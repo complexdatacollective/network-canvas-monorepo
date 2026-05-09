@@ -229,7 +229,7 @@ function CollectionContent<T extends Record<string, unknown>>({
  * <Collection
  *   items={users}
  *   keyExtractor={(user) => user.id}
- *   layout={new ListLayout({ gap: 8 })}
+ *   layout={new ListLayout({ gap: 2 })}
  *   renderItem={(user) => (
  *     <div className="p-2">{user.name}</div>
  *   )}

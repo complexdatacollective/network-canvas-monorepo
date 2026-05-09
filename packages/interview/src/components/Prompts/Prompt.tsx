@@ -50,7 +50,7 @@ const Prompt = ({ id, text, backwards = false, small }: PromptProps) => {
 				opacity: { duration: 0.2 },
 			}}
 		>
-			<Heading level={small ? "h4" : "h2"} margin="none" className="font-normal">
+			<Heading level={small ? "h4" : "h2"} margin="none" className="font-normal max-w-[65ch]">
 				<RenderMarkdown render={<Fragment />}>{text}</RenderMarkdown>
 			</Heading>
 		</motion.div>

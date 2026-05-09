@@ -15,6 +15,7 @@ import type { StageProps } from "../../types";
 import PedigreeChecklist from "./components/PedigreeChecklist";
 import EgoCellWizard from "./components/wizards/EgoCellWizard";
 import { FamilyPedigreeProvider, useFamilyPedigreeStore } from "./FamilyPedigreeProvider";
+import contextMenuHintUrl from "./pedigree-context-menu-hint.png";
 import FamilyPedigreePlaceholder from "./pedigree-layout/components/FamilyPedigreePlaceholder";
 import PedigreeView from "./pedigree-layout/components/PedigreeView";
 import type { VariableConfig } from "./store";
@@ -361,7 +362,7 @@ const FamilyPedigree = (props: StageProps<"FamilyPedigree">) => {
 										</div>
 										<figure className="phone-landscape:flex hidden shrink-0 flex-col items-center gap-2">
 											<img
-												src="/images/pedigree-context-menu-hint.png"
+												src={contextMenuHintUrl}
 												alt="Example of the context menu showing options to add parent, child, partner, sibling, edit name, or delete"
 												className="w-40 rounded-lg shadow-lg"
 											/>

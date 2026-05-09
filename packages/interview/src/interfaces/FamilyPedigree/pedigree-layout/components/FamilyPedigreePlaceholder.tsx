@@ -53,8 +53,6 @@ export default function FamilyPedigreePlaceholder({ className }: { className?: s
 	const ego = { x: 1400, y: 1100 }; // square (slightly brighter)
 	const child3 = { x: 2200, y: 1100 }; // circle
 
-	const stroke = "var(--platinum)";
-	const lineStroke = "var(--platinum)";
 	const sw = 25; // stroke width
 
 	return (
@@ -73,7 +71,7 @@ export default function FamilyPedigreePlaceholder({ className }: { className?: s
 				y1={father.y}
 				x2={mother.x - r}
 				y2={mother.y}
-				stroke={lineStroke}
+				className="stroke-platinum"
 				strokeWidth={sw}
 				variants={draw(0.4)}
 			/>
@@ -83,7 +81,7 @@ export default function FamilyPedigreePlaceholder({ className }: { className?: s
 				y1={father.y}
 				x2={midX}
 				y2={railY}
-				stroke={lineStroke}
+				className="stroke-platinum"
 				strokeWidth={sw}
 				variants={draw(0.65)}
 			/>
@@ -93,7 +91,7 @@ export default function FamilyPedigreePlaceholder({ className }: { className?: s
 				y1={railY}
 				x2={child3.x}
 				y2={railY}
-				stroke={lineStroke}
+				className="stroke-platinum"
 				strokeWidth={sw}
 				variants={draw(0.9)}
 			/>
@@ -103,7 +101,7 @@ export default function FamilyPedigreePlaceholder({ className }: { className?: s
 				y1={railY}
 				x2={child1.x}
 				y2={child1.y - r}
-				stroke={lineStroke}
+				className="stroke-platinum"
 				strokeWidth={sw}
 				variants={draw(1.15)}
 			/>
@@ -112,7 +110,7 @@ export default function FamilyPedigreePlaceholder({ className }: { className?: s
 				y1={railY}
 				x2={ego.x}
 				y2={ego.y - r}
-				stroke={lineStroke}
+				className="stroke-platinum"
 				strokeWidth={sw}
 				variants={draw(1.15)}
 			/>
@@ -121,7 +119,7 @@ export default function FamilyPedigreePlaceholder({ className }: { className?: s
 				y1={railY}
 				x2={child3.x}
 				y2={child3.y - r}
-				stroke={lineStroke}
+				className="stroke-platinum"
 				strokeWidth={sw}
 				variants={draw(1.15)}
 			/>
@@ -135,7 +133,7 @@ export default function FamilyPedigreePlaceholder({ className }: { className?: s
 				height={d}
 				rx={rx}
 				fill="none"
-				stroke={stroke}
+				className="stroke-platinum"
 				strokeWidth={sw}
 				variants={draw(0)}
 			/>
@@ -145,7 +143,7 @@ export default function FamilyPedigreePlaceholder({ className }: { className?: s
 				cy={mother.y}
 				r={r}
 				fill="none"
-				stroke={stroke}
+				className="stroke-platinum"
 				strokeWidth={sw}
 				variants={draw(0.15)}
 			/>
@@ -155,7 +153,7 @@ export default function FamilyPedigreePlaceholder({ className }: { className?: s
 				cy={child1.y}
 				r={r}
 				fill="none"
-				stroke={stroke}
+				className="stroke-platinum"
 				strokeWidth={sw}
 				variants={draw(1.4)}
 			/>
@@ -167,7 +165,7 @@ export default function FamilyPedigreePlaceholder({ className }: { className?: s
 				height={d}
 				rx={rx}
 				fill="none"
-				stroke={stroke}
+				className="stroke-platinum"
 				strokeWidth={sw}
 				variants={draw(1.4)}
 			/>
@@ -177,7 +175,7 @@ export default function FamilyPedigreePlaceholder({ className }: { className?: s
 				cy={child3.y}
 				r={r}
 				fill="none"
-				stroke={stroke}
+				className="stroke-platinum"
 				strokeWidth={sw}
 				variants={draw(1.4)}
 			/>

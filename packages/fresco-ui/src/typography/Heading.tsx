@@ -5,14 +5,14 @@ import * as React from "react";
 import { cva, cx, type VariantProps } from "../utils/cva";
 
 export const headingVariants = cva({
-	base: "font-heading scroll-m-20 text-balance",
+	base: "font-heading scroll-m-20 text-pretty",
 	variants: {
 		level: {
 			h1: "text-3xl font-bold",
 			h2: "text-2xl font-bold",
 			h3: "text-xl font-bold",
 			h4: "text-lg font-extrabold",
-			label: "text-base leading-snug font-bold text-pretty",
+			label: "text-base leading-snug font-bold",
 		},
 		variant: {
 			default: "",

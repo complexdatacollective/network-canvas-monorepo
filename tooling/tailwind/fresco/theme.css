@@ -87,6 +87,33 @@
   --font-monospace: ui-monospace, Menlo, Monaco, 'Fira Code', monospace;
 
   /*****************************************************************************
+  *                               CONTAINER WIDTHS
+  *
+  * Drives `w-md`, `max-w-2xs`, `min-w-3xs`, etc. Multiplied by
+  * `--theme-root-size` so container widths scale on the same axis as the
+  * type scale — keeps reading line lengths (chars/line) stable across
+  * theme breakpoints. Multipliers match Tailwind's rem defaults
+  * (3xs=16, 2xs=18, xs=20, sm=24, md=28, lg=32, xl=36, 2xl=42, 3xl=48,
+  * 4xl=56, 5xl=64, 6xl=72, 7xl=80) so default-theme behaviour is
+  * unchanged. Themes that override `--theme-root-size` MUST redeclare
+  * this block — see the spacing-base note in default.css.
+  *****************************************************************************/
+  --container-*: initial;
+  --container-3xs: calc(16 * var(--theme-root-size));
+  --container-2xs: calc(18 * var(--theme-root-size));
+  --container-xs:  calc(20 * var(--theme-root-size));
+  --container-sm:  calc(24 * var(--theme-root-size));
+  --container-md:  calc(28 * var(--theme-root-size));
+  --container-lg:  calc(32 * var(--theme-root-size));
+  --container-xl:  calc(36 * var(--theme-root-size));
+  --container-2xl: calc(42 * var(--theme-root-size));
+  --container-3xl: calc(48 * var(--theme-root-size));
+  --container-4xl: calc(56 * var(--theme-root-size));
+  --container-5xl: calc(64 * var(--theme-root-size));
+  --container-6xl: calc(72 * var(--theme-root-size));
+  --container-7xl: calc(80 * var(--theme-root-size));
+
+  /*****************************************************************************
   *                               COLORS
   *****************************************************************************/
   --color-*: initial;
@@ -529,7 +556,7 @@
 
   /* Slightly increase default stroke width for better visibility */
   .lucide {
-    stroke-width: 2.5px;
+    stroke-width: 2px;
   }
 }
 

@@ -61,7 +61,7 @@ const ErrorMessage = (_props: { error: Error }) => (
 	</div>
 );
 
-const layout = new ListLayout<UseItemElement>({ gap: 14 });
+const layout = new ListLayout<UseItemElement>({ gap: 2 });
 
 const keyExtractor = (item: UseItemElement) => item.id;
 

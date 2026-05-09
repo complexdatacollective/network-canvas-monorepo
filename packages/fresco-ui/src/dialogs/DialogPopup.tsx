@@ -8,10 +8,10 @@ export default function DialogPopup({ children, className, ...props }: React.Com
 			className={cx(
 				surfaceVariants({
 					level: 0,
-					elevation: "high",
+					elevation: "none",
 					spacing: "none",
 				}),
-				"tablet-portrait:w-auto w-[calc(100%-var(--spacing)*6)] max-w-2xl",
+				"tablet-portrait:w-auto w-[calc(100%-var(--spacing)*6)] max-w-2xl shadow-2xl",
 				"fixed top-1/2 left-1/2 -translate-1/2",
 				"flex max-h-[calc(100vh-var(--spacing)*4)] flex-col",
 				className,

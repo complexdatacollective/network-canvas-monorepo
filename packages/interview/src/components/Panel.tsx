@@ -52,7 +52,7 @@ const Panel = ({ title, children, minimize = false, panelNumber, noCollapse = fa
 	const headingClassNames = compose(
 		surfaceSpacingVariants,
 		cva({
-			base: "border-background flex shrink-0 grow-0 flex-col justify-center border-b-[3px] text-center",
+			base: "border-background flex shrink-0 grow-0 flex-col justify-center border-b-3 text-center",
 		}),
 	);
 

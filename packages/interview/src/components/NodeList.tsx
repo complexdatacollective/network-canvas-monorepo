@@ -60,7 +60,7 @@ const NodeList = memo(
 		// All other Collection props passed through
 		...collectionProps
 	}: NodeListProps) => {
-		const layout = useMemo(() => new InlineGridLayout<NcNode>({ gap: 16 }), []);
+		const layout = useMemo(() => new InlineGridLayout<NcNode>({ gap: 4 }), []);
 		const containerRef = useRef<HTMLDivElement>(null);
 
 		// --- Item buffering for prompt transitions ---
@@ -214,7 +214,7 @@ const NodeList = memo(
 						animationKey={displayAnimationKey}
 						aria-label={ariaLabel}
 						emptyState={emptyState}
-						viewportClassName="p-2"
+						viewportClassName="p-4"
 					>
 						{(CollectionElements) => CollectionElements}
 					</Collection>

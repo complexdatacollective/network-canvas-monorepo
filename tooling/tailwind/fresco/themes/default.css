@@ -16,8 +16,41 @@
     --heading-font: 'Nunito Variable', sans-serif;
     --body-font: 'Inclusive Sans Variable', sans-serif;
 
-    /* TW default uses rem, we use em so that spacing scales with local font size */
-    --spacing-base: 0.25em;
+    /*
+     * Spacing tracks `--theme-root-size` so themed regions can scale all
+     * `p-*` / `m-*` / `gap-*` / `size-*` utilities at their breakpoints by
+     * just overriding `--theme-root-size`. NOT em-based: em would compound
+     * across nested font-sizes and make component sizes context-dependent.
+     * Theme files must redeclare `--spacing-base` (not just
+     * `--theme-root-size`) for the calc to re-evaluate at their cascade
+     * level — the inner var() in a calc is resolved when the custom
+     * property is computed, so a snapshot of :root's value cascades
+     * downward unless the theme overrides `--spacing-base` directly.
+     */
+    --spacing-base: calc(0.25 * var(--theme-root-size));
+
+    /*
+     * Container widths — declared here at :root because Tailwind v4's
+     * `@theme inline` tree-shakes calc-with-var() tokens from its :root
+     * emission, so utilities like `.w-md { width: var(--container-md) }`
+     * would otherwise have no value outside themed regions. Themes that
+     * override `--theme-root-size` redeclare these for the same reason
+     * `--spacing-base` is redeclared (calc snapshots at the declaration
+     * site). Multipliers match Tailwind's rem defaults.
+     */
+    --container-3xs: calc(16 * var(--theme-root-size));
+    --container-2xs: calc(18 * var(--theme-root-size));
+    --container-xs:  calc(20 * var(--theme-root-size));
+    --container-sm:  calc(24 * var(--theme-root-size));
+    --container-md:  calc(28 * var(--theme-root-size));
+    --container-lg:  calc(32 * var(--theme-root-size));
+    --container-xl:  calc(36 * var(--theme-root-size));
+    --container-2xl: calc(42 * var(--theme-root-size));
+    --container-3xl: calc(48 * var(--theme-root-size));
+    --container-4xl: calc(56 * var(--theme-root-size));
+    --container-5xl: calc(64 * var(--theme-root-size));
+    --container-6xl: calc(72 * var(--theme-root-size));
+    --container-7xl: calc(80 * var(--theme-root-size));
 
     /*
      * `rem` keeps radius constant across cascade contexts (anchored to the

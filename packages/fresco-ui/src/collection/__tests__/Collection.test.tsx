@@ -42,9 +42,9 @@ function ControlledCollection({
 	// Calculation: (800 + 8) / (250 + 8) = 3.13 → 3 columns
 	const layout = useMemo(() => {
 		if (layoutType === "grid") {
-			return new GridLayout<Item>({ minItemWidth: 250, gap: 8 });
+			return new GridLayout<Item>({ minItemWidth: 250, gap: 2 });
 		}
-		return new ListLayout<Item>({ gap: 8 });
+		return new ListLayout<Item>({ gap: 2 });
 	}, [layoutType]);
 
 	const handleSelectionChange = (keys: Set<Key>) => {
@@ -88,7 +88,7 @@ describe("Collection", () => {
 		});
 
 		it("should render empty state when no items", () => {
-			const layout = new ListLayout<Item>({ gap: 8 });
+			const layout = new ListLayout<Item>({ gap: 2 });
 
 			render(
 				<Collection
@@ -405,7 +405,7 @@ describe("Collection", () => {
 
 	describe("uncontrolled selection", () => {
 		it("should work with defaultSelectedKeys", () => {
-			const layout = new ListLayout<Item>({ gap: 8 });
+			const layout = new ListLayout<Item>({ gap: 2 });
 
 			render(
 				<Collection

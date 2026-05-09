@@ -133,7 +133,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
 		[createEdge, dispatch, stageStep],
 	);
 
-	const layout = useMemo(() => new InlineGridLayout<NcNode>({ gap: 16 }), []);
+	const layout = useMemo(() => new InlineGridLayout<NcNode>({ gap: 4 }), []);
 
 	const keyExtractor = useCallback((node: NcNode) => node[entityPrimaryKeyProperty], []);
 

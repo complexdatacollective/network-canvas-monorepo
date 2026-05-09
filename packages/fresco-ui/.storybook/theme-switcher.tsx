@@ -59,7 +59,7 @@ export const withTheme: Decorator = (Story, context) => {
 
 	if (theme === "interview") {
 		return (
-			<ThemedRegion theme="interview" className="bg-background text-text publish-colors">
+			<ThemedRegion theme="interview">
 				<Story />
 			</ThemedRegion>
 		);

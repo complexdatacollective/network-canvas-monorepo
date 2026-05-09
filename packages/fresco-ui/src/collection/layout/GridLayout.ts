@@ -8,7 +8,12 @@ import type { LayoutInfo, LayoutOptions, MeasurementInfo, RowInfo, Size } from "
 type GridLayoutOptions = {
 	/** Minimum width for items. Columns are calculated to fit items of at least this width. Default: 200 */
 	minItemWidth?: number;
-	/** Gap between items. Default: 16 */
+	/**
+	 * Gap between items, expressed in Tailwind spacing units (the same scale
+	 * as `gap-*` / `p-*` / `m-*` — `1` = `--spacing-base`, ≈ 0.25rem at the
+	 * default theme; themed regions can override `--spacing-base` to scale).
+	 * Default: 4 (= 1rem at default theme).
+	 */
 	gap?: number;
 };
 
@@ -23,18 +28,22 @@ export class GridLayout<T = unknown> extends Layout<T> {
 	constructor(options?: GridLayoutOptions) {
 		super();
 		this.minItemWidth = options?.minItemWidth ?? 200;
-		this.gap_ = options?.gap ?? 16;
+		this.gap_ = options?.gap ?? 4;
+	}
+
+	private getResolvedGap(): number {
+		return this.gap_ * this.resolveSpacingUnit();
 	}
 
 	override getGap(): number {
-		return this.gap_;
+		return this.getResolvedGap();
 	}
 
 	getContainerStyles(): React.CSSProperties {
 		return {
 			display: "grid",
 			gridTemplateColumns: `repeat(auto-fill, minmax(${this.minItemWidth}px, 1fr))`,
-			gap: this.gap_,
+			gap: `calc(${this.gap_} * var(--spacing-base, 0.25rem))`,
 		};
 	}
 
@@ -94,6 +103,7 @@ export class GridLayout<T = unknown> extends Layout<T> {
 		this.currentItemWidth = itemWidth;
 
 		// Initial layout pass - heights will be 0 until measurements arrive
+		const resolvedGap = this.getResolvedGap();
 		let x = 0;
 		let y = 0;
 		let columnIndex = 0;
@@ -113,10 +123,10 @@ export class GridLayout<T = unknown> extends Layout<T> {
 
 			if (columnIndex >= columnCount) {
 				x = 0;
-				y += this.gap_;
+				y += resolvedGap;
 				columnIndex = 0;
 			} else {
-				x += itemWidth + this.gap_;
+				x += itemWidth + resolvedGap;
 			}
 		}
 
@@ -135,6 +145,7 @@ export class GridLayout<T = unknown> extends Layout<T> {
 		if (this.currentColumnCount === 0) return;
 
 		const itemWidth = this.currentItemWidth;
+		const resolvedGap = this.getResolvedGap();
 		this.rows = [];
 
 		let x = 0;
@@ -174,13 +185,13 @@ export class GridLayout<T = unknown> extends Layout<T> {
 
 				// Move to next row
 				x = 0;
-				y += currentRowMaxHeight + this.gap_;
+				y += currentRowMaxHeight + resolvedGap;
 				columnIndex = 0;
 				currentRowKeys = [];
 				currentRowMaxHeight = 0;
 				rowIndex++;
 			} else {
-				x += itemWidth + this.gap_;
+				x += itemWidth + resolvedGap;
 			}
 		}
 
@@ -202,15 +213,16 @@ export class GridLayout<T = unknown> extends Layout<T> {
 	}
 
 	private calculateColumnCount(containerWidth: number): number {
-		const availableWidth = containerWidth + this.gap_;
-		const itemWidthWithGap = this.minItemWidth + this.gap_;
+		const resolvedGap = this.getResolvedGap();
+		const availableWidth = containerWidth + resolvedGap;
+		const itemWidthWithGap = this.minItemWidth + resolvedGap;
 		const columnCount = Math.max(1, Math.floor(availableWidth / itemWidthWithGap));
 
 		return columnCount;
 	}
 
 	private calculateItemWidth(containerWidth: number, columnCount: number): number {
-		const totalGapWidth = this.gap_ * (columnCount - 1);
+		const totalGapWidth = this.getResolvedGap() * (columnCount - 1);
 		const availableWidth = containerWidth - totalGapWidth;
 		return availableWidth / columnCount;
 	}

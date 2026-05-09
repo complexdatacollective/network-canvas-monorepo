@@ -98,7 +98,7 @@ export const controlVariants = cva({
 export const textSizeVariants = cva({
 	variants: {
 		size: {
-			sm: "", // Text size causes padding etc to also scale. Given these are also adjusted for small size, we can leave text size unchanged to avoid excessive shrinking.
+			sm: "text-sm",
 			md: "text-base",
 			lg: "text-lg",
 			xl: "text-xl",
@@ -113,10 +113,10 @@ export const textSizeVariants = cva({
 export const heightVariants = cva({
 	variants: {
 		size: {
-			sm: "h-10",
+			sm: "h-8",
 			md: "h-12",
-			lg: "h-13",
-			xl: "h-14",
+			lg: "h-16",
+			xl: "h-20",
 		},
 	},
 	defaultVariants: {

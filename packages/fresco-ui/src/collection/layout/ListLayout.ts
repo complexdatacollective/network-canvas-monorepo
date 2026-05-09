@@ -6,6 +6,12 @@ import { Layout } from "./Layout";
 import type { LayoutInfo, LayoutOptions, MeasurementInfo, RowInfo, Size } from "./types";
 
 type ListLayoutOptions = {
+	/**
+	 * Gap between items, expressed in Tailwind spacing units (the same scale
+	 * as `gap-*` / `p-*` / `m-*` — `1` = `--spacing-base`, ≈ 0.25rem at the
+	 * default theme; themed regions can override `--spacing-base` to scale).
+	 * Default: 0.
+	 */
 	gap?: number;
 };
 
@@ -20,16 +26,20 @@ export class ListLayout<T = unknown> extends Layout<T> {
 		this.gap_ = options?.gap ?? 0;
 	}
 
+	private getResolvedGap(): number {
+		return this.gap_ * this.resolveSpacingUnit();
+	}
+
 	getContainerStyles(): React.CSSProperties {
 		return {
 			display: "flex",
 			flexDirection: "column",
-			gap: this.gap_,
+			gap: `calc(${this.gap_} * var(--spacing-base, 0.25rem))`,
 		};
 	}
 
 	override getGap(): number {
-		return this.gap_;
+		return this.getResolvedGap();
 	}
 
 	getMeasurementInfo(containerWidth?: number): MeasurementInfo {
@@ -74,12 +84,12 @@ export class ListLayout<T = unknown> extends Layout<T> {
 
 			this.layoutInfos.set(key, layoutInfo);
 
-			y += this.gap_;
+			y += this.getResolvedGap();
 		}
 
 		this.contentSize = {
 			width: layoutOptions.containerWidth,
-			height: Math.max(0, y - this.gap_),
+			height: Math.max(0, y - this.getResolvedGap()),
 		};
 
 		// If we already have measurements, recalculate with them
@@ -115,14 +125,14 @@ export class ListLayout<T = unknown> extends Layout<T> {
 				itemKeys: [key],
 			});
 
-			y += height + this.gap_;
+			y += height + this.getResolvedGap();
 			rowIndex++;
 		}
 
 		// Remove the last gap from content height
 		this.contentSize = {
 			width: this.containerWidth,
-			height: Math.max(0, y - this.gap_),
+			height: Math.max(0, y - this.getResolvedGap()),
 		};
 	}
 

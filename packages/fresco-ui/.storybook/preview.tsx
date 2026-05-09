@@ -24,7 +24,7 @@ const ThemedDocsContainer = ({ children, context }: PropsWithChildren<DocsContai
 
 	if (theme === "interview") {
 		return (
-			<ThemedRegion theme="interview" className="bg-background text-text publish-colors">
+			<ThemedRegion theme="interview">
 				<DocsContainer context={context}>{children}</DocsContainer>
 			</ThemedRegion>
 		);

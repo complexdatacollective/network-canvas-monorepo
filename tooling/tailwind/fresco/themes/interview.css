@@ -52,7 +52,34 @@
   [data-theme-interview] {
     --heading-font: 'Nunito Variable', sans-serif;
     --body-font: 'Nunito Variable', sans-serif;
-    --spacing-base: 0.25em; /* TW default uses rem */
+
+    /*
+     * Redeclared (not inherited from :root) so the calc resolves against
+     * THIS region's `--theme-root-size`, which the breakpoint media queries
+     * below override. Without redeclaration the inherited value is the
+     * snapshot computed at :root (where --theme-root-size never scales),
+     * and `size-*` / `p-*` / `gap-*` would be frozen at the default size
+     * inside the themed region. Same gotcha applies to `--container-*`
+     * below.
+     */
+    --spacing-base: calc(0.25 * var(--theme-root-size));
+
+    /* Container widths — see theme.css for rationale. Redeclared here so
+     * `w-md`, `max-w-2xs` etc. scale with the themed `--theme-root-size`
+     * at the breakpoints, keeping chars-per-line stable as text grows. */
+    --container-3xs: calc(16 * var(--theme-root-size));
+    --container-2xs: calc(18 * var(--theme-root-size));
+    --container-xs:  calc(20 * var(--theme-root-size));
+    --container-sm:  calc(24 * var(--theme-root-size));
+    --container-md:  calc(28 * var(--theme-root-size));
+    --container-lg:  calc(32 * var(--theme-root-size));
+    --container-xl:  calc(36 * var(--theme-root-size));
+    --container-2xl: calc(42 * var(--theme-root-size));
+    --container-3xl: calc(48 * var(--theme-root-size));
+    --container-4xl: calc(56 * var(--theme-root-size));
+    --container-5xl: calc(64 * var(--theme-root-size));
+    --container-6xl: calc(72 * var(--theme-root-size));
+    --container-7xl: calc(80 * var(--theme-root-size));
 
     --shadow-color: oklch(5% 0.01 260);
 

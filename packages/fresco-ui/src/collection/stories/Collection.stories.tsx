@@ -463,7 +463,7 @@ A feature-rich, accessible collection component for rendering interactive lists 
 import { Collection } from '../components/Collection';
 import { ListLayout } from '../layout/ListLayout';
 
-const layout = new ListLayout({ gap: 8 });
+const layout = new ListLayout({ gap: 4 });
 
 <Collection
   items={items}
@@ -499,7 +499,7 @@ Three layout strategies are available. Each layout creates its own keyboard navi
 Vertical single-column layout using flexbox. Keyboard navigation is Up/Down only.
 
 \`\`\`tsx
-new ListLayout({ gap: 8 })
+new ListLayout({ gap: 4 })
 \`\`\`
 
 ### GridLayout
@@ -507,7 +507,7 @@ new ListLayout({ gap: 8 })
 CSS Grid with auto-calculated columns based on container width. Supports 2D keyboard navigation (Up/Down/Left/Right).
 
 \`\`\`tsx
-new GridLayout({ minItemWidth: 200, gap: 16 })
+new GridLayout({ minItemWidth: 200, gap: 4 })
 \`\`\`
 
 ### InlineGridLayout
@@ -515,8 +515,14 @@ new GridLayout({ minItemWidth: 200, gap: 16 })
 Flexbox wrapping layout where items keep their intrinsic widths. Supports 2D spatial navigation. Best for variable-width items like tags or badges.
 
 \`\`\`tsx
-new InlineGridLayout({ gap: 16 })
+new InlineGridLayout({ gap: 4 })
 \`\`\`
+
+### Gap
+
+The \`gap\` option on every layout is a **multiplier of the theme's \`--spacing-base\` variable** — the same scale Tailwind's \`gap-*\` / \`p-*\` / \`m-*\` utilities use. A value of \`1\` resolves to \`--spacing-base\` (≈0.25rem at the default theme), so \`gap: 4\` matches \`gap-4\`.
+
+Because \`--spacing-base\` is themable, the same numeric value scales with the surrounding theme — e.g. inside a \`<ThemedRegion theme="interview">\` the spacing unit grows at larger breakpoints, and the collection gap grows with it. Internally, layouts emit \`calc(N * var(--spacing-base, 0.25rem))\` for the rendered grid/flex \`gap\`, and resolve the same expression to pixels when measuring rows for virtualization.
 
 ## Selection
 
@@ -739,7 +745,7 @@ Provide a custom empty state component:
 export const Primary = meta.story({
 	args: {
 		layoutType: "list",
-		gap: 12,
+		gap: 2,
 		minItemWidth: 200,
 		itemComponent: "card",
 		selectionMode: "multiple",
@@ -761,8 +767,9 @@ export const Primary = meta.story({
 			table: { category: "Layout" },
 		},
 		gap: {
-			control: { type: "range" as const, min: 0, max: 48, step: 4 },
-			description: "Gap between items in pixels",
+			control: { type: "range" as const, min: 0, max: 10, step: 1 },
+			description:
+				"Gap between items in spacing units (multiplier of `--spacing-base`, same scale as Tailwind's `gap-*`)",
 			table: { category: "Layout" },
 		},
 		minItemWidth: {
@@ -849,8 +856,9 @@ const dragDropArgTypes = {
 		table: { category: "Layout" },
 	},
 	gap: {
-		control: { type: "range" as const, min: 0, max: 48, step: 4 },
-		description: "Gap between items in pixels",
+		control: { type: "range" as const, min: 0, max: 10, step: 1 },
+		description:
+			"Gap between items in spacing units (multiplier of `--spacing-base`, same scale as Tailwind's `gap-*`)",
 		table: { category: "Layout" },
 	},
 	minItemWidth: {
@@ -882,7 +890,7 @@ export const DragDropBetweenCollections = meta.story({
 	name: "Drag Drop Between Collections",
 	args: {
 		layoutType: "inlineGrid",
-		gap: 16,
+		gap: 4,
 		minItemWidth: 200,
 		itemComponent: "node",
 		selectionMode: "multiple",

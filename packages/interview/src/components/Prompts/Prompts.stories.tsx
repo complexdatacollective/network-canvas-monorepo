@@ -7,8 +7,9 @@ import { useState } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import Prompts from "./Prompts";
 
-const containerClasses = "w-full max-w-2xl mx-auto p-8 bg-surface text-surface-contrast publish-colors rounded";
+const containerClasses = "w-full mx-auto";
 
+// Simulates stage load to trigger animation sequence.
 const MotionDecorator = (Story: React.ComponentType) => {
 	const decoratorVariants = {
 		initial: { opacity: 0 },

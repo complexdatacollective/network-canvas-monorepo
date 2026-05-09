@@ -31,30 +31,27 @@ export const surfaceSpacingVariants = cva({
 		{
 			spacing: "xs",
 			dynamicSpacing: true,
-			className: "phone-landscape:p-4",
+			className: "p-4",
 		},
 		{
 			spacing: "sm",
 			dynamicSpacing: true,
-			className: "phone-landscape:p-6",
+			className: "p-6",
 		},
 		{
 			spacing: "md",
 			dynamicSpacing: true,
-			className:
-				"phone-landscape:px-8 phone-landscape:py-6 tablet-landscape:px-10 tablet-landscape:py-6 desktop:px-12 desktop:py-8",
+			className: "p-8 tablet-portrait:px-12",
 		},
 		{
 			spacing: "lg",
 			dynamicSpacing: true,
-			className:
-				"phone-landscape:px-8 phone-landscape:py-6 tablet-portrait:px-10 tablet-portrait:py-6 tablet-landscape:px-12 tablet-landscape:py-8 desktop:px-16 desktop:py-10",
+			className: "p-10 tablet-portrait:px-16",
 		},
 		{
 			spacing: "xl",
 			dynamicSpacing: true,
-			className:
-				"phone-landscape:px-10 phone-landscape:py-8 tablet-portrait:px-12 tablet-portrait:py-8 tablet-landscape:px-16 tablet-landscape:py-10 desktop:px-20 desktop:py-12",
+			className: "p-12 tablet-portrait:px-20",
 		},
 	],
 	defaultVariants: {
@@ -72,7 +69,7 @@ export const surfaceVariants = compose(
 		// `scrollIntoView`/focus auto-scroll to move a descendant into view by
 		// scrolling the Surface itself, which in dialogs pushes the header off
 		// screen when content exceeds the clipped area.
-		base: "publish-colors relative overflow-clip rounded-sm @xl:rounded @4xl:rounded-lg",
+		base: "publish-colors relative overflow-clip rounded",
 		variants: {
 			level: {
 				0: "text-surface-contrast bg-surface",

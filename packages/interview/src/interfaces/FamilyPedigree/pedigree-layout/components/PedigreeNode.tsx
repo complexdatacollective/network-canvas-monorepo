@@ -1,7 +1,7 @@
 import { useDragSource } from "@codaco/fresco-ui/dnd/dnd";
 import Node from "@codaco/fresco-ui/Node";
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
-import { useMemo } from "react";
+import { type MouseEventHandler, type Ref, useMemo } from "react";
 import { useStageSelector } from "../../../../hooks/useStageSelector";
 import { getNodeColorSelector, resolveNodeShape } from "../../../../selectors/session";
 import type { VariableConfig } from "../../store";
@@ -126,7 +126,8 @@ type PedigreeNodeProps = {
 	allowDrag: boolean;
 	isAdopted?: boolean;
 	selected?: boolean;
-	onClick?: () => void;
+	onClick?: MouseEventHandler<HTMLButtonElement>;
+	ref?: Ref<HTMLButtonElement>;
 };
 
 export default function PedigreeNode({
@@ -137,6 +138,7 @@ export default function PedigreeNode({
 	isAdopted,
 	selected,
 	onClick,
+	ref,
 	...rest
 }: PedigreeNodeProps) {
 	const { id } = node;
@@ -160,12 +162,14 @@ export default function PedigreeNode({
 
 	const nodeElement = (
 		<Node
+			ref={ref}
 			color={nodeColor}
 			size="sm"
 			label={isEgo ? "" : displayLabel}
 			ariaLabel={displayLabel}
 			shape={shape}
 			selected={selected}
+			onClick={onClick}
 			{...(allowDrag ? dragProps : {})}
 			{...rest}
 		>
@@ -175,14 +179,5 @@ export default function PedigreeNode({
 		</Node>
 	);
 
-	const wrappedNode = isAdopted ? <AdoptionBrackets>{nodeElement}</AdoptionBrackets> : nodeElement;
-
-	if (onClick) {
-		return (
-			<button type="button" onClick={onClick} className="contents">
-				{wrappedNode}
-			</button>
-		);
-	}
-	return <div>{wrappedNode}</div>;
+	return isAdopted ? <AdoptionBrackets>{nodeElement}</AdoptionBrackets> : nodeElement;
 }

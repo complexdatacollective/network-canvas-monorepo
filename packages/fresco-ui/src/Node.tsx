@@ -38,10 +38,10 @@ const nodeVariants = cva({
 	variants: {
 		size: {
 			xxs: "size-8",
-			xs: "desktop:size-18 tablet-landscape:size-16 size-14",
-			sm: "desktop:size-24 tablet-landscape:size-22 size-20",
-			md: "desktop:size-30 tablet-landscape:size-28 size-24",
-			lg: "desktop:size-36 tablet-landscape:size-34 size-30",
+			xs: "size-16",
+			sm: "size-24",
+			md: "size-32",
+			lg: "size-40",
 		},
 		shape: {
 			circle: "rounded-full",
@@ -49,14 +49,14 @@ const nodeVariants = cva({
 			diamond: "scale-[0.85] rotate-45 rounded",
 		},
 		color: {
-			"node-color-seq-1": "outline-node-1 [--base:var(--color-node-1)]",
-			"node-color-seq-2": "outline-node-2 [--base:var(--color-node-2)]",
-			"node-color-seq-3": "outline-node-3 [--base:var(--color-node-3)]",
-			"node-color-seq-4": "outline-node-4 [--base:var(--color-node-4)]",
-			"node-color-seq-5": "outline-node-5 [--base:var(--color-node-5)]",
-			"node-color-seq-6": "outline-node-6 [--base:var(--color-node-6)]",
-			"node-color-seq-7": "outline-node-7 [--base:var(--color-node-7)]",
-			"node-color-seq-8": "outline-node-8 [--base:var(--color-node-8)]",
+			"node-color-seq-1": "outline-node-1 [--base:var(--node-1)]",
+			"node-color-seq-2": "outline-node-2 [--base:var(--node-2)]",
+			"node-color-seq-3": "outline-node-3 [--base:var(--node-3)]",
+			"node-color-seq-4": "outline-node-4 [--base:var(--node-4)]",
+			"node-color-seq-5": "outline-node-5 [--base:var(--node-5)]",
+			"node-color-seq-6": "outline-node-6 [--base:var(--node-6)]",
+			"node-color-seq-7": "outline-node-7 [--base:var(--node-7)]",
+			"node-color-seq-8": "outline-node-8 [--base:var(--node-8)]",
 			custom: "", // Custom color - set via style prop
 		},
 		disabled: {
