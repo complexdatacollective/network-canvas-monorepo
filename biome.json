@@ -73,8 +73,7 @@
 			"!apps/interviewer",
 			"!apps/architect-desktop",
 			"!packages/network-query",
-			"!**/worker-configuration.d.ts",
-			"!tooling/tailwind/fresco/theme.css"
+			"!**/worker-configuration.d.ts"
 		]
 	},
 	"javascript": {
