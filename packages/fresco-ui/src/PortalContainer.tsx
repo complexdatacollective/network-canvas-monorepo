@@ -24,10 +24,14 @@ export function PortalContainerProvider({ children }: { children: ReactNode }) {
 			 * 0-wide `relative` container, those Positioners shrink-to-fit to
 			 * min-content width, collapsing menu/tooltip text to its longest
 			 * unbreakable token. `pointer-events-none` keeps the empty
-			 * viewport-sized portal layer from swallowing interactions; portaled
-			 * popups re-enable pointer events on themselves.
+			 * viewport-sized portal layer from swallowing interactions on the
+			 * stage below; `[&>*]:pointer-events-auto` re-enables pointer
+			 * events on each portaled root (dialog backdrop/popup, tooltip /
+			 * menu / popover Positioner) so dialogs remain interactive —
+			 * `pointer-events` inherits, so we override on the children
+			 * instead of asking every consumer to.
 			 */}
-			<div ref={setContainer} className="pointer-events-none fixed inset-0 isolate z-50" />
+			<div ref={setContainer} className="pointer-events-none fixed inset-0 isolate z-50 [&>*]:pointer-events-auto" />
 		</PortalContainerContext.Provider>
 	);
 }
