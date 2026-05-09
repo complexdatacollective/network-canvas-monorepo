@@ -12,13 +12,11 @@ const alertVariants = cva({
 	variants: {
 		variant: {
 			default: "",
-			info: "text-info-contrast [&>svg]:text-info-contrast bg-info [--color-link:var(--color-info-contrast)]",
+			info: "text-info-contrast [&>svg]:text-info-contrast bg-info [--color-link:var(--info-contrast)]",
 			destructive:
-				"text-destructive-contrast [&>svg]:text-destructive-contrast bg-destructive [--color-link:var(--color-destructive-contrast)]",
-			success:
-				"text-success-contrast [&>svg]:text-success-contrast bg-success [--color-link:var(--color-success-contrast)]",
-			warning:
-				"text-warning-contrast [&>svg]:text-warning-contrast bg-warning [--color-link:var(--color-warning-contrast)]",
+				"text-destructive-contrast [&>svg]:text-destructive-contrast bg-destructive [--color-link:var(--destructive-contrast)]",
+			success: "text-success-contrast [&>svg]:text-success-contrast bg-success [--color-link:var(--success-contrast)]",
+			warning: "text-warning-contrast [&>svg]:text-warning-contrast bg-warning [--color-link:var(--warning-contrast)]",
 		},
 	},
 	defaultVariants: {

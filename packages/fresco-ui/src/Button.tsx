@@ -72,7 +72,7 @@ const buttonSpecificVariants = cva({
 			variant: ["outline", "text", "dashed"],
 			color: "default",
 			className:
-				"interview:[--component-text:var(--color-neutral)] [--component-text:var(--color-neutral-contrast)] hover:enabled:[--component-text:var(--color-neutral)]",
+				"interview:[--component-text:var(--neutral)] [--component-text:var(--neutral-contrast)] hover:enabled:[--component-text:var(--neutral)]",
 		},
 		{
 			variant: ["outline", "dashed"],

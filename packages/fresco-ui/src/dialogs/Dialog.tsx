@@ -64,10 +64,10 @@ export default function Dialog({
 				key="dialog-popup"
 				className={cx(
 					// Accent overrides the primary hue so that nested primary buttons inherit color
-					accent === "success" && "[--color-primary:var(--color-success)]",
-					accent === "info" && "[--color-primary:var(--color-info)]",
+					accent === "success" && "[--color-primary:var(--success)]",
+					accent === "info" && "[--color-primary:var(--info)]",
 					accent === "destructive" &&
-						"[--color-primary-contrast:var(--color-destructive-contrast)] [--color-primary:var(--color-destructive)]",
+						"[--color-primary-contrast:var(--destructive-contrast)] [--color-primary:var(--destructive)]",
 					className,
 				)}
 				{...rest}
