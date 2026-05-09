@@ -219,11 +219,7 @@ export default function Node(props: UINodeProps) {
 			void animate(
 				stateScope.current,
 				{
-					boxShadow: [
-						"0 0 0 0 var(--color-selected)",
-						"0 0 0 0.5em var(--color-selected)",
-						"0 0 0 0.3em var(--color-selected)",
-					],
+					boxShadow: ["0 0 0 0 var(--selected)", "0 0 0 0.5em var(--selected)", "0 0 0 0.3em var(--selected)"],
 				},
 				{
 					duration: 0.4,
@@ -279,12 +275,12 @@ export default function Node(props: UINodeProps) {
 					<motion.span
 						className="pointer-events-none absolute inset-0 rounded-[inherit]"
 						initial={{
-							boxShadow: "0 0 0 0.08em var(--color-selected)",
+							boxShadow: "0 0 0 0.08em var(--selected)",
 						}}
 						animate={{
-							boxShadow: ["0 0 0 0.08em var(--color-selected)", "0 0 0 0.7em var(--color-selected)"],
+							boxShadow: ["0 0 0 0.08em var(--selected)", "0 0 0 0.7em var(--selected)"],
 						}}
-						exit={{ opacity: 0, boxShadow: "0 0 0 0 var(--color-selected)" }}
+						exit={{ opacity: 0, boxShadow: "0 0 0 0 var(--selected)" }}
 						transition={{
 							boxShadow: {
 								duration: 0.4,
