@@ -43,17 +43,13 @@ const NodeBin = ({ accepts, dropHandler }: NodeBinProps) => {
 			transition={{ type: "spring", stiffness: 500, damping: 30 }}
 		>
 			{/*
-			 * Background lives on a child rather than `style` on the motion.div
-			 * because motion's `style` prop is reactive — passing a non-animated
-			 * CSS property like `backgroundImage` alongside `initial`/`animate`
-			 * doesn't reliably forward to the rendered element. A static child
-			 * div sidesteps that interaction.
+			 * <img> rather than a child div with `background-image`: the latter
+			 * worked historically but stops landing in the DOM when the parent
+			 * is a motion.div — React passes the style prop, but the inline
+			 * `style` attribute never reaches the rendered child. <img src> is
+			 * unaffected.
 			 */}
-			<div
-				aria-hidden="true"
-				className="size-full bg-contain bg-no-repeat"
-				style={{ backgroundImage: `url(${nodeBinUrl})` }}
-			/>
+			<img src={nodeBinUrl} alt="" aria-hidden="true" className="size-full object-contain" />
 		</motion.div>
 	);
 };
