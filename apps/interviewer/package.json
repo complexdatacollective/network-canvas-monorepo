@@ -97,7 +97,7 @@
 		"react-virtualized": "~9.22.6",
 		"react-virtualized-auto-sizer": "~1.0.26",
 		"react-window": "~1.8.11",
-		"recompose": "^0.26.0",
+		"recompose": "^0.30.0",
 		"redux": "^5.0.1",
 		"redux-form": "^8.3.10",
 		"redux-logger": "^2.10.2",
