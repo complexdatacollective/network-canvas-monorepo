@@ -213,6 +213,12 @@ export class SyntheticInterview {
 			variables: new Map(),
 		};
 
+		// Seed a "name" text variable so generated initial nodes receive a
+		// faker firstName via ValueGenerator. Without this, nodes render with
+		// the type's display name (e.g. "Person") as their fallback label.
+		const nameVarId = this.nextId("var");
+		entry.variables.set(nameVarId, { id: nameVarId, name: "name", type: "text" });
+
 		this.nodeTypes.set(id, entry);
 
 		const handle: NodeTypeHandle = {
