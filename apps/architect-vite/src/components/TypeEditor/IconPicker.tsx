@@ -123,7 +123,7 @@ const IconPicker = ({ input, meta: { error, invalid, touched } }: IconPickerProp
 									<Combobox.Item
 										key={entry.isCustom ? `custom-${entry.name}` : entry.name}
 										value={entry}
-										className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-[var(--color-foreground)] outline-none data-[highlighted]:bg-[var(--color-surface-2)]"
+										className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-[var(--color-foreground)] outline-none data-[highlighted]:bg-[var(--color-surface-2)]"
 									>
 										<span className="flex h-5 w-5 shrink-0 items-center justify-center">
 											<IconPreview entry={entry} size={18} />

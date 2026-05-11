@@ -22,7 +22,7 @@ img.form-fields-select {
 	background: var(--color-surface-1);
 	color: var(--color-foreground);
 	border: 0;
-	border-radius: 1rem 1rem 0 0;
+	border-radius: var(--radius);
 	padding: 0 var(--space-md);
 	width: 100%;
 	min-height: var(--space-4xl);
@@ -44,7 +44,7 @@ img.form-fields-select {
 }
 
 .form-fields-select__menu {
-	border-radius: 0 0 1rem 1rem;
+	border-radius: var(--radius);
 	overflow: hidden;
 	margin: 0;
 }

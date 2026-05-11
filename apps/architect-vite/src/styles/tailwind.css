@@ -441,14 +441,20 @@
 	--color-rule-operator: var(--color-rules-operator);
 	--color-rule-value: var(--color-rules-value);
 
-	--radius-none: 0px;
-	--radius-sm: 0.125rem;
-	--radius: 0.6rem;
-	--radius-md: 0.75rem;
-	--radius-lg: 0.95rem;
-	--radius-xl: 1.25rem;
-	--radius-2xl: 1.6rem;
-	--radius-full: 9999px;
+	/* Border radius — Fresco's relative-calc scale anchored at 1.75rem (28px).
+	   Approximate pixel values shown for reference; use the variables in CSS
+	   and the rounded-* utilities everywhere else. */
+	--radius-none: 0px; /* 0px */
+	--radius-2xs: calc(var(--radius) * 0.125); /* 3.5px */
+	--radius-xs: calc(var(--radius) * 0.25); /* 7px */
+	--radius-sm: calc(var(--radius) * 0.5); /* 14px */
+	--radius-base: 1.75rem;
+	--radius: var(--radius-base, 1.75rem); /* 28px */
+	--radius-lg: calc(var(--radius) * 1.5); /* 42px */
+	--radius-xl: calc(var(--radius) * 2); /* 56px */
+	--radius-2xl: calc(var(--radius) * 3); /* 84px */
+	--radius-3xl: calc(var(--radius) * 4); /* 112px */
+	--radius-full: 9999px; /* 9999px */
 
 	/* Tinted shadow scale — mirrors Fresco's theme.css. Color-mixes the purple
 	   --shadow-color set in :root with transparency to produce shadows that

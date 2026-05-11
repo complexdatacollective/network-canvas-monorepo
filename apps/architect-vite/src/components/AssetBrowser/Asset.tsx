@@ -146,7 +146,7 @@ const Asset = ({
 			</div>
 
 			{!isUsed && (
-				<span className="absolute bottom-(--space-xs) left-(--space-xs) rounded-md bg-error p-(--space-sm) text-xs text-error-foreground">
+				<span className="absolute bottom-(--space-xs) left-(--space-xs) rounded-xs bg-error p-(--space-sm) text-xs text-error-foreground">
 					Unused
 				</span>
 			)}

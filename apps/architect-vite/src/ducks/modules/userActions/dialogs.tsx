@@ -29,7 +29,7 @@ export const validationErrorDialog = (errorMessage: string) => {
 	const message: ReactNode = (
 		<>
 			<p>The protocol file could not be opened due to validation errors:</p>
-			<pre className="bg-surface-1 p-4 rounded-md text-sm overflow-auto max-h-64">{errorMessage}</pre>
+			<pre className="bg-surface-1 p-4 rounded-sm text-sm overflow-auto max-h-64">{errorMessage}</pre>
 
 			<p className="text-sm">
 				If the problem persists, reach out on our&nbsp;
@@ -51,7 +51,7 @@ export const invalidProtocolDialog = (errorMessage: string, onConfirm?: () => vo
 	const message: ReactNode = (
 		<>
 			<p>The protocol contains validation errors:</p>
-			<pre className="bg-surface-1 p-4 rounded-md text-sm overflow-auto max-h-64">{errorMessage}</pre>
+			<pre className="bg-surface-1 p-4 rounded-sm text-sm overflow-auto max-h-64">{errorMessage}</pre>
 
 			<p className="text-sm">
 				You can revert to the last valid state to fix this issue. If the problem persists, please reach out on our&nbsp;
