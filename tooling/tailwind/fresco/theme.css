@@ -89,29 +89,43 @@
   /*****************************************************************************
   *                               CONTAINER WIDTHS
   *
-  * Drives `w-md`, `max-w-2xs`, `min-w-3xs`, etc. Multiplied by
-  * `--theme-root-size` so container widths scale on the same axis as the
-  * type scale — keeps reading line lengths (chars/line) stable across
-  * theme breakpoints. Multipliers match Tailwind's rem defaults
-  * (3xs=16, 2xs=18, xs=20, sm=24, md=28, lg=32, xl=36, 2xl=42, 3xl=48,
-  * 4xl=56, 5xl=64, 6xl=72, 7xl=80) so default-theme behaviour is
-  * unchanged. Themes that override `--theme-root-size` MUST redeclare
-  * this block — see the spacing-base note in default.css.
+  * Drives `w-md`, `max-w-2xs`, `min-w-3xs`, etc. AND the named container-
+  * query variants (`@xs:`, `@sm:`, ... `@7xl:`).
+  *
+  * `em` (not `rem` or `calc(N * var(--theme-root-size))`) so values:
+  *   1. Stay static at build time so Tailwind can bake them into
+  *      `@container (min-width: ...)` rules. `var()` is not permitted
+  *      inside @container / @media conditions, so a calc-with-var here
+  *      would cause Tailwind to silently drop the CQ variants.
+  *   2. Still scale per themed region: `em` resolves against the
+  *      styled element's font-size, and themes set
+  *      `font-size: var(--theme-root-size)` on their wrapper, so
+  *      `max-w-md` inside `[data-theme-interview]` automatically
+  *      becomes 28 × `--theme-root-size`. Same effect as the prior
+  *      calc-with-var approach without the static/dynamic conflict.
+  *
+  * Multipliers match Tailwind's rem defaults (3xs=16, 2xs=18, xs=20,
+  * sm=24, md=28, lg=32, xl=36, 2xl=42, 3xl=48, 4xl=56, 5xl=64, 6xl=72,
+  * 7xl=80) so default-theme behaviour is unchanged.
+  *
+  * One caveat: applying both `text-*` and `max-w-*` to the same element
+  * makes the width resolve against the overridden font-size (em
+  * compounding). Existing usages don't do this — keep that convention.
   *****************************************************************************/
   --container-*: initial;
-  --container-3xs: calc(16 * var(--theme-root-size));
-  --container-2xs: calc(18 * var(--theme-root-size));
-  --container-xs:  calc(20 * var(--theme-root-size));
-  --container-sm:  calc(24 * var(--theme-root-size));
-  --container-md:  calc(28 * var(--theme-root-size));
-  --container-lg:  calc(32 * var(--theme-root-size));
-  --container-xl:  calc(36 * var(--theme-root-size));
-  --container-2xl: calc(42 * var(--theme-root-size));
-  --container-3xl: calc(48 * var(--theme-root-size));
-  --container-4xl: calc(56 * var(--theme-root-size));
-  --container-5xl: calc(64 * var(--theme-root-size));
-  --container-6xl: calc(72 * var(--theme-root-size));
-  --container-7xl: calc(80 * var(--theme-root-size));
+  --container-3xs: 16em;
+  --container-2xs: 18em;
+  --container-xs:  20em;
+  --container-sm:  24em;
+  --container-md:  28em;
+  --container-lg:  32em;
+  --container-xl:  36em;
+  --container-2xl: 42em;
+  --container-3xl: 48em;
+  --container-4xl: 56em;
+  --container-5xl: 64em;
+  --container-6xl: 72em;
+  --container-7xl: 80em;
 
   /*****************************************************************************
   *                               COLORS

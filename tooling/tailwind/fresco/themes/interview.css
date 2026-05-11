@@ -64,22 +64,10 @@
      */
     --spacing-base: calc(0.25 * var(--theme-root-size));
 
-    /* Container widths — see theme.css for rationale. Redeclared here so
-     * `w-md`, `max-w-2xs` etc. scale with the themed `--theme-root-size`
-     * at the breakpoints, keeping chars-per-line stable as text grows. */
-    --container-3xs: calc(16 * var(--theme-root-size));
-    --container-2xs: calc(18 * var(--theme-root-size));
-    --container-xs:  calc(20 * var(--theme-root-size));
-    --container-sm:  calc(24 * var(--theme-root-size));
-    --container-md:  calc(28 * var(--theme-root-size));
-    --container-lg:  calc(32 * var(--theme-root-size));
-    --container-xl:  calc(36 * var(--theme-root-size));
-    --container-2xl: calc(42 * var(--theme-root-size));
-    --container-3xl: calc(48 * var(--theme-root-size));
-    --container-4xl: calc(56 * var(--theme-root-size));
-    --container-5xl: calc(64 * var(--theme-root-size));
-    --container-6xl: calc(72 * var(--theme-root-size));
-    --container-7xl: calc(80 * var(--theme-root-size));
+    /* No `--container-*` redeclaration: theme.css defines them as static
+     * `em` values, and this scope's `font-size: var(--theme-root-size)`
+     * (set in the @layer base block above) makes max-w-* / @sm: / etc.
+     * scale with the themed root size automatically. */
 
     --shadow-color: oklch(5% 0.01 260);
 
