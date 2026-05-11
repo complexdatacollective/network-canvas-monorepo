@@ -15,12 +15,14 @@
 ## File Map
 
 **Created**
+
 - `packages/fresco-ui/src/PortalContainer.tsx` — context, provider, `usePortalContainer` hook
 - `packages/fresco-ui/src/PortalContainer.test.tsx` — provider/hook tests
 - `packages/fresco-ui/src/ThemedRegion.tsx` — themed-region wrapper
 - `packages/fresco-ui/src/ThemedRegion.test.tsx` — wrapper tests
 
 **Modified**
+
 - `tooling/tailwind/fresco/theme.css` — rewrite `--text-*` scale using sentinel
 - `tooling/tailwind/fresco/themes/default.css` — declare `--theme-root-size: 1rem` on `:root`
 - `tooling/tailwind/fresco/themes/interview.css` — drop `:root` selector, switch to rem-based sentinel
@@ -43,9 +45,11 @@
 - `packages/interview/README.md` — delete "Theming & DOM scope" section, replace with brief paragraph
 
 **Deleted**
+
 - `.changeset/interview-1-0-0-alpha-14.md` — superseded; replaced by alpha-15 changeset
 
 **New changesets**
+
 - `.changeset/tailwind-config-theme-root-size-sentinel.md`
 - `.changeset/fresco-ui-themed-region-portal-container.md`
 - `.changeset/interview-1-0-0-alpha-15.md`
@@ -55,6 +59,7 @@
 ## Task 1: Add `--theme-root-size` sentinel to default theme + rewrite type scale
 
 **Files:**
+
 - Modify: `tooling/tailwind/fresco/themes/default.css`
 - Modify: `tooling/tailwind/fresco/theme.css`
 
@@ -133,6 +138,7 @@ In `tooling/tailwind/fresco/theme.css`, replace the entire `--text-*` block (lin
 - [ ] **Step 3: Verify the diff**
 
 Run `git diff tooling/tailwind/fresco/themes/default.css tooling/tailwind/fresco/theme.css` and confirm:
+
 - One added line in `themes/default.css` (the `--theme-root-size: 1rem;` declaration).
 - 8 `--text-*` clamp/value definitions in `theme.css` rewritten with `var(--theme-root-size)`. Line-heights and letter-spacing unchanged.
 
@@ -148,6 +154,7 @@ git commit -m "feat(tailwind-config): bind type scale to --theme-root-size senti
 ## Task 2: Move interview theme off `:root` and use rem-based sentinel
 
 **Files:**
+
 - Modify: `tooling/tailwind/fresco/themes/interview.css`
 
 The interview theme's two `:root[data-theme-interview]` blocks become `[data-theme-interview]`. The responsive font-size override switches from literal `font-size: 16/18/20px` (which only works on `<html>`) to a sentinel-based pattern that honors user OS text-zoom.
@@ -220,6 +227,7 @@ The file's top-level comment (lines 1–13) describes the `<html>`-only behavior
 - [ ] **Step 4: Verify the diff**
 
 Run `git diff tooling/tailwind/fresco/themes/interview.css` and confirm:
+
 - The `@layer base` block uses `[data-theme-interview]` (no `:root`) and `--theme-root-size: 1rem | 1.125rem | 1.25rem` at the breakpoints.
 - The `@layer theme` block selector is `[data-theme-interview]` (no `:root`); variable declarations inside are unchanged.
 - The docblock is rewritten.
@@ -236,6 +244,7 @@ git commit -m "feat(tailwind-config): scope interview theme to [data-theme-inter
 ## Task 3: Update Tailwind variants and remove duplicate declarations
 
 **Files:**
+
 - Modify: `tooling/tailwind/fresco/utilities.css`
 - Modify: `tooling/tailwind/fresco/fresco.css`
 
@@ -291,6 +300,7 @@ Also update the comment at line 32 (`overrides under :root[data-theme-interview]
 - [ ] **Step 4: Verify the diff**
 
 Run `git diff tooling/tailwind/fresco/utilities.css tooling/tailwind/fresco/fresco.css`:
+
 - `utilities.css`: 2-line change to the variant declarations.
 - `fresco.css`: 7 lines removed (comment + 2 declarations), 2 docblock lines updated.
 
@@ -306,6 +316,7 @@ git commit -m "feat(tailwind-config): scope interview/dashboard variants for nes
 ## Task 4: Update tailwind-config README and add changeset
 
 **Files:**
+
 - Modify: `tooling/tailwind/README.md`
 - Create: `.changeset/tailwind-config-theme-root-size-sentinel.md`
 
@@ -343,6 +354,7 @@ git commit -m "docs(tailwind-config): document scoped interview theme + sentinel
 ## Task 5: Create `PortalContainer` (provider + hook + tests)
 
 **Files:**
+
 - Create: `packages/fresco-ui/src/PortalContainer.tsx`
 - Create: `packages/fresco-ui/src/PortalContainer.test.tsx`
 
@@ -358,27 +370,27 @@ import { describe, expect, it } from "vitest";
 import { PortalContainerProvider, usePortalContainer } from "./PortalContainer";
 
 describe("PortalContainerProvider", () => {
-	it("exposes a DOM node via usePortalContainer when wrapping children", () => {
-		const { result } = renderHook(() => usePortalContainer(), {
-			wrapper: ({ children }) => <PortalContainerProvider>{children}</PortalContainerProvider>,
-		});
+ it("exposes a DOM node via usePortalContainer when wrapping children", () => {
+  const { result } = renderHook(() => usePortalContainer(), {
+   wrapper: ({ children }) => <PortalContainerProvider>{children}</PortalContainerProvider>,
+  });
 
-		expect(result.current).toBeInstanceOf(HTMLElement);
-	});
+  expect(result.current).toBeInstanceOf(HTMLElement);
+ });
 
-	it("returns null when usePortalContainer is called outside a provider", () => {
-		const { result } = renderHook(() => usePortalContainer());
-		expect(result.current).toBeNull();
-	});
+ it("returns null when usePortalContainer is called outside a provider", () => {
+  const { result } = renderHook(() => usePortalContainer());
+  expect(result.current).toBeNull();
+ });
 
-	it("renders children", () => {
-		render(
-			<PortalContainerProvider>
-				<span data-testid="child">hello</span>
-			</PortalContainerProvider>,
-		);
-		expect(screen.getByTestId("child")).toHaveTextContent("hello");
-	});
+ it("renders children", () => {
+  render(
+   <PortalContainerProvider>
+    <span data-testid="child">hello</span>
+   </PortalContainerProvider>,
+  );
+  expect(screen.getByTestId("child")).toHaveTextContent("hello");
+ });
 });
 ```
 
@@ -402,17 +414,17 @@ import { createContext, type ReactNode, useContext, useState } from "react";
 const PortalContainerContext = createContext<HTMLElement | null>(null);
 
 export function PortalContainerProvider({ children }: { children: ReactNode }) {
-	const [container, setContainer] = useState<HTMLElement | null>(null);
-	return (
-		<PortalContainerContext.Provider value={container}>
-			{children}
-			<div ref={setContainer} />
-		</PortalContainerContext.Provider>
-	);
+ const [container, setContainer] = useState<HTMLElement | null>(null);
+ return (
+  <PortalContainerContext.Provider value={container}>
+   {children}
+   <div ref={setContainer} />
+  </PortalContainerContext.Provider>
+ );
 }
 
 export function usePortalContainer() {
-	return useContext(PortalContainerContext);
+ return useContext(PortalContainerContext);
 }
 ```
 
@@ -445,6 +457,7 @@ git commit -m "feat(fresco-ui): add PortalContainerProvider context"
 ## Task 6: Create `<ThemedRegion>` (component + tests)
 
 **Files:**
+
 - Create: `packages/fresco-ui/src/ThemedRegion.tsx`
 - Create: `packages/fresco-ui/src/ThemedRegion.test.tsx`
 
@@ -461,53 +474,53 @@ import { usePortalContainer } from "./PortalContainer";
 import { ThemedRegion } from "./ThemedRegion";
 
 describe("ThemedRegion", () => {
-	it("renders a div with data-theme-interview when theme=interview", () => {
-		const { container } = render(
-			<ThemedRegion theme="interview">
-				<span data-testid="child">hello</span>
-			</ThemedRegion>,
-		);
+ it("renders a div with data-theme-interview when theme=interview", () => {
+  const { container } = render(
+   <ThemedRegion theme="interview">
+    <span data-testid="child">hello</span>
+   </ThemedRegion>,
+  );
 
-		const wrapper = container.firstElementChild;
-		expect(wrapper).not.toBeNull();
-		expect(wrapper?.tagName).toBe("DIV");
-		expect(wrapper?.hasAttribute("data-theme-interview")).toBe(true);
-		expect(screen.getByTestId("child")).toHaveTextContent("hello");
-	});
+  const wrapper = container.firstElementChild;
+  expect(wrapper).not.toBeNull();
+  expect(wrapper?.tagName).toBe("DIV");
+  expect(wrapper?.hasAttribute("data-theme-interview")).toBe(true);
+  expect(screen.getByTestId("child")).toHaveTextContent("hello");
+ });
 
-	it("forwards className and other HTML props to the wrapper", () => {
-		const { container } = render(
-			<ThemedRegion theme="interview" className="custom-class" id="region">
-				<span />
-			</ThemedRegion>,
-		);
+ it("forwards className and other HTML props to the wrapper", () => {
+  const { container } = render(
+   <ThemedRegion theme="interview" className="custom-class" id="region">
+    <span />
+   </ThemedRegion>,
+  );
 
-		const wrapper = container.firstElementChild;
-		expect(wrapper).toHaveClass("custom-class");
-		expect(wrapper).toHaveAttribute("id", "region");
-	});
+  const wrapper = container.firstElementChild;
+  expect(wrapper).toHaveClass("custom-class");
+  expect(wrapper).toHaveAttribute("id", "region");
+ });
 
-	it("supports the render prop for tag polymorphism", () => {
-		const { container } = render(
-			<ThemedRegion theme="interview" render={<main className="shell" />}>
-				<span data-testid="child" />
-			</ThemedRegion>,
-		);
+ it("supports the render prop for tag polymorphism", () => {
+  const { container } = render(
+   <ThemedRegion theme="interview" render={<main className="shell" />}>
+    <span data-testid="child" />
+   </ThemedRegion>,
+  );
 
-		const wrapper = container.firstElementChild;
-		expect(wrapper?.tagName).toBe("MAIN");
-		expect(wrapper?.hasAttribute("data-theme-interview")).toBe(true);
-		expect(wrapper).toHaveClass("shell");
-		expect(screen.getByTestId("child")).toBeInTheDocument();
-	});
+  const wrapper = container.firstElementChild;
+  expect(wrapper?.tagName).toBe("MAIN");
+  expect(wrapper?.hasAttribute("data-theme-interview")).toBe(true);
+  expect(wrapper).toHaveClass("shell");
+  expect(screen.getByTestId("child")).toBeInTheDocument();
+ });
 
-	it("provides a portal container to descendants via context", () => {
-		const { result } = renderHook(() => usePortalContainer(), {
-			wrapper: ({ children }) => <ThemedRegion theme="interview">{children}</ThemedRegion>,
-		});
+ it("provides a portal container to descendants via context", () => {
+  const { result } = renderHook(() => usePortalContainer(), {
+   wrapper: ({ children }) => <ThemedRegion theme="interview">{children}</ThemedRegion>,
+  });
 
-		expect(result.current).toBeInstanceOf(HTMLElement);
-	});
+  expect(result.current).toBeInstanceOf(HTMLElement);
+ });
 });
 ```
 
@@ -531,30 +544,30 @@ import { PortalContainerProvider } from "./PortalContainer";
 import { cx } from "./utils/cva";
 
 type ThemedRegionProps = {
-	theme: "interview";
-	children: ReactNode;
-	className?: string;
-	render?: ReactElement;
+ theme: "interview";
+ children: ReactNode;
+ className?: string;
+ render?: ReactElement;
 } & Omit<HTMLAttributes<HTMLDivElement>, "children" | "className">;
 
 export function ThemedRegion({ theme, render, children, className, ...rest }: ThemedRegionProps) {
-	const themeAttr = theme === "interview" ? { "data-theme-interview": "" } : {};
-	const body = <PortalContainerProvider>{children}</PortalContainerProvider>;
+ const themeAttr = theme === "interview" ? { "data-theme-interview": "" } : {};
+ const body = <PortalContainerProvider>{children}</PortalContainerProvider>;
 
-	if (render && isValidElement<{ className?: string }>(render)) {
-		return cloneElement(render, {
-			...themeAttr,
-			...rest,
-			className: cx(render.props.className, className),
-			children: body,
-		});
-	}
+ if (render && isValidElement<{ className?: string }>(render)) {
+  return cloneElement(render, {
+   ...themeAttr,
+   ...rest,
+   className: cx(render.props.className, className),
+   children: body,
+  });
+ }
 
-	return (
-		<div {...themeAttr} {...rest} className={className}>
-			{body}
-		</div>
-	);
+ return (
+  <div {...themeAttr} {...rest} className={className}>
+   {body}
+  </div>
+ );
 }
 ```
 
@@ -587,6 +600,7 @@ git commit -m "feat(fresco-ui): add ThemedRegion wrapper with portal container"
 ## Task 7: Add new exports to fresco-ui `package.json`
 
 **Files:**
+
 - Modify: `packages/fresco-ui/package.json`
 
 The package uses `exports` (sub-path style) and a build that emits each source file under `dist/`. Add two new entries.
@@ -596,14 +610,14 @@ The package uses `exports` (sub-path style) and a build that emits each source f
 In `packages/fresco-ui/package.json`, find the `exports` block and add these two entries (ordering: alphabetical near related entries — place `./PortalContainer` and `./ThemedRegion` near the top-level component exports like `./Toast`, `./Tooltip`):
 
 ```json
-		"./PortalContainer": {
-			"types": "./dist/PortalContainer.d.ts",
-			"default": "./dist/PortalContainer.js"
-		},
-		"./ThemedRegion": {
-			"types": "./dist/ThemedRegion.d.ts",
-			"default": "./dist/ThemedRegion.js"
-		},
+  "./PortalContainer": {
+   "types": "./dist/PortalContainer.d.ts",
+   "default": "./dist/PortalContainer.js"
+  },
+  "./ThemedRegion": {
+   "types": "./dist/ThemedRegion.d.ts",
+   "default": "./dist/ThemedRegion.js"
+  },
 ```
 
 - [ ] **Step 2: Verify the build picks them up**
@@ -628,6 +642,7 @@ git commit -m "feat(fresco-ui): export PortalContainer and ThemedRegion"
 ## Task 8: Thread portal container through `Modal`
 
 **Files:**
+
 - Modify: `packages/fresco-ui/src/Modal/Modal.tsx`
 
 The pattern repeats for every Portal site: read the container via `usePortalContainer()` and pass it as the `container` prop. When the hook returns `null`, pass `undefined` so Base UI falls back to its default (`document.body`).
@@ -660,28 +675,28 @@ import { ModalBackdrop } from "./ModalBackdrop";
  *
  */
 export default function Modal({
-	open,
-	onOpenChange,
-	children,
+ open,
+ onOpenChange,
+ children,
 }: {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	children: ReactNode;
+ open: boolean;
+ onOpenChange: (open: boolean) => void;
+ children: ReactNode;
 }) {
-	const portalContainer = usePortalContainer();
+ const portalContainer = usePortalContainer();
 
-	return (
-		<BaseDialog.Root open={open} onOpenChange={onOpenChange}>
-			<AnimatePresence>
-				{open && (
-					<BaseDialog.Portal container={portalContainer ?? undefined} keepMounted>
-						<ModalBackdrop />
-						{children}
-					</BaseDialog.Portal>
-				)}
-			</AnimatePresence>
-		</BaseDialog.Root>
-	);
+ return (
+  <BaseDialog.Root open={open} onOpenChange={onOpenChange}>
+   <AnimatePresence>
+    {open && (
+     <BaseDialog.Portal container={portalContainer ?? undefined} keepMounted>
+      <ModalBackdrop />
+      {children}
+     </BaseDialog.Portal>
+    )}
+   </AnimatePresence>
+  </BaseDialog.Root>
+ );
 }
 ```
 
@@ -713,6 +728,7 @@ git commit -m "feat(fresco-ui): thread portal container through Modal"
 ## Task 9: Thread portal container through `Popover`
 
 **Files:**
+
 - Modify: `packages/fresco-ui/src/Popover.tsx`
 
 - [ ] **Step 1: Update `PopoverContent`**
@@ -725,26 +741,26 @@ In `packages/fresco-ui/src/Popover.tsx`, find `PopoverContent` (starts at line 1
 import { usePortalContainer } from "./PortalContainer";
 ```
 
-2. Inside `PopoverContent` (after the `usePopoverContext()` call at line 154), add:
+1. Inside `PopoverContent` (after the `usePopoverContext()` call at line 154), add:
 
 ```tsx
-	const portalContainer = usePortalContainer();
+ const portalContainer = usePortalContainer();
 ```
 
-3. On the `<BasePopover.Portal>` line (line 157), add the `container` prop. The line currently is:
+1. On the `<BasePopover.Portal>` line (line 157), add the `container` prop. The line currently is:
 
 ```tsx
-		<BasePopover.Portal keepMounted={keepMounted} {...(props as ComponentPropsWithoutRef<typeof BasePopover.Portal>)}>
+  <BasePopover.Portal keepMounted={keepMounted} {...(props as ComponentPropsWithoutRef<typeof BasePopover.Portal>)}>
 ```
 
 Replace with:
 
 ```tsx
-		<BasePopover.Portal
-			container={portalContainer ?? undefined}
-			keepMounted={keepMounted}
-			{...(props as ComponentPropsWithoutRef<typeof BasePopover.Portal>)}
-		>
+  <BasePopover.Portal
+   container={portalContainer ?? undefined}
+   keepMounted={keepMounted}
+   {...(props as ComponentPropsWithoutRef<typeof BasePopover.Portal>)}
+  >
 ```
 
 - [ ] **Step 2: Run typecheck**
@@ -767,6 +783,7 @@ git commit -m "feat(fresco-ui): thread portal container through Popover"
 ## Task 10: Thread portal container through `Tooltip`
 
 **Files:**
+
 - Modify: `packages/fresco-ui/src/Tooltip.tsx`
 
 - [ ] **Step 1: Update `TooltipContent`**
@@ -779,43 +796,42 @@ In `packages/fresco-ui/src/Tooltip.tsx`:
 import { usePortalContainer } from "./PortalContainer";
 ```
 
-2. The component is a `React.forwardRef` callback; convert it from arrow-callback shorthand to a function body so we can call the hook. Replace the existing `TooltipContent` definition (lines 23–54) with:
+1. The component is a `React.forwardRef` callback; convert it from arrow-callback shorthand to a function body so we can call the hook. Replace the existing `TooltipContent` definition (lines 23–54) with:
 
 ```tsx
 const TooltipContent = React.forwardRef<React.ElementRef<typeof BaseTooltip.Popup>, TooltipContentProps>(
-	({ className, sideOffset = 10, side = "top", align = "center", showArrow = true, children, ...props }, ref) => {
-		const portalContainer = usePortalContainer();
-		return (
-			<BaseTooltip.Portal container={portalContainer ?? undefined}>
-				<BaseTooltip.Positioner side={side} sideOffset={sideOffset} align={align}>
-					<AnimatePresence>
-						<BaseTooltip.Popup
-							ref={ref}
-							render={
-								<MotionSurface
-									level="popover"
-									elevation="none"
-									className={cx(
-										"@container-normal max-w-(--available-width) overflow-visible text-sm shadow-xl",
-										className,
-									)}
-									initial={{ opacity: 0, scale: 0.96 }}
-									animate={{ opacity: 1, scale: 1 }}
-									exit={{ opacity: 0, scale: 0.96 }}
-									noContainer
-									transition={{ type: "spring", duration: 0.5 }}
-								/>
-							}
-							{...props}
-						>
-							{showArrow && <TooltipArrow />}
-							{children}
-						</BaseTooltip.Popup>
-					</AnimatePresence>
-				</BaseTooltip.Positioner>
-			</BaseTooltip.Portal>
-		);
-	},
+ ({ className, sideOffset = 10, side = "top", align = "center", showArrow = true, children, ...props }, ref) => {
+  const portalContainer = usePortalContainer();
+  return (
+   <BaseTooltip.Portal container={portalContainer ?? undefined}>
+    <BaseTooltip.Positioner side={side} sideOffset={sideOffset} align={align}>
+     <AnimatePresence>
+      <BaseTooltip.Popup
+       ref={ref}
+       render={
+        <MotionSurface
+         level="popover"
+         className={cx(
+          "@container-normal max-w-(--available-width) overflow-visible text-sm shadow-xl",
+          className,
+         )}
+         initial={{ opacity: 0, scale: 0.96 }}
+         animate={{ opacity: 1, scale: 1 }}
+         exit={{ opacity: 0, scale: 0.96 }}
+         noContainer
+         transition={{ type: "spring", duration: 0.5 }}
+        />
+       }
+       {...props}
+      >
+       {showArrow && <TooltipArrow />}
+       {children}
+      </BaseTooltip.Popup>
+     </AnimatePresence>
+    </BaseTooltip.Positioner>
+   </BaseTooltip.Portal>
+  );
+ },
 );
 TooltipContent.displayName = "TooltipContent";
 ```
@@ -840,6 +856,7 @@ git commit -m "feat(fresco-ui): thread portal container through Tooltip"
 ## Task 11: Thread portal container through `DropdownMenu` (both Sub and Content variants)
 
 **Files:**
+
 - Modify: `packages/fresco-ui/src/DropdownMenu.tsx`
 
 `DropdownMenu.tsx` has two Portal sites: `DropdownMenuSubContent` (line 77) and `DropdownMenuContent` (line 103). Both need the same treatment.
@@ -857,13 +874,13 @@ import { usePortalContainer } from "./PortalContainer";
 Find the body of `DropdownMenuSubContent` (around line 73). Inside the component callback, after `const { mounted } = useDropdownMenuContext();`, add:
 
 ```tsx
-	const portalContainer = usePortalContainer();
+ const portalContainer = usePortalContainer();
 ```
 
 Then update the `<Menu.Portal>` line:
 
 ```tsx
-		<Menu.Portal container={portalContainer ?? undefined} keepMounted={keepMounted}>
+  <Menu.Portal container={portalContainer ?? undefined} keepMounted={keepMounted}>
 ```
 
 - [ ] **Step 3: Update `DropdownMenuContent`**
@@ -871,13 +888,13 @@ Then update the `<Menu.Portal>` line:
 Find the body of `DropdownMenuContent` (around line 100). Inside the component callback, after `const { mounted } = useDropdownMenuContext();`, add:
 
 ```tsx
-	const portalContainer = usePortalContainer();
+ const portalContainer = usePortalContainer();
 ```
 
 Then update the `<Menu.Portal>` line:
 
 ```tsx
-		<Menu.Portal container={portalContainer ?? undefined} keepMounted={keepMounted}>
+  <Menu.Portal container={portalContainer ?? undefined} keepMounted={keepMounted}>
 ```
 
 - [ ] **Step 4: Run typecheck**
@@ -900,6 +917,7 @@ git commit -m "feat(fresco-ui): thread portal container through DropdownMenu"
 ## Task 12: Thread portal container through `Toast`
 
 **Files:**
+
 - Modify: `packages/fresco-ui/src/Toast.tsx`
 
 - [ ] **Step 1: Update `Toaster`**
@@ -912,27 +930,27 @@ In `packages/fresco-ui/src/Toast.tsx`:
 import { usePortalContainer } from "./PortalContainer";
 ```
 
-2. Update the `Toaster` function (starts at line 151) to call the hook and pass `container`:
+1. Update the `Toaster` function (starts at line 151) to call the hook and pass `container`:
 
 ```tsx
 export function Toaster() {
-	const { toasts } = useToast();
-	const portalContainer = usePortalContainer();
+ const { toasts } = useToast();
+ const portalContainer = usePortalContainer();
 
-	return (
-		<Toast.Portal container={portalContainer ?? undefined}>
-			<Toast.Viewport
-				className={cx(
-					"phone-landscape:max-w-sm fixed top-auto bottom-2 mx-auto flex w-full",
-					"tablet-portrait:right-8 tablet-portrait:bottom-8 z-10",
-				)}
-			>
-				{toasts.map((toast) => (
-					<ToastItem key={toast.id} toast={toast} />
-				))}
-			</Toast.Viewport>
-		</Toast.Portal>
-	);
+ return (
+  <Toast.Portal container={portalContainer ?? undefined}>
+   <Toast.Viewport
+    className={cx(
+     "phone-landscape:max-w-sm fixed top-auto bottom-2 mx-auto flex w-full",
+     "tablet-portrait:right-8 tablet-portrait:bottom-8 z-10",
+    )}
+   >
+    {toasts.map((toast) => (
+     <ToastItem key={toast.id} toast={toast} />
+    ))}
+   </Toast.Viewport>
+  </Toast.Portal>
+ );
 }
 ```
 
@@ -956,6 +974,7 @@ git commit -m "feat(fresco-ui): thread portal container through Toast"
 ## Task 13: Thread portal container through `Select` and `Combobox`
 
 **Files:**
+
 - Modify: `packages/fresco-ui/src/form/fields/Select/Styled.tsx`
 - Modify: `packages/fresco-ui/src/form/fields/Combobox/Combobox.tsx`
 
@@ -970,13 +989,13 @@ import { usePortalContainer } from "../../../PortalContainer";
 Inside `SelectField` (after `const handleValueChange = …` block, before the `return`), add:
 
 ```tsx
-	const portalContainer = usePortalContainer();
+ const portalContainer = usePortalContainer();
 ```
 
 Update the `<Select.Portal>` line (line 59):
 
 ```tsx
-				<Select.Portal container={portalContainer ?? undefined}>
+    <Select.Portal container={portalContainer ?? undefined}>
 ```
 
 - [ ] **Step 2: Update `Combobox.tsx`**
@@ -990,13 +1009,13 @@ import { usePortalContainer } from "../../../PortalContainer";
 Locate the body of the Combobox component, find a sensible location to call the hook (near the top of the component, with other hooks), and add:
 
 ```tsx
-	const portalContainer = usePortalContainer();
+ const portalContainer = usePortalContainer();
 ```
 
 Update the `<Combobox.Portal>` line (line 143):
 
 ```tsx
-				<Combobox.Portal container={portalContainer ?? undefined}>
+    <Combobox.Portal container={portalContainer ?? undefined}>
 ```
 
 - [ ] **Step 3: Run typecheck**
@@ -1019,6 +1038,7 @@ git commit -m "feat(fresco-ui): thread portal container through Select and Combo
 ## Task 14: Update fresco-ui Storybook theme-switcher
 
 **Files:**
+
 - Modify: `packages/fresco-ui/.storybook/theme-switcher.tsx`
 
 Replace the `useLayoutEffect`-on-html pattern with `<ThemedRegion>`. The `INTERVIEW_ATTR` constant becomes unused.
@@ -1036,82 +1056,82 @@ const THEME_KEY = "theme";
 const STORAGE_KEY = "storybook-theme-preference";
 
 const themes = {
-	dashboard: {
-		name: "Dashboard",
-	},
-	interview: {
-		name: "Interview",
-	},
+ dashboard: {
+  name: "Dashboard",
+ },
+ interview: {
+  name: "Interview",
+ },
 } as const;
 
 type ThemeKey = keyof typeof themes;
 
 function getStoredTheme(): ThemeKey | null {
-	try {
-		const stored = localStorage.getItem(STORAGE_KEY);
-		if (stored && stored in themes) {
-			return stored as ThemeKey;
-		}
-	} catch (error) {
-		// eslint-disable-next-line no-console
-		console.warn("Failed to read theme from localStorage:", error);
-	}
-	return null;
+ try {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored && stored in themes) {
+   return stored as ThemeKey;
+  }
+ } catch (error) {
+  // eslint-disable-next-line no-console
+  console.warn("Failed to read theme from localStorage:", error);
+ }
+ return null;
 }
 
 function setStoredTheme(theme: ThemeKey) {
-	try {
-		localStorage.setItem(STORAGE_KEY, theme);
-	} catch (error) {
-		// eslint-disable-next-line no-console
-		console.warn("Failed to save theme to localStorage:", error);
-	}
+ try {
+  localStorage.setItem(STORAGE_KEY, theme);
+ } catch (error) {
+  // eslint-disable-next-line no-console
+  console.warn("Failed to save theme to localStorage:", error);
+ }
 }
 
 function ThemeWrapper({ selectedTheme, children }: { selectedTheme: ThemeKey; children: React.ReactNode }) {
-	setStoredTheme(selectedTheme);
+ setStoredTheme(selectedTheme);
 
-	if (selectedTheme === "interview") {
-		return (
-			<ThemedRegion theme="interview" className="bg-background text-text publish-colors scheme-dark">
-				{children}
-			</ThemedRegion>
-		);
-	}
+ if (selectedTheme === "interview") {
+  return (
+   <ThemedRegion theme="interview" className="bg-background text-text publish-colors scheme-dark">
+    {children}
+   </ThemedRegion>
+  );
+ }
 
-	return <div className={cx("bg-background text-text publish-colors")}>{children}</div>;
+ return <div className={cx("bg-background text-text publish-colors")}>{children}</div>;
 }
 
 export const withTheme: Decorator = (Story, context) => {
-	const selectedTheme =
-		(context.parameters.forceTheme as ThemeKey) ?? (context.globals[THEME_KEY] as ThemeKey) ?? "dashboard";
+ const selectedTheme =
+  (context.parameters.forceTheme as ThemeKey) ?? (context.globals[THEME_KEY] as ThemeKey) ?? "dashboard";
 
-	return (
-		<ThemeWrapper selectedTheme={selectedTheme}>
-			<Story />
-		</ThemeWrapper>
-	);
+ return (
+  <ThemeWrapper selectedTheme={selectedTheme}>
+   <Story />
+  </ThemeWrapper>
+ );
 };
 
 export const globalTypes = {
-	[THEME_KEY]: {
-		name: "Theme",
-		description: "Global theme for components",
-		defaultValue: getStoredTheme() ?? "dashboard",
-		toolbar: {
-			icon: "paintbrush" as const,
-			items: Object.entries(themes).map(([key, { name }]) => ({
-				value: key,
-				title: name,
-			})),
-			showName: true,
-			dynamicTitle: true,
-		},
-	},
+ [THEME_KEY]: {
+  name: "Theme",
+  description: "Global theme for components",
+  defaultValue: getStoredTheme() ?? "dashboard",
+  toolbar: {
+   icon: "paintbrush" as const,
+   items: Object.entries(themes).map(([key, { name }]) => ({
+    value: key,
+    title: name,
+   })),
+   showName: true,
+   dynamicTitle: true,
+  },
+ },
 };
 
 export function getInitialTheme(): ThemeKey {
-	return getStoredTheme() ?? "dashboard";
+ return getStoredTheme() ?? "dashboard";
 }
 ```
 
@@ -1135,6 +1155,7 @@ git commit -m "feat(fresco-ui): use ThemedRegion in Storybook theme-switcher"
 ## Task 15: Update fresco-ui README and add changeset
 
 **Files:**
+
 - Modify: `packages/fresco-ui/README.md`
 - Create: `.changeset/fresco-ui-themed-region-portal-container.md`
 
@@ -1178,6 +1199,7 @@ git commit -m "docs(fresco-ui): document ThemedRegion + portal container"
 ## Task 16: Thread portal container through `InterviewToastViewport`
 
 **Files:**
+
 - Modify: `packages/interview/src/toast/InterviewToast.tsx`
 
 - [ ] **Step 1: Update `InterviewToastViewport`**
@@ -1190,22 +1212,22 @@ In `packages/interview/src/toast/InterviewToast.tsx`:
 import { usePortalContainer } from "@codaco/fresco-ui/PortalContainer";
 ```
 
-2. Update `InterviewToastViewport` (starts at line 100):
+1. Update `InterviewToastViewport` (starts at line 100):
 
 ```tsx
 export function InterviewToastViewport() {
-	const { toasts } = Toast.useToastManager();
-	const portalContainer = usePortalContainer();
+ const { toasts } = Toast.useToastManager();
+ const portalContainer = usePortalContainer();
 
-	return (
-		<Toast.Portal container={portalContainer ?? undefined}>
-			<Toast.Viewport aria-label="Interview notifications" className="pointer-events-none fixed inset-0 z-50">
-				{toasts.map((toast) => (
-					<InterviewToastItem key={toast.id} toast={toast} />
-				))}
-			</Toast.Viewport>
-		</Toast.Portal>
-	);
+ return (
+  <Toast.Portal container={portalContainer ?? undefined}>
+   <Toast.Viewport aria-label="Interview notifications" className="pointer-events-none fixed inset-0 z-50">
+    {toasts.map((toast) => (
+     <InterviewToastItem key={toast.id} toast={toast} />
+    ))}
+   </Toast.Viewport>
+  </Toast.Portal>
+ );
 }
 ```
 
@@ -1229,6 +1251,7 @@ git commit -m "feat(interview): thread portal container through InterviewToast"
 ## Task 17: Update `Shell.tsx` to use `<ThemedRegion>`
 
 **Files:**
+
 - Modify: `packages/interview/src/Shell.tsx`
 
 The DOM output must remain identical (`<main data-theme-interview>` with the same `className`), but the attribute now comes from `<ThemedRegion render={…}>` and the children are wrapped in `PortalContainerProvider` automatically.
@@ -1246,59 +1269,59 @@ import { ThemedRegion } from "@codaco/fresco-ui/ThemedRegion";
 Find the `<main data-theme-interview …>` JSX in the `Interview` function (lines 66–115). Replace the `<main>` opening + closing tags with `<ThemedRegion theme="interview" render={<main … />}>`:
 
 ```tsx
-		<ThemedRegion
-			theme="interview"
-			render={
-				<main
-					className={cx(
-						"relative flex size-full flex-1 overflow-hidden bg-background text-text scheme-dark",
-						isPortraitAspectRatio ? "flex-col" : "flex-row-reverse",
-					)}
-				/>
-			}
-		>
-			<StageMetadataProvider value={registerBeforeNext}>
-				<InterviewToastProvider
-					forwardButtonRef={forwardButtonRef}
-					backButtonRef={backButtonRef}
-					orientation={navigationOrientation}
-				>
-					<AnimatePresence mode="wait" onExitComplete={handleExitComplete}>
-						{showStage && stage && (
-							<motion.div
-								key={displayedStep}
-								data-stage-step={displayedStep}
-								className="flex min-h-0 flex-1"
-								initial="initial"
-								animate="animate"
-								exit="exit"
-								variants={variants}
-								transition={{ duration: 0.5 }}
-							>
-								<div className="flex size-full flex-col items-center justify-center" id="stage" key={stage.id}>
-									<StageErrorBoundary>
-										{CurrentInterface && (
-											<CurrentInterface key={stage.id} stage={stage} getNavigationHelpers={getNavigationHelpers} />
-										)}
-									</StageErrorBoundary>
-								</div>
-							</motion.div>
-						)}
-					</AnimatePresence>
-				</InterviewToastProvider>
-			</StageMetadataProvider>
-			<Navigation
-				moveBackward={moveBackward}
-				moveForward={moveForward}
-				disableMoveForward={disableMoveForward}
-				disableMoveBackward={disableMoveBackward}
-				pulseNext={pulseNext}
-				progress={progress}
-				orientation={navigationOrientation}
-				forwardButtonRef={forwardButtonRef}
-				backButtonRef={backButtonRef}
-			/>
-		</ThemedRegion>
+  <ThemedRegion
+   theme="interview"
+   render={
+    <main
+     className={cx(
+      "relative flex size-full flex-1 overflow-hidden bg-background text-text scheme-dark",
+      isPortraitAspectRatio ? "flex-col" : "flex-row-reverse",
+     )}
+    />
+   }
+  >
+   <StageMetadataProvider value={registerBeforeNext}>
+    <InterviewToastProvider
+     forwardButtonRef={forwardButtonRef}
+     backButtonRef={backButtonRef}
+     orientation={navigationOrientation}
+    >
+     <AnimatePresence mode="wait" onExitComplete={handleExitComplete}>
+      {showStage && stage && (
+       <motion.div
+        key={displayedStep}
+        data-stage-step={displayedStep}
+        className="flex min-h-0 flex-1"
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        variants={variants}
+        transition={{ duration: 0.5 }}
+       >
+        <div className="flex size-full flex-col items-center justify-center" id="stage" key={stage.id}>
+         <StageErrorBoundary>
+          {CurrentInterface && (
+           <CurrentInterface key={stage.id} stage={stage} getNavigationHelpers={getNavigationHelpers} />
+          )}
+         </StageErrorBoundary>
+        </div>
+       </motion.div>
+      )}
+     </AnimatePresence>
+    </InterviewToastProvider>
+   </StageMetadataProvider>
+   <Navigation
+    moveBackward={moveBackward}
+    moveForward={moveForward}
+    disableMoveForward={disableMoveForward}
+    disableMoveBackward={disableMoveBackward}
+    pulseNext={pulseNext}
+    progress={progress}
+    orientation={navigationOrientation}
+    forwardButtonRef={forwardButtonRef}
+    backButtonRef={backButtonRef}
+   />
+  </ThemedRegion>
 ```
 
 - [ ] **Step 3: Run typecheck**
@@ -1333,6 +1356,7 @@ git commit -m "feat(interview): wrap Shell in ThemedRegion"
 ## Task 18: Update interview Storybook `preview.tsx`
 
 **Files:**
+
 - Modify: `packages/interview/.storybook/preview.tsx`
 
 Delete the `InterviewThemeRoot` component and replace the decorator with a `<ThemedRegion>` wrapper.
@@ -1354,37 +1378,37 @@ import "./preview.css";
 import Providers from "./Providers";
 
 export default definePreview({
-	addons: [addonDocs(), addonA11y(), addonVitest()],
-	parameters: {
-		controls: {
-			matchers: {
-				color: /(background|color)$/i,
-				date: /Date$/i,
-			},
-		},
-	},
-	decorators: [
-		(Story) => {
-			// Disable Base UI animations whenever Storybook is being driven
-			// by automation (vitest browser mode / play-function runner).
-			// Manual browsing keeps animations.
-			const disableAnimations = typeof navigator !== "undefined" && navigator.webdriver === true;
+ addons: [addonDocs(), addonA11y(), addonVitest()],
+ parameters: {
+  controls: {
+   matchers: {
+    color: /(background|color)$/i,
+    date: /Date$/i,
+   },
+  },
+ },
+ decorators: [
+  (Story) => {
+   // Disable Base UI animations whenever Storybook is being driven
+   // by automation (vitest browser mode / play-function runner).
+   // Manual browsing keeps animations.
+   const disableAnimations = typeof navigator !== "undefined" && navigator.webdriver === true;
 
-			return (
-				<StrictMode>
-					{/*
-					 * Required by Base UI's portal-based dialogs/popovers:
-					 * https://base-ui.com/react/overview/quick-start#portals
-					 */}
-					<ThemedRegion theme="interview" className="root h-full">
-						<Providers disableAnimations={disableAnimations}>
-							<Story />
-						</Providers>
-					</ThemedRegion>
-				</StrictMode>
-			);
-		},
-	],
+   return (
+    <StrictMode>
+     {/*
+      * Required by Base UI's portal-based dialogs/popovers:
+      * https://base-ui.com/react/overview/quick-start#portals
+      */}
+     <ThemedRegion theme="interview" className="root h-full">
+      <Providers disableAnimations={disableAnimations}>
+       <Story />
+      </Providers>
+     </ThemedRegion>
+    </StrictMode>
+   );
+  },
+ ],
 });
 ```
 
@@ -1408,6 +1432,7 @@ git commit -m "feat(interview): use ThemedRegion in Storybook preview"
 ## Task 19: Update interview README and replace alpha-14 changeset
 
 **Files:**
+
 - Modify: `packages/interview/README.md`
 - Delete: `.changeset/interview-1-0-0-alpha-14.md`
 - Create: `.changeset/interview-1-0-0-alpha-15.md`
@@ -1501,6 +1526,7 @@ pnpm test
 ```
 
 Expected: all suites pass. Pay particular attention to:
+
 - `packages/fresco-ui` — `PortalContainer.test.tsx` and `ThemedRegion.test.tsx` (3 + 4 tests).
 - `packages/fresco-ui/src/dialogs/__tests__/wizardDialog.test.tsx` and friends — should still pass with the Modal change.
 - `packages/interview` — existing tests unaffected.
@@ -1536,6 +1562,7 @@ If no changes, skip this step.
 - [ ] **Step 7: Final summary**
 
 Confirm all tasks completed:
+
 - `git log --oneline feat/interview-package..HEAD` should show ~16+ commits matching the task pattern.
 - Three changesets: `tailwind-config-theme-root-size-sentinel.md`, `fresco-ui-themed-region-portal-container.md`, `interview-1-0-0-alpha-15.md`.
 - The old `.changeset/interview-1-0-0-alpha-14.md` is gone.
