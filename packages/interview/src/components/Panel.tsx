@@ -16,7 +16,15 @@ type PanelProps = React.HTMLAttributes<HTMLDivElement> & {
  * Renders a side panel, with a title and `props.children`.
  */
 
-const Panel = ({ title, children, minimize = false, panelNumber, noCollapse = false, testId }: PanelProps) => {
+const Panel = ({
+	title,
+	children,
+	minimize = false,
+	panelNumber,
+	noCollapse = false,
+	testId,
+	className,
+}: PanelProps) => {
 	const [collapsed, setCollapsed] = useState(false);
 
 	const toggleCollapsed = useCallback(() => {
@@ -42,6 +50,7 @@ const Panel = ({ title, children, minimize = false, panelNumber, noCollapse = fa
 		panelNumber === 7 && "border-b-cat-8",
 		panelNumber === 8 && "border-b-cat-9",
 		panelNumber === 9 && "border-b-cat-10",
+		className,
 	);
 
 	const panelContentClasses = compose(

@@ -1,27 +1,22 @@
-import { Collection } from "@codaco/fresco-ui/collection/components/Collection";
-import { InlineGridLayout } from "@codaco/fresco-ui/collection/layout/InlineGridLayout";
 import type { ItemProps } from "@codaco/fresco-ui/collection/types";
-import Surface from "@codaco/fresco-ui/layout/Surface";
-import Heading from "@codaco/fresco-ui/typography/Heading";
-import { entityAttributesProperty, entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
+import { entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
 import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSelector } from "react-redux";
 import { useTrack } from "~/analytics/useTrack";
 import { ConnectedMotionNode } from "~/components/ConnectedNode";
+import NodeList from "~/components/NodeList";
+import Panel from "~/components/Panel";
 import Prompts from "~/components/Prompts";
 import { usePrompts } from "~/components/Prompts/usePrompts";
 import { useCurrentStep } from "~/contexts/CurrentStepContext";
 import useBeforeNext from "~/hooks/useBeforeNext";
 import useSortedNodeList from "~/hooks/useSortedNodeList";
 import { useStageSelector } from "~/hooks/useStageSelector";
-import { makeGetCodebookVariablesForNodeType } from "~/selectors/protocol";
 import { getNetworkEdges, getNetworkNodesForType } from "~/selectors/session";
 import { edgeExists, toggleEdge } from "~/store/modules/session";
 import { useAppDispatch } from "~/store/store";
 import type { StageProps } from "~/types";
 import type { ProtocolSortRule } from "~/utils/createSorter";
-import { getNodeLabelAttribute } from "~/utils/getNodeLabelAttribute";
 
 type OneToManyDyadCensusProps = StageProps<"OneToManyDyadCensus">;
 
@@ -133,26 +128,6 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
 		[createEdge, dispatch, stageStep],
 	);
 
-	const layout = useMemo(() => new InlineGridLayout<NcNode>({ gap: 4 }), []);
-
-	const keyExtractor = useCallback((node: NcNode) => node[entityPrimaryKeyProperty], []);
-
-	const getCodebookVariablesForNodeType = useSelector(makeGetCodebookVariablesForNodeType);
-
-	const textValueExtractor = useCallback(
-		(node: NcNode) => {
-			const codebookVariables = getCodebookVariablesForNodeType(node.type);
-			const labelAttrId = getNodeLabelAttribute(codebookVariables, node[entityAttributesProperty]);
-			if (labelAttrId) {
-				const value = node[entityAttributesProperty][labelAttrId];
-				if (typeof value === "string") return value;
-				if (typeof value === "number") return String(value);
-			}
-			return node[entityPrimaryKeyProperty];
-		},
-		[getCodebookVariablesForNodeType],
-	);
-
 	const filteredTargets = useMemo(() => {
 		if (!removeAfterConsideration) return sortedTargets;
 		return sortedTargets.filter((node) => {
@@ -174,6 +149,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
 					{...itemProps}
 					nodeId={node[entityPrimaryKeyProperty]}
 					type={node.type}
+					size="sm"
 					selected={selected}
 					onClick={handleNodeClick(source, node)}
 					layoutId={node[entityPrimaryKeyProperty]}
@@ -191,7 +167,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
 					<ConnectedMotionNode
 						nodeId={source[entityPrimaryKeyProperty]}
 						type={source.type}
-						size="sm"
+						size="md"
 						className="z-10"
 						layoutId={source[entityPrimaryKeyProperty]}
 						key={source[entityPrimaryKeyProperty]}
@@ -203,27 +179,19 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
 					</div>
 				)}
 			</AnimatePresence>
-			<Surface noContainer className="flex grow flex-col overflow-visible" spacing="none">
-				<Heading level="h4" className="mx-auto p-2">
-					Click/tap all that apply:
-				</Heading>
-				<Collection
-					key={promptIndex}
+			<Panel title="Click/tap all that apply:" panelNumber={0} noCollapse className="w-full max-w-7xl">
+				<NodeList
 					id="dyad-census-targets"
 					items={filteredTargets}
-					keyExtractor={keyExtractor}
-					textValueExtractor={textValueExtractor}
-					layout={layout}
 					renderItem={renderItem}
 					selectionMode="none"
 					layoutGroupId={null}
-					viewportClassName={isTransitioning ? "overflow-visible p-4" : "p-4"}
+					animationKey={promptIndex}
 					aria-label="Target nodes"
+					announcedName="Target nodes"
 					emptyState={<h3>No nodes to display.</h3>}
-				>
-					{(CollectionElements) => CollectionElements}
-				</Collection>
-			</Surface>
+				/>
+			</Panel>
 		</div>
 	);
 }
