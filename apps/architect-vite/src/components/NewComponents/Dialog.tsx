@@ -20,7 +20,7 @@ function DialogPopup({ size, header, children, footer, className, onAnimationCom
 		<BaseDialog.Popup
 			className={cx(
 				"w-3xl",
-				"fixed top-1/2 left-1/2 max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg overflow-hidden",
+				"fixed top-1/2 left-1/2 z-(--z-dialog) max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg overflow-hidden",
 				"bg-surface-1 text-surface-1-foreground max-h-[80vh] flex flex-col",
 				"shadow-xl",
 				className,

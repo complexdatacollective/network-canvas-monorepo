@@ -9,9 +9,11 @@ import type { RootState } from "~/ducks/store";
 import { IconButton } from "~/lib/legacy-ui/components/Button";
 import { getCanRedo, getCanUndo, getProtocolName } from "~/selectors/protocol";
 import { cn } from "~/utils/cn";
+import ActionToolbar from "./ActionToolbar";
 import Breadcrumb, { type BreadcrumbItem } from "./Breadcrumb";
 import DownloadButton from "./DownloadButton";
 import NavShell from "./NavShell";
+import { PageActionsTarget } from "./PageActions";
 
 type Tab = {
 	href: string;
@@ -36,6 +38,9 @@ const ProjectNav = () => {
 	const handleUndo = useCallback(() => dispatch(undo()), [dispatch]);
 	const handleRedo = useCallback(() => dispatch(redo()), [dispatch]);
 
+	// Summary is read-only: undo/redo would have no visible effect.
+	const isSummary = location === "/protocol/summary";
+
 	const breadcrumbItems: BreadcrumbItem[] = [{ label: protocolName ?? "Untitled protocol" }];
 
 	const tabs = (
@@ -48,7 +53,7 @@ const ProjectNav = () => {
 						href={href}
 						aria-current={isActive ? "page" : undefined}
 						className={cn(
-							"text-base font-semibold relative cursor-pointer no-underline text-accent-foreground transition-colors leading-none",
+							"text-base font-semibold relative cursor-pointer no-underline text-white transition-colors leading-none",
 							!isActive && "hover:text-action",
 						)}
 					>
@@ -70,15 +75,35 @@ const ProjectNav = () => {
 		</nav>
 	);
 
-	const trailing = (
+	return (
 		<>
-			<IconButton variant="text" icon={<Undo />} onClick={handleUndo} disabled={!canUndo} aria-label="Undo" />
-			<IconButton variant="text" icon={<Redo />} onClick={handleRedo} disabled={!canRedo} aria-label="Redo" />
-			<DownloadButton />
+			<NavShell leading={<Breadcrumb items={breadcrumbItems} />} trailing={tabs} />
+			<ActionToolbar>
+				<PageActionsTarget />
+				{!isSummary && (
+					<>
+						<IconButton
+							variant="text"
+							icon={<Undo />}
+							onClick={handleUndo}
+							disabled={!canUndo}
+							aria-label="Undo"
+							className="hover:bg-white/10"
+						/>
+						<IconButton
+							variant="text"
+							icon={<Redo />}
+							onClick={handleRedo}
+							disabled={!canRedo}
+							aria-label="Redo"
+							className="hover:bg-white/10"
+						/>
+					</>
+				)}
+				<DownloadButton />
+			</ActionToolbar>
 		</>
 	);
-
-	return <NavShell leading={<Breadcrumb items={breadcrumbItems} />} center={tabs} trailing={trailing} />;
 };
 
 export default ProjectNav;

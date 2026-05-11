@@ -7,7 +7,6 @@ import { v1 as uuid } from "uuid";
 import { useLocation } from "wouter";
 import Editor from "~/components/Editor";
 import ExternalLink from "~/components/ExternalLink";
-import Issues from "~/components/Issues";
 import StageEditorNav from "~/components/ProjectNav/StageEditorNav";
 import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
@@ -195,7 +194,7 @@ const StageEditor = (props: StageEditorProps) => {
 
 	return (
 		<Editor initialValues={initialValues} onSubmit={onSubmit} form={formName}>
-			<div className="relative flex flex-col h-dvh">
+			<div className="relative h-dvh overflow-y-auto">
 				<StageEditorNav
 					stageName={stageName}
 					onCancel={handleCancel}
@@ -205,11 +204,10 @@ const StageEditor = (props: StageEditorProps) => {
 					isUploadingPreview={isUploadingPreview}
 					hasUnsavedChanges={hasUnsavedChanges}
 				/>
-				<div className="overflow-auto flex flex-col items-center basis-auto">
+				<div className="flex flex-col items-center">
 					<StageHeading />
-					<div className="flex flex-col gap-10 mb-32">{renderSections(sections)}</div>
+					<div className="flex flex-col gap-10">{renderSections(sections)}</div>
 				</div>
-				<Issues />
 			</div>
 		</Editor>
 	);

@@ -2,6 +2,7 @@ import { Printer } from "lucide-react";
 import { useEffect } from "react";
 import { useSelector } from "react-redux";
 import { Layout } from "~/components/EditorLayout";
+import { PageActions } from "~/components/ProjectNav/PageActions";
 import PageHeading from "~/components/ProjectNav/PageHeading";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
 import { Button } from "~/lib/legacy-ui/components";
@@ -67,44 +68,40 @@ const SummaryPage = () => {
 				index,
 			}}
 		>
-			<div className="relative flex flex-col h-dvh print:h-auto print:overflow-visible">
-				<div className="flex-1 overflow-y-auto print:overflow-visible">
-					<Layout className="protocol-summary-page">
-						<div className="print:hidden w-full">
-							<PageHeading
-								title="Protocol Summary"
-								description="Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets."
-								actions={
-									<Button onClick={print} color="sea-green" icon={<Printer />}>
-										Print
-									</Button>
-								}
-							/>
-						</div>
-						<div className="protocol-summary">
-							<div className="page-break-marker">
-								<Cover />
-							</div>
-
-							<div className="page-break-marker">
-								<Contents />
-							</div>
-
-							<div>
-								<Stages />
-							</div>
-
-							<div>
-								<Codebook />
-							</div>
-
-							<div>
-								<AssetManifest />
-							</div>
-						</div>
-					</Layout>
+			<PageActions>
+				<Button onClick={print} color="neon-coral" icon={<Printer />}>
+					Print
+				</Button>
+			</PageActions>
+			<Layout className="protocol-summary-page">
+				<div className="print:hidden w-full">
+					<PageHeading
+						title="Protocol Summary"
+						description="Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets."
+					/>
 				</div>
-			</div>
+				<div className="protocol-summary">
+					<div className="page-break-marker">
+						<Cover />
+					</div>
+
+					<div className="page-break-marker">
+						<Contents />
+					</div>
+
+					<div>
+						<Stages />
+					</div>
+
+					<div>
+						<Codebook />
+					</div>
+
+					<div>
+						<AssetManifest />
+					</div>
+				</div>
+			</Layout>
 		</SummaryContext.Provider>
 	);
 };

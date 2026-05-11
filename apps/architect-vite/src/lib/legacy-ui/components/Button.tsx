@@ -119,13 +119,14 @@ class Button extends PureComponent<ButtonProps> {
 			type = "button",
 			iconPosition = "left",
 			disabled = false,
+			className,
 			...rest
 		} = this.props;
 
 		return (
 			<button
 				type={type}
-				className={computeButtonClasses({ color, size, variant, icon, iconPosition })}
+				className={cn(computeButtonClasses({ color, size, variant, icon, iconPosition }), className)}
 				onClick={onClick}
 				disabled={disabled}
 				{...rest}
