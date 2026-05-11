@@ -70,8 +70,7 @@ export default function GeospatialStubSearch({ className }: Props) {
 					<MotionSurface
 						noContainer
 						spacing="none"
-						elevation="high"
-						className="bg-surface/80 w-sm rounded-xl backdrop-blur-md"
+						className="bg-surface/80 w-sm rounded-xl backdrop-blur-md shadow-xl"
 					>
 						<InputField
 							type="text"
@@ -106,8 +105,7 @@ export default function GeospatialStubSearch({ className }: Props) {
 							noContainer
 							spacing="none"
 							level="popover"
-							elevation="high"
-							className="absolute left-0 mt-2 flex max-h-64 w-sm flex-col"
+							className="absolute left-0 mt-2 flex max-h-64 w-sm flex-col shadow-xl"
 						>
 							<div role="listbox" aria-label="Search suggestions" className="flex flex-col p-1">
 								{STUB_SUGGESTIONS.map((s) => (

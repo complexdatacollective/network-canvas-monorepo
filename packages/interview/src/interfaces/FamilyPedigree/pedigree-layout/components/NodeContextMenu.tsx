@@ -47,7 +47,6 @@ export default function NodeContextMenu({
 						</Menu.Arrow>
 						<MotionSurface
 							level="popover"
-							elevation="none"
 							spacing="none"
 							noContainer
 							className={cx("max-w-(--available-width) overflow-hidden shadow-xl")}

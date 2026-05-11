@@ -149,11 +149,9 @@ function ComboboxField(props: ComboboxFieldProps) {
 						render={
 							<Surface
 								level="popover"
-								elevation="none"
 								spacing="xs"
 								noContainer
-								dynamicSpacing={false}
-								className={cx("flex flex-col shadow-xl", "min-w-(--anchor-width)", "gap-2")}
+								className={cx("flex flex-col", "min-w-(--anchor-width)", "gap-2")}
 							/>
 						}
 					>

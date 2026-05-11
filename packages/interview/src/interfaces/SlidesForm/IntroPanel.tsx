@@ -33,7 +33,7 @@ export default function IntroPanel({ title, text, onDismiss }: IntroPanelProps) 
 
 	return (
 		<div className="flex size-full items-center justify-center">
-			<Surface className="@container-normal h-auto max-h-[75%]" elevation="medium" maxWidth="3xl">
+			<Surface className="h-auto max-h-[75%] shadow-xl" maxWidth="3xl">
 				<Heading level="h1" className="text-center">
 					{title}
 				</Heading>

@@ -16,48 +16,16 @@ export const surfaceSpacingVariants = cva({
 		},
 		spacing: {
 			none: "",
-			xs: "px-3 py-2",
-			sm: "px-4 py-3",
-			md: "px-4 py-3",
-			lg: "px-6 py-4",
-			xl: "px-8 py-6",
-		},
-		dynamicSpacing: {
-			true: "",
-			false: "",
+			xs: "px-4 py-3",
+			sm: "px-6 py-4",
+			md: "px-8 py-6",
+			lg: "px-10 py-8",
+			xl: "px-12 py-10",
 		},
 	},
-	compoundVariants: [
-		{
-			spacing: "xs",
-			dynamicSpacing: true,
-			className: "p-4",
-		},
-		{
-			spacing: "sm",
-			dynamicSpacing: true,
-			className: "p-6",
-		},
-		{
-			spacing: "md",
-			dynamicSpacing: true,
-			className: "p-8 tablet-portrait:px-12",
-		},
-		{
-			spacing: "lg",
-			dynamicSpacing: true,
-			className: "p-10 tablet-portrait:px-16",
-		},
-		{
-			spacing: "xl",
-			dynamicSpacing: true,
-			className: "p-12 tablet-portrait:px-20",
-		},
-	],
 	defaultVariants: {
 		spacing: "md",
 		section: "container",
-		dynamicSpacing: true,
 	},
 });
 
@@ -78,26 +46,17 @@ export const surfaceVariants = compose(
 				3: "text-surface-3-contrast bg-surface-3",
 				popover: "text-surface-popover-contrast bg-surface-popover [--focus-color:white]",
 			},
-			bleed: {
+			spacing: {
 				none: "",
-				xs: "-mx-2 @xl:-mx-4",
-				sm: "-mx-4 @xl:-mx-6 @4xl:-mx-8",
-				md: "-mx-8 @xl:-mx-10 @4xl:-mx-12",
-				lg: "-mx-10 @xl:-mx-16 @4xl:-mx-20",
-				xl: "-mx-10 @xl:-mx-20 @4xl:-mx-28",
-			},
-			elevation: {
-				dynamic: "elevation-low @xl:elevation-medium @4xl:elevation-high",
-				low: "elevation-low",
-				medium: "elevation-medium",
-				high: "elevation-high",
-				none: "",
+				xs: "shadow-sm",
+				sm: "shadow",
+				md: "shadow-md",
+				lg: "shadow-lg",
+				xl: "shadow-xl",
 			},
 		},
 		defaultVariants: {
 			level: 0,
-			elevation: "low",
-			bleed: "none",
 		},
 	}),
 );
@@ -128,24 +87,7 @@ type SurfaceProps<T extends ElementType = "div"> = {
  * <Surface className="before:bg-primary text-primary-contrast">
  */
 const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
-	(
-		{
-			as,
-			children,
-			level,
-			spacing,
-			elevation,
-			bleed,
-			section,
-			dynamicSpacing,
-			className,
-			maxWidth,
-			baseSize,
-			noContainer = false,
-			...rest
-		},
-		ref,
-	) => {
+	({ as, children, level, spacing, section, className, maxWidth, baseSize, noContainer = false, ...rest }, ref) => {
 		const Component = as ?? "div";
 		const surfaceElement = (
 			<Component
@@ -155,10 +97,7 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
 					surfaceVariants({
 						level,
 						spacing,
-						elevation,
-						bleed,
 						section,
-						dynamicSpacing,
 					}),
 					className,
 				)}

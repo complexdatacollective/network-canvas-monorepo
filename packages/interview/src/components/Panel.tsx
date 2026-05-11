@@ -27,6 +27,7 @@ const Panel = ({ title, children, minimize = false, panelNumber, noCollapse = fa
 	}, [setCollapsed, noCollapse]);
 
 	const panelClasses = cx(
+		"shadow-none elevation-high",
 		"flex min-h-0 grow flex-col overflow-hidden rounded border-b-10",
 		"transition-all duration-500 ease-in-out",
 		minimize && "mb-0 grow-0 basis-0 border-b-0 opacity-0",
@@ -57,7 +58,7 @@ const Panel = ({ title, children, minimize = false, panelNumber, noCollapse = fa
 	);
 
 	return (
-		<Surface className={panelClasses} elevation="high" spacing="none" noContainer data-testid={testId}>
+		<Surface className={panelClasses} spacing="none" noContainer data-testid={testId}>
 			<button type="button" className={headingClassNames({ spacing: "sm" })} onClick={toggleCollapsed}>
 				<Heading level="h3" margin="none">
 					{title}

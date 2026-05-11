@@ -62,7 +62,6 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
 				className={cx(alertVariants({ variant }), className)}
 				noContainer
 				maxWidth="3xl"
-				elevation="none"
 				{...props}
 			>
 				{IconComponent && (

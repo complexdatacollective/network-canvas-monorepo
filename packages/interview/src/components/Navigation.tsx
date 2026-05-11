@@ -68,7 +68,7 @@ const NavigationButton = ({
 };
 
 const navigationVariants = cva({
-	base: "flex max-h-none shrink-0 grow-0 items-center justify-between overflow-visible rounded-none",
+	base: "flex max-h-none shrink-0 grow-0 items-center justify-between overflow-visible rounded-none shadow-none",
 	variants: {
 		orientation: {
 			vertical: "w-auto flex-col",
@@ -124,10 +124,8 @@ const Navigation = ({
 	return (
 		<MotionSurface
 			role="navigation"
-			elevation="none"
 			className={navigationVariants({ orientation })}
 			spacing="xs"
-			dynamicSpacing={false}
 			noContainer
 			variants={containerVariants}
 			custom={orientation}

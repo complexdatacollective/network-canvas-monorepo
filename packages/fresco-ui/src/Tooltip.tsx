@@ -33,10 +33,8 @@ const TooltipContent = React.forwardRef<React.ElementRef<typeof BaseTooltip.Popu
 							render={
 								<MotionSurface
 									level="popover"
-									dynamicSpacing={false}
 									spacing="sm"
-									elevation="none"
-									className={cx("max-w-(--available-width) overflow-visible text-sm shadow-xl", className)}
+									className={cx("max-w-(--available-width) overflow-visible text-sm", className)}
 									initial={{ opacity: 0, scale: 0.96 }}
 									animate={{ opacity: 1, scale: 1 }}
 									exit={{ opacity: 0, scale: 0.96 }}

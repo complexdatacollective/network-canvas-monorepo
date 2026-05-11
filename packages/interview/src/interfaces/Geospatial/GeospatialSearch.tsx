@@ -222,8 +222,7 @@ export default function GeospatialSearch({
 						<MotionSurface
 							noContainer
 							spacing="none"
-							elevation="high"
-							className="bg-surface/80 w-sm rounded-xl backdrop-blur-md"
+							className="bg-surface/80 w-sm rounded-xl backdrop-blur-md shadow-md"
 							initial={{ opacity: 0, x: "-2rem" }}
 							animate={{ opacity: 1, x: 0 }}
 							exit={{ opacity: 0, x: "-2rem" }}
@@ -266,8 +265,7 @@ export default function GeospatialSearch({
 									noContainer
 									spacing="none"
 									level="popover"
-									elevation="high"
-									className="absolute left-0 mt-2 flex max-h-64 w-sm flex-col"
+									className="absolute left-0 mt-2 flex max-h-64 w-sm flex-col shadow-xl"
 									initial={{ opacity: 0, y: "-0.5rem" }}
 									animate={{ opacity: 1, y: 0 }}
 									exit={{ opacity: 0, y: "-0.5rem" }}
