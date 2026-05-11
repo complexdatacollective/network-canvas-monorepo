@@ -22,11 +22,11 @@ import { getEdgeColorForType, getNetworkEdges, getNetworkNodesForType, getStageM
 import { getCodebook } from "~/store/modules/protocol";
 import {
 	addEdge,
-	type DyadCensusMetadataItem,
 	deleteEdge,
 	edgeExists,
 	updateEdge,
 	updateStageMetadata,
+	type DyadCensusMetadataItem,
 } from "~/store/modules/session";
 import { useAppDispatch } from "~/store/store";
 import type { StageProps } from "~/types";

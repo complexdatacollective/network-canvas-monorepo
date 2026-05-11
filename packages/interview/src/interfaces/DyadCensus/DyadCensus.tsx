@@ -17,10 +17,10 @@ import { getNodePairs } from "~/selectors/dyad-census";
 import { getEdgeColorForType, getNetworkEdges, getNetworkNodesForType, getStageMetadata } from "~/selectors/session";
 import {
 	addEdge,
-	type DyadCensusMetadataItem,
 	deleteEdge,
 	edgeExists,
 	updateStageMetadata,
+	type DyadCensusMetadataItem,
 } from "~/store/modules/session";
 import { useAppDispatch } from "~/store/store";
 import type { StageProps } from "~/types";

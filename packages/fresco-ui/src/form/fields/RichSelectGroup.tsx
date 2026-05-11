@@ -252,155 +252,131 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
 
 	return (
 		<div className={cx(useColumns && "@container w-full")}>
-			{isSingle ? (
-				<div
-					id={id}
-					className={richSelectGroupVariants({
-						size,
-						orientation,
-						useColumns,
-						className,
-					})}
-					role="listbox"
-					aria-orientation={orientation}
-					aria-label={fieldsetProps["aria-label"]}
-					aria-labelledby={fieldsetProps["aria-labelledby"]}
-					aria-describedby={fieldsetProps["aria-describedby"]}
-					aria-invalid={fieldsetProps["aria-invalid"] ?? undefined}
-					aria-disabled={disabled ? true : undefined}
-					data-readonly={readOnly ? "true" : undefined}
-				>
-					{renderOptions()}
-				</div>
-			) : (
-				<fieldset
-					id={id}
-					{...fieldsetProps}
-					className={richSelectGroupVariants({
-						size,
-						orientation,
-						useColumns,
-						className,
-					})}
-					disabled={disabled}
-					aria-label={fieldsetProps["aria-label"]}
-					aria-labelledby={fieldsetProps["aria-labelledby"]}
-					aria-describedby={fieldsetProps["aria-describedby"]}
-					aria-invalid={fieldsetProps["aria-invalid"] ?? undefined}
-					data-readonly={readOnly ? "true" : undefined}
-				>
-					{renderOptions()}
-				</fieldset>
-			)}
+			<fieldset
+				id={id}
+				{...fieldsetProps}
+				className={richSelectGroupVariants({
+					size,
+					orientation,
+					useColumns,
+					className,
+				})}
+				disabled={disabled}
+				role={isSingle ? "listbox" : undefined}
+				aria-orientation={isSingle ? orientation : undefined}
+				aria-label={fieldsetProps["aria-label"]}
+				aria-labelledby={fieldsetProps["aria-labelledby"]}
+				aria-describedby={fieldsetProps["aria-describedby"]}
+				aria-invalid={fieldsetProps["aria-invalid"] ?? undefined}
+				data-readonly={readOnly ? "true" : undefined}
+			>
+				{options.map((option, index) => {
+					const isOptionDisabled = disabled ?? option.disabled;
+					const optionSelected = isSelected(option.value);
+					const optionState = isOptionDisabled
+						? "disabled"
+						: readOnly
+							? "readOnly"
+							: groupState === "invalid"
+								? "invalid"
+								: "normal";
+
+					const ariaProps = isSingle
+						? {
+								role: "option" as const,
+								"aria-selected": optionSelected,
+								tabIndex: optionSelected || (!currentValue && index === 0) ? 0 : -1,
+							}
+						: {
+								"aria-pressed": optionSelected,
+								tabIndex: 0,
+							};
+
+					return (
+						<motion.button
+							key={String(option.value)}
+							ref={(el) => {
+								optionRefs.current[index] = el;
+							}}
+							type="button"
+							className={optionCardVariants({
+								selected: optionSelected,
+								state: optionState,
+								size,
+							})}
+							onClick={() => {
+								if (!isOptionDisabled && !readOnly) {
+									handleSelect(option.value);
+								}
+							}}
+							onKeyDown={(e) => handleKeyDown(e, index)}
+							disabled={isOptionDisabled}
+							whileTap={isOptionDisabled || readOnly ? undefined : { scale: 0.98 }}
+							transition={selectionSpring}
+							{...ariaProps}
+						>
+							<span
+								aria-hidden
+								className={indicatorVariants({
+									size,
+									state: optionState,
+									mode: isSingle ? "radio" : "checkbox",
+								})}
+							>
+								{isSingle ? (
+									<svg
+										aria-hidden="true"
+										viewBox="0 0 24 24"
+										fill="currentColor"
+										className="text-primary size-full overflow-hidden rounded-full p-[0.1em]"
+									>
+										<motion.circle
+											cx="12"
+											cy="12"
+											r="10"
+											initial={false}
+											animate={{ scale: optionSelected ? 1 : 0 }}
+											transition={{
+												type: "spring",
+												bounce: 0.3,
+												duration: optionSelected ? 0.3 : 0.15,
+											}}
+										/>
+									</svg>
+								) : (
+									<svg
+										aria-hidden="true"
+										viewBox="0 0 24 24"
+										fill="none"
+										className="text-primary size-full p-[0.1em]"
+										stroke="currentColor"
+										strokeWidth="3"
+									>
+										<path
+											d="M4 12L10 18L20 6"
+											pathLength={1}
+											style={{
+												strokeDasharray: 1,
+												strokeDashoffset: optionSelected ? 0 : 1,
+												strokeLinecap: optionSelected ? "round" : "butt",
+												transition: "stroke-dashoffset 0.2s ease-out",
+											}}
+										/>
+									</svg>
+								)}
+							</span>
+							<Label className="m-0!">
+								<RenderMarkdown>{option.label}</RenderMarkdown>
+							</Label>
+							{option.description && (
+								<span className={descriptionVariants({ size })}>
+									<RenderMarkdown>{option.description}</RenderMarkdown>
+								</span>
+							)}
+						</motion.button>
+					);
+				})}
+			</fieldset>
 		</div>
 	);
-
-	function renderOptions() {
-		return options.map((option, index) => {
-			const isOptionDisabled = disabled ?? option.disabled;
-			const optionSelected = isSelected(option.value);
-			const optionState = isOptionDisabled
-				? "disabled"
-				: readOnly
-					? "readOnly"
-					: groupState === "invalid"
-						? "invalid"
-						: "normal";
-
-			const ariaProps = isSingle
-				? {
-						role: "option" as const,
-						"aria-selected": optionSelected,
-						tabIndex: optionSelected || (!currentValue && index === 0) ? 0 : -1,
-					}
-				: {
-						"aria-pressed": optionSelected,
-						tabIndex: 0,
-					};
-
-			return (
-				<motion.button
-					key={String(option.value)}
-					ref={(el) => {
-						optionRefs.current[index] = el;
-					}}
-					type="button"
-					className={optionCardVariants({
-						selected: optionSelected,
-						state: optionState,
-						size,
-					})}
-					onClick={() => {
-						if (!isOptionDisabled && !readOnly) {
-							handleSelect(option.value);
-						}
-					}}
-					onKeyDown={(e) => handleKeyDown(e, index)}
-					disabled={isOptionDisabled}
-					whileTap={isOptionDisabled || readOnly ? undefined : { scale: 0.98 }}
-					transition={selectionSpring}
-					{...ariaProps}
-				>
-					<span
-						aria-hidden
-						className={indicatorVariants({
-							size,
-							state: optionState,
-							mode: isSingle ? "radio" : "checkbox",
-						})}
-					>
-						{isSingle ? (
-							<svg
-								aria-hidden="true"
-								viewBox="0 0 24 24"
-								fill="currentColor"
-								className="text-primary size-full overflow-hidden rounded-full p-[0.1em]"
-							>
-								<motion.circle
-									cx="12"
-									cy="12"
-									r="10"
-									initial={false}
-									animate={{ scale: optionSelected ? 1 : 0 }}
-									transition={{
-										type: "spring",
-										bounce: 0.3,
-										duration: optionSelected ? 0.3 : 0.15,
-									}}
-								/>
-							</svg>
-						) : (
-							<svg
-								aria-hidden="true"
-								viewBox="0 0 24 24"
-								fill="none"
-								className="text-primary size-full p-[0.1em]"
-								stroke="currentColor"
-								strokeWidth="3"
-							>
-								<path
-									d="M4 12L10 18L20 6"
-									pathLength={1}
-									style={{
-										strokeDasharray: 1,
-										strokeDashoffset: optionSelected ? 0 : 1,
-										strokeLinecap: optionSelected ? "round" : "butt",
-										transition: "stroke-dashoffset 0.2s ease-out",
-									}}
-								/>
-							</svg>
-						)}
-					</span>
-					<Label className="m-0!">
-						<RenderMarkdown>{option.label}</RenderMarkdown>
-					</Label>
-					{option.description && (
-						<span className={descriptionVariants({ size })}>
-							<RenderMarkdown>{option.description}</RenderMarkdown>
-						</span>
-					)}
-				</motion.button>
-			);
-		});
-	}
 }
