@@ -11,7 +11,7 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
 	const handleReturnToStart = useReturnToStartDialog();
 	return (
 		<header className="sticky top-0 z-(--z-global-ui) w-full px-4 sm:px-6 py-(--space-md) pointer-events-none print:hidden print:static">
-			<div className="pointer-events-auto max-w-7xl mx-auto bg-cyber-grape text-white shadow-md rounded-full pl-2 sm:pl-3 pr-6 sm:pr-10 py-3 flex items-center gap-(--space-md) flex-wrap">
+			<div className="pointer-events-auto max-w-7xl mx-auto bg-fresco-purple text-white shadow-lg rounded-full pl-2 sm:pl-3 pr-6 sm:pr-10 py-3 flex items-center gap-(--space-md) flex-wrap">
 				<div className="flex items-center gap-(--space-md) min-w-0 flex-1 justify-start">
 					<Brand variant="icon" onClick={handleReturnToStart} />
 					{leading}

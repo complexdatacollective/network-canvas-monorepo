@@ -132,8 +132,9 @@
 		--heading-font-family: "Nunito", sans-serif;
 		--body-font-family: "Inclusive Sans", sans-serif;
 
-		--modal-window-box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-		--shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px 0 rgb(0 0 0 / 0.06);
+		/* Tinted purple shadow color — drives the --shadow-* scale defined in
+		   @theme. Mirrors Fresco's shadow tint (oklch derived from base-hue 290). */
+		--shadow-color: oklch(0.16 0.09 290);
 		--modal-overlay: rgb(0 0 0 / 0.5);
 
 		--z-fx: 1;
@@ -306,6 +307,11 @@
 	--color-transparent: transparent;
 	--color-white: hsl(var(--white));
 
+	/* Fresco's darker brand purple — matches Fresco's --primary token (oklch
+	   10% lightness, base-hue 290). Use for high-contrast surfaces like the
+	   sticky shared nav. */
+	--color-fresco-purple: oklch(10% 0.4 290);
+
 	/* Node color tokens consumed by @codaco/fresco-ui/Node. The component reads
 	   `var(--color-node-N)` for its gradient base and uses `outline-node-N`
 	   utilities (auto-generated from these theme tokens) for the focus ring. */
@@ -443,6 +449,26 @@
 	--radius-xl: 1.25rem;
 	--radius-2xl: 1.6rem;
 	--radius-full: 9999px;
+
+	/* Tinted shadow scale — mirrors Fresco's theme.css. Color-mixes the purple
+	   --shadow-color set in :root with transparency to produce shadows that
+	   pick up the brand hue instead of reading as flat neutral gray. */
+	--shadow-sm:
+		0 1px 3px 0 color-mix(in oklab, var(--shadow-color) 12%, transparent),
+		0 1px 2px -1px color-mix(in oklab, var(--shadow-color) 20%, transparent);
+	--shadow:
+		0 4px 6px -1px color-mix(in oklab, var(--shadow-color) 12%, transparent),
+		0 2px 4px -2px color-mix(in oklab, var(--shadow-color) 20%, transparent);
+	--shadow-md:
+		0 6px 10px -2px color-mix(in oklab, var(--shadow-color) 14%, transparent),
+		0 3px 6px -3px color-mix(in oklab, var(--shadow-color) 22%, transparent);
+	--shadow-lg:
+		0 10px 15px -3px color-mix(in oklab, var(--shadow-color) 16%, transparent),
+		0 4px 6px -4px color-mix(in oklab, var(--shadow-color) 24%, transparent);
+	--shadow-xl:
+		0 20px 25px -5px color-mix(in oklab, var(--shadow-color) 16%, transparent),
+		0 8px 10px -6px color-mix(in oklab, var(--shadow-color) 24%, transparent);
+	--shadow-2xl: 0 25px 50px -12px color-mix(in oklab, var(--shadow-color) 30%, transparent);
 
 	--animate-wiggle: wiggle 1s ease-in-out infinite;
 	--animate-shake: shake 0.82s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;

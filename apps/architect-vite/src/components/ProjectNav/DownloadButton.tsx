@@ -1,5 +1,6 @@
 import { Check, Download } from "lucide-react";
 import { useCallback, useState } from "react";
+import Tooltip from "~/components/NewComponents/Tooltip";
 import { useAppDispatch } from "~/ducks/hooks";
 import { exportNetcanvas } from "~/ducks/modules/userActions/userActions";
 import { Button } from "~/lib/legacy-ui/components";
@@ -27,13 +28,15 @@ const DownloadButton = ({ disabled = false }: DownloadButtonProps) => {
 	}, [dispatch]);
 
 	return (
-		<Button
-			onClick={handleDownload}
-			color="sea-green"
-			content={downloadSuccess ? "Downloaded" : isExporting ? "Downloading..." : "Download"}
-			disabled={isExporting || disabled}
-			icon={downloadSuccess ? <Check /> : <Download />}
-		/>
+		<Tooltip content="Download .netcanvas protocol">
+			<Button
+				onClick={handleDownload}
+				color="sea-green"
+				content={downloadSuccess ? "Downloaded" : isExporting ? "Downloading..." : "Download"}
+				disabled={isExporting || disabled}
+				icon={downloadSuccess ? <Check /> : <Download />}
+			/>
+		</Tooltip>
 	);
 };
 

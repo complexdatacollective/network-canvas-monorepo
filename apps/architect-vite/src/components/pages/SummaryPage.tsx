@@ -2,6 +2,7 @@ import { Printer } from "lucide-react";
 import { useEffect } from "react";
 import { useSelector } from "react-redux";
 import { Layout } from "~/components/EditorLayout";
+import Tooltip from "~/components/NewComponents/Tooltip";
 import { PageActions } from "~/components/ProjectNav/PageActions";
 import PageHeading from "~/components/ProjectNav/PageHeading";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
@@ -69,9 +70,11 @@ const SummaryPage = () => {
 			}}
 		>
 			<PageActions>
-				<Button onClick={print} color="neon-coral" icon={<Printer />}>
-					Print
-				</Button>
+				<Tooltip content="Print protocol summary">
+					<Button onClick={print} color="neon-coral" icon={<Printer />}>
+						Print
+					</Button>
+				</Tooltip>
 			</PageActions>
 			<Layout className="protocol-summary-page">
 				<div className="print:hidden w-full">

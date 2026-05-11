@@ -53,7 +53,7 @@ const ProjectNav = () => {
 						href={href}
 						aria-current={isActive ? "page" : undefined}
 						className={cn(
-							"text-base font-semibold relative cursor-pointer no-underline text-white transition-colors leading-none",
+							"text-base font-semibold relative cursor-pointer no-underline text-current transition-colors leading-none",
 							!isActive && "hover:text-action",
 						)}
 					>
@@ -88,7 +88,7 @@ const ProjectNav = () => {
 							onClick={handleUndo}
 							disabled={!canUndo}
 							aria-label="Undo"
-							className="hover:bg-white/10"
+							className="hover:bg-current/10"
 						/>
 						<IconButton
 							variant="text"
@@ -96,7 +96,7 @@ const ProjectNav = () => {
 							onClick={handleRedo}
 							disabled={!canRedo}
 							aria-label="Redo"
-							className="hover:bg-white/10"
+							className="hover:bg-current/10"
 						/>
 					</>
 				)}

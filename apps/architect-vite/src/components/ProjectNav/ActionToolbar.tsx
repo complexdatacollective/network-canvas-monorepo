@@ -16,7 +16,7 @@ const ActionToolbar = ({
 }: ActionToolbarProps) => (
 	<div className="fixed inset-x-0 bottom-6 z-(--z-global-ui) px-4 sm:px-6 pointer-events-none print:hidden">
 		<div className="max-w-7xl mx-auto flex justify-end">
-			<div className="pointer-events-auto bg-cyber-grape text-white shadow-md rounded-2xl overflow-hidden">
+			<div className="pointer-events-auto bg-fresco-purple text-white shadow-lg rounded-2xl overflow-hidden">
 				{banner}
 				<div
 					role="toolbar"
