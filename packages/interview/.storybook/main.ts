@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { defineMain } from "@storybook/react-vite/node";
 import tailwindcss from "@tailwindcss/vite";
+import { mergeConfig } from "vite";
 
 export default defineMain({
 	addons: ["@storybook/addon-docs", "@storybook/addon-a11y", "@storybook/addon-vitest", "@chromatic-com/storybook"],
@@ -15,14 +16,17 @@ export default defineMain({
 	// Static fixtures used by stories — roster JSON for NameGeneratorRoster
 	// and geojson layers for Geospatial. Served at `/storybook/<file>`.
 	staticDirs: ["./static"],
-	viteFinal: async (config) => {
-		config.plugins = [...(config.plugins ?? []), tailwindcss()];
-		config.resolve = config.resolve ?? {};
-		config.resolve.tsconfigPaths = true;
-		config.resolve.alias = {
-			...(config.resolve.alias ?? {}),
-			"@codaco/fresco-ui": resolve(import.meta.dirname, "../../fresco-ui/src"),
-		};
-		return config;
-	},
+	viteFinal: (config) =>
+		mergeConfig(config, {
+			plugins: [tailwindcss()],
+			resolve: {
+				tsconfigPaths: true,
+				alias: {
+					"@codaco/fresco-ui": resolve(import.meta.dirname, "../../fresco-ui/src"),
+				},
+			},
+			optimizeDeps: {
+				include: ["d3-force"],
+			},
+		}),
 });
