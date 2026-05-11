@@ -1,7 +1,7 @@
 "use client";
 
 import { createListenerMiddleware, type TypedStartListening } from "@reduxjs/toolkit";
-import type { Tracker } from "../../analytics/tracker";
+import type { Tracker } from "~/analytics/tracker";
 import { addEdge, addNode, addNodeToPrompt, deleteEdge, deleteNode, removeNodeFromPrompt } from "../modules/session";
 import { setPassphrase, setPassphraseInvalid } from "../modules/ui";
 import type { AppDispatch, RootState } from "../store";

@@ -5,7 +5,7 @@ import CheckboxGroupField from "@codaco/fresco-ui/form/fields/CheckboxGroup";
 import RadioGroupField from "@codaco/fresco-ui/form/fields/RadioGroup";
 import RichSelectGroupField from "@codaco/fresco-ui/form/fields/RichSelectGroup";
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
-import { useStageSelector } from "../../../hooks/useStageSelector";
+import { useStageSelector } from "~/hooks/useStageSelector";
 import type { VariableConfig } from "../store";
 import { getNodeLabelVariable } from "../utils/nodeUtils";
 import { PARENT_EDGE_TYPE_OPTIONS_ALTER } from "./quickStartWizard/fieldOptions";

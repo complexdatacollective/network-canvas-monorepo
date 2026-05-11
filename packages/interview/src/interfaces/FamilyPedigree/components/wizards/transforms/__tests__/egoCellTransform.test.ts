@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { VariableConfig } from "../../../../store";
+import type { VariableConfig } from "~/interfaces/FamilyPedigree/store";
 import { egoCellTransform } from "../egoCellTransform";
 
 const variableConfig: VariableConfig = {

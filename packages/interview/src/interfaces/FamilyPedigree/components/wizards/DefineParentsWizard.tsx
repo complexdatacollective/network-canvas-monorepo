@@ -1,6 +1,6 @@
 import type useDialog from "@codaco/fresco-ui/dialogs/useDialog";
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
-import type { CommitBatch, VariableConfig } from "../../store";
+import type { CommitBatch, VariableConfig } from "~/interfaces/FamilyPedigree/store";
 import ParentPartnershipsStep from "../quickStartWizard/ParentPartnershipsStep";
 import GenericAdditionalParentsStep from "./steps/GenericAdditionalParentsStep";
 import GenericBioParentsStep from "./steps/GenericBioParentsStep";

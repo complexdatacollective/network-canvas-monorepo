@@ -17,28 +17,28 @@ import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
 import { entityAttributesProperty, entityPrimaryKeyProperty } from "@codaco/shared-consts";
 import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useId, useMemo, useRef } from "react";
-import { useTrack } from "../../analytics/useTrack";
-import Loading from "../../components/Loading";
-import NodeList from "../../components/NodeList";
-import Panel from "../../components/Panel";
-import Prompts from "../../components/Prompts";
-import { usePrompts } from "../../components/Prompts/usePrompts";
-import { useCurrentStep } from "../../contexts/CurrentStepContext";
-import useNodeLimits from "../../hooks/useNodeLimits";
-import { useStageSelector } from "../../hooks/useStageSelector";
-import { getNodeVariables } from "../../selectors/interface";
-import { getSearchOptions, getSortOptions } from "../../selectors/name-generator";
-import { getCodebookVariablesForSubjectType } from "../../selectors/protocol";
+import { useTrack } from "~/analytics/useTrack";
+import Loading from "~/components/Loading";
+import NodeList from "~/components/NodeList";
+import Panel from "~/components/Panel";
+import Prompts from "~/components/Prompts";
+import { usePrompts } from "~/components/Prompts/usePrompts";
+import { useCurrentStep } from "~/contexts/CurrentStepContext";
+import useNodeLimits from "~/hooks/useNodeLimits";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import { getNodeVariables } from "~/selectors/interface";
+import { getSearchOptions, getSortOptions } from "~/selectors/name-generator";
+import { getCodebookVariablesForSubjectType } from "~/selectors/protocol";
 import {
 	getNetworkNodesForPrompt,
 	getNodeColorSelector,
 	getPromptAdditionalAttributes,
 	getStageNodeCount,
-} from "../../selectors/session";
-import { addNode, deleteNode } from "../../store/modules/session";
-import { useAppDispatch } from "../../store/store";
-import { mapNCType } from "../../utils/createSorter";
-import getParentKeyByNameValue from "../../utils/getParentKeyByNameValue";
+} from "~/selectors/session";
+import { addNode, deleteNode } from "~/store/modules/session";
+import { useAppDispatch } from "~/store/store";
+import { mapNCType } from "~/utils/createSorter";
+import getParentKeyByNameValue from "~/utils/getParentKeyByNameValue";
 import { usePassphrase } from "../Anonymisation/usePassphrase";
 import DataCard from "./DataCard";
 import DropOverlay from "./DropOverlay";

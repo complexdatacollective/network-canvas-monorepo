@@ -5,7 +5,7 @@ import {
 	type VariableValue,
 } from "@codaco/shared-consts";
 import { describe, expect, it } from "vitest";
-import type { VariableOption } from "../../../utils/codebook";
+import type { VariableOption } from "~/utils/codebook";
 import { groupNodesByVariable } from "../ConvexHullLayer";
 
 function makeNode(id: string, attributes: Record<string, VariableValue> = {}): NcNode {

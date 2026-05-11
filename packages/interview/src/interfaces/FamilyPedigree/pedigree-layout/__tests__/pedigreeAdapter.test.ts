@@ -1,6 +1,6 @@
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
 import { describe, expect, test } from "vitest";
-import type { VariableConfig } from "../../store";
+import type { VariableConfig } from "~/interfaces/FamilyPedigree/store";
 import { alignPedigree } from "../alignPedigree";
 import { computeLayoutMetrics, type LayoutDimensions } from "../layoutDimensions";
 import { buildConnectorData, pedigreeLayoutToPositions, storeToPedigreeInput } from "../pedigreeAdapter";

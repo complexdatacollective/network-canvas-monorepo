@@ -2,9 +2,9 @@ import type { NcEdge, NcNode } from "@codaco/shared-consts";
 import { invariant } from "es-toolkit";
 import { createContext, useContext, useRef } from "react";
 import { useStore } from "zustand";
-import { useCurrentStep } from "../../contexts/CurrentStepContext";
-import { useStageSelector } from "../../hooks/useStageSelector";
-import { useAppDispatch } from "../../store/store";
+import { useCurrentStep } from "~/contexts/CurrentStepContext";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import { useAppDispatch } from "~/store/store";
 import {
 	createFamilyPedigreeStore,
 	type FamilyPedigreeStore,

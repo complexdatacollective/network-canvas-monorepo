@@ -9,6 +9,9 @@ import pkg from "./package.json" with { type: "json" };
 const dirname = typeof __dirname !== "undefined" ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+	resolve: {
+		tsconfigPaths: true,
+	},
 	plugins: [react()],
 	define: {
 		__PACKAGE_VERSION__: JSON.stringify(pkg.version),

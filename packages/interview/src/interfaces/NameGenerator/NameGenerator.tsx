@@ -13,24 +13,24 @@ import {
 import { has } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import NodeBin from "../../components/NodeBin";
-import NodeList from "../../components/NodeList";
-import Prompts from "../../components/Prompts";
-import { usePrompts } from "../../components/Prompts/usePrompts";
-import { useCurrentStep } from "../../contexts/CurrentStepContext";
-import useMediaQuery from "../../hooks/useMediaQuery";
-import useNodeLimits from "../../hooks/useNodeLimits";
-import usePortalTarget from "../../hooks/usePortalTarget";
-import { useStageSelector } from "../../hooks/useStageSelector";
-import { getCodebookVariablesForSubjectType } from "../../selectors/protocol";
-import { getNetworkNodesForPrompt, getPromptAdditionalAttributes, getStageNodeCount } from "../../selectors/session";
+import NodeBin from "~/components/NodeBin";
+import NodeList from "~/components/NodeList";
+import Prompts from "~/components/Prompts";
+import { usePrompts } from "~/components/Prompts/usePrompts";
+import { useCurrentStep } from "~/contexts/CurrentStepContext";
+import useMediaQuery from "~/hooks/useMediaQuery";
+import useNodeLimits from "~/hooks/useNodeLimits";
+import usePortalTarget from "~/hooks/usePortalTarget";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import { getCodebookVariablesForSubjectType } from "~/selectors/protocol";
+import { getNetworkNodesForPrompt, getPromptAdditionalAttributes, getStageNodeCount } from "~/selectors/session";
 import {
 	addNode as addNodeAction,
 	addNodeToPrompt as addNodeToPromptAction,
 	deleteNode as deleteNodeAction,
-} from "../../store/modules/session";
-import { useAppDispatch } from "../../store/store";
-import type { StageProps } from "../../types";
+} from "~/store/modules/session";
+import { useAppDispatch } from "~/store/store";
+import type { StageProps } from "~/types";
 import { usePassphrase } from "../Anonymisation/usePassphrase";
 import { decryptData } from "../Anonymisation/utils";
 import NodeForm from "./components/NodeForm";

@@ -2,9 +2,9 @@
 
 import useDialog from "@codaco/fresco-ui/dialogs/useDialog";
 import { AnimatePresence, motion } from "motion/react";
-import { useTrack } from "../../../../analytics/useTrack";
-import ActionButton from "../../../../components/ActionButton";
-import type { VariableConfig } from "../../store";
+import { useTrack } from "~/analytics/useTrack";
+import ActionButton from "~/components/ActionButton";
+import type { VariableConfig } from "~/interfaces/FamilyPedigree/store";
 import AdditionalParentsStep from "../quickStartWizard/AdditionalParentsStep";
 import BioParentsStep from "../quickStartWizard/BioParentsStep";
 import ChildrenDetailStep from "../quickStartWizard/ChildrenDetailStep";

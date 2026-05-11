@@ -2,10 +2,10 @@ import { useDragSource } from "@codaco/fresco-ui/dnd/dnd";
 import Node from "@codaco/fresco-ui/Node";
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
 import { type MouseEventHandler, type Ref, useMemo } from "react";
-import { useStageSelector } from "../../../../hooks/useStageSelector";
-import { getNodeColorSelector, resolveNodeShape } from "../../../../selectors/session";
-import type { VariableConfig } from "../../store";
-import { getNodeShapeDefinition } from "../../utils/nodeUtils";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import type { VariableConfig } from "~/interfaces/FamilyPedigree/store";
+import { getNodeShapeDefinition } from "~/interfaces/FamilyPedigree/utils/nodeUtils";
+import { getNodeColorSelector, resolveNodeShape } from "~/selectors/session";
 import { useClickUnlessDragged } from "../useClickUnlessDragged";
 import { computeAllDisplayLabels } from "../utils/getDisplayLabel";
 

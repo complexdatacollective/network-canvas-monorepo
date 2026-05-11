@@ -5,29 +5,24 @@ import Heading from "@codaco/fresco-ui/typography/Heading";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import { useTrack } from "../../analytics/useTrack";
-import Prompts from "../../components/Prompts";
-import { usePrompts } from "../../components/Prompts/usePrompts";
-import { useCurrentStep } from "../../contexts/CurrentStepContext";
-import useBeforeNext from "../../hooks/useBeforeNext";
-import { useStageSelector } from "../../hooks/useStageSelector";
-import useStageValidation from "../../hooks/useStageValidation";
-import { getNodePairs } from "../../selectors/dyad-census";
-import {
-	getEdgeColorForType,
-	getNetworkEdges,
-	getNetworkNodesForType,
-	getStageMetadata,
-} from "../../selectors/session";
+import { useTrack } from "~/analytics/useTrack";
+import Prompts from "~/components/Prompts";
+import { usePrompts } from "~/components/Prompts/usePrompts";
+import { useCurrentStep } from "~/contexts/CurrentStepContext";
+import useBeforeNext from "~/hooks/useBeforeNext";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import useStageValidation from "~/hooks/useStageValidation";
+import { getNodePairs } from "~/selectors/dyad-census";
+import { getEdgeColorForType, getNetworkEdges, getNetworkNodesForType, getStageMetadata } from "~/selectors/session";
 import {
 	addEdge,
 	type DyadCensusMetadataItem,
 	deleteEdge,
 	edgeExists,
 	updateStageMetadata,
-} from "../../store/modules/session";
-import { useAppDispatch } from "../../store/store";
-import type { StageProps } from "../../types";
+} from "~/store/modules/session";
+import { useAppDispatch } from "~/store/store";
+import type { StageProps } from "~/types";
 import Pair from "./components/Pair";
 import { getNodePair, getStageMetadataResponse, isDyadCensusMetadata, matchEntry } from "./helpers";
 

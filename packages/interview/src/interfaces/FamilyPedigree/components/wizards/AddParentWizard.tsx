@@ -6,7 +6,7 @@ import Field from "@codaco/fresco-ui/form/Field/Field";
 import RadioGroupField from "@codaco/fresco-ui/form/fields/RadioGroup";
 import RichSelectGroupField from "@codaco/fresco-ui/form/fields/RichSelectGroup";
 import type { NcEdge, NcNode, VariableValue } from "@codaco/shared-consts";
-import type { CommitBatch, VariableConfig } from "../../store";
+import type { CommitBatch, VariableConfig } from "~/interfaces/FamilyPedigree/store";
 import { PARENT_EDGE_TYPE_OPTIONS_ALTER } from "../quickStartWizard/fieldOptions";
 import PersonFields from "../quickStartWizard/PersonFields";
 

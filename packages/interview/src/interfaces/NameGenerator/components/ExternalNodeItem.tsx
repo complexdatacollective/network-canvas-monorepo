@@ -3,9 +3,9 @@ import UINode from "@codaco/fresco-ui/Node";
 import { entityAttributesProperty, type NcNode } from "@codaco/shared-consts";
 import { useMemo } from "react";
 import { useSelector } from "react-redux";
-import { resolveNodeShape } from "../../../selectors/session";
-import { getCodebook } from "../../../store/modules/protocol";
-import { useNodeLabel } from "../../Anonymisation/useNodeLabel";
+import { useNodeLabel } from "~/interfaces/Anonymisation/useNodeLabel";
+import { resolveNodeShape } from "~/selectors/session";
+import { getCodebook } from "~/store/modules/protocol";
 
 type ExternalNodeItemProps = {
 	node: NcNode;

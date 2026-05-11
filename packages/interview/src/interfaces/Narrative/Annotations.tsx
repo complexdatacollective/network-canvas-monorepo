@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from "react";
-import { useTrack } from "../../analytics/useTrack";
+import { useTrack } from "~/analytics/useTrack";
 
 type Point = { x: number; y: number };
 

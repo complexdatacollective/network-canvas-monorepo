@@ -3,11 +3,11 @@ import { entityAttributesProperty, type NcNode } from "@codaco/shared-consts";
 import { isNil } from "es-toolkit";
 import { get } from "es-toolkit/compat";
 import { useSelector } from "react-redux";
-import { usePrompts } from "../../components/Prompts/usePrompts";
-import useSortedNodeList, { getSortedNodeList } from "../../hooks/useSortedNodeList";
-import { useStageSelector } from "../../hooks/useStageSelector";
-import { getAllVariableUUIDsByEntity, makeGetCodebookVariableById } from "../../selectors/protocol";
-import { getNetworkNodesForType } from "../../selectors/session";
+import { usePrompts } from "~/components/Prompts/usePrompts";
+import useSortedNodeList, { getSortedNodeList } from "~/hooks/useSortedNodeList";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import { getAllVariableUUIDsByEntity, makeGetCodebookVariableById } from "~/selectors/protocol";
+import { getNetworkNodesForType } from "~/selectors/session";
 
 const matchVariableValue = (node: NcNode, variable: string, value: string | number | boolean) => {
 	const variableValue = node[entityAttributesProperty][variable];

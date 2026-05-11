@@ -17,15 +17,10 @@ import { invariant } from "es-toolkit";
 import { find, get } from "es-toolkit/compat";
 import { v4 as uuid } from "uuid";
 import { z } from "zod/mini";
-import { generateSecureAttributes } from "../../interfaces/Anonymisation/utils";
-import { makeGetCodebookVariablesForEdgeType, makeGetCodebookVariablesForNodeType } from "../../selectors/protocol";
-import {
-	getCurrentStageId,
-	getPromptAdditionalAttributes,
-	getPromptId,
-	makeGetNodeById,
-} from "../../selectors/session";
-import { getDefaultAttributesForEntityType } from "../../utils/getDefaultAttributesForEntityType";
+import { generateSecureAttributes } from "~/interfaces/Anonymisation/utils";
+import { makeGetCodebookVariablesForEdgeType, makeGetCodebookVariablesForNodeType } from "~/selectors/protocol";
+import { getCurrentStageId, getPromptAdditionalAttributes, getPromptId, makeGetNodeById } from "~/selectors/session";
+import { getDefaultAttributesForEntityType } from "~/utils/getDefaultAttributesForEntityType";
 import type { RootState } from "../store";
 import { getShouldEncryptNames } from "./protocol";
 

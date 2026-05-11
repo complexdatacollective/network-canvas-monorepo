@@ -1,5 +1,5 @@
 import type { NcEdge, NcNode, VariableValue } from "@codaco/shared-consts";
-import type { CommitBatch, VariableConfig } from "../../../store";
+import type { CommitBatch, VariableConfig } from "~/interfaces/FamilyPedigree/store";
 
 const KNOWN_PERSON_KEYS = new Set(["name"]);
 

@@ -1,7 +1,7 @@
 import { MotionSurface } from "@codaco/fresco-ui/layout/Surface";
 import { cx } from "@codaco/fresco-ui/utils/cva";
 import type { ReactNode, RefObject } from "react";
-import Prompts from "../../components/Prompts";
+import Prompts from "~/components/Prompts";
 
 const CollapsablePrompts = (props: {
 	dragConstraints: RefObject<HTMLElement | null>;
@@ -20,7 +20,6 @@ const CollapsablePrompts = (props: {
 			layout
 			drag
 			dragConstraints={dragConstraints}
-			elevation="none"
 			noContainer
 			spacing="sm"
 			variants={{

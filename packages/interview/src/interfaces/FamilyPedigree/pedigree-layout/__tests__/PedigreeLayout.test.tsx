@@ -1,7 +1,7 @@
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
-import type { VariableConfig } from "../../store";
+import type { VariableConfig } from "~/interfaces/FamilyPedigree/store";
 import PedigreeLayout from "../components/PedigreeLayout";
 
 const variableConfig: VariableConfig = {

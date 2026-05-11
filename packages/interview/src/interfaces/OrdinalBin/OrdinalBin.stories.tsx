@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useMemo } from "react";
 import SuperJSON from "superjson";
 import StoryInterviewShell from "~/.storybook/StoryInterviewShell";
-import { SyntheticInterview } from "../../synthetic/SyntheticInterview";
-import type { VariableOption } from "../../synthetic/types";
+import { SyntheticInterview } from "~/synthetic/SyntheticInterview";
+import type { VariableOption } from "~/synthetic/types";
 
 const ORDINAL_LABELS = [
 	"Strongly Disagree",

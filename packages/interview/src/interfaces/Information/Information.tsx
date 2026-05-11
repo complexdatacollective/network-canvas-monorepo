@@ -8,11 +8,11 @@ import { cx } from "@codaco/fresco-ui/utils/cva";
 import type { Item } from "@codaco/protocol-validation";
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
-import { useCaptureException } from "../../analytics/useTrack";
-import { useContractFlags } from "../../contract/context";
-import { useAssetUrl } from "../../hooks/useAssetUrl";
-import { getAssetManifest } from "../../store/modules/protocol";
-import type { StageProps } from "../../types";
+import { useCaptureException } from "~/analytics/useTrack";
+import { useContractFlags } from "~/contract/context";
+import { useAssetUrl } from "~/hooks/useAssetUrl";
+import { getAssetManifest } from "~/store/modules/protocol";
+import type { StageProps } from "~/types";
 
 // UploadThing's CDN serves files uploaded via the `blob` router with an invalid
 // Content-Type (e.g. `video` instead of `video/mp4`). Safari strictly requires

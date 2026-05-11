@@ -17,12 +17,10 @@ export default defineMain({
 	staticDirs: ["./static"],
 	viteFinal: async (config) => {
 		config.plugins = [...(config.plugins ?? []), tailwindcss()];
-		// `~` resolves to the package root so stories can import
-		// `~/.storybook/StoryInterviewShell` from any depth in src/.
 		config.resolve = config.resolve ?? {};
+		config.resolve.tsconfigPaths = true;
 		config.resolve.alias = {
 			...(config.resolve.alias ?? {}),
-			"~": resolve(import.meta.dirname, ".."),
 			"@codaco/fresco-ui": resolve(import.meta.dirname, "../../fresco-ui/src"),
 		};
 		return config;

@@ -31,6 +31,9 @@ const cssCopyPlugin = (): Plugin => ({
 const isLibraryBuild = !process.env.STORYBOOK && !process.env.VITEST;
 
 export default defineConfig({
+	resolve: {
+		tsconfigPaths: true,
+	},
 	plugins: [
 		react(),
 		isLibraryBuild &&
@@ -52,7 +55,7 @@ export default defineConfig({
 			formats: ["es"],
 		},
 		rollupOptions: {
-			external: (id) => !id.startsWith(".") && !id.startsWith("/") && !id.includes("\0"),
+			external: (id) => !id.startsWith(".") && !id.startsWith("/") && !id.startsWith("~/") && !id.includes("\0"),
 			output: {
 				preserveModules: true,
 				preserveModulesRoot: "src",

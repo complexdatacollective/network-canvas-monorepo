@@ -1,5 +1,5 @@
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
-import type { VariableConfig } from "../../store";
+import type { VariableConfig } from "~/interfaces/FamilyPedigree/store";
 
 type PathStep = "parent" | "child" | "partner";
 

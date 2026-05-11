@@ -12,10 +12,10 @@ import { createSelector } from "@reduxjs/toolkit";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useStageSelector } from "../../hooks/useStageSelector";
-import { getSubjectType } from "../../selectors/session";
-import { getCodebook } from "../../store/modules/protocol";
-import type { VariableOption } from "../../utils/codebook";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import { getSubjectType } from "~/selectors/session";
+import { getCodebook } from "~/store/modules/protocol";
+import type { VariableOption } from "~/utils/codebook";
 
 type NarrativeStage = Extract<Stage, { type: "Narrative" }>;
 type Preset = NarrativeStage["presets"][number];

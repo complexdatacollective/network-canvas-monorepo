@@ -7,21 +7,21 @@ import { entityAttributesProperty, entityPrimaryKeyProperty, type NcNode } from 
 import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
-import { useTrack } from "../../analytics/useTrack";
-import { ConnectedMotionNode } from "../../components/ConnectedNode";
-import Prompts from "../../components/Prompts";
-import { usePrompts } from "../../components/Prompts/usePrompts";
-import { useCurrentStep } from "../../contexts/CurrentStepContext";
-import useBeforeNext from "../../hooks/useBeforeNext";
-import useSortedNodeList from "../../hooks/useSortedNodeList";
-import { useStageSelector } from "../../hooks/useStageSelector";
-import { makeGetCodebookVariablesForNodeType } from "../../selectors/protocol";
-import { getNetworkEdges, getNetworkNodesForType } from "../../selectors/session";
-import { edgeExists, toggleEdge } from "../../store/modules/session";
-import { useAppDispatch } from "../../store/store";
-import type { StageProps } from "../../types";
-import type { ProtocolSortRule } from "../../utils/createSorter";
-import { getNodeLabelAttribute } from "../../utils/getNodeLabelAttribute";
+import { useTrack } from "~/analytics/useTrack";
+import { ConnectedMotionNode } from "~/components/ConnectedNode";
+import Prompts from "~/components/Prompts";
+import { usePrompts } from "~/components/Prompts/usePrompts";
+import { useCurrentStep } from "~/contexts/CurrentStepContext";
+import useBeforeNext from "~/hooks/useBeforeNext";
+import useSortedNodeList from "~/hooks/useSortedNodeList";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import { makeGetCodebookVariablesForNodeType } from "~/selectors/protocol";
+import { getNetworkEdges, getNetworkNodesForType } from "~/selectors/session";
+import { edgeExists, toggleEdge } from "~/store/modules/session";
+import { useAppDispatch } from "~/store/store";
+import type { StageProps } from "~/types";
+import type { ProtocolSortRule } from "~/utils/createSorter";
+import { getNodeLabelAttribute } from "~/utils/getNodeLabelAttribute";
 
 type OneToManyDyadCensusProps = StageProps<"OneToManyDyadCensus">;
 

@@ -3,8 +3,8 @@ import { entityAttributesProperty, entityPrimaryKeyProperty, type NcNode } from 
 import { hash as objectHash } from "ohash";
 import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
-import { makeGetCodebookForNodeType } from "../../selectors/protocol";
-import { getNodeLabelAttribute } from "../../utils/getNodeLabelAttribute";
+import { makeGetCodebookForNodeType } from "~/selectors/protocol";
+import { getNodeLabelAttribute } from "~/utils/getNodeLabelAttribute";
 import { useNodeAttributes } from "./useNodeAttributes";
 import { usePassphrase } from "./usePassphrase";
 import { UnauthorizedError } from "./utils";

@@ -7,7 +7,7 @@ import { MotionSurface } from "@codaco/fresco-ui/layout/Surface";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import { AnimatePresence, LayoutGroup, motion, useMotionValue } from "motion/react";
 import { type RefObject, useCallback, useMemo, useState } from "react";
-import { useStageSelector } from "../../../hooks/useStageSelector";
+import { useStageSelector } from "~/hooks/useStageSelector";
 import { useFamilyPedigreeStore } from "../FamilyPedigreeProvider";
 import { getRelationshipTypeVariable } from "../utils/edgeUtils";
 import { getEgoVariable, getNodeLabelVariable } from "../utils/nodeUtils";
@@ -225,7 +225,6 @@ export default function PedigreeChecklist({
 					layout
 					drag
 					dragConstraints={dragConstraints}
-					elevation="none"
 					noContainer
 					spacing="sm"
 					initial={{ scale: 0.4, opacity: 0 }}

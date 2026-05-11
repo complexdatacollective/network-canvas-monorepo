@@ -1,11 +1,11 @@
 import type { EntityDefinition, Prompt, SortOrder } from "@codaco/protocol-validation";
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useStageSelector } from "../../hooks/useStageSelector";
-import { getAllVariableUUIDsByEntity } from "../../selectors/protocol";
-import { getPromptIndex, getPrompts } from "../../selectors/session";
-import { updatePrompt } from "../../store/modules/session";
-import { type ProcessedSortRule, processProtocolSortRule } from "../../utils/createSorter";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import { getAllVariableUUIDsByEntity } from "~/selectors/protocol";
+import { getPromptIndex, getPrompts } from "~/selectors/session";
+import { updatePrompt } from "~/store/modules/session";
+import { type ProcessedSortRule, processProtocolSortRule } from "~/utils/createSorter";
 
 function isSortOrder(value: unknown): value is SortOrder {
 	return (

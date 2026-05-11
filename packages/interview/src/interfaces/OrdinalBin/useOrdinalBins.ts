@@ -1,11 +1,11 @@
 import type { Stage } from "@codaco/protocol-validation";
 import { entityAttributesProperty, type NcNode } from "@codaco/shared-consts";
 import { invariant, isNil } from "es-toolkit";
-import { usePrompts } from "../../components/Prompts/usePrompts";
-import useSortedNodeList from "../../hooks/useSortedNodeList";
-import { useStageSelector } from "../../hooks/useStageSelector";
-import { makeGetCodebookVariableById } from "../../selectors/protocol";
-import { getNetworkNodesForType } from "../../selectors/session";
+import { usePrompts } from "~/components/Prompts/usePrompts";
+import useSortedNodeList from "~/hooks/useSortedNodeList";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import { makeGetCodebookVariableById } from "~/selectors/protocol";
+import { getNetworkNodesForType } from "~/selectors/session";
 
 export type OrdinalBinItem = {
 	label: string;

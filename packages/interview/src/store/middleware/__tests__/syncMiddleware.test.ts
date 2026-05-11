@@ -1,6 +1,6 @@
 import { configureStore, createAction, type UnknownAction } from "@reduxjs/toolkit";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
-import type { SessionState } from "../../modules/session";
+import type { SessionState } from "~/store/modules/session";
 import { createSyncMiddleware } from "../syncMiddleware";
 
 // --- Helpers ---

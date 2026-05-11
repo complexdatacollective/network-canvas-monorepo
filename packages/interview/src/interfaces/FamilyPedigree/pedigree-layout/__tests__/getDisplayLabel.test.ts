@@ -1,6 +1,6 @@
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
 import { describe, expect, it } from "vitest";
-import type { VariableConfig } from "../../store";
+import type { VariableConfig } from "~/interfaces/FamilyPedigree/store";
 import { getDisplayLabel } from "../utils/getDisplayLabel";
 
 const variableConfig: VariableConfig = {

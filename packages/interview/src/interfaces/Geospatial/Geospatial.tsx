@@ -8,19 +8,19 @@ import { AnimatePresence, motion, type Variants } from "motion/react";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import type { ThunkDispatch } from "redux-thunk";
-import { useTrack } from "../../analytics/useTrack";
-import Node from "../../components/ConnectedNode";
-import { usePrompts } from "../../components/Prompts/usePrompts";
-import { useCurrentStep } from "../../contexts/CurrentStepContext";
-import { useContractFlags } from "../../contract/context";
-import { useAssetUrl } from "../../hooks/useAssetUrl";
-import useBeforeNext from "../../hooks/useBeforeNext";
-import useReadyForNextStage from "../../hooks/useReadyForNextStage";
-import { useStageSelector } from "../../hooks/useStageSelector";
-import { getNetworkNodesForType } from "../../selectors/session";
-import { updateNode as updateNodeAction } from "../../store/modules/session";
-import type { RootState } from "../../store/store";
-import type { Direction, StageProps } from "../../types";
+import { useTrack } from "~/analytics/useTrack";
+import Node from "~/components/ConnectedNode";
+import { usePrompts } from "~/components/Prompts/usePrompts";
+import { useCurrentStep } from "~/contexts/CurrentStepContext";
+import { useContractFlags } from "~/contract/context";
+import { useAssetUrl } from "~/hooks/useAssetUrl";
+import useBeforeNext from "~/hooks/useBeforeNext";
+import useReadyForNextStage from "~/hooks/useReadyForNextStage";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import { getNetworkNodesForType } from "~/selectors/session";
+import { updateNode as updateNodeAction } from "~/store/modules/session";
+import type { RootState } from "~/store/store";
+import type { Direction, StageProps } from "~/types";
 import CollapsablePrompts from "../Sociogram/CollapsablePrompts";
 import { isMapboxStubBrowser } from "./isMapboxStubBrowser";
 import { type ExtendedMapOptions, useMapbox } from "./useMapbox";
@@ -378,7 +378,6 @@ export default function GeospatialInterface({ stage }: GeospatialInterfaceProps)
 					noContainer
 					level={0}
 					spacing="none"
-					elevation="none"
 					className="bg-surface/80 absolute right-4 bottom-4 z-5 flex flex-col gap-2 rounded-xl p-2 shadow-2xl backdrop-blur-md"
 					data-testid="map-toolbar"
 					variants={{

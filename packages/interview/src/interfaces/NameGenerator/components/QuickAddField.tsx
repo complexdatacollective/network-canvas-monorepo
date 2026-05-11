@@ -17,11 +17,11 @@ import {
 	actionIconClass,
 	actionPlusBadgeVariants,
 	actionPlusIconClass,
-} from "../../../components/actionButtonVariants";
-import { useCelebrate } from "../../../hooks/useCelebrate";
-import { useStageSelector } from "../../../hooks/useStageSelector";
-import { getNodeIconName } from "../../../selectors/name-generator";
-import { getNodeColorSelector } from "../../../selectors/session";
+} from "~/components/actionButtonVariants";
+import { useCelebrate } from "~/hooks/useCelebrate";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import { getNodeIconName } from "~/selectors/name-generator";
+import { getNodeColorSelector } from "~/selectors/session";
 
 function convertToNodeColor(color: NodeColorSequence): string {
 	switch (color) {

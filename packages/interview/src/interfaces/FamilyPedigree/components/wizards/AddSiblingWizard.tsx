@@ -1,6 +1,6 @@
 import type useDialog from "@codaco/fresco-ui/dialogs/useDialog";
 import type { NcEdge, NcNode } from "@codaco/shared-consts";
-import type { CommitBatch, VariableConfig } from "../../store";
+import type { CommitBatch, VariableConfig } from "~/interfaces/FamilyPedigree/store";
 import PersonFields from "../quickStartWizard/PersonFields";
 import BioTriadStep, { type BioTriadConfig, BioTriadConfigProvider } from "./steps/BioTriadStep";
 import GenericAdditionalParentsStep from "./steps/GenericAdditionalParentsStep";

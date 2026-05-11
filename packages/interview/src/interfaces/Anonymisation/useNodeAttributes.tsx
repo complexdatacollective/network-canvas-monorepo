@@ -1,8 +1,8 @@
 import { entitySecureAttributesMeta, type NcNode, type VariableValue } from "@codaco/shared-consts";
 import { useCallback } from "react";
 import { useSelector } from "react-redux";
-import { makeGetCodebookVariablesForNodeType } from "../../selectors/protocol";
-import { getEntityAttributes } from "../../utils/networkEntities";
+import { makeGetCodebookVariablesForNodeType } from "~/selectors/protocol";
+import { getEntityAttributes } from "~/utils/networkEntities";
 import { usePassphrase } from "./usePassphrase";
 import { decryptData, UnauthorizedError } from "./utils";
 

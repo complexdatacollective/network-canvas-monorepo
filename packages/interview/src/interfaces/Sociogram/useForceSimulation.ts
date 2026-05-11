@@ -1,10 +1,10 @@
 import { entityPrimaryKeyProperty, type NcEdge, type NcNode } from "@codaco/shared-consts";
 import { clamp } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTrack } from "../../analytics/useTrack";
-import type { CanvasStoreApi } from "../../canvas/useCanvasStore";
-import { useContractFlags } from "../../contract/context";
-import type { AppDispatch } from "../../store/store";
+import { useTrack } from "~/analytics/useTrack";
+import type { CanvasStoreApi } from "~/canvas/useCanvasStore";
+import { useContractFlags } from "~/contract/context";
+import type { AppDispatch } from "~/store/store";
 // Workers are imported with `?worker&inline` so Vite emits a self-contained
 // Worker constructor backed by an inlined blob URL. This sidesteps the
 // absolute `/assets/<hash>.js` URLs that library-mode worker chunks emit

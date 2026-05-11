@@ -6,23 +6,28 @@ import InputField from "@codaco/fresco-ui/form/fields/InputField";
 import Node from "@codaco/fresco-ui/Node";
 import type { NcEdge, NcNode, VariableValue } from "@codaco/shared-consts";
 import { useMemo } from "react";
-import { useNodeMeasurement } from "../../../../hooks/useNodeMeasurement";
-import { useStageSelector } from "../../../../hooks/useStageSelector";
-import AddPersonFields, { type AddPersonMode } from "../../components/AddPersonForm";
-import { openAddChildWizard } from "../../components/wizards/AddChildWizard";
-import { openAddParentWizard } from "../../components/wizards/AddParentWizard";
-import { openAddSiblingWizard } from "../../components/wizards/AddSiblingWizard";
-import { openDefineParentsWizard } from "../../components/wizards/DefineParentsWizard";
-import { useFamilyPedigreeStore } from "../../FamilyPedigreeProvider";
-import type { ParentEdge } from "../../schema";
-import type { VariableConfig } from "../../store";
+import { useNodeMeasurement } from "~/hooks/useNodeMeasurement";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import AddPersonFields, { type AddPersonMode } from "~/interfaces/FamilyPedigree/components/AddPersonForm";
+import { openAddChildWizard } from "~/interfaces/FamilyPedigree/components/wizards/AddChildWizard";
+import { openAddParentWizard } from "~/interfaces/FamilyPedigree/components/wizards/AddParentWizard";
+import { openAddSiblingWizard } from "~/interfaces/FamilyPedigree/components/wizards/AddSiblingWizard";
+import { openDefineParentsWizard } from "~/interfaces/FamilyPedigree/components/wizards/DefineParentsWizard";
+import { useFamilyPedigreeStore } from "~/interfaces/FamilyPedigree/FamilyPedigreeProvider";
+import type { ParentEdge } from "~/interfaces/FamilyPedigree/schema";
+import type { VariableConfig } from "~/interfaces/FamilyPedigree/store";
 import {
 	getEdgeTypeKey,
 	getIsActiveVariable,
 	getIsGestationalCarrierVariable,
 	getRelationshipTypeVariable,
-} from "../../utils/edgeUtils";
-import { getEgoVariable, getNodeLabelVariable, getNodeTypeKey, getResolvedNodeFormFields } from "../../utils/nodeUtils";
+} from "~/interfaces/FamilyPedigree/utils/edgeUtils";
+import {
+	getEgoVariable,
+	getNodeLabelVariable,
+	getNodeTypeKey,
+	getResolvedNodeFormFields,
+} from "~/interfaces/FamilyPedigree/utils/nodeUtils";
 import NodeContextMenu, { type NodeContextMenuAction } from "./NodeContextMenu";
 import PedigreeLayout from "./PedigreeLayout";
 import PedigreeNode, { computeNodeDisplayLabels } from "./PedigreeNode";

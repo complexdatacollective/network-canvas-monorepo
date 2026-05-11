@@ -8,22 +8,17 @@ import { get } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import { useTrack } from "../../analytics/useTrack";
-import BooleanOption from "../../components/BooleanOption";
-import Prompts from "../../components/Prompts";
-import { usePrompts } from "../../components/Prompts/usePrompts";
-import { useCurrentStep } from "../../contexts/CurrentStepContext";
-import useBeforeNext from "../../hooks/useBeforeNext";
-import { useStageSelector } from "../../hooks/useStageSelector";
-import useStageValidation from "../../hooks/useStageValidation";
-import { getNodePairs } from "../../selectors/dyad-census";
-import {
-	getEdgeColorForType,
-	getNetworkEdges,
-	getNetworkNodesForType,
-	getStageMetadata,
-} from "../../selectors/session";
-import { getCodebook } from "../../store/modules/protocol";
+import { useTrack } from "~/analytics/useTrack";
+import BooleanOption from "~/components/BooleanOption";
+import Prompts from "~/components/Prompts";
+import { usePrompts } from "~/components/Prompts/usePrompts";
+import { useCurrentStep } from "~/contexts/CurrentStepContext";
+import useBeforeNext from "~/hooks/useBeforeNext";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import useStageValidation from "~/hooks/useStageValidation";
+import { getNodePairs } from "~/selectors/dyad-census";
+import { getEdgeColorForType, getNetworkEdges, getNetworkNodesForType, getStageMetadata } from "~/selectors/session";
+import { getCodebook } from "~/store/modules/protocol";
 import {
 	addEdge,
 	type DyadCensusMetadataItem,
@@ -31,10 +26,10 @@ import {
 	edgeExists,
 	updateEdge,
 	updateStageMetadata,
-} from "../../store/modules/session";
-import { useAppDispatch } from "../../store/store";
-import type { StageProps } from "../../types";
-import type { VariableOptions, VariableOptionValue } from "../../utils/codebook";
+} from "~/store/modules/session";
+import { useAppDispatch } from "~/store/store";
+import type { StageProps } from "~/types";
+import type { VariableOptions, VariableOptionValue } from "~/utils/codebook";
 import { getNodePair, getStageMetadataResponse, isDyadCensusMetadata, matchEntry } from "../DyadCensus/helpers";
 import Pair from "./Pair";
 

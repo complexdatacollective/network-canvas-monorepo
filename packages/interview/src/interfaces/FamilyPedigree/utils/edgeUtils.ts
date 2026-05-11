@@ -1,6 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { invariant } from "es-toolkit";
-import { getCurrentStage } from "../../../selectors/session";
+import { getCurrentStage } from "~/selectors/session";
 
 const getEdgeConfig = createSelector(getCurrentStage, (stage) => {
 	invariant(stage.type === "FamilyPedigree", "Stage must be FamilyPedigree");

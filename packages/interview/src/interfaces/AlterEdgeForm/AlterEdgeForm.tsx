@@ -9,13 +9,13 @@ import {
 } from "@codaco/shared-consts";
 import { find } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Node from "../../components/ConnectedNode";
-import { useStageSelector } from "../../hooks/useStageSelector";
-import { getNetworkEdgesForType, getNetworkNodes, makeGetEdgeColor } from "../../selectors/session";
-import { updateEdge } from "../../store/modules/session";
-import { useAppDispatch } from "../../store/store";
-import type { StageProps } from "../../types";
-import { edgeColorMap } from "../../utils/edgeColorMap";
+import Node from "~/components/ConnectedNode";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import { getNetworkEdgesForType, getNetworkNodes, makeGetEdgeColor } from "~/selectors/session";
+import { updateEdge } from "~/store/modules/session";
+import { useAppDispatch } from "~/store/store";
+import type { StageProps } from "~/types";
+import { edgeColorMap } from "~/utils/edgeColorMap";
 import IntroPanel from "../SlidesForm/IntroPanel";
 import SlidesForm from "../SlidesForm/SlidesForm";
 

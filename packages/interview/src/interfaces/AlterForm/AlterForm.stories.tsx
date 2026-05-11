@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useMemo } from "react";
 import SuperJSON from "superjson";
 import StoryInterviewShell from "~/.storybook/StoryInterviewShell";
-import { SyntheticInterview } from "../../synthetic/SyntheticInterview";
-import type { ComponentType } from "../../synthetic/types";
+import { SyntheticInterview } from "~/synthetic/SyntheticInterview";
+import type { ComponentType } from "~/synthetic/types";
 
 const FIELD_PRESETS: { component: ComponentType; prompt: string }[] = [
 	{ component: "Text", prompt: "Nickname" },

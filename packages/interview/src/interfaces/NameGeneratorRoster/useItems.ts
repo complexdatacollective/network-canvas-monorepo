@@ -8,13 +8,13 @@ import {
 } from "@codaco/shared-consts";
 import { invariant } from "es-toolkit";
 import { useCallback, useMemo } from "react";
-import useExternalData from "../../hooks/useExternalData";
-import { useStageSelector } from "../../hooks/useStageSelector";
-import { getStageCardOptions } from "../../selectors/name-generator";
-import { getNetworkNodes, getNodeTypeDefinition } from "../../selectors/session";
-import { getNodeLabelAttribute } from "../../utils/getNodeLabelAttribute";
-import getParentKeyByNameValue from "../../utils/getParentKeyByNameValue";
-import { getEntityAttributes } from "../../utils/networkEntities";
+import useExternalData from "~/hooks/useExternalData";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import { getStageCardOptions } from "~/selectors/name-generator";
+import { getNetworkNodes, getNodeTypeDefinition } from "~/selectors/session";
+import { getNodeLabelAttribute } from "~/utils/getNodeLabelAttribute";
+import getParentKeyByNameValue from "~/utils/getParentKeyByNameValue";
+import { getEntityAttributes } from "~/utils/networkEntities";
 import type { NameGeneratorRosterProps } from "./helpers";
 
 /**

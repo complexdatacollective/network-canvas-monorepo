@@ -6,11 +6,11 @@ import type { Stage } from "@codaco/protocol-validation";
 import type { NcNode } from "@codaco/shared-consts";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useRef } from "react";
-import NodeList from "../../../components/NodeList";
-import { usePrompts } from "../../../components/Prompts/usePrompts";
-import { useCelebrate } from "../../../hooks/useCelebrate";
-import { useStageSelector } from "../../../hooks/useStageSelector";
-import { getCurrentStageId } from "../../../selectors/session";
+import NodeList from "~/components/NodeList";
+import { usePrompts } from "~/components/Prompts/usePrompts";
+import { useCelebrate } from "~/hooks/useCelebrate";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import { getCurrentStageId } from "~/selectors/session";
 import BinSummary from "./BinSummary";
 
 type CategoricalBinItemProps = {
