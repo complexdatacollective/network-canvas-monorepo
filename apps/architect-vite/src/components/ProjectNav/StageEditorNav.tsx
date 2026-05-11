@@ -45,7 +45,8 @@ const StageEditorNav = ({
 	return (
 		<>
 			<NavShell leading={<Breadcrumb items={breadcrumbItems} />} />
-			<ActionToolbar aria-label="Stage editor actions" banner={<Issues ref={issuesRef} />}>
+			<ActionToolbar aria-label="Stage editor actions">
+				<Issues ref={issuesRef} />
 				<Button onClick={onCancel} color="platinum" icon={<X />}>
 					Cancel
 				</Button>

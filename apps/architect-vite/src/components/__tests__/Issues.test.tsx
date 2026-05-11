@@ -41,13 +41,15 @@ describe("<Issues />", () => {
 		(getFormSyncErrors as Mock).mockReturnValue(() => mockIssues);
 		(hasSubmitFailed as Mock).mockReturnValue(() => true);
 
-		const { container } = render(
+		render(
 			<Provider store={mockStore}>
 				<Issues />
 			</Provider>,
 		);
 
-		const issueElements = container.querySelectorAll("li.issues__issue");
+		// Popover content lives in a portal mounted to document.body, and opens
+		// automatically on mount because submitFailed + hasIssues.
+		const issueElements = document.querySelectorAll("li.issues__issue");
 		expect(issueElements).toHaveLength(3);
 	});
 });

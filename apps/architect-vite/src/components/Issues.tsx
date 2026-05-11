@@ -1,6 +1,6 @@
+import { Popover } from "@base-ui/react/popover";
 import { map } from "es-toolkit/compat";
-import { ChevronDown, TriangleAlert } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { TriangleAlert } from "lucide-react";
 import type React from "react";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useSelector } from "react-redux";
@@ -22,14 +22,14 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
 	const hasIssues = flatIssues.length > 0;
 	const issueCount = flatIssues.length;
 
-	const [expanded, setExpanded] = useState(false);
+	const [open, setOpen] = useState(false);
 	const issueRefs = useRef<Record<string, HTMLElement | null>>({});
 
 	useImperativeHandle(
 		ref,
 		() => ({
 			open: () => {
-				if (hasIssues) setExpanded(true);
+				if (hasIssues) setOpen(true);
 			},
 			hasIssues,
 		}),
@@ -38,12 +38,12 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
 
 	useEffect(() => {
 		if (submitFailed && hasIssues) {
-			setExpanded(true);
+			setOpen(true);
 		}
 	}, [submitFailed, hasIssues]);
 
 	useEffect(() => {
-		if (!hasIssues) setExpanded(false);
+		if (!hasIssues) setOpen(false);
 	}, [hasIssues]);
 
 	const setIssueRef = (el: HTMLElement | null, fieldId: string) => {
@@ -74,44 +74,41 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
 			const destination = document.querySelector(link);
 			if (destination instanceof HTMLElement) {
 				scrollTo(destination);
-				setExpanded(false);
+				setOpen(false);
 			}
 		}
 	};
 
 	return (
-		<div className="border-b border-(--color-sea-serpent-dark)/40">
-			<button
-				type="button"
-				onClick={() => setExpanded((prev) => !prev)}
-				aria-expanded={expanded}
-				className="flex w-full items-center gap-(--space-md) bg-(--color-sea-serpent) px-(--space-md) py-3 text-(--color-primary-foreground) text-left cursor-pointer border-none"
-			>
-				<TriangleAlert className="size-4 shrink-0" aria-hidden />
-				<span className="flex-1 text-sm font-(--font-weight-semibold) uppercase tracking-[0.05em]">
-					Issues ({issueCount})
-				</span>
-				<motion.span animate={{ rotate: expanded ? 180 : 0 }} aria-hidden>
-					<ChevronDown className="size-4" />
-				</motion.span>
-			</button>
-			<AnimatePresence initial={false}>
-				{expanded && (
-					<motion.div
-						initial={{ height: 0 }}
-						animate={{ height: "auto" }}
-						exit={{ height: 0 }}
-						transition={{ type: "tween", duration: 0.18 }}
-						className="overflow-hidden bg-(--color-sea-serpent) text-(--color-primary-foreground)"
+		<Popover.Root open={open} onOpenChange={setOpen}>
+			<Popover.Trigger
+				render={
+					<button
+						type="button"
+						className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-sea-serpent-dark bg-sea-serpent px-6 py-2 text-sm font-[500] tracking-wide text-white transition-colors duration-200 hover:bg-sea-serpent-dark"
 					>
-						<ol className="m-0 max-h-80 list-none overflow-y-auto p-0 [counter-reset:issue]">
+						<TriangleAlert className="size-4" />
+						Issues ({issueCount})
+					</button>
+				}
+			/>
+			<Popover.Portal>
+				<Popover.Positioner side="top" align="start" sideOffset={8} className="z-(--z-tooltip)">
+					<Popover.Popup className="flex max-h-[80vh] min-w-md max-w-lg flex-col overflow-hidden rounded-sm bg-(--color-sea-serpent) text-(--color-primary-foreground) shadow-lg">
+						<div className="flex items-center gap-(--space-md) border-b border-(--color-sea-serpent-dark)/40 px-(--space-md) py-3">
+							<TriangleAlert className="size-4 shrink-0" aria-hidden />
+							<span className="text-sm font-(--font-weight-semibold) uppercase tracking-[0.05em]">
+								Issues ({issueCount})
+							</span>
+						</div>
+						<ol className="m-0 list-none overflow-y-auto p-0 [counter-reset:issue]">
 							{map(flatIssues, ({ field, issue }) => {
 								const fieldId = getFieldId(field);
 								return (
 									// `issues__issue` marker is preserved for the Issues.test.tsx selector.
 									<li
 										key={fieldId}
-										className="issues__issue m-0 bg-transparent p-0 transition-colors duration-(--animation-duration-standard) ease-(--animation-easing) hover:bg-(--color-sea-green)"
+										className="issues__issue m-0 bg-transparent p-0 transition-colors duration-(--animation-duration-standard) ease-(--animation-easing) hover:bg-(--color-sea-serpent-dark)"
 									>
 										<a
 											href={`#${fieldId}`}
@@ -124,10 +121,10 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
 								);
 							})}
 						</ol>
-					</motion.div>
-				)}
-			</AnimatePresence>
-		</div>
+					</Popover.Popup>
+				</Popover.Positioner>
+			</Popover.Portal>
+		</Popover.Root>
 	);
 });
 
