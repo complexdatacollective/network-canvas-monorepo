@@ -182,7 +182,7 @@ const NodeForm = (props: NodeFormProps) => {
 					</Button>
 				}
 			>
-				<Form id="node-form" onSubmit={handleSubmit} className="w-full">
+				<Form id="node-form" onSubmit={handleSubmit} className="w-full phone-landscape:min-w-sm desktop:min-w-md">
 					{fieldComponents}
 				</Form>
 			</Dialog>

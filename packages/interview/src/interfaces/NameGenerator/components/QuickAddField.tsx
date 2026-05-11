@@ -166,7 +166,7 @@ export default function QuickAddField({
 				{checked && (
 					<MotionSurface
 						noContainer
-						className="shadow-xl w-96 rounded-xl"
+						className="shadow-xl w-96 rounded-full"
 						initial={{ opacity: 0, x: "15%" }}
 						animate={{ opacity: 1, x: 0 }}
 						exit={{ opacity: 0, x: "15%" }}

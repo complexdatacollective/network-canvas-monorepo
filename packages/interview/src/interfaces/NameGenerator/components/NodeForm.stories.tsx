@@ -385,6 +385,9 @@ export const CreateNewNode: Story = {
 		form: basicForm,
 		disabled: false,
 	},
+	parameters: {
+		layout: "fullscreen",
+	},
 };
 
 export const EditExistingNode: Story = {

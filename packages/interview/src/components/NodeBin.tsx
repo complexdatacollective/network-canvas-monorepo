@@ -36,7 +36,7 @@ const NodeBin = ({ accepts, dropHandler }: NodeBinProps) => {
 					? {
 							opacity: 1,
 							y: 0,
-							scale: isOver ? 2 : 1,
+							scale: isOver ? 1.5 : 1,
 						}
 					: { opacity: 0, y: "25%", scale: 1 }
 			}
