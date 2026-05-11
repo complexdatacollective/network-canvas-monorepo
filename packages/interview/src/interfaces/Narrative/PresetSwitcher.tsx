@@ -6,7 +6,7 @@ import { IconButton } from "@codaco/fresco-ui/Button";
 import { MotionSurface } from "@codaco/fresco-ui/layout/Surface";
 import { usePortalContainer } from "@codaco/fresco-ui/PortalContainer";
 import { RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
-import Heading from "@codaco/fresco-ui/typography/Heading";
+import Heading, { headingVariants } from "@codaco/fresco-ui/typography/Heading";
 import type { Stage } from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
@@ -71,6 +71,7 @@ function AnimatedPanel({ children }: { children: ReactNode }) {
 					initial={false}
 					transition={{ duration: 0.2, ease: "easeInOut" }}
 					style={{ ...props.style, overflow: "hidden" }}
+					className="mt-2"
 				>
 					{props.children}
 				</motion.div>
@@ -186,8 +187,8 @@ export default function PresetSwitcher({
 					render={
 						<MotionSurface
 							noContainer
-							className="bg-surface/80 absolute right-10 bottom-10 z-10 flex min-w-3xs cursor-move items-center gap-4 rounded-2xl backdrop-blur-md"
-							spacing="none"
+							className="bg-surface/80 absolute right-10 bottom-10 z-10 flex min-w-3xs cursor-move items-center gap-4 rounded-2xl backdrop-blur-md shadow-xl"
+							spacing="sm"
 							drag
 							dragConstraints={dragConstraints}
 							layout
@@ -200,8 +201,6 @@ export default function PresetSwitcher({
 						aria-label="Previous preset"
 						icon={<ChevronLeft />}
 						variant="text"
-						size="lg"
-						className="rounded-none outline-offset-0"
 					/>
 					<AnimatePresence mode="wait" custom={backwards}>
 						<motion.div
@@ -225,8 +224,6 @@ export default function PresetSwitcher({
 						disabled={activePreset + 1 === presets.length}
 						onClick={() => onChangePreset(activePreset + 1)}
 						variant="text"
-						size="lg"
-						className="rounded-none outline-offset-0"
 					/>
 				</Popover.Trigger>
 				<Popover.Portal container={portalContainer ?? undefined} keepMounted>
@@ -270,19 +267,18 @@ export default function PresetSwitcher({
 											>
 												{hasHighlights && (
 													<Accordion.Item value={SECTION_ATTRIBUTES}>
-														<Accordion.Header className="mb-2">
-															<Accordion.Trigger className="focusable flex w-full items-center gap-4">
-																<Heading
-																	level="h4"
-																	variant="all-caps"
-																	margin="none"
-																	className="flex-1 text-left text-xs opacity-60"
-																>
-																	Attributes
-																</Heading>
-																<ChevronDown className="opacity-60 transition-transform [[data-panel-open]>&]:rotate-180" />
-															</Accordion.Trigger>
-														</Accordion.Header>
+														<Accordion.Trigger
+															className={headingVariants({
+																level: "h4",
+																variant: "all-caps",
+																margin: "none",
+																className:
+																	"focusable flex w-full items-center gap-4 flex-1 text-left text-xs opacity-60 justify-between",
+															})}
+														>
+															Attributes
+															<ChevronDown className="opacity-60 transition-transform [[data-panel-open]>&]:rotate-180" />
+														</Accordion.Trigger>
 														<AnimatedPanel>
 															<RadioGroup
 																value={String(highlightIndex)}
@@ -318,19 +314,18 @@ export default function PresetSwitcher({
 
 												{hasEdges && (
 													<Accordion.Item value={SECTION_LINKS}>
-														<Accordion.Header className="mb-2">
-															<Accordion.Trigger className="focusable flex w-full items-center gap-4">
-																<Heading
-																	level="h4"
-																	variant="all-caps"
-																	margin="none"
-																	className="flex-1 text-left text-xs opacity-60"
-																>
-																	Links
-																</Heading>
-																<ChevronDown className="opacity-60 transition-transform [[data-panel-open]>&]:rotate-180" />
-															</Accordion.Trigger>
-														</Accordion.Header>
+														<Accordion.Trigger
+															className={headingVariants({
+																level: "h4",
+																variant: "all-caps",
+																margin: "none",
+																className:
+																	"focusable flex w-full items-center gap-4 flex-1 text-left text-xs opacity-60 justify-between",
+															})}
+														>
+															Links
+															<ChevronDown className="opacity-60 transition-transform [[data-panel-open]>&]:rotate-180" />
+														</Accordion.Trigger>
 														<AnimatedPanel>
 															<div className="flex flex-col gap-2">
 																{edges.map((edge, index) => (
@@ -346,19 +341,18 @@ export default function PresetSwitcher({
 
 												{hasGroups && (
 													<Accordion.Item value={SECTION_GROUPS}>
-														<Accordion.Header className="mb-2">
-															<Accordion.Trigger className="focusable flex w-full items-center gap-4">
-																<Heading
-																	level="h4"
-																	variant="all-caps"
-																	margin="none"
-																	className="flex-1 text-left text-xs opacity-60"
-																>
-																	Groups
-																</Heading>
-																<ChevronDown className="opacity-60 transition-transform [[data-panel-open]>&]:rotate-180" />
-															</Accordion.Trigger>
-														</Accordion.Header>
+														<Accordion.Trigger
+															className={headingVariants({
+																level: "h4",
+																variant: "all-caps",
+																margin: "none",
+																className:
+																	"focusable flex w-full items-center gap-4 flex-1 text-left text-xs opacity-60 justify-between",
+															})}
+														>
+															Groups
+															<ChevronDown className="opacity-60 transition-transform [[data-panel-open]>&]:rotate-180" />
+														</Accordion.Trigger>
 														<AnimatedPanel>
 															<div className="flex flex-col gap-2">
 																{categoricalOptions.map((option, index) => (

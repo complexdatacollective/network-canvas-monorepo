@@ -48,15 +48,16 @@ export const surfaceVariants = compose(
 			},
 			spacing: {
 				none: "",
-				xs: "shadow-sm",
-				sm: "shadow",
-				md: "shadow-md",
-				lg: "shadow-lg",
-				xl: "shadow-xl",
+				xs: "shadow",
+				sm: "shadow-md",
+				md: "shadow-lg",
+				lg: "shadow-xl",
+				xl: "shadow-2xl",
 			},
 		},
 		defaultVariants: {
 			level: 0,
+			spacing: "md",
 		},
 	}),
 );
