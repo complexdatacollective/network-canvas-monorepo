@@ -1,11 +1,12 @@
 import BooleanField from "@codaco/fresco-ui/form/fields/Boolean";
 import { MotionSurface } from "@codaco/fresco-ui/layout/Surface";
-import { RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
+import { ALLOWED_MARKDOWN_SECTION_TAGS, RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useTrack } from "~/analytics/useTrack";
+import Pair from "~/components/Pair";
 import Prompts from "~/components/Prompts";
 import { usePrompts } from "~/components/Prompts/usePrompts";
 import { useCurrentStep } from "~/contexts/CurrentStepContext";
@@ -16,14 +17,13 @@ import { getNodePairs } from "~/selectors/dyad-census";
 import { getEdgeColorForType, getNetworkEdges, getNetworkNodesForType, getStageMetadata } from "~/selectors/session";
 import {
 	addEdge,
-	type DyadCensusMetadataItem,
 	deleteEdge,
 	edgeExists,
 	updateStageMetadata,
+	type DyadCensusMetadataItem,
 } from "~/store/modules/session";
 import { useAppDispatch } from "~/store/store";
 import type { StageProps } from "~/types";
-import Pair from "./components/Pair";
 import { getNodePair, getStageMetadataResponse, isDyadCensusMetadata, matchEntry } from "./helpers";
 
 const choiceVariants = {
@@ -49,6 +49,10 @@ export default function DyadCensus(props: DyadCensusProps) {
 	const { moveForward } = getNavigationHelpers();
 	const dispatch = useAppDispatch();
 	const { currentStep } = useCurrentStep();
+
+	const baseId = useId();
+	const pairLabelId = `${baseId}-pair`;
+	const promptLabelId = `${baseId}-prompt`;
 
 	const [isIntroduction, setIsIntroduction] = useState(true);
 	const [isForwards, setIsForwards] = useState(true);
@@ -232,7 +236,9 @@ export default function DyadCensus(props: DyadCensusProps) {
 						<Heading level="h1" className="text-center">
 							{stage.introductionPanel.title}
 						</Heading>
-						<RenderMarkdown>{stage.introductionPanel.text}</RenderMarkdown>
+						<RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+							{stage.introductionPanel.text}
+						</RenderMarkdown>
 					</MotionSurface>
 				) : (
 					<motion.div
@@ -256,6 +262,7 @@ export default function DyadCensus(props: DyadCensusProps) {
 									edgeColor={edgeColor}
 									hasEdge={hasEdge}
 									animateForwards={isForwards}
+									labelId={pairLabelId}
 								/>
 							</AnimatePresence>
 						</motion.div>
@@ -266,7 +273,7 @@ export default function DyadCensus(props: DyadCensusProps) {
 							initial="initial"
 							animate="animate"
 						>
-							<Prompts />
+							<Prompts id={promptLabelId} />
 							<AnimatePresence mode="wait">
 								<motion.div
 									key={`${promptIndex}_${pairIndex}_choice`}
@@ -283,6 +290,7 @@ export default function DyadCensus(props: DyadCensusProps) {
 											{ label: "No", value: false },
 										]}
 										noReset
+										aria-labelledby={`${pairLabelId} ${promptLabelId}`}
 									/>
 								</motion.div>
 							</AnimatePresence>

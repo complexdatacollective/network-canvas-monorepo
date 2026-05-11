@@ -40,8 +40,8 @@ const nodeVariants = cva({
 			xxs: "size-8",
 			xs: "size-16",
 			sm: "size-24",
-			md: "size-32",
-			lg: "size-40",
+			md: "size-28 tablet-portrait:size-32",
+			lg: "size-32 tablet-portrait:size-40",
 		},
 		shape: {
 			circle: "rounded-full",
@@ -241,6 +241,7 @@ export default function Node(props: UINodeProps) {
 	return (
 		<motion.button
 			{...buttonProps}
+			tabIndex={hasClickHandler ? buttonProps.tabIndex : (buttonProps.tabIndex ?? -1)}
 			ref={useMergeRefs({ ref, scope, stateScope })}
 			type="button"
 			disabled={disabled}

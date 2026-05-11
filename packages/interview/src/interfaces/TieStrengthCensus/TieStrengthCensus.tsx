@@ -1,15 +1,16 @@
 "use client";
 
+import RichSelectGroupField, { type RichSelectOption } from "@codaco/fresco-ui/form/fields/RichSelectGroup";
 import { MotionSurface } from "@codaco/fresco-ui/layout/Surface";
-import { RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
+import { ALLOWED_MARKDOWN_SECTION_TAGS, RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import { entityAttributesProperty, entityPrimaryKeyProperty } from "@codaco/shared-consts";
 import { get } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useTrack } from "~/analytics/useTrack";
-import BooleanOption from "~/components/BooleanOption";
+import Pair from "~/components/Pair";
 import Prompts from "~/components/Prompts";
 import { usePrompts } from "~/components/Prompts/usePrompts";
 import { useCurrentStep } from "~/contexts/CurrentStepContext";
@@ -21,17 +22,16 @@ import { getEdgeColorForType, getNetworkEdges, getNetworkNodesForType, getStageM
 import { getCodebook } from "~/store/modules/protocol";
 import {
 	addEdge,
-	type DyadCensusMetadataItem,
 	deleteEdge,
 	edgeExists,
 	updateEdge,
 	updateStageMetadata,
+	type DyadCensusMetadataItem,
 } from "~/store/modules/session";
 import { useAppDispatch } from "~/store/store";
 import type { StageProps } from "~/types";
 import type { VariableOptions, VariableOptionValue } from "~/utils/codebook";
 import { getNodePair, getStageMetadataResponse, isDyadCensusMetadata, matchEntry } from "../DyadCensus/helpers";
-import Pair from "./Pair";
 
 const fadeVariants = {
 	initial: { opacity: 0, transition: { duration: 0.5 } },
@@ -61,6 +61,8 @@ const introVariants = {
 	exit: { opacity: 0, scale: 0 },
 };
 
+const NEGATIVE_OPTION_VALUE = "__none__";
+
 type TieStrengthCensusProps = StageProps<"TieStrengthCensus">;
 
 export default function TieStrengthCensus(props: TieStrengthCensusProps) {
@@ -68,6 +70,10 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 	const { moveForward } = getNavigationHelpers();
 	const dispatch = useAppDispatch();
 	const { currentStep } = useCurrentStep();
+
+	const baseId = useId();
+	const pairLabelId = `${baseId}-pair`;
+	const promptLabelId = `${baseId}-prompt`;
 
 	const [isIntroduction, setIsIntroduction] = useState(true);
 	const [isForwards, setIsForwards] = useState(true);
@@ -92,6 +98,13 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 	const edgeVariableOptions = (
 		edgeVariable ? get(codebook, ["edge", createEdge, "variables", edgeVariable, "options"]) : []
 	) as VariableOptions;
+
+	const richSelectOptions: RichSelectOption[] = [
+		...edgeVariableOptions.flatMap((option) =>
+			typeof option.value === "boolean" ? [] : [{ value: option.value, label: option.label }],
+		),
+		{ value: NEGATIVE_OPTION_VALUE, label: negativeLabel },
+	];
 
 	const pair = pairIndex >= 0 && pairIndex < pairs.length ? (pairs[pairIndex] ?? null) : null;
 	const [fromNode, toNode] = getNodePair(nodes, pair);
@@ -291,7 +304,9 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 						<Heading level="h1" className="text-center">
 							{stage.introductionPanel.title}
 						</Heading>
-						<RenderMarkdown>{stage.introductionPanel.text}</RenderMarkdown>
+						<RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+							{stage.introductionPanel.text}
+						</RenderMarkdown>
 					</MotionSurface>
 				) : (
 					<motion.div
@@ -311,6 +326,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 									animateForwards={isForwards}
 									fromNode={fromNode}
 									toNode={toNode}
+									labelId={pairLabelId}
 								/>
 							</AnimatePresence>
 						</motion.div>
@@ -321,7 +337,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 							initial="initial"
 							animate="animate"
 						>
-							<Prompts />
+							<Prompts id={promptLabelId} />
 							<AnimatePresence mode="wait">
 								<motion.div
 									key={`${promptIndex}_${pairIndex}_choice`}
@@ -331,22 +347,26 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 									animate="animate"
 									exit="exit"
 								>
-									<div className="grid auto-cols-fr grid-flow-col gap-4">
-										{edgeVariableOptions.map((option) => (
-											<BooleanOption
-												key={String(option.value)}
-												selected={!!hasEdge && edgeVariableValue === option.value}
-												onClick={() => handleChange(option.value)}
-												label={option.label}
-											/>
-										))}
-										<BooleanOption
-											selected={hasEdge === false}
-											onClick={() => handleChange(false)}
-											label={negativeLabel}
-											negative
-										/>
-									</div>
+									<RichSelectGroupField
+										orientation="horizontal"
+										options={richSelectOptions}
+										autoFocus
+										value={
+											hasEdge === false
+												? NEGATIVE_OPTION_VALUE
+												: hasEdge && edgeVariableValue !== undefined
+													? edgeVariableValue
+													: undefined
+										}
+										onChange={(next) => {
+											if (next === NEGATIVE_OPTION_VALUE) {
+												handleChange(false);
+											} else if (typeof next === "string" || typeof next === "number") {
+												handleChange(next);
+											}
+										}}
+										aria-labelledby={`${pairLabelId} ${promptLabelId}`}
+									/>
 								</motion.div>
 							</AnimatePresence>
 						</MotionSurface>

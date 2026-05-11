@@ -1,8 +1,11 @@
+"use client";
+
 import { cx } from "@codaco/fresco-ui/utils/cva";
 import type { EdgeColor } from "@codaco/protocol-validation";
 import { entityPrimaryKeyProperty, type NcNode } from "@codaco/shared-consts";
 import { motion } from "motion/react";
 import Node from "~/components/ConnectedNode";
+import { useNodeLabel } from "~/interfaces/Anonymisation/useNodeLabel";
 import { edgeColorMap } from "~/utils/edgeColorMap";
 
 const pairVariants = {
@@ -38,14 +41,26 @@ const edgeVariants = {
 };
 
 type PairProps = {
-	fromNode?: NcNode;
-	toNode?: NcNode;
+	fromNode: NcNode | undefined;
+	toNode: NcNode | undefined;
 	edgeColor: EdgeColor;
 	hasEdge?: boolean | null;
 	animateForwards?: boolean;
+	/** DOM id applied to a visually-hidden element describing the pair, for `aria-labelledby` consumers. */
+	labelId?: string;
 };
 
-export default function Pair({ fromNode, toNode, edgeColor, hasEdge = false, animateForwards = true }: PairProps) {
+export default function Pair({
+	fromNode,
+	toNode,
+	edgeColor,
+	hasEdge = false,
+	animateForwards = true,
+	labelId,
+}: PairProps) {
+	const fromLabel = useNodeLabel(fromNode);
+	const toLabel = useNodeLabel(toNode);
+
 	if (!fromNode || !toNode) {
 		return null;
 	}
@@ -59,6 +74,11 @@ export default function Pair({ fromNode, toNode, edgeColor, hasEdge = false, ani
 			exit="exit"
 			className="flex w-md items-center"
 		>
+			{labelId && (
+				<span id={labelId} className="sr-only">
+					{fromLabel ?? "First node"} and {toLabel ?? "second node"}
+				</span>
+			)}
 			<Node nodeId={fromNode[entityPrimaryKeyProperty]} type={fromNode.type} />
 			<motion.div
 				className={cx(

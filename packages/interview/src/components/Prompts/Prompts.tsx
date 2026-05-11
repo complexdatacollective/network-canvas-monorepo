@@ -19,13 +19,14 @@ type PromptsProps = {
 	currentPromptId?: string;
 	className?: string;
 	small?: boolean;
+	id?: string;
 };
 
 /**
  * Displays prompts with navigation pips and animations.
  * Uses aria-live region to announce prompt changes to screen readers.
  */
-const Prompts = ({ currentPromptId = "0", prompts, className, small }: PromptsProps) => {
+const Prompts = ({ currentPromptId = "0", prompts, className, small, id }: PromptsProps) => {
 	const prevPromptRef = useRef<number>(undefined);
 
 	const currentIndex = findIndex(prompts, (prompt) => prompt.id === currentPromptId);
@@ -43,6 +44,7 @@ const Prompts = ({ currentPromptId = "0", prompts, className, small }: PromptsPr
 
 	return (
 		<motion.div
+			id={id}
 			className={promptsClasses}
 			variants={containerVariants}
 			role="status"
