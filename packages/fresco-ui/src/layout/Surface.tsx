@@ -37,7 +37,7 @@ export const surfaceVariants = compose(
 		// `scrollIntoView`/focus auto-scroll to move a descendant into view by
 		// scrolling the Surface itself, which in dialogs pushes the header off
 		// screen when content exceeds the clipped area.
-		base: "publish-colors relative overflow-clip rounded",
+		base: "publish-colors relative min-h-0 overflow-clip rounded",
 		variants: {
 			level: {
 				0: "text-surface-contrast bg-surface",
