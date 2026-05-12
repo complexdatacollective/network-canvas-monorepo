@@ -1,4 +1,5 @@
 import type { StageType } from "@codaco/protocol-validation";
+import { startCase } from "es-toolkit/compat";
 import type { ComponentType } from "react";
 import {
 	AnonymisationExplanation,
@@ -200,7 +201,7 @@ const INTERFACE_CONFIGS = {
 			...,
 		], documentation: "...", name: "Name Generator (using forms)" }
  */
-export function getInterface(interfaceType: StageType): InterfaceConfig {
+export function getInterface(interfaceType: StageType): InterfaceConfig & { readonly name: string } {
 	const config = INTERFACE_CONFIGS[interfaceType];
 
 	if (!config) {
@@ -209,5 +210,8 @@ export function getInterface(interfaceType: StageType): InterfaceConfig {
 		);
 	}
 
-	return config;
+	return {
+		...config,
+		name: config.name ?? startCase(interfaceType),
+	};
 }

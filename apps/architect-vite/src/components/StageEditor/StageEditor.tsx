@@ -190,11 +190,16 @@ const StageEditor = (props: StageEditorProps) => {
 		});
 
 	const stageName = (formValues?.label as string | undefined) ?? stage?.label ?? "New stage";
+	const isExistingStage = stageIndex !== -1;
+	const protocolStageCount = protocol?.stages.length ?? 0;
+	const stagePosition = isExistingStage ? stageIndex : (insertAtIndex ?? protocolStageCount);
+	const stageNumber = stagePosition + 1;
+	const totalStages = protocolStageCount + (isExistingStage ? 0 : 1);
 	const previewLabel = isUploadingPreview ? getProgressText(uploadProgress) : "Preview";
 
 	return (
 		<Editor initialValues={initialValues} onSubmit={onSubmit} form={formName}>
-			<div className="relative h-dvh overflow-y-auto pb-32">
+			<div className="relative h-dvh overflow-y-auto pb-32 [--nav-h:7rem]">
 				<StageEditorNav
 					stageName={stageName}
 					onCancel={handleCancel}
@@ -204,8 +209,10 @@ const StageEditor = (props: StageEditorProps) => {
 					isUploadingPreview={isUploadingPreview}
 					hasUnsavedChanges={hasUnsavedChanges}
 				/>
-				<div className="flex flex-col items-center px-4 sm:px-6">
-					<StageHeading />
+				<div className="w-full bg-surface-3 text-surface-3-foreground overflow-clip -mt-(--nav-h) pt-(--nav-h)">
+					<StageHeading stageNumber={stageNumber} totalStages={totalStages} />
+				</div>
+				<div className="flex flex-col items-center px-4 sm:px-6 pt-(--space-2xl)">
 					<div className="flex flex-col gap-10">{renderSections(sections)}</div>
 				</div>
 			</div>
