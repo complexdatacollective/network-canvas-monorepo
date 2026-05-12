@@ -56,21 +56,21 @@ const DataCard = ({ label, details, className, ...articleProps }: DataCardProps)
 		<article
 			{...articleProps}
 			className={cx(
-				"card group relative flex h-full flex-col overflow-hidden rounded-xs",
+				"card group relative flex h-full flex-col overflow-hidden rounded",
 				"bg-platinum text-charcoal",
 				"focusable outline-white",
 				className,
 			)}
 			aria-label={label}
 		>
-			<header className="border-platinum-dark/30 border-b px-4 pt-3 pb-2">
-				<Heading level="h4" margin="none">
+			<header className="border-platinum-dark/30 border-b px-6 py-2">
+				<Heading level="label" margin="none">
 					{label}
 				</Heading>
 			</header>
 
 			{hasDetails && (
-				<dl className="bg-platinum-dark grid grow grid-cols-[fit-content(33%)_minmax(0,1fr)] items-baseline gap-x-6 gap-y-4 px-6 py-4 text-sm">
+				<dl className="bg-platinum-dark grid grow grid-cols-[fit-content(33%)_minmax(0,1fr)] items-baseline gap-x-6 gap-y-4 px-6 py-2">
 					{Object.entries(details).map(([detailLabel, value]) => (
 						<div key={detailLabel} className="contents">
 							<Heading
@@ -78,11 +78,11 @@ const DataCard = ({ label, details, className, ...articleProps }: DataCardProps)
 								variant="all-caps"
 								margin="none"
 								render={<dt />}
-								className="text-right text-xs wrap-break-word"
+								className="text-right wrap-break-word text-xs leading-tight font-extrabold"
 							>
 								{detailLabel}
 							</Heading>
-							<dd className="font-medium wrap-break-word">{formatValue(value)}</dd>
+							<dd className="text-sm leading-tight font-medium wrap-break-word">{formatValue(value)}</dd>
 						</div>
 					))}
 				</dl>

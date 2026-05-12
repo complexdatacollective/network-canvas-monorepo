@@ -2,7 +2,7 @@ import { Collection } from "@codaco/fresco-ui/collection/components/Collection";
 import { CollectionFilterInput } from "@codaco/fresco-ui/collection/components/CollectionFilterInput";
 import { CollectionSortButton } from "@codaco/fresco-ui/collection/components/CollectionSortButton";
 import { useDragAndDrop } from "@codaco/fresco-ui/collection/dnd/useDragAndDrop";
-import { ListLayout } from "@codaco/fresco-ui/collection/layout/ListLayout";
+import { GridLayout } from "@codaco/fresco-ui/collection/layout/GridLayout";
 import type {
 	SortType as CollectionSortType,
 	SortableProperty,
@@ -61,7 +61,7 @@ const ErrorMessage = (_props: { error: Error }) => (
 	</div>
 );
 
-const layout = new ListLayout<UseItemElement>({ gap: 2 });
+const layout = new GridLayout<UseItemElement>({ gap: 2, minItemWidth: 400 });
 
 const keyExtractor = (item: UseItemElement) => item.id;
 
@@ -323,7 +323,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 			<Prompts />
 			<ResizableFlexPanel
 				storageKey="name-generator-roster-panels"
-				defaultBasis={33}
+				defaultBasis={50}
 				className="min-h-0 w-full flex-1 basis-full"
 				aria-label="Resize panel and node list areas"
 			>
@@ -356,24 +356,26 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 							>
 								{(CollectionElements) => (
 									<>
-										{sortableProperties && sortableProperties.length > 0 && (
-											<div className="flex flex-wrap gap-2 p-2">
-												{sortableProperties.map((sp) => (
-													<CollectionSortButton
-														key={Array.isArray(sp.property) ? sp.property.join("-") : String(sp.property)}
-														property={sp.property}
-														type={sp.type}
-														label={sp.label}
-													/>
-												))}
-											</div>
-										)}
+										<div>
+											{searchOptions && (
+												<div className="flex flex-wrap gap-2 p-2">
+													<CollectionFilterInput placeholder="Enter a search term..." />
+												</div>
+											)}
+											{sortableProperties && sortableProperties.length > 0 && (
+												<div className="flex flex-wrap gap-2 p-2">
+													{sortableProperties.map((sp) => (
+														<CollectionSortButton
+															key={Array.isArray(sp.property) ? sp.property.join("-") : String(sp.property)}
+															property={sp.property}
+															type={sp.type}
+															label={sp.label}
+														/>
+													))}
+												</div>
+											)}
+										</div>
 										{CollectionElements}
-										{searchOptions && (
-											<div className="flex flex-wrap gap-2 p-2">
-												<CollectionFilterInput placeholder="Enter a search term..." />
-											</div>
-										)}
 									</>
 								)}
 							</Collection>
