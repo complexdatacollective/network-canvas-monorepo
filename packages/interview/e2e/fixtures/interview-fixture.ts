@@ -111,18 +111,6 @@ export class InterviewFixture {
 				});
 				window.scrollTo(0, document.documentElement.scrollHeight);
 			});
-			// Buffer for the post-interaction ResizeObserver/React commit cycle
-			// to propagate to the DOM (in particular, for `data-cb-layout-pending`
-			// to flip to `true` if a CategoricalBin layout debounce was just armed).
-			await this.page.waitForTimeout(100);
-			// Wait for any in-flight CategoricalBin layout debounce to commit.
-			// The hook surfaces `data-cb-layout-pending` on `.catbin-outer` while
-			// its 120ms ResizeObserver-settle timer is armed; once cleared, the
-			// committed dimensions are reflected in `cols`/`rows`. No-op for any
-			// stage that doesn't render a categorical bin.
-			await this.page.waitForFunction(() => !document.querySelector("[data-cb-layout-pending]"), null, {
-				timeout: 5_000,
-			});
 
 			const prefix = this.snapshotPrefix ? `${this.snapshotPrefix}-` : "";
 			await this.capture(`${prefix}stage-${step}-final`);
