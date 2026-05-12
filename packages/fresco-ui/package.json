@@ -16,6 +16,10 @@
 		"dist"
 	],
 	"exports": {
+		"./Accordion": {
+			"types": "./dist/Accordion.d.ts",
+			"default": "./dist/Accordion.js"
+		},
 		"./Alert": {
 			"types": "./dist/Alert.d.ts",
 			"default": "./dist/Alert.js"
