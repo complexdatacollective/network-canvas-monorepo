@@ -109,11 +109,14 @@ const DialogContent = ({ children }: { children: React.ReactNode }) => {
 	);
 };
 
+// Layout convention: place the cancel/dismiss action as the first child to pin it left.
+// Primary and any secondary actions follow and cluster on the right. A single-child footer
+// (e.g. acknowledge dialog) is right-aligned by `justify-end`.
 const DialogFooter = ({ children, className }: { children?: React.ReactNode; className?: string }) => {
 	return (
 		<footer
 			className={cx(
-				"phone-landscape:flex-row phone-landscape:justify-between phone-landscape:*:only:ml-auto mt-4 flex flex-col gap-2",
+				"phone-landscape:flex-row phone-landscape:justify-end phone-landscape:[&>*:first-child:not(:only-child)]:mr-auto mt-4 flex flex-col gap-2",
 				children && "mt-6",
 				surfaceSpacingVariants({ section: "footer" }),
 				className,
