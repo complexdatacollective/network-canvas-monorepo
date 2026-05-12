@@ -14,6 +14,7 @@
 - `actionlint` is the validator used throughout. Install it: `brew install actionlint` (macOS) or `go install github.com/rhysd/actionlint/cmd/actionlint@latest`. If the engineer can't install it, fall back to `npx -y actionlint-cli` per step.
 - `gh` CLI must be authenticated (`gh auth status`) — used to resolve action tags to commit SHAs.
 - Definitive functional test for every change: after committing, open a no-op draft PR (or push to a throwaway branch) and confirm the affected workflows run green. Each task notes which workflow(s) to watch.
+- **Known baseline warnings (expected, not in scope):** `actionlint` reports 5 pre-existing `info`/`style` shellcheck warnings in `development-protocol-release.yml` (SC2035, SC2086 x3, SC2129). These are not errors and not introduced by this work. Any *new* warning or any `error`-level finding is in scope to fix.
 
 ---
 
@@ -151,7 +152,7 @@ Run:
 actionlint .github/workflows/*.yml
 ```
 
-Expected: no output (exit code 0). If errors appear, the SHA replacement broke YAML — almost always indentation or a missing quote. Fix and rerun until clean.
+Expected: same 5 baseline shellcheck warnings in `development-protocol-release.yml` (SC2035, SC2086 x3, SC2129) — nothing more. If new errors appear, the SHA replacement broke YAML — almost always indentation or a missing quote. Fix and rerun until clean.
 
 - [ ] **Step 11: Sanity-check the diff**
 
@@ -187,6 +188,8 @@ Push the branch and open a draft PR. Watch `ci-and-release.yml`, `chromatic.yml`
 ---
 
 ### Task 2: Scope `id-token: write` to the job that needs it in `interview-e2e.yml`
+
+> **DEFERRED on the initial execution (2026-05-12):** the target file `.github/workflows/interview-e2e.yml` exists only on branch `feat/interview-package`, not on `main`. This task will be applied on that branch (or in a follow-up after it merges) using the same steps below.
 
 The `id-token: write` permission is currently granted at the workflow level (line 6), exposing it to the `e2e` job which doesn't mint or consume an OIDC token. Only `actions/deploy-pages@v4` in the `deploy-report` job needs it. Following least-privilege, move it.
 
@@ -265,7 +268,7 @@ Run:
 actionlint .github/workflows/interview-e2e.yml
 ```
 
-Expected: no output.
+Expected: no output (this file has no baseline warnings).
 
 - [ ] **Step 5: Verify the e2e job's effective permissions**
 
@@ -550,7 +553,7 @@ Run:
 actionlint .github/workflows/*.yml
 ```
 
-Expected: no output.
+Expected: same 5 baseline shellcheck warnings only.
 
 - [ ] **Step 5: Verify zero floating tags remain**
 
@@ -581,7 +584,7 @@ Push and open a draft PR. Watch all workflows execute. Pay particular attention 
 
 ### Task 7 (manual): Verify secret scoping in GitHub UI
 
-This is a verification task, not a code change. It can't be done through the repo; it requires GitHub web-UI access to repo settings.
+This is a verification task, not a code change. It can't be done through the repo; it requires GitHub web-UI access to repo settings. The controller will surface this task back to the human user — do not attempt to dispatch this to a subagent.
 
 - [ ] **Step 1: Confirm the `npm-publish` environment exists and is protected**
 

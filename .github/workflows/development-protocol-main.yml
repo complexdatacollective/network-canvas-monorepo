@@ -23,19 +23,19 @@ jobs:
         working-directory: ./packages/protocol-validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
         with:
           node-version-file: '.nvmrc'
       
       # Setup pnpm
       - name: Install pnpm
-        uses: pnpm/action-setup@v5
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5
 
       # Build protocol-validation and dependencies
       - name: Build protocol validation
         run: |
-          pnpm install
+          pnpm install --frozen-lockfile
           # Build shared-consts first, then protocol-validation
           pnpm --filter @codaco/shared-consts build
           pnpm build
