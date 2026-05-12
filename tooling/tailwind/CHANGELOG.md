@@ -1,5 +1,13 @@
 # @codaco/tailwind-config
 
+## 1.0.0-alpha.18
+
+### Prerelease Changes
+
+- Interview theme type-scale: tune the `--theme-root-size` clamp at the `1280×720` and `1366×768` breakpoints so headings/body sizes track the redesigned interview density more accurately.
+
+- New static CategoricalBin grid driven by `data-count` + `@container` queries. The grid template, ragged-row centring (keyed on a `[data-flow-index]` attribute), and per-AR-band column count (different layouts at portrait vs wide aspect ratios) are now fully expressed in CSS — the consumer no longer measures the container in JS and pushes a layout dict down. Adds count-9 intermediate bands with a `clamp()`-based expanded-panel size, and a simplified `:nth-child` strategy for the in-flow slots.
+
 ## 1.0.0-alpha.17
 
 ### Prerelease Changes

@@ -6,6 +6,14 @@
 
 - Fix `Dialog`'s `accent` override and `Alert`'s variant link color. Both were setting `--color-*` aliases (`--color-primary`, `--color-primary-contrast`, `--color-link`), but those aliases are declared inside `@theme inline` in `tooling/tailwind/fresco/theme.css` and get substituted to their inner `var(--…)` at Tailwind compile time. Consumers like `Button`'s `color="primary"` variant and the `text-link` utility read the underlying primitives (`--primary`, `--primary-contrast`, `--link`) directly, so overrides targeting the alias never propagated. Switched both to override the primitives instead, restoring the accent recoloring inside dialogs and link recoloring inside themed alerts.
 
+- `DialogFooter` pins the cancel/dismiss button to the left and clusters secondary + primary to the right, via `justify-end` with a `first-of-many` selector that pushes the first child away. Choice dialogs render buttons in DOM order `cancel → secondary → primary` so the layout applies automatically. Single-button (acknowledge) footers stay right-aligned.
+
+- `RichSelectGroup`'s mount-time `autoFocus` now uses `.focus({ preventScroll: true })`. Previously the default scroll-into-view ran before parent enter animations finished, so e.g. `TieStrengthCensus`'s slide-up `MotionSurface` (starting at `translateY(120%)`) was scrolled into view from off-screen, breaking the entrance. Keyboard-navigation focus is unchanged — user-initiated focus still scrolls.
+
+- Expose `./collection/layout/GridLayout` in package exports. The compiled module already shipped in `dist/`, but with no `exports` entry consumers got a TS resolution error on `import …/GridLayout`. Sister layouts `InlineGridLayout` and `ListLayout` were already exposed.
+
+- Control-variant size scale: `sm` button bumped up one notch for better tap-target density, and the briefly-introduced `xs` size is removed (the `sm` bump was the cleaner fix). Internal `Button` cleanup to match.
+
 ## 2.10.0
 
 ### Minor Changes
