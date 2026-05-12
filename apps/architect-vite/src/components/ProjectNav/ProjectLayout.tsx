@@ -10,7 +10,9 @@ type ProjectLayoutProps = {
 
 const ProjectLayout = ({ children, className }: ProjectLayoutProps) => (
 	<PageActionsProvider>
-		<div className={cn("relative h-dvh overflow-y-auto print:h-auto print:overflow-visible", className)}>
+		<div
+			className={cn("relative h-dvh overflow-y-auto pb-32 print:h-auto print:overflow-visible print:pb-0", className)}
+		>
 			<ProjectNav />
 			{children}
 		</div>
