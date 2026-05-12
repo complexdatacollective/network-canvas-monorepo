@@ -189,6 +189,8 @@ Push the branch and open a draft PR. Watch `ci-and-release.yml`, `chromatic.yml`
 
 ### Task 2: Scope `id-token: write` to the job that needs it in `interview-e2e.yml`
 
+> **DEFERRED on the initial execution (2026-05-12):** the target file `.github/workflows/interview-e2e.yml` exists only on branch `feat/interview-package`, not on `main`. This task will be applied on that branch (or in a follow-up after it merges) using the same steps below.
+
 The `id-token: write` permission is currently granted at the workflow level (line 6), exposing it to the `e2e` job which doesn't mint or consume an OIDC token. Only `actions/deploy-pages@v4` in the `deploy-report` job needs it. Following least-privilege, move it.
 
 **Files:**
