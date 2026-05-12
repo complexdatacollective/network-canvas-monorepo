@@ -11,7 +11,7 @@ export const headingVariants = cva({
 			h1: "text-3xl font-bold",
 			h2: "text-2xl font-bold",
 			h3: "text-xl font-bold",
-			h4: "text-lg font-extrabold",
+			h4: "text-lg font-bold",
 			label: "text-base leading-snug font-bold",
 		},
 		variant: {
@@ -20,7 +20,7 @@ export const headingVariants = cva({
 			"page-heading": "text-4xl",
 		},
 		margin: {
-			default: "not-first:mt-4 not-last:mb-2",
+			default: "not-first:mt-[1em] not-last:mb-[0.5em]",
 			none: "mb-0",
 		},
 	},
