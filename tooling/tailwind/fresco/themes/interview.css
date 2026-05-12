@@ -196,9 +196,40 @@
     container-name: catbin;
   }
 
+  /* Static grid: cols/rows decided by data-count + a container query for
+     orientation. Every count uses a doubled-column grid so ragged last rows
+     (counts 5, 7) can be centred via grid-column-start without breaking row
+     alignment. */
   .catbin-circles {
     position: relative;
+    display: grid;
+    grid-template-columns: repeat(var(--catbin-cols, 2), 1fr);
+    grid-template-rows: repeat(var(--catbin-rows, 1), 1fr);
+    gap: 1rem;
+    place-items: center;
   }
+
+  .catbin-circles > * {
+    grid-column: span 2;
+    width: min(
+      100%,
+      calc((100cqb - 1rem * (var(--catbin-rows, 1) - 1)) / var(--catbin-rows, 1))
+    );
+    aspect-ratio: 1 / 1;
+  }
+
+  .catbin-circles[data-count="1"]  { --catbin-cols: 2;  --catbin-rows: 1; }
+  .catbin-circles[data-count="2"]  { --catbin-cols: 4;  --catbin-rows: 1; }
+  .catbin-circles[data-count="3"]  { --catbin-cols: 6;  --catbin-rows: 1; }
+  .catbin-circles[data-count="4"]  { --catbin-cols: 4;  --catbin-rows: 2; }
+  .catbin-circles[data-count="5"]  { --catbin-cols: 6;  --catbin-rows: 2; }
+  .catbin-circles[data-count="5"] > :nth-child(4) { grid-column-start: 2; }
+  .catbin-circles[data-count="6"]  { --catbin-cols: 6;  --catbin-rows: 2; }
+  .catbin-circles[data-count="7"]  { --catbin-cols: 8;  --catbin-rows: 2; }
+  .catbin-circles[data-count="7"] > :nth-child(5) { grid-column-start: 2; }
+  .catbin-circles[data-count="8"]  { --catbin-cols: 8;  --catbin-rows: 2; }
+  .catbin-circles[data-count="9"]  { --catbin-cols: 6;  --catbin-rows: 3; }
+  .catbin-circles[data-count="10"] { --catbin-cols: 10; --catbin-rows: 2; }
 
   .catbin-circles[data-expanded] {
     padding-inline-start: calc(
@@ -217,6 +248,18 @@
   }
 
   @container catbin (aspect-ratio < 1) {
+    .catbin-circles[data-count="2"]  { --catbin-cols: 2; --catbin-rows: 2; }
+    .catbin-circles[data-count="3"]  { --catbin-cols: 2; --catbin-rows: 3; }
+    .catbin-circles[data-count="5"]  { --catbin-cols: 4; --catbin-rows: 3; }
+    .catbin-circles[data-count="5"] > :nth-child(4) { grid-column-start: auto; }
+    .catbin-circles[data-count="5"] > :nth-child(5) { grid-column-start: 2; }
+    .catbin-circles[data-count="6"]  { --catbin-cols: 4; --catbin-rows: 3; }
+    .catbin-circles[data-count="7"]  { --catbin-cols: 4; --catbin-rows: 4; }
+    .catbin-circles[data-count="7"] > :nth-child(5) { grid-column-start: auto; }
+    .catbin-circles[data-count="7"] > :nth-child(7) { grid-column-start: 2; }
+    .catbin-circles[data-count="8"]  { --catbin-cols: 4; --catbin-rows: 4; }
+    .catbin-circles[data-count="10"] { --catbin-cols: 4; --catbin-rows: 5; }
+
     .catbin-circles[data-expanded] {
       padding-inline-start: 0;
       padding-block-start: calc(
