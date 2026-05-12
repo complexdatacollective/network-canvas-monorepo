@@ -541,14 +541,18 @@ class CategoricalBinFixture {
 	}
 
 	/**
-	 * Collapse an expanded bin by clicking the interface container.
-	 * The container's onClick calls setExpandedBinIndex(null) which collapses
-	 * any expanded bin. We cannot click the expanded header directly because
-	 * onToggleExpand only sets the same index (no-op), not a toggle.
+	 * Collapse an expanded bin by pressing Escape.
+	 *
+	 * CategoricalBin attaches a document-level keydown listener that calls
+	 * setExpandedBinIndex(null) on Escape. Clicking the wrapper container
+	 * is unreliable: Playwright targets the wrapper's geometric centre,
+	 * which lands on a child bin whose onClick calls stopPropagation —
+	 * that both blocks the document click listener and switches the
+	 * expansion to the clicked bin, so the panel never disappears.
 	 */
 	async collapseBin(label: string): Promise<void> {
 		if (await this.isBinExpanded(label)) {
-			await this.page.getByTestId("categorical-bin-interface").click();
+			await this.page.keyboard.press("Escape");
 			await expect(this.page.locator('[class*="catbin-expanded"]')).not.toBeVisible();
 		}
 	}
