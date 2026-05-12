@@ -15,10 +15,10 @@ import { getNodePairs } from "~/selectors/dyad-census";
 import { getEdgeColorForType, getNetworkEdges, getNetworkNodesForType, getStageMetadata } from "~/selectors/session";
 import {
 	addEdge,
+	type DyadCensusMetadataItem,
 	deleteEdge,
 	edgeExists,
 	updateStageMetadata,
-	type DyadCensusMetadataItem,
 } from "~/store/modules/session";
 import { useAppDispatch } from "~/store/store";
 import type { StageProps } from "~/types";
@@ -33,12 +33,6 @@ const choiceVariants = {
 		transition: { delay: 0.15, type: "spring" as const },
 	},
 	exit: { opacity: 0, translateY: "120%" },
-};
-
-const introVariants = {
-	initial: { opacity: 0, scale: 0 },
-	animate: { opacity: 1, scale: 1 },
-	exit: { opacity: 0, scale: 0 },
 };
 
 type DyadCensusProps = StageProps<"DyadCensus">;

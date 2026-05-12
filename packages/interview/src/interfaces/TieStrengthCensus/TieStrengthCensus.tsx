@@ -20,11 +20,11 @@ import { getEdgeColorForType, getNetworkEdges, getNetworkNodesForType, getStageM
 import { getCodebook } from "~/store/modules/protocol";
 import {
 	addEdge,
+	type DyadCensusMetadataItem,
 	deleteEdge,
 	edgeExists,
 	updateEdge,
 	updateStageMetadata,
-	type DyadCensusMetadataItem,
 } from "~/store/modules/session";
 import { useAppDispatch } from "~/store/store";
 import type { StageProps } from "~/types";
@@ -52,12 +52,6 @@ const choiceVariants = {
 		transition: { delay: 0.25, type: "spring" as const },
 	},
 	exit: { opacity: 0, translateY: "120%" },
-};
-
-const introVariants = {
-	initial: { opacity: 0, scale: 0 },
-	animate: { opacity: 1, scale: 1 },
-	exit: { opacity: 0, scale: 0 },
 };
 
 const NEGATIVE_OPTION_VALUE = "__none__";
