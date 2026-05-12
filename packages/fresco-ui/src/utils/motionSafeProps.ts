@@ -30,9 +30,7 @@ const COLLIDING_KEYS = [
 
 type CollidingKey = (typeof COLLIDING_KEYS)[number];
 
-export function motionSafeProps<T extends object>(
-	props: T,
-): Omit<T, CollidingKey | "hidden"> {
+export function motionSafeProps<T extends object>(props: T): Omit<T, CollidingKey | "hidden"> {
 	const result: Record<string, unknown> = {};
 	for (const key in props) {
 		if (key === "hidden") continue;
