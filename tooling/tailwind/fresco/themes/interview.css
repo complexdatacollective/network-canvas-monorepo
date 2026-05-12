@@ -198,17 +198,21 @@
 
   /* Static grid: cols/rows decided by data-count + a container query for
      orientation. Every count uses a doubled-column grid so ragged last rows
-     (counts 5, 7, 8, 10) can be centred via grid-column-start without
-     breaking row alignment.
-     The nth-child rules below count all direct children; that's safe because
-     when a bin is expanded, data-count switches to bins.length - 1, so the
-     count-N nth-child rules don't fire during expansion. */
+     (counts 5, 7, 8, 10) can be centred via grid-column without breaking
+     row alignment.
+     Centring rules target [data-flow-index="N"], a 1-based ordinal among
+     non-expanded bins that React computes per render. This is robust to
+     which bin is currently expanded: the absolute panel has no
+     data-flow-index, so the rule only matches the intended in-flow bin
+     regardless of DOM order. (Using :nth-child here would shift one off
+     whenever the expanded bin precedes the targeted position.) */
   .catbin-circles {
     position: relative;
     display: grid;
     grid-template-columns: repeat(var(--catbin-cols, 2), 1fr);
     grid-template-rows: repeat(var(--catbin-rows, 1), 1fr);
     place-items: center;
+    gap: calc(var(--spacing-base) * 2);
   }
 
   /* Sizing applies to the circle bins only. The expanded panel
@@ -260,21 +264,21 @@
   .catbin-circles[data-count="3"]  { --catbin-cols: 6;  --catbin-rows: 1; }
   .catbin-circles[data-count="4"]  { --catbin-cols: 4;  --catbin-rows: 2; }
   .catbin-circles[data-count="5"]  { --catbin-cols: 6;  --catbin-rows: 2; }
-  .catbin-circles[data-count="5"] > :nth-child(4) {
+  .catbin-circles[data-count="5"] > [data-flow-index="4"] {
     grid-column: 2 / span 2;
   }
   .catbin-circles[data-count="6"]  { --catbin-cols: 6;  --catbin-rows: 2; }
   .catbin-circles[data-count="7"]  { --catbin-cols: 6;  --catbin-rows: 3; }
-  .catbin-circles[data-count="7"] > :nth-child(7) {
+  .catbin-circles[data-count="7"] > [data-flow-index="7"] {
     grid-column: 3 / span 2;
   }
   .catbin-circles[data-count="8"]  { --catbin-cols: 6;  --catbin-rows: 3; }
-  .catbin-circles[data-count="8"] > :nth-child(7) {
+  .catbin-circles[data-count="8"] > [data-flow-index="7"] {
     grid-column: 2 / span 2;
   }
   .catbin-circles[data-count="9"]  { --catbin-cols: 6;  --catbin-rows: 3; }
   .catbin-circles[data-count="10"] { --catbin-cols: 8;  --catbin-rows: 3; }
-  .catbin-circles[data-count="10"] > :nth-child(9) {
+  .catbin-circles[data-count="10"] > [data-flow-index="9"] {
     grid-column: 3 / span 2;
   }
 
@@ -301,18 +305,18 @@
     .catbin-circles[data-count="2"] { --catbin-cols: 2; --catbin-rows: 2; }
     .catbin-circles[data-count="3"] { --catbin-cols: 2; --catbin-rows: 3; }
     .catbin-circles[data-count="5"] { --catbin-cols: 4; --catbin-rows: 3; }
-    .catbin-circles[data-count="5"] > :nth-child(4) {
+    .catbin-circles[data-count="5"] > [data-flow-index="4"] {
       grid-column: span 2;
     }
-    .catbin-circles[data-count="5"] > :nth-child(5) {
+    .catbin-circles[data-count="5"] > [data-flow-index="5"] {
       grid-column: 2 / span 2;
     }
     .catbin-circles[data-count="6"] { --catbin-cols: 4; --catbin-rows: 3; }
     .catbin-circles[data-count="10"] { --catbin-cols: 6; --catbin-rows: 4; }
-    .catbin-circles[data-count="10"] > :nth-child(9) {
+    .catbin-circles[data-count="10"] > [data-flow-index="9"] {
       grid-column: span 2;
     }
-    .catbin-circles[data-count="10"] > :nth-child(10) {
+    .catbin-circles[data-count="10"] > [data-flow-index="10"] {
       grid-column: 3 / span 2;
     }
 
@@ -338,7 +342,7 @@
   }
   @container catbin (aspect-ratio < 0.4) {
     .catbin-circles[data-count="5"] { --catbin-cols: 2; --catbin-rows: 5; }
-    .catbin-circles[data-count="5"] > :nth-child(5) {
+    .catbin-circles[data-count="5"] > [data-flow-index="5"] {
       grid-column: span 2;
     }
   }
@@ -347,25 +351,25 @@
   }
   @container catbin (aspect-ratio < 0.22) {
     .catbin-circles[data-count="9"] { --catbin-cols: 2; --catbin-rows: 9; }
-    .catbin-circles[data-count="9"] > :nth-child(9) {
+    .catbin-circles[data-count="9"] > [data-flow-index="9"] {
       grid-column: span 2;
     }
   }
   @container catbin (aspect-ratio < 0.286) {
     .catbin-circles[data-count="7"] { --catbin-cols: 2; --catbin-rows: 7; }
-    .catbin-circles[data-count="7"] > :nth-child(7) {
+    .catbin-circles[data-count="7"] > [data-flow-index="7"] {
       grid-column: span 2;
     }
   }
   @container catbin (aspect-ratio < 0.25) {
     .catbin-circles[data-count="8"] { --catbin-cols: 2; --catbin-rows: 8; }
-    .catbin-circles[data-count="8"] > :nth-child(7) {
+    .catbin-circles[data-count="8"] > [data-flow-index="7"] {
       grid-column: span 2;
     }
   }
   @container catbin (aspect-ratio < 0.2) {
     .catbin-circles[data-count="10"] { --catbin-cols: 2; --catbin-rows: 10; }
-    .catbin-circles[data-count="10"] > :nth-child(10) {
+    .catbin-circles[data-count="10"] > [data-flow-index="10"] {
       grid-column: span 2;
     }
   }
@@ -374,11 +378,11 @@
      beyond AR=0.75 (3x3 stops being optimal there). */
   @container catbin (aspect-ratio < 0.75) {
     .catbin-circles[data-count="7"] { --catbin-cols: 4; --catbin-rows: 4; }
-    .catbin-circles[data-count="7"] > :nth-child(7) {
+    .catbin-circles[data-count="7"] > [data-flow-index="7"] {
       grid-column: 2 / span 2;
     }
     .catbin-circles[data-count="8"] { --catbin-cols: 4; --catbin-rows: 4; }
-    .catbin-circles[data-count="8"] > :nth-child(7) {
+    .catbin-circles[data-count="8"] > [data-flow-index="7"] {
       grid-column: span 2;
     }
   }
@@ -388,11 +392,11 @@
      cell centred in row 5. */
   @container catbin (aspect-ratio < 0.6) {
     .catbin-circles[data-count="9"] { --catbin-cols: 4; --catbin-rows: 5; }
-    .catbin-circles[data-count="9"] > :nth-child(9) {
+    .catbin-circles[data-count="9"] > [data-flow-index="9"] {
       grid-column: 2 / span 2;
     }
     .catbin-circles[data-count="10"] { --catbin-cols: 4; --catbin-rows: 5; }
-    .catbin-circles[data-count="10"] > :nth-child(10) {
+    .catbin-circles[data-count="10"] > [data-flow-index="10"] {
       grid-column: span 2;
     }
   }
@@ -401,14 +405,14 @@
      AR > 1.33. Counts 6, 9 transition to 2x3 / 3x3 (no-op for 9) here too. */
   @container catbin (aspect-ratio > 1.33) {
     .catbin-circles[data-count="7"] { --catbin-cols: 8; --catbin-rows: 2; }
-    .catbin-circles[data-count="7"] > :nth-child(5) {
+    .catbin-circles[data-count="7"] > [data-flow-index="5"] {
       grid-column: 2 / span 2;
     }
-    .catbin-circles[data-count="7"] > :nth-child(7) {
+    .catbin-circles[data-count="7"] > [data-flow-index="7"] {
       grid-column: span 2;
     }
     .catbin-circles[data-count="8"] { --catbin-cols: 8; --catbin-rows: 2; }
-    .catbin-circles[data-count="8"] > :nth-child(7) {
+    .catbin-circles[data-count="8"] > [data-flow-index="7"] {
       grid-column: span 2;
     }
   }
@@ -417,11 +421,11 @@
      uses 2x5 with 1 empty cell centred in row 2). */
   @container catbin (aspect-ratio > 1.67) {
     .catbin-circles[data-count="9"] { --catbin-cols: 10; --catbin-rows: 2; }
-    .catbin-circles[data-count="9"] > :nth-child(6) {
+    .catbin-circles[data-count="9"] > [data-flow-index="6"] {
       grid-column: 2 / span 2;
     }
     .catbin-circles[data-count="10"] { --catbin-cols: 10; --catbin-rows: 2; }
-    .catbin-circles[data-count="10"] > :nth-child(9) {
+    .catbin-circles[data-count="10"] > [data-flow-index="9"] {
       grid-column: span 2;
     }
   }
@@ -432,7 +436,7 @@
   }
   @container catbin (aspect-ratio > 2.5) {
     .catbin-circles[data-count="5"] { --catbin-cols: 10; --catbin-rows: 1; }
-    .catbin-circles[data-count="5"] > :nth-child(4) {
+    .catbin-circles[data-count="5"] > [data-flow-index="4"] {
       grid-column: span 2;
     }
   }
@@ -441,7 +445,7 @@
   }
   @container catbin (aspect-ratio > 3.5) {
     .catbin-circles[data-count="7"] { --catbin-cols: 14; --catbin-rows: 1; }
-    .catbin-circles[data-count="7"] > :nth-child(5) {
+    .catbin-circles[data-count="7"] > [data-flow-index="5"] {
       grid-column: span 2;
     }
   }
@@ -450,7 +454,7 @@
   }
   @container catbin (aspect-ratio > 4.5) {
     .catbin-circles[data-count="9"] { --catbin-cols: 18; --catbin-rows: 1; }
-    .catbin-circles[data-count="9"] > :nth-child(6) {
+    .catbin-circles[data-count="9"] > [data-flow-index="6"] {
       grid-column: span 2;
     }
   }

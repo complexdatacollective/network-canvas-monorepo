@@ -20,6 +20,13 @@ type CategoricalBinItemProps = {
 	catColor: string | null;
 	onDropNode: (node: NcNode) => Promise<void>;
 	nodes: NcNode[];
+	/**
+	 * 1-based position among in-flow (non-expanded) bins. Drives the
+	 * ragged-row centring rules in CSS via [data-flow-index="N"]. Undefined
+	 * when this bin is the expanded one (the panel is absolutely positioned
+	 * and not part of the in-flow sequence).
+	 */
+	flowOrdinal: number | undefined;
 };
 
 const springTransition = {
@@ -37,7 +44,7 @@ const binItemVariants = {
 type CategoricalBinPrompts = Extract<Stage, { type: "CategoricalBin" }>["prompts"][number];
 
 const CategoricalBinItem = (props: CategoricalBinItemProps) => {
-	const { label, isExpanded, onToggleExpand, catColor, onDropNode, nodes } = props;
+	const { label, isExpanded, onToggleExpand, catColor, onDropNode, nodes, flowOrdinal } = props;
 
 	const {
 		prompt: { id: promptId },
@@ -94,45 +101,43 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
 		);
 
 		return (
-			<>
-				<motion.div
-					ref={binRef}
-					layout
-					layoutId={layoutId}
-					className={panelClasses}
-					style={{ ...colorStyle, borderRadius: 16 }}
-					onClick={(e) => e.stopPropagation()}
-					transition={springTransition}
-					variants={binItemVariants}
-					initial="initial"
-					animate="animate"
+			<motion.div
+				ref={binRef}
+				layout
+				layoutId={layoutId}
+				className={panelClasses}
+				style={{ ...colorStyle, borderRadius: 16 }}
+				onClick={(e) => e.stopPropagation()}
+				transition={springTransition}
+				variants={binItemVariants}
+				initial="initial"
+				animate="animate"
+			>
+				<button
+					type="button"
+					className={headerClasses}
+					onClick={onToggleExpand}
+					aria-expanded={true}
+					aria-label={`Category ${label}, ${nodes.length} items, expanded`}
 				>
-					<button
-						type="button"
-						className={headerClasses}
-						onClick={onToggleExpand}
-						aria-expanded={true}
-						aria-label={`Category ${label}, ${nodes.length} items, expanded`}
-					>
-						<Heading level="h3">
-							<RenderMarkdown>{label}</RenderMarkdown>
-						</Heading>
-						<span className="ml-auto text-sm opacity-60">{nodes.length}</span>
-					</button>
-					<div ref={dropRef} {...dropPropsRest} className="min-h-0 flex-1 overflow-hidden p-2">
-						<motion.div initial="initial" animate="animate" className="size-full">
-							<NodeList id={listId} items={nodes} nodeSize="sm" announcedName={`${label} category`} />
-						</motion.div>
-					</div>
-				</motion.div>
-			</>
+					<Heading level="h3">
+						<RenderMarkdown>{label}</RenderMarkdown>
+					</Heading>
+					<span className="ml-auto text-sm opacity-60">{nodes.length}</span>
+				</button>
+				<div ref={dropRef} {...dropPropsRest} className="min-h-0 flex-1 overflow-hidden p-2">
+					<motion.div initial="initial" animate="animate" className="size-full">
+						<NodeList id={listId} items={nodes} nodeSize="sm" announcedName={`${label} category`} />
+					</motion.div>
+				</div>
+			</motion.div>
 		);
 	}
 
 	const circleClasses = cx(
 		"catbin-item",
 		"focusable flex min-w-0 cursor-pointer flex-col items-center justify-center overflow-hidden text-center outline-(--cat-color)",
-		"border-4 p-4",
+		"border-4",
 		"border-(--cat-color)",
 		catColor && "bg-[oklch(from_var(--cat-color)_l_c_h/0.1)]",
 		!catColor && "bg-surface",
@@ -148,6 +153,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
 			layoutId={layoutId}
 			{...dropPropsRest}
 			className={circleClasses}
+			data-flow-index={flowOrdinal}
 			style={{
 				...colorStyle,
 				borderRadius: "50%",

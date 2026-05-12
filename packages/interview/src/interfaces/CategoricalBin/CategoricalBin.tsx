@@ -217,17 +217,28 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 							animate="animate"
 							exit="exit"
 						>
-							{bins.map((bin, index) => (
-								<CategoricalBinItem
-									key={index}
-									label={bin.label}
-									isExpanded={index === expandedBinIndex}
-									onToggleExpand={() => setExpandedBinIndex(index)}
-									catColor={getCatColor(index)}
-									onDropNode={(node) => handleDropNode(node, index)}
-									nodes={bin.nodes}
-								/>
-							))}
+							{bins.map((bin, index) => {
+								const isThisExpanded = index === expandedBinIndex;
+								// 1-based ordinal among in-flow (non-expanded) bins.
+								// Drives CSS ragged-row centring via [data-flow-index="N"].
+								const flowOrdinal = isThisExpanded
+									? undefined
+									: expandedBinIndex !== null && expandedBinIndex < index
+										? index
+										: index + 1;
+								return (
+									<CategoricalBinItem
+										key={index}
+										label={bin.label}
+										isExpanded={isThisExpanded}
+										onToggleExpand={() => setExpandedBinIndex(index)}
+										catColor={getCatColor(index)}
+										onDropNode={(node) => handleDropNode(node, index)}
+										nodes={bin.nodes}
+										flowOrdinal={flowOrdinal}
+									/>
+								);
+							})}
 						</motion.div>
 					</AnimatePresence>
 				</div>
