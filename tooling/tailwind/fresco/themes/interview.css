@@ -278,9 +278,12 @@
     grid-column-start: 3;
   }
 
+  /* Expanded panel size: floor at 20rem so it's always usable, ceiling at
+     40rem so it doesn't dominate the screen on very wide containers,
+     scales with the container's inline-size in between. */
   .catbin-circles[data-expanded] {
     padding-inline-start: calc(
-      var(--catbin-panel-fraction, 0.5) * 100% + var(--spacing) * 2
+      clamp(20rem, 40cqi, 40rem) + var(--spacing) * 2
     );
   }
 
@@ -288,9 +291,7 @@
     position: absolute;
     inset: 0;
     inset-inline-end: auto;
-    inline-size: calc(
-      var(--catbin-panel-fraction, 0.5) * 100% - var(--spacing) * 2
-    );
+    inline-size: calc(clamp(20rem, 40cqi, 40rem) - var(--spacing) * 2);
     z-index: 10;
   }
 
@@ -318,7 +319,7 @@
     .catbin-circles[data-expanded] {
       padding-inline-start: 0;
       padding-block-start: calc(
-        var(--catbin-panel-fraction, 0.5) * 100cqb + var(--spacing) * 2
+        clamp(20rem, 40cqb, 40rem) + var(--spacing) * 2
       );
     }
 
@@ -326,9 +327,7 @@
       inset: 0;
       inset-block-end: auto;
       inline-size: auto;
-      block-size: calc(
-        var(--catbin-panel-fraction, 0.5) * 100cqb - var(--spacing) * 2
-      );
+      block-size: calc(clamp(20rem, 40cqb, 40rem) - var(--spacing) * 2);
     }
   }
 
@@ -345,7 +344,12 @@
   }
   @container catbin (aspect-ratio < 0.33) {
     .catbin-circles[data-count="6"] { --catbin-cols: 2; --catbin-rows: 6; }
+  }
+  @container catbin (aspect-ratio < 0.22) {
     .catbin-circles[data-count="9"] { --catbin-cols: 2; --catbin-rows: 9; }
+    .catbin-circles[data-count="9"] > :nth-child(9) {
+      grid-column-start: auto;
+    }
   }
   @container catbin (aspect-ratio < 0.286) {
     .catbin-circles[data-count="7"] { --catbin-cols: 2; --catbin-rows: 7; }
@@ -379,9 +383,14 @@
     }
   }
 
-  /* Portrait-rectangular for count 10: 5x2 once narrower than AR=0.6
-     (4x3 stops being optimal there). */
+  /* Portrait-rectangular for counts 9, 10: 5x2 once narrower than AR=0.6
+     (3x3 / 4x3 stops being optimal there). Count 9 uses 5x2 with 1 empty
+     cell centred in row 5. */
   @container catbin (aspect-ratio < 0.6) {
+    .catbin-circles[data-count="9"] { --catbin-cols: 4; --catbin-rows: 5; }
+    .catbin-circles[data-count="9"] > :nth-child(9) {
+      grid-column-start: 2;
+    }
     .catbin-circles[data-count="10"] { --catbin-cols: 4; --catbin-rows: 5; }
     .catbin-circles[data-count="10"] > :nth-child(10) {
       grid-column-start: auto;
@@ -404,8 +413,13 @@
     }
   }
 
-  /* Landscape rectangular for count 10: 2x5 once AR > 1.67. */
+  /* Landscape rectangular for counts 9, 10: 2x5 once AR > 1.67 (count 9
+     uses 2x5 with 1 empty cell centred in row 2). */
   @container catbin (aspect-ratio > 1.67) {
+    .catbin-circles[data-count="9"] { --catbin-cols: 10; --catbin-rows: 2; }
+    .catbin-circles[data-count="9"] > :nth-child(6) {
+      grid-column-start: 2;
+    }
     .catbin-circles[data-count="10"] { --catbin-cols: 10; --catbin-rows: 2; }
     .catbin-circles[data-count="10"] > :nth-child(9) {
       grid-column-start: auto;
@@ -424,7 +438,6 @@
   }
   @container catbin (aspect-ratio > 3) {
     .catbin-circles[data-count="6"] { --catbin-cols: 12; --catbin-rows: 1; }
-    .catbin-circles[data-count="9"] { --catbin-cols: 18; --catbin-rows: 1; }
   }
   @container catbin (aspect-ratio > 3.5) {
     .catbin-circles[data-count="7"] { --catbin-cols: 14; --catbin-rows: 1; }
@@ -434,6 +447,12 @@
   }
   @container catbin (aspect-ratio > 4) {
     .catbin-circles[data-count="8"] { --catbin-cols: 16; --catbin-rows: 1; }
+  }
+  @container catbin (aspect-ratio > 4.5) {
+    .catbin-circles[data-count="9"] { --catbin-cols: 18; --catbin-rows: 1; }
+    .catbin-circles[data-count="9"] > :nth-child(6) {
+      grid-column-start: auto;
+    }
   }
   @container catbin (aspect-ratio > 5) {
     .catbin-circles[data-count="10"] { --catbin-cols: 20; --catbin-rows: 1; }

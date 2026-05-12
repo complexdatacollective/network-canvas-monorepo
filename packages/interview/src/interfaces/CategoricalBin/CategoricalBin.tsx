@@ -129,9 +129,6 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 
 	const circleCount = hasExpanded ? bins.length - 1 : bins.length;
 
-	// Shrink the expanded panel as bin count grows so the remaining bins have room
-	const panelFraction = Math.max(0.25, 0.5 - 0.04 * Math.max(0, bins.length - 4));
-
 	const dispatch = useAppDispatch();
 	const { currentStep } = useCurrentStep();
 	const { openDialog } = useDialog();
@@ -215,7 +212,6 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 							className="catbin-circles size-full content-center data-expanded:content-start"
 							data-count={circleCount}
 							data-expanded={hasExpanded || undefined}
-							style={{ "--catbin-panel-fraction": panelFraction } as React.CSSProperties}
 							variants={binsContainerVariants}
 							initial="initial"
 							animate="animate"
