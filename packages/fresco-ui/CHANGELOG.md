@@ -14,6 +14,8 @@
 
 - Control-variant size scale: `sm` button bumped up one notch for better tap-target density, and the briefly-introduced `xs` size is removed (the `sm` bump was the cleaner fix). Internal `Button` cleanup to match.
 
+- `controlVariants` border-radius now varies per `size`. Default drops from `rounded-2xl` to `rounded`, and the `lg`/`xl` sizes opt into `rounded-lg`/`rounded-xl` so they keep visual mass against the larger control bodies. `sm`/`md` track the smaller new default.
+
 ## 2.10.0
 
 ### Minor Changes
