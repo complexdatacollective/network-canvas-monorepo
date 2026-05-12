@@ -26,7 +26,7 @@ const Breadcrumb = ({ items }: BreadcrumbProps) => (
 							onClick={item.onClick}
 							className={cn(
 								labelClasses,
-								"bg-transparent border-none p-0 cursor-pointer hover:opacity-70 transition-opacity",
+								"bg-transparent border-none p-0 cursor-pointer hover:text-action transition-colors",
 							)}
 						>
 							{item.label}
