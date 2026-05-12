@@ -158,7 +158,10 @@ jobs:
         node-version-file: '.nvmrc'
         cache: 'pnpm'
     - name: Install dependencies
-      run: pnpm install --frozen-lockfile
+      # --ignore-scripts: this job holds id-token: write and the npm publish
+      # credential, so refuse to execute lifecycle scripts from any (potentially
+      # compromised) transitive dep. Explicit builds run as their own steps below.
+      run: pnpm install --frozen-lockfile --ignore-scripts
 
     - name: Download shared-consts build
       uses: actions/download-artifact@v4
