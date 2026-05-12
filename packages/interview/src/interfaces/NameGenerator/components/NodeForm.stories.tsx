@@ -288,7 +288,7 @@ const ReduxDecorator = (
 	);
 	return (
 		<Provider store={store}>
-			<div className="relative flex h-[400px] w-[800px] items-end justify-end p-6">
+			<div className="relative flex h-screen w-screen items-end justify-end p-6">
 				<Story />
 			</div>
 		</Provider>
@@ -300,7 +300,7 @@ const meta: Meta<StoryArgs> = {
 	component: NodeForm,
 	decorators: [ReduxDecorator],
 	parameters: {
-		layout: "centered",
+		layout: "fullscreen",
 	},
 	args: {
 		icon: "add-a-person",
