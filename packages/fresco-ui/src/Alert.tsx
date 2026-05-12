@@ -12,11 +12,13 @@ const alertVariants = cva({
 	variants: {
 		variant: {
 			default: "",
-			info: "text-info-contrast [&>svg]:text-info-contrast bg-info [--color-link:var(--info-contrast)]",
+			// Override the --link primitive (not the --color-link @theme inline alias, which is
+			// substituted away at compile time so consumers read var(--link) directly).
+			info: "text-info-contrast [&>svg]:text-info-contrast bg-info [--link:var(--info-contrast)]",
 			destructive:
-				"text-destructive-contrast [&>svg]:text-destructive-contrast bg-destructive [--color-link:var(--destructive-contrast)]",
-			success: "text-success-contrast [&>svg]:text-success-contrast bg-success [--color-link:var(--success-contrast)]",
-			warning: "text-warning-contrast [&>svg]:text-warning-contrast bg-warning [--color-link:var(--warning-contrast)]",
+				"text-destructive-contrast [&>svg]:text-destructive-contrast bg-destructive [--link:var(--destructive-contrast)]",
+			success: "text-success-contrast [&>svg]:text-success-contrast bg-success [--link:var(--success-contrast)]",
+			warning: "text-warning-contrast [&>svg]:text-warning-contrast bg-warning [--link:var(--warning-contrast)]",
 		},
 	},
 	defaultVariants: {

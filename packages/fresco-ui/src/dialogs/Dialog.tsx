@@ -63,11 +63,13 @@ export default function Dialog({
 			<DialogPopup
 				key="dialog-popup"
 				className={cx(
-					// Accent overrides the primary hue so that nested primary buttons inherit color
-					accent === "success" && "[--color-primary:var(--success)]",
-					accent === "info" && "[--color-primary:var(--info)]",
-					accent === "destructive" &&
-						"[--color-primary-contrast:var(--destructive-contrast)] [--color-primary:var(--destructive)]",
+					// Accent overrides the primary hue so that nested primary buttons inherit color.
+					// Override the primitives (--primary/--primary-contrast) because @theme inline
+					// substitutes the --color-* aliases at compile time — consumers like Button read
+					// the primitives directly, so an alias override wouldn't propagate.
+					accent === "success" && "[--primary:var(--success)]",
+					accent === "info" && "[--primary:var(--info)]",
+					accent === "destructive" && "[--primary-contrast:var(--destructive-contrast)] [--primary:var(--destructive)]",
 					className,
 				)}
 				{...rest}

@@ -1,5 +1,11 @@
 # @codaco/fresco-ui
 
+## 2.10.1
+
+### Patch Changes
+
+- Fix `Dialog`'s `accent` override and `Alert`'s variant link color. Both were setting `--color-*` aliases (`--color-primary`, `--color-primary-contrast`, `--color-link`), but those aliases are declared inside `@theme inline` in `tooling/tailwind/fresco/theme.css` and get substituted to their inner `var(--…)` at Tailwind compile time. Consumers like `Button`'s `color="primary"` variant and the `text-link` utility read the underlying primitives (`--primary`, `--primary-contrast`, `--link`) directly, so overrides targeting the alias never propagated. Switched both to override the primitives instead, restoring the accent recoloring inside dialogs and link recoloring inside themed alerts.
+
 ## 2.10.0
 
 ### Minor Changes
