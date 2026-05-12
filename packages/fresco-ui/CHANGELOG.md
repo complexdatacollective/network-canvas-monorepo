@@ -12,6 +12,10 @@
 
 - Expose `./collection/layout/GridLayout` in package exports. The compiled module already shipped in `dist/`, but with no `exports` entry consumers got a TS resolution error on `import …/GridLayout`. Sister layouts `InlineGridLayout` and `ListLayout` were already exposed.
 
+## 2.10.2
+
+### Patch Changes
+
 - Control-variant size scale: `sm` button bumped up one notch for better tap-target density, and the briefly-introduced `xs` size is removed (the `sm` bump was the cleaner fix). Internal `Button` cleanup to match.
 
 - `controlVariants` border-radius now varies per `size`. Default drops from `rounded-2xl` to `rounded`, and the `lg`/`xl` sizes opt into `rounded-lg`/`rounded-xl` so they keep visual mass against the larger control bodies. `sm`/`md` track the smaller new default.
