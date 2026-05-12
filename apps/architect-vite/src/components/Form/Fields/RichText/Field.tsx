@@ -44,7 +44,11 @@ const RichTextField = ({
 
 	return (
 		<div className="form-field-container">
-			<h4>{anyLabel && <MarkdownLabel label={anyLabel} />}</h4>
+			{anyLabel && (
+				<h4>
+					<MarkdownLabel label={anyLabel} />
+				</h4>
+			)}
 			<div className={cx(className)}>
 				<RichText
 					value={input.value}
