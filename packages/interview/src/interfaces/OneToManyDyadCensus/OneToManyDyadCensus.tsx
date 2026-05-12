@@ -179,7 +179,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
 					</div>
 				)}
 			</AnimatePresence>
-			<Panel title="Click/tap all that apply:" panelNumber={0} noCollapse className="w-full max-w-7xl">
+			<Panel title="Select all that apply, then click next" panelNumber={0} noCollapse className="w-full max-w-7xl">
 				<NodeList
 					id="dyad-census-targets"
 					items={filteredTargets}
