@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Install pnpm
-        uses: pnpm/action-setup@v5
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5
       - name: Install Node.js
         uses: actions/setup-node@v6
         with:
@@ -57,7 +57,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Install pnpm
-        uses: pnpm/action-setup@v5
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5
       - name: Install Node.js
         uses: actions/setup-node@v6
         with:
@@ -103,7 +103,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Install pnpm
-        uses: pnpm/action-setup@v5
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5
       - name: Install Node.js
         uses: actions/setup-node@v6
         with:
@@ -151,7 +151,7 @@ jobs:
     - name: Check out the code
       uses: actions/checkout@v6
     - name: Install pnpm
-      uses: pnpm/action-setup@v5
+      uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5
     - name: Set up Node.js
       uses: actions/setup-node@v6
       with:
@@ -177,7 +177,7 @@ jobs:
       run: pnpm run build:changed-packages
 
     - name: Create Release Pull Request
-      uses: changesets/action@v1
+      uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b  # v1
       with:
         # command used to version packages. Lint and fix to avoid errors caused
         # by versioning
