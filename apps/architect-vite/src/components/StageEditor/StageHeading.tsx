@@ -21,7 +21,7 @@ const StageHeading = ({ _id }: { _id?: string }) => {
 	const documentationLinkForType = get(getInterface(type as StageType), "documentation", null);
 
 	return (
-		<div className="w-full grid gap-8 grid-cols-[20rem_auto] max-w-7xl my-10">
+		<div className="w-full grid gap-8 lg:grid-cols-[20rem_auto] max-w-7xl my-10">
 			{documentationLinkForType && (
 				<div className="flex items-center flex-col relative">
 					<a

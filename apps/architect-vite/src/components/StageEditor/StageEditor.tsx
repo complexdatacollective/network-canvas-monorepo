@@ -204,7 +204,7 @@ const StageEditor = (props: StageEditorProps) => {
 					isUploadingPreview={isUploadingPreview}
 					hasUnsavedChanges={hasUnsavedChanges}
 				/>
-				<div className="flex flex-col items-center">
+				<div className="flex flex-col items-center px-4 sm:px-6">
 					<StageHeading />
 					<div className="flex flex-col gap-10">{renderSections(sections)}</div>
 				</div>
