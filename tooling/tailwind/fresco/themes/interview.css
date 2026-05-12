@@ -220,6 +220,16 @@
     aspect-ratio: 1 / 1;
   }
 
+  /*
+   * Defaults = the layout that maximises min(cellW, cellH) at AR=1 (square
+   * container) for each count. Counts 7-8 use a 3x3 grid with 1-2 empty cells
+   * centred at the bottom — at AR=1, 3x3 cells are ~35% larger than 2x4.
+   * Count 10 uses 3x4 for the same reason (~27% larger than 2x5).
+   *
+   * Each off-square band is an @container override below; the bands are
+   * bounded ranges so they don't overlap and no cross-band resets are needed
+   * — every band declares its own --catbin-cols/--catbin-rows and centring.
+   */
   .catbin-circles[data-count="1"]  { --catbin-cols: 2;  --catbin-rows: 1; }
   .catbin-circles[data-count="2"]  { --catbin-cols: 4;  --catbin-rows: 1; }
   .catbin-circles[data-count="3"]  { --catbin-cols: 6;  --catbin-rows: 1; }
@@ -229,13 +239,19 @@
     grid-column-start: 2;
   }
   .catbin-circles[data-count="6"]  { --catbin-cols: 6;  --catbin-rows: 2; }
-  .catbin-circles[data-count="7"]  { --catbin-cols: 8;  --catbin-rows: 2; }
-  .catbin-circles[data-count="7"] > :nth-child(5 of :not(.catbin-expanded)) {
+  .catbin-circles[data-count="7"]  { --catbin-cols: 6;  --catbin-rows: 3; }
+  .catbin-circles[data-count="7"] > :nth-child(7 of :not(.catbin-expanded)) {
+    grid-column-start: 3;
+  }
+  .catbin-circles[data-count="8"]  { --catbin-cols: 6;  --catbin-rows: 3; }
+  .catbin-circles[data-count="8"] > :nth-child(7 of :not(.catbin-expanded)) {
     grid-column-start: 2;
   }
-  .catbin-circles[data-count="8"]  { --catbin-cols: 8;  --catbin-rows: 2; }
   .catbin-circles[data-count="9"]  { --catbin-cols: 6;  --catbin-rows: 3; }
-  .catbin-circles[data-count="10"] { --catbin-cols: 10; --catbin-rows: 2; }
+  .catbin-circles[data-count="10"] { --catbin-cols: 8;  --catbin-rows: 3; }
+  .catbin-circles[data-count="10"] > :nth-child(9 of :not(.catbin-expanded)) {
+    grid-column-start: 3;
+  }
 
   .catbin-circles[data-expanded] {
     padding-inline-start: calc(
@@ -253,26 +269,26 @@
     z-index: 10;
   }
 
+  /* Portrait rectangular band (0.25-0.75 depending on count): more rows than
+     cols, matches landscape rectangular shape transposed. */
   @container catbin (aspect-ratio < 1) {
-    .catbin-circles[data-count="2"]  { --catbin-cols: 2; --catbin-rows: 2; }
-    .catbin-circles[data-count="3"]  { --catbin-cols: 2; --catbin-rows: 3; }
-    .catbin-circles[data-count="5"]  { --catbin-cols: 4; --catbin-rows: 3; }
+    .catbin-circles[data-count="2"] { --catbin-cols: 2; --catbin-rows: 2; }
+    .catbin-circles[data-count="3"] { --catbin-cols: 2; --catbin-rows: 3; }
+    .catbin-circles[data-count="5"] { --catbin-cols: 4; --catbin-rows: 3; }
     .catbin-circles[data-count="5"] > :nth-child(4 of :not(.catbin-expanded)) {
       grid-column-start: auto;
     }
     .catbin-circles[data-count="5"] > :nth-child(5 of :not(.catbin-expanded)) {
       grid-column-start: 2;
     }
-    .catbin-circles[data-count="6"]  { --catbin-cols: 4; --catbin-rows: 3; }
-    .catbin-circles[data-count="7"]  { --catbin-cols: 4; --catbin-rows: 4; }
-    .catbin-circles[data-count="7"] > :nth-child(5 of :not(.catbin-expanded)) {
+    .catbin-circles[data-count="6"] { --catbin-cols: 4; --catbin-rows: 3; }
+    .catbin-circles[data-count="10"] { --catbin-cols: 6; --catbin-rows: 4; }
+    .catbin-circles[data-count="10"] > :nth-child(9 of :not(.catbin-expanded)) {
       grid-column-start: auto;
     }
-    .catbin-circles[data-count="7"] > :nth-child(7 of :not(.catbin-expanded)) {
-      grid-column-start: 2;
+    .catbin-circles[data-count="10"] > :nth-child(10 of :not(.catbin-expanded)) {
+      grid-column-start: 3;
     }
-    .catbin-circles[data-count="8"]  { --catbin-cols: 4; --catbin-rows: 4; }
-    .catbin-circles[data-count="10"] { --catbin-cols: 4; --catbin-rows: 5; }
 
     .catbin-circles[data-expanded] {
       padding-inline-start: 0;
@@ -289,5 +305,112 @@
         var(--catbin-panel-fraction, 0.5) * 100cqb - var(--spacing) * 2
       );
     }
+  }
+
+  /* Portrait extra-tall: 1-col layouts. Threshold = 1/count for each count
+     (crossover where (W-(N-1)g)/N = H/2 etc., approximated). */
+  @container catbin (aspect-ratio < 0.5) {
+    .catbin-circles[data-count="4"] { --catbin-cols: 2; --catbin-rows: 4; }
+  }
+  @container catbin (aspect-ratio < 0.4) {
+    .catbin-circles[data-count="5"] { --catbin-cols: 2; --catbin-rows: 5; }
+    .catbin-circles[data-count="5"] > :nth-child(5 of :not(.catbin-expanded)) {
+      grid-column-start: auto;
+    }
+  }
+  @container catbin (aspect-ratio < 0.33) {
+    .catbin-circles[data-count="6"] { --catbin-cols: 2; --catbin-rows: 6; }
+    .catbin-circles[data-count="9"] { --catbin-cols: 2; --catbin-rows: 9; }
+  }
+  @container catbin (aspect-ratio < 0.286) {
+    .catbin-circles[data-count="7"] { --catbin-cols: 2; --catbin-rows: 7; }
+    .catbin-circles[data-count="7"] > :nth-child(7 of :not(.catbin-expanded)) {
+      grid-column-start: auto;
+    }
+  }
+  @container catbin (aspect-ratio < 0.25) {
+    .catbin-circles[data-count="8"] { --catbin-cols: 2; --catbin-rows: 8; }
+    .catbin-circles[data-count="8"] > :nth-child(7 of :not(.catbin-expanded)) {
+      grid-column-start: auto;
+    }
+  }
+  @container catbin (aspect-ratio < 0.2) {
+    .catbin-circles[data-count="10"] { --catbin-cols: 2; --catbin-rows: 10; }
+    .catbin-circles[data-count="10"] > :nth-child(10 of :not(.catbin-expanded)) {
+      grid-column-start: auto;
+    }
+  }
+
+  /* Portrait-rectangular for counts 7, 8: 4x2 once the container narrows
+     beyond AR=0.75 (3x3 stops being optimal there). */
+  @container catbin (aspect-ratio < 0.75) {
+    .catbin-circles[data-count="7"] { --catbin-cols: 4; --catbin-rows: 4; }
+    .catbin-circles[data-count="7"] > :nth-child(7 of :not(.catbin-expanded)) {
+      grid-column-start: 2;
+    }
+    .catbin-circles[data-count="8"] { --catbin-cols: 4; --catbin-rows: 4; }
+    .catbin-circles[data-count="8"] > :nth-child(7 of :not(.catbin-expanded)) {
+      grid-column-start: auto;
+    }
+  }
+
+  /* Portrait-rectangular for count 10: 5x2 once narrower than AR=0.6
+     (4x3 stops being optimal there). */
+  @container catbin (aspect-ratio < 0.6) {
+    .catbin-circles[data-count="10"] { --catbin-cols: 4; --catbin-rows: 5; }
+    .catbin-circles[data-count="10"] > :nth-child(10 of :not(.catbin-expanded)) {
+      grid-column-start: auto;
+    }
+  }
+
+  /* Landscape rectangular: counts 7, 8 switch from 3x3 (default) to 2x4 once
+     AR > 1.33. Counts 6, 9 transition to 2x3 / 3x3 (no-op for 9) here too. */
+  @container catbin (aspect-ratio > 1.33) {
+    .catbin-circles[data-count="7"] { --catbin-cols: 8; --catbin-rows: 2; }
+    .catbin-circles[data-count="7"] > :nth-child(5 of :not(.catbin-expanded)) {
+      grid-column-start: 2;
+    }
+    .catbin-circles[data-count="7"] > :nth-child(7 of :not(.catbin-expanded)) {
+      grid-column-start: auto;
+    }
+    .catbin-circles[data-count="8"] { --catbin-cols: 8; --catbin-rows: 2; }
+    .catbin-circles[data-count="8"] > :nth-child(7 of :not(.catbin-expanded)) {
+      grid-column-start: auto;
+    }
+  }
+
+  /* Landscape rectangular for count 10: 2x5 once AR > 1.67. */
+  @container catbin (aspect-ratio > 1.67) {
+    .catbin-circles[data-count="10"] { --catbin-cols: 10; --catbin-rows: 2; }
+    .catbin-circles[data-count="10"] > :nth-child(9 of :not(.catbin-expanded)) {
+      grid-column-start: auto;
+    }
+  }
+
+  /* Landscape ultra-wide: 1-row layouts. Threshold per count (AR ~= count/2). */
+  @container catbin (aspect-ratio > 2) {
+    .catbin-circles[data-count="4"] { --catbin-cols: 8; --catbin-rows: 1; }
+  }
+  @container catbin (aspect-ratio > 2.5) {
+    .catbin-circles[data-count="5"] { --catbin-cols: 10; --catbin-rows: 1; }
+    .catbin-circles[data-count="5"] > :nth-child(4 of :not(.catbin-expanded)) {
+      grid-column-start: auto;
+    }
+  }
+  @container catbin (aspect-ratio > 3) {
+    .catbin-circles[data-count="6"] { --catbin-cols: 12; --catbin-rows: 1; }
+    .catbin-circles[data-count="9"] { --catbin-cols: 18; --catbin-rows: 1; }
+  }
+  @container catbin (aspect-ratio > 3.5) {
+    .catbin-circles[data-count="7"] { --catbin-cols: 14; --catbin-rows: 1; }
+    .catbin-circles[data-count="7"] > :nth-child(5 of :not(.catbin-expanded)) {
+      grid-column-start: auto;
+    }
+  }
+  @container catbin (aspect-ratio > 4) {
+    .catbin-circles[data-count="8"] { --catbin-cols: 16; --catbin-rows: 1; }
+  }
+  @container catbin (aspect-ratio > 5) {
+    .catbin-circles[data-count="10"] { --catbin-cols: 20; --catbin-rows: 1; }
   }
 }
