@@ -77,47 +77,54 @@ const AlterForm = (props: StageProps<"AlterForm">) => {
 
 	if (shouldSkipEmpty) return null;
 
+	// Intro and form modes render with different layout contexts:
+	// - intro uses `.interface` (centered flex column with stage padding) so the
+	//   IntroPanel sits middle-aligned, matching how the original code wrapped it.
+	// - form needs a `flex flex-col` parent with real height so SlidesForm's
+	//   root `flex-auto` propagates a height down to the inner ScrollArea —
+	//   otherwise the scroll viewport collapses to zero. The original code
+	//   sidestepped this by rendering SlidesForm as the stage root (inheriting
+	//   the Shell's flex column directly); the AnimatePresence wrapper here
+	//   re-establishes the same context per side.
 	return (
-		<div className="interface">
-			<AnimatePresence mode="wait" initial={false}>
-				{mode === "intro" ? (
-					<motion.div
-						key="intro"
-						className="size-full"
-						initial={{ opacity: 0 }}
-						animate={{ opacity: 1 }}
-						exit={{ opacity: 0 }}
-						transition={{ duration: 0.2 }}
-						data-stage-section="intro"
-						data-stage-ready="true"
-					>
-						<IntroPanel title={stage.introductionPanel.title} text={stage.introductionPanel.text} />
-					</motion.div>
-				) : (
-					<motion.div
-						key="form"
-						className="size-full"
-						initial={{ opacity: 0 }}
-						animate={{ opacity: 1 }}
-						exit={{ opacity: 0 }}
-						transition={{ duration: 0.2 }}
-						onAnimationComplete={() => setIsFormReady(true)}
-						data-stage-section="form"
-						data-stage-ready={isFormReady ? "true" : undefined}
-					>
-						<SlidesForm
-							updateItem={handleUpdateItem}
-							items={items}
-							subject={stage.subject}
-							form={stage.form}
-							onNavigateBack={() => setMode("intro")}
-							renderHeader={renderHeader}
-							form_kind="alter"
-						/>
-					</motion.div>
-				)}
-			</AnimatePresence>
-		</div>
+		<AnimatePresence mode="wait" initial={false}>
+			{mode === "intro" ? (
+				<motion.div
+					key="intro"
+					className="interface"
+					initial={{ opacity: 0 }}
+					animate={{ opacity: 1 }}
+					exit={{ opacity: 0 }}
+					transition={{ duration: 0.2 }}
+					data-stage-section="intro"
+					data-stage-ready="true"
+				>
+					<IntroPanel title={stage.introductionPanel.title} text={stage.introductionPanel.text} />
+				</motion.div>
+			) : (
+				<motion.div
+					key="form"
+					className="flex w-full flex-auto flex-col overflow-hidden"
+					initial={{ opacity: 0 }}
+					animate={{ opacity: 1 }}
+					exit={{ opacity: 0 }}
+					transition={{ duration: 0.2 }}
+					onAnimationComplete={() => setIsFormReady(true)}
+					data-stage-section="form"
+					data-stage-ready={isFormReady ? "true" : undefined}
+				>
+					<SlidesForm
+						updateItem={handleUpdateItem}
+						items={items}
+						subject={stage.subject}
+						form={stage.form}
+						onNavigateBack={() => setMode("intro")}
+						renderHeader={renderHeader}
+						form_kind="alter"
+					/>
+				</motion.div>
+			)}
+		</AnimatePresence>
 	);
 };
 

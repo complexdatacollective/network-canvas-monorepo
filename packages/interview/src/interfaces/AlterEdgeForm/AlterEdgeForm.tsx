@@ -87,47 +87,46 @@ const AlterEdgeForm = (props: StageProps<"AlterEdgeForm">) => {
 
 	if (shouldSkipEmpty) return null;
 
+	// See AlterForm for the per-mode layout-class rationale.
 	return (
-		<div className="interface">
-			<AnimatePresence mode="wait" initial={false}>
-				{mode === "intro" ? (
-					<motion.div
-						key="intro"
-						className="size-full"
-						initial={{ opacity: 0 }}
-						animate={{ opacity: 1 }}
-						exit={{ opacity: 0 }}
-						transition={{ duration: 0.2 }}
-						data-stage-section="intro"
-						data-stage-ready="true"
-					>
-						<IntroPanel title={stage.introductionPanel.title} text={stage.introductionPanel.text} />
-					</motion.div>
-				) : (
-					<motion.div
-						key="form"
-						className="size-full"
-						initial={{ opacity: 0 }}
-						animate={{ opacity: 1 }}
-						exit={{ opacity: 0 }}
-						transition={{ duration: 0.2 }}
-						onAnimationComplete={() => setIsFormReady(true)}
-						data-stage-section="form"
-						data-stage-ready={isFormReady ? "true" : undefined}
-					>
-						<SlidesForm
-							updateItem={handleUpdateItem}
-							items={items}
-							subject={stage.subject}
-							form={stage.form}
-							onNavigateBack={() => setMode("intro")}
-							renderHeader={renderHeader}
-							form_kind="alter_edge"
-						/>
-					</motion.div>
-				)}
-			</AnimatePresence>
-		</div>
+		<AnimatePresence mode="wait" initial={false}>
+			{mode === "intro" ? (
+				<motion.div
+					key="intro"
+					className="interface"
+					initial={{ opacity: 0 }}
+					animate={{ opacity: 1 }}
+					exit={{ opacity: 0 }}
+					transition={{ duration: 0.2 }}
+					data-stage-section="intro"
+					data-stage-ready="true"
+				>
+					<IntroPanel title={stage.introductionPanel.title} text={stage.introductionPanel.text} />
+				</motion.div>
+			) : (
+				<motion.div
+					key="form"
+					className="flex w-full flex-auto flex-col overflow-hidden"
+					initial={{ opacity: 0 }}
+					animate={{ opacity: 1 }}
+					exit={{ opacity: 0 }}
+					transition={{ duration: 0.2 }}
+					onAnimationComplete={() => setIsFormReady(true)}
+					data-stage-section="form"
+					data-stage-ready={isFormReady ? "true" : undefined}
+				>
+					<SlidesForm
+						updateItem={handleUpdateItem}
+						items={items}
+						subject={stage.subject}
+						form={stage.form}
+						onNavigateBack={() => setMode("intro")}
+						renderHeader={renderHeader}
+						form_kind="alter_edge"
+					/>
+				</motion.div>
+			)}
+		</AnimatePresence>
 	);
 };
 
