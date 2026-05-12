@@ -240,6 +240,10 @@
 			"types": "./dist/collection/dnd/useDragAndDrop.d.ts",
 			"default": "./dist/collection/dnd/useDragAndDrop.js"
 		},
+		"./collection/layout/GridLayout": {
+			"types": "./dist/collection/layout/GridLayout.d.ts",
+			"default": "./dist/collection/layout/GridLayout.js"
+		},
 		"./collection/layout/InlineGridLayout": {
 			"types": "./dist/collection/layout/InlineGridLayout.d.ts",
 			"default": "./dist/collection/layout/InlineGridLayout.js"
