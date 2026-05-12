@@ -108,7 +108,7 @@
 		"react-table": "^7.8.0",
 		"react-test-renderer": "^16.14.0",
 		"react-transition-group": "^4.4.5",
-		"react-virtualized-auto-sizer": "^1.0.26",
+		"react-virtualized-auto-sizer": "^2.0.3",
 		"react-window": "^1.8.11",
 		"recompose": "^0.30.0",
 		"redux": "^5.0.1",
