@@ -35,7 +35,7 @@ jobs:
       # Build protocol-validation and dependencies
       - name: Build protocol validation
         run: |
-          pnpm install
+          pnpm install --frozen-lockfile
           # Build shared-consts first, then protocol-validation
           pnpm --filter @codaco/shared-consts build
           pnpm build
