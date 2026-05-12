@@ -220,6 +220,28 @@
     aspect-ratio: 1 / 1;
   }
 
+  /* Each bin is its own size-typed container so its content can respond to
+     its rendered diameter, independently of the parent catbin-circles grid
+     decision. */
+  .catbin-item {
+    container-type: size;
+    container-name: catbin-item;
+  }
+
+  /* Scale the bin title with the bin diameter. clamp() keeps it readable at
+     both extremes (~12px floor at very small bins, ~24px ceiling at large). */
+  .catbin-item :is(h1, h2, h3, h4, h5, h6) {
+    font-size: clamp(0.75rem, 6cqi, 1.5rem);
+  }
+
+  /* Drop the node-count summary once the bin is small enough that both lines
+     no longer fit comfortably. */
+  @container catbin-item (inline-size < 9rem) {
+    .catbin-summary {
+      display: none;
+    }
+  }
+
   /*
    * Defaults = the layout that maximises min(cellW, cellH) at AR=1 (square
    * container) for each count. Counts 7-8 use a 3x3 grid with 1-2 empty cells

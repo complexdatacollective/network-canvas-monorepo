@@ -130,6 +130,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
 	}
 
 	const circleClasses = cx(
+		"catbin-item",
 		"focusable flex min-w-0 cursor-pointer flex-col items-center justify-center overflow-hidden text-center outline-(--cat-color)",
 		"border-4 p-4",
 		"border-(--cat-color)",
@@ -165,7 +166,12 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
 			</Heading>
 			<AnimatePresence>
 				{nodes.length > 0 && (
-					<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+					<motion.div
+						className="catbin-summary"
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+					>
 						<BinSummary nodes={nodes} />
 					</motion.div>
 				)}
