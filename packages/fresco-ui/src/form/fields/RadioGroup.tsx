@@ -42,6 +42,83 @@ const radioIndicatorVariants = compose(
 	}),
 );
 
+type RadioItemProps = {
+	value: string | number;
+	label: string;
+	disabled?: boolean;
+	readOnly?: boolean;
+	size?: VariantProps<typeof radioIndicatorVariants>["size"];
+	id?: string;
+};
+
+export function RadioItem({ value, label, disabled, readOnly, size = "md", id }: RadioItemProps) {
+	const generatedId = useId();
+	const optionId = id ?? generatedId;
+	const optionValue = String(value);
+	const indicatorState = disabled ? "disabled" : readOnly ? "readOnly" : "normal";
+
+	return (
+		<label htmlFor={optionId} className={groupOptionVariants({ size, disabled })}>
+			<motion.div
+				whileTap={disabled ? undefined : { scale: 0.85 }}
+				transition={{
+					type: "spring",
+					duration: 0.3,
+					bounce: 0.3,
+				}}
+				tabIndex={-1}
+			>
+				<Radio.Root
+					value={optionValue}
+					disabled={disabled}
+					nativeButton
+					render={(renderProps, state) => (
+						<button
+							{...renderProps}
+							id={optionId}
+							type="button"
+							aria-label={label}
+							className={radioIndicatorVariants({
+								size,
+								state: indicatorState,
+							})}
+						>
+							<svg
+								aria-hidden="true"
+								viewBox="0 0 24 24"
+								fill="currentColor"
+								className="text-primary size-full overflow-hidden rounded-full p-[0.1em]"
+							>
+								<motion.circle
+									cx="12"
+									cy="12"
+									r="10"
+									initial={false}
+									animate={{ scale: state.checked ? 1 : 0 }}
+									transition={{
+										type: "spring",
+										bounce: 0.3,
+										duration: state.checked ? 0.3 : 0.15,
+									}}
+								/>
+							</svg>
+						</button>
+					)}
+				/>
+			</motion.div>
+			<span
+				className={cx(
+					controlLabelVariants({ size }),
+					"cursor-[inherit] transition-colors duration-200",
+					disabled && "opacity-50",
+				)}
+			>
+				<RenderMarkdown>{label}</RenderMarkdown>
+			</span>
+		</label>
+	);
+}
+
 type RadioOption = {
 	value: string | number;
 	label: string;
@@ -116,85 +193,17 @@ export default function RadioGroupField(props: RadioGroupFieldProps) {
 				aria-describedby={rest["aria-describedby"]}
 				aria-invalid={rest["aria-invalid"] ?? undefined}
 			>
-				{options.map((option) => {
-					const isOptionDisabled = disabled ?? option.disabled;
-					const optionValue = String(option.value);
-					const optionId = `${optionIdPrefix}-${optionValue}`;
-
-					const getOptionState = () => {
-						if (isOptionDisabled) return "disabled" as const;
-						if (readOnly) return "readOnly" as const;
-						return "normal" as const;
-					};
-
-					return (
-						<label
-							key={optionValue}
-							htmlFor={optionId}
-							className={groupOptionVariants({
-								size,
-								disabled: isOptionDisabled,
-							})}
-						>
-							<motion.div
-								whileTap={isOptionDisabled ? undefined : { scale: 0.85 }}
-								transition={{
-									type: "spring",
-									duration: 0.3,
-									bounce: 0.3,
-								}}
-								tabIndex={-1}
-							>
-								<Radio.Root
-									value={optionValue}
-									disabled={isOptionDisabled}
-									nativeButton
-									render={(renderProps, state) => (
-										<button
-											{...renderProps}
-											id={optionId}
-											type="button"
-											aria-label={option.label}
-											className={radioIndicatorVariants({
-												size,
-												state: getOptionState(),
-											})}
-										>
-											<svg
-												aria-hidden="true"
-												viewBox="0 0 24 24"
-												fill="currentColor"
-												className="text-primary size-full overflow-hidden rounded-full p-[0.1em]"
-											>
-												<motion.circle
-													cx="12"
-													cy="12"
-													r="10"
-													initial={false}
-													animate={{ scale: state.checked ? 1 : 0 }}
-													transition={{
-														type: "spring",
-														bounce: 0.3,
-														duration: state.checked ? 0.3 : 0.15,
-													}}
-												/>
-											</svg>
-										</button>
-									)}
-								/>
-							</motion.div>
-							<span
-								className={cx(
-									controlLabelVariants({ size }),
-									"cursor-[inherit] transition-colors duration-200",
-									isOptionDisabled && "opacity-50",
-								)}
-							>
-								<RenderMarkdown>{option.label}</RenderMarkdown>
-							</span>
-						</label>
-					);
-				})}
+				{options.map((option) => (
+					<RadioItem
+						key={String(option.value)}
+						value={option.value}
+						label={option.label}
+						disabled={disabled ?? option.disabled}
+						readOnly={readOnly}
+						size={size}
+						id={`${optionIdPrefix}-${String(option.value)}`}
+					/>
+				))}
 			</RadioGroup>
 		</div>
 	);
