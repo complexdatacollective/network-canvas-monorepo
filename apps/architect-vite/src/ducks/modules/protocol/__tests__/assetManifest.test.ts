@@ -102,8 +102,8 @@ describe("protocol/assetManifest", () => {
 	});
 
 	describe("actionCreators", () => {
-		it.todo("importAsset() dispatches correct actions");
-		it.todo("importAsset() dispatches correct actions when util/importAsset fails");
+		it.todo("importAssetAsync() dispatches correct actions");
+		it.todo("importAssetAsync() dispatches correct actions when util/importAsset fails");
 		it.todo("deleteAsset() dispatches correct actions");
 	});
 });
