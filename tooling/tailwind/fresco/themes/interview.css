@@ -35,10 +35,10 @@
    * (1279px) and `--breakpoint-desktop-lg` (1920px) in `theme.css`.
    */
   [data-theme-interview] {
-    --theme-root-size: 1.1rem;
+    --theme-root-size: 1rem;
     font-size: var(--theme-root-size);
 
-    @media (width >= 1279px) {
+    @media (width >= 1080px) {
       --theme-root-size: 1.125rem;
     }
 
