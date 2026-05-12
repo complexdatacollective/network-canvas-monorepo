@@ -235,25 +235,30 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 									flowOrdinal={undefined}
 								/>
 							)}
-							<div className="catbin-inflow" data-count={circleCount}>
-								{bins.map((bin, index) => {
-									if (index === expandedBinIndex) return null;
-									// 1-based ordinal among in-flow (non-expanded) bins.
-									// Drives CSS ragged-row centring via [data-flow-index="N"].
-									const flowOrdinal = expandedBinIndex !== null && expandedBinIndex < index ? index : index + 1;
-									return (
-										<CategoricalBinItem
-											key={index}
-											label={bin.label}
-											isExpanded={false}
-											onToggleExpand={() => setExpandedBinIndex(index)}
-											catColor={getCatColor(index)}
-											onDropNode={(node) => handleDropNode(node, index)}
-											nodes={bin.nodes}
-											flowOrdinal={flowOrdinal}
-										/>
-									);
-								})}
+							<div className="catbin-inflow">
+								{/* .catbin-inflow is the size query container; .catbin-grid is
+									the actual grid descendant where @container catbin rules
+									match and where data-count drives the lookup. */}
+								<div className="catbin-grid" data-count={circleCount}>
+									{bins.map((bin, index) => {
+										if (index === expandedBinIndex) return null;
+										// 1-based ordinal among in-flow (non-expanded) bins.
+										// Drives CSS ragged-row centring via [data-flow-index="N"].
+										const flowOrdinal = expandedBinIndex !== null && expandedBinIndex < index ? index : index + 1;
+										return (
+											<CategoricalBinItem
+												key={index}
+												label={bin.label}
+												isExpanded={false}
+												onToggleExpand={() => setExpandedBinIndex(index)}
+												catColor={getCatColor(index)}
+												onDropNode={(node) => handleDropNode(node, index)}
+												nodes={bin.nodes}
+												flowOrdinal={flowOrdinal}
+											/>
+										);
+									})}
+								</div>
 							</div>
 						</motion.div>
 					</AnimatePresence>
