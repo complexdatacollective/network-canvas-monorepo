@@ -1,17 +1,21 @@
-import { Accordion } from "@base-ui/react/accordion";
-import { Popover } from "@base-ui/react/popover";
-import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
-import { IconButton } from "@codaco/fresco-ui/Button";
+import {
+	Accordion,
+	AccordionHeader,
+	AccordionItem,
+	AccordionPanel,
+	AccordionTrigger,
+} from "@codaco/fresco-ui/Accordion";
+import { buttonVariants, IconButton } from "@codaco/fresco-ui/Button";
+import { RadioItem } from "@codaco/fresco-ui/form/fields/RadioGroup";
 import { MotionSurface } from "@codaco/fresco-ui/layout/Surface";
-import { usePortalContainer } from "@codaco/fresco-ui/PortalContainer";
+import { Popover, PopoverContent, PopoverTrigger } from "@codaco/fresco-ui/Popover";
 import { RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
-import Heading, { headingVariants } from "@codaco/fresco-ui/typography/Heading";
 import type { Stage } from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { AnimatePresence, LayoutGroup, motion } from "motion/react";
-import { type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
+import { LayoutGroup, useDragControls } from "motion/react";
+import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStageSelector } from "~/hooks/useStageSelector";
 import { getSubjectType } from "~/selectors/session";
 import { getCodebook } from "~/store/modules/protocol";
@@ -50,37 +54,6 @@ const presetContentVariants = {
 	center: { x: 0, opacity: 1 },
 	exit: (backwards: boolean) => ({ x: backwards ? 20 : -20, opacity: 0 }),
 };
-
-function AnimatedPanel({ children }: { children: ReactNode }) {
-	return (
-		<Accordion.Panel
-			keepMounted
-			render={(props, state) => (
-				<motion.div
-					{...props}
-					onDrag={undefined}
-					onDragEnd={undefined}
-					onDragStart={undefined}
-					onAnimationStart={undefined}
-					hidden={undefined}
-					aria-hidden={!state.open}
-					animate={{
-						height: state.open ? "auto" : 0,
-						opacity: state.open ? 1 : 0,
-					}}
-					initial={false}
-					transition={{ duration: 0.2, ease: "easeInOut" }}
-					style={{ ...props.style, overflow: "hidden" }}
-					className="mt-2"
-				>
-					{props.children}
-				</motion.div>
-			)}
-		>
-			{children}
-		</Accordion.Panel>
-	);
-}
 
 export default function PresetSwitcher({
 	presets,
@@ -157,237 +130,139 @@ export default function PresetSwitcher({
 	);
 
 	const [popoverOpen, setPopoverOpen] = useState(true);
-	const portalContainer = usePortalContainer();
+	const dragControls = useDragControls();
 
 	const prevPresetRef = useRef(activePreset);
 	const backwards = activePreset < prevPresetRef.current;
 
+	const switcherRef = useRef<HTMLDivElement>(null);
+
 	useEffect(() => {
 		prevPresetRef.current = activePreset;
-
-		// Close then reopen on preset change
-		setPopoverOpen(false);
-		const timeout = setTimeout(() => setPopoverOpen(true), 300);
-		return () => clearTimeout(timeout);
 	}, [activePreset]);
 
 	if (!currentPreset) return null;
 
 	return (
 		<LayoutGroup>
-			<Popover.Root
+			<Popover
 				open={popoverOpen}
 				onOpenChange={(open, event) => {
-					if (!open && event.reason === "outside-press") return;
+					if (!open && event.reason !== "trigger-press") return;
 					setPopoverOpen(open);
 				}}
 			>
-				<Popover.Trigger
-					nativeButton={false}
-					render={
-						<MotionSurface
-							noContainer
-							className="bg-surface/80 absolute right-10 bottom-10 z-10 flex min-w-3xs cursor-move items-center gap-4 rounded-2xl backdrop-blur-md shadow-xl"
-							spacing="sm"
-							drag
-							dragConstraints={dragConstraints}
-							layout
-						/>
-					}
+				<MotionSurface
+					noContainer
+					drag
+					dragConstraints={dragConstraints}
+					spacing="xs"
+					className="flex items-center rounded-full gap-2"
+					dragControls={dragControls}
+					dragListener={false}
+					ref={switcherRef}
 				>
 					<IconButton
+						aria-label="Drag to reposition"
+						onPointerDown={(event) => {
+							event.stopPropagation();
+							dragControls.start(event);
+						}}
+						onClick={(event) => event.stopPropagation()}
+						className="cursor-grab active:cursor-grabbing"
+						icon={<GripVertical />}
+						variant="text"
+					/>
+					<IconButton
 						disabled={activePreset === 0}
-						onClick={() => onChangePreset(activePreset - 1)}
+						onClick={(event) => {
+							event.stopPropagation();
+							onChangePreset(activePreset - 1);
+						}}
 						aria-label="Previous preset"
 						icon={<ChevronLeft />}
 						variant="text"
 					/>
-					<AnimatePresence mode="wait" custom={backwards}>
-						<motion.div
-							key={activePreset}
-							custom={backwards}
-							variants={presetLabelVariants}
-							initial="enter"
-							animate="center"
-							exit="exit"
-							transition={{ duration: 0.15 }}
-							className="grow text-center"
-						>
-							<Heading level="label" margin="none">
-								{currentPreset.label}
-							</Heading>
-						</motion.div>
-					</AnimatePresence>
+					<PopoverTrigger nativeButton={false} className={buttonVariants({ variant: "text" })}>
+						{currentPreset.label}
+					</PopoverTrigger>
 					<IconButton
 						icon={<ChevronRight />}
 						aria-label="Next preset"
 						disabled={activePreset + 1 === presets.length}
-						onClick={() => onChangePreset(activePreset + 1)}
+						onClick={(event) => {
+							event.stopPropagation();
+							onChangePreset(activePreset + 1);
+						}}
 						variant="text"
 					/>
-				</Popover.Trigger>
-				<Popover.Portal container={portalContainer ?? undefined} keepMounted>
-					<AnimatePresence>
-						{popoverOpen && (
-							<Popover.Positioner align="center" sideOffset={14}>
-								<Popover.Popup
-									className="max-w-sm min-w-3xs overflow-visible"
-									render={
-										<MotionSurface
-											noContainer
-											className="bg-surface/80 rounded-lg shadow-xl backdrop-blur-md"
-											initial={{ opacity: 0, scale: 0.96 }}
-											animate={{ opacity: 1, scale: 1 }}
-											exit={{ opacity: 0, scale: 0.96 }}
-											transition={{ type: "spring", duration: 0.5 }}
-										/>
-									}
-								>
-									<Popover.Arrow className="data-[side=bottom]:top-[-10px] data-[side=left]:right-[-15px] data-[side=left]:rotate-90 data-[side=right]:left-[-15px] data-[side=right]:rotate-270 data-[side=top]:bottom-[-10px] data-[side=top]:rotate-180">
-										<ArrowSvg />
-									</Popover.Arrow>
-									<AnimatePresence mode="wait" custom={backwards}>
-										<motion.div
-											key={activePreset}
-											custom={backwards}
-											variants={presetContentVariants}
-											initial="enter"
-											animate="center"
-											exit="exit"
-											transition={{
-												x: { type: "spring", stiffness: 600, damping: 35 },
-												opacity: { duration: 0.15 },
-											}}
-										>
-											<Accordion.Root
-												multiple
-												value={accordionValue}
-												onValueChange={handleAccordionValueChange}
-												className="flex flex-col gap-4"
-											>
-												{hasHighlights && (
-													<Accordion.Item value={SECTION_ATTRIBUTES}>
-														<Accordion.Trigger
-															className={headingVariants({
-																level: "h4",
-																variant: "all-caps",
-																margin: "none",
-																className:
-																	"focusable flex w-full items-center gap-4 flex-1 text-left text-xs opacity-60 justify-between",
-															})}
-														>
-															Attributes
-															<ChevronDown className="opacity-60 transition-transform [[data-panel-open]>&]:rotate-180" />
-														</Accordion.Trigger>
-														<AnimatedPanel>
-															<RadioGroup
-																value={String(highlightIndex)}
-																onValueChange={(v) => onChangeHighlightIndex(Number(v))}
-																className="flex flex-col gap-2"
-															>
-																{highlightLabels.map((label, index) => {
-																	const radioId = `highlight-radio-${index}`;
-																	return (
-																		// `relative` anchors the hidden position-absolute
-																		// input emitted by base-ui's Radio. See
-																		// groupOptionVariants for details.
-																		<label
-																			key={index}
-																			htmlFor={radioId}
-																			className="relative flex cursor-pointer items-center gap-4 text-sm"
-																		>
-																			<Radio.Root
-																				id={radioId}
-																				value={String(index)}
-																				className="border-muted-foreground flex size-4 items-center justify-center rounded-full border"
-																			>
-																				<Radio.Indicator className="bg-primary size-2 rounded-full" />
-																			</Radio.Root>
-																			{label}
-																		</label>
-																	);
-																})}
-															</RadioGroup>
-														</AnimatedPanel>
-													</Accordion.Item>
-												)}
-
-												{hasEdges && (
-													<Accordion.Item value={SECTION_LINKS}>
-														<Accordion.Trigger
-															className={headingVariants({
-																level: "h4",
-																variant: "all-caps",
-																margin: "none",
-																className:
-																	"focusable flex w-full items-center gap-4 flex-1 text-left text-xs opacity-60 justify-between",
-															})}
-														>
-															Links
-															<ChevronDown className="opacity-60 transition-transform [[data-panel-open]>&]:rotate-180" />
-														</Accordion.Trigger>
-														<AnimatedPanel>
-															<div className="flex flex-col gap-2">
-																{edges.map((edge, index) => (
-																	<div key={index} className="flex items-center gap-4 text-sm">
-																		<EdgeSwatch color={edge.color} />
-																		{edge.label}
-																	</div>
-																))}
-															</div>
-														</AnimatedPanel>
-													</Accordion.Item>
-												)}
-
-												{hasGroups && (
-													<Accordion.Item value={SECTION_GROUPS}>
-														<Accordion.Trigger
-															className={headingVariants({
-																level: "h4",
-																variant: "all-caps",
-																margin: "none",
-																className:
-																	"focusable flex w-full items-center gap-4 flex-1 text-left text-xs opacity-60 justify-between",
-															})}
-														>
-															Groups
-															<ChevronDown className="opacity-60 transition-transform [[data-panel-open]>&]:rotate-180" />
-														</Accordion.Trigger>
-														<AnimatedPanel>
-															<div className="flex flex-col gap-2">
-																{categoricalOptions.map((option, index) => (
-																	<div key={index} className="flex items-center gap-4 text-sm">
-																		<span
-																			className="inline-block size-3 rounded-full"
-																			style={{
-																				backgroundColor: `var(--cat-${index + 1})`,
-																			}}
-																		/>
-																		<RenderMarkdown>{option.label}</RenderMarkdown>
-																	</div>
-																))}
-															</div>
-														</AnimatedPanel>
-													</Accordion.Item>
-												)}
-											</Accordion.Root>
-										</motion.div>
-									</AnimatePresence>
-								</Popover.Popup>
-							</Popover.Positioner>
+				</MotionSurface>
+				<PopoverContent align="center" sideOffset={14} anchor={switcherRef} className="min-w-2xs">
+					<Accordion multiple value={accordionValue} onValueChange={handleAccordionValueChange}>
+						{hasHighlights && (
+							<AccordionItem value={SECTION_ATTRIBUTES}>
+								<AccordionHeader>
+									<AccordionTrigger>Attributes</AccordionTrigger>
+								</AccordionHeader>
+								<AccordionPanel>
+									<RadioGroup
+										value={String(highlightIndex)}
+										onValueChange={(v) => onChangeHighlightIndex(Number(v))}
+										className="flex flex-col gap-2"
+									>
+										{highlightLabels.map((label, index) => {
+											const radioId = `highlight-radio-${index}`;
+											return <RadioItem key={index} id={radioId} value={String(index)} label={label} />;
+										})}
+									</RadioGroup>
+								</AccordionPanel>
+							</AccordionItem>
 						)}
-					</AnimatePresence>
-				</Popover.Portal>
-			</Popover.Root>
-		</LayoutGroup>
-	);
-}
 
-function ArrowSvg(props: React.ComponentProps<"svg">) {
-	return (
-		<svg width="20" height="12" viewBox="0 0 30 15" fill="none" aria-hidden="true" {...props}>
-			<path d="M0 15 L12 3 Q15 0 18 3 L30 15Z" className="fill-surface/80 backdrop-blur-md" />
-		</svg>
+						{hasEdges && (
+							<AccordionItem value={SECTION_LINKS}>
+								<AccordionHeader>
+									<AccordionTrigger>Links</AccordionTrigger>
+								</AccordionHeader>
+								<AccordionPanel>
+									<div className="flex flex-col gap-2">
+										{edges.map((edge, index) => (
+											<div key={index} className="flex items-center gap-4 text-base">
+												<EdgeSwatch color={edge.color} />
+												{edge.label}
+											</div>
+										))}
+									</div>
+								</AccordionPanel>
+							</AccordionItem>
+						)}
+
+						{hasGroups && (
+							<AccordionItem value={SECTION_GROUPS}>
+								<AccordionHeader>
+									<AccordionTrigger>Groups</AccordionTrigger>
+								</AccordionHeader>
+								<AccordionPanel>
+									<div className="flex flex-col gap-2">
+										{categoricalOptions.map((option, index) => (
+											<div key={index} className="flex items-center gap-4 text-base">
+												<span
+													className="inline-block size-3 rounded-full"
+													style={{
+														backgroundColor: `var(--cat-${index + 1})`,
+													}}
+												/>
+												<RenderMarkdown>{option.label}</RenderMarkdown>
+											</div>
+										))}
+									</div>
+								</AccordionPanel>
+							</AccordionItem>
+						)}
+					</Accordion>
+				</PopoverContent>
+			</Popover>
+		</LayoutGroup>
 	);
 }
 
