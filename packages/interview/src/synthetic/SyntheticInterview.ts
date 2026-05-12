@@ -258,13 +258,28 @@ export class SyntheticInterview {
 			throw new Error(`Node type "${nodeTypeId}" not found`);
 		}
 
-		const varId = opts?.id ?? this.nextId("var");
 		const type = this.resolveVariableType(opts);
+		const name = opts?.name ?? this.defaultVariableName(type);
+
+		// Dedupe by name. addNodeType seeds a "name" text variable for faker-driven
+		// initial nodes; callers re-declaring it (or any other name) get the existing
+		// handle so external-data UUID replacement and protocol references stay aligned.
+		const existing = this.findVariableByName(nodeType.variables, name);
+		if (existing) {
+			if (existing.type !== type) {
+				throw new Error(
+					`Variable "${name}" already exists on node type "${nodeTypeId}" with type "${existing.type}"; cannot redeclare as "${type}".`,
+				);
+			}
+			return { id: existing.id };
+		}
+
+		const varId = opts?.id ?? this.nextId("var");
 		const options = this.resolveOptions(type, opts?.options);
 
 		const entry: VariableEntry = {
 			id: varId,
-			name: opts?.name ?? this.defaultVariableName(type),
+			name,
 			type,
 			component: opts?.component,
 			options,
@@ -281,13 +296,25 @@ export class SyntheticInterview {
 			throw new Error(`Edge type "${edgeTypeId}" not found`);
 		}
 
-		const varId = opts?.id ?? this.nextId("var");
 		const type = this.resolveVariableType(opts);
+		const name = opts?.name ?? this.defaultVariableName(type);
+
+		const existing = this.findVariableByName(edgeType.variables, name);
+		if (existing) {
+			if (existing.type !== type) {
+				throw new Error(
+					`Variable "${name}" already exists on edge type "${edgeTypeId}" with type "${existing.type}"; cannot redeclare as "${type}".`,
+				);
+			}
+			return { id: existing.id };
+		}
+
+		const varId = opts?.id ?? this.nextId("var");
 		const options = this.resolveOptions(type, opts?.options);
 
 		const entry: VariableEntry = {
 			id: varId,
-			name: opts?.name ?? this.defaultVariableName(type),
+			name,
 			type,
 			component: opts?.component,
 			options,
@@ -296,6 +323,13 @@ export class SyntheticInterview {
 
 		edgeType.variables.set(varId, entry);
 		return { id: varId };
+	}
+
+	private findVariableByName(variables: Map<string, VariableEntry>, name: string): VariableEntry | undefined {
+		for (const entry of variables.values()) {
+			if (entry.name === name) return entry;
+		}
+		return undefined;
 	}
 
 	addEgoVariable(opts?: AddVariableInput): VariableRef {
