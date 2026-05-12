@@ -48,4 +48,5 @@ docker run --rm \
     && corepack enable \
     && pnpm install --filter '@codaco/interview...' --frozen-lockfile \
     && pnpm turbo build --filter @codaco/interview \
+    && pnpm --filter @codaco/interview exec vite build --config e2e/host/vite.config.ts \
     && pnpm --filter @codaco/interview exec playwright test --config=e2e/playwright.config.ts $*"

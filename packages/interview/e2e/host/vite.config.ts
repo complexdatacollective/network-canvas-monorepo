@@ -8,6 +8,7 @@ export default defineConfig({
 	root: __dirname,
 	plugins: [react(), tailwindcss()],
 	server: { port: 4101, strictPort: true },
+	preview: { port: 4101, strictPort: true },
 	define: {
 		__PACKAGE_VERSION__: JSON.stringify(pkg.version),
 	},

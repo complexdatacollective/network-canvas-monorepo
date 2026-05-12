@@ -30,7 +30,7 @@
 		"test": "vitest run",
 		"test:e2e": "./e2e/scripts/run.sh",
 		"test:e2e:update-snapshots": "./e2e/scripts/run.sh --update-snapshots",
-		"test:e2e:headed": "pnpm turbo build --filter @codaco/interview && playwright test --config e2e/playwright.config.ts --headed",
+		"test:e2e:headed": "pnpm turbo build --filter @codaco/interview && pnpm exec vite build --config e2e/host/vite.config.ts && playwright test --config e2e/playwright.config.ts --headed",
 		"dev:host": "tsx e2e/scripts/dev-host.ts",
 		"storybook": "storybook dev -p 6006",
 		"build-storybook": "storybook build",

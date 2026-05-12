@@ -37,10 +37,17 @@ export default defineConfig({
 
 	webServer: [
 		{
-			command: "pnpm --filter @codaco/interview exec vite --config e2e/host/vite.config.ts",
+			// Production preview, not the dev server. The dev server's optimizeDeps
+			// re-bundles when it discovers a new @base-ui/react subpath at runtime
+			// (e.g. the success toast that surfaces only after addNode), which forces
+			// a full page reload and wipes the Shell's Redux state mid-test —
+			// manifested as a stage-2-final.png mismatch on the SILOS Self-Nomination
+			// test. The host bundle is built upstream (run.sh in Docker, or
+			// test:e2e:headed locally) so this command assumes e2e/host/dist/ exists.
+			command: "pnpm --filter @codaco/interview exec vite preview --config e2e/host/vite.config.ts",
 			port: 4101,
 			reuseExistingServer: !process.env.CI,
-			timeout: 60_000,
+			timeout: 30_000,
 		},
 		{
 			command: "pnpm --filter @codaco/interview exec tsx e2e/helpers/assetServer.ts",
