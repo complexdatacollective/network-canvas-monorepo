@@ -209,36 +209,37 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 					<AnimatePresence mode="wait">
 						<motion.div
 							key={id}
-							className="catbin-circles size-full content-center data-expanded:content-start"
-							data-count={circleCount}
+							className="catbin-circles size-full"
 							data-expanded={hasExpanded || undefined}
 							variants={binsContainerVariants}
 							initial="initial"
 							animate="animate"
 							exit="exit"
 						>
-							{bins.map((bin, index) => {
-								const isThisExpanded = index === expandedBinIndex;
-								// 1-based ordinal among in-flow (non-expanded) bins.
-								// Drives CSS ragged-row centring via [data-flow-index="N"].
-								const flowOrdinal = isThisExpanded
-									? undefined
-									: expandedBinIndex !== null && expandedBinIndex < index
-										? index
-										: index + 1;
-								return (
-									<CategoricalBinItem
-										key={index}
-										label={bin.label}
-										isExpanded={isThisExpanded}
-										onToggleExpand={() => setExpandedBinIndex(index)}
-										catColor={getCatColor(index)}
-										onDropNode={(node) => handleDropNode(node, index)}
-										nodes={bin.nodes}
-										flowOrdinal={flowOrdinal}
-									/>
-								);
-							})}
+							<div className="catbin-inflow" data-count={circleCount}>
+								{bins.map((bin, index) => {
+									const isThisExpanded = index === expandedBinIndex;
+									// 1-based ordinal among in-flow (non-expanded) bins.
+									// Drives CSS ragged-row centring via [data-flow-index="N"].
+									const flowOrdinal = isThisExpanded
+										? undefined
+										: expandedBinIndex !== null && expandedBinIndex < index
+											? index
+											: index + 1;
+									return (
+										<CategoricalBinItem
+											key={index}
+											label={bin.label}
+											isExpanded={isThisExpanded}
+											onToggleExpand={() => setExpandedBinIndex(index)}
+											catColor={getCatColor(index)}
+											onDropNode={(node) => handleDropNode(node, index)}
+											nodes={bin.nodes}
+											flowOrdinal={flowOrdinal}
+										/>
+									);
+								})}
+							</div>
 						</motion.div>
 					</AnimatePresence>
 				</div>
