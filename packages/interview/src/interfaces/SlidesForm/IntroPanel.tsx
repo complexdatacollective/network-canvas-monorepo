@@ -1,7 +1,7 @@
 "use client";
 
 import Surface from "@codaco/fresco-ui/layout/Surface";
-import { RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
+import { ALLOWED_MARKDOWN_SECTION_TAGS, RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import { useEffect } from "react";
 import useBeforeNext from "~/hooks/useBeforeNext";
@@ -37,9 +37,7 @@ export default function IntroPanel({ title, text, onDismiss }: IntroPanelProps) 
 				<Heading level="h1" className="text-center">
 					{title}
 				</Heading>
-				<span>
-					<RenderMarkdown>{text}</RenderMarkdown>
-				</span>
+				<RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>{text}</RenderMarkdown>
 			</Surface>
 		</div>
 	);

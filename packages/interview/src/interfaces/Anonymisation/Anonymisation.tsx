@@ -6,7 +6,7 @@ import { useFormMeta } from "@codaco/fresco-ui/form/hooks/useFormState";
 import SubmitButton from "@codaco/fresco-ui/form/SubmitButton";
 import FormStoreProvider from "@codaco/fresco-ui/form/store/formStoreProvider";
 import Surface, { MotionSurface } from "@codaco/fresco-ui/layout/Surface";
-import { RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
+import { ALLOWED_MARKDOWN_SECTION_TAGS, RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
 import { ScrollArea } from "@codaco/fresco-ui/ScrollArea";
 import Heading from "@codaco/fresco-ui/typography/Heading";
 import { ArrowRight } from "lucide-react";
@@ -88,7 +88,7 @@ function AnonymisationInner(props: AnonymisationProps) {
 						}}
 					>
 						<Heading level="h1">{explanationText.title}</Heading>
-						<RenderMarkdown>{explanationText.body}</RenderMarkdown>
+						<RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>{explanationText.body}</RenderMarkdown>
 
 						<AnimatePresence mode="popLayout">
 							{passphrase ? (
