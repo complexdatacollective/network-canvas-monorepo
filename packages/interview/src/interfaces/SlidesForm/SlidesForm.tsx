@@ -195,7 +195,8 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(function Sl
 				</div>
 				<Surface noContainer className="tablet:min-w-lg max-w-2xl shrink-0">
 					<FormWithoutProvider onSubmit={handleSubmit} className="[&_.form-field-container]:break-inside-avoid">
-						{fieldComponents}
+						{/* Wrap fields so the last field's :last-child match isn't broken by the hidden submit button. */}
+						<div>{fieldComponents}</div>
 						{submitButton}
 					</FormWithoutProvider>
 				</Surface>
