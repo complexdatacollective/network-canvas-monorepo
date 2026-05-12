@@ -29,7 +29,7 @@ export const headingVariants = cva({
 		variant: "default",
 		margin: "default",
 	},
-	compoundVariants: [{ level: "h4", variant: "all-caps", className: "text-base font-black" }],
+	compoundVariants: [{ level: "h4", variant: "all-caps", className: "text-sm font-black" }],
 });
 
 const levelToTagName = {
