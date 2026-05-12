@@ -96,8 +96,8 @@
     --surface-2-contrast: var(--text);
     --surface-3: oklch(from var(--background) calc(l + 0.16) c h);
     --surface-3-contrast: var(--text);
-    --surface-popover: oklch(var(--white));
-    --surface-popover-contrast: var(--background);
+    --surface-popover: var(--surface);
+    --surface-popover-contrast: var(--surface-contrast);
 
     --destructive: oklch(var(--neon-coral));
     --destructive-contrast: oklch(var(--white));
