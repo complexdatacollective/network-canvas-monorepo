@@ -111,6 +111,7 @@ export class InterviewFixture {
 				});
 				window.scrollTo(0, document.documentElement.scrollHeight);
 			});
+			await this.waitForMotionCommit();
 
 			const prefix = this.snapshotPrefix ? `${this.snapshotPrefix}-` : "";
 			await this.capture(`${prefix}stage-${step}-final`);
@@ -197,6 +198,26 @@ export class InterviewFixture {
 		return match?.[1] ?? null;
 	}
 
+	/**
+	 * Wait for motion to commit its initial-mount animation.
+	 *
+	 * motion's `MotionConfig skipAnimations` zero-durations transitions but does
+	 * NOT change what React commits on first render — components mount with
+	 * their `initial` variant (e.g. `opacity: 0`) and only flip to `animate` in
+	 * a `useEffect` that fires AFTER the first paint. Playwright's stable-frame
+	 * heuristic can latch onto that brief initial-variant paint and capture a
+	 * pre-animation screenshot (most visibly: CategoricalBin bins inside an
+	 * `<AnimatePresence>` rendering at `opacity: 0`).
+	 *
+	 * Two rAFs is enough: the first lets the `useEffect` fire and commit the
+	 * `animate` values, the second lets the resulting paint complete. ~32ms.
+	 */
+	private async waitForMotionCommit(): Promise<void> {
+		await this.page.evaluate(
+			() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+		);
+	}
+
 	private async waitForStageLoad(): Promise<void> {
 		const mainLocator = this.page.locator("main[data-theme-interview]");
 		const currentStep = this.getCurrentStep();
@@ -209,6 +230,7 @@ export class InterviewFixture {
 			if (currentStep !== null) {
 				await this.page.locator(`[data-stage-step="${currentStep}"]`).waitFor({ state: "attached", timeout: 5_000 });
 			}
+			await this.waitForMotionCommit();
 		} catch (error) {
 			const url = this.page.url();
 			const title = await this.page.title();

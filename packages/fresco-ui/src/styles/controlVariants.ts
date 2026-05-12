@@ -98,7 +98,6 @@ export const controlVariants = cva({
 export const textSizeVariants = cva({
 	variants: {
 		size: {
-			xs: "text-xs",
 			sm: "text-sm",
 			md: "text-base",
 			lg: "text-lg",
@@ -114,7 +113,6 @@ export const textSizeVariants = cva({
 export const heightVariants = cva({
 	variants: {
 		size: {
-			xs: "h-8",
 			sm: "h-10",
 			md: "h-12",
 			lg: "h-16",
