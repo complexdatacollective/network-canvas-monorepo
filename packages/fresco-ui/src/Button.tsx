@@ -48,7 +48,6 @@ const buttonSpecificVariants = cva({
 			success: "focus:outline-success [--component-bg:var(--success-contrast)] [--component-text:var(--success)]",
 			accent: "focus:outline-accent [--component-bg:var(--accent-contrast)] [--component-text:var(--accent)]",
 		},
-		hasIcon: { true: "gap-2" },
 		iconPosition: {
 			left: "flex-row",
 			right: "flex-row-reverse",
@@ -57,7 +56,6 @@ const buttonSpecificVariants = cva({
 	defaultVariants: {
 		variant: "default",
 		color: "default",
-		hasIcon: false,
 		iconPosition: "left",
 	},
 	compoundVariants: [
@@ -133,7 +131,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 					variant,
 					color,
 					size,
-					hasIcon: !!icon,
 					iconPosition: iconPosition,
 					className,
 				})}
@@ -148,7 +145,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 Button.displayName = "Button";
 
-type IconButtonProps = Omit<ButtonProps, "icon" | "children" | "hasIcon" | "iconPosition" | "color"> & {
+type IconButtonProps = Omit<ButtonProps, "icon" | "children" | "iconPosition" | "color"> & {
 	icon: React.ReactNode;
 	"aria-label": string;
 	color?: "default" | "dynamic" | "primary" | "secondary" | "warning" | "info" | "destructive" | "success" | "accent";

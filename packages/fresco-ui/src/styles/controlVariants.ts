@@ -89,7 +89,7 @@ export const controlVariants = cva({
 		"flex min-w-fit items-center justify-between",
 		"overflow-hidden",
 		"truncate text-nowrap",
-		"rounded",
+		"rounded-2xl",
 		"border-2",
 	),
 });
@@ -98,6 +98,7 @@ export const controlVariants = cva({
 export const textSizeVariants = cva({
 	variants: {
 		size: {
+			xs: "text-xs",
 			sm: "text-sm",
 			md: "text-base",
 			lg: "text-lg",
@@ -113,7 +114,8 @@ export const textSizeVariants = cva({
 export const heightVariants = cva({
 	variants: {
 		size: {
-			sm: "h-8",
+			xs: "h-8",
+			sm: "h-10",
 			md: "h-12",
 			lg: "h-16",
 			xl: "h-20",
@@ -137,10 +139,26 @@ export const inputControlVariants = cva({
 // Spacing between elements within a wrapper, such as icons and text
 export const inlineSpacingVariants = cva({
 	base: "gap-2",
+	variants: {
+		size: {
+			sm: "gap-2",
+			md: "gap-2",
+			lg: "gap-3",
+			xl: "gap-4",
+		},
+	},
 });
 
 export const wrapperPaddingVariants = cva({
-	base: "tablet-landscape:px-6 px-4",
+	base: "px-6",
+	variants: {
+		size: {
+			sm: "",
+			md: "",
+			lg: "px-8",
+			xl: "px-10",
+		},
+	},
 });
 
 // Spacing for groups of controls.
