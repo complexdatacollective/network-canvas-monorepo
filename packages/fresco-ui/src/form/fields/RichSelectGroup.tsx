@@ -188,7 +188,9 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
 		const firstEnabledIndex = options.findIndex((opt) => !(disabled ?? opt.disabled));
 		const targetIndex = selectedIndex >= 0 ? selectedIndex : firstEnabledIndex;
 		if (targetIndex >= 0) {
-			optionRefs.current[targetIndex]?.focus();
+			// preventScroll: avoid browser scroll-into-view fighting parent enter animations
+			// (e.g. MotionSurface sliding up from translateY 120%).
+			optionRefs.current[targetIndex]?.focus({ preventScroll: true });
 		}
 		// Focus the listbox only when the field first mounts with autoFocus enabled.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
