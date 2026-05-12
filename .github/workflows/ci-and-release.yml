@@ -154,6 +154,11 @@ jobs:
     steps:
     - name: Check out the code
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      with:
+        # Don't leave GITHUB_TOKEN in the local git config after checkout.
+        # changesets/action reads GITHUB_TOKEN from its env block at line ~189;
+        # nothing else in this job needs the token in git config.
+        persist-credentials: false
     - name: Install pnpm
       uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5
     - name: Set up Node.js
