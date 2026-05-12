@@ -12,6 +12,11 @@ export default defineConfig({
 		__PACKAGE_VERSION__: JSON.stringify(pkg.version),
 	},
 	resolve: {
+		// Resolve `~/*` paths declared in packages/interview/tsconfig.json.
+		// The host loads interview source files via the @codaco/interview alias
+		// below, so every `~/*` import inside that source needs path-mapping
+		// context — without this they fail to resolve at pre-transform.
+		tsconfigPaths: true,
 		// Regex aliases anchor the bare specifier and the styles.css subpath
 		// independently. A plain string alias on `@codaco/interview` would
 		// prefix-match subpaths and rewrite `@codaco/interview/styles.css` to
