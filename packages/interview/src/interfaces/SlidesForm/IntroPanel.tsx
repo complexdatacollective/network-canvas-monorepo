@@ -3,34 +3,13 @@
 import Surface from "@codaco/fresco-ui/layout/Surface";
 import { ALLOWED_MARKDOWN_SECTION_TAGS, RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
 import Heading from "@codaco/fresco-ui/typography/Heading";
-import { useEffect } from "react";
-import useBeforeNext from "~/hooks/useBeforeNext";
-import useReadyForNextStage from "~/hooks/useReadyForNextStage";
-import type { BeforeNextFunction } from "~/types";
 
 type IntroPanelProps = {
 	title: string;
 	text: string;
-	onDismiss: () => void;
 };
 
-export default function IntroPanel({ title, text, onDismiss }: IntroPanelProps) {
-	const { updateReady } = useReadyForNextStage();
-
-	useEffect(() => {
-		updateReady(true);
-	}, [updateReady]);
-
-	const beforeNext: BeforeNextFunction = (direction) => {
-		if (direction === "forwards") {
-			onDismiss();
-			return false;
-		}
-		return true;
-	};
-
-	useBeforeNext(beforeNext);
-
+export default function IntroPanel({ title, text }: IntroPanelProps) {
 	return (
 		<div className="flex size-full items-center justify-center">
 			<Surface className="h-auto max-h-[75%] shadow-xl" maxWidth="3xl">

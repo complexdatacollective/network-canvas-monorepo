@@ -161,6 +161,19 @@ export class InterviewFixture {
 	}
 
 	/**
+	 * Click next to dismiss an intro panel and wait for the form section to
+	 * finish entering. Use on stages whose first interaction is a form field
+	 * immediately after dismissing the intro (AlterForm, AlterEdgeForm) — the
+	 * intro→form swap is animated and Playwright otherwise races the input mount.
+	 */
+	async dismissIntro(): Promise<void> {
+		await this.nextButton.click();
+		await this.page
+			.locator('[data-stage-section="form"][data-stage-ready="true"]')
+			.waitFor({ state: "visible", timeout: 5_000 });
+	}
+
+	/**
 	 * Complete the FinishSession stage: click Finish, confirm the dialog.
 	 *
 	 * Note: in the standalone host the onFinish handler is a no-op — no URL

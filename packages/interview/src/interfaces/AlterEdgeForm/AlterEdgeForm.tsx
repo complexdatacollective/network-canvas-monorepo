@@ -8,8 +8,11 @@ import {
 	type NcNode,
 } from "@codaco/shared-consts";
 import { find } from "es-toolkit/compat";
+import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Node from "~/components/ConnectedNode";
+import useBeforeNext from "~/hooks/useBeforeNext";
+import useReadyForNextStage from "~/hooks/useReadyForNextStage";
 import { useStageSelector } from "~/hooks/useStageSelector";
 import { getNetworkEdgesForType, getNetworkNodes, makeGetEdgeColor } from "~/selectors/session";
 import { updateEdge } from "~/store/modules/session";
@@ -36,11 +39,14 @@ function EdgeHeader({ item }: { item: NcEdge }) {
 	);
 }
 
+type Mode = "intro" | "form";
+
 const AlterEdgeForm = (props: StageProps<"AlterEdgeForm">) => {
 	const { stage } = props;
 	const items = useStageSelector(getNetworkEdgesForType);
 	const dispatch = useAppDispatch();
-	const [showIntro, setShowIntro] = useState(true);
+	const [mode, setMode] = useState<Mode>("intro");
+	const [isFormReady, setIsFormReady] = useState(false);
 
 	const handleUpdateItem = useCallback(
 		(id: string, newAttributeData: NcEdge[EntityAttributesProperty]) => {
@@ -61,35 +67,67 @@ const AlterEdgeForm = (props: StageProps<"AlterEdgeForm">) => {
 
 	const { moveForward } = props.getNavigationHelpers();
 
-	// If the intro panel is dismissed and there are no items, skip to the next stage.
-	useEffect(() => {
-		if (showIntro === false && items.length === 0) {
-			moveForward();
+	useBeforeNext((direction) => {
+		if (mode === "intro" && direction === "forwards") {
+			setMode("form");
+			return false;
 		}
-	}, [showIntro, items.length, moveForward]);
+		return true;
+	});
 
-	if (showIntro) {
-		return (
-			<div className="interface">
-				<IntroPanel
-					title={stage.introductionPanel.title}
-					text={stage.introductionPanel.text}
-					onDismiss={() => setShowIntro(false)}
-				/>
-			</div>
-		);
-	}
+	const { updateReady } = useReadyForNextStage();
+	useEffect(() => {
+		if (mode === "intro") updateReady(true);
+	}, [mode, updateReady]);
+
+	const shouldSkipEmpty = mode === "form" && items.length === 0;
+	useEffect(() => {
+		if (shouldSkipEmpty) moveForward();
+	}, [shouldSkipEmpty, moveForward]);
+
+	if (shouldSkipEmpty) return null;
 
 	return (
-		<SlidesForm
-			updateItem={handleUpdateItem}
-			items={items}
-			subject={stage.subject}
-			form={stage.form}
-			onNavigateBack={() => setShowIntro(true)}
-			renderHeader={renderHeader}
-			form_kind="alter_edge"
-		/>
+		<div className="interface">
+			<AnimatePresence mode="wait" initial={false}>
+				{mode === "intro" ? (
+					<motion.div
+						key="intro"
+						className="size-full"
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						transition={{ duration: 0.2 }}
+						data-stage-section="intro"
+						data-stage-ready="true"
+					>
+						<IntroPanel title={stage.introductionPanel.title} text={stage.introductionPanel.text} />
+					</motion.div>
+				) : (
+					<motion.div
+						key="form"
+						className="size-full"
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						transition={{ duration: 0.2 }}
+						onAnimationComplete={() => setIsFormReady(true)}
+						data-stage-section="form"
+						data-stage-ready={isFormReady ? "true" : undefined}
+					>
+						<SlidesForm
+							updateItem={handleUpdateItem}
+							items={items}
+							subject={stage.subject}
+							form={stage.form}
+							onNavigateBack={() => setMode("intro")}
+							renderHeader={renderHeader}
+							form_kind="alter_edge"
+						/>
+					</motion.div>
+				)}
+			</AnimatePresence>
+		</div>
 	);
 };
 

@@ -820,8 +820,7 @@ test.describe("SILOS Protocol", () => {
 
 		test("Stage 24: Anal Sex Counts (AlterForm)", async ({ interview, stage }) => {
 			await interview.captureInitial();
-			// AlterForm with intro panel — dismiss it
-			await interview.nextButton.click();
+			await interview.dismissIntro();
 
 			// Slide 1 (first sex partner with anal sex — Bob or Evan)
 			// 1. Number of times anal sex (Number)
@@ -842,8 +841,7 @@ test.describe("SILOS Protocol", () => {
 
 		test("Stage 25: Sex Partner Form (AlterForm)", async ({ interview, stage }) => {
 			await interview.captureInitial();
-			// Dismiss intro panel
-			await interview.nextButton.click();
+			await interview.dismissIntro();
 
 			// Slide 1 (first sex partner with anal sex)
 			// 1. First day of sex (RelativeDatePicker)
@@ -930,8 +928,7 @@ test.describe("SILOS Protocol", () => {
 
 		test("Stage 28: Alter Substances (AlterForm)", async ({ interview, stage }) => {
 			await interview.captureInitial();
-			// Dismiss intro panel
-			await interview.nextButton.click();
+			await interview.dismissIntro();
 
 			// Slide 1 — select substances for first anal sex partner (CheckboxGroup)
 			await stage.form.selectCheckbox("d76f1663-f491-4aa2-90ee-806e186652b0", "Marijuana");
@@ -976,8 +973,7 @@ test.describe("SILOS Protocol", () => {
 		test("Stage 30: Name Place Met (AlterForm)", async ({ interview, stage }) => {
 			await interview.captureInitial();
 			// Only shows partners who met at a physical place
-			// Dismiss intro panel
-			await interview.nextButton.click();
+			await interview.dismissIntro();
 
 			// Fill the venue name (Text)
 			await stage.form.fillText("052fbe4e-a85e-4dc8-b632-43d3f9462ec2", "The Bar");
@@ -988,8 +984,7 @@ test.describe("SILOS Protocol", () => {
 		test("Stage 31: Name App Met (AlterForm)", async ({ interview, stage }) => {
 			await interview.captureInitial();
 			// Only shows partners who met online
-			// Dismiss intro panel
-			await interview.nextButton.click();
+			await interview.dismissIntro();
 
 			// Fill the app name (Text)
 			await stage.form.fillText("b5cd7347-5dce-4a67-8f2b-11dd2b6ead0b", "Grindr");
