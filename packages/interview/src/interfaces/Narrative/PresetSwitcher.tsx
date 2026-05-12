@@ -15,7 +15,7 @@ import type { Stage } from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
 import { ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
 import { LayoutGroup, useDragControls } from "motion/react";
-import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type RefObject, useCallback, useMemo, useRef, useState } from "react";
 import { useStageSelector } from "~/hooks/useStageSelector";
 import { getSubjectType } from "~/selectors/session";
 import { getCodebook } from "~/store/modules/protocol";
@@ -41,18 +41,6 @@ type PresetSwitcherProps = {
 	onChangeHighlightIndex: (index: number) => void;
 	onToggleHighlighting: () => void;
 	dragConstraints: RefObject<HTMLElement | null>;
-};
-
-const presetLabelVariants = {
-	enter: (backwards: boolean) => ({ y: backwards ? -8 : 8, opacity: 0 }),
-	center: { y: 0, opacity: 1 },
-	exit: (backwards: boolean) => ({ y: backwards ? 8 : -8, opacity: 0 }),
-};
-
-const presetContentVariants = {
-	enter: (backwards: boolean) => ({ x: backwards ? -20 : 20, opacity: 0 }),
-	center: { x: 0, opacity: 1 },
-	exit: (backwards: boolean) => ({ x: backwards ? 20 : -20, opacity: 0 }),
 };
 
 export default function PresetSwitcher({
@@ -132,14 +120,7 @@ export default function PresetSwitcher({
 	const [popoverOpen, setPopoverOpen] = useState(true);
 	const dragControls = useDragControls();
 
-	const prevPresetRef = useRef(activePreset);
-	const backwards = activePreset < prevPresetRef.current;
-
 	const switcherRef = useRef<HTMLDivElement>(null);
-
-	useEffect(() => {
-		prevPresetRef.current = activePreset;
-	}, [activePreset]);
 
 	if (!currentPreset) return null;
 
