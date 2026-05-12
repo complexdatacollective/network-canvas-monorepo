@@ -211,7 +211,13 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 	return (
 		<div data-testid="categorical-bin-interface" className="interface overflow-hidden pb-0">
 			<Prompts />
-			<div className="flex w-full min-h-0 flex-1 flex-col items-center gap-2">
+			{/*
+			 * Reserve fixed bottom space (pb-52) so the bins area stays the same
+			 * height regardless of NodeDrawer state. The drawer floats over this
+			 * reserved area, so its expand/collapse never resizes catbin-outer and
+			 * never triggers a cols recompute mid-stage.
+			 */}
+			<div className="flex w-full min-h-0 flex-1 flex-col items-center pb-52">
 				<div
 					className="catbin-outer min-h-0 w-full flex-1"
 					ref={containerRef}
@@ -250,8 +256,8 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 						</AnimatePresence>
 					)}
 				</div>
-				<NodeDrawer nodes={uncategorisedNodes} itemType="NODE" />
 			</div>
+			<NodeDrawer nodes={uncategorisedNodes} itemType="NODE" floating />
 		</div>
 	);
 };
