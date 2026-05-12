@@ -180,8 +180,12 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(function Sl
 	}));
 
 	return (
-		<ScrollArea ref={scrollAreaRef} className="size-full" viewportClassName="flex flex-col gap-4 items-center h-full">
-			<div className="phone-landscape:py-4 tablet-landscape:py-6 phone-landscape:mx-4 tablet-landscape:mx-6 mx-2 my-auto flex flex-col gap-4 py-2">
+		<ScrollArea
+			ref={scrollAreaRef}
+			className="size-full"
+			viewportClassName="flex flex-col gap-4 items-center size-full p-4"
+		>
+			<div className="my-auto flex flex-col gap-4 w-full items-center">
 				<div className="sticky top-0 z-10 shrink-0">
 					<motion.div
 						className="flex justify-center"
@@ -193,7 +197,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(function Sl
 						{header}
 					</motion.div>
 				</div>
-				<Surface noContainer className="tablet:min-w-lg max-w-2xl shrink-0">
+				<Surface noContainer className="w-full tablet-portrait:min-w-lg max-w-2xl shrink-0" spacing="lg">
 					<FormWithoutProvider onSubmit={handleSubmit} className="[&_.form-field-container]:break-inside-avoid">
 						{/* Wrap fields so the last field's :last-child match isn't broken by the hidden submit button. */}
 						<div>{fieldComponents}</div>

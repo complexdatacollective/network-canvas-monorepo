@@ -2,8 +2,6 @@
 
 import RichSelectGroupField, { type RichSelectOption } from "@codaco/fresco-ui/form/fields/RichSelectGroup";
 import { MotionSurface } from "@codaco/fresco-ui/layout/Surface";
-import { ALLOWED_MARKDOWN_SECTION_TAGS, RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
-import Heading from "@codaco/fresco-ui/typography/Heading";
 import { entityAttributesProperty, entityPrimaryKeyProperty } from "@codaco/shared-consts";
 import { get } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
@@ -22,16 +20,17 @@ import { getEdgeColorForType, getNetworkEdges, getNetworkNodesForType, getStageM
 import { getCodebook } from "~/store/modules/protocol";
 import {
 	addEdge,
-	type DyadCensusMetadataItem,
 	deleteEdge,
 	edgeExists,
 	updateEdge,
 	updateStageMetadata,
+	type DyadCensusMetadataItem,
 } from "~/store/modules/session";
 import { useAppDispatch } from "~/store/store";
 import type { StageProps } from "~/types";
 import type { VariableOptions, VariableOptionValue } from "~/utils/codebook";
 import { getNodePair, getStageMetadataResponse, isDyadCensusMetadata, matchEntry } from "../DyadCensus/helpers";
+import IntroPanel from "../SlidesForm/IntroPanel";
 
 const fadeVariants = {
 	initial: { opacity: 0, transition: { duration: 0.5 } },
@@ -292,22 +291,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 		<div className="interface">
 			<AnimatePresence initial={false} mode="wait">
 				{isIntroduction ? (
-					<MotionSurface
-						noContainer
-						className="w-full max-w-2xl grow-0"
-						variants={introVariants}
-						initial="initial"
-						exit="exit"
-						animate="animate"
-						key="intro"
-					>
-						<Heading level="h1" className="text-center">
-							{stage.introductionPanel.title}
-						</Heading>
-						<RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
-							{stage.introductionPanel.text}
-						</RenderMarkdown>
-					</MotionSurface>
+					<IntroPanel title={stage.introductionPanel.title} text={stage.introductionPanel.text} key="intro" />
 				) : (
 					<motion.div
 						key="content"

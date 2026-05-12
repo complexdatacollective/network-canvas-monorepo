@@ -89,9 +89,17 @@ export const controlVariants = cva({
 		"flex min-w-fit items-center justify-between",
 		"overflow-hidden",
 		"truncate text-nowrap",
-		"rounded-2xl",
+		"rounded",
 		"border-2",
 	),
+	variants: {
+		size: {
+			sm: "",
+			md: "",
+			lg: "rounded-lg",
+			xl: "rounded-xl",
+		},
+	},
 });
 
 // Text size variants - can be composed with other variants for consistent text scaling

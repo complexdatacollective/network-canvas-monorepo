@@ -169,7 +169,7 @@ const Information = ({ stage: { title, items } }: InformationProps) => {
 	return (
 		<ScrollArea className="m-0 size-full">
 			<div className="interface allow-text-selection mx-auto flex min-h-full max-w-[80ch] flex-col justify-center">
-				<Surface className="grow-0" noContainer>
+				<Surface className="grow-0" noContainer spacing="lg">
 					<Heading level="h1" className="text-center">
 						{title}
 					</Heading>

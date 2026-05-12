@@ -1,10 +1,10 @@
 import { Alert, AlertDescription } from "@codaco/fresco-ui/Alert";
 import Field from "@codaco/fresco-ui/form/Field/Field";
-import { FormWithoutProvider } from "@codaco/fresco-ui/form/Form";
 import PasswordField from "@codaco/fresco-ui/form/fields/PasswordField";
+import { FormWithoutProvider } from "@codaco/fresco-ui/form/Form";
 import { useFormMeta } from "@codaco/fresco-ui/form/hooks/useFormState";
-import SubmitButton from "@codaco/fresco-ui/form/SubmitButton";
 import FormStoreProvider from "@codaco/fresco-ui/form/store/formStoreProvider";
+import SubmitButton from "@codaco/fresco-ui/form/SubmitButton";
 import Surface, { MotionSurface } from "@codaco/fresco-ui/layout/Surface";
 import { ALLOWED_MARKDOWN_SECTION_TAGS, RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
 import { ScrollArea } from "@codaco/fresco-ui/ScrollArea";
@@ -70,6 +70,7 @@ function AnonymisationInner(props: AnonymisationProps) {
 				<div className="interface mx-auto min-h-full max-w-[80ch] flex-col">
 					<MotionSurface
 						noContainer
+						spacing="lg"
 						className="bg-surface/80 max-w-2xl backdrop-blur-xs"
 						initial={{
 							scale: 0.8,

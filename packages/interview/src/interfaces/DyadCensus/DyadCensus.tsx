@@ -1,7 +1,5 @@
 import BooleanField from "@codaco/fresco-ui/form/fields/Boolean";
 import { MotionSurface } from "@codaco/fresco-ui/layout/Surface";
-import { ALLOWED_MARKDOWN_SECTION_TAGS, RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
-import Heading from "@codaco/fresco-ui/typography/Heading";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useId, useRef, useState } from "react";
 import { useSelector } from "react-redux";
@@ -17,13 +15,14 @@ import { getNodePairs } from "~/selectors/dyad-census";
 import { getEdgeColorForType, getNetworkEdges, getNetworkNodesForType, getStageMetadata } from "~/selectors/session";
 import {
 	addEdge,
-	type DyadCensusMetadataItem,
 	deleteEdge,
 	edgeExists,
 	updateStageMetadata,
+	type DyadCensusMetadataItem,
 } from "~/store/modules/session";
 import { useAppDispatch } from "~/store/store";
 import type { StageProps } from "~/types";
+import IntroPanel from "../SlidesForm/IntroPanel";
 import { getNodePair, getStageMetadataResponse, isDyadCensusMetadata, matchEntry } from "./helpers";
 
 const choiceVariants = {
@@ -224,22 +223,7 @@ export default function DyadCensus(props: DyadCensusProps) {
 		<div className="interface">
 			<AnimatePresence initial={false} mode="wait">
 				{isIntroduction ? (
-					<MotionSurface
-						noContainer
-						className="w-full max-w-2xl grow-0"
-						variants={introVariants}
-						initial="initial"
-						exit="exit"
-						animate="animate"
-						key="intro"
-					>
-						<Heading level="h1" className="text-center">
-							{stage.introductionPanel.title}
-						</Heading>
-						<RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
-							{stage.introductionPanel.text}
-						</RenderMarkdown>
-					</MotionSurface>
+					<IntroPanel title={stage.introductionPanel.title} text={stage.introductionPanel.text} key="intro" />
 				) : (
 					<motion.div
 						key="content"
