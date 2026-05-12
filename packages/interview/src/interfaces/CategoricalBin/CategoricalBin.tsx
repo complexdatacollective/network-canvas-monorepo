@@ -22,7 +22,6 @@ import type { StageProps } from "~/types";
 import { getNodeLabelAttribute } from "~/utils/getNodeLabelAttribute";
 import CategoricalBinItem from "./components/CategoricalBinItem";
 import { useCategoricalBins } from "./useCategoricalBins";
-import { useCircleLayout } from "./useCircleLayout";
 
 type CategoricalBinStageProps = StageProps<"CategoricalBin">;
 
@@ -129,9 +128,6 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 	const hasExpanded = expandedBinIndex !== null;
 
 	const circleCount = hasExpanded ? bins.length - 1 : bins.length;
-	const { containerRef, cols, rows, isReady, pending } = useCircleLayout({
-		count: circleCount,
-	});
 
 	// Shrink the expanded panel as bin count grows so the remaining bins have room
 	const panelFraction = Math.max(0.25, 0.5 - 0.04 * Math.max(0, bins.length - 4));
@@ -211,53 +207,36 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 	return (
 		<div data-testid="categorical-bin-interface" className="interface overflow-hidden pb-0">
 			<Prompts />
-			{/*
-			 * Reserve fixed bottom space (pb-52) so the bins area stays the same
-			 * height regardless of NodeDrawer state. The drawer floats over this
-			 * reserved area, so its expand/collapse never resizes catbin-outer and
-			 * never triggers a cols recompute mid-stage.
-			 */}
-			<div className="flex w-full min-h-0 flex-1 flex-col items-center pb-52">
-				<div
-					className="catbin-outer min-h-0 w-full flex-1"
-					ref={containerRef}
-					data-cb-layout-pending={pending || undefined}
-				>
-					{isReady && (
-						<AnimatePresence mode="wait">
-							<motion.div
-								key={id}
-								className="catbin-circles grid size-full content-center justify-center justify-items-center gap-4 data-expanded:content-start"
-								data-expanded={hasExpanded || undefined}
-								style={
-									{
-										"--catbin-panel-fraction": panelFraction,
-										gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-									} as React.CSSProperties
-								}
-								variants={binsContainerVariants}
-								initial="initial"
-								animate="animate"
-								exit="exit"
-							>
-								{bins.map((bin, index) => (
-									<CategoricalBinItem
-										key={index}
-										label={bin.label}
-										isExpanded={index === expandedBinIndex}
-										onToggleExpand={() => setExpandedBinIndex(index)}
-										catColor={getCatColor(index)}
-										onDropNode={(node) => handleDropNode(node, index)}
-										nodes={bin.nodes}
-										rows={rows}
-									/>
-								))}
-							</motion.div>
-						</AnimatePresence>
-					)}
+			<div className="flex w-full min-h-0 flex-1 flex-col items-center gap-2">
+				<div className="catbin-outer min-h-0 w-full flex-1">
+					<AnimatePresence mode="wait">
+						<motion.div
+							key={id}
+							className="catbin-circles size-full content-center data-expanded:content-start"
+							data-count={circleCount}
+							data-expanded={hasExpanded || undefined}
+							style={{ "--catbin-panel-fraction": panelFraction } as React.CSSProperties}
+							variants={binsContainerVariants}
+							initial="initial"
+							animate="animate"
+							exit="exit"
+						>
+							{bins.map((bin, index) => (
+								<CategoricalBinItem
+									key={index}
+									label={bin.label}
+									isExpanded={index === expandedBinIndex}
+									onToggleExpand={() => setExpandedBinIndex(index)}
+									catColor={getCatColor(index)}
+									onDropNode={(node) => handleDropNode(node, index)}
+									nodes={bin.nodes}
+								/>
+							))}
+						</motion.div>
+					</AnimatePresence>
 				</div>
+				<NodeDrawer nodes={uncategorisedNodes} itemType="NODE" />
 			</div>
-			<NodeDrawer nodes={uncategorisedNodes} itemType="NODE" floating />
 		</div>
 	);
 };

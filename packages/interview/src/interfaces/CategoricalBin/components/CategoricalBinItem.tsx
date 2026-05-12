@@ -19,7 +19,6 @@ type CategoricalBinItemProps = {
 	onToggleExpand: () => void;
 	catColor: string | null;
 	onDropNode: (node: NcNode) => Promise<void>;
-	rows: number;
 	nodes: NcNode[];
 };
 
@@ -38,7 +37,7 @@ const binItemVariants = {
 type CategoricalBinPrompts = Extract<Stage, { type: "CategoricalBin" }>["prompts"][number];
 
 const CategoricalBinItem = (props: CategoricalBinItemProps) => {
-	const { label, isExpanded, onToggleExpand, catColor, onDropNode, rows, nodes } = props;
+	const { label, isExpanded, onToggleExpand, catColor, onDropNode, nodes } = props;
 
 	const {
 		prompt: { id: promptId },
@@ -150,15 +149,6 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
 			className={circleClasses}
 			style={{
 				...colorStyle,
-				// Width = min(grid track width, available height per row).
-				// 100cqb / rows = bin height if it filled vertically; the parent
-				// .catbin-outer is the named container so 100cqb resolves to its
-				// block size. min() picks the binding constraint, then aspect-ratio
-				// keeps the circle square. Sizing is fully CSS-driven so the
-				// rendered diameter is stable across runs even if container
-				// measurement drifts by a few pixels.
-				width: `min(100%, calc((100cqb - 1rem * ${rows - 1}) / ${rows}))`,
-				aspectRatio: "1 / 1",
 				borderRadius: "50%",
 			}}
 			onClick={(e) => {
