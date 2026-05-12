@@ -291,7 +291,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 							))}
 						</select>
 						{hasError && (
-							<div className="flex items-center bg-error text-error-foreground px-(--space-xs) py-(--space-xs) [&_svg]:max-h-(--space-md)">
+							<div className="flex items-center bg-error text-error-foreground px-(--space-xs) py-(--space-xs) rounded-b-sm [&_svg]:max-h-(--space-md)">
 								<Icon name="warning" />
 								{error}
 							</div>

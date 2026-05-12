@@ -139,6 +139,7 @@ img.form-fields-select {
 	opacity: 0;
 	background: var(--color-error);
 	padding: var(--space-sm) var(--space-xs);
+	border-radius: 0 0 var(--radius-sm) var(--radius-sm);
 	display: flex;
 	align-items: center;
 }

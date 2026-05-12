@@ -628,7 +628,7 @@
 
 /* Form field utility - replaces form-field mixin */
 @utility form-field {
-	@apply w-full rounded-lg border border-border;
+	@apply w-full rounded-sm border border-border;
 	background-color: var(--color-white);
 	color: var(--color-input-foreground);
 	padding: var(--space-sm) var(--space-md);
