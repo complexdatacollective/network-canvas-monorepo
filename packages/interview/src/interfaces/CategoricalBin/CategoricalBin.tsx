@@ -225,7 +225,13 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 						>
 							{expandedBin && expandedBinIndex !== null && (
 								<CategoricalBinItem
-									key="expanded"
+									// Key includes the index so React unmounts + remounts when a
+									// different bin is expanded. With a constant key, props would
+									// just update — but the inner motion.div's layoutId derives
+									// from `label`, so it would change mid-component-life and
+									// motion would lose the layoutId transition (panel never
+									// appears after switching between expanded bins).
+									key={`expanded-${expandedBinIndex}`}
 									label={expandedBin.label}
 									isExpanded
 									onToggleExpand={() => setExpandedBinIndex(null)}

@@ -197,8 +197,16 @@
      the @container queries see the in-flow area's size — so when a bin is
      expanded and padding-inline-start shrinks the in-flow area, the layout
      adapts (e.g. 2x5 -> 3x3 for 9 bins as the available width drops). */
+  /* Anonymous size container so .catbin-circles' padding-inline-start AND
+     .catbin-expanded's inline-size both resolve their clamp(20rem, 40cqi,
+     40rem) against the same source. Putting this on .catbin-circles itself
+     creates a circular dependency: cqi resolves to .catbin-circles'
+     content-box (which shrinks as padding grows), so padding and panel
+     size collapse to wildly different values. .catbin-outer has no padding
+     so its size is stable. Anonymous so it doesn't match @container catbin
+     queries — those still match .catbin-inflow (named catbin). */
   .catbin-outer {
-    /* no container declarations here; .catbin-inflow is the catbin container */
+    container-type: size;
   }
 
   /* .catbin-inflow is the size container only. The actual grid lives on a
@@ -240,11 +248,6 @@
      whenever the expanded bin precedes the targeted position.) */
   .catbin-circles {
     position: relative;
-    /* Anonymous size container so the expanded panel's clamp(20rem, 40cqi,
-       40rem) resolves against the full (un-shrunken) area. The @container
-       catbin (...) queries below still match .catbin-inflow (by name) and
-       not this one. */
-    container-type: size;
   }
 
   /* All bin items inside the grid get span-2 sizing. The expanded panel is
@@ -319,7 +322,7 @@
      scales with the container's inline-size in between. */
   .catbin-circles[data-expanded] {
     padding-inline-start: calc(
-      clamp(20rem, 40cqi, 40rem) + var(--spacing) * 2
+      clamp(20rem, 40cqi, 40rem) + var(--spacing-base) * 2
     );
   }
 
@@ -327,7 +330,7 @@
     position: absolute;
     inset: 0;
     inset-inline-end: auto;
-    inline-size: calc(clamp(20rem, 40cqi, 40rem) - var(--spacing) * 2);
+    inline-size: calc(clamp(20rem, 40cqi, 40rem) - var(--spacing-base) * 2);
     z-index: 10;
   }
 
@@ -355,7 +358,7 @@
     .catbin-circles[data-expanded] {
       padding-inline-start: 0;
       padding-block-start: calc(
-        clamp(20rem, 40cqb, 40rem) + var(--spacing) * 2
+        clamp(20rem, 40cqb, 40rem) + var(--spacing-base) * 2
       );
     }
 
@@ -363,7 +366,7 @@
       inset: 0;
       inset-block-end: auto;
       inline-size: auto;
-      block-size: calc(clamp(20rem, 40cqb, 40rem) - var(--spacing) * 2);
+      block-size: calc(clamp(20rem, 40cqb, 40rem) - var(--spacing-base) * 2);
     }
   }
 
