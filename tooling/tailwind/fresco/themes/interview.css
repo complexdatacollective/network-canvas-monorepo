@@ -230,6 +230,11 @@
      whenever the expanded bin precedes the targeted position.) */
   .catbin-circles {
     position: relative;
+    /* Anonymous size container so the expanded panel's clamp(20rem, 40cqi,
+       40rem) resolves against the full (un-shrunken) area. The @container
+       catbin (...) queries below still match .catbin-inflow (by name) and
+       not this one. */
+    container-type: size;
   }
 
   /* Sizing applies to the circle bins only. The expanded panel

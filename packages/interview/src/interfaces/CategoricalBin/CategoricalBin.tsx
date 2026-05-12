@@ -129,6 +129,13 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 
 	const circleCount = hasExpanded ? bins.length - 1 : bins.length;
 
+	// The expanded bin is rendered as a sibling of .catbin-inflow (not inside
+	// it) so its position:absolute anchors to .catbin-circles. If it sat
+	// inside .catbin-inflow, the container-type:size on .catbin-inflow would
+	// make .catbin-inflow itself the containing block — and the panel would
+	// be confined to the (shrunken) in-flow area instead of the full one.
+	const expandedBin = expandedBinIndex !== null ? bins[expandedBinIndex] : undefined;
+
 	const dispatch = useAppDispatch();
 	const { currentStep } = useCurrentStep();
 	const { openDialog } = useDialog();
@@ -216,21 +223,29 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 							animate="animate"
 							exit="exit"
 						>
+							{expandedBin && expandedBinIndex !== null && (
+								<CategoricalBinItem
+									key="expanded"
+									label={expandedBin.label}
+									isExpanded
+									onToggleExpand={() => setExpandedBinIndex(null)}
+									catColor={getCatColor(expandedBinIndex)}
+									onDropNode={(node) => handleDropNode(node, expandedBinIndex)}
+									nodes={expandedBin.nodes}
+									flowOrdinal={undefined}
+								/>
+							)}
 							<div className="catbin-inflow" data-count={circleCount}>
 								{bins.map((bin, index) => {
-									const isThisExpanded = index === expandedBinIndex;
+									if (index === expandedBinIndex) return null;
 									// 1-based ordinal among in-flow (non-expanded) bins.
 									// Drives CSS ragged-row centring via [data-flow-index="N"].
-									const flowOrdinal = isThisExpanded
-										? undefined
-										: expandedBinIndex !== null && expandedBinIndex < index
-											? index
-											: index + 1;
+									const flowOrdinal = expandedBinIndex !== null && expandedBinIndex < index ? index : index + 1;
 									return (
 										<CategoricalBinItem
 											key={index}
 											label={bin.label}
-											isExpanded={isThisExpanded}
+											isExpanded={false}
 											onToggleExpand={() => setExpandedBinIndex(index)}
 											catColor={getCatColor(index)}
 											onDropNode={(node) => handleDropNode(node, index)}
