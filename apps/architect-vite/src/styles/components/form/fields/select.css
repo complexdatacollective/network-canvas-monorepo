@@ -22,7 +22,7 @@ img.form-fields-select {
 	background: var(--color-surface-1);
 	color: var(--color-foreground);
 	border: 0;
-	border-radius: var(--radius);
+	border-radius: var(--radius-sm);
 	padding: 0 var(--space-md);
 	width: 100%;
 	min-height: var(--space-4xl);
@@ -154,6 +154,7 @@ img.form-fields-select {
 
 .form-fields-select--has-error .form-fields-select__control {
 	border: 0.1rem solid var(--color-error);
+	border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
 
 .form-fields-select--light-background .form-fields-select__control {

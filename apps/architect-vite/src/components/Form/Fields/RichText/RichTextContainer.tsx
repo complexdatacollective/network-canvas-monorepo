@@ -14,7 +14,7 @@ const RichTextContainer = ({ children, hasError = false }: RichTextContainerProp
 		<div
 			data-active={focused ? "" : undefined}
 			className={cx(
-				"group rounded-t-lg overflow-hidden bg-input",
+				"group rounded-t-sm overflow-hidden bg-input",
 				hasError ? "border-2 border-error" : "border border-border",
 			)}
 		>
