@@ -1,7 +1,7 @@
 import { map } from "es-toolkit/compat";
 import { TriangleAlert } from "lucide-react";
 import type React from "react";
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { getFormSyncErrors, hasSubmitFailed } from "redux-form";
 import Button from "~/lib/legacy-ui/components/Button";
@@ -19,7 +19,7 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
 	const formErrors = useSelector(getFormSyncErrors(formName));
 	const submitFailed = useSelector(hasSubmitFailed(formName));
 	const issues = formErrors as Record<string, unknown>;
-	const flatIssues = flattenIssues(issues);
+	const flatIssues = useMemo(() => flattenIssues(issues), [issues]);
 	const hasIssues = flatIssues.length > 0;
 	const issueCount = flatIssues.length;
 
@@ -53,7 +53,9 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
 
 	// Field display labels live in the DOM; harvest friendly names from each field's
 	// data-name/textContent so the list reads as a label rather than an internal path.
+	// `open` is a dep because the issue refs are only mounted while the popover is open.
 	useEffect(() => {
+		if (!open) return;
 		flatIssues.forEach(({ field }: { field: string; issue: string }) => {
 			const fieldId = getFieldId(field);
 			const targetField = document.querySelector(`#${fieldId}`);
@@ -63,7 +65,7 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
 				issueRefs.current[fieldId].textContent = fieldName;
 			}
 		});
-	});
+	}, [flatIssues, open]);
 
 	if (!hasIssues || !submitFailed) return null;
 

@@ -129,7 +129,7 @@ const DatePickerInput = ({
 								<motion.div
 									ref={ref}
 									layout
-									className="absolute z-(--z-global-ui) mb-(--space-2xl) w-full max-w-(--datepicker-popover-max-width) shadow-(--modal-window-box-shadow)"
+									className="absolute z-(--z-global-ui) mb-(--space-2xl) w-full max-w-(--datepicker-popover-max-width) shadow-md"
 								>
 									<AnimatePresence>
 										{panelsOpen && (
