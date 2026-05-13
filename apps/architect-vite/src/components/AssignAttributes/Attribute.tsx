@@ -34,9 +34,6 @@ const Attribute = ({
 	entity,
 	type,
 }: AttributeProps) => {
-	// The legacy JSX referenced `bg-section-background`, but no such token
-	// exists — Tailwind silently dropped it. The original CSS also set no
-	// background, so the class was a documented no-op. Omitted here.
 	return (
 		<div className="my-(--space-md) flex rounded-(--radius) p-(--space-md) [&_.form-field]:mb-0 [&_.form-field]:bg-surface-2">
 			<div className="flex grow shrink-0 basis-auto flex-col">

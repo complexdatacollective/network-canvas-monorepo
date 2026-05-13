@@ -399,7 +399,7 @@
 	--color-surface-2: hsl(var(--platinum));
 	--color-surface-2-foreground: hsl(var(--navy-taupe));
 	--color-surface-3: hsl(var(--platinum-dark));
-	--color-surface-3-foreground: hsl(var(--color-navy-taupe-dark));
+	--color-surface-3-foreground: var(--color-navy-taupe-dark);
 	--color-surface-accent: hsl(var(--navy-taupe));
 	--color-surface-accent-foreground: hsl(var(--white));
 
@@ -417,7 +417,7 @@
 
 	--color-input: hsl(var(--white));
 	--color-input-foreground: hsl(var(--charcoal));
-	--color-input-placeholder: hsl(var(--color-platinum-dark));
+	--color-input-placeholder: var(--color-muted-foreground);
 	--color-input-active: var(--color-active);
 
 	--color-sortable-background: hsl(var(--slate-blue));
@@ -635,13 +635,13 @@
 	padding: var(--space-sm) var(--space-md);
 	line-height: var(--leading-normal);
 
-	:focus {
+	&:focus {
 		@apply outline-none ring-1;
 		border-color: var(--color-primary);
-		ring-color: var(--color-primary);
+		--tw-ring-color: var(--color-primary);
 	}
 
-	::placeholder {
+	&::placeholder {
 		color: var(--color-input-placeholder);
 	}
 
@@ -675,150 +675,6 @@
 	&:not(:disabled):active {
 		box-shadow: unset;
 		transform: translateY(0.2rem);
-	}
-}
-
-@utility clickable-2 {
-	box-shadow: 0 0.4rem 0.4rem rgba(17, 21, 27, 0.664);
-	transition:
-		transform var(--animation-duration-fast) var(--animation-easing),
-		box-shadow var(--animation-duration-fast) var(--animation-easing);
-
-	&:not(:disabled):hover {
-		text-decoration: none;
-		cursor: pointer;
-		transform: translateY(-0.4rem);
-		box-shadow: 0 0.8rem 0.4rem 0 rgba(0, 0, 0, 0.35);
-	}
-
-	&:not(:disabled):active {
-		box-shadow: unset;
-		transform: translateY(0.4rem);
-	}
-}
-
-@utility clickable-3 {
-	box-shadow: 0 0.6rem 0.6rem rgba(17, 21, 27, 0.664);
-	transition:
-		transform var(--animation-duration-fast) var(--animation-easing),
-		box-shadow var(--animation-duration-fast) var(--animation-easing);
-
-	&:not(:disabled):hover {
-		text-decoration: none;
-		cursor: pointer;
-		transform: translateY(-0.6rem);
-		box-shadow: 0 1.2rem 0.6rem 0 rgba(0, 0, 0, 0.35);
-	}
-
-	&:not(:disabled):active {
-		box-shadow: unset;
-		transform: translateY(0.6rem);
-	}
-}
-
-/* MiniTable utilities — used by `~/lib/ProtocolSummary/components/MiniTable.tsx`
- * to render the printable protocol summary's stats tables. Variant utilities
- * compose with the base via cva. The `--mini-table-bg` token controls the
- * cell tint (used both as the table background and the alternating-row color);
- * not added to @theme since this is the only consumer. */
-@utility mini-table {
-	@apply rounded my-(--space-md) overflow-hidden break-inside-avoid;
-	--mini-table-bg: rgb(58 106 117 / 5%);
-	background: var(--mini-table-bg);
-
-	& > thead > tr > th {
-		@apply uppercase font-semibold text-xs tracking-widest break-keep;
-	}
-
-	& > tbody tr > td > ul,
-	& > tbody tr > td > ol,
-	& > tbody tr > th > ul,
-	& > tbody tr > th > ol,
-	& > thead tr > td > ul,
-	& > thead tr > td > ol,
-	& > thead tr > th > ul,
-	& > thead tr > th > ol {
-		padding: inherit;
-	}
-
-	& > tbody > tr > td:not(:last-child),
-	& > tbody > tr > th:not(:last-child),
-	& > thead > tr > td:not(:last-child),
-	& > thead > tr > th:not(:last-child) {
-		border-right: 3px solid var(--color-white);
-	}
-
-	& > tbody > tr > td,
-	& > tbody > tr > th,
-	& > thead > tr > td,
-	& > thead > tr > th {
-		@apply px-(--space-md) py-(--space-sm);
-	}
-
-	& > tbody > tr > td p:first-child,
-	& > tbody > tr > th p:first-child,
-	& > thead > tr > td p:first-child,
-	& > thead > tr > th p:first-child {
-		@apply mt-0;
-	}
-
-	& > tbody > tr > td p:last-child,
-	& > tbody > tr > th p:last-child,
-	& > thead > tr > td p:last-child,
-	& > thead > tr > th p:last-child {
-		@apply mb-0;
-	}
-
-	& > tbody > tr:nth-child(odd) > td {
-		background-color: var(--mini-table-bg);
-	}
-}
-
-@utility mini-table-wide {
-	@apply w-full;
-}
-
-@utility mini-table-rotated {
-	& > tbody > tr:not(:last-child),
-	& > thead > tr:not(:last-child) {
-		border-bottom: 3px solid var(--color-white);
-	}
-
-	& > tbody > tr:nth-child(odd) > td,
-	& > thead > tr:nth-child(odd) > td {
-		background-color: transparent;
-	}
-
-	& > tbody > tr > td:nth-child(2n),
-	& > thead > tr > td:nth-child(2n) {
-		background-color: var(--mini-table-bg);
-	}
-
-	& > tbody > tr > td,
-	& > thead > tr > td {
-		border-right: 0;
-		background-color: transparent;
-	}
-
-	& > tbody > tr > td:first-child,
-	& > thead > tr > td:first-child {
-		@apply uppercase font-semibold text-xs tracking-widest text-right whitespace-nowrap break-words;
-		border-right: 0;
-	}
-}
-
-@utility mini-table-lite {
-	& > tbody > tr > td {
-		border-bottom: 1px solid var(--mini-table-bg);
-		background-color: transparent;
-	}
-
-	& > tbody > tr :first-child {
-		@apply uppercase font-semibold text-xs tracking-widest;
-	}
-
-	& > tbody > tr:nth-child(2n) > td {
-		background-color: transparent;
 	}
 }
 
