@@ -1,11 +1,13 @@
 import { Route, Switch } from "wouter";
 import Home from "~/components/Home/Home";
+import { PreviewHost } from "~/components/PreviewHost/PreviewHost";
 import Protocol from "~/components/Protocol";
 import { AssetsPage, CodebookPage, ExperimentsPage, StageEditorPage, SummaryPage } from "~/components/pages";
 
 const Routes = () => {
 	return (
 		<Switch>
+			<Route path="/preview" component={PreviewHost} />
 			<Route path="/protocol" component={Protocol} />
 			<Route path="/protocol/assets" component={AssetsPage} />
 			<Route path="/protocol/codebook" component={CodebookPage} />

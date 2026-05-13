@@ -38,6 +38,10 @@ vi.mock("~/components/Protocol", () => ({
 	default: () => <div data-testid="protocol">Protocol Component</div>,
 }));
 
+vi.mock("~/components/PreviewHost/PreviewHost", () => ({
+	PreviewHost: () => <div data-testid="preview" />,
+}));
+
 const mockProtocolName = "Test Protocol";
 const mockProtocolDescription = "test description";
 
@@ -139,5 +143,15 @@ describe("Routes", () => {
 		// Should not render any specific component for unknown routes
 		expect(screen.queryByTestId("home")).not.toBeInTheDocument();
 		expect(screen.queryByTestId("protocol")).not.toBeInTheDocument();
+	});
+
+	it("renders PreviewHost on /preview", () => {
+		mockLocation.mockReturnValue("/preview");
+
+		render(<Routes />, {
+			wrapper: createWrapper(store),
+		});
+
+		expect(screen.getByTestId("preview")).toBeInTheDocument();
 	});
 });
