@@ -84,7 +84,7 @@
 		min-height: var(--page-size-height);
 		margin: var(--margin) auto;
 		border: 1px hsl(var(--platinum-dark)) solid;
-		border-radius: 5px;
+		border-radius: var(--radius-xs);
 		box-shadow: 0 4px 5px rgb(75 75 75 / 20%);
 	}
 }

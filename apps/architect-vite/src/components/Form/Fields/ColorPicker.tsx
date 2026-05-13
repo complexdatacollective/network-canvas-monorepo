@@ -78,14 +78,14 @@ const ColorPicker = ({
 				)}
 				<div
 					className={cx(
-						"bg-surface-1 text-input-foreground rounded-t-2xl pt-(--space-sm) pl-(--space-sm)",
+						"bg-surface-1 text-input-foreground rounded-t-sm pt-(--space-sm) pl-(--space-sm)",
 						showError && "border-(length:--space-xs) border-error",
 					)}
 				>
 					<div className="flex flex-wrap">{colors.map(renderColor)}</div>
 				</div>
 				{showError && (
-					<div className="flex items-center bg-error text-error-foreground py-(--space-xs) px-(--space-xs) [&_svg]:max-h-(--space-md)">
+					<div className="flex items-center bg-error text-error-foreground py-(--space-xs) px-(--space-xs) rounded-b-sm [&_svg]:max-h-(--space-md)">
 						<Icon name="warning" />
 						{error}
 					</div>

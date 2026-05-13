@@ -139,7 +139,7 @@ const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) =>
 					<button
 						type="button"
 						className={cx(
-							"relative w-[44px] h-[24px] rounded-[12px] border-0 cursor-pointer",
+							"relative w-[44px] h-[24px] rounded-full border-0 cursor-pointer",
 							"transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)",
 							enabled ? "bg-active" : "bg-surface-2",
 						)}
@@ -219,7 +219,7 @@ const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) =>
 									<span className="text-sm text-muted-foreground">≥</span>
 									<input
 										type="number"
-										className="w-[70px] bg-surface-2 border border-surface-2 rounded-[4px] p-(--space-xs) text-center text-foreground"
+										className="w-[70px] bg-surface-2 border border-surface-2 rounded-xs p-(--space-xs) text-center text-foreground"
 										value={threshold.value}
 										onChange={(e) => handleThresholdValueChange(index, Number.parseFloat(e.target.value) || 0)}
 										onBlur={() => {

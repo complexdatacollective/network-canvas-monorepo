@@ -261,12 +261,12 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 						<select
 							className={cx(
 								"block w-full max-w-full min-h-(--space-md) m-0 px-(--space-md) py-(--space-sm)",
-								"appearance-none border-0 shadow-none rounded-t-(--space-sm)",
+								"appearance-none border-0 shadow-none rounded-sm",
 								"text-base font-normal text-input-foreground bg-surface-1",
 								"focus:outline-none focus:shadow-none",
 								"disabled:cursor-not-allowed",
 								"[&_option:disabled]:italic [&_option:disabled]:text-surface-2-foreground",
-								hasError && "border-(length:--space-xs) border-solid border-error mb-0",
+								hasError && "border-(length:--space-xs) border-solid border-error mb-0 rounded-b-none",
 							)}
 							style={{
 								backgroundImage: CHEVRON_BACKGROUND_IMAGE,
@@ -291,7 +291,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 							))}
 						</select>
 						{hasError && (
-							<div className="flex items-center bg-error text-error-foreground px-(--space-xs) py-(--space-xs) [&_svg]:max-h-(--space-md)">
+							<div className="flex items-center bg-error text-error-foreground px-(--space-xs) py-(--space-xs) rounded-b-sm [&_svg]:max-h-(--space-md)">
 								<Icon name="warning" />
 								{error}
 							</div>

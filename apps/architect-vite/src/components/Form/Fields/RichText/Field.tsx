@@ -44,7 +44,11 @@ const RichTextField = ({
 
 	return (
 		<div className="form-field-container">
-			<h4>{anyLabel && <MarkdownLabel label={anyLabel} />}</h4>
+			{anyLabel && (
+				<h4>
+					<MarkdownLabel label={anyLabel} />
+				</h4>
+			)}
 			<div className={cx(className)}>
 				<RichText
 					value={input.value}
@@ -56,7 +60,7 @@ const RichTextField = ({
 					hasError={hasError}
 				/>
 				{hasError && (
-					<div className="flex items-center bg-error text-error-foreground py-(--space-sm) px-(--space-xs) [&_svg]:max-h-(--space-md)">
+					<div className="flex items-center bg-error text-error-foreground py-(--space-sm) px-(--space-xs) rounded-b-sm [&_svg]:max-h-(--space-md)">
 						<Icon name="warning" />
 						{meta.error}
 					</div>

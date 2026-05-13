@@ -55,7 +55,11 @@ const TextInput = ({
 
 	return (
 		<div className="form-field-container" hidden={hidden}>
-			<h4>{anyLabel && <MarkdownLabel label={anyLabel} />}</h4>
+			{anyLabel && (
+				<h4>
+					<MarkdownLabel label={anyLabel} />
+				</h4>
+			)}
 			<div className={cx("group relative", className)}>
 				<input
 					id={id.current}
@@ -82,7 +86,7 @@ const TextInput = ({
 					</div>
 				)}
 				{hasError && (
-					<div className="flex items-center bg-error text-error-foreground py-(--space-sm) px-(--space-xs) rounded-b-lg [&_svg]:max-h-(--space-md)">
+					<div className="flex items-center bg-error text-error-foreground py-(--space-sm) px-(--space-xs) rounded-b-sm [&_svg]:max-h-(--space-md)">
 						<Icon name="warning" />
 						{error}
 					</div>

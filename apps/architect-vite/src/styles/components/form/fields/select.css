@@ -22,7 +22,7 @@ img.form-fields-select {
 	background: var(--color-surface-1);
 	color: var(--color-foreground);
 	border: 0;
-	border-radius: 1rem 1rem 0 0;
+	border-radius: var(--radius-sm);
 	padding: 0 var(--space-md);
 	width: 100%;
 	min-height: var(--space-4xl);
@@ -44,7 +44,7 @@ img.form-fields-select {
 }
 
 .form-fields-select__menu {
-	border-radius: 0 0 1rem 1rem;
+	border-radius: var(--radius);
 	overflow: hidden;
 	margin: 0;
 }
@@ -139,6 +139,7 @@ img.form-fields-select {
 	opacity: 0;
 	background: var(--color-error);
 	padding: var(--space-sm) var(--space-xs);
+	border-radius: 0 0 var(--radius-sm) var(--radius-sm);
 	display: flex;
 	align-items: center;
 }
@@ -153,6 +154,7 @@ img.form-fields-select {
 
 .form-fields-select--has-error .form-fields-select__control {
 	border: 0.1rem solid var(--color-error);
+	border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
 
 .form-fields-select--light-background .form-fields-select__control {

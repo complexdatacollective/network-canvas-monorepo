@@ -45,7 +45,7 @@ const BaseVariablePill = React.forwardRef<HTMLDivElement, BaseVariablePillProps>
 		// selectors on PreviewRule's `__text` row in slice 33. Remove the
 		// marker once slice 35 folds protocol-summary.css into tailwind.css.
 		<motion.div
-			className="variable-pill inline-flex h-(--space-2xl) flex-nowrap overflow-hidden rounded-full bg-platinum w-[var(--variable-pill-width,20rem)] shadow-[0_0_var(--space-sm)_var(--variable-pill-shadow-color,transparent)]"
+			className="variable-pill inline-flex h-(--space-2xl) flex-nowrap overflow-hidden rounded-full bg-platinum w-(--variable-pill-width,20rem) shadow-[0_0_var(--space-sm)_var(--variable-pill-shadow-color,transparent)]"
 			style={width ? ({ "--variable-pill-width": width } as React.CSSProperties) : undefined}
 			ref={ref}
 		>

@@ -107,7 +107,7 @@ const Asset = ({
 
 			<div
 				className={cx(
-					"absolute top-(--space-sm) right-(--space-sm) flex items-center justify-center rounded-lg bg-rich-black px-(--space-sm) pt-(--space-sm) pb-(--space-xs) opacity-0 transition-opacity duration-(--animation-duration-standard) ease-(--animation-easing) group-hover:opacity-100",
+					"absolute top-(--space-sm) right-(--space-sm) flex items-center justify-center rounded-sm bg-rich-black px-(--space-sm) pt-(--space-sm) pb-(--space-xs) opacity-0 transition-opacity duration-(--animation-duration-standard) ease-(--animation-easing) group-hover:opacity-100",
 				)}
 			>
 				{onPreview && (
@@ -146,7 +146,7 @@ const Asset = ({
 			</div>
 
 			{!isUsed && (
-				<span className="absolute bottom-(--space-xs) left-(--space-xs) rounded-md bg-error p-(--space-sm) text-xs text-error-foreground">
+				<span className="absolute bottom-(--space-xs) left-(--space-xs) rounded bg-error p-(--space-sm) text-xs text-error-foreground">
 					Unused
 				</span>
 			)}

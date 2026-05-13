@@ -59,7 +59,7 @@ class DatePickerField extends Component<DatePickerFieldProps> {
 			<div className="form-field-container" hidden={!!hidden} ref={this.ref}>
 				{anyLabel && <MarkdownLabel label={anyLabel} />}
 				<div
-					className={cx("text-input-foreground", hasError && "rounded-t-lg border-2 border-error", className)}
+					className={cx("text-input-foreground", hasError && "rounded-t-sm border-2 border-error", className)}
 					data-name={input.name}
 				>
 					<DatePicker
@@ -70,7 +70,7 @@ class DatePickerField extends Component<DatePickerFieldProps> {
 						placeholder={placeholder}
 					/>
 					{hasError && (
-						<div className="flex items-center bg-error px-(--space-xs) py-(--space-sm) text-error-foreground [&_svg]:max-h-(--space-md)">
+						<div className="flex items-center bg-error px-(--space-xs) py-(--space-sm) rounded-b-sm text-error-foreground [&_svg]:max-h-(--space-md)">
 							<Icon name="warning" />
 							{error}
 						</div>

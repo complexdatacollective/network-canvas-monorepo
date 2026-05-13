@@ -5,7 +5,7 @@ import DateComponent from "./DatePicker/DateComponent";
 import { getMonthName } from "./helpers";
 
 const previewBase =
-	"flex h-(--datepicker-preview-height) items-center rounded-t-lg border-b-2 border-transparent bg-background px-(--space-md) text-base transition-colors duration-(--animation-duration-fast) ease-(--animation-easing) focus:border-b-active";
+	"flex h-(--datepicker-preview-height) items-center rounded-t-sm border-b-2 border-transparent bg-background px-(--space-md) text-base transition-colors duration-(--animation-duration-fast) ease-(--animation-easing) focus:border-b-active";
 
 const partBase =
 	"inline-block cursor-pointer transition-colors duration-(--animation-duration-fast) ease-(--animation-easing)";

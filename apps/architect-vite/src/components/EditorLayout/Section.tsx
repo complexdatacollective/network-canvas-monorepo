@@ -4,8 +4,7 @@ import { cn } from "~/utils/cn";
 import IssueAnchor from "../IssueAnchor";
 import Switch from "../NewComponents/Switch";
 
-const containerClasses =
-	"p-6 shadow-md rounded bg-[var(--current-surface)] text-[var(--current-surface-foreground)] relative";
+const containerClasses = "p-6 shadow-md rounded bg-(--current-surface) text-(--current-surface-foreground) relative";
 
 type SectionProps = {
 	id?: string | null;
@@ -57,7 +56,13 @@ const Section = ({
 		}
 	}, [isOpen, handleToggleChange]);
 
-	const classes = cn(layout === "horizontal" && containerClasses, layout === "horizontal" && "min-w-2xl", "relative");
+	// In the "horizontal" layout, below the lg: breakpoint we render the section
+	// as the "vertical" layout
+	const classes = cn(
+		layout === "horizontal" &&
+			"lg:p-6 lg:shadow-md lg:rounded lg:bg-(--current-surface) lg:text-(--current-surface-foreground) lg:min-w-2xl",
+		"relative",
+	);
 
 	return (
 		<div
@@ -65,7 +70,8 @@ const Section = ({
 				"[--input-background:var(--color-surface-1)] [--slider-color:hsl(var(--charcoal))]",
 				"[--current-surface:var(--color-surface-1)] [--current-surface-foreground:var(--color-surface-1-foreground)] relative",
 				"w-full max-w-7xl",
-				layout === "horizontal" && "grid grid-cols-[20rem_auto] gap-8",
+				layout === "horizontal" &&
+					"lg:grid lg:grid-cols-[20rem_auto] lg:gap-8 max-lg:flex max-lg:flex-col max-lg:gap-(--space-md) max-lg:mb-4 max-lg:p-6 max-lg:shadow-md max-lg:rounded max-lg:bg-(--current-surface) max-lg:text-(--current-surface-foreground)",
 				layout === "vertical" && "flex flex-col gap-(--space-md) mb-4",
 				layout === "vertical" && containerClasses,
 				className,
@@ -77,7 +83,7 @@ const Section = ({
 						"flex gap-4 items-center text-right",
 						layout === "vertical" && "text-xl font-semibold tracking-tight",
 						layout === "horizontal" &&
-							"small-heading px-6 py-2 rounded items-center justify-between flex-row-reverse bg-border sticky top-2",
+							"lg:small-heading lg:px-6 lg:py-2 lg:rounded lg:items-center lg:justify-between lg:flex-row-reverse lg:bg-border lg:sticky lg:top-2 max-lg:text-xl max-lg:font-semibold max-lg:tracking-tight",
 					)}
 				>
 					<span>
@@ -99,7 +105,7 @@ const Section = ({
 			<fieldset className={classes}>
 				{disabled ? (
 					layout === "horizontal" ? (
-						<div className="absolute inset-0 flex justify-center items-center w-full h-full bg-border/75 text-foreground/70 font-semibold italic rounded">
+						<div className="flex justify-center items-center bg-border/75 text-foreground/70 font-semibold italic rounded lg:absolute lg:inset-0 lg:w-full lg:h-full max-lg:p-8 max-lg:text-center">
 							{disabledMessage}
 						</div>
 					) : (
@@ -111,7 +117,7 @@ const Section = ({
 					<>
 						{isOpen && children}
 						{toggleable && !isOpen && layout !== "vertical" && (
-							<div className="absolute inset-0 flex justify-center items-center w-full h-full bg-border/75 text-foreground/70 font-semibold italic">
+							<div className="absolute inset-0 flex justify-center items-center w-full h-full bg-border/75 text-foreground/70 font-semibold italic max-lg:hidden">
 								Click the toggle to enable this feature...
 							</div>
 						)}

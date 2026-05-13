@@ -1,11 +1,9 @@
 import { useCallback, useState } from "react";
-import { useLocation } from "wouter";
 import Codebook from "~/components/Codebook/Codebook";
 import EntityTypeDialog from "~/components/Codebook/EntityTypeDialog";
-import ControlBar from "~/components/ControlBar";
 import { Layout } from "~/components/EditorLayout";
+import PageHeading from "~/components/ProjectNav/PageHeading";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
-import { Button } from "~/lib/legacy-ui/components";
 
 type DialogState = {
 	entity?: string;
@@ -13,16 +11,11 @@ type DialogState = {
 };
 
 const CodebookPage = () => {
-	const [, setLocation] = useLocation();
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [dialogState, setDialogState] = useState<DialogState>({});
 
 	// Load the protocol based on URL parameters
 	useProtocolLoader();
-
-	const handleGoBack = () => {
-		setLocation("/protocol");
-	};
 
 	const handleOpenEntityDialog = useCallback((entity: string, type?: string) => {
 		setDialogState({ entity, type });
@@ -35,33 +28,23 @@ const CodebookPage = () => {
 	}, []);
 
 	return (
-		<div className="relative flex flex-col h-dvh">
-			<div className="flex-1 overflow-y-auto">
-				<Layout>
-					<div className="flex flex-col">
-						<h1 className="screen-heading">Codebook</h1>
-						<p>
-							Below you can find an overview of the node and edge types that you have defined while creating your
-							interview. Entities that are unused may be deleted.
-						</p>
-					</div>
+		<>
+			<Layout>
+				<PageHeading
+					title="Codebook"
+					description="Overview of the node and edge types defined in your protocol. Unused entities can be deleted."
+				/>
+				<div className="mx-(--space-5xl) w-full max-w-[80rem]">
 					<Codebook onEditEntity={handleOpenEntityDialog} />
-				</Layout>
-			</div>
-			<ControlBar
-				secondaryButtons={[
-					<Button key="go-back" onClick={handleGoBack} color="platinum">
-						Go Back
-					</Button>,
-				]}
-			/>
+				</div>
+			</Layout>
 			<EntityTypeDialog
 				show={dialogOpen}
 				entity={dialogState.entity}
 				type={dialogState.type}
 				onClose={handleCloseDialog}
 			/>
-		</div>
+		</>
 	);
 };
 

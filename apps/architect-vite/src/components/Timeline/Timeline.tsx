@@ -96,15 +96,16 @@ const Timeline = () => {
 
 	return (
 		<>
-			{/* Wrapper with timeline line */}
-			<div className="relative mb-24">
+			{/* Wrapper with timeline line. Top padding leaves a stretch of line below
+			    the protocol overview card so the timeline visually connects to it. */}
+			<div className="relative pt-(--space-xl)">
 				{/* Timeline line via CSS - height is 100% minus small offset to stop at add button center */}
 				<div className="absolute left-1/2 top-0 w-[5px] h-[calc(100%-1.25rem)] -translate-x-1/2 bg-timeline pointer-events-none" />
 
 				<Reorder.Group
 					axis="y"
 					onReorder={handleReorder}
-					className="relative grid grid-cols-1 gap-6 pt-16 justify-items-center"
+					className="relative grid grid-cols-1 gap-6 justify-items-center"
 					values={stages}
 				>
 					{stages.flatMap((stage, index) => [

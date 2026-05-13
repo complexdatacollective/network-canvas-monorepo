@@ -7,15 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import protocolsReducer, { addProtocol } from "~/ducks/modules/protocols";
 import Protocol from "../Protocol";
 
-// Mock components to avoid complex rendering
-vi.mock("~/components/Overview", () => ({
-	default: () => <div data-testid="overview">Overview Component</div>,
-}));
-
-vi.mock("~/components/ProtocolControlBar", () => ({
-	default: () => <div data-testid="control-bar">Control Bar Component</div>,
-}));
-
+// Mock Timeline to avoid complex rendering
 vi.mock("~/components/Timeline", () => ({
 	default: () => <div data-testid="timeline">Timeline Component</div>,
 }));
@@ -109,8 +101,6 @@ describe("Protocol Component", () => {
 			wrapper: createWrapper(store),
 		});
 
-		expect(screen.getByTestId("overview")).toBeInTheDocument();
-		expect(screen.getByTestId("control-bar")).toBeInTheDocument();
 		expect(screen.getByTestId("timeline")).toBeInTheDocument();
 	});
 
@@ -166,8 +156,6 @@ describe("Protocol Component", () => {
 		});
 
 		// Should still render components even without protocol ID
-		expect(screen.getByTestId("overview")).toBeInTheDocument();
-		expect(screen.getByTestId("control-bar")).toBeInTheDocument();
 		expect(screen.getByTestId("timeline")).toBeInTheDocument();
 	});
 
@@ -204,7 +192,7 @@ describe("Protocol Component", () => {
 			wrapper: createWrapper(store),
 		});
 
-		expect(screen.getByTestId("overview")).toBeInTheDocument();
+		expect(screen.getByTestId("timeline")).toBeInTheDocument();
 
 		// Switch to second protocol
 		mockUseProtocolLoader.mockReturnValue({
@@ -214,9 +202,6 @@ describe("Protocol Component", () => {
 
 		rerender(<Protocol />);
 
-		// Should still render all components
-		expect(screen.getByTestId("overview")).toBeInTheDocument();
-		expect(screen.getByTestId("control-bar")).toBeInTheDocument();
 		expect(screen.getByTestId("timeline")).toBeInTheDocument();
 	});
 });

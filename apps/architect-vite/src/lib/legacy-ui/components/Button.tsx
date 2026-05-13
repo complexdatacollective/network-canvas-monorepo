@@ -1,4 +1,4 @@
-import React, { forwardRef, PureComponent } from "react";
+import React, { forwardRef } from "react";
 import { cn } from "~/utils/cn";
 import Icon from "./Icon";
 
@@ -37,20 +37,29 @@ type ButtonColor =
 
 type ButtonSize = "small" | "large";
 
+type ButtonVariant = "filled" | "text";
+
 type ComputeClassesArgs = {
 	color?: ButtonColor;
 	size?: ButtonSize;
+	variant?: ButtonVariant;
 	icon?: string | React.ReactElement;
 	iconPosition?: "left" | "right";
 };
 
-const computeButtonClasses = ({ color = "platinum", size, icon, iconPosition = "left" }: ComputeClassesArgs) =>
+const computeButtonClasses = ({
+	color = "platinum",
+	size,
+	variant = "filled",
+	icon,
+	iconPosition = "left",
+}: ComputeClassesArgs) =>
 	cn(
 		"inline-flex gap-2 items-center justify-center grow-0 shrink-0 w-auto",
 		// focus state
 		"transition-color duration-200 ease-in-out",
 		"cursor-pointer",
-		"rounded-xl",
+		"rounded-full",
 		"h-10 px-6 py-2",
 		"tracking-wide font-[500] text-sm",
 		// Handle image size
@@ -81,6 +90,8 @@ const computeButtonClasses = ({ color = "platinum", size, icon, iconPosition = "
 		color === "barbie-pink" && "bg-barbie-pink border-barbie-pink-dark text-white hover:bg-barbie-pink-dark",
 		color === "tomato" && "bg-tomato border-tomato-dark text-white hover:bg-tomato-dark",
 		color === "white" && "bg-white border-platinum-dark text-charcoal hover:bg-platinum",
+		// variant overrides — must come after color block so conflicting utilities win
+		variant === "text" && "bg-transparent border-transparent text-current hover:bg-foreground/10",
 		// Icon position
 		icon && iconPosition === "left" && "flex-row",
 		icon && iconPosition === "right" && "flex-row-reverse",
@@ -92,13 +103,15 @@ type ButtonProps = {
 	iconPosition?: "left" | "right";
 	size?: ButtonSize;
 	color?: ButtonColor;
+	variant?: ButtonVariant;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
-class Button extends PureComponent<ButtonProps> {
-	render() {
-		const {
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+	(
+		{
 			color = "platinum",
 			size,
+			variant,
 			children,
 			content = "",
 			onClick = () => {},
@@ -106,38 +119,42 @@ class Button extends PureComponent<ButtonProps> {
 			type = "button",
 			iconPosition = "left",
 			disabled = false,
+			className,
 			...rest
-		} = this.props;
+		},
+		ref,
+	) => (
+		<button
+			ref={ref}
+			type={type}
+			className={cn(computeButtonClasses({ color, size, variant, icon, iconPosition }), className)}
+			onClick={onClick}
+			disabled={disabled}
+			{...rest}
+		>
+			{renderButtonIcon({ icon })}
+			{content || children}
+		</button>
+	),
+);
 
-		return (
-			<button
-				type={type}
-				className={computeButtonClasses({ color, size, icon, iconPosition })}
-				onClick={onClick}
-				disabled={disabled}
-				{...rest}
-			>
-				{renderButtonIcon({ icon })}
-				{content || children}
-			</button>
-		);
-	}
-}
+Button.displayName = "Button";
 
 type IconButtonProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
 	icon: React.ReactElement;
 	"aria-label": string;
 	color?: ButtonColor;
 	size?: ButtonSize;
+	variant?: ButtonVariant;
 };
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
-	({ icon, color, size, className, type = "button", ...rest }, ref) => (
+	({ icon, color, size, variant, className, type = "button", ...rest }, ref) => (
 		<button
 			ref={ref}
 			type={type}
 			className={cn(
-				computeButtonClasses({ color, size }),
+				computeButtonClasses({ color, size, variant }),
 				"aspect-square rounded-full p-0",
 				size === "small" ? "h-8 w-8" : size === "large" ? "h-12 w-12" : "h-10 w-10",
 				className,
