@@ -1,4 +1,5 @@
 import "./analytics";
+import "@codaco/interview/styles.css";
 import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";
 import { AppErrorBoundary } from "./components/Errors";

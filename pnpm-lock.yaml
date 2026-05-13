@@ -437,6 +437,12 @@ importers:
       '@base-ui/react':
         specifier: 'catalog:'
         version: 1.4.1(@date-fns/tz@1.4.1)(@types/react@19.2.14)(date-fns@4.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@codaco/fresco-ui':
+        specifier: workspace:*
+        version: link:../../packages/fresco-ui
+      '@codaco/interview':
+        specifier: workspace:*
+        version: link:../../packages/interview
       '@codaco/protocol-validation':
         specifier: workspace:*
         version: link:../../packages/protocol-validation
