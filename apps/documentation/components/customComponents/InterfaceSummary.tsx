@@ -1,5 +1,5 @@
-import { Paragraph } from "@codaco/ui";
 import type { ReactNode } from "react";
+import Paragraph from "~/components/ui/typography/Paragraph";
 
 export const InterfaceSummary = ({ children }: { children: ReactNode }) => {
 	return <div className="mb-4 flex flex-col sm:flex-row sm:items-center">{children}</div>;

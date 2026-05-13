@@ -1,6 +1,6 @@
 "use client";
 
-import { inputVariants } from "@codaco/ui";
+import { inputVariants } from "~/components/ui/inputVariants";
 import "@docsearch/css";
 import { DocSearch } from "@docsearch/react";
 import { Search } from "lucide-react";

@@ -92,13 +92,21 @@ export const controlVariants = cva({
 		"rounded",
 		"border-2",
 	),
+	variants: {
+		size: {
+			sm: "",
+			md: "",
+			lg: "rounded-lg",
+			xl: "rounded-xl",
+		},
+	},
 });
 
 // Text size variants - can be composed with other variants for consistent text scaling
 export const textSizeVariants = cva({
 	variants: {
 		size: {
-			sm: "", // Text size causes padding etc to also scale. Given these are also adjusted for small size, we can leave text size unchanged to avoid excessive shrinking.
+			sm: "text-sm",
 			md: "text-base",
 			lg: "text-lg",
 			xl: "text-xl",
@@ -115,8 +123,8 @@ export const heightVariants = cva({
 		size: {
 			sm: "h-10",
 			md: "h-12",
-			lg: "h-13",
-			xl: "h-14",
+			lg: "h-16",
+			xl: "h-20",
 		},
 	},
 	defaultVariants: {
@@ -137,10 +145,26 @@ export const inputControlVariants = cva({
 // Spacing between elements within a wrapper, such as icons and text
 export const inlineSpacingVariants = cva({
 	base: "gap-2",
+	variants: {
+		size: {
+			sm: "gap-2",
+			md: "gap-2",
+			lg: "gap-3",
+			xl: "gap-4",
+		},
+	},
 });
 
 export const wrapperPaddingVariants = cva({
-	base: "tablet-landscape:px-6 px-4",
+	base: "px-6",
+	variants: {
+		size: {
+			sm: "",
+			md: "",
+			lg: "px-8",
+			xl: "px-10",
+		},
+	},
 });
 
 // Spacing for groups of controls.

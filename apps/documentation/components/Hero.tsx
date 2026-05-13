@@ -1,9 +1,9 @@
 "use client";
 
-import { Paragraph } from "@codaco/ui";
 import { motion } from "motion/react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import Paragraph from "~/components/ui/typography/Paragraph";
 import { cn } from "~/lib/utils";
 import { Link } from "~/navigation";
 import DocSearchComponent from "./DocSearchComponent";

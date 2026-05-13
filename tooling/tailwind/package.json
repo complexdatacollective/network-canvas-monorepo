@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/tailwind-config",
-	"version": "0.4.0",
+	"version": "1.0.0-alpha.18",
 	"description": "Shared Tailwind v4 theme, color palette, and plugins for Fresco and other Codaco apps.",
 	"repository": {
 		"type": "git",
@@ -12,33 +12,30 @@
 		"**/*.css"
 	],
 	"files": [
-		"base.ts",
-		"fresco.ts",
-		"globals.css",
-		"fresco"
+		"fresco/**",
+		"shared/**",
+		"tsconfig*.json"
 	],
 	"exports": {
-		"./fresco": "./fresco.ts",
-		"./fresco/theme.css": "./fresco/theme.css",
-		"./fresco/colors.css": "./fresco/colors.css",
-		"./fresco/default-theme.css": "./fresco/default-theme.css",
-		"./fresco/interview-theme.css": "./fresco/interview-theme.css",
-		"./fresco/fonts.css": "./fresco/fonts.css",
-		"./fresco/plugins/elevation/elevation": "./fresco/plugins/elevation/elevation.ts",
-		"./fresco/plugins/inset-surface/inset-surface": "./fresco/plugins/inset-surface/inset-surface.ts",
-		"./fresco/plugins/motion-spring": "./fresco/plugins/motion-spring.ts",
-		"./base": "./base.ts",
-		"./globals.css": "./globals.css"
+		"./fresco.css": "./fresco/fresco.css",
+		"./colors.css": "./shared/colors.css",
+		"./fonts/inclusive-sans.css": "./shared/fonts/inclusive-sans.css",
+		"./fonts/nunito.css": "./shared/fonts/nunito.css"
 	},
 	"license": "MIT",
 	"scripts": {
-		"clean": "rm -rf .turbo node_modules",
-		"typecheck": "tsgo --noEmit"
+		"build": "tsc -p tsconfig.build.json",
+		"typecheck": "tsgo --noEmit",
+		"prepublishOnly": "pnpm build"
 	},
 	"dependencies": {
-		"motion": "catalog:",
-		"tailwindcss": "catalog:",
-		"tailwindcss-animate": "catalog:"
+		"@fontsource-variable/inclusive-sans": "^5.2.8",
+		"@fontsource-variable/nunito": "^5.2.7",
+		"@tailwindcss/forms": "^0.5.11",
+		"motion": "catalog:"
+	},
+	"peerDependencies": {
+		"tailwindcss": "catalog:"
 	},
 	"devDependencies": {
 		"@codaco/tsconfig": "workspace:*",

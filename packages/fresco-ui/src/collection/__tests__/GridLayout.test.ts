@@ -113,7 +113,7 @@ describe("GridLayout", () => {
 				// Container width 600: (600 + 50) / (200 + 50) = 2.6 -> 2 columns
 				const layout = new GridLayout({
 					minItemWidth: 200,
-					gap: 50,
+					gap: 12.5,
 				});
 				const collection = createMockCollection(8);
 
@@ -166,22 +166,22 @@ describe("GridLayout", () => {
 		it("should return auto-fill grid styles", () => {
 			const layout = new GridLayout({
 				minItemWidth: 200,
-				gap: 20,
+				gap: 5,
 			});
 			const styles = layout.getContainerStyles();
 
 			expect(styles.display).toBe("grid");
 			expect(styles.gridTemplateColumns).toBe("repeat(auto-fill, minmax(200px, 1fr))");
-			expect(styles.gap).toBe(20);
+			expect(styles.gap).toBe("calc(5 * var(--spacing-base, 0.25rem))");
 		});
 
 		it("should use default minItemWidth if not specified", () => {
-			const layout = new GridLayout({ gap: 16 });
+			const layout = new GridLayout({ gap: 4 });
 			const styles = layout.getContainerStyles();
 
 			expect(styles.display).toBe("grid");
 			expect(styles.gridTemplateColumns).toBe("repeat(auto-fill, minmax(200px, 1fr))");
-			expect(styles.gap).toBe(16);
+			expect(styles.gap).toBe("calc(4 * var(--spacing-base, 0.25rem))");
 		});
 	});
 

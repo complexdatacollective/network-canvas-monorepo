@@ -1,20 +1,12 @@
 "use client";
 
-import {
-	Dialog,
-	DialogContentEmpty,
-	DialogTrigger,
-	dialogContentClasses,
-	Paragraph,
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "@codaco/ui";
 import { motion } from "motion/react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
+import { Dialog, DialogContentEmpty, DialogTrigger, dialogContentClasses } from "~/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
+import Paragraph from "~/components/ui/typography/Paragraph";
 import { env } from "~/env";
 import { cn } from "~/lib/utils";
 

@@ -63,11 +63,13 @@ export default function Dialog({
 			<DialogPopup
 				key="dialog-popup"
 				className={cx(
-					// Accent overrides the primary hue so that nested primary buttons inherit color
-					accent === "success" && "[--color-primary:var(--color-success)]",
-					accent === "info" && "[--color-primary:var(--color-info)]",
-					accent === "destructive" &&
-						"[--color-primary-contrast:var(--color-destructive-contrast)] [--color-primary:var(--color-destructive)]",
+					// Accent overrides the primary hue so that nested primary buttons inherit color.
+					// Override the primitives (--primary/--primary-contrast) because @theme inline
+					// substitutes the --color-* aliases at compile time — consumers like Button read
+					// the primitives directly, so an alias override wouldn't propagate.
+					accent === "success" && "[--primary:var(--success)]",
+					accent === "info" && "[--primary:var(--info)]",
+					accent === "destructive" && "[--primary-contrast:var(--destructive-contrast)] [--primary:var(--destructive)]",
 					className,
 				)}
 				{...rest}
@@ -109,11 +111,14 @@ const DialogContent = ({ children }: { children: React.ReactNode }) => {
 	);
 };
 
+// Layout convention: place the cancel/dismiss action as the first child to pin it left.
+// Primary and any secondary actions follow and cluster on the right. A single-child footer
+// (e.g. acknowledge dialog) is right-aligned by `justify-end`.
 const DialogFooter = ({ children, className }: { children?: React.ReactNode; className?: string }) => {
 	return (
 		<footer
 			className={cx(
-				"phone-landscape:flex-row phone-landscape:justify-between phone-landscape:*:only:ml-auto mt-4 flex flex-col gap-2",
+				"phone-landscape:flex-row phone-landscape:justify-end phone-landscape:[&>*:first-child:not(:only-child)]:mr-auto mt-4 flex flex-col gap-2",
 				children && "mt-6",
 				surfaceSpacingVariants({ section: "footer" }),
 				className,

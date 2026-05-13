@@ -2,6 +2,7 @@
 	"$schema": "https://json.schemastore.org/tsconfig",
 	"extends": "./base.json",
 	"compilerOptions": {
-		"lib": ["dom", "dom.iterable", "ES2024"]
+		"lib": ["dom", "dom.iterable", "ES2024"],
+		"types": []
 	}
 }

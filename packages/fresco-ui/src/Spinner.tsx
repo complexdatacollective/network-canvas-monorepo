@@ -48,11 +48,11 @@ const spinnerVariants = cva({
 	],
 	variants: {
 		size: {
-			xs: "[--circle-size:0.35rem]",
-			sm: "[--circle-size:0.5rem]",
-			md: "[--circle-size:0.75rem]",
-			lg: "[--circle-size:1.25rem]",
-			xl: "[--circle-size:2rem]",
+			xs: "[--circle-size:calc(0.35*var(--theme-root-size))]",
+			sm: "[--circle-size:calc(0.5*var(--theme-root-size))]",
+			md: "[--circle-size:calc(0.75*var(--theme-root-size))]",
+			lg: "[--circle-size:calc(1.25*var(--theme-root-size))]",
+			xl: "[--circle-size:calc(2*var(--theme-root-size))]",
 		},
 	},
 	defaultVariants: {

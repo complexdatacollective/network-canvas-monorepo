@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/protocol-validation",
-	"version": "11.4.0",
+	"version": "11.5.0",
 	"main": "./dist/index.js",
 	"license": "GPL-3.0-or-later",
 	"repository": {
@@ -27,6 +27,7 @@
 	"dependencies": {
 		"@codaco/shared-consts": "workspace:*",
 		"@faker-js/faker": "catalog:",
+		"ohash": "^2.0.11",
 		"zod": "catalog:"
 	},
 	"devDependencies": {

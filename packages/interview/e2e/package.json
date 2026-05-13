@@ -1,0 +1,23 @@
+{
+	"name": "@codaco/interview-e2e",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"dependencies": {
+		"@base-ui/react": "catalog:",
+		"@codaco/fresco-ui": "workspace:^",
+		"@codaco/interview": "workspace:^",
+		"@codaco/protocol-validation": "workspace:^",
+		"@codaco/tailwind-config": "workspace:^",
+		"@playwright/test": "^1.59.1",
+		"@tailwindcss/vite": "catalog:",
+		"@vitejs/plugin-react": "catalog:",
+		"chalk": "^5.6.2",
+		"motion": "catalog:",
+		"react": "catalog:",
+		"react-dom": "catalog:",
+		"uuid": "catalog:",
+		"vite": "catalog:",
+		"vitest": "catalog:"
+	}
+}

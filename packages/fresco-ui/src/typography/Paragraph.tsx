@@ -9,7 +9,7 @@ export const paragraphVariants = cva({
 		intent: {
 			default: "",
 			blockquote: "mt-4 border-l-2 pl-6 italic",
-			inlineCode: "bg-background/50 font-monospace relative rounded px-[0.3rem] py-[0.2rem] font-semibold",
+			inlineCode: "bg-background/50 font-monospace relative rounded px-1.5 py-0.5 font-semibold",
 			lead: "text-lg",
 			smallText: "text-sm",
 		},
@@ -18,7 +18,7 @@ export const paragraphVariants = cva({
 			muted: "text-current/70",
 		},
 		margin: {
-			default: "not-last:mb-4",
+			default: "not-last:mb-[1em]",
 			none: "mt-0",
 		},
 	},

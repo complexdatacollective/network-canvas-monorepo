@@ -1,7 +1,7 @@
-import { Paragraph } from "@codaco/ui";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import PopoutBox from "~/components/PopoutBox";
+import Paragraph from "~/components/ui/typography/Paragraph";
 import { cn } from "~/lib/utils";
 
 const WorkInProgress = () => {

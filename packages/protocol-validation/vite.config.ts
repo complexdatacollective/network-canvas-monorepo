@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 import dts from "vite-plugin-dts";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
 const schemaPlugin = (): Plugin => {
 	return {
 		name: "schema",
@@ -27,13 +29,9 @@ const schemaPlugin = (): Plugin => {
 	};
 };
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
 export default defineConfig({
 	resolve: {
-		alias: {
-			"~": resolve(__dirname, "./src"),
-		},
+		tsconfigPaths: true,
 	},
 	build: {
 		lib: {

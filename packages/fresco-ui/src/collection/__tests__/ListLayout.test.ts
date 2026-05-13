@@ -54,7 +54,7 @@ describe("ListLayout", () => {
 		});
 
 		it("should accept gap option", () => {
-			const layout = new ListLayout({ gap: 16 });
+			const layout = new ListLayout({ gap: 4 });
 
 			expect(layout.getGap()).toBe(16);
 		});
@@ -62,12 +62,12 @@ describe("ListLayout", () => {
 
 	describe("getContainerStyles", () => {
 		it("should return flexbox styles", () => {
-			const layout = new ListLayout({ gap: 8 });
+			const layout = new ListLayout({ gap: 2 });
 			const styles = layout.getContainerStyles();
 
 			expect(styles.display).toBe("flex");
 			expect(styles.flexDirection).toBe("column");
-			expect(styles.gap).toBe(8);
+			expect(styles.gap).toBe("calc(2 * var(--spacing-base, 0.25rem))");
 		});
 	});
 
@@ -121,7 +121,7 @@ describe("ListLayout", () => {
 
 	describe("update", () => {
 		it("should calculate layout positions", () => {
-			const layout = new ListLayout({ gap: 10 });
+			const layout = new ListLayout({ gap: 2.5 });
 			layout.setItems(
 				new Map([
 					["a", { key: "a", value: "A", type: "item", textValue: "A" }],

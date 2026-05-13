@@ -1,6 +1,7 @@
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { AnimatePresence } from "motion/react";
 import type { ReactNode } from "react";
+import { usePortalContainer } from "../PortalContainer";
 import { ModalBackdrop } from "./ModalBackdrop";
 
 /**
@@ -28,11 +29,13 @@ export default function Modal({
 	onOpenChange: (open: boolean) => void;
 	children: ReactNode;
 }) {
+	const portalContainer = usePortalContainer();
+
 	return (
 		<BaseDialog.Root open={open} onOpenChange={onOpenChange}>
 			<AnimatePresence>
 				{open && (
-					<BaseDialog.Portal keepMounted>
+					<BaseDialog.Portal container={portalContainer ?? undefined} keepMounted>
 						<ModalBackdrop />
 						{children}
 					</BaseDialog.Portal>

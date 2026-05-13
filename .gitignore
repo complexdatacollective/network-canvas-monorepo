@@ -5,6 +5,7 @@ node_modules
 /.pnp
 .pnp.js
 .yarn/install-state.gz
+.pnpm-store/
 
 
 # next.js
@@ -53,3 +54,19 @@ apps/documentation/public/sidebar.json
 
 # Superpowers brainstorm sessions
 .superpowers/
+
+# Playwright e2e artifacts
+**/test-results/
+**/playwright-report/
+**/.playwright-mcp/
+packages/interview/e2e/.assets/
+
+# e2e host seed-silos generated artifacts (regenerated per script run)
+packages/interview/e2e/host/public/silos-state.json
+packages/interview/e2e/host/public/silos-assets/
+
+# Storybook build output
+storybook-static/
+
+# pnpm pack output
+**/codaco-interview-*.tgz

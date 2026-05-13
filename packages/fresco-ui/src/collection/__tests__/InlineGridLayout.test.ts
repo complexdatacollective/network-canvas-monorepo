@@ -53,14 +53,14 @@ describe("InlineGridLayout", () => {
 		});
 
 		it("should create with custom gap", () => {
-			const layout = new InlineGridLayout({ gap: 24 });
+			const layout = new InlineGridLayout({ gap: 6 });
 			expect(layout.getGap()).toBe(24);
 		});
 	});
 
 	describe("getKeyboardDelegate", () => {
 		it("should return a SpatialKeyboardDelegate", () => {
-			const layout = new InlineGridLayout({ gap: 16 });
+			const layout = new InlineGridLayout({ gap: 4 });
 			const collection = createMockCollection(9);
 
 			const delegate = layout.getKeyboardDelegate(collection, new Set(), 400);
@@ -71,32 +71,32 @@ describe("InlineGridLayout", () => {
 
 	describe("getContainerStyles", () => {
 		it("should return flexbox styles with wrap", () => {
-			const layout = new InlineGridLayout({ gap: 16 });
+			const layout = new InlineGridLayout({ gap: 4 });
 			const styles = layout.getContainerStyles();
 
 			expect(styles.display).toBe("flex");
 			expect(styles.flexWrap).toBe("wrap");
-			expect(styles.gap).toBe(16);
+			expect(styles.gap).toBe("calc(4 * var(--spacing-base, 0.25rem))");
 		});
 
 		it("should use custom gap", () => {
-			const layout = new InlineGridLayout({ gap: 24 });
+			const layout = new InlineGridLayout({ gap: 6 });
 			const styles = layout.getContainerStyles();
 
-			expect(styles.gap).toBe(24);
+			expect(styles.gap).toBe("calc(6 * var(--spacing-base, 0.25rem))");
 		});
 
 		it("should use default gap when not specified", () => {
 			const layout = new InlineGridLayout();
 			const styles = layout.getContainerStyles();
 
-			expect(styles.gap).toBe(16);
+			expect(styles.gap).toBe("calc(4 * var(--spacing-base, 0.25rem))");
 		});
 	});
 
 	describe("getItemStyles", () => {
 		it("should return empty styles (items control their own size)", () => {
-			const layout = new InlineGridLayout({ gap: 16 });
+			const layout = new InlineGridLayout({ gap: 4 });
 			const styles = layout.getItemStyles();
 
 			expect(styles).toEqual({});
@@ -105,7 +105,7 @@ describe("InlineGridLayout", () => {
 
 	describe("getMeasurementInfo", () => {
 		it("should return intrinsic measurement mode", () => {
-			const layout = new InlineGridLayout({ gap: 16 });
+			const layout = new InlineGridLayout({ gap: 4 });
 			const info = layout.getMeasurementInfo();
 
 			expect(info.mode).toBe("intrinsic");
@@ -115,7 +115,7 @@ describe("InlineGridLayout", () => {
 
 	describe("getRows", () => {
 		it("should return empty rows before measurements", () => {
-			const layout = new InlineGridLayout({ gap: 16 });
+			const layout = new InlineGridLayout({ gap: 4 });
 			layout.update({ containerWidth: 400 });
 
 			const rows = layout.getRows();
@@ -126,7 +126,7 @@ describe("InlineGridLayout", () => {
 
 	describe("updateWithMeasurements", () => {
 		it("should throw error for zero-size items", () => {
-			const layout = new InlineGridLayout({ gap: 16 });
+			const layout = new InlineGridLayout({ gap: 4 });
 			const collection = createMockCollection(3);
 
 			const items = new Map<Key, Node<unknown>>();
@@ -160,7 +160,7 @@ describe("InlineGridLayout", () => {
 		});
 
 		it("should calculate rows from measured sizes", () => {
-			const layout = new InlineGridLayout({ gap: 16 });
+			const layout = new InlineGridLayout({ gap: 4 });
 			const collection = createMockCollection(6);
 
 			const items = new Map<Key, Node<unknown>>();
@@ -191,7 +191,7 @@ describe("InlineGridLayout", () => {
 		});
 
 		it("should handle variable-width items", () => {
-			const layout = new InlineGridLayout({ gap: 16 });
+			const layout = new InlineGridLayout({ gap: 4 });
 			const collection = createMockCollection(4);
 
 			const items = new Map<Key, Node<unknown>>();
@@ -224,7 +224,7 @@ describe("InlineGridLayout", () => {
 		});
 
 		it("should wrap items that exceed container width", () => {
-			const layout = new InlineGridLayout({ gap: 16 });
+			const layout = new InlineGridLayout({ gap: 4 });
 			const collection = createMockCollection(3);
 
 			const items = new Map<Key, Node<unknown>>();
@@ -255,7 +255,7 @@ describe("InlineGridLayout", () => {
 
 	describe("getGap", () => {
 		it("should return configured gap", () => {
-			const layout = new InlineGridLayout({ gap: 20 });
+			const layout = new InlineGridLayout({ gap: 5 });
 			expect(layout.getGap()).toBe(20);
 		});
 
@@ -270,7 +270,7 @@ describe("InlineGridLayout", () => {
 			// This test documents the exact calculation to prevent regressions
 			// The bug was that containerWidth was incorrectly including padding,
 			// causing more items to appear per row than should fit.
-			const layout = new InlineGridLayout({ gap: 8 });
+			const layout = new InlineGridLayout({ gap: 2 });
 			const collection = createMockCollection(21);
 
 			const items = new Map<Key, Node<unknown>>();
@@ -304,7 +304,7 @@ describe("InlineGridLayout", () => {
 		it("should not fit more items than mathematically possible", () => {
 			// If this test fails, it means the layout is incorrectly calculating
 			// that 8 items fit in a space where only 7 should fit.
-			const layout = new InlineGridLayout({ gap: 8 });
+			const layout = new InlineGridLayout({ gap: 2 });
 			const collection = createMockCollection(16);
 
 			const items = new Map<Key, Node<unknown>>();
@@ -335,7 +335,7 @@ describe("InlineGridLayout", () => {
 		});
 
 		it("should handle tight fit where items exactly fill container", () => {
-			const layout = new InlineGridLayout({ gap: 10 });
+			const layout = new InlineGridLayout({ gap: 2.5 });
 			const collection = createMockCollection(6);
 
 			const items = new Map<Key, Node<unknown>>();
@@ -363,7 +363,7 @@ describe("InlineGridLayout", () => {
 		});
 
 		it("should wrap to next row when one more item would overflow", () => {
-			const layout = new InlineGridLayout({ gap: 8 });
+			const layout = new InlineGridLayout({ gap: 2 });
 			const collection = createMockCollection(5);
 
 			const items = new Map<Key, Node<unknown>>();

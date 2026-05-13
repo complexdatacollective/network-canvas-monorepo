@@ -1,9 +1,9 @@
 "use client";
 
-import { Button } from "@codaco/ui";
 import { Anchor, Arrow, Content, Portal, Root } from "@radix-ui/react-popover";
 import { ClipboardCheck, ClipboardCopy } from "lucide-react";
 import { useState } from "react";
+import { Button } from "~/components/ui/Button";
 
 const CodeCopyButton = ({ code }: { code: string }) => {
 	const [isCopied, setIsCopied] = useState(false);

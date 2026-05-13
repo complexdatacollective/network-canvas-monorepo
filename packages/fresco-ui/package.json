@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/fresco-ui",
-	"version": "2.0.1",
+	"version": "2.10.2",
 	"type": "module",
 	"license": "MIT",
 	"description": "Fresco UI components, styles, and utilities",
@@ -16,6 +16,10 @@
 		"dist"
 	],
 	"exports": {
+		"./Accordion": {
+			"types": "./dist/Accordion.d.ts",
+			"default": "./dist/Accordion.js"
+		},
 		"./Alert": {
 			"types": "./dist/Alert.d.ts",
 			"default": "./dist/Alert.js"
@@ -103,6 +107,14 @@
 		"./Tooltip": {
 			"types": "./dist/Tooltip.d.ts",
 			"default": "./dist/Tooltip.js"
+		},
+		"./PortalContainer": {
+			"types": "./dist/PortalContainer.d.ts",
+			"default": "./dist/PortalContainer.js"
+		},
+		"./ThemedRegion": {
+			"types": "./dist/ThemedRegion.d.ts",
+			"default": "./dist/ThemedRegion.js"
 		},
 		"./Table": {
 			"types": "./dist/Table.d.ts",
@@ -227,6 +239,10 @@
 		"./collection/dnd/useDragAndDrop": {
 			"types": "./dist/collection/dnd/useDragAndDrop.d.ts",
 			"default": "./dist/collection/dnd/useDragAndDrop.js"
+		},
+		"./collection/layout/GridLayout": {
+			"types": "./dist/collection/layout/GridLayout.d.ts",
+			"default": "./dist/collection/layout/GridLayout.js"
 		},
 		"./collection/layout/InlineGridLayout": {
 			"types": "./dist/collection/layout/InlineGridLayout.d.ts",
@@ -409,20 +425,20 @@
 	"scripts": {
 		"build": "vite build",
 		"dev": "vite build --watch",
-		"typecheck": "tsc --build --noEmit",
+		"typecheck": "tsc --build --noEmit && tsc -p tsconfig.node.json --noEmit",
 		"test": "vitest run",
 		"test:unit": "vitest run --project=unit",
 		"test:storybook": "vitest run --project=storybook",
 		"storybook": "storybook dev -p 6006",
 		"build-storybook": "storybook build",
+		"chromatic": "chromatic --exit-once-uploaded",
 		"prepublishOnly": "pnpm build",
 		"clean": "rm -rf .turbo node_modules dist"
 	},
 	"peerDependencies": {
-		"@codaco/protocol-validation": "11.4.0-alpha.0",
+		"@base-ui/react": "^1.4.0",
 		"@codaco/shared-consts": "5.0.0",
 		"@codaco/tailwind-config": "workspace:^",
-		"immer": "^11.1.4",
 		"motion": "catalog:",
 		"react": "catalog:",
 		"react-dom": "catalog:",
@@ -431,7 +447,6 @@
 		"zustand": "^5.0.12"
 	},
 	"dependencies": {
-		"@base-ui/react": "1.4.0",
 		"@radix-ui/react-slot": "catalog:",
 		"@tiptap/core": "^3.22.3",
 		"@tiptap/extension-bullet-list": "^3.22.3",
@@ -445,6 +460,7 @@
 		"cva": "1.0.0-beta.4",
 		"es-toolkit": "catalog:",
 		"fuse.js": "^7.3.0",
+		"immer": "catalog:",
 		"lucide-react": "catalog:",
 		"nanoid": "^5.1.11",
 		"react-aria-components": "^1.16.0",
@@ -457,7 +473,9 @@
 		"usehooks-ts": "^3.1.1"
 	},
 	"devDependencies": {
-		"@chromatic-com/storybook": "^5.1.2",
+		"@base-ui/react": "catalog:",
+		"@chromatic-com/storybook": "catalog:",
+		"@codaco/protocol-validation": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"@faker-js/faker": "catalog:",
 		"@storybook/addon-a11y": "^10.3.5",
@@ -468,12 +486,13 @@
 		"@testing-library/jest-dom": "^6.9.1",
 		"@testing-library/react": "^16.3.0",
 		"@testing-library/user-event": "^14.6.1",
+		"@types/node": "catalog:",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
 		"@vitejs/plugin-react": "catalog:",
-		"@vitest/browser": "^4.1.5",
-		"@vitest/browser-playwright": "^4.1.5",
-		"chromatic": "^16.2.0",
+		"@vitest/browser": "catalog:",
+		"@vitest/browser-playwright": "catalog:",
+		"chromatic": "catalog:",
 		"jsdom": "^29.0.2",
 		"playwright": "^1.59.1",
 		"storybook": "^10.3.5",

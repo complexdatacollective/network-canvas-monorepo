@@ -55,6 +55,26 @@ export abstract class Layout<T = unknown> {
 		return 0;
 	}
 
+	/**
+	 * Resolves the current `--spacing-base` (Tailwind's spacing token) to
+	 * pixels by stamping a hidden child on the container with `font-size:
+	 * var(--spacing-base, 0.25rem)` and reading its computed font-size. This
+	 * lets gap multipliers behave like Tailwind's `gap-*` utilities — same
+	 * scale as `p-*`, `m-*`, `gap-*` — and pick up the themed override
+	 * inside `[data-theme-interview]`. Falls back to 4px (= 0.25rem) when
+	 * there is no DOM (SSR, jsdom without var() resolution).
+	 */
+	protected resolveSpacingUnit(): number {
+		const container = this.containerRef?.current;
+		if (typeof window === "undefined" || !container) return 4;
+		const measure = document.createElement("div");
+		measure.style.cssText = "position:absolute;visibility:hidden;font-size:var(--spacing-base,0.25rem);";
+		container.appendChild(measure);
+		const fontSize = Number.parseFloat(getComputedStyle(measure).fontSize);
+		container.removeChild(measure);
+		return Number.isFinite(fontSize) && fontSize > 0 ? fontSize : 4;
+	}
+
 	getPadding(): Padding {
 		return { top: 0, right: 0, bottom: 0, left: 0 };
 	}

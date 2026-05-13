@@ -1,5 +1,84 @@
 # @codaco/fresco-ui
 
+## 2.10.1
+
+### Patch Changes
+
+- Fix `Dialog`'s `accent` override and `Alert`'s variant link color. Both were setting `--color-*` aliases (`--color-primary`, `--color-primary-contrast`, `--color-link`), but those aliases are declared inside `@theme inline` in `tooling/tailwind/fresco/theme.css` and get substituted to their inner `var(--…)` at Tailwind compile time. Consumers like `Button`'s `color="primary"` variant and the `text-link` utility read the underlying primitives (`--primary`, `--primary-contrast`, `--link`) directly, so overrides targeting the alias never propagated. Switched both to override the primitives instead, restoring the accent recoloring inside dialogs and link recoloring inside themed alerts.
+
+- `DialogFooter` pins the cancel/dismiss button to the left and clusters secondary + primary to the right, via `justify-end` with a `first-of-many` selector that pushes the first child away. Choice dialogs render buttons in DOM order `cancel → secondary → primary` so the layout applies automatically. Single-button (acknowledge) footers stay right-aligned.
+
+- `RichSelectGroup`'s mount-time `autoFocus` now uses `.focus({ preventScroll: true })`. Previously the default scroll-into-view ran before parent enter animations finished, so e.g. `TieStrengthCensus`'s slide-up `MotionSurface` (starting at `translateY(120%)`) was scrolled into view from off-screen, breaking the entrance. Keyboard-navigation focus is unchanged — user-initiated focus still scrolls.
+
+- Expose `./collection/layout/GridLayout` in package exports. The compiled module already shipped in `dist/`, but with no `exports` entry consumers got a TS resolution error on `import …/GridLayout`. Sister layouts `InlineGridLayout` and `ListLayout` were already exposed.
+
+## 2.10.2
+
+### Patch Changes
+
+- Control-variant size scale: `sm` button bumped up one notch for better tap-target density, and the briefly-introduced `xs` size is removed (the `sm` bump was the cleaner fix). Internal `Button` cleanup to match.
+
+- `controlVariants` border-radius now varies per `size`. Default drops from `rounded-2xl` to `rounded`, and the `lg`/`xl` sizes opt into `rounded-lg`/`rounded-xl` so they keep visual mass against the larger control bodies. `sm`/`md` track the smaller new default.
+
+## 2.10.0
+
+### Minor Changes
+
+- New `Accordion` component. Wraps base-ui's accordion primitives behind the fresco-ui surface (`Accordion`, `AccordionItem`, `AccordionHeader`, `AccordionTrigger`, `AccordionPanel`) and registers `./Accordion` in the package exports. Ships with Storybook coverage and uses the new `motionSafeProps` utility to strip motion props when `prefers-reduced-motion` is set.
+
+- New `RadioItem` named export from `./form/fields/RadioGroup`. Pulls the styled radio item (label + animated indicator + base-ui `Radio.Root` + markdown label) out of `RadioGroupField`'s per-option `.map` so it can be reused inside other base-ui `RadioGroup` parents. `RadioGroupField`'s behavior and markup are unchanged.
+
+- Register `./collection/layout/GridLayout` in the package exports. The compiled module already shipped in `dist/`, but without an `exports` entry consumers couldn't import it without a TS resolution error. Sister layouts `InlineGridLayout` and `ListLayout` were already exposed; this brings `GridLayout` in line.
+
+- `RichSelectGroup` now uses listbox semantics in single-select mode. Selection decouples from focus, `Home`/`End` jump to first/last, and the single-select and multi-select branches are now separate JSX subtrees with static `role`/aria attributes (works around Biome's `useAriaPropsSupportedByRole` ternary-resolution limitation). New `autoFocus` prop. `description` is now optional. Horizontal mode sizes its container to content; `useColumns` is now gated behind an explicit prop instead of being implicit when horizontal. Used by the new Dyad/TieStrengthCensus stages over in `@codaco/interview`.
+
+- `Surface` API simplification — **breaking for consumers passing `elevation`, `bleed`, or `dynamicSpacing`.** Drop those three props; consumers apply `shadow-*` utilities at the call site for elevation, and the spacing scale now resolves to static asymmetric padding (`px-N py-M`) at each tier rather than a mix of compound variants scaled by container queries. Default `spacing` shifts to `'md'` and each tier's `shadow-*` is bumped up one step so the resting depth matches the prior "low" elevation. Fresco-ui's own consumers (`Alert`, `Popover`, `Tooltip`, `DialogPopup`, `Combobox`) are updated; downstream consumers that relied on `elevation`/`dynamicSpacing` need to replace them with `shadow-*` classes and explicit responsive padding.
+
+- `Surface` is now `min-h-0` by default. Surfaces nested in a flex column with a height constraint can now shrink below their content size — fixes a class of "ScrollArea viewport sizes to content instead of overflowing" bugs where the height-constraint chain was broken by flex's default `min-height: auto`. All 25 in-tree usages were audited; none depended on the prior `min-height: auto` behavior.
+
+- `Node`'s `tabIndex` now defaults to `-1` when no `onClick` is provided, so passive nodes drop out of the tab order. Active (clickable) nodes are unaffected.
+
+- Typography: switch `Heading`, `Paragraph`, and the list components to em-based top/bottom margins. After `--spacing-base` became rem-anchored in `@codaco/tailwind-config@1.0.0-alpha.17`, `mb-*` on typography no longer scaled per element, so headings and paragraphs lost their proportional rhythm. Em-based margins fix that without re-introducing em compounding into the global spacing scale. Also drop `h4` from `font-extrabold` to `font-bold` for consistency with the other heading levels, and downsize the `h4 + all-caps` compound to `text-sm` so it reads as a label rather than a heading.
+
+- Theme cascade fixes for components that previously rendered a default-theme value inside `<ThemedRegion theme="interview">`:
+
+  - `Node` selection ring: motion `boxShadow` keyframes now reference `var(--selected)` instead of `var(--color-selected)`, so the cascade picks up the interview override at the animated element. The `--color-*` alias resolves at `:root` and freezes the default-theme value, which was rendering the selection ring yellow inside the interview palette.
+  - `Alert` `[--color-link:…]` variant overrides, `Button` `interview:[--component-text:…]` hover override, `Dialog` accent overrides (`[--color-primary:…]` / `[--color-primary-contrast:…]`), and `animate-pulse-glow` keyframes in `theme.css` swap to bare primitive vars for the same reason.
+
+- `PortalContainer` is now a viewport-sized stacking context (`fixed inset-0 isolate z-50 pointer-events-none`), giving portaled popups a real containing block above sibling stage content. Re-enable pointer events on each portaled root via `[&>*]:pointer-events-auto` so dialog backdrops/popups don't inherit `pointer-events: none` from the container and stop accepting clicks.
+
+- DnD drag preview now portals into the themed `PortalContainer` rather than `document.body`, so cloned drag items inherit the surrounding theme cascade.
+
+- `ProgressBar` uses fixed `w-3/h-3` for the bar thickness instead of `calc(0.7 * var(--theme-root-size))`, and gates the `data-complete` pulse-glow animation behind `motion-safe:` so it respects `prefers-reduced-motion`.
+
+- `ResizableFlexPanel` only applies `overflow: hidden` during the collapse transition, restoring it to the prior overflow behavior once the panel is fully open. Previously the panel kept `overflow: hidden` applied at all times, clipping content that should have been visible.
+
+- `Spinner` and the package's Lucide default stroke-width drop from `2.5` to `2` for cleaner glyphs at the new themed sizes.
+
+## 2.9.0
+
+### Minor Changes
+
+- Move `immer` from `peerDependencies` to `dependencies`. Hosts no longer need to declare `immer` themselves; fresco-ui now ships its own resolved version. Internal use is limited to `enableMapSet()` in the form store, and pnpm catalog/overrides keep the version aligned with `@codaco/interview`'s and any transitives (`@reduxjs/toolkit`, `zustand`).
+
+- Drop `--color-` prefixes from a handful of `bg-[--…]` arbitrary values; tailwind-config alpha.16 now exposes the bare semantic tokens via `@theme inline`, and the `--color-*` indirection no longer flows through to scoped themes.
+
+## 2.8.0
+
+### Minor Changes
+
+- `<ThemedRegion theme="interview">` now also applies Tailwind's `scheme-dark` utility (`color-scheme: dark`) on the wrapper. Interview is a dark-only palette, so native UI inside the region — form controls, scrollbars, autofill backgrounds — now matches the themed surface without the consumer having to add `scheme-dark` themselves. Consumers that previously hardcoded `scheme-dark` alongside `<ThemedRegion theme="interview">` can drop it.
+
+## 2.7.0
+
+### Minor Changes
+
+- New `<ThemedRegion>` component and `<PortalContainerProvider>` for declarative theme scoping. All Portal-using components (Modal, Popover, Tooltip, DropdownMenu, Toast, Select, Combobox) now thread a portal container through React context, allowing themed dialogs and popovers to inherit the theme of the closest themed ancestor instead of always portaling into `document.body`. Outside a `<PortalContainerProvider>` the new container prop falls back to Base UI's default (`document.body`), so existing consumers see no behavior change. New exports: `@codaco/fresco-ui/ThemedRegion` (`ThemedRegion`) and `@codaco/fresco-ui/PortalContainer` (`PortalContainerProvider`, `usePortalContainer`).
+
+- Move `@base-ui/react` from `dependencies` to `peerDependencies` (range `^1.4.0`). Previously it shipped as a regular dependency pinned to exact `1.4.0`, which caused dual-install issues when consumers (or sibling peer deps like `@codaco/interview`) wanted a different patch version. Hosts must now declare `@base-ui/react` themselves.
+
+- Move `@codaco/protocol-validation` from `peerDependencies` to `devDependencies`. All usages inside fresco-ui are `import type` only (`Variable`, `StageSubject`, `Codebook`, `AdditionalAttributes` in the form layer's type signatures), so nothing ends up in the runtime bundle. Hosts that consume fresco-ui's form types must declare `@codaco/protocol-validation` themselves; without it, fresco-ui's emitted `.d.ts` files won't typecheck cleanly.
+
 ## 2.0.1
 
 ### Patch Changes

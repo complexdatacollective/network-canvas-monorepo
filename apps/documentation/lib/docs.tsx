@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, sep } from "node:path";
-import { Button, Details, Heading, ListItem, OrderedList, Paragraph, Summary, UnorderedList } from "@codaco/ui";
 import rehypeFigure from "@microflash/rehype-figure";
 import type { ComponentProps, ReactNode } from "react";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
@@ -25,6 +24,11 @@ import { PrerequisitesSection, SummaryCard, SummarySection } from "~/components/
 import TipBox, { type TipBoxProps } from "~/components/customComponents/TipBox";
 import VideoIFrame from "~/components/customComponents/VideoIFrame";
 import Link from "~/components/Link";
+import { Button } from "~/components/ui/Button";
+import { Details, Summary } from "~/components/ui/typography/Details";
+import Heading from "~/components/ui/typography/Heading";
+import { ListItem, OrderedList, UnorderedList } from "~/components/ui/typography/Lists";
+import Paragraph from "~/components/ui/typography/Paragraph";
 import { get } from "./helper_functions";
 import processPreTags from "./processPreTags";
 import processYamlMatter from "./processYamlMatter";

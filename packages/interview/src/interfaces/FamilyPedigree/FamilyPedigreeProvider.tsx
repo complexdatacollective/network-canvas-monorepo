@@ -1,0 +1,80 @@
+import type { NcEdge, NcNode } from "@codaco/shared-consts";
+import { invariant } from "es-toolkit";
+import { createContext, useContext, useRef } from "react";
+import { useStore } from "zustand";
+import { useCurrentStep } from "~/contexts/CurrentStepContext";
+import { useStageSelector } from "~/hooks/useStageSelector";
+import { useAppDispatch } from "~/store/store";
+import {
+	createFamilyPedigreeStore,
+	type FamilyPedigreeStore,
+	type FamilyPedigreeStoreApi,
+	type NodeMetadata,
+	type VariableConfig,
+} from "./store";
+import {
+	getEdgeTypeKey,
+	getIsActiveVariable,
+	getIsGestationalCarrierVariable,
+	getRelationshipTypeVariable,
+} from "./utils/edgeUtils";
+import { getEgoVariable, getNodeLabelVariable, getNodeTypeKey } from "./utils/nodeUtils";
+
+const FamilyPedigreeContext = createContext<FamilyPedigreeStoreApi | undefined>(undefined);
+
+export const FamilyPedigreeProvider = ({
+	nodes,
+	edges,
+	children,
+}: {
+	nodes: NcNode[];
+	edges: NcEdge[];
+	children: React.ReactNode;
+}) => {
+	const storeRef = useRef<FamilyPedigreeStoreApi>(undefined);
+	const dispatch = useAppDispatch();
+	const { currentStep } = useCurrentStep();
+
+	const nodeType = useStageSelector(getNodeTypeKey);
+	const edgeType = useStageSelector(getEdgeTypeKey);
+	const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
+	const egoVariable = useStageSelector(getEgoVariable);
+	const relationshipTypeVariable = useStageSelector(getRelationshipTypeVariable);
+	const isActiveVariable = useStageSelector(getIsActiveVariable);
+	const isGestationalCarrierVariable = useStageSelector(getIsGestationalCarrierVariable);
+	const variableConfig: VariableConfig = {
+		nodeType,
+		edgeType,
+		nodeLabelVariable,
+		egoVariable,
+		relationshipTypeVariable,
+		isActiveVariable,
+		isGestationalCarrierVariable,
+	};
+
+	const initialNodes = new Map<string, NcNode>(nodes.map((node) => [node._uid, node]));
+
+	const initialEdges = new Map<string, NcEdge>(edges.map((edge) => [edge._uid, edge]));
+
+	const initialNodeMetadata = new Map<string, NodeMetadata>(
+		nodes.map((node) => [node._uid, { readOnly: node.attributes[egoVariable] === true }]),
+	);
+
+	storeRef.current ??= createFamilyPedigreeStore(
+		initialNodes,
+		initialEdges,
+		initialNodeMetadata,
+		variableConfig,
+		dispatch,
+		currentStep,
+	);
+
+	return <FamilyPedigreeContext.Provider value={storeRef.current}>{children}</FamilyPedigreeContext.Provider>;
+};
+
+export const useFamilyPedigreeStore = <T,>(selector: (state: FamilyPedigreeStore) => T) => {
+	const store = useContext(FamilyPedigreeContext);
+	invariant(store, "useFamilyPedigreeStore must be used within a FamilyPedigreeProvider");
+
+	return useStore(store, selector);
+};

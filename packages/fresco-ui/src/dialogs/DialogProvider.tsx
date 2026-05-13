@@ -394,17 +394,17 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =
 			return (
 				<>
 					{dialog.error && <Paragraph className="text-destructive w-full text-sm">{dialog.error}</Paragraph>}
-					{dialog.actions.secondary && (
-						<Button onClick={() => closeDialog(dialog.id, dialog.actions.secondary!.value)}>
-							{dialog.actions.secondary.label}
-						</Button>
-					)}
 					{dialog.actions.cancel && (
 						<Button
 							onClick={() => closeDialog(dialog.id, dialog.actions.cancel.value)}
 							autoFocus={autoFocusButton === "cancel"}
 						>
 							{dialog.actions.cancel.label}
+						</Button>
+					)}
+					{dialog.actions.secondary && (
+						<Button onClick={() => closeDialog(dialog.id, dialog.actions.secondary!.value)}>
+							{dialog.actions.secondary.label}
 						</Button>
 					)}
 					<Button

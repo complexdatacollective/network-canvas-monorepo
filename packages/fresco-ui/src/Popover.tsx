@@ -11,6 +11,7 @@ import {
 	useState,
 } from "react";
 import { MotionSurface } from "./layout/Surface";
+import { usePortalContainer } from "./PortalContainer";
 import { cx } from "./utils/cva";
 
 export function BaseUISharedPopoverContainer({
@@ -22,11 +23,9 @@ export function BaseUISharedPopoverContainer({
 	return (
 		<MotionSurface
 			level="popover"
-			elevation="none"
-			dynamicSpacing={false}
 			spacing="xs"
 			noContainer
-			className={cx("max-w-(--available-width) overflow-visible shadow-xl", className)}
+			className={cx("max-w-(--available-width) overflow-visible", className)}
 			initial={{ opacity: 0, scale: 0.96 }}
 			animate={{ opacity: 1, scale: 1 }}
 			exit={{ opacity: 0, scale: 0.96 }}
@@ -152,9 +151,14 @@ function PopoverContent({
 	...props
 }: PopoverContentProps) {
 	const { mounted } = usePopoverContext();
+	const portalContainer = usePortalContainer();
 
 	return (
-		<BasePopover.Portal keepMounted={keepMounted} {...(props as ComponentPropsWithoutRef<typeof BasePopover.Portal>)}>
+		<BasePopover.Portal
+			container={portalContainer ?? undefined}
+			keepMounted={keepMounted}
+			{...(props as ComponentPropsWithoutRef<typeof BasePopover.Portal>)}
+		>
 			<AnimatePresence>
 				{mounted && (
 					<BasePopover.Positioner sideOffset={sideOffset} align={align} {...(anchor ? { anchor } : {})}>

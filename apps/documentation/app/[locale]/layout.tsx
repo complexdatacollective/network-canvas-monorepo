@@ -1,6 +1,5 @@
 import "@fontsource-variable/quicksand";
 import { GoogleAnalytics } from "@next/third-parties/google";
-import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
@@ -74,7 +73,6 @@ export default async function MainLayout(props: MainLayoutProps) {
 				</PostHogClientProvider>
 			</body>
 			<GoogleAnalytics gaId={env.NEXT_PUBLIC_GA_ID} />
-			<Analytics />
 		</html>
 	);
 }

@@ -18,11 +18,11 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
       - name: Install pnpm
-        uses: pnpm/action-setup@v5
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5
       - name: Install Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
@@ -37,7 +37,7 @@ jobs:
 
       # Upload shared-consts build as artifact
       - name: Upload shared-consts build
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
           name: shared-consts-dist
           path: packages/shared-consts/dist
@@ -45,7 +45,7 @@ jobs:
 
       # Upload protocol-validation build as artifact
       - name: Upload protocol-validation build
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
           name: protocol-validation-dist
           path: packages/protocol-validation/dist
@@ -55,11 +55,11 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
       - name: Install pnpm
-        uses: pnpm/action-setup@v5
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5
       - name: Install Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
@@ -67,13 +67,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Download shared-consts build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
         with:
           name: shared-consts-dist
           path: packages/shared-consts/dist
 
       - name: Download protocol-validation build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
         with:
           name: protocol-validation-dist
           path: packages/protocol-validation/dist
@@ -101,25 +101,29 @@ jobs:
       PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
       GITHUB_TOKEN: ${{ secrets.TEST_PROTOCOL_TOKEN }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
       - name: Install pnpm
-        uses: pnpm/action-setup@v5
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5
       - name: Install Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        # --ignore-scripts: defense-in-depth alongside the release job. The
+        # test job exposes PROTOCOL_ENCRYPTION_KEY/IV and TEST_PROTOCOL_TOKEN
+        # via env; preventing lifecycle scripts from running here removes a
+        # path where a compromised transitive dep could read those secrets.
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Download shared-consts build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
         with:
           name: shared-consts-dist
           path: packages/shared-consts/dist
 
       - name: Download protocol-validation build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
         with:
           name: protocol-validation-dist
           path: packages/protocol-validation/dist
@@ -149,25 +153,33 @@ jobs:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
     steps:
     - name: Check out the code
-      uses: actions/checkout@v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      with:
+        # Don't leave GITHUB_TOKEN in the local git config after checkout.
+        # changesets/action reads GITHUB_TOKEN from its env block at line ~189;
+        # nothing else in this job needs the token in git config.
+        persist-credentials: false
     - name: Install pnpm
-      uses: pnpm/action-setup@v5
+      uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5
     - name: Set up Node.js
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
       with:
         node-version-file: '.nvmrc'
         cache: 'pnpm'
     - name: Install dependencies
-      run: pnpm install --frozen-lockfile
+      # --ignore-scripts: this job holds id-token: write and the npm publish
+      # credential, so refuse to execute lifecycle scripts from any (potentially
+      # compromised) transitive dep. Explicit builds run as their own steps below.
+      run: pnpm install --frozen-lockfile --ignore-scripts
 
     - name: Download shared-consts build
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
       with:
         name: shared-consts-dist
         path: packages/shared-consts/dist
 
     - name: Download protocol-validation build
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
       with:
         name: protocol-validation-dist
         path: packages/protocol-validation/dist
@@ -177,7 +189,7 @@ jobs:
       run: pnpm run build:changed-packages
 
     - name: Create Release Pull Request
-      uses: changesets/action@v1
+      uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b  # v1
       with:
         # command used to version packages. Lint and fix to avoid errors caused
         # by versioning

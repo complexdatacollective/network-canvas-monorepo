@@ -1,6 +1,6 @@
-import { Paragraph, type ParagraphProps } from "@codaco/ui";
 import { motion, type Variants } from "motion/react";
 import { Children } from "react";
+import Paragraph, { type ParagraphProps } from "~/components/ui/typography/Paragraph";
 
 // FancyParagraph animates individual words in a paragraph.
 const FancyParagraph = (props: ParagraphProps) => {

@@ -4,6 +4,8 @@
 	"version": "0.1.0",
 	"files": [
 		"base.json",
+		"dev.json",
+		"node.json",
 		"web.json"
 	]
 }

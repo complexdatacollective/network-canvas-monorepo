@@ -1,0 +1,24 @@
+/*
+ * Import the tailwind foundation for fresco-ui.
+ *
+ * No need to @source interview components because they are part of the root 
+ * that tailwind scans. However, fresco-ui components must be @source'd 
+ * since they live outside the root that tailwind scans. We @source the 
+ * relative path so we don't need to rebuild the fresco-ui package for changes 
+ * to propagate in the interview host.
+ *
+ * Fonts are imported in JS so that url() paths resolve correctly.
+ */
+@import "@codaco/tailwind-config/fresco.css";
+@source "../../fresco-ui/src/**/*.{ts,tsx}";
+
+@layer base {
+	/* Autodocs renders each story in a `.sbdocs-preview` wrapper that lives
+   outside the canvas iframe, so the body rule above doesn't reach it.
+   Paint the docs preview canvas with the theme background directly. */
+	.sbdocs-preview {
+		@apply bg-background!;
+	}
+
+}
+

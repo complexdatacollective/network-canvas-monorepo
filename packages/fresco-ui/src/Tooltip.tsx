@@ -4,6 +4,7 @@ import { Tooltip as BaseTooltip } from "@base-ui/react/tooltip";
 import { AnimatePresence } from "motion/react";
 import * as React from "react";
 import { MotionSurface } from "./layout/Surface";
+import { usePortalContainer } from "./PortalContainer";
 import { cx } from "./utils/cva";
 
 const TooltipProvider = BaseTooltip.Provider;
@@ -21,36 +22,36 @@ type TooltipContentProps = Omit<React.ComponentPropsWithoutRef<typeof BaseToolti
 };
 
 const TooltipContent = React.forwardRef<React.ElementRef<typeof BaseTooltip.Popup>, TooltipContentProps>(
-	({ className, sideOffset = 10, side = "top", align = "center", showArrow = true, children, ...props }, ref) => (
-		<BaseTooltip.Portal>
-			<BaseTooltip.Positioner side={side} sideOffset={sideOffset} align={align}>
-				<AnimatePresence>
-					<BaseTooltip.Popup
-						ref={ref}
-						render={
-							<MotionSurface
-								level="popover"
-								elevation="none"
-								className={cx(
-									"@container-normal max-w-(--available-width) overflow-visible text-sm shadow-xl",
-									className,
-								)}
-								initial={{ opacity: 0, scale: 0.96 }}
-								animate={{ opacity: 1, scale: 1 }}
-								exit={{ opacity: 0, scale: 0.96 }}
-								noContainer
-								transition={{ type: "spring", duration: 0.5 }}
-							/>
-						}
-						{...props}
-					>
-						{showArrow && <TooltipArrow />}
-						{children}
-					</BaseTooltip.Popup>
-				</AnimatePresence>
-			</BaseTooltip.Positioner>
-		</BaseTooltip.Portal>
-	),
+	({ className, sideOffset = 10, side = "top", align = "center", showArrow = true, children, ...props }, ref) => {
+		const portalContainer = usePortalContainer();
+		return (
+			<BaseTooltip.Portal container={portalContainer ?? undefined}>
+				<BaseTooltip.Positioner side={side} sideOffset={sideOffset} align={align}>
+					<AnimatePresence>
+						<BaseTooltip.Popup
+							ref={ref}
+							render={
+								<MotionSurface
+									level="popover"
+									spacing="sm"
+									className={cx("max-w-(--available-width) overflow-visible text-sm", className)}
+									initial={{ opacity: 0, scale: 0.96 }}
+									animate={{ opacity: 1, scale: 1 }}
+									exit={{ opacity: 0, scale: 0.96 }}
+									noContainer
+									transition={{ type: "spring", duration: 0.5 }}
+								/>
+							}
+							{...props}
+						>
+							{showArrow && <TooltipArrow />}
+							{children}
+						</BaseTooltip.Popup>
+					</AnimatePresence>
+				</BaseTooltip.Positioner>
+			</BaseTooltip.Portal>
+		);
+	},
 );
 TooltipContent.displayName = "TooltipContent";
 
