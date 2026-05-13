@@ -38,8 +38,8 @@ The app will be available at `http://localhost:5173`.
 Copy `.env.example` to `.env` and configure:
 
 - `VITE_PUBLIC_POSTHOG_KEY` - PostHog analytics key (optional for development)
-- `VITE_FRESCO_PREVIEW_URL` - Base URL for the Fresco preview service used to upload and view protocol previews
-- `VITE_FRESCO_PREVIEW_API_TOKEN` - API token used to authenticate requests to the Fresco preview service
+
+Protocols are previewed in a local browser tab using the bundled `@codaco/interview` runtime; no remote service is required.
 
 ### Building
 
