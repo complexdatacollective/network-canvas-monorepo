@@ -1,5 +1,7 @@
+import { Popover } from "@base-ui/react/popover";
 import { type CurrentProtocol, type Stage, type StageType, validateProtocol } from "@codaco/protocol-validation";
 import { omit } from "es-toolkit/compat";
+import { Settings } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { getFormValues, isDirty as isFormDirty, isInvalid } from "redux-form";
@@ -7,17 +9,18 @@ import { v1 as uuid } from "uuid";
 import { useLocation } from "wouter";
 import ControlBar from "~/components/ControlBar";
 import Editor from "~/components/Editor";
-import ExternalLink from "~/components/ExternalLink";
 import Issues from "~/components/Issues";
+import Switch from "~/components/NewComponents/Switch";
 import Tooltip from "~/components/NewComponents/Tooltip";
+import { launchPreview } from "~/components/PreviewHost/launchPreview";
 import { useAppDispatch } from "~/ducks/hooks";
+import { getPreviewUseSyntheticData, setPreviewUseSyntheticData } from "~/ducks/modules/app";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
 import type { RootState } from "~/ducks/store";
 import { Button } from "~/lib/legacy-ui/components";
 import { getProtocol, getStage, getStageIndex } from "~/selectors/protocol";
 import { ensureError } from "~/utils/ensureError";
-import { getProgressText, type UploadProgress, uploadProtocolForPreview } from "~/utils/preview/uploadPreview";
 import { formName } from "./configuration";
 import type { SectionComponent } from "./Interfaces";
 import { getInterface } from "./Interfaces";
@@ -76,8 +79,8 @@ const StageEditor = (props: StageEditorProps) => {
 	const isStageInvalid = useSelector((state: RootState) => isInvalid(formName)(state));
 
 	// Preview state
-	const [isUploadingPreview, setIsUploadingPreview] = useState(false);
-	const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
+	const [isOpeningPreview, setIsOpeningPreview] = useState(false);
+	const useSyntheticData = useSelector(getPreviewUseSyntheticData);
 
 	// Handle form submission
 	const onSubmit = useCallback(
@@ -132,7 +135,6 @@ const StageEditor = (props: StageEditorProps) => {
 		const normalizedStage = omit(formValues, ["_modified"]) as Stage;
 		const previewProtocol = buildProtocolWithStage(protocol, normalizedStage, id, insertAtIndex);
 
-		// Validate the protocol before previewing
 		const validationResult = await validateProtocol(previewProtocol);
 		if (!validationResult.success) {
 			dispatch(
@@ -145,45 +147,22 @@ const StageEditor = (props: StageEditorProps) => {
 			return;
 		}
 
-		setIsUploadingPreview(true);
-		setUploadProgress(null);
-
+		const startStage = stageIndex !== -1 ? stageIndex : (insertAtIndex ?? protocol.stages.length);
+		setIsOpeningPreview(true);
 		try {
-			const startStage = stageIndex !== -1 ? stageIndex : (insertAtIndex ?? protocol.stages.length);
-			const { previewUrl } = await uploadProtocolForPreview(previewProtocol, startStage, setUploadProgress);
-
-			// Try to open popup - if blocked, show dialog with link
-			const popup = window.open(previewUrl, "_blank", "noopener,noreferrer");
-			if (!popup) {
-				dispatch(
-					dialogActions.openDialog({
-						type: "Notice",
-						title: "Preview Ready",
-						message: (
-							<div className="flex flex-col gap-4">
-								<p>Your browser blocked the preview popup. Click the link below to open it:</p>
-								<span className="break-all">
-									<ExternalLink href={previewUrl}>{previewUrl}</ExternalLink>
-								</span>
-							</div>
-						),
-						confirmLabel: "Close",
-					}),
-				);
-			}
+			await launchPreview({ protocol: previewProtocol, startStage, useSyntheticData });
 		} catch (error) {
 			dispatch(
 				dialogActions.openDialog({
 					type: "Error",
 					title: "Preview Failed",
-					message: error instanceof Error ? error.message : "Failed to upload protocol for preview",
+					message: error instanceof Error ? error.message : "Failed to open preview",
 				}),
 			);
 		} finally {
-			setIsUploadingPreview(false);
-			setUploadProgress(null);
+			setIsOpeningPreview(false);
 		}
-	}, [protocol, stageIndex, dispatch, formValues, id, insertAtIndex]);
+	}, [protocol, stageIndex, dispatch, formValues, id, insertAtIndex, useSyntheticData]);
 	const sections = useMemo(() => getInterface(interfaceType).sections, [interfaceType]);
 
 	const renderSections = (sectionsList: readonly SectionComponent[]) =>
@@ -192,10 +171,38 @@ const StageEditor = (props: StageEditorProps) => {
 			return <SectionComponent key={sectionKey} form={formName} stagePath={stagePath} interfaceType={interfaceType} />;
 		});
 
+	const previewOptions = (
+		<Popover.Root>
+			<Popover.Trigger
+				render={
+					<button type="button" aria-label="Preview options" className="rounded-md p-2 hover:bg-input-active">
+						<Settings className="size-4" />
+					</button>
+				}
+			/>
+			<Popover.Portal>
+				<Popover.Positioner side="top" sideOffset={8}>
+					<Popover.Popup className="rounded-md bg-surface-accent p-3 text-surface-accent-foreground shadow-lg">
+						<label className="flex items-center gap-3">
+							<Switch
+								checked={useSyntheticData}
+								onCheckedChange={(checked) => dispatch(setPreviewUseSyntheticData(checked))}
+							/>
+							<span className="text-sm">Start preview with example data</span>
+						</label>
+					</Popover.Popup>
+				</Popover.Positioner>
+			</Popover.Portal>
+		</Popover.Root>
+	);
+
 	const previewButton = (
-		<Button key="preview" onClick={handlePreview} color="barbie-pink" disabled={isUploadingPreview || isStageInvalid}>
-			{isUploadingPreview ? getProgressText(uploadProgress) : "Preview"}
-		</Button>
+		<span key="preview" className="inline-flex items-center gap-1">
+			{previewOptions}
+			<Button onClick={handlePreview} color="barbie-pink" disabled={isOpeningPreview || isStageInvalid}>
+				{isOpeningPreview ? "Opening preview…" : "Preview"}
+			</Button>
+		</span>
 	);
 
 	return (
