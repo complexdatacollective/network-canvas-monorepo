@@ -23,9 +23,7 @@ const Routes = () => {
 				</ProjectLayout>
 			</Route>
 			<Route path="/protocol/summary">
-				<ProjectLayout className="print:h-auto print:overflow-visible">
-					<SummaryPage />
-				</ProjectLayout>
+				<SummaryPage />
 			</Route>
 			<Route path="/protocol/stage/:stageId" component={StageEditorPage} />
 			<Route path="/protocol/experiments" component={ExperimentsPage} />

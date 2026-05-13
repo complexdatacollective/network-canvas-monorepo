@@ -18,11 +18,11 @@ const ProtocolInfoCard = () => {
 	}, [name]);
 
 	return (
-		<div className="w-full max-w-4xl mx-auto bg-surface-1 flex flex-col rounded relative overflow-hidden shadow-[0_var(--space-sm)_var(--space-xs)_0_var(--color-border)]">
+		<div className="w-full max-w-4xl mx-auto bg-surface-1 flex flex-col rounded relative overflow-hidden shadow-md">
 			<div className="py-(--space-md) px-(--space-lg)">
 				<input
 					type="text"
-					className="text-2xl font-bold w-full mb-(--space-sm) bg-transparent border-none outline-none p-0 text-inherit font-body focus:outline-none"
+					className="h1 my-0 mb-(--space-sm) w-full bg-transparent border-none outline-none p-0 text-inherit focus:outline-none"
 					value={localName}
 					onChange={(e) => setLocalName(e.target.value)}
 					onBlur={() => {

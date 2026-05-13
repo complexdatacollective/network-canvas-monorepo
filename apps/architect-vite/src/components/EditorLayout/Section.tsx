@@ -4,8 +4,7 @@ import { cn } from "~/utils/cn";
 import IssueAnchor from "../IssueAnchor";
 import Switch from "../NewComponents/Switch";
 
-const containerClasses =
-	"p-6 shadow-md rounded bg-[var(--current-surface)] text-[var(--current-surface-foreground)] relative";
+const containerClasses = "p-6 shadow-md rounded bg-(--current-surface) text-(--current-surface-foreground) relative";
 
 type SectionProps = {
 	id?: string | null;
@@ -61,7 +60,7 @@ const Section = ({
 	// as the "vertical" layout
 	const classes = cn(
 		layout === "horizontal" &&
-			"lg:p-6 lg:shadow-md lg:rounded lg:bg-[var(--current-surface)] lg:text-[var(--current-surface-foreground)] lg:min-w-2xl",
+			"lg:p-6 lg:shadow-md lg:rounded lg:bg-(--current-surface) lg:text-(--current-surface-foreground) lg:min-w-2xl",
 		"relative",
 	);
 
@@ -72,7 +71,7 @@ const Section = ({
 				"[--current-surface:var(--color-surface-1)] [--current-surface-foreground:var(--color-surface-1-foreground)] relative",
 				"w-full max-w-7xl",
 				layout === "horizontal" &&
-					"lg:grid lg:grid-cols-[20rem_auto] lg:gap-8 max-lg:flex max-lg:flex-col max-lg:gap-(--space-md) max-lg:mb-4 max-lg:p-6 max-lg:shadow-md max-lg:rounded max-lg:bg-[var(--current-surface)] max-lg:text-[var(--current-surface-foreground)]",
+					"lg:grid lg:grid-cols-[20rem_auto] lg:gap-8 max-lg:flex max-lg:flex-col max-lg:gap-(--space-md) max-lg:mb-4 max-lg:p-6 max-lg:shadow-md max-lg:rounded max-lg:bg-(--current-surface) max-lg:text-(--current-surface-foreground)",
 				layout === "vertical" && "flex flex-col gap-(--space-md) mb-4",
 				layout === "vertical" && containerClasses,
 				className,

@@ -3,8 +3,8 @@ import { useEffect } from "react";
 import { useSelector } from "react-redux";
 import { Layout } from "~/components/EditorLayout";
 import Tooltip from "~/components/NewComponents/Tooltip";
-import { PageActions } from "~/components/ProjectNav/PageActions";
 import PageHeading from "~/components/ProjectNav/PageHeading";
+import ProjectLayout from "~/components/ProjectNav/ProjectLayout";
 import useProtocolLoader from "~/hooks/useProtocolLoader";
 import { Button } from "~/lib/legacy-ui/components";
 import AssetManifest from "~/lib/ProtocolSummary/components/AssetManifest";
@@ -55,11 +55,21 @@ const SummaryPage = () => {
 	// Don't render until we have protocol data
 	if (!protocol || !protocolName) {
 		return (
-			<Layout>
-				<p>Loading protocol...</p>
-			</Layout>
+			<ProjectLayout className="print:h-auto print:overflow-visible">
+				<Layout>
+					<p>Loading protocol...</p>
+				</Layout>
+			</ProjectLayout>
 		);
 	}
+
+	const printAction = (
+		<Tooltip content="Print protocol summary">
+			<Button onClick={print} color="neon-coral" icon={<Printer />}>
+				Print
+			</Button>
+		</Tooltip>
+	);
 
 	return (
 		<SummaryContext.Provider
@@ -69,42 +79,37 @@ const SummaryPage = () => {
 				index,
 			}}
 		>
-			<PageActions>
-				<Tooltip content="Print protocol summary">
-					<Button onClick={print} color="neon-coral" icon={<Printer />}>
-						Print
-					</Button>
-				</Tooltip>
-			</PageActions>
-			<Layout className="protocol-summary-page">
-				<div className="print:hidden w-full">
-					<PageHeading
-						title="Protocol Summary"
-						description="Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets."
-					/>
-				</div>
-				<div className="protocol-summary">
-					<div className="page-break-marker">
-						<Cover />
+			<ProjectLayout className="print:h-auto print:overflow-visible" extraActions={printAction}>
+				<Layout className="protocol-summary-page">
+					<div className="print:hidden w-full">
+						<PageHeading
+							title="Protocol Summary"
+							description="Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets."
+						/>
 					</div>
+					<div className="protocol-summary">
+						<div className="page-break-marker">
+							<Cover />
+						</div>
 
-					<div className="page-break-marker">
-						<Contents />
-					</div>
+						<div className="page-break-marker">
+							<Contents />
+						</div>
 
-					<div>
-						<Stages />
-					</div>
+						<div>
+							<Stages />
+						</div>
 
-					<div>
-						<Codebook />
-					</div>
+						<div>
+							<Codebook />
+						</div>
 
-					<div>
-						<AssetManifest />
+						<div>
+							<AssetManifest />
+						</div>
 					</div>
-				</div>
-			</Layout>
+				</Layout>
+			</ProjectLayout>
 		</SummaryContext.Provider>
 	);
 };

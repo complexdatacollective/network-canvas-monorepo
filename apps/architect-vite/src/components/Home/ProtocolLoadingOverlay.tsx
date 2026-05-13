@@ -7,7 +7,7 @@ const ProtocolLoadingOverlay = ({ open }: { open: boolean }) => (
 	<BaseDialog.Root open={open}>
 		<AnimatePresence>
 			{open && (
-				<BaseDialog.Portal keepMounted className="z-[var(--z-dialog)]">
+				<BaseDialog.Portal keepMounted className="z-(--z-dialog)">
 					<DialogBackdrop />
 					<div className="fixed inset-0 z-(--z-dialog) flex items-center justify-center">
 						<Spinner size="xl" />

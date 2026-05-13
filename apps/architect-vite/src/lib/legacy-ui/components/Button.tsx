@@ -1,4 +1,4 @@
-import React, { forwardRef, PureComponent } from "react";
+import React, { forwardRef } from "react";
 import { cn } from "~/utils/cn";
 import Icon from "./Icon";
 
@@ -59,7 +59,7 @@ const computeButtonClasses = ({
 		// focus state
 		"transition-color duration-200 ease-in-out",
 		"cursor-pointer",
-		"rounded-xl",
+		"rounded-full",
 		"h-10 px-6 py-2",
 		"tracking-wide font-[500] text-sm",
 		// Handle image size
@@ -106,9 +106,9 @@ type ButtonProps = {
 	variant?: ButtonVariant;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
-class Button extends PureComponent<ButtonProps> {
-	render() {
-		const {
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+	(
+		{
 			color = "platinum",
 			size,
 			variant,
@@ -121,22 +121,24 @@ class Button extends PureComponent<ButtonProps> {
 			disabled = false,
 			className,
 			...rest
-		} = this.props;
+		},
+		ref,
+	) => (
+		<button
+			ref={ref}
+			type={type}
+			className={cn(computeButtonClasses({ color, size, variant, icon, iconPosition }), className)}
+			onClick={onClick}
+			disabled={disabled}
+			{...rest}
+		>
+			{renderButtonIcon({ icon })}
+			{content || children}
+		</button>
+	),
+);
 
-		return (
-			<button
-				type={type}
-				className={cn(computeButtonClasses({ color, size, variant, icon, iconPosition }), className)}
-				onClick={onClick}
-				disabled={disabled}
-				{...rest}
-			>
-				{renderButtonIcon({ icon })}
-				{content || children}
-			</button>
-		);
-	}
-}
+Button.displayName = "Button";
 
 type IconButtonProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
 	icon: React.ReactElement;

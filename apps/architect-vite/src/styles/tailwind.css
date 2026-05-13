@@ -311,6 +311,7 @@
 	   10% lightness, base-hue 290). Use for high-contrast surfaces like the
 	   sticky shared nav. */
 	--color-fresco-purple: oklch(10% 0.4 290);
+	--color-fresco-purple-foreground: hsl(var(--white));
 
 	/* Node color tokens consumed by @codaco/fresco-ui/Node. The component reads
 	   `var(--color-node-N)` for its gradient base and uses `outline-node-N`

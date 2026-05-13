@@ -1,19 +1,20 @@
-import { BookOpenText, FileImage, type LucideIcon, Printer, Redo, Timeline, Undo } from "lucide-react";
+import { BookOpenText, Check, Download, FileImage, type LucideIcon, Printer, Redo, Timeline, Undo } from "lucide-react";
 import { motion } from "motion/react";
-import { useCallback } from "react";
+import type React from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { Link, useLocation } from "wouter";
+import Tooltip from "~/components/NewComponents/Tooltip";
 import { useAppDispatch } from "~/ducks/hooks";
 import { redo, undo } from "~/ducks/modules/activeProtocol";
-import type { RootState } from "~/ducks/store";
-import { IconButton } from "~/lib/legacy-ui/components/Button";
+import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
+import { exportNetcanvas } from "~/ducks/modules/userActions/userActions";
+import Button, { IconButton } from "~/lib/legacy-ui/components/Button";
 import { getCanRedo, getCanUndo, getProtocolName } from "~/selectors/protocol";
 import { cn } from "~/utils/cn";
 import ActionToolbar from "./ActionToolbar";
 import Breadcrumb, { type BreadcrumbItem } from "./Breadcrumb";
-import DownloadButton from "./DownloadButton";
 import NavShell from "./NavShell";
-import { PageActionsTarget } from "./PageActions";
 
 type Tab = {
 	href: string;
@@ -28,15 +29,46 @@ const TABS: Tab[] = [
 	{ href: "/protocol/summary", label: "Summary", Icon: Printer },
 ];
 
-const ProjectNav = () => {
+type ProjectNavProps = {
+	extraActions?: React.ReactNode;
+};
+
+const ProjectNav = ({ extraActions }: ProjectNavProps) => {
 	const [location] = useLocation();
 	const dispatch = useAppDispatch();
 	const protocolName = useSelector(getProtocolName);
-	const canUndo = useSelector((state: RootState) => getCanUndo(state));
-	const canRedo = useSelector((state: RootState) => getCanRedo(state));
+	const canUndo = useSelector(getCanUndo);
+	const canRedo = useSelector(getCanRedo);
+
+	const [isExporting, setIsExporting] = useState(false);
+	const [downloadSuccess, setDownloadSuccess] = useState(false);
 
 	const handleUndo = useCallback(() => dispatch(undo()), [dispatch]);
 	const handleRedo = useCallback(() => dispatch(redo()), [dispatch]);
+
+	const handleDownload = useCallback(async () => {
+		try {
+			setIsExporting(true);
+			await dispatch(exportNetcanvas()).unwrap();
+			setDownloadSuccess(true);
+		} catch (error) {
+			dispatch(
+				dialogActions.openDialog({
+					type: "Error",
+					title: "Failed to export protocol",
+					message: error instanceof Error ? error.message : String(error),
+				}),
+			);
+		} finally {
+			setIsExporting(false);
+		}
+	}, [dispatch]);
+
+	useEffect(() => {
+		if (!downloadSuccess) return;
+		const timer = setTimeout(() => setDownloadSuccess(false), 2000);
+		return () => clearTimeout(timer);
+	}, [downloadSuccess]);
 
 	// Summary is read-only: undo/redo would have no visible effect.
 	const isSummary = location === "/protocol/summary";
@@ -44,7 +76,7 @@ const ProjectNav = () => {
 	const breadcrumbItems: BreadcrumbItem[] = [{ label: protocolName ?? "Untitled protocol" }];
 
 	const tabs = (
-		<nav aria-label="Project sections" className="flex items-center gap-6 lg:gap-10">
+		<nav aria-label="Project sections" className="flex items-center gap-(--space-lg) lg:gap-(--space-xl)">
 			{TABS.map(({ href, label, Icon }) => {
 				const isActive = location === href;
 				return (
@@ -79,7 +111,7 @@ const ProjectNav = () => {
 		<>
 			<NavShell leading={<Breadcrumb items={breadcrumbItems} />} trailing={tabs} />
 			<ActionToolbar>
-				<PageActionsTarget />
+				{extraActions}
 				{!isSummary && (
 					<>
 						<IconButton
@@ -100,7 +132,15 @@ const ProjectNav = () => {
 						/>
 					</>
 				)}
-				<DownloadButton />
+				<Tooltip content="Download .netcanvas protocol">
+					<Button
+						onClick={handleDownload}
+						color="sea-green"
+						content={downloadSuccess ? "Downloaded" : isExporting ? "Downloading..." : "Download"}
+						disabled={isExporting}
+						icon={downloadSuccess ? <Check /> : <Download />}
+					/>
+				</Tooltip>
 			</ActionToolbar>
 		</>
 	);

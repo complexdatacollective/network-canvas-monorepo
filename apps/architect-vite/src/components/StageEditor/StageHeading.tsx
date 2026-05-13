@@ -81,7 +81,13 @@ const StageHeading = ({ stageNumber, totalStages }: StageHeadingProps) => {
 	return (
 		<div className="w-full pt-(--space-lg) sm:pt-(--space-xl) lg:grid lg:grid-cols-[20rem_auto] lg:gap-8 max-lg:flex max-lg:flex-col max-lg:gap-(--space-md)">
 			<div className="flex items-center justify-center">
-				<div className="relative before:absolute before:left-[50%] before:border-l-10 before:h-56 before:border-neon-coral before:-top-13 before:[mask-image:linear-gradient(180deg,transparent,rgb(0,0,0)_20%,rgb(0,0,0)_80%,transparent_100%)]">
+				{/*
+				 * Decorative timeline rail behind the stage thumbnail.
+				 * - image height: h-28 (7rem); rail height h-56 (14rem) extends 3.5rem above and below to bleed past both ends
+				 * - -top-13 (-3.25rem) shifts the rail up so it is vertically centered on the image
+				 * - border-l-10 (10px) stroke matches the badge timeline accent width
+				 */}
+				<div className="relative before:absolute before:left-[50%] before:border-l-10 before:h-56 before:border-neon-coral before:-top-13 before:mask-[linear-gradient(180deg,transparent,rgb(0,0,0)_20%,rgb(0,0,0)_80%,transparent_100%)]">
 					<img
 						src={getTimelineImage(type)}
 						alt={`${typeLabel} interface`}

@@ -118,7 +118,7 @@ export const mayUpgradeProtocolDialog = (
 						If you choose to migrate, the following actions will be automatically performed on your protocol. Read these
 						notes carefully, as these actions may affect your data.
 					</p>
-					<div className="max-h-72 overflow-y-auto rounded-xl bg-surface-2 px-4 py-2 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-2 [&_li]:leading-relaxed">
+					<div className="max-h-72 overflow-y-auto rounded-sm bg-surface-2 px-4 py-2 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-2 [&_li]:leading-relaxed">
 						{migrationNotes.map(({ version, notes }) => (
 							<div key={version}>
 								<h4>Migrating to schema Version {version} will:</h4>

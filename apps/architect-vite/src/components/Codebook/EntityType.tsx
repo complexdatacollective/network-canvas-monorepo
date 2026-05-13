@@ -64,11 +64,7 @@ const EntityType = ({
 
 	const stages = usage.map(({ id, label }) =>
 		id ? (
-			<Link
-				href={`/protocol/stage/${id}`}
-				key={id}
-				className="underline decoration-[color:var(--color-action)] underline-offset-4 px-1"
-			>
+			<Link href={`/protocol/stage/${id}`} key={id} className="underline decoration-action underline-offset-4 px-1">
 				{label}
 			</Link>
 		) : (
