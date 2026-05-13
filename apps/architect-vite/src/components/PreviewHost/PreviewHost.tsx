@@ -1,4 +1,10 @@
-import { createInitialNetwork, generateNetwork, type InterviewPayload, Shell } from "@codaco/interview";
+import {
+	createInitialNetwork,
+	generateNetwork,
+	type InterviewPayload,
+	type SessionPayload,
+	Shell,
+} from "@codaco/interview";
 import { useEffect, useState } from "react";
 import { v4 as uuid } from "uuid";
 import { currentProtocolToPayload } from "./currentProtocolToPayload";
@@ -8,7 +14,7 @@ import { useAssetResolver } from "./useAssetResolver";
 const noopSync = async () => {};
 const noopFinish = async () => {};
 
-function buildSession(payload: PreviewPayload) {
+function buildSession(payload: PreviewPayload): SessionPayload {
 	const now = new Date().toISOString();
 	const network = payload.useSyntheticData
 		? generateNetwork(payload.protocol.codebook, payload.protocol.stages).network
@@ -20,7 +26,6 @@ function buildSession(payload: PreviewPayload) {
 		exportTime: null,
 		lastUpdated: now,
 		network,
-		currentStep: payload.startStage,
 	};
 }
 

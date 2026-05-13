@@ -18,7 +18,7 @@ function makeProtocol(): CurrentProtocol {
 		stages: [{}, {}, {}],
 		codebook: { node: {}, edge: {}, ego: {} },
 		assetManifest: { a: { id: "a", name: "x", type: "image", source: "x.png" } },
-	} as CurrentProtocol;
+	} as unknown as CurrentProtocol;
 }
 
 function postReadyFromSource(source: unknown, origin = window.location.origin) {

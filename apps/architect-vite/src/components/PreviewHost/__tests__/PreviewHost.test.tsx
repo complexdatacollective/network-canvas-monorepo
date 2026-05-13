@@ -63,9 +63,9 @@ describe("PreviewHost", () => {
 		postPayload(openerStub, { type: "preview:payload", protocol, startStage: 0, useSyntheticData: false });
 
 		expect(screen.getByTestId("shell-mounted")).toBeInTheDocument();
-		const call = shellMock.mock.calls.at(-1)?.[0] as { payload: InterviewPayload };
+		const call = shellMock.mock.calls.at(-1)?.[0] as { payload: InterviewPayload; currentStep: number };
 		expect(call.payload.protocol.name).toBe("T");
-		expect(call.payload.session.currentStep).toBe(0);
+		expect(call.currentStep).toBe(0);
 		expect(call.payload.session.network.nodes).toEqual([]);
 	});
 
@@ -74,10 +74,8 @@ describe("PreviewHost", () => {
 		const protocol = makeProtocol();
 		postPayload(openerStub, { type: "preview:payload", protocol, startStage: 0, useSyntheticData: true });
 
-		const call = shellMock.mock.calls.at(-1)?.[0] as { payload: InterviewPayload };
-		// generateNetwork should run; for an Information stage it may still produce 0 nodes,
-		// but the call should resolve without error and currentStep should respect startStage.
-		expect(call.payload.session.currentStep).toBe(0);
+		const call = shellMock.mock.calls.at(-1)?.[0] as { payload: InterviewPayload; currentStep: number };
+		expect(call.currentStep).toBe(0);
 	});
 
 	it("ignores payload messages from a non-opener source", () => {
