@@ -31,7 +31,6 @@
 		"@radix-ui/react-slot": "catalog:",
 		"@radix-ui/react-tooltip": "^1.2.8",
 		"@t3-oss/env-nextjs": "^0.13.11",
-		"@vercel/analytics": "^2.0.1",
 		"class-variance-authority": "catalog:",
 		"clsx": "^2.1.1",
 		"dotenv": "catalog:",
