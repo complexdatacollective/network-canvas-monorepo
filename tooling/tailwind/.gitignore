@@ -1,0 +1,5 @@
+node_modules
+.turbo
+
+# tsc-emitted plugin artifacts (built before publish, see scripts.build).
+shared/plugins/**/*.js

@@ -70,12 +70,17 @@ export default defineConfig({
 		emptyOutDir: true,
 	},
 	plugins: [
-		dts({
-			include: "src",
-			exclude: ["**/*.stories.tsx", "**/*.test.*", "**/*.spec.*", "**/__tests__/**", "**/test-setup.ts"],
-			// Strip the `src/` prefix so dts outputs land alongside the JS in `dist/`.
-			entryRoot: "src",
-		}),
+		// Skip dts emission when this config is loaded by Storybook (preview
+		// build) or Vitest. Storybook's CLI sets STORYBOOK=true; Vitest sets
+		// VITEST=true.
+		!process.env.STORYBOOK &&
+			!process.env.VITEST &&
+			dts({
+				include: "src",
+				exclude: ["**/*.stories.tsx", "**/*.test.*", "**/*.spec.*", "**/__tests__/**", "**/test-setup.ts"],
+				// Strip the `src/` prefix so dts outputs land alongside the JS in `dist/`.
+				entryRoot: "src",
+			}),
 		cssCopyPlugin(),
 	],
 });

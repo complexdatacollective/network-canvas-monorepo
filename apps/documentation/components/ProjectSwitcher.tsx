@@ -1,11 +1,13 @@
 "use client";
 
-import { Heading, Paragraph, Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from "@codaco/ui";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { forwardRef } from "react";
 import { type Locale, type Project, projects } from "~/app/types";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from "~/components/ui/select";
+import Heading from "~/components/ui/typography/Heading";
+import Paragraph from "~/components/ui/typography/Paragraph";
 import { cn } from "~/lib/utils";
 import { useRouter } from "~/navigation";
 

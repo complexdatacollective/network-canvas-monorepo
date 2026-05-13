@@ -1,8 +1,8 @@
 "use client";
 
-import { Heading, type HeadingProps } from "@codaco/ui";
 import { motion, type Variants } from "motion/react";
 import { Children } from "react";
+import Heading, { type HeadingProps } from "~/components/ui/typography/Heading";
 
 // FancyHeading is a component that animates the words in a heading.
 const FancyHeading = (props: HeadingProps) => {

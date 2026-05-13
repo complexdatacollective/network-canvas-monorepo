@@ -1,0 +1,22 @@
+{
+	"extends": "@codaco/tsconfig/dev.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"paths": {
+			"~/.storybook/*": ["./.storybook/*"],
+			"~/*": ["./src/*"]
+		}
+	},
+	"include": [
+		"vite.config.ts",
+		"vitest.config.ts",
+		".storybook/**/*.ts",
+		".storybook/**/*.tsx",
+		"src/**/*.stories.tsx",
+		"src/**/*.test.ts",
+		"src/**/*.test.tsx",
+		"src/**/__tests__/**/*.ts",
+		"src/**/__tests__/**/*.tsx",
+		"src/**/*.d.ts"
+	]
+}

@@ -1,18 +1,17 @@
-import sharedConfig from "@codaco/tailwind-config/fresco";
 import containers from "@tailwindcss/container-queries";
 import typography from "@tailwindcss/typography";
 import type { Config } from "tailwindcss";
+import fresco from "./tailwind/fresco";
 
 const config: Pick<Config, "content" | "darkMode" | "presets" | "plugins" | "theme"> = {
 	darkMode: "class",
 	content: [
-		...sharedConfig.content,
+		...fresco.content,
 		"./lib/**/*.{ts,tsx}", // For JSX components in MD
 		"./components/**/*.{ts,tsx}",
 		"./app/**/*.{ts,tsx}",
-		"../../packages/ui/src/**/*.{ts,tsx}", // UI package
 	],
-	presets: [sharedConfig],
+	presets: [fresco],
 	plugins: [typography, containers],
 	theme: {
 		extend: {

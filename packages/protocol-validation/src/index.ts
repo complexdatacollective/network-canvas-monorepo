@@ -1,4 +1,5 @@
 import { type ExtractedAsset, extractProtocol } from "./utils/extractProtocol";
+import { hashProtocol } from "./utils/hashProtocol";
 import { getVariableNamesFromNetwork, type Network, validateNames } from "./utils/validateExternalData";
 import validateProtocol from "./validation/validate-protocol";
 
@@ -24,6 +25,7 @@ export {
 	type ExtractedAsset,
 	extractProtocol,
 	getVariableNamesFromNetwork,
+	hashProtocol,
 	type Network,
 	validateNames,
 	validateProtocol,

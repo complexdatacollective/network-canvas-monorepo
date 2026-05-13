@@ -16,7 +16,6 @@
 	},
 	"dependencies": {
 		"@codaco/art": "workspace:*",
-		"@codaco/ui": "workspace:*",
 		"@docsearch/css": "^4.6.2",
 		"@docsearch/react": "^4.6.2",
 		"@fontsource-variable/quicksand": "^5.2.10",
@@ -24,9 +23,13 @@
 		"@next/bundle-analyzer": "catalog:",
 		"@next/third-parties": "catalog:",
 		"@posthog/react": "catalog:",
+		"@radix-ui/react-collapsible": "^1.1.12",
 		"@radix-ui/react-dialog": "catalog:",
 		"@radix-ui/react-navigation-menu": "^1.2.14",
 		"@radix-ui/react-popover": "^1.1.15",
+		"@radix-ui/react-select": "^2.2.6",
+		"@radix-ui/react-slot": "catalog:",
+		"@radix-ui/react-tooltip": "^1.2.8",
 		"@t3-oss/env-nextjs": "^0.13.11",
 		"@vercel/analytics": "^2.0.1",
 		"class-variance-authority": "catalog:",
@@ -43,7 +46,6 @@
 		"react-dom": "catalog:"
 	},
 	"devDependencies": {
-		"@codaco/tailwind-config": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"@microflash/rehype-figure": "^2.1.4",
 		"@tailwindcss/container-queries": "catalog:",

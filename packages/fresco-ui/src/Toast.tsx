@@ -5,6 +5,7 @@ import { AlertCircle, Info, type LucideIcon, PartyPopper } from "lucide-react";
 import Button from "./Button";
 import CloseButton from "./CloseButton";
 import { surfaceVariants } from "./layout/Surface";
+import { usePortalContainer } from "./PortalContainer";
 import Heading from "./typography/Heading";
 import { cva, cx, type VariantProps } from "./utils/cva";
 
@@ -150,9 +151,10 @@ export function useToast(): TypedUseToastManager {
 
 export function Toaster() {
 	const { toasts } = useToast();
+	const portalContainer = usePortalContainer();
 
 	return (
-		<Toast.Portal>
+		<Toast.Portal container={portalContainer ?? undefined}>
 			<Toast.Viewport
 				className={cx(
 					"phone-landscape:max-w-sm fixed top-auto bottom-2 mx-auto flex w-full",

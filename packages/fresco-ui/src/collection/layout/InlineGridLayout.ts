@@ -6,7 +6,12 @@ import { Layout } from "./Layout";
 import type { LayoutInfo, LayoutOptions, MeasurementInfo, RowInfo, Size } from "./types";
 
 type InlineGridLayoutOptions = {
-	/** Gap between items in pixels. Default: 16 */
+	/**
+	 * Gap between items, expressed in Tailwind spacing units (the same scale
+	 * as `gap-*` / `p-*` / `m-*` — `1` = `--spacing-base`, ≈ 0.25rem at the
+	 * default theme; themed regions can override `--spacing-base` to scale).
+	 * Default: 4 (= 1rem at default theme).
+	 */
 	gap?: number;
 };
 
@@ -29,14 +34,18 @@ export class InlineGridLayout<T = unknown> extends Layout<T> {
 
 	constructor(options?: InlineGridLayoutOptions) {
 		super();
-		this.gap_ = options?.gap ?? 16;
+		this.gap_ = options?.gap ?? 4;
+	}
+
+	private getResolvedGap(): number {
+		return this.gap_ * this.resolveSpacingUnit();
 	}
 
 	getContainerStyles(): React.CSSProperties {
 		return {
 			display: "flex",
 			flexWrap: "wrap",
-			gap: this.gap_,
+			gap: `calc(${this.gap_} * var(--spacing-base, 0.25rem))`,
 		};
 	}
 
@@ -46,7 +55,7 @@ export class InlineGridLayout<T = unknown> extends Layout<T> {
 	}
 
 	override getGap(): number {
-		return this.gap_;
+		return this.getResolvedGap();
 	}
 
 	getMeasurementInfo(_containerWidth?: number): MeasurementInfo {
@@ -92,6 +101,7 @@ export class InlineGridLayout<T = unknown> extends Layout<T> {
 
 		// Initial pass without measurements - positions will be approximate
 		// until measurements arrive
+		const resolvedGap = this.getResolvedGap();
 		let x = 0;
 		let y = 0;
 
@@ -110,12 +120,12 @@ export class InlineGridLayout<T = unknown> extends Layout<T> {
 			this.layoutInfos.set(key, layoutInfo);
 
 			// Move to next position
-			x += size.width + this.gap_;
+			x += size.width + resolvedGap;
 
 			// Wrap to next row if needed
-			if (x > this.containerWidth && x > size.width + this.gap_) {
+			if (x > this.containerWidth && x > size.width + resolvedGap) {
 				x = 0;
-				y += size.height + this.gap_;
+				y += size.height + resolvedGap;
 			}
 		}
 
@@ -134,6 +144,7 @@ export class InlineGridLayout<T = unknown> extends Layout<T> {
 		this.layoutInfos.clear();
 		this.rows = [];
 
+		const resolvedGap = this.getResolvedGap();
 		let x = 0;
 		let y = 0;
 		let currentRowKeys: Key[] = [];
@@ -162,7 +173,7 @@ export class InlineGridLayout<T = unknown> extends Layout<T> {
 
 				// Start new row
 				x = 0;
-				y += currentRowMaxHeight + this.gap_;
+				y += currentRowMaxHeight + resolvedGap;
 				currentRowKeys = [];
 				currentRowMaxHeight = 0;
 			}
@@ -178,7 +189,7 @@ export class InlineGridLayout<T = unknown> extends Layout<T> {
 			currentRowMaxHeight = Math.max(currentRowMaxHeight, size.height);
 
 			// Move to next position
-			x += size.width + this.gap_;
+			x += size.width + resolvedGap;
 		}
 
 		// Don't forget the last row

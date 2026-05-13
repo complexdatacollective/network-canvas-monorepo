@@ -1,7 +1,7 @@
 "use client";
-import { Heading } from "@codaco/ui";
 import type { JSX } from "react";
 import WorkInProgress from "~/components/customComponents/WorkInProgress";
+import Heading from "~/components/ui/typography/Heading";
 import type { HeadingNode } from "~/lib/tableOfContents";
 import { usePathname } from "~/navigation";
 import FancyHeading from "./FancyHeading";

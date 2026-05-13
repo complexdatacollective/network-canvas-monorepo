@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Seed SILOS interview</title>
+    <style>
+      body { font: 14px/1.4 -apple-system, system-ui, sans-serif; padding: 2rem; max-width: 36rem; }
+      .err { color: #b00020; }
+    </style>
+  </head>
+  <body>
+    <p>Seeding SILOS interview into sessionStorage…</p>
+    <p id="msg"></p>
+    <script type="module">
+      const params = new URLSearchParams(location.search);
+      const step = params.get('step') ?? '0';
+      const msg = document.getElementById('msg');
+      try {
+        const res = await fetch('/silos-state.json', { cache: 'no-store' });
+        if (!res.ok) throw new Error(`fetch ${res.status}`);
+        const { meta, state } = await res.json();
+        sessionStorage.setItem(meta.storageKey, JSON.stringify(state));
+        const target = `/?interviewId=${encodeURIComponent(meta.interviewId)}&step=${encodeURIComponent(step)}`;
+        msg.textContent = `Redirecting to ${target}…`;
+        location.replace(target);
+      } catch (e) {
+        msg.className = 'err';
+        msg.textContent = `Seed failed: ${e?.message ?? e}. Did you run \`pnpm tsx e2e/host/scripts/seed-silos.ts\`?`;
+      }
+    </script>
+  </body>
+</html>

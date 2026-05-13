@@ -5,14 +5,14 @@ import * as React from "react";
 import { cva, cx, type VariantProps } from "../utils/cva";
 
 export const headingVariants = cva({
-	base: "font-heading scroll-m-20 text-balance",
+	base: "font-heading scroll-m-20 text-pretty",
 	variants: {
 		level: {
 			h1: "text-3xl font-bold",
 			h2: "text-2xl font-bold",
 			h3: "text-xl font-bold",
-			h4: "text-lg font-extrabold",
-			label: "text-base leading-snug font-bold text-pretty",
+			h4: "text-lg font-bold",
+			label: "text-base leading-snug font-bold",
 		},
 		variant: {
 			default: "",
@@ -20,7 +20,7 @@ export const headingVariants = cva({
 			"page-heading": "text-4xl",
 		},
 		margin: {
-			default: "not-first:mt-4 not-last:mb-2",
+			default: "not-first:mt-[1em] not-last:mb-[0.5em]",
 			none: "mb-0",
 		},
 	},
@@ -29,7 +29,7 @@ export const headingVariants = cva({
 		variant: "default",
 		margin: "default",
 	},
-	compoundVariants: [{ level: "h4", variant: "all-caps", className: "text-base font-black" }],
+	compoundVariants: [{ level: "h4", variant: "all-caps", className: "text-sm font-black" }],
 });
 
 const levelToTagName = {

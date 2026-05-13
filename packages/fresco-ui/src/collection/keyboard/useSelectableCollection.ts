@@ -38,7 +38,7 @@ export function useSelectableCollection(options: UseSelectableCollectionOptions)
 
 	// Type-ahead search state
 	const searchRef = useRef("");
-	const searchTimeoutRef = useRef<NodeJS.Timeout>(undefined);
+	const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
 	const handleTypeAhead = useCallback(
 		(char: string) => {

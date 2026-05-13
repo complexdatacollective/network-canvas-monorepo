@@ -5,6 +5,7 @@ import { Check, CheckIcon, ChevronRight } from "lucide-react";
 import { AnimatePresence } from "motion/react";
 import * as React from "react";
 import { BaseUISharedPopoverContainer } from "./Popover";
+import { usePortalContainer } from "./PortalContainer";
 import { dropdownItemVariants, proportionalLucideIconVariants } from "./styles/controlVariants";
 import { cx } from "./utils/cva";
 
@@ -72,9 +73,10 @@ const DropdownMenuSubContent = React.forwardRef<
 	}
 >(({ className, sideOffset = 8, keepMounted = true, ...props }, ref) => {
 	const { mounted } = useDropdownMenuContext();
+	const portalContainer = usePortalContainer();
 
 	return (
-		<Menu.Portal keepMounted={keepMounted}>
+		<Menu.Portal container={portalContainer ?? undefined} keepMounted={keepMounted}>
 			<AnimatePresence>
 				{mounted && (
 					<Menu.Positioner sideOffset={sideOffset}>
@@ -98,9 +100,10 @@ const DropdownMenuContent = React.forwardRef<
 	}
 >(({ className, sideOffset = 4, side = "bottom", align = "center", keepMounted = true, ...props }, ref) => {
 	const { mounted } = useDropdownMenuContext();
+	const portalContainer = usePortalContainer();
 
 	return (
-		<Menu.Portal keepMounted={keepMounted}>
+		<Menu.Portal container={portalContainer ?? undefined} keepMounted={keepMounted}>
 			<AnimatePresence>
 				{mounted && (
 					<Menu.Positioner sideOffset={sideOffset} side={side} align={align}>

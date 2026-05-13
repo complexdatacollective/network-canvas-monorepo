@@ -38,10 +38,10 @@ const nodeVariants = cva({
 	variants: {
 		size: {
 			xxs: "size-8",
-			xs: "desktop:size-18 tablet-landscape:size-16 size-14",
-			sm: "desktop:size-24 tablet-landscape:size-22 size-20",
-			md: "desktop:size-30 tablet-landscape:size-28 size-24",
-			lg: "desktop:size-36 tablet-landscape:size-34 size-30",
+			xs: "size-16",
+			sm: "size-24",
+			md: "size-28 tablet-portrait:size-32",
+			lg: "size-32 tablet-portrait:size-40",
 		},
 		shape: {
 			circle: "rounded-full",
@@ -49,14 +49,14 @@ const nodeVariants = cva({
 			diamond: "scale-[0.85] rotate-45 rounded",
 		},
 		color: {
-			"node-color-seq-1": "outline-node-1 [--base:var(--color-node-1)]",
-			"node-color-seq-2": "outline-node-2 [--base:var(--color-node-2)]",
-			"node-color-seq-3": "outline-node-3 [--base:var(--color-node-3)]",
-			"node-color-seq-4": "outline-node-4 [--base:var(--color-node-4)]",
-			"node-color-seq-5": "outline-node-5 [--base:var(--color-node-5)]",
-			"node-color-seq-6": "outline-node-6 [--base:var(--color-node-6)]",
-			"node-color-seq-7": "outline-node-7 [--base:var(--color-node-7)]",
-			"node-color-seq-8": "outline-node-8 [--base:var(--color-node-8)]",
+			"node-color-seq-1": "outline-node-1 [--base:var(--node-1)]",
+			"node-color-seq-2": "outline-node-2 [--base:var(--node-2)]",
+			"node-color-seq-3": "outline-node-3 [--base:var(--node-3)]",
+			"node-color-seq-4": "outline-node-4 [--base:var(--node-4)]",
+			"node-color-seq-5": "outline-node-5 [--base:var(--node-5)]",
+			"node-color-seq-6": "outline-node-6 [--base:var(--node-6)]",
+			"node-color-seq-7": "outline-node-7 [--base:var(--node-7)]",
+			"node-color-seq-8": "outline-node-8 [--base:var(--node-8)]",
 			custom: "", // Custom color - set via style prop
 		},
 		disabled: {
@@ -219,11 +219,7 @@ export default function Node(props: UINodeProps) {
 			void animate(
 				stateScope.current,
 				{
-					boxShadow: [
-						"0 0 0 0 var(--color-selected)",
-						"0 0 0 0.5em var(--color-selected)",
-						"0 0 0 0.3em var(--color-selected)",
-					],
+					boxShadow: ["0 0 0 0 var(--selected)", "0 0 0 0.5em var(--selected)", "0 0 0 0.3em var(--selected)"],
 				},
 				{
 					duration: 0.4,
@@ -245,6 +241,7 @@ export default function Node(props: UINodeProps) {
 	return (
 		<motion.button
 			{...buttonProps}
+			tabIndex={hasClickHandler ? buttonProps.tabIndex : (buttonProps.tabIndex ?? -1)}
 			ref={useMergeRefs({ ref, scope, stateScope })}
 			type="button"
 			disabled={disabled}
@@ -279,12 +276,12 @@ export default function Node(props: UINodeProps) {
 					<motion.span
 						className="pointer-events-none absolute inset-0 rounded-[inherit]"
 						initial={{
-							boxShadow: "0 0 0 0.08em var(--color-selected)",
+							boxShadow: "0 0 0 0.08em var(--selected)",
 						}}
 						animate={{
-							boxShadow: ["0 0 0 0.08em var(--color-selected)", "0 0 0 0.7em var(--color-selected)"],
+							boxShadow: ["0 0 0 0.08em var(--selected)", "0 0 0 0.7em var(--selected)"],
 						}}
-						exit={{ opacity: 0, boxShadow: "0 0 0 0 var(--color-selected)" }}
+						exit={{ opacity: 0, boxShadow: "0 0 0 0 var(--selected)" }}
 						transition={{
 							boxShadow: {
 								duration: 0.4,
