@@ -37,7 +37,7 @@
 		"dotenv": "catalog:",
 		"gunzip-maybe": "^1.4.2",
 		"jszip": "^3.10.1",
-		"tar-stream": "^3.1.8",
+		"tar-stream": "^3.2.0",
 		"tsx": "catalog:",
 		"typescript": "catalog:",
 		"vite": "catalog:",
