@@ -63,10 +63,25 @@ describe("PreviewHost", () => {
 		postPayload(openerStub, { type: "preview:payload", protocol, startStage: 0, useSyntheticData: false });
 
 		expect(screen.getByTestId("shell-mounted")).toBeInTheDocument();
-		const call = shellMock.mock.calls.at(-1)?.[0] as { payload: InterviewPayload; currentStep: number };
+		const call = shellMock.mock.calls.at(-1)?.[0] as {
+			payload: InterviewPayload;
+			currentStep: number;
+			onStepChange: (step: number) => void;
+		};
 		expect(call.payload.protocol.name).toBe("T");
-		expect(call.currentStep).toBe(0);
 		expect(call.payload.session.network.nodes).toEqual([]);
+		// Shell goes read-only if currentStep is provided without onStepChange — both must be wired.
+		expect(call.currentStep).toBe(0);
+		expect(typeof call.onStepChange).toBe("function");
+	});
+
+	it("initialises currentStep from payload.startStage", () => {
+		render(<PreviewHost />);
+		const protocol = makeProtocol();
+		postPayload(openerStub, { type: "preview:payload", protocol, startStage: 3, useSyntheticData: false });
+
+		const call = shellMock.mock.calls.at(-1)?.[0] as { currentStep: number };
+		expect(call.currentStep).toBe(3);
 	});
 
 	it("seeds a synthetic network when useSyntheticData is true", () => {

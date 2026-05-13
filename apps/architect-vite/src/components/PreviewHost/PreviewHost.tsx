@@ -29,14 +29,10 @@ function buildSession(payload: PreviewPayload): SessionPayload {
 	};
 }
 
-type ResolvedPreview = {
-	interviewPayload: InterviewPayload;
-	startStage: number;
-};
-
 export function PreviewHost() {
-	const [resolved, setResolved] = useState<ResolvedPreview | null>(null);
-	const opener = typeof window !== "undefined" ? window.opener : null;
+	const [interviewPayload, setInterviewPayload] = useState<InterviewPayload | null>(null);
+	const [currentStep, setCurrentStep] = useState(0);
+	const opener = window.opener as Window | null;
 	const onRequestAsset = useAssetResolver();
 
 	useEffect(() => {
@@ -50,13 +46,11 @@ export function PreviewHost() {
 			if (!isPreviewMessage(event.data)) return;
 			if (event.data.type !== "preview:payload") return;
 			const previewPayload: PreviewPayload = event.data;
-			setResolved({
-				interviewPayload: {
-					protocol: currentProtocolToPayload(previewPayload.protocol),
-					session: buildSession(previewPayload),
-				},
-				startStage: previewPayload.startStage,
+			setInterviewPayload({
+				protocol: currentProtocolToPayload(previewPayload.protocol),
+				session: buildSession(previewPayload),
 			});
+			setCurrentStep(previewPayload.startStage);
 		};
 
 		window.addEventListener("message", onMessage);
@@ -76,7 +70,7 @@ export function PreviewHost() {
 		);
 	}
 
-	if (!resolved) {
+	if (!interviewPayload) {
 		return (
 			<div className="flex h-dvh w-full items-center justify-center">
 				<p>Loading preview…</p>
@@ -86,11 +80,12 @@ export function PreviewHost() {
 
 	return (
 		<Shell
-			payload={resolved.interviewPayload}
+			payload={interviewPayload}
 			onSync={noopSync}
 			onFinish={noopFinish}
 			onRequestAsset={onRequestAsset}
-			currentStep={resolved.startStage}
+			currentStep={currentStep}
+			onStepChange={setCurrentStep}
 			disableAnalytics
 			analytics={{ installationId: "architect-preview", hostApp: "architect-preview" }}
 		/>

@@ -16,10 +16,6 @@ const appSlice = createSlice({
 			const { key, value } = action.payload;
 			state[key] = value;
 		},
-		clearProperty: (state, action: PayloadAction<{ key: string }>) => {
-			const { key } = action.payload;
-			delete state[key];
-		},
 	},
 });
 
