@@ -1,16 +1,14 @@
-import "./analytics";
+import "@codaco/tailwind-config/fresco.css";
+import "@codaco/fresco-ui/styles.css";
+import "@codaco/interview/styles.css";
 import { createRoot } from "react-dom/client";
-import { Provider } from "react-redux";
 import { AppErrorBoundary } from "./components/Errors";
-import AppView from "./components/ViewManager/views/App";
-import { store } from "./ducks/store";
+import { PreviewHost } from "./components/PreviewHost/PreviewHost";
 
 const root = document.getElementById("root") as Element;
 
 createRoot(root).render(
 	<AppErrorBoundary>
-		<Provider store={store}>
-			<AppView />
-		</Provider>
+		<PreviewHost />
 	</AppErrorBoundary>,
 );

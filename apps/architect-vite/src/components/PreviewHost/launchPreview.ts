@@ -11,7 +11,7 @@ type LaunchOptions = {
 };
 
 export function launchPreview({ protocol, startStage, useSyntheticData }: LaunchOptions): Promise<void> {
-	const popup = window.open("/preview", "_blank");
+	const popup = window.open("/preview.html", "_blank");
 	if (!popup) {
 		return Promise.reject(
 			new Error("Your browser blocked the preview popup. Allow popups for this site and try again."),

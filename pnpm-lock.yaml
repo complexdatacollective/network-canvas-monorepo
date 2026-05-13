@@ -449,6 +449,9 @@ importers:
       '@codaco/shared-consts':
         specifier: workspace:*
         version: link:../../packages/shared-consts
+      '@codaco/tailwind-config':
+        specifier: workspace:*
+        version: link:../../tooling/tailwind
       '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript

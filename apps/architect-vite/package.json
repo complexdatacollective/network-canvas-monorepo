@@ -16,6 +16,7 @@
 		"@codaco/interview": "workspace:*",
 		"@codaco/protocol-validation": "workspace:*",
 		"@codaco/shared-consts": "workspace:*",
+		"@codaco/tailwind-config": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"@productboard/slate-edit-list": "^0.21.5",
 		"@reduxjs/toolkit": "catalog:",

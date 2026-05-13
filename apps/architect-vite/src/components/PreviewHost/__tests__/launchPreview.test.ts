@@ -47,7 +47,7 @@ describe("launchPreview", () => {
 		const protocol = makeProtocol();
 		const promise = launchPreview({ protocol, startStage: 2, useSyntheticData: true });
 
-		expect(openSpy).toHaveBeenCalledWith("/preview", "_blank");
+		expect(openSpy).toHaveBeenCalledWith("/preview.html", "_blank");
 
 		postReadyFromSource(popup);
 		await promise;
