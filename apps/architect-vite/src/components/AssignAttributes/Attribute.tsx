@@ -37,9 +37,6 @@ const Attribute = ({
 	return (
 		<div className="my-(--space-md) flex rounded-(--radius) p-(--space-md) [&_.form-field]:mb-0 [&_.form-field]:bg-surface-2">
 			<div className="flex grow shrink-0 basis-auto flex-col">
-				{/* The legacy `.assign-attributes-attribute__variable` cascade overrode
-				    the form-fields-variable-picker fieldset margins. Replicate via the
-				    descendant selector so we don't need to touch the deferred picker. */}
 				<div className="grow shrink-0 basis-auto [&_.form-fields-variable-picker]:mt-0 [&_.form-fields-variable-picker]:mb-(--space-md)">
 					<ValidatedField
 						name={`${field}.variable`}

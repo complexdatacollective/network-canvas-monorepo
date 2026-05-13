@@ -17,12 +17,8 @@ type ProtocolCardProps = {
 
 const formatDate = (timeString: string | null) => timeString && new Date(timeString).toLocaleString(undefined);
 
-// Marker classes `protocol-card` and `protocol-name` are non-BEM hooks preserved
-// for cross-area cascades — slice 17's `Cover.tsx` targets `[&_.protocol-card]:...`
-// and `[&_.protocol-card_.protocol-name]:block` to override the card's appearance
-// when nested inside the printable summary cover. Removing these markers would
-// break that cascade. Drop them when slice 17's Cover migration absorbs the
-// styling into props instead.
+// `protocol-card` / `protocol-name` markers — Cover.tsx cascades onto them
+// when the card is rendered inside the printable summary cover.
 const cardVariants = cva({
 	base: "protocol-card relative flex overflow-hidden rounded bg-platinum text-navy-taupe",
 	variants: {
@@ -99,11 +95,6 @@ const ProtocolCard = ({
 	});
 
 	const renderStatusIcon = () => {
-		// The legacy `.status-icon.protocol-card--outdated { background: var(--color-warning) }`
-		// rule never matched any rendered DOM (the JSX applied `status-icon--outdated`, not
-		// `protocol-card--outdated`, on the same element). The `outdated` state therefore
-		// rendered with the same default `status-icon` styling as a normal protocol; the
-		// migration matches that actual rendered output.
 		const statusButtonClass =
 			"flex size-(--space-2xl) items-center justify-center rounded-full p-(--space-md) ml-(--space-md) text-center [&_svg]:size-full!";
 

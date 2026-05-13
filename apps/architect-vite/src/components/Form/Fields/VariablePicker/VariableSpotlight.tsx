@@ -107,9 +107,6 @@ type DividerProps = {
 
 const Divider = ({ legend }: DividerProps) => (
 	<ListItem>
-		{/* The legacy `divider-header > legend` rule used `color: var(--transparent--md)`,
-		    which was undefined and silently fell back to inherited foreground.
-		    Preserve that by leaving the legend's color unset. */}
 		<fieldset className="w-full border-t-2 border-surface-3">
 			<legend className="px-(--space-md) py-(--space-xs) text-center">{legend}</legend>
 		</fieldset>
@@ -377,9 +374,6 @@ const VariableSpotlight = ({
 		hidden: { height: 0 },
 	};
 
-	// `[&_.form-field]:mb-0`/`[&_.form-field-container]:mb-0` reset the
-	// bottom margin from the still-on-legacy Search field so the spotlight
-	// header collapses tight against the result list.
 	return (
 		<Modal open={open} onOpenChange={handleOpenChange} forceRender>
 			<motion.div

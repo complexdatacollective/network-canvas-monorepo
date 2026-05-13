@@ -110,9 +110,6 @@ const OptionsFieldComponent = ({ fields, meta: { error, submitFailed } }: Option
 	};
 
 	return (
-		// `form-field-container` is a marker hook for unmigrated parent stylesheets
-		// (codebook.css, rule.css, sections/*.css) that target `.form-field-container`
-		// for layout. Drop the class once the form-field area migrates.
 		<div className="form-field-container">
 			<div>
 				<Reorder.Group

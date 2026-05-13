@@ -10,7 +10,7 @@ type TipProps = {
 };
 
 const typeClasses: Record<NonNullable<TipProps["type"]>, string> = {
-	// `cls-3`/`cls-4` target paths inside the legacy info icon SVG.
+	// `cls-3`/`cls-4` target paths inside the info icon SVG.
 	info: "bg-info/25 text-navy-taupe [&_.cls-3]:fill-white [&_.cls-4]:fill-platinum",
 	warning: "bg-warning/10",
 	error: "bg-error/10",
