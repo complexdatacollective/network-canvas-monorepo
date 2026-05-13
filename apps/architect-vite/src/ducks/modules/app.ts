@@ -2,14 +2,12 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { get } from "es-toolkit/compat";
 import type { RootState } from "./root";
 
-// Define the shape of the app state
 type AppState = {
 	[key: string]: unknown;
 };
 
 const initialState: AppState = {};
 
-// Create the app slice using RTK
 const appSlice = createSlice({
 	name: "app",
 	initialState,
@@ -25,11 +23,18 @@ const appSlice = createSlice({
 	},
 });
 
-// Internal action creators (not exported - app module not currently used)
-const { setProperty: _setProperty, clearProperty: _clearProperty } = appSlice.actions;
+const { setProperty, clearProperty } = appSlice.actions;
 
-// Selector (internal use only)
-const _getProperty = (key: string) => (state: RootState) => get(state, ["app", key]);
+const PREVIEW_USE_SYNTHETIC_DATA_KEY = "previewUseSyntheticData";
 
-// Export the reducer as default
+export function setPreviewUseSyntheticData(value: boolean) {
+	return setProperty({ key: PREVIEW_USE_SYNTHETIC_DATA_KEY, value });
+}
+
+export function getPreviewUseSyntheticData(state: RootState): boolean {
+	const raw = get(state, ["app", PREVIEW_USE_SYNTHETIC_DATA_KEY]);
+	return raw === undefined ? true : Boolean(raw);
+}
+
+export { clearProperty, setProperty };
 export default appSlice.reducer;
