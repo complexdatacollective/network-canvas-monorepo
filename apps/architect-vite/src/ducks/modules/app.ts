@@ -23,7 +23,7 @@ const appSlice = createSlice({
 	},
 });
 
-const { setProperty, clearProperty } = appSlice.actions;
+const { setProperty } = appSlice.actions;
 
 const PREVIEW_USE_SYNTHETIC_DATA_KEY = "previewUseSyntheticData";
 
@@ -36,5 +36,4 @@ export function getPreviewUseSyntheticData(state: Pick<RootState, "app">): boole
 	return raw === undefined ? true : Boolean(raw);
 }
 
-export { clearProperty, setProperty };
 export default appSlice.reducer;

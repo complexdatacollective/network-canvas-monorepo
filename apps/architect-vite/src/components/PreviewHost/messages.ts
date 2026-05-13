@@ -1,6 +1,6 @@
 import type { CurrentProtocol } from "@codaco/protocol-validation";
 
-export type PreviewReady = { type: "preview:ready" };
+type PreviewReady = { type: "preview:ready" };
 
 export type PreviewPayload = {
 	type: "preview:payload";
@@ -9,7 +9,7 @@ export type PreviewPayload = {
 	useSyntheticData: boolean;
 };
 
-export type PreviewMessage = PreviewReady | PreviewPayload;
+type PreviewMessage = PreviewReady | PreviewPayload;
 
 export function isPreviewMessage(value: unknown): value is PreviewMessage {
 	if (!value || typeof value !== "object") return false;
