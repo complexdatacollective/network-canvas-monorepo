@@ -80,7 +80,7 @@
 		"@types/recompose": "^0.30.15",
 		"@types/redux-form": "^8.3.11",
 		"@vitejs/plugin-react-swc": "^4.3.0",
-		"jsdom": "^29.0.2",
+		"jsdom": "^29.1.1",
 		"tailwindcss": "^4.2.4",
 		"typescript": "catalog:",
 		"vite": "catalog:",
