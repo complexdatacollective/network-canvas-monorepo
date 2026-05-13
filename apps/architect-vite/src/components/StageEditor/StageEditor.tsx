@@ -209,11 +209,11 @@ const StageEditor = (props: StageEditorProps) => {
 					isUploadingPreview={isUploadingPreview}
 					hasUnsavedChanges={hasUnsavedChanges}
 				/>
-				<div className="w-full bg-surface-3 text-surface-3-foreground overflow-clip -mt-(--nav-h) pt-(--nav-h)">
-					<StageHeading stageNumber={stageNumber} totalStages={totalStages} />
-				</div>
-				<div className="flex flex-col items-center px-4 sm:px-6 pt-(--space-2xl)">
-					<div className="flex flex-col gap-10">{renderSections(sections)}</div>
+				<div className="px-4 sm:px-6">
+					<div className="mx-auto w-full max-w-7xl">
+						<StageHeading stageNumber={stageNumber} totalStages={totalStages} />
+						<div className="flex flex-col gap-10 pt-(--space-2xl)">{renderSections(sections)}</div>
+					</div>
 				</div>
 			</div>
 		</Editor>
