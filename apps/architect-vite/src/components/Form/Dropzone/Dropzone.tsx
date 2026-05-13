@@ -194,7 +194,7 @@ const Dropzone = ({ onDrop, className, accepts = [], disabled = false }: Dropzon
 
 	return (
 		<div>
-			<div {...getRootProps()} className={dropzoneVariants({ state: dropzoneState })}>
+			<div {...getRootProps()} className={dropzoneVariants({ state: dropzoneState, class: className })}>
 				<input {...getInputProps()} />
 				<div
 					className={cx(

@@ -35,12 +35,12 @@ const HeadingInput = ({ input = {}, meta = {}, placeholder, maxLength, autoFocus
 	const hasError = !!(meta.invalid && meta.touched && meta.error);
 	return (
 		<>
-			{/* biome-ignore lint/a11y/noAutofocus: stage name is the primary action in this hero */}
 			<input
 				{...input}
 				type="text"
 				placeholder={placeholder}
 				maxLength={maxLength}
+				// biome-ignore lint/a11y/noAutofocus: stage name is the primary action in this hero
 				autoFocus={autoFocus}
 				aria-label="Stage name"
 				aria-invalid={hasError}
