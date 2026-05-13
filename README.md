@@ -15,7 +15,8 @@ This monorepo is organized into four main categories:
 | App | Description |
 |-----|-------------|
 | [`architect-vite`](./apps/architect-vite) | Protocol designer application (Vite + React + Redux) for creating Network Canvas interview protocols |
-| [`analytics-web`](./apps/analytics-web) | Next.js analytics dashboard with Clerk authentication and Postgres database |
+| [`architect-desktop`](./apps/architect-desktop) | Legacy Electron build of Architect, the Network Canvas protocol designer (maintenance mode) |
+| [`interviewer`](./apps/interviewer) | Network Canvas Interviewer — the desktop/mobile app (Electron + Cordova) used to conduct interviews |
 | [`documentation`](./apps/documentation) | Next.js documentation website with MDX support and search functionality |
 
 ### Packages
@@ -23,9 +24,11 @@ This monorepo is organized into four main categories:
 | Package | Description |
 |---------|-------------|
 | [`@codaco/protocol-validation`](./packages/protocol-validation) | Zod schemas for validating and migrating Network Canvas protocol files |
-| [`@codaco/shared-consts`](./packages/shared-consts) | Shared constants and TypeScript definitions |
-| [`@codaco/analytics`](./packages/analytics) | PostHog analytics wrapper with installation ID tracking and error reporting |
-| [`@codaco/ui`](./packages/ui) | Reusable React UI components built on shadcn/ui and Tailwind CSS |
+| [`@codaco/shared-consts`](./packages/shared-consts) | Shared constants and TypeScript definitions for the Network Canvas project |
+| [`@codaco/interview`](./packages/interview) | Network Canvas interview engine — Shell component, synthetic network generator, and session contract |
+| [`@codaco/network-exporters`](./packages/network-exporters) | Effect-TS pipeline for exporting Network Canvas interview data as CSV and GraphML |
+| [`@codaco/network-query`](./packages/network-query) | Network filtering and querying utilities for Network Canvas |
+| [`@codaco/fresco-ui`](./packages/fresco-ui) | Fresco UI components, styles, and utilities built on Base UI and Tailwind CSS |
 | [`@codaco/art`](./packages/art) | Visual design components using blobs and d3-interpolate-path for animated graphics |
 | [`@codaco/development-protocol`](./packages/development-protocol) | Development protocol assets for testing Network Canvas applications |
 
@@ -40,8 +43,8 @@ This monorepo is organized into four main categories:
 
 | Config | Description |
 |--------|-------------|
-| [`tailwind`](./tooling/tailwind) | Shared Tailwind CSS configuration |
-| [`typescript`](./tooling/typescript) | Shared TypeScript configurations |
+| [`@codaco/tailwind-config`](./tooling/tailwind) | Shared Tailwind v4 theme, color palette, and plugins for Fresco and other Codaco apps |
+| [`@codaco/tsconfig`](./tooling/typescript) | Shared TypeScript configurations |
 
 ## Getting Started
 
@@ -77,7 +80,7 @@ pnpm test
 # Work with a specific package
 pnpm --filter @codaco/protocol-validation build
 pnpm --filter architect-vite dev
-pnpm --filter analytics-web dev
+pnpm --filter @codaco/documentation dev
 
 # Run commands across multiple packages
 pnpm --filter "./packages/*" build
