@@ -1,7 +1,7 @@
-import cx from "classnames";
 import { clamp } from "es-toolkit/compat";
 import type { ReactNode } from "react";
 import React, { useCallback, useImperativeHandle, useRef } from "react";
+import { cx } from "~/utils/cva";
 
 type ScrollerProps = {
 	className?: string;
@@ -40,7 +40,7 @@ const Scroller = React.forwardRef<ScrollerRef, ScrollerProps>(
 
 		return (
 			<div
-				className={cx("scrollable", className)}
+				className={cx("scrollable flex-1", className)}
 				onScroll={handleScroll}
 				style={{ scrollBehavior: useSmoothScrolling ? "smooth" : "unset" }}
 				ref={scrollableRef}

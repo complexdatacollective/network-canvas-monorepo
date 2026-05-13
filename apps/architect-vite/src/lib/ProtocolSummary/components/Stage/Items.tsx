@@ -1,6 +1,7 @@
 import Markdown from "~/components/Form/Fields/Markdown";
 import Asset from "../Asset";
 import MiniTable from "../MiniTable";
+import SectionFrame from "./SectionFrame";
 
 type ItemsProps = {
 	items?: Array<{
@@ -17,35 +18,32 @@ const Items = ({ items = null }: ItemsProps) => {
 	}
 
 	return (
-		<div className="protocol-summary-stage__items">
-			<div className="protocol-summary-stage__items-content">
-				<h2 className="section-heading">Items</h2>
-				{items.map(({ type, content, size, id }) => {
-					switch (type) {
-						case "asset":
-							return (
-								<div className="protocol-summary-stage__items-item" key={id}>
-									<Asset id={content ?? ""} size={size ?? ""} />
-								</div>
-							);
-						default:
-							return (
-								<div className="protocol-summary-stage__items-item--text" key={id}>
-									<MiniTable
-										rotated
-										rows={[
-											["Block Size", size],
-											["Type", "Text"],
-											// eslint-disable-next-line jsx-a11y/media-has-caption
-											["Content", <Markdown key="content" label={content ?? ""} />],
-										]}
-									/>
-								</div>
-							);
-					}
-				})}
-			</div>
-		</div>
+		<SectionFrame title="Items">
+			{items.map(({ type, content, size, id }) => {
+				switch (type) {
+					case "asset":
+						return (
+							<div key={id}>
+								<Asset id={content ?? ""} size={size ?? ""} />
+							</div>
+						);
+					default:
+						return (
+							<div key={id}>
+								<MiniTable
+									rotated
+									rows={[
+										["Block Size", size],
+										["Type", "Text"],
+										// eslint-disable-next-line jsx-a11y/media-has-caption
+										["Content", <Markdown key="content" label={content ?? ""} />],
+									]}
+								/>
+							</div>
+						);
+				}
+			})}
+		</SectionFrame>
 	);
 };
 

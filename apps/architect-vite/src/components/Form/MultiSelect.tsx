@@ -14,6 +14,22 @@ import { Button } from "~/lib/legacy-ui/components";
 import { actionCreators as dialogsActions } from "../../ducks/modules/dialogs";
 import ValidatedField from "./ValidatedField";
 
+// Row background reads `--rule-bg` so callers (e.g. Validations error state)
+// can flip it without re-defining the row layout.
+export const MULTI_SELECT_RULE_CLASSES =
+	"flex items-center py-(--space-md) bg-(--rule-bg) text-sortable-foreground rounded-(--space-xs) z-(--z-fx) transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)";
+
+export const MULTI_SELECT_CONTROL_CLASSES = "flex grow-0 items-center px-(--space-md)";
+
+export const MULTI_SELECT_OPTIONS_CLASSES = "flex-1 flex items-center px-(--space-md)";
+
+export const MULTI_SELECT_OPTION_CLASSES =
+	"flex flex-1 items-start ml-(--space-md) first:ml-0 " +
+	"[&_.form-field-container]:m-0 [&_.form-field-container]:w-full [&_.form-field-container]:relative " +
+	"[&_.form-field-container_h4]:m-0 [&_.form-field-container_.form-field]:m-0 " +
+	"[&_.form-field-container_input]:rounded-(--radius) [&_.form-field-container_input]:border-0 [&_.form-field-container_input]:pb-(--space-sm) " +
+	"[&_.form-field-container_textarea]:rounded-(--radius) [&_.form-field-container_textarea]:border-0 [&_.form-field-container_textarea]:pb-(--space-sm)";
+
 type PropertyField = {
 	fieldName: string;
 	[key: string]: unknown;
@@ -94,24 +110,27 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
 
 	return (
 		<Reorder.Item
-			className="group form-fields-multi-select__rule"
+			className={`group ${MULTI_SELECT_RULE_CLASSES}`}
 			value={internalItem}
 			dragListener={false}
 			dragControls={controls}
 		>
-			<div className="form-fields-multi-select__rule-control">
-				<div className="form-fields-multi-select__handle" onPointerDown={(e) => controls.start(e)}>
+			<div className={MULTI_SELECT_CONTROL_CLASSES}>
+				<div
+					className="flex w-[1.8rem] h-[1.8rem] items-center justify-center bg-transparent text-sortable-foreground cursor-grab"
+					onPointerDown={(e) => controls.start(e)}
+				>
 					<GripVertical className="cursor-grab" />
 				</div>
 			</div>
 
-			<div className="form-fields-multi-select__rule-options">
+			<div className={MULTI_SELECT_OPTIONS_CLASSES}>
 				{properties.map(({ fieldName, component, ...rest }, index) => {
 					const selectOptions = options(fieldName, rowValues, allValues);
 					const FieldComponent = component ?? NativeSelect;
 					const componentProps = component ? rest : { options: selectOptions, ...rest };
 					return (
-						<div className="form-fields-multi-select__rule-option" key={fieldName}>
+						<div className={MULTI_SELECT_OPTION_CLASSES} key={fieldName}>
 							<ValidatedField
 								component={FieldComponent as React.ComponentType<Record<string, unknown>>}
 								name={`${field}.${fieldName}`}
@@ -123,7 +142,7 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
 					);
 				})}
 			</div>
-			<div className="form-fields-multi-select__rule-control">
+			<div className={MULTI_SELECT_CONTROL_CLASSES}>
 				<motion.div
 					layout
 					className="opacity-0 transition-all duration-200 cursor-pointer group-hover:opacity-100 hover:bg-tomato rounded-full p-2 grow-0 shrink-0 h-10 aspect-square"
@@ -261,30 +280,28 @@ const ItemsComponent: React.FC<ItemsComponentProps> = ({ fields, maxItems = null
 
 	return (
 		<>
-			<div className="form-fields-multi-select w-full">
-				<Reorder.Group
-					className="form-fields-multi-select__rules"
-					onReorder={handleReorder}
-					values={internalItems}
-					axis="y"
-				>
-					{internalItems.map((internalItem, index) => {
-						const field = `${fields.name}[${index}]`;
+			<Reorder.Group
+				className="flex flex-col gap-(--space-md)"
+				onReorder={handleReorder}
+				values={internalItems}
+				axis="y"
+			>
+				{internalItems.map((internalItem, index) => {
+					const field = `${fields.name}[${index}]`;
 
-						return (
-							<Item
-								index={index}
-								key={internalItem._internalId}
-								field={field}
-								fields={fields}
-								internalItem={internalItem}
-								// eslint-disable-next-line react/jsx-props-no-spreading
-								{...rest}
-							/>
-						);
-					})}
-				</Reorder.Group>
-			</div>
+					return (
+						<Item
+							index={index}
+							key={internalItem._internalId}
+							field={field}
+							fields={fields}
+							internalItem={internalItem}
+							// eslint-disable-next-line react/jsx-props-no-spreading
+							{...rest}
+						/>
+					);
+				})}
+			</Reorder.Group>
 
 			{showAdd && <AddItem onClick={() => fields.push({})} />}
 
@@ -308,7 +325,7 @@ type MultiSelectProps = {
 };
 
 const MultiSelect = ({ name, properties, options, label = "", ...rest }: MultiSelectProps) => (
-	<div className="form-fields-multi-select w-full">
+	<div className="flex flex-col gap-(--space-md) w-full [--rule-bg:var(--color-sortable-background)] [&_button]:m-0">
 		{label && <h4>{label}</h4>}
 		<FieldArray
 			name={name}

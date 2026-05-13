@@ -14,13 +14,16 @@ const Tick = ({ tick, getLabelForValue = () => null }: TickProps) => {
 
 	return (
 		<div
-			className="form-field-slider__tick"
-			style={{
-				position: "absolute",
-				left: `${percent}%`,
-			}}
+			className="absolute top-0 after:content-[''] after:absolute after:left-0 after:top-0 after:w-0 after:h-(--space-2xl) after:border-l-2 after:border-platinum after:-translate-x-1/2 after:-translate-y-1/2"
+			style={{ left: `${percent}%` }}
 		>
-			{label && <MarkdownLabel inline label={label} className="form-field-slider__tick-label" />}
+			{label && (
+				<MarkdownLabel
+					inline
+					label={label}
+					className="absolute top-(--space-xl) -translate-x-1/2 flex justify-center w-max min-h-(--space-xl) max-w-(--space-6xl) text-center"
+				/>
+			)}
 		</div>
 	);
 };

@@ -53,7 +53,7 @@ const Assets = ({
 		const handleDownload = thumbnailType === "apikey" ? null : onDownload;
 
 		return (
-			<div className="asset-browser-assets__asset" key={id}>
+			<div key={id}>
 				<Asset
 					id={id}
 					type={thumbnailType}
@@ -68,9 +68,9 @@ const Assets = ({
 	});
 
 	return (
-		<div className="asset-browser-assets">
+		<div>
 			{!type && (
-				<div className="asset-browser-assets__controls">
+				<div className="mb-(--space-md) [&_.form-field-container]:flex! [&_.form-field-container]:items-center [&_.form-field-container]:gap-(--space-md) [&_.form-field-container_h4]:m-0 [&_.form-field-container_h4]:flex-none">
 					<RadioGroup
 						options={ASSET_TYPES}
 						input={{
@@ -79,10 +79,11 @@ const Assets = ({
 							value: assetType,
 						}}
 						label="Show types:"
+						className="flex-row! items-center! mb-0! w-auto! [&_label]:mr-(--space-md)! [&_label]:mb-0!"
 					/>
 				</div>
 			)}
-			<div className="asset-browser-assets__assets">
+			<div className="grid grid-cols-3 gap-5">
 				{assets.length > 0 ? renderedAssets : <em>No resources to display.</em>}
 			</div>
 		</div>

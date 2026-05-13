@@ -11,7 +11,7 @@ import filterIcon from "~/images/timeline/filter-icon.svg";
 import skipLogicIcon from "~/images/timeline/skip-logic-icon.svg";
 import { Button } from "~/lib/legacy-ui/components";
 import { getStageList } from "~/selectors/protocol";
-import { cn } from "~/utils/cn";
+import { cx } from "~/utils/cva";
 import NewStageScreen from "../Screens/NewStageScreen";
 import InsertButton from "./InsertButton";
 
@@ -87,7 +87,7 @@ const Timeline = () => {
 		[stages, dispatch],
 	);
 
-	const itemClasses = cn(
+	const itemClasses = cx(
 		"relative grid grid-cols-[1fr_auto_1fr] items-center gap-10 cursor-pointer group w-2xl p-4",
 		"hover:bg-timeline-hover transition-colors duration-300 ease-in-out",
 		// Focus state for accessibility
@@ -96,15 +96,16 @@ const Timeline = () => {
 
 	return (
 		<>
-			{/* Wrapper with timeline line */}
-			<div className="relative mb-24">
+			{/* Wrapper with timeline line. Top padding leaves a stretch of line below
+			    the protocol overview card so the timeline visually connects to it. */}
+			<div className="relative pt-(--space-xl)">
 				{/* Timeline line via CSS - height is 100% minus small offset to stop at add button center */}
 				<div className="absolute left-1/2 top-0 w-[5px] h-[calc(100%-1.25rem)] -translate-x-1/2 bg-timeline pointer-events-none" />
 
 				<Reorder.Group
 					axis="y"
 					onReorder={handleReorder}
-					className="relative grid grid-cols-1 gap-6 pt-16 justify-items-center"
+					className="relative grid grid-cols-1 gap-6 justify-items-center"
 					values={stages}
 				>
 					{stages.flatMap((stage, index) => [

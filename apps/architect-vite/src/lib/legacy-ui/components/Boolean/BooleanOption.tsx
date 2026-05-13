@@ -1,7 +1,6 @@
-import cx from "classnames";
-import type { ReactElement } from "react";
-import { memo } from "react";
+import { memo, type ReactElement } from "react";
 import Markdown from "~/components/Form/Fields/Markdown";
+import { cx } from "~/utils/cva";
 import RoundCheckbox from "./RoundCheckbox";
 
 type BooleanOptionProps = {
@@ -21,29 +20,28 @@ const BooleanOption = ({
 	customIcon = null,
 	negative = false,
 }: BooleanOptionProps) => {
-	const classNames = cx(
-		"boolean-option",
-		{ "boolean-option--selected": selected },
-		{ "boolean-option--negative": negative },
-		// { "boolean-option--collapsed": sizes && sizes.width < 235 },
-		classes,
-	);
-
 	const renderLabel = () => {
 		if (typeof label === "function") {
 			return label();
 		}
-
-		return <Markdown label={label as string} className="form-field-inline-label" />;
+		return <Markdown label={label as string} className="[&>:first-child]:mt-0 [&>:last-child]:mb-0" />;
 	};
 
 	return (
 		<button
 			type="button"
-			className={classNames}
+			className={cx(
+				"clickable relative cursor-pointer",
+				"inline-flex items-center w-full grow basis-full",
+				"border-2 border-solid",
+				"p-(--space-md) rounded",
+				"mr-(--space-xs) ml-0 last:mr-0",
+				"bg-input text-input-foreground",
+				selected ? (negative ? "border-error" : "border-input-active") : "border-transparent",
+				classes,
+			)}
 			onClick={onClick}
 			aria-pressed={selected}
-			style={{ position: "relative" }}
 		>
 			{customIcon || <RoundCheckbox checked={selected} negative={negative} />}
 			{renderLabel()}

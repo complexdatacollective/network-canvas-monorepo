@@ -29,7 +29,7 @@ export const validationErrorDialog = (errorMessage: string) => {
 	const message: ReactNode = (
 		<>
 			<p>The protocol file could not be opened due to validation errors:</p>
-			<pre className="bg-surface-1 p-4 rounded-md text-sm overflow-auto max-h-64">{errorMessage}</pre>
+			<pre className="bg-surface-1 p-4 rounded-sm text-sm overflow-auto max-h-64">{errorMessage}</pre>
 
 			<p className="text-sm">
 				If the problem persists, reach out on our&nbsp;
@@ -51,7 +51,7 @@ export const invalidProtocolDialog = (errorMessage: string, onConfirm?: () => vo
 	const message: ReactNode = (
 		<>
 			<p>The protocol contains validation errors:</p>
-			<pre className="bg-surface-1 p-4 rounded-md text-sm overflow-auto max-h-64">{errorMessage}</pre>
+			<pre className="bg-surface-1 p-4 rounded-sm text-sm overflow-auto max-h-64">{errorMessage}</pre>
 
 			<p className="text-sm">
 				You can revert to the last valid state to fix this issue. If the problem persists, please reach out on our&nbsp;
@@ -118,7 +118,7 @@ export const mayUpgradeProtocolDialog = (
 						If you choose to migrate, the following actions will be automatically performed on your protocol. Read these
 						notes carefully, as these actions may affect your data.
 					</p>
-					<div className="max-h-72 overflow-y-auto rounded-xl bg-surface-2 px-4 py-2 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-2 [&_li]:leading-relaxed">
+					<div className="max-h-72 overflow-y-auto rounded-sm bg-surface-2 px-4 py-2 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-2 [&_li]:leading-relaxed">
 						{migrationNotes.map(({ version, notes }) => (
 							<div key={version}>
 								<h4>Migrating to schema Version {version} will:</h4>

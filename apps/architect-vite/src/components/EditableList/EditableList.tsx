@@ -92,7 +92,7 @@ const EditableList = ({
 	const initialValuesForEdit = currentItemValues || templateValues;
 
 	return (
-		<div className="flex flex-col gap-4 items-start">
+		<div className="flex flex-col items-start gap-(--space-md)">
 			{label && (
 				<h4>
 					<MarkdownLabel label={label} />

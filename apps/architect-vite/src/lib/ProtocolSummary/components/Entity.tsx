@@ -8,22 +8,19 @@ type EntityProps = {
 };
 
 const Entity = ({ type, entity, variables }: EntityProps) => (
-	<div className="protocol-summary-entity page-break-marker" id={entity === "ego" ? "ego" : `entity-${type ?? ""}`}>
-		{entity !== "ego" && type && entity && (
-			<div className="protocol-summary-entity__meta">
-				<EntityBadge type={type} entity={entity} />
-			</div>
-		)}
+	<div
+		className="page-break-marker mb-(--space-2xl) break-before-page"
+		id={entity === "ego" ? "ego" : `entity-${type ?? ""}`}
+	>
+		{entity !== "ego" && type && entity && <EntityBadge type={type} entity={entity} />}
 
 		{entity === "ego" && (
-			<div className="protocol-summary-entity__meta">
-				<div className="protocol-summary-entity__meta-name">
-					<h1>Ego</h1>
-				</div>
+			<div>
+				<h1>Ego</h1>
 			</div>
 		)}
 
-		<div className="protocol-summary-entity__variables">
+		<div className="mt-(--space-xl)">
 			<Variables variables={variables} />
 		</div>
 	</div>

@@ -22,7 +22,7 @@ const Codebook = () => {
 	const edges = toPairs(codebook.edge ?? {});
 
 	return (
-		<div className="landscape">
+		<div>
 			{codebook.ego && <Entity entity="ego" variables={codebook.ego.variables} />}
 			{nodes.map(([id, node]) => (
 				<Entity key={id} entity="node" type={id} variables={node.variables} />

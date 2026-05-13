@@ -23,7 +23,7 @@ const SortOrder = ({ rules }: SortOrderProps) => {
 			{property === "*" ? "*" : <Variable id={property} />} <small>({directionLabel(direction)})</small>
 		</li>
 	));
-	return <ol className="protocol-summary-stage__prompts-sort">{result}</ol>;
+	return <ol className="ps-[inherit]">{result}</ol>;
 };
 
 const attributes: Array<[string, string, (val: unknown) => ReactNode]> = [
@@ -79,7 +79,7 @@ const Prompt = ({ text, additionalAttributes = [], ...prompt }: PromptProps) => 
 	]);
 
 	return (
-		<div className="protocol-summary-stage__prompts-item">
+		<div className="break-inside-avoid">
 			<Markdown label={text} />
 			{attributeRows.length > 0 && <MiniTable rotated rows={attributeRows} />}
 			{additionalAttributes.length > 0 && <MiniTable rows={[["Variable", "Value"], ...additionalAttributeRows]} />}

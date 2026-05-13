@@ -207,8 +207,8 @@ importers:
         specifier: ^7.28.5
         version: 7.28.5(@babel/core@7.29.0)
       '@codaco/protocol-validation':
-        specifier: ^11.4.0
-        version: 11.5.0
+        specifier: workspace:*
+        version: link:../../packages/protocol-validation
       '@codaco/ui':
         specifier: ^5.8.6
         version: 5.8.6(@types/react@19.2.14)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
@@ -437,6 +437,9 @@ importers:
       '@base-ui/react':
         specifier: 'catalog:'
         version: 1.4.1(@date-fns/tz@1.4.1)(@types/react@19.2.14)(date-fns@4.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@codaco/fresco-ui':
+        specifier: ^2.5.3
+        version: link:../../packages/fresco-ui
       '@codaco/protocol-validation':
         specifier: workspace:*
         version: link:../../packages/protocol-validation
@@ -476,6 +479,9 @@ importers:
       csvtojson:
         specifier: ^2.0.14
         version: 2.0.14
+      cva:
+        specifier: 1.0.0-beta.4
+        version: 1.0.0-beta.4(typescript@6.0.3)
       dexie:
         specifier: ^4.4.2
         version: 4.4.2
@@ -2762,16 +2768,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@codaco/protocol-validation@11.5.0':
-    resolution: {integrity: sha512-MMLjWqLc96BzugWXBmuogqIWUc+6rvr/DW4wH9pY074rzjry343q0bl1L1yYOf4l6Yf/UFtvKxPtZ6ev0fLFHg==}
-    hasBin: true
-
   '@codaco/shared-consts@0.0.2':
     resolution: {integrity: sha512-qPmZQm50NhIuQGznQx00kdCxXJ/rOW8UkCrLPQObmPFjq3iIOTwBjAWddq7gRBsDByRfdB/gMCwcd7Pay2aOFQ==}
-
-  '@codaco/shared-consts@5.0.0':
-    resolution: {integrity: sha512-7neTWHNjw6Y7FdVOU8htO2OshADlpS9vI+5mQEDWOdtlL8BdHmBflqQlZE8lFjzBin8tUI9jIlxsLlMYOpjm/w==}
-    engines: {node: '>=20.0.0'}
 
   '@codaco/ui@5.8.6':
     resolution: {integrity: sha512-vjrAI2YPvzg55F5EpVXae7RAZzIpqTsUSjUcQ/laPaH3ZWjVgMeiMEFPCE+C85Oe16rNh0iOMN/XU7kxGaK4Vg==}
@@ -14458,18 +14456,7 @@ snapshots:
   '@cloudflare/workerd-windows-64@1.20260421.1':
     optional: true
 
-  '@codaco/protocol-validation@11.5.0':
-    dependencies:
-      '@codaco/shared-consts': 5.0.0
-      '@faker-js/faker': 10.4.0
-      ohash: 2.0.11
-      zod: 4.4.3
-
   '@codaco/shared-consts@0.0.2': {}
-
-  '@codaco/shared-consts@5.0.0':
-    dependencies:
-      zod: 4.4.3
 
   '@codaco/ui@5.8.6(@types/react@19.2.14)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:

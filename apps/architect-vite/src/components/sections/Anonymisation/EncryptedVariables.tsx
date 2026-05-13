@@ -124,12 +124,7 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
 						handleToggleChange={(newState) => handleToggleChange(hasEncryptedVariable, nodeType, newState)}
 						summary={<p>Which variables should be encrypted?</p>}
 					>
-						<div
-							style={{
-								maxHeight: "300px",
-								overflowY: "auto",
-							}}
-						>
+						<div className="max-h-[300px] overflow-y-auto">
 							<DetachedField
 								component={CheckboxGroup as ComponentType<Record<string, unknown>>}
 								options={variableOptions}

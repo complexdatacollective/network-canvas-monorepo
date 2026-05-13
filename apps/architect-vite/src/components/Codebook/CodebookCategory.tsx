@@ -4,9 +4,9 @@ type CodebookCategoryProps = {
 };
 
 const CodebookCategory = ({ title = "", children = null }: CodebookCategoryProps) => (
-	<div className="codebook-category">
+	<div>
 		<h2>{title}</h2>
-		<div className="codebook__category-items">{children}</div>
+		<div className="border-t-[0.2rem] border-divider mt-(--space-lg)">{children}</div>
 	</div>
 );
 

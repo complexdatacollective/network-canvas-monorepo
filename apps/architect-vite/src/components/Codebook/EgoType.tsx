@@ -33,9 +33,9 @@ const EgoType = ({ variables = {} }: EgoTypeProps) => {
 	const VariablesTyped = Variables as unknown as React.ComponentType<VariablesComponentProps>;
 
 	return (
-		<div className="codebook__entity">
+		<div className="overflow-hidden mx-auto my-(--space-xl) p-(--space-xl) bg-surface-3 rounded">
 			{variableArray.length > 0 && (
-				<div className="codebook__entity-variables codebook__entity-variables--no-border">
+				<div>
 					<h3>Variables:</h3>
 					<VariablesTyped variables={variableArray} entity="ego" />
 				</div>

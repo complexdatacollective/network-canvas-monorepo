@@ -1,17 +1,15 @@
 import cx from "classnames";
 import type React from "react";
 import withAssetUrl from "~/components/Assets/withAssetUrl";
+import { thumbnailBase } from "./styles";
 
 type ImageThumbnailProps = {
 	url?: string;
 	contain?: boolean;
 } & React.HTMLAttributes<HTMLDivElement>;
 
-const ImageThumbnail = ({ url, contain = false, ...props }: ImageThumbnailProps) => {
-	const className = cx("thumbnail", "thumbnail--image", {
-		"thumbnail--contain": contain,
-	});
-
+const ImageThumbnail = ({ url, contain: _contain = false, ...props }: ImageThumbnailProps) => {
+	const className = cx(thumbnailBase, "bg-no-repeat bg-contain bg-center h-(--space-6xl)");
 	return <div className={className} style={{ backgroundImage: url ? `url(${url})` : undefined }} {...props} />;
 };
 

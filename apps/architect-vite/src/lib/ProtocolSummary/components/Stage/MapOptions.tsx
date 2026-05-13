@@ -1,6 +1,7 @@
 import { mapboxStyleOptions } from "~/components/Form/Fields/Geospatial/mapboxConstants";
 import AssetBadge from "../AssetBadge";
 import MiniTable from "../MiniTable";
+import SectionFrame from "./SectionFrame";
 
 const mapboxStyleLabels = Object.fromEntries(mapboxStyleOptions.map(({ value, label }) => [value, label]));
 
@@ -47,20 +48,14 @@ const MapOptions = ({ mapOptions = null }: MapOptionsProps) => {
 	return (
 		<>
 			{tokenAssetId && (
-				<div className="protocol-summary-stage__data-source">
-					<div className="protocol-summary-stage__data-source-content">
-						<h2 className="section-heading">Mapbox API Key</h2>
-						<AssetBadge id={tokenAssetId} link />
-					</div>
-				</div>
+				<SectionFrame title="Mapbox API Key">
+					<AssetBadge id={tokenAssetId} link />
+				</SectionFrame>
 			)}
 			{dataSourceAssetId && (
-				<div className="protocol-summary-stage__data-source">
-					<div className="protocol-summary-stage__data-source-content">
-						<h2 className="section-heading">GeoJSON Data Source</h2>
-						<AssetBadge id={dataSourceAssetId} link />
-					</div>
-				</div>
+				<SectionFrame title="GeoJSON Data Source">
+					<AssetBadge id={dataSourceAssetId} link />
+				</SectionFrame>
 			)}
 			{configRows.length > 0 && <MiniTable rotated rows={configRows} />}
 		</>

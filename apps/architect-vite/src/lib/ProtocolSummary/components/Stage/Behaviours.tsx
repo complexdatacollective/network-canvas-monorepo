@@ -1,6 +1,7 @@
 import { map } from "es-toolkit/compat";
 import { renderValue } from "../helpers";
 import MiniTable from "../MiniTable";
+import SectionFrame from "./SectionFrame";
 
 const behaviorLabel = (behaviourValue: unknown, behaviourKey: string) => {
 	switch (behaviourKey) {
@@ -42,12 +43,9 @@ const Behaviours = ({ behaviours = null }: BehavioursProps) => {
 	}
 
 	return (
-		<div className="protocol-summary-stage__behaviours">
-			<div className="protocol-summary-stage__behaviours-content">
-				<h2 className="section-heading">Behaviours</h2>
-				<MiniTable rotated rows={behaviourRows(behaviours)} />
-			</div>
-		</div>
+		<SectionFrame title="Behaviours">
+			<MiniTable rotated rows={behaviourRows(behaviours)} />
+		</SectionFrame>
 	);
 };
 

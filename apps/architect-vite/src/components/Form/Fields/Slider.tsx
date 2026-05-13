@@ -1,5 +1,7 @@
-import cx from "classnames";
+/* eslint-disable react/jsx-props-no-spreading */
+
 import Icon from "~/lib/legacy-ui/components/Icon";
+import { cx } from "~/utils/cva";
 import MarkdownLabel from "./MarkdownLabel";
 import Slider from "./Slider/Slider";
 
@@ -71,21 +73,23 @@ const SliderField = ({
 	type,
 }: SliderFieldProps) => {
 	const { error, invalid, touched } = meta;
-
-	const formFieldClasses = cx(className, "form-field-slider", {
-		"form-field-slider--has-error": invalid && touched,
-	});
-
+	const hasError = !!(invalid && touched);
 	const anyLabel = fieldLabel || label;
 	const sliderType = getSliderType(type);
 
 	return (
 		<div className="form-field-container" hidden={hidden}>
 			{anyLabel && <MarkdownLabel label={anyLabel} />}
-			<div className={formFieldClasses} data-name={input.name}>
+			<div
+				className={cx(
+					hasError && "[&_.form-field]:mb-0 [&_.form-field]:border-2 [&_.form-field]:border-error",
+					className,
+				)}
+				data-name={input.name}
+			>
 				<Slider options={options} parameters={parameters} type={sliderType} {...input} value={getValue(input.value)} />
-				{invalid && touched && (
-					<div className="form-field-slider__error">
+				{hasError && (
+					<div className="flex items-center bg-error text-foreground py-(--space-sm) px-(--space-xs) [&_svg]:max-h-(--space-md)">
 						<Icon name="warning" />
 						{error}
 					</div>

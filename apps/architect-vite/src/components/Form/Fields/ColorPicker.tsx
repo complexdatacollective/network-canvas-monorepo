@@ -1,6 +1,6 @@
-import cx from "classnames";
 import { range } from "es-toolkit";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import { cx } from "~/utils/cva";
 
 type ColorOption = {
 	label: string;
@@ -46,40 +46,46 @@ const ColorPicker = ({
 		input.onChange(value);
 	};
 
-	const renderColor = (color: ColorOption) => {
-		const colorClasses = cx("form-fields-color-picker__color", {
-			"form-fields-color-picker__color--selected": input.value === color.value,
-		});
-
-		return (
-			<button
-				type="button"
-				className={colorClasses}
-				onClick={() => handleClick(color.value)}
-				aria-label={`Select color ${color.label}`}
-				style={{ "--color": `hsl(var(--${color.value}))` } as React.CSSProperties}
-				key={color.value}
-			>
-				<div className="form-fields-color-picker__color-label">{color.label}</div>
-			</button>
-		);
-	};
+	const renderColor = (color: ColorOption) => (
+		<button
+			type="button"
+			className={cx(
+				"flex justify-center items-center cursor-pointer overflow-hidden",
+				"size-(--picker-size) rounded-(--picker-size) mr-(--space-sm) mb-(--space-sm)",
+				"transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)",
+				"after:content-[''] after:m-(--picker-border-size) after:rounded-(--picker-size)",
+				"after:size-[calc(var(--picker-size)-var(--picker-border-size)*2)]",
+				"after:bg-(--color) after:border-2 after:border-transparent",
+				"after:transition-colors after:duration-(--animation-duration-standard) after:ease-(--animation-easing)",
+				input.value === color.value && "bg-selected after:border-surface-1",
+			)}
+			onClick={() => handleClick(color.value)}
+			aria-label={`Select color ${color.label}`}
+			style={{ "--color": `hsl(var(--${color.value}))` } as React.CSSProperties}
+			key={color.value}
+		>
+			<div className="hidden">{color.label}</div>
+		</button>
+	);
 
 	const showError = invalid && touched && error;
 
-	const pickerStyles = cx("form-fields-color-picker", {
-		"form-fields-color-picker--has-error": showError,
-	});
-
 	return (
 		<div className="form-field-container">
-			<div className={pickerStyles}>
-				{label && <div className="form-fields-color-picker__label">{label}</div>}
-				<div className="form-fields-color-picker__edit">
-					<div className="form-fields-color-picker__colors">{colors.map(renderColor)}</div>
+			<div>
+				{label && (
+					<div className="font-heading font-semibold text-foreground mt-(--space-xl) mb-(--space-md)">{label}</div>
+				)}
+				<div
+					className={cx(
+						"bg-surface-1 text-input-foreground rounded-t-sm pt-(--space-sm) pl-(--space-sm)",
+						showError && "border-(length:--space-xs) border-error",
+					)}
+				>
+					<div className="flex flex-wrap">{colors.map(renderColor)}</div>
 				</div>
 				{showError && (
-					<div className="form-fields-color-picker__error">
+					<div className="flex items-center bg-error text-error-foreground py-(--space-xs) px-(--space-xs) rounded-b-sm [&_svg]:max-h-(--space-md)">
 						<Icon name="warning" />
 						{error}
 					</div>

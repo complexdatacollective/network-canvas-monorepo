@@ -1,8 +1,8 @@
-import cx from "classnames";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import Spinner from "~/components/Spinner";
 import { Icon } from "~/lib/legacy-ui/components";
+import { cva, cx } from "~/utils/cva";
 import { acceptsFiles, getRejectedExtensions } from "./helpers";
 import useTimer from "./useTimer";
 
@@ -33,7 +33,60 @@ type DropzoneProps = {
 	disabled?: boolean;
 };
 
-const Dropzone = ({ onDrop, className = "form-dropzone", accepts = [], disabled = false }: DropzoneProps) => {
+type DropzoneStateName = "idle" | "active" | "hover" | "loading" | "error" | "disabled";
+
+const dropzoneVariants = cva({
+	base: "relative isolate flex h-(--space-6xl) cursor-pointer items-center justify-center overflow-hidden rounded-(--space-lg) border-2 border-transparent bg-surface-accent p-(--space-2xl) text-base leading-normal transition-[border-color] duration-(--animation-duration-slow) ease-(--animation-easing)",
+	variants: {
+		state: {
+			idle: "",
+			active: "cursor-default",
+			hover: "border-info duration-(--animation-duration-fast)",
+			loading: "cursor-wait",
+			error: "border-warning duration-(--animation-duration-fast)",
+			disabled: "",
+		},
+	},
+	defaultVariants: {
+		state: "idle",
+	},
+});
+
+const labelVariants = cva({
+	base: "relative z-[2] text-white transition-opacity duration-(--animation-duration-standard) ease-(--animation-easing)",
+	variants: {
+		state: {
+			idle: "opacity-100",
+			active: "opacity-50",
+			hover: "opacity-100",
+			loading: "opacity-0",
+			error: "opacity-100",
+			disabled: "opacity-100",
+		},
+	},
+	defaultVariants: {
+		state: "idle",
+	},
+});
+
+const loadingVariants = cva({
+	base: "absolute inset-0 flex items-center justify-center transition-opacity duration-(--animation-duration-standard) ease-(--animation-easing)",
+	variants: {
+		state: {
+			idle: "opacity-0",
+			active: "opacity-0",
+			hover: "opacity-0",
+			loading: "opacity-100",
+			error: "opacity-0",
+			disabled: "opacity-0",
+		},
+	},
+	defaultVariants: {
+		state: "idle",
+	},
+});
+
+const Dropzone = ({ onDrop, className, accepts = [], disabled = false }: DropzoneProps) => {
 	const [state, setState] = useState(initialState);
 
 	const isDisabled = disabled || state.isActive;
@@ -127,31 +180,38 @@ const Dropzone = ({ onDrop, className = "form-dropzone", accepts = [], disabled 
 		noKeyboard: false,
 	});
 
-	const dropzoneClasses = cx(className, {
-		[`${className}--active`]: state.isActive,
-		[`${className}--hover`]: isDragActive,
-		[`${className}--loading`]: state.isLoading,
-		[`${className}--error`]: state.isError,
-		[`${className}--disabled`]: isDisabled,
-	});
-
-	const errorClasses = cx(`${className}__error`, {
-		[`${className}__error--show`]: state.error,
-	});
+	const dropzoneState: DropzoneStateName = state.isError
+		? "error"
+		: state.isLoading
+			? "loading"
+			: isDragActive
+				? "hover"
+				: isDisabled
+					? "disabled"
+					: state.isActive
+						? "active"
+						: "idle";
 
 	return (
 		<div>
-			<div {...getRootProps()} className={dropzoneClasses}>
+			<div {...getRootProps()} className={dropzoneVariants({ state: dropzoneState, class: className })}>
 				<input {...getInputProps()} />
-				<div className={`${className}__container`} />
-				<div className={`${className}__label`}>
+				<div
+					className={cx(
+						"absolute inset-0 z-[1] bg-transparent transition-[background-color] duration-(--animation-duration-fast) ease-(--animation-easing)",
+					)}
+				/>
+				<div className={labelVariants({ state: dropzoneState })}>
 					Drag and drop a file here to import it, or&nbsp;
-					<span className={`${className}__link`}>click here to select a file from your computer</span>.
+					<span className="inline-block cursor-pointer border-b-2 border-action">
+						click here to select a file from your computer
+					</span>
+					.
 				</div>
-				<div className={`${className}__loading`}>{state.isActive && <Spinner size="sm" />}</div>
+				<div className={loadingVariants({ state: dropzoneState })}>{state.isActive && <Spinner size="sm" />}</div>
 			</div>
 			{state.error && (
-				<div className={errorClasses}>
+				<div className="mt-(--space-xs) flex items-center overflow-hidden rounded-(--space-xs) bg-warning px-(--space-lg) py-(--space-xs) opacity-100 transition-opacity duration-(--animation-duration-fast) [&_.icon]:mr-(--space-xs) [&_.icon]:h-[1.2rem] [&_.icon]:w-[1.2rem]">
 					<Icon name="warning" />
 					{state.error}
 				</div>

@@ -18,9 +18,9 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 	const hasAnyContent = hasEgoVariables || hasNodes || hasEdges;
 
 	return (
-		<div className="codebook space-y-6">
+		<div className="my-(--space-xl) space-y-(--space-lg)">
 			{!hasAnyContent && (
-				<div className="bg-muted border border-border rounded-lg p-6">
+				<div className="bg-muted border border-border rounded p-(--space-lg)">
 					<p className="text-muted-foreground text-center">
 						There are currently no types or variables defined in this protocol. When you have created some interview
 						stages, the types and variables will be shown here.
@@ -36,7 +36,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
 			{hasNodes && (
 				<CodebookCategory title="Node Types">
-					<div className="space-y-4">
+					<div className="space-y-(--space-md)">
 						{nodes.map((node) => (
 							<EntityType
 								key={node.type}
@@ -53,7 +53,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
 			{hasEdges && (
 				<CodebookCategory title="Edge Types">
-					<div className="space-y-4">
+					<div className="space-y-(--space-md)">
 						{edges.map((edge) => (
 							<EntityType
 								key={edge.type}
@@ -70,7 +70,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
 			{hasNetworkAssets && (
 				<CodebookCategory title="Network Assets">
-					<div className="space-y-3">
+					<div className="space-y-(--space-sm)">
 						{processedNetworkAssets.map((networkAsset) => (
 							<ExternalEntity key={networkAsset.id} id={networkAsset.id} name={networkAsset.name} />
 						))}

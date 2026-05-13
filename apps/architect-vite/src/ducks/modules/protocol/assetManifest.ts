@@ -49,8 +49,6 @@ export const importAssetAsync = createAsyncThunk(
 		const name = file.name;
 		const assetId = uuid();
 
-		dispatch(assetManifestSlice.actions.importAsset(name));
-
 		try {
 			// Validate asset
 			const validationResult = await validateAsset(file).catch((error) => {
@@ -114,10 +112,6 @@ const assetManifestSlice = createSlice({
 	name: "assetManifest",
 	initialState,
 	reducers: {
-		importAsset: (_state, _action: PayloadAction<string>) => {
-			// This is just a loading state action - no state change needed
-			// Could be used to track loading states in the future
-		},
 		importAssetComplete: (state, action: PayloadAction<ImportAssetCompletePayload>) => {
 			const { id, filename, name, assetType } = action.payload;
 			state[id] = {

@@ -1,8 +1,8 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
-import cx from "classnames";
 import { useCallback } from "react";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import { cx } from "~/utils/cva";
 import type { CheckboxProps } from "./Checkbox";
 import Checkbox from "./Checkbox";
 import MarkdownLabel from "./MarkdownLabel";
@@ -65,7 +65,6 @@ const CheckboxGroup = ({
 
 			return (
 				<OptionComponent
-					className="form-field-checkbox-group__option"
 					key={index}
 					input={{
 						name: `option-${index}`,
@@ -82,23 +81,18 @@ const CheckboxGroup = ({
 	);
 
 	const { error, invalid, touched } = meta;
-	const classNames = cx(
-		"form-field-checkbox-group",
-		"form-field-container",
-		{
-			"form-field-checkbox-group--has-error": invalid && touched && error,
-		},
-		className,
-	);
+	const hasError = !!(invalid && touched && error);
 
 	const anyLabel = fieldLabel || label;
 
 	return (
-		<div className={classNames}>
+		<div className={cx("form-field-container block", className)}>
 			{anyLabel && <MarkdownLabel label={anyLabel} />}
-			<div className="form-field">{options.map(renderOption)}</div>
-			{invalid && touched && (
-				<div className="form-field-checkbox-group__error">
+			<div className={cx("form-field flex flex-col", hasError && "border-2 border-error mb-0")}>
+				{options.map(renderOption)}
+			</div>
+			{hasError && (
+				<div className="flex items-center bg-error text-foreground py-(--space-sm) px-(--space-xs) [&_svg]:max-h-(--space-md)">
 					<Icon name="warning" />
 					{error}
 				</div>

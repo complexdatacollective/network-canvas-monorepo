@@ -1,3 +1,4 @@
+import { cx } from "~/utils/cva";
 import PreviewRule from "./PreviewRule";
 
 type Rule = Record<string, unknown> & {
@@ -10,19 +11,29 @@ type PreviewRulesProps = {
 	codebook: Record<string, unknown>;
 	onClickRule: (id: string) => void;
 	onDeleteRule: (id: string) => void;
+	hasError?: boolean;
 };
 
-const PreviewRules = ({ join = null, rules, codebook, onClickRule, onDeleteRule }: PreviewRulesProps) => {
+const PreviewRules = ({
+	join = null,
+	rules,
+	codebook,
+	onClickRule,
+	onDeleteRule,
+	hasError = false,
+}: PreviewRulesProps) => {
 	const getJoin = (index: number): string | null =>
 		rules.length !== 1 && index < rules.length - 1 ? join || null : null;
 
 	return (
-		<div className="rules-preview-rules">
-			{rules.length === 0 && <div className="rules-preview-rules__empty">Add rule types from the options below.</div>}
+		<div className={cx("rounded-t-lg border border-transparent bg-input", hasError && "border-error")}>
+			{rules.length === 0 && (
+				<div className="px-(--space-md) py-(--space-md) italic">Add rule types from the options below.</div>
+			)}
 			{rules.length > 0 && (
-				<div className="rules-preview-rules__rules">
+				<div className="flex w-full flex-col items-start py-(--space-md)">
 					{rules.map((rule, index) => (
-						<div className="rules-preview-rules__rule" key={rule.id}>
+						<div className="w-full" key={rule.id}>
 							<PreviewRule
 								// eslint-disable-next-line react/jsx-props-no-spreading
 								{...rule}

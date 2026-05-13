@@ -1,9 +1,9 @@
-import cx from "classnames";
 import type React from "react";
 import { useRef } from "react";
 import { v4 as uuid } from "uuid";
 import MarkdownLabel from "~/components/Form/Fields/MarkdownLabel";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import { cx } from "~/utils/cva";
 import RichText from "./RichText";
 
 type RichTextFieldProps = {
@@ -40,16 +40,16 @@ const RichTextField = ({
 	const _id = useRef(uuid());
 
 	const anyLabel = label;
-
-	const seamlessClasses = cx(className, "form-field-rich-text", {
-		"form-field-rich-text--has-focus": meta.active,
-		"form-field-rich-text--has-error": meta.invalid && meta.touched && meta.error,
-	});
+	const hasError = !!(meta.invalid && meta.touched && meta.error);
 
 	return (
 		<div className="form-field-container">
-			<h4>{anyLabel && <MarkdownLabel label={anyLabel} />}</h4>
-			<div className={seamlessClasses}>
+			{anyLabel && (
+				<h4>
+					<MarkdownLabel label={anyLabel} />
+				</h4>
+			)}
+			<div className={cx(className)}>
 				<RichText
 					value={input.value}
 					onChange={input.onChange}
@@ -57,9 +57,10 @@ const RichTextField = ({
 					autoFocus={autoFocus}
 					inline={inline}
 					disallowedTypes={disallowedTypes}
+					hasError={hasError}
 				/>
-				{meta.invalid && meta.touched && (
-					<div className="form-field-rich-text__error">
+				{hasError && (
+					<div className="flex items-center bg-error text-error-foreground py-(--space-sm) px-(--space-xs) rounded-b-sm [&_svg]:max-h-(--space-md)">
 						<Icon name="warning" />
 						{meta.error}
 					</div>

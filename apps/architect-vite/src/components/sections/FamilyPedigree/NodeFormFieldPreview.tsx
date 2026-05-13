@@ -27,7 +27,7 @@ const NodeFormFieldPreview = ({ variable, prompt, form }: NodeFormFieldPreviewPr
 	};
 
 	return (
-		<div className="field-preview m-4 flex gap-2 flex-col">
+		<div className="m-(--space-md) flex gap-(--space-sm) flex-col">
 			<Markdown label={prompt} className="[&>p]:m-0" />
 			<div>
 				<Badge color={getColorForType(codebookVariable.type)}>

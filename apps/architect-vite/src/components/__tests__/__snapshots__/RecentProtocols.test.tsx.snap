@@ -1,3 +1,0 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
-
-exports[`<RecentProtocols /> > can render? 1`] = `<div />`;

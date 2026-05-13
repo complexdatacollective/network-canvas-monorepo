@@ -1,10 +1,10 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
-import cx from "classnames";
 import { isBoolean } from "es-toolkit/compat";
 import { useEffect, useRef } from "react";
 import { v4 as uuid } from "uuid";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import { cx } from "~/utils/cva";
 import MarkdownLabel from "./MarkdownLabel";
 
 type ToggleProps = {
@@ -49,24 +49,20 @@ const Toggle = ({
 	}, [input]);
 
 	const { error, invalid, touched } = meta;
-
-	const containerClassNames = cx("form-field-container", {
-		"form-field-toggle--has-error": invalid && touched && error,
-	});
-
-	const componentClasses = cx("form-field", "form-field-toggle", className, {
-		"form-field-toggle--disabled": disabled,
-		"form-field-toggle--has-error": invalid && touched && error,
-	});
+	const hasError = !!(invalid && touched && error);
 
 	const { name, value, onChange, ...inputRest } = input;
 
 	return (
-		<div className={containerClassNames}>
+		<div className="form-field-container">
 			{fieldLabel && <MarkdownLabel label={fieldLabel} />}
-			<label className={componentClasses} htmlFor={id.current} title={title}>
+			<label
+				className={cx("form-field flex items-center flex-row justify-start cursor-pointer", className)}
+				htmlFor={id.current}
+				title={title}
+			>
 				<input
-					className="form-field-toggle__input"
+					className="hidden"
 					id={id.current}
 					name={name}
 					checked={!!value}
@@ -77,13 +73,27 @@ const Toggle = ({
 					{...(inputRest as Record<string, unknown>)}
 					{...(rest as Record<string, unknown>)}
 				/>
-				<div className="form-field-toggle__toggle">
-					<span className="form-field-toggle__button" />
+				<div className="relative inline-block w-(--space-3xl) h-(--space-xl) mr-(--space-md)">
+					<span
+						data-state={value ? "checked" : "unchecked"}
+						className={cx(
+							"absolute inset-0 overflow-hidden",
+							"bg-primary rounded-(--space-xl)",
+							"transition-colors duration-(--animation-duration-fast) ease-(--animation-easing)",
+							"data-[state=checked]:bg-active",
+							"before:absolute before:top-0 before:left-0",
+							"before:content-[''] before:rounded-full",
+							"before:size-(--space-xl) before:bg-border",
+							"before:transition-[left] before:duration-(--animation-duration-fast) before:ease-(--animation-easing)",
+							"data-[state=checked]:before:left-[calc(100%-var(--space-xl))]",
+							disabled && "opacity-50",
+						)}
+					/>
 				</div>
-				{label && <MarkdownLabel inline label={label} className="form-field-inline-label" />}
+				{label && <MarkdownLabel inline label={label} className="[&>:first-child]:mt-0 [&>:last-child]:mb-0" />}
 			</label>
-			{invalid && touched && (
-				<div className="form-field-toggle__error">
+			{hasError && (
+				<div className="flex items-center bg-error text-foreground py-(--space-sm) px-(--space-xs) [&_svg]:max-h-(--space-md)">
 					<Icon name="warning" />
 					{error}
 				</div>

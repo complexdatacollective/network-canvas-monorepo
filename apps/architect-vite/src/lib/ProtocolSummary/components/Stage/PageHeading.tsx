@@ -1,3 +1,5 @@
+import SectionFrame from "./SectionFrame";
+
 type PageHeadingProps = {
 	heading?: string | null;
 };
@@ -8,12 +10,9 @@ const PageHeading = ({ heading = null }: PageHeadingProps) => {
 	}
 
 	return (
-		<div className="protocol-summary-stage__page-heading">
-			<div className="protocol-summary-stage__page-heading-content">
-				<h2 className="section-heading">Page Heading</h2>
-				<h2>{heading}</h2>
-			</div>
-		</div>
+		<SectionFrame title="Page Heading">
+			<h2>{heading}</h2>
+		</SectionFrame>
 	);
 };
 

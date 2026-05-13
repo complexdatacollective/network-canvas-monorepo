@@ -21,16 +21,14 @@ const SkipLogic = ({ skipLogic }: SkipLogicProps) => {
 	};
 
 	return (
-		<div className="protocol-summary-stage__skip-logic">
-			<MiniTable
-				rotated
-				wide
-				rows={[
-					["Action", action],
-					["Rules", filter ? <Rules key="rules" filter={filter} /> : null],
-				]}
-			/>
-		</div>
+		<MiniTable
+			rotated
+			wide
+			rows={[
+				["Action", action],
+				["Rules", filter ? <Rules key="rules" filter={filter} /> : null],
+			]}
+		/>
 	);
 };
 

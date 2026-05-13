@@ -18,16 +18,16 @@ const ExternalEntity = ({ id, name }: ExternalEntityProps) => {
 
 	return (
 		<>
-			<div className="codebook__entity">
-				<div className="codebook__entity-detail">
-					<div className="codebook__entity-icon">
+			<div className="overflow-hidden mx-auto my-(--space-xl) p-(--space-xl) bg-surface-3 rounded">
+				<div className="flex items-center">
+					<div className="grow-0 basis-(--space-5xl)">
 						<EntityIcon entity="asset" />
 					</div>
-					<div className="codebook__entity-name">
+					<div className="ps-(--space-lg)">
 						<h2>{name}</h2>
 					</div>
-					<div className="codebook__entity-meta" />
-					<div className="codebook__entity-control">
+					<div className="flex-1 ps-(--space-xl)" />
+					<div className="grow-0 flex gap-(--space-sm)">
 						<Button onClick={() => handleShowPreview(id)} color="sea-green">
 							Preview
 						</Button>
@@ -37,7 +37,7 @@ const ExternalEntity = ({ id, name }: ExternalEntityProps) => {
 					</div>
 				</div>
 				{variables.length > 0 && (
-					<div className="codebook__entity-variables">
+					<div>
 						<h3>Variables:</h3>
 						<VariableList variables={variables} />
 					</div>
