@@ -31,7 +31,7 @@ export function setPreviewUseSyntheticData(value: boolean) {
 	return setProperty({ key: PREVIEW_USE_SYNTHETIC_DATA_KEY, value });
 }
 
-export function getPreviewUseSyntheticData(state: RootState): boolean {
+export function getPreviewUseSyntheticData(state: Pick<RootState, "app">): boolean {
 	const raw = get(state, ["app", PREVIEW_USE_SYNTHETIC_DATA_KEY]);
 	return raw === undefined ? true : Boolean(raw);
 }
