@@ -92,7 +92,7 @@ type InterfaceRegistry = {
  * Each key corresponds to a stage type from the protocol validation schema.
  * Internal use only - not exported.
  */
-const INTERFACE_CONFIGS = {
+const INTERFACE_CONFIGS: InterfaceRegistry = {
 	AlterEdgeForm: {
 		sections: [FilteredEdgeType, IntroductionPanel, Form, SkipLogic, InterviewScript],
 		documentation: "https://documentation.networkcanvas.com/interface-documentation/per-alter-edge-form/",
@@ -186,7 +186,7 @@ const INTERFACE_CONFIGS = {
 		sections: [NodeConfiguration, EdgeConfiguration, CensusPrompt, NominationPrompts, SkipLogic, InterviewScript],
 		documentation: "https://documentation.networkcanvas.com/interface-documentation/family-pedigree/",
 	},
-} as const satisfies InterfaceRegistry;
+};
 
 /**
  * Retrieves the interface configuration for a given stage type.
