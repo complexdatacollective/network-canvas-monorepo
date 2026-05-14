@@ -42,23 +42,15 @@ const GridItem = ({
 					</div>
 					<div className="flex-initial flex items-center p-(--space-sm) gap-(--space-sm)">
 						<button
-							className="cursor-pointer p-(--space-sm) rounded-xs flex items-center justify-center bg-transparent border-none text-inherit transition-colors duration-(--animation-duration-fast) ease-(--animation-easing) hover:bg-foreground/10 [&_.icon]:size-(--space-md)!"
-							onMouseDown={(e) => {
-								e.stopPropagation();
-								e.preventDefault();
-								onEditItem(fieldId);
-							}}
+							className="grid-item-action cursor-pointer p-(--space-sm) rounded-xs flex items-center justify-center bg-transparent border-none text-inherit transition-colors duration-(--animation-duration-fast) ease-(--animation-easing) hover:bg-foreground/10 [&_.icon]:size-(--space-md)!"
+							onClick={() => onEditItem(fieldId)}
 							type="button"
 						>
 							<Icon name="edit" color="sea-green" />
 						</button>
 						<button
-							className="cursor-pointer p-(--space-sm) rounded-xs flex items-center justify-center bg-transparent border-none text-inherit transition-colors duration-(--animation-duration-fast) ease-(--animation-easing) hover:bg-error/20 ml-(--space-sm) [&_.icon]:size-(--space-md)!"
-							onMouseDown={(e) => {
-								e.stopPropagation();
-								e.preventDefault();
-								fields.remove(index);
-							}}
+							className="grid-item-action cursor-pointer p-(--space-sm) rounded-xs flex items-center justify-center bg-transparent border-none text-inherit transition-colors duration-(--animation-duration-fast) ease-(--animation-easing) hover:bg-error/20 ml-(--space-sm) [&_.icon]:size-(--space-md)!"
+							onClick={() => fields.remove(index)}
 							type="button"
 						>
 							<Icon name="delete" />

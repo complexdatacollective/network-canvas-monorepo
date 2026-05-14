@@ -129,6 +129,7 @@ class Grid extends Component<GridProps, GridState> {
 					width={width}
 					onDragStop={this.handleDragStop}
 					onResizeStop={this.handleResizeStop}
+					draggableCancel=".grid-item-action"
 				>
 					{items.map(({ id, ...item }, index) => (
 						<div key={id} className="relative">
