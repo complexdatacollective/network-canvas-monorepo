@@ -35,7 +35,7 @@ const PreviewRule = ({ type, options, join = null, onClick, handleDelete }: Prev
 				</div>
 				<button
 					type="button"
-					className="ml-(--space-sm) flex size-(--space-lg) shrink-0 grow-0 cursor-pointer items-center justify-center overflow-hidden rounded-(--space-lg) border-0 bg-error opacity-0 transition-opacity duration-(--animation-duration-fast) ease-(--animation-easing) group-hover:opacity-100 [&_.icon]:size-(--space-md) [&_.icon_.cls-1]:fill-error-foreground [&_.icon_.cls-2]:fill-error-foreground"
+					className="ml-(--space-sm) flex size-(--space-lg) shrink-0 grow-0 cursor-pointer items-center justify-center overflow-hidden rounded-(--space-lg) border-0 bg-error text-error-foreground opacity-0 transition-opacity duration-(--animation-duration-fast) ease-(--animation-easing) group-hover:opacity-100 [&_.icon]:size-(--space-md)"
 					onClick={handleDelete}
 				>
 					<Icon name="delete" />

@@ -153,6 +153,21 @@
 		--animation-duration-slow: 500ms;
 		--animation-duration-fast: 150ms;
 
+		/* Primitive tokens read directly by @codaco/fresco-ui components:
+		   Node reads var(--node-N) for its gradient --base and var(--selected)
+		   for its selection / linking box-shadow rings. Theme tokens below
+		   alias --color-node-N / --color-selected to these. */
+		--selected: hsl(var(--mustard));
+
+		--node-1: hsl(var(--neon-coral));
+		--node-2: hsl(var(--sea-serpent));
+		--node-3: hsl(var(--purple-pizazz));
+		--node-4: hsl(var(--neon-carrot));
+		--node-5: hsl(var(--kiwi));
+		--node-6: hsl(var(--cerulean-blue));
+		--node-7: hsl(var(--paradise-pink));
+		--node-8: hsl(var(--mustard));
+
 		--node-color-seq-1: var(--neon-coral);
 		--node-color-seq-1-dark: var(--neon-coral-dark);
 		--node-color-seq-2: var(--sea-serpent);
@@ -313,17 +328,17 @@
 	--color-fresco-purple: oklch(10% 0.4 290);
 	--color-fresco-purple-foreground: hsl(var(--white));
 
-	/* Node color tokens consumed by @codaco/fresco-ui/Node. The component reads
-	   `var(--color-node-N)` for its gradient base and uses `outline-node-N`
-	   utilities (auto-generated from these theme tokens) for the focus ring. */
-	--color-node-1: hsl(var(--neon-coral));
-	--color-node-2: hsl(var(--sea-serpent));
-	--color-node-3: hsl(var(--purple-pizazz));
-	--color-node-4: hsl(var(--neon-carrot));
-	--color-node-5: hsl(var(--kiwi));
-	--color-node-6: hsl(var(--cerulean-blue));
-	--color-node-7: hsl(var(--paradise-pink));
-	--color-node-8: hsl(var(--mustard));
+	/* Node theme tokens — alias the --node-N primitives defined in :root.
+	   Tailwind emits these as `--color-node-N` and auto-generates utilities
+	   like `outline-node-N` used by @codaco/fresco-ui/Node for its focus ring. */
+	--color-node-1: var(--node-1);
+	--color-node-2: var(--node-2);
+	--color-node-3: var(--node-3);
+	--color-node-4: var(--node-4);
+	--color-node-5: var(--node-5);
+	--color-node-6: var(--node-6);
+	--color-node-7: var(--node-7);
+	--color-node-8: var(--node-8);
 
 	/* Breakpoints used by fresco-ui responsive size variants (`tablet-landscape:`,
 	   `desktop:`). Mirrors the values in tooling/tailwind/fresco/theme.css. */
@@ -406,7 +421,7 @@
 	--color-hover: hsl(var(--sea-green-dark));
 	--color-focus: hsl(var(--sea-green));
 	--color-active: hsl(var(--sea-green));
-	--color-selected: var(--color-mustard);
+	--color-selected: var(--selected);
 
 	--color-border: hsl(var(--platinum-dark));
 	--color-divider: hsl(var(--platinum-dark));
@@ -674,49 +689,3 @@
 	}
 }
 
-@layer components {
-	/* vendor overrides */
-
-	/* react-grid-layout
-	 * Replaces the library's default resize-handle arrow with a chevron drawn
-	 * from `--color-active`, matching the architect Grid styling that lived
-	 * in `src/styles/components/grid.css` before the Tailwind migration.
-	 * Scoped to `.react-grid-item` so it only fires inside react-grid-layout
-	 * grids, not any other consumer of the library's `.react-resizable-handle`
-	 * class. */
-	.react-grid-item > .react-resizable-handle {
-		background: transparent;
-	}
-
-	.react-grid-item > .react-resizable-handle::after {
-		content: "";
-		position: absolute;
-		right: 0;
-		bottom: 0;
-		width: 1rem;
-		height: 1rem;
-		border-bottom-right-radius: 0.5rem;
-		border-bottom: 2px solid var(--color-active);
-		border-right: 2px solid var(--color-active);
-	}
-
-	/* @tippyjs/react — `theme="error"` validation tooltip
-	 * Sole consumer is `VariablePill`'s inline-edit validation popover. The
-	 * library's default CSS isn't imported anywhere, so without this rule
-	 * `<Tippy theme="error">` renders as an unstyled div. Bg/foreground use
-	 * the architect semantic-error tokens. */
-	.tippy-box[data-theme~="error"] {
-		background-color: var(--color-error);
-		color: var(--color-error-foreground);
-		border-radius: var(--radius);
-		font-size: var(--text-sm);
-	}
-
-	.tippy-box[data-theme~="error"] .tippy-content {
-		padding: var(--space-xs) var(--space-sm);
-	}
-
-	.tippy-box[data-theme~="error"] .tippy-arrow {
-		color: var(--color-error);
-	}
-}

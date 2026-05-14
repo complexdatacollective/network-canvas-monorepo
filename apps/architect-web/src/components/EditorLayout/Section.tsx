@@ -1,6 +1,6 @@
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
-import { cn } from "~/utils/cn";
+import { cx } from "~/utils/cva";
 import IssueAnchor from "../IssueAnchor";
 import Switch from "../NewComponents/Switch";
 
@@ -58,7 +58,7 @@ const Section = ({
 
 	// In the "horizontal" layout, below the lg: breakpoint we render the section
 	// as the "vertical" layout
-	const classes = cn(
+	const classes = cx(
 		layout === "horizontal" &&
 			"lg:p-6 lg:shadow-md lg:rounded lg:bg-(--current-surface) lg:text-(--current-surface-foreground) lg:min-w-2xl",
 		"relative",
@@ -66,7 +66,7 @@ const Section = ({
 
 	return (
 		<div
-			className={cn(
+			className={cx(
 				"[--input-background:var(--color-surface-1)] [--slider-color:hsl(var(--charcoal))]",
 				"[--current-surface:var(--color-surface-1)] [--current-surface-foreground:var(--color-surface-1-foreground)] relative",
 				"w-full max-w-7xl",
@@ -79,7 +79,7 @@ const Section = ({
 		>
 			<div>
 				<legend
-					className={cn(
+					className={cx(
 						"flex gap-4 items-center text-right",
 						layout === "vertical" && "text-xl font-semibold tracking-tight",
 						layout === "horizontal" &&
@@ -96,7 +96,7 @@ const Section = ({
 							checked={isOpen}
 							onCheckedChange={changeToggleState}
 							disabled={disabled}
-							className={cn("shrink-0 grow-0", disabled && "opacity-50 cursor-not-allowed")}
+							className={cx("shrink-0 grow-0", disabled && "opacity-50 cursor-not-allowed")}
 						/>
 					)}
 				</legend>

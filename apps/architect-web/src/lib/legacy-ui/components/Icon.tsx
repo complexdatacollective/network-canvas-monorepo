@@ -1,6 +1,6 @@
-import cx from "classnames";
 import type React from "react";
 import { memo, useMemo } from "react";
+import { cx } from "~/utils/cva";
 import icons from "../utils/getIcon";
 
 type IconProps = {

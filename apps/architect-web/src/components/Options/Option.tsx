@@ -50,7 +50,7 @@ const deleteOption =
 // Layout for the side controls (drag handle + delete button). Both are 3rem wide
 // flex centers; the only difference is `cursor: grab` for the handle.
 const sideControlClasses =
-	"flex w-(--space-2xl) cursor-pointer items-center justify-center bg-transparent text-sortable-foreground [&_.icon]:size-(--space-md) [&_.icon_.cls-1]:fill-sortable-foreground [&_.icon_.cls-2]:fill-sortable-foreground";
+	"flex w-(--space-2xl) cursor-pointer items-center justify-center bg-transparent text-sortable-foreground [&_.icon]:size-(--space-md)";
 
 const DeleteOption = (props: React.HTMLAttributes<HTMLDivElement>) => (
 	<div

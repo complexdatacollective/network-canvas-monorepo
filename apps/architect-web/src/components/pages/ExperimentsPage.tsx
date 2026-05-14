@@ -8,7 +8,7 @@ import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators } from "~/ducks/modules/activeProtocol";
 import { Button } from "~/lib/legacy-ui/components";
 import { getExperiments, getProtocol } from "~/selectors/protocol";
-import { cn } from "~/utils/cn";
+import { cx } from "~/utils/cva";
 
 const ExperimentsPage = () => {
 	const [, setLocation] = useLocation();
@@ -66,7 +66,7 @@ const ExperimentsPage = () => {
 
 						<div className="flex flex-col gap-4">
 							<div
-								className={cn(
+								className={cx(
 									"flex items-center gap-4 p-4 rounded-lg transition-colors",
 									isEncryptedEnabled ? "border-sea-green/50 bg-sea-green/10" : "bg-surface-1",
 								)}

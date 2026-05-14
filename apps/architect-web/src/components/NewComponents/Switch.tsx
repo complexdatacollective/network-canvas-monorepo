@@ -1,10 +1,10 @@
 import { Switch as BaseSwitch } from "@base-ui/react/switch";
-import classNames from "classnames";
+import { cx } from "~/utils/cva";
 
 type SwitchProps = React.ComponentProps<typeof BaseSwitch.Root>;
 
 export default function Switch({ className, ...rest }: SwitchProps) {
-	const mergedClasses = classNames(
+	const mergedClasses = cx(
 		className,
 		"relative flex h-6 w-10 rounded-full bg-navy-taupe -outline-offset-1 transition-[background-position] duration-[125ms] ease-[cubic-bezier(0.26,0.75,0.38,0.45)] before:absolute before:rounded-full before:outline-offset-2 before:outline-accent focus-visible:before:inset-0 focus-visible:before:outline focus-visible:before:outline-2 data-[checked]:bg-input-active",
 	);
