@@ -114,7 +114,7 @@ const Divider = ({ legend }: DividerProps) => (
 );
 
 const CREATE_NEW_CLASSES =
-	"flex items-center justify-center px-(--space-md) py-(--space-xs) font-medium text-current [&_.icon]:h-(--space-md) [&_.icon]:mr-(--space-md) [&_.icon_.cls-1]:fill-current [&_.icon_.cls-2]:fill-current [&_.icon[name=warning]_.cls-1]:fill-warning [&_.icon[name=warning]_.cls-2]:fill-warning [&_.icon[name=warning]_.cls-3]:fill-white [&_.icon[name=warning]_.cls-4]:fill-white";
+	"flex items-center justify-center px-(--space-md) py-(--space-xs) font-medium text-current [&_.icon]:h-(--space-md) [&_.icon]:mr-(--space-md) [&_.icon[name=warning]_.cls-1]:fill-warning [&_.icon[name=warning]_.cls-2]:fill-warning [&_.icon[name=warning]_.cls-3]:fill-white [&_.icon[name=warning]_.cls-4]:fill-white";
 
 type VariableSpotlightProps = {
 	open: boolean;

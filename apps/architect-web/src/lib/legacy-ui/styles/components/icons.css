@@ -63,58 +63,6 @@ This applies .icon--sea-green class which is mapped to Tailwind fill classes
 		}
 	}
 
-	&[name="tick"],
-	&[name="cross"] {
-		&.icon--mustard .cls-1,
-		&.icon--primary .cls-1 {
-			fill: var(--color-mustard);
-		}
-
-		&.icon--neon-coral .cls-1 {
-			fill: var(--color-neon-coral);
-		}
-
-		&.icon--tomato .cls-1 {
-			fill: var(--color-tomato);
-		}
-
-		&.icon--sea-green .cls-1 {
-			fill: var(--color-sea-green);
-		}
-
-		&.icon--sea-serpent .cls-1 {
-			fill: var(--color-sea-serpent);
-		}
-
-		&.icon--barbie-pink .cls-1 {
-			fill: var(--color-barbie-pink);
-		}
-
-		&.icon--purple-pizazz .cls-1 {
-			fill: var(--color-purple-pizazz);
-		}
-
-		&.icon--kiwi .cls-1 {
-			fill: var(--color-kiwi);
-		}
-
-		&.icon--cerulean-blue .cls-1 {
-			fill: var(--color-cerulean-blue);
-		}
-
-		&.icon--paradise-pink .cls-1 {
-			fill: var(--color-paradise-pink);
-		}
-
-		&.icon--slate-blue .cls-1 {
-			fill: var(--color-slate-blue);
-		}
-
-		&.icon--white .cls-1 {
-			fill: var(--color-white);
-		}
-	}
-
 	&[name="error"] {
 		&.icon--mustard .cls-8,
 		&.icon--primary .cls-8 {

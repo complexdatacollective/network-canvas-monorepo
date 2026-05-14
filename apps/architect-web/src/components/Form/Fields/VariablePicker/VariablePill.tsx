@@ -200,7 +200,7 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
 													!canSubmit && "cursor-not-allowed grayscale",
 												)}
 											>
-												<Icon name="tick" color="sea-green" />
+												<Icon name="tick" className="text-sea-green" />
 											</motion.div>
 											<motion.div
 												title="Cancel"
@@ -213,7 +213,7 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
 												onClick={handleCancel}
 												className="ml-(--space-sm) cursor-pointer [&_.icon]:size-(--space-md)"
 											>
-												<Icon name="cross" color="tomato" />
+												<Icon name="cross" className="text-tomato" />
 											</motion.div>
 										</motion.div>
 									}

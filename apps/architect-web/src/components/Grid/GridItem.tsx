@@ -53,7 +53,7 @@ const GridItem = ({
 							<Icon name="edit" color="sea-green" />
 						</button>
 						<button
-							className="cursor-pointer p-(--space-sm) rounded-xs flex items-center justify-center bg-transparent border-none text-inherit transition-colors duration-(--animation-duration-fast) ease-(--animation-easing) hover:bg-error/20 ml-(--space-sm) [&_.icon]:size-(--space-md)! [&_.icon_.cls-1]:fill-sortable-foreground [&_.icon_.cls-2]:fill-sortable-foreground"
+							className="cursor-pointer p-(--space-sm) rounded-xs flex items-center justify-center bg-transparent border-none text-inherit transition-colors duration-(--animation-duration-fast) ease-(--animation-easing) hover:bg-error/20 ml-(--space-sm) [&_.icon]:size-(--space-md)!"
 							onMouseDown={(e) => {
 								e.stopPropagation();
 								e.preventDefault();
