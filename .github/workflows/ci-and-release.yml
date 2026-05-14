@@ -447,7 +447,11 @@ jobs:
           CHROMATIC_BRANCH: ${{ github.head_ref || github.ref_name }}
           CHROMATIC_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           CHROMATIC_SLUG: ${{ github.repository }}
-        run: npx --yes chromatic --exit-once-uploaded --auto-accept-changes main
+        # --storybook-build-dir points chromatic at the storybook-static
+        # directory turbo just produced (or restored from cache); without it
+        # chromatic re-runs `pnpm build-storybook` into a tmp dir and the
+        # turbo cache savings evaporate.
+        run: npx --yes chromatic --exit-once-uploaded --auto-accept-changes main --storybook-build-dir=storybook-static
 
   chromatic-interview:
     needs: [quality, detect]
@@ -477,7 +481,11 @@ jobs:
           CHROMATIC_BRANCH: ${{ github.head_ref || github.ref_name }}
           CHROMATIC_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           CHROMATIC_SLUG: ${{ github.repository }}
-        run: npx --yes chromatic --exit-once-uploaded --auto-accept-changes main
+        # --storybook-build-dir points chromatic at the storybook-static
+        # directory turbo just produced (or restored from cache); without it
+        # chromatic re-runs `pnpm build-storybook` into a tmp dir and the
+        # turbo cache savings evaporate.
+        run: npx --yes chromatic --exit-once-uploaded --auto-accept-changes main --storybook-build-dir=storybook-static
 
   interview-e2e:
     needs: [quality, detect]
