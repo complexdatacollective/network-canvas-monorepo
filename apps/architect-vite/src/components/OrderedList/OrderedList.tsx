@@ -52,7 +52,7 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
 	}
 
 	return (
-		<Reorder.Group className="flex flex-col gap-4 w-full" onReorder={handleReorder} values={values} axis="y">
+		<Reorder.Group className="flex w-full flex-col gap-(--space-md)" onReorder={handleReorder} values={values} axis="y">
 			<AnimatePresence>
 				{values.map((item, index) => {
 					const key = item.id || hash(item);

@@ -1,7 +1,7 @@
+import type { NodeShape } from "@codaco/fresco-ui/Node";
 import { compose, withHandlers } from "react-recompose";
 import { connect } from "react-redux";
 import { Link } from "wouter";
-import type { NodeShape } from "~/components/Node/Node";
 import { actionCreators as dialogActionCreators } from "~/ducks/modules/dialogs";
 import { deleteTypeAsync } from "~/ducks/modules/protocol/codebook";
 import type { RootState } from "~/ducks/store";
@@ -64,11 +64,7 @@ const EntityType = ({
 
 	const stages = usage.map(({ id, label }) =>
 		id ? (
-			<Link
-				href={`/protocol/stage/${id}`}
-				key={id}
-				className="underline decoration-[color:var(--color-action)] underline-offset-4 px-1"
-			>
+			<Link href={`/protocol/stage/${id}`} key={id} className="underline decoration-action underline-offset-4 px-1">
 				{label}
 			</Link>
 		) : (
@@ -79,15 +75,15 @@ const EntityType = ({
 	);
 
 	return (
-		<div className="codebook__entity">
-			<div className="codebook__entity-detail">
-				<div className="codebook__entity-icon">
+		<div className="overflow-hidden mx-auto my-(--space-xl) p-(--space-xl) bg-surface-3 rounded">
+			<div className="flex items-center">
+				<div className="grow-0 basis-(--space-5xl)">
 					<EntityIcon color={color} entity={entity} shape={shape} />
 				</div>
-				<div className="codebook__entity-name">
+				<div className="ps-(--space-lg)">
 					<h2>{name}</h2>
 				</div>
-				<div className="codebook__entity-meta">
+				<div className="flex-1 ps-(--space-xl)">
 					{!inUse && <Tag>not in use</Tag>}
 					{inUse && (
 						<>
@@ -95,7 +91,7 @@ const EntityType = ({
 						</>
 					)}
 				</div>
-				<div className="codebook__entity-control">
+				<div className="grow-0 flex gap-(--space-sm)">
 					<Button onClick={handleEdit} color="sea-green">
 						Edit entity
 					</Button>
@@ -105,7 +101,7 @@ const EntityType = ({
 				</div>
 			</div>
 			{variableArray.length > 0 && (
-				<div className="codebook__entity-variables">
+				<div>
 					<h3>Variables:</h3>
 					<VariablesTyped variables={variableArray} entity={entity} type={type} />
 				</div>

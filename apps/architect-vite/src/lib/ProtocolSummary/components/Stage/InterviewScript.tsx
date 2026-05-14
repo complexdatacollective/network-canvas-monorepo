@@ -1,16 +1,14 @@
 import Markdown from "~/components/Form/Fields/Markdown";
+import SectionFrame from "./SectionFrame";
 
 type InterviewScriptProps = {
 	interviewScript?: string | null;
 };
 
 const InterviewScript = ({ interviewScript = null }: InterviewScriptProps) => (
-	<div className="protocol-summary-stage__interview-script">
-		<div className="protocol-summary-stage__interview-script-content">
-			<h2 className="section-heading">Interviewer Script</h2>
-			{interviewScript && <Markdown label={interviewScript} />}
-		</div>
-	</div>
+	<SectionFrame title="Interviewer Script" wrapperClassName="break-inside-avoid" contentClassName="min-h-[25rem]">
+		{interviewScript && <Markdown label={interviewScript} />}
+	</SectionFrame>
 );
 
 export default InterviewScript;

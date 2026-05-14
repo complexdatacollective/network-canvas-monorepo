@@ -1,3 +1,4 @@
+import type { NodeShape } from "@codaco/fresco-ui/Node";
 import type {
 	EdgeDefinition,
 	EgoDefinition,
@@ -8,7 +9,6 @@ import type {
 } from "@codaco/protocol-validation";
 import { createSelector } from "@reduxjs/toolkit";
 import { compact, get, reduce, uniq } from "es-toolkit/compat";
-import type { NodeShape } from "~/components/Node/Node";
 import type { RootState } from "~/ducks/store";
 import { getAllVariablesByUUID, getType } from "~/selectors/codebook";
 import { makeGetIsUsed } from "~/selectors/codebook/isUsed";

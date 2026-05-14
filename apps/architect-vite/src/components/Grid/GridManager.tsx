@@ -80,8 +80,8 @@ const GridManager = ({
 	>
 		<IssueAnchor fieldName={`${fieldName}._error`} description={fieldName} />
 		{children}
-		<div className="grid-manager">
-			<div className="grid-manager__items">
+		<div>
+			<div>
 				<ValidatedFieldArray
 					name={fieldName}
 					component={Grid as unknown as React.ComponentType<WrappedFieldArrayProps<unknown>>}
@@ -95,7 +95,7 @@ const GridManager = ({
 				/>
 			</div>
 			{hasSpace && (
-				<div className="grid-manager__add">
+				<div className="mt-(--space-md)">
 					<Button onClick={handleAddNew} icon="add" color="sea-green">
 						Add new item
 					</Button>

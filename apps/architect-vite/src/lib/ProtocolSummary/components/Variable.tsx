@@ -18,7 +18,7 @@ const Variable = ({ id }: VariableProps) => {
 	const name = getVariableName(index, id);
 
 	return (
-		<DualLink to={`#variable-${id}`} className="protocol-summary-variable">
+		<DualLink to={`#variable-${id}`}>
 			<SimpleVariablePill label={name} type={meta.type as VariableType}>
 				{name}
 			</SimpleVariablePill>

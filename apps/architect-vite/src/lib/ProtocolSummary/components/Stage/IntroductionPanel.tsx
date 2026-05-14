@@ -1,4 +1,5 @@
 import Markdown from "~/components/Form/Fields/Markdown";
+import SectionFrame from "./SectionFrame";
 
 type IntroductionPanelProps = {
 	introductionPanel?: {
@@ -13,13 +14,10 @@ const IntroductionPanel = ({ introductionPanel = null }: IntroductionPanelProps)
 	}
 
 	return (
-		<div className="protocol-summary-stage__introduction-panel">
-			<div className="protocol-summary-stage__introduction-panel-content">
-				<h2 className="section-heading">Introduction Panel</h2>
-				<h1>{introductionPanel.title}</h1>
-				<Markdown label={introductionPanel.text} />
-			</div>
-		</div>
+		<SectionFrame title="Introduction Panel">
+			<h1>{introductionPanel.title}</h1>
+			<Markdown label={introductionPanel.text} />
+		</SectionFrame>
 	);
 };
 

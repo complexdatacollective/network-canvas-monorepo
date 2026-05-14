@@ -4,6 +4,12 @@ import { Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import NumberField from "~/components/Form/Fields/Number";
 import NativeSelect from "../Form/Fields/NativeSelect";
+import {
+	MULTI_SELECT_CONTROL_CLASSES,
+	MULTI_SELECT_OPTION_CLASSES,
+	MULTI_SELECT_OPTIONS_CLASSES,
+	MULTI_SELECT_RULE_CLASSES,
+} from "../Form/MultiSelect";
 import { isValidationWithListValue, isValidationWithNumberValue } from "./options";
 
 type ValidationOption = {
@@ -72,9 +78,9 @@ const Validation = ({
 	};
 
 	return (
-		<div className="form-fields-multi-select__rule group">
-			<div className="form-fields-multi-select__rule-options">
-				<div className="form-fields-multi-select__rule-option">
+		<div className={`group ${MULTI_SELECT_RULE_CLASSES}`}>
+			<div className={MULTI_SELECT_OPTIONS_CLASSES}>
+				<div className={MULTI_SELECT_OPTION_CLASSES}>
 					<NativeSelect
 						options={options}
 						input={keyInputProps}
@@ -83,12 +89,12 @@ const Validation = ({
 					/>
 				</div>
 				{itemKey && isValidationWithNumberValue(itemKey) && (
-					<div className="form-fields-multi-select__rule-option">
+					<div className={MULTI_SELECT_OPTION_CLASSES}>
 						<NumberField input={numberValueInputProps} validation={{ required: true }} />
 					</div>
 				)}
 				{itemKey && isValidationWithListValue(itemKey) && (
-					<div className="form-fields-multi-select__rule-option">
+					<div className={MULTI_SELECT_OPTION_CLASSES}>
 						<NativeSelect
 							options={existingVariableOptions}
 							input={listValueInputProps}
@@ -98,7 +104,7 @@ const Validation = ({
 					</div>
 				)}
 			</div>
-			<div className="form-fields-multi-select__rule-control">
+			<div className={MULTI_SELECT_CONTROL_CLASSES}>
 				<motion.div
 					layout
 					className="opacity-0 transition-all duration-200 cursor-pointer group-hover:opacity-100 hover:bg-tomato rounded-full p-2 grow-0 shrink-0 h-10 aspect-square"

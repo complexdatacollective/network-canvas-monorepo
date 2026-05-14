@@ -32,10 +32,10 @@ function buildSession(payload: PreviewPayload): SessionPayload {
 export function PreviewHost() {
 	const [interviewPayload, setInterviewPayload] = useState<InterviewPayload | null>(null);
 	const [currentStep, setCurrentStep] = useState(0);
-	const opener = window.opener as Window | null;
 	const onRequestAsset = useAssetResolver();
 
 	useEffect(() => {
+		const opener = window.opener as Window | null;
 		if (!opener) return;
 
 		const expectedOrigin = window.location.origin;
@@ -56,9 +56,9 @@ export function PreviewHost() {
 		window.addEventListener("message", onMessage);
 		opener.postMessage({ type: "preview:ready" }, expectedOrigin);
 		return () => window.removeEventListener("message", onMessage);
-	}, [opener]);
+	}, []);
 
-	if (!opener) {
+	if (!window.opener) {
 		return (
 			<div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
 				<h1 className="text-2xl font-semibold">This preview has ended</h1>
@@ -79,15 +79,17 @@ export function PreviewHost() {
 	}
 
 	return (
-		<Shell
-			payload={interviewPayload}
-			onSync={noopSync}
-			onFinish={noopFinish}
-			onRequestAsset={onRequestAsset}
-			currentStep={currentStep}
-			onStepChange={setCurrentStep}
-			disableAnalytics
-			analytics={{ installationId: "architect-preview", hostApp: "architect-preview" }}
-		/>
+		<div className="h-screen">
+			<Shell
+				payload={interviewPayload}
+				onSync={noopSync}
+				onFinish={noopFinish}
+				onRequestAsset={onRequestAsset}
+				currentStep={currentStep}
+				onStepChange={setCurrentStep}
+				disableAnalytics
+				analytics={{ installationId: "architect-preview", hostApp: "architect-preview" }}
+			/>
+		</div>
 	);
 }

@@ -35,14 +35,14 @@ const AdditionalInformation = ({ stack }: AdditionalInformationProps) => {
 	const buttonText = expanded ? "Hide details \u25b2" : "Show details \u25bc";
 
 	return (
-		<div className="dialog__additional mt-4">
+		<div className="mt-(--space-md) mb-[0.15rem]">
 			<Button color="platinum" onClick={() => setExpanded(!expanded)}>
 				{buttonText}
 			</Button>
 			{expanded && (
 				<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-					<div className="dialog__additional-box mt-4 max-h-60 overflow-y-auto bg-[var(--color-background)] rounded-[var(--radius)] select-text">
-						<pre className="error__stack-trace p-4 whitespace-pre-wrap break-words">{stack}</pre>
+					<div className="mt-(--space-md) max-h-[15rem] select-text overflow-y-auto rounded bg-background">
+						<pre className="w-full whitespace-pre-wrap break-words p-(--space-md)">{stack}</pre>
 					</div>
 				</motion.div>
 			)}

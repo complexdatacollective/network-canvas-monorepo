@@ -1,8 +1,8 @@
-import cx from "classnames";
 import { throttle } from "es-toolkit/compat";
 import React, { Component } from "react";
 import GridLayout, { type Layout } from "react-grid-layout";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import { cx } from "~/utils/cva";
 import GridItem from "./GridItem";
 import { convertSize, type GridItem as GridItemData, getLayout, trimSize } from "./helpers";
 import withItems from "./withItems";
@@ -106,13 +106,11 @@ class Grid extends Component<GridProps, GridState> {
 
 		const { width } = this.state;
 
-		const gridClasses = cx("grid", {
-			"grid--has-error": submitFailed && error,
-		});
+		const showError = Boolean(submitFailed && error);
 
 		if (!items) {
 			return (
-				<div className="grid">
+				<div>
 					<p>
 						<em>Currently no items.</em>
 					</p>
@@ -121,9 +119,9 @@ class Grid extends Component<GridProps, GridState> {
 		}
 
 		return (
-			<div className={gridClasses} ref={this.ref}>
+			<div ref={this.ref}>
 				<GridLayout
-					className="layout"
+					className="h-[450px] bg-surface-accent rounded-lg"
 					layout={getLayout(items, capacity)}
 					cols={1}
 					rowHeight={100}
@@ -133,7 +131,7 @@ class Grid extends Component<GridProps, GridState> {
 					onResizeStop={this.handleResizeStop}
 				>
 					{items.map(({ id, ...item }, index) => (
-						<div key={id} className="grid__item">
+						<div key={id} className="relative">
 							<GridItem
 								id={id}
 								index={index}
@@ -148,8 +146,14 @@ class Grid extends Component<GridProps, GridState> {
 					))}
 				</GridLayout>
 
-				{submitFailed && error && (
-					<p className="grid__error">
+				{showError && (
+					<p
+						className={cx(
+							"flex items-center gap-(--space-sm) bg-error text-primary-foreground rounded p-(--space-sm) mt-(--space-md) overflow-hidden transition-all duration-(--animation-duration-standard) ease-(--animation-easing)",
+							"max-h-[50px] opacity-100",
+							"[&_.icon]:h-(--space-md)!",
+						)}
+					>
 						<Icon name="warning" /> {error}
 					</p>
 				)}

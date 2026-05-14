@@ -37,9 +37,9 @@ const spinnerVariants = cva(
 		"relative",
 		"will-change-transform",
 		"[backface-visibility:hidden]",
-		"w-[var(--container-size)]",
-		"h-[var(--container-size)]",
-		"m-[var(--circle-size)]",
+		"w-(--container-size)",
+		"h-(--container-size)",
+		"m-(--circle-size)",
 	].join(" "),
 	{
 		variants: {
@@ -57,7 +57,7 @@ const spinnerVariants = cva(
 	},
 );
 
-const halfCircleBase = "h-[var(--circle-size)] w-[calc(var(--circle-size)*2)] rounded-t-[calc(var(--circle-size)*2)]";
+const halfCircleBase = "h-(--circle-size) w-[calc(var(--circle-size)*2)] rounded-t-[calc(var(--circle-size)*2)]";
 
 const containerAnimation = {
 	rotate: [45, 45, 405, 405],

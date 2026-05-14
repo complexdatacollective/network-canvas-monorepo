@@ -32,9 +32,9 @@ const AssignAttributes = ({
 	handleDelete,
 	form,
 }: AssignAttributesProps) => (
-	<div className="assign-attributes">
+	<div>
 		{fields.length > 0 && (
-			<div className="assign-attributes__attributes">
+			<div>
 				{fields.map((field, index) => {
 					const AttributeComponent = Attribute as unknown as React.ComponentType<{
 						index: number;
@@ -62,7 +62,7 @@ const AssignAttributes = ({
 				})}
 			</div>
 		)}
-		<div className="assign-attributes__add">
+		<div className="mt-(--space-md) [&_button]:m-0">
 			<Button color="sea-green" icon="add" onClick={handleAddNew}>
 				Add new variable to assign
 			</Button>

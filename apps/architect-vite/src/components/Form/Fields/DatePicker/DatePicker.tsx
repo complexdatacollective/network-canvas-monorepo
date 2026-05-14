@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { type FocusEvent, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import useScrollTo from "~/lib/legacy-ui/hooks/useScrollTo";
@@ -72,10 +71,6 @@ const DatePickerInput = ({
 	const handleClickPreview = (open = true) => setPanelsOpen(open);
 	const today = now().toObject();
 
-	const datePickerClasses = cx("date-picker", {
-		"date-picker--is-active": panelsOpen,
-	});
-
 	const handleFocus = () => {
 		if (isEmpty(value)) {
 			setPanelsOpen(true);
@@ -104,31 +99,42 @@ const DatePickerInput = ({
 					const todayDay = date.year === today.year && date.month === today.month ? today.day : null;
 
 					const handleBlur = (e: FocusEvent<HTMLDivElement>) => {
-						if (!e.target.classList.contains("date-picker")) {
+						if (e.target !== e.currentTarget) {
 							return;
 						}
 						// dump incomplete state
 						if (!isComplete) {
 							onChange({ year: null, month: null, day: null });
 						}
-						// setPanelsOpen(false);
 					};
 
 					return (
 						<LayoutGroup>
 							<motion.div
-								className={datePickerClasses}
+								className="relative max-w-full"
+								style={
+									{
+										"--datepicker-panel-height": "18rem",
+										"--datepicker-preview-height": "4rem",
+										"--datepicker-popover-max-width": "30rem",
+										"--datepicker-row-tint": "rgb(255 255 255 / 0.05)",
+									} as React.CSSProperties
+								}
 								onBlur={handleBlur}
 								onFocus={handleFocus}
 								tabIndex={0}
 								role="button"
 							>
 								<DatePreview onClick={handleClickPreview} isActive={panelsOpen} placeholder={placeholder} />
-								<motion.div ref={ref} layout className="date-picker__container">
+								<motion.div
+									ref={ref}
+									layout
+									className="absolute z-(--z-global-ui) mb-(--space-2xl) w-full max-w-(--datepicker-popover-max-width) shadow-md"
+								>
 									<AnimatePresence>
 										{panelsOpen && (
 											<Panels>
-												<Panel isActive={isYearActive} isComplete={isYearComplete} type="year">
+												<Panel isActive={isYearActive} isComplete={isYearComplete}>
 													<Years>
 														{({ years }) => (
 															<RangePicker
@@ -143,7 +149,7 @@ const DatePickerInput = ({
 													</Years>
 												</Panel>
 												{canSetMonth && (
-													<Panel isActive={isMonthActive} isComplete={isMonthComplete} type="month">
+													<Panel isActive={isMonthActive} isComplete={isMonthComplete}>
 														<Months>
 															{({ months }) => (
 																<RangePicker
@@ -158,7 +164,7 @@ const DatePickerInput = ({
 													</Panel>
 												)}
 												{canSetDay && (
-													<Panel isActive={isDayActive} isComplete={isDayComplete} type="day">
+													<Panel isActive={isDayActive} isComplete={isDayComplete}>
 														<Days>
 															{({ days }) => (
 																<RangePicker

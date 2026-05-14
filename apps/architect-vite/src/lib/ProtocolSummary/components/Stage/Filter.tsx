@@ -14,11 +14,7 @@ const Filter = ({ filter }: FilterProps) => {
 		return null;
 	}
 
-	return (
-		<div className="protocol-summary-stage__filter">
-			<Rules filter={filter as FilterType} />
-		</div>
-	);
+	return <Rules filter={filter as FilterType} />;
 };
 
 export default Filter;

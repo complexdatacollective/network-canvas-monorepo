@@ -1,8 +1,8 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
-import cx from "classnames";
 import BooleanToggle from "~/lib/legacy-ui/components/Boolean/Boolean";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import { cx } from "~/utils/cva";
 import MarkdownLabel from "./MarkdownLabel";
 
 type BooleanValue = boolean | string | number | null;
@@ -40,7 +40,7 @@ const BooleanField = ({
 	noReset = false,
 	className = "",
 	input,
-	disabled = false,
+	disabled: _disabled = false,
 	options = [
 		{ label: "Yes", value: true },
 		{ label: "No", value: false, negative: true },
@@ -48,31 +48,28 @@ const BooleanField = ({
 	meta = {},
 }: BooleanFieldProps) => {
 	const { error, invalid, touched } = meta;
-	const componentClasses = cx(
-		"form-field-container form-field-boolean",
-		className,
-		{
-			"form-field-boolean--disabled": disabled,
-		},
-		{
-			"form-field-boolean--has-error": invalid && touched && error,
-		},
-	);
+	const hasError = !!(invalid && touched && error);
 
 	const anyLabel = fieldLabel || label;
 
 	return (
-		<div className={componentClasses}>
+		<div
+			className={cx(
+				"form-field-container mb-(--space-xl)",
+				hasError && "[&_.form-field]:mb-0 [&_.form-field]:border-2 [&_.form-field]:border-error",
+				className,
+			)}
+		>
 			{anyLabel && <MarkdownLabel label={anyLabel} />}
-			<div className="form-field-boolean__control">
+			<div>
 				<BooleanToggle
 					options={options as Parameters<typeof BooleanToggle>[0]["options"]}
 					value={input.value as boolean | null}
 					onChange={input.onChange as (value: boolean | null) => void}
 					noReset={noReset}
 				/>
-				{invalid && touched && (
-					<div className="form-field-boolean__error">
+				{hasError && (
+					<div className="flex items-center bg-error text-foreground py-(--space-sm) px-(--space-xs) [&_svg]:max-h-(--space-md)">
 						<Icon name="warning" />
 						{error}
 					</div>

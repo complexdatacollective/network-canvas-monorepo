@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Source the @codaco/fresco-ui compiled output so Tailwind discovers utility
+   classes referenced inside the package (e.g. `size-14`, `outline-node-1`,
+   `desktop:size-18`). Without this, fresco-ui components render unstyled
+   because their classes never make it into the generated stylesheet. */
+@source "../../node_modules/@codaco/fresco-ui/dist/**/*.js";
+
 @layer base {
 	:root {
 		/* UI Colors */
@@ -123,8 +129,12 @@
 
 		--base-font-size: 16px;
 
-		--modal-window-box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-		--shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px 0 rgb(0 0 0 / 0.06);
+		--heading-font-family: "Nunito", sans-serif;
+		--body-font-family: "Inclusive Sans", sans-serif;
+
+		/* Tinted purple shadow color — drives the --shadow-* scale defined in
+		   @theme. Mirrors Fresco's shadow tint (oklch derived from base-hue 290). */
+		--shadow-color: oklch(0.16 0.09 290);
 		--modal-overlay: rgb(0 0 0 / 0.5);
 
 		--z-fx: 1;
@@ -201,7 +211,7 @@
 @layer base {
 	html {
 		font-size: var(--base-font-size);
-		font-family: "Quicksand", sans-serif;
+		font-family: var(--body-font-family);
 		font-optical-sizing: auto;
 		@apply h-full w-full;
 	}
@@ -297,6 +307,29 @@
 	--color-transparent: transparent;
 	--color-white: hsl(var(--white));
 
+	/* Fresco's darker brand purple — matches Fresco's --primary token (oklch
+	   10% lightness, base-hue 290). Use for high-contrast surfaces like the
+	   sticky shared nav. */
+	--color-fresco-purple: oklch(10% 0.4 290);
+	--color-fresco-purple-foreground: hsl(var(--white));
+
+	/* Node color tokens consumed by @codaco/fresco-ui/Node. The component reads
+	   `var(--color-node-N)` for its gradient base and uses `outline-node-N`
+	   utilities (auto-generated from these theme tokens) for the focus ring. */
+	--color-node-1: hsl(var(--neon-coral));
+	--color-node-2: hsl(var(--sea-serpent));
+	--color-node-3: hsl(var(--purple-pizazz));
+	--color-node-4: hsl(var(--neon-carrot));
+	--color-node-5: hsl(var(--kiwi));
+	--color-node-6: hsl(var(--cerulean-blue));
+	--color-node-7: hsl(var(--paradise-pink));
+	--color-node-8: hsl(var(--mustard));
+
+	/* Breakpoints used by fresco-ui responsive size variants (`tablet-landscape:`,
+	   `desktop:`). Mirrors the values in tooling/tailwind/fresco/theme.css. */
+	--breakpoint-tablet-landscape: 1024px;
+	--breakpoint-desktop: 1536px;
+
 	--space-0: 0;
 	--space-xs: 0.3rem;
 	--space-sm: 0.6rem;
@@ -307,6 +340,7 @@
 	--space-3xl: 4.8rem;
 	--space-4xl: 6rem;
 	--space-5xl: 7.2rem;
+	--space-6xl: 8.4rem;
 
 	--text-xs: 0.75rem; /* 12px */
 	--text-sm: 0.875rem; /* 14px */
@@ -322,6 +356,9 @@
 	--leading-tight: 1.1;
 	--leading-normal: 1.4;
 	--leading-relaxed: 1.6;
+
+	--font-body: var(--body-font-family);
+	--font-heading: var(--heading-font-family);
 
 	--font-weight-normal: 400;
 	--font-weight-medium: 500;
@@ -362,7 +399,7 @@
 	--color-surface-2: hsl(var(--platinum));
 	--color-surface-2-foreground: hsl(var(--navy-taupe));
 	--color-surface-3: hsl(var(--platinum-dark));
-	--color-surface-3-foreground: hsl(var(--color-navy-taupe-dark));
+	--color-surface-3-foreground: var(--color-navy-taupe-dark);
 	--color-surface-accent: hsl(var(--navy-taupe));
 	--color-surface-accent-foreground: hsl(var(--white));
 
@@ -380,11 +417,13 @@
 
 	--color-input: hsl(var(--white));
 	--color-input-foreground: hsl(var(--charcoal));
-	--color-input-placeholder: hsl(var(--color-platinum-dark));
+	--color-input-placeholder: var(--color-muted-foreground);
 	--color-input-active: var(--color-active);
 
 	--color-sortable-background: hsl(var(--slate-blue));
 	--color-sortable-foreground: hsl(var(--white));
+
+	--color-table-row-tint: rgb(58 106 117 / 5%);
 
 	--color-form-control: hsl(var(--sea-serpent));
 
@@ -403,14 +442,40 @@
 	--color-rule-operator: var(--color-rules-operator);
 	--color-rule-value: var(--color-rules-value);
 
-	--radius-none: 0px;
-	--radius-sm: 0.125rem;
-	--radius: 0.6rem;
-	--radius-md: 0.75rem;
-	--radius-lg: 0.95rem;
-	--radius-xl: 1.25rem;
-	--radius-2xl: 1.6rem;
-	--radius-full: 9999px;
+	/* Border radius — Fresco's relative-calc scale anchored at 1.75rem (28px).
+	   Approximate pixel values shown for reference; use the variables in CSS
+	   and the rounded-* utilities everywhere else. */
+	--radius-none: 0px; /* 0px */
+	--radius-2xs: calc(var(--radius) * 0.125); /* 3.5px */
+	--radius-xs: calc(var(--radius) * 0.25); /* 7px */
+	--radius-sm: calc(var(--radius) * 0.5); /* 14px */
+	--radius-base: 1.75rem;
+	--radius: var(--radius-base, 1.75rem); /* 28px */
+	--radius-lg: calc(var(--radius) * 1.5); /* 42px */
+	--radius-xl: calc(var(--radius) * 2); /* 56px */
+	--radius-2xl: calc(var(--radius) * 3); /* 84px */
+	--radius-3xl: calc(var(--radius) * 4); /* 112px */
+	--radius-full: 9999px; /* 9999px */
+
+	/* Tinted shadow scale — mirrors Fresco's theme.css. Color-mixes the purple
+	   --shadow-color set in :root with transparency to produce shadows that
+	   pick up the brand hue instead of reading as flat neutral gray. */
+	--shadow-sm:
+		0 1px 3px 0 color-mix(in oklab, var(--shadow-color) 12%, transparent),
+		0 1px 2px -1px color-mix(in oklab, var(--shadow-color) 20%, transparent);
+	--shadow:
+		0 4px 6px -1px color-mix(in oklab, var(--shadow-color) 12%, transparent),
+		0 2px 4px -2px color-mix(in oklab, var(--shadow-color) 20%, transparent);
+	--shadow-md:
+		0 6px 10px -2px color-mix(in oklab, var(--shadow-color) 14%, transparent),
+		0 3px 6px -3px color-mix(in oklab, var(--shadow-color) 22%, transparent);
+	--shadow-lg:
+		0 10px 15px -3px color-mix(in oklab, var(--shadow-color) 16%, transparent),
+		0 4px 6px -4px color-mix(in oklab, var(--shadow-color) 24%, transparent);
+	--shadow-xl:
+		0 20px 25px -5px color-mix(in oklab, var(--shadow-color) 16%, transparent),
+		0 8px 10px -6px color-mix(in oklab, var(--shadow-color) 24%, transparent);
+	--shadow-2xl: 0 25px 50px -12px color-mix(in oklab, var(--shadow-color) 30%, transparent);
 
 	--animate-wiggle: wiggle 1s ease-in-out infinite;
 	--animate-shake: shake 0.82s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
@@ -485,24 +550,30 @@
 	}
 }
 
+/* Mirrors the `focusable` utility shipped with @codaco/fresco-ui — used by
+   fresco-ui components (Node, Button, etc.) for their focus ring. */
+@utility focusable {
+	@apply focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-mustard;
+}
+
 @utility h1 {
-	@apply text-3xl leading-tight font-bold my-6 mx-0;
+	@apply font-heading text-3xl leading-tight font-bold my-6 mx-0;
 }
 
 @utility h2 {
-	@apply text-2xl leading-tight font-bold my-6 mx-0;
+	@apply font-heading text-2xl leading-tight font-bold my-6 mx-0;
 }
 
 @utility h3 {
-	@apply text-xl leading-tight font-semibold my-2 mx-0;
+	@apply font-heading text-xl leading-tight font-semibold my-2 mx-0;
 }
 
 @utility h4 {
-	@apply text-lg leading-normal font-semibold my-2 mx-0;
+	@apply font-heading text-lg leading-normal font-semibold my-2 mx-0;
 }
 
 @utility hero {
-	@apply text-7xl leading-tight font-bold tracking-tight;
+	@apply font-heading text-7xl leading-tight font-bold tracking-tight;
 }
 
 @utility lead {
@@ -528,6 +599,7 @@
 
 /* Small heading utility - replaces .small-heading placeholder */
 @utility small-heading {
+	font-family: var(--heading-font-family);
 	font-size: var(--text-sm);
 	font-weight: 900;
 	line-height: var(--leading-normal);
@@ -553,30 +625,23 @@
 	@apply overflow-hidden overflow-y-auto;
 	-webkit-overflow-scrolling: touch;
 	scroll-behavior: smooth;
-	mask-image: linear-gradient(
-		180deg,
-		transparent,
-		rgb(0 0 0 / 100%) var(--space-md),
-		rgb(0 0 0 / 100%) calc(100% - var(--space-lg)),
-		transparent 100%
-	);
 }
 
 /* Form field utility - replaces form-field mixin */
 @utility form-field {
-	@apply w-full rounded-lg border border-border;
+	@apply w-full rounded-sm border border-border;
 	background-color: var(--color-white);
 	color: var(--color-input-foreground);
 	padding: var(--space-sm) var(--space-md);
 	line-height: var(--leading-normal);
 
-	:focus {
+	&:focus {
 		@apply outline-none ring-1;
 		border-color: var(--color-primary);
-		ring-color: var(--color-primary);
+		--tw-ring-color: var(--color-primary);
 	}
 
-	::placeholder {
+	&::placeholder {
 		color: var(--color-input-placeholder);
 	}
 
@@ -587,10 +652,6 @@
 		margin: 0;
 		color: var(--color-input-foreground);
 	}
-}
-
-@utility section-container {
-	@apply relative shadow-md rounded bg-[var(--current-surface)] text-[(--current-surface-foreground)] w-full overflow-hidden;
 }
 
 /* Clickable utilities - enhanced 3D effect with multiple depths */
@@ -613,40 +674,49 @@
 	}
 }
 
-@utility clickable-2 {
-	box-shadow: 0 0.4rem 0.4rem rgba(17, 21, 27, 0.664);
-	transition:
-		transform var(--animation-duration-fast) var(--animation-easing),
-		box-shadow var(--animation-duration-fast) var(--animation-easing);
+@layer components {
+	/* vendor overrides */
 
-	&:not(:disabled):hover {
-		text-decoration: none;
-		cursor: pointer;
-		transform: translateY(-0.4rem);
-		box-shadow: 0 0.8rem 0.4rem 0 rgba(0, 0, 0, 0.35);
+	/* react-grid-layout
+	 * Replaces the library's default resize-handle arrow with a chevron drawn
+	 * from `--color-active`, matching the architect Grid styling that lived
+	 * in `src/styles/components/grid.css` before the Tailwind migration.
+	 * Scoped to `.react-grid-item` so it only fires inside react-grid-layout
+	 * grids, not any other consumer of the library's `.react-resizable-handle`
+	 * class. */
+	.react-grid-item > .react-resizable-handle {
+		background: transparent;
 	}
 
-	&:not(:disabled):active {
-		box-shadow: unset;
-		transform: translateY(0.4rem);
-	}
-}
-
-@utility clickable-3 {
-	box-shadow: 0 0.6rem 0.6rem rgba(17, 21, 27, 0.664);
-	transition:
-		transform var(--animation-duration-fast) var(--animation-easing),
-		box-shadow var(--animation-duration-fast) var(--animation-easing);
-
-	&:not(:disabled):hover {
-		text-decoration: none;
-		cursor: pointer;
-		transform: translateY(-0.6rem);
-		box-shadow: 0 1.2rem 0.6rem 0 rgba(0, 0, 0, 0.35);
+	.react-grid-item > .react-resizable-handle::after {
+		content: "";
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		width: 1rem;
+		height: 1rem;
+		border-bottom-right-radius: 0.5rem;
+		border-bottom: 2px solid var(--color-active);
+		border-right: 2px solid var(--color-active);
 	}
 
-	&:not(:disabled):active {
-		box-shadow: unset;
-		transform: translateY(0.6rem);
+	/* @tippyjs/react — `theme="error"` validation tooltip
+	 * Sole consumer is `VariablePill`'s inline-edit validation popover. The
+	 * library's default CSS isn't imported anywhere, so without this rule
+	 * `<Tippy theme="error">` renders as an unstyled div. Bg/foreground use
+	 * the architect semantic-error tokens. */
+	.tippy-box[data-theme~="error"] {
+		background-color: var(--color-error);
+		color: var(--color-error-foreground);
+		border-radius: var(--radius);
+		font-size: var(--text-sm);
+	}
+
+	.tippy-box[data-theme~="error"] .tippy-content {
+		padding: var(--space-xs) var(--space-sm);
+	}
+
+	.tippy-box[data-theme~="error"] .tippy-arrow {
+		color: var(--color-error);
 	}
 }

@@ -59,8 +59,8 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(
 					Each value can also be styled to indicate that it is negative. When enabled, this will make the option red
 					when selected, and use a cross icon rather than a tick.
 				</p>
-				<div className="boolean-option-configuration">
-					<div className="boolean-option-configuration__item">
+				<div className="grid grid-cols-2 gap-x-(--space-md)">
+					<div className="rounded-(--radius) bg-surface-3 p-(--space-lg) space-y-(--space-md) [&_h3]:mt-0">
 						<h3>Option One</h3>
 						<p>
 							This option will set the value <strong>true</strong> when selected.
@@ -76,7 +76,7 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(
 						/>
 						<Field label="Style option as negative" component={Toggle} name="options[0].negative" />
 					</div>
-					<div className="boolean-option-configuration__item">
+					<div className="rounded-(--radius) bg-surface-3 p-(--space-lg) space-y-(--space-md) [&_h3]:mt-0">
 						<h3>Option Two</h3>
 						<p>
 							This option will set the value <strong>false</strong> when selected.

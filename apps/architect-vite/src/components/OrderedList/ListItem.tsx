@@ -1,7 +1,7 @@
-import cx from "classnames";
 import { GripVertical, Trash2 } from "lucide-react";
 import { motion, Reorder, useDragControls } from "motion/react";
 import type { ComponentProps } from "react";
+import { cx } from "~/utils/cva";
 
 type ListItemProps = ComponentProps<typeof Reorder.Item> & {
 	handleDelete: () => void;

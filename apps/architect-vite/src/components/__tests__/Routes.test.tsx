@@ -13,16 +13,18 @@ const mockNavigate = vi.fn();
 
 type RouteProps = {
 	path: string;
-	component: React.ComponentType<Record<string, unknown>>;
+	component?: React.ComponentType<Record<string, unknown>>;
+	children?: ReactNode;
 } & Record<string, unknown>;
 
 vi.mock("wouter", () => ({
 	useLocation: () => [mockLocation(), mockNavigate],
-	Route: ({ path, component: Component }: RouteProps) => {
+	Route: ({ path, component: Component, children }: RouteProps) => {
 		const currentPath = mockLocation();
 		// Simple path matching for testing
 		if (path === currentPath || (path === "/protocol" && currentPath.startsWith("/protocol/"))) {
-			return <Component />;
+			if (Component) return <Component />;
+			return <>{children}</>;
 		}
 		return null;
 	},
@@ -36,6 +38,11 @@ vi.mock("~/components/Home/Home", () => ({
 
 vi.mock("~/components/Protocol", () => ({
 	default: () => <div data-testid="protocol">Protocol Component</div>,
+}));
+
+// Mock ProjectLayout so children render directly without needing the full nav setup
+vi.mock("~/components/ProjectNav/ProjectLayout", () => ({
+	default: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 const mockProtocolName = "Test Protocol";

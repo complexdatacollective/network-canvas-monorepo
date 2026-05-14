@@ -61,7 +61,7 @@ const InterfaceThumbnail = ({
 			onMouseLeave={removeHighlighted}
 		>
 			<div className="flex items-center gap-10 mx-6">
-				<img className="w-40 h-auto shrink-0 rounded-lg" src={image} alt={title} />
+				<img className="w-40 h-auto shrink-0 rounded-sm" src={image} alt={title} />
 				<div className="flex flex-col">
 					<h4 className={`mb-2 mt-0 ${highlighted ? "text-white" : ""}`}>{title}</h4>
 					<div className={`mb-3 ${highlighted ? "text-white" : ""}`}>{description}</div>

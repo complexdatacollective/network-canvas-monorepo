@@ -1,5 +1,4 @@
 import { createSelector } from "@reduxjs/toolkit";
-import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import NewTypeDialog from "~/components/Dialog/NewTypeDialog";
@@ -7,6 +6,7 @@ import { useAppDispatch } from "~/ducks/hooks";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { Icon } from "~/lib/legacy-ui/components";
 import Button from "~/lib/legacy-ui/components/Button";
+import { cx } from "~/utils/cva";
 import { getEdgeTypes, getNodeTypes } from "../../../../selectors/codebook";
 import { asOptions } from "../../../../selectors/utils";
 import PreviewEdge from "./PreviewEdge";
@@ -111,25 +111,24 @@ const EntitySelectField = ({
 		[options, value, handleClickItem, PreviewComponent],
 	);
 
-	const classes = cx("form-fields-entity-select flex flex-col items-start gap-4", {
-		"form-fields-entity-select--has-error": hasError,
-	});
-
 	return (
-		<div className={classes}>
+		<div className="flex flex-col items-start gap-(--space-md)">
 			{label && <h4>{label}</h4>}
 
-			<div className="flex-wrap flex p-2 gap-2">{renderOptions()}</div>
-			{options.length === 0 && (
-				<p className="form-fields-entity-select__empty">
-					No {entityType} types currently defined. Use the button below to create one.
-				</p>
-			)}
+			<div
+				className={cx(
+					"flex flex-row flex-wrap justify-start gap-(--space-sm) p-(--space-sm)",
+					hasError && "border-(--space-xs) border-solid border-error",
+				)}
+			>
+				{renderOptions()}
+			</div>
+			{options.length === 0 && <p>No {entityType} types currently defined. Use the button below to create one.</p>}
 			<Button icon="add" onClick={handleOpenCreateNewType} color="sea-green">
 				Create new {entityType} type
 			</Button>
 			{invalid && touched && (
-				<div className="form-fields-entity-select__error">
+				<div className="mb-(--space-lg) flex items-center bg-error p-(--space-xs) text-error-foreground [&_svg]:max-h-(--space-md)">
 					<Icon name="warning" />
 					{error}
 				</div>

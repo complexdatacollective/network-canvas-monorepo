@@ -1,9 +1,9 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
-import cx from "classnames";
 import { useCallback, useRef } from "react";
 import { v4 as uuid } from "uuid";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import { cx } from "~/utils/cva";
 import MarkdownLabel from "./MarkdownLabel";
 import Radio from "./Radio";
 import type { Option } from "./utils/options";
@@ -78,21 +78,18 @@ const RadioGroup = ({
 	);
 
 	const { error, invalid, touched } = meta;
-
-	const containerClassNames = cx("form-field-container", {
-		"form-field-radio-group--has-error": invalid && touched && error,
-	});
-
-	const classNames = cx("form-field", "form-field-radio-group", className);
+	const hasError = !!(invalid && touched && error);
 
 	const anyLabel = fieldLabel || label;
 
 	return (
-		<div className={containerClassNames}>
+		<div className="form-field-container">
 			{anyLabel && <MarkdownLabel label={anyLabel} />}
-			<div className={classNames}>{options.map(renderOption)}</div>
-			{invalid && touched && (
-				<div className="form-field-radio-group__error">
+			<div className={cx("form-field flex flex-col", hasError && "border-2 border-error mb-0", className)}>
+				{options.map(renderOption)}
+			</div>
+			{hasError && (
+				<div className="flex items-center bg-error text-foreground py-(--space-sm) px-(--space-xs) [&_svg]:max-h-(--space-md)">
 					<Icon name="warning" />
 					{error}
 				</div>

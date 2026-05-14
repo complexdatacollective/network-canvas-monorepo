@@ -69,7 +69,6 @@
 			"!**/.turbo",
 			"!**/public/**/*.*",
 			"!!**/*.css",
-			"!!apps/architect-vite/src/utils/getAbsoluteBoundingRect.ts",
 			"!apps/interviewer",
 			"!apps/architect-desktop",
 			"!packages/network-query",

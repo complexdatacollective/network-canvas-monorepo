@@ -37,8 +37,8 @@ const VideoInput = (props: VideoInputProps) => {
 			{...rest}
 		>
 			{(id: string) => (
-				<div className="form-fields-video">
-					<Video className="form-fields-video__still" id={id} controls />
+				<div className="relative w-full overflow-hidden bg-rich-black pb-[57%]">
+					<Video className="absolute top-0 left-0 size-full" id={id} controls />
 				</div>
 			)}
 		</File>

@@ -18,7 +18,7 @@ export default function Modal({
 		<BaseDialog.Root open={open} onOpenChange={onOpenChange}>
 			<AnimatePresence>
 				{open && (
-					<BaseDialog.Portal keepMounted className="z-[var(--z-dialog)]">
+					<BaseDialog.Portal keepMounted className="z-(--z-dialog)">
 						<DialogBackdrop forceRender={forceRender} />
 						{children}
 					</BaseDialog.Portal>

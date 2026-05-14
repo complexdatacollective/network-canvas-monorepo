@@ -22,11 +22,11 @@ const AssetManifest = () => {
 	}
 
 	return (
-		<div className="protocol-summary-asset-manifest page-break-marker">
+		<div className="page-break-marker break-before-page [&_h2]:capitalize">
 			<h1>Resource Library</h1>
 			{assets &&
 				map(assets, (typeAssets, type) => (
-					<div className="protocol-summary-asset-manifest__group" key={type}>
+					<div className="mt-(--space-xl)" key={type}>
 						<h2>{type}</h2>
 						{typeAssets.map(([id]) => (
 							<Asset id={id} key={id} />

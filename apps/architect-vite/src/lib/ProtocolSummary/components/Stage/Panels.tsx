@@ -1,5 +1,6 @@
 import AssetBadge from "../AssetBadge";
 import MiniTable from "../MiniTable";
+import SectionFrame from "./SectionFrame";
 
 // TODO: add filter
 
@@ -17,33 +18,30 @@ const Panels = ({ panels = null }: PanelsProps) => {
 	}
 
 	return (
-		<div className="protocol-summary-stage__panels">
-			<div className="protocol-summary-stage__panels-content">
-				<h2 className="section-heading">Panels</h2>
-				<ol>
-					{panels.map((panel) => (
-						<li className="protocol-summary-stage__panels-panel" key={panel.id}>
-							<MiniTable
-								rotated
-								rows={[
-									["Title", panel.title],
-									[
-										"Data Source",
-										panel.dataSource === "existing" ? (
-											<p key="existing">
-												<em>Existing network</em>
-											</p>
-										) : (
-											<AssetBadge key="asset" id={panel.dataSource} link />
-										),
-									],
-								]}
-							/>
-						</li>
-					))}
-				</ol>
-			</div>
-		</div>
+		<SectionFrame title="Panels">
+			<ol className="m-0 ps-(--space-xl)">
+				{panels.map((panel) => (
+					<li className="my-(--space-md) pl-(--space-md)" key={panel.id}>
+						<MiniTable
+							rotated
+							rows={[
+								["Title", panel.title],
+								[
+									"Data Source",
+									panel.dataSource === "existing" ? (
+										<p key="existing">
+											<em>Existing network</em>
+										</p>
+									) : (
+										<AssetBadge key="asset" id={panel.dataSource} link />
+									),
+								],
+							]}
+						/>
+					</li>
+				))}
+			</ol>
+		</SectionFrame>
 	);
 };
 

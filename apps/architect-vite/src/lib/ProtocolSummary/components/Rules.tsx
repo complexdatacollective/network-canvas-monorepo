@@ -25,12 +25,12 @@ const Rules = ({ filter = null }: RulesProps) => {
 	const { join, rules } = filter;
 
 	return (
-		<div className="protocol-summary-rules">
+		<div>
 			{rules.map(({ type, options }, index) => {
 				const key = `rule-${type}-${JSON.stringify(options)}`;
 				return (
 					<React.Fragment key={key}>
-						<div className="protocol-summary-rules__rule">
+						<div className="flex w-full grow items-center not-last:mb-(--space-sm)">
 							<Rule type={type} options={options} codebook={protocol.codebook} />
 						</div>
 						{index !== rules.length - 1 && join && <Join value={join} />}

@@ -54,12 +54,12 @@ const ExperimentsPage = () => {
 							maxWidth: "80rem",
 						}}
 					>
-						<div className="stage-heading">
+						<div className="flex flex-col">
 							<div className="flex items-center gap-3">
 								<div className="p-2 rounded-lg bg-mustard/20">
 									<FlaskConical className="w-6 h-6 text-mustard" />
 								</div>
-								<h1 className="screen-heading">Experimental Features</h1>
+								<h1>Experimental Features</h1>
 							</div>
 							<p>These features are experimental and may not be fully supported.</p>
 						</div>

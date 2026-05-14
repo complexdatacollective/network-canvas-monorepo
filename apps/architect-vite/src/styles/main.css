@@ -1,4 +1,4 @@
 @import "react-grid-layout/css/styles.css";
-@import "../lib/legacy-ui/styles/all.css";
-@import "../lib/ProtocolSummary/styles/all.css";
-@import "./components.css";
+@import "../lib/legacy-ui/styles/components/icons.css";
+@import "../lib/ProtocolSummary/styles/protocol-summary.css";
+@import "./components/form/fields/select.css";

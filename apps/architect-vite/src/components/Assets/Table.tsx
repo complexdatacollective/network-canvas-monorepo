@@ -1,5 +1,6 @@
 import { ArrowDown as ArrowDropDownIcon, ArrowUp as ArrowDropUpIcon } from "lucide-react";
 import { type Column, type TableHeaderProps, useSortBy, useTable } from "react-table";
+import { cx } from "~/utils/cva";
 
 // Type for column with sort properties added by useSortBy
 type ColumnWithSort = Column<Record<string, unknown>> & {
@@ -20,11 +21,23 @@ type TableProps = {
 	columns: Column<Record<string, unknown>>[];
 };
 
+const tableClasses = cx(
+	"rounded bg-table-row-tint max-h-[60vh] overflow-auto",
+	"[&_th]:min-w-[8rem] [&_td]:min-w-[8rem]",
+	"[&_th]:text-sm [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:break-keep [&_th]:whitespace-nowrap",
+	"[&_th]:px-(--space-md) [&_th]:py-(--space-sm) [&_th]:leading-(--space-xl)",
+	"[&_th_svg]:size-(--space-xl) [&_th_svg]:relative [&_th_svg]:top-[-0.1rem] [&_th_svg]:align-middle [&_th_svg]:text-primary",
+	"[&_th:not(:last-child)]:border-r-[3px] [&_th:not(:last-child)]:border-r-white",
+	"[&_td]:p-(--space-md)",
+	"[&_td:not(:last-child)]:border-r-[3px] [&_td:not(:last-child)]:border-r-white",
+	"[&_tbody>tr:nth-child(odd)>td]:bg-table-row-tint",
+);
+
 const Table = ({ data, columns }: TableProps) => {
 	const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable({ data, columns }, useSortBy);
 
 	return (
-		<table {...getTableProps()} className="network">
+		<table {...getTableProps()} className={tableClasses}>
 			<thead>
 				{headerGroups.map((headerGroup) => (
 					<tr {...headerGroup.getHeaderGroupProps()} key={headerGroup.id}>

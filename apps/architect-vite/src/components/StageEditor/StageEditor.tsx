@@ -7,18 +7,15 @@ import { useSelector } from "react-redux";
 import { getFormValues, isDirty as isFormDirty, isInvalid } from "redux-form";
 import { v1 as uuid } from "uuid";
 import { useLocation } from "wouter";
-import ControlBar from "~/components/ControlBar";
 import Editor from "~/components/Editor";
-import Issues from "~/components/Issues";
 import Switch from "~/components/NewComponents/Switch";
-import Tooltip from "~/components/NewComponents/Tooltip";
 import { launchPreview } from "~/components/PreviewHost/launchPreview";
+import StageEditorNav from "~/components/ProjectNav/StageEditorNav";
 import { useAppDispatch } from "~/ducks/hooks";
 import { getPreviewUseSyntheticData, setPreviewUseSyntheticData } from "~/ducks/modules/app";
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
 import type { RootState } from "~/ducks/store";
-import { Button } from "~/lib/legacy-ui/components";
 import { getProtocol, getStage, getStageIndex } from "~/selectors/protocol";
 import { ensureError } from "~/utils/ensureError";
 import { formName } from "./configuration";
@@ -171,6 +168,14 @@ const StageEditor = (props: StageEditorProps) => {
 			return <SectionComponent key={sectionKey} form={formName} stagePath={stagePath} interfaceType={interfaceType} />;
 		});
 
+	const stageName = (formValues?.label as string | undefined) ?? stage?.label ?? "New stage";
+	const isExistingStage = stageIndex !== -1;
+	const protocolStageCount = protocol?.stages.length ?? 0;
+	const stagePosition = isExistingStage ? stageIndex : (insertAtIndex ?? protocolStageCount);
+	const stageNumber = stagePosition + 1;
+	const totalStages = protocolStageCount + (isExistingStage ? 0 : 1);
+	const previewLabel = isOpeningPreview ? "Opening preview…" : "Preview";
+
 	const previewOptions = (
 		<Popover.Root>
 			<Popover.Trigger
@@ -196,49 +201,25 @@ const StageEditor = (props: StageEditorProps) => {
 		</Popover.Root>
 	);
 
-	const previewButton = (
-		<span key="preview" className="inline-flex items-center gap-1">
-			{previewOptions}
-			<Button onClick={handlePreview} color="barbie-pink" disabled={isOpeningPreview || isStageInvalid}>
-				{isOpeningPreview ? "Opening preview…" : "Preview"}
-			</Button>
-		</span>
-	);
-
 	return (
 		<Editor initialValues={initialValues} onSubmit={onSubmit} form={formName}>
-			<div className="relative flex flex-col h-dvh">
-				<div className="overflow-auto flex flex-col items-center basis-auto">
-					<StageHeading />
-					<div className="flex flex-col gap-10 mb-32">{renderSections(sections)}</div>
-				</div>
-				<Issues />
-				<ControlBar
-					secondaryButtons={[
-						<Button key="cancel" onClick={handleCancel} color="platinum">
-							Cancel
-						</Button>,
-					]}
-					buttons={[
-						isStageInvalid ? (
-							<Tooltip
-								key="preview"
-								content="Previewing this stage requires valid stage configuration. Fix the errors on this stage to enable previewing."
-							>
-								{previewButton}
-							</Tooltip>
-						) : (
-							previewButton
-						),
-						...(hasUnsavedChanges
-							? [
-									<Button key="submit" type="submit" color="sea-green" iconPosition="right" icon="arrow-right">
-										Finished Editing
-									</Button>,
-								]
-							: []),
-					]}
+			<div className="relative h-dvh overflow-y-auto pb-32">
+				<StageEditorNav
+					stageName={stageName}
+					onCancel={handleCancel}
+					onPreview={handlePreview}
+					previewLabel={previewLabel}
+					previewOptions={previewOptions}
+					isStageInvalid={isStageInvalid}
+					isOpeningPreview={isOpeningPreview}
+					hasUnsavedChanges={hasUnsavedChanges}
 				/>
+				<div className="px-4 sm:px-6">
+					<div className="mx-auto w-full max-w-7xl">
+						<StageHeading stageNumber={stageNumber} totalStages={totalStages} />
+						<div className="flex flex-col gap-10 pt-(--space-2xl)">{renderSections(sections)}</div>
+					</div>
+				</div>
 			</div>
 		</Editor>
 	);

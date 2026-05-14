@@ -5,6 +5,7 @@ import EntityBadge from "../EntityBadge";
 import { renderValue } from "../helpers";
 import MiniTable from "../MiniTable";
 import SummaryContext from "../SummaryContext";
+import SectionFrame from "./SectionFrame";
 
 type AnonymisationProps = {
 	explanationText?: {
@@ -86,40 +87,30 @@ const Anonymisation = ({ explanationText = null, validation = null }: Anonymisat
 	return (
 		<>
 			{hasExplanation && (
-				<div className="protocol-summary-stage__introduction-panel">
-					<div className="protocol-summary-stage__introduction-panel-content">
-						<h2 className="section-heading">Explanation Text</h2>
-						<h1>{explanationText.title}</h1>
-						<Markdown label={explanationText.body} />
-					</div>
-				</div>
+				<SectionFrame title="Explanation Text">
+					<h1>{explanationText.title}</h1>
+					<Markdown label={explanationText.body} />
+				</SectionFrame>
 			)}
 
 			{hasValidation && <MiniTable rotated rows={validationRows(validation)} />}
 
 			{hasEncryptedVariables && (
 				<>
-					<p className="mb-4">The following variables will be encrypted using the participant's passphrase:</p>
-					<table className="protocol-summary-mini-table">
-						<thead>
-							<tr>
-								<th>Node Type</th>
-								<th>Variable</th>
-							</tr>
-						</thead>
-						<tbody>
-							{encryptedVariables.map(({ id, name, nodeType }) => (
-								<tr key={id}>
-									<td>
-										<EntityBadge small type={nodeType} entity="node" link />
-									</td>
-									<td>
-										<DualLink to={`#variable-${id}`}>{name}</DualLink>
-									</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
+					<p className="mb-(--space-md)">
+						The following variables will be encrypted using the participant's passphrase:
+					</p>
+					<MiniTable
+						rows={[
+							["Node Type", "Variable"],
+							...encryptedVariables.map(({ id, name, nodeType }) => [
+								<EntityBadge key={`badge-${id}`} small type={nodeType} entity="node" link />,
+								<DualLink key={`link-${id}`} to={`#variable-${id}`}>
+									{name}
+								</DualLink>,
+							]),
+						]}
+					/>
 				</>
 			)}
 		</>

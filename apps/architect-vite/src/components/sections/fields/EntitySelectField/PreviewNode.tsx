@@ -1,6 +1,8 @@
-import cx from "classnames";
-import type { NodeShape, NodeSize } from "~/components/Node/Node";
-import Node from "~/components/Node/Node";
+import Node, { type NodeColorSequence, type NodeShape } from "@codaco/fresco-ui/Node";
+import type { ComponentProps } from "react";
+import { cx } from "~/utils/cva";
+
+type NodeSize = ComponentProps<typeof Node>["size"];
 
 type PreviewNodeProps = {
 	label: string;
@@ -23,20 +25,14 @@ const PreviewNode = ({
 		<Node
 			label={label}
 			selected={selected}
-			color={color}
+			color={color as NodeColorSequence}
 			shape={shape}
 			size={size}
 			onClick={!selected ? onClick : undefined}
 		/>
 	);
 
-	const commonClasses = cx(
-		"preview-node",
-		{ "preview-node--selected": selected },
-		{ "preview-node--clickable": onClick },
-	);
-
-	return <div className={commonClasses}>{content}</div>;
+	return <div className={cx(onClick && !selected && "cursor-pointer")}>{content}</div>;
 };
 
 export default PreviewNode;

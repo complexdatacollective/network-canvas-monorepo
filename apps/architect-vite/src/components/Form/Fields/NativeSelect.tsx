@@ -1,5 +1,4 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
-import cx from "classnames";
 import { sortBy } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useMemo, useState } from "react";
@@ -8,7 +7,13 @@ import { Text } from "~/components/Form/Fields";
 import { useAppDispatch } from "~/ducks/hooks";
 import { Button } from "~/lib/legacy-ui/components";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import { cx } from "~/utils/cva";
 import { getValidator } from "~/utils/validations";
+
+// Inline data-URI chevron preserved from native-select.css. Lives in a constant
+// to keep the JSX readable.
+const CHEVRON_BACKGROUND_IMAGE =
+	'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236D6F76%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")';
 
 type Option = {
 	label: string;
@@ -209,17 +214,14 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 		transition: { duration: 0.5 },
 	};
 
-	const componentClasses = cx(className, "form-fields-select-native", {
-		"form-fields-select-native--has-error": invalid && touched && error,
-		"form-fields-select-native--disabled": disabled,
-	});
+	const hasError = !!(invalid && touched && error);
 
 	return (
-		<motion.div className="form-fields-select-native__wrapper">
+		<motion.div className={cx("flex-1", disabled && "cursor-not-allowed", className)}>
 			<AnimatePresence initial={false} mode="wait">
 				{showCreateOptionForm ? (
 					<motion.div
-						className="form-fields-select-native__new-section"
+						className="bg-surface-2 p-(--space-md) rounded-(--radius)"
 						key="new-section"
 						variants={variants}
 						initial="hide"
@@ -244,7 +246,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 								error: calculateMeta.error ?? undefined,
 							}}
 						/>
-						<div className="button-footer">
+						<div className="flex items-center justify-end [&_button]:min-w-[10rem] [&_button]:mr-(--space-sm) [&_button:last-of-type]:mr-0">
 							<Button color="platinum" onClick={() => setShowCreateOptionForm(false)}>
 								Cancel
 							</Button>
@@ -254,17 +256,24 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 						</div>
 					</motion.div>
 				) : (
-					<motion.div
-						key="select-section"
-						className={componentClasses}
-						initial="hide"
-						variants={variants}
-						exit="hide"
-						animate="show"
-					>
+					<motion.div key="select-section" initial="hide" variants={variants} exit="hide" animate="show">
 						{label && <h4>{label}</h4>}
 						<select
-							className="form-fields-select-native__component"
+							className={cx(
+								"block w-full max-w-full min-h-(--space-md) m-0 px-(--space-md) py-(--space-sm)",
+								"appearance-none border-0 shadow-none rounded-sm",
+								"text-base font-normal text-input-foreground bg-surface-1",
+								"focus:outline-none focus:shadow-none",
+								"disabled:cursor-not-allowed",
+								"[&_option:disabled]:italic [&_option:disabled]:text-surface-2-foreground",
+								hasError && "border-(length:--space-xs) border-solid border-error mb-0 rounded-b-none",
+							)}
+							style={{
+								backgroundImage: CHEVRON_BACKGROUND_IMAGE,
+								backgroundRepeat: "no-repeat, repeat",
+								backgroundPosition: "right var(--space-xl) top 50%, 0 0",
+								backgroundSize: "0.9rem auto, 100%",
+							}}
 							{...inputProps}
 							value={inputProps.value || "_placeholder"}
 							onChange={handleChange}
@@ -281,8 +290,8 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 								</option>
 							))}
 						</select>
-						{invalid && touched && (
-							<div className="form-fields-select-native__error">
+						{hasError && (
+							<div className="flex items-center bg-error text-error-foreground px-(--space-xs) py-(--space-xs) rounded-b-sm [&_svg]:max-h-(--space-md)">
 								<Icon name="warning" />
 								{error}
 							</div>

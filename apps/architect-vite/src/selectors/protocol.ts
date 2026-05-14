@@ -78,12 +78,6 @@ export const getExperiments = (state: RootState) => {
 	return experiments;
 };
 
-export const getIsProtocolValid = (state: RootState): boolean => {
-	// Return validation result from protocolValidation slice
-	const validationResult = state.protocolValidation.validationResult;
-	return validationResult?.success ?? true;
-};
-
 // Timeline selector
 export const getTimelineLocus = (state: RootState) => {
 	// Check new activeProtocol store first

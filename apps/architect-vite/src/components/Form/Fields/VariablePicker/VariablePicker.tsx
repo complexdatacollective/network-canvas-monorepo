@@ -85,7 +85,7 @@ const VariablePicker = ({
 
 	return (
 		<>
-			<fieldset className="form-fields-variable-picker">
+			<fieldset className="rounded-(--radius) border-2 border-dashed border-border p-(--space-md) [&>legend]:px-(--space-md) [&_.variable-pill]:mb-(--space-md)">
 				{label && <legend>{label}</legend>}
 
 				{value && (
@@ -100,7 +100,7 @@ const VariablePicker = ({
 				<Button icon="add" onClick={() => setShowPicker(true)} color="sea-green">
 					{value ? "Change Variable" : "Select Variable"}
 				</Button>
-				{invalid && touched && <p className="form-fields-variable-picker__error">{error}</p>}
+				{invalid && touched && <p className="mb-0 text-error">{error}</p>}
 			</fieldset>
 			<VariableSpotlight
 				open={showPicker}

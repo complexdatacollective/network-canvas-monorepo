@@ -2,6 +2,7 @@ import cx from "classnames";
 import type React from "react";
 import withAssetMeta from "~/components/Assets/withAssetMeta";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import { thumbnailBase, thumbnailExisting, thumbnailIcon, thumbnailLabel } from "./styles";
 
 type NetworkThumbnailProps = {
 	id: string;
@@ -11,15 +12,11 @@ type NetworkThumbnailProps = {
 };
 
 const NetworkThumbnail = ({ id, meta = { name: "" } }: NetworkThumbnailProps) => (
-	<div
-		className={cx("thumbnail thumbnail--network", {
-			"thumbnail--existing": id === "existing",
-		})}
-	>
-		<div className="thumbnail__icon">
+	<div className={cx(thumbnailBase, id === "existing" && thumbnailExisting)}>
+		<div className={thumbnailIcon}>
 			<Icon name="menu-sociogram" />
 		</div>
-		<div className="thumbnail__label">{meta.name}</div>
+		<div className={thumbnailLabel}>{meta.name}</div>
 	</div>
 );
 

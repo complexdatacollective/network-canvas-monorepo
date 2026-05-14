@@ -1,10 +1,11 @@
-import cx from "classnames";
 import { get, isNil, round } from "es-toolkit/compat";
 import { useCallback } from "react";
 import { Handles, Slider, Ticks, Tracks } from "react-compound-slider";
 import Handle from "./Handle";
 import Tick from "./Tick";
 import Track from "./Track";
+
+export type SliderType = "LIKERT" | "VAS" | null;
 
 type SliderOption = {
 	value: string | number;
@@ -14,7 +15,7 @@ type SliderOption = {
 type SliderInputProps = {
 	options?: SliderOption[] | null;
 	value: string | number | null;
-	type: string | null;
+	type: SliderType;
 	onBlur: (value: string | number | null) => void;
 	parameters?: {
 		minLabel?: string;
@@ -97,23 +98,20 @@ const SliderInput = ({ options = [], value, type, onBlur, parameters = {} }: Sli
 	const showTooltips = !isVisualAnalogScale();
 	const isNotSet = isNil(value);
 
-	const className = cx(
-		"form-field-slider__slider",
-		{ "form-field-slider__slider--likert": isLikert() },
-		{ "form-field-slider__slider--vas": isVisualAnalogScale() },
-		{ "form-field-slider__slider--not-set": isNotSet },
-	);
-
 	if (!type) {
 		return null;
 	}
 
 	return (
 		<div className="form-field">
-			<Slider {...sliderProps} className={className} onSlideEnd={handleSlideEnd}>
+			<Slider
+				{...sliderProps}
+				className="relative h-(--space-3xl) w-[calc(100%-var(--space-3xl)*2)] mx-(--space-3xl) mb-(--space-xl)"
+				onSlideEnd={handleSlideEnd}
+			>
 				<Handles>
 					{({ handles, activeHandleID, getHandleProps }) => (
-						<div className="form-field-slider__handles">
+						<div>
 							{handles.map((handle) => (
 								<Handle
 									key={handle.id}
@@ -123,6 +121,7 @@ const SliderInput = ({ options = [], value, type, onBlur, parameters = {} }: Sli
 									isActive={handle.id === activeHandleID}
 									getHandleProps={getHandleProps}
 									showTooltips={showTooltips}
+									isNotSet={isNotSet}
 								/>
 							))}
 						</div>
@@ -130,9 +129,17 @@ const SliderInput = ({ options = [], value, type, onBlur, parameters = {} }: Sli
 				</Handles>
 				<Tracks>
 					{({ tracks, getTrackProps }) => (
-						<div className="form-field-slider__tracks">
-							{tracks.map(({ id, source, target }) => (
-								<Track key={id} source={source} target={target} getTrackProps={getTrackProps} />
+						<div className="absolute top-(--space-xl) z-(--z-fx) h-(--space-xl) w-full -translate-y-1/2">
+							{tracks.map(({ id, source, target }, idx) => (
+								<Track
+									key={id}
+									source={source}
+									target={target}
+									getTrackProps={getTrackProps}
+									isFirst={idx === 0}
+									isLast={idx === tracks.length - 1}
+									sliderType={type}
+								/>
 							))}
 						</div>
 					)}
@@ -140,7 +147,7 @@ const SliderInput = ({ options = [], value, type, onBlur, parameters = {} }: Sli
 				{tickCount && (
 					<Ticks count={tickCount}>
 						{({ ticks }) => (
-							<div className="form-field-slider__ticks">
+							<div className="relative top-(--space-xl) left-0 w-full">
 								{ticks.map((tick) => (
 									<Tick tick={tick} key={tick.id} getLabelForValue={getLabelForValue} />
 								))}

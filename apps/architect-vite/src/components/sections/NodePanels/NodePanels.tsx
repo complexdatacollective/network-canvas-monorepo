@@ -65,12 +65,12 @@ const NodePanels = ({ form, createNewPanel, panels = null, disabled = false, ...
 			startExpanded={!!panels}
 			handleToggleChange={handleToggleChange}
 		>
-			<div className="stage-editor-section-content-items">
+			<div>
 				<IssueAnchor fieldName="panels" description="Panel Configuration" />
 				<Field name="panels" component={OrderedList} item={NodePanel} form={form} />
 
 				{!isFull && (
-					<div className="stage-editor-section-content-items__controls">
+					<div className="mt-(--space-lg)">
 						<Button onClick={() => createNewPanel()} icon="add" color="sea-green">
 							Add new panel
 						</Button>

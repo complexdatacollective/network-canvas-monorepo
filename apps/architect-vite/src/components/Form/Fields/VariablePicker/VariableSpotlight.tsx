@@ -1,5 +1,4 @@
 import type { VariableType } from "@codaco/protocol-validation";
-import cx from "classnames";
 import { get } from "es-toolkit/compat";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -7,11 +6,15 @@ import { useSelector } from "react-redux";
 import Search from "~/components/Form/Fields/Search";
 import type { RootState } from "~/ducks/store";
 import { Icon, Modal, Scroller } from "~/lib/legacy-ui/components";
+import { cx } from "~/utils/cva";
 import { validations } from "~/utils/validations";
 import { getVariablesForSubject } from "../../../../selectors/codebook";
 import { sortByLabel } from "../../../Codebook/helpers";
 import ExternalLink from "../../../ExternalLink";
 import { SimpleVariablePill } from "./VariablePill";
+
+const EMPTY_CLASSES =
+	"flex grow basis-full items-center rounded px-(--space-lg) py-(--space-md) [&_.icon]:mr-(--space-xs) [&_.icon]:shrink-0 [&_.icon[name=info]_.cls-3]:fill-divider [&_.icon[name=warning]_.cls-1]:fill-divider";
 
 type ListItemProps = {
 	disabled?: boolean;
@@ -21,6 +24,14 @@ type ListItemProps = {
 	setSelected?: () => void;
 	removeSelected?: () => void;
 };
+
+const LIST_ITEM_BASE = "flex w-full items-center justify-between px-(--space-lg) py-(--space-xs)";
+
+// When `data-selected`, the row sets the foreground to white (so descendant
+// text reads on the primary background) and overrides the cascade variable
+// `--variable-pill-shadow-color` so any nested variable-pill grows a halo.
+const LIST_ITEM_SELECTED =
+	"data-selected:bg-primary data-selected:text-white data-selected:[--variable-pill-shadow-color:hsl(var(--sea-green-dark))]";
 
 const ListItem = ({
 	disabled = false,
@@ -38,13 +49,6 @@ const ListItem = ({
 			ref.current.scrollIntoView({ block: "nearest" });
 		}
 	}, [selected]);
-
-	const classes = cx(
-		"spotlight-list-item",
-		{ "spotlight-list-item--selected": selected },
-		{ "spotlight-list-item--clickable": onSelect },
-		{ "spotlight-list-item--disabled": disabled },
-	);
 
 	const handleClick = () => {
 		if (onSelect && !disabled) {
@@ -64,7 +68,9 @@ const ListItem = ({
 			<li ref={ref}>
 				<button
 					type="button"
-					className={classes}
+					data-testid="spotlight-list-item"
+					data-selected={selected || undefined}
+					className={cx(LIST_ITEM_BASE, LIST_ITEM_SELECTED, "cursor-pointer disabled:cursor-not-allowed")}
 					onClick={handleClick}
 					onKeyDown={handleKeyDown}
 					onMouseEnter={setSelected}
@@ -72,7 +78,11 @@ const ListItem = ({
 					disabled={disabled}
 				>
 					{children}
-					{selected && <kbd>Enter&nbsp;&#8629;</kbd>}
+					{selected && (
+						<kbd className="ml-(--space-md) flex items-center justify-center rounded-sm border border-charcoal bg-surface-1 p-(--space-xs) text-input-foreground">
+							Enter&nbsp;&#8629;
+						</kbd>
+					)}
 				</button>
 			</li>
 		);
@@ -80,7 +90,13 @@ const ListItem = ({
 
 	return (
 		<li ref={ref}>
-			<div className={classes}>{children}</div>
+			<div
+				data-testid="spotlight-list-item"
+				data-disabled={disabled || undefined}
+				className={cx(LIST_ITEM_BASE, "data-disabled:cursor-not-allowed")}
+			>
+				{children}
+			</div>
 		</li>
 	);
 };
@@ -91,11 +107,14 @@ type DividerProps = {
 
 const Divider = ({ legend }: DividerProps) => (
 	<ListItem>
-		<fieldset className="divider-header">
-			<legend>{legend}</legend>
+		<fieldset className="w-full border-t-2 border-surface-3">
+			<legend className="px-(--space-md) py-(--space-xs) text-center">{legend}</legend>
 		</fieldset>
 	</ListItem>
 );
+
+const CREATE_NEW_CLASSES =
+	"flex items-center justify-center px-(--space-md) py-(--space-xs) font-medium text-current [&_.icon]:h-(--space-md) [&_.icon]:mr-(--space-md) [&_.icon_.cls-1]:fill-current [&_.icon_.cls-2]:fill-current [&_.icon[name=warning]_.cls-1]:fill-warning [&_.icon[name=warning]_.cls-2]:fill-warning [&_.icon[name=warning]_.cls-3]:fill-white [&_.icon[name=warning]_.cls-4]:fill-white";
 
 type VariableSpotlightProps = {
 	open: boolean;
@@ -192,11 +211,11 @@ const VariableSpotlight = ({
 
 	const renderResults = () => (
 		<Scroller>
-			<ol>
+			<ol className="m-0 list-none p-0">
 				{filterTerm && options.filter((item) => item.label === filterTerm).length !== 1 && (
 					<>
 						{disallowCreation && hasFilterTerm && !hasFilterResults && (
-							<div className="variable-spotlight__empty">
+							<div data-testid="variable-spotlight-empty" className={EMPTY_CLASSES}>
 								<Icon name="warning" />
 								<div>
 									<p>
@@ -219,7 +238,7 @@ const VariableSpotlight = ({
 										}}
 										removeSelected={() => setCursor(0)}
 									>
-										<div className="create-new">
+										<div className={CREATE_NEW_CLASSES}>
 											<Icon name="add" color="charcoal" />
 											<span>
 												Create new variable called &quot;
@@ -230,7 +249,7 @@ const VariableSpotlight = ({
 									</ListItem>
 								) : (
 									<ListItem disabled>
-										<div className="create-new">
+										<div className={CREATE_NEW_CLASSES}>
 											<Icon name="warning" />
 											<span>
 												Cannot create variable named &quot;
@@ -367,7 +386,7 @@ const VariableSpotlight = ({
 					type: "spring",
 				}}
 			>
-				<header className="variable-spotlight__header">
+				<header className="shrink-0 grow-0 basis-(--space-2xl) px-(--space-lg) py-(--space-md) [&_.form-field]:mb-0 [&_.form-field-container]:mb-0">
 					<Search
 						autoFocus
 						placeholder={disallowCreation ? "Find a variable..." : "Create or find a variable..."}
@@ -379,12 +398,12 @@ const VariableSpotlight = ({
 					/>
 				</header>
 				<motion.main
-					className="variable-spotlight__list"
+					className="flex-auto max-h-[60vh] flex-col overflow-hidden pb-(--space-xs)"
 					variants={resultsVariants}
 					transition={{ duration: 0.2, ease: "easeInOut" }}
 				>
 					{!disallowCreation && !hasOptions && (
-						<div className="variable-spotlight__empty">
+						<div data-testid="variable-spotlight-empty" className={EMPTY_CLASSES}>
 							<Icon name="info" />
 							<div>
 								<p>
@@ -398,7 +417,7 @@ const VariableSpotlight = ({
 						</div>
 					)}
 					{disallowCreation && !hasFilterTerm && !hasOptions && (
-						<div className="variable-spotlight__empty">
+						<div data-testid="variable-spotlight-empty" className={EMPTY_CLASSES}>
 							<Icon name="warning" />
 							<div>
 								<p>

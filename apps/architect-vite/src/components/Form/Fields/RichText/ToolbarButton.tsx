@@ -1,5 +1,5 @@
-import cx from "classnames";
 import { useSlate } from "slate-react";
+import { cx } from "~/utils/cva";
 import Icon from "./Icon";
 import { isBlockActive, isMarkActive, toggleBlock, toggleMark } from "./lib/actions";
 
@@ -18,9 +18,13 @@ export const ToolbarButton = ({ isActive = false, icon, tooltip, action }: Toolb
 			action();
 		}}
 		type="button"
-		className={cx("rich-text__button", {
-			"rich-text__button--is-active": isActive,
-		})}
+		className={cx(
+			"rounded-full bg-transparent border-0 outline-none cursor-pointer",
+			"size-(--space-xl) m-(--space-xs)",
+			"transition-[filter,background-color] duration-(--animation-duration-fast) ease-(--animation-easing)",
+			"[&_svg]:align-middle [&_svg]:w-full",
+			isActive ? "bg-primary" : "grayscale brightness-[0.65] hover:brightness-0",
+		)}
 	>
 		<Icon name={icon} />
 	</button>

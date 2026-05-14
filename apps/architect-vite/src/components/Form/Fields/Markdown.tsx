@@ -41,7 +41,7 @@ type MarkdownProps = {
 
 const Markdown = ({
 	label,
-	className = "markdown",
+	className,
 	allowedElements = ALLOWED_MARKDOWN_TAGS,
 	markdownRenderers = {},
 }: MarkdownProps) => {
@@ -54,7 +54,7 @@ const Markdown = ({
 	}, [label]);
 
 	return (
-		<span className={className} data-markdown>
+		<span className={className}>
 			<ReactMarkdown
 				allowedElements={allowedElements}
 				components={{

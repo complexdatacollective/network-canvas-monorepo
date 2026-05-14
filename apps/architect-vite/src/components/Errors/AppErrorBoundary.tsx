@@ -41,17 +41,17 @@ class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundary
 
 		if (error) {
 			return (
-				<div className="error">
-					<div className="error__layout">
-						<h1 className="error__title">Something went wrong.</h1>
-						<div className="error__message">
+				<div className="absolute inset-0 size-full flex items-center justify-center bg-(--modal-overlay) text-primary-foreground">
+					<div className="w-[60rem] p-(--space-2xl) rounded bg-cyber-grape">
+						<h1>Something went wrong.</h1>
+						<div>
 							<p>
 								The following &quot;
 								{error.message}
 								&quot; error occurred:
 							</p>
 						</div>
-						<pre className="error__stack">
+						<pre className="block overflow-scroll my-(--space-md) p-(--space-md) max-h-[9rem] rounded bg-surface-1-foreground">
 							<code>{error.stack}</code>
 						</pre>
 						<Button size="small" color="platinum" onClick={this.resetError}>

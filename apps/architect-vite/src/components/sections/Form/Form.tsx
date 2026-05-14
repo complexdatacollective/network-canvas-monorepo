@@ -50,7 +50,6 @@ const Form = ({
 				componentProps={{
 					label: "Form heading text (e.g 'Add a person')",
 					placeholder: "Enter your title here",
-					className: "stage-editor-section-title",
 				}}
 			/>
 		)}

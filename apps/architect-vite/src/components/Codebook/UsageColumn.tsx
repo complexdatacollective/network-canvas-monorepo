@@ -37,7 +37,7 @@ const UsageColumn = ({ inUse, usage }: UsageColumnProps) => {
 	});
 
 	return (
-		<div className="codebook__variables-usage-container" key="usage">
+		<div className="flex flex-col items-start [&>*]:m-(--space-xs)" key="usage">
 			{stages}
 		</div>
 	);
