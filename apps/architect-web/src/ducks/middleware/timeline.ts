@@ -2,6 +2,7 @@ import {
 	createAction,
 	createSlice,
 	current,
+	type Draft,
 	type PayloadAction,
 	type Reducer,
 	type UnknownAction,
@@ -69,7 +70,7 @@ const createTimelineReducer = <T>(
 					}
 
 					const newPresent = past[past.length - 1];
-					const newFuture = [current(present), ...current(future || [])];
+					const newFuture = [current<T>(present as Draft<T>), ...current<T[]>(future || [])];
 					const lastTimelineItem = timeline[timeline.length - 1];
 					const newFutureTimeline = lastTimelineItem ? [lastTimelineItem, ...(futureTimeline || [])] : futureTimeline;
 
@@ -130,7 +131,7 @@ const createTimelineReducer = <T>(
 					const newLocus = futureTimeline[0];
 
 					// Move current present to past
-					const newPast = present ? [...past, current(present)] : past;
+					const newPast = present ? [...past, current<T>(present as Draft<T>)] : past;
 					const newTimeline = newLocus ? [...timeline, newLocus] : timeline;
 
 					Object.assign(state, {
@@ -143,7 +144,7 @@ const createTimelineReducer = <T>(
 				})
 				.addCase(timelineActions.reset, (state) => {
 					const locus = uuid();
-					const newPresent = reducer((state.present ? current(state.present) : state.present) as T, {
+					const newPresent = reducer((state.present ? current<T>(state.present as Draft<T>) : state.present) as T, {
 						type: "@@RESET",
 					});
 
@@ -183,8 +184,8 @@ const createTimelineReducer = <T>(
 					const { past, present, timeline } = state;
 
 					// Clone present BEFORE calling reducer, because reducer mutates in place
-					const presentSnapshot = present ? structuredClone(current(present)) : null;
-					const newPresent = reducer((present ? current(present) : present) as T, action);
+					const presentSnapshot = present ? structuredClone(current<T>(present as Draft<T>)) : null;
+					const newPresent = reducer((present ? current<T>(present as Draft<T>) : present) as T, action);
 
 					// This is the first run
 					if (timeline.length === 0) {

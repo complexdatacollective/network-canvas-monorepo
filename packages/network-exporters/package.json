@@ -67,7 +67,7 @@
 		"@codaco/protocol-validation": "workspace:*",
 		"@codaco/shared-consts": "workspace:*",
 		"@xmldom/xmldom": "^0.9.10",
-		"effect": "^3.21.0",
+		"effect": "^3.21.2",
 		"es-toolkit": "catalog:",
 		"fflate": "^0.8.2",
 		"ohash": "^2.0.11",
