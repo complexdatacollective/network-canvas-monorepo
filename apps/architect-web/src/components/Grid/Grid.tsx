@@ -130,6 +130,17 @@ class Grid extends Component<GridProps, GridState> {
 					onDragStop={this.handleDragStop}
 					onResizeStop={this.handleResizeStop}
 					draggableCancel=".grid-item-action"
+					resizeHandle={(axis, ref) => (
+						<span
+							ref={ref as React.Ref<HTMLSpanElement>}
+							className={`react-resizable-handle react-resizable-handle-${axis} after:hidden`}
+						>
+							<span
+								aria-hidden="true"
+								className="block absolute right-0 bottom-0 size-7 rounded-br-[1.75rem] border-r-2 border-b-2 border-solid border-(--color-active)"
+							/>
+						</span>
+					)}
 				>
 					{items.map(({ id, ...item }, index) => (
 						<div key={id} className="relative">
