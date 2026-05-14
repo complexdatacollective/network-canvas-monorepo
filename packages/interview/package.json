@@ -69,7 +69,7 @@
 		"redux-thunk": "^3.1.0",
 		"uuid": "catalog:",
 		"zod": "catalog:",
-		"zustand": "^5.0.13"
+		"zustand": "catalog:"
 	},
 	"devDependencies": {
 		"@chromatic-com/storybook": "catalog:",

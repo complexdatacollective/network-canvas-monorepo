@@ -44,10 +44,11 @@ catalog:
   typescript: ^6.0.3
   uuid: ^14.0.0
   vite: ^8.0.13
-  vite-plugin-dts: ^4.5.4
+  vite-plugin-dts: ^5.0.0
   vitest: ^4.1.6
   wrangler: ^4.91.0
   zod: ^4.4.3
+  zustand: ^5.0.13
 
 onlyBuiltDependencies:
   - '@biomejs/biome'
