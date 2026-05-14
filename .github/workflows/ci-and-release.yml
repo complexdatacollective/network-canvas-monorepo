@@ -396,7 +396,22 @@ jobs:
       - name: Dead-link check
         env:
           DOCS_URL: ${{ needs.deploy-docs-preview.outputs.url }}
-        run: npx --yes @jthrilly/dead-link-checker "$DOCS_URL" -v --yes
+        # @jthrilly/dead-link-checker fans out many parallel fetches against
+        # the Netlify preview and gets transient FETCH_ERRORs even though the
+        # URLs resolve fine on retry. Wrap in a short retry loop so we don't
+        # fail the PR on flake.
+        run: |
+          attempt=1
+          max=3
+          until npx --yes @jthrilly/dead-link-checker "$DOCS_URL" -v --yes; do
+            if (( attempt >= max )); then
+              echo "dead-link-checker failed after $max attempts"
+              exit 1
+            fi
+            echo "attempt $attempt failed, retrying in 10s"
+            attempt=$((attempt + 1))
+            sleep 10
+          done
       - name: Redirect test
         working-directory: apps/documentation
         env:
@@ -427,6 +442,11 @@ jobs:
       - working-directory: packages/fresco-ui
         env:
           CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_FRESCO_UI }}
+          # Forward PR context so the chromatic CLI doesn't fall back to the
+          # merge commit (GH Actions checks out detached HEAD on pull_request).
+          CHROMATIC_BRANCH: ${{ github.head_ref || github.ref_name }}
+          CHROMATIC_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          CHROMATIC_SLUG: ${{ github.repository }}
         run: npx --yes chromatic --exit-once-uploaded --auto-accept-changes main
 
   chromatic-interview:
@@ -453,6 +473,10 @@ jobs:
       - working-directory: packages/interview
         env:
           CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_INTERVIEW }}
+          # Forward PR context — see chromatic-fresco-ui for rationale.
+          CHROMATIC_BRANCH: ${{ github.head_ref || github.ref_name }}
+          CHROMATIC_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          CHROMATIC_SLUG: ${{ github.repository }}
         run: npx --yes chromatic --exit-once-uploaded --auto-accept-changes main
 
   interview-e2e:
