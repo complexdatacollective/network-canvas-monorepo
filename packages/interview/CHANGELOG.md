@@ -1,7 +1,5 @@
 # @codaco/interview
 
-<!-- test: verifying interview-tree change detection in CI -->
-
 ## 1.0.0-alpha.20
 
 ### Prerelease Changes
