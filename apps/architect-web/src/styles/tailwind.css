@@ -714,24 +714,4 @@
 		border-bottom: 2px solid var(--color-active);
 		border-right: 2px solid var(--color-active);
 	}
-
-	/* @tippyjs/react — `theme="error"` validation tooltip
-	 * Sole consumer is `VariablePill`'s inline-edit validation popover. The
-	 * library's default CSS isn't imported anywhere, so without this rule
-	 * `<Tippy theme="error">` renders as an unstyled div. Bg/foreground use
-	 * the architect semantic-error tokens. */
-	.tippy-box[data-theme~="error"] {
-		background-color: var(--color-error);
-		color: var(--color-error-foreground);
-		border-radius: var(--radius);
-		font-size: var(--text-sm);
-	}
-
-	.tippy-box[data-theme~="error"] .tippy-content {
-		padding: var(--space-xs) var(--space-sm);
-	}
-
-	.tippy-box[data-theme~="error"] .tippy-arrow {
-		color: var(--color-error);
-	}
 }

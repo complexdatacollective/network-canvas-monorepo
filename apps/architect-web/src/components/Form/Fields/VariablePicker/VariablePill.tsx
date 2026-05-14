@@ -1,9 +1,9 @@
 import type { VariableType } from "@codaco/protocol-validation";
-import Tippy from "@tippyjs/react";
 import { get } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import React, { useMemo, useRef, useState } from "react";
 import TextInput from "~/components/Form/Fields/Text";
+import Tooltip from "~/components/NewComponents/Tooltip";
 import { getIconForType } from "~/config/variables";
 import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
 import { updateVariableByUUID } from "~/ducks/modules/protocol/codebook";
@@ -172,7 +172,7 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
 						animate={{ opacity: 1 }}
 						exit={{ opacity: 0 }}
 					>
-						<Tippy theme="error" content={validation} visible={!!validation} placement="bottom">
+						<Tooltip content={validation} open={!!validation} side="bottom" variant="error">
 							<div className="flex-auto w-full">
 								<TextInput
 									autoFocus
@@ -219,7 +219,7 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
 									}
 								/>
 							</div>
-						</Tippy>
+						</Tooltip>
 					</motion.div>
 				) : (
 					<motion.h4
