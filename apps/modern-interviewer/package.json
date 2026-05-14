@@ -18,9 +18,17 @@
 		"electron:dist:mac": "pnpm run electron:build && electron-builder --mac --config electron-builder.config.cjs",
 		"electron:dist:win": "pnpm run electron:build && electron-builder --win --config electron-builder.config.cjs",
 		"electron:dist:linux": "pnpm run electron:build && electron-builder --linux --config electron-builder.config.cjs",
+		"capacitor:add:ios": "cap add ios",
+		"capacitor:add:android": "cap add android",
 		"capacitor:sync": "pnpm run build && cap sync",
+		"capacitor:sync:ios": "pnpm run build && cap sync ios",
+		"capacitor:sync:android": "pnpm run build && cap sync android",
+		"capacitor:dev:ios": "pnpm run build && cap run ios --live-reload --external",
+		"capacitor:dev:android": "pnpm run build && cap run android --live-reload --external",
 		"capacitor:open:ios": "cap open ios",
-		"capacitor:open:android": "cap open android"
+		"capacitor:open:android": "cap open android",
+		"capacitor:dist:ios": "pnpm run build && cap sync ios && cap build ios",
+		"capacitor:dist:android": "pnpm run build && cap sync android && cap build android"
 	},
 	"dependencies": {
 		"@base-ui/react": "catalog:",
