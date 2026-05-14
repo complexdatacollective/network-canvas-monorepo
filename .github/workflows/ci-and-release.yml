@@ -79,18 +79,12 @@ jobs:
   # build task's `env:` list in turbo.json so they participate in the cache key.
   quality:
     runs-on: ubuntu-latest
-    env:
-      NEXT_PUBLIC_ALGOLIA_APPLICATION_ID: ${{ secrets.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID }}
-      NEXT_PUBLIC_ALGOLIA_INDEX_NAME: ${{ secrets.NEXT_PUBLIC_ALGOLIA_INDEX_NAME }}
-      NEXT_PUBLIC_ALGOLIA_API_KEY: ${{ secrets.NEXT_PUBLIC_ALGOLIA_API_KEY }}
-      NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
-      NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
-      VITE_FRESCO_PREVIEW_URL: ${{ secrets.VITE_FRESCO_PREVIEW_URL }}
-      VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
-      # quality builds architect-web with analytics disabled — this matches the
-      # preview-deploy build's env so the .turbo cache slot is reused. The prod
-      # deploy intentionally builds with analytics enabled (different cache hash).
-      VITE_DISABLE_ANALYTICS: "true"
+    # No NEXT_PUBLIC_* / VITE_* env vars here. Quality just verifies the build
+    # compiles — env.js has skipValidation:true so missing public env values
+    # don't fail the build. Keeping these vars unset in quality matches what
+    # chromatic/e2e have, so shared package builds (fresco-ui, shared-consts,
+    # interview, …) compute the same task hash across all those jobs and the
+    # cache that quality writes is actually reusable downstream.
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5
