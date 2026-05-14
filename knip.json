@@ -40,7 +40,7 @@
 			"ignoreDependencies": ["@fontsource-variable/inclusive-sans", "@fontsource-variable/nunito"]
 		},
 		"apps/architect-web": {
-			"entry": ["index.html!"],
+			"entry": ["index.html!", "preview/index.html!", "src/preview-main.tsx!"],
 			"vite": true,
 			"project": ["src/**/*.{ts,tsx}"],
 			"paths": {
