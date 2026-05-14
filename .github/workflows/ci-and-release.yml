@@ -44,24 +44,27 @@ jobs:
           # Manual runs may set force_run=true to bypass detection and run
           # every conditional job (replaces the old per-workflow rerun buttons).
           FORCE_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.force_run == true }}
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           # Determine the comparison base — the commit immediately before the
           # one we're checking. We DON'T use turbo-ignore because it includes
           # global config (turbo.json, lockfile, root configs) in its hash, so
           # any unrelated workflow tweak invalidates every package's hash.
           #
-          # For PRs we evaluate the FULL cumulative PR diff (merge-base..tip),
-          # not just the latest push. GH Actions checks out a synthetic merge
-          # commit; HEAD^2 is the actual PR tip. Comparing against the
-          # merge-base with the base branch ensures every change introduced
-          # by the PR — including package.json bumps and config tweaks from
-          # earlier commits — counts toward the per-package change flags.
-          # Without this, a follow-up commit touching only one file would
-          # skip CI jobs for all other packages the PR modifies.
+          # For PRs we want push-to-push semantics: only RE-RUN jobs whose
+          # packages changed between the prior PR commit and the new tip. The
+          # first push on a PR is a degenerate case — HEAD^2^1 resolves to
+          # the base branch HEAD, so the push diff IS the cumulative PR diff
+          # at that point and every relevant job fires at least once.
+          # Subsequent pushes only re-trigger impacted jobs; jobs that
+          # already ran on earlier PR commits keep their prior status (see
+          # the carry-forward job below) instead of being re-executed.
+          #
+          # GH Actions checks out a synthetic merge commit on PRs; HEAD^2 is
+          # the actual PR tip, HEAD^2^1 is the prior commit on the source
+          # branch (or the base branch HEAD on the first PR push).
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
             CURR=$(git rev-parse HEAD^2 2>/dev/null || git rev-parse HEAD)
-            PREV=$(git merge-base "$CURR" "$PR_BASE_SHA" 2>/dev/null || git rev-parse "${CURR}^1" 2>/dev/null || true)
+            PREV=$(git rev-parse "${CURR}^1" 2>/dev/null || true)
           else
             CURR=$(git rev-parse HEAD)
             PREV=$(git rev-parse HEAD^1 2>/dev/null || true)
@@ -677,3 +680,142 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
+
+  # Carry forward prior success statuses for conditional jobs that the
+  # current push didn't touch. Push-to-push detection (see detect job)
+  # deliberately re-runs a job ONLY when its package changed between
+  # consecutive PR commits, but GitHub renders the latest workflow run's
+  # check list — so jobs that ran successfully on an earlier PR commit
+  # would appear "skipped" on the new tip and (depending on branch
+  # protection config) block merge.
+  #
+  # This step republishes a check_run on the current SHA — same name,
+  # conclusion "success" — pointing at the prior run that did succeed.
+  # Branch protection sees the most-recent check_run for each name and
+  # treats the job as passing without burning runner time re-executing
+  # work that's still valid.
+  #
+  # First push on a PR: no prior runs exist, so nothing to carry; the
+  # detect logic already runs the relevant jobs at least once because
+  # the push diff IS the cumulative PR diff on the first commit.
+  carry-forward-statuses:
+    needs:
+      - detect
+      - deploy-docs-preview
+      - deploy-architect-preview
+      - chromatic-fresco-ui
+      - chromatic-interview
+      - interview-e2e
+      - interview-e2e-report
+      - docs-preview-checks
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      checks: write
+    steps:
+      - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
+        env:
+          # Map detect flag → list of conditional jobs gated on it.
+          # interview-e2e-report transitively depends on interview-e2e, and
+          # docs-preview-checks on deploy-docs-preview, so they share flags.
+          FLAG_DOCS: ${{ needs.detect.outputs.docs }}
+          FLAG_ARCHITECT: ${{ needs.detect.outputs.architect }}
+          FLAG_FRESCO_UI_STORYBOOK: ${{ needs.detect.outputs.fresco_ui_storybook }}
+          FLAG_INTERVIEW_STORYBOOK: ${{ needs.detect.outputs.interview_storybook }}
+          FLAG_INTERVIEW_E2E: ${{ needs.detect.outputs.interview_e2e }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          script: |
+            const flagToJobs = {
+              FLAG_DOCS: ["deploy-docs-preview", "docs-preview-checks"],
+              FLAG_ARCHITECT: ["deploy-architect-preview"],
+              FLAG_FRESCO_UI_STORYBOOK: ["chromatic-fresco-ui"],
+              FLAG_INTERVIEW_STORYBOOK: ["chromatic-interview"],
+              FLAG_INTERVIEW_E2E: ["interview-e2e", "interview-e2e-report"],
+            };
+
+            // Only consider jobs the current run didn't execute (flag false).
+            // If a flag is true, the real job ran on this commit and its own
+            // check_run already reflects the outcome — no carry-forward needed.
+            const skippedJobs = Object.entries(flagToJobs).flatMap(
+              ([flag, jobs]) => (process.env[flag] === "false" ? jobs : []),
+            );
+            if (skippedJobs.length === 0) {
+              core.info("No skipped conditional jobs on this run; nothing to carry forward.");
+              return;
+            }
+
+            // Walk prior workflow runs on this PR's source branch, most recent
+            // first, looking for the latest successful execution of each
+            // skipped job. We stop walking once every skipped job is resolved.
+            const remaining = new Set(skippedJobs);
+            const resolutions = new Map();
+            let page = 1;
+            const PER_PAGE = 50;
+            const MAX_RUNS = 200; // safety cap; PRs rarely have 200 runs.
+            let scanned = 0;
+
+            outer: while (remaining.size > 0 && scanned < MAX_RUNS) {
+              const { data } = await github.rest.actions.listWorkflowRunsForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: process.env.PR_HEAD_REF,
+                event: "pull_request",
+                per_page: PER_PAGE,
+                page,
+              });
+              if (data.workflow_runs.length === 0) break;
+
+              for (const run of data.workflow_runs) {
+                scanned += 1;
+                // Skip the run we're currently inside of.
+                if (run.id === context.runId) continue;
+                // Skip runs against the same commit (re-runs of the same SHA
+                // don't introduce new information).
+                if (run.head_sha === process.env.PR_HEAD_SHA) continue;
+                // Pull the job list for this run.
+                const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  run_id: run.id,
+                  per_page: 100,
+                });
+                for (const job of jobs.jobs) {
+                  if (!remaining.has(job.name)) continue;
+                  if (job.conclusion === "success") {
+                    resolutions.set(job.name, { run, job });
+                    remaining.delete(job.name);
+                  }
+                }
+                if (remaining.size === 0) break outer;
+              }
+              if (data.workflow_runs.length < PER_PAGE) break;
+              page += 1;
+            }
+
+            for (const [name, { run, job }] of resolutions) {
+              await github.rest.checks.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name,
+                head_sha: context.sha,
+                status: "completed",
+                conclusion: "success",
+                details_url: job.html_url,
+                output: {
+                  title: `Carried forward from ${run.head_sha.substring(0, 7)}`,
+                  summary: [
+                    `This job ran successfully on an earlier commit of this PR and the latest push did not touch its package, so it was not re-executed.`,
+                    ``,
+                    `Source run: [#${run.run_number}](${run.html_url}) on commit \`${run.head_sha.substring(0, 7)}\`.`,
+                  ].join("\n"),
+                },
+              });
+              core.info(`Carried forward ${name} from run #${run.run_number} (${run.head_sha.substring(0, 7)}).`);
+            }
+
+            for (const name of remaining) {
+              core.info(`No prior successful run found for ${name}; leaving its skipped status as-is.`);
+            }
