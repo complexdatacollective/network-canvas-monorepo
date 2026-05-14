@@ -55,6 +55,9 @@ apps/documentation/public/sidebar.json
 # Superpowers brainstorm sessions
 .superpowers/
 
+# Claude Code local state (worktrees, projects, settings)
+.claude/
+
 # Playwright e2e artifacts
 **/test-results/
 **/playwright-report/

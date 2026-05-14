@@ -2,7 +2,6 @@
 	"private": true,
 	"scripts": {
 		"build": "turbo run build --filter=!network-canvas-interviewer --filter=!network-canvas-architect",
-		"build:changed-packages": "node scripts/build-changed-packages.mjs",
 		"dev": "turbo watch dev",
 		"test": "turbo run test --filter=!network-canvas-interviewer --filter=!network-canvas-architect",
 		"test:watch": "turbo watch test:watch --filter=!network-canvas-interviewer --filter=!network-canvas-architect",

@@ -2,6 +2,10 @@
   from = "/"
   to = "/en"
   status = 301
+  # Next.js static export emits out/index.html (for the next-intl root
+  # redirect), and Netlify [[redirects]] only fire when no static file
+  # exists at the path. Force this rule so the 301 wins over index.html.
+  force = true
 
 [[redirects]]
   from = "/citing-the-software"

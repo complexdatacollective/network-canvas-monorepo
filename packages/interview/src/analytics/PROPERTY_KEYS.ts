@@ -3,7 +3,7 @@
 export const INSTANCE_NAME = "@codaco/interview";
 
 // Codaco-managed PostHog proxy. The project key is public PostHog data, not a
-// secret — same value used by architect-vite and the documentation app.
+// secret — same value used by architect-web and the documentation app.
 export const POSTHOG_API_KEY = "phc_OThPUolJumHmf142W78TKWtjoYYAxGlF0ZZmhcV7J3c";
 export const POSTHOG_HOST = "https://ph-relay.networkcanvas.com";
 
