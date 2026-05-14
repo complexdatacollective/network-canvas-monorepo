@@ -153,6 +153,21 @@
 		--animation-duration-slow: 500ms;
 		--animation-duration-fast: 150ms;
 
+		/* Primitive tokens read directly by @codaco/fresco-ui components:
+		   Node reads var(--node-N) for its gradient --base and var(--selected)
+		   for its selection / linking box-shadow rings. Theme tokens below
+		   alias --color-node-N / --color-selected to these. */
+		--selected: hsl(var(--mustard));
+
+		--node-1: hsl(var(--neon-coral));
+		--node-2: hsl(var(--sea-serpent));
+		--node-3: hsl(var(--purple-pizazz));
+		--node-4: hsl(var(--neon-carrot));
+		--node-5: hsl(var(--kiwi));
+		--node-6: hsl(var(--cerulean-blue));
+		--node-7: hsl(var(--paradise-pink));
+		--node-8: hsl(var(--mustard));
+
 		--node-color-seq-1: var(--neon-coral);
 		--node-color-seq-1-dark: var(--neon-coral-dark);
 		--node-color-seq-2: var(--sea-serpent);
@@ -313,17 +328,17 @@
 	--color-fresco-purple: oklch(10% 0.4 290);
 	--color-fresco-purple-foreground: hsl(var(--white));
 
-	/* Node color tokens consumed by @codaco/fresco-ui/Node. The component reads
-	   `var(--color-node-N)` for its gradient base and uses `outline-node-N`
-	   utilities (auto-generated from these theme tokens) for the focus ring. */
-	--color-node-1: hsl(var(--neon-coral));
-	--color-node-2: hsl(var(--sea-serpent));
-	--color-node-3: hsl(var(--purple-pizazz));
-	--color-node-4: hsl(var(--neon-carrot));
-	--color-node-5: hsl(var(--kiwi));
-	--color-node-6: hsl(var(--cerulean-blue));
-	--color-node-7: hsl(var(--paradise-pink));
-	--color-node-8: hsl(var(--mustard));
+	/* Node theme tokens — alias the --node-N primitives defined in :root.
+	   Tailwind emits these as `--color-node-N` and auto-generates utilities
+	   like `outline-node-N` used by @codaco/fresco-ui/Node for its focus ring. */
+	--color-node-1: var(--node-1);
+	--color-node-2: var(--node-2);
+	--color-node-3: var(--node-3);
+	--color-node-4: var(--node-4);
+	--color-node-5: var(--node-5);
+	--color-node-6: var(--node-6);
+	--color-node-7: var(--node-7);
+	--color-node-8: var(--node-8);
 
 	/* Breakpoints used by fresco-ui responsive size variants (`tablet-landscape:`,
 	   `desktop:`). Mirrors the values in tooling/tailwind/fresco/theme.css. */
@@ -406,7 +421,7 @@
 	--color-hover: hsl(var(--sea-green-dark));
 	--color-focus: hsl(var(--sea-green));
 	--color-active: hsl(var(--sea-green));
-	--color-selected: var(--color-mustard);
+	--color-selected: var(--selected);
 
 	--color-border: hsl(var(--platinum-dark));
 	--color-divider: hsl(var(--platinum-dark));
