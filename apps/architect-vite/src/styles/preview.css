@@ -1,0 +1,9 @@
+@import '@codaco/tailwind-config/fresco.css';
+
+/*
+ * Tailwind's class scanner needs an explicit @source for the package's compiled
+ * JS — the @source declaration inside the package's styles.css is relative to
+ * the package's own dist/, which Fresco's compiler can't resolve from here.
+ */
+@import '@codaco/fresco-ui/styles.css';
+@import '@codaco/interview/styles.css';

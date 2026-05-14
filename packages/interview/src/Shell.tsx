@@ -79,66 +79,62 @@ function Interview() {
 				/>
 			}
 		>
-			{/*
-			 * DndStoreProvider sits inside ThemedRegion so its DragPreview's
-			 * portal lands in the themed portal container — cloned drag
-			 * previews then inherit the theme cascade. Hosts no longer need
-			 * to mount this provider themselves.
-			 */}
-			<DndStoreProvider>
-				<StageMetadataProvider value={registerBeforeNext}>
-					<InterviewToastProvider
+			<DialogProvider>
+				<DndStoreProvider>
+					<StageMetadataProvider value={registerBeforeNext}>
+						<InterviewToastProvider
+							forwardButtonRef={forwardButtonRef}
+							backButtonRef={backButtonRef}
+							orientation={navigationOrientation}
+						>
+							<AnimatePresence mode="wait" onExitComplete={handleExitComplete}>
+								{showStage && stage && (
+									<motion.div
+										key={displayedStep}
+										data-stage-step={displayedStep}
+										className="flex min-h-0 flex-1"
+										initial="initial"
+										animate="animate"
+										exit="exit"
+										variants={variants}
+										transition={{ duration: 0.5 }}
+									>
+										<div className="flex size-full flex-col items-center justify-center" id="stage" key={stage.id}>
+											<StageErrorBoundary>
+												{CurrentInterface && (
+													<CurrentInterface key={stage.id} stage={stage} getNavigationHelpers={getNavigationHelpers} />
+												)}
+											</StageErrorBoundary>
+										</div>
+									</motion.div>
+								)}
+							</AnimatePresence>
+						</InterviewToastProvider>
+					</StageMetadataProvider>
+					<Navigation
+						moveBackward={moveBackward}
+						moveForward={moveForward}
+						disableMoveForward={disableMoveForward}
+						disableMoveBackward={disableMoveBackward}
+						pulseNext={pulseNext}
+						progress={progress}
+						orientation={navigationOrientation}
 						forwardButtonRef={forwardButtonRef}
 						backButtonRef={backButtonRef}
-						orientation={navigationOrientation}
-					>
-						<AnimatePresence mode="wait" onExitComplete={handleExitComplete}>
-							{showStage && stage && (
-								<motion.div
-									key={displayedStep}
-									data-stage-step={displayedStep}
-									className="flex min-h-0 flex-1"
-									initial="initial"
-									animate="animate"
-									exit="exit"
-									variants={variants}
-									transition={{ duration: 0.5 }}
-								>
-									<div className="flex size-full flex-col items-center justify-center" id="stage" key={stage.id}>
-										<StageErrorBoundary>
-											{CurrentInterface && (
-												<CurrentInterface key={stage.id} stage={stage} getNavigationHelpers={getNavigationHelpers} />
-											)}
-										</StageErrorBoundary>
-									</div>
-								</motion.div>
-							)}
-						</AnimatePresence>
-					</InterviewToastProvider>
-				</StageMetadataProvider>
-				<Navigation
-					moveBackward={moveBackward}
-					moveForward={moveForward}
-					disableMoveForward={disableMoveForward}
-					disableMoveBackward={disableMoveBackward}
-					pulseNext={pulseNext}
-					progress={progress}
-					orientation={navigationOrientation}
-					forwardButtonRef={forwardButtonRef}
-					backButtonRef={backButtonRef}
-				/>
-				{/*
-				 * Self-contained Toast.Provider for the interview manager so
-				 * the viewport's portal lands inside ThemedRegion (themed
-				 * surface + portal-container context) regardless of what the
-				 * host sets up. Hosts may still mount their own app-level
-				 * Toast.Provider for non-interview toasts; the two are
-				 * independent channels.
-				 */}
-				<Toast.Provider toastManager={interviewToastManager}>
-					<InterviewToastViewport />
-				</Toast.Provider>
-			</DndStoreProvider>
+					/>
+					{/*
+					 * Self-contained Toast.Provider for the interview manager so
+					 * the viewport's portal lands inside ThemedRegion (themed
+					 * surface + portal-container context) regardless of what the
+					 * host sets up. Hosts may still mount their own app-level
+					 * Toast.Provider for non-interview toasts; the two are
+					 * independent channels.
+					 */}
+					<Toast.Provider toastManager={interviewToastManager}>
+						<InterviewToastViewport />
+					</Toast.Provider>
+				</DndStoreProvider>
+			</DialogProvider>
 		</ThemedRegion>
 	);
 }
@@ -236,17 +232,7 @@ const Shell = ({
 			<Provider store={reduxStore}>
 				<ContractProvider onFinish={onFinish} onRequestAsset={onRequestAsset} flags={flags}>
 					<CurrentStepProvider currentStep={currentStep} onStepChange={onStepChange}>
-						{/*
-						 * Interview-scoped DialogProvider (nested below the app-root one in
-						 * components/Providers). Required because dialogs opened from inside
-						 * the interview render components that call useSelector, and
-						 * DialogProvider renders its dialogs at its own location in the tree.
-						 * Without this inner provider, dialog content would mount outside
-						 * the Redux Provider and throw on the first useSelector call.
-						 */}
-						<DialogProvider>
-							<Interview />
-						</DialogProvider>
+						<Interview />
 					</CurrentStepProvider>
 				</ContractProvider>
 			</Provider>

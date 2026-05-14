@@ -1,5 +1,5 @@
 import { Check, Eye, Loader2, X } from "lucide-react";
-import { useRef } from "react";
+import { type ReactNode, useRef } from "react";
 import { useSelector } from "react-redux";
 import Issues, { type IssuesHandle } from "~/components/Issues";
 import Tooltip from "~/components/NewComponents/Tooltip";
@@ -14,8 +14,9 @@ type StageEditorNavProps = {
 	onCancel: () => void;
 	onPreview: () => void;
 	previewLabel: string;
+	previewOptions?: ReactNode;
 	isStageInvalid: boolean;
-	isUploadingPreview: boolean;
+	isOpeningPreview: boolean;
 	hasUnsavedChanges: boolean;
 };
 
@@ -24,8 +25,9 @@ const StageEditorNav = ({
 	onCancel,
 	onPreview,
 	previewLabel,
+	previewOptions,
 	isStageInvalid,
-	isUploadingPreview,
+	isOpeningPreview,
 	hasUnsavedChanges,
 }: StageEditorNavProps) => {
 	const protocolName = useSelector(getProtocolName);
@@ -38,7 +40,7 @@ const StageEditorNav = ({
 
 	const previewTooltip = isStageInvalid
 		? "Previewing requires valid stage configuration. Fix the errors on this stage to enable previewing."
-		: isUploadingPreview
+		: isOpeningPreview
 			? previewLabel
 			: "Open this stage in a new tab to preview how it will appear to participants.";
 
@@ -50,12 +52,13 @@ const StageEditorNav = ({
 				<Button onClick={onCancel} color="platinum" icon={<X />}>
 					Cancel
 				</Button>
+				{previewOptions}
 				<Tooltip content={previewTooltip}>
 					<Button
 						onClick={onPreview}
 						color="neon-coral"
-						icon={isUploadingPreview ? <Loader2 className="animate-spin" /> : <Eye />}
-						disabled={isUploadingPreview || isStageInvalid}
+						icon={isOpeningPreview ? <Loader2 className="animate-spin" /> : <Eye />}
+						disabled={isOpeningPreview || isStageInvalid}
 					>
 						Preview
 					</Button>

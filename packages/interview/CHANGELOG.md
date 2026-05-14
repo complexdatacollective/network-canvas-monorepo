@@ -1,5 +1,11 @@
 # @codaco/interview
 
+## 1.0.0-alpha.20
+
+### Prerelease Changes
+
+- `Shell`: move `DialogProvider` inside `ThemedRegion` so dialogs opened from stage content (`FamilyPedigree`, etc.) portal into the themed `PortalContainerProvider` instead of escaping to `document.body`. The provider remains nested below the Redux `Provider`, so dialog content can still call `useSelector` without exploding.
+
 ## 1.0.0-alpha.19
 
 ### Prerelease Changes

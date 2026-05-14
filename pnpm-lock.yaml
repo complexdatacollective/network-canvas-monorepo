@@ -438,14 +438,20 @@ importers:
         specifier: 'catalog:'
         version: 1.4.1(@date-fns/tz@1.4.1)(@types/react@19.2.14)(date-fns@4.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@codaco/fresco-ui':
-        specifier: ^2.5.3
+        specifier: workspace:*
         version: link:../../packages/fresco-ui
+      '@codaco/interview':
+        specifier: workspace:*
+        version: link:../../packages/interview
       '@codaco/protocol-validation':
         specifier: workspace:*
         version: link:../../packages/protocol-validation
       '@codaco/shared-consts':
         specifier: workspace:*
         version: link:../../packages/shared-consts
+      '@codaco/tailwind-config':
+        specifier: workspace:*
+        version: link:../../tooling/tailwind
       '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
