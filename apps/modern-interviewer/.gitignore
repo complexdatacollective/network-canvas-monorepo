@@ -1,0 +1,9 @@
+node_modules
+dist
+out
+release-builds
+.turbo
+ios
+android
+*.log
+.DS_Store

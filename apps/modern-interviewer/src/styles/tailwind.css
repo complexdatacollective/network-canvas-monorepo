@@ -1,0 +1,31 @@
+@import "@codaco/tailwind-config/fresco.css";
+
+/* Source the @codaco/fresco-ui and @codaco/interview compiled outputs so
+   Tailwind discovers utility classes referenced inside those packages.
+   Without this, those components render unstyled. */
+@source "../../../../node_modules/@codaco/fresco-ui/dist/**/*.js";
+@source "../../../../node_modules/@codaco/interview/dist/**/*.js";
+
+html,
+body,
+#root {
+	height: 100%;
+	width: 100%;
+	margin: 0;
+}
+
+html {
+	font-family: "Inclusive Sans", system-ui, sans-serif;
+	background: var(--color-background, #f5f7fa);
+	color: var(--color-foreground, #1d2334);
+	-webkit-tap-highlight-color: transparent;
+}
+
+body {
+	overflow: hidden;
+}
+
+#root {
+	display: flex;
+	flex-direction: column;
+}

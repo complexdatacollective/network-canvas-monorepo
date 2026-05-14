@@ -49,6 +49,23 @@
 			"ignoreDependencies": ["@types/recompose"],
 			"ignore": ["src/**/*.d.ts", "src/test/**"]
 		},
+		"apps/modern-interviewer": {
+			"entry": [
+				"index.html!",
+				"electron/main.ts!",
+				"electron/preload.ts!",
+				"electron.vite.config.ts!",
+				"electron-builder.config.cjs!",
+				"capacitor.config.ts!"
+			],
+			"vite": true,
+			"project": ["src/**/*.{ts,tsx}", "electron/**/*.ts"],
+			"paths": {
+				"~/*": ["./src/*"]
+			},
+			"ignore": ["vite-env.d.ts"],
+			"ignoreDependencies": ["@capacitor/android", "@capacitor/ios", "@codaco/network-query", "jszip"]
+		},
 		"workers/development-protocol": {},
 		"workers/posthog-proxy": {}
 	}

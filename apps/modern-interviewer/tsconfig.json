@@ -1,0 +1,13 @@
+{
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"extends": "@codaco/tsconfig/web.json",
+	"compilerOptions": {
+		"paths": {
+			"~/*": ["./src/*"]
+		},
+		"types": ["vite/client"],
+		"strict": true
+	},
+	"include": ["src", "vite-env.d.ts"],
+	"exclude": ["node_modules", "dist", "electron"]
+}

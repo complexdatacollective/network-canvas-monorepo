@@ -1,0 +1,9 @@
+{
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"extends": "@codaco/tsconfig/node.json",
+	"compilerOptions": {
+		"strict": true
+	},
+	"include": ["vite.config.ts", "vitest.config.ts", "electron.vite.config.ts", "electron"],
+	"exclude": ["node_modules", "dist"]
+}
