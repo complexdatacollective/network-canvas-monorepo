@@ -16,8 +16,8 @@
 	},
 	"dependencies": {
 		"@codaco/art": "workspace:*",
-		"@docsearch/css": "^4.6.2",
-		"@docsearch/react": "^4.6.2",
+		"@docsearch/css": "^4.6.3",
+		"@docsearch/react": "^4.6.3",
 		"@fontsource-variable/quicksand": "^5.2.10",
 		"@mendable/search": "^0.0.206",
 		"@next/bundle-analyzer": "catalog:",
@@ -37,9 +37,9 @@
 		"lucide-react": "catalog:",
 		"motion": "catalog:",
 		"next": "catalog:",
-		"next-intl": "^4.9.1",
+		"next-intl": "^4.12.0",
 		"next-themes": "^0.4.6",
-		"postcss": "^8.5.12",
+		"postcss": "^8.5.14",
 		"posthog-js": "catalog:",
 		"react": "catalog:",
 		"react-dom": "catalog:"

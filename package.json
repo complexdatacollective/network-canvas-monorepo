@@ -15,14 +15,14 @@
 		"knip": "knip --exclude catalog"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4.13",
+		"@biomejs/biome": "^2.4.15",
 		"@changesets/cli": "^2.31.0",
 		"@types/node": "catalog:",
-		"@typescript/native-preview": "^7.0.0-dev.20260421.2",
+		"@typescript/native-preview": "^7.0.0-dev.20260514.1",
 		"husky": "^9.1.7",
-		"knip": "^6.6.2",
-		"lint-staged": "^16.4.0",
-		"turbo": "^2.9.6",
+		"knip": "^6.13.1",
+		"lint-staged": "^17.0.4",
+		"turbo": "^2.9.12",
 		"typescript": "catalog:"
 	},
 	"pnpm": {
