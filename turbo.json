@@ -23,7 +23,7 @@
 				"package.json",
 				"pnpm-lock.yaml"
 			],
-			"env": [],
+			"env": ["NODE_ENV"],
 			"outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"]
 		},
 		"@codaco/documentation#build": {
@@ -97,7 +97,7 @@
 		"build-storybook": {
 			"dependsOn": ["^build"],
 			"inputs": ["src/**", ".storybook/**", "stories/**", "package.json", "tsconfig*.json"],
-			"env": [],
+			"env": ["NODE_ENV"],
 			"outputs": ["storybook-static/**"]
 		},
 		"//#lint": {
@@ -172,7 +172,7 @@
 		"typecheck": {
 			"dependsOn": ["^build"],
 			"inputs": ["src/**", "tsconfig*.json", "package.json"],
-			"env": [],
+			"env": ["NODE_ENV"],
 			"outputs": []
 		}
 	}
