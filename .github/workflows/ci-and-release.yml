@@ -376,6 +376,23 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Wait for Netlify CDN propagation
+        # netlify-cli's deploy returns as soon as the deploy is queued, but
+        # asset URLs are served from edges that may take a few seconds to
+        # propagate. The link-checker fans out many parallel requests; without
+        # this wait it hits FETCH_ERROR on assets that resolve fine moments
+        # later. Cheap and reliable.
+        env:
+          DOCS_URL: ${{ needs.deploy-docs-preview.outputs.url }}
+        run: |
+          for i in 1 2 3 4 5 6; do
+            if curl -fsSL --max-time 10 -o /dev/null "$DOCS_URL/en"; then
+              echo "deploy is reachable; proceeding"
+              break
+            fi
+            echo "attempt $i: not yet, sleeping 5s"
+            sleep 5
+          done
       - name: Dead-link check
         env:
           DOCS_URL: ${{ needs.deploy-docs-preview.outputs.url }}
