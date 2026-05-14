@@ -1,6 +1,6 @@
-import cx from "classnames";
 import type React from "react";
 import withAssetUrl from "~/components/Assets/withAssetUrl";
+import { cx } from "~/utils/cva";
 import { thumbnailBase } from "./styles";
 
 type ImageThumbnailProps = {

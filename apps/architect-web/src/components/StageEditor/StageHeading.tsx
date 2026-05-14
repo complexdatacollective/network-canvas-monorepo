@@ -4,7 +4,7 @@ import { useId } from "react";
 import Badge from "~/components/Badge";
 import ExternalLink from "~/components/ExternalLink";
 import timelineImages from "~/images/timeline";
-import { cn } from "~/utils/cn";
+import { cx } from "~/utils/cva";
 import { useFormContext } from "../Editor";
 import ValidatedField from "../Form/ValidatedField";
 import IssueAnchor from "../IssueAnchor";
@@ -45,7 +45,7 @@ const HeadingInput = ({ input = {}, meta = {}, placeholder, maxLength, autoFocus
 				aria-label="Stage name"
 				aria-invalid={hasError}
 				aria-describedby={hasError ? errorId : undefined}
-				className={cn(
+				className={cx(
 					"h1 my-0 w-full bg-transparent border-none outline-none p-0 placeholder:opacity-40",
 					hasError && "text-error",
 				)}

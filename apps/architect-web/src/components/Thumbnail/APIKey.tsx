@@ -1,6 +1,6 @@
-import cx from "classnames";
 import { KeyRound } from "lucide-react";
 import withAssetMeta from "~/components/Assets/withAssetMeta";
+import { cx } from "~/utils/cva";
 import { thumbnailBase, thumbnailExisting, thumbnailIcon, thumbnailLabel } from "./styles";
 
 type APIKeyThumbnailProps = {

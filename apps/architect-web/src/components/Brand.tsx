@@ -1,5 +1,5 @@
 import architectIcon from "~/images/Arc-Flat.svg";
-import { cn } from "~/utils/cn";
+import { cx } from "~/utils/cva";
 import Badge from "./Badge";
 
 type BrandProps = {
@@ -26,16 +26,16 @@ const Brand = ({ onClick, className, variant = "pill" }: BrandProps) => {
 					type="button"
 					onClick={onClick}
 					aria-label="Return to start screen"
-					className={cn("shrink-0 bg-transparent p-0", INTERACTIVE, className)}
+					className={cx("shrink-0 bg-transparent p-0", INTERACTIVE, className)}
 				>
 					{iconImg}
 				</button>
 			);
 		}
-		return <div className={cn("shrink-0", className)}>{iconImg}</div>;
+		return <div className={cx("shrink-0", className)}>{iconImg}</div>;
 	}
 
-	const baseClasses = cn(ROW, isPill && PILL_CHROME);
+	const baseClasses = cx(ROW, isPill && PILL_CHROME);
 
 	const content = (
 		<>
@@ -51,14 +51,14 @@ const Brand = ({ onClick, className, variant = "pill" }: BrandProps) => {
 				type="button"
 				onClick={onClick}
 				aria-label="Return to start screen"
-				className={cn(baseClasses, INTERACTIVE, !isPill && "bg-transparent p-0", className)}
+				className={cx(baseClasses, INTERACTIVE, !isPill && "bg-transparent p-0", className)}
 			>
 				{content}
 			</button>
 		);
 	}
 
-	return <div className={cn(baseClasses, className)}>{content}</div>;
+	return <div className={cx(baseClasses, className)}>{content}</div>;
 };
 
 export default Brand;

@@ -1,8 +1,8 @@
-import cx from "classnames";
 import type React from "react";
 import { PureComponent } from "react";
 import ReactSelect, { type ActionMeta, type OptionProps, type ValueType } from "react-select";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import { cx } from "~/utils/cva";
 
 const getValue = (options: SelectOption[], value: unknown) => {
 	const foundValue = options.find((option) => option.value === value);

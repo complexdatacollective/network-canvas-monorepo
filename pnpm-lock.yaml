@@ -473,15 +473,6 @@ importers:
       animejs:
         specifier: ^2.2.0
         version: 2.2.0
-      class-variance-authority:
-        specifier: 'catalog:'
-        version: 0.7.1
-      classnames:
-        specifier: ^2.5.1
-        version: 2.5.1
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
       csvtojson:
         specifier: ^2.0.14
         version: 2.0.14

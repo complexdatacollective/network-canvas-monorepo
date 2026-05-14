@@ -1,6 +1,6 @@
-import cx from "classnames";
 import withAssetMeta from "~/components/Assets/withAssetMeta";
 import Icon from "~/lib/legacy-ui/components/Icon";
+import { cx } from "~/utils/cva";
 import { thumbnailBase, thumbnailExisting, thumbnailIcon, thumbnailLabel } from "./styles";
 
 type AudioThumbnailProps = {

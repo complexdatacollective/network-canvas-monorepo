@@ -1,5 +1,5 @@
-import cx from "classnames";
 import type React from "react";
+import { cx } from "~/utils/cva";
 
 type RowProps = {
 	disabled?: boolean;
