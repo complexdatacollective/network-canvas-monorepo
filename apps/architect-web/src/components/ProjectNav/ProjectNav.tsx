@@ -114,22 +114,8 @@ const ProjectNav = ({ extraActions }: ProjectNavProps) => {
 				{extraActions}
 				{!isSummary && (
 					<>
-						<IconButton
-							variant="text"
-							icon={<Undo />}
-							onClick={handleUndo}
-							disabled={!canUndo}
-							aria-label="Undo"
-							className="hover:bg-current/10"
-						/>
-						<IconButton
-							variant="text"
-							icon={<Redo />}
-							onClick={handleRedo}
-							disabled={!canRedo}
-							aria-label="Redo"
-							className="hover:bg-current/10"
-						/>
+						<IconButton variant="text" icon={<Undo />} onClick={handleUndo} disabled={!canUndo} aria-label="Undo" />
+						<IconButton variant="text" icon={<Redo />} onClick={handleRedo} disabled={!canRedo} aria-label="Redo" />
 					</>
 				)}
 				<Tooltip content="Download .netcanvas protocol">

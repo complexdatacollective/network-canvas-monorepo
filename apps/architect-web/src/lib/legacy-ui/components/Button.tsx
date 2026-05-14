@@ -91,7 +91,7 @@ const computeButtonClasses = ({
 		color === "tomato" && "bg-tomato border-tomato-dark text-white hover:bg-tomato-dark",
 		color === "white" && "bg-white border-platinum-dark text-charcoal hover:bg-platinum",
 		// variant overrides — must come after color block so conflicting utilities win
-		variant === "text" && "bg-transparent border-transparent text-current hover:bg-foreground/10",
+		variant === "text" && "bg-transparent border-transparent text-current hover:bg-current/10",
 		// Icon position
 		icon && iconPosition === "left" && "flex-row",
 		icon && iconPosition === "right" && "flex-row-reverse",
