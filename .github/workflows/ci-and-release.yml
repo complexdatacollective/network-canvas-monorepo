@@ -174,18 +174,6 @@ jobs:
           echo "$json" | jq .
           url=$(echo "$json" | jq -r '.deploy_url')
           echo "url=$url" >> "$GITHUB_OUTPUT"
-      - name: Comment deploy URL on PR
-        uses: actions/github-script@v7
-        env:
-          URL: ${{ steps.deploy.outputs.url }}
-        with:
-          script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `🚀 documentation preview → ${process.env.URL}`,
-            });
 
   deploy-docs-prod:
     needs: [detect, quality, chromatic-fresco-ui, chromatic-interview, interview-e2e-report]
@@ -277,18 +265,55 @@ jobs:
           echo "$json" | jq .
           url=$(echo "$json" | jq -r '.deploy_url')
           echo "url=$url" >> "$GITHUB_OUTPUT"
-      - name: Comment deploy URL on PR
-        uses: actions/github-script@v7
+
+  # Single PR comment summarising whichever preview(s) deployed. Uses a hidden
+  # HTML marker to locate the existing comment on subsequent runs so we update
+  # in place rather than spamming the PR with one new comment per run.
+  comment-preview-urls:
+    needs: [deploy-docs-preview, deploy-architect-preview]
+    if: |
+      always() &&
+      github.event_name == 'pull_request' &&
+      (needs.deploy-docs-preview.result == 'success' || needs.deploy-architect-preview.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7
         env:
-          URL: ${{ steps.deploy.outputs.url }}
+          DOCS_URL: ${{ needs.deploy-docs-preview.outputs.url }}
+          ARCHITECT_URL: ${{ needs.deploy-architect-preview.outputs.url }}
         with:
           script: |
-            await github.rest.issues.createComment({
+            const marker = '<!-- ci:deploy-previews -->';
+            const lines = [marker, '🚀 **Deploy previews**'];
+            const { DOCS_URL, ARCHITECT_URL } = process.env;
+            if (DOCS_URL) lines.push(`- documentation → ${DOCS_URL}`);
+            if (ARCHITECT_URL) lines.push(`- architect-web → ${ARCHITECT_URL}`);
+            const body = lines.join('\n');
+            const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `🚀 architect-web preview → ${process.env.URL}`,
+              per_page: 100,
             });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
 
   deploy-architect-prod:
     needs: [detect, quality, chromatic-fresco-ui, chromatic-interview, interview-e2e-report]
@@ -452,7 +477,7 @@ jobs:
             packages/interview/e2e/test-results 2>/dev/null || true
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: interview-playwright-report
           path: packages/interview/e2e/playwright-report/
@@ -476,12 +501,12 @@ jobs:
       url: https://complexdatacollective.github.io/network-canvas-monorepo/interview-e2e/${{ needs.interview-e2e.outputs.slug }}/
     steps:
       - name: Download new report
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
         with:
           name: interview-playwright-report
           path: new-report
       - name: Fetch existing pages content
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
         with:
           ref: gh-pages
           path: existing-pages
@@ -498,13 +523,13 @@ jobs:
           rm -rf "merged/interview-e2e/$SLUG"
           mkdir -p "merged/interview-e2e/$SLUG"
           cp -r new-report/. "merged/interview-e2e/$SLUG/"
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa  # v3
         with:
           path: merged/
-      - uses: actions/deploy-pages@v4
+      - uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e  # v4
       - name: Comment on PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7
         env:
           SLUG: ${{ needs.interview-e2e.outputs.slug }}
           OUTCOME: ${{ needs.interview-e2e.result }}
