@@ -1,4 +1,4 @@
-# architect-vite
+# @codaco/architect-web
 
 ## 7.6.0
 

@@ -1,6 +1,6 @@
 {
 	"name": "@codaco/interview",
-	"version": "1.0.0-alpha.20",
+	"version": "1.0.0-alpha.19",
 	"type": "module",
 	"license": "MIT",
 	"description": "Network Canvas interview engine — Shell component, synthetic network generator, session contract.",
@@ -27,7 +27,8 @@
 		"build": "vite build",
 		"dev": "vite build --watch",
 		"typecheck": "tsc --build --noEmit && tsc -p tsconfig.node.json --noEmit",
-		"test": "vitest run",
+		"test": "vitest run --project=units",
+		"test:storybook": "vitest run --project=storybook",
 		"test:e2e": "./e2e/scripts/run.sh",
 		"test:e2e:update-snapshots": "./e2e/scripts/run.sh --update-snapshots",
 		"test:e2e:headed": "pnpm turbo build --filter @codaco/interview && pnpm exec vite build --config e2e/host/vite.config.ts && playwright test --config e2e/playwright.config.ts --headed",

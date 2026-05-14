@@ -29,7 +29,7 @@ import { Details, Summary } from "~/components/ui/typography/Details";
 import Heading from "~/components/ui/typography/Heading";
 import { ListItem, OrderedList, UnorderedList } from "~/components/ui/typography/Lists";
 import Paragraph from "~/components/ui/typography/Paragraph";
-import { get } from "./helper_functions";
+import { DOCS_PATH, get } from "./helper_functions";
 import processPreTags from "./processPreTags";
 import processYamlMatter from "./processYamlMatter";
 import { type HeadingNode, headingTree } from "./tableOfContents";
@@ -136,12 +136,19 @@ export const getDocsForRouteSegment = ({ locale, project }: { locale: string; pr
 	return results;
 };
 
+// Source files in sidebar.json are recorded as "/<DOCS_PATH>/..." paths. Anchor
+// resolution to the DOCS_PATH subfolder explicitly so Turbopack's static analysis
+// sees a bounded prefix (path.join(process.cwd(), DOCS_PATH, <dynamic>)) instead
+// of treating the join as referring to anything under cwd — which would force
+// the NFT tracer to include the entire project.
+const stripDocsPrefix = (sourceFile: string) => sourceFile.replace(new RegExp(`^/?${DOCS_PATH}/`), "");
+
 // Get the sourceFile path from the sidebar.json
 const getSourceFile = (locale: string, project: string, pathSegment?: string[]) => {
 	const sidebar = getSidebar();
 	const projectSourceFile = get(sidebar, [locale, project, "sourceFile"], null) as string;
 
-	if (!pathSegment) return join(process.cwd(), projectSourceFile);
+	if (!pathSegment) return join(process.cwd(), DOCS_PATH, stripDocsPrefix(projectSourceFile));
 
 	const pathSegmentWithChildren = pathSegment.flatMap((segment, index) => {
 		if (index === 0) {
@@ -159,7 +166,7 @@ const getSourceFile = (locale: string, project: string, pathSegment?: string[]) 
 
 	if (!folderSourceFile) return null;
 
-	return join(process.cwd(), folderSourceFile);
+	return join(process.cwd(), DOCS_PATH, stripDocsPrefix(folderSourceFile));
 };
 
 const markdownComponents = {

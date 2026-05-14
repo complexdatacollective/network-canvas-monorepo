@@ -10,9 +10,70 @@
 				"vite.config.*",
 				"electron.vite.config.*",
 				"next.config.*",
-				"package.json"
+				"package.json",
+				"pnpm-lock.yaml"
+			],
+			"env": [
+				"NEXT_PUBLIC_ALGOLIA_APPLICATION_ID",
+				"NEXT_PUBLIC_ALGOLIA_INDEX_NAME",
+				"NEXT_PUBLIC_ALGOLIA_API_KEY",
+				"NEXT_PUBLIC_MENDABLE_ANON_KEY",
+				"NEXT_PUBLIC_GA_ID",
+				"VITE_FRESCO_PREVIEW_URL",
+				"VITE_FRESCO_PREVIEW_API_TOKEN"
 			],
 			"outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"]
+		},
+		"@codaco/documentation#build": {
+			"dependsOn": ["^build"],
+			"inputs": [
+				"app/**",
+				"components/**",
+				"hooks/**",
+				"lib/**",
+				"messages/**",
+				"docs/**",
+				"public/**",
+				"scripts/**",
+				"styles/**",
+				"tailwind/**",
+				"env.js",
+				"navigation.ts",
+				"instrumentation-client.ts",
+				"types.d.ts",
+				"next.config.*",
+				"next-sitemap.config.*",
+				"postcss.config.*",
+				"tailwind.config.*",
+				"tsconfig*.json",
+				"components.json",
+				"package.json",
+				"pnpm-lock.yaml"
+			],
+			"env": [
+				"NEXT_PUBLIC_ALGOLIA_APPLICATION_ID",
+				"NEXT_PUBLIC_ALGOLIA_INDEX_NAME",
+				"NEXT_PUBLIC_ALGOLIA_API_KEY",
+				"NEXT_PUBLIC_MENDABLE_ANON_KEY",
+				"NEXT_PUBLIC_GA_ID"
+			],
+			"outputs": ["out/**", ".next/**", "!.next/cache/**"]
+		},
+		"@codaco/architect-web#build": {
+			"dependsOn": ["^build"],
+			"inputs": [
+				"src/**",
+				"public/**",
+				"index.html",
+				"vite.config.*",
+				"tailwind.config.*",
+				"tsconfig*.json",
+				"vite-env.d.ts",
+				"package.json",
+				"pnpm-lock.yaml"
+			],
+			"env": ["VITE_FRESCO_PREVIEW_URL", "VITE_FRESCO_PREVIEW_API_TOKEN", "VITE_DISABLE_ANALYTICS"],
+			"outputs": ["dist/**"]
 		},
 		"network-canvas-architect#build": {
 			"dependsOn": ["^build", "network-canvas-interviewer#build"],
@@ -31,6 +92,39 @@
 			"inputs": ["shared/plugins/**/*.ts", "tsconfig*.json", "package.json"],
 			"outputs": ["shared/plugins/**/*.js"]
 		},
+		"build-storybook": {
+			"dependsOn": ["^build"],
+			"inputs": ["src/**", ".storybook/**", "stories/**", "package.json", "tsconfig*.json"],
+			"outputs": ["storybook-static/**"]
+		},
+		"//#lint": {
+			"inputs": [
+				"**/*.{ts,tsx,js,jsx,mjs,cjs,json}",
+				"**/biome.json",
+				".gitignore",
+				"!**/dist/**",
+				"!**/out/**",
+				"!**/.next/**",
+				"!**/storybook-static/**",
+				"!**/node_modules/**"
+			],
+			"outputs": []
+		},
+		"//#knip": {
+			"inputs": [
+				"**/*.{ts,tsx,js,jsx,mjs,cjs}",
+				"**/package.json",
+				"**/tsconfig*.json",
+				"knip.json",
+				"pnpm-workspace.yaml",
+				"pnpm-lock.yaml",
+				"!**/dist/**",
+				"!**/out/**",
+				"!**/.next/**",
+				"!**/node_modules/**"
+			],
+			"outputs": []
+		},
 		"dev": {
 			"dependsOn": ["^build"],
 			"cache": false,
@@ -38,7 +132,8 @@
 		},
 		"test": {
 			"dependsOn": ["^build"],
-			"inputs": ["src/**", "__tests__/**", "vitest.config.*", "package.json"],
+			"inputs": ["src/**", "__tests__/**", "vitest.config.*", "package.json", ".env"],
+			"env": ["PROTOCOL_ENCRYPTION_KEY", "PROTOCOL_ENCRYPTION_IV", "GITHUB_TOKEN"],
 			"outputs": []
 		},
 		"test:watch": {
@@ -52,6 +147,24 @@
 		"test:e2e:headed": {
 			"dependsOn": ["build"],
 			"cache": false
+		},
+		"@codaco/documentation#typecheck": {
+			"dependsOn": ["^build"],
+			"inputs": [
+				"app/**",
+				"components/**",
+				"hooks/**",
+				"lib/**",
+				"scripts/**",
+				"env.js",
+				"navigation.ts",
+				"instrumentation-client.ts",
+				"types.d.ts",
+				"next.config.*",
+				"tsconfig*.json",
+				"package.json"
+			],
+			"outputs": []
 		},
 		"typecheck": {
 			"dependsOn": ["^build"],

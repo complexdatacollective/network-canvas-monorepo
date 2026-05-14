@@ -14,7 +14,7 @@ This monorepo is organized into four main categories:
 
 | App | Description |
 |-----|-------------|
-| [`architect-vite`](./apps/architect-vite) | Protocol designer application (Vite + React + Redux) for creating Network Canvas interview protocols |
+| [`architect-web`](./apps/architect-web) | Protocol designer application (Vite + React + Redux) for creating Network Canvas interview protocols |
 | [`architect-desktop`](./apps/architect-desktop) | Legacy Electron build of Architect, the Network Canvas protocol designer (maintenance mode) |
 | [`interviewer`](./apps/interviewer) | Network Canvas Interviewer — the desktop/mobile app (Electron + Cordova) used to conduct interviews |
 | [`documentation`](./apps/documentation) | Next.js documentation website with MDX support and search functionality |
@@ -79,7 +79,7 @@ pnpm test
 ```bash
 # Work with a specific package
 pnpm --filter @codaco/protocol-validation build
-pnpm --filter architect-vite dev
+pnpm --filter @codaco/architect-web dev
 pnpm --filter @codaco/documentation dev
 
 # Run commands across multiple packages

@@ -39,8 +39,8 @@
 			"project": ["fresco/**/*.{ts,css}", "shared/**/*.{ts,css}"],
 			"ignoreDependencies": ["@fontsource-variable/inclusive-sans", "@fontsource-variable/nunito"]
 		},
-		"apps/architect-vite": {
-			"entry": ["index.html!", "preview/index.html!", "src/preview-main.tsx!"],
+		"apps/architect-web": {
+			"entry": ["index.html!"],
 			"vite": true,
 			"project": ["src/**/*.{ts,tsx}"],
 			"paths": {

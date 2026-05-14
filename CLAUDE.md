@@ -14,7 +14,7 @@ pnpm install
 pnpm dev
 
 # Start specific applications
-pnpm --filter architect-vite dev
+pnpm --filter @codaco/architect-web dev
 pnpm --filter analytics-web dev  # Next.js with turbopack
 ```
 
@@ -104,7 +104,7 @@ pnpm publish-packages
 This is a **pnpm workspace** monorepo with catalog dependencies for version consistency:
 
 - **Apps**: End-user applications
-  - `architect-vite` - Protocol designer (Vite + Redux)
+  - `architect-web` - Protocol designer (Vite + Redux)
   - `documentation` - Documentation site
 - **Packages**: Shared libraries and utilities
   - `protocol-validation` - Zod schemas for protocol validation and migration

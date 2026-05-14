@@ -15,7 +15,6 @@ export const env = createEnv({
 	 * `NEXT_PUBLIC_`.
 	 */
 	client: {
-		NEXT_PUBLIC_DOCS_PATH: z.string().min(1),
 		NEXT_PUBLIC_ALGOLIA_APPLICATION_ID: z.string().min(1),
 		NEXT_PUBLIC_ALGOLIA_INDEX_NAME: z.string().min(1),
 		NEXT_PUBLIC_ALGOLIA_API_KEY: z.string().min(1),
@@ -32,7 +31,6 @@ export const env = createEnv({
 	 */
 
 	runtimeEnv: {
-		NEXT_PUBLIC_DOCS_PATH: process.env.NEXT_PUBLIC_DOCS_PATH,
 		NEXT_PUBLIC_ALGOLIA_APPLICATION_ID: process.env.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID,
 		NEXT_PUBLIC_ALGOLIA_INDEX_NAME: process.env.NEXT_PUBLIC_ALGOLIA_INDEX_NAME,
 		NEXT_PUBLIC_ALGOLIA_API_KEY: process.env.NEXT_PUBLIC_ALGOLIA_API_KEY,

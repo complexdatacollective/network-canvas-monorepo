@@ -1,202 +1,561 @@
-name: CI and Release (Optimized)
+name: CI and Release
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: 'Force all conditional jobs (deploys, chromatic, e2e) to run regardless of turbo-ignore detection.'
+        type: boolean
+        default: false
 
 permissions:
-  contents: read      # Allow reading repository contents
-  packages: read      # Allow reading GitHub Packages
-  actions: read       # Allow read-only access to workflow runs and jobs
-  checks: write       # Allow updating check runs (needed for changesets/action)
-  pull-requests: write # Allow creating pull requests (needed for changesets/action)
+  contents: read
+  packages: read
+  actions: read
+  checks: write
+  pull-requests: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Setup job that all other jobs depend on
-  setup:
+  detect:
     runs-on: ubuntu-latest
+    outputs:
+      any_app: ${{ steps.flags.outputs.any_app }}
+      docs: ${{ steps.flags.outputs.docs }}
+      architect: ${{ steps.flags.outputs.architect }}
+      fresco_ui_storybook: ${{ steps.flags.outputs.fresco_ui_storybook }}
+      interview_storybook: ${{ steps.flags.outputs.interview_storybook }}
+      interview_e2e: ${{ steps.flags.outputs.interview_e2e }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
-      - name: Install pnpm
-        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5
-      - name: Install Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
+        with:
+          node-version-file: '.nvmrc'
+      - id: flags
+        env:
+          # Manual runs may set force_run=true to bypass turbo-ignore and run
+          # every conditional job (replaces the old per-workflow rerun buttons).
+          FORCE_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.force_run == true }}
+        run: |
+          # turbo-ignore: exit 0 = "no changes" -> flag false; exit 1 = "changes" -> flag true.
+          flag() {
+            if [[ "$FORCE_RUN" == "true" ]]; then
+              echo true
+              return
+            fi
+            if npx --yes turbo-ignore@2.9.6 "$1" --fallback=HEAD^1 >/dev/null 2>&1; then
+              echo false
+            else
+              echo true
+            fi
+          }
+          docs=$(flag @codaco/documentation)
+          arch=$(flag @codaco/architect-web)
+          fui=$(flag @codaco/fresco-ui)
+          intv=$(flag @codaco/interview)
+          any_app=false
+          if [[ "$docs" == "true" || "$arch" == "true" ]]; then any_app=true; fi
+          {
+            echo "any_app=$any_app"
+            echo "docs=$docs"
+            echo "architect=$arch"
+            echo "fresco_ui_storybook=$fui"
+            echo "interview_storybook=$intv"
+            echo "interview_e2e=$intv"
+          } >> "$GITHUB_OUTPUT"
+
+  # Cache design: every Turbo-using job restores `.turbo` from the same
+  # `${{ runner.os }}-turbo-*` keyspace. Whichever job finishes its build first
+  # writes the SHA-specific slot; subsequent jobs read it via `restore-keys`
+  # fallback. Per-package env values (NEXT_PUBLIC_*, VITE_*) are part of each
+  # build task's `env:` list in turbo.json so they participate in the cache key.
+  quality:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_ALGOLIA_APPLICATION_ID: ${{ secrets.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID }}
+      NEXT_PUBLIC_ALGOLIA_INDEX_NAME: ${{ secrets.NEXT_PUBLIC_ALGOLIA_INDEX_NAME }}
+      NEXT_PUBLIC_ALGOLIA_API_KEY: ${{ secrets.NEXT_PUBLIC_ALGOLIA_API_KEY }}
+      NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
+      NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
+      VITE_FRESCO_PREVIEW_URL: ${{ secrets.VITE_FRESCO_PREVIEW_URL }}
+      VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
+      # quality builds architect-web with analytics disabled — this matches the
+      # preview-deploy build's env so the .turbo cache slot is reused. The prod
+      # deploy intentionally builds with analytics enabled (different cache hash).
+      VITE_DISABLE_ANALYTICS: "true"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build shared-consts
-        run: pnpm --filter @codaco/shared-consts build
-
-      - name: Build protocol-validation
-        run: pnpm --filter @codaco/protocol-validation build
-
-      # Upload shared-consts build as artifact
-      - name: Upload shared-consts build
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
         with:
-          name: shared-consts-dist
-          path: packages/shared-consts/dist
-          retention-days: 1
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - name: Write protocol-validation .env (test fixture)
+        env:
+          PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
+          PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
+          TEST_PROTOCOL_TOKEN: ${{ secrets.TEST_PROTOCOL_TOKEN }}
+        run: |
+          {
+            echo "PROTOCOL_ENCRYPTION_KEY=$PROTOCOL_ENCRYPTION_KEY"
+            echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
+            echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
+          } > packages/protocol-validation/.env
+      - name: Run all gates
+        run: |
+          pnpm exec turbo run //#lint //#knip typecheck build test \
+            --filter='!network-canvas-interviewer' \
+            --filter='!network-canvas-architect'
 
-      # Upload protocol-validation build as artifact
-      - name: Upload protocol-validation build
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
-        with:
-          name: protocol-validation-dist
-          path: packages/protocol-validation/dist
-          retention-days: 1
+  # Deploy jobs are split per-app and per-environment so:
+  #   * one app's build failure never blocks the other app's deploy
+  #   * preview deploys never wait on quality / chromatic / e2e
+  #   * production deploys are strictly gated on every check passing
+  #
+  # netlify-cli flags:
+  #   --no-build:    skip dashboard build command + plugin lifecycle hooks
+  #   --filter=<pkg>: workspace selector (required because pnpm-workspace.yaml
+  #                   is at the repo root and netlify-cli detects the monorepo)
+  #   --dir:         pre-built directory to upload
 
-  lint:
-    needs: setup
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
-      - name: Install pnpm
-        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5
-      - name: Install Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Download shared-consts build
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
-        with:
-          name: shared-consts-dist
-          path: packages/shared-consts/dist
-
-      - name: Download protocol-validation build
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
-        with:
-          name: protocol-validation-dist
-          path: packages/protocol-validation/dist
-
-      - name: Check formatting
-        run: pnpm lint
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Knip
-        run: pnpm knip
-
-      - name: Validate redirects
-        run: pnpm --filter @codaco/documentation validate-redirects
-
-  test:
-    needs: setup
+  deploy-docs-preview:
+    needs: [detect]
+    if: github.event_name == 'pull_request' && needs.detect.outputs.docs == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: read
+      pull-requests: write
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
     env:
-      PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
-      PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
-      GITHUB_TOKEN: ${{ secrets.TEST_PROTOCOL_TOKEN }}
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NEXT_PUBLIC_ALGOLIA_APPLICATION_ID: ${{ secrets.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID }}
+      NEXT_PUBLIC_ALGOLIA_INDEX_NAME: ${{ secrets.NEXT_PUBLIC_ALGOLIA_INDEX_NAME }}
+      NEXT_PUBLIC_ALGOLIA_API_KEY: ${{ secrets.NEXT_PUBLIC_ALGOLIA_API_KEY }}
+      NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
+      NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
-      - name: Install pnpm
-        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5
-      - name: Install Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
-      - name: Install dependencies
-        # --ignore-scripts: defense-in-depth alongside the release job. The
-        # test job exposes PROTOCOL_ENCRYPTION_KEY/IV and TEST_PROTOCOL_TOKEN
-        # via env; preventing lifecycle scripts from running here removes a
-        # path where a compromised transitive dep could read those secrets.
-        run: pnpm install --frozen-lockfile --ignore-scripts
-
-      - name: Download shared-consts build
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
         with:
-          name: shared-consts-dist
-          path: packages/shared-consts/dist
-
-      - name: Download protocol-validation build
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
-        with:
-          name: protocol-validation-dist
-          path: packages/protocol-validation/dist
-
-      - name: Install Playwright Chromium (for fresco-ui storybook tests)
-        run: pnpm --filter @codaco/fresco-ui exec playwright install --with-deps chromium
-
-      - name: Create .env file and run tests
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - id: deploy
+        name: Build and deploy docs preview
         run: |
-          echo "PROTOCOL_ENCRYPTION_KEY=${{ secrets.PROTOCOL_ENCRYPTION_KEY }}" > packages/protocol-validation/.env
-          echo "PROTOCOL_ENCRYPTION_IV=${{ secrets.PROTOCOL_ENCRYPTION_IV }}" >> packages/protocol-validation/.env
-          echo "GITHUB_TOKEN=${{ secrets.TEST_PROTOCOL_TOKEN }}" >> packages/protocol-validation/.env
-          pnpm test
+          pnpm exec turbo run build --filter=@codaco/documentation
+          cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
+          json=$(npx --yes netlify-cli@22 deploy --no-build \
+                   --filter=@codaco/documentation \
+                   --dir=apps/documentation/out \
+                   --site="${{ secrets.NETLIFY_SITE_ID_DOCS }}" \
+                   --alias="pr-${{ github.event.number }}" --json)
+          echo "$json" | jq .
+          url=$(echo "$json" | jq -r '.deploy_url')
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Comment deploy URL on PR
+        uses: actions/github-script@v7
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `🚀 documentation preview → ${process.env.URL}`,
+            });
+
+  deploy-docs-prod:
+    needs: [detect, quality, chromatic-fresco-ui, chromatic-interview, interview-e2e-report]
+    if: |
+      always() &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.detect.outputs.docs == 'true' &&
+      needs.quality.result == 'success' &&
+      needs.chromatic-fresco-ui.result != 'failure' &&
+      needs.chromatic-interview.result != 'failure' &&
+      needs.interview-e2e-report.result != 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NEXT_PUBLIC_ALGOLIA_APPLICATION_ID: ${{ secrets.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID }}
+      NEXT_PUBLIC_ALGOLIA_INDEX_NAME: ${{ secrets.NEXT_PUBLIC_ALGOLIA_INDEX_NAME }}
+      NEXT_PUBLIC_ALGOLIA_API_KEY: ${{ secrets.NEXT_PUBLIC_ALGOLIA_API_KEY }}
+      NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
+      NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - id: deploy
+        name: Build and deploy docs production
+        run: |
+          pnpm exec turbo run build --filter=@codaco/documentation
+          cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
+          json=$(npx --yes netlify-cli@22 deploy --no-build --prod \
+                   --filter=@codaco/documentation \
+                   --dir=apps/documentation/out \
+                   --site="${{ secrets.NETLIFY_SITE_ID_DOCS }}" --json)
+          echo "$json" | jq .
+          url=$(echo "$json" | jq -r '.deploy_url')
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+  deploy-architect-preview:
+    needs: [detect]
+    if: github.event_name == 'pull_request' && needs.detect.outputs.architect == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      VITE_FRESCO_PREVIEW_URL: ${{ secrets.VITE_FRESCO_PREVIEW_URL }}
+      VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
+      # Preview bundles ship without analytics so PR-preview interaction
+      # doesn't pollute the production PostHog project.
+      VITE_DISABLE_ANALYTICS: "true"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - id: deploy
+        name: Build and deploy architect-web preview
+        run: |
+          pnpm exec turbo run build --filter=@codaco/architect-web
+          json=$(npx --yes netlify-cli@22 deploy --no-build \
+                   --filter=@codaco/architect-web \
+                   --dir=apps/architect-web/dist \
+                   --site="${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}" \
+                   --alias="pr-${{ github.event.number }}" --json)
+          echo "$json" | jq .
+          url=$(echo "$json" | jq -r '.deploy_url')
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Comment deploy URL on PR
+        uses: actions/github-script@v7
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `🚀 architect-web preview → ${process.env.URL}`,
+            });
+
+  deploy-architect-prod:
+    needs: [detect, quality, chromatic-fresco-ui, chromatic-interview, interview-e2e-report]
+    if: |
+      always() &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.detect.outputs.architect == 'true' &&
+      needs.quality.result == 'success' &&
+      needs.chromatic-fresco-ui.result != 'failure' &&
+      needs.chromatic-interview.result != 'failure' &&
+      needs.interview-e2e-report.result != 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      VITE_FRESCO_PREVIEW_URL: ${{ secrets.VITE_FRESCO_PREVIEW_URL }}
+      VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
+      # Production bundle has analytics enabled (no VITE_DISABLE_ANALYTICS set).
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - id: deploy
+        name: Build and deploy architect-web production
+        run: |
+          pnpm exec turbo run build --filter=@codaco/architect-web
+          json=$(npx --yes netlify-cli@22 deploy --no-build --prod \
+                   --filter=@codaco/architect-web \
+                   --dir=apps/architect-web/dist \
+                   --site="${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}" --json)
+          echo "$json" | jq .
+          url=$(echo "$json" | jq -r '.deploy_url')
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+  docs-preview-checks:
+    # Run link-check + redirect-test against the preview URL only. Production
+    # deploys aren't gated on these — the equivalent checks have already
+    # passed against the preview before the change reached main.
+    needs: [deploy-docs-preview]
+    if: needs.deploy-docs-preview.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Dead-link check
+        env:
+          DOCS_URL: ${{ needs.deploy-docs-preview.outputs.url }}
+        run: npx --yes @jthrilly/dead-link-checker "$DOCS_URL" -v --yes
+      - name: Redirect test
+        working-directory: apps/documentation
+        env:
+          DEPLOYMENT_URL: ${{ needs.deploy-docs-preview.outputs.url }}
+        run: pnpm run test-redirects
+
+  chromatic-fresco-ui:
+    needs: [quality, detect]
+    if: needs.detect.outputs.fresco_ui_storybook == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - run: pnpm exec turbo run build-storybook --filter=@codaco/fresco-ui
+      - working-directory: packages/fresco-ui
+        env:
+          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_FRESCO_UI }}
+        run: npx --yes chromatic --exit-once-uploaded --auto-accept-changes main
+
+  chromatic-interview:
+    needs: [quality, detect]
+    if: needs.detect.outputs.interview_storybook == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - run: pnpm exec turbo run build-storybook --filter=@codaco/interview
+      - working-directory: packages/interview
+        env:
+          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_INTERVIEW }}
+        run: npx --yes chromatic --exit-once-uploaded --auto-accept-changes main
+
+  interview-e2e:
+    needs: [quality, detect]
+    if: needs.detect.outputs.interview_e2e == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      slug: ${{ steps.meta.outputs.slug }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - id: meta
+        env:
+          REF: ${{ github.head_ref || github.ref_name }}
+        run: |
+          SLUG=$(printf '%s' "$REF" | tr '/' '-' | tr '[:upper:]' '[:lower:]')
+          # Strip any chars that would break GitHub Pages URLs or filesystem paths.
+          SLUG=$(printf '%s' "$SLUG" | tr -c '[:alnum:]-_.' '-')
+          SLUG=${SLUG:-unknown}
+          printf 'slug=%s\n' "$SLUG" >> "$GITHUB_OUTPUT"
+      - name: Run E2E tests
+        run: ./packages/interview/e2e/scripts/run.sh
+      - name: Reclaim artifact ownership
+        if: always()
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" \
+            packages/interview/e2e/playwright-report \
+            packages/interview/e2e/test-results 2>/dev/null || true
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: interview-playwright-report
+          path: packages/interview/e2e/playwright-report/
+          if-no-files-found: warn
+          retention-days: 14
+
+  interview-e2e-report:
+    needs: interview-e2e
+    if: ${{ !cancelled() && needs.interview-e2e.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      pull-requests: write
+    concurrency:
+      group: interview-e2e-pages-deploy
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: https://complexdatacollective.github.io/network-canvas-monorepo/interview-e2e/${{ needs.interview-e2e.outputs.slug }}/
+    steps:
+      - name: Download new report
+        uses: actions/download-artifact@v4
+        with:
+          name: interview-playwright-report
+          path: new-report
+      - name: Fetch existing pages content
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: existing-pages
+        continue-on-error: true
+      - name: Merge report into branch subdirectory
+        env:
+          SLUG: ${{ needs.interview-e2e.outputs.slug }}
+        run: |
+          mkdir -p merged
+          if [ -d existing-pages ] && [ "$(ls -A existing-pages 2>/dev/null)" ]; then
+            cp -r existing-pages/. merged/
+            rm -rf merged/.git
+          fi
+          rm -rf "merged/interview-e2e/$SLUG"
+          mkdir -p "merged/interview-e2e/$SLUG"
+          cp -r new-report/. "merged/interview-e2e/$SLUG/"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: merged/
+      - uses: actions/deploy-pages@v4
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          SLUG: ${{ needs.interview-e2e.outputs.slug }}
+          OUTCOME: ${{ needs.interview-e2e.result }}
+        with:
+          script: |
+            const { SLUG, OUTCOME } = process.env;
+            const url = `https://complexdatacollective.github.io/network-canvas-monorepo/interview-e2e/${SLUG}/`;
+            const emoji = OUTCOME === 'success' ? '✅' : '❌';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `${emoji} Interview E2E — **${OUTCOME}**\n\n📊 [View report](${url})`,
+            });
 
   release:
+    needs: quality
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: npm-publish
     permissions:
       contents: write
       pull-requests: write
       id-token: write
-    # Only run on main branch pushes (not PRs) and only if lint and test jobs succeed
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [setup, lint, test]
-    runs-on: ubuntu-latest
-    environment: npm-publish
     env:
-      NEXT_PUBLIC_DOCS_PATH: "docs"
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
     steps:
-    - name: Check out the code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
-      with:
-        # Don't leave GITHUB_TOKEN in the local git config after checkout.
-        # changesets/action reads GITHUB_TOKEN from its env block at line ~189;
-        # nothing else in this job needs the token in git config.
-        persist-credentials: false
-    - name: Install pnpm
-      uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5
-    - name: Set up Node.js
-      uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
-      with:
-        node-version-file: '.nvmrc'
-        cache: 'pnpm'
-    - name: Install dependencies
-      # --ignore-scripts: this job holds id-token: write and the npm publish
-      # credential, so refuse to execute lifecycle scripts from any (potentially
-      # compromised) transitive dep. Explicit builds run as their own steps below.
-      run: pnpm install --frozen-lockfile --ignore-scripts
-
-    - name: Download shared-consts build
-      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
-      with:
-        name: shared-consts-dist
-        path: packages/shared-consts/dist
-
-    - name: Download protocol-validation build
-      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
-      with:
-        name: protocol-validation-dist
-        path: packages/protocol-validation/dist
-
-    # Build only packages with changesets
-    - name: Build changed packages only
-      run: pnpm run build:changed-packages
-
-    - name: Create Release Pull Request
-      uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b  # v1
-      with:
-        # command used to version packages. Lint and fix to avoid errors caused
-        # by versioning
-        version: pnpm run version-packages
-        # Runs changesets publish. versioning is done by changesets action
-        publish: pnpm run publish-packages
-        createGithubReleases: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        NPM_CONFIG_PROVENANCE: true
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - name: Build all publishable packages
+        # Only build the workspaces under packages/ — those are what changesets
+        # publishes to npm. Apps (./apps/*) are private:true and don't need to
+        # build successfully here; their deploy pipeline is per-app deploy jobs.
+        run: pnpm exec turbo run build --filter='./packages/*'
+      - uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b  # v1
+        with:
+          version: pnpm run version-packages
+          publish: pnpm run publish-packages
+          createGithubReleases: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true

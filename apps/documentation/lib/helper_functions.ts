@@ -4,9 +4,12 @@ import { join, sep } from "node:path";
 import type matter from "gray-matter";
 import type { Locale, MetadataFile, SidebarFolder, SidebarPage, SidebarProject } from "~/app/types";
 import { MetadataFileSchema } from "~/app/types";
-import { env } from "~/env";
 
-export const relativePathToDocs = join(process.cwd(), env.NEXT_PUBLIC_DOCS_PATH);
+// Path (relative to apps/documentation/) where markdown source files live.
+// Change here to relocate; consumers should import this rather than hard-coding.
+export const DOCS_PATH = "docs";
+
+export const relativePathToDocs = join(process.cwd(), DOCS_PATH);
 
 /**
  * Given a path, return an array for each path segment, inserting 'children'
