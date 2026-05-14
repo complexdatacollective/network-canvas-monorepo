@@ -41,17 +41,47 @@ jobs:
           node-version-file: '.nvmrc'
       - id: flags
         env:
-          # Manual runs may set force_run=true to bypass turbo-ignore and run
+          # Manual runs may set force_run=true to bypass detection and run
           # every conditional job (replaces the old per-workflow rerun buttons).
           FORCE_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.force_run == true }}
         run: |
-          # turbo-ignore: exit 0 = "no changes" -> flag false; exit 1 = "changes" -> flag true.
+          # Determine the comparison base — the commit immediately before the
+          # one we're checking. We DON'T use turbo-ignore because it includes
+          # global config (turbo.json, lockfile, root configs) in its hash, so
+          # any unrelated workflow tweak invalidates every package's hash.
+          #
+          # For PRs we want push-to-push semantics. GH Actions checks out a
+          # synthetic merge commit; HEAD^2 is the actual PR tip, HEAD^2^1 is
+          # the prior commit on the source branch.
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            CURR=$(git rev-parse HEAD^2 2>/dev/null || git rev-parse HEAD)
+            PREV=$(git rev-parse "${CURR}^1" 2>/dev/null || true)
+          else
+            CURR=$(git rev-parse HEAD)
+            PREV=$(git rev-parse HEAD^1 2>/dev/null || true)
+          fi
+          echo "comparing $PREV..$CURR"
+
+          # flag <package>: true if any file in the package's workspace dep
+          # tree changed between PREV and CURR, false otherwise.
           flag() {
+            local pkg=$1
             if [[ "$FORCE_RUN" == "true" ]]; then
-              echo true
-              return
+              echo true; return
             fi
-            if npx --yes turbo-ignore@2.9.6 "$1" --fallback=HEAD^1 >/dev/null 2>&1; then
+            # First commit on a branch (no parent reachable) — be conservative
+            # and run everything.
+            if [[ -z "$PREV" ]]; then
+              echo true; return
+            fi
+            local paths
+            paths=$(npx --yes turbo@2.9.6 ls --filter="${pkg}..." --output=json 2>/dev/null \
+              | jq -r '.packages.items[].path')
+            local pathspec=()
+            while IFS= read -r p; do
+              [[ -n "$p" ]] && pathspec+=("$p")
+            done <<<"$paths"
+            if git diff --quiet "$PREV" "$CURR" -- "${pathspec[@]}"; then
               echo false
             else
               echo true
