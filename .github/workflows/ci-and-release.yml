@@ -133,8 +133,16 @@ jobs:
   #   --dir:         pre-built directory to upload
 
   deploy-docs-preview:
-    needs: [detect]
-    if: github.event_name == 'pull_request' && needs.detect.outputs.docs == 'true'
+    # needs:quality (not just detect) so quality finishes first and owns the
+    # .turbo cache slot; deploy reads it back instead of racing. The
+    # `always()` and `result != 'cancelled'` clauses mean a quality failure
+    # doesn't block the preview deploy.
+    needs: [detect, quality]
+    if: |
+      always() &&
+      github.event_name == 'pull_request' &&
+      needs.detect.outputs.docs == 'true' &&
+      needs.quality.result != 'cancelled'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -225,8 +233,14 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
   deploy-architect-preview:
-    needs: [detect]
-    if: github.event_name == 'pull_request' && needs.detect.outputs.architect == 'true'
+    # Same shape as deploy-docs-preview: wait for quality (cache + write-slot)
+    # but don't gate on its success.
+    needs: [detect, quality]
+    if: |
+      always() &&
+      github.event_name == 'pull_request' &&
+      needs.detect.outputs.architect == 'true' &&
+      needs.quality.result != 'cancelled'
     runs-on: ubuntu-latest
     permissions:
       contents: read
