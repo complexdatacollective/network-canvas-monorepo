@@ -4,7 +4,7 @@
 	"version": "0.1.0",
 	"description": "Modern Network Canvas Interviewer — dashboard, runner, and exporter. Builds for web, desktop (Electron) and tablet (Capacitor).",
 	"type": "module",
-	"main": "dist/electron/main.js",
+	"main": "out/main/main.js",
 	"scripts": {
 		"dev": "vite",
 		"build": "vite build",

@@ -38,6 +38,11 @@ export default defineConfig({
 		},
 		build: {
 			outDir: "out/renderer",
+			rollupOptions: {
+				input: {
+					index: resolve(rootDir, "index.html"),
+				},
+			},
 		},
 	},
 });

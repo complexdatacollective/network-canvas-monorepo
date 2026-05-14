@@ -22,10 +22,13 @@ function createMainWindow() {
 		minHeight: 640,
 		title: "Network Canvas Interviewer",
 		webPreferences: {
-			preload: join(__dirname, "../preload/preload.js"),
+			// electron-vite emits the preload as ESM (.mjs) because the package
+			// is "type": "module". `sandbox: false` is required for ESM preload
+			// scripts in Electron >= 28.
+			preload: join(__dirname, "../preload/preload.mjs"),
 			contextIsolation: true,
 			nodeIntegration: false,
-			sandbox: true,
+			sandbox: false,
 		},
 	});
 

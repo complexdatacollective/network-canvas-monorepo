@@ -54,6 +54,7 @@ onlyBuiltDependencies:
   - '@clerk/shared'
   - bufferutil
   - core-js
+  - electron
   - esbuild
   - sharp
   - '@parcel/watcher'
