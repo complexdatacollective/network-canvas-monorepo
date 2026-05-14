@@ -3,6 +3,7 @@ import { posthog } from "~/analytics";
 import { isPreviewMessage, type PreviewPayload } from "./messages";
 
 const HANDSHAKE_TIMEOUT_MS = 10_000;
+const POPUP_CLOSED_POLL_MS = 1_000;
 
 type LaunchOptions = {
 	protocol: CurrentProtocol;
@@ -10,12 +11,12 @@ type LaunchOptions = {
 	useSyntheticData: boolean;
 };
 
-export function launchPreview({ protocol, startStage, useSyntheticData }: LaunchOptions): Promise<void> {
-	const popup = window.open("/preview.html", "_blank");
+type LaunchPreviewResult = { kind: "delivered" } | { kind: "popup-blocked" };
+
+export function launchPreview({ protocol, startStage, useSyntheticData }: LaunchOptions): Promise<LaunchPreviewResult> {
+	const popup = window.open("/preview", "_blank");
 	if (!popup) {
-		return Promise.reject(
-			new Error("Your browser blocked the preview popup. Allow popups for this site and try again."),
-		);
+		return Promise.resolve({ kind: "popup-blocked" });
 	}
 
 	posthog.capture("protocol_previewed", {
@@ -33,10 +34,16 @@ export function launchPreview({ protocol, startStage, useSyntheticData }: Launch
 		useSyntheticData,
 	};
 
-	return new Promise<void>((resolve, reject) => {
+	return new Promise<LaunchPreviewResult>((resolve, reject) => {
+		// The listener stays registered for the popup's lifetime so a reloaded
+		// preview tab can re-request the payload. Cleanup happens when the popup
+		// closes or when the initial handshake times out.
+		let initialDelivered = false;
+
 		const cleanup = () => {
 			window.removeEventListener("message", onMessage);
-			clearTimeout(timeoutId);
+			clearTimeout(initialTimeoutId);
+			clearInterval(closedPollId);
 		};
 
 		const onMessage = (event: MessageEvent) => {
@@ -46,14 +53,22 @@ export function launchPreview({ protocol, startStage, useSyntheticData }: Launch
 			if (event.data.type !== "preview:ready") return;
 
 			popup.postMessage(payload, expectedOrigin);
-			cleanup();
-			resolve();
+			if (!initialDelivered) {
+				initialDelivered = true;
+				clearTimeout(initialTimeoutId);
+				resolve({ kind: "delivered" });
+			}
 		};
 
-		const timeoutId = setTimeout(() => {
+		const initialTimeoutId = setTimeout(() => {
+			if (initialDelivered) return;
 			cleanup();
 			reject(new Error("Preview tab didn't load in time. Close it and try again."));
 		}, HANDSHAKE_TIMEOUT_MS);
+
+		const closedPollId = setInterval(() => {
+			if (popup.closed) cleanup();
+		}, POPUP_CLOSED_POLL_MS);
 
 		window.addEventListener("message", onMessage);
 	});

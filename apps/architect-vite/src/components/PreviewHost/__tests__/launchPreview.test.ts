@@ -47,7 +47,7 @@ describe("launchPreview", () => {
 		const protocol = makeProtocol();
 		const promise = launchPreview({ protocol, startStage: 2, useSyntheticData: true });
 
-		expect(openSpy).toHaveBeenCalledWith("/preview.html", "_blank");
+		expect(openSpy).toHaveBeenCalledWith("/preview", "_blank");
 
 		postReadyFromSource(popup);
 		await promise;
@@ -72,11 +72,11 @@ describe("launchPreview", () => {
 		});
 	});
 
-	it("rejects with a popup-blocked error when window.open returns null", async () => {
+	it("resolves with popup-blocked result when window.open returns null", async () => {
 		openSpy.mockReturnValueOnce(null);
-		await expect(launchPreview({ protocol: makeProtocol(), startStage: 0, useSyntheticData: true })).rejects.toThrow(
-			/popup/i,
-		);
+		await expect(launchPreview({ protocol: makeProtocol(), startStage: 0, useSyntheticData: true })).resolves.toEqual({
+			kind: "popup-blocked",
+		});
 	});
 
 	it("ignores ready messages from a different source", async () => {
@@ -108,5 +108,18 @@ describe("launchPreview", () => {
 		const expectation = expect(promise).rejects.toThrow(/didn't load/i);
 		await vi.advanceTimersByTimeAsync(10_000);
 		await expectation;
+	});
+
+	it("redelivers the payload on a subsequent preview:ready (handles preview-tab reload)", async () => {
+		const promise = launchPreview({ protocol: makeProtocol(), startStage: 0, useSyntheticData: true });
+
+		postReadyFromSource(popup);
+		await promise;
+		expect(popup.postMessage).toHaveBeenCalledTimes(1);
+
+		// Preview tab refreshed: posts ready again. The editor's listener should still
+		// be active and re-send the payload.
+		postReadyFromSource(popup);
+		expect(popup.postMessage).toHaveBeenCalledTimes(2);
 	});
 });

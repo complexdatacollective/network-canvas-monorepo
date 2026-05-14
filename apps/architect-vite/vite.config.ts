@@ -25,7 +25,7 @@ export default defineConfig({
 		rollupOptions: {
 			input: {
 				main: resolve(rootDir, "index.html"),
-				preview: resolve(rootDir, "preview.html"),
+				preview: resolve(rootDir, "preview/index.html"),
 			},
 		},
 	},

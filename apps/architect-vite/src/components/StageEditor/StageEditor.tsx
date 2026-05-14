@@ -147,7 +147,16 @@ const StageEditor = (props: StageEditorProps) => {
 		const startStage = stageIndex !== -1 ? stageIndex : (insertAtIndex ?? protocol.stages.length);
 		setIsOpeningPreview(true);
 		try {
-			await launchPreview({ protocol: previewProtocol, startStage, useSyntheticData });
+			const result = await launchPreview({ protocol: previewProtocol, startStage, useSyntheticData });
+			if (result.kind === "popup-blocked") {
+				dispatch(
+					dialogActions.openDialog({
+						type: "Notice",
+						title: "Preview popup blocked",
+						message: "Your browser blocked the preview popup. Allow popups for this site, then click Preview again.",
+					}),
+				);
+			}
 		} catch (error) {
 			dispatch(
 				dialogActions.openDialog({

@@ -1,5 +1,5 @@
 import type { InterviewPayload } from "@codaco/interview";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { shellMock } = vi.hoisted(() => ({ shellMock: vi.fn() }));
@@ -115,5 +115,36 @@ describe("PreviewHost", () => {
 		Object.defineProperty(window, "opener", { value: null, configurable: true });
 		render(<PreviewHost />);
 		expect(screen.getByText(/preview has ended/i)).toBeInTheDocument();
+	});
+
+	it("shows a timeout fallback if the payload never arrives", () => {
+		vi.useFakeTimers();
+		try {
+			render(<PreviewHost />);
+			expect(screen.getByText(/loading preview/i)).toBeInTheDocument();
+			act(() => {
+				vi.advanceTimersByTime(5_000);
+			});
+			expect(screen.getByText(/couldn't reach the architect tab/i)).toBeInTheDocument();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("re-posts preview:ready when the user clicks Try again", () => {
+		vi.useFakeTimers();
+		try {
+			render(<PreviewHost />);
+			act(() => {
+				vi.advanceTimersByTime(5_000);
+			});
+			openerStub.postMessage.mockClear();
+
+			fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+
+			expect(openerStub.postMessage).toHaveBeenCalledWith({ type: "preview:ready" }, window.location.origin);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

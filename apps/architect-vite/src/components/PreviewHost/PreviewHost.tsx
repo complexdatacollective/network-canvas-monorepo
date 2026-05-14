@@ -11,6 +11,8 @@ import { currentProtocolToPayload } from "./currentProtocolToPayload";
 import { isPreviewMessage, type PreviewPayload } from "./messages";
 import { useAssetResolver } from "./useAssetResolver";
 
+const PAYLOAD_TIMEOUT_MS = 5_000;
+
 const noopSync = async () => {};
 const noopFinish = async () => {};
 
@@ -32,13 +34,17 @@ function buildSession(payload: PreviewPayload): SessionPayload {
 export function PreviewHost() {
 	const [interviewPayload, setInterviewPayload] = useState<InterviewPayload | null>(null);
 	const [currentStep, setCurrentStep] = useState(0);
+	const [timedOut, setTimedOut] = useState(false);
+	const [retryNonce, setRetryNonce] = useState(0);
 	const onRequestAsset = useAssetResolver();
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: retryNonce is the deliberate retrigger key
 	useEffect(() => {
 		const opener = window.opener as Window | null;
 		if (!opener) return;
 
 		const expectedOrigin = window.location.origin;
+		let received = false;
 
 		const onMessage = (event: MessageEvent) => {
 			if (event.source !== opener) return;
@@ -46,17 +52,27 @@ export function PreviewHost() {
 			if (!isPreviewMessage(event.data)) return;
 			if (event.data.type !== "preview:payload") return;
 			const previewPayload: PreviewPayload = event.data;
+			received = true;
 			setInterviewPayload({
 				protocol: currentProtocolToPayload(previewPayload.protocol),
 				session: buildSession(previewPayload),
 			});
 			setCurrentStep(previewPayload.startStage);
+			setTimedOut(false);
 		};
 
 		window.addEventListener("message", onMessage);
 		opener.postMessage({ type: "preview:ready" }, expectedOrigin);
-		return () => window.removeEventListener("message", onMessage);
-	}, []);
+
+		const timeoutId = setTimeout(() => {
+			if (!received) setTimedOut(true);
+		}, PAYLOAD_TIMEOUT_MS);
+
+		return () => {
+			window.removeEventListener("message", onMessage);
+			clearTimeout(timeoutId);
+		};
+	}, [retryNonce]);
 
 	if (!window.opener) {
 		return (
@@ -66,6 +82,30 @@ export function PreviewHost() {
 				<button type="button" onClick={() => window.close()} className="rounded-md bg-accent px-4 py-2 text-white">
 					Close tab
 				</button>
+			</div>
+		);
+	}
+
+	if (!interviewPayload && timedOut) {
+		return (
+			<div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
+				<h1 className="text-2xl font-semibold">Couldn't reach the Architect tab</h1>
+				<p>The preview couldn't be loaded. The Architect tab may be closed or no longer responding.</p>
+				<div className="flex gap-3">
+					<button
+						type="button"
+						onClick={() => {
+							setTimedOut(false);
+							setRetryNonce((n) => n + 1);
+						}}
+						className="rounded-md bg-accent px-4 py-2 text-white"
+					>
+						Try again
+					</button>
+					<button type="button" onClick={() => window.close()} className="rounded-md bg-input-active px-4 py-2">
+						Close tab
+					</button>
+				</div>
 			</div>
 		);
 	}
