@@ -1,0 +1,73 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import", "promise"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "options": { "typeAware": true },
+  "env": { "browser": true, "node": true, "es2024": true },
+  "rules": {
+    "no-console": "warn",
+    "no-process-env": "error",
+    "no-unreachable": "error",
+
+    "typescript/consistent-type-definitions": ["error", "type"],
+    "typescript/consistent-type-imports": [
+      "warn",
+      { "prefer": "type-imports", "fixStyle": "inline-type-imports" }
+    ],
+    "typescript/no-unused-vars": [
+      "error",
+      { "caughtErrors": "none", "argsIgnorePattern": "^_" }
+    ],
+    "typescript/no-explicit-any": "error",
+    "typescript/switch-exhaustiveness-check": "error",
+    "typescript/no-misused-promises": ["error", { "checksVoidReturn": false }],
+    "typescript/no-inferrable-types": "error",
+
+    "import/no-cycle": "error",
+    "import/no-duplicates": "warn",
+    "import/no-anonymous-default-export": "off"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.js", "**/*.jsx", "**/*.mjs", "**/*.cjs"],
+      "plugins": ["typescript", "unicorn", "oxc", "import", "promise"]
+    },
+    {
+      "files": ["**/*.d.ts"],
+      "rules": { "typescript/consistent-type-definitions": "off" }
+    },
+    {
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/__tests__/**/*.ts",
+        "**/__tests__/**/*.tsx"
+      ],
+      "rules": { "typescript/unbound-method": "off" }
+    },
+    {
+      "files": [
+        "**/scripts/**",
+        "**/vite.config.*",
+        "**/vitest.config.*",
+        "**/next.config.*",
+        "tooling/**"
+      ],
+      "rules": { "no-process-env": "off", "no-console": "off" }
+    }
+  ],
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/.next/**",
+    "**/out/**",
+    "**/coverage/**",
+    "**/.turbo/**",
+    "**/public/**/*.*",
+    "**/worker-configuration.d.ts"
+  ]
+}
