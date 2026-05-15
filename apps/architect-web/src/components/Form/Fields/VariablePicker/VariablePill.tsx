@@ -31,31 +31,39 @@ type BaseVariablePillProps = {
 	type: VariableType;
 	children: React.ReactNode;
 	width?: string;
+	summary?: boolean;
 };
 
-const BaseVariablePill = React.forwardRef<HTMLDivElement, BaseVariablePillProps>(({ type, children, width }, ref) => {
-	const icon = useMemo(() => getIconForType(type), [type]);
+const BaseVariablePill = React.forwardRef<HTMLDivElement, BaseVariablePillProps>(
+	({ type, children, width, summary }, ref) => {
+		const icon = useMemo(() => getIconForType(type), [type]);
 
-	return (
-		// `variable-pill` marker — hook for the protocol-summary.css cascade
-		// that overrides shadow color and preview margin.
-		<motion.div
-			className="variable-pill inline-flex h-(--space-2xl) flex-nowrap overflow-hidden rounded-full bg-platinum w-(--variable-pill-width,20rem) shadow-[0_0_var(--space-sm)_var(--variable-pill-shadow-color,transparent)]"
-			style={width ? ({ "--variable-pill-width": width } as React.CSSProperties) : undefined}
-			ref={ref}
-		>
-			<div
+		return (
+			// `variable-pill` marker — hook for two remaining same-area cascades:
+			// `VariablePicker.tsx` (mb on nested pills) and `PreviewRule.tsx` (zoom).
+			<motion.div
 				className={cx(
-					"flex shrink-0 basis-(--space-2xl) items-center justify-center [&_.icon]:w-(--space-lg)",
-					ICON_BACKGROUND_BY_TYPE[type],
+					"variable-pill inline-flex h-(--space-2xl) flex-nowrap overflow-hidden rounded-full w-(--variable-pill-width,20rem) shadow-[0_0_var(--space-sm)_var(--variable-pill-shadow-color,transparent)]",
+					summary
+						? "bg-white [zoom:0.8] max-w-[24rem] m-[0.5rem] [--variable-pill-shadow-color:var(--color-platinum-dark)]"
+						: "bg-platinum",
 				)}
+				style={width ? ({ "--variable-pill-width": width } as React.CSSProperties) : undefined}
+				ref={ref}
 			>
-				<img className="icon" src={icon} alt={type} />
-			</div>
-			<div className="flex flex-1 w-[calc(100%-var(--space-2xl))] items-center justify-between">{children}</div>
-		</motion.div>
-	);
-});
+				<div
+					className={cx(
+						"flex shrink-0 basis-(--space-2xl) items-center justify-center [&_.icon]:w-(--space-lg)",
+						ICON_BACKGROUND_BY_TYPE[type],
+					)}
+				>
+					<img className="icon" src={icon} alt={type} />
+				</div>
+				<div className="flex flex-1 w-[calc(100%-var(--space-2xl))] items-center justify-between">{children}</div>
+			</motion.div>
+		);
+	},
+);
 
 type SimpleVariablePillProps = {
 	label: string;

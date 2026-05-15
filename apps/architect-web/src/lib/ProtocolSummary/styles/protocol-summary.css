@@ -1,11 +1,9 @@
 /* Protocol summary globals — print page setup, screen page-break visualisation,
- * print-mode body overrides, and the cross-area cascade into VariablePill (whose
- * `variable-pill` BEM marker was preserved by slice #7 specifically for this hook).
- *
- * Component-level rules were migrated to Tailwind utilities in slice #18; what
- * remains here is the @page rule, the body-level @media print/screen blocks for
- * the `.print` document mode, and the `.protocol-summary` container's print
- * styling — none of which can be expressed as classNames on JSX. */
+ * and print-mode body overrides. Component-level rules were migrated to
+ * Tailwind utilities; what remains here is the @page rule, the body-level
+ * @media print/screen blocks for the `.print` document mode, and the
+ * `.protocol-summary` container's print styling — none of which can be
+ * expressed as classNames on JSX. */
 
 :root {
 	--margin: 1.5cm;
@@ -93,12 +91,4 @@
 	.protocol-summary [data-print="no"] {
 		display: none;
 	}
-}
-
-.protocol-summary .variable-pill {
-	zoom: 0.8;
-	max-width: 24rem;
-	margin: 0.5rem;
-	background: white;
-	--variable-pill-shadow-color: var(--color-platinum-dark);
 }
