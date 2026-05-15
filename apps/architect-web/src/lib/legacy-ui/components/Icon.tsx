@@ -6,18 +6,11 @@ import icons from "../utils/getIcon";
 type IconProps = {
 	name: string;
 	className?: string;
-	color?: string;
 	style?: React.CSSProperties;
 } & React.HTMLAttributes<HTMLElement>;
 
-const Icon = ({ color = "", name, className = "", style = {}, ...rest }: IconProps) => {
-	const iconClassNames = cx(
-		{
-			icon: true,
-			[`icon--${color}`]: !!color,
-		},
-		[className],
-	);
+const Icon = ({ name, className = "", style = {}, ...rest }: IconProps) => {
+	const iconClassNames = cx("icon", className);
 
 	const IconComponent = useMemo(() => icons(name), [name]);
 

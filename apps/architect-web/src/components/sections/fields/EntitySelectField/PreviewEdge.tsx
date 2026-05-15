@@ -10,9 +10,15 @@ type PreviewEdgeProps = {
 };
 
 const PreviewEdge = ({ label, color, onClick = null, selected = false, surface = 1 }: PreviewEdgeProps) => {
+	const wrapperStyle = {
+		"--edge-color": `var(--${color})`,
+		"--icon-tone-primary": `hsl(var(--${color}-dark))`,
+		"--icon-tone-secondary": `hsl(var(--${color}))`,
+	} as React.CSSProperties;
+
 	const content = (
 		<>
-			<Icon name="links" color={color} />
+			<Icon name="links" />
 			{label}
 		</>
 	);
@@ -28,7 +34,7 @@ const PreviewEdge = ({ label, color, onClick = null, selected = false, surface =
 			<button
 				type="button"
 				className={cx(baseClasses, surfaceClasses, "clickable")}
-				style={{ "--edge-color": `var(--${color})` } as React.CSSProperties}
+				style={wrapperStyle}
 				onClick={onClick}
 				aria-label={`Select edge ${label}`}
 			>
@@ -40,7 +46,7 @@ const PreviewEdge = ({ label, color, onClick = null, selected = false, surface =
 	return (
 		<div
 			className={cx(baseClasses, surfaceClasses, selected && "border-(--edge-color) pointer-events-none")}
-			style={{ "--edge-color": `var(--${color})` } as React.CSSProperties}
+			style={wrapperStyle}
 		>
 			{content}
 		</div>

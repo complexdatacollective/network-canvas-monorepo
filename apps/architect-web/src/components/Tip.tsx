@@ -10,8 +10,9 @@ type TipProps = {
 };
 
 const typeClasses: Record<NonNullable<TipProps["type"]>, string> = {
-	// `cls-3`/`cls-4` target paths inside the info icon SVG.
-	info: "bg-info/25 text-navy-taupe [&_.cls-3]:fill-white [&_.cls-4]:fill-platinum",
+	// Swap the info icon's "speech bubble" tones for a lighter pair so the icon
+	// reads against the tinted Tip background. See info.svg.react.tsx.
+	info: "bg-info/25 text-navy-taupe [--info-fill-primary:var(--color-white)] [--info-fill-shadow:var(--color-platinum)]",
 	warning: "bg-warning/10",
 	error: "bg-error/10",
 };
@@ -43,7 +44,7 @@ const Tip = ({ type = "info", icon = true, children = null }: TipProps) => {
 						})
 					}
 				>
-					{/* Inline size beats `.icon[name="info"]` in legacy-ui icons.css (5rem). */}
+					{/* Inline size beats the default 5rem `.icon[name="info"]` rule in tailwind.css. */}
 					<Icon
 						name={type}
 						style={{

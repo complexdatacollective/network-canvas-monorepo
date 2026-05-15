@@ -14,7 +14,7 @@ import ExternalLink from "../../../ExternalLink";
 import { SimpleVariablePill } from "./VariablePill";
 
 const EMPTY_CLASSES =
-	"flex grow basis-full items-center rounded px-(--space-lg) py-(--space-md) [&_.icon]:mr-(--space-xs) [&_.icon]:shrink-0 [&_.icon[name=info]_.cls-3]:fill-divider [&_.icon[name=warning]_.cls-1]:fill-divider";
+	"flex grow basis-full items-center rounded px-(--space-lg) py-(--space-md) [&_.icon]:mr-(--space-xs) [&_.icon]:shrink-0 [--info-fill-primary:var(--color-divider)] [--warning-body:var(--color-divider)]";
 
 type ListItemProps = {
 	disabled?: boolean;
@@ -114,7 +114,7 @@ const Divider = ({ legend }: DividerProps) => (
 );
 
 const CREATE_NEW_CLASSES =
-	"flex items-center justify-center px-(--space-md) py-(--space-xs) font-medium text-current [&_.icon]:h-(--space-md) [&_.icon]:mr-(--space-md) [&_.icon[name=warning]_.cls-1]:fill-warning [&_.icon[name=warning]_.cls-2]:fill-warning [&_.icon[name=warning]_.cls-3]:fill-white [&_.icon[name=warning]_.cls-4]:fill-white";
+	"flex items-center justify-center px-(--space-md) py-(--space-xs) font-medium text-current [&_.icon]:h-(--space-md) [&_.icon]:mr-(--space-md) [--warning-body:var(--color-warning)] [--warning-body-shadow:var(--color-warning)] [--warning-mark:var(--color-white)] [--warning-mark-shadow:var(--color-white)]";
 
 type VariableSpotlightProps = {
 	open: boolean;
@@ -239,7 +239,7 @@ const VariableSpotlight = ({
 										removeSelected={() => setCursor(0)}
 									>
 										<div className={CREATE_NEW_CLASSES}>
-											<Icon name="add" color="charcoal" />
+											<Icon name="add" />
 											<span>
 												Create new variable called &quot;
 												{filterTerm}
@@ -386,10 +386,11 @@ const VariableSpotlight = ({
 					type: "spring",
 				}}
 			>
-				<header className="shrink-0 grow-0 basis-(--space-2xl) px-(--space-lg) py-(--space-md) [&_.form-field]:mb-0 [&_.form-field-container]:mb-0">
+				<header className="shrink-0 grow-0 basis-(--space-2xl) px-(--space-lg) py-(--space-md) [&_.form-field]:mb-0">
 					<Search
 						autoFocus
 						placeholder={disallowCreation ? "Find a variable..." : "Create or find a variable..."}
+						wrapperClassName="mb-0"
 						input={{
 							value: filterTerm,
 							onChange: handleFilter,

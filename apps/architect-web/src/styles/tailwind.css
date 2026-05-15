@@ -220,6 +220,14 @@
 		--ord-color-seq-7-dark: var(--paradise-pink-dark);
 		--ord-color-seq-8: var(--mustard);
 		--ord-color-seq-8-dark: var(--mustard-dark);
+
+		--icon-dimension-base: 2.5rem;
+		--icon-small-width: var(--icon-dimension-base);
+		--icon-small-height: var(--icon-dimension-base);
+		--icon-medium-width: calc(var(--icon-dimension-base) * 2);
+		--icon-medium-height: calc(var(--icon-dimension-base) * 2);
+		--icon-large-width: calc(var(--icon-dimension-base) * 4);
+		--icon-large-height: calc(var(--icon-dimension-base) * 4);
 	}
 }
 
@@ -264,6 +272,22 @@
 	p {
 		@apply text-base leading-normal;
 		margin: 1em 0;
+	}
+
+	.icon[name="error"],
+	.icon[name="info"],
+	.icon[name="warning"],
+	.icon[name="edit"] {
+		height: var(--icon-medium-height);
+		width: var(--icon-medium-width);
+	}
+
+	.icon[name="menu-sociogram"],
+	.icon[name="menu-map"],
+	.icon[name="menu-custom-interface"],
+	.icon[name="links"] {
+		height: var(--icon-small-height);
+		width: var(--icon-small-width);
 	}
 }
 

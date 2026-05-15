@@ -37,9 +37,26 @@ const renderIcon = (entity: string, color?: string, shape: NodeShape = "circle",
 			// a NodeColorSequence value when entity === "node".
 			return <Node label="" color={color as NodeColorSequence | undefined} shape={shape} size={nodeSizeMap[size]} />;
 		case "edge":
-			return <Icon name="links" color={color} />;
+			return (
+				<Icon
+					name="links"
+					style={
+						color
+							? ({
+									"--icon-tone-primary": `hsl(var(--${color}-dark))`,
+									"--icon-tone-secondary": `hsl(var(--${color}))`,
+								} as React.CSSProperties)
+							: undefined
+					}
+				/>
+			);
 		case "asset":
-			return <Icon name="menu-sociogram" color="cerulean-blue" />;
+			return (
+				<Icon
+					name="menu-sociogram"
+					className="[--icon-tone-primary:var(--color-cerulean-blue-dark)] [--icon-tone-secondary:var(--color-cerulean-blue)]"
+				/>
+			);
 		default:
 			return null;
 	}
