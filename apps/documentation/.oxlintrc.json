@@ -1,0 +1,9 @@
+{
+  "extends": [
+    "../../.oxlintrc.json",
+    "../../tooling/oxlint/react.json",
+    "../../tooling/oxlint/tailwind.json"
+  ],
+  "plugins": ["nextjs"],
+  "rules": { "nextjs/no-img-element": "off" }
+}
