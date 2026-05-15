@@ -69,8 +69,8 @@ pnpm knip
 pnpm typecheck
 ```
 
-- Biome config: tabs for indentation, 120 char line width, double quotes
-- Pre-commit hooks automatically format staged files
+- Oxlint + oxfmt: 2-space indentation, 80 char line width, single quotes
+- Pre-commit hooks automatically lint and format staged files
 
 ### Cloudflare Workers
 
@@ -190,10 +190,11 @@ Network Canvas uses a protocol-based system where:
 
 ### Code Style
 
-- Uses Biome for formatting and linting with tab indentation and 120-character line width
+- Uses oxlint for linting and oxfmt for formatting
 - Enforces unused import/variable removal
-- Uses double quotes for strings
-- Pre-commit hooks automatically format code
+- 2-space indentation, 80-character line width, single quotes
+- Import sorting and Tailwind class sorting handled by oxfmt
+- Pre-commit hooks automatically lint and format staged files
 - ALL code style tasks to pass successfully before committing
 
 ### Code Standards
