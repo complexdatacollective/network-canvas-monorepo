@@ -133,8 +133,8 @@ export default function useWizardState({
       // Run step-specific beforeNext handler if registered
       const handler = beforeNextRef.current;
       if (handler) {
-        const result = await handler();
-        if (!result) return;
+        const shouldProceed = await handler();
+        if (shouldProceed === false) return;
       }
     } catch {
       return;

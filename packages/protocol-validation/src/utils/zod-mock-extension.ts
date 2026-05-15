@@ -32,8 +32,8 @@ type ExactReturn<T, Expected> = [CanCheckExcess<Expected>] extends [true]
   : T;
 
 declare module 'zod' {
-  // oxlint-disable-next-line no-interface-declaration -- module augmentation requires interface, not type
-  type ZodType = {
+  // oxlint-disable-next-line typescript/consistent-type-definitions -- module augmentation requires interface, not type alias
+  interface ZodType {
     generateMock(): z.output<this>;
     generateMock<T extends z.output<this>>(
       generator: (data: z.output<this>) => ExactReturn<T, z.output<this>>,
@@ -41,7 +41,7 @@ declare module 'zod' {
     generateMock<T extends z.output<this>>(
       generator: () => ExactReturn<T, z.output<this>>,
     ): this;
-  };
+  }
 }
 
 // Default mock generators for primitive types

@@ -2,7 +2,12 @@
 
 import { createContext, useContext } from 'react';
 
-export type BeforeNextHandler = () => Promise<boolean> | boolean;
+// Return false to block navigation; returning true, undefined, or void allows navigation
+export type BeforeNextHandler = () =>
+  | Promise<boolean | undefined | void>
+  | boolean
+  | undefined
+  | void;
 
 export type WizardContextType = {
   currentStep: number;
