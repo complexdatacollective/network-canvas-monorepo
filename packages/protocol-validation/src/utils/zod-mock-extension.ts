@@ -32,7 +32,7 @@ type ExactReturn<T, Expected> = [CanCheckExcess<Expected>] extends [true]
   : T;
 
 declare module 'zod' {
-  // biome-ignore lint/style/useConsistentTypeDefinitions: needs to extend interface
+  // oxlint-disable-next-line no-interface-declaration -- module augmentation requires interface, not type
   type ZodType = {
     generateMock(): z.output<this>;
     generateMock<T extends z.output<this>>(
