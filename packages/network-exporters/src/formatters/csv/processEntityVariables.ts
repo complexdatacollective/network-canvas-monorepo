@@ -32,7 +32,7 @@ const processEntityVariables = (
 
     if (entity === 'ego') {
       codebookAttribute = codebook.ego?.variables?.[attributeUUID];
-    } else {
+    } else if ('type' in entityObject) {
       codebookAttribute =
         codebook[entity]?.[entityObject.type]?.variables?.[attributeUUID];
     }

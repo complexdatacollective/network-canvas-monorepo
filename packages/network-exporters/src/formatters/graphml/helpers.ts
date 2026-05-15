@@ -40,7 +40,12 @@ export function getCodebookVariablesForEntity(
 }
 
 export function deriveEntityType(
-  entities: NodeWithResequencedID[] | NcEgo | NcNode | NcEdge,
+  entities:
+    | NodeWithResequencedID[]
+    | EdgeWithResequencedID[]
+    | NcEgo
+    | NcNode
+    | NcEdge,
 ) {
   if (!Array.isArray(entities)) {
     return 'type' in entities

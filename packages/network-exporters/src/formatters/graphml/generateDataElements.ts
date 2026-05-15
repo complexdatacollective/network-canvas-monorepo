@@ -29,7 +29,7 @@ export default function getDataElementGenerator(
   exportOptions: ExportOptions,
 ) {
   return async (
-    entities: NodeWithResequencedID[] | NcEgo,
+    entities: NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo,
   ): Promise<DocumentFragment> => {
     const fragment = createDocumentFragment();
 

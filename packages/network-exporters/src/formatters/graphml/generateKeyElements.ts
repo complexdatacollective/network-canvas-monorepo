@@ -10,7 +10,7 @@ import {
   ncUUIDProperty,
 } from '@codaco/shared-consts';
 
-import type { NodeWithResequencedID } from '../../input';
+import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
 import type { ExportOptions } from '../../options';
 import { getEntityAttributes } from '../../utils/general';
 import {
@@ -27,7 +27,7 @@ export default function getKeyElementGenerator(
   exportOptions: ExportOptions,
 ) {
   return async (
-    incomingEntities: NodeWithResequencedID[] | NcEgo,
+    incomingEntities: NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo,
   ): Promise<DocumentFragment> => {
     // Important to create the fragment on each invocation
     const fragment = createDocumentFragment();
