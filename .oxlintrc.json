@@ -38,6 +38,8 @@
       }
     ],
     "typescript/no-explicit-any": "warn",
+    "typescript/no-non-null-assertion": "off",
+    "typescript/no-unnecessary-type-assertion": "off",
     "typescript/switch-exhaustiveness-check": "warn",
     "typescript/no-misused-promises": ["error", { "checksVoidReturn": false }],
     "typescript/no-inferrable-types": "error",
