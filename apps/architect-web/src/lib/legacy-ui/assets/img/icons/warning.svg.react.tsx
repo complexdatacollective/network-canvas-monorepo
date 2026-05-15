@@ -1,10 +1,16 @@
 import type { SVGProps } from "react";
+import { cx } from "~/utils/cva";
 
 // CSS-var hooks let parents repaint the body (platinum) and accent (tomato)
 // regions. VariableSpotlight uses them to flag rows that need attention.
-export default function SVG(props: SVGProps<SVGSVGElement>) {
+export default function SVG({ className, ...props }: SVGProps<SVGSVGElement>) {
 	return (
-		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 160" {...props}>
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 180 160"
+			className={cx("size-(--space-3xl)", className)}
+			{...props}
+		>
 			<title>Warning</title>
 			<circle fill="var(--warning-body, var(--color-platinum))" cx="90" cy="17.5" r="17.5" />
 			<circle fill="var(--warning-body, var(--color-platinum))" cx="17.5" cy="142.5" r="17.5" />

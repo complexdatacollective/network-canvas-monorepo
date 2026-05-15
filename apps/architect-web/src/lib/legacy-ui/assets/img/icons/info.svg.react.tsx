@@ -1,11 +1,17 @@
 import type { SVGProps } from "react";
+import { cx } from "~/utils/cva";
 
 // The two `var(--info-fill-*, …)` hooks let parents recolor the "speech bubble"
 // region of this icon. `Tip` uses them to swap the default platinum tones for
 // white/platinum so the icon reads on a tinted Tip background.
-export default function SVG(props: SVGProps<SVGSVGElement>) {
+export default function SVG({ className, ...props }: SVGProps<SVGSVGElement>) {
 	return (
-		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" {...props}>
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 180 180"
+			className={cx("size-(--space-3xl)", className)}
+			{...props}
+		>
 			<title>Info</title>
 			<circle fill="var(--color-tomato)" cx="90" cy="155.78" r="24" />
 			<path fill="var(--color-tomato-dark)" d="M106.77 138.62l-33.93 33.93a24 24 0 1 0 33.93-33.93z" />

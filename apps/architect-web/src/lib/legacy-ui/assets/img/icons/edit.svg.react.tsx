@@ -1,8 +1,14 @@
 import type { SVGProps } from "react";
+import { cx } from "~/utils/cva";
 
-export default function SVG(props: SVGProps<SVGSVGElement>) {
+export default function SVG({ className, ...props }: SVGProps<SVGSVGElement>) {
 	return (
-		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 94" {...props}>
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 80 94"
+			className={cx("size-(--space-3xl)", className)}
+			{...props}
+		>
 			<title>Edit</title>
 			<path fill="var(--color-sea-green)" d="M53.545 10.772l7.071 7.07L10.61 67.85l-7.071-7.07z" />
 			<path fill="var(--color-sea-green-dark)" d="M60.615 17.84l7.071 7.071L17.68 74.918l-7.071-7.071z" />

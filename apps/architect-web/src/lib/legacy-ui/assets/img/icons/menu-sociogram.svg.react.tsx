@@ -1,11 +1,17 @@
 import type { SVGProps } from "react";
+import { cx } from "~/utils/cva";
 
 // Two-tone via CSS variables. Defaults to `currentColor` so the icon inherits
 // the parent's text color (single-tone). Callers wanting two-tone set both
 // vars — see Codebook/EntityIcon.tsx for the cerulean-blue case.
-export default function SVG(props: SVGProps<SVGSVGElement>) {
+export default function SVG({ className, ...props }: SVGProps<SVGSVGElement>) {
 	return (
-		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 70" {...props}>
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 70 70"
+			className={cx("size-(--space-xl)", className)}
+			{...props}
+		>
 			<title>Menu - Sociogram</title>
 			<path fill="var(--icon-tone-primary, currentColor)" d="M18.741 42.178l14.996-23.004 2.514 1.638-14.996 23.004z" />
 			<path fill="var(--icon-tone-primary, currentColor)" d="M33.74 20.818l2.512-1.638 15 23-2.513 1.64z" />

@@ -265,22 +265,6 @@
 		@apply text-base leading-normal;
 		margin: 1em 0;
 	}
-
-	.icon[name="error"],
-	.icon[name="info"],
-	.icon[name="warning"],
-	.icon[name="edit"] {
-		height: var(--space-3xl);
-		width: var(--space-3xl);
-	}
-
-	.icon[name="menu-sociogram"],
-	.icon[name="menu-map"],
-	.icon[name="menu-custom-interface"],
-	.icon[name="links"] {
-		height: var(--space-xl);
-		width: var(--space-xl);
-	}
 }
 
 @theme static {

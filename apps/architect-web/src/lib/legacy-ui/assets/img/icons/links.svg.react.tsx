@@ -1,12 +1,19 @@
 import type { SVGProps } from "react";
+import { cx } from "~/utils/cva";
 
 // Two-tone via CSS variables. Defaults to `currentColor` so the icon inherits
 // the parent's text color when no edge color is set. Callers driven by a
 // codebook color (PreviewEdge, Codebook/EntityIcon) set both vars from an
 // `edge-color-seq-N` token.
-export default function SVG(props: SVGProps<SVGSVGElement>) {
+export default function SVG({ className, ...props }: SVGProps<SVGSVGElement>) {
 	return (
-		<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" {...props}>
+		<svg
+			aria-hidden="true"
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 60 60"
+			className={cx("size-(--space-xl)", className)}
+			{...props}
+		>
 			<circle fill="var(--icon-tone-primary, currentColor)" cx="49" cy="11" r="11" />
 			<circle fill="var(--icon-tone-primary, currentColor)" cx="49" cy="49" r="11" />
 			<circle fill="var(--icon-tone-primary, currentColor)" cx="11" cy="30" r="11" />

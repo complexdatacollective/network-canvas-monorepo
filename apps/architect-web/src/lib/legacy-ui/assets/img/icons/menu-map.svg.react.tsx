@@ -1,8 +1,14 @@
 import type { SVGProps } from "react";
+import { cx } from "~/utils/cva";
 
-export default function SVG(props: SVGProps<SVGSVGElement>) {
+export default function SVG({ className, ...props }: SVGProps<SVGSVGElement>) {
 	return (
-		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 70" {...props}>
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 70 70"
+			className={cx("size-(--space-xl)", className)}
+			{...props}
+		>
 			<title>Menu - Map</title>
 			<path fill="currentColor" d="M60 38H10L0 70h70L60 38z" />
 			<path
