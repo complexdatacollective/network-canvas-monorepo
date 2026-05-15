@@ -42,7 +42,7 @@ export default defineConfig({
 				include: ["src/**/*.ts", "src/**/*.tsx"],
 				exclude: ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/*.stories.tsx"],
 				compilerOptions: { rootDir: resolve(__dirname, "src") },
-				rollupTypes: true,
+				bundleTypes: true,
 			}),
 		cssCopyPlugin(),
 	],

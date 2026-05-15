@@ -31,7 +31,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MONOREPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 cd "$MONOREPO_ROOT"
 
-IMAGE="mcr.microsoft.com/playwright:v1.59.1-noble"
+IMAGE="mcr.microsoft.com/playwright:v1.60.0-noble"
 
 if ! docker info >/dev/null 2>&1; then
   echo "Error: Docker is not running." >&2

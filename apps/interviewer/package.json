@@ -44,7 +44,7 @@
 		"@faker-js/faker": "~6.0.0",
 		"@material-ui/icons": "^4.11.3",
 		"@vitejs/plugin-react": "catalog:",
-		"@vitest/coverage-v8": "^4.1.1",
+		"@vitest/coverage-v8": "^4.1.6",
 		"@zippytech/sorty": "^2.0.0",
 		"animejs": "^2.2.0",
 		"async": "^3.2.6",
@@ -113,7 +113,7 @@
 		"svg2png": "^4.1.1",
 		"uuid": "^14.0.0",
 		"vite": "catalog:",
-		"vitest": "^4.1.1",
+		"vitest": "catalog:",
 		"whatwg-fetch": "2.0.3",
 		"xml2js": "~0.6.2",
 		"xss": "^0.3.8"

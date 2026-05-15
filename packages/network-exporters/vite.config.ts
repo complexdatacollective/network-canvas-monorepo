@@ -43,7 +43,6 @@ export default defineConfig({
 	},
 	plugins: [
 		dts({
-			rollupTypes: false,
 			insertTypesEntry: false,
 			// Multi-entry build: strip `src/` so emitted .d.ts files sit alongside
 			// their .js counterparts (dist/foo.d.ts vs dist/src/foo.d.ts).
