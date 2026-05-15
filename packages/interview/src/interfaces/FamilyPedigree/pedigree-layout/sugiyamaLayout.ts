@@ -1115,7 +1115,7 @@ function encodePedigreeLayout(
   if (twinRelations.length > 0) {
     twins = [];
     for (let layer = 0; layer < maxLayer; layer++) {
-      twins.push(new Array<number>(n[layer]!).fill(0));
+      twins.push(Array.from({ length: n[layer]! }, () => 0));
     }
 
     for (const rel of twinRelations) {

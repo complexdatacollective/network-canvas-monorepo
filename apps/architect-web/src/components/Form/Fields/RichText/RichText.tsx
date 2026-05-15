@@ -124,7 +124,7 @@ const RichText = ({
   const disallowedTypesWithDefaults = useMemo(
     () => [
       ...disallowedTypes,
-      ...[...(inline ? INLINE_DISALLOWED_ITEMS : [])],
+      ...(inline ? INLINE_DISALLOWED_ITEMS : []),
       ...ALWAYS_DISALLOWED,
     ],
     [disallowedTypes, inline],

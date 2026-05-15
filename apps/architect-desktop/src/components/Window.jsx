@@ -18,7 +18,7 @@ const Window = ({
 
   return (
     <Stackable stackKey>
-      {({ stackIndex }) => (
+      {({ stackIndex: _stackIndex }) => (
         <div
           className={cx('window', className)}
           onClick={(e) => e.stopPropagation()}

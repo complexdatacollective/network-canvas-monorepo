@@ -44,7 +44,7 @@ const Dialog = ({ show, children, className, onBlur }) => {
 
   return (
     <Stackable stackKey>
-      {({ stackIndex }) => (
+      {({ stackIndex: _stackIndex }) => (
         <div
           className={cx('contextual-dialog', className)}
           onClick={handleBlur}

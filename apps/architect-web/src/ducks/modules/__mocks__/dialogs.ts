@@ -1,4 +1,4 @@
-import type { Dispatch, UnknownAction } from '@reduxjs/toolkit';
+import type { Dispatch } from '@reduxjs/toolkit';
 import { v4 as uuid } from 'uuid';
 
 const OPEN_DIALOG = 'PROTOCOL/OPEN_DIALOG';

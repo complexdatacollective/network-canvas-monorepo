@@ -6,8 +6,6 @@ import type { FormField, Variable } from '@codaco/protocol-validation';
 import { getCodebook } from '../store/modules/protocol';
 import { getNetwork, getStageSubject } from './session';
 
-type CodebookVariableWithComponent = Extract<Variable, { component?: unknown }>;
-
 export type Subject = {
   entity: 'node' | 'edge' | 'ego';
   type?: string;

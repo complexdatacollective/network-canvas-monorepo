@@ -4,8 +4,6 @@ import { useSelector } from 'react-redux';
 import type { FormAction } from 'redux-form';
 import { change, Field, formValueSelector } from 'redux-form';
 
-/* eslint-disable react/jsx-props-no-spreading */
-import type { FilterRule } from '@codaco/protocol-validation';
 import { Row, Section } from '~/components/EditorLayout';
 import { CheckboxGroup } from '~/components/Form/Fields';
 import { useAppDispatch } from '~/ducks/hooks';

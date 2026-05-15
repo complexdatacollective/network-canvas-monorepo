@@ -256,9 +256,9 @@ const BackgroundBlobs = memo(
   }: BackgroundBlobsProps) => {
     const blobs = useMemo(
       () => [
-        new Array(large).fill(null).map(() => new NCBlob(3, speedFactor)),
-        new Array(medium).fill(null).map(() => new NCBlob(2, speedFactor)),
-        new Array(small).fill(null).map(() => new NCBlob(1, speedFactor)),
+        Array.from({ length: large }, () => new NCBlob(3, speedFactor)),
+        Array.from({ length: medium }, () => new NCBlob(2, speedFactor)),
+        Array.from({ length: small }, () => new NCBlob(1, speedFactor)),
       ],
       [large, medium, small, speedFactor],
     );

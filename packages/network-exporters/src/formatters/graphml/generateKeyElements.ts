@@ -10,10 +10,9 @@ import {
   ncUUIDProperty,
 } from '@codaco/shared-consts';
 
-import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
+import type { NodeWithResequencedID } from '../../input';
 import type { ExportOptions } from '../../options';
 import { getEntityAttributes } from '../../utils/general';
-import type { VariableDefinition } from '../csv/processEntityVariables';
 import {
   createDocumentFragment,
   deriveEntityType,

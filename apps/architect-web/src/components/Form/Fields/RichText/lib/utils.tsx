@@ -1,4 +1,4 @@
-import { Editor, type Node, type NodeEntry, Range, Transforms } from 'slate';
+import { Editor, type NodeEntry, Range, Transforms } from 'slate';
 
 const getContainerBlockAtCursor = (editor: Editor): NodeEntry | undefined =>
   Editor.above(editor, {

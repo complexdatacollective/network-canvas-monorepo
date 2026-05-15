@@ -34,7 +34,7 @@ export function rank(arr: number[]): number[] {
   const indexed = arr.map((val, i) => ({ val, i }));
   indexed.sort((a, b) => a.val - b.val);
 
-  const ranks = new Array<number>(arr.length);
+  const ranks: number[] = Array.from({ length: arr.length });
   let i = 0;
   while (i < indexed.length) {
     let j = i;
@@ -65,7 +65,7 @@ import type { ParentConnection } from './types';
 // Chase all ancestors of a person
 export function ancestor(me: number, parents: ParentConnection[][]): number[] {
   const n = parents.length;
-  const result = new Array<boolean>(n).fill(false);
+  const result: boolean[] = Array.from({ length: n }, () => false);
 
   // Seed with direct parents
   const myParents = parents[me] ?? [];
@@ -98,7 +98,7 @@ export function ancestor(me: number, parents: ParentConnection[][]): number[] {
 // Chase up ancestors — returns all ancestors reachable from x (including x)
 export function chaseup(x: number[], parents: ParentConnection[][]): number[] {
   const n = parents.length;
-  const inSet = new Array<boolean>(n).fill(false);
+  const inSet: boolean[] = Array.from({ length: n }, () => false);
   for (const idx of x) inSet[idx] = true;
 
   for (let iter = 0; iter < n; iter++) {

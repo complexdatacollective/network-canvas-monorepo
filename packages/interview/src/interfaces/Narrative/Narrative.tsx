@@ -18,7 +18,6 @@ import {
 import { updateNode } from '~/store/modules/session';
 import { useAppDispatch } from '~/store/store';
 import type { StageProps } from '~/types';
-import type { VariableOptions } from '~/utils/codebook';
 
 import Annotations, { type AnnotationsHandle } from './Annotations';
 import ConvexHullLayer from './ConvexHullLayer';

@@ -1,9 +1,7 @@
 import type {
   Codebook,
-  EdgeDefinition,
   EntityDefinition,
   FilterRule,
-  NodeDefinition,
   StageSubject,
   Variable,
 } from '../schemas/8/schema';

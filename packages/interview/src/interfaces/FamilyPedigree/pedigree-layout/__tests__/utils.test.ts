@@ -121,7 +121,7 @@ describe('ancestor', () => {
       ],
     ];
     const result = ancestor(3, parents);
-    expect(result.toSorted()).toEqual([0, 1, 2]);
+    expect(result.toSorted((a, b) => a - b)).toEqual([0, 1, 2]);
   });
 });
 

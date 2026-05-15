@@ -35,7 +35,7 @@ import type { Direction, StageProps } from '~/types';
 
 import CollapsablePrompts from '../Sociogram/CollapsablePrompts';
 import { isMapboxStubBrowser } from './isMapboxStubBrowser';
-import { type ExtendedMapOptions, useMapbox } from './useMapbox';
+import { useMapbox } from './useMapbox';
 
 // Lazy import: @mapbox/search-js-web accesses document at module load, so the
 // chunk must only resolve in the browser. The package is "use client" throughout,

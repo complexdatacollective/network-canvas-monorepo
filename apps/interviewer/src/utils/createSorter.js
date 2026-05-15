@@ -35,7 +35,7 @@ const asc = (propertyGetter) => (a, b) => {
     return -1;
   }
 
-  return -(firstValue < secondValue) || +(firstValue > secondValue);
+  return -Number(firstValue < secondValue) || Number(firstValue > secondValue);
 };
 
 /* As above, but with the items reversed (thereby reversing the sort order) */
@@ -174,13 +174,14 @@ const dateFunction =
 
     if (direction === 'asc') {
       return (
-        -(firstValueDate < secondValueDate) ||
-        +(firstValueDate > secondValueDate)
+        -Number(firstValueDate < secondValueDate) ||
+        Number(firstValueDate > secondValueDate)
       );
     }
 
     return (
-      -(firstValueDate > secondValueDate) || +(firstValueDate < secondValueDate)
+      -Number(firstValueDate > secondValueDate) ||
+      Number(firstValueDate < secondValueDate)
     );
   };
 

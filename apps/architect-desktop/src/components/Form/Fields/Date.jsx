@@ -51,7 +51,7 @@ const TextInput = ({
   label,
   fieldLabel,
   className,
-  autoFocus,
+  autoFocus: _autoFocus,
   hidden,
   dateFormat,
 }) => {

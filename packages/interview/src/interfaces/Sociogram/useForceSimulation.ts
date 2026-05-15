@@ -78,7 +78,7 @@ export function useForceSimulation({
     () =>
       nodes
         .map((n) => n[entityPrimaryKeyProperty])
-        .toSorted()
+        .toSorted((a, b) => String(a).localeCompare(String(b)))
         .join(','),
     [nodes],
   );

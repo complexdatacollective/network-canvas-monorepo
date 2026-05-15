@@ -32,7 +32,7 @@ export function kindepth(
 
   // Assign depth = max(parent depths) + 1 using topological ordering.
   // A child is only assigned once ALL its parents have depths.
-  const depth = new Array<number>(n).fill(0);
+  const depth: number[] = Array.from({ length: n }, () => 0);
   const assigned = new Set<number>(currentLevel);
 
   for (let pass = 0; pass < n; pass++) {
@@ -77,7 +77,7 @@ export function kindepth(
   }
 
   const ngroups = groups.length;
-  const done = new Array<boolean>(ngroups).fill(false);
+  const done: boolean[] = Array.from({ length: ngroups }, () => false);
 
   for (;;) {
     // Find groups where members have different depths
