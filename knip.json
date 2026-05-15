@@ -2,6 +2,7 @@
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "ignoreWorkspaces": ["apps/interviewer", "apps/architect-desktop"],
   "ignoreExportsUsedInFile": { "type": true },
+  "ignoreDependencies": ["oxlint-tailwindcss"],
   "tags": ["-public"],
   "workspaces": {
     "packages/ui": {},
