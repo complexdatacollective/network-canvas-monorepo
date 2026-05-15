@@ -105,10 +105,10 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
 					{map(flatIssues, ({ field, issue }) => {
 						const fieldId = getFieldId(field);
 						return (
-							// `issues__issue` marker is preserved for the Issues.test.tsx selector.
 							<li
 								key={fieldId}
-								className="issues__issue m-0 bg-transparent p-0 transition-colors duration-(--animation-duration-standard) ease-(--animation-easing) hover:bg-sea-serpent-dark"
+								data-testid="issue"
+								className="m-0 bg-transparent p-0 transition-colors duration-(--animation-duration-standard) ease-(--animation-easing) hover:bg-sea-serpent-dark"
 							>
 								<a
 									href={`#${fieldId}`}

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import APIKeyThumbnail from "~/components/Thumbnail/APIKey";
 import Button from "~/lib/legacy-ui/components/Button";
-import { cx } from "~/utils/cva";
 import APIKeyBrowser from "./APIKeyBrowser";
 
 type GeoAPIKeyProps = {
@@ -13,18 +12,13 @@ type GeoAPIKeyProps = {
 
 const GeoAPIKey = ({ input: { value, onChange } }: GeoAPIKeyProps) => {
 	const [showAPIKeyBrowser, setShowAPIKeyBrowser] = useState(false);
-	const fieldClasses = cx("form-fields-file", {
-		"form-fields-file--replace": !!value,
-	});
 	return (
 		<>
-			<div className={fieldClasses}>
-				<div className="form-fields-file__preview">{value && <APIKeyThumbnail id={value} />}</div>
-				<div className="form-fields-file__browse">
-					<Button onClick={() => setShowAPIKeyBrowser(true)} color="sea-green">
-						{!value ? "Select API Key" : "Update API Key"}
-					</Button>
-				</div>
+			<div className="flex flex-col items-start gap-(--space-md)">
+				{value && <APIKeyThumbnail id={value} />}
+				<Button onClick={() => setShowAPIKeyBrowser(true)} color="sea-green">
+					{!value ? "Select API Key" : "Update API Key"}
+				</Button>
 			</div>
 			<APIKeyBrowser
 				show={showAPIKeyBrowser}

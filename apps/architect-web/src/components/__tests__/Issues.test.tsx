@@ -49,7 +49,7 @@ describe("<Issues />", () => {
 
 		// Popover content lives in a portal mounted to document.body, and opens
 		// automatically on mount because submitFailed + hasIssues.
-		const issueElements = document.querySelectorAll("li.issues__issue");
+		const issueElements = document.querySelectorAll('li[data-testid="issue"]');
 		expect(issueElements).toHaveLength(3);
 	});
 });
