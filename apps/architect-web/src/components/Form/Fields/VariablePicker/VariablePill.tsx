@@ -52,9 +52,7 @@ const BaseVariablePill = React.forwardRef<HTMLDivElement, BaseVariablePillProps>
 			>
 				<img className="icon" src={icon} alt={type} />
 			</div>
-			<div className="flex flex-1 w-[calc(100%-var(--space-2xl))] items-center justify-between [&_.label]:cursor-text [&_.label]:w-full [&_.label]:overflow-hidden [&_.label]:whitespace-nowrap [&_.label]:text-ellipsis">
-				{children}
-			</div>
+			<div className="flex flex-1 w-[calc(100%-var(--space-2xl))] items-center justify-between">{children}</div>
 		</motion.div>
 	);
 });
@@ -224,7 +222,7 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
 				) : (
 					<motion.h4
 						key="label"
-						className="label m-0 grow shrink-0 px-(--space-md) py-(--space-sm) [word-break:keep-all] text-input-foreground"
+						className="m-0 grow shrink-0 cursor-text w-full overflow-hidden whitespace-nowrap text-ellipsis px-(--space-md) py-(--space-sm) [word-break:keep-all] text-input-foreground"
 						initial={{ opacity: 0 }}
 						animate={{ opacity: 1 }}
 						exit={{ opacity: 0 }}
