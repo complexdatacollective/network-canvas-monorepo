@@ -54,7 +54,7 @@ function buildInterview(args: StoryArgs) {
 
   const fieldCount = Math.min(args.fieldCount, FIELD_PRESETS.length);
   for (let i = 0; i < fieldCount; i++) {
-    const preset = FIELD_PRESETS[i];
+    const preset = FIELD_PRESETS[i]!;
     stage.addFormField({
       component: preset.component,
       prompt: preset.prompt,

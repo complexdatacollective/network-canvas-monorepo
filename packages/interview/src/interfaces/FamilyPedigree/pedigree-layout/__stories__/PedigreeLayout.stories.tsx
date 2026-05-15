@@ -124,7 +124,7 @@ function buildNetwork(
 
   const edges = new Map<string, NcEdge>();
   for (let i = 0; i < edgeDefs.length; i++) {
-    const e = edgeDefs[i];
+    const e = edgeDefs[i]!;
     const eid = `e${i}`;
     const attrs: NcEdge['attributes'] = {
       [STORY_REL_TYPE_VAR]: e.relationshipType,
@@ -1991,12 +1991,12 @@ type StoryArgs = {
 };
 
 export const Playground: StoryFn<StoryArgs> = ({ network, nodeStyle }) => {
-  const data = NETWORKS[network] ?? NETWORKS['Three Generations'];
+  const data = NETWORKS[network] ?? NETWORKS['Three Generations']!;
   const renderNode =
-    NODE_RENDERERS[nodeStyle] ?? NODE_RENDERERS['Labeled Node'];
+    NODE_RENDERERS[nodeStyle] ?? NODE_RENDERERS['Labeled Node']!;
   const measureComponent =
     NODE_MEASUREMENT_COMPONENTS[nodeStyle] ??
-    NODE_MEASUREMENT_COMPONENTS['Labeled Node'];
+    NODE_MEASUREMENT_COMPONENTS['Labeled Node']!;
 
   const { nodeWidth, nodeHeight, measurementContainer } = useNodeMeasurement({
     component: measureComponent,
