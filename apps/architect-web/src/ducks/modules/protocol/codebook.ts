@@ -387,7 +387,7 @@ const getStateWithUpdatedVariable = (
           : {}),
         ...configuration,
       } as Variable)
-    : configuration;
+    : (configuration as Variable);
 
   const existingVariables = get(state, [...entityPath, 'variables']);
   const newVariables: Record<string, Variable> = {
