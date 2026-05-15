@@ -55,7 +55,7 @@ function generateDemoItems(count: number, seed = 123): DemoItem[] {
     id: `item-${i + 1}`,
     name: faker.person.fullName(),
     description: faker.commerce.productDescription().slice(0, 60),
-    color: NODE_COLORS[i % NODE_COLORS.length],
+    color: NODE_COLORS[i % NODE_COLORS.length]!,
     department: faker.helpers.arrayElement([
       'Engineering',
       'Design',
