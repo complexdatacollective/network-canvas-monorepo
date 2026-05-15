@@ -56,7 +56,7 @@ function makeEdges(
 ): Map<string, NcEdge> {
   const map = new Map<string, NcEdge>();
   for (let i = 0; i < entries.length; i++) {
-    const e = entries[i];
+    const e = entries[i]!;
     map.set(`e${i}`, {
       _uid: `e${i}`,
       type: 'family',
@@ -119,7 +119,7 @@ describe('storeToPedigreeInput', () => {
     const motherIdx = idToIndex.get('mother')!;
 
     expect(input.parents[childIdx]).toHaveLength(2);
-    const parentIndices = input.parents[childIdx].map((p) => p.parentIndex);
+    const parentIndices = input.parents[childIdx]!.map((p) => p.parentIndex);
     expect(parentIndices).toContain(fatherIdx);
     expect(parentIndices).toContain(motherIdx);
 
@@ -154,14 +154,14 @@ describe('storeToPedigreeInput', () => {
     const gfIdx = idToIndex.get('gf')!;
     const gmIdx = idToIndex.get('gm')!;
 
-    const fatherParentIndices = input.parents[fatherIdx].map(
+    const fatherParentIndices = input.parents[fatherIdx]!.map(
       (p) => p.parentIndex,
     );
     expect(fatherParentIndices).toContain(gfIdx);
     expect(fatherParentIndices).toContain(gmIdx);
 
     const childIdx = idToIndex.get('child')!;
-    const childParentIndices = input.parents[childIdx].map(
+    const childParentIndices = input.parents[childIdx]!.map(
       (p) => p.parentIndex,
     );
     expect(childParentIndices).toContain(fatherIdx);
@@ -178,8 +178,8 @@ describe('storeToPedigreeInput', () => {
     const { input } = storeToPedigreeInput(nodes, edges, variableConfig);
 
     expect(input.relation).toHaveLength(2);
-    expect(input.relation![0].code).toBe(4);
-    expect(input.relation![1].code).toBe(4);
+    expect(input.relation![0]!.code).toBe(4);
+    expect(input.relation![1]!.code).toBe(4);
   });
 
   test('single parent produces one parent connection', () => {
@@ -196,7 +196,7 @@ describe('storeToPedigreeInput', () => {
     const childIdx = idToIndex.get('child')!;
 
     expect(input.parents[childIdx]).toHaveLength(1);
-    expect(input.parents[childIdx][0].parentIndex).toBe(
+    expect(input.parents[childIdx]![0]!.parentIndex).toBe(
       idToIndex.get('parent')!,
     );
   });
@@ -214,7 +214,7 @@ describe('storeToPedigreeInput', () => {
 
     const result = storeToPedigreeInput(nodes, edges, variableConfig);
     const childIdx = result.idToIndex.get('child')!;
-    const edgeTypes = result.input.parents[childIdx].map((p) => p.edgeType);
+    const edgeTypes = result.input.parents[childIdx]!.map((p) => p.edgeType);
     expect(edgeTypes).toContain('biological');
     expect(edgeTypes).toContain('donor');
   });

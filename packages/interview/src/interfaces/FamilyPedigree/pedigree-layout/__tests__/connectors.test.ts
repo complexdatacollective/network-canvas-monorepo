@@ -58,13 +58,13 @@ describe('computeConnectors', () => {
   it('produces parent group connectors', () => {
     const connectors = computeConnectors(layout, scaling, parents);
     expect(connectors.groupLines.length).toBeGreaterThan(0);
-    expect(connectors.groupLines[0].type).toBe('parent-group');
+    expect(connectors.groupLines[0]!.type).toBe('parent-group');
   });
 
   it('produces parent-child connectors with edgeType', () => {
     const connectors = computeConnectors(layout, scaling, parents);
     expect(connectors.parentChildLines.length).toBeGreaterThan(0);
-    expect(connectors.parentChildLines[0].edgeType).toBe('biological');
+    expect(connectors.parentChildLines[0]!.edgeType).toBe('biological');
   });
 
   it('produces branched parent links (4 segments) when branch > 0', () => {
@@ -75,7 +75,7 @@ describe('computeConnectors', () => {
       undefined,
       0.6,
     );
-    const pc = connectors.parentChildLines[0];
+    const pc = connectors.parentChildLines[0]!;
     expect(pc.parentLink.length).toBe(4);
   });
 
@@ -87,13 +87,13 @@ describe('computeConnectors', () => {
       undefined,
       0,
     );
-    const pc = connectors.parentChildLines[0];
+    const pc = connectors.parentChildLines[0]!;
     expect(pc.parentLink.length).toBe(2);
   });
 
   it('group connector double flag reflects consanguinity', () => {
     const connectors = computeConnectors(layout, scaling, parents);
-    expect(connectors.groupLines[0].double).toBe(false);
+    expect(connectors.groupLines[0]!.double).toBe(false);
   });
 
   it('produces double line for consanguineous pairs', () => {
@@ -105,8 +105,8 @@ describe('computeConnectors', () => {
       ],
     };
     const connectors = computeConnectors(consLayout, scaling, parents);
-    expect(connectors.groupLines[0].double).toBe(true);
-    expect(connectors.groupLines[0].doubleSegment).toBeDefined();
+    expect(connectors.groupLines[0]!.double).toBe(true);
+    expect(connectors.groupLines[0]!.doubleSegment).toBeDefined();
   });
 
   it('produces duplicate arcs for repeated subjects', () => {
@@ -136,9 +136,9 @@ describe('computeConnectors', () => {
     };
     const connectors = computeConnectors(dupLayout, scaling, []);
     expect(connectors.duplicateArcs.length).toBe(1);
-    expect(connectors.duplicateArcs[0].personIndex).toBe(1);
-    expect(connectors.duplicateArcs[0].path.dashed).toBe(true);
-    expect(connectors.duplicateArcs[0].path.points.length).toBe(15);
+    expect(connectors.duplicateArcs[0]!.personIndex).toBe(1);
+    expect(connectors.duplicateArcs[0]!.path.dashed).toBe(true);
+    expect(connectors.duplicateArcs[0]!.path.points.length).toBe(15);
   });
 
   it('produces auxiliary connectors for donor edges', () => {
@@ -178,8 +178,8 @@ describe('computeConnectors', () => {
     ];
     const connectors = computeConnectors(donorLayout, scaling, donorParents);
     expect(connectors.auxiliaryLines.length).toBe(1);
-    expect(connectors.auxiliaryLines[0].edgeType).toBe('donor');
-    expect(connectors.auxiliaryLines[0].segment).toBeDefined();
+    expect(connectors.auxiliaryLines[0]!.edgeType).toBe('donor');
+    expect(connectors.auxiliaryLines[0]!.segment).toBeDefined();
   });
 
   it('routes parent links to specific couple midpoints in multi-partner layouts', () => {
@@ -226,12 +226,12 @@ describe('computeConnectors', () => {
 
     expect(connectors.parentChildLines.length).toBe(2);
 
-    const pc1 = connectors.parentChildLines[0];
-    const pc1ParentX = pc1.parentLink[0].x1;
+    const pc1 = connectors.parentChildLines[0]!;
+    const pc1ParentX = pc1.parentLink[0]!.x1;
     expect(pc1ParentX).toBeCloseTo(0.5, 1);
 
-    const pc2 = connectors.parentChildLines[1];
-    const pc2ParentX = pc2.parentLink[0].x1;
+    const pc2 = connectors.parentChildLines[1]!;
+    const pc2ParentX = pc2.parentLink[0]!.x1;
     expect(pc2ParentX).toBeCloseTo(1.5, 1);
   });
 
@@ -272,26 +272,26 @@ describe('computeConnectors', () => {
     ];
     const connectors = computeConnectors(bioLayout, scaling, bioParents);
     expect(connectors.auxiliaryLines.length).toBe(1);
-    expect(connectors.auxiliaryLines[0].edgeType).toBe('biological');
+    expect(connectors.auxiliaryLines[0]!.edgeType).toBe('biological');
   });
 
   it('marks group lines as active when no activePartnerPairs provided', () => {
     const connectors = computeConnectors(layout, scaling, parents);
-    expect(connectors.groupLines[0].isActive).toBe(true);
+    expect(connectors.groupLines[0]!.isActive).toBe(true);
   });
 
   it('marks group lines as inactive for non-active partner pairs', () => {
     const activePairs = new Set<string>();
     const connectors = computeConnectors(layout, scaling, parents, activePairs);
     expect(connectors.groupLines.length).toBe(1);
-    expect(connectors.groupLines[0].isActive).toBe(false);
+    expect(connectors.groupLines[0]!.isActive).toBe(false);
   });
 
   it('marks group lines as active for active partner pairs', () => {
     const activePairs = new Set(['1,2']);
     const connectors = computeConnectors(layout, scaling, parents, activePairs);
     expect(connectors.groupLines.length).toBe(1);
-    expect(connectors.groupLines[0].isActive).toBe(true);
+    expect(connectors.groupLines[0]!.isActive).toBe(true);
   });
 
   it('descends from genetic contributor when only one parent is biological', () => {
@@ -329,16 +329,16 @@ describe('computeConnectors', () => {
       ],
     ];
     const connectors = computeConnectors(socialLayout, scaling, socialParents);
-    const pc = connectors.parentChildLines[0];
+    const pc = connectors.parentChildLines[0]!;
     // Descent should be from parent 0's position (x=0), not midpoint (x=1)
-    expect(pc.parentLink[0].x1).toBeCloseTo(0, 1);
+    expect(pc.parentLink[0]!.x1).toBeCloseTo(0, 1);
   });
 
   it('descends from couple midpoint when both parents are biological', () => {
     const connectors = computeConnectors(layout, scaling, parents);
-    const pc = connectors.parentChildLines[0];
+    const pc = connectors.parentChildLines[0]!;
     // Both parents biological: midpoint of pos 0 and 2 = 1
-    expect(pc.parentLink[0].x1).toBeCloseTo(1, 1);
+    expect(pc.parentLink[0]!.x1).toBeCloseTo(1, 1);
   });
 
   it('auxiliary connector connects to sibling bar when donor is parent of ALL siblings', () => {
@@ -390,7 +390,7 @@ describe('computeConnectors', () => {
     );
     expect(connectors.auxiliaryLines.length).toBe(1);
     // Sibling bar y = childLevel(1) - legh(0.25) = 0.75
-    expect(connectors.auxiliaryLines[0].segment.y2).toBeCloseTo(0.75, 5);
+    expect(connectors.auxiliaryLines[0]!.segment.y2).toBeCloseTo(0.75, 5);
   });
 
   it('auxiliary connector connects directly to child when donor is parent of only SOME siblings', () => {
@@ -443,8 +443,8 @@ describe('computeConnectors', () => {
     );
     expect(connectors.auxiliaryLines.length).toBe(2);
     // Each connects directly to child: y = childLevel(1) + boxh/2(0.25) = 1.25
-    expect(connectors.auxiliaryLines[0].segment.y2).toBeCloseTo(1.25, 5);
-    expect(connectors.auxiliaryLines[1].segment.y2).toBeCloseTo(1.25, 5);
+    expect(connectors.auxiliaryLines[0]!.segment.y2).toBeCloseTo(1.25, 5);
+    expect(connectors.auxiliaryLines[1]!.segment.y2).toBeCloseTo(1.25, 5);
   });
 
   it('auxiliary connector connects directly to child when single child in family', () => {
@@ -490,7 +490,7 @@ describe('computeConnectors', () => {
     );
     expect(connectors.auxiliaryLines.length).toBe(1);
     // Single child: connects directly to child node y = 1 + 0.25 = 1.25
-    expect(connectors.auxiliaryLines[0].segment.y2).toBeCloseTo(1.25, 5);
+    expect(connectors.auxiliaryLines[0]!.segment.y2).toBeCloseTo(1.25, 5);
   });
 
   it('social parent connector connects to sibling bar when social parent of ALL siblings', () => {
@@ -548,7 +548,7 @@ describe('computeConnectors', () => {
     );
     expect(bioAux.length).toBe(1);
     // Connects to sibling bar y = 1 - 0.25 = 0.75
-    expect(bioAux[0].segment.y2).toBeCloseTo(0.75, 5);
+    expect(bioAux[0]!.segment.y2).toBeCloseTo(0.75, 5);
   });
 
   it('social parent connector connects directly to child when social parent of only SOME siblings', () => {
@@ -605,8 +605,8 @@ describe('computeConnectors', () => {
     );
     expect(bioAux.length).toBe(2);
     // Each connects directly to child: y = 1 + 0.25 = 1.25
-    expect(bioAux[0].segment.y2).toBeCloseTo(1.25, 5);
-    expect(bioAux[1].segment.y2).toBeCloseTo(1.25, 5);
+    expect(bioAux[0]!.segment.y2).toBeCloseTo(1.25, 5);
+    expect(bioAux[1]!.segment.y2).toBeCloseTo(1.25, 5);
   });
 
   it('slashSide is set correctly for inactive group lines', () => {
@@ -702,7 +702,7 @@ describe('computeConnectors', () => {
       adoptiveParents,
     );
     expect(connectors.parentChildLines.length).toBeGreaterThan(0);
-    expect(connectors.parentChildLines[0].edgeType).toBe('adoptive');
+    expect(connectors.parentChildLines[0]!.edgeType).toBe('adoptive');
   });
 
   it('uses standard parent link (not diagonal joins) for inactive partnerships', () => {
@@ -747,10 +747,10 @@ describe('computeConnectors', () => {
       inactiveParents,
       activePairs,
     );
-    const pc = connectors.parentChildLines[0];
+    const pc = connectors.parentChildLines[0]!;
     // Should produce standard branched parent link (4 segments), not diagonal joins
     expect(pc.parentLink.length).toBe(4);
     // Parent link should descend from couple midpoint (both biological)
-    expect(pc.parentLink[0].x1).toBeCloseTo(1, 1);
+    expect(pc.parentLink[0]!.x1).toBeCloseTo(1, 1);
   });
 });

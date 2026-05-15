@@ -18,8 +18,8 @@ describe('createMatrix', () => {
   it('creates a 2D array of correct dimensions', () => {
     const m = createMatrix(3, 4, 0);
     expect(m.length).toBe(3);
-    expect(m[0].length).toBe(4);
-    expect(m[2][3]).toBe(0);
+    expect(m[0]!.length).toBe(4);
+    expect(m[2]![3]).toBe(0);
   });
 });
 
