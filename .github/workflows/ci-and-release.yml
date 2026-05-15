@@ -459,6 +459,16 @@ jobs:
             attempt=$((attempt + 1))
             sleep 10
           done
+      - name: Static docs link validation
+        # Catches two classes of failure the HTTP-only dead-link checker can't:
+        #   * page links that resolve via netlify.toml's catch-all (so the
+        #     fetcher sees 200) but have no docs source, and
+        #   * downloadable-file links (/protocols/*.netcanvas, …) whose target
+        #     is missing from public/. The next/link runtime bypass in
+        #     components/Link.tsx handles correct rendering; this check
+        #     guarantees the target itself exists.
+        working-directory: apps/documentation
+        run: pnpm run validate-docs-links
       - name: Redirect test
         working-directory: apps/documentation
         env:

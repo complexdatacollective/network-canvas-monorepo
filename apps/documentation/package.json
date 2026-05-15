@@ -12,6 +12,7 @@
 		"start": "pnpm next start",
 		"typecheck": "tsgo --noEmit",
 		"validate-redirects": "tsx ./scripts/validate-redirects.ts",
+		"validate-docs-links": "tsx ./scripts/validate-docs-links.ts",
 		"test-redirects": "tsx ./scripts/test-redirects.ts"
 	},
 	"dependencies": {
