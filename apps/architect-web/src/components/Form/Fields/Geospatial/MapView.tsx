@@ -138,7 +138,7 @@ const MapView = ({
 					}
 					layout="vertical"
 				>
-					<div ref={mapContainerRef} style={{ width: "100%", height: "50vh" }} />
+					<div ref={mapContainerRef} className="w-full h-[50vh]" />
 				</Section>
 			</Layout>
 		</Dialog>

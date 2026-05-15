@@ -1,4 +1,5 @@
 import type React from "react";
+import { cx } from "~/utils/cva";
 import withAssetUrl from "./withAssetUrl";
 
 type BackgroundImageProps = {
@@ -11,16 +12,8 @@ const BackgroundImage = ({ url, className, ...props }: BackgroundImageProps) => 
 	}
 
 	return (
-		<div
-			className={className}
-			{...props}
-			style={{
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-			}}
-		>
-			<img src={url} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+		<div className={cx(className, "flex items-center justify-center")} {...props}>
+			<img src={url} alt="" className="max-w-full max-h-full object-contain" />
 		</div>
 	);
 };

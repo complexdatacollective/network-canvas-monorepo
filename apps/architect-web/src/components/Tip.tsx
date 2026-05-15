@@ -29,11 +29,8 @@ const Tip = ({ type = "info", icon = true, children = null }: TipProps) => {
 		>
 			{icon && (
 				<motion.div
-					className="shrink-0"
+					className="shrink-0 origin-center"
 					animate={animation}
-					style={{
-						transformOrigin: "center",
-					}}
 					onViewportEnter={() =>
 						animation.start({
 							rotate: [-15, 10, -7, 0],
@@ -44,14 +41,7 @@ const Tip = ({ type = "info", icon = true, children = null }: TipProps) => {
 						})
 					}
 				>
-					{/* Inline size beats the default 5rem `.icon[name="info"]` rule in tailwind.css. */}
-					<Icon
-						name={type}
-						style={{
-							width: "var(--space-xl)",
-							height: "var(--space-xl)",
-						}}
-					/>
+					<Icon name={type} className="size-(--space-xl)" />
 				</motion.div>
 			)}
 			<div>{children}</div>
