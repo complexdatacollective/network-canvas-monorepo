@@ -18,11 +18,7 @@ import {
 import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
 import type { ExportOptions } from '../../options';
 import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
-import {
-  createDataElement,
-  createDocumentFragment,
-  deriveEntityType,
-} from './helpers';
+import { createDataElement, createDocumentFragment } from './helpers';
 import processAttributes from './processAttributes';
 
 /**
@@ -72,108 +68,94 @@ async function generateDataElementsForEntity(
 ): Promise<DocumentFragment> {
   const fragment = createDocumentFragment();
   const dom = new DOMImplementation().createDocument(null, 'root', null);
-  const entityType = deriveEntityType(entity);
 
-  if (entityType === 'ego') {
+  // Ego entities do not have a 'type' property
+  if (!('type' in entity)) {
     const keyDataElement = createDataElement(
-      {
-        key: ncUUIDProperty,
-      },
+      { key: ncUUIDProperty },
       entity[entityPrimaryKeyProperty],
     );
-
     fragment.appendChild(keyDataElement);
-
     const dataElements = await processAttributes(
       entity,
       codebook,
       exportOptions,
     );
-
     fragment.appendChild(dataElements);
-
     return fragment;
   }
 
-  // Create an element representing the entity (<node> or <edge>)
-  const domElement = dom.createElement(entityType);
+  // After ego check, entity is NodeWithResequencedID | EdgeWithResequencedID
+  // Edge entities have an edgeExportIDProperty; node entities have nodeExportIDProperty
+  if (edgeExportIDProperty in entity) {
+    const edge = entity;
+    const domElement = dom.createElement('edge');
+    domElement.setAttribute('id', edge[edgeExportIDProperty].toString());
+    domElement.appendChild(
+      createDataElement(
+        { key: ncUUIDProperty },
+        edge[entityPrimaryKeyProperty],
+      ),
+    );
+    const entityTypeName = codebook.edge?.[edge.type]?.name ?? edge.type;
+    domElement.appendChild(
+      createDataElement({ key: ncTypeProperty }, entityTypeName),
+    );
+    domElement.setAttribute('source', edge[edgeSourceProperty].toString());
+    domElement.setAttribute('target', edge[edgeTargetProperty].toString());
+    domElement.appendChild(
+      createDataElement({ key: ncSourceUUID }, edge[ncSourceUUID]),
+    );
+    domElement.appendChild(
+      createDataElement({ key: ncTargetUUID }, edge[ncTargetUUID]),
+    );
+    const dataElements = await processAttributes(edge, codebook, exportOptions);
+    domElement.appendChild(dataElements);
+    fragment.appendChild(domElement);
+    return fragment;
+  }
 
-  // Set the id of the entity element to the export ID property
-  domElement.setAttribute(
-    'id',
-    entityType === 'node'
-      ? entity[nodeExportIDProperty].toString()
-      : entity[edgeExportIDProperty].toString(),
-  );
-
-  // Create data element for entity UUID [networkCanvasUUID]
+  const node = entity;
+  const domElement = dom.createElement('node');
+  domElement.setAttribute('id', node[nodeExportIDProperty].toString());
   domElement.appendChild(
-    createDataElement(
-      { key: ncUUIDProperty },
-      entity[entityPrimaryKeyProperty],
-    ),
+    createDataElement({ key: ncUUIDProperty }, node[entityPrimaryKeyProperty]),
   );
-
-  // Create data element for entity type [networkCanvasType]
-  const type = entity.type;
-  const entityTypeName = codebook[entityType]?.[type]?.name ?? type;
+  const entityTypeName = codebook.node?.[node.type]?.name ?? node.type;
   domElement.appendChild(
     createDataElement({ key: ncTypeProperty }, entityTypeName),
   );
 
-  /**
-   * Special handling for model variables and variables unique to entity type
-   */
-  if (entityType === 'edge') {
-    // Add source and target properties and map them to the _from and _to attributes
-    domElement.setAttribute('source', entity[edgeSourceProperty].toString());
-    domElement.setAttribute('target', entity[edgeTargetProperty].toString());
+  const codebookDefinition = codebook.node?.[node.type];
+  const labelAttribute = getNodeLabelAttribute(
+    codebookDefinition?.variables,
+    node[entityAttributesProperty],
+  );
 
-    // Insert the nc UUID versions of 'to' and 'from' under special properties
-    domElement.appendChild(
-      createDataElement({ key: ncSourceUUID }, entity[ncSourceUUID]),
-    );
-
-    domElement.appendChild(
-      createDataElement({ key: ncTargetUUID }, entity[ncTargetUUID]),
-    );
-  } else {
-    const codebookDefinition = codebook.node?.[entity.type];
-    const labelAttribute = getNodeLabelAttribute(
-      codebookDefinition?.variables,
-      entity[entityAttributesProperty],
-    );
-
-    if (labelAttribute) {
-      // Add label property if attribute is not encrypted.
-      const isEncrypted =
-        codebookDefinition?.variables?.[labelAttribute]?.encrypted ?? false;
-
-      if (isEncrypted) {
-        domElement.appendChild(
-          createDataElement({ key: 'label' }, 'Encrypted'),
-        );
-      } else {
-        domElement.appendChild(
-          createDataElement(
-            { key: 'label' },
-            entity[entityAttributesProperty][labelAttribute] as string,
-          ),
-        );
-      }
+  if (labelAttribute) {
+    const isEncrypted =
+      codebookDefinition?.variables?.[labelAttribute]?.encrypted ?? false;
+    if (isEncrypted) {
+      domElement.appendChild(createDataElement({ key: 'label' }, 'Encrypted'));
     } else {
       domElement.appendChild(
         createDataElement(
           { key: 'label' },
-          codebookDefinition?.name ?? entity[entityPrimaryKeyProperty],
+          node[entityAttributesProperty][labelAttribute] as string,
         ),
       );
     }
+  } else {
+    domElement.appendChild(
+      createDataElement(
+        { key: 'label' },
+        codebookDefinition?.name ?? node[entityPrimaryKeyProperty],
+      ),
+    );
   }
 
-  const dataElements = await processAttributes(entity, codebook, exportOptions);
+  const dataElements = await processAttributes(node, codebook, exportOptions);
   domElement.appendChild(dataElements);
   fragment.appendChild(domElement);
-
   return fragment;
 }
