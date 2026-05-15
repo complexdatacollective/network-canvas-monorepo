@@ -75,7 +75,7 @@ describe('SyntheticInterview', () => {
       stage.addPrompt();
 
       const protocol = si.getProtocol();
-      const nodeTypeId = Object.keys(protocol.codebook.node)[0];
+      const nodeTypeId = Object.keys(protocol.codebook.node)[0]!;
       const nodeType = protocol.codebook.node[nodeTypeId] as Record<
         string,
         unknown
@@ -103,7 +103,7 @@ describe('SyntheticInterview', () => {
       stage.addPrompt({ highlight: { variable: true } });
 
       const protocol = si.getProtocol();
-      const nodeTypeId = Object.keys(protocol.codebook.node)[0];
+      const nodeTypeId = Object.keys(protocol.codebook.node)[0]!;
       const nodeType = protocol.codebook.node[nodeTypeId] as Record<
         string,
         unknown
@@ -160,8 +160,8 @@ describe('SyntheticInterview', () => {
         string,
         { type: string; options: unknown[] }
       >;
-      expect(variables[varRef.id].type).toBe('ordinal');
-      expect(variables[varRef.id].options).toHaveLength(5);
+      expect(variables[varRef.id]!.type).toBe('ordinal');
+      expect(variables[varRef.id]!.options).toHaveLength(5);
     });
 
     it('auto-generates options for categorical variables', () => {
@@ -175,8 +175,8 @@ describe('SyntheticInterview', () => {
         string,
         { type: string; options: unknown[] }
       >;
-      expect(variables[varRef.id].type).toBe('categorical');
-      expect(variables[varRef.id].options).toHaveLength(4);
+      expect(variables[varRef.id]!.type).toBe('categorical');
+      expect(variables[varRef.id]!.options).toHaveLength(4);
     });
   });
 
@@ -195,11 +195,11 @@ describe('SyntheticInterview', () => {
         fields: { variable: string; component: string }[];
       };
       expect(form.fields).toHaveLength(2);
-      expect(form.fields[0].component).toBe('Text');
-      expect(form.fields[1].component).toBe('Number');
+      expect(form.fields[0]!.component).toBe('Text');
+      expect(form.fields[1]!.component).toBe('Number');
 
       // Variables should exist in codebook
-      const nodeTypeId = Object.keys(protocol.codebook.node)[0];
+      const nodeTypeId = Object.keys(protocol.codebook.node)[0]!;
       const nodeType = protocol.codebook.node[nodeTypeId] as Record<
         string,
         unknown
@@ -219,7 +219,7 @@ describe('SyntheticInterview', () => {
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
       const form = stageConfig.form as { fields: { component: string }[] };
       expect(form.fields).toHaveLength(1);
-      expect(form.fields[0].component).toBe('RadioGroup');
+      expect(form.fields[0]!.component).toBe('RadioGroup');
     });
 
     it('supports prompts and panels', () => {
@@ -233,9 +233,9 @@ describe('SyntheticInterview', () => {
       const prompts = stageConfig.prompts as { text: string }[];
       const panels = stageConfig.panels as { title: string }[];
       expect(prompts).toHaveLength(1);
-      expect(prompts[0].text).toBe('Name your friends');
+      expect(prompts[0]!.text).toBe('Name your friends');
       expect(panels).toHaveLength(1);
-      expect(panels[0].title).toBe('Previous contacts');
+      expect(panels[0]!.title).toBe('Previous contacts');
     });
 
     it('generates initial nodes', () => {
@@ -267,7 +267,7 @@ describe('SyntheticInterview', () => {
       }[];
       expect(prompts).toHaveLength(1);
 
-      const prompt = prompts[0];
+      const prompt = prompts[0]!;
       expect(prompt.text).toBe('Place people');
       expect(prompt.layout.layoutVariable).toBeTruthy();
       expect(prompt.edges.create).toBeTruthy();
@@ -322,7 +322,7 @@ describe('SyntheticInterview', () => {
       }[];
       expect(presets).toHaveLength(1);
 
-      const preset = presets[0];
+      const preset = presets[0]!;
       expect(preset.label).toBe('Full View');
       expect(preset.layoutVariable).toBeTruthy();
       expect(preset.groupVariable).toBeTruthy();
@@ -342,7 +342,7 @@ describe('SyntheticInterview', () => {
       const presets = stageConfig.presets as {
         edges: { display: string[] };
       }[];
-      expect(presets[0].edges.display).toEqual([et.id]);
+      expect(presets[0]!.edges.display).toEqual([et.id]);
     });
 
     it('supports behaviours (freeDraw, allowRepositioning)', () => {
@@ -466,7 +466,7 @@ describe('SyntheticInterview', () => {
       const network = si.getNetwork();
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as { prompts: { id: string }[] };
-      const firstPromptId = stageConfig.prompts[0].id;
+      const firstPromptId = stageConfig.prompts[0]!.id;
 
       expect(network.nodes).toHaveLength(3);
       for (const node of network.nodes) {
@@ -510,7 +510,7 @@ describe('SyntheticInterview', () => {
       expect(stageConfig.quickAdd).toBeTruthy();
       const prompts = stageConfig.prompts as { text: string }[];
       expect(prompts).toHaveLength(1);
-      expect(prompts[0].text).toBe('Name your friends');
+      expect(prompts[0]!.text).toBe('Name your friends');
     });
 
     it('supports panels', () => {
@@ -523,7 +523,7 @@ describe('SyntheticInterview', () => {
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
       const panels = stageConfig.panels as { title: string }[];
       expect(panels).toHaveLength(1);
-      expect(panels[0].title).toBe('Existing');
+      expect(panels[0]!.title).toBe('Existing');
     });
   });
 
@@ -586,9 +586,9 @@ describe('SyntheticInterview', () => {
         negativeLabel: string;
       }[];
       expect(prompts).toHaveLength(1);
-      expect(prompts[0].createEdge).toBe(et.id);
-      expect(prompts[0].edgeVariable).toBe(varRef.id);
-      expect(prompts[0].negativeLabel).toBe('No Friendship');
+      expect(prompts[0]!.createEdge).toBe(et.id);
+      expect(prompts[0]!.edgeVariable).toBe(varRef.id);
+      expect(prompts[0]!.negativeLabel).toBe('No Friendship');
     });
 
     it('auto-creates edge type and variable when none provided', () => {
@@ -602,7 +602,7 @@ describe('SyntheticInterview', () => {
       const edgeTypeIds = Object.keys(protocol.codebook.edge);
       expect(edgeTypeIds.length).toBeGreaterThanOrEqual(1);
 
-      const edgeType = protocol.codebook.edge[edgeTypeIds[0]] as Record<
+      const edgeType = protocol.codebook.edge[edgeTypeIds[0]!] as Record<
         string,
         unknown
       >;
@@ -795,7 +795,7 @@ describe('SyntheticInterview', () => {
         variable: string;
       }[];
       expect(nomPrompts).toHaveLength(1);
-      expect(nomPrompts[0].text).toBe('Who has the disease?');
+      expect(nomPrompts[0]!.text).toBe('Who has the disease?');
     });
   });
 
@@ -825,8 +825,8 @@ describe('SyntheticInterview', () => {
       >;
       const varEntries = Object.values(variables);
       expect(varEntries).toHaveLength(1);
-      expect(varEntries[0].name).toBe('Strength');
-      expect(varEntries[0].type).toBe('ordinal');
+      expect(varEntries[0]!.name).toBe('Strength');
+      expect(varEntries[0]!.type).toBe('ordinal');
     });
   });
 
