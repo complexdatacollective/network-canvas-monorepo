@@ -88,7 +88,7 @@ describe('useNodeMeasurement', () => {
     const containers = document.querySelectorAll(
       'div[style*="visibility: hidden"]',
     );
-    const container = containers[0];
+    const container = containers[0]!;
     expect(container.children.length).toBeGreaterThan(0);
   });
 
@@ -97,7 +97,7 @@ describe('useNodeMeasurement', () => {
     render(<TestConsumer component={<div>test</div>} />);
 
     expect(latestObserverInstances.length).toBeGreaterThan(0);
-    expect(latestObserverInstances[0].observeSpy).toHaveBeenCalled();
+    expect(latestObserverInstances[0]!.observeSpy).toHaveBeenCalled();
   });
 
   test('updates dimensions when ResizeObserver fires', () => {
