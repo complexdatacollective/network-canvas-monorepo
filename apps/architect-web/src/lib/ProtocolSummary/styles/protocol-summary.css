@@ -1,9 +1,15 @@
-/* Protocol summary globals — print page setup, screen page-break visualisation,
- * and print-mode body overrides. Component-level rules were migrated to
- * Tailwind utilities; what remains here is the @page rule, the body-level
- * @media print/screen blocks for the `.print` document mode, and the
- * `.protocol-summary` container's print styling — none of which can be
- * expressed as classNames on JSX. */
+/* Protocol summary print scaffolding. What remains here cannot be expressed
+ * as Tailwind utilities on JSX:
+ *   - @page targets the printed paper itself, not a DOM element
+ *   - .summary-view (on <html>) and .summary-view body target elements that
+ *     live outside React (index.html), so no className can attach to them
+ *   - the screen-only .page-break-marker "paper card" framing is a screen-
+ *     gated multi-property rule applied to several elements; expressing it
+ *     as repeated [@media_screen]: utilities on every marker would be far
+ *     uglier than this single rule
+ *
+ * Surface-level styles (page dimensions, base font size, print color/font
+ * overrides) live in the `protocol-summary-surface` @utility in tailwind.css. */
 
 :root {
 	--margin: 1.5cm;
@@ -13,19 +19,14 @@
 	margin: var(--margin);
 }
 
-.print .protocol-summary {
-	--base-font-size: 12px;
-	font-size: var(--base-font-size);
-}
-
 @media print {
-	.print {
+	.summary-view {
 		overflow: visible;
 		height: auto;
 		width: auto;
 	}
 
-	.print body {
+	.summary-view body {
 		overflow: visible;
 		height: auto;
 		width: auto;
@@ -34,45 +35,14 @@
 }
 
 @media screen {
-	.print body {
+	.summary-view body {
 		overflow: visible;
 		height: auto;
 		width: auto;
 		background: hsl(var(--platinum));
 	}
-}
 
-.print #preload {
-	display: none;
-}
-
-.protocol-summary-page {
-	--base-font-size: 14px;
-}
-
-.protocol-summary {
-	--page-size-height: 29.7cm;
-	--page-size-width: 21cm;
-}
-
-@media print {
-	.protocol-summary {
-		-webkit-print-color-adjust: exact !important;
-		color: #000;
-		font-family:
-			-apple-system, "Segoe UI", Helvetica, Arial, sans-serif,
-			"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-	}
-}
-
-@media print {
-	.protocol-summary .page-break-marker {
-		page-break-before: always;
-	}
-}
-
-@media screen {
-	.protocol-summary .page-break-marker {
+	.page-break-marker {
 		background: white;
 		padding: var(--margin);
 		display: block;
@@ -84,11 +54,5 @@
 		border: 1px hsl(var(--platinum-dark)) solid;
 		border-radius: var(--radius-xs);
 		box-shadow: 0 4px 5px rgb(75 75 75 / 20%);
-	}
-}
-
-@media print {
-	.protocol-summary [data-print="no"] {
-		display: none;
 	}
 }

@@ -689,3 +689,21 @@
 	}
 }
 
+/* A4-sized container for the protocol summary print view. Sets page
+   dimensions and base font size as CSS variables (consumed by descendant
+   .page-break-marker "paper cards"), plus print-mode overrides so the
+   printed output renders in a system font stack independent of the app's
+   webfonts and with full-bleed colors. */
+@utility protocol-summary-surface {
+	--page-size-height: 29.7cm;
+	--page-size-width: 21cm;
+	--base-font-size: 12px;
+	font-size: var(--base-font-size);
+
+	@media print {
+		color: #000;
+		font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+			"Segoe UI Symbol";
+		-webkit-print-color-adjust: exact !important;
+	}
+}
