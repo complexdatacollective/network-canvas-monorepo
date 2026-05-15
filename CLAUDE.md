@@ -205,8 +205,43 @@ Network Canvas uses a protocol-based system where:
 ### TypeScript
 
 - NEVER use the `any` type
+- Use `type` for type definitions, not `interface`
+- Prefer inline type imports: `import { type Foo } from './bar'` rather than a separate `import type` statement
+- Intentionally unused variables must be prefixed with an underscore (e.g. `_unusedVar`) so Biome's unused-variable rule does not flag them
 - Shared TypeScript configurations in `tooling/typescript/`
 - Strict type checking enabled across all packages
+
+### Logging
+
+- Do not use `console.log` in committed code. If a log is genuinely intentional, suppress it with an inline Biome disable comment (e.g. `// biome-ignore lint/suspicious/noConsole: <reason>`) and include a reason.
+
+### UI Components
+
+When authoring components in `@codaco/ui` (or any app consuming shadcn/ui + Tailwind):
+
+- Use `cva` (class-variance-authority) to define component variants
+- Use the `cn()` utility for class merging
+- Export the component alongside its variants, and a skeleton variant where applicable
+
+```typescript
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@codaco/ui/lib/utils";
+
+const buttonVariants = cva("base-classes", {
+	variants: {
+		variant: { default: "...", destructive: "..." },
+		size: { default: "...", sm: "..." },
+	},
+	defaultVariants: {
+		variant: "default",
+		size: "default",
+	},
+});
+
+export type ButtonProps = {
+	variant?: VariantProps<typeof buttonVariants>["variant"];
+} & React.ButtonHTMLAttributes<HTMLButtonElement>;
+```
 
 ### Testing
 
