@@ -1,160 +1,171 @@
-import { Alert, AlertDescription } from "@codaco/fresco-ui/Alert";
-import Field from "@codaco/fresco-ui/form/Field/Field";
-import { FormWithoutProvider } from "@codaco/fresco-ui/form/Form";
-import PasswordField from "@codaco/fresco-ui/form/fields/PasswordField";
-import { useFormMeta } from "@codaco/fresco-ui/form/hooks/useFormState";
-import SubmitButton from "@codaco/fresco-ui/form/SubmitButton";
-import FormStoreProvider from "@codaco/fresco-ui/form/store/formStoreProvider";
-import Surface, { MotionSurface } from "@codaco/fresco-ui/layout/Surface";
-import { ALLOWED_MARKDOWN_SECTION_TAGS, RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
-import { ScrollArea } from "@codaco/fresco-ui/ScrollArea";
-import Heading from "@codaco/fresco-ui/typography/Heading";
-import { ArrowRight } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useRef } from "react";
-import EncryptionBackground from "~/components/EncryptedBackground";
-import useBeforeNext from "~/hooks/useBeforeNext";
-import { useCelebrate } from "~/hooks/useCelebrate";
-import useReadyForNextStage from "~/hooks/useReadyForNextStage";
-import type { StageProps } from "~/types";
-import { usePassphrase } from "./usePassphrase";
+import { ArrowRight } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { useCallback, useEffect, useRef } from 'react';
 
-type AnonymisationProps = StageProps<"Anonymisation">;
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import Field from '@codaco/fresco-ui/form/Field/Field';
+import PasswordField from '@codaco/fresco-ui/form/fields/PasswordField';
+import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import Surface, { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import {
+  ALLOWED_MARKDOWN_SECTION_TAGS,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
+import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import EncryptionBackground from '~/components/EncryptedBackground';
+import useBeforeNext from '~/hooks/useBeforeNext';
+import { useCelebrate } from '~/hooks/useCelebrate';
+import useReadyForNextStage from '~/hooks/useReadyForNextStage';
+import type { StageProps } from '~/types';
+
+import { usePassphrase } from './usePassphrase';
+
+type AnonymisationProps = StageProps<'Anonymisation'>;
 
 function AnonymisationInner(props: AnonymisationProps) {
-	const formRef = useRef<HTMLFormElement>(null);
-	const alertRef = useRef<HTMLDivElement>(null);
-	const { updateReady } = useReadyForNextStage();
-	const {
-		stage: { explanationText },
-	} = props;
-	const { passphrase, setPassphrase } = usePassphrase();
-	const celebrate = useCelebrate(alertRef);
+  const formRef = useRef<HTMLFormElement>(null);
+  const alertRef = useRef<HTMLDivElement>(null);
+  const { updateReady } = useReadyForNextStage();
+  const {
+    stage: { explanationText },
+  } = props;
+  const { passphrase, setPassphrase } = usePassphrase();
+  const celebrate = useCelebrate(alertRef);
 
-	const { isValid: isFormValid } = useFormMeta();
+  const { isValid: isFormValid } = useFormMeta();
 
-	useEffect(() => {
-		if (passphrase) {
-			celebrate();
-		}
-	}, [passphrase, celebrate]);
+  useEffect(() => {
+    if (passphrase) {
+      celebrate();
+    }
+  }, [passphrase, celebrate]);
 
-	useBeforeNext((direction) => {
-		if (direction === "backwards") {
-			return true;
-		}
+  useBeforeNext((direction) => {
+    if (direction === 'backwards') {
+      return true;
+    }
 
-		formRef.current?.submit();
+    formRef.current?.submit();
 
-		if (!isFormValid) {
-			return false;
-		}
+    if (!isFormValid) {
+      return false;
+    }
 
-		return true;
-	});
+    return true;
+  });
 
-	const handleSetPassphrase = useCallback(
-		(values: unknown) => {
-			const fields = values as { passphrase: string };
-			setPassphrase(fields.passphrase);
-			updateReady(true);
-			return { success: true };
-		},
-		[setPassphrase, updateReady],
-	);
+  const handleSetPassphrase = useCallback(
+    (values: unknown) => {
+      const fields = values as { passphrase: string };
+      setPassphrase(fields.passphrase);
+      updateReady(true);
+      return { success: true };
+    },
+    [setPassphrase, updateReady],
+  );
 
-	return (
-		<>
-			<EncryptionBackground thresholdPosition={passphrase ? 20 : 100} />
-			<ScrollArea className="m-0 size-full">
-				<div className="interface mx-auto min-h-full max-w-[80ch] flex-col">
-					<MotionSurface
-						noContainer
-						spacing="lg"
-						className="bg-surface/80 max-w-2xl backdrop-blur-xs"
-						initial={{
-							scale: 0.8,
-							opacity: 0,
-							y: 50,
-						}}
-						animate={{
-							scale: 1,
-							opacity: 1,
-							y: 0,
-						}}
-						transition={{
-							type: "spring",
-							damping: 15,
-							delay: 0.2,
-						}}
-					>
-						<Heading level="h1">{explanationText.title}</Heading>
-						<RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>{explanationText.body}</RenderMarkdown>
+  return (
+    <>
+      <EncryptionBackground thresholdPosition={passphrase ? 20 : 100} />
+      <ScrollArea className="m-0 size-full">
+        <div className="interface mx-auto min-h-full max-w-[80ch] flex-col">
+          <MotionSurface
+            noContainer
+            spacing="lg"
+            className="bg-surface/80 max-w-2xl backdrop-blur-xs"
+            initial={{
+              scale: 0.8,
+              opacity: 0,
+              y: 50,
+            }}
+            animate={{
+              scale: 1,
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              type: 'spring',
+              damping: 15,
+              delay: 0.2,
+            }}
+          >
+            <Heading level="h1">{explanationText.title}</Heading>
+            <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+              {explanationText.body}
+            </RenderMarkdown>
 
-						<AnimatePresence mode="popLayout">
-							{passphrase ? (
-								<motion.div
-									key="success"
-									initial={{ opacity: 0, scale: 0.9 }}
-									animate={{ opacity: 1, scale: 1 }}
-									transition={{ type: "spring", damping: 15 }}
-								>
-									<Alert ref={alertRef} variant="success">
-										<AlertDescription>
-											Passphrase set successfully! Click &quot;Next&quot; to continue.
-										</AlertDescription>
-									</Alert>
-								</motion.div>
-							) : (
-								<motion.div
-									key="form"
-									initial={{ opacity: 1 }}
-									exit={{ opacity: 0, scale: 0.95 }}
-									transition={{ duration: 0.2 }}
-								>
-									<Surface level={1} className="mt-6" spacing="sm">
-										<FormWithoutProvider onSubmit={handleSetPassphrase} ref={formRef}>
-											<Field
-												component={PasswordField}
-												name="passphrase"
-												placeholder="Enter your passphrase..."
-												label="Passphrase"
-												required
-												autoFocus
-											/>
-											<Field
-												component={PasswordField}
-												name="passphrase-2"
-												placeholder="Re-enter your passphrase..."
-												label="Confirm Passphrase"
-												required
-												sameAs="passphrase"
-											/>
-											<SubmitButton
-												key="submit"
-												aria-label="Submit"
-												type="submit"
-												icon={<ArrowRight />}
-												iconPosition="right"
-											>
-												Continue
-											</SubmitButton>
-										</FormWithoutProvider>
-									</Surface>
-								</motion.div>
-							)}
-						</AnimatePresence>
-					</MotionSurface>
-				</div>
-			</ScrollArea>
-		</>
-	);
+            <AnimatePresence mode="popLayout">
+              {passphrase ? (
+                <motion.div
+                  key="success"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: 'spring', damping: 15 }}
+                >
+                  <Alert ref={alertRef} variant="success">
+                    <AlertDescription>
+                      Passphrase set successfully! Click &quot;Next&quot; to
+                      continue.
+                    </AlertDescription>
+                  </Alert>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="form"
+                  initial={{ opacity: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Surface level={1} className="mt-6" spacing="sm">
+                    <FormWithoutProvider
+                      onSubmit={handleSetPassphrase}
+                      ref={formRef}
+                    >
+                      <Field
+                        component={PasswordField}
+                        name="passphrase"
+                        placeholder="Enter your passphrase..."
+                        label="Passphrase"
+                        required
+                        autoFocus
+                      />
+                      <Field
+                        component={PasswordField}
+                        name="passphrase-2"
+                        placeholder="Re-enter your passphrase..."
+                        label="Confirm Passphrase"
+                        required
+                        sameAs="passphrase"
+                      />
+                      <SubmitButton
+                        key="submit"
+                        aria-label="Submit"
+                        type="submit"
+                        icon={<ArrowRight />}
+                        iconPosition="right"
+                      >
+                        Continue
+                      </SubmitButton>
+                    </FormWithoutProvider>
+                  </Surface>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </MotionSurface>
+        </div>
+      </ScrollArea>
+    </>
+  );
 }
 
 export default function Anonymisation(props: AnonymisationProps) {
-	return (
-		<FormStoreProvider>
-			<AnonymisationInner {...props} />
-		</FormStoreProvider>
-	);
+  return (
+    <FormStoreProvider>
+      <AnonymisationInner {...props} />
+    </FormStoreProvider>
+  );
 }

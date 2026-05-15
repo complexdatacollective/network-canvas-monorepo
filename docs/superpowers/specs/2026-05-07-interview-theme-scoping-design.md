@@ -38,7 +38,7 @@ Introduce `--theme-root-size`, an inheritable custom property that the type scal
 
 The custom property carries a fixed (rem) value. When a child of `[data-theme-interview]` reads `var(--theme-root-size)`, it resolves to the value declared on the closest themed ancestor — not the parent's font-size. This avoids the em-compounding problem (where `text-lg` inside `text-base` would otherwise multiply font-sizes through nesting).
 
-The wrapper also sets `font-size: var(--theme-root-size)` so that `em`-based spacing utilities (`--spacing-base: 0.25em`, already in place) track the same base. Spacing is *intentionally* em-based to compound with local text size; that behavior is preserved.
+The wrapper also sets `font-size: var(--theme-root-size)` so that `em`-based spacing utilities (`--spacing-base: 0.25em`, already in place) track the same base. Spacing is _intentionally_ em-based to compound with local text size; that behavior is preserved.
 
 #### Type scale rewrite (`tooling/tailwind/fresco/theme.css`)
 
@@ -48,28 +48,42 @@ Every `Nrem` becomes `calc(N * var(--theme-root-size))`. Mechanical substitution
 @theme static {
   --text-*: initial;
 
-  --text-xs:   clamp(calc(0.64  * var(--theme-root-size)),
-                     calc(0.733 * var(--theme-root-size) + 0.283vw),
-                     calc(0.79  * var(--theme-root-size)));
-  --text-sm:   clamp(calc(0.8   * var(--theme-root-size)),
-                     calc(0.844 * var(--theme-root-size) + 0.223vw),
-                     calc(0.889 * var(--theme-root-size)));
+  --text-xs: clamp(
+    calc(0.64 * var(--theme-root-size)),
+    calc(0.733 * var(--theme-root-size) + 0.283vw),
+    calc(0.79 * var(--theme-root-size))
+  );
+  --text-sm: clamp(
+    calc(0.8 * var(--theme-root-size)),
+    calc(0.844 * var(--theme-root-size) + 0.223vw),
+    calc(0.889 * var(--theme-root-size))
+  );
   --text-base: var(--theme-root-size);
-  --text-lg:   clamp(calc(1.125 * var(--theme-root-size)),
-                     calc(1.063 * var(--theme-root-size) + 0.313vw),
-                     calc(1.25  * var(--theme-root-size)));
-  --text-xl:   clamp(calc(1.266 * var(--theme-root-size)),
-                     calc(1.141 * var(--theme-root-size) + 0.625vw),
-                     calc(1.563 * var(--theme-root-size)));
-  --text-2xl:  clamp(calc(1.424 * var(--theme-root-size)),
-                     calc(1.174 * var(--theme-root-size) + 1.25vw),
-                     calc(1.953 * var(--theme-root-size)));
-  --text-3xl:  clamp(calc(1.602 * var(--theme-root-size)),
-                     calc(1.143 * var(--theme-root-size) + 2.295vw),
-                     calc(2.441 * var(--theme-root-size)));
-  --text-4xl:  clamp(calc(1.802 * var(--theme-root-size)),
-                     calc(1.052 * var(--theme-root-size) + 3.75vw),
-                     calc(3.052 * var(--theme-root-size)));
+  --text-lg: clamp(
+    calc(1.125 * var(--theme-root-size)),
+    calc(1.063 * var(--theme-root-size) + 0.313vw),
+    calc(1.25 * var(--theme-root-size))
+  );
+  --text-xl: clamp(
+    calc(1.266 * var(--theme-root-size)),
+    calc(1.141 * var(--theme-root-size) + 0.625vw),
+    calc(1.563 * var(--theme-root-size))
+  );
+  --text-2xl: clamp(
+    calc(1.424 * var(--theme-root-size)),
+    calc(1.174 * var(--theme-root-size) + 1.25vw),
+    calc(1.953 * var(--theme-root-size))
+  );
+  --text-3xl: clamp(
+    calc(1.602 * var(--theme-root-size)),
+    calc(1.143 * var(--theme-root-size) + 2.295vw),
+    calc(2.441 * var(--theme-root-size))
+  );
+  --text-4xl: clamp(
+    calc(1.802 * var(--theme-root-size)),
+    calc(1.052 * var(--theme-root-size) + 3.75vw),
+    calc(3.052 * var(--theme-root-size))
+  );
   /* line-height and letter-spacing values are unchanged (unitless or em) */
 }
 ```
@@ -93,8 +107,12 @@ Every `Nrem` becomes `calc(N * var(--theme-root-size))`. Mechanical substitution
     --theme-root-size: 1rem;
     font-size: var(--theme-root-size);
 
-    @media (width >= 1279px) { --theme-root-size: 1.125rem; }
-    @media (width >= 1920px) { --theme-root-size: 1.25rem; }
+    @media (width >= 1279px) {
+      --theme-root-size: 1.125rem;
+    }
+    @media (width >= 1920px) {
+      --theme-root-size: 1.25rem;
+    }
   }
 }
 
@@ -127,8 +145,8 @@ The user-facing API is a single component, `<ThemedRegion>`, that bundles the th
 #### `PortalContainerContext` (`packages/fresco-ui/src/PortalContainer.tsx` — new file)
 
 ```tsx
-"use client";
-import { createContext, useContext, useState, type ReactNode } from "react";
+'use client';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 
 const PortalContainerContext = createContext<HTMLElement | null>(null);
 
@@ -152,20 +170,31 @@ The provider renders an empty sibling `<div>` after children — that node is th
 #### `<ThemedRegion>` (`packages/fresco-ui/src/ThemedRegion.tsx` — new file)
 
 ```tsx
-"use client";
-import { cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
-import { PortalContainerProvider } from "./PortalContainer";
-import { cx } from "./utils/cva";
+'use client';
+import {
+  cloneElement,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
+import { PortalContainerProvider } from './PortalContainer';
+import { cx } from './utils/cva';
 
 type ThemedRegionProps = {
-  theme: "interview";
+  theme: 'interview';
   children: ReactNode;
   className?: string;
   render?: ReactElement;
-} & Omit<React.HTMLAttributes<HTMLDivElement>, "children" | "className">;
+} & Omit<React.HTMLAttributes<HTMLDivElement>, 'children' | 'className'>;
 
-export function ThemedRegion({ theme, render, children, className, ...rest }: ThemedRegionProps) {
-  const themeAttr = theme === "interview" ? { "data-theme-interview": "" } : {};
+export function ThemedRegion({
+  theme,
+  render,
+  children,
+  className,
+  ...rest
+}: ThemedRegionProps) {
+  const themeAttr = theme === 'interview' ? { 'data-theme-interview': '' } : {};
   const body = <PortalContainerProvider>{children}</PortalContainerProvider>;
 
   if (render && isValidElement(render)) {
@@ -189,16 +218,16 @@ The `theme` prop is a discriminated union, ready to extend if more named themes 
 
 #### Eight Portal sites updated to read the container
 
-| File | Component | Portal type |
-|---|---|---|
-| `packages/fresco-ui/src/Modal/Modal.tsx:35` | `Modal` | `BaseDialog.Portal` |
-| `packages/fresco-ui/src/Popover.tsx:157` | `PopoverContent` | `BasePopover.Portal` |
-| `packages/fresco-ui/src/Tooltip.tsx:25` | `Tooltip` | `BaseTooltip.Portal` |
-| `packages/fresco-ui/src/DropdownMenu.tsx:77, 103` | `DropdownMenuContent`, `DropdownSubMenuContent` | `Menu.Portal` (×2) |
-| `packages/fresco-ui/src/Toast.tsx:155` | `Toaster` | `Toast.Portal` |
-| `packages/fresco-ui/src/form/fields/Select/Styled.tsx:59` | `Styled` | `Select.Portal` |
-| `packages/fresco-ui/src/form/fields/Combobox/Combobox.tsx:143` | `Combobox` | `Combobox.Portal` |
-| `packages/interview/src/toast/InterviewToast.tsx:104` | `InterviewToastViewport` | `Toast.Portal` |
+| File                                                           | Component                                       | Portal type          |
+| -------------------------------------------------------------- | ----------------------------------------------- | -------------------- |
+| `packages/fresco-ui/src/Modal/Modal.tsx:35`                    | `Modal`                                         | `BaseDialog.Portal`  |
+| `packages/fresco-ui/src/Popover.tsx:157`                       | `PopoverContent`                                | `BasePopover.Portal` |
+| `packages/fresco-ui/src/Tooltip.tsx:25`                        | `Tooltip`                                       | `BaseTooltip.Portal` |
+| `packages/fresco-ui/src/DropdownMenu.tsx:77, 103`              | `DropdownMenuContent`, `DropdownSubMenuContent` | `Menu.Portal` (×2)   |
+| `packages/fresco-ui/src/Toast.tsx:155`                         | `Toaster`                                       | `Toast.Portal`       |
+| `packages/fresco-ui/src/form/fields/Select/Styled.tsx:59`      | `Styled`                                        | `Select.Portal`      |
+| `packages/fresco-ui/src/form/fields/Combobox/Combobox.tsx:143` | `Combobox`                                      | `Combobox.Portal`    |
+| `packages/interview/src/toast/InterviewToast.tsx:104`          | `InterviewToastViewport`                        | `Toast.Portal`       |
 
 Pattern at every site:
 
@@ -252,16 +281,27 @@ function Interview() {
 Drop the `useLayoutEffect`, the `INTERVIEW_ATTR` constant, and the html-attribute mutation. Render the theme attribute on the wrapper div via `<ThemedRegion>`:
 
 ```tsx
-function ThemeWrapper({ selectedTheme, children }: { selectedTheme: ThemeKey; children: React.ReactNode }) {
+function ThemeWrapper({
+  selectedTheme,
+  children,
+}: {
+  selectedTheme: ThemeKey;
+  children: React.ReactNode;
+}) {
   setStoredTheme(selectedTheme);
-  if (selectedTheme === "interview") {
+  if (selectedTheme === 'interview') {
     return (
-      <ThemedRegion theme="interview" className="bg-background text-text publish-colors scheme-dark">
+      <ThemedRegion
+        theme="interview"
+        className="bg-background text-text publish-colors scheme-dark"
+      >
         {children}
       </ThemedRegion>
     );
   }
-  return <div className="bg-background text-text publish-colors">{children}</div>;
+  return (
+    <div className="bg-background text-text publish-colors">{children}</div>
+  );
 }
 ```
 
@@ -291,7 +331,7 @@ No change. The locator `main[data-theme-interview]` continues to match (Shell st
 
 #### Documentation updates
 
-- `packages/interview/README.md` — delete the "Theming & DOM scope" section that documents the host-side `useLayoutEffect` requirement (lines ~383–417). Replace with a brief paragraph: *"`Shell` renders `<main data-theme-interview>` and provides a portal container to descendants automatically. Hosts that render their own theme-scoped UI outside Shell can use `<ThemedRegion theme=\"interview\">` from `@codaco/fresco-ui`."*
+- `packages/interview/README.md` — delete the "Theming & DOM scope" section that documents the host-side `useLayoutEffect` requirement (lines ~383–417). Replace with a brief paragraph: _"`Shell` renders `<main data-theme-interview>` and provides a portal container to descendants automatically. Hosts that render their own theme-scoped UI outside Shell can use `<ThemedRegion theme=\"interview\">` from `@codaco/fresco-ui`."_
 - `packages/fresco-ui/README.md` — update the line referencing `data-theme-interview` to mention scoped placement; document the `<ThemedRegion>` and `<PortalContainerProvider>` exports.
 - `tooling/tailwind/README.md:33` — replace the description of `<html>`-level activation with the scoped-attribute description.
 
@@ -304,9 +344,9 @@ No change. The locator `main[data-theme-interview]` continues to match (Shell st
 
 ## Changesets
 
-- **`@codaco/tailwind-config`** — minor. *"Type scale rewritten to use a `--theme-root-size` sentinel custom property; interview theme drops the `:root` requirement and binds to `[data-theme-interview]` on any element. Responsive font-sizes now also honor user OS text-zoom (rem-based instead of px-pegged). `interview:` and `dashboard:` `@custom-variant` selectors updated to support nested coexistence."*
-- **`@codaco/fresco-ui`** — minor. *"New `<ThemedRegion>` component and `<PortalContainerProvider>` for declarative theme scoping. All Portal-using components (Modal, Popover, Tooltip, DropdownMenu, Toast, Select, Combobox) now thread a portal container through context, allowing themed dialogs/popovers to inherit the theme of the closest themed ancestor instead of `document.body`."*
-- **`@codaco/interview`** — alpha-15. *"Shell now scopes the interview theme purely declaratively via `<ThemedRegion>`. Removed the host-side `useLayoutEffect` requirement that previously toggled `data-theme-interview` on `<html>`. Hosts mount Shell anywhere in the tree and the theme + portal containment travel with it."*
+- **`@codaco/tailwind-config`** — minor. _"Type scale rewritten to use a `--theme-root-size` sentinel custom property; interview theme drops the `:root` requirement and binds to `[data-theme-interview]` on any element. Responsive font-sizes now also honor user OS text-zoom (rem-based instead of px-pegged). `interview:` and `dashboard:` `@custom-variant` selectors updated to support nested coexistence."_
+- **`@codaco/fresco-ui`** — minor. _"New `<ThemedRegion>` component and `<PortalContainerProvider>` for declarative theme scoping. All Portal-using components (Modal, Popover, Tooltip, DropdownMenu, Toast, Select, Combobox) now thread a portal container through context, allowing themed dialogs/popovers to inherit the theme of the closest themed ancestor instead of `document.body`."_
+- **`@codaco/interview`** — alpha-15. _"Shell now scopes the interview theme purely declaratively via `<ThemedRegion>`. Removed the host-side `useLayoutEffect` requirement that previously toggled `data-theme-interview` on `<html>`. Hosts mount Shell anywhere in the tree and the theme + portal containment travel with it."_
 
 ## Testing strategy
 

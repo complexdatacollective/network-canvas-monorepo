@@ -1,5 +1,5 @@
-import { type VersionedProtocol, VersionedProtocolSchema } from "../schemas";
-import { ensureError } from "../utils/ensureError";
+import { type VersionedProtocol, VersionedProtocolSchema } from '../schemas';
+import { ensureError } from '../utils/ensureError';
 
 /**
  * Enhanced validateProtocol that uses Zod 4 with integrated cross-reference validation.
@@ -7,17 +7,20 @@ import { ensureError } from "../utils/ensureError";
  * Returns Zod's SafeParseReturnType directly.
  */
 const validateProtocol = async (protocol: VersionedProtocol) => {
-	if (protocol === undefined) {
-		throw new Error("Protocol is undefined");
-	}
+  if (protocol === undefined) {
+    throw new Error('Protocol is undefined');
+  }
 
-	try {
-		return await VersionedProtocolSchema.safeParseAsync(protocol);
-	} catch (e) {
-		const error = ensureError(e);
+  try {
+    return await VersionedProtocolSchema.safeParseAsync(protocol);
+  } catch (e) {
+    const error = ensureError(e);
 
-		throw new Error(`Protocol validation failed due to an internal error: ${error.message}`);
-	}
+    throw new Error(
+      `Protocol validation failed due to an internal error: ${error.message}`,
+      { cause: e },
+    );
+  }
 };
 
 export default validateProtocol;

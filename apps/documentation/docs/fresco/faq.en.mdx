@@ -6,14 +6,14 @@ navOrder: 3
 
 ## How much does Fresco cost?
 
-Fresco is free and open source software. You can always 
+Fresco is free and open source software. You can always
 download the latest version of Fresco source-code from the [GitHub repository](https://github.com/complexdatacollective/fresco).
 
 We have done our best to make sure that you can deploy Fresco on your own server (if you have one) or to a cloud platform like Netlify
 without any additional costs. However, you may need to pay for server hosting, depending on your needs.
 
 Our [Deployment Guide](./deployment/guide) covers getting started with deploying Fresco
-using the free tier of Netlify, which is sufficient for most small-scale research projects. 
+using the free tier of Netlify, which is sufficient for most small-scale research projects.
 
 Netlify also offers paid plans with greater features and performance. Information about the costs of using Netlify can be found on their [pricing page](https://netlify.com/pricing).
 
@@ -30,14 +30,15 @@ If you would like to work more closely with the project team as part of a resear
 Fresco is a web application that requires a server to host it. You can deploy Fresco on your own server or use a cloud platform like Netlify. The [Deployment Guide](./deployment/guide) provides detailed instructions on how to deploy Fresco on Netlify, for free.
 
 The core technology stack for Fresco is as follows:
-  - Frontend: Next.js (React)
-  - Backend:
-    - Node 20+ - for running the backend server
-    - Next.js API routes - for handling API requests
-    - tRPC - for defining and handling API routes
-    - PostgreSQL - for storing all data
-    - Prisma - for interacting with the database
-    - UploadThing - for storing protocol assets
+
+- Frontend: Next.js (React)
+- Backend:
+  - Node 20+ - for running the backend server
+  - Next.js API routes - for handling API requests
+  - tRPC - for defining and handling API routes
+  - PostgreSQL - for storing all data
+  - Prisma - for interacting with the database
+  - UploadThing - for storing protocol assets
 
 To deploy Fresco, you will need to have access to one or more servers that can run these technologies. For example you might have a server that runs the Next.js frontend and another server that runs the PostgreSQL database.
 
@@ -64,12 +65,14 @@ If you are using a different database provider, you will need to follow the back
 Fresco and Interviewer are software tools that can be used in a GDPR-compliant manner, but compliance depends entirely on how you deploy and configure them. The Network Canvas development team does **not** host any participant data and does **not** act as a Data Controller or Data Processor under GDPR.
 
 **For Interviewer (Desktop/Tablet App):**
+
 - All participant data is stored only on your local device
 - No participant data is transmitted externally unless you manually export it
 - The app does not collect analytics or crash logs
 - Device-level protections (disk encryption, access controls) are your responsibility
 
 **For Fresco (Self-Hosted Web Application):**
+
 - You deploy and host Fresco on your own infrastructure
 - All participant data remains under your control at all times
 - Interview data is stored in Postgres (encrypted at rest when using providers like Neon)
@@ -79,6 +82,7 @@ Fresco and Interviewer are software tools that can be used in a GDPR-compliant m
 
 **Your Responsibilities:**
 As the Data Controller, you are responsible for:
+
 - Establishing a lawful basis for processing participant data
 - Selecting GDPR-compliant hosting regions
 - Implementing appropriate data security measures
@@ -92,7 +96,7 @@ For comprehensive guidance on GDPR compliance, including detailed information fo
 
 Fresco is designed to be used by a single user. This is because the platform is intended for small-scale research projects where a single researcher is responsible for managing the data collection process. If you need to share access with a colleague, you can share your login credentials with them.
 
-We have plans for more sophisticated multi-user and multi-project support in the forthcoming Studio platform. 
+We have plans for more sophisticated multi-user and multi-project support in the forthcoming Studio platform.
 
 ## Where will announcements about releases be posted?
 
@@ -127,5 +131,3 @@ If you do not have access, you may need to [reset your database](/en/fresco/depl
 ## I have multiple studies. Should I create a new Fresco instance for each study?
 
 Fresco is designed to be used for a single study at a time. If you have multiple studies, you can create a new Fresco instance for each study. This will allow you to keep the data separate and organized. Please bear in mind that you may need to pay for additional server hosting if you create multiple instances.
-
-

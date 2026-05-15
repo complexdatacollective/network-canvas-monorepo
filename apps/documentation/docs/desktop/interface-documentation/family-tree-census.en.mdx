@@ -47,22 +47,22 @@ The Family Tree Census requires specific variables to store family tree data. Th
 
 ### Ego Variables
 
-| Variable | Type | Description |
-|----------|------|-------------|
+| Variable           | Type                      | Description                                                                                          |
+| ------------------ | ------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Ego Biological Sex | Categorical (male/female) | Stores the participant's biological sex. Used to determine visual representation in the family tree. |
 
 ### Alter Variables
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| Alter Biological Sex | Categorical (male/female) | Stores each alter's biological sex. Used for visual representation in the family tree.|
-| Relationship to Participant | Text | Stores each person's relationship to the participant (e.g., mother, uncle, daughter). Automatically calculated by the interface based on tree structure. |
-| Ego Identifier | Boolean | Identifies which node represents the participant (ego) in the family tree. This variable can be used in future stage filtering to remove the ego from node attribute collection.|
+| Variable                    | Type                      | Description                                                                                                                                                                      |
+| --------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Alter Biological Sex        | Categorical (male/female) | Stores each alter's biological sex. Used for visual representation in the family tree.                                                                                           |
+| Relationship to Participant | Text                      | Stores each person's relationship to the participant (e.g., mother, uncle, daughter). Automatically calculated by the interface based on tree structure.                         |
+| Ego Identifier              | Boolean                   | Identifies which node represents the participant (ego) in the family tree. This variable can be used in future stage filtering to remove the ego from node attribute collection. |
 
 ### Edge Variables
 
-| Variable | Type | Description |
-|----------|------|-------------|
+| Variable          | Type                         | Description                                                 |
+| ----------------- | ---------------------------- | ----------------------------------------------------------- |
 | Relationship Type | Categorical (parent/partner) | Stores the type of relationship between two family members. |
 
 <TipBox>

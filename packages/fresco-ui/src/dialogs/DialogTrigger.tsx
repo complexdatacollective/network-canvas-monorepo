@@ -1,38 +1,39 @@
-"use client";
+'use client';
 
-import type React from "react";
-import { Button, type ButtonProps } from "../Button";
-import type { AnyDialog, DialogReturnType } from "./DialogProvider";
-import useDialog from "./useDialog";
+import type React from 'react';
 
-type DialogTriggerProps<D extends AnyDialog> = Omit<ButtonProps, "onClick"> & {
-	dialog: D;
-	onResult?: (result: DialogReturnType<D>) => void | Promise<void>;
-	onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+import { Button, type ButtonProps } from '../Button';
+import type { AnyDialog, DialogReturnType } from './DialogProvider';
+import useDialog from './useDialog';
+
+type DialogTriggerProps<D extends AnyDialog> = Omit<ButtonProps, 'onClick'> & {
+  dialog: D;
+  onResult?: (result: DialogReturnType<D>) => void | Promise<void>;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 };
 
 export function DialogTrigger<D extends AnyDialog>({
-	dialog,
-	onResult,
-	onClick,
-	children,
-	...buttonProps
+  dialog,
+  onResult,
+  onClick,
+  children,
+  ...buttonProps
 }: DialogTriggerProps<D>) {
-	const { openDialog } = useDialog();
+  const { openDialog } = useDialog();
 
-	const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
-		onClick?.(e);
+  const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    onClick?.(e);
 
-		const result = await openDialog(dialog);
+    const result = await openDialog(dialog);
 
-		if (onResult) {
-			await onResult(result);
-		}
-	};
+    if (onResult) {
+      await onResult(result);
+    }
+  };
 
-	return (
-		<Button onClick={handleClick} {...buttonProps}>
-			{children}
-		</Button>
-	);
+  return (
+    <Button onClick={handleClick} {...buttonProps}>
+      {children}
+    </Button>
+  );
 }

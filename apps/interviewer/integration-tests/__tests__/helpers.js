@@ -1,49 +1,56 @@
 /* eslint-env jest */
 
-import path from "node:path";
-import { get, kebabCase } from "lodash";
-import { Application } from "spectron";
-import dialogAddon from "spectron-dialog-addon";
-import { defaultImageSnaphotConfig, getAppConfiguration, testSizes, timing } from "../config";
+import path from 'node:path';
 
-let appSize = "not-set";
+import { get, kebabCase } from 'lodash';
+import { Application } from 'spectron';
+import dialogAddon from 'spectron-dialog-addon';
+
+import {
+  defaultImageSnaphotConfig,
+  getAppConfiguration,
+  testSizes,
+  timing,
+} from '../config';
+
+let appSize = 'not-set';
 let _app; // eslint-disable-line
 
 export const resetApp = async (app) => {
-	await app.client.url("#/reset");
-	await app.client.pause(timing.long);
+  await app.client.url('#/reset');
+  await app.client.pause(timing.long);
 };
 
-export const resizeApp = async (app, size = "wide") => {
-	const dimensions = get(testSizes, size);
-	if (!dimensions) {
-		return;
-	}
-	appSize = `${dimensions[0]}x${dimensions[1]}`;
-	await app.browserWindow.setSize(dimensions[0], dimensions[1]);
-	await resetApp(app);
+export const resizeApp = async (app, size = 'wide') => {
+  const dimensions = get(testSizes, size);
+  if (!dimensions) {
+    return;
+  }
+  appSize = `${dimensions[0]}x${dimensions[1]}`;
+  await app.browserWindow.setSize(dimensions[0], dimensions[1]);
+  await resetApp(app);
 };
 
 export const makeTestingApp = async () => {
-	if (_app) {
-		// await _app.client.reloadSession();
-		return _app;
-	}
-	const appConfiguration = getAppConfiguration();
-	_app = new Application(appConfiguration);
-	dialogAddon.apply(_app);
-	await _app.start();
-	await _app.client.waitUntilWindowLoaded();
-	await _app.client.pause(timing.medium);
-	await resizeApp(_app);
-	return _app;
+  if (_app) {
+    // await _app.client.reloadSession();
+    return _app;
+  }
+  const appConfiguration = getAppConfiguration();
+  _app = new Application(appConfiguration);
+  dialogAddon.apply(_app);
+  await _app.start();
+  await _app.client.waitUntilWindowLoaded();
+  await _app.client.pause(timing.medium);
+  await resizeApp(_app);
+  return _app;
 };
 
 export const stopApp = async () => {
-	if (_app?.isRunning()) {
-		return _app.stop().catch(() => {});
-	}
-	return Promise.resolve();
+  if (_app?.isRunning()) {
+    return _app.stop().catch(() => {});
+  }
+  return Promise.resolve();
 };
 
 /**
@@ -56,51 +63,53 @@ export const stopApp = async () => {
  * @param {string} _selector querySelector
  */
 export const forceClick = async (app, _selector) => {
-	await app.client.waitForVisible(_selector);
-	await app.client.execute((selector) => {
-		window.document.querySelector(selector).click();
-	}, _selector);
+  await app.client.waitForVisible(_selector);
+  await app.client.execute((selector) => {
+    window.document.querySelector(selector).click();
+  }, _selector);
 };
 
 const getImageSnaphotConfig = async (app) =>
-	app.client
-		.execute(() => window.devicePixelRatio)
-		.then(({ value: devicePixelRatio }) => ({
-			...defaultImageSnaphotConfig,
-			customSnapshotIdentifier: ({ testPath, currentTestName, counter }) =>
-				`${devicePixelRatio}x-${appSize}-`.concat(
-					kebabCase(`${path.basename(testPath)}-${currentTestName}-${counter}`),
-				),
-		}));
+  app.client
+    .execute(() => window.devicePixelRatio)
+    .then(({ value: devicePixelRatio }) => ({
+      ...defaultImageSnaphotConfig,
+      customSnapshotIdentifier: ({ testPath, currentTestName, counter }) =>
+        `${devicePixelRatio}x-${appSize}-`.concat(
+          kebabCase(`${path.basename(testPath)}-${currentTestName}-${counter}`),
+        ),
+    }));
 
 export const matchImageSnapshot = async (app, rect = null) => {
-	if (process.env.TEST_ENV === "development") {
-		await app.client.pause(timing.medium);
-		return;
-	}
+  if (process.env.TEST_ENV === 'development') {
+    await app.client.pause(timing.medium);
+    return;
+  }
 
-	await app.client.pause(timing.long);
-	await getImageSnaphotConfig(app).then((imageSnaphotConfig) =>
-		expect(app.browserWindow.capturePage(rect)).resolves.toMatchImageSnapshot(imageSnaphotConfig),
-	);
+  await app.client.pause(timing.long);
+  await getImageSnaphotConfig(app).then((imageSnaphotConfig) =>
+    expect(app.browserWindow.capturePage(rect)).resolves.toMatchImageSnapshot(
+      imageSnaphotConfig,
+    ),
+  );
 };
 
-export const pause = async (app, duration = "medium") => {
-	const time = get(timing, duration, duration);
-	await app.client.pause(time);
+export const pause = async (app, duration = 'medium') => {
+  const time = get(timing, duration, duration);
+  await app.client.pause(time);
 };
 
 export const debug = async (app) => {
-	await app.browserWindow.openDevTools({ mode: "detach" });
-	await app.client.debug();
+  await app.browserWindow.openDevTools({ mode: 'detach' });
+  await app.client.debug();
 };
 
 export const asyncForEach = async (array, callback) => {
-	if (array.length === 0) {
-		return null;
-	}
+  if (array.length === 0) {
+    return null;
+  }
 
-	const item = array.shift();
-	await callback(item);
-	return asyncForEach(array, callback);
+  const item = array.shift();
+  await callback(item);
+  return asyncForEach(array, callback);
 };

@@ -1,1 +1,1 @@
-export const formName = "edit-stage";
+export const formName = 'edit-stage';

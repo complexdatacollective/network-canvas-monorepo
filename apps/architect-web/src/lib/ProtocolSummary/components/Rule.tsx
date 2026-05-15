@@ -1,14 +1,19 @@
-import { compose } from "react-recompose";
-import RuleText from "~/components/Query/Rules/PreviewText";
-import withDisplayOptions from "~/components/Query/Rules/withDisplayOptions";
+import { compose } from 'react-recompose';
+
+import RuleText from '~/components/Query/Rules/PreviewText';
+import withDisplayOptions from '~/components/Query/Rules/withDisplayOptions';
 
 type RuleProps = {
-	type: string;
-	options: Record<string, unknown>;
-	codebook?: unknown;
+  type: string;
+  options: Record<string, unknown>;
+  codebook?: unknown;
 };
 
-const Rule = ({ type, options }: RuleProps) => <RuleText type={type} options={options} />;
+const Rule = ({ type, options }: RuleProps) => (
+  <RuleText type={type} options={options} />
+);
 
 // The withDisplayOptions HOC will inject the codebook prop
-export default compose<RuleProps, RuleProps & { codebook: unknown }>(withDisplayOptions)(Rule);
+export default compose<RuleProps, RuleProps & { codebook: unknown }>(
+  withDisplayOptions,
+)(Rule);

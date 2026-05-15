@@ -1,5 +1,5 @@
 ---
-"@codaco/interview": major
+'@codaco/interview': major
 ---
 
 Initial alpha release of `@codaco/interview` — the Network Canvas interview engine extracted from Fresco's `lib/interviewer/` into a standalone, host-pluggable package.

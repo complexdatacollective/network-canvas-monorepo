@@ -1,39 +1,47 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from 'vitest';
 
-import getSortOrderOptionGetter from "../getSortOrderOptionGetter";
+import getSortOrderOptionGetter from '../getSortOrderOptionGetter';
 
 const mockExternalDataPropertyOptions = [
-	{ label: "Name", value: "1234-1234-1234-1" },
-	{ label: "Age", value: "1234-1234-1234-2" },
-	{ label: "Favourite Color", value: "1234-1234-1234-3" },
+  { label: 'Name', value: '1234-1234-1234-1' },
+  { label: 'Age', value: '1234-1234-1234-2' },
+  { label: 'Favourite Color', value: '1234-1234-1234-3' },
 ];
 
-describe("getSortOrderOptionGetter", () => {
-	it("options for `property`", () => {
-		const sortOrderOptionGetter = getSortOrderOptionGetter(mockExternalDataPropertyOptions);
+describe('getSortOrderOptionGetter', () => {
+  it('options for `property`', () => {
+    const sortOrderOptionGetter = getSortOrderOptionGetter(
+      mockExternalDataPropertyOptions,
+    );
 
-		const mockAllValues = [{ property: "1234-1234-1234-2", direction: "asc" }];
+    const mockAllValues = [{ property: '1234-1234-1234-2', direction: 'asc' }];
 
-		const subject = sortOrderOptionGetter("property", undefined, mockAllValues);
+    const subject = sortOrderOptionGetter('property', undefined, mockAllValues);
 
-		expect(subject).toEqual([
-			{ label: "*", value: "*" },
-			{ label: "Name", value: "1234-1234-1234-1" },
-			{ label: "Age", value: "1234-1234-1234-2", disabled: true },
-			{ label: "Favourite Color", value: "1234-1234-1234-3" },
-		]);
-	});
+    expect(subject).toEqual([
+      { label: '*', value: '*' },
+      { label: 'Name', value: '1234-1234-1234-1' },
+      { label: 'Age', value: '1234-1234-1234-2', disabled: true },
+      { label: 'Favourite Color', value: '1234-1234-1234-3' },
+    ]);
+  });
 
-	it("options for `direction`", () => {
-		const sortOrderOptionGetter = getSortOrderOptionGetter(mockExternalDataPropertyOptions);
+  it('options for `direction`', () => {
+    const sortOrderOptionGetter = getSortOrderOptionGetter(
+      mockExternalDataPropertyOptions,
+    );
 
-		const mockAllValues = [{ property: "1234-1234-1234-2", direction: "asc" }];
+    const mockAllValues = [{ property: '1234-1234-1234-2', direction: 'asc' }];
 
-		const subject = sortOrderOptionGetter("direction", undefined, mockAllValues);
+    const subject = sortOrderOptionGetter(
+      'direction',
+      undefined,
+      mockAllValues,
+    );
 
-		expect(subject).toEqual([
-			{ label: "Descending", value: "desc" },
-			{ label: "Ascending", value: "asc" },
-		]);
-	});
+    expect(subject).toEqual([
+      { label: 'Descending', value: 'desc' },
+      { label: 'Ascending', value: 'asc' },
+    ]);
+  });
 });

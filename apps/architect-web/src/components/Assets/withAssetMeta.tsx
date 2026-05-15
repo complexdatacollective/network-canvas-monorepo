@@ -1,32 +1,35 @@
-import { get } from "es-toolkit/compat";
-import { compose } from "react-recompose";
-import { connect } from "react-redux";
-import type { RootState } from "~/ducks/modules/root";
-import { getAssetManifest } from "~/selectors/protocol";
+import { get } from 'es-toolkit/compat';
+import { compose } from 'react-recompose';
+import { connect } from 'react-redux';
+
+import type { RootState } from '~/ducks/modules/root';
+import { getAssetManifest } from '~/selectors/protocol';
 
 const existingMeta = {
-	name: "Interview network",
+  name: 'Interview network',
 };
 
 type OwnProps = {
-	id: string;
+  id: string;
 };
 
 type WithMetaProps = {
-	meta: {
-		name: string;
-	};
+  meta: {
+    name: string;
+  };
 };
 
 const mapStateToProps = (state: RootState, { id }: OwnProps) => {
-	const assetManifest = getAssetManifest(state);
-	const meta = get(assetManifest, id, existingMeta);
+  const assetManifest = getAssetManifest(state);
+  const meta = get(assetManifest, id, existingMeta);
 
-	return {
-		meta,
-	};
+  return {
+    meta,
+  };
 };
 
-const withAssetMeta = compose<WithMetaProps & OwnProps, OwnProps>(connect(mapStateToProps));
+const withAssetMeta = compose<WithMetaProps & OwnProps, OwnProps>(
+  connect(mapStateToProps),
+);
 
 export default withAssetMeta;

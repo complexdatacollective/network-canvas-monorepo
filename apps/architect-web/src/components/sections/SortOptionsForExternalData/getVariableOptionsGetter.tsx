@@ -1,8 +1,8 @@
-import { map } from "es-toolkit/compat";
+import { map } from 'es-toolkit/compat';
 
 type VariableOption = {
-	value: string;
-	[key: string]: unknown;
+  value: string;
+  [key: string]: unknown;
 };
 
 /**
@@ -11,13 +11,17 @@ type VariableOption = {
  * This optionGetter is for variableOptions, which defines properties for the `variable` column.
  */
 const getVariableOptionsGetter =
-	(variableOptions: VariableOption[]) =>
-	(_property: unknown, _rowValues: unknown, allValues: Array<Record<string, unknown>>) => {
-		const used = map(allValues, "variable");
+  (variableOptions: VariableOption[]) =>
+  (
+    _property: unknown,
+    _rowValues: unknown,
+    allValues: Array<Record<string, unknown>>,
+  ) => {
+    const used = map(allValues, 'variable');
 
-		return variableOptions.map((option: VariableOption) =>
-			!used.includes(option.value) ? option : { ...option, disabled: true },
-		);
-	};
+    return variableOptions.map((option: VariableOption) =>
+      !used.includes(option.value) ? option : { ...option, disabled: true },
+    );
+  };
 
 export default getVariableOptionsGetter;

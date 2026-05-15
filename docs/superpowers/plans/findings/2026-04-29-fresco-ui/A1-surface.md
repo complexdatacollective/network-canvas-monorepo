@@ -52,7 +52,7 @@ import usePrevious from '~/hooks/usePrevious';
 import useResizablePanel from '~/hooks/useResizablePanel';
 ```
 
-Deduplicated by *target* (collapsing the various `cva` import shapes), the components reach into these external roots:
+Deduplicated by _target_ (collapsing the various `cva` import shapes), the components reach into these external roots:
 
 - `~/utils/cva` — `compose`, `cva`, `cx`, `VariantProps`
 - `~/utils/composeEventHandlers`

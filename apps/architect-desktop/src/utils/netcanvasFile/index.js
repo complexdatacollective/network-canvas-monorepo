@@ -1,15 +1,12 @@
-export { errors } from "./errors";
+export { errors } from './errors';
+
+export { importNetcanvas, readProtocol } from './lib';
 
 export {
-	importNetcanvas,
-	readProtocol,
-} from "./lib";
-
-export {
-	checkSchemaVersion,
-	createNetcanvas,
-	migrateNetcanvas,
-	saveNetcanvas,
-	schemaVersionStates,
-	validateNetcanvas,
-} from "./netcanvasFile";
+  checkSchemaVersion,
+  createNetcanvas,
+  migrateNetcanvas,
+  saveNetcanvas,
+  schemaVersionStates,
+  validateNetcanvas,
+} from './netcanvasFile';

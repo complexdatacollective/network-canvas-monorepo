@@ -1,5 +1,7 @@
-import { entityAttributesProperty } from '@codaco/shared-consts';
 import { describe, expect, it } from 'vitest';
+
+import { entityAttributesProperty } from '@codaco/shared-consts';
+
 import { getRuleFunction } from '../rules';
 import { generateRuleConfig, getEntityGenerator } from './helpers';
 

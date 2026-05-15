@@ -1,5 +1,5 @@
 ---
-"@codaco/interview": prerelease
+'@codaco/interview': prerelease
 ---
 
 **Breaking** (still pre-1.0): replace `onError` callback with built-in PostHog analytics.

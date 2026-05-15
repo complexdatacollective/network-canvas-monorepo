@@ -86,12 +86,14 @@ If you have specific security requirements, please contact us to discuss how we 
 Fresco and Interviewer are software tools that can be used in a GDPR-compliant manner, but compliance depends entirely on how you deploy and configure them. The Network Canvas development team does **not** host any participant data and does **not** act as a Data Controller or Data Processor under GDPR.
 
 **For Interviewer (Desktop/Tablet App):**
+
 - All participant data is stored only on your local device
 - No participant data is transmitted externally unless you manually export it
 - The app does not collect analytics or crash logs
 - Device-level protections (disk encryption, access controls) are your responsibility
 
 **For Fresco (Self-Hosted Web Application):**
+
 - You deploy and host Fresco on your own infrastructure
 - All participant data remains under your control at all times
 - Interview data is stored in Postgres (encrypted at rest when using providers like Neon)
@@ -101,6 +103,7 @@ Fresco and Interviewer are software tools that can be used in a GDPR-compliant m
 
 **Your Responsibilities:**
 As the Data Controller, you are responsible for:
+
 - Establishing a lawful basis for processing participant data
 - Selecting GDPR-compliant hosting regions
 - Implementing appropriate data security measures

@@ -1,1 +1,1 @@
-export { default } from "./TieStrengthCensusPrompts";
+export { default } from './TieStrengthCensusPrompts';

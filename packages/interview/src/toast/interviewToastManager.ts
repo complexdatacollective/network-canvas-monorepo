@@ -1,4 +1,4 @@
-import { Toast } from "@base-ui/react/toast";
+import { Toast } from '@base-ui/react/toast';
 
 /**
  * Global toast manager for interview validation/notification toasts.

@@ -3,7 +3,9 @@ title: Field Validation
 ---
 
 <Definition>
-Field validation ensures participants provide complete and valid data by enforcing rules on form fields. Validation improves data quality and reduces the need for data cleaning during analysis.
+  Field validation ensures participants provide complete and valid data by
+  enforcing rules on form fields. Validation improves data quality and reduces
+  the need for data cleaning during analysis.
 </Definition>
 
 ## Overview
@@ -11,6 +13,7 @@ Field validation ensures participants provide complete and valid data by enforci
 When designing [forms](/en/desktop/key-concepts/forms) in Architect, you can add validation rules to ensure that participants enter valid data before they can proceed. Validation rules are applied to individual fields and are checked when the participant attempts to submit the form or move to the next section of the interview.
 
 Validation serves two important purposes:
+
 1. **Data quality** - Ensures you collect complete, accurate data in the expected format
 2. **User guidance** - Provides immediate feedback to participants, helping them understand what input is expected
 
@@ -90,6 +93,7 @@ Match validation strictness to the sensitivity and importance of the data. High 
 Combine validation with [skip logic](/en/desktop/key-concepts/skip-logic) to create adaptive forms.
 
 **Example:**
+
 - First question: "Have you used this service?" (Yes/No, required)
 - If Yes → Show follow-up questions with validation
 - If No → Skip to next section
@@ -216,18 +220,22 @@ Additional detail that's nice-to-have but not essential to analysis.
 Consider how validation choices impact your data:
 
 ### Required Fields
+
 - **Benefit:** Complete data for all participants
 - **Cost:** May force arbitrary responses; potential participant dropout
 
 ### Optional Fields
+
 - **Benefit:** Higher quality responses from those who choose to answer
 - **Cost:** Missing data requires appropriate statistical handling
 
 ### Range Restrictions
+
 - **Benefit:** Clean data within expected bounds
 - **Cost:** May exclude legitimate outliers; data cleaning still needed
 
 Plan your analysis strategy alongside your validation strategy:
+
 - How will you handle missing data?
 - What ranges are defensible for your population?
 - Which variables are essential vs. supplementary?
@@ -237,6 +245,7 @@ Plan your analysis strategy alongside your validation strategy:
 ### Participants Can't Submit Form
 
 **Check:**
+
 - Are all required fields actually answerable?
 - Are ranges realistic for your population?
 - Is the error message clear about what's wrong?
@@ -244,6 +253,7 @@ Plan your analysis strategy alongside your validation strategy:
 ### High Drop-Out Rates
 
 **Check:**
+
 - Are you requiring too many fields?
 - Are validation rules too strict?
 - Is the cognitive burden too high?
@@ -251,6 +261,7 @@ Plan your analysis strategy alongside your validation strategy:
 ### Invalid Data Despite Validation
 
 **Remember:**
+
 - Validation prevents format errors, not thoughtless responses
 - Some participants may enter nonsense to satisfy validation
 - Validation is part of data quality, not the whole solution

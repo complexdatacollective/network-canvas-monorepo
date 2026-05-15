@@ -1,19 +1,27 @@
-import { map } from "es-toolkit/compat";
-import { useContext } from "react";
-import Stage from "./Stage";
-import SummaryContext from "./SummaryContext";
+import { map } from 'es-toolkit/compat';
+import { useContext } from 'react';
+
+import Stage from './Stage';
+import SummaryContext from './SummaryContext';
 
 const Stages = () => {
-	const { protocol } = useContext(SummaryContext);
+  const { protocol } = useContext(SummaryContext);
 
-	return (
-		<div>
-			{protocol.stages &&
-				map(protocol.stages, ({ type, label, id, ...configuration }, i) => (
-					<Stage key={id} type={type} label={label} id={id} stageNumber={i + 1} configuration={configuration} />
-				))}
-		</div>
-	);
+  return (
+    <div>
+      {protocol.stages &&
+        map(protocol.stages, ({ type, label, id, ...configuration }, i) => (
+          <Stage
+            key={id}
+            type={type}
+            label={label}
+            id={id}
+            stageNumber={i + 1}
+            configuration={configuration}
+          />
+        ))}
+    </div>
+  );
 };
 
 export default Stages;

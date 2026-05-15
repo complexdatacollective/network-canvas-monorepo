@@ -1,37 +1,37 @@
-import { Row, Section } from "~/components/EditorLayout";
-import { Field as RichText } from "~/components/Form/Fields/RichText";
-import ValidatedField from "~/components/Form/ValidatedField";
-import { getFieldId } from "~/utils/issues";
+import { Row, Section } from '~/components/EditorLayout';
+import { Field as RichText } from '~/components/Form/Fields/RichText';
+import ValidatedField from '~/components/Form/ValidatedField';
+import { getFieldId } from '~/utils/issues';
 
 type PromptTextProps = {
-	name?: string;
+  name?: string;
 };
 
-const PromptText = ({ name = "text" }: PromptTextProps) => {
-	return (
-		<Section
-			id={getFieldId(name)}
-			title="Prompt Text"
-			summary={
-				<p>
-					The prompt text instructs your participant about the task on this stage. Enter the text to use for your prompt
-					below.
-				</p>
-			}
-			layout="vertical"
-		>
-			<Row>
-				<ValidatedField
-					name={name}
-					component={RichText}
-					inline
-					label=""
-					placeholder="Enter text for the prompt here..."
-					validation={{ required: true, maxLength: 220 }}
-				/>
-			</Row>
-		</Section>
-	);
+const PromptText = ({ name = 'text' }: PromptTextProps) => {
+  return (
+    <Section
+      id={getFieldId(name)}
+      title="Prompt Text"
+      summary={
+        <p>
+          The prompt text instructs your participant about the task on this
+          stage. Enter the text to use for your prompt below.
+        </p>
+      }
+      layout="vertical"
+    >
+      <Row>
+        <ValidatedField
+          name={name}
+          component={RichText}
+          inline
+          label=""
+          placeholder="Enter text for the prompt here..."
+          validation={{ required: true, maxLength: 220 }}
+        />
+      </Row>
+    </Section>
+  );
 };
 
 export default PromptText;

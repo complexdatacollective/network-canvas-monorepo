@@ -1,0 +1,13 @@
+{
+  "extends": [
+    "../../.oxlintrc.json",
+    "../../tooling/oxlint/react.json",
+    "../../tooling/oxlint/tailwind.json"
+  ],
+  "overrides": [
+    {
+      "files": ["**/*.stories.ts", "**/*.stories.tsx", ".storybook/**"],
+      "rules": { "no-console": "off" }
+    }
+  ]
+}

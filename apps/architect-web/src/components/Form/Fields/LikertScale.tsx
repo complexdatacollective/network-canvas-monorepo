@@ -1,7 +1,8 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
-import type { ComponentProps } from "react";
-import Slider from "./Slider";
+import type { ComponentProps } from 'react';
+
+import Slider from './Slider';
 
 type LikertScaleProps = ComponentProps<typeof Slider>;
 

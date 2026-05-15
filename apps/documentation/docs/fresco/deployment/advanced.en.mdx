@@ -81,9 +81,9 @@ Fresco uses a PostgreSQL database to store protocol and interview data. You will
 
 Fresco requires two connection strings to PostgreSQL:
 
-| **Variable**                 | **Details**                                                                                                                                                                 |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **DATABASE_URL**      | A pooled connection URL for Prisma. Connection pooling allows for efficient re-use of connections, and avoids potential issues caused by large numbers of concurrent users. |
+| **Variable**              | **Details**                                                                                                                                                                 |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **DATABASE_URL**          | A pooled connection URL for Prisma. Connection pooling allows for efficient re-use of connections, and avoids potential issues caused by large numbers of concurrent users. |
 | **DATABASE_URL_UNPOOLED** | A non-pooling connection URL for Prisma. This is primarily used for database migrations when upgrading.                                                                     |
 
 If you do not have a connection pooler such as PgBouncer, you can use the same connection string for both variables (although this may lead to database errors under heavy load).

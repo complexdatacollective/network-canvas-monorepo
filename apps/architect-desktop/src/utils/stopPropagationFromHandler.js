@@ -1,8 +1,8 @@
 const stopPropagationFromHandler =
-	(f) =>
-	(e, ...rest) => {
-		e.stopPropagation();
-		f(e, ...rest);
-	};
+  (f) =>
+  (e, ...rest) => {
+    e.stopPropagation();
+    f(e, ...rest);
+  };
 
 export default stopPropagationFromHandler;

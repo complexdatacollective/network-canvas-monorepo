@@ -13,7 +13,7 @@ The plan brief flagged that `git status` showed modifications/deletions under `l
 - The current branch is **`reorganise-ui`** (HEAD `ade5abadf`), **not** `next` (HEAD `9bae07047`).
 - The status output quoted in the brief was a comparison against `next` (or a stale snapshot), not the current working tree. **The current working tree is clean** — `git status` reports `nothing to commit, working tree clean`.
 - The single commit on top of `next`, `ade5abadf "reorganise UI components ready for migration to package"`, **deletes** all of `lib/dnd`, `lib/dialogs`, `lib/form`, `lib/collection` and many `components/*` files (180 files deleted, 0 added or modified in those four directories).
-- That commit is exactly the prep work the migration is built on top of. There is no separate in-flight branch or stash that intends to *introduce* these paths.
+- That commit is exactly the prep work the migration is built on top of. There is no separate in-flight branch or stash that intends to _introduce_ these paths.
 - Two stashes exist; neither touches the suspect paths.
 
 There is no risk of conflicting in-flight work on the suspect paths.
@@ -104,12 +104,12 @@ $ git branch -a --sort=-committerdate | head -20
 
 Per-branch presence of the suspect dirs:
 
-| branch                              | lib/dnd | lib/dialogs | lib/form | lib/collection |
-|-------------------------------------|---------|-------------|----------|----------------|
-| `reorganise-ui` (HEAD `ade5abadf`)  | absent  | absent      | absent   | absent         |
-| `next` (HEAD `9bae07047`)           | 15 files| 16 files    | 88 files | 61 files       |
-| `refactor/interviewer-api-contract` | present | present     | present  | present        |
-| `refactor/e2e-simplify`             | present | present     | present  | present        |
+| branch                              | lib/dnd  | lib/dialogs | lib/form | lib/collection |
+| ----------------------------------- | -------- | ----------- | -------- | -------------- |
+| `reorganise-ui` (HEAD `ade5abadf`)  | absent   | absent      | absent   | absent         |
+| `next` (HEAD `9bae07047`)           | 15 files | 16 files    | 88 files | 61 files       |
+| `refactor/interviewer-api-contract` | present  | present     | present  | present        |
+| `refactor/e2e-simplify`             | present  | present     | present  | present        |
 
 These branches "carry" the paths simply because they branched from a commit prior to the deletion commit. They are not introducing new code under those paths.
 
@@ -126,7 +126,7 @@ $ git diff --name-status next..HEAD -- lib/dnd lib/dialogs lib/form lib/collecti
  180 D
 ```
 
-100% of the diff against `next` for those four paths is deletions (`D`). No additions, no renames, no modifications. The commit message itself states the intent: *"reorganise UI components ready for migration to package"* — i.e. it is the prep step for the very migration this finding is part of.
+100% of the diff against `next` for those four paths is deletions (`D`). No additions, no renames, no modifications. The commit message itself states the intent: _"reorganise UI components ready for migration to package"_ — i.e. it is the prep step for the very migration this finding is part of.
 
 ## Disposition
 

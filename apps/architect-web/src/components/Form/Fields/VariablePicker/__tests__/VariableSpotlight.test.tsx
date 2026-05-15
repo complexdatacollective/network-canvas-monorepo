@@ -1,71 +1,76 @@
-import { render } from "@testing-library/react";
-import { noop } from "es-toolkit/compat";
-import { Provider } from "react-redux";
-import { createStore } from "redux";
-import { beforeAll, describe, expect, it, vi } from "vitest";
-import VariableSpotlight from "../VariableSpotlight";
+import { render } from '@testing-library/react';
+import { noop } from 'es-toolkit/compat';
+import { Provider } from 'react-redux';
+import { createStore } from 'redux';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+
+import VariableSpotlight from '../VariableSpotlight';
 
 const mockStore = createStore(() => ({
-	activeProtocol: { present: { codebook: { node: {}, edge: {}, ego: {} } } },
+  activeProtocol: { present: { codebook: { node: {}, edge: {}, ego: {} } } },
 }));
 
-describe("VariableSpotlight", () => {
-	beforeAll(() => {
-		Element.prototype.scrollIntoView = vi.fn();
-	});
+describe('VariableSpotlight', () => {
+  beforeAll(() => {
+    Element.prototype.scrollIntoView = vi.fn();
+  });
 
-	it("when options is empty it renders the empty message", () => {
-		const { baseElement } = render(
-			<Provider store={mockStore}>
-				<VariableSpotlight
-					open={true}
-					onOpenChange={noop}
-					onSelect={noop}
-					entity=""
-					type=""
-					onCancel={noop}
-					onCreateOption={noop}
-					options={[]}
-				/>
-			</Provider>,
-		);
+  it('when options is empty it renders the empty message', () => {
+    const { baseElement } = render(
+      <Provider store={mockStore}>
+        <VariableSpotlight
+          open={true}
+          onOpenChange={noop}
+          onSelect={noop}
+          entity=""
+          type=""
+          onCancel={noop}
+          onCreateOption={noop}
+          options={[]}
+        />
+      </Provider>,
+    );
 
-		expect(baseElement.querySelector('[data-testid="variable-spotlight-empty"]')).toBeInTheDocument();
-	});
+    expect(
+      baseElement.querySelector('[data-testid="variable-spotlight-empty"]'),
+    ).toBeInTheDocument();
+  });
 
-	it("it renders options", () => {
-		const { baseElement } = render(
-			<Provider store={mockStore}>
-				<VariableSpotlight
-					open={true}
-					onOpenChange={noop}
-					onSelect={noop}
-					entity=""
-					type=""
-					onCancel={noop}
-					onCreateOption={noop}
-					options={[
-						{
-							value: "name",
-							label: "Name",
-							type: "text",
-						},
-						{
-							value: "age",
-							label: "Just a number",
-							type: "number",
-						},
-					]}
-				/>
-			</Provider>,
-		);
+  it('it renders options', () => {
+    const { baseElement } = render(
+      <Provider store={mockStore}>
+        <VariableSpotlight
+          open={true}
+          onOpenChange={noop}
+          onSelect={noop}
+          entity=""
+          type=""
+          onCancel={noop}
+          onCreateOption={noop}
+          options={[
+            {
+              value: 'name',
+              label: 'Name',
+              type: 'text',
+            },
+            {
+              value: 'age',
+              label: 'Just a number',
+              type: 'number',
+            },
+          ]}
+        />
+      </Provider>,
+    );
 
-		const items = baseElement.querySelectorAll('[data-testid="spotlight-list-item"]');
+    const items = baseElement.querySelectorAll(
+      '[data-testid="spotlight-list-item"]',
+    );
 
-		expect(items[0]).toHaveTextContent("Existing Variables");
-		expect(items[1]).toHaveTextContent("Just a number");
-		expect(items[1]?.querySelector(".icon")).toBeInTheDocument();
-		expect(items[2]).toHaveTextContent("Name");
-		expect(items[2]?.querySelector(".icon")).toBeInTheDocument();
-	});
+    expect(items[0]).toHaveTextContent('Existing Variables');
+    expect(items[1]).toHaveTextContent('Just a number');
+    expect(items[1]?.querySelector('.icon')).toBeInTheDocument();
+    expect(items[2]).toHaveTextContent('Name');
+    expect(items[2]?.querySelector('.icon')).toBeInTheDocument();
+  });
 });

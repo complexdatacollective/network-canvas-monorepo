@@ -1,51 +1,55 @@
-import { get, isEqual } from "es-toolkit/compat";
-import { DateTime } from "luxon";
+import { get, isEqual } from 'es-toolkit/compat';
+import { DateTime } from 'luxon';
 
 export const now = () => DateTime.now();
 
 export type DateObject = {
-	year: number | null;
-	month: number | null;
-	day: number | null;
+  year: number | null;
+  month: number | null;
+  day: number | null;
 };
 
 /**
  * Is date object fully complete?
  */
 export const isComplete =
-	(type: string | null) =>
-	({ day, month, year }: DateObject) => {
-		switch (type) {
-			case "year":
-				return !!year;
-			case "month":
-				return !!year && !!month;
-			default:
-				return !!year && !!month && !!day;
-		}
-	};
+  (type: string | null) =>
+  ({ day, month, year }: DateObject) => {
+    switch (type) {
+      case 'year':
+        return !!year;
+      case 'month':
+        return !!year && !!month;
+      default:
+        return !!year && !!month && !!day;
+    }
+  };
 
 /**
  * Is date object empty
  */
 export const isEmpty = (_type: string | null) => (date: DateObject) =>
-	isEqual(date, { year: null, month: null, day: null });
+  isEqual(date, { year: null, month: null, day: null });
 
 // Get month names - using DateTime instead of Info for compatibility
 const monthNames = Array.from({ length: 12 }, (_, i) =>
-	DateTime.fromObject({ year: 2000, month: i + 1, day: 1 }).toFormat("LLLL"),
+  DateTime.fromObject({ year: 2000, month: i + 1, day: 1 }).toFormat('LLLL'),
 );
 
-export const getMonthName = (numericMonth: number) => get(monthNames, numericMonth - 1, numericMonth);
+export const getMonthName = (numericMonth: number) =>
+  get(monthNames, numericMonth - 1, numericMonth);
 
 export type RangeItem = {
-	value: number;
-	label: string | number;
-	isOutOfRange?: boolean;
+  value: number;
+  label: string | number;
+  isOutOfRange?: boolean;
 };
 
-export const formatRangeItem = (value: number, props: Partial<RangeItem> = {}): RangeItem => ({
-	value,
-	label: value,
-	...props,
+export const formatRangeItem = (
+  value: number,
+  props: Partial<RangeItem> = {},
+): RangeItem => ({
+  value,
+  label: value,
+  ...props,
 });

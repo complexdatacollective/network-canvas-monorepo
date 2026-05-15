@@ -1,13 +1,19 @@
-import { z } from "zod/mini";
-import { UnorderedList } from "../../typography/UnorderedList";
+import { z } from 'zod/mini';
+
+import { UnorderedList } from '../../typography/UnorderedList';
 import type {
-	CustomFieldValidation,
-	FieldValidationFunction,
-	FieldValue,
-	ValidationContext,
-	ValidationResult,
-} from "../store/types";
-import { type ValidationFunction, type ValidationParameter, validationPropKeys, validations } from "./functions";
+  CustomFieldValidation,
+  FieldValidationFunction,
+  FieldValue,
+  ValidationContext,
+  ValidationResult,
+} from '../store/types';
+import {
+  type ValidationFunction,
+  type ValidationParameter,
+  validationPropKeys,
+  validations,
+} from './functions';
 
 /**
  * Validates a field value against a validation schema.
@@ -29,13 +35,16 @@ import { type ValidationFunction, type ValidationParameter, validationPropKeys, 
  *   - On failure: `{ success: false, error: z.ZodError }` containing validation issues
  */
 export async function validateFieldValue<T extends z.ZodMiniType>(
-	value: unknown,
-	validation: FieldValidationFunction,
-	formValues: Record<string, FieldValue>,
+  value: unknown,
+  validation: FieldValidationFunction,
+  formValues: Record<string, FieldValue>,
 ): Promise<ValidationResult<T>> {
-	const schema = typeof validation === "function" ? await validation(formValues) : validation;
+  const schema =
+    typeof validation === 'function'
+      ? await validation(formValues)
+      : validation;
 
-	return (await schema.safeParseAsync(value)) as ValidationResult<T>;
+  return (await schema.safeParseAsync(value)) as ValidationResult<T>;
 }
 
 /**
@@ -45,80 +54,90 @@ export async function validateFieldValue<T extends z.ZodMiniType>(
  * Exported for use by UnconnectedField.
  */
 export function makeValidationFunction(props: Record<string, unknown>) {
-	const validationContext = props.validationContext as ValidationContext | undefined;
+  const validationContext = props.validationContext as
+    | ValidationContext
+    | undefined;
 
-	return (formValues: Record<string, FieldValue>) =>
-		z.unknown().check(
-			z.superRefine(async (fieldValue, ctx) => {
-				// Handle built-in validations from the validations object
-				const validationEntries = Object.entries(props).filter(
-					([key]) => key in validations && key !== "validationContext" && key !== "custom",
-				);
+  return (formValues: Record<string, FieldValue>) =>
+    z.unknown().check(
+      z.superRefine(async (fieldValue, ctx) => {
+        // Handle built-in validations from the validations object
+        const validationEntries = Object.entries(props).filter(
+          ([key]) =>
+            key in validations &&
+            key !== 'validationContext' &&
+            key !== 'custom',
+        );
 
-				for (const [validationName, parameter] of validationEntries) {
-					try {
-						const validationFnFactory = validations[
-							validationName as keyof typeof validations
-						] as ValidationFunction<ValidationParameter>;
+        for (const [validationName, parameter] of validationEntries) {
+          try {
+            const validationFnFactory = validations[
+              validationName as keyof typeof validations
+            ] as ValidationFunction<ValidationParameter>;
 
-						const validationFn = validationFnFactory(parameter as ValidationParameter, validationContext)(formValues);
+            const validationFn = validationFnFactory(
+              parameter as ValidationParameter,
+              validationContext,
+            )(formValues);
 
-						const result = await validationFn.safeParseAsync(fieldValue);
+            const result = await validationFn.safeParseAsync(fieldValue);
 
-						if (!result.success && result.error) {
-							result.error.issues.forEach((issue) => {
-								ctx.addIssue({
-									code: "custom",
-									message: issue.message,
-									path: [...issue.path],
-								});
-							});
-						}
-					} catch (error) {
-						// eslint-disable-next-line no-console
-						console.error("Error while validating:", error);
-						ctx.addIssue({
-							code: "custom",
-							message: "An error occurred while validating.",
-						});
-					}
-				}
+            if (!result.success && result.error) {
+              result.error.issues.forEach((issue) => {
+                ctx.addIssue({
+                  code: 'custom',
+                  message: issue.message,
+                  path: [...issue.path],
+                });
+              });
+            }
+          } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error('Error while validating:', error);
+            ctx.addIssue({
+              code: 'custom',
+              message: 'An error occurred while validating.',
+            });
+          }
+        }
 
-				// Handle custom validations (single or array)
-				if ("custom" in props && props.custom) {
-					const customValidations = Array.isArray(props.custom)
-						? (props.custom as CustomFieldValidation[])
-						: [props.custom as CustomFieldValidation];
+        // Handle custom validations (single or array)
+        if ('custom' in props && props.custom) {
+          const customValidations = Array.isArray(props.custom)
+            ? (props.custom as CustomFieldValidation[])
+            : [props.custom as CustomFieldValidation];
 
-					for (const { schema } of customValidations) {
-						try {
-							// Resolve schema if it's a function
-							const resolvedSchema =
-								typeof schema === "function" ? await schema(formValues, validationContext) : schema;
+          for (const { schema } of customValidations) {
+            try {
+              // Resolve schema if it's a function
+              const resolvedSchema =
+                typeof schema === 'function'
+                  ? await schema(formValues, validationContext)
+                  : schema;
 
-							const result = await resolvedSchema.safeParseAsync(fieldValue);
+              const result = await resolvedSchema.safeParseAsync(fieldValue);
 
-							if (!result.success && result.error) {
-								result.error.issues.forEach((issue) => {
-									ctx.addIssue({
-										code: "custom",
-										message: issue.message,
-										path: [...issue.path],
-									});
-								});
-							}
-						} catch (error) {
-							// eslint-disable-next-line no-console
-							console.log("custom validation error", error);
-							ctx.addIssue({
-								code: "custom",
-								message: "An error occurred while validating.",
-							});
-						}
-					}
-				}
-			}),
-		);
+              if (!result.success && result.error) {
+                result.error.issues.forEach((issue) => {
+                  ctx.addIssue({
+                    code: 'custom',
+                    message: issue.message,
+                    path: [...issue.path],
+                  });
+                });
+              }
+            } catch (error) {
+              // eslint-disable-next-line no-console
+              console.log('custom validation error', error);
+              ctx.addIssue({
+                code: 'custom',
+                message: 'An error occurred while validating.',
+              });
+            }
+          }
+        }
+      }),
+    );
 }
 
 /**
@@ -128,67 +147,78 @@ export function makeValidationFunction(props: Record<string, unknown>) {
  * Exported for use by UnconnectedField.
  */
 export function makeValidationHints(props: Record<string, unknown>) {
-	const validationContext = props.validationContext as ValidationContext | undefined;
+  const validationContext = props.validationContext as
+    | ValidationContext
+    | undefined;
 
-	const validationEntries = Object.entries(props).filter(
-		([key]) => key in validations && key !== "validationContext" && key !== "custom",
-	);
+  const validationEntries = Object.entries(props).filter(
+    ([key]) =>
+      key in validations && key !== 'validationContext' && key !== 'custom',
+  );
 
-	const hints: string[] = [];
+  const hints: string[] = [];
 
-	for (const [validationName, parameter] of validationEntries) {
-		// Skip required=false or other falsy values that indicate no validation
-		if (validationName === "required" && parameter !== true) {
-			continue;
-		}
+  for (const [validationName, parameter] of validationEntries) {
+    // Skip required=false or other falsy values that indicate no validation
+    if (validationName === 'required' && parameter !== true) {
+      continue;
+    }
 
-		try {
-			const validationFnFactory = validations[validationName as keyof typeof validations] as ValidationFunction<
-				string | number | boolean | { regex: string; hint: string }
-			>;
+    try {
+      const validationFnFactory = validations[
+        validationName as keyof typeof validations
+      ] as ValidationFunction<
+        string | number | boolean | { regex: string; hint: string }
+      >;
 
-			// Call the factory with the parameter to get the validation function
-			// Pass empty object as formValues since we just need metadata
-			const validationFn = validationFnFactory(
-				parameter as string | number | boolean | { regex: string; hint: string },
-				validationContext,
-			)({});
+      // Call the factory with the parameter to get the validation function
+      // Pass empty object as formValues since we just need metadata
+      const validationFn = validationFnFactory(
+        parameter as
+          | string
+          | number
+          | boolean
+          | { regex: string; hint: string },
+        validationContext,
+      )({});
 
-			// Extract hint from the schema's metadata via global registry
-			const meta = z.globalRegistry.get(validationFn) as { hint?: string } | undefined;
-			if (meta?.hint) {
-				hints.push(meta.hint);
-			}
-		} catch {
-			// If we can't get the hint (e.g., missing context for some validations),
-			// skip this validation's hint
-			// eslint-disable-next-line no-console
-			console.warn(`Could not extract hint for validation: ${validationName}`);
-		}
-	}
+      // Extract hint from the schema's metadata via global registry
+      const meta = z.globalRegistry.get(validationFn) as
+        | { hint?: string }
+        | undefined;
+      if (meta?.hint) {
+        hints.push(meta.hint);
+      }
+    } catch {
+      // If we can't get the hint (e.g., missing context for some validations),
+      // skip this validation's hint
+      // eslint-disable-next-line no-console
+      console.warn(`Could not extract hint for validation: ${validationName}`);
+    }
+  }
 
-	// Handle custom validation hints
-	if ("custom" in props && props.custom) {
-		const customValidations = Array.isArray(props.custom)
-			? (props.custom as CustomFieldValidation[])
-			: [props.custom as CustomFieldValidation];
+  // Handle custom validation hints
+  if ('custom' in props && props.custom) {
+    const customValidations = Array.isArray(props.custom)
+      ? (props.custom as CustomFieldValidation[])
+      : [props.custom as CustomFieldValidation];
 
-		for (const { hint } of customValidations) {
-			hints.push(hint);
-		}
-	}
+    for (const { hint } of customValidations) {
+      hints.push(hint);
+    }
+  }
 
-	if (hints.length === 0) {
-		return null;
-	}
+  if (hints.length === 0) {
+    return null;
+  }
 
-	return (
-		<UnorderedList className="mb-4!">
-			{hints.map((hint, index) => (
-				<li key={index}>{hint}</li>
-			))}
-		</UnorderedList>
-	);
+  return (
+    <UnorderedList className="mb-4!">
+      {hints.map((hint, index) => (
+        <li key={index}>{hint}</li>
+      ))}
+    </UnorderedList>
+  );
 }
 
 /**
@@ -196,15 +226,19 @@ export function makeValidationHints(props: Record<string, unknown>) {
  * underlying component for native constraint UI (e.g. `<input type="date">`
  * honouring `min`/`max` in its picker) in addition to driving validation.
  */
-const DUAL_USE_VALIDATION_KEYS = new Set(["min", "max"]);
+const DUAL_USE_VALIDATION_KEYS = new Set(['min', 'max']);
 
-export function filterValidationProps(props: Record<string, unknown>): Record<string, unknown> {
-	const filtered: Record<string, unknown> = {};
-	for (const [key, value] of Object.entries(props)) {
-		const isValidationKey = validationPropKeys.includes(key as keyof typeof validations);
-		if (!isValidationKey || DUAL_USE_VALIDATION_KEYS.has(key)) {
-			filtered[key] = value;
-		}
-	}
-	return filtered;
+export function filterValidationProps(
+  props: Record<string, unknown>,
+): Record<string, unknown> {
+  const filtered: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(props)) {
+    const isValidationKey = validationPropKeys.includes(
+      key as keyof typeof validations,
+    );
+    if (!isValidationKey || DUAL_USE_VALIDATION_KEYS.has(key)) {
+      filtered[key] = value;
+    }
+  }
+  return filtered;
 }

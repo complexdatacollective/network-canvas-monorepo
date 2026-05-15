@@ -1,57 +1,73 @@
-import { isEmpty } from "es-toolkit/compat";
-import { nativeSelectVariants } from "../../../styles/controlVariants";
-import { cx, type VariantProps } from "../../../utils/cva";
-import type { CreateFormFieldProps } from "../../Field/types";
-import { getInputState } from "../../utils/getInputState";
-import { type SelectOption, selectWrapperVariants } from "./shared";
+import { isEmpty } from 'es-toolkit/compat';
+
+import { nativeSelectVariants } from '../../../styles/controlVariants';
+import { cx, type VariantProps } from '../../../utils/cva';
+import type { CreateFormFieldProps } from '../../Field/types';
+import { getInputState } from '../../utils/getInputState';
+import { type SelectOption, selectWrapperVariants } from './shared';
 
 type SelectProps = CreateFormFieldProps<
-	string | number,
-	"select",
-	{
-		placeholder?: string;
-		options: SelectOption[];
-		size?: VariantProps<typeof selectWrapperVariants>["size"];
-	}
+  string | number,
+  'select',
+  {
+    placeholder?: string;
+    options: SelectOption[];
+    size?: VariantProps<typeof selectWrapperVariants>['size'];
+  }
 >;
 
 export default function SelectField(props: SelectProps) {
-	const { options, placeholder, size, name, disabled, readOnly, onChange, className, value, ...rest } = props;
+  const {
+    options,
+    placeholder,
+    size,
+    name,
+    disabled,
+    readOnly,
+    onChange,
+    className,
+    value,
+    ...rest
+  } = props;
 
-	// Normalize undefined to "" so the placeholder option is selected
-	const normalizedValue = value ?? "";
+  // Normalize undefined to "" so the placeholder option is selected
+  const normalizedValue = value ?? '';
 
-	const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-		const selectedValue = event.target.value;
-		onChange?.(selectedValue);
-	};
+  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedValue = event.target.value;
+    onChange?.(selectedValue);
+  };
 
-	const hasValue = isEmpty(value) === false;
+  const hasValue = !isEmpty(value);
 
-	return (
-		<div
-			className={selectWrapperVariants({
-				size,
-				className: cx("w-full", className),
-				state: getInputState(props),
-			})}
-		>
-			<select
-				autoComplete="off"
-				{...rest}
-				name={name}
-				value={normalizedValue}
-				disabled={disabled ?? readOnly}
-				onChange={handleChange}
-				className={cx("w-full", nativeSelectVariants(), !hasValue && "text-current/50 italic")}
-			>
-				{placeholder && <option value="">{placeholder}</option>}
-				{options.map((option) => (
-					<option key={option.value} value={option.value}>
-						{option.label}
-					</option>
-				))}
-			</select>
-		</div>
-	);
+  return (
+    <div
+      className={selectWrapperVariants({
+        size,
+        className: cx('w-full', className),
+        state: getInputState(props),
+      })}
+    >
+      <select
+        autoComplete="off"
+        {...rest}
+        name={name}
+        value={normalizedValue}
+        disabled={disabled ?? readOnly}
+        onChange={handleChange}
+        className={cx(
+          'w-full',
+          nativeSelectVariants(),
+          !hasValue && 'text-current/50 italic',
+        )}
+      >
+        {placeholder && <option value="">{placeholder}</option>}
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
 }

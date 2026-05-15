@@ -1,136 +1,141 @@
-import { useId } from "react";
-import { RenderMarkdown } from "../../RenderMarkdown";
+import { useId } from 'react';
+
+import { RenderMarkdown } from '../../RenderMarkdown';
 import {
-	controlLabelVariants,
-	controlVariants,
-	groupOptionVariants,
-	groupSpacingVariants,
-	inputControlVariants,
-	interactiveStateVariants,
-	orientationVariants,
-	stateVariants,
-} from "../../styles/controlVariants";
-import { compose, cva, cx, type VariantProps } from "../../utils/cva";
-import type { CreateFormFieldProps } from "../Field/types";
-import { getInputState } from "../utils/getInputState";
-import Checkbox from "./Checkbox";
+  controlLabelVariants,
+  controlVariants,
+  groupOptionVariants,
+  groupSpacingVariants,
+  inputControlVariants,
+  interactiveStateVariants,
+  orientationVariants,
+  stateVariants,
+} from '../../styles/controlVariants';
+import { compose, cva, cx, type VariantProps } from '../../utils/cva';
+import type { CreateFormFieldProps } from '../Field/types';
+import { getInputState } from '../utils/getInputState';
+import Checkbox from './Checkbox';
 
 // Compose fieldset wrapper variants
 const checkboxGroupComposedVariants = compose(
-	controlVariants,
-	inputControlVariants,
-	groupSpacingVariants,
-	stateVariants,
-	interactiveStateVariants,
-	orientationVariants,
-	cva({
-		base: "items-start",
-	}),
+  controlVariants,
+  inputControlVariants,
+  groupSpacingVariants,
+  stateVariants,
+  interactiveStateVariants,
+  orientationVariants,
+  cva({
+    base: 'items-start',
+  }),
 );
 
 type CheckboxOption = {
-	value: string | number;
-	label: string;
-	disabled?: boolean;
+  value: string | number;
+  label: string;
+  disabled?: boolean;
 };
 
 type CheckboxGroupProps = CreateFormFieldProps<
-	(string | number)[],
-	"fieldset",
-	{
-		options: CheckboxOption[];
-		defaultValue?: (string | number)[];
-		orientation?: "horizontal" | "vertical";
-		size?: "sm" | "md" | "lg" | "xl";
-		useColumns?: boolean;
-	}
+  (string | number)[],
+  'fieldset',
+  {
+    options: CheckboxOption[];
+    defaultValue?: (string | number)[];
+    orientation?: 'horizontal' | 'vertical';
+    size?: 'sm' | 'md' | 'lg' | 'xl';
+    useColumns?: boolean;
+  }
 > &
-	VariantProps<typeof checkboxGroupComposedVariants>;
+  VariantProps<typeof checkboxGroupComposedVariants>;
 
 export default function CheckboxGroupField(props: CheckboxGroupProps) {
-	const {
-		id,
-		className,
-		name,
-		options,
-		value,
-		defaultValue,
-		onChange,
-		orientation = "vertical",
-		size = "md",
-		useColumns = false,
-		disabled,
-		readOnly,
-		...fieldsetProps
-	} = props;
+  const {
+    id,
+    className,
+    name,
+    options,
+    value,
+    defaultValue,
+    onChange,
+    orientation = 'vertical',
+    size = 'md',
+    useColumns = false,
+    disabled,
+    readOnly,
+    ...fieldsetProps
+  } = props;
 
-	const handleChange = (optionValue: string | number, checked: boolean) => {
-		if (readOnly) return;
-		const currentValues = value ?? [];
-		const newValues = checked ? [...currentValues, optionValue] : currentValues.filter((v) => v !== optionValue);
-		onChange?.(newValues);
-	};
+  const handleChange = (optionValue: string | number, checked: boolean) => {
+    if (readOnly) return;
+    const currentValues = value ?? [];
+    const newValues = checked
+      ? [...currentValues, optionValue]
+      : currentValues.filter((v) => v !== optionValue);
+    onChange?.(newValues);
+  };
 
-	// Determine if this is controlled or uncontrolled
-	const isControlled = value !== undefined;
-	const currentValues = isControlled ? value : (defaultValue ?? []);
+  // Determine if this is controlled or uncontrolled
+  const isControlled = value !== undefined;
+  const currentValues = isControlled ? value : (defaultValue ?? []);
 
-	const optionIdPrefix = useId();
+  const optionIdPrefix = useId();
 
-	return (
-		<div className="@container w-full">
-			<fieldset
-				id={id}
-				{...fieldsetProps}
-				className={checkboxGroupComposedVariants({
-					size,
-					orientation,
-					useColumns,
-					state: getInputState(props),
-					className,
-				})}
-				disabled={disabled}
-			>
-				{options.map((option) => {
-					const isOptionDisabled = disabled ?? option.disabled;
-					const isChecked = currentValues.includes(option.value);
-					const optionId = `${optionIdPrefix}-${option.value}`;
+  return (
+    <div className="@container w-full">
+      <fieldset
+        id={id}
+        {...fieldsetProps}
+        className={checkboxGroupComposedVariants({
+          size,
+          orientation,
+          useColumns,
+          state: getInputState(props),
+          className,
+        })}
+        disabled={disabled}
+      >
+        {options.map((option) => {
+          const isOptionDisabled = disabled ?? option.disabled;
+          const isChecked = currentValues.includes(option.value);
+          const optionId = `${optionIdPrefix}-${option.value}`;
 
-					return (
-						<label
-							key={option.value}
-							htmlFor={optionId}
-							className={groupOptionVariants({
-								size,
-								disabled: isOptionDisabled,
-							})}
-						>
-							<Checkbox
-								id={optionId}
-								name={name}
-								{...(isControlled ? { checked: isChecked } : { defaultChecked: isChecked })}
-								disabled={isOptionDisabled}
-								readOnly={readOnly}
-								onCheckedChange={(checked) => {
-									if (!isOptionDisabled && !readOnly) {
-										handleChange(option.value, checked);
-									}
-								}}
-								size={size}
-							/>
-							<span
-								className={cx(
-									controlLabelVariants({ size }),
-									"cursor-[inherit] transition-colors duration-200",
-									isOptionDisabled && "opacity-50",
-								)}
-							>
-								<RenderMarkdown>{option.label}</RenderMarkdown>
-							</span>
-						</label>
-					);
-				})}
-			</fieldset>
-		</div>
-	);
+          return (
+            <label
+              key={option.value}
+              htmlFor={optionId}
+              className={groupOptionVariants({
+                size,
+                disabled: isOptionDisabled,
+              })}
+            >
+              <Checkbox
+                id={optionId}
+                name={name}
+                {...(isControlled
+                  ? { checked: isChecked }
+                  : { defaultChecked: isChecked })}
+                disabled={isOptionDisabled}
+                readOnly={readOnly}
+                onCheckedChange={(checked) => {
+                  if (!isOptionDisabled && !readOnly) {
+                    handleChange(option.value, checked);
+                  }
+                }}
+                size={size}
+              />
+              <span
+                className={cx(
+                  controlLabelVariants({ size }),
+                  'cursor-[inherit] transition-colors duration-200',
+                  isOptionDisabled && 'opacity-50',
+                )}
+              >
+                <RenderMarkdown>{option.label}</RenderMarkdown>
+              </span>
+            </label>
+          );
+        })}
+      </fieldset>
+    </div>
+  );
 }

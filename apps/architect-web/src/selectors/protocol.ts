@@ -1,112 +1,115 @@
-import { createSelector } from "@reduxjs/toolkit";
-import { find, findIndex, reduce } from "es-toolkit/compat";
-import type { RootState } from "~/ducks/modules/root";
+import { createSelector } from '@reduxjs/toolkit';
+import { find, findIndex, reduce } from 'es-toolkit/compat';
+
+import type { RootState } from '~/ducks/modules/root';
 
 // Protocol selectors
 export const getProtocol = (state: RootState) => {
-	// The activeProtocol in RootState is wrapped by the timeline middleware
-	// We need to extract the present value
-	const timelineState = state.activeProtocol;
+  // The activeProtocol in RootState is wrapped by the timeline middleware
+  // We need to extract the present value
+  const timelineState = state.activeProtocol;
 
-	return timelineState.present;
+  return timelineState.present;
 };
 
 // Protocol metadata selectors
 export const getProtocolName = (state: RootState): string | undefined => {
-	return getProtocol(state)?.name;
+  return getProtocol(state)?.name;
 };
 
 export const getAssetManifest = (state: RootState) => {
-	const protocol = getProtocol(state);
-	return protocol?.assetManifest || {};
+  const protocol = getProtocol(state);
+  return protocol?.assetManifest || {};
 };
 
 export const getCodebook = (state: RootState) => {
-	const protocol = getProtocol(state);
-	return protocol?.codebook || null;
+  const protocol = getProtocol(state);
+  return protocol?.codebook || null;
 };
 
 export const getStageList = createSelector([getProtocol], (protocol) => {
-	const stages = protocol ? protocol.stages : [];
+  const stages = protocol ? protocol.stages : [];
 
-	return stages.map((stage) => ({
-		id: stage.id,
-		type: stage.type,
-		label: stage.label,
-		hasFilter: "filter" in stage ? !!stage.filter : false,
-		hasSkipLogic: !!stage.skipLogic,
-	}));
+  return stages.map((stage) => ({
+    id: stage.id,
+    type: stage.type,
+    label: stage.label,
+    hasFilter: 'filter' in stage ? !!stage.filter : false,
+    hasSkipLogic: !!stage.skipLogic,
+  }));
 });
 
 export const getStage = (state: RootState, id: string) => {
-	const protocol = getProtocol(state);
-	if (!protocol) return null;
+  const protocol = getProtocol(state);
+  if (!protocol) return null;
 
-	const stage = find(protocol.stages, ["id", id]);
-	return stage;
+  const stage = find(protocol.stages, ['id', id]);
+  return stage;
 };
 
 export const getStageIndex = (state: RootState, id: string) => {
-	const protocol = getProtocol(state);
-	if (!protocol) return -1;
+  const protocol = getProtocol(state);
+  if (!protocol) return -1;
 
-	const stageIndex = findIndex(protocol.stages, ["id", id]);
-	return stageIndex;
+  const stageIndex = findIndex(protocol.stages, ['id', id]);
+  return stageIndex;
 };
 
-const networkTypes = new Set(["network", "async:network"]);
+const networkTypes = new Set(['network', 'async:network']);
 
 // TODO: Does this method make sense here?
-export const getNetworkAssets = createSelector(getAssetManifest, (assetManifest) =>
-	reduce(
-		assetManifest,
-		(memo, asset, name) => {
-			if (!networkTypes.has(asset.type)) {
-				return memo;
-			}
+export const getNetworkAssets = createSelector(
+  getAssetManifest,
+  (assetManifest) =>
+    reduce(
+      assetManifest,
+      (memo, asset, name) => {
+        if (!networkTypes.has(asset.type)) {
+          return memo;
+        }
 
-			return { ...memo, [name]: asset };
-		},
-		{},
-	),
+        return { ...memo, [name]: asset };
+      },
+      {},
+    ),
 );
 
 export const getExperiments = (state: RootState) => {
-	const protocol = getProtocol(state);
-	const experiments = protocol ? protocol.experiments : undefined;
+  const protocol = getProtocol(state);
+  const experiments = protocol ? protocol.experiments : undefined;
 
-	return experiments;
+  return experiments;
 };
 
 // Timeline selector
 export const getTimelineLocus = (state: RootState) => {
-	// Check new activeProtocol store first
-	const activeProtocolTimeline = state.activeProtocol?.timeline;
-	if (activeProtocolTimeline?.length > 0) {
-		return activeProtocolTimeline[activeProtocolTimeline.length - 1];
-	}
+  // Check new activeProtocol store first
+  const activeProtocolTimeline = state.activeProtocol?.timeline;
+  if (activeProtocolTimeline?.length > 0) {
+    return activeProtocolTimeline[activeProtocolTimeline.length - 1];
+  }
 
-	// Fall back to old protocol store
-	const protocolTimeline = state.activeProtocol.timeline;
+  // Fall back to old protocol store
+  const protocolTimeline = state.activeProtocol.timeline;
 
-	if (protocolTimeline && protocolTimeline.length > 0) {
-		return protocolTimeline[protocolTimeline.length - 1];
-	}
+  if (protocolTimeline && protocolTimeline.length > 0) {
+    return protocolTimeline[protocolTimeline.length - 1];
+  }
 
-	return null;
+  return null;
 };
 
 // Undo/redo selectors
 export const getCanUndo = (state: RootState): boolean => {
-	const past = state.activeProtocol?.past || [];
-	if (past.length === 0) return false;
+  const past = state.activeProtocol?.past || [];
+  if (past.length === 0) return false;
 
-	// Don't allow undo if it would take us back to a null state
-	const wouldBePresent = past[past.length - 1];
-	return wouldBePresent !== null && wouldBePresent !== undefined;
+  // Don't allow undo if it would take us back to a null state
+  const wouldBePresent = past[past.length - 1];
+  return wouldBePresent !== null && wouldBePresent !== undefined;
 };
 
 export const getCanRedo = (state: RootState): boolean => {
-	const future = state.activeProtocol?.future || [];
-	return future.length > 0;
+  const future = state.activeProtocol?.future || [];
+  return future.length > 0;
 };

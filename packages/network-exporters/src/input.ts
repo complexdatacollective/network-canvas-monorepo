@@ -1,79 +1,85 @@
-import type { Codebook } from "@codaco/protocol-validation";
+import type { Codebook } from '@codaco/protocol-validation';
 import type {
-	caseProperty,
-	codebookHashProperty,
-	edgeExportIDProperty,
-	egoProperty,
-	NcEdge,
-	NcNetwork,
-	NcNode,
-	ncSourceUUID,
-	ncTargetUUID,
-	nodeExportIDProperty,
-	protocolName,
-	protocolProperty,
-	sessionExportTimeProperty,
-	sessionFinishTimeProperty,
-	sessionProperty,
-	sessionStartTimeProperty,
-} from "@codaco/shared-consts";
+  caseProperty,
+  codebookHashProperty,
+  edgeExportIDProperty,
+  egoProperty,
+  NcEdge,
+  NcNetwork,
+  NcNode,
+  ncSourceUUID,
+  ncTargetUUID,
+  nodeExportIDProperty,
+  protocolName,
+  protocolProperty,
+  sessionExportTimeProperty,
+  sessionFinishTimeProperty,
+  sessionProperty,
+  sessionStartTimeProperty,
+} from '@codaco/shared-consts';
 
 type NodeWithEgo = NcNode & {
-	[egoProperty]: string;
+  [egoProperty]: string;
 };
 
 type EdgeWithEgo = NcEdge & {
-	[egoProperty]: string;
+  [egoProperty]: string;
 };
 
 export type SessionVariables = {
-	[caseProperty]: string;
-	[sessionProperty]: string;
-	[protocolProperty]: string;
-	[protocolName]: string;
-	[codebookHashProperty]: string;
-	[sessionExportTimeProperty]: string;
-	[sessionStartTimeProperty]: string | undefined;
-	[sessionFinishTimeProperty]: string | undefined;
-	COMMIT_HASH: string;
-	APP_VERSION: string;
+  [caseProperty]: string;
+  [sessionProperty]: string;
+  [protocolProperty]: string;
+  [protocolName]: string;
+  [codebookHashProperty]: string;
+  [sessionExportTimeProperty]: string;
+  [sessionStartTimeProperty]: string | undefined;
+  [sessionFinishTimeProperty]: string | undefined;
+  COMMIT_HASH: string;
+  APP_VERSION: string;
 };
 
 export type FormattedSession = NcNetwork & {
-	sessionVariables: SessionVariables;
+  sessionVariables: SessionVariables;
 };
 
-export type SessionWithNetworkEgo = Omit<FormattedSession, "nodes" | "edges"> & {
-	nodes: NodeWithEgo[];
-	edges: EdgeWithEgo[];
+export type SessionWithNetworkEgo = Omit<
+  FormattedSession,
+  'nodes' | 'edges'
+> & {
+  nodes: NodeWithEgo[];
+  edges: EdgeWithEgo[];
 };
 
 export type NodeWithResequencedID = NodeWithEgo & {
-	[nodeExportIDProperty]: number;
+  [nodeExportIDProperty]: number;
 };
 
 export type EdgeWithResequencedID = EdgeWithEgo & {
-	[ncSourceUUID]: string;
-	[ncTargetUUID]: string;
-	[edgeExportIDProperty]: number;
+  [ncSourceUUID]: string;
+  [ncTargetUUID]: string;
+  [edgeExportIDProperty]: number;
 };
 
-export type SessionWithResequencedIDs = Omit<FormattedSession, "nodes" | "edges"> & {
-	nodes: NodeWithResequencedID[];
-	edges: EdgeWithResequencedID[];
+export type SessionWithResequencedIDs = Omit<
+  FormattedSession,
+  'nodes' | 'edges'
+> & {
+  nodes: NodeWithResequencedID[];
+  edges: EdgeWithResequencedID[];
 };
 
 export type ProtocolExportInput = {
-	hash: string;
-	name: string;
-	codebook: Codebook;
+  hash: string;
+  name: string;
+  codebook: Codebook;
 };
 
 export type InterviewExportInput = {
-	id: string;
-	participantIdentifier: string;
-	startTime: Date;
-	finishTime: Date | null;
-	network: NcNetwork;
-	protocolHash: string;
+  id: string;
+  participantIdentifier: string;
+  startTime: Date;
+  finishTime: Date | null;
+  network: NcNetwork;
+  protocolHash: string;
 };

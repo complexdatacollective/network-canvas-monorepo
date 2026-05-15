@@ -1,6 +1,6 @@
-import { createDeepEqualSelector } from "./utils";
+import { createDeepEqualSelector } from './utils';
 
 export const getExternalData = createDeepEqualSelector(
-	(state) => state.externalData,
-	(protocolData) => protocolData,
+  (state) => state.externalData,
+  (protocolData) => protocolData,
 );

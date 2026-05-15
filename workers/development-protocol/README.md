@@ -69,6 +69,7 @@ The worker is configured through `wrangler.jsonc`:
 ### Success Response (200)
 
 Returns the `Development.netcanvas` file with headers:
+
 - `Content-Type`: Based on the asset's content type
 - `Content-Disposition`: `attachment; filename="Development.netcanvas"`
 - `Access-Control-Allow-Origin`: `*`

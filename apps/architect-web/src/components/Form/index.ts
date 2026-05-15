@@ -1,1 +1,1 @@
-export { default as ValidatedField } from "./ValidatedField";
+export { default as ValidatedField } from './ValidatedField';

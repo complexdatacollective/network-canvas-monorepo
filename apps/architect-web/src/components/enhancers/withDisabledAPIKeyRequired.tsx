@@ -1,16 +1,19 @@
-import { withProps } from "react-recompose";
+import { withProps } from 'react-recompose';
 
 type MapOptions = {
-	tokenAssetId?: string;
+  tokenAssetId?: string;
 };
 
 type PropsWithMapOptions = {
-	mapOptions?: MapOptions;
+  mapOptions?: MapOptions;
 };
 
-const withDisabledAPIKeyRequired = withProps<{ disabled: boolean }, PropsWithMapOptions>(({ mapOptions }) => {
-	const tokenAssetId = mapOptions?.tokenAssetId;
-	return { disabled: !tokenAssetId };
+const withDisabledAPIKeyRequired = withProps<
+  { disabled: boolean },
+  PropsWithMapOptions
+>(({ mapOptions }) => {
+  const tokenAssetId = mapOptions?.tokenAssetId;
+  return { disabled: !tokenAssetId };
 });
 
 export default withDisabledAPIKeyRequired;

@@ -1,0 +1,10 @@
+{
+  "jsPlugins": ["oxlint-tailwindcss"],
+  "rules": {
+    "tailwindcss/no-unknown-classes": "warn",
+    "tailwindcss/no-duplicate-classes": "error",
+    "tailwindcss/no-conflicting-classes": "warn",
+    "tailwindcss/no-unnecessary-whitespace": "error",
+    "tailwindcss/enforce-canonical": "warn"
+  }
+}

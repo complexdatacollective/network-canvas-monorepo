@@ -1,75 +1,78 @@
-"use client";
+'use client';
 
-import { createContext, type ReactNode, useContext, useRef } from "react";
-import { createPortal } from "react-dom";
-import { useStore } from "zustand";
+import { createContext, type ReactNode, useContext, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { useStore } from 'zustand';
 
-import { usePortalContainer } from "../PortalContainer";
-import { createDndStore, type DndStore } from "./store";
+import { usePortalContainer } from '../PortalContainer';
+import { createDndStore, type DndStore } from './store';
 
 type DndStoreApi = ReturnType<typeof createDndStore>;
 
 const DndStoreContext = createContext<DndStoreApi | undefined>(undefined);
 
 type DndStoreProviderProps = {
-	children: ReactNode;
+  children: ReactNode;
 };
 
 export const DndStoreProvider = ({ children }: DndStoreProviderProps) => {
-	const storeRef = useRef<DndStoreApi | null>(null);
-	storeRef.current ??= createDndStore();
+  const storeRef = useRef<DndStoreApi | null>(null);
+  storeRef.current ??= createDndStore();
 
-	return (
-		<DndStoreContext.Provider value={storeRef.current}>
-			{children}
-			<DragPreview />
-		</DndStoreContext.Provider>
-	);
+  return (
+    <DndStoreContext.Provider value={storeRef.current}>
+      {children}
+      <DragPreview />
+    </DndStoreContext.Provider>
+  );
 };
 
 export const useDndStore = <T,>(selector: (store: DndStore) => T): T => {
-	const dndStoreContext = useContext(DndStoreContext);
+  const dndStoreContext = useContext(DndStoreContext);
 
-	if (!dndStoreContext) {
-		throw new Error("useDndStore must be used within DndStoreProvider");
-	}
+  if (!dndStoreContext) {
+    throw new Error('useDndStore must be used within DndStoreProvider');
+  }
 
-	return useStore(dndStoreContext, selector);
+  return useStore(dndStoreContext, selector);
 };
 
 export const useDndStoreApi = () => {
-	const dndStoreContext = useContext(DndStoreContext);
+  const dndStoreContext = useContext(DndStoreContext);
 
-	if (!dndStoreContext) {
-		throw new Error("useDndStoreApi must be used within DndStoreProvider");
-	}
+  if (!dndStoreContext) {
+    throw new Error('useDndStoreApi must be used within DndStoreProvider');
+  }
 
-	return dndStoreContext;
+  return dndStoreContext;
 };
 
 function DragPreview() {
-	const dragPreview = useDndStore((state) => state.dragPreview);
-	const dragPosition = useDndStore((state) => state.dragPosition);
-	const dragItem = useDndStore((state) => state.dragItem);
-	const isDragging = !!dragItem;
-	// Portal into the closest themed-region's portal container so cloned
-	// items inherit the theme cascade (color, font, --radius-base, etc.).
-	// Falls back to document.body when no themed region is in scope (e.g.,
-	// dnd stories that don't mount a ThemedRegion).
-	const portalContainer = usePortalContainer();
+  const dragPreview = useDndStore((state) => state.dragPreview);
+  const dragPosition = useDndStore((state) => state.dragPosition);
+  const dragItem = useDndStore((state) => state.dragItem);
+  const isDragging = !!dragItem;
+  // Portal into the closest themed-region's portal container so cloned
+  // items inherit the theme cascade (color, font, --radius-base, etc.).
+  // Falls back to document.body when no themed region is in scope (e.g.,
+  // dnd stories that don't mount a ThemedRegion).
+  const portalContainer = usePortalContainer();
 
-	if (!isDragging || !dragPreview || typeof document === "undefined") {
-		return null;
-	}
+  if (!isDragging || !dragPreview || typeof document === 'undefined') {
+    return null;
+  }
 
-	const previewStyles: React.CSSProperties = {
-		transform: `translate(${dragPosition?.x ?? 0}px, ${dragPosition?.y ?? 0}px) translate(-50%, -50%)`,
-	};
+  const previewStyles: React.CSSProperties = {
+    transform: `translate(${dragPosition?.x ?? 0}px, ${dragPosition?.y ?? 0}px) translate(-50%, -50%)`,
+  };
 
-	return createPortal(
-		<div style={previewStyles} className="pointer-events-none fixed top-0 left-0 z-9999 select-none">
-			{dragPreview}
-		</div>,
-		portalContainer ?? document.body,
-	);
+  return createPortal(
+    <div
+      style={previewStyles}
+      className="pointer-events-none fixed top-0 left-0 z-9999 select-none"
+    >
+      {dragPreview}
+    </div>,
+    portalContainer ?? document.body,
+  );
 }

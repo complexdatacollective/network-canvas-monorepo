@@ -7,12 +7,12 @@
  */
 
 const logger = {
-	info: (..._args) => {},
-	warn: (..._args) => {},
-	error: (..._args) => {},
-	debug: (..._args) => {},
-	verbose: (..._args) => {},
-	silly: (..._args) => {},
+  info: (..._args) => {},
+  warn: (..._args) => {},
+  error: (..._args) => {},
+  debug: (..._args) => {},
+  verbose: (..._args) => {},
+  silly: (..._args) => {},
 };
 
 export default logger;

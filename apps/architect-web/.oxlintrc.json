@@ -1,0 +1,10 @@
+{
+  "extends": [
+    "../../.oxlintrc.json",
+    "../../tooling/oxlint/react.json",
+    "../../tooling/oxlint/tailwind.json"
+  ],
+  "rules": {
+    "react/exhaustive-deps": "warn"
+  }
+}

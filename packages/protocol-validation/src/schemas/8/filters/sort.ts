@@ -1,18 +1,19 @@
-import { faker } from "@faker-js/faker";
-import { getNodeVariableId } from "~/utils/mock-seeds";
-import { z } from "~/utils/zod-mock-extension";
+import { faker } from '@faker-js/faker';
 
-const directions = ["asc", "desc"] as const;
+import { getNodeVariableId } from '~/utils/mock-seeds';
+import { z } from '~/utils/zod-mock-extension';
+
+const directions = ['asc', 'desc'] as const;
 
 export const SortRuleSchema = z
-	.strictObject({
-		property: z.string(),
-		direction: z.enum(["asc", "desc"]),
-	})
-	.generateMock(() => ({
-		property: getNodeVariableId(),
-		direction: faker.helpers.arrayElement(directions),
-	}));
+  .strictObject({
+    property: z.string(),
+    direction: z.enum(['asc', 'desc']),
+  })
+  .generateMock(() => ({
+    property: getNodeVariableId(),
+    direction: faker.helpers.arrayElement(directions),
+  }));
 
 export type SortRule = z.infer<typeof SortRuleSchema>;
 

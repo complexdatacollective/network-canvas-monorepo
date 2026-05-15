@@ -1,6 +1,7 @@
-import { stagger } from "motion/react";
-import { useEffect, useRef } from "react";
-import { useSafeAnimate } from "../../hooks/useSafeAnimate";
+import { stagger } from 'motion/react';
+import { useEffect, useRef } from 'react';
+
+import { useSafeAnimate } from '../../hooks/useSafeAnimate';
 
 const TOTAL_STAGGER_DURATION = 0.8;
 const MAX_STAGGER_DELAY = 0.1;
@@ -20,47 +21,59 @@ const MAX_STAGGER_DELAY = 0.1;
  * @param animationKey - When this value changes, the stagger entrance re-runs
  * @returns A ref to attach to the animation scope container
  */
-export function useStaggerAnimation(enabled: boolean, itemCount: number, animationKey?: string | number) {
-	const [scope, animate] = useSafeAnimate<HTMLDivElement>();
-	const hasAnimatedRef = useRef(false);
-	const prevAnimationKeyRef = useRef(animationKey);
+export function useStaggerAnimation(
+  enabled: boolean,
+  itemCount: number,
+  animationKey?: string | number,
+) {
+  const [scope, animate] = useSafeAnimate();
+  const hasAnimatedRef = useRef(false);
+  const prevAnimationKeyRef = useRef(animationKey);
 
-	// Reset hasAnimatedRef when animationKey changes so the stagger re-runs
-	if (animationKey !== prevAnimationKeyRef.current && prevAnimationKeyRef.current !== undefined) {
-		hasAnimatedRef.current = false;
-		prevAnimationKeyRef.current = animationKey;
-	}
+  // Reset hasAnimatedRef when animationKey changes so the stagger re-runs
+  if (
+    animationKey !== prevAnimationKeyRef.current &&
+    prevAnimationKeyRef.current !== undefined
+  ) {
+    hasAnimatedRef.current = false;
+    prevAnimationKeyRef.current = animationKey;
+  }
 
-	useEffect(() => {
-		if (!enabled || hasAnimatedRef.current || itemCount === 0) {
-			return;
-		}
+  useEffect(() => {
+    if (!enabled || hasAnimatedRef.current || itemCount === 0) {
+      return;
+    }
 
-		hasAnimatedRef.current = true;
+    hasAnimatedRef.current = true;
 
-		const staggerDelay = Math.min(TOTAL_STAGGER_DURATION / itemCount, MAX_STAGGER_DELAY);
+    const staggerDelay = Math.min(
+      TOTAL_STAGGER_DURATION / itemCount,
+      MAX_STAGGER_DELAY,
+    );
 
-		// When animationKey is defined, scope the selector to only target items
-		// with the current key. This prevents the stagger from accidentally
-		// animating exiting items still in the DOM (from AnimatePresence popLayout).
-		const selector =
-			animationKey !== undefined ? `[data-stagger-item][data-stagger-key="${animationKey}"]` : "[data-stagger-item]";
+    // When animationKey is defined, scope the selector to only target items
+    // with the current key. This prevents the stagger from accidentally
+    // animating exiting items still in the DOM (from AnimatePresence popLayout).
+    const selector =
+      animationKey !== undefined
+        ? `[data-stagger-item][data-stagger-key="${animationKey}"]`
+        : '[data-stagger-item]';
 
-		const runAnimation = async () => {
-			await animate(
-				selector,
-				{ opacity: [0, 1], y: ["20%", "0%"], scale: [0.6, 1] },
-				{
-					type: "spring",
-					stiffness: 500,
-					damping: 20,
-					delay: stagger(staggerDelay),
-				},
-			);
-		};
+    const runAnimation = async () => {
+      await animate(
+        selector,
+        { opacity: [0, 1], y: ['20%', '0%'], scale: [0.6, 1] },
+        {
+          type: 'spring',
+          stiffness: 500,
+          damping: 20,
+          delay: stagger(staggerDelay),
+        },
+      );
+    };
 
-		void runAnimation();
-	}, [animate, enabled, itemCount, animationKey]);
+    void runAnimation();
+  }, [animate, enabled, itemCount, animationKey]);
 
-	return scope;
+  return scope;
 }

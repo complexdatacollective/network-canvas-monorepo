@@ -43,9 +43,9 @@ consumers import them in order:
 
 ```css
 /* styles/globals.css */
-@import "@codaco/tailwind-config/fresco.css"; /* Tailwind v4 + theme + plugins + fonts */
-@import "@codaco/fresco-ui/styles.css";       /* @source for fresco-ui's dist */
-@import "@codaco/interview/styles.css";       /* @source for interview's dist */
+@import '@codaco/tailwind-config/fresco.css'; /* Tailwind v4 + theme + plugins + fonts */
+@import '@codaco/fresco-ui/styles.css'; /* @source for fresco-ui's dist */
+@import '@codaco/interview/styles.css'; /* @source for interview's dist */
 ```
 
 **Do not also `@import "tailwindcss"` yourself.** That import lives
@@ -63,14 +63,14 @@ need to write `@source '../node_modules/...'` lines themselves.
 `@codaco/tailwind-config/fresco.css` bundles both the default and
 interview theme variants. Shell renders `<main data-theme-interview>`
 with a portal container so dialogs/popovers stay inside the themed
-subtree — no host-side setup required. See *Theming & DOM scope* below.
+subtree — no host-side setup required. See _Theming & DOM scope_ below.
 
 ### Vitest / jsdom
 
 Node has no CSS loader, so any vitest test that imports from
 `@codaco/interview` (even just the schemas) needs Vite to process
 the package, otherwise you get
-*"TypeError: Unknown file extension `.css`"*. Inline the package on
+_"TypeError: Unknown file extension `.css`"_. Inline the package on
 every project that uses jsdom:
 
 ```ts
@@ -145,22 +145,22 @@ export default function InterviewClient({
 
   // Persist state on every reducer commit. Receives the full session
   // payload — POST it to your server, write to IndexedDB, anything.
-  const onSync: SyncHandler = useCallback(
-    async (interviewId, session) => {
-      await fetch(`/interview/${interviewId}/sync`, {
-        method: 'POST',
-        body: JSON.stringify(session),
-      });
-    },
-    [],
-  );
+  const onSync: SyncHandler = useCallback(async (interviewId, session) => {
+    await fetch(`/interview/${interviewId}/sync`, {
+      method: 'POST',
+      body: JSON.stringify(session),
+    });
+  }, []);
 
   // Called when the participant clicks Finish on the FinishSession
   // stage. Receives an AbortSignal so you can cancel any in-flight work
   // if the user backs out.
   const onFinish: FinishHandler = useCallback(
     async (interviewId, signal) => {
-      await fetch(`/interview/${interviewId}/finish`, { method: 'POST', signal });
+      await fetch(`/interview/${interviewId}/finish`, {
+        method: 'POST',
+        signal,
+      });
       router.push(`/interview/${interviewId}/complete`);
     },
     [router],
@@ -203,18 +203,18 @@ different stages without re-creating the Redux store: only the
 
 ### Shell props
 
-| Prop              | Type                        | Required | Notes |
-| ----------------- | --------------------------- | -------- | ----- |
-| `payload`         | `InterviewPayload`          | yes      | `{ session, protocol }` — see the type for shape. The store is created once per `payload.session.id`; pass a stable reference. |
-| `currentStep`     | `number`                    | yes      | The stage index the participant is on. Owned by the host. |
-| `onStepChange`    | `(step: number) => void`    | yes      | Fired whenever the participant navigates. The host should mirror `step` into its own state. |
-| `onSync`          | `(id, session) => Promise`  | yes      | Called after every Redux commit. Persist the session however you like. |
-| `onFinish`        | `(id, AbortSignal) => Promise` | yes   | Called from the FinishSession stage. The signal aborts if the user navigates away mid-flight. |
-| `onRequestAsset`  | `(assetId) => Promise<url>` | yes      | Resolve a protocol asset to a URL. Called lazily as stages mount. |
-| `analytics`       | `InterviewAnalyticsMetadata`| yes      | Host metadata attached as super-properties on every event: `installationId` (anonymous host UUID), `hostApp` (e.g. `"Fresco"`), `hostVersion?`. |
-| `posthogClient`   | `PostHog` (from posthog-js) | no       | Pre-initialised PostHog client. When provided, the package emits events through it without modifying its config. When absent, the package lazy-initialises its own named instance against `ph-relay.networkcanvas.com`. |
-| `disableAnalytics`| `boolean`                   | no       | When `true`, all event emission is suppressed (no `posthog-js` import). Default `false`. Use for E2E and synthetic-interview runs. |
-| `flags`           | `{ isE2E?, isDevelopment? }`| no       | `isE2E: true` exposes `window.__interviewStore` for Playwright fixtures. `isDevelopment: true` enables redux-logger. |
+| Prop               | Type                           | Required | Notes                                                                                                                                                                                                                   |
+| ------------------ | ------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `payload`          | `InterviewPayload`             | yes      | `{ session, protocol }` — see the type for shape. The store is created once per `payload.session.id`; pass a stable reference.                                                                                          |
+| `currentStep`      | `number`                       | yes      | The stage index the participant is on. Owned by the host.                                                                                                                                                               |
+| `onStepChange`     | `(step: number) => void`       | yes      | Fired whenever the participant navigates. The host should mirror `step` into its own state.                                                                                                                             |
+| `onSync`           | `(id, session) => Promise`     | yes      | Called after every Redux commit. Persist the session however you like.                                                                                                                                                  |
+| `onFinish`         | `(id, AbortSignal) => Promise` | yes      | Called from the FinishSession stage. The signal aborts if the user navigates away mid-flight.                                                                                                                           |
+| `onRequestAsset`   | `(assetId) => Promise<url>`    | yes      | Resolve a protocol asset to a URL. Called lazily as stages mount.                                                                                                                                                       |
+| `analytics`        | `InterviewAnalyticsMetadata`   | yes      | Host metadata attached as super-properties on every event: `installationId` (anonymous host UUID), `hostApp` (e.g. `"Fresco"`), `hostVersion?`.                                                                         |
+| `posthogClient`    | `PostHog` (from posthog-js)    | no       | Pre-initialised PostHog client. When provided, the package emits events through it without modifying its config. When absent, the package lazy-initialises its own named instance against `ph-relay.networkcanvas.com`. |
+| `disableAnalytics` | `boolean`                      | no       | When `true`, all event emission is suppressed (no `posthog-js` import). Default `false`. Use for E2E and synthetic-interview runs.                                                                                      |
+| `flags`            | `{ isE2E?, isDevelopment? }`   | no       | `isE2E: true` exposes `window.__interviewStore` for Playwright fixtures. `isDevelopment: true` enables redux-logger.                                                                                                    |
 
 The package replaces a previous `onError` callback with internal `posthog.captureException` calls; render errors and asset-load failures are reported via the resolved analytics client (or suppressed when `disableAnalytics` is `true`). The host does not need to wire its own error sink.
 
@@ -265,7 +265,9 @@ import {
 } from '@codaco/interview';
 import { hashProtocol } from '@codaco/protocol-validation';
 
-export async function loadInterviewPayload(interviewId: string): Promise<InterviewPayload> {
+export async function loadInterviewPayload(
+  interviewId: string,
+): Promise<InterviewPayload> {
   const interview = await db.interview.findUniqueOrThrow({
     where: { id: interviewId },
     include: { protocol: true },
@@ -366,11 +368,17 @@ type ResolvedAsset = {
   value?: string; // apikey only
 };
 
-type SyncHandler         = (interviewId: string, session: SessionPayload) => Promise<void>;
-type FinishHandler       = (interviewId: string, signal: AbortSignal)      => Promise<void>;
-type AssetRequestHandler = (assetId: string)                               => Promise<string>;
-type ErrorHandler        = (error: Error, ctx?: Record<string, unknown>)   => void;
-type StepChangeHandler   = (step: number)                                  => void;
+type SyncHandler = (
+  interviewId: string,
+  session: SessionPayload,
+) => Promise<void>;
+type FinishHandler = (
+  interviewId: string,
+  signal: AbortSignal,
+) => Promise<void>;
+type AssetRequestHandler = (assetId: string) => Promise<string>;
+type ErrorHandler = (error: Error, ctx?: Record<string, unknown>) => void;
+type StepChangeHandler = (step: number) => void;
 
 type InterviewerFlags = {
   isE2E?: boolean;
@@ -384,16 +392,16 @@ type InterviewerFlags = {
 
 `Shell` renders a single `<main data-theme-interview>` element. This is both the stable selector for tests / e2e fixtures and the wrapper that activates the interview theme: descendants pick up the dark palette, Nunito typography, and responsive root font-size automatically.
 
-`Shell` also provides a portal container (via `<PortalContainerProvider>` from `@codaco/fresco-ui/PortalContainer`) so dialogs, popovers, dropdowns, tooltips, toasts, selects, and comboboxes opened from inside the interview render into a node *inside* the themed subtree — they inherit the interview palette automatically rather than portaling to `document.body`.
+`Shell` also provides a portal container (via `<PortalContainerProvider>` from `@codaco/fresco-ui/PortalContainer`) so dialogs, popovers, dropdowns, tooltips, toasts, selects, and comboboxes opened from inside the interview render into a node _inside_ the themed subtree — they inherit the interview palette automatically rather than portaling to `document.body`.
 
 If you render interview-themed UI **outside** of `Shell` (e.g. a "thank you" page after the interview ends), wrap that UI with `<ThemedRegion theme="interview">` from `@codaco/fresco-ui/ThemedRegion`:
 
 ```tsx
-import { ThemedRegion } from "@codaco/fresco-ui/ThemedRegion";
+import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 
 <ThemedRegion theme="interview">
   <ThankYouPage />
-</ThemedRegion>
+</ThemedRegion>;
 ```
 
 `<ThemedRegion>` and its ancestors up to `<body>` must not have `transform`, `filter`, `perspective`, or `contain` set — these create new containing blocks for fixed-positioned descendants and would break modal/popover positioning.
@@ -404,7 +412,7 @@ import { ThemedRegion } from "@codaco/fresco-ui/ThemedRegion";
 
 ### Unit / component tests (Vitest + jsdom)
 
-See the *Vitest / jsdom* note above — inline `@codaco/interview` in
+See the _Vitest / jsdom_ note above — inline `@codaco/interview` in
 your config so the CSS side effect resolves cleanly.
 
 ### End-to-end (Playwright)
@@ -435,6 +443,7 @@ tab that lands directly in step 0 of the interview — no console paste.
 ## What lives in this package, what doesn't
 
 In:
+
 - the Redux store + every reducer / selector / thunk
 - all 17 stage interfaces and the navigation chrome
 - the dialog system, toast system, and stage error boundary
@@ -442,6 +451,7 @@ In:
 - the contract types and the schemas the host serialises against
 
 Out:
+
 - everything that touches a database, a session cookie, or the network
 - protocol parsing and validation (use `@codaco/protocol-validation`)
 - export to GraphML / CSV (use `@codaco/network-exporters`)

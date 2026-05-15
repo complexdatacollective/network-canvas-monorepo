@@ -1,5 +1,5 @@
 ---
-"@codaco/interview": prerelease
+'@codaco/interview': prerelease
 ---
 
 Shell now mirrors `data-theme-interview` onto `<html>` via a `useLayoutEffect` (set on mount, removed on unmount), in addition to the existing static attribute on its `<main>`. Pairs with `@codaco/tailwind-config@1.0.0-alpha.8`'s `:root[data-theme-interview]` selectors so `1rem` tracks the interview theme's responsive font-size override (16/18/20px at tablet / desktop) — every `text-*` and `p-*` / `gap-*` utility now scales together without the em-compounding regression that landed in alpha.7.

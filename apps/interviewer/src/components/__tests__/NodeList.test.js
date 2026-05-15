@@ -1,16 +1,22 @@
-import { shallow } from "enzyme";
-import { createStore } from "redux";
-import { vi } from "vitest";
-import NodeList from "../NodeList";
+import { shallow } from 'enzyme';
+import { createStore } from 'redux';
+import { vi } from 'vitest';
 
-vi.mock("@codaco/ui/lib/utils/CSSVariables");
+import NodeList from '../NodeList';
 
-const mockStore = createStore(() => ({ droppable: { activeZones: [] }, draggable: { draggingFromIds: {} } }));
+vi.mock('@codaco/ui/lib/utils/CSSVariables');
 
-describe("NodeList component", () => {
-	it("renders ok", () => {
-		const component = shallow(<NodeList id="foo" listId="foo_bar" store={mockStore} />);
+const mockStore = createStore(() => ({
+  droppable: { activeZones: [] },
+  draggable: { draggingFromIds: {} },
+}));
 
-		expect(component).toMatchSnapshot();
-	});
+describe('NodeList component', () => {
+  it('renders ok', () => {
+    const component = shallow(
+      <NodeList id="foo" listId="foo_bar" store={mockStore} />,
+    );
+
+    expect(component).toMatchSnapshot();
+  });
 });

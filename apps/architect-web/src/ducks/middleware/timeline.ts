@@ -1,252 +1,288 @@
 import {
-	createAction,
-	createSlice,
-	current,
-	type Draft,
-	type PayloadAction,
-	type Reducer,
-	type UnknownAction,
-} from "@reduxjs/toolkit";
-import { v4 as uuid } from "uuid";
+  createAction,
+  createSlice,
+  current,
+  type Draft,
+  type PayloadAction,
+  type Reducer,
+  type UnknownAction,
+} from '@reduxjs/toolkit';
+import { v4 as uuid } from 'uuid';
 
 // Types
 type TimelineState<T = unknown> = {
-	past: T[];
-	present: T | null;
-	timeline: string[];
-	future: T[];
-	futureTimeline: string[];
+  past: T[];
+  present: T | null;
+  timeline: string[];
+  future: T[];
+  futureTimeline: string[];
 };
 
 type TimelineOptions = {
-	name?: string;
-	limit?: number;
-	exclude?: (action: UnknownAction) => boolean;
+  name?: string;
+  limit?: number;
+  exclude?: (action: UnknownAction) => boolean;
 };
 
 const defaultOptions: Required<TimelineOptions> = {
-	name: "timeline",
-	limit: 1000,
-	exclude: () => false,
+  name: 'timeline',
+  limit: 1000,
+  exclude: () => false,
 };
 
 // Create standalone actions using createAction
 export const timelineActions = {
-	jump: createAction<string, "timeline/jump">("timeline/jump"),
-	reset: createAction<void, "timeline/reset">("timeline/reset"),
-	undo: createAction<void, "timeline/undo">("timeline/undo"),
-	redo: createAction<void, "timeline/redo">("timeline/redo"),
+  jump: createAction<string, 'timeline/jump'>('timeline/jump'),
+  reset: createAction<void, 'timeline/reset'>('timeline/reset'),
+  undo: createAction<void, 'timeline/undo'>('timeline/undo'),
+  redo: createAction<void, 'timeline/redo'>('timeline/redo'),
 };
 
 const createTimelineReducer = <T>(
-	reducer: Reducer<T>,
-	customOptions: TimelineOptions = {},
-): Reducer<TimelineState<T>, UnknownAction> => {
-	const options = {
-		...defaultOptions,
-		...customOptions,
-	};
+  reducer: Reducer<T>,
+  customOptions: TimelineOptions = {},
+): Reducer<TimelineState<T>> => {
+  const options = {
+    ...defaultOptions,
+    ...customOptions,
+  };
 
-	const initialState: TimelineState<T> = {
-		past: [],
-		present: null,
-		timeline: [],
-		future: [],
-		futureTimeline: [],
-	};
+  const initialState: TimelineState<T> = {
+    past: [],
+    present: null,
+    timeline: [],
+    future: [],
+    futureTimeline: [],
+  };
 
-	// Create slice that handles both timeline actions and wraps the original reducer
-	const timelineSlice = createSlice({
-		name: options.name,
-		initialState,
-		reducers: {},
-		extraReducers: (builder) => {
-			builder
-				.addCase(timelineActions.undo, (state) => {
-					const { past, present, timeline, future = [], futureTimeline = [] } = state;
+  // Create slice that handles both timeline actions and wraps the original reducer
+  const timelineSlice = createSlice({
+    name: options.name,
+    initialState,
+    reducers: {},
+    extraReducers: (builder) => {
+      builder
+        .addCase(timelineActions.undo, (state) => {
+          const {
+            past,
+            present,
+            timeline,
+            future = [],
+            futureTimeline = [],
+          } = state;
 
-					if (past.length === 0 || !present) {
-						return;
-					}
+          if (past.length === 0 || !present) {
+            return;
+          }
 
-					const newPresent = past[past.length - 1];
-					const newFuture = [current<T>(present as Draft<T>), ...current<T[]>(future || [])];
-					const lastTimelineItem = timeline[timeline.length - 1];
-					const newFutureTimeline = lastTimelineItem ? [lastTimelineItem, ...(futureTimeline || [])] : futureTimeline;
+          const newPresent = past[past.length - 1];
+          const newFuture = [
+            current<T>(present as Draft<T>),
+            ...current<T[]>(future || []),
+          ];
+          const lastTimelineItem = timeline[timeline.length - 1];
+          const newFutureTimeline = lastTimelineItem
+            ? [lastTimelineItem, ...(futureTimeline || [])]
+            : futureTimeline;
 
-					const newPast = past.slice(0, -1);
-					const newTimeline = timeline.slice(0, -1);
+          const newPast = past.slice(0, -1);
+          const newTimeline = timeline.slice(0, -1);
 
-					Object.assign(state, {
-						past: newPast,
-						present: newPresent,
-						timeline: newTimeline,
-						future: newFuture,
-						futureTimeline: newFutureTimeline,
-					});
-				})
-				.addCase(timelineActions.jump, (state, action: PayloadAction<string>) => {
-					const { past, timeline } = state;
-					const locus = action.payload;
+          Object.assign(state, {
+            past: newPast,
+            present: newPresent,
+            timeline: newTimeline,
+            future: newFuture,
+            futureTimeline: newFutureTimeline,
+          });
+        })
+        .addCase(
+          timelineActions.jump,
+          (state, action: PayloadAction<string>) => {
+            const { past, timeline } = state;
+            const locus = action.payload;
 
-					if (!locus) {
-						return state;
-					}
+            if (!locus) {
+              return state;
+            }
 
-					const locusIndex = timeline.indexOf(locus);
+            const locusIndex = timeline.indexOf(locus);
 
-					// If point in timeline cannot be found do nothing
-					if (locusIndex === -1) {
-						return;
-					}
+            // If point in timeline cannot be found do nothing
+            if (locusIndex === -1) {
+              return;
+            }
 
-					// no events in timeline yet
-					if (timeline.length === 1) {
-						return;
-					}
+            // no events in timeline yet
+            if (timeline.length === 1) {
+              return;
+            }
 
-					// the last point in the timeline is the present
-					if (locusIndex === timeline.length - 1) {
-						return;
-					}
+            // the last point in the timeline is the present
+            if (locusIndex === timeline.length - 1) {
+              return;
+            }
 
-					const newPresent = past[locusIndex];
+            const newPresent = past[locusIndex];
 
-					Object.assign(state, {
-						past: past.slice(0, locusIndex),
-						present: newPresent,
-						timeline: timeline.slice(0, locusIndex + 1),
-					});
-				})
-				.addCase(timelineActions.redo, (state) => {
-					const { future = [], futureTimeline = [], present, past, timeline } = state;
+            Object.assign(state, {
+              past: past.slice(0, locusIndex),
+              present: newPresent,
+              timeline: timeline.slice(0, locusIndex + 1),
+            });
+          },
+        )
+        .addCase(timelineActions.redo, (state) => {
+          const {
+            future = [],
+            futureTimeline = [],
+            present,
+            past,
+            timeline,
+          } = state;
 
-					// Need at least one item in future to redo
-					if (!future || future.length === 0) {
-						return;
-					}
+          // Need at least one item in future to redo
+          if (!future || future.length === 0) {
+            return;
+          }
 
-					// Move first future item to present
-					const newPresent = future[0];
-					const newLocus = futureTimeline[0];
+          // Move first future item to present
+          const newPresent = future[0];
+          const newLocus = futureTimeline[0];
 
-					// Move current present to past
-					const newPast = present ? [...past, current<T>(present as Draft<T>)] : past;
-					const newTimeline = newLocus ? [...timeline, newLocus] : timeline;
+          // Move current present to past
+          const newPast = present
+            ? [...past, current<T>(present as Draft<T>)]
+            : past;
+          const newTimeline = newLocus ? [...timeline, newLocus] : timeline;
 
-					Object.assign(state, {
-						past: newPast,
-						present: newPresent,
-						timeline: newTimeline,
-						future: future.slice(1),
-						futureTimeline: futureTimeline.slice(1),
-					});
-				})
-				.addCase(timelineActions.reset, (state) => {
-					const locus = uuid();
-					const newPresent = reducer((state.present ? current<T>(state.present as Draft<T>) : state.present) as T, {
-						type: "@@RESET",
-					});
+          Object.assign(state, {
+            past: newPast,
+            present: newPresent,
+            timeline: newTimeline,
+            future: future.slice(1),
+            futureTimeline: futureTimeline.slice(1),
+          });
+        })
+        .addCase(timelineActions.reset, (state) => {
+          const locus = uuid();
+          const newPresent = reducer(
+            (state.present
+              ? current<T>(state.present as Draft<T>)
+              : state.present) as T,
+            {
+              type: '@@RESET',
+            },
+          );
 
-					Object.assign(state, {
-						past: [],
-						present: newPresent ?? null,
-						timeline: [locus],
-						future: [],
-						futureTimeline: [],
-					});
-				})
-				.addDefaultCase((state, action) => {
-					// Don't process timeline actions here - they're handled by the cases above
-					if (
-						action &&
-						(timelineActions.jump.match(action) ||
-							timelineActions.reset.match(action) ||
-							timelineActions.undo.match(action) ||
-							timelineActions.redo.match(action))
-					) {
-						return state;
-					}
+          Object.assign(state, {
+            past: [],
+            present: newPresent ?? null,
+            timeline: [locus],
+            future: [],
+            futureTimeline: [],
+          });
+        })
+        .addDefaultCase((state, action) => {
+          // Don't process timeline actions here - they're handled by the cases above
+          if (
+            action &&
+            (timelineActions.jump.match(action) ||
+              timelineActions.reset.match(action) ||
+              timelineActions.undo.match(action) ||
+              timelineActions.redo.match(action))
+          ) {
+            return state;
+          }
 
-					// Initialize future arrays if they don't exist (for backwards compatibility with persisted state)
-					if (!state.future) {
-						state.future = [];
-					}
-					if (!state.futureTimeline) {
-						state.futureTimeline = [];
-					}
+          // Initialize future arrays if they don't exist (for backwards compatibility with persisted state)
+          if (!state.future) {
+            state.future = [];
+          }
+          if (!state.futureTimeline) {
+            state.futureTimeline = [];
+          }
 
-					// Clean up null values from past array (for backwards compatibility with persisted state)
-					if (state.past?.some((p) => p === null || p === undefined)) {
-						state.past = state.past.filter((p) => p !== null && p !== undefined);
-					}
+          // Clean up null values from past array (for backwards compatibility with persisted state)
+          if (state.past?.some((p) => p === null || p === undefined)) {
+            state.past = state.past.filter(
+              (p) => p !== null && p !== undefined,
+            );
+          }
 
-					const { past, present, timeline } = state;
+          const { past, present, timeline } = state;
 
-					// Clone present BEFORE calling reducer, because reducer mutates in place
-					const presentSnapshot = present ? structuredClone(current<T>(present as Draft<T>)) : null;
-					const newPresent = reducer((present ? current<T>(present as Draft<T>) : present) as T, action);
+          // Clone present BEFORE calling reducer, because reducer mutates in place
+          const presentSnapshot = present
+            ? structuredClone(current<T>(present as Draft<T>))
+            : null;
+          const newPresent = reducer(
+            (present ? current<T>(present as Draft<T>) : present) as T,
+            action,
+          );
 
-					// This is the first run
-					if (timeline.length === 0) {
-						const locus = uuid();
-						Object.assign(state, {
-							past: [],
-							present: newPresent ?? null,
-							timeline: [locus],
-							future: [],
-							futureTimeline: [],
-						});
-						return;
-					}
+          // This is the first run
+          if (timeline.length === 0) {
+            const locus = uuid();
+            Object.assign(state, {
+              past: [],
+              present: newPresent ?? null,
+              timeline: [locus],
+              future: [],
+              futureTimeline: [],
+            });
+            return;
+          }
 
-					// If newPresent matches the old one, don't treat as a new point in the timeline
-					if (present === newPresent) {
-						return state;
-					}
+          // If newPresent matches the old one, don't treat as a new point in the timeline
+          if (present === newPresent) {
+            return state;
+          }
 
-					// If this is setActiveProtocol, reset the timeline (loading a new protocol)
-					if (action.type === "activeProtocol/setActiveProtocol") {
-						const locus = uuid();
-						Object.assign(state, {
-							past: [],
-							present: newPresent ?? null,
-							timeline: [locus],
-							future: [],
-							futureTimeline: [],
-						});
-						return;
-					}
+          // If this is setActiveProtocol, reset the timeline (loading a new protocol)
+          if (action.type === 'activeProtocol/setActiveProtocol') {
+            const locus = uuid();
+            Object.assign(state, {
+              past: [],
+              present: newPresent ?? null,
+              timeline: [locus],
+              future: [],
+              futureTimeline: [],
+            });
+            return;
+          }
 
-					// If excluded, we don't treat this as a new point in the timeline, but we do update the state
-					if (options.exclude(action)) {
-						Object.assign(state, {
-							past,
-							present: newPresent ?? null,
-							timeline,
-						});
-						return;
-					}
+          // If excluded, we don't treat this as a new point in the timeline, but we do update the state
+          if (options.exclude(action)) {
+            Object.assign(state, {
+              past,
+              present: newPresent ?? null,
+              timeline,
+            });
+            return;
+          }
 
-					// clear future when making a new change
-					state.future = [];
-					state.futureTimeline = [];
+          // clear future when making a new change
+          state.future = [];
+          state.futureTimeline = [];
 
-					const locus = uuid();
-					const newTimeline = [...timeline, locus].slice(-options.limit - 1);
+          const locus = uuid();
+          const newTimeline = [...timeline, locus].slice(-options.limit - 1);
 
-					const validPast = presentSnapshot ? [...past, presentSnapshot] : [...past];
+          const validPast = presentSnapshot
+            ? [...past, presentSnapshot]
+            : [...past];
 
-					Object.assign(state, {
-						past: validPast.slice(-options.limit),
-						present: newPresent ?? null,
-						timeline: newTimeline,
-					});
-				});
-		},
-	});
+          Object.assign(state, {
+            past: validPast.slice(-options.limit),
+            present: newPresent ?? null,
+            timeline: newTimeline,
+          });
+        });
+    },
+  });
 
-	return timelineSlice.reducer;
+  return timelineSlice.reducer;
 };
 
 export default createTimelineReducer;

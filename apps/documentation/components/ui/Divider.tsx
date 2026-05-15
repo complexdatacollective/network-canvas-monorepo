@@ -1,5 +1,10 @@
-import { cn } from "~/lib/utils";
+import { cn } from '~/lib/utils';
 
 export const Divider = ({ className }: { className?: string }) => (
-	<hr className={cn("mx-auto w-full rounded-full border-[1.5px] border-foreground", className)} />
+  <hr
+    className={cn(
+      'border-foreground mx-auto w-full rounded-full border-[1.5px]',
+      className,
+    )}
+  />
 );

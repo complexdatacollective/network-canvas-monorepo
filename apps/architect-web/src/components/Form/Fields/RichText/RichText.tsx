@@ -1,60 +1,68 @@
-import { EditListPlugin } from "@productboard/slate-edit-list";
-import { isEmpty } from "es-toolkit/compat";
-import { isHotkey } from "is-hotkey";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { createEditor, type Descendant, type Editor, Transforms as SlateTransforms } from "slate";
-import type { HistoryEditor } from "slate-history";
-import { withHistory } from "slate-history";
-import { Editable, type ReactEditor, Slate, withReact } from "slate-react";
-import { cx } from "~/utils/cva";
-import Element from "./Element";
-import Leaf from "./Leaf";
-import { toggleMark } from "./lib/actions";
-import { ALWAYS_DISALLOWED, INLINE_DISALLOWED_ITEMS } from "./lib/options";
-import parse, { defaultValue } from "./lib/parse";
-import serialize from "./lib/serialize";
-import withNormalize from "./lib/withNormalize";
-import withVoids from "./lib/withVoids";
-import RichTextContainer from "./RichTextContainer";
-import Toolbar from "./Toolbar";
+import { EditListPlugin } from '@productboard/slate-edit-list';
+import { isEmpty } from 'es-toolkit/compat';
+import { isHotkey } from 'is-hotkey';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  createEditor,
+  type Descendant,
+  type Editor,
+  Transforms as SlateTransforms,
+} from 'slate';
+import type { HistoryEditor } from 'slate-history';
+import { withHistory } from 'slate-history';
+import { Editable, type ReactEditor, Slate, withReact } from 'slate-react';
+
+import { cx } from '~/utils/cva';
+
+import Element from './Element';
+import Leaf from './Leaf';
+import { toggleMark } from './lib/actions';
+import { ALWAYS_DISALLOWED, INLINE_DISALLOWED_ITEMS } from './lib/options';
+import parse, { defaultValue } from './lib/parse';
+import serialize from './lib/serialize';
+import withNormalize from './lib/withNormalize';
+import withVoids from './lib/withVoids';
+import RichTextContainer from './RichTextContainer';
+import Toolbar from './Toolbar';
 
 type CustomEditor = Editor &
-	ReactEditor &
-	HistoryEditor & {
-		inline?: boolean;
-		disallowedTypes?: string[];
-	};
+  ReactEditor &
+  HistoryEditor & {
+    inline?: boolean;
+    disallowedTypes?: string[];
+  };
 
 type RichTextProps = {
-	value?: string;
-	placeholder?: string;
-	onChange?: (value: string) => void;
-	inline?: boolean;
-	disallowedTypes?: string[];
-	autoFocus?: boolean;
-	hasError?: boolean;
+  value?: string;
+  placeholder?: string;
+  onChange?: (value: string) => void;
+  inline?: boolean;
+  disallowedTypes?: string[];
+  autoFocus?: boolean;
+  hasError?: boolean;
 };
 
 const HOTKEYS: Record<string, string> = {
-	"mod+b": "bold",
-	"mod+i": "italic",
+  'mod+b': 'bold',
+  'mod+i': 'italic',
 };
 
 const [withEditList, listOnKeyDown] = EditListPlugin({
-	maxDepth: 1, // Restrict list depth to one, for now.
+  maxDepth: 1, // Restrict list depth to one, for now.
 });
 
-const hotkeyOnKeyDown = (editor: CustomEditor) => (event: React.KeyboardEvent) => {
-	Object.keys(HOTKEYS).forEach((hotkey) => {
-		if (isHotkey(hotkey, event)) {
-			event.preventDefault();
-			const mark = HOTKEYS[hotkey];
-			if (mark) {
-				toggleMark(editor, mark);
-			}
-		}
-	});
-};
+const hotkeyOnKeyDown =
+  (editor: CustomEditor) => (event: React.KeyboardEvent) => {
+    Object.keys(HOTKEYS).forEach((hotkey) => {
+      if (isHotkey(hotkey, event)) {
+        event.preventDefault();
+        const mark = HOTKEYS[hotkey];
+        if (mark) {
+          toggleMark(editor, mark);
+        }
+      }
+    });
+  };
 
 /**
  * This rich text component is UI for editing markdown.
@@ -100,162 +108,171 @@ const hotkeyOnKeyDown = (editor: CustomEditor) => (event: React.KeyboardEvent) =
  */
 
 const RichText = ({
-	autoFocus = false,
-	inline = false,
-	disallowedTypes = [],
-	onChange = () => {},
-	value: initialValue = "",
-	placeholder = "Enter some text...",
-	hasError = false,
+  autoFocus = false,
+  inline = false,
+  disallowedTypes = [],
+  onChange = () => {},
+  value: initialValue = '',
+  placeholder = 'Enter some text...',
+  hasError = false,
 }: RichTextProps) => {
-	const [isInitialized, setIsInitialized] = useState(false);
-	const [value, setValue] = useState<Descendant[]>(defaultValue);
-	const [lastChange, setLastChange] = useState(initialValue);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [value, setValue] = useState<Descendant[]>(defaultValue);
+  const [lastChange, setLastChange] = useState(initialValue);
 
-	// Use the inline prop to optionally merge additional disallowed items
-	const disallowedTypesWithDefaults = useMemo(
-		() => [...disallowedTypes, ...[...(inline ? INLINE_DISALLOWED_ITEMS : [])], ...ALWAYS_DISALLOWED],
-		[disallowedTypes, inline],
-	);
+  // Use the inline prop to optionally merge additional disallowed items
+  const disallowedTypesWithDefaults = useMemo(
+    () => [
+      ...disallowedTypes,
+      ...(inline ? INLINE_DISALLOWED_ITEMS : []),
+      ...ALWAYS_DISALLOWED,
+    ],
+    [disallowedTypes, inline],
+  );
 
-	const withOptions = useCallback(
-		(e: Editor) => {
-			const customE = e as CustomEditor;
-			customE.inline = inline;
-			customE.disallowedTypes = disallowedTypesWithDefaults;
-			return customE;
-		},
-		[inline, disallowedTypesWithDefaults],
-	);
+  const withOptions = useCallback(
+    (e: Editor) => {
+      const customE = e as CustomEditor;
+      customE.inline = inline;
+      customE.disallowedTypes = disallowedTypesWithDefaults;
+      return customE;
+    },
+    [inline, disallowedTypesWithDefaults],
+  );
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: fix runtime error
-	const editor = useMemo(() => {
-		const baseEditor = createEditor();
-		const withReactEditor = withReact(baseEditor);
-		const withHistoryEditor = withHistory(withReactEditor);
-		const withListEditor = withEditList(withHistoryEditor);
-		const withNormalizeEditor = withNormalize(withListEditor);
-		const withVoidsEditor = withVoids(withNormalizeEditor);
-		const withOptionsEditor = withOptions(withVoidsEditor);
-		return withOptionsEditor as CustomEditor;
-	}, [disallowedTypesWithDefaults.join()]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fix runtime error
+  const editor = useMemo(() => {
+    const baseEditor = createEditor();
+    const withReactEditor = withReact(baseEditor);
+    const withHistoryEditor = withHistory(withReactEditor);
+    const withListEditor = withEditList(withHistoryEditor);
+    const withNormalizeEditor = withNormalize(withListEditor);
+    const withVoidsEditor = withVoids(withNormalizeEditor);
+    const withOptionsEditor = withOptions(withVoidsEditor);
+    return withOptionsEditor;
+  }, [disallowedTypesWithDefaults.join()]);
 
-	// Test if there is no text content in the tree
-	const childrenAreEmpty = useCallback((children: Descendant[]): boolean => {
-		const checkEmpty = (nodes: Descendant[]): boolean =>
-			nodes.every((child) => {
-				// Thematic break has no text, but still counts as content.
-				if ("type" in child && child.type === "thematic_break") {
-					return false;
-				}
+  // Test if there is no text content in the tree
+  const childrenAreEmpty = useCallback((children: Descendant[]): boolean => {
+    const checkEmpty = (nodes: Descendant[]): boolean =>
+      nodes.every((child) => {
+        // Thematic break has no text, but still counts as content.
+        if ('type' in child && child.type === 'thematic_break') {
+          return false;
+        }
 
-				if ("children" in child && child.children) {
-					return checkEmpty(child.children);
-				}
+        if ('children' in child && child.children) {
+          return checkEmpty(child.children);
+        }
 
-				// The regexp here means that content only containing spaces or
-				// tabs will be considered empty!
-				if ("text" in child) {
-					return isEmpty(child.text) || !/\S/.test(child.text);
-				}
+        // The regexp here means that content only containing spaces or
+        // tabs will be considered empty!
+        if ('text' in child) {
+          return isEmpty(child.text) || !/\S/.test(child.text);
+        }
 
-				return true;
-			});
-		return checkEmpty(children);
-	}, []);
+        return true;
+      });
+    return checkEmpty(children);
+  }, []);
 
-	const getSerializedValue = useCallback(() => {
-		if (childrenAreEmpty(editor.children)) {
-			return "";
-		}
-		return serialize(value);
-	}, [childrenAreEmpty, editor.children, value]);
+  const getSerializedValue = useCallback(() => {
+    if (childrenAreEmpty(editor.children)) {
+      return '';
+    }
+    return serialize(value);
+  }, [childrenAreEmpty, editor.children, value]);
 
-	const setInitialValue = useCallback(
-		() =>
-			parse(initialValue).then((parsedValue) => {
-				// we need to reset the cursor state because the value length may have changed
-				SlateTransforms.deselect(editor);
-				setValue(parsedValue);
-			}),
-		[editor, initialValue],
-	);
+  const setInitialValue = useCallback(
+    () =>
+      parse(initialValue).then((parsedValue) => {
+        // we need to reset the cursor state because the value length may have changed
+        SlateTransforms.deselect(editor);
+        setValue(parsedValue);
+      }),
+    [editor, initialValue],
+  );
 
-	// Set starting state from prop value on start up
-	// biome-ignore lint/correctness/useExhaustiveDependencies: infinite runtime error
-	useEffect(() => {
-		setInitialValue().then(() => setIsInitialized(true));
-	}, []);
+  // Set starting state from prop value on start up
+  // biome-ignore lint/correctness/useExhaustiveDependencies: infinite runtime error
+  useEffect(() => {
+    setInitialValue().then(() => setIsInitialized(true));
+  }, []);
 
-	// Set value again when initial value changes
-	// biome-ignore lint/correctness/useExhaustiveDependencies: fix runtime error
-	useEffect(() => {
-		// If value matches the last reported change do not set value;
-		if (initialValue === lastChange) {
-			return;
-		}
-		setInitialValue();
-	}, [initialValue, setInitialValue]);
+  // Set value again when initial value changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fix runtime error
+  useEffect(() => {
+    // If value matches the last reported change do not set value;
+    if (initialValue === lastChange) {
+      return;
+    }
+    setInitialValue();
+  }, [initialValue, setInitialValue]);
 
-	// Update upstream on change
-	useEffect(() => {
-		if (!isInitialized) {
-			return;
-		}
+  // Update upstream on change
+  useEffect(() => {
+    if (!isInitialized) {
+      return;
+    }
 
-		const nextValue = getSerializedValue();
+    const nextValue = getSerializedValue();
 
-		// Is this optimization necessary?
-		if (nextValue === lastChange) {
-			return;
-		}
+    // Is this optimization necessary?
+    if (nextValue === lastChange) {
+      return;
+    }
 
-		setLastChange(nextValue);
-		onChange(nextValue);
-	}, [getSerializedValue, isInitialized, lastChange, onChange]);
+    setLastChange(nextValue);
+    onChange(nextValue);
+  }, [getSerializedValue, isInitialized, lastChange, onChange]);
 
-	const handleKeyDown = useCallback(
-		(event: React.KeyboardEvent) => {
-			hotkeyOnKeyDown(editor as CustomEditor)(event);
-			listOnKeyDown(editor as Editor)(event);
-		},
-		[editor],
-	);
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      hotkeyOnKeyDown(editor)(event);
+      listOnKeyDown(editor as Editor)(event);
+    },
+    [editor],
+  );
 
-	// Loading state - don't render Slate until we initialize
-	if (!isInitialized) {
-		return <div>Loading...</div>;
-	}
+  // Loading state - don't render Slate until we initialize
+  if (!isInitialized) {
+    return <div>Loading...</div>;
+  }
 
-	return (
-		<Slate editor={editor} initialValue={value} value={value} onChange={setValue}>
-			<RichTextContainer hasError={hasError}>
-				<Toolbar />
-				<div
-					className={cx(
-						"cursor-text text-input-foreground px-(--space-md) py-0",
-						"border-b-2 border-b-transparent",
-						"transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)",
-						"group-hover:border-b-input-active group-data-[active]:border-b-input-active",
-						"focus:outline-none focus-within:outline-none [&_[contenteditable]]:outline-none",
-						"[&_ul]:my-(--space-md) [&_ul]:pl-(--space-lg) [&_ul]:list-disc",
-						"[&_ol]:my-(--space-md) [&_ol]:pl-(--space-lg) [&_ol]:list-decimal",
-						"[&_li]:my-(--space-xs) [&_li_p]:m-0",
-						!inline && "resize-y overflow-auto",
-					)}
-				>
-					<Editable
-						renderElement={Element}
-						renderLeaf={Leaf}
-						placeholder={placeholder}
-						spellCheck
-						autoFocus={autoFocus}
-						onKeyDown={handleKeyDown}
-					/>
-				</div>
-			</RichTextContainer>
-		</Slate>
-	);
+  return (
+    <Slate
+      editor={editor}
+      initialValue={value}
+      value={value}
+      onChange={setValue}
+    >
+      <RichTextContainer hasError={hasError}>
+        <Toolbar />
+        <div
+          className={cx(
+            'text-input-foreground cursor-text px-(--space-md) py-0',
+            'border-b-2 border-b-transparent',
+            'transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)',
+            'group-hover:border-b-input-active group-data-[active]:border-b-input-active',
+            'focus-within:outline-none focus:outline-none [&_[contenteditable]]:outline-none',
+            '[&_ul]:my-(--space-md) [&_ul]:list-disc [&_ul]:pl-(--space-lg)',
+            '[&_ol]:my-(--space-md) [&_ol]:list-decimal [&_ol]:pl-(--space-lg)',
+            '[&_li]:my-(--space-xs) [&_li_p]:m-0',
+            !inline && 'resize-y overflow-auto',
+          )}
+        >
+          <Editable
+            renderElement={Element}
+            renderLeaf={Leaf}
+            placeholder={placeholder}
+            spellCheck
+            autoFocus={autoFocus}
+            onKeyDown={handleKeyDown}
+          />
+        </div>
+      </RichTextContainer>
+    </Slate>
+  );
 };
 
 export default RichText;

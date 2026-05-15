@@ -5,80 +5,88 @@ type PathSegment = string | { arrayKey: true } | { wildcardKey: true };
  * Supports wildcard notation with * to match all keys in an object
  */
 function parsePath(path: string): PathSegment[] {
-	const segments: PathSegment[] = [];
-	const parts = path.split(".");
+  const segments: PathSegment[] = [];
+  const parts = path.split('.');
 
-	for (const part of parts) {
-		if (part.endsWith("[]")) {
-			// Array element access
-			const key = part.slice(0, -2);
-			if (key) {
-				segments.push(key);
-			}
-			segments.push({ arrayKey: true });
-		} else if (part === "*") {
-			// Wildcard - match all keys in an object
-			segments.push({ wildcardKey: true });
-		} else {
-			segments.push(part);
-		}
-	}
+  for (const part of parts) {
+    if (part.endsWith('[]')) {
+      // Array element access
+      const key = part.slice(0, -2);
+      if (key) {
+        segments.push(key);
+      }
+      segments.push({ arrayKey: true });
+    } else if (part === '*') {
+      // Wildcard - match all keys in an object
+      segments.push({ wildcardKey: true });
+    } else {
+      segments.push(part);
+    }
+  }
 
-	return segments;
+  return segments;
 }
 
 /**
  * Recursively traverse an object/array and apply a function to matching paths
  */
-function traverseAndApply(obj: unknown, remainingSegments: PathSegment[], fn: (value: unknown) => unknown): unknown {
-	if (remainingSegments.length === 0) {
-		// We've reached the target - apply the function
-		return fn(obj);
-	}
+function traverseAndApply(
+  obj: unknown,
+  remainingSegments: PathSegment[],
+  fn: (value: unknown) => unknown,
+): unknown {
+  if (remainingSegments.length === 0) {
+    // We've reached the target - apply the function
+    return fn(obj);
+  }
 
-	const [currentSegment, ...restSegments] = remainingSegments;
+  const [currentSegment, ...restSegments] = remainingSegments;
 
-	if (typeof currentSegment === "object" && "arrayKey" in currentSegment) {
-		// Process array elements
-		if (!Array.isArray(obj)) {
-			return obj;
-		}
+  if (typeof currentSegment === 'object' && 'arrayKey' in currentSegment) {
+    // Process array elements
+    if (!Array.isArray(obj)) {
+      return obj;
+    }
 
-		return obj.map((item) => traverseAndApply(item, restSegments, fn));
-	}
+    return obj.map((item) => traverseAndApply(item, restSegments, fn));
+  }
 
-	if (typeof currentSegment === "object" && "wildcardKey" in currentSegment) {
-		// Process all keys in the object
-		if (typeof obj !== "object" || obj === null) {
-			return obj;
-		}
+  if (typeof currentSegment === 'object' && 'wildcardKey' in currentSegment) {
+    // Process all keys in the object
+    if (typeof obj !== 'object' || obj === null) {
+      return obj;
+    }
 
-		const objAsRecord = obj as Record<string, unknown>;
-		const result: Record<string, unknown> = {};
+    const objAsRecord = obj as Record<string, unknown>;
+    const result: Record<string, unknown> = {};
 
-		for (const [key, value] of Object.entries(objAsRecord)) {
-			result[key] = traverseAndApply(value, restSegments, fn);
-		}
+    for (const [key, value] of Object.entries(objAsRecord)) {
+      result[key] = traverseAndApply(value, restSegments, fn);
+    }
 
-		return result;
-	}
+    return result;
+  }
 
-	// Process object property
-	if (typeof obj !== "object" || obj === null) {
-		return obj;
-	}
+  // Process object property
+  if (typeof obj !== 'object' || obj === null) {
+    return obj;
+  }
 
-	const objAsRecord = obj as Record<string, unknown>;
+  const objAsRecord = obj as Record<string, unknown>;
 
-	if (typeof currentSegment !== "string" || !(currentSegment in objAsRecord)) {
-		return obj;
-	}
+  if (typeof currentSegment !== 'string' || !(currentSegment in objAsRecord)) {
+    return obj;
+  }
 
-	// Create a new object with the modified property
-	return {
-		...objAsRecord,
-		[currentSegment]: traverseAndApply(objAsRecord[currentSegment], restSegments, fn),
-	};
+  // Create a new object with the modified property
+  return {
+    ...objAsRecord,
+    [currentSegment]: traverseAndApply(
+      objAsRecord[currentSegment],
+      restSegments,
+      fn,
+    ),
+  };
 }
 
 /**
@@ -109,20 +117,20 @@ function traverseAndApply(obj: unknown, remainingSegments: PathSegment[], fn: (v
  * ]);
  */
 export function traverseAndTransform<T>(
-	obj: T,
-	transformations: Array<{ paths: string[]; fn: <V>(value: V) => V }>,
+  obj: T,
+  transformations: Array<{ paths: string[]; fn: <V>(value: V) => V }>,
 ): T {
-	let result = obj;
-	for (const { paths, fn } of transformations) {
-		for (const path of paths) {
-			if (path === "") {
-				// Handle root-level transformation
-				result = fn(result) as T;
-			} else {
-				const segments = parsePath(path);
-				result = traverseAndApply(result, segments, fn) as T;
-			}
-		}
-	}
-	return result;
+  let result = obj;
+  for (const { paths, fn } of transformations) {
+    for (const path of paths) {
+      if (path === '') {
+        // Handle root-level transformation
+        result = fn(result);
+      } else {
+        const segments = parsePath(path);
+        result = traverseAndApply(result, segments, fn) as T;
+      }
+    }
+  }
+  return result;
 }

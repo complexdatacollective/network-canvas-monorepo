@@ -1,5 +1,5 @@
 ---
-"@codaco/tailwind-config": prerelease
+'@codaco/tailwind-config': prerelease
 ---
 
 Three coordinated changes:

@@ -1,19 +1,20 @@
-import { render } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import DatePicker from "../DatePicker";
-import Days from "../Days";
+import { render } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
-describe("<Days>", () => {
-	it("can render", () => {
-		const mockChild = vi.fn(() => <div>Days Test</div>);
+import DatePicker from '../DatePicker';
+import Days from '../Days';
 
-		const { getByText } = render(
-			<DatePicker date="2019-12-09">
-				<Days>{mockChild}</Days>
-			</DatePicker>,
-		);
+describe('<Days>', () => {
+  it('can render', () => {
+    const mockChild = vi.fn(() => <div>Days Test</div>);
 
-		expect(getByText("Days Test")).toBeInTheDocument();
-		expect(mockChild).toHaveBeenCalled();
-	});
+    const { getByText } = render(
+      <DatePicker date="2019-12-09">
+        <Days>{mockChild}</Days>
+      </DatePicker>,
+    );
+
+    expect(getByText('Days Test')).toBeInTheDocument();
+    expect(mockChild).toHaveBeenCalled();
+  });
 });

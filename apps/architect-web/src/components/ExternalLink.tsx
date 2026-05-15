@@ -1,25 +1,25 @@
-import type React from "react";
+import type React from 'react';
 
 const openExternalLink = (href: string) => {
-	window.open(href, "_blank", "noopener,noreferrer");
+  window.open(href, '_blank', 'noopener,noreferrer');
 };
 
 type ExternalLinkProps = {
-	children: React.ReactNode;
-	href: string;
+  children: React.ReactNode;
+  href: string;
 };
 
 const ExternalLink = ({ children, href }: ExternalLinkProps) => {
-	const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-		event.preventDefault();
-		openExternalLink(href);
-	};
+  const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    openExternalLink(href);
+  };
 
-	return (
-		<a href={href} onClick={handleClick} className="action-link">
-			{children}
-		</a>
-	);
+  return (
+    <a href={href} onClick={handleClick} className="action-link">
+      {children}
+    </a>
+  );
 };
 
 export default ExternalLink;

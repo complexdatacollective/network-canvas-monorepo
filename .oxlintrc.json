@@ -1,0 +1,116 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import", "promise"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "options": { "typeAware": true },
+  "env": { "browser": true, "node": true, "es2024": true },
+  "rules": {
+    "no-console": "warn",
+    "no-process-env": "error",
+    "no-unreachable": "error",
+
+    "typescript/consistent-type-definitions": ["error", "type"],
+    "typescript/consistent-type-imports": [
+      "warn",
+      { "prefer": "type-imports", "fixStyle": "inline-type-imports" }
+    ],
+    "no-unused-vars": [
+      "error",
+      {
+        "caughtErrors": "none",
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "destructuredArrayIgnorePattern": "^_",
+        "ignoreRestSiblings": true
+      }
+    ],
+    "typescript/no-unused-vars": [
+      "error",
+      {
+        "caughtErrors": "none",
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "destructuredArrayIgnorePattern": "^_",
+        "ignoreRestSiblings": true
+      }
+    ],
+    "typescript/no-explicit-any": "warn",
+    "typescript/no-non-null-assertion": "off",
+    "typescript/no-unnecessary-type-assertion": "off",
+    "typescript/no-useless-empty-export": "off",
+    "typescript/switch-exhaustiveness-check": "warn",
+    "typescript/no-misused-promises": ["error", { "checksVoidReturn": false }],
+    "typescript/no-inferrable-types": "error",
+    "typescript/no-floating-promises": "warn",
+    "typescript/no-redundant-type-constituents": "warn",
+    "typescript/await-thenable": "warn",
+    "typescript/unbound-method": "warn",
+    "typescript/no-useless-default-assignment": "warn",
+    "typescript/no-misused-spread": "warn",
+    "typescript/restrict-template-expressions": "warn",
+    "typescript/no-implied-eval": "warn",
+    "typescript/no-base-to-string": "warn",
+    "unicorn/no-thenable": "warn",
+
+    "import/no-cycle": "warn",
+    "import/no-duplicates": "warn",
+    "import/no-anonymous-default-export": "off",
+    "import/default": "warn",
+
+    "promise/no-callback-in-promise": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.js", "**/*.jsx", "**/*.mjs", "**/*.cjs"],
+      "plugins": ["typescript", "unicorn", "oxc", "import", "promise"]
+    },
+    {
+      "files": ["**/*.d.ts"],
+      "rules": { "typescript/consistent-type-definitions": "off" }
+    },
+    {
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.test.js",
+        "**/*.test.jsx",
+        "**/__tests__/**/*.ts",
+        "**/__tests__/**/*.tsx",
+        "**/__tests__/**/*.js",
+        "**/__tests__/**/*.jsx"
+      ],
+      "rules": {
+        "typescript/unbound-method": "off",
+        "no-import-assign": "off"
+      }
+    },
+    {
+      "files": [
+        "**/scripts/**",
+        "**/vite.config.*",
+        "**/vitest.config.*",
+        "**/next.config.*",
+        "tooling/**"
+      ],
+      "rules": {
+        "no-process-env": "off",
+        "no-console": "off",
+        "react/rules-of-hooks": "off"
+      }
+    }
+  ],
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/.next/**",
+    "**/out/**",
+    "**/coverage/**",
+    "**/.turbo/**",
+    "**/public/**/*.*",
+    "**/worker-configuration.d.ts"
+  ]
+}

@@ -8,97 +8,97 @@
  * styling — none of which can be expressed as classNames on JSX. */
 
 :root {
-	--margin: 1.5cm;
+  --margin: 1.5cm;
 }
 
 @page {
-	margin: var(--margin);
+  margin: var(--margin);
 }
 
 .print .protocol-summary {
-	--base-font-size: 12px;
-	font-size: var(--base-font-size);
+  --base-font-size: 12px;
+  font-size: var(--base-font-size);
 }
 
 @media print {
-	.print {
-		overflow: visible;
-		height: auto;
-		width: auto;
-	}
+  .print {
+    overflow: visible;
+    height: auto;
+    width: auto;
+  }
 
-	.print body {
-		overflow: visible;
-		height: auto;
-		width: auto;
-		background: white;
-	}
+  .print body {
+    overflow: visible;
+    height: auto;
+    width: auto;
+    background: white;
+  }
 }
 
 @media screen {
-	.print body {
-		overflow: visible;
-		height: auto;
-		width: auto;
-		background: hsl(var(--platinum));
-	}
+  .print body {
+    overflow: visible;
+    height: auto;
+    width: auto;
+    background: hsl(var(--platinum));
+  }
 }
 
 .print #preload {
-	display: none;
+  display: none;
 }
 
 .protocol-summary-page {
-	--base-font-size: 14px;
+  --base-font-size: 14px;
 }
 
 .protocol-summary {
-	--page-size-height: 29.7cm;
-	--page-size-width: 21cm;
+  --page-size-height: 29.7cm;
+  --page-size-width: 21cm;
 }
 
 @media print {
-	.protocol-summary {
-		-webkit-print-color-adjust: exact !important;
-		color: #000;
-		font-family:
-			-apple-system, "Segoe UI", Helvetica, Arial, sans-serif,
-			"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-	}
+  .protocol-summary {
+    -webkit-print-color-adjust: exact !important;
+    color: #000;
+    font-family:
+      -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif,
+      'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  }
 }
 
 @media print {
-	.protocol-summary .page-break-marker {
-		page-break-before: always;
-	}
+  .protocol-summary .page-break-marker {
+    page-break-before: always;
+  }
 }
 
 @media screen {
-	.protocol-summary .page-break-marker {
-		background: white;
-		padding: var(--margin);
-		display: block;
-		overflow: visible;
-		position: relative;
-		width: var(--page-size-width);
-		min-height: var(--page-size-height);
-		margin: var(--margin) auto;
-		border: 1px hsl(var(--platinum-dark)) solid;
-		border-radius: var(--radius-xs);
-		box-shadow: 0 4px 5px rgb(75 75 75 / 20%);
-	}
+  .protocol-summary .page-break-marker {
+    background: white;
+    padding: var(--margin);
+    display: block;
+    overflow: visible;
+    position: relative;
+    width: var(--page-size-width);
+    min-height: var(--page-size-height);
+    margin: var(--margin) auto;
+    border: 1px hsl(var(--platinum-dark)) solid;
+    border-radius: var(--radius-xs);
+    box-shadow: 0 4px 5px rgb(75 75 75 / 20%);
+  }
 }
 
 @media print {
-	.protocol-summary [data-print="no"] {
-		display: none;
-	}
+  .protocol-summary [data-print='no'] {
+    display: none;
+  }
 }
 
 .protocol-summary .variable-pill {
-	zoom: 0.8;
-	max-width: 24rem;
-	margin: 0.5rem;
-	background: white;
-	--variable-pill-shadow-color: var(--color-platinum-dark);
+  zoom: 0.8;
+  max-width: 24rem;
+  margin: 0.5rem;
+  background: white;
+  --variable-pill-shadow-color: var(--color-platinum-dark);
 }

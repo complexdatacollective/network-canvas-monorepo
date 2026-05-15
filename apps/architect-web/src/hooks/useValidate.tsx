@@ -1,12 +1,15 @@
-import { useMemo } from "react";
-import type { Validator } from "redux-form";
-import { getValidations } from "~/utils/validations";
+import { useMemo } from 'react';
+import type { Validator } from 'redux-form';
 
-const useValidate = (validation: Record<string, Validator | boolean | string | string[] | unknown>) => {
-	// biome-ignore lint/correctness/useExhaustiveDependencies: exhaustive deps causes infinite loop
-	const validate = useMemo(() => getValidations(validation), []);
+import { getValidations } from '~/utils/validations';
 
-	return validate;
+const useValidate = (
+  validation: Record<string, Validator | boolean | string | string[] | unknown>,
+) => {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: exhaustive deps causes infinite loop
+  const validate = useMemo(() => getValidations(validation), []);
+
+  return validate;
 };
 
 export default useValidate;

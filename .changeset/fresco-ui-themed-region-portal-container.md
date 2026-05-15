@@ -1,5 +1,5 @@
 ---
-"@codaco/fresco-ui": minor
+'@codaco/fresco-ui': minor
 ---
 
 New `<ThemedRegion>` component and `<PortalContainerProvider>` for declarative theme scoping. All Portal-using components (Modal, Popover, Tooltip, DropdownMenu, Toast, Select, Combobox) now thread a portal container through React context, allowing themed dialogs and popovers to inherit the theme of the closest themed ancestor instead of always portaling into `document.body`.

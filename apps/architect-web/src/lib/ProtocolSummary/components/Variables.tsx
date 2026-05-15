@@ -1,110 +1,127 @@
-import type { Variable } from "@codaco/protocol-validation";
-import { find, get, isEmpty, sortBy, toPairs } from "es-toolkit/compat";
-import type { ReactNode } from "react";
-import React, { useContext } from "react";
-import Markdown from "~/components/Form/Fields/Markdown";
-import { SimpleVariablePill } from "~/components/Form/Fields/VariablePicker/VariablePill";
-import DualLink from "./DualLink";
-import { renderValue } from "./helpers";
-import MiniTable from "./MiniTable";
-import SummaryContext from "./SummaryContext";
+import { find, get, isEmpty, sortBy, toPairs } from 'es-toolkit/compat';
+import type { ReactNode } from 'react';
+import React, { useContext } from 'react';
+
+import type { Variable } from '@codaco/protocol-validation';
+import Markdown from '~/components/Form/Fields/Markdown';
+import { SimpleVariablePill } from '~/components/Form/Fields/VariablePicker/VariablePill';
+
+import DualLink from './DualLink';
+import { renderValue } from './helpers';
+import MiniTable from './MiniTable';
+import SummaryContext from './SummaryContext';
 
 type ProtocolType = {
-	stages?: Array<{ id: string; label: string }>;
-	[key: string]: unknown;
+  stages?: Array<{ id: string; label: string }>;
+  [key: string]: unknown;
 };
 
 type IndexEntry = {
-	id: string;
-	stages?: string[];
-	[key: string]: unknown;
+  id: string;
+  stages?: string[];
+  [key: string]: unknown;
 };
 
 const getStageName = (protocol: ProtocolType) => (stageId: string) => {
-	const stageConfiguration = find(protocol.stages, ["id", stageId]);
-	return get(stageConfiguration, "label");
+  const stageConfiguration = find(protocol.stages, ['id', stageId]);
+  return get(stageConfiguration, 'label');
 };
 
 // TODO: Make this part of the index?
-const makeGetUsedIn = (protocol: ProtocolType) => (indexEntry: IndexEntry | undefined) => {
-	const stages = get(indexEntry, "stages", []) as string[];
+const makeGetUsedIn =
+  (protocol: ProtocolType) => (indexEntry: IndexEntry | undefined) => {
+    const stages = get(indexEntry, 'stages', []) as string[];
 
-	return stages.map((stageId: string) => [stageId, getStageName(protocol)(stageId)]);
-};
+    return stages.map((stageId: string) => [
+      stageId,
+      getStageName(protocol)(stageId),
+    ]);
+  };
 
 type VariablesProps = {
-	variables?: Record<string, unknown>;
+  variables?: Record<string, unknown>;
 };
 
 const Variables = ({ variables }: VariablesProps) => {
-	const { protocol, index } = useContext(SummaryContext);
+  const { protocol, index } = useContext(SummaryContext);
 
-	const getUsedIn = makeGetUsedIn(protocol as ProtocolType);
+  const getUsedIn = makeGetUsedIn(protocol as ProtocolType);
 
-	const sortedVariables = sortBy(toPairs(variables), [(variable) => (variable[1] as Variable).name.toLowerCase()]);
+  const sortedVariables = sortBy(toPairs(variables), [
+    (variable) => (variable[1] as Variable).name.toLowerCase(),
+  ]);
 
-	return (
-		<div className="[&_a]:text-neon-coral">
-			<table className="w-full [&_th]:max-w-[7cm] [&_td]:max-w-[7cm] [&_thead>tr>th]:bg-platinum [&_thead>tr>th]:p-(--space-sm) [&_thead>tr>th]:pe-(--space-md) [&_thead>tr>th]:align-top [&_tbody>tr>td]:p-(--space-sm) [&_tbody>tr>td]:align-top [&_tbody>tr>td]:border-t [&_tbody>tr>td]:border-t-platinum-dark [&_tbody>tr>td:first-of-type]:break-words [&_tbody>tr>td:first-of-type]:hyphens-auto">
-				<thead>
-					<tr>
-						<th>Name</th>
-						<th>Type</th>
-						<th>Used In</th>
-					</tr>
-				</thead>
-				<tbody>
-					{isEmpty(variables) && (
-						<tr>
-							<td colSpan={3}>No variables to display.</td>
-						</tr>
-					)}
-					{sortedVariables.map(([variableId, variableConfiguration]) => {
-						const config = variableConfiguration as Variable;
-						const { name, type } = config;
+  return (
+    <div className="[&_a]:text-neon-coral">
+      <table className="[&_thead>tr>th]:bg-platinum [&_tbody>tr>td]:border-t-platinum-dark w-full [&_tbody>tr>td]:border-t [&_tbody>tr>td]:p-(--space-sm) [&_tbody>tr>td]:align-top [&_tbody>tr>td:first-of-type]:wrap-break-word [&_tbody>tr>td:first-of-type]:hyphens-auto [&_td]:max-w-[7cm] [&_th]:max-w-[7cm] [&_thead>tr>th]:p-(--space-sm) [&_thead>tr>th]:pe-(--space-md) [&_thead>tr>th]:align-top">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Used In</th>
+          </tr>
+        </thead>
+        <tbody>
+          {isEmpty(variables) && (
+            <tr>
+              <td colSpan={3}>No variables to display.</td>
+            </tr>
+          )}
+          {sortedVariables.map(([variableId, variableConfiguration]) => {
+            const config = variableConfiguration as Variable;
+            const { name, type } = config;
 
-						const indexEntry = index.find(({ id }: { id: string }) => id === variableId) as IndexEntry | undefined;
+            const indexEntry = index.find(
+              ({ id }: { id: string }) => id === variableId,
+            ) as IndexEntry | undefined;
 
-						let optionsRows: ReactNode[][] = [];
+            let optionsRows: ReactNode[][] = [];
 
-						if ("options" in config) {
-							optionsRows =
-								config.options?.map(({ value, label }) => [
-									<span key={`val-${String(value)}`}>{renderValue(value)}</span>,
-									<Markdown key={`label-${String(value)}`} label={label} />,
-								]) ?? [];
-						}
+            if ('options' in config) {
+              optionsRows =
+                config.options?.map(({ value, label }) => [
+                  <span key={`val-${String(value)}`}>
+                    {renderValue(value)}
+                  </span>,
+                  <Markdown key={`label-${String(value)}`} label={label} />,
+                ]) ?? [];
+            }
 
-						return (
-							<tr key={variableId} id={`variable-${variableId}`}>
-								<td>
-									<SimpleVariablePill label={name} type={type}>
-										{name}
-									</SimpleVariablePill>
-								</td>
-								<td>
-									{type}
-									<br />
-									<br />
-									{optionsRows.length > 0 && (
-										<MiniTable className="m-0 max-w-[7cm]" rows={[["Value", "Label"], ...optionsRows]} />
-									)}
-								</td>
-								<td>
-									{getUsedIn(indexEntry).map(([stageId, stageName]) => (
-										<React.Fragment key={String(stageId)}>
-											<DualLink to={`#stage-${String(stageId)}`}>{String(stageName)}</DualLink>
-											<br />
-										</React.Fragment>
-									))}
-								</td>
-							</tr>
-						);
-					})}
-				</tbody>
-			</table>
-		</div>
-	);
+            return (
+              <tr key={variableId} id={`variable-${variableId}`}>
+                <td>
+                  <SimpleVariablePill label={name} type={type}>
+                    {name}
+                  </SimpleVariablePill>
+                </td>
+                <td>
+                  {type}
+                  <br />
+                  <br />
+                  {optionsRows.length > 0 && (
+                    <MiniTable
+                      className="m-0 max-w-[7cm]"
+                      rows={[['Value', 'Label'], ...optionsRows]}
+                    />
+                  )}
+                </td>
+                <td>
+                  {getUsedIn(indexEntry).map(([stageId, stageName]) => (
+                    <React.Fragment key={String(stageId)}>
+                      <DualLink to={`#stage-${String(stageId)}`}>
+                        {String(stageName)}
+                      </DualLink>
+                      <br />
+                    </React.Fragment>
+                  ))}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 };
 
 export default Variables;

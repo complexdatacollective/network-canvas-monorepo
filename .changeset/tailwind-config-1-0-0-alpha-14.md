@@ -1,5 +1,5 @@
 ---
-"@codaco/tailwind-config": prerelease
+'@codaco/tailwind-config': prerelease
 ---
 
 Move `tailwindcss` from `dependencies` to `peerDependencies`. The package ships only CSS configuration (theme, plugins, color tokens) — the tailwindcss compiler always runs in the consumer's tooling context (`@tailwindcss/vite` or PostCSS), never inside tailwind-config itself. Peer status better reflects that runtime relationship and avoids any chance of duplicate tailwindcss installs if a consumer pins a different version range.

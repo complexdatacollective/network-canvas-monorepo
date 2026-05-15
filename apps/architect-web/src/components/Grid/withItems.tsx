@@ -1,15 +1,19 @@
-import { connect } from "react-redux";
-import { formValueSelector } from "redux-form";
-import type { RootState } from "~/ducks/modules/root";
+import { connect } from 'react-redux';
+import { formValueSelector } from 'redux-form';
 
-const mapStateToProps = (state: RootState, { form, fields }: { form: string; fields: { name?: string } }) => {
-	const items = formValueSelector(form)(state, fields.name || "items") || [];
-	const itemCount = items ? items.length : 0;
+import type { RootState } from '~/ducks/modules/root';
 
-	return {
-		itemCount,
-		items,
-	};
+const mapStateToProps = (
+  state: RootState,
+  { form, fields }: { form: string; fields: { name?: string } },
+) => {
+  const items = formValueSelector(form)(state, fields.name || 'items') || [];
+  const itemCount = items ? items.length : 0;
+
+  return {
+    itemCount,
+    items,
+  };
 };
 
 const withItems = connect(mapStateToProps);

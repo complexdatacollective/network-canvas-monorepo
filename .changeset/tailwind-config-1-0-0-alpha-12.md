@@ -1,5 +1,5 @@
 ---
-"@codaco/tailwind-config": prerelease
+'@codaco/tailwind-config': prerelease
 ---
 
 Restore the build step that compiles the Tailwind plugin TypeScript sources to `.js` siblings via `tsc`. Wired into `prepublishOnly` so published tarballs always include both the source `.ts` and the compiled `.js` for each plugin file (`shared/plugins/{elevation,inset-surface}/index.js`, `shared/plugins/elevation/{elevation,jwc,utils}.js`, `shared/plugins/inset-surface/inset-surface.js`, `shared/plugins/motion-spring.js`).

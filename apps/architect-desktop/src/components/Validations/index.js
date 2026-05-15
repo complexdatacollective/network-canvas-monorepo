@@ -1,8 +1,13 @@
-import { compose, withState } from "recompose";
-import Validations from "./Validations";
-import withStoreState from "./withStoreState";
-import withUpdateHandlers from "./withUpdateHandlers";
+import { compose, withState } from 'recompose';
 
-const withAddNew = withState("addNew", "setAddNew", false);
+import Validations from './Validations';
+import withStoreState from './withStoreState';
+import withUpdateHandlers from './withUpdateHandlers';
 
-export default compose(withStoreState, withAddNew, withUpdateHandlers)(Validations);
+const withAddNew = withState('addNew', 'setAddNew', false);
+
+export default compose(
+  withStoreState,
+  withAddNew,
+  withUpdateHandlers,
+)(Validations);

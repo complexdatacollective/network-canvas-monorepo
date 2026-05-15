@@ -1,33 +1,36 @@
-import { isMatch } from "lodash";
-import PropTypes from "prop-types";
-import DatePicker from "./DatePicker";
-import RelativeDatePicker from "./RelativeDatePicker";
-import Scalar from "./Scalar";
+import { isMatch } from 'lodash';
+import PropTypes from 'prop-types';
+
+import DatePicker from './DatePicker';
+import RelativeDatePicker from './RelativeDatePicker';
+import Scalar from './Scalar';
 
 const definitions = [
-	[Scalar, { type: "scalar" }],
-	[DatePicker, { type: "datetime", component: "DatePicker" }],
-	[RelativeDatePicker, { type: "datetime", component: "RelativeDatePicker" }],
+  [Scalar, { type: 'scalar' }],
+  [DatePicker, { type: 'datetime', component: 'DatePicker' }],
+  [RelativeDatePicker, { type: 'datetime', component: 'RelativeDatePicker' }],
 ];
 
 const getComponent = (options) => {
-	const [component] = definitions.find(([, pattern]) => isMatch(options, pattern));
+  const [component] = definitions.find(([, pattern]) =>
+    isMatch(options, pattern),
+  );
 
-	return component;
+  return component;
 };
 
 const Parameters = ({ type, component, ...rest }) => {
-	const ParameterComponent = getComponent({ type, component });
-	if (!ParameterComponent) {
-		return null;
-	}
+  const ParameterComponent = getComponent({ type, component });
+  if (!ParameterComponent) {
+    return null;
+  }
 
-	return <ParameterComponent {...rest} />;
+  return <ParameterComponent {...rest} />;
 };
 
 Parameters.propTypes = {
-	type: PropTypes.string.isRequired,
-	component: PropTypes.any.isRequired,
+  type: PropTypes.string.isRequired,
+  component: PropTypes.any.isRequired,
 };
 
 export default Parameters;

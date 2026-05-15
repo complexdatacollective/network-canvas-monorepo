@@ -1,28 +1,33 @@
-"use client";
+'use client';
 
-import { useFormValue } from "@codaco/fresco-ui/form/hooks/useFormValue";
-import Surface from "@codaco/fresco-ui/layout/Surface";
-import Heading from "@codaco/fresco-ui/typography/Heading";
-import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
-import PersonFields from "./PersonFields";
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
+import Surface from '@codaco/fresco-ui/layout/Surface';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+
+import PersonFields from './PersonFields';
 
 export default function ChildrenDetailStep() {
-	const { childrenWithPartnerCount } = useFormValue(["childrenWithPartnerCount"]);
-	const count = Number(childrenWithPartnerCount ?? 0);
+  const { childrenWithPartnerCount } = useFormValue([
+    'childrenWithPartnerCount',
+  ]);
+  const count = Number(childrenWithPartnerCount ?? 0);
 
-	if (count === 0) return null;
+  if (count === 0) return null;
 
-	return (
-		<>
-			<Paragraph>Please tell us about each of your children with your current partner.</Paragraph>
-			<div className="flex flex-col gap-6">
-				{Array.from({ length: count }, (_, i) => (
-					<Surface key={i} level={1} spacing="sm">
-						<Heading level="h3">Child {i + 1}</Heading>
-						<PersonFields namespace={`childWithPartner[${String(i)}]`} />
-					</Surface>
-				))}
-			</div>
-		</>
-	);
+  return (
+    <>
+      <Paragraph>
+        Please tell us about each of your children with your current partner.
+      </Paragraph>
+      <div className="flex flex-col gap-6">
+        {Array.from({ length: count }, (_, i) => (
+          <Surface key={i} level={1} spacing="sm">
+            <Heading level="h3">Child {i + 1}</Heading>
+            <PersonFields namespace={`childWithPartner[${String(i)}]`} />
+          </Surface>
+        ))}
+      </div>
+    </>
+  );
 }

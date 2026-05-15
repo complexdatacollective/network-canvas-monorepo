@@ -1,5 +1,5 @@
 ---
-"@codaco/interview": prerelease
+'@codaco/interview': prerelease
 ---
 
 Pairs with `@codaco/fresco-ui@2.8.0` and `@codaco/tailwind-config@1.0.0-alpha.16` to make the scoped interview theme actually paint when `data-theme-interview` is applied to the `<main>` wrapper instead of `:root`.

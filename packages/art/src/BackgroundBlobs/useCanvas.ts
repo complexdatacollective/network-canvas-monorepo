@@ -1,77 +1,87 @@
-"use client";
+'use client';
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from 'react';
 
-const resizeCanvas = (context: CanvasRenderingContext2D, canvasRef: React.RefObject<HTMLCanvasElement | null>) => {
-	if (!canvasRef?.current) {
-		return false;
-	}
+const resizeCanvas = (
+  context: CanvasRenderingContext2D,
+  canvasRef: React.RefObject<HTMLCanvasElement | null>,
+) => {
+  if (!canvasRef?.current) {
+    return false;
+  }
 
-	const currentCanvas = canvasRef.current;
+  const currentCanvas = canvasRef.current;
 
-	const { width, height } = currentCanvas.getBoundingClientRect();
-	const { devicePixelRatio: ratio = 1 } = window;
+  const { width, height } = currentCanvas.getBoundingClientRect();
+  const { devicePixelRatio: ratio = 1 } = window;
 
-	if (currentCanvas.width !== width * ratio || currentCanvas.height !== height * ratio) {
-		currentCanvas.width = width * ratio;
-		currentCanvas.height = height * ratio;
-		context.scale(ratio, ratio);
-		return true;
-	}
+  if (
+    currentCanvas.width !== width * ratio ||
+    currentCanvas.height !== height * ratio
+  ) {
+    currentCanvas.width = width * ratio;
+    currentCanvas.height = height * ratio;
+    context.scale(ratio, ratio);
+    return true;
+  }
 
-	return false;
+  return false;
 };
 
 type DrawFunction = (
-	ctx: CanvasRenderingContext2D,
-	time: number,
-	canvasRef: React.RefObject<HTMLCanvasElement | null>,
+  ctx: CanvasRenderingContext2D,
+  time: number,
+  canvasRef: React.RefObject<HTMLCanvasElement | null>,
 ) => void;
 
 const defaultPredraw: DrawFunction = (context: CanvasRenderingContext2D) => {
-	context.save();
-	const { width, height } = context.canvas;
-	context.clearRect(0, 0, width, height);
+  context.save();
+  const { width, height } = context.canvas;
+  context.clearRect(0, 0, width, height);
 };
 
 const defaultPostdraw: DrawFunction = (context: CanvasRenderingContext2D) => {
-	context.restore();
+  context.restore();
 };
 
-const useCanvas = (draw: DrawFunction, predraw = defaultPredraw, postdraw = defaultPostdraw) => {
-	const canvasRef = useRef<HTMLCanvasElement>(null);
+const useCanvas = (
+  draw: DrawFunction,
+  predraw = defaultPredraw,
+  postdraw = defaultPostdraw,
+) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-	useEffect(() => {
-		if (!canvasRef.current) {
-			return;
-		}
+  useEffect(() => {
+    if (!canvasRef.current) {
+      return;
+    }
 
-		const context = canvasRef.current.getContext("2d");
+    const context = canvasRef.current.getContext('2d');
 
-		if (!(context && canvasRef.current)) {
-			return;
-		}
+    if (!(context && canvasRef.current)) {
+      return;
+    }
 
-		let requestAnimationId: number | null = null;
+    let requestAnimationId: number | null = null;
 
-		const render = (ctx: CanvasRenderingContext2D, time: number) => {
-			resizeCanvas(context, canvasRef);
-			predraw(ctx, time, canvasRef);
-			draw(ctx, time, canvasRef);
-			postdraw(ctx, time, canvasRef);
-			requestAnimationId = requestAnimationFrame((t) => render(ctx, t));
-		};
+    const render = (ctx: CanvasRenderingContext2D, time: number) => {
+      resizeCanvas(context, canvasRef);
+      predraw(ctx, time, canvasRef);
+      draw(ctx, time, canvasRef);
+      postdraw(ctx, time, canvasRef);
+      requestAnimationId = requestAnimationFrame((t) => render(ctx, t));
+    };
 
-		render(context, 0);
+    render(context, 0);
 
-		return () => {
-			if (requestAnimationId) {
-				cancelAnimationFrame(requestAnimationId);
-			}
-		};
-	});
+    return () => {
+      if (requestAnimationId) {
+        cancelAnimationFrame(requestAnimationId);
+      }
+    };
+  });
 
-	return canvasRef;
+  return canvasRef;
 };
 
 export default useCanvas;

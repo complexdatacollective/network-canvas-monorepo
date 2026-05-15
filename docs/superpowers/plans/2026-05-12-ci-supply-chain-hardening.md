@@ -11,10 +11,11 @@
 **Findings backing this plan:** See the audit summary in the conversation that produced this plan (2026-05-12). Repo is **not** dependency-impacted by the TanStack compromise (zero `@tanstack/*` references in `pnpm-lock.yaml`). This plan addresses the structural CI hardening gaps surfaced by that audit.
 
 **Pre-flight check (do once before starting):**
+
 - `actionlint` is the validator used throughout. Install it: `brew install actionlint` (macOS) or `go install github.com/rhysd/actionlint/cmd/actionlint@latest`. If the engineer can't install it, fall back to `npx -y actionlint-cli` per step.
 - `gh` CLI must be authenticated (`gh auth status`) — used to resolve action tags to commit SHAs.
 - Definitive functional test for every change: after committing, open a no-op draft PR (or push to a throwaway branch) and confirm the affected workflows run green. Each task notes which workflow(s) to watch.
-- **Known baseline warnings (expected, not in scope):** `actionlint` reports 5 pre-existing `info`/`style` shellcheck warnings in `development-protocol-release.yml` (SC2035, SC2086 x3, SC2129). These are not errors and not introduced by this work. Any *new* warning or any `error`-level finding is in scope to fix.
+- **Known baseline warnings (expected, not in scope):** `actionlint` reports 5 pre-existing `info`/`style` shellcheck warnings in `development-protocol-release.yml` (SC2035, SC2086 x3, SC2129). These are not errors and not introduced by this work. Any _new_ warning or any `error`-level finding is in scope to fix.
 
 ---
 
@@ -22,22 +23,23 @@
 
 This plan modifies CI configuration only. No source files are created or moved.
 
-| File | Purpose | Touched by |
-|---|---|---|
-| `.github/workflows/ci-and-release.yml` | Main CI + npm publish | Tasks 1, 3, 6 |
-| `.github/workflows/chromatic.yml` | Storybook visual regression | Tasks 1, 6 |
-| `.github/workflows/interview-e2e.yml` | Playwright e2e + Pages deploy | Tasks 1, 2, 6 |
-| `.github/workflows/development-protocol-main.yml` | PR validate dev protocol | Tasks 4, 6 |
-| `.github/workflows/development-protocol-release.yml` | Release dev protocol | Tasks 1, 6 |
-| `.github/workflows/documentation-check-links.yml` | Doc link checker | Tasks 1, 6 |
-| `.github/workflows/documentation-test-redirects.yml` | Doc redirect tester | Tasks 1, 6 |
-| `.github/dependabot.yml` | Auto-update config | Task 5 |
+| File                                                 | Purpose                       | Touched by    |
+| ---------------------------------------------------- | ----------------------------- | ------------- |
+| `.github/workflows/ci-and-release.yml`               | Main CI + npm publish         | Tasks 1, 3, 6 |
+| `.github/workflows/chromatic.yml`                    | Storybook visual regression   | Tasks 1, 6    |
+| `.github/workflows/interview-e2e.yml`                | Playwright e2e + Pages deploy | Tasks 1, 2, 6 |
+| `.github/workflows/development-protocol-main.yml`    | PR validate dev protocol      | Tasks 4, 6    |
+| `.github/workflows/development-protocol-release.yml` | Release dev protocol          | Tasks 1, 6    |
+| `.github/workflows/documentation-check-links.yml`    | Doc link checker              | Tasks 1, 6    |
+| `.github/workflows/documentation-test-redirects.yml` | Doc redirect tester           | Tasks 1, 6    |
+| `.github/dependabot.yml`                             | Auto-update config            | Task 5        |
 
 ---
 
 ## Task Ordering Rationale
 
 Tasks are ordered by **blast radius reduction per unit of work**:
+
 - Task 1 (third-party SHA pinning) closes the highest-risk gap — the release job's `changesets/action@v1` floating tag.
 - Tasks 2–3 reduce credential exposure on the workflows that hold credentials.
 - Tasks 4–5 are low-risk hygiene fixes.
@@ -53,6 +55,7 @@ If time is constrained, **Tasks 1, 3, and 5 are the minimum set worth landing.**
 Pin every non-`actions/*` reference across all workflows to a full 40-character commit SHA. Floating major tags (`@v5`, `@v11`, etc.) are mutable; a compromised maintainer can swap them. SHAs are immutable.
 
 **Files:**
+
 - Modify: `.github/workflows/ci-and-release.yml` (lines 23, 60, 106, 154, 180)
 - Modify: `.github/workflows/chromatic.yml` (lines 47, 62, 80, 95)
 - Modify: `.github/workflows/interview-e2e.yml` (no third-party in current form — verify)
@@ -62,6 +65,7 @@ Pin every non-`actions/*` reference across all workflows to a full 40-character 
 - Modify: `.github/workflows/documentation-test-redirects.yml` (lines 21, 42)
 
 Third-party actions in scope:
+
 - `pnpm/action-setup@v5`
 - `changesets/action@v1`
 - `chromaui/action@v11`
@@ -71,6 +75,7 @@ Third-party actions in scope:
 - [ ] **Step 1: Resolve current SHAs for each pinned tag**
 
 Run:
+
 ```bash
 for ref in \
   "pnpm/action-setup@v5" \
@@ -97,21 +102,27 @@ If a SHA doesn't match, do not proceed with that action — flag it and ask the 
 Apply the resolved SHAs. The format is: `uses: <repo>@<sha>  # <original-version>` so a human reader can still see the human-readable version.
 
 Replace every occurrence of:
+
 ```yaml
-        uses: pnpm/action-setup@v5
+uses: pnpm/action-setup@v5
 ```
+
 with (substituting the resolved SHA from Step 1):
+
 ```yaml
-        uses: pnpm/action-setup@<resolved-sha>  # v5
+uses: pnpm/action-setup@<resolved-sha> # v5
 ```
 
 Replace:
+
 ```yaml
-      uses: changesets/action@v1
+uses: changesets/action@v1
 ```
+
 with:
+
 ```yaml
-      uses: changesets/action@<resolved-sha>  # v1
+uses: changesets/action@<resolved-sha> # v1
 ```
 
 There are 4 occurrences of `pnpm/action-setup@v5` and 1 of `changesets/action@v1` in this file.
@@ -139,6 +150,7 @@ Replace `dorny/paths-filter@v3` and `pnpm/action-setup@v5` with their SHA-pinned
 - [ ] **Step 9: Verify `interview-e2e.yml` has no third-party actions**
 
 Run:
+
 ```bash
 grep -nE "uses: " .github/workflows/interview-e2e.yml | grep -v "actions/"
 ```
@@ -148,6 +160,7 @@ Expected: no output. If anything appears, pin it using the same pattern. (At tim
 - [ ] **Step 10: Lint all workflows**
 
 Run:
+
 ```bash
 actionlint .github/workflows/*.yml
 ```
@@ -157,6 +170,7 @@ Expected: same 5 baseline shellcheck warnings in `development-protocol-release.y
 - [ ] **Step 11: Sanity-check the diff**
 
 Run:
+
 ```bash
 git diff --stat .github/workflows/
 ```
@@ -164,6 +178,7 @@ git diff --stat .github/workflows/
 Expected: 7 workflow files modified, no other files touched. Approximately 14 lines changed total.
 
 Run:
+
 ```bash
 git diff .github/workflows/ | grep -E "^\+.*uses:" | sort -u
 ```
@@ -194,12 +209,14 @@ Push the branch and open a draft PR. Watch `ci-and-release.yml`, `chromatic.yml`
 The `id-token: write` permission is currently granted at the workflow level (line 6), exposing it to the `e2e` job which doesn't mint or consume an OIDC token. Only `actions/deploy-pages@v4` in the `deploy-report` job needs it. Following least-privilege, move it.
 
 **Files:**
+
 - Modify: `.github/workflows/interview-e2e.yml:3-7` (workflow-level permissions block)
 - Modify: `.github/workflows/interview-e2e.yml:76-89` (deploy-report job — add job-level permissions)
 
 - [ ] **Step 1: Confirm e2e job doesn't need `id-token`**
 
 Run:
+
 ```bash
 grep -nE "(id-token|OIDC|oidc|aws-actions|google-github-actions)" .github/workflows/interview-e2e.yml
 ```
@@ -211,6 +228,7 @@ Expected: only the workflow-level `id-token: write` line in the permissions bloc
 Edit `.github/workflows/interview-e2e.yml` lines 3–7.
 
 Replace:
+
 ```yaml
 permissions:
   contents: read
@@ -220,6 +238,7 @@ permissions:
 ```
 
 with:
+
 ```yaml
 permissions:
   contents: read
@@ -233,30 +252,32 @@ permissions:
 Find the `deploy-report:` job definition (around line 76). Immediately after the `if:` line and before `needs: e2e`, add a `permissions:` block.
 
 Replace:
+
 ```yaml
-  deploy-report:
-    # Run on test pass or fail, but skip when e2e is cancelled (concurrency
-    # interrupt or manual cancel) — there's no artifact to deploy and the
-    # outputs are empty, so the job would just error out trying to download.
-    if: ${{ !cancelled() && needs.e2e.result != 'cancelled' }}
-    needs: e2e
-    runs-on: ubuntu-latest
+deploy-report:
+  # Run on test pass or fail, but skip when e2e is cancelled (concurrency
+  # interrupt or manual cancel) — there's no artifact to deploy and the
+  # outputs are empty, so the job would just error out trying to download.
+  if: ${{ !cancelled() && needs.e2e.result != 'cancelled' }}
+  needs: e2e
+  runs-on: ubuntu-latest
 ```
 
 with:
+
 ```yaml
-  deploy-report:
-    # Run on test pass or fail, but skip when e2e is cancelled (concurrency
-    # interrupt or manual cancel) — there's no artifact to deploy and the
-    # outputs are empty, so the job would just error out trying to download.
-    if: ${{ !cancelled() && needs.e2e.result != 'cancelled' }}
-    needs: e2e
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-      pull-requests: write
+deploy-report:
+  # Run on test pass or fail, but skip when e2e is cancelled (concurrency
+  # interrupt or manual cancel) — there's no artifact to deploy and the
+  # outputs are empty, so the job would just error out trying to download.
+  if: ${{ !cancelled() && needs.e2e.result != 'cancelled' }}
+  needs: e2e
+  runs-on: ubuntu-latest
+  permissions:
+    contents: read
+    pages: write
+    id-token: write
+    pull-requests: write
 ```
 
 `pull-requests: write` stays here because the `Comment on PR` step at the end of this job uses it.
@@ -264,6 +285,7 @@ with:
 - [ ] **Step 4: Lint**
 
 Run:
+
 ```bash
 actionlint .github/workflows/interview-e2e.yml
 ```
@@ -273,6 +295,7 @@ Expected: no output (this file has no baseline warnings).
 - [ ] **Step 5: Verify the e2e job's effective permissions**
 
 Run:
+
 ```bash
 grep -A 20 "^  e2e:" .github/workflows/interview-e2e.yml | head -25
 ```
@@ -301,11 +324,13 @@ Push and watch a PR run. The `interview-e2e.yml` workflow must complete with the
 The release job in `ci-and-release.yml` runs `pnpm install --frozen-lockfile` on a runner that holds `id-token: write` and the npm publish credential. Default pnpm runs `postinstall`/`prepare` lifecycle scripts during install. A compromised transitive dep can therefore execute arbitrary code with publish privileges. Disabling lifecycle scripts in this specific job closes that gap. Explicit builds afterward (which the job already does) cover legitimate needs.
 
 **Files:**
+
 - Modify: `.github/workflows/ci-and-release.yml:160-161` (release job install step)
 
 - [ ] **Step 1: Confirm no required postinstall script in the release path**
 
 Run:
+
 ```bash
 grep -nE '"(postinstall|prepare|preinstall|install)"' package.json packages/*/package.json apps/*/package.json workers/*/package.json tooling/*/package.json 2>/dev/null
 ```
@@ -319,23 +344,26 @@ If unsure, the safer default is still `--ignore-scripts` plus an explicit `pnpm 
 Edit `.github/workflows/ci-and-release.yml` line 161.
 
 Replace:
+
 ```yaml
-    - name: Install dependencies
-      run: pnpm install --frozen-lockfile
+- name: Install dependencies
+  run: pnpm install --frozen-lockfile
 ```
 
 with (in the `release` job only, around line 160 — not the other three install steps):
+
 ```yaml
-    - name: Install dependencies
-      # --ignore-scripts: this job holds id-token: write and the npm publish
-      # credential, so refuse to execute lifecycle scripts from any (potentially
-      # compromised) transitive dep. Explicit builds run as their own steps below.
-      run: pnpm install --frozen-lockfile --ignore-scripts
+- name: Install dependencies
+  # --ignore-scripts: this job holds id-token: write and the npm publish
+  # credential, so refuse to execute lifecycle scripts from any (potentially
+  # compromised) transitive dep. Explicit builds run as their own steps below.
+  run: pnpm install --frozen-lockfile --ignore-scripts
 ```
 
 - [ ] **Step 3: Lint**
 
 Run:
+
 ```bash
 actionlint .github/workflows/ci-and-release.yml
 ```
@@ -345,6 +373,7 @@ Expected: no output.
 - [ ] **Step 4: Verify only the release job changed**
 
 Run:
+
 ```bash
 grep -n "pnpm install" .github/workflows/ci-and-release.yml
 ```
@@ -366,11 +395,12 @@ that follow cover legitimate build needs."
 - [ ] **Step 6: Functional test**
 
 Push to a branch and merge to main (or wait for the next planned merge). Watch the `release` job in `ci-and-release.yml`. It must:
+
 - Install dependencies successfully (no missing-binary errors).
 - Run `pnpm run build:changed-packages` successfully.
 - Open a changesets PR or publish (depending on changeset state) as before.
 
-If install fails with a "command not found" error from a build tool, that tool's binary was being created by a `postinstall` script. Solution: add an explicit `pnpm <whatever-the-script-did>` step *after* install. Do not revert `--ignore-scripts`.
+If install fails with a "command not found" error from a build tool, that tool's binary was being created by a `postinstall` script. Solution: add an explicit `pnpm <whatever-the-script-did>` step _after_ install. Do not revert `--ignore-scripts`.
 
 ---
 
@@ -379,35 +409,39 @@ If install fails with a "command not found" error from a build tool, that tool's
 This workflow currently runs `pnpm install` without `--frozen-lockfile`, allowing silent lockfile drift in CI. Every other install in the repo uses `--frozen-lockfile`. Consistency closes the divergence.
 
 **Files:**
+
 - Modify: `.github/workflows/development-protocol-main.yml:36-41`
 
 - [ ] **Step 1: Update the install step**
 
 Replace:
+
 ```yaml
-      # Build protocol-validation and dependencies
-      - name: Build protocol validation
-        run: |
-          pnpm install
-          # Build shared-consts first, then protocol-validation
-          pnpm --filter @codaco/shared-consts build
-          pnpm build
+# Build protocol-validation and dependencies
+- name: Build protocol validation
+  run: |
+    pnpm install
+    # Build shared-consts first, then protocol-validation
+    pnpm --filter @codaco/shared-consts build
+    pnpm build
 ```
 
 with:
+
 ```yaml
-      # Build protocol-validation and dependencies
-      - name: Build protocol validation
-        run: |
-          pnpm install --frozen-lockfile
-          # Build shared-consts first, then protocol-validation
-          pnpm --filter @codaco/shared-consts build
-          pnpm build
+# Build protocol-validation and dependencies
+- name: Build protocol validation
+  run: |
+    pnpm install --frozen-lockfile
+    # Build shared-consts first, then protocol-validation
+    pnpm --filter @codaco/shared-consts build
+    pnpm build
 ```
 
 - [ ] **Step 2: Lint**
 
 Run:
+
 ```bash
 actionlint .github/workflows/development-protocol-main.yml
 ```
@@ -435,6 +469,7 @@ Push and open a PR that touches `packages/development-protocol/**` or `packages/
 Once actions are pinned to SHAs (Task 1), they no longer auto-update. Dependabot's `github-actions` ecosystem opens a PR when a new release is cut, with the new SHA already substituted in. This restores updates without giving up pin safety.
 
 **Files:**
+
 - Modify: `.github/dependabot.yml`
 
 - [ ] **Step 1: Update `dependabot.yml`**
@@ -442,6 +477,7 @@ Once actions are pinned to SHAs (Task 1), they no longer auto-update. Dependabot
 Replace the file's `updates:` section so it covers both ecosystems.
 
 Replace the entire content of `.github/dependabot.yml` with:
+
 ```yaml
 # To get started with Dependabot version updates, you'll need to specify which
 # package ecosystems to update and where the package manifests are located.
@@ -450,19 +486,19 @@ Replace the entire content of `.github/dependabot.yml` with:
 
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
 
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     groups:
       actions:
         patterns:
-          - "*"
+          - '*'
 ```
 
 The `groups: actions: patterns: "*"` block bundles all action-version updates into a single PR per week, which is typically what you want — a flurry of one-line PRs each week creates review fatigue.
@@ -470,6 +506,7 @@ The `groups: actions: patterns: "*"` block bundles all action-version updates in
 - [ ] **Step 2: Validate YAML**
 
 Run:
+
 ```bash
 python3 -c "import yaml, sys; yaml.safe_load(open('.github/dependabot.yml'))" && echo OK
 ```
@@ -498,9 +535,11 @@ After push, navigate to `https://github.com/<owner>/<repo>/network/updates` and 
 First-party `actions/*` are lower-risk than third-party — they're maintained by GitHub itself — but pinning them removes a whole category of concern in one stroke. Take this task only if the previous tasks are stable and you want belt-and-braces.
 
 **Files:**
+
 - Modify: every workflow under `.github/workflows/` (same files as Task 1, plus the parts of `interview-e2e.yml` skipped earlier)
 
 Actions in scope:
+
 - `actions/checkout` (mix of `@v4` and `@v6`)
 - `actions/setup-node@v6`
 - `actions/upload-artifact` (`@v4` and `@v7`)
@@ -514,6 +553,7 @@ Actions in scope:
 Before pinning, normalize the inconsistencies first — there's no reason for two different `checkout` major versions to coexist, and pinning enshrines the inconsistency.
 
 Run:
+
 ```bash
 grep -rnE "uses: actions/" .github/workflows/ | sort -t'/' -k3
 ```
@@ -525,6 +565,7 @@ Decide a target version per action (latest stable major is usually right) and up
 - [ ] **Step 2: Resolve SHAs**
 
 Run:
+
 ```bash
 for ref in \
   "actions/checkout@v6" \
@@ -549,6 +590,7 @@ Apply the SHA-pin pattern (`uses: <repo>@<sha>  # <version>`) for every `actions
 - [ ] **Step 4: Lint**
 
 Run:
+
 ```bash
 actionlint .github/workflows/*.yml
 ```
@@ -558,6 +600,7 @@ Expected: same 5 baseline shellcheck warnings only.
 - [ ] **Step 5: Verify zero floating tags remain**
 
 Run:
+
 ```bash
 grep -rnE "uses: [^@]+@v[0-9]+$" .github/workflows/
 ```
@@ -589,6 +632,7 @@ This is a verification task, not a code change. It can't be done through the rep
 - [ ] **Step 1: Confirm the `npm-publish` environment exists and is protected**
 
 Navigate to `https://github.com/<owner>/<repo>/settings/environments`. Confirm:
+
 - An environment named `npm-publish` exists (referenced by `ci-and-release.yml:146`).
 - It has required reviewers configured (any merge to main triggers it; reviewers gate the publish step).
 - It restricts deployment branches to `main` only.
@@ -599,6 +643,7 @@ If any of these are missing, fix in the UI. The protection of the `npm-publish` 
 - [ ] **Step 2: Audit repo-level secrets**
 
 Navigate to `https://github.com/<owner>/<repo>/settings/secrets/actions`. For each repo-level secret, confirm:
+
 - `PROTOCOL_ENCRYPTION_KEY`, `PROTOCOL_ENCRYPTION_IV` — used by the test job. Confirm these are test-only keys, not the same keys used by any production system.
 - `TEST_PROTOCOL_TOKEN` — used to fetch test protocols. Confirm it's a fine-grained GitHub token with `contents: read` only, scoped to the relevant test-fixture repo. **It must not have write or admin scope.**
 - `CHROMATIC_PROJECT_TOKEN_FRESCO_UI`, `CHROMATIC_PROJECT_TOKEN_INTERVIEW` — Chromatic project tokens. These are scoped per-project by Chromatic; no action needed unless one has been leaked.
@@ -618,16 +663,16 @@ If everything is correctly scoped, no commit is needed — this task is verifica
 
 **Spec coverage:** Cross-referencing against the audit findings in the conversation:
 
-| Audit finding | Plan task |
-|---|---|
-| Pin third-party actions to SHAs | Task 1 |
-| `id-token: write` on workflow-level in `interview-e2e.yml` | Task 2 |
-| Inconsistent artifact action versions (`v4` vs `v7`) | Task 6 Step 1 |
-| `pnpm install` runs lifecycle scripts in release job | Task 3 |
-| Missing `--frozen-lockfile` in `development-protocol-main.yml` | Task 4 |
-| Confirm test-job secret scopes | Task 7 |
-| Add github-actions ecosystem to Dependabot | Task 5 |
-| Pin first-party `actions/*` to SHAs (lower-priority) | Task 6 |
+| Audit finding                                                  | Plan task     |
+| -------------------------------------------------------------- | ------------- |
+| Pin third-party actions to SHAs                                | Task 1        |
+| `id-token: write` on workflow-level in `interview-e2e.yml`     | Task 2        |
+| Inconsistent artifact action versions (`v4` vs `v7`)           | Task 6 Step 1 |
+| `pnpm install` runs lifecycle scripts in release job           | Task 3        |
+| Missing `--frozen-lockfile` in `development-protocol-main.yml` | Task 4        |
+| Confirm test-job secret scopes                                 | Task 7        |
+| Add github-actions ecosystem to Dependabot                     | Task 5        |
+| Pin first-party `actions/*` to SHAs (lower-priority)           | Task 6        |
 
 All findings covered.
 
