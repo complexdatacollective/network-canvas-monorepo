@@ -22,12 +22,22 @@ type PreviewRuleProps = {
 };
 
 const PreviewRule = ({ type, options, join = null, onClick, handleDelete }: PreviewRuleProps) => {
+	const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+		if (e.key === "Enter" || e.key === " ") {
+			if (e.key === " ") e.preventDefault();
+			onClick();
+		}
+	};
+
 	return (
 		<>
-			<button
-				type="button"
+			{/* biome-ignore lint/a11y/useSemanticElements: a real <button> would nest with the inner delete <button> */}
+			<div
+				role="button"
+				tabIndex={0}
 				className="group mx-auto flex min-h-(--space-3xl) w-[95%] cursor-pointer items-center rounded-(--radius) px-(--space-md) py-(--space-sm) hover:bg-surface-accent"
 				onClick={onClick}
+				onKeyDown={handleKeyDown}
 				aria-label="Edit rule"
 			>
 				<div className="flex w-full flex-1 items-center text-surface-1-foreground group-hover:text-primary-foreground [&>*]:mx-(--space-sm) [&>*]:max-w-[24rem] [&_.variable-pill]:[zoom:0.8]">
@@ -40,7 +50,7 @@ const PreviewRule = ({ type, options, join = null, onClick, handleDelete }: Prev
 				>
 					<Icon name="delete" />
 				</button>
-			</button>
+			</div>
 			{join && <Join value={join} />}
 		</>
 	);

@@ -45,7 +45,12 @@ const Select = ({
 	const handleValueChange = (next: string | null) => {
 		if (next === null) return;
 		onChange?.(next);
-		onBlur?.(next);
+	};
+
+	const handleOpenChange = (open: boolean) => {
+		if (!open) {
+			onBlur?.(value ?? null);
+		}
 	};
 
 	return (
@@ -54,6 +59,7 @@ const Select = ({
 			<BaseSelect.Root
 				value={value ?? null}
 				onValueChange={handleValueChange}
+				onOpenChange={handleOpenChange}
 				disabled={isDisabled}
 				name={name}
 				items={options}

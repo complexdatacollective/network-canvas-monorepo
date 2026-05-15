@@ -11,7 +11,7 @@ const formatDate = (timeString: string | null) => timeString && new Date(timeStr
 
 const ProtocolCard = ({ name, description = null, lastModified, schemaVersion }: ProtocolCardProps) => (
 	<div className="relative flex min-h-(--space-6xl) max-w-[12cm] flex-col-reverse overflow-hidden rounded bg-platinum text-navy-taupe [zoom:120%]">
-		<div className="flex min-h-0 shrink-0 flex-row items-center justify-center bg-slate-blue-dark px-(--space-xl) py-(--space-md) text-[#aab0fd]">
+		<div className="flex min-h-0 shrink-0 flex-row items-center justify-center bg-slate-blue-dark px-(--space-xl) py-(--space-md) text-white">
 			<div className="flex h-full flex-[0_0_var(--space-xl)] [&_.icon]:flex-[0_1_auto] [&_.icon]:size-full!">
 				<Icon name="protocol-card" />
 			</div>

@@ -28,8 +28,8 @@ export function PopoverTrigger({ children, asChild, nativeButton, ...props }: Po
 			triggerProps: React.HTMLAttributes<Element> & { ref?: React.Ref<Element> },
 		) {
 			return cloneElement(children, {
-				...triggerProps,
 				...children.props,
+				...triggerProps,
 			} as Parameters<typeof cloneElement>[1]);
 		};
 

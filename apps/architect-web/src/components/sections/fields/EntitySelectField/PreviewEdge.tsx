@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { Icon } from "~/lib/legacy-ui/components";
 import { cx } from "~/utils/cva";
 
@@ -14,7 +15,7 @@ const PreviewEdge = ({ label, color, onClick = null, selected = false, surface =
 		"--edge-color": `var(--${color})`,
 		"--icon-tone-primary": `hsl(var(--${color}-dark))`,
 		"--icon-tone-secondary": `hsl(var(--${color}))`,
-	} as React.CSSProperties;
+	} as CSSProperties;
 
 	const content = (
 		<>

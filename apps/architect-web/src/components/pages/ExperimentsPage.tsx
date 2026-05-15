@@ -47,7 +47,7 @@ const ExperimentsPage = () => {
 		<div className="relative flex flex-col h-dvh">
 			<div className="flex-1 overflow-y-auto">
 				<Layout>
-					<div className="flex flex-col gap-6 my-(--space-xl) mx-(--space-5xl) max-w-[80rem]">
+					<div className="flex flex-col gap-6 my-(--space-xl) mx-auto max-w-[80rem] px-(--space-md) sm:px-(--space-lg) lg:px-(--space-5xl)">
 						<div className="flex flex-col">
 							<div className="flex items-center gap-3">
 								<div className="p-2 rounded-lg bg-mustard/20">

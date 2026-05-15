@@ -12,7 +12,7 @@ const BackgroundImage = ({ url, className, ...props }: BackgroundImageProps) => 
 	}
 
 	return (
-		<div className={cx(className, "flex items-center justify-center")} {...props}>
+		<div className={cx("flex items-center justify-center", className)} {...props}>
 			<img src={url} alt="" className="max-w-full max-h-full object-contain" />
 		</div>
 	);
