@@ -1,73 +1,97 @@
-import type { Panel, StageSubject } from "@codaco/protocol-validation";
-import type { NcNode } from "@codaco/shared-consts";
-import { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
-import { useCaptureException } from "../analytics/useTrack";
-import { useContractHandlers } from "../contract/context";
-import { getAssetManifest, getCodebook } from "../store/modules/protocol";
-import { ensureError } from "../utils/ensureError";
-import { getVariableTypeReplacements } from "../utils/externalData";
-import loadExternalData, { makeVariableUUIDReplacer } from "../utils/loadExternalData";
+import { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
 
-const useExternalData = (dataSource: Panel["dataSource"], subject: StageSubject | null) => {
-	const assetManifest = useSelector(getAssetManifest);
-	const codebook = useSelector(getCodebook);
-	const { onRequestAsset } = useContractHandlers();
-	const captureException = useCaptureException();
+import type { Panel, StageSubject } from '@codaco/protocol-validation';
+import type { NcNode } from '@codaco/shared-consts';
 
-	const [externalData, setExternalData] = useState<NcNode[] | null>(null);
-	const [status, setStatus] = useState<{
-		isLoading: boolean;
-		error: Error | null;
-	}>({ isLoading: false, error: null });
+import { useCaptureException } from '../analytics/useTrack';
+import { useContractHandlers } from '../contract/context';
+import { getAssetManifest, getCodebook } from '../store/modules/protocol';
+import { ensureError } from '../utils/ensureError';
+import { getVariableTypeReplacements } from '../utils/externalData';
+import loadExternalData, {
+  makeVariableUUIDReplacer,
+} from '../utils/loadExternalData';
 
-	useEffect(() => {
-		if (!dataSource || dataSource === "existing" || !subject || subject.entity === "ego") {
-			return;
-		}
+const useExternalData = (
+  dataSource: Panel['dataSource'],
+  subject: StageSubject | null,
+) => {
+  const assetManifest = useSelector(getAssetManifest);
+  const codebook = useSelector(getCodebook);
+  const { onRequestAsset } = useContractHandlers();
+  const captureException = useCaptureException();
 
-		let cancelled = false;
+  const [externalData, setExternalData] = useState<NcNode[] | null>(null);
+  const [status, setStatus] = useState<{
+    isLoading: boolean;
+    error: Error | null;
+  }>({ isLoading: false, error: null });
 
-		setExternalData(null);
-		setStatus({ isLoading: true, error: null });
+  useEffect(() => {
+    if (
+      !dataSource ||
+      dataSource === 'existing' ||
+      !subject ||
+      subject.entity === 'ego'
+    ) {
+      return;
+    }
 
-		const asset = assetManifest[dataSource];
-		if (!asset) {
-			setStatus({
-				isLoading: false,
-				error: new Error(`Unknown asset id: ${String(dataSource)}`),
-			});
-			return () => {
-				cancelled = true;
-			};
-		}
+    let cancelled = false;
 
-		void (async () => {
-			try {
-				const url = await onRequestAsset(asset.assetId);
-				const { nodes } = await loadExternalData(asset.name, url);
-				const replacer = makeVariableUUIDReplacer(codebook, subject.type);
-				const uuidData = nodes.map(replacer);
-				const formatted = getVariableTypeReplacements(asset.name, uuidData, codebook, subject);
-				if (!cancelled) {
-					setExternalData(formatted);
-					setStatus({ isLoading: false, error: null });
-				}
-			} catch (e) {
-				const error = ensureError(e);
-				captureException(error, { feature: "external-data" });
-				// eslint-disable-next-line no-console
-				console.error(error);
-				if (!cancelled) setStatus({ isLoading: false, error });
-			}
-		})();
+    setExternalData(null);
+    setStatus({ isLoading: true, error: null });
 
-		return () => {
-			cancelled = true;
-		};
-	}, [dataSource, assetManifest, codebook, subject, onRequestAsset, captureException]);
+    const asset = assetManifest[dataSource];
+    if (!asset) {
+      setStatus({
+        isLoading: false,
+        error: new Error(`Unknown asset id: ${String(dataSource)}`),
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
 
-	return { externalData, status };
+    void (async () => {
+      try {
+        const url = await onRequestAsset(asset.assetId);
+        const { nodes } = await loadExternalData(asset.name, url);
+        const replacer = makeVariableUUIDReplacer(codebook, subject.type);
+        const uuidData = nodes.map(replacer);
+        const formatted = getVariableTypeReplacements(
+          asset.name,
+          uuidData,
+          codebook,
+          subject,
+        );
+        if (!cancelled) {
+          setExternalData(formatted);
+          setStatus({ isLoading: false, error: null });
+        }
+      } catch (e) {
+        const error = ensureError(e);
+        captureException(error, { feature: 'external-data' });
+        // eslint-disable-next-line no-console
+        console.error(error);
+        if (!cancelled) setStatus({ isLoading: false, error });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    dataSource,
+    assetManifest,
+    codebook,
+    subject,
+    onRequestAsset,
+    captureException,
+  ]);
+
+  return { externalData, status };
 };
 
 export default useExternalData;

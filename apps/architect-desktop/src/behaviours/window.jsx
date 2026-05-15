@@ -1,33 +1,35 @@
-import windowRootConsumer from "@codaco/ui/lib/components/windowRootConsumer";
-import PropTypes from "prop-types";
-import ReactDOM from "react-dom";
+import PropTypes from 'prop-types';
+import ReactDOM from 'react-dom';
 
-const getDisplayName = (WrappedComponent) => WrappedComponent.displayName || WrappedComponent.name || "Component";
+import windowRootConsumer from '@codaco/ui/lib/components/windowRootConsumer';
+
+const getDisplayName = (WrappedComponent) =>
+  WrappedComponent.displayName || WrappedComponent.name || 'Component';
 
 /*
  * HOC which will cause a component to be rendered outside of the main ReactDOM hierarchy,
  * useful for modals and other windowed components.
  */
 const window = (forceRoot) => (WrappedComponent) => {
-	const Window = (props) => {
-		const { windowRoot } = props;
-		const portal = forceRoot || windowRoot;
-		// const portal = windowRoot;
+  const Window = (props) => {
+    const { windowRoot } = props;
+    const portal = forceRoot || windowRoot;
+    // const portal = windowRoot;
 
-		return ReactDOM.createPortal(<WrappedComponent {...props} />, portal);
-	};
+    return ReactDOM.createPortal(<WrappedComponent {...props} />, portal);
+  };
 
-	Window.displayName = () => `Window(${getDisplayName(WrappedComponent)})`;
+  Window.displayName = () => `Window(${getDisplayName(WrappedComponent)})`;
 
-	Window.propTypes = {
-		windowRoot: PropTypes.any,
-	};
+  Window.propTypes = {
+    windowRoot: PropTypes.any,
+  };
 
-	Window.defaultProps = {
-		windowRoot: null,
-	};
+  Window.defaultProps = {
+    windowRoot: null,
+  };
 
-	return windowRootConsumer(Window);
+  return windowRootConsumer(Window);
 };
 
 export default window;

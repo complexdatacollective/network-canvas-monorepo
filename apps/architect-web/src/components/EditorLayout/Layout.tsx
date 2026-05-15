@@ -1,22 +1,25 @@
-import cx from "classnames";
+import cx from 'classnames';
 
 type LayoutProps = {
-	children: React.ReactNode;
-	className?: string;
+  children: React.ReactNode;
+  className?: string;
 } & React.HTMLAttributes<HTMLDivElement>;
 
-const Layout = ({ children, className = "", ...rest }: LayoutProps) => {
-	const containerClasses = cx(className, "flex flex-col gap-6 items-center w-full");
+const Layout = ({ children, className = '', ...rest }: LayoutProps) => {
+  const containerClasses = cx(
+    className,
+    'flex w-full flex-col items-center gap-6',
+  );
 
-	return (
-		<div
-			className={containerClasses}
-			// eslint-disable-next-line react/jsx-props-no-spreading
-			{...rest}
-		>
-			{children}
-		</div>
-	);
+  return (
+    <div
+      className={containerClasses}
+      // eslint-disable-next-line react/jsx-props-no-spreading
+      {...rest}
+    >
+      {children}
+    </div>
+  );
 };
 
 export default Layout;

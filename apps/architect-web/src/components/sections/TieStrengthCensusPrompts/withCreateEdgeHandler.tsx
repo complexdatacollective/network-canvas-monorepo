@@ -1,23 +1,30 @@
-import { compose, withHandlers } from "react-recompose";
-import { connect } from "react-redux";
-import { createEdgeAsync } from "~/ducks/modules/protocol/codebook";
-import type { AppDispatch } from "~/ducks/store";
+import { compose, withHandlers } from 'react-recompose';
+import { connect } from 'react-redux';
+
+import { createEdgeAsync } from '~/ducks/modules/protocol/codebook';
+import type { AppDispatch } from '~/ducks/store';
 
 const mapDispatchToProps = {
-	createEdge: createEdgeAsync,
+  createEdge: createEdgeAsync,
 };
 
 // TODO: This should be the top level withCreateEdgeHandler enhancer but currently
 // contains an edge case for sociogram
 
 const createEdgeHandler = {
-	handleCreateEdge:
-		({ createEdge, dispatch }: { createEdge: typeof createEdgeAsync; dispatch: AppDispatch }) =>
-		async (name: string) => {
-			const { type } = await dispatch(createEdge({ name }));
+  handleCreateEdge:
+    ({
+      createEdge,
+      dispatch,
+    }: {
+      createEdge: typeof createEdgeAsync;
+      dispatch: AppDispatch;
+    }) =>
+    async (name: string) => {
+      const { type } = await dispatch(createEdge({ name }));
 
-			return type;
-		},
+      return type;
+    },
 };
 
 /**
@@ -28,6 +35,9 @@ const createEdgeHandler = {
  *   <div handler={() => handleCreateEdge(name)} />
  * )
  */
-const withCreateEdgeHandler = compose(connect(null, mapDispatchToProps), withHandlers(createEdgeHandler));
+const withCreateEdgeHandler = compose(
+  connect(null, mapDispatchToProps),
+  withHandlers(createEdgeHandler),
+);
 
 export default withCreateEdgeHandler;

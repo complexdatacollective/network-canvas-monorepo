@@ -1,64 +1,71 @@
-import type { CSSProperties, ReactNode } from "react";
-import { useCallback } from "react";
-import Confirm from "./Dialog/Confirm";
-import ErrorDialogComponent from "./Dialog/Error";
-import Notice from "./Dialog/Notice";
-import Simple from "./Dialog/Simple";
-import UserErrorDialogComponent from "./Dialog/UserError";
-import Warning from "./Dialog/Warning";
+import type { CSSProperties, ReactNode } from 'react';
+import { useCallback } from 'react';
+
+import Confirm from './Dialog/Confirm';
+import ErrorDialogComponent from './Dialog/Error';
+import Notice from './Dialog/Notice';
+import Simple from './Dialog/Simple';
+import UserErrorDialogComponent from './Dialog/UserError';
+import Warning from './Dialog/Warning';
 
 type BaseDialog = {
-	id: string;
-	title?: string;
-	message?: ReactNode;
-	onConfirm?: () => void;
-	onCancel?: () => void;
+  id: string;
+  title?: string;
+  message?: ReactNode;
+  onConfirm?: () => void;
+  onCancel?: () => void;
 };
 
 type ConfirmDialog = BaseDialog & {
-	type: "Confirm";
-	title: string;
-	canCancel?: boolean;
-	confirmLabel?: string;
-	cancelLabel?: string;
-	className?: string;
+  type: 'Confirm';
+  title: string;
+  canCancel?: boolean;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  className?: string;
 };
 
 type NoticeDialog = BaseDialog & {
-	type: "Notice";
-	title: string;
-	confirmLabel?: string;
+  type: 'Notice';
+  title: string;
+  confirmLabel?: string;
 };
 
 type WarningDialog = BaseDialog & {
-	type: "Warning";
-	title: string;
-	canCancel?: boolean;
-	confirmLabel?: string;
-	cancelLabel?: string;
+  type: 'Warning';
+  title: string;
+  canCancel?: boolean;
+  confirmLabel?: string;
+  cancelLabel?: string;
 };
 
 type ErrorDialog = BaseDialog & {
-	type: "Error";
-	error?: Error | string | { friendlyMessage?: string };
-	confirmLabel?: string;
+  type: 'Error';
+  error?: Error | string | { friendlyMessage?: string };
+  confirmLabel?: string;
 };
 
 type UserErrorDialog = BaseDialog & {
-	type: "UserError";
-	error?: Error | string | { friendlyMessage?: string };
-	confirmLabel?: string;
+  type: 'UserError';
+  error?: Error | string | { friendlyMessage?: string };
+  confirmLabel?: string;
 };
 
 type SimpleDialog = BaseDialog & {
-	type: "Simple";
-	title: string;
-	children?: ReactNode;
-	className?: string;
-	style?: CSSProperties;
+  type: 'Simple';
+  title: string;
+  children?: ReactNode;
+  className?: string;
+  style?: CSSProperties;
 };
 
-export type Dialog = ConfirmDialog | NoticeDialog | WarningDialog | ErrorDialog | UserErrorDialog | SimpleDialog;
+export type Dialog =
+  | ConfirmDialog
+  | NoticeDialog
+  | WarningDialog
+  | ErrorDialog
+  | UserErrorDialog
+  | SimpleDialog;
 
 export type { ConfirmDialog, UserErrorDialog };
 
@@ -107,123 +114,123 @@ export type { ConfirmDialog, UserErrorDialog };
  */
 
 type DialogsProps = {
-	dialogs?: Dialog[];
-	closeDialog: (id: string) => void;
+  dialogs?: Dialog[];
+  closeDialog: (id: string) => void;
 };
 
 const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
-	const handleConfirm = useCallback(
-		(dialog: Dialog) => {
-			if (dialog.onConfirm) {
-				dialog.onConfirm();
-			}
-			closeDialog(dialog.id);
-		},
-		[closeDialog],
-	);
+  const handleConfirm = useCallback(
+    (dialog: Dialog) => {
+      if (dialog.onConfirm) {
+        dialog.onConfirm();
+      }
+      closeDialog(dialog.id);
+    },
+    [closeDialog],
+  );
 
-	const handleCancel = useCallback(
-		(dialog: Dialog) => {
-			if (dialog.onCancel) {
-				dialog.onCancel();
-			}
-			closeDialog(dialog.id);
-		},
-		[closeDialog],
-	);
+  const handleCancel = useCallback(
+    (dialog: Dialog) => {
+      if (dialog.onCancel) {
+        dialog.onCancel();
+      }
+      closeDialog(dialog.id);
+    },
+    [closeDialog],
+  );
 
-	const renderDialog = useCallback(
-		(dialog: Dialog) => {
-			const onConfirm = () => handleConfirm(dialog);
-			const onCancel = () => handleCancel(dialog);
+  const renderDialog = useCallback(
+    (dialog: Dialog) => {
+      const onConfirm = () => handleConfirm(dialog);
+      const onCancel = () => handleCancel(dialog);
 
-			switch (dialog.type) {
-				case "Confirm":
-					return (
-						<Confirm
-							key={dialog.id}
-							show
-							title={dialog.title}
-							message={dialog.message}
-							canCancel={(dialog).canCancel}
-							confirmLabel={dialog.confirmLabel}
-							cancelLabel={(dialog).cancelLabel}
-							className={(dialog).className}
-							onConfirm={onConfirm}
-							onCancel={onCancel}
-						/>
-					);
-				case "Warning":
-					return (
-						<Warning
-							key={dialog.id}
-							show
-							title={dialog.title}
-							message={dialog.message}
-							canCancel={(dialog).canCancel}
-							confirmLabel={dialog.confirmLabel}
-							cancelLabel={(dialog).cancelLabel}
-							onConfirm={onConfirm}
-							onCancel={onCancel}
-						/>
-					);
-				case "Notice":
-					return (
-						<Notice
-							key={dialog.id}
-							show
-							title={(dialog).title}
-							message={dialog.message}
-							confirmLabel={dialog.confirmLabel}
-							onConfirm={onConfirm}
-						/>
-					);
-				case "Error":
-					return (
-						<ErrorDialogComponent
-							key={dialog.id}
-							show
-							title={dialog.title}
-							message={dialog.message}
-							error={(dialog).error}
-							confirmLabel={dialog.confirmLabel}
-							onConfirm={onConfirm}
-						/>
-					);
-				case "UserError":
-					return (
-						<UserErrorDialogComponent
-							key={dialog.id}
-							show
-							title={dialog.title}
-							message={dialog.message}
-							error={(dialog).error}
-							confirmLabel={dialog.confirmLabel}
-							onConfirm={onConfirm}
-						/>
-					);
-				case "Simple":
-					return (
-						<Simple
-							key={dialog.id}
-							show
-							title={(dialog).title}
-							message={dialog.message}
-							className={(dialog).className}
-							style={(dialog).style}
-							onBlur={onCancel}
-						/>
-					);
-				default: {
-					// TypeScript ensures this is exhaustive
-					return null;
-				}
-			}
-		},
-		[handleConfirm, handleCancel],
-	);
+      switch (dialog.type) {
+        case 'Confirm':
+          return (
+            <Confirm
+              key={dialog.id}
+              show
+              title={dialog.title}
+              message={dialog.message}
+              canCancel={dialog.canCancel}
+              confirmLabel={dialog.confirmLabel}
+              cancelLabel={dialog.cancelLabel}
+              className={dialog.className}
+              onConfirm={onConfirm}
+              onCancel={onCancel}
+            />
+          );
+        case 'Warning':
+          return (
+            <Warning
+              key={dialog.id}
+              show
+              title={dialog.title}
+              message={dialog.message}
+              canCancel={dialog.canCancel}
+              confirmLabel={dialog.confirmLabel}
+              cancelLabel={dialog.cancelLabel}
+              onConfirm={onConfirm}
+              onCancel={onCancel}
+            />
+          );
+        case 'Notice':
+          return (
+            <Notice
+              key={dialog.id}
+              show
+              title={dialog.title}
+              message={dialog.message}
+              confirmLabel={dialog.confirmLabel}
+              onConfirm={onConfirm}
+            />
+          );
+        case 'Error':
+          return (
+            <ErrorDialogComponent
+              key={dialog.id}
+              show
+              title={dialog.title}
+              message={dialog.message}
+              error={dialog.error}
+              confirmLabel={dialog.confirmLabel}
+              onConfirm={onConfirm}
+            />
+          );
+        case 'UserError':
+          return (
+            <UserErrorDialogComponent
+              key={dialog.id}
+              show
+              title={dialog.title}
+              message={dialog.message}
+              error={dialog.error}
+              confirmLabel={dialog.confirmLabel}
+              onConfirm={onConfirm}
+            />
+          );
+        case 'Simple':
+          return (
+            <Simple
+              key={dialog.id}
+              show
+              title={dialog.title}
+              message={dialog.message}
+              className={dialog.className}
+              style={dialog.style}
+              onBlur={onCancel}
+            />
+          );
+        default: {
+          // TypeScript ensures this is exhaustive
+          return null;
+        }
+      }
+    },
+    [handleConfirm, handleCancel],
+  );
 
-	return dialogs.map(renderDialog);
+  return dialogs.map(renderDialog);
 };
 
 export { Dialogs };

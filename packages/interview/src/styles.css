@@ -32,4 +32,4 @@
  * otherwise, add an explicit @source pointing at the source tree.
  */
 
-@source "./**/*.{js,ts,tsx}";
+@source './**/*.{js,ts,tsx}';

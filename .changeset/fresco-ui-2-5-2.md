@@ -1,5 +1,5 @@
 ---
-"@codaco/fresco-ui": patch
+'@codaco/fresco-ui': patch
 ---
 
 Sync with `@codaco/tailwind-config@1.0.0-alpha.7`:

@@ -135,7 +135,8 @@
     var(--cyber-grape-hue);
   --platinum: 0.9593 0.009 var(--cyber-grape-hue);
   --platinum--dark: calc(0.9593 - var(--dark-mod)) 0.009 var(--cyber-grape-hue);
-  --slate-blue: 0.55 calc(var(--cyber-grape-chroma) * 2.2) var(--cyber-grape-hue);
+  --slate-blue: 0.55 calc(var(--cyber-grape-chroma) * 2.2)
+    var(--cyber-grape-hue);
   --slate-blue--dark: calc(0.55 - var(--dark-mod))
     calc(var(--cyber-grape-chroma) * 2.2) var(--cyber-grape-hue);
 }

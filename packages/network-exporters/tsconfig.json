@@ -1,12 +1,12 @@
 {
-	"extends": "@codaco/tsconfig/base.json",
-	"compilerOptions": {
-		"composite": true,
-		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
-		"allowJs": true,
-		"outDir": "dist",
-		"types": ["node"]
-	},
-	"include": ["src", "vite.config.ts"],
-	"exclude": ["node_modules", "dist", "**/__tests__/**"]
+  "extends": "@codaco/tsconfig/base.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+    "allowJs": true,
+    "outDir": "dist",
+    "types": ["node"]
+  },
+  "include": ["src", "vite.config.ts"],
+  "exclude": ["node_modules", "dist", "**/__tests__/**"]
 }

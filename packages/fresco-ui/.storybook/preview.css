@@ -6,15 +6,13 @@
  *
  * Fonts are imported in JS so that url() paths resolve correctly.
  */
-@import "@codaco/tailwind-config/fresco.css";
+@import '@codaco/tailwind-config/fresco.css';
 
 @layer base {
-	/* Autodocs renders each story in a `.sbdocs-preview` wrapper that lives
+  /* Autodocs renders each story in a `.sbdocs-preview` wrapper that lives
    outside the canvas iframe, so the body rule above doesn't reach it.
    Paint the docs preview canvas with the theme background directly. */
-	.sbdocs-preview {
-		@apply bg-background!;
-	}
-
+  .sbdocs-preview {
+    @apply bg-background!;
+  }
 }
-

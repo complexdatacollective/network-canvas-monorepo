@@ -1,86 +1,89 @@
-import type { StoryObj } from "@storybook/react-vite";
-import { fn } from "storybook/test";
-import Button from "../Button";
-import Paragraph from "../typography/Paragraph";
-import Dialog, { type DialogProps, STATE_VARIANTS } from "./Dialog";
+import type { StoryObj } from '@storybook/react-vite';
+import { fn } from 'storybook/test';
+
+import Button from '../Button';
+import Paragraph from '../typography/Paragraph';
+import Dialog, { type DialogProps, STATE_VARIANTS } from './Dialog';
 
 const meta = {
-	title: "Systems/Dialogs/Dialog",
-	component: Dialog as never,
-	args: {
-		closeDialog: fn(),
-	},
-	argTypes: {
-		accent: {
-			control: {
-				type: "select",
-				options: STATE_VARIANTS,
-			},
-		},
-		title: {
-			control: "text",
-		},
-		description: {
-			control: "text",
-		},
-	},
-	parameters: {
-		layout: "fullscreen",
-	},
-	tags: ["autodocs"],
+  title: 'Systems/Dialogs/Dialog',
+  component: Dialog as never,
+  args: {
+    closeDialog: fn(),
+  },
+  argTypes: {
+    accent: {
+      control: {
+        type: 'select',
+        options: STATE_VARIANTS,
+      },
+    },
+    title: {
+      control: 'text',
+    },
+    description: {
+      control: 'text',
+    },
+  },
+  parameters: {
+    layout: 'fullscreen',
+  },
+  tags: ['autodocs'],
 };
 
 export default meta;
 type Story = StoryObj<typeof Dialog>;
 
 const DialogTemplate = (args: DialogProps) => (
-	<Dialog
-		{...args}
-		open={true}
-		footer={
-			<>
-				<Button onClick={args.closeDialog}>Cancel</Button>
-				<Button color="primary" onClick={args.closeDialog}>
-					Continue
-				</Button>
-			</>
-		}
-	>
-		<Paragraph margin="none">This is additional content inside the dialog.</Paragraph>
-	</Dialog>
+  <Dialog
+    {...args}
+    open={true}
+    footer={
+      <>
+        <Button onClick={args.closeDialog}>Cancel</Button>
+        <Button color="primary" onClick={args.closeDialog}>
+          Continue
+        </Button>
+      </>
+    }
+  >
+    <Paragraph margin="none">
+      This is additional content inside the dialog.
+    </Paragraph>
+  </Dialog>
 );
 
 export const Default: Story = {
-	args: {
-		title: "Default Dialog",
-		description: "This is a default dialog description",
-	},
-	render: (args) => <DialogTemplate {...args} />,
+  args: {
+    title: 'Default Dialog',
+    description: 'This is a default dialog description',
+  },
+  render: (args) => <DialogTemplate {...args} />,
 };
 
 export const Success: Story = {
-	args: {
-		title: "Success Dialog",
-		description: "This dialog indicates success.",
-		accent: "success",
-	},
-	render: (args) => <DialogTemplate {...args} />,
+  args: {
+    title: 'Success Dialog',
+    description: 'This dialog indicates success.',
+    accent: 'success',
+  },
+  render: (args) => <DialogTemplate {...args} />,
 };
 
 export const Destructive: Story = {
-	args: {
-		title: "Destructive Dialog",
-		description: "This dialog indicates destructive.",
-		accent: "destructive",
-	},
-	render: (args) => <DialogTemplate {...args} />,
+  args: {
+    title: 'Destructive Dialog',
+    description: 'This dialog indicates destructive.',
+    accent: 'destructive',
+  },
+  render: (args) => <DialogTemplate {...args} />,
 };
 
 export const Info: Story = {
-	args: {
-		title: "Info Dialog",
-		description: "This dialog provides some information.",
-		accent: "info",
-	},
-	render: (args) => <DialogTemplate {...args} />,
+  args: {
+    title: 'Info Dialog',
+    description: 'This dialog provides some information.',
+    accent: 'info',
+  },
+  render: (args) => <DialogTemplate {...args} />,
 };

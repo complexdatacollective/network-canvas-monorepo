@@ -11,10 +11,10 @@ Today the `@codaco/interview` package exposes an optional `onError` prop so a ho
 
 This is too thin a contract for the questions we now want to answer:
 
-- *Where do participants get stuck?* (per-interface time, per-sub-task friction)
-- *What proportion of interviews abandon at each stage?*
-- *Are bottlenecks structural to the protocol, or specific to the participant's host environment / device?*
-- *Are errors happening that nobody is seeing?*
+- _Where do participants get stuck?_ (per-interface time, per-sub-task friction)
+- _What proportion of interviews abandon at each stage?_
+- _Are bottlenecks structural to the protocol, or specific to the participant's host environment / device?_
+- _Are errors happening that nobody is seeing?_
 
 The interview package should own its own analytics — instrumented from the inside, with stable event names, PII-safe property shapes, and host-supplied environment metadata threaded through every event.
 
@@ -91,17 +91,17 @@ The interview package should own its own analytics — instrumented from the ins
 
 ### 4.1 Client-resolution decision table
 
-| `disableAnalytics` | `posthogClient` | Behaviour |
-|---|---|---|
-| `true` | (any) | Listener middleware **not added** to store. `useTrack` returns no-op. `posthog-js` not imported. |
-| `false` | provided | Use the host client. **Never** call `init`, `register`, `identify`, or `opt_out_capturing` on it. Each `capture()` includes `distinct_id` override and merges super-props as event-props. |
-| `false` | absent | Lazy-import `posthog-js`, call `posthog.init(KEY, opts, '@codaco/interview')` to create a named instance. `register()` super-props once. Subsequent `capture()` calls per-event-override `distinct_id`. |
+| `disableAnalytics` | `posthogClient` | Behaviour                                                                                                                                                                                               |
+| ------------------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `true`             | (any)           | Listener middleware **not added** to store. `useTrack` returns no-op. `posthog-js` not imported.                                                                                                        |
+| `false`            | provided        | Use the host client. **Never** call `init`, `register`, `identify`, or `opt_out_capturing` on it. Each `capture()` includes `distinct_id` override and merges super-props as event-props.               |
+| `false`            | absent          | Lazy-import `posthog-js`, call `posthog.init(KEY, opts, '@codaco/interview')` to create a named instance. `register()` super-props once. Subsequent `capture()` calls per-event-override `distinct_id`. |
 
 Resolution runs once per `Shell` mount and the result is cached for the lifetime of the mount.
 
 ### 4.2 Why per-event `distinct_id` override
 
-Fresco-next today calls `posthog.identify(installationId)` on its own instance. If the package shared that instance and called `capture()` without an override, every interview event would be associated with the *installation* PostHog person, lumping all interviews on the install together.
+Fresco-next today calls `posthog.identify(installationId)` on its own instance. If the package shared that instance and called `capture()` without an override, every interview event would be associated with the _installation_ PostHog person, lumping all interviews on the install together.
 
 By passing `distinct_id: payload.session.id` per-event, every interview becomes its own PostHog "person." Funnel analysis per interview works naturally; the host's installation-keyed events remain unaffected.
 
@@ -126,7 +126,7 @@ type ShellProps = {
    * events through it without modifying its config. When absent, the package
    * lazy-initialises its own named instance against ph-relay.
    */
-  posthogClient?: PostHog;  // imported as `import type { PostHog } from 'posthog-js'`
+  posthogClient?: PostHog; // imported as `import type { PostHog } from 'posthog-js'`
 
   /**
    * When true, suppresses all event emission. The package never imports
@@ -147,9 +147,9 @@ type ShellProps = {
 
 ```ts
 export type InterviewAnalyticsMetadata = {
-  installationId: string;    // → super prop "installation_id"
-  hostApp: string;           // → super prop "app"
-  hostVersion?: string;      // → super prop "host_version"
+  installationId: string; // → super prop "installation_id"
+  hostApp: string; // → super prop "app"
+  hostVersion?: string; // → super prop "host_version"
 };
 ```
 
@@ -163,16 +163,19 @@ export type InterviewAnalyticsMetadata = {
 
 ```ts
 // Returns a track function that no-ops when disableAnalytics is true.
-export function useTrack(): (eventName: string, props?: Record<string, JSONValue>) => void;
+export function useTrack(): (
+  eventName: string,
+  props?: Record<string, JSONValue>,
+) => void;
 ```
 
 ### 5.6 `ProtocolPayload` shape change
 
 ```ts
-export type ProtocolPayload = Omit<CurrentProtocol, "assetManifest"> & {
+export type ProtocolPayload = Omit<CurrentProtocol, 'assetManifest'> & {
   id: string;
-  hash: string;        // ← NEW. Required. Computed by host using `hashProtocol`
-                       //   from @codaco/protocol-validation at protocol-import time.
+  hash: string; // ← NEW. Required. Computed by host using `hashProtocol`
+  //   from @codaco/protocol-validation at protocol-import time.
   importedAt: string;
   assets: ResolvedAsset[];
 };
@@ -193,7 +196,10 @@ export type ProtocolPayload = Omit<CurrentProtocol, "assetManifest"> & {
  *   - Interview package analytics (forwarded as protocol_hash super property)
  *   - Network-exporters (already reads protocol.hash from caller)
  */
-export function hashProtocol(protocol: { codebook: unknown; stages: unknown }): string;
+export function hashProtocol(protocol: {
+  codebook: unknown;
+  stages: unknown;
+}): string;
 ```
 
 Implementation moves from `~/Projects/fresco-next/lib/protocol/hashProtocol.ts` (deleted) to `packages/protocol-validation/src/hashProtocol.ts`. All callers import from `@codaco/protocol-validation`.
@@ -207,7 +213,7 @@ Implementation moves from `~/Projects/fresco-next/lib/protocol/hashProtocol.ts` 
   "dependencies": {
     "posthog-js": "catalog:",
     // ...existing
-  }
+  },
 }
 ```
 
@@ -220,9 +226,9 @@ The `posthogClient?: PostHog` prop type uses `import type { PostHog } from 'post
 Embedded in the package, not host-supplied:
 
 ```ts
-const POSTHOG_API_KEY = "phc_OThPUolJumHmf142W78TKWtjoYYAxGlF0ZZmhcV7J3c";  // public, shared with architect/docs
-const POSTHOG_HOST = "https://ph-relay.networkcanvas.com";                   // codaco proxy worker
-const INSTANCE_NAME = "@codaco/interview";                                   // for posthog.init named instance
+const POSTHOG_API_KEY = 'phc_OThPUolJumHmf142W78TKWtjoYYAxGlF0ZZmhcV7J3c'; // public, shared with architect/docs
+const POSTHOG_HOST = 'https://ph-relay.networkcanvas.com'; // codaco proxy worker
+const INSTANCE_NAME = '@codaco/interview'; // for posthog.init named instance
 ```
 
 The API key is public PostHog project-key data; it is not a secret. The host is the codaco-managed posthog-proxy worker.
@@ -231,17 +237,17 @@ The API key is public PostHog project-key data; it is not a secret. The host is 
 
 Set on the package's named instance via `register()` once after init. When using a host-supplied client, these are **merged into every `capture()` call as event properties** instead of registered (we never mutate the host's instance).
 
-| Property | Source | Required | Notes |
-|---|---|---|---|
-| `app` | `analytics.hostApp` | yes | e.g. `"Fresco"`, `"researcher-desktop"` |
-| `installation_id` | `analytics.installationId` | yes | Anonymous host installation UUID |
-| `host_version` | `analytics.hostVersion` | optional | Host app version |
-| `package_version` | build-time injected `__PACKAGE_VERSION__` | yes | Interview package version, from `package.json` via Vite `define` |
-| `protocol_hash` | `payload.protocol.hash` | yes | Forwarded from host; never recomputed inside the package |
-| `stage_type` | navigation state | yes | Updated on stage transition |
-| `stage_index` | navigation state | yes | Updated on stage transition |
-| `prompt_index` | navigation state | yes | Updated on prompt transition |
-| `distinct_id` | `payload.session.id` | yes | **Per-event override**, not a super property |
+| Property          | Source                                    | Required | Notes                                                            |
+| ----------------- | ----------------------------------------- | -------- | ---------------------------------------------------------------- |
+| `app`             | `analytics.hostApp`                       | yes      | e.g. `"Fresco"`, `"researcher-desktop"`                          |
+| `installation_id` | `analytics.installationId`                | yes      | Anonymous host installation UUID                                 |
+| `host_version`    | `analytics.hostVersion`                   | optional | Host app version                                                 |
+| `package_version` | build-time injected `__PACKAGE_VERSION__` | yes      | Interview package version, from `package.json` via Vite `define` |
+| `protocol_hash`   | `payload.protocol.hash`                   | yes      | Forwarded from host; never recomputed inside the package         |
+| `stage_type`      | navigation state                          | yes      | Updated on stage transition                                      |
+| `stage_index`     | navigation state                          | yes      | Updated on stage transition                                      |
+| `prompt_index`    | navigation state                          | yes      | Updated on prompt transition                                     |
+| `distinct_id`     | `payload.session.id`                      | yes      | **Per-event override**, not a super property                     |
 
 Note: `is_e2e` and `is_synthetic` are **not** super properties. Hosts pass `disableAnalytics={true}` for E2E and synthetic runs.
 
@@ -256,7 +262,7 @@ The package guarantees, by construction, that the following **never** appear in 
 What **is** allowed:
 
 - **Structural identifiers**: `stage_type` (interface kind), `stage_index`, `prompt_index`, `node_id`, `edge_id` (random UUIDs generated at creation time, no derivation from participant input).
-- **Codebook *internal* ids**: `node_type`, `edge_type`, `relation_type` — these are stable codes (`person`, `friend`, `parent`), not author-facing labels. Protocol-author-authored *labels* and *colours* never flow.
+- **Codebook _internal_ ids**: `node_type`, `edge_type`, `relation_type` — these are stable codes (`person`, `friend`, `parent`), not author-facing labels. Protocol-author-authored _labels_ and _colours_ never flow.
 - **Counts and durations**: `node_count`, `edge_count`, `field_count`, `duration_ms`, `total_slides`.
 - **Discriminators**: `form_kind`, `selection_kind`, `direction`, `census_kind`, `add_path`, etc. — these are package-defined constants.
 - **Validation kinds and structural rule params**: `kind: 'minLength'`, `config: { minLength: 5 }` — never the rendered error message (which could include protocol-author content) and never variable-name-bearing rule params (`differentFrom: 'name'`).
@@ -273,130 +279,130 @@ Property `node_id`/`edge_id` (and `node_a_id`/`node_b_id` for paired events) app
 
 ### 9.1 Stage-level events
 
-| Event | Source | Extra props |
-|---|---|---|
-| `interview_started` | middleware (Shell mount) | — |
-| `stage_entered` | middleware (currentStep change) | `stage_type`, `stage_index`, `prompt_index`, `direction: 'forward' \| 'back' \| 'jumped' \| 'initial'` |
-| `stage_exited` | middleware | `stage_type`, `stage_index`, `duration_ms`, `prompt_count`, `exit_direction` |
-| `stage_validation_failed` | hook (Navigation `beforeNext`) | `stage_type`, `stage_index`, `validation_kind` |
-| `interview_finished` | middleware (`onFinish` resolves) | `total_duration_ms`, `stage_count` |
+| Event                     | Source                           | Extra props                                                                                            |
+| ------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `interview_started`       | middleware (Shell mount)         | —                                                                                                      |
+| `stage_entered`           | middleware (currentStep change)  | `stage_type`, `stage_index`, `prompt_index`, `direction: 'forward' \| 'back' \| 'jumped' \| 'initial'` |
+| `stage_exited`            | middleware                       | `stage_type`, `stage_index`, `duration_ms`, `prompt_count`, `exit_direction`                           |
+| `stage_validation_failed` | hook (Navigation `beforeNext`)   | `stage_type`, `stage_index`, `validation_kind`                                                         |
+| `interview_finished`      | middleware (`onFinish` resolves) | `total_duration_ms`, `stage_count`                                                                     |
 
 ### 9.2 Global entity events
 
 Fire from Redux middleware on the underlying actions, regardless of which stage dispatched them. `stage_type` super-prop discriminates which interface triggered the event in PostHog queries.
 
-| Event | Source | Extra props |
-|---|---|---|
-| `node_added` | middleware (`addNode` fulfilled) | `node_id`, `node_type` |
-| `node_removed` | middleware (`deleteNode`) | `node_id`, `node_type` |
-| `node_added_to_prompt` | middleware (`addNodeToPrompt` fulfilled) | `node_id`, `node_type` |
+| Event                      | Source                                        | Extra props            |
+| -------------------------- | --------------------------------------------- | ---------------------- |
+| `node_added`               | middleware (`addNode` fulfilled)              | `node_id`, `node_type` |
+| `node_removed`             | middleware (`deleteNode`)                     | `node_id`, `node_type` |
+| `node_added_to_prompt`     | middleware (`addNodeToPrompt` fulfilled)      | `node_id`, `node_type` |
 | `node_removed_from_prompt` | middleware (`removeNodeFromPrompt` fulfilled) | `node_id`, `node_type` |
-| `edge_created` | middleware (`addEdge` fulfilled) | `edge_id`, `edge_type` |
-| `edge_removed` | middleware (`deleteEdge`) | `edge_id`, `edge_type` |
+| `edge_created`             | middleware (`addEdge` fulfilled)              | `edge_id`, `edge_type` |
+| `edge_removed`             | middleware (`deleteEdge`)                     | `edge_id`, `edge_type` |
 
 ### 9.3 Per-interface events
 
 #### Form family (AlterForm, AlterEdgeForm, EgoForm, SlidesForm)
 
-| Event | Source | Extra props |
-|---|---|---|
-| `form_opened` | hook | `form_kind: 'alter' \| 'alter_edge' \| 'ego' \| 'slides'`, `field_details: string[]` (component names in order, duplicates preserved), `entity_id?` (node_id when alter, edge_id when alter_edge, omitted for ego/slides) |
-| `form_submitted` | middleware (`updateEgo` / `updateNode` / `updateEdge` fulfilled) | `form_kind`, `entity_id?` |
-| `form_dismissed_without_save` | hook | `form_kind`, `entity_id?` |
-| `form_validation_failed` | hook | `form_kind`, `entity_id?`, `field_errors: Array<{ field_index: number; component: string; kind: string; config?: Record<string, number \| boolean> }>` |
-| `slides_form_slide_advanced` | hook (SlidesForm only) | `slide_index`, `total_slides` |
+| Event                         | Source                                                           | Extra props                                                                                                                                                                                                               |
+| ----------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `form_opened`                 | hook                                                             | `form_kind: 'alter' \| 'alter_edge' \| 'ego' \| 'slides'`, `field_details: string[]` (component names in order, duplicates preserved), `entity_id?` (node_id when alter, edge_id when alter_edge, omitted for ego/slides) |
+| `form_submitted`              | middleware (`updateEgo` / `updateNode` / `updateEdge` fulfilled) | `form_kind`, `entity_id?`                                                                                                                                                                                                 |
+| `form_dismissed_without_save` | hook                                                             | `form_kind`, `entity_id?`                                                                                                                                                                                                 |
+| `form_validation_failed`      | hook                                                             | `form_kind`, `entity_id?`, `field_errors: Array<{ field_index: number; component: string; kind: string; config?: Record<string, number \| boolean> }>`                                                                    |
+| `slides_form_slide_advanced`  | hook (SlidesForm only)                                           | `slide_index`, `total_slides`                                                                                                                                                                                             |
 
 `field_errors[].config` carries only numeric/boolean rule params; entries that reference codebook variable names (`differentFrom: 'name'`, etc.) are filtered out before emission.
 
 #### NameGenerator
 
-| Event | Source | Extra props |
-|---|---|---|
-| `node_form_opened` | hook | `node_id?` (omitted when the form is for a not-yet-created node) |
-| `node_form_dismissed_without_save` | hook | `node_id?` |
+| Event                              | Source | Extra props                                                      |
+| ---------------------------------- | ------ | ---------------------------------------------------------------- |
+| `node_form_opened`                 | hook   | `node_id?` (omitted when the form is for a not-yet-created node) |
+| `node_form_dismissed_without_save` | hook   | `node_id?`                                                       |
 
 (`node_added` and `node_added_to_prompt` fire from the global tier on each NameGenerator add, joinable by `node_id`.)
 
 #### NameGeneratorRoster
 
-| Event | Source | Extra props |
-|---|---|---|
-| `roster_loaded` | hook (after `useExternalData` resolves) | `entry_count` |
-| `roster_filter_changed` | hook (debounced ~500ms) | `has_filter: boolean` |
+| Event                   | Source                                  | Extra props           |
+| ----------------------- | --------------------------------------- | --------------------- |
+| `roster_loaded`         | hook (after `useExternalData` resolves) | `entry_count`         |
+| `roster_filter_changed` | hook (debounced ~500ms)                 | `has_filter: boolean` |
 
 (`node_added_to_prompt` / `node_removed_from_prompt` cover the add/remove half from the global tier. No filter text ever sent.)
 
 #### Sociogram
 
-| Event | Source | Extra props |
-|---|---|---|
-| `node_initial_positioned` | hook (drag-end, manual layout only) | `node_id` |
-| `node_repositioned` | hook (debounced drag-end, manual layout only) | `node_id` |
-| `node_selected` | hook (attribute-selection mode only) | `node_id` |
-| `node_deselected` | hook (attribute-selection mode only) | `node_id` |
-| `simulation_started` | hook (force-sim begin) | `node_count`, `edge_count` |
-| `simulation_finished` | hook (sim convergence) | `duration_ms`, `node_count`, `edge_count` |
+| Event                     | Source                                        | Extra props                               |
+| ------------------------- | --------------------------------------------- | ----------------------------------------- |
+| `node_initial_positioned` | hook (drag-end, manual layout only)           | `node_id`                                 |
+| `node_repositioned`       | hook (debounced drag-end, manual layout only) | `node_id`                                 |
+| `node_selected`           | hook (attribute-selection mode only)          | `node_id`                                 |
+| `node_deselected`         | hook (attribute-selection mode only)          | `node_id`                                 |
+| `simulation_started`      | hook (force-sim begin)                        | `node_count`, `edge_count`                |
+| `simulation_finished`     | hook (sim convergence)                        | `duration_ms`, `node_count`, `edge_count` |
 
 `node_initial_positioned` and `node_repositioned` are suppressed entirely when automatic layout is enabled. Component-side state distinguishes "first placement" from "subsequent moves" — a node with no recorded position fires `node_initial_positioned` on first drag-end, `node_repositioned` thereafter.
 
 #### Comparison family (DyadCensus, TieStrengthCensus, OneToManyDyadCensus)
 
-| Event | Source | Extra props |
-|---|---|---|
+| Event        | Source                                                         | Extra props              |
+| ------------ | -------------------------------------------------------------- | ------------------------ |
 | `pair_shown` | hook (DyadCensus, TieStrengthCensus — on each new pair render) | `node_a_id`, `node_b_id` |
-| `focal_node` | hook (OneToManyDyadCensus — on each new focal node) | `node_id` |
+| `focal_node` | hook (OneToManyDyadCensus — on each new focal node)            | `node_id`                |
 
 (`edge_created` / `edge_removed` from the global tier carry the answers.)
 
 #### CategoricalBin & OrdinalBin
 
-| Event | Source | Extra props |
-|---|---|---|
-| `node_binned` | hook (first time the node lands in any bin/rank) | `node_id`, `node_type`, `bin_index` |
-| `node_rebinned` | hook (moved between bins) | `node_id`, `node_type`, `from_bin_index`, `to_bin_index` |
-| `bin_expanded` | hook (CategoricalBin only) | `bin_index` |
-| `bin_collapsed` | hook (CategoricalBin only) | `bin_index` |
+| Event           | Source                                           | Extra props                                              |
+| --------------- | ------------------------------------------------ | -------------------------------------------------------- |
+| `node_binned`   | hook (first time the node lands in any bin/rank) | `node_id`, `node_type`, `bin_index`                      |
+| `node_rebinned` | hook (moved between bins)                        | `node_id`, `node_type`, `from_bin_index`, `to_bin_index` |
+| `bin_expanded`  | hook (CategoricalBin only)                       | `bin_index`                                              |
+| `bin_collapsed` | hook (CategoricalBin only)                       | `bin_index`                                              |
 
 `bin_index` is numeric; bin labels never sent. There is no `node_unbinned` (the UI does not support full unbinning).
 
 #### Narrative
 
-| Event | Source | Extra props |
-|---|---|---|
-| `narrative_preset_changed` | hook (PresetSwitcher) | `preset_index`, `direction: 'forward' \| 'back' \| 'jumped'` |
-| `narrative_preset_updated` | hook | `preset_index`, `changed: 'group' \| 'edge_type' \| 'highlight'` |
-| `annotation_drawn` | hook (stroke completion) | — |
-| `annotations_reset` | hook (DrawingControls `onReset`) | — |
+| Event                      | Source                           | Extra props                                                      |
+| -------------------------- | -------------------------------- | ---------------------------------------------------------------- |
+| `narrative_preset_changed` | hook (PresetSwitcher)            | `preset_index`, `direction: 'forward' \| 'back' \| 'jumped'`     |
+| `narrative_preset_updated` | hook                             | `preset_index`, `changed: 'group' \| 'edge_type' \| 'highlight'` |
+| `annotation_drawn`         | hook (stroke completion)         | —                                                                |
+| `annotations_reset`        | hook (DrawingControls `onReset`) | —                                                                |
 
-`preset_index` is numeric. `changed` carries the *kind* of property change, never the codebook variable id.
+`preset_index` is numeric. `changed` carries the _kind_ of property change, never the codebook variable id.
 
 #### FamilyPedigree
 
-| Event | Source | Extra props |
-|---|---|---|
-| `pedigree_relative_added` | hook (manual additions only — wizard-triggered additions excluded) | `node_id`, `relation_type` |
-| `pedigree_relative_removed` | hook | `node_id`, `relation_type` |
-| `pedigree_wizard_shown` | hook (wizard action-button click) | — |
-| `pedigree_wizard_complete` | hook (wizard completion) | `nodes_created`, `edges_created` |
-| `pedigree_wizard_abandoned` | hook (wizard dismissed without completion) | — |
+| Event                       | Source                                                             | Extra props                      |
+| --------------------------- | ------------------------------------------------------------------ | -------------------------------- |
+| `pedigree_relative_added`   | hook (manual additions only — wizard-triggered additions excluded) | `node_id`, `relation_type`       |
+| `pedigree_relative_removed` | hook                                                               | `node_id`, `relation_type`       |
+| `pedigree_wizard_shown`     | hook (wizard action-button click)                                  | —                                |
+| `pedigree_wizard_complete`  | hook (wizard completion)                                           | `nodes_created`, `edges_created` |
+| `pedigree_wizard_abandoned` | hook (wizard dismissed without completion)                         | —                                |
 
 Wizard suppression scope is **only** the interface-specific `pedigree_relative_added` event. Global `node_added` / `edge_created` events still fire (one per entity) as the wizard creates them.
 
 #### Anonymisation
 
-| Event | Source | Extra props |
-|---|---|---|
-| `passphrase_set` | middleware (`setPassphrase`) | — |
-| `passphrase_validation_failed` | middleware (`setPassphraseInvalid`) | — |
+| Event                          | Source                              | Extra props |
+| ------------------------------ | ----------------------------------- | ----------- |
+| `passphrase_set`               | middleware (`setPassphrase`)        | —           |
+| `passphrase_validation_failed` | middleware (`setPassphraseInvalid`) | —           |
 
 Absolutely no values: not the passphrase, not its length, not a hash of it, not a hint, not the validation kind.
 
 #### Geospatial
 
-| Event | Source | Extra props |
-|---|---|---|
+| Event                          | Source                           | Extra props                                    |
+| ------------------------------ | -------------------------------- | ---------------------------------------------- |
 | `geospatial_location_selected` | hook (Mapbox selection callback) | `node_id`, `selection_kind: 'search' \| 'pin'` |
-| `geospatial_search_performed` | hook (debounced ~500ms) | `node_id` |
+| `geospatial_search_performed`  | hook (debounced ~500ms)          | `node_id`                                      |
 
 No coordinates, no place names, no search query text.
 
@@ -418,11 +424,11 @@ No interface-specific events. Stage-level `stage_entered` → `stage_exited` dur
 
 `onError` is fully removed. Errors fire `posthog.captureException` from inside the package, with the same `distinct_id: payload.session.id` override applied:
 
-| Site | Replacement |
-|---|---|
-| `StageErrorBoundary.componentDidCatch` | `captureException(error, { component_stack, stage_type, stage_index })`. UI fallback unchanged. |
-| `useExternalData` catch block | `captureException(error, { feature: 'external-data' })`. No `dataSource` value (would expose protocol asset id). Component-level error UI unchanged. |
-| `Information.tsx` `VideoPlayer` `onError` | `captureException(error, { feature: 'information-media' })`. UI fallback unchanged. |
+| Site                                      | Replacement                                                                                                                                          |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `StageErrorBoundary.componentDidCatch`    | `captureException(error, { component_stack, stage_type, stage_index })`. UI fallback unchanged.                                                      |
+| `useExternalData` catch block             | `captureException(error, { feature: 'external-data' })`. No `dataSource` value (would expose protocol asset id). Component-level error UI unchanged. |
+| `Information.tsx` `VideoPlayer` `onError` | `captureException(error, { feature: 'information-media' })`. UI fallback unchanged.                                                                  |
 
 Error events are not subject to PII filtering of error messages — exception strings are typically engine-generated and considered acceptable for debugging. If we later identify a leak vector (e.g. validation error messages embedded in thrown errors that include codebook content), we sanitise at that emit site.
 
@@ -483,7 +489,7 @@ packages/protocol-validation/src/hashProtocol.ts       // NEW: ported from fresc
 `vite.config.ts`:
 
 ```ts
-import pkg from "./package.json";
+import pkg from './package.json';
 
 export default defineConfig({
   define: {
@@ -499,12 +505,12 @@ Code references `__PACKAGE_VERSION__` directly (declared as a global in the pack
 
 ### 12.1 Unit tests (Vitest)
 
-| File | Asserts |
-|---|---|
-| `analytics/__tests__/resolveClient.test.ts` | All four resolution paths: disabled, host-supplied, own-init, error during dynamic import. |
-| `analytics/__tests__/superProperties.test.ts` | Given metadata + payload, exact super-prop object shape. |
+| File                                                   | Asserts                                                                                                                                                  |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `analytics/__tests__/resolveClient.test.ts`            | All four resolution paths: disabled, host-supplied, own-init, error during dynamic import.                                                               |
+| `analytics/__tests__/superProperties.test.ts`          | Given metadata + payload, exact super-prop object shape.                                                                                                 |
 | `store/middleware/__tests__/analyticsListener.test.ts` | For each Redux action that triggers an event, dispatching it produces exactly the documented `(eventName, propsObject)`. One assertion per global event. |
-| `analytics/__tests__/pii-guard.test.ts` | Walks a synthetic protocol with sentinel strings through emitters, asserts no sentinel appears in any emitted property value. |
+| `analytics/__tests__/pii-guard.test.ts`                | Walks a synthetic protocol with sentinel strings through emitters, asserts no sentinel appears in any emitted property value.                            |
 
 ### 12.2 Integration tests (Vitest + RTL)
 

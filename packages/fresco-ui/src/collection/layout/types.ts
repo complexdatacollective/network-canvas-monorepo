@@ -1,20 +1,20 @@
-import type { Key } from "react-aria-components";
+import type { Key } from 'react-aria-components';
 
 export type Size = { width: number; height: number };
 export type Rect = { x: number; y: number; width: number; height: number };
 export type Padding = {
-	top: number;
-	right: number;
-	bottom: number;
-	left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
 };
 export type LayoutInfo = {
-	key: Key;
-	rect: Rect;
+  key: Key;
+  rect: Rect;
 };
 export type LayoutOptions = {
-	containerWidth: number;
-	containerHeight?: number;
+  containerWidth: number;
+  containerHeight?: number;
 };
 
 /**
@@ -23,15 +23,15 @@ export type LayoutOptions = {
  * - 'height-only': Measure height with constrained width (GridLayout, ListLayout)
  * - 'intrinsic': Measure full intrinsic size (InlineGridLayout)
  */
-type MeasurementMode = "none" | "height-only" | "intrinsic";
+type MeasurementMode = 'none' | 'height-only' | 'intrinsic';
 
 /**
  * Information about how items should be measured for virtualization.
  */
 export type MeasurementInfo = {
-	mode: MeasurementMode;
-	/** For 'height-only' mode: the width to constrain items to during measurement */
-	constrainedWidth?: number;
+  mode: MeasurementMode;
+  /** For 'height-only' mode: the width to constrain items to during measurement */
+  constrainedWidth?: number;
 };
 
 /**
@@ -39,8 +39,8 @@ export type MeasurementInfo = {
  * Groups items that share the same Y position into rows.
  */
 export type RowInfo = {
-	rowIndex: number;
-	yStart: number;
-	height: number;
-	itemKeys: Key[];
+  rowIndex: number;
+  yStart: number;
+  height: number;
+  itemKeys: Key[];
 };

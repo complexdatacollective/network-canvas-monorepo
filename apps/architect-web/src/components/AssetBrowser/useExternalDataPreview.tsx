@@ -1,24 +1,34 @@
-import { useCallback, useMemo, useState } from "react";
-import Preview from "~/components/AssetBrowser/Preview";
-import useExternalDataDownload from "./useExternalDataDownload";
+import { useCallback, useMemo, useState } from 'react';
 
-const useExternalDataPreview = (): [React.ReactNode | null, (id: string) => void, () => void] => {
-	const [showPreview, setShowPreview] = useState<string | null>(null);
-	const handleDownload = useExternalDataDownload();
+import Preview from '~/components/AssetBrowser/Preview';
 
-	const handleShowPreview = setShowPreview;
+import useExternalDataDownload from './useExternalDataDownload';
 
-	const handleClosePreview = useCallback(() => setShowPreview(null), []);
+const useExternalDataPreview = (): [
+  React.ReactNode | null,
+  (id: string) => void,
+  () => void,
+] => {
+  const [showPreview, setShowPreview] = useState<string | null>(null);
+  const handleDownload = useExternalDataDownload();
 
-	const preview = useMemo(
-		() =>
-			showPreview && (
-				<Preview id={showPreview} onDownload={() => handleDownload(showPreview)} onClose={handleClosePreview} />
-			),
-		[showPreview, handleClosePreview, handleDownload],
-	);
+  const handleShowPreview = setShowPreview;
 
-	return [preview, handleShowPreview, handleClosePreview];
+  const handleClosePreview = useCallback(() => setShowPreview(null), []);
+
+  const preview = useMemo(
+    () =>
+      showPreview && (
+        <Preview
+          id={showPreview}
+          onDownload={() => handleDownload(showPreview)}
+          onClose={handleClosePreview}
+        />
+      ),
+    [showPreview, handleClosePreview, handleDownload],
+  );
+
+  return [preview, handleShowPreview, handleClosePreview];
 };
 
 export default useExternalDataPreview;

@@ -1,11 +1,11 @@
-import { createMigration, type ProtocolDocument } from "~/migration";
-import { traverseAndTransform } from "~/utils/traverse-and-transform";
+import { createMigration, type ProtocolDocument } from '~/migration';
+import { traverseAndTransform } from '~/utils/traverse-and-transform';
 
 const migrationV7toV8 = createMigration({
-	from: 7,
-	to: 8,
-	dependencies: { name: "" },
-	notes: `
+  from: 7,
+  to: 8,
+  dependencies: { name: '' },
+  notes: `
 - New interface: "geospatial interface". Allows the participant to select a location on a map based on a geojson shapefile.
 - New experimental interface: "anonymisation interface". Allows the participant to encrypt sensitive/identifiable information, so that it cannot be read by the researcher. Not enabled by default. Contact the team for details.
 - New interface: "one-to-many dyad-census". Allows the participant to link multiple alters at a time.
@@ -22,103 +22,121 @@ const migrationV7toV8 = createMigration({
 - Added optional 'hint' property to form fields, allowing a markdown string to be displayed as additional guidance for participants.
 - Added optional 'showValidationHints' property to form fields, enabling automatic display of hints derived from validation rules.
 `,
-	migrate: (doc, deps) => {
-		const transformed = traverseAndTransform(doc as Record<string, unknown>, [
-			{
-				// Remove deprecated 'displayVariable' property from node and edge entity definitions
-				paths: ["codebook.node.*", "codebook.edge.*"],
-				fn: <V>(entityDefinition: V) => {
-					if (typeof entityDefinition === "object" && entityDefinition !== null) {
-						const typedEntity = entityDefinition as Record<string, unknown>;
-						delete typedEntity.displayVariable;
-					}
-					return entityDefinition;
-				},
-			},
-			{
-				// Remove 'options' property from Toggle boolean variables
-				paths: ["codebook.node.*.variables", "codebook.edge.*.variables", "codebook.ego.variables"],
-				fn: <V>(variables: V) => {
-					if (!variables || typeof variables !== "object") return variables;
+  migrate: (doc, deps) => {
+    const transformed = traverseAndTransform(doc as Record<string, unknown>, [
+      {
+        // Remove deprecated 'displayVariable' property from node and edge entity definitions
+        paths: ['codebook.node.*', 'codebook.edge.*'],
+        fn: <V>(entityDefinition: V) => {
+          if (
+            typeof entityDefinition === 'object' &&
+            entityDefinition !== null
+          ) {
+            const typedEntity = entityDefinition as Record<string, unknown>;
+            delete typedEntity.displayVariable;
+          }
+          return entityDefinition;
+        },
+      },
+      {
+        // Remove 'options' property from Toggle boolean variables
+        paths: [
+          'codebook.node.*.variables',
+          'codebook.edge.*.variables',
+          'codebook.ego.variables',
+        ],
+        fn: <V>(variables: V) => {
+          if (!variables || typeof variables !== 'object') return variables;
 
-					for (const variable of Object.values(variables as Record<string, unknown>)) {
-						if (typeof variable === "object" && variable !== null) {
-							const typedVariable = variable as Record<string, unknown>;
-							if (typedVariable.type === "boolean" && typedVariable.component === "Toggle") {
-								delete typedVariable.options;
-							}
-						}
-					}
-					return variables;
-				},
-			},
-			{
-				// Change filter.type value from "alter" to "node" to match entity naming elsewhere
-				paths: [
-					"stages[].panels[].filter.rules[].type",
-					"stages[].skipLogic.filter.rules[].type",
-					"stages[].filter.rules[].type",
-				],
-				fn: <V>(filterType: V) => {
-					if (filterType === "alter") return "node" as V;
-					return filterType;
-				},
-			},
-			{
-				// Remove top-level `filter` from stage types that don't support it in v8.
-				// V7 was lax so some protocols stored filter on stages like NameGenerator; v8 is strict.
-				paths: ["stages[]"],
-				fn: <V>(stage: V) => {
-					if (typeof stage !== "object" || stage === null) return stage;
-					const stagesWithoutFilter = new Set([
-						"NameGenerator",
-						"NameGeneratorQuickAdd",
-						"NameGeneratorRoster",
-						"Anonymisation",
-						"Information",
-						"EgoForm",
-						"FamilyPedigree",
-					]);
-					const typedStage = stage as Record<string, unknown>;
-					if (typeof typedStage.type === "string" && stagesWithoutFilter.has(typedStage.type)) {
-						delete typedStage.filter;
-					}
-					return stage;
-				},
-			},
-			{
-				// Rename 'iconVariant' to 'icon' and add 'shape' to node definitions
-				paths: ["codebook.node.*"],
-				fn: <V>(entityDefinition: V) => {
-					if (typeof entityDefinition === "object" && entityDefinition !== null) {
-						const typedEntity = entityDefinition as Record<string, unknown>;
-						if ("iconVariant" in typedEntity) {
-							typedEntity.icon = typedEntity.iconVariant;
-							delete typedEntity.iconVariant;
-						}
-						typedEntity.shape = { default: "circle" };
-					}
-					return entityDefinition;
-				},
-			},
-			{
-				// Update schema version and add experiments field
-				paths: [""],
-				fn: <V>(protocol: V) =>
-					({
-						...(protocol as Record<string, unknown>),
-						schemaVersion: 8 as const,
-						experiments: {},
-					}) as V,
-			},
-		]);
+          for (const variable of Object.values(
+            variables as Record<string, unknown>,
+          )) {
+            if (typeof variable === 'object' && variable !== null) {
+              const typedVariable = variable as Record<string, unknown>;
+              if (
+                typedVariable.type === 'boolean' &&
+                typedVariable.component === 'Toggle'
+              ) {
+                delete typedVariable.options;
+              }
+            }
+          }
+          return variables;
+        },
+      },
+      {
+        // Change filter.type value from "alter" to "node" to match entity naming elsewhere
+        paths: [
+          'stages[].panels[].filter.rules[].type',
+          'stages[].skipLogic.filter.rules[].type',
+          'stages[].filter.rules[].type',
+        ],
+        fn: <V>(filterType: V) => {
+          if (filterType === 'alter') return 'node' as V;
+          return filterType;
+        },
+      },
+      {
+        // Remove top-level `filter` from stage types that don't support it in v8.
+        // V7 was lax so some protocols stored filter on stages like NameGenerator; v8 is strict.
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          if (typeof stage !== 'object' || stage === null) return stage;
+          const stagesWithoutFilter = new Set([
+            'NameGenerator',
+            'NameGeneratorQuickAdd',
+            'NameGeneratorRoster',
+            'Anonymisation',
+            'Information',
+            'EgoForm',
+            'FamilyPedigree',
+          ]);
+          const typedStage = stage as Record<string, unknown>;
+          if (
+            typeof typedStage.type === 'string' &&
+            stagesWithoutFilter.has(typedStage.type)
+          ) {
+            delete typedStage.filter;
+          }
+          return stage;
+        },
+      },
+      {
+        // Rename 'iconVariant' to 'icon' and add 'shape' to node definitions
+        paths: ['codebook.node.*'],
+        fn: <V>(entityDefinition: V) => {
+          if (
+            typeof entityDefinition === 'object' &&
+            entityDefinition !== null
+          ) {
+            const typedEntity = entityDefinition as Record<string, unknown>;
+            if ('iconVariant' in typedEntity) {
+              typedEntity.icon = typedEntity.iconVariant;
+              delete typedEntity.iconVariant;
+            }
+            typedEntity.shape = { default: 'circle' };
+          }
+          return entityDefinition;
+        },
+      },
+      {
+        // Update schema version and add experiments field
+        paths: [''],
+        fn: <V>(protocol: V) =>
+          ({
+            ...(protocol as Record<string, unknown>),
+            schemaVersion: 8 as const,
+            experiments: {},
+          }) as V,
+      },
+    ]);
 
-		// Set name from required dependency
-		const result = transformed;
-		result.name = deps.name;
+    // Set name from required dependency
+    const result = transformed;
+    result.name = deps.name;
 
-		return result as ProtocolDocument<8>;
-	},
+    return result as ProtocolDocument<8>;
+  },
 });
 
 export default migrationV7toV8;

@@ -1,30 +1,31 @@
-"use client";
+'use client';
 
-import { ArrowUpIcon } from "lucide-react";
-import { motion } from "motion/react";
-import { useShallow } from "zustand/shallow";
-import { Button, type ButtonProps } from "../../Button";
-import { cx } from "../../utils/cva";
-import { useCollectionStore, useOptionalSortManager } from "../contexts";
-import type { SortDirection, SortProperty, SortType } from "../sorting/types";
+import { ArrowUpIcon } from 'lucide-react';
+import { motion } from 'motion/react';
+import { useShallow } from 'zustand/shallow';
+
+import { Button, type ButtonProps } from '../../Button';
+import { cx } from '../../utils/cva';
+import { useCollectionStore, useOptionalSortManager } from '../contexts';
+import type { SortDirection, SortProperty, SortType } from '../sorting/types';
 
 const MotionArrowIcon = motion.create(ArrowUpIcon);
 
 type CollectionSortButtonProps = {
-	/** Property to sort by when clicked */
-	property: SortProperty;
-	/** Type of comparison to use */
-	type: SortType;
-	/** Display label for the button */
-	label: string;
-	/** Show sort direction indicator when active */
-	showDirectionIndicator?: boolean;
-	/** Additional class name */
-	className?: string;
-	/** Button variant */
-	variant?: ButtonProps["variant"];
-	/** Button size */
-	size?: ButtonProps["size"];
+  /** Property to sort by when clicked */
+  property: SortProperty;
+  /** Type of comparison to use */
+  type: SortType;
+  /** Display label for the button */
+  label: string;
+  /** Show sort direction indicator when active */
+  showDirectionIndicator?: boolean;
+  /** Additional class name */
+  className?: string;
+  /** Button variant */
+  variant?: ButtonProps['variant'];
+  /** Button size */
+  size?: ButtonProps['size'];
 };
 
 /**
@@ -43,60 +44,65 @@ type CollectionSortButtonProps = {
  * ```
  */
 export function CollectionSortButton({
-	property,
-	type,
-	label,
-	showDirectionIndicator = true,
-	className,
-	variant = "default",
-	size = "md",
+  property,
+  type,
+  label,
+  showDirectionIndicator = true,
+  className,
+  variant = 'default',
+  size = 'md',
 }: CollectionSortButtonProps) {
-	const sortManager = useOptionalSortManager();
+  const sortManager = useOptionalSortManager();
 
-	// Subscribe directly to the sort state we render. SortManager is stable,
-	// so it cannot trigger re-renders on its own.
-	const { sortProperty, sortDirection } = useCollectionStore<
-		unknown,
-		{ sortProperty: SortProperty | null; sortDirection: SortDirection }
-	>(
-		useShallow((state) => ({
-			sortProperty: state.sortProperty,
-			sortDirection: state.sortDirection,
-		})),
-	);
+  // Subscribe directly to the sort state we render. SortManager is stable,
+  // so it cannot trigger re-renders on its own.
+  const { sortProperty, sortDirection } = useCollectionStore<
+    unknown,
+    { sortProperty: SortProperty | null; sortDirection: SortDirection }
+  >(
+    useShallow((state) => ({
+      sortProperty: state.sortProperty,
+      sortDirection: state.sortDirection,
+    })),
+  );
 
-	if (!sortManager) {
-		// eslint-disable-next-line no-console
-		console.warn("CollectionSortButton must be used within a Collection component");
-		return null;
-	}
+  if (!sortManager) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      'CollectionSortButton must be used within a Collection component',
+    );
+    return null;
+  }
 
-	const isActive =
-		sortProperty !== null &&
-		(Array.isArray(property) && Array.isArray(sortProperty)
-			? property.length === sortProperty.length && property.every((p, i) => p === sortProperty[i])
-			: sortProperty === property);
-	const direction: SortDirection | null = isActive ? sortDirection : null;
+  const isActive =
+    sortProperty !== null &&
+    (Array.isArray(property) && Array.isArray(sortProperty)
+      ? property.length === sortProperty.length &&
+        property.every((p, i) => p === sortProperty[i])
+      : sortProperty === property);
+  const direction: SortDirection | null = isActive ? sortDirection : null;
 
-	const handleClick = () => {
-		sortManager.sortBy(property, type);
-	};
+  const handleClick = () => {
+    sortManager.sortBy(property, type);
+  };
 
-	return (
-		<Button
-			variant={variant}
-			size={size}
-			onClick={handleClick}
-			className={cx(isActive && "bg-accent text-accent-contrast", className)}
-			aria-pressed={isActive}
-			aria-label={`Sort by ${label}${isActive ? ` (${direction === "asc" ? "ascending" : "descending"})` : ""}`}
-			icon={
-				showDirectionIndicator && isActive ? (
-					<MotionArrowIcon animate={{ rotate: direction === "asc" ? 0 : 180 }} />
-				) : undefined
-			}
-		>
-			{label}
-		</Button>
-	);
+  return (
+    <Button
+      variant={variant}
+      size={size}
+      onClick={handleClick}
+      className={cx(isActive && 'bg-accent text-accent-contrast', className)}
+      aria-pressed={isActive}
+      aria-label={`Sort by ${label}${isActive ? ` (${direction === 'asc' ? 'ascending' : 'descending'})` : ''}`}
+      icon={
+        showDirectionIndicator && isActive ? (
+          <MotionArrowIcon
+            animate={{ rotate: direction === 'asc' ? 0 : 180 }}
+          />
+        ) : undefined
+      }
+    >
+      {label}
+    </Button>
+  );
 }

@@ -5,8 +5,9 @@
  * Collection component system.
  */
 
-import { get } from "es-toolkit/compat";
-import type { SortDirection, SortRule } from "./types";
+import { get } from 'es-toolkit/compat';
+
+import type { SortDirection, SortRule } from './types';
 
 type Item = Record<string, unknown>;
 
@@ -23,13 +24,14 @@ const collator = new Intl.Collator();
  * Used for FIFO/LIFO sorting by original array position.
  */
 const withCreatedIndex = <T extends Item>(items: T[]) =>
-	items.map((item, _createdIndex) => ({ ...item, _createdIndex }));
+  items.map((item, _createdIndex) => ({ ...item, _createdIndex }));
 
 /**
  * Removes the '_createdIndex' prop from items after sorting.
  */
-const withoutCreatedIndex = <T extends Item>(items: (T & { _createdIndex?: number })[]) =>
-	items.map(({ _createdIndex: _, ...originalItem }) => originalItem as T);
+const withoutCreatedIndex = <T extends Item>(
+  items: (T & { _createdIndex?: number })[],
+) => items.map(({ _createdIndex: _, ...originalItem }) => originalItem as T);
 
 type PropertyGetter<T extends Item> = (item: T) => unknown;
 
@@ -39,29 +41,31 @@ type PropertyGetter<T extends Item> = (item: T) => unknown;
  * Ascending order.
  */
 const asc =
-	<T extends Item>(propertyGetter: PropertyGetter<T>) =>
-	(a: T, b: T) => {
-		const firstValue = propertyGetter(a);
-		const secondValue = propertyGetter(b);
+  <T extends Item>(propertyGetter: PropertyGetter<T>) =>
+  (a: T, b: T) => {
+    const firstValue = propertyGetter(a);
+    const secondValue = propertyGetter(b);
 
-		if (firstValue === null || firstValue === undefined) {
-			return 1;
-		}
+    if (firstValue === null || firstValue === undefined) {
+      return 1;
+    }
 
-		if (secondValue === null || secondValue === undefined) {
-			return -1;
-		}
+    if (secondValue === null || secondValue === undefined) {
+      return -1;
+    }
 
-		return -Number(firstValue < secondValue) || +Number(firstValue > secondValue);
-	};
+    return (
+      -Number(firstValue < secondValue) || +Number(firstValue > secondValue)
+    );
+  };
 
 /**
  * Descending order - reverses the comparison.
  */
 const desc =
-	<T extends Item>(propertyGetter: PropertyGetter<T>) =>
-	(a: T, b: T) =>
-		asc(propertyGetter)(b, a);
+  <T extends Item>(propertyGetter: PropertyGetter<T>) =>
+  (a: T, b: T) =>
+    asc(propertyGetter)(b, a);
 
 export type SortFn<T extends Item> = (a: T, b: T) => number;
 
@@ -72,15 +76,18 @@ export type SortFn<T extends Item> = (a: T, b: T) => number;
  * Used to chain together multiple sort functions.
  */
 const chain =
-	<T extends Item>(...fns: SortFn<T>[]) =>
-	(a: T, b: T) =>
-		fns.reduce((diff, fn) => diff || fn(a, b), 0);
+  <T extends Item>(...fns: SortFn<T>[]) =>
+  (a: T, b: T) =>
+    fns.reduce((diff, fn) => diff || fn(a, b), 0);
 
 /**
  * Get the value from an item at the given property path.
  */
-const getValue = <T extends Item>(item: T, property: string | string[]): unknown => {
-	return get(item, property, null);
+const getValue = <T extends Item>(
+  item: T,
+  property: string | string[],
+): unknown => {
+  return get(item, property, null);
 };
 
 /**
@@ -88,128 +95,150 @@ const getValue = <T extends Item>(item: T, property: string | string[]): unknown
  * Handles null/undefined values by placing them at the end.
  */
 const stringFunction =
-	<T extends Item>(property: string | string[], direction: SortDirection): SortFn<T> =>
-	(a: T, b: T) => {
-		const firstValue = getValue(a, property) as string | null;
-		const secondValue = getValue(b, property) as string | null;
+  <T extends Item>(
+    property: string | string[],
+    direction: SortDirection,
+  ): SortFn<T> =>
+  (a: T, b: T) => {
+    const firstValue = getValue(a, property) as string | null;
+    const secondValue = getValue(b, property) as string | null;
 
-		if (firstValue === null || typeof firstValue !== "string") {
-			return 1;
-		}
+    if (firstValue === null || typeof firstValue !== 'string') {
+      return 1;
+    }
 
-		if (secondValue === null || typeof secondValue !== "string") {
-			return -1;
-		}
+    if (secondValue === null || typeof secondValue !== 'string') {
+      return -1;
+    }
 
-		if (direction === "asc") {
-			return collator.compare(firstValue, secondValue);
-		}
+    if (direction === 'asc') {
+      return collator.compare(firstValue, secondValue);
+    }
 
-		return collator.compare(secondValue, firstValue);
-	};
+    return collator.compare(secondValue, firstValue);
+  };
 
 /**
  * Number comparison sort function.
  */
 const numberFunction =
-	<T extends Item>(property: string | string[], direction: SortDirection): SortFn<T> =>
-	(a: T, b: T) => {
-		const firstValue = getValue(a, property);
-		const secondValue = getValue(b, property);
+  <T extends Item>(
+    property: string | string[],
+    direction: SortDirection,
+  ): SortFn<T> =>
+  (a: T, b: T) => {
+    const firstValue = getValue(a, property);
+    const secondValue = getValue(b, property);
 
-		// Handle null/undefined/non-number values
-		const firstNum =
-			typeof firstValue === "number" && !Number.isNaN(firstValue)
-				? firstValue
-				: direction === "asc"
-					? Number.POSITIVE_INFINITY
-					: Number.NEGATIVE_INFINITY;
-		const secondNum =
-			typeof secondValue === "number" && !Number.isNaN(secondValue)
-				? secondValue
-				: direction === "asc"
-					? Number.POSITIVE_INFINITY
-					: Number.NEGATIVE_INFINITY;
+    // Handle null/undefined/non-number values
+    const firstNum =
+      typeof firstValue === 'number' && !Number.isNaN(firstValue)
+        ? firstValue
+        : direction === 'asc'
+          ? Number.POSITIVE_INFINITY
+          : Number.NEGATIVE_INFINITY;
+    const secondNum =
+      typeof secondValue === 'number' && !Number.isNaN(secondValue)
+        ? secondValue
+        : direction === 'asc'
+          ? Number.POSITIVE_INFINITY
+          : Number.NEGATIVE_INFINITY;
 
-		if (direction === "asc") {
-			return firstNum - secondNum;
-		}
-		return secondNum - firstNum;
-	};
+    if (direction === 'asc') {
+      return firstNum - secondNum;
+    }
+    return secondNum - firstNum;
+  };
 
 /**
  * Date comparison sort function.
  */
 const dateFunction =
-	<T extends Item>(property: string | string[], direction: SortDirection): SortFn<T> =>
-	(a: T, b: T) => {
-		const firstValueString = getValue(a, property) as string | null;
-		const secondValueString = getValue(b, property) as string | null;
+  <T extends Item>(
+    property: string | string[],
+    direction: SortDirection,
+  ): SortFn<T> =>
+  (a: T, b: T) => {
+    const firstValueString = getValue(a, property) as string | null;
+    const secondValueString = getValue(b, property) as string | null;
 
-		const firstValueDate = Date.parse(firstValueString ?? "");
-		const secondValueDate = Date.parse(secondValueString ?? "");
+    const firstValueDate = Date.parse(firstValueString ?? '');
+    const secondValueDate = Date.parse(secondValueString ?? '');
 
-		if (Number.isNaN(firstValueDate)) {
-			return 1;
-		}
+    if (Number.isNaN(firstValueDate)) {
+      return 1;
+    }
 
-		if (Number.isNaN(secondValueDate)) {
-			return -1;
-		}
+    if (Number.isNaN(secondValueDate)) {
+      return -1;
+    }
 
-		if (direction === "asc") {
-			return -Number(firstValueDate < secondValueDate) || +Number(firstValueDate > secondValueDate);
-		}
+    if (direction === 'asc') {
+      return (
+        -Number(firstValueDate < secondValueDate) ||
+        +Number(firstValueDate > secondValueDate)
+      );
+    }
 
-		return -Number(firstValueDate > secondValueDate) || +Number(firstValueDate < secondValueDate);
-	};
+    return (
+      -Number(firstValueDate > secondValueDate) ||
+      +Number(firstValueDate < secondValueDate)
+    );
+  };
 
 /**
  * Boolean comparison sort function.
  * false < true in ascending order.
  */
 const booleanFunction =
-	<T extends Item>(property: string | string[], direction: SortDirection): SortFn<T> =>
-	(a: T, b: T) => {
-		const firstValue = getValue(a, property);
-		const secondValue = getValue(b, property);
+  <T extends Item>(
+    property: string | string[],
+    direction: SortDirection,
+  ): SortFn<T> =>
+  (a: T, b: T) => {
+    const firstValue = getValue(a, property);
+    const secondValue = getValue(b, property);
 
-		// Convert to boolean, default false for null/undefined
-		const firstBool = Boolean(firstValue);
-		const secondBool = Boolean(secondValue);
+    // Convert to boolean, default false for null/undefined
+    const firstBool = Boolean(firstValue);
+    const secondBool = Boolean(secondValue);
 
-		if (firstBool === secondBool) return 0;
+    if (firstBool === secondBool) return 0;
 
-		if (direction === "asc") {
-			return firstBool ? 1 : -1;
-		}
-		return firstBool ? -1 : 1;
-	};
+    if (direction === 'asc') {
+      return firstBool ? 1 : -1;
+    }
+    return firstBool ? -1 : 1;
+  };
 
 /**
  * Transforms a sort rule into a sort function compatible with Array.sort.
  */
-const getSortFunction = <T extends Item>(rule: SortRule): SortFn<T & { _createdIndex?: number }> => {
-	const { property, direction = "asc", type } = rule;
+const getSortFunction = <T extends Item>(
+  rule: SortRule,
+): SortFn<T & { _createdIndex?: number }> => {
+  const { property, direction = 'asc', type } = rule;
 
-	// LIFO/FIFO rule sorted by _createdIndex (original array position)
-	if (property === "*") {
-		return direction === "asc" ? asc((item) => get(item, "_createdIndex")) : desc((item) => get(item, "_createdIndex"));
-	}
+  // LIFO/FIFO rule sorted by _createdIndex (original array position)
+  if (property === '*') {
+    return direction === 'asc'
+      ? asc((item) => get(item, '_createdIndex'))
+      : desc((item) => get(item, '_createdIndex'));
+  }
 
-	switch (type) {
-		case "string":
-			return stringFunction(property, direction);
-		case "number":
-			return numberFunction(property, direction);
-		case "date":
-			return dateFunction(property, direction);
-		case "boolean":
-			return booleanFunction(property, direction);
-		default:
-			// Default to string comparison
-			return stringFunction(property, direction);
-	}
+  switch (type) {
+    case 'string':
+      return stringFunction(property, direction);
+    case 'number':
+      return numberFunction(property, direction);
+    case 'date':
+      return dateFunction(property, direction);
+    case 'boolean':
+      return booleanFunction(property, direction);
+    default:
+      // Default to string comparison
+      return stringFunction(property, direction);
+  }
 };
 
 /**
@@ -245,19 +274,21 @@ const getSortFunction = <T extends Item>(rule: SortRule): SortFn<T & { _createdI
  * ```
  */
 const createCollectionSorter = <T extends Item = Item>(
-	sortRules: SortRule[] = [],
-	prefixFns: SortFn<T & { _createdIndex?: number }>[] = [],
+  sortRules: SortRule[] = [],
+  prefixFns: SortFn<T & { _createdIndex?: number }>[] = [],
 ) => {
-	const sortFunctions = sortRules.map(getSortFunction<T>);
-	const allFns = [...prefixFns, ...sortFunctions];
+  const sortFunctions = sortRules.map(getSortFunction<T>);
+  const allFns = [...prefixFns, ...sortFunctions];
 
-	if (allFns.length === 0) {
-		return (items: T[]) => items;
-	}
+  if (allFns.length === 0) {
+    return (items: T[]) => items;
+  }
 
-	return (items: T[]) => {
-		return withoutCreatedIndex(withCreatedIndex(items).toSorted(chain(...allFns)));
-	};
+  return (items: T[]) => {
+    return withoutCreatedIndex(
+      withCreatedIndex(items).toSorted(chain(...allFns)),
+    );
+  };
 };
 
 export default createCollectionSorter;

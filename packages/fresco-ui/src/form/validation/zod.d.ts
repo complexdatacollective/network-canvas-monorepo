@@ -5,18 +5,17 @@
  * hint text that can be displayed to users filling out forms.
  */
 
-declare module "zod" {
-	type GlobalMeta = {
-		// add new fields here
-		hintText?: string;
-	};
+declare module 'zod' {
+  type GlobalMeta = {
+    // add new fields here
+    hintText?: string;
+  };
 }
 
-declare module "zod/mini" {
-	type GlobalMeta = {
-		hintText?: string;
-	};
+declare module 'zod/mini' {
+  type GlobalMeta = {
+    hintText?: string;
+  };
 }
 
 // forces TypeScript to consider the file a module
-

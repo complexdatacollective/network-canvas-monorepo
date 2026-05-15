@@ -75,6 +75,7 @@ Expected: prints `1` (just the shared-consts build, no deps to build).
 ### Task 2: Update `turbo.json` — add `//#lint`, `//#knip`, `build-storybook`; tighten `build` inputs
 
 **Files:**
+
 - Modify: `turbo.json`
 
 - [ ] **Step 1: Replace `turbo.json` contents**
@@ -83,104 +84,104 @@ Overwrite `turbo.json` with:
 
 ```jsonc
 {
-	"$schema": "https://turbo.build/schema.json",
-	"ui": "tui",
-	"tasks": {
-		"build": {
-			"dependsOn": ["^build"],
-			"inputs": [
-				"src/**",
-				"tsconfig*.json",
-				"vite.config.*",
-				"electron.vite.config.*",
-				"next.config.*",
-				"package.json",
-				"pnpm-lock.yaml"
-			],
-			"outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"]
-		},
-		"network-canvas-architect#build": {
-			"dependsOn": ["^build", "network-canvas-interviewer#build"],
-			"inputs": [
-				"src/**",
-				"scripts/**",
-				"tsconfig*.json",
-				"electron.vite.config.*",
-				"electron-builder.config.*",
-				"package.json"
-			],
-			"outputs": ["out/**", "dist/**"]
-		},
-		"@codaco/tailwind-config#build": {
-			"dependsOn": ["^build"],
-			"inputs": ["shared/plugins/**/*.ts", "tsconfig*.json", "package.json"],
-			"outputs": ["shared/plugins/**/*.js"]
-		},
-		"build-storybook": {
-			"dependsOn": ["^build"],
-			"inputs": [
-				"src/**",
-				".storybook/**",
-				"stories/**",
-				"package.json",
-				"tsconfig*.json"
-			],
-			"outputs": ["storybook-static/**"]
-		},
-		"//#lint": {
-			"inputs": [
-				"**/*.{ts,tsx,js,jsx,mjs,cjs,json}",
-				"biome.json",
-				"!**/dist/**",
-				"!**/out/**",
-				"!**/.next/**",
-				"!**/storybook-static/**",
-				"!**/node_modules/**"
-			],
-			"outputs": []
-		},
-		"//#knip": {
-			"inputs": [
-				"**/*.{ts,tsx,js,jsx,mjs,cjs}",
-				"**/package.json",
-				"knip.json",
-				"pnpm-workspace.yaml",
-				"pnpm-lock.yaml",
-				"!**/dist/**",
-				"!**/out/**",
-				"!**/.next/**",
-				"!**/node_modules/**"
-			],
-			"outputs": []
-		},
-		"dev": {
-			"dependsOn": ["^build"],
-			"cache": false,
-			"persistent": true
-		},
-		"test": {
-			"dependsOn": ["^build"],
-			"inputs": ["src/**", "__tests__/**", "vitest.config.*", "package.json"],
-			"outputs": []
-		},
-		"test:watch": {
-			"cache": false,
-			"persistent": true
-		},
-		"test:e2e": {
-			"dependsOn": ["build"],
-			"cache": false
-		},
-		"test:e2e:headed": {
-			"dependsOn": ["build"],
-			"cache": false
-		},
-		"typecheck": {
-			"dependsOn": ["^build"],
-			"inputs": ["src/**", "tsconfig*.json", "package.json"],
-			"outputs": []
-		}
-	}
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "src/**",
+        "tsconfig*.json",
+        "vite.config.*",
+        "electron.vite.config.*",
+        "next.config.*",
+        "package.json",
+        "pnpm-lock.yaml",
+      ],
+      "outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"],
+    },
+    "network-canvas-architect#build": {
+      "dependsOn": ["^build", "network-canvas-interviewer#build"],
+      "inputs": [
+        "src/**",
+        "scripts/**",
+        "tsconfig*.json",
+        "electron.vite.config.*",
+        "electron-builder.config.*",
+        "package.json",
+      ],
+      "outputs": ["out/**", "dist/**"],
+    },
+    "@codaco/tailwind-config#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["shared/plugins/**/*.ts", "tsconfig*.json", "package.json"],
+      "outputs": ["shared/plugins/**/*.js"],
+    },
+    "build-storybook": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "src/**",
+        ".storybook/**",
+        "stories/**",
+        "package.json",
+        "tsconfig*.json",
+      ],
+      "outputs": ["storybook-static/**"],
+    },
+    "//#lint": {
+      "inputs": [
+        "**/*.{ts,tsx,js,jsx,mjs,cjs,json}",
+        "biome.json",
+        "!**/dist/**",
+        "!**/out/**",
+        "!**/.next/**",
+        "!**/storybook-static/**",
+        "!**/node_modules/**",
+      ],
+      "outputs": [],
+    },
+    "//#knip": {
+      "inputs": [
+        "**/*.{ts,tsx,js,jsx,mjs,cjs}",
+        "**/package.json",
+        "knip.json",
+        "pnpm-workspace.yaml",
+        "pnpm-lock.yaml",
+        "!**/dist/**",
+        "!**/out/**",
+        "!**/.next/**",
+        "!**/node_modules/**",
+      ],
+      "outputs": [],
+    },
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true,
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", "__tests__/**", "vitest.config.*", "package.json"],
+      "outputs": [],
+    },
+    "test:watch": {
+      "cache": false,
+      "persistent": true,
+    },
+    "test:e2e": {
+      "dependsOn": ["build"],
+      "cache": false,
+    },
+    "test:e2e:headed": {
+      "dependsOn": ["build"],
+      "cache": false,
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", "tsconfig*.json", "package.json"],
+      "outputs": [],
+    },
+  },
 }
 ```
 
@@ -233,6 +234,7 @@ Sign in to Netlify → User settings → Applications → Personal access tokens
 - [ ] **Step 2: Capture site IDs**
 
 In the Netlify dashboard:
+
 - Open the documentation site → Site settings → Site details → copy the **Site ID** (UUID).
 - Open the architect-web site → Site settings → Site details → copy the **Site ID**.
 
@@ -240,11 +242,11 @@ In the Netlify dashboard:
 
 Settings → Secrets and variables → Actions → New repository secret. Add:
 
-| Name | Value |
-|---|---|
-| `NETLIFY_AUTH_TOKEN` | the personal access token from Step 1 |
-| `NETLIFY_SITE_ID_DOCS` | documentation site UUID |
-| `NETLIFY_SITE_ID_ARCHITECT` | architect-web site UUID |
+| Name                        | Value                                 |
+| --------------------------- | ------------------------------------- |
+| `NETLIFY_AUTH_TOKEN`        | the personal access token from Step 1 |
+| `NETLIFY_SITE_ID_DOCS`      | documentation site UUID               |
+| `NETLIFY_SITE_ID_ARCHITECT` | architect-web site UUID               |
 
 - [ ] **Step 4: Verify existing secrets are present**
 
@@ -264,6 +266,7 @@ If any are missing, the corresponding job will fail at runtime — pause and rec
 ### Task 4: Replace `ci-and-release.yml` with the new workflow
 
 **Files:**
+
 - Replace: `.github/workflows/ci-and-release.yml`
 
 - [ ] **Step 1: Overwrite the file**
@@ -300,10 +303,10 @@ jobs:
       interview_storybook: ${{ steps.flags.outputs.interview_storybook }}
       interview_e2e: ${{ steps.flags.outputs.interview_e2e }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version-file: '.nvmrc'
       - id: flags
@@ -338,9 +341,9 @@ jobs:
       PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
       GITHUB_TOKEN: ${{ secrets.TEST_PROTOCOL_TOKEN }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v5
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
@@ -657,7 +660,7 @@ jobs:
           pnpm exec turbo run build \
             --filter='!network-canvas-interviewer' \
             --filter='!network-canvas-architect'
-      - uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b  # v1
+      - uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1
         with:
           version: pnpm run version-packages
           publish: pnpm run publish-packages
@@ -687,6 +690,7 @@ git commit -m "feat(ci): consolidate workflow with turbo cache and turbo-ignore 
 ### Task 5: Delete superseded workflow files and the changeset build script
 
 **Files:**
+
 - Delete: `.github/workflows/interview-e2e.yml`
 - Delete: `.github/workflows/chromatic.yml`
 - Delete: `.github/workflows/documentation-check-links.yml`
@@ -786,6 +790,7 @@ Once `quality` is green, proceed.
 ### Task 7: Verify `deploy-netlify` end-to-end with a docs-only change
 
 **Files:**
+
 - Modify (test commit): `apps/documentation/README.md` (any innocuous edit) — to be reverted before merge.
 
 - [ ] **Step 1: Create a test commit that touches the docs app**
@@ -825,6 +830,7 @@ git push
 ### Task 8: Verify `chromatic-fresco-ui` with a fresco-ui-only change
 
 **Files:**
+
 - Modify (test commit): any file under `packages/fresco-ui/src/`, e.g. add a blank line to `packages/fresco-ui/src/<some component file>` — to be reverted.
 
 - [ ] **Step 1: Make and push a trivial change to a fresco-ui source file**
@@ -856,6 +862,7 @@ git push
 ### Task 9: Verify `interview-e2e` and report deploy
 
 **Files:**
+
 - Modify (test commit): a file under `packages/interview/src/`, to be reverted.
 
 - [ ] **Step 1: Push a trivial change to an interview source file**

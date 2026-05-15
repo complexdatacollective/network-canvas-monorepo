@@ -1,5 +1,5 @@
 ---
-"@codaco/interview": prerelease
+'@codaco/interview': prerelease
 ---
 
 Several CategoricalBin layout/render fixes and motion-gating cleanup:

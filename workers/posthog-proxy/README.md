@@ -33,6 +33,7 @@ This Cloudflare Worker acts as a reverse proxy for PostHog analytics, forwarding
 5. Click **Add Custom Domain**
 
 Cloudflare will automatically:
+
 - Create the necessary DNS records
 - Provision SSL/TLS certificates
 - Route traffic from your custom domain to the worker
@@ -85,6 +86,7 @@ us.i.posthog.com (PostHog US Cloud)
 ### CORS Handling
 
 The worker automatically handles CORS:
+
 - Accepts `OPTIONS` preflight requests
 - Adds appropriate `Access-Control-Allow-*` headers
 - Allows requests from any origin
@@ -111,6 +113,7 @@ The worker doesn't require environment variables in basic configuration, but you
 ## Cost Estimates
 
 Cloudflare Workers pricing (as of 2025):
+
 - **Free tier**: 100,000 requests/day
 - **Paid plan**: $5/month for 10M requests + $0.50 per additional million
 
@@ -119,16 +122,19 @@ Given typical analytics usage, the free tier should be sufficient for most deplo
 ## Troubleshooting
 
 ### Worker not receiving requests
+
 - Verify DNS is pointing to Cloudflare
 - Check custom domain is properly configured
 - Ensure SSL/TLS mode is "Full" or "Full (strict)"
 
 ### CORS errors
+
 - Verify the worker is adding CORS headers (check Network tab)
 - Ensure the worker code includes the `handleOptions()` function
 - Check that client is sending proper `Origin` header
 
 ### 524 timeout errors
+
 - PostHog might be slow to respond
 - Consider adding timeout handling in the worker
 - Check PostHog status page: status.posthog.com

@@ -1,109 +1,109 @@
 {
-	"name": "@codaco/interview",
-	"version": "1.0.0-alpha.20",
-	"type": "module",
-	"license": "MIT",
-	"description": "Network Canvas interview engine — Shell component, synthetic network generator, session contract.",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
-		"directory": "packages/interview"
-	},
-	"sideEffects": [
-		"**/*.css",
-		"**/Shell.js"
-	],
-	"files": [
-		"dist"
-	],
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"default": "./dist/index.js"
-		},
-		"./styles.css": "./dist/styles.css"
-	},
-	"scripts": {
-		"build": "vite build",
-		"dev": "vite build --watch",
-		"typecheck": "tsc --build --noEmit && tsc -p tsconfig.node.json --noEmit",
-		"test": "vitest run --project=units",
-		"test:storybook": "vitest run --project=storybook",
-		"test:e2e": "./e2e/scripts/run.sh",
-		"test:e2e:update-snapshots": "./e2e/scripts/run.sh --update-snapshots",
-		"test:e2e:headed": "pnpm turbo build --filter @codaco/interview && pnpm exec vite build --config e2e/host/vite.config.ts && playwright test --config e2e/playwright.config.ts --headed",
-		"dev:host": "tsx e2e/scripts/dev-host.ts",
-		"storybook": "storybook dev -p 6006",
-		"build-storybook": "storybook build",
-		"chromatic": "chromatic --exit-once-uploaded",
-		"prepublishOnly": "pnpm build",
-		"clean": "rm -rf .turbo node_modules dist"
-	},
-	"peerDependencies": {
-		"@codaco/fresco-ui": "workspace:^",
-		"@codaco/protocol-validation": "workspace:^",
-		"@codaco/shared-consts": "workspace:^",
-		"@codaco/tailwind-config": "workspace:^",
-		"motion": "catalog:",
-		"react": "catalog:",
-		"react-dom": "catalog:",
-		"tailwindcss": "catalog:"
-	},
-	"dependencies": {
-		"@base-ui/react": "catalog:",
-		"@codaco/network-query": "workspace:^",
-		"@faker-js/faker": "catalog:",
-		"@mapbox/search-js-react": "^1.5.1",
-		"@reduxjs/toolkit": "catalog:",
-		"concaveman": "^2.0.0",
-		"csvtojson": "^2.0.14",
-		"d3-force": "^3.0.0",
-		"es-toolkit": "catalog:",
-		"immer": "catalog:",
-		"lucide-react": "catalog:",
-		"mapbox-gl": "^3.23.1",
-		"ohash": "^2.0.11",
-		"posthog-js": "catalog:",
-		"react-redux": "catalog:",
-		"redux-logger": "catalog:",
-		"redux-thunk": "^3.1.0",
-		"uuid": "catalog:",
-		"zod": "catalog:",
-		"zustand": "catalog:"
-	},
-	"devDependencies": {
-		"@chromatic-com/storybook": "catalog:",
-		"@codaco/tsconfig": "workspace:*",
-		"@playwright/test": "^1.60.0",
-		"@storybook/addon-a11y": "^10.4.0",
-		"@storybook/addon-docs": "^10.4.0",
-		"@storybook/addon-vitest": "^10.4.0",
-		"@storybook/react-vite": "^10.4.0",
-		"@tailwindcss/vite": "catalog:",
-		"@testing-library/react": "^16.3.0",
-		"@types/concaveman": "^1.1.6",
-		"@types/d3-force": "^3.0.10",
-		"@types/node": "catalog:",
-		"@types/react": "catalog:",
-		"@types/react-dom": "catalog:",
-		"@types/redux-logger": "^3.0.13",
-		"@vitejs/plugin-react": "catalog:",
-		"@vitest/browser": "catalog:",
-		"@vitest/browser-playwright": "catalog:",
-		"chalk": "5.6.2",
-		"chromatic": "catalog:",
-		"jsdom": "^29.1.1",
-		"playwright": "^1.60.0",
-		"storybook": "^10.4.0",
-		"superjson": "^2.2.6",
-		"tinyglobby": "^0.2.16",
-		"tsx": "catalog:",
-		"typescript": "catalog:",
-		"vite": "catalog:",
-		"vite-plugin-dts": "catalog:",
-		"vitest": "catalog:"
-	},
-	"publishConfig": {
-		"access": "public"
-	}
+  "name": "@codaco/interview",
+  "version": "1.0.0-alpha.20",
+  "description": "Network Canvas interview engine — Shell component, synthetic network generator, session contract.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+    "directory": "packages/interview"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "**/*.css",
+    "**/Shell.js"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "typecheck": "tsc --build --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "test": "vitest run --project=units",
+    "test:storybook": "vitest run --project=storybook",
+    "test:e2e": "./e2e/scripts/run.sh",
+    "test:e2e:update-snapshots": "./e2e/scripts/run.sh --update-snapshots",
+    "test:e2e:headed": "pnpm turbo build --filter @codaco/interview && pnpm exec vite build --config e2e/host/vite.config.ts && playwright test --config e2e/playwright.config.ts --headed",
+    "dev:host": "tsx e2e/scripts/dev-host.ts",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "chromatic": "chromatic --exit-once-uploaded",
+    "prepublishOnly": "pnpm build",
+    "clean": "rm -rf .turbo node_modules dist"
+  },
+  "dependencies": {
+    "@base-ui/react": "catalog:",
+    "@codaco/network-query": "workspace:^",
+    "@faker-js/faker": "catalog:",
+    "@mapbox/search-js-react": "^1.5.1",
+    "@reduxjs/toolkit": "catalog:",
+    "concaveman": "^2.0.0",
+    "csvtojson": "^2.0.14",
+    "d3-force": "^3.0.0",
+    "es-toolkit": "catalog:",
+    "immer": "catalog:",
+    "lucide-react": "catalog:",
+    "mapbox-gl": "^3.23.1",
+    "ohash": "^2.0.11",
+    "posthog-js": "catalog:",
+    "react-redux": "catalog:",
+    "redux-logger": "catalog:",
+    "redux-thunk": "^3.1.0",
+    "uuid": "catalog:",
+    "zod": "catalog:",
+    "zustand": "catalog:"
+  },
+  "devDependencies": {
+    "@chromatic-com/storybook": "catalog:",
+    "@codaco/tsconfig": "workspace:*",
+    "@playwright/test": "^1.60.0",
+    "@storybook/addon-a11y": "^10.4.0",
+    "@storybook/addon-docs": "^10.4.0",
+    "@storybook/addon-vitest": "^10.4.0",
+    "@storybook/react-vite": "^10.4.0",
+    "@tailwindcss/vite": "catalog:",
+    "@testing-library/react": "^16.3.0",
+    "@types/concaveman": "^1.1.6",
+    "@types/d3-force": "^3.0.10",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@types/redux-logger": "^3.0.13",
+    "@vitejs/plugin-react": "catalog:",
+    "@vitest/browser": "catalog:",
+    "@vitest/browser-playwright": "catalog:",
+    "chalk": "5.6.2",
+    "chromatic": "catalog:",
+    "jsdom": "^29.1.1",
+    "playwright": "^1.60.0",
+    "storybook": "^10.4.0",
+    "superjson": "^2.2.6",
+    "tinyglobby": "^0.2.16",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@codaco/fresco-ui": "workspace:^",
+    "@codaco/protocol-validation": "workspace:^",
+    "@codaco/shared-consts": "workspace:^",
+    "@codaco/tailwind-config": "workspace:^",
+    "motion": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:"
+  }
 }

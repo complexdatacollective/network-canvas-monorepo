@@ -1,85 +1,85 @@
 {
-	"name": "@codaco/network-exporters",
-	"version": "1.0.2",
-	"description": "Effect-TS pipeline for exporting Network Canvas interview data as CSV and GraphML.",
-	"license": "GPL-3.0-or-later",
-	"author": "Complex Data Collective <hello@complexdatacollective.org>",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git"
-	},
-	"type": "module",
-	"main": "./dist/pipeline.js",
-	"types": "./dist/pipeline.d.ts",
-	"exports": {
-		"./pipeline": {
-			"types": "./dist/pipeline.d.ts",
-			"import": "./dist/pipeline.js"
-		},
-		"./options": {
-			"types": "./dist/options.d.ts",
-			"import": "./dist/options.js"
-		},
-		"./input": {
-			"types": "./dist/input.d.ts",
-			"import": "./dist/input.js"
-		},
-		"./output": {
-			"types": "./dist/output.d.ts",
-			"import": "./dist/output.js"
-		},
-		"./events": {
-			"types": "./dist/events.d.ts",
-			"import": "./dist/events.js"
-		},
-		"./errors": {
-			"types": "./dist/errors.d.ts",
-			"import": "./dist/errors.js"
-		},
-		"./services/InterviewRepository": {
-			"types": "./dist/services/InterviewRepository.d.ts",
-			"import": "./dist/services/InterviewRepository.js"
-		},
-		"./services/ProtocolRepository": {
-			"types": "./dist/services/ProtocolRepository.d.ts",
-			"import": "./dist/services/ProtocolRepository.js"
-		},
-		"./services/Output": {
-			"types": "./dist/services/Output.d.ts",
-			"import": "./dist/services/Output.js"
-		},
-		"./layers/ZipOutput": {
-			"types": "./dist/layers/ZipOutput.d.ts",
-			"import": "./dist/layers/ZipOutput.js"
-		}
-	},
-	"files": [
-		"dist"
-	],
-	"scripts": {
-		"build": "tsgo --noEmit && vite build",
-		"dev": "npm run build -- --watch",
-		"typecheck": "tsgo --noEmit",
-		"test": "vitest --run",
-		"test:watch": "vitest"
-	},
-	"dependencies": {
-		"@codaco/protocol-validation": "workspace:*",
-		"@codaco/shared-consts": "workspace:*",
-		"@xmldom/xmldom": "^0.9.10",
-		"effect": "^3.21.2",
-		"es-toolkit": "catalog:",
-		"fflate": "^0.8.2",
-		"ohash": "^2.0.11",
-		"sanitize-filename": "^1.6.4",
-		"zod": "catalog:"
-	},
-	"devDependencies": {
-		"@codaco/tsconfig": "workspace:*",
-		"@types/node": "catalog:",
-		"typescript": "catalog:",
-		"vite": "catalog:",
-		"vite-plugin-dts": "catalog:",
-		"vitest": "catalog:"
-	}
+  "name": "@codaco/network-exporters",
+  "version": "1.0.2",
+  "description": "Effect-TS pipeline for exporting Network Canvas interview data as CSV and GraphML.",
+  "license": "GPL-3.0-or-later",
+  "author": "Complex Data Collective <hello@complexdatacollective.org>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/pipeline.js",
+  "types": "./dist/pipeline.d.ts",
+  "exports": {
+    "./pipeline": {
+      "types": "./dist/pipeline.d.ts",
+      "import": "./dist/pipeline.js"
+    },
+    "./options": {
+      "types": "./dist/options.d.ts",
+      "import": "./dist/options.js"
+    },
+    "./input": {
+      "types": "./dist/input.d.ts",
+      "import": "./dist/input.js"
+    },
+    "./output": {
+      "types": "./dist/output.d.ts",
+      "import": "./dist/output.js"
+    },
+    "./events": {
+      "types": "./dist/events.d.ts",
+      "import": "./dist/events.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "import": "./dist/errors.js"
+    },
+    "./services/InterviewRepository": {
+      "types": "./dist/services/InterviewRepository.d.ts",
+      "import": "./dist/services/InterviewRepository.js"
+    },
+    "./services/ProtocolRepository": {
+      "types": "./dist/services/ProtocolRepository.d.ts",
+      "import": "./dist/services/ProtocolRepository.js"
+    },
+    "./services/Output": {
+      "types": "./dist/services/Output.d.ts",
+      "import": "./dist/services/Output.js"
+    },
+    "./layers/ZipOutput": {
+      "types": "./dist/layers/ZipOutput.d.ts",
+      "import": "./dist/layers/ZipOutput.js"
+    }
+  },
+  "scripts": {
+    "build": "tsgo --noEmit && vite build",
+    "dev": "npm run build -- --watch",
+    "typecheck": "tsgo --noEmit",
+    "test": "vitest --run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@codaco/protocol-validation": "workspace:*",
+    "@codaco/shared-consts": "workspace:*",
+    "@xmldom/xmldom": "^0.9.10",
+    "effect": "^3.21.2",
+    "es-toolkit": "catalog:",
+    "fflate": "^0.8.2",
+    "ohash": "^2.0.11",
+    "sanitize-filename": "^1.6.4",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@codaco/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vitest": "catalog:"
+  }
 }

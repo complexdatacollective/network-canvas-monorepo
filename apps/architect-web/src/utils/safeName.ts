@@ -1,3 +1,3 @@
-const safeName = (name: string) => name.replace(/[.$[\]{}]+/g, "");
+const safeName = (name: string) => name.replace(/[.$[\]{}]+/g, '');
 
 export default safeName;

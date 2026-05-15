@@ -1,62 +1,86 @@
-import { motion } from "motion/react";
-import { type ReactNode, useState } from "react";
-import Button from "../Button";
-import Dialog from "./Dialog";
+import { motion } from 'motion/react';
+import { type ReactNode, useState } from 'react';
 
-const getErrorMessage = (error: Error | string | { friendlyMessage?: string; toString: () => string } | null) =>
-	!!error &&
-	(typeof error === "object" && "friendlyMessage" in error && error.friendlyMessage
-		? error.friendlyMessage
-		: error.toString());
+import Button from '../Button';
+import Dialog from './Dialog';
+
+const getErrorMessage = (
+  error:
+    | Error
+    | string
+    | { friendlyMessage?: string; toString: () => string }
+    | null,
+) =>
+  !!error &&
+  (typeof error === 'object' &&
+  'friendlyMessage' in error &&
+  error.friendlyMessage
+    ? error.friendlyMessage
+    : error.toString());
 
 const getMessage = ({
-	error,
-	message,
+  error,
+  message,
 }: {
-	error?: Error | string | { friendlyMessage?: string } | null;
-	message?: React.ReactNode;
+  error?: Error | string | { friendlyMessage?: string } | null;
+  message?: React.ReactNode;
 }): React.ReactNode =>
-	error ? getErrorMessage(error as Error | string | { friendlyMessage?: string; toString: () => string }) : message;
+  error
+    ? getErrorMessage(
+        error as
+          | Error
+          | string
+          | { friendlyMessage?: string; toString: () => string },
+      )
+    : message;
 
-const getStack = (error: Error | string | { friendlyMessage?: string } | null): string | undefined => {
-	if (error && typeof error === "object" && "stack" in error) {
-		return error.stack;
-	}
-	return undefined;
+const getStack = (
+  error: Error | string | { friendlyMessage?: string } | null,
+): string | undefined => {
+  if (error && typeof error === 'object' && 'stack' in error) {
+    return error.stack;
+  }
+  return undefined;
 };
 
 type AdditionalInformationProps = {
-	stack?: string;
+  stack?: string;
 };
 
 const AdditionalInformation = ({ stack }: AdditionalInformationProps) => {
-	const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
-	const buttonText = expanded ? "Hide details \u25b2" : "Show details \u25bc";
+  const buttonText = expanded ? 'Hide details \u25b2' : 'Show details \u25bc';
 
-	return (
-		<div className="mt-(--space-md) mb-[0.15rem]">
-			<Button color="platinum" onClick={() => setExpanded(!expanded)}>
-				{buttonText}
-			</Button>
-			{expanded && (
-				<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-					<div className="mt-(--space-md) max-h-60 select-text overflow-y-auto rounded bg-background">
-						<pre className="w-full whitespace-pre-wrap wrap-break-word p-(--space-md)">{stack}</pre>
-					</div>
-				</motion.div>
-			)}
-		</div>
-	);
+  return (
+    <div className="mt-(--space-md) mb-[0.15rem]">
+      <Button color="platinum" onClick={() => setExpanded(!expanded)}>
+        {buttonText}
+      </Button>
+      {expanded && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="bg-background mt-(--space-md) max-h-60 overflow-y-auto rounded select-text">
+            <pre className="w-full p-(--space-md) wrap-break-word whitespace-pre-wrap">
+              {stack}
+            </pre>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
 };
 
 type ErrorDialogProps = {
-	error?: Error | string | { friendlyMessage?: string };
-	message?: ReactNode;
-	onConfirm: () => void;
-	show?: boolean;
-	confirmLabel?: string;
-	title?: string;
+  error?: Error | string | { friendlyMessage?: string };
+  message?: ReactNode;
+  onConfirm: () => void;
+  show?: boolean;
+  confirmLabel?: string;
+  title?: string;
 };
 
 /*
@@ -64,27 +88,34 @@ type ErrorDialogProps = {
  * explicitly click Acknowledge to close.
  */
 const ErrorDialog = ({
-	error,
-	message,
-	onConfirm,
-	show = false,
-	confirmLabel = "OK",
-	title = "Something went wrong!",
+  error,
+  message,
+  onConfirm,
+  show = false,
+  confirmLabel = 'OK',
+  title = 'Something went wrong!',
 }: ErrorDialogProps) => {
-	const stack = error ? getStack(error) : undefined;
+  const stack = error ? getStack(error) : undefined;
 
-	return (
-		<Dialog
-			type="error"
-			icon="error"
-			show={show}
-			title={title}
-			message={getMessage({ error, message })}
-			options={[<Button key="confirm" onClick={onConfirm} color="neon-coral" content={confirmLabel} />]}
-		>
-			{stack && <AdditionalInformation stack={stack} />}
-		</Dialog>
-	);
+  return (
+    <Dialog
+      type="error"
+      icon="error"
+      show={show}
+      title={title}
+      message={getMessage({ error, message })}
+      options={[
+        <Button
+          key="confirm"
+          onClick={onConfirm}
+          color="neon-coral"
+          content={confirmLabel}
+        />,
+      ]}
+    >
+      {stack && <AdditionalInformation stack={stack} />}
+    </Dialog>
+  );
 };
 
 export default ErrorDialog;

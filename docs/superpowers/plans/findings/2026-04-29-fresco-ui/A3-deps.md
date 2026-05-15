@@ -6,46 +6,46 @@ Scope: every file under `components/ui/**` (excluding `SubmitButton.tsx`, `Link.
 
 37 unique third-party packages were imported across the migration scope. Versions were taken from `~/Projects/fresco-next/package.json` and the `catalog:` block in `~/Projects/network-canvas/pnpm-workspace.yaml`.
 
-| Package | Fresco version | Monorepo catalog version | Resolution |
-| --- | --- | --- | --- |
-| `@base-ui/react` | `1.4.0` | _(not in catalog)_ | `add-to-catalog` |
-| `@codaco/protocol-validation` | `11.4.0-alpha.0` | _(not in catalog)_ | `add-to-catalog` |
-| `@codaco/shared-consts` | `5.0.0` | _(not in catalog)_ | `add-to-catalog` |
-| `@faker-js/faker` | `^10.4.0` | `^10.4.0` | `catalog` |
-| `@radix-ui/react-slot` | `^1.2.4` | `^1.2.4` | `catalog` |
-| `@storybook/nextjs-vite` | `^10.3.5` | _(not in catalog)_ | `add-to-catalog` (devDep — see Notes) |
-| `@testing-library/react` | `^16.3.0` | _(not in catalog)_ | `add-to-catalog` (devDep) |
-| `@testing-library/user-event` | `^14.6.1` | _(not in catalog)_ | `add-to-catalog` (devDep) |
-| `@tiptap/core` | `^3.22.3` | _(not in catalog)_ | `add-to-catalog` |
-| `@tiptap/extension-bullet-list` | `^3.22.3` | _(not in catalog)_ | `add-to-catalog` |
-| `@tiptap/extension-heading` | `^3.22.3` | _(not in catalog)_ | `add-to-catalog` |
-| `@tiptap/extension-ordered-list` | `^3.22.3` | _(not in catalog)_ | `add-to-catalog` |
-| `@tiptap/extension-paragraph` | `^3.22.3` | _(not in catalog)_ | `add-to-catalog` |
-| `@tiptap/pm` | `^3.22.4` | _(not in catalog)_ | `add-to-catalog` |
-| `@tiptap/react` | `^3.22.3` | _(not in catalog)_ | `add-to-catalog` |
-| `@tiptap/starter-kit` | `^3.22.3` | _(not in catalog)_ | `add-to-catalog` |
-| `comlink` | `^4.4.2` | _(not in catalog)_ | `add-to-catalog` |
-| `cva` | `1.0.0-beta.4` | _(not in catalog — `class-variance-authority 0.7.1` is the legacy entry)_ | `add-to-catalog` (see Notes) |
-| `es-toolkit` | `^1.45.1` | `^1.46.0` | `catalog` (Fresco's range is satisfied by catalog upgrade) |
-| `fuse.js` | `^7.3.0` | _(not in catalog)_ | `add-to-catalog` |
-| `immer` | `^11.1.4` | _(not in catalog)_ | `add-to-catalog` |
-| `lucide-react` | `^1.8.0` | `^1.9.0` | `catalog` (catalog range is forward-compatible) |
-| `motion` | `^12.38.0` | `^12.38.0` | `catalog` |
-| `nanoid` | `^5.1.9` | _(not in catalog)_ | `add-to-catalog` |
-| `react` | `19.2.5` | `^19.2.5` | `catalog` (peer — see Peer-dependency candidates) |
-| `react-aria-components` | `^1.16.0` | _(not in catalog)_ | `add-to-catalog` |
-| `react-best-merge-refs` | `^1.0.2` | _(not in catalog)_ | `add-to-catalog` |
-| `react-dom` | `19.2.5` | `^19.2.5` | `catalog` (peer) |
-| `react-markdown` | `^10.1.0` | _(not in catalog)_ | `add-to-catalog` |
-| `rehype-raw` | `^7.0.0` | _(not in catalog)_ | `add-to-catalog` |
-| `rehype-sanitize` | `^6.0.0` | _(not in catalog)_ | `add-to-catalog` |
-| `remark-gemoji` | `^8.0.0` | _(not in catalog)_ | `add-to-catalog` |
-| `storybook` | `^10.3.5` | _(not in catalog)_ | `add-to-catalog` (devDep) |
-| `tailwind-merge` | `^3.5.0` | `^3.5.0` | `catalog` |
-| `tailwindcss` | `4.2.2` | `^4.2.4` | `catalog` (catalog satisfies; tailwind is a peer/devDep — see Notes) |
-| `vitest` | `^4.1.4` | `^4.1.5` | `catalog` (devDep) |
-| `zod` | `^4.3.6` | `^4.3.6` | `catalog` |
-| `zustand` | `^5.0.12` | _(not in catalog)_ | `add-to-catalog` |
+| Package                          | Fresco version   | Monorepo catalog version                                                  | Resolution                                                           |
+| -------------------------------- | ---------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `@base-ui/react`                 | `1.4.0`          | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `@codaco/protocol-validation`    | `11.4.0-alpha.0` | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `@codaco/shared-consts`          | `5.0.0`          | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `@faker-js/faker`                | `^10.4.0`        | `^10.4.0`                                                                 | `catalog`                                                            |
+| `@radix-ui/react-slot`           | `^1.2.4`         | `^1.2.4`                                                                  | `catalog`                                                            |
+| `@storybook/nextjs-vite`         | `^10.3.5`        | _(not in catalog)_                                                        | `add-to-catalog` (devDep — see Notes)                                |
+| `@testing-library/react`         | `^16.3.0`        | _(not in catalog)_                                                        | `add-to-catalog` (devDep)                                            |
+| `@testing-library/user-event`    | `^14.6.1`        | _(not in catalog)_                                                        | `add-to-catalog` (devDep)                                            |
+| `@tiptap/core`                   | `^3.22.3`        | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `@tiptap/extension-bullet-list`  | `^3.22.3`        | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `@tiptap/extension-heading`      | `^3.22.3`        | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `@tiptap/extension-ordered-list` | `^3.22.3`        | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `@tiptap/extension-paragraph`    | `^3.22.3`        | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `@tiptap/pm`                     | `^3.22.4`        | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `@tiptap/react`                  | `^3.22.3`        | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `@tiptap/starter-kit`            | `^3.22.3`        | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `comlink`                        | `^4.4.2`         | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `cva`                            | `1.0.0-beta.4`   | _(not in catalog — `class-variance-authority 0.7.1` is the legacy entry)_ | `add-to-catalog` (see Notes)                                         |
+| `es-toolkit`                     | `^1.45.1`        | `^1.46.0`                                                                 | `catalog` (Fresco's range is satisfied by catalog upgrade)           |
+| `fuse.js`                        | `^7.3.0`         | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `immer`                          | `^11.1.4`        | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `lucide-react`                   | `^1.8.0`         | `^1.9.0`                                                                  | `catalog` (catalog range is forward-compatible)                      |
+| `motion`                         | `^12.38.0`       | `^12.38.0`                                                                | `catalog`                                                            |
+| `nanoid`                         | `^5.1.9`         | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `react`                          | `19.2.5`         | `^19.2.5`                                                                 | `catalog` (peer — see Peer-dependency candidates)                    |
+| `react-aria-components`          | `^1.16.0`        | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `react-best-merge-refs`          | `^1.0.2`         | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `react-dom`                      | `19.2.5`         | `^19.2.5`                                                                 | `catalog` (peer)                                                     |
+| `react-markdown`                 | `^10.1.0`        | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `rehype-raw`                     | `^7.0.0`         | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `rehype-sanitize`                | `^6.0.0`         | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `remark-gemoji`                  | `^8.0.0`         | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
+| `storybook`                      | `^10.3.5`        | _(not in catalog)_                                                        | `add-to-catalog` (devDep)                                            |
+| `tailwind-merge`                 | `^3.5.0`         | `^3.5.0`                                                                  | `catalog`                                                            |
+| `tailwindcss`                    | `4.2.2`          | `^4.2.4`                                                                  | `catalog` (catalog satisfies; tailwind is a peer/devDep — see Notes) |
+| `vitest`                         | `^4.1.4`         | `^4.1.5`                                                                  | `catalog` (devDep)                                                   |
+| `zod`                            | `^4.3.6`         | `^4.3.6`                                                                  | `catalog`                                                            |
+| `zustand`                        | `^5.0.12`        | _(not in catalog)_                                                        | `add-to-catalog`                                                     |
 
 Tally: **9 catalog**, **28 add-to-catalog**, **0 direct**.
 
@@ -80,4 +80,4 @@ Storybook, vitest, testing-library, faker — all `devDependencies`.
 - **`storybook` 10.x is brand-new** — Fresco is on `^10.3.5`. The monorepo catalog has no Storybook entry, so adding it pins the org on a single major. Worth coordinating with the wider monorepo if any other package wants Storybook later.
 - **`zod/mini`** — `formStore.ts` imports from `zod/mini`. Same npm package, sub-export — no separate dep needed.
 - **Excluded from inventory**: `useProtocolForm.tsx` (and its story) — confirmed via removal from input set before grep. The two files import additional packages (`react-hook-form`, `@hookform/resolvers`, etc.) that are intentionally NOT in this list.
-- **Tailwind plugins under `styles/plugins/**`** — `tailwind-motion-spring.ts`, `tailwind-elevation/`, `tailwind-inset-surface/` import `tailwindcss/plugin`. These are Node-side build helpers, executed at the consumer's tailwind config evaluation. `tailwindcss` should appear in both `peerDependencies` and `devDependencies`.
+- **Tailwind plugins under `styles/plugins/**`** — `tailwind-motion-spring.ts`, `tailwind-elevation/`, `tailwind-inset-surface/`import`tailwindcss/plugin`. These are Node-side build helpers, executed at the consumer's tailwind config evaluation. `tailwindcss`should appear in both`peerDependencies`and`devDependencies`.

@@ -1,29 +1,29 @@
 {
-	"name": "@codaco/development-protocol",
-	"version": "2.0.1",
-	"description": "Development protocol for testing Network Canvas applications",
-	"type": "module",
-	"main": "./protocol.json",
-	"exports": {
-		".": "./protocol.json"
-	},
-	"files": [
-		"protocol.json",
-		"assets"
-	],
-	"keywords": [
-		"network-canvas",
-		"protocol",
-		"development"
-	],
-	"author": "Complex Data Collective <hello@complexdatacollective.org>",
-	"license": "GPL-3.0-or-later",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
-		"directory": "packages/development-protocol"
-	},
-	"engines": {
-		"node": ">=20.0.0"
-	}
+  "name": "@codaco/development-protocol",
+  "version": "2.0.1",
+  "description": "Development protocol for testing Network Canvas applications",
+  "keywords": [
+    "development",
+    "network-canvas",
+    "protocol"
+  ],
+  "license": "GPL-3.0-or-later",
+  "author": "Complex Data Collective <hello@complexdatacollective.org>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+    "directory": "packages/development-protocol"
+  },
+  "files": [
+    "protocol.json",
+    "assets"
+  ],
+  "type": "module",
+  "main": "./protocol.json",
+  "exports": {
+    ".": "./protocol.json"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
 }

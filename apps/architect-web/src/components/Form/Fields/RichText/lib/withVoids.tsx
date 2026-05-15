@@ -1,23 +1,23 @@
 /* eslint-disable no-param-reassign */
 
-import type { Editor, Element } from "slate";
+import type { Editor, Element } from 'slate';
 
-const VOID_TYPES = ["thematic_break"];
+const VOID_TYPES = ['thematic_break'];
 
 type VoidEditor = {
-	isVoid: (element: Element) => boolean;
-} & Editor
+  isVoid: (element: Element) => boolean;
+} & Editor;
 
 const withVoids = (editor: VoidEditor): VoidEditor => {
-	const { isVoid } = editor;
-	editor.isVoid = (element: Element) => {
-		if ("type" in element && VOID_TYPES.includes(element.type as string)) {
-			return true;
-		}
-		return isVoid(element);
-	};
+  const { isVoid } = editor;
+  editor.isVoid = (element: Element) => {
+    if ('type' in element && VOID_TYPES.includes(element.type as string)) {
+      return true;
+    }
+    return isVoid(element);
+  };
 
-	return editor;
+  return editor;
 };
 
 export default withVoids;

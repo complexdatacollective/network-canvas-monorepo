@@ -1,1 +1,1 @@
-export { default } from "./NarrativePresets";
+export { default } from './NarrativePresets';

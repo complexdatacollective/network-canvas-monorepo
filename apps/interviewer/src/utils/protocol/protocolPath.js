@@ -4,20 +4,22 @@
  * Note: In Electron, these functions are now async because they depend on
  * IPC calls to get user data and app paths.
  */
-import { isArray, isString } from "lodash";
-import inEnvironment from "../Environment";
-import { pathSync } from "../electronAPI";
-import environments from "../environments";
-import { appPath, userDataPath } from "../filesystem";
+import { isArray, isString } from 'lodash';
 
-const isValidProtocolUID = (protocolUID) => isString(protocolUID) && protocolUID.length > 0;
+import { pathSync } from '../electronAPI';
+import inEnvironment from '../Environment';
+import environments from '../environments';
+import { appPath, userDataPath } from '../filesystem';
+
+const isValidProtocolUID = (protocolUID) =>
+  isString(protocolUID) && protocolUID.length > 0;
 
 const ensureArray = (filePath = []) => {
-	if (!isArray(filePath)) {
-		return [filePath];
-	}
+  if (!isArray(filePath)) {
+    return [filePath];
+  }
 
-	return filePath;
+  return filePath;
 };
 
 /**
@@ -25,23 +27,27 @@ const ensureArray = (filePath = []) => {
  * Returns a Promise in Electron.
  */
 export const factoryProtocolPath = (environment) => {
-	if (environment === environments.ELECTRON) {
-		return async (protocolUID, filePath = "") => {
-			if (!isValidProtocolUID(protocolUID)) throw Error("Protocol name is not valid");
-			const basePath = await appPath();
-			return pathSync.join(basePath, "protocols", protocolUID, filePath);
-		};
-	}
+  if (environment === environments.ELECTRON) {
+    return async (protocolUID, filePath = '') => {
+      if (!isValidProtocolUID(protocolUID))
+        throw Error('Protocol name is not valid');
+      const basePath = await appPath();
+      return pathSync.join(basePath, 'protocols', protocolUID, filePath);
+    };
+  }
 
-	if (environment === environments.CORDOVA) {
-		return (protocolUID, filePath) => {
-			if (!isValidProtocolUID(protocolUID)) throw Error("Protocol name is not valid");
+  if (environment === environments.CORDOVA) {
+    return (protocolUID, filePath) => {
+      if (!isValidProtocolUID(protocolUID))
+        throw Error('Protocol name is not valid');
 
-			return [appPath(), "www", "protocols", protocolUID].concat([filePath]).join("/");
-		};
-	}
+      return [appPath(), 'www', 'protocols', protocolUID]
+        .concat([filePath])
+        .join('/');
+    };
+  }
 
-	throw new Error("factoryProtocolPath() is not supported on this platform");
+  throw new Error('factoryProtocolPath() is not supported on this platform');
 };
 
 /**
@@ -49,28 +55,35 @@ export const factoryProtocolPath = (environment) => {
  * Returns a Promise in Electron.
  */
 const protocolPath = (environment) => {
-	if (environment === environments.ELECTRON) {
-		return async (protocolUID, filePath = []) => {
-			if (!isValidProtocolUID(protocolUID)) throw Error("Protocol name is not valid");
-			const basePath = await userDataPath();
-			return pathSync.join(basePath, "protocols", protocolUID, ...ensureArray(filePath));
-		};
-	}
+  if (environment === environments.ELECTRON) {
+    return async (protocolUID, filePath = []) => {
+      if (!isValidProtocolUID(protocolUID))
+        throw Error('Protocol name is not valid');
+      const basePath = await userDataPath();
+      return pathSync.join(
+        basePath,
+        'protocols',
+        protocolUID,
+        ...ensureArray(filePath),
+      );
+    };
+  }
 
-	if (environment === environments.CORDOVA) {
-		return (protocolUID, filePath) => {
-			if (!isValidProtocolUID(protocolUID)) throw Error("Protocol name is not valid");
+  if (environment === environments.CORDOVA) {
+    return (protocolUID, filePath) => {
+      if (!isValidProtocolUID(protocolUID))
+        throw Error('Protocol name is not valid');
 
-			if (!filePath) {
-				// Cordova expects a trailing slash:
-				return `${userDataPath()}protocols/${protocolUID}/`;
-			}
+      if (!filePath) {
+        // Cordova expects a trailing slash:
+        return `${userDataPath()}protocols/${protocolUID}/`;
+      }
 
-			return `${userDataPath()}protocols/${protocolUID}/${filePath}`;
-		};
-	}
+      return `${userDataPath()}protocols/${protocolUID}/${filePath}`;
+    };
+  }
 
-	throw new Error("protocolPath() not specified on this platform");
+  throw new Error('protocolPath() not specified on this platform');
 };
 
 export default inEnvironment(protocolPath);

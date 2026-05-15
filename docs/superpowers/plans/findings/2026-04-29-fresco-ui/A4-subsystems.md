@@ -37,12 +37,12 @@ These are listed below for completeness but are not flagged as new coupling.
 
 ### External imports (every `~/...` outside `~/components/ui/...`)
 
-| Import | Files | Migration status |
-|---|---|---|
-| `~/utils/cva` (cva, cx, compose, VariantProps) | many fields/components | already in scope |
+| Import                                                                                   | Files                                                                                                                                                                                                                                                                                                                        | Migration status                                          |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `~/utils/cva` (cva, cx, compose, VariantProps)                                           | many fields/components                                                                                                                                                                                                                                                                                                       | already in scope                                          |
 | `~/styles/shared/controlVariants` (incl. `dropdownItemVariants`, `nativeSelectVariants`) | 20 files (all under `form/components/fields/**` — InputField, RichSelectGroup, SegmentedCodeField, Boolean, VisualAnalogScale, ToggleField, Checkbox, RadioGroup, CheckboxGroup, LikertScale, Combobox/{shared,Combobox}, RichTextEditor, TextArea, Select/{shared,Native,Styled}, ToggleButtonGroup, ArrayField/ArrayField) | already in scope (the brief enumerates `controlVariants`) |
-| `~/lib/interviewer/utils/scrollParent` | `form/utils/focusFirstError.ts` (1 file) | already in scope |
-| `~/lib/interviewer/selectors/forms` | `form/hooks/useProtocolForm.tsx` (1 file — confirmed no other consumers) | leave behind (this file stays in Fresco per the plan) |
+| `~/lib/interviewer/utils/scrollParent`                                                   | `form/utils/focusFirstError.ts` (1 file)                                                                                                                                                                                                                                                                                     | already in scope                                          |
+| `~/lib/interviewer/selectors/forms`                                                      | `form/hooks/useProtocolForm.tsx` (1 file — confirmed no other consumers)                                                                                                                                                                                                                                                     | leave behind (this file stays in Fresco per the plan)     |
 
 No imports of `~/lib/...` (other than the two above), `~/actions/...`, `~/queries/...`, `~/schemas/...`, or `~/app/...` were found. **No new coupling.**
 
@@ -63,11 +63,11 @@ No imports of `~/lib/...` (other than the two above), `~/actions/...`, `~/querie
 
 ### External imports
 
-| Import | Files | Migration status |
-|---|---|---|
-| `~/utils/cva` (cx) | broad usage in collection components | already in scope |
-| `~/hooks/useSafeAnimate` | `collection/hooks/useStaggerAnimation.ts` (1 file) | already in scope |
-| `~/.storybook/preview` | `collection/stories/Collection.stories.tsx` (1 file) | story-only — see below |
+| Import                   | Files                                                | Migration status       |
+| ------------------------ | ---------------------------------------------------- | ---------------------- |
+| `~/utils/cva` (cx)       | broad usage in collection components                 | already in scope       |
+| `~/hooks/useSafeAnimate` | `collection/hooks/useStaggerAnimation.ts` (1 file)   | already in scope       |
+| `~/.storybook/preview`   | `collection/stories/Collection.stories.tsx` (1 file) | story-only — see below |
 
 The `~/.storybook/preview` import is **not** a runtime coupling — it is a Storybook CSF3 `preview.meta(...)` usage in a story file. It mirrors the same pattern other stories in the repo use to bind to the project-wide Storybook config. The package will ship its own `.storybook/preview.tsx`; the story will rebind to the package's preview after migration. Treated as story-rebinding, not coupling.
 
@@ -79,7 +79,7 @@ The `~/.storybook/preview` import is **not** a runtime coupling — it is a Stor
 
 ### Recommended action
 
-**Clean migrate.** All collection sources move as-is. The package's vitest setup must include the same ResizeObserver/offsetWidth/Worker/motion shims — these were originally added *for* Collection, so they belong with it. The single `vi.mock` call uses a relative path and migrates unchanged.
+**Clean migrate.** All collection sources move as-is. The package's vitest setup must include the same ResizeObserver/offsetWidth/Worker/motion shims — these were originally added _for_ Collection, so they belong with it. The single `vi.mock` call uses a relative path and migrates unchanged.
 
 ---
 
@@ -87,8 +87,8 @@ The `~/.storybook/preview` import is **not** a runtime coupling — it is a Stor
 
 ### External imports
 
-| Import | Files | Migration status |
-|---|---|---|
+| Import                               | Files                                                     | Migration status |
+| ------------------------------------ | --------------------------------------------------------- | ---------------- |
 | `~/utils/prettify` (`Prettify` type) | `dnd/useDragSource.tsx`, `dnd/useDropTarget.ts` (2 files) | already in scope |
 
 No other `~/` imports. **No new coupling.**
@@ -98,7 +98,7 @@ No other `~/` imports. **No new coupling.**
 - Tests under `dnd/__tests__/`: `hooks.test.ts`, `store.test.ts`, plus a local `setup.ts`.
 - The local `setup.ts` is **self-contained**: it polyfills `ResizeObserver`, `IntersectionObserver`, `requestAnimationFrame`/`cancelAnimationFrame`, `PointerEvent`, `getBoundingClientRect`, and `setPointerCapture`/`releasePointerCapture` using inline `vi.fn()` mocks. It imports nothing from Fresco.
 - `vi.mock` calls in dnd test files: **none** (zero matches against `vi.mock(`).
-- Tests need: jsdom and the local `setup.ts`. They do *not* use `@testing-library/react` (no `.test.tsx` files in `__tests__/`).
+- Tests need: jsdom and the local `setup.ts`. They do _not_ use `@testing-library/react` (no `.test.tsx` files in `__tests__/`).
 
 ### Recommended action
 
@@ -110,9 +110,9 @@ No other `~/` imports. **No new coupling.**
 
 ### External imports
 
-| Import | Files | Migration status |
-|---|---|---|
-| `~/utils/cva` (cx) | broad usage | already in scope |
+| Import                     | Files                                 | Migration status |
+| -------------------------- | ------------------------------------- | ---------------- |
+| `~/utils/cva` (cx)         | broad usage                           | already in scope |
 | `~/utils/generatePublicId` | `dialogs/DialogProvider.tsx` (1 file) | already in scope |
 
 No other `~/` imports. **No new coupling.**
@@ -131,12 +131,12 @@ No other `~/` imports. **No new coupling.**
 
 ## Cross-cutting summary
 
-| Subsystem | Action | New coupling? | Notes |
-|---|---|---|---|
-| form | clean migrate (minus `useProtocolForm.tsx`) | no | leave-behind file already named in plan |
-| collection | clean migrate | no | story rebinds to package's `.storybook/preview` |
-| dnd | clean migrate | no | self-contained test setup |
-| dialogs | clean migrate | no | — |
+| Subsystem  | Action                                      | New coupling? | Notes                                           |
+| ---------- | ------------------------------------------- | ------------- | ----------------------------------------------- |
+| form       | clean migrate (minus `useProtocolForm.tsx`) | no            | leave-behind file already named in plan         |
+| collection | clean migrate                               | no            | story rebinds to package's `.storybook/preview` |
+| dnd        | clean migrate                               | no            | self-contained test setup                       |
+| dialogs    | clean migrate                               | no            | —                                               |
 
 ### Shared `vitest.setup.ts` shims the package will need
 

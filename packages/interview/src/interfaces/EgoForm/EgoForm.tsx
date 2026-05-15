@@ -1,258 +1,290 @@
-import useDialog from "@codaco/fresco-ui/dialogs/useDialog";
-import { FormWithoutProvider } from "@codaco/fresco-ui/form/Form";
-import { useFormMeta } from "@codaco/fresco-ui/form/hooks/useFormState";
-import useFormStore from "@codaco/fresco-ui/form/hooks/useFormStore";
-import FormStoreProvider from "@codaco/fresco-ui/form/store/formStoreProvider";
-import type { FieldValue, FlattenedErrors } from "@codaco/fresco-ui/form/store/types";
-import { focusFirstError } from "@codaco/fresco-ui/form/utils/focusFirstError";
-import Surface, { MotionSurface } from "@codaco/fresco-ui/layout/Surface";
-import { ALLOWED_MARKDOWN_SECTION_TAGS, RenderMarkdown } from "@codaco/fresco-ui/RenderMarkdown";
-import { ScrollArea } from "@codaco/fresco-ui/ScrollArea";
-import Heading from "@codaco/fresco-ui/typography/Heading";
-import type { VariableValue } from "@codaco/shared-consts";
-import { ChevronDown } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useTrack } from "~/analytics/useTrack";
-import useProtocolForm from "~/forms/useProtocolForm";
-import useBeforeNext from "~/hooks/useBeforeNext";
-import useReadyForNextStage from "~/hooks/useReadyForNextStage";
-import { useScrolledToBottom } from "~/hooks/useScrolledToBottom";
-import { useStageSelector } from "~/hooks/useStageSelector";
-import { getEgoAttributes } from "~/selectors/session";
-import { updateEgo } from "~/store/modules/session";
-import { useAppDispatch } from "~/store/store";
-import type { BeforeNextFunction, StageProps } from "~/types";
+import { ChevronDown } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
-type EgoFormProps = StageProps<"EgoForm">;
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import type {
+  FieldValue,
+  FlattenedErrors,
+} from '@codaco/fresco-ui/form/store/types';
+import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
+import Surface, { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import {
+  ALLOWED_MARKDOWN_SECTION_TAGS,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
+import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import type { VariableValue } from '@codaco/shared-consts';
+import { useTrack } from '~/analytics/useTrack';
+import useProtocolForm from '~/forms/useProtocolForm';
+import useBeforeNext from '~/hooks/useBeforeNext';
+import useReadyForNextStage from '~/hooks/useReadyForNextStage';
+import { useScrolledToBottom } from '~/hooks/useScrolledToBottom';
+import { useStageSelector } from '~/hooks/useStageSelector';
+import { getEgoAttributes } from '~/selectors/session';
+import { updateEgo } from '~/store/modules/session';
+import { useAppDispatch } from '~/store/store';
+import type { BeforeNextFunction, StageProps } from '~/types';
+
+type EgoFormProps = StageProps<'EgoForm'>;
 
 const EgoFormInner = (props: EgoFormProps) => {
-	const { stage } = props;
+  const { stage } = props;
 
-	const { form, introductionPanel } = stage;
+  const { form, introductionPanel } = stage;
 
-	const dispatch = useAppDispatch();
-	const { openDialog } = useDialog();
-	const track = useTrack();
+  const dispatch = useAppDispatch();
+  const { openDialog } = useDialog();
+  const track = useTrack();
 
-	useEffect(() => {
-		track("form_opened", {
-			form_kind: "ego",
-			field_details: form.fields.map((f) => ("component" in f ? f.component : "unknown")),
-		});
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
+  useEffect(() => {
+    track('form_opened', {
+      form_kind: 'ego',
+      field_details: form.fields.map((f) =>
+        'component' in f ? f.component : 'unknown',
+      ),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-	const [nudgeVisible, setNudgeVisible] = useState(false);
+  const [nudgeVisible, setNudgeVisible] = useState(false);
 
-	const { isDirty: isFormDirty, isValid: isFormValid } = useFormMeta();
-	const submitForm = useFormStore((s) => s.submitForm);
-	const validateForm = useFormStore((s) => s.validateForm);
-	const formErrors = useFormStore((s) => s.errors);
-	const formErrorsRef = useRef<FlattenedErrors>(formErrors);
-	useLayoutEffect(() => {
-		formErrorsRef.current = formErrors;
-	}, [formErrors]);
+  const { isDirty: isFormDirty, isValid: isFormValid } = useFormMeta();
+  const submitForm = useFormStore((s) => s.submitForm);
+  const validateForm = useFormStore((s) => s.validateForm);
+  const formErrors = useFormStore((s) => s.errors);
+  const formErrorsRef = useRef<FlattenedErrors>(formErrors);
+  useLayoutEffect(() => {
+    formErrorsRef.current = formErrors;
+  }, [formErrors]);
 
-	const fields = useFormStore((s) => s.fields);
+  const fields = useFormStore((s) => s.fields);
 
-	const scrollAreaRef = useRef<HTMLDivElement>(null);
-	const { hasScrolledToBottom, sentinelRef } = useScrolledToBottom(scrollAreaRef);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { hasScrolledToBottom, sentinelRef } =
+    useScrolledToBottom(scrollAreaRef);
 
-	// Show nudge after 15s of inactivity. Reset on field changes.
-	// Once the user has scrolled to the bottom, permanently hide the nudge.
-	useEffect(() => {
-		setNudgeVisible(false);
-		if (hasScrolledToBottom) return;
-		const timer = setTimeout(() => setNudgeVisible(true), 15000);
-		return () => clearTimeout(timer);
-	}, [fields, hasScrolledToBottom]);
+  // Show nudge after 15s of inactivity. Reset on field changes.
+  // Once the user has scrolled to the bottom, permanently hide the nudge.
+  useEffect(() => {
+    setNudgeVisible(false);
+    if (hasScrolledToBottom) return;
+    const timer = setTimeout(() => setNudgeVisible(true), 15000);
+    return () => clearTimeout(timer);
+  }, [fields, hasScrolledToBottom]);
 
-	const { updateReady: setIsReadyForNext } = useReadyForNextStage();
-	const egoAttributes = useStageSelector(getEgoAttributes);
+  const { updateReady: setIsReadyForNext } = useReadyForNextStage();
+  const egoAttributes = useStageSelector(getEgoAttributes);
 
-	const beforeNext: BeforeNextFunction = async (direction) => {
-		// If direction is backwards, and the form is invalid, check if the user
-		// wants to proceed anyway (causing the form to be reset)
-		if (direction === "backwards") {
-			if (isFormDirty && !isFormValid) {
-				const result = await openDialog({
-					type: "choice",
-					title: "Discard changes?",
-					description:
-						"This form contains invalid data, so it cannot be saved. If you continue it will be reset and your changes will be lost. Do you want to discard your changes?",
-					intent: "destructive",
-					actions: {
-						primary: { label: "Discard changes", value: true },
-						cancel: { label: "Keep changes", value: false },
-					},
-				});
-				if (result) {
-					track("form_dismissed_without_save", { form_kind: "ego" });
-				}
-				return !!result;
-			}
+  const beforeNext: BeforeNextFunction = async (direction) => {
+    // If direction is backwards, and the form is invalid, check if the user
+    // wants to proceed anyway (causing the form to be reset)
+    if (direction === 'backwards') {
+      if (isFormDirty && !isFormValid) {
+        const result = await openDialog({
+          type: 'choice',
+          title: 'Discard changes?',
+          description:
+            'This form contains invalid data, so it cannot be saved. If you continue it will be reset and your changes will be lost. Do you want to discard your changes?',
+          intent: 'destructive',
+          actions: {
+            primary: { label: 'Discard changes', value: true },
+            cancel: { label: 'Keep changes', value: false },
+          },
+        });
+        if (result) {
+          track('form_dismissed_without_save', { form_kind: 'ego' });
+        }
+        return !!result;
+      }
 
-			// if form is valid submit the form and proceed backwards
-			if (isFormDirty && isFormValid) {
-				await submitForm();
-			}
+      // if form is valid submit the form and proceed backwards
+      if (isFormDirty && isFormValid) {
+        await submitForm();
+      }
 
-			return true;
-		}
+      return true;
+    }
 
-		// Validate form and submit if valid
-		const formIsValid = await validateForm();
-		if (formIsValid) {
-			await submitForm();
-			return true;
-		}
+    // Validate form and submit if valid
+    const formIsValid = await validateForm();
+    if (formIsValid) {
+      await submitForm();
+      return true;
+    }
 
-		const fieldErrorEntries: Array<{ field_index: number; component: string; message: string }> = [];
-		const fieldErrors = formErrorsRef.current?.fieldErrors;
-		if (fieldErrors) {
-			for (const [name, messages] of Object.entries(fieldErrors)) {
-				if (!Array.isArray(messages) || messages.length === 0) continue;
-				const idx = form.fields.findIndex((f) => f.variable === name);
-				if (idx === -1) continue;
-				const f = form.fields[idx];
-				const component = f && "component" in f && typeof f.component === "string" ? f.component : "unknown";
-				for (const message of messages) {
-					fieldErrorEntries.push({ field_index: idx, component, message });
-				}
-			}
-		}
-		track("form_validation_failed", { form_kind: "ego", field_errors: fieldErrorEntries });
+    const fieldErrorEntries: Array<{
+      field_index: number;
+      component: string;
+      message: string;
+    }> = [];
+    const fieldErrors = formErrorsRef.current?.fieldErrors;
+    if (fieldErrors) {
+      for (const [name, messages] of Object.entries(fieldErrors)) {
+        if (!Array.isArray(messages) || messages.length === 0) continue;
+        const idx = form.fields.findIndex((f) => f.variable === name);
+        if (idx === -1) continue;
+        const f = form.fields[idx];
+        const component =
+          f && 'component' in f && typeof f.component === 'string'
+            ? f.component
+            : 'unknown';
+        for (const message of messages) {
+          fieldErrorEntries.push({ field_index: idx, component, message });
+        }
+      }
+    }
+    track('form_validation_failed', {
+      form_kind: 'ego',
+      field_errors: fieldErrorEntries,
+    });
 
-		// Scroll to the first validation error after a tick so the store
-		// update has propagated to React and error elements are rendered.
-		setTimeout(() => {
-			focusFirstError(formErrorsRef.current);
-		}, 0);
+    // Scroll to the first validation error after a tick so the store
+    // update has propagated to React and error elements are rendered.
+    setTimeout(() => {
+      focusFirstError(formErrorsRef.current);
+    }, 0);
 
-		return false;
-	};
+    return false;
+  };
 
-	useBeforeNext(beforeNext);
+  useBeforeNext(beforeNext);
 
-	const handleSubmitForm = useCallback(
-		async (formData: Record<string, FieldValue>) => {
-			// Only include fields from this stage to avoid overwriting values
-			// from previous EgoForm stages. Missing fields (unanswered questions)
-			// are set to null rather than omitted.
-			const stageFieldIds = form.fields.map((f) => f.variable);
-			const completeData = Object.fromEntries(stageFieldIds.map((id) => [id, formData[id] ?? null])) as Record<
-				string,
-				VariableValue
-			>;
+  const handleSubmitForm = useCallback(
+    async (formData: Record<string, FieldValue>) => {
+      // Only include fields from this stage to avoid overwriting values
+      // from previous EgoForm stages. Missing fields (unanswered questions)
+      // are set to null rather than omitted.
+      const stageFieldIds = form.fields.map((f) => f.variable);
+      const completeData = Object.fromEntries(
+        stageFieldIds.map((id) => [id, formData[id] ?? null]),
+      ) as Record<string, VariableValue>;
 
-			await dispatch(updateEgo(completeData));
-			track("form_submitted", { form_kind: "ego" });
-			return { success: true };
-		},
-		[dispatch, form.fields, track],
-	);
+      await dispatch(updateEgo(completeData));
+      track('form_submitted', { form_kind: 'ego' });
+      return { success: true };
+    },
+    [dispatch, form.fields, track],
+  );
 
-	useEffect(() => {
-		if (!isFormValid) {
-			setIsReadyForNext(false);
-			return;
-		}
+  useEffect(() => {
+    if (!isFormValid) {
+      setIsReadyForNext(false);
+      return;
+    }
 
-		setIsReadyForNext(true);
-	}, [isFormValid, setIsReadyForNext]);
+    setIsReadyForNext(true);
+  }, [isFormValid, setIsReadyForNext]);
 
-	const showScrollNudge = nudgeVisible && !hasScrolledToBottom;
+  const showScrollNudge = nudgeVisible && !hasScrolledToBottom;
 
-	const { fieldComponents } = useProtocolForm({
-		fields: form.fields,
-		initialValues: Object.fromEntries(Object.entries(egoAttributes).filter(([, value]) => value !== null)) as Record<
-			string,
-			FieldValue
-		>,
-	});
+  const { fieldComponents } = useProtocolForm({
+    fields: form.fields,
+    initialValues: Object.fromEntries(
+      Object.entries(egoAttributes).filter(([, value]) => value !== null),
+    ) as Record<string, FieldValue>,
+  });
 
-	const scrollToBottom = useCallback(() => {
-		scrollAreaRef.current?.scrollTo({
-			top: scrollAreaRef.current.scrollHeight,
-			behavior: "smooth",
-		});
-	}, []);
+  const scrollToBottom = useCallback(() => {
+    scrollAreaRef.current?.scrollTo({
+      top: scrollAreaRef.current.scrollHeight,
+      behavior: 'smooth',
+    });
+  }, []);
 
-	return (
-		<>
-			<ScrollArea className="m-0 size-full" ref={scrollAreaRef}>
-				<div className="interface mx-auto max-w-[80ch] flex-col">
-					<Surface spacing="lg">
-						<Heading level="h1">{introductionPanel.title}</Heading>
-						<RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>{introductionPanel.text}</RenderMarkdown>
-					</Surface>
-					<Surface spacing="lg">
-						<FormWithoutProvider onSubmit={handleSubmitForm}>{fieldComponents}</FormWithoutProvider>
-					</Surface>
-				</div>
-				<div ref={sentinelRef} aria-hidden />
-			</ScrollArea>
-			<AnimatePresence>
-				{showScrollNudge && (
-					<MotionSurface
-						noContainer
-						level="popover"
-						spacing="xs"
-						role="status"
-						aria-live="polite"
-						className="scroll-nudge absolute bottom-4 left-1/2 z-10 flex translate-x-[-50%]"
-						initial={{ y: "100%" }}
-						animate={{
-							y: 0,
-							transition: { type: "spring", stiffness: 200, damping: 15 },
-						}}
-						exit={{ y: "200%" }}
-					>
-						<button type="button" onClick={scrollToBottom} className="flex items-center gap-2">
-							<motion.div
-								aria-hidden="true"
-								animate={{
-									y: [0, 7, 0, 7, 0],
-								}}
-								transition={{
-									duration: 2,
-									ease: "easeInOut",
-									repeat: Number.POSITIVE_INFINITY,
-								}}
-							>
-								<ChevronDown size="24" />
-							</motion.div>
-							<Heading level="label" margin="none">
-								Scroll to see more questions
-							</Heading>
-							<motion.div
-								aria-hidden="true"
-								animate={{
-									y: [0, 7, 0, 7, 0],
-								}}
-								transition={{
-									duration: 2,
-									ease: "easeInOut",
-									repeat: Number.POSITIVE_INFINITY,
-								}}
-							>
-								<ChevronDown size="24" />
-							</motion.div>
-						</button>
-					</MotionSurface>
-				)}
-			</AnimatePresence>
-		</>
-	);
+  return (
+    <>
+      <ScrollArea className="m-0 size-full" ref={scrollAreaRef}>
+        <div className="interface mx-auto max-w-[80ch] flex-col">
+          <Surface spacing="lg">
+            <Heading level="h1">{introductionPanel.title}</Heading>
+            <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+              {introductionPanel.text}
+            </RenderMarkdown>
+          </Surface>
+          <Surface spacing="lg">
+            <FormWithoutProvider onSubmit={handleSubmitForm}>
+              {fieldComponents}
+            </FormWithoutProvider>
+          </Surface>
+        </div>
+        <div ref={sentinelRef} aria-hidden />
+      </ScrollArea>
+      <AnimatePresence>
+        {showScrollNudge && (
+          <MotionSurface
+            noContainer
+            level="popover"
+            spacing="xs"
+            role="status"
+            aria-live="polite"
+            className="scroll-nudge absolute bottom-4 left-1/2 z-10 flex translate-x-[-50%]"
+            initial={{ y: '100%' }}
+            animate={{
+              y: 0,
+              transition: { type: 'spring', stiffness: 200, damping: 15 },
+            }}
+            exit={{ y: '200%' }}
+          >
+            <button
+              type="button"
+              onClick={scrollToBottom}
+              className="flex items-center gap-2"
+            >
+              <motion.div
+                aria-hidden="true"
+                animate={{
+                  y: [0, 7, 0, 7, 0],
+                }}
+                transition={{
+                  duration: 2,
+                  ease: 'easeInOut',
+                  repeat: Number.POSITIVE_INFINITY,
+                }}
+              >
+                <ChevronDown size="24" />
+              </motion.div>
+              <Heading level="label" margin="none">
+                Scroll to see more questions
+              </Heading>
+              <motion.div
+                aria-hidden="true"
+                animate={{
+                  y: [0, 7, 0, 7, 0],
+                }}
+                transition={{
+                  duration: 2,
+                  ease: 'easeInOut',
+                  repeat: Number.POSITIVE_INFINITY,
+                }}
+              >
+                <ChevronDown size="24" />
+              </motion.div>
+            </button>
+          </MotionSurface>
+        )}
+      </AnimatePresence>
+    </>
+  );
 };
 
 const EgoForm = (props: EgoFormProps) => {
-	return (
-		<FormStoreProvider>
-			<EgoFormInner {...props} />
-		</FormStoreProvider>
-	);
+  return (
+    <FormStoreProvider>
+      <EgoFormInner {...props} />
+    </FormStoreProvider>
+  );
 };
 
 export default EgoForm;

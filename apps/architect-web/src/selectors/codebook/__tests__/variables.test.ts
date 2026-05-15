@@ -1,252 +1,256 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from 'vitest';
 
-import type { RootState } from "~/ducks/modules/root";
-import { makeGetIsUsed, makeOptionsWithIsUsedSelector } from "../isUsed";
+import type { RootState } from '~/ducks/modules/root';
 
-const variable1 = "1234-1234-1234-1";
-const variable2 = "1234-1234-1234-2";
-const variable3 = "1234-1234-1234-3";
-const variable4 = "1234-1234-1234-4";
-const variable5 = "1234-1234-1234-5";
-const variable6 = "1234-1234-1234-6";
-const variable7 = "1234-1234-1234-7";
-const variable8 = "1234-1234-1234-8";
+import { makeGetIsUsed, makeOptionsWithIsUsedSelector } from '../isUsed';
+
+const variable1 = '1234-1234-1234-1';
+const variable2 = '1234-1234-1234-2';
+const variable3 = '1234-1234-1234-3';
+const variable4 = '1234-1234-1234-4';
+const variable5 = '1234-1234-1234-5';
+const variable6 = '1234-1234-1234-6';
+const variable7 = '1234-1234-1234-7';
+const variable8 = '1234-1234-1234-8';
 
 const mockCodebookWithoutUse = {
-	ego: {
-		variables: {
-			[variable5]: {},
-			[variable6]: {},
-		},
-	},
-	node: {
-		person: {
-			variables: {
-				[variable1]: {},
-				[variable2]: {},
-				[variable3]: {},
-				[variable4]: {},
-			},
-		},
-	},
-	edge: {
-		friendship: {
-			variables: {
-				[variable7]: {},
-				[variable8]: {},
-			},
-		},
-	},
+  ego: {
+    variables: {
+      [variable5]: {},
+      [variable6]: {},
+    },
+  },
+  node: {
+    person: {
+      variables: {
+        [variable1]: {},
+        [variable2]: {},
+        [variable3]: {},
+        [variable4]: {},
+      },
+    },
+  },
+  edge: {
+    friendship: {
+      variables: {
+        [variable7]: {},
+        [variable8]: {},
+      },
+    },
+  },
 };
 
 const mockProtocolWithoutUse = {
-	present: {
-		codebook: mockCodebookWithoutUse,
-		stages: [
-			{
-				id: "1",
-			},
-		],
-	},
+  present: {
+    codebook: mockCodebookWithoutUse,
+    stages: [
+      {
+        id: '1',
+      },
+    ],
+  },
 };
 
 const mockReduxFormsWithoutUse = {
-	"edit-stage": {
-		values: {},
-	},
+  'edit-stage': {
+    values: {},
+  },
 };
 
 const mockStateWithoutUse = {
-	activeProtocol: mockProtocolWithoutUse,
-	form: mockReduxFormsWithoutUse,
+  activeProtocol: mockProtocolWithoutUse,
+  form: mockReduxFormsWithoutUse,
 };
 
-const asState = (state: typeof mockStateWithoutUse | Record<string, unknown>) => state as unknown as RootState;
+const asState = (state: typeof mockStateWithoutUse | Record<string, unknown>) =>
+  state as unknown as RootState;
 
-describe("makeGetIsUsed", () => {
-	it("returns false when a variable is not present", () => {
-		const result = makeGetIsUsed()(asState(mockStateWithoutUse));
+describe('makeGetIsUsed', () => {
+  it('returns false when a variable is not present', () => {
+    const result = makeGetIsUsed()(asState(mockStateWithoutUse));
 
-		expect(result).toEqual({
-			[variable1]: false,
-			[variable2]: false,
-			[variable3]: false,
-			[variable4]: false,
-			[variable5]: false,
-			[variable6]: false,
-			[variable7]: false,
-			[variable8]: false,
-		});
-	});
+    expect(result).toEqual({
+      [variable1]: false,
+      [variable2]: false,
+      [variable3]: false,
+      [variable4]: false,
+      [variable5]: false,
+      [variable6]: false,
+      [variable7]: false,
+      [variable8]: false,
+    });
+  });
 
-	it("returns true when a variable is present at known paths in the protocol", () => {
-		// Uses paths defined in indexes.js (e.g., stages[].form.fields[].variable)
-		const stateWithProtocolUse = {
-			...mockStateWithoutUse,
-			activeProtocol: {
-				...mockProtocolWithoutUse,
-				present: {
-					...mockProtocolWithoutUse.present,
-					stages: [
-						{
-							id: "1",
-							form: {
-								fields: [{ variable: variable1 }, { variable: variable2 }],
-							},
-							prompts: [{ variable: variable3 }],
-						},
-					],
-				},
-			},
-		};
+  it('returns true when a variable is present at known paths in the protocol', () => {
+    // Uses paths defined in indexes.js (e.g., stages[].form.fields[].variable)
+    const stateWithProtocolUse = {
+      ...mockStateWithoutUse,
+      activeProtocol: {
+        ...mockProtocolWithoutUse,
+        present: {
+          ...mockProtocolWithoutUse.present,
+          stages: [
+            {
+              id: '1',
+              form: {
+                fields: [{ variable: variable1 }, { variable: variable2 }],
+              },
+              prompts: [{ variable: variable3 }],
+            },
+          ],
+        },
+      },
+    };
 
-		const result = makeGetIsUsed()(asState(stateWithProtocolUse));
+    const result = makeGetIsUsed()(asState(stateWithProtocolUse));
 
-		expect(result).toEqual({
-			[variable1]: true,
-			[variable2]: true,
-			[variable3]: true,
-			[variable4]: false,
-			[variable5]: false,
-			[variable6]: false,
-			[variable7]: false,
-			[variable8]: false,
-		});
-	});
+    expect(result).toEqual({
+      [variable1]: true,
+      [variable2]: true,
+      [variable3]: true,
+      [variable4]: false,
+      [variable5]: false,
+      [variable6]: false,
+      [variable7]: false,
+      [variable8]: false,
+    });
+  });
 
-	describe("redux forms", () => {
-		const stateWithFormUse = {
-			...mockStateWithoutUse,
-			form: {
-				...mockReduxFormsWithoutUse,
-				formName: {
-					values: {
-						[variable1]: "foo",
-					},
-				},
-				"edit-stage": {
-					values: {
-						[variable2]: "foo",
-						thing: {
-							foo: variable3,
-						},
-					},
-				},
-			},
-		};
+  describe('redux forms', () => {
+    const stateWithFormUse = {
+      ...mockStateWithoutUse,
+      form: {
+        ...mockReduxFormsWithoutUse,
+        'formName': {
+          values: {
+            [variable1]: 'foo',
+          },
+        },
+        'edit-stage': {
+          values: {
+            [variable2]: 'foo',
+            thing: {
+              foo: variable3,
+            },
+          },
+        },
+      },
+    };
 
-		describe("returns true when a variable is present in redux forms", () => {
-			it("returns from default form names only without parameters", () => {
-				const result = makeGetIsUsed()(asState(stateWithFormUse));
+    describe('returns true when a variable is present in redux forms', () => {
+      it('returns from default form names only without parameters', () => {
+        const result = makeGetIsUsed()(asState(stateWithFormUse));
 
-				expect(result).toEqual({
-					[variable1]: false,
-					[variable2]: true,
-					[variable3]: true,
-					[variable4]: false,
-					[variable5]: false,
-					[variable6]: false,
-					[variable7]: false,
-					[variable8]: false,
-				});
-			});
+        expect(result).toEqual({
+          [variable1]: false,
+          [variable2]: true,
+          [variable3]: true,
+          [variable4]: false,
+          [variable5]: false,
+          [variable6]: false,
+          [variable7]: false,
+          [variable8]: false,
+        });
+      });
 
-			it("allows the redux form name to be specified to return specific form", () => {
-				// Also check we can set form name
-				const result = makeGetIsUsed({ formNames: ["formName"] })(asState(stateWithFormUse));
+      it('allows the redux form name to be specified to return specific form', () => {
+        // Also check we can set form name
+        const result = makeGetIsUsed({ formNames: ['formName'] })(
+          asState(stateWithFormUse),
+        );
 
-				expect(result).toEqual({
-					[variable1]: true,
-					[variable2]: false,
-					[variable3]: false,
-					[variable4]: false,
-					[variable5]: false,
-					[variable6]: false,
-					[variable7]: false,
-					[variable8]: false,
-				});
-			});
-		});
-	});
+        expect(result).toEqual({
+          [variable1]: true,
+          [variable2]: false,
+          [variable3]: false,
+          [variable4]: false,
+          [variable5]: false,
+          [variable6]: false,
+          [variable7]: false,
+          [variable8]: false,
+        });
+      });
+    });
+  });
 
-	it("checks codebook for variable validation use", () => {
-		const stateWithCodebookUse = {
-			...mockStateWithoutUse,
-			activeProtocol: {
-				...mockProtocolWithoutUse,
-				present: {
-					codebook: {
-						...mockCodebookWithoutUse,
-						node: {
-							...mockCodebookWithoutUse.node,
-							person: {
-								...mockCodebookWithoutUse.node.person,
-								variables: {
-									...mockCodebookWithoutUse.node.person.variables,
-									[variable1]: {
-										validation: {
-											sameAs: variable2,
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		};
+  it('checks codebook for variable validation use', () => {
+    const stateWithCodebookUse = {
+      ...mockStateWithoutUse,
+      activeProtocol: {
+        ...mockProtocolWithoutUse,
+        present: {
+          codebook: {
+            ...mockCodebookWithoutUse,
+            node: {
+              ...mockCodebookWithoutUse.node,
+              person: {
+                ...mockCodebookWithoutUse.node.person,
+                variables: {
+                  ...mockCodebookWithoutUse.node.person.variables,
+                  [variable1]: {
+                    validation: {
+                      sameAs: variable2,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
 
-		const result = makeGetIsUsed()(asState(stateWithCodebookUse));
+    const result = makeGetIsUsed()(asState(stateWithCodebookUse));
 
-		expect(result).toEqual({
-			[variable1]: false,
-			[variable2]: true,
-			[variable3]: false,
-			[variable4]: false,
-			[variable5]: false,
-			[variable6]: false,
-			[variable7]: false,
-			[variable8]: false,
-		});
-	});
+    expect(result).toEqual({
+      [variable1]: false,
+      [variable2]: true,
+      [variable3]: false,
+      [variable4]: false,
+      [variable5]: false,
+      [variable6]: false,
+      [variable7]: false,
+      [variable8]: false,
+    });
+  });
 
-	describe("makeOptionsWithIsUsedSelector", () => {
-		it("appends used state to options", () => {
-			const state = {
-				activeProtocol: {
-					present: {
-						codebook: mockCodebookWithoutUse,
-						stages: [],
-					},
-				},
-				form: {
-					formName: {
-						values: {
-							foo: variable1,
-						},
-					},
-				},
-			};
+  describe('makeOptionsWithIsUsedSelector', () => {
+    it('appends used state to options', () => {
+      const state = {
+        activeProtocol: {
+          present: {
+            codebook: mockCodebookWithoutUse,
+            stages: [],
+          },
+        },
+        form: {
+          formName: {
+            values: {
+              foo: variable1,
+            },
+          },
+        },
+      };
 
-			const mockOptions = [
-				{ value: variable1, label: "1" },
-				{ value: variable2, label: "2" },
-				{ value: variable3, label: "3" },
-				{ value: variable4, label: "4" },
-			];
+      const mockOptions = [
+        { value: variable1, label: '1' },
+        { value: variable2, label: '2' },
+        { value: variable3, label: '3' },
+        { value: variable4, label: '4' },
+      ];
 
-			// Create the selector with form name configuration
-			const selector = makeOptionsWithIsUsedSelector({
-				formNames: ["formName"],
-			});
-			const result = selector(asState(state), mockOptions);
+      // Create the selector with form name configuration
+      const selector = makeOptionsWithIsUsedSelector({
+        formNames: ['formName'],
+      });
+      const result = selector(asState(state), mockOptions);
 
-			expect(result).toEqual([
-				{ value: variable1, label: "1", isUsed: true },
-				{ value: variable2, label: "2", isUsed: false },
-				{ value: variable3, label: "3", isUsed: false },
-				{ value: variable4, label: "4", isUsed: false },
-			]);
-		});
-	});
+      expect(result).toEqual([
+        { value: variable1, label: '1', isUsed: true },
+        { value: variable2, label: '2', isUsed: false },
+        { value: variable3, label: '3', isUsed: false },
+        { value: variable4, label: '4', isUsed: false },
+      ]);
+    });
+  });
 });

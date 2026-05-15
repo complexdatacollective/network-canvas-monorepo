@@ -27,12 +27,12 @@ Replace Biome (lint + format) with the Oxc toolchain (oxlint + oxfmt), while bri
 
 ### Tooling
 
-| Concern | Before | After |
-|---|---|---|
-| Lint | `@biomejs/biome` | `oxlint` (native) + `oxlint-tailwindcss` (native plugin) |
-| Format | `@biomejs/biome` | `oxfmt` |
-| Editor | `biomejs.biome` VSCode extension | `oxc.oxc-vscode` |
-| Pre-commit | husky + lint-staged → `pnpm lint:fix` | husky + lint-staged → `oxlint --fix` + `oxfmt` |
+| Concern    | Before                                | After                                                    |
+| ---------- | ------------------------------------- | -------------------------------------------------------- |
+| Lint       | `@biomejs/biome`                      | `oxlint` (native) + `oxlint-tailwindcss` (native plugin) |
+| Format     | `@biomejs/biome`                      | `oxfmt`                                                  |
+| Editor     | `biomejs.biome` VSCode extension      | `oxc.oxc-vscode`                                         |
+| Pre-commit | husky + lint-staged → `pnpm lint:fix` | husky + lint-staged → `oxlint --fix` + `oxfmt`           |
 
 ### Config layout
 
@@ -100,6 +100,7 @@ Packages without a config file inherit root: `shared-consts`, `protocol-validati
 ```
 
 Notes:
+
 - `sortTailwindcss` auto-detects each app's stylesheet (`globals.css` / `main.css` / `tailwind.css` containing `@import "tailwindcss"`). If auto-detection misses a package, that package adds a per-package `.oxfmtrc.json` that sets `stylesheet`.
 - Style values mirror Fresco's `.prettierrc` plus `cn` and `clsx` (idiomatic in this repo).
 
@@ -222,17 +223,18 @@ Type-aware is root-only in oxlint; that's why `no-misused-promises` and `switch-
 
 These rules map directly to what Fresco was running through `eslint-plugin-better-tailwindcss`:
 
-| Fresco (better-tailwindcss) | oxlint-tailwindcss |
-|---|---|
-| `enforce-canonical-classes` (warn) | `enforce-canonical` (warn) |
+| Fresco (better-tailwindcss)         | oxlint-tailwindcss                  |
+| ----------------------------------- | ----------------------------------- |
+| `enforce-canonical-classes` (warn)  | `enforce-canonical` (warn)          |
 | `no-unnecessary-whitespace` (error) | `no-unnecessary-whitespace` (error) |
-| `no-duplicate-classes` (error) | `no-duplicate-classes` (error) |
-| `no-unknown-classes` (error) | `no-unknown-classes` (error) |
-| `no-conflicting-classes` (warn) | `no-conflicting-classes` (warn) |
+| `no-duplicate-classes` (error)      | `no-duplicate-classes` (error)      |
+| `no-unknown-classes` (error)        | `no-unknown-classes` (error)        |
+| `no-conflicting-classes` (warn)     | `no-conflicting-classes` (warn)     |
 
 ### Per-package configs
 
 **`apps/architect-web/.oxlintrc.json`**
+
 ```json
 {
   "extends": [
@@ -244,6 +246,7 @@ These rules map directly to what Fresco was running through `eslint-plugin-bette
 ```
 
 **`apps/documentation/.oxlintrc.json`**
+
 ```json
 {
   "extends": [
@@ -257,6 +260,7 @@ These rules map directly to what Fresco was running through `eslint-plugin-bette
 ```
 
 **`apps/interviewer/.oxlintrc.json`**
+
 ```json
 {
   "extends": [
@@ -272,12 +276,10 @@ These rules map directly to what Fresco was running through `eslint-plugin-bette
 ```
 
 **`apps/architect-desktop/.oxlintrc.json`**
+
 ```json
 {
-  "extends": [
-    "../../.oxlintrc.json",
-    "../../tooling/oxlint/react.json"
-  ],
+  "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
   "rules": {
     "react-hooks/exhaustive-deps": "warn",
     "no-process-env": "off"
@@ -286,6 +288,7 @@ These rules map directly to what Fresco was running through `eslint-plugin-bette
 ```
 
 **`packages/fresco-ui/.oxlintrc.json`** and **`packages/interview/.oxlintrc.json`**
+
 ```json
 {
   "extends": [
@@ -304,16 +307,15 @@ These rules map directly to what Fresco was running through `eslint-plugin-bette
 ```
 
 **`packages/art/.oxlintrc.json`**
+
 ```json
 {
-  "extends": [
-    "../../.oxlintrc.json",
-    "../../tooling/oxlint/react.json"
-  ]
+  "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"]
 }
 ```
 
 **`workers/posthog-proxy/.oxlintrc.json`** and **`workers/development-protocol/.oxlintrc.json`**
+
 ```json
 {
   "extends": ["../../.oxlintrc.json"],
@@ -325,14 +327,17 @@ These rules map directly to what Fresco was running through `eslint-plugin-bette
 ### Root `package.json` changes
 
 Remove:
+
 - `"@biomejs/biome": "^2.4.15"`
 
 Add (versions resolved at install):
+
 - `"oxlint"`
 - `"oxfmt"`
 - `"oxlint-tailwindcss"`
 
 Scripts:
+
 ```json
 "lint": "oxlint && oxfmt --check .",
 "lint:fix": "oxlint --fix && oxfmt .",
@@ -341,6 +346,7 @@ Scripts:
 ```
 
 lint-staged (replaces the current blanket `*`):
+
 ```json
 "lint-staged": {
   "*.{js,jsx,mjs,cjs,ts,tsx}": ["oxlint --fix", "oxfmt"],
@@ -351,11 +357,13 @@ lint-staged (replaces the current blanket `*`):
 ### VSCode
 
 **`.vscode/extensions.json`**
+
 ```json
 { "recommendations": ["oxc.oxc-vscode"] }
 ```
 
 **`.vscode/settings.json`**
+
 ```json
 {
   "typescript.tsdk": "./node_modules/typescript/lib",
@@ -366,12 +374,12 @@ lint-staged (replaces the current blanket `*`):
   "editor.codeActionsOnSave": {
     "source.fixAll.oxc": "always"
   },
-  "[javascript]":       { "editor.defaultFormatter": "oxc.oxc-vscode" },
-  "[typescript]":       { "editor.defaultFormatter": "oxc.oxc-vscode" },
-  "[typescriptreact]":  { "editor.defaultFormatter": "oxc.oxc-vscode" },
-  "[javascriptreact]":  { "editor.defaultFormatter": "oxc.oxc-vscode" },
-  "[json]":             { "editor.defaultFormatter": "oxc.oxc-vscode" },
-  "[jsonc]":            { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[javascript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[typescript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[typescriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[javascriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[json]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[jsonc]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
   "files.associations": { "*.css": "tailwindcss" }
 }
 ```
@@ -379,6 +387,7 @@ lint-staged (replaces the current blanket `*`):
 ### Files removed
 
 All 14 `biome.json` files:
+
 - `biome.json`
 - `tooling/tailwind/biome.json`
 - `packages/art/biome.json`

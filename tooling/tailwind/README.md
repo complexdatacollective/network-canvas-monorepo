@@ -13,21 +13,21 @@ All exports are explicit; the `exports` field in `package.json` is the public AP
 
 The v4 surface ships a single foundation barrel that bundles every theme, plugin, and font. Tailwind v4 cares about `@import` ordering — by self-hosting fonts via `@font-face` (no external Google Fonts `@import url(...)`) the barrel composes safely no matter where consumers place it in their entry stream.
 
-| Export                                                              | Purpose                                                                                                       |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `@codaco/tailwind-config/fresco.css`                                | Foundation barrel — colors, the `@theme` block, foundational utilities, custom plugins, **both theme variants** (default + interview) with self-hosted Nunito + Inclusive Sans fonts. |
-| `@codaco/tailwind-config/fresco/plugins/elevation/elevation`        | Multi-layer realistic shadows (`elevation-low/medium/high`).                                                  |
-| `@codaco/tailwind-config/fresco/plugins/inset-surface/inset-surface`| Background-color-adaptive inset (pressed-in) shadows.                                                         |
-| `@codaco/tailwind-config/fresco/plugins/motion-spring`              | Spring-based transition utilities (`spring-short/medium/long`) generated via `motion`.                        |
+| Export                                                               | Purpose                                                                                                                                                                               |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@codaco/tailwind-config/fresco.css`                                 | Foundation barrel — colors, the `@theme` block, foundational utilities, custom plugins, **both theme variants** (default + interview) with self-hosted Nunito + Inclusive Sans fonts. |
+| `@codaco/tailwind-config/fresco/plugins/elevation/elevation`         | Multi-layer realistic shadows (`elevation-low/medium/high`).                                                                                                                          |
+| `@codaco/tailwind-config/fresco/plugins/inset-surface/inset-surface` | Background-color-adaptive inset (pressed-in) shadows.                                                                                                                                 |
+| `@codaco/tailwind-config/fresco/plugins/motion-spring`               | Spring-based transition utilities (`spring-short/medium/long`) generated via `motion`.                                                                                                |
 
 ### Consuming from a Tailwind v4 app
 
 `packages/fresco-ui/src/styles.css` is the canonical example. The minimal Fresco entry is:
 
 ```css
-@import "tailwindcss";
+@import 'tailwindcss';
 
-@import "@codaco/tailwind-config/fresco.css";
+@import '@codaco/tailwind-config/fresco.css';
 ```
 
 The default theme writes its values under `:root`; the interview theme layers overrides under `[data-theme-interview]`, which can be placed on any element. The type scale binds to a `--theme-root-size` sentinel that each theme declares (`1rem` for the default, `1rem`/`1.125rem`/`1.25rem` at viewport breakpoints for the interview theme). Both themes ship together in the foundation barrel; consumers typically wrap interview UI with `<ThemedRegion theme="interview">` from `@codaco/fresco-ui`.
@@ -38,10 +38,10 @@ The `@theme` block (bundled in `fresco.css`) exposes semantic CSS variables (`--
 
 ## Tailwind v3 surface
 
-| Export                                | Purpose                                                                                                                   |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `@codaco/tailwind-config/base`        | Tailwind v3 preset (`Config` object) with shadcn-style HSL semantic colors and container settings.                        |
-| `@codaco/tailwind-config/fresco`      | Tailwind v3 preset extending `base` with the Network Canvas palette, font sizes, keyframes, and `tailwindcss-animate`.    |
-| `@codaco/tailwind-config/globals.css` | Network Canvas palette as HSL `H S% L%` triplets, plus dark-variant calc fallbacks. Pair with the v3 presets.             |
+| Export                                | Purpose                                                                                                                |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `@codaco/tailwind-config/base`        | Tailwind v3 preset (`Config` object) with shadcn-style HSL semantic colors and container settings.                     |
+| `@codaco/tailwind-config/fresco`      | Tailwind v3 preset extending `base` with the Network Canvas palette, font sizes, keyframes, and `tailwindcss-animate`. |
+| `@codaco/tailwind-config/globals.css` | Network Canvas palette as HSL `H S% L%` triplets, plus dark-variant calc fallbacks. Pair with the v3 presets.          |
 
 Used by `packages/ui`, `packages/art`, and `apps/documentation`. New consumers should prefer the v4 surface unless they are explicitly maintaining a v3 codebase.

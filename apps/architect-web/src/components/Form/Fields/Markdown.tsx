@@ -1,9 +1,16 @@
-import { type AnchorHTMLAttributes, type ClassAttributes, type ComponentType, memo, useMemo } from "react";
-import ReactMarkdown, { type ExtraProps } from "react-markdown";
-import rehypeRaw from "rehype-raw";
-import rehypeSanitize from "rehype-sanitize";
-import remarkGemoji from "remark-gemoji";
-import { ALLOWED_MARKDOWN_TAGS } from "./config";
+import {
+  type AnchorHTMLAttributes,
+  type ClassAttributes,
+  type ComponentType,
+  memo,
+  useMemo,
+} from 'react';
+import ReactMarkdown, { type ExtraProps } from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
+import remarkGemoji from 'remark-gemoji';
+
+import { ALLOWED_MARKDOWN_TAGS } from './config';
 
 /**
  * Hack for `>` characters that already exist in some protocols
@@ -17,58 +24,64 @@ import { ALLOWED_MARKDOWN_TAGS } from "./config";
  * rather than a single regex, because Safari does not support
  * lookbehind.
  */
-const escapeAngleBracket = (value = "") => value.replace(/>/g, "&gt;").replace(/<br&gt;/g, "<br>");
+const escapeAngleBracket = (value = '') =>
+  value.replace(/>/g, '&gt;').replace(/<br&gt;/g, '<br>');
 
 const externalLinkRenderer = ({
-	href,
-	children,
-}: ClassAttributes<HTMLAnchorElement> & AnchorHTMLAttributes<HTMLAnchorElement> & ExtraProps) => (
-	<a href={href} target="_blank" rel="noopener noreferrer">
-		{children}
-	</a>
+  href,
+  children,
+}: ClassAttributes<HTMLAnchorElement> &
+  AnchorHTMLAttributes<HTMLAnchorElement> &
+  ExtraProps) => (
+  <a href={href} target="_blank" rel="noopener noreferrer">
+    {children}
+  </a>
 );
 
 const defaultMarkdownRenderers = {
-	a: externalLinkRenderer,
+  a: externalLinkRenderer,
 };
 
 type MarkdownProps = {
-	label: string;
-	allowedElements?: readonly string[];
-	markdownRenderers?: Record<string, ComponentType<unknown>>;
-	className?: string;
+  label: string;
+  allowedElements?: readonly string[];
+  markdownRenderers?: Record<string, ComponentType<unknown>>;
+  className?: string;
 };
 
 const Markdown = ({
-	label,
-	className,
-	allowedElements = ALLOWED_MARKDOWN_TAGS,
-	markdownRenderers = {},
+  label,
+  className,
+  allowedElements = ALLOWED_MARKDOWN_TAGS,
+  markdownRenderers = {},
 }: MarkdownProps) => {
-	const rawText = useMemo(() => {
-		if (!label) {
-			return null;
-		}
+  const rawText = useMemo(() => {
+    if (!label) {
+      return null;
+    }
 
-		return escapeAngleBracket(label);
-	}, [label]);
+    return escapeAngleBracket(label);
+  }, [label]);
 
-	return (
-		<span className={className}>
-			<ReactMarkdown
-				allowedElements={allowedElements}
-				components={{
-					...defaultMarkdownRenderers,
-					...markdownRenderers,
-				}}
-				remarkPlugins={[remarkGemoji]}
-				rehypePlugins={[rehypeRaw, rehypeSanitize]}
-				unwrapDisallowed
-			>
-				{rawText}
-			</ReactMarkdown>
-		</span>
-	);
+  return (
+    <span className={className}>
+      <ReactMarkdown
+        allowedElements={allowedElements}
+        components={{
+          ...defaultMarkdownRenderers,
+          ...markdownRenderers,
+        }}
+        remarkPlugins={[remarkGemoji]}
+        rehypePlugins={[rehypeRaw, rehypeSanitize]}
+        unwrapDisallowed
+      >
+        {rawText}
+      </ReactMarkdown>
+    </span>
+  );
 };
 
-export default memo(Markdown, (prevProps, nextProps) => prevProps.label === nextProps.label);
+export default memo(
+  Markdown,
+  (prevProps, nextProps) => prevProps.label === nextProps.label,
+);

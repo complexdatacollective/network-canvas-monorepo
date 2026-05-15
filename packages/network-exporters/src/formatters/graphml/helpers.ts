@@ -1,125 +1,148 @@
-import type { Codebook, Variable } from "@codaco/protocol-validation";
+import { DOMImplementation } from '@xmldom/xmldom';
+import { isNil } from 'es-toolkit';
+
+import type { Codebook, Variable } from '@codaco/protocol-validation';
 import {
-	caseProperty,
-	codebookHashProperty,
-	edgeSourceProperty,
-	type NcEdge,
-	type NcEgo,
-	type NcNode,
-	protocolName,
-	protocolProperty,
-	sessionExportTimeProperty,
-	sessionFinishTimeProperty,
-	sessionProperty,
-	sessionStartTimeProperty,
-	type VariableValue,
-} from "@codaco/shared-consts";
-import { DOMImplementation } from "@xmldom/xmldom";
-import { isNil } from "es-toolkit";
-import type { EdgeWithResequencedID, NodeWithResequencedID } from "../../input";
-import type { ExportFileNetwork } from "../../session/exportFile";
-import { getEntityAttributes } from "../../utils/general";
+  caseProperty,
+  codebookHashProperty,
+  edgeSourceProperty,
+  type NcEdge,
+  type NcEgo,
+  type NcNode,
+  protocolName,
+  protocolProperty,
+  sessionExportTimeProperty,
+  sessionFinishTimeProperty,
+  sessionProperty,
+  sessionStartTimeProperty,
+  type VariableValue,
+} from '@codaco/shared-consts';
+
+import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
+import type { ExportFileNetwork } from '../../session/exportFile';
+import { getEntityAttributes } from '../../utils/general';
 
 export function getCodebookVariablesForEntity(
-	entity: NodeWithResequencedID | EdgeWithResequencedID | NcEgo,
-	codebook: Codebook,
+  entity: NodeWithResequencedID | EdgeWithResequencedID | NcEgo,
+  codebook: Codebook,
 ) {
-	const entityType = deriveEntityType(entity);
-	// Fetch the codebook variables for this entity
-	let codebookVariables: Record<string, Variable>;
-	if ("type" in entity) {
-		codebookVariables = codebook[entityType as "node" | "edge"]?.[entity.type]?.variables ?? {};
-	} else {
-		codebookVariables = codebook.ego?.variables ?? {};
-	}
+  const entityType = deriveEntityType(entity);
+  // Fetch the codebook variables for this entity
+  let codebookVariables: Record<string, Variable>;
+  if ('type' in entity) {
+    codebookVariables =
+      codebook[entityType as 'node' | 'edge']?.[entity.type]?.variables ?? {};
+  } else {
+    codebookVariables = codebook.ego?.variables ?? {};
+  }
 
-	return codebookVariables;
+  return codebookVariables;
 }
 
 export function deriveEntityType(
-	entities: NodeWithResequencedID[]   | NcEgo | NcNode | NcEdge,
+  entities: NodeWithResequencedID[] | NcEgo | NcNode | NcEdge,
 ) {
-	if (!Array.isArray(entities)) {
-		return "type" in entities ? (Object.hasOwn(entities, edgeSourceProperty) ? "edge" : "node") : "ego";
-	}
+  if (!Array.isArray(entities)) {
+    return 'type' in entities
+      ? Object.hasOwn(entities, edgeSourceProperty)
+        ? 'edge'
+        : 'node'
+      : 'ego';
+  }
 
-	// Handle empty arrays
-	if (entities.length === 0) {
-		return "node";
-	}
+  // Handle empty arrays
+  if (entities.length === 0) {
+    return 'node';
+  }
 
-	const first = entities[0];
-	return first !== undefined && Object.hasOwn(first, edgeSourceProperty) ? "edge" : "node";
+  const first = entities[0];
+  return first !== undefined && Object.hasOwn(first, edgeSourceProperty)
+    ? 'edge'
+    : 'node';
 }
 
 export function createDocumentFragment() {
-	const dom = new DOMImplementation().createDocument(null, "root", null);
-	const fragment = dom.createDocumentFragment();
+  const dom = new DOMImplementation().createDocument(null, 'root', null);
+  const fragment = dom.createDocumentFragment();
 
-	return fragment;
+  return fragment;
 }
 
-export const setUpXml = (sessionVariables: ExportFileNetwork["sessionVariables"]) => {
-	const doc = new DOMImplementation().createDocument(null, "graphml", null);
+export const setUpXml = (
+  sessionVariables: ExportFileNetwork['sessionVariables'],
+) => {
+  const doc = new DOMImplementation().createDocument(null, 'graphml', null);
 
-	// Set the necessary namespaces and attributes
-	const root = doc.documentElement;
-	if (!root) throw new Error("GraphML document missing root element");
-	root.setAttribute("xmlns", "http://graphml.graphdrawing.org/xmlns");
-	root.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
-	root.setAttribute(
-		"xsi:schemaLocation",
-		"http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd",
-	);
-	root.setAttribute("xmlns:nc", "http://schema.networkcanvas.com/xmlns");
+  // Set the necessary namespaces and attributes
+  const root = doc.documentElement;
+  if (!root) throw new Error('GraphML document missing root element');
+  root.setAttribute('xmlns', 'http://graphml.graphdrawing.org/xmlns');
+  root.setAttribute('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
+  root.setAttribute(
+    'xsi:schemaLocation',
+    'http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd',
+  );
+  root.setAttribute('xmlns:nc', 'http://schema.networkcanvas.com/xmlns');
 
-	const pi = doc.createProcessingInstruction("xml", 'version="1.0" encoding="UTF-8"');
-	doc.insertBefore(pi, doc.firstChild);
+  const pi = doc.createProcessingInstruction(
+    'xml',
+    'version="1.0" encoding="UTF-8"',
+  );
+  doc.insertBefore(pi, doc.firstChild);
 
-	// Create <key> for a 'label' variable for display in Gephi.
-	const labelDataElement = doc.createElement("key");
-	labelDataElement.setAttribute("id", "label");
-	labelDataElement.setAttribute("attr.name", "label");
-	labelDataElement.setAttribute("attr.type", "string");
-	labelDataElement.setAttribute("for", "all");
-	root.appendChild(labelDataElement);
+  // Create <key> for a 'label' variable for display in Gephi.
+  const labelDataElement = doc.createElement('key');
+  labelDataElement.setAttribute('id', 'label');
+  labelDataElement.setAttribute('attr.name', 'label');
+  labelDataElement.setAttribute('attr.type', 'string');
+  labelDataElement.setAttribute('for', 'all');
+  root.appendChild(labelDataElement);
 
-	// Create the graph element
-	const graph = doc.createElement("graph");
+  // Create the graph element
+  const graph = doc.createElement('graph');
 
-	// Add attributes
-	graph.setAttribute("edgedefault", "undirected");
-	graph.setAttribute("nc:caseId", sessionVariables[caseProperty]);
-	graph.setAttribute("nc:sessionUUID", sessionVariables[sessionProperty]);
-	graph.setAttribute("nc:protocolName", sessionVariables[protocolName]);
-	graph.setAttribute("nc:protocolUID", sessionVariables[protocolProperty]);
-	graph.setAttribute("nc:codebookHash", sessionVariables[codebookHashProperty]);
-	graph.setAttribute("nc:sessionExportTime", sessionVariables[sessionExportTimeProperty]);
+  // Add attributes
+  graph.setAttribute('edgedefault', 'undirected');
+  graph.setAttribute('nc:caseId', sessionVariables[caseProperty]);
+  graph.setAttribute('nc:sessionUUID', sessionVariables[sessionProperty]);
+  graph.setAttribute('nc:protocolName', sessionVariables[protocolName]);
+  graph.setAttribute('nc:protocolUID', sessionVariables[protocolProperty]);
+  graph.setAttribute('nc:codebookHash', sessionVariables[codebookHashProperty]);
+  graph.setAttribute(
+    'nc:sessionExportTime',
+    sessionVariables[sessionExportTimeProperty],
+  );
 
-	if (sessionVariables[sessionStartTimeProperty]) {
-		graph.setAttribute("nc:sessionStartTime", sessionVariables[sessionStartTimeProperty]);
-	}
+  if (sessionVariables[sessionStartTimeProperty]) {
+    graph.setAttribute(
+      'nc:sessionStartTime',
+      sessionVariables[sessionStartTimeProperty],
+    );
+  }
 
-	if (sessionVariables[sessionFinishTimeProperty]) {
-		graph.setAttribute("nc:sessionFinishTime", sessionVariables[sessionFinishTimeProperty]);
-	}
+  if (sessionVariables[sessionFinishTimeProperty]) {
+    graph.setAttribute(
+      'nc:sessionFinishTime',
+      sessionVariables[sessionFinishTimeProperty],
+    );
+  }
 
-	root.appendChild(graph);
+  root.appendChild(graph);
 
-	return doc;
+  return doc;
 };
 
 const utf8Encoder = new TextEncoder();
 
 export const sha1 = async (text: string): Promise<string> => {
-	const data = utf8Encoder.encode(text);
-	const digest = await crypto.subtle.digest("SHA-1", data);
-	const bytes = new Uint8Array(digest);
-	let hex = "";
-	for (const byte of bytes) {
-		hex += byte.toString(16).padStart(2, "0");
-	}
-	return hex;
+  const data = utf8Encoder.encode(text);
+  const digest = await crypto.subtle.digest('SHA-1', data);
+  const bytes = new Uint8Array(digest);
+  let hex = '';
+  for (const byte of bytes) {
+    hex += byte.toString(16).padStart(2, '0');
+  }
+  return hex;
 };
 
 /**
@@ -136,72 +159,84 @@ export const sha1 = async (text: string): Promise<string> => {
  * @param {*} key
  */
 
-type GraphMLKeyType = "boolean" | "int" | "long" | "float" | "double" | "string";
+type GraphMLKeyType =
+  | 'boolean'
+  | 'int'
+  | 'long'
+  | 'float'
+  | 'double'
+  | 'string';
 
 export const getGraphMLTypeForKey = (
-	data: NodeWithResequencedID[]   | NcEgo[],
-	key: string,
+  data: NodeWithResequencedID[] | NcEgo[],
+  key: string,
 ): GraphMLKeyType =>
-	data.reduce<GraphMLKeyType | null>((result, value) => {
-		const attrs = getEntityAttributes(value);
+  data.reduce<GraphMLKeyType | null>((result, value) => {
+    const attrs = getEntityAttributes(value);
 
-		// If the attribute is not present, return the current result
-		if (isNil(attrs[key])) return result;
+    // If the attribute is not present, return the current result
+    if (isNil(attrs[key])) return result;
 
-		const currentType = getAttributeType(attrs[key]);
+    const currentType = getAttributeType(attrs[key]);
 
-		// If we haven't yet set a type, set it to whatever we detected the type as
-		if (result === null) return currentType;
+    // If we haven't yet set a type, set it to whatever we detected the type as
+    if (result === null) return currentType;
 
-		// If types match, keep that type
-		if (currentType === result) return currentType;
+    // If types match, keep that type
+    if (currentType === result) return currentType;
 
-		// Always upgrade to a higher precision number type - never downgrade
-		if (currentType === "double" && result === "int") return "double";
-		if (currentType === "int" && result === "double") return "double";
+    // Always upgrade to a higher precision number type - never downgrade
+    if (currentType === 'double' && result === 'int') return 'double';
+    if (currentType === 'int' && result === 'double') return 'double';
 
-		// Default to string when types don't match
-		return "string";
-	}, null) ?? "string"; // Default to string if no values are processed
+    // Default to string when types don't match
+    return 'string';
+  }, null) ?? 'string'; // Default to string if no values are processed
 
 function getAttributeType(attribute: VariableValue): GraphMLKeyType {
-	// Determine the type of the attribute value
-	if (typeof attribute === "boolean") {
-		return "boolean";
-	}
+  // Determine the type of the attribute value
+  if (typeof attribute === 'boolean') {
+    return 'boolean';
+  }
 
-	if (typeof attribute === "number") {
-		// For numbers, check if integer or floating point
-		return Number.isInteger(attribute) ? "int" : "double";
-	}
+  if (typeof attribute === 'number') {
+    // For numbers, check if integer or floating point
+    return Number.isInteger(attribute) ? 'int' : 'double';
+  }
 
-	// Handle string representation of numbers
-	// Handle potential object values before stringifying
-	const attrVal = attribute;
-	const attrStr = typeof attrVal === "object" && attrVal !== null ? JSON.stringify(attrVal) : String(attrVal);
+  // Handle string representation of numbers
+  // Handle potential object values before stringifying
+  const attrVal = attribute;
+  const attrStr =
+    typeof attrVal === 'object' && attrVal !== null
+      ? JSON.stringify(attrVal)
+      : String(attrVal);
 
-	// Integer pattern
-	if (/^-?\d+$/.exec(attrStr)) {
-		return "int";
-	}
+  // Integer pattern
+  if (/^-?\d+$/.exec(attrStr)) {
+    return 'int';
+  }
 
-	// Float pattern
-	if (/^-?\d+\.\d+$/.exec(attrStr)) {
-		return "double";
-	}
+  // Float pattern
+  if (/^-?\d+\.\d+$/.exec(attrStr)) {
+    return 'double';
+  }
 
-	return "string";
+  return 'string';
 }
 
-export const createDataElement = (attributes: Record<string, string>, text: string) => {
-	const dom = new DOMImplementation().createDocument(null, "root", null);
-	const textNode = dom.createTextNode(text);
-	const element = dom.createElement("data");
-	Object.entries(attributes).forEach(([key, val]) => {
-		element.setAttribute(key, val);
-	});
+export const createDataElement = (
+  attributes: Record<string, string>,
+  text: string,
+) => {
+  const dom = new DOMImplementation().createDocument(null, 'root', null);
+  const textNode = dom.createTextNode(text);
+  const element = dom.createElement('data');
+  Object.entries(attributes).forEach(([key, val]) => {
+    element.setAttribute(key, val);
+  });
 
-	element.appendChild(textNode);
+  element.appendChild(textNode);
 
-	return element;
+  return element;
 };

@@ -1,22 +1,35 @@
-import type { AssetRequestHandler, InterviewPayload, StepChangeHandler } from "@codaco/interview";
-import { Shell } from "@codaco/interview";
-import { MotionConfig } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { mockFinish, mockSync } from "./mockCallbacks";
+import { MotionConfig } from 'motion/react';
 import {
-	createInterview as createInterviewHook,
-	getTestState,
-	installProtocol as installProtocolHook,
-	installTestHooks,
-	setAssetUrl as setAssetUrlHook,
-	subscribe,
-} from "./testHooks";
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 
-const ASSET_SERVER_URL = "http://localhost:4200";
+import type {
+  AssetRequestHandler,
+  InterviewPayload,
+  StepChangeHandler,
+} from '@codaco/interview';
+import { Shell } from '@codaco/interview';
+
+import { mockFinish, mockSync } from './mockCallbacks';
+import {
+  createInterview as createInterviewHook,
+  getTestState,
+  installProtocol as installProtocolHook,
+  installTestHooks,
+  setAssetUrl as setAssetUrlHook,
+  subscribe,
+} from './testHooks';
+
+const ASSET_SERVER_URL = 'http://localhost:4200';
 
 type BootstrapPayload = {
-	protocol: Parameters<typeof installProtocolHook>[0];
-	assetUrls: Record<string, string>;
+  protocol: Parameters<typeof installProtocolHook>[0];
+  assetUrls: Record<string, string>;
 };
 
 // Auto-bootstrap path: `?bootstrap=<slug>` fetches a prepared bundle from the
@@ -24,126 +37,128 @@ type BootstrapPayload = {
 // redirects to `?interviewId=<id>&step=0`. Used by `pnpm dev:host` so devs
 // can land in an interview without a console paste.
 async function autoBootstrap(slug: string): Promise<string | null> {
-	try {
-		const res = await fetch(`${ASSET_SERVER_URL}/${slug}/bootstrap.json`);
-		if (!res.ok) return null;
-		const { protocol, assetUrls } = (await res.json()) as BootstrapPayload;
-		installProtocolHook(protocol);
-		for (const [id, url] of Object.entries(assetUrls)) {
-			setAssetUrlHook(id, url);
-		}
-		return createInterviewHook(protocol.id, "dev-host");
-	} catch {
-		return null;
-	}
+  try {
+    const res = await fetch(`${ASSET_SERVER_URL}/${slug}/bootstrap.json`);
+    if (!res.ok) return null;
+    const { protocol, assetUrls } = (await res.json()) as BootstrapPayload;
+    installProtocolHook(protocol);
+    for (const [id, url] of Object.entries(assetUrls)) {
+      setAssetUrlHook(id, url);
+    }
+    return createInterviewHook(protocol.id, 'dev-host');
+  } catch {
+    return null;
+  }
 }
 
 globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
 
 const mockAssetReq: AssetRequestHandler = async (assetId: string) => {
-	const url = getTestState().assetUrls.get(assetId);
-	if (!url) throw new Error(`No URL registered for asset ${assetId}`);
-	return url;
+  const url = getTestState().assetUrls.get(assetId);
+  if (!url) throw new Error(`No URL registered for asset ${assetId}`);
+  return url;
 };
 
 installTestHooks();
 
 function useTestState() {
-	return useSyncExternalStore(
-		subscribe,
-		() =>
-			Array.from(getTestState().interviews.entries())
-				.map(([id]) => id)
-				.join(","),
-		() => "",
-	);
+  return useSyncExternalStore(
+    subscribe,
+    () =>
+      Array.from(getTestState().interviews.entries())
+        .map(([id]) => id)
+        .join(','),
+    () => '',
+  );
 }
 
 function getStepFromUrl(): number | undefined {
-	const params = new URLSearchParams(window.location.search);
-	const step = params.get("step");
-	return step !== null ? Number(step) : undefined;
+  const params = new URLSearchParams(window.location.search);
+  const step = params.get('step');
+  return step !== null ? Number(step) : undefined;
 }
 
 export default function App() {
-	const [activeId, setActiveId] = useState<string | null>(null);
-	const [currentStep, setCurrentStep] = useState<number | undefined>(undefined);
-	useTestState();
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState<number | undefined>(undefined);
+  useTestState();
 
-	useEffect(() => {
-		const params = new URLSearchParams(window.location.search);
-		const existingId = params.get("interviewId");
-		if (existingId) {
-			setActiveId(existingId);
-			setCurrentStep(getStepFromUrl());
-			return;
-		}
-		const bootstrapSlug = params.get("bootstrap");
-		if (bootstrapSlug) {
-			autoBootstrap(bootstrapSlug).then((id) => {
-				if (id) {
-					window.history.replaceState(null, "", `?interviewId=${id}&step=0`);
-					setActiveId(id);
-					setCurrentStep(0);
-				}
-			});
-		}
-	}, []);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const existingId = params.get('interviewId');
+    if (existingId) {
+      setActiveId(existingId);
+      setCurrentStep(getStepFromUrl());
+      return;
+    }
+    const bootstrapSlug = params.get('bootstrap');
+    if (bootstrapSlug) {
+      autoBootstrap(bootstrapSlug).then((id) => {
+        if (id) {
+          window.history.replaceState(null, '', `?interviewId=${id}&step=0`);
+          setActiveId(id);
+          setCurrentStep(0);
+        }
+      });
+    }
+  }, []);
 
-	const onStepChange = useCallback<StepChangeHandler>((step) => {
-		setCurrentStep(step);
-		const params = new URLSearchParams(window.location.search);
-		params.set("step", String(step));
-		window.history.replaceState(null, "", `?${params.toString()}`);
-	}, []);
+  const onStepChange = useCallback<StepChangeHandler>((step) => {
+    setCurrentStep(step);
+    const params = new URLSearchParams(window.location.search);
+    params.set('step', String(step));
+    window.history.replaceState(null, '', `?${params.toString()}`);
+  }, []);
 
-	const entry = activeId ? getTestState().interviews.get(activeId) : undefined;
-	const protocol = entry ? getTestState().protocols.get(entry.protocolId) : undefined;
+  const entry = activeId ? getTestState().interviews.get(activeId) : undefined;
+  const protocol = entry
+    ? getTestState().protocols.get(entry.protocolId)
+    : undefined;
 
-	// Stable ref to the current entry/protocol so useMemo only recreates the
-	// payload (and thus the Redux store inside Shell) when the interview ID
-	// changes, not on every step change or App re-render.
-	const entryRef = useRef(entry);
-	entryRef.current = entry;
-	const protocolRef = useRef(protocol);
-	protocolRef.current = protocol;
+  // Stable ref to the current entry/protocol so useMemo only recreates the
+  // payload (and thus the Redux store inside Shell) when the interview ID
+  // changes, not on every step change or App re-render.
+  const entryRef = useRef(entry);
+  entryRef.current = entry;
+  const protocolRef = useRef(protocol);
+  protocolRef.current = protocol;
 
-	const payload: InterviewPayload | null = useMemo(() => {
-		const e = entryRef.current;
-		const p = protocolRef.current;
-		if (!e || !p) return null;
-		return { session: e.session, protocol: p };
-	}, [activeId]);
+  const payload: InterviewPayload | null = useMemo(() => {
+    const e = entryRef.current;
+    const p = protocolRef.current;
+    if (!e || !p) return null;
+    return { session: e.session, protocol: p };
+  }, [activeId]);
 
-	if (!activeId) {
-		return <div>No interview selected. Use ?interviewId=... in the URL.</div>;
-	}
+  if (!activeId) {
+    return <div>No interview selected. Use ?interviewId=... in the URL.</div>;
+  }
 
-	if (!entry) {
-		return <div>Unknown interview ID: {activeId}</div>;
-	}
+  if (!entry) {
+    return <div>Unknown interview ID: {activeId}</div>;
+  }
 
-	if (!protocol) {
-		return <div>Unknown protocol for interview: {entry.protocolId}</div>;
-	}
+  if (!protocol) {
+    return <div>Unknown protocol for interview: {entry.protocolId}</div>;
+  }
 
-	if (!payload) {
-		return <div>Loading...</div>;
-	}
+  if (!payload) {
+    return <div>Loading...</div>;
+  }
 
-	return (
-		<MotionConfig reducedMotion="always" skipAnimations>
-			<Shell
-				payload={payload}
-				onSync={mockSync}
-				onFinish={mockFinish}
-				onRequestAsset={mockAssetReq}
-				currentStep={currentStep}
-				onStepChange={onStepChange}
-				flags={{ isE2E: true }}
-				analytics={{ installationId: "e2e", hostApp: "e2e" }}
-				disableAnalytics={true}
-			/>
-		</MotionConfig>
-	);
+  return (
+    <MotionConfig reducedMotion="always" skipAnimations>
+      <Shell
+        payload={payload}
+        onSync={mockSync}
+        onFinish={mockFinish}
+        onRequestAsset={mockAssetReq}
+        currentStep={currentStep}
+        onStepChange={onStepChange}
+        flags={{ isE2E: true }}
+        analytics={{ installationId: 'e2e', hostApp: 'e2e' }}
+        disableAnalytics={true}
+      />
+    </MotionConfig>
+  );
 }

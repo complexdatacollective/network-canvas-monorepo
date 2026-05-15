@@ -1,43 +1,49 @@
-import type { SchemaVersion } from "../schemas";
+import type { SchemaVersion } from '../schemas';
 
 export class MigrationError extends Error {
-	constructor(message: string) {
-		super(message);
-		this.name = "MigrationError";
-	}
+  constructor(message: string) {
+    super(message);
+    this.name = 'MigrationError';
+  }
 }
 
 export class MigrationNotPossibleError extends MigrationError {
-	constructor(from: number, to: number) {
-		super(`Migration to this version is not possible (${from} -> ${to}).`);
-		this.name = "MigrationNotPossibleError";
-	}
+  constructor(from: number, to: number) {
+    super(`Migration to this version is not possible (${from} -> ${to}).`);
+    this.name = 'MigrationNotPossibleError';
+  }
 }
 
 export class VersionMismatchError extends MigrationError {
-	constructor(from: number, to: number) {
-		super(`Nonsensical migration path (${from} -> ${to}). Source version must be lower than target version.`);
-		this.name = "VersionMismatchError";
-	}
+  constructor(from: number, to: number) {
+    super(
+      `Nonsensical migration path (${from} -> ${to}). Source version must be lower than target version.`,
+    );
+    this.name = 'VersionMismatchError';
+  }
 }
 
 export class MigrationStepError extends MigrationError {
-	constructor(version: number) {
-		super(`Migration step failed at version ${version}.`);
-		this.name = "MigrationStepError";
-	}
+  constructor(version: number) {
+    super(`Migration step failed at version ${version}.`);
+    this.name = 'MigrationStepError';
+  }
 }
 
 export class SchemaVersionDetectionError extends MigrationError {
-	constructor() {
-		super("Unable to detect schema version from document");
-		this.name = "SchemaVersionDetectionError";
-	}
+  constructor() {
+    super('Unable to detect schema version from document');
+    this.name = 'SchemaVersionDetectionError';
+  }
 }
 
 export class ValidationError extends MigrationError {
-	constructor(message: string, version?: SchemaVersion) {
-		super(version ? `Validation failed for version ${version}: ${message}` : `Validation failed: ${message}`);
-		this.name = "ValidationError";
-	}
+  constructor(message: string, version?: SchemaVersion) {
+    super(
+      version
+        ? `Validation failed for version ${version}: ${message}`
+        : `Validation failed: ${message}`,
+    );
+    this.name = 'ValidationError';
+  }
 }

@@ -36,6 +36,7 @@ It also exports several utility methods for managing protocol validation.
 ```js
 const migratedProtocol = migrateProtocol(8, protocolJson);
 ```
+
 2. canUpgrade - checks if protocol can be upgraded from one schema version to another
 
 ```js
@@ -54,7 +55,8 @@ const migrationNotes = getMigrationNotes(7, 8);
 const variableNames = getVariableNamesFromNetwork(network);
 ```
 
-5. validateNames - validates variable names to ensure they only contain letters, numbers, and the symbols ._-:
+5. validateNames - validates variable names to ensure they only contain letters, numbers, and the symbols .\_-:
+
 ```js
 const validationResult = validateNames(variableNamesArray);
 ```

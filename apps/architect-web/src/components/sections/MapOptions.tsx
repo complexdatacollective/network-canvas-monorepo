@@ -1,174 +1,191 @@
-import { compose } from "react-recompose";
-import withDisabledAPIKeyRequired from "~/components/enhancers/withDisabledAPIKeyRequired";
-import withMapFormToProps from "~/components/enhancers/withMapFormToProps";
-import NativeSelect from "~/components/Form/Fields/NativeSelect";
-import type { StageEditorSectionProps } from "~/components/StageEditor/Interfaces";
-import useVariablesFromExternalData from "../../hooks/useVariablesFromExternalData";
-import { Row, Section } from "../EditorLayout";
-import ExternalLink from "../ExternalLink";
-import ColorPicker from "../Form/Fields/ColorPicker";
-import GeoAPIKey from "../Form/Fields/Geospatial/GeoAPIKey";
-import GeoDataSource from "../Form/Fields/Geospatial/GeoDataSource";
-import MapSelection from "../Form/Fields/Geospatial/MapSelection";
-import { mapboxStyleOptions } from "../Form/Fields/Geospatial/mapboxConstants";
-import Toggle from "../Form/Fields/Toggle";
-import ValidatedField from "../Form/ValidatedField";
+import { compose } from 'react-recompose';
+
+import withDisabledAPIKeyRequired from '~/components/enhancers/withDisabledAPIKeyRequired';
+import withMapFormToProps from '~/components/enhancers/withMapFormToProps';
+import NativeSelect from '~/components/Form/Fields/NativeSelect';
+import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+
+import useVariablesFromExternalData from '../../hooks/useVariablesFromExternalData';
+import { Row, Section } from '../EditorLayout';
+import ExternalLink from '../ExternalLink';
+import ColorPicker from '../Form/Fields/ColorPicker';
+import GeoAPIKey from '../Form/Fields/Geospatial/GeoAPIKey';
+import GeoDataSource from '../Form/Fields/Geospatial/GeoDataSource';
+import { mapboxStyleOptions } from '../Form/Fields/Geospatial/mapboxConstants';
+import MapSelection from '../Form/Fields/Geospatial/MapSelection';
+import Toggle from '../Form/Fields/Toggle';
+import ValidatedField from '../Form/ValidatedField';
 
 type MapOptionsProps = StageEditorSectionProps & {
-	mapOptions?: {
-		center?: number[];
-		tokenAssetId?: string;
-		initialZoom?: number;
-		dataSourceAssetId?: string;
-		color?: string;
-		targetFeatureProperty?: string;
-		style?: string;
-		showTransit?: boolean;
-		allowSearch?: boolean;
-	};
-	disabled: boolean;
+  mapOptions?: {
+    center?: number[];
+    tokenAssetId?: string;
+    initialZoom?: number;
+    dataSourceAssetId?: string;
+    color?: string;
+    targetFeatureProperty?: string;
+    style?: string;
+    showTransit?: boolean;
+    allowSearch?: boolean;
+  };
+  disabled: boolean;
 };
 
 const defaultMapOptions = {
-	center: [0, 0],
-	tokenAssetId: "",
-	initialZoom: 0,
-	dataSourceAssetId: "",
-	color: "",
-	targetFeatureProperty: "",
-	style: "",
-	showTransit: false,
-	allowSearch: false,
+  center: [0, 0],
+  tokenAssetId: '',
+  initialZoom: 0,
+  dataSourceAssetId: '',
+  color: '',
+  targetFeatureProperty: '',
+  style: '',
+  showTransit: false,
+  allowSearch: false,
 };
 
-const MapOptions = ({ mapOptions = defaultMapOptions, disabled }: MapOptionsProps) => {
-	const { variables: variableOptions } = useVariablesFromExternalData(mapOptions?.dataSourceAssetId, true, "geojson");
+const MapOptions = ({
+  mapOptions = defaultMapOptions,
+  disabled,
+}: MapOptionsProps) => {
+  const { variables: variableOptions } = useVariablesFromExternalData(
+    mapOptions?.dataSourceAssetId,
+    true,
+    'geojson',
+  );
 
-	const { paletteName, paletteSize } = {
-		paletteName: "ord-color-seq",
-		paletteSize: 8,
-	};
+  const { paletteName, paletteSize } = {
+    paletteName: 'ord-color-seq',
+    paletteSize: 8,
+  };
 
-	return (
-		<>
-			<Section
-				title="API Key"
-				summary={
-					<p>
-						This interface requires an API key from Mapbox. For more information about Mapbox and retreiving an API Key,
-						read our{" "}
-						<ExternalLink href="https://documentation.networkcanvas.com/interface-documentation/geospatial/">
-							documentation
-						</ExternalLink>{" "}
-						on the interface.
-					</p>
-				}
-			>
-				<div data-name="Map Options Mapbox Key" />
-				<ValidatedField
-					name="mapOptions.tokenAssetId"
-					component={GeoAPIKey as React.ComponentType}
-					validation={{ required: true }}
-					componentProps={{
-						label: "Mapbox API Key",
-					}}
-				/>
-			</Section>
-			<Section
-				title="Data source for map layers"
-				summary={
-					<p>
-						This interface requires a GeoJSON source for map layers. These provide selectable areas for prompts. Select
-						a GeoJSON file to use.
-					</p>
-				}
-			>
-				<Row>
-					<div data-name="Layer data-source" />
-					<ValidatedField
-						component={GeoDataSource as React.ComponentType}
-						name="mapOptions.dataSourceAssetId"
-						validation={{ required: true }}
-					/>
-				</Row>
-				{variableOptions && variableOptions.length > 0 && (
-					<Row>
-						<ValidatedField
-							name="mapOptions.targetFeatureProperty"
-							component={NativeSelect as React.ComponentType}
-							validation={{ required: true }}
-							componentProps={{
-								label: "Which property should be used for map selection?",
-								options: variableOptions,
-							}}
-						/>
-					</Row>
-				)}
-			</Section>
-			<Section
-				title="Map Style"
-				summary={<p>Customize the colors, style, and features of the map.</p>}
-				disabled={disabled}
-			>
-				<ValidatedField
-					component={ColorPicker as React.ComponentType}
-					name="mapOptions.color"
-					validation={{ required: true }}
-					componentProps={{
-						palette: paletteName,
-						paletteRange: paletteSize,
-						label: "Which color would you like to use for this stage's map outlines and selections?",
-					}}
-				/>
-				<ValidatedField
-					component={NativeSelect as React.ComponentType}
-					name="mapOptions.style"
-					validation={{ required: true }}
-					componentProps={{
-						options: mapboxStyleOptions,
-						label: "Which mapbox style would you like to use for the map itself?",
-					}}
-				/>
+  return (
+    <>
+      <Section
+        title="API Key"
+        summary={
+          <p>
+            This interface requires an API key from Mapbox. For more information
+            about Mapbox and retreiving an API Key, read our{' '}
+            <ExternalLink href="https://documentation.networkcanvas.com/interface-documentation/geospatial/">
+              documentation
+            </ExternalLink>{' '}
+            on the interface.
+          </p>
+        }
+      >
+        <div data-name="Map Options Mapbox Key" />
+        <ValidatedField
+          name="mapOptions.tokenAssetId"
+          component={GeoAPIKey as React.ComponentType}
+          validation={{ required: true }}
+          componentProps={{
+            label: 'Mapbox API Key',
+          }}
+        />
+      </Section>
+      <Section
+        title="Data source for map layers"
+        summary={
+          <p>
+            This interface requires a GeoJSON source for map layers. These
+            provide selectable areas for prompts. Select a GeoJSON file to use.
+          </p>
+        }
+      >
+        <Row>
+          <div data-name="Layer data-source" />
+          <ValidatedField
+            component={GeoDataSource as React.ComponentType}
+            name="mapOptions.dataSourceAssetId"
+            validation={{ required: true }}
+          />
+        </Row>
+        {variableOptions && variableOptions.length > 0 && (
+          <Row>
+            <ValidatedField
+              name="mapOptions.targetFeatureProperty"
+              component={NativeSelect as React.ComponentType}
+              validation={{ required: true }}
+              componentProps={{
+                label: 'Which property should be used for map selection?',
+                options: variableOptions,
+              }}
+            />
+          </Row>
+        )}
+      </Section>
+      <Section
+        title="Map Style"
+        summary={<p>Customize the colors, style, and features of the map.</p>}
+        disabled={disabled}
+      >
+        <ValidatedField
+          component={ColorPicker as React.ComponentType}
+          name="mapOptions.color"
+          validation={{ required: true }}
+          componentProps={{
+            palette: paletteName,
+            paletteRange: paletteSize,
+            label:
+              "Which color would you like to use for this stage's map outlines and selections?",
+          }}
+        />
+        <ValidatedField
+          component={NativeSelect as React.ComponentType}
+          name="mapOptions.style"
+          validation={{ required: true }}
+          componentProps={{
+            options: mapboxStyleOptions,
+            label:
+              'Which mapbox style would you like to use for the map itself?',
+          }}
+        />
 
-				<h4>Show Public Transit</h4>
-				<ValidatedField
-					name="mapOptions.showTransit"
-					component={Toggle as React.ComponentType}
-					validation={{}}
-					componentProps={{
-						label: "Show public transit routes and stations on the map.",
-					}}
-				/>
+        <h4>Show Public Transit</h4>
+        <ValidatedField
+          name="mapOptions.showTransit"
+          component={Toggle as React.ComponentType}
+          validation={{}}
+          componentProps={{
+            label: 'Show public transit routes and stations on the map.',
+          }}
+        />
 
-				<h4>Allow Location Search</h4>
-				<ValidatedField
-					name="mapOptions.allowSearch"
-					component={Toggle as React.ComponentType}
-					validation={{}}
-					componentProps={{
-						label: "Allow participants to search the map for addresses, neighborhoods, and points of interest.",
-					}}
-				/>
-			</Section>
-			<Section
-				title="Initial Map View"
-				summary={<p>Configure the initial map view to adjust where it will be centered and zoomed to.</p>}
-				disabled={disabled}
-			>
-				<ValidatedField
-					name="mapOptions"
-					component={MapSelection as React.ComponentType}
-					validation={{ required: true }}
-					componentProps={{
-						label: "Initial Map View",
-					}}
-				/>
-			</Section>
-		</>
-	);
+        <h4>Allow Location Search</h4>
+        <ValidatedField
+          name="mapOptions.allowSearch"
+          component={Toggle as React.ComponentType}
+          validation={{}}
+          componentProps={{
+            label:
+              'Allow participants to search the map for addresses, neighborhoods, and points of interest.',
+          }}
+        />
+      </Section>
+      <Section
+        title="Initial Map View"
+        summary={
+          <p>
+            Configure the initial map view to adjust where it will be centered
+            and zoomed to.
+          </p>
+        }
+        disabled={disabled}
+      >
+        <ValidatedField
+          name="mapOptions"
+          component={MapSelection as React.ComponentType}
+          validation={{ required: true }}
+          componentProps={{
+            label: 'Initial Map View',
+          }}
+        />
+      </Section>
+    </>
+  );
 };
 
 export default compose<MapOptionsProps, StageEditorSectionProps>(
-	withMapFormToProps(["mapOptions"]),
-	withDisabledAPIKeyRequired,
+  withMapFormToProps(['mapOptions']),
+  withDisabledAPIKeyRequired,
 )(MapOptions);

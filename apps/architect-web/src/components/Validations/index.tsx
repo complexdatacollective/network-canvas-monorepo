@@ -1,22 +1,24 @@
-import type { Variable } from "@codaco/protocol-validation";
-import type { ComponentProps } from "react";
-import { compose, withState } from "react-recompose";
-import Validations from "./Validations";
-import withStoreState from "./withStoreState";
-import withUpdateHandlers from "./withUpdateHandlers";
+import type { ComponentProps } from 'react';
+import { compose, withState } from 'react-recompose';
 
-const withAddNew = withState("addNew", "setAddNew", false);
+import type { Variable } from '@codaco/protocol-validation';
+
+import Validations from './Validations';
+import withStoreState from './withStoreState';
+import withUpdateHandlers from './withUpdateHandlers';
+
+const withAddNew = withState('addNew', 'setAddNew', false);
 
 type OuterProps = {
-	form: string;
-	name: string;
-	variableType: string;
-	entity: string;
-	existingVariables?: Record<string, Pick<Variable, "name" | "type">>;
+  form: string;
+  name: string;
+  variableType: string;
+  entity: string;
+  existingVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
 };
 
 export default compose<ComponentProps<typeof Validations>, OuterProps>(
-	withStoreState,
-	withAddNew,
-	withUpdateHandlers,
+  withStoreState,
+  withAddNew,
+  withUpdateHandlers,
 )(Validations);

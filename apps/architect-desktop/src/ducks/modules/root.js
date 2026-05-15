@@ -1,19 +1,20 @@
-import { combineReducers } from "redux";
-import { reducer as formReducer } from "redux-form";
-import createTimeline from "../middleware/timeline";
-import app from "./app";
-import dialogs from "./dialogs";
-import protocol from "./protocol";
-import recentProtocols from "./recentProtocols";
-import session from "./session";
-import stacks from "./stacks";
-import toasts from "./toasts";
-import ui from "./ui";
+import { combineReducers } from 'redux';
+import { reducer as formReducer } from 'redux-form';
+
+import createTimeline from '../middleware/timeline';
+import app from './app';
+import dialogs from './dialogs';
+import protocol from './protocol';
+import recentProtocols from './recentProtocols';
+import session from './session';
+import stacks from './stacks';
+import toasts from './toasts';
+import ui from './ui';
 
 const protocolPattern = /^PROTOCOL\//;
 
 const timelineOptions = {
-	exclude: ({ type }) => !protocolPattern.test(type.toString()),
+  exclude: ({ type }) => !protocolPattern.test(type.toString()),
 };
 
 /*
@@ -24,14 +25,14 @@ const timelineOptions = {
  * }
  */
 export const rootReducer = combineReducers({
-	app,
-	dialogs,
-	form: formReducer,
-	locale: () => "en-US",
-	protocol: createTimeline(protocol, timelineOptions),
-	recentProtocols,
-	session,
-	stacks,
-	ui,
-	toasts,
+  app,
+  dialogs,
+  form: formReducer,
+  locale: () => 'en-US',
+  protocol: createTimeline(protocol, timelineOptions),
+  recentProtocols,
+  session,
+  stacks,
+  ui,
+  toasts,
 });

@@ -1,5 +1,6 @@
-import type { CurrentProtocol } from "@codaco/protocol-validation";
-import type { SessionState } from "../store/modules/session";
+import type { CurrentProtocol } from '@codaco/protocol-validation';
+
+import type { SessionState } from '../store/modules/session';
 
 /**
  * Package-internal asset representation. Has only the fields the interviewer
@@ -7,10 +8,10 @@ import type { SessionState } from "../store/modules/session";
  * for apikey-style assets). URLs are resolved lazily via AssetRequestHandler.
  */
 export type ResolvedAsset = {
-	assetId: string;
-	name: string;
-	type: "image" | "video" | "audio" | "network" | "geojson" | "apikey";
-	value?: string; // populated for apikey assets only
+  assetId: string;
+  name: string;
+  type: 'image' | 'video' | 'audio' | 'network' | 'geojson' | 'apikey';
+  value?: string; // populated for apikey assets only
 };
 
 /**
@@ -24,11 +25,11 @@ export type ResolvedAsset = {
  * import time. Forwarded through analytics events as the `protocol_hash`
  * super property.
  */
-export type ProtocolPayload = Omit<CurrentProtocol, "assetManifest"> & {
-	id: string;
-	hash: string;
-	importedAt: string; // ISO
-	assets: ResolvedAsset[];
+export type ProtocolPayload = Omit<CurrentProtocol, 'assetManifest'> & {
+  id: string;
+  hash: string;
+  importedAt: string; // ISO
+  assets: ResolvedAsset[];
 };
 
 /**
@@ -38,21 +39,27 @@ export type ProtocolPayload = Omit<CurrentProtocol, "assetManifest"> & {
 export type SessionPayload = SessionState;
 
 export type InterviewPayload = {
-	session: SessionPayload;
-	protocol: ProtocolPayload;
+  session: SessionPayload;
+  protocol: ProtocolPayload;
 };
 
-export type SyncHandler = (interviewId: string, session: SessionPayload) => Promise<void>;
+export type SyncHandler = (
+  interviewId: string,
+  session: SessionPayload,
+) => Promise<void>;
 
-export type FinishHandler = (interviewId: string, signal: AbortSignal) => Promise<void>;
+export type FinishHandler = (
+  interviewId: string,
+  signal: AbortSignal,
+) => Promise<void>;
 
 export type AssetRequestHandler = (assetId: string) => Promise<string>;
 
 export type StepChangeHandler = (step: number) => void;
 
 export type InterviewerFlags = {
-	isE2E?: boolean;
-	isDevelopment?: boolean;
+  isE2E?: boolean;
+  isDevelopment?: boolean;
 };
 
 /**
@@ -61,7 +68,7 @@ export type InterviewerFlags = {
  * id are required and become PostHog super properties on every event.
  */
 export type InterviewAnalyticsMetadata = {
-	installationId: string;
-	hostApp: string;
-	hostVersion?: string;
+  installationId: string;
+  hostApp: string;
+  hostVersion?: string;
 };

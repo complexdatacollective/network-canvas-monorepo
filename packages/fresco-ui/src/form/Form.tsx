@@ -1,18 +1,19 @@
-"use client";
+'use client';
 
-import { LayoutGroup } from "motion/react";
-import { type ComponentProps, useId } from "react";
-import { cx } from "../utils/cva";
-import FormErrorsList from "./FormErrors";
-import { useForm } from "./hooks/useForm";
-import FormStoreProvider from "./store/formStoreProvider";
-import type { FormSubmitHandler } from "./store/types";
-import { focusFirstError } from "./utils/focusFirstError";
+import { LayoutGroup } from 'motion/react';
+import { type ComponentProps, useId } from 'react';
+
+import { cx } from '../utils/cva';
+import FormErrorsList from './FormErrors';
+import { useForm } from './hooks/useForm';
+import FormStoreProvider from './store/formStoreProvider';
+import type { FormSubmitHandler } from './store/types';
+import { focusFirstError } from './utils/focusFirstError';
 
 type FormProps = {
-	onSubmit: FormSubmitHandler;
-	children: React.ReactNode;
-} & Omit<ComponentProps<"form">, "onSubmit" | "children" | "submitButton">;
+  onSubmit: FormSubmitHandler;
+  children: React.ReactNode;
+} & Omit<ComponentProps<'form'>, 'onSubmit' | 'children' | 'submitButton'>;
 
 /**
  * The form element without the store provider wrapper.
@@ -32,30 +33,30 @@ type FormProps = {
  * ```
  */
 export function FormWithoutProvider(props: FormProps) {
-	const { onSubmit, children, className, ...rest } = props;
+  const { onSubmit, children, className, ...rest } = props;
 
-	const { formProps, formErrors } = useForm({
-		onSubmit,
-		onSubmitInvalid: (errors) => {
-			focusFirstError(errors);
-		},
-	});
+  const { formProps, formErrors } = useForm({
+    onSubmit,
+    onSubmitInvalid: (errors) => {
+      focusFirstError(errors);
+    },
+  });
 
-	const id = useId();
+  const id = useId();
 
-	return (
-		<form
-			noValidate // Don't show native HTML validation UI
-			className={cx("w-full", className)}
-			onSubmit={formProps.onSubmit}
-			{...rest}
-		>
-			<LayoutGroup id={id}>
-				{formErrors && <FormErrorsList key="form-errors" errors={formErrors} />}
-				{children}
-			</LayoutGroup>
-		</form>
-	);
+  return (
+    <form
+      noValidate // Don't show native HTML validation UI
+      className={cx('w-full', className)}
+      onSubmit={formProps.onSubmit}
+      {...rest}
+    >
+      <LayoutGroup id={id}>
+        {formErrors && <FormErrorsList key="form-errors" errors={formErrors} />}
+        {children}
+      </LayoutGroup>
+    </form>
+  );
 }
 
 /**
@@ -68,9 +69,9 @@ export function FormWithoutProvider(props: FormProps) {
  * FormStoreProvider wrapper.
  */
 export default function Form(props: FormProps) {
-	return (
-		<FormStoreProvider>
-			<FormWithoutProvider {...props} />
-		</FormStoreProvider>
-	);
+  return (
+    <FormStoreProvider>
+      <FormWithoutProvider {...props} />
+    </FormStoreProvider>
+  );
 }

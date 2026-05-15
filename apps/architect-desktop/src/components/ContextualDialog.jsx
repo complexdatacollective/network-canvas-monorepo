@@ -1,73 +1,77 @@
-import window from "@app/behaviours/window";
-import Stackable from "@components/Stackable";
-import cx from "classnames";
-import PropTypes from "prop-types";
-import { useCallback } from "react";
-import { compose } from "redux";
+import window from '@app/behaviours/window';
+import Stackable from '@components/Stackable';
+import cx from 'classnames';
+import PropTypes from 'prop-types';
+import { useCallback } from 'react';
+import { compose } from 'redux';
 
-export const Controls = ({ children }) => <div className="contextual-dialog__controls">{children}</div>;
+export const Controls = ({ children }) => (
+  <div className="contextual-dialog__controls">{children}</div>
+);
 
 Controls.propTypes = {
-	children: PropTypes.node,
+  children: PropTypes.node,
 };
 
 Controls.defaultProps = {
-	children: null,
+  children: null,
 };
 
-export const Title = ({ children }) => <h2 className="contextual-dialog__title">{children}</h2>;
+export const Title = ({ children }) => (
+  <h2 className="contextual-dialog__title">{children}</h2>
+);
 
 Title.propTypes = {
-	children: PropTypes.node,
+  children: PropTypes.node,
 };
 
 Title.defaultProps = {
-	children: null,
+  children: null,
 };
 
 const Dialog = ({ show, children, className, onBlur }) => {
-	const handleBlur = useCallback(
-		(e) => {
-			e.stopPropagation();
-			onBlur();
-		},
-		[onBlur],
-	);
+  const handleBlur = useCallback(
+    (e) => {
+      e.stopPropagation();
+      onBlur();
+    },
+    [onBlur],
+  );
 
-	if (!show) {
-		return null;
-	}
+  if (!show) {
+    return null;
+  }
 
-	return (
-		<Stackable stackKey>
-			{({ stackIndex }) => (
-				<div
-					className={cx("contextual-dialog", className)}
-					onClick={handleBlur}
-				>
-					<div className="contextual-dialog__container">
-						<div className="contextual-dialog__main">
-							<div className="contextual-dialog__content">{children}</div>
-						</div>
-					</div>
-				</div>
-			)}
-		</Stackable>
-	);
+  return (
+    <Stackable stackKey>
+      {({ stackIndex }) => (
+        <div
+          className={cx('contextual-dialog', className)}
+          onClick={handleBlur}
+        >
+          <div className="contextual-dialog__container">
+            <div className="contextual-dialog__main">
+              <div className="contextual-dialog__content">{children}</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </Stackable>
+  );
 };
 
 Dialog.propTypes = {
-	children: PropTypes.node,
-	className: PropTypes.string,
-	show: PropTypes.bool,
-	onBlur: PropTypes.func,
+  children: PropTypes.node,
+  className: PropTypes.string,
+  show: PropTypes.bool,
+  onBlur: PropTypes.func,
 };
 
 Dialog.defaultProps = {
-	children: null,
-	className: null,
-	show: true,
-	onBlur: () => {},
+  children: null,
+  className: null,
+  show: true,
+  onBlur: () => {},
 };
 
 export default compose(window(document.body))(Dialog);

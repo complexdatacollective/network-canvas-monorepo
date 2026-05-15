@@ -12,39 +12,39 @@ This monorepo is organized into four main categories:
 
 ### Apps
 
-| App | Description |
-|-----|-------------|
-| [`architect-web`](./apps/architect-web) | Protocol designer application (Vite + React + Redux) for creating Network Canvas interview protocols |
-| [`architect-desktop`](./apps/architect-desktop) | Legacy Electron build of Architect, the Network Canvas protocol designer (maintenance mode) |
-| [`interviewer`](./apps/interviewer) | Network Canvas Interviewer — the desktop/mobile app (Electron + Cordova) used to conduct interviews |
-| [`documentation`](./apps/documentation) | Next.js documentation website with MDX support and search functionality |
+| App                                             | Description                                                                                          |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| [`architect-web`](./apps/architect-web)         | Protocol designer application (Vite + React + Redux) for creating Network Canvas interview protocols |
+| [`architect-desktop`](./apps/architect-desktop) | Legacy Electron build of Architect, the Network Canvas protocol designer (maintenance mode)          |
+| [`interviewer`](./apps/interviewer)             | Network Canvas Interviewer — the desktop/mobile app (Electron + Cordova) used to conduct interviews  |
+| [`documentation`](./apps/documentation)         | Next.js documentation website with MDX support and search functionality                              |
 
 ### Packages
 
-| Package | Description |
-|---------|-------------|
-| [`@codaco/protocol-validation`](./packages/protocol-validation) | Zod schemas for validating and migrating Network Canvas protocol files |
-| [`@codaco/shared-consts`](./packages/shared-consts) | Shared constants and TypeScript definitions for the Network Canvas project |
-| [`@codaco/interview`](./packages/interview) | Network Canvas interview engine — Shell component, synthetic network generator, and session contract |
-| [`@codaco/network-exporters`](./packages/network-exporters) | Effect-TS pipeline for exporting Network Canvas interview data as CSV and GraphML |
-| [`@codaco/network-query`](./packages/network-query) | Network filtering and querying utilities for Network Canvas |
-| [`@codaco/fresco-ui`](./packages/fresco-ui) | Fresco UI components, styles, and utilities built on Base UI and Tailwind CSS |
-| [`@codaco/art`](./packages/art) | Visual design components using blobs and d3-interpolate-path for animated graphics |
-| [`@codaco/development-protocol`](./packages/development-protocol) | Development protocol assets for testing Network Canvas applications |
+| Package                                                           | Description                                                                                          |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| [`@codaco/protocol-validation`](./packages/protocol-validation)   | Zod schemas for validating and migrating Network Canvas protocol files                               |
+| [`@codaco/shared-consts`](./packages/shared-consts)               | Shared constants and TypeScript definitions for the Network Canvas project                           |
+| [`@codaco/interview`](./packages/interview)                       | Network Canvas interview engine — Shell component, synthetic network generator, and session contract |
+| [`@codaco/network-exporters`](./packages/network-exporters)       | Effect-TS pipeline for exporting Network Canvas interview data as CSV and GraphML                    |
+| [`@codaco/network-query`](./packages/network-query)               | Network filtering and querying utilities for Network Canvas                                          |
+| [`@codaco/fresco-ui`](./packages/fresco-ui)                       | Fresco UI components, styles, and utilities built on Base UI and Tailwind CSS                        |
+| [`@codaco/art`](./packages/art)                                   | Visual design components using blobs and d3-interpolate-path for animated graphics                   |
+| [`@codaco/development-protocol`](./packages/development-protocol) | Development protocol assets for testing Network Canvas applications                                  |
 
 ### Workers
 
-| Worker | Description |
-|--------|-------------|
+| Worker                                                          | Description                                                          |
+| --------------------------------------------------------------- | -------------------------------------------------------------------- |
 | [`development-protocol-worker`](./workers/development-protocol) | Cloudflare Worker for serving development protocol files from GitHub |
-| [`posthog-proxy-worker`](./workers/posthog-proxy) | Cloudflare Worker for proxying PostHog analytics requests |
+| [`posthog-proxy-worker`](./workers/posthog-proxy)               | Cloudflare Worker for proxying PostHog analytics requests            |
 
 ### Tooling
 
-| Config | Description |
-|--------|-------------|
+| Config                                          | Description                                                                           |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------- |
 | [`@codaco/tailwind-config`](./tooling/tailwind) | Shared Tailwind v4 theme, color palette, and plugins for Fresco and other Codaco apps |
-| [`@codaco/tsconfig`](./tooling/typescript) | Shared TypeScript configurations |
+| [`@codaco/tsconfig`](./tooling/typescript)      | Shared TypeScript configurations                                                      |
 
 ## Getting Started
 

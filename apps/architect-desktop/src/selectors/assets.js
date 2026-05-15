@@ -1,8 +1,12 @@
-import { getGeoJsonVariables, getNetworkVariables } from "@app/utils/protocols/assetTools";
-import { pathSync } from "@utils/electronBridge";
-import { get } from "lodash";
-import { getAssetManifest } from "./protocol";
-import { getWorkingPath } from "./session";
+import {
+  getGeoJsonVariables,
+  getNetworkVariables,
+} from '@app/utils/protocols/assetTools';
+import { pathSync } from '@utils/electronBridge';
+import { get } from 'lodash';
+
+import { getAssetManifest } from './protocol';
+import { getWorkingPath } from './session';
 
 /**
  * Generate asset path using the assetManifest and protocol meta
@@ -11,16 +15,16 @@ import { getWorkingPath } from "./session";
  * @param {string} dataSource id of entry in assetManifest
  */
 export const getAssetPath = (state, dataSource) => {
-	const workingPath = getWorkingPath(state);
-	const assetManifest = getAssetManifest(state);
-	const asset = get(assetManifest, dataSource);
+  const workingPath = getWorkingPath(state);
+  const assetManifest = getAssetManifest(state);
+  const asset = get(assetManifest, dataSource);
 
-	if (!asset) {
-		return null;
-	}
+  if (!asset) {
+    return null;
+  }
 
-	const assetPath = pathSync.join(workingPath, "assets", asset.source);
-	return assetPath;
+  const assetPath = pathSync.join(workingPath, 'assets', asset.source);
+  return assetPath;
 };
 
 /**
@@ -30,34 +34,40 @@ export const getAssetPath = (state, dataSource) => {
  * @param {boolean} asOptions return variables as a label/value list
  */
 export const makeGetNetworkAssetVariables =
-	(state) =>
-	async (dataSource, asOptions = false) => {
-		const assetPath = getAssetPath(state, dataSource);
+  (state) =>
+  async (dataSource, asOptions = false) => {
+    const assetPath = getAssetPath(state, dataSource);
 
-		if (!assetPath) {
-			return null;
-		}
+    if (!assetPath) {
+      return null;
+    }
 
-		const variables = await getNetworkVariables(assetPath);
+    const variables = await getNetworkVariables(assetPath);
 
-		if (asOptions) {
-			const variableOptions = variables.map((attribute) => ({ label: attribute, value: attribute }));
-			return variableOptions;
-		}
+    if (asOptions) {
+      const variableOptions = variables.map((attribute) => ({
+        label: attribute,
+        value: attribute,
+      }));
+      return variableOptions;
+    }
 
-		return variables;
-	};
+    return variables;
+  };
 
 export const makeGetGeoJsonAssetVariables = (state) => async (dataSource) => {
-	const assetPath = getAssetPath(state, dataSource);
+  const assetPath = getAssetPath(state, dataSource);
 
-	if (!assetPath) {
-		return null;
-	}
+  if (!assetPath) {
+    return null;
+  }
 
-	const variables = await getGeoJsonVariables(assetPath);
+  const variables = await getGeoJsonVariables(assetPath);
 
-	const variableOptions = variables.map((attribute) => ({ label: attribute, value: attribute }));
+  const variableOptions = variables.map((attribute) => ({
+    label: attribute,
+    value: attribute,
+  }));
 
-	return variableOptions;
+  return variableOptions;
 };

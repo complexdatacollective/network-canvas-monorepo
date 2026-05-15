@@ -10,32 +10,34 @@
 // to motion's props without casts. Keep this list aligned with motion's
 // gesture/animation handler surface.
 const COLLIDING_KEYS = [
-	"onDrag",
-	"onDragStart",
-	"onDragEnd",
-	"onDragOver",
-	"onDragEnter",
-	"onDragLeave",
-	"onDragExit",
-	"onPan",
-	"onPanStart",
-	"onPanEnd",
-	"onPanSessionStart",
-	"onAnimationStart",
-	"onAnimationEnd",
-	"onAnimationComplete",
-	"onAnimationIteration",
-	"onTransitionEnd",
+  'onDrag',
+  'onDragStart',
+  'onDragEnd',
+  'onDragOver',
+  'onDragEnter',
+  'onDragLeave',
+  'onDragExit',
+  'onPan',
+  'onPanStart',
+  'onPanEnd',
+  'onPanSessionStart',
+  'onAnimationStart',
+  'onAnimationEnd',
+  'onAnimationComplete',
+  'onAnimationIteration',
+  'onTransitionEnd',
 ] as const;
 
 type CollidingKey = (typeof COLLIDING_KEYS)[number];
 
-export function motionSafeProps<T extends object>(props: T): Omit<T, CollidingKey | "hidden"> {
-	const result: Record<string, unknown> = {};
-	for (const key in props) {
-		if (key === "hidden") continue;
-		if ((COLLIDING_KEYS as readonly string[]).includes(key)) continue;
-		result[key] = (props as Record<string, unknown>)[key];
-	}
-	return result as Omit<T, CollidingKey | "hidden">;
+export function motionSafeProps<T extends object>(
+  props: T,
+): Omit<T, CollidingKey | 'hidden'> {
+  const result: Record<string, unknown> = {};
+  for (const key in props) {
+    if (key === 'hidden') continue;
+    if ((COLLIDING_KEYS as readonly string[]).includes(key)) continue;
+    result[key] = (props as Record<string, unknown>)[key];
+  }
+  return result as Omit<T, CollidingKey | 'hidden'>;
 }

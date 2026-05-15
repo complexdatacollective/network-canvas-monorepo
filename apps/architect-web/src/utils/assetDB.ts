@@ -1,16 +1,17 @@
-import type { ExtractedAsset } from "@codaco/protocol-validation";
-import Dexie, { type EntityTable } from "dexie";
+import Dexie, { type EntityTable } from 'dexie';
 
-export const assetDb = new Dexie("ArchitectAssetDB") as Dexie & {
-	assets: EntityTable<
-		ExtractedAsset,
-		"id" // primary key "id" (for the typings only)
-	>;
+import type { ExtractedAsset } from '@codaco/protocol-validation';
+
+export const assetDb = new Dexie('ArchitectAssetDB') as Dexie & {
+  assets: EntityTable<
+    ExtractedAsset,
+    'id' // primary key "id" (for the typings only)
+  >;
 };
 
 // Schema declaration:
 assetDb.version(1).stores({
-	assets: "++id, name, data", // primary key "id" (for the runtime!)
+  assets: '++id, name, data', // primary key "id" (for the runtime!)
 });
 
 /**
@@ -18,14 +19,14 @@ assetDb.version(1).stores({
  * This function clears Redux state, localStorage, and IndexedDB
  */
 export async function clearAllStorage() {
-	try {
-		// Clear localStorage
-		localStorage.clear();
+  try {
+    // Clear localStorage
+    localStorage.clear();
 
-		// Clear assetDB (IndexedDB)
-		await assetDb.assets.clear();
+    // Clear assetDB (IndexedDB)
+    await assetDb.assets.clear();
 
-		// Reload the page to reset Redux state
-		window.location.reload();
-	} catch (_error) {}
+    // Reload the page to reset Redux state
+    window.location.reload();
+  } catch (_error) {}
 }

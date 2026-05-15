@@ -1,25 +1,26 @@
-import { beforeAll, describe, it, vi } from "vitest";
-import { getEnvironment } from "../Environment";
-import environments from "../environments";
+import { beforeAll, describe, it, vi } from 'vitest';
 
-vi.mock("../Environment");
-vi.mock("../filesystem");
-vi.mock("../protocol/protocolPath");
+import { getEnvironment } from '../Environment';
+import environments from '../environments';
 
-describe("importer", () => {
-	describe("Electron", () => {
-		beforeAll(() => {
-			getEnvironment.mockReturnValue(environments.ELECTRON);
-		});
+vi.mock('../Environment');
+vi.mock('../filesystem');
+vi.mock('../protocol/protocolPath');
 
-		it("copies the protocol files to the user data directory", () => {});
-	});
+describe('importer', () => {
+  describe('Electron', () => {
+    beforeAll(() => {
+      getEnvironment.mockReturnValue(environments.ELECTRON);
+    });
 
-	describe("Cordova", () => {
-		beforeAll(() => {
-			getEnvironment.mockReturnValue(environments.CORDOVA);
-		});
+    it('copies the protocol files to the user data directory', () => {});
+  });
 
-		it("copies the protocol files to the user data directory", () => {});
-	});
+  describe('Cordova', () => {
+    beforeAll(() => {
+      getEnvironment.mockReturnValue(environments.CORDOVA);
+    });
+
+    it('copies the protocol files to the user data directory', () => {});
+  });
 });

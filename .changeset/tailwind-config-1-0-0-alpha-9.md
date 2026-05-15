@@ -1,5 +1,5 @@
 ---
-"@codaco/tailwind-config": prerelease
+'@codaco/tailwind-config': prerelease
 ---
 
 Add the foundational base-layer rules and the global reduced-motion override that previously had to be redeclared by every consumer. They now ship as part of `fresco/utilities.css`, so any package that imports `@codaco/tailwind-config/fresco.css` (transitively or directly) inherits them.

@@ -1,35 +1,40 @@
-import { pick } from "es-toolkit/compat";
+import { pick } from 'es-toolkit/compat';
 
 const DEFAULT_OPTIONS = {
-	type: undefined,
-	attribute: undefined,
-	operator: undefined,
+  type: undefined,
+  attribute: undefined,
+  operator: undefined,
 };
 
 const DEFAULT_VALUES: Record<string, unknown> = {
-	boolean: false,
-	categorical: [],
+  boolean: false,
+  categorical: [],
 };
 
-const getDefaultValue = (variableType: string) => DEFAULT_VALUES[variableType] || "";
+const getDefaultValue = (variableType: string) =>
+  DEFAULT_VALUES[variableType] || '';
 
-export const getDefaultOptions = (attributes: string[] | undefined, variableType?: string) => {
-	// generate default options object with all possible attributes
-	const defaultOptions = {
-		...DEFAULT_OPTIONS,
-		value: getDefaultValue(variableType || ""),
-	};
+export const getDefaultOptions = (
+  attributes: string[] | undefined,
+  variableType?: string,
+) => {
+  // generate default options object with all possible attributes
+  const defaultOptions = {
+    ...DEFAULT_OPTIONS,
+    value: getDefaultValue(variableType || ''),
+  };
 
-	if (!attributes) {
-		return defaultOptions;
-	}
+  if (!attributes) {
+    return defaultOptions;
+  }
 
-	// return attributes which match this options object
-	return pick(defaultOptions, attributes);
+  // return attributes which match this options object
+  return pick(defaultOptions, attributes);
 };
 
 export const makeGetOptionsWithDefaults =
-	(variableType?: string, attributes?: string[]) => (options?: Record<string, unknown>) => ({
-		...getDefaultOptions(attributes, variableType),
-		...options,
-	});
+  (variableType?: string, attributes?: string[]) =>
+  (options?: Record<string, unknown>) => ({
+    ...getDefaultOptions(attributes, variableType),
+    ...options,
+  });

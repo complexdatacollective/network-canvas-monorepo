@@ -23,7 +23,6 @@
 ### Minor Changes
 
 - 273bcbe: Add optional showTransit and allowSearch configuration options to geospatial interface mapOptions:
-
   - showTransit: When enabled, Fresco displays transit layers on the map
   - allowSearch: When enabled, participants can search the map for locations
 
@@ -58,11 +57,9 @@
 - cc2adc3: Add required `name` property to protocol schema (breaking change)
 
   **Schema changes:**
-
   - Protocol schema now requires a `name` property (`string`, min 1 character)
 
   **Migration changes (v7 → v8):**
-
   - Migration now requires a `name` dependency to be provided when migrating from v7
 
 ## 8.0.2
@@ -70,7 +67,6 @@
 ### Patch Changes
 
 - 9958b67: Fix type inference in zod-mock-extension generateMock function
-
   - Fixed `base` parameter type inference in `generateMock()` callbacks by using `z.output<this>` instead of explicit type parameters
   - Added excess property checking for object schemas to catch extra properties at compile time
   - The `ExactReturn` type utility now correctly handles unions, primitives, arrays, and Record types without false positives
@@ -92,7 +88,6 @@
 ### Minor Changes
 
 - 26ae10b: Add comprehensive migration tests and wildcard support for schema transformations
-
   - Add comprehensive test suite for v7 to v8 migration covering all transformations (displayVariable removal, Toggle options removal, filter type transformations, schema version updates)
   - Extend traverseAndTransform utility to support wildcard (\*) syntax in transformation paths
   - Add 9 new tests for wildcard functionality including nested paths, multiple wildcards, and edge cases
@@ -156,11 +151,9 @@
   This changeset marks the transition from alpha/prerelease to stable versions for protocol-validation package.
 
   ## Changes
-
   - **@codaco/protocol-validation**: Upgraded from `4.0.0-alpha.11` → `4.0.0` (stable)
 
   ## Context
-
   - Both shared-consts (3.0.0) and protocol-validation are now considered stable and ready for production use
   - This removes the alpha/prerelease status and indicates these packages have reached production readiness
 
@@ -171,16 +164,13 @@
 - ae26f2a: ### Major Update for `@codaco/protocol-validation` (Schema 8)
 
   #### Key Changes:
-
   - **New Stage Types Added**:
-
     - `Geospatial`
     - `Anonymisation`
     - `OneToManyDyadCensus`
     - `FamilyTreeCensus`
 
   - **Expanded `assetManifest` Schema**:
-
     - Added a new `apiAssetSchema`, enabling support for API keys.
     - Expanded `fileAssetSchema` with the addition of the `geojson` type, enabling support for geospatial data.
 
@@ -279,16 +269,13 @@
 - ae26f2a: ### Major Update for `@codaco/protocol-validation` (Schema 8)
 
   #### Key Changes:
-
   - **New Stage Types Added**:
-
     - `Geospatial`
     - `Anonymisation`
     - `OneToManyDyadCensus`
     - `FamilyTreeCensus`
 
   - **Expanded `assetManifest` Schema**:
-
     - Added a new `apiAssetSchema`, enabling support for API keys.
     - Expanded `fileAssetSchema` with the addition of the `geojson` type, enabling support for geospatial data.
 

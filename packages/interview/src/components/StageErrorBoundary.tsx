@@ -1,72 +1,83 @@
-import Icon from "@codaco/fresco-ui/Icon";
-import Surface from "@codaco/fresco-ui/layout/Surface";
-import Heading from "@codaco/fresco-ui/typography/Heading";
-import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
-import React, { Component, type ReactNode } from "react";
-import { useCaptureException } from "../analytics/useTrack";
-import CopyDebugInfoButton from "./CopyDebugInfoButton";
+import React, { Component, type ReactNode } from 'react';
+
+import Icon from '@codaco/fresco-ui/Icon';
+import Surface from '@codaco/fresco-ui/layout/Surface';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+
+import { useCaptureException } from '../analytics/useTrack';
+import CopyDebugInfoButton from './CopyDebugInfoButton';
 
 type StageErrorBoundaryInnerProps = {
-	children: ReactNode;
-	captureException: (error: Error, props?: Record<string, unknown>) => void;
+  children: ReactNode;
+  captureException: (error: Error, props?: Record<string, unknown>) => void;
 };
 
 type StageErrorBoundaryState = {
-	error?: Error;
+  error?: Error;
 };
 
-class StageErrorBoundaryInner extends Component<StageErrorBoundaryInnerProps, StageErrorBoundaryState> {
-	constructor(props: StageErrorBoundaryInnerProps) {
-		super(props);
-		this.state = {};
-	}
+class StageErrorBoundaryInner extends Component<
+  StageErrorBoundaryInnerProps,
+  StageErrorBoundaryState
+> {
+  constructor(props: StageErrorBoundaryInnerProps) {
+    super(props);
+    this.state = {};
+  }
 
-	componentDidCatch(error: Error, info: React.ErrorInfo) {
-		this.props.captureException(error, {
-			component_stack: info.componentStack,
-			feature: "stage-error-boundary",
-		});
-		this.setState({ error });
-	}
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    this.props.captureException(error, {
+      component_stack: info.componentStack,
+      feature: 'stage-error-boundary',
+    });
+    this.setState({ error });
+  }
 
-	render() {
-		const { children } = this.props;
-		const { error } = this.state;
+  render() {
+    const { children } = this.props;
+    const { error } = this.state;
 
-		if (error) {
-			return (
-				<Surface noContainer className="mx-auto h-fit max-w-2xl grow-0">
-					<div className="flex items-center gap-6">
-						<div className="flex items-center justify-center">
-							<Icon name="error" />
-						</div>
-						<div>
-							<Heading>A problem occurred!</Heading>
-							<Paragraph>
-								There was an error with the interview software, and this task could not be displayed. Try refreshing the
-								page. If the problem persists, please contact the study organizer and provide the debug information
-								below. You may be able to continue your interview by clicking the next button.
-							</Paragraph>
-						</div>
-					</div>
-					<div className="mt-4 flex justify-end">
-						<CopyDebugInfoButton debugInfo={error.stack ?? error.message} />
-					</div>
-				</Surface>
-			);
-		}
+    if (error) {
+      return (
+        <Surface noContainer className="mx-auto h-fit max-w-2xl grow-0">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center justify-center">
+              <Icon name="error" />
+            </div>
+            <div>
+              <Heading>A problem occurred!</Heading>
+              <Paragraph>
+                There was an error with the interview software, and this task
+                could not be displayed. Try refreshing the page. If the problem
+                persists, please contact the study organizer and provide the
+                debug information below. You may be able to continue your
+                interview by clicking the next button.
+              </Paragraph>
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <CopyDebugInfoButton debugInfo={error.stack ?? error.message} />
+          </div>
+        </Surface>
+      );
+    }
 
-		return children;
-	}
+    return children;
+  }
 }
 
 type StageErrorBoundaryProps = {
-	children: ReactNode;
+  children: ReactNode;
 };
 
 const StageErrorBoundary = ({ children }: StageErrorBoundaryProps) => {
-	const captureException = useCaptureException();
-	return <StageErrorBoundaryInner captureException={captureException}>{children}</StageErrorBoundaryInner>;
+  const captureException = useCaptureException();
+  return (
+    <StageErrorBoundaryInner captureException={captureException}>
+      {children}
+    </StageErrorBoundaryInner>
+  );
 };
 
 export default StageErrorBoundary;

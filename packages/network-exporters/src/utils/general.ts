@@ -1,31 +1,38 @@
-import { caseProperty, entityAttributesProperty, type NcEntity, sessionProperty } from "@codaco/shared-consts";
-import { isNil } from "es-toolkit";
-import sanitizeFilename from "sanitize-filename";
-import type { SessionWithResequencedIDs } from "../input";
-import type { ExportFormat } from "../options";
+import { isNil } from 'es-toolkit';
+import sanitizeFilename from 'sanitize-filename';
 
-const escapeFilePart = (part: string) => part.replace(/\W/g, "");
+import {
+  caseProperty,
+  entityAttributesProperty,
+  type NcEntity,
+  sessionProperty,
+} from '@codaco/shared-consts';
+
+import type { SessionWithResequencedIDs } from '../input';
+import type { ExportFormat } from '../options';
+
+const escapeFilePart = (part: string) => part.replace(/\W/g, '');
 
 export const makeFilename = (
-	prefix: string,
-	entityName: string | undefined,
-	exportFormat: string,
-	extension: string,
+  prefix: string,
+  entityName: string | undefined,
+  exportFormat: string,
+  extension: string,
 ) => {
-	let name = prefix;
-	if (extension !== `.${exportFormat}`) {
-		name += name ? "_" : "";
-		name += exportFormat;
-	}
-	if (entityName) {
-		name += `_${escapeFilePart(entityName)}`;
-	}
-	return `${name}${extension}`;
+  let name = prefix;
+  if (extension !== `.${exportFormat}`) {
+    name += name ? '_' : '';
+    name += exportFormat;
+  }
+  if (entityName) {
+    name += `_${escapeFilePart(entityName)}`;
+  }
+  return `${name}${extension}`;
 };
 
 const EXTENSIONS = {
-	graphml: ".graphml",
-	csv: ".csv",
+  graphml: '.graphml',
+  csv: '.csv',
 } as const;
 
 /**
@@ -34,15 +41,15 @@ const EXTENSIONS = {
  * @return {string}
  */
 export const getFileExtension = (formatterType: ExportFormat) => {
-	switch (formatterType) {
-		case "graphml":
-			return EXTENSIONS.graphml;
-		case "adjacencyMatrix":
-		case "edgeList":
-		case "attributeList":
-		case "ego":
-			return EXTENSIONS.csv;
-	}
+  switch (formatterType) {
+    case 'graphml':
+      return EXTENSIONS.graphml;
+    case 'adjacencyMatrix':
+    case 'edgeList':
+    case 'attributeList':
+    case 'ego':
+      return EXTENSIONS.csv;
+  }
 };
 
 /**
@@ -50,7 +57,9 @@ export const getFileExtension = (formatterType: ExportFormat) => {
  * `{caseId}_{sessionId}`
  */
 export const getFilePrefix = (session: SessionWithResequencedIDs) =>
-	sanitizeFilename(`${session.sessionVariables[caseProperty]}_${session.sessionVariables[sessionProperty]}`);
+  sanitizeFilename(
+    `${session.sessionVariables[caseProperty]}_${session.sessionVariables[sessionProperty]}`,
+  );
 
 /**
  * Check if an option value is selected in the categorical attribute data.
@@ -61,20 +70,21 @@ export const getFilePrefix = (session: SessionWithResequencedIDs) =>
  * @returns true if the option is selected, false otherwise
  */
 export const isCategoricalOptionSelected = (
-	attributeData: unknown,
-	optionValue: string | number | boolean,
+  attributeData: unknown,
+  optionValue: string | number | boolean,
 ): boolean => {
-	// isNil, not `!attributeData`: a stored `0` / `false` is a valid option
-	// value that must reach the equality / includes checks below.
-	if (isNil(attributeData)) {
-		return false;
-	}
+  // isNil, not `!attributeData`: a stored `0` / `false` is a valid option
+  // value that must reach the equality / includes checks below.
+  if (isNil(attributeData)) {
+    return false;
+  }
 
-	if (Array.isArray(attributeData)) {
-		return attributeData.includes(optionValue);
-	}
+  if (Array.isArray(attributeData)) {
+    return attributeData.includes(optionValue);
+  }
 
-	return attributeData === optionValue;
+  return attributeData === optionValue;
 };
 
-export const getEntityAttributes = (entity: NcEntity) => entity?.[entityAttributesProperty] || {};
+export const getEntityAttributes = (entity: NcEntity) =>
+  entity?.[entityAttributesProperty] || {};

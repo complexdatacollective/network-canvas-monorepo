@@ -1,7 +1,8 @@
-import PropTypes from "prop-types";
-import { compose, withStateHandlers } from "recompose";
-import { Form, reduxForm } from "redux-form";
-import Issues from "./Issues";
+import PropTypes from 'prop-types';
+import { compose, withStateHandlers } from 'recompose';
+import { Form, reduxForm } from 'redux-form';
+
+import Issues from './Issues';
 
 /**
  * Editor is a scaffold for specific editor components.
@@ -46,59 +47,61 @@ import Issues from "./Issues";
  * export default connect(null, mapDispatchToProps)(MySpecificEditor);
  */
 const Editor = ({
-	handleSubmit,
-	hideIssues,
-	isIssuesVisible,
-	form,
-	children,
-	title,
-	submitFailed,
-	component: Component,
-	...rest
+  handleSubmit,
+  hideIssues,
+  isIssuesVisible,
+  form,
+  children,
+  title,
+  submitFailed,
+  component: Component,
+  ...rest
 }) => (
-	<>
-		<Form onSubmit={handleSubmit}>
-			{typeof children === "function" &&
-				children({
-					form,
-					submitFailed,
-					...rest,
-				})}
-			{children && typeof children !== "function" && children}
-			{!children && <Component form={form} submitFailed={submitFailed} {...rest} />}
-		</Form>
-		<Issues form={form} show={isIssuesVisible} hideIssues={hideIssues} />
-	</>
+  <>
+    <Form onSubmit={handleSubmit}>
+      {typeof children === 'function' &&
+        children({
+          form,
+          submitFailed,
+          ...rest,
+        })}
+      {children && typeof children !== 'function' && children}
+      {!children && (
+        <Component form={form} submitFailed={submitFailed} {...rest} />
+      )}
+    </Form>
+    <Issues form={form} show={isIssuesVisible} hideIssues={hideIssues} />
+  </>
 );
 
 Editor.propTypes = {
-	hideIssues: PropTypes.func.isRequired,
-	isIssuesVisible: PropTypes.bool.isRequired,
-	handleSubmit: PropTypes.func.isRequired,
-	submitFailed: PropTypes.bool.isRequired,
-	form: PropTypes.string.isRequired,
-	title: PropTypes.string,
-	children: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
-	component: PropTypes.func,
+  hideIssues: PropTypes.func.isRequired,
+  isIssuesVisible: PropTypes.bool.isRequired,
+  handleSubmit: PropTypes.func.isRequired,
+  submitFailed: PropTypes.bool.isRequired,
+  form: PropTypes.string.isRequired,
+  title: PropTypes.string,
+  children: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
+  component: PropTypes.func,
 };
 
 Editor.defaultProps = {
-	component: null,
-	children: null,
-	title: "",
+  component: null,
+  children: null,
+  title: '',
 };
 
 export default compose(
-	withStateHandlers(
-		{ isIssuesVisible: false },
-		{
-			hideIssues: () => () => ({ isIssuesVisible: false }),
-			onSubmitFail: () => () => ({ isIssuesVisible: true }),
-		},
-	),
-	reduxForm({
-		touchOnBlur: false,
-		touchOnChange: true,
-		enableReinitialize: true,
-	}),
+  withStateHandlers(
+    { isIssuesVisible: false },
+    {
+      hideIssues: () => () => ({ isIssuesVisible: false }),
+      onSubmitFail: () => () => ({ isIssuesVisible: true }),
+    },
+  ),
+  reduxForm({
+    touchOnBlur: false,
+    touchOnChange: true,
+    enableReinitialize: true,
+  }),
 )(Editor);

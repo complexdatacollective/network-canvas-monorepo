@@ -1,53 +1,60 @@
-import { type DndStore, useDndStore } from "@codaco/fresco-ui/dnd/dnd";
-import UINode, { type NodeColorSequence } from "@codaco/fresco-ui/Node";
-import { motion } from "motion/react";
+import { motion } from 'motion/react';
+
+import { type DndStore, useDndStore } from '@codaco/fresco-ui/dnd/dnd';
+import UINode, { type NodeColorSequence } from '@codaco/fresco-ui/Node';
 
 const variants = {
-	visible: { opacity: 1 },
-	hidden: { opacity: 0 },
+  visible: { opacity: 1 },
+  hidden: { opacity: 0 },
 };
 
 const iconVariants = {
-	over: {
-		scale: [0, 1],
-		transition: {
-			type: "spring" as const,
-		},
-	},
-	initial: {
-		scale: 1,
-		y: [0, 7, 0, 7, 0],
-		transition: {
-			duration: 2,
-			loop: Number.POSITIVE_INFINITY,
-			ease: "easeInOut" as const,
-		},
-	},
+  over: {
+    scale: [0, 1],
+    transition: {
+      type: 'spring' as const,
+    },
+  },
+  initial: {
+    scale: 1,
+    y: [0, 7, 0, 7, 0],
+    transition: {
+      duration: 2,
+      loop: Number.POSITIVE_INFINITY,
+      ease: 'easeInOut' as const,
+    },
+  },
 };
 
 type DropOverlayProps = {
-	dropTargetId: string;
-	nodeColor: NodeColorSequence;
-	message: string;
+  dropTargetId: string;
+  nodeColor: NodeColorSequence;
+  message: string;
 };
 
-const DropOverlay = ({ dropTargetId, nodeColor, message }: DropOverlayProps) => {
-	const isOver = useDndStore((state: DndStore) => state.activeDropTargetId === dropTargetId);
+const DropOverlay = ({
+  dropTargetId,
+  nodeColor,
+  message,
+}: DropOverlayProps) => {
+  const isOver = useDndStore(
+    (state: DndStore) => state.activeDropTargetId === dropTargetId,
+  );
 
-	return (
-		<motion.div
-			className="absolute inset-0 flex flex-col items-center justify-center bg-[rgb(58_58_117/80%)] [text-shadow:1px_1px_0.5em_var(--rich-black)]"
-			variants={variants}
-			initial="hidden"
-			animate="visible"
-			exit="hidden"
-		>
-			<motion.div variants={iconVariants} animate={isOver ? "over" : "initial"}>
-				<UINode label="" color={nodeColor} />
-			</motion.div>
-			<h2>{message}</h2>
-		</motion.div>
-	);
+  return (
+    <motion.div
+      className="absolute inset-0 flex flex-col items-center justify-center bg-[rgb(58_58_117/80%)] [text-shadow:1px_1px_0.5em_var(--rich-black)]"
+      variants={variants}
+      initial="hidden"
+      animate="visible"
+      exit="hidden"
+    >
+      <motion.div variants={iconVariants} animate={isOver ? 'over' : 'initial'}>
+        <UINode label="" color={nodeColor} />
+      </motion.div>
+      <h2>{message}</h2>
+    </motion.div>
+  );
 };
 
 export default DropOverlay;

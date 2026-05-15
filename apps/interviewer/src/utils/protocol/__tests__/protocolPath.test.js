@@ -1,45 +1,59 @@
-import path from "node:path";
-import { vi } from "vitest";
-import { getEnvironment } from "../../Environment";
-import environments from "../../environments";
-import protocolPath from "../protocolPath";
+import path from 'node:path';
 
-vi.mock("../../filesystem");
+import { vi } from 'vitest';
 
-describe("protocolPath", () => {
-	describe("Electron", () => {
-		beforeAll(() => {
-			getEnvironment.mockReturnValue(environments.ELECTRON);
-		});
+import { getEnvironment } from '../../Environment';
+import environments from '../../environments';
+import protocolPath from '../protocolPath';
 
-		it("Generates an asset path for the file", () => {
-			expect(protocolPath("foo.canvas", "protocol.json")).toEqual(
-				path.join("tmp", "mock", "user", "path", "protocols", "foo.canvas", "protocol.json"),
-			);
+vi.mock('../../filesystem');
 
-			expect(protocolPath("foo.canvas")).toEqual(path.join("tmp", "mock", "user", "path", "protocols", "foo.canvas"));
-		});
+describe('protocolPath', () => {
+  describe('Electron', () => {
+    beforeAll(() => {
+      getEnvironment.mockReturnValue(environments.ELECTRON);
+    });
 
-		it("Thows an error if the protocol is not specified", () => {
-			expect(() => protocolPath()).toThrow();
-		});
-	});
+    it('Generates an asset path for the file', () => {
+      expect(protocolPath('foo.canvas', 'protocol.json')).toEqual(
+        path.join(
+          'tmp',
+          'mock',
+          'user',
+          'path',
+          'protocols',
+          'foo.canvas',
+          'protocol.json',
+        ),
+      );
 
-	describe("Cordova", () => {
-		beforeAll(() => {
-			getEnvironment.mockReturnValue(environments.CORDOVA);
-		});
+      expect(protocolPath('foo.canvas')).toEqual(
+        path.join('tmp', 'mock', 'user', 'path', 'protocols', 'foo.canvas'),
+      );
+    });
 
-		it("Generates an asset path for the file", () => {
-			expect(protocolPath("foo.canvas", "protocol.json")).toEqual(
-				"tmp/mock/user/path/protocols/foo.canvas/protocol.json",
-			);
+    it('Thows an error if the protocol is not specified', () => {
+      expect(() => protocolPath()).toThrow();
+    });
+  });
 
-			expect(protocolPath("foo.canvas")).toEqual("tmp/mock/user/path/protocols/foo.canvas/");
-		});
+  describe('Cordova', () => {
+    beforeAll(() => {
+      getEnvironment.mockReturnValue(environments.CORDOVA);
+    });
 
-		it("Thows an error if the protocol is not specified", () => {
-			expect(() => protocolPath()).toThrow();
-		});
-	});
+    it('Generates an asset path for the file', () => {
+      expect(protocolPath('foo.canvas', 'protocol.json')).toEqual(
+        'tmp/mock/user/path/protocols/foo.canvas/protocol.json',
+      );
+
+      expect(protocolPath('foo.canvas')).toEqual(
+        'tmp/mock/user/path/protocols/foo.canvas/',
+      );
+    });
+
+    it('Thows an error if the protocol is not specified', () => {
+      expect(() => protocolPath()).toThrow();
+    });
+  });
 });

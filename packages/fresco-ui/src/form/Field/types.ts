@@ -1,28 +1,30 @@
-import type { Variable } from "@codaco/protocol-validation";
-import type { JSONContent } from "@tiptap/core";
-import type { ReactNode } from "react";
-import type { CustomFieldValidation, ValidationContext } from "../store/types";
-import type { ValidationPropKey } from "../validation/functions";
+import type { JSONContent } from '@tiptap/core';
+import type { ReactNode } from 'react';
+
+import type { Variable } from '@codaco/protocol-validation';
+
+import type { CustomFieldValidation, ValidationContext } from '../store/types';
+import type { ValidationPropKey } from '../validation/functions';
 
 /**
  * Parameter type for variable comparison validations
  * (greaterThanVariable, lessThanVariable, greaterThanOrEqualToVariable, lessThanOrEqualToVariable)
  */
 type VariableComparisonParam = {
-	attribute: string;
-	type: Variable["type"];
+  attribute: string;
+  type: Variable['type'];
 };
 
 /**
  * Type representing all possible values for a form field.
  */
 export type FieldValue =
-	| string
-	| (string | number | boolean | Record<string, unknown>)[]
-	| number
-	| boolean
-	| JSONContent //
-	| undefined;
+  | string
+  | (string | number | boolean | Record<string, unknown>)[]
+  | number
+  | boolean
+  | JSONContent //
+  | undefined;
 
 // ═══════════════════════════════════════════════════════════════
 // Type utilities for field component validation
@@ -34,9 +36,10 @@ export type FieldValue =
  * to properly handle optional value properties.
  * Returns `never` if the component doesn't have a value prop.
  */
-export type ExtractValue<C extends ValidFieldComponent> = "value" extends keyof React.ComponentProps<C>
-	? Exclude<React.ComponentProps<C>["value"], undefined>
-	: never;
+export type ExtractValue<C extends ValidFieldComponent> =
+  'value' extends keyof React.ComponentProps<C>
+    ? Exclude<React.ComponentProps<C>['value'], undefined>
+    : never;
 
 /**
  * Constraint for valid field components. Concrete field components have
@@ -59,40 +62,40 @@ export type ValidFieldComponent = React.ComponentType<any>;
  * These validations make sense regardless of the underlying data type.
  */
 type CommonValidationProps = {
-	required?: boolean | string;
-	custom?: CustomFieldValidation | CustomFieldValidation[];
-	unique?: string;
-	sameAs?: string;
-	differentFrom?: string;
-	greaterThanVariable?: VariableComparisonParam;
-	lessThanVariable?: VariableComparisonParam;
-	greaterThanOrEqualToVariable?: VariableComparisonParam;
-	lessThanOrEqualToVariable?: VariableComparisonParam;
+  required?: boolean | string;
+  custom?: CustomFieldValidation | CustomFieldValidation[];
+  unique?: string;
+  sameAs?: string;
+  differentFrom?: string;
+  greaterThanVariable?: VariableComparisonParam;
+  lessThanVariable?: VariableComparisonParam;
+  greaterThanOrEqualToVariable?: VariableComparisonParam;
+  lessThanOrEqualToVariable?: VariableComparisonParam;
 };
 
 /**
  * Validation props specific to string values.
  */
 type StringValidationProps = {
-	minLength?: number;
-	maxLength?: number;
-	pattern?: { regex: string; hint: string; errorMessage: string };
+  minLength?: number;
+  maxLength?: number;
+  pattern?: { regex: string; hint: string; errorMessage: string };
 };
 
 /**
  * Validation props specific to number values.
  */
 type NumberValidationProps = {
-	minValue?: number;
-	maxValue?: number;
+  minValue?: number;
+  maxValue?: number;
 };
 
 /**
  * Validation props specific to array values.
  */
 type ArrayValidationProps = {
-	minSelected?: number;
-	maxSelected?: number;
+  minSelected?: number;
+  maxSelected?: number;
 };
 
 /**
@@ -101,18 +104,18 @@ type ArrayValidationProps = {
  * semantics of the `min`/`max` HTML attributes.
  */
 type OrderedValidationProps = {
-	min?: string | number;
-	max?: string | number;
+  min?: string | number;
+  max?: string | number;
 };
 
 /**
  * Combined catalogue of all validation props
  */
 export type ValidationPropsCatalogue = CommonValidationProps &
-	StringValidationProps &
-	NumberValidationProps &
-	ArrayValidationProps &
-	OrderedValidationProps;
+  StringValidationProps &
+  NumberValidationProps &
+  ArrayValidationProps &
+  OrderedValidationProps;
 
 /**
  * Infers the appropriate validation props based on the field's value type.
@@ -122,9 +125,13 @@ export type ValidationPropsCatalogue = CommonValidationProps &
  * - Array fields additionally get minSelected, maxSelected
  */
 export type ValidationPropsForValue<V> = CommonValidationProps &
-	(V extends string ? StringValidationProps & OrderedValidationProps : unknown) &
-	(V extends number ? NumberValidationProps & OrderedValidationProps : unknown) &
-	(V extends unknown[] ? ArrayValidationProps : unknown);
+  (V extends string
+    ? StringValidationProps & OrderedValidationProps
+    : unknown) &
+  (V extends number
+    ? NumberValidationProps & OrderedValidationProps
+    : unknown) &
+  (V extends unknown[] ? ArrayValidationProps : unknown);
 
 // ═══════════════════════════════════════════════════════════════
 // Utility type for creating field component prop definitions
@@ -153,13 +160,16 @@ export type ValidationPropsForValue<V> = CommonValidationProps &
  * ```
  */
 export type CreateFormFieldProps<
-	V extends FieldValue,
-	TElement extends keyof React.JSX.IntrinsicElements,
-	TCustom = Record<never, never>,
+  V extends FieldValue,
+  TElement extends keyof React.JSX.IntrinsicElements,
+  TCustom = Record<never, never>,
 > = FieldValueProps<V> &
-	InjectedFieldProps &
-	Omit<React.JSX.IntrinsicElements[TElement], keyof FieldValueProps<V> | keyof InjectedFieldProps | keyof TCustom> &
-	TCustom;
+  InjectedFieldProps &
+  Omit<
+    React.JSX.IntrinsicElements[TElement],
+    keyof FieldValueProps<V> | keyof InjectedFieldProps | keyof TCustom
+  > &
+  TCustom;
 
 // ═══════════════════════════════════════════════════════════════
 // Field component prop types
@@ -186,16 +196,16 @@ export type CreateFormFieldProps<
  * The Field component guarantees these are always provided in pattern 1.
  */
 export type InjectedFieldProps = {
-	id?: string;
-	name?: string;
-	onBlur?: (e: React.FocusEvent) => void;
-	"aria-required"?: boolean;
-	"aria-invalid"?: boolean;
-	"aria-describedby"?: string;
-	"aria-disabled"?: boolean;
-	"aria-readonly"?: boolean;
-	disabled?: boolean;
-	readOnly?: boolean;
+  'id'?: string;
+  'name'?: string;
+  'onBlur'?: (e: React.FocusEvent) => void;
+  'aria-required'?: boolean;
+  'aria-invalid'?: boolean;
+  'aria-describedby'?: string;
+  'aria-disabled'?: boolean;
+  'aria-readonly'?: boolean;
+  'disabled'?: boolean;
+  'readOnly'?: boolean;
 };
 
 /**
@@ -203,8 +213,8 @@ export type InjectedFieldProps = {
  * field components (ensured via CreateFormFieldProps utility type).
  */
 export type FieldValueProps<V extends FieldValue> = {
-	value?: V | undefined;
-	onChange?: (value: V | undefined) => void;
+  value?: V | undefined;
+  onChange?: (value: V | undefined) => void;
 };
 
 /**
@@ -212,46 +222,46 @@ export type FieldValueProps<V extends FieldValue> = {
  * Generic over C (the component type) to enable type inference.
  */
 type FieldOwnProps<C extends ValidFieldComponent> = {
-	/** Unique field name, used as the key in form state. */
-	name: string;
-	/** Label text rendered above (or beside when inline) the control. */
-	label: string;
-	/** Supplementary text rendered below the label. */
-	hint?: ReactNode;
-	/**
-	 * When true, renders the label and control on the same horizontal row
-	 * with the hint grouped beneath the label.
-	 * @default false
-	 */
-	inline?: boolean;
-	/** Value the field starts with before user interaction. */
-	initialValue?: ExtractValue<C> | undefined;
-	/**
-	 * When true, renders a human-readable summary of the field's validation
-	 * rules (e.g. "required", "between 8 and 64 characters") below the hint.
-	 * @default false
-	 */
-	showValidationHints?: boolean;
-	/** Prevents user interaction and dims the control. */
-	disabled?: boolean;
-	/** Allows the value to be read but not changed. */
-	readOnly?: boolean;
-	/**
-	 * Context required for context-dependent validations like unique, sameAs, etc.
-	 */
-	validationContext?: ValidationContext;
-	/**
-	 * When true, validates the field on change instead of waiting for blur.
-	 * Validation is debounced to avoid excessive calls while typing.
-	 * Useful for async validation where immediate feedback is desired.
-	 */
-	validateOnChange?: boolean;
-	/**
-	 * Debounce delay in milliseconds for validateOnChange.
-	 * Only applies when validateOnChange is true.
-	 * @default 300
-	 */
-	validateOnChangeDelay?: number;
+  /** Unique field name, used as the key in form state. */
+  name: string;
+  /** Label text rendered above (or beside when inline) the control. */
+  label: string;
+  /** Supplementary text rendered below the label. */
+  hint?: ReactNode;
+  /**
+   * When true, renders the label and control on the same horizontal row
+   * with the hint grouped beneath the label.
+   * @default false
+   */
+  inline?: boolean;
+  /** Value the field starts with before user interaction. */
+  initialValue?: ExtractValue<C> | undefined;
+  /**
+   * When true, renders a human-readable summary of the field's validation
+   * rules (e.g. "required", "between 8 and 64 characters") below the hint.
+   * @default false
+   */
+  showValidationHints?: boolean;
+  /** Prevents user interaction and dims the control. */
+  disabled?: boolean;
+  /** Allows the value to be read but not changed. */
+  readOnly?: boolean;
+  /**
+   * Context required for context-dependent validations like unique, sameAs, etc.
+   */
+  validationContext?: ValidationContext;
+  /**
+   * When true, validates the field on change instead of waiting for blur.
+   * Validation is debounced to avoid excessive calls while typing.
+   * Useful for async validation where immediate feedback is desired.
+   */
+  validateOnChange?: boolean;
+  /**
+   * Debounce delay in milliseconds for validateOnChange.
+   * Only applies when validateOnChange is true.
+   * @default 300
+   */
+  validateOnChangeDelay?: number;
 };
 
 /**
@@ -262,7 +272,12 @@ type FieldOwnProps<C extends ValidFieldComponent> = {
  * Validation props are inferred based on the component's value type.
  */
 export type FieldProps<C extends ValidFieldComponent> = FieldOwnProps<C> &
-	Omit<React.ComponentProps<C>, keyof InjectedFieldProps | keyof FieldValueProps<FieldValue> | ValidationPropKey> &
-	ValidationPropsForValue<ExtractValue<C>> & {
-		component: C;
-	};
+  Omit<
+    React.ComponentProps<C>,
+    | keyof InjectedFieldProps
+    | keyof FieldValueProps<FieldValue>
+    | ValidationPropKey
+  > &
+  ValidationPropsForValue<ExtractValue<C>> & {
+    component: C;
+  };

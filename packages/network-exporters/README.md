@@ -3,20 +3,20 @@
 A runtime-agnostic [Effect-TS](https://effect.website) pipeline that exports Network Canvas interview sessions to GraphML and CSV. Hosts plug in three Layers (`InterviewRepository`, `ProtocolRepository`, `Output`) and call `exportPipeline`. The package owns no persistence, pulls in no `node:*` modules from its core, and runs unchanged on Node, browsers, and Cloudflare Workers.
 
 ```ts
-import { Effect, Layer, Queue } from "effect";
-import { exportPipeline } from "@codaco/network-exporters/pipeline";
-import type { ExportEvent } from "@codaco/network-exporters/events";
-import { makeZipOutput } from "@codaco/network-exporters/layers/ZipOutput";
+import { Effect, Layer, Queue } from 'effect';
+import { exportPipeline } from '@codaco/network-exporters/pipeline';
+import type { ExportEvent } from '@codaco/network-exporters/events';
+import { makeZipOutput } from '@codaco/network-exporters/layers/ZipOutput';
 
 const layer = Layer.mergeAll(
-	MyInterviewRepository, // workspace-specific
-	MyProtocolRepository,  // workspace-specific
-	makeZipOutput(mySink), // ships with this package
+  MyInterviewRepository, // workspace-specific
+  MyProtocolRepository, // workspace-specific
+  makeZipOutput(mySink), // ships with this package
 );
 
 const program = Effect.gen(function* () {
-	const queue = yield* Queue.unbounded<ExportEvent>();
-	return yield* exportPipeline(interviewIds, exportOptions, queue);
+  const queue = yield* Queue.unbounded<ExportEvent>();
+  return yield* exportPipeline(interviewIds, exportOptions, queue);
 });
 
 const result = await Effect.runPromise(program.pipe(Effect.provide(layer)));
@@ -64,10 +64,10 @@ Export logic was historically embedded in [Fresco](https://github.com/complexdat
 
 Three injected services (`Context.Tag`s) form the package's input/output boundary:
 
-| Service               | Provided by | Responsibility                                                                                 |
-| --------------------- | ----------- | ---------------------------------------------------------------------------------------------- |
-| `InterviewRepository` | Host        | `getForExport(ids)` returns sessions referencing protocols by hash                             |
-| `ProtocolRepository`  | Host        | `getProtocols(hashes)` returns `Record<hash, ProtocolExportInput>` for unique hashes           |
+| Service               | Provided by                       | Responsibility                                                                           |
+| --------------------- | --------------------------------- | ---------------------------------------------------------------------------------------- |
+| `InterviewRepository` | Host                              | `getForExport(ids)` returns sessions referencing protocols by hash                       |
+| `ProtocolRepository`  | Host                              | `getProtocols(hashes)` returns `Record<hash, ProtocolExportInput>` for unique hashes     |
 | `Output`              | Host (or shipped `makeZipOutput`) | Stateful `begin → writeEntry × N → end`; consumes `OutputEntry { name, data }` per entry |
 
 Sessions reference protocols by hash, so the pipeline fetches each unique protocol exactly once per run regardless of how many sessions share it. The `Output` service is stateful: `begin` produces an opaque handle, the pipeline writes one entry per successful generation result, and `end` returns a host-defined `OutputResult` that flows out via `ExportReturn.output`.
@@ -83,18 +83,18 @@ The host's only responsibilities are:
 
 Imports use sub-paths — the package has no barrel export.
 
-| Sub-path | Exports |
-| --- | --- |
-| `@codaco/network-exporters/pipeline` | `exportPipeline`, type `ExportedProtocol` |
-| `@codaco/network-exporters/options` | `ExportOptions`, `ExportOptionsSchema`, type `ExportFormat` |
-| `@codaco/network-exporters/input` | `InterviewExportInput`, `ProtocolExportInput`, plus session shape types (`FormattedSession`, `SessionVariables`, `SessionWithNetworkEgo`, `SessionWithResequencedIDs`) |
-| `@codaco/network-exporters/output` | `ExportResult`, `ExportSuccess`, `ExportFailure`, `ExportReturn`, `OutputEntry`, `OutputResult`, `OutputHandle` |
-| `@codaco/network-exporters/events` | `ExportEvent`, `stageMessages` |
-| `@codaco/network-exporters/errors` | `DatabaseError`, `OutputError`, `ExportGenerationError`, `ProtocolNotFoundError`, `SessionProcessingError`, type `ExportError`, `describeExportError` |
-| `@codaco/network-exporters/services/InterviewRepository` | `InterviewRepository` Tag |
-| `@codaco/network-exporters/services/ProtocolRepository` | `ProtocolRepository` Tag |
-| `@codaco/network-exporters/services/Output` | `Output` Tag |
-| `@codaco/network-exporters/layers/ZipOutput` | `makeZipOutput`, type `ZipSink` |
+| Sub-path                                                 | Exports                                                                                                                                                                |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@codaco/network-exporters/pipeline`                     | `exportPipeline`, type `ExportedProtocol`                                                                                                                              |
+| `@codaco/network-exporters/options`                      | `ExportOptions`, `ExportOptionsSchema`, type `ExportFormat`                                                                                                            |
+| `@codaco/network-exporters/input`                        | `InterviewExportInput`, `ProtocolExportInput`, plus session shape types (`FormattedSession`, `SessionVariables`, `SessionWithNetworkEgo`, `SessionWithResequencedIDs`) |
+| `@codaco/network-exporters/output`                       | `ExportResult`, `ExportSuccess`, `ExportFailure`, `ExportReturn`, `OutputEntry`, `OutputResult`, `OutputHandle`                                                        |
+| `@codaco/network-exporters/events`                       | `ExportEvent`, `stageMessages`                                                                                                                                         |
+| `@codaco/network-exporters/errors`                       | `DatabaseError`, `OutputError`, `ExportGenerationError`, `ProtocolNotFoundError`, `SessionProcessingError`, type `ExportError`, `describeExportError`                  |
+| `@codaco/network-exporters/services/InterviewRepository` | `InterviewRepository` Tag                                                                                                                                              |
+| `@codaco/network-exporters/services/ProtocolRepository`  | `ProtocolRepository` Tag                                                                                                                                               |
+| `@codaco/network-exporters/services/Output`              | `Output` Tag                                                                                                                                                           |
+| `@codaco/network-exporters/layers/ZipOutput`             | `makeZipOutput`, type `ZipSink`                                                                                                                                        |
 
 Everything else (formatters, session helpers, dispatch logic, internal zip stream helpers) is internal and not exported.
 
@@ -105,35 +105,35 @@ Everything else (formatters, session helpers, dispatch logic, internal zip strea
 ### 1. Provide an `InterviewRepository`
 
 ```ts
-import { Effect, Layer } from "effect";
-import { NcNetworkSchema } from "@codaco/shared-consts";
-import { DatabaseError } from "@codaco/network-exporters/errors";
-import type { InterviewExportInput } from "@codaco/network-exporters/input";
-import { InterviewRepository } from "@codaco/network-exporters/services/InterviewRepository";
+import { Effect, Layer } from 'effect';
+import { NcNetworkSchema } from '@codaco/shared-consts';
+import { DatabaseError } from '@codaco/network-exporters/errors';
+import type { InterviewExportInput } from '@codaco/network-exporters/input';
+import { InterviewRepository } from '@codaco/network-exporters/services/InterviewRepository';
 
 export const PrismaInterviewRepository = Layer.succeed(InterviewRepository, {
-	getForExport: (ids) =>
-		Effect.gen(function* () {
-			const rows = yield* Effect.tryPromise({
-				try: () =>
-					prisma.interview.findMany({
-						where: { id: { in: [...ids] } },
-						include: { participant: true },
-					}),
-				catch: (error) => new DatabaseError({ cause: error }),
-			});
+  getForExport: (ids) =>
+    Effect.gen(function* () {
+      const rows = yield* Effect.tryPromise({
+        try: () =>
+          prisma.interview.findMany({
+            where: { id: { in: [...ids] } },
+            include: { participant: true },
+          }),
+        catch: (error) => new DatabaseError({ cause: error }),
+      });
 
-			const inputs: InterviewExportInput[] = rows.map((row) => ({
-				id: row.id,
-				participantIdentifier: row.participant.identifier,
-				startTime: row.startTime,
-				finishTime: row.finishTime,
-				network: NcNetworkSchema.parse(row.network),
-				protocolHash: row.protocolHash,
-			}));
+      const inputs: InterviewExportInput[] = rows.map((row) => ({
+        id: row.id,
+        participantIdentifier: row.participant.identifier,
+        startTime: row.startTime,
+        finishTime: row.finishTime,
+        network: NcNetworkSchema.parse(row.network),
+        protocolHash: row.protocolHash,
+      }));
 
-			return inputs;
-		}),
+      return inputs;
+    }),
 });
 ```
 
@@ -142,25 +142,30 @@ The repository returns sessions referencing protocols **by hash**. There is no `
 ### 2. Provide a `ProtocolRepository`
 
 ```ts
-import { Effect, Layer } from "effect";
-import { DatabaseError } from "@codaco/network-exporters/errors";
-import type { ProtocolExportInput } from "@codaco/network-exporters/input";
-import { ProtocolRepository } from "@codaco/network-exporters/services/ProtocolRepository";
+import { Effect, Layer } from 'effect';
+import { DatabaseError } from '@codaco/network-exporters/errors';
+import type { ProtocolExportInput } from '@codaco/network-exporters/input';
+import { ProtocolRepository } from '@codaco/network-exporters/services/ProtocolRepository';
 
 export const PrismaProtocolRepository = Layer.succeed(ProtocolRepository, {
-	getProtocols: (hashes) =>
-		Effect.gen(function* () {
-			const rows = yield* Effect.tryPromise({
-				try: () => prisma.protocol.findMany({ where: { hash: { in: [...hashes] } } }),
-				catch: (error) => new DatabaseError({ cause: error }),
-			});
+  getProtocols: (hashes) =>
+    Effect.gen(function* () {
+      const rows = yield* Effect.tryPromise({
+        try: () =>
+          prisma.protocol.findMany({ where: { hash: { in: [...hashes] } } }),
+        catch: (error) => new DatabaseError({ cause: error }),
+      });
 
-			const map: Record<string, ProtocolExportInput> = {};
-			for (const row of rows) {
-				map[row.hash] = { hash: row.hash, name: row.name, codebook: row.codebook };
-			}
-			return map;
-		}),
+      const map: Record<string, ProtocolExportInput> = {};
+      for (const row of rows) {
+        map[row.hash] = {
+          hash: row.hash,
+          name: row.name,
+          codebook: row.codebook,
+        };
+      }
+      return map;
+    }),
 });
 ```
 
@@ -173,23 +178,23 @@ The pipeline calls `getProtocols` once per run with the deduplicated hash set ex
 #### S3 with `ZipOutput` (Node)
 
 ```ts
-import { Readable } from "node:stream";
-import { Upload } from "@aws-sdk/lib-storage";
-import { Effect } from "effect";
-import { OutputError } from "@codaco/network-exporters/errors";
-import { makeZipOutput } from "@codaco/network-exporters/layers/ZipOutput";
+import { Readable } from 'node:stream';
+import { Upload } from '@aws-sdk/lib-storage';
+import { Effect } from 'effect';
+import { OutputError } from '@codaco/network-exporters/errors';
+import { makeZipOutput } from '@codaco/network-exporters/layers/ZipOutput';
 
 const S3ZipOutput = makeZipOutput((stream, fileName) =>
-	Effect.tryPromise({
-		try: async () => {
-			await new Upload({
-				client: s3,
-				params: { Bucket, Key: fileName, Body: Readable.from(stream) },
-			}).done();
-			return { key: fileName, url: await presign(fileName) };
-		},
-		catch: (cause) => new OutputError({ cause }),
-	}),
+  Effect.tryPromise({
+    try: async () => {
+      await new Upload({
+        client: s3,
+        params: { Bucket, Key: fileName, Body: Readable.from(stream) },
+      }).done();
+      return { key: fileName, url: await presign(fileName) };
+    },
+    catch: (cause) => new OutputError({ cause }),
+  }),
 );
 ```
 
@@ -198,20 +203,20 @@ const S3ZipOutput = makeZipOutput((stream, fileName) =>
 #### Browser blob with `ZipOutput`
 
 ```ts
-import { Effect } from "effect";
-import { OutputError } from "@codaco/network-exporters/errors";
-import { makeZipOutput } from "@codaco/network-exporters/layers/ZipOutput";
+import { Effect } from 'effect';
+import { OutputError } from '@codaco/network-exporters/errors';
+import { makeZipOutput } from '@codaco/network-exporters/layers/ZipOutput';
 
 const BlobZipOutput = makeZipOutput((stream) =>
-	Effect.tryPromise({
-		try: async () => {
-			const chunks: Uint8Array[] = [];
-			for await (const chunk of stream) chunks.push(chunk);
-			const blob = new Blob(chunks, { type: "application/zip" });
-			return { blob, url: URL.createObjectURL(blob) };
-		},
-		catch: (cause) => new OutputError({ cause }),
-	}),
+  Effect.tryPromise({
+    try: async () => {
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of stream) chunks.push(chunk);
+      const blob = new Blob(chunks, { type: 'application/zip' });
+      return { blob, url: URL.createObjectURL(blob) };
+    },
+    catch: (cause) => new OutputError({ cause }),
+  }),
 );
 ```
 
@@ -220,31 +225,35 @@ const BlobZipOutput = makeZipOutput((stream) =>
 #### OPFS folder (no zip)
 
 ```ts
-import { Effect, Layer } from "effect";
-import { OutputError } from "@codaco/network-exporters/errors";
-import { Output } from "@codaco/network-exporters/services/Output";
+import { Effect, Layer } from 'effect';
+import { OutputError } from '@codaco/network-exporters/errors';
+import { Output } from '@codaco/network-exporters/services/Output';
 
 const OPFSFolderOutput = Layer.succeed(Output, {
-	begin: () =>
-		Effect.tryPromise({
-			try: async () => ({
-				dir: await navigator.storage
-					.getDirectory()
-					.then((root) => root.getDirectoryHandle(`export-${Date.now()}`, { create: true })),
-			}),
-			catch: (cause) => new OutputError({ cause }),
-		}),
-	writeEntry: (handle, entry) =>
-		Effect.tryPromise({
-			try: async () => {
-				const file = await handle.dir.getFileHandle(entry.name, { create: true });
-				const writable = await file.createWritable();
-				for await (const chunk of entry.data) await writable.write(chunk);
-				await writable.close();
-			},
-			catch: (cause) => new OutputError({ cause }),
-		}),
-	end: (handle) => Effect.succeed({ folderHandle: handle.dir }),
+  begin: () =>
+    Effect.tryPromise({
+      try: async () => ({
+        dir: await navigator.storage
+          .getDirectory()
+          .then((root) =>
+            root.getDirectoryHandle(`export-${Date.now()}`, { create: true }),
+          ),
+      }),
+      catch: (cause) => new OutputError({ cause }),
+    }),
+  writeEntry: (handle, entry) =>
+    Effect.tryPromise({
+      try: async () => {
+        const file = await handle.dir.getFileHandle(entry.name, {
+          create: true,
+        });
+        const writable = await file.createWritable();
+        for await (const chunk of entry.data) await writable.write(chunk);
+        await writable.close();
+      },
+      catch: (cause) => new OutputError({ cause }),
+    }),
+  end: (handle) => Effect.succeed({ folderHandle: handle.dir }),
 });
 ```
 
@@ -253,58 +262,61 @@ This implementation skips `makeZipOutput` entirely: each successful generation r
 ### 4. Run the pipeline
 
 ```ts
-import { Effect, Layer, Queue } from "effect";
-import { exportPipeline } from "@codaco/network-exporters/pipeline";
-import type { ExportEvent } from "@codaco/network-exporters/events";
-import { describeExportError, type ExportError } from "@codaco/network-exporters/errors";
+import { Effect, Layer, Queue } from 'effect';
+import { exportPipeline } from '@codaco/network-exporters/pipeline';
+import type { ExportEvent } from '@codaco/network-exporters/events';
+import {
+  describeExportError,
+  type ExportError,
+} from '@codaco/network-exporters/errors';
 
 const exportLayer = Layer.mergeAll(
-	PrismaInterviewRepository,
-	PrismaProtocolRepository,
-	S3ZipOutput,
+  PrismaInterviewRepository,
+  PrismaProtocolRepository,
+  S3ZipOutput,
 );
 
 const result = await Effect.gen(function* () {
-	const queue = yield* Queue.unbounded<ExportEvent>();
+  const queue = yield* Queue.unbounded<ExportEvent>();
 
-	// Spawn a fiber that drains the queue and forwards events to the UI
-	// (e.g. an SSE response). The pipeline writes; this consumer reads.
-	yield* Effect.forkDaemon(
-		Effect.gen(function* () {
-			while (true) {
-				const event = yield* Queue.take(queue);
-				yield* renderEventToClient(event);
-			}
-		}),
-	);
+  // Spawn a fiber that drains the queue and forwards events to the UI
+  // (e.g. an SSE response). The pipeline writes; this consumer reads.
+  yield* Effect.forkDaemon(
+    Effect.gen(function* () {
+      while (true) {
+        const event = yield* Queue.take(queue);
+        yield* renderEventToClient(event);
+      }
+    }),
+  );
 
-	return yield* exportPipeline(
-		["interview-1", "interview-2"],
-		{
-			exportGraphML: true,
-			exportCSV: true,
-			globalOptions: {
-				useScreenLayoutCoordinates: true,
-				screenLayoutHeight: 1080,
-				screenLayoutWidth: 1920,
-			},
-			// optional: defaults to os.cpus().length on Node, 4 elsewhere
-			concurrency: 4,
-			// optional: only used to populate session metadata
-			appVersion: "3.0.0",
-			commitHash: process.env.COMMIT_HASH,
-		},
-		queue,
-	);
+  return yield* exportPipeline(
+    ['interview-1', 'interview-2'],
+    {
+      exportGraphML: true,
+      exportCSV: true,
+      globalOptions: {
+        useScreenLayoutCoordinates: true,
+        screenLayoutHeight: 1080,
+        screenLayoutWidth: 1920,
+      },
+      // optional: defaults to os.cpus().length on Node, 4 elsewhere
+      concurrency: 4,
+      // optional: only used to populate session metadata
+      appVersion: '3.0.0',
+      commitHash: process.env.COMMIT_HASH,
+    },
+    queue,
+  );
 }).pipe(
-	Effect.provide(exportLayer),
-	Effect.catchAll((error: ExportError) =>
-		Effect.succeed({
-			status: "error" as const,
-			message: describeExportError(error, "running export"),
-		}),
-	),
-	Effect.runPromise,
+  Effect.provide(exportLayer),
+  Effect.catchAll((error: ExportError) =>
+    Effect.succeed({
+      status: 'error' as const,
+      message: describeExportError(error, 'running export'),
+    }),
+  ),
+  Effect.runPromise,
 );
 ```
 
@@ -314,12 +326,12 @@ const result = await Effect.gen(function* () {
 
 ## Pipeline stages
 
-| Stage | What happens | Event emitted |
-| --- | --- | --- |
-| `fetching` | `InterviewRepository.getForExport(ids)` resolves to `InterviewExportInput[]` | `{ type: "stage", stage: "fetching" }` |
-| `formatting` | Per-stage Effects: `getProtocols`, partition missing, build session variables, insert ego, group by protocol hash, resequence ids. Per-session catches route bad sessions to `failedExports` | `{ type: "stage", stage: "formatting" }` |
-| `generating` | Per-file fan-out (CSV generators + GraphML doc), bounded concurrency, each producing an `AsyncIterable<Uint8Array>` | `{ type: "stage", stage: "generating" }` plus `{ type: "progress", stage: "generating", current, total }` |
-| `outputting` | `Output.begin()`, then `Output.writeEntry(handle, entry)` per successful file, then `Output.end(handle)` | `{ type: "stage", stage: "outputting" }` plus `{ type: "progress", stage: "outputting", current, total }` |
+| Stage        | What happens                                                                                                                                                                                 | Event emitted                                                                                             |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `fetching`   | `InterviewRepository.getForExport(ids)` resolves to `InterviewExportInput[]`                                                                                                                 | `{ type: "stage", stage: "fetching" }`                                                                    |
+| `formatting` | Per-stage Effects: `getProtocols`, partition missing, build session variables, insert ego, group by protocol hash, resequence ids. Per-session catches route bad sessions to `failedExports` | `{ type: "stage", stage: "formatting" }`                                                                  |
+| `generating` | Per-file fan-out (CSV generators + GraphML doc), bounded concurrency, each producing an `AsyncIterable<Uint8Array>`                                                                          | `{ type: "stage", stage: "generating" }` plus `{ type: "progress", stage: "generating", current, total }` |
+| `outputting` | `Output.begin()`, then `Output.writeEntry(handle, entry)` per successful file, then `Output.end(handle)`                                                                                     | `{ type: "stage", stage: "outputting" }` plus `{ type: "progress", stage: "outputting", current, total }` |
 
 Four stages, four `stage` event values. `outputting` covers `begin`, every `writeEntry`, and `end`. The pipeline allocates no persistent state — there is no separate cleanup phase.
 
@@ -345,10 +357,10 @@ Two distinct error tracks, both tagged.
 
 The pipeline raises into Effect's failure channel for unrecoverable conditions: database fetch fails, output begin/write/end fails. Each is a tagged `Data.TaggedError` instance:
 
-| Class                | Tag                                | Raised by                                   |
-| -------------------- | ---------------------------------- | ------------------------------------------- |
-| `DatabaseError`      | `NetworkExporters/DatabaseError`   | `InterviewRepository`, `ProtocolRepository` |
-| `OutputError`        | `NetworkExporters/OutputError`     | `Output.begin` / `Output.writeEntry` / `Output.end` (covers former `FileStorageError` and `ArchiveError`) |
+| Class           | Tag                              | Raised by                                                                                                 |
+| --------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `DatabaseError` | `NetworkExporters/DatabaseError` | `InterviewRepository`, `ProtocolRepository`                                                               |
+| `OutputError`   | `NetworkExporters/OutputError`   | `Output.begin` / `Output.writeEntry` / `Output.end` (covers former `FileStorageError` and `ArchiveError`) |
 
 The `ExportError` union type covers both fatal classes.
 
@@ -358,22 +370,22 @@ A failure inside `Output.writeEntry` is fatal — once partial bytes are in the 
 
 ```ts
 Effect.catchAll((error) =>
-	Effect.succeed({
-		status: "error" as const,
-		message: describeExportError(error, "running export"),
-	}),
-)
+  Effect.succeed({
+    status: 'error' as const,
+    message: describeExportError(error, 'running export'),
+  }),
+);
 ```
 
 ### Partial failures — `ExportFailure[]`
 
 A single bad session or a single failing file does **not** abort the pipeline. Three things can land in `failedExports`:
 
-| `kind`               | Source error             | When                                                                                  |
-| -------------------- | ------------------------ | ------------------------------------------------------------------------------------- |
-| `protocol-missing`   | `ProtocolNotFoundError`  | Session's `protocolHash` not present in `ProtocolRepository.getProtocols` result      |
-| `session-processing` | `SessionProcessingError` | Per-session catch in `format`, `insertEgo`, or `resequence` stages                    |
-| `generation`         | `ExportGenerationError`  | A per-file generator (e.g. one CSV partition) throws while the rest succeed           |
+| `kind`               | Source error             | When                                                                             |
+| -------------------- | ------------------------ | -------------------------------------------------------------------------------- |
+| `protocol-missing`   | `ProtocolNotFoundError`  | Session's `protocolHash` not present in `ProtocolRepository.getProtocols` result |
+| `session-processing` | `SessionProcessingError` | Per-session catch in `format`, `insertEgo`, or `resequence` stages               |
+| `generation`         | `ExportGenerationError`  | A per-file generator (e.g. one CSV partition) throws while the rest succeed      |
 
 Successful files still get written to `Output` and reported.
 
@@ -410,16 +422,16 @@ if (result.status === "partial") {
 
 ```ts
 type ExportStageEvent = {
-	type: "stage";
-	stage: "fetching" | "formatting" | "generating" | "outputting";
-	message: string;
+  type: 'stage';
+  stage: 'fetching' | 'formatting' | 'generating' | 'outputting';
+  message: string;
 };
 
 type ExportProgressEvent = {
-	type: "progress";
-	stage: "generating" | "outputting";
-	current: number;
-	total: number;
+  type: 'progress';
+  stage: 'generating' | 'outputting';
+  current: number;
+  total: number;
 };
 ```
 

@@ -81,11 +81,11 @@ The host has no business logic of its own. State is installed via
 `window.__test` hooks defined in `host/src/testHooks.ts`:
 
 ```ts
-window.__test.installProtocol(payload)
-window.__test.setAssetUrl(assetId, url)
-window.__test.createInterview(protocolId, participantId) // returns id
-window.__test.getNetworkState()  // reads from the live Redux store
-window.__test.reset()
+window.__test.installProtocol(payload);
+window.__test.setAssetUrl(assetId, url);
+window.__test.createInterview(protocolId, participantId); // returns id
+window.__test.getNetworkState(); // reads from the live Redux store
+window.__test.reset();
 ```
 
 The same functions are exported as ES modules from `host/src/testHooks.ts` —
@@ -101,21 +101,23 @@ The `interview-test` fixture composes everything — protocol install, interview
 creation, navigation helpers, and the screenshot capture wiring:
 
 ```ts
-import { test, expect } from "../fixtures/test";
-import path from "node:path";
+import { test, expect } from '../fixtures/test';
+import path from 'node:path';
 
-test.describe("My protocol", () => {
+test.describe('My protocol', () => {
   test.beforeAll(async ({ protocol, interview }) => {
     const installed = await protocol.install(
-      path.resolve(__dirname, "../data/my-protocol.netcanvas"),
+      path.resolve(__dirname, '../data/my-protocol.netcanvas'),
     );
-    interview.interviewId = await protocol.createInterview(installed.protocolId);
+    interview.interviewId = await protocol.createInterview(
+      installed.protocolId,
+    );
   });
 
-  test("renders the first stage", async ({ interview, page }) => {
+  test('renders the first stage', async ({ interview, page }) => {
     await interview.goto(0);
     await interview.captureInitial();
-    await expect(page.getByRole("heading", { name: "Welcome" })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Welcome' })).toBeVisible();
     await interview.next();
   });
 });

@@ -1,12 +1,12 @@
 {
-	"extends": "@codaco/tsconfig/web.json",
-	"compilerOptions": {
-		"noEmit": true,
-		"types": ["node", "@playwright/test", "vite/client"],
-		"module": "ESNext",
-		"moduleResolution": "Bundler",
-		"jsx": "react-jsx"
-	},
-	"include": ["fixtures/**/*.ts", "helpers/**/*.ts", "specs/**/*.ts", "*.ts"],
-	"exclude": ["node_modules"]
+  "extends": "@codaco/tsconfig/web.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node", "@playwright/test", "vite/client"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx"
+  },
+  "include": ["fixtures/**/*.ts", "helpers/**/*.ts", "specs/**/*.ts", "*.ts"],
+  "exclude": ["node_modules"]
 }

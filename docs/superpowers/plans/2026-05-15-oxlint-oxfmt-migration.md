@@ -17,6 +17,7 @@
 ## Task 1: Install dependencies and remove Biome
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `pnpm-workspace.yaml` (remove `'@biomejs/biome': true` from `allowBuilds`)
 - Modify: `pnpm-lock.yaml` (regenerated)
@@ -35,11 +36,13 @@ Open `pnpm-workspace.yaml` and delete the line `'@biomejs/biome': true` from the
 - [ ] **Step 3: Verify the install**
 
 Run:
+
 ```bash
 pnpm install
 pnpm exec oxlint --version
 pnpm exec oxfmt --version
 ```
+
 Expected: each command prints a version. No errors.
 
 - [ ] **Step 4: Commit**
@@ -54,6 +57,7 @@ git commit -m "chore(deps): replace @biomejs/biome with oxlint + oxfmt + oxlint-
 ## Task 2: Create root `.oxfmtrc.json`
 
 **Files:**
+
 - Create: `.oxfmtrc.json`
 
 - [ ] **Step 1: Write `.oxfmtrc.json`**
@@ -104,9 +108,11 @@ git commit -m "chore(deps): replace @biomejs/biome with oxlint + oxfmt + oxlint-
 - [ ] **Step 2: Verify the config is recognized**
 
 Run:
+
 ```bash
 pnpm exec oxfmt --check README.md
 ```
+
 Expected: prints either "all formatted" or a diff. Must not error on the config file itself. If oxfmt rejects an option, note the option and switch it to the closest supported value, then re-run.
 
 - [ ] **Step 3: Commit**
@@ -121,6 +127,7 @@ git commit -m "chore: add root oxfmt config"
 ## Task 3: Create root `.oxlintrc.json`
 
 **Files:**
+
 - Create: `.oxlintrc.json`
 
 - [ ] **Step 1: Write `.oxlintrc.json`**
@@ -204,9 +211,11 @@ git commit -m "chore: add root oxfmt config"
 - [ ] **Step 2: Verify oxlint loads the config**
 
 Run:
+
 ```bash
 pnpm exec oxlint --print-config 2>&1 | head -40
 ```
+
 Expected: prints the resolved config without errors. If any rule name is rejected (e.g. `typescript/no-misused-promises` is named differently), update the name to what oxlint reports and re-run.
 
 - [ ] **Step 3: Commit**
@@ -221,6 +230,7 @@ git commit -m "chore: add root oxlint config"
 ## Task 4: Create shared React profile
 
 **Files:**
+
 - Create: `tooling/oxlint/react.json`
 
 - [ ] **Step 1: Create directory and file**
@@ -230,6 +240,7 @@ mkdir -p tooling/oxlint
 ```
 
 Write `tooling/oxlint/react.json`:
+
 ```json
 {
   "plugins": ["react", "react-hooks", "jsx-a11y"],
@@ -262,6 +273,7 @@ git commit -m "chore(oxlint): add shared React profile"
 ## Task 5: Create shared Tailwind profile
 
 **Files:**
+
 - Create: `tooling/oxlint/tailwind.json`
 
 - [ ] **Step 1: Write `tooling/oxlint/tailwind.json`**
@@ -291,6 +303,7 @@ git commit -m "chore(oxlint): add shared Tailwind profile"
 ## Task 6: Update root `package.json` scripts and lint-staged
 
 **Files:**
+
 - Modify: `package.json`
 
 - [ ] **Step 1: Replace scripts and lint-staged sections**
@@ -316,9 +329,11 @@ Replace the existing `lint-staged` block:
 - [ ] **Step 2: Verify scripts run**
 
 Run:
+
 ```bash
 pnpm run lint 2>&1 | tail -20
 ```
+
 Expected: oxlint and oxfmt execute. They may report errors (we haven't reformatted yet) — that's fine; we just want to see them run without "command not found" or config errors.
 
 - [ ] **Step 3: Commit**
@@ -333,6 +348,7 @@ git commit -m "chore: switch root scripts and lint-staged to oxlint/oxfmt"
 ## Task 7: Update `.vscode/settings.json` and `.vscode/extensions.json`
 
 **Files:**
+
 - Modify: `.vscode/settings.json`
 - Modify: `.vscode/extensions.json`
 
@@ -354,12 +370,12 @@ git commit -m "chore: switch root scripts and lint-staged to oxlint/oxfmt"
   "editor.codeActionsOnSave": {
     "source.fixAll.oxc": "always"
   },
-  "[javascript]":       { "editor.defaultFormatter": "oxc.oxc-vscode" },
-  "[typescript]":       { "editor.defaultFormatter": "oxc.oxc-vscode" },
-  "[typescriptreact]":  { "editor.defaultFormatter": "oxc.oxc-vscode" },
-  "[javascriptreact]":  { "editor.defaultFormatter": "oxc.oxc-vscode" },
-  "[json]":             { "editor.defaultFormatter": "oxc.oxc-vscode" },
-  "[jsonc]":            { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[javascript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[typescript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[typescriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[javascriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[json]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[jsonc]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
   "files.associations": { "*.css": "tailwindcss" }
 }
 ```
@@ -376,6 +392,7 @@ git commit -m "chore(vscode): switch defaultFormatter to oxc-vscode"
 ## Task 8: Create per-package configs (apps)
 
 **Files:**
+
 - Create: `apps/architect-web/.oxlintrc.json`
 - Create: `apps/documentation/.oxlintrc.json`
 - Create: `apps/interviewer/.oxlintrc.json`
@@ -427,10 +444,7 @@ git commit -m "chore(vscode): switch defaultFormatter to oxc-vscode"
 
 ```json
 {
-  "extends": [
-    "../../.oxlintrc.json",
-    "../../tooling/oxlint/react.json"
-  ],
+  "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
   "rules": {
     "react-hooks/exhaustive-deps": "warn",
     "no-process-env": "off"
@@ -441,12 +455,14 @@ git commit -m "chore(vscode): switch defaultFormatter to oxc-vscode"
 - [ ] **Step 5: Verify the app configs load**
 
 Run:
+
 ```bash
 pnpm exec oxlint --print-config apps/architect-web 2>&1 | head -20
 pnpm exec oxlint --print-config apps/documentation 2>&1 | head -20
 pnpm exec oxlint --print-config apps/interviewer 2>&1 | head -20
 pnpm exec oxlint --print-config apps/architect-desktop 2>&1 | head -20
 ```
+
 Expected: each prints a merged config. If any plugin name (`nextjs`, `react`, `jsx-a11y`, `oxlint-tailwindcss`, `storybook`) is rejected, replace it with whatever oxlint reports as the canonical name OR move it into a `jsPlugins` array per oxlint's docs. Document the substitution in the commit message.
 
 - [ ] **Step 6: Commit**
@@ -462,6 +478,7 @@ git commit -m "chore(oxlint): add per-app configs"
 ## Task 9: Create per-package configs (packages + workers)
 
 **Files:**
+
 - Create: `packages/fresco-ui/.oxlintrc.json`
 - Create: `packages/interview/.oxlintrc.json`
 - Create: `packages/art/.oxlintrc.json`
@@ -471,6 +488,7 @@ git commit -m "chore(oxlint): add per-app configs"
 - [ ] **Step 1: Write `packages/fresco-ui/.oxlintrc.json` and `packages/interview/.oxlintrc.json`**
 
 Both files get the same content:
+
 ```json
 {
   "extends": [
@@ -492,16 +510,14 @@ Both files get the same content:
 
 ```json
 {
-  "extends": [
-    "../../.oxlintrc.json",
-    "../../tooling/oxlint/react.json"
-  ]
+  "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"]
 }
 ```
 
 - [ ] **Step 3: Write `workers/posthog-proxy/.oxlintrc.json` and `workers/development-protocol/.oxlintrc.json`**
 
 Both files get the same content:
+
 ```json
 {
   "extends": ["../../.oxlintrc.json"],
@@ -513,12 +529,14 @@ Both files get the same content:
 - [ ] **Step 4: Verify the package configs load**
 
 Run:
+
 ```bash
 pnpm exec oxlint --print-config packages/fresco-ui 2>&1 | head -20
 pnpm exec oxlint --print-config packages/interview 2>&1 | head -20
 pnpm exec oxlint --print-config packages/art 2>&1 | head -20
 pnpm exec oxlint --print-config workers/posthog-proxy 2>&1 | head -20
 ```
+
 Expected: each prints a merged config without config errors. Apply the same plugin-name fallback as in Task 8 if needed.
 
 - [ ] **Step 5: Commit**
@@ -535,6 +553,7 @@ git commit -m "chore(oxlint): add per-package and worker configs"
 ## Task 10: Delete all `biome.json` files
 
 **Files (delete):**
+
 - `biome.json`
 - `tooling/tailwind/biome.json`
 - `packages/art/biome.json`
@@ -574,6 +593,7 @@ rm biome.json \
 ```bash
 find . -name biome.json -not -path '*/node_modules/*'
 ```
+
 Expected: no output.
 
 - [ ] **Step 3: Commit**
@@ -588,6 +608,7 @@ git commit -m "chore: remove all biome.json files"
 ## Task 11: Apply oxlint auto-fixes repo-wide
 
 **Files:**
+
 - Modify: any file with auto-fixable issues
 
 - [ ] **Step 1: Run oxlint --fix**
@@ -595,6 +616,7 @@ git commit -m "chore: remove all biome.json files"
 ```bash
 pnpm exec oxlint --fix .
 ```
+
 Expected: oxlint reports a summary of fixed/remaining issues. Non-zero exit if unfixed errors remain — that's fine for this step.
 
 - [ ] **Step 2: Commit auto-fixes**
@@ -611,6 +633,7 @@ If there are no changes (the previous biome rules already prevented these issues
 ## Task 12: Apply oxfmt repo-wide
 
 **Files:**
+
 - Modify: every formatted file (TS/JS/JSON/MD/CSS/YAML)
 
 - [ ] **Step 1: Run oxfmt**
@@ -618,6 +641,7 @@ If there are no changes (the previous biome rules already prevented these issues
 ```bash
 pnpm exec oxfmt .
 ```
+
 Expected: reports a large number of files reformatted (this is the deliberate style change).
 
 - [ ] **Step 2: Spot-check**
@@ -625,6 +649,7 @@ Expected: reports a large number of files reformatted (this is the deliberate st
 ```bash
 git diff --stat | tail -20
 ```
+
 Verify the reformat touches every expected file type and no files in `node_modules`, `dist`, `.next`, etc.
 
 - [ ] **Step 3: Commit the reformat as one commit**
@@ -639,6 +664,7 @@ git commit -m "style: reformat repo with oxfmt (2sp / 80 / single-quote)"
 ## Task 13: Triage remaining lint errors
 
 **Files:**
+
 - Modify: source files with residual lint errors
 
 - [ ] **Step 1: List remaining errors**
@@ -652,6 +678,7 @@ grep -c "error" /tmp/oxlint-residual.log || true
 - [ ] **Step 2: Decide fix-vs-defer per error class**
 
 For each distinct rule that errors:
+
 - If it's small/local and obvious (≤10 occurrences, mechanical fix), fix inline.
 - If it's a behavior change requiring real thought (e.g. `no-process-env` flagged a legitimate env access without a wrapper), open a follow-up issue and add the file to a tightly-scoped `overrides` entry in the appropriate per-package `.oxlintrc.json` to defer.
 
@@ -662,6 +689,7 @@ Do NOT mass-disable rules; do NOT add blanket `// oxlint-disable` comments. Each
 ```bash
 pnpm lint
 ```
+
 Expected: exit 0.
 
 - [ ] **Step 4: Commit**
@@ -678,6 +706,7 @@ If carve-outs were added, mention them in the commit body.
 ## Task 14: Update CLAUDE.md
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 
 - [ ] **Step 1: Update the Code Quality / Code Style sections**
@@ -685,18 +714,21 @@ If carve-outs were added, mention them in the commit body.
 Replace the Biome-specific lines:
 
 Old:
+
 ```
 - Biome config: tabs for indentation, 120 char line width, double quotes
 - Pre-commit hooks automatically format staged files
 ```
 
 New:
+
 ```
 - Oxlint + oxfmt: 2-space indentation, 80 char line width, single quotes
 - Pre-commit hooks automatically lint and format staged files
 ```
 
 Old:
+
 ```
 - Uses Biome for formatting and linting with tab indentation and 120-character line width
 - Enforces unused import/variable removal
@@ -704,6 +736,7 @@ Old:
 ```
 
 New:
+
 ```
 - Uses oxlint for linting and oxfmt for formatting
 - 2-space indentation, 80-character line width, single quotes
@@ -727,6 +760,7 @@ git commit -m "docs: update CLAUDE.md for oxlint/oxfmt migration"
 ```bash
 pnpm lint
 ```
+
 Expected: exit 0.
 
 - [ ] **Step 2: Typecheck**
@@ -734,6 +768,7 @@ Expected: exit 0.
 ```bash
 pnpm typecheck
 ```
+
 Expected: exit 0. If typecheck regresses, the formatter may have moved type-import positions in a way that broke something; investigate before continuing.
 
 - [ ] **Step 3: Tests**
@@ -741,6 +776,7 @@ Expected: exit 0. If typecheck regresses, the formatter may have moved type-impo
 ```bash
 pnpm test
 ```
+
 Expected: exit 0.
 
 - [ ] **Step 4: Build**
@@ -748,6 +784,7 @@ Expected: exit 0.
 ```bash
 pnpm build
 ```
+
 Expected: exit 0.
 
 - [ ] **Step 5: Knip**
@@ -755,6 +792,7 @@ Expected: exit 0.
 ```bash
 pnpm knip
 ```
+
 Expected: no regressions vs the previous baseline (existing unused-export reports are unchanged).
 
 - [ ] **Step 6: Final commit if anything needed adjusting**

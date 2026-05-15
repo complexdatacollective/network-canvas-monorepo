@@ -1,32 +1,40 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { Layout } from "../layout/Layout";
-import type { Size } from "../layout/types";
-import type { Collection, ItemRenderer, Key } from "../types";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+
+import type { Layout } from '../layout/Layout';
+import type { Size } from '../layout/types';
+import type { Collection, ItemRenderer, Key } from '../types';
 
 type UseMeasureItemsOptions<T> = {
-	collection: Collection<T>;
-	layout: Layout<T>;
-	renderItem: ItemRenderer<T>;
-	containerWidth: number;
-	/** Set to true to skip measurement (for non-virtualized rendering) */
-	skip?: boolean;
+  collection: Collection<T>;
+  layout: Layout<T>;
+  renderItem: ItemRenderer<T>;
+  containerWidth: number;
+  /** Set to true to skip measurement (for non-virtualized rendering) */
+  skip?: boolean;
 };
 
 type UseMeasureItemsResult = {
-	/** Map of item key to measured size (sampled + lazy refinements) */
-	measurements: Map<Key, Size>;
-	/** Whether all items have been measured */
-	isComplete: boolean;
-	/** React node to render for measurement (hidden container) */
-	measurementContainer: React.ReactNode;
-	/**
-	 * Report the actual measured size of an item. Called by the renderer
-	 * (via ResizeObserver) as items mount or resize in the visible viewport.
-	 * Multiple reports in the same frame are coalesced into a single re-render.
-	 */
-	reportItemSize: (key: Key, size: Size) => void;
+  /** Map of item key to measured size (sampled + lazy refinements) */
+  measurements: Map<Key, Size>;
+  /** Whether all items have been measured */
+  isComplete: boolean;
+  /** React node to render for measurement (hidden container) */
+  measurementContainer: React.ReactNode;
+  /**
+   * Report the actual measured size of an item. Called by the renderer
+   * (via ResizeObserver) as items mount or resize in the visible viewport.
+   * Multiple reports in the same frame are coalesced into a single re-render.
+   */
+  reportItemSize: (key: Key, size: Size) => void;
 };
 
 // Threshold for width change that triggers re-measurement (handles scrollbar fluctuations)
@@ -70,401 +78,420 @@ const SAMPLE_SIZE = 32;
  * For 'intrinsic' mode: Items render naturally, full width and height are measured.
  */
 export function useMeasureItems<T>({
-	collection,
-	layout,
-	renderItem,
-	containerWidth,
-	skip = false,
+  collection,
+  layout,
+  renderItem,
+  containerWidth,
+  skip = false,
 }: UseMeasureItemsOptions<T>): UseMeasureItemsResult {
-	const [measurements, setMeasurements] = useState<Map<Key, Size>>(new Map());
-	const [isComplete, setIsComplete] = useState(false);
-	const measureContainerRef = useRef<HTMLDivElement>(null);
-	const itemRefsRef = useRef<Map<Key, HTMLDivElement>>(new Map());
+  const [measurements, setMeasurements] = useState<Map<Key, Size>>(new Map());
+  const [isComplete, setIsComplete] = useState(false);
+  const measureContainerRef = useRef<HTMLDivElement>(null);
+  const itemRefsRef = useRef<Map<Key, HTMLDivElement>>(new Map());
 
-	// Track container width that was used for last measurement
-	const lastMeasuredWidthRef = useRef<number>(0);
+  // Track container width that was used for last measurement
+  const lastMeasuredWidthRef = useRef<number>(0);
 
-	// Sentinel ref for detecting root font-size changes via ResizeObserver
-	const sentinelRef = useRef<HTMLDivElement>(null);
+  // Sentinel ref for detecting root font-size changes via ResizeObserver
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-	// Sentinel size captured at the time of last successful measurement.
-	// The ResizeObserver compares against this to detect post-measurement changes.
-	const lastMeasuredSentinelSizeRef = useRef<{
-		width: number;
-		height: number;
-	} | null>(null);
+  // Sentinel size captured at the time of last successful measurement.
+  // The ResizeObserver compares against this to detect post-measurement changes.
+  const lastMeasuredSentinelSizeRef = useRef<{
+    width: number;
+    height: number;
+  } | null>(null);
 
-	// Version counter bumped when root font-size changes, forcing re-measurement
-	const [remVersion, setRemVersion] = useState(0);
+  // Version counter bumped when root font-size changes, forcing re-measurement
+  const [remVersion, setRemVersion] = useState(0);
 
-	// ---------------------------------------------------------------------
-	// Lazy measurements — refinements reported by items actually rendered
-	// into the virtualized viewport. These take precedence over the sampled
-	// estimates in the merged `measurements` map the hook returns.
-	//
-	// We keep the running state in a ref (not React state) so individual
-	// ResizeObserver callbacks can land without triggering re-renders. A
-	// `lazyVersion` counter is bumped on the next animation frame, coalescing
-	// bursts of reports (e.g. many items mounting together after a scroll)
-	// into a single merge/re-render.
-	// ---------------------------------------------------------------------
-	const lazyMeasurementsRef = useRef<Map<Key, Size>>(new Map());
-	const [lazyVersion, setLazyVersion] = useState(0);
-	const pendingFlushRef = useRef<number | null>(null);
+  // ---------------------------------------------------------------------
+  // Lazy measurements — refinements reported by items actually rendered
+  // into the virtualized viewport. These take precedence over the sampled
+  // estimates in the merged `measurements` map the hook returns.
+  //
+  // We keep the running state in a ref (not React state) so individual
+  // ResizeObserver callbacks can land without triggering re-renders. A
+  // `lazyVersion` counter is bumped on the next animation frame, coalescing
+  // bursts of reports (e.g. many items mounting together after a scroll)
+  // into a single merge/re-render.
+  // ---------------------------------------------------------------------
+  const lazyMeasurementsRef = useRef<Map<Key, Size>>(new Map());
+  const [lazyVersion, setLazyVersion] = useState(0);
+  const pendingFlushRef = useRef<number | null>(null);
 
-	const scheduleLazyFlush = useCallback(() => {
-		if (pendingFlushRef.current !== null) return;
-		pendingFlushRef.current = requestAnimationFrame(() => {
-			pendingFlushRef.current = null;
-			setLazyVersion((v) => v + 1);
-		});
-	}, []);
+  const scheduleLazyFlush = useCallback(() => {
+    if (pendingFlushRef.current !== null) return;
+    pendingFlushRef.current = requestAnimationFrame(() => {
+      pendingFlushRef.current = null;
+      setLazyVersion((v) => v + 1);
+    });
+  }, []);
 
-	// Ref so `reportItemSize` can see the freshest sampled measurements
-	// without being rebuilt on every render (which would force the observer
-	// in `VirtualizedRenderer` to re-subscribe and re-fire reports).
-	const sampleMeasurementsRef = useRef(measurements);
-	sampleMeasurementsRef.current = measurements;
+  // Ref so `reportItemSize` can see the freshest sampled measurements
+  // without being rebuilt on every render (which would force the observer
+  // in `VirtualizedRenderer` to re-subscribe and re-fire reports).
+  const sampleMeasurementsRef = useRef(measurements);
+  sampleMeasurementsRef.current = measurements;
 
-	const reportItemSize = useCallback(
-		(key: Key, size: Size) => {
-			// Only HEIGHT matters for layout positioning: widths are fully
-			// determined by the layout's container-width → column-width
-			// calculation (CSS grid / flex), so observed widths will always
-			// equal whatever the layout already has. Comparing them would
-			// trigger a feedback loop because the sample measurement container
-			// and the real virtualized container produce sub-pixel width
-			// differences (fractional CSS grid sizing vs. the hidden container's
-			// exact `width: constrainedWidth`).
-			const lazy = lazyMeasurementsRef.current.get(key);
-			const reference = lazy ?? sampleMeasurementsRef.current.get(key);
-			if (reference && Math.abs(reference.height - size.height) < LAZY_MEASUREMENT_TOLERANCE) {
-				return;
-			}
-			lazyMeasurementsRef.current.set(key, size);
-			scheduleLazyFlush();
-		},
-		[scheduleLazyFlush],
-	);
+  const reportItemSize = useCallback(
+    (key: Key, size: Size) => {
+      // Only HEIGHT matters for layout positioning: widths are fully
+      // determined by the layout's container-width → column-width
+      // calculation (CSS grid / flex), so observed widths will always
+      // equal whatever the layout already has. Comparing them would
+      // trigger a feedback loop because the sample measurement container
+      // and the real virtualized container produce sub-pixel width
+      // differences (fractional CSS grid sizing vs. the hidden container's
+      // exact `width: constrainedWidth`).
+      const lazy = lazyMeasurementsRef.current.get(key);
+      const reference = lazy ?? sampleMeasurementsRef.current.get(key);
+      if (
+        reference &&
+        Math.abs(reference.height - size.height) < LAZY_MEASUREMENT_TOLERANCE
+      ) {
+        return;
+      }
+      lazyMeasurementsRef.current.set(key, size);
+      scheduleLazyFlush();
+    },
+    [scheduleLazyFlush],
+  );
 
-	// Cancel any pending flush on unmount to avoid a stray setState after unmount.
-	useEffect(
-		() => () => {
-			if (pendingFlushRef.current !== null) {
-				cancelAnimationFrame(pendingFlushRef.current);
-				pendingFlushRef.current = null;
-			}
-		},
-		[],
-	);
+  // Cancel any pending flush on unmount to avoid a stray setState after unmount.
+  useEffect(
+    () => () => {
+      if (pendingFlushRef.current !== null) {
+        cancelAnimationFrame(pendingFlushRef.current);
+        pendingFlushRef.current = null;
+      }
+    },
+    [],
+  );
 
-	// Get measurement info from layout, passing containerWidth so constrainedWidth
-	// can be computed on-the-fly without requiring layout.update() to have been called.
-	const measurementInfo = layout.getMeasurementInfo(containerWidth);
+  // Get measurement info from layout, passing containerWidth so constrainedWidth
+  // can be computed on-the-fly without requiring layout.update() to have been called.
+  const measurementInfo = layout.getMeasurementInfo(containerWidth);
 
-	// Get ordered keys for iteration
-	const orderedKeys = useMemo(() => Array.from(collection.getKeys()), [collection]);
+  // Get ordered keys for iteration
+  const orderedKeys = useMemo(
+    () => Array.from(collection.getKeys()),
+    [collection],
+  );
 
-	// Keys we actually render into the hidden measurement container. For large
-	// collections this is capped at SAMPLE_SIZE; the rest get an extrapolated
-	// size after the sample completes. See SAMPLE_SIZE comment for rationale.
-	const sampledKeys = useMemo(
-		() => (orderedKeys.length > SAMPLE_SIZE ? orderedKeys.slice(0, SAMPLE_SIZE) : orderedKeys),
-		[orderedKeys],
-	);
-	const isSampled = sampledKeys.length < orderedKeys.length;
+  // Keys we actually render into the hidden measurement container. For large
+  // collections this is capped at SAMPLE_SIZE; the rest get an extrapolated
+  // size after the sample completes. See SAMPLE_SIZE comment for rationale.
+  const sampledKeys = useMemo(
+    () =>
+      orderedKeys.length > SAMPLE_SIZE
+        ? orderedKeys.slice(0, SAMPLE_SIZE)
+        : orderedKeys,
+    [orderedKeys],
+  );
+  const isSampled = sampledKeys.length < orderedKeys.length;
 
-	// Create ref callback for each item
-	const createItemRef = useCallback((key: Key) => {
-		return (element: HTMLDivElement | null) => {
-			if (element) {
-				itemRefsRef.current.set(key, element);
-			} else {
-				itemRefsRef.current.delete(key);
-			}
-		};
-	}, []);
+  // Create ref callback for each item
+  const createItemRef = useCallback((key: Key) => {
+    return (element: HTMLDivElement | null) => {
+      if (element) {
+        itemRefsRef.current.set(key, element);
+      } else {
+        itemRefsRef.current.delete(key);
+      }
+    };
+  }, []);
 
-	// Check if width changed significantly enough to require re-measurement.
-	// Applies to all measurement modes since container width affects block-level
-	// items in both height-only and intrinsic modes.
-	const needsRemeasurement = useCallback(() => {
-		if (measurementInfo.mode === "none") return false;
-		const widthChange = Math.abs(containerWidth - lastMeasuredWidthRef.current);
-		return widthChange > WIDTH_CHANGE_THRESHOLD;
-	}, [containerWidth, measurementInfo.mode]);
+  // Check if width changed significantly enough to require re-measurement.
+  // Applies to all measurement modes since container width affects block-level
+  // items in both height-only and intrinsic modes.
+  const needsRemeasurement = useCallback(() => {
+    if (measurementInfo.mode === 'none') return false;
+    const widthChange = Math.abs(containerWidth - lastMeasuredWidthRef.current);
+    return widthChange > WIDTH_CHANGE_THRESHOLD;
+  }, [containerWidth, measurementInfo.mode]);
 
-	// Observe sentinel element for size changes caused by root font-size updates.
-	// The sentinel is a 1rem x 1rem div, so it resizes when the root font-size
-	// changes (e.g. from 16px default to 20px after a theme stylesheet loads).
-	//
-	// Compares against the sentinel size captured at measurement time (stored in
-	// lastMeasuredSentinelSizeRef) rather than the size when the effect runs.
-	// This avoids a timing hole where CSS loads between measurement and effect
-	// re-run, causing the new observer to see the already-changed size as its
-	// baseline and miss the change.
-	useLayoutEffect(() => {
-		const sentinel = sentinelRef.current;
-		if (!sentinel || skip || measurementInfo.mode === "none") return;
+  // Observe sentinel element for size changes caused by root font-size updates.
+  // The sentinel is a 1rem x 1rem div, so it resizes when the root font-size
+  // changes (e.g. from 16px default to 20px after a theme stylesheet loads).
+  //
+  // Compares against the sentinel size captured at measurement time (stored in
+  // lastMeasuredSentinelSizeRef) rather than the size when the effect runs.
+  // This avoids a timing hole where CSS loads between measurement and effect
+  // re-run, causing the new observer to see the already-changed size as its
+  // baseline and miss the change.
+  useLayoutEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || skip || measurementInfo.mode === 'none') return;
 
-		const observer = new ResizeObserver((entries) => {
-			const entry = entries[0];
-			if (!entry) return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
 
-			const lastMeasured = lastMeasuredSentinelSizeRef.current;
+      const lastMeasured = lastMeasuredSentinelSizeRef.current;
 
-			// No measurement taken yet - nothing to invalidate
-			if (!lastMeasured) return;
+      // No measurement taken yet - nothing to invalidate
+      if (!lastMeasured) return;
 
-			const { width, height } = entry.contentRect;
+      const { width, height } = entry.contentRect;
 
-			// Sentinel matches what was measured - no rem change
-			if (width === lastMeasured.width && height === lastMeasured.height) return;
+      // Sentinel matches what was measured - no rem change
+      if (width === lastMeasured.width && height === lastMeasured.height)
+        return;
 
-			// Root font-size changed since last measurement - invalidate
-			setIsComplete(false);
-			setMeasurements(new Map());
-			setRemVersion((v) => v + 1);
-		});
+      // Root font-size changed since last measurement - invalidate
+      setIsComplete(false);
+      setMeasurements(new Map());
+      setRemVersion((v) => v + 1);
+    });
 
-		observer.observe(sentinel);
-		return () => observer.disconnect();
-	}, [skip, measurementInfo.mode]);
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [skip, measurementInfo.mode]);
 
-	// Measure all items after they render
-	useLayoutEffect(() => {
-		// If skip is true, don't mark as complete - we're waiting for containerWidth
-		if (skip) {
-			return;
-		}
+  // Measure all items after they render
+  useLayoutEffect(() => {
+    // If skip is true, don't mark as complete - we're waiting for containerWidth
+    if (skip) {
+      return;
+    }
 
-		// If no measurement mode or no items, mark as complete
-		if (measurementInfo.mode === "none" || orderedKeys.length === 0) {
-			setIsComplete(true);
-			return;
-		}
+    // If no measurement mode or no items, mark as complete
+    if (measurementInfo.mode === 'none' || orderedKeys.length === 0) {
+      setIsComplete(true);
+      return;
+    }
 
-		// Wait for refs to be populated
-		if (itemRefsRef.current.size === 0) {
-			return;
-		}
+    // Wait for refs to be populated
+    if (itemRefsRef.current.size === 0) {
+      return;
+    }
 
-		const newMeasurements = new Map<Key, Size>();
+    const newMeasurements = new Map<Key, Size>();
 
-		// Measure the rendered sample (which equals `orderedKeys` when the
-		// collection is small enough, or the first SAMPLE_SIZE items otherwise).
-		let maxWidth = 0;
-		let maxHeight = 0;
-		for (const key of sampledKeys) {
-			const element = itemRefsRef.current.get(key);
-			if (!element) continue;
+    // Measure the rendered sample (which equals `orderedKeys` when the
+    // collection is small enough, or the first SAMPLE_SIZE items otherwise).
+    let maxWidth = 0;
+    let maxHeight = 0;
+    for (const key of sampledKeys) {
+      const element = itemRefsRef.current.get(key);
+      if (!element) continue;
 
-			const rect = element.getBoundingClientRect();
+      const rect = element.getBoundingClientRect();
 
-			// Validate measurements for intrinsic mode
-			if (measurementInfo.mode === "intrinsic") {
-				if (rect.width === 0 || rect.height === 0) {
-					throw new Error(
-						`InlineGridLayout: Item "${String(key)}" measured to ${rect.width}x${rect.height}. ` +
-							"Items must have explicit width and height, or content that defines their size.",
-					);
-				}
-			}
+      // Validate measurements for intrinsic mode
+      if (measurementInfo.mode === 'intrinsic') {
+        if (rect.width === 0 || rect.height === 0) {
+          throw new Error(
+            `InlineGridLayout: Item "${String(key)}" measured to ${rect.width}x${rect.height}. ` +
+              'Items must have explicit width and height, or content that defines their size.',
+          );
+        }
+      }
 
-			const size = { width: rect.width, height: rect.height };
-			newMeasurements.set(key, size);
-			if (size.width > maxWidth) maxWidth = size.width;
-			if (size.height > maxHeight) maxHeight = size.height;
-		}
+      const size = { width: rect.width, height: rect.height };
+      newMeasurements.set(key, size);
+      if (size.width > maxWidth) maxWidth = size.width;
+      if (size.height > maxHeight) maxHeight = size.height;
+    }
 
-		// If we sampled (collection larger than SAMPLE_SIZE), fill in estimated
-		// sizes for the unmeasured tail using the largest observed size. The
-		// layout expects a measurement for every key, and over-estimating is
-		// preferable to under-estimating because it prevents content overlap in
-		// the initial virtualized layout. Real measurements replace these as
-		// items actually scroll into the viewport (future lazy-measure pass).
-		if (isSampled && maxHeight > 0) {
-			const estimate: Size = { width: maxWidth, height: maxHeight };
-			for (let i = sampledKeys.length; i < orderedKeys.length; i++) {
-				const key = orderedKeys[i];
-				if (key !== undefined) {
-					newMeasurements.set(key, estimate);
-				}
-			}
-		}
+    // If we sampled (collection larger than SAMPLE_SIZE), fill in estimated
+    // sizes for the unmeasured tail using the largest observed size. The
+    // layout expects a measurement for every key, and over-estimating is
+    // preferable to under-estimating because it prevents content overlap in
+    // the initial virtualized layout. Real measurements replace these as
+    // items actually scroll into the viewport (future lazy-measure pass).
+    if (isSampled && maxHeight > 0) {
+      const estimate: Size = { width: maxWidth, height: maxHeight };
+      for (let i = sampledKeys.length; i < orderedKeys.length; i++) {
+        const key = orderedKeys[i];
+        if (key !== undefined) {
+          newMeasurements.set(key, estimate);
+        }
+      }
+    }
 
-		// Capture sentinel size at measurement time so the ResizeObserver
-		// can detect changes that occur after this measurement.
-		if (sentinelRef.current) {
-			const sentinelRect = sentinelRef.current.getBoundingClientRect();
-			lastMeasuredSentinelSizeRef.current = {
-				width: sentinelRect.width,
-				height: sentinelRect.height,
-			};
-		}
+    // Capture sentinel size at measurement time so the ResizeObserver
+    // can detect changes that occur after this measurement.
+    if (sentinelRef.current) {
+      const sentinelRect = sentinelRef.current.getBoundingClientRect();
+      lastMeasuredSentinelSizeRef.current = {
+        width: sentinelRect.width,
+        height: sentinelRect.height,
+      };
+    }
 
-		lastMeasuredWidthRef.current = containerWidth;
-		setMeasurements(newMeasurements);
-		setIsComplete(newMeasurements.size === orderedKeys.length);
-	}, [sampledKeys, orderedKeys, isSampled, measurementInfo.mode, skip, containerWidth, remVersion, isComplete]);
+    lastMeasuredWidthRef.current = containerWidth;
+    setMeasurements(newMeasurements);
+    setIsComplete(newMeasurements.size === orderedKeys.length);
+  }, [
+    sampledKeys,
+    orderedKeys,
+    isSampled,
+    measurementInfo.mode,
+    skip,
+    containerWidth,
+    remVersion,
+    isComplete,
+  ]);
 
-	// Reset measurements when collection or layout *actually* changes.
-	// Skipping the first run avoids a redundant reset on mount — state is
-	// already empty at that point, and the extra `setMeasurements(new Map())`
-	// schedules an unnecessary re-render because the new Map has a different
-	// reference than the initial one.
-	const hasTrackedCollectionLayoutRef = useRef(false);
-	useLayoutEffect(() => {
-		if (!hasTrackedCollectionLayoutRef.current) {
-			hasTrackedCollectionLayoutRef.current = true;
-			return;
-		}
-		setIsComplete(false);
-		setMeasurements(new Map());
-		lastMeasuredSentinelSizeRef.current = null;
-		// The layout (or collection contents) changed — any previously reported
-		// lazy measurements are stale, so drop them and let items in the
-		// viewport re-report against the new layout.
-		lazyMeasurementsRef.current = new Map();
-	}, [collection, layout]);
+  // Reset measurements when collection or layout *actually* changes.
+  // Skipping the first run avoids a redundant reset on mount — state is
+  // already empty at that point, and the extra `setMeasurements(new Map())`
+  // schedules an unnecessary re-render because the new Map has a different
+  // reference than the initial one.
+  const hasTrackedCollectionLayoutRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!hasTrackedCollectionLayoutRef.current) {
+      hasTrackedCollectionLayoutRef.current = true;
+      return;
+    }
+    setIsComplete(false);
+    setMeasurements(new Map());
+    lastMeasuredSentinelSizeRef.current = null;
+    // The layout (or collection contents) changed — any previously reported
+    // lazy measurements are stale, so drop them and let items in the
+    // viewport re-report against the new layout.
+    lazyMeasurementsRef.current = new Map();
+  }, [collection, layout]);
 
-	// When a fresh sample pass lands (e.g. after a width change large enough
-	// to invalidate wrapping) the previously reported lazy measurements are
-	// also stale — items need to re-report at the new width.
-	const prevMeasurementsRef = useRef(measurements);
-	useLayoutEffect(() => {
-		if (prevMeasurementsRef.current === measurements) return;
-		prevMeasurementsRef.current = measurements;
-		if (lazyMeasurementsRef.current.size > 0) {
-			lazyMeasurementsRef.current = new Map();
-		}
-	}, [measurements]);
+  // When a fresh sample pass lands (e.g. after a width change large enough
+  // to invalidate wrapping) the previously reported lazy measurements are
+  // also stale — items need to re-report at the new width.
+  const prevMeasurementsRef = useRef(measurements);
+  useLayoutEffect(() => {
+    if (prevMeasurementsRef.current === measurements) return;
+    prevMeasurementsRef.current = measurements;
+    if (lazyMeasurementsRef.current.size > 0) {
+      lazyMeasurementsRef.current = new Map();
+    }
+  }, [measurements]);
 
-	// Generate the hidden measurement container
-	const measurementContainer = useMemo(() => {
-		if (skip || measurementInfo.mode === "none" || orderedKeys.length === 0) {
-			return null;
-		}
+  // Generate the hidden measurement container
+  const measurementContainer = useMemo(() => {
+    if (skip || measurementInfo.mode === 'none' || orderedKeys.length === 0) {
+      return null;
+    }
 
-		// Skip re-rendering measurement container if width didn't change significantly
-		// This prevents unnecessary work during scroll when scrollbar causes minor width fluctuations
-		if (isComplete && !needsRemeasurement()) {
-			return null;
-		}
+    // Skip re-rendering measurement container if width didn't change significantly
+    // This prevents unnecessary work during scroll when scrollbar causes minor width fluctuations
+    if (isComplete && !needsRemeasurement()) {
+      return null;
+    }
 
-		// Calculate item style based on measurement mode.
-		// 'height-only': constrain width so items match the grid column width.
-		// 'intrinsic': use fit-content so the wrapper shrinks to the item's
-		//   natural size (block-level divs would otherwise expand to container width).
-		const itemStyle: React.CSSProperties =
-			measurementInfo.mode === "height-only" && measurementInfo.constrainedWidth
-				? { width: measurementInfo.constrainedWidth }
-				: measurementInfo.mode === "intrinsic"
-					? { width: "fit-content" }
-					: {};
+    // Calculate item style based on measurement mode.
+    // 'height-only': constrain width so items match the grid column width.
+    // 'intrinsic': use fit-content so the wrapper shrinks to the item's
+    //   natural size (block-level divs would otherwise expand to container width).
+    const itemStyle: React.CSSProperties =
+      measurementInfo.mode === 'height-only' && measurementInfo.constrainedWidth
+        ? { width: measurementInfo.constrainedWidth }
+        : measurementInfo.mode === 'intrinsic'
+          ? { width: 'fit-content' }
+          : {};
 
-		return (
-			<div
-				ref={measureContainerRef}
-				aria-hidden="true"
-				style={{
-					position: "absolute",
-					visibility: "hidden",
-					pointerEvents: "none",
-					// Position off-screen but allow natural sizing
-					left: -9999,
-					top: 0,
-					// Always constrain container to actual width so block-level items
-					// (like Cards) render at the correct width in both height-only and
-					// intrinsic modes. Items with fixed dimensions (like Nodes) are
-					// unaffected since they maintain their size regardless.
-					width: containerWidth || undefined,
-					// Font-size is inherited from the DOM (measurement container is
-					// rendered inside the scroll area). This ensures it stays in sync
-					// when external stylesheets load and change root font-size.
-				}}
-			>
-				{sampledKeys.map((key) => {
-					const node = collection.getItem(key);
-					if (!node) return null;
+    return (
+      <div
+        ref={measureContainerRef}
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          visibility: 'hidden',
+          pointerEvents: 'none',
+          // Position off-screen but allow natural sizing
+          left: -9999,
+          top: 0,
+          // Always constrain container to actual width so block-level items
+          // (like Cards) render at the correct width in both height-only and
+          // intrinsic modes. Items with fixed dimensions (like Nodes) are
+          // unaffected since they maintain their size regardless.
+          width: containerWidth || undefined,
+          // Font-size is inherited from the DOM (measurement container is
+          // rendered inside the scroll area). This ensures it stays in sync
+          // when external stylesheets load and change root font-size.
+        }}
+      >
+        {sampledKeys.map((key) => {
+          const node = collection.getItem(key);
+          if (!node) return null;
 
-					// Create a minimal itemProps for measurement
-					// We don't need interactivity, just the render output
-					const itemProps = {
-						ref: createItemRef(key),
-						id: `measure-${String(key)}`,
-						tabIndex: -1,
-						role: "presentation",
-						style: itemStyle,
-					};
+          // Create a minimal itemProps for measurement
+          // We don't need interactivity, just the render output
+          const itemProps = {
+            ref: createItemRef(key),
+            id: `measure-${String(key)}`,
+            tabIndex: -1,
+            role: 'presentation',
+            style: itemStyle,
+          };
 
-					return (
-						<div key={key} ref={createItemRef(key)} style={itemStyle}>
-							{renderItem(node.value, itemProps)}
-						</div>
-					);
-				})}
-			</div>
-		);
-	}, [
-		skip,
-		measurementInfo,
-		orderedKeys,
-		sampledKeys,
-		collection,
-		renderItem,
-		containerWidth,
-		createItemRef,
-		isComplete,
-		needsRemeasurement,
-	]);
+          return (
+            <div key={key} ref={createItemRef(key)} style={itemStyle}>
+              {renderItem(node.value, itemProps)}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }, [
+    skip,
+    measurementInfo,
+    orderedKeys,
+    sampledKeys,
+    collection,
+    renderItem,
+    containerWidth,
+    createItemRef,
+    isComplete,
+    needsRemeasurement,
+  ]);
 
-	// Sentinel element for detecting root font-size changes.
-	// Always rendered (even after measurement completes) so ResizeObserver
-	// can detect when rem values change due to late-loading stylesheets.
-	const sentinel =
-		skip || measurementInfo.mode === "none" ? null : (
-			<div
-				ref={sentinelRef}
-				aria-hidden="true"
-				style={{
-					position: "absolute",
-					visibility: "hidden",
-					pointerEvents: "none",
-					width: "1rem",
-					height: "1rem",
-				}}
-			/>
-		);
+  // Sentinel element for detecting root font-size changes.
+  // Always rendered (even after measurement completes) so ResizeObserver
+  // can detect when rem values change due to late-loading stylesheets.
+  const sentinel =
+    skip || measurementInfo.mode === 'none' ? null : (
+      <div
+        ref={sentinelRef}
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          visibility: 'hidden',
+          pointerEvents: 'none',
+          width: '1rem',
+          height: '1rem',
+        }}
+      />
+    );
 
-	// Merge the sample measurements with the lazy refinements reported by
-	// items currently in the viewport. Lazy values take precedence because
-	// they are the ground truth for rendered items (the sample values are
-	// either measured on a hidden clone or extrapolated from the max of the
-	// sample, so they are only estimates for anything past the sample).
-	const mergedMeasurements = useMemo(() => {
-		if (lazyMeasurementsRef.current.size === 0) {
-			return measurements;
-		}
-		const merged = new Map(measurements);
-		for (const [key, size] of lazyMeasurementsRef.current) {
-			merged.set(key, size);
-		}
-		return merged;
-		// lazyVersion drives re-merge when the batched flush fires; we
-		// intentionally read `lazyMeasurementsRef.current` imperatively.
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [measurements, lazyVersion]);
+  // Merge the sample measurements with the lazy refinements reported by
+  // items currently in the viewport. Lazy values take precedence because
+  // they are the ground truth for rendered items (the sample values are
+  // either measured on a hidden clone or extrapolated from the max of the
+  // sample, so they are only estimates for anything past the sample).
+  const mergedMeasurements = useMemo(() => {
+    if (lazyMeasurementsRef.current.size === 0) {
+      return measurements;
+    }
+    const merged = new Map(measurements);
+    for (const [key, size] of lazyMeasurementsRef.current) {
+      merged.set(key, size);
+    }
+    return merged;
+    // lazyVersion drives re-merge when the batched flush fires; we
+    // intentionally read `lazyMeasurementsRef.current` imperatively.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [measurements, lazyVersion]);
 
-	return {
-		measurements: mergedMeasurements,
-		isComplete,
-		measurementContainer: (
-			<>
-				{sentinel}
-				{measurementContainer}
-			</>
-		),
-		reportItemSize,
-	};
+  return {
+    measurements: mergedMeasurements,
+    isComplete,
+    measurementContainer: (
+      <>
+        {sentinel}
+        {measurementContainer}
+      </>
+    ),
+    reportItemSize,
+  };
 }

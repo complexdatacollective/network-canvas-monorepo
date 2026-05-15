@@ -1,27 +1,30 @@
-import { render, renderHook, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import { PortalContainerProvider, usePortalContainer } from "./PortalContainer";
+import { render, renderHook, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
-describe("PortalContainerProvider", () => {
-	it("exposes a DOM node via usePortalContainer when wrapping children", () => {
-		const { result } = renderHook(() => usePortalContainer(), {
-			wrapper: ({ children }) => <PortalContainerProvider>{children}</PortalContainerProvider>,
-		});
+import { PortalContainerProvider, usePortalContainer } from './PortalContainer';
 
-		expect(result.current).toBeInstanceOf(HTMLElement);
-	});
+describe('PortalContainerProvider', () => {
+  it('exposes a DOM node via usePortalContainer when wrapping children', () => {
+    const { result } = renderHook(() => usePortalContainer(), {
+      wrapper: ({ children }) => (
+        <PortalContainerProvider>{children}</PortalContainerProvider>
+      ),
+    });
 
-	it("returns null when usePortalContainer is called outside a provider", () => {
-		const { result } = renderHook(() => usePortalContainer());
-		expect(result.current).toBeNull();
-	});
+    expect(result.current).toBeInstanceOf(HTMLElement);
+  });
 
-	it("renders children", () => {
-		render(
-			<PortalContainerProvider>
-				<span data-testid="child">hello</span>
-			</PortalContainerProvider>,
-		);
-		expect(screen.getByTestId("child")).toHaveTextContent("hello");
-	});
+  it('returns null when usePortalContainer is called outside a provider', () => {
+    const { result } = renderHook(() => usePortalContainer());
+    expect(result.current).toBeNull();
+  });
+
+  it('renders children', () => {
+    render(
+      <PortalContainerProvider>
+        <span data-testid="child">hello</span>
+      </PortalContainerProvider>,
+    );
+    expect(screen.getByTestId('child')).toHaveTextContent('hello');
+  });
 });
