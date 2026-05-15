@@ -390,7 +390,6 @@ const VariableSpotlight = ({
 					<Search
 						autoFocus
 						placeholder={disallowCreation ? "Find a variable..." : "Create or find a variable..."}
-						wrapperClassName="mb-0"
 						input={{
 							value: filterTerm,
 							onChange: handleFilter,

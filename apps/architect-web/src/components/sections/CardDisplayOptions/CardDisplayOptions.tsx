@@ -79,6 +79,7 @@ const CardDisplayOptions = ({ dataSource, disabled }: CardDisplayOptionsProps) =
 								fieldName: "label",
 								component: Text,
 								placeholder: "Label",
+								variant: "embedded",
 							},
 						]}
 						options={(fieldName: string, rowValues: unknown, allValues: unknown) =>

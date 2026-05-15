@@ -43,7 +43,7 @@ const RichTextField = ({
 	const hasError = !!(meta.invalid && meta.touched && meta.error);
 
 	return (
-		<div className="form-field-container">
+		<div className="m-0 w-full [&>h4]:m-0">
 			{anyLabel && (
 				<h4>
 					<MarkdownLabel label={anyLabel} />

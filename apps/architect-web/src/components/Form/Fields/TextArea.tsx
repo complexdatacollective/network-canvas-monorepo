@@ -22,6 +22,7 @@ type TextAreaProps = {
 	label?: string | null;
 	fieldLabel?: string | null;
 	className?: string;
+	variant?: "default" | "embedded";
 	placeholder?: string;
 	hidden?: boolean;
 };
@@ -32,6 +33,7 @@ const TextArea = ({
 	label = null,
 	fieldLabel = null,
 	className = "",
+	variant = "default",
 	placeholder = "",
 	hidden = false,
 }: TextAreaProps) => {
@@ -41,7 +43,7 @@ const TextArea = ({
 	const hasError = !!(invalid && touched && error);
 
 	return (
-		<label htmlFor={id.current} className="form-field-container block" hidden={hidden}>
+		<label htmlFor={id.current} className="block m-0 w-full [&>h4]:m-0" hidden={hidden}>
 			{(fieldLabel || label) && <MarkdownLabel label={fieldLabel || label || ""} />}
 			<div className={cx("group relative", className)}>
 				<textarea
@@ -50,6 +52,7 @@ const TextArea = ({
 						"form-field placeholder:italic resize-y block",
 						"group-hover:border-b-input-active focus:border-b-input-active",
 						hasError && "border-2 border-error rounded-b-none",
+						variant === "embedded" && "m-0 rounded-(--radius) border-0 pb-(--space-sm)",
 					)}
 					placeholder={placeholder}
 					{...input}

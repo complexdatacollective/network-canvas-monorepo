@@ -54,7 +54,7 @@ const Toggle = ({
 	const { name, value, onChange, ...inputRest } = input;
 
 	return (
-		<div className="form-field-container">
+		<div className="m-0 [&>h4]:m-0">
 			{fieldLabel && <MarkdownLabel label={fieldLabel} />}
 			<label
 				className={cx("form-field flex items-center flex-row justify-start cursor-pointer", className)}

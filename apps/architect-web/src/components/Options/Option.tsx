@@ -86,7 +86,7 @@ const Option = ({ field, handleDelete, internalItem, hasError = false }: OptionP
 	return (
 		<Reorder.Item
 			className={cx(
-				"z-(--z-fx) flex rounded-xl text-sortable-foreground transition-colors duration-(--animation-duration-standard) ease-(--animation-easing) [&_.form-field-container]:m-0",
+				"z-(--z-fx) flex rounded-xl text-sortable-foreground transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)",
 				hasError ? "bg-error" : "bg-form-control",
 			)}
 			value={internalItem}
