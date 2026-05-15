@@ -5,7 +5,7 @@
     "correctness": "error",
     "suspicious": "warn"
   },
-  "options": { "typeAware": false },
+  "options": { "typeAware": true },
   "env": { "browser": true, "node": true, "es2024": true },
   "rules": {
     "no-console": "warn",
