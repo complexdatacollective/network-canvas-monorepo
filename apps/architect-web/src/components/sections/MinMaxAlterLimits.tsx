@@ -49,7 +49,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
 
 	const handleToggleChange = useCallback(
 		async (newState: boolean) => {
-			if ((isUndefined(currentMinValue) && isUndefined(currentMaxValue)) || newState === true) {
+			if ((isUndefined(currentMinValue) && isUndefined(currentMaxValue)) ||  newState) {
 				return true;
 			}
 

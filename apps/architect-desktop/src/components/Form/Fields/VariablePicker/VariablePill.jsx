@@ -88,7 +88,7 @@ const EditableVariablePill = ({ uuid }) => {
 	const existingVariables = useSelector((state) => getVariablesForSubject(state, { entity, type: entityType }));
 
 	const existingVariableNames = useMemo(() =>
-		Object.keys(existingVariables).map((variable) => get(existingVariables[variable], "name")),
+		Object.keys(existingVariables).map((variable) => get(existingVariables[variable], "name")), [],
 	);
 
 	const handleUpdateName = (event) => {

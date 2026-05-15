@@ -51,7 +51,7 @@ const Radio = ({ label, className = "", input, disabled = false, fieldLabel, ...
 					"relative inline-block shrink-0 size-(--space-xl) mr-(--space-sm)",
 					"before:content-[''] before:absolute before:inset-0 before:rounded-full before:border-2 before:border-solid before:border-border",
 					"before:transition-[border-color] before:duration-(--animation-duration-standard) before:ease-(--animation-easing)",
-					"after:content-[''] after:absolute after:inset-[0.375rem]",
+					"after:content-[''] after:absolute after:inset-1.5",
 					"after:rounded-full after:bg-input-active after:opacity-0",
 					"after:transition-opacity after:duration-(--animation-duration-standard) after:ease-(--animation-easing)",
 					"peer-checked:before:border-input-active peer-checked:after:opacity-100",

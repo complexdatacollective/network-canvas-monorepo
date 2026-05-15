@@ -48,7 +48,7 @@ function NodePanel(props: NodePanelProps) {
 		(metadata: DragMetadata | undefined) => {
 			if (!metadata) return false;
 
-			const node = metadata as NcNode & { itemType?: string };
+			const node = metadata;
 
 			// Only accept nodes from the main panel
 			if (node.itemType !== "EXISTING_NODE") return false;

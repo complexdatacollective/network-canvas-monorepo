@@ -14,7 +14,7 @@ type InterfaceListProps = {
 const InterfaceList = ({
 	items = [],
 	onSelect,
-	highlightedIndex = undefined,
+	highlightedIndex,
 	handleClearSearchAndFilter,
 	setHighlighted,
 	removeHighlighted,

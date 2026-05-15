@@ -36,7 +36,7 @@ function NodePanels(props: NodePanelsProps) {
 	const { disableAddNew, onOpenChange, animationKey } = props;
 	const isDragging = useDndStore((state: DndStore) => state.isDragging);
 	const dragItem = useDndStore((state: DndStore) => state.dragItem);
-	const meta = dragItem?.metadata as NcNode & { itemType: string };
+	const meta = dragItem?.metadata;
 
 	const panels = useStageSelector(getPanelConfiguration);
 

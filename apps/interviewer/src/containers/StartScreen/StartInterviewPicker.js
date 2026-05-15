@@ -26,7 +26,7 @@ const StartInterviewPicker = ({ show, onClose, addSession, installedProtocols })
 		setSelectedProtocol(protocolUID);
 	};
 
-	const formattedProtocols = [...Object.keys(installedProtocols)].map((protocolUID) => {
+	const formattedProtocols = Object.keys(installedProtocols).map((protocolUID) => {
 		const { schemaVersion, lastModified, installationDate, name, description } = installedProtocols[protocolUID];
 
 		return {

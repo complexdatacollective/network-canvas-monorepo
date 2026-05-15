@@ -44,11 +44,11 @@ describe("alignPedigree", () => {
 			hints: { order: [1, 2, 3, 4, 5, 6, 7] },
 		});
 		for (let lev = 0; lev < result.n.length; lev++) {
-			const nn = result.n[lev]!;
+			const nn = result.n[lev];
 			if (nn <= 1) continue;
-			const positions = result.pos[lev]!.slice(0, nn);
+			const positions = result.pos[lev].slice(0, nn);
 			for (let j = 0; j < positions.length - 1; j++) {
-				expect(positions[j + 1]!).toBeGreaterThan(positions[j]!);
+				expect(positions[j + 1]).toBeGreaterThan(positions[j]);
 			}
 		}
 	});
@@ -66,9 +66,9 @@ describe("alignPedigree", () => {
 			hints: { order: [1, 2, 3, 4, 5] },
 		});
 		for (let lev = 0; lev < result.n.length; lev++) {
-			for (let j = 0; j < result.n[lev]!; j++) {
+			for (let j = 0; j < result.n[lev]; j++) {
 				// Allow tiny floating point errors from QP solver
-				expect(result.pos[lev]![j]!).toBeGreaterThanOrEqual(-1e-10);
+				expect(result.pos[lev][j]).toBeGreaterThanOrEqual(-1e-10);
 			}
 		}
 	});
@@ -125,9 +125,9 @@ describe("alignPedigree", () => {
 		});
 		const parentLevel = result.n.findIndex((v) => v >= 3);
 		expect(parentLevel).toBeGreaterThanOrEqual(0);
-		const positions = result.pos[parentLevel]!.slice(0, result.n[parentLevel]);
+		const positions = result.pos[parentLevel].slice(0, result.n[parentLevel]);
 		for (let j = 0; j < positions.length - 1; j++) {
-			expect(positions[j + 1]! - positions[j]!).toBeGreaterThanOrEqual(1 - 1e-10);
+			expect(positions[j + 1] - positions[j]).toBeGreaterThanOrEqual(1 - 1e-10);
 		}
 	});
 
@@ -150,7 +150,7 @@ describe("alignPedigree", () => {
 		const rowOf = new Map<number, number>();
 		for (let lev = 0; lev < result.n.length; lev++) {
 			for (let col = 0; col < (result.n[lev] ?? 0); col++) {
-				const pid = result.nid[lev]![col]!;
+				const pid = result.nid[lev][col];
 				if (pid >= 0) rowOf.set(pid, lev);
 			}
 		}
@@ -185,7 +185,7 @@ describe("alignPedigree", () => {
 		const rowOf = new Map<number, number>();
 		for (let lev = 0; lev < result.n.length; lev++) {
 			for (let col = 0; col < (result.n[lev] ?? 0); col++) {
-				const pid = result.nid[lev]![col]!;
+				const pid = result.nid[lev][col];
 				if (pid >= 0) rowOf.set(pid, lev);
 			}
 		}
@@ -228,7 +228,7 @@ describe("alignPedigree", () => {
 		const rowOf = new Map<number, number>();
 		for (let lev = 0; lev < result.n.length; lev++) {
 			for (let col = 0; col < (result.n[lev] ?? 0); col++) {
-				const pid = result.nid[lev]![col]!;
+				const pid = result.nid[lev][col];
 				if (pid >= 0) rowOf.set(pid, lev);
 			}
 		}
@@ -315,7 +315,7 @@ describe("alignPedigree", () => {
 		const rowOf = new Map<number, number>();
 		for (let lev = 0; lev < result.n.length; lev++) {
 			for (let col = 0; col < (result.n[lev] ?? 0); col++) {
-				const pid = result.nid[lev]![col]!;
+				const pid = result.nid[lev][col];
 				if (pid >= 0) rowOf.set(pid, lev);
 			}
 		}
@@ -331,8 +331,8 @@ describe("alignPedigree", () => {
 		const colOf = new Map<number, number>();
 		for (let lev = 0; lev < result.n.length; lev++) {
 			for (let col = 0; col < (result.n[lev] ?? 0); col++) {
-				const pid = result.nid[lev]![col]!;
-				if (pid >= 0 && !colOf.has(pid)) colOf.set(pid, result.pos[lev]![col]!);
+				const pid = result.nid[lev][col];
+				if (pid >= 0 && !colOf.has(pid)) colOf.set(pid, result.pos[lev][col]);
 			}
 		}
 
@@ -351,7 +351,7 @@ describe("alignPedigree", () => {
 		const rowOf = new Map<number, number>();
 		for (let lev = 0; lev < result.n.length; lev++) {
 			for (let col = 0; col < (result.n[lev] ?? 0); col++) {
-				const pid = result.nid[lev]![col]!;
+				const pid = result.nid[lev][col];
 				if (pid >= 0) rowOf.set(pid, lev);
 			}
 		}
@@ -381,7 +381,7 @@ describe("alignPedigree", () => {
 		const colOf = new Map<number, number>();
 		for (let lev = 0; lev < result.n.length; lev++) {
 			for (let col = 0; col < (result.n[lev] ?? 0); col++) {
-				const pid = result.nid[lev]![col]!;
+				const pid = result.nid[lev][col];
 				if (pid >= 0 && !colOf.has(pid)) colOf.set(pid, col);
 			}
 		}
@@ -394,7 +394,7 @@ describe("alignPedigree", () => {
 		const leftCol = Math.min(col0, col1);
 
 		// group[parentLev][leftCol] should be > 0 indicating a group connection
-		expect(result.group[parentLev]![leftCol]).toBeGreaterThan(0);
+		expect(result.group[parentLev][leftCol]).toBeGreaterThan(0);
 	});
 
 	it("subset donors have equal spacing from the family", () => {
@@ -421,9 +421,9 @@ describe("alignPedigree", () => {
 		const posOf = new Map<number, number>();
 		for (let lev = 0; lev < result.n.length; lev++) {
 			for (let col = 0; col < (result.n[lev] ?? 0); col++) {
-				const pid = result.nid[lev]![col]!;
+				const pid = result.nid[lev][col];
 				if (pid >= 0 && !posOf.has(pid)) {
-					posOf.set(pid, result.pos[lev]![col]!);
+					posOf.set(pid, result.pos[lev][col]);
 				}
 			}
 		}
@@ -475,9 +475,9 @@ describe("alignPedigree", () => {
 		const rowOf = new Map<number, number>();
 		for (let lev = 0; lev < result.n.length; lev++) {
 			for (let col = 0; col < (result.n[lev] ?? 0); col++) {
-				const pid = result.nid[lev]![col]!;
+				const pid = result.nid[lev][col];
 				if (pid >= 0 && !posOf.has(pid)) {
-					posOf.set(pid, result.pos[lev]![col]!);
+					posOf.set(pid, result.pos[lev][col]);
 					rowOf.set(pid, lev);
 				}
 			}
@@ -524,13 +524,13 @@ describe("traditional family regression", () => {
 
 		// Parent level: 2 people (indices 0 and 1)
 		expect(result.n[parentLevIdx]).toBe(2);
-		const parentLevel = result.nid[parentLevIdx]!.slice(0, result.n[parentLevIdx]);
+		const parentLevel = result.nid[parentLevIdx].slice(0, result.n[parentLevIdx]);
 		expect(parentLevel).toContain(0);
 		expect(parentLevel).toContain(1);
 
 		// Child level: 3 people (indices 2, 3, 4)
 		expect(result.n[childLevIdx]).toBe(3);
-		const childLevel = result.nid[childLevIdx]!.slice(0, result.n[childLevIdx]);
+		const childLevel = result.nid[childLevIdx].slice(0, result.n[childLevIdx]);
 		expect(childLevel).toContain(2);
 		expect(childLevel).toContain(3);
 		expect(childLevel).toContain(4);
@@ -553,7 +553,7 @@ describe("traditional family regression", () => {
 		const parentLevIdx = result.n.findIndex((v) => v > 0);
 		const childLevIdx = result.n.findIndex((v, i) => v > 0 && i > parentLevIdx);
 		// All children should share the same fam value > 0
-		const childFams = result.fam[childLevIdx]!.slice(0, result.n[childLevIdx]);
+		const childFams = result.fam[childLevIdx].slice(0, result.n[childLevIdx]);
 		const uniqueFams = [...new Set(childFams)];
 		expect(uniqueFams.length).toBe(1);
 		expect(uniqueFams[0]).toBeGreaterThan(0);
@@ -584,8 +584,8 @@ describe("traditional family regression", () => {
 
 		// Grandchild (4) on the deepest active level
 		const activeLevels = result.n.map((v, i) => ({ v, i })).filter((x) => x.v > 0);
-		const deepest = activeLevels[activeLevels.length - 1]!.i;
-		const deepestIds = result.nid[deepest]!.slice(0, result.n[deepest]);
+		const deepest = activeLevels[activeLevels.length - 1].i;
+		const deepestIds = result.nid[deepest].slice(0, result.n[deepest]);
 		expect(deepestIds).toContain(4);
 	});
 
@@ -613,10 +613,10 @@ describe("traditional family regression", () => {
 		// Find the child level (has 5 people)
 		const childLevIdx = result.n.findIndex((v) => v === 5);
 		expect(childLevIdx).toBeGreaterThanOrEqual(0);
-		const childPositions = result.pos[childLevIdx]!.slice(0, result.n[childLevIdx]);
+		const childPositions = result.pos[childLevIdx].slice(0, result.n[childLevIdx]);
 		// All positions should be distinct and increasing
 		for (let j = 0; j < childPositions.length - 1; j++) {
-			expect(childPositions[j + 1]!).toBeGreaterThan(childPositions[j]!);
+			expect(childPositions[j + 1]).toBeGreaterThan(childPositions[j]);
 		}
 		expect(childPositions.length).toBe(5);
 	});
@@ -644,8 +644,8 @@ describe("traditional family regression", () => {
 
 		// Grandchild on the deepest active level
 		const activeLevels = result.n.map((v, i) => ({ v, i })).filter((x) => x.v > 0);
-		const deepest = activeLevels[activeLevels.length - 1]!.i;
-		const deepestIds = result.nid[deepest]!.slice(0, result.n[deepest]);
+		const deepest = activeLevels[activeLevels.length - 1].i;
+		const deepestIds = result.nid[deepest].slice(0, result.n[deepest]);
 		expect(deepestIds).toContain(6);
 
 		// Connectors: at least 3 group lines, at least 3 parent-child links.
@@ -668,8 +668,8 @@ describe("traditional family regression", () => {
 		expect(conn.parentChildLines.length).toBe(2);
 
 		// Parent links should target different x positions
-		const x1 = conn.parentChildLines[0]!.parentLink[0]!.x1;
-		const x2 = conn.parentChildLines[1]!.parentLink[0]!.x1;
+		const x1 = conn.parentChildLines[0].parentLink[0].x1;
+		const x2 = conn.parentChildLines[1].parentLink[0].x1;
 		expect(x1).not.toBeCloseTo(x2, 1);
 	});
 });
@@ -718,8 +718,8 @@ function positionOf(
 ): { layer: number; pos: number } | undefined {
 	for (let lev = 0; lev < result.n.length; lev++) {
 		for (let col = 0; col < (result.n[lev] ?? 0); col++) {
-			if (result.nid[lev]![col] === nodeIndex) {
-				return { layer: lev, pos: result.pos[lev]![col]! };
+			if (result.nid[lev][col] === nodeIndex) {
+				return { layer: lev, pos: result.pos[lev][col] };
 			}
 		}
 	}

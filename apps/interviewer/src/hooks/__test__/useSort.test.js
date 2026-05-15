@@ -86,7 +86,7 @@ describe("useSort", () => {
 
 		const { sortedList: reversedSortedList, sortDirection } = subject.find("div").prop("useSort");
 
-		expect(sortedList.reverse()).toEqual(reversedSortedList);
+		expect(sortedList.toReversed()).toEqual(reversedSortedList);
 		expect(sortDirection).toEqual("asc");
 	});
 

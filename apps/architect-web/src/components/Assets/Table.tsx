@@ -23,7 +23,7 @@ type TableProps = {
 
 const tableClasses = cx(
 	"rounded bg-table-row-tint max-h-[60vh] overflow-auto",
-	"[&_th]:min-w-[8rem] [&_td]:min-w-[8rem]",
+	"[&_th]:min-w-32 [&_td]:min-w-32",
 	"[&_th]:text-sm [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:break-keep [&_th]:whitespace-nowrap",
 	"[&_th]:px-(--space-md) [&_th]:py-(--space-sm) [&_th]:leading-(--space-xl)",
 	"[&_th_svg]:size-(--space-xl) [&_th_svg]:relative [&_th_svg]:top-[-0.1rem] [&_th_svg]:align-middle [&_th_svg]:text-primary",

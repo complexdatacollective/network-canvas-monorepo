@@ -30,7 +30,7 @@ const Tag = ({
 	);
 
 	const dotClasses = cn(
-		"w-[15px] h-auto aspect-square rounded-full shrink-0",
+		"w-3.75 h-auto aspect-square rounded-full shrink-0",
 		color === "neon-coral" && "bg-neon-coral",
 		color === "sea-green" && "bg-sea-green",
 		color === "slate-blue" && "bg-slate-blue",

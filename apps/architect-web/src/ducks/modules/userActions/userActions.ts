@@ -139,7 +139,7 @@ export const createNetcanvas = createAsyncThunk(
 		} as CurrentProtocol;
 
 		// Set active protocol
-		dispatch(setActiveProtocol(newProtocol as CurrentProtocol));
+		dispatch(setActiveProtocol(newProtocol));
 
 		// Navigate to the protocol
 		navigate("/protocol");

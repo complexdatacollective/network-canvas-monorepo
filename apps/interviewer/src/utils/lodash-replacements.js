@@ -27,7 +27,7 @@ const pathReducer = (acc, part) => {
 };
 
 // Replacement for lodash.get using optional chaining and nullish coalescing
-const getReplacement = (object, path, defaultValue = undefined) => {
+const getReplacement = (object, path, defaultValue) => {
 	if (!object) {
 		return defaultValue;
 	}

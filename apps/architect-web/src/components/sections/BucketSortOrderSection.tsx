@@ -34,7 +34,7 @@ const BucketSortOrderSection = ({
 	const hasBucketSortOrder = useSelector((state: Record<string, unknown>) => formSelector(state, "bucketSortOrder"));
 
 	const handleToggleChange = (nextState: boolean) => {
-		if (nextState === false) {
+		if (!nextState) {
 			dispatch(change(form, "bucketSortOrder", null));
 		}
 

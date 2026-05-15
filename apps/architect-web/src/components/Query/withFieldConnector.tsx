@@ -23,7 +23,7 @@ type OutputProps = {
 
 const withFieldConnector = withProps<OutputProps, FieldInputProps>((props) => ({
 	rules: get(props.input.value, "rules", []) as unknown[],
-	join: get(props.input.value, "join") as string | undefined,
+	join: get(props.input.value, "join"),
 	onChange: props.input.onChange,
 	error: props.meta.error,
 }));

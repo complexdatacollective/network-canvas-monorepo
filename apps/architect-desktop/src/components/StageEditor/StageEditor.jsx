@@ -25,7 +25,7 @@ const StageEditor = (props) => {
 		if (event.ctrlKey && event.key === "/") {
 			toggleCodeView();
 		}
-	});
+	}, []);
 
 	useEffect(() => {
 		window.addEventListener("keydown", handleKeyDown);

@@ -106,7 +106,7 @@ export default function GeospatialInterface({ stage }: GeospatialInterfaceProps)
 		direction: null,
 	});
 
-	const mapOptions = stage.mapOptions as ExtendedMapOptions;
+	const mapOptions = stage.mapOptions;
 	const { promptIndex, prompt: currentPrompt } = usePrompts<{
 		variable?: string;
 	}>();

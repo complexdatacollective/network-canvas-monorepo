@@ -230,7 +230,7 @@ const getSortFunction = (rule) => {
  */
 const createSorter = (sortRules = []) => {
 	const sortFunctions = sortRules.map(getSortFunction);
-	return (items) => withoutCreatedIndex(withCreatedIndex(items).sort(chain(...sortFunctions)));
+	return (items) => withoutCreatedIndex(withCreatedIndex(items).toSorted(chain(...sortFunctions)));
 };
 
 /**

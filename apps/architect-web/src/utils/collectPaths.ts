@@ -6,7 +6,7 @@ type ObjPath = string | string[];
 export type CollectPathsEntry = string | [string, MapFunc];
 
 const collectPath = (objPath: ObjPath, obj: unknown, memoPath = ""): PathMap => {
-	const parsedPath: string[] = isArray(objPath) ? (objPath as string[]) : (objPath as string).split("[].");
+	const parsedPath: string[] = isArray(objPath) ? (objPath) : (objPath).split("[].");
 	const [first, ...rest] = parsedPath;
 	let next = first ?? "";
 	let scanArray = false;
@@ -16,13 +16,13 @@ const collectPath = (objPath: ObjPath, obj: unknown, memoPath = ""): PathMap => 
 		scanArray = true;
 	}
 
-	const path = memoPath ? `${memoPath}.${next}` : `${next}`;
+	const path = memoPath ? `${memoPath}.${next}` : next;
 
 	const nextObj = get(obj, next) as unknown[] | undefined;
 
 	if (rest.length > 0) {
 		return reduce(
-			(nextObj || []) as unknown[],
+			(nextObj || []),
 			(memo: PathMap, item: unknown, index: number) => {
 				const collected = collectPath(rest, item, `${path}[${index}]`);
 				Object.assign(memo, collected);
@@ -35,7 +35,7 @@ const collectPath = (objPath: ObjPath, obj: unknown, memoPath = ""): PathMap => 
 	// special case to parse end array
 	if (Array.isArray(nextObj) && scanArray) {
 		const result = reduce(
-			(nextObj || []) as unknown[],
+			(nextObj || []),
 			(memo: PathMap, item: unknown, index: number) => {
 				memo[`${path}[${index}]`] = item;
 				return memo;

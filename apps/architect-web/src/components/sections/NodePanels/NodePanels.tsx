@@ -31,7 +31,7 @@ const NodePanels = ({ form, createNewPanel, panels = null, disabled = false, ...
 
 	const handleToggleChange = useCallback(
 		async (newState: boolean) => {
-			if (!panels || panels.length === 0 || newState === true) {
+			if (!panels || panels.length === 0 ||  newState) {
 				return true;
 			}
 
@@ -100,7 +100,7 @@ const mapDispatchToProps = (dispatch: Dispatch, { form }: { form: string }) => (
 				title: null,
 				dataSource: "existing",
 				filter: null,
-			}) as FormAction,
+			}),
 		dispatch,
 	),
 });

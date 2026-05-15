@@ -65,8 +65,8 @@ const DisplayEdges = ({ form }: DisplayEdgesProps) => {
 		dispatch(change(form, "edges.display", displayEdgesWithCreatedEdge) as unknown as FormAction);
 	}, [createEdge, dispatch, form]);
 
-	const edgeFilters = useSelector((state: RootState) => getEdgeFilters(state)) as FilterRule[];
-	const shouldShowNetworkFilterWarning = getEdgeFilteringWarning(edgeFilters as FilterRule[], displayEdges || []);
+	const edgeFilters = useSelector((state: RootState) => getEdgeFilters(state));
+	const shouldShowNetworkFilterWarning = getEdgeFilteringWarning(edgeFilters, displayEdges || []);
 
 	return (
 		<Section

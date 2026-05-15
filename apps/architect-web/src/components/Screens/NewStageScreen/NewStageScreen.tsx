@@ -42,7 +42,7 @@ const search = (query: string): InterfaceType[] => {
 		return INTERFACE_TYPES;
 	}
 	const result: FuseResultWithScore<InterfaceType>[] = fuse.search(query) as FuseResultWithScore<InterfaceType>[];
-	return result.sort((a, b) => (a.score ?? 0) - (b.score ?? 0)).map((item) => item.item);
+	return result.toSorted((a, b) => (a.score ?? 0) - (b.score ?? 0)).map((item) => item.item);
 };
 
 type NewStageScreenProps = {
@@ -241,7 +241,7 @@ const NewStageScreen = ({ insertAtIndex, open, onOpenChange, experiments = {} }:
 							/>
 						</div>
 						<div className="flex items-center gap-4">
-							<div className="flex-shrink-0 text-white">
+							<div className="shrink-0 text-white">
 								<h4 className="text-sm font-semibold">Filter by capabilities:</h4>
 							</div>
 							<div className="flex flex-wrap gap-1 text-navy-taupe">

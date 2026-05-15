@@ -51,7 +51,7 @@ export default function useResizablePanel({
 }: UseResizablePanelOptions) {
 	const hasBreakpoints = breakpoints.length > 0;
 	const sortedBreakpoints = useMemo(
-		() => (hasBreakpoints ? [...breakpoints].sort((a, b) => a.value - b.value) : []),
+		() => (hasBreakpoints ? [...breakpoints].toSorted((a, b) => a.value - b.value) : []),
 		[hasBreakpoints, breakpoints],
 	);
 	const containerRef = useRef<HTMLDivElement>(null);

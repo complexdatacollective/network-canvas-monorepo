@@ -24,7 +24,7 @@ const processPreTags = () => {
 			const rawCodeContent = hastNodeToString(codeElement);
 
 			// Add the `raw` property with the extracted content to the `pre` element
-			node.properties = { ...(node.properties || {}), raw: rawCodeContent };
+			node.properties = { ...node.properties, raw: rawCodeContent };
 		});
 	};
 };

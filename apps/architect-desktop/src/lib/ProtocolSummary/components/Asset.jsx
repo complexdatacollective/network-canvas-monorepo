@@ -21,7 +21,7 @@ const Asset = ({ id, size }) => {
 		return () => {
 			ref.current.removeEventListener("loadedmetadata", metaDataListener.current);
 		};
-	}, [ref.current, type, url]);
+	}, [type, url]);
 
 	return (
 		<div className="protocol-summary-asset-manifest__asset" id={`asset-${id}`}>

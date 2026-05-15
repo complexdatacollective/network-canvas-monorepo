@@ -99,7 +99,7 @@ export default definePreview({
 			//
 			// Manual browsing has `navigator.webdriver === false`, so interactive
 			// development still gets the full animations by default.
-			const disableAnimationsFromAutomation = typeof navigator !== "undefined" && navigator.webdriver === true;
+			const disableAnimationsFromAutomation = typeof navigator !== "undefined" &&  navigator.webdriver;
 			const disableAnimations = disableAnimationsFromAutomation || isChromatic();
 
 			return (

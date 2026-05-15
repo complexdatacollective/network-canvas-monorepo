@@ -122,7 +122,7 @@ function buildNetwork(
 
 	const edges = new Map<string, NcEdge>();
 	for (let i = 0; i < edgeDefs.length; i++) {
-		const e = edgeDefs[i]!;
+		const e = edgeDefs[i];
 		const eid = `e${i}`;
 		const attrs: NcEdge["attributes"] = {
 			[STORY_REL_TYPE_VAR]: e.relationshipType,
@@ -1912,7 +1912,7 @@ const NODE_RENDERERS: Record<string, NodeRenderer> = {
 	"Colored Node": (node, edges) => {
 		const label = node.attributes[STORY_LABEL_VAR] as string | undefined;
 		const nodeEl = (
-			<Node color="node-color-seq-1" label={!node.attributes[STORY_EGO_VAR] === true ? (label ?? "") : ""} size="sm">
+			<Node color="node-color-seq-1" label={!node.attributes[STORY_EGO_VAR] ? (label ?? "") : ""} size="sm">
 				{node.attributes[STORY_EGO_VAR] === true && (
 					<EgoIcon className="pointer-events-none absolute top-1/2 left-1/2 size-8 -translate-1/2" variant="platinum" />
 				)}
@@ -1929,7 +1929,7 @@ const NODE_RENDERERS: Record<string, NodeRenderer> = {
 			<Node
 				className="shrink-0"
 				color="node-color-seq-1"
-				label={!node.attributes[STORY_EGO_VAR] === true ? (label ?? "") : ""}
+				label={!node.attributes[STORY_EGO_VAR] ? (label ?? "") : ""}
 				size="sm"
 			>
 				{node.attributes[STORY_EGO_VAR] === true && (
@@ -1970,9 +1970,9 @@ type StoryArgs = {
 };
 
 export const Playground: StoryFn<StoryArgs> = ({ network, nodeStyle }) => {
-	const data = NETWORKS[network] ?? NETWORKS["Three Generations"]!;
-	const renderNode = NODE_RENDERERS[nodeStyle] ?? NODE_RENDERERS["Labeled Node"]!;
-	const measureComponent = NODE_MEASUREMENT_COMPONENTS[nodeStyle] ?? NODE_MEASUREMENT_COMPONENTS["Labeled Node"]!;
+	const data = NETWORKS[network] ?? NETWORKS["Three Generations"];
+	const renderNode = NODE_RENDERERS[nodeStyle] ?? NODE_RENDERERS["Labeled Node"];
+	const measureComponent = NODE_MEASUREMENT_COMPONENTS[nodeStyle] ?? NODE_MEASUREMENT_COMPONENTS["Labeled Node"];
 
 	const { nodeWidth, nodeHeight, measurementContainer } = useNodeMeasurement({
 		component: measureComponent,

@@ -13,7 +13,7 @@ const equalByArea = (outerRadius, n) => {
 			const next = (b + previous ** 2) ** 0.5;
 			return [...memo, next];
 		}, [])
-		.reverse();
+		.toReversed();
 };
 
 const equalByIncrement = (outerRadius, n) =>

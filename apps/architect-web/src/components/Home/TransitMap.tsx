@@ -229,11 +229,11 @@ function Station({ x, y, meta, label, sub, isNewest, labelLeft, index, entryDela
 								maxWidth: LABEL_W - 20,
 							}}
 						>
-							<div className="truncate text-[19px] font-extrabold leading-tight tracking-tight text-[color:hsl(240_35%_17%)]">
+							<div className="truncate text-[19px] font-extrabold leading-tight tracking-tight text-[hsl(240_35%_17%)]">
 								{label}
 							</div>
 							<div
-								className="mt-[3px] text-[12px] font-bold uppercase leading-none tracking-[0.16em]"
+								className="mt-0.75 text-[12px] font-bold uppercase leading-none tracking-[0.16em]"
 								style={{ color: meta.color }}
 							>
 								{sub}
@@ -256,7 +256,7 @@ function Station({ x, y, meta, label, sub, isNewest, labelLeft, index, entryDela
 					height={20}
 				>
 					<div
-						className="font-mono text-[12px] tracking-[0.1em] text-[color:hsl(220_4%_44%)]"
+						className="font-mono text-[12px] tracking-widest text-[hsl(220_4%_44%)]"
 						style={{ textAlign: labelLeft ? "left" : "right" }}
 					>
 						{String(index + 1).padStart(2, "0")}

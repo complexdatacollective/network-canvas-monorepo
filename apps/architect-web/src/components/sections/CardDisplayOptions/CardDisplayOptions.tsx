@@ -31,7 +31,7 @@ const CardDisplayOptions = ({ dataSource, disabled }: CardDisplayOptionsProps) =
 	);
 
 	const handleToggleCardDisplayOptions = (nextState: boolean) => {
-		if (nextState === false) {
+		if (!nextState) {
 			dispatch(change("edit-stage", "cardOptions.additionalProperties", null) as unknown as UnknownAction);
 		}
 

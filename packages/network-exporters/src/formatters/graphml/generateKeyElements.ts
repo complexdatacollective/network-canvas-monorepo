@@ -17,7 +17,7 @@ import {
 // <key> elements provide the type definitions for GraphML data elements
 export default function getKeyElementGenerator(codebook: Codebook, exportOptions: ExportOptions) {
 	return async (
-		incomingEntities: NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo,
+		incomingEntities: NodeWithResequencedID[]   | NcEgo,
 	): Promise<DocumentFragment> => {
 		// Important to create the fragment on each invocation
 		const fragment = createDocumentFragment();
@@ -35,7 +35,7 @@ export default function getKeyElementGenerator(codebook: Codebook, exportOptions
 		const entities =
 			entityType === "ego"
 				? ([incomingEntities] as NcEgo[])
-				: (incomingEntities as NodeWithResequencedID[] | EdgeWithResequencedID[]);
+				: (incomingEntities as NodeWithResequencedID[]  );
 
 		if (entityType === "node" && !done.has("type")) {
 			const typeDataElement = dom.createElement("key");
@@ -79,7 +79,7 @@ export default function getKeyElementGenerator(codebook: Codebook, exportOptions
 		}
 
 		const entityKeys = await generateKeysForEntities(
-			entities as NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo[],
+			entities as NodeWithResequencedID[]   | NcEgo[],
 			entityType,
 			codebook,
 			exportOptions,
@@ -92,7 +92,7 @@ export default function getKeyElementGenerator(codebook: Codebook, exportOptions
 }
 
 async function generateKeysForEntities(
-	entities: NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo[],
+	entities: NodeWithResequencedID[]   | NcEgo[],
 	entityType: "node" | "edge" | "ego",
 	codebook: Codebook,
 	exportOptions: ExportOptions,
@@ -115,7 +115,7 @@ async function generateKeysForEntities(
 
 			// Test if we have already created a key for this variable, and that it
 			// isn't on our exclude list.
-			if (done.has(variableId) === false) {
+			if (!done.has(variableId)) {
 				const keyElement = dom.createElement("key");
 
 				// Determine variable type to decide how to encode it
@@ -197,7 +197,7 @@ async function generateKeysForEntities(
 						 */
 
 						// fetch options property for this variable
-						const options = get(codebookVariable as Extract<VariableDefinition, { type: "categorical" }>, "options");
+						const options = get(codebookVariable, "options");
 
 						// If there are no options, we can't create keys for this variable
 						if (!options) {

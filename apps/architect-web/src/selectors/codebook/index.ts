@@ -58,7 +58,7 @@ const getTypeSelector = createSelector(
 			return null;
 		}
 		const path = subject.type ? [subject.entity, subject.type] : [subject.entity];
-		return get(codebook, path, null) as NodeDefinition | EdgeDefinition | EgoDefinition | null;
+		return get(codebook, path, null);
 	},
 );
 

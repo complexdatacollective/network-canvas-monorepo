@@ -33,7 +33,7 @@ export const getNestedPath = (path: string) => {
 
 // WARNING: This is not a drop in replacement solution and
 // it might not work for some edge cases. Test your code!
-export const get = (obj: Record<string | number, unknown>, path: string | string[], defValue: unknown = undefined) => {
+export const get = (obj: Record<string | number, unknown>, path: string | string[], defValue?: unknown) => {
 	// If path is not defined or it has false value
 	if (!path) return undefined;
 	// Check if path is string or array. Regex : ensure that we do not have '.' and brackets.

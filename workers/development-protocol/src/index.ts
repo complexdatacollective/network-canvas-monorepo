@@ -36,7 +36,7 @@ export default {
 			// Find all development protocol releases and sort by timestamp
 			const developmentReleases = releases
 				.filter((release) => release.name?.includes("@codaco/development-protocol-"))
-				.sort((a, b) => {
+				.toSorted((a, b) => {
 					// Extract timestamp from release name (format: @codaco/development-protocol-YYYYMMDDHHMMSS-SHA)
 					const timestampA = a.name?.match(/@codaco\/development-protocol-(\d{14})/)?.[1] || "0";
 					const timestampB = b.name?.match(/@codaco\/development-protocol-(\d{14})/)?.[1] || "0";

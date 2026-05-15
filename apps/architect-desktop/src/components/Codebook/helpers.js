@@ -137,7 +137,7 @@ export const getEntityProperties = (state, { entity, type }) => {
 			return baseProperties;
 		}
 
-		const usage = getUsageAsStageMeta(stageMetaByIndex, variableMeta, getUsage(variableIndex, id)).sort(sortByLabel);
+		const usage = getUsageAsStageMeta(stageMetaByIndex, variableMeta, getUsage(variableIndex, id)).toSorted(sortByLabel);
 
 		const usageString = usage
 			.map(({ label }) => label)

@@ -42,7 +42,7 @@ function isAuxiliaryEdge(edgeType: ParentEdgeType): boolean {
 }
 
 function partnerGroupKey(members: number[]): string {
-	return [...members].sort((a, b) => a - b).join(",");
+	return [...members].toSorted((a, b) => a - b).join(",");
 }
 
 function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
@@ -78,7 +78,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
 			const key = partnerGroupKey(members);
 			if (!groupMap.has(key)) {
 				groupMap.set(key, {
-					members: [...members].sort((a, b) => a - b),
+					members: [...members].toSorted((a, b) => a - b),
 					isActive: p.isActive,
 				});
 			}
@@ -93,7 +93,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
 			const key = partnerGroupKey(members);
 			if (!groupMap.has(key)) {
 				groupMap.set(key, {
-					members: [...members].sort((a, b) => a - b),
+					members: [...members].toSorted((a, b) => a - b),
 					isActive: true,
 				});
 			}
@@ -130,7 +130,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
 				const key = partnerGroupKey(members);
 				if (!groupMap.has(key)) {
 					groupMap.set(key, {
-						members: [...members].sort((c, d) => c - d),
+						members: [...members].toSorted((c, d) => c - d),
 						isActive: true,
 					});
 				}
@@ -312,7 +312,7 @@ function buildConstraintBlocks(nodesOnLayer: number[], graph: PedigreeGraph, lay
 
 	// Build partner blocks from merged groups
 	for (const [, members] of groupUnion) {
-		const blockNodes = [...members].sort((a, b) => a - b);
+		const blockNodes = [...members].toSorted((a, b) => a - b);
 		// Order anchor (shared node) between its partners
 		const anchors = blockNodes.filter((n) => (nodeToPartnerGroups.get(n)?.length ?? 0) > 1);
 		if (anchors.length === 1) {
@@ -333,7 +333,7 @@ function buildConstraintBlocks(nodesOnLayer: number[], graph: PedigreeGraph, lay
 	for (const sg of graph.siblingGroups) {
 		const membersOnLayer = sg.members.filter((m) => graph.layers[m] === layer && !assigned.has(m));
 		if (membersOnLayer.length > 1) {
-			const sorted = membersOnLayer.sort((a, b) => a - b);
+			const sorted = membersOnLayer.toSorted((a, b) => a - b);
 			for (const n of sorted) assigned.add(n);
 			blocks.push({ nodes: sorted, barycenter: 0 });
 		}
@@ -614,7 +614,7 @@ function encodePedigreeLayout(graph: PedigreeGraph, ordering: number[][], ped: P
 					return loc?.layer === layer ? loc.col : -1;
 				})
 				.filter((c) => c >= 0)
-				.sort((a, b) => a - b);
+				.toSorted((a, b) => a - b);
 
 			if (childCols.length === 0) continue;
 
@@ -705,7 +705,7 @@ function encodePedigreeLayout(graph: PedigreeGraph, ordering: number[][], ped: P
 					return loc?.layer === layer ? loc.col : -1;
 				})
 				.filter((c) => c >= 0)
-				.sort((a, b) => a - b);
+				.toSorted((a, b) => a - b);
 
 			if (childCols.length < 2) continue;
 
@@ -792,7 +792,7 @@ function encodePedigreeLayout(graph: PedigreeGraph, ordering: number[][], ped: P
 				}
 			}
 
-			const uniqueParentCols = [...new Set(parentCols)].sort((a, b) => a - b);
+			const uniqueParentCols = [...new Set(parentCols)].toSorted((a, b) => a - b);
 			centeringGroups.push({
 				parentCols: uniqueParentCols,
 				children: [...allChildren],

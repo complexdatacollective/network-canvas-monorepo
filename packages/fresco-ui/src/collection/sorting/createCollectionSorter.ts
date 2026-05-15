@@ -256,7 +256,7 @@ const createCollectionSorter = <T extends Item = Item>(
 	}
 
 	return (items: T[]) => {
-		return withoutCreatedIndex(withCreatedIndex(items).sort(chain(...allFns)));
+		return withoutCreatedIndex(withCreatedIndex(items).toSorted(chain(...allFns)));
 	};
 };
 

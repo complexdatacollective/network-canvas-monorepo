@@ -1,7 +1,7 @@
 import { compose } from "react-recompose";
 import { Heading, rowClassName, type SortDirection, withSort } from "./Variables";
 
-type SortDirectionType = typeof SortDirection.ASC | typeof SortDirection.DESC;
+type SortDirectionType = typeof SortDirection.ASC  ;
 
 type VariableListProps = {
 	variables?: string[];

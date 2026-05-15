@@ -117,7 +117,7 @@ export function traverseAndTransform<T>(
 		for (const path of paths) {
 			if (path === "") {
 				// Handle root-level transformation
-				result = fn(result) as T;
+				result = fn(result);
 			} else {
 				const segments = parsePath(path);
 				result = traverseAndApply(result, segments, fn) as T;

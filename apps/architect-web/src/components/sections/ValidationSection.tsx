@@ -45,7 +45,7 @@ const ValidationSection = ({
 	);
 
 	const handleToggleValidation = (nextState: boolean) => {
-		if (nextState === false) {
+		if (!nextState) {
 			dispatch(change(form, "validation", null) as UnknownAction);
 		}
 

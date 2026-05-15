@@ -1,10 +1,10 @@
 /* eslint-disable no-param-reassign,no-restricted-syntax */
 import { type Editor, Element, Node, type NodeEntry, Transforms } from "slate";
 
-interface NormalizeEditor extends Editor {
+type NormalizeEditor = {
 	inline?: boolean;
 	normalizeNode: (entry: NodeEntry) => void;
-}
+} & Editor
 
 /**
  * This extends the editor with a custom normalization

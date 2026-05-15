@@ -138,7 +138,7 @@ class dragManager {
 	};
 
 	detectDragStart = (movement) => {
-		if (this.state.type === "DRAG" && this.state.dragStart === false && movement.distance > 4) {
+		if (this.state.type === "DRAG" && ! this.state.dragStart && movement.distance > 4) {
 			this.state.dragStart = true;
 			this.onDragStart(movement);
 		}
@@ -160,7 +160,7 @@ class dragManager {
 	};
 
 	onMove = (e) => {
-		if (this.state.moveStart === true) {
+		if (this.state.moveStart) {
 			const movement = this.movementFromEvent(e);
 
 			const { x, y, t } = movement;
@@ -171,7 +171,7 @@ class dragManager {
 			// Detect drag start
 			this.detectDragStart(movement);
 
-			if (this.state.dragStart === true) {
+			if (this.state.dragStart) {
 				this.onDragMove(movement);
 			}
 
@@ -189,7 +189,7 @@ class dragManager {
 
 		this.onDragMove.flush();
 
-		if (this.state.dragStart === true) {
+		if (this.state.dragStart) {
 			const movement = this.movementFromEvent(e);
 
 			this.onDragEnd(movement);
@@ -198,7 +198,7 @@ class dragManager {
 		}
 	};
 
-	isDragging = () => this.state.dragStart === true;
+	isDragging = () =>  this.state.dragStart;
 }
 
 export default dragManager;

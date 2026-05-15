@@ -56,7 +56,7 @@ export const maxSelected = (max) => (value) =>
 
 const isMatchingValue = (submittedValue, existingValue) => {
 	if (submittedValue && existingValue && Array.isArray(existingValue)) {
-		return isEqual(submittedValue.sort(), existingValue.sort());
+		return isEqual(submittedValue.toSorted(), existingValue.toSorted());
 	}
 	if (submittedValue && existingValue && existingValue instanceof Object) {
 		return isEqual(submittedValue, existingValue);

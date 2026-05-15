@@ -95,9 +95,7 @@ const withOptions = withProps<OutputProps, InputProps>((props: InputProps) => {
 		(get(props.codebook, variablesRoot() as never, {}) as Record<string, Variable>) ?? {},
 	);
 
-	const variableType = get(props.codebook, [...variablesRoot(), variableId, "type"] as never, null) as string | null as
-		| string
-		| null;
+	const variableType = get(props.codebook, [...variablesRoot(), variableId, "type"] as never, null) as string | null;
 
 	const variableOptions = get(props.codebook, [...variablesRoot(), variableId, "options"] as never, null);
 

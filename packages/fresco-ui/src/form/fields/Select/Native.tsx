@@ -26,7 +26,7 @@ export default function SelectField(props: SelectProps) {
 		onChange?.(selectedValue);
 	};
 
-	const hasValue = isEmpty(value) === false;
+	const hasValue = ! isEmpty(value);
 
 	return (
 		<div

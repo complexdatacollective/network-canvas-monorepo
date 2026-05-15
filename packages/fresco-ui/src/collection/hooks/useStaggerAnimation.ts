@@ -21,7 +21,7 @@ const MAX_STAGGER_DELAY = 0.1;
  * @returns A ref to attach to the animation scope container
  */
 export function useStaggerAnimation(enabled: boolean, itemCount: number, animationKey?: string | number) {
-	const [scope, animate] = useSafeAnimate<HTMLDivElement>();
+	const [scope, animate] = useSafeAnimate();
 	const hasAnimatedRef = useRef(false);
 	const prevAnimationKeyRef = useRef(animationKey);
 

@@ -25,7 +25,7 @@ import processAttributes from "./processAttributes";
  * Function that returns a function that generates <data> elements for a given entity
  */
 export default function getDataElementGenerator(codebook: Codebook, exportOptions: ExportOptions) {
-	return async (entities: NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo): Promise<DocumentFragment> => {
+	return async (entities: NodeWithResequencedID[]   | NcEgo): Promise<DocumentFragment> => {
 		const fragment = createDocumentFragment();
 
 		if (!entities) {
@@ -83,15 +83,15 @@ async function generateDataElementsForEntity(
 	domElement.setAttribute(
 		"id",
 		entityType === "node"
-			? (entity as NodeWithResequencedID)[nodeExportIDProperty].toString()
-			: (entity as EdgeWithResequencedID)[edgeExportIDProperty].toString(),
+			? (entity)[nodeExportIDProperty].toString()
+			: (entity)[edgeExportIDProperty].toString(),
 	);
 
 	// Create data element for entity UUID [networkCanvasUUID]
 	domElement.appendChild(createDataElement({ key: ncUUIDProperty }, entity[entityPrimaryKeyProperty]));
 
 	// Create data element for entity type [networkCanvasType]
-	const type = (entity as NcNode | NcEdge).type;
+	const type = (entity).type;
 	const entityTypeName = codebook[entityType]?.[type]?.name ?? type;
 	domElement.appendChild(createDataElement({ key: ncTypeProperty }, entityTypeName));
 
@@ -100,15 +100,15 @@ async function generateDataElementsForEntity(
 	 */
 	if (entityType === "edge") {
 		// Add source and target properties and map them to the _from and _to attributes
-		domElement.setAttribute("source", (entity as EdgeWithResequencedID)[edgeSourceProperty].toString());
-		domElement.setAttribute("target", (entity as EdgeWithResequencedID)[edgeTargetProperty].toString());
+		domElement.setAttribute("source", (entity)[edgeSourceProperty].toString());
+		domElement.setAttribute("target", (entity)[edgeTargetProperty].toString());
 
 		// Insert the nc UUID versions of 'to' and 'from' under special properties
-		domElement.appendChild(createDataElement({ key: ncSourceUUID }, (entity as EdgeWithResequencedID)[ncSourceUUID]));
+		domElement.appendChild(createDataElement({ key: ncSourceUUID }, (entity)[ncSourceUUID]));
 
-		domElement.appendChild(createDataElement({ key: ncTargetUUID }, (entity as EdgeWithResequencedID)[ncTargetUUID]));
+		domElement.appendChild(createDataElement({ key: ncTargetUUID }, (entity)[ncTargetUUID]));
 	} else {
-		const codebookDefinition = codebook.node?.[(entity as NodeWithResequencedID).type];
+		const codebookDefinition = codebook.node?.[(entity).type];
 		const labelAttribute = getNodeLabelAttribute(codebookDefinition?.variables, entity[entityAttributesProperty]);
 
 		if (labelAttribute) {

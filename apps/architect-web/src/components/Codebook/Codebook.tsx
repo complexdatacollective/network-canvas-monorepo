@@ -18,7 +18,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 	const hasAnyContent = hasEgoVariables || hasNodes || hasEdges;
 
 	return (
-		<div className="my-(--space-xl) space-y-(--space-lg)">
+		<div className="my-(--space-xl) space-y-lg">
 			{!hasAnyContent && (
 				<div className="bg-muted border border-border rounded p-(--space-lg)">
 					<p className="text-muted-foreground text-center">
@@ -36,7 +36,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
 			{hasNodes && (
 				<CodebookCategory title="Node Types">
-					<div className="space-y-(--space-md)">
+					<div className="space-y-md">
 						{nodes.map((node) => (
 							<EntityType
 								key={node.type}
@@ -53,7 +53,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
 			{hasEdges && (
 				<CodebookCategory title="Edge Types">
-					<div className="space-y-(--space-md)">
+					<div className="space-y-md">
 						{edges.map((edge) => (
 							<EntityType
 								key={edge.type}
@@ -70,7 +70,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
 			{hasNetworkAssets && (
 				<CodebookCategory title="Network Assets">
-					<div className="space-y-(--space-sm)">
+					<div className="space-y-sm">
 						{processedNetworkAssets.map((networkAsset) => (
 							<ExternalEntity key={networkAsset.id} id={networkAsset.id} name={networkAsset.name} />
 						))}

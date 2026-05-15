@@ -17,7 +17,7 @@ type UseCollectionSetupOptions = {
 	disabledKeys?: Iterable<Key>;
 	disallowEmptySelection?: boolean;
 	dragAndDropHooks?: CollectionProps<unknown>["dragAndDropHooks"];
-	layout: Layout<unknown>;
+	layout: Layout;
 	collectionId?: string;
 };
 

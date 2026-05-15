@@ -19,10 +19,10 @@ const getPxValue = (cssValue) => {
 	if (!cssValue) {
 		return 0;
 	}
-	if (/%$/.test(cssValue)) {
+	if (cssValue.endsWith('%')) {
 		return 0;
 	}
-	if (/em$/.test(cssValue)) {
+	if (cssValue.endsWith('em')) {
 		return Number.parseFloat(cssValue) * getBaseFontSizePx();
 	}
 	return Number.parseFloat(cssValue);

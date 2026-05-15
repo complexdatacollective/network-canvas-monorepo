@@ -15,7 +15,7 @@ const Link = forwardRef<
 			)}
 			{...props}
 		>
-			<span className="bg-gradient-to-r from-link to-link bg-[length:0%_2px] bg-left-bottom bg-no-repeat pb-[2px] transition-[background-size] duration-200 ease-out group-hover:bg-[length:100%_2px]">
+			<span className="bg-linear-to-r from-link to-link bg-size-[0%_2px] bg-left-bottom bg-no-repeat pb-0.5 transition-[background-size] duration-200 ease-out group-hover:bg-size-[100%_2px]">
 				{props.children}
 			</span>
 		</NextLink>

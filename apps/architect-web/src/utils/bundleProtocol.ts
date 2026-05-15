@@ -87,6 +87,6 @@ export async function downloadProtocolAsNetcanvas(protocol: CurrentProtocol, pro
 		document.body.removeChild(a);
 		URL.revokeObjectURL(url);
 	} catch (error) {
-		throw new Error(`Failed to download protocol: ${error instanceof Error ? error.message : "Unknown error"}`);
+		throw new Error(`Failed to download protocol: ${error instanceof Error ? error.message : "Unknown error"}`, { cause: error });
 	}
 }

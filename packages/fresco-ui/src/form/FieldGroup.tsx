@@ -39,7 +39,7 @@ type FieldGroupProps<T extends readonly string[]> = {
 function FieldGroup<const T extends readonly string[]>({ watch, condition, children }: FieldGroupProps<T>) {
 	const shouldRender = useFieldGroupCondition(watch, condition);
 
-	return <AnimatePresence mode="sync">{shouldRender === true && <>{children}</>}</AnimatePresence>;
+	return <AnimatePresence mode="sync">{shouldRender && <>{children}</>}</AnimatePresence>;
 }
 
 export default FieldGroup;

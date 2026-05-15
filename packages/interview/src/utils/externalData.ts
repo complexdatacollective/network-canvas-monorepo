@@ -134,7 +134,7 @@ const getNodeListUsingTypes = (
 
 				let codebookType = codebookDefinition?.variables?.[attributeKey]?.type;
 
-				if (!Object.values(VariableTypes).includes(codebookType!)) {
+				if (!Object.values(VariableTypes).includes(codebookType)) {
 					codebookType = derivedAttributeTypes[attributeKey] as VariableType;
 				}
 

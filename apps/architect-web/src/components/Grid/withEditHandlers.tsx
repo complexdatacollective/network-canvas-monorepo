@@ -56,7 +56,7 @@ const mapStateToProps = (
 	};
 };
 
-const mapDispatchToProps = (dispatch: Dispatch<UnknownAction>, { form }: OwnProps): DispatchProps => ({
+const mapDispatchToProps = (dispatch: Dispatch, { form }: OwnProps): DispatchProps => ({
 	upsert: (fieldId: string, value: GridItem) => dispatch(change(form, fieldId, value) as UnknownAction),
 });
 

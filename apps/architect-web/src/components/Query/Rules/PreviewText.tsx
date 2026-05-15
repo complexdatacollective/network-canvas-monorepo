@@ -89,7 +89,7 @@ type ValueProps = {
 const Value = ({ value = "" }: ValueProps) => {
 	const formattedValue = formatValue(value);
 	return (
-		<div className="-mb-[3px] mx-(--space-xs) border-b-[3px] border-dotted border-rules-assert font-semibold">
+		<div className="-mb-0.75 mx-(--space-xs) border-b-[3px] border-dotted border-rules-assert font-semibold">
 			{formattedValue}
 		</div>
 	);

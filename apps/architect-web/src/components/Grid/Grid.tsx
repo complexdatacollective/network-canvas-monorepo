@@ -60,7 +60,7 @@ class Grid extends Component<GridProps, GridState> {
 
 	handleDragStop = (layout: Layout[], from: Layout) => {
 		const { fields, items } = this.props;
-		const newOrder = layout.sort((a, b) => a.y - b.y).map(({ i }) => i);
+		const newOrder = layout.toSorted((a, b) => a.y - b.y).map(({ i }) => i);
 		const oldIndex = items.findIndex(({ id }) => id === from.i);
 		const newIndex = newOrder.indexOf(from.i);
 		if (oldIndex === newIndex) {
@@ -121,7 +121,7 @@ class Grid extends Component<GridProps, GridState> {
 		return (
 			<div ref={this.ref}>
 				<GridLayout
-					className="h-[450px] bg-surface-accent rounded-lg"
+					className="h-112.5 bg-surface-accent rounded-lg"
 					layout={getLayout(items, capacity)}
 					cols={1}
 					rowHeight={100}
@@ -150,7 +150,7 @@ class Grid extends Component<GridProps, GridState> {
 					<p
 						className={cx(
 							"flex items-center gap-(--space-sm) bg-error text-primary-foreground rounded p-(--space-sm) mt-(--space-md) overflow-hidden transition-all duration-(--animation-duration-standard) ease-(--animation-easing)",
-							"max-h-[50px] opacity-100",
+							"max-h-12.5 opacity-100",
 							"[&_.icon]:h-(--space-md)!",
 						)}
 					>

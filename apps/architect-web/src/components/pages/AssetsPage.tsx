@@ -22,7 +22,7 @@ const AssetsPage = () => {
 					</>
 				}
 			/>
-			<div className="mx-(--space-5xl) w-full max-w-[80rem]">
+			<div className="mx-(--space-5xl) w-full max-w-7xl">
 				<AssetBrowser sectionLayout="vertical" />
 			</div>
 		</Layout>

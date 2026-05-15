@@ -6,7 +6,7 @@ const initialState = [];
 
 const addProtocol = (state, protocol) =>
 	uniqBy([protocol, ...state], "filePath")
-		.sort((a, b) => b.lastModified - a.lastModified)
+		.toSorted((a, b) => b.lastModified - a.lastModified)
 		.slice(0, 50);
 
 export default function reducer(state = initialState, action = {}) {

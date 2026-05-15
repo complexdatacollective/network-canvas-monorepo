@@ -98,7 +98,7 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
 		>
 			<div className="flex items-center gap-(--space-md) border-b border-sea-serpent-dark/40 px-(--space-md) py-3">
 				<TriangleAlert className="size-4 shrink-0" aria-hidden />
-				<span className="text-sm font-(--font-weight-semibold) uppercase tracking-[0.05em]">Issues ({issueCount})</span>
+				<span className="text-sm font-semibold uppercase tracking-wider">Issues ({issueCount})</span>
 			</div>
 			<ol className="m-0 list-none overflow-y-auto p-0 [counter-reset:issue]">
 				{map(flatIssues, ({ field, issue }) => {

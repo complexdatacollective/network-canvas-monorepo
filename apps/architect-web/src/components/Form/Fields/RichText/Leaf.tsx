@@ -10,9 +10,9 @@ type CustomLeaf = {
 	text: string;
 };
 
-interface LeafProps extends RenderLeafProps {
+type LeafProps = {
 	leaf: CustomLeaf;
-}
+} & RenderLeafProps
 
 const withMarks = (content: ReactNode, leaf: CustomLeaf) => {
 	if (leaf.bold) {

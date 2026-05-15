@@ -18,7 +18,7 @@ type CreateTrackerArgs = {
 export function createTracker({ client, superProperties, distinctId, ownsInstance }: CreateTrackerArgs): Tracker {
 	const merge = (props: EventProps | undefined): EventProps => ({
 		...(ownsInstance ? {} : superProperties),
-		...(props ?? {}),
+		...props,
 		distinct_id: distinctId,
 	});
 

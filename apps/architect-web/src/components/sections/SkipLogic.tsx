@@ -17,7 +17,7 @@ const SkipLogicSection = (_props: StageEditorSectionProps) => {
 	const handleToggleChange = useCallback(
 		async (newState: boolean) => {
 			// When turning skip logic on
-			if (!hasSkipLogic || newState === true) {
+			if (!hasSkipLogic ||  newState) {
 				return true;
 			}
 

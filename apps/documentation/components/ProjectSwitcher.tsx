@@ -31,7 +31,7 @@ const ProjectValue = forwardRef<
 	const t = useTranslations("ProjectSwitcher");
 	return (
 		<div className="flex flex-1 items-center" ref={ref}>
-			<div className={cn("mr-2 flex items-center justify-start", showDescription && "min-w-[75px]")}>
+			<div className={cn("mr-2 flex items-center justify-start", showDescription && "min-w-18.75")}>
 				{getImageForProject(project)}
 			</div>
 			<div className="flex flex-col">
@@ -39,7 +39,7 @@ const ProjectValue = forwardRef<
 					{t(`${project}.label`)}
 				</Heading>
 				{showDescription && (
-					<Paragraph className="max-w-[20rem] max-[450px]:max-w-[12rem] sm:max-w-full" variant="smallText">
+					<Paragraph className="max-w-80 max-[450px]:max-w-48 sm:max-w-full" variant="smallText">
 						{t(`${project}.description`)}
 					</Paragraph>
 				)}
@@ -70,7 +70,7 @@ export default function ProjectSwitcher() {
 			<SelectContent>
 				<SelectGroup>
 					{projects.map((p) => (
-						<SelectItem key={p} value={p} className="sm:w-[25rem]">
+						<SelectItem key={p} value={p} className="sm:w-100">
 							<ProjectValue project={p} showDescription />
 						</SelectItem>
 					))}

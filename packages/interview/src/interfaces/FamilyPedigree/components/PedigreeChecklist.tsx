@@ -202,7 +202,7 @@ export default function PedigreeChecklist({
 
 	const sortedItems = useMemo(
 		() =>
-			[...items].sort((a, b) => {
+			[...items].toSorted((a, b) => {
 				if (a.done !== b.done) return a.done ? 1 : -1;
 				if (a.required !== b.required) return a.required ? -1 : 1;
 				return 0;

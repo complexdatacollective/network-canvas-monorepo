@@ -52,7 +52,7 @@ const EditableList = ({
 			// Map issues to field names
 			scrollToFirstIssue(issues, ref.current);
 		},
-		[ref.current],
+		[],
 	);
 
 	return (

@@ -59,8 +59,7 @@ const ProtocolControlBar = () => {
 					Return to start screen
 				</Button>,
 			]}
-			buttons={[
-				...(protocolIsValid && hasUnsavedChanges
+			buttons={(protocolIsValid && hasUnsavedChanges
 					? [
 							<Button
 								key="save-button"
@@ -81,8 +80,7 @@ const ProtocolControlBar = () => {
 								}
 							/>,
 						]
-					: []),
-			]}
+					: [])}
 		/>
 	);
 };

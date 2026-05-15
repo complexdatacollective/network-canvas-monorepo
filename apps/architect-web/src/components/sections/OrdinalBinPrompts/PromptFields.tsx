@@ -38,7 +38,7 @@ const PromptFields = ({
 	entity,
 	form,
 	type,
-	variable = undefined,
+	variable,
 	variableOptions = [],
 	optionsForVariableDraft = [],
 }: PromptFieldsProps) => {

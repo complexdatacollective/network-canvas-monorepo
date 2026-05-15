@@ -27,7 +27,7 @@ export default function MobileSidebarDialog({ open, setOpen }: MobileSidebarDial
 
 	return (
 		<Sheet open={open} onOpenChange={setOpen}>
-			<SheetContent className="flex h-[100vh] w-full flex-col overflow-y-auto bg-background px-4 py-0" side={"left"}>
+			<SheetContent className="flex h-screen w-full flex-col overflow-y-auto bg-background px-4 py-0" side={"left"}>
 				<div className="sticky top-0 z-10 flex items-center justify-between bg-background">
 					<LogoComponent className="mx-4 my-2 block w-fit" />
 					<Button

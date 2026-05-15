@@ -14,7 +14,7 @@ const SortDirection = {
 	DESC: Symbol("DESC"),
 };
 
-type SortDirectionType = typeof SortDirection.ASC | typeof SortDirection.DESC;
+type SortDirectionType = typeof SortDirection.ASC  ;
 
 const reverseSort = (direction: SortDirectionType) =>
 	direction === SortDirection.ASC ? SortDirection.DESC : SortDirection.ASC;
@@ -34,7 +34,7 @@ const Heading = ({ children, name, sortBy, sortDirection, onSort }: HeadingProps
 	const newSortDirection = !isSorted ? SortDirection.ASC : reverseSort(sortDirection);
 	const sortClasses = cx(
 		"ml-(--space-sm) relative inline-block size-(--space-md)",
-		"after:block after:absolute after:text-xl after:-top-[0.15rem] after:text-action",
+		"after:block after:absolute after:text-xl after:top-[-0.15rem] after:text-action",
 		sortDirection === SortDirection.ASC ? 'after:[content:"\\25BE"]' : 'after:[content:"\\25B4"]',
 	);
 
@@ -194,7 +194,7 @@ const sort = (sortBy: string) => (list: Variable[]) => list.sort(sortByProp(sort
 const reverse =
 	(sortDirection: SortDirectionType = SortDirection.ASC) =>
 	(list: Variable[]) =>
-		sortDirection === SortDirection.DESC ? [...list].reverse() : list;
+		sortDirection === SortDirection.DESC ? [...list].toReversed() : list;
 
 type WithSortProps = {
 	sortBy: string;

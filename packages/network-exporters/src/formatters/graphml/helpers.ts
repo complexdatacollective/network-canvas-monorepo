@@ -37,7 +37,7 @@ export function getCodebookVariablesForEntity(
 }
 
 export function deriveEntityType(
-	entities: NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo | NcNode | NcEdge,
+	entities: NodeWithResequencedID[]   | NcEgo | NcNode | NcEdge,
 ) {
 	if (!Array.isArray(entities)) {
 		return "type" in entities ? (Object.hasOwn(entities, edgeSourceProperty) ? "edge" : "node") : "ego";
@@ -139,7 +139,7 @@ export const sha1 = async (text: string): Promise<string> => {
 type GraphMLKeyType = "boolean" | "int" | "long" | "float" | "double" | "string";
 
 export const getGraphMLTypeForKey = (
-	data: NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo[],
+	data: NodeWithResequencedID[]   | NcEgo[],
 	key: string,
 ): GraphMLKeyType =>
 	data.reduce<GraphMLKeyType | null>((result, value) => {

@@ -301,7 +301,7 @@ describe("SelectionManager", () => {
 				manager.toggleSelection("b");
 
 				expect(setState).toHaveBeenCalled();
-				const newSelection = (setState.mock.calls[0]![0] as SelectionUpdate).selectedKeys;
+				const newSelection = (setState.mock.calls[0][0] as SelectionUpdate).selectedKeys;
 				expect(newSelection).toBeInstanceOf(Selection);
 				expect((newSelection as Selection).has("a")).toBe(true);
 				expect((newSelection as Selection).has("b")).toBe(true);
@@ -318,7 +318,7 @@ describe("SelectionManager", () => {
 
 				manager.toggleSelection("b");
 
-				const newSelection = (setState.mock.calls[0]![0] as SelectionUpdate).selectedKeys;
+				const newSelection = (setState.mock.calls[0][0] as SelectionUpdate).selectedKeys;
 				expect(newSelection).toBeInstanceOf(Selection);
 				expect((newSelection as Selection).has("a")).toBe(true);
 				expect((newSelection as Selection).has("b")).toBe(false);
@@ -349,7 +349,7 @@ describe("SelectionManager", () => {
 
 				manager.toggleSelection("b");
 
-				const newSelection = (setState.mock.calls[0]![0] as SelectionUpdate).selectedKeys;
+				const newSelection = (setState.mock.calls[0][0] as SelectionUpdate).selectedKeys;
 				expect(newSelection).toBeInstanceOf(Selection);
 				expect((newSelection as Selection).has("a")).toBe(false);
 				expect((newSelection as Selection).has("b")).toBe(true);
@@ -394,7 +394,7 @@ describe("SelectionManager", () => {
 
 				manager.replaceSelection("c");
 
-				const newSelection = (setState.mock.calls[0]![0] as SelectionUpdate).selectedKeys;
+				const newSelection = (setState.mock.calls[0][0] as SelectionUpdate).selectedKeys;
 				expect(newSelection).toBeInstanceOf(Selection);
 				expect((newSelection as Selection).size).toBe(1);
 				expect((newSelection as Selection).has("c")).toBe(true);
@@ -411,7 +411,7 @@ describe("SelectionManager", () => {
 
 				manager.replaceSelection("b");
 
-				const newSelection = (setState.mock.calls[0]![0] as SelectionUpdate).selectedKeys;
+				const newSelection = (setState.mock.calls[0][0] as SelectionUpdate).selectedKeys;
 				expect(newSelection).toBeInstanceOf(Selection);
 				expect((newSelection as Selection).size).toBe(0);
 			});
@@ -445,7 +445,7 @@ describe("SelectionManager", () => {
 
 				manager.extendSelection("d");
 
-				const newSelection = (setState.mock.calls[0]![0] as SelectionUpdate).selectedKeys;
+				const newSelection = (setState.mock.calls[0][0] as SelectionUpdate).selectedKeys;
 				expect(newSelection).toBeInstanceOf(Selection);
 				expect((newSelection as Selection).has("b")).toBe(true);
 				expect((newSelection as Selection).has("c")).toBe(true);
@@ -463,7 +463,7 @@ describe("SelectionManager", () => {
 
 				manager.extendSelection("c");
 
-				const newSelection = (setState.mock.calls[0]![0] as SelectionUpdate).selectedKeys;
+				const newSelection = (setState.mock.calls[0][0] as SelectionUpdate).selectedKeys;
 				expect(newSelection).toBeInstanceOf(Selection);
 				expect((newSelection as Selection).size).toBe(1);
 				expect((newSelection as Selection).has("c")).toBe(true);
@@ -482,7 +482,7 @@ describe("SelectionManager", () => {
 
 				manager.extendSelection("d");
 
-				const newSelection = (setState.mock.calls[0]![0] as SelectionUpdate).selectedKeys;
+				const newSelection = (setState.mock.calls[0][0] as SelectionUpdate).selectedKeys;
 				expect(newSelection).toBeInstanceOf(Selection);
 				expect((newSelection as Selection).has("a")).toBe(true);
 				expect((newSelection as Selection).has("b")).toBe(false);
@@ -537,7 +537,7 @@ describe("SelectionManager", () => {
 				manager.clearSelection();
 
 				expect(setState).toHaveBeenCalledWith({ focusedKey: null });
-				const secondCall = setState.mock.calls[1]![0] as SelectionUpdate;
+				const secondCall = setState.mock.calls[1][0] as SelectionUpdate;
 				expect(secondCall.selectedKeys).toBeInstanceOf(Selection);
 				expect((secondCall.selectedKeys as Selection).size).toBe(0);
 			});
@@ -569,7 +569,7 @@ describe("SelectionManager", () => {
 
 				manager.selectRange("b", "d");
 
-				const newSelection = (setState.mock.calls[0]![0] as SelectionUpdate).selectedKeys;
+				const newSelection = (setState.mock.calls[0][0] as SelectionUpdate).selectedKeys;
 				expect(newSelection).toBeInstanceOf(Selection);
 				expect((newSelection as Selection).has("a")).toBe(false);
 				expect((newSelection as Selection).has("b")).toBe(true);

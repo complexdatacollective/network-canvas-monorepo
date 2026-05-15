@@ -85,7 +85,7 @@ const Overview = ({
 				/>
 			</motion.div>
 		</div>
-	));
+	), []);
 
 	const renderSummary = useCallback(() => (
 		<motion.div
@@ -101,7 +101,7 @@ const Overview = ({
 			</div>
 			{renderActionButtons(true)}
 		</motion.div>
-	));
+	), []);
 
 	return (
 		<AnimatePresence>

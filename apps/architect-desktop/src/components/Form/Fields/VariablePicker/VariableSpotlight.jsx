@@ -102,7 +102,7 @@ const VariableSpotlight = (props) => {
 	const hasFilterResults = useMemo(() => sortedAndFilteredItems.length > 0, [sortedAndFilteredItems]);
 
 	const existingVariableNames = useMemo(() =>
-		Object.keys(existingVariables).map((variable) => get(existingVariables[variable], "name")),
+		Object.keys(existingVariables).map((variable) => get(existingVariables[variable], "name")), [],
 	);
 
 	const invalidVariableName = useMemo(() => {

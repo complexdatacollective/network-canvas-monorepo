@@ -46,7 +46,7 @@ const MiniTable = ({ rows = [], wide = false, rotated = false, className }: Mini
 				</thead>
 			)}
 			<tbody>
-				{[...(!rotated ? [...rows.slice(1)] : rows)].map((row, n) => (
+				{[...(!rotated ? rows.slice(1) : rows)].map((row, n) => (
 					// biome-ignore lint/suspicious/noArrayIndexKey: Static table data with no unique identifiers
 					<tr key={`row-${n}`}>
 						{row.map((column, m) => (

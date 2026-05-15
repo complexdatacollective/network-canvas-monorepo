@@ -21,7 +21,7 @@ const StartScreen = ({ activeSessionId, sessions }) => {
 	if (activeSessionId) {
 		const { stageIndex } = sessions[activeSessionId];
 		const pathname = `/session/${activeSessionId}/${stageIndex}`;
-		return <Redirect to={{ pathname: `${pathname}` }} />;
+		return <Redirect to={{ pathname: pathname }} />;
 	}
 
 	return (

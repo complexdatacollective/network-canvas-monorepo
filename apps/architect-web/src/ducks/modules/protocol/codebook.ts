@@ -340,7 +340,7 @@ const getStateWithUpdatedVariable = (
 				...(existingVariable && typeof existingVariable === "object" ? (existingVariable as Partial<Variable>) : {}),
 				...configuration,
 			} as Variable)
-		: (configuration as Variable);
+		: (configuration);
 
 	const existingVariables = get(state, [...entityPath, "variables"]);
 	const newVariables: Record<string, Variable> = {

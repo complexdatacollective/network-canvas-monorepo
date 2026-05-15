@@ -47,7 +47,7 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
 
 	const handleToggleChange = useCallback(
 		async (hasEncryptedVariable: boolean, nodeType: NodeType, newState: boolean) => {
-			if (!hasEncryptedVariable || newState === true) {
+			if (!hasEncryptedVariable ||  newState) {
 				return true;
 			}
 
@@ -124,7 +124,7 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
 						handleToggleChange={(newState) => handleToggleChange(hasEncryptedVariable, nodeType, newState)}
 						summary={<p>Which variables should be encrypted?</p>}
 					>
-						<div className="max-h-[300px] overflow-y-auto">
+						<div className="max-h-75 overflow-y-auto">
 							<DetachedField
 								component={CheckboxGroup as ComponentType<Record<string, unknown>>}
 								options={variableOptions}

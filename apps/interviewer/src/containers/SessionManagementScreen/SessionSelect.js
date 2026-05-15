@@ -19,7 +19,7 @@ const SessionSelect = ({ selectedSessions, setSelectedSessions }) => {
 
 	const handleSessionCardClick = (sessionUUID) => {
 		if (selectedSessions.includes(sessionUUID)) {
-			setSelectedSessions([...selectedSessions.filter((session) => session !== sessionUUID)]);
+			setSelectedSessions(selectedSessions.filter((session) => session !== sessionUUID));
 
 			return;
 		}
@@ -27,7 +27,7 @@ const SessionSelect = ({ selectedSessions, setSelectedSessions }) => {
 		setSelectedSessions((alreadySelected) => [...alreadySelected, sessionUUID]);
 	};
 
-	const formattedSessions = [...Object.keys(sessions)].map((sessionUUID) => {
+	const formattedSessions = Object.keys(sessions).map((sessionUUID) => {
 		const session = sessions[sessionUUID];
 
 		const { caseId, startedAt, updatedAt, finishedAt, exportedAt } = session;

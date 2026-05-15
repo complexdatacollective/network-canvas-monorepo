@@ -42,7 +42,7 @@ export const getNavigableStages = createSelector(getSkipMap, getStageIndex, (ski
 	);
 
 	const previousStage = Object.keys(skipMap)
-		.reverse()
+		.toReversed()
 		.find((stage) => Number.parseInt(stage) < currentStep && skipMap[Number.parseInt(stage)] === false);
 
 	return {

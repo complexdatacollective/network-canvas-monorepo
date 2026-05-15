@@ -10,7 +10,7 @@ type DialogConfig = {
 	[key: string]: unknown;
 };
 
-const openDialog = (dialog: DialogConfig) => (dispatch: Dispatch<UnknownAction>) =>
+const openDialog = (dialog: DialogConfig) => (dispatch: Dispatch) =>
 	new Promise((resolve) => {
 		const onConfirm = () => {
 			if (dialog.onConfirm) {

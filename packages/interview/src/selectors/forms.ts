@@ -64,7 +64,7 @@ const createFieldMetadata = (variables: Record<string, Variable>, fields: FormFi
 		);
 
 		return {
-			...(codebookEntry as CodebookVariableWithComponent),
+			...(codebookEntry),
 			variable,
 			label: prompt,
 			hint,

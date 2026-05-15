@@ -160,7 +160,7 @@ const sort = (sortBy) => (list) => list.sort(sortByProp(sortBy));
 const reverse =
 	(sortDirection = SortDirection.ASC) =>
 	(list) =>
-		sortDirection === SortDirection.DESC ? [...list].reverse() : list;
+		sortDirection === SortDirection.DESC ? [...list].toReversed() : list;
 
 const withSort = compose(
 	withStateHandlers(

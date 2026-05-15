@@ -41,12 +41,12 @@ const useDrag = () => {
 			dy,
 			dx,
 		};
-	});
+	}, []);
 
 	const handleDragStart = useCallback((e, id) => {
 		state.current.id = id;
 		state.current.lastPosition = getCoords(e);
-	});
+	}, []);
 
 	const handleDragMove = useCallback((e) => {
 		if (!state.current.id) {
@@ -54,7 +54,7 @@ const useDrag = () => {
 		}
 		state.current.move = getMove(e);
 		state.current.hasMoved = true;
-	});
+	}, []);
 
 	const handleDragEnd = useCallback(() => {
 		if (!state.current.id) {
@@ -66,7 +66,7 @@ const useDrag = () => {
 		// move = null;
 		// move = getMove(e);
 		// console.log('end', getMove(e));
-	});
+	}, []);
 
 	const getDelta = useCallback(() => {
 		if (!state.current.hasMoved) {
@@ -93,7 +93,7 @@ const useDrag = () => {
 		state.current.hasMoved = false;
 
 		return delta;
-	});
+	}, []);
 
 	return {
 		state,

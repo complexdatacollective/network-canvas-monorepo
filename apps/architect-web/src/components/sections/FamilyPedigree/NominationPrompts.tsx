@@ -24,7 +24,7 @@ const NominationPrompts = ({ form }: StageEditorSectionProps) => {
 
 	const handleToggleChange = useCallback(
 		async (newState: boolean) => {
-			if (!hasNominationPrompts?.length || newState === true) {
+			if (!hasNominationPrompts?.length ||  newState) {
 				return true;
 			}
 

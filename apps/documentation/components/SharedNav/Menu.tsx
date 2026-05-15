@@ -148,13 +148,13 @@ export const NavigationMenuDemo = () => {
 							</Item>
 						);
 					})}
-					<Indicator className="data-[state=visible]:animate-fadeIn data-[state=hidden]:animate-fadeOut top-full z-[1] flex h-[10px] items-end justify-center overflow-hidden transition-[width,transform_250ms_ease]">
-						<div className="relative top-[70%] h-[14px] w-[14px] rotate-[45deg] rounded-tl-[2px] bg-card" />
+					<Indicator className="data-[state=visible]:animate-fadeIn data-[state=hidden]:animate-fadeOut top-full z-1 flex h-2.5 items-end justify-center overflow-hidden transition-[width,transform_250ms_ease]">
+						<div className="relative top-[70%] h-3.5 w-3.5 rotate-45 rounded-tl-[2px] bg-card" />
 					</Indicator>
 				</List>
 
 				<div className="perspective-[2000px] absolute right-0 top-full flex justify-center">
-					<Viewport className="data-[state=open]:animate-scaleIn data-[state=closed]:animate-scaleOut relative mt-[10px] h-[var(--radix-navigation-menu-viewport-height)] w-[calc(100vw-20rem)] origin-[top_center] overflow-hidden rounded-[6px] bg-card shadow-xl transition-[width,_height] duration-300 lg:w-[50rem]" />
+					<Viewport className="data-[state=open]:animate-scaleIn data-[state=closed]:animate-scaleOut relative mt-2.5 h-(--radix-navigation-menu-viewport-height) w-[calc(100vw-20rem)] origin-[top_center] overflow-hidden rounded-[6px] bg-card shadow-xl transition-[width,height] duration-300 lg:w-200" />
 				</div>
 			</div>
 		</Root>

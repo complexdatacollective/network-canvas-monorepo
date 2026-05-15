@@ -34,11 +34,11 @@ const PresetFields = ({
 	form,
 	edgesForSubject = [],
 	entity,
-	groupVariable = undefined,
+	groupVariable,
 	groupVariablesForSubject = [],
 	handleCreateLayoutVariable,
 	highlightVariablesForSubject = [],
-	layoutVariable = undefined,
+	layoutVariable,
 	layoutVariablesForSubject = [],
 	type,
 }: PresetFieldsProps) => {

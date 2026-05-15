@@ -72,7 +72,7 @@ describe("kindepth", () => {
 		];
 		const depth = kindepth(parents, true);
 		expect(depth[2]).toBe(depth[3]);
-		expect(depth[4]!).toBeGreaterThan(depth[2]!);
+		expect(depth[4]).toBeGreaterThan(depth[2]);
 	});
 
 	it("throws on cyclic pedigree", () => {

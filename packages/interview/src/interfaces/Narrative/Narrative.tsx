@@ -172,7 +172,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
 		getCategoricalOptions(state, step, {
 			variableId: convexHullVariable,
 		}),
-	) as VariableOptions;
+	);
 
 	// Highlight attribute
 	const highlightAttribute = showHighlightedNodes ? (highlight[highlightIndex] ?? undefined) : undefined;

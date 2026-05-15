@@ -17,7 +17,7 @@ const TipBox = ({ children, danger = false }: TipBoxProps) => {
 	return (
 		<PopoutBox
 			title={title}
-			iconClassName={cn(type === "info" && "bg-info", type === "warning" && "bg-warning ")}
+			iconClassName={cn(type === "info" && "bg-info", type === "warning" && "bg-warning")}
 			icon={
 				<Image
 					src={type === "info" ? "/images/tip-info.svg" : "/images/tip-caution.svg"}
@@ -30,12 +30,12 @@ const TipBox = ({ children, danger = false }: TipBoxProps) => {
 				type === "info" &&
 					cn(
 						"bg-info/10 [--link:var(--info)]",
-						"![background-color:color-mix(in_oklab,hsl(var(--background))_90%,hsl(var(--info)))]",
+						"!bg-[color-mix(in_oklab,hsl(var(--background))_90%,hsl(var(--info)))]",
 					),
 				type === "warning" &&
 					cn(
 						"bg-warning/10 [--link:var(--warning)]",
-						"![background-color:color-mix(in_oklab,hsl(var(--background))_80%,hsl(var(--warning)))]",
+						"!bg-[color-mix(in_oklab,hsl(var(--background))_80%,hsl(var(--warning)))]",
 					),
 			)}
 		>

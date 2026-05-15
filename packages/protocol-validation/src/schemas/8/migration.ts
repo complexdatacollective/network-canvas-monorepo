@@ -114,7 +114,7 @@ const migrationV7toV8 = createMigration({
 		]);
 
 		// Set name from required dependency
-		const result = transformed as Record<string, unknown>;
+		const result = transformed;
 		result.name = deps.name;
 
 		return result as ProtocolDocument<8>;

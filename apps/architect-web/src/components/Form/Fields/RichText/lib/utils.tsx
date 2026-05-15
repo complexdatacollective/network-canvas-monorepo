@@ -1,15 +1,15 @@
 import { Editor, type Node, type NodeEntry, Range, Transforms } from "slate";
 
-const getContainerBlockAtCursor = (editor: Editor): NodeEntry<Node> | undefined =>
+const getContainerBlockAtCursor = (editor: Editor): NodeEntry | undefined =>
 	Editor.above(editor, {
 		match: (n) => Editor.isBlock(editor, n),
 		mode: "highest",
 	});
 
-const getContainerBlocksAtSelection = (editor: Editor): NodeEntry<Node>[] => {
+const getContainerBlocksAtSelection = (editor: Editor): NodeEntry[] => {
 	const nodes = Editor.nodes(editor);
 
-	const blocks: NodeEntry<Node>[] = [];
+	const blocks: NodeEntry[] = [];
 
 	// eslint-disable-next-line no-restricted-syntax
 	for (const node of nodes) {
@@ -22,7 +22,7 @@ const getContainerBlocksAtSelection = (editor: Editor): NodeEntry<Node>[] => {
 	return blocks;
 };
 
-export const getBlocks = (editor: Editor): NodeEntry<Node>[] => {
+export const getBlocks = (editor: Editor): NodeEntry[] => {
 	const { selection } = editor;
 	const isCollapsed = selection && Range.isCollapsed(selection);
 

@@ -258,10 +258,10 @@ export const States: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 
-		const disabledSegment = canvas.getAllByLabelText(/Digit 1 of 6/)[1]!;
+		const disabledSegment = canvas.getAllByLabelText(/Digit 1 of 6/)[1];
 		await expect(disabledSegment).toBeDisabled();
 
-		const readonlySegment = canvas.getAllByLabelText(/Digit 1 of 6/)[2]!;
+		const readonlySegment = canvas.getAllByLabelText(/Digit 1 of 6/)[2];
 		await expect(readonlySegment).toHaveAttribute("readonly");
 	},
 };

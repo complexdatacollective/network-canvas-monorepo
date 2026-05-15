@@ -41,7 +41,7 @@ export const timelineActions = {
 const createTimelineReducer = <T>(
 	reducer: Reducer<T>,
 	customOptions: TimelineOptions = {},
-): Reducer<TimelineState<T>, UnknownAction> => {
+): Reducer<TimelineState<T>> => {
 	const options = {
 		...defaultOptions,
 		...customOptions,

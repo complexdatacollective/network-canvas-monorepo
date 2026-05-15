@@ -52,8 +52,8 @@ const PromptFields = ({
 	const hasSortOrder = useSelector((state: RootState) => getFormValue(state, "sortOrder"));
 
 	const handleToggleSortOrder = (nextState: boolean) => {
-		if (nextState === false) {
-			dispatch(change(form, "sortOrder", null) as FormAction);
+		if (!nextState) {
+			dispatch(change(form, "sortOrder", null));
 		}
 
 		return true;

@@ -170,7 +170,7 @@ export function useFilterState<T extends Record<string, unknown>>(
 
 				// If query changed, trigger debounced search
 				if ("filterQuery" in updates && updates.filterQuery !== undefined) {
-					void debouncedSearchRef.current?.(updates.filterQuery);
+					 debouncedSearchRef.current?.(updates.filterQuery);
 				}
 			}
 		},
@@ -181,7 +181,7 @@ export function useFilterState<T extends Record<string, unknown>>(
 	useEffect(() => {
 		if (!isFilteringEnabled) return;
 		if (isControlled && isReady) {
-			void debouncedSearchRef.current?.(controlledFilterQuery ?? "");
+			 debouncedSearchRef.current?.(controlledFilterQuery ?? "");
 		}
 	}, [isControlled, controlledFilterQuery, isReady, isFilteringEnabled]);
 
@@ -192,7 +192,7 @@ export function useFilterState<T extends Record<string, unknown>>(
 			const store = storeApi.getState();
 			const currentQuery = store.filterQuery;
 			if (currentQuery) {
-				void debouncedSearchRef.current?.(currentQuery);
+				 debouncedSearchRef.current?.(currentQuery);
 			}
 		}
 	}, [isReady, storeApi, isFilteringEnabled]);

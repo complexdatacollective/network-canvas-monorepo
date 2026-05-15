@@ -28,7 +28,7 @@ const SimpleDialog = ({
 	<Modal open={show} onOpenChange={() => onBlur()}>
 		<div
 			className={cx(
-				"flex max-w-[60rem] flex-col rounded-lg border-l-8 border-l-primary bg-surface-1 text-foreground",
+				"flex max-w-240 flex-col rounded-lg border-l-8 border-l-primary bg-surface-1 text-foreground",
 				className,
 			)}
 			style={style}

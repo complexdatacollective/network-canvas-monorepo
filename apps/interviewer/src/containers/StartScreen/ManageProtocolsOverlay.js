@@ -12,7 +12,7 @@ const ManageProtocolsOverlay = ({ show, onClose }) => {
 	const installedProtocols = useSelector((state) => state.installedProtocols);
 
 	const formattedProtocols = () =>
-		[...Object.keys(installedProtocols)].map((protocolUID) => {
+		Object.keys(installedProtocols).map((protocolUID) => {
 			const { schemaVersion, lastModified, installationDate, name, description } = installedProtocols[protocolUID];
 
 			return {
@@ -53,7 +53,7 @@ const ManageProtocolsOverlay = ({ show, onClose }) => {
 
 	const handleProtocolCardClick = (protocolUUID) => {
 		if (selectedProtocols.includes(protocolUUID)) {
-			setSelectedProtocols([...selectedProtocols.filter((protocol) => protocol !== protocolUUID)]);
+			setSelectedProtocols(selectedProtocols.filter((protocol) => protocol !== protocolUUID));
 
 			return;
 		}

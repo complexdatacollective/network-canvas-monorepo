@@ -7,9 +7,7 @@ import IssueAnchor from "../../IssueAnchor";
 
 const ConnectedQuery = (
 	withFieldConnector as unknown as (c: React.ComponentType) => React.ComponentType<Record<string, unknown>>
-)(withStoreConnector(Query as unknown as React.ComponentType) as unknown as React.ComponentType) as React.ComponentType<
-	Record<string, unknown>
->;
+)(withStoreConnector(Query as unknown as React.ComponentType) as unknown as React.ComponentType);
 
 const SkipLogicFields = () => (
 	<>

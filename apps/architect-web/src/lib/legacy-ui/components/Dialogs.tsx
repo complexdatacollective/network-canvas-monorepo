@@ -145,10 +145,10 @@ const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
 							show
 							title={dialog.title}
 							message={dialog.message}
-							canCancel={(dialog as ConfirmDialog).canCancel}
+							canCancel={(dialog).canCancel}
 							confirmLabel={dialog.confirmLabel}
-							cancelLabel={(dialog as ConfirmDialog).cancelLabel}
-							className={(dialog as ConfirmDialog).className}
+							cancelLabel={(dialog).cancelLabel}
+							className={(dialog).className}
 							onConfirm={onConfirm}
 							onCancel={onCancel}
 						/>
@@ -160,9 +160,9 @@ const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
 							show
 							title={dialog.title}
 							message={dialog.message}
-							canCancel={(dialog as WarningDialog).canCancel}
+							canCancel={(dialog).canCancel}
 							confirmLabel={dialog.confirmLabel}
-							cancelLabel={(dialog as WarningDialog).cancelLabel}
+							cancelLabel={(dialog).cancelLabel}
 							onConfirm={onConfirm}
 							onCancel={onCancel}
 						/>
@@ -172,7 +172,7 @@ const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
 						<Notice
 							key={dialog.id}
 							show
-							title={(dialog as NoticeDialog).title}
+							title={(dialog).title}
 							message={dialog.message}
 							confirmLabel={dialog.confirmLabel}
 							onConfirm={onConfirm}
@@ -185,7 +185,7 @@ const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
 							show
 							title={dialog.title}
 							message={dialog.message}
-							error={(dialog as ErrorDialog).error}
+							error={(dialog).error}
 							confirmLabel={dialog.confirmLabel}
 							onConfirm={onConfirm}
 						/>
@@ -197,7 +197,7 @@ const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
 							show
 							title={dialog.title}
 							message={dialog.message}
-							error={(dialog as UserErrorDialog).error}
+							error={(dialog).error}
 							confirmLabel={dialog.confirmLabel}
 							onConfirm={onConfirm}
 						/>
@@ -207,10 +207,10 @@ const Dialogs = ({ dialogs = [], closeDialog }: DialogsProps) => {
 						<Simple
 							key={dialog.id}
 							show
-							title={(dialog as SimpleDialog).title}
+							title={(dialog).title}
 							message={dialog.message}
-							className={(dialog as SimpleDialog).className}
-							style={(dialog as SimpleDialog).style}
+							className={(dialog).className}
+							style={(dialog).style}
 							onBlur={onCancel}
 						/>
 					);

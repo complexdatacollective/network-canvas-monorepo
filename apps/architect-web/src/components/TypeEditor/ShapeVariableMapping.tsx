@@ -139,7 +139,7 @@ const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) =>
 					<button
 						type="button"
 						className={cx(
-							"relative w-[44px] h-[24px] rounded-full border-0 cursor-pointer",
+							"relative w-11 h-6 rounded-full border-0 cursor-pointer",
 							"transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)",
 							enabled ? "bg-active" : "bg-surface-2",
 						)}
@@ -148,9 +148,9 @@ const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) =>
 					>
 						<span
 							className={cx(
-								"absolute top-[3px] left-[3px] w-[18px] h-[18px] rounded-full bg-white",
+								"absolute top-0.75 left-0.75 w-4.5 h-4.5 rounded-full bg-white",
 								"transition-transform duration-(--animation-duration-standard) ease-(--animation-easing)",
-								enabled && "translate-x-[20px]",
+								enabled && "translate-x-5",
 							)}
 						/>
 					</button>
@@ -219,11 +219,11 @@ const ShapeVariableMapping = ({ form, nodeColor }: ShapeVariableMappingProps) =>
 									<span className="text-sm text-muted-foreground">≥</span>
 									<input
 										type="number"
-										className="w-[70px] bg-surface-2 border border-surface-2 rounded-xs p-(--space-xs) text-center text-foreground"
+										className="w-17.5 bg-surface-2 border border-surface-2 rounded-xs p-(--space-xs) text-center text-foreground"
 										value={threshold.value}
 										onChange={(e) => handleThresholdValueChange(index, Number.parseFloat(e.target.value) || 0)}
 										onBlur={() => {
-											const sorted = [...(dynamic.thresholds ?? [])].sort((a, b) => a.value - b.value);
+											const sorted = [...(dynamic.thresholds ?? [])].toSorted((a, b) => a.value - b.value);
 											dispatch(change(form, "shape.dynamic.thresholds", sorted));
 										}}
 									/>

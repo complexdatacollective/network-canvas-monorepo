@@ -93,7 +93,7 @@ export default function QuickAddField({
 				fieldProps.onChange("");
 				setSubmissionCount((c) => c + 1);
 				setShowErrors(false);
-				void celebrate();
+				 celebrate();
 			} else {
 				setShowErrors(true);
 			}

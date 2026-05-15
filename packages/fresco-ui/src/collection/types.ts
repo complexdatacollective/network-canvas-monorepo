@@ -76,11 +76,11 @@ export type ItemProps = {
 	"data-disabled"?: boolean;
 	"data-dragging"?: boolean;
 	"data-drop-target"?: boolean;
-	onFocus?: React.FocusEventHandler<Element>;
-	onClick?: React.MouseEventHandler<Element>;
-	onKeyDown?: React.KeyboardEventHandler<Element>;
-	onPointerDown?: React.PointerEventHandler<Element>;
-	onPointerMove?: React.PointerEventHandler<Element>;
+	onFocus?: React.FocusEventHandler;
+	onClick?: React.MouseEventHandler;
+	onKeyDown?: React.KeyboardEventHandler;
+	onPointerDown?: React.PointerEventHandler;
+	onPointerMove?: React.PointerEventHandler;
 };
 
 /**

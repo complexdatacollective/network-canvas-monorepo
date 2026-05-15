@@ -14,7 +14,7 @@ const FilterField = (
 	withFieldConnector as unknown as (c: React.ComponentType) => React.ComponentType<Record<string, unknown>>
 )(
 	withStoreConnector(FilterQuery as unknown as React.ComponentType) as unknown as React.ComponentType,
-) as React.ComponentType<Record<string, unknown>>;
+);
 
 type NetworkFilterProps = {
 	form: string;
@@ -28,7 +28,7 @@ type NetworkFilterProps = {
 const NetworkFilter = ({ form, hasFilter, changeField, openDialog, name, variant }: NetworkFilterProps) => {
 	const handleToggleChange = useCallback(
 		async (newStatus: boolean) => {
-			if (newStatus === true) {
+			if (newStatus) {
 				return Promise.resolve(true);
 			}
 

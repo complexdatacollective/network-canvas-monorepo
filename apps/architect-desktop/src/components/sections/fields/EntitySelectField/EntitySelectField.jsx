@@ -53,7 +53,7 @@ const EntitySelectField = (props) => {
 
 	const handleOpenCreateNewType = useCallback(() => {
 		openScreen("type", { entity: entityType });
-	}, [openScreen, encodeURI]);
+	}, [openScreen]);
 
 	const PreviewComponent = useMemo(() => {
 		if (entityType === "edge") {

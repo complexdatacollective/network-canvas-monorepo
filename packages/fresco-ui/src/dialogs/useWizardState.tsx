@@ -120,7 +120,7 @@ export default function useWizardState({
 			const handler = beforeNextRef.current;
 			if (handler) {
 				const result = await handler();
-				if (result === false) return;
+				if (!result) return;
 			}
 		} catch {
 			return;

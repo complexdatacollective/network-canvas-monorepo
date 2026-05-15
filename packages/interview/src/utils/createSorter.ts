@@ -275,7 +275,7 @@ const getSortFunction = (rule: ProcessedSortRule) => {
  */
 const createSorter = <T extends Item = Item>(sortRules: ProcessedSortRule[] = []) => {
 	const sortFunctions = sortRules.map(getSortFunction);
-	return (items: T[]) => withoutCreatedIndex(withCreatedIndex(items).sort(chain(...sortFunctions))) as T[];
+	return (items: T[]) => withoutCreatedIndex(withCreatedIndex(items).toSorted(chain(...sortFunctions))) as T[];
 };
 
 type SortType = "string" | "number" | "date" | "boolean" | "hierarchy" | "categorical";

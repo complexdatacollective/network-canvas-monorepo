@@ -10,8 +10,8 @@ export function optionsMatch(variableOptions: VariableOptions | undefined, locke
 	if (variableOptions.length !== lockedOptions.length) return false;
 
 	// Sort both arrays by value for consistent comparison
-	const sortedVar = [...variableOptions].sort((a, b) => String(a.value).localeCompare(String(b.value)));
-	const sortedLocked = [...lockedOptions].sort((a, b) => String(a.value).localeCompare(String(b.value)));
+	const sortedVar = [...variableOptions].toSorted((a, b) => String(a.value).localeCompare(String(b.value)));
+	const sortedLocked = [...lockedOptions].toSorted((a, b) => String(a.value).localeCompare(String(b.value)));
 
 	return sortedVar.every((opt, i) => opt.value === sortedLocked[i]?.value && opt.label === sortedLocked[i]?.label);
 }

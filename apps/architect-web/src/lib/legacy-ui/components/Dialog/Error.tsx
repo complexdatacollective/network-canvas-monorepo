@@ -41,8 +41,8 @@ const AdditionalInformation = ({ stack }: AdditionalInformationProps) => {
 			</Button>
 			{expanded && (
 				<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-					<div className="mt-(--space-md) max-h-[15rem] select-text overflow-y-auto rounded bg-background">
-						<pre className="w-full whitespace-pre-wrap break-words p-(--space-md)">{stack}</pre>
+					<div className="mt-(--space-md) max-h-60 select-text overflow-y-auto rounded bg-background">
+						<pre className="w-full whitespace-pre-wrap wrap-break-word p-(--space-md)">{stack}</pre>
 					</div>
 				</motion.div>
 			)}

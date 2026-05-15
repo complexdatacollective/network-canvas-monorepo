@@ -38,7 +38,7 @@ const search = (query) => {
 		return INTERFACE_TYPES;
 	}
 	const result = fuse.search(query);
-	return result.sort((a, b) => a.score - b.score).map((item) => item.item);
+	return result.toSorted((a, b) => a.score - b.score).map((item) => item.item);
 };
 
 const NewStageScreen = ({ insertAtIndex, onComplete, experiments }) => {
@@ -177,7 +177,7 @@ const NewStageScreen = ({ insertAtIndex, onComplete, experiments }) => {
 	const handleClearSearchAndFilter = useCallback(() => {
 		setQuery("");
 		setSelectedTags([]);
-	});
+	}, []);
 
 	const hasQuery = query !== "";
 

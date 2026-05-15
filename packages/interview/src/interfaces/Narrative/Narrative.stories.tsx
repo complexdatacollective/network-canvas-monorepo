@@ -424,7 +424,7 @@ const buildManyNodes = () => {
 		si.setNodeAttribute(i, closeVar.id, v);
 	});
 	const catValues = ["family", "work", "school", "neighborhood"] as const;
-	const groupValues = Array.from({ length: 15 }, (_, i) => catValues[i % 4]!);
+	const groupValues = Array.from({ length: 15 }, (_, i) => catValues[i % 4]);
 	groupValues.forEach((v, i) => {
 		si.setNodeAttribute(i, communityVar.id, v);
 	});

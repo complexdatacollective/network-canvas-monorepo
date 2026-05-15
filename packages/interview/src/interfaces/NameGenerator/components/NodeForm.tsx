@@ -75,17 +75,13 @@ const NodeForm = (props: NodeFormProps) => {
 	const previousShowRef = useRef(false);
 	useEffect(() => {
 		if (show && !previousShowRef.current) {
-			track("node_form_opened", {
-				...(selectedNode ? { node_id: selectedNode[entityPrimaryKeyProperty] } : {}),
-			});
+			track("node_form_opened", (selectedNode ? { node_id: selectedNode[entityPrimaryKeyProperty] } : {}));
 		}
 		previousShowRef.current = show;
 	}, [show, selectedNode, track]);
 
 	const handleClose = useCallback(() => {
-		track("node_form_dismissed_without_save", {
-			...(selectedNode ? { node_id: selectedNode[entityPrimaryKeyProperty] } : {}),
-		});
+		track("node_form_dismissed_without_save", (selectedNode ? { node_id: selectedNode[entityPrimaryKeyProperty] } : {}));
 		setShow(false);
 		onClose();
 	}, [onClose, selectedNode, track]);

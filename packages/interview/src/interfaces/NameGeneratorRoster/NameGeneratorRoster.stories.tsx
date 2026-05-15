@@ -247,7 +247,7 @@ export const SortInteraction: Story = {
 				await expect(labels.length).toBeGreaterThan(0);
 
 				// Sort must be ascending alphabetical
-				const sortedCopy = [...labels].sort((a, b) => a.localeCompare(b));
+				const sortedCopy = [...labels].toSorted((a, b) => a.localeCompare(b));
 				await expect(labels).toEqual(sortedCopy);
 
 				// The first label must start with 'A' (otherwise the sort silently
@@ -267,7 +267,7 @@ export const SortInteraction: Story = {
 				});
 				const labels = readSourceLabels(sourceListbox).slice(0, 5);
 				await expect(labels.length).toBeGreaterThan(0);
-				const sortedDescCopy = [...labels].sort((a, b) => b.localeCompare(a));
+				const sortedDescCopy = [...labels].toSorted((a, b) => b.localeCompare(a));
 				await expect(labels).toEqual(sortedDescCopy);
 			},
 			{ timeout: 5000 },

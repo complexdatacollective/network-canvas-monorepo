@@ -219,7 +219,7 @@ export const getEntityProperties = (
 	const variablesWithUsage: Record<string, VariableWithUsage> = {};
 
 	for (const [id, variable] of Object.entries(variables || {})) {
-		const inUse = get(isUsedIndex, id, false) as boolean;
+		const inUse = get(isUsedIndex, id, false);
 
 		const baseProperties: VariableWithUsage = {
 			...variable,
@@ -232,7 +232,7 @@ export const getEntityProperties = (
 			continue;
 		}
 
-		const usage = getUsageAsStageMeta(stageMetaByIndex, variableMeta, getUsage(variableIndex, id)).sort(sortByLabel);
+		const usage = getUsageAsStageMeta(stageMetaByIndex, variableMeta, getUsage(variableIndex, id)).toSorted(sortByLabel);
 
 		const usageString = usage
 			.map(({ label }: UsageMeta) => label)

@@ -9,9 +9,9 @@ import { getSupportedAssetType } from "~/utils/protocols/importAsset";
 type ReaderFunc = (...args: string[]) => Promise<unknown>;
 type ExtensionConfig = Record<string, ReaderFunc>;
 
-interface CodedError extends Error {
+type CodedError = {
 	code?: string;
-}
+} & Error
 
 const withExtensionSwitch =
 	(configuration: ExtensionConfig, fallback: ReaderFunc = () => Promise.resolve()) =>
@@ -21,7 +21,7 @@ const withExtensionSwitch =
 		}
 		const extension = filePathOrUrl.split(".").pop()?.toLowerCase() || "";
 
-		const f = get(configuration, [extension], fallback) as ReaderFunc;
+		const f = get(configuration, [extension], fallback);
 		return f(...rest);
 	};
 

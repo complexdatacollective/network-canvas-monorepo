@@ -61,7 +61,7 @@ const computeButtonClasses = ({
 		"cursor-pointer",
 		"rounded-full",
 		"h-10 px-6 py-2",
-		"tracking-wide font-[500] text-sm",
+		"tracking-wide font-medium text-sm",
 		// Handle image size
 		"[&>svg]:h-full",
 		// Disabled states

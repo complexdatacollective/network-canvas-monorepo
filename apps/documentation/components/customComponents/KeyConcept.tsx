@@ -14,7 +14,7 @@ const KeyConcept = ({ children, title }: KeyConceptProps) => {
 			title={title}
 			className={cn(
 				"bg-accent/10 [--link:var(--accent)]",
-				"![background-color:color-mix(in_oklab,hsl(var(--background))_80%,hsl(var(--accent)))]",
+				"!bg-[color-mix(in_oklab,hsl(var(--background))_80%,hsl(var(--accent)))]",
 			)}
 			iconClassName="bg-white"
 			icon={<Image src="/images/key-concept.svg" width={32} height={32} alt={title} />}

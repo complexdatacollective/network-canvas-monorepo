@@ -32,7 +32,7 @@ class Grid extends Component {
 
 	handleDragStop = (layout, from) => {
 		const { fields, items } = this.props;
-		const newOrder = layout.sort((a, b) => a.y - b.y).map(({ i }) => i);
+		const newOrder = layout.toSorted((a, b) => a.y - b.y).map(({ i }) => i);
 		const oldIndex = items.findIndex(({ id }) => id === from.i);
 		const newIndex = newOrder.indexOf(from.i);
 		if (oldIndex === newIndex) {

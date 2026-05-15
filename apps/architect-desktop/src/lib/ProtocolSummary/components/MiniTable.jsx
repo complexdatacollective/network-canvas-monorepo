@@ -21,7 +21,7 @@ const MiniTable = ({ rows, wide, lite, rotated }) => {
 				</thead>
 			)}
 			<tbody>
-				{[...(!rotated ? [...rows.slice(1)] : rows)].map((row, n) => (
+				{[...(!rotated ? rows.slice(1) : rows)].map((row, n) => (
 					<tr key={n}>
 						{row.map((column, m) => (
 							<td key={m}>{column}</td>

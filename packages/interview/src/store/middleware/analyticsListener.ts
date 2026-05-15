@@ -19,8 +19,8 @@ export function createAnalyticsListenerMiddleware({ tracker }: AnalyticsListener
 	startAppListening({
 		actionCreator: addNode.fulfilled,
 		effect: (action, listenerApi) => {
-			const stateAfter = listenerApi.getState() as RootState;
-			const stateBefore = listenerApi.getOriginalState() as RootState;
+			const stateAfter = listenerApi.getState();
+			const stateBefore = listenerApi.getOriginalState();
 			const before = stateBefore.session.network?.nodes ?? [];
 			const after = stateAfter.session.network?.nodes ?? [];
 			if (after.length <= before.length) return;
@@ -81,7 +81,7 @@ export function createAnalyticsListenerMiddleware({ tracker }: AnalyticsListener
 	startAppListening({
 		actionCreator: setPassphraseInvalid,
 		effect: (action) => {
-			if (action.payload === true) {
+			if (action.payload) {
 				tracker.track("passphrase_validation_failed");
 			}
 		},

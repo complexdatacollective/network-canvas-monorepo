@@ -14,11 +14,11 @@ type QueryProps = {
 
 const Query = ({
 	rules = [],
-	join = undefined,
+	join,
 	codebook,
 	onChange,
 	openDialog,
-	error = undefined,
+	error,
 	meta = {},
 }: QueryProps) => (
 	<Rules

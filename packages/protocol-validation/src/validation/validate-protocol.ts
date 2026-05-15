@@ -16,7 +16,7 @@ const validateProtocol = async (protocol: VersionedProtocol) => {
 	} catch (e) {
 		const error = ensureError(e);
 
-		throw new Error(`Protocol validation failed due to an internal error: ${error.message}`);
+		throw new Error(`Protocol validation failed due to an internal error: ${error.message}`, { cause: e });
 	}
 };
 

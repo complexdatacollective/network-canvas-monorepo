@@ -11,7 +11,7 @@ const WorkInProgress = () => {
 			title={t("title")}
 			className={cn(
 				"bg-success/10 [--link:var(--success)]",
-				"![background-color:color-mix(in_oklab,hsl(var(--background))_80%,hsl(var(--success)))]",
+				"!bg-[color-mix(in_oklab,hsl(var(--background))_80%,hsl(var(--success)))]",
 			)}
 			iconClassName="bg-white"
 			icon={<Image src="/images/work-in-progress.svg" alt={t("title")} width={22} height={22} />}

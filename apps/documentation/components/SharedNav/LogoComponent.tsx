@@ -16,7 +16,7 @@ const LogoComponent = ({ invisible = false, className }: LogoComponentProps) => 
 			className={cn(
 				className,
 				invisible ? "invisible" : "visible",
-				"focusable flex-shrink-0 transition-transform duration-1000",
+				"focusable shrink-0 transition-transform duration-1000",
 			)}
 		>
 			<Image

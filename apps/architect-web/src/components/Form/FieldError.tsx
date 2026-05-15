@@ -13,7 +13,7 @@ const FieldError = ({ error = null, show = false, className }: FieldErrorProps) 
 			"flex max-h-0 items-center bg-error p-0 text-error-foreground opacity-0",
 			"transition-[opacity,max-height] duration-(--animation-duration-standard) ease-(--animation-easing)",
 			"[&_svg]:max-h-(--space-md)",
-			show && "max-h-[50px] p-(--space-xs) opacity-100",
+			show && "max-h-12.5 p-(--space-xs) opacity-100",
 			className,
 		)}
 	>

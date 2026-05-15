@@ -137,7 +137,7 @@ const RichText = ({
 		const withNormalizeEditor = withNormalize(withListEditor);
 		const withVoidsEditor = withVoids(withNormalizeEditor);
 		const withOptionsEditor = withOptions(withVoidsEditor);
-		return withOptionsEditor as CustomEditor;
+		return withOptionsEditor;
 	}, [disallowedTypesWithDefaults.join()]);
 
 	// Test if there is no text content in the tree
@@ -216,7 +216,7 @@ const RichText = ({
 
 	const handleKeyDown = useCallback(
 		(event: React.KeyboardEvent) => {
-			hotkeyOnKeyDown(editor as CustomEditor)(event);
+			hotkeyOnKeyDown(editor)(event);
 			listOnKeyDown(editor as Editor)(event);
 		},
 		[editor],

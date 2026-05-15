@@ -66,7 +66,7 @@ type SimpleVariablePillProps = {
 export const SimpleVariablePill = ({ label, ...props }: SimpleVariablePillProps) => (
 	// eslint-disable-next-line react/jsx-props-no-spreading
 	<BaseVariablePill {...props}>
-		<motion.h4 className="m-0 grow shrink-0 px-(--space-md) py-(--space-sm) [word-break:keep-all] text-input-foreground">
+		<motion.h4 className="m-0 grow shrink-0 px-(--space-md) py-(--space-sm) break-keep text-input-foreground">
 			{label}
 		</motion.h4>
 	</BaseVariablePill>
@@ -224,7 +224,7 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
 				) : (
 					<motion.h4
 						key="label"
-						className="label m-0 grow shrink-0 px-(--space-md) py-(--space-sm) [word-break:keep-all] text-input-foreground"
+						className="label m-0 grow shrink-0 px-(--space-md) py-(--space-sm) break-keep text-input-foreground"
 						initial={{ opacity: 0 }}
 						animate={{ opacity: 1 }}
 						exit={{ opacity: 0 }}

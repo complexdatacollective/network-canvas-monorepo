@@ -39,9 +39,9 @@ const PromptFields = ({
 	form,
 	onCreateOtherVariable,
 	optionsForVariableDraft = [],
-	otherVariable = undefined,
+	otherVariable,
 	type,
-	variable = undefined,
+	variable,
 	variableOptions = [],
 }: PromptFieldsProps) => {
 	const newVariableWindowInitialProps = {
@@ -56,7 +56,7 @@ const PromptFields = ({
 	};
 
 	const handleToggleOtherVariable = (nextState: boolean) => {
-		if (nextState === false) {
+		if (!nextState) {
 			changeForm(form, "otherVariable", null);
 			changeForm(form, "otherVariablePrompt", null);
 			changeForm(form, "otherOptionLabel", null);

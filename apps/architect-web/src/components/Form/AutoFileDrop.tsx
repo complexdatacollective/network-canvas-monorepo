@@ -34,7 +34,7 @@ const autoFileDrop = compose<DropzoneInputProps, BaseProps>(
 	withProps<{ accepts: string[] }, BaseProps>(({ type }) => {
 		// Handle no 'type' required - still enforce only allowing supported file types
 		if (!type || !has(SUPPORTED_EXTENSION_TYPE_MAP, type)) {
-			const values = Object.values(SUPPORTED_EXTENSION_TYPE_MAP) as string[][];
+			const values = Object.values(SUPPORTED_EXTENSION_TYPE_MAP);
 			const consolidatedList: string[] = values.flat();
 			return { accepts: consolidatedList };
 		}

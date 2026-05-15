@@ -176,7 +176,7 @@ describe("protocols", () => {
 
 		it("should select all protocols", () => {
 			const protocolsData = store.getState().protocols;
-			const allProtocols = Object.values(protocolsData).sort((a, b) => b.lastModified - a.lastModified);
+			const allProtocols = Object.values(protocolsData).toSorted((a, b) => b.lastModified - a.lastModified);
 
 			expect(allProtocols).toHaveLength(2);
 			expect(allProtocols[0]?.id).toBe(protocol2Id); // Should be sorted by lastModified desc
@@ -201,7 +201,7 @@ describe("protocols", () => {
 
 		it("should select recent protocols with limit", () => {
 			const protocolsData = store.getState().protocols;
-			const allProtocols = Object.values(protocolsData).sort((a, b) => b.lastModified - a.lastModified);
+			const allProtocols = Object.values(protocolsData).toSorted((a, b) => b.lastModified - a.lastModified);
 			const recentProtocols = allProtocols.slice(0, 1);
 
 			expect(recentProtocols).toHaveLength(1);

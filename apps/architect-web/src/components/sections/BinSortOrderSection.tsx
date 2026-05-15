@@ -31,7 +31,7 @@ const BinSortOrderSection = ({
 	const hasBinSortOrder = useSelector((state: Record<string, unknown>) => getFormValue(state, "binSortOrder"));
 
 	const handleToggleChange = (nextState: boolean) => {
-		if (nextState === false) {
+		if (!nextState) {
 			dispatch(change(form, "binSortOrder", null));
 		}
 

@@ -22,7 +22,7 @@ const processEntityVariables = (
 		if (entity === "ego") {
 			codebookAttribute = codebook.ego?.variables?.[attributeUUID];
 		} else {
-			codebookAttribute = codebook[entity]?.[(entityObject as NcNode | NcEdge).type]?.variables?.[attributeUUID];
+			codebookAttribute = codebook[entity]?.[(entityObject).type]?.variables?.[attributeUUID];
 		}
 
 		const attributeName = codebookAttribute?.name;

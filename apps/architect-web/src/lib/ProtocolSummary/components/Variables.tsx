@@ -45,7 +45,7 @@ const Variables = ({ variables }: VariablesProps) => {
 
 	return (
 		<div className="[&_a]:text-neon-coral">
-			<table className="w-full [&_th]:max-w-[7cm] [&_td]:max-w-[7cm] [&_thead>tr>th]:bg-platinum [&_thead>tr>th]:p-(--space-sm) [&_thead>tr>th]:pe-(--space-md) [&_thead>tr>th]:align-top [&_tbody>tr>td]:p-(--space-sm) [&_tbody>tr>td]:align-top [&_tbody>tr>td]:border-t [&_tbody>tr>td]:border-t-platinum-dark [&_tbody>tr>td:first-of-type]:break-words [&_tbody>tr>td:first-of-type]:hyphens-auto">
+			<table className="w-full [&_th]:max-w-[7cm] [&_td]:max-w-[7cm] [&_thead>tr>th]:bg-platinum [&_thead>tr>th]:p-(--space-sm) [&_thead>tr>th]:pe-(--space-md) [&_thead>tr>th]:align-top [&_tbody>tr>td]:p-(--space-sm) [&_tbody>tr>td]:align-top [&_tbody>tr>td]:border-t [&_tbody>tr>td]:border-t-platinum-dark [&_tbody>tr>td:first-of-type]:wrap-break-word [&_tbody>tr>td:first-of-type]:hyphens-auto">
 				<thead>
 					<tr>
 						<th>Name</th>

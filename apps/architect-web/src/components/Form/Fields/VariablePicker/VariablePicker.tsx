@@ -70,8 +70,8 @@ const VariablePicker = ({
 			return <EditableVariablePill uuid={found?.value ?? ""} />;
 		}
 
-		const selectedLabel = get(found, "label", null) as string | null;
-		const selectedValue = get(found, "value", null) as string | null;
+		const selectedLabel = get(found, "label", null);
+		const selectedValue = get(found, "value", null);
 
 		const finalLabel = selectedLabel || selectedValue || "";
 		const variableType = (found.type ?? "text") as VariableType;

@@ -15,17 +15,17 @@ describe("buildPedigreeGraph", () => {
 
 		expect(graph.nodeCount).toBe(5);
 		expect(graph.partnerGroups).toHaveLength(1);
-		expect(graph.partnerGroups[0]!.members).toEqual([0, 1]);
+		expect(graph.partnerGroups[0].members).toEqual([0, 1]);
 		expect(graph.familyUnits).toHaveLength(1);
-		expect(graph.familyUnits[0]!.children).toEqual([2, 3, 4]);
+		expect(graph.familyUnits[0].children).toEqual([2, 3, 4]);
 		expect(graph.siblingGroups).toHaveLength(1);
-		expect(graph.siblingGroups[0]!.members).toEqual([2, 3, 4]);
+		expect(graph.siblingGroups[0].members).toEqual([2, 3, 4]);
 
 		const uniqueLayers = new Set(graph.layers);
 		expect(uniqueLayers.size).toBe(2);
 
 		expect(graph.layers[0]).toBe(graph.layers[1]);
-		expect(graph.layers[2]).toBeGreaterThan(graph.layers[0]!);
+		expect(graph.layers[2]).toBeGreaterThan(graph.layers[0]);
 	});
 
 	it("three generation pedigree", () => {
@@ -38,15 +38,15 @@ describe("buildPedigreeGraph", () => {
 		expect(uniqueLayers.size).toBe(3);
 
 		expect(graph.layers[0]).toBe(graph.layers[1]);
-		expect(graph.layers[2]).toBeGreaterThan(graph.layers[0]!);
-		expect(graph.layers[4]).toBeGreaterThan(graph.layers[2]!);
+		expect(graph.layers[2]).toBeGreaterThan(graph.layers[0]);
+		expect(graph.layers[4]).toBeGreaterThan(graph.layers[2]);
 	});
 
 	it("surrogacy family: social parents + surrogate as auxiliary", () => {
 		const graph = buildPedigreeGraph(surrogacyFamily);
 
 		expect(graph.partnerGroups).toHaveLength(1);
-		expect(graph.partnerGroups[0]!.members).toEqual([0, 1]);
+		expect(graph.partnerGroups[0].members).toEqual([0, 1]);
 
 		expect(graph.auxiliaryParents.has(3)).toBe(true);
 		expect(graph.auxiliaryParents.get(3)).toEqual([2]);
@@ -63,8 +63,8 @@ describe("buildPedigreeGraph", () => {
 		expect(graph.nodeCount).toBe(2);
 		expect(graph.partnerGroups).toHaveLength(0);
 		expect(graph.familyUnits).toHaveLength(1);
-		expect(graph.familyUnits[0]!.parentGroup.members).toEqual([0]);
-		expect(graph.familyUnits[0]!.children).toEqual([1]);
+		expect(graph.familyUnits[0].parentGroup.members).toEqual([0]);
+		expect(graph.familyUnits[0].children).toEqual([1]);
 
 		const uniqueLayers = new Set(graph.layers);
 		expect(uniqueLayers.size).toBe(2);
@@ -74,7 +74,7 @@ describe("buildPedigreeGraph", () => {
 		const graph = buildPedigreeGraph(multipleMarriages);
 
 		expect(graph.partnerGroups).toHaveLength(2);
-		const groupKeys = graph.partnerGroups.map((g) => g.members.join(",")).sort();
+		const groupKeys = graph.partnerGroups.map((g) => g.members.join(",")).toSorted();
 		expect(groupKeys).toEqual(["0,1", "0,2"]);
 
 		expect(graph.familyUnits).toHaveLength(2);
@@ -110,7 +110,7 @@ describe("minimizeCrossings", () => {
 			for (let i = 0; i < graph.nodeCount; i++) {
 				if (graph.layers[i] === layer) nodes.push(i);
 			}
-			badOrdering.push(nodes.reverse());
+			badOrdering.push(nodes.toReversed());
 		}
 
 		const badCrossings = countCrossings(badOrdering, graph);
@@ -125,14 +125,14 @@ describe("minimizeCrossings", () => {
 		const ordering = minimizeCrossings(graph);
 
 		for (const pg of graph.partnerGroups) {
-			const layer = graph.layers[pg.members[0]!]!;
-			const layerOrdering = ordering[layer]!;
+			const layer = graph.layers[pg.members[0]];
+			const layerOrdering = ordering[layer];
 			const positions = pg.members.map((m) => layerOrdering.indexOf(m));
 			positions.sort((a, b) => a - b);
 
 			// All members must be at consecutive positions
 			for (let i = 1; i < positions.length; i++) {
-				expect(positions[i]! - positions[i - 1]!).toBe(1);
+				expect(positions[i] - positions[i - 1]).toBe(1);
 			}
 		}
 	});
@@ -142,13 +142,13 @@ describe("minimizeCrossings", () => {
 		const ordering = minimizeCrossings(graph);
 
 		for (const sg of graph.siblingGroups) {
-			const layer = graph.layers[sg.members[0]!]!;
-			const layerOrdering = ordering[layer]!;
+			const layer = graph.layers[sg.members[0]];
+			const layerOrdering = ordering[layer];
 			const positions = sg.members.map((m) => layerOrdering.indexOf(m));
 			positions.sort((a, b) => a - b);
 
 			for (let i = 1; i < positions.length; i++) {
-				expect(positions[i]! - positions[i - 1]!).toBe(1);
+				expect(positions[i] - positions[i - 1]).toBe(1);
 			}
 		}
 	});
@@ -163,9 +163,9 @@ describe("minimizeCrossings", () => {
 		// Layer 1: grandparents (0, 1)
 		// Layer 2: parents (2, 3)
 		// Layer 3: child (4)
-		const layer1 = ordering[1]!;
-		const layer2 = ordering[2]!;
-		const layer3 = ordering[3]!;
+		const layer1 = ordering[1];
+		const layer2 = ordering[2];
+		const layer3 = ordering[3];
 
 		expect(new Set(layer1)).toEqual(new Set([0, 1]));
 		expect(new Set(layer2)).toEqual(new Set([2, 3]));
@@ -190,10 +190,10 @@ describe("sugiyamaLayout (output encoding)", () => {
 
 		// Positions strictly increasing within each active layer
 		for (let layer = 0; layer < result.n.length; layer++) {
-			const count = result.n[layer]!;
+			const count = result.n[layer];
 			if (count <= 1) continue;
 			for (let col = 0; col < count - 1; col++) {
-				expect(result.pos[layer]![col + 1]!).toBeGreaterThan(result.pos[layer]![col]!);
+				expect(result.pos[layer][col + 1]).toBeGreaterThan(result.pos[layer][col]);
 			}
 		}
 	});
@@ -204,7 +204,7 @@ describe("sugiyamaLayout (output encoding)", () => {
 		const parentLevIdx = result.n.findIndex((v) => v > 0);
 		const childLevIdx = result.n.findIndex((v, i) => v > 0 && i > parentLevIdx);
 
-		const childFams = result.fam[childLevIdx]!.slice(0, result.n[childLevIdx]);
+		const childFams = result.fam[childLevIdx].slice(0, result.n[childLevIdx]);
 		for (const f of childFams) {
 			expect(f).toBeGreaterThan(0);
 		}
@@ -226,7 +226,7 @@ describe("sugiyamaLayout (output encoding)", () => {
 
 		const loc3 = findNodeLocation(result, 3);
 		expect(loc3).not.toBeNull();
-		expect(result.groupMember[loc3!.layer]![loc3!.col]).toBe(true);
+		expect(result.groupMember[loc3!.layer][loc3!.col]).toBe(true);
 	});
 
 	it("twins detection produces non-null twins with MZ code", () => {
@@ -244,8 +244,8 @@ function findNodeLocation(
 	node: number,
 ): { layer: number; col: number } | null {
 	for (let layer = 0; layer < layout.n.length; layer++) {
-		for (let col = 0; col < layout.n[layer]!; col++) {
-			if (layout.nid[layer]![col] === node) {
+		for (let col = 0; col < layout.n[layer]; col++) {
+			if (layout.nid[layer][col] === node) {
 				return { layer, col };
 			}
 		}

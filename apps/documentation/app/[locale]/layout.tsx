@@ -62,7 +62,7 @@ export default async function MainLayout(props: MainLayoutProps) {
 
 	return (
 		<html lang={locale} suppressHydrationWarning className="font-sans antialiased">
-			<body className="flex min-h-[100dvh] flex-col text-base">
+			<body className="flex min-h-dvh flex-col text-base">
 				<PostHogClientProvider>
 					<ThemeProvider enableSystem enableColorScheme attribute="class" storageKey="nc-docs-site">
 						<NextIntlClientProvider timeZone={timeZone} now={now} locale={locale} messages={messages.default}>

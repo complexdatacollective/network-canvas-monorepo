@@ -27,7 +27,7 @@ const cardVariants = cva({
 			condensed: "h-(--space-4xl) flex-row",
 		},
 		clickable: {
-			true: "cursor-pointer transition-all duration-(--animation-duration-fast) ease-(--animation-easing) hover:-translate-y-[2px] hover:shadow-[0_4px_8px_rgba(0,0,0,0.1)]",
+			true: "cursor-pointer transition-all duration-(--animation-duration-fast) ease-(--animation-easing) hover:-translate-y-0.5 hover:shadow-[0_4px_8px_rgba(0,0,0,0.1)]",
 			false: "",
 		},
 		selected: {
@@ -48,7 +48,7 @@ const cardVariants = cva({
 });
 
 const iconSectionVariants = cva({
-	base: "icon-section flex flex-shrink-0 flex-row items-center justify-center bg-slate-blue-dark text-[#aab0fd] min-h-0",
+	base: "icon-section flex shrink-0 flex-row items-center justify-center bg-slate-blue-dark text-[#aab0fd] min-h-0",
 	variants: {
 		condensed: {
 			true: "flex-[0_0_var(--space-3xl)] p-0 [&_.protocol-icon]:size-(--space-lg)",
@@ -147,7 +147,7 @@ const ProtocolCard = ({
 		}
 
 		return (
-			<div className="protocol-description flex-1 overflow-y-auto pt-(--space-md) text-sm [-webkit-overflow-scrolling:touch] [scroll-behavior:smooth]">
+			<div className="protocol-description flex-1 overflow-y-auto pt-(--space-md) text-sm [-webkit-overflow-scrolling:touch] scroll-smooth">
 				{description}
 			</div>
 		);

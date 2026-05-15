@@ -17,7 +17,7 @@ const FilterField = (
 	withFieldConnector as unknown as (c: React.ComponentType) => React.ComponentType<Record<string, unknown>>
 )(
 	withStoreConnector(FilterQuery as unknown as React.ComponentType) as unknown as React.ComponentType,
-) as React.ComponentType<Record<string, unknown>>;
+);
 
 export const handleFilterDeactivate = async (openDialogFn: () => Promise<boolean>) => {
 	const result = await openDialogFn();
@@ -62,7 +62,7 @@ const Filter = () => {
 
 	const handleToggleChange = useCallback(
 		async (newState: boolean) => {
-			if (!currentValue || newState === true) {
+			if (!currentValue ||  newState) {
 				return true;
 			}
 

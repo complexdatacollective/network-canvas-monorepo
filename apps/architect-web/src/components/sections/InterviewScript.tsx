@@ -17,7 +17,7 @@ const InterviewerScript = (_props: StageEditorSectionProps) => {
 
 	const handleToggleChange = useCallback(
 		async (newState: boolean) => {
-			if (!currentValue || newState === true) {
+			if (!currentValue ||  newState) {
 				return true;
 			}
 

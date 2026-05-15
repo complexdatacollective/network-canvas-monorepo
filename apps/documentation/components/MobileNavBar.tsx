@@ -20,7 +20,7 @@ const MobileNavBar = () => {
 			<DocSearchComponent />
 			{open ? (
 				<Button onClick={() => setOpen(false)} variant="ghost" size="icon-large" className="shrink-0">
-					<CloseMenu className="h-8 w-8  transition-transform duration-300" />
+					<CloseMenu className="h-8 w-8 transition-transform duration-300" />
 				</Button>
 			) : (
 				<Button

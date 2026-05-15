@@ -199,7 +199,7 @@ const SidebarLink = ({
 			ref={ref}
 			href={href}
 			className={cn(
-				"focusable flex flex-1 border-l-[2px] border-foreground/5 py-2 pl-4 text-sm transition-colors",
+				"focusable flex flex-1 border-l-2 border-foreground/5 py-2 pl-4 text-sm transition-colors",
 				"hover:border-accent/100 hover:text-accent",
 				isActive && "border-accent/100 font-semibold text-accent",
 			)}

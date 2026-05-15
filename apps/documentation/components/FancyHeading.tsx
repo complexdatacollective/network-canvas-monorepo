@@ -28,7 +28,7 @@ const FancyHeading = (props: HeadingProps) => {
 			<span
 				// biome-ignore lint/suspicious/noArrayIndexKey: word index won't change
 				key={`${outerIndex}-${innerIndex}`}
-				className="relative -top-[0.75em] -mb-[1em] inline-block overflow-hidden"
+				className="relative top-[-0.75em] mb-[-1em] inline-block overflow-hidden"
 			>
 				<motion.span
 					custom={outerIndex + innerIndex}

@@ -398,7 +398,7 @@ describe("egoCellTransform", () => {
 
 		const child0Edges = batch.edges.filter((e) => e.target === "child-0");
 		expect(child0Edges).toHaveLength(2);
-		expect(child0Edges.map((e) => e.source).sort()).toEqual(["ego", "partner"].sort());
+		expect(child0Edges.map((e) => e.source).toSorted()).toEqual(["ego", "partner"].toSorted());
 
 		const child1Edges = batch.edges.filter((e) => e.target === "child-1");
 		expect(child1Edges).toHaveLength(2);

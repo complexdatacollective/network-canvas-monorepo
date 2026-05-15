@@ -53,7 +53,7 @@ const dropzoneVariants = cva({
 });
 
 const labelVariants = cva({
-	base: "relative z-[2] text-white transition-opacity duration-(--animation-duration-standard) ease-(--animation-easing)",
+	base: "relative z-2 text-white transition-opacity duration-(--animation-duration-standard) ease-(--animation-easing)",
 	variants: {
 		state: {
 			idle: "opacity-100",
@@ -198,7 +198,7 @@ const Dropzone = ({ onDrop, className, accepts = [], disabled = false }: Dropzon
 				<input {...getInputProps()} />
 				<div
 					className={cx(
-						"absolute inset-0 z-[1] bg-transparent transition-[background-color] duration-(--animation-duration-fast) ease-(--animation-easing)",
+						"absolute inset-0 z-1 bg-transparent transition-[background-color] duration-(--animation-duration-fast) ease-(--animation-easing)",
 					)}
 				/>
 				<div className={labelVariants({ state: dropzoneState })}>

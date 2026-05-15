@@ -35,8 +35,7 @@ function reducer(state = initialState, action = {}) {
 		case ADD_TOAST:
 			return [...state, { ...action.toast }];
 		case UPDATE_TOAST: {
-			return [
-				...state.map((toast) => {
+			return state.map((toast) => {
 					if (toast.id !== action.id) {
 						return toast;
 					}
@@ -44,11 +43,10 @@ function reducer(state = initialState, action = {}) {
 						...toast,
 						...action.toast,
 					};
-				}),
-			];
+				});
 		}
 		case REMOVE_TOAST:
-			return [...state.filter((toast) => toast.id !== action.id)];
+			return state.filter((toast) => toast.id !== action.id);
 		default:
 			return state;
 	}

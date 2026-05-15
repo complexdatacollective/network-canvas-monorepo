@@ -246,7 +246,7 @@ export class InterviewFixture {
 				`Body content (truncated): ${bodyText?.slice(0, 500) ?? "empty"}`,
 			].join("\n");
 
-			throw new Error(`${diagnostics}\n\nOriginal error: ${String(error)}`);
+			throw new Error(`${diagnostics}\n\nOriginal error: ${String(error)}`, { cause: error });
 		}
 	}
 }

@@ -180,7 +180,7 @@ export default function DyadCensus(props: DyadCensusProps) {
 		setIsChanged(hasEdge !== value);
 		setIsTouched(true);
 
-		if (value === true) {
+		if (value) {
 			void dispatch(addEdge({ from: pair[0], to: pair[1], type: createEdge, currentStep }));
 
 			if (isDyadCensusMetadata(stageMetadata)) {

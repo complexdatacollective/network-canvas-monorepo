@@ -25,7 +25,7 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
 	const hasSearchOptions = useSelector((state: RootState) => getFormValue(state, "searchOptions"));
 
 	const handleToggleSearchOptions = (nextState: boolean) => {
-		if (nextState === false) {
+		if (!nextState) {
 			dispatch(change("edit-stage", "searchOptions", null) as UnknownAction);
 		}
 

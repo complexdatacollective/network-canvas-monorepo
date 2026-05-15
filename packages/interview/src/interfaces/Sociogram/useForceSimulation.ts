@@ -72,7 +72,7 @@ export function useForceSimulation({
 		() =>
 			nodes
 				.map((n) => n[entityPrimaryKeyProperty])
-				.sort()
+				.toSorted()
 				.join(","),
 		[nodes],
 	);
@@ -81,7 +81,7 @@ export function useForceSimulation({
 		() =>
 			edges
 				.map((e) => `${e.from}-${e.to}`)
-				.sort()
+				.toSorted()
 				.join(","),
 		[edges],
 	);

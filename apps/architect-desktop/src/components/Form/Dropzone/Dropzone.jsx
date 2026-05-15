@@ -124,7 +124,7 @@ const Dropzone = ({ onDrop, className, accepts, disabled }) => {
 
 	const handleDragLeave = useCallback(() => {
 		setState((previousState) => ({ ...previousState, isHover: false }));
-	});
+	}, []);
 
 	const handleDragEnter = useCallback(() => {
 		if (isDisabled) {

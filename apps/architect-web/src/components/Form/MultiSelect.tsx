@@ -70,7 +70,7 @@ const mapStateToItemProps = (
 	form,
 });
 
-const mapDispatchToItemProps = (dispatch: Dispatch<UnknownAction>, { meta: { form } }: ItemOwnProps) => ({
+const mapDispatchToItemProps = (dispatch: Dispatch, { meta: { form } }: ItemOwnProps) => ({
 	openDialog: bindActionCreators(dialogsActions.openDialog, dispatch),
 	resetField: (fieldName: string) => dispatch(change(form, fieldName, null) as UnknownAction),
 });
@@ -220,7 +220,7 @@ const ItemsComponent: React.FC<ItemsComponentProps> = ({ fields, maxItems = null
 	const hasSpace = maxItems === null || fields.length < (maxItems ?? 0);
 	const showAdd = hasSpace;
 
-	const items = (fields.getAll() as ItemValue[]) || [];
+	const items = (fields.getAll()) || [];
 
 	// Track stable wrapper objects - Reorder.Group needs stable references to track items
 	// Pattern from Options.tsx

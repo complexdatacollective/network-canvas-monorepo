@@ -259,7 +259,7 @@ export const DragFromPanelToMainList: Story = {
 		await expect(mainNodesBefore).toBe(0);
 
 		// Focus the first panel node and initiate a keyboard drag.
-		const firstPanelNode = within(panel).getAllByRole("option")[0]!;
+		const firstPanelNode = within(panel).getAllByRole("option")[0];
 		firstPanelNode.focus();
 
 		// Ctrl+D starts keyboard drag mode.
@@ -320,7 +320,7 @@ export const ExistingPanelRoundTrip: Story = {
 		await expect(within(mainList).queryAllByRole("option").length).toBe(0);
 
 		// Forward: panel → main list.
-		within(panel).getAllByRole("option")[0]!.focus();
+		within(panel).getAllByRole("option")[0].focus();
 		await userEvent.keyboard("{Control>}d{/Control}");
 		await userEvent.keyboard("{ArrowRight}");
 		await userEvent.keyboard("{Enter}");
@@ -338,7 +338,7 @@ export const ExistingPanelRoundTrip: Story = {
 		// delegate cycles them in registration order, which isn't guaranteed,
 		// so cycle arrow keys until the live region announces the panel before
 		// pressing Enter.
-		within(mainList).getAllByRole("option")[0]!.focus();
+		within(mainList).getAllByRole("option")[0].focus();
 		await userEvent.keyboard("{Control>}d{/Control}");
 
 		const panelTitle = "Panel 1";
@@ -495,7 +495,7 @@ export const DragFromExternalDataPanel: Story = {
 
 		// Drag from panel → main list via keyboard.
 		// Focus the first panel node and use Ctrl+D to start keyboard drag.
-		within(getPanel()).getAllByRole("option")[0]!.focus();
+		within(getPanel()).getAllByRole("option")[0].focus();
 		await userEvent.keyboard("{Control>}d{/Control}");
 		await userEvent.keyboard("{ArrowRight}");
 		await userEvent.keyboard("{Enter}");

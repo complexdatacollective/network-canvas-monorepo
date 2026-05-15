@@ -119,7 +119,7 @@ export class MigrationChain {
 	): ProtocolDocument<To> {
 		const fromVersion = document.schemaVersion;
 
-		if ((fromVersion as SchemaVersion) === (targetVersion as SchemaVersion)) {
+		if ((fromVersion as SchemaVersion) === (targetVersion)) {
 			return document as unknown as ProtocolDocument<To>;
 		}
 
@@ -144,10 +144,10 @@ export class MigrationChain {
 			}
 
 			current = this.executeStep(
-				current as ProtocolDocument<SchemaVersion>,
+				current,
 				migration,
 				dependencies,
-			) as ProtocolDocument<SchemaVersion>;
+			);
 			currentVersion = migration.to;
 		}
 

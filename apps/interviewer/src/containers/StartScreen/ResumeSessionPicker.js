@@ -19,7 +19,7 @@ const ResumeSessionPicker = ({ show, onClose }) => {
 		onClose();
 	};
 
-	const formattedSessions = [...Object.keys(sessions)].map((sessionUUID) => {
+	const formattedSessions = Object.keys(sessions).map((sessionUUID) => {
 		const session = sessions[sessionUUID];
 		const protocol = get(installedProtocols, [session.protocolUID]);
 

@@ -33,7 +33,7 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
 	);
 
 	const handleToggleSortOptions = (nextState: boolean) => {
-		if (nextState === false) {
+		if (!nextState) {
 			dispatch(change("edit-stage", "sortOptions", null) as unknown as FormAction);
 		}
 

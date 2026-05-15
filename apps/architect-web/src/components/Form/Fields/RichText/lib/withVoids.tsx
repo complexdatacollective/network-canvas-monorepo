@@ -4,9 +4,9 @@ import type { Editor, Element } from "slate";
 
 const VOID_TYPES = ["thematic_break"];
 
-interface VoidEditor extends Editor {
+type VoidEditor = {
 	isVoid: (element: Element) => boolean;
-}
+} & Editor
 
 const withVoids = (editor: VoidEditor): VoidEditor => {
 	const { isVoid } = editor;

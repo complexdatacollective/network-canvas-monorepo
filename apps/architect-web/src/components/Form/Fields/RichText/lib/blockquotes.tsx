@@ -3,12 +3,12 @@
 import { type Descendant, type Editor, Element, Node, type NodeEntry, type Path, Transforms } from "slate";
 import { getBlocks } from "./utils";
 
-interface BlockNode extends Element {
+type BlockNode = {
 	type: string;
 	children: Descendant[];
-}
+} & Element
 
-const toggleBlock = (editor: Editor, block: NodeEntry<Node>): void => {
+const toggleBlock = (editor: Editor, block: NodeEntry): void => {
 	const [node, path] = block;
 	if (!Element.isElement(node)) {
 		return;
@@ -51,7 +51,7 @@ export const toggleBlockquote = (editor: Editor): void => {
 		toggleBlock(editor, block);
 	});
 
-	const reversedPaths = blocks.reduce((acc: Path[], [, path]: NodeEntry<Node>) => {
+	const reversedPaths = blocks.reduce((acc: Path[], [, path]: NodeEntry) => {
 		acc.unshift(path);
 		return acc;
 	}, []);

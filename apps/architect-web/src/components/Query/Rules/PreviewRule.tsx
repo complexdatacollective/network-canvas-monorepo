@@ -30,7 +30,7 @@ const PreviewRule = ({ type, options, join = null, onClick, handleDelete }: Prev
 				onClick={onClick}
 				aria-label="Edit rule"
 			>
-				<div className="flex w-full flex-1 items-center text-surface-1-foreground group-hover:text-primary-foreground [&>*]:mx-(--space-sm) [&>*]:max-w-[24rem] [&_.variable-pill]:[zoom:0.8]">
+				<div className="flex w-full flex-1 items-center text-surface-1-foreground group-hover:text-primary-foreground *:mx-(--space-sm) *:max-w-[24rem] [&_.variable-pill]:zoom-[0.8]">
 					<RuleText type={type} options={options} />
 				</div>
 				<button

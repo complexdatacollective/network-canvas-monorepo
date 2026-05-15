@@ -33,7 +33,7 @@ type ExactReturn<T, Expected> = [CanCheckExcess<Expected>] extends [true]
 
 declare module "zod" {
 	// biome-ignore lint/style/useConsistentTypeDefinitions: needs to extend interface
-	interface ZodType {
+	type ZodType = {
 		generateMock(): z.output<this>;
 		generateMock<T extends z.output<this>>(generator: (data: z.output<this>) => ExactReturn<T, z.output<this>>): this;
 		generateMock<T extends z.output<this>>(generator: () => ExactReturn<T, z.output<this>>): this;
@@ -135,7 +135,7 @@ function generateMockData<S extends z.ZodType>(schema: S, applyTopLevelTransform
 
 			if (arrayDef.checks) {
 				for (const check of arrayDef.checks) {
-					const checkDef = (check as core.$ZodCheck)._zod.def;
+					const checkDef = (check)._zod.def;
 					if (checkDef.check === "min_length" && "minimum" in checkDef) {
 						minLength = checkDef.minimum as number;
 					} else if (checkDef.check === "max_length" && "maximum" in checkDef) {

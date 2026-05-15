@@ -246,7 +246,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
 								error: calculateMeta.error ?? undefined,
 							}}
 						/>
-						<div className="flex items-center justify-end [&_button]:min-w-[10rem] [&_button]:mr-(--space-sm) [&_button:last-of-type]:mr-0">
+						<div className="flex items-center justify-end [&_button]:min-w-40 [&_button]:mr-(--space-sm) [&_button:last-of-type]:mr-0">
 							<Button color="platinum" onClick={() => setShowCreateOptionForm(false)}>
 								Cancel
 							</Button>

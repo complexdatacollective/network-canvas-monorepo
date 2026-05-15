@@ -103,8 +103,8 @@ function CollectionItemComponent<T>({ node, renderItem, dragAndDropHooks, layout
 		onFocus: itemProps.onFocus,
 		onClick: itemProps.onClick,
 		onKeyDown: composedOnKeyDown,
-		onPointerDown: dndDragProps.onPointerDown as React.PointerEventHandler<Element> | undefined,
-		onPointerMove: dndDragProps.onPointerMove as React.PointerEventHandler<Element> | undefined,
+		onPointerDown: dndDragProps.onPointerDown as React.PointerEventHandler | undefined,
+		onPointerMove: dndDragProps.onPointerMove as React.PointerEventHandler | undefined,
 		id: itemId,
 		...dndDragProps,
 	};
