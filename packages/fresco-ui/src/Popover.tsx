@@ -109,8 +109,8 @@ function PopoverTrigger({ children, asChild, nativeButton, ...props }: PopoverTr
 			},
 		) {
 			return cloneElement(children, {
-				...children.props,
 				...triggerProps,
+				...children.props,
 			} as Parameters<typeof cloneElement>[1]);
 		};
 

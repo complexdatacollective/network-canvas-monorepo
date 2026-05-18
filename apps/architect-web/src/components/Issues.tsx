@@ -69,10 +69,9 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
 
 	if (!hasIssues || !submitFailed) return null;
 
-	const handleClickIssue = (e: React.MouseEvent) => {
+	const handleClickIssue = (e: React.MouseEvent<HTMLAnchorElement>) => {
 		e.preventDefault();
-		const target = e.target as HTMLElement;
-		const link = target.closest("a")?.getAttribute("href");
+		const link = e.currentTarget.getAttribute("href");
 		if (link) {
 			const destination = document.querySelector(link);
 			if (destination instanceof HTMLElement) {

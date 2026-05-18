@@ -1,6 +1,19 @@
 import { Popover as BasePopover } from "@base-ui/react/popover";
-import { type ComponentProps, cloneElement, isValidElement, type ReactNode } from "react";
+import { composeEventHandlers } from "@codaco/fresco-ui/utils/composeEventHandlers";
+import { type ComponentProps, cloneElement, isValidElement, type ReactNode, type Ref } from "react";
 import { cx } from "~/utils/cva";
+
+function mergeRefs<T>(...refs: Array<Ref<T> | undefined>) {
+	return (value: T | null) => {
+		for (const ref of refs) {
+			if (typeof ref === "function") {
+				ref(value);
+			} else if (ref != null) {
+				(ref as { current: T | null }).current = value;
+			}
+		}
+	};
+}
 
 export const Popover = BasePopover.Root;
 
@@ -27,10 +40,27 @@ export function PopoverTrigger({ children, asChild, nativeButton, ...props }: Po
 		const renderTriggerFn = function renderTrigger(
 			triggerProps: React.HTMLAttributes<Element> & { ref?: React.Ref<Element> },
 		) {
-			return cloneElement(children, {
-				...children.props,
-				...triggerProps,
-			} as Parameters<typeof cloneElement>[1]);
+			const childProps = children.props as Record<string, unknown>;
+			const incoming = triggerProps as unknown as Record<string, unknown>;
+			const merged: Record<string, unknown> = { ...childProps, ...incoming };
+
+			for (const key of Object.keys(incoming)) {
+				const internal = incoming[key];
+				const external = childProps[key];
+				if (typeof internal === "function" && typeof external === "function") {
+					merged[key] = composeEventHandlers(
+						internal as (event: unknown) => void,
+						external as (event: unknown) => void,
+					);
+				}
+			}
+
+			const childRef = childProps.ref as Ref<Element> | undefined;
+			if (childRef || triggerProps.ref) {
+				merged.ref = mergeRefs<Element>(triggerProps.ref, childRef);
+			}
+
+			return cloneElement(children, merged as Parameters<typeof cloneElement>[1]);
 		};
 
 		return (

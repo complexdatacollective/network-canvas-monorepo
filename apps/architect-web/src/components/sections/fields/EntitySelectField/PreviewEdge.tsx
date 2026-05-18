@@ -12,7 +12,7 @@ type PreviewEdgeProps = {
 
 const PreviewEdge = ({ label, color, onClick = null, selected = false, surface = 1 }: PreviewEdgeProps) => {
 	const wrapperStyle = {
-		"--edge-color": `var(--${color})`,
+		"--edge-color": `hsl(var(--${color}))`,
 		"--icon-tone-primary": `hsl(var(--${color}-dark))`,
 		"--icon-tone-secondary": `hsl(var(--${color}))`,
 	} as CSSProperties;

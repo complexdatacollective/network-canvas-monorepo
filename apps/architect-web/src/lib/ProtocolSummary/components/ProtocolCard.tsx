@@ -7,7 +7,12 @@ type ProtocolCardProps = {
 	schemaVersion: number;
 };
 
-const formatDate = (timeString: string | null) => timeString && new Date(timeString).toLocaleString(undefined);
+const formatDate = (timeString: string | null) => {
+	if (!timeString) return null;
+	const date = new Date(timeString);
+	if (Number.isNaN(date.getTime())) return null;
+	return date.toLocaleString(undefined);
+};
 
 const ProtocolCard = ({ name, description = null, lastModified, schemaVersion }: ProtocolCardProps) => (
 	<div className="relative flex min-h-(--space-6xl) max-w-[12cm] flex-col-reverse overflow-hidden rounded bg-platinum text-navy-taupe [zoom:120%]">

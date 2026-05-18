@@ -1,5 +1,6 @@
 import { Select as BaseSelect } from "@base-ui/react/select";
 import { Check, ChevronDown } from "lucide-react";
+import { useEffect, useId, useRef } from "react";
 import Icon from "~/lib/legacy-ui/components/Icon";
 import { cx } from "~/utils/cva";
 
@@ -36,26 +37,41 @@ const Select = ({
 	placeholder = "Select an option",
 	isDisabled = false,
 }: SelectProps) => {
+	const reactId = useId();
+	const currentValue = input?.value ?? null;
+
+	// Track the latest selected value so onBlur fired by handleOpenChange
+	// sees the value committed by handleValueChange in the same event, not
+	// the stale render-time value.
+	const latestValueRef = useRef<string | null>(currentValue);
+	useEffect(() => {
+		latestValueRef.current = currentValue;
+	}, [currentValue]);
+
 	if (!input) return null;
 
 	const { value, onChange, onBlur, name } = input;
 	const { invalid, error, touched } = meta;
 	const hasError = !!(invalid && touched && error);
 
+	const labelId = label ? `${reactId}-label` : undefined;
+	const errorId = hasError ? `${reactId}-error` : undefined;
+
 	const handleValueChange = (next: string | null) => {
 		if (next === null) return;
+		latestValueRef.current = next;
 		onChange?.(next);
 	};
 
 	const handleOpenChange = (open: boolean) => {
 		if (!open) {
-			onBlur?.(value ?? null);
+			onBlur?.(latestValueRef.current);
 		}
 	};
 
 	return (
 		<div className={cx("flex flex-col", className)}>
-			{label && <h4>{label}</h4>}
+			{label && <h4 id={labelId}>{label}</h4>}
 			<BaseSelect.Root
 				value={value ?? null}
 				onValueChange={handleValueChange}
@@ -65,6 +81,8 @@ const Select = ({
 				items={options}
 			>
 				<BaseSelect.Trigger
+					aria-labelledby={labelId}
+					aria-describedby={errorId}
 					className={cx(
 						"flex w-full cursor-pointer items-center gap-2 rounded-sm border bg-surface-1 px-3 py-2 text-left text-base text-foreground",
 						"data-disabled:cursor-not-allowed data-disabled:opacity-60",
@@ -106,7 +124,10 @@ const Select = ({
 				</BaseSelect.Portal>
 			</BaseSelect.Root>
 			{hasError && (
-				<div className="flex items-center bg-error text-error-foreground py-(--space-sm) px-(--space-xs) rounded-b-sm [&_svg]:max-h-(--space-md)">
+				<div
+					id={errorId}
+					className="flex items-center bg-error text-error-foreground py-(--space-sm) px-(--space-xs) rounded-b-sm [&_svg]:max-h-(--space-md)"
+				>
 					<Icon name="warning" />
 					{error}
 				</div>
