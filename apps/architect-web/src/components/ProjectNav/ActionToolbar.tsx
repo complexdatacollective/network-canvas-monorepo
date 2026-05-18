@@ -22,7 +22,7 @@ const ActionToolbar = ({
           role="toolbar"
           aria-label={ariaLabel}
           className={cx(
-            'flex items-center gap-(--space-sm) px-(--space-sm) py-(--space-xs)',
+            'flex items-center gap-(--space-sm) py-3 pr-3 pl-2 sm:px-3',
             className,
           )}
         >

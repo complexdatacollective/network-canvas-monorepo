@@ -3,6 +3,7 @@ import {
   Check,
   Download,
   FileImage,
+  Home,
   type LucideIcon,
   Printer,
   Redo,
@@ -20,6 +21,7 @@ import { useAppDispatch } from '~/ducks/hooks';
 import { redo, undo } from '~/ducks/modules/activeProtocol';
 import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
+import { useReturnToStartDialog } from '~/hooks/useReturnToStartDialog';
 import Button, { IconButton } from '~/lib/legacy-ui/components/Button';
 import { getCanRedo, getCanUndo, getProtocolName } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
@@ -51,6 +53,7 @@ const ProjectNav = ({ extraActions }: ProjectNavProps) => {
   const protocolName = useSelector(getProtocolName);
   const canUndo = useSelector(getCanUndo);
   const canRedo = useSelector(getCanRedo);
+  const handleReturnToStart = useReturnToStartDialog();
 
   const [isExporting, setIsExporting] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
@@ -131,6 +134,9 @@ const ProjectNav = ({ extraActions }: ProjectNavProps) => {
         trailing={tabs}
       />
       <ActionToolbar>
+        <Button onClick={handleReturnToStart} color="platinum" icon={<Home />}>
+          Return to start
+        </Button>
         {extraActions}
         {!isSummary && (
           <>

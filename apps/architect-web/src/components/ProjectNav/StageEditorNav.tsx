@@ -54,7 +54,16 @@ const StageEditorNav = ({
         <Button onClick={onCancel} color="platinum" icon={<X />}>
           Cancel
         </Button>
-        {previewOptions}
+        {hasUnsavedChanges && (
+          <Button
+            type="submit"
+            color="sea-green"
+            icon={<Check />}
+            onClick={() => issuesRef.current?.open()}
+          >
+            Finished Editing
+          </Button>
+        )}
         <Tooltip content={previewTooltip}>
           <Button
             onClick={onPreview}
@@ -67,16 +76,7 @@ const StageEditorNav = ({
             Preview
           </Button>
         </Tooltip>
-        {hasUnsavedChanges && (
-          <Button
-            type="submit"
-            color="sea-green"
-            icon={<Check />}
-            onClick={() => issuesRef.current?.open()}
-          >
-            Finished Editing
-          </Button>
-        )}
+        {previewOptions}
       </ActionToolbar>
     </>
   );
