@@ -1233,9 +1233,6 @@ importers:
       '@electron/rebuild':
         specifier: ^4.0.4
         version: 4.0.4
-      '@types/d3-interpolate-path':
-        specifier: ^2.0.3
-        version: 2.0.3
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.14
@@ -1245,12 +1242,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 6.0.2(vite@8.0.13(@types/node@25.6.0)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.99.0)(terser@5.47.0)(tsx@4.22.0)(yaml@2.9.0))
-      blobs:
-        specifier: 2.3.0-beta.2
-        version: 2.3.0-beta.2
-      d3-interpolate-path:
-        specifier: ^2.3.0
-        version: 2.3.0
       electron:
         specifier: 'catalog:'
         version: 42.1.0
@@ -6502,9 +6493,6 @@ packages:
   '@types/d3-force@3.0.10':
     resolution: {integrity: sha512-ZYeSaCF3p73RdOKcjj+swRlZfnYpK1EbaDiYICEEp5Q6sUiqFaFQ9qgoshp5CzIyyb/yD09kD9o2zEltCexlgw==}
 
-  '@types/d3-interpolate-path@2.0.3':
-    resolution: {integrity: sha512-EmFAmzvZN9vmYfUEOLOQj/PWXkUKrMp0iGElacDIcYj3N2zFJ2Mk5DiL8J4fKYnnyQdcYOixABJx7TaIc4GcdA==}
-
   '@types/debug@4.1.13':
     resolution: {integrity: sha512-KSVgmQmzMwPlmtljOomayoR89W4FynCAi3E8PPs7vmDVPe84hT+vGPKkJfThkmXs0x0jAaa9U8uW8bbfyS2fWw==}
 
@@ -7873,9 +7861,6 @@ packages:
   d3-force@3.0.0:
     resolution: {integrity: sha512-zxV/SsA+U4yte8051P4ECydjD/S+qeYtnaIyAs9tgHCqfguma/aAQDjo85A9Z6EKhBirHRJHXIgJUlffT4wdLg==}
     engines: {node: '>=12'}
-
-  d3-interpolate-path@2.3.0:
-    resolution: {integrity: sha512-tZYtGXxBmbgHsIc9Wms6LS5u4w6KbP8C09a4/ZYc4KLMYYqub57rRBUgpUr2CIarIrJEpdAWWxWQvofgaMpbKQ==}
 
   d3-quadtree@3.0.1:
     resolution: {integrity: sha512-04xDrxQTDTCFwP5H6hRhsRcb9xxv2RzkcsygFzmkSIOJy3PeRJP7sNk3VRIbKXcog561P9oU0/rVH6vDROAgUw==}
@@ -17943,8 +17928,6 @@ snapshots:
 
   '@types/d3-force@3.0.10': {}
 
-  '@types/d3-interpolate-path@2.0.3': {}
-
   '@types/debug@4.1.13':
     dependencies:
       '@types/ms': 2.1.0
@@ -19627,8 +19610,6 @@ snapshots:
       d3-dispatch: 3.0.1
       d3-quadtree: 3.0.1
       d3-timer: 3.0.1
-
-  d3-interpolate-path@2.3.0: {}
 
   d3-quadtree@3.0.1: {}
 
