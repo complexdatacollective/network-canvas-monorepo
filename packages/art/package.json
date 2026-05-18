@@ -22,8 +22,11 @@
 		"@types/d3-interpolate-path": "^2.0.3",
 		"@types/node": "catalog:",
 		"@types/react": "catalog:",
+		"@types/react-dom": "catalog:",
+		"@vitejs/plugin-react": "catalog:",
 		"jsdom": "^29.1.1",
 		"react": "catalog:",
+		"react-dom": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:"
 	},

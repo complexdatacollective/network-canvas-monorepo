@@ -1167,12 +1167,21 @@ importers:
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.14
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.2.3(@types/react@19.2.14)
+      '@vitejs/plugin-react':
+        specifier: 'catalog:'
+        version: 6.0.2(vite@8.0.13(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.99.0)(terser@5.47.0)(tsx@4.22.0)(yaml@2.9.0))
       jsdom:
         specifier: ^29.1.1
         version: 29.1.1
       react:
         specifier: 'catalog:'
         version: 19.2.6
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.2.6(react@19.2.6)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
