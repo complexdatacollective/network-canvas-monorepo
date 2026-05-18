@@ -3,7 +3,7 @@ import { rngToPalette } from "../palette";
 import { seedToRng } from "../seed";
 import type { PatternProps, Renderer } from "../types";
 
-export const renderDots: Renderer = (rng, palette, w, h) => {
+const renderDots: Renderer = (rng, palette, w, h) => {
 	const cell = 12 + Math.floor(rng() * 16);
 	const cols = Math.ceil(w / cell) + 1;
 	const rows = Math.ceil(h / cell) + 1;

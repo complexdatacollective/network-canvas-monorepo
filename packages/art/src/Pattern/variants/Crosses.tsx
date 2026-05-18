@@ -3,7 +3,7 @@ import { rngToPalette } from "../palette";
 import { seedToRng } from "../seed";
 import type { PatternProps, Renderer } from "../types";
 
-export const renderCrosses: Renderer = (rng, palette, w, h) => {
+const renderCrosses: Renderer = (rng, palette, w, h) => {
 	const cell = 24 + Math.floor(rng() * 16);
 	const cross = cell * (0.4 + rng() * 0.2);
 	const stroke = 2 + rng() * 1.5;

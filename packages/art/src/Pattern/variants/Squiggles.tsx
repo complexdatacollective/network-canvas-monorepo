@@ -3,7 +3,7 @@ import { rngToPalette } from "../palette";
 import { seedToRng } from "../seed";
 import type { PatternProps, Renderer } from "../types";
 
-export const renderSquiggles: Renderer = (rng, palette, w, h) => {
+const renderSquiggles: Renderer = (rng, palette, w, h) => {
 	const rowCount = 5 + Math.floor(rng() * 5);
 	const colors = [palette.foreground, palette.accent, palette.highlight];
 	const stroke = 2 + rng() * 2;

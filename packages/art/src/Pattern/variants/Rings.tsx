@@ -3,7 +3,7 @@ import { rngToPalette } from "../palette";
 import { seedToRng } from "../seed";
 import type { PatternProps, Renderer } from "../types";
 
-export const renderRings: Renderer = (rng, palette, w, h) => {
+const renderRings: Renderer = (rng, palette, w, h) => {
 	const centreCount = 3 + Math.floor(rng() * 4);
 	const colors = [palette.foreground, palette.accent, palette.highlight];
 	const stroke = 1.5 + rng() * 1.5;

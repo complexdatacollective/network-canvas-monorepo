@@ -3,7 +3,7 @@ import { rngToPalette } from "../palette";
 import { seedToRng } from "../seed";
 import type { PatternProps, Renderer } from "../types";
 
-export const renderTruchet: Renderer = (rng, palette, w, h) => {
+const renderTruchet: Renderer = (rng, palette, w, h) => {
 	const tile = 24 + Math.floor(rng() * 24);
 	const cols = Math.ceil(w / tile) + 1;
 	const rows = Math.ceil(h / tile) + 1;

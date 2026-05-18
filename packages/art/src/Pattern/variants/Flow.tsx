@@ -3,7 +3,7 @@ import { rngToPalette } from "../palette";
 import { seedToRng } from "../seed";
 import type { PatternProps, Renderer } from "../types";
 
-export const renderFlow: Renderer = (rng, palette, w, h) => {
+const renderFlow: Renderer = (rng, palette, w, h) => {
 	const lineCount = 5 + Math.floor(rng() * 6);
 	const colors = [palette.foreground, palette.accent, palette.highlight];
 	const stroke = 1.4 + rng() * 2.2;

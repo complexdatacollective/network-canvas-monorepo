@@ -3,7 +3,7 @@ import { rngToPalette } from "../palette";
 import { seedToRng } from "../seed";
 import type { PatternProps, Renderer } from "../types";
 
-export const renderTiles: Renderer = (rng, palette, w, h) => {
+const renderTiles: Renderer = (rng, palette, w, h) => {
 	const tile = 28 + Math.floor(rng() * 20);
 	const triHeight = (tile * Math.sqrt(3)) / 2;
 	const cols = Math.ceil(w / tile) + 2;
