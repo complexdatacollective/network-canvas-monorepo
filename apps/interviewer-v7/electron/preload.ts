@@ -7,7 +7,6 @@ const dbBridge = {
       ipcRenderer.invoke('db:protocols:getByHash', hash),
     getByHashes: (hashes: string[]) =>
       ipcRenderer.invoke('db:protocols:getByHashes', hashes),
-    getById: (id: string) => ipcRenderer.invoke('db:protocols:getById', id),
     save: (input: unknown) => ipcRenderer.invoke('db:protocols:save', input),
     delete: (hash: string) => ipcRenderer.invoke('db:protocols:delete', hash),
     listAssets: (hash: string) =>
@@ -17,8 +16,6 @@ const dbBridge = {
   },
   sessions: {
     list: () => ipcRenderer.invoke('db:sessions:list'),
-    listForProtocol: (hash: string) =>
-      ipcRenderer.invoke('db:sessions:listForProtocol', hash),
     get: (id: string) => ipcRenderer.invoke('db:sessions:get', id),
     getByIds: (ids: string[]) =>
       ipcRenderer.invoke('db:sessions:getByIds', ids),
@@ -28,7 +25,6 @@ const dbBridge = {
       ipcRenderer.invoke('db:sessions:markFinished', id),
     markExported: (ids: string[]) =>
       ipcRenderer.invoke('db:sessions:markExported', ids),
-    delete: (id: string) => ipcRenderer.invoke('db:sessions:delete', id),
     deleteMany: (ids: string[]) =>
       ipcRenderer.invoke('db:sessions:deleteMany', ids),
   },

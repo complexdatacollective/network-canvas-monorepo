@@ -38,12 +38,6 @@ export async function getProtocolsByHashes(
   return out;
 }
 
-export async function getProtocolById(
-  id: string,
-): Promise<StoredProtocol | undefined> {
-  return db.protocols.get(id);
-}
-
 export async function saveProtocol(
   protocol: CurrentProtocol,
   hash: string,

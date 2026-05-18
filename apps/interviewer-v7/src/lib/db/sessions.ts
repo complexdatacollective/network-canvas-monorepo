@@ -11,21 +11,6 @@ export async function listSessions(): Promise<StoredSession[]> {
   return db.sessions.orderBy('lastUpdatedAt').reverse().toArray();
 }
 
-export async function listSessionsForProtocol(
-  protocolHash: string,
-): Promise<StoredSession[]> {
-  return (
-    db.sessions
-      .where('protocolHash')
-      .equals(protocolHash)
-      // Dexie Collection.reverse(); see listSessions above.
-      // oxlint-disable-next-line unicorn/no-array-reverse
-      .reverse()
-      .sortBy('lastUpdatedAt')
-      .then((s) => s.reverse())
-  );
-}
-
 export async function getSession(
   id: string,
 ): Promise<StoredSession | undefined> {
@@ -101,10 +86,6 @@ export async function markSessionsExported(ids: string[]): Promise<void> {
       });
     }
   });
-}
-
-export async function deleteSession(id: string): Promise<void> {
-  await db.sessions.delete(id);
 }
 
 export async function deleteSessions(ids: string[]): Promise<void> {

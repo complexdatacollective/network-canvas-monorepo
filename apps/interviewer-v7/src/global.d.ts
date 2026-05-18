@@ -46,7 +46,6 @@ declare global {
       list: () => Promise<ProtocolWithCounts[]>;
       getByHash: (hash: string) => Promise<StoredProtocol | undefined>;
       getByHashes: (hashes: string[]) => Promise<StoredProtocol[]>;
-      getById: (id: string) => Promise<StoredProtocol | undefined>;
       save: (input: {
         protocol: CurrentProtocol;
         hash: string;
@@ -61,7 +60,6 @@ declare global {
     };
     sessions: {
       list: () => Promise<StoredSession[]>;
-      listForProtocol: (hash: string) => Promise<StoredSession[]>;
       get: (id: string) => Promise<StoredSession | undefined>;
       getByIds: (ids: string[]) => Promise<StoredSession[]>;
       create: (args: {
@@ -76,7 +74,6 @@ declare global {
       }) => Promise<StoredSession | undefined>;
       markFinished: (id: string) => Promise<void>;
       markExported: (ids: string[]) => Promise<void>;
-      delete: (id: string) => Promise<void>;
       deleteMany: (ids: string[]) => Promise<void>;
     };
     settings: {

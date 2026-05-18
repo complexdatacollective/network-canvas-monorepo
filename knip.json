@@ -48,6 +48,21 @@
         "@fontsource-variable/nunito"
       ]
     },
+    "apps/interviewer-v7": {
+      "entry": [
+        "index.html!",
+        "electron.vite.config.ts",
+        "electron-builder.config.cjs",
+        "electron/main.ts",
+        "electron/preload.ts"
+      ],
+      "vite": true,
+      "project": ["src/**/*.{ts,tsx}", "electron/**/*.ts"],
+      "paths": {
+        "~/*": ["./src/*"]
+      },
+      "ignore": ["src/**/*.d.ts"]
+    },
     "apps/architect-web": {
       "entry": ["index.html!", "preview/index.html!", "src/preview-main.tsx!"],
       "vite": true,

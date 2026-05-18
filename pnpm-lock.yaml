@@ -1193,18 +1193,12 @@ importers:
       better-sqlite3-multiple-ciphers:
         specifier: ^12.9.0
         version: 12.9.0(patch_hash=f8eee29adc51371f90731790796adaacd29655f815301beae9923efcd7e0c8b5)
-      class-variance-authority:
-        specifier: 'catalog:'
-        version: 0.7.1
       dexie:
         specifier: ^4.4.2
         version: 4.4.2
       effect:
         specifier: ^3.21.2
         version: 3.21.2
-      es-toolkit:
-        specifier: 'catalog:'
-        version: 1.46.1
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
@@ -1220,9 +1214,6 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.2.6(react@19.2.6)
-      tailwind-merge:
-        specifier: 'catalog:'
-        version: 3.6.0
       uuid:
         specifier: 'catalog:'
         version: 14.0.0
@@ -1239,9 +1230,6 @@ importers:
       '@electron/rebuild':
         specifier: ^4.0.4
         version: 4.0.4
-      '@types/better-sqlite3':
-        specifier: ^7.6.13
-        version: 7.6.13
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.14
@@ -6492,9 +6480,6 @@ packages:
 
   '@types/babel__traverse@7.28.0':
     resolution: {integrity: sha512-8PvcXf70gTDZBgt9ptxJ8elBeBjcLOAcOtoO/mPJjtji1+CdGbHgm77om1GrsPxsiE+uXIpNSK64UYaIwQXd4Q==}
-
-  '@types/better-sqlite3@7.6.13':
-    resolution: {integrity: sha512-NMv9ASNARoKksWtsq/SHakpYAYnhBrQgGD8zkLYk/jaK8jUGn08CfEdTRgYhMypUQAfzSP8W6gNLe0q19/t4VA==}
 
   '@types/cacheable-request@6.0.3':
     resolution: {integrity: sha512-IQ3EbTzGxIigb1I3qPZc1rWJnH0BmSKv5QYTalEwweFvyBDLSAe24zP0le/hyi7ecGfZVlIVAg4BZqb8WBwKqw==}
@@ -17932,10 +17917,6 @@ snapshots:
     dependencies:
       '@babel/types': 7.29.0
 
-  '@types/better-sqlite3@7.6.13':
-    dependencies:
-      '@types/node': 25.6.0
-
   '@types/cacheable-request@6.0.3':
     dependencies:
       '@types/http-cache-semantics': 4.2.0
@@ -18322,9 +18303,9 @@ snapshots:
       obug: 2.1.1
       std-env: 4.0.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@24.12.4)(@vitest/browser-playwright@4.1.6)(@vitest/coverage-v8@4.1.6)(jsdom@29.1.1)(vite@8.0.13(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.99.0)(terser@5.47.0)(tsx@4.22.0)(yaml@2.9.0))
+      vitest: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/browser-playwright@4.1.6)(@vitest/coverage-v8@4.1.6)(jsdom@27.4.0)(vite@8.0.13(@types/node@25.6.0)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.98.0)(terser@5.47.0)(tsx@4.22.0)(yaml@2.9.0))
     optionalDependencies:
-      '@vitest/browser': 4.1.6(vite@8.0.13(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.99.0)(terser@5.47.0)(tsx@4.22.0)(yaml@2.9.0))(vitest@4.1.6)
+      '@vitest/browser': 4.1.6(vite@8.0.13(@types/node@25.6.0)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.98.0)(terser@5.47.0)(tsx@4.22.0)(yaml@2.9.0))(vitest@4.1.6)
 
   '@vitest/expect@3.2.4':
     dependencies:

@@ -10,9 +10,6 @@ export function registerDbHandlers(): void {
   ipcMain.handle('db:protocols:getByHashes', async (_e, hashes: string[]) =>
     protocols.getByHashes(hashes),
   );
-  ipcMain.handle('db:protocols:getById', async (_e, id: string) =>
-    protocols.getById(id),
-  );
   ipcMain.handle('db:protocols:save', async (_e, input) =>
     protocols.save(input),
   );
@@ -29,9 +26,6 @@ export function registerDbHandlers(): void {
   );
 
   ipcMain.handle('db:sessions:list', async () => sessions.list());
-  ipcMain.handle('db:sessions:listForProtocol', async (_e, hash: string) =>
-    sessions.listForProtocol(hash),
-  );
   ipcMain.handle('db:sessions:get', async (_e, id: string) => sessions.get(id));
   ipcMain.handle('db:sessions:getByIds', async (_e, ids: string[]) =>
     sessions.getByIds(ids),
@@ -47,9 +41,6 @@ export function registerDbHandlers(): void {
   );
   ipcMain.handle('db:sessions:markExported', async (_e, ids: string[]) =>
     sessions.markExported(ids),
-  );
-  ipcMain.handle('db:sessions:delete', async (_e, id: string) =>
-    sessions.delete(id),
   );
   ipcMain.handle('db:sessions:deleteMany', async (_e, ids: string[]) =>
     sessions.deleteMany(ids),

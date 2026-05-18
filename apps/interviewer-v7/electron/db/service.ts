@@ -102,10 +102,6 @@ export function getDbPath(): string {
   return join(app.getPath('userData'), DB_FILENAME);
 }
 
-export function isDbOpen(): boolean {
-  return dbInstance !== null;
-}
-
 export function openDatabase(rawKeyHex: string): void {
   if (dbInstance) return;
   const path = getDbPath();
@@ -227,12 +223,6 @@ export const protocols = {
       )
       .all(...hashes);
     return rows.map(rowToProtocol);
-  },
-  getById(id: string) {
-    const row = getDb()
-      .prepare<[string], ProtocolRow>('SELECT * FROM protocols WHERE id = ?')
-      .get(id);
-    return row ? rowToProtocol(row) : undefined;
   },
   save(input: {
     protocol: {
@@ -362,14 +352,6 @@ export const sessions = {
       .all();
     return rows.map(rowToSession);
   },
-  listForProtocol(hash: string) {
-    const rows = getDb()
-      .prepare<[string], SessionRow>(
-        'SELECT * FROM sessions WHERE protocolHash = ? ORDER BY lastUpdatedAt DESC',
-      )
-      .all(hash);
-    return rows.map(rowToSession);
-  },
   get(id: string) {
     const row = getDb()
       .prepare<[string], SessionRow>('SELECT * FROM sessions WHERE id = ?')
@@ -470,9 +452,6 @@ export const sessions = {
       for (const id of ids) stmt.run(now, now, id);
     });
     tx();
-  },
-  delete(id: string) {
-    getDb().prepare('DELETE FROM sessions WHERE id = ?').run(id);
   },
   deleteMany(ids: string[]) {
     if (ids.length === 0) return;

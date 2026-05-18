@@ -26,12 +26,6 @@ export async function getProtocolsByHashes(
   return ipc().protocols.getByHashes([...hashes]);
 }
 
-export async function getProtocolById(
-  id: string,
-): Promise<StoredProtocol | undefined> {
-  return ipc().protocols.getById(id);
-}
-
 export async function saveProtocol(
   protocol: CurrentProtocol,
   hash: string,

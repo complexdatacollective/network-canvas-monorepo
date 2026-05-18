@@ -1,6 +1,6 @@
-export type Platform = 'web' | 'electron' | 'capacitor';
+type Platform = 'web' | 'electron' | 'capacitor';
 
-export function detectPlatform(): Platform {
+function detectPlatform(): Platform {
   if (typeof window === 'undefined') return 'web';
   if (window.electronAPI) return 'electron';
   const capacitor = (
@@ -10,10 +10,9 @@ export function detectPlatform(): Platform {
   return 'web';
 }
 
-export const platform = detectPlatform();
+const platform = detectPlatform();
 
 export const isElectron = platform === 'electron';
 export const isCapacitor = platform === 'capacitor';
-export const isWeb = platform === 'web';
 
 export const hostAppName = 'interviewer-v7';

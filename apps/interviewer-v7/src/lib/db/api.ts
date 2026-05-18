@@ -38,14 +38,6 @@ export async function getProtocolsByHashes(
     : dexieProtocols.getProtocolsByHashes(hashes);
 }
 
-export async function getProtocolById(
-  id: string,
-): Promise<StoredProtocol | undefined> {
-  return isElectron
-    ? electronProtocols.getProtocolById(id)
-    : dexieProtocols.getProtocolById(id);
-}
-
 export async function saveProtocol(
   protocol: CurrentProtocol,
   hash: string,
@@ -81,14 +73,6 @@ export async function listSessions(): Promise<StoredSession[]> {
   return isElectron
     ? electronSessions.listSessions()
     : dexieSessions.listSessions();
-}
-
-export async function listSessionsForProtocol(
-  protocolHash: string,
-): Promise<StoredSession[]> {
-  return isElectron
-    ? electronSessions.listSessionsForProtocol(protocolHash)
-    : dexieSessions.listSessionsForProtocol(protocolHash);
 }
 
 export async function getSession(
@@ -137,12 +121,6 @@ export async function markSessionsExported(ids: string[]): Promise<void> {
   return isElectron
     ? electronSessions.markSessionsExported(ids)
     : dexieSessions.markSessionsExported(ids);
-}
-
-export async function deleteSession(id: string): Promise<void> {
-  return isElectron
-    ? electronSessions.deleteSession(id)
-    : dexieSessions.deleteSession(id);
 }
 
 export async function deleteSessions(ids: string[]): Promise<void> {

@@ -55,16 +55,3 @@ export function makeAssetResolver(
     return url;
   };
 }
-
-export function clearAssetUrlCache(): void {
-  for (const url of urlCache.values()) {
-    if (url.startsWith('blob:')) {
-      try {
-        URL.revokeObjectURL(url);
-      } catch {
-        // ignore
-      }
-    }
-  }
-  urlCache.clear();
-}

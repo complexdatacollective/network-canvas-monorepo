@@ -14,12 +14,6 @@ export async function listSessions(): Promise<StoredSession[]> {
   return ipc().sessions.list();
 }
 
-export async function listSessionsForProtocol(
-  protocolHash: string,
-): Promise<StoredSession[]> {
-  return ipc().sessions.listForProtocol(protocolHash);
-}
-
 export async function getSession(
   id: string,
 ): Promise<StoredSession | undefined> {
@@ -54,10 +48,6 @@ export async function markSessionFinished(id: string): Promise<void> {
 
 export async function markSessionsExported(ids: string[]): Promise<void> {
   return ipc().sessions.markExported(ids);
-}
-
-export async function deleteSession(id: string): Promise<void> {
-  return ipc().sessions.delete(id);
 }
 
 export async function deleteSessions(ids: string[]): Promise<void> {
