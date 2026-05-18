@@ -2,32 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 
-const resizeCanvas = (
-  context: CanvasRenderingContext2D,
-  canvasRef: React.RefObject<HTMLCanvasElement | null>,
-) => {
-  if (!canvasRef?.current) {
-    return false;
-  }
-
-  const currentCanvas = canvasRef.current;
-
-  const { width, height } = currentCanvas.getBoundingClientRect();
-  const { devicePixelRatio: ratio = 1 } = window;
-
-  if (
-    currentCanvas.width !== width * ratio ||
-    currentCanvas.height !== height * ratio
-  ) {
-    currentCanvas.width = width * ratio;
-    currentCanvas.height = height * ratio;
-    context.scale(ratio, ratio);
-    return true;
-  }
-
-  return false;
-};
-
 type DrawFunction = (
   ctx: CanvasRenderingContext2D,
   time: number,
@@ -52,32 +26,70 @@ const useCanvas = (
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (!canvasRef.current) {
-      return;
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return undefined;
     }
 
-    const context = canvasRef.current.getContext('2d');
-
-    if (!(context && canvasRef.current)) {
-      return;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      return undefined;
     }
+
+    // Setting canvas.width/height resets the context transform, so we must
+    // re-apply the DPR scale every time we resize the backing store.
+    const syncSize = (cssWidth: number, cssHeight: number) => {
+      const ratio = window.devicePixelRatio || 1;
+      const targetWidth = Math.round(cssWidth * ratio);
+      const targetHeight = Math.round(cssHeight * ratio);
+      if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        context.scale(ratio, ratio);
+      }
+    };
+
+    const initialRect = canvas.getBoundingClientRect();
+    syncSize(initialRect.width, initialRect.height);
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) {
+        return;
+      }
+
+      let cssWidth: number;
+      let cssHeight: number;
+      if (entry.contentBoxSize) {
+        const box = Array.isArray(entry.contentBoxSize)
+          ? entry.contentBoxSize[0]
+          : entry.contentBoxSize;
+        cssWidth = box.inlineSize;
+        cssHeight = box.blockSize;
+      } else {
+        cssWidth = entry.contentRect.width;
+        cssHeight = entry.contentRect.height;
+      }
+      syncSize(cssWidth, cssHeight);
+    });
+    resizeObserver.observe(canvas);
 
     let requestAnimationId: number | null = null;
 
-    const render = (ctx: CanvasRenderingContext2D, time: number) => {
-      resizeCanvas(context, canvasRef);
-      predraw(ctx, time, canvasRef);
-      draw(ctx, time, canvasRef);
-      postdraw(ctx, time, canvasRef);
-      requestAnimationId = requestAnimationFrame((t) => render(ctx, t));
+    const render = (time: number) => {
+      predraw(context, time, canvasRef);
+      draw(context, time, canvasRef);
+      postdraw(context, time, canvasRef);
+      requestAnimationId = requestAnimationFrame(render);
     };
 
-    render(context, 0);
+    requestAnimationId = requestAnimationFrame(render);
 
     return () => {
-      if (requestAnimationId) {
+      if (requestAnimationId !== null) {
         cancelAnimationFrame(requestAnimationId);
       }
+      resizeObserver.disconnect();
     };
   });
 
