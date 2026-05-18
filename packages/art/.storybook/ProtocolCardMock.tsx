@@ -25,14 +25,14 @@ export const ProtocolCardMock = ({ title, meta = "Modified May 18, 2026", subhea
 				position: "absolute",
 				left: 0,
 				right: 0,
-				bottom: 0,
+				top: 0,
 				padding: "14px 18px",
 			}}
 		>
-			<Heading level="h3" margin="none" style={{ color: "white" }}>
+			<div style={{ fontSize: 12, color: subheadingColor, fontWeight: 600 }}>{meta}</div>
+			<Heading level="h3" margin="none" style={{ color: "white", marginTop: 2 }}>
 				{title}
 			</Heading>
-			<div style={{ fontSize: 12, marginTop: 4, color: subheadingColor, fontWeight: 600 }}>{meta}</div>
 		</div>
 	</div>
 );
