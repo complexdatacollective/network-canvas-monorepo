@@ -114,7 +114,7 @@ const Timeline = () => {
         <Reorder.Group
           axis="y"
           onReorder={handleReorder}
-          className="relative grid grid-cols-1 justify-items-center gap-6"
+          className="relative grid grid-cols-1 justify-items-center gap-1"
           values={stages}
         >
           {stages.flatMap((stage, index) => [
@@ -140,7 +140,7 @@ const Timeline = () => {
               }}
             >
               <img
-                className="pointer-events-none w-40 justify-self-end rounded shadow transition-transform duration-300 ease-in-out select-none group-hover:scale-105"
+                className="pointer-events-none w-56 justify-self-end rounded-xs shadow transition-transform duration-300 ease-in-out select-none group-hover:scale-105"
                 src={getTimelineImage(stage.type)}
                 alt={`${stage.type} interface`}
                 title={`${stage.type} interface`}
