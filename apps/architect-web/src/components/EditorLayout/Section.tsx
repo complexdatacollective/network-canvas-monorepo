@@ -63,7 +63,7 @@ const Section = ({
   // as the "vertical" layout
   const classes = cx(
     layout === 'horizontal' &&
-      'lg:min-w-2xl lg:rounded lg:bg-(--current-surface) lg:p-6 lg:text-(--current-surface-foreground) lg:shadow-md',
+      'lg:min-w-2xl lg:overflow-hidden lg:rounded lg:bg-(--current-surface) lg:p-6 lg:text-(--current-surface-foreground) lg:shadow-md',
     'relative',
   );
 
@@ -111,7 +111,7 @@ const Section = ({
       <fieldset className={classes}>
         {disabled ? (
           layout === 'horizontal' ? (
-            <div className="bg-border/75 text-foreground/70 flex items-center justify-center rounded font-semibold italic max-lg:p-8 max-lg:text-center lg:absolute lg:inset-0 lg:h-full lg:w-full">
+            <div className="bg-border/75 text-foreground/70 flex items-center justify-center font-semibold italic max-lg:rounded max-lg:p-8 max-lg:text-center lg:absolute lg:inset-0 lg:h-full lg:w-full">
               {disabledMessage}
             </div>
           ) : (
