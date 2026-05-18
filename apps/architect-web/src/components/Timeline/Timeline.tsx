@@ -1,5 +1,5 @@
 import { get } from 'es-toolkit/compat';
-import { motion, Reorder } from 'motion/react';
+import { motion, Reorder, useReducedMotion, type Variants } from 'motion/react';
 import { useCallback, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
@@ -23,10 +23,35 @@ import InsertButton from './InsertButton';
 const getTimelineImage = (type: string) =>
   get(timelineImages, type, timelineImages.Default);
 
+const timelineContainerVariants: Variants = {
+  hidden: {},
+  visible: {},
+};
+
+// Uniform delay across all items (no per-index stagger) so total animation
+// duration is independent of timeline length — matches Architect desktop.
+const timelineStageVariants: Variants = {
+  hidden: { scale: 0, opacity: 0 },
+  visible: {
+    scale: 1,
+    opacity: 1,
+    transition: { type: 'spring', delay: 0.2 },
+  },
+};
+
+const timelineInsertVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { delay: 0.45 },
+  },
+};
+
 const Timeline = () => {
   const stages = useSelector(getStageList);
   const dispatch = useAppDispatch();
   const pointerStart = useRef({ x: 0, y: 0 });
+  const shouldReduceMotion = useReducedMotion();
 
   const deleteStage = useCallback(
     (stageId: string) => {
@@ -109,18 +134,28 @@ const Timeline = () => {
 			    the protocol overview card so the timeline visually connects to it. */}
       <div className="relative pt-(--space-xl)">
         {/* Timeline line via CSS - height is 100% minus small offset to stop at add button center */}
-        <div className="bg-timeline pointer-events-none absolute top-0 left-1/2 h-[calc(100%-1.25rem)] w-(--space-xs) -translate-x-1/2" />
+        <motion.div
+          className="bg-timeline pointer-events-none absolute top-0 left-1/2 h-[calc(100%-1.25rem)] w-(--space-xs) -translate-x-1/2"
+          style={{ transformOrigin: 'top' }}
+          initial={shouldReduceMotion ? false : { scaleY: 0 }}
+          animate={{ scaleY: 1 }}
+          transition={{ delay: 0.2, duration: 0.5, ease: 'easeOut' }}
+        />
 
         <Reorder.Group
           axis="y"
           onReorder={handleReorder}
           className="relative grid grid-cols-1 justify-items-center gap-1"
           values={stages}
+          initial={shouldReduceMotion ? false : 'hidden'}
+          animate="visible"
+          variants={timelineContainerVariants}
         >
           {stages.flatMap((stage, index) => [
             <InsertButton
               key={`insert_${stage.id}`}
               onClick={() => handleInsertStage(index)}
+              variants={timelineInsertVariants}
             />,
             <Reorder.Item
               tabIndex={0}
@@ -128,6 +163,7 @@ const Timeline = () => {
               value={stage}
               layoutId={`timeline-stage-${stage.id}`}
               className={itemClasses}
+              variants={timelineStageVariants}
               onPointerDown={(e) => {
                 pointerStart.current = { x: e.clientX, y: e.clientY };
               }}
@@ -190,6 +226,7 @@ const Timeline = () => {
           <motion.div
             className="group mt-3 grid w-2xl cursor-pointer grid-cols-[1fr_auto_1fr] items-center gap-10 p-4"
             onClick={() => handleInsertStage(stages.length)}
+            variants={timelineInsertVariants}
           >
             <div />
             <div className="bg-action text-primary-foreground flex h-10 w-10 items-center justify-center rounded-full text-4xl font-medium transition-transform duration-300 ease-in-out group-hover:scale-110">

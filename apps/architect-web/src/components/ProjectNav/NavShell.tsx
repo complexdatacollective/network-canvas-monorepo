@@ -1,3 +1,4 @@
+import { motion, useReducedMotion, type Variants } from 'motion/react';
 import type React from 'react';
 
 import Brand from '~/components/Brand';
@@ -7,6 +8,31 @@ import { cx } from '~/utils/cva';
 export const NAV_SURFACE =
   'pointer-events-auto bg-fresco-purple text-fresco-purple-foreground shadow-lg';
 
+const containerVariants: Variants = {
+  hidden: {
+    y: '-150%',
+  },
+  visible: {
+    y: 0,
+    transition: {
+      type: 'spring',
+      delayChildren: 0.5,
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: '-100%' },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: 'spring',
+    },
+  },
+};
+
 type NavShellProps = {
   leading?: React.ReactNode;
   trailing?: React.ReactNode;
@@ -14,16 +40,22 @@ type NavShellProps = {
 
 const NavShell = ({ leading, trailing }: NavShellProps) => {
   const handleReturnToStart = useReturnToStartDialog();
+  const shouldReduceMotion = useReducedMotion();
   return (
     <header className="pointer-events-none sticky top-0 z-(--z-global-ui) w-full px-4 py-(--space-md) sm:px-6 print:static print:hidden">
-      <div
+      <motion.div
         className={cx(
           NAV_SURFACE,
           'mx-auto flex max-w-7xl flex-wrap items-center gap-(--space-md) rounded-full py-3 pr-6 pl-2 sm:pr-10 sm:pl-3',
         )}
+        variants={containerVariants}
+        initial={shouldReduceMotion ? false : 'hidden'}
+        animate="visible"
       >
         <div className="flex min-w-0 flex-1 items-center justify-start gap-(--space-md)">
-          <Brand variant="icon" onClick={handleReturnToStart} />
+          <motion.div variants={itemVariants}>
+            <Brand variant="icon" onClick={handleReturnToStart} />
+          </motion.div>
           {leading}
         </div>
         {trailing && (
@@ -31,7 +63,7 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
             {trailing}
           </div>
         )}
-      </div>
+      </motion.div>
     </header>
   );
 };
