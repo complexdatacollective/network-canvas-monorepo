@@ -45,7 +45,7 @@ const ItemEditor = ({ type, handleChangeType }: ItemEditorProps) => (
 		</Section>
 		{type && (
 			<Section title="Content" layout="vertical">
-				<Row disabled={!type}>
+				<Row>
 					<IssueAnchor fieldName="content" description="Content" />
 					<ValidatedField name="content" component={getInputComponent(type)} validation={{ required: true }} />
 				</Row>

@@ -24,12 +24,15 @@ const SummaryPage = () => {
 	// Load the protocol based on URL parameters
 	useProtocolLoader();
 
-	// Apply print class for print preview styling
+	// Toggle a document-level class so global stylesheets can switch <html>
+	// and <body> into the summary "paged" layout. The class name avoids
+	// `print` because Tailwind's `print:` variant makes that token noisy to
+	// grep for.
 	useEffect(() => {
-		document.documentElement.classList.add("print");
+		document.documentElement.classList.add("summary-view");
 
 		return () => {
-			document.documentElement.classList.remove("print");
+			document.documentElement.classList.remove("summary-view");
 		};
 	}, []);
 
@@ -80,19 +83,22 @@ const SummaryPage = () => {
 			}}
 		>
 			<ProjectLayout className="print:h-auto print:overflow-visible" extraActions={printAction}>
-				<Layout className="protocol-summary-page">
+				<Layout className="[--base-font-size:14px]">
 					<div className="print:hidden w-full">
 						<PageHeading
 							title="Protocol Summary"
 							description="Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets."
 						/>
 					</div>
-					<div className="protocol-summary">
+					<div className="protocol-summary-surface">
+						{/* Cover is the first marker; an explicit page break here would be
+						    a no-op (CSS Fragmentation: forced breaks at the start of a
+						    fragment are discarded) so it's omitted. */}
 						<div className="page-break-marker">
 							<Cover />
 						</div>
 
-						<div className="page-break-marker">
+						<div className="page-break-marker break-before-page">
 							<Contents />
 						</div>
 

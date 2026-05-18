@@ -55,7 +55,7 @@ const BooleanField = ({
 	return (
 		<div
 			className={cx(
-				"form-field-container mb-(--space-xl)",
+				"mb-(--space-xl) [&>h4]:m-0",
 				hasError && "[&_.form-field]:mb-0 [&_.form-field]:border-2 [&_.form-field]:border-error",
 				className,
 			)}

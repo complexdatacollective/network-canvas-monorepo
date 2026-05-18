@@ -18,7 +18,7 @@ type IconProps = {
 	name: string;
 };
 
-const icons: Record<string, React.ComponentType<{ style?: React.CSSProperties }>> = {
+const icons: Record<string, React.ComponentType<{ className?: string }>> = {
 	bold: BoldIcon,
 	italic: ItalicIcon,
 	quote: QuoteIcon,
@@ -39,7 +39,7 @@ const Icon = ({ name }: IconProps) => {
 	if (!IconComponent) {
 		return <span>{name}</span>;
 	}
-	return <IconComponent style={{ color: "white" }} />;
+	return <IconComponent className="text-white" />;
 };
 
 export default Icon;

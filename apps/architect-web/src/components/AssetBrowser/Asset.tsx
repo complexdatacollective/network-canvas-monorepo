@@ -17,14 +17,19 @@ const FallBackAssetComponent = () => <div>No preview component available for thi
 
 type AssetType = "image" | "video" | "audio" | "network" | "apikey" | "geojson";
 
-// Use a more lenient type since these are HOC-wrapped components
-const ASSET_COMPONENTS: Record<AssetType, React.ComponentType<Record<string, unknown>>> = {
-	image: Image as unknown as React.ComponentType<Record<string, unknown>>,
-	video: Video as unknown as React.ComponentType<Record<string, unknown>>,
-	audio: Audio as unknown as React.ComponentType<Record<string, unknown>>,
-	network: Network as unknown as React.ComponentType<Record<string, unknown>>,
-	apikey: APIKey as unknown as React.ComponentType<Record<string, unknown>>,
-	geojson: GeoJSON as unknown as React.ComponentType<Record<string, unknown>>,
+type ThumbnailComponentProps = {
+	id: string;
+	interactive?: boolean;
+	fullWidth?: boolean;
+};
+
+const ASSET_COMPONENTS: Record<AssetType, React.ComponentType<ThumbnailComponentProps>> = {
+	image: Image as unknown as React.ComponentType<ThumbnailComponentProps>,
+	video: Video as unknown as React.ComponentType<ThumbnailComponentProps>,
+	audio: Audio as unknown as React.ComponentType<ThumbnailComponentProps>,
+	network: Network as unknown as React.ComponentType<ThumbnailComponentProps>,
+	apikey: APIKey as unknown as React.ComponentType<ThumbnailComponentProps>,
+	geojson: GeoJSON as unknown as React.ComponentType<ThumbnailComponentProps>,
 };
 
 const Asset = ({
@@ -94,15 +99,8 @@ const Asset = ({
 			onKeyDown={handleKeyDown}
 			className={cx("group relative size-full", onClick && "cursor-pointer")}
 		>
-			<div
-				className={cx(
-					"flex size-full items-center justify-center",
-					"[&_.thumbnail]:flex [&_.thumbnail]:w-full",
-					onClick &&
-						"[&_.thumbnail]:cursor-pointer [&_.thumbnail]:transition-opacity [&_.thumbnail]:duration-(--animation-duration-fast) [&_.thumbnail]:ease-(--animation-easing) [&_.thumbnail:hover]:opacity-80",
-				)}
-			>
-				<PreviewComponent id={id} />
+			<div className="flex size-full items-center justify-center">
+				<PreviewComponent id={id} interactive={!!onClick} fullWidth />
 			</div>
 
 			<div

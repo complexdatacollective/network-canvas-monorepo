@@ -90,7 +90,7 @@ const Validation = ({
 				</div>
 				{itemKey && isValidationWithNumberValue(itemKey) && (
 					<div className={MULTI_SELECT_OPTION_CLASSES}>
-						<NumberField input={numberValueInputProps} validation={{ required: true }} />
+						<NumberField input={numberValueInputProps} validation={{ required: true }} variant="embedded" />
 					</div>
 				)}
 				{itemKey && isValidationWithListValue(itemKey) && (

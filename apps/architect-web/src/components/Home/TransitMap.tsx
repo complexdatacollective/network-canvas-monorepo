@@ -197,9 +197,9 @@ function Station({ x, y, meta, label, sub, isNewest, labelLeft, index, entryDela
 					y={y - ICON_SIZE / 2}
 					width={ICON_SIZE}
 					height={ICON_SIZE}
-					style={{ overflow: "visible" }}
+					overflow="visible"
 				>
-					<div className="flex h-full w-full items-center justify-center" style={{ filter: "brightness(0) invert(1)" }}>
+					<div className="flex h-full w-full items-center justify-center brightness-0 invert">
 						<img src={meta.icon} alt="" style={{ width: ICON_SIZE, height: ICON_SIZE }} />
 					</div>
 				</foreignObject>
@@ -216,18 +216,15 @@ function Station({ x, y, meta, label, sub, isNewest, labelLeft, index, entryDela
 					y={y - 40}
 					width={LABEL_W}
 					height={80}
-					style={{ overflow: "visible" }}
+					overflow="visible"
 				>
 					<div
 						className="flex h-full w-full items-center"
 						style={{ justifyContent: labelLeft ? "flex-end" : "flex-start" }}
 					>
 						<div
-							className="min-w-0 rounded-full bg-white/40 px-6 py-3 font-heading"
-							style={{
-								boxShadow: "0 8px 20px rgba(22,21,43,0.10)",
-								maxWidth: LABEL_W - 20,
-							}}
+							className="min-w-0 rounded-full bg-white/40 px-6 py-3 font-heading shadow-[0_8px_20px_rgba(22,21,43,0.10)]"
+							style={{ maxWidth: LABEL_W - 20 }}
 						>
 							<div className="truncate text-[19px] font-extrabold leading-tight tracking-tight text-[color:hsl(240_35%_17%)]">
 								{label}

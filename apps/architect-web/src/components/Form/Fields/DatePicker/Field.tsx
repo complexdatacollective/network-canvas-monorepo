@@ -56,7 +56,7 @@ class DatePickerField extends Component<DatePickerFieldProps> {
 
 		const anyLabel = fieldLabel || label;
 		return (
-			<div className="form-field-container" hidden={!!hidden} ref={this.ref}>
+			<div className="m-0 [&>h4]:m-0" hidden={!!hidden} ref={this.ref}>
 				{anyLabel && <MarkdownLabel label={anyLabel} />}
 				<div
 					className={cx("text-input-foreground", hasError && "rounded-t-sm border-2 border-error", className)}

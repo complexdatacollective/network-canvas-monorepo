@@ -37,7 +37,7 @@ const Attribute = ({
 	return (
 		<div className="my-(--space-md) flex rounded-(--radius) p-(--space-md) [&_.form-field]:mb-0 [&_.form-field]:bg-surface-2">
 			<div className="flex grow shrink-0 basis-auto flex-col">
-				<div className="grow shrink-0 basis-auto [&_.form-fields-variable-picker]:mt-0 [&_.form-fields-variable-picker]:mb-(--space-md)">
+				<div className="grow shrink-0 basis-auto">
 					<ValidatedField
 						name={`${field}.variable`}
 						component={VariablePicker}

@@ -24,6 +24,7 @@ type TextInputProps = {
 	placeholder?: string | number;
 	fieldLabel?: string | null;
 	className?: string;
+	variant?: "default" | "embedded";
 	type?: "text" | "number" | "search";
 	autoFocus?: boolean;
 	hidden?: boolean;
@@ -38,6 +39,7 @@ const TextInput = ({
 	placeholder = "Enter some text...",
 	fieldLabel = null,
 	className = "",
+	variant = "default",
 	type = "text",
 	autoFocus: _autoFocus = false,
 	hidden = false,
@@ -54,7 +56,7 @@ const TextInput = ({
 	const anyLabel = fieldLabel || label;
 
 	return (
-		<div className="form-field-container" hidden={hidden}>
+		<div className="m-0 w-full [&>h4]:m-0" hidden={hidden}>
 			{anyLabel && (
 				<h4>
 					<MarkdownLabel label={anyLabel} />
@@ -70,6 +72,7 @@ const TextInput = ({
 						hasLeftAdornment && "pl-[3.25em]",
 						hasRightAdornment && "pr-[3.25em]",
 						hasError && "border-2 border-error rounded-b-none",
+						variant === "embedded" && "m-0 rounded-(--radius) border-0 pb-(--space-sm)",
 					)}
 					placeholder={placeholder?.toString()}
 					type={type}

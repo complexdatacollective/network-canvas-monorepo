@@ -1,4 +1,4 @@
-import cx from "classnames";
+import { cx } from "~/utils/cva";
 
 type LayoutProps = {
 	children: React.ReactNode;

@@ -11,7 +11,7 @@ import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { exportNetcanvas } from "~/ducks/modules/userActions/userActions";
 import Button, { IconButton } from "~/lib/legacy-ui/components/Button";
 import { getCanRedo, getCanUndo, getProtocolName } from "~/selectors/protocol";
-import { cn } from "~/utils/cn";
+import { cx } from "~/utils/cva";
 import ActionToolbar from "./ActionToolbar";
 import Breadcrumb, { type BreadcrumbItem } from "./Breadcrumb";
 import NavShell from "./NavShell";
@@ -84,7 +84,7 @@ const ProjectNav = ({ extraActions }: ProjectNavProps) => {
 						key={href}
 						href={href}
 						aria-current={isActive ? "page" : undefined}
-						className={cn(
+						className={cx(
 							"text-base font-semibold relative cursor-pointer no-underline text-current transition-colors leading-none",
 							!isActive && "hover:text-action",
 						)}
@@ -114,22 +114,8 @@ const ProjectNav = ({ extraActions }: ProjectNavProps) => {
 				{extraActions}
 				{!isSummary && (
 					<>
-						<IconButton
-							variant="text"
-							icon={<Undo />}
-							onClick={handleUndo}
-							disabled={!canUndo}
-							aria-label="Undo"
-							className="hover:bg-current/10"
-						/>
-						<IconButton
-							variant="text"
-							icon={<Redo />}
-							onClick={handleRedo}
-							disabled={!canRedo}
-							aria-label="Redo"
-							className="hover:bg-current/10"
-						/>
+						<IconButton variant="text" icon={<Undo />} onClick={handleUndo} disabled={!canUndo} aria-label="Undo" />
+						<IconButton variant="text" icon={<Redo />} onClick={handleRedo} disabled={!canRedo} aria-label="Redo" />
 					</>
 				)}
 				<Tooltip content="Download .netcanvas protocol">

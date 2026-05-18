@@ -110,7 +110,7 @@ const OptionsFieldComponent = ({ fields, meta: { error, submitFailed } }: Option
 	};
 
 	return (
-		<div className="form-field-container">
+		<div>
 			<div>
 				<Reorder.Group
 					className="mb-(--space-md) flex flex-col gap-(--space-md)"

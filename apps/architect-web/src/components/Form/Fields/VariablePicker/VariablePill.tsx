@@ -1,9 +1,9 @@
 import type { VariableType } from "@codaco/protocol-validation";
-import Tippy from "@tippyjs/react";
 import { get } from "es-toolkit/compat";
 import { AnimatePresence, motion } from "motion/react";
 import React, { useMemo, useRef, useState } from "react";
 import TextInput from "~/components/Form/Fields/Text";
+import Tooltip from "~/components/NewComponents/Tooltip";
 import { getIconForType } from "~/config/variables";
 import { useAppDispatch, useAppSelector } from "~/ducks/hooks";
 import { updateVariableByUUID } from "~/ducks/modules/protocol/codebook";
@@ -31,33 +31,39 @@ type BaseVariablePillProps = {
 	type: VariableType;
 	children: React.ReactNode;
 	width?: string;
+	summary?: boolean;
 };
 
-const BaseVariablePill = React.forwardRef<HTMLDivElement, BaseVariablePillProps>(({ type, children, width }, ref) => {
-	const icon = useMemo(() => getIconForType(type), [type]);
+const BaseVariablePill = React.forwardRef<HTMLDivElement, BaseVariablePillProps>(
+	({ type, children, width, summary }, ref) => {
+		const icon = useMemo(() => getIconForType(type), [type]);
 
-	return (
-		// `variable-pill` marker — hook for the protocol-summary.css cascade
-		// that overrides shadow color and preview margin.
-		<motion.div
-			className="variable-pill inline-flex h-(--space-2xl) flex-nowrap overflow-hidden rounded-full bg-platinum w-(--variable-pill-width,20rem) shadow-[0_0_var(--space-sm)_var(--variable-pill-shadow-color,transparent)]"
-			style={width ? ({ "--variable-pill-width": width } as React.CSSProperties) : undefined}
-			ref={ref}
-		>
-			<div
+		return (
+			// `variable-pill` marker — hook for two remaining same-area cascades:
+			// `VariablePicker.tsx` (mb on nested pills) and `PreviewRule.tsx` (zoom).
+			<motion.div
 				className={cx(
-					"flex shrink-0 basis-(--space-2xl) items-center justify-center [&_.icon]:w-(--space-lg)",
-					ICON_BACKGROUND_BY_TYPE[type],
+					"variable-pill inline-flex h-(--space-2xl) flex-nowrap overflow-hidden rounded-full w-(--variable-pill-width,20rem) shadow-[0_0_var(--space-sm)_var(--variable-pill-shadow-color,transparent)]",
+					summary
+						? "bg-white [zoom:0.8] max-w-[24rem] m-[0.5rem] [--variable-pill-shadow-color:var(--color-platinum-dark)]"
+						: "bg-platinum",
 				)}
+				style={width ? ({ "--variable-pill-width": width } as React.CSSProperties) : undefined}
+				ref={ref}
 			>
-				<img className="icon" src={icon} alt={type} />
-			</div>
-			<div className="flex flex-1 w-[calc(100%-var(--space-2xl))] items-center justify-between [&_.label]:cursor-text [&_.label]:w-full [&_.label]:overflow-hidden [&_.label]:whitespace-nowrap [&_.label]:text-ellipsis">
-				{children}
-			</div>
-		</motion.div>
-	);
-});
+				<div
+					className={cx(
+						"flex shrink-0 basis-(--space-2xl) items-center justify-center [&_.icon]:w-(--space-lg)",
+						ICON_BACKGROUND_BY_TYPE[type],
+					)}
+				>
+					<img className="icon" src={icon} alt={type} />
+				</div>
+				<div className="flex flex-1 w-[calc(100%-var(--space-2xl))] items-center justify-between">{children}</div>
+			</motion.div>
+		);
+	},
+);
 
 type SimpleVariablePillProps = {
 	label: string;
@@ -172,7 +178,7 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
 						animate={{ opacity: 1 }}
 						exit={{ opacity: 0 }}
 					>
-						<Tippy theme="error" content={validation} visible={!!validation} placement="bottom">
+						<Tooltip content={validation} open={!!validation} side="bottom" variant="error">
 							<div className="flex-auto w-full">
 								<TextInput
 									autoFocus
@@ -200,7 +206,7 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
 													!canSubmit && "cursor-not-allowed grayscale",
 												)}
 											>
-												<Icon name="tick" color="sea-green" />
+												<Icon name="tick" className="text-sea-green" />
 											</motion.div>
 											<motion.div
 												title="Cancel"
@@ -213,18 +219,18 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
 												onClick={handleCancel}
 												className="ml-(--space-sm) cursor-pointer [&_.icon]:size-(--space-md)"
 											>
-												<Icon name="cross" color="tomato" />
+												<Icon name="cross" className="text-tomato" />
 											</motion.div>
 										</motion.div>
 									}
 								/>
 							</div>
-						</Tippy>
+						</Tooltip>
 					</motion.div>
 				) : (
 					<motion.h4
 						key="label"
-						className="label m-0 grow shrink-0 px-(--space-md) py-(--space-sm) [word-break:keep-all] text-input-foreground"
+						className="m-0 grow shrink-0 cursor-text w-full overflow-hidden whitespace-nowrap text-ellipsis px-(--space-md) py-(--space-sm) [word-break:keep-all] text-input-foreground"
 						initial={{ opacity: 0 }}
 						animate={{ opacity: 1 }}
 						exit={{ opacity: 0 }}

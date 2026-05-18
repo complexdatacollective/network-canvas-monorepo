@@ -78,7 +78,7 @@ const SliderField = ({
 	const sliderType = getSliderType(type);
 
 	return (
-		<div className="form-field-container" hidden={hidden}>
+		<div className="m-0 [&>h4]:m-0" hidden={hidden}>
 			{anyLabel && <MarkdownLabel label={anyLabel} />}
 			<div
 				className={cx(

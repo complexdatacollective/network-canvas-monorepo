@@ -86,7 +86,7 @@ const CheckboxGroup = ({
 	const anyLabel = fieldLabel || label;
 
 	return (
-		<div className={cx("form-field-container block", className)}>
+		<div className={cx("block m-0 [&>h4]:m-0", className)}>
 			{anyLabel && <MarkdownLabel label={anyLabel} />}
 			<div className={cx("form-field flex flex-col", hasError && "border-2 border-error mb-0")}>
 				{options.map(renderOption)}

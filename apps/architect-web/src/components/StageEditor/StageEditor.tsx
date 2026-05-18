@@ -1,4 +1,3 @@
-import { Popover } from "@base-ui/react/popover";
 import { type CurrentProtocol, type Stage, type StageType, validateProtocol } from "@codaco/protocol-validation";
 import { omit } from "es-toolkit/compat";
 import { Settings } from "lucide-react";
@@ -8,6 +7,7 @@ import { getFormValues, isDirty as isFormDirty, isInvalid } from "redux-form";
 import { v1 as uuid } from "uuid";
 import { useLocation } from "wouter";
 import Editor from "~/components/Editor";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/NewComponents/Popover";
 import Switch from "~/components/NewComponents/Switch";
 import { launchPreview } from "~/components/PreviewHost/launchPreview";
 import StageEditorNav from "~/components/ProjectNav/StageEditorNav";
@@ -16,6 +16,7 @@ import { getPreviewUseSyntheticData, setPreviewUseSyntheticData } from "~/ducks/
 import { actionCreators as dialogActions } from "~/ducks/modules/dialogs";
 import { actionCreators as stageActions } from "~/ducks/modules/protocol/stages";
 import type { RootState } from "~/ducks/store";
+import { IconButton } from "~/lib/legacy-ui/components/Button";
 import { getProtocol, getStage, getStageIndex } from "~/selectors/protocol";
 import { ensureError } from "~/utils/ensureError";
 import { formName } from "./configuration";
@@ -186,28 +187,20 @@ const StageEditor = (props: StageEditorProps) => {
 	const previewLabel = isOpeningPreview ? "Opening preview…" : "Preview";
 
 	const previewOptions = (
-		<Popover.Root>
-			<Popover.Trigger
-				render={
-					<button type="button" aria-label="Preview options" className="rounded-md p-2 hover:bg-input-active">
-						<Settings className="size-4" />
-					</button>
-				}
-			/>
-			<Popover.Portal>
-				<Popover.Positioner side="top" sideOffset={8}>
-					<Popover.Popup className="rounded-md bg-surface-accent p-3 text-surface-accent-foreground shadow-lg">
-						<label className="flex items-center gap-3">
-							<Switch
-								checked={useSyntheticData}
-								onCheckedChange={(checked) => dispatch(setPreviewUseSyntheticData(checked))}
-							/>
-							<span className="text-sm">Start preview with example data</span>
-						</label>
-					</Popover.Popup>
-				</Popover.Positioner>
-			</Popover.Portal>
-		</Popover.Root>
+		<Popover>
+			<PopoverTrigger asChild>
+				<IconButton variant="text" icon={<Settings />} aria-label="Preview options" />
+			</PopoverTrigger>
+			<PopoverContent side="top" sideOffset={8} className="bg-surface-accent p-3 text-surface-accent-foreground">
+				<label className="flex items-center gap-3">
+					<Switch
+						checked={useSyntheticData}
+						onCheckedChange={(checked) => dispatch(setPreviewUseSyntheticData(checked))}
+					/>
+					<span className="text-sm">Start preview with example data</span>
+				</label>
+			</PopoverContent>
+		</Popover>
 	);
 
 	return (

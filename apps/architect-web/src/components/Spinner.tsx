@@ -1,7 +1,6 @@
-import { cva, type VariantProps } from "class-variance-authority";
 import { motion, useAnimationControls } from "motion/react";
 import { useEffect, useRef } from "react";
-import { cn } from "~/utils/cn";
+import { cva, cx, type VariantProps } from "~/utils/cva";
 
 const ANIMATION_DURATION = 1.8;
 
@@ -31,8 +30,8 @@ const circlePositions = [
 	{ top: 2, left: 1, rotate: -180 },
 ] as const;
 
-const spinnerVariants = cva(
-	[
+const spinnerVariants = cva({
+	base: [
 		"[--container-size:calc(var(--circle-size)*3)]",
 		"relative",
 		"will-change-transform",
@@ -41,21 +40,19 @@ const spinnerVariants = cva(
 		"h-(--container-size)",
 		"m-(--circle-size)",
 	].join(" "),
-	{
-		variants: {
-			size: {
-				xs: "[--circle-size:0.35rem]",
-				sm: "[--circle-size:0.5rem]",
-				md: "[--circle-size:0.75rem]",
-				lg: "[--circle-size:1.25rem]",
-				xl: "[--circle-size:2rem]",
-			},
-		},
-		defaultVariants: {
-			size: "md",
+	variants: {
+		size: {
+			xs: "[--circle-size:0.35rem]",
+			sm: "[--circle-size:0.5rem]",
+			md: "[--circle-size:0.75rem]",
+			lg: "[--circle-size:1.25rem]",
+			xl: "[--circle-size:2rem]",
 		},
 	},
-);
+	defaultVariants: {
+		size: "md",
+	},
+});
 
 const halfCircleBase = "h-(--circle-size) w-[calc(var(--circle-size)*2)] rounded-t-[calc(var(--circle-size)*2)]";
 
@@ -136,7 +133,7 @@ export default function Spinner({ size = "md", customSize, className }: SpinnerP
 
 	return (
 		<motion.div
-			className={cn(spinnerVariants({ size }), className)}
+			className={cx(spinnerVariants({ size }), className)}
 			style={customSizeStyle}
 			initial={{ rotate: 45, scale: 1 }}
 			animate={containerControls}
@@ -161,7 +158,7 @@ export default function Spinner({ size = "md", customSize, className }: SpinnerP
 							animate={halfCircleControls[index]}
 						/>
 						<div
-							className={cn(halfCircleBase, "rotate-180 relative -top-px")}
+							className={cx(halfCircleBase, "rotate-180 relative -top-px")}
 							style={{ backgroundColor: colors.light }}
 						/>
 					</motion.div>

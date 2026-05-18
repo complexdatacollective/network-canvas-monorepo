@@ -32,7 +32,7 @@ const ShapePicker = ({
 	const showError = invalid && touched && error;
 
 	return (
-		<div className="form-field-container">
+		<div className="m-0 [&>h4]:m-0">
 			<div>
 				<div className="flex flex-wrap gap-(--space-sm)">
 					{SHAPES.map(({ value, label }) => (

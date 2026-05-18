@@ -100,7 +100,7 @@ const Timeline = () => {
 			    the protocol overview card so the timeline visually connects to it. */}
 			<div className="relative pt-(--space-xl)">
 				{/* Timeline line via CSS - height is 100% minus small offset to stop at add button center */}
-				<div className="absolute left-1/2 top-0 w-[5px] h-[calc(100%-1.25rem)] -translate-x-1/2 bg-timeline pointer-events-none" />
+				<div className="absolute left-1/2 top-0 w-(--space-xs) h-[calc(100%-1.25rem)] -translate-x-1/2 bg-timeline pointer-events-none" />
 
 				<Reorder.Group
 					axis="y"

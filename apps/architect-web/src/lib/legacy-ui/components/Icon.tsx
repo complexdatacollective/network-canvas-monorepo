@@ -1,23 +1,16 @@
-import cx from "classnames";
 import type React from "react";
 import { memo, useMemo } from "react";
+import { cx } from "~/utils/cva";
 import icons from "../utils/getIcon";
 
 type IconProps = {
 	name: string;
 	className?: string;
-	color?: string;
 	style?: React.CSSProperties;
 } & React.HTMLAttributes<HTMLElement>;
 
-const Icon = ({ color = "", name, className = "", style = {}, ...rest }: IconProps) => {
-	const iconClassNames = cx(
-		{
-			icon: true,
-			[`icon--${color}`]: !!color,
-		},
-		[className],
-	);
+const Icon = ({ name, className = "", style = {}, ...rest }: IconProps) => {
+	const iconClassNames = cx("icon", className);
 
 	const IconComponent = useMemo(() => icons(name), [name]);
 

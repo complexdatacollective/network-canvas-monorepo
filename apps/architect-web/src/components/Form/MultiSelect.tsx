@@ -23,12 +23,7 @@ export const MULTI_SELECT_CONTROL_CLASSES = "flex grow-0 items-center px-(--spac
 
 export const MULTI_SELECT_OPTIONS_CLASSES = "flex-1 flex items-center px-(--space-md)";
 
-export const MULTI_SELECT_OPTION_CLASSES =
-	"flex flex-1 items-start ml-(--space-md) first:ml-0 " +
-	"[&_.form-field-container]:m-0 [&_.form-field-container]:w-full [&_.form-field-container]:relative " +
-	"[&_.form-field-container_h4]:m-0 [&_.form-field-container_.form-field]:m-0 " +
-	"[&_.form-field-container_input]:rounded-(--radius) [&_.form-field-container_input]:border-0 [&_.form-field-container_input]:pb-(--space-sm) " +
-	"[&_.form-field-container_textarea]:rounded-(--radius) [&_.form-field-container_textarea]:border-0 [&_.form-field-container_textarea]:pb-(--space-sm)";
+export const MULTI_SELECT_OPTION_CLASSES = "flex flex-1 items-start ml-(--space-md) first:ml-0";
 
 type PropertyField = {
 	fieldName: string;

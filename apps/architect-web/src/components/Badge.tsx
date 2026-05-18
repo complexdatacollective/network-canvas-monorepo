@@ -1,12 +1,12 @@
 import type React from "react";
-import { cn } from "~/utils/cn";
+import { cx } from "~/utils/cva";
 
 type BadgeProps = React.HTMLAttributes<HTMLDivElement> & {
 	color: string;
 };
 
 const Badge = ({ color, className, children = null, ...rest }: BadgeProps) => {
-	const badgeClasses = cn(
+	const badgeClasses = cx(
 		"inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm",
 		color === "white" && "bg-surface-1 text-foreground",
 		color === "neon-coral" && "bg-neon-coral text-white",

@@ -78,7 +78,7 @@ const Variables = ({ variables }: VariablesProps) => {
 						return (
 							<tr key={variableId} id={`variable-${variableId}`}>
 								<td>
-									<SimpleVariablePill label={name} type={type}>
+									<SimpleVariablePill summary label={name} type={type}>
 										{name}
 									</SimpleVariablePill>
 								</td>

@@ -1,5 +1,5 @@
 import React, { forwardRef } from "react";
-import { cn } from "~/utils/cn";
+import { cx } from "~/utils/cva";
 import Icon from "./Icon";
 
 const renderButtonIcon = ({ icon }: { icon?: string | React.ReactElement }) => {
@@ -54,7 +54,7 @@ const computeButtonClasses = ({
 	icon,
 	iconPosition = "left",
 }: ComputeClassesArgs) =>
-	cn(
+	cx(
 		"inline-flex gap-2 items-center justify-center grow-0 shrink-0 w-auto",
 		// focus state
 		"transition-color duration-200 ease-in-out",
@@ -91,7 +91,7 @@ const computeButtonClasses = ({
 		color === "tomato" && "bg-tomato border-tomato-dark text-white hover:bg-tomato-dark",
 		color === "white" && "bg-white border-platinum-dark text-charcoal hover:bg-platinum",
 		// variant overrides — must come after color block so conflicting utilities win
-		variant === "text" && "bg-transparent border-transparent text-current hover:bg-foreground/10",
+		variant === "text" && "bg-transparent border-transparent text-current hover:bg-current/10",
 		// Icon position
 		icon && iconPosition === "left" && "flex-row",
 		icon && iconPosition === "right" && "flex-row-reverse",
@@ -127,7 +127,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 		<button
 			ref={ref}
 			type={type}
-			className={cn(computeButtonClasses({ color, size, variant, icon, iconPosition }), className)}
+			className={cx(computeButtonClasses({ color, size, variant, icon, iconPosition }), className)}
 			onClick={onClick}
 			disabled={disabled}
 			{...rest}
@@ -153,7 +153,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
 		<button
 			ref={ref}
 			type={type}
-			className={cn(
+			className={cx(
 				computeButtonClasses({ color, size, variant }),
 				"aspect-square rounded-full p-0",
 				size === "small" ? "h-8 w-8" : size === "large" ? "h-12 w-12" : "h-10 w-10",
