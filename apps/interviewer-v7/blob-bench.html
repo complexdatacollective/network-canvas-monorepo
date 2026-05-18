@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>blob-bench</title>
+    <style>
+      body {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        background: #1a1a2e;
+        color: #eaeaea;
+        margin: 0;
+        padding: 16px;
+      }
+      pre {
+        white-space: pre;
+        margin: 0;
+      }
+      canvas {
+        display: block;
+        margin-top: 16px;
+        background: #0e0e1a;
+      }
+      #status {
+        font-weight: bold;
+        margin-bottom: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="status">running…</div>
+    <pre id="output"></pre>
+    <script type="module" src="/src/blob-bench/main.ts"></script>
+  </body>
+</html>
