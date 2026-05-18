@@ -9,7 +9,6 @@ import { NewSessionDialog } from '~/components/NewSessionDialog';
 import { ProtocolDeck } from '~/components/ProtocolDeck';
 import { ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
-import { StageBackground } from '~/components/StageBackground';
 import { StatusRow } from '~/components/StatusRow';
 import { TopActionBar } from '~/components/TopActionBar';
 import { getSettings, listProtocols, listSessions } from '~/lib/db/api';
@@ -62,7 +61,7 @@ export function HomeRoute() {
   const haveProtocols = protocols.length > 0;
 
   return (
-    <StageBackground className="iv-root flex min-h-dvh w-full flex-col gap-8 overflow-hidden px-11 pt-9 pb-5">
+    <div className="iv-root flex min-h-dvh w-full flex-col gap-8 overflow-hidden px-11 pt-9 pb-5">
       <header className="flex items-start justify-between">
         <BrandHeader />
         <TopActionBar
@@ -125,6 +124,6 @@ export function HomeRoute() {
           }}
         />
       ) : null}
-    </StageBackground>
+    </div>
   );
 }

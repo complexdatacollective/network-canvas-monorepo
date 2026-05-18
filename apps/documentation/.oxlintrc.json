@@ -1,9 +1,18 @@
 {
-  "extends": [
-    "../../.oxlintrc.json",
-    "../../tooling/oxlint/react.json",
-    "../../tooling/oxlint/tailwind.json"
-  ],
+  "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
   "plugins": ["nextjs"],
-  "rules": { "nextjs/no-img-element": "off" }
+  "jsPlugins": ["oxlint-tailwindcss"],
+  "settings": {
+    "tailwindcss": {
+      "entryPoint": ["tooling/tailwind/fresco/fresco.css"]
+    }
+  },
+  "rules": {
+    "nextjs/no-img-element": "off",
+    "tailwindcss/no-unknown-classes": "warn",
+    "tailwindcss/no-duplicate-classes": "error",
+    "tailwindcss/no-conflicting-classes": "warn",
+    "tailwindcss/no-unnecessary-whitespace": "error",
+    "tailwindcss/enforce-canonical": "warn"
+  }
 }
