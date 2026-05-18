@@ -24,7 +24,7 @@ export function rngToPalette(rng: Rng): Palette {
 	// the top, clamped to a sensible floor.
 	const bottomL = Math.max(0.22, base.l - 0.3);
 	return {
-		foreground: "oklch(1 0 0 / 0.55)",
+		foreground: "oklch(1 0 0)",
 		backgroundTop: `oklch(${base.l} ${base.c} ${base.h})`,
 		backgroundBottom: `oklch(${bottomL.toFixed(3)} ${base.c} ${base.h})`,
 	};

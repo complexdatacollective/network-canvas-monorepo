@@ -14,13 +14,12 @@ const parseOklch = (s: string) => {
 };
 
 describe("rngToPalette", () => {
-	it("foreground is translucent white", () => {
+	it("foreground is solid white (opacity is applied at the group level in PatternSvg)", () => {
 		const palette = rngToPalette(seedToRng("alice"));
 		const fg = parseOklch(palette.foreground);
 		expect(fg.l).toBe(1);
 		expect(fg.c).toBe(0);
-		expect(fg.a).toBeGreaterThan(0);
-		expect(fg.a).toBeLessThan(1);
+		expect(fg.a).toBe(1);
 	});
 
 	it("backgroundTop matches one of the four BASE_PALETTE colors at full strength", () => {

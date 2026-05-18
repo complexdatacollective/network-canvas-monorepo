@@ -1,6 +1,12 @@
 import { type CSSProperties, type ReactNode, useId } from "react";
 import type { Palette } from "./types";
 
+// Applied to a `<g>` wrapping the shapes. Using group-level opacity (rather
+// than alpha in the fill/stroke color) flattens overlaps in an offscreen
+// buffer before compositing, so intersecting paths don't compound to a
+// brighter spot.
+const FOREGROUND_OPACITY = 0.8;
+
 type Props = {
 	width: number;
 	height: number;
@@ -29,7 +35,7 @@ export const PatternSvg = ({ width, height, palette, className, style, children 
 				</linearGradient>
 			</defs>
 			<rect width={width} height={height} fill={`url(#${gradId})`} />
-			{children}
+			<g opacity={FOREGROUND_OPACITY}>{children}</g>
 		</svg>
 	);
 };
