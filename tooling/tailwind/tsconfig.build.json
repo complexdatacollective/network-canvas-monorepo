@@ -1,11 +1,11 @@
 {
-	"extends": "@codaco/tsconfig/base.json",
-	"compilerOptions": {
-		"noEmit": false,
-		"declaration": false,
-		"outDir": "shared/plugins",
-		"rootDir": "shared/plugins",
-		"incremental": false
-	},
-	"include": ["shared/plugins/**/*.ts"]
+  "extends": "@codaco/tsconfig/base.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": false,
+    "outDir": "shared/plugins",
+    "rootDir": "shared/plugins",
+    "incremental": false
+  },
+  "include": ["shared/plugins/**/*.ts"]
 }

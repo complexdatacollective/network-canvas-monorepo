@@ -1,46 +1,47 @@
-import { get } from "lodash";
-import { formValueSelector } from "redux-form";
-import { getAssetManifest } from "../../../selectors/protocol";
-import Grid from "../../Grid";
-import ItemEditor from "./ItemEditor";
-import ItemPreview from "./ItemPreview";
-import { capacity } from "./options";
+import { get } from 'lodash';
+import { formValueSelector } from 'redux-form';
+
+import { getAssetManifest } from '../../../selectors/protocol';
+import Grid from '../../Grid';
+import ItemEditor from './ItemEditor';
+import ItemPreview from './ItemPreview';
+import { capacity } from './options';
 
 const normalizeType = (item) => ({
-	...item,
-	type: item.type === "text" ? "text" : "asset",
+  ...item,
+  type: item.type === 'text' ? 'text' : 'asset',
 });
 
 const denormalizeType = (state, { form, editField }) => {
-	const item = formValueSelector(form)(state, editField);
+  const item = formValueSelector(form)(state, editField);
 
-	if (!item) {
-		return null;
-	}
+  if (!item) {
+    return null;
+  }
 
-	if (item.type === "text") {
-		return item;
-	}
+  if (item.type === 'text') {
+    return item;
+  }
 
-	const assetManifest = getAssetManifest(state);
-	const manifestType = get(assetManifest, [item.content, "type"]);
+  const assetManifest = getAssetManifest(state);
+  const manifestType = get(assetManifest, [item.content, 'type']);
 
-	return {
-		...item,
-		type: manifestType,
-	};
+  return {
+    ...item,
+    type: manifestType,
+  };
 };
 
 const ContentGrid = (props) => (
-	<Grid
-		previewComponent={ItemPreview}
-		editComponent={ItemEditor}
-		normalize={normalizeType}
-		itemSelector={denormalizeType}
-		title="Edit Items"
-		capacity={capacity}
-		{...props}
-	/>
+  <Grid
+    previewComponent={ItemPreview}
+    editComponent={ItemEditor}
+    normalize={normalizeType}
+    itemSelector={denormalizeType}
+    title="Edit Items"
+    capacity={capacity}
+    {...props}
+  />
 );
 
 export { ContentGrid };

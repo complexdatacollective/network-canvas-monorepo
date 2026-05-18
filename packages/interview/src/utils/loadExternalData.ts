@@ -1,15 +1,17 @@
+import csv from 'csvtojson';
+import { mapKeys } from 'es-toolkit';
+import { hash } from 'ohash';
+
 // import CSVWorker from './csvDecoder.worker';
-import type { Codebook, StageSubject } from "@codaco/protocol-validation";
+import type { Codebook, StageSubject } from '@codaco/protocol-validation';
 import {
-	type EntityAttributesProperty,
-	entityAttributesProperty,
-	entityPrimaryKeyProperty,
-	type NcNode,
-} from "@codaco/shared-consts";
-import csv from "csvtojson";
-import { mapKeys } from "es-toolkit";
-import { hash } from "ohash";
-import getParentKeyByNameValue from "./getParentKeyByNameValue";
+  type EntityAttributesProperty,
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
+
+import getParentKeyByNameValue from './getParentKeyByNameValue';
 
 /**
  * Converting data from CSV to our network JSON format is expensive, and so happens
@@ -30,60 +32,68 @@ import getParentKeyByNameValue from "./getParentKeyByNameValue";
 // });
 
 const CSVToJSONNetworkFormat = async (data: string) => {
-	const withTypeAndAttributes = (node: NcNode[EntityAttributesProperty]) => ({
-		[entityAttributesProperty]: {
-			...node,
-		},
-	});
+  const withTypeAndAttributes = (node: NcNode[EntityAttributesProperty]) => ({
+    [entityAttributesProperty]: {
+      ...node,
+    },
+  });
 
-	const network = (await csv().fromString(data)) as NcNode[EntityAttributesProperty][];
+  const network = (await csv().fromString(
+    data,
+  )) as NcNode[EntityAttributesProperty][];
 
-	return network.map((entry) => withTypeAndAttributes(entry));
+  return network.map((entry) => withTypeAndAttributes(entry));
 };
 
 const convertCSVToJsonWithWorker = async (data: string) => {
-	return CSVToJSONNetworkFormat(data);
+  return CSVToJSONNetworkFormat(data);
 };
 
 /**
  * Loads network data from assets and appends objectHash uids.
  */
 const loadExternalData = async (fileName: string, url: string) => {
-	const isCSV = fileName.split(".").pop() === "csv";
+  const isCSV = fileName.split('.').pop() === 'csv';
 
-	const data = await fetch(url);
-	let nodes: Partial<NcNode>[] = [];
+  const data = await fetch(url);
+  let nodes: Partial<NcNode>[] = [];
 
-	if (isCSV) {
-		const text = await data.text();
-		nodes = await convertCSVToJsonWithWorker(text);
-	} else {
-		const json = (await data.json()) as { nodes: Partial<NcNode>[] };
-		nodes = json.nodes ?? [];
-	}
+  if (isCSV) {
+    const text = await data.text();
+    nodes = await convertCSVToJsonWithWorker(text);
+  } else {
+    const json = (await data.json()) as { nodes: Partial<NcNode>[] };
+    nodes = json.nodes ?? [];
+  }
 
-	return { nodes };
+  return { nodes };
 };
 
 export default loadExternalData;
 
 // Replace string keys with UUIDs in codebook, according to stage subject.
 export const makeVariableUUIDReplacer =
-	(protocolCodebook: Codebook, subjectType: Extract<StageSubject, { entity: "node" }>["type"]) =>
-	(node: Partial<NcNode>): NcNode => {
-		const codebookDefinition = protocolCodebook.node?.[subjectType];
+  (
+    protocolCodebook: Codebook,
+    subjectType: Extract<StageSubject, { entity: 'node' }>['type'],
+  ) =>
+  (node: Partial<NcNode>): NcNode => {
+    const codebookDefinition = protocolCodebook.node?.[subjectType];
 
-		const uuid = hash(node);
+    const uuid = hash(node);
 
-		const attributes = mapKeys(
-			node[entityAttributesProperty] ?? {},
-			(_attributeValue, attributeKey) =>
-				getParentKeyByNameValue(codebookDefinition?.variables ?? {}, attributeKey) ?? attributeKey,
-		);
+    const attributes = mapKeys(
+      node[entityAttributesProperty] ?? {},
+      (_attributeValue, attributeKey) =>
+        getParentKeyByNameValue(
+          codebookDefinition?.variables ?? {},
+          attributeKey,
+        ) ?? attributeKey,
+    );
 
-		return {
-			type: subjectType,
-			[entityPrimaryKeyProperty]: uuid,
-			[entityAttributesProperty]: attributes,
-		} as NcNode;
-	};
+    return {
+      type: subjectType,
+      [entityPrimaryKeyProperty]: uuid,
+      [entityAttributesProperty]: attributes,
+    } as NcNode;
+  };

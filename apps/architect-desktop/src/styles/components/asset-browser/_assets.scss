@@ -25,10 +25,7 @@
           margin-right: units.unit(2);
         }
       }
-
     }
-
-
   }
 
   &__assets {
@@ -36,5 +33,4 @@
     grid-template-columns: 1fr 1fr 1fr;
     grid-gap: units.unit(2);
   }
-
 }

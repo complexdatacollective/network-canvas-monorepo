@@ -1,5 +1,5 @@
 ---
-"@codaco/interview": prerelease
+'@codaco/interview': prerelease
 ---
 
 Move `immer` from `peerDependencies` to `dependencies`. Hosts no longer have to declare `immer` themselves — interview ships its own resolved version (catalog `^11.1.4`, aligned with fresco-ui and the workspace `@reduxjs/toolkit` / `zustand` transitives via a `pnpm.overrides` entry). The single-instance contract that `enableMapSet()` and Draft tracking rely on is preserved; consumers just don't have to opt in.

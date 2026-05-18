@@ -1,10 +1,10 @@
-import { spring } from "motion";
-import plugin from "tailwindcss/plugin";
+import { spring } from 'motion';
+import plugin from 'tailwindcss/plugin';
 
 const springPresets = {
-	short: [0.25, 0.8],
-	medium: [0.35, 0.5],
-	long: [0.55, 0.3],
+  short: [0.25, 0.8],
+  medium: [0.35, 0.5],
+  long: [0.55, 0.3],
 };
 
 /**
@@ -12,52 +12,54 @@ const springPresets = {
  * from motion, so that you can generate springy animations using CSS.
  */
 const motionSpringPlugin: ReturnType<typeof plugin> = plugin((api) => {
-	// Add preset spring utilities
-	const presetUtilities: Record<string, Record<string, string>> = {};
+  // Add preset spring utilities
+  const presetUtilities: Record<string, Record<string, string>> = {};
 
-	Object.entries(springPresets).forEach(([name, [stiffness, damping]]) => {
-		const springValue = spring(stiffness, damping);
-		presetUtilities[`.spring-${name}`] = {
-			transition: `all ${springValue.toString()}`,
-		};
+  Object.entries(springPresets).forEach(([name, [stiffness, damping]]) => {
+    const springValue = spring(stiffness, damping);
+    presetUtilities[`.spring-${name}`] = {
+      transition: `all ${springValue.toString()}`,
+    };
 
-		presetUtilities[`.spring-discrete-${name}`] = {
-			transition: `all ${springValue.toString()} allow-discrete`,
-		};
-	});
+    presetUtilities[`.spring-discrete-${name}`] = {
+      transition: `all ${springValue.toString()} allow-discrete`,
+    };
+  });
 
-	if (api.addUtilities) {
-		api.addUtilities(presetUtilities);
-	}
+  if (api.addUtilities) {
+    api.addUtilities(presetUtilities);
+  }
 
-	// Add arbitrary value spring utilities
-	if (api.matchUtilities) {
-		api.matchUtilities(
-			{
-				spring: (value) => {
-					// Parse the value - could be "0.5,0.5".
-					const params = value.split(",").map((v) => Number.parseFloat(v.trim()));
+  // Add arbitrary value spring utilities
+  if (api.matchUtilities) {
+    api.matchUtilities(
+      {
+        spring: (value) => {
+          // Parse the value - could be "0.5,0.5".
+          const params = value
+            .split(',')
+            .map((v) => Number.parseFloat(v.trim()));
 
-					if (params.length < 2 || params.some(Number.isNaN)) {
-						return {
-							transition: `all ${spring().toString()}`,
-						};
-					}
+          if (params.length < 2 || params.some(Number.isNaN)) {
+            return {
+              transition: `all ${spring().toString()}`,
+            };
+          }
 
-					const [duration, bounciness] = params;
-					const springValue = spring(duration, bounciness);
+          const [duration, bounciness] = params;
+          const springValue = spring(duration, bounciness);
 
-					return {
-						transition: `all ${springValue.toString()}`,
-					};
-				},
-			},
-			{
-				values: {},
-				type: "any",
-			},
-		);
-	}
+          return {
+            transition: `all ${springValue.toString()}`,
+          };
+        },
+      },
+      {
+        values: {},
+        type: 'any',
+      },
+    );
+  }
 });
 
 export default motionSpringPlugin;

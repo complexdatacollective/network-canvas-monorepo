@@ -1,38 +1,49 @@
-import { getVariableOptionsForSubject } from "@selectors/codebook";
-import PropTypes from "prop-types";
-import { connect } from "react-redux";
-import { compose, withProps } from "recompose";
-import NativeSelect from "./NativeSelect";
+import { getVariableOptionsForSubject } from '@selectors/codebook';
+import PropTypes from 'prop-types';
+import { connect } from 'react-redux';
+import { compose, withProps } from 'recompose';
+
+import NativeSelect from './NativeSelect';
 
 const withVariableValidator = withProps(({ validation }) => ({
-	validation: { ...validation, allowedVariableName: "variable name" },
+  validation: { ...validation, allowedVariableName: 'variable name' },
 }));
 
 const mapStateToProps = (state, { entity, type }) => {
-	const existingVariables = getVariableOptionsForSubject(state, { entity, type });
+  const existingVariables = getVariableOptionsForSubject(state, {
+    entity,
+    type,
+  });
 
-	return { reserved: existingVariables };
+  return { reserved: existingVariables };
 };
 
 // TODO: For now just map existing variables, but later could also append create handlers!
 const VariableSelect = ({ reserved, entity, type, variable, ...props }) => (
-	<div className="form-fields-variable-select">
-		<NativeSelect placeholder="Select or create a variable" {...props} reserved={reserved} />
-	</div>
+  <div className="form-fields-variable-select">
+    <NativeSelect
+      placeholder="Select or create a variable"
+      {...props}
+      reserved={reserved}
+    />
+  </div>
 );
 
 VariableSelect.propTypes = {
-	entity: PropTypes.string,
-	reserved: PropTypes.array,
-	type: PropTypes.string,
-	variable: PropTypes.string,
+  entity: PropTypes.string,
+  reserved: PropTypes.array,
+  type: PropTypes.string,
+  variable: PropTypes.string,
 };
 
 VariableSelect.defaultProps = {
-	reserved: [],
-	entity: null,
-	type: null,
-	variable: null,
+  reserved: [],
+  entity: null,
+  type: null,
+  variable: null,
 };
 
-export default compose(connect(mapStateToProps, {}), withVariableValidator)(VariableSelect);
+export default compose(
+  connect(mapStateToProps, {}),
+  withVariableValidator,
+)(VariableSelect);

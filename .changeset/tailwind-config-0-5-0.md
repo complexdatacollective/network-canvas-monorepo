@@ -1,5 +1,5 @@
 ---
-"@codaco/tailwind-config": minor
+'@codaco/tailwind-config': minor
 ---
 
 Reorganize Fresco design-system CSS exports.

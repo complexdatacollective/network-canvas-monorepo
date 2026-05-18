@@ -1,14 +1,21 @@
 {
-	"extends": "@codaco/tsconfig/web.json",
-	"compilerOptions": {
-		"composite": true,
-		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
-		"outDir": "dist",
-		"paths": {
-			"~/.storybook/*": ["./.storybook/*"],
-			"~/*": ["./src/*"]
-		}
-	},
-	"include": ["src"],
-	"exclude": ["node_modules", "dist", "src/**/*.stories.tsx", "src/**/*.test.*", "src/**/*.spec.*", "**/__tests__/**"]
+  "extends": "@codaco/tsconfig/web.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+    "outDir": "dist",
+    "paths": {
+      "~/.storybook/*": ["./.storybook/*"],
+      "~/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/*.stories.tsx",
+    "src/**/*.test.*",
+    "src/**/*.spec.*",
+    "**/__tests__/**"
+  ]
 }

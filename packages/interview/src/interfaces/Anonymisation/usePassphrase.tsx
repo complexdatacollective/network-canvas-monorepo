@@ -1,62 +1,63 @@
-import { useCallback } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { getShouldEncryptNames } from "~/store/modules/protocol";
+import { useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+
+import { getShouldEncryptNames } from '~/store/modules/protocol';
 import {
-	getPassphrase,
-	getPassphraseInvalid,
-	setPassphrase as setPassphraseAction,
-	setPassphraseInvalid as setPassphraseInvalidAction,
-	setShowPassphrasePrompter,
-	showPassphrasePrompter,
-} from "~/store/modules/ui";
+  getPassphrase,
+  getPassphraseInvalid,
+  setPassphrase as setPassphraseAction,
+  setPassphraseInvalid as setPassphraseInvalidAction,
+  setShowPassphrasePrompter,
+  showPassphrasePrompter,
+} from '~/store/modules/ui';
 
 export const usePassphrase = () => {
-	const dispatch = useDispatch();
+  const dispatch = useDispatch();
 
-	const isEnabled = useSelector(getShouldEncryptNames);
+  const isEnabled = useSelector(getShouldEncryptNames);
 
-	const passphrase = useSelector(getPassphrase);
-	const passphraseInvalid = useSelector(getPassphraseInvalid);
-	const showPrompter = useSelector(showPassphrasePrompter);
+  const passphrase = useSelector(getPassphrase);
+  const passphraseInvalid = useSelector(getPassphraseInvalid);
+  const showPrompter = useSelector(showPassphrasePrompter);
 
-	const requirePassphrase = useCallback(() => {
-		if (passphrase) {
-			if (showPrompter) {
-				dispatch(setShowPassphrasePrompter(false));
-			}
+  const requirePassphrase = useCallback(() => {
+    if (passphrase) {
+      if (showPrompter) {
+        dispatch(setShowPassphrasePrompter(false));
+      }
 
-			return passphrase;
-		}
+      return passphrase;
+    }
 
-		if (!showPrompter) {
-			dispatch(setShowPassphrasePrompter(true));
-		}
-		return undefined;
-	}, [passphrase, dispatch, showPrompter]);
+    if (!showPrompter) {
+      dispatch(setShowPassphrasePrompter(true));
+    }
+    return undefined;
+  }, [passphrase, dispatch, showPrompter]);
 
-	const setPassphrase = useCallback(
-		(passphrase: string) => {
-			dispatch(setShowPassphrasePrompter(false));
+  const setPassphrase = useCallback(
+    (passphrase: string) => {
+      dispatch(setShowPassphrasePrompter(false));
 
-			dispatch(setPassphraseAction(passphrase));
-		},
-		[dispatch],
-	);
+      dispatch(setPassphraseAction(passphrase));
+    },
+    [dispatch],
+  );
 
-	const setPassphraseInvalid = useCallback(
-		(state: boolean) => {
-			dispatch(setPassphraseInvalidAction(state));
-		},
-		[dispatch],
-	);
+  const setPassphraseInvalid = useCallback(
+    (state: boolean) => {
+      dispatch(setPassphraseInvalidAction(state));
+    },
+    [dispatch],
+  );
 
-	return {
-		isEnabled,
-		passphrase,
-		passphraseInvalid,
-		setPassphrase,
-		requirePassphrase,
-		showPassphrasePrompter: showPrompter,
-		setPassphraseInvalid,
-	};
+  return {
+    isEnabled,
+    passphrase,
+    passphraseInvalid,
+    setPassphrase,
+    requirePassphrase,
+    showPassphrasePrompter: showPrompter,
+    setPassphraseInvalid,
+  };
 };

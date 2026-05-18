@@ -1,14 +1,14 @@
-import pruneAssets from "@app/utils/protocols/pruneAssets";
-import { electronAPI } from "@utils/electronBridge";
-import log from "@utils/logger";
+import pruneAssets from '@app/utils/protocols/pruneAssets';
+import { electronAPI } from '@utils/electronBridge';
+import log from '@utils/logger';
 
 const getStringifiedProtocol = (protocol) => {
-	try {
-		return JSON.stringify(protocol, null, 2);
-	} catch (e) {
-		log.error(e);
-		throw e;
-	}
+  try {
+    return JSON.stringify(protocol, null, 2);
+  } catch (e) {
+    log.error(e);
+    throw e;
+  }
 };
 
 /**
@@ -18,14 +18,17 @@ const getStringifiedProtocol = (protocol) => {
  * @param {object} protocol - The protocol object.
  */
 const saveProtocol = async (workingPath, protocol) => {
-	const destinationPath = await electronAPI.path.join(workingPath, "protocol.json");
-	log.info(`Save protocol to ${destinationPath}`);
+  const destinationPath = await electronAPI.path.join(
+    workingPath,
+    'protocol.json',
+  );
+  log.info(`Save protocol to ${destinationPath}`);
 
-	const protocolData = getStringifiedProtocol(protocol);
-	await electronAPI.fs.writeFile(destinationPath, protocolData);
-	await pruneAssets(workingPath);
+  const protocolData = getStringifiedProtocol(protocol);
+  await electronAPI.fs.writeFile(destinationPath, protocolData);
+  await pruneAssets(workingPath);
 
-	return destinationPath;
+  return destinationPath;
 };
 
 export default saveProtocol;

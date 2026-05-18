@@ -1,21 +1,24 @@
-import { shallow } from "enzyme";
-import { UnconnectedPresetSwitcherKey as PresetSwitcherKey } from "../PresetSwitcherKey";
+import { shallow } from 'enzyme';
 
-describe("<PresetSwitcherKey />", () => {
-	const props = {
-		isOpen: true,
-		highlightLabels: ["mock"],
-		edges: ["mock"],
-		convexOptions: ["mock"],
-	};
+import { UnconnectedPresetSwitcherKey as PresetSwitcherKey } from '../PresetSwitcherKey';
 
-	it("renders accordions of preset options", () => {
-		const subject = shallow(<PresetSwitcherKey {...props} />);
-		expect(subject.find("Accordion").length).toEqual(3);
-	});
+describe('<PresetSwitcherKey />', () => {
+  const props = {
+    isOpen: true,
+    highlightLabels: ['mock'],
+    edges: ['mock'],
+    convexOptions: ['mock'],
+  };
 
-	it("doesnt render an accordion if the option is empty", () => {
-		const subject = shallow(<PresetSwitcherKey {...props} highlightLabels={[]} />);
-		expect(subject.find("Accordion").length).toEqual(2);
-	});
+  it('renders accordions of preset options', () => {
+    const subject = shallow(<PresetSwitcherKey {...props} />);
+    expect(subject.find('Accordion').length).toEqual(3);
+  });
+
+  it('doesnt render an accordion if the option is empty', () => {
+    const subject = shallow(
+      <PresetSwitcherKey {...props} highlightLabels={[]} />,
+    );
+    expect(subject.find('Accordion').length).toEqual(2);
+  });
 });

@@ -1,7 +1,9 @@
 type PresetPreviewProps = {
-	label: string;
+  label: string;
 };
 
-const PresetPreview = ({ label }: PresetPreviewProps) => <div className="py-(--space-md)">{label}</div>;
+const PresetPreview = ({ label }: PresetPreviewProps) => (
+  <div className="py-(--space-md)">{label}</div>
+);
 
 export default PresetPreview;

@@ -1,3 +1,4 @@
-import { entityAttributesProperty, type NcEntity } from "@codaco/shared-consts";
+import { entityAttributesProperty, type NcEntity } from '@codaco/shared-consts';
 
-export const getEntityAttributes = (entity: NcEntity) => entity?.[entityAttributesProperty] || {};
+export const getEntityAttributes = (entity: NcEntity) =>
+  entity?.[entityAttributesProperty] || {};

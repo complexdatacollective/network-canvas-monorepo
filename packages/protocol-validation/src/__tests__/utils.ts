@@ -1,133 +1,149 @@
-import { createDecipheriv } from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
-import { Readable } from "node:stream";
-import type { Endpoints } from "@octokit/types";
-import * as dotenv from "dotenv";
-import gunzip from "gunzip-maybe";
-import * as tarStream from "tar-stream";
+import { createDecipheriv } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { Readable } from 'node:stream';
 
-type GitHubRelease = Endpoints["GET /repos/{owner}/{repo}/releases/latest"]["response"]["data"];
+import type { Endpoints } from '@octokit/types';
+import * as dotenv from 'dotenv';
+import gunzip from 'gunzip-maybe';
+import * as tarStream from 'tar-stream';
+
+type GitHubRelease =
+  Endpoints['GET /repos/{owner}/{repo}/releases/latest']['response']['data'];
 
 dotenv.config();
 
 const checkEnvVariable = (varName: string): string => {
-	const value = process.env[varName];
-	if (!value) {
-		throw new Error(`Missing environment variable: ${varName}`);
-	}
-	return value;
+  const value = process.env[varName];
+  if (!value) {
+    throw new Error(`Missing environment variable: ${varName}`);
+  }
+  return value;
 };
 
 const ensureFolderExists = (folderPath: string) => {
-	if (!fs.existsSync(folderPath)) {
-		fs.mkdirSync(folderPath);
-	}
+  if (!fs.existsSync(folderPath)) {
+    fs.mkdirSync(folderPath);
+  }
 };
 
 const checkCache = (): number => {
-	const cacheFilePath = path.join(__dirname, ".cache");
-	if (!fs.existsSync(cacheFilePath)) {
-		return 0;
-	}
-	const cache = fs.readFileSync(cacheFilePath, "utf8");
-	return Number.parseInt(cache, 10);
+  const cacheFilePath = path.join(__dirname, '.cache');
+  if (!fs.existsSync(cacheFilePath)) {
+    return 0;
+  }
+  const cache = fs.readFileSync(cacheFilePath, 'utf8');
+  return Number.parseInt(cache, 10);
 };
 
 const updateCache = (size: number) => {
-	const cacheFilePath = path.join(__dirname, ".cache");
-	fs.writeFileSync(cacheFilePath, size.toString());
+  const cacheFilePath = path.join(__dirname, '.cache');
+  fs.writeFileSync(cacheFilePath, size.toString());
 };
 
 // Utility functions for encryption handling
 const decryptFile = async (encryptedBuffer: Buffer) => {
-	const key = checkEnvVariable("PROTOCOL_ENCRYPTION_KEY");
-	const iv = checkEnvVariable("PROTOCOL_ENCRYPTION_IV");
-	const decipher = createDecipheriv("aes-256-cbc", Buffer.from(key, "hex"), Buffer.from(iv, "hex"));
-	return Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
+  const key = checkEnvVariable('PROTOCOL_ENCRYPTION_KEY');
+  const iv = checkEnvVariable('PROTOCOL_ENCRYPTION_IV');
+  const decipher = createDecipheriv(
+    'aes-256-cbc',
+    Buffer.from(key, 'hex'),
+    Buffer.from(iv, 'hex'),
+  );
+  return Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
 };
 
-export async function downloadAndDecryptProtocols(): Promise<Map<string, Buffer>> {
-	const githubToken = checkEnvVariable("GITHUB_TOKEN");
-	const protocols = new Map<string, Buffer>();
+export async function downloadAndDecryptProtocols(): Promise<
+  Map<string, Buffer>
+> {
+  const githubToken = checkEnvVariable('GITHUB_TOKEN');
+  const protocols = new Map<string, Buffer>();
 
-	const downloadFolder = path.join(__dirname, "data");
-	ensureFolderExists(downloadFolder);
-	// First, get the releases from the test-protocols repo. Note that this requires us to authenticate with a GitHub token.
-	const res = await fetch("https://api.github.com/repos/complexdatacollective/test-protocols/releases/latest", {
-		headers: {
-			Authorization: `Bearer ${githubToken}`,
-		},
-	});
+  const downloadFolder = path.join(__dirname, 'data');
+  ensureFolderExists(downloadFolder);
+  // First, get the releases from the test-protocols repo. Note that this requires us to authenticate with a GitHub token.
+  const res = await fetch(
+    'https://api.github.com/repos/complexdatacollective/test-protocols/releases/latest',
+    {
+      headers: {
+        Authorization: `Bearer ${githubToken}`,
+      },
+    },
+  );
 
-	const release = (await res.json()) as GitHubRelease;
+  const release = (await res.json()) as GitHubRelease;
 
-	// The test protocols are stored in an asset called "protocols.tar.gz.enc" attached to each release
-	const asset = release.assets.find((asset) => asset.name === "protocols.tar.gz.enc");
+  // The test protocols are stored in an asset called "protocols.tar.gz.enc" attached to each release
+  const asset = release.assets.find(
+    (asset) => asset.name === 'protocols.tar.gz.enc',
+  );
 
-	if (!asset) {
-		throw new Error("protocols.tar.gz.enc asset not found in latest release");
-	}
+  if (!asset) {
+    throw new Error('protocols.tar.gz.enc asset not found in latest release');
+  }
 
-	const assetSize = asset.size;
+  const assetSize = asset.size;
 
-	// Check the cache size and compare it with the current asset size
-	const cacheSize = checkCache();
-	if (cacheSize !== assetSize) {
-		// If sizes are different, delete the existing data directory
-		const dataFolder = path.join(__dirname, "data");
-		if (fs.existsSync(dataFolder)) {
-			fs.rmSync(dataFolder, { recursive: true, force: true });
-		}
+  // Check the cache size and compare it with the current asset size
+  const cacheSize = checkCache();
+  if (cacheSize !== assetSize) {
+    // If sizes are different, delete the existing data directory
+    const dataFolder = path.join(__dirname, 'data');
+    if (fs.existsSync(dataFolder)) {
+      fs.rmSync(dataFolder, { recursive: true, force: true });
+    }
 
-		// Fetch the asset into a Buffer
-		const assetRes = await fetch(asset.url, {
-			headers: {
-				Authorization: `Bearer ${githubToken}`,
-				Accept: "application/octet-stream",
-			},
-		});
+    // Fetch the asset into a Buffer
+    const assetRes = await fetch(asset.url, {
+      headers: {
+        Authorization: `Bearer ${githubToken}`,
+        Accept: 'application/octet-stream',
+      },
+    });
 
-		const encryptedData = await assetRes.arrayBuffer();
-		const encryptedBuffer = Buffer.from(encryptedData);
+    const encryptedData = await assetRes.arrayBuffer();
+    const encryptedBuffer = Buffer.from(encryptedData);
 
-		const decryptedData = await decryptFile(encryptedBuffer);
+    const decryptedData = await decryptFile(encryptedBuffer);
 
-		// Save the decrypted data to the /data folder
-		ensureFolderExists(dataFolder);
-		const decryptedFilePath = path.join(dataFolder, "protocols.tar.gz");
-		fs.writeFileSync(decryptedFilePath, decryptedData);
+    // Save the decrypted data to the /data folder
+    ensureFolderExists(dataFolder);
+    const decryptedFilePath = path.join(dataFolder, 'protocols.tar.gz');
+    fs.writeFileSync(decryptedFilePath, decryptedData);
 
-		updateCache(assetSize);
-	}
+    updateCache(assetSize);
+  }
 
-	const decryptedFilePath = path.join(downloadFolder, "protocols.tar.gz");
-	const decryptedData = fs.readFileSync(decryptedFilePath);
+  const decryptedFilePath = path.join(downloadFolder, 'protocols.tar.gz');
+  const decryptedData = fs.readFileSync(decryptedFilePath);
 
-	const readStream = Readable.from(decryptedData);
-	const extract = tarStream.extract();
+  const readStream = Readable.from(decryptedData);
+  const extract = tarStream.extract();
 
-	await new Promise((resolve, reject) => {
-		extract.on("entry", (header, stream, next) => {
-			if (header.name.startsWith("data/") && header.name.endsWith(".netcanvas")) {
-				const chunks: Buffer[] = [];
-				stream.on("data", (chunk) => chunks.push(chunk));
-				stream.on("end", () => {
-					const fileName = header.name.split("/").pop() as string;
-					protocols.set(fileName, Buffer.concat(chunks));
-					next();
-				});
-			} else {
-				stream.on("end", next);
-			}
-			stream.resume();
-		});
+  await new Promise((resolve, reject) => {
+    extract.on('entry', (header, stream, next) => {
+      if (
+        header.name.startsWith('data/') &&
+        header.name.endsWith('.netcanvas')
+      ) {
+        const chunks: Buffer[] = [];
+        stream.on('data', (chunk) => chunks.push(chunk));
+        stream.on('end', () => {
+          const fileName = header.name.split('/').pop() as string;
+          protocols.set(fileName, Buffer.concat(chunks));
+          next();
+        });
+      } else {
+        stream.on('end', next);
+      }
+      stream.resume();
+    });
 
-		extract.on("finish", resolve);
-		extract.on("error", reject);
+    extract.on('finish', resolve);
+    extract.on('error', reject);
 
-		readStream.pipe(gunzip()).pipe(extract);
-	});
+    readStream.pipe(gunzip()).pipe(extract);
+  });
 
-	return protocols;
+  return protocols;
 }

@@ -24,11 +24,11 @@ Out of scope: shipping a browser consumer, a Workers smoke test, formatter imple
 
 Three Tags:
 
-| Tag | Replaces | Responsibility |
-| --- | --- | --- |
-| `InterviewRepository` | (unchanged Tag, new shape) | `getForExport(ids)` returns sessions referencing protocols by hash |
-| `ProtocolRepository` | *new* | `getProtocols(hashes)` returns `Record<hash, ProtocolExportInput>` for unique hashes the pipeline encountered |
-| `Output` | replaces `FileStorage` + `FileSystem` | Stateful `begin → writeEntry × N → end` lifecycle; consumes `OutputEntry { name, data: AsyncIterable<Uint8Array> }` per entry; returns a host-defined `OutputResult` |
+| Tag                   | Replaces                              | Responsibility                                                                                                                                                       |
+| --------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `InterviewRepository` | (unchanged Tag, new shape)            | `getForExport(ids)` returns sessions referencing protocols by hash                                                                                                   |
+| `ProtocolRepository`  | _new_                                 | `getProtocols(hashes)` returns `Record<hash, ProtocolExportInput>` for unique hashes the pipeline encountered                                                        |
+| `Output`              | replaces `FileStorage` + `FileSystem` | Stateful `begin → writeEntry × N → end` lifecycle; consumes `OutputEntry { name, data: AsyncIterable<Uint8Array> }` per entry; returns a host-defined `OutputResult` |
 
 ### 2.2 Removed from the public surface
 
@@ -63,7 +63,7 @@ InterviewRepository.getForExport(ids)
 ### 2.5 Stages
 
 ```ts
-type ExportStage = "fetching" | "formatting" | "generating" | "outputting";
+type ExportStage = 'fetching' | 'formatting' | 'generating' | 'outputting';
 ```
 
 Four stages. `archiving` is gone. `uploading` is renamed to `outputting` and covers `begin` + every `writeEntry` + `end`. Per-entry progress events are emitted during both `generating` (per file produced) and `outputting` (per file written). Cleanup phase is gone — the pipeline allocates no persistent state.
@@ -72,7 +72,9 @@ Four stages. `archiving` is gone. `uploading` is renamed to `outputting` and cov
 
 ```ts
 // services/InterviewRepository.ts
-class InterviewRepository extends Context.Tag("NetworkExporters/InterviewRepository")<
+class InterviewRepository extends Context.Tag(
+  'NetworkExporters/InterviewRepository',
+)<
   InterviewRepository,
   {
     readonly getForExport: (
@@ -98,7 +100,9 @@ type ProtocolExportInput = {
   codebook: Codebook;
 };
 
-class ProtocolRepository extends Context.Tag("NetworkExporters/ProtocolRepository")<
+class ProtocolRepository extends Context.Tag(
+  'NetworkExporters/ProtocolRepository',
+)<
   ProtocolRepository,
   {
     readonly getProtocols: (
@@ -118,7 +122,7 @@ type OutputResult = {
 
 type OutputHandle = unknown;
 
-class Output extends Context.Tag("NetworkExporters/Output")<
+class Output extends Context.Tag('NetworkExporters/Output')<
   Output,
   {
     readonly begin: () => Effect.Effect<OutputHandle, OutputError>;
@@ -126,7 +130,9 @@ class Output extends Context.Tag("NetworkExporters/Output")<
       handle: OutputHandle,
       entry: OutputEntry,
     ) => Effect.Effect<void, OutputError>;
-    readonly end: (handle: OutputHandle) => Effect.Effect<OutputResult, OutputError>;
+    readonly end: (
+      handle: OutputHandle,
+    ) => Effect.Effect<OutputResult, OutputError>;
   }
 >() {}
 ```
@@ -168,13 +174,13 @@ ArchiveError               // no separate archive stage; collapsed into OutputEr
 
 ### 4.2 Channel routing
 
-| Error | Channel | Behaviour |
-| --- | --- | --- |
-| `DatabaseError` | fatal | aborts pipeline (raised by either repo) |
-| `ProtocolNotFoundError` | partial | one entry per dropped session in `failedExports` |
-| `SessionProcessingError` | partial | one entry per failing session per stage in `failedExports` |
-| `ExportGenerationError` | partial | unchanged |
-| `OutputError` | fatal | aborts pipeline (raised by `Output.{begin,writeEntry,end}` — covers former `FileStorageError` and `ArchiveError`) |
+| Error                    | Channel | Behaviour                                                                                                         |
+| ------------------------ | ------- | ----------------------------------------------------------------------------------------------------------------- |
+| `DatabaseError`          | fatal   | aborts pipeline (raised by either repo)                                                                           |
+| `ProtocolNotFoundError`  | partial | one entry per dropped session in `failedExports`                                                                  |
+| `SessionProcessingError` | partial | one entry per failing session per stage in `failedExports`                                                        |
+| `ExportGenerationError`  | partial | unchanged                                                                                                         |
+| `OutputError`            | fatal   | aborts pipeline (raised by `Output.{begin,writeEntry,end}` — covers former `FileStorageError` and `ArchiveError`) |
 
 A failure inside `Output.writeEntry` is fatal — once partial bytes are in the host's bundle, retrying inline is the host's job, not the pipeline's. Hosts that need retry semantics implement them inside their `Output` layer.
 
@@ -186,21 +192,27 @@ type ExportSuccess = {
   readonly format: ExportFormat;
   readonly sessionId: string;
   readonly partitionEntity?: string;
-  readonly name: string;          // ← was filePath; now the entry name written to Output
+  readonly name: string; // ← was filePath; now the entry name written to Output
 };
 
 type ExportFailure =
-  | { kind: "generation";
+  | {
+      kind: 'generation';
       sessionId: string;
       format: ExportFormat;
       partitionEntity?: string;
-      error: ExportGenerationError }
-  | { kind: "protocol-missing";
+      error: ExportGenerationError;
+    }
+  | {
+      kind: 'protocol-missing';
       sessionId: string;
-      error: ProtocolNotFoundError }
-  | { kind: "session-processing";
+      error: ProtocolNotFoundError;
+    }
+  | {
+      kind: 'session-processing';
       sessionId: string;
-      error: SessionProcessingError };
+      error: SessionProcessingError;
+    };
 ```
 
 `ExportSuccess.filePath` is gone (no temp files). It's replaced by `name` — the entry name passed to `Output.writeEntry`. Host iterates `failedExports` once and dispatches on `kind`. `describeExportError` handles the new tags.
@@ -209,7 +221,7 @@ type ExportFailure =
 
 ```ts
 type ExportReturn = {
-  readonly status: "success" | "partial";
+  readonly status: 'success' | 'partial';
   readonly successfulExports: ExportSuccess[];
   readonly failedExports: ExportFailure[];
   readonly output: OutputResult;
@@ -253,15 +265,17 @@ resequenced: Record<hash, SessionWithResequencedIDs[]>
 The three per-session steps share one wrapper:
 
 ```ts
-const perSession = <A>(
-  stage: SessionProcessingError["stage"],
-  fn: (s: InterviewExportInput) => Effect.Effect<A, unknown>,
-) =>
+const perSession =
+  <A>(
+    stage: SessionProcessingError['stage'],
+    fn: (s: InterviewExportInput) => Effect.Effect<A, unknown>,
+  ) =>
   (sessions: InterviewExportInput[]) =>
     Effect.partition(sessions, (s) =>
       fn(s).pipe(
-        Effect.mapError((cause) =>
-          new SessionProcessingError({ cause, stage, sessionId: s.id }),
+        Effect.mapError(
+          (cause) =>
+            new SessionProcessingError({ cause, stage, sessionId: s.id }),
         ),
       ),
     );
@@ -280,14 +294,14 @@ Failed sessions accumulate into a single `Ref<ExportFailure[]>` carried through 
 
 ```ts
 type ExportStageEvent = {
-  type: "stage";
+  type: 'stage';
   stage: ExportStage;
   message: string;
 };
 
 type ExportProgressEvent = {
-  type: "progress";
-  stage: "generating" | "outputting";
+  type: 'progress';
+  stage: 'generating' | 'outputting';
   current: number;
   total: number;
 };
@@ -324,7 +338,7 @@ type ZipSink = (
   fileName: string,
 ) => Effect.Effect<OutputResult, OutputError>;
 
-const ARCHIVE_PREFIX = "networkCanvasExport";
+const ARCHIVE_PREFIX = 'networkCanvasExport';
 
 export const makeZipOutput = (sink: ZipSink): Layer.Layer<Output> =>
   Layer.succeed(Output, {
@@ -378,7 +392,7 @@ const BlobZipOutput = makeZipOutput((stream) =>
     try: async () => {
       const chunks: Uint8Array[] = [];
       for await (const chunk of stream) chunks.push(chunk);
-      const blob = new Blob(chunks, { type: "application/zip" });
+      const blob = new Blob(chunks, { type: 'application/zip' });
       return { blob, url: URL.createObjectURL(blob) };
     },
     catch: (cause) => new OutputError({ cause }),
@@ -388,22 +402,29 @@ const BlobZipOutput = makeZipOutput((stream) =>
 // 3. Browser folder (no zip) — OPFS, one entry per file.
 //    Implements Output directly; doesn't use ZipOutput.
 const OPFSFolderOutput = Layer.succeed(Output, {
-  begin: () => Effect.tryPromise({
-    try: async () => ({
-      dir: await navigator.storage.getDirectory()
-        .then((root) => root.getDirectoryHandle(`export-${Date.now()}`, { create: true })),
+  begin: () =>
+    Effect.tryPromise({
+      try: async () => ({
+        dir: await navigator.storage
+          .getDirectory()
+          .then((root) =>
+            root.getDirectoryHandle(`export-${Date.now()}`, { create: true }),
+          ),
+      }),
+      catch: (cause) => new OutputError({ cause }),
     }),
-    catch: (cause) => new OutputError({ cause }),
-  }),
-  writeEntry: (handle, entry) => Effect.tryPromise({
-    try: async () => {
-      const file = await handle.dir.getFileHandle(entry.name, { create: true });
-      const writable = await file.createWritable();
-      for await (const chunk of entry.data) await writable.write(chunk);
-      await writable.close();
-    },
-    catch: (cause) => new OutputError({ cause }),
-  }),
+  writeEntry: (handle, entry) =>
+    Effect.tryPromise({
+      try: async () => {
+        const file = await handle.dir.getFileHandle(entry.name, {
+          create: true,
+        });
+        const writable = await file.createWritable();
+        for await (const chunk of entry.data) await writable.write(chunk);
+        await writable.close();
+      },
+      catch: (cause) => new OutputError({ cause }),
+    }),
   end: (handle) => Effect.succeed({ folderHandle: handle.dir }),
 });
 ```
@@ -452,16 +473,16 @@ Rough size: ~30 lines of host change.
 
 ## 11. Testing
 
-| Area | Approach |
-| --- | --- |
-| Pure transforms (`groupByProtocolHash`, `partitionByType`, etc.) | Existing unit tests; minor changes for renamed types |
-| Per-session formatting steps | New unit tests asserting bad input produces a `SessionProcessingError` in `failedExports`, not a thrown exception |
-| `ProtocolRepository` integration | New pipeline test using an in-memory repo that returns a partial map; assert missing-protocol sessions land in `failedExports` with `kind: "protocol-missing"` |
-| `Output` lifecycle | New unit tests with a fake `Output` Tag that records `begin/writeEntry/end` calls; assert `writeEntry` is called once per successful generation result |
-| `makeZipOutput` | Unit test that pipes a few entries through a fake sink, then unzips the captured bytes and asserts contents |
-| End-to-end | Existing `pipeline.test.ts` updated to wire all three Layers (`InterviewRepository`, `ProtocolRepository`, `makeZipOutput` over an in-memory sink) and assert the final `ExportReturn` |
+| Area                                                             | Approach                                                                                                                                                                               |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pure transforms (`groupByProtocolHash`, `partitionByType`, etc.) | Existing unit tests; minor changes for renamed types                                                                                                                                   |
+| Per-session formatting steps                                     | New unit tests asserting bad input produces a `SessionProcessingError` in `failedExports`, not a thrown exception                                                                      |
+| `ProtocolRepository` integration                                 | New pipeline test using an in-memory repo that returns a partial map; assert missing-protocol sessions land in `failedExports` with `kind: "protocol-missing"`                         |
+| `Output` lifecycle                                               | New unit tests with a fake `Output` Tag that records `begin/writeEntry/end` calls; assert `writeEntry` is called once per successful generation result                                 |
+| `makeZipOutput`                                                  | Unit test that pipes a few entries through a fake sink, then unzips the captured bytes and asserts contents                                                                            |
+| End-to-end                                                       | Existing `pipeline.test.ts` updated to wire all three Layers (`InterviewRepository`, `ProtocolRepository`, `makeZipOutput` over an in-memory sink) and assert the final `ExportReturn` |
 
-A browser smoke test is out of scope. The package is verified to be browser-*compatible* by ensuring no `node:*` imports survive in the published `dist/`.
+A browser smoke test is out of scope. The package is verified to be browser-_compatible_ by ensuring no `node:*` imports survive in the published `dist/`.
 
 ## 12. Implementation order
 

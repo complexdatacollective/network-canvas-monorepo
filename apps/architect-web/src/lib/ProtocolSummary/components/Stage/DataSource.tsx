@@ -1,20 +1,20 @@
-import AssetBadge from "../AssetBadge";
-import SectionFrame from "./SectionFrame";
+import AssetBadge from '../AssetBadge';
+import SectionFrame from './SectionFrame';
 
 type DataSourceProps = {
-	dataSource?: string | null;
+  dataSource?: string | null;
 };
 
 const DataSource = ({ dataSource = null }: DataSourceProps) => {
-	if (!dataSource) {
-		return null;
-	}
+  if (!dataSource) {
+    return null;
+  }
 
-	return (
-		<SectionFrame title="DataSource">
-			<AssetBadge id={dataSource} link />
-		</SectionFrame>
-	);
+  return (
+    <SectionFrame title="DataSource">
+      <AssetBadge id={dataSource} link />
+    </SectionFrame>
+  );
 };
 
 export default DataSource;

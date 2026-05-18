@@ -13,26 +13,26 @@ declare const module: undefined;
 declare const exports: undefined;
 
 // Map react-recompose types to @types/recompose declarations
-declare module "react-recompose" {
-	// biome-ignore lint/correctness/noUndeclaredDependencies: reexporting types from @types/recompose for compatibility
-	export * from "recompose";
+declare module 'react-recompose' {
+  // biome-ignore lint/correctness/noUndeclaredDependencies: reexporting types from @types/recompose for compatibility
+  export * from 'recompose';
 }
 
 // Type declaration for animejs v2
-declare module "animejs" {
-	type AnimeParams = {
-		targets?: unknown;
-		duration?: number;
-		easing?: unknown;
-		scrollTop?: number;
-		[key: string]: unknown;
-	};
-	function anime(params: AnimeParams): void;
-	export default anime;
+declare module 'animejs' {
+  type AnimeParams = {
+    targets?: unknown;
+    duration?: number;
+    easing?: unknown;
+    scrollTop?: number;
+    [key: string]: unknown;
+  };
+  function anime(params: AnimeParams): void;
+  export default anime;
 }
 
 // Type declaration for scrollparent module
-declare module "scrollparent" {
-	function scrollparent(element: HTMLElement): HTMLElement | Document;
-	export default scrollparent;
+declare module 'scrollparent' {
+  function scrollparent(element: HTMLElement): HTMLElement | Document;
+  export default scrollparent;
 }

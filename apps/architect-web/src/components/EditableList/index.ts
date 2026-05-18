@@ -1,3 +1,3 @@
-export { default } from "./EditableList";
+export { default } from './EditableList';
 
-export const formName = "editable-list-form";
+export const formName = 'editable-list-form';

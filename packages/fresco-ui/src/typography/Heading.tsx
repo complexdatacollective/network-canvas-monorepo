@@ -1,64 +1,67 @@
-"use client";
+'use client';
 
-import { type useRender as UseRender, useRender } from "@base-ui/react";
-import * as React from "react";
-import { cva, cx, type VariantProps } from "../utils/cva";
+import { type useRender as UseRender, useRender } from '@base-ui/react';
+import * as React from 'react';
+
+import { cva, cx, type VariantProps } from '../utils/cva';
 
 export const headingVariants = cva({
-	base: "font-heading scroll-m-20 text-pretty",
-	variants: {
-		level: {
-			h1: "text-3xl font-bold",
-			h2: "text-2xl font-bold",
-			h3: "text-xl font-bold",
-			h4: "text-lg font-bold",
-			label: "text-base leading-snug font-bold",
-		},
-		variant: {
-			default: "",
-			"all-caps": "tracking-widest uppercase",
-			"page-heading": "text-4xl",
-		},
-		margin: {
-			default: "not-first:mt-[1em] not-last:mb-[0.5em]",
-			none: "mb-0",
-		},
-	},
-	defaultVariants: {
-		level: "h2",
-		variant: "default",
-		margin: "default",
-	},
-	compoundVariants: [{ level: "h4", variant: "all-caps", className: "text-sm font-black" }],
+  base: 'font-heading scroll-m-20 text-pretty',
+  variants: {
+    level: {
+      h1: 'text-3xl font-bold',
+      h2: 'text-2xl font-bold',
+      h3: 'text-xl font-bold',
+      h4: 'text-lg font-bold',
+      label: 'text-base leading-snug font-bold',
+    },
+    variant: {
+      'default': '',
+      'all-caps': 'tracking-widest uppercase',
+      'page-heading': 'text-4xl',
+    },
+    margin: {
+      default: 'not-first:mt-[1em] not-last:mb-[0.5em]',
+      none: 'mb-0',
+    },
+  },
+  defaultVariants: {
+    level: 'h2',
+    variant: 'default',
+    margin: 'default',
+  },
+  compoundVariants: [
+    { level: 'h4', variant: 'all-caps', className: 'text-sm font-black' },
+  ],
 });
 
 const levelToTagName = {
-	h1: "h1",
-	h2: "h2",
-	h3: "h3",
-	h4: "h4",
-	label: "h4",
+  h1: 'h1',
+  h2: 'h2',
+  h3: 'h3',
+  h4: 'h4',
+  label: 'h4',
 } as const;
 
 type HeadingProps = {
-	render?: UseRender.RenderProp;
+  render?: UseRender.RenderProp;
 } & React.HTMLAttributes<HTMLHeadingElement> &
-	VariantProps<typeof headingVariants>;
+  VariantProps<typeof headingVariants>;
 
 const Heading = React.forwardRef<HTMLHeadingElement, HeadingProps>(
-	({ className, variant, level = "h2", margin, render, ...props }, ref) => {
-		return useRender({
-			render,
-			ref,
-			props: {
-				className: cx(headingVariants({ variant, level, margin, className })),
-				...props,
-			},
-			defaultTagName: levelToTagName[level],
-		});
-	},
+  ({ className, variant, level = 'h2', margin, render, ...props }, ref) => {
+    return useRender({
+      render,
+      ref,
+      props: {
+        className: cx(headingVariants({ variant, level, margin, className })),
+        ...props,
+      },
+      defaultTagName: levelToTagName[level],
+    });
+  },
 );
 
-Heading.displayName = "Heading";
+Heading.displayName = 'Heading';
 
 export default Heading;

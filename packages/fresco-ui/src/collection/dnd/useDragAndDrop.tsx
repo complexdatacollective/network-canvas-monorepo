@@ -1,20 +1,21 @@
-"use client";
+'use client';
 
-import { useCallback, useMemo, useRef, useState } from "react";
-import { useDndStore } from "../../dnd/dnd";
-import { useDragSource } from "../../dnd/useDragSource";
-import { useDropTarget } from "../../dnd/useDropTarget";
-import { useOptionalSelectionManager } from "../contexts";
-import type { Key } from "../types";
-import { DropIndicator } from "./DropIndicator";
+import { useCallback, useMemo, useRef, useState } from 'react';
+
+import { useDndStore } from '../../dnd/dnd';
+import { useDragSource } from '../../dnd/useDragSource';
+import { useDropTarget } from '../../dnd/useDropTarget';
+import { useOptionalSelectionManager } from '../contexts';
+import type { Key } from '../types';
+import { DropIndicator } from './DropIndicator';
 import type {
-	DragAndDropHooks,
-	DragAndDropOptions,
-	DropPosition,
-	DroppableCollectionResult,
-	DropTarget,
-	ReorderEvent,
-} from "./types";
+  DragAndDropHooks,
+  DragAndDropOptions,
+  DropPosition,
+  DroppableCollectionResult,
+  DropTarget,
+  ReorderEvent,
+} from './types';
 
 /**
  * Creates drag and drop hooks for a Collection component.
@@ -35,258 +36,284 @@ import type {
  * ```
  */
 export function useDragAndDrop<T>(options: DragAndDropOptions<T>): {
-	dragAndDropHooks: DragAndDropHooks;
+  dragAndDropHooks: DragAndDropHooks;
 } {
-	const {
-		getItems,
-		onReorder,
-		onDrop,
-		acceptTypes,
-		acceptsFilter,
-		allowedDropPositions = ["before", "after"],
-		getItemMetadata,
-		renderPreview,
-		announcedName,
-	} = options;
+  const {
+    getItems,
+    onReorder,
+    onDrop,
+    acceptTypes,
+    acceptsFilter,
+    allowedDropPositions = ['before', 'after'],
+    getItemMetadata,
+    renderPreview,
+    announcedName,
+  } = options;
 
-	// Get the item type(s) from the getItems function for drop target acceptance
-	const itemTypesRef = useRef<string[]>(["collection-item"]);
-	// Update types on first render based on getItems
-	if (itemTypesRef.current.length === 1 && itemTypesRef.current[0] === "collection-item") {
-		const sampleItems = getItems(new Set(["__sample__"]));
-		if (sampleItems.length > 0 && sampleItems[0]?.type) {
-			itemTypesRef.current = [sampleItems[0].type, "collection-item"];
-		}
-	}
+  // Get the item type(s) from the getItems function for drop target acceptance
+  const itemTypesRef = useRef<string[]>(['collection-item']);
+  // Update types on first render based on getItems
+  if (
+    itemTypesRef.current.length === 1 &&
+    itemTypesRef.current[0] === 'collection-item'
+  ) {
+    const sampleItems = getItems(new Set(['__sample__']));
+    if (sampleItems.length > 0 && sampleItems[0]?.type) {
+      itemTypesRef.current = [sampleItems[0].type, 'collection-item'];
+    }
+  }
 
-	// Track drop target state
-	const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
+  // Track drop target state
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
 
-	// Refs to avoid stale closures
-	const onReorderRef = useRef(onReorder);
-	onReorderRef.current = onReorder;
+  // Refs to avoid stale closures
+  const onReorderRef = useRef(onReorder);
+  onReorderRef.current = onReorder;
 
-	const onDropRef = useRef(onDrop);
-	onDropRef.current = onDrop;
+  const onDropRef = useRef(onDrop);
+  onDropRef.current = onDrop;
 
-	// Handle drop completion
-	const handleDrop = useCallback((target: DropTarget, draggedKeys: Set<Key>) => {
-		if (onReorderRef.current) {
-			const event: ReorderEvent = {
-				keys: draggedKeys,
-				target,
-			};
-			onReorderRef.current(event);
-		}
-		setDropTarget(null);
-	}, []);
+  // Handle drop completion
+  const handleDrop = useCallback(
+    (target: DropTarget, draggedKeys: Set<Key>) => {
+      if (onReorderRef.current) {
+        const event: ReorderEvent = {
+          keys: draggedKeys,
+          target,
+        };
+        onReorderRef.current(event);
+      }
+      setDropTarget(null);
+    },
+    [],
+  );
 
-	const dragAndDropHooks = useMemo<DragAndDropHooks>(
-		() => ({
-			useDroppableCollectionState: (collectionId: string): DroppableCollectionResult => {
-				// If no onDrop handler, return inactive state with empty props
-				if (!onDropRef.current) {
-					return {
-						state: { isOver: false, willAccept: false, isDragging: false },
-						dropProps: {},
-					};
-				}
+  const dragAndDropHooks = useMemo<DragAndDropHooks>(
+    () => ({
+      useDroppableCollectionState: (
+        collectionId: string,
+      ): DroppableCollectionResult => {
+        // If no onDrop handler, return inactive state with empty props
+        if (!onDropRef.current) {
+          return {
+            state: { isOver: false, willAccept: false, isDragging: false },
+            dropProps: {},
+          };
+        }
 
-				// Determine accept types (from options or derived from getItems)
-				const accepts = acceptTypes ?? itemTypesRef.current;
+        // Determine accept types (from options or derived from getItems)
+        const accepts = acceptTypes ?? itemTypesRef.current;
 
-				// eslint-disable-next-line react-hooks/rules-of-hooks
-				const { dropProps, isOver, willAccept, isDragging } = useDropTarget({
-					id: `${collectionId}-container`,
-					accepts,
-					acceptsFilter,
-					announcedName,
-					onDrop: (metadata) => {
-						if (!metadata || !onDropRef.current) return;
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const { dropProps, isOver, willAccept, isDragging } = useDropTarget({
+          id: `${collectionId}-container`,
+          accepts,
+          acceptsFilter,
+          announcedName,
+          onDrop: (metadata) => {
+            if (!metadata || !onDropRef.current) return;
 
-						const type = (metadata.type as string | undefined) ?? "unknown";
-						onDropRef.current({ type, metadata });
-					},
-				});
+            const type = (metadata.type as string | undefined) ?? 'unknown';
+            onDropRef.current({ type, metadata });
+          },
+        });
 
-				return {
-					state: { isOver, willAccept, isDragging },
-					dropProps,
-				};
-			},
+        return {
+          state: { isOver, willAccept, isDragging },
+          dropProps,
+        };
+      },
 
-			useDraggableItemProps: (key: Key) => {
-				const selectionManager = useOptionalSelectionManager();
+      useDraggableItemProps: (key: Key) => {
+        const selectionManager = useOptionalSelectionManager();
 
-				// Check if item is disabled - disabled items should not be draggable
-				const isDisabled = selectionManager?.isDisabled(key) ?? false;
+        // Check if item is disabled - disabled items should not be draggable
+        const isDisabled = selectionManager?.isDisabled(key) ?? false;
 
-				// If the item being dragged is selected AND selection contains more
-				// than one key, include all selected keys in the drag operation.
-				// We only materialise the Set of selected keys when the bulk-drag
-				// path is actually taken — allocating a Set per item per render was
-				// a measurable cost for large collections.
-				const isSelected = selectionManager?.isSelected(key) ?? false;
-				const selectionSize = selectionManager?.selectionSize ?? 0;
-				const useBulkDrag = isSelected && selectionSize > 1;
-				const dragKeys: Set<Key> = useBulkDrag ? new Set(selectionManager!.rawSelectedKeys) : new Set([key]);
+        // If the item being dragged is selected AND selection contains more
+        // than one key, include all selected keys in the drag operation.
+        // We only materialise the Set of selected keys when the bulk-drag
+        // path is actually taken — allocating a Set per item per render was
+        // a measurable cost for large collections.
+        const isSelected = selectionManager?.isSelected(key) ?? false;
+        const selectionSize = selectionManager?.selectionSize ?? 0;
+        const useBulkDrag = isSelected && selectionSize > 1;
+        const dragKeys: Set<Key> = useBulkDrag
+          ? new Set(selectionManager!.rawSelectedKeys)
+          : new Set([key]);
 
-				const items = getItems(dragKeys);
-				const firstItem = items[0];
+        const items = getItems(dragKeys);
+        const firstItem = items[0];
 
-				const metadata = {
-					key,
-					keys: dragKeys,
-					...(getItemMetadata ? getItemMetadata(key) : {}),
-				};
+        const metadata = {
+          key,
+          keys: dragKeys,
+          ...(getItemMetadata ? getItemMetadata(key) : {}),
+        };
 
-				const dragType = firstItem?.type ?? "collection-item";
+        const dragType = firstItem?.type ?? 'collection-item';
 
-				const preview = renderPreview ? renderPreview(key, metadata) : undefined;
+        const preview = renderPreview
+          ? renderPreview(key, metadata)
+          : undefined;
 
-				const { dragProps, isDragging } = useDragSource({
-					type: dragType,
-					metadata,
-					preview,
-					announcedName: dragKeys.size > 1 ? `${dragKeys.size} items` : `Item ${key}`,
-					disabled: isDisabled,
-				});
+        const { dragProps, isDragging } = useDragSource({
+          type: dragType,
+          metadata,
+          preview,
+          announcedName:
+            dragKeys.size > 1 ? `${dragKeys.size} items` : `Item ${key}`,
+          disabled: isDisabled,
+        });
 
-				return {
-					...dragProps,
-					"data-dragging": isDragging || undefined,
-				};
-			},
+        return {
+          ...dragProps,
+          'data-dragging': isDragging || undefined,
+        };
+      },
 
-			useDroppableItemProps: (key: Key, collectionId: string) => {
-				const dragItem = useDndStore((state) => state.dragItem);
-				// Use refs instead of state to avoid stale closures in callbacks
+      useDroppableItemProps: (key: Key, collectionId: string) => {
+        const dragItem = useDndStore((state) => state.dragItem);
+        // Use refs instead of state to avoid stale closures in callbacks
 
-				const hoverPositionRef = useRef<DropPosition | null>(null);
+        const hoverPositionRef = useRef<DropPosition | null>(null);
 
-				const [hoverPositionState, setHoverPositionState] = useState<DropPosition | null>(null);
+        const [hoverPositionState, setHoverPositionState] =
+          useState<DropPosition | null>(null);
 
-				const elementRef = useRef<HTMLElement | null>(null);
+        const elementRef = useRef<HTMLElement | null>(null);
 
-				// Calculate drop position based on cursor position
+        // Calculate drop position based on cursor position
 
-				const calculateDropPosition = useCallback((e: PointerEvent | MouseEvent): DropPosition => {
-					const element = elementRef.current;
-					if (!element) return "after";
+        const calculateDropPosition = useCallback(
+          (e: PointerEvent | MouseEvent): DropPosition => {
+            const element = elementRef.current;
+            if (!element) return 'after';
 
-					const rect = element.getBoundingClientRect();
-					const midY = rect.top + rect.height / 2;
+            const rect = element.getBoundingClientRect();
+            const midY = rect.top + rect.height / 2;
 
-					// Check if dropping in upper half or lower half
-					if (e.clientY < midY) {
-						return allowedDropPositions.includes("before") ? "before" : "after";
-					}
-					return allowedDropPositions.includes("after") ? "after" : "before";
-				}, []);
+            // Check if dropping in upper half or lower half
+            if (e.clientY < midY) {
+              return allowedDropPositions.includes('before')
+                ? 'before'
+                : 'after';
+            }
+            return allowedDropPositions.includes('after') ? 'after' : 'before';
+          },
+          [],
+        );
 
-				// Handle drop on this item - use ref to get latest position
+        // Handle drop on this item - use ref to get latest position
 
-				const handleItemDrop = useCallback(
-					(metadata?: Record<string, unknown>) => {
-						if (!metadata) return;
+        const handleItemDrop = useCallback(
+          (metadata?: Record<string, unknown>) => {
+            if (!metadata) return;
 
-						const draggedKeys = metadata.keys as Set<Key> | undefined;
-						const draggedKey = metadata.key as Key | undefined;
+            const draggedKeys = metadata.keys as Set<Key> | undefined;
+            const draggedKey = metadata.key as Key | undefined;
 
-						if (!draggedKeys && !draggedKey) return;
+            if (!draggedKeys && !draggedKey) return;
 
-						const keys = draggedKeys ?? new Set([draggedKey!]);
+            const keys = draggedKeys ?? new Set([draggedKey!]);
 
-						// Don't allow dropping on self
-						if (keys.has(key)) return;
+            // Don't allow dropping on self
+            if (keys.has(key)) return;
 
-						// Use ref to get the latest position value (not stale closure)
-						const position = hoverPositionRef.current ?? "after";
+            // Use ref to get the latest position value (not stale closure)
+            const position = hoverPositionRef.current ?? 'after';
 
-						handleDrop({ key, position }, keys);
-						hoverPositionRef.current = null;
-						setHoverPositionState(null);
-					},
-					[key],
-				);
+            handleDrop({ key, position }, keys);
+            hoverPositionRef.current = null;
+            setHoverPositionState(null);
+          },
+          [key],
+        );
 
-				const { dropProps, isOver, willAccept } = useDropTarget({
-					id: `${collectionId}-item-${key}`,
-					accepts: itemTypesRef.current,
-					announcedName,
-					onDrop: handleItemDrop,
-					onDragEnter: () => {
-						setDropTarget({ key, position: "after" });
-					},
-					onDragLeave: () => {
-						hoverPositionRef.current = null;
-						setHoverPositionState(null);
-						if (dropTarget?.key === key) {
-							setDropTarget(null);
-						}
-					},
-				});
+        const { dropProps, isOver, willAccept } = useDropTarget({
+          id: `${collectionId}-item-${key}`,
+          accepts: itemTypesRef.current,
+          announcedName,
+          onDrop: handleItemDrop,
+          onDragEnter: () => {
+            setDropTarget({ key, position: 'after' });
+          },
+          onDragLeave: () => {
+            hoverPositionRef.current = null;
+            setHoverPositionState(null);
+            if (dropTarget?.key === key) {
+              setDropTarget(null);
+            }
+          },
+        });
 
-				// Track pointer movement to update drop position
+        // Track pointer movement to update drop position
 
-				const handlePointerMove = useCallback(
-					(e: React.PointerEvent) => {
-						if (!isOver || !willAccept) return;
+        const handlePointerMove = useCallback(
+          (e: React.PointerEvent) => {
+            if (!isOver || !willAccept) return;
 
-						const position = calculateDropPosition(e.nativeEvent);
-						// Update both ref (for callbacks) and state (for rendering)
-						hoverPositionRef.current = position;
-						setHoverPositionState(position);
-						setDropTarget({ key, position });
-					},
-					[isOver, willAccept, calculateDropPosition, key],
-				);
+            const position = calculateDropPosition(e.nativeEvent);
+            // Update both ref (for callbacks) and state (for rendering)
+            hoverPositionRef.current = position;
+            setHoverPositionState(position);
+            setDropTarget({ key, position });
+          },
+          [isOver, willAccept, calculateDropPosition, key],
+        );
 
-				// Memoize the ref callback to avoid triggering useEffect re-runs in CollectionItem
+        // Memoize the ref callback to avoid triggering useEffect re-runs in CollectionItem
 
-				const combinedRef = useCallback(
-					(el: HTMLElement | null) => {
-						elementRef.current = el;
-						// Call the original ref from dropProps
-						if (typeof dropProps.ref === "function") {
-							dropProps.ref(el);
-						}
-					},
-					[dropProps],
-				);
+        const combinedRef = useCallback(
+          (el: HTMLElement | null) => {
+            elementRef.current = el;
+            // Call the original ref from dropProps
+            if (typeof dropProps.ref === 'function') {
+              dropProps.ref(el);
+            }
+          },
+          [dropProps],
+        );
 
-				// Check if this is the dragged item itself
-				const isDraggedItem =
-					dragItem?.metadata?.key === key || (dragItem?.metadata?.keys as Set<Key> | undefined)?.has(key);
+        // Check if this is the dragged item itself
+        const isDraggedItem =
+          dragItem?.metadata?.key === key ||
+          (dragItem?.metadata?.keys as Set<Key> | undefined)?.has(key);
 
-				return {
-					...dropProps,
-					ref: combinedRef,
-					onPointerMove: handlePointerMove,
-					isOver: isDraggedItem ? false : isOver,
-					willAccept: isDraggedItem ? false : willAccept,
-					dropPosition: isOver && willAccept && !isDraggedItem ? hoverPositionState : null,
-				};
-			},
+        return {
+          ...dropProps,
+          ref: combinedRef,
+          onPointerMove: handlePointerMove,
+          isOver: isDraggedItem ? false : isOver,
+          willAccept: isDraggedItem ? false : willAccept,
+          dropPosition:
+            isOver && willAccept && !isDraggedItem ? hoverPositionState : null,
+        };
+      },
 
-			renderDropIndicator: (target: { key: Key; position: string }) => {
-				return <DropIndicator key={`${target.key}-${target.position}`} target={target as DropTarget} />;
-			},
+      renderDropIndicator: (target: { key: Key; position: string }) => {
+        return (
+          <DropIndicator
+            key={`${target.key}-${target.position}`}
+            target={target as DropTarget}
+          />
+        );
+      },
 
-			getDropTarget: () => dropTarget,
-		}),
-		[
-			getItems,
-			getItemMetadata,
-			renderPreview,
-			handleDrop,
-			dropTarget,
-			allowedDropPositions,
-			acceptTypes,
-			acceptsFilter,
-			announcedName,
-		],
-	);
+      getDropTarget: () => dropTarget,
+    }),
+    [
+      getItems,
+      getItemMetadata,
+      renderPreview,
+      handleDrop,
+      dropTarget,
+      allowedDropPositions,
+      acceptTypes,
+      acceptsFilter,
+      announcedName,
+    ],
+  );
 
-	return { dragAndDropHooks };
+  return { dragAndDropHooks };
 }

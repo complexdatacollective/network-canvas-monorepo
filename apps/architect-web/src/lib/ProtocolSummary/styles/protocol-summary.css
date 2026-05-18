@@ -12,47 +12,47 @@
  * overrides) live in the `protocol-summary-surface` @utility in tailwind.css. */
 
 :root {
-	--margin: 1.5cm;
+  --margin: 1.5cm;
 }
 
 @page {
-	margin: var(--margin);
+  margin: var(--margin);
 }
 
 @media print {
-	.summary-view {
-		overflow: visible;
-		height: auto;
-		width: auto;
-	}
+  .summary-view {
+    overflow: visible;
+    height: auto;
+    width: auto;
+  }
 
-	.summary-view body {
-		overflow: visible;
-		height: auto;
-		width: auto;
-		background: white;
-	}
+  .summary-view body {
+    overflow: visible;
+    height: auto;
+    width: auto;
+    background: white;
+  }
 }
 
 @media screen {
-	.summary-view body {
-		overflow: visible;
-		height: auto;
-		width: auto;
-		background: hsl(var(--platinum));
-	}
+  .summary-view body {
+    overflow: visible;
+    height: auto;
+    width: auto;
+    background: hsl(var(--platinum));
+  }
 
-	.page-break-marker {
-		background: white;
-		padding: var(--margin);
-		display: block;
-		overflow: visible;
-		position: relative;
-		width: var(--page-size-width);
-		min-height: var(--page-size-height);
-		margin: var(--margin) auto;
-		border: 1px hsl(var(--platinum-dark)) solid;
-		border-radius: var(--radius-xs);
-		box-shadow: 0 4px 5px rgb(75 75 75 / 20%);
-	}
+  .page-break-marker {
+    background: white;
+    padding: var(--margin);
+    display: block;
+    overflow: visible;
+    position: relative;
+    width: var(--page-size-width);
+    min-height: var(--page-size-height);
+    margin: var(--margin) auto;
+    border: 1px hsl(var(--platinum-dark)) solid;
+    border-radius: var(--radius-xs);
+    box-shadow: 0 4px 5px rgb(75 75 75 / 20%);
+  }
 }

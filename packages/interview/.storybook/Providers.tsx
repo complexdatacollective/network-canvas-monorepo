@@ -1,18 +1,22 @@
-"use client";
+'use client';
 
-import { DirectionProvider } from "@base-ui/react/direction-provider";
-import { Toast } from "@base-ui/react/toast";
-import DialogProvider from "@codaco/fresco-ui/dialogs/DialogProvider";
-import { DndStoreProvider } from "@codaco/fresco-ui/dnd/dnd";
-import { Toaster } from "@codaco/fresco-ui/Toast";
-import { TooltipProvider } from "@codaco/fresco-ui/Tooltip";
-import { MotionConfig } from "motion/react";
-import type { ReactNode } from "react";
-import { CurrentStepProvider } from "../src/contexts/CurrentStepContext";
-import { ContractProvider } from "../src/contract/context";
+import { DirectionProvider } from '@base-ui/react/direction-provider';
+import { Toast } from '@base-ui/react/toast';
+import { MotionConfig } from 'motion/react';
+import type { ReactNode } from 'react';
+
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
+import { Toaster } from '@codaco/fresco-ui/Toast';
+import { TooltipProvider } from '@codaco/fresco-ui/Tooltip';
+
+import { CurrentStepProvider } from '../src/contexts/CurrentStepContext';
+import { ContractProvider } from '../src/contract/context';
 
 const noopAssetUrl = (assetId: string) =>
-	Promise.resolve(`data:text/plain;base64,${btoa(`storybook-asset:${assetId}`)}`);
+  Promise.resolve(
+    `data:text/plain;base64,${btoa(`storybook-asset:${assetId}`)}`,
+  );
 const noopFinish = () => Promise.resolve();
 
 /**
@@ -41,32 +45,36 @@ const noopFinish = () => Promise.resolve();
  * decorator only needs to provide the default toast surface.
  */
 export default function Providers({
-	children,
-	disableAnimations,
+  children,
+  disableAnimations,
 }: {
-	children: ReactNode;
-	disableAnimations?: boolean;
+  children: ReactNode;
+  disableAnimations?: boolean;
 }) {
-	if (disableAnimations) {
-		globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
-	}
+  if (disableAnimations) {
+    globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
+  }
 
-	return (
-		<MotionConfig reducedMotion="user" skipAnimations={disableAnimations}>
-			<DirectionProvider direction="ltr">
-				<Toast.Provider limit={7}>
-					<TooltipProvider>
-						<DndStoreProvider>
-							<DialogProvider>
-								<ContractProvider onFinish={noopFinish} onRequestAsset={noopAssetUrl} flags={{ isDevelopment: true }}>
-									<CurrentStepProvider>{children}</CurrentStepProvider>
-								</ContractProvider>
-							</DialogProvider>
-						</DndStoreProvider>
-					</TooltipProvider>
-					<Toaster />
-				</Toast.Provider>
-			</DirectionProvider>
-		</MotionConfig>
-	);
+  return (
+    <MotionConfig reducedMotion="user" skipAnimations={disableAnimations}>
+      <DirectionProvider direction="ltr">
+        <Toast.Provider limit={7}>
+          <TooltipProvider>
+            <DndStoreProvider>
+              <DialogProvider>
+                <ContractProvider
+                  onFinish={noopFinish}
+                  onRequestAsset={noopAssetUrl}
+                  flags={{ isDevelopment: true }}
+                >
+                  <CurrentStepProvider>{children}</CurrentStepProvider>
+                </ContractProvider>
+              </DialogProvider>
+            </DndStoreProvider>
+          </TooltipProvider>
+          <Toaster />
+        </Toast.Provider>
+      </DirectionProvider>
+    </MotionConfig>
+  );
 }

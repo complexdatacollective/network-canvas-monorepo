@@ -1,1 +1,1 @@
-module.exports = require("../../../__mocks__/electron").dialog;
+module.exports = require('../../../__mocks__/electron').dialog;

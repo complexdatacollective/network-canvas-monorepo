@@ -22,6 +22,7 @@ These resolve unknowns from spec §8 before destructive work begins. Each produc
 
 **Repo:** Fresco (`~/Projects/fresco-next`)
 **Files:**
+
 - Read: `components/ui/**/*.{ts,tsx,css}`
 - Create: `~/Projects/network-canvas/docs/superpowers/plans/findings/2026-04-29-fresco-ui/A1-surface.md`
 
@@ -65,6 +66,7 @@ This list is the seed for the public allowlist in Task D2.
 - [ ] **Step 5: Write findings**
 
 In `A1-surface.md`, record:
+
 - Total file count under `components/ui/`
 - The list of external `~/...` imports the components depend on (excluding `~/components/ui/...`)
 - The list of importing files (count + sample)
@@ -84,6 +86,7 @@ cd ~/Projects/network-canvas && \
 
 **Repo:** Fresco
 **Files:**
+
 - Inspect: Fresco git index, working tree
 - Create: `~/Projects/network-canvas/docs/superpowers/plans/findings/2026-04-29-fresco-ui/A2-phantom-lib-paths.md`
 
@@ -133,6 +136,7 @@ cd ~/Projects/network-canvas && \
 
 **Repo:** Fresco
 **Files:**
+
 - Read: every file under `components/ui/`, `utils/cva.ts`, `utils/generatePublicId.ts`, `utils/prettify.ts`, `hooks/useSafeAnimate.ts`, `lib/interviewer/utils/scrollParent.ts`, `styles/shared/`, `styles/plugins/`
 - Create: `~/Projects/network-canvas/docs/superpowers/plans/findings/2026-04-29-fresco-ui/A3-deps.md`
 
@@ -159,9 +163,10 @@ For each unique package name from Step 1, look up Fresco's installed version (`p
 In `A3-deps.md`, record a table:
 
 | Package | Fresco version | Monorepo catalog version | Resolution |
-|---|---|---|---|
+| ------- | -------------- | ------------------------ | ---------- |
 
 Resolution column values:
+
 - `catalog` — both match the catalog entry; reference `catalog:` in the package
 - `add-to-catalog` — Fresco has a version not yet in the monorepo catalog; **add it to the catalog first** (Task B2)
 - `direct` — keep Fresco's specific version pinned in the package's `dependencies` (only if catalog adoption is impractical)
@@ -182,6 +187,7 @@ cd ~/Projects/network-canvas && \
 
 **Repo:** Fresco
 **Files:**
+
 - Read: every file under `components/ui/{form,collection,dnd,dialogs}/`
 - Create: `~/Projects/network-canvas/docs/superpowers/plans/findings/2026-04-29-fresco-ui/A4-subsystems.md`
 
@@ -216,6 +222,7 @@ find ~/Projects/fresco-next -maxdepth 2 -name 'vitest.config.*' -o -name 'vitest
 - [ ] **Step 4: Write findings**
 
 For each subsystem, in `A4-subsystems.md` record:
+
 - External imports (those not under `components/ui/` and not under `~/utils/cva`/etc. that already travel)
 - Whether tests rely on Fresco-specific setup files; if yes, what
 - Recommended action: clean migrate / migrate with reshape (and what reshape) / leave behind
@@ -234,6 +241,7 @@ cd ~/Projects/network-canvas && \
 
 **Repo:** Monorepo (`~/Projects/network-canvas`)
 **Files:**
+
 - Read: `tooling/typescript/tsconfig.json` (or whatever the package exposes), `biome.json`, `turbo.json`, `pnpm-workspace.yaml`, `packages/network-exporters/{package.json, vite.config.ts, tsconfig.json}` (a recent Vite-library example), `packages/ui/{package.json, src/index.ts, src/utils.ts}`
 - Create: `~/Projects/network-canvas/docs/superpowers/plans/findings/2026-04-29-fresco-ui/A5-monorepo-conventions.md`
 
@@ -242,6 +250,7 @@ cd ~/Projects/network-canvas && \
 - [ ] **Step 2: Write findings**
 
 In `A5-monorepo-conventions.md`, record:
+
 - The `@codaco/tsconfig` `extends` shape and which exported config to extend
 - The Biome root-config path the package's `biome.json` should `extends`
 - The Vite library-mode pattern in use (`packages/network-exporters/vite.config.ts` is the freshest reference)
@@ -262,6 +271,7 @@ cd ~/Projects/network-canvas && \
 
 **Repo:** Monorepo
 **Files:**
+
 - Read: latest official docs (Vite 8 release notes, Rolldown library guide, vite-plugin-dts README)
 - Create: `~/Projects/network-canvas/docs/superpowers/plans/findings/2026-04-29-fresco-ui/A6-build-tooling.md`
 
@@ -280,6 +290,7 @@ Check the `vite-plugin-dts` GitHub releases / npm versions for any 2026-Q1 relea
 - [ ] **Step 4: Write findings**
 
 In `A6-build-tooling.md`, record:
+
 - Confirmed Vite 8 lib config syntax (with code example to be used in Task B7)
 - Whether `preserveModules` is available (and recommendation)
 - vite-plugin-dts compat status; fallback plan if needed
@@ -302,6 +313,7 @@ Phase B creates the new package on disk in the monorepo with no source code yet,
 
 **Repo:** Monorepo
 **Files:**
+
 - Create: `packages/fresco-ui/package.json`
 - Create: `packages/fresco-ui/.gitignore`
 - Create: `packages/fresco-ui/README.md`
@@ -333,11 +345,11 @@ cd ~/Projects/network-canvas/packages/fresco-ui
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "prepublishOnly": "pnpm build",
-    "clean": "rm -rf .turbo node_modules dist"
+    "clean": "rm -rf .turbo node_modules dist",
   },
   "peerDependencies": {
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
   },
   "dependencies": {},
   "devDependencies": {
@@ -346,9 +358,9 @@ cd ~/Projects/network-canvas/packages/fresco-ui
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:",
-    "tinyglobby": "^0.2.0"
+    "tinyglobby": "^0.2.0",
   },
-  "publishConfig": { "access": "public" }
+  "publishConfig": { "access": "public" },
 }
 ```
 
@@ -375,6 +387,7 @@ Fresco UI components, styles, and utilities. See `docs/superpowers/specs/2026-04
 ```bash
 cd ~/Projects/network-canvas && pnpm install
 ```
+
 Expected: lockfile updates with `@codaco/fresco-ui` as a workspace package.
 
 - [ ] **Step 6: Commit**
@@ -390,6 +403,7 @@ git add packages/fresco-ui pnpm-lock.yaml && \
 
 **Repo:** Monorepo
 **Files:**
+
 - Modify: `pnpm-workspace.yaml` (catalog additions, if A3 surfaced any)
 - Modify: `packages/fresco-ui/package.json` (`dependencies`)
 
@@ -400,6 +414,7 @@ For example, if `motion` 12.x and `@tiptap/core` 3.22 aren't in the catalog yet,
 - [ ] **Step 2: Update `packages/fresco-ui/package.json` with all migrated dependencies**
 
 Per A3:
+
 - `catalog` rows → `"<pkg>": "catalog:"`
 - `direct` rows → `"<pkg>": "<exact version>"`
 - Any peer-dep candidates → move to `peerDependencies` instead
@@ -409,6 +424,7 @@ Per A3:
 ```bash
 cd ~/Projects/network-canvas && pnpm install
 ```
+
 Expected: lockfile updates; no errors.
 
 - [ ] **Step 4: Commit**
@@ -424,6 +440,7 @@ git add pnpm-workspace.yaml pnpm-lock.yaml packages/fresco-ui/package.json && \
 
 **Repo:** Monorepo
 **Files:**
+
 - Create: `packages/fresco-ui/tsconfig.json`
 
 - [ ] **Step 1: Write the tsconfig (extending the monorepo base per A5)**
@@ -439,10 +456,10 @@ git add pnpm-workspace.yaml pnpm-lock.yaml packages/fresco-ui/package.json && \
     "moduleResolution": "Bundler",
     "noEmit": true,
     "composite": false,
-    "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo"
+    "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo",
   },
   "include": ["src/**/*"],
-  "exclude": ["src/**/*.stories.tsx", "src/**/*.test.*", "src/**/__tests__/**"]
+  "exclude": ["src/**/*.stories.tsx", "src/**/*.test.*", "src/**/__tests__/**"],
 }
 ```
 
@@ -453,6 +470,7 @@ If A5 noted a different exposed config name (e.g. `@codaco/tsconfig/library.json
 ```bash
 cd ~/Projects/network-canvas && pnpm --filter @codaco/fresco-ui typecheck
 ```
+
 Expected: PASS (vacuously — no source files yet).
 
 - [ ] **Step 3: Commit**
@@ -468,6 +486,7 @@ git add packages/fresco-ui/tsconfig.json && \
 
 **Repo:** Monorepo
 **Files:**
+
 - Create: `packages/fresco-ui/biome.json`
 
 - [ ] **Step 1: Write biome config**
@@ -477,8 +496,8 @@ git add packages/fresco-ui/tsconfig.json && \
   "$schema": "https://biomejs.dev/schemas/2.4.13/schema.json",
   "extends": ["//"],
   "files": {
-    "includes": ["src/**/*.{ts,tsx,js,jsx}"]
-  }
+    "includes": ["src/**/*.{ts,tsx,js,jsx}"],
+  },
 }
 ```
 
@@ -489,6 +508,7 @@ If A5 noted a different `extends` value, use it.
 ```bash
 cd ~/Projects/network-canvas && pnpm lint
 ```
+
 Expected: PASS.
 
 - [ ] **Step 3: Commit**
@@ -504,13 +524,14 @@ git add packages/fresco-ui/biome.json && \
 
 **Repo:** Monorepo
 **Files:**
+
 - Modify (only if needed per A5): `turbo.json`
 
 - [ ] **Step 1: Verify the existing `turbo.json` build/test/typecheck tasks already cover the new package**
 
 The current `inputs` are `src/**`, `tsconfig*.json`, `vite.config.*`, `package.json`. Confirm `*.css` is also picked up via `src/**`.
 
-- [ ] **Step 2: If gaps surfaced, add `src/**/*.css` explicitly**
+- [ ] **Step 2: If gaps surfaced, add `src/**/\*.css` explicitly\*\*
 
 Otherwise no change.
 
@@ -532,6 +553,7 @@ git add turbo.json && git commit -m "chore(turbo): cover fresco-ui inputs"
 
 **Repo:** Monorepo
 **Files:**
+
 - Create: `packages/fresco-ui/exports.config.ts`
 
 - [ ] **Step 1: Write a placeholder allowlist**
@@ -565,6 +587,7 @@ git add packages/fresco-ui/exports.config.ts && \
 
 **Repo:** Monorepo
 **Files:**
+
 - Create: `packages/fresco-ui/vite.config.ts`
 - Create: `packages/fresco-ui/scripts/build-exports.mjs`
 
@@ -587,7 +610,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(here, '..');
 
 async function loadAllowlist() {
-  const { exportEntries, cssEntries } = await import(resolve(pkgRoot, 'exports.config.ts'));
+  const { exportEntries, cssEntries } = await import(
+    resolve(pkgRoot, 'exports.config.ts')
+  );
   return { exportEntries, cssEntries };
 }
 
@@ -596,7 +621,8 @@ export async function entries() {
   const out = {};
   for (const e of exportEntries) {
     const abs = resolve(pkgRoot, 'src', e.source);
-    if (!existsSync(abs)) throw new Error(`exports.config.ts: missing source ${e.source}`);
+    if (!existsSync(abs))
+      throw new Error(`exports.config.ts: missing source ${e.source}`);
     out[e.subpath.replace(/^\.\//, '')] = abs;
   }
   return out;
@@ -608,7 +634,7 @@ async function buildExportsMap() {
   for (const e of exportEntries) {
     const distBase = e.source.replace(/\.tsx?$/, '');
     map[e.subpath] = {
-      types:   `./dist/${distBase}.d.ts`,
+      types: `./dist/${distBase}.d.ts`,
       default: `./dist/${distBase}.js`,
     };
   }
@@ -623,7 +649,9 @@ async function writePackageJson() {
   const pkg = JSON.parse(await readFile(pkgPath, 'utf8'));
   pkg.exports = await buildExportsMap();
   await writeFile(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-  console.log(`wrote ${Object.keys(pkg.exports).length} export entries to package.json`);
+  console.log(
+    `wrote ${Object.keys(pkg.exports).length} export entries to package.json`,
+  );
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -648,7 +676,9 @@ const cssCopyPlugin = () => ({
   async closeBundle() {
     // Copy every src/**/*.css to dist/**/*.css verbatim (bypass Vite/Lightning CSS).
     const { globSync } = await import('tinyglobby');
-    const files = globSync(['src/**/*.css'], { cwd: import.meta.dirname ?? __dirname });
+    const files = globSync(['src/**/*.css'], {
+      cwd: import.meta.dirname ?? __dirname,
+    });
     for (const rel of files) {
       const out = rel.replace(/^src\//, 'dist/');
       await mkdir(dirname(out), { recursive: true });
@@ -662,15 +692,23 @@ export default defineConfig(async () => ({
     lib: { entry: await entries(), formats: ['es'] },
     rolldownOptions: {
       external: [
-        /^react/, /^react-dom/,
-        /^@radix-ui/, /^@base-ui/,
-        /^motion/, /^@tiptap/,
+        /^react/,
+        /^react-dom/,
+        /^@radix-ui/,
+        /^@base-ui/,
+        /^motion/,
+        /^@tiptap/,
         /^lucide-react/,
-        /^class-variance-authority/, /^cva/,
-        /^clsx/, /^tailwind-merge/,
+        /^class-variance-authority/,
+        /^cva/,
+        /^clsx/,
+        /^tailwind-merge/,
         /^luxon/,
       ],
-      output: { entryFileNames: '[name].js', chunkFileNames: 'chunks/[hash].js' },
+      output: {
+        entryFileNames: '[name].js',
+        chunkFileNames: 'chunks/[hash].js',
+      },
     },
     sourcemap: true,
     minify: false,
@@ -694,6 +732,7 @@ If A6 confirmed `output.preserveModules` is available, replace the entire `lib.e
 cd ~/Projects/network-canvas && \
   pnpm --filter @codaco/fresco-ui build 2>&1 | tail -30
 ```
+
 Expected: an error about the empty `entries()` output. That's fine; we just need the config to parse. No commit yet — Task B8 will verify a clean run after we add a sentinel entry.
 
 - [ ] **Step 4: Commit**
@@ -709,6 +748,7 @@ git add packages/fresco-ui/vite.config.ts packages/fresco-ui/scripts/build-expor
 
 **Repo:** Monorepo
 **Files:**
+
 - Create: `packages/fresco-ui/src/_sentinel.ts`
 - Modify: `packages/fresco-ui/exports.config.ts`
 
@@ -738,6 +778,7 @@ export const cssEntries: ExportEntry[] = [];
 cd ~/Projects/network-canvas && \
   pnpm --filter @codaco/fresco-ui build
 ```
+
 Expected: `dist/_sentinel.js` and `dist/_sentinel.d.ts` exist; `package.json` `exports` has `./_sentinel`.
 
 - [ ] **Step 4: Verify build artefacts manually**
@@ -763,6 +804,7 @@ git add packages/fresco-ui/src/_sentinel.ts \
 
 **Repo:** Monorepo
 **Files:**
+
 - Create: `packages/fresco-ui/vitest.config.ts`
 - Create: `packages/fresco-ui/src/_sentinel.test.ts`
 - Modify: `packages/fresco-ui/package.json` (add vitest devDependency)
@@ -798,7 +840,10 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    include: ['src/**/*.{test,spec}.{ts,tsx}', 'src/**/__tests__/**/*.{ts,tsx}'],
+    include: [
+      'src/**/*.{test,spec}.{ts,tsx}',
+      'src/**/__tests__/**/*.{ts,tsx}',
+    ],
     css: false,
   },
 });
@@ -824,6 +869,7 @@ describe('_sentinel', () => {
 cd ~/Projects/network-canvas && \
   pnpm --filter @codaco/fresco-ui test
 ```
+
 Expected: 1 passed.
 
 - [ ] **Step 6: Commit**
@@ -852,6 +898,7 @@ The general pattern for every task in Phase C:
 
 **Repo:** Monorepo
 **Files:**
+
 - Create: `packages/fresco-ui/src/utils/cva.ts` (copy of Fresco's `~/utils/cva.ts`)
 - Create: `packages/fresco-ui/src/utils/generatePublicId.ts`
 - Create: `packages/fresco-ui/src/utils/prettify.ts`
@@ -875,7 +922,8 @@ grep -n "from '~/" src/utils/*.ts || echo "no remaining ~/ imports"
 ```
 
 If any exist, resolve them:
-- If the import target is *also* migrating in this plan, rewrite to a relative path within `src/`.
+
+- If the import target is _also_ migrating in this plan, rewrite to a relative path within `src/`.
 - Otherwise stop and surface to the user — the migration scope was supposed to capture every dependency.
 
 - [ ] **Step 3: Migrate any tests for these utilities**
@@ -893,10 +941,10 @@ In `exports.config.ts`:
 ```ts
 export const exportEntries: ExportEntry[] = [
   { subpath: './_sentinel', source: '_sentinel.ts' },
-  { subpath: './utils/cva',              source: 'utils/cva.ts' },
+  { subpath: './utils/cva', source: 'utils/cva.ts' },
   { subpath: './utils/generatePublicId', source: 'utils/generatePublicId.ts' },
-  { subpath: './utils/prettify',         source: 'utils/prettify.ts' },
-  { subpath: './utils/scrollParent',     source: 'utils/scrollParent.ts' },
+  { subpath: './utils/prettify', source: 'utils/prettify.ts' },
+  { subpath: './utils/scrollParent', source: 'utils/scrollParent.ts' },
 ];
 ```
 
@@ -908,6 +956,7 @@ cd ~/Projects/network-canvas && \
   pnpm --filter @codaco/fresco-ui test && \
   pnpm --filter @codaco/fresco-ui build
 ```
+
 Expected: all pass.
 
 - [ ] **Step 6: Commit**
@@ -923,6 +972,7 @@ git add packages/fresco-ui && \
 
 **Repo:** Monorepo
 **Files:**
+
 - Create: `packages/fresco-ui/src/hooks/useSafeAnimate.ts`
 - Modify: `packages/fresco-ui/exports.config.ts`
 
@@ -938,6 +988,7 @@ cp ~/Projects/fresco-next/hooks/useSafeAnimate.ts \
 ```bash
 grep -n "from '~/" ~/Projects/network-canvas/packages/fresco-ui/src/hooks/useSafeAnimate.ts || echo none
 ```
+
 Rewrite as in C1 Step 2.
 
 - [ ] **Step 3: Add to allowlist**
@@ -963,6 +1014,7 @@ git add packages/fresco-ui && \
 
 **Repo:** Monorepo
 **Files:**
+
 - Create: `packages/fresco-ui/src/styles/controlVariants.ts`
 - Create: `packages/fresco-ui/src/styles/colors.css`
 - Modify: `packages/fresco-ui/exports.config.ts`
@@ -981,6 +1033,7 @@ cp ~/Projects/fresco-next/styles/shared/colors.css \
 ```bash
 grep -n "from '~/" ~/Projects/network-canvas/packages/fresco-ui/src/styles/controlVariants.ts || echo none
 ```
+
 Rewrite to relative paths (e.g. `~/utils/cva` → `../utils/cva`).
 
 - [ ] **Step 3: Add to allowlist**
@@ -1001,6 +1054,7 @@ cd ~/Projects/network-canvas && \
   pnpm --filter @codaco/fresco-ui build && \
   diff packages/fresco-ui/src/styles/colors.css packages/fresco-ui/dist/styles/colors.css
 ```
+
 Expected: typecheck PASS, build PASS, diff produces **no output** (files identical).
 
 - [ ] **Step 5: Commit**
@@ -1016,6 +1070,7 @@ git add packages/fresco-ui && \
 
 **Repo:** Monorepo
 **Files:**
+
 - Create: `packages/fresco-ui/src/styles/plugins/elevation/...` (preserve internal layout)
 - Create: `packages/fresco-ui/src/styles/plugins/inset-surface/...`
 - Create: `packages/fresco-ui/src/styles/plugins/motion-spring.ts`
@@ -1071,6 +1126,7 @@ git add packages/fresco-ui && \
 
 **Repo:** Monorepo
 **Files:**
+
 - Create: `packages/fresco-ui/src/styles.css`
 - Modify: `packages/fresco-ui/exports.config.ts`
 
@@ -1088,7 +1144,7 @@ Cross-reference Fresco's globals + theme with the existing `@codaco/tailwind-con
 - [ ] **Step 2: Write `src/styles.css`**
 
 ```css
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
   /* Lifted from Fresco's authoritative tokens. The full set is mechanical;
@@ -1138,6 +1194,7 @@ cd ~/Projects/network-canvas && \
   pnpm --filter @codaco/fresco-ui build && \
   diff packages/fresco-ui/src/styles.css packages/fresco-ui/dist/styles.css
 ```
+
 Expected: PASS, diff empty.
 
 - [ ] **Step 5: Sanity-check `@plugin` resolution**
@@ -1161,6 +1218,7 @@ git add packages/fresco-ui && \
 
 **Repo:** Monorepo
 **Files (copy each from Fresco's `components/ui/`):**
+
 - `Alert.tsx`, `badge.tsx`, `button-constants.ts`, `Pips.tsx`, `ProgressBar.tsx`, `RenderMarkdown.tsx`, `ResizableFlexPanel.tsx`, `ScrollArea.tsx`, `skeleton.tsx`, `Spinner.tsx`, `TimeAgo.tsx`
 - Modify: `packages/fresco-ui/exports.config.ts`
 
@@ -1178,19 +1236,20 @@ done
 
 For each file, every `~/` import must be rewritten:
 
-| Source path | Target path (relative from src/) |
-|---|---|
-| `~/utils/cva` | `./utils/cva` |
-| `~/styles/shared/controlVariants` | `./styles/controlVariants` |
-| `~/utils/generatePublicId` | `./utils/generatePublicId` |
-| `~/utils/prettify` | `./utils/prettify` |
-| `~/hooks/useSafeAnimate` | `./hooks/useSafeAnimate` |
-| `~/lib/interviewer/utils/scrollParent` | `./utils/scrollParent` |
-| Any other `~/` not in this table | **stop and report**: it isn't accounted for in the migration |
+| Source path                            | Target path (relative from src/)                             |
+| -------------------------------------- | ------------------------------------------------------------ |
+| `~/utils/cva`                          | `./utils/cva`                                                |
+| `~/styles/shared/controlVariants`      | `./styles/controlVariants`                                   |
+| `~/utils/generatePublicId`             | `./utils/generatePublicId`                                   |
+| `~/utils/prettify`                     | `./utils/prettify`                                           |
+| `~/hooks/useSafeAnimate`               | `./hooks/useSafeAnimate`                                     |
+| `~/lib/interviewer/utils/scrollParent` | `./utils/scrollParent`                                       |
+| Any other `~/` not in this table       | **stop and report**: it isn't accounted for in the migration |
 
 ```bash
 grep -rln "from '~/" src/*.ts src/*.tsx 2>/dev/null
 ```
+
 Loop until no `~/` imports remain in this group.
 
 - [ ] **Step 3: Add to allowlist**
@@ -1226,6 +1285,7 @@ git add packages/fresco-ui && \
 
 **Repo:** Monorepo
 **Files (copy from Fresco):**
+
 - `Button.tsx` (defines `Button`, `IconButton`, `MotionButton`)
 - `CloseButton.tsx`
 - Modify: `packages/fresco-ui/exports.config.ts`
@@ -1262,6 +1322,7 @@ git add packages/fresco-ui && git commit -m "feat(fresco-ui): migrate Button and
 
 **Repo:** Monorepo
 **Files (copy from Fresco):**
+
 - `dropdown-menu.tsx`, `popover.tsx`, `tooltip.tsx`, `table.tsx`, `Label.tsx`
 - Modify: `packages/fresco-ui/exports.config.ts`
 
@@ -1299,6 +1360,7 @@ git add packages/fresco-ui && git commit -m "feat(fresco-ui): migrate Radix-base
 
 **Repo:** Monorepo
 **Files (copy from Fresco):**
+
 - `Icon.tsx`, `Node.tsx`, `Toast.tsx`
 - Modify: `packages/fresco-ui/exports.config.ts`
 
@@ -1309,6 +1371,7 @@ for f in Icon Node Toast; do
   cp ~/Projects/fresco-next/components/ui/$f.tsx ~/Projects/network-canvas/packages/fresco-ui/src/$f.tsx
 done
 ```
+
 Rewrite imports per C6 Step 2.
 
 - [ ] **Step 2: Add to allowlist**
@@ -1333,6 +1396,7 @@ git add packages/fresco-ui && git commit -m "feat(fresco-ui): migrate Icon, Node
 
 **Repo:** Monorepo
 **Files:**
+
 - Copy directory: `~/Projects/fresco-next/components/ui/Modal/` → `packages/fresco-ui/src/Modal/`
 - Modify: `packages/fresco-ui/exports.config.ts`
 
@@ -1371,6 +1435,7 @@ git add packages/fresco-ui && git commit -m "feat(fresco-ui): migrate Modal"
 
 **Repo:** Monorepo
 **Files:**
+
 - Create: `packages/fresco-ui/src/RichTextRenderer.tsx`
 - Modify: `packages/fresco-ui/exports.config.ts`
 
@@ -1413,6 +1478,7 @@ git add packages/fresco-ui && git commit -m "feat(fresco-ui): migrate RichTextRe
 
 **Repo:** Monorepo
 **Files:**
+
 - Copy: `~/Projects/fresco-next/components/ui/layout/Surface.tsx` and `ResponsiveContainer.tsx`
 - Modify: `packages/fresco-ui/exports.config.ts`
 
@@ -1423,6 +1489,7 @@ mkdir -p ~/Projects/network-canvas/packages/fresco-ui/src/layout
 cp ~/Projects/fresco-next/components/ui/layout/{Surface,ResponsiveContainer}.tsx \
    ~/Projects/network-canvas/packages/fresco-ui/src/layout/
 ```
+
 Rewrite imports per C6 Step 2.
 
 - [ ] **Step 2: Add to allowlist**
@@ -1446,6 +1513,7 @@ git add packages/fresco-ui && git commit -m "feat(fresco-ui): migrate layout com
 
 **Repo:** Monorepo
 **Files:**
+
 - Copy each file from `~/Projects/fresco-next/components/ui/typography/`
 - Modify: `packages/fresco-ui/exports.config.ts`
 
@@ -1480,6 +1548,7 @@ git add packages/fresco-ui && git commit -m "feat(fresco-ui): migrate typography
 
 **Repo:** Monorepo
 **Files:**
+
 - Copy directory: `~/Projects/fresco-next/components/ui/dialogs/` → `packages/fresco-ui/src/dialogs/` (preserve `__tests__/`)
 - Modify: `packages/fresco-ui/exports.config.ts`
 
@@ -1562,6 +1631,7 @@ Commit message: `feat(fresco-ui): migrate collection subsystem`.
 
 **Repo:** Monorepo
 **Files:**
+
 - Copy directory: `~/Projects/fresco-next/components/ui/form/` → `packages/fresco-ui/src/form/`
 - Delete: `packages/fresco-ui/src/form/hooks/useProtocolForm.tsx` and `packages/fresco-ui/src/form/hooks/useProtocolForm.stories.tsx` (these stay in Fresco — see G3)
 - Modify: `packages/fresco-ui/exports.config.ts`
@@ -1606,6 +1676,7 @@ git add packages/fresco-ui && git commit -m "feat(fresco-ui): migrate form subsy
 
 **Repo:** Monorepo
 **Files:**
+
 - Modify: `packages/fresco-ui/exports.config.ts`
 
 - [ ] **Step 1: Compare allowlist vs. observed Fresco imports**
@@ -1655,6 +1726,7 @@ git add packages/fresco-ui && \
 
 **Repo:** Monorepo
 **Files:**
+
 - Create: `packages/fresco-ui/.storybook/main.ts`
 - Create: `packages/fresco-ui/.storybook/preview.tsx`
 - Create: `packages/fresco-ui/.storybook/StoryInterviewShell.tsx`
@@ -1723,6 +1795,7 @@ If nothing matches, omit the plugin from the package's Storybook (don't copy `vi
 ```bash
 cd ~/Projects/network-canvas && pnpm --filter @codaco/fresco-ui build-storybook
 ```
+
 Expected: PASS, `storybook-static/` created.
 
 - [ ] **Step 8: Commit**
@@ -1738,6 +1811,7 @@ git add packages/fresco-ui pnpm-lock.yaml && \
 
 **Repo:** Monorepo
 **Files:**
+
 - Copy every `.stories.tsx` file from `~/Projects/fresco-next/components/ui/**/*.stories.tsx` to the equivalent location in `packages/fresco-ui/src/`
 
 - [ ] **Step 1: Enumerate stories**
@@ -1763,6 +1837,7 @@ done < /tmp/stories.txt
 ```bash
 rm -f ~/Projects/network-canvas/packages/fresco-ui/src/form/hooks/useProtocolForm.stories.tsx
 ```
+
 (May already not exist if the file wasn't part of the form/ tree we copied; the line is idempotent.)
 
 - [ ] **Step 4: Rewrite imports inside each story per the C6 Step 2 table**
@@ -1778,6 +1853,7 @@ grep -rln "from '~/" ~/Projects/network-canvas/packages/fresco-ui/src --include=
 ```bash
 cd ~/Projects/network-canvas && pnpm --filter @codaco/fresco-ui build-storybook
 ```
+
 Expected: PASS. Story-load errors usually surface as warnings; treat any error as a failure.
 
 - [ ] **Step 6: Commit**
@@ -1792,6 +1868,7 @@ git add packages/fresco-ui && git commit -m "feat(fresco-ui): copy storybook sto
 
 **Repo:** Monorepo
 **Files:**
+
 - Create: `.changeset/<random-name>.md` (the existing changeset CLI generates this)
 
 - [ ] **Step 1: Generate a changeset**
@@ -1803,6 +1880,7 @@ cd ~/Projects/network-canvas && pnpm changeset
 Select `@codaco/fresco-ui`. Mark as **minor** (since it's the initial release at `0.1.0`).
 
 Summary:
+
 > Initial release of `@codaco/fresco-ui` — Fresco UI components, styles, and utilities migrated from `~/Projects/fresco-next/components/ui`.
 
 - [ ] **Step 2: Inspect the generated file**
@@ -1929,6 +2007,7 @@ Expected: `next: 0.1.0-next.0`, `exports` map present.
 
 **Repo:** Monorepo
 **Files:**
+
 - Delete: `tooling/tailwind/fresco.ts`
 - Modify: `tooling/tailwind/package.json` (remove the `./fresco` export)
 
@@ -1939,7 +2018,7 @@ grep -rln "@codaco/tailwind-config/fresco" ~/Projects/network-canvas
 grep -rln "@codaco/tailwind-config/fresco" ~/Projects/fresco-next
 ```
 
-If Fresco is the only consumer **and** Phase G hasn't started yet, defer this task to after Fresco's CSS migration in G2 — otherwise Fresco breaks. **Schedule note:** F1 runs *after* G2.
+If Fresco is the only consumer **and** Phase G hasn't started yet, defer this task to after Fresco's CSS migration in G2 — otherwise Fresco breaks. **Schedule note:** F1 runs _after_ G2.
 
 - [ ] **Step 2: After G2 lands, remove the file and the export**
 
@@ -1969,6 +2048,7 @@ git add tooling/tailwind && git commit -m "chore(tailwind-config): drop fresco p
 
 **Repo:** Fresco
 **Files:**
+
 - Modify: `~/Projects/fresco-next/package.json`
 
 - [ ] **Step 1: Add the dependency**
@@ -1999,6 +2079,7 @@ git add package.json pnpm-lock.yaml && \
 
 **Repo:** Fresco
 **Files:**
+
 - Modify: Fresco's Tailwind v4 entry CSS (likely `styles/globals.css` or `app/globals.css`; verify)
 - Delete (only at end of G7): `tailwind.config.ts` if present
 
@@ -2014,7 +2095,7 @@ grep -l "@import \"tailwindcss\"" ~/Projects/fresco-next/styles/*.css ~/Projects
 In Fresco's entry CSS, near the top (after any `@import "tailwindcss"`):
 
 ```css
-@import "@codaco/fresco-ui/styles.css";
+@import '@codaco/fresco-ui/styles.css';
 
 @source "../app/**/*.{ts,tsx}";
 @source "../components/**/*.{ts,tsx}";
@@ -2051,6 +2132,7 @@ git add styles app && git commit -m "feat(fresco): import @codaco/fresco-ui styl
 
 **Repo:** Fresco
 **Files:**
+
 - Move: `components/ui/SubmitButton.tsx` → `components/SubmitButton.tsx`
 - Move: `components/ui/Link.tsx` → `components/Link.tsx`
 - Move: `components/ui/form/hooks/useProtocolForm.tsx` → `lib/interviewer/forms/useProtocolForm.tsx`
@@ -2091,6 +2173,7 @@ grep -rln "from '~/components/ui/form/hooks/useProtocolForm'" ~/Projects/fresco-
 ```bash
 pnpm typecheck
 ```
+
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -2105,6 +2188,7 @@ git add . && git commit -m "refactor(fresco): relocate SubmitButton, Link, usePr
 
 **Repo:** Fresco
 **Files:**
+
 - Create: `~/Projects/fresco-next/scripts/codemod-fresco-ui-imports.mjs`
 - Modify: every Fresco file that imports `~/components/ui/...`, `~/utils/cva`, etc.
 
@@ -2118,22 +2202,40 @@ import { globSync } from 'tinyglobby';
 const rules = [
   // [from regex, to template]
   [/from '~\/components\/ui\/(.+?)'/g, "from '@codaco/fresco-ui/$1'"],
-  [/from '~\/utils\/cva'/g,                       "from '@codaco/fresco-ui/utils/cva'"],
-  [/from '~\/utils\/generatePublicId'/g,          "from '@codaco/fresco-ui/utils/generatePublicId'"],
-  [/from '~\/utils\/prettify'/g,                  "from '@codaco/fresco-ui/utils/prettify'"],
-  [/from '~\/hooks\/useSafeAnimate'/g,            "from '@codaco/fresco-ui/hooks/useSafeAnimate'"],
-  [/from '~\/lib\/interviewer\/utils\/scrollParent'/g, "from '@codaco/fresco-ui/utils/scrollParent'"],
-  [/from '~\/styles\/shared\/controlVariants'/g,  "from '@codaco/fresco-ui/styles/controlVariants'"],
+  [/from '~\/utils\/cva'/g, "from '@codaco/fresco-ui/utils/cva'"],
+  [
+    /from '~\/utils\/generatePublicId'/g,
+    "from '@codaco/fresco-ui/utils/generatePublicId'",
+  ],
+  [/from '~\/utils\/prettify'/g, "from '@codaco/fresco-ui/utils/prettify'"],
+  [
+    /from '~\/hooks\/useSafeAnimate'/g,
+    "from '@codaco/fresco-ui/hooks/useSafeAnimate'",
+  ],
+  [
+    /from '~\/lib\/interviewer\/utils\/scrollParent'/g,
+    "from '@codaco/fresco-ui/utils/scrollParent'",
+  ],
+  [
+    /from '~\/styles\/shared\/controlVariants'/g,
+    "from '@codaco/fresco-ui/styles/controlVariants'",
+  ],
 ];
 
-const files = globSync(['**/*.{ts,tsx}'], { cwd: process.cwd(), ignore: ['node_modules', '.next', 'dist'] });
+const files = globSync(['**/*.{ts,tsx}'], {
+  cwd: process.cwd(),
+  ignore: ['node_modules', '.next', 'dist'],
+});
 
 let touched = 0;
 for (const f of files) {
   const before = await readFile(f, 'utf8');
   let after = before;
   for (const [re, to] of rules) after = after.replace(re, to);
-  if (after !== before) { await writeFile(f, after); touched++; }
+  if (after !== before) {
+    await writeFile(f, after);
+    touched++;
+  }
 }
 console.log(`rewrote imports in ${touched} files`);
 ```
@@ -2168,6 +2270,7 @@ The codemod might have rewritten an import inside `lib/interviewer/forms/useProt
 ```bash
 pnpm typecheck
 ```
+
 Expected: PASS. If it fails, the typical cause is a missing allowlist entry in the package — circle back to D1 and add it, republish a new alpha (E2 with a fresh changeset), bump Fresco's dependency, retry.
 
 - [ ] **Step 6: Lint**
@@ -2175,6 +2278,7 @@ Expected: PASS. If it fails, the typical cause is a missing allowlist entry in t
 ```bash
 pnpm lint
 ```
+
 Expected: PASS. If lint surfaces unused-import warnings on Fresco files that re-imported things, fix as part of this commit.
 
 - [ ] **Step 7: Commit**
@@ -2189,6 +2293,7 @@ git add . && git commit -m "refactor(fresco): rewrite imports to @codaco/fresco-
 
 **Repo:** Fresco
 **Files (to delete):**
+
 - `components/ui/` (entire directory; the relocated files moved out in G3)
 - `utils/cva.ts`
 - `utils/generatePublicId.ts`
@@ -2241,6 +2346,7 @@ ls ~/Projects/fresco-next/utils/__tests__/
 ```bash
 pnpm typecheck && pnpm lint && pnpm test
 ```
+
 Expected: all PASS.
 
 - [ ] **Step 5: Knip**
@@ -2248,6 +2354,7 @@ Expected: all PASS.
 ```bash
 pnpm knip
 ```
+
 Expected: no new unused exports/files.
 
 - [ ] **Step 6: Commit**
@@ -2312,6 +2419,7 @@ cat tests/e2e/test-results/results.json | jq '.suites[].suites[].specs[] | selec
 - [ ] **Step 3: For each failing test, diagnose**
 
 Most likely categories:
+
 - Selector breakage (testids preserved? component DOM unchanged?)
 - Style regression (a class no longer resolves because a token isn't in `styles.css`)
 - Toast/dialog portal mounting (component DOM-context assumption from spec §8 risk 5)
@@ -2378,6 +2486,7 @@ git add package.json pnpm-lock.yaml && \
 ```bash
 pnpm typecheck && pnpm lint && pnpm test
 ```
+
 Expected: PASS.
 
 - [ ] **Step 7: Final commit**

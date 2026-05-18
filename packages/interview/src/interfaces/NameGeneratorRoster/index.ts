@@ -1,1 +1,1 @@
-export { default } from "./NameGeneratorRoster";
+export { default } from './NameGeneratorRoster';

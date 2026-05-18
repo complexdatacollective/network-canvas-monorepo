@@ -1,15 +1,22 @@
-import { withProps } from "react-recompose";
+import { withProps } from 'react-recompose';
 
 type PropsWithInterfaceType = {
-	interfaceType?: string;
+  interfaceType?: string;
 };
 
-const withDisabledFormTitle = withProps<{ disableFormTitle: boolean }, PropsWithInterfaceType>(({ interfaceType }) => {
-	if (interfaceType === "EgoForm" || interfaceType === "AlterForm" || interfaceType === "AlterEdgeForm") {
-		return { disableFormTitle: true };
-	}
+const withDisabledFormTitle = withProps<
+  { disableFormTitle: boolean },
+  PropsWithInterfaceType
+>(({ interfaceType }) => {
+  if (
+    interfaceType === 'EgoForm' ||
+    interfaceType === 'AlterForm' ||
+    interfaceType === 'AlterEdgeForm'
+  ) {
+    return { disableFormTitle: true };
+  }
 
-	return { disableFormTitle: false };
+  return { disableFormTitle: false };
 });
 
 export default withDisabledFormTitle;

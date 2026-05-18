@@ -1,18 +1,26 @@
-import type { NcEdge, NcNode } from "@codaco/shared-consts";
-import { createSelector, type Selector } from "@reduxjs/toolkit";
-import { isNil } from "es-toolkit";
-import { get, has } from "es-toolkit/compat";
-import type { RootState } from "../store/store";
-import { getEntityAttributes } from "../utils/networkEntities";
-import { getCurrentPrompt, getNetworkEdges, getNetworkNodes, getStageSubject } from "./session";
-import { createDeepEqualSelector } from "./utils";
+import { createSelector, type Selector } from '@reduxjs/toolkit';
+import { isNil } from 'es-toolkit';
+import { get, has } from 'es-toolkit/compat';
+
+import type { NcEdge, NcNode } from '@codaco/shared-consts';
+
+import type { RootState } from '../store/store';
+import { getEntityAttributes } from '../utils/networkEntities';
+import {
+  getCurrentPrompt,
+  getNetworkEdges,
+  getNetworkNodes,
+  getStageSubject,
+} from './session';
+import { createDeepEqualSelector } from './utils';
 
 const getPromptLayoutVariable = createSelector(getCurrentPrompt, (prompt) =>
-	get(prompt, "layout.layoutVariable", null),
+  get(prompt, 'layout.layoutVariable', null),
 );
 
-const getPromptDisplayEdges = createDeepEqualSelector(getCurrentPrompt, (prompt) =>
-	prompt ? get(prompt, "edges.display", []) : [],
+const getPromptDisplayEdges = createDeepEqualSelector(
+  getCurrentPrompt,
+  (prompt) => (prompt ? get(prompt, 'edges.display', []) : []),
 );
 
 /**
@@ -23,21 +31,31 @@ const getPromptDisplayEdges = createDeepEqualSelector(getCurrentPrompt, (prompt)
  *
  * Must *ALWAYS* return an array, even if empty.
  */
-export const getPlacedNodes: Selector<RootState, NcNode[]> = createDeepEqualSelector(
-	getNetworkNodes,
-	getStageSubject,
-	getPromptLayoutVariable,
-	(nodes, subject, layoutVariable) => {
-		if (nodes.length === 0 || !subject || subject.entity === "ego" || !layoutVariable) {
-			return [];
-		}
+export const getPlacedNodes: Selector<RootState, NcNode[]> =
+  createDeepEqualSelector(
+    getNetworkNodes,
+    getStageSubject,
+    getPromptLayoutVariable,
+    (nodes, subject, layoutVariable) => {
+      if (
+        nodes.length === 0 ||
+        !subject ||
+        subject.entity === 'ego' ||
+        !layoutVariable
+      ) {
+        return [];
+      }
 
-		return nodes.filter((node) => {
-			const attributes = getEntityAttributes(node);
-			return subject.type === node.type && has(attributes, layoutVariable) && !isNil(attributes[layoutVariable]);
-		});
-	},
-);
+      return nodes.filter((node) => {
+        const attributes = getEntityAttributes(node);
+        return (
+          subject.type === node.type &&
+          has(attributes, layoutVariable) &&
+          !isNil(attributes[layoutVariable])
+        );
+      });
+    },
+  );
 
 /**
  * Selector for edges.
@@ -46,9 +64,10 @@ export const getPlacedNodes: Selector<RootState, NcNode[]> = createDeepEqualSele
  * { subject, layout, displayEdges } props
  */
 export const getEdges: Selector<RootState, NcEdge[]> = createDeepEqualSelector(
-	getNetworkEdges,
-	getPromptDisplayEdges,
-	(edges, displayEdges) => edges.filter((edge) => displayEdges.includes(edge.type)),
+  getNetworkEdges,
+  getPromptDisplayEdges,
+  (edges, displayEdges) =>
+    edges.filter((edge) => displayEdges.includes(edge.type)),
 );
 
 /**
@@ -56,18 +75,28 @@ export const getEdges: Selector<RootState, NcEdge[]> = createDeepEqualSelector(
  *
  * Returns all nodes of the stage subject type that have a nil layout variable.
  */
-export const getUnplacedNodes: Selector<RootState, NcNode[]> = createDeepEqualSelector(
-	getNetworkNodes,
-	getStageSubject,
-	getPromptLayoutVariable,
-	(nodes, subject, layoutVariable) => {
-		if (nodes.length === 0 || !subject || subject.entity === "ego" || !layoutVariable) {
-			return [];
-		}
+export const getUnplacedNodes: Selector<RootState, NcNode[]> =
+  createDeepEqualSelector(
+    getNetworkNodes,
+    getStageSubject,
+    getPromptLayoutVariable,
+    (nodes, subject, layoutVariable) => {
+      if (
+        nodes.length === 0 ||
+        !subject ||
+        subject.entity === 'ego' ||
+        !layoutVariable
+      ) {
+        return [];
+      }
 
-		return nodes.filter((node) => {
-			const attributes = getEntityAttributes(node);
-			return subject.type === node.type && has(attributes, layoutVariable) && isNil(attributes[layoutVariable]);
-		});
-	},
-);
+      return nodes.filter((node) => {
+        const attributes = getEntityAttributes(node);
+        return (
+          subject.type === node.type &&
+          has(attributes, layoutVariable) &&
+          isNil(attributes[layoutVariable])
+        );
+      });
+    },
+  );

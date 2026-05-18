@@ -1,1 +1,1 @@
-export { default } from "./OneToManyDyadCensusPrompts";
+export { default } from './OneToManyDyadCensusPrompts';

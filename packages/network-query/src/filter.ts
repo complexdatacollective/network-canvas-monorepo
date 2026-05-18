@@ -5,6 +5,7 @@ import {
   type NcNetwork,
   type NcNode,
 } from '@codaco/shared-consts';
+
 import { type NetworkRuleRunner, getRuleFunction } from './rules';
 
 type NetworkRuleResult = { nodes: NcNode[]; edges: NcEdge[] };

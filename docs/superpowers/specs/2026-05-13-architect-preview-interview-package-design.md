@@ -81,32 +81,32 @@ Two principles drive the shape:
 
 ### 5.1 New files
 
-| Path | Purpose |
-|---|---|
-| `apps/architect-vite/src/components/PreviewHost/PreviewHost.tsx` | The `/preview` route. Performs the ready handshake, builds the payload, mounts `<Shell>`. Renders an "ended" fallback when the handshake fails or the tab is reloaded. |
-| `apps/architect-vite/src/components/PreviewHost/launchPreview.ts` | Called from `StageEditor`. Opens the new tab and serves the payload over postMessage. Async function `launchPreview(protocol, startStage)` that resolves once the payload is delivered and rejects on popup-blocked / handshake timeout. |
-| `apps/architect-vite/src/components/PreviewHost/currentProtocolToPayload.ts` | Pure helper: `CurrentProtocol` → `ProtocolPayload`. Generates a per-preview UUID for `id`, computes `hash` via `hashProtocol`, sets `importedAt` to now, transforms `assetManifest` into `ResolvedAsset[]`. |
-| `apps/architect-vite/src/components/PreviewHost/useAssetResolver.ts` | Hook that owns the `assetId → objectURL` cache, returns a stable `onRequestAsset` callback, revokes URLs on unmount. |
-| `apps/architect-vite/src/components/PreviewHost/messages.ts` | Discriminated union of postMessage types and a small `isPreviewMessage(event)` type guard. Single source of truth for the wire format between editor and preview tab. |
-| `apps/architect-vite/src/components/PreviewHost/__tests__/` | Unit tests for converter, resolver, handshake logic, and the reload fallback. |
+| Path                                                                         | Purpose                                                                                                                                                                                                                                  |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/architect-vite/src/components/PreviewHost/PreviewHost.tsx`             | The `/preview` route. Performs the ready handshake, builds the payload, mounts `<Shell>`. Renders an "ended" fallback when the handshake fails or the tab is reloaded.                                                                   |
+| `apps/architect-vite/src/components/PreviewHost/launchPreview.ts`            | Called from `StageEditor`. Opens the new tab and serves the payload over postMessage. Async function `launchPreview(protocol, startStage)` that resolves once the payload is delivered and rejects on popup-blocked / handshake timeout. |
+| `apps/architect-vite/src/components/PreviewHost/currentProtocolToPayload.ts` | Pure helper: `CurrentProtocol` → `ProtocolPayload`. Generates a per-preview UUID for `id`, computes `hash` via `hashProtocol`, sets `importedAt` to now, transforms `assetManifest` into `ResolvedAsset[]`.                              |
+| `apps/architect-vite/src/components/PreviewHost/useAssetResolver.ts`         | Hook that owns the `assetId → objectURL` cache, returns a stable `onRequestAsset` callback, revokes URLs on unmount.                                                                                                                     |
+| `apps/architect-vite/src/components/PreviewHost/messages.ts`                 | Discriminated union of postMessage types and a small `isPreviewMessage(event)` type guard. Single source of truth for the wire format between editor and preview tab.                                                                    |
+| `apps/architect-vite/src/components/PreviewHost/__tests__/`                  | Unit tests for converter, resolver, handshake logic, and the reload fallback.                                                                                                                                                            |
 
 ### 5.2 Modified files
 
-| Path | Change |
-|---|---|
-| `apps/architect-vite/src/components/StageEditor/StageEditor.tsx` | Replace `uploadProtocolForPreview` call with `launchPreview`. Drop `UploadProgress` state and `getProgressText` — no upload phase remains. Add the preview-options popover (see §8). |
-| `apps/architect-vite/src/components/Routes.tsx` | Add `<Route path="/preview" component={PreviewHost} />`. |
-| `apps/architect-vite/src/ducks/modules/app.ts` | Export `setProperty` and selector helpers (currently private). Add typed action `setPreviewUseSyntheticData(boolean)` and typed selector `getPreviewUseSyntheticData(state)` that defaults to `true` when unset. The slice is already in `rememberedKeys` so persistence is automatic. |
-| `apps/architect-vite/package.json` | Add `@codaco/interview: workspace:*` and `@codaco/fresco-ui: workspace:*` (Shell's peer dep used for ThemedRegion/styles). Import `@codaco/interview/styles.css` from `main.tsx`. |
-| `apps/architect-vite/.env`, `.env.example`, `README.md` | Remove `VITE_FRESCO_PREVIEW_URL` and `VITE_FRESCO_PREVIEW_API_TOKEN` entries. |
+| Path                                                             | Change                                                                                                                                                                                                                                                                                 |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/architect-vite/src/components/StageEditor/StageEditor.tsx` | Replace `uploadProtocolForPreview` call with `launchPreview`. Drop `UploadProgress` state and `getProgressText` — no upload phase remains. Add the preview-options popover (see §8).                                                                                                   |
+| `apps/architect-vite/src/components/Routes.tsx`                  | Add `<Route path="/preview" component={PreviewHost} />`.                                                                                                                                                                                                                               |
+| `apps/architect-vite/src/ducks/modules/app.ts`                   | Export `setProperty` and selector helpers (currently private). Add typed action `setPreviewUseSyntheticData(boolean)` and typed selector `getPreviewUseSyntheticData(state)` that defaults to `true` when unset. The slice is already in `rememberedKeys` so persistence is automatic. |
+| `apps/architect-vite/package.json`                               | Add `@codaco/interview: workspace:*` and `@codaco/fresco-ui: workspace:*` (Shell's peer dep used for ThemedRegion/styles). Import `@codaco/interview/styles.css` from `main.tsx`.                                                                                                      |
+| `apps/architect-vite/.env`, `.env.example`, `README.md`          | Remove `VITE_FRESCO_PREVIEW_URL` and `VITE_FRESCO_PREVIEW_API_TOKEN` entries.                                                                                                                                                                                                          |
 
 ### 5.3 Files deleted
 
-| Path | Reason |
-|---|---|
-| `apps/architect-vite/src/utils/preview/uploadPreview.ts` | Remote upload flow. |
-| `apps/architect-vite/src/utils/preview/types.ts` | Wire types for the removed remote endpoint. |
-| `apps/architect-vite/src/utils/preview/` | Directory empty after removals — delete it. |
+| Path                                                       | Reason                                                                              |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `apps/architect-vite/src/utils/preview/uploadPreview.ts`   | Remote upload flow.                                                                 |
+| `apps/architect-vite/src/utils/preview/types.ts`           | Wire types for the removed remote endpoint.                                         |
+| `apps/architect-vite/src/utils/preview/`                   | Directory empty after removals — delete it.                                         |
 | `apps/architect-vite/src/utils/__mocks__/previewDriver.ts` | Mock for the removed upload driver. Remove only after its call sites are rewritten. |
 
 ## 6. Handoff protocol
@@ -116,10 +116,10 @@ Two principles drive the shape:
 A single discriminated union in `messages.ts`:
 
 ```ts
-type PreviewReady = { type: "preview:ready" };
+type PreviewReady = { type: 'preview:ready' };
 
 type PreviewPayload = {
-  type: "preview:payload";
+  type: 'preview:payload';
   protocol: CurrentProtocol;
   startStage: number;
   useSyntheticData: boolean;
@@ -180,23 +180,27 @@ launchPreview(protocol, startStage):
 function useAssetResolver(): AssetRequestHandler {
   const cache = useRef<Map<string, string>>(new Map());
 
-  useEffect(() => () => {
-    for (const url of cache.current.values()) {
-      URL.revokeObjectURL(url);
-    }
-    cache.current.clear();
-  }, []);
+  useEffect(
+    () => () => {
+      for (const url of cache.current.values()) {
+        URL.revokeObjectURL(url);
+      }
+      cache.current.clear();
+    },
+    [],
+  );
 
   return useCallback(async (assetId: string) => {
     const cached = cache.current.get(assetId);
     if (cached) return cached;
 
     const entry = await assetDb.assets.get({ id: assetId });
-    if (!entry || typeof entry.data === "string") {
+    if (!entry || typeof entry.data === 'string') {
       throw new Error(`Asset ${assetId} not found in local store`);
     }
 
-    const blob = entry.data instanceof Blob ? entry.data : new Blob([entry.data]);
+    const blob =
+      entry.data instanceof Blob ? entry.data : new Blob([entry.data]);
     const url = URL.createObjectURL(blob);
     cache.current.set(assetId, url);
     return url;
@@ -280,7 +284,7 @@ In a single change (no env-var fallback, no runtime toggle):
 Keep the existing `protocol_previewed` PostHog event. Move the capture call into `launchPreview` (editor side) so it fires the moment the user clicks Preview, with the same properties, plus one addition:
 
 ```ts
-posthog.capture("protocol_previewed", {
+posthog.capture('protocol_previewed', {
   stage_count: protocol.stages?.length ?? 0,
   start_stage_index: stageIndex,
   asset_count: Object.keys(protocol.assetManifest ?? {}).length,
@@ -294,26 +298,26 @@ The interview package emits its own internal stage-navigation events through its
 
 Four units, four test suites:
 
-| Unit | Test type | What it verifies |
-|---|---|---|
-| `currentProtocolToPayload` | Vitest, pure-function unit tests | hash stability, asset-manifest → assets[] for each asset type (image/video/audio/network/geojson/apikey), id/importedAt are present, original protocol is not mutated |
-| `useAssetResolver` | Vitest with `@testing-library/react` + Dexie test instance | cache hit returns same URL, cache miss reads Dexie, unmount revokes all issued URLs, missing asset rejects, string-data entries reject |
-| `launchPreview` + `PreviewHost` handshake | Vitest with `jsdom` and a mocked `window.open` returning a stub with `postMessage` | ready → payload happy path, 10s timeout when no ready arrives, popup blocked rejects, messages from wrong origin/source ignored |
-| `<PreviewHost>` reload fallback | Component test | rendering with `window.opener === null` shows the "preview ended" view, no handshake attempted |
+| Unit                                      | Test type                                                                          | What it verifies                                                                                                                                                      |
+| ----------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `currentProtocolToPayload`                | Vitest, pure-function unit tests                                                   | hash stability, asset-manifest → assets[] for each asset type (image/video/audio/network/geojson/apikey), id/importedAt are present, original protocol is not mutated |
+| `useAssetResolver`                        | Vitest with `@testing-library/react` + Dexie test instance                         | cache hit returns same URL, cache miss reads Dexie, unmount revokes all issued URLs, missing asset rejects, string-data entries reject                                |
+| `launchPreview` + `PreviewHost` handshake | Vitest with `jsdom` and a mocked `window.open` returning a stub with `postMessage` | ready → payload happy path, 10s timeout when no ready arrives, popup blocked rejects, messages from wrong origin/source ignored                                       |
+| `<PreviewHost>` reload fallback           | Component test                                                                     | rendering with `window.opener === null` shows the "preview ended" view, no handshake attempted                                                                        |
 
 No end-to-end test mounts `<Shell>` from architect. The interview package owns Shell's e2e coverage. Architect's tests stop at the boundary where a valid `InterviewPayload` and a working `onRequestAsset` are handed over.
 
 ## 12. Edge cases
 
-| Case | Handling |
-|---|---|
-| Validation fails before preview | Existing dialog from `StageEditor.handlePreview` still fires; `launchPreview` is never called. No change. |
-| Popup blocked | `launchPreview` rejects; `StageEditor` shows an Error dialog matching today's "Your browser blocked the preview popup…" but without a fallback link (there is no URL — it is a same-app route). |
-| Editor tab navigated/closed before handshake completes | The preview tab's `preview:ready` message hits nothing. After 10s of no reply, the preview tab renders the same "preview ended" view as the reload case. |
-| Preview tab closed before handshake completes | Editor's `launchPreview` listener stays registered until the 10s timeout, then rejects silently — the Preview button re-enables. Acceptable; no user-visible error needed when the user themselves closed the tab. |
-| User clicks Preview twice in rapid succession | Each click creates an independent closure with an independent listener. The button briefly disables during the "opening" phase to discourage this; if it slips through, two tabs open with two independent handshakes — not a correctness issue. |
-| Asset blob deleted from Dexie between editor-side validation and preview-side resolution | Asset-not-found rejection bubbles into the relevant stage. The interview package handles missing-asset display already. |
-| Stale `protocol` reaching the preview tab | Cannot happen — `protocol` is captured in the editor's closure at click time and validated before `window.open`. The class of bug is structurally impossible. |
+| Case                                                                                     | Handling                                                                                                                                                                                                                                         |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Validation fails before preview                                                          | Existing dialog from `StageEditor.handlePreview` still fires; `launchPreview` is never called. No change.                                                                                                                                        |
+| Popup blocked                                                                            | `launchPreview` rejects; `StageEditor` shows an Error dialog matching today's "Your browser blocked the preview popup…" but without a fallback link (there is no URL — it is a same-app route).                                                  |
+| Editor tab navigated/closed before handshake completes                                   | The preview tab's `preview:ready` message hits nothing. After 10s of no reply, the preview tab renders the same "preview ended" view as the reload case.                                                                                         |
+| Preview tab closed before handshake completes                                            | Editor's `launchPreview` listener stays registered until the 10s timeout, then rejects silently — the Preview button re-enables. Acceptable; no user-visible error needed when the user themselves closed the tab.                               |
+| User clicks Preview twice in rapid succession                                            | Each click creates an independent closure with an independent listener. The button briefly disables during the "opening" phase to discourage this; if it slips through, two tabs open with two independent handshakes — not a correctness issue. |
+| Asset blob deleted from Dexie between editor-side validation and preview-side resolution | Asset-not-found rejection bubbles into the relevant stage. The interview package handles missing-asset display already.                                                                                                                          |
+| Stale `protocol` reaching the preview tab                                                | Cannot happen — `protocol` is captured in the editor's closure at click time and validated before `window.open`. The class of bug is structurally impossible.                                                                                    |
 
 ## 13. Known follow-ups (not in this design)
 

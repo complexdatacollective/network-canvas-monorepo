@@ -1,9 +1,9 @@
 {
-	"extends": "@codaco/tsconfig/base.json",
-	"compilerOptions": {
-		"composite": true,
-		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
-	},
-	"include": ["*.ts", "src"],
-	"exclude": ["node_modules"]
+  "extends": "@codaco/tsconfig/base.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
+  },
+  "include": ["*.ts", "src"],
+  "exclude": ["node_modules"]
 }

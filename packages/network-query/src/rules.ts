@@ -7,6 +7,7 @@ import {
   type NcNetwork,
   type NcNode,
 } from '@codaco/shared-consts';
+
 import predicate, { operators } from './predicate';
 
 const singleEdgeRule =

@@ -16,27 +16,27 @@
  * duplicate / conflicting utilities.
  */
 
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* NC palette channel triplets (oklch L C H). Relative-color values used
    in theme.css reference these via var(--neon-coral), var(--sea-green), etc. */
-@import "../shared/colors.css";
+@import '../shared/colors.css';
 
 /* Tailwind v4 @theme block defining the Fresco design system token surface. */
-@import "./theme.css";
+@import './theme.css';
 
 /* Foundational @utility / @custom-variant definitions used across packages. */
-@import "./utilities.css";
+@import './utilities.css';
 
 /* Theme variants. Default writes :root values; interview layers
    overrides under [data-theme-interview]. */
-@import "./themes/default.css";
-@import "./themes/interview.css";
+@import './themes/default.css';
+@import './themes/interview.css';
 
 /* Custom Tailwind plugins. Bare specifiers resolve through Node module
    resolution against the consumer's `node_modules`, mapped via this
    package's `exports` field to compiled JS in `dist/shared/plugins/...`. */
-@plugin "../shared/plugins/elevation";
-@plugin "../shared/plugins/inset-surface";
-@plugin "../shared/plugins/motion-spring";
+@plugin '../shared/plugins/elevation';
+@plugin '../shared/plugins/inset-surface';
+@plugin '../shared/plugins/motion-spring';
 @plugin '@tailwindcss/forms';

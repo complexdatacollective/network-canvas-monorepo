@@ -1,5 +1,5 @@
 ---
-"@codaco/tailwind-config": prerelease
+'@codaco/tailwind-config': prerelease
 ---
 
 Effective fix for the consumer-side `Unable to load plugin: ../shared/plugins/elevation` (and `inset-surface` / `motion-spring`) failures from `eslint-plugin-better-tailwindcss`. The `1.0.0-alpha.12` release intended to ship compiled `.js` siblings via `prepublishOnly: tsc -p tsconfig.build.json`, but `npm publish` honors `.gitignore` when no `.npmignore` is present, and the `shared/plugins/**/*.js` ignore rule was excluding the just-emitted artifacts from the tarball — so alpha-12 shipped `.ts`-only, identical to alpha-11.

@@ -28,67 +28,73 @@
  *                          a promise that resolves to the label
  */
 function nodeLabelWorker({ node, network }) {
-	// Examples:
-	//
-	// 1. Given name, surname initial
-	// const label = `${node.name} ${(node.last_name && `${node.last_name[0]}.`) || ''}`;
-	//
-	// 2. Counter based on data set or subset (here, the network nodes)
-	// const index = network.nodes.findIndex(n => n.networkCanvasId === node.networkCanvasId);
-	// const label = index > -1 ? `${node.name} ${index + 1}` : node.name;
-	//
-	// 3. Counter, based on network as well. Access to `externalData` TBD.
-	// const networkNodeIds = {};
-	// network.nodes.forEach((n) => { networkNodeIds[n.networkCanvasId] = 1; });
-	// const externalNodes = externalData.previousInterview.nodes
-	//    .filter(n => !networkNodeIds[n.networkCanvasId]);
-	// const nodes = [...network.nodes, ...externalNodes]
-	//    .sort((a, b) => a.networkCanvasId.localeCompare(b.networkCanvasId));
-	// const index = nodes.findIndex(n => n.networkCanvasId === node.networkCanvasId);
-	// const label = index > -1 ? `${node.name} ${index + 1}` : node.name;
-	//
-	// 4. Add emoji suffix based on a node property
-	// const label = `${node.name} ${node.close_friend ? '😇' : '😡'}`;
-	// console.log('worker req', label);
-	// setTimeout(() => postMessage({ node, label }), 1000 * Math.random());
+  // Examples:
+  //
+  // 1. Given name, surname initial
+  // const label = `${node.name} ${(node.last_name && `${node.last_name[0]}.`) || ''}`;
+  //
+  // 2. Counter based on data set or subset (here, the network nodes)
+  // const index = network.nodes.findIndex(n => n.networkCanvasId === node.networkCanvasId);
+  // const label = index > -1 ? `${node.name} ${index + 1}` : node.name;
+  //
+  // 3. Counter, based on network as well. Access to `externalData` TBD.
+  // const networkNodeIds = {};
+  // network.nodes.forEach((n) => { networkNodeIds[n.networkCanvasId] = 1; });
+  // const externalNodes = externalData.previousInterview.nodes
+  //    .filter(n => !networkNodeIds[n.networkCanvasId]);
+  // const nodes = [...network.nodes, ...externalNodes]
+  //    .sort((a, b) => a.networkCanvasId.localeCompare(b.networkCanvasId));
+  // const index = nodes.findIndex(n => n.networkCanvasId === node.networkCanvasId);
+  // const label = index > -1 ? `${node.name} ${index + 1}` : node.name;
+  //
+  // 4. Add emoji suffix based on a node property
+  // const label = `${node.name} ${node.close_friend ? '😇' : '😡'}`;
+  // console.log('worker req', label);
+  // setTimeout(() => postMessage({ node, label }), 1000 * Math.random());
 
-	// 5. Add emoji based on an edge or node property
-	// let label = node.name;
-	// if (network.edges.some(e => e.from === node.networkCanvasId || e.to === node.networkCanvasId)) {
-	//   label += '😎';
-	// } else if (node.close_friend) {
-	//   label += '😇';
-	// }
+  // 5. Add emoji based on an edge or node property
+  // let label = node.name;
+  // if (network.edges.some(e => e.from === node.networkCanvasId || e.to === node.networkCanvasId)) {
+  //   label += '😎';
+  // } else if (node.close_friend) {
+  //   label += '😇';
+  // }
 
-	// To perform async work, return a promise instead.
-	// Use this with care; the most recent response to the client will be used.
-	// return new Promise((resolve, reject) => {
-	//   setTimeout(() => {
-	//     resolve(label);
-	//   }, 100);
-	// });
+  // To perform async work, return a promise instead.
+  // Use this with care; the most recent response to the client will be used.
+  // return new Promise((resolve, reject) => {
+  //   setTimeout(() => {
+  //     resolve(label);
+  //   }, 100);
+  // });
 
-	// For our example worker we will return a different label dependant on the node type.
-	let label = node.nickname || node.name;
+  // For our example worker we will return a different label dependant on the node type.
+  let label = node.nickname || node.name;
 
-	if (!label) {
-		return false;
-	}
+  if (!label) {
+    return false;
+  }
 
-	switch (node.networkCanvasType) {
-		case "person":
-			if (network.edges.some((edge) => edge.from === node.networkCanvasId || edge.to === node.networkCanvasId)) {
-				label = `🔗\u{0a}${label}`;
-			} else if (node.close_friend) {
-				label = `❤️\u{0a}${label}`;
-			}
-			break;
-		case "venue":
-			label = `🏥\u{0a}${node.name}`;
-			break;
-		default:
-			break;
-	}
+  switch (node.networkCanvasType) {
+    case 'person':
+      if (
+        network.edges.some(
+          (edge) =>
+            edge.from === node.networkCanvasId ||
+            edge.to === node.networkCanvasId,
+        )
+      ) {
+        label = `🔗\u{0a}${label}`;
+      } else if (node.close_friend) {
+        label = `❤️\u{0a}${label}`;
+      }
+      break;
+    case 'venue':
+      label = `🏥\u{0a}${node.name}`;
+      break;
+    default:
+      break;
+  }
 
-	return label;
+  return label;
 }

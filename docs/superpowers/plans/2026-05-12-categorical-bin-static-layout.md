@@ -23,6 +23,7 @@
 ### Task 1: Add the static layout CSS
 
 **Files:**
+
 - Modify: `tooling/tailwind/fresco/themes/interview.css:192-240`
 
 - [ ] **Step 1: Add the static layout block inside `@layer components`**
@@ -51,32 +52,95 @@ Insert the rules below immediately after the existing `.catbin-expanded` rule (c
 }
 
 /* Landscape lookup (aspect-ratio >= 1, default). */
-.catbin-circles[data-count="1"]  { --catbin-cols: 2;  --catbin-rows: 1; }
-.catbin-circles[data-count="2"]  { --catbin-cols: 4;  --catbin-rows: 1; }
-.catbin-circles[data-count="3"]  { --catbin-cols: 6;  --catbin-rows: 1; }
-.catbin-circles[data-count="4"]  { --catbin-cols: 4;  --catbin-rows: 2; }
-.catbin-circles[data-count="5"]  { --catbin-cols: 6;  --catbin-rows: 2; }
-.catbin-circles[data-count="5"] > :nth-child(4) { grid-column-start: 2; }
-.catbin-circles[data-count="6"]  { --catbin-cols: 6;  --catbin-rows: 2; }
-.catbin-circles[data-count="7"]  { --catbin-cols: 8;  --catbin-rows: 2; }
-.catbin-circles[data-count="7"] > :nth-child(5) { grid-column-start: 2; }
-.catbin-circles[data-count="8"]  { --catbin-cols: 8;  --catbin-rows: 2; }
-.catbin-circles[data-count="9"]  { --catbin-cols: 6;  --catbin-rows: 3; }
-.catbin-circles[data-count="10"] { --catbin-cols: 10; --catbin-rows: 2; }
+.catbin-circles[data-count='1'] {
+  --catbin-cols: 2;
+  --catbin-rows: 1;
+}
+.catbin-circles[data-count='2'] {
+  --catbin-cols: 4;
+  --catbin-rows: 1;
+}
+.catbin-circles[data-count='3'] {
+  --catbin-cols: 6;
+  --catbin-rows: 1;
+}
+.catbin-circles[data-count='4'] {
+  --catbin-cols: 4;
+  --catbin-rows: 2;
+}
+.catbin-circles[data-count='5'] {
+  --catbin-cols: 6;
+  --catbin-rows: 2;
+}
+.catbin-circles[data-count='5'] > :nth-child(4) {
+  grid-column-start: 2;
+}
+.catbin-circles[data-count='6'] {
+  --catbin-cols: 6;
+  --catbin-rows: 2;
+}
+.catbin-circles[data-count='7'] {
+  --catbin-cols: 8;
+  --catbin-rows: 2;
+}
+.catbin-circles[data-count='7'] > :nth-child(5) {
+  grid-column-start: 2;
+}
+.catbin-circles[data-count='8'] {
+  --catbin-cols: 8;
+  --catbin-rows: 2;
+}
+.catbin-circles[data-count='9'] {
+  --catbin-cols: 6;
+  --catbin-rows: 3;
+}
+.catbin-circles[data-count='10'] {
+  --catbin-cols: 10;
+  --catbin-rows: 2;
+}
 
 /* Portrait override (aspect-ratio < 1). Counts 1, 4, 9 keep their landscape values. */
 @container catbin (aspect-ratio < 1) {
-  .catbin-circles[data-count="2"]  { --catbin-cols: 2; --catbin-rows: 2; }
-  .catbin-circles[data-count="3"]  { --catbin-cols: 2; --catbin-rows: 3; }
-  .catbin-circles[data-count="5"]  { --catbin-cols: 4; --catbin-rows: 3; }
-  .catbin-circles[data-count="5"] > :nth-child(4) { grid-column-start: auto; }
-  .catbin-circles[data-count="5"] > :nth-child(5) { grid-column-start: 2; }
-  .catbin-circles[data-count="6"]  { --catbin-cols: 4; --catbin-rows: 3; }
-  .catbin-circles[data-count="7"]  { --catbin-cols: 4; --catbin-rows: 4; }
-  .catbin-circles[data-count="7"] > :nth-child(5) { grid-column-start: auto; }
-  .catbin-circles[data-count="7"] > :nth-child(7) { grid-column-start: 2; }
-  .catbin-circles[data-count="8"]  { --catbin-cols: 4; --catbin-rows: 4; }
-  .catbin-circles[data-count="10"] { --catbin-cols: 4; --catbin-rows: 5; }
+  .catbin-circles[data-count='2'] {
+    --catbin-cols: 2;
+    --catbin-rows: 2;
+  }
+  .catbin-circles[data-count='3'] {
+    --catbin-cols: 2;
+    --catbin-rows: 3;
+  }
+  .catbin-circles[data-count='5'] {
+    --catbin-cols: 4;
+    --catbin-rows: 3;
+  }
+  .catbin-circles[data-count='5'] > :nth-child(4) {
+    grid-column-start: auto;
+  }
+  .catbin-circles[data-count='5'] > :nth-child(5) {
+    grid-column-start: 2;
+  }
+  .catbin-circles[data-count='6'] {
+    --catbin-cols: 4;
+    --catbin-rows: 3;
+  }
+  .catbin-circles[data-count='7'] {
+    --catbin-cols: 4;
+    --catbin-rows: 4;
+  }
+  .catbin-circles[data-count='7'] > :nth-child(5) {
+    grid-column-start: auto;
+  }
+  .catbin-circles[data-count='7'] > :nth-child(7) {
+    grid-column-start: 2;
+  }
+  .catbin-circles[data-count='8'] {
+    --catbin-cols: 4;
+    --catbin-rows: 4;
+  }
+  .catbin-circles[data-count='10'] {
+    --catbin-cols: 4;
+    --catbin-rows: 5;
+  }
 }
 ```
 
@@ -107,132 +171,149 @@ this just adds the rules that read from it."
 ### Task 2: Strip JS layout from CategoricalBin.tsx
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/CategoricalBin/CategoricalBin.tsx`
 
 - [ ] **Step 1: Remove the `useCircleLayout` import and call**
 
 Find:
+
 ```ts
-import { useCircleLayout } from "./useCircleLayout";
+import { useCircleLayout } from './useCircleLayout';
 ```
 
 Delete the import line.
 
 Find:
-```ts
-	const hasExpanded = expandedBinIndex !== null;
 
-	const circleCount = hasExpanded ? bins.length - 1 : bins.length;
-	const { containerRef, cols, rows, isReady, pending } = useCircleLayout({
-		count: circleCount,
-	});
+```ts
+const hasExpanded = expandedBinIndex !== null;
+
+const circleCount = hasExpanded ? bins.length - 1 : bins.length;
+const { containerRef, cols, rows, isReady, pending } = useCircleLayout({
+  count: circleCount,
+});
 ```
 
 Replace with:
-```ts
-	const hasExpanded = expandedBinIndex !== null;
 
-	const circleCount = hasExpanded ? bins.length - 1 : bins.length;
+```ts
+const hasExpanded = expandedBinIndex !== null;
+
+const circleCount = hasExpanded ? bins.length - 1 : bins.length;
 ```
 
 - [ ] **Step 2: Restore the drawer to inline flow and remove the bottom reservation**
 
 Find the return statement (currently around line 211-263):
+
 ```tsx
-	return (
-		<div data-testid="categorical-bin-interface" className="interface overflow-hidden pb-0">
-			<Prompts />
-			{/*
-			 * Reserve fixed bottom space so the bins area stays the same
-			 * height regardless of NodeDrawer state. The drawer floats over this
-			 * reserved area, so its expand/collapse never resizes catbin-outer and
-			 * never triggers a cols recompute mid-stage.
-			 */}
-			<div className="flex w-full min-h-0 flex-1 flex-col items-center pb-44">
-				<div
-					className="catbin-outer min-h-0 w-full flex-1"
-					ref={containerRef}
-					data-cb-layout-pending={pending || undefined}
-				>
-					{isReady && (
-						<AnimatePresence mode="wait">
-							<motion.div
-								key={id}
-								className="catbin-circles grid size-full content-center justify-center justify-items-center gap-4 data-expanded:content-start"
-								data-expanded={hasExpanded || undefined}
-								style={
-									{
-										"--catbin-panel-fraction": panelFraction,
-										gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-									} as React.CSSProperties
-								}
-								variants={binsContainerVariants}
-								initial="initial"
-								animate="animate"
-								exit="exit"
-							>
-								{bins.map((bin, index) => (
-									<CategoricalBinItem
-										key={index}
-										label={bin.label}
-										isExpanded={index === expandedBinIndex}
-										onToggleExpand={() => setExpandedBinIndex(index)}
-										catColor={getCatColor(index)}
-										onDropNode={(node) => handleDropNode(node, index)}
-										nodes={bin.nodes}
-										rows={rows}
-									/>
-								))}
-							</motion.div>
-						</AnimatePresence>
-					)}
-				</div>
-			</div>
-			<NodeDrawer nodes={uncategorisedNodes} itemType="NODE" floating />
-		</div>
-	);
+return (
+  <div
+    data-testid="categorical-bin-interface"
+    className="interface overflow-hidden pb-0"
+  >
+    <Prompts />
+    {/*
+     * Reserve fixed bottom space so the bins area stays the same
+     * height regardless of NodeDrawer state. The drawer floats over this
+     * reserved area, so its expand/collapse never resizes catbin-outer and
+     * never triggers a cols recompute mid-stage.
+     */}
+    <div className="flex w-full min-h-0 flex-1 flex-col items-center pb-44">
+      <div
+        className="catbin-outer min-h-0 w-full flex-1"
+        ref={containerRef}
+        data-cb-layout-pending={pending || undefined}
+      >
+        {isReady && (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={id}
+              className="catbin-circles grid size-full content-center justify-center justify-items-center gap-4 data-expanded:content-start"
+              data-expanded={hasExpanded || undefined}
+              style={
+                {
+                  '--catbin-panel-fraction': panelFraction,
+                  'gridTemplateColumns': `repeat(${cols}, minmax(0, 1fr))`,
+                } as React.CSSProperties
+              }
+              variants={binsContainerVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              {bins.map((bin, index) => (
+                <CategoricalBinItem
+                  key={index}
+                  label={bin.label}
+                  isExpanded={index === expandedBinIndex}
+                  onToggleExpand={() => setExpandedBinIndex(index)}
+                  catColor={getCatColor(index)}
+                  onDropNode={(node) => handleDropNode(node, index)}
+                  nodes={bin.nodes}
+                  rows={rows}
+                />
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        )}
+      </div>
+    </div>
+    <NodeDrawer nodes={uncategorisedNodes} itemType="NODE" floating />
+  </div>
+);
 ```
 
 Replace with:
+
 ```tsx
-	return (
-		<div data-testid="categorical-bin-interface" className="interface overflow-hidden pb-0">
-			<Prompts />
-			<div className="flex w-full min-h-0 flex-1 flex-col items-center gap-2">
-				<div className="catbin-outer min-h-0 w-full flex-1">
-					<AnimatePresence mode="wait">
-						<motion.div
-							key={id}
-							className="catbin-circles size-full content-center data-expanded:content-start"
-							data-count={circleCount}
-							data-expanded={hasExpanded || undefined}
-							style={{ "--catbin-panel-fraction": panelFraction } as React.CSSProperties}
-							variants={binsContainerVariants}
-							initial="initial"
-							animate="animate"
-							exit="exit"
-						>
-							{bins.map((bin, index) => (
-								<CategoricalBinItem
-									key={index}
-									label={bin.label}
-									isExpanded={index === expandedBinIndex}
-									onToggleExpand={() => setExpandedBinIndex(index)}
-									catColor={getCatColor(index)}
-									onDropNode={(node) => handleDropNode(node, index)}
-									nodes={bin.nodes}
-								/>
-							))}
-						</motion.div>
-					</AnimatePresence>
-				</div>
-				<NodeDrawer nodes={uncategorisedNodes} itemType="NODE" />
-			</div>
-		</div>
-	);
+return (
+  <div
+    data-testid="categorical-bin-interface"
+    className="interface overflow-hidden pb-0"
+  >
+    <Prompts />
+    <div className="flex w-full min-h-0 flex-1 flex-col items-center gap-2">
+      <div className="catbin-outer min-h-0 w-full flex-1">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={id}
+            className="catbin-circles size-full content-center data-expanded:content-start"
+            data-count={circleCount}
+            data-expanded={hasExpanded || undefined}
+            style={
+              {
+                '--catbin-panel-fraction': panelFraction,
+              } as React.CSSProperties
+            }
+            variants={binsContainerVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            {bins.map((bin, index) => (
+              <CategoricalBinItem
+                key={index}
+                label={bin.label}
+                isExpanded={index === expandedBinIndex}
+                onToggleExpand={() => setExpandedBinIndex(index)}
+                catColor={getCatColor(index)}
+                onDropNode={(node) => handleDropNode(node, index)}
+                nodes={bin.nodes}
+              />
+            ))}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+      <NodeDrawer nodes={uncategorisedNodes} itemType="NODE" />
+    </div>
+  </div>
+);
 ```
 
 What changed in this block:
+
 - Reserved-bottom-space wrapper comment removed.
 - `pb-44` removed; `gap-2` reintroduced (drawer is a flex sibling again).
 - `containerRef` and `data-cb-layout-pending` attributes removed from `.catbin-outer`.
@@ -260,6 +341,7 @@ Expected: any auto-fixable issues are fixed; remaining warnings are pre-existing
 ### Task 3: Drop `rows` and inline styles from `CategoricalBinItem`
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/CategoricalBin/components/CategoricalBinItem.tsx`
 
 - [ ] **Step 1: Read the current sizing block**
@@ -279,6 +361,7 @@ Find the function signature and remove `rows` from the destructured props.
 - [ ] **Step 4: Remove the inline `width`/`aspectRatio` style**
 
 Find:
+
 ```ts
 				// Width = min(grid track width, available height per row).
 				// 100cqb / rows = bin height if it filled vertically; the parent
@@ -328,6 +411,7 @@ the 100cqb-derived circle sizing — no JS measurement remains."
 ### Task 4: Delete `useCircleLayout.ts`
 
 **Files:**
+
 - Delete: `packages/interview/src/interfaces/CategoricalBin/useCircleLayout.ts`
 
 - [ ] **Step 1: Confirm there are no remaining importers**
@@ -364,6 +448,7 @@ isReady gate, pending flag, and 50px-snapping heuristic are no longer needed."
 ### Task 5: Remove the `data-cb-layout-pending` wait from `captureFinal`
 
 **Files:**
+
 - Modify: `packages/interview/e2e/fixtures/interview-fixture.ts:98-130`
 
 - [ ] **Step 1: Find the current `captureFinal` implementation**
@@ -375,19 +460,24 @@ Expected lines (numbers approximate): 98 `async captureFinal()`, 113-125 the wai
 - [ ] **Step 2: Delete the 100ms buffer + waitForFunction**
 
 Find:
+
 ```ts
-			// Buffer for the post-interaction ResizeObserver/React commit cycle
-			// to propagate to the DOM (in particular, for `data-cb-layout-pending`
-			// to flip to `true` if a CategoricalBin layout debounce was just armed).
-			await this.page.waitForTimeout(100);
-			// Wait for any in-flight CategoricalBin layout debounce to commit.
-			// The hook surfaces `data-cb-layout-pending` on `.catbin-outer` while
-			// its 120ms ResizeObserver-settle timer is armed; once cleared, the
-			// committed dimensions are reflected in `cols`/`rows`. No-op for any
-			// stage that doesn't render a categorical bin.
-			await this.page.waitForFunction(() => !document.querySelector("[data-cb-layout-pending]"), null, {
-				timeout: 5_000,
-			});
+// Buffer for the post-interaction ResizeObserver/React commit cycle
+// to propagate to the DOM (in particular, for `data-cb-layout-pending`
+// to flip to `true` if a CategoricalBin layout debounce was just armed).
+await this.page.waitForTimeout(100);
+// Wait for any in-flight CategoricalBin layout debounce to commit.
+// The hook surfaces `data-cb-layout-pending` on `.catbin-outer` while
+// its 120ms ResizeObserver-settle timer is armed; once cleared, the
+// committed dimensions are reflected in `cols`/`rows`. No-op for any
+// stage that doesn't render a categorical bin.
+await this.page.waitForFunction(
+  () => !document.querySelector('[data-cb-layout-pending]'),
+  null,
+  {
+    timeout: 5_000,
+  },
+);
 ```
 
 Delete the entire block. The lines that follow it (`const prefix = ...` and `await this.capture(...)`) stay in place.
@@ -426,12 +516,14 @@ Expected: clean exit. If anything fails, stop and investigate before regeneratin
 - [ ] **Step 2: Repo-wide biome check on the touched files**
 
 Run:
+
 ```bash
 pnpm exec biome check \
   packages/interview/src/interfaces/CategoricalBin/CategoricalBin.tsx \
   packages/interview/src/interfaces/CategoricalBin/components/CategoricalBinItem.tsx \
   packages/interview/e2e/fixtures/interview-fixture.ts
 ```
+
 Expected: only pre-existing warnings (`noNonNullAssertion` on lines unrelated to this work).
 
 - [ ] **Step 3: Unit tests for CategoricalBin internals**
@@ -458,6 +550,7 @@ Expected: 168/168 pass on the freshly committed baselines — confirms the new l
 - [ ] **Step 3: Inspect the regenerated snapshots before committing**
 
 The diff includes ~330 PNGs (56 tests × 3 browsers). Open a few CategoricalBin baselines manually and confirm:
+
 - 4-bin stages render `2×2` at the 1920×1080 viewport.
 - Counts 5 and 7 (if any test exercises them) render with the centred ragged last row, not a left-aligned one.
 - Drawer-collapsed `final` snapshots look reasonable (the bins now expand into the larger area, scaled via `100cqb / rows`).

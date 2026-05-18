@@ -1,18 +1,24 @@
-import { connect } from "react-redux";
-import type { RootState } from "~/ducks/store";
-import { getVariableOptionsForSubject } from "~/selectors/codebook";
+import { connect } from 'react-redux';
 
-const mapStateToProps = (state: RootState, { entity, type }: { entity: "node" | "edge" | "ego"; type?: string }) => {
-	const variableOptionsForSubject = getVariableOptionsForSubject(state, {
-		entity,
-		type,
-	});
+import type { RootState } from '~/ducks/store';
+import { getVariableOptionsForSubject } from '~/selectors/codebook';
 
-	const textOptionsForSubject = variableOptionsForSubject.filter(({ type: variableType }) => variableType === "text");
+const mapStateToProps = (
+  state: RootState,
+  { entity, type }: { entity: 'node' | 'edge' | 'ego'; type?: string },
+) => {
+  const variableOptionsForSubject = getVariableOptionsForSubject(state, {
+    entity,
+    type,
+  });
 
-	return {
-		options: textOptionsForSubject,
-	};
+  const textOptionsForSubject = variableOptionsForSubject.filter(
+    ({ type: variableType }) => variableType === 'text',
+  );
+
+  return {
+    options: textOptionsForSubject,
+  };
 };
 
 const withOptions = connect(mapStateToProps, {});

@@ -20,7 +20,7 @@ Five fixes have been layered onto the JS hook (50-px snapping, 120 ms debounce, 
 ## Goals
 
 1. Bin grid dimensions are determined statically — never via JS measurement of the container.
-2. Drawer expand/collapse never changes which grid is chosen (it can change circle *size* but not row/column count).
+2. Drawer expand/collapse never changes which grid is chosen (it can change circle _size_ but not row/column count).
 3. The layout responds correctly to both landscape and portrait container orientations.
 4. The total number of bins is bounded to ≤ 10 (a constraint of the broader product).
 5. Removing `useCircleLayout` removes the measurement-debouncing/pending machinery downstream of it.
@@ -53,33 +53,33 @@ Both tables apply the "balanced" shape philosophy: square counts (4, 9) get squa
 
 **Landscape** (default, `aspect-ratio ≥ 1`):
 
-| count | rows | cols | notes |
-|------:|-----:|-----:|-------|
-| 1 | 1 | 1 | |
-| 2 | 1 | 2 | |
-| 3 | 1 | 3 | |
-| 4 | 2 | 2 | |
-| 5 | 2 | 3 | row 1: 3 items; row 2: 2 items centred |
-| 6 | 2 | 3 | |
-| 7 | 2 | 4 | row 1: 4 items; row 2: 3 items centred |
-| 8 | 2 | 4 | |
-| 9 | 3 | 3 | |
-| 10 | 2 | 5 | |
+| count | rows | cols | notes                                  |
+| ----: | ---: | ---: | -------------------------------------- |
+|     1 |    1 |    1 |                                        |
+|     2 |    1 |    2 |                                        |
+|     3 |    1 |    3 |                                        |
+|     4 |    2 |    2 |                                        |
+|     5 |    2 |    3 | row 1: 3 items; row 2: 2 items centred |
+|     6 |    2 |    3 |                                        |
+|     7 |    2 |    4 | row 1: 4 items; row 2: 3 items centred |
+|     8 |    2 |    4 |                                        |
+|     9 |    3 |    3 |                                        |
+|    10 |    2 |    5 |                                        |
 
 **Portrait** (`aspect-ratio < 1`) — mirror of landscape:
 
-| count | rows | cols | notes |
-|------:|-----:|-----:|-------|
-| 1 | 1 | 1 | |
-| 2 | 2 | 1 | |
-| 3 | 3 | 1 | |
-| 4 | 2 | 2 | |
-| 5 | 3 | 2 | rows 1-2: 2 items; row 3: 1 item centred |
-| 6 | 3 | 2 | |
-| 7 | 4 | 2 | rows 1-3: 2 items; row 4: 1 item centred |
-| 8 | 4 | 2 | |
-| 9 | 3 | 3 | |
-| 10 | 5 | 2 | |
+| count | rows | cols | notes                                    |
+| ----: | ---: | ---: | ---------------------------------------- |
+|     1 |    1 |    1 |                                          |
+|     2 |    2 |    1 |                                          |
+|     3 |    3 |    1 |                                          |
+|     4 |    2 |    2 |                                          |
+|     5 |    3 |    2 | rows 1-2: 2 items; row 3: 1 item centred |
+|     6 |    3 |    2 |                                          |
+|     7 |    4 |    2 | rows 1-3: 2 items; row 4: 1 item centred |
+|     8 |    4 |    2 |                                          |
+|     9 |    3 |    3 |                                          |
+|    10 |    5 |    2 |                                          |
 
 ### CSS sketch
 
@@ -101,32 +101,95 @@ Uniform "doubled-column" form for every count keeps the rules regular:
 }
 
 /* Landscape lookup (default) */
-.catbin-circles[data-count="1"]  { --cols: 2;  --rows: 1; }
-.catbin-circles[data-count="2"]  { --cols: 4;  --rows: 1; }
-.catbin-circles[data-count="3"]  { --cols: 6;  --rows: 1; }
-.catbin-circles[data-count="4"]  { --cols: 4;  --rows: 2; }
-.catbin-circles[data-count="5"]  { --cols: 6;  --rows: 2; }
-.catbin-circles[data-count="5"] > :nth-child(4) { grid-column-start: 2; }
-.catbin-circles[data-count="6"]  { --cols: 6;  --rows: 2; }
-.catbin-circles[data-count="7"]  { --cols: 8;  --rows: 2; }
-.catbin-circles[data-count="7"] > :nth-child(5) { grid-column-start: 2; }
-.catbin-circles[data-count="8"]  { --cols: 8;  --rows: 2; }
-.catbin-circles[data-count="9"]  { --cols: 6;  --rows: 3; }
-.catbin-circles[data-count="10"] { --cols: 10; --rows: 2; }
+.catbin-circles[data-count='1'] {
+  --cols: 2;
+  --rows: 1;
+}
+.catbin-circles[data-count='2'] {
+  --cols: 4;
+  --rows: 1;
+}
+.catbin-circles[data-count='3'] {
+  --cols: 6;
+  --rows: 1;
+}
+.catbin-circles[data-count='4'] {
+  --cols: 4;
+  --rows: 2;
+}
+.catbin-circles[data-count='5'] {
+  --cols: 6;
+  --rows: 2;
+}
+.catbin-circles[data-count='5'] > :nth-child(4) {
+  grid-column-start: 2;
+}
+.catbin-circles[data-count='6'] {
+  --cols: 6;
+  --rows: 2;
+}
+.catbin-circles[data-count='7'] {
+  --cols: 8;
+  --rows: 2;
+}
+.catbin-circles[data-count='7'] > :nth-child(5) {
+  grid-column-start: 2;
+}
+.catbin-circles[data-count='8'] {
+  --cols: 8;
+  --rows: 2;
+}
+.catbin-circles[data-count='9'] {
+  --cols: 6;
+  --rows: 3;
+}
+.catbin-circles[data-count='10'] {
+  --cols: 10;
+  --rows: 2;
+}
 
 /* Portrait override */
 @container catbin (aspect-ratio < 1) {
-  .catbin-circles[data-count="2"]  { --cols: 2; --rows: 2; }
-  .catbin-circles[data-count="3"]  { --cols: 2; --rows: 3; }
-  .catbin-circles[data-count="5"]  { --cols: 4; --rows: 3; }
-  .catbin-circles[data-count="5"] > :nth-child(4) { grid-column-start: auto; }
-  .catbin-circles[data-count="5"] > :nth-child(5) { grid-column-start: 2; }
-  .catbin-circles[data-count="6"]  { --cols: 4; --rows: 3; }
-  .catbin-circles[data-count="7"]  { --cols: 4; --rows: 4; }
-  .catbin-circles[data-count="7"] > :nth-child(5) { grid-column-start: auto; }
-  .catbin-circles[data-count="7"] > :nth-child(7) { grid-column-start: 2; }
-  .catbin-circles[data-count="8"]  { --cols: 4; --rows: 4; }
-  .catbin-circles[data-count="10"] { --cols: 4; --rows: 5; }
+  .catbin-circles[data-count='2'] {
+    --cols: 2;
+    --rows: 2;
+  }
+  .catbin-circles[data-count='3'] {
+    --cols: 2;
+    --rows: 3;
+  }
+  .catbin-circles[data-count='5'] {
+    --cols: 4;
+    --rows: 3;
+  }
+  .catbin-circles[data-count='5'] > :nth-child(4) {
+    grid-column-start: auto;
+  }
+  .catbin-circles[data-count='5'] > :nth-child(5) {
+    grid-column-start: 2;
+  }
+  .catbin-circles[data-count='6'] {
+    --cols: 4;
+    --rows: 3;
+  }
+  .catbin-circles[data-count='7'] {
+    --cols: 4;
+    --rows: 4;
+  }
+  .catbin-circles[data-count='7'] > :nth-child(5) {
+    grid-column-start: auto;
+  }
+  .catbin-circles[data-count='7'] > :nth-child(7) {
+    grid-column-start: 2;
+  }
+  .catbin-circles[data-count='8'] {
+    --cols: 4;
+    --rows: 4;
+  }
+  .catbin-circles[data-count='10'] {
+    --cols: 4;
+    --rows: 5;
+  }
   /* counts 1, 4, 9 are unchanged */
 }
 ```
@@ -150,7 +213,7 @@ Notes on the doubled-column technique:
 
 `CategoricalBinItem.tsx`:
 
-- Remove the inline `width: \`min(100%, calc((100cqb - 1rem * ${rows - 1}) / ${rows}))\`` and `aspectRatio: "1 / 1"` styles. These move into the CSS rule on `.catbin-circles > *`, where `var(--rows)` substitutes for the JS `rows`.
+- Remove the inline `width: \`min(100%, calc((100cqb - 1rem _ ${rows - 1}) / ${rows}))\``and`aspectRatio: "1 / 1"`styles. These move into the CSS rule on`.catbin-circles > _`, where `var(--rows)`substitutes for the JS`rows`.
 - Remove the `rows` prop and its consumers.
 
 `useCircleLayout.ts`:
@@ -179,14 +242,14 @@ The flip happened because `computeCols` is a discontinuous function of a drift-p
 
 ## Files touched
 
-| Path | Change |
-|------|--------|
-| `tooling/tailwind/fresco/themes/interview.css` | Add the `[data-count]` rules + portrait `@container` override block. Existing `.catbin-outer` container declaration is unchanged. |
-| `packages/interview/src/interfaces/CategoricalBin/CategoricalBin.tsx` | Remove `useCircleLayout`, `isReady` gate, `pending` attribute, `gridTemplateColumns` inline style, `pb-44`, `floating` on drawer. Add `data-count`. |
-| `packages/interview/src/interfaces/CategoricalBin/components/CategoricalBinItem.tsx` | Remove inline `width`/`aspectRatio`. Remove `rows` prop. |
-| `packages/interview/src/interfaces/CategoricalBin/useCircleLayout.ts` | Delete. |
-| `packages/interview/e2e/fixtures/interview-fixture.ts` | Delete the `data-cb-layout-pending` wait block in `captureFinal`. |
-| `packages/interview/e2e/visual-snapshots/**` | Regenerate baselines. Stage-29 4-bin landscape returns to `2×2` (matches the prior baseline). Other CategoricalBin stages should be re-inspected. |
+| Path                                                                                 | Change                                                                                                                                              |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tooling/tailwind/fresco/themes/interview.css`                                       | Add the `[data-count]` rules + portrait `@container` override block. Existing `.catbin-outer` container declaration is unchanged.                   |
+| `packages/interview/src/interfaces/CategoricalBin/CategoricalBin.tsx`                | Remove `useCircleLayout`, `isReady` gate, `pending` attribute, `gridTemplateColumns` inline style, `pb-44`, `floating` on drawer. Add `data-count`. |
+| `packages/interview/src/interfaces/CategoricalBin/components/CategoricalBinItem.tsx` | Remove inline `width`/`aspectRatio`. Remove `rows` prop.                                                                                            |
+| `packages/interview/src/interfaces/CategoricalBin/useCircleLayout.ts`                | Delete.                                                                                                                                             |
+| `packages/interview/e2e/fixtures/interview-fixture.ts`                               | Delete the `data-cb-layout-pending` wait block in `captureFinal`.                                                                                   |
+| `packages/interview/e2e/visual-snapshots/**`                                         | Regenerate baselines. Stage-29 4-bin landscape returns to `2×2` (matches the prior baseline). Other CategoricalBin stages should be re-inspected.   |
 
 ## Testing
 

@@ -13,21 +13,21 @@ Migrate Fresco's `components/ui/` directory (and its supporting styles/utilities
 
 The following decisions were made during brainstorming and are fixed inputs to implementation:
 
-| Decision | Value |
-|---|---|
-| Relationship to existing `@codaco/ui` | Separate package, lives alongside |
-| Consumers | Fresco (primary) + selected monorepo apps |
-| Package name | `@codaco/fresco-ui` |
-| Distribution | Published to npm via the monorepo's existing `changesets` pipeline |
-| Tailwind config style | **Tailwind v4 CSS-first** (no `tailwind.config.ts`, no JS preset) |
-| Build tool | **Vite 8** (Rolldown bundler) library mode + `vite-plugin-dts` |
-| Public API shape | Per-component subpath exports — **no barrel files** |
-| Internal layout | **Flat** (Approach 1): mirrors Fresco's tree, no `primitives/`/`subsystems/`/`foundations/` taxonomy |
-| Lint | Biome (matches monorepo) |
-| TypeScript | extends `@codaco/tsconfig`, React 19 from the catalog |
-| Storybook | Lives in the package (`packages/fresco-ui/.storybook/`); first Storybook in the monorepo. Fresco continues to run its own Storybook for app-specific stories (interview stages, etc.). |
-| Visual regression / Chromatic | Stays in Fresco for interview-stage stories. The package ships **without** VR coverage initially. |
-| Versioning | Pre-1.0 (`0.1.0-alpha.0` initial, on `next` dist-tag) |
+| Decision                              | Value                                                                                                                                                                                  |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Relationship to existing `@codaco/ui` | Separate package, lives alongside                                                                                                                                                      |
+| Consumers                             | Fresco (primary) + selected monorepo apps                                                                                                                                              |
+| Package name                          | `@codaco/fresco-ui`                                                                                                                                                                    |
+| Distribution                          | Published to npm via the monorepo's existing `changesets` pipeline                                                                                                                     |
+| Tailwind config style                 | **Tailwind v4 CSS-first** (no `tailwind.config.ts`, no JS preset)                                                                                                                      |
+| Build tool                            | **Vite 8** (Rolldown bundler) library mode + `vite-plugin-dts`                                                                                                                         |
+| Public API shape                      | Per-component subpath exports — **no barrel files**                                                                                                                                    |
+| Internal layout                       | **Flat** (Approach 1): mirrors Fresco's tree, no `primitives/`/`subsystems/`/`foundations/` taxonomy                                                                                   |
+| Lint                                  | Biome (matches monorepo)                                                                                                                                                               |
+| TypeScript                            | extends `@codaco/tsconfig`, React 19 from the catalog                                                                                                                                  |
+| Storybook                             | Lives in the package (`packages/fresco-ui/.storybook/`); first Storybook in the monorepo. Fresco continues to run its own Storybook for app-specific stories (interview stages, etc.). |
+| Visual regression / Chromatic         | Stays in Fresco for interview-stage stories. The package ships **without** VR coverage initially.                                                                                      |
+| Versioning                            | Pre-1.0 (`0.1.0-alpha.0` initial, on `next` dist-tag)                                                                                                                                  |
 
 ## 3. Scope
 
@@ -175,7 +175,7 @@ File casing is preserved exactly as it currently exists in Fresco (some lowercas
 
 ### 4.2 Public API via subpath exports
 
-`package.json` declares one entry per *consumable* file. Generated by `scripts/build-exports.mjs` from the `exports.config.ts` allowlist.
+`package.json` declares one entry per _consumable_ file. Generated by `scripts/build-exports.mjs` from the `exports.config.ts` allowlist.
 
 ```jsonc
 "exports": {
@@ -194,7 +194,7 @@ File casing is preserved exactly as it currently exists in Fresco (some lowercas
 
 The same allowlist drives `lib.entry` in `vite.config.ts`, so the package's `exports` map and the Vite multi-entry list cannot drift.
 
-**Privacy boundary.** Subsystem internals (e.g. `form/store/formStore.ts`, `collection/store/createCollectionSorter.ts`) are *not* in `exports`. They remain build artefacts for the package's own consumption but are not import-reachable through the public API. The allowlist is generated initially by walking Fresco's current import sites — every file that imports `~/components/ui/...` from outside `components/ui/` tells us what's public.
+**Privacy boundary.** Subsystem internals (e.g. `form/store/formStore.ts`, `collection/store/createCollectionSorter.ts`) are _not_ in `exports`. They remain build artefacts for the package's own consumption but are not import-reachable through the public API. The allowlist is generated initially by walking Fresco's current import sites — every file that imports `~/components/ui/...` from outside `components/ui/` tells us what's public.
 
 **Validation.** The `build-exports.mjs` script fails the build if a `src/` file is matched by a public-allowlist glob but has no resolved entry, or if a resolved file isn't reachable from any allowlist entry. Renames cannot silently disappear from the API.
 
@@ -231,7 +231,7 @@ export default defineConfig({
 });
 ```
 
-**CSS files.** `src/styles.css` and `src/styles/colors.css` are Tailwind v4 sources that consumers compile through *their own* Tailwind. They must reach `dist/` unprocessed (with `@import "tailwindcss"`, `@theme`, `@plugin`, `@source` directives intact). A small Vite plugin or a build-step copy handles this — Vite's default CSS pipeline is bypassed for these files.
+**CSS files.** `src/styles.css` and `src/styles/colors.css` are Tailwind v4 sources that consumers compile through _their own_ Tailwind. They must reach `dist/` unprocessed (with `@import "tailwindcss"`, `@theme`, `@plugin`, `@source` directives intact). A small Vite plugin or a build-step copy handles this — Vite's default CSS pipeline is bypassed for these files.
 
 **Type emission.** `vite-plugin-dts` is the primary mechanism. If Vite-8/Rolldown compatibility issues surface in practice, fall back to a separate `tsc --emitDeclarationOnly --outDir dist` step in the `build` script. Decided during initial setup.
 
@@ -246,20 +246,22 @@ export default defineConfig({
   "type": "module",
   "sideEffects": ["**/*.css"],
   "files": ["dist"],
-  "exports": { /* generated */ },
+  "exports": {
+    /* generated */
+  },
   "scripts": {
-    "build":          "node scripts/build-exports.mjs && vite build",
-    "dev":            "vite build --watch",
-    "typecheck":      "tsc --build --noEmit",
-    "test":           "vitest run",
-    "storybook":      "storybook dev -p 6006",
-    "build-storybook":"storybook build",
+    "build": "node scripts/build-exports.mjs && vite build",
+    "dev": "vite build --watch",
+    "typecheck": "tsc --build --noEmit",
+    "test": "vitest run",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
     "prepublishOnly": "pnpm build",
-    "clean":          "rm -rf .turbo node_modules dist"
+    "clean": "rm -rf .turbo node_modules dist",
   },
   "peerDependencies": {
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
   },
   "dependencies": {
     /* radix, base-ui, motion, tiptap, lucide-react, cva (or class-variance-authority), clsx, tailwind-merge, luxon */
@@ -269,10 +271,10 @@ export default defineConfig({
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:",
     "typescript": "catalog:",
-    "@biomejs/biome": "^2.4.13"
+    "@biomejs/biome": "^2.4.13",
     /* + storybook deps */
   },
-  "publishConfig": { "access": "public" }
+  "publishConfig": { "access": "public" },
 }
 ```
 
@@ -285,18 +287,18 @@ The package ships its theming as CSS, not as a JS preset.
 **`src/styles.css`** is the package's CSS entry. The `@theme` block carries the **entire** current Fresco token set (NC palette, semantic tokens, typography, radii, shadows, motion) — the snippet below is illustrative; the full set is lifted verbatim from Fresco's existing `styles/globals.css` + `styles/themes/default.css` + the relevant pieces of `@codaco/tailwind-config/fresco.ts` (which is being deprecated, so its tokens move here).
 
 ```css
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* Authoritative tokens (lifted from Fresco's current globals.css + themes/default.css) */
 @theme {
-  --color-neon-coral:        hsl(var(--neon-coral));
-  --color-neon-coral-dark:   hsl(var(--neon-coral-dark));
-  --color-sea-green:         hsl(var(--sea-green));
+  --color-neon-coral: hsl(var(--neon-coral));
+  --color-neon-coral-dark: hsl(var(--neon-coral-dark));
+  --color-sea-green: hsl(var(--sea-green));
   /* … remaining NC palette */
-  --color-background:        hsl(var(--background));
-  --color-foreground:        hsl(var(--foreground));
-  --color-primary:           hsl(var(--primary));
-  --color-border:            hsl(var(--border));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-primary: hsl(var(--primary));
+  --color-border: hsl(var(--border));
   /* … shadcn-style semantic tokens */
 }
 
@@ -312,19 +314,19 @@ The package ships its theming as CSS, not as a JS preset.
 @plugin "./styles/plugins/inset-surface";
 @plugin "./styles/plugins/motion-spring";
 
-@source "../../dist/**/*.js";   /* relative to dist/styles.css after build */
+@source "../../dist/**/*.js"; /* relative to dist/styles.css after build */
 ```
 
 Consumers wire this into their own CSS:
 
 ```css
 /* Fresco's app/globals.css */
-@import "@codaco/fresco-ui/styles.css";
+@import '@codaco/fresco-ui/styles.css';
 
 @source "../app/**/*.{ts,tsx}";
 @source "../components/**/*.{ts,tsx}";
 
-@import "./themes/default.css";
+@import './themes/default.css';
 /* @import "./themes/interview.css"; — applied conditionally */
 ```
 
@@ -369,7 +371,7 @@ The migration scope contains **one** Fresco-specific coupling:
 
 `components/ui/form/hooks/useProtocolForm.tsx` imports `~/lib/interviewer/selectors/forms` (a Fresco Redux selector). It's used by Fresco's interviewer interfaces (NameGenerator, SlidesForm, EgoForm, FamilyPedigree, FamilyPedigree quick-start wizard).
 
-**Resolution:** `useProtocolForm.tsx` and `useProtocolForm.stories.tsx` stay in Fresco. They move out of `components/ui/form/hooks/` to a Fresco-internal location (final path nailed down in the implementation plan). The hook continues to import the generic form primitives from `@codaco/fresco-ui/form/...` *and* the Redux selector from `~/lib/interviewer/selectors/forms` as it does today. No reshape of the form's API needed; just a relocation of one file.
+**Resolution:** `useProtocolForm.tsx` and `useProtocolForm.stories.tsx` stay in Fresco. They move out of `components/ui/form/hooks/` to a Fresco-internal location (final path nailed down in the implementation plan). The hook continues to import the generic form primitives from `@codaco/fresco-ui/form/...` _and_ the Redux selector from `~/lib/interviewer/selectors/forms` as it does today. No reshape of the form's API needed; just a relocation of one file.
 
 After this, `@codaco/fresco-ui/form` is a clean, store-free, protocol-agnostic form library.
 
@@ -377,22 +379,22 @@ After this, `@codaco/fresco-ui/form` is a clean, store-free, protocol-agnostic f
 
 ### 6.1 Codemod rules
 
-| From | To |
-|---|---|
-| `from '~/components/ui/Button'` | `from '@codaco/fresco-ui/Button'` |
-| `from '~/components/ui/Modal'` | `from '@codaco/fresco-ui/Modal'` |
-| `from '~/components/ui/layout/Surface'` | `from '@codaco/fresco-ui/layout/Surface'` |
-| `from '~/components/ui/typography/Heading'` | `from '@codaco/fresco-ui/typography/Heading'` |
-| `from '~/components/ui/form/...'` | `from '@codaco/fresco-ui/form/...'` |
-| `from '~/components/ui/collection/...'` | `from '@codaco/fresco-ui/collection/...'` |
-| `from '~/components/ui/dnd/...'` | `from '@codaco/fresco-ui/dnd/...'` |
-| `from '~/components/ui/dialogs/...'` | `from '@codaco/fresco-ui/dialogs/...'` |
-| `from '~/utils/cva'` | `from '@codaco/fresco-ui/utils/cva'` |
-| `from '~/styles/shared/controlVariants'` | `from '@codaco/fresco-ui/styles/controlVariants'` |
-| `from '~/utils/generatePublicId'` | `from '@codaco/fresco-ui/utils/generatePublicId'` |
-| `from '~/utils/prettify'` | `from '@codaco/fresco-ui/utils/prettify'` |
-| `from '~/hooks/useSafeAnimate'` | `from '@codaco/fresco-ui/hooks/useSafeAnimate'` |
-| `from '~/lib/interviewer/utils/scrollParent'` | `from '@codaco/fresco-ui/utils/scrollParent'` |
+| From                                          | To                                                |
+| --------------------------------------------- | ------------------------------------------------- |
+| `from '~/components/ui/Button'`               | `from '@codaco/fresco-ui/Button'`                 |
+| `from '~/components/ui/Modal'`                | `from '@codaco/fresco-ui/Modal'`                  |
+| `from '~/components/ui/layout/Surface'`       | `from '@codaco/fresco-ui/layout/Surface'`         |
+| `from '~/components/ui/typography/Heading'`   | `from '@codaco/fresco-ui/typography/Heading'`     |
+| `from '~/components/ui/form/...'`             | `from '@codaco/fresco-ui/form/...'`               |
+| `from '~/components/ui/collection/...'`       | `from '@codaco/fresco-ui/collection/...'`         |
+| `from '~/components/ui/dnd/...'`              | `from '@codaco/fresco-ui/dnd/...'`                |
+| `from '~/components/ui/dialogs/...'`          | `from '@codaco/fresco-ui/dialogs/...'`            |
+| `from '~/utils/cva'`                          | `from '@codaco/fresco-ui/utils/cva'`              |
+| `from '~/styles/shared/controlVariants'`      | `from '@codaco/fresco-ui/styles/controlVariants'` |
+| `from '~/utils/generatePublicId'`             | `from '@codaco/fresco-ui/utils/generatePublicId'` |
+| `from '~/utils/prettify'`                     | `from '@codaco/fresco-ui/utils/prettify'`         |
+| `from '~/hooks/useSafeAnimate'`               | `from '@codaco/fresco-ui/hooks/useSafeAnimate'`   |
+| `from '~/lib/interviewer/utils/scrollParent'` | `from '@codaco/fresco-ui/utils/scrollParent'`     |
 
 286 importing files. Codemod implemented as a `jscodeshift` script (or `ripgrep`+structured replacements; the patterns are mechanical).
 
@@ -460,8 +462,8 @@ These don't block design approval — verify or decide during implementation.
 
 1. **Rolldown chunking quality.** Without `preserveModules`, Rolldown's automatic shared-chunk extraction is the unknown. If chunks fragment badly or filenames look wrong, fallbacks: (a) promote shared utilities to standalone entries, (b) set `codeSplitting: false` and accept duplication.
 2. **`vite-plugin-dts` × Vite 8 compatibility.** Generally expected to work via Rolldown's Rollup-plugin-API compat, but not officially confirmed. Fallback: `tsc --emitDeclarationOnly` step.
-3. **CSS-source pass-through.** Tailwind v4 source CSS (with `@import "tailwindcss"`, `@theme`, `@plugin`, `@source`) must reach `dist/` *unprocessed*. Vite's default CSS pipeline would break this. Solution: small build-step plugin to copy `*.css` from `src/` to `dist/` verbatim. Verify post-build that `dist/styles.css` still has the directives intact.
-4. **`@plugin` path resolution.** Paths in `dist/styles.css` must resolve correctly relative to the *built* layout (`node_modules/@codaco/fresco-ui/dist/styles.css` → `node_modules/@codaco/fresco-ui/dist/styles/plugins/*.js`). Verify when wiring up the build.
+3. **CSS-source pass-through.** Tailwind v4 source CSS (with `@import "tailwindcss"`, `@theme`, `@plugin`, `@source`) must reach `dist/` _unprocessed_. Vite's default CSS pipeline would break this. Solution: small build-step plugin to copy `*.css` from `src/` to `dist/` verbatim. Verify post-build that `dist/styles.css` still has the directives intact.
+4. **`@plugin` path resolution.** Paths in `dist/styles.css` must resolve correctly relative to the _built_ layout (`node_modules/@codaco/fresco-ui/dist/styles.css` → `node_modules/@codaco/fresco-ui/dist/styles/plugins/*.js`). Verify when wiring up the build.
 5. **Component DOM-context assumptions.** Some components (e.g. `Toast.tsx`) may assume a portal root that exists in Fresco's app shell. Migration is lift-and-shift; if components break for non-Fresco consumers, document setup requirements rather than reshape on the way in.
 6. **`useSafeAnimate` hook.** Not yet read in detail; assumed to be a generic motion-safe wrapper. If it touches Fresco-specific state, surface during typecheck and either reshape or leave in Fresco.
 7. **Subsystem internal-helper allowlist.** Generated initially from Fresco's current import sites. If post-migration something breaks because an import path isn't in the allowlist, add a one-line allowlist entry.

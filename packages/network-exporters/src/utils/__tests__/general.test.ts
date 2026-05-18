@@ -1,27 +1,28 @@
-import { describe, expect, it } from "vitest";
-import { isCategoricalOptionSelected } from "../general";
+import { describe, expect, it } from 'vitest';
 
-describe("isCategoricalOptionSelected", () => {
-	// CategoricalBin writes scalar option values, so a stored `0` must still
-	// match the corresponding option on export.
-	it("treats stored 0 as selected when option value is 0", () => {
-		expect(isCategoricalOptionSelected(0, 0)).toBe(true);
-	});
+import { isCategoricalOptionSelected } from '../general';
 
-	it("treats stored 0 as not selected for a different option value", () => {
-		expect(isCategoricalOptionSelected(0, 1)).toBe(false);
-	});
+describe('isCategoricalOptionSelected', () => {
+  // CategoricalBin writes scalar option values, so a stored `0` must still
+  // match the corresponding option on export.
+  it('treats stored 0 as selected when option value is 0', () => {
+    expect(isCategoricalOptionSelected(0, 0)).toBe(true);
+  });
 
-	// CheckboxGroup stores arrays; a falsy element must still match.
-	it("treats [0] as selected when option value is 0", () => {
-		expect(isCategoricalOptionSelected([0], 0)).toBe(true);
-	});
+  it('treats stored 0 as not selected for a different option value', () => {
+    expect(isCategoricalOptionSelected(0, 1)).toBe(false);
+  });
 
-	it("treats null as not selected", () => {
-		expect(isCategoricalOptionSelected(null, 0)).toBe(false);
-	});
+  // CheckboxGroup stores arrays; a falsy element must still match.
+  it('treats [0] as selected when option value is 0', () => {
+    expect(isCategoricalOptionSelected([0], 0)).toBe(true);
+  });
 
-	it("treats undefined as not selected", () => {
-		expect(isCategoricalOptionSelected(undefined, 0)).toBe(false);
-	});
+  it('treats null as not selected', () => {
+    expect(isCategoricalOptionSelected(null, 0)).toBe(false);
+  });
+
+  it('treats undefined as not selected', () => {
+    expect(isCategoricalOptionSelected(undefined, 0)).toBe(false);
+  });
 });

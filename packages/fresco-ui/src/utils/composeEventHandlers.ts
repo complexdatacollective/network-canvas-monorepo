@@ -7,13 +7,13 @@
  * @returns A composed handler that calls both in sequence
  */
 export function composeEventHandlers<E>(
-	internal?: (event: E) => void,
-	external?: (event: E) => void,
+  internal?: (event: E) => void,
+  external?: (event: E) => void,
 ): ((event: E) => void) | undefined {
-	if (!internal && !external) return undefined;
+  if (!internal && !external) return undefined;
 
-	return (event: E) => {
-		internal?.(event);
-		external?.(event);
-	};
+  return (event: E) => {
+    internal?.(event);
+    external?.(event);
+  };
 }

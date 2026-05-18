@@ -1,51 +1,52 @@
 /// <reference types="vitest" />
 
-import { execSync } from "node:child_process";
-import path, { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { defineConfig, type Plugin } from "vite";
-import dts from "vite-plugin-dts";
+import { execSync } from 'node:child_process';
+import path, { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { defineConfig, type Plugin } from 'vite';
+import dts from 'vite-plugin-dts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const schemaPlugin = (): Plugin => {
-	return {
-		name: "schema",
+  return {
+    name: 'schema',
 
-		// watches the schema files for changes
-		buildStart() {
-			this.addWatchFile(path.resolve("src/schemas/"));
-		},
-		// runs when a file changes
-		watchChange(file) {
-			if (file.endsWith("zod.ts")) {
-				execSync("pnpm run zod-to-json src/schemas/8.zod.ts");
-			}
+    // watches the schema files for changes
+    buildStart() {
+      this.addWatchFile(path.resolve('src/schemas/'));
+    },
+    // runs when a file changes
+    watchChange(file) {
+      if (file.endsWith('zod.ts')) {
+        execSync('pnpm run zod-to-json src/schemas/8.zod.ts');
+      }
 
-			if (file.endsWith(".json")) {
-				execSync("pnpm run compile-schemas");
-			}
-		},
-	};
+      if (file.endsWith('.json')) {
+        execSync('pnpm run compile-schemas');
+      }
+    },
+  };
 };
 
 export default defineConfig({
-	resolve: {
-		tsconfigPaths: true,
-	},
-	build: {
-		lib: {
-			entry: resolve(__dirname, "src/index.ts"),
-			name: "ProtocolValidation",
-			// the proper extensions will be added
-			fileName: "index",
-			formats: ["es"],
-		},
-	},
-	plugins: [
-		schemaPlugin(),
-		dts({
-			insertTypesEntry: true,
-		}),
-	],
+  resolve: {
+    tsconfigPaths: true,
+  },
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/index.ts'),
+      name: 'ProtocolValidation',
+      // the proper extensions will be added
+      fileName: 'index',
+      formats: ['es'],
+    },
+  },
+  plugins: [
+    schemaPlugin(),
+    dts({
+      insertTypesEntry: true,
+    }),
+  ],
 });

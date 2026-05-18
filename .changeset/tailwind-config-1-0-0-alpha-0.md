@@ -1,5 +1,5 @@
 ---
-"@codaco/tailwind-config": major
+'@codaco/tailwind-config': major
 ---
 
 **Breaking**: 1.0 alpha. Reorganize the package's exports surface.
@@ -12,7 +12,7 @@
 Consumers should import:
 
 ```css
-@import "tailwindcss";
-@import "@codaco/tailwind-config/fresco.css";
-@import "@codaco/tailwind-config/fresco/themes/default.css"; /* or interview.css */
+@import 'tailwindcss';
+@import '@codaco/tailwind-config/fresco.css';
+@import '@codaco/tailwind-config/fresco/themes/default.css'; /* or interview.css */
 ```

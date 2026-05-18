@@ -1,9 +1,13 @@
-import type { Codebook, StageSubject } from "@codaco/protocol-validation";
+import type { Codebook, StageSubject } from '@codaco/protocol-validation';
 
-export function getVariableDefinition(codebook: Codebook, subject: StageSubject, attribute: string) {
-	if (subject.entity === "ego") {
-		return codebook.ego?.variables?.[attribute];
-	}
+export function getVariableDefinition(
+  codebook: Codebook,
+  subject: StageSubject,
+  attribute: string,
+) {
+  if (subject.entity === 'ego') {
+    return codebook.ego?.variables?.[attribute];
+  }
 
-	return codebook[subject.entity]?.[subject.type]?.variables?.[attribute];
+  return codebook[subject.entity]?.[subject.type]?.variables?.[attribute];
 }

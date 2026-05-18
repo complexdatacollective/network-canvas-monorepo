@@ -67,9 +67,9 @@ No multi-entry fallback is needed.
 
 ```json
 {
-  "@microsoft/api-extractor": ">=7",   // optional
-  "rollup": ">=3",                      // optional
-  "vite": ">=3"                         // optional
+  "@microsoft/api-extractor": ">=7", // optional
+  "rollup": ">=3", // optional
+  "vite": ">=3" // optional
 }
 ```
 

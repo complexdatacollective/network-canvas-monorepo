@@ -1,18 +1,19 @@
-import { compose } from "react-recompose";
-import { connect } from "react-redux";
-import { formValueSelector } from "redux-form";
-import type { RootState } from "~/ducks/modules/root";
+import { compose } from 'react-recompose';
+import { connect } from 'react-redux';
+import { formValueSelector } from 'redux-form';
+
+import type { RootState } from '~/ducks/modules/root';
 
 type OwnProps = {
-	form: string;
+  form: string;
 };
 
 const mapStateToProps = (state: RootState, { form }: OwnProps) => {
-	const quickAdd = formValueSelector(form)(state, "quickAdd");
+  const quickAdd = formValueSelector(form)(state, 'quickAdd');
 
-	return {
-		quickAdd,
-	};
+  return {
+    quickAdd,
+  };
 };
 
 const withQuickAddState = connect(mapStateToProps);
