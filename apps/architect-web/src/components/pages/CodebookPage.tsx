@@ -4,6 +4,7 @@ import Codebook from '~/components/Codebook/Codebook';
 import EntityTypeDialog from '~/components/Codebook/EntityTypeDialog';
 import { Layout } from '~/components/EditorLayout';
 import PageHeading from '~/components/ProjectNav/PageHeading';
+import ProjectActions from '~/components/ProjectNav/ProjectActions';
 import useProtocolLoader from '~/hooks/useProtocolLoader';
 
 type DialogState = {
@@ -34,6 +35,7 @@ const CodebookPage = () => {
   return (
     <>
       <Layout>
+        <ProjectActions />
         <PageHeading
           title="Codebook"
           description="Overview of the node and edge types defined in your protocol. Unused entities can be deleted."

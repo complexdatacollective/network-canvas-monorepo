@@ -8,16 +8,11 @@ import { cx } from '~/utils/cva';
 type ProjectLayoutProps = {
   children: React.ReactNode;
   className?: string;
-  extraActions?: React.ReactNode;
 };
 
 const scrollPositions = new Map<string, number>();
 
-const ProjectLayout = ({
-  children,
-  className,
-  extraActions,
-}: ProjectLayoutProps) => {
+const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
   const [location] = useLocation();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -43,7 +38,7 @@ const ProjectLayout = ({
         className,
       )}
     >
-      <ProjectNav extraActions={extraActions} />
+      <ProjectNav />
       {children}
     </div>
   );

@@ -5,7 +5,7 @@ import { useSelector } from 'react-redux';
 import { Layout } from '~/components/EditorLayout';
 import Tooltip from '~/components/NewComponents/Tooltip';
 import PageHeading from '~/components/ProjectNav/PageHeading';
-import ProjectLayout from '~/components/ProjectNav/ProjectLayout';
+import ProjectActions from '~/components/ProjectNav/ProjectActions';
 import useProtocolLoader from '~/hooks/useProtocolLoader';
 import { Button } from '~/lib/legacy-ui/components';
 import AssetManifest from '~/lib/ProtocolSummary/components/AssetManifest';
@@ -59,11 +59,9 @@ const SummaryPage = () => {
   // Don't render until we have protocol data
   if (!protocol || !protocolName) {
     return (
-      <ProjectLayout className="print:h-auto print:overflow-visible">
-        <Layout>
-          <p>Loading protocol...</p>
-        </Layout>
-      </ProjectLayout>
+      <Layout>
+        <p>Loading protocol...</p>
+      </Layout>
     );
   }
 
@@ -83,43 +81,39 @@ const SummaryPage = () => {
         index,
       }}
     >
-      <ProjectLayout
-        className="print:h-auto print:overflow-visible"
-        extraActions={printAction}
-      >
-        <Layout className="[--base-font-size:14px]">
-          <div className="w-full print:hidden">
-            <PageHeading
-              title="Protocol Summary"
-              description="Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets."
-            />
+      <ProjectActions readOnly extras={printAction} />
+      <Layout className="[--base-font-size:14px]">
+        <div className="w-full print:hidden">
+          <PageHeading
+            title="Protocol Summary"
+            description="Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets."
+          />
+        </div>
+        <div className="protocol-summary-surface">
+          {/* Cover is the first marker; an explicit page break here would be
+              a no-op (CSS Fragmentation: forced breaks at the start of a
+              fragment are discarded) so it's omitted. */}
+          <div className="page-break-marker">
+            <Cover />
           </div>
-          <div className="protocol-summary-surface">
-            {/* Cover is the first marker; an explicit page break here would be
-						    a no-op (CSS Fragmentation: forced breaks at the start of a
-						    fragment are discarded) so it's omitted. */}
-            <div className="page-break-marker">
-              <Cover />
-            </div>
 
-            <div className="page-break-marker break-before-page">
-              <Contents />
-            </div>
-
-            <div>
-              <Stages />
-            </div>
-
-            <div>
-              <Codebook />
-            </div>
-
-            <div>
-              <AssetManifest />
-            </div>
+          <div className="page-break-marker break-before-page">
+            <Contents />
           </div>
-        </Layout>
-      </ProjectLayout>
+
+          <div>
+            <Stages />
+          </div>
+
+          <div>
+            <Codebook />
+          </div>
+
+          <div>
+            <AssetManifest />
+          </div>
+        </div>
+      </Layout>
     </SummaryContext.Provider>
   );
 };

@@ -30,7 +30,9 @@ const Routes = () => {
         </ProjectLayout>
       </Route>
       <Route path="/protocol/summary">
-        <SummaryPage />
+        <ProjectLayout>
+          <SummaryPage />
+        </ProjectLayout>
       </Route>
       <Route path="/protocol/stage/:stageId" component={StageEditorPage} />
       <Route path="/protocol/experiments" component={ExperimentsPage} />
