@@ -1,12 +1,14 @@
+import Heading from "@codaco/fresco-ui/typography/Heading";
 import type { ReactNode } from "react";
 
 type Props = {
 	title: string;
 	meta?: string;
+	subheadingColor: string;
 	children: ReactNode;
 };
 
-export const ProtocolCardMock = ({ title, meta = "Modified May 18, 2026", children }: Props) => (
+export const ProtocolCardMock = ({ title, meta = "Modified May 18, 2026", subheadingColor, children }: Props) => (
 	<div
 		style={{
 			width: 320,
@@ -15,7 +17,6 @@ export const ProtocolCardMock = ({ title, meta = "Modified May 18, 2026", childr
 			overflow: "hidden",
 			position: "relative",
 			boxShadow: "0 6px 18px -8px rgba(0,0,0,0.25)",
-			background: "#fff",
 		}}
 	>
 		<div style={{ position: "absolute", inset: 0 }}>{children}</div>
@@ -25,13 +26,13 @@ export const ProtocolCardMock = ({ title, meta = "Modified May 18, 2026", childr
 				left: 0,
 				right: 0,
 				bottom: 0,
-				padding: "12px 16px",
-				background: "linear-gradient(to top, rgba(255,255,255,0.97) 50%, rgba(255,255,255,0))",
-				color: "#1a1330",
+				padding: "14px 18px",
 			}}
 		>
-			<div style={{ fontWeight: 600, fontSize: 16, lineHeight: 1.2 }}>{title}</div>
-			<div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>{meta}</div>
+			<Heading level="h3" margin="none" style={{ color: "white" }}>
+				{title}
+			</Heading>
+			<div style={{ fontSize: 12, marginTop: 4, color: subheadingColor, fontWeight: 600 }}>{meta}</div>
 		</div>
 	</div>
 );

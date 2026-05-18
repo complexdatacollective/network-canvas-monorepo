@@ -1,21 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { BASE_PALETTE, rngToPalette } from "../palette";
+import { BASE_PALETTE, rngToPalette, seedToDeepAccent } from "../palette";
 import { seedToRng } from "../seed";
 
 const parseOklch = (s: string) => {
-	const m = /oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\)/.exec(s);
+	const m = /oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\s*\)/.exec(s);
 	if (!m?.[1] || !m[2] || !m[3]) throw new Error(`Not an oklch string: ${s}`);
-	return { l: Number.parseFloat(m[1]), c: Number.parseFloat(m[2]), h: Number.parseFloat(m[3]) };
+	return {
+		l: Number.parseFloat(m[1]),
+		c: Number.parseFloat(m[2]),
+		h: Number.parseFloat(m[3]),
+		a: m[4] ? Number.parseFloat(m[4]) : 1,
+	};
 };
 
 describe("rngToPalette", () => {
-	it("produces foreground, backgroundTop, backgroundBottom that all share the base hue", () => {
+	it("foreground is translucent white", () => {
 		const palette = rngToPalette(seedToRng("alice"));
 		const fg = parseOklch(palette.foreground);
-		const top = parseOklch(palette.backgroundTop);
-		const bot = parseOklch(palette.backgroundBottom);
-		expect(top.h).toBeCloseTo(fg.h, 4);
-		expect(bot.h).toBeCloseTo(fg.h, 4);
+		expect(fg.l).toBe(1);
+		expect(fg.c).toBe(0);
+		expect(fg.a).toBeGreaterThan(0);
+		expect(fg.a).toBeLessThan(1);
 	});
 
 	it("backgroundTop matches one of the four BASE_PALETTE colors at full strength", () => {
@@ -24,18 +29,11 @@ describe("rngToPalette", () => {
 		expect(baseStrings).toContain(palette.backgroundTop);
 	});
 
-	it("foreground is lighter and less saturated than the background top", () => {
-		const palette = rngToPalette(seedToRng("alice"));
-		const fg = parseOklch(palette.foreground);
-		const top = parseOklch(palette.backgroundTop);
-		expect(fg.l).toBeGreaterThan(top.l);
-		expect(fg.c).toBeLessThan(top.c);
-	});
-
-	it("backgroundBottom is darker than backgroundTop", () => {
+	it("backgroundBottom shares the backgroundTop hue but is darker", () => {
 		const palette = rngToPalette(seedToRng("alice"));
 		const top = parseOklch(palette.backgroundTop);
 		const bot = parseOklch(palette.backgroundBottom);
+		expect(bot.h).toBeCloseTo(top.h, 4);
 		expect(bot.l).toBeLessThan(top.l);
 	});
 
@@ -43,5 +41,18 @@ describe("rngToPalette", () => {
 		const a = rngToPalette(seedToRng("alice"));
 		const b = rngToPalette(seedToRng("alice"));
 		expect(a).toEqual(b);
+	});
+});
+
+describe("seedToDeepAccent", () => {
+	it("returns a much darker version of the seed's base hue", () => {
+		const accent = parseOklch(seedToDeepAccent("alice"));
+		const top = parseOklch(rngToPalette(seedToRng("alice")).backgroundTop);
+		expect(accent.h).toBeCloseTo(top.h, 4);
+		expect(accent.l).toBeLessThan(top.l - 0.2);
+	});
+
+	it("is deterministic for the same seed", () => {
+		expect(seedToDeepAccent("alice")).toBe(seedToDeepAccent("alice"));
 	});
 });

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ProtocolCardMock } from "../../../.storybook/ProtocolCardMock";
+import { seedToDeepAccent } from "../palette";
 import { SquigglesPattern } from "./Squiggles";
 
 const meta: Meta<typeof SquigglesPattern> = {
@@ -31,7 +32,7 @@ export const Gallery: Story = {
 
 export const OnCard: Story = {
 	render: (args) => (
-		<ProtocolCardMock title={args.seed} meta="Squiggles variant">
+		<ProtocolCardMock title={args.seed} meta="Squiggles variant" subheadingColor={seedToDeepAccent(args.seed)}>
 			<SquigglesPattern {...args} style={{ width: "100%", height: "100%" }} />
 		</ProtocolCardMock>
 	),

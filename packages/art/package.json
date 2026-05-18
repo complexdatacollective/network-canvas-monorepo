@@ -20,6 +20,7 @@
 		"d3-interpolate-path": "^2.3.0"
 	},
 	"devDependencies": {
+		"@codaco/fresco-ui": "workspace:*",
 		"@codaco/tailwind-config": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
 		"@storybook/addon-a11y": "^10.4.0",

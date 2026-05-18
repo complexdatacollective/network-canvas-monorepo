@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { CSSProperties } from "react";
 import { ProtocolCardMock } from "../../.storybook/ProtocolCardMock";
 import { Pattern } from "./Pattern";
+import { seedToDeepAccent } from "./palette";
 import { PATTERN_VARIANTS, type PatternVariant } from "./types";
 
 const meta = {
@@ -59,14 +60,14 @@ const DEFAULT_SEED_GRID = [
 	"alpha",
 	"delta",
 	"zeta",
+	"sigma",
 	"elm",
-	"moss",
-	"nest",
+	"pine",
 	"nu",
-	"upsilon",
-	"psi",
-	"beta",
+	"moss",
 	"gamma",
+	"xi",
+	"beta",
 	"epsilon",
 ] as const;
 
@@ -100,8 +101,8 @@ const PROTOCOL_NAMES = [
 	"Aging in Place",
 	"Faith and Belonging",
 	"Migration Pathways",
-	"Adolescent Friendships",
-	"Workplace Connections",
+	"Urban Mobility Survey",
+	"Family Networks 2024",
 ] as const;
 
 export const OnCardGrid: Story = {
@@ -115,7 +116,7 @@ export const OnCardGrid: Story = {
 			}}
 		>
 			{PROTOCOL_NAMES.map((name) => (
-				<ProtocolCardMock key={name} title={name}>
+				<ProtocolCardMock key={name} title={name} subheadingColor={seedToDeepAccent(name)}>
 					<Pattern seed={name} style={{ width: "100%", height: "100%" }} />
 				</ProtocolCardMock>
 			))}

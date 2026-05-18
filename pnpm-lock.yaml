@@ -1155,6 +1155,9 @@ importers:
         specifier: ^2.3.0
         version: 2.3.0
     devDependencies:
+      '@codaco/fresco-ui':
+        specifier: workspace:*
+        version: link:../fresco-ui
       '@codaco/tailwind-config':
         specifier: workspace:*
         version: link:../../tooling/tailwind
