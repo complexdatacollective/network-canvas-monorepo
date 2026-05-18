@@ -37,11 +37,15 @@ const renderFlow: Renderer = (rng, palette, w, h) => {
 };
 
 export const FlowPattern = ({ seed, width = 400, height = 250, className, style }: PatternProps) => {
-	const rng = useMemo(() => seedToRng(seed), [seed]);
-	const palette = useMemo(() => rngToPalette(rng), [rng]);
+	const { palette, content } = useMemo(() => {
+		const rng = seedToRng(seed);
+		const palette = rngToPalette(rng);
+		const content = renderFlow(rng, palette, width, height);
+		return { palette, content };
+	}, [seed, width, height]);
 	return (
 		<PatternSvg width={width} height={height} palette={palette} className={className} style={style}>
-			{renderFlow(rng, palette, width, height)}
+			{content}
 		</PatternSvg>
 	);
 };

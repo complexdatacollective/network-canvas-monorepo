@@ -55,31 +55,33 @@ export const AllVariants: Story = {
 	),
 };
 
-const SEED_GRID_SEEDS = [
+const DEFAULT_SEED_GRID = [
 	"alpha",
+	"delta",
+	"zeta",
+	"elm",
+	"moss",
+	"nest",
+	"nu",
+	"upsilon",
+	"psi",
 	"beta",
 	"gamma",
-	"delta",
 	"epsilon",
-	"zeta",
-	"eta",
-	"theta",
-	"iota",
-	"kappa",
-	"lambda",
-	"mu",
 ] as const;
 
 export const SeedGrid: Story = {
 	args: { variant: "dots", seed: "" },
 	argTypes: {
 		variant: { control: "select", options: PATTERN_VARIANTS },
+		seed: { control: "text", description: "Empty = balanced default; otherwise used as a prefix for 12 derived seeds" },
 	},
 	render: (args) => {
 		const v: PatternVariant = args.variant ?? "dots";
+		const seeds = args.seed ? Array.from({ length: 12 }, (_, i) => `${args.seed}-${i + 1}`) : DEFAULT_SEED_GRID;
 		return (
 			<div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, maxWidth: 900 }}>
-				{SEED_GRID_SEEDS.map((seed) => (
+				{seeds.map((seed) => (
 					<div key={seed}>
 						<div style={tileBox}>
 							<Pattern seed={seed} variant={v} style={{ width: "100%", height: "100%" }} />
@@ -93,13 +95,13 @@ export const SeedGrid: Story = {
 };
 
 const PROTOCOL_NAMES = [
-	"Family Networks 2024",
-	"Drug Use Among Young Adults",
-	"Migration Pathways",
-	"Social Capital Study",
 	"Health Worker Networks",
-	"Kinship and Caregiving",
+	"Drug Use Among Young Adults",
+	"Aging in Place",
+	"Faith and Belonging",
+	"Migration Pathways",
 	"Adolescent Friendships",
+	"Workplace Connections",
 ] as const;
 
 export const OnCardGrid: Story = {
