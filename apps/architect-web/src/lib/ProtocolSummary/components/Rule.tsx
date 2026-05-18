@@ -10,7 +10,7 @@ type RuleProps = {
 };
 
 const Rule = ({ type, options }: RuleProps) => (
-  <RuleText type={type} options={options} />
+  <RuleText summary type={type} options={options} />
 );
 
 // The withDisplayOptions HOC will inject the codebook prop

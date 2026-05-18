@@ -10,7 +10,7 @@ type APIKeyProps = {
 };
 
 const APIKey = ({ meta = { value: '' } }: APIKeyProps) => (
-  <h1 style={{ wordWrap: 'break-word' }}>{meta.value}</h1>
+  <h1 className="wrap-break-word">{meta.value}</h1>
 );
 
 export default withAssetMeta(APIKey) as React.ComponentType<unknown>;

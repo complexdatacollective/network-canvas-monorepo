@@ -30,12 +30,22 @@ const PreviewRule = ({
   onClick,
   handleDelete,
 }: PreviewRuleProps) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      if (e.key === ' ') e.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <>
-      <button
-        type="button"
+      {/* biome-ignore lint/a11y/useSemanticElements: a real <button> would nest with the inner delete <button> */}
+      <div
+        role="button"
+        tabIndex={0}
         className="group hover:bg-surface-accent mx-auto flex min-h-(--space-3xl) w-[95%] cursor-pointer items-center rounded-(--radius) px-(--space-md) py-(--space-sm)"
         onClick={onClick}
+        onKeyDown={handleKeyDown}
         aria-label="Edit rule"
       >
         <div className="text-surface-1-foreground group-hover:text-primary-foreground flex w-full flex-1 items-center *:mx-(--space-sm) *:max-w-[24rem] [&_.variable-pill]:zoom-[0.8]">
@@ -43,12 +53,12 @@ const PreviewRule = ({
         </div>
         <button
           type="button"
-          className="bg-error [&_.icon_.cls-1]:fill-error-foreground [&_.icon_.cls-2]:fill-error-foreground ml-(--space-sm) flex size-(--space-lg) shrink-0 grow-0 cursor-pointer items-center justify-center overflow-hidden rounded-(--space-lg) border-0 opacity-0 transition-opacity duration-(--animation-duration-fast) ease-(--animation-easing) group-hover:opacity-100 [&_.icon]:size-(--space-md)"
+          className="bg-error text-error-foreground ml-(--space-sm) flex size-(--space-lg) shrink-0 grow-0 cursor-pointer items-center justify-center overflow-hidden rounded-(--space-lg) border-0 opacity-0 transition-opacity duration-(--animation-duration-fast) ease-(--animation-easing) group-hover:opacity-100 [&_.icon]:size-(--space-md)"
           onClick={handleDelete}
         >
           <Icon name="delete" />
         </button>
-      </button>
+      </div>
       {join && <Join value={join} />}
     </>
   );

@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react';
 
-import { cn } from '~/utils/cn';
+import { cx } from '~/utils/cva';
 
 import Icon from './Icon';
 
@@ -56,7 +56,7 @@ const computeButtonClasses = ({
   icon,
   iconPosition = 'left',
 }: ComputeClassesArgs) =>
-  cn(
+  cx(
     'inline-flex w-auto shrink-0 grow-0 items-center justify-center gap-2',
     // focus state
     'transition-color duration-200 ease-in-out',
@@ -113,7 +113,7 @@ const computeButtonClasses = ({
       'border-platinum-dark text-charcoal hover:bg-platinum bg-white',
     // variant overrides — must come after color block so conflicting utilities win
     variant === 'text' &&
-      'hover:bg-foreground/10 border-transparent bg-transparent text-current',
+      'border-transparent bg-transparent text-current hover:bg-current/10',
     // Icon position
     icon && iconPosition === 'left' && 'flex-row',
     icon && iconPosition === 'right' && 'flex-row-reverse',
@@ -149,7 +149,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     <button
       ref={ref}
       type={type}
-      className={cn(
+      className={cx(
         computeButtonClasses({ color, size, variant, icon, iconPosition }),
         className,
       )}
@@ -184,7 +184,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
     <button
       ref={ref}
       type={type}
-      className={cn(
+      className={cx(
         computeButtonClasses({ color, size, variant }),
         'aspect-square rounded-full p-0',
         size === 'small'

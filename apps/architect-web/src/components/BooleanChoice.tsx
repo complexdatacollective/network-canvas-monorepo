@@ -54,7 +54,7 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(({
   }, [form, formSelector, changeField]);
 
   return (
-    <div className="type-editor__subsection">
+    <div>
       <p>
         The BooleanChoice input component allows you to specify rich text labels
         for the two choices that your participant sees. Create a label for the

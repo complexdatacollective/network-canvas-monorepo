@@ -96,6 +96,7 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
               fieldName: 'label',
               component: Text,
               placeholder: 'Label',
+              variant: 'embedded',
             },
           ]}
           options={(

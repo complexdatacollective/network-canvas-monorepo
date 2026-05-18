@@ -132,7 +132,7 @@ const RuleEntity = ({ type, color, label }: RuleEntityProps) =>
     <PreviewNode color={color} label={label} size="xs" />
   );
 
-const PreviewText = ({ type, options }: PreviewTextProps) => {
+const PreviewText = ({ type, options, summary }: PreviewTextProps) => {
   if (type === 'ego') {
     return (
       <>
@@ -145,6 +145,7 @@ const PreviewText = ({ type, options }: PreviewTextProps) => {
         />
         <Copy>has</Copy>
         <SimpleVariablePill
+          summary={summary}
           label={options.attribute ?? ''}
           type={
             (options.variableType as
@@ -201,6 +202,7 @@ const PreviewText = ({ type, options }: PreviewTextProps) => {
       />
       <Copy>where</Copy>
       <SimpleVariablePill
+        summary={summary}
         label={options.attribute ?? ''}
         type={
           (options.variableType as
@@ -236,6 +238,7 @@ type PreviewTextOptions = {
 type PreviewTextProps = {
   type: string;
   options: PreviewTextOptions;
+  summary?: boolean;
 };
 
 export default PreviewText;

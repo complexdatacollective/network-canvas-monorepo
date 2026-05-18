@@ -24,6 +24,7 @@ type TextAreaProps = {
   label?: string | null;
   fieldLabel?: string | null;
   className?: string;
+  variant?: 'default' | 'embedded';
   placeholder?: string;
   hidden?: boolean;
 };
@@ -34,6 +35,7 @@ const TextArea = ({
   label = null,
   fieldLabel = null,
   className = '',
+  variant = 'default',
   placeholder = '',
   hidden = false,
 }: TextAreaProps) => {
@@ -45,7 +47,7 @@ const TextArea = ({
   return (
     <label
       htmlFor={id.current}
-      className="form-field-container block"
+      className="m-0 block w-full [&>h4]:m-0"
       hidden={hidden}
     >
       {(fieldLabel || label) && (
@@ -58,6 +60,8 @@ const TextArea = ({
             'form-field block resize-y placeholder:italic',
             'group-hover:border-b-input-active focus:border-b-input-active',
             hasError && 'border-error rounded-b-none border-2',
+            variant === 'embedded' &&
+              'm-0 rounded-(--radius) border-0 pb-(--space-sm)',
           )}
           placeholder={placeholder}
           {...input}

@@ -72,7 +72,7 @@ const Assets = ({
   return (
     <div>
       {!type && (
-        <div className="mb-(--space-md) [&_.form-field-container]:flex! [&_.form-field-container]:items-center [&_.form-field-container]:gap-(--space-md) [&_.form-field-container_h4]:m-0 [&_.form-field-container_h4]:flex-none">
+        <div className="mb-(--space-md)">
           <RadioGroup
             options={ASSET_TYPES}
             input={{
@@ -82,7 +82,7 @@ const Assets = ({
               value: assetType,
             }}
             label="Show types:"
-            className="mb-0! w-auto! flex-row! items-center! [&_label]:mr-(--space-md)! [&_label]:mb-0!"
+            orientation="horizontal"
           />
         </div>
       )}

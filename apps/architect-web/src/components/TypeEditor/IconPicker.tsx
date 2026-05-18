@@ -95,7 +95,7 @@ const IconPicker = ({
   const showError = invalid && touched && error;
 
   return (
-    <div className="form-field-container">
+    <div className="m-0 [&>h4]:m-0">
       <Combobox.Root<IconEntry>
         value={selectedEntry}
         filteredItems={filteredIcons}

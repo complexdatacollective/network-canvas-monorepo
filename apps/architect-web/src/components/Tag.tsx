@@ -1,6 +1,6 @@
 import type React from 'react';
 
-import { cn } from '~/utils/cn';
+import { cx } from '~/utils/cva';
 
 type TagProps = {
   id: string;
@@ -21,7 +21,7 @@ const Tag = ({
   light = false,
   disabled = false,
 }: TagProps) => {
-  const componentClasses = cn(
+  const componentClasses = cx(
     'bg-foreground/15 inline-flex items-center justify-center gap-2 rounded-full border-2 border-transparent px-2 py-1 text-xs font-semibold tracking-widest text-white uppercase',
     selected && 'bg-platinum text-surface-2-foreground',
     light && 'bg-platinum text-surface-2-foreground',
@@ -30,7 +30,7 @@ const Tag = ({
     onClick && !disabled && 'cursor-pointer',
   );
 
-  const dotClasses = cn(
+  const dotClasses = cx(
     'aspect-square h-auto w-3.75 shrink-0 rounded-full',
     color === 'neon-coral' && 'bg-neon-coral',
     color === 'sea-green' && 'bg-sea-green',

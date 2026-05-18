@@ -105,6 +105,7 @@ const Validation = ({
             <NumberField
               input={numberValueInputProps}
               validation={{ required: true }}
+              variant="embedded"
             />
           </div>
         )}

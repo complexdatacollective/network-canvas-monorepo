@@ -9,7 +9,7 @@ import { useAppDispatch } from '~/ducks/hooks';
 import { actionCreators } from '~/ducks/modules/activeProtocol';
 import { Button } from '~/lib/legacy-ui/components';
 import { getExperiments, getProtocol } from '~/selectors/protocol';
-import { cn } from '~/utils/cn';
+import { cx } from '~/utils/cva';
 
 const ExperimentsPage = () => {
   const [, setLocation] = useLocation();
@@ -48,13 +48,7 @@ const ExperimentsPage = () => {
     <div className="relative flex h-dvh flex-col">
       <div className="flex-1 overflow-y-auto">
         <Layout>
-          <div
-            className="flex flex-col gap-6"
-            style={{
-              margin: 'var(--space-xl) var(--space-5xl)',
-              maxWidth: '80rem',
-            }}
-          >
+          <div className="mx-auto my-(--space-xl) flex max-w-7xl flex-col gap-6 px-(--space-md) sm:px-(--space-lg) lg:px-(--space-5xl)">
             <div className="flex flex-col">
               <div className="flex items-center gap-3">
                 <div className="bg-mustard/20 rounded-lg p-2">
@@ -69,7 +63,7 @@ const ExperimentsPage = () => {
 
             <div className="flex flex-col gap-4">
               <div
-                className={cn(
+                className={cx(
                   'flex items-center gap-4 rounded-lg p-4 transition-colors',
                   isEncryptedEnabled
                     ? 'border-sea-green/50 bg-sea-green/10'

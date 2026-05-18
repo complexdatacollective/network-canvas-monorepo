@@ -147,7 +147,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
     | undefined;
 
   return (
-    <div className="page-break-marker" id={`stage-${id}`}>
+    <div className="page-break-marker break-before-page" id={`stage-${id}`}>
       <div className="overflow-hidden">
         <div className="flex items-center pb-(--space-xl)">
           <div className="me-(--space-md) flex-1">

@@ -1,7 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { Fragment } from 'react';
 
-import { cn } from '~/utils/cn';
+import { cx } from '~/utils/cva';
 
 export type BreadcrumbItem = {
   label: string;
@@ -31,7 +31,7 @@ const Breadcrumb = ({ items }: BreadcrumbProps) => (
           <button
             type="button"
             onClick={item.onClick}
-            className={cn(
+            className={cx(
               labelClasses,
               'hover:text-action cursor-pointer border-none bg-transparent p-0 transition-colors',
             )}

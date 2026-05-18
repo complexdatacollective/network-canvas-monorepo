@@ -20,6 +20,7 @@ type RadioGroupProps = {
     onChange: (value: unknown) => void;
   };
   className?: string | null;
+  orientation?: 'vertical' | 'horizontal';
   fieldLabel?: string | null;
   meta?: {
     error?: string;
@@ -42,6 +43,7 @@ const RadioGroup = ({
   label = null,
   input,
   className = null,
+  orientation = 'vertical',
   fieldLabel = null,
   meta = {},
   optionComponent: OptionComponent = Radio,
@@ -89,11 +91,20 @@ const RadioGroup = ({
   const anyLabel = fieldLabel || label;
 
   return (
-    <div className="form-field-container">
+    <div
+      className={cx(
+        'm-0 [&>h4]:m-0',
+        orientation === 'horizontal' &&
+          'flex items-center gap-(--space-md) [&>h4]:flex-none',
+      )}
+    >
       {anyLabel && <MarkdownLabel label={anyLabel} />}
       <div
         className={cx(
-          'form-field flex flex-col',
+          'form-field',
+          orientation === 'vertical'
+            ? 'flex flex-col'
+            : 'mb-0 flex w-auto flex-row items-center [&_label]:mr-(--space-md) [&_label]:mb-0',
           hasError && 'border-error mb-0 border-2',
           className,
         )}

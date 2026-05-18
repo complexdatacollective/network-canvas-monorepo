@@ -1,23 +1,33 @@
-import cx from 'classnames';
 import type React from 'react';
 
 import withAssetUrl from '~/components/Assets/withAssetUrl';
+import { cx } from '~/utils/cva';
 
-import { thumbnailBase } from './styles';
+import {
+  thumbnailBase,
+  thumbnailFullWidth,
+  thumbnailInteractive,
+} from './styles';
 
 type ImageThumbnailProps = {
   url?: string;
   contain?: boolean;
+  interactive?: boolean;
+  fullWidth?: boolean;
 } & React.HTMLAttributes<HTMLDivElement>;
 
 const ImageThumbnail = ({
   url,
   contain: _contain = false,
+  interactive,
+  fullWidth,
   ...props
 }: ImageThumbnailProps) => {
   const className = cx(
     thumbnailBase,
     'h-(--space-6xl) bg-contain bg-center bg-no-repeat',
+    fullWidth && thumbnailFullWidth,
+    interactive && thumbnailInteractive,
   );
   return (
     <div

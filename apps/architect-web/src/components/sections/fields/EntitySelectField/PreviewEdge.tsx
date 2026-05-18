@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 import { Icon } from '~/lib/legacy-ui/components';
 import { cx } from '~/utils/cva';
 
@@ -16,9 +18,15 @@ const PreviewEdge = ({
   selected = false,
   surface = 1,
 }: PreviewEdgeProps) => {
+  const wrapperStyle = {
+    '--edge-color': `hsl(var(--${color}))`,
+    '--icon-tone-primary': `hsl(var(--${color}-dark))`,
+    '--icon-tone-secondary': `hsl(var(--${color}))`,
+  } as CSSProperties;
+
   const content = (
     <>
-      <Icon name="links" color={color} />
+      <Icon name="links" />
       {label}
     </>
   );
@@ -36,7 +44,7 @@ const PreviewEdge = ({
       <button
         type="button"
         className={cx(baseClasses, surfaceClasses, 'clickable')}
-        style={{ '--edge-color': `var(--${color})` } as React.CSSProperties}
+        style={wrapperStyle}
         onClick={onClick}
         aria-label={`Select edge ${label}`}
       >
@@ -52,7 +60,7 @@ const PreviewEdge = ({
         surfaceClasses,
         selected && 'pointer-events-none border-(--edge-color)',
       )}
-      style={{ '--edge-color': `var(--${color})` } as React.CSSProperties}
+      style={wrapperStyle}
     >
       {content}
     </div>

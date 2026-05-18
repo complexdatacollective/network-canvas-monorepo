@@ -16,7 +16,11 @@ import Button from '~/lib/legacy-ui/components/Button';
 
 import { flattenIssues, getFieldId } from '../utils/issues';
 import scrollTo from '../utils/scrollTo';
-import Popover from './NewComponents/Popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from './NewComponents/Popover';
 import { formName } from './StageEditor/configuration';
 
 export type IssuesHandle = {
@@ -79,10 +83,9 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
 
   if (!hasIssues || !submitFailed) return null;
 
-  const handleClickIssue = (e: React.MouseEvent) => {
+  const handleClickIssue = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    const target = e.target as HTMLElement;
-    const link = target.closest('a')?.getAttribute('href');
+    const link = e.currentTarget.getAttribute('href');
     if (link) {
       const destination = document.querySelector(link);
       if (destination instanceof HTMLElement) {
@@ -93,46 +96,46 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
   };
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={setOpen}
-      side="top"
-      align="start"
-      sideOffset={8}
-      className="bg-sea-serpent text-primary-foreground max-w-lg min-w-md"
-      trigger={
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
         <Button color="sea-serpent" icon={<TriangleAlert />}>
           Issues ({issueCount})
         </Button>
-      }
-    >
-      <div className="border-sea-serpent-dark/40 flex items-center gap-(--space-md) border-b px-(--space-md) py-3">
-        <TriangleAlert className="size-4 shrink-0" aria-hidden />
-        <span className="text-sm font-semibold tracking-wider uppercase">
-          Issues ({issueCount})
-        </span>
-      </div>
-      <ol className="m-0 list-none overflow-y-auto p-0 [counter-reset:issue]">
-        {map(flatIssues, ({ field, issue }) => {
-          const fieldId = getFieldId(field);
-          return (
-            // `issues__issue` marker is preserved for the Issues.test.tsx selector.
-            <li
-              key={fieldId}
-              className="issues__issue hover:bg-sea-serpent-dark m-0 bg-transparent p-0 transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)"
-            >
-              <a
-                href={`#${fieldId}`}
-                onClick={handleClickIssue}
-                className="text-primary-foreground block w-full px-(--space-md) py-(--space-sm) no-underline before:mr-(--space-sm) before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
+      </PopoverTrigger>
+      <PopoverContent
+        side="top"
+        align="start"
+        sideOffset={8}
+        className="bg-sea-serpent text-primary-foreground max-w-lg min-w-md"
+      >
+        <div className="border-sea-serpent-dark/40 flex items-center gap-(--space-md) border-b px-(--space-md) py-3">
+          <TriangleAlert className="size-4 shrink-0" aria-hidden />
+          <span className="text-sm font-semibold tracking-wider uppercase">
+            Issues ({issueCount})
+          </span>
+        </div>
+        <ol className="m-0 list-none overflow-y-auto p-0 [counter-reset:issue]">
+          {map(flatIssues, ({ field, issue }) => {
+            const fieldId = getFieldId(field);
+            return (
+              <li
+                key={fieldId}
+                data-testid="issue"
+                className="hover:bg-sea-serpent-dark m-0 bg-transparent p-0 transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)"
               >
-                <span ref={(el) => setIssueRef(el, fieldId)}>{field}</span> -{' '}
-                {issue}
-              </a>
-            </li>
-          );
-        })}
-      </ol>
+                <a
+                  href={`#${fieldId}`}
+                  onClick={handleClickIssue}
+                  className="text-primary-foreground block w-full px-(--space-md) py-(--space-sm) no-underline before:mr-(--space-sm) before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
+                >
+                  <span ref={(el) => setIssueRef(el, fieldId)}>{field}</span> -{' '}
+                  {issue}
+                </a>
+              </li>
+            );
+          })}
+        </ol>
+      </PopoverContent>
     </Popover>
   );
 });

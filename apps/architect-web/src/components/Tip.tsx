@@ -11,8 +11,9 @@ type TipProps = {
 };
 
 const typeClasses: Record<NonNullable<TipProps['type']>, string> = {
-  // `cls-3`/`cls-4` target paths inside the info icon SVG.
-  info: 'bg-info/25 text-navy-taupe [&_.cls-3]:fill-white [&_.cls-4]:fill-platinum',
+  // Swap the info icon's "speech bubble" tones for a lighter pair so the icon
+  // reads against the tinted Tip background. See info.svg.react.tsx.
+  info: 'bg-info/25 text-navy-taupe [--info-fill-primary:var(--color-white)] [--info-fill-shadow:var(--color-platinum)]',
   warning: 'bg-warning/10',
   error: 'bg-error/10',
 };
@@ -29,11 +30,8 @@ const Tip = ({ type = 'info', icon = true, children = null }: TipProps) => {
     >
       {icon && (
         <motion.div
-          className="shrink-0"
+          className="shrink-0 origin-center"
           animate={animation}
-          style={{
-            transformOrigin: 'center',
-          }}
           onViewportEnter={() =>
             animation.start({
               rotate: [-15, 10, -7, 0],
@@ -44,14 +42,7 @@ const Tip = ({ type = 'info', icon = true, children = null }: TipProps) => {
             })
           }
         >
-          {/* Inline size beats `.icon[name="info"]` in legacy-ui icons.css (5rem). */}
-          <Icon
-            name={type}
-            style={{
-              width: 'var(--space-xl)',
-              height: 'var(--space-xl)',
-            }}
-          />
+          <Icon name={type} className="size-(--space-xl)" />
         </motion.div>
       )}
       <div>{children}</div>

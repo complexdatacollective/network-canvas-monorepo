@@ -22,7 +22,7 @@ import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
 import Button, { IconButton } from '~/lib/legacy-ui/components/Button';
 import { getCanRedo, getCanUndo, getProtocolName } from '~/selectors/protocol';
-import { cn } from '~/utils/cn';
+import { cx } from '~/utils/cva';
 
 import ActionToolbar from './ActionToolbar';
 import Breadcrumb, { type BreadcrumbItem } from './Breadcrumb';
@@ -101,7 +101,7 @@ const ProjectNav = ({ extraActions }: ProjectNavProps) => {
             key={href}
             href={href}
             aria-current={isActive ? 'page' : undefined}
-            className={cn(
+            className={cx(
               'relative cursor-pointer text-base leading-none font-semibold text-current no-underline transition-colors',
               !isActive && 'hover:text-action',
             )}
@@ -140,7 +140,6 @@ const ProjectNav = ({ extraActions }: ProjectNavProps) => {
               onClick={handleUndo}
               disabled={!canUndo}
               aria-label="Undo"
-              className="hover:bg-current/10"
             />
             <IconButton
               variant="text"
@@ -148,7 +147,6 @@ const ProjectNav = ({ extraActions }: ProjectNavProps) => {
               onClick={handleRedo}
               disabled={!canRedo}
               aria-label="Redo"
-              className="hover:bg-current/10"
             />
           </>
         )}

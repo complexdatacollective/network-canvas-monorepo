@@ -83,12 +83,7 @@ const FileInput = ({
   };
 
   return (
-    <div
-      className={cx(
-        'form-field form-field-container relative block',
-        className,
-      )}
-    >
+    <div className={cx('form-field relative m-0 block [&>h4]:m-0', className)}>
       {label && <h4 className="h3">{label}</h4>}
       {invalid && touched && (
         <div className="text-error flex items-center px-(--space-xs) py-(--space-sm) [&_.icon]:mr-(--space-sm) [&_.icon]:size-(--space-md)">

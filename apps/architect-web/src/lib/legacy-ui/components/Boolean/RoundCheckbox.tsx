@@ -23,7 +23,7 @@ const RoundCheckbox = ({
       checked && (negative ? 'bg-error' : 'bg-input-active'),
     )}
   >
-    <Icon name={negative ? 'cross' : 'tick'} color="white" />
+    <Icon name={negative ? 'cross' : 'tick'} className="text-white" />
   </div>
 );
 

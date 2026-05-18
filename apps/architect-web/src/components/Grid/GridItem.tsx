@@ -34,7 +34,7 @@ const GridItem = ({
     <div>
       <Flipped flipId={flipId}>
         <div className="bg-sortable-background text-sortable-foreground absolute flex size-full items-stretch justify-start overflow-hidden rounded">
-          <div className="[&_.assets]:bg-sortable-background [&_.assets]:text-sortable-foreground flex grow basis-full items-center overflow-y-auto px-(--space-xl) py-(--space-md) [&_.assets]:h-auto [&_div]:size-full">
+          <div className="flex grow basis-full items-center overflow-y-auto px-(--space-xl) py-(--space-md) [&_div]:size-full">
             <PreviewComponent
               id={id}
               // eslint-disable-next-line react/jsx-props-no-spreading
@@ -43,23 +43,15 @@ const GridItem = ({
           </div>
           <div className="flex flex-initial items-center gap-(--space-sm) p-(--space-sm)">
             <button
-              className="hover:bg-foreground/10 flex cursor-pointer items-center justify-center rounded-xs border-none bg-transparent p-(--space-sm) text-inherit transition-colors duration-(--animation-duration-fast) ease-(--animation-easing) [&_.icon]:size-(--space-md)!"
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                onEditItem(fieldId);
-              }}
+              className="grid-item-action hover:bg-foreground/10 flex cursor-pointer items-center justify-center rounded-xs border-none bg-transparent p-(--space-sm) text-inherit transition-colors duration-(--animation-duration-fast) ease-(--animation-easing) [&_.icon]:size-(--space-md)!"
+              onClick={() => onEditItem(fieldId)}
               type="button"
             >
-              <Icon name="edit" color="sea-green" />
+              <Icon name="edit" />
             </button>
             <button
-              className="hover:bg-error/20 [&_.icon_.cls-1]:fill-sortable-foreground [&_.icon_.cls-2]:fill-sortable-foreground ml-(--space-sm) flex cursor-pointer items-center justify-center rounded-xs border-none bg-transparent p-(--space-sm) text-inherit transition-colors duration-(--animation-duration-fast) ease-(--animation-easing) [&_.icon]:size-(--space-md)!"
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                fields.remove(index);
-              }}
+              className="grid-item-action hover:bg-error/20 ml-(--space-sm) flex cursor-pointer items-center justify-center rounded-xs border-none bg-transparent p-(--space-sm) text-inherit transition-colors duration-(--animation-duration-fast) ease-(--animation-easing) [&_.icon]:size-(--space-md)!"
+              onClick={() => fields.remove(index)}
               type="button"
             >
               <Icon name="delete" />

@@ -100,6 +100,7 @@ const CardDisplayOptions = ({
                 fieldName: 'label',
                 component: Text,
                 placeholder: 'Label',
+                variant: 'embedded',
               },
             ]}
             options={(

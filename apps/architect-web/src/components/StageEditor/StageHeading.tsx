@@ -5,7 +5,7 @@ import type { StageType } from '@codaco/protocol-validation';
 import Badge from '~/components/Badge';
 import ExternalLink from '~/components/ExternalLink';
 import timelineImages from '~/images/timeline';
-import { cn } from '~/utils/cn';
+import { cx } from '~/utils/cva';
 
 import { useFormContext } from '../Editor';
 import ValidatedField from '../Form/ValidatedField';
@@ -54,7 +54,7 @@ const HeadingInput = ({
         aria-label="Stage name"
         aria-invalid={hasError}
         aria-describedby={hasError ? errorId : undefined}
-        className={cn(
+        className={cx(
           'h1 my-0 w-full border-none bg-transparent p-0 outline-none placeholder:opacity-40',
           hasError && 'text-error',
         )}

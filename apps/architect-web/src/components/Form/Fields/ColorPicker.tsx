@@ -76,7 +76,7 @@ const ColorPicker = ({
   const showError = invalid && touched && error;
 
   return (
-    <div className="form-field-container">
+    <div className="m-0 [&>h4]:m-0">
       <div>
         {label && (
           <div className="font-heading text-foreground mt-(--space-xl) mb-(--space-md) font-semibold">

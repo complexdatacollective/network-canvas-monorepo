@@ -49,7 +49,7 @@ const ItemEditor = ({ type, handleChangeType }: ItemEditorProps) => (
     </Section>
     {type && (
       <Section title="Content" layout="vertical">
-        <Row disabled={!type}>
+        <Row>
           <IssueAnchor fieldName="content" description="Content" />
           <ValidatedField
             name="content"

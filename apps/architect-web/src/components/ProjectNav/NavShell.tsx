@@ -2,7 +2,7 @@ import type React from 'react';
 
 import Brand from '~/components/Brand';
 import { useReturnToStartDialog } from '~/hooks/useReturnToStartDialog';
-import { cn } from '~/utils/cn';
+import { cx } from '~/utils/cva';
 
 export const NAV_SURFACE =
   'pointer-events-auto bg-fresco-purple text-fresco-purple-foreground shadow-lg';
@@ -17,7 +17,7 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
   return (
     <header className="pointer-events-none sticky top-0 z-(--z-global-ui) w-full px-4 py-(--space-md) sm:px-6 print:static print:hidden">
       <div
-        className={cn(
+        className={cx(
           NAV_SURFACE,
           'mx-auto flex max-w-7xl flex-wrap items-center gap-(--space-md) rounded-full py-3 pr-6 pl-2 sm:pr-10 sm:pl-3',
         )}

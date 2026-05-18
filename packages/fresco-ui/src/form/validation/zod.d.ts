@@ -19,4 +19,3 @@ declare module 'zod/mini' {
 }
 
 // forces TypeScript to consider the file a module
-export {};

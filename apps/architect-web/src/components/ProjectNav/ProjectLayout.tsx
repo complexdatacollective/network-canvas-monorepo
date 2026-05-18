@@ -1,7 +1,7 @@
 import type React from 'react';
 
 import ProjectNav from '~/components/ProjectNav/ProjectNav';
-import { cn } from '~/utils/cn';
+import { cx } from '~/utils/cva';
 
 type ProjectLayoutProps = {
   children: React.ReactNode;
@@ -15,7 +15,7 @@ const ProjectLayout = ({
   extraActions,
 }: ProjectLayoutProps) => (
   <div
-    className={cn(
+    className={cx(
       'relative h-dvh overflow-y-auto pb-32 print:h-auto print:overflow-visible print:pb-0',
       className,
     )}

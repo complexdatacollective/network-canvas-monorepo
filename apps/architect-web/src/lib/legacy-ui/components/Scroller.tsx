@@ -53,9 +53,12 @@ const Scroller = React.forwardRef<ScrollerRef, ScrollerProps>(
 
     return (
       <div
-        className={cx('scrollable flex-1', className)}
+        className={cx(
+          'scrollable flex-1',
+          useSmoothScrolling ? 'scroll-smooth' : 'scroll-auto',
+          className,
+        )}
         onScroll={handleScroll}
-        style={{ scrollBehavior: useSmoothScrolling ? 'smooth' : 'unset' }}
         ref={scrollableRef}
       >
         {children}

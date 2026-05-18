@@ -19,7 +19,7 @@ const ConnectedQuery = (
   withStoreConnector(
     Query as unknown as React.ComponentType,
   ) as unknown as React.ComponentType,
-);
+) as React.ComponentType<Record<string, unknown>>;
 
 const SkipLogicFields = () => (
   <>
@@ -33,7 +33,6 @@ const SkipLogicFields = () => (
         component={RadioGroup as React.ComponentType<Record<string, unknown>>}
         validation={{ required: true }}
         componentProps={{
-          className: 'form-fields-select',
           options: [
             { value: 'SHOW', label: 'Show this stage if' },
             { value: 'SKIP', label: 'Skip this stage if' },
