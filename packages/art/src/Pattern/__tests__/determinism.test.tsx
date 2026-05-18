@@ -6,6 +6,7 @@ import { FlowPattern } from "../variants/Flow";
 import { RingsPattern } from "../variants/Rings";
 import { SquigglesPattern } from "../variants/Squiggles";
 import { TilesPattern } from "../variants/Tiles";
+import { TruchetPattern } from "../variants/Truchet";
 
 describe("determinism", () => {
 	describe("DotsPattern", () => {
@@ -119,6 +120,26 @@ describe("determinism", () => {
 
 		it("matches snapshot for the determinism fixture seed", () => {
 			const markup = renderToStaticMarkup(<CrossesPattern seed="determinism-fixture" width={400} height={250} />);
+			expect(markup).toMatchSnapshot();
+		});
+	});
+
+	describe("TruchetPattern", () => {
+		it("produces identical markup on repeat renders with the same seed", () => {
+			const a = renderToStaticMarkup(<TruchetPattern seed="fixture" width={400} height={250} />);
+			const b = renderToStaticMarkup(<TruchetPattern seed="fixture" width={400} height={250} />);
+			expect(a).toBe(b);
+		});
+
+		it("renders an svg with arc paths", () => {
+			const markup = renderToStaticMarkup(<TruchetPattern seed="fixture" width={400} height={250} />);
+			expect(markup.startsWith("<svg")).toBe(true);
+			expect(markup).toContain("<path");
+			expect(markup).toContain("A ");
+		});
+
+		it("matches snapshot for the determinism fixture seed", () => {
+			const markup = renderToStaticMarkup(<TruchetPattern seed="determinism-fixture" width={400} height={250} />);
 			expect(markup).toMatchSnapshot();
 		});
 	});
