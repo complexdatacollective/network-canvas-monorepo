@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NC_PALETTE, rngToPalette } from "../palette";
+import { BASE_PALETTE, NC_PALETTE, rngToPalette } from "../palette";
 import { seedToRng } from "../seed";
 
 const parseOklch = (s: string) => {
@@ -9,14 +9,14 @@ const parseOklch = (s: string) => {
 };
 
 describe("rngToPalette", () => {
-	it("returns 3 distinct vivid colors sourced from NC_PALETTE", () => {
+	it("foreground is sourced from BASE_PALETTE; accent/highlight are distinct entries from NC_PALETTE", () => {
 		const palette = rngToPalette(seedToRng("alice"));
-		const vivid = [palette.foreground, palette.accent, palette.highlight];
-		expect(new Set(vivid).size).toBe(3);
+		const baseOklch = new Set(BASE_PALETTE.map((c) => `oklch(${c.l} ${c.c} ${c.h})`));
 		const ncOklch = new Set(NC_PALETTE.map((c) => `oklch(${c.l} ${c.c} ${c.h})`));
-		for (const color of vivid) {
-			expect(ncOklch.has(color)).toBe(true);
-		}
+		expect(baseOklch.has(palette.foreground)).toBe(true);
+		expect(ncOklch.has(palette.accent)).toBe(true);
+		expect(ncOklch.has(palette.highlight)).toBe(true);
+		expect(palette.accent).not.toEqual(palette.highlight);
 	});
 
 	it("derives a high-lightness, low-chroma background", () => {

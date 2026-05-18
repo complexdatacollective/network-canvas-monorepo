@@ -17,6 +17,17 @@ export const NC_PALETTE: readonly NCColor[] = [
 	{ name: "tomato", l: 0.5599, c: 0.25, h: 23.69 },
 ] as const;
 
+// Restricted base palette that drives the foreground + background pair.
+// Foreground uses the base at full strength; background is the same hue
+// tinted to a soft surface (high L, low C). Tuple type makes index 0
+// non-undefined so the `?? BASE_PALETTE[0]` fallback is well-typed.
+export const BASE_PALETTE = [
+	{ name: "neon-coral", l: 0.5733, c: 0.2584, h: 11.57 },
+	{ name: "mustard", l: 0.81, c: 0.17, h: 86.39 },
+	{ name: "sea-green", l: 0.7, c: 0.2, h: 171.52 },
+	{ name: "slate-blue", l: 0.55, c: 0.198, h: 281 },
+] as const;
+
 const toOklch = ({ l, c, h }: NCColor): string => `oklch(${l} ${c} ${h})`;
 
 function getPaletteColor(idx: number): NCColor {
@@ -28,9 +39,11 @@ function getPaletteColor(idx: number): NCColor {
 }
 
 export function rngToPalette(rng: Rng): Palette {
+	const baseIdx = Math.floor(rng() * BASE_PALETTE.length);
+	const base = BASE_PALETTE[baseIdx] ?? BASE_PALETTE[0];
+
 	const paletteLength = NC_PALETTE.length;
 	const indices: number[] = Array.from({ length: paletteLength }, (_, i) => i);
-
 	for (let i = indices.length - 1; i > 0; i--) {
 		const j = Math.floor(rng() * (i + 1));
 		const valAtI = indices[i];
@@ -41,20 +54,18 @@ export function rngToPalette(rng: Rng): Palette {
 		}
 	}
 
-	const fgIdx = indices.at(0);
-	const accentIdx = indices.at(1);
-	const highlightIdx = indices.at(2);
-	if (fgIdx === undefined || accentIdx === undefined || highlightIdx === undefined) {
+	const accentIdx = indices.at(0);
+	const highlightIdx = indices.at(1);
+	if (accentIdx === undefined || highlightIdx === undefined) {
 		throw new Error("Failed to initialize palette indices");
 	}
-	const fg = getPaletteColor(fgIdx);
 	const accent = getPaletteColor(accentIdx);
 	const highlight = getPaletteColor(highlightIdx);
-	const bgChroma = Number((fg.c * 0.18).toFixed(3));
+	const bgChroma = Number((base.c * 0.18).toFixed(3));
 	return {
-		foreground: toOklch(fg),
+		foreground: toOklch(base),
 		accent: toOklch(accent),
 		highlight: toOklch(highlight),
-		background: `oklch(0.94 ${bgChroma} ${fg.h})`,
+		background: `oklch(0.94 ${bgChroma} ${base.h})`,
 	};
 }
