@@ -37,6 +37,7 @@
 		"storybook": "^10.4.0",
 		"tailwindcss": "catalog:",
 		"typescript": "catalog:",
+		"vite": "catalog:",
 		"vitest": "catalog:"
 	},
 	"peerDependencies": {
