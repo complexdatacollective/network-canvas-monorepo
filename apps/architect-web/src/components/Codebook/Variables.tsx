@@ -1,4 +1,5 @@
 import { get, isString } from 'es-toolkit/compat';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import {
   compose,
@@ -10,7 +11,6 @@ import { connect } from 'react-redux';
 
 import { actionCreators as dialogActionCreators } from '~/ducks/modules/dialogs';
 import { deleteVariableAsync } from '~/ducks/modules/protocol/codebook';
-import { cx } from '~/utils/cva';
 
 import EditableVariablePill from '../Form/Fields/VariablePicker/VariablePill';
 import ControlsColumn from './ControlsColumn';
@@ -25,8 +25,6 @@ type SortDirectionType = typeof SortDirection.ASC;
 
 const reverseSort = (direction: SortDirectionType) =>
   direction === SortDirection.ASC ? SortDirection.DESC : SortDirection.ASC;
-
-const rowClassName = (index: number) => (index % 2 === 0 ? 'bg-surface-3' : '');
 
 type HeadingProps = {
   children: React.ReactNode;
@@ -50,21 +48,21 @@ const Heading = ({
   const newSortDirection = !isSorted
     ? SortDirection.ASC
     : reverseSort(sortDirection);
-  const sortClasses = cx(
-    'relative ml-(--space-sm) inline-block size-(--space-md)',
-    'after:text-action after:absolute after:top-[-0.15rem] after:block after:text-xl',
-    sortDirection === SortDirection.ASC
-      ? 'after:[content:"\\25BE"]'
-      : 'after:[content:"\\25B4"]',
-  );
 
   return (
     <th
-      className="m-0 px-(--space-sm) py-(--space-md) text-left align-middle text-base normal-case"
+      className="m-0 px-(--space-sm) py-(--space-md) text-left align-middle text-base font-black normal-case"
       onClick={() => onSort({ sortBy: name, sortDirection: newSortDirection })}
     >
-      {children}
-      {isSorted && <div className={sortClasses} />}
+      <span className="inline-flex items-center gap-(--space-xs)">
+        {children}
+        {isSorted &&
+          (sortDirection === SortDirection.ASC ? (
+            <ChevronDown size={16} className="text-action" />
+          ) : (
+            <ChevronUp size={16} className="text-action" />
+          ))}
+      </span>
     </th>
   );
 };
@@ -111,7 +109,7 @@ const Variables = ({
     <div>
       <table className="mt-(--space-lg) w-full">
         <thead>
-          <tr className="border-divider border-b-[0.2rem]">
+          <tr>
             <Heading
               name="name"
               // eslint-disable-next-line react/jsx-props-no-spreading
@@ -138,18 +136,18 @@ const Variables = ({
           </tr>
         </thead>
         <tbody>
-          {variables.map(({ id, component, inUse, usage }, index) => (
-            <tr className={rowClassName(index)} key={id}>
-              <td className="m-0 px-(--space-sm) py-(--space-md) text-base">
+          {variables.map(({ id, component, inUse, usage }) => (
+            <tr key={id}>
+              <td className="m-0 px-(--space-sm) py-(--space-sm) text-base">
                 <EditableVariablePill uuid={id} width="25rem" />
               </td>
-              <td className="m-0 px-(--space-sm) py-(--space-md) text-base">
+              <td className="m-0 px-(--space-sm) py-(--space-sm) text-base">
                 {component}
               </td>
-              <td className="m-0 px-(--space-sm) py-(--space-md) text-base">
+              <td className="m-0 px-(--space-sm) py-(--space-sm) text-base">
                 <UsageColumn inUse={inUse} usage={usage} />
               </td>
-              <td className="m-0 px-(--space-sm) py-(--space-md) text-base">
+              <td className="m-0 px-(--space-sm) py-(--space-sm) text-base">
                 <ControlsColumn onDelete={onDelete} inUse={inUse} id={id} />
               </td>
             </tr>
@@ -276,7 +274,7 @@ const withSort = compose(
   ),
 );
 
-export { Heading, rowClassName, SortDirection, withSort };
+export { Heading, SortDirection, withSort };
 
 export default compose<ComponentProps<typeof Variables>, typeof Variables>(
   withVariableHandlers,

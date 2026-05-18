@@ -52,10 +52,14 @@ const AssetBrowser = ({
 
   return (
     <>
-      <Section title="Import a New Resource" layout={sectionLayout}>
+      <Section
+        title="Import a New Resource"
+        layout={sectionLayout}
+        required={false}
+      >
         <NewAsset onCreate={handleCreate} type={type} />
       </Section>
-      <Section title="Resource Library" layout={sectionLayout}>
+      <Section title="Resource Library" layout={sectionLayout} required={false}>
         <Assets
           onSelect={onSelect}
           onPreview={handleShowPreview}

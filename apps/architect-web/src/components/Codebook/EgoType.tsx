@@ -36,7 +36,7 @@ const EgoType = ({ variables = {} }: EgoTypeProps) => {
     Variables as unknown as React.ComponentType<VariablesComponentProps>;
 
   return (
-    <div className="bg-surface-3 mx-auto my-(--space-xl) overflow-hidden rounded p-(--space-xl)">
+    <div className="py-(--space-md)">
       {variableArray.length > 0 && (
         <div>
           <h3>Variables:</h3>
