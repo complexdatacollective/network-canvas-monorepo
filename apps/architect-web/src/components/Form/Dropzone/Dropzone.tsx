@@ -44,12 +44,12 @@ type DropzoneStateName =
   | 'disabled';
 
 const dropzoneVariants = cva({
-  base: 'bg-surface-accent relative isolate flex h-(--space-6xl) cursor-pointer items-center justify-center overflow-hidden rounded-(--space-lg) border-2 border-transparent p-(--space-2xl) text-base leading-normal transition-[border-color] duration-(--animation-duration-slow) ease-(--animation-easing)',
+  base: 'bg-surface-accent relative isolate flex h-(--space-6xl) cursor-pointer items-center justify-center overflow-hidden rounded-(--space-lg) border-4 border-dashed border-transparent p-(--space-2xl) text-base leading-normal transition-[border-color,background-color] duration-(--animation-duration-slow) ease-(--animation-easing)',
   variants: {
     state: {
       idle: '',
       active: 'cursor-default',
-      hover: 'border-info duration-(--animation-duration-fast)',
+      hover: 'border-action bg-action/10 duration-(--animation-duration-fast)',
       loading: 'cursor-wait',
       error: 'border-warning duration-(--animation-duration-fast)',
       disabled: '',
@@ -61,12 +61,12 @@ const dropzoneVariants = cva({
 });
 
 const labelVariants = cva({
-  base: 'relative z-2 text-white transition-opacity duration-(--animation-duration-standard) ease-(--animation-easing)',
+  base: 'relative z-2 text-white transition-[opacity,color] duration-(--animation-duration-standard) ease-(--animation-easing)',
   variants: {
     state: {
       idle: 'opacity-100',
       active: 'opacity-50',
-      hover: 'opacity-100',
+      hover: 'text-foreground opacity-100',
       loading: 'opacity-0',
       error: 'opacity-100',
       disabled: 'opacity-100',

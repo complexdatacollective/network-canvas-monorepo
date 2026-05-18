@@ -57,9 +57,13 @@ const Asset = ({
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      onClick?.(id);
+      if (onClick) {
+        onClick(id);
+      } else if (onPreview) {
+        onPreview(id);
+      }
     },
-    [onClick, id],
+    [onClick, onPreview, id],
   );
 
   const handleDelete = useCallback(
@@ -99,10 +103,14 @@ const Asset = ({
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        onClick?.(id);
+        if (onClick) {
+          onClick(id);
+        } else if (onPreview) {
+          onPreview(id);
+        }
       }
     },
-    [onClick, id],
+    [onClick, onPreview, id],
   );
 
   return (
@@ -110,36 +118,43 @@ const Asset = ({
       type="button"
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      className={cx('group relative size-full', onClick && 'cursor-pointer')}
+      className={cx(
+        'group relative size-full',
+        (onClick || onPreview) && 'cursor-pointer',
+      )}
     >
       <div className="flex size-full items-center justify-center">
-        <PreviewComponent id={id} interactive={!!onClick} fullWidth />
+        <PreviewComponent
+          id={id}
+          interactive={!!(onClick || onPreview)}
+          fullWidth
+        />
       </div>
 
       <div
         className={cx(
-          'bg-rich-black absolute top-(--space-sm) right-(--space-sm) flex items-center justify-center rounded-sm px-(--space-sm) pt-(--space-sm) pb-(--space-xs) opacity-0 transition-opacity duration-(--animation-duration-standard) ease-(--animation-easing) group-hover:opacity-100',
+          'bg-rich-black absolute top-(--space-sm) right-(--space-sm) flex items-center justify-center gap-(--space-sm) rounded-sm p-(--space-sm) opacity-0 transition-opacity duration-(--animation-duration-standard) ease-(--animation-easing) group-hover:opacity-100',
         )}
       >
         {onPreview && (
           <button
             type="button"
-            className="ml-(--space-sm) cursor-pointer text-white first:ml-0"
+            className="flex cursor-pointer items-center justify-center text-white"
             onClick={handlePreview}
             aria-label="Preview asset"
           >
-            <PreviewIcon />
+            <PreviewIcon className="size-5" />
           </button>
         )}
 
         {onDownload && (
           <button
             type="button"
-            className="ml-(--space-sm) cursor-pointer text-white first:ml-0"
+            className="flex cursor-pointer items-center justify-center text-white"
             onClick={handleDownload}
             aria-label="Download asset"
           >
-            <DownloadIcon />
+            <DownloadIcon className="size-5" />
           </button>
         )}
 
@@ -147,7 +162,7 @@ const Asset = ({
           <button
             type="button"
             className={cx(
-              'ml-(--space-sm) text-white first:ml-0',
+              'flex items-center justify-center text-white',
               isUsed ? 'cursor-not-allowed' : 'cursor-pointer',
             )}
             onClick={handleDelete}
@@ -160,7 +175,7 @@ const Asset = ({
               isUsed ? 'Cannot delete - asset in use' : 'Delete asset'
             }
           >
-            <DeleteIcon />
+            <DeleteIcon className="size-5" />
           </button>
         )}
       </div>
