@@ -4,7 +4,7 @@ import { seedToRng } from "../seed";
 
 const parseOklch = (s: string) => {
 	const m = /oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\)/.exec(s);
-	if (!m || !m[1] || !m[2] || !m[3]) throw new Error(`Not an oklch string: ${s}`);
+	if (!m?.[1] || !m[2] || !m[3]) throw new Error(`Not an oklch string: ${s}`);
 	return { l: Number.parseFloat(m[1]), c: Number.parseFloat(m[2]), h: Number.parseFloat(m[3]) };
 };
 
