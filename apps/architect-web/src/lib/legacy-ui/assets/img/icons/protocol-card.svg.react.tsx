@@ -12,7 +12,7 @@ export default function SVG(props: SVGProps<SVGSVGElement>) {
 				/>{" "}
 				<g id="NC-Flat">
 					{" "}
-					<circle fill="rgba(var(--navy-taupe---rgb), 0.5)" cx="118.4" cy="188.9" r="83.7" />{" "}
+					<circle fill="hsl(var(--navy-taupe) / 0.5)" cx="118.4" cy="188.9" r="83.7" />{" "}
 					<circle fill="var(--color-navy-taupe)" cx="118.4" cy="188.9" r="44.1" />{" "}
 					<g id="NC-Nodes">
 						{" "}
