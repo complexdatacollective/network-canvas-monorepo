@@ -1,131 +1,58 @@
-import { ChevronLeft, ChevronRight, Play, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
-import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import Button, { IconButton } from '@codaco/fresco-ui/Button';
-import TimeAgo from '@codaco/fresco-ui/TimeAgo';
-import Heading from '@codaco/fresco-ui/typography/Heading';
-import { cva } from '@codaco/fresco-ui/utils/cva';
+import { IconButton } from '@codaco/fresco-ui/Button';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
 
-// Render budget for the fanned stack: cards further than this offset from the
-// active index are skipped during render. Navigation still spans every protocol.
-const MAX_VISIBLE = 3;
-// Fan-out tuning. Offsets are percentages of the card's own size so the
-// fanned stack adapts when the deck container resizes (transform percentages
-// resolve against the transformed element's box). Original tuning at
-// 360×470 cards: 240px horizontal ≈ 66% width, 22px drop ≈ 4.7% height,
-// 10px hover peek ≈ 2.1% height.
-const FAN_OFFSET_PCT = 66;
-const FAN_DROP_PCT = 4.7;
-const FAN_PEEK_PCT = 2.1;
-const FAN_ROTATE = 5;
-const FAN_SCALE_STEP = 0.07;
-// Per-accent class bundle: cover gradient + ring-on-active. Indexed by the
-// same hash function so Tailwind can statically scan every variant. Tailwind
-// can't synthesise an arbitrary colour from a runtime string, so each accent
-// gets its own pre-baked class set rather than a single class with a CSS var.
-const ACCENT_CLASSES = [
-  {
-    cover:
-      'bg-[linear-gradient(140deg,var(--color-cerulean-blue),color-mix(in_srgb,var(--color-cerulean-blue)_50%,black))]',
-    ring: 'shadow-[0_30px_60px_oklch(0.10_0.05_281/0.7),0_0_0_2px_var(--color-cerulean-blue)]',
-  },
-  {
-    cover:
-      'bg-[linear-gradient(140deg,var(--color-paradise-pink),color-mix(in_srgb,var(--color-paradise-pink)_50%,black))]',
-    ring: 'shadow-[0_30px_60px_oklch(0.10_0.05_281/0.7),0_0_0_2px_var(--color-paradise-pink)]',
-  },
-  {
-    cover:
-      'bg-[linear-gradient(140deg,var(--color-mustard),color-mix(in_srgb,var(--color-mustard)_50%,black))]',
-    ring: 'shadow-[0_30px_60px_oklch(0.10_0.05_281/0.7),0_0_0_2px_var(--color-mustard)]',
-  },
-  {
-    cover:
-      'bg-[linear-gradient(140deg,var(--color-neon-carrot),color-mix(in_srgb,var(--color-neon-carrot)_50%,black))]',
-    ring: 'shadow-[0_30px_60px_oklch(0.10_0.05_281/0.7),0_0_0_2px_var(--color-neon-carrot)]',
-  },
-  {
-    cover:
-      'bg-[linear-gradient(140deg,var(--color-kiwi),color-mix(in_srgb,var(--color-kiwi)_50%,black))]',
-    ring: 'shadow-[0_30px_60px_oklch(0.10_0.05_281/0.7),0_0_0_2px_var(--color-kiwi)]',
-  },
-  {
-    cover:
-      'bg-[linear-gradient(140deg,var(--color-purple-pizazz),color-mix(in_srgb,var(--color-purple-pizazz)_50%,black))]',
-    ring: 'shadow-[0_30px_60px_oklch(0.10_0.05_281/0.7),0_0_0_2px_var(--color-purple-pizazz)]',
-  },
-  {
-    cover:
-      'bg-[linear-gradient(140deg,var(--color-sea-serpent),color-mix(in_srgb,var(--color-sea-serpent)_50%,black))]',
-    ring: 'shadow-[0_30px_60px_oklch(0.10_0.05_281/0.7),0_0_0_2px_var(--color-sea-serpent)]',
-  },
-];
-const INACTIVE_SHADOW = 'shadow-[0_20px_40px_oklch(0.10_0.05_281/0.5)]';
+import { DeckCard, type DeckEntry, SLOT_TO_CARD_RATIO } from './DeckCard';
+import { GLASS_PILL } from './TopActionBar';
+
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-type DeckEntry =
-  | { kind: 'protocol'; protocol: ProtocolWithCounts }
-  | { kind: 'import' };
+// ScrollTimeline isn't yet in TypeScript's lib.dom. Declared narrowly here.
+type ScrollTimelineCtor = new (options: {
+  source: Element;
+  axis?: 'block' | 'inline' | 'x' | 'y';
+}) => AnimationTimeline;
+const getScrollTimelineCtor = (): ScrollTimelineCtor | undefined => {
+  if (typeof globalThis === 'undefined') return undefined;
+  return (globalThis as unknown as { ScrollTimeline?: ScrollTimelineCtor })
+    .ScrollTimeline;
+};
 
 type ProtocolDeckProps = {
   protocols: ProtocolWithCounts[];
   sessions: StoredSession[];
+  initialProtocolHash?: string;
   onImport: () => void;
   onStartInterview: (protocolHash: string) => void;
 };
 
-const cardBase = cva({
-  base: [
-    'absolute top-0 left-1/2 cursor-pointer rounded-[3rem] text-left',
-    'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sea-green',
-  ].join(' '),
-});
-
-// Card dimensions scale with the deck container's available height.
-// Width derives from the original 360:470 aspect ratio. `h-[88%]` leaves room
-// at the bottom of the section for the fanned cards' y-translate (max abs is 3,
-// max drop ≈ 3 × 4.7% = 14.1% of the card's own height), so even the
-// furthest-out cards stay within the cards area.
-const CARD_SIZE_CLASS = 'h-[88%] aspect-[36/47] origin-[center_bottom]';
-
-const importCardClass = cva({
-  base: [
-    'flex flex-col items-center justify-center gap-3 border-[3px] border-dashed border-outline bg-background',
-    CARD_SIZE_CLASS,
-    'text-text/80',
-  ].join(' '),
-});
-
-const protocolCardClass = cva({
-  base: [
-    CARD_SIZE_CLASS,
-    'overflow-hidden border-0 bg-surface-1 p-0 text-text',
-  ].join(' '),
-});
-
-// `size="lg"` resolves to h-16 = 4 × --theme-root-size; in the interview
-// theme that's ~72px on tablet/desktop. The lucide override forces the
-// chevron to 32px regardless of Button's proportional icon sizing.
-const CHEVRON_BUTTON_CLASS =
-  'border-outline bg-surface/85 backdrop-blur-md shadow-md disabled:opacity-40 [&>.lucide]:!size-8';
-
-function pickAccentIndex(hash: string): number {
-  let total = 0;
-  for (let i = 0; i < hash.length; i += 1)
-    total = (total + hash.charCodeAt(i)) % ACCENT_CLASSES.length;
-  return total;
-}
-
 export function ProtocolDeck({
   protocols,
   sessions,
+  initialProtocolHash,
   onImport,
   onStartInterview,
 }: ProtocolDeckProps) {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
+  const CARD_HEIGHT_PCT = 0.88;
+  const CARD_ASPECT = 36 / 47;
+  // Small top inset so the deck sits below the header instead of hugging it.
+  const SECTION_PADDING = 24;
+  const [sectionSize, setSectionSize] = useState({ width: 0, height: 0 });
+  // Card height = CARD_HEIGHT_PCT of section's available block-size (border
+  // box minus our padding-top). Card width = height × aspect. Slot width =
+  // SLOT_TO_CARD_RATIO × card width — the fan spacing dial.
+  const innerHeight = Math.max(0, sectionSize.height - SECTION_PADDING * 2);
+  const cardHeight = Math.round(innerHeight * CARD_HEIGHT_PCT);
+  const cardWidth = Math.round(cardHeight * CARD_ASPECT);
+  const slotWidth = Math.round(cardWidth * SLOT_TO_CARD_RATIO);
+  const paddingInline = Math.max(0, (sectionSize.width - slotWidth) / 2);
 
   const deck = useMemo<DeckEntry[]>(() => {
     const entries: DeckEntry[] = protocols.map((p) => ({
@@ -136,15 +63,131 @@ export function ProtocolDeck({
     return entries;
   }, [protocols]);
 
-  // Clamp the active index when the deck shrinks (e.g., protocol deleted elsewhere).
+  // Per-protocol session count, hoisted here so DeckCard doesn't take the
+  // whole sessions array (which would break memo when other sessions change).
+  const sessionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const s of sessions) {
+      counts.set(s.protocolHash, (counts.get(s.protocolHash) ?? 0) + 1);
+    }
+    return counts;
+  }, [sessions]);
+
+  // Observe the section so slotWidth and paddingInline track its size. Read
+  // borderBoxSize — contentRect excludes our own paddingInline and would feed
+  // back into the calculation.
   useEffect(() => {
-    setActiveIdx((idx) => Math.min(idx, Math.max(deck.length - 1, 0)));
-  }, [deck.length]);
+    const el = sectionRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const box = entry.borderBoxSize?.[0];
+      const width = box?.inlineSize ?? entry.target.clientWidth;
+      const height = box?.blockSize ?? entry.target.clientHeight;
+      setSectionSize({ width, height });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Native scroll is the source of truth for which card is active. `Math.round`
+  // matches the browser's snap commit, so the CTA jumps to the next card the
+  // moment scroll-snap has decided.
+  //
+  // Trackpad scroll events on macOS fire at ~120Hz; without rAF coalescing
+  // each one queues a React state update, which dominates the frame budget.
+  // The ref-guard avoids dispatching setActiveIdx when the rounded index
+  // hasn't actually changed.
+  const activeIdxRef = useRef(0);
+  useEffect(() => {
+    activeIdxRef.current = activeIdx;
+  }, [activeIdx]);
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el || slotWidth === 0) return;
+    let rafId = 0;
+    const sync = () => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = 0;
+        const idx = Math.round(el.scrollLeft / slotWidth);
+        const clamped = Math.max(0, Math.min(deck.length - 1, idx));
+        if (clamped !== activeIdxRef.current) {
+          activeIdxRef.current = clamped;
+          setActiveIdx(clamped);
+        }
+      });
+    };
+    sync();
+    el.addEventListener('scroll', sync, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', sync);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [slotWidth, deck.length]);
+
+  const scrollToIndex = useCallback((idx: number) => {
+    const el = cardRefs.current[idx];
+    el?.scrollIntoView({
+      behavior: 'smooth',
+      inline: 'center',
+      block: 'nearest',
+    });
+  }, []);
+
+  // Slide the wrapper's perspective-origin so it tracks the scroll viewport's
+  // centre. Without this, perspective is anchored to the wrapper's middle (the
+  // middle of all scroll content) and cards near either end look distorted.
+  // ScrollTimeline drives this in the same compositor cycle as scroll input —
+  // no JS per frame.
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    const section = sectionRef.current;
+    if (!wrapper || !section) return;
+    if (sectionSize.width === 0) return;
+    const Ctor = getScrollTimelineCtor();
+    if (!Ctor) return;
+    const wrapperWidth = wrapper.scrollWidth;
+    const halfViewport = sectionSize.width / 2;
+    const timeline = new Ctor({ source: section, axis: 'inline' });
+    const animation = wrapper.animate(
+      [
+        { perspectiveOrigin: `${halfViewport}px 50%` },
+        { perspectiveOrigin: `${wrapperWidth - halfViewport}px 50%` },
+      ],
+      { timeline, fill: 'both' },
+    );
+    return () => animation.cancel();
+  }, [sectionSize.width, slotWidth, deck.length]);
+
+  // Land on the last-used protocol on first paint. We wait for slotWidth so
+  // layout has settled before scrolling, and only run once (didInitialScroll
+  // gates re-runs caused by setActiveIdx via the scroll listener).
+  const didInitialScroll = useRef(false);
+  useEffect(() => {
+    if (didInitialScroll.current) return;
+    if (!initialProtocolHash || slotWidth === 0) return;
+    const idx = protocols.findIndex((p) => p.hash === initialProtocolHash);
+    if (idx < 0) return;
+    didInitialScroll.current = true;
+    const el = cardRefs.current[idx];
+    el?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }, [initialProtocolHash, slotWidth, protocols]);
+
+  // If the deck shrinks under our feet, scroll the now-out-of-range index back
+  // into bounds. setActiveIdx happens via the scroll listener.
+  useEffect(() => {
+    if (deck.length === 0) return;
+    if (activeIdx > deck.length - 1) {
+      scrollToIndex(deck.length - 1);
+    }
+  }, [deck.length, activeIdx, scrollToIndex]);
 
   const handleActivate = useCallback(
     (idx: number) => {
       if (idx !== activeIdx) {
-        setActiveIdx(idx);
+        scrollToIndex(idx);
         return;
       }
       const entry = deck[idx];
@@ -155,7 +198,7 @@ export function ProtocolDeck({
       }
       onStartInterview(entry.protocol.hash);
     },
-    [activeIdx, deck, onImport, onStartInterview],
+    [activeIdx, deck, scrollToIndex, onImport, onStartInterview],
   );
 
   // Global ←/→/Enter cycle the deck — the deck is the primary affordance on
@@ -173,12 +216,12 @@ export function ProtocolDeck({
 
       if (event.key === 'ArrowLeft') {
         event.preventDefault();
-        setActiveIdx((idx) => Math.max(0, idx - 1));
+        scrollToIndex(Math.max(0, activeIdx - 1));
         return;
       }
       if (event.key === 'ArrowRight') {
         event.preventDefault();
-        setActiveIdx((idx) => Math.min(deck.length - 1, idx + 1));
+        scrollToIndex(Math.min(deck.length - 1, activeIdx + 1));
         return;
       }
       // Enter must not double-fire when focus is on an interactive control
@@ -198,7 +241,7 @@ export function ProtocolDeck({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [activeIdx, deck.length, handleActivate]);
+  }, [activeIdx, deck.length, scrollToIndex, handleActivate]);
 
   const atStart = activeIdx === 0;
   const atEnd = activeIdx === deck.length - 1;
@@ -208,28 +251,49 @@ export function ProtocolDeck({
       initial={{ opacity: 0, y: 36, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.75, delay: 0.65, ease: EASE }}
-      className="flex min-h-0 w-full flex-1 flex-col gap-8 [perspective:1800px]"
+      className="flex min-h-0 w-full flex-1 flex-col perspective-[1800px] transform-3d"
     >
       <section
+        ref={sectionRef}
         aria-label="Protocol deck"
-        className="relative min-h-0 w-full flex-1"
+        // The section is the SCROLLER. It can't host perspective itself
+        // because `overflow-x: auto` forces `transform-style: flat` per the
+        // CSS spec, breaking the 3D chain.
+        style={{ paddingBlock: SECTION_PADDING }}
+        className="relative min-h-0 w-full flex-1 touch-pan-x snap-x snap-proximity scrollbar-none overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden"
       >
-        {deck.map((entry, i) => {
-          const offset = i - activeIdx;
-          const abs = Math.abs(offset);
-          if (abs > MAX_VISIBLE) return null;
-          const isActive = offset === 0;
-          return (
+        {/* 3D wrapper — single shared perspective context for every card,
+            so 3D depth (translateZ in keyframes) is what stacks the fan,
+            not z-index or DOM order. `inline-flex` lets the wrapper grow to
+            the width of its slots so the section scrolls horizontally. */}
+        <div
+          ref={wrapperRef}
+          className="inline-flex h-full items-stretch perspective-[1800px] transform-3d"
+          style={{ paddingInline }}
+        >
+          {deck.map((entry, i) => (
             <DeckCard
               key={entry.kind === 'import' ? 'import' : entry.protocol.hash}
+              ref={(el) => {
+                cardRefs.current[i] = el;
+              }}
               entry={entry}
-              offset={offset}
-              isActive={isActive}
-              sessions={sessions}
-              onTap={() => handleActivate(i)}
+              index={i}
+              totalCards={deck.length}
+              sectionRef={sectionRef}
+              slotWidth={slotWidth}
+              cardWidth={cardWidth}
+              cardHeight={cardHeight}
+              isActive={i === activeIdx}
+              sessionCount={
+                entry.kind === 'protocol'
+                  ? (sessionCounts.get(entry.protocol.hash) ?? 0)
+                  : 0
+              }
+              onActivate={handleActivate}
             />
-          );
-        })}
+          ))}
+        </div>
       </section>
 
       {deck.length > 1 ? (
@@ -237,7 +301,7 @@ export function ProtocolDeck({
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 1.05, ease: EASE }}
-          className="z-[6] flex shrink-0 items-center justify-center gap-7"
+          className="z-6 flex shrink-0 items-center justify-center gap-7"
         >
           <motion.span
             whileHover={{ scale: 1.06 }}
@@ -250,9 +314,9 @@ export function ProtocolDeck({
               variant="text"
               icon={<ChevronLeft strokeWidth={2.8} aria-hidden />}
               aria-label="Previous protocol"
-              onClick={() => setActiveIdx((i) => Math.max(0, i - 1))}
+              onClick={() => scrollToIndex(Math.max(0, activeIdx - 1))}
               disabled={atStart}
-              className={CHEVRON_BUTTON_CLASS}
+              className={GLASS_PILL}
             />
           </motion.span>
           <div className="flex items-center gap-2.5">
@@ -260,11 +324,11 @@ export function ProtocolDeck({
               <button
                 key={entry.kind === 'import' ? 'import' : entry.protocol.hash}
                 type="button"
-                onClick={() => setActiveIdx(i)}
+                onClick={() => scrollToIndex(i)}
                 aria-label={`Go to card ${i + 1}`}
                 aria-current={i === activeIdx ? 'true' : undefined}
                 className={`h-3 cursor-pointer rounded-full border-0 p-0 transition-all duration-200 ${
-                  i === activeIdx ? 'bg-sea-green w-9' : 'bg-surface-2 w-3'
+                  i === activeIdx ? 'bg-sea-green w-9' : 'bg-outline w-3'
                 }`}
               />
             ))}
@@ -281,153 +345,13 @@ export function ProtocolDeck({
               icon={<ChevronRight strokeWidth={2.8} aria-hidden />}
               aria-label="Next protocol"
               onClick={() =>
-                setActiveIdx((i) => Math.min(deck.length - 1, i + 1))
+                scrollToIndex(Math.min(deck.length - 1, activeIdx + 1))
               }
               disabled={atEnd}
-              className={CHEVRON_BUTTON_CLASS}
+              className={GLASS_PILL}
             />
           </motion.span>
         </motion.div>
-      ) : null}
-    </motion.div>
-  );
-}
-
-type DeckCardProps = {
-  entry: DeckEntry;
-  offset: number;
-  isActive: boolean;
-  sessions: StoredSession[];
-  onTap: () => void;
-};
-
-function DeckCard({ entry, offset, isActive, sessions, onTap }: DeckCardProps) {
-  const abs = Math.abs(offset);
-  const variants = useMemo(
-    () => ({
-      rest: {
-        x: `calc(-50% + ${offset * FAN_OFFSET_PCT}%)`,
-        y: `${abs * FAN_DROP_PCT}%`,
-        rotate: offset * FAN_ROTATE,
-        scale: 1 - abs * FAN_SCALE_STEP,
-        opacity: abs > 2 ? 0.35 : 1,
-        zIndex: 10 - abs,
-      },
-      peek: {
-        y: `${abs * FAN_DROP_PCT - (isActive ? 0 : FAN_PEEK_PCT)}%`,
-        rotate: offset * FAN_ROTATE * 0.85,
-        scale: 1 - abs * FAN_SCALE_STEP + (isActive ? 0 : 0.025),
-      },
-    }),
-    [abs, isActive, offset],
-  );
-
-  const className = cardBase();
-
-  if (entry.kind === 'import') {
-    return (
-      <motion.button
-        type="button"
-        onClick={onTap}
-        className={`${className} ${importCardClass()}`}
-        variants={variants}
-        initial="rest"
-        animate="rest"
-        whileHover="peek"
-        whileFocus="peek"
-        transition={{ type: 'spring', stiffness: 280, damping: 26 }}
-        aria-label="Import a protocol"
-      >
-        <div className="bg-surface text-sea-green inline-flex h-[84px] w-[84px] items-center justify-center rounded-full">
-          <Plus size={36} strokeWidth={2.5} aria-hidden />
-        </div>
-        <Heading level="h2" margin="none" className="text-text font-black">
-          Import a protocol
-        </Heading>
-        <div className="px-8 text-center text-sm">
-          Add a <span className="font-monospace text-text">.netcanvas</span>{' '}
-          file
-        </div>
-      </motion.button>
-    );
-  }
-
-  const protocol = entry.protocol;
-  const accent = ACCENT_CLASSES[pickAccentIndex(protocol.hash)];
-  const sessionCount = sessions.filter(
-    (s) => s.protocolHash === protocol.hash,
-  ).length;
-  const shadowClass = isActive ? accent?.ring : INACTIVE_SHADOW;
-  const onCardKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onTap();
-    }
-  };
-
-  return (
-    <motion.div
-      role="button"
-      tabIndex={0}
-      onClick={onTap}
-      onKeyDown={onCardKeyDown}
-      className={`${className} ${protocolCardClass()} ${shadowClass ?? INACTIVE_SHADOW}`}
-      variants={variants}
-      initial="rest"
-      animate="rest"
-      whileHover="peek"
-      whileFocus="peek"
-      transition={{ type: 'spring', stiffness: 280, damping: 26 }}
-      aria-label={`${protocol.name}${isActive ? ' (active)' : ''}`}
-    >
-      {/* Cover — 200/470 of original card height */}
-      <div
-        className={`relative h-[42.5%] overflow-hidden p-6 ${accent?.cover ?? ''}`}
-      >
-        <div className="relative">
-          <Heading
-            level="h2"
-            margin="none"
-            className="mt-2 max-w-[90%] leading-[0.98] font-black tracking-[-0.025em] text-white"
-          >
-            {protocol.name}
-          </Heading>
-          <div className="font-monospace mt-2.5 text-xs text-white/85">
-            Schema v{protocol.schemaVersion}
-          </div>
-        </div>
-      </div>
-
-      {/* Meta row */}
-      <div className="font-monospace flex items-center justify-between px-6 pt-4 text-xs">
-        <span className="text-text/60">
-          Imported <TimeAgo date={protocol.importedAt} />
-        </span>
-        <span className="text-text/60">
-          {sessionCount} {sessionCount === 1 ? 'interview' : 'interviews'}
-        </span>
-      </div>
-
-      {/* Description */}
-      <div className="px-6 pt-3.5 pb-[18px]">
-        <p className="text-text/80 line-clamp-3 text-sm leading-[1.45]">
-          {protocol.description ?? 'No description provided.'}
-        </p>
-      </div>
-
-      {/* CTA on active */}
-      {isActive ? (
-        <Button
-          icon={<Play className="stroke-[3px]!" aria-hidden />}
-          className="bg-sea-green text-primary-contrast border-b-sea-green-dark border-b-8 text-base font-black tracking-[0.08em] uppercase"
-          size="lg"
-          onClick={(event) => {
-            event.stopPropagation();
-            onTap();
-          }}
-        >
-          Start new interview
-        </Button>
       ) : null}
     </motion.div>
   );

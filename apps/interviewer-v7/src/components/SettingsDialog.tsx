@@ -225,12 +225,20 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
               <Row
                 title="Platform"
                 desc="Host application this device is running"
-                control={<span className="mono">{hostAppName}</span>}
+                control={
+                  <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
+                    {hostAppName}
+                  </span>
+                }
               />
               <Row
                 title="Installation ID"
                 desc="Unique per-device identifier"
-                control={<span className="mono text-xs">{installationId}</span>}
+                control={
+                  <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
+                    {installationId}
+                  </span>
+                }
               />
             </>
           ) : null}
@@ -239,7 +247,11 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             <Row
               title="Display preferences"
               desc="Brightness, theme, and text size will follow the operating system."
-              control={<span className="mono text-text/60">—</span>}
+              control={
+                <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
+                  —
+                </span>
+              }
             />
           ) : null}
 
@@ -363,17 +375,29 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
               <Row
                 title="App version"
                 desc="Network Canvas Interviewer"
-                control={<span className="mono">{APP_VERSION}</span>}
+                control={
+                  <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
+                    {APP_VERSION}
+                  </span>
+                }
               />
               <Row
                 title="Platform"
                 desc="Host application this device is running"
-                control={<span className="mono">{hostAppName}</span>}
+                control={
+                  <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
+                    {hostAppName}
+                  </span>
+                }
               />
               <Row
                 title="Installation ID"
                 desc="Unique per-device identifier"
-                control={<span className="mono text-xs">{installationId}</span>}
+                control={
+                  <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
+                    {installationId}
+                  </span>
+                }
               />
             </>
           ) : null}

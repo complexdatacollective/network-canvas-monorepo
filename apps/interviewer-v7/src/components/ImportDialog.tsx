@@ -163,7 +163,7 @@ export function ImportDialog({ open, onClose, onImported }: ImportDialogProps) {
             }}
             onDragLeave={() => setDragOver(false)}
             onDrop={(event) => void handleDrop(event)}
-            className={`text-text mb-[22px] block w-full cursor-pointer rounded-[var(--radius-lg)] border-2 border-dashed px-8 py-11 text-center font-[inherit] transition-all duration-[180ms] ${dropZoneBorder} ${dropZoneBackground}`}
+            className={`text-text mb-[22px] block w-full cursor-pointer rounded-lg border-2 border-dashed px-8 py-11 text-center font-[inherit] transition-all duration-180 ${dropZoneBorder} ${dropZoneBackground}`}
           >
             <span
               aria-hidden
@@ -172,8 +172,7 @@ export function ImportDialog({ open, onClose, onImported }: ImportDialogProps) {
               <Upload size={32} aria-hidden />
             </span>
             <span className="mb-1.5 block text-xl font-extrabold">
-              Drop a <code className={`mono ${codeChipClass}`}>.netcanvas</code>{' '}
-              file
+              Drop a <code className={codeChipClass}>.netcanvas</code> file
             </span>
             <span className="inline-flex items-center gap-2 text-sm">
               <Folder size={16} strokeWidth={2.5} aria-hidden /> or use the file
@@ -183,7 +182,7 @@ export function ImportDialog({ open, onClose, onImported }: ImportDialogProps) {
 
           <div className="mx-1 my-5 flex items-center gap-3.5">
             <span aria-hidden className="bg-outline h-px flex-1" />
-            <span className="all-caps">or</span>
+            <span className="uppercase">or</span>
             <span aria-hidden className="bg-outline h-px flex-1" />
           </div>
 

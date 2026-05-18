@@ -45,21 +45,23 @@ export function ResumePill({ sessions }: ResumePillProps) {
           whileTap={{ scale: 0.98 }}
           className="border-outline text-text inline-flex cursor-pointer items-center gap-4 self-center rounded-full border bg-[oklch(0.32_0.10_281/0.85)] py-3 pr-3.5 pl-[18px] shadow-md backdrop-blur-md"
         >
-          <span
-            aria-hidden
-            className="bg-sea-green h-2 w-2 rounded-full shadow-[0_0_10px_oklch(var(--sea-green))]"
-          />
+          <div className="flex size-4 shrink-0 items-center justify-center">
+            <span
+              aria-hidden
+              className="bg-sea-green animate-pulse-glow h-2 w-2 rounded-full shadow-[0_0_10px_oklch(var(--sea-green))]"
+            />
+          </div>
           <div className="text-left">
-            <div className="all-caps mb-0.5">
-              Resume interview · {inProgress.caseId || 'Untitled'}
+            <div className="font-heading text-text/60 mb-0.5 text-xs font-black tracking-widest uppercase">
+              Resume last interview
             </div>
             <div className="font-heading text-sm font-extrabold">
-              {inProgress.protocolName}
+              {inProgress.protocolName} – {inProgress.caseId || 'Untitled'}
             </div>
           </div>
           <div
             aria-hidden
-            className="bg-sea-green text-primary-contrast inline-flex h-9 w-9 items-center justify-center rounded-full"
+            className="bg-sea-green text-primary-contrast inline-flex size-14 items-center justify-center rounded-full"
           >
             <Play size={14} />
           </div>

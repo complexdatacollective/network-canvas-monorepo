@@ -8,12 +8,6 @@ import { getInstallationId } from '~/lib/platform/installationId';
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 export function BrandHeader() {
-  const [shortId, setShortId] = useState<string>('');
-
-  useEffect(() => {
-    setShortId(getInstallationId().slice(0, 6).toUpperCase());
-  }, []);
-
   return (
     <motion.div
       initial={{ opacity: 0, y: -8 }}
@@ -29,12 +23,9 @@ export function BrandHeader() {
       >
         <img src={ncMarkUrl} alt="" className="size-20" />
       </motion.span>
-      <div>
-        <Heading level="h1" margin="none" className="font-black tracking-tight">
-          Interviewer
-        </Heading>
-        <div className="mono mt-1.5">{shortId}</div>
-      </div>
+      <Heading level="h1" margin="none" className="font-black tracking-tight">
+        Interviewer
+      </Heading>
     </motion.div>
   );
 }

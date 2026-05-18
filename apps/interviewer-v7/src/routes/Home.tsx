@@ -18,14 +18,12 @@ import type {
   StoredSettings,
 } from '~/lib/db/types';
 
-const EASE = [0.22, 1, 0.36, 1] as const;
-
 type OpenDialog = 'import' | 'data' | 'settings' | null;
 
 export function HomeRoute() {
   const [protocols, setProtocols] = useState<ProtocolWithCounts[]>([]);
   const [sessions, setSessions] = useState<StoredSession[]>([]);
-  const [, setSettings] = useState<StoredSettings | null>(null);
+  const [settings, setSettings] = useState<StoredSettings | null>(null);
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null);
   const [pendingProtocolHash, setPendingProtocolHash] = useState<string | null>(
     null,
@@ -58,12 +56,13 @@ export function HomeRoute() {
     [reload],
   );
 
-  const haveProtocols = protocols.length > 0;
-
   return (
-    <div className="iv-root flex min-h-dvh w-full flex-col gap-8 overflow-hidden px-11 pt-9 pb-5">
-      <header className="flex items-start justify-between">
+    <div className="flex min-h-dvh w-full flex-col gap-8 overflow-hidden">
+      {/* Header/status own their inset; the protocol deck spans full width so
+          cards can swing all the way to the screen edges. */}
+      <header className="flex items-center justify-between px-11 pt-9">
         <BrandHeader />
+        <ResumePill sessions={sessions} />
         <TopActionBar
           onOpenImport={() => setOpenDialog('import')}
           onOpenData={() => setOpenDialog('data')}
@@ -71,33 +70,21 @@ export function HomeRoute() {
         />
       </header>
 
-      <ResumePill sessions={sessions} />
-
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, delay: 0.55, ease: EASE }}
-        className="text-center"
-      >
-        <div className="all-caps font-monospace text-sea-green tracking-[0.3em]">
-          {haveProtocols
-            ? `${protocols.length} ${protocols.length === 1 ? 'protocol' : 'protocols'} on this device · swipe to choose`
-            : 'No protocols installed yet'}
-        </div>
-      </motion.div>
-
       <ProtocolDeck
         protocols={protocols}
         sessions={sessions}
+        initialProtocolHash={settings?.lastActiveProtocolHash}
         onImport={() => setOpenDialog('import')}
         onStartInterview={setPendingProtocolHash}
       />
 
-      <StatusRow
-        protocolCount={protocols.length}
-        interviewCount={sessions.length}
-        onOpenData={() => setOpenDialog('data')}
-      />
+      <div className="px-11 pb-5">
+        <StatusRow
+          protocolCount={protocols.length}
+          interviewCount={sessions.length}
+          onOpenData={() => setOpenDialog('data')}
+        />
+      </div>
 
       <ImportDialog
         open={openDialog === 'import'}

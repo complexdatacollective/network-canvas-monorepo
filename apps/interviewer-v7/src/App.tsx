@@ -1,5 +1,7 @@
+import { motion } from 'motion/react';
 import { Route, Switch } from 'wouter';
 
+import { BackgroundBlobs } from '@codaco/art';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 
 import { AppShell } from './components/AppShell';
@@ -15,7 +17,25 @@ import { SettingsRoute } from './routes/Settings';
 export default function App() {
   return (
     <AppProviders>
-      <ThemedRegion theme="interview">
+      <ThemedRegion theme="interview" className="isolate">
+        <motion.div
+          className="fixed inset-0 -z-10 blur-[10rem]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.8 }}
+          transition={{
+            duration: 2,
+          }}
+        >
+          <BackgroundBlobs
+            large={0}
+            medium={4}
+            small={0}
+            // speedFactor={40}
+            // filter="blur(10rem)"
+            // compositeOperation="screen"
+            compositeOperation="color-dodge"
+          />
+        </motion.div>
         <AuthGate>
           <Switch>
             <Route path="/interview/:sessionId">

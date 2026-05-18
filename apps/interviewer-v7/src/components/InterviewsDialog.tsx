@@ -40,9 +40,12 @@ function statusLabel(kind: StatusKind): string {
   }
 }
 
+const CHIP_BASE =
+  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-pill)] font-heading font-extrabold text-xs uppercase tracking-[0.08em]';
+
 function statusChipClass(kind: StatusKind): string {
-  if (kind === 'in-progress') return 'iv-chip iv-chip--warn';
-  return 'iv-chip iv-chip--accent';
+  if (kind === 'in-progress') return `${CHIP_BASE} bg-mustard/22 text-mustard`;
+  return `${CHIP_BASE} bg-sea-green/22 text-sea-green`;
 }
 
 const HEADER_CELL_CLASS =
@@ -326,7 +329,9 @@ export function InterviewsDialog({ open, onClose }: InterviewsDialogProps) {
                   </td>
                   <td className={CELL_CLASS}>—</td>
                   <td className={`${CELL_CLASS} min-w-[140px]`}>
-                    <span className="mono">step {session.currentStep + 1}</span>
+                    <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
+                      step {session.currentStep + 1}
+                    </span>
                   </td>
                   <td className={CELL_CLASS}>
                     <span className={statusChipClass(kind)}>

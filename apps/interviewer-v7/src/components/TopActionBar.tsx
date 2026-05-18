@@ -7,8 +7,8 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 
 // Glass-pill treatment layered over the standard Button: backdrop-blur surface
 // with the theme outline, sized to match BrandHeader's height (h-14).
-const GLASS_PILL =
-  'h-14 rounded-full border border-outline bg-surface/85 backdrop-blur-md shadow-md';
+export const GLASS_PILL =
+  'border border-outline bg-surface/50 backdrop-blur-md shadow-md uppercase text-sm font-black';
 
 type TopActionBarProps = {
   onOpenImport: () => void;
@@ -33,7 +33,7 @@ export function TopActionBar({
       >
         <Button
           variant="text"
-          icon={<Upload size={18} strokeWidth={2.6} aria-hidden />}
+          icon={<Upload size={18} className="stroke-[3px]" aria-hidden />}
           onClick={onOpenImport}
           className={`${GLASS_PILL} gap-2.5 px-6`}
         >
@@ -50,7 +50,7 @@ export function TopActionBar({
       >
         <Button
           variant="text"
-          icon={<Database size={18} strokeWidth={2.5} aria-hidden />}
+          icon={<Database size={18} className="stroke-[3px]" aria-hidden />}
           onClick={onOpenData}
           className={`${GLASS_PILL} gap-2.5 px-6`}
         >
@@ -67,10 +67,10 @@ export function TopActionBar({
       >
         <IconButton
           variant="text"
-          icon={<Settings size={22} strokeWidth={2.4} aria-hidden />}
+          icon={<Settings size={22} className="stroke-[3px]" aria-hidden />}
           aria-label="Settings"
           onClick={onOpenSettings}
-          className={`${GLASS_PILL} w-14`}
+          className={GLASS_PILL}
         />
       </motion.span>
     </div>
