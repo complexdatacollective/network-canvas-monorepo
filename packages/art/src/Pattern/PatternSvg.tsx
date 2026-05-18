@@ -5,7 +5,7 @@ import type { Palette } from "./types";
 // than alpha in the fill/stroke color) flattens overlaps in an offscreen
 // buffer before compositing, so intersecting paths don't compound to a
 // brighter spot.
-const FOREGROUND_OPACITY = 0.8;
+const FOREGROUND_OPACITY = 0.2;
 
 type Props = {
 	width: number;
