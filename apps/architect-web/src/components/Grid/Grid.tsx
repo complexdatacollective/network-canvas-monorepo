@@ -1,6 +1,5 @@
-import { throttle } from 'es-toolkit/compat';
-import React, { Component } from 'react';
-import GridLayout, { type Layout } from 'react-grid-layout';
+import { Component } from 'react';
+import GridLayout, { type Layout, WidthProvider } from 'react-grid-layout';
 
 import Icon from '~/lib/legacy-ui/components/Icon';
 import { cx } from '~/utils/cva';
@@ -13,6 +12,8 @@ import {
   trimSize,
 } from './helpers';
 import withItems from './withItems';
+
+const SizedGridLayout = WidthProvider(GridLayout);
 
 type FieldArrayApi = {
   name: string;
@@ -37,34 +38,7 @@ type GridProps = {
   fieldName?: string;
 };
 
-type GridState = {
-  width: number;
-};
-
-class Grid extends Component<GridProps, GridState> {
-  private ref = React.createRef<HTMLDivElement>();
-  private resizeSensor?: NodeJS.Timeout;
-
-  constructor(props: GridProps) {
-    super(props);
-
-    this.state = {
-      width: 100,
-    };
-  }
-
-  componentDidMount() {
-    this.resizeSensor = setInterval(this.checkSize, 50);
-  }
-
-  componentWillUnmount() {
-    clearInterval(this.resizeSensor);
-  }
-
-  setWidth = throttle((width: number) => {
-    this.setState({ width });
-  }, 500);
-
+class Grid extends Component<GridProps> {
   handleDragStop = (layout: Layout[], from: Layout) => {
     const { fields, items } = this.props;
     const newOrder = layout.toSorted((a, b) => a.y - b.y).map(({ i }) => i);
@@ -88,24 +62,6 @@ class Grid extends Component<GridProps, GridState> {
     fields.splice(index, 1, newItem);
   };
 
-  checkSize = () => {
-    const { width } = this.state;
-    if (!this.ref.current) {
-      return;
-    }
-
-    const parent = this.ref.current.parentElement;
-    if (!parent) {
-      return;
-    }
-
-    const nextWidth = parent.offsetWidth;
-
-    if (width !== nextWidth) {
-      this.setWidth(nextWidth);
-    }
-  };
-
   render() {
     const {
       items,
@@ -118,8 +74,6 @@ class Grid extends Component<GridProps, GridState> {
     } = this.props;
 
     const { error, submitFailed } = meta;
-
-    const { width } = this.state;
 
     const showError = Boolean(submitFailed && error);
 
@@ -134,14 +88,14 @@ class Grid extends Component<GridProps, GridState> {
     }
 
     return (
-      <div ref={this.ref}>
-        <GridLayout
-          className="bg-surface-accent h-112.5 rounded-lg"
+      <div>
+        <SizedGridLayout
+          className="bg-surface-accent h-162.5 rounded-lg"
           layout={getLayout(items, capacity)}
           cols={1}
-          rowHeight={100}
+          rowHeight={150}
           autoSize={false}
-          width={width}
+          measureBeforeMount
           onDragStop={this.handleDragStop}
           onResizeStop={this.handleResizeStop}
           draggableCancel=".grid-item-action"
@@ -171,7 +125,7 @@ class Grid extends Component<GridProps, GridState> {
               />
             </div>
           ))}
-        </GridLayout>
+        </SizedGridLayout>
 
         {showError && (
           <p
