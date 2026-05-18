@@ -19,6 +19,7 @@ allowBuilds:
   phantomjs-prebuilt: false
   protobufjs: false
   workerd: false
+  better-sqlite3-multiple-ciphers: true
 
 catalog:
   '@base-ui/react': ^1.4.1
@@ -43,6 +44,7 @@ catalog:
   chromatic: ^16.10.0
   class-variance-authority: 0.7.1
   dotenv: ^17.4.2
+  electron: ^42.1.0
   es-toolkit: ^1.46.1
   immer: ^11.1.8
   lucide-react: ^1.16.0
@@ -74,3 +76,5 @@ linkWorkspacePackages: true
 packageConfigs:
   network-canvas-interviewer:
     savePrefix: '~'
+patchedDependencies:
+  better-sqlite3-multiple-ciphers@12.9.0: patches/better-sqlite3-multiple-ciphers@12.9.0.patch

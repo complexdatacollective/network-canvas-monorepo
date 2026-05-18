@@ -1,0 +1,10 @@
+{
+	"extends": "@codaco/tsconfig/node.json",
+	"include": [
+		"vite.config.ts",
+		"electron.vite.config.ts",
+		"electron/**/*.ts",
+		"capacitor.config.ts",
+		"electron-builder.config.cjs"
+	]
+}

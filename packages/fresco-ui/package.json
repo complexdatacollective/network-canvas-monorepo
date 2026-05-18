@@ -96,6 +96,10 @@
 			"types": "./dist/Modal/ModalPopup.d.ts",
 			"default": "./dist/Modal/ModalPopup.js"
 		},
+		"./Modal/ModalBackdrop": {
+			"types": "./dist/Modal/ModalBackdrop.d.ts",
+			"default": "./dist/Modal/ModalBackdrop.js"
+		},
 		"./DropdownMenu": {
 			"types": "./dist/DropdownMenu.d.ts",
 			"default": "./dist/DropdownMenu.js"
@@ -188,9 +192,17 @@
 			"types": "./dist/dialogs/Dialog.d.ts",
 			"default": "./dist/dialogs/Dialog.js"
 		},
+		"./dialogs/DialogPopup": {
+			"types": "./dist/dialogs/DialogPopup.d.ts",
+			"default": "./dist/dialogs/DialogPopup.js"
+		},
 		"./dialogs/DialogProvider": {
 			"types": "./dist/dialogs/DialogProvider.d.ts",
 			"default": "./dist/dialogs/DialogProvider.js"
+		},
+		"./dialogs/DialogTrigger": {
+			"types": "./dist/dialogs/DialogTrigger.d.ts",
+			"default": "./dist/dialogs/DialogTrigger.js"
 		},
 		"./dialogs/useDialog": {
 			"types": "./dist/dialogs/useDialog.d.ts",
@@ -203,6 +215,10 @@
 		"./dnd/dnd": {
 			"types": "./dist/dnd/dnd.d.ts",
 			"default": "./dist/dnd/dnd.js"
+		},
+		"./dnd/DndStoreProvider": {
+			"types": "./dist/dnd/DndStoreProvider.d.ts",
+			"default": "./dist/dnd/DndStoreProvider.js"
 		},
 		"./dnd/types": {
 			"types": "./dist/dnd/types.d.ts",
@@ -272,6 +288,10 @@
 			"types": "./dist/form/Field/UnconnectedField.d.ts",
 			"default": "./dist/form/Field/UnconnectedField.js"
 		},
+		"./form/FieldErrors": {
+			"types": "./dist/form/FieldErrors.d.ts",
+			"default": "./dist/form/FieldErrors.js"
+		},
 		"./form/FieldGroup": {
 			"types": "./dist/form/FieldGroup.d.ts",
 			"default": "./dist/form/FieldGroup.js"
@@ -283,6 +303,14 @@
 		"./form/FieldNamespace": {
 			"types": "./dist/form/FieldNamespace.d.ts",
 			"default": "./dist/form/FieldNamespace.js"
+		},
+		"./form/FormErrors": {
+			"types": "./dist/form/FormErrors.d.ts",
+			"default": "./dist/form/FormErrors.js"
+		},
+		"./form/Hint": {
+			"types": "./dist/form/Hint.d.ts",
+			"default": "./dist/form/Hint.js"
 		},
 		"./form/fields/ArrayField/ArrayField": {
 			"types": "./dist/form/fields/ArrayField/ArrayField.d.ts",
@@ -387,6 +415,10 @@
 		"./form/hooks/useField": {
 			"types": "./dist/form/hooks/useField.d.ts",
 			"default": "./dist/form/hooks/useField.js"
+		},
+		"./form/hooks/useForm": {
+			"types": "./dist/form/hooks/useForm.d.ts",
+			"default": "./dist/form/hooks/useForm.js"
 		},
 		"./form/hooks/useFormState": {
 			"types": "./dist/form/hooks/useFormState.d.ts",

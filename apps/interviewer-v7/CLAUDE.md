@@ -1,0 +1,94 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in `apps/interviewer-v7`.
+
+See [`SPEC.md`](./SPEC.md) for the product specification and [`README.md`](./README.md) for architecture diagrams, data flows, invariants, and tradeoffs.
+
+## Project Overview
+
+Network Canvas Interviewer v7 is a single-user, offline-first research-data-collection app that hosts the `@codaco/interview` engine. It runs from one codebase as:
+
+- **Desktop** (macOS / Windows / Linux) via Electron — SQLCipher-encrypted storage, WebAuthn PRF unlocks the database.
+- **Tablet** (iPadOS / Android) via Capacitor 8 — Dexie/IndexedDB behind platform at-rest protections, WebAuthn gates the app.
+- **Web** via Vite — Dexie/IndexedDB, WebAuthn gates the app. Positioned for development.
+
+## Development Commands
+
+All commands run from this directory unless noted. The monorepo-wide `pnpm lint` / `pnpm typecheck` from the repo root also cover this app.
+
+```bash
+# Web (Vite dev server)
+pnpm dev
+
+# Electron desktop
+pnpm electron:dev
+pnpm electron:build
+pnpm electron:dist            # platform-detected packaged build
+pnpm electron:dist:mac        # explicit macOS build
+pnpm electron:dist:win
+pnpm electron:dist:linux
+pnpm electron:rebuild         # rebind better-sqlite3-multiple-ciphers to Electron ABI
+
+# Capacitor tablet
+pnpm capacitor:sync
+pnpm capacitor:run:ios
+pnpm capacitor:run:android
+pnpm capacitor:open:ios
+pnpm capacitor:open:android
+pnpm capacitor:dev:ios        # live-reload against vite at :5180
+pnpm capacitor:dev:android    # live-reload against :5180 over 10.0.2.2
+
+# Verification
+pnpm typecheck
+pnpm build
+pnpm preview
+```
+
+## Source Surface (renderer)
+
+One row per directory. Per-file granularity rots; per-directory framing tells an LLM which folder to open first.
+
+| Path | What lives here | When to touch it |
+|------|-----------------|------------------|
+| `src/main.tsx` | Vite entry; mounts `<App/>` into `#root`. | Change app-level providers or mount target. |
+| `src/App.tsx` | Wraps `<AppProviders>` around the wouter `<Router>` + route table. | Add a top-level route or wrap the tree in a new global provider. |
+| `src/routes/` | Top-level route components: `Home.tsx` (Variation F start screen), `Protocols.tsx` (list + cascade-delete), `Sessions.tsx` (multi-select + bulk export), `Settings.tsx` (export prefs + idle timeout + Manage authenticator + diagnostics), `Interview.tsx` (hosts the `@codaco/interview` Shell), `NotFound.tsx`. | Add/modify a top-level page. Routes wire data via `src/lib/db/api`. |
+| `src/components/` | Shared UI. AppShell + AuthGate state machine, SetupScreen, LockScreen, BrandHeader, TopActionBar, ProtocolDeck, ResumePill, StageBackground, StatusRow, ProtocolCard, SessionCard, ExportDialog, ImportFromUrlDialog, NewSessionDialog, ManageAuthenticator. | Cross-cutting UI; not a route, not a primitive. Reach for `@codaco/fresco-ui` first, fall back to `@base-ui/react` + `motion`, fall back to `@codaco/art` for blobs. |
+| `src/providers/` | `AppProviders.tsx` composes the global provider stack — Toast/Theme/`AuthProvider` (defined in `src/lib/auth/AuthContext.tsx`). | Add a new global provider; do not introduce a new top-level state library here without checking the rationale in `README.md`. |
+| `src/lib/auth/` | WebAuthn client + `AuthGate` state machine. `webauthn.ts` (create/get + PRF), `api.ts` (platform-dispatching `enrol`/`unlock`/`lock`/`reEnrol`/`revoke`), `AuthContext.tsx` (`AuthProvider` + `useAuth`), `electron.ts` (IPC wrappers — desktop only), `vaultMetadata.ts` (Capacitor Preferences / localStorage adapter holding `credentialIdB64` + `saltB64`), `idle.ts` (`useIdleTimer` + `BLUR_LOCK_DELAY_MS`). | Auth flow changes, idle-timeout behaviour, credential metadata storage. WebAuthn is the sole auth mechanism — no passphrase code path may be reintroduced. |
+| `src/lib/db/` | Platform-aware DB facade. `api.ts` (the public surface routes/components call), `db.ts` + `protocols.ts` + `sessions.ts` (Dexie 4 backend used in renderer when `!isElectron`), `electron-protocols.ts` + `electron-sessions.ts` + `electron-settings.ts` (Electron IPC wrappers calling the main-process SQLCipher service), `types.ts` (`StoredProtocol`, `StoredSession`, `StoredSettings`, `ExtractedAsset`). | Any data read/write. Always go through `api.ts` — never branch on `isElectron` inside a route. |
+| `src/lib/protocol/` | `importProtocol.ts` — the full `.netcanvas` pipeline: pickFile → JSZip extract → schema-version detect → `migrateProtocol` (if needed) → `validateProtocol` → `hashProtocol` → `saveProtocol` via the DB facade. | Protocol import bug or schema-version bump. |
+| `src/lib/export/` | `exportSessions.ts` — Effect 3 program wiring `@codaco/network-exporters` to renderer-side repositories + a Blob sink, surfacing per-stage progress via an event queue. | Export pipeline changes (GraphML/CSV options, screen-coordinate pixels, archive layout). |
+| `src/lib/files/` | `pickFile.ts` (Electron `dialog:openProtocol` vs `<input type=file>`), `download.ts` (Electron `dialog:saveFile` IPC vs `@capacitor/filesystem` vs browser Blob+saveAs). | Cross-platform open/save logic. |
+| `src/lib/platform/` | `platform.ts` (`isElectron`, `isCapacitor`, `hostAppName`), `installationId.ts` (per-device id surfaced as the BrandHeader mono line), `storage.ts` (`navigator.storage.estimate` + persistence state). | Platform-detection branches; storage-quota UI in Settings + StatusRow. |
+| `src/lib/assets/` | `assetResolver.ts` — the `@codaco/interview` Shell asset hook; resolves asset ids to blob URLs from the active protocol's stored assets. | Asset resolution bugs in the interview engine. |
+| `src/styles/` | `globals.css` — Tailwind base + interview-mode token block (`--iv-bg`, `--iv-fg-*`, `--paradise-pink`, `--sea-green`, `--font-display`). TODO note in-file: move tokens into `@codaco/tailwind-config`. | Token additions/changes for interview-mode visual treatment. |
+| `src/assets/` | Static SVG/font assets bundled into the renderer (e.g. `NC-Mark.svg`). | Add a static asset referenced by a component import. |
+| `src/global.d.ts` | Ambient typings for `window.api` exposed by `electron/preload.ts`. | Change the preload's IPC surface — must update here in lockstep. |
+
+## Source Surface (Electron main process)
+
+| Path | What lives here | When to touch it |
+|------|-----------------|------------------|
+| `electron/main.ts` | App lifecycle + window. Registers `dialog:openProtocol`, `dialog:saveFile`, `system:platform`; mounts `registerAuthHandlers` and `registerDbHandlers`. | Window options, app lifecycle hooks, top-level IPC handlers that aren't auth or DB. |
+| `electron/preload.ts` | `contextBridge.exposeInMainWorld("api", …)` — the only renderer→main surface. Mirrors `auth:*`, `db:*`, `dialog:*`, `system:*`. | Adding/removing an IPC channel — keep `src/global.d.ts` in lockstep. |
+| `electron/auth/` | `vault.ts` (envelope encryption: PRF → KEK → wrap/unwrap a random DEK; `status`/`setup`/`unlock`/`lock`/`reEnrol`/`revoke`), `vaultStore.ts` (`VaultRecord` shape v3 — `credentialIdB64`, `saltB64`, `wrapIvB64`, `wrapCiphertextB64`). | Any change to the key-handling model. Re-enrol must remain atomic — the new record only replaces the old after the new wrap succeeds. |
+| `electron/db/` | `service.ts` (better-sqlite3-multiple-ciphers SQLCipher wrapper; `DB_FILENAME = "interviewer-v7.encrypted.db"`; one-shot `migrateLegacyDbFilename` from the prototype's `modern-interviewer.encrypted.db`), `schema.ts` (table DDL: protocols, protocol_assets, sessions, settings). | Schema migrations or storage open/close logic. Both legacy + new DB existing is a fatal startup state — do not silently pick one. |
+| `electron/handlers/` | `authHandlers.ts` registers `auth:status`, `auth:setup`, `auth:unlock`, `auth:lock`, `auth:reEnrol`, `auth:revoke`. `dbHandlers.ts` registers `db:protocols:*`, `db:sessions:*`, `db:settings:*`. | Adding a new auth or DB IPC. Channel string is the contract — match it on the preload + renderer client. |
+
+## Why this structure
+
+- **`src/lib/db/api.ts` facade** isolates the platform split (encrypted SQLCipher on desktop, platform-protected Dexie elsewhere) so routes/components never branch on `isElectron`.
+- **Renderer-side WebAuthn + main-process key custody**: WebAuthn lives in the renderer (no Node WebAuthn surface). The PRF output crosses IPC once and is never persisted in main; the wrapped DEK is the only durable artefact.
+- **Effect-TS export pipeline**: `Layer.mergeAll` cleanly assembles the renderer-specific repositories and Blob sink without leaking implementation details into the shared `@codaco/network-exporters` package.
+- **`fresco-ui` first**: every Button/Surface/Form/Dialog/Toast or typography token should reach for `@codaco/fresco-ui` first; fall back to `@base-ui/react` + `motion` only for primitives fresco-ui doesn't ship (fanned deck, translucent-blur pills, animated blob background).
+
+## Conventions
+
+- **No `any`, no `as` assertions to bypass type checking.** Fix the underlying type instead.
+- **No barrel files** (`index.ts` re-export aggregators). Import from the original source.
+- **No re-exports for convenience.** All references to a function/variable should import from the original source.
+- **Biome** formats and lints: tabs for indentation, 120-character line width, double quotes. Pre-commit hooks format staged files. Run `pnpm lint:fix` from the repo root before committing.
+- **Tests** are co-located in `__tests__/` directories with `.test.ts` / `.test.tsx` extensions, using Vitest.
+- **WebAuthn is the sole authentication mechanism.** No passphrase code path may be reintroduced anywhere in `src/lib/auth/` or `electron/auth/`.
+- **Single-user invariant.** `installationId` identifies the device, not a user. No code path may introduce a user identifier.

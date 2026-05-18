@@ -17,7 +17,7 @@ const randomInt = (a = 1, b = 0) => {
 	return Math.floor(lower + Math.random() * (upper - lower + 1));
 };
 
-const gradients = [
+const defaultGradients: ReadonlyArray<readonly [string, string]> = [
 	["rgb(237,0,140)", "rgb(226,33,91)"],
 	["#00c9ff", "#92fe9d"],
 	["#fc466b", "#3f5efb"],
@@ -39,7 +39,7 @@ class NCBlob {
 	size: number;
 	velocityX: number;
 	velocityY: number;
-	gradient;
+	gradient: readonly [string, string] | undefined;
 	firstRender: boolean;
 	animateForward: boolean;
 	lastUpdate: number | null;
@@ -53,7 +53,7 @@ class NCBlob {
 	shape2: string | null;
 	interpolator: ((t: number) => string) | null;
 
-	constructor(layer: 1 | 2 | 3, speedFactor: number) {
+	constructor(layer: 1 | 2 | 3, speedFactor: number, palette: ReadonlyArray<readonly [string, string]>) {
 		const speeds = {
 			1: speedFactor * random(3, 6),
 			2: speedFactor * random(0.5, 1.5),
@@ -67,7 +67,7 @@ class NCBlob {
 		this.velocityX = Math.sin(this.angle) * this.speed;
 		this.velocityY = Math.cos(this.angle) * this.speed;
 
-		this.gradient = gradients[randomInt(0, gradients.length - 1)];
+		this.gradient = palette[randomInt(0, palette.length - 1)];
 
 		this.firstRender = true; // Used to know if we need to initialize contextual values
 		this.animateForward = true; // Toggle for shape animation direction
@@ -227,13 +227,14 @@ class NCBlob {
 	}
 }
 
-type BackgroundBlobsProps = {
+export type BackgroundBlobsProps = {
 	large?: number;
 	medium?: number;
 	small?: number;
 	speedFactor?: number;
 	compositeOperation?: GlobalCompositeOperation;
 	filter?: CanvasFilters["filter"];
+	palette?: Array<[string, string]>;
 };
 
 const BackgroundBlobs = memo(
@@ -244,15 +245,16 @@ const BackgroundBlobs = memo(
 		speedFactor = DEFAULT_SPEED_FACTOR,
 		compositeOperation = "source-over",
 		filter = "",
+		palette,
 	}: BackgroundBlobsProps) => {
-		const blobs = useMemo(
-			() => [
-				new Array(large).fill(null).map(() => new NCBlob(3, speedFactor)),
-				new Array(medium).fill(null).map(() => new NCBlob(2, speedFactor)),
-				new Array(small).fill(null).map(() => new NCBlob(1, speedFactor)),
-			],
-			[large, medium, small, speedFactor],
-		);
+		const blobs = useMemo(() => {
+			const activePalette: ReadonlyArray<readonly [string, string]> = palette ?? defaultGradients;
+			return [
+				new Array(large).fill(null).map(() => new NCBlob(3, speedFactor, activePalette)),
+				new Array(medium).fill(null).map(() => new NCBlob(2, speedFactor, activePalette)),
+				new Array(small).fill(null).map(() => new NCBlob(1, speedFactor, activePalette)),
+			];
+		}, [large, medium, small, speedFactor, palette]);
 
 		const drawBlobs = (ctx: CanvasRenderingContext2D, time: number) => {
 			ctx.globalCompositeOperation = compositeOperation;
