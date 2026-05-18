@@ -13,5 +13,8 @@
   "[javascriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
   "[json]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
   "[jsonc]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
-  "files.associations": { "*.css": "tailwindcss" }
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+  "java.configuration.updateBuildConfiguration": "disabled"
 }
