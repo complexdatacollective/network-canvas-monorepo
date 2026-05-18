@@ -1,5 +1,5 @@
 ---
-"@codaco/tailwind-config": prerelease
+'@codaco/tailwind-config': prerelease
 ---
 
 Move `@import "tailwindcss"` into `fresco/fresco.css`. The foundation package now owns the Tailwind v4 runtime entry directly, so any consumer of `@codaco/tailwind-config/fresco.css` gets a complete, runnable Tailwind setup with theme tokens, plugins, fonts, and variants — no second `@import "tailwindcss"` required.
@@ -8,4 +8,4 @@ Restore the `@plugin` directives for `elevation` and `inset-surface` in `fresco/
 
 Housekeeping: drop a leftover `@utility publish-colors` stub from `utilities.css`; remove an unused `vite` devDep (the package ships source CSS via the `exports` field, no Vite build is wired up); and quote the `url(@fontsource-variable/...)` references in the published font CSS so they parse under strict CSS parsers.
 
-**Breaking** for consumers that import `@codaco/tailwind-config/fresco.css` *and* additionally `@import "tailwindcss"` themselves: that combination now loads Tailwind twice. Drop the redundant `@import "tailwindcss"` from your CSS entry.
+**Breaking** for consumers that import `@codaco/tailwind-config/fresco.css` _and_ additionally `@import "tailwindcss"` themselves: that combination now loads Tailwind twice. Drop the redundant `@import "tailwindcss"` from your CSS entry.

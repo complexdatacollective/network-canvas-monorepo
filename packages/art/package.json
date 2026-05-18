@@ -1,33 +1,47 @@
 {
-	"name": "@codaco/art",
-	"private": true,
-	"version": "0.1.0",
-	"type": "module",
-	"exports": {
-		".": "./src/index.ts"
-	},
-	"license": "MIT",
-	"scripts": {
-		"clean": "rm -rf .turbo node_modules",
-		"test": "vitest run",
-		"test:watch": "vitest",
-		"typecheck": "tsgo --noEmit"
-	},
-	"dependencies": {
-		"blobs": "2.3.0-beta.2",
-		"d3-interpolate-path": "^2.3.0"
-	},
-	"devDependencies": {
-		"@codaco/tsconfig": "workspace:*",
-		"@types/d3-interpolate-path": "^2.0.3",
-		"@types/node": "catalog:",
-		"@types/react": "catalog:",
-		"jsdom": "^29.1.1",
-		"react": "catalog:",
-		"typescript": "catalog:",
-		"vitest": "catalog:"
-	},
-	"peerDependencies": {
-		"react": "catalog:"
-	}
+  "name": "@codaco/art",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build-storybook": "storybook build",
+    "clean": "rm -rf .turbo node_modules",
+    "storybook": "storybook dev -p 6007",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "blobs": "2.3.0-beta.2",
+    "d3-interpolate-path": "^2.3.0"
+  },
+  "devDependencies": {
+    "@codaco/fresco-ui": "workspace:*",
+    "@codaco/tailwind-config": "workspace:*",
+    "@codaco/tsconfig": "workspace:*",
+    "@storybook/addon-a11y": "^10.4.0",
+    "@storybook/addon-docs": "^10.4.0",
+    "@storybook/react-vite": "^10.4.0",
+    "@tailwindcss/vite": "catalog:",
+    "@types/d3-interpolate-path": "^2.0.3",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "jsdom": "^29.1.1",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "storybook": "^10.4.0",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "catalog:"
+  }
 }

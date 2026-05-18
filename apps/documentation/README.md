@@ -80,4 +80,3 @@ The last rule in this excerpt is a catch-all rule that matches any path that doe
 ```
 
 The above rule redirects matching requests to the `/en/desktop/:path*` path.
-

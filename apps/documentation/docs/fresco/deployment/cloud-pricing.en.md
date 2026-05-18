@@ -23,7 +23,6 @@ For more information on Netlify's pricing plans and features, you can visit thei
 
 For more information on Neon's pricing plans and features, you can visit their [pricing page.](https://neon.com/pricing)
 
-
 ## UploadThing
 
 - **Free Tier**: UploadThing offers a free tier with basic features and up to 2GB of storage, suitable for small projects.

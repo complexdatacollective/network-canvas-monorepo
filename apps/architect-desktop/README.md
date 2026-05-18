@@ -41,20 +41,20 @@ Note: The `.npmrc` file configures x64 architecture for Electron (required until
 
 # Operation
 
-| `pnpm run <script>`             | Description                                                                                                                                  |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `start:architect:electron`      | Serves your app for consumption by electron.                                                                                                 |
-| `preelectron:dev`               | Copies the electron source to `./electron-dev` (must be run only when setting up the repo for the first time, or bumping the version number) |
-| `dev:electron`                  | Runs electron window with contents of `start:architect:electron` (must be run concurrently)                                                  |
-| `build`                         | Compiles assets and prepares app for production in the /build directory.                                                                     |
-| `lint`                          | Lints js/scss                                                                                                                                |
-| `test`                          | Runs testing suite                                                                                                                           |
-| `preflight`                     | Runs linting & testing. Useful as a prepush/build hook                                                                                       |
-| `dist:mac`                      | Build and publish macOS version                                                                                                              |
-| `dist:linux`                    | Build and publish Linux version                                                                                                              |
-| `dist:win`                      | Build and publish Windows version                                                                                                            |
-| `dist:all`                      | Build and publish all platforms                                                                                                              |
-| `update-submodules`             | Update git submodules                                                                                                                        |
+| `pnpm run <script>`        | Description                                                                                                                                  |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `start:architect:electron` | Serves your app for consumption by electron.                                                                                                 |
+| `preelectron:dev`          | Copies the electron source to `./electron-dev` (must be run only when setting up the repo for the first time, or bumping the version number) |
+| `dev:electron`             | Runs electron window with contents of `start:architect:electron` (must be run concurrently)                                                  |
+| `build`                    | Compiles assets and prepares app for production in the /build directory.                                                                     |
+| `lint`                     | Lints js/scss                                                                                                                                |
+| `test`                     | Runs testing suite                                                                                                                           |
+| `preflight`                | Runs linting & testing. Useful as a prepush/build hook                                                                                       |
+| `dist:mac`                 | Build and publish macOS version                                                                                                              |
+| `dist:linux`               | Build and publish Linux version                                                                                                              |
+| `dist:win`                 | Build and publish Windows version                                                                                                            |
+| `dist:all`                 | Build and publish all platforms                                                                                                              |
+| `update-submodules`        | Update git submodules                                                                                                                        |
 
 > **Note:** Preview functionality is temporarily disabled pending security modernization of the network-canvas submodule.
 

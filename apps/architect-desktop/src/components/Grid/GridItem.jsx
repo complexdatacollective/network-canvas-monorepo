@@ -1,47 +1,62 @@
-import Icon from "@codaco/ui/lib/components/Icon";
-import PropTypes from "prop-types";
-import { Flipped } from "react-flip-toolkit";
+import PropTypes from 'prop-types';
+import { Flipped } from 'react-flip-toolkit';
 
-const GridItem = ({ fields, editField, onEditItem, previewComponent: PreviewComponent, index, id, ...rest }) => {
-	const fieldId = `${fields.name}[${index}]`;
-	const flipId = editField === fieldId ? `_${fieldId}` : fieldId;
+import Icon from '@codaco/ui/lib/components/Icon';
 
-	if (!PreviewComponent) {
-		return null;
-	}
+const GridItem = ({
+  fields,
+  editField,
+  onEditItem,
+  previewComponent: PreviewComponent,
+  index,
+  id,
+  ...rest
+}) => {
+  const fieldId = `${fields.name}[${index}]`;
+  const flipId = editField === fieldId ? `_${fieldId}` : fieldId;
 
-	return (
-		<div>
-			<Flipped flipId={flipId}>
-				<div className="grid-item">
-					<div className="grid-item__content">
-						<PreviewComponent id={id} {...rest} />
-					</div>
-					<div className="grid-item__controls">
-						<div className="grid-item__edit" onClick={() => onEditItem(fieldId)}>
-							<Icon name="edit" />
-						</div>
-						<div className="grid-item__delete" onClick={() => fields.remove(index)}>
-							<Icon name="delete" />
-						</div>
-					</div>
-				</div>
-			</Flipped>
-		</div>
-	);
+  if (!PreviewComponent) {
+    return null;
+  }
+
+  return (
+    <div>
+      <Flipped flipId={flipId}>
+        <div className="grid-item">
+          <div className="grid-item__content">
+            <PreviewComponent id={id} {...rest} />
+          </div>
+          <div className="grid-item__controls">
+            <div
+              className="grid-item__edit"
+              onClick={() => onEditItem(fieldId)}
+            >
+              <Icon name="edit" />
+            </div>
+            <div
+              className="grid-item__delete"
+              onClick={() => fields.remove(index)}
+            >
+              <Icon name="delete" />
+            </div>
+          </div>
+        </div>
+      </Flipped>
+    </div>
+  );
 };
 
 GridItem.propTypes = {
-	fields: PropTypes.object.isRequired,
-	editField: PropTypes.string,
-	onEditItem: PropTypes.func.isRequired,
-	previewComponent: PropTypes.any.isRequired,
-	index: PropTypes.number.isRequired,
-	id: PropTypes.string.isRequired,
+  fields: PropTypes.object.isRequired,
+  editField: PropTypes.string,
+  onEditItem: PropTypes.func.isRequired,
+  previewComponent: PropTypes.any.isRequired,
+  index: PropTypes.number.isRequired,
+  id: PropTypes.string.isRequired,
 };
 
 GridItem.defaultProps = {
-	editField: null,
+  editField: null,
 };
 
 export default GridItem;

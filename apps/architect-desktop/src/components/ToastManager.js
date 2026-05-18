@@ -1,14 +1,18 @@
-import { ToastManager as UIToastManager } from "@codaco/ui";
-import { connect } from "react-redux";
-import { bindActionCreators, compose } from "redux";
-import { actionCreators as toastActions } from "../ducks/modules/toasts";
+import { connect } from 'react-redux';
+import { bindActionCreators, compose } from 'redux';
+
+import { ToastManager as UIToastManager } from '@codaco/ui';
+
+import { actionCreators as toastActions } from '../ducks/modules/toasts';
 
 const mapStateToProps = (state) => ({
-	toasts: state.toasts,
+  toasts: state.toasts,
 });
 
 const mapDispatchToProps = (dispatch) => ({
-	removeToast: bindActionCreators(toastActions.removeToast, dispatch),
+  removeToast: bindActionCreators(toastActions.removeToast, dispatch),
 });
 
-export default compose(connect(mapStateToProps, mapDispatchToProps))(UIToastManager);
+export default compose(connect(mapStateToProps, mapDispatchToProps))(
+  UIToastManager,
+);

@@ -1,55 +1,65 @@
-import type { NcNetwork } from "@codaco/shared-consts";
-import type { StoredSession } from "./types";
+import type { NcNetwork } from '@codaco/shared-consts';
+
+import type { StoredSession } from './types';
 
 function ipc() {
-	const api = window.electronAPI;
-	if (!api?.db) {
-		throw new Error("Electron DB IPC bridge not available");
-	}
-	return api.db;
+  const api = window.electronAPI;
+  if (!api?.db) {
+    throw new Error('Electron DB IPC bridge not available');
+  }
+  return api.db;
 }
 
 export async function listSessions(): Promise<StoredSession[]> {
-	return ipc().sessions.list();
+  return ipc().sessions.list();
 }
 
-export async function listSessionsForProtocol(protocolHash: string): Promise<StoredSession[]> {
-	return ipc().sessions.listForProtocol(protocolHash);
+export async function listSessionsForProtocol(
+  protocolHash: string,
+): Promise<StoredSession[]> {
+  return ipc().sessions.listForProtocol(protocolHash);
 }
 
-export async function getSession(id: string): Promise<StoredSession | undefined> {
-	return ipc().sessions.get(id);
+export async function getSession(
+  id: string,
+): Promise<StoredSession | undefined> {
+  return ipc().sessions.get(id);
 }
 
-export async function getSessionsByIds(ids: readonly string[]): Promise<StoredSession[]> {
-	return ipc().sessions.getByIds([...ids]);
+export async function getSessionsByIds(
+  ids: readonly string[],
+): Promise<StoredSession[]> {
+  return ipc().sessions.getByIds([...ids]);
 }
 
 export async function createSession(args: {
-	protocolHash: string;
-	protocolName: string;
-	caseId: string;
-	initialNetwork: NcNetwork;
+  protocolHash: string;
+  protocolName: string;
+  caseId: string;
+  initialNetwork: NcNetwork;
 }): Promise<StoredSession> {
-	return ipc().sessions.create(args);
+  return ipc().sessions.create(args);
 }
 
-export async function updateSession(id: string, patch: Partial<StoredSession>): Promise<StoredSession | undefined> {
-	return ipc().sessions.update({ id, patch });
+export async function updateSession(
+  id: string,
+  patch: Partial<StoredSession>,
+): Promise<StoredSession | undefined> {
+  return ipc().sessions.update({ id, patch });
 }
 
 export async function markSessionFinished(id: string): Promise<void> {
-	return ipc().sessions.markFinished(id);
+  return ipc().sessions.markFinished(id);
 }
 
 export async function markSessionsExported(ids: string[]): Promise<void> {
-	return ipc().sessions.markExported(ids);
+  return ipc().sessions.markExported(ids);
 }
 
 export async function deleteSession(id: string): Promise<void> {
-	return ipc().sessions.delete(id);
+  return ipc().sessions.delete(id);
 }
 
 export async function deleteSessions(ids: string[]): Promise<void> {
-	return ipc().sessions.deleteMany(ids);
+  return ipc().sessions.deleteMany(ids);
 }

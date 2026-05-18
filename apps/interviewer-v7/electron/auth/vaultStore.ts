@@ -1,44 +1,48 @@
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { app } from "electron";
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-const FILE_NAME = "vault.json";
+import { app } from 'electron';
+
+const FILE_NAME = 'vault.json';
 const VAULT_VERSION = 3;
 
 export type VaultRecord = {
-	version: number;
-	credentialIdB64: string;
-	saltB64: string;
-	wrapIvB64: string;
-	wrapCiphertextB64: string;
+  version: number;
+  credentialIdB64: string;
+  saltB64: string;
+  wrapIvB64: string;
+  wrapCiphertextB64: string;
 };
 
 function vaultPath(): string {
-	return join(app.getPath("userData"), FILE_NAME);
+  return join(app.getPath('userData'), FILE_NAME);
 }
 
 export function isVaultConfigured(): boolean {
-	return existsSync(vaultPath());
+  return existsSync(vaultPath());
 }
 
 export function readVault(): VaultRecord | null {
-	if (!existsSync(vaultPath())) return null;
-	try {
-		const raw = readFileSync(vaultPath(), "utf-8");
-		const parsed = JSON.parse(raw) as VaultRecord;
-		if (parsed.version !== VAULT_VERSION) return null;
-		return parsed;
-	} catch {
-		return null;
-	}
+  if (!existsSync(vaultPath())) return null;
+  try {
+    const raw = readFileSync(vaultPath(), 'utf-8');
+    const parsed = JSON.parse(raw) as VaultRecord;
+    if (parsed.version !== VAULT_VERSION) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 export function writeVault(record: VaultRecord): void {
-	writeFileSync(vaultPath(), JSON.stringify(record, null, 2), { encoding: "utf-8", mode: 0o600 });
+  writeFileSync(vaultPath(), JSON.stringify(record, null, 2), {
+    encoding: 'utf-8',
+    mode: 0o600,
+  });
 }
 
 export function deleteVault(): void {
-	if (existsSync(vaultPath())) rmSync(vaultPath());
+  if (existsSync(vaultPath())) rmSync(vaultPath());
 }
 
 export const CURRENT_VAULT_VERSION = VAULT_VERSION;

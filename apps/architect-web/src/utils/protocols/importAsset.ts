@@ -1,5 +1,6 @@
-import { findKey, toLower } from "es-toolkit/compat";
-import { SUPPORTED_EXTENSION_TYPE_MAP } from "~/config";
+import { findKey, toLower } from 'es-toolkit/compat';
+
+import { SUPPORTED_EXTENSION_TYPE_MAP } from '~/config';
 
 /**
  * Function that determines the type of an asset file when importing. Types are defined
@@ -12,10 +13,12 @@ import { SUPPORTED_EXTENSION_TYPE_MAP } from "~/config";
  * type is unsupported
  */
 export const getSupportedAssetType = (filename: string) => {
-	const match = /(\.[A-Za-z0-9]+)$/.exec(filename);
-	const extension = match ? toLower(match[1]) : "";
+  const match = /(\.[A-Za-z0-9]+)$/.exec(filename);
+  const extension = match ? toLower(match[1]) : '';
 
-	const typeFromMap = findKey(SUPPORTED_EXTENSION_TYPE_MAP, (type) => type.includes(extension));
+  const typeFromMap = findKey(SUPPORTED_EXTENSION_TYPE_MAP, (type) =>
+    type.includes(extension),
+  );
 
-	return typeFromMap || false;
+  return typeFromMap || false;
 };

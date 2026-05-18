@@ -1,121 +1,125 @@
-import { mount } from "enzyme";
-import { vi } from "vitest";
-import DragManager from "../DragManager";
-import DragPreview, { cleanup as previewCleanup, position as previewPosition } from "../DragPreview";
-import DragSource from "../DragSource";
-import { actionCreators as actions } from "../reducer";
+import { mount } from 'enzyme';
+import { vi } from 'vitest';
 
-vi.mock("../DragManager");
-vi.mock("../DragPreview");
-vi.mock("../store");
-vi.mock("../reducer");
+import DragManager from '../DragManager';
+import DragPreview, {
+  cleanup as previewCleanup,
+  position as previewPosition,
+} from '../DragPreview';
+import DragSource from '../DragSource';
+import { actionCreators as actions } from '../reducer';
 
-describe("DragSource", () => {
-	describe("on drag start", () => {
-		let component;
+vi.mock('../DragManager');
+vi.mock('../DragPreview');
+vi.mock('../store');
+vi.mock('../reducer');
 
-		beforeEach(() => {
-			DragPreview.mockClear();
-			actions.dragStart.mockClear();
+describe('DragSource', () => {
+  describe('on drag start', () => {
+    let component;
 
-			const MockComponent = DragSource("div");
+    beforeEach(() => {
+      DragPreview.mockClear();
+      actions.dragStart.mockClear();
 
-			component = mount(<MockComponent />);
+      const MockComponent = DragSource('div');
 
-			DragManager.getOptions().onDragStart({ x: 0, y: 0 });
-		});
+      component = mount(<MockComponent />);
 
-		afterEach(() => {
-			component.unmount();
-		});
+      DragManager.getOptions().onDragStart({ x: 0, y: 0 });
+    });
 
-		it("it creates a preview", () => {
-			expect(DragPreview.mock.calls.length).toEqual(1);
-		});
+    afterEach(() => {
+      component.unmount();
+    });
 
-		it("registers source with DRAG_START", () => {
-			expect(actions.dragStart.mock.calls.length).toEqual(1);
-		});
-	});
+    it('it creates a preview', () => {
+      expect(DragPreview.mock.calls.length).toEqual(1);
+    });
 
-	describe("on drag move", () => {
-		let component;
+    it('registers source with DRAG_START', () => {
+      expect(actions.dragStart.mock.calls.length).toEqual(1);
+    });
+  });
 
-		beforeEach(() => {
-			DragPreview.mockClear();
-			actions.dragMove.mockClear();
+  describe('on drag move', () => {
+    let component;
 
-			const MockComponent = DragSource("div");
+    beforeEach(() => {
+      DragPreview.mockClear();
+      actions.dragMove.mockClear();
 
-			component = mount(<MockComponent />);
+      const MockComponent = DragSource('div');
 
-			DragManager.getOptions().onDragStart({ x: 0, y: 0 });
-			DragManager.getOptions().onDragMove({ x: 0, y: 0 });
-		});
+      component = mount(<MockComponent />);
 
-		afterEach(() => {
-			component.unmount();
-		});
+      DragManager.getOptions().onDragStart({ x: 0, y: 0 });
+      DragManager.getOptions().onDragMove({ x: 0, y: 0 });
+    });
 
-		it("updates the preview", () => {
-			expect(previewPosition.mock.calls.length).toEqual(1);
-		});
+    afterEach(() => {
+      component.unmount();
+    });
 
-		it("updates source with DRAG_MOVE", () => {
-			expect(actions.dragMove.mock.calls.length).toEqual(1);
-		});
-	});
+    it('updates the preview', () => {
+      expect(previewPosition.mock.calls.length).toEqual(1);
+    });
 
-	describe("on drag end", () => {
-		let component;
+    it('updates source with DRAG_MOVE', () => {
+      expect(actions.dragMove.mock.calls.length).toEqual(1);
+    });
+  });
 
-		beforeEach(() => {
-			previewCleanup.mockClear();
-			actions.dragEnd.mockClear();
+  describe('on drag end', () => {
+    let component;
 
-			const MockComponent = DragSource("div");
+    beforeEach(() => {
+      previewCleanup.mockClear();
+      actions.dragEnd.mockClear();
 
-			component = mount(<MockComponent />);
+      const MockComponent = DragSource('div');
 
-			DragManager.getOptions().onDragStart({ x: 0, y: 0 });
-			DragManager.getOptions().onDragEnd({ x: 0, y: 0 });
-		});
+      component = mount(<MockComponent />);
 
-		afterEach(() => {
-			component.unmount();
-		});
+      DragManager.getOptions().onDragStart({ x: 0, y: 0 });
+      DragManager.getOptions().onDragEnd({ x: 0, y: 0 });
+    });
 
-		it("it removes the preview", () => {
-			expect(previewCleanup.mock.calls.length).toEqual(1);
-		});
+    afterEach(() => {
+      component.unmount();
+    });
 
-		it("removes source with DRAG_END", () => {
-			expect(actions.dragEnd.mock.calls.length).toEqual(1);
-		});
-	});
+    it('it removes the preview', () => {
+      expect(previewCleanup.mock.calls.length).toEqual(1);
+    });
 
-	describe("on unmount", () => {
-		let component;
+    it('removes source with DRAG_END', () => {
+      expect(actions.dragEnd.mock.calls.length).toEqual(1);
+    });
+  });
 
-		beforeEach(() => {
-			previewCleanup.mockClear();
-			DragManager.unmount.mockClear();
+  describe('on unmount', () => {
+    let component;
 
-			const MockComponent = DragSource("div");
+    beforeEach(() => {
+      previewCleanup.mockClear();
+      DragManager.unmount.mockClear();
 
-			component = mount(<MockComponent />);
+      const MockComponent = DragSource('div');
 
-			DragManager.getOptions().onDragStart({ x: 0, y: 0 });
+      component = mount(<MockComponent />);
 
-			component.unmount();
-		});
+      DragManager.getOptions().onDragStart({ x: 0, y: 0 });
 
-		it("it removes the preview", () => {
-			expect(previewCleanup.mock.calls.length).toEqual(1);
-		});
+      component.unmount();
+    });
 
-		it("removes source with DRAG_END", () => {
-			expect(DragManager.unmount.mock.calls.length).toEqual(1);
-		});
-	});
+    it('it removes the preview', () => {
+      expect(previewCleanup.mock.calls.length).toEqual(1);
+    });
+
+    it('removes source with DRAG_END', () => {
+      expect(DragManager.unmount.mock.calls.length).toEqual(1);
+    });
+  });
 });

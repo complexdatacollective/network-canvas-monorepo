@@ -1,99 +1,100 @@
 /* eslint-env jest */
 
-import { getThunkMocks } from "@app/__tests__/testHelpers";
-import reducer, { actionCreators, test } from "../index";
+import { getThunkMocks } from '@app/__tests__/testHelpers';
 
-describe("protocol", () => {
-	describe("reducer", () => {
-		it("initial state", () => {
-			const initialState = reducer();
-			expect(initialState).toEqual({
-				assetManifest: {},
-				stages: [],
-				codebook: {
-					node: {},
-					edge: {},
-				},
-			});
-		});
+import reducer, { actionCreators, test } from '../index';
 
-		it("PROTOCOL/UPDATE_OPTIONS", () => {
-			const currentProtocol = {
-				name: "foo",
-				assetManifest: { nodes: [{ foo: "bar" }] },
-				forms: { fooForm: { bar: "baz" } },
-				stages: [{ type: "foobar" }],
-				codebook: { fooVar: { baz: "buzz" } },
-			};
+describe('protocol', () => {
+  describe('reducer', () => {
+    it('initial state', () => {
+      const initialState = reducer();
+      expect(initialState).toEqual({
+        assetManifest: {},
+        stages: [],
+        codebook: {
+          node: {},
+          edge: {},
+        },
+      });
+    });
 
-			const newStateFromFileAction = reducer(
-				currentProtocol,
-				test.updateOptions({
-					name: "bar",
-				}),
-			);
+    it('PROTOCOL/UPDATE_OPTIONS', () => {
+      const currentProtocol = {
+        name: 'foo',
+        assetManifest: { nodes: [{ foo: 'bar' }] },
+        forms: { fooForm: { bar: 'baz' } },
+        stages: [{ type: 'foobar' }],
+        codebook: { fooVar: { baz: 'buzz' } },
+      };
 
-			expect(newStateFromFileAction).toEqual({
-				name: "bar",
-				assetManifest: { nodes: [{ foo: "bar" }] },
-				forms: { fooForm: { bar: "baz" } },
-				stages: [{ type: "foobar" }],
-				codebook: { fooVar: { baz: "buzz" } },
-			});
-		});
+      const newStateFromFileAction = reducer(
+        currentProtocol,
+        test.updateOptions({
+          name: 'bar',
+        }),
+      );
 
-		it("SESSION/OPEN_NETCANVAS_SUCCESS", () => {
-			const currentProtocol = {
-				name: "foo",
-				assetManifest: { nodes: [] },
-				forms: {},
-				stages: [],
-				codebook: {},
-			};
+      expect(newStateFromFileAction).toEqual({
+        name: 'bar',
+        assetManifest: { nodes: [{ foo: 'bar' }] },
+        forms: { fooForm: { bar: 'baz' } },
+        stages: [{ type: 'foobar' }],
+        codebook: { fooVar: { baz: 'buzz' } },
+      });
+    });
 
-			const newProtocol = {
-				name: "bar",
-				assetManifest: { nodes: [{ foo: "bar" }] },
-				forms: { fooForm: { bar: "baz" } },
-				stages: [{ type: "foobar" }],
-				codebook: { fooVar: { baz: "buzz" } },
-			};
+    it('SESSION/OPEN_NETCANVAS_SUCCESS', () => {
+      const currentProtocol = {
+        name: 'foo',
+        assetManifest: { nodes: [] },
+        forms: {},
+        stages: [],
+        codebook: {},
+      };
 
-			const newStateFromFileAction = reducer(currentProtocol, {
-				type: "SESSION/OPEN_NETCANVAS_SUCCESS",
-				payload: { protocol: newProtocol },
-			});
+      const newProtocol = {
+        name: 'bar',
+        assetManifest: { nodes: [{ foo: 'bar' }] },
+        forms: { fooForm: { bar: 'baz' } },
+        stages: [{ type: 'foobar' }],
+        codebook: { fooVar: { baz: 'buzz' } },
+      };
 
-			expect(newStateFromFileAction).toEqual({
-				name: "bar",
-				assetManifest: { nodes: [{ foo: "bar" }] },
-				forms: { fooForm: { bar: "baz" } },
-				stages: [{ type: "foobar" }],
-				codebook: { fooVar: { baz: "buzz" } },
-			});
-		});
-	});
+      const newStateFromFileAction = reducer(currentProtocol, {
+        type: 'SESSION/OPEN_NETCANVAS_SUCCESS',
+        payload: { protocol: newProtocol },
+      });
 
-	describe("thunks", () => {
-		it("PROTOCOL/UPDATE_OPTIONS", async () => {
-			const [dispatch] = getThunkMocks();
+      expect(newStateFromFileAction).toEqual({
+        name: 'bar',
+        assetManifest: { nodes: [{ foo: 'bar' }] },
+        forms: { fooForm: { bar: 'baz' } },
+        stages: [{ type: 'foobar' }],
+        codebook: { fooVar: { baz: 'buzz' } },
+      });
+    });
+  });
 
-			await actionCreators.updateOptions({
-				name: "bar",
-			})(dispatch);
+  describe('thunks', () => {
+    it('PROTOCOL/UPDATE_OPTIONS', async () => {
+      const [dispatch] = getThunkMocks();
 
-			expect(dispatch).toHaveBeenNthCalledWith(1, {
-				options: {
-					name: "bar",
-				},
-				type: "PROTOCOL/UPDATE_OPTIONS",
-			});
+      await actionCreators.updateOptions({
+        name: 'bar',
+      })(dispatch);
 
-			expect(dispatch).toHaveBeenNthCalledWith(3, {
-				type: "SESSION/PROTOCOL_CHANGED",
-				ipc: true,
-				protocolIsValid: true,
-			});
-		});
-	});
+      expect(dispatch).toHaveBeenNthCalledWith(1, {
+        options: {
+          name: 'bar',
+        },
+        type: 'PROTOCOL/UPDATE_OPTIONS',
+      });
+
+      expect(dispatch).toHaveBeenNthCalledWith(3, {
+        type: 'SESSION/PROTOCOL_CHANGED',
+        ipc: true,
+        protocolIsValid: true,
+      });
+    });
+  });
 });

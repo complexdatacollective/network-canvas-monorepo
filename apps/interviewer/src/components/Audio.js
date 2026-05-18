@@ -1,19 +1,20 @@
-import PropTypes from "prop-types";
-import injectAssetUrl from "../behaviours/injectAssetUrl";
+import PropTypes from 'prop-types';
+
+import injectAssetUrl from '../behaviours/injectAssetUrl';
 
 const Audio = ({ url, description, ...props }) => (
-	<audio src={url} {...props}>
-		{description}
-	</audio>
+  <audio src={url} {...props}>
+    {description}
+  </audio>
 );
 
 Audio.propTypes = {
-	description: PropTypes.string,
-	url: PropTypes.string.isRequired,
+  description: PropTypes.string,
+  url: PropTypes.string.isRequired,
 };
 
 Audio.defaultProps = {
-	description: "",
+  description: '',
 };
 
 export { Audio };

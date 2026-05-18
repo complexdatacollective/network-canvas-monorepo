@@ -1,23 +1,26 @@
-import { withProps } from "react-recompose";
+import { withProps } from 'react-recompose';
 
 type PropsWithSubject = {
-	interfaceType?: string;
-	type?: string;
+  interfaceType?: string;
+  type?: string;
 };
 
 type InjectedProps = { disabled: boolean; disabledMessage?: string };
 
-const withDisabledSubjectRequired = withProps<InjectedProps, PropsWithSubject>(({ interfaceType, type }) => {
-	if (interfaceType === "EgoForm" || type) {
-		return { disabled: false };
-	}
+const withDisabledSubjectRequired = withProps<InjectedProps, PropsWithSubject>(
+  ({ interfaceType, type }) => {
+    if (interfaceType === 'EgoForm' || type) {
+      return { disabled: false };
+    }
 
-	const entityLabel = interfaceType === "AlterEdgeForm" ? "an edge" : "a node";
+    const entityLabel =
+      interfaceType === 'AlterEdgeForm' ? 'an edge' : 'a node';
 
-	return {
-		disabled: true,
-		disabledMessage: `Select ${entityLabel} type above to configure this section.`,
-	};
-});
+    return {
+      disabled: true,
+      disabledMessage: `Select ${entityLabel} type above to configure this section.`,
+    };
+  },
+);
 
 export default withDisabledSubjectRequired;

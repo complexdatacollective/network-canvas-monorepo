@@ -19,34 +19,34 @@ UI rule throughout: reuse and extend existing `@codaco/fresco-ui` components fir
 
 ### Decision Log
 
-| Decision | Reasoning Chain |
-|----------|-----------------|
-| Targeted rewrite (Home + auth + Settings only) over greenfield | Greenfield discards ~4000 LOC of working IPC, Dexie/SQLCipher dual-store, asset resolver, Effect export pipeline → none of which change in the spec → re-solving them would only introduce regression risk → targeted rewrite touches just the SPEC-delta areas. |
-| Rename `apps/modern-interviewer` → `apps/interviewer-v7` and `@codaco/modern-interviewer` → `@codaco/interviewer-v7` | User-confirmed via AskUserQuestion → product name shifts to "v7" → keeping the old folder name would mean every grep/CI/docs reference drifts → one clean rename now beats long-tail churn. |
-| WebAuthn (PRF) is the sole authentication mechanism; remove all passphrase code paths | SPEC §Security: "Web Authentication API as its sole authentication mechanism" → user instruction "Remove content about biometrics, as this is a side effect of the web authentication API" → any passphrase fallback would re-introduce the surface the spec just removed → delete passphrase paths in both `electron/auth/*` and `src/lib/auth/*`. |
-| Keep DEK indirection on desktop (envelope encryption: PRF → KEK → wrap a random DEK; DEK opens SQLCipher) over direct-key SQLCipher with PRF | Re-enrolment with a new authenticator must not require re-encrypting the whole database → direct-key would force a full re-encrypt on every credential rotation → envelope encryption keeps the on-disk DEK constant and just re-wraps it → standard practice for at-rest encryption with rotatable user keys. |
-| Drop the encrypted web/tablet renderer-side vault (`src/lib/auth/crypto.ts`, `src/lib/auth/vault.ts`) entirely | SPEC §Storage paragraph 4: "On tablet and web, storage relies on the platform's own at-rest protections; Web Authentication is used to gate access to the running app rather than to derive a storage key." → keeping a renderer-side passphrase-derived vault would contradict the spec → simpler model: WebAuthn gates the app; Dexie data sits behind the platform's existing protections. |
-| Gate the web build with WebAuthn the same as desktop/tablet (no dev-bypass env flag) | User-confirmed via AskUserQuestion → keeps the auth flows exercised across all targets → divergence between web and native auth would create separate bug surfaces. |
-| Implement Variation F as handed off; defer the unanswered iteration ("split protocol selector and protocol meta into two side-by-side panels") | User-confirmed via AskUserQuestion → the design bundle's chat transcript ends with the user asking for the split but the design wasn't iterated yet → implementing it now would require unbacked design judgement → faithful to the bundle, flag as a follow-up. |
-| Preserve `isElectron`-based platform facade in `src/lib/db/api.ts` | Existing pattern works → SPEC §Storage explicitly requires platform-specific behaviour (encrypted desktop, platform-protected elsewhere) → the facade is the right abstraction for that split. |
-| `@codaco/network-exporters` Effect pipeline used as-is via `src/lib/export/exportSessions.ts` | Working code with documented Effect 3 + Layer-based wiring → SPEC's export requirements (GraphML, CSV, screen-coords, zip) are already implemented → no reason to change. |
-| `fresco-ui` first; `@base-ui/react` + `motion` fallback; `@codaco/art` for blobs | User instruction in the planning prompt → workspace catalog confirms all three available → prototype already uses 28 distinct fresco-ui modules → the new Home design's animated blobs and fanned deck have no fresco-ui equivalent so the fallback rule is necessary. |
-| Idle timeout default 15 min; options 1/5/15/30/60 | SPEC §Auto-lock specifies these values verbatim. |
-| `BLUR_LOCK_DELAY_MS = 30_000` preserved | Existing in `src/lib/auth/AuthContext.tsx` → SPEC says "extended focus loss" → 30s matches that intent and is already proven in the prototype. |
-| Export sink: Electron uses `dialog:saveFile` IPC; Capacitor uses `@capacitor/filesystem`; web uses `Blob`+`saveAs` | SPEC §Data export + existing platform-aware helpers in `src/lib/files/download.ts` → no change needed. |
-| Single-deliverable framing in the plan prose; milestones are an execution detail | User memory: "No phased rollouts. Present designs as a single deliverable" → milestones exist for ordered execution + per-step verification, not as a public rollout schedule. |
-| Work on a branch (no worktree) | User memory: "Work directly on branches, skip git worktrees". |
+| Decision                                                                                                                                       | Reasoning Chain                                                                                                                                                                                                                                                                                                                                                                               |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Targeted rewrite (Home + auth + Settings only) over greenfield                                                                                 | Greenfield discards ~4000 LOC of working IPC, Dexie/SQLCipher dual-store, asset resolver, Effect export pipeline → none of which change in the spec → re-solving them would only introduce regression risk → targeted rewrite touches just the SPEC-delta areas.                                                                                                                              |
+| Rename `apps/modern-interviewer` → `apps/interviewer-v7` and `@codaco/modern-interviewer` → `@codaco/interviewer-v7`                           | User-confirmed via AskUserQuestion → product name shifts to "v7" → keeping the old folder name would mean every grep/CI/docs reference drifts → one clean rename now beats long-tail churn.                                                                                                                                                                                                   |
+| WebAuthn (PRF) is the sole authentication mechanism; remove all passphrase code paths                                                          | SPEC §Security: "Web Authentication API as its sole authentication mechanism" → user instruction "Remove content about biometrics, as this is a side effect of the web authentication API" → any passphrase fallback would re-introduce the surface the spec just removed → delete passphrase paths in both `electron/auth/*` and `src/lib/auth/*`.                                           |
+| Keep DEK indirection on desktop (envelope encryption: PRF → KEK → wrap a random DEK; DEK opens SQLCipher) over direct-key SQLCipher with PRF   | Re-enrolment with a new authenticator must not require re-encrypting the whole database → direct-key would force a full re-encrypt on every credential rotation → envelope encryption keeps the on-disk DEK constant and just re-wraps it → standard practice for at-rest encryption with rotatable user keys.                                                                                |
+| Drop the encrypted web/tablet renderer-side vault (`src/lib/auth/crypto.ts`, `src/lib/auth/vault.ts`) entirely                                 | SPEC §Storage paragraph 4: "On tablet and web, storage relies on the platform's own at-rest protections; Web Authentication is used to gate access to the running app rather than to derive a storage key." → keeping a renderer-side passphrase-derived vault would contradict the spec → simpler model: WebAuthn gates the app; Dexie data sits behind the platform's existing protections. |
+| Gate the web build with WebAuthn the same as desktop/tablet (no dev-bypass env flag)                                                           | User-confirmed via AskUserQuestion → keeps the auth flows exercised across all targets → divergence between web and native auth would create separate bug surfaces.                                                                                                                                                                                                                           |
+| Implement Variation F as handed off; defer the unanswered iteration ("split protocol selector and protocol meta into two side-by-side panels") | User-confirmed via AskUserQuestion → the design bundle's chat transcript ends with the user asking for the split but the design wasn't iterated yet → implementing it now would require unbacked design judgement → faithful to the bundle, flag as a follow-up.                                                                                                                              |
+| Preserve `isElectron`-based platform facade in `src/lib/db/api.ts`                                                                             | Existing pattern works → SPEC §Storage explicitly requires platform-specific behaviour (encrypted desktop, platform-protected elsewhere) → the facade is the right abstraction for that split.                                                                                                                                                                                                |
+| `@codaco/network-exporters` Effect pipeline used as-is via `src/lib/export/exportSessions.ts`                                                  | Working code with documented Effect 3 + Layer-based wiring → SPEC's export requirements (GraphML, CSV, screen-coords, zip) are already implemented → no reason to change.                                                                                                                                                                                                                     |
+| `fresco-ui` first; `@base-ui/react` + `motion` fallback; `@codaco/art` for blobs                                                               | User instruction in the planning prompt → workspace catalog confirms all three available → prototype already uses 28 distinct fresco-ui modules → the new Home design's animated blobs and fanned deck have no fresco-ui equivalent so the fallback rule is necessary.                                                                                                                        |
+| Idle timeout default 15 min; options 1/5/15/30/60                                                                                              | SPEC §Auto-lock specifies these values verbatim.                                                                                                                                                                                                                                                                                                                                              |
+| `BLUR_LOCK_DELAY_MS = 30_000` preserved                                                                                                        | Existing in `src/lib/auth/AuthContext.tsx` → SPEC says "extended focus loss" → 30s matches that intent and is already proven in the prototype.                                                                                                                                                                                                                                                |
+| Export sink: Electron uses `dialog:saveFile` IPC; Capacitor uses `@capacitor/filesystem`; web uses `Blob`+`saveAs`                             | SPEC §Data export + existing platform-aware helpers in `src/lib/files/download.ts` → no change needed.                                                                                                                                                                                                                                                                                        |
+| Single-deliverable framing in the plan prose; milestones are an execution detail                                                               | User memory: "No phased rollouts. Present designs as a single deliverable" → milestones exist for ordered execution + per-step verification, not as a public rollout schedule.                                                                                                                                                                                                                |
+| Work on a branch (no worktree)                                                                                                                 | User memory: "Work directly on branches, skip git worktrees".                                                                                                                                                                                                                                                                                                                                 |
 
 ### Rejected Alternatives
 
-| Alternative | Why Rejected |
-|-------------|--------------|
-| Greenfield rewrite of `apps/modern-interviewer/src/` | Discards 4,000 LOC of working IPC bridges, asset resolver, Effect export pipeline, dual-store facade — none of which the SPEC changes. Would be pure churn. |
-| Keep passphrase as a fallback unlock | Contradicts the spec's "sole authentication mechanism" language and the user's instruction to remove biometric/passphrase surface. Reintroduces the very surface the SPEC removed. |
-| Direct-key SQLCipher with the PRF output (no DEK indirection) | Would force a full database re-encrypt on every authenticator re-enrolment. Envelope encryption with a random DEK keeps re-enrol O(1). |
-| `DEV_BYPASS_AUTH` env flag for web dev | User chose parity. Divergence between web and native auth would create separate bug surfaces. |
-| Implement the pending design iteration (side-by-side panels) now | The design isn't in the handed-off bundle. Building from chat-transcript intent alone means unbacked judgement on panel sizes, transitions, content distribution. |
-| Skip the WebAuthn gate on web entirely | User chose parity. Web build is dev-focused but still on the same auth surface. |
+| Alternative                                                      | Why Rejected                                                                                                                                                                       |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Greenfield rewrite of `apps/modern-interviewer/src/`             | Discards 4,000 LOC of working IPC bridges, asset resolver, Effect export pipeline, dual-store facade — none of which the SPEC changes. Would be pure churn.                        |
+| Keep passphrase as a fallback unlock                             | Contradicts the spec's "sole authentication mechanism" language and the user's instruction to remove biometric/passphrase surface. Reintroduces the very surface the SPEC removed. |
+| Direct-key SQLCipher with the PRF output (no DEK indirection)    | Would force a full database re-encrypt on every authenticator re-enrolment. Envelope encryption with a random DEK keeps re-enrol O(1).                                             |
+| `DEV_BYPASS_AUTH` env flag for web dev                           | User chose parity. Divergence between web and native auth would create separate bug surfaces.                                                                                      |
+| Implement the pending design iteration (side-by-side panels) now | The design isn't in the handed-off bundle. Building from chat-transcript intent alone means unbacked judgement on panel sizes, transitions, content distribution.                  |
+| Skip the WebAuthn gate on web entirely                           | User chose parity. Web build is dev-focused but still on the same auth surface.                                                                                                    |
 
 ### Constraints & Assumptions
 
@@ -61,17 +61,17 @@ UI rule throughout: reuse and extend existing `@codaco/fresco-ui` components fir
 
 ### Known Risks
 
-| Risk | Mitigation | Anchor |
-|------|-----------|--------|
-| Renaming `apps/modern-interviewer` → `apps/interviewer-v7` breaks Capacitor native projects (`ios/`, `android/`) that may hold absolute paths embedded by `cap add` | Test `capacitor:sync` + `capacitor:run` on both platforms after rename. If either breaks, regenerate native projects: `pnpm exec cap add ios && pnpm exec cap add android` under the new directory and commit the rebuild. The capacitor config itself is path-relative. | `apps/modern-interviewer/capacitor.config.ts:7` — `webDir: "dist"` is relative |
-| Renaming the package breaks downstream workspace imports | Cross-grep showed zero imports of `@codaco/modern-interviewer` from outside the app folder. `pnpm-workspace.yaml` uses the `apps/*` glob — no edit required. | `grep -r @codaco/modern --include="*.json" --include="*.ts"` returned only `apps/modern-interviewer/*` files |
-| WebAuthn PRF extension unsupported on a user's OS/browser, blocking setup with no recovery path | Probe PRF support up-front: after `navigator.credentials.create`, if `getClientExtensionResults().prf?.results?.first` is undefined, fall back to a second `authenticatePasskey` call to elicit PRF; if that also returns nothing, fail setup with an explicit error message in `SetupScreen.tsx`. | `src/lib/auth/webauthn.ts:91-101` — `if (prfOnCreate) return ok; const result = await authenticatePasskey(...)` |
-| Interview-mode design tokens (`--iv-bg`, `--iv-edge`, `--paradise-pink`, `--sea-green`, `--font-display`, etc.) may not be exposed by `@codaco/tailwind-config/fresco.css`; design bundle's own `fresco-interview.css` notes that the shipped Architect tokens omit the Interview palette | M8 starts with a 30-min spike: open `tooling/tailwind/fresco/` and ripgrep for `--iv-bg`, `--paradise-pink`, `--font-display`. If absent, copy the relevant `:root` token block from `/tmp/design-fetch/.../lib/fresco-interview.css` into `apps/interviewer-v7/src/styles/globals.css` under a labelled "Interview-mode tokens (TODO: move into @codaco/tailwind-config)" comment. | `/tmp/design-fetch/interviewer-7-start-screen-2/project/lib/fresco-interview.css:1-3` — explicit warning comment |
-| `@codaco/art` `BackgroundBlobs` uses RGB gradient pairs, not the design's named oklch palette — naive use won't match Variation F | M10 — pass a custom palette of resolved RGB pairs derived from the oklch tokens. Extend `BackgroundBlobs` with an opt-in `palette?: Array<[string, string]>` prop; default behaviour unchanged. | `packages/art/src/BackgroundBlobs/BackgroundBlobs.tsx:23-34` — `gradients` is a hardcoded array of RGB pairs |
-| Motion + canvas blobs may stutter on lower-end tablets (iPad 6th gen, mid-tier Android) | `StageBackground` honours `prefers-reduced-motion` and falls back to a static SVG/CSS radial gradient. Add a one-time perf check during M10 — first paint TTI + frame rate at 60fps target on iPad sim/Android emulator. | hypothetical risk, no code claim |
-| `better-sqlite3-multiple-ciphers` is a native module; rename may not auto-rebuild for the new path | Run `pnpm --filter @codaco/interviewer-v7 electron:rebuild` at end of M1. The script is already wired. | `apps/modern-interviewer/package.json:28` — `"electron:rebuild": "electron-rebuild -f -w better-sqlite3-multiple-ciphers"` |
-| Renderer-side web vault (`src/lib/auth/crypto.ts`, `src/lib/auth/vault.ts`) currently uses a passphrase-derived KEK; removing passphrase means deciding whether to keep an encrypted blob or drop the renderer vault entirely | Decision: drop entirely. SPEC says tablet/web don't derive a storage key. `vaultMetadata.ts` stores `credentialId`+`salt` only — via `@capacitor/preferences` on Capacitor, `localStorage` on web. | `src/lib/auth/crypto.ts:5,36,94` + SPEC §Storage paragraph 4 |
-| Electron `dialog:saveFile` IPC payload is `Uint8Array`; large zip exports (sessions with many image assets) could exceed structured-clone size limits | Acceptable for now since exports are O(MB) not O(GB). Add a TODO to switch to `ReadableStream` if a session approaches IPC limits. | `electron/main.ts:80-92` — handler receives `payload: Uint8Array` and writes via `writeFile(result.filePath, Buffer.from(payload))` |
+| Risk                                                                                                                                                                                                                                                                                      | Mitigation                                                                                                                                                                                                                                                                                                                                                                          | Anchor                                                                                                                              |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Renaming `apps/modern-interviewer` → `apps/interviewer-v7` breaks Capacitor native projects (`ios/`, `android/`) that may hold absolute paths embedded by `cap add`                                                                                                                       | Test `capacitor:sync` + `capacitor:run` on both platforms after rename. If either breaks, regenerate native projects: `pnpm exec cap add ios && pnpm exec cap add android` under the new directory and commit the rebuild. The capacitor config itself is path-relative.                                                                                                            | `apps/modern-interviewer/capacitor.config.ts:7` — `webDir: "dist"` is relative                                                      |
+| Renaming the package breaks downstream workspace imports                                                                                                                                                                                                                                  | Cross-grep showed zero imports of `@codaco/modern-interviewer` from outside the app folder. `pnpm-workspace.yaml` uses the `apps/*` glob — no edit required.                                                                                                                                                                                                                        | `grep -r @codaco/modern --include="*.json" --include="*.ts"` returned only `apps/modern-interviewer/*` files                        |
+| WebAuthn PRF extension unsupported on a user's OS/browser, blocking setup with no recovery path                                                                                                                                                                                           | Probe PRF support up-front: after `navigator.credentials.create`, if `getClientExtensionResults().prf?.results?.first` is undefined, fall back to a second `authenticatePasskey` call to elicit PRF; if that also returns nothing, fail setup with an explicit error message in `SetupScreen.tsx`.                                                                                  | `src/lib/auth/webauthn.ts:91-101` — `if (prfOnCreate) return ok; const result = await authenticatePasskey(...)`                     |
+| Interview-mode design tokens (`--iv-bg`, `--iv-edge`, `--paradise-pink`, `--sea-green`, `--font-display`, etc.) may not be exposed by `@codaco/tailwind-config/fresco.css`; design bundle's own `fresco-interview.css` notes that the shipped Architect tokens omit the Interview palette | M8 starts with a 30-min spike: open `tooling/tailwind/fresco/` and ripgrep for `--iv-bg`, `--paradise-pink`, `--font-display`. If absent, copy the relevant `:root` token block from `/tmp/design-fetch/.../lib/fresco-interview.css` into `apps/interviewer-v7/src/styles/globals.css` under a labelled "Interview-mode tokens (TODO: move into @codaco/tailwind-config)" comment. | `/tmp/design-fetch/interviewer-7-start-screen-2/project/lib/fresco-interview.css:1-3` — explicit warning comment                    |
+| `@codaco/art` `BackgroundBlobs` uses RGB gradient pairs, not the design's named oklch palette — naive use won't match Variation F                                                                                                                                                         | M10 — pass a custom palette of resolved RGB pairs derived from the oklch tokens. Extend `BackgroundBlobs` with an opt-in `palette?: Array<[string, string]>` prop; default behaviour unchanged.                                                                                                                                                                                     | `packages/art/src/BackgroundBlobs/BackgroundBlobs.tsx:23-34` — `gradients` is a hardcoded array of RGB pairs                        |
+| Motion + canvas blobs may stutter on lower-end tablets (iPad 6th gen, mid-tier Android)                                                                                                                                                                                                   | `StageBackground` honours `prefers-reduced-motion` and falls back to a static SVG/CSS radial gradient. Add a one-time perf check during M10 — first paint TTI + frame rate at 60fps target on iPad sim/Android emulator.                                                                                                                                                            | hypothetical risk, no code claim                                                                                                    |
+| `better-sqlite3-multiple-ciphers` is a native module; rename may not auto-rebuild for the new path                                                                                                                                                                                        | Run `pnpm --filter @codaco/interviewer-v7 electron:rebuild` at end of M1. The script is already wired.                                                                                                                                                                                                                                                                              | `apps/modern-interviewer/package.json:28` — `"electron:rebuild": "electron-rebuild -f -w better-sqlite3-multiple-ciphers"`          |
+| Renderer-side web vault (`src/lib/auth/crypto.ts`, `src/lib/auth/vault.ts`) currently uses a passphrase-derived KEK; removing passphrase means deciding whether to keep an encrypted blob or drop the renderer vault entirely                                                             | Decision: drop entirely. SPEC says tablet/web don't derive a storage key. `vaultMetadata.ts` stores `credentialId`+`salt` only — via `@capacitor/preferences` on Capacitor, `localStorage` on web.                                                                                                                                                                                  | `src/lib/auth/crypto.ts:5,36,94` + SPEC §Storage paragraph 4                                                                        |
+| Electron `dialog:saveFile` IPC payload is `Uint8Array`; large zip exports (sessions with many image assets) could exceed structured-clone size limits                                                                                                                                     | Acceptable for now since exports are O(MB) not O(GB). Add a TODO to switch to `ReadableStream` if a session approaches IPC limits.                                                                                                                                                                                                                                                  | `electron/main.ts:80-92` — handler receives `payload: Uint8Array` and writes via `writeFile(result.filePath, Buffer.from(payload))` |
 
 ## Invisible Knowledge
 
@@ -228,29 +228,32 @@ markSessionsExported(ids) -> updates exportedAt timestamp
 
 ### Tradeoffs
 
-| Decision | Cost | Benefit |
-|----------|------|---------|
-| Envelope encryption (PRF → KEK → DEK) over direct-key SQLCipher | Slightly more code in `vault.ts`; one extra in-memory transformation per unlock | Re-enrolment is O(1); no full DB re-encrypt; the on-disk key remains constant across credential rotation |
-| WebAuthn-only (no passphrase fallback) | Users without PRF support cannot use the app; no account recovery path | Strong, modern auth; smallest possible auth surface; spec-aligned |
-| Drop encrypted renderer vault on tablet/web | Tablet/web data is platform-protected, not app-encrypted | Massive simplification of the renderer auth code; matches what the spec actually says about non-desktop platforms |
-| Variation F as handed off | The pending "split selector + meta" iteration is deferred | Faithful to the design that exists; no unbacked design judgement |
+| Decision                                                        | Cost                                                                            | Benefit                                                                                                           |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Envelope encryption (PRF → KEK → DEK) over direct-key SQLCipher | Slightly more code in `vault.ts`; one extra in-memory transformation per unlock | Re-enrolment is O(1); no full DB re-encrypt; the on-disk key remains constant across credential rotation          |
+| WebAuthn-only (no passphrase fallback)                          | Users without PRF support cannot use the app; no account recovery path          | Strong, modern auth; smallest possible auth surface; spec-aligned                                                 |
+| Drop encrypted renderer vault on tablet/web                     | Tablet/web data is platform-protected, not app-encrypted                        | Massive simplification of the renderer auth code; matches what the spec actually says about non-desktop platforms |
+| Variation F as handed off                                       | The pending "split selector + meta" iteration is deferred                       | Faithful to the design that exists; no unbacked design judgement                                                  |
 
 ## Milestones
 
 ### Milestone 1: Workspace rename
 
 **Files**:
+
 - Rename directory: `apps/modern-interviewer` → `apps/interviewer-v7`
 - `apps/interviewer-v7/package.json` (edit `name` + `description`)
 
 **Flags**: needs conformance check (first folder rename in this monorepo).
 
 **Requirements**:
+
 - Set `"name": "@codaco/interviewer-v7"`.
 - Set `"description": "Network Canvas Interviewer v7 — Vite + React 19 dashboard hosting the @codaco/interview engine, with desktop (Electron) and tablet (Capacitor) targets."`.
 - No other workspace edits required (`pnpm-workspace.yaml` uses the `apps/*` glob — auto-picks up the new path).
 
 **Acceptance Criteria**:
+
 - `pnpm install` exits 0.
 - `pnpm --filter @codaco/interviewer-v7 typecheck` exits 0.
 - `pnpm --filter @codaco/interviewer-v7 electron:rebuild` exits 0 (native module rebinds to new path).
@@ -259,22 +262,26 @@ markSessionsExported(ids) -> updates exportedAt timestamp
 ### Milestone 2: Brand sweep (user-visible strings)
 
 **Files**:
+
 - `apps/interviewer-v7/electron/main.ts`
 - `apps/interviewer-v7/capacitor.config.ts`
 - `apps/interviewer-v7/electron-builder.config.cjs`
 
 **Requirements**:
+
 - `electron/main.ts:18` — `title: "Network Canvas Interviewer v7"`.
 - `capacitor.config.ts:5` — `appName: "Network Canvas Interviewer v7"`.
 - `electron-builder.config.cjs` — update comment + `productName: "Network Canvas Interviewer v7"`.
 
 **Acceptance Criteria**:
+
 - `pnpm --filter @codaco/interviewer-v7 electron:dev` shows the new title.
 - `rg -i "Modern Network Canvas Interviewer" apps/interviewer-v7/` returns nothing.
 
 ### Milestone 3: Backend vault rewrite (WebAuthn-only desktop)
 
 **Files**:
+
 - `apps/interviewer-v7/electron/auth/vault.ts` (rewrite)
 - `apps/interviewer-v7/electron/auth/vaultStore.ts` (rewrite `VaultRecord` shape)
 - `apps/interviewer-v7/electron/handlers/authHandlers.ts` (drop passphrase IPC; expose enrol / unlock / lock / reEnrol / revoke)
@@ -350,17 +357,18 @@ export async function revoke(): Promise<void>;
 
 ```ts
 export type VaultRecord = {
-  version: number;            // CURRENT_VAULT_VERSION = 3
+  version: number; // CURRENT_VAULT_VERSION = 3
   credentialIdB64: string;
   saltB64: string;
   wrapIvB64: string;
-  wrapCiphertextB64: string;  // AES-GCM(KEK, DEK)
+  wrapCiphertextB64: string; // AES-GCM(KEK, DEK)
 };
 ```
 
 **Requirements — `authHandlers.ts`** — IPC channels: `auth:status`, `auth:setup`, `auth:unlock`, `auth:lock`, `auth:reEnrol`, `auth:revoke`. Remove passphrase channels.
 
 **Acceptance Criteria**:
+
 - Clean profile + Electron boot: setup IPC succeeds; SQLCipher db file created at `userData/`; round-trips data.
 - Restart Electron with same authenticator → unlock IPC succeeds; sessions list returns prior rows.
 - `pnpm typecheck` green.
@@ -370,6 +378,7 @@ export type VaultRecord = {
 ### Milestone 4: Renderer auth client (passphrase-free)
 
 **Files**:
+
 - `apps/interviewer-v7/src/lib/auth/api.ts` (rewrite)
 - `apps/interviewer-v7/src/lib/auth/AuthContext.tsx` (rewrite)
 - `apps/interviewer-v7/src/lib/auth/electron.ts` (drop passphrase IPC wrappers)
@@ -390,10 +399,16 @@ export async function status(): Promise<{
   credentialIdB64?: string;
   saltB64?: string;
 }>;
-export async function enrol(signal?: AbortSignal): Promise<{ ok: boolean; message?: string }>;
-export async function unlock(signal?: AbortSignal): Promise<{ ok: boolean; message?: string }>;
+export async function enrol(
+  signal?: AbortSignal,
+): Promise<{ ok: boolean; message?: string }>;
+export async function unlock(
+  signal?: AbortSignal,
+): Promise<{ ok: boolean; message?: string }>;
 export async function lock(): Promise<void>;
-export async function reEnrol(signal?: AbortSignal): Promise<{ ok: boolean; message?: string }>;
+export async function reEnrol(
+  signal?: AbortSignal,
+): Promise<{ ok: boolean; message?: string }>;
 export async function revoke(): Promise<void>;
 ```
 
@@ -404,7 +419,7 @@ export async function revoke(): Promise<void>;
 **Requirements — `AuthContext.tsx`** target surface:
 
 ```ts
-export type AuthStateKind = "loading" | "unconfigured" | "locked" | "unlocked";
+export type AuthStateKind = 'loading' | 'unconfigured' | 'locked' | 'unlocked';
 
 export type AuthState = {
   kind: AuthStateKind;
@@ -415,8 +430,12 @@ export type AuthState = {
 
 type AuthActions = {
   refresh: () => Promise<void>;
-  enrolAuthenticator: (signal?: AbortSignal) => Promise<{ ok: boolean; message?: string }>;
-  unlockWithAuthenticator: (signal?: AbortSignal) => Promise<{ ok: boolean; message?: string }>;
+  enrolAuthenticator: (
+    signal?: AbortSignal,
+  ) => Promise<{ ok: boolean; message?: string }>;
+  unlockWithAuthenticator: (
+    signal?: AbortSignal,
+  ) => Promise<{ ok: boolean; message?: string }>;
   lock: () => Promise<void>;
   reEnrol: (signal?: AbortSignal) => Promise<{ ok: boolean; message?: string }>;
   revoke: () => Promise<void>;
@@ -427,6 +446,7 @@ type AuthActions = {
 The `"disabled"` state kind and `securityEnabled` state field are removed entirely.
 
 **Acceptance Criteria**:
+
 - `pnpm typecheck` green.
 - `rg -i passphrase apps/interviewer-v7/src/lib/auth/` returns no matches.
 - `AuthContext` exposes only the 7 actions above.
@@ -434,6 +454,7 @@ The `"disabled"` state kind and `securityEnabled` state field are removed entire
 ### Milestone 5: Setup + Lock screens
 
 **Files**:
+
 - `apps/interviewer-v7/src/components/SetupScreen.tsx` (rewrite)
 - `apps/interviewer-v7/src/components/LockScreen.tsx` (rewrite)
 - `apps/interviewer-v7/src/components/AuthGate.tsx` (simplify state machine)
@@ -442,6 +463,7 @@ The `"disabled"` state kind and `securityEnabled` state field are removed entire
 **Flags**: needs TW rationale (single-CTA vs progressive disclosure of the no-recovery warning).
 
 **Requirements — `SetupScreen.tsx`**:
+
 - Centred card on dark stage; explains: "This device will be secured with your platform authenticator. There is no recovery — losing the authenticator means losing the data on this device."
 - Acknowledgement checkbox: "I understand there is no recovery".
 - Primary button: "Enrol authenticator" (disabled until checkbox).
@@ -450,20 +472,24 @@ The `"disabled"` state kind and `securityEnabled` state field are removed entire
 - On PRF-unsupported (desktop only): error block "Your platform authenticator does not support the PRF extension. Use a different authenticator or device."
 
 **Requirements — `LockScreen.tsx`**:
+
 - Single primary button: "Unlock with authenticator".
 - On WebAuthn cancel: stay on LockScreen, button reactivates.
 - 30-second `BLUR_LOCK_DELAY_MS` honoured via the existing `useIdleTimer` hook.
 
 **Requirements — `AuthGate.tsx`**:
+
 - Render: `loading` → spinner; `unconfigured` → `<SetupScreen/>`; `locked` → `<LockScreen/>`; `unlocked` → children.
 
 **Acceptance Criteria**:
+
 - Manual flow on Electron clean profile: SetupScreen → enrol → AppShell with Home → quit → relaunch → LockScreen → unlock → Home.
 - `pnpm typecheck` green.
 
 ### Milestone 6: Tablet/web auth parity
 
 **Files**:
+
 - `apps/interviewer-v7/src/lib/auth/AuthContext.tsx` (drop the `securityEnabled` fallback branch)
 - `apps/interviewer-v7/src/lib/auth/vaultMetadata.ts` (already rewritten in M4; verify storage adapter dispatches `@capacitor/preferences` on Capacitor, `localStorage` on web)
 - `apps/interviewer-v7/electron/db/service.ts` (drop `securityEnabled` from `DEFAULT_SETTINGS`)
@@ -473,11 +499,13 @@ The `"disabled"` state kind and `securityEnabled` state field are removed entire
 **Flags**: needs error review (Capacitor `@capacitor/preferences` errors on iOS Keychain-locked devices).
 
 **Requirements**:
+
 - `AuthGate` runs unconditionally on every platform.
 - Capacitor metadata keys: `auth.credentialId`, `auth.salt` (via `@capacitor/preferences`).
 - Web metadata keys: same names via `localStorage`.
 
 **Acceptance Criteria**:
+
 - Capacitor iOS sim cold-launches into SetupScreen; enrolment via Face ID/Touch ID succeeds.
 - Capacitor Android cold-launches into SetupScreen; enrolment via fingerprint/PIN succeeds.
 - Web (vite dev on https) presents SetupScreen.
@@ -486,12 +514,14 @@ The `"disabled"` state kind and `securityEnabled` state field are removed entire
 ### Milestone 7: Settings restructure
 
 **Files**:
+
 - `apps/interviewer-v7/src/routes/Settings.tsx` (rewrite)
 - `apps/interviewer-v7/src/components/ManageAuthenticator.tsx` (new — Settings sub-panel)
 
 **Flags**: needs TW rationale (Manage authenticator sub-panel vs inline rows).
 
 **Requirements — `Settings.tsx`** sections in order:
+
 1. **Data export** — fresco-ui form fields: `ToggleField` GraphML, `ToggleField` CSV, `ToggleField` "Export node positions as screen-coordinate pixels", `InputField` width (px), `InputField` height (px). Persists via `updateSettings`.
 2. **Idle timeout** — fresco-ui `Select/Native` with options 1 / 5 / 15 / 30 / 60 minutes. Persists.
 3. **Manage authenticator** — sub-panel summarising credential metadata (truncated `credentialIdB64`, `enrolledAt`) + "Re-enrol authenticator" button + "Revoke" button (red, base-ui Dialog with "This will destroy all data on this device" warning).
@@ -505,6 +535,7 @@ The `"disabled"` state kind and `securityEnabled` state field are removed entire
 6. **Diagnostics** — read-only: platform name (`hostAppName`), storage usage, storage persistence state.
 
 **Acceptance Criteria**:
+
 - Each control persists across page reload.
 - Revoke triggers: vault destroyed → AuthGate transitions to `unconfigured` → SetupScreen rendered.
 - `pnpm typecheck` green.
@@ -512,6 +543,7 @@ The `"disabled"` state kind and `securityEnabled` state field are removed entire
 ### Milestone 8: Variation F Home — brand + top action bar + page shell
 
 **Files**:
+
 - `apps/interviewer-v7/src/routes/Home.tsx` (full rewrite)
 - `apps/interviewer-v7/src/components/BrandHeader.tsx` (new)
 - `apps/interviewer-v7/src/components/TopActionBar.tsx` (new)
@@ -522,20 +554,24 @@ The `"disabled"` state kind and `securityEnabled` state field are removed entire
 **Spike at the start of M8**: open `tooling/tailwind/fresco/fresco.css` (and any sibling token files), ripgrep for `--iv-bg`, `--paradise-pink`, `--font-display`. If absent, copy the `:root` block from `/tmp/design-fetch/interviewer-7-start-screen-2/project/lib/fresco-interview.css` into `apps/interviewer-v7/src/styles/globals.css` under a labelled "Interview-mode tokens (TODO: move into @codaco/tailwind-config)" comment block.
 
 **Requirements — `Home.tsx`**:
+
 - Layout: relative full-viewport container; brand top-left absolute, top-action-bar top-right absolute, content area centred, status row bottom. No 1280×900 letterbox — responsive.
 - Loads protocols + sessions + settings via existing `db/api` helpers.
 
 **Requirements — `BrandHeader.tsx`**:
+
 - NC-Mark 56×56 (use a `@codaco/fresco-ui` asset if present, else copy `/tmp/design-fetch/.../assets/NC-Mark.svg` into `apps/interviewer-v7/src/assets/`).
 - Wordmark "Interviewer" — display font, weight 900, 28px, letter-spacing -0.015em, line-height 1.
 - Mono device-id line 12px, `var(--iv-fg-subtle)`; first 6 chars of `installationId`.
 
 **Requirements — `TopActionBar.tsx`**:
+
 - Three buttons: **Import** (calls existing `pickProtocolFile` → `importProtocolFromFile`), **Data** (navigates `/sessions`), **Settings** (navigates `/settings`).
 - Visual per design: each 56px-tall pill (Settings 56×56 square) with `backdrop-filter: blur(10px)`, background `oklch(0.34 0.10 281 / 0.85)`, 1px `var(--iv-edge)` border, `var(--shadow-md)`, font-weight 800, font-size 15px.
 - Implement by wrapping fresco-ui Button with a `cva`-derived class set (`@codaco/fresco-ui/utils/cva`); if fresco-ui Button class-merging doesn't accept the style cleanly, fall back to a raw `<button>` styled via the same cva utility.
 
 **Acceptance Criteria**:
+
 - At 1440×900 viewport: BrandHeader visible top-left; all three TopActionBar buttons visible top-right; computed background colour matches `var(--iv-bg)` or the radial-gradient over it (verifiable via DOM inspection).
 - At 768×1024 (tablet portrait): no element's bounding rect overflows its parent (`getBoundingClientRect()` check on Brand, TopActionBar, content slot, status slot).
 - Import button opens the native/browser file picker → completes the existing `importProtocolFromFile` flow → toast appears via fresco-ui `Toast`.
@@ -544,6 +580,7 @@ The `"disabled"` state kind and `securityEnabled` state field are removed entire
 ### Milestone 9: Variation F Home — protocol deck + resume pill + status row
 
 **Files**:
+
 - `apps/interviewer-v7/src/components/ProtocolDeck.tsx` (new)
 - `apps/interviewer-v7/src/components/ResumePill.tsx` (new)
 - `apps/interviewer-v7/src/components/StatusRow.tsx` (new)
@@ -552,6 +589,7 @@ The `"disabled"` state kind and `securityEnabled` state field are removed entire
 **Flags**: needs TW rationale (fanned deck animation pattern is new); needs conformance check (motion variants — follow `packages/interview` for existing patterns).
 
 **Requirements — `ProtocolDeck.tsx`**:
+
 - Renders array of stored protocols (max 5 visible at once — beyond 5 the fanned stack stops adding visible cards and the count is reflected in the status row; visual density is the limit, not data). Trailing "Import a protocol" card always present.
 - Cards fanned via `motion` variants: initial stacked behind active; hover/focus peek; active card front-and-centre.
 - Active card shows protocol name, description, `importedAt`, `sessionCount`.
@@ -559,15 +597,18 @@ The `"disabled"` state kind and `securityEnabled` state field are removed entire
 - Keyboard: ←/→ cycles cards, Enter starts an interview.
 
 **Requirements — `ResumePill.tsx`**:
+
 - Renders only when `listSessions()` returns at least one session with `finishedAt === null`.
 - Shows protocol name + `caseId` of most-recent-updated unfinished session.
 - Click navigates to `/interview/:sessionId`; updates `lastActiveSessionId`.
 
 **Requirements — `StatusRow.tsx`**:
+
 - Single bottom-of-stage mono row: `"{N protocols} · {M interviews} · {used}/{quota} used"`.
 - Storage info from `src/lib/platform/storage.ts`.
 
 **Acceptance Criteria**:
+
 - No-protocols state: deck shows only the import card.
 - With protocols: deck fans; arrow keys cycle; start-interview flow works.
 - With an in-progress session: ResumePill visible; click resumes.
@@ -576,6 +617,7 @@ The `"disabled"` state kind and `securityEnabled` state field are removed entire
 ### Milestone 10: Stage background (animated blobs + radial gradient)
 
 **Files**:
+
 - `apps/interviewer-v7/src/components/StageBackground.tsx` (new)
 - `apps/interviewer-v7/src/routes/Home.tsx` (wrap shell with `<StageBackground/>`)
 - `packages/art/src/BackgroundBlobs/BackgroundBlobs.tsx` (extend with `palette?: Array<[string, string]>` prop)
@@ -584,15 +626,18 @@ The `"disabled"` state kind and `securityEnabled` state field are removed entire
 **Flags**: needs conformance check (first use of `@codaco/art` in this app — verify import path + prop surface).
 
 **Requirements — `StageBackground.tsx`**:
+
 - Outer div: `radial-gradient(ellipse at 50% 110%, oklch(0.36 0.10 281) 0%, var(--iv-bg) 60%)` over `var(--iv-bg)` fallback.
 - `<BackgroundBlobs palette={[<RGB pair derived from sea-green>, <RGB pair derived from paradise-pink>]} opacity={0.18} />` rendered behind content with `pointer-events: none`.
 - **Reduced-motion gating happens in `StageBackground`, not in `BackgroundBlobs`.** When `window.matchMedia("(prefers-reduced-motion: reduce)").matches` is true at mount, `StageBackground` does not render `<BackgroundBlobs/>` at all — the canvas element is not mounted. The radial gradient remains. (Don't rely on `BackgroundBlobs` to self-opt-out; the import is conditional at the caller.)
 
 **Requirements — `BackgroundBlobs.tsx` extension**:
+
 - Add optional `palette?: Array<[string, string]>` prop; when provided, replaces the hardcoded `gradients[]` array. Default behaviour unchanged.
 - Update exported types. Backwards compatible.
 
 **Acceptance Criteria**:
+
 - Chrome DevTools Performance recording of a 5-second Home idle on an M1 MacBook: average frame duration ≤ 16.7 ms (60 fps target); no frame ≥ 50 ms (no jank stutter).
 - With System Preferences "Reduce motion" enabled, `<canvas>` element from `BackgroundBlobs` does not mount (verifiable via `document.querySelector("canvas")` returning null inside `StageBackground`).
 - `pnpm --filter @codaco/art test` exits 0 — no regressions in existing `packages/art` tests.
@@ -604,6 +649,7 @@ The `"disabled"` state kind and `securityEnabled` state field are removed entire
 **Flags**: needs error review (cross-platform smoke).
 
 **Requirements**:
+
 - `rg -i "passphrase|biometric|modern.interviewer|@codaco/modern" apps/interviewer-v7` returns zero hits.
 - Rename db filename constant in `electron/db/service.ts:60`: `DB_FILENAME` from `"modern-interviewer.encrypted.db"` → `"interviewer-v7.encrypted.db"` **with a one-shot migration**: on first boot of the new build, rename the old filename to the new one if only the old exists. WHY: a bare rename would strand existing prototype users' encrypted databases under the old filename; the migration preserves their data through the brand transition.
 - **Migration failure modes** must be handled explicitly, not silently swallowed:
@@ -614,6 +660,7 @@ The `"disabled"` state kind and `securityEnabled` state field are removed entire
 - Run: `pnpm --filter @codaco/interviewer-v7 lint:fix`; `typecheck`; `electron:dev` smoke boot; `capacitor:run:ios` + `:android` smoke; `dev` web smoke.
 
 **Acceptance Criteria**:
+
 - `rg -i "passphrase|biometric|modern.interviewer|@codaco/modern" apps/interviewer-v7` exits with no matches (rg returns 1 / non-zero on no-match).
 - All five smoke launches reach the post-AuthGate dashboard (visually confirm `<AppShell>` mounts).
 - On a clean profile (delete `userData/interviewer-v7.encrypted.db` + clear localStorage + clear `@capacitor/preferences`), each platform shows the SetupScreen as the first non-loading view.
@@ -623,15 +670,18 @@ The `"disabled"` state kind and `securityEnabled` state field are removed entire
 ### Milestone 12: Documentation
 
 **Files**:
+
 - `apps/interviewer-v7/CLAUDE.md` (new — tabular index of the app's source surface)
 - `apps/interviewer-v7/README.md` (new — captures the Invisible Knowledge above)
 
 **Requirements**:
+
 - `CLAUDE.md` enables an LLM to locate relevant code for debugging/modification tasks. Tabular format: file path / what it does / when to touch it. Covers `src/routes/*`, `src/components/*`, `src/lib/{auth,db,export,protocol,assets,files,platform}`, `electron/*`.
 - `README.md` includes: the process-boundary diagram, the auth flow diagram, the protocol-import data flow, the export data flow, "Why this structure", invariants, tradeoffs — all from this plan's Invisible Knowledge section.
 - Cross-reference SPEC.md from both.
 
 **Acceptance Criteria**:
+
 - CLAUDE.md index covers `src/routes/`, `src/components/`, `src/lib/{auth,db,export,protocol,assets,files,platform}`, and `electron/` — one entry per directory describing what lives there and when to touch it (durable against file-level churn).
 - Every file path mentioned in README.md exists in the repo at the time M12 ships.
 - Every IPC channel string mentioned in README.md (e.g. `auth:setup`, `db:saveProtocol`, `dialog:openProtocol`) appears in a handler registration under `apps/interviewer-v7/electron/handlers/` or `apps/interviewer-v7/electron/main.ts`.

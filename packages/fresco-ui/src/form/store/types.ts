@@ -1,11 +1,12 @@
-import type { Codebook, StageSubject } from "@codaco/protocol-validation";
-import type { NcNetwork } from "@codaco/shared-consts";
-import type * as z from "zod/mini";
+import type * as z from 'zod/mini';
+
+import type { Codebook, StageSubject } from '@codaco/protocol-validation';
+import type { NcNetwork } from '@codaco/shared-consts';
 
 // Re-export FieldValue for convenience
-export type { FieldValue } from "../Field/types";
+export type { FieldValue } from '../Field/types';
 
-import type { FieldValue } from "../Field/types";
+import type { FieldValue } from '../Field/types';
 
 // ═══════════════════════════════════════════════════════════════
 // Validation types
@@ -22,18 +23,20 @@ import type { FieldValue } from "../Field/types";
  *
  * @template T - The Zod schema type being validated against
  */
-export type ValidationResult<T extends z.ZodMiniType = z.ZodMiniType> = Awaited<ReturnType<T["safeParseAsync"]>>;
+export type ValidationResult<T extends z.ZodMiniType = z.ZodMiniType> = Awaited<
+  ReturnType<T['safeParseAsync']>
+>;
 
 /**
  * Schema for custom validation - can be a Zod schema directly, or a function
  * that receives form values and validation context and returns a schema.
  */
 export type FieldValidationFunction =
-	| z.ZodMiniType
-	| ((
-			formValues: Record<string, FieldValue>,
-			validationContext?: ValidationContext,
-	  ) => z.ZodMiniType | Promise<z.ZodMiniType>);
+  | z.ZodMiniType
+  | ((
+      formValues: Record<string, FieldValue>,
+      validationContext?: ValidationContext,
+    ) => z.ZodMiniType | Promise<z.ZodMiniType>);
 
 /**
  * Custom field validation with required hint metadata.
@@ -41,8 +44,8 @@ export type FieldValidationFunction =
  * form values and validation context and returns a schema.
  */
 export type CustomFieldValidation = {
-	schema: FieldValidationFunction;
-	hint: string;
+  schema: FieldValidationFunction;
+  hint: string;
 };
 
 /**
@@ -52,10 +55,10 @@ export type CustomFieldValidation = {
  * such as the current stage subject or codebook, to perform their checks.
  */
 export type ValidationContext = {
-	stageSubject: StageSubject;
-	codebook: Codebook;
-	network: NcNetwork;
-	currentEntityId?: string;
+  stageSubject: StageSubject;
+  codebook: Codebook;
+  network: NcNetwork;
+  currentEntityId?: string;
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -63,22 +66,22 @@ export type ValidationContext = {
 // ═══════════════════════════════════════════════════════════════
 
 export type FieldState = {
-	value: FieldValue;
-	initialValue?: FieldValue;
-	meta: {
-		isValidating: boolean;
-		isTouched: boolean;
-		isBlurred: boolean;
-		isDirty: boolean;
-		isValid: boolean;
-	};
-	validation?: FieldValidationFunction;
+  value: FieldValue;
+  initialValue?: FieldValue;
+  meta: {
+    isValidating: boolean;
+    isTouched: boolean;
+    isBlurred: boolean;
+    isDirty: boolean;
+    isValid: boolean;
+  };
+  validation?: FieldValidationFunction;
 };
 
 export type FieldConfig = {
-	name: string;
-	initialValue?: FieldValue;
-	validation?: FieldValidationFunction;
+  name: string;
+  initialValue?: FieldValue;
+  validation?: FieldValidationFunction;
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -89,25 +92,27 @@ export type FieldConfig = {
  * Flattened errors type - uses Zod's core flattened error type
  * This ensures compatibility with z.flattenError() output for any schema
  */
-export type FlattenedErrors = z.core.$ZodFlattenedError<Record<string, FieldValue>>;
+export type FlattenedErrors = z.core.$ZodFlattenedError<
+  Record<string, FieldValue>
+>;
 
 /**
  * Form submission result type
  * Designed to be compatible with Zod's flattenError output
  */
 export type FormSubmissionResult =
-	| {
-			success: true;
-	  }
-	| ({
-			success: false;
-	  } & Partial<FlattenedErrors>);
+  | {
+      success: true;
+    }
+  | ({
+      success: false;
+    } & Partial<FlattenedErrors>);
 
 export type FormSubmitHandler<T = Record<string, FieldValue>> = (
-	values: T,
+  values: T,
 ) => FormSubmissionResult | Promise<FormSubmissionResult>;
 
 export type FormConfig = {
-	onSubmit: FormSubmitHandler;
-	onSubmitInvalid?: (errors: FlattenedErrors) => void;
+  onSubmit: FormSubmitHandler;
+  onSubmitInvalid?: (errors: FlattenedErrors) => void;
 };

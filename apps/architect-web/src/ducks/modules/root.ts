@@ -1,13 +1,14 @@
 /* eslint-disable import/prefer-default-export */
 
-import { combineReducers, type UnknownAction } from "@reduxjs/toolkit";
-import { reducer as formReducer } from "redux-form";
-import createTimeline from "../middleware/timeline";
-import activeProtocol from "./activeProtocol";
-import app from "./app";
-import dialogs from "./dialogs";
-import protocols from "./protocols";
-import protocolValidation from "./protocolValidation";
+import { combineReducers, type UnknownAction } from '@reduxjs/toolkit';
+import { reducer as formReducer } from 'redux-form';
+
+import createTimeline from '../middleware/timeline';
+import activeProtocol from './activeProtocol';
+import app from './app';
+import dialogs from './dialogs';
+import protocols from './protocols';
+import protocolValidation from './protocolValidation';
 
 const protocolPattern = /^(activeProtocol|stages|codebook|assetManifest)\//;
 // Thunk-lifecycle actions dispatched by createAsyncThunk don't carry state mutations themselves;
@@ -19,23 +20,23 @@ const thunkLifecyclePattern = /\/(pending|fulfilled|rejected)$/;
 type ActionWithMeta = UnknownAction & { meta?: { skipTimeline?: boolean } };
 
 const timelineOptions = {
-	exclude: (action: UnknownAction) => {
-		const type = action.type.toString();
-		return (
-			!protocolPattern.test(type) ||
-			thunkLifecyclePattern.test(type) ||
-			(action as ActionWithMeta).meta?.skipTimeline === true
-		);
-	},
+  exclude: (action: UnknownAction) => {
+    const type = action.type.toString();
+    return (
+      !protocolPattern.test(type) ||
+      thunkLifecyclePattern.test(type) ||
+      (action as ActionWithMeta).meta?.skipTimeline === true
+    );
+  },
 };
 
 export const rootReducer = combineReducers({
-	app,
-	dialogs,
-	form: formReducer,
-	activeProtocol: createTimeline(activeProtocol, timelineOptions),
-	protocols,
-	protocolValidation,
+  app,
+  dialogs,
+  form: formReducer,
+  activeProtocol: createTimeline(activeProtocol, timelineOptions),
+  protocols,
+  protocolValidation,
 });
 
 // Export the root state type

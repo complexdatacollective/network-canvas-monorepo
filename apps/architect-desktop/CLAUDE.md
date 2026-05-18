@@ -40,6 +40,7 @@ pnpm run dist:win                   # Windows build
 ### Build System
 
 electron-vite with custom configuration:
+
 - **electron.vite.config.js** - Main, preload, and renderer configuration
 - Main process files are copied (not bundled) due to CommonJS usage
 - Renderer uses Vite with React plugin
@@ -47,6 +48,7 @@ electron-vite with custom configuration:
 ### State Management
 
 Redux with ducks pattern (`src/ducks/`):
+
 - **store.js** - Redux store with redux-persist, thunk middleware
 - **modules/root.js** - Root reducer combining all slices
 - **modules/protocol/** - Protocol state (stages, codebook, assets) with timeline middleware for undo/redo
@@ -58,6 +60,7 @@ Protocol actions are prefixed with `PROTOCOL/` and tracked by the timeline middl
 ### Selectors
 
 Reselect-based selectors in `src/selectors/`:
+
 - **protocol.js** - Current protocol data
 - **codebook/** - Node/edge types, variables
 - **indexes.js** - Derived indexes for fast lookups
@@ -66,6 +69,7 @@ Reselect-based selectors in `src/selectors/`:
 ### Import Aliases
 
 Configured in `electron.vite.config.js` and `vitest.config.js`:
+
 - `@app` → `src/`
 - `@components` → `src/components/`
 - `@modules` → `src/ducks/modules/`
@@ -86,6 +90,7 @@ Configured in `electron.vite.config.js` and `vitest.config.js`:
 ### Protocol Structure
 
 A protocol contains:
+
 - `stages[]` - Interview stages configuration
 - `codebook` - Node types, edge types, ego, and their variables
 - `assetManifest` - Media assets (images, audio, video, external data)
@@ -93,6 +98,7 @@ A protocol contains:
 ### Electron Integration
 
 Security hardened with context isolation:
+
 - **public/electron-starter.js** - Electron main process entry
 - **public/preload/appPreload.js** - Secure IPC bridge (contextBridge)
 - **public/components/ipcHandlers.js** - Main process IPC handlers
@@ -108,6 +114,7 @@ Test setup: `config/vitest/setup.js`
 Mock files: `src/__mocks__/`
 
 Snapshot testing is used for component rendering. Update snapshots with:
+
 ```bash
 pnpm test:update-snapshots
 ```
@@ -126,6 +133,7 @@ pnpm test:update-snapshots
 ## Security
 
 This application uses Electron's recommended security model:
+
 - `nodeIntegration: false`
 - `contextIsolation: true`
 - Preload scripts with contextBridge for IPC

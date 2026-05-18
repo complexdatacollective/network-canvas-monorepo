@@ -1,9 +1,14 @@
-import { createSelector } from "@reduxjs/toolkit";
-import { getCodebook } from "../store/modules/protocol";
-import { getSubjectType } from "./session";
+import { createSelector } from '@reduxjs/toolkit';
 
-export const getNodeVariables = createSelector(getCodebook, getSubjectType, (codebook, nodeType) => {
-	const nodeInfo = codebook.node;
+import { getCodebook } from '../store/modules/protocol';
+import { getSubjectType } from './session';
 
-	return nodeType ? (nodeInfo?.[nodeType]?.variables ?? {}) : {};
-});
+export const getNodeVariables = createSelector(
+  getCodebook,
+  getSubjectType,
+  (codebook, nodeType) => {
+    const nodeInfo = codebook.node;
+
+    return nodeType ? (nodeInfo?.[nodeType]?.variables ?? {}) : {};
+  },
+);

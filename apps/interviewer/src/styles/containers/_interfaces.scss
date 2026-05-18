@@ -25,6 +25,7 @@
   display: flex;
   height: 100%;
   overflow: hidden;
-  padding: units.unit(2) units.unit(4) units.unit(2) calc(#{units.unit(4)} + var(--session-panel-width));
+  padding: units.unit(2) units.unit(4) units.unit(2)
+    calc(#{units.unit(4)} + var(--session-panel-width));
   position: relative;
 }

@@ -1,39 +1,48 @@
-"use client";
+'use client';
 
-import { type Remote, releaseProxy, wrap } from "comlink";
-import { useCallback, useEffect, useRef, useState } from "react";
-import SearchWorker from "../filtering/search.worker.ts?worker&inline";
-import type { FilterProperty, FuseOptions, WorkerSearchResult } from "../filtering/types";
-import type { Key, KeyExtractor } from "../types";
+import { type Remote, releaseProxy, wrap } from 'comlink';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import SearchWorker from '../filtering/search.worker.ts?worker&inline';
+import type {
+  FilterProperty,
+  FuseOptions,
+  WorkerSearchResult,
+} from '../filtering/types';
+import type { Key, KeyExtractor } from '../types';
 
 /**
  * Interface for the SearchEngine exposed by the worker.
  */
 type SearchEngine = {
-	init: (items: (Record<string, unknown> & { _key: string })[], keys: string[], options?: FuseOptions) => void;
-	search: (query: string, minQueryLength?: number) => WorkerSearchResult;
-	updateItems: (items: (Record<string, unknown> & { _key: string })[]) => void;
-	isReady: () => boolean;
+  init: (
+    items: (Record<string, unknown> & { _key: string })[],
+    keys: string[],
+    options?: FuseOptions,
+  ) => void;
+  search: (query: string, minQueryLength?: number) => WorkerSearchResult;
+  updateItems: (items: (Record<string, unknown> & { _key: string })[]) => void;
+  isReady: () => boolean;
 };
 
 type UseSearchWorkerOptions<T> = {
-	items: T[];
-	keyExtractor: KeyExtractor<T>;
-	filterKeys: FilterProperty[];
-	fuseOptions?: FuseOptions;
+  items: T[];
+  keyExtractor: KeyExtractor<T>;
+  filterKeys: FilterProperty[];
+  fuseOptions?: FuseOptions;
 };
 
 type UseSearchWorkerReturn = {
-	isReady: boolean;
-	isIndexing: boolean;
-	search: (
-		query: string,
-		minQueryLength?: number,
-	) => Promise<{
-		matchingKeys: Set<Key>;
-		matchCount: number;
-		scores: Map<Key, number>;
-	}>;
+  isReady: boolean;
+  isIndexing: boolean;
+  search: (
+    query: string,
+    minQueryLength?: number,
+  ) => Promise<{
+    matchingKeys: Set<Key>;
+    matchCount: number;
+    scores: Map<Key, number>;
+  }>;
 };
 
 /**
@@ -45,121 +54,127 @@ type UseSearchWorkerReturn = {
  * @returns Object with search function and status flags
  */
 export function useSearchWorker<T extends Record<string, unknown>>({
-	items,
-	keyExtractor,
-	filterKeys,
-	fuseOptions,
+  items,
+  keyExtractor,
+  filterKeys,
+  fuseOptions,
 }: UseSearchWorkerOptions<T>): UseSearchWorkerReturn {
-	const workerRef = useRef<Worker | null>(null);
-	const apiRef = useRef<Remote<SearchEngine> | null>(null);
-	const [isReady, setIsReady] = useState(false);
-	const [isIndexing, setIsIndexing] = useState(false);
+  const workerRef = useRef<Worker | null>(null);
+  const apiRef = useRef<Remote<SearchEngine> | null>(null);
+  const [isReady, setIsReady] = useState(false);
+  const [isIndexing, setIsIndexing] = useState(false);
 
-	// Convert FilterProperty[] to string[] for fuse.js
-	const fuseKeys = filterKeys.map((key) => (Array.isArray(key) ? key.join(".") : key));
-	const fuseKeysRef = useRef(fuseKeys);
-	fuseKeysRef.current = fuseKeys;
+  // Convert FilterProperty[] to string[] for fuse.js
+  const fuseKeys = filterKeys.map((key) =>
+    Array.isArray(key) ? key.join('.') : key,
+  );
+  const fuseKeysRef = useRef(fuseKeys);
+  fuseKeysRef.current = fuseKeys;
 
-	const fuseOptionsRef = useRef(fuseOptions);
-	fuseOptionsRef.current = fuseOptions;
+  const fuseOptionsRef = useRef(fuseOptions);
+  fuseOptionsRef.current = fuseOptions;
 
-	const isUnmountedRef = useRef(false);
+  const isUnmountedRef = useRef(false);
 
-	// Initialize worker
-	useEffect(() => {
-		isUnmountedRef.current = false;
+  // Initialize worker
+  useEffect(() => {
+    isUnmountedRef.current = false;
 
-		const worker = new SearchWorker();
+    const worker = new SearchWorker();
 
-		workerRef.current = worker;
-		apiRef.current = wrap<SearchEngine>(worker);
+    workerRef.current = worker;
+    apiRef.current = wrap<SearchEngine>(worker);
 
-		// Cleanup on unmount - release Comlink proxy before terminating worker
-		return () => {
-			isUnmountedRef.current = true;
-			if (apiRef.current) {
-				apiRef.current[releaseProxy]();
-			}
-			worker.terminate();
-			workerRef.current = null;
-			apiRef.current = null;
-			setIsReady(false);
-		};
-	}, []);
+    // Cleanup on unmount - release Comlink proxy before terminating worker
+    return () => {
+      isUnmountedRef.current = true;
+      if (apiRef.current) {
+        apiRef.current[releaseProxy]();
+      }
+      worker.terminate();
+      workerRef.current = null;
+      apiRef.current = null;
+      setIsReady(false);
+    };
+  }, []);
 
-	// Initialize/update index when items change
-	useEffect(() => {
-		let cancelled = false;
+  // Initialize/update index when items change
+  useEffect(() => {
+    let cancelled = false;
 
-		const initIndex = async () => {
-			if (!apiRef.current || items.length === 0) {
-				if (!cancelled && !isUnmountedRef.current) {
-					setIsReady(items.length === 0);
-				}
-				return;
-			}
+    const initIndex = async () => {
+      if (!apiRef.current || items.length === 0) {
+        if (!cancelled && !isUnmountedRef.current) {
+          setIsReady(items.length === 0);
+        }
+        return;
+      }
 
-			if (!cancelled && !isUnmountedRef.current) {
-				setIsIndexing(true);
-			}
-			try {
-				// Serialize items for worker (add _key for tracking)
-				const serializedItems = items.map((item) => ({
-					...item,
-					_key: String(keyExtractor(item)),
-				}));
+      if (!cancelled && !isUnmountedRef.current) {
+        setIsIndexing(true);
+      }
+      try {
+        // Serialize items for worker (add _key for tracking)
+        const serializedItems = items.map((item) => ({
+          ...item,
+          _key: String(keyExtractor(item)),
+        }));
 
-				await apiRef.current.init(serializedItems, fuseKeysRef.current, fuseOptionsRef.current);
-				if (!cancelled && !isUnmountedRef.current) {
-					setIsReady(true);
-				}
-			} catch {
-				// Worker was terminated during init - ignore
-			} finally {
-				if (!cancelled && !isUnmountedRef.current) {
-					setIsIndexing(false);
-				}
-			}
-		};
+        await apiRef.current.init(
+          serializedItems,
+          fuseKeysRef.current,
+          fuseOptionsRef.current,
+        );
+        if (!cancelled && !isUnmountedRef.current) {
+          setIsReady(true);
+        }
+      } catch {
+        // Worker was terminated during init - ignore
+      } finally {
+        if (!cancelled && !isUnmountedRef.current) {
+          setIsIndexing(false);
+        }
+      }
+    };
 
-		void initIndex();
+    void initIndex();
 
-		return () => {
-			cancelled = true;
-		};
-	}, [items, keyExtractor]);
+    return () => {
+      cancelled = true;
+    };
+  }, [items, keyExtractor]);
 
-	// Search function
-	const search = useCallback(async (query: string, minQueryLength = 1) => {
-		if (!apiRef.current || isUnmountedRef.current) {
-			return {
-				matchingKeys: new Set<Key>(),
-				matchCount: 0,
-				scores: new Map<Key, number>(),
-			};
-		}
+  // Search function
+  const search = useCallback(async (query: string, minQueryLength = 1) => {
+    if (!apiRef.current || isUnmountedRef.current) {
+      return {
+        matchingKeys: new Set<Key>(),
+        matchCount: 0,
+        scores: new Map<Key, number>(),
+      };
+    }
 
-		try {
-			const result = await apiRef.current.search(query, minQueryLength);
+    try {
+      const result = await apiRef.current.search(query, minQueryLength);
 
-			return {
-				matchingKeys: new Set<Key>(result.matchingKeys),
-				matchCount: result.matchCount,
-				scores: new Map<Key, number>(result.scores),
-			};
-		} catch {
-			// Worker was terminated during search - return empty results
-			return {
-				matchingKeys: new Set<Key>(),
-				matchCount: 0,
-				scores: new Map<Key, number>(),
-			};
-		}
-	}, []);
+      return {
+        matchingKeys: new Set<Key>(result.matchingKeys),
+        matchCount: result.matchCount,
+        scores: new Map<Key, number>(result.scores),
+      };
+    } catch {
+      // Worker was terminated during search - return empty results
+      return {
+        matchingKeys: new Set<Key>(),
+        matchCount: 0,
+        scores: new Map<Key, number>(),
+      };
+    }
+  }, []);
 
-	return {
-		isReady,
-		isIndexing,
-		search,
-	};
+  return {
+    isReady,
+    isIndexing,
+    search,
+  };
 }

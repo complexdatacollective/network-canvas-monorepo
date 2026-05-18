@@ -1,5 +1,5 @@
 ---
-"@codaco/fresco-ui": minor
+'@codaco/fresco-ui': minor
 ---
 
 New `Accordion` component (wraps base-ui's accordion primitives behind `Accordion`/`AccordionItem`/`AccordionHeader`/`AccordionTrigger`/`AccordionPanel`, registered at `./Accordion`, ships with Storybook coverage and a new `motionSafeProps` utility that strips motion props when `prefers-reduced-motion` is set).

@@ -1,14 +1,14 @@
-import { isEmpty } from "es-toolkit/compat";
-import markdown from "remark-parse";
-import slate from "remark-slate";
-import type { Descendant } from "slate";
-import { unified } from "unified";
+import { isEmpty } from 'es-toolkit/compat';
+import markdown from 'remark-parse';
+import slate from 'remark-slate';
+import type { Descendant } from 'slate';
+import { unified } from 'unified';
 
 export const defaultValue: Descendant[] = [
-	{
-		type: "paragraph",
-		children: [{ text: "" }],
-	},
+  {
+    type: 'paragraph',
+    children: [{ text: '' }],
+  },
 ];
 
 /**
@@ -23,24 +23,25 @@ export const defaultValue: Descendant[] = [
  * rather than a single regex, because Safari does not support
  * lookbehind.
  */
-const escapeAngleBracket = (value = ""): string => value.replace(/>/g, "&gt;").replace(/<br&gt;/g, "<br>");
+const escapeAngleBracket = (value = ''): string =>
+  value.replace(/>/g, '&gt;').replace(/<br&gt;/g, '<br>');
 
 // TODO: Can we make this synchronous? JM - yes, use `processSync` below
 const parse = (value: string): Promise<Descendant[]> => {
-	// If for some reason we encounter 'content' with no content,
-	// Slate rendering will be messed up. Instead, return a
-	// 'proper' empty node.
-	//
-	// The regex tests for presence of only space/tab/break
-	if (!value || isEmpty(value) || !/\S/.test(value)) {
-		return Promise.resolve(defaultValue);
-	}
+  // If for some reason we encounter 'content' with no content,
+  // Slate rendering will be messed up. Instead, return a
+  // 'proper' empty node.
+  //
+  // The regex tests for presence of only space/tab/break
+  if (!value || isEmpty(value) || !/\S/.test(value)) {
+    return Promise.resolve(defaultValue);
+  }
 
-	return unified()
-		.use(markdown)
-		.use(slate)
-		.process(escapeAngleBracket(value))
-		.then(({ result }) => result as Descendant[]);
+  return unified()
+    .use(markdown)
+    .use(slate)
+    .process(escapeAngleBracket(value))
+    .then(({ result }) => result as Descendant[]);
 };
 
 export default parse;

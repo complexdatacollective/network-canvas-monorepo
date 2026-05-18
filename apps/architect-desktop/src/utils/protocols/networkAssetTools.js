@@ -1,37 +1,38 @@
-import { getVariableNamesFromNetwork } from "@codaco/protocol-validation";
-import { electronAPI } from "@utils/electronBridge";
-import csvParse from "csv-parse";
-import { first, get } from "lodash";
+import { electronAPI } from '@utils/electronBridge';
+import csvParse from 'csv-parse';
+import { first, get } from 'lodash';
+
+import { getVariableNamesFromNetwork } from '@codaco/protocol-validation';
 
 /**
  * Generate a switching function that takes a filepath as an argument
  * and returns match from configuration object.
  */
 const withExtensionSwitch =
-	(configuration, fallback = () => Promise.resolve()) =>
-	async (filePath) => {
-		const extname = await electronAPI.path.extname(filePath);
-		const extension = extname.substr(1); // e.g. 'csv'
+  (configuration, fallback = () => Promise.resolve()) =>
+  async (filePath) => {
+    const extname = await electronAPI.path.extname(filePath);
+    const extension = extname.substr(1); // e.g. 'csv'
 
-		return get(configuration, [extension], fallback);
-	};
+    return get(configuration, [extension], fallback);
+  };
 
 const readJsonVariables = (data) => {
-	const network = JSON.parse(data);
-	return getVariableNamesFromNetwork(network);
+  const network = JSON.parse(data);
+  return getVariableNamesFromNetwork(network);
 };
 
 const readCsvVariables = (data) =>
-	new Promise((resolve, reject) => {
-		csvParse(data, { trim: true }, (err, tableData) => {
-			if (err) {
-				reject(err);
-				return;
-			}
-			const firstRow = first(tableData);
-			resolve(firstRow);
-		});
-	});
+  new Promise((resolve, reject) => {
+    csvParse(data, { trim: true }, (err, tableData) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      const firstRow = first(tableData);
+      resolve(firstRow);
+    });
+  });
 
 /**
  * Get validator based on filePath, if no validator available it resolves by default
@@ -39,8 +40,8 @@ const readCsvVariables = (data) =>
  * @returns {string} - Returns a function that returns a promise.
  */
 const getVariableReader = withExtensionSwitch({
-	csv: readCsvVariables,
-	json: readJsonVariables,
+  csv: readCsvVariables,
+  json: readJsonVariables,
 });
 
 /**
@@ -48,7 +49,7 @@ const getVariableReader = withExtensionSwitch({
  * @param {buffer} file - The external data source
  */
 export const getAssetVariables = async (filePath) => {
-	const variableReader = await getVariableReader(filePath);
-	const data = await electronAPI.fs.readFile(filePath, "utf8");
-	return variableReader(data);
+  const variableReader = await getVariableReader(filePath);
+  const data = await electronAPI.fs.readFile(filePath, 'utf8');
+  return variableReader(data);
 };

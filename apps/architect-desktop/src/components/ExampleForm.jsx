@@ -1,5 +1,6 @@
-import Modal from "@codaco/ui/lib/components/Modal";
-import PropTypes from "prop-types";
+import PropTypes from 'prop-types';
+
+import Modal from '@codaco/ui/lib/components/Modal';
 
 /*
  *  <ExampleForm
@@ -12,27 +13,27 @@ import PropTypes from "prop-types";
  */
 
 const ExampleForm = ({ show, onComplete, onBlur }) => (
-	<Modal show={show} onBlur={onBlur}>
-		<div style={{ background: "white", padding: "20px", borderRadius: "20px" }}>
-			Name:
-			<input type="text" />
-			<button type="button" onClick={onComplete}>
-				Confirm
-			</button>
-		</div>
-	</Modal>
+  <Modal show={show} onBlur={onBlur}>
+    <div style={{ background: 'white', padding: '20px', borderRadius: '20px' }}>
+      Name:
+      <input type="text" />
+      <button type="button" onClick={onComplete}>
+        Confirm
+      </button>
+    </div>
+  </Modal>
 );
 
 ExampleForm.propTypes = {
-	show: PropTypes.bool,
-	onBlur: PropTypes.func,
-	onComplete: PropTypes.func,
+  show: PropTypes.bool,
+  onBlur: PropTypes.func,
+  onComplete: PropTypes.func,
 };
 
 ExampleForm.defaultProps = {
-	show: false,
-	onBlur: () => {},
-	onComplete: () => {},
+  show: false,
+  onBlur: () => {},
+  onComplete: () => {},
 };
 
 export { ExampleForm };

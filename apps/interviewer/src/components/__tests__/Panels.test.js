@@ -1,14 +1,15 @@
-import { shallow } from "enzyme";
-import Panels from "../Panel";
+import { shallow } from 'enzyme';
 
-describe("Panels component", () => {
-	it("renders ok", () => {
-		const component = shallow(
-			<Panels>
-				<span>foo</span>
-			</Panels>,
-		);
+import Panels from '../Panel';
 
-		expect(component).toMatchSnapshot();
-	});
+describe('Panels component', () => {
+  it('renders ok', () => {
+    const component = shallow(
+      <Panels>
+        <span>foo</span>
+      </Panels>,
+    );
+
+    expect(component).toMatchSnapshot();
+  });
 });

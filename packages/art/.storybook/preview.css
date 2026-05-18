@@ -1,0 +1,6 @@
+@import '@codaco/tailwind-config/fresco.css';
+@import '@codaco/fresco-ui/styles.css';
+
+body {
+  padding: 1rem;
+}

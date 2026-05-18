@@ -1,14 +1,14 @@
 {
-	"extends": "@codaco/tsconfig/web.json",
-	"compilerOptions": {
-		"paths": {
-			"~/*": ["./src/*"]
-		},
-		"tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
-		"types": ["vite/client"],
-		"strict": true,
-		"noFallthroughCasesInSwitch": true
-	},
-	"include": ["src/**/*.ts", "src/**/*.tsx", "src/global.d.ts"],
-	"exclude": ["node_modules", "dist", "electron"]
+  "extends": "@codaco/tsconfig/web.json",
+  "compilerOptions": {
+    "paths": {
+      "~/*": ["./src/*"]
+    },
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+    "types": ["vite/client"],
+    "strict": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/global.d.ts"],
+  "exclude": ["node_modules", "dist", "electron"]
 }

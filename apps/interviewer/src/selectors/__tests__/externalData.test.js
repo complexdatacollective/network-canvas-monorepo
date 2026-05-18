@@ -1,22 +1,22 @@
-import { getExternalData } from "../externalData";
+import { getExternalData } from '../externalData';
 
 const externalData = {
-	baz: "bar",
+  baz: 'bar',
 };
 
 const mockState = {
-	externalData,
+  externalData,
 };
 
 const emptyState = {
-	externalData: null,
+  externalData: null,
 };
 
-describe("protocol selector", () => {
-	describe("memoed selectors", () => {
-		it("should get external data", () => {
-			expect(getExternalData(mockState)).toEqual(externalData);
-			expect(getExternalData(emptyState)).toEqual(null);
-		});
-	});
+describe('protocol selector', () => {
+  describe('memoed selectors', () => {
+    it('should get external data', () => {
+      expect(getExternalData(mockState)).toEqual(externalData);
+      expect(getExternalData(emptyState)).toEqual(null);
+    });
+  });
 });

@@ -1,63 +1,79 @@
-import type { Codebook } from "@codaco/protocol-validation";
+import type { Codebook } from '@codaco/protocol-validation';
 import {
-	egoProperty,
-	entityAttributesProperty,
-	entityPrimaryKeyProperty,
-	ncUUIDProperty,
-	nodeExportIDProperty,
-} from "@codaco/shared-consts";
-import type { SessionWithResequencedIDs } from "../../input";
-import type { ExportOptions } from "../../options";
-import { csvEOL, sanitizeCellValue, toAsyncBytes } from "./csvShared";
-import processEntityVariables from "./processEntityVariables";
+  egoProperty,
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  ncUUIDProperty,
+  nodeExportIDProperty,
+} from '@codaco/shared-consts';
 
-const printableAttribute = (attribute: string) => (attribute === entityPrimaryKeyProperty ? ncUUIDProperty : attribute);
+import type { SessionWithResequencedIDs } from '../../input';
+import type { ExportOptions } from '../../options';
+import { csvEOL, sanitizeCellValue, toAsyncBytes } from './csvShared';
+import processEntityVariables from './processEntityVariables';
+
+const printableAttribute = (attribute: string) =>
+  attribute === entityPrimaryKeyProperty ? ncUUIDProperty : attribute;
 
 type ProcessedNode = ReturnType<typeof processEntityVariables>;
 
 function collectHeaders(nodes: ProcessedNode[]): string[] {
-	const headers = new Set<string>([nodeExportIDProperty, egoProperty, entityPrimaryKeyProperty]);
-	for (const node of nodes) {
-		for (const key of Object.keys(node[entityAttributesProperty])) {
-			headers.add(key);
-		}
-	}
-	return [...headers];
+  const headers = new Set<string>([
+    nodeExportIDProperty,
+    egoProperty,
+    entityPrimaryKeyProperty,
+  ]);
+  for (const node of nodes) {
+    for (const key of Object.keys(node[entityAttributesProperty])) {
+      headers.add(key);
+    }
+  }
+  return [...headers];
 }
 
 export function* attributeListRows(
-	network: SessionWithResequencedIDs,
-	codebook: Codebook,
-	exportOptions: ExportOptions,
+  network: SessionWithResequencedIDs,
+  codebook: Codebook,
+  exportOptions: ExportOptions,
 ): Generator<string, void, void> {
-	const nodes: ProcessedNode[] = (network.nodes ?? []).map((node) =>
-		codebook.node?.[node.type]
-			? processEntityVariables(node, "node", codebook, exportOptions)
-			: (node as unknown as ProcessedNode),
-	);
+  const nodes: ProcessedNode[] = (network.nodes ?? []).map((node) =>
+    codebook.node?.[node.type]
+      ? processEntityVariables(node, 'node', codebook, exportOptions)
+      : (node as unknown as ProcessedNode),
+  );
 
-	const headers = collectHeaders(nodes);
+  const headers = collectHeaders(nodes);
 
-	yield headers.map((h) => String(sanitizeCellValue(printableAttribute(h)) ?? "")).join(",") + csvEOL;
+  yield (
+    headers
+      .map((h) => String(sanitizeCellValue(printableAttribute(h)) ?? ''))
+      .join(',') + csvEOL
+  );
 
-	for (const node of nodes) {
-		const cells = headers.map((header) => {
-			let value: unknown;
-			if (header === entityPrimaryKeyProperty || header === egoProperty || header === nodeExportIDProperty) {
-				value = (node as Record<string, unknown>)[header];
-			} else {
-				value = (node[entityAttributesProperty] as Record<string, unknown>)[header];
-			}
-			return String(sanitizeCellValue(value) ?? "");
-		});
-		yield cells.join(",") + csvEOL;
-	}
+  for (const node of nodes) {
+    const cells = headers.map((header) => {
+      let value: unknown;
+      if (
+        header === entityPrimaryKeyProperty ||
+        header === egoProperty ||
+        header === nodeExportIDProperty
+      ) {
+        value = (node as Record<string, unknown>)[header];
+      } else {
+        value = (node[entityAttributesProperty] as Record<string, unknown>)[
+          header
+        ];
+      }
+      return String(sanitizeCellValue(value) ?? '');
+    });
+    yield cells.join(',') + csvEOL;
+  }
 }
 
 export function attributeListBytes(
-	network: SessionWithResequencedIDs,
-	codebook: Codebook,
-	exportOptions: ExportOptions,
+  network: SessionWithResequencedIDs,
+  codebook: Codebook,
+  exportOptions: ExportOptions,
 ): AsyncIterable<Uint8Array> {
-	return toAsyncBytes(attributeListRows(network, codebook, exportOptions));
+  return toAsyncBytes(attributeListRows(network, codebook, exportOptions));
 }

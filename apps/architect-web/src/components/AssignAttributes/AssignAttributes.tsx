@@ -1,73 +1,78 @@
-import type { FieldArrayFieldsProps } from "redux-form";
-import Button from "~/lib/legacy-ui/components/Button";
-import Attribute from "./Attribute";
-import withAssignAttributesHandlers from "./withAssignAttributesHandlers";
+import type { FieldArrayFieldsProps } from 'redux-form';
+
+import Button from '~/lib/legacy-ui/components/Button';
+
+import Attribute from './Attribute';
+import withAssignAttributesHandlers from './withAssignAttributesHandlers';
 
 type VariableOption = {
-	disabled?: boolean;
-	isUsed?: boolean;
-	label: string;
-	type: string;
-	value: string;
+  disabled?: boolean;
+  isUsed?: boolean;
+  label: string;
+  type: string;
+  value: string;
 };
 
 type AssignAttributesProps = {
-	variableOptions: VariableOption[];
-	fields: FieldArrayFieldsProps<{ variable: string; value: boolean }>;
-	type: string;
-	entity: string;
-	handleAddNew: () => void;
-	handleDelete: (index: number) => void;
-	handleCreateNewVariable: (value: string) => void;
-	form: string;
+  variableOptions: VariableOption[];
+  fields: FieldArrayFieldsProps<{ variable: string; value: boolean }>;
+  type: string;
+  entity: string;
+  handleAddNew: () => void;
+  handleDelete: (index: number) => void;
+  handleCreateNewVariable: (value: string) => void;
+  form: string;
 };
 
 const AssignAttributes = ({
-	variableOptions,
-	fields,
-	type,
-	entity,
-	handleAddNew,
-	handleCreateNewVariable,
-	handleDelete,
-	form,
+  variableOptions,
+  fields,
+  type,
+  entity,
+  handleAddNew,
+  handleCreateNewVariable,
+  handleDelete,
+  form,
 }: AssignAttributesProps) => (
-	<div>
-		{fields.length > 0 && (
-			<div>
-				{fields.map((field, index) => {
-					const AttributeComponent = Attribute as unknown as React.ComponentType<{
-						index: number;
-						entity: string;
-						type: string;
-						form: string;
-						field: string;
-						variableOptions: VariableOption[];
-						onCreateNew: (value: string) => void;
-						onDelete: (index: number) => void;
-					}>;
-					return (
-						<AttributeComponent
-							key={field}
-							index={index}
-							entity={entity}
-							type={type}
-							form={form}
-							field={field}
-							variableOptions={variableOptions}
-							onCreateNew={handleCreateNewVariable}
-							onDelete={handleDelete}
-						/>
-					);
-				})}
-			</div>
-		)}
-		<div className="mt-(--space-md) [&_button]:m-0">
-			<Button color="sea-green" icon="add" onClick={handleAddNew}>
-				Add new variable to assign
-			</Button>
-		</div>
-	</div>
+  <div>
+    {fields.length > 0 && (
+      <div>
+        {fields.map((field, index) => {
+          const AttributeComponent =
+            Attribute as unknown as React.ComponentType<{
+              index: number;
+              entity: string;
+              type: string;
+              form: string;
+              field: string;
+              variableOptions: VariableOption[];
+              onCreateNew: (value: string) => void;
+              onDelete: (index: number) => void;
+            }>;
+          return (
+            <AttributeComponent
+              key={field}
+              index={index}
+              entity={entity}
+              type={type}
+              form={form}
+              field={field}
+              variableOptions={variableOptions}
+              onCreateNew={handleCreateNewVariable}
+              onDelete={handleDelete}
+            />
+          );
+        })}
+      </div>
+    )}
+    <div className="mt-(--space-md) [&_button]:m-0">
+      <Button color="sea-green" icon="add" onClick={handleAddNew}>
+        Add new variable to assign
+      </Button>
+    </div>
+  </div>
 );
 
-export default withAssignAttributesHandlers(AssignAttributes as React.ComponentType<unknown>);
+export default withAssignAttributesHandlers(
+  AssignAttributes as React.ComponentType<unknown>,
+);

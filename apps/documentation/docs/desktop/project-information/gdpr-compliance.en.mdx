@@ -4,7 +4,9 @@ date: 19th November 2025
 ---
 
 <Paragraph variant="lead">
-This guide explains how Interviewer and Fresco handle participant data, how they fit within GDPR frameworks, and what responsibilities researchers must take on when deploying them.
+  This guide explains how Interviewer and Fresco handle participant data, how
+  they fit within GDPR frameworks, and what responsibilities researchers must
+  take on when deploying them.
 </Paragraph>
 
 <TipBox>
@@ -21,17 +23,18 @@ The Network Canvas development team does not act as a Data Controller or Data Pr
 
 ## Interviewer vs Fresco: Key Differences
 
-| Aspect | Interviewer (Desktop/Tablet) | Fresco (Self-Hosted Web) |
-|--------|------------------------------|--------------------------|
-| **Data Storage Location** | All participant data stored only on your local device | Interview data stored in Postgres database; study assets stored in S3 via UploadThing |
-| **Data Transmission** | No participant data transmitted externally unless you manually export it | Data remains on your infrastructure; no transmission to developers |
-| **Encryption** | Device-level protections required (disk encryption, access controls are your responsibility) | Encrypted at rest when using providers like Neon; S3 server-side encryption enforced |
-| **Analytics/Telemetry** | Does not collect analytics or crash logs | Optional anonymous usage/error analytics (can be disabled) |
-| **GDPR-Compliant Hosting** | Not applicable (local device storage) | Possible when selecting an EU region (available on paid UploadThing plans) |
-| **Your Control** | Complete control over participant data on your device | All participant data remains under your control at all times |
-| **Infrastructure** | Your device | Your deployed infrastructure (hosting, database, storage) |
+| Aspect                     | Interviewer (Desktop/Tablet)                                                                 | Fresco (Self-Hosted Web)                                                              |
+| -------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| **Data Storage Location**  | All participant data stored only on your local device                                        | Interview data stored in Postgres database; study assets stored in S3 via UploadThing |
+| **Data Transmission**      | No participant data transmitted externally unless you manually export it                     | Data remains on your infrastructure; no transmission to developers                    |
+| **Encryption**             | Device-level protections required (disk encryption, access controls are your responsibility) | Encrypted at rest when using providers like Neon; S3 server-side encryption enforced  |
+| **Analytics/Telemetry**    | Does not collect analytics or crash logs                                                     | Optional anonymous usage/error analytics (can be disabled)                            |
+| **GDPR-Compliant Hosting** | Not applicable (local device storage)                                                        | Possible when selecting an EU region (available on paid UploadThing plans)            |
+| **Your Control**           | Complete control over participant data on your device                                        | All participant data remains under your control at all times                          |
+| **Infrastructure**         | Your device                                                                                  | Your deployed infrastructure (hosting, database, storage)                             |
 
 **Your Responsibilities as Data Controller:**
+
 - Establishing a lawful basis for processing participant data
 - Selecting GDPR-compliant hosting regions (Fresco only)
 - Implementing appropriate data security measures
@@ -279,20 +282,24 @@ The software provides the foundation for GDPR-compliant research. Your deploymen
 ## Additional resources
 
 **GDPR information:**
+
 - [EU GDPR Official Text](https://gdpr-info.eu/)
 - [ICO Guide to GDPR](https://ico.org.uk/for-organisations/guide-to-data-protection/guide-to-the-general-data-protection-regulation-gdpr/) (UK)
 
 **Data protection in research:**
+
 - [UK Research and Innovation GDPR](https://www.ukri.org/about-us/policies-standards-and-data/gdpr/)
 - [European Commission Ethics and Data Protection](https://ec.europa.eu/info/funding-tenders/opportunities/docs/2021-2027/horizon/guidance/ethics-and-data-protection_he_en.pdf)
 
 **Service provider documentation:**
+
 - [Neon Security](https://neon.com/docs/security/security-overview)
 - [UploadThing Documentation](https://docs.uploadthing.com/)
 - [Vercel Security](https://vercel.com/security)
 - [Netlify Security](https://www.netlify.com/security/)
 
 **Network Canvas resources:**
+
 - [Deployment Guide](/en/fresco/deployment/guide) - Deploy Fresco to compliant infrastructure
 - [Advanced Deployment](/en/fresco/deployment/advanced) - Self-hosting options for maximum control
 - [Using Fresco](/en/fresco/using-fresco) - Platform features and functionality

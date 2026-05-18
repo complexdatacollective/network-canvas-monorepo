@@ -257,7 +257,9 @@
     grid-column: span 2;
     width: min(
       100%,
-      calc((100cqb - 1rem * (var(--catbin-rows, 1) - 1)) / var(--catbin-rows, 1))
+      calc(
+        (100cqb - 1rem * (var(--catbin-rows, 1) - 1)) / var(--catbin-rows, 1)
+      )
     );
     aspect-ratio: 1 / 1;
   }
@@ -294,26 +296,56 @@
    * bounded ranges so they don't overlap and no cross-band resets are needed
    * — every band declares its own --catbin-cols/--catbin-rows and centring.
    */
-  .catbin-grid[data-count="1"]  { --catbin-cols: 2;  --catbin-rows: 1; }
-  .catbin-grid[data-count="2"]  { --catbin-cols: 4;  --catbin-rows: 1; }
-  .catbin-grid[data-count="3"]  { --catbin-cols: 6;  --catbin-rows: 1; }
-  .catbin-grid[data-count="4"]  { --catbin-cols: 4;  --catbin-rows: 2; }
-  .catbin-grid[data-count="5"]  { --catbin-cols: 6;  --catbin-rows: 2; }
-  .catbin-grid[data-count="5"] > [data-flow-index="4"] {
+  .catbin-grid[data-count='1'] {
+    --catbin-cols: 2;
+    --catbin-rows: 1;
+  }
+  .catbin-grid[data-count='2'] {
+    --catbin-cols: 4;
+    --catbin-rows: 1;
+  }
+  .catbin-grid[data-count='3'] {
+    --catbin-cols: 6;
+    --catbin-rows: 1;
+  }
+  .catbin-grid[data-count='4'] {
+    --catbin-cols: 4;
+    --catbin-rows: 2;
+  }
+  .catbin-grid[data-count='5'] {
+    --catbin-cols: 6;
+    --catbin-rows: 2;
+  }
+  .catbin-grid[data-count='5'] > [data-flow-index='4'] {
     grid-column: 2 / span 2;
   }
-  .catbin-grid[data-count="6"]  { --catbin-cols: 6;  --catbin-rows: 2; }
-  .catbin-grid[data-count="7"]  { --catbin-cols: 6;  --catbin-rows: 3; }
-  .catbin-grid[data-count="7"] > [data-flow-index="7"] {
+  .catbin-grid[data-count='6'] {
+    --catbin-cols: 6;
+    --catbin-rows: 2;
+  }
+  .catbin-grid[data-count='7'] {
+    --catbin-cols: 6;
+    --catbin-rows: 3;
+  }
+  .catbin-grid[data-count='7'] > [data-flow-index='7'] {
     grid-column: 3 / span 2;
   }
-  .catbin-grid[data-count="8"]  { --catbin-cols: 6;  --catbin-rows: 3; }
-  .catbin-grid[data-count="8"] > [data-flow-index="7"] {
+  .catbin-grid[data-count='8'] {
+    --catbin-cols: 6;
+    --catbin-rows: 3;
+  }
+  .catbin-grid[data-count='8'] > [data-flow-index='7'] {
     grid-column: 2 / span 2;
   }
-  .catbin-grid[data-count="9"]  { --catbin-cols: 6;  --catbin-rows: 3; }
-  .catbin-grid[data-count="10"] { --catbin-cols: 8;  --catbin-rows: 3; }
-  .catbin-grid[data-count="10"] > [data-flow-index="9"] {
+  .catbin-grid[data-count='9'] {
+    --catbin-cols: 6;
+    --catbin-rows: 3;
+  }
+  .catbin-grid[data-count='10'] {
+    --catbin-cols: 8;
+    --catbin-rows: 3;
+  }
+  .catbin-grid[data-count='10'] > [data-flow-index='9'] {
     grid-column: 3 / span 2;
   }
 
@@ -337,21 +369,36 @@
   /* Portrait rectangular band (0.25-0.75 depending on count): more rows than
      cols, matches landscape rectangular shape transposed. */
   @container catbin (aspect-ratio < 1) {
-    .catbin-grid[data-count="2"] { --catbin-cols: 2; --catbin-rows: 2; }
-    .catbin-grid[data-count="3"] { --catbin-cols: 2; --catbin-rows: 3; }
-    .catbin-grid[data-count="5"] { --catbin-cols: 4; --catbin-rows: 3; }
-    .catbin-grid[data-count="5"] > [data-flow-index="4"] {
+    .catbin-grid[data-count='2'] {
+      --catbin-cols: 2;
+      --catbin-rows: 2;
+    }
+    .catbin-grid[data-count='3'] {
+      --catbin-cols: 2;
+      --catbin-rows: 3;
+    }
+    .catbin-grid[data-count='5'] {
+      --catbin-cols: 4;
+      --catbin-rows: 3;
+    }
+    .catbin-grid[data-count='5'] > [data-flow-index='4'] {
       grid-column: span 2;
     }
-    .catbin-grid[data-count="5"] > [data-flow-index="5"] {
+    .catbin-grid[data-count='5'] > [data-flow-index='5'] {
       grid-column: 2 / span 2;
     }
-    .catbin-grid[data-count="6"] { --catbin-cols: 4; --catbin-rows: 3; }
-    .catbin-grid[data-count="10"] { --catbin-cols: 6; --catbin-rows: 4; }
-    .catbin-grid[data-count="10"] > [data-flow-index="9"] {
+    .catbin-grid[data-count='6'] {
+      --catbin-cols: 4;
+      --catbin-rows: 3;
+    }
+    .catbin-grid[data-count='10'] {
+      --catbin-cols: 6;
+      --catbin-rows: 4;
+    }
+    .catbin-grid[data-count='10'] > [data-flow-index='9'] {
       grid-column: span 2;
     }
-    .catbin-grid[data-count="10"] > [data-flow-index="10"] {
+    .catbin-grid[data-count='10'] > [data-flow-index='10'] {
       grid-column: 3 / span 2;
     }
 
@@ -373,38 +420,59 @@
   /* Portrait extra-tall: 1-col layouts. Threshold = 1/count for each count
      (crossover where (W-(N-1)g)/N = H/2 etc., approximated). */
   @container catbin (aspect-ratio < 0.5) {
-    .catbin-grid[data-count="4"] { --catbin-cols: 2; --catbin-rows: 4; }
+    .catbin-grid[data-count='4'] {
+      --catbin-cols: 2;
+      --catbin-rows: 4;
+    }
   }
   @container catbin (aspect-ratio < 0.4) {
-    .catbin-grid[data-count="5"] { --catbin-cols: 2; --catbin-rows: 5; }
-    .catbin-grid[data-count="5"] > [data-flow-index="5"] {
+    .catbin-grid[data-count='5'] {
+      --catbin-cols: 2;
+      --catbin-rows: 5;
+    }
+    .catbin-grid[data-count='5'] > [data-flow-index='5'] {
       grid-column: span 2;
     }
   }
   @container catbin (aspect-ratio < 0.33) {
-    .catbin-grid[data-count="6"] { --catbin-cols: 2; --catbin-rows: 6; }
+    .catbin-grid[data-count='6'] {
+      --catbin-cols: 2;
+      --catbin-rows: 6;
+    }
   }
   @container catbin (aspect-ratio < 0.22) {
-    .catbin-grid[data-count="9"] { --catbin-cols: 2; --catbin-rows: 9; }
-    .catbin-grid[data-count="9"] > [data-flow-index="9"] {
+    .catbin-grid[data-count='9'] {
+      --catbin-cols: 2;
+      --catbin-rows: 9;
+    }
+    .catbin-grid[data-count='9'] > [data-flow-index='9'] {
       grid-column: span 2;
     }
   }
   @container catbin (aspect-ratio < 0.286) {
-    .catbin-grid[data-count="7"] { --catbin-cols: 2; --catbin-rows: 7; }
-    .catbin-grid[data-count="7"] > [data-flow-index="7"] {
+    .catbin-grid[data-count='7'] {
+      --catbin-cols: 2;
+      --catbin-rows: 7;
+    }
+    .catbin-grid[data-count='7'] > [data-flow-index='7'] {
       grid-column: span 2;
     }
   }
   @container catbin (aspect-ratio < 0.25) {
-    .catbin-grid[data-count="8"] { --catbin-cols: 2; --catbin-rows: 8; }
-    .catbin-grid[data-count="8"] > [data-flow-index="7"] {
+    .catbin-grid[data-count='8'] {
+      --catbin-cols: 2;
+      --catbin-rows: 8;
+    }
+    .catbin-grid[data-count='8'] > [data-flow-index='7'] {
       grid-column: span 2;
     }
   }
   @container catbin (aspect-ratio < 0.2) {
-    .catbin-grid[data-count="10"] { --catbin-cols: 2; --catbin-rows: 10; }
-    .catbin-grid[data-count="10"] > [data-flow-index="10"] {
+    .catbin-grid[data-count='10'] {
+      --catbin-cols: 2;
+      --catbin-rows: 10;
+    }
+    .catbin-grid[data-count='10'] > [data-flow-index='10'] {
       grid-column: span 2;
     }
   }
@@ -412,12 +480,18 @@
   /* Portrait-rectangular for counts 7, 8: 4x2 once the container narrows
      beyond AR=0.75 (3x3 stops being optimal there). */
   @container catbin (aspect-ratio < 0.75) {
-    .catbin-grid[data-count="7"] { --catbin-cols: 4; --catbin-rows: 4; }
-    .catbin-grid[data-count="7"] > [data-flow-index="7"] {
+    .catbin-grid[data-count='7'] {
+      --catbin-cols: 4;
+      --catbin-rows: 4;
+    }
+    .catbin-grid[data-count='7'] > [data-flow-index='7'] {
       grid-column: 2 / span 2;
     }
-    .catbin-grid[data-count="8"] { --catbin-cols: 4; --catbin-rows: 4; }
-    .catbin-grid[data-count="8"] > [data-flow-index="7"] {
+    .catbin-grid[data-count='8'] {
+      --catbin-cols: 4;
+      --catbin-rows: 4;
+    }
+    .catbin-grid[data-count='8'] > [data-flow-index='7'] {
       grid-column: span 2;
     }
   }
@@ -426,12 +500,18 @@
      (3x3 / 4x3 stops being optimal there). Count 9 uses 5x2 with 1 empty
      cell centred in row 5. */
   @container catbin (aspect-ratio < 0.6) {
-    .catbin-grid[data-count="9"] { --catbin-cols: 4; --catbin-rows: 5; }
-    .catbin-grid[data-count="9"] > [data-flow-index="9"] {
+    .catbin-grid[data-count='9'] {
+      --catbin-cols: 4;
+      --catbin-rows: 5;
+    }
+    .catbin-grid[data-count='9'] > [data-flow-index='9'] {
       grid-column: 2 / span 2;
     }
-    .catbin-grid[data-count="10"] { --catbin-cols: 4; --catbin-rows: 5; }
-    .catbin-grid[data-count="10"] > [data-flow-index="10"] {
+    .catbin-grid[data-count='10'] {
+      --catbin-cols: 4;
+      --catbin-rows: 5;
+    }
+    .catbin-grid[data-count='10'] > [data-flow-index='10'] {
       grid-column: span 2;
     }
   }
@@ -439,15 +519,21 @@
   /* Landscape rectangular: counts 7, 8 switch from 3x3 (default) to 2x4 once
      AR > 1.33. Counts 6, 9 transition to 2x3 / 3x3 (no-op for 9) here too. */
   @container catbin (aspect-ratio > 1.33) {
-    .catbin-grid[data-count="7"] { --catbin-cols: 8; --catbin-rows: 2; }
-    .catbin-grid[data-count="7"] > [data-flow-index="5"] {
+    .catbin-grid[data-count='7'] {
+      --catbin-cols: 8;
+      --catbin-rows: 2;
+    }
+    .catbin-grid[data-count='7'] > [data-flow-index='5'] {
       grid-column: 2 / span 2;
     }
-    .catbin-grid[data-count="7"] > [data-flow-index="7"] {
+    .catbin-grid[data-count='7'] > [data-flow-index='7'] {
       grid-column: span 2;
     }
-    .catbin-grid[data-count="8"] { --catbin-cols: 8; --catbin-rows: 2; }
-    .catbin-grid[data-count="8"] > [data-flow-index="7"] {
+    .catbin-grid[data-count='8'] {
+      --catbin-cols: 8;
+      --catbin-rows: 2;
+    }
+    .catbin-grid[data-count='8'] > [data-flow-index='7'] {
       grid-column: span 2;
     }
   }
@@ -455,45 +541,72 @@
   /* Landscape rectangular for counts 9, 10: 2x5 once AR > 1.67 (count 9
      uses 2x5 with 1 empty cell centred in row 2). */
   @container catbin (aspect-ratio > 1.67) {
-    .catbin-grid[data-count="9"] { --catbin-cols: 10; --catbin-rows: 2; }
-    .catbin-grid[data-count="9"] > [data-flow-index="6"] {
+    .catbin-grid[data-count='9'] {
+      --catbin-cols: 10;
+      --catbin-rows: 2;
+    }
+    .catbin-grid[data-count='9'] > [data-flow-index='6'] {
       grid-column: 2 / span 2;
     }
-    .catbin-grid[data-count="10"] { --catbin-cols: 10; --catbin-rows: 2; }
-    .catbin-grid[data-count="10"] > [data-flow-index="9"] {
+    .catbin-grid[data-count='10'] {
+      --catbin-cols: 10;
+      --catbin-rows: 2;
+    }
+    .catbin-grid[data-count='10'] > [data-flow-index='9'] {
       grid-column: span 2;
     }
   }
 
   /* Landscape ultra-wide: 1-row layouts. Threshold per count (AR ~= count/2). */
   @container catbin (aspect-ratio > 2) {
-    .catbin-grid[data-count="4"] { --catbin-cols: 8; --catbin-rows: 1; }
+    .catbin-grid[data-count='4'] {
+      --catbin-cols: 8;
+      --catbin-rows: 1;
+    }
   }
   @container catbin (aspect-ratio > 2.5) {
-    .catbin-grid[data-count="5"] { --catbin-cols: 10; --catbin-rows: 1; }
-    .catbin-grid[data-count="5"] > [data-flow-index="4"] {
+    .catbin-grid[data-count='5'] {
+      --catbin-cols: 10;
+      --catbin-rows: 1;
+    }
+    .catbin-grid[data-count='5'] > [data-flow-index='4'] {
       grid-column: span 2;
     }
   }
   @container catbin (aspect-ratio > 3) {
-    .catbin-grid[data-count="6"] { --catbin-cols: 12; --catbin-rows: 1; }
+    .catbin-grid[data-count='6'] {
+      --catbin-cols: 12;
+      --catbin-rows: 1;
+    }
   }
   @container catbin (aspect-ratio > 3.5) {
-    .catbin-grid[data-count="7"] { --catbin-cols: 14; --catbin-rows: 1; }
-    .catbin-grid[data-count="7"] > [data-flow-index="5"] {
+    .catbin-grid[data-count='7'] {
+      --catbin-cols: 14;
+      --catbin-rows: 1;
+    }
+    .catbin-grid[data-count='7'] > [data-flow-index='5'] {
       grid-column: span 2;
     }
   }
   @container catbin (aspect-ratio > 4) {
-    .catbin-grid[data-count="8"] { --catbin-cols: 16; --catbin-rows: 1; }
+    .catbin-grid[data-count='8'] {
+      --catbin-cols: 16;
+      --catbin-rows: 1;
+    }
   }
   @container catbin (aspect-ratio > 4.5) {
-    .catbin-grid[data-count="9"] { --catbin-cols: 18; --catbin-rows: 1; }
-    .catbin-grid[data-count="9"] > [data-flow-index="6"] {
+    .catbin-grid[data-count='9'] {
+      --catbin-cols: 18;
+      --catbin-rows: 1;
+    }
+    .catbin-grid[data-count='9'] > [data-flow-index='6'] {
       grid-column: span 2;
     }
   }
   @container catbin (aspect-ratio > 5) {
-    .catbin-grid[data-count="10"] { --catbin-cols: 20; --catbin-rows: 1; }
+    .catbin-grid[data-count='10'] {
+      --catbin-cols: 20;
+      --catbin-rows: 1;
+    }
   }
 }

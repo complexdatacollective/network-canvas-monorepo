@@ -1,9 +1,9 @@
 export default {
-	codebook: {
-		node: {},
-		edge: {},
-		ego: {},
-	},
-	assetManifest: {},
-	stages: [],
+  codebook: {
+    node: {},
+    edge: {},
+    ego: {},
+  },
+  assetManifest: {},
+  stages: [],
 };

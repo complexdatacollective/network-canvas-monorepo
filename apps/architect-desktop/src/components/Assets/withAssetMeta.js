@@ -1,27 +1,27 @@
-import { getAssetManifest } from "@selectors/protocol";
-import { get } from "lodash";
-import PropTypes from "prop-types";
-import { connect } from "react-redux";
-import { compose, setPropTypes } from "recompose";
+import { getAssetManifest } from '@selectors/protocol';
+import { get } from 'lodash';
+import PropTypes from 'prop-types';
+import { connect } from 'react-redux';
+import { compose, setPropTypes } from 'recompose';
 
 const existingMeta = {
-	name: "Interview network",
+  name: 'Interview network',
 };
 
 const mapStateToProps = (state, { id }) => {
-	const assetManifest = getAssetManifest(state);
-	const meta = get(assetManifest, id, existingMeta);
+  const assetManifest = getAssetManifest(state);
+  const meta = get(assetManifest, id, existingMeta);
 
-	return {
-		meta,
-	};
+  return {
+    meta,
+  };
 };
 
 const withAssetMeta = compose(
-	setPropTypes({
-		id: PropTypes.string.isRequired,
-	}),
-	connect(mapStateToProps),
+  setPropTypes({
+    id: PropTypes.string.isRequired,
+  }),
+  connect(mapStateToProps),
 );
 
 export default withAssetMeta;

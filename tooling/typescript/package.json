@@ -1,11 +1,11 @@
 {
-	"name": "@codaco/tsconfig",
-	"private": true,
-	"version": "0.1.0",
-	"files": [
-		"base.json",
-		"dev.json",
-		"node.json",
-		"web.json"
-	]
+  "name": "@codaco/tsconfig",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "base.json",
+    "dev.json",
+    "node.json",
+    "web.json"
+  ]
 }

@@ -9,6 +9,7 @@
 **Tech Stack:** `@codaco/interview` (Vite, React, Redux Toolkit, posthog-js), `@codaco/protocol-validation` (Zod, ohash), `fresco-next` (Next.js 16 host), pnpm catalog.
 
 **Branches:**
+
 - Monorepo: `feat/interview-package` (current)
 - Fresco-next: `interview-package` (current, already pinned to `@codaco/interview@1.0.0-alpha.1`)
 
@@ -21,6 +22,7 @@
 ### Task 1: Port `hashProtocol` and add tests
 
 **Files:**
+
 - Create: `packages/protocol-validation/src/utils/hashProtocol.ts`
 - Create: `packages/protocol-validation/src/utils/__tests__/hashProtocol.test.ts`
 - Modify: `packages/protocol-validation/src/index.ts`
@@ -47,55 +49,55 @@ Expected: ohash gets installed for protocol-validation.
 Create `packages/protocol-validation/src/utils/__tests__/hashProtocol.test.ts`:
 
 ```typescript
-import { describe, expect, it } from "vitest";
-import { hashProtocol } from "../hashProtocol";
+import { describe, expect, it } from 'vitest';
+import { hashProtocol } from '../hashProtocol';
 
-describe("hashProtocol", () => {
-  it("produces a stable string for the same codebook+stages", () => {
+describe('hashProtocol', () => {
+  it('produces a stable string for the same codebook+stages', () => {
     const protocol = {
       codebook: { node: { person: { variables: {} } } },
-      stages: [{ id: "s1", type: "Information" }],
+      stages: [{ id: 's1', type: 'Information' }],
     };
     expect(hashProtocol(protocol)).toBe(hashProtocol(protocol));
   });
 
-  it("ignores fields outside codebook and stages", () => {
+  it('ignores fields outside codebook and stages', () => {
     const a = {
       codebook: { node: {} },
       stages: [],
-      name: "Name A",
-      description: "desc",
-      lastModified: "2026-01-01",
+      name: 'Name A',
+      description: 'desc',
+      lastModified: '2026-01-01',
       assetManifest: { foo: {} },
       experiments: { x: 1 },
     };
     const b = {
       codebook: { node: {} },
       stages: [],
-      name: "Name B",
-      description: "different",
-      lastModified: "2026-12-31",
+      name: 'Name B',
+      description: 'different',
+      lastModified: '2026-12-31',
       assetManifest: { bar: {} },
       experiments: { y: 2 },
     };
     expect(hashProtocol(a)).toBe(hashProtocol(b));
   });
 
-  it("changes when codebook changes", () => {
+  it('changes when codebook changes', () => {
     const a = { codebook: { node: { person: {} } }, stages: [] };
     const b = { codebook: { node: { place: {} } }, stages: [] };
     expect(hashProtocol(a)).not.toBe(hashProtocol(b));
   });
 
-  it("changes when stages change", () => {
-    const a = { codebook: {}, stages: [{ id: "s1" }] };
-    const b = { codebook: {}, stages: [{ id: "s2" }] };
+  it('changes when stages change', () => {
+    const a = { codebook: {}, stages: [{ id: 's1' }] };
+    const b = { codebook: {}, stages: [{ id: 's2' }] };
     expect(hashProtocol(a)).not.toBe(hashProtocol(b));
   });
 
-  it("returns a non-empty string", () => {
+  it('returns a non-empty string', () => {
     const result = hashProtocol({ codebook: {}, stages: [] });
-    expect(typeof result).toBe("string");
+    expect(typeof result).toBe('string');
     expect(result.length).toBeGreaterThan(0);
   });
 });
@@ -111,7 +113,7 @@ Expected: FAIL with module-not-found / import error for `../hashProtocol`.
 Create `packages/protocol-validation/src/utils/hashProtocol.ts`:
 
 ```typescript
-import { hash } from "ohash";
+import { hash } from 'ohash';
 
 /**
  * Computes the dedup hash for a protocol from its structural definition only
@@ -125,7 +127,10 @@ import { hash } from "ohash";
  *   - Interview package analytics (forwarded as protocol_hash super property)
  *   - Network-exporters (already reads protocol.hash from caller)
  */
-export function hashProtocol(protocol: { codebook: unknown; stages: unknown }): string {
+export function hashProtocol(protocol: {
+  codebook: unknown;
+  stages: unknown;
+}): string {
   return hash({ codebook: protocol.codebook, stages: protocol.stages });
 }
 ```
@@ -135,36 +140,40 @@ export function hashProtocol(protocol: { codebook: unknown; stages: unknown }): 
 Edit `packages/protocol-validation/src/index.ts` — add to the bottom export block:
 
 ```typescript
-import { type ExtractedAsset, extractProtocol } from "./utils/extractProtocol";
-import { hashProtocol } from "./utils/hashProtocol";
-import { getVariableNamesFromNetwork, type Network, validateNames } from "./utils/validateExternalData";
-import validateProtocol from "./validation/validate-protocol";
+import { type ExtractedAsset, extractProtocol } from './utils/extractProtocol';
+import { hashProtocol } from './utils/hashProtocol';
+import {
+  getVariableNamesFromNetwork,
+  type Network,
+  validateNames,
+} from './utils/validateExternalData';
+import validateProtocol from './validation/validate-protocol';
 
 export {
-	MigrationChain,
-	type ProtocolMigration as Migration,
-	protocolMigrations,
-} from "./migration";
-export * from "./migration/errors";
+  MigrationChain,
+  type ProtocolMigration as Migration,
+  protocolMigrations,
+} from './migration';
+export * from './migration/errors';
 export {
-	detectSchemaVersion,
-	getMigrationInfo,
-	type MigrationInfo,
-	type MigrationNote,
-	migrateProtocol,
-	ProtocolMigrator,
-	protocolMigrator,
-} from "./migration/migrate-protocol";
+  detectSchemaVersion,
+  getMigrationInfo,
+  type MigrationInfo,
+  type MigrationNote,
+  migrateProtocol,
+  ProtocolMigrator,
+  protocolMigrator,
+} from './migration/migrate-protocol';
 
-export * from "./schemas";
+export * from './schemas';
 export {
-	type ExtractedAsset,
-	extractProtocol,
-	getVariableNamesFromNetwork,
-	hashProtocol,
-	type Network,
-	validateNames,
-	validateProtocol,
+  type ExtractedAsset,
+  extractProtocol,
+  getVariableNamesFromNetwork,
+  hashProtocol,
+  type Network,
+  validateNames,
+  validateProtocol,
 };
 ```
 
@@ -193,6 +202,7 @@ git commit -m "feat(protocol-validation): add canonical hashProtocol export"
 ### Task 2: Bump `@codaco/protocol-validation` version
 
 **Files:**
+
 - Modify: `packages/protocol-validation/package.json`
 - Create: `.changeset/protocol-validation-hash-export.md`
 
@@ -206,7 +216,7 @@ Create `.changeset/protocol-validation-hash-export.md`:
 
 ```markdown
 ---
-"@codaco/protocol-validation": minor
+'@codaco/protocol-validation': minor
 ---
 
 Add `hashProtocol(protocol)` export — content-only hash of `{ codebook, stages }` for cross-package protocol identification (dedup, analytics, migration). Computed via ohash.
@@ -226,6 +236,7 @@ git commit -m "chore(protocol-validation): version bump to 11.5.0"
 ### Task 3: Add `posthog-js` dependency and `__PACKAGE_VERSION__` build-time constant
 
 **Files:**
+
 - Modify: `packages/interview/package.json`
 - Modify: `packages/interview/vite.config.ts`
 - Create: `packages/interview/src/types/build-globals.d.ts`
@@ -268,42 +279,47 @@ Expected: posthog-js installed for the package via the catalog version.
 Edit `packages/interview/vite.config.ts`:
 
 ```typescript
-import { resolve } from "node:path";
-import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
-import dts from "vite-plugin-dts";
-import pkg from "./package.json" with { type: "json" };
+import { resolve } from 'node:path';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
+import dts from 'vite-plugin-dts';
+import pkg from './package.json' with { type: 'json' };
 
 export default defineConfig({
-	plugins: [
-		react(),
-		dts({
-			entryRoot: "src",
-			include: ["src/**/*.ts", "src/**/*.tsx"],
-			exclude: ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/*.stories.tsx"],
-			compilerOptions: { rootDir: resolve(__dirname, "src") },
-			rollupTypes: true,
-		}),
-	],
-	define: {
-		__PACKAGE_VERSION__: JSON.stringify(pkg.version),
-	},
-	build: {
-		lib: {
-			entry: resolve(__dirname, "src/index.ts"),
-			formats: ["es"],
-		},
-		rollupOptions: {
-			external: (id) => !id.startsWith(".") && !id.startsWith("/") && !id.includes("\0"),
-			output: {
-				preserveModules: true,
-				preserveModulesRoot: "src",
-				entryFileNames: "[name].js",
-			},
-		},
-		sourcemap: true,
-		minify: false,
-	},
+  plugins: [
+    react(),
+    dts({
+      entryRoot: 'src',
+      include: ['src/**/*.ts', 'src/**/*.tsx'],
+      exclude: [
+        'src/**/*.test.ts',
+        'src/**/*.test.tsx',
+        'src/**/*.stories.tsx',
+      ],
+      compilerOptions: { rootDir: resolve(__dirname, 'src') },
+      rollupTypes: true,
+    }),
+  ],
+  define: {
+    __PACKAGE_VERSION__: JSON.stringify(pkg.version),
+  },
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/index.ts'),
+      formats: ['es'],
+    },
+    rollupOptions: {
+      external: (id) =>
+        !id.startsWith('.') && !id.startsWith('/') && !id.includes('\0'),
+      output: {
+        preserveModules: true,
+        preserveModulesRoot: 'src',
+        entryFileNames: '[name].js',
+      },
+    },
+    sourcemap: true,
+    minify: false,
+  },
 });
 ```
 
@@ -335,6 +351,7 @@ git commit -m "build(interview): add posthog-js dep and inject __PACKAGE_VERSION
 ### Task 4: Add `ProtocolPayload.hash` field
 
 **Files:**
+
 - Modify: `packages/interview/src/contract/types.ts`
 
 - [ ] **Step 1: Add `hash` to `ProtocolPayload`**
@@ -342,47 +359,53 @@ git commit -m "build(interview): add posthog-js dep and inject __PACKAGE_VERSION
 Edit `packages/interview/src/contract/types.ts`:
 
 ```typescript
-import type { CurrentProtocol } from "@codaco/protocol-validation";
-import type { SessionState } from "../store/modules/session";
+import type { CurrentProtocol } from '@codaco/protocol-validation';
+import type { SessionState } from '../store/modules/session';
 
 export type ResolvedAsset = {
-	assetId: string;
-	name: string;
-	type: "image" | "video" | "audio" | "network" | "geojson" | "apikey";
-	value?: string;
+  assetId: string;
+  name: string;
+  type: 'image' | 'video' | 'audio' | 'network' | 'geojson' | 'apikey';
+  value?: string;
 };
 
-export type ProtocolPayload = Omit<CurrentProtocol, "assetManifest"> & {
-	id: string;
-	hash: string; // host-computed via hashProtocol from @codaco/protocol-validation
-	importedAt: string;
-	assets: ResolvedAsset[];
+export type ProtocolPayload = Omit<CurrentProtocol, 'assetManifest'> & {
+  id: string;
+  hash: string; // host-computed via hashProtocol from @codaco/protocol-validation
+  importedAt: string;
+  assets: ResolvedAsset[];
 };
 
 export type SessionPayload = SessionState;
 
 export type InterviewPayload = {
-	session: SessionPayload;
-	protocol: ProtocolPayload;
+  session: SessionPayload;
+  protocol: ProtocolPayload;
 };
 
-export type SyncHandler = (interviewId: string, session: SessionPayload) => Promise<void>;
+export type SyncHandler = (
+  interviewId: string,
+  session: SessionPayload,
+) => Promise<void>;
 
-export type FinishHandler = (interviewId: string, signal: AbortSignal) => Promise<void>;
+export type FinishHandler = (
+  interviewId: string,
+  signal: AbortSignal,
+) => Promise<void>;
 
 export type AssetRequestHandler = (assetId: string) => Promise<string>;
 
 export type StepChangeHandler = (step: number) => void;
 
 export type InterviewerFlags = {
-	isE2E?: boolean;
-	isDevelopment?: boolean;
+  isE2E?: boolean;
+  isDevelopment?: boolean;
 };
 
 export type InterviewAnalyticsMetadata = {
-	installationId: string;
-	hostApp: string;
-	hostVersion?: string;
+  installationId: string;
+  hostApp: string;
+  hostVersion?: string;
 };
 ```
 
@@ -407,6 +430,7 @@ git commit -m "feat(interview)!: ProtocolPayload requires hash; remove ErrorHand
 ### Task 5: Property-key constants module
 
 **Files:**
+
 - Create: `packages/interview/src/analytics/PROPERTY_KEYS.ts`
 
 - [ ] **Step 1: Add constants module**
@@ -416,34 +440,35 @@ Create `packages/interview/src/analytics/PROPERTY_KEYS.ts`:
 ```typescript
 // PostHog instance name. Must be unique across all posthog-js instances on a
 // page so we never collide with a host's default-named instance.
-export const INSTANCE_NAME = "@codaco/interview";
+export const INSTANCE_NAME = '@codaco/interview';
 
 // Codaco-managed PostHog proxy. The project key is public PostHog data, not a
 // secret — same value used by architect-vite and the documentation app.
-export const POSTHOG_API_KEY = "phc_OThPUolJumHmf142W78TKWtjoYYAxGlF0ZZmhcV7J3c";
-export const POSTHOG_HOST = "https://ph-relay.networkcanvas.com";
+export const POSTHOG_API_KEY =
+  'phc_OThPUolJumHmf142W78TKWtjoYYAxGlF0ZZmhcV7J3c';
+export const POSTHOG_HOST = 'https://ph-relay.networkcanvas.com';
 
 // Super-property keys (snake_case for PostHog convention).
 export const SUPER_PROPS = {
-	APP: "app",
-	INSTALLATION_ID: "installation_id",
-	HOST_VERSION: "host_version",
-	PACKAGE_VERSION: "package_version",
-	PROTOCOL_HASH: "protocol_hash",
-	STAGE_TYPE: "stage_type",
-	STAGE_INDEX: "stage_index",
-	PROMPT_INDEX: "prompt_index",
+  APP: 'app',
+  INSTALLATION_ID: 'installation_id',
+  HOST_VERSION: 'host_version',
+  PACKAGE_VERSION: 'package_version',
+  PROTOCOL_HASH: 'protocol_hash',
+  STAGE_TYPE: 'stage_type',
+  STAGE_INDEX: 'stage_index',
+  PROMPT_INDEX: 'prompt_index',
 } as const;
 
 export type SuperProperties = {
-	[SUPER_PROPS.APP]: string;
-	[SUPER_PROPS.INSTALLATION_ID]: string;
-	[SUPER_PROPS.HOST_VERSION]?: string;
-	[SUPER_PROPS.PACKAGE_VERSION]: string;
-	[SUPER_PROPS.PROTOCOL_HASH]: string;
-	[SUPER_PROPS.STAGE_TYPE]?: string;
-	[SUPER_PROPS.STAGE_INDEX]?: number;
-	[SUPER_PROPS.PROMPT_INDEX]?: number;
+  [SUPER_PROPS.APP]: string;
+  [SUPER_PROPS.INSTALLATION_ID]: string;
+  [SUPER_PROPS.HOST_VERSION]?: string;
+  [SUPER_PROPS.PACKAGE_VERSION]: string;
+  [SUPER_PROPS.PROTOCOL_HASH]: string;
+  [SUPER_PROPS.STAGE_TYPE]?: string;
+  [SUPER_PROPS.STAGE_INDEX]?: number;
+  [SUPER_PROPS.PROMPT_INDEX]?: number;
 };
 ```
 
@@ -459,6 +484,7 @@ git commit -m "feat(interview/analytics): property-key constants"
 ### Task 6: Super-properties computation module
 
 **Files:**
+
 - Create: `packages/interview/src/analytics/superProperties.ts`
 - Create: `packages/interview/src/analytics/__tests__/superProperties.test.ts`
 
@@ -467,48 +493,51 @@ git commit -m "feat(interview/analytics): property-key constants"
 Create `packages/interview/src/analytics/__tests__/superProperties.test.ts`:
 
 ```typescript
-import { describe, expect, it } from "vitest";
-import type { InterviewPayload, InterviewAnalyticsMetadata } from "../../contract/types";
-import { computeSuperProperties } from "../superProperties";
+import { describe, expect, it } from 'vitest';
+import type {
+  InterviewPayload,
+  InterviewAnalyticsMetadata,
+} from '../../contract/types';
+import { computeSuperProperties } from '../superProperties';
 
 const fixturePayload = {
-	session: { id: "session-1" },
-	protocol: { hash: "abc123" },
+  session: { id: 'session-1' },
+  protocol: { hash: 'abc123' },
 } as InterviewPayload;
 
-describe("computeSuperProperties", () => {
-	it("produces app, installation_id, package_version, protocol_hash for required-only metadata", () => {
-		const metadata: InterviewAnalyticsMetadata = {
-			installationId: "install-1",
-			hostApp: "Fresco",
-		};
-		expect(computeSuperProperties(metadata, fixturePayload)).toEqual({
-			app: "Fresco",
-			installation_id: "install-1",
-			package_version: expect.any(String),
-			protocol_hash: "abc123",
-		});
-	});
+describe('computeSuperProperties', () => {
+  it('produces app, installation_id, package_version, protocol_hash for required-only metadata', () => {
+    const metadata: InterviewAnalyticsMetadata = {
+      installationId: 'install-1',
+      hostApp: 'Fresco',
+    };
+    expect(computeSuperProperties(metadata, fixturePayload)).toEqual({
+      app: 'Fresco',
+      installation_id: 'install-1',
+      package_version: expect.any(String),
+      protocol_hash: 'abc123',
+    });
+  });
 
-	it("includes host_version when provided", () => {
-		const metadata: InterviewAnalyticsMetadata = {
-			installationId: "install-1",
-			hostApp: "Fresco",
-			hostVersion: "2.5.0",
-		};
-		expect(computeSuperProperties(metadata, fixturePayload)).toMatchObject({
-			host_version: "2.5.0",
-		});
-	});
+  it('includes host_version when provided', () => {
+    const metadata: InterviewAnalyticsMetadata = {
+      installationId: 'install-1',
+      hostApp: 'Fresco',
+      hostVersion: '2.5.0',
+    };
+    expect(computeSuperProperties(metadata, fixturePayload)).toMatchObject({
+      host_version: '2.5.0',
+    });
+  });
 
-	it("omits host_version when undefined", () => {
-		const metadata: InterviewAnalyticsMetadata = {
-			installationId: "install-1",
-			hostApp: "Fresco",
-		};
-		const result = computeSuperProperties(metadata, fixturePayload);
-		expect(Object.keys(result)).not.toContain("host_version");
-	});
+  it('omits host_version when undefined', () => {
+    const metadata: InterviewAnalyticsMetadata = {
+      installationId: 'install-1',
+      hostApp: 'Fresco',
+    };
+    const result = computeSuperProperties(metadata, fixturePayload);
+    expect(Object.keys(result)).not.toContain('host_version');
+  });
 });
 ```
 
@@ -522,23 +551,26 @@ Expected: FAIL — module `../superProperties` not found.
 Create `packages/interview/src/analytics/superProperties.ts`:
 
 ```typescript
-import type { InterviewAnalyticsMetadata, InterviewPayload } from "../contract/types";
-import { SUPER_PROPS, type SuperProperties } from "./PROPERTY_KEYS";
+import type {
+  InterviewAnalyticsMetadata,
+  InterviewPayload,
+} from '../contract/types';
+import { SUPER_PROPS, type SuperProperties } from './PROPERTY_KEYS';
 
 export function computeSuperProperties(
-	metadata: InterviewAnalyticsMetadata,
-	payload: InterviewPayload,
+  metadata: InterviewAnalyticsMetadata,
+  payload: InterviewPayload,
 ): SuperProperties {
-	const props: SuperProperties = {
-		[SUPER_PROPS.APP]: metadata.hostApp,
-		[SUPER_PROPS.INSTALLATION_ID]: metadata.installationId,
-		[SUPER_PROPS.PACKAGE_VERSION]: __PACKAGE_VERSION__,
-		[SUPER_PROPS.PROTOCOL_HASH]: payload.protocol.hash,
-	};
-	if (metadata.hostVersion !== undefined) {
-		props[SUPER_PROPS.HOST_VERSION] = metadata.hostVersion;
-	}
-	return props;
+  const props: SuperProperties = {
+    [SUPER_PROPS.APP]: metadata.hostApp,
+    [SUPER_PROPS.INSTALLATION_ID]: metadata.installationId,
+    [SUPER_PROPS.PACKAGE_VERSION]: __PACKAGE_VERSION__,
+    [SUPER_PROPS.PROTOCOL_HASH]: payload.protocol.hash,
+  };
+  if (metadata.hostVersion !== undefined) {
+    props[SUPER_PROPS.HOST_VERSION] = metadata.hostVersion;
+  }
+  return props;
 }
 ```
 
@@ -559,6 +591,7 @@ git commit -m "feat(interview/analytics): super-properties computation"
 ### Task 7: Client resolver
 
 **Files:**
+
 - Create: `packages/interview/src/analytics/resolveClient.ts`
 - Create: `packages/interview/src/analytics/__tests__/resolveClient.test.ts`
 
@@ -567,61 +600,61 @@ git commit -m "feat(interview/analytics): super-properties computation"
 Create `packages/interview/src/analytics/__tests__/resolveClient.test.ts`:
 
 ```typescript
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { resolveClient } from "../resolveClient";
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resolveClient } from '../resolveClient';
 
 const fakeClient = {
-	capture: vi.fn(),
-	register: vi.fn(),
-	captureException: vi.fn(),
+  capture: vi.fn(),
+  register: vi.fn(),
+  captureException: vi.fn(),
 };
 
 beforeEach(() => {
-	vi.resetAllMocks();
-	vi.resetModules();
+  vi.resetAllMocks();
+  vi.resetModules();
 });
 
 afterEach(() => {
-	vi.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
-describe("resolveClient", () => {
-	it("returns null when disableAnalytics is true", async () => {
-		const result = await resolveClient({ disableAnalytics: true });
-		expect(result).toBeNull();
-	});
+describe('resolveClient', () => {
+  it('returns null when disableAnalytics is true', async () => {
+    const result = await resolveClient({ disableAnalytics: true });
+    expect(result).toBeNull();
+  });
 
-	it("returns the supplied host client unchanged when disableAnalytics is false", async () => {
-		const result = await resolveClient({
-			disableAnalytics: false,
-			posthogClient: fakeClient as never,
-		});
-		expect(result).toBe(fakeClient);
-		expect(fakeClient.register).not.toHaveBeenCalled();
-	});
+  it('returns the supplied host client unchanged when disableAnalytics is false', async () => {
+    const result = await resolveClient({
+      disableAnalytics: false,
+      posthogClient: fakeClient as never,
+    });
+    expect(result).toBe(fakeClient);
+    expect(fakeClient.register).not.toHaveBeenCalled();
+  });
 
-	it("dynamically imports posthog-js and inits a named instance when no host client", async () => {
-		const initSpy = vi.fn().mockReturnValue(fakeClient);
-		vi.doMock("posthog-js", () => ({
-			default: { init: initSpy },
-		}));
-		const result = await resolveClient({ disableAnalytics: false });
-		expect(initSpy).toHaveBeenCalledWith(
-			expect.any(String),
-			expect.objectContaining({ api_host: expect.any(String) }),
-			"@codaco/interview",
-		);
-		expect(result).toBe(fakeClient);
-	});
+  it('dynamically imports posthog-js and inits a named instance when no host client', async () => {
+    const initSpy = vi.fn().mockReturnValue(fakeClient);
+    vi.doMock('posthog-js', () => ({
+      default: { init: initSpy },
+    }));
+    const result = await resolveClient({ disableAnalytics: false });
+    expect(initSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ api_host: expect.any(String) }),
+      '@codaco/interview',
+    );
+    expect(result).toBe(fakeClient);
+  });
 
-	it("returns null when dynamic import fails", async () => {
-		vi.doMock("posthog-js", () => {
-			throw new Error("simulated chunk load failure");
-		});
-		vi.spyOn(console, "warn").mockImplementation(() => {});
-		const result = await resolveClient({ disableAnalytics: false });
-		expect(result).toBeNull();
-	});
+  it('returns null when dynamic import fails', async () => {
+    vi.doMock('posthog-js', () => {
+      throw new Error('simulated chunk load failure');
+    });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = await resolveClient({ disableAnalytics: false });
+    expect(result).toBeNull();
+  });
 });
 ```
 
@@ -635,37 +668,43 @@ Expected: FAIL — module not found.
 Create `packages/interview/src/analytics/resolveClient.ts`:
 
 ```typescript
-import type { PostHog } from "posthog-js";
-import { INSTANCE_NAME, POSTHOG_API_KEY, POSTHOG_HOST } from "./PROPERTY_KEYS";
+import type { PostHog } from 'posthog-js';
+import { INSTANCE_NAME, POSTHOG_API_KEY, POSTHOG_HOST } from './PROPERTY_KEYS';
 
 type ResolveArgs = {
-	disableAnalytics: boolean;
-	posthogClient?: PostHog;
+  disableAnalytics: boolean;
+  posthogClient?: PostHog;
 };
 
-export async function resolveClient({ disableAnalytics, posthogClient }: ResolveArgs): Promise<PostHog | null> {
-	if (disableAnalytics) return null;
-	if (posthogClient) return posthogClient;
+export async function resolveClient({
+  disableAnalytics,
+  posthogClient,
+}: ResolveArgs): Promise<PostHog | null> {
+  if (disableAnalytics) return null;
+  if (posthogClient) return posthogClient;
 
-	try {
-		const { default: posthog } = await import("posthog-js");
-		return posthog.init(
-			POSTHOG_API_KEY,
-			{
-				api_host: POSTHOG_HOST,
-				autocapture: false,
-				capture_pageview: false,
-				capture_pageleave: false,
-				disable_session_recording: true,
-				persistence: "memory",
-			},
-			INSTANCE_NAME,
-		);
-	} catch (e) {
-		// eslint-disable-next-line no-console
-		console.warn("[@codaco/interview] failed to init analytics client; events suppressed", e);
-		return null;
-	}
+  try {
+    const { default: posthog } = await import('posthog-js');
+    return posthog.init(
+      POSTHOG_API_KEY,
+      {
+        api_host: POSTHOG_HOST,
+        autocapture: false,
+        capture_pageview: false,
+        capture_pageleave: false,
+        disable_session_recording: true,
+        persistence: 'memory',
+      },
+      INSTANCE_NAME,
+    );
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[@codaco/interview] failed to init analytics client; events suppressed',
+      e,
+    );
+    return null;
+  }
 }
 ```
 
@@ -688,6 +727,7 @@ git commit -m "feat(interview/analytics): client resolver (host-supplied or own 
 ### Task 8: Tracker abstraction (track + captureException with distinct_id override)
 
 **Files:**
+
 - Create: `packages/interview/src/analytics/tracker.ts`
 - Create: `packages/interview/src/analytics/__tests__/tracker.test.ts`
 
@@ -696,66 +736,85 @@ git commit -m "feat(interview/analytics): client resolver (host-supplied or own 
 Create `packages/interview/src/analytics/__tests__/tracker.test.ts`:
 
 ```typescript
-import { describe, expect, it, vi } from "vitest";
-import { createTracker, NULL_TRACKER } from "../tracker";
+import { describe, expect, it, vi } from 'vitest';
+import { createTracker, NULL_TRACKER } from '../tracker';
 
-describe("createTracker", () => {
-	it("calls capture with merged super-props, event-props, and distinct_id override", () => {
-		const client = { capture: vi.fn(), captureException: vi.fn() };
-		const tracker = createTracker({
-			client: client as never,
-			superProperties: { app: "Fresco", installation_id: "i1", package_version: "1", protocol_hash: "h" },
-			distinctId: "session-1",
-			ownsInstance: false,
-		});
-		tracker.track("node_added", { node_id: "n1", node_type: "person" });
-		expect(client.capture).toHaveBeenCalledWith("node_added", {
-			node_id: "n1",
-			node_type: "person",
-			app: "Fresco",
-			installation_id: "i1",
-			package_version: "1",
-			protocol_hash: "h",
-			$set_once: undefined,
-			distinct_id: "session-1",
-		});
-	});
+describe('createTracker', () => {
+  it('calls capture with merged super-props, event-props, and distinct_id override', () => {
+    const client = { capture: vi.fn(), captureException: vi.fn() };
+    const tracker = createTracker({
+      client: client as never,
+      superProperties: {
+        app: 'Fresco',
+        installation_id: 'i1',
+        package_version: '1',
+        protocol_hash: 'h',
+      },
+      distinctId: 'session-1',
+      ownsInstance: false,
+    });
+    tracker.track('node_added', { node_id: 'n1', node_type: 'person' });
+    expect(client.capture).toHaveBeenCalledWith('node_added', {
+      node_id: 'n1',
+      node_type: 'person',
+      app: 'Fresco',
+      installation_id: 'i1',
+      package_version: '1',
+      protocol_hash: 'h',
+      $set_once: undefined,
+      distinct_id: 'session-1',
+    });
+  });
 
-	it("does NOT merge super-props when ownsInstance=true (relies on register())", () => {
-		const client = { capture: vi.fn(), captureException: vi.fn() };
-		const tracker = createTracker({
-			client: client as never,
-			superProperties: { app: "X", installation_id: "i", package_version: "1", protocol_hash: "h" },
-			distinctId: "session-1",
-			ownsInstance: true,
-		});
-		tracker.track("node_added", { node_id: "n1" });
-		const props = client.capture.mock.calls[0][1];
-		expect(props.app).toBeUndefined();
-		expect(props.distinct_id).toBe("session-1");
-	});
+  it('does NOT merge super-props when ownsInstance=true (relies on register())', () => {
+    const client = { capture: vi.fn(), captureException: vi.fn() };
+    const tracker = createTracker({
+      client: client as never,
+      superProperties: {
+        app: 'X',
+        installation_id: 'i',
+        package_version: '1',
+        protocol_hash: 'h',
+      },
+      distinctId: 'session-1',
+      ownsInstance: true,
+    });
+    tracker.track('node_added', { node_id: 'n1' });
+    const props = client.capture.mock.calls[0][1];
+    expect(props.app).toBeUndefined();
+    expect(props.distinct_id).toBe('session-1');
+  });
 
-	it("captureException applies distinct_id override and merges feature tag", () => {
-		const client = { capture: vi.fn(), captureException: vi.fn() };
-		const tracker = createTracker({
-			client: client as never,
-			superProperties: { app: "X", installation_id: "i", package_version: "1", protocol_hash: "h" },
-			distinctId: "session-1",
-			ownsInstance: false,
-		});
-		const err = new Error("boom");
-		tracker.captureException(err, { feature: "external-data" });
-		expect(client.captureException).toHaveBeenCalledWith(err, "session-1", expect.objectContaining({ feature: "external-data" }));
-	});
+  it('captureException applies distinct_id override and merges feature tag', () => {
+    const client = { capture: vi.fn(), captureException: vi.fn() };
+    const tracker = createTracker({
+      client: client as never,
+      superProperties: {
+        app: 'X',
+        installation_id: 'i',
+        package_version: '1',
+        protocol_hash: 'h',
+      },
+      distinctId: 'session-1',
+      ownsInstance: false,
+    });
+    const err = new Error('boom');
+    tracker.captureException(err, { feature: 'external-data' });
+    expect(client.captureException).toHaveBeenCalledWith(
+      err,
+      'session-1',
+      expect.objectContaining({ feature: 'external-data' }),
+    );
+  });
 });
 
-describe("NULL_TRACKER", () => {
-	it("track is a no-op", () => {
-		expect(() => NULL_TRACKER.track("x", {})).not.toThrow();
-	});
-	it("captureException is a no-op", () => {
-		expect(() => NULL_TRACKER.captureException(new Error("x"))).not.toThrow();
-	});
+describe('NULL_TRACKER', () => {
+  it('track is a no-op', () => {
+    expect(() => NULL_TRACKER.track('x', {})).not.toThrow();
+  });
+  it('captureException is a no-op', () => {
+    expect(() => NULL_TRACKER.captureException(new Error('x'))).not.toThrow();
+  });
 });
 ```
 
@@ -769,52 +828,57 @@ Expected: FAIL — module not found.
 Create `packages/interview/src/analytics/tracker.ts`:
 
 ```typescript
-import type { PostHog } from "posthog-js";
-import type { SuperProperties } from "./PROPERTY_KEYS";
+import type { PostHog } from 'posthog-js';
+import type { SuperProperties } from './PROPERTY_KEYS';
 
 export type EventProps = Record<string, unknown>;
 
 export type Tracker = {
-	track: (eventName: string, props?: EventProps) => void;
-	captureException: (error: Error, props?: EventProps) => void;
+  track: (eventName: string, props?: EventProps) => void;
+  captureException: (error: Error, props?: EventProps) => void;
 };
 
 type CreateTrackerArgs = {
-	client: PostHog;
-	superProperties: SuperProperties;
-	distinctId: string;
-	ownsInstance: boolean;
+  client: PostHog;
+  superProperties: SuperProperties;
+  distinctId: string;
+  ownsInstance: boolean;
 };
 
-export function createTracker({ client, superProperties, distinctId, ownsInstance }: CreateTrackerArgs): Tracker {
-	const merge = (props: EventProps | undefined): EventProps => ({
-		...(ownsInstance ? {} : superProperties),
-		...(props ?? {}),
-		$set_once: undefined,
-		distinct_id: distinctId,
-	});
+export function createTracker({
+  client,
+  superProperties,
+  distinctId,
+  ownsInstance,
+}: CreateTrackerArgs): Tracker {
+  const merge = (props: EventProps | undefined): EventProps => ({
+    ...(ownsInstance ? {} : superProperties),
+    ...(props ?? {}),
+    $set_once: undefined,
+    distinct_id: distinctId,
+  });
 
-	return {
-		track: (eventName, props) => {
-			try {
-				client.capture(eventName, merge(props));
-			} catch {
-				// Never let analytics throw into the calling code path.
-			}
-		},
-		captureException: (error, props) => {
-			try {
-				client.captureException(error, distinctId, merge(props));
-			} catch {
-				// Same: never throw out of analytics.
-			}
-		},
-	};
+  return {
+    track: (eventName, props) => {
+      try {
+        client.capture(eventName, merge(props));
+      } catch {
+        // Never let analytics throw into the calling code path.
+      }
+    },
+    captureException: (error, props) => {
+      try {
+        client.captureException(error, distinctId, merge(props));
+      } catch {
+        // Same: never throw out of analytics.
+      }
+    },
+  };
 }
 
 export const NULL_TRACKER: Tracker = {
-	track: () => {},
-	captureException: () => {},
+  track: () => {},
+  captureException: () => {},
 };
 ```
 
@@ -835,6 +899,7 @@ git commit -m "feat(interview/analytics): tracker (capture + exceptions, distinc
 ### Task 9: AnalyticsProvider + useTrack
 
 **Files:**
+
 - Create: `packages/interview/src/analytics/AnalyticsContext.tsx`
 - Create: `packages/interview/src/analytics/AnalyticsProvider.tsx`
 - Create: `packages/interview/src/analytics/useTrack.ts`
@@ -845,10 +910,10 @@ git commit -m "feat(interview/analytics): tracker (capture + exceptions, distinc
 Create `packages/interview/src/analytics/AnalyticsContext.tsx`:
 
 ```tsx
-"use client";
+'use client';
 
-import { createContext } from "react";
-import { NULL_TRACKER, type Tracker } from "./tracker";
+import { createContext } from 'react';
+import { NULL_TRACKER, type Tracker } from './tracker';
 
 export const AnalyticsContext = createContext<Tracker>(NULL_TRACKER);
 ```
@@ -858,87 +923,102 @@ export const AnalyticsContext = createContext<Tracker>(NULL_TRACKER);
 Create `packages/interview/src/analytics/AnalyticsProvider.tsx`:
 
 ```tsx
-"use client";
+'use client';
 
-import type { PostHog } from "posthog-js";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import type { InterviewAnalyticsMetadata, InterviewPayload } from "../contract/types";
-import { AnalyticsContext } from "./AnalyticsContext";
-import { SUPER_PROPS } from "./PROPERTY_KEYS";
-import { resolveClient } from "./resolveClient";
-import { computeSuperProperties } from "./superProperties";
-import { createTracker, NULL_TRACKER, type Tracker } from "./tracker";
+import type { PostHog } from 'posthog-js';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import type {
+  InterviewAnalyticsMetadata,
+  InterviewPayload,
+} from '../contract/types';
+import { AnalyticsContext } from './AnalyticsContext';
+import { SUPER_PROPS } from './PROPERTY_KEYS';
+import { resolveClient } from './resolveClient';
+import { computeSuperProperties } from './superProperties';
+import { createTracker, NULL_TRACKER, type Tracker } from './tracker';
 
 type AnalyticsProviderProps = {
-	analytics: InterviewAnalyticsMetadata;
-	posthogClient?: PostHog;
-	disableAnalytics: boolean;
-	payload: InterviewPayload;
-	children: ReactNode;
+  analytics: InterviewAnalyticsMetadata;
+  posthogClient?: PostHog;
+  disableAnalytics: boolean;
+  payload: InterviewPayload;
+  children: ReactNode;
 };
 
 export function AnalyticsProvider({
-	analytics,
-	posthogClient,
-	disableAnalytics,
-	payload,
-	children,
+  analytics,
+  posthogClient,
+  disableAnalytics,
+  payload,
+  children,
 }: AnalyticsProviderProps) {
-	const [tracker, setTracker] = useState<Tracker>(NULL_TRACKER);
-	const ownsInstanceRef = useRef(false);
+  const [tracker, setTracker] = useState<Tracker>(NULL_TRACKER);
+  const ownsInstanceRef = useRef(false);
 
-	const superProperties = useMemo(() => computeSuperProperties(analytics, payload), [analytics, payload]);
-	const distinctId = payload.session.id;
+  const superProperties = useMemo(
+    () => computeSuperProperties(analytics, payload),
+    [analytics, payload],
+  );
+  const distinctId = payload.session.id;
 
-	useEffect(() => {
-		if (disableAnalytics) {
-			setTracker(NULL_TRACKER);
-			return;
-		}
-		let cancelled = false;
-		(async () => {
-			const client = await resolveClient({ disableAnalytics, posthogClient });
-			if (cancelled) return;
-			if (!client) {
-				setTracker(NULL_TRACKER);
-				return;
-			}
-			const ownsInstance = !posthogClient;
-			ownsInstanceRef.current = ownsInstance;
-			if (ownsInstance) {
-				try {
-					client.register(superProperties);
-				} catch {
-					// ignore; tracker still works without registered super-props
-				}
-			}
-			setTracker(createTracker({ client, superProperties, distinctId, ownsInstance }));
-		})();
-		return () => {
-			cancelled = true;
-		};
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [disableAnalytics, posthogClient]);
+  useEffect(() => {
+    if (disableAnalytics) {
+      setTracker(NULL_TRACKER);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const client = await resolveClient({ disableAnalytics, posthogClient });
+      if (cancelled) return;
+      if (!client) {
+        setTracker(NULL_TRACKER);
+        return;
+      }
+      const ownsInstance = !posthogClient;
+      ownsInstanceRef.current = ownsInstance;
+      if (ownsInstance) {
+        try {
+          client.register(superProperties);
+        } catch {
+          // ignore; tracker still works without registered super-props
+        }
+      }
+      setTracker(
+        createTracker({ client, superProperties, distinctId, ownsInstance }),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [disableAnalytics, posthogClient]);
 
-	return <AnalyticsContext.Provider value={tracker}>{children}</AnalyticsContext.Provider>;
+  return (
+    <AnalyticsContext.Provider value={tracker}>
+      {children}
+    </AnalyticsContext.Provider>
+  );
 }
 
 export function updateNavigationSuperProps(
-	tracker: Tracker,
-	posthogClient: PostHog | null,
-	ownsInstance: boolean,
-	props: { stage_type?: string; stage_index?: number; prompt_index?: number },
+  tracker: Tracker,
+  posthogClient: PostHog | null,
+  ownsInstance: boolean,
+  props: { stage_type?: string; stage_index?: number; prompt_index?: number },
 ) {
-	if (!posthogClient || !ownsInstance) return;
-	try {
-		const filtered: Record<string, unknown> = {};
-		if (props.stage_type !== undefined) filtered[SUPER_PROPS.STAGE_TYPE] = props.stage_type;
-		if (props.stage_index !== undefined) filtered[SUPER_PROPS.STAGE_INDEX] = props.stage_index;
-		if (props.prompt_index !== undefined) filtered[SUPER_PROPS.PROMPT_INDEX] = props.prompt_index;
-		posthogClient.register(filtered);
-	} catch {
-		// ignore
-	}
+  if (!posthogClient || !ownsInstance) return;
+  try {
+    const filtered: Record<string, unknown> = {};
+    if (props.stage_type !== undefined)
+      filtered[SUPER_PROPS.STAGE_TYPE] = props.stage_type;
+    if (props.stage_index !== undefined)
+      filtered[SUPER_PROPS.STAGE_INDEX] = props.stage_index;
+    if (props.prompt_index !== undefined)
+      filtered[SUPER_PROPS.PROMPT_INDEX] = props.prompt_index;
+    posthogClient.register(filtered);
+  } catch {
+    // ignore
+  }
 }
 ```
 
@@ -947,19 +1027,19 @@ export function updateNavigationSuperProps(
 Create `packages/interview/src/analytics/useTrack.ts`:
 
 ```typescript
-"use client";
+'use client';
 
-import { useContext } from "react";
-import { AnalyticsContext } from "./AnalyticsContext";
+import { useContext } from 'react';
+import { AnalyticsContext } from './AnalyticsContext';
 
 export function useTrack() {
-	const tracker = useContext(AnalyticsContext);
-	return tracker.track;
+  const tracker = useContext(AnalyticsContext);
+  return tracker.track;
 }
 
 export function useCaptureException() {
-	const tracker = useContext(AnalyticsContext);
-	return tracker.captureException;
+  const tracker = useContext(AnalyticsContext);
+  return tracker.captureException;
 }
 ```
 
@@ -968,72 +1048,72 @@ export function useCaptureException() {
 Create `packages/interview/src/analytics/__tests__/AnalyticsProvider.test.tsx`:
 
 ```tsx
-import { act, render, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import type { InterviewPayload } from "../../contract/types";
-import { AnalyticsProvider } from "../AnalyticsProvider";
-import { useTrack } from "../useTrack";
+import { act, render, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import type { InterviewPayload } from '../../contract/types';
+import { AnalyticsProvider } from '../AnalyticsProvider';
+import { useTrack } from '../useTrack';
 
 const payload = {
-	session: { id: "interview-42" },
-	protocol: { hash: "h-x" },
+  session: { id: 'interview-42' },
+  protocol: { hash: 'h-x' },
 } as InterviewPayload;
 
 function Probe() {
-	const track = useTrack();
-	return (
-		<button type="button" onClick={() => track("test_event", { foo: "bar" })}>
-			fire
-		</button>
-	);
+  const track = useTrack();
+  return (
+    <button type="button" onClick={() => track('test_event', { foo: 'bar' })}>
+      fire
+    </button>
+  );
 }
 
-describe("AnalyticsProvider", () => {
-	it("uses NULL_TRACKER when disableAnalytics=true", () => {
-		const client = { capture: vi.fn(), register: vi.fn() };
-		const { getByRole } = render(
-			<AnalyticsProvider
-				analytics={{ installationId: "i1", hostApp: "Fresco" }}
-				posthogClient={client as never}
-				disableAnalytics={true}
-				payload={payload}
-			>
-				<Probe />
-			</AnalyticsProvider>,
-		);
-		act(() => getByRole("button").click());
-		expect(client.capture).not.toHaveBeenCalled();
-	});
+describe('AnalyticsProvider', () => {
+  it('uses NULL_TRACKER when disableAnalytics=true', () => {
+    const client = { capture: vi.fn(), register: vi.fn() };
+    const { getByRole } = render(
+      <AnalyticsProvider
+        analytics={{ installationId: 'i1', hostApp: 'Fresco' }}
+        posthogClient={client as never}
+        disableAnalytics={true}
+        payload={payload}
+      >
+        <Probe />
+      </AnalyticsProvider>,
+    );
+    act(() => getByRole('button').click());
+    expect(client.capture).not.toHaveBeenCalled();
+  });
 
-	it("forwards events to a host-supplied client without calling register/identify on it", async () => {
-		const client = { capture: vi.fn(), register: vi.fn() };
-		const { getByRole } = render(
-			<AnalyticsProvider
-				analytics={{ installationId: "i1", hostApp: "Fresco" }}
-				posthogClient={client as never}
-				disableAnalytics={false}
-				payload={payload}
-			>
-				<Probe />
-			</AnalyticsProvider>,
-		);
-		await waitFor(() => {
-			act(() => getByRole("button").click());
-		});
-		await waitFor(() => {
-			expect(client.capture).toHaveBeenCalledWith(
-				"test_event",
-				expect.objectContaining({
-					foo: "bar",
-					app: "Fresco",
-					installation_id: "i1",
-					protocol_hash: "h-x",
-					distinct_id: "interview-42",
-				}),
-			);
-		});
-		expect(client.register).not.toHaveBeenCalled();
-	});
+  it('forwards events to a host-supplied client without calling register/identify on it', async () => {
+    const client = { capture: vi.fn(), register: vi.fn() };
+    const { getByRole } = render(
+      <AnalyticsProvider
+        analytics={{ installationId: 'i1', hostApp: 'Fresco' }}
+        posthogClient={client as never}
+        disableAnalytics={false}
+        payload={payload}
+      >
+        <Probe />
+      </AnalyticsProvider>,
+    );
+    await waitFor(() => {
+      act(() => getByRole('button').click());
+    });
+    await waitFor(() => {
+      expect(client.capture).toHaveBeenCalledWith(
+        'test_event',
+        expect.objectContaining({
+          foo: 'bar',
+          app: 'Fresco',
+          installation_id: 'i1',
+          protocol_hash: 'h-x',
+          distinct_id: 'interview-42',
+        }),
+      );
+    });
+    expect(client.register).not.toHaveBeenCalled();
+  });
 });
 ```
 
@@ -1056,6 +1136,7 @@ git commit -m "feat(interview/analytics): provider + useTrack hook"
 ### Task 10: Replace `StageErrorBoundary` `onError` with internal `captureException`
 
 **Files:**
+
 - Modify: `packages/interview/src/components/StageErrorBoundary.tsx`
 
 - [ ] **Step 1: Replace onError consumption**
@@ -1063,75 +1144,84 @@ git commit -m "feat(interview/analytics): provider + useTrack hook"
 Edit `packages/interview/src/components/StageErrorBoundary.tsx`:
 
 ```tsx
-import Icon from "@codaco/fresco-ui/Icon";
-import Surface from "@codaco/fresco-ui/layout/Surface";
-import Heading from "@codaco/fresco-ui/typography/Heading";
-import Paragraph from "@codaco/fresco-ui/typography/Paragraph";
-import React, { Component, type ReactNode } from "react";
-import { useCaptureException } from "../analytics/useTrack";
-import CopyDebugInfoButton from "./CopyDebugInfoButton";
+import Icon from '@codaco/fresco-ui/Icon';
+import Surface from '@codaco/fresco-ui/layout/Surface';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import React, { Component, type ReactNode } from 'react';
+import { useCaptureException } from '../analytics/useTrack';
+import CopyDebugInfoButton from './CopyDebugInfoButton';
 
 type StageErrorBoundaryInnerProps = {
-	children: ReactNode;
-	captureException: (error: Error, props?: Record<string, unknown>) => void;
+  children: ReactNode;
+  captureException: (error: Error, props?: Record<string, unknown>) => void;
 };
 
 type StageErrorBoundaryState = {
-	error?: Error;
+  error?: Error;
 };
 
-class StageErrorBoundaryInner extends Component<StageErrorBoundaryInnerProps, StageErrorBoundaryState> {
-	constructor(props: StageErrorBoundaryInnerProps) {
-		super(props);
-		this.state = {};
-	}
+class StageErrorBoundaryInner extends Component<
+  StageErrorBoundaryInnerProps,
+  StageErrorBoundaryState
+> {
+  constructor(props: StageErrorBoundaryInnerProps) {
+    super(props);
+    this.state = {};
+  }
 
-	componentDidCatch(error: Error, info: React.ErrorInfo) {
-		this.props.captureException(error, {
-			component_stack: info.componentStack,
-			feature: "stage-error-boundary",
-		});
-		this.setState({ error });
-	}
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    this.props.captureException(error, {
+      component_stack: info.componentStack,
+      feature: 'stage-error-boundary',
+    });
+    this.setState({ error });
+  }
 
-	render() {
-		const { children } = this.props;
-		const { error } = this.state;
+  render() {
+    const { children } = this.props;
+    const { error } = this.state;
 
-		if (error) {
-			return (
-				<Surface noContainer className="mx-auto h-fit max-w-2xl grow-0">
-					<div className="flex items-center gap-6">
-						<div className="flex items-center justify-center">
-							<Icon name="error" />
-						</div>
-						<div>
-							<Heading>A problem occurred!</Heading>
-							<Paragraph>
-								There was an error with the interview software, and this task could not be displayed. Try refreshing the
-								page. If the problem persists, please contact the study organizer and provide the debug information
-								below. You may be able to continue your interview by clicking the next button.
-							</Paragraph>
-						</div>
-					</div>
-					<div className="mt-4 flex justify-end">
-						<CopyDebugInfoButton debugInfo={error.stack ?? error.message} />
-					</div>
-				</Surface>
-			);
-		}
+    if (error) {
+      return (
+        <Surface noContainer className="mx-auto h-fit max-w-2xl grow-0">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center justify-center">
+              <Icon name="error" />
+            </div>
+            <div>
+              <Heading>A problem occurred!</Heading>
+              <Paragraph>
+                There was an error with the interview software, and this task
+                could not be displayed. Try refreshing the page. If the problem
+                persists, please contact the study organizer and provide the
+                debug information below. You may be able to continue your
+                interview by clicking the next button.
+              </Paragraph>
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <CopyDebugInfoButton debugInfo={error.stack ?? error.message} />
+          </div>
+        </Surface>
+      );
+    }
 
-		return children;
-	}
+    return children;
+  }
 }
 
 type StageErrorBoundaryProps = {
-	children: ReactNode;
+  children: ReactNode;
 };
 
 const StageErrorBoundary = ({ children }: StageErrorBoundaryProps) => {
-	const captureException = useCaptureException();
-	return <StageErrorBoundaryInner captureException={captureException}>{children}</StageErrorBoundaryInner>;
+  const captureException = useCaptureException();
+  return (
+    <StageErrorBoundaryInner captureException={captureException}>
+      {children}
+    </StageErrorBoundaryInner>
+  );
 };
 
 export default StageErrorBoundary;
@@ -1152,6 +1242,7 @@ git commit -m "refactor(interview): StageErrorBoundary uses internal captureExce
 ### Task 11: Replace `useExternalData` `onError` and remove `ErrorHandler` from contract
 
 **Files:**
+
 - Modify: `packages/interview/src/hooks/useExternalData.tsx`
 - Modify: `packages/interview/src/contract/context.tsx`
 
@@ -1160,76 +1251,98 @@ git commit -m "refactor(interview): StageErrorBoundary uses internal captureExce
 Edit `packages/interview/src/hooks/useExternalData.tsx`:
 
 ```tsx
-import type { Panel, StageSubject } from "@codaco/protocol-validation";
-import type { NcNode } from "@codaco/shared-consts";
-import { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
-import { useCaptureException } from "../analytics/useTrack";
-import { useContractHandlers } from "../contract/context";
-import { getAssetManifest, getCodebook } from "../store/modules/protocol";
-import { ensureError } from "../utils/ensureError";
-import { getVariableTypeReplacements } from "../utils/externalData";
-import loadExternalData, { makeVariableUUIDReplacer } from "../utils/loadExternalData";
+import type { Panel, StageSubject } from '@codaco/protocol-validation';
+import type { NcNode } from '@codaco/shared-consts';
+import { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
+import { useCaptureException } from '../analytics/useTrack';
+import { useContractHandlers } from '../contract/context';
+import { getAssetManifest, getCodebook } from '../store/modules/protocol';
+import { ensureError } from '../utils/ensureError';
+import { getVariableTypeReplacements } from '../utils/externalData';
+import loadExternalData, {
+  makeVariableUUIDReplacer,
+} from '../utils/loadExternalData';
 
-const useExternalData = (dataSource: Panel["dataSource"], subject: StageSubject | null) => {
-	const assetManifest = useSelector(getAssetManifest);
-	const codebook = useSelector(getCodebook);
-	const { onRequestAsset } = useContractHandlers();
-	const captureException = useCaptureException();
+const useExternalData = (
+  dataSource: Panel['dataSource'],
+  subject: StageSubject | null,
+) => {
+  const assetManifest = useSelector(getAssetManifest);
+  const codebook = useSelector(getCodebook);
+  const { onRequestAsset } = useContractHandlers();
+  const captureException = useCaptureException();
 
-	const [externalData, setExternalData] = useState<NcNode[] | null>(null);
-	const [status, setStatus] = useState<{
-		isLoading: boolean;
-		error: Error | null;
-	}>({ isLoading: false, error: null });
+  const [externalData, setExternalData] = useState<NcNode[] | null>(null);
+  const [status, setStatus] = useState<{
+    isLoading: boolean;
+    error: Error | null;
+  }>({ isLoading: false, error: null });
 
-	useEffect(() => {
-		if (!dataSource || dataSource === "existing" || !subject || subject.entity === "ego") {
-			return;
-		}
+  useEffect(() => {
+    if (
+      !dataSource ||
+      dataSource === 'existing' ||
+      !subject ||
+      subject.entity === 'ego'
+    ) {
+      return;
+    }
 
-		let cancelled = false;
+    let cancelled = false;
 
-		setExternalData(null);
-		setStatus({ isLoading: true, error: null });
+    setExternalData(null);
+    setStatus({ isLoading: true, error: null });
 
-		const asset = assetManifest[dataSource];
-		if (!asset) {
-			setStatus({
-				isLoading: false,
-				error: new Error(`Unknown asset id: ${String(dataSource)}`),
-			});
-			return () => {
-				cancelled = true;
-			};
-		}
+    const asset = assetManifest[dataSource];
+    if (!asset) {
+      setStatus({
+        isLoading: false,
+        error: new Error(`Unknown asset id: ${String(dataSource)}`),
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
 
-		void (async () => {
-			try {
-				const url = await onRequestAsset(asset.assetId);
-				const { nodes } = await loadExternalData(asset.name, url);
-				const replacer = makeVariableUUIDReplacer(codebook, subject.type);
-				const uuidData = nodes.map(replacer);
-				const formatted = getVariableTypeReplacements(asset.name, uuidData, codebook, subject);
-				if (!cancelled) {
-					setExternalData(formatted);
-					setStatus({ isLoading: false, error: null });
-				}
-			} catch (e) {
-				const error = ensureError(e);
-				captureException(error, { feature: "external-data" });
-				// eslint-disable-next-line no-console
-				console.error(error);
-				if (!cancelled) setStatus({ isLoading: false, error });
-			}
-		})();
+    void (async () => {
+      try {
+        const url = await onRequestAsset(asset.assetId);
+        const { nodes } = await loadExternalData(asset.name, url);
+        const replacer = makeVariableUUIDReplacer(codebook, subject.type);
+        const uuidData = nodes.map(replacer);
+        const formatted = getVariableTypeReplacements(
+          asset.name,
+          uuidData,
+          codebook,
+          subject,
+        );
+        if (!cancelled) {
+          setExternalData(formatted);
+          setStatus({ isLoading: false, error: null });
+        }
+      } catch (e) {
+        const error = ensureError(e);
+        captureException(error, { feature: 'external-data' });
+        // eslint-disable-next-line no-console
+        console.error(error);
+        if (!cancelled) setStatus({ isLoading: false, error });
+      }
+    })();
 
-		return () => {
-			cancelled = true;
-		};
-	}, [dataSource, assetManifest, codebook, subject, onRequestAsset, captureException]);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    dataSource,
+    assetManifest,
+    codebook,
+    subject,
+    onRequestAsset,
+    captureException,
+  ]);
 
-	return { externalData, status };
+  return { externalData, status };
 };
 
 export default useExternalData;
@@ -1240,70 +1353,98 @@ export default useExternalData;
 Edit `packages/interview/src/contract/context.tsx`:
 
 ```tsx
-"use client";
+'use client';
 
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useRef } from "react";
-import type { AssetRequestHandler, FinishHandler, InterviewerFlags } from "./types";
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+} from 'react';
+import type {
+  AssetRequestHandler,
+  FinishHandler,
+  InterviewerFlags,
+} from './types';
 
 type ContractHandlers = {
-	onFinish: FinishHandler;
-	onRequestAsset: AssetRequestHandler;
+  onFinish: FinishHandler;
+  onRequestAsset: AssetRequestHandler;
 };
 
 type ContractValue = {
-	handlers: ContractHandlers;
-	flags: Required<InterviewerFlags>;
+  handlers: ContractHandlers;
+  flags: Required<InterviewerFlags>;
 };
 
 const ContractContext = createContext<ContractValue | null>(null);
 
 type ContractProviderProps = {
-	onFinish: FinishHandler;
-	onRequestAsset: AssetRequestHandler;
-	flags?: InterviewerFlags;
-	children: ReactNode;
+  onFinish: FinishHandler;
+  onRequestAsset: AssetRequestHandler;
+  flags?: InterviewerFlags;
+  children: ReactNode;
 };
 
-export function ContractProvider({ onFinish, onRequestAsset, flags, children }: ContractProviderProps) {
-	const onFinishRef = useRef(onFinish);
-	const onRequestAssetRef = useRef(onRequestAsset);
-	onFinishRef.current = onFinish;
-	onRequestAssetRef.current = onRequestAsset;
+export function ContractProvider({
+  onFinish,
+  onRequestAsset,
+  flags,
+  children,
+}: ContractProviderProps) {
+  const onFinishRef = useRef(onFinish);
+  const onRequestAssetRef = useRef(onRequestAsset);
+  onFinishRef.current = onFinish;
+  onRequestAssetRef.current = onRequestAsset;
 
-	const stableOnFinish = useCallback<FinishHandler>((...args) => onFinishRef.current(...args), []);
-	const stableOnRequestAsset = useCallback<AssetRequestHandler>((...args) => onRequestAssetRef.current(...args), []);
+  const stableOnFinish = useCallback<FinishHandler>(
+    (...args) => onFinishRef.current(...args),
+    [],
+  );
+  const stableOnRequestAsset = useCallback<AssetRequestHandler>(
+    (...args) => onRequestAssetRef.current(...args),
+    [],
+  );
 
-	const value = useMemo<ContractValue>(
-		() => ({
-			handlers: {
-				onFinish: stableOnFinish,
-				onRequestAsset: stableOnRequestAsset,
-			},
-			flags: {
-				isE2E: flags?.isE2E ?? false,
-				isDevelopment: flags?.isDevelopment ?? false,
-			},
-		}),
-		[stableOnFinish, stableOnRequestAsset, flags?.isE2E, flags?.isDevelopment],
-	);
+  const value = useMemo<ContractValue>(
+    () => ({
+      handlers: {
+        onFinish: stableOnFinish,
+        onRequestAsset: stableOnRequestAsset,
+      },
+      flags: {
+        isE2E: flags?.isE2E ?? false,
+        isDevelopment: flags?.isDevelopment ?? false,
+      },
+    }),
+    [stableOnFinish, stableOnRequestAsset, flags?.isE2E, flags?.isDevelopment],
+  );
 
-	return <ContractContext.Provider value={value}>{children}</ContractContext.Provider>;
+  return (
+    <ContractContext.Provider value={value}>
+      {children}
+    </ContractContext.Provider>
+  );
 }
 
 function useContract(): ContractValue {
-	const value = useContext(ContractContext);
-	if (!value) {
-		throw new Error("useContractHandlers / useContractFlags must be used within a ContractProvider");
-	}
-	return value;
+  const value = useContext(ContractContext);
+  if (!value) {
+    throw new Error(
+      'useContractHandlers / useContractFlags must be used within a ContractProvider',
+    );
+  }
+  return value;
 }
 
 export function useContractHandlers(): ContractHandlers {
-	return useContract().handlers;
+  return useContract().handlers;
 }
 
 export function useContractFlags(): Required<InterviewerFlags> {
-	return useContract().flags;
+  return useContract().flags;
 }
 ```
 
@@ -1324,6 +1465,7 @@ git commit -m "refactor(interview)!: drop onError contract; useExternalData uses
 ### Task 12: Wire `Information` `VideoPlayer` `onError` to `captureException`
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/Information/Information.tsx`
 
 - [ ] **Step 1: Add captureException usage to VideoPlayer**
@@ -1331,48 +1473,65 @@ git commit -m "refactor(interview)!: drop onError contract; useExternalData uses
 In `Information.tsx`, change `VideoPlayer` to consume `useCaptureException` and pipe video load errors through it:
 
 ```tsx
-import { useCaptureException } from "../../analytics/useTrack";
+import { useCaptureException } from '../../analytics/useTrack';
 // ...existing imports
 
-function VideoPlayer({ src, name, isE2E }: { src: string; name: string; isE2E: boolean }) {
-	const [state, setState] = useState<MediaLoadState>("loading");
-	const captureException = useCaptureException();
+function VideoPlayer({
+  src,
+  name,
+  isE2E,
+}: {
+  src: string;
+  name: string;
+  isE2E: boolean;
+}) {
+  const [state, setState] = useState<MediaLoadState>('loading');
+  const captureException = useCaptureException();
 
-	const mimeType = getMediaMimeType(name, "video/mp4");
+  const mimeType = getMediaMimeType(name, 'video/mp4');
 
-	return (
-		<div className={cx("relative", state === "loading" && "min-h-48")}>
-			{state === "loading" && !isE2E && (
-				<div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-					<Spinner size="lg" />
-					<Paragraph intent="smallText">Loading video...</Paragraph>
-				</div>
-			)}
-			{state === "error" && (
-				<Paragraph intent="smallText" className="text-center">
-					Video could not be loaded.
-				</Paragraph>
-			)}
-			<video
-				loop
-				controls
-				autoPlay={!isE2E}
-				muted={!isE2E}
-				playsInline
-				preload={isE2E ? "none" : "auto"}
-				className={cx((state === "loading" && !isE2E) || state === "error" ? "invisible h-0" : "")}
-				onLoadedData={() => setState("loaded")}
-				onError={(e) => {
-					setState("error");
-					const target = e.currentTarget;
-					const err = new Error(`video load failed: ${target.error?.code ?? "unknown"}`);
-					captureException(err, { feature: "information-media", media_kind: "video" });
-				}}
-			>
-				<source src={src} type={mimeType} />
-			</video>
-		</div>
-	);
+  return (
+    <div className={cx('relative', state === 'loading' && 'min-h-48')}>
+      {state === 'loading' && !isE2E && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+          <Spinner size="lg" />
+          <Paragraph intent="smallText">Loading video...</Paragraph>
+        </div>
+      )}
+      {state === 'error' && (
+        <Paragraph intent="smallText" className="text-center">
+          Video could not be loaded.
+        </Paragraph>
+      )}
+      <video
+        loop
+        controls
+        autoPlay={!isE2E}
+        muted={!isE2E}
+        playsInline
+        preload={isE2E ? 'none' : 'auto'}
+        className={cx(
+          (state === 'loading' && !isE2E) || state === 'error'
+            ? 'invisible h-0'
+            : '',
+        )}
+        onLoadedData={() => setState('loaded')}
+        onError={(e) => {
+          setState('error');
+          const target = e.currentTarget;
+          const err = new Error(
+            `video load failed: ${target.error?.code ?? 'unknown'}`,
+          );
+          captureException(err, {
+            feature: 'information-media',
+            media_kind: 'video',
+          });
+        }}
+      >
+        <source src={src} type={mimeType} />
+      </video>
+    </div>
+  );
 }
 ```
 
@@ -1388,6 +1547,7 @@ git commit -m "feat(interview): report Information video load errors via capture
 ### Task 13: Update `Shell` to accept analytics props and wire `AnalyticsProvider`
 
 **Files:**
+
 - Modify: `packages/interview/src/Shell.tsx`
 
 - [ ] **Step 1: Replace Shell with new prop surface**
@@ -1395,189 +1555,209 @@ git commit -m "feat(interview): report Information video load errors via capture
 Edit `packages/interview/src/Shell.tsx`:
 
 ```tsx
-"use client";
-"use no memo";
+'use client';
+'use no memo';
 
-import "@codaco/tailwind-config/fresco/interview-theme.css";
+import '@codaco/tailwind-config/fresco/interview-theme.css';
 
-import DialogProvider from "@codaco/fresco-ui/dialogs/DialogProvider";
-import { cx } from "@codaco/fresco-ui/utils/cva";
-import { AnimatePresence, motion } from "motion/react";
-import type { PostHog } from "posthog-js";
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { Provider } from "react-redux";
-import { AnalyticsProvider } from "./analytics/AnalyticsProvider";
-import Navigation from "./components/Navigation";
-import StageErrorBoundary from "./components/StageErrorBoundary";
-import { CurrentStepProvider } from "./contexts/CurrentStepContext";
-import { StageMetadataProvider } from "./contexts/StageMetadataContext";
-import { ContractProvider, useContractFlags } from "./contract/context";
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import { cx } from '@codaco/fresco-ui/utils/cva';
+import { AnimatePresence, motion } from 'motion/react';
+import type { PostHog } from 'posthog-js';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Provider } from 'react-redux';
+import { AnalyticsProvider } from './analytics/AnalyticsProvider';
+import Navigation from './components/Navigation';
+import StageErrorBoundary from './components/StageErrorBoundary';
+import { CurrentStepProvider } from './contexts/CurrentStepContext';
+import { StageMetadataProvider } from './contexts/StageMetadataContext';
+import { ContractProvider, useContractFlags } from './contract/context';
 import type {
-	AssetRequestHandler,
-	FinishHandler,
-	InterviewAnalyticsMetadata,
-	InterviewerFlags,
-	InterviewPayload,
-	StepChangeHandler,
-	SyncHandler,
-} from "./contract/types";
-import useInterviewNavigation from "./hooks/useInterviewNavigation";
-import useMediaQuery from "./hooks/useMediaQuery";
-import { store } from "./store/store";
-import { InterviewToastProvider } from "./toast/InterviewToast";
+  AssetRequestHandler,
+  FinishHandler,
+  InterviewAnalyticsMetadata,
+  InterviewerFlags,
+  InterviewPayload,
+  StepChangeHandler,
+  SyncHandler,
+} from './contract/types';
+import useInterviewNavigation from './hooks/useInterviewNavigation';
+import useMediaQuery from './hooks/useMediaQuery';
+import { store } from './store/store';
+import { InterviewToastProvider } from './toast/InterviewToast';
 
 const variants = {
-	initial: { opacity: 0 },
-	animate: { opacity: 1 },
-	exit: { opacity: 0 },
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
 };
 
 function Interview() {
-	const {
-		stage,
-		displayedStep,
-		showStage,
-		CurrentInterface,
-		registerBeforeNext,
-		getNavigationHelpers,
-		handleExitComplete,
-		moveForward,
-		moveBackward,
-		disableMoveForward,
-		disableMoveBackward,
-		pulseNext,
-		progress,
-	} = useInterviewNavigation();
+  const {
+    stage,
+    displayedStep,
+    showStage,
+    CurrentInterface,
+    registerBeforeNext,
+    getNavigationHelpers,
+    handleExitComplete,
+    moveForward,
+    moveBackward,
+    disableMoveForward,
+    disableMoveBackward,
+    pulseNext,
+    progress,
+  } = useInterviewNavigation();
 
-	const { isE2E } = useContractFlags();
+  const { isE2E } = useContractFlags();
 
-	const forwardButtonRef = useRef<HTMLButtonElement>(null);
-	const backButtonRef = useRef<HTMLButtonElement>(null);
+  const forwardButtonRef = useRef<HTMLButtonElement>(null);
+  const backButtonRef = useRef<HTMLButtonElement>(null);
 
-	const isPortraitAspectRatio = useMediaQuery("(max-aspect-ratio: 3/4)");
-	const navigationOrientation = isPortraitAspectRatio ? "horizontal" : "vertical";
+  const isPortraitAspectRatio = useMediaQuery('(max-aspect-ratio: 3/4)');
+  const navigationOrientation = isPortraitAspectRatio
+    ? 'horizontal'
+    : 'vertical';
 
-	const transitionDuration = isE2E ? 0 : 0.5;
+  const transitionDuration = isE2E ? 0 : 0.5;
 
-	return (
-		<main
-			data-interview
-			className={cx(
-				"relative flex size-full flex-1 overflow-hidden bg-background text-text",
-				isPortraitAspectRatio ? "flex-col" : "flex-row-reverse",
-			)}
-		>
-			<StageMetadataProvider value={registerBeforeNext}>
-				<InterviewToastProvider
-					forwardButtonRef={forwardButtonRef}
-					backButtonRef={backButtonRef}
-					orientation={navigationOrientation}
-				>
-					<AnimatePresence mode="wait" onExitComplete={handleExitComplete}>
-						{showStage && stage && (
-							<motion.div
-								key={displayedStep}
-								data-stage-step={displayedStep}
-								className="flex min-h-0 flex-1"
-								initial={isE2E ? false : "initial"}
-								animate="animate"
-								exit="exit"
-								variants={variants}
-								transition={{ duration: transitionDuration }}
-							>
-								<div className="flex size-full flex-col items-center justify-center" id="stage" key={stage.id}>
-									<StageErrorBoundary>
-										{CurrentInterface && (
-											<CurrentInterface key={stage.id} stage={stage} getNavigationHelpers={getNavigationHelpers} />
-										)}
-									</StageErrorBoundary>
-								</div>
-							</motion.div>
-						)}
-					</AnimatePresence>
-				</InterviewToastProvider>
-			</StageMetadataProvider>
-			<Navigation
-				moveBackward={moveBackward}
-				moveForward={moveForward}
-				disableMoveForward={disableMoveForward}
-				disableMoveBackward={disableMoveBackward}
-				pulseNext={pulseNext}
-				progress={progress}
-				orientation={navigationOrientation}
-				forwardButtonRef={forwardButtonRef}
-				backButtonRef={backButtonRef}
-			/>
-		</main>
-	);
+  return (
+    <main
+      data-interview
+      className={cx(
+        'relative flex size-full flex-1 overflow-hidden bg-background text-text',
+        isPortraitAspectRatio ? 'flex-col' : 'flex-row-reverse',
+      )}
+    >
+      <StageMetadataProvider value={registerBeforeNext}>
+        <InterviewToastProvider
+          forwardButtonRef={forwardButtonRef}
+          backButtonRef={backButtonRef}
+          orientation={navigationOrientation}
+        >
+          <AnimatePresence mode="wait" onExitComplete={handleExitComplete}>
+            {showStage && stage && (
+              <motion.div
+                key={displayedStep}
+                data-stage-step={displayedStep}
+                className="flex min-h-0 flex-1"
+                initial={isE2E ? false : 'initial'}
+                animate="animate"
+                exit="exit"
+                variants={variants}
+                transition={{ duration: transitionDuration }}
+              >
+                <div
+                  className="flex size-full flex-col items-center justify-center"
+                  id="stage"
+                  key={stage.id}
+                >
+                  <StageErrorBoundary>
+                    {CurrentInterface && (
+                      <CurrentInterface
+                        key={stage.id}
+                        stage={stage}
+                        getNavigationHelpers={getNavigationHelpers}
+                      />
+                    )}
+                  </StageErrorBoundary>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </InterviewToastProvider>
+      </StageMetadataProvider>
+      <Navigation
+        moveBackward={moveBackward}
+        moveForward={moveForward}
+        disableMoveForward={disableMoveForward}
+        disableMoveBackward={disableMoveBackward}
+        pulseNext={pulseNext}
+        progress={progress}
+        orientation={navigationOrientation}
+        forwardButtonRef={forwardButtonRef}
+        backButtonRef={backButtonRef}
+      />
+    </main>
+  );
 }
 
 type ShellProps = {
-	payload: InterviewPayload;
-	onSync: SyncHandler;
-	onFinish: FinishHandler;
-	onRequestAsset: AssetRequestHandler;
-	currentStep?: number;
-	onStepChange?: StepChangeHandler;
-	flags?: InterviewerFlags;
-	analytics: InterviewAnalyticsMetadata;
-	posthogClient?: PostHog;
-	disableAnalytics?: boolean;
+  payload: InterviewPayload;
+  onSync: SyncHandler;
+  onFinish: FinishHandler;
+  onRequestAsset: AssetRequestHandler;
+  currentStep?: number;
+  onStepChange?: StepChangeHandler;
+  flags?: InterviewerFlags;
+  analytics: InterviewAnalyticsMetadata;
+  posthogClient?: PostHog;
+  disableAnalytics?: boolean;
 };
 
 const Shell = ({
-	payload,
-	onSync,
-	onFinish,
-	onRequestAsset,
-	currentStep,
-	onStepChange,
-	flags,
-	analytics,
-	posthogClient,
-	disableAnalytics = false,
+  payload,
+  onSync,
+  onFinish,
+  onRequestAsset,
+  currentStep,
+  onStepChange,
+  flags,
+  analytics,
+  posthogClient,
+  disableAnalytics = false,
 }: ShellProps) => {
-	const onSyncRef = useRef(onSync);
-	onSyncRef.current = onSync;
-	const stableOnSync = useCallback<SyncHandler>((...args) => onSyncRef.current(...args), []);
+  const onSyncRef = useRef(onSync);
+  onSyncRef.current = onSync;
+  const stableOnSync = useCallback<SyncHandler>(
+    (...args) => onSyncRef.current(...args),
+    [],
+  );
 
-	const reduxStore = useMemo(
-		() =>
-			store(payload, {
-				onSync: stableOnSync,
-				isDevelopment: flags?.isDevelopment,
-			}),
-		[payload, stableOnSync, flags?.isDevelopment],
-	);
+  const reduxStore = useMemo(
+    () =>
+      store(payload, {
+        onSync: stableOnSync,
+        isDevelopment: flags?.isDevelopment,
+      }),
+    [payload, stableOnSync, flags?.isDevelopment],
+  );
 
-	useEffect(() => {
-		if (!flags?.isE2E || typeof window === "undefined") return;
-		window.__interviewStore = reduxStore;
-		return () => {
-			if (window.__interviewStore === reduxStore) {
-				window.__interviewStore = undefined;
-			}
-		};
-	}, [reduxStore, flags?.isE2E]);
+  useEffect(() => {
+    if (!flags?.isE2E || typeof window === 'undefined') return;
+    window.__interviewStore = reduxStore;
+    return () => {
+      if (window.__interviewStore === reduxStore) {
+        window.__interviewStore = undefined;
+      }
+    };
+  }, [reduxStore, flags?.isE2E]);
 
-	return (
-		<AnalyticsProvider
-			analytics={analytics}
-			posthogClient={posthogClient}
-			disableAnalytics={disableAnalytics}
-			payload={payload}
-		>
-			<Provider store={reduxStore}>
-				<ContractProvider onFinish={onFinish} onRequestAsset={onRequestAsset} flags={flags}>
-					<CurrentStepProvider currentStep={currentStep} onStepChange={onStepChange}>
-						<DialogProvider>
-							<Interview />
-						</DialogProvider>
-					</CurrentStepProvider>
-				</ContractProvider>
-			</Provider>
-		</AnalyticsProvider>
-	);
+  return (
+    <AnalyticsProvider
+      analytics={analytics}
+      posthogClient={posthogClient}
+      disableAnalytics={disableAnalytics}
+      payload={payload}
+    >
+      <Provider store={reduxStore}>
+        <ContractProvider
+          onFinish={onFinish}
+          onRequestAsset={onRequestAsset}
+          flags={flags}
+        >
+          <CurrentStepProvider
+            currentStep={currentStep}
+            onStepChange={onStepChange}
+          >
+            <DialogProvider>
+              <Interview />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </ContractProvider>
+      </Provider>
+    </AnalyticsProvider>
+  );
 };
 
 export default Shell;
@@ -1588,8 +1768,8 @@ export default Shell;
 In `packages/interview/src/index.ts` (or wherever the public exports live; if no barrel, ensure it's exported via the existing export surface), add:
 
 ```typescript
-export type { InterviewAnalyticsMetadata } from "./contract/types";
-export { useTrack } from "./analytics/useTrack";
+export type { InterviewAnalyticsMetadata } from './contract/types';
+export { useTrack } from './analytics/useTrack';
 ```
 
 (Adapt to the existing export style — package convention is no barrel files; verify whether interview already publishes via individual exports or a single entry. If individual, make sure these new types are reachable from `dist/contract/types.d.ts` and `dist/analytics/useTrack.d.ts` which they will be via vite-plugin-dts with `rollupTypes: true`.)
@@ -1653,6 +1833,7 @@ git commit -m "feat(interview)!: Shell accepts analytics, posthogClient, disable
 ### Task 14: Stub the listener and add it conditionally to the store factory
 
 **Files:**
+
 - Create: `packages/interview/src/store/middleware/analyticsListener.ts`
 - Modify: `packages/interview/src/store/store.ts`
 
@@ -1661,27 +1842,36 @@ git commit -m "feat(interview)!: Shell accepts analytics, posthogClient, disable
 Create `packages/interview/src/store/middleware/analyticsListener.ts`:
 
 ```typescript
-"use client";
+'use client';
 
-import { createListenerMiddleware, type TypedStartListening } from "@reduxjs/toolkit";
-import type { Tracker } from "../../analytics/tracker";
-import type { AppDispatch } from "../store";
-import type { RootState } from "./types-rootstate";
+import {
+  createListenerMiddleware,
+  type TypedStartListening,
+} from '@reduxjs/toolkit';
+import type { Tracker } from '../../analytics/tracker';
+import type { AppDispatch } from '../store';
+import type { RootState } from './types-rootstate';
 
 export type AnalyticsListenerArgs = {
-	tracker: Tracker;
+  tracker: Tracker;
 };
 
-export function createAnalyticsListenerMiddleware({ tracker }: AnalyticsListenerArgs) {
-	const analyticsListenerMiddleware = createListenerMiddleware();
-	const startAppListening = analyticsListenerMiddleware.startListening as TypedStartListening<RootState, AppDispatch>;
+export function createAnalyticsListenerMiddleware({
+  tracker,
+}: AnalyticsListenerArgs) {
+  const analyticsListenerMiddleware = createListenerMiddleware();
+  const startAppListening =
+    analyticsListenerMiddleware.startListening as TypedStartListening<
+      RootState,
+      AppDispatch
+    >;
 
-	// Listeners are added across subsequent tasks for: navigation/stage transitions,
-	// node/edge mutations, prompt-add/remove, anonymisation, etc.
-	void tracker;
-	void startAppListening;
+  // Listeners are added across subsequent tasks for: navigation/stage transitions,
+  // node/edge mutations, prompt-add/remove, anonymisation, etc.
+  void tracker;
+  void startAppListening;
 
-	return analyticsListenerMiddleware;
+  return analyticsListenerMiddleware;
 }
 ```
 
@@ -1690,7 +1880,7 @@ export function createAnalyticsListenerMiddleware({ tracker }: AnalyticsListener
 If `RootState` is exported from `store.ts`, replace the file's `import type { RootState }` line with:
 
 ```typescript
-import type { RootState } from "../store";
+import type { RootState } from '../store';
 ```
 
 - [ ] **Step 2: Wire factory to accept tracker and conditionally add the listener**
@@ -1698,68 +1888,74 @@ import type { RootState } from "../store";
 Edit `packages/interview/src/store/store.ts`:
 
 ```typescript
-"use client";
+'use client';
 
-import { combineReducers, configureStore, type Middleware } from "@reduxjs/toolkit";
-import { useDispatch } from "react-redux";
-import { NULL_TRACKER, type Tracker } from "../analytics/tracker";
-import type { InterviewPayload, SyncHandler } from "../contract/types";
-import { createAnalyticsListenerMiddleware } from "./middleware/analyticsListener";
-import logger from "./middleware/logger";
-import { createSyncMiddleware } from "./middleware/syncMiddleware";
-import protocol from "./modules/protocol";
-import session from "./modules/session";
-import ui from "./modules/ui";
+import {
+  combineReducers,
+  configureStore,
+  type Middleware,
+} from '@reduxjs/toolkit';
+import { useDispatch } from 'react-redux';
+import { NULL_TRACKER, type Tracker } from '../analytics/tracker';
+import type { InterviewPayload, SyncHandler } from '../contract/types';
+import { createAnalyticsListenerMiddleware } from './middleware/analyticsListener';
+import logger from './middleware/logger';
+import { createSyncMiddleware } from './middleware/syncMiddleware';
+import protocol from './modules/protocol';
+import session from './modules/session';
+import ui from './modules/ui';
 
 const rootReducer = combineReducers({
-	session,
-	protocol,
-	ui,
+  session,
+  protocol,
+  ui,
 });
 
 type StoreOptions = {
-	onSync: SyncHandler;
-	isDevelopment?: boolean;
-	extraMiddleware?: Middleware[];
-	tracker?: Tracker;
+  onSync: SyncHandler;
+  isDevelopment?: boolean;
+  extraMiddleware?: Middleware[];
+  tracker?: Tracker;
 };
 
 export const store = (
-	{ session: sessionPayload, protocol: protocolPayload }: InterviewPayload,
-	options: StoreOptions,
+  { session: sessionPayload, protocol: protocolPayload }: InterviewPayload,
+  options: StoreOptions,
 ) => {
-	const syncMiddleware = createSyncMiddleware({ onSync: options.onSync });
-	const tracker = options.tracker ?? NULL_TRACKER;
-	const analyticsMiddleware = createAnalyticsListenerMiddleware({ tracker }).middleware;
+  const syncMiddleware = createSyncMiddleware({ onSync: options.onSync });
+  const tracker = options.tracker ?? NULL_TRACKER;
+  const analyticsMiddleware = createAnalyticsListenerMiddleware({
+    tracker,
+  }).middleware;
 
-	return configureStore({
-		reducer: rootReducer,
-		middleware: (getDefaultMiddleware) =>
-			getDefaultMiddleware({
-				serializableCheck: {
-					ignoredActions: ["dialogs/addDialog", "dialogs/open/pending"],
-				},
-			}).concat(
-				...(options.isDevelopment ? [logger] : []),
-				syncMiddleware,
-				analyticsMiddleware,
-				...(options.extraMiddleware ?? []),
-			),
-		preloadedState: {
-			session: sessionPayload,
-			protocol: protocolPayload,
-		},
-	});
+  return configureStore({
+    reducer: rootReducer,
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({
+        serializableCheck: {
+          ignoredActions: ['dialogs/addDialog', 'dialogs/open/pending'],
+        },
+      }).concat(
+        ...(options.isDevelopment ? [logger] : []),
+        syncMiddleware,
+        analyticsMiddleware,
+        ...(options.extraMiddleware ?? []),
+      ),
+    preloadedState: {
+      session: sessionPayload,
+      protocol: protocolPayload,
+    },
+  });
 };
 
 export type RootState = ReturnType<typeof rootReducer>;
-export type AppDispatch = ReturnType<typeof store>["dispatch"];
+export type AppDispatch = ReturnType<typeof store>['dispatch'];
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
 ```
 
 - [ ] **Step 3: Plumb tracker from Shell to store factory**
 
-The store is created inside `Shell.tsx`'s `useMemo` from `payload`. Pull the tracker out of context and pass it to `store(...)`. This requires the tracker to be accessible *before* the Provider mounts the store. Two options:
+The store is created inside `Shell.tsx`'s `useMemo` from `payload`. Pull the tracker out of context and pass it to `store(...)`. This requires the tracker to be accessible _before_ the Provider mounts the store. Two options:
 
 **(a)** Move `AnalyticsProvider` inside the Redux Provider and let the listener call `track()` via a closure created at provider time (current code).
 **(b)** Use a mutable tracker holder.
@@ -1769,26 +1965,26 @@ Use **(b)** — simpler and avoids reordering:
 In `packages/interview/src/Shell.tsx`, replace the store creation block with a tracker-holder pattern:
 
 ```tsx
-import { NULL_TRACKER, type Tracker } from "./analytics/tracker";
+import { NULL_TRACKER, type Tracker } from './analytics/tracker';
 
 // ...inside Shell:
 const trackerRef = useRef<Tracker>(NULL_TRACKER);
 const trackerHolder: Tracker = useMemo(
-	() => ({
-		track: (e, p) => trackerRef.current.track(e, p),
-		captureException: (err, p) => trackerRef.current.captureException(err, p),
-	}),
-	[],
+  () => ({
+    track: (e, p) => trackerRef.current.track(e, p),
+    captureException: (err, p) => trackerRef.current.captureException(err, p),
+  }),
+  [],
 );
 
 const reduxStore = useMemo(
-	() =>
-		store(payload, {
-			onSync: stableOnSync,
-			isDevelopment: flags?.isDevelopment,
-			tracker: trackerHolder,
-		}),
-	[payload, stableOnSync, flags?.isDevelopment, trackerHolder],
+  () =>
+    store(payload, {
+      onSync: stableOnSync,
+      isDevelopment: flags?.isDevelopment,
+      tracker: trackerHolder,
+    }),
+  [payload, stableOnSync, flags?.isDevelopment, trackerHolder],
 );
 ```
 
@@ -1797,15 +1993,20 @@ Now expose a way for `AnalyticsProvider` to update `trackerRef`. Add a callback 
 ```tsx
 // In AnalyticsProvider props:
 type AnalyticsProviderProps = {
-	// ...
-	onTrackerChange?: (tracker: Tracker) => void;
+  // ...
+  onTrackerChange?: (tracker: Tracker) => void;
 };
 ```
 
 In its `useEffect` after `setTracker(...)`:
 
 ```tsx
-const newTracker = createTracker({ client, superProperties, distinctId, ownsInstance });
+const newTracker = createTracker({
+  client,
+  superProperties,
+  distinctId,
+  ownsInstance,
+});
 setTracker(newTracker);
 onTrackerChange?.(newTracker);
 ```
@@ -1843,6 +2044,7 @@ git commit -m "feat(interview): analytics listener middleware scaffold + tracker
 ### Task 15: Test harness for the analytics listener
 
 **Files:**
+
 - Create: `packages/interview/src/store/middleware/__tests__/analyticsListener.test.ts`
 
 - [ ] **Step 1: Write the harness**
@@ -1850,35 +2052,41 @@ git commit -m "feat(interview): analytics listener middleware scaffold + tracker
 Create `packages/interview/src/store/middleware/__tests__/analyticsListener.test.ts`:
 
 ```typescript
-import { configureStore } from "@reduxjs/toolkit";
-import { describe, expect, it, vi } from "vitest";
-import { NULL_TRACKER, type Tracker } from "../../../analytics/tracker";
-import session, { addEdge, addNode, deleteEdge, deleteNode } from "../../modules/session";
-import protocol from "../../modules/protocol";
-import ui from "../../modules/ui";
-import { createAnalyticsListenerMiddleware } from "../analyticsListener";
+import { configureStore } from '@reduxjs/toolkit';
+import { describe, expect, it, vi } from 'vitest';
+import { NULL_TRACKER, type Tracker } from '../../../analytics/tracker';
+import session, {
+  addEdge,
+  addNode,
+  deleteEdge,
+  deleteNode,
+} from '../../modules/session';
+import protocol from '../../modules/protocol';
+import ui from '../../modules/ui';
+import { createAnalyticsListenerMiddleware } from '../analyticsListener';
 
 function makeStore(tracker: Tracker = NULL_TRACKER) {
-	const middleware = createAnalyticsListenerMiddleware({ tracker }).middleware;
-	return configureStore({
-		reducer: { session, protocol, ui },
-		middleware: (getDefault) => getDefault({ serializableCheck: false }).concat(middleware),
-	});
+  const middleware = createAnalyticsListenerMiddleware({ tracker }).middleware;
+  return configureStore({
+    reducer: { session, protocol, ui },
+    middleware: (getDefault) =>
+      getDefault({ serializableCheck: false }).concat(middleware),
+  });
 }
 
-describe("analyticsListener — harness", () => {
-	it("constructs without error", () => {
-		const store = makeStore();
-		expect(store.getState).toBeDefined();
-	});
+describe('analyticsListener — harness', () => {
+  it('constructs without error', () => {
+    const store = makeStore();
+    expect(store.getState).toBeDefined();
+  });
 
-	it("tracker is callable", () => {
-		const tracker = { track: vi.fn(), captureException: vi.fn() };
-		const store = makeStore(tracker);
-		// Sanity: dispatch a benign action; no events yet (none wired)
-		store.dispatch({ type: "noop/x" });
-		expect(tracker.track).not.toHaveBeenCalled();
-	});
+  it('tracker is callable', () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const store = makeStore(tracker);
+    // Sanity: dispatch a benign action; no events yet (none wired)
+    store.dispatch({ type: 'noop/x' });
+    expect(tracker.track).not.toHaveBeenCalled();
+  });
 });
 ```
 
@@ -1899,6 +2107,7 @@ git commit -m "test(interview/analytics): listener test harness"
 ### Task 16: Global entity events — `node_added`, `node_removed`, `node_added_to_prompt`, `node_removed_from_prompt`, `edge_created`, `edge_removed`
 
 **Files:**
+
 - Modify: `packages/interview/src/store/middleware/analyticsListener.ts`
 - Modify: `packages/interview/src/store/middleware/__tests__/analyticsListener.test.ts`
 
@@ -1907,96 +2116,117 @@ git commit -m "test(interview/analytics): listener test harness"
 Append to `analyticsListener.test.ts`:
 
 ```typescript
-import { addNodeToPrompt, removeNodeFromPrompt } from "../../modules/session";
+import { addNodeToPrompt, removeNodeFromPrompt } from '../../modules/session';
 
-describe("analyticsListener — global entity events", () => {
-	const baseSession = {
-		id: "i1",
-		startTime: new Date().toISOString(),
-		network: { ego: { _uid: "ego" }, nodes: [], edges: [] },
-		currentStep: 0,
-	};
+describe('analyticsListener — global entity events', () => {
+  const baseSession = {
+    id: 'i1',
+    startTime: new Date().toISOString(),
+    network: { ego: { _uid: 'ego' }, nodes: [], edges: [] },
+    currentStep: 0,
+  };
 
-	function buildStore(tracker: Tracker) {
-		return configureStore({
-			reducer: { session, protocol, ui },
-			preloadedState: {
-				session: baseSession as never,
-				protocol: { id: "p", hash: "h", schemaVersion: 8 } as never,
-				ui: undefined,
-			},
-			middleware: (getDefault) =>
-				getDefault({ serializableCheck: false }).concat(createAnalyticsListenerMiddleware({ tracker }).middleware),
-		});
-	}
+  function buildStore(tracker: Tracker) {
+    return configureStore({
+      reducer: { session, protocol, ui },
+      preloadedState: {
+        session: baseSession as never,
+        protocol: { id: 'p', hash: 'h', schemaVersion: 8 } as never,
+        ui: undefined,
+      },
+      middleware: (getDefault) =>
+        getDefault({ serializableCheck: false }).concat(
+          createAnalyticsListenerMiddleware({ tracker }).middleware,
+        ),
+    });
+  }
 
-	it("emits node_added on addNode/fulfilled", async () => {
-		const tracker = { track: vi.fn(), captureException: vi.fn() };
-		const store = buildStore(tracker);
-		await store.dispatch(
-			addNode({ modelData: { type: "person" }, attributeData: {} } as never) as never,
-		);
-		expect(tracker.track).toHaveBeenCalledWith(
-			"node_added",
-			expect.objectContaining({ node_id: expect.any(String), node_type: "person" }),
-		);
-	});
+  it('emits node_added on addNode/fulfilled', async () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const store = buildStore(tracker);
+    await store.dispatch(
+      addNode({
+        modelData: { type: 'person' },
+        attributeData: {},
+      } as never) as never,
+    );
+    expect(tracker.track).toHaveBeenCalledWith(
+      'node_added',
+      expect.objectContaining({
+        node_id: expect.any(String),
+        node_type: 'person',
+      }),
+    );
+  });
 
-	it("emits node_removed on deleteNode", () => {
-		const tracker = { track: vi.fn(), captureException: vi.fn() };
-		const store = buildStore(tracker);
-		store.dispatch(deleteNode("node-1") as never);
-		expect(tracker.track).toHaveBeenCalledWith(
-			"node_removed",
-			expect.objectContaining({ node_id: "node-1" }),
-		);
-	});
+  it('emits node_removed on deleteNode', () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const store = buildStore(tracker);
+    store.dispatch(deleteNode('node-1') as never);
+    expect(tracker.track).toHaveBeenCalledWith(
+      'node_removed',
+      expect.objectContaining({ node_id: 'node-1' }),
+    );
+  });
 
-	it("emits edge_created on addEdge/fulfilled", async () => {
-		const tracker = { track: vi.fn(), captureException: vi.fn() };
-		const store = buildStore(tracker);
-		await store.dispatch(
-			addEdge({ modelData: { type: "friend", from: "a", to: "b" } } as never) as never,
-		);
-		expect(tracker.track).toHaveBeenCalledWith(
-			"edge_created",
-			expect.objectContaining({ edge_id: expect.any(String), edge_type: "friend" }),
-		);
-	});
+  it('emits edge_created on addEdge/fulfilled', async () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const store = buildStore(tracker);
+    await store.dispatch(
+      addEdge({
+        modelData: { type: 'friend', from: 'a', to: 'b' },
+      } as never) as never,
+    );
+    expect(tracker.track).toHaveBeenCalledWith(
+      'edge_created',
+      expect.objectContaining({
+        edge_id: expect.any(String),
+        edge_type: 'friend',
+      }),
+    );
+  });
 
-	it("emits edge_removed on deleteEdge", () => {
-		const tracker = { track: vi.fn(), captureException: vi.fn() };
-		const store = buildStore(tracker);
-		store.dispatch(deleteEdge("edge-1") as never);
-		expect(tracker.track).toHaveBeenCalledWith(
-			"edge_removed",
-			expect.objectContaining({ edge_id: "edge-1" }),
-		);
-	});
+  it('emits edge_removed on deleteEdge', () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const store = buildStore(tracker);
+    store.dispatch(deleteEdge('edge-1') as never);
+    expect(tracker.track).toHaveBeenCalledWith(
+      'edge_removed',
+      expect.objectContaining({ edge_id: 'edge-1' }),
+    );
+  });
 
-	it("emits node_added_to_prompt on addNodeToPrompt/fulfilled", async () => {
-		const tracker = { track: vi.fn(), captureException: vi.fn() };
-		const store = buildStore(tracker);
-		await store.dispatch(
-			addNodeToPrompt({ nodeId: "n1", promptId: "p1", promptAttributes: {} } as never) as never,
-		);
-		expect(tracker.track).toHaveBeenCalledWith(
-			"node_added_to_prompt",
-			expect.objectContaining({ node_id: "n1" }),
-		);
-	});
+  it('emits node_added_to_prompt on addNodeToPrompt/fulfilled', async () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const store = buildStore(tracker);
+    await store.dispatch(
+      addNodeToPrompt({
+        nodeId: 'n1',
+        promptId: 'p1',
+        promptAttributes: {},
+      } as never) as never,
+    );
+    expect(tracker.track).toHaveBeenCalledWith(
+      'node_added_to_prompt',
+      expect.objectContaining({ node_id: 'n1' }),
+    );
+  });
 
-	it("emits node_removed_from_prompt on removeNodeFromPrompt/fulfilled", async () => {
-		const tracker = { track: vi.fn(), captureException: vi.fn() };
-		const store = buildStore(tracker);
-		await store.dispatch(
-			removeNodeFromPrompt({ nodeId: "n1", promptId: "p1", promptAttributes: {} } as never) as never,
-		);
-		expect(tracker.track).toHaveBeenCalledWith(
-			"node_removed_from_prompt",
-			expect.objectContaining({ node_id: "n1" }),
-		);
-	});
+  it('emits node_removed_from_prompt on removeNodeFromPrompt/fulfilled', async () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const store = buildStore(tracker);
+    await store.dispatch(
+      removeNodeFromPrompt({
+        nodeId: 'n1',
+        promptId: 'p1',
+        promptAttributes: {},
+      } as never) as never,
+    );
+    expect(tracker.track).toHaveBeenCalledWith(
+      'node_removed_from_prompt',
+      expect.objectContaining({ node_id: 'n1' }),
+    );
+  });
 });
 ```
 
@@ -2010,61 +2240,81 @@ Expected: 6 failures with "expected mock to have been called".
 Edit `packages/interview/src/store/middleware/analyticsListener.ts` to register listeners. Replace the body of `createAnalyticsListenerMiddleware`:
 
 ```typescript
-import { addEdge, addNode, addNodeToPrompt, deleteEdge, deleteNode, removeNodeFromPrompt } from "../modules/session";
+import {
+  addEdge,
+  addNode,
+  addNodeToPrompt,
+  deleteEdge,
+  deleteNode,
+  removeNodeFromPrompt,
+} from '../modules/session';
 
-export function createAnalyticsListenerMiddleware({ tracker }: AnalyticsListenerArgs) {
-	const analyticsListenerMiddleware = createListenerMiddleware();
-	const startAppListening = analyticsListenerMiddleware.startListening as TypedStartListening<RootState, AppDispatch>;
+export function createAnalyticsListenerMiddleware({
+  tracker,
+}: AnalyticsListenerArgs) {
+  const analyticsListenerMiddleware = createListenerMiddleware();
+  const startAppListening =
+    analyticsListenerMiddleware.startListening as TypedStartListening<
+      RootState,
+      AppDispatch
+    >;
 
-	startAppListening({
-		actionCreator: addNode.fulfilled,
-		effect: (action) => {
-			const node = action.payload as { _uid?: string; type?: string } | undefined;
-			if (!node?._uid) return;
-			tracker.track("node_added", { node_id: node._uid, node_type: node.type });
-		},
-	});
+  startAppListening({
+    actionCreator: addNode.fulfilled,
+    effect: (action) => {
+      const node = action.payload as
+        | { _uid?: string; type?: string }
+        | undefined;
+      if (!node?._uid) return;
+      tracker.track('node_added', { node_id: node._uid, node_type: node.type });
+    },
+  });
 
-	startAppListening({
-		actionCreator: deleteNode,
-		effect: (action) => {
-			tracker.track("node_removed", { node_id: action.payload });
-		},
-	});
+  startAppListening({
+    actionCreator: deleteNode,
+    effect: (action) => {
+      tracker.track('node_removed', { node_id: action.payload });
+    },
+  });
 
-	startAppListening({
-		actionCreator: addEdge.fulfilled,
-		effect: (action) => {
-			const edge = action.payload as { _uid?: string; type?: string } | undefined;
-			if (!edge?._uid) return;
-			tracker.track("edge_created", { edge_id: edge._uid, edge_type: edge.type });
-		},
-	});
+  startAppListening({
+    actionCreator: addEdge.fulfilled,
+    effect: (action) => {
+      const edge = action.payload as
+        | { _uid?: string; type?: string }
+        | undefined;
+      if (!edge?._uid) return;
+      tracker.track('edge_created', {
+        edge_id: edge._uid,
+        edge_type: edge.type,
+      });
+    },
+  });
 
-	startAppListening({
-		actionCreator: deleteEdge,
-		effect: (action) => {
-			tracker.track("edge_removed", { edge_id: action.payload });
-		},
-	});
+  startAppListening({
+    actionCreator: deleteEdge,
+    effect: (action) => {
+      tracker.track('edge_removed', { edge_id: action.payload });
+    },
+  });
 
-	startAppListening({
-		actionCreator: addNodeToPrompt.fulfilled,
-		effect: (action) => {
-			const arg = action.meta.arg as { nodeId?: string };
-			tracker.track("node_added_to_prompt", { node_id: arg.nodeId });
-		},
-	});
+  startAppListening({
+    actionCreator: addNodeToPrompt.fulfilled,
+    effect: (action) => {
+      const arg = action.meta.arg as { nodeId?: string };
+      tracker.track('node_added_to_prompt', { node_id: arg.nodeId });
+    },
+  });
 
-	startAppListening({
-		actionCreator: removeNodeFromPrompt.fulfilled,
-		effect: (action) => {
-			const arg = action.meta.arg as { nodeId?: string };
-			tracker.track("node_removed_from_prompt", { node_id: arg.nodeId });
-		},
-	});
+  startAppListening({
+    actionCreator: removeNodeFromPrompt.fulfilled,
+    effect: (action) => {
+      const arg = action.meta.arg as { nodeId?: string };
+      tracker.track('node_removed_from_prompt', { node_id: arg.nodeId });
+    },
+  });
 
-	return analyticsListenerMiddleware;
+  return analyticsListenerMiddleware;
 }
 ```
 
@@ -2087,6 +2337,7 @@ git commit -m "feat(interview/analytics): global entity events (node + edge + pr
 ### Task 17: Stage-level events — `interview_started`, `stage_entered`, `stage_exited`, `interview_finished`
 
 **Files:**
+
 - Modify: `packages/interview/src/store/middleware/analyticsListener.ts`
 - Modify: `packages/interview/src/store/middleware/__tests__/analyticsListener.test.ts`
 
@@ -2101,57 +2352,74 @@ The `interview_finished` event fires when `onFinish` resolves — but `onFinish`
 Append to `analyticsListener.test.ts`:
 
 ```typescript
-describe("analyticsListener — stage-level events", () => {
-	function buildStore(tracker: Tracker, sessionOverrides: Partial<typeof baseSession> = {}) {
-		return configureStore({
-			reducer: { session, protocol, ui },
-			preloadedState: {
-				session: { ...baseSession, ...sessionOverrides } as never,
-				protocol: {
-					id: "p",
-					hash: "h",
-					schemaVersion: 8,
-					stages: [
-						{ id: "s0", type: "Information" },
-						{ id: "s1", type: "NameGenerator" },
-						{ id: "s2", type: "FinishSession" },
-					],
-				} as never,
-				ui: undefined,
-			},
-			middleware: (getDefault) =>
-				getDefault({ serializableCheck: false }).concat(createAnalyticsListenerMiddleware({ tracker }).middleware),
-		});
-	}
+describe('analyticsListener — stage-level events', () => {
+  function buildStore(
+    tracker: Tracker,
+    sessionOverrides: Partial<typeof baseSession> = {},
+  ) {
+    return configureStore({
+      reducer: { session, protocol, ui },
+      preloadedState: {
+        session: { ...baseSession, ...sessionOverrides } as never,
+        protocol: {
+          id: 'p',
+          hash: 'h',
+          schemaVersion: 8,
+          stages: [
+            { id: 's0', type: 'Information' },
+            { id: 's1', type: 'NameGenerator' },
+            { id: 's2', type: 'FinishSession' },
+          ],
+        } as never,
+        ui: undefined,
+      },
+      middleware: (getDefault) =>
+        getDefault({ serializableCheck: false }).concat(
+          createAnalyticsListenerMiddleware({ tracker }).middleware,
+        ),
+    });
+  }
 
-	it("emits stage_entered when currentStep changes", () => {
-		const tracker = { track: vi.fn(), captureException: vi.fn() };
-		const store = buildStore(tracker);
-		// Replace the action below with the real one from session.ts
-		store.dispatch({ type: "session/updateCurrentStep", payload: 1 });
-		expect(tracker.track).toHaveBeenCalledWith(
-			"stage_entered",
-			expect.objectContaining({ stage_index: 1, stage_type: "NameGenerator", direction: expect.any(String) }),
-		);
-	});
+  it('emits stage_entered when currentStep changes', () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const store = buildStore(tracker);
+    // Replace the action below with the real one from session.ts
+    store.dispatch({ type: 'session/updateCurrentStep', payload: 1 });
+    expect(tracker.track).toHaveBeenCalledWith(
+      'stage_entered',
+      expect.objectContaining({
+        stage_index: 1,
+        stage_type: 'NameGenerator',
+        direction: expect.any(String),
+      }),
+    );
+  });
 
-	it("emits stage_exited (with duration_ms) when leaving a stage", () => {
-		const tracker = { track: vi.fn(), captureException: vi.fn() };
-		const store = buildStore(tracker);
-		store.dispatch({ type: "session/updateCurrentStep", payload: 1 });
-		store.dispatch({ type: "session/updateCurrentStep", payload: 2 });
-		const exitCall = tracker.track.mock.calls.find(([name]) => name === "stage_exited");
-		expect(exitCall).toBeDefined();
-		expect(exitCall?.[1]).toMatchObject({ stage_index: 1, stage_type: "NameGenerator" });
-		expect(typeof exitCall?.[1].duration_ms).toBe("number");
-	});
+  it('emits stage_exited (with duration_ms) when leaving a stage', () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const store = buildStore(tracker);
+    store.dispatch({ type: 'session/updateCurrentStep', payload: 1 });
+    store.dispatch({ type: 'session/updateCurrentStep', payload: 2 });
+    const exitCall = tracker.track.mock.calls.find(
+      ([name]) => name === 'stage_exited',
+    );
+    expect(exitCall).toBeDefined();
+    expect(exitCall?.[1]).toMatchObject({
+      stage_index: 1,
+      stage_type: 'NameGenerator',
+    });
+    expect(typeof exitCall?.[1].duration_ms).toBe('number');
+  });
 
-	it("emits interview_finished when entering FinishSession stage", () => {
-		const tracker = { track: vi.fn(), captureException: vi.fn() };
-		const store = buildStore(tracker);
-		store.dispatch({ type: "session/updateCurrentStep", payload: 2 });
-		expect(tracker.track).toHaveBeenCalledWith("interview_finished", expect.any(Object));
-	});
+  it('emits interview_finished when entering FinishSession stage', () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const store = buildStore(tracker);
+    store.dispatch({ type: 'session/updateCurrentStep', payload: 2 });
+    expect(tracker.track).toHaveBeenCalledWith(
+      'interview_finished',
+      expect.any(Object),
+    );
+  });
 });
 ```
 
@@ -2170,64 +2438,67 @@ let lastStageEnteredAt: number | undefined;
 let interviewStartEmitted = false;
 
 startAppListening({
-	predicate: (_action, currentState, previousState) => {
-		const cur = currentState.session?.currentStep;
-		const prev = previousState.session?.currentStep;
-		return cur !== prev;
-	},
-	effect: (_action, listenerApi) => {
-		const state = listenerApi.getState() as RootState;
-		const previous = listenerApi.getOriginalState() as RootState;
-		const currentStep = state.session?.currentStep ?? 0;
-		const prevStep = previous.session?.currentStep;
-		const stages = state.protocol?.stages ?? [];
-		const stageType = stages[currentStep]?.type as string | undefined;
-		const prevStageType = prevStep !== undefined ? (stages[prevStep]?.type as string | undefined) : undefined;
-		const now = Date.now();
+  predicate: (_action, currentState, previousState) => {
+    const cur = currentState.session?.currentStep;
+    const prev = previousState.session?.currentStep;
+    return cur !== prev;
+  },
+  effect: (_action, listenerApi) => {
+    const state = listenerApi.getState() as RootState;
+    const previous = listenerApi.getOriginalState() as RootState;
+    const currentStep = state.session?.currentStep ?? 0;
+    const prevStep = previous.session?.currentStep;
+    const stages = state.protocol?.stages ?? [];
+    const stageType = stages[currentStep]?.type as string | undefined;
+    const prevStageType =
+      prevStep !== undefined
+        ? (stages[prevStep]?.type as string | undefined)
+        : undefined;
+    const now = Date.now();
 
-		if (!interviewStartEmitted) {
-			tracker.track("interview_started");
-			interviewStartEmitted = true;
-		}
+    if (!interviewStartEmitted) {
+      tracker.track('interview_started');
+      interviewStartEmitted = true;
+    }
 
-		if (lastStageIndex !== undefined && lastStageEnteredAt !== undefined) {
-			tracker.track("stage_exited", {
-				stage_type: prevStageType,
-				stage_index: lastStageIndex,
-				duration_ms: now - lastStageEnteredAt,
-				exit_direction:
-					prevStep === undefined
-						? "initial"
-						: currentStep > prevStep
-							? "forward"
-							: currentStep < prevStep
-								? "back"
-								: "jumped",
-			});
-		}
+    if (lastStageIndex !== undefined && lastStageEnteredAt !== undefined) {
+      tracker.track('stage_exited', {
+        stage_type: prevStageType,
+        stage_index: lastStageIndex,
+        duration_ms: now - lastStageEnteredAt,
+        exit_direction:
+          prevStep === undefined
+            ? 'initial'
+            : currentStep > prevStep
+              ? 'forward'
+              : currentStep < prevStep
+                ? 'back'
+                : 'jumped',
+      });
+    }
 
-		const direction =
-			prevStep === undefined
-				? "initial"
-				: currentStep === prevStep + 1
-					? "forward"
-					: currentStep === prevStep - 1
-						? "back"
-						: "jumped";
+    const direction =
+      prevStep === undefined
+        ? 'initial'
+        : currentStep === prevStep + 1
+          ? 'forward'
+          : currentStep === prevStep - 1
+            ? 'back'
+            : 'jumped';
 
-		tracker.track("stage_entered", {
-			stage_type: stageType,
-			stage_index: currentStep,
-			direction,
-		});
+    tracker.track('stage_entered', {
+      stage_type: stageType,
+      stage_index: currentStep,
+      direction,
+    });
 
-		if (stageType === "FinishSession") {
-			tracker.track("interview_finished", { stage_count: stages.length });
-		}
+    if (stageType === 'FinishSession') {
+      tracker.track('interview_finished', { stage_count: stages.length });
+    }
 
-		lastStageIndex = currentStep;
-		lastStageEnteredAt = now;
-	},
+    lastStageIndex = currentStep;
+    lastStageEnteredAt = now;
+  },
 });
 ```
 
@@ -2250,6 +2521,7 @@ git commit -m "feat(interview/analytics): stage-level navigation events"
 ### Task 18: Anonymisation events via middleware
 
 **Files:**
+
 - Modify: `packages/interview/src/store/middleware/analyticsListener.ts`
 - Modify: `packages/interview/src/store/middleware/__tests__/analyticsListener.test.ts`
 
@@ -2258,33 +2530,40 @@ git commit -m "feat(interview/analytics): stage-level navigation events"
 Append to `analyticsListener.test.ts`:
 
 ```typescript
-import { setPassphrase, setPassphraseInvalid } from "../../modules/ui";
+import { setPassphrase, setPassphraseInvalid } from '../../modules/ui';
 
-describe("analyticsListener — anonymisation", () => {
-	it("emits passphrase_set on setPassphrase action", () => {
-		const tracker = { track: vi.fn(), captureException: vi.fn() };
-		const store = configureStore({
-			reducer: { session, protocol, ui },
-			middleware: (getDefault) =>
-				getDefault({ serializableCheck: false }).concat(createAnalyticsListenerMiddleware({ tracker }).middleware),
-		});
-		store.dispatch(setPassphrase("not-recorded-secret"));
-		expect(tracker.track).toHaveBeenCalledWith("passphrase_set", undefined);
-		// Ensure the passphrase value is NEVER sent
-		const allArgs = tracker.track.mock.calls.flat();
-		expect(JSON.stringify(allArgs)).not.toContain("not-recorded-secret");
-	});
+describe('analyticsListener — anonymisation', () => {
+  it('emits passphrase_set on setPassphrase action', () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const store = configureStore({
+      reducer: { session, protocol, ui },
+      middleware: (getDefault) =>
+        getDefault({ serializableCheck: false }).concat(
+          createAnalyticsListenerMiddleware({ tracker }).middleware,
+        ),
+    });
+    store.dispatch(setPassphrase('not-recorded-secret'));
+    expect(tracker.track).toHaveBeenCalledWith('passphrase_set', undefined);
+    // Ensure the passphrase value is NEVER sent
+    const allArgs = tracker.track.mock.calls.flat();
+    expect(JSON.stringify(allArgs)).not.toContain('not-recorded-secret');
+  });
 
-	it("emits passphrase_validation_failed on setPassphraseInvalid", () => {
-		const tracker = { track: vi.fn(), captureException: vi.fn() };
-		const store = configureStore({
-			reducer: { session, protocol, ui },
-			middleware: (getDefault) =>
-				getDefault({ serializableCheck: false }).concat(createAnalyticsListenerMiddleware({ tracker }).middleware),
-		});
-		store.dispatch(setPassphraseInvalid(true));
-		expect(tracker.track).toHaveBeenCalledWith("passphrase_validation_failed", undefined);
-	});
+  it('emits passphrase_validation_failed on setPassphraseInvalid', () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const store = configureStore({
+      reducer: { session, protocol, ui },
+      middleware: (getDefault) =>
+        getDefault({ serializableCheck: false }).concat(
+          createAnalyticsListenerMiddleware({ tracker }).middleware,
+        ),
+    });
+    store.dispatch(setPassphraseInvalid(true));
+    expect(tracker.track).toHaveBeenCalledWith(
+      'passphrase_validation_failed',
+      undefined,
+    );
+  });
 });
 ```
 
@@ -2298,22 +2577,22 @@ Expected: 2 new failures.
 Add to listener:
 
 ```typescript
-import { setPassphrase, setPassphraseInvalid } from "../modules/ui";
+import { setPassphrase, setPassphraseInvalid } from '../modules/ui';
 
 startAppListening({
-	actionCreator: setPassphrase,
-	effect: () => {
-		tracker.track("passphrase_set");
-	},
+  actionCreator: setPassphrase,
+  effect: () => {
+    tracker.track('passphrase_set');
+  },
 });
 
 startAppListening({
-	actionCreator: setPassphraseInvalid,
-	effect: (action) => {
-		if (action.payload === true) {
-			tracker.track("passphrase_validation_failed");
-		}
-	},
+  actionCreator: setPassphraseInvalid,
+  effect: (action) => {
+    if (action.payload === true) {
+      tracker.track('passphrase_validation_failed');
+    }
+  },
 });
 ```
 
@@ -2340,6 +2619,7 @@ For test infrastructure each interface test will need a small harness that wraps
 ### Task 19: Test harness for hook-based interface tests
 
 **Files:**
+
 - Create: `packages/interview/src/analytics/__tests__/testHarness.tsx`
 
 - [ ] **Step 1: Create harness**
@@ -2347,33 +2627,41 @@ For test infrastructure each interface test will need a small harness that wraps
 Create `packages/interview/src/analytics/__tests__/testHarness.tsx`:
 
 ```tsx
-import { Provider } from "react-redux";
-import { type ReactNode } from "react";
-import { configureStore } from "@reduxjs/toolkit";
-import { vi } from "vitest";
-import { AnalyticsContext } from "../AnalyticsContext";
-import type { Tracker } from "../tracker";
-import session from "../../store/modules/session";
-import protocol from "../../store/modules/protocol";
-import ui from "../../store/modules/ui";
+import { Provider } from 'react-redux';
+import { type ReactNode } from 'react';
+import { configureStore } from '@reduxjs/toolkit';
+import { vi } from 'vitest';
+import { AnalyticsContext } from '../AnalyticsContext';
+import type { Tracker } from '../tracker';
+import session from '../../store/modules/session';
+import protocol from '../../store/modules/protocol';
+import ui from '../../store/modules/ui';
 
-export function makeTracker(): Tracker & { track: ReturnType<typeof vi.fn>; captureException: ReturnType<typeof vi.fn> } {
-	return {
-		track: vi.fn(),
-		captureException: vi.fn(),
-	} as never;
+export function makeTracker(): Tracker & {
+  track: ReturnType<typeof vi.fn>;
+  captureException: ReturnType<typeof vi.fn>;
+} {
+  return {
+    track: vi.fn(),
+    captureException: vi.fn(),
+  } as never;
 }
 
-export function withAnalytics(node: ReactNode, tracker: Tracker = makeTracker()) {
-	const store = configureStore({
-		reducer: { session, protocol, ui },
-		middleware: (g) => g({ serializableCheck: false }),
-	});
-	return (
-		<Provider store={store}>
-			<AnalyticsContext.Provider value={tracker}>{node}</AnalyticsContext.Provider>
-		</Provider>
-	);
+export function withAnalytics(
+  node: ReactNode,
+  tracker: Tracker = makeTracker(),
+) {
+  const store = configureStore({
+    reducer: { session, protocol, ui },
+    middleware: (g) => g({ serializableCheck: false }),
+  });
+  return (
+    <Provider store={store}>
+      <AnalyticsContext.Provider value={tracker}>
+        {node}
+      </AnalyticsContext.Provider>
+    </Provider>
+  );
 }
 ```
 
@@ -2389,6 +2677,7 @@ git commit -m "test(interview/analytics): shared hook-test harness"
 ### Task 20: Form family — `form_opened`, `form_submitted`, `form_dismissed_without_save`, `form_validation_failed`, `slides_form_slide_advanced`
 
 **Files:**
+
 - Modify: `packages/interview/src/forms/useProtocolForm.tsx` (or wherever the form-engine entry point lives — emit `form_opened` on mount)
 - Modify: `packages/interview/src/interfaces/AlterForm/AlterForm.tsx`
 - Modify: `packages/interview/src/interfaces/AlterEdgeForm/AlterEdgeForm.tsx`
@@ -2411,34 +2700,37 @@ Identify (a) the form-mount point (effect that runs once when the form first ren
 Create `packages/interview/src/forms/__tests__/formAnalytics.test.tsx`:
 
 ```tsx
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import { makeTracker, withAnalytics } from "../../analytics/__tests__/testHarness";
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import {
+  makeTracker,
+  withAnalytics,
+} from '../../analytics/__tests__/testHarness';
 // import the form-host component you'll wrap, e.g. EgoForm — adjust path
 
-describe("form-family analytics", () => {
-	it("emits form_opened on mount with field_details and entity_id", () => {
-		// Render an EgoForm (or simpler: render useProtocolForm via a minimal wrapper)
-		// Stub: render(<TestFormHost {...} />)
-		// Assert tracker.track called with "form_opened" and a field_details array of strings.
-		// NOTE: adapt to actual form mount API — populate stage props via stub.
-	});
+describe('form-family analytics', () => {
+  it('emits form_opened on mount with field_details and entity_id', () => {
+    // Render an EgoForm (or simpler: render useProtocolForm via a minimal wrapper)
+    // Stub: render(<TestFormHost {...} />)
+    // Assert tracker.track called with "form_opened" and a field_details array of strings.
+    // NOTE: adapt to actual form mount API — populate stage props via stub.
+  });
 
-	it("emits form_submitted on successful submit", () => {
-		// fire submit → assert tracker.track called with "form_submitted", { form_kind, entity_id? }
-	});
+  it('emits form_submitted on successful submit', () => {
+    // fire submit → assert tracker.track called with "form_submitted", { form_kind, entity_id? }
+  });
 
-	it("emits form_validation_failed with field_errors array on validation failure", () => {
-		// fire submit while required field empty → assert "form_validation_failed" with an array
-	});
+  it('emits form_validation_failed with field_errors array on validation failure', () => {
+    // fire submit while required field empty → assert "form_validation_failed" with an array
+  });
 
-	it("emits form_dismissed_without_save when the cancel path runs", () => {
-		// fire cancel → assert "form_dismissed_without_save", { form_kind }
-	});
+  it('emits form_dismissed_without_save when the cancel path runs', () => {
+    // fire cancel → assert "form_dismissed_without_save", { form_kind }
+  });
 
-	it("emits slides_form_slide_advanced on SlidesForm next-slide", () => {
-		// render SlidesForm with two slides; advance → assert "slides_form_slide_advanced"
-	});
+  it('emits slides_form_slide_advanced on SlidesForm next-slide', () => {
+    // render SlidesForm with two slides; advance → assert "slides_form_slide_advanced"
+  });
 });
 ```
 
@@ -2462,38 +2754,52 @@ In `packages/interview/src/forms/useProtocolForm.tsx`:
 Code shape (insert into the hook):
 
 ```tsx
-import { useTrack } from "../analytics/useTrack";
+import { useTrack } from '../analytics/useTrack';
 
 const track = useTrack();
 
 useEffect(() => {
-	const fieldDetails = fields.map((f) => f.component);
-	track("form_opened", { form_kind: formKind, field_details: fieldDetails, ...(entityId ? { entity_id: entityId } : {}) });
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+  const fieldDetails = fields.map((f) => f.component);
+  track('form_opened', {
+    form_kind: formKind,
+    field_details: fieldDetails,
+    ...(entityId ? { entity_id: entityId } : {}),
+  });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
 
 // In onSubmit success:
-track("form_submitted", { form_kind: formKind, ...(entityId ? { entity_id: entityId } : {}) });
+track('form_submitted', {
+  form_kind: formKind,
+  ...(entityId ? { entity_id: entityId } : {}),
+});
 
 // In dismiss path (cancel button or close):
-track("form_dismissed_without_save", { form_kind: formKind, ...(entityId ? { entity_id: entityId } : {}) });
+track('form_dismissed_without_save', {
+  form_kind: formKind,
+  ...(entityId ? { entity_id: entityId } : {}),
+});
 
 // In validation failure handler:
 const fieldErrors = errors.map((err, idx) => {
-	const fieldDef = fields[idx];
-	const sanitizedConfig: Record<string, number | boolean> = {};
-	for (const [k, v] of Object.entries(err.config ?? {})) {
-		if (typeof v === "number" || typeof v === "boolean") sanitizedConfig[k] = v;
-		// strings (like differentFrom: "name") are dropped — they would carry codebook variable names
-	}
-	return {
-		field_index: idx,
-		component: fieldDef?.component ?? "unknown",
-		kind: err.kind,
-		...(Object.keys(sanitizedConfig).length ? { config: sanitizedConfig } : {}),
-	};
+  const fieldDef = fields[idx];
+  const sanitizedConfig: Record<string, number | boolean> = {};
+  for (const [k, v] of Object.entries(err.config ?? {})) {
+    if (typeof v === 'number' || typeof v === 'boolean') sanitizedConfig[k] = v;
+    // strings (like differentFrom: "name") are dropped — they would carry codebook variable names
+  }
+  return {
+    field_index: idx,
+    component: fieldDef?.component ?? 'unknown',
+    kind: err.kind,
+    ...(Object.keys(sanitizedConfig).length ? { config: sanitizedConfig } : {}),
+  };
 });
-track("form_validation_failed", { form_kind: formKind, ...(entityId ? { entity_id: entityId } : {}), field_errors: fieldErrors });
+track('form_validation_failed', {
+  form_kind: formKind,
+  ...(entityId ? { entity_id: entityId } : {}),
+  field_errors: fieldErrors,
+});
 ```
 
 (Adapt to the actual form engine API — the local variables `fields`, `errors`, `entityId`, `formKind` need to come from the hook's existing state.)
@@ -2503,7 +2809,10 @@ In `SlidesForm.tsx`, add slide-advance emission:
 ```tsx
 const track = useTrack();
 // ...where slides advance:
-track("slides_form_slide_advanced", { slide_index: nextIndex, total_slides: slides.length });
+track('slides_form_slide_advanced', {
+  slide_index: nextIndex,
+  total_slides: slides.length,
+});
 ```
 
 - [ ] **Step 5: Run tests to verify pass**
@@ -2523,6 +2832,7 @@ git commit -m "feat(interview/analytics): form-family events"
 ### Task 21: NameGenerator — `node_form_opened`, `node_form_dismissed_without_save`
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/NameGenerator/components/NodeForm.tsx`
 - Modify: `packages/interview/src/interfaces/NameGenerator/components/QuickNodeForm.tsx`
 - Create: `packages/interview/src/interfaces/NameGenerator/__tests__/NameGeneratorAnalytics.test.tsx`
@@ -2532,23 +2842,26 @@ git commit -m "feat(interview/analytics): form-family events"
 Create `packages/interview/src/interfaces/NameGenerator/__tests__/NameGeneratorAnalytics.test.tsx`:
 
 ```tsx
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import { makeTracker, withAnalytics } from "../../../analytics/__tests__/testHarness";
-import NodeForm from "../components/NodeForm";
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import {
+  makeTracker,
+  withAnalytics,
+} from '../../../analytics/__tests__/testHarness';
+import NodeForm from '../components/NodeForm';
 
-describe("NameGenerator NodeForm analytics", () => {
-	it("emits node_form_opened on open", () => {
-		const tracker = makeTracker();
-		// render NodeForm in open state with a stubbed node id
-		// expect(tracker.track).toHaveBeenCalledWith("node_form_opened", expect.objectContaining({ node_id: "n1" }));
-	});
+describe('NameGenerator NodeForm analytics', () => {
+  it('emits node_form_opened on open', () => {
+    const tracker = makeTracker();
+    // render NodeForm in open state with a stubbed node id
+    // expect(tracker.track).toHaveBeenCalledWith("node_form_opened", expect.objectContaining({ node_id: "n1" }));
+  });
 
-	it("emits node_form_dismissed_without_save on cancel", () => {
-		const tracker = makeTracker();
-		// render NodeForm; fire the cancel handler
-		// expect(tracker.track).toHaveBeenCalledWith("node_form_dismissed_without_save", expect.objectContaining({ node_id: "n1" }));
-	});
+  it('emits node_form_dismissed_without_save on cancel', () => {
+    const tracker = makeTracker();
+    // render NodeForm; fire the cancel handler
+    // expect(tracker.track).toHaveBeenCalledWith("node_form_dismissed_without_save", expect.objectContaining({ node_id: "n1" }));
+  });
 });
 ```
 
@@ -2564,18 +2877,18 @@ Expected: failure.
 In `NodeForm.tsx`:
 
 ```tsx
-import { useTrack } from "../../../analytics/useTrack";
+import { useTrack } from '../../../analytics/useTrack';
 
 // In the component:
 const track = useTrack();
 useEffect(() => {
-	track("node_form_opened", { node_id: existingNodeId });
+  track('node_form_opened', { node_id: existingNodeId });
 }, [existingNodeId, track]);
 
 // In the cancel/dismiss handler:
 const onCancel = useCallback(() => {
-	track("node_form_dismissed_without_save", { node_id: existingNodeId });
-	// existing close logic
+  track('node_form_dismissed_without_save', { node_id: existingNodeId });
+  // existing close logic
 }, [existingNodeId, track]);
 ```
 
@@ -2598,6 +2911,7 @@ git commit -m "feat(interview/analytics): NameGenerator NodeForm open/dismiss ev
 ### Task 22: NameGeneratorRoster — `roster_loaded`, `roster_filter_changed`
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/NameGeneratorRoster/NameGeneratorRoster.tsx`
 - Modify: `packages/interview/src/interfaces/NameGeneratorRoster/useItems.ts`
 - Create: `packages/interview/src/interfaces/NameGeneratorRoster/__tests__/RosterAnalytics.test.tsx`
@@ -2607,19 +2921,19 @@ git commit -m "feat(interview/analytics): NameGenerator NodeForm open/dismiss ev
 Create `RosterAnalytics.test.tsx`:
 
 ```tsx
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from 'vitest';
 // (skeleton — adapt to component API)
 
-describe("NameGeneratorRoster analytics", () => {
-	it("emits roster_loaded with entry_count after data resolves", () => {
-		// stub useExternalData to resolve immediately with N entries
-		// expect track called with "roster_loaded", { entry_count: N }
-	});
+describe('NameGeneratorRoster analytics', () => {
+  it('emits roster_loaded with entry_count after data resolves', () => {
+    // stub useExternalData to resolve immediately with N entries
+    // expect track called with "roster_loaded", { entry_count: N }
+  });
 
-	it("emits roster_filter_changed (debounced) with has_filter boolean", () => {
-		// type into filter input; advance fake timers; assert single call with { has_filter: true }
-		// clear filter; assert another call with { has_filter: false }
-	});
+  it('emits roster_filter_changed (debounced) with has_filter boolean', () => {
+    // type into filter input; advance fake timers; assert single call with { has_filter: true }
+    // clear filter; assert another call with { has_filter: false }
+  });
 });
 ```
 
@@ -2630,26 +2944,31 @@ describe("NameGeneratorRoster analytics", () => {
 In `NameGeneratorRoster.tsx`:
 
 ```tsx
-import { useEffect, useRef } from "react";
-import { useTrack } from "../../analytics/useTrack";
-import { debounce } from "es-toolkit";
+import { useEffect, useRef } from 'react';
+import { useTrack } from '../../analytics/useTrack';
+import { debounce } from 'es-toolkit';
 
 const track = useTrack();
 const loaded = useRef(false);
 useEffect(() => {
-	if (!externalData || loaded.current) return;
-	track("roster_loaded", { entry_count: externalData.length });
-	loaded.current = true;
+  if (!externalData || loaded.current) return;
+  track('roster_loaded', { entry_count: externalData.length });
+  loaded.current = true;
 }, [externalData, track]);
 
 const fireFilterChanged = useMemo(
-	() => debounce((hasFilter: boolean) => track("roster_filter_changed", { has_filter: hasFilter }), 500),
-	[track],
+  () =>
+    debounce(
+      (hasFilter: boolean) =>
+        track('roster_filter_changed', { has_filter: hasFilter }),
+      500,
+    ),
+  [track],
 );
 
 useEffect(() => {
-	fireFilterChanged(filterText.length > 0);
-	return () => fireFilterChanged.cancel();
+  fireFilterChanged(filterText.length > 0);
+  return () => fireFilterChanged.cancel();
 }, [filterText, fireFilterChanged]);
 ```
 
@@ -2667,6 +2986,7 @@ git commit -m "feat(interview/analytics): roster events"
 ### Task 23: Sociogram — `node_initial_positioned`, `node_repositioned`, `node_selected`, `node_deselected`, `simulation_started`, `simulation_finished`
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/Sociogram/Sociogram.tsx`
 - Modify: `packages/interview/src/interfaces/Sociogram/useForceSimulation.ts`
 - Create: `packages/interview/src/interfaces/Sociogram/__tests__/SociogramAnalytics.test.tsx`
@@ -2690,17 +3010,19 @@ const track = useTrack();
 const positionedNodeIds = useRef(new Set<string>());
 
 const onDragEnd = (nodeId: string) => {
-	if (autoLayout) return; // suppress when force-sim drives positions
-	if (positionedNodeIds.current.has(nodeId)) {
-		track("node_repositioned", { node_id: nodeId });
-	} else {
-		positionedNodeIds.current.add(nodeId);
-		track("node_initial_positioned", { node_id: nodeId });
-	}
+  if (autoLayout) return; // suppress when force-sim drives positions
+  if (positionedNodeIds.current.has(nodeId)) {
+    track('node_repositioned', { node_id: nodeId });
+  } else {
+    positionedNodeIds.current.add(nodeId);
+    track('node_initial_positioned', { node_id: nodeId });
+  }
 };
 
-const onSelect = (nodeId: string, mode: "select" | "deselect") => {
-	track(mode === "select" ? "node_selected" : "node_deselected", { node_id: nodeId });
+const onSelect = (nodeId: string, mode: 'select' | 'deselect') => {
+  track(mode === 'select' ? 'node_selected' : 'node_deselected', {
+    node_id: nodeId,
+  });
 };
 ```
 
@@ -2712,16 +3034,19 @@ const startedAt = useRef<number | null>(null);
 
 // On simulation start:
 startedAt.current = Date.now();
-track("simulation_started", { node_count: nodes.length, edge_count: edges.length });
+track('simulation_started', {
+  node_count: nodes.length,
+  edge_count: edges.length,
+});
 
 // On simulation settled (alpha < alphaMin):
 if (startedAt.current !== null) {
-	track("simulation_finished", {
-		duration_ms: Date.now() - startedAt.current,
-		node_count: nodes.length,
-		edge_count: edges.length,
-	});
-	startedAt.current = null;
+  track('simulation_finished', {
+    duration_ms: Date.now() - startedAt.current,
+    node_count: nodes.length,
+    edge_count: edges.length,
+  });
+  startedAt.current = null;
 }
 ```
 
@@ -2739,6 +3064,7 @@ git commit -m "feat(interview/analytics): sociogram events"
 ### Task 24: Comparison family — `pair_shown` (DyadCensus, TieStrengthCensus), `focal_node` (OneToManyDyadCensus)
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/DyadCensus/DyadCensus.tsx`
 - Modify: `packages/interview/src/interfaces/TieStrengthCensus/TieStrengthCensus.tsx`
 - Modify: `packages/interview/src/interfaces/OneToManyDyadCensus/OneToManyDyadCensus.tsx`
@@ -2755,8 +3081,8 @@ git commit -m "feat(interview/analytics): sociogram events"
 ```tsx
 const track = useTrack();
 useEffect(() => {
-	if (!nodeA || !nodeB) return;
-	track("pair_shown", { node_a_id: nodeA._uid, node_b_id: nodeB._uid });
+  if (!nodeA || !nodeB) return;
+  track('pair_shown', { node_a_id: nodeA._uid, node_b_id: nodeB._uid });
 }, [nodeA?._uid, nodeB?._uid, track]);
 ```
 
@@ -2765,8 +3091,8 @@ For `OneToManyDyadCensus`:
 ```tsx
 const track = useTrack();
 useEffect(() => {
-	if (!focalNode) return;
-	track("focal_node", { node_id: focalNode._uid });
+  if (!focalNode) return;
+  track('focal_node', { node_id: focalNode._uid });
 }, [focalNode?._uid, track]);
 ```
 
@@ -2784,6 +3110,7 @@ git commit -m "feat(interview/analytics): comparison-family events"
 ### Task 25: CategoricalBin / OrdinalBin — `node_binned`, `node_rebinned`, `bin_expanded`, `bin_collapsed`
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/CategoricalBin/CategoricalBin.tsx`
 - Modify: `packages/interview/src/interfaces/CategoricalBin/components/CategoricalBinItem.tsx`
 - Modify: `packages/interview/src/interfaces/OrdinalBin/OrdinalBin.tsx`
@@ -2803,19 +3130,27 @@ git commit -m "feat(interview/analytics): comparison-family events"
 const track = useTrack();
 const lastBinIndex = useRef(new Map<string, number>());
 
-const onDrop = (nodeId: string, nodeType: string | undefined, binIndex: number) => {
-	const previous = lastBinIndex.current.get(nodeId);
-	if (previous === undefined) {
-		track("node_binned", { node_id: nodeId, node_type: nodeType, bin_index: binIndex });
-	} else if (previous !== binIndex) {
-		track("node_rebinned", {
-			node_id: nodeId,
-			node_type: nodeType,
-			from_bin_index: previous,
-			to_bin_index: binIndex,
-		});
-	}
-	lastBinIndex.current.set(nodeId, binIndex);
+const onDrop = (
+  nodeId: string,
+  nodeType: string | undefined,
+  binIndex: number,
+) => {
+  const previous = lastBinIndex.current.get(nodeId);
+  if (previous === undefined) {
+    track('node_binned', {
+      node_id: nodeId,
+      node_type: nodeType,
+      bin_index: binIndex,
+    });
+  } else if (previous !== binIndex) {
+    track('node_rebinned', {
+      node_id: nodeId,
+      node_type: nodeType,
+      from_bin_index: previous,
+      to_bin_index: binIndex,
+    });
+  }
+  lastBinIndex.current.set(nodeId, binIndex);
 };
 ```
 
@@ -2824,8 +3159,8 @@ In `CategoricalBinItem.tsx`:
 ```tsx
 const track = useTrack();
 const onToggleExpanded = (next: boolean) => {
-	track(next ? "bin_expanded" : "bin_collapsed", { bin_index: index });
-	// existing toggle logic
+  track(next ? 'bin_expanded' : 'bin_collapsed', { bin_index: index });
+  // existing toggle logic
 };
 ```
 
@@ -2843,6 +3178,7 @@ git commit -m "feat(interview/analytics): bin events"
 ### Task 26: Narrative — `narrative_preset_changed`, `narrative_preset_updated`, `annotation_drawn`, `annotations_reset`
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/Narrative/Narrative.tsx`
 - Modify: `packages/interview/src/interfaces/Narrative/PresetSwitcher.tsx`
 - Modify: `packages/interview/src/interfaces/Narrative/Annotations.tsx`
@@ -2860,9 +3196,10 @@ git commit -m "feat(interview/analytics): bin events"
 ```tsx
 const track = useTrack();
 const onChange = (next: number) => {
-	const direction = next > activePreset ? "forward" : next < activePreset ? "back" : "jumped";
-	track("narrative_preset_changed", { preset_index: next, direction });
-	onChangePreset(next);
+  const direction =
+    next > activePreset ? 'forward' : next < activePreset ? 'back' : 'jumped';
+  track('narrative_preset_changed', { preset_index: next, direction });
+  onChangePreset(next);
 };
 ```
 
@@ -2871,14 +3208,17 @@ const onChange = (next: number) => {
 ```tsx
 const track = useTrack();
 useEffect(() => {
-	track("narrative_preset_updated", { preset_index: activePreset, changed: "group" });
+  track('narrative_preset_updated', {
+    preset_index: activePreset,
+    changed: 'group',
+  });
 }, [groupVariableId]); // similar for edge_type, highlight
 ```
 
 `Annotations.tsx` on stroke complete:
 
 ```tsx
-track("annotation_drawn");
+track('annotation_drawn');
 ```
 
 `DrawingControls.tsx` `onReset`:
@@ -2886,8 +3226,8 @@ track("annotation_drawn");
 ```tsx
 const track = useTrack();
 const handleReset = () => {
-	track("annotations_reset");
-	onReset();
+  track('annotations_reset');
+  onReset();
 };
 ```
 
@@ -2905,13 +3245,14 @@ git commit -m "feat(interview/analytics): narrative events"
 ### Task 27: FamilyPedigree — `pedigree_relative_added` (manual only), `pedigree_relative_removed`, wizard events
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/FamilyPedigree/FamilyPedigree.tsx`
 - Modify: `packages/interview/src/interfaces/FamilyPedigree/components/AddPersonForm.tsx`
 - Modify: `packages/interview/src/interfaces/FamilyPedigree/components/quickStartWizard/*` (wizard entry/finish/abandon)
 - Modify: `packages/interview/src/interfaces/FamilyPedigree/components/wizards/steps/*` (same)
 - Create: `packages/interview/src/interfaces/FamilyPedigree/__tests__/FamilyPedigreeAnalytics.test.tsx`
 
-- [ ] **Step 1: Test** — assert manual add fires `pedigree_relative_added`; wizard add does *not*; wizard open fires `pedigree_wizard_shown`; wizard finish fires `pedigree_wizard_complete` with counts; wizard close-without-finish fires `pedigree_wizard_abandoned`.
+- [ ] **Step 1: Test** — assert manual add fires `pedigree_relative_added`; wizard add does _not_; wizard open fires `pedigree_wizard_shown`; wizard finish fires `pedigree_wizard_complete` with counts; wizard close-without-finish fires `pedigree_wizard_abandoned`.
 
 - [ ] **Step 2: Run to verify failure**.
 
@@ -2922,7 +3263,10 @@ git commit -m "feat(interview/analytics): narrative events"
 ```tsx
 const track = useTrack();
 // after successful add, only when not from wizard:
-track("pedigree_relative_added", { node_id: createdNodeId, relation_type: relationType });
+track('pedigree_relative_added', {
+  node_id: createdNodeId,
+  relation_type: relationType,
+});
 ```
 
 `AddPersonForm` accepts a `source?: "manual" | "wizard"` arg passed from the parent; only emit when `source === "manual"`. Default to `"manual"`.
@@ -2932,18 +3276,27 @@ Wizard component (open handler):
 ```tsx
 const track = useTrack();
 const onOpen = () => {
-	track("pedigree_wizard_shown");
-	openWizard();
+  track('pedigree_wizard_shown');
+  openWizard();
 };
 
-const onComplete = ({ nodesCreated, edgesCreated }: { nodesCreated: number; edgesCreated: number }) => {
-	track("pedigree_wizard_complete", { nodes_created: nodesCreated, edges_created: edgesCreated });
-	closeWizard();
+const onComplete = ({
+  nodesCreated,
+  edgesCreated,
+}: {
+  nodesCreated: number;
+  edgesCreated: number;
+}) => {
+  track('pedigree_wizard_complete', {
+    nodes_created: nodesCreated,
+    edges_created: edgesCreated,
+  });
+  closeWizard();
 };
 
 const onAbandon = () => {
-	track("pedigree_wizard_abandoned");
-	closeWizard();
+  track('pedigree_wizard_abandoned');
+  closeWizard();
 };
 ```
 
@@ -2951,8 +3304,11 @@ Removal:
 
 ```tsx
 const onRemove = (node: NcNode) => {
-	track("pedigree_relative_removed", { node_id: node._uid, relation_type: node.type });
-	dispatchRemove(node);
+  track('pedigree_relative_removed', {
+    node_id: node._uid,
+    relation_type: node.type,
+  });
+  dispatchRemove(node);
 };
 ```
 
@@ -2970,6 +3326,7 @@ git commit -m "feat(interview/analytics): family pedigree events"
 ### Task 28: Geospatial — `geospatial_location_selected`, `geospatial_search_performed`
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/Geospatial/Geospatial.tsx`
 - Modify: `packages/interview/src/interfaces/Geospatial/GeospatialSearch.tsx`
 - Modify: `packages/interview/src/interfaces/Geospatial/useGeospatialSearch.ts`
@@ -2984,17 +3341,22 @@ git commit -m "feat(interview/analytics): family pedigree events"
 `useGeospatialSearch.ts`:
 
 ```tsx
-import { debounce } from "es-toolkit";
-import { useTrack } from "../../analytics/useTrack";
+import { debounce } from 'es-toolkit';
+import { useTrack } from '../../analytics/useTrack';
 
 const track = useTrack();
 const fireSearch = useMemo(
-	() => debounce((nodeId: string) => track("geospatial_search_performed", { node_id: nodeId }), 500),
-	[track],
+  () =>
+    debounce(
+      (nodeId: string) =>
+        track('geospatial_search_performed', { node_id: nodeId }),
+      500,
+    ),
+  [track],
 );
 
 useEffect(() => {
-	if (query) fireSearch(activeNodeId);
+  if (query) fireSearch(activeNodeId);
 }, [query, activeNodeId, fireSearch]);
 ```
 
@@ -3003,10 +3365,16 @@ useEffect(() => {
 ```tsx
 const track = useTrack();
 const onSelectFromSearch = (nodeId: string) => {
-	track("geospatial_location_selected", { node_id: nodeId, selection_kind: "search" });
+  track('geospatial_location_selected', {
+    node_id: nodeId,
+    selection_kind: 'search',
+  });
 };
 const onSelectFromPin = (nodeId: string) => {
-	track("geospatial_location_selected", { node_id: nodeId, selection_kind: "pin" });
+  track('geospatial_location_selected', {
+    node_id: nodeId,
+    selection_kind: 'pin',
+  });
 };
 ```
 
@@ -3024,6 +3392,7 @@ git commit -m "feat(interview/analytics): geospatial events"
 ### Task 29: Stage validation failure event from Navigation `beforeNext`
 
 **Files:**
+
 - Modify: `packages/interview/src/components/Navigation.tsx`
 - Modify: `packages/interview/src/hooks/useInterviewNavigation.tsx` (or wherever `beforeNext` is registered/run)
 - Create test in nearest `__tests__/`
@@ -3034,8 +3403,12 @@ git commit -m "feat(interview/analytics): geospatial events"
 
 ```tsx
 const track = useTrack();
-const validationKind = result.kind ?? "unknown";
-track("stage_validation_failed", { stage_type, stage_index, validation_kind: validationKind });
+const validationKind = result.kind ?? 'unknown';
+track('stage_validation_failed', {
+  stage_type,
+  stage_index,
+  validation_kind: validationKind,
+});
 ```
 
 `validation_kind` is a structural string code (e.g. `"min_nodes"`, `"required_field"`, `"passphrase_mismatch"`) — never a rendered message. Surface this via the `beforeNext` callback contract returning `{ ok: false, kind: string }`.
@@ -3054,90 +3427,114 @@ git commit -m "feat(interview/analytics): stage_validation_failed event"
 ### Task 30: PII guard test
 
 **Files:**
+
 - Create: `packages/interview/src/analytics/__tests__/pii-guard.test.ts`
 
 - [ ] **Step 1: Implement guard test**
 
 ```typescript
-import { describe, expect, it, vi } from "vitest";
-import { configureStore } from "@reduxjs/toolkit";
-import session, { addEdge, addNode, deleteEdge, deleteNode } from "../../store/modules/session";
-import protocol from "../../store/modules/protocol";
-import ui from "../../store/modules/ui";
-import { createAnalyticsListenerMiddleware } from "../../store/middleware/analyticsListener";
+import { describe, expect, it, vi } from 'vitest';
+import { configureStore } from '@reduxjs/toolkit';
+import session, {
+  addEdge,
+  addNode,
+  deleteEdge,
+  deleteNode,
+} from '../../store/modules/session';
+import protocol from '../../store/modules/protocol';
+import ui from '../../store/modules/ui';
+import { createAnalyticsListenerMiddleware } from '../../store/middleware/analyticsListener';
 
 const SENTINELS = [
-	"CODEBOOK_LABEL_TRIGGER",
-	"PROMPT_TEXT_TRIGGER",
-	"NODE_LABEL_TRIGGER",
-	"PARTICIPANT_INPUT_TRIGGER",
-	"PASSPHRASE_TRIGGER",
+  'CODEBOOK_LABEL_TRIGGER',
+  'PROMPT_TEXT_TRIGGER',
+  'NODE_LABEL_TRIGGER',
+  'PARTICIPANT_INPUT_TRIGGER',
+  'PASSPHRASE_TRIGGER',
 ];
 
 function containsSentinel(value: unknown): boolean {
-	if (value == null) return false;
-	if (typeof value === "string") return SENTINELS.some((s) => value.includes(s));
-	if (typeof value === "object") {
-		return Object.values(value as Record<string, unknown>).some(containsSentinel);
-	}
-	return false;
+  if (value == null) return false;
+  if (typeof value === 'string')
+    return SENTINELS.some((s) => value.includes(s));
+  if (typeof value === 'object') {
+    return Object.values(value as Record<string, unknown>).some(
+      containsSentinel,
+    );
+  }
+  return false;
 }
 
-describe("PII guard — global listener events", () => {
-	function buildStore(tracker: { track: ReturnType<typeof vi.fn>; captureException: ReturnType<typeof vi.fn> }) {
-		return configureStore({
-			reducer: { session, protocol, ui },
-			preloadedState: {
-				session: {
-					id: "interview-1",
-					startTime: new Date().toISOString(),
-					network: {
-						ego: { _uid: "ego", "PARTICIPANT_INPUT_TRIGGER": "value" },
-						nodes: [{ _uid: "n1", type: "person", label: "NODE_LABEL_TRIGGER" }],
-						edges: [],
-					},
-					currentStep: 0,
-				} as never,
-				protocol: {
-					id: "p1",
-					hash: "h1",
-					schemaVersion: 8,
-					name: "PROMPT_TEXT_TRIGGER",
-					description: "PROMPT_TEXT_TRIGGER",
-					codebook: {
-						node: { person: { name: "CODEBOOK_LABEL_TRIGGER", variables: {} } },
-					},
-					stages: [],
-				} as never,
-				ui: undefined,
-			},
-			middleware: (g) =>
-				g({ serializableCheck: false }).concat(createAnalyticsListenerMiddleware({ tracker }).middleware),
-		});
-	}
+describe('PII guard — global listener events', () => {
+  function buildStore(tracker: {
+    track: ReturnType<typeof vi.fn>;
+    captureException: ReturnType<typeof vi.fn>;
+  }) {
+    return configureStore({
+      reducer: { session, protocol, ui },
+      preloadedState: {
+        session: {
+          id: 'interview-1',
+          startTime: new Date().toISOString(),
+          network: {
+            ego: { _uid: 'ego', PARTICIPANT_INPUT_TRIGGER: 'value' },
+            nodes: [
+              { _uid: 'n1', type: 'person', label: 'NODE_LABEL_TRIGGER' },
+            ],
+            edges: [],
+          },
+          currentStep: 0,
+        } as never,
+        protocol: {
+          id: 'p1',
+          hash: 'h1',
+          schemaVersion: 8,
+          name: 'PROMPT_TEXT_TRIGGER',
+          description: 'PROMPT_TEXT_TRIGGER',
+          codebook: {
+            node: { person: { name: 'CODEBOOK_LABEL_TRIGGER', variables: {} } },
+          },
+          stages: [],
+        } as never,
+        ui: undefined,
+      },
+      middleware: (g) =>
+        g({ serializableCheck: false }).concat(
+          createAnalyticsListenerMiddleware({ tracker }).middleware,
+        ),
+    });
+  }
 
-	it("never emits any sentinel string in any captured event", async () => {
-		const tracker = { track: vi.fn(), captureException: vi.fn() };
-		const store = buildStore(tracker);
+  it('never emits any sentinel string in any captured event', async () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const store = buildStore(tracker);
 
-		await store.dispatch(addNode({ modelData: { type: "person", label: "NODE_LABEL_TRIGGER" } } as never) as never);
-		store.dispatch(deleteNode("n1") as never);
-		await store.dispatch(addEdge({ modelData: { type: "friend", from: "a", to: "b" } } as never) as never);
-		store.dispatch(deleteEdge("e1") as never);
+    await store.dispatch(
+      addNode({
+        modelData: { type: 'person', label: 'NODE_LABEL_TRIGGER' },
+      } as never) as never,
+    );
+    store.dispatch(deleteNode('n1') as never);
+    await store.dispatch(
+      addEdge({
+        modelData: { type: 'friend', from: 'a', to: 'b' },
+      } as never) as never,
+    );
+    store.dispatch(deleteEdge('e1') as never);
 
-		for (const call of tracker.track.mock.calls) {
-			const [eventName, props] = call;
-			expect(containsSentinel(eventName)).toBe(false);
-			expect(containsSentinel(props)).toBe(false);
-		}
-	});
+    for (const call of tracker.track.mock.calls) {
+      const [eventName, props] = call;
+      expect(containsSentinel(eventName)).toBe(false);
+      expect(containsSentinel(props)).toBe(false);
+    }
+  });
 });
 ```
 
 - [ ] **Step 2: Run**
 
 Run: `pnpm --filter @codaco/interview test -- --run pii-guard`
-Expected: green (the listener already only sends `node_id`, `node_type`, `edge_id`, `edge_type` — none of which can carry sentinels because the entity `type` is the codebook *internal id* like `"person"`, not the sentinel string we put in `name`).
+Expected: green (the listener already only sends `node_id`, `node_type`, `edge_id`, `edge_type` — none of which can carry sentinels because the entity `type` is the codebook _internal id_ like `"person"`, not the sentinel string we put in `name`).
 
 - [ ] **Step 3: Commit**
 
@@ -3151,83 +3548,109 @@ git commit -m "test(interview/analytics): PII guard for global listener events"
 ### Task 31: Shell integration test (three modes)
 
 **Files:**
+
 - Create: `packages/interview/src/__tests__/Shell.analytics.test.tsx`
 
 - [ ] **Step 1: Test the three resolution modes**
 
 ```tsx
-import { render } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import Shell from "../Shell";
+import { render } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import Shell from '../Shell';
 
 const minimalPayload = {
-	session: { id: "i1", startTime: new Date().toISOString(), network: { ego: { _uid: "e" }, nodes: [], edges: [] }, currentStep: 0 },
-	protocol: { id: "p", hash: "h", schemaVersion: 8, codebook: {}, stages: [{ id: "s", type: "Information", title: "x", items: [] }] },
+  session: {
+    id: 'i1',
+    startTime: new Date().toISOString(),
+    network: { ego: { _uid: 'e' }, nodes: [], edges: [] },
+    currentStep: 0,
+  },
+  protocol: {
+    id: 'p',
+    hash: 'h',
+    schemaVersion: 8,
+    codebook: {},
+    stages: [{ id: 's', type: 'Information', title: 'x', items: [] }],
+  },
 } as never;
 
-describe("Shell analytics modes", () => {
-	it("disableAnalytics=true does not import posthog-js or fire events", async () => {
-		const importMock = vi.fn();
-		vi.doMock("posthog-js", () => {
-			importMock();
-			return { default: { init: vi.fn() } };
-		});
-		const onSync = vi.fn().mockResolvedValue(undefined);
-		const onFinish = vi.fn().mockResolvedValue(undefined);
-		const onRequestAsset = vi.fn().mockResolvedValue("");
-		render(
-			<Shell
-				payload={minimalPayload}
-				onSync={onSync}
-				onFinish={onFinish}
-				onRequestAsset={onRequestAsset}
-				analytics={{ installationId: "i", hostApp: "test" }}
-				disableAnalytics={true}
-			/>,
-		);
-		await new Promise((r) => setTimeout(r, 0));
-		expect(importMock).not.toHaveBeenCalled();
-	});
+describe('Shell analytics modes', () => {
+  it('disableAnalytics=true does not import posthog-js or fire events', async () => {
+    const importMock = vi.fn();
+    vi.doMock('posthog-js', () => {
+      importMock();
+      return { default: { init: vi.fn() } };
+    });
+    const onSync = vi.fn().mockResolvedValue(undefined);
+    const onFinish = vi.fn().mockResolvedValue(undefined);
+    const onRequestAsset = vi.fn().mockResolvedValue('');
+    render(
+      <Shell
+        payload={minimalPayload}
+        onSync={onSync}
+        onFinish={onFinish}
+        onRequestAsset={onRequestAsset}
+        analytics={{ installationId: 'i', hostApp: 'test' }}
+        disableAnalytics={true}
+      />,
+    );
+    await new Promise((r) => setTimeout(r, 0));
+    expect(importMock).not.toHaveBeenCalled();
+  });
 
-	it("posthogClient supplied — no init/register on it", async () => {
-		const client = { capture: vi.fn(), captureException: vi.fn(), register: vi.fn(), init: vi.fn(), identify: vi.fn() };
-		const onSync = vi.fn().mockResolvedValue(undefined);
-		const onFinish = vi.fn().mockResolvedValue(undefined);
-		const onRequestAsset = vi.fn().mockResolvedValue("");
-		render(
-			<Shell
-				payload={minimalPayload}
-				onSync={onSync}
-				onFinish={onFinish}
-				onRequestAsset={onRequestAsset}
-				analytics={{ installationId: "i", hostApp: "test" }}
-				posthogClient={client as never}
-			/>,
-		);
-		await new Promise((r) => setTimeout(r, 0));
-		expect(client.init).not.toHaveBeenCalled();
-		expect(client.register).not.toHaveBeenCalled();
-		expect(client.identify).not.toHaveBeenCalled();
-	});
+  it('posthogClient supplied — no init/register on it', async () => {
+    const client = {
+      capture: vi.fn(),
+      captureException: vi.fn(),
+      register: vi.fn(),
+      init: vi.fn(),
+      identify: vi.fn(),
+    };
+    const onSync = vi.fn().mockResolvedValue(undefined);
+    const onFinish = vi.fn().mockResolvedValue(undefined);
+    const onRequestAsset = vi.fn().mockResolvedValue('');
+    render(
+      <Shell
+        payload={minimalPayload}
+        onSync={onSync}
+        onFinish={onFinish}
+        onRequestAsset={onRequestAsset}
+        analytics={{ installationId: 'i', hostApp: 'test' }}
+        posthogClient={client as never}
+      />,
+    );
+    await new Promise((r) => setTimeout(r, 0));
+    expect(client.init).not.toHaveBeenCalled();
+    expect(client.register).not.toHaveBeenCalled();
+    expect(client.identify).not.toHaveBeenCalled();
+  });
 
-	it("no host client — initializes a named instance", async () => {
-		const initSpy = vi.fn().mockReturnValue({ capture: vi.fn(), register: vi.fn(), captureException: vi.fn() });
-		vi.doMock("posthog-js", () => ({ default: { init: initSpy } }));
-		const onSync = vi.fn().mockResolvedValue(undefined);
-		const onFinish = vi.fn().mockResolvedValue(undefined);
-		const onRequestAsset = vi.fn().mockResolvedValue("");
-		render(
-			<Shell
-				payload={minimalPayload}
-				onSync={onSync}
-				onFinish={onFinish}
-				onRequestAsset={onRequestAsset}
-				analytics={{ installationId: "i", hostApp: "test" }}
-			/>,
-		);
-		await new Promise((r) => setTimeout(r, 50));
-		expect(initSpy).toHaveBeenCalledWith(expect.any(String), expect.any(Object), "@codaco/interview");
-	});
+  it('no host client — initializes a named instance', async () => {
+    const initSpy = vi.fn().mockReturnValue({
+      capture: vi.fn(),
+      register: vi.fn(),
+      captureException: vi.fn(),
+    });
+    vi.doMock('posthog-js', () => ({ default: { init: initSpy } }));
+    const onSync = vi.fn().mockResolvedValue(undefined);
+    const onFinish = vi.fn().mockResolvedValue(undefined);
+    const onRequestAsset = vi.fn().mockResolvedValue('');
+    render(
+      <Shell
+        payload={minimalPayload}
+        onSync={onSync}
+        onFinish={onFinish}
+        onRequestAsset={onRequestAsset}
+        analytics={{ installationId: 'i', hostApp: 'test' }}
+      />,
+    );
+    await new Promise((r) => setTimeout(r, 50));
+    expect(initSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Object),
+      '@codaco/interview',
+    );
+  });
 });
 ```
 
@@ -3246,6 +3669,7 @@ git commit -m "test(interview): Shell analytics three-mode integration"
 ### Task 32: Update `packages/interview/README.md`
 
 **Files:**
+
 - Modify: `packages/interview/README.md`
 
 - [ ] **Step 1: Update the Shell-props table**
@@ -3263,7 +3687,10 @@ In `README.md`, find the Shell-props table (around line 195) and update:
 ```ts
 const protocol: ProtocolPayload = {
   ...interview.protocol,
-  hash: hashProtocol({ codebook: interview.protocol.codebook, stages: interview.protocol.stages }),
+  hash: hashProtocol({
+    codebook: interview.protocol.codebook,
+    stages: interview.protocol.stages,
+  }),
   importedAt: interview.protocol.importedAt.toISOString(),
   assets,
 };
@@ -3288,9 +3715,9 @@ Required typed schema (no extension bucket — adding a field requires a package
 
 \`\`\`ts
 type InterviewAnalyticsMetadata = {
-  installationId: string;   // → super prop "installation_id"
-  hostApp: string;          // → super prop "app"
-  hostVersion?: string;     // → super prop "host_version"
+installationId: string; // → super prop "installation_id"
+hostApp: string; // → super prop "app"
+hostVersion?: string; // → super prop "host_version"
 };
 \`\`\`
 
@@ -3298,7 +3725,7 @@ type InterviewAnalyticsMetadata = {
 
 Events never include: protocol-network data (nodes/edges/attributes), protocol-author content (stage labels, prompt text, codebook labels, asset names), or participant input (form values, free-text, alter labels, search queries, passphrases).
 
-Events do include: structural identifiers (stage type, stage index, prompt index, random node/edge ids), codebook *internal* ids (e.g. `"person"`, `"friend"`), counts, durations, and package-defined discriminators.
+Events do include: structural identifiers (stage type, stage index, prompt index, random node/edge ids), codebook _internal_ ids (e.g. `"person"`, `"friend"`), counts, durations, and package-defined discriminators.
 
 The full taxonomy lives at [`docs/superpowers/specs/2026-05-05-interview-analytics-design.md`](../../docs/superpowers/specs/2026-05-05-interview-analytics-design.md).
 ```
@@ -3315,6 +3742,7 @@ git commit -m "docs(interview): document analytics surface and PII contract"
 ### Task 33: Bump `@codaco/interview` to `1.0.0-alpha.1`
 
 **Files:**
+
 - Modify: `packages/interview/package.json`
 
 - [ ] **Step 1: Bump version**
@@ -3327,7 +3755,7 @@ Create `.changeset/interview-analytics-alpha-1.md`:
 
 ```markdown
 ---
-"@codaco/interview": minor
+'@codaco/interview': minor
 ---
 
 **Breaking** (still pre-1.0): replace `onError` callback with built-in PostHog analytics. New required Shell prop `analytics` (typed metadata). New optional `posthogClient` (host can supply its own client) and `disableAnalytics` (default false). `ProtocolPayload.hash` is now required — host computes via `hashProtocol` from `@codaco/protocol-validation`. Per-interface and stage-level events instrumented across all 17 interfaces with strict no-PII guarantees.
@@ -3353,7 +3781,7 @@ Expected: `packages/protocol-validation/dist` populated.
 
 - [ ] **Step 2: Set npm token (manual)**
 
-Provide the token via environment for the publish process (do *not* commit). The user will supply a fresh npm token (rotate the previously leaked one first).
+Provide the token via environment for the publish process (do _not_ commit). The user will supply a fresh npm token (rotate the previously leaked one first).
 
 ```bash
 export NPM_TOKEN=<user-provided>
@@ -3427,6 +3855,7 @@ Expected: `posthog-js` listed; `@codaco/protocol-validation` resolved to `^11.5.
 ### Task 36: Migrate `hashProtocol` callsites in fresco-next
 
 **Files (in `~/Projects/fresco-next`):**
+
 - Modify: `hooks/useProtocolImport.tsx`
 - Modify: `actions/protocols.ts`
 - Modify: `scripts/migrate-protocols-to-v8.ts`
@@ -3522,6 +3951,7 @@ git commit -m "refactor: import hashProtocol from @codaco/protocol-validation"
 ### Task 37: Populate `payload.protocol.hash` in `mapInterviewPayload.ts`
 
 **Files (in `~/Projects/fresco-next`):**
+
 - Modify: `app/(interview)/interview/[interviewId]/mapInterviewPayload.ts`
 - Modify: `queries/interviews.ts` (if `Protocol.hash` isn't already selected from Prisma)
 
@@ -3571,6 +4001,7 @@ git commit -m "feat: pass protocol.hash through to interview payload"
 ### Task 38: Pass analytics props to `<Shell>` in `InterviewClient.tsx` (and preview client)
 
 **Files (in `~/Projects/fresco-next`):**
+
 - Modify: `app/(interview)/interview/[interviewId]/InterviewClient.tsx`
 - Modify: `app/(interview)/preview/[protocolId]/interview/PreviewInterviewClient.tsx` (if it exists)
 
@@ -3675,6 +4106,7 @@ pnpm dev
 - [ ] **Step 2: Manually verify**
 
 In a browser:
+
 1. Open an interview.
 2. Open DevTools → Network → filter for `ph-relay.networkcanvas.com`.
 3. Confirm requests are firing.

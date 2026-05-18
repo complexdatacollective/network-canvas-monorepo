@@ -3,10 +3,10 @@
  * Fonts are imported via JS (see src/main.tsx) so url() refs resolve
  * through the Vite bundler.
  */
-@import "@codaco/tailwind-config/fresco.css";
+@import '@codaco/tailwind-config/fresco.css';
 
-@import "@codaco/fresco-ui/styles.css";
-@import "@codaco/interview/styles.css";
+@import '@codaco/fresco-ui/styles.css';
+@import '@codaco/interview/styles.css';
 
 /* Make the root container fill the viewport so the dashboard / interview
    shell can size to the full screen on tablet + desktop without scrolling
@@ -14,13 +14,13 @@
 html,
 body,
 #root {
-	height: 100%;
+  height: 100%;
 }
 
 body {
-	overscroll-behavior: none;
-	-webkit-user-select: none;
-	user-select: none;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /*
@@ -29,124 +29,128 @@ body {
  */
 
 .iv-root {
-	background: var(--background);
-	color: var(--text);
-	font-family: var(--font-body);
-	line-height: 1.45;
-	-webkit-font-smoothing: antialiased;
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
 }
 
 .iv-root .all-caps {
-	font-family: var(--font-heading);
-	font-weight: 900;
-	font-size: var(--text-xs);
-	letter-spacing: 0.1em;
-	text-transform: uppercase;
-	color: oklch(from var(--text) l c h / 0.6);
+  font-family: var(--font-heading);
+  font-weight: 900;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: oklch(from var(--text) l c h / 0.6);
 }
 
 .iv-root .mono {
-	font-family: var(--font-monospace);
-	font-size: var(--text-xs);
-	color: oklch(from var(--text) l c h / 0.6);
-	letter-spacing: 0.02em;
+  font-family: var(--font-monospace);
+  font-size: var(--text-xs);
+  color: oklch(from var(--text) l c h / 0.6);
+  letter-spacing: 0.02em;
 }
 
 /* Surface */
 .iv-surface {
-	background: var(--surface);
-	border-radius: var(--radius);
-	position: relative;
-	overflow: hidden;
+  background: var(--surface);
+  border-radius: var(--radius);
+  position: relative;
+  overflow: hidden;
 }
 
 .iv-surface-1 {
-	background: var(--surface-1);
+  background: var(--surface-1);
 }
 
 .iv-surface-2 {
-	background: var(--surface-2);
+  background: var(--surface-2);
 }
 
 /* Background blobs (decorative) */
 .iv-blobs {
-	position: absolute;
-	inset: 0;
-	pointer-events: none;
-	overflow: hidden;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
 }
 
 .iv-blob {
-	position: absolute;
-	border-radius: 50%;
-	filter: blur(60px);
-	opacity: 0.35;
-	animation: iv-float 14s ease-in-out infinite;
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.35;
+  animation: iv-float 14s ease-in-out infinite;
 }
 
 @keyframes iv-float {
-	0%,
-	100% {
-		transform: translate(0, 0) scale(1);
-	}
-	50% {
-		transform: translate(40px, -30px) scale(1.07);
-	}
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(40px, -30px) scale(1.07);
+  }
 }
 
 /* Decorative coloured circle */
 .iv-node {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 56px;
-	height: 56px;
-	border-radius: 50%;
-	font-family: var(--font-heading);
-	font-weight: 900;
-	color: #ffffff;
-	background: linear-gradient(150deg, var(--c, var(--color-sea-green)) 50%, var(--d, var(--color-sea-green-dark)) 50%);
-	box-shadow: 0 6px 14px oklch(0.10 0.05 281 / 0.5);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  font-family: var(--font-heading);
+  font-weight: 900;
+  color: #ffffff;
+  background: linear-gradient(
+    150deg,
+    var(--c, var(--color-sea-green)) 50%,
+    var(--d, var(--color-sea-green-dark)) 50%
+  );
+  box-shadow: 0 6px 14px oklch(0.1 0.05 281 / 0.5);
 }
 
 /* Pill chip */
 .iv-chip {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	padding: 6px 12px;
-	border-radius: var(--radius-pill);
-	font-family: var(--font-heading);
-	font-weight: 800;
-	font-size: var(--text-xs);
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
-	background: var(--surface-2);
-	color: oklch(from var(--text) l c h / 0.8);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--surface-2);
+  color: oklch(from var(--text) l c h / 0.8);
 }
 
 .iv-chip--accent {
-	background: color-mix(in srgb, var(--color-sea-green) 22%, transparent);
-	color: var(--color-sea-green);
+  background: color-mix(in srgb, var(--color-sea-green) 22%, transparent);
+  color: var(--color-sea-green);
 }
 
 .iv-chip--warn {
-	background: color-mix(in srgb, var(--color-mustard) 22%, transparent);
-	color: var(--color-mustard);
+  background: color-mix(in srgb, var(--color-mustard) 22%, transparent);
+  color: var(--color-mustard);
 }
 
 /* Focus ring */
 .iv-root :focus-visible {
-	outline: 4px solid var(--color-sea-green);
-	outline-offset: 3px;
-	border-radius: 4px;
+  outline: 4px solid var(--color-sea-green);
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 /* Hide scrollbars within the interview surface */
 .iv-root *::-webkit-scrollbar {
-	display: none;
+  display: none;
 }
 
 .iv-root * {
-	scrollbar-width: none;
+  scrollbar-width: none;
 }

@@ -1,40 +1,48 @@
-import InternalLink from "@components/Link";
-import { actionCreators as screenActions } from "@modules/ui/screens";
-import PropTypes from "prop-types";
-import { useCallback } from "react";
-import { connect } from "react-redux";
+import InternalLink from '@components/Link';
+import { actionCreators as screenActions } from '@modules/ui/screens';
+import PropTypes from 'prop-types';
+import { useCallback } from 'react';
+import { connect } from 'react-redux';
 
-const ScreenLink = ({ children, screen, openScreen, closeExisting, closeScreen, onClick, ...options }) => {
-	const handleOpenStage = useCallback(() => {
-		if (closeExisting) {
-			closeScreen(closeExisting);
-		}
-		openScreen(screen, options);
-		if (onClick) {
-			onClick();
-		}
-	}, ["openScreen", "onClick"]);
+const ScreenLink = ({
+  children,
+  screen,
+  openScreen,
+  closeExisting,
+  closeScreen,
+  onClick,
+  ...options
+}) => {
+  const handleOpenStage = useCallback(() => {
+    if (closeExisting) {
+      closeScreen(closeExisting);
+    }
+    openScreen(screen, options);
+    if (onClick) {
+      onClick();
+    }
+  }, ['openScreen', 'onClick']);
 
-	return <InternalLink onClick={handleOpenStage}>{children}</InternalLink>;
+  return <InternalLink onClick={handleOpenStage}>{children}</InternalLink>;
 };
 
 ScreenLink.propTypes = {
-	openScreen: PropTypes.func.isRequired,
-	closeScreen: PropTypes.func.isRequired,
-	onClick: PropTypes.func,
-	screen: PropTypes.string.isRequired,
-	closeExisting: PropTypes.string,
-	children: PropTypes.node.isRequired,
+  openScreen: PropTypes.func.isRequired,
+  closeScreen: PropTypes.func.isRequired,
+  onClick: PropTypes.func,
+  screen: PropTypes.string.isRequired,
+  closeExisting: PropTypes.string,
+  children: PropTypes.node.isRequired,
 };
 
 ScreenLink.defaultProps = {
-	onClick: null,
-	closeExisting: null,
+  onClick: null,
+  closeExisting: null,
 };
 
 const mapDispatchToProps = {
-	openScreen: screenActions.openScreen,
-	closeScreen: screenActions.closeScreen,
+  openScreen: screenActions.openScreen,
+  closeScreen: screenActions.closeScreen,
 };
 
 export default connect(null, mapDispatchToProps)(ScreenLink);

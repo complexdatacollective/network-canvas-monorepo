@@ -146,11 +146,15 @@ The trailing `validate-redirects` step preserves a check that lives in the curre
     "build": {
       "dependsOn": ["^build"],
       "inputs": [
-        "src/**", "tsconfig*.json", "vite.config.*",
-        "electron.vite.config.*", "next.config.*", "package.json",
-        "pnpm-lock.yaml"
+        "src/**",
+        "tsconfig*.json",
+        "vite.config.*",
+        "electron.vite.config.*",
+        "next.config.*",
+        "package.json",
+        "pnpm-lock.yaml",
       ],
-      "outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"]
+      "outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"],
     },
 
     // new root tasks
@@ -158,30 +162,40 @@ The trailing `validate-redirects` step preserves a check that lives in the curre
       "inputs": [
         "**/*.{ts,tsx,js,jsx,mjs,cjs,json}",
         "biome.json",
-        "!**/dist/**", "!**/out/**", "!**/.next/**", "!**/storybook-static/**"
+        "!**/dist/**",
+        "!**/out/**",
+        "!**/.next/**",
+        "!**/storybook-static/**",
       ],
-      "outputs": []
+      "outputs": [],
     },
     "//#knip": {
       "inputs": [
         "**/*.{ts,tsx,js,jsx,mjs,cjs}",
-        "**/package.json", "knip.json",
-        "pnpm-workspace.yaml", "pnpm-lock.yaml",
-        "!**/dist/**", "!**/out/**", "!**/.next/**"
+        "**/package.json",
+        "knip.json",
+        "pnpm-workspace.yaml",
+        "pnpm-lock.yaml",
+        "!**/dist/**",
+        "!**/out/**",
+        "!**/.next/**",
       ],
-      "outputs": []
+      "outputs": [],
     },
 
     // new per-package task
     "build-storybook": {
       "dependsOn": ["^build"],
       "inputs": [
-        "src/**", ".storybook/**", "stories/**",
-        "package.json", "tsconfig*.json"
+        "src/**",
+        ".storybook/**",
+        "stories/**",
+        "package.json",
+        "tsconfig*.json",
       ],
-      "outputs": ["storybook-static/**"]
-    }
-  }
+      "outputs": ["storybook-static/**"],
+    },
+  },
 }
 ```
 
@@ -211,11 +225,11 @@ Outside the repo, as part of cutover:
 
 ## Cache reuse summary
 
-| Asset | Reused across workflows? | Mechanism |
-|---|---|---|
-| pnpm content-addressed store (`~/.local/share/pnpm/store`) | yes | `setup-node` pnpm cache; install runs but is fast |
-| `.turbo/` build outputs | yes | `actions/cache@v4` keyed on SHA with `restore-keys` fallback |
-| `node_modules/` | no | each job runs `pnpm install --frozen-lockfile --ignore-scripts` against warm pnpm store (~15–20s) |
+| Asset                                                      | Reused across workflows? | Mechanism                                                                                         |
+| ---------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------- |
+| pnpm content-addressed store (`~/.local/share/pnpm/store`) | yes                      | `setup-node` pnpm cache; install runs but is fast                                                 |
+| `.turbo/` build outputs                                    | yes                      | `actions/cache@v4` keyed on SHA with `restore-keys` fallback                                      |
+| `node_modules/`                                            | no                       | each job runs `pnpm install --frozen-lockfile --ignore-scripts` against warm pnpm store (~15–20s) |
 
 Cache writeback within `ci-and-release.yml` is naturally sequential because every job that does Turbo work `needs: quality` (directly or transitively). `quality` writes the SHA-specific cache slot; downstream jobs restore it and either no-op (cache hit) or rebuild a small delta. Since all Turbo-using jobs live in this single workflow, there are no cross-workflow writers competing for the cache key.
 

@@ -1,8 +1,9 @@
-import { Dialog as BaseDialog } from "@base-ui/react/dialog";
-import { AnimatePresence } from "motion/react";
-import type { ReactNode } from "react";
-import { usePortalContainer } from "../PortalContainer";
-import { ModalBackdrop } from "./ModalBackdrop";
+import { Dialog as BaseDialog } from '@base-ui/react/dialog';
+import { AnimatePresence } from 'motion/react';
+import type { ReactNode } from 'react';
+
+import { usePortalContainer } from '../PortalContainer';
+import { ModalBackdrop } from './ModalBackdrop';
 
 /**
  * A modal component designed to render full screen "overlay" UIs using
@@ -21,26 +22,29 @@ import { ModalBackdrop } from "./ModalBackdrop";
  *
  */
 export default function Modal({
-	open,
-	onOpenChange,
-	children,
+  open,
+  onOpenChange,
+  children,
 }: {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	children: ReactNode;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: ReactNode;
 }) {
-	const portalContainer = usePortalContainer();
+  const portalContainer = usePortalContainer();
 
-	return (
-		<BaseDialog.Root open={open} onOpenChange={onOpenChange}>
-			<AnimatePresence>
-				{open && (
-					<BaseDialog.Portal container={portalContainer ?? undefined} keepMounted>
-						<ModalBackdrop />
-						{children}
-					</BaseDialog.Portal>
-				)}
-			</AnimatePresence>
-		</BaseDialog.Root>
-	);
+  return (
+    <BaseDialog.Root open={open} onOpenChange={onOpenChange}>
+      <AnimatePresence>
+        {open && (
+          <BaseDialog.Portal
+            container={portalContainer ?? undefined}
+            keepMounted
+          >
+            <ModalBackdrop />
+            {children}
+          </BaseDialog.Portal>
+        )}
+      </AnimatePresence>
+    </BaseDialog.Root>
+  );
 }

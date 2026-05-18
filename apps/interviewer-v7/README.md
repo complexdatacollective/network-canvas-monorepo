@@ -166,12 +166,12 @@ markSessionsExported(ids) -> updates exportedAt timestamp
 
 ## Tradeoffs
 
-| Decision | Cost | Benefit |
-|----------|------|---------|
-| Envelope encryption (PRF -> KEK -> DEK) over direct-key SQLCipher | Slightly more code in `vault.ts`; one extra in-memory transformation per unlock | Re-enrolment is O(1); no full DB re-encrypt; the on-disk key remains constant across credential rotation |
-| WebAuthn-only (no passphrase fallback) | Users without PRF support cannot use the app; no account recovery path | Strong, modern auth; smallest possible auth surface; spec-aligned |
-| Drop encrypted renderer vault on tablet/web | Tablet/web data is platform-protected, not app-encrypted | Massive simplification of the renderer auth code; matches what the spec actually says about non-desktop platforms |
-| Variation F as handed off | The pending "split selector + meta" iteration is deferred | Faithful to the design that exists; no unbacked design judgement |
+| Decision                                                          | Cost                                                                            | Benefit                                                                                                           |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Envelope encryption (PRF -> KEK -> DEK) over direct-key SQLCipher | Slightly more code in `vault.ts`; one extra in-memory transformation per unlock | Re-enrolment is O(1); no full DB re-encrypt; the on-disk key remains constant across credential rotation          |
+| WebAuthn-only (no passphrase fallback)                            | Users without PRF support cannot use the app; no account recovery path          | Strong, modern auth; smallest possible auth surface; spec-aligned                                                 |
+| Drop encrypted renderer vault on tablet/web                       | Tablet/web data is platform-protected, not app-encrypted                        | Massive simplification of the renderer auth code; matches what the spec actually says about non-desktop platforms |
+| Variation F as handed off                                         | The pending "split selector + meta" iteration is deferred                       | Faithful to the design that exists; no unbacked design judgement                                                  |
 
 ## Known one-time data losses for prototype users
 

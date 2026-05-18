@@ -1,33 +1,44 @@
 {
-	"private": true,
-	"scripts": {
-		"build": "turbo run build --filter=!network-canvas-interviewer --filter=!network-canvas-architect",
-		"dev": "turbo watch dev",
-		"test": "turbo run test --filter=!network-canvas-interviewer --filter=!network-canvas-architect",
-		"test:watch": "turbo watch test:watch --filter=!network-canvas-interviewer --filter=!network-canvas-architect",
-		"publish-packages": "pnpm exec changeset publish",
-		"version-packages": "pnpm exec changeset version && pnpm install --no-frozen-lockfile && pnpm lint:fix",
-		"changeset": "changeset add",
-		"lint": "biome check .",
-		"lint:fix": "biome check . --write",
-		"typecheck": "turbo run typecheck --continue --filter=!network-canvas-interviewer --filter=!network-canvas-architect",
-		"prepare": "husky",
-		"knip": "knip --exclude catalog"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "^2.4.15",
-		"@changesets/cli": "^2.31.0",
-		"@types/node": "catalog:",
-		"@typescript/native-preview": "^7.0.0-dev.20260514.1",
-		"husky": "^9.1.7",
-		"knip": "^6.13.1",
-		"lint-staged": "^17.0.4",
-		"turbo": "^2.9.12",
-		"typescript": "catalog:"
-	},
-	"packageManager": "pnpm@11.1.2+sha512.415a1cc25974731e75455c1468371be74c5aa5fb7621b50d4056d222451609f11412f23fd602e6169f1e060466641f798597e1be961a10688836a67b16569499",
-	"name": "network-canvas-monorepo",
-	"lint-staged": {
-		"*": "pnpm run lint:fix"
-	}
+  "name": "network-canvas-monorepo",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build --filter=!network-canvas-interviewer --filter=!network-canvas-architect",
+    "dev": "turbo watch dev",
+    "test": "turbo run test --filter=!network-canvas-interviewer --filter=!network-canvas-architect",
+    "test:watch": "turbo watch test:watch --filter=!network-canvas-interviewer --filter=!network-canvas-architect",
+    "publish-packages": "pnpm exec changeset publish",
+    "version-packages": "pnpm exec changeset version && pnpm install --no-frozen-lockfile && pnpm lint:fix",
+    "changeset": "changeset add",
+    "lint": "oxlint && oxfmt --check .",
+    "lint:fix": "oxlint --fix && oxfmt .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "typecheck": "turbo run typecheck --continue --filter=!network-canvas-interviewer --filter=!network-canvas-architect",
+    "prepare": "husky",
+    "knip": "knip --exclude catalog"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.31.0",
+    "@types/node": "catalog:",
+    "@typescript/native-preview": "^7.0.0-dev.20260514.1",
+    "husky": "^9.1.7",
+    "knip": "^6.13.1",
+    "lint-staged": "^17.0.4",
+    "oxfmt": "^0.49.0",
+    "oxlint": "^1.64.0",
+    "oxlint-tailwindcss": "^0.7.1",
+    "oxlint-tsgolint": "^0.22.1",
+    "turbo": "^2.9.12",
+    "typescript": "catalog:"
+  },
+  "lint-staged": {
+    "*.{js,jsx,mjs,cjs,ts,tsx}": [
+      "oxlint --fix",
+      "oxfmt"
+    ],
+    "*.{json,jsonc,md,css,html,yaml,yml}": [
+      "oxfmt"
+    ]
+  },
+  "packageManager": "pnpm@11.1.2+sha512.415a1cc25974731e75455c1468371be74c5aa5fb7621b50d4056d222451609f11412f23fd602e6169f1e060466641f798597e1be961a10688836a67b16569499"
 }

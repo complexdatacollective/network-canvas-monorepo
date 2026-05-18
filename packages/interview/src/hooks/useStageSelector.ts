@@ -1,8 +1,9 @@
-"use client";
+'use client';
 
-import { useSelector } from "react-redux";
-import { useCurrentStep } from "../contexts/CurrentStepContext";
-import type { RootState } from "../store/store";
+import { useSelector } from 'react-redux';
+
+import { useCurrentStep } from '../contexts/CurrentStepContext';
+import type { RootState } from '../store/store';
 
 /**
  * `useSelector` for selectors that depend on the current stage step.
@@ -16,7 +17,9 @@ import type { RootState } from "../store/store";
  * For navigation logic that needs the *target* step (e.g. computing the next
  * valid stage to advance to) read `currentStep` directly via `useCurrentStep`.
  */
-export function useStageSelector<T>(selector: (state: RootState, currentStep: number) => T): T {
-	const { displayedStep } = useCurrentStep();
-	return useSelector((state: RootState) => selector(state, displayedStep));
+export function useStageSelector<T>(
+  selector: (state: RootState, currentStep: number) => T,
+): T {
+  const { displayedStep } = useCurrentStep();
+  return useSelector((state: RootState) => selector(state, displayedStep));
 }
