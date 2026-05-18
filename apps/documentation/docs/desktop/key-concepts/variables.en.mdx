@@ -3,7 +3,8 @@ title: Variables
 ---
 
 <Definition>
-Variables are data fields that you define in your protocol to collect information about ego, alters, and edges during the interview.
+  Variables are data fields that you define in your protocol to collect
+  information about ego, alters, and edges during the interview.
 </Definition>
 
 ## Overview
@@ -11,6 +12,7 @@ Variables are data fields that you define in your protocol to collect informatio
 Variables are the fundamental data elements in Network Canvas protocols. Every piece of information you collect—from an alter's name to the strength of a relationship—is stored in a variable. Understanding variables is essential for designing effective protocols and working with your exported data.
 
 When you create a protocol in Architect, you define variables by:
+
 1. Choosing which entity type they belong to (ego, node, or edge)
 2. Selecting a variable type (text, number, boolean, categorical, etc.)
 3. Assigning an [input control](/en/desktop/key-concepts/input-controls) that determines how participants provide data
@@ -80,6 +82,7 @@ Once you create a variable, you can use it across multiple stages in your protoc
 ### Variable persistence
 
 Variables persist throughout the interview:
+
 - Values set on early stages are available on later stages
 - You can use [skip logic](/en/desktop/key-concepts/skip-logic) to conditionally show stages based on variable values
 - You can use [network filtering](/en/desktop/key-concepts/network-filtering) to show only entities with specific variable values
@@ -109,10 +112,12 @@ When configuring bins:
 Some variables are created automatically:
 
 **Layout variables:** Created when you add a Sociogram interface
+
 - Store x/y coordinates of node positions
 - Named by the Sociogram stage
 
 **System variables:** Network Canvas creates these automatically
+
 - `networkCanvasUUID` - Unique identifier for each entity
 - `networkCanvasEgoUUID` - Unique identifier for ego
 - Timestamps and session metadata
@@ -122,11 +127,13 @@ Some variables are created automatically:
 ### Use descriptive names
 
 **Good examples:**
+
 - `close_friend` (clear meaning)
 - `contact_frequency` (describes what's measured)
 - `provides_emotional_support` (unambiguous)
 
 **Poor examples:**
+
 - `var1` (meaningless)
 - `q3` (not self-documenting)
 - `test` (unclear purpose)
@@ -134,11 +141,13 @@ Some variables are created automatically:
 ### Use consistent conventions
 
 Choose a naming style and stick to it:
+
 - **snake_case** (recommended): `contact_frequency`, `close_friend`
 - **camelCase**: `contactFrequency`, `closeFriend`
 - **PascalCase**: `ContactFrequency`, `CloseFriend`
 
 **Avoid:**
+
 - Spaces: "contact frequency" (problematic in data analysis)
 - Special characters: `contact-frequency` (hyphens can be interpreted as minus signs)
 - Starting with numbers: `1contact` (invalid in many systems)
@@ -151,6 +160,7 @@ Choose a naming style and stick to it:
 ### Plan for data analysis
 
 Consider how variables will appear in exported data:
+
 - R and Python prefer snake_case
 - Statistical packages prefer short names
 - Avoid abbreviations that are unclear months later
@@ -160,6 +170,7 @@ Consider how variables will appear in exported data:
 ### Viewing all variables
 
 Use the [Codebook](/en/desktop/key-concepts/codebook) in Architect:
+
 1. Click **Manage codebook** in your protocol
 2. View all variables organized by entity type
 3. See where each variable is used
@@ -174,6 +185,7 @@ To change immutable properties, create a new variable with the desired settings,
 ### Deleting variables
 
 You can only delete unused variables:
+
 1. Open the Codebook
 2. Find variables marked "not in use"
 3. Delete unused variables
@@ -187,12 +199,14 @@ You can only delete unused variables:
 Variables appear as columns in CSV files:
 
 **Ego file:** Ego variables as columns
+
 ```csv
 ego_id,networkCanvasEgoUUID,age,gender
 1,abc123,34,Male
 ```
 
 **Alter files:** Alter variables as columns
+
 ```csv
 ego_id,alter_id,networkCanvasUUID,name,age,close_friend
 1,1,xyz789,John,32,true
@@ -200,6 +214,7 @@ ego_id,alter_id,networkCanvasUUID,name,age,close_friend
 ```
 
 **Edge files:** Edge variables as columns
+
 ```csv
 ego_id,edge_id,from,to,relationship_strength,frequency
 1,1,1,2,strong,weekly
@@ -210,24 +225,29 @@ ego_id,edge_id,from,to,relationship_strength,frequency
 Different variable types require different analytical approaches:
 
 **Categorical/Ordinal:**
+
 - Use frequency tables, cross-tabs
 - Chi-square tests, logistic regression
 
 **Boolean:**
+
 - Treat as categorical with two levels
 - Can convert to 0/1 for regression
 
 **Numerical:**
+
 - Descriptive statistics (mean, median, SD)
 - Correlation, regression, t-tests
 
 **Text:**
+
 - Qualitative analysis
 - Content analysis, coding
 
 ### Variable naming in exports
 
 Variable names in your protocol become column names in exported data:
+
 - `close_friend` variable → `close_friend` column
 - Categorical variables → Multiple columns (for checkboxes) or single column (for radio buttons)
 - Layout variables → `x` and `y` columns
@@ -290,11 +310,13 @@ support_frequency: Ordinal (Radio Button Group)
 ### Variable values not in export
 
 **Cause:**
+
 - Variable not assigned on any stage
 - Forms not completed during interview
 - Validation prevented completion
 
 **Solution:**
+
 - Verify variables are used on stages
 - Check that stages were shown (not skipped)
 - Review validation rules

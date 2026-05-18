@@ -1,5 +1,5 @@
 ---
-"@codaco/interview": prerelease
+'@codaco/interview': prerelease
 ---
 
 Document the canonical CSS chain in `dist/styles.css` more emphatically: importing `@codaco/interview/styles.css` is **mandatory** for any host loading the package — without it, Tailwind v4's auto-detection won't reach `node_modules/@codaco/interview/dist` and the stage interface utilities (`.interface`, ActionButton sizing, QuickAdd toggle dimensions, etc.) won't be generated, leaving components unstyled.

@@ -1,4 +1,4 @@
-import { hash } from "ohash";
+import { hash } from 'ohash';
 
 /**
  * Computes the dedup hash for a protocol from its structural definition only
@@ -12,6 +12,9 @@ import { hash } from "ohash";
  *   - Interview package analytics (forwarded as protocol_hash super property)
  *   - Network-exporters (already reads protocol.hash from caller)
  */
-export function hashProtocol(protocol: { codebook: unknown; stages: unknown }): string {
-	return hash({ codebook: protocol.codebook, stages: protocol.stages });
+export function hashProtocol(protocol: {
+  codebook: unknown;
+  stages: unknown;
+}): string {
+  return hash({ codebook: protocol.codebook, stages: protocol.stages });
 }

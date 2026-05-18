@@ -1,75 +1,99 @@
-import { getCSSVariableAsNumber } from "@codaco/ui/lib/utils/CSSVariables";
-import cx from "classnames";
-import { motion } from "framer-motion";
-import PropTypes from "prop-types";
-import { connect } from "react-redux";
-import { compose, withHandlers } from "recompose";
-import timelineImages from "../../images/timeline";
-import { get } from "../../utils/lodash-replacements";
-import { currentStageIndex } from "../../utils/matchSessionPath";
+import cx from 'classnames';
+import { motion } from 'framer-motion';
+import PropTypes from 'prop-types';
+import { connect } from 'react-redux';
+import { compose, withHandlers } from 'recompose';
 
-const getTimelineImage = (type) => get(timelineImages, type, timelineImages.Default);
+import { getCSSVariableAsNumber } from '@codaco/ui/lib/utils/CSSVariables';
 
-const StagePreview = ({ item: { type, label, index, id }, handleOpenStage, active }) => {
-	const classes = cx("stage-preview", {
-		"stage-preview--current": active,
-	});
+import timelineImages from '../../images/timeline';
+import { get } from '../../utils/lodash-replacements';
+import { currentStageIndex } from '../../utils/matchSessionPath';
 
-	const baseAnimationDuration = getCSSVariableAsNumber("--animation-duration-standard-ms") / 1000;
+const getTimelineImage = (type) =>
+  get(timelineImages, type, timelineImages.Default);
 
-	const timelineVariants = {
-		expanded: {
-			y: 0,
-			opacity: 1,
-			height: "100%",
-			transition: {
-				duration: baseAnimationDuration / 3,
-			},
-		},
-		normal: {
-			y: "-100%",
-			opacity: 0,
-			height: 0,
-			transition: {
-				duration: baseAnimationDuration / 3,
-			},
-		},
-	};
+const StagePreview = ({
+  item: { type, label, index, id },
+  handleOpenStage,
+  active,
+}) => {
+  const classes = cx('stage-preview', {
+    'stage-preview--current': active,
+  });
 
-	return (
-		<div onClick={handleOpenStage} className={classes} data-stage-name={id} data-stage-id={index}>
-			<motion.div className="stage-preview__notch" variants={timelineVariants} key={id} />
-			<div className="stage-preview__image">
-				<img src={getTimelineImage(type)} alt="NameGenerator Interface" title="NameGenerator Interface" />
-			</div>
-			<div className="stage-preview__label">
-				{index + 1}.{label}
-			</div>
-		</div>
-	);
+  const baseAnimationDuration =
+    getCSSVariableAsNumber('--animation-duration-standard-ms') / 1000;
+
+  const timelineVariants = {
+    expanded: {
+      y: 0,
+      opacity: 1,
+      height: '100%',
+      transition: {
+        duration: baseAnimationDuration / 3,
+      },
+    },
+    normal: {
+      y: '-100%',
+      opacity: 0,
+      height: 0,
+      transition: {
+        duration: baseAnimationDuration / 3,
+      },
+    },
+  };
+
+  return (
+    <div
+      onClick={handleOpenStage}
+      className={classes}
+      data-stage-name={id}
+      data-stage-id={index}
+    >
+      <motion.div
+        className="stage-preview__notch"
+        variants={timelineVariants}
+        key={id}
+      />
+      <div className="stage-preview__image">
+        <img
+          src={getTimelineImage(type)}
+          alt="NameGenerator Interface"
+          title="NameGenerator Interface"
+        />
+      </div>
+      <div className="stage-preview__label">
+        {index + 1}.{label}
+      </div>
+    </div>
+  );
 };
 
 const stagePreviewHandlers = withHandlers({
-	handleOpenStage: (props) => () => {
-		const {
-			item: { index: stageIndex },
-			onStageSelect,
-			setExpanded,
-		} = props;
+  handleOpenStage: (props) => () => {
+    const {
+      item: { index: stageIndex },
+      onStageSelect,
+      setExpanded,
+    } = props;
 
-		onStageSelect(stageIndex);
-		setExpanded(false);
-	},
+    onStageSelect(stageIndex);
+    setExpanded(false);
+  },
 });
 
 const mapStateToProps = (state) => ({
-	currentStageIndex: currentStageIndex(state.router.location.pathname),
+  currentStageIndex: currentStageIndex(state.router.location.pathname),
 });
 
 StagePreview.propTypes = {
-	item: PropTypes.object.isRequired,
-	active: PropTypes.bool.isRequired,
-	handleOpenStage: PropTypes.func.isRequired,
+  item: PropTypes.object.isRequired,
+  active: PropTypes.bool.isRequired,
+  handleOpenStage: PropTypes.func.isRequired,
 };
 
-export default compose(connect(mapStateToProps), stagePreviewHandlers)(StagePreview);
+export default compose(
+  connect(mapStateToProps),
+  stagePreviewHandlers,
+)(StagePreview);

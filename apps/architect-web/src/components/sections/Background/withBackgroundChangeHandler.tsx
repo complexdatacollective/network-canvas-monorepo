@@ -1,59 +1,68 @@
-import { compose, withHandlers, withState } from "react-recompose";
-import { connect } from "react-redux";
-import { change, formValueSelector } from "redux-form";
-import type { RootState } from "~/ducks/modules/root";
+import { compose, withHandlers, withState } from 'react-recompose';
+import { connect } from 'react-redux';
+import { change, formValueSelector } from 'redux-form';
+
+import type { RootState } from '~/ducks/modules/root';
 
 type OwnProps = {
-	form: string;
+  form: string;
 };
 
 type StateProps = {
-	useImage: boolean;
+  useImage: boolean;
 };
 
 type DispatchProps = {
-	changeForm: typeof change;
+  changeForm: typeof change;
 };
 
 type WithStateProps = StateProps &
-	DispatchProps &
-	OwnProps & {
-		setUseImage: (useImage: boolean) => void;
-	};
+  DispatchProps &
+  OwnProps & {
+    setUseImage: (useImage: boolean) => void;
+  };
 
-const withBackgroundChangeHandlerState = connect<StateProps, DispatchProps, OwnProps, RootState>(
-	(state, { form }) => ({
-		useImage: !!formValueSelector(form)(state, "background.image"),
-	}),
-	{ changeForm: change },
+const withBackgroundChangeHandlerState = connect<
+  StateProps,
+  DispatchProps,
+  OwnProps,
+  RootState
+>(
+  (state, { form }) => ({
+    useImage: !!formValueSelector(form)(state, 'background.image'),
+  }),
+  { changeForm: change },
 );
 
 const withBackgroundChangeHandlerEnabled = withState<
-	StateProps & DispatchProps & OwnProps,
-	boolean,
-	"useImage",
-	"setUseImage"
->("useImage", "setUseImage", ({ useImage }) => !!useImage);
+  StateProps & DispatchProps & OwnProps,
+  boolean,
+  'useImage',
+  'setUseImage'
+>('useImage', 'setUseImage', ({ useImage }) => !!useImage);
 
-const withBackgroundChangeHandlers = withHandlers<WithStateProps, { handleChooseBackgroundType: () => void }>({
-	handleChooseBackgroundType:
-		({ setUseImage, useImage, form, changeForm }) =>
-		() => {
-			if (useImage) {
-				changeForm(form, "background.image", null);
-			} else {
-				changeForm(form, "background.concentricCircles", null);
-				changeForm(form, "background.skewedTowardCenter", null);
-			}
+const withBackgroundChangeHandlers = withHandlers<
+  WithStateProps,
+  { handleChooseBackgroundType: () => void }
+>({
+  handleChooseBackgroundType:
+    ({ setUseImage, useImage, form, changeForm }) =>
+    () => {
+      if (useImage) {
+        changeForm(form, 'background.image', null);
+      } else {
+        changeForm(form, 'background.concentricCircles', null);
+        changeForm(form, 'background.skewedTowardCenter', null);
+      }
 
-			setUseImage(!useImage);
-		},
+      setUseImage(!useImage);
+    },
 });
 
 const withBackgroundChangeHandler = compose(
-	withBackgroundChangeHandlerState,
-	withBackgroundChangeHandlerEnabled,
-	withBackgroundChangeHandlers,
+  withBackgroundChangeHandlerState,
+  withBackgroundChangeHandlerEnabled,
+  withBackgroundChangeHandlers,
 );
 
 export default withBackgroundChangeHandler;

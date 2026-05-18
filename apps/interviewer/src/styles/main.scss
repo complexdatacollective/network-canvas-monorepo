@@ -15,7 +15,7 @@ $image-path: '@codaco/ui/lib/assets/images';
 
   &:focus {
     outline: none;
-   }
+  }
 }
 
 :root {
@@ -24,7 +24,7 @@ $image-path: '@codaco/ui/lib/assets/images';
   --session-panel-width: 9rem; // Does *not* change actual timeline width (which is automatically calculated). Used for drop obstacle and stage margins
   --interface-prompt-flex-basis: 8rem;
   --base-font-size: 1.75vmin;
-  --border-radius: .75rem;
+  --border-radius: 0.75rem;
   --padding-unit: 1rem;
   --form-intro-panel-background: var(--color-cyber-grape);
 }
@@ -75,4 +75,3 @@ a {
     border-radius: var(--border-radius);
   }
 }
-

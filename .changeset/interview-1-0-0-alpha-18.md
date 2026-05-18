@@ -1,5 +1,5 @@
 ---
-"@codaco/interview": prerelease
+'@codaco/interview': prerelease
 ---
 
 `Narrative/PresetSwitcher` rebuilt on top of fresco-ui's `Popover`/`Accordion`/`RadioItem` wrappers, with a drag-handle button driven by `useDragControls` and a pure-toggle popover (only the trigger opens or closes it). The floating panel uses `Surface spacing='sm'` with explicit `shadow-xl`, accordion sections flatten their header into a single `Trigger` that applies `headingVariants()` directly, and the unused `presetLabelVariants`/`presetContentVariants`/`prevPresetRef` from the prior `AnimatePresence`-based version are removed.

@@ -1,5 +1,6 @@
-import PropTypes from "prop-types";
-import AutoFileDrop from "../Form/AutoFileDrop";
+import PropTypes from 'prop-types';
+
+import AutoFileDrop from '../Form/AutoFileDrop';
 
 /**
  * Data source, which can be async or json file
@@ -7,19 +8,19 @@ import AutoFileDrop from "../Form/AutoFileDrop";
  * Value should be assetId
  */
 const NewAsset = ({ type, onCreate }) => (
-	<>
-		<AutoFileDrop type={type} onDrop={onCreate} />
-	</>
+  <>
+    <AutoFileDrop type={type} onDrop={onCreate} />
+  </>
 );
 
 NewAsset.propTypes = {
-	type: PropTypes.string,
-	onCreate: PropTypes.func,
+  type: PropTypes.string,
+  onCreate: PropTypes.func,
 };
 
 NewAsset.defaultProps = {
-	type: null,
-	onCreate: () => {},
+  type: null,
+  onCreate: () => {},
 };
 
 export default NewAsset;

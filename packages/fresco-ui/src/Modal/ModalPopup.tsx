@@ -1,35 +1,39 @@
-import { Dialog } from "@base-ui/react/dialog";
+import { Dialog } from '@base-ui/react/dialog';
 import {
-	type HTMLMotionProps,
-	LayoutGroup,
-	motion,
-	type TargetAndTransition,
-	usePresence,
-	type VariantLabels,
-} from "motion/react";
-import { type ComponentProps, useEffect, useId } from "react";
-import { useSafeAnimate } from "../hooks/useSafeAnimate";
+  type HTMLMotionProps,
+  LayoutGroup,
+  motion,
+  type TargetAndTransition,
+  usePresence,
+  type VariantLabels,
+} from 'motion/react';
+import { type ComponentProps, useEffect, useId } from 'react';
+
+import { useSafeAnimate } from '../hooks/useSafeAnimate';
 
 /**
  * Makes the opacity property required in TargetAndTransition.
  * Base-UI's dialog component detects animation completion via opacity changes.
  */
 type TargetWithRequiredOpacity = TargetAndTransition & {
-	opacity: number;
+  opacity: number;
 };
 
 /**
  * Animation props with required opacity for Base-UI dialog detection.
  */
 type AnimationPropsWithRequiredOpacity = {
-	initial?: boolean | VariantLabels | TargetWithRequiredOpacity;
-	animate?: TargetWithRequiredOpacity | VariantLabels;
-	exit?: TargetWithRequiredOpacity | VariantLabels;
-	transition?: HTMLMotionProps<"div">["transition"];
+  initial?: boolean | VariantLabels | TargetWithRequiredOpacity;
+  animate?: TargetWithRequiredOpacity | VariantLabels;
+  exit?: TargetWithRequiredOpacity | VariantLabels;
+  transition?: HTMLMotionProps<'div'>['transition'];
 };
 
-type BaseModalPopupProps = Omit<ComponentProps<typeof motion.div>, "initial" | "animate" | "exit" | "layoutId"> &
-	Omit<Dialog.Popup.Props, "render">;
+type BaseModalPopupProps = Omit<
+  ComponentProps<typeof motion.div>,
+  'initial' | 'animate' | 'exit' | 'layoutId'
+> &
+  Omit<Dialog.Popup.Props, 'render'>;
 
 /**
  * Props for ModalPopup.
@@ -39,15 +43,15 @@ type BaseModalPopupProps = Omit<ComponentProps<typeof motion.div>, "initial" | "
  * - layoutId: For shared layout animations (incompatible with animation props)
  */
 type ModalPopupProps = BaseModalPopupProps &
-	(
-		| (AnimationPropsWithRequiredOpacity & { layoutId?: never })
-		| {
-				layoutId: string;
-				initial?: never;
-				animate?: never;
-				exit?: never;
-		  }
-	);
+  (
+    | (AnimationPropsWithRequiredOpacity & { layoutId?: never })
+    | {
+        layoutId: string;
+        initial?: never;
+        animate?: never;
+        exit?: never;
+      }
+  );
 
 /**
  * A modal popup dialog using Base-UI's Dialog and motion for animations.
@@ -59,81 +63,93 @@ type ModalPopupProps = BaseModalPopupProps &
  * @param className Additional class names for styling.
  * @param props Animation props or layoutId, along with other Dialog.Popup props.
  */
-export default function ModalPopup({ children, className, ...props }: ModalPopupProps) {
-	const hasLayoutId = "layoutId" in props && props.layoutId !== undefined;
+export default function ModalPopup({
+  children,
+  className,
+  ...props
+}: ModalPopupProps) {
+  const hasLayoutId = 'layoutId' in props && props.layoutId !== undefined;
 
-	const id = useId();
+  const id = useId();
 
-	// Determine animation: layoutId gets minimal opacity so that base-ui detects it,
-	// custom props used as-is, otherwise default
-	// Note: do NOT use a layout transition here, as child elements inherit it,
-	// and it ends up looking bad.
-	const animation = hasLayoutId
-		? ({
-				initial: { opacity: 0.9999 },
-				animate: { opacity: 1, transition: { when: "beforeChildren" } },
-				exit: { opacity: 0.9999, transition: { when: "afterChildren" } },
-			} as const)
-		: {};
+  // Determine animation: layoutId gets minimal opacity so that base-ui detects it,
+  // custom props used as-is, otherwise default
+  // Note: do NOT use a layout transition here, as child elements inherit it,
+  // and it ends up looking bad.
+  const animation = hasLayoutId
+    ? ({
+        initial: { opacity: 0.9999 },
+        animate: { opacity: 1, transition: { when: 'beforeChildren' } },
+        exit: { opacity: 0.9999, transition: { when: 'afterChildren' } },
+      } as const)
+    : {};
 
-	const [scope, animate] = useSafeAnimate();
+  const [scope, animate] = useSafeAnimate();
 
-	const [isPresent, safeToRemove] = usePresence(!hasLayoutId);
+  const [isPresent, safeToRemove] = usePresence(!hasLayoutId);
 
-	useEffect(() => {
-		if (hasLayoutId) {
-			return;
-		}
+  useEffect(() => {
+    if (hasLayoutId) {
+      return;
+    }
 
-		if (isPresent) {
-			const enterAnimation = async () => {
-				await animate(
-					scope.current,
-					{
-						opacity: [0, 1],
-						y: ["-10%", "0%"],
-						scale: [1.2, 1],
-						filter: ["blur(10px)", "blur(0px)"],
-					},
-					{
-						when: "beforeChildren",
-						type: "spring",
-						stiffness: 500,
-						damping: 30,
-					},
-				);
-			};
-			void enterAnimation();
-		} else {
-			const exitAnimation = async () => {
-				await animate(scope.current, {
-					opacity: [1, 0],
-					y: ["0%", "-10%"],
-					scale: [1, 1.5],
-					filter: ["blur(0px)", "blur(10px)"],
-				});
-				safeToRemove();
-			};
+    if (isPresent) {
+      const enterAnimation = async () => {
+        await animate(
+          scope.current,
+          {
+            opacity: [0, 1],
+            y: ['-10%', '0%'],
+            scale: [1.2, 1],
+            filter: ['blur(10px)', 'blur(0px)'],
+          },
+          {
+            when: 'beforeChildren',
+            type: 'spring',
+            stiffness: 500,
+            damping: 30,
+          },
+        );
+      };
+      void enterAnimation();
+    } else {
+      const exitAnimation = async () => {
+        await animate(scope.current, {
+          opacity: [1, 0],
+          y: ['0%', '-10%'],
+          scale: [1, 1.5],
+          filter: ['blur(0px)', 'blur(10px)'],
+        });
+        safeToRemove();
+      };
 
-			void exitAnimation();
-		}
-	}, [isPresent, scope, safeToRemove, animate, hasLayoutId]);
+      void exitAnimation();
+    }
+  }, [isPresent, scope, safeToRemove, animate, hasLayoutId]);
 
-	const popup = (
-		<Dialog.Popup
-			// Must render motion.div to properly detect animation completion for Base-UI's Dialog
-			render={<motion.div ref={scope} className={className} {...props} {...animation} style={{ borderRadius: 28 }} />}
-		>
-			{children}
-		</Dialog.Popup>
-	);
+  const popup = (
+    <Dialog.Popup
+      // Must render motion.div to properly detect animation completion for Base-UI's Dialog
+      render={
+        <motion.div
+          ref={scope}
+          className={className}
+          {...props}
+          {...animation}
+          style={{ borderRadius: 28 }}
+        />
+      }
+    >
+      {children}
+    </Dialog.Popup>
+  );
 
-	// When using layoutId for shared-element morph, we must NOT wrap in a
-	// LayoutGroup with a unique id — that namespaces the layoutId and prevents
-	// it from matching the trigger element rendered outside the popup.
-	if (hasLayoutId) {
-		return popup;
-	}
+  // When using layoutId for shared-element morph, we must NOT wrap in a
+  // LayoutGroup with a unique id — that namespaces the layoutId and prevents
+  // it from matching the trigger element rendered outside the popup.
+  if (hasLayoutId) {
+    return popup;
+  }
 
-	return <LayoutGroup id={id}>{popup}</LayoutGroup>;
+  return <LayoutGroup id={id}>{popup}</LayoutGroup>;
 }

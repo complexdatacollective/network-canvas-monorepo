@@ -1,5 +1,5 @@
-import { electronAPI } from "@utils/electronBridge";
-import { v4 as uuid } from "uuid";
+import { electronAPI } from '@utils/electronBridge';
+import { v4 as uuid } from 'uuid';
 
 /**
  * Generates a path in the application /tmp/ to be used
@@ -8,8 +8,8 @@ import { v4 as uuid } from "uuid";
  * @returns The destination path in /tmp/.
  */
 const getLocalDirectoryFromArchivePath = async () => {
-	const tempPath = await electronAPI.app.getPath("temp");
-	return electronAPI.path.join(tempPath, "protocols", uuid());
+  const tempPath = await electronAPI.app.getPath('temp');
+  return electronAPI.path.join(tempPath, 'protocols', uuid());
 };
 
 export default getLocalDirectoryFromArchivePath;

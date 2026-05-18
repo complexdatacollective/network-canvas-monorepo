@@ -1,49 +1,49 @@
 {
-	"name": "@codaco/shared-consts",
-	"version": "5.0.0",
-	"description": "Shared constants and typescript definitions for the Network Canvas project.",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
-		"directory": "packages/shared-consts"
-	},
-	"type": "module",
-	"main": "./dist/index.cjs",
-	"module": "./dist/index.js",
-	"types": "./dist/index.d.ts",
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js",
-			"require": "./dist/index.cjs"
-		}
-	},
-	"files": [
-		"dist"
-	],
-	"scripts": {
-		"build": "tsgo --noEmit && vite build",
-		"dev": "npm run build -- --watch",
-		"clean": "rm -rf .turbo node_modules dist",
-		"typecheck": "tsc --build --noEmit"
-	},
-	"keywords": [
-		"typescript",
-		"library"
-	],
-	"author": "Complex Data Collective <hello@complexdatacollective.org>",
-	"license": "MIT",
-	"engines": {
-		"node": ">=20.0.0"
-	},
-	"devDependencies": {
-		"@codaco/tsconfig": "workspace:*",
-		"@types/node": "catalog:",
-		"typescript": "catalog:",
-		"vite": "catalog:",
-		"vite-plugin-dts": "catalog:"
-	},
-	"dependencies": {
-		"zod": "catalog:"
-	}
+  "name": "@codaco/shared-consts",
+  "version": "5.0.0",
+  "description": "Shared constants and typescript definitions for the Network Canvas project.",
+  "keywords": [
+    "library",
+    "typescript"
+  ],
+  "license": "MIT",
+  "author": "Complex Data Collective <hello@complexdatacollective.org>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+    "directory": "packages/shared-consts"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsgo --noEmit && vite build",
+    "dev": "npm run build -- --watch",
+    "clean": "rm -rf .turbo node_modules dist",
+    "typecheck": "tsc --build --noEmit"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@codaco/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
 }

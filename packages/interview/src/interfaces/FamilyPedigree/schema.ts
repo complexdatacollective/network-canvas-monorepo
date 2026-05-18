@@ -10,16 +10,16 @@
 //                Also used when a person is both egg donor AND gestational carrier
 //                (traditional surrogacy), per the paper's recommendation.
 //   surrogate  — gestational carrier only, not providing gametes ("S" label)
-type ParentType = "biological" | "social" | "donor" | "surrogate" | "adoptive";
+type ParentType = 'biological' | 'social' | 'donor' | 'surrogate' | 'adoptive';
 
 export type ParentEdge = {
-	relationshipType: ParentType;
-	isActive: boolean;
-	// Explicit gestational carrier flag. Needed because sex/gender cannot reliably
-	// indicate who carries a pregnancy (trans men and non-binary people can gestate).
-	// Determines pregnancy symbol positioning and gestational exposure tracking.
-	// Implicit defaults by parentType: surrogate→true, donor→false, social→false.
-	// Must be explicit for: donor who also carries (traditional surrogacy),
-	// biological parent in ART who is gestational-only (e.g. IVF with donor egg).
-	isGestationalCarrier?: boolean;
+  relationshipType: ParentType;
+  isActive: boolean;
+  // Explicit gestational carrier flag. Needed because sex/gender cannot reliably
+  // indicate who carries a pregnancy (trans men and non-binary people can gestate).
+  // Determines pregnancy symbol positioning and gestational exposure tracking.
+  // Implicit defaults by parentType: surrogate→true, donor→false, social→false.
+  // Must be explicit for: donor who also carries (traditional surrogacy),
+  // biological parent in ART who is gestational-only (e.g. IVF with donor egg).
+  isGestationalCarrier?: boolean;
 };

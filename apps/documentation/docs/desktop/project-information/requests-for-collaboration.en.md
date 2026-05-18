@@ -34,21 +34,17 @@ All collaboration requests should be sent by email to [info@networkcanvas.com](m
 Depending on the intended collaboration, one of the following will apply:
 
 - Subcontract through Northwestern University
-
   - Institutional subcontracts are the most common mechanism for collaboration with our team. They allow for sustained engagement with multiple members of our core Network Canvas team based at Northwestern University and allow for collaboration across multiple areas of a study (e.g., software development and implementation consultation).
   - Subcontracts can be planned preceding a grant submission or after a grant is awarded, and always require a scope of work and a budget that includes indirect costs applied by Northwestern University.
 
 - Subcontract through the University of Oxford
-
   - Institutional subcontracts through the University of Oxford are appropriate when an individual investigator or research group seeks collaboration directly with project Co-I Dr. Bernie Hogan specifically.
   - Subcontracts can be planned preceding a grant submission or after a grant is awarded, and always require a scope of work and a budget that includes indirect costs applied by the University of Oxford.
 
 - Consultancy through CODACO
-
   - Consultation agreements through our not-for-profit CODACO may be appropriate when an intended collaboration entails multiple members of our team and where a subcontract cannot be undertaken (e.g., budget constraints, alignment of research to academic team’s foci).
 
 - Individual Consultancy
-
   - Individual consultation agreements between a single member of our team and an external partner may be appropriate when the scope of collaboration is limited to a single activity that does not require involvement of more than one member (e.g., a limited scope software development request).
   - Consultation agreement would be established between the member of the team and the external partner directly.
 

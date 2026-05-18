@@ -1,56 +1,64 @@
 {
-	"$schema": "https://unpkg.com/knip@latest/schema.json",
-	"ignoreWorkspaces": ["apps/interviewer", "apps/architect-desktop"],
-	"ignoreExportsUsedInFile": { "type": true },
-	"tags": ["-public"],
-	"workspaces": {
-		"packages/ui": {},
-		"apps/documentation": {
-			"ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]
-		},
-		"packages/interview": {
-			"entry": [
-				"src/**/*.stories.tsx",
-				"e2e/specs/**/*.ts",
-				"e2e/host/src/main.tsx",
-				"e2e/host/vite.config.ts",
-				"e2e/host/scripts/*.ts",
-				"e2e/scripts/*.ts",
-				"e2e/helpers/assetServer.ts",
-				"e2e/fixtures/window-test.d.ts",
-				"e2e/host/src/global-augmentations.d.ts"
-			],
-			"project": ["src/**/*.{ts,tsx,js}", ".storybook/**/*.{ts,tsx}", "e2e/**/*.{ts,tsx}"],
-			"paths": {
-				"~/*": ["./*"]
-			}
-		},
-		"packages/protocol-validation": {},
-		"packages/network-exporters": {},
-		"tooling/tailwind": {
-			"entry": [
-				"shared/plugins/elevation/index.ts",
-				"shared/plugins/elevation/elevation.ts",
-				"shared/plugins/elevation/jwc.ts",
-				"shared/plugins/elevation/utils.ts",
-				"shared/plugins/inset-surface/index.ts",
-				"shared/plugins/inset-surface/inset-surface.ts",
-				"shared/plugins/motion-spring.ts"
-			],
-			"project": ["fresco/**/*.{ts,css}", "shared/**/*.{ts,css}"],
-			"ignoreDependencies": ["@fontsource-variable/inclusive-sans", "@fontsource-variable/nunito"]
-		},
-		"apps/architect-web": {
-			"entry": ["index.html!", "preview/index.html!", "src/preview-main.tsx!"],
-			"vite": true,
-			"project": ["src/**/*.{ts,tsx}"],
-			"paths": {
-				"~/*": ["./src/*"]
-			},
-			"ignoreDependencies": ["@types/recompose"],
-			"ignore": ["src/**/*.d.ts", "src/test/**"]
-		},
-		"workers/development-protocol": {},
-		"workers/posthog-proxy": {}
-	}
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "ignoreWorkspaces": ["apps/interviewer", "apps/architect-desktop"],
+  "ignoreExportsUsedInFile": { "type": true },
+  "ignoreDependencies": ["oxlint-tailwindcss"],
+  "tags": ["-public"],
+  "workspaces": {
+    "packages/ui": {},
+    "apps/documentation": {
+      "ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]
+    },
+    "packages/interview": {
+      "entry": [
+        "src/**/*.stories.tsx",
+        "e2e/specs/**/*.ts",
+        "e2e/host/src/main.tsx",
+        "e2e/host/vite.config.ts",
+        "e2e/host/scripts/*.ts",
+        "e2e/scripts/*.ts",
+        "e2e/helpers/assetServer.ts",
+        "e2e/fixtures/window-test.d.ts",
+        "e2e/host/src/global-augmentations.d.ts"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx,js}",
+        ".storybook/**/*.{ts,tsx}",
+        "e2e/**/*.{ts,tsx}"
+      ],
+      "paths": {
+        "~/*": ["./*"]
+      }
+    },
+    "packages/protocol-validation": {},
+    "packages/network-exporters": {},
+    "tooling/tailwind": {
+      "entry": [
+        "shared/plugins/elevation/index.ts",
+        "shared/plugins/elevation/elevation.ts",
+        "shared/plugins/elevation/jwc.ts",
+        "shared/plugins/elevation/utils.ts",
+        "shared/plugins/inset-surface/index.ts",
+        "shared/plugins/inset-surface/inset-surface.ts",
+        "shared/plugins/motion-spring.ts"
+      ],
+      "project": ["fresco/**/*.{ts,css}", "shared/**/*.{ts,css}"],
+      "ignoreDependencies": [
+        "@fontsource-variable/inclusive-sans",
+        "@fontsource-variable/nunito"
+      ]
+    },
+    "apps/architect-web": {
+      "entry": ["index.html!", "preview/index.html!", "src/preview-main.tsx!"],
+      "vite": true,
+      "project": ["src/**/*.{ts,tsx}"],
+      "paths": {
+        "~/*": ["./src/*"]
+      },
+      "ignoreDependencies": ["@types/recompose"],
+      "ignore": ["src/**/*.d.ts", "src/test/**"]
+    },
+    "workers/development-protocol": {},
+    "workers/posthog-proxy": {}
+  }
 }

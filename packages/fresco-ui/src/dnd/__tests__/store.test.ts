@@ -1,378 +1,379 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { createDndStore, defaultInitState } from "../store";
-import type { DropTarget } from "../types";
-import { boundsHitDetector } from "../utils";
+import { beforeEach, describe, expect, it } from 'vitest';
 
-describe("DnD Store", () => {
-	let store: ReturnType<typeof createDndStore>;
+import { createDndStore, defaultInitState } from '../store';
+import type { DropTarget } from '../types';
+import { boundsHitDetector } from '../utils';
 
-	beforeEach(() => {
-		// Create a fresh store instance for each test
-		store = createDndStore(defaultInitState, boundsHitDetector);
-	});
+describe('DnD Store', () => {
+  let store: ReturnType<typeof createDndStore>;
 
-	describe("startDrag", () => {
-		it("should initialize drag state", () => {
-			const dragItem = {
-				id: "drag-1",
-				type: "test",
-				metadata: { type: "test" },
-				_sourceZone: null,
-			};
+  beforeEach(() => {
+    // Create a fresh store instance for each test
+    store = createDndStore(defaultInitState, boundsHitDetector);
+  });
 
-			const position = {
-				x: 100,
-				y: 200,
-				width: 50,
-				height: 50,
-			};
+  describe('startDrag', () => {
+    it('should initialize drag state', () => {
+      const dragItem = {
+        id: 'drag-1',
+        type: 'test',
+        metadata: { type: 'test' },
+        _sourceZone: null,
+      };
 
-			store.getState().startDrag(dragItem, position);
+      const position = {
+        x: 100,
+        y: 200,
+        width: 50,
+        height: 50,
+      };
 
-			const state = store.getState();
-			expect(state.isDragging).toBe(true);
-			expect(state.dragItem).toEqual(dragItem);
-			expect(state.dragPosition).toEqual(position);
-			expect(state.activeDropTargetId).toBe(null);
-		});
+      store.getState().startDrag(dragItem, position);
 
-		it("should update canDrop for compatible drop targets", () => {
-			const dropTarget: DropTarget = {
-				id: "drop-1",
-				x: 0,
-				y: 0,
-				width: 100,
-				height: 100,
-				accepts: ["test"],
-			};
+      const state = store.getState();
+      expect(state.isDragging).toBe(true);
+      expect(state.dragItem).toEqual(dragItem);
+      expect(state.dragPosition).toEqual(position);
+      expect(state.activeDropTargetId).toBe(null);
+    });
 
-			const dragItem = {
-				id: "drag-1",
-				type: "test",
-				metadata: { type: "test" },
-				_sourceZone: null,
-			};
+    it('should update canDrop for compatible drop targets', () => {
+      const dropTarget: DropTarget = {
+        id: 'drop-1',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        accepts: ['test'],
+      };
 
-			const position = {
-				x: 100,
-				y: 200,
-				width: 50,
-				height: 50,
-			};
+      const dragItem = {
+        id: 'drag-1',
+        type: 'test',
+        metadata: { type: 'test' },
+        _sourceZone: null,
+      };
 
-			store.getState().registerDropTarget(dropTarget);
-			store.getState().startDrag(dragItem, position);
+      const position = {
+        x: 100,
+        y: 200,
+        width: 50,
+        height: 50,
+      };
 
-			const state = store.getState();
-			const storedTarget = state.dropTargets.get("drop-1");
-			expect(storedTarget?.canDrop).toBe(true);
-		});
-	});
+      store.getState().registerDropTarget(dropTarget);
+      store.getState().startDrag(dragItem, position);
 
-	describe("updateDragPosition", () => {
-		it("should update drag item position", () => {
-			const dragItem = {
-				id: "drag-1",
-				type: "test",
-				metadata: { type: "test" },
-				_sourceZone: null,
-			};
+      const state = store.getState();
+      const storedTarget = state.dropTargets.get('drop-1');
+      expect(storedTarget?.canDrop).toBe(true);
+    });
+  });
 
-			const position = {
-				x: 100,
-				y: 200,
-				width: 50,
-				height: 50,
-			};
+  describe('updateDragPosition', () => {
+    it('should update drag item position', () => {
+      const dragItem = {
+        id: 'drag-1',
+        type: 'test',
+        metadata: { type: 'test' },
+        _sourceZone: null,
+      };
 
-			store.getState().startDrag(dragItem, position);
-			store.getState().updateDragPosition(150, 250);
+      const position = {
+        x: 100,
+        y: 200,
+        width: 50,
+        height: 50,
+      };
 
-			const state = store.getState();
-			expect(state.dragPosition?.x).toBe(150);
-			expect(state.dragPosition?.y).toBe(250);
-		});
+      store.getState().startDrag(dragItem, position);
+      store.getState().updateDragPosition(150, 250);
 
-		it("should not update if no drag item", () => {
-			store.getState().updateDragPosition(150, 250);
-			const state = store.getState();
-			expect(state.dragItem).toBe(null);
-		});
-	});
+      const state = store.getState();
+      expect(state.dragPosition?.x).toBe(150);
+      expect(state.dragPosition?.y).toBe(250);
+    });
 
-	describe("endDrag", () => {
-		it("should clear drag state", () => {
-			const dragItem = {
-				id: "drag-1",
-				type: "test",
-				metadata: { type: "test" },
-				_sourceZone: null,
-			};
+    it('should not update if no drag item', () => {
+      store.getState().updateDragPosition(150, 250);
+      const state = store.getState();
+      expect(state.dragItem).toBe(null);
+    });
+  });
 
-			const position = {
-				x: 100,
-				y: 200,
-				width: 50,
-				height: 50,
-			};
+  describe('endDrag', () => {
+    it('should clear drag state', () => {
+      const dragItem = {
+        id: 'drag-1',
+        type: 'test',
+        metadata: { type: 'test' },
+        _sourceZone: null,
+      };
 
-			store.getState().startDrag(dragItem, position);
-			store.getState().endDrag();
+      const position = {
+        x: 100,
+        y: 200,
+        width: 50,
+        height: 50,
+      };
 
-			const state = store.getState();
-			expect(state.isDragging).toBe(false);
-			expect(state.dragItem).toBe(null);
-			expect(state.dragPosition).toBe(null);
-			expect(state.activeDropTargetId).toBe(null);
-		});
+      store.getState().startDrag(dragItem, position);
+      store.getState().endDrag();
 
-		it("should clear canDrop and isOver states", () => {
-			const dropTarget: DropTarget = {
-				id: "drop-1",
-				x: 0,
-				y: 0,
-				width: 100,
-				height: 100,
-				accepts: ["test"],
-			};
+      const state = store.getState();
+      expect(state.isDragging).toBe(false);
+      expect(state.dragItem).toBe(null);
+      expect(state.dragPosition).toBe(null);
+      expect(state.activeDropTargetId).toBe(null);
+    });
 
-			const dragItem = {
-				id: "drag-1",
-				type: "test",
-				metadata: { type: "test" },
-				_sourceZone: null,
-			};
+    it('should clear canDrop and isOver states', () => {
+      const dropTarget: DropTarget = {
+        id: 'drop-1',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        accepts: ['test'],
+      };
 
-			const position = {
-				x: 100,
-				y: 200,
-				width: 50,
-				height: 50,
-			};
+      const dragItem = {
+        id: 'drag-1',
+        type: 'test',
+        metadata: { type: 'test' },
+        _sourceZone: null,
+      };
 
-			store.getState().registerDropTarget(dropTarget);
-			store.getState().startDrag(dragItem, position);
-			store.getState().endDrag();
+      const position = {
+        x: 100,
+        y: 200,
+        width: 50,
+        height: 50,
+      };
 
-			const state = store.getState();
-			const storedTarget = state.dropTargets.get("drop-1");
-			expect(storedTarget?.canDrop).toBe(false);
-			expect(storedTarget?.isOver).toBe(false);
-		});
-	});
+      store.getState().registerDropTarget(dropTarget);
+      store.getState().startDrag(dragItem, position);
+      store.getState().endDrag();
 
-	describe("registerDropTarget", () => {
-		it("should add drop target to store", () => {
-			const dropTarget: DropTarget = {
-				id: "drop-1",
-				x: 0,
-				y: 0,
-				width: 100,
-				height: 100,
-				accepts: ["test"],
-			};
+      const state = store.getState();
+      const storedTarget = state.dropTargets.get('drop-1');
+      expect(storedTarget?.canDrop).toBe(false);
+      expect(storedTarget?.isOver).toBe(false);
+    });
+  });
 
-			store.getState().registerDropTarget(dropTarget);
+  describe('registerDropTarget', () => {
+    it('should add drop target to store', () => {
+      const dropTarget: DropTarget = {
+        id: 'drop-1',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        accepts: ['test'],
+      };
 
-			const state = store.getState();
-			const storedTarget = state.dropTargets.get("drop-1");
-			expect(storedTarget).toEqual({
-				...dropTarget,
-				canDrop: false,
-				isOver: false,
-			});
-		});
-	});
+      store.getState().registerDropTarget(dropTarget);
 
-	describe("unregisterDropTarget", () => {
-		it("should remove drop target from store", () => {
-			const dropTarget: DropTarget = {
-				id: "drop-1",
-				x: 0,
-				y: 0,
-				width: 100,
-				height: 100,
-				accepts: ["test"],
-			};
+      const state = store.getState();
+      const storedTarget = state.dropTargets.get('drop-1');
+      expect(storedTarget).toEqual({
+        ...dropTarget,
+        canDrop: false,
+        isOver: false,
+      });
+    });
+  });
 
-			store.getState().registerDropTarget(dropTarget);
-			store.getState().unregisterDropTarget("drop-1");
+  describe('unregisterDropTarget', () => {
+    it('should remove drop target from store', () => {
+      const dropTarget: DropTarget = {
+        id: 'drop-1',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        accepts: ['test'],
+      };
 
-			const state = store.getState();
-			expect(state.dropTargets.has("drop-1")).toBe(false);
-		});
+      store.getState().registerDropTarget(dropTarget);
+      store.getState().unregisterDropTarget('drop-1');
 
-		it("should clear activeDropTargetId if it matches", () => {
-			const dropTarget: DropTarget = {
-				id: "drop-1",
-				x: 0,
-				y: 0,
-				width: 100,
-				height: 100,
-				accepts: ["test"],
-			};
+      const state = store.getState();
+      expect(state.dropTargets.has('drop-1')).toBe(false);
+    });
 
-			store.getState().registerDropTarget(dropTarget);
-			store.getState().setActiveDropTarget("drop-1");
-			store.getState().unregisterDropTarget("drop-1");
+    it('should clear activeDropTargetId if it matches', () => {
+      const dropTarget: DropTarget = {
+        id: 'drop-1',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        accepts: ['test'],
+      };
 
-			const state = store.getState();
-			expect(state.activeDropTargetId).toBe(null);
-		});
-	});
+      store.getState().registerDropTarget(dropTarget);
+      store.getState().setActiveDropTarget('drop-1');
+      store.getState().unregisterDropTarget('drop-1');
 
-	describe("hit detection", () => {
-		it("should detect drop target at position and set isOver", () => {
-			const dropTarget: DropTarget = {
-				id: "drop-1",
-				x: 50,
-				y: 50,
-				width: 100,
-				height: 100,
-				accepts: ["test"],
-			};
+      const state = store.getState();
+      expect(state.activeDropTargetId).toBe(null);
+    });
+  });
 
-			const dragItem = {
-				id: "drag-1",
-				type: "test",
-				metadata: { type: "test" },
-				_sourceZone: null,
-			};
+  describe('hit detection', () => {
+    it('should detect drop target at position and set isOver', () => {
+      const dropTarget: DropTarget = {
+        id: 'drop-1',
+        x: 50,
+        y: 50,
+        width: 100,
+        height: 100,
+        accepts: ['test'],
+      };
 
-			const position = {
-				x: 100,
-				y: 100,
-				width: 50,
-				height: 50,
-			};
+      const dragItem = {
+        id: 'drag-1',
+        type: 'test',
+        metadata: { type: 'test' },
+        _sourceZone: null,
+      };
 
-			store.getState().registerDropTarget(dropTarget);
-			store.getState().startDrag(dragItem, position);
-			store.getState().updateDragPosition(100, 100);
+      const position = {
+        x: 100,
+        y: 100,
+        width: 50,
+        height: 50,
+      };
 
-			const state = store.getState();
-			expect(state.activeDropTargetId).toBe("drop-1");
-			const storedTarget = state.dropTargets.get("drop-1");
-			expect(storedTarget?.isOver).toBe(true);
-		});
+      store.getState().registerDropTarget(dropTarget);
+      store.getState().startDrag(dragItem, position);
+      store.getState().updateDragPosition(100, 100);
 
-		it("should not set activeDropTargetId if target does not accept", () => {
-			const dropTarget: DropTarget = {
-				id: "drop-1",
-				x: 50,
-				y: 50,
-				width: 100,
-				height: 100,
-				accepts: ["other"],
-			};
+      const state = store.getState();
+      expect(state.activeDropTargetId).toBe('drop-1');
+      const storedTarget = state.dropTargets.get('drop-1');
+      expect(storedTarget?.isOver).toBe(true);
+    });
 
-			const dragItem = {
-				id: "drag-1",
-				type: "test",
-				metadata: { type: "test" },
-				_sourceZone: null,
-			};
+    it('should not set activeDropTargetId if target does not accept', () => {
+      const dropTarget: DropTarget = {
+        id: 'drop-1',
+        x: 50,
+        y: 50,
+        width: 100,
+        height: 100,
+        accepts: ['other'],
+      };
 
-			const position = {
-				x: 100,
-				y: 100,
-				width: 50,
-				height: 50,
-			};
+      const dragItem = {
+        id: 'drag-1',
+        type: 'test',
+        metadata: { type: 'test' },
+        _sourceZone: null,
+      };
 
-			store.getState().registerDropTarget(dropTarget);
-			store.getState().startDrag(dragItem, position);
-			store.getState().updateDragPosition(100, 100);
+      const position = {
+        x: 100,
+        y: 100,
+        width: 50,
+        height: 50,
+      };
 
-			const state = store.getState();
-			expect(state.activeDropTargetId).toBe(null);
-			const storedTarget = state.dropTargets.get("drop-1");
-			expect(storedTarget?.isOver).toBe(false);
-		});
+      store.getState().registerDropTarget(dropTarget);
+      store.getState().startDrag(dragItem, position);
+      store.getState().updateDragPosition(100, 100);
 
-		it("should not set activeDropTargetId if point is outside target", () => {
-			const dropTarget: DropTarget = {
-				id: "drop-1",
-				x: 50,
-				y: 50,
-				width: 100,
-				height: 100,
-				accepts: ["test"],
-			};
+      const state = store.getState();
+      expect(state.activeDropTargetId).toBe(null);
+      const storedTarget = state.dropTargets.get('drop-1');
+      expect(storedTarget?.isOver).toBe(false);
+    });
 
-			const dragItem = {
-				id: "drag-1",
-				type: "test",
-				metadata: { type: "test" },
-				_sourceZone: null,
-			};
+    it('should not set activeDropTargetId if point is outside target', () => {
+      const dropTarget: DropTarget = {
+        id: 'drop-1',
+        x: 50,
+        y: 50,
+        width: 100,
+        height: 100,
+        accepts: ['test'],
+      };
 
-			const position = {
-				x: 200,
-				y: 200,
-				width: 50,
-				height: 50,
-			};
+      const dragItem = {
+        id: 'drag-1',
+        type: 'test',
+        metadata: { type: 'test' },
+        _sourceZone: null,
+      };
 
-			store.getState().registerDropTarget(dropTarget);
-			store.getState().startDrag(dragItem, position);
-			store.getState().updateDragPosition(200, 200);
+      const position = {
+        x: 200,
+        y: 200,
+        width: 50,
+        height: 50,
+      };
 
-			const state = store.getState();
-			expect(state.activeDropTargetId).toBe(null);
-			const storedTarget = state.dropTargets.get("drop-1");
-			expect(storedTarget?.isOver).toBe(false);
-		});
-	});
+      store.getState().registerDropTarget(dropTarget);
+      store.getState().startDrag(dragItem, position);
+      store.getState().updateDragPosition(200, 200);
 
-	describe("focus coordination after drop", () => {
-		it("should have null focus state by default", () => {
-			const state = store.getState();
-			expect(state.pendingFocusZoneId).toBe(null);
-			expect(state.pendingFocusItemId).toBe(null);
-		});
+      const state = store.getState();
+      expect(state.activeDropTargetId).toBe(null);
+      const storedTarget = state.dropTargets.get('drop-1');
+      expect(storedTarget?.isOver).toBe(false);
+    });
+  });
 
-		it("should set pending focus with zone and item id", () => {
-			store.getState().requestFocus("zone-1", "item-1");
+  describe('focus coordination after drop', () => {
+    it('should have null focus state by default', () => {
+      const state = store.getState();
+      expect(state.pendingFocusZoneId).toBe(null);
+      expect(state.pendingFocusItemId).toBe(null);
+    });
 
-			const state = store.getState();
-			expect(state.pendingFocusZoneId).toBe("zone-1");
-			expect(state.pendingFocusItemId).toBe("item-1");
-		});
+    it('should set pending focus with zone and item id', () => {
+      store.getState().requestFocus('zone-1', 'item-1');
 
-		it("should set pending focus with zone id and null item (stay-in-source)", () => {
-			store.getState().requestFocus("zone-1", null);
+      const state = store.getState();
+      expect(state.pendingFocusZoneId).toBe('zone-1');
+      expect(state.pendingFocusItemId).toBe('item-1');
+    });
 
-			const state = store.getState();
-			expect(state.pendingFocusZoneId).toBe("zone-1");
-			expect(state.pendingFocusItemId).toBe(null);
-		});
+    it('should set pending focus with zone id and null item (stay-in-source)', () => {
+      store.getState().requestFocus('zone-1', null);
 
-		it("should clear pending focus for matching zone", () => {
-			store.getState().requestFocus("zone-1", "item-1");
-			store.getState().clearPendingFocus("zone-1");
+      const state = store.getState();
+      expect(state.pendingFocusZoneId).toBe('zone-1');
+      expect(state.pendingFocusItemId).toBe(null);
+    });
 
-			const state = store.getState();
-			expect(state.pendingFocusZoneId).toBe(null);
-			expect(state.pendingFocusItemId).toBe(null);
-		});
+    it('should clear pending focus for matching zone', () => {
+      store.getState().requestFocus('zone-1', 'item-1');
+      store.getState().clearPendingFocus('zone-1');
 
-		it("should not clear pending focus for non-matching zone", () => {
-			store.getState().requestFocus("zone-1", "item-1");
-			store.getState().clearPendingFocus("zone-2");
+      const state = store.getState();
+      expect(state.pendingFocusZoneId).toBe(null);
+      expect(state.pendingFocusItemId).toBe(null);
+    });
 
-			const state = store.getState();
-			expect(state.pendingFocusZoneId).toBe("zone-1");
-			expect(state.pendingFocusItemId).toBe("item-1");
-		});
+    it('should not clear pending focus for non-matching zone', () => {
+      store.getState().requestFocus('zone-1', 'item-1');
+      store.getState().clearPendingFocus('zone-2');
 
-		it("should overwrite previous focus request with new one", () => {
-			store.getState().requestFocus("zone-1", "item-1");
-			store.getState().requestFocus("zone-2", "item-2");
+      const state = store.getState();
+      expect(state.pendingFocusZoneId).toBe('zone-1');
+      expect(state.pendingFocusItemId).toBe('item-1');
+    });
 
-			const state = store.getState();
-			expect(state.pendingFocusZoneId).toBe("zone-2");
-			expect(state.pendingFocusItemId).toBe("item-2");
-		});
-	});
+    it('should overwrite previous focus request with new one', () => {
+      store.getState().requestFocus('zone-1', 'item-1');
+      store.getState().requestFocus('zone-2', 'item-2');
+
+      const state = store.getState();
+      expect(state.pendingFocusZoneId).toBe('zone-2');
+      expect(state.pendingFocusItemId).toBe('item-2');
+    });
+  });
 });

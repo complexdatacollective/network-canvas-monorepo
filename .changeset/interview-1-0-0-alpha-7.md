@@ -1,5 +1,5 @@
 ---
-"@codaco/interview": prerelease
+'@codaco/interview': prerelease
 ---
 
 Two changes that ride on `@codaco/tailwind-config@1.0.0-alpha.7`:

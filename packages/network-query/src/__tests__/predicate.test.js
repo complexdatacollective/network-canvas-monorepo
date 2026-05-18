@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import predicate, { countOperators, operators } from '../predicate';
 
 describe('predicate', () => {

@@ -1,73 +1,82 @@
-import type { VariableType } from "@codaco/protocol-validation";
-import { isEmpty } from "es-toolkit/compat";
-import { compose, withHandlers } from "react-recompose";
-import { connect } from "react-redux";
-import { change } from "redux-form";
-import { createVariableAsync, deleteVariableAsync } from "../../ducks/modules/protocol/codebook";
-import safeName from "../../utils/safeName";
+import { isEmpty } from 'es-toolkit/compat';
+import { compose, withHandlers } from 'react-recompose';
+import { connect } from 'react-redux';
+import { change } from 'redux-form';
+
+import type { VariableType } from '@codaco/protocol-validation';
+
+import {
+  createVariableAsync,
+  deleteVariableAsync,
+} from '../../ducks/modules/protocol/codebook';
+import safeName from '../../utils/safeName';
 
 const mapDispatchToProps = {
-	createVariable: createVariableAsync,
-	deleteVariable: deleteVariableAsync,
-	changeField: change,
+  createVariable: createVariableAsync,
+  deleteVariable: deleteVariableAsync,
+  changeField: change,
 };
 
 const normalizeKeyDown = (event: React.KeyboardEvent) => {
-	const check = safeName(event.key);
+  const check = safeName(event.key);
 
-	if (isEmpty(check)) {
-		event.preventDefault();
-	}
+  if (isEmpty(check)) {
+    event.preventDefault();
+  }
 };
 
 type ConnectedProps = {
-	createVariable: typeof createVariableAsync;
-	deleteVariable: typeof deleteVariableAsync;
-	changeField: typeof change;
+  createVariable: typeof createVariableAsync;
+  deleteVariable: typeof deleteVariableAsync;
+  changeField: typeof change;
 };
 
 type OwnProps = {
-	type: string;
-	entity: string;
-	form: string;
+  type: string;
+  entity: string;
+  form: string;
 };
 
-type Entity = "node" | "edge" | "ego";
+type Entity = 'node' | 'edge' | 'ego';
 
 type HandlerProps = ConnectedProps & OwnProps;
 
 const createVariableHandler = {
-	handleCreateVariable:
-		({ changeField, createVariable, type, entity, form }: HandlerProps) =>
-		async (variableName: string, variableType?: VariableType, field?: string) => {
-			const withType = variableType ? { type: variableType } : {};
+  handleCreateVariable:
+    ({ changeField, createVariable, type, entity, form }: HandlerProps) =>
+    async (
+      variableName: string,
+      variableType?: VariableType,
+      field?: string,
+    ) => {
+      const withType = variableType ? { type: variableType } : {};
 
-			const configuration = {
-				name: variableName,
-				...withType,
-			};
+      const configuration = {
+        name: variableName,
+        ...withType,
+      };
 
-			const result = (await createVariable({
-				entity: entity as Entity,
-				type,
-				configuration,
-			})) as unknown as {
-				payload: { entity: Entity; type?: string; variable: string };
-			};
-			const variable = result.payload.variable;
+      const result = (await createVariable({
+        entity: entity as Entity,
+        type,
+        configuration,
+      })) as unknown as {
+        payload: { entity: Entity; type?: string; variable: string };
+      };
+      const variable = result.payload.variable;
 
-			// If we supplied a field, update it with the result of the variable creation
-			if (field) {
-				changeField(form, field, variable);
-			}
+      // If we supplied a field, update it with the result of the variable creation
+      if (field) {
+        changeField(form, field, variable);
+      }
 
-			return variable;
-		},
-	handleDeleteVariable:
-		({ deleteVariable, type, entity }: HandlerProps) =>
-		(variableId: string) =>
-			deleteVariable({ entity: entity as Entity, type, variable: variableId }),
-	normalizeKeyDown: () => normalizeKeyDown,
+      return variable;
+    },
+  handleDeleteVariable:
+    ({ deleteVariable, type, entity }: HandlerProps) =>
+    (variableId: string) =>
+      deleteVariable({ entity: entity as Entity, type, variable: variableId }),
+  normalizeKeyDown: () => normalizeKeyDown,
 };
 
 /**
@@ -79,8 +88,8 @@ const createVariableHandler = {
  * )
  */
 const withCreateVariableHandler = compose(
-	connect(null, mapDispatchToProps),
-	withHandlers<HandlerProps, object>(createVariableHandler),
+  connect(null, mapDispatchToProps),
+  withHandlers<HandlerProps, object>(createVariableHandler),
 );
 
 export default withCreateVariableHandler;

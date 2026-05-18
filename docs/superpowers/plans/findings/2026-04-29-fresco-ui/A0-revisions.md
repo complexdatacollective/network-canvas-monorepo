@@ -33,13 +33,13 @@ After migration, the directory must NOT have a barrel file (`index.ts`) per the 
 
 Each new migrating file gets a corresponding rewrite rule in the Fresco codemod (Task G4):
 
-| From | To |
-|---|---|
-| `from '~/utils/composeEventHandlers'` | `from '@codaco/fresco-ui/utils/composeEventHandlers'` |
-| `from '~/utils/NoSSRWrapper'` | `from '@codaco/fresco-ui/utils/NoSSRWrapper'` |
-| `from '~/hooks/useNodeInteractions'` | `from '@codaco/fresco-ui/hooks/useNodeInteractions'` |
-| `from '~/hooks/usePrevious'` | `from '@codaco/fresco-ui/hooks/usePrevious'` |
-| `from '~/hooks/useResizablePanel'` | `from '@codaco/fresco-ui/hooks/useResizablePanel'` |
+| From                                                          | To                                                                            |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `from '~/utils/composeEventHandlers'`                         | `from '@codaco/fresco-ui/utils/composeEventHandlers'`                         |
+| `from '~/utils/NoSSRWrapper'`                                 | `from '@codaco/fresco-ui/utils/NoSSRWrapper'`                                 |
+| `from '~/hooks/useNodeInteractions'`                          | `from '@codaco/fresco-ui/hooks/useNodeInteractions'`                          |
+| `from '~/hooks/usePrevious'`                                  | `from '@codaco/fresco-ui/hooks/usePrevious'`                                  |
+| `from '~/hooks/useResizablePanel'`                            | `from '@codaco/fresco-ui/hooks/useResizablePanel'`                            |
 | `from '~/lib/interviewer/components/icons'` (and any subpath) | the package no longer publicly exports the icons; `Icon` is the only consumer |
 
 ## R2 — Per-component reshape decisions
@@ -52,8 +52,11 @@ Currently imports `dateOptions` (an `Intl.DateTimeFormatOptions` object) from `~
 
 ```ts
 export const dateOptions: Intl.DateTimeFormatOptions = {
-  year: 'numeric', month: 'numeric', day: 'numeric',
-  hour: 'numeric', minute: 'numeric',
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: 'numeric',
 };
 ```
 
@@ -85,6 +88,7 @@ Per the original spec §5: stays in Fresco at `lib/interviewer/forms/useProtocol
 Per A6, Rolldown's `preserveModules` option shipped in May 2025 (closed `rolldown#2622`) and is stable. Replace the multi-entry-with-shared-chunks strategy from the original spec §4.3 with `preserveModules: true, preserveModulesRoot: 'src'`.
 
 Result:
+
 - One output file per source file (no shared `chunks/` directory)
 - The `exports` map in `package.json` is a 1:1 mirror of the public allowlist's source paths — no chunk filenames to worry about
 - Simpler `vite.config.ts` (no `lib.entry` enumeration; `lib.entry` becomes a single string pointing at a "no-op" entry, with all real files reached through the rolldown options)
@@ -120,18 +124,28 @@ export default defineConfig(() => ({
     },
     rolldownOptions: {
       input: globSync(
-        ['src/**/*.{ts,tsx}', '!src/**/*.{stories,test,spec}.{ts,tsx}', '!src/**/__tests__/**'],
+        [
+          'src/**/*.{ts,tsx}',
+          '!src/**/*.{stories,test,spec}.{ts,tsx}',
+          '!src/**/__tests__/**',
+        ],
         { cwd: import.meta.dirname },
       ),
       external: [
-        /^react/, /^react-dom/,
-        /^@radix-ui/, /^@base-ui/,
-        /^motion/, /^@tiptap/,
+        /^react/,
+        /^react-dom/,
+        /^@radix-ui/,
+        /^@base-ui/,
+        /^motion/,
+        /^@tiptap/,
         /^lucide-react/,
-        /^class-variance-authority/, /^cva/,
-        /^clsx/, /^tailwind-merge/,
+        /^class-variance-authority/,
+        /^cva/,
+        /^clsx/,
+        /^tailwind-merge/,
         /^luxon/,
-        /^zustand/, /^immer/,
+        /^zustand/,
+        /^immer/,
         /^@codaco\//,
       ],
       output: {
@@ -148,7 +162,12 @@ export default defineConfig(() => ({
   plugins: [
     dts({
       include: 'src',
-      exclude: ['**/*.stories.tsx', '**/*.test.*', '**/*.spec.*', '**/__tests__/**'],
+      exclude: [
+        '**/*.stories.tsx',
+        '**/*.test.*',
+        '**/*.spec.*',
+        '**/__tests__/**',
+      ],
     }),
     cssCopyPlugin(),
   ],
@@ -165,11 +184,12 @@ Update plan Task B7's script accordingly.
 
 ## R4 — Phase G branch strategy (Fresco)
 
-A2 found Fresco is on branch `reorganise-ui` (HEAD `ade5abadf` "reorganise UI components ready for migration to package") — i.e. the prep commit *for* this migration, not `next` as the session-start git status implied.
+A2 found Fresco is on branch `reorganise-ui` (HEAD `ade5abadf` "reorganise UI components ready for migration to package") — i.e. the prep commit _for_ this migration, not `next` as the session-start git status implied.
 
 **Per user direction:** Phase G (Fresco-side migration) runs **directly on the `reorganise-ui` branch** in `~/Projects/fresco-next`, no sub-branch.
 
 This means:
+
 - Subagents working on Phase G operate on `~/Projects/fresco-next` directly.
 - They do NOT create a Fresco worktree.
 - They do NOT create a sub-branch off `reorganise-ui`.
@@ -222,15 +242,26 @@ The current implementation:
 ```tsx
 import dynamic from 'next/dynamic';
 const NoSSRWrapper = ({ children }) => <>{children}</>;
-const NoSSRWrapperDynamic = dynamic(() => Promise.resolve(NoSSRWrapper), { ssr: false });
-export const withNoSSRWrapper = (WrappedComponent) => (props) =>
-  <NoSSRWrapperDynamic><WrappedComponent {...props} /></NoSSRWrapperDynamic>;
+const NoSSRWrapperDynamic = dynamic(() => Promise.resolve(NoSSRWrapper), {
+  ssr: false,
+});
+export const withNoSSRWrapper = (WrappedComponent) => (props) => (
+  <NoSSRWrapperDynamic>
+    <WrappedComponent {...props} />
+  </NoSSRWrapperDynamic>
+);
 ```
 
 Replace with a generic mount-detection pattern (same observable behaviour for SSR consumers, no Next dep, works in non-SSR consumers as a no-op-after-mount):
 
 ```tsx
-import { useEffect, useState, type ComponentProps, type ComponentType, type ReactNode } from 'react';
+import {
+  useEffect,
+  useState,
+  type ComponentProps,
+  type ComponentType,
+  type ReactNode,
+} from 'react';
 
 const NoSSRWrapper = ({ children }: { children: ReactNode }) => {
   const [mounted, setMounted] = useState(false);
@@ -241,7 +272,9 @@ const NoSSRWrapper = ({ children }: { children: ReactNode }) => {
 export const withNoSSRWrapper = <P extends object>(
   WrappedComponent: ComponentType<P>,
 ): React.FC<ComponentProps<ComponentType<P>>> => {
-  const WithNoSSRWrapper: React.FC<ComponentProps<ComponentType<P>>> = (props) => (
+  const WithNoSSRWrapper: React.FC<ComponentProps<ComponentType<P>>> = (
+    props,
+  ) => (
     <NoSSRWrapper>
       <WrappedComponent {...props} />
     </NoSSRWrapper>
@@ -251,6 +284,7 @@ export const withNoSSRWrapper = <P extends object>(
 ```
 
 Notes:
+
 - The original `NoSSRWrapper` (without Dynamic) was identity (`<>{children}</>`). The reshape makes it actually skip server render via mount detection. Behaviour is functionally equivalent for the use case (skip SSR), and works in any React environment.
 - Drop `next/dynamic` from imports. Keep the file's docstring relevant — strip the Next-specific apologia, keep the alternatives note.
 
@@ -258,18 +292,18 @@ This reshape happens during the C1+C2 file copy (subagent rewrites the file cont
 
 ## Revision index
 
-| Revision | Plan tasks affected |
-|---|---|
-| R1 (scope additions) | C1 (utils — add composeEventHandlers, NoSSRWrapper), C2 (hooks — add useNodeInteractions, usePrevious, useResizablePanel), C9 (Icon — add custom icons directory + reshape import), G4 (codemod rules) |
-| R2 (per-component reshape) | C6 (TimeAgo inline dateOptions), C9 (Icon import rewrite) |
-| R3 (preserveModules) | B7 (vite.config.ts), B8 (sentinel build expectations), Section 4.3 of spec |
-| R4 (Fresco branch) | All G-tasks (G1-G7) |
-| R5 (catalog additions) | B2 (uses A3 directly) |
-| R6 (useProtocolForm location) | G3 (verify location during execution) |
-| R7a (useSafeLocalStorage scope) | C2 (hooks — add useSafeLocalStorage), B2 retroactively (catalog: add `usehooks-ts`), G4 (codemod rule) |
-| R7b (NoSSRWrapper reshape) | C1 (utils — reshape during copy) |
-| R8 (NativeLink split) | New C-task: extract `NativeLink` from Fresco's `components/ui/Link.tsx` into `packages/fresco-ui/src/NativeLink.tsx`. Fresco's `Link.tsx` keeps only the default Next-coupled `Link` export and moves to `components/Link.tsx` per spec §3.2 (G3). Codemod rule G4: `from '~/components/ui/Link'` is NOT migrated to `@codaco/fresco-ui/Link` — it's relocated to `~/components/Link` per G3. The two NativeLink consumers (Link.tsx itself and RenderMarkdown.tsx) handle the import differently: RenderMarkdown imports from package locally; any Fresco code importing `NativeLink` (currently zero) imports from `@codaco/fresco-ui/NativeLink` post-codemod. |
-| R9 (C6 reorder) | Original plan order (C6 primitives → C7 Button → C8 Radix → … → C12 layout → C13 typography) was wrong: `Alert.tsx` and `RenderMarkdown.tsx` (in C6) depend on layout/typography. New order: C12+C13 first (already done), then a "C6.5" task that lands Alert + NativeLink + RenderMarkdown. C6 was completed partially (9 of 11 components landed) and the deferred two will land in C6.5. |
+| Revision                        | Plan tasks affected                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1 (scope additions)            | C1 (utils — add composeEventHandlers, NoSSRWrapper), C2 (hooks — add useNodeInteractions, usePrevious, useResizablePanel), C9 (Icon — add custom icons directory + reshape import), G4 (codemod rules)                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| R2 (per-component reshape)      | C6 (TimeAgo inline dateOptions), C9 (Icon import rewrite)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| R3 (preserveModules)            | B7 (vite.config.ts), B8 (sentinel build expectations), Section 4.3 of spec                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| R4 (Fresco branch)              | All G-tasks (G1-G7)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| R5 (catalog additions)          | B2 (uses A3 directly)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| R6 (useProtocolForm location)   | G3 (verify location during execution)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| R7a (useSafeLocalStorage scope) | C2 (hooks — add useSafeLocalStorage), B2 retroactively (catalog: add `usehooks-ts`), G4 (codemod rule)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| R7b (NoSSRWrapper reshape)      | C1 (utils — reshape during copy)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| R8 (NativeLink split)           | New C-task: extract `NativeLink` from Fresco's `components/ui/Link.tsx` into `packages/fresco-ui/src/NativeLink.tsx`. Fresco's `Link.tsx` keeps only the default Next-coupled `Link` export and moves to `components/Link.tsx` per spec §3.2 (G3). Codemod rule G4: `from '~/components/ui/Link'` is NOT migrated to `@codaco/fresco-ui/Link` — it's relocated to `~/components/Link` per G3. The two NativeLink consumers (Link.tsx itself and RenderMarkdown.tsx) handle the import differently: RenderMarkdown imports from package locally; any Fresco code importing `NativeLink` (currently zero) imports from `@codaco/fresco-ui/NativeLink` post-codemod. |
+| R9 (C6 reorder)                 | Original plan order (C6 primitives → C7 Button → C8 Radix → … → C12 layout → C13 typography) was wrong: `Alert.tsx` and `RenderMarkdown.tsx` (in C6) depend on layout/typography. New order: C12+C13 first (already done), then a "C6.5" task that lands Alert + NativeLink + RenderMarkdown. C6 was completed partially (9 of 11 components landed) and the deferred two will land in C6.5.                                                                                                                                                                                                                                                                      |
 
 ## R8 — Extract `NativeLink` from `Link.tsx`
 
@@ -282,6 +316,7 @@ Since `NativeLink` is the only export `RenderMarkdown` needs (and `RenderMarkdow
 
 - Copy `NativeLink` (the named export, plus its shared className constants) into `packages/fresco-ui/src/NativeLink.tsx`.
 - The function body matches Fresco's verbatim:
+
   ```tsx
   import { cx } from './utils/cva';
 
@@ -290,7 +325,10 @@ Since `NativeLink` is the only export `RenderMarkdown` needs (and `RenderMarkdow
   const spanClasses =
     'from-link to-link bg-linear-to-r bg-[length:0%_2px] bg-bottom-left bg-no-repeat pb-[2px] transition-all duration-200 ease-out group-hover:bg-[length:100%_2px]';
 
-  export function NativeLink({ className, ...props }: React.ComponentProps<'a'>) {
+  export function NativeLink({
+    className,
+    ...props
+  }: React.ComponentProps<'a'>) {
     return (
       <a className={cx(groupClasses, className)} {...props}>
         <span className={spanClasses}>{props.children}</span>
@@ -298,6 +336,7 @@ Since `NativeLink` is the only export `RenderMarkdown` needs (and `RenderMarkdow
     );
   }
   ```
+
 - Add to allowlist: `{ subpath: './NativeLink', source: 'NativeLink.tsx' }`.
 
 Fresco-side: when Link.tsx moves to `components/Link.tsx` in Phase G3, drop the `NativeLink` export from it (no Fresco code imports it; only RenderMarkdown did, and RenderMarkdown is now in the package).

@@ -1,5 +1,6 @@
-import plugin from "tailwindcss/plugin";
-import { type Elevation, generateShadowLayers } from "./jwc";
+import plugin from 'tailwindcss/plugin';
+
+import { type Elevation, generateShadowLayers } from './jwc';
 
 /**
  * Plugin that adds `elevation` utilities that create shadows based on the
@@ -56,123 +57,129 @@ import { type Elevation, generateShadowLayers } from "./jwc";
  */
 
 type PluginConfig = {
-	oomph?: number; // 0-1, affects shadow intensity/opacity
-	crispy?: number; // 0-1, affects blur sharpness (0=softer, 1=crisper)
-	lightX?: number; // 0-1, horizontal light position (0=left, 1=right)
-	lightY?: number; // 0-1, vertical light position (0=top, 1=bottom)
-	resolution?: number; // 0-1, affects detail level of shadow layers
-	opacityScaleFactor?: number; // multiplier for overall opacity
+  oomph?: number; // 0-1, affects shadow intensity/opacity
+  crispy?: number; // 0-1, affects blur sharpness (0=softer, 1=crisper)
+  lightX?: number; // 0-1, horizontal light position (0=left, 1=right)
+  lightY?: number; // 0-1, vertical light position (0=top, 1=bottom)
+  resolution?: number; // 0-1, affects detail level of shadow layers
+  opacityScaleFactor?: number; // multiplier for overall opacity
 };
 
-const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> = plugin.withOptions<PluginConfig>(
-	(options = {}) =>
-		(api) => {
-			const {
-				lightX = 0,
-				lightY = -0.5,
-				oomph = 0.5,
-				crispy = 0.5,
-				resolution = 0.5,
-				opacityScaleFactor = 0.5,
-			} = options;
+const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> =
+  plugin.withOptions<PluginConfig>(
+    (options = {}) =>
+      (api) => {
+        const {
+          lightX = 0,
+          lightY = -0.5,
+          oomph = 0.5,
+          crispy = 0.5,
+          resolution = 0.5,
+          opacityScaleFactor = 0.5,
+        } = options;
 
-			const defaultShadowColor = "oklch(10% 1 180)";
+        const defaultShadowColor = 'oklch(10% 1 180)';
 
-			const generateShadow = (elevation: Elevation) => {
-				return generateShadowLayers(
-					elevation,
-					oomph,
-					crispy,
-					{
-						x: lightX,
-						y: lightY,
-					},
-					resolution,
-				)
-					.map(({ opacity, blurRadius, spreadRadius, offsetX, offsetY }) => {
-						const boostedOpacity = opacity * opacityScaleFactor;
-						// Clamp chroma
-						return `${offsetX} ${offsetY} ${blurRadius} ${spreadRadius} oklch(from var(--published-bg, ${defaultShadowColor}) clamp(0.025, calc(l - 0.5), 0.1) clamp(0.2, calc(c * 2), 0.5) h / ${boostedOpacity})`;
-					})
-					.join(", ");
-			};
+        const generateShadow = (elevation: Elevation) => {
+          return generateShadowLayers(
+            elevation,
+            oomph,
+            crispy,
+            {
+              x: lightX,
+              y: lightY,
+            },
+            resolution,
+          )
+            .map(({ opacity, blurRadius, spreadRadius, offsetX, offsetY }) => {
+              const boostedOpacity = opacity * opacityScaleFactor;
+              // Clamp chroma
+              return `${offsetX} ${offsetY} ${blurRadius} ${spreadRadius} oklch(from var(--published-bg, ${defaultShadowColor}) clamp(0.025, calc(l - 0.5), 0.1) clamp(0.2, calc(c * 2), 0.5) h / ${boostedOpacity})`;
+            })
+            .join(', ');
+        };
 
-			// Reset --scoped-bg on elements with bg-* but not publish-colors
-			// This prevents child elements from overriding the published background
-			api.addBase({
-				'[class*="bg-"]:where(:not(.publish-colors))': {
-					"--scoped-bg": "inherit !important",
-				},
-			});
+        // Reset --scoped-bg on elements with bg-* but not publish-colors
+        // This prevents child elements from overriding the published background
+        api.addBase({
+          '[class*="bg-"]:where(:not(.publish-colors))': {
+            '--scoped-bg': 'inherit !important',
+          },
+        });
 
-			api.addUtilities({
-				".elevation-none": {
-					"box-shadow": "none",
-				},
-				".elevation-low": {
-					"box-shadow": generateShadow("low"),
-				},
-				".elevation-medium": {
-					"box-shadow": generateShadow("medium"),
-				},
-				".elevation-high": {
-					"box-shadow": generateShadow("high"),
-				},
-				".publish-colors": {
-					// These need to be css Color values.
-					"--published-bg": "var(--scoped-bg, var(--background))",
-					"--published-text": "var(--scoped-text, currentColor)",
-				},
-			});
+        api.addUtilities({
+          '.elevation-none': {
+            'box-shadow': 'none',
+          },
+          '.elevation-low': {
+            'box-shadow': generateShadow('low'),
+          },
+          '.elevation-medium': {
+            'box-shadow': generateShadow('medium'),
+          },
+          '.elevation-high': {
+            'box-shadow': generateShadow('high'),
+          },
+          '.publish-colors': {
+            // These need to be css Color values.
+            '--published-bg': 'var(--scoped-bg, var(--background))',
+            '--published-text': 'var(--scoped-text, currentColor)',
+          },
+        });
 
-			// Rewrite `var(--color-X)` references to `var(--X)` so --scoped-bg /
-			// --scoped-text point at the bare semantic tokens declared by the
-			// theme files (`--background`, `--text`, etc.) rather than going
-			// through Tailwind's `--color-*` indirection. Tailwind's
-			// `api.theme(...)` resolves color tokens to their `--color-*` form
-			// regardless of `@theme inline`, so we strip the prefix at plugin
-			// emit time. Literal values (oklch(...), currentColor) are
-			// unchanged because they don't match the pattern.
-			const stripColorPrefix = (value: string) => value.replace(/var\(--color-/g, "var(--");
+        // Rewrite `var(--color-X)` references to `var(--X)` so --scoped-bg /
+        // --scoped-text point at the bare semantic tokens declared by the
+        // theme files (`--background`, `--text`, etc.) rather than going
+        // through Tailwind's `--color-*` indirection. Tailwind's
+        // `api.theme(...)` resolves color tokens to their `--color-*` form
+        // regardless of `@theme inline`, so we strip the prefix at plugin
+        // emit time. Literal values (oklch(...), currentColor) are
+        // unchanged because they don't match the pattern.
+        const stripColorPrefix = (value: string) =>
+          value.replace(/var\(--color-/g, 'var(--');
 
-			// `modifiers: 'any'` ensures alpha-modified classes like `bg-primary/90`
-			// still set --scoped-bg. Shadow derivation uses the solid color, so the
-			// alpha on the visible background is intentionally discarded here.
-			api.matchUtilities(
-				{
-					bg: (value) => ({
-						"--scoped-bg": stripColorPrefix(value),
-					}),
-				},
-				{
-					values: (api.theme?.("backgroundColor") ?? api.theme?.("colors") ?? {}) as Record<string, string>,
-					modifiers: "any",
-				},
-			);
+        // `modifiers: 'any'` ensures alpha-modified classes like `bg-primary/90`
+        // still set --scoped-bg. Shadow derivation uses the solid color, so the
+        // alpha on the visible background is intentionally discarded here.
+        api.matchUtilities(
+          {
+            bg: (value) => ({
+              '--scoped-bg': stripColorPrefix(value),
+            }),
+          },
+          {
+            values: (api.theme?.('backgroundColor') ??
+              api.theme?.('colors') ??
+              {}) as Record<string, string>,
+            modifiers: 'any',
+          },
+        );
 
-			api.matchUtilities(
-				{
-					text: (value) => ({
-						"--scoped-text": stripColorPrefix(value),
-					}),
-				},
-				{
-					values: (api.theme?.("textColor") ?? api.theme?.("colors") ?? {}) as Record<string, string>,
-					modifiers: "any",
-				},
-			);
-		},
-	() => ({
-		theme: {
-			extend: {
-				elevation: {
-					low: "elevation-low",
-					medium: "elevation-medium",
-					high: "elevation-high",
-				},
-			},
-		},
-	}),
-);
+        api.matchUtilities(
+          {
+            text: (value) => ({
+              '--scoped-text': stripColorPrefix(value),
+            }),
+          },
+          {
+            values: (api.theme?.('textColor') ??
+              api.theme?.('colors') ??
+              {}) as Record<string, string>,
+            modifiers: 'any',
+          },
+        );
+      },
+    () => ({
+      theme: {
+        extend: {
+          elevation: {
+            low: 'elevation-low',
+            medium: 'elevation-medium',
+            high: 'elevation-high',
+          },
+        },
+      },
+    }),
+  );
 
 export default elevationPlugin;

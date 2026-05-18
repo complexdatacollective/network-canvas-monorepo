@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * Tracks whether a sentinel element has ever been visible within its scroll
@@ -15,43 +15,45 @@ import { useCallback, useEffect, useRef, useState } from "react";
  *
  * If content doesn't overflow (sentinel visible on mount), returns true immediately.
  */
-export function useScrolledToBottom(rootRef?: React.RefObject<HTMLElement | null>) {
-	const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
-	const observerRef = useRef<IntersectionObserver | null>(null);
+export function useScrolledToBottom(
+  rootRef?: React.RefObject<HTMLElement | null>,
+) {
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
-	const sentinelRef = useCallback(
-		(node: HTMLDivElement | null) => {
-			if (observerRef.current) {
-				observerRef.current.disconnect();
-				observerRef.current = null;
-			}
+  const sentinelRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+      }
 
-			if (!node) {
-				setHasScrolledToBottom(false);
-				return;
-			}
+      if (!node) {
+        setHasScrolledToBottom(false);
+        return;
+      }
 
-			const observer = new IntersectionObserver(
-				(entries) => {
-					const entry = entries[0];
-					if (entry?.isIntersecting) {
-						setHasScrolledToBottom(true);
-					}
-				},
-				{ root: rootRef?.current ?? null },
-			);
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          if (entry?.isIntersecting) {
+            setHasScrolledToBottom(true);
+          }
+        },
+        { root: rootRef?.current ?? null },
+      );
 
-			observer.observe(node);
-			observerRef.current = observer;
-		},
-		[rootRef],
-	);
+      observer.observe(node);
+      observerRef.current = observer;
+    },
+    [rootRef],
+  );
 
-	useEffect(() => {
-		return () => {
-			observerRef.current?.disconnect();
-		};
-	}, []);
+  useEffect(() => {
+    return () => {
+      observerRef.current?.disconnect();
+    };
+  }, []);
 
-	return { hasScrolledToBottom, sentinelRef };
+  return { hasScrolledToBottom, sentinelRef };
 }

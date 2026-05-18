@@ -1,46 +1,64 @@
-import type { EntityDefinition, Prompt, SortOrder } from "@codaco/protocol-validation";
-import { useCallback } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { useStageSelector } from "~/hooks/useStageSelector";
-import { getAllVariableUUIDsByEntity } from "~/selectors/protocol";
-import { getPromptIndex, getPrompts } from "~/selectors/session";
-import { updatePrompt } from "~/store/modules/session";
-import { type ProcessedSortRule, processProtocolSortRule } from "~/utils/createSorter";
+import { useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+
+import type {
+  EntityDefinition,
+  Prompt,
+  SortOrder,
+} from '@codaco/protocol-validation';
+import { useStageSelector } from '~/hooks/useStageSelector';
+import { getAllVariableUUIDsByEntity } from '~/selectors/protocol';
+import { getPromptIndex, getPrompts } from '~/selectors/session';
+import { updatePrompt } from '~/store/modules/session';
+import {
+  type ProcessedSortRule,
+  processProtocolSortRule,
+} from '~/utils/createSorter';
 
 function isSortOrder(value: unknown): value is SortOrder {
-	return (
-		Array.isArray(value) &&
-		value.every(
-			(item: unknown) => typeof item === "object" && item !== null && "property" in item && "direction" in item,
-		)
-	);
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item: unknown) =>
+        typeof item === 'object' &&
+        item !== null &&
+        'property' in item &&
+        'direction' in item,
+    )
+  );
 }
 
-const processSortRules = (prompts: Prompt[] | null, codebookVariables: EntityDefinition["variables"]) => {
-	if (!prompts) {
-		return [];
-	}
+const processSortRules = (
+  prompts: Prompt[] | null,
+  codebookVariables: EntityDefinition['variables'],
+) => {
+  if (!prompts) {
+    return [];
+  }
 
-	const sortProperties = ["bucketSortOrder", "binSortOrder"] as const;
+  const sortProperties = ['bucketSortOrder', 'binSortOrder'] as const;
 
-	const ruleProcessor = processProtocolSortRule(codebookVariables);
+  const ruleProcessor = processProtocolSortRule(codebookVariables);
 
-	return prompts.map((prompt) => {
-		const sortOptions = {} as Record<(typeof sortProperties)[number], ProcessedSortRule[]>;
+  return prompts.map((prompt) => {
+    const sortOptions = {} as Record<
+      (typeof sortProperties)[number],
+      ProcessedSortRule[]
+    >;
 
-		sortProperties.forEach((property) => {
-			if (property in prompt) {
-				const sortRules = prompt[property as keyof Prompt];
-				if (isSortOrder(sortRules)) {
-					sortOptions[property] = sortRules.map(ruleProcessor);
-				}
-			}
-		});
-		return {
-			...prompt,
-			...sortOptions,
-		};
-	});
+    sortProperties.forEach((property) => {
+      if (property in prompt) {
+        const sortRules = prompt[property as keyof Prompt];
+        if (isSortOrder(sortRules)) {
+          sortOptions[property] = sortRules.map(ruleProcessor);
+        }
+      }
+    });
+    return {
+      ...prompt,
+      ...sortOptions,
+    };
+  });
 };
 
 /**
@@ -79,41 +97,48 @@ const processSortRules = (prompts: Prompt[] | null, codebookVariables: EntityDef
  * updatePrompt,
  * } = usePrompts();
  */
-export const usePrompts = <T extends Record<string, unknown> = Record<string, unknown>>() => {
-	const dispatch = useDispatch();
-	const setPrompt = useCallback((promptIndex: number) => dispatch(updatePrompt(promptIndex)), [dispatch]);
+export const usePrompts = <
+  T extends Record<string, unknown> = Record<string, unknown>,
+>() => {
+  const dispatch = useDispatch();
+  const setPrompt = useCallback(
+    (promptIndex: number) => dispatch(updatePrompt(promptIndex)),
+    [dispatch],
+  );
 
-	const codebookVariables = useSelector(getAllVariableUUIDsByEntity);
-	const prompts = useStageSelector(getPrompts);
+  const codebookVariables = useSelector(getAllVariableUUIDsByEntity);
+  const prompts = useStageSelector(getPrompts);
 
-	const processedPrompts = processSortRules(prompts, codebookVariables);
+  const processedPrompts = processSortRules(prompts, codebookVariables);
 
-	const promptIndex = useSelector(getPromptIndex);
-	const isFirstPrompt = processedPrompts.length === 0;
-	const isLastPrompt = promptIndex === processedPrompts.length - 1;
+  const promptIndex = useSelector(getPromptIndex);
+  const isFirstPrompt = processedPrompts.length === 0;
+  const isLastPrompt = promptIndex === processedPrompts.length - 1;
 
-	const promptForward = () => {
-		updatePrompt((promptIndex + 1) % processedPrompts.length);
-	};
+  const promptForward = () => {
+    updatePrompt((promptIndex + 1) % processedPrompts.length);
+  };
 
-	const promptBackward = () => {
-		updatePrompt((promptIndex - 1 + processedPrompts.length) % processedPrompts.length);
-	};
+  const promptBackward = () => {
+    updatePrompt(
+      (promptIndex - 1 + processedPrompts.length) % processedPrompts.length,
+    );
+  };
 
-	const prompt = (processedPrompts[promptIndex] ?? {
-		id: "",
-		text: "",
-	}) as Prompt & T;
+  const prompt = (processedPrompts[promptIndex] ?? {
+    id: '',
+    text: '',
+  }) as Prompt & T;
 
-	return {
-		promptIndex,
-		prompt,
-		prompts: processedPrompts,
-		promptForward,
-		promptBackward,
-		setPrompt,
-		isLastPrompt,
-		isFirstPrompt,
-		updatePrompt,
-	};
+  return {
+    promptIndex,
+    prompt,
+    prompts: processedPrompts,
+    promptForward,
+    promptBackward,
+    setPrompt,
+    isLastPrompt,
+    isFirstPrompt,
+    updatePrompt,
+  };
 };

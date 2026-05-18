@@ -105,14 +105,14 @@ A decision point where the path diverges based on interview network data.
 
 ### Key Naming Changes from v8
 
-| v8 | v9 | Notes |
-|---|---|---|
-| `stage.type` (e.g. "EgoForm") | `stage.stageType` | `type` is now the entity discriminator |
-| n/a | `entity.type` | "Stage", "Collection", or "Branch" |
-| `stage.skipLogic` | removed | Replaced by Branch entities |
-| `stage.label` | `stage.label` | Unchanged for stages |
-| n/a | `collection.name`, `branch.name` | New entity naming |
-| Auto-injected finish screen | Explicit FinishInterview stage | Must be present in timeline |
+| v8                            | v9                               | Notes                                  |
+| ----------------------------- | -------------------------------- | -------------------------------------- |
+| `stage.type` (e.g. "EgoForm") | `stage.stageType`                | `type` is now the entity discriminator |
+| n/a                           | `entity.type`                    | "Stage", "Collection", or "Branch"     |
+| `stage.skipLogic`             | removed                          | Replaced by Branch entities            |
+| `stage.label`                 | `stage.label`                    | Unchanged for stages                   |
+| n/a                           | `collection.name`, `branch.name` | New entity naming                      |
+| Auto-injected finish screen   | Explicit FinishInterview stage   | Must be present in timeline            |
 
 ## Validation Rules
 
@@ -174,7 +174,7 @@ Linear chain: each stage targets the next. A FinishInterview stage is appended a
 
 Skip logic (`action: "SHOW" | "SKIP"` with filter) translates to a branch inserted before the stage:
 
-- **SKIP**: Branch with 2 slots. Condition match targets the stage *after* the skipped one (skip path). Default targets the stage itself (proceed path).
+- **SKIP**: Branch with 2 slots. Condition match targets the stage _after_ the skipped one (skip path). Default targets the stage itself (proceed path).
 - **SHOW**: Branch with 2 slots. Condition match targets the stage (show path). Default targets the stage after (skip path).
 
 The branch gets a generated name based on the stage label (e.g., "Skip: Demographics").
@@ -182,29 +182,71 @@ The branch gets a generated name based on the stage label (e.g., "Skip: Demograp
 ### Migration Example
 
 v8:
+
 ```json
 {
   "stages": [
     { "id": "s1", "type": "Information", "label": "Welcome" },
-    { "id": "s2", "type": "EgoForm", "label": "Demographics", "skipLogic": { "action": "SKIP", "filter": { "join": "AND", "rules": [] } } },
+    {
+      "id": "s2",
+      "type": "EgoForm",
+      "label": "Demographics",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": { "join": "AND", "rules": [] }
+      }
+    },
     { "id": "s3", "type": "Information", "label": "Thank You" }
   ]
 }
 ```
 
 v9:
+
 ```json
 {
   "timeline": {
     "start": "s1",
     "entities": [
-      { "id": "s1", "type": "Stage", "stageType": "Information", "label": "Welcome", "target": "branch-generated" },
-      { "id": "branch-generated", "type": "Branch", "name": "Skip: Demographics", "slots": [
-        { "id": "slot-1", "filter": { "join": "AND", "rules": [] }, "label": "Skip", "target": "s3-finish" },
-        { "id": "slot-2", "default": true, "label": "Default", "target": "s2" }
-      ]},
-      { "id": "s2", "type": "Stage", "stageType": "EgoForm", "label": "Demographics", "target": "s3-finish" },
-      { "id": "s3-finish", "type": "Stage", "stageType": "FinishInterview", "label": "Thank You" }
+      {
+        "id": "s1",
+        "type": "Stage",
+        "stageType": "Information",
+        "label": "Welcome",
+        "target": "branch-generated"
+      },
+      {
+        "id": "branch-generated",
+        "type": "Branch",
+        "name": "Skip: Demographics",
+        "slots": [
+          {
+            "id": "slot-1",
+            "filter": { "join": "AND", "rules": [] },
+            "label": "Skip",
+            "target": "s3-finish"
+          },
+          {
+            "id": "slot-2",
+            "default": true,
+            "label": "Default",
+            "target": "s2"
+          }
+        ]
+      },
+      {
+        "id": "s2",
+        "type": "Stage",
+        "stageType": "EgoForm",
+        "label": "Demographics",
+        "target": "s3-finish"
+      },
+      {
+        "id": "s3-finish",
+        "type": "Stage",
+        "stageType": "FinishInterview",
+        "label": "Thank You"
+      }
     ]
   }
 }

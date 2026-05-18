@@ -7,17 +7,17 @@
 @custom-variant focus-visible-within (&:has(:focus-visible));
 
 @utility focus-styles {
-	@apply outline-4 outline-offset-3 transition-all duration-200 ease-in-out;
+  @apply outline-4 outline-offset-3 transition-all duration-200 ease-in-out;
 }
 
 @utility focusable {
-	outline-color: var(--focus-color, currentColor);
-	@apply focus-visible:focus-styles;
+  outline-color: var(--focus-color, currentColor);
+  @apply focus-visible:focus-styles;
 }
 
 @utility focusable-within {
-	outline-color: var(--focus-color, currentColor);
-	@apply focus-visible-within:focus-styles;
+  outline-color: var(--focus-color, currentColor);
+  @apply focus-visible-within:focus-styles;
 }
 
 /**
@@ -27,18 +27,18 @@
  * The pseudo-element sits on the parent and won't be clipped by child overflow.
  */
 @utility focusable-after {
-	@apply relative;
-	&::after {
-		@apply pointer-events-none absolute inset-0 content-[''];
-		outline-color: var(--focus-color, currentColor);
-	}
-	&:has(.focusable-after-trigger:focus-visible)::after {
-		@apply focus-styles z-1 rounded-sm;
-	}
+  @apply relative;
+  &::after {
+    @apply pointer-events-none absolute inset-0 content-[''];
+    outline-color: var(--focus-color, currentColor);
+  }
+  &:has(.focusable-after-trigger:focus-visible)::after {
+    @apply focus-styles z-1 rounded-sm;
+  }
 }
 
 @utility focusable-after-trigger {
-	@apply outline-none;
+  @apply outline-none;
 }
 
 /**
@@ -47,9 +47,9 @@
  * items receive actual DOM focus instead of the trigger element.
  */
 @utility focusable-after-within {
-	&:has(:focus-visible)::after {
-		@apply focus-styles z-1 rounded-sm;
-	}
+  &:has(:focus-visible)::after {
+    @apply focus-styles z-1 rounded-sm;
+  }
 }
 
 /**
@@ -57,48 +57,48 @@
  * Uses CSS variables set by ScrollArea component to create fade effects at scroll edges.
  */
 @utility scroll-area-viewport {
-	--fade-height: max(1.5rem, 8%);
-	&::before,
-	&::after {
-		@apply pointer-events-none absolute left-0 block transition-[height] duration-100 ease-out content-[''];
-		right: var(--scrollbar-width, 0px);
-	}
-	&::before {
-		@apply top-0 z-1 bg-linear-to-b from-(--published-bg,var(--background)) to-transparent;
-		height: min(var(--fade-height), var(--scroll-area-overflow-y-start, 0px));
-	}
-	&::after {
-		@apply bottom-0 bg-linear-to-t from-(--published-bg,var(--background)) to-transparent;
-		height: min(var(--fade-height), var(--scroll-area-overflow-y-end, 0px));
-	}
+  --fade-height: max(1.5rem, 8%);
+  &::before,
+  &::after {
+    @apply pointer-events-none absolute left-0 block transition-[height] duration-100 ease-out content-[''];
+    right: var(--scrollbar-width, 0px);
+  }
+  &::before {
+    @apply top-0 z-1 bg-linear-to-b from-(--published-bg,var(--background)) to-transparent;
+    height: min(var(--fade-height), var(--scroll-area-overflow-y-start, 0px));
+  }
+  &::after {
+    @apply bottom-0 bg-linear-to-t from-(--published-bg,var(--background)) to-transparent;
+    height: min(var(--fade-height), var(--scroll-area-overflow-y-end, 0px));
+  }
 }
 
 @utility scroll-area-viewport-x {
-	--fade-width: max(1.5rem, 8%);
-	&::before,
-	&::after {
-		@apply pointer-events-none absolute top-0 block transition-[width] duration-100 ease-out content-[''];
-		bottom: var(--scrollbar-height, 0px);
-	}
-	&::before {
-		@apply left-0 z-1 bg-linear-to-r from-(--published-bg,var(--background)) to-transparent;
-		width: min(var(--fade-width), var(--scroll-area-overflow-x-start, 0px));
-	}
-	&::after {
-		@apply right-0 bg-linear-to-l from-(--published-bg,var(--background)) to-transparent;
-		width: min(var(--fade-width), var(--scroll-area-overflow-x-end, 0px));
-	}
+  --fade-width: max(1.5rem, 8%);
+  &::before,
+  &::after {
+    @apply pointer-events-none absolute top-0 block transition-[width] duration-100 ease-out content-[''];
+    bottom: var(--scrollbar-height, 0px);
+  }
+  &::before {
+    @apply left-0 z-1 bg-linear-to-r from-(--published-bg,var(--background)) to-transparent;
+    width: min(var(--fade-width), var(--scroll-area-overflow-x-start, 0px));
+  }
+  &::after {
+    @apply right-0 bg-linear-to-l from-(--published-bg,var(--background)) to-transparent;
+    width: min(var(--fade-width), var(--scroll-area-overflow-x-end, 0px));
+  }
 }
 
 /* Replacement for interview centering mixin — used by all interview stage components. */
 @utility interface {
-	@apply relative flex min-h-0 w-full shrink grow basis-auto flex-col items-center justify-center;
-	@apply phone-landscape:p-4 phone-landscape:gap-6 tablet-landscape:p-6 tablet-landscape:gap-8 desktop:px-8 desktop:gap-10 gap-4 p-2;
+  @apply relative flex min-h-0 w-full shrink grow basis-auto flex-col items-center justify-center;
+  @apply phone-landscape:p-4 phone-landscape:gap-6 tablet-landscape:p-6 tablet-landscape:gap-8 desktop:px-8 desktop:gap-10 gap-4 p-2;
 }
 
 /* Required for base-ui components that use portals: https://base-ui.com/react/overview/quick-start#portals */
 @utility root {
-	@apply isolate;
+  @apply isolate;
 }
 
 /*
@@ -110,7 +110,7 @@
  * inherit the body-resolved values for the default theme.
  */
 @utility theme-base {
-	@apply bg-background text-text publish-colors font-body;
+  @apply bg-background text-text publish-colors font-body;
 }
 
 /* Variant for elements with the readonly attribute. The default tailwind

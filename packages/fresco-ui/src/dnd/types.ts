@@ -2,42 +2,46 @@
 export type DragMetadata = Record<string, unknown>;
 
 export type DragItem = {
-	id: string;
-	type: string;
-	metadata?: DragMetadata;
-	_sourceZone: string | null;
+  id: string;
+  type: string;
+  metadata?: DragMetadata;
+  _sourceZone: string | null;
 };
 
 export type DropTarget = {
-	id: string;
-	x: number;
-	y: number;
-	width: number;
-	height: number;
-	accepts: string[];
-	acceptsFilter?: (metadata: DragMetadata | undefined) => boolean;
-	announcedName?: string;
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  accepts: string[];
+  acceptsFilter?: (metadata: DragMetadata | undefined) => boolean;
+  announcedName?: string;
 };
 
 export type UseDropTargetReturn = {
-	dropProps: {
-		ref: (element: HTMLElement | null) => void;
-		"aria-dropeffect"?: "none" | "copy" | "execute" | "link" | "move" | "popup";
-		"aria-label"?: string;
-		"data-zone-id"?: string;
-		style?: React.CSSProperties;
-		tabIndex?: number;
-	};
-	isOver: boolean;
-	willAccept: boolean;
-	isDragging: boolean;
+  dropProps: {
+    'ref': (element: HTMLElement | null) => void;
+    'aria-dropeffect'?: 'none' | 'copy' | 'execute' | 'link' | 'move' | 'popup';
+    'aria-label'?: string;
+    'data-zone-id'?: string;
+    'style'?: React.CSSProperties;
+    'tabIndex'?: number;
+  };
+  isOver: boolean;
+  willAccept: boolean;
+  isDragging: boolean;
 };
 
 export type DropCallback = (metadata?: DragMetadata) => void;
 
 export type DropTargetState = DropTarget & {
-	canDrop: boolean;
-	isOver: boolean;
+  canDrop: boolean;
+  isOver: boolean;
 };
 
-export type HitDetector = (x: number, y: number, dropTargets: Map<string, DropTargetState>) => string | null;
+export type HitDetector = (
+  x: number,
+  y: number,
+  dropTargets: Map<string, DropTargetState>,
+) => string | null;

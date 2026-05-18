@@ -36,15 +36,15 @@ consumers import them in order:
 
 ```css
 /* styles/globals.css */
-@import "@codaco/tailwind-config/fresco.css"; /* Tailwind v4 + theme + plugins + fonts */
-@import "@codaco/fresco-ui/styles.css";       /* @source for fresco-ui's dist */
+@import '@codaco/tailwind-config/fresco.css'; /* Tailwind v4 + theme + plugins + fonts */
+@import '@codaco/fresco-ui/styles.css'; /* @source for fresco-ui's dist */
 ```
 
 If you also use `@codaco/interview`, add its CSS file too — see that
 package's README:
 
 ```css
-@import "@codaco/interview/styles.css";
+@import '@codaco/interview/styles.css';
 ```
 
 **Do not also `@import "tailwindcss"` yourself.** That import lives

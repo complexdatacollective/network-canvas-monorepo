@@ -1,12 +1,12 @@
 // TODO: should be with network-exporters package
 
-export const nodeExportIDProperty = "nodeID";
-export const edgeExportIDProperty = "edgeID";
-export const egoProperty = "networkCanvasEgoUUID";
-export const ncTypeProperty = "networkCanvasType";
-export const ncProtocolNameProperty = "networkCanvasProtocolName";
-export const ncCaseProperty = "networkCanvasCaseID";
-export const ncSessionProperty = "networkCanvasSessionID";
-export const ncUUIDProperty = "networkCanvasUUID";
-export const ncSourceUUID = "networkCanvasSourceUUID";
-export const ncTargetUUID = "networkCanvasTargetUUID";
+export const nodeExportIDProperty = 'nodeID';
+export const edgeExportIDProperty = 'edgeID';
+export const egoProperty = 'networkCanvasEgoUUID';
+export const ncTypeProperty = 'networkCanvasType';
+export const ncProtocolNameProperty = 'networkCanvasProtocolName';
+export const ncCaseProperty = 'networkCanvasCaseID';
+export const ncSessionProperty = 'networkCanvasSessionID';
+export const ncUUIDProperty = 'networkCanvasUUID';
+export const ncSourceUUID = 'networkCanvasSourceUUID';
+export const ncTargetUUID = 'networkCanvasTargetUUID';

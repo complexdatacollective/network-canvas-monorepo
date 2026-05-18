@@ -1,164 +1,178 @@
-"use client";
+'use client';
 
-import type { ToastVariant } from "@codaco/fresco-ui/Toast";
-import { type ReactNode, useCallback, useContext, useEffect, useRef } from "react";
-import { useTrack } from "../analytics/useTrack";
-import { StageMetadataContext } from "../contexts/StageMetadataContext";
-import { useInterviewToastContext } from "../toast/InterviewToast";
-import { interviewToastManager } from "../toast/interviewToastManager";
-import type { Direction } from "../types";
+import {
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+} from 'react';
+
+import type { ToastVariant } from '@codaco/fresco-ui/Toast';
+
+import { useTrack } from '../analytics/useTrack';
+import { StageMetadataContext } from '../contexts/StageMetadataContext';
+import { useInterviewToastContext } from '../toast/InterviewToast';
+import { interviewToastManager } from '../toast/interviewToastManager';
+import type { Direction } from '../types';
 
 type StageConstraint = {
-	direction: "forwards" | "backwards" | "both";
-	isMet: boolean;
-	/**
-	 * Structural validation kind for analytics. Stable, lowercase, snake_case.
-	 * Examples: "min_nodes", "required_field", "passphrase_mismatch".
-	 * Never a rendered message.
-	 */
-	kind?: string;
-	toast: {
-		description: string | ReactNode;
-		variant: ToastVariant;
-		anchor: "forward" | "backward";
-		icon?: ReactNode;
-		timeout?: number;
-	};
+  direction: 'forwards' | 'backwards' | 'both';
+  isMet: boolean;
+  /**
+   * Structural validation kind for analytics. Stable, lowercase, snake_case.
+   * Examples: "min_nodes", "required_field", "passphrase_mismatch".
+   * Never a rendered message.
+   */
+  kind?: string;
+  toast: {
+    description: string | ReactNode;
+    variant: ToastVariant;
+    anchor: 'forward' | 'backward';
+    icon?: ReactNode;
+    timeout?: number;
+  };
 };
 
 type InterviewToastOptions = {
-	description: string | ReactNode;
-	variant: ToastVariant;
-	anchor: "forward" | "backward";
-	icon?: ReactNode;
-	timeout?: number;
+  description: string | ReactNode;
+  variant: ToastVariant;
+  anchor: 'forward' | 'backward';
+  icon?: ReactNode;
+  timeout?: number;
 };
 
 type UseStageValidationOptions = {
-	constraints: StageConstraint[];
+  constraints: StageConstraint[];
 };
 
 function useStageValidation({ constraints }: UseStageValidationOptions) {
-	const registerBeforeNext = useContext(StageMetadataContext);
-	const toastContext = useInterviewToastContext();
-	const track = useTrack();
+  const registerBeforeNext = useContext(StageMetadataContext);
+  const toastContext = useInterviewToastContext();
+  const track = useTrack();
 
-	const constraintsRef = useRef(constraints);
-	constraintsRef.current = constraints;
+  const constraintsRef = useRef(constraints);
+  constraintsRef.current = constraints;
 
-	// Track active constraint toasts: constraint index -> toast ID
-	const activeToastsRef = useRef(new Map<number, string>());
-	// Track previous isMet values for auto-close
-	const prevIsMetRef = useRef<boolean[]>([]);
+  // Track active constraint toasts: constraint index -> toast ID
+  const activeToastsRef = useRef(new Map<number, string>());
+  // Track previous isMet values for auto-close
+  const prevIsMetRef = useRef<boolean[]>([]);
 
-	const resolvePositionerProps = useCallback(
-		(anchor: "forward" | "backward") => {
-			if (!toastContext) return undefined;
+  const resolvePositionerProps = useCallback(
+    (anchor: 'forward' | 'backward') => {
+      if (!toastContext) return undefined;
 
-			const { forwardButtonRef, backButtonRef, orientation } = toastContext;
-			const anchorRef = anchor === "forward" ? forwardButtonRef : backButtonRef;
-			const side = orientation === "vertical" ? ("right" as const) : ("top" as const);
+      const { forwardButtonRef, backButtonRef, orientation } = toastContext;
+      const anchorRef = anchor === 'forward' ? forwardButtonRef : backButtonRef;
+      const side =
+        orientation === 'vertical' ? ('right' as const) : ('top' as const);
 
-			return {
-				anchor: anchorRef.current,
-				side,
-			};
-		},
-		[toastContext],
-	);
+      return {
+        anchor: anchorRef.current,
+        side,
+      };
+    },
+    [toastContext],
+  );
 
-	const resolvePositionerPropsRef = useRef(resolvePositionerProps);
-	resolvePositionerPropsRef.current = resolvePositionerProps;
+  const resolvePositionerPropsRef = useRef(resolvePositionerProps);
+  resolvePositionerPropsRef.current = resolvePositionerProps;
 
-	const showToast = useCallback((options: InterviewToastOptions): string => {
-		const positionerProps = resolvePositionerPropsRef.current(options.anchor);
+  const showToast = useCallback((options: InterviewToastOptions): string => {
+    const positionerProps = resolvePositionerPropsRef.current(options.anchor);
 
-		return interviewToastManager.add({
-			type: options.variant,
-			description: options.description,
-			timeout: options.timeout ?? 4000,
-			positionerProps,
-			data: options.icon ? { icon: options.icon } : undefined,
-		});
-	}, []);
+    return interviewToastManager.add({
+      type: options.variant,
+      description: options.description,
+      timeout: options.timeout ?? 4000,
+      positionerProps,
+      data: options.icon ? { icon: options.icon } : undefined,
+    });
+  }, []);
 
-	const closeToast = useCallback((id: string) => {
-		interviewToastManager.close(id);
-	}, []);
+  const closeToast = useCallback((id: string) => {
+    interviewToastManager.close(id);
+  }, []);
 
-	// Auto-close toasts when constraints transition from unmet -> met
-	useEffect(() => {
-		const prevValues = prevIsMetRef.current;
-		const activeToasts = activeToastsRef.current;
+  // Auto-close toasts when constraints transition from unmet -> met
+  useEffect(() => {
+    const prevValues = prevIsMetRef.current;
+    const activeToasts = activeToastsRef.current;
 
-		constraints.forEach((constraint, index) => {
-			if (constraint.isMet && prevValues[index] === false) {
-				const toastId = activeToasts.get(index);
-				if (toastId) {
-					interviewToastManager.close(toastId);
-					activeToasts.delete(index);
-				}
-			}
-		});
+    constraints.forEach((constraint, index) => {
+      if (constraint.isMet && prevValues[index] === false) {
+        const toastId = activeToasts.get(index);
+        if (toastId) {
+          interviewToastManager.close(toastId);
+          activeToasts.delete(index);
+        }
+      }
+    });
 
-		prevIsMetRef.current = constraints.map((c) => c.isMet);
-	}, [constraints]);
+    prevIsMetRef.current = constraints.map((c) => c.isMet);
+  }, [constraints]);
 
-	// Register the keyed beforeNext handler
-	useEffect(() => {
-		const handler = (direction: Direction) => {
-			const currentConstraints = constraintsRef.current;
-			const activeToasts = activeToastsRef.current;
+  // Register the keyed beforeNext handler
+  useEffect(() => {
+    const handler = (direction: Direction) => {
+      const currentConstraints = constraintsRef.current;
+      const activeToasts = activeToastsRef.current;
 
-			for (let i = 0; i < currentConstraints.length; i++) {
-				const constraint = currentConstraints[i]!;
-				const matchesDirection = constraint.direction === "both" || constraint.direction === direction;
+      for (let i = 0; i < currentConstraints.length; i++) {
+        const constraint = currentConstraints[i]!;
+        const matchesDirection =
+          constraint.direction === 'both' || constraint.direction === direction;
 
-				if (matchesDirection && !constraint.isMet) {
-					track("stage_validation_failed", {
-						validation_kind: constraint.kind ?? "unknown",
-						direction,
-					});
+        if (matchesDirection && !constraint.isMet) {
+          track('stage_validation_failed', {
+            validation_kind: constraint.kind ?? 'unknown',
+            direction,
+          });
 
-					if (!activeToasts.has(i)) {
-						const positionerProps = resolvePositionerPropsRef.current(constraint.toast.anchor);
+          if (!activeToasts.has(i)) {
+            const positionerProps = resolvePositionerPropsRef.current(
+              constraint.toast.anchor,
+            );
 
-						const toastId = interviewToastManager.add({
-							type: constraint.toast.variant,
-							description: constraint.toast.description,
-							timeout: constraint.toast.timeout ?? 4000,
-							positionerProps,
-							data: constraint.toast.icon ? { icon: constraint.toast.icon } : undefined,
-							onRemove: () => {
-								activeToasts.delete(i);
-							},
-						});
+            const toastId = interviewToastManager.add({
+              type: constraint.toast.variant,
+              description: constraint.toast.description,
+              timeout: constraint.toast.timeout ?? 4000,
+              positionerProps,
+              data: constraint.toast.icon
+                ? { icon: constraint.toast.icon }
+                : undefined,
+              onRemove: () => {
+                activeToasts.delete(i);
+              },
+            });
 
-						activeToasts.set(i, toastId);
-					}
+            activeToasts.set(i, toastId);
+          }
 
-					return false;
-				}
-			}
+          return false;
+        }
+      }
 
-			return true;
-		};
+      return true;
+    };
 
-		registerBeforeNext("stageValidation", handler);
+    registerBeforeNext('stageValidation', handler);
 
-		const activeToasts = activeToastsRef.current;
+    const activeToasts = activeToastsRef.current;
 
-		return () => {
-			registerBeforeNext("stageValidation", null);
+    return () => {
+      registerBeforeNext('stageValidation', null);
 
-			for (const toastId of activeToasts.values()) {
-				interviewToastManager.close(toastId);
-			}
-			activeToasts.clear();
-		};
-	}, [registerBeforeNext]);
+      for (const toastId of activeToasts.values()) {
+        interviewToastManager.close(toastId);
+      }
+      activeToasts.clear();
+    };
+  }, [registerBeforeNext]);
 
-	return { showToast, closeToast };
+  return { showToast, closeToast };
 }
 
 export default useStageValidation;

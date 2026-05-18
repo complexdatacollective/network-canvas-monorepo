@@ -1,6 +1,7 @@
-import { flatMap } from "lodash";
+import { flatMap } from 'lodash';
 
-const getIdsFromEntity = (entity) => (entity.variables ? Object.keys(entity.variables) : []);
+const getIdsFromEntity = (entity) =>
+  entity.variables ? Object.keys(entity.variables) : [];
 
 /**
  *
@@ -8,6 +9,8 @@ const getIdsFromEntity = (entity) => (entity.variables ? Object.keys(entity.vari
  * @returns
  */
 export const getIdsFromCodebook = (codebook) =>
-	flatMap(codebook, (entityOrEntities, type) =>
-		type === "ego" ? getIdsFromEntity(entityOrEntities) : flatMap(entityOrEntities, getIdsFromEntity),
-	);
+  flatMap(codebook, (entityOrEntities, type) =>
+    type === 'ego'
+      ? getIdsFromEntity(entityOrEntities)
+      : flatMap(entityOrEntities, getIdsFromEntity),
+  );

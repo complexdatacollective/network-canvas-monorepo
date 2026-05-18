@@ -1,0 +1,20 @@
+{
+  "extends": [
+    "../../.oxlintrc.json",
+    "../../tooling/oxlint/react.json",
+    "../../tooling/oxlint/tailwind.json"
+  ],
+  "rules": {
+    "react/exhaustive-deps": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.stories.ts", "**/*.stories.tsx", ".storybook/**"],
+      "rules": { "no-console": "off" }
+    },
+    {
+      "files": ["e2e/**"],
+      "rules": { "react/rules-of-hooks": "off" }
+    }
+  ]
+}

@@ -1,23 +1,24 @@
-import type { NodeShape } from "@codaco/fresco-ui/Node";
+import { createSelector } from '@reduxjs/toolkit';
+import { compact, get, reduce, uniq } from 'es-toolkit/compat';
+
+import type { NodeShape } from '@codaco/fresco-ui/Node';
 import type {
-	EdgeDefinition,
-	EgoDefinition,
-	NodeDefinition,
-	Stage,
-	Variable,
-	Variables,
-} from "@codaco/protocol-validation";
-import { createSelector } from "@reduxjs/toolkit";
-import { compact, get, reduce, uniq } from "es-toolkit/compat";
-import type { RootState } from "~/ducks/store";
-import { getAllVariablesByUUID, getType } from "~/selectors/codebook";
-import { makeGetIsUsed } from "~/selectors/codebook/isUsed";
-import { getVariableIndex, utils } from "~/selectors/indexes";
-import { getCodebook, getProtocol } from "~/selectors/protocol";
+  EdgeDefinition,
+  EgoDefinition,
+  NodeDefinition,
+  Stage,
+  Variable,
+  Variables,
+} from '@codaco/protocol-validation';
+import type { RootState } from '~/ducks/store';
+import { getAllVariablesByUUID, getType } from '~/selectors/codebook';
+import { makeGetIsUsed } from '~/selectors/codebook/isUsed';
+import { getVariableIndex, utils } from '~/selectors/indexes';
+import { getCodebook, getProtocol } from '~/selectors/protocol';
 
 type StageMeta = {
-	label: string;
-	id: string;
+  label: string;
+  id: string;
 };
 
 /**
@@ -25,15 +26,18 @@ type StageMeta = {
  * @param {Object} state Application state
  * @returns {Object[]} Stage meta sorted by index in state
  */
-const getStageMetaByIndex = createSelector([getProtocol], (protocol): StageMeta[] => {
-	if (!protocol) return [];
-	return protocol.stages.map(({ label, id }: Stage) => ({ label, id }));
-});
+const getStageMetaByIndex = createSelector(
+  [getProtocol],
+  (protocol): StageMeta[] => {
+    if (!protocol) return [];
+    return protocol.stages.map(({ label, id }: Stage) => ({ label, id }));
+  },
+);
 
 const getVariableMetaByIndex = createSelector([getCodebook], (codebook) => {
-	if (!codebook) return {};
-	const variables = getAllVariablesByUUID(codebook);
-	return variables;
+  if (!codebook) return {};
+  const variables = getAllVariablesByUUID(codebook);
+  return variables;
 });
 
 /**
@@ -42,17 +46,19 @@ const getVariableMetaByIndex = createSelector([getCodebook], (codebook) => {
  * @returns {string | null} return a stageIndex or null if stage not found.
  */
 const getStageIndexFromPath = (path: string): string | null => {
-	const matches = /stages\[([0-9]+)\]/.exec(path);
-	return get(matches, 1, null);
+  const matches = /stages\[([0-9]+)\]/.exec(path);
+  return get(matches, 1, null);
 };
 
 const codebookVariableReferenceRegex =
-	/codebook\.(ego|node\[([^\]]+)\]|edge\[([^\]]+)\])\.variables\[(.*?)\].validation\.(sameAs|differentFrom)/;
+  /codebook\.(ego|node\[([^\]]+)\]|edge\[([^\]]+)\])\.variables\[(.*?)\].validation\.(sameAs|differentFrom)/;
 
-const getCodebookVariableIndexFromValidationPath = (path: string): string | null => {
-	const match = path.match(codebookVariableReferenceRegex);
+const getCodebookVariableIndexFromValidationPath = (
+  path: string,
+): string | null => {
+  const match = path.match(codebookVariableReferenceRegex);
 
-	return get(match, 4, null);
+  return get(match, 4, null);
 };
 
 /**
@@ -63,21 +69,24 @@ const getCodebookVariableIndexFromValidationPath = (path: string): string | null
  * @param {any} value Value to match in usage index
  * @returns {string[]} List of paths ("usage array")
  */
-export const getUsage = (index: Record<string, unknown>, value: string): string[] =>
-	reduce(
-		index,
-		(acc: string[], indexValue: unknown, path: string) => {
-			if (indexValue !== value) {
-				return acc;
-			}
-			return [...acc, path];
-		},
-		[],
-	);
+export const getUsage = (
+  index: Record<string, unknown>,
+  value: string,
+): string[] =>
+  reduce(
+    index,
+    (acc: string[], indexValue: unknown, path: string) => {
+      if (indexValue !== value) {
+        return acc;
+      }
+      return [...acc, path];
+    },
+    [],
+  );
 
 type UsageMeta = {
-	label: string;
-	id?: string;
+  label: string;
+  id?: string;
 };
 
 /**
@@ -95,25 +104,31 @@ type UsageMeta = {
  * @returns {Object[]} List of stage meta `{ label, id }`.
  */
 export const getUsageAsStageMeta = (
-	stageMetaByIndex: StageMeta[],
-	variableMetaByIndex: Variables,
-	usageArray: string[],
+  stageMetaByIndex: StageMeta[],
+  variableMetaByIndex: Variables,
+  usageArray: string[],
 ): UsageMeta[] => {
-	// Filter codebook variables from usage array
-	const codebookVariablePaths = usageArray.filter(getCodebookVariableIndexFromValidationPath);
-	const codebookVariablesWithMeta = codebookVariablePaths.map((path: string) => {
-		const variableId = getCodebookVariableIndexFromValidationPath(path);
-		const variable = variableId ? variableMetaByIndex[variableId] : undefined;
-		const name = variable?.name;
-		return {
-			label: `Used as validation for "${name || "unknown"}"`,
-		};
-	});
+  // Filter codebook variables from usage array
+  const codebookVariablePaths = usageArray.filter(
+    getCodebookVariableIndexFromValidationPath,
+  );
+  const codebookVariablesWithMeta = codebookVariablePaths.map(
+    (path: string) => {
+      const variableId = getCodebookVariableIndexFromValidationPath(path);
+      const variable = variableId ? variableMetaByIndex[variableId] : undefined;
+      const name = variable?.name;
+      return {
+        label: `Used as validation for "${name || 'unknown'}"`,
+      };
+    },
+  );
 
-	const stageIndexes = compact(uniq(usageArray.map(getStageIndexFromPath)));
-	const stageVariablesWithMeta = stageIndexes.map((stageIndex: string) => get(stageMetaByIndex, stageIndex));
+  const stageIndexes = compact(uniq(usageArray.map(getStageIndexFromPath)));
+  const stageVariablesWithMeta = stageIndexes.map((stageIndex: string) =>
+    get(stageMetaByIndex, stageIndex),
+  );
 
-	return [...stageVariablesWithMeta, ...codebookVariablesWithMeta];
+  return [...stageVariablesWithMeta, ...codebookVariablesWithMeta];
 };
 
 /**
@@ -125,13 +140,13 @@ export const getUsageAsStageMeta = (
  * @returns {number} -1 if a < b, 1 if a > b, 0 if a === b
  */
 export const sortByLabel = (a: UsageMeta, b: UsageMeta): number => {
-	if (a.label < b.label) {
-		return -1;
-	}
-	if (a.label > b.label) {
-		return 1;
-	}
-	return 0;
+  if (a.label < b.label) {
+    return -1;
+  }
+  if (a.label > b.label) {
+    return 1;
+  }
+  return 0;
 };
 
 /**
@@ -140,40 +155,52 @@ export const sortByLabel = (a: UsageMeta, b: UsageMeta): number => {
  * @param {Record<string, unknown>} mergeProps Props to merge with the result
  * @returns {function} Function that can be used in map operations
  */
-export const makeGetEntityWithUsage = (index: Record<string, unknown>, mergeProps: Record<string, unknown>) =>
-	createSelector([getStageMetaByIndex, getVariableMetaByIndex], (stageMetaByIndex, variableMetaByIndex) => {
-		const search = utils.buildSearch([index]);
+export const makeGetEntityWithUsage = (
+  index: Record<string, unknown>,
+  mergeProps: Record<string, unknown>,
+) =>
+  createSelector(
+    [getStageMetaByIndex, getVariableMetaByIndex],
+    (stageMetaByIndex, variableMetaByIndex) => {
+      const search = utils.buildSearch([index]);
 
-		return (_: unknown, id: string) => {
-			const inUse = search.has(id);
-			const usage = inUse ? getUsageAsStageMeta(stageMetaByIndex, variableMetaByIndex, getUsage(index, id)) : [];
+      return (_: unknown, id: string) => {
+        const inUse = search.has(id);
+        const usage = inUse
+          ? getUsageAsStageMeta(
+              stageMetaByIndex,
+              variableMetaByIndex,
+              getUsage(index, id),
+            )
+          : [];
 
-			return {
-				...mergeProps,
-				type: id,
-				inUse,
-				usage,
-			};
-		};
-	});
+        return {
+          ...mergeProps,
+          type: id,
+          inUse,
+          usage,
+        };
+      };
+    },
+  );
 
 type EntityPropertiesParams = {
-	entity: "node" | "edge" | "ego";
-	type?: string;
+  entity: 'node' | 'edge' | 'ego';
+  type?: string;
 };
 
 type VariableWithUsage = Variable & {
-	id: string;
-	inUse: boolean;
-	usage?: UsageMeta[];
-	usageString?: string;
+  id: string;
+  inUse: boolean;
+  usage?: UsageMeta[];
+  usageString?: string;
 };
 
 type EntityProperties = {
-	name: string;
-	color?: string;
-	shape?: NodeShape;
-	variables: Record<string, VariableWithUsage>;
+  name: string;
+  color?: string;
+  shape?: NodeShape;
+  variables: Record<string, VariableWithUsage>;
 };
 
 /**
@@ -183,73 +210,80 @@ type EntityProperties = {
  * @returns
  */
 export const getEntityProperties = (
-	state: RootState,
-	{ entity, type }: EntityPropertiesParams,
+  state: RootState,
+  { entity, type }: EntityPropertiesParams,
 ): EntityProperties | null => {
-	const entityType = getType(state, { entity, type });
+  const entityType = getType(state, { entity, type });
 
-	if (!entityType) {
-		return null;
-	}
+  if (!entityType) {
+    return null;
+  }
 
-	// Type guard to check if entityType has name and color (nodes and edges do, ego does not)
-	const hasNameAndColor = (
-		def: NodeDefinition | EdgeDefinition | EgoDefinition,
-	): def is NodeDefinition | EdgeDefinition => {
-		return "name" in def && "color" in def;
-	};
+  // Type guard to check if entityType has name and color (nodes and edges do, ego does not)
+  const hasNameAndColor = (
+    def: NodeDefinition | EdgeDefinition | EgoDefinition,
+  ): def is NodeDefinition | EdgeDefinition => {
+    return 'name' in def && 'color' in def;
+  };
 
-	const isEgo = entity === "ego";
-	const variables = entityType.variables;
+  const isEgo = entity === 'ego';
+  const variables = entityType.variables;
 
-	// For non-ego entities, we need name and color
-	if (!isEgo && !hasNameAndColor(entityType)) {
-		return null;
-	}
+  // For non-ego entities, we need name and color
+  if (!isEgo && !hasNameAndColor(entityType)) {
+    return null;
+  }
 
-	const name = hasNameAndColor(entityType) ? entityType.name : "Ego";
-	const color = hasNameAndColor(entityType) ? entityType.color : undefined;
-	const shape = entity === "node" && "shape" in entityType ? entityType.shape?.default : undefined;
+  const name = hasNameAndColor(entityType) ? entityType.name : 'Ego';
+  const color = hasNameAndColor(entityType) ? entityType.color : undefined;
+  const shape =
+    entity === 'node' && 'shape' in entityType
+      ? entityType.shape?.default
+      : undefined;
 
-	const variableIndex = getVariableIndex(state) as Record<string, string>;
-	const variableMeta = getVariableMetaByIndex(state);
-	const stageMetaByIndex = getStageMetaByIndex(state);
-	const isUsedIndex = makeGetIsUsed({ formNames: [] })(state);
+  const variableIndex = getVariableIndex(state) as Record<string, string>;
+  const variableMeta = getVariableMetaByIndex(state);
+  const stageMetaByIndex = getStageMetaByIndex(state);
+  const isUsedIndex = makeGetIsUsed({ formNames: [] })(state);
 
-	const variablesWithUsage: Record<string, VariableWithUsage> = {};
+  const variablesWithUsage: Record<string, VariableWithUsage> = {};
 
-	for (const [id, variable] of Object.entries(variables || {})) {
-		const inUse = get(isUsedIndex, id, false) as boolean;
+  for (const [id, variable] of Object.entries(variables || {})) {
+    const inUse = get(isUsedIndex, id, false);
 
-		const baseProperties: VariableWithUsage = {
-			...variable,
-			id,
-			inUse,
-		};
+    const baseProperties: VariableWithUsage = {
+      ...variable,
+      id,
+      inUse,
+    };
 
-		if (!inUse) {
-			variablesWithUsage[id] = baseProperties;
-			continue;
-		}
+    if (!inUse) {
+      variablesWithUsage[id] = baseProperties;
+      continue;
+    }
 
-		const usage = getUsageAsStageMeta(stageMetaByIndex, variableMeta, getUsage(variableIndex, id)).sort(sortByLabel);
+    const usage = getUsageAsStageMeta(
+      stageMetaByIndex,
+      variableMeta,
+      getUsage(variableIndex, id),
+    ).toSorted(sortByLabel);
 
-		const usageString = usage
-			.map(({ label }: UsageMeta) => label)
-			.join(", ")
-			.toUpperCase();
+    const usageString = usage
+      .map(({ label }: UsageMeta) => label)
+      .join(', ')
+      .toUpperCase();
 
-		variablesWithUsage[id] = {
-			...baseProperties,
-			usage,
-			usageString,
-		};
-	}
+    variablesWithUsage[id] = {
+      ...baseProperties,
+      usage,
+      usageString,
+    };
+  }
 
-	return {
-		name,
-		color,
-		shape,
-		variables: variablesWithUsage,
-	};
+  return {
+    name,
+    color,
+    shape,
+    variables: variablesWithUsage,
+  };
 };
