@@ -1,19 +1,18 @@
 import { useMemo } from "react";
+import { PatternSvg } from "../PatternSvg";
 import { rngToPalette } from "../palette";
 import { seedToRng } from "../seed";
 import type { PatternProps, Renderer } from "../types";
 
 const renderRings: Renderer = (rng, palette, w, h) => {
-	const centreCount = 3 + Math.floor(rng() * 4);
-	const colors = [palette.foreground, palette.accent, palette.highlight];
-	const stroke = 1.5 + rng() * 1.5;
+	const centreCount = 2 + Math.floor(rng() * 8); // 2–9
+	const stroke = 0.8 + rng() * 4; // 0.8–4.8
 	const circles: React.ReactNode[] = [];
 	for (let i = 0; i < centreCount; i++) {
 		const cx = rng() * w;
 		const cy = rng() * h;
-		const maxR = 30 + rng() * (Math.min(w, h) * 0.45);
-		const ringCount = 3 + Math.floor(rng() * 3);
-		const color = colors[Math.floor(rng() * 3)] ?? palette.foreground;
+		const maxR = 20 + rng() * (Math.min(w, h) * 0.7); // wider
+		const ringCount = 2 + Math.floor(rng() * 6); // 2–7
 		for (let r = 0; r < ringCount; r++) {
 			const radius = ((r + 1) / ringCount) * maxR;
 			const opacity = 1 - r / ringCount;
@@ -24,34 +23,22 @@ const renderRings: Renderer = (rng, palette, w, h) => {
 					cy={cy.toFixed(2)}
 					r={radius.toFixed(2)}
 					fill="none"
-					stroke={color}
+					stroke={palette.foreground}
 					strokeOpacity={opacity.toFixed(3)}
 					strokeWidth={stroke}
 				/>,
 			);
 		}
 	}
-	return (
-		<>
-			<rect width={w} height={h} fill={palette.background} />
-			{circles}
-		</>
-	);
+	return <>{circles}</>;
 };
 
 export const RingsPattern = ({ seed, width = 400, height = 250, className, style }: PatternProps) => {
 	const rng = useMemo(() => seedToRng(seed), [seed]);
 	const palette = useMemo(() => rngToPalette(rng), [rng]);
 	return (
-		<svg
-			viewBox={`0 0 ${width} ${height}`}
-			preserveAspectRatio="xMidYMid slice"
-			className={className}
-			style={style}
-			role="presentation"
-			xmlns="http://www.w3.org/2000/svg"
-		>
+		<PatternSvg width={width} height={height} palette={palette} className={className} style={style}>
 			{renderRings(rng, palette, width, height)}
-		</svg>
+		</PatternSvg>
 	);
 };

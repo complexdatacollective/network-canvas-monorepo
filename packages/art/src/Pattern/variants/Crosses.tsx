@@ -1,15 +1,16 @@
 import { useMemo } from "react";
+import { PatternSvg } from "../PatternSvg";
 import { rngToPalette } from "../palette";
 import { seedToRng } from "../seed";
 import type { PatternProps, Renderer } from "../types";
 
 const renderCrosses: Renderer = (rng, palette, w, h) => {
-	const cell = 24 + Math.floor(rng() * 16);
-	const cross = cell * (0.4 + rng() * 0.2);
-	const stroke = 2 + rng() * 1.5;
+	const cell = 16 + Math.floor(rng() * 32); // 16–48
+	const crossSize = cell * (0.3 + rng() * 0.4); // 0.3–0.7 of cell
+	const stroke = 1 + rng() * 4; // 1–5
+	const rotated = rng() > 0.5;
 	const cols = Math.ceil(w / cell) + 2;
 	const rows = Math.ceil(h / cell) + 2;
-	const colors = [palette.foreground, palette.accent, palette.highlight];
 	const lines: React.ReactNode[] = [];
 	for (let row = 0; row < rows; row++) {
 		const yOffset = row * cell;
@@ -17,53 +18,48 @@ const renderCrosses: Renderer = (rng, palette, w, h) => {
 		for (let col = 0; col < cols; col++) {
 			const cx = col * cell + xShift;
 			const cy = yOffset;
-			const color = colors[Math.floor(rng() * 3)] ?? palette.foreground;
-			const half = cross / 2;
+			const half = crossSize / 2;
+			// 0deg crosses (+): horizontal + vertical lines through (cx, cy)
+			// 45deg crosses (x): two diagonal lines through (cx, cy)
+			const a = rotated
+				? { x1: cx - half, y1: cy - half, x2: cx + half, y2: cy + half }
+				: { x1: cx - half, y1: cy, x2: cx + half, y2: cy };
+			const b = rotated
+				? { x1: cx - half, y1: cy + half, x2: cx + half, y2: cy - half }
+				: { x1: cx, y1: cy - half, x2: cx, y2: cy + half };
 			lines.push(
 				<line
-					key={`h-${row}-${col}`}
-					x1={(cx - half).toFixed(2)}
-					y1={cy.toFixed(2)}
-					x2={(cx + half).toFixed(2)}
-					y2={cy.toFixed(2)}
-					stroke={color}
+					key={`a-${row}-${col}`}
+					x1={a.x1.toFixed(2)}
+					y1={a.y1.toFixed(2)}
+					x2={a.x2.toFixed(2)}
+					y2={a.y2.toFixed(2)}
+					stroke={palette.foreground}
 					strokeWidth={stroke}
 					strokeLinecap="round"
 				/>,
 				<line
-					key={`v-${row}-${col}`}
-					x1={cx.toFixed(2)}
-					y1={(cy - half).toFixed(2)}
-					x2={cx.toFixed(2)}
-					y2={(cy + half).toFixed(2)}
-					stroke={color}
+					key={`b-${row}-${col}`}
+					x1={b.x1.toFixed(2)}
+					y1={b.y1.toFixed(2)}
+					x2={b.x2.toFixed(2)}
+					y2={b.y2.toFixed(2)}
+					stroke={palette.foreground}
 					strokeWidth={stroke}
 					strokeLinecap="round"
 				/>,
 			);
 		}
 	}
-	return (
-		<>
-			<rect width={w} height={h} fill={palette.background} />
-			{lines}
-		</>
-	);
+	return <>{lines}</>;
 };
 
 export const CrossesPattern = ({ seed, width = 400, height = 250, className, style }: PatternProps) => {
 	const rng = useMemo(() => seedToRng(seed), [seed]);
 	const palette = useMemo(() => rngToPalette(rng), [rng]);
 	return (
-		<svg
-			viewBox={`0 0 ${width} ${height}`}
-			preserveAspectRatio="xMidYMid slice"
-			className={className}
-			style={style}
-			role="presentation"
-			xmlns="http://www.w3.org/2000/svg"
-		>
+		<PatternSvg width={width} height={height} palette={palette} className={className} style={style}>
 			{renderCrosses(rng, palette, width, height)}
-		</svg>
+		</PatternSvg>
 	);
 };

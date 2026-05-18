@@ -1,19 +1,20 @@
 import { useMemo } from "react";
+import { PatternSvg } from "../PatternSvg";
 import { rngToPalette } from "../palette";
 import { seedToRng } from "../seed";
 import type { PatternProps, Renderer } from "../types";
 
 const renderFlow: Renderer = (rng, palette, w, h) => {
-	const lineCount = 5 + Math.floor(rng() * 6);
-	const colors = [palette.foreground, palette.accent, palette.highlight];
-	const stroke = 1.4 + rng() * 2.2;
-	const segments = 6;
+	const lineCount = 4 + Math.floor(rng() * 10); // 4–13
+	const stroke = 0.8 + rng() * 4.5; // 0.8–5.3
+	const segments = 6 + Math.floor(rng() * 8); // 6–13
 	const paths: React.ReactNode[] = [];
 	for (let i = 0; i < lineCount; i++) {
 		const baseY = ((i + 0.5) / lineCount) * h;
-		const amp = 6 + rng() * (h / (lineCount * 2));
+		const ampFactor = 0.4 + rng() * 0.5; // 0.4–0.9
+		const amp = 6 + rng() * (h / lineCount) * ampFactor;
 		const phase = rng() * Math.PI * 2;
-		const wavelength = w / (1 + rng() * 2);
+		const wavelength = w / (1 + rng() * 3); // wider range
 		const stepX = w / segments;
 		const points: string[] = [`M ${-stepX} ${baseY + Math.sin(phase) * amp}`];
 		for (let s = 0; s <= segments + 1; s++) {
@@ -21,32 +22,26 @@ const renderFlow: Renderer = (rng, palette, w, h) => {
 			const y = baseY + Math.sin(phase + (x / wavelength) * Math.PI * 2) * amp;
 			points.push(`L ${x.toFixed(2)} ${y.toFixed(2)}`);
 		}
-		const color = colors[i % colors.length] ?? palette.foreground;
 		paths.push(
-			<path key={i} d={points.join(" ")} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" />,
+			<path
+				key={i}
+				d={points.join(" ")}
+				fill="none"
+				stroke={palette.foreground}
+				strokeWidth={stroke}
+				strokeLinecap="round"
+			/>,
 		);
 	}
-	return (
-		<>
-			<rect width={w} height={h} fill={palette.background} />
-			{paths}
-		</>
-	);
+	return <>{paths}</>;
 };
 
 export const FlowPattern = ({ seed, width = 400, height = 250, className, style }: PatternProps) => {
 	const rng = useMemo(() => seedToRng(seed), [seed]);
 	const palette = useMemo(() => rngToPalette(rng), [rng]);
 	return (
-		<svg
-			viewBox={`0 0 ${width} ${height}`}
-			preserveAspectRatio="xMidYMid slice"
-			className={className}
-			style={style}
-			role="presentation"
-			xmlns="http://www.w3.org/2000/svg"
-		>
+		<PatternSvg width={width} height={height} palette={palette} className={className} style={style}>
 			{renderFlow(rng, palette, width, height)}
-		</svg>
+		</PatternSvg>
 	);
 };

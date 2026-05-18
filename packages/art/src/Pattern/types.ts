@@ -3,10 +3,9 @@ import type { CSSProperties, ReactNode } from "react";
 export type Rng = () => number;
 
 export type Palette = {
-	background: string;
 	foreground: string;
-	accent: string;
-	highlight: string;
+	backgroundTop: string;
+	backgroundBottom: string;
 };
 
 export type Renderer = (rng: Rng, palette: Palette, width: number, height: number) => ReactNode;

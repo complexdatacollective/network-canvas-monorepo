@@ -1,18 +1,18 @@
 import { useMemo } from "react";
+import { PatternSvg } from "../PatternSvg";
 import { rngToPalette } from "../palette";
 import { seedToRng } from "../seed";
 import type { PatternProps, Renderer } from "../types";
 
 const renderSquiggles: Renderer = (rng, palette, w, h) => {
-	const rowCount = 5 + Math.floor(rng() * 5);
-	const colors = [palette.foreground, palette.accent, palette.highlight];
-	const stroke = 2 + rng() * 2;
+	const rowCount = 3 + Math.floor(rng() * 10); // 3–12
+	const stroke = 1 + rng() * 5; // 1–6
 	const rowGap = h / rowCount;
 	const paths: React.ReactNode[] = [];
 	for (let i = 0; i < rowCount; i++) {
 		const baseY = (i + 0.5) * rowGap;
-		const amp = Math.min(rowGap * 0.45, 6 + rng() * (rowGap * 0.35));
-		const wavelength = 30 + rng() * 50;
+		const amp = Math.min(rowGap * 0.45, 4 + rng() * (rowGap * 0.5));
+		const wavelength = 20 + rng() * 70;
 		const steps = Math.ceil(w / (wavelength / 2)) + 2;
 		let direction = rng() > 0.5 ? 1 : -1;
 		const d: string[] = [`M ${-wavelength / 2} ${baseY.toFixed(2)}`];
@@ -23,30 +23,26 @@ const renderSquiggles: Renderer = (rng, palette, w, h) => {
 			d.push(`Q ${xMid.toFixed(2)} ${yMid.toFixed(2)}, ${xEnd.toFixed(2)} ${baseY.toFixed(2)}`);
 			direction *= -1;
 		}
-		const color = colors[i % colors.length] ?? palette.foreground;
-		paths.push(<path key={i} d={d.join(" ")} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" />);
+		paths.push(
+			<path
+				key={i}
+				d={d.join(" ")}
+				fill="none"
+				stroke={palette.foreground}
+				strokeWidth={stroke}
+				strokeLinecap="round"
+			/>,
+		);
 	}
-	return (
-		<>
-			<rect width={w} height={h} fill={palette.background} />
-			{paths}
-		</>
-	);
+	return <>{paths}</>;
 };
 
 export const SquigglesPattern = ({ seed, width = 400, height = 250, className, style }: PatternProps) => {
 	const rng = useMemo(() => seedToRng(seed), [seed]);
 	const palette = useMemo(() => rngToPalette(rng), [rng]);
 	return (
-		<svg
-			viewBox={`0 0 ${width} ${height}`}
-			preserveAspectRatio="xMidYMid slice"
-			className={className}
-			style={style}
-			role="presentation"
-			xmlns="http://www.w3.org/2000/svg"
-		>
+		<PatternSvg width={width} height={height} palette={palette} className={className} style={style}>
 			{renderSquiggles(rng, palette, width, height)}
-		</svg>
+		</PatternSvg>
 	);
 };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BASE_PALETTE, NC_PALETTE, rngToPalette } from "../palette";
+import { BASE_PALETTE, rngToPalette } from "../palette";
 import { seedToRng } from "../seed";
 
 const parseOklch = (s: string) => {
@@ -9,33 +9,39 @@ const parseOklch = (s: string) => {
 };
 
 describe("rngToPalette", () => {
-	it("foreground is sourced from BASE_PALETTE; accent/highlight are distinct entries from NC_PALETTE", () => {
+	it("produces foreground, backgroundTop, backgroundBottom that all share the base hue", () => {
 		const palette = rngToPalette(seedToRng("alice"));
-		const baseOklch = new Set(BASE_PALETTE.map((c) => `oklch(${c.l} ${c.c} ${c.h})`));
-		const ncOklch = new Set(NC_PALETTE.map((c) => `oklch(${c.l} ${c.c} ${c.h})`));
-		expect(baseOklch.has(palette.foreground)).toBe(true);
-		expect(ncOklch.has(palette.accent)).toBe(true);
-		expect(ncOklch.has(palette.highlight)).toBe(true);
-		expect(palette.accent).not.toEqual(palette.highlight);
+		const fg = parseOklch(palette.foreground);
+		const top = parseOklch(palette.backgroundTop);
+		const bot = parseOklch(palette.backgroundBottom);
+		expect(top.h).toBeCloseTo(fg.h, 4);
+		expect(bot.h).toBeCloseTo(fg.h, 4);
 	});
 
-	it("derives a high-lightness, low-chroma background", () => {
+	it("backgroundTop matches one of the four BASE_PALETTE colors at full strength", () => {
 		const palette = rngToPalette(seedToRng("alice"));
-		const bg = parseOklch(palette.background);
-		expect(bg.l).toBeGreaterThanOrEqual(0.9);
-		expect(bg.c).toBeLessThanOrEqual(0.05);
+		const baseStrings = BASE_PALETTE.map((c) => `oklch(${c.l} ${c.c} ${c.h})`);
+		expect(baseStrings).toContain(palette.backgroundTop);
+	});
+
+	it("foreground is lighter and less saturated than the background top", () => {
+		const palette = rngToPalette(seedToRng("alice"));
+		const fg = parseOklch(palette.foreground);
+		const top = parseOklch(palette.backgroundTop);
+		expect(fg.l).toBeGreaterThan(top.l);
+		expect(fg.c).toBeLessThan(top.c);
+	});
+
+	it("backgroundBottom is darker than backgroundTop", () => {
+		const palette = rngToPalette(seedToRng("alice"));
+		const top = parseOklch(palette.backgroundTop);
+		const bot = parseOklch(palette.backgroundBottom);
+		expect(bot.l).toBeLessThan(top.l);
 	});
 
 	it("produces the same palette for the same seed", () => {
 		const a = rngToPalette(seedToRng("alice"));
 		const b = rngToPalette(seedToRng("alice"));
 		expect(a).toEqual(b);
-	});
-
-	it("background hue matches foreground hue", () => {
-		const palette = rngToPalette(seedToRng("alice"));
-		const bg = parseOklch(palette.background);
-		const fg = parseOklch(palette.foreground);
-		expect(bg.h).toBeCloseTo(fg.h, 4);
 	});
 });
