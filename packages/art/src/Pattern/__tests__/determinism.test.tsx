@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { Pattern } from "../Pattern";
 import { CrossesPattern } from "../variants/Crosses";
 import { DotsPattern } from "../variants/Dots";
 import { FlowPattern } from "../variants/Flow";
@@ -141,6 +142,19 @@ describe("determinism", () => {
 		it("matches snapshot for the determinism fixture seed", () => {
 			const markup = renderToStaticMarkup(<TruchetPattern seed="determinism-fixture" width={400} height={250} />);
 			expect(markup).toMatchSnapshot();
+		});
+	});
+
+	describe("Pattern dispatcher", () => {
+		it("produces identical markup on repeat renders with no variant prop", () => {
+			const a = renderToStaticMarkup(<Pattern seed="dispatch-fixture" width={400} height={250} />);
+			const b = renderToStaticMarkup(<Pattern seed="dispatch-fixture" width={400} height={250} />);
+			expect(a).toBe(b);
+		});
+
+		it("renders the explicit variant when provided", () => {
+			const markup = renderToStaticMarkup(<Pattern seed="fixture" variant="dots" width={400} height={250} />);
+			expect(markup).toContain("<circle");
 		});
 	});
 });
