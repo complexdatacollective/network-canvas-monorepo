@@ -140,7 +140,7 @@ export function ProtocolsRoute() {
                 <TableCell>
                   <div className="font-medium">{protocol.name}</div>
                   {protocol.description ? (
-                    <div className="text-muted-foreground text-xs">
+                    <div className="text-text/60 text-xs">
                       {protocol.description}
                     </div>
                   ) : null}

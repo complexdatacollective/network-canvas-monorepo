@@ -64,9 +64,9 @@ export function ManageAuthenticator() {
       <Heading level="h3">Manage authenticator</Heading>
       {credentialIdB64 ? (
         <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 font-mono text-xs">
-          <dt className="text-muted-foreground">Credential</dt>
+          <dt className="text-text/60">Credential</dt>
           <dd>{truncateCredentialId(credentialIdB64)}</dd>
-          <dt className="text-muted-foreground">Enrolled</dt>
+          <dt className="text-text/60">Enrolled</dt>
           <dd>
             {enrolledAt ? <TimeAgo date={enrolledAt} /> : <span>unknown</span>}
           </dd>

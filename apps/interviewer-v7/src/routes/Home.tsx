@@ -5,6 +5,7 @@ import { useLocation } from 'wouter';
 import { BrandHeader } from '~/components/BrandHeader';
 import { ImportDialog } from '~/components/ImportDialog';
 import { InterviewsDialog } from '~/components/InterviewsDialog';
+import { NewSessionDialog } from '~/components/NewSessionDialog';
 import { ProtocolDeck } from '~/components/ProtocolDeck';
 import { ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
@@ -27,6 +28,9 @@ export function HomeRoute() {
   const [sessions, setSessions] = useState<StoredSession[]>([]);
   const [, setSettings] = useState<StoredSettings | null>(null);
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null);
+  const [pendingProtocolHash, setPendingProtocolHash] = useState<string | null>(
+    null,
+  );
   const [, navigate] = useLocation();
 
   const reload = useCallback(async () => {
@@ -43,6 +47,17 @@ export function HomeRoute() {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  const handleImported = useCallback(
+    (hash?: string) => {
+      void reload();
+      // ImportDialog's "Start an interview" CTA forwards the imported protocol's
+      // hash so we can open the new-session flow directly. A bare close-after-import
+      // (no hash) just refreshes the deck.
+      if (hash) setPendingProtocolHash(hash);
+    },
+    [reload],
+  );
 
   const haveProtocols = protocols.length > 0;
 
@@ -76,7 +91,7 @@ export function HomeRoute() {
         protocols={protocols}
         sessions={sessions}
         onImport={() => setOpenDialog('import')}
-        onSessionCreated={(sessionId) => navigate(`/interview/${sessionId}`)}
+        onStartInterview={setPendingProtocolHash}
       />
 
       <StatusRow
@@ -88,7 +103,7 @@ export function HomeRoute() {
       <ImportDialog
         open={openDialog === 'import'}
         onClose={() => setOpenDialog(null)}
-        onImported={() => void reload()}
+        onImported={handleImported}
       />
       <InterviewsDialog
         open={openDialog === 'data'}
@@ -98,6 +113,18 @@ export function HomeRoute() {
         open={openDialog === 'settings'}
         onClose={() => setOpenDialog(null)}
       />
+
+      {pendingProtocolHash ? (
+        <NewSessionDialog
+          open
+          protocolHash={pendingProtocolHash}
+          onClose={() => setPendingProtocolHash(null)}
+          onCreated={(session) => {
+            setPendingProtocolHash(null);
+            navigate(`/interview/${session.id}`);
+          }}
+        />
+      ) : null}
     </StageBackground>
   );
 }

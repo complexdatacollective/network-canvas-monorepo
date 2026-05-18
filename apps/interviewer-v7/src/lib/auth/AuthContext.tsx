@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import { getSettings, updateSettings } from '../db/api';
+import { DEFAULT_SETTINGS } from '../db/types';
 import * as authApi from './api';
 import { useIdleTimer } from './idle';
 import * as vaultMetadata from './vaultMetadata';
@@ -52,15 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     kind: 'loading',
     authenticatorSupported: false,
-    idleTimeoutMinutes: 15,
+    idleTimeoutMinutes: DEFAULT_SETTINGS.idleTimeoutMinutes,
   });
 
+  // Auth status must be read BEFORE any DB-backed call: on Electron the SQLCipher
+  // service throws while the vault is locked, and loading settings first would
+  // strand AuthGate in 'loading' on first launch.
   const refresh = useCallback(async () => {
-    const settings = await getSettings();
-    const idleTimeoutMinutes: IdleTimeoutMinutes =
-      settings?.idleTimeoutMinutes ?? 15;
     const authenticatorSupported = authApi.isAuthenticatorSupported();
-
     const s = await authApi.status();
     const kind: AuthStateKind = !s.configured
       ? 'unconfigured'
@@ -77,6 +77,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       : s.credentialIdB64
         ? { credentialIdB64: s.credentialIdB64, enrolledAt: '' }
         : undefined;
+
+    let idleTimeoutMinutes: IdleTimeoutMinutes =
+      DEFAULT_SETTINGS.idleTimeoutMinutes;
+    if (kind === 'unlocked') {
+      const settings = await getSettings();
+      idleTimeoutMinutes =
+        settings?.idleTimeoutMinutes ?? DEFAULT_SETTINGS.idleTimeoutMinutes;
+    }
 
     setState({
       kind,

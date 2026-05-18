@@ -1,6 +1,7 @@
 import { randomBytes, webcrypto } from 'node:crypto';
+import { unlink } from 'node:fs/promises';
 
-import { closeDatabase, openDatabase } from '../db/service';
+import { closeDatabase, getDbPath, openDatabase } from '../db/service';
 import {
   CURRENT_VAULT_VERSION,
   deleteVault,
@@ -74,12 +75,32 @@ export async function status(): Promise<{
   credentialIdB64?: string;
   saltB64?: string;
 }> {
-  const record = readVault();
+  if (!isVaultConfigured()) {
+    return { configured: false, locked: false };
+  }
+  let record: VaultRecord | null;
+  try {
+    record = readVault();
+  } catch (cause) {
+    console.warn(
+      '[auth] vault file present but unreadable, treating as unconfigured:',
+      cause,
+    );
+    return { configured: false, locked: false };
+  }
+  // readVault() returns null for unsupported schema versions; same treatment —
+  // setup will overwrite the stale file rather than brick the app.
+  if (!record) {
+    console.warn(
+      '[auth] vault file present but schema version mismatched, treating as unconfigured',
+    );
+    return { configured: false, locked: false };
+  }
   return {
-    configured: isVaultConfigured(),
+    configured: true,
     locked: unlockedKeyHex === null,
-    credentialIdB64: record?.credentialIdB64,
-    saltB64: record?.saltB64,
+    credentialIdB64: record.credentialIdB64,
+    saltB64: record.saltB64,
   };
 }
 
@@ -216,5 +237,18 @@ export async function reEnrol(args: {
 
 export async function revoke(): Promise<void> {
   await lock();
+  const dbPath = getDbPath();
+  for (const path of [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]) {
+    try {
+      await unlink(path);
+    } catch (cause) {
+      if (
+        !(cause instanceof Error) ||
+        (cause as NodeJS.ErrnoException).code !== 'ENOENT'
+      ) {
+        throw cause;
+      }
+    }
+  }
   deleteVault();
 }

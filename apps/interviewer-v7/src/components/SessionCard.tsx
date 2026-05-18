@@ -38,14 +38,11 @@ export function SessionCard({ session, prominent }: SessionCardProps) {
         {session.finishedAt ? (
           <CheckCircle2 className="text-success size-4" aria-label="Finished" />
         ) : (
-          <Clock
-            className="text-muted-foreground size-4"
-            aria-label="In progress"
-          />
+          <Clock className="text-text/60 size-4" aria-label="In progress" />
         )}
       </div>
       <Paragraph emphasis="muted">{session.protocolName}</Paragraph>
-      <dl className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs">
+      <dl className="text-text/60 flex flex-wrap gap-x-4 gap-y-1 text-xs">
         <div className="flex items-center gap-1">
           <Calendar className="size-3" aria-hidden />
           <dt className="sr-only">Updated</dt>

@@ -1,3 +1,4 @@
+import { db } from '../db/db';
 import { isElectron } from '../platform/platform';
 import * as electronAuth from './electron';
 import * as vaultMetadata from './vaultMetadata';
@@ -35,10 +36,10 @@ function writeWebUnlocked(value: boolean): void {
 
 export function isAuthenticatorSupported(): boolean {
   if (!isWebAuthnAvailable()) return false;
-  // Electron's WebAuthn implementation requires a signed binary plus entitlements +
-  // app.configureWebAuthn before navigator.credentials.create()/get() will surface a
-  // platform-authenticator prompt; in unsigned dev builds the call hangs silently.
-  if (isElectron && !window.electronAPI?.isPackaged) return false;
+  // Electron main calls app.configureWebAuthn() at bootstrap; the OS-level
+  // requirements (signed binary + Touch ID / Windows Hello entitlements) must
+  // also be met for navigator.credentials to surface a platform-authenticator
+  // prompt, but those are deployment concerns, not runtime gates we can check here.
   return true;
 }
 
@@ -175,6 +176,10 @@ export async function revoke(): Promise<void> {
     await electronAuth.revoke();
     return;
   }
+  // Order matters: drop the Dexie DB first, then clear metadata. If we fail
+  // mid-revoke, leaving metadata behind keeps the install in a recoverable
+  // "configured but locked" state instead of an orphaned DB without a vault.
+  await db.delete();
   await vaultMetadata.clear();
   writeWebUnlocked(false);
 }

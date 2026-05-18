@@ -240,16 +240,16 @@ export function SettingsRoute() {
           Read-only details about this device&apos;s storage.
         </Paragraph>
         <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 font-mono text-xs">
-          <dt className="text-muted-foreground">Platform</dt>
+          <dt className="text-text/60">Platform</dt>
           <dd>{hostAppName}</dd>
-          <dt className="text-muted-foreground">Storage usage</dt>
+          <dt className="text-text/60">Storage usage</dt>
           <dd>
             {formatBytes(storage.usage)} of {formatBytes(storage.quota)}
             {storage.percent !== null
               ? ` (${storage.percent.toFixed(1)}%)`
               : ''}
           </dd>
-          <dt className="text-muted-foreground">Persistent storage</dt>
+          <dt className="text-text/60">Persistent storage</dt>
           <dd>{persistent ? 'granted' : 'not granted'}</dd>
         </dl>
       </Surface>

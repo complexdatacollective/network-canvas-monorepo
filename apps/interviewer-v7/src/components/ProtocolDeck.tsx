@@ -1,16 +1,17 @@
 import { ChevronLeft, ChevronRight, Play, Plus } from 'lucide-react';
 import { motion } from 'motion/react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cva } from '@codaco/fresco-ui/utils/cva';
-import { NewSessionDialog } from '~/components/NewSessionDialog';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
 
-// Beyond MAX_VISIBLE, the fanned stack stops adding visible cards.
-const MAX_VISIBLE = 5;
+// Render budget for the fanned stack: cards further than this offset from the
+// active index are skipped during render. Navigation still spans every protocol.
+const MAX_VISIBLE = 3;
 // Fan-out tuning. Offsets are percentages of the card's own size so the
 // fanned stack adapts when the deck container resizes (transform percentages
 // resolve against the transformed element's box). Original tuning at
@@ -73,7 +74,7 @@ type ProtocolDeckProps = {
   protocols: ProtocolWithCounts[];
   sessions: StoredSession[];
   onImport: () => void;
-  onSessionCreated: (sessionId: string) => void;
+  onStartInterview: (protocolHash: string) => void;
 };
 
 const cardBase = cva({
@@ -122,35 +123,23 @@ export function ProtocolDeck({
   protocols,
   sessions,
   onImport,
-  onSessionCreated,
+  onStartInterview,
 }: ProtocolDeckProps) {
   const [activeIdx, setActiveIdx] = useState(0);
-  const [pendingProtocolHash, setPendingProtocolHash] = useState<string | null>(
-    null,
-  );
-
-  const visibleProtocols = useMemo(
-    () => protocols.slice(0, MAX_VISIBLE),
-    [protocols],
-  );
 
   const deck = useMemo<DeckEntry[]>(() => {
-    const entries: DeckEntry[] = visibleProtocols.map((p) => ({
+    const entries: DeckEntry[] = protocols.map((p) => ({
       kind: 'protocol',
       protocol: p,
     }));
     entries.push({ kind: 'import' });
     return entries;
-  }, [visibleProtocols]);
+  }, [protocols]);
 
   // Clamp the active index when the deck shrinks (e.g., protocol deleted elsewhere).
   useEffect(() => {
     setActiveIdx((idx) => Math.min(idx, Math.max(deck.length - 1, 0)));
   }, [deck.length]);
-
-  const startInterview = useCallback((hash: string) => {
-    setPendingProtocolHash(hash);
-  }, []);
 
   const handleActivate = useCallback(
     (idx: number) => {
@@ -164,23 +153,24 @@ export function ProtocolDeck({
         onImport();
         return;
       }
-      startInterview(entry.protocol.hash);
+      onStartInterview(entry.protocol.hash);
     },
-    [activeIdx, deck, onImport, startInterview],
+    [activeIdx, deck, onImport, onStartInterview],
   );
 
   // Global ←/→/Enter cycle the deck — the deck is the primary affordance on
-  // Home, so page-wide keys feel natural. The dialog overlay swallows keys when
-  // open because the NewSessionDialog mounts a focus-trapped surface above.
+  // Home, so page-wide keys feel natural. The NewSessionDialog (lifted to Home)
+  // mounts a focus-trapped surface above and swallows keys while open.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (pendingProtocolHash) return;
       const target = event.target;
-      if (target instanceof HTMLElement) {
-        const tag = target.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable)
-          return;
-      }
+      const isEditableTarget =
+        target instanceof HTMLElement &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+      if (isEditableTarget) return;
+
       if (event.key === 'ArrowLeft') {
         event.preventDefault();
         setActiveIdx((idx) => Math.max(0, idx - 1));
@@ -191,119 +181,115 @@ export function ProtocolDeck({
         setActiveIdx((idx) => Math.min(deck.length - 1, idx + 1));
         return;
       }
+      // Enter must not double-fire when focus is on an interactive control
+      // (TopActionBar buttons, chevrons, dot navs, the active card itself) —
+      // the control already activates on Enter via its own handler.
       if (event.key === 'Enter') {
+        if (target instanceof HTMLElement) {
+          if (target.tagName === 'BUTTON' || target.tagName === 'A') return;
+          if (
+            target.closest('button, a, [role="button"], [role="link"]') !== null
+          )
+            return;
+        }
         event.preventDefault();
         handleActivate(activeIdx);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [activeIdx, deck.length, handleActivate, pendingProtocolHash]);
+  }, [activeIdx, deck.length, handleActivate]);
 
   const atStart = activeIdx === 0;
   const atEnd = activeIdx === deck.length - 1;
 
   return (
-    <>
-      <motion.div
-        initial={{ opacity: 0, y: 36, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.75, delay: 0.65, ease: EASE }}
-        className="flex min-h-0 w-full flex-1 flex-col gap-8 [perspective:1800px]"
+    <motion.div
+      initial={{ opacity: 0, y: 36, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.75, delay: 0.65, ease: EASE }}
+      className="flex min-h-0 w-full flex-1 flex-col gap-8 [perspective:1800px]"
+    >
+      <section
+        aria-label="Protocol deck"
+        className="relative min-h-0 w-full flex-1"
       >
-        <section
-          aria-label="Protocol deck"
-          className="relative min-h-0 w-full flex-1"
+        {deck.map((entry, i) => {
+          const offset = i - activeIdx;
+          const abs = Math.abs(offset);
+          if (abs > MAX_VISIBLE) return null;
+          const isActive = offset === 0;
+          return (
+            <DeckCard
+              key={entry.kind === 'import' ? 'import' : entry.protocol.hash}
+              entry={entry}
+              offset={offset}
+              isActive={isActive}
+              sessions={sessions}
+              onTap={() => handleActivate(i)}
+            />
+          );
+        })}
+      </section>
+
+      {deck.length > 1 ? (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 1.05, ease: EASE }}
+          className="z-[6] flex shrink-0 items-center justify-center gap-7"
         >
-          {deck.map((entry, i) => {
-            const offset = i - activeIdx;
-            const abs = Math.abs(offset);
-            if (abs > 3) return null;
-            const isActive = offset === 0;
-            return (
-              <DeckCard
-                key={entry.kind === 'import' ? 'import' : entry.protocol.hash}
-                entry={entry}
-                offset={offset}
-                isActive={isActive}
-                sessions={sessions}
-                onTap={() => handleActivate(i)}
-              />
-            );
-          })}
-        </section>
-
-        {deck.length > 1 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 1.05, ease: EASE }}
-            className="z-[6] flex shrink-0 items-center justify-center gap-7"
+          <motion.span
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.92 }}
+            transition={{ duration: 0.2 }}
+            className="inline-flex"
           >
-            <motion.span
-              whileHover={{ scale: 1.06 }}
-              whileTap={{ scale: 0.92 }}
-              transition={{ duration: 0.2 }}
-              className="inline-flex"
-            >
-              <IconButton
-                size="xl"
-                variant="text"
-                icon={<ChevronLeft strokeWidth={2.8} aria-hidden />}
-                aria-label="Previous protocol"
-                onClick={() => setActiveIdx((i) => Math.max(0, i - 1))}
-                disabled={atStart}
-                className={CHEVRON_BUTTON_CLASS}
+            <IconButton
+              size="xl"
+              variant="text"
+              icon={<ChevronLeft strokeWidth={2.8} aria-hidden />}
+              aria-label="Previous protocol"
+              onClick={() => setActiveIdx((i) => Math.max(0, i - 1))}
+              disabled={atStart}
+              className={CHEVRON_BUTTON_CLASS}
+            />
+          </motion.span>
+          <div className="flex items-center gap-2.5">
+            {deck.map((entry, i) => (
+              <button
+                key={entry.kind === 'import' ? 'import' : entry.protocol.hash}
+                type="button"
+                onClick={() => setActiveIdx(i)}
+                aria-label={`Go to card ${i + 1}`}
+                aria-current={i === activeIdx ? 'true' : undefined}
+                className={`h-3 cursor-pointer rounded-full border-0 p-0 transition-all duration-200 ${
+                  i === activeIdx ? 'bg-sea-green w-9' : 'bg-surface-2 w-3'
+                }`}
               />
-            </motion.span>
-            <div className="flex items-center gap-2.5">
-              {deck.map((entry, i) => (
-                <button
-                  key={entry.kind === 'import' ? 'import' : entry.protocol.hash}
-                  type="button"
-                  onClick={() => setActiveIdx(i)}
-                  aria-label={`Go to card ${i + 1}`}
-                  aria-current={i === activeIdx ? 'true' : undefined}
-                  className={`h-3 cursor-pointer rounded-full border-0 p-0 transition-all duration-200 ${
-                    i === activeIdx ? 'bg-sea-green w-9' : 'bg-surface-2 w-3'
-                  }`}
-                />
-              ))}
-            </div>
-            <motion.span
-              whileHover={{ scale: 1.06 }}
-              whileTap={{ scale: 0.92 }}
-              transition={{ duration: 0.2 }}
-              className="inline-flex"
-            >
-              <IconButton
-                size="xl"
-                variant="text"
-                icon={<ChevronRight strokeWidth={2.8} aria-hidden />}
-                aria-label="Next protocol"
-                onClick={() =>
-                  setActiveIdx((i) => Math.min(deck.length - 1, i + 1))
-                }
-                disabled={atEnd}
-                className={CHEVRON_BUTTON_CLASS}
-              />
-            </motion.span>
-          </motion.div>
-        ) : null}
-      </motion.div>
-
-      {pendingProtocolHash ? (
-        <NewSessionDialog
-          open
-          protocolHash={pendingProtocolHash}
-          onClose={() => setPendingProtocolHash(null)}
-          onCreated={(session) => {
-            setPendingProtocolHash(null);
-            onSessionCreated(session.id);
-          }}
-        />
+            ))}
+          </div>
+          <motion.span
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.92 }}
+            transition={{ duration: 0.2 }}
+            className="inline-flex"
+          >
+            <IconButton
+              size="xl"
+              variant="text"
+              icon={<ChevronRight strokeWidth={2.8} aria-hidden />}
+              aria-label="Next protocol"
+              onClick={() =>
+                setActiveIdx((i) => Math.min(deck.length - 1, i + 1))
+              }
+              disabled={atEnd}
+              className={CHEVRON_BUTTON_CLASS}
+            />
+          </motion.span>
+        </motion.div>
       ) : null}
-    </>
+    </motion.div>
   );
 }
 
@@ -372,11 +358,19 @@ function DeckCard({ entry, offset, isActive, sessions, onTap }: DeckCardProps) {
     (s) => s.protocolHash === protocol.hash,
   ).length;
   const shadowClass = isActive ? accent?.ring : INACTIVE_SHADOW;
+  const onCardKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onTap();
+    }
+  };
 
   return (
-    <motion.button
-      type="button"
+    <motion.div
+      role="button"
+      tabIndex={0}
       onClick={onTap}
+      onKeyDown={onCardKeyDown}
       className={`${className} ${protocolCardClass()} ${shadowClass ?? INACTIVE_SHADOW}`}
       variants={variants}
       initial="rest"
@@ -427,11 +421,14 @@ function DeckCard({ entry, offset, isActive, sessions, onTap }: DeckCardProps) {
           icon={<Play className="stroke-[3px]!" aria-hidden />}
           className="bg-sea-green text-primary-contrast border-b-sea-green-dark border-b-8 text-base font-black tracking-[0.08em] uppercase"
           size="lg"
-          onClick={onTap}
+          onClick={(event) => {
+            event.stopPropagation();
+            onTap();
+          }}
         >
           Start new interview
         </Button>
       ) : null}
-    </motion.button>
+    </motion.div>
   );
 }

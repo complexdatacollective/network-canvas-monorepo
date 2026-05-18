@@ -24,7 +24,7 @@ import type { StoredSession } from '~/lib/db/types';
 function formatStatus(session: StoredSession): { label: string; tone: string } {
   if (session.exportedAt) return { label: 'Exported', tone: 'text-success' };
   if (session.finishedAt) return { label: 'Finished', tone: 'text-info' };
-  return { label: 'In progress', tone: 'text-muted-foreground' };
+  return { label: 'In progress', tone: 'text-text/60' };
 }
 
 export function SessionsRoute() {

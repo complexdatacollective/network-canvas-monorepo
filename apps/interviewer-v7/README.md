@@ -35,8 +35,9 @@ Network Canvas Interviewer v7 is a single-user, offline-first research-data-coll
 +-------------v-----------+   +--v--------------------------+
 | Electron preload        |   | Capacitor / Web             |
 | contextBridge           |   | - Dexie 4 (IndexedDB)       |
-| window.api.{db, auth,   |   | - @capacitor/filesystem     |
-|   dialog, system}       |   |   for export save           |
+| window.electronAPI.     |   | - @capacitor/filesystem     |
+|   {db, auth,            |   |   for export save           |
+|    openFile, saveFile}  |   |                             |
 +-------------|-----------+   | - @capacitor/preferences    |
               |               |   for auth metadata         |
               v               | - WebAuthn for app gate     |

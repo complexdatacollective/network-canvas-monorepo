@@ -1,3 +1,4 @@
+import { Dialog as BaseDialog } from '@base-ui/react/dialog';
 import type { ReactNode } from 'react';
 
 import CloseButton from '@codaco/fresco-ui/CloseButton';
@@ -44,7 +45,11 @@ export function HomeModal({
     >
       <DialogPopup className={maxWidthClass(maxWidth)}>
         <div className="flex items-center justify-between gap-4 px-8 pt-6">
-          <div className="flex min-w-0 items-center gap-3.5">{title}</div>
+          <BaseDialog.Title
+            render={<div className="flex min-w-0 items-center gap-3.5" />}
+          >
+            {title}
+          </BaseDialog.Title>
           <div className="flex items-center gap-2.5">
             {action}
             <CloseButton onClick={onClose} />

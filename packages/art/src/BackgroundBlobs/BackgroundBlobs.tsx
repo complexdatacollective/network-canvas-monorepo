@@ -261,7 +261,8 @@ const BackgroundBlobs = memo(
     palette,
   }: BackgroundBlobsProps) => {
     const blobs = useMemo(() => {
-      const activePalette = palette ?? defaultGradients;
+      const activePalette =
+        palette && palette.length > 0 ? palette : defaultGradients;
       return [
         Array.from(
           { length: large },

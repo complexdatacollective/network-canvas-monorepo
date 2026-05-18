@@ -1,5 +1,5 @@
 import { LogOut } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 
 import Button from '@codaco/fresco-ui/Button';
@@ -39,6 +39,11 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [, navigate] = useLocation();
   const [currentStep, setCurrentStep] = useState(0);
+  // SessionPayload from @codaco/interview's onSync does not carry the current
+  // step. Mirror it into a ref so handleSync sees the latest value rather
+  // than the stale closure value (which would overwrite a step that
+  // handleStepChange just persisted).
+  const currentStepRef = useRef(0);
 
   useEffect(() => {
     let active = true;
@@ -65,11 +70,13 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         },
       };
       if (!active) return;
-      setCurrentStep(session.currentStep ?? 0);
+      const initialStep = session.currentStep ?? 0;
+      setCurrentStep(initialStep);
+      currentStepRef.current = initialStep;
       setState({
         kind: 'ready',
         payload,
-        resolver: makeAssetResolver(session.protocolHash),
+        resolver: makeAssetResolver(session.protocolHash, protocol.importedAt),
       });
       void updateSettings({
         lastActiveSessionId: session.id,
@@ -91,14 +98,14 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     async (id: string, session: SessionPayload) => {
       await updateSession(id, {
         network: session.network,
-        currentStep,
+        currentStep: currentStepRef.current,
         stageMetadata: session.stageMetadata as
           | Record<string, unknown>
           | undefined,
         finishedAt: session.finishTime,
       });
     },
-    [currentStep],
+    [],
   );
 
   const handleFinish = useCallback(
@@ -111,6 +118,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
 
   const handleStepChange = useCallback(
     (step: number) => {
+      currentStepRef.current = step;
       setCurrentStep(step);
       void updateSession(sessionId, { currentStep: step });
     },

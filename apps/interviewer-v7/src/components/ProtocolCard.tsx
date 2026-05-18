@@ -23,7 +23,7 @@ export function ProtocolCard({ protocol, prominent }: ProtocolCardProps) {
       {protocol.description ? (
         <Paragraph emphasis="muted">{protocol.description}</Paragraph>
       ) : null}
-      <dl className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs">
+      <dl className="text-text/60 flex flex-wrap gap-x-4 gap-y-1 text-xs">
         <div className="flex items-center gap-1">
           <Calendar className="size-3" aria-hidden />
           <dt className="sr-only">Imported</dt>

@@ -66,7 +66,15 @@ export function ExportDialog({ open, sessionIds, onClose }: ExportDialogProps) {
       if (!blob || !fileName) {
         throw new Error('Export produced no file');
       }
-      await downloadBlob(blob, fileName);
+      const download = await downloadBlob(blob, fileName);
+      if (!download.saved) {
+        toast.add({
+          title: 'Export canceled',
+          description: 'The archive was not saved.',
+        });
+        setStatus('idle');
+        return;
+      }
       await markSessionsExported(
         result.successfulExports.map((s) => s.sessionId),
       );

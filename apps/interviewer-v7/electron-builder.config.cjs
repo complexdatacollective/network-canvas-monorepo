@@ -12,6 +12,9 @@ module.exports = {
   },
   files: [
     'dist-electron/**/*',
+    'node_modules/better-sqlite3-multiple-ciphers/**/*',
+    'node_modules/bindings/**/*',
+    'node_modules/file-uri-to-path/**/*',
     '!**/*.{map,ts,md}',
     '!**/test/**',
     '!**/__tests__/**',

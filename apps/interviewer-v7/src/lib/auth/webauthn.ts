@@ -95,7 +95,7 @@ export async function createPasskey(args: {
           { type: 'public-key', alg: -257 },
         ],
         authenticatorSelection: {
-          userVerification: 'preferred',
+          userVerification: 'required',
           residentKey: 'preferred',
         },
         extensions: {
@@ -146,7 +146,7 @@ export async function authenticatePasskey(args: {
         challenge,
         rpId: getRpId(),
         allowCredentials: [{ id: args.credentialId, type: 'public-key' }],
-        userVerification: 'preferred',
+        userVerification: 'required',
         extensions: {
           prf: { eval: { first: args.salt } },
         } as AuthenticationExtensionsClientInputs,

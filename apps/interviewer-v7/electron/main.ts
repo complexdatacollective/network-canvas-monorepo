@@ -42,10 +42,30 @@ function createWindow() {
     return { action: 'deny' };
   });
 
+  // Top-level navigation must stay on the bundled renderer. Any nav to a remote
+  // origin (e.g. accidental <a href> click) would inherit the preload bridge and
+  // hand DB/auth IPC + file dialogs to untrusted content.
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const allowed = isDev
+      ? url.startsWith(RENDERER_DEV_URL)
+      : url.startsWith('file://');
+    if (!allowed) {
+      event.preventDefault();
+      void shell.openExternal(url);
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
 }
+
+// Must be called before any BrowserWindow is created so navigator.credentials
+// surfaces a platform-authenticator prompt in the renderer. macOS Touch ID needs
+// a signed binary + `keychainAccessGroup` (set once we have a signing identity);
+// for now we enable the default WebAuthn stack only (USB security keys, Windows
+// Hello, Chromium virtual authenticator in dev).
+app.configureWebAuthn({});
 
 app.whenReady().then(() => {
   try {

@@ -4,8 +4,11 @@ import { getProtocolAsset, getProtocolAssets } from '../db/api';
 
 const urlCache = new Map<string, string>();
 
-function cacheKey(protocolHash: string, assetId: string) {
-  return `${protocolHash}::${assetId}`;
+// The protocol hash intentionally ignores `assetManifest`, so re-importing
+// the same protocol with updated asset files keeps the same hash. Include
+// `importedAt` in the cache key so a re-import evicts stale blob URLs.
+function cacheKey(protocolHash: string, importedAt: string, assetId: string) {
+  return `${protocolHash}::${importedAt}::${assetId}`;
 }
 
 export async function buildResolvedAssets(
@@ -23,9 +26,10 @@ export async function buildResolvedAssets(
 
 export function makeAssetResolver(
   protocolHash: string,
+  importedAt: string,
 ): (assetId: string) => Promise<string> {
   return async (assetId: string) => {
-    const key = cacheKey(protocolHash, assetId);
+    const key = cacheKey(protocolHash, importedAt, assetId);
     const cached = urlCache.get(key);
     if (cached) return cached;
 
