@@ -1,5 +1,5 @@
-import { Component } from 'react';
-import GridLayout, { type Layout, WidthProvider } from 'react-grid-layout';
+import { Component, createRef } from 'react';
+import GridLayout, { type Layout } from 'react-grid-layout';
 
 import Icon from '~/lib/legacy-ui/components/Icon';
 import { cx } from '~/utils/cva';
@@ -12,8 +12,6 @@ import {
   trimSize,
 } from './helpers';
 import withItems from './withItems';
-
-const SizedGridLayout = WidthProvider(GridLayout);
 
 type FieldArrayApi = {
   name: string;
@@ -38,7 +36,35 @@ type GridProps = {
   fieldName?: string;
 };
 
-class Grid extends Component<GridProps> {
+type GridState = {
+  width: number | null;
+};
+
+class Grid extends Component<GridProps, GridState> {
+  private containerRef = createRef<HTMLDivElement>();
+  private resizeObserver?: ResizeObserver;
+
+  state: GridState = { width: null };
+
+  componentDidMount() {
+    this.resizeObserver = new ResizeObserver((entries) => {
+      const measured = entries[0]?.contentRect.width;
+      if (measured == null) {
+        return;
+      }
+      this.setState((prev) =>
+        prev.width === measured ? null : { width: measured },
+      );
+    });
+    if (this.containerRef.current) {
+      this.resizeObserver.observe(this.containerRef.current);
+    }
+  }
+
+  componentWillUnmount() {
+    this.resizeObserver?.disconnect();
+  }
+
   handleDragStop = (layout: Layout[], from: Layout) => {
     const { fields, items } = this.props;
     const newOrder = layout.toSorted((a, b) => a.y - b.y).map(({ i }) => i);
@@ -75,6 +101,8 @@ class Grid extends Component<GridProps> {
 
     const { error, submitFailed } = meta;
 
+    const { width } = this.state;
+
     const showError = Boolean(submitFailed && error);
 
     if (!items) {
@@ -89,43 +117,49 @@ class Grid extends Component<GridProps> {
 
     return (
       <div>
-        <SizedGridLayout
-          className="bg-surface-accent h-162.5 rounded-lg"
-          layout={getLayout(items, capacity)}
-          cols={1}
-          rowHeight={150}
-          autoSize={false}
-          measureBeforeMount
-          onDragStop={this.handleDragStop}
-          onResizeStop={this.handleResizeStop}
-          draggableCancel=".grid-item-action"
-          resizeHandle={(axis, ref) => (
-            <span
-              ref={ref as React.Ref<HTMLSpanElement>}
-              className={`react-resizable-handle react-resizable-handle-${axis} after:hidden`}
-            >
-              <span
-                aria-hidden="true"
-                className="rounded-br-base absolute right-0 bottom-0 block size-7 border-r-2 border-b-2 border-solid border-(--color-active)"
-              />
-            </span>
-          )}
+        <div
+          ref={this.containerRef}
+          className="bg-surface-accent h-162.5 overflow-hidden rounded-lg"
         >
-          {items.map(({ id, ...item }, index) => (
-            <div key={id} className="relative">
-              <GridItem
-                id={id}
-                index={index}
-                fields={fields}
-                previewComponent={previewComponent}
-                onEditItem={onEditItem}
-                editField={editField}
-                // eslint-disable-next-line react/jsx-props-no-spreading
-                {...item}
-              />
-            </div>
-          ))}
-        </SizedGridLayout>
+          {width !== null && (
+            <GridLayout
+              layout={getLayout(items, capacity)}
+              cols={1}
+              rowHeight={150}
+              autoSize={false}
+              width={width}
+              onDragStop={this.handleDragStop}
+              onResizeStop={this.handleResizeStop}
+              draggableCancel=".grid-item-action"
+              resizeHandle={(axis, ref) => (
+                <span
+                  ref={ref as React.Ref<HTMLSpanElement>}
+                  className={`react-resizable-handle react-resizable-handle-${axis} after:hidden`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="rounded-br-base absolute right-0 bottom-0 block size-7 border-r-2 border-b-2 border-solid border-(--color-active)"
+                  />
+                </span>
+              )}
+            >
+              {items.map(({ id, ...item }, index) => (
+                <div key={id} className="relative">
+                  <GridItem
+                    id={id}
+                    index={index}
+                    fields={fields}
+                    previewComponent={previewComponent}
+                    onEditItem={onEditItem}
+                    editField={editField}
+                    // eslint-disable-next-line react/jsx-props-no-spreading
+                    {...item}
+                  />
+                </div>
+              ))}
+            </GridLayout>
+          )}
+        </div>
 
         {showError && (
           <p
