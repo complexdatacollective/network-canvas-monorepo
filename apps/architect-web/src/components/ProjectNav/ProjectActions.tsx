@@ -15,13 +15,13 @@ import { getCanRedo, getCanUndo } from '~/selectors/protocol';
 import ActionToolbar from './ActionToolbar';
 
 type ProjectActionsProps = {
-  extras?: React.ReactNode;
+  additionalActions?: React.ReactNode;
   readOnly?: boolean;
   showReturnToStart?: boolean;
 };
 
 const ProjectActions = ({
-  extras,
+  additionalActions,
   readOnly = false,
   showReturnToStart = false,
 }: ProjectActionsProps) => {
@@ -71,7 +71,7 @@ const ProjectActions = ({
           Return to Start Screen
         </Button>
       )}
-      {extras}
+      {additionalActions}
       {!readOnly && (
         <>
           <IconButton

@@ -81,7 +81,7 @@ const SummaryPage = () => {
         index,
       }}
     >
-      <ProjectActions readOnly extras={printAction} />
+      <ProjectActions readOnly additionalActions={printAction} />
       <Layout className="[--base-font-size:14px]">
         <div className="w-full print:hidden">
           <PageHeading

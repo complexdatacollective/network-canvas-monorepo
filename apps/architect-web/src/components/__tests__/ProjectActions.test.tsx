@@ -123,11 +123,14 @@ describe('<ProjectActions />', () => {
     expect(screen.queryByRole('button', { name: /redo/i })).toBeNull();
   });
 
-  it('renders extras between Return-to-start and Undo/Redo', () => {
+  it('renders additionalActions between Return-to-start and Undo/Redo', () => {
     const store = createTestStore();
-    render(<ProjectActions extras={<button type="button">Print</button>} />, {
-      wrapper: wrap(store),
-    });
+    render(
+      <ProjectActions
+        additionalActions={<button type="button">Print</button>}
+      />,
+      { wrapper: wrap(store) },
+    );
 
     expect(screen.getByRole('button', { name: /print/i })).toBeInTheDocument();
   });
