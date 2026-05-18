@@ -44,6 +44,7 @@ const AddItem = (props: React.ComponentProps<typeof Button>) => (
   <Button
     color="sea-green"
     icon="add"
+    className="self-start"
     // eslint-disable-next-line react/jsx-props-no-spreading
     {...props}
   >
