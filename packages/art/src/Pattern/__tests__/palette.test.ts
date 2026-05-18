@@ -26,7 +26,7 @@ describe('rngToPalette', () => {
     expect(fg.a).toBe(1);
   });
 
-  it('backgroundTop matches one of the four BASE_PALETTE colors at full strength', () => {
+  it('backgroundTop matches one of the BASE_PALETTE colors at full strength', () => {
     const palette = rngToPalette(seedToRng('alice'));
     const baseStrings = BASE_PALETTE.map((c) => `oklch(${c.l} ${c.c} ${c.h})`);
     expect(baseStrings).toContain(palette.backgroundTop);

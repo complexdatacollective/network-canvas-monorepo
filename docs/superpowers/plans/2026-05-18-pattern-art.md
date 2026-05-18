@@ -4,7 +4,9 @@
 
 **Goal:** Add a family of seven deterministic SVG pattern generators to `@codaco/art`, each seeded by an input string, plus a new Storybook instance illustrating them.
 
-**Architecture:** A `Pattern/` subtree inside the existing art package. A shared `seed.ts` (xmur3 + mulberry32) seeds a `Rng`. A shared `palette.ts` picks 3 distinct vivid OKLCH colors + a derived tinted background. Each variant has its own file containing a pure renderer `(rng, palette, w, h) => ReactNode` and a thin React component that wraps the renderer in an `<svg>`. A `Pattern` dispatcher routes by variant prop (deriving variant from the seed when absent). Stories live in a new Storybook in `packages/art`.
+> **Note:** This plan captures the work as originally scoped. The palette model and rendering contract iterated during implementation — see the code (and the design doc's note) for the current state. In short: foreground is monochrome translucent white applied at the group level; background is a vertical `<linearGradient>` between two shades of one base hue from a 5-hue set; the `<svg>` element and gradient `<defs>` live in a shared `PatternSvg` wrapper, not the individual variant components.
+
+**Architecture:** A `Pattern/` subtree inside the existing art package. A shared `seed.ts` (xmur3 + mulberry32) seeds a `Rng`. A shared `palette.ts` picks one of five base OKLCH hues and emits `foreground` + `backgroundTop` + `backgroundBottom`. A shared `PatternSvg` wraps each variant's shapes in an `<svg>` with gradient defs. Each variant has its own file containing a pure renderer `(rng, palette, w, h) => ReactNode` returning the foreground shapes, plus a React component that calls `PatternSvg`. A `Pattern` dispatcher routes by variant prop (deriving variant from a separate `${seed}::variant` channel when absent). Stories live in a new Storybook in `packages/art`.
 
 **Tech Stack:** React 19, TypeScript, Vitest (jsdom), Storybook 10.4 (react-vite), Tailwind 4, Biome.
 

@@ -2,7 +2,15 @@
 
 Date: 2026-05-18
 Package: `@codaco/art`
-Status: design
+Status: superseded by implementation
+
+> **Note:** This document captures the design as originally drafted. The implementation iterated past it during review. Read the code as the authoritative source — in particular:
+>
+> - Foreground is now monochrome translucent white applied via a wrapping `<g opacity>` (not three accent colors).
+> - Background is a vertical `<linearGradient>` between two shades of a single base hue (not a solid rect).
+> - The base palette is restricted to **5 hues** — `neon-coral`, `mustard`, `sea-green`, `slate-blue`, `cerulean-blue` — picked by the main PRNG channel from the seed.
+> - Variant selection uses a **separate** seed channel (`${seed}::variant`), so adding a future variant won't shift palette or geometry for existing seeds.
+> - The shared `PatternSvg` wrapper owns the `<svg>` element and gradient `<defs>`. Each variant renderer returns only the foreground shapes.
 
 ## Goal
 
@@ -18,11 +26,11 @@ Out of scope: animation, server-rendered SVG export, theming hooks, integration 
 <DotsPattern seed="Family Networks 2024" />               // direct variant access
 ```
 
-Each renders an inline `<svg>` sized to the parent via CSS, containing a solid background rect and a pattern composed of shapes drawn in three accent colors from the Network Canvas palette. All values — palette, geometry, variant (when omitted) — are derived from one PRNG seeded by the input string.
+Each renders an inline `<svg>` sized to the parent via CSS. The SVG contains a vertical `<linearGradient>` background (full-strength base hue at the top, darker at the bottom) and a set of translucent-white foreground shapes drawn in a `<g opacity>` group. Palette and geometry are derived from the main PRNG channel (`seedToRng(seed)`); variant selection, when no `variant` prop is passed, uses a separate channel (`seedToRng("${seed}::variant")`).
 
 ## File layout
 
-```
+```text
 packages/art/
 ├── package.json                   ← + storybook devDeps + scripts
 ├── .storybook/
