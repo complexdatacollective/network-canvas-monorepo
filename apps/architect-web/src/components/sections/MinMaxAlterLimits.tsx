@@ -3,7 +3,7 @@ import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { change, FormSection, formValueSelector } from 'redux-form';
 
-import { Section } from '~/components/EditorLayout';
+import { Row, Section } from '~/components/EditorLayout';
 import { Number as NumberField } from '~/components/Form/Fields';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -125,44 +125,48 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
         </Tip>
       )}
       <FormSection name="behaviours">
-        <IssueAnchor
-          fieldName="behaviours.minNodes"
-          description="Minimum alters"
-        />
-        <ValidatedField
-          name="minNodes"
-          component={NumberField}
-          validation={{
-            lessThanMax: minValidation,
-            positiveNumber: (value: number | null | undefined) => {
-              if (!value && value !== 0) return undefined;
-              return value >= 0 ? undefined : 'Must be a positive number';
-            },
-          }}
-          componentProps={{
-            label: 'Minimum Number of Alters. (0 = no minimum)',
-            placeholder: '0',
-          }}
-        />
-        <IssueAnchor
-          fieldName="behaviours.maxNodes"
-          description="Maximum alters"
-        />
-        <ValidatedField
-          name="maxNodes"
-          component={NumberField}
-          validation={{
-            greaterThanMin: maxValidation,
-            minValue: (value: number | null | undefined) => {
-              if (!value) return undefined;
-              return value >= 1 ? undefined : 'Must be at least 1';
-            },
-          }}
-          componentProps={{
-            label: 'Maximum Number of Alters. _(Leave empty for no maximum)_',
-            placeholder: 'Infinity',
-          }}
-        />
+        <Row>
+          <IssueAnchor
+            fieldName="behaviours.minNodes"
+            description="Minimum alters"
+          />
+          <ValidatedField
+            name="minNodes"
+            component={NumberField}
+            validation={{
+              lessThanMax: minValidation,
+              positiveNumber: (value: number | null | undefined) => {
+                if (!value && value !== 0) return undefined;
+                return value >= 0 ? undefined : 'Must be a positive number';
+              },
+            }}
+            componentProps={{
+              label: 'Minimum Number of Alters. (0 = no minimum)',
+              placeholder: '0',
+            }}
+          />
+        </Row>
+        <Row>
+          <IssueAnchor
+            fieldName="behaviours.maxNodes"
+            description="Maximum alters"
+          />
+          <ValidatedField
+            name="maxNodes"
+            component={NumberField}
+            validation={{
+              greaterThanMin: maxValidation,
+              minValue: (value: number | null | undefined) => {
+                if (!value) return undefined;
+                return value >= 1 ? undefined : 'Must be at least 1';
+              },
+            }}
+            componentProps={{
+              label: 'Maximum Number of Alters. _(Leave empty for no maximum)_',
+              placeholder: 'Infinity',
+            }}
+          />
+        </Row>
       </FormSection>
     </Section>
   );
