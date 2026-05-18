@@ -45,6 +45,7 @@ This monorepo is organized into four main categories:
 | ----------------------------------------------- | ------------------------------------------------------------------------------------- |
 | [`@codaco/tailwind-config`](./tooling/tailwind) | Shared Tailwind v4 theme, color palette, and plugins for Fresco and other Codaco apps |
 | [`@codaco/tsconfig`](./tooling/typescript)      | Shared TypeScript configurations                                                      |
+| [`oxlint`](./tooling/oxlint)                    | Shared oxlint configurations (React and Tailwind rule sets) extended by workspaces    |
 
 ## Getting Started
 
