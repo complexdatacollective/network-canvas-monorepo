@@ -103,7 +103,7 @@ pnpm --filter posthog-proxy-worker deploy
 
 - **Build System**: Vite for fast builds and development
 - **Package Manager**: pnpm with workspace support
-- **Code Formatting**: Biome for consistent code style
+- **Code Formatting**: oxfmt for formatting and oxlint for linting
 - **Type Checking**: TypeScript with shared configurations
 - **Edge Computing**: Cloudflare Workers for serverless functions
 - **CI/CD**: GitHub Actions with optimized workflows
@@ -111,7 +111,7 @@ pnpm --filter posthog-proxy-worker deploy
 
 ## Code Style
 
-This project uses Biome for formatting and linting:
+This project uses [oxlint](https://oxc.rs/docs/guide/usage/linter) for linting and [oxfmt](https://github.com/oxc-project/oxfmt) for formatting. Style settings: 2-space indentation, 80-character line width, and single quotes.
 
 ```bash
 # Check formatting and linting
@@ -119,9 +119,15 @@ pnpm lint
 
 # Auto-fix formatting and linting issues
 pnpm lint:fix
+
+# Format only
+pnpm format
+
+# Check formatting only
+pnpm format:check
 ```
 
-Pre-commit hooks automatically format code on commit.
+Pre-commit hooks automatically lint and format staged files.
 
 ## Testing
 
