@@ -18,4 +18,5 @@ declare module 'zod/v4/core' {
   }
 }
 
+// oxlint-disable-next-line require-module-specifiers -- This line is load-bearing; see comment at top.
 export {};
