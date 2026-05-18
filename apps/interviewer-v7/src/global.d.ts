@@ -1,5 +1,15 @@
 /// <reference types="vite/client" />
 
+import type { CurrentProtocol } from '@codaco/protocol-validation';
+import type { NcNetwork } from '@codaco/shared-consts';
+
+import type {
+  ProtocolWithCounts,
+  StoredProtocol,
+  StoredSession,
+  StoredSettings,
+} from './lib/db/types';
+
 declare module '*.css';
 
 declare global {
@@ -33,21 +43,15 @@ declare global {
 
   type DbBridge = {
     protocols: {
-      list: () => Promise<import('./lib/db/types').ProtocolWithCounts[]>;
-      getByHash: (
-        hash: string,
-      ) => Promise<import('./lib/db/types').StoredProtocol | undefined>;
-      getByHashes: (
-        hashes: string[],
-      ) => Promise<import('./lib/db/types').StoredProtocol[]>;
-      getById: (
-        id: string,
-      ) => Promise<import('./lib/db/types').StoredProtocol | undefined>;
+      list: () => Promise<ProtocolWithCounts[]>;
+      getByHash: (hash: string) => Promise<StoredProtocol | undefined>;
+      getByHashes: (hashes: string[]) => Promise<StoredProtocol[]>;
+      getById: (id: string) => Promise<StoredProtocol | undefined>;
       save: (input: {
-        protocol: import('@codaco/protocol-validation').CurrentProtocol;
+        protocol: CurrentProtocol;
         hash: string;
         assets: WireAssetInput[];
-      }) => Promise<import('./lib/db/types').StoredProtocol>;
+      }) => Promise<StoredProtocol>;
       delete: (hash: string) => Promise<void>;
       listAssets: (hash: string) => Promise<WireAsset[]>;
       getAsset: (args: {
@@ -56,36 +60,30 @@ declare global {
       }) => Promise<WireAsset | null>;
     };
     sessions: {
-      list: () => Promise<import('./lib/db/types').StoredSession[]>;
-      listForProtocol: (
-        hash: string,
-      ) => Promise<import('./lib/db/types').StoredSession[]>;
-      get: (
-        id: string,
-      ) => Promise<import('./lib/db/types').StoredSession | undefined>;
-      getByIds: (
-        ids: string[],
-      ) => Promise<import('./lib/db/types').StoredSession[]>;
+      list: () => Promise<StoredSession[]>;
+      listForProtocol: (hash: string) => Promise<StoredSession[]>;
+      get: (id: string) => Promise<StoredSession | undefined>;
+      getByIds: (ids: string[]) => Promise<StoredSession[]>;
       create: (args: {
         protocolHash: string;
         protocolName: string;
         caseId: string;
-        initialNetwork: import('@codaco/shared-consts').NcNetwork;
-      }) => Promise<import('./lib/db/types').StoredSession>;
+        initialNetwork: NcNetwork;
+      }) => Promise<StoredSession>;
       update: (args: {
         id: string;
-        patch: Partial<import('./lib/db/types').StoredSession>;
-      }) => Promise<import('./lib/db/types').StoredSession | undefined>;
+        patch: Partial<StoredSession>;
+      }) => Promise<StoredSession | undefined>;
       markFinished: (id: string) => Promise<void>;
       markExported: (ids: string[]) => Promise<void>;
       delete: (id: string) => Promise<void>;
       deleteMany: (ids: string[]) => Promise<void>;
     };
     settings: {
-      get: () => Promise<import('./lib/db/types').StoredSettings>;
+      get: () => Promise<StoredSettings>;
       update: (
-        patch: Partial<Omit<import('./lib/db/types').StoredSettings, 'id'>>,
-      ) => Promise<import('./lib/db/types').StoredSettings>;
+        patch: Partial<Omit<StoredSettings, 'id'>>,
+      ) => Promise<StoredSettings>;
     };
   };
 

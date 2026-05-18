@@ -6,7 +6,9 @@ import type { ProtocolWithCounts, StoredAsset, StoredProtocol } from './types';
 export async function listProtocols(): Promise<ProtocolWithCounts[]> {
   const protocols = await db.protocols
     .orderBy('importedAt')
-    .toReversed()
+    // Dexie Collection.reverse() returns a descending Collection, not an Array.
+    // oxlint-disable-next-line unicorn/no-array-reverse
+    .reverse()
     .toArray();
   const sessions = await db.sessions.toArray();
   const counts = new Map<string, number>();

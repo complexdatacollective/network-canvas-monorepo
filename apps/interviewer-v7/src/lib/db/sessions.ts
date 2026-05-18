@@ -6,18 +6,24 @@ import { db } from './db';
 import type { StoredSession } from './types';
 
 export async function listSessions(): Promise<StoredSession[]> {
-  return db.sessions.orderBy('lastUpdatedAt').toReversed().toArray();
+  // Dexie Collection.reverse() returns a descending Collection, not an Array.
+  // oxlint-disable-next-line unicorn/no-array-reverse
+  return db.sessions.orderBy('lastUpdatedAt').reverse().toArray();
 }
 
 export async function listSessionsForProtocol(
   protocolHash: string,
 ): Promise<StoredSession[]> {
-  return db.sessions
-    .where('protocolHash')
-    .equals(protocolHash)
-    .toReversed()
-    .sortBy('lastUpdatedAt')
-    .then((s) => s.reverse());
+  return (
+    db.sessions
+      .where('protocolHash')
+      .equals(protocolHash)
+      // Dexie Collection.reverse(); see listSessions above.
+      // oxlint-disable-next-line unicorn/no-array-reverse
+      .reverse()
+      .sortBy('lastUpdatedAt')
+      .then((s) => s.reverse())
+  );
 }
 
 export async function getSession(
