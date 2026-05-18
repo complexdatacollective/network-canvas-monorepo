@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { CrossesPattern } from "../variants/Crosses";
 import { DotsPattern } from "../variants/Dots";
 import { FlowPattern } from "../variants/Flow";
 import { RingsPattern } from "../variants/Rings";
@@ -79,6 +80,25 @@ describe("determinism", () => {
 
 		it("matches snapshot for the determinism fixture seed", () => {
 			const markup = renderToStaticMarkup(<RingsPattern seed="determinism-fixture" width={400} height={250} />);
+			expect(markup).toMatchSnapshot();
+		});
+	});
+
+	describe("CrossesPattern", () => {
+		it("produces identical markup on repeat renders with the same seed", () => {
+			const a = renderToStaticMarkup(<CrossesPattern seed="fixture" width={400} height={250} />);
+			const b = renderToStaticMarkup(<CrossesPattern seed="fixture" width={400} height={250} />);
+			expect(a).toBe(b);
+		});
+
+		it("renders an svg with lines", () => {
+			const markup = renderToStaticMarkup(<CrossesPattern seed="fixture" width={400} height={250} />);
+			expect(markup.startsWith("<svg")).toBe(true);
+			expect(markup).toContain("<line");
+		});
+
+		it("matches snapshot for the determinism fixture seed", () => {
+			const markup = renderToStaticMarkup(<CrossesPattern seed="determinism-fixture" width={400} height={250} />);
 			expect(markup).toMatchSnapshot();
 		});
 	});
