@@ -1,6 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
+  "globalDependencies": ["pnpm-lock.yaml", "pnpm-workspace.yaml"],
   "globalPassThroughEnv": [
     "NEXT_PUBLIC_ALGOLIA_APPLICATION_ID",
     "NEXT_PUBLIC_ALGOLIA_INDEX_NAME",
@@ -20,8 +21,7 @@
         "vite.config.*",
         "electron.vite.config.*",
         "next.config.*",
-        "package.json",
-        "pnpm-lock.yaml"
+        "package.json"
       ],
       "env": ["NODE_ENV"],
       "outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"]
@@ -49,8 +49,7 @@
         "tailwind.config.*",
         "tsconfig*.json",
         "components.json",
-        "package.json",
-        "pnpm-lock.yaml"
+        "package.json"
       ],
       "env": [
         "NEXT_PUBLIC_ALGOLIA_APPLICATION_ID",
@@ -71,8 +70,7 @@
         "tailwind.config.*",
         "tsconfig*.json",
         "vite-env.d.ts",
-        "package.json",
-        "pnpm-lock.yaml"
+        "package.json"
       ],
       "env": [
         "VITE_FRESCO_PREVIEW_URL",
