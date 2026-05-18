@@ -15,7 +15,10 @@ export function rngToPalette(rng: Rng): Palette {
 	const base = BASE_PALETTE[baseIdx] ?? BASE_PALETTE[0];
 	const fgL = Math.min(0.94, base.l + 0.3);
 	const fgC = Number((base.c * 0.2).toFixed(3));
-	const bottomL = Math.max(0.1, base.l - 0.08);
+	// Strong vertical gradient so lighter bases (mustard, sea-green) read as
+	// distinct hues, not pale off-white. Bottom is pushed ~0.3 darker than
+	// the top, clamped to a sensible floor.
+	const bottomL = Math.max(0.22, base.l - 0.3);
 	return {
 		foreground: `oklch(${fgL.toFixed(3)} ${fgC} ${base.h})`,
 		backgroundTop: `oklch(${base.l} ${base.c} ${base.h})`,
