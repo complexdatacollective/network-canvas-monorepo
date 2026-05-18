@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { DotsPattern } from "../variants/Dots";
+import { FlowPattern } from "../variants/Flow";
 import { TilesPattern } from "../variants/Tiles";
 
 describe("determinism", () => {
@@ -39,6 +40,25 @@ describe("determinism", () => {
 
 		it("matches snapshot for the determinism fixture seed", () => {
 			const markup = renderToStaticMarkup(<TilesPattern seed="determinism-fixture" width={400} height={250} />);
+			expect(markup).toMatchSnapshot();
+		});
+	});
+
+	describe("FlowPattern", () => {
+		it("produces identical markup on repeat renders with the same seed", () => {
+			const a = renderToStaticMarkup(<FlowPattern seed="fixture" width={400} height={250} />);
+			const b = renderToStaticMarkup(<FlowPattern seed="fixture" width={400} height={250} />);
+			expect(a).toBe(b);
+		});
+
+		it("renders an svg with paths", () => {
+			const markup = renderToStaticMarkup(<FlowPattern seed="fixture" width={400} height={250} />);
+			expect(markup.startsWith("<svg")).toBe(true);
+			expect(markup).toContain("<path");
+		});
+
+		it("matches snapshot for the determinism fixture seed", () => {
+			const markup = renderToStaticMarkup(<FlowPattern seed="determinism-fixture" width={400} height={250} />);
 			expect(markup).toMatchSnapshot();
 		});
 	});
