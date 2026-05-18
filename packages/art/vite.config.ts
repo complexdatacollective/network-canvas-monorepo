@@ -1,7 +1,7 @@
-import { defineConfig } from "vite";
+import { defineConfig } from 'vite';
 
 export default defineConfig({
-	oxc: {
-		jsx: { runtime: "automatic" },
-	},
+  oxc: {
+    jsx: { runtime: 'automatic' },
+  },
 });

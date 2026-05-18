@@ -17,5 +17,3 @@ declare module 'zod/v4/core' {
     hint?: string;
   }
 }
-
-export {};

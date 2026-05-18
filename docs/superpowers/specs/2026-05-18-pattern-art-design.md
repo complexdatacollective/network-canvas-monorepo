@@ -96,7 +96,11 @@ export function seedToRng(seed: string): Rng {
   return mulberry32(xmur3(seed)());
 }
 
-export function nextInt(rng: Rng, minInclusive: number, maxExclusive: number): number {
+export function nextInt(
+  rng: Rng,
+  minInclusive: number,
+  maxExclusive: number,
+): number {
   return minInclusive + Math.floor(rng() * (maxExclusive - minInclusive));
 }
 ```
@@ -111,18 +115,18 @@ xmur3 and mulberry32 are short, public-domain, well-distributed enough for visua
 type NCColor = { name: string; l: number; c: number; h: number };
 
 const NC_PALETTE: readonly NCColor[] = [
-  { name: "neon-coral",     l: 0.5733, c: 0.2584, h: 11.57 },
-  { name: "mustard",        l: 0.81,   c: 0.17,   h: 86.39 },
-  { name: "sea-green",      l: 0.7,    c: 0.2,    h: 171.52 },
-  { name: "cyber-grape",    l: 0.3,    c: 0.09,   h: 281 },
-  { name: "sea-serpent",    l: 0.7383, c: 0.13,   h: 217.55 },
-  { name: "purple-pizazz",  l: 0.6249, c: 0.288,  h: 320.46 },
-  { name: "paradise-pink",  l: 0.6586, c: 0.253,  h: 359.2 },
-  { name: "cerulean-blue",  l: 0.5824, c: 0.229,  h: 260.09 },
-  { name: "kiwi",           l: 0.7436, c: 0.157,  h: 137.61 },
-  { name: "neon-carrot",    l: 0.7487, c: 0.161,  h: 62.61 },
-  { name: "barbie-pink",    l: 0.6182, c: 0.251,  h: 359.853 },
-  { name: "tomato",         l: 0.5599, c: 0.25,   h: 23.69 },
+  { name: 'neon-coral', l: 0.5733, c: 0.2584, h: 11.57 },
+  { name: 'mustard', l: 0.81, c: 0.17, h: 86.39 },
+  { name: 'sea-green', l: 0.7, c: 0.2, h: 171.52 },
+  { name: 'cyber-grape', l: 0.3, c: 0.09, h: 281 },
+  { name: 'sea-serpent', l: 0.7383, c: 0.13, h: 217.55 },
+  { name: 'purple-pizazz', l: 0.6249, c: 0.288, h: 320.46 },
+  { name: 'paradise-pink', l: 0.6586, c: 0.253, h: 359.2 },
+  { name: 'cerulean-blue', l: 0.5824, c: 0.229, h: 260.09 },
+  { name: 'kiwi', l: 0.7436, c: 0.157, h: 137.61 },
+  { name: 'neon-carrot', l: 0.7487, c: 0.161, h: 62.61 },
+  { name: 'barbie-pink', l: 0.6182, c: 0.251, h: 359.853 },
+  { name: 'tomato', l: 0.5599, c: 0.25, h: 23.69 },
 ] as const;
 
 export type Palette = {
@@ -161,14 +165,30 @@ The background's tint shares the foreground hue so the pattern feels chromatical
 `types.ts`:
 
 ```ts
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
 
 export type Rng = () => number;
-export type Palette = { background: string; foreground: string; accent: string; highlight: string };
-export type Renderer = (rng: Rng, palette: Palette, width: number, height: number) => ReactNode;
+export type Palette = {
+  background: string;
+  foreground: string;
+  accent: string;
+  highlight: string;
+};
+export type Renderer = (
+  rng: Rng,
+  palette: Palette,
+  width: number,
+  height: number,
+) => ReactNode;
 
 export const PATTERN_VARIANTS = [
-  "dots", "tiles", "flow", "rings", "crosses", "squiggles", "truchet",
+  'dots',
+  'tiles',
+  'flow',
+  'rings',
+  'crosses',
+  'squiggles',
+  'truchet',
 ] as const;
 export type PatternVariant = (typeof PATTERN_VARIANTS)[number];
 
@@ -186,10 +206,10 @@ Each variant exposes a pure renderer returning the SVG children only (no wrappin
 Template for each variant file (e.g. `Dots.tsx`):
 
 ```tsx
-import { useMemo } from "react";
-import { seedToRng } from "../seed";
-import { rngToPalette } from "../palette";
-import type { PatternProps, Renderer } from "../types";
+import { useMemo } from 'react';
+import { seedToRng } from '../seed';
+import { rngToPalette } from '../palette';
+import type { PatternProps, Renderer } from '../types';
 
 export const renderDots: Renderer = (rng, palette, w, h) => {
   const cell = 12 + Math.floor(rng() * 16);
@@ -205,13 +225,27 @@ export const renderDots: Renderer = (rng, palette, w, h) => {
         const r = 1 + rng() * (cell * 0.35);
         const cx = col * cell + rng() * cell * 0.25;
         const cy = row * cell + rng() * cell * 0.25;
-        return <circle key={i} cx={cx} cy={cy} r={r} fill={colors[Math.floor(rng() * 3)]} />;
+        return (
+          <circle
+            key={i}
+            cx={cx}
+            cy={cy}
+            r={r}
+            fill={colors[Math.floor(rng() * 3)]}
+          />
+        );
       })}
     </>
   );
 };
 
-export const DotsPattern = ({ seed, width = 400, height = 250, className, style }: PatternProps) => {
+export const DotsPattern = ({
+  seed,
+  width = 400,
+  height = 250,
+  className,
+  style,
+}: PatternProps) => {
   const rng = useMemo(() => seedToRng(seed), [seed]);
   const palette = useMemo(() => rngToPalette(rng), [rng]);
   return (
@@ -229,6 +263,7 @@ export const DotsPattern = ({ seed, width = 400, height = 250, className, style 
 ```
 
 Notes:
+
 - `preserveAspectRatio="xMidYMid slice"` so the pattern fills any card aspect ratio (cards aren't always 16:10), cropping rather than letterboxing.
 - `viewBox` width/height is coordinate space, not pixels — CSS controls rendered size. Default `400×250`.
 - `role="presentation"` — patterns are decorative.
@@ -236,15 +271,15 @@ Notes:
 
 ## Per-variant geometry
 
-| Variant   | Geometry                                                                | Seed-varied parameters                                              |
-|-----------|-------------------------------------------------------------------------|---------------------------------------------------------------------|
-| Dots      | Grid of circles, one per cell                                           | Cell size (12–28), radius range, color per circle, per-cell jitter   |
-| Tiles     | Up/down triangle tessellation                                            | Tile size (28–48), color per triangle                                |
-| Flow      | Stacked horizontal sinusoidal `<path>`s                                  | Line count (5–10), stroke width, amplitude per row, phase per row    |
-| Rings     | N "epicenters" each emitting concentric stroked circles                  | Centre count (3–6), positions, ring counts, max radius, color        |
-| Crosses   | Grid of plus signs, every other row offset                              | Cell size (24–40), cross size, stroke width, color per cross         |
-| Squiggles | Rows of sine-wave squiggles using `q`-cubic chains                       | Row count (5–9), wavelength, amplitude (< row gap), stroke, color    |
-| Truchet   | Tile grid; each tile is two opposing quarter-circle arcs in 1 of 2 rotations | Tile size (24–48), per-tile rotation, color per arc                 |
+| Variant   | Geometry                                                                     | Seed-varied parameters                                             |
+| --------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Dots      | Grid of circles, one per cell                                                | Cell size (12–28), radius range, color per circle, per-cell jitter |
+| Tiles     | Up/down triangle tessellation                                                | Tile size (28–48), color per triangle                              |
+| Flow      | Stacked horizontal sinusoidal `<path>`s                                      | Line count (5–10), stroke width, amplitude per row, phase per row  |
+| Rings     | N "epicenters" each emitting concentric stroked circles                      | Centre count (3–6), positions, ring counts, max radius, color      |
+| Crosses   | Grid of plus signs, every other row offset                                   | Cell size (24–40), cross size, stroke width, color per cross       |
+| Squiggles | Rows of sine-wave squiggles using `q`-cubic chains                           | Row count (5–9), wavelength, amplitude (< row gap), stroke, color  |
+| Truchet   | Tile grid; each tile is two opposing quarter-circle arcs in 1 of 2 rotations | Tile size (24–48), per-tile rotation, color per arc                |
 
 All renderers add a 1-cell overdraw at edges (`Math.ceil(w / cell) + 1`) so `slice` cropping never reveals the background through gaps. No shared `<filter>` or `<defs>` — every pattern's SVG is self-contained, so two `<Pattern>`s on the same page never collide.
 
@@ -253,16 +288,20 @@ All renderers add a 1-cell overdraw at edges (`Math.ceil(w / cell) + 1`) so `sli
 `Pattern.tsx`:
 
 ```tsx
-import { useMemo } from "react";
-import { seedToRng } from "./seed";
-import { PATTERN_VARIANTS, type PatternProps, type PatternVariant } from "./types";
-import { DotsPattern } from "./variants/Dots";
-import { TilesPattern } from "./variants/Tiles";
-import { FlowPattern } from "./variants/Flow";
-import { RingsPattern } from "./variants/Rings";
-import { CrossesPattern } from "./variants/Crosses";
-import { SquigglesPattern } from "./variants/Squiggles";
-import { TruchetPattern } from "./variants/Truchet";
+import { useMemo } from 'react';
+import { seedToRng } from './seed';
+import {
+  PATTERN_VARIANTS,
+  type PatternProps,
+  type PatternVariant,
+} from './types';
+import { DotsPattern } from './variants/Dots';
+import { TilesPattern } from './variants/Tiles';
+import { FlowPattern } from './variants/Flow';
+import { RingsPattern } from './variants/Rings';
+import { CrossesPattern } from './variants/Crosses';
+import { SquigglesPattern } from './variants/Squiggles';
+import { TruchetPattern } from './variants/Truchet';
 
 const componentByVariant = {
   dots: DotsPattern,
@@ -275,7 +314,9 @@ const componentByVariant = {
 };
 
 export const Pattern = ({
-  seed, variant, ...rest
+  seed,
+  variant,
+  ...rest
 }: PatternProps & { variant?: PatternVariant }) => {
   const resolvedVariant = useMemo<PatternVariant>(() => {
     if (variant) return variant;
@@ -297,14 +338,14 @@ New Storybook in `packages/art`, mirroring `packages/fresco-ui/.storybook` setup
 `packages/art/.storybook/main.ts`:
 
 ```ts
-import { defineMain } from "@storybook/react-vite/node";
-import tailwindcss from "@tailwindcss/vite";
+import { defineMain } from '@storybook/react-vite/node';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineMain({
-  addons: ["@storybook/addon-docs", "@storybook/addon-a11y"],
-  framework: { name: "@storybook/react-vite", options: {} },
+  addons: ['@storybook/addon-docs', '@storybook/addon-a11y'],
+  framework: { name: '@storybook/react-vite', options: {} },
   typescript: { check: false },
-  stories: ["../src/**/*.stories.tsx"],
+  stories: ['../src/**/*.stories.tsx'],
   viteFinal: async (config) => {
     config.plugins = [...(config.plugins ?? []), tailwindcss()];
     return config;
@@ -318,7 +359,7 @@ export default defineMain({
 {
   "scripts": {
     "storybook": "storybook dev -p 6007",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
   },
   "devDependencies": {
     "@codaco/fresco-ui": "workspace:*",
@@ -327,8 +368,8 @@ export default defineMain({
     "@storybook/react-vite": "^10.4.0",
     "@tailwindcss/vite": "catalog:",
     "storybook": "^10.4.0",
-    "tailwindcss": "catalog:"
-  }
+    "tailwindcss": "catalog:",
+  },
 }
 ```
 
@@ -357,21 +398,25 @@ Each variant has one stories file with two stories:
 Four small Vitest files in `src/Pattern/__tests__/`. Existing vitest config + jsdom is reused.
 
 `seed.test.ts`:
+
 - `seedToRng("alice")` returns identical first 10 floats on two separate calls.
 - Two different seeds produce different first floats (sanity, not statistical).
 - Empty-string seed is valid and deterministic.
 
 `palette.test.ts`:
+
 - `rngToPalette(rng)` returns 4 colors; the three vivid ones are distinct OKLCH strings sourced from `NC_PALETTE`.
 - Background has `L >= 0.9` and `C <= 0.05` (parse the OKLCH string).
 - `rngToPalette(seedToRng("alice"))` is bit-identical across calls.
 
 `determinism.test.ts` uses `renderToStaticMarkup`:
+
 - For each of 7 variants: render twice with `seed="determinism-fixture"` and assert byte-identical markup.
 - One markup snapshot per variant. Snapshots will be 5–15 KB each — reviewable in PRs; intentional renderer changes regenerate via `pnpm test -- -u`.
 - `<Pattern seed="alice" />` (no variant) resolves to the same variant on repeat calls.
 
 `smoke.test.ts`:
+
 - For each variant, render 50 sequential numeric seeds (`"0"` through `"49"`) at `400×250`. Assert each call returns non-empty markup and does not throw.
 
 No visual regression test — Storybook stories are the visual review surface; snapshot tests cover markup-level regressions.

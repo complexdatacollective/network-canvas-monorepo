@@ -17,6 +17,7 @@
 ### Task 1: Types & seeded RNG
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/types.ts`
 - Create: `packages/art/src/Pattern/seed.ts`
 - Create: `packages/art/src/Pattern/__tests__/seed.test.ts`
@@ -26,20 +27,20 @@
 Create `packages/art/src/Pattern/__tests__/seed.test.ts`:
 
 ```ts
-import { describe, expect, it } from "vitest";
-import { nextInt, seedToRng } from "../seed";
+import { describe, expect, it } from 'vitest';
+import { nextInt, seedToRng } from '../seed';
 
-describe("seedToRng", () => {
-  it("returns identical sequences for identical seeds", () => {
-    const a = seedToRng("alice");
-    const b = seedToRng("alice");
+describe('seedToRng', () => {
+  it('returns identical sequences for identical seeds', () => {
+    const a = seedToRng('alice');
+    const b = seedToRng('alice');
     const sequenceA = Array.from({ length: 10 }, () => a());
     const sequenceB = Array.from({ length: 10 }, () => b());
     expect(sequenceA).toEqual(sequenceB);
   });
 
-  it("returns floats in [0, 1)", () => {
-    const rng = seedToRng("test");
+  it('returns floats in [0, 1)', () => {
+    const rng = seedToRng('test');
     for (let i = 0; i < 100; i++) {
       const value = rng();
       expect(value).toBeGreaterThanOrEqual(0);
@@ -47,22 +48,22 @@ describe("seedToRng", () => {
     }
   });
 
-  it("produces different first draws for different seeds", () => {
-    const a = seedToRng("alice");
-    const b = seedToRng("bob");
+  it('produces different first draws for different seeds', () => {
+    const a = seedToRng('alice');
+    const b = seedToRng('bob');
     expect(a()).not.toEqual(b());
   });
 
-  it("accepts empty string as a deterministic seed", () => {
-    const a = seedToRng("");
-    const b = seedToRng("");
+  it('accepts empty string as a deterministic seed', () => {
+    const a = seedToRng('');
+    const b = seedToRng('');
     expect(a()).toEqual(b());
   });
 });
 
-describe("nextInt", () => {
-  it("returns integers in [min, max)", () => {
-    const rng = seedToRng("range-test");
+describe('nextInt', () => {
+  it('returns integers in [min, max)', () => {
+    const rng = seedToRng('range-test');
     for (let i = 0; i < 50; i++) {
       const n = nextInt(rng, 5, 10);
       expect(Number.isInteger(n)).toBe(true);
@@ -83,7 +84,7 @@ Expected: FAIL — module not found (`../seed`).
 Create `packages/art/src/Pattern/types.ts`:
 
 ```ts
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactNode } from 'react';
 
 export type Rng = () => number;
 
@@ -94,16 +95,21 @@ export type Palette = {
   highlight: string;
 };
 
-export type Renderer = (rng: Rng, palette: Palette, width: number, height: number) => ReactNode;
+export type Renderer = (
+  rng: Rng,
+  palette: Palette,
+  width: number,
+  height: number,
+) => ReactNode;
 
 export const PATTERN_VARIANTS = [
-  "dots",
-  "tiles",
-  "flow",
-  "rings",
-  "crosses",
-  "squiggles",
-  "truchet",
+  'dots',
+  'tiles',
+  'flow',
+  'rings',
+  'crosses',
+  'squiggles',
+  'truchet',
 ] as const;
 export type PatternVariant = (typeof PATTERN_VARIANTS)[number];
 
@@ -121,7 +127,7 @@ export type PatternProps = {
 Create `packages/art/src/Pattern/seed.ts`:
 
 ```ts
-import type { Rng } from "./types";
+import type { Rng } from './types';
 
 function xmur3(str: string): () => number {
   let h = 1779033703 ^ str.length;
@@ -151,7 +157,11 @@ export function seedToRng(seed: string): Rng {
   return mulberry32(xmur3(seed)());
 }
 
-export function nextInt(rng: Rng, minInclusive: number, maxExclusive: number): number {
+export function nextInt(
+  rng: Rng,
+  minInclusive: number,
+  maxExclusive: number,
+): number {
   return minInclusive + Math.floor(rng() * (maxExclusive - minInclusive));
 }
 ```
@@ -178,6 +188,7 @@ git commit -m "feat(art): add seeded PRNG and Pattern shared types"
 ### Task 2: Palette derivation
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/palette.ts`
 - Create: `packages/art/src/Pattern/__tests__/palette.test.ts`
 
@@ -186,42 +197,48 @@ git commit -m "feat(art): add seeded PRNG and Pattern shared types"
 Create `packages/art/src/Pattern/__tests__/palette.test.ts`:
 
 ```ts
-import { describe, expect, it } from "vitest";
-import { NC_PALETTE, rngToPalette } from "../palette";
-import { seedToRng } from "../seed";
+import { describe, expect, it } from 'vitest';
+import { NC_PALETTE, rngToPalette } from '../palette';
+import { seedToRng } from '../seed';
 
 const parseOklch = (s: string) => {
   const m = /oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\)/.exec(s);
   if (!m) throw new Error(`Not an oklch string: ${s}`);
-  return { l: Number.parseFloat(m[1]), c: Number.parseFloat(m[2]), h: Number.parseFloat(m[3]) };
+  return {
+    l: Number.parseFloat(m[1]),
+    c: Number.parseFloat(m[2]),
+    h: Number.parseFloat(m[3]),
+  };
 };
 
-describe("rngToPalette", () => {
-  it("returns 3 distinct vivid colors sourced from NC_PALETTE", () => {
-    const palette = rngToPalette(seedToRng("alice"));
+describe('rngToPalette', () => {
+  it('returns 3 distinct vivid colors sourced from NC_PALETTE', () => {
+    const palette = rngToPalette(seedToRng('alice'));
     const vivid = [palette.foreground, palette.accent, palette.highlight];
     expect(new Set(vivid).size).toBe(3);
-    const ncOklch = new Set(NC_PALETTE.map((c) => `oklch(${c.l} ${c.c} ${c.h})`));
+    const ncOklch = new Set(
+      NC_PALETTE.map((c) => `oklch(${c.l} ${c.c} ${c.h})`),
+    );
     for (const color of vivid) {
       expect(ncOklch.has(color)).toBe(true);
     }
   });
 
-  it("derives a high-lightness, low-chroma background", () => {
-    const palette = rngToPalette(seedToRng("alice"));
+  it('derives a high-lightness, low-chroma background', () => {
+    const palette = rngToPalette(seedToRng('alice'));
     const bg = parseOklch(palette.background);
     expect(bg.l).toBeGreaterThanOrEqual(0.9);
     expect(bg.c).toBeLessThanOrEqual(0.05);
   });
 
-  it("produces the same palette for the same seed", () => {
-    const a = rngToPalette(seedToRng("alice"));
-    const b = rngToPalette(seedToRng("alice"));
+  it('produces the same palette for the same seed', () => {
+    const a = rngToPalette(seedToRng('alice'));
+    const b = rngToPalette(seedToRng('alice'));
     expect(a).toEqual(b);
   });
 
-  it("background hue matches foreground hue", () => {
-    const palette = rngToPalette(seedToRng("alice"));
+  it('background hue matches foreground hue', () => {
+    const palette = rngToPalette(seedToRng('alice'));
     const bg = parseOklch(palette.background);
     const fg = parseOklch(palette.foreground);
     expect(bg.h).toBeCloseTo(fg.h, 4);
@@ -239,23 +256,23 @@ Expected: FAIL — module not found.
 Create `packages/art/src/Pattern/palette.ts`:
 
 ```ts
-import type { Palette, Rng } from "./types";
+import type { Palette, Rng } from './types';
 
 type NCColor = { name: string; l: number; c: number; h: number };
 
 export const NC_PALETTE: readonly NCColor[] = [
-  { name: "neon-coral", l: 0.5733, c: 0.2584, h: 11.57 },
-  { name: "mustard", l: 0.81, c: 0.17, h: 86.39 },
-  { name: "sea-green", l: 0.7, c: 0.2, h: 171.52 },
-  { name: "cyber-grape", l: 0.3, c: 0.09, h: 281 },
-  { name: "sea-serpent", l: 0.7383, c: 0.13, h: 217.55 },
-  { name: "purple-pizazz", l: 0.6249, c: 0.288, h: 320.46 },
-  { name: "paradise-pink", l: 0.6586, c: 0.253, h: 359.2 },
-  { name: "cerulean-blue", l: 0.5824, c: 0.229, h: 260.09 },
-  { name: "kiwi", l: 0.7436, c: 0.157, h: 137.61 },
-  { name: "neon-carrot", l: 0.7487, c: 0.161, h: 62.61 },
-  { name: "barbie-pink", l: 0.6182, c: 0.251, h: 359.853 },
-  { name: "tomato", l: 0.5599, c: 0.25, h: 23.69 },
+  { name: 'neon-coral', l: 0.5733, c: 0.2584, h: 11.57 },
+  { name: 'mustard', l: 0.81, c: 0.17, h: 86.39 },
+  { name: 'sea-green', l: 0.7, c: 0.2, h: 171.52 },
+  { name: 'cyber-grape', l: 0.3, c: 0.09, h: 281 },
+  { name: 'sea-serpent', l: 0.7383, c: 0.13, h: 217.55 },
+  { name: 'purple-pizazz', l: 0.6249, c: 0.288, h: 320.46 },
+  { name: 'paradise-pink', l: 0.6586, c: 0.253, h: 359.2 },
+  { name: 'cerulean-blue', l: 0.5824, c: 0.229, h: 260.09 },
+  { name: 'kiwi', l: 0.7436, c: 0.157, h: 137.61 },
+  { name: 'neon-carrot', l: 0.7487, c: 0.161, h: 62.61 },
+  { name: 'barbie-pink', l: 0.6182, c: 0.251, h: 359.853 },
+  { name: 'tomato', l: 0.5599, c: 0.25, h: 23.69 },
 ] as const;
 
 const toOklch = ({ l, c, h }: NCColor): string => `oklch(${l} ${c} ${h})`;
@@ -305,6 +322,7 @@ Each variant task adds: the pure renderer + a React component + a determinism as
 ### Task 3: Dots variant
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/variants/Dots.tsx`
 - Create: `packages/art/src/Pattern/__tests__/determinism.test.ts`
 - Modify: `packages/art/package.json` (add react-dom devDep)
@@ -314,27 +332,35 @@ Each variant task adds: the pure renderer + a React component + a determinism as
 Create `packages/art/src/Pattern/__tests__/determinism.test.ts`:
 
 ```tsx
-import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
-import { DotsPattern } from "../variants/Dots";
+import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it } from 'vitest';
+import { DotsPattern } from '../variants/Dots';
 
-describe("determinism", () => {
-  describe("DotsPattern", () => {
-    it("produces identical markup on repeat renders with the same seed", () => {
-      const a = renderToStaticMarkup(<DotsPattern seed="fixture" width={400} height={250} />);
-      const b = renderToStaticMarkup(<DotsPattern seed="fixture" width={400} height={250} />);
+describe('determinism', () => {
+  describe('DotsPattern', () => {
+    it('produces identical markup on repeat renders with the same seed', () => {
+      const a = renderToStaticMarkup(
+        <DotsPattern seed="fixture" width={400} height={250} />,
+      );
+      const b = renderToStaticMarkup(
+        <DotsPattern seed="fixture" width={400} height={250} />,
+      );
       expect(a).toBe(b);
     });
 
-    it("renders an svg with the background rect first", () => {
-      const markup = renderToStaticMarkup(<DotsPattern seed="fixture" width={400} height={250} />);
-      expect(markup.startsWith("<svg")).toBe(true);
-      expect(markup).toContain("<rect");
-      expect(markup).toContain("<circle");
+    it('renders an svg with the background rect first', () => {
+      const markup = renderToStaticMarkup(
+        <DotsPattern seed="fixture" width={400} height={250} />,
+      );
+      expect(markup.startsWith('<svg')).toBe(true);
+      expect(markup).toContain('<rect');
+      expect(markup).toContain('<circle');
     });
 
-    it("matches snapshot for the determinism fixture seed", () => {
-      const markup = renderToStaticMarkup(<DotsPattern seed="determinism-fixture" width={400} height={250} />);
+    it('matches snapshot for the determinism fixture seed', () => {
+      const markup = renderToStaticMarkup(
+        <DotsPattern seed="determinism-fixture" width={400} height={250} />,
+      );
       expect(markup).toMatchSnapshot();
     });
   });
@@ -362,10 +388,10 @@ Expected: FAIL — module not found (`../variants/Dots`).
 Create `packages/art/src/Pattern/variants/Dots.tsx`:
 
 ```tsx
-import { useMemo } from "react";
-import { rngToPalette } from "../palette";
-import { seedToRng } from "../seed";
-import type { PatternProps, Renderer } from "../types";
+import { useMemo } from 'react';
+import { rngToPalette } from '../palette';
+import { seedToRng } from '../seed';
+import type { PatternProps, Renderer } from '../types';
 
 export const renderDots: Renderer = (rng, palette, w, h) => {
   const cell = 12 + Math.floor(rng() * 16);
@@ -379,7 +405,9 @@ export const renderDots: Renderer = (rng, palette, w, h) => {
       const cx = col * cell + rng() * cell * 0.25;
       const cy = row * cell + rng() * cell * 0.25;
       const fill = colors[Math.floor(rng() * 3)];
-      circles.push(<circle key={`${row}-${col}`} cx={cx} cy={cy} r={r} fill={fill} />);
+      circles.push(
+        <circle key={`${row}-${col}`} cx={cx} cy={cy} r={r} fill={fill} />,
+      );
     }
   }
   return (
@@ -390,7 +418,13 @@ export const renderDots: Renderer = (rng, palette, w, h) => {
   );
 };
 
-export const DotsPattern = ({ seed, width = 400, height = 250, className, style }: PatternProps) => {
+export const DotsPattern = ({
+  seed,
+  width = 400,
+  height = 250,
+  className,
+  style,
+}: PatternProps) => {
   const rng = useMemo(() => seedToRng(seed), [seed]);
   const palette = useMemo(() => rngToPalette(rng), [rng]);
   return (
@@ -430,6 +464,7 @@ git commit -m "feat(art): add Dots pattern variant"
 ### Task 4: Tiles variant
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/variants/Tiles.tsx`
 - Modify: `packages/art/src/Pattern/__tests__/determinism.test.ts`
 
@@ -438,27 +473,35 @@ git commit -m "feat(art): add Dots pattern variant"
 At the top of `determinism.test.ts`, add the import:
 
 ```tsx
-import { TilesPattern } from "../variants/Tiles";
+import { TilesPattern } from '../variants/Tiles';
 ```
 
 Inside the outer `describe("determinism", ...)`, append:
 
 ```tsx
-describe("TilesPattern", () => {
-  it("produces identical markup on repeat renders with the same seed", () => {
-    const a = renderToStaticMarkup(<TilesPattern seed="fixture" width={400} height={250} />);
-    const b = renderToStaticMarkup(<TilesPattern seed="fixture" width={400} height={250} />);
+describe('TilesPattern', () => {
+  it('produces identical markup on repeat renders with the same seed', () => {
+    const a = renderToStaticMarkup(
+      <TilesPattern seed="fixture" width={400} height={250} />,
+    );
+    const b = renderToStaticMarkup(
+      <TilesPattern seed="fixture" width={400} height={250} />,
+    );
     expect(a).toBe(b);
   });
 
-  it("renders an svg with polygons", () => {
-    const markup = renderToStaticMarkup(<TilesPattern seed="fixture" width={400} height={250} />);
-    expect(markup.startsWith("<svg")).toBe(true);
-    expect(markup).toContain("<polygon");
+  it('renders an svg with polygons', () => {
+    const markup = renderToStaticMarkup(
+      <TilesPattern seed="fixture" width={400} height={250} />,
+    );
+    expect(markup.startsWith('<svg')).toBe(true);
+    expect(markup).toContain('<polygon');
   });
 
-  it("matches snapshot for the determinism fixture seed", () => {
-    const markup = renderToStaticMarkup(<TilesPattern seed="determinism-fixture" width={400} height={250} />);
+  it('matches snapshot for the determinism fixture seed', () => {
+    const markup = renderToStaticMarkup(
+      <TilesPattern seed="determinism-fixture" width={400} height={250} />,
+    );
     expect(markup).toMatchSnapshot();
   });
 });
@@ -474,10 +517,10 @@ Expected: FAIL — module not found.
 Create `packages/art/src/Pattern/variants/Tiles.tsx`:
 
 ```tsx
-import { useMemo } from "react";
-import { rngToPalette } from "../palette";
-import { seedToRng } from "../seed";
-import type { PatternProps, Renderer } from "../types";
+import { useMemo } from 'react';
+import { rngToPalette } from '../palette';
+import { seedToRng } from '../seed';
+import type { PatternProps, Renderer } from '../types';
 
 export const renderTiles: Renderer = (rng, palette, w, h) => {
   const tile = 28 + Math.floor(rng() * 20);
@@ -518,7 +561,13 @@ export const renderTiles: Renderer = (rng, palette, w, h) => {
   );
 };
 
-export const TilesPattern = ({ seed, width = 400, height = 250, className, style }: PatternProps) => {
+export const TilesPattern = ({
+  seed,
+  width = 400,
+  height = 250,
+  className,
+  style,
+}: PatternProps) => {
   const rng = useMemo(() => seedToRng(seed), [seed]);
   const palette = useMemo(() => rngToPalette(rng), [rng]);
   return (
@@ -555,6 +604,7 @@ git commit -m "feat(art): add Tiles pattern variant"
 ### Task 5: Flow variant
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/variants/Flow.tsx`
 - Modify: `packages/art/src/Pattern/__tests__/determinism.test.ts`
 
@@ -563,27 +613,35 @@ git commit -m "feat(art): add Tiles pattern variant"
 At the top of `determinism.test.ts`, add:
 
 ```tsx
-import { FlowPattern } from "../variants/Flow";
+import { FlowPattern } from '../variants/Flow';
 ```
 
 Inside the outer describe, append:
 
 ```tsx
-describe("FlowPattern", () => {
-  it("produces identical markup on repeat renders with the same seed", () => {
-    const a = renderToStaticMarkup(<FlowPattern seed="fixture" width={400} height={250} />);
-    const b = renderToStaticMarkup(<FlowPattern seed="fixture" width={400} height={250} />);
+describe('FlowPattern', () => {
+  it('produces identical markup on repeat renders with the same seed', () => {
+    const a = renderToStaticMarkup(
+      <FlowPattern seed="fixture" width={400} height={250} />,
+    );
+    const b = renderToStaticMarkup(
+      <FlowPattern seed="fixture" width={400} height={250} />,
+    );
     expect(a).toBe(b);
   });
 
-  it("renders an svg with paths", () => {
-    const markup = renderToStaticMarkup(<FlowPattern seed="fixture" width={400} height={250} />);
-    expect(markup.startsWith("<svg")).toBe(true);
-    expect(markup).toContain("<path");
+  it('renders an svg with paths', () => {
+    const markup = renderToStaticMarkup(
+      <FlowPattern seed="fixture" width={400} height={250} />,
+    );
+    expect(markup.startsWith('<svg')).toBe(true);
+    expect(markup).toContain('<path');
   });
 
-  it("matches snapshot for the determinism fixture seed", () => {
-    const markup = renderToStaticMarkup(<FlowPattern seed="determinism-fixture" width={400} height={250} />);
+  it('matches snapshot for the determinism fixture seed', () => {
+    const markup = renderToStaticMarkup(
+      <FlowPattern seed="determinism-fixture" width={400} height={250} />,
+    );
     expect(markup).toMatchSnapshot();
   });
 });
@@ -599,10 +657,10 @@ Expected: FAIL — module not found.
 Create `packages/art/src/Pattern/variants/Flow.tsx`:
 
 ```tsx
-import { useMemo } from "react";
-import { rngToPalette } from "../palette";
-import { seedToRng } from "../seed";
-import type { PatternProps, Renderer } from "../types";
+import { useMemo } from 'react';
+import { rngToPalette } from '../palette';
+import { seedToRng } from '../seed';
+import type { PatternProps, Renderer } from '../types';
 
 export const renderFlow: Renderer = (rng, palette, w, h) => {
   const lineCount = 5 + Math.floor(rng() * 6);
@@ -625,7 +683,7 @@ export const renderFlow: Renderer = (rng, palette, w, h) => {
     paths.push(
       <path
         key={i}
-        d={points.join(" ")}
+        d={points.join(' ')}
         fill="none"
         stroke={colors[i % colors.length]}
         strokeWidth={stroke}
@@ -641,7 +699,13 @@ export const renderFlow: Renderer = (rng, palette, w, h) => {
   );
 };
 
-export const FlowPattern = ({ seed, width = 400, height = 250, className, style }: PatternProps) => {
+export const FlowPattern = ({
+  seed,
+  width = 400,
+  height = 250,
+  className,
+  style,
+}: PatternProps) => {
   const rng = useMemo(() => seedToRng(seed), [seed]);
   const palette = useMemo(() => rngToPalette(rng), [rng]);
   return (
@@ -676,6 +740,7 @@ Expected: 9 tests pass.
 ### Task 6: Rings variant
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/variants/Rings.tsx`
 - Modify: `packages/art/src/Pattern/__tests__/determinism.test.ts`
 
@@ -684,27 +749,35 @@ Expected: 9 tests pass.
 At the top of `determinism.test.ts`, add:
 
 ```tsx
-import { RingsPattern } from "../variants/Rings";
+import { RingsPattern } from '../variants/Rings';
 ```
 
 Inside the outer describe, append:
 
 ```tsx
-describe("RingsPattern", () => {
-  it("produces identical markup on repeat renders with the same seed", () => {
-    const a = renderToStaticMarkup(<RingsPattern seed="fixture" width={400} height={250} />);
-    const b = renderToStaticMarkup(<RingsPattern seed="fixture" width={400} height={250} />);
+describe('RingsPattern', () => {
+  it('produces identical markup on repeat renders with the same seed', () => {
+    const a = renderToStaticMarkup(
+      <RingsPattern seed="fixture" width={400} height={250} />,
+    );
+    const b = renderToStaticMarkup(
+      <RingsPattern seed="fixture" width={400} height={250} />,
+    );
     expect(a).toBe(b);
   });
 
-  it("renders an svg with circles", () => {
-    const markup = renderToStaticMarkup(<RingsPattern seed="fixture" width={400} height={250} />);
-    expect(markup.startsWith("<svg")).toBe(true);
-    expect(markup).toContain("<circle");
+  it('renders an svg with circles', () => {
+    const markup = renderToStaticMarkup(
+      <RingsPattern seed="fixture" width={400} height={250} />,
+    );
+    expect(markup.startsWith('<svg')).toBe(true);
+    expect(markup).toContain('<circle');
   });
 
-  it("matches snapshot for the determinism fixture seed", () => {
-    const markup = renderToStaticMarkup(<RingsPattern seed="determinism-fixture" width={400} height={250} />);
+  it('matches snapshot for the determinism fixture seed', () => {
+    const markup = renderToStaticMarkup(
+      <RingsPattern seed="determinism-fixture" width={400} height={250} />,
+    );
     expect(markup).toMatchSnapshot();
   });
 });
@@ -720,10 +793,10 @@ Expected: FAIL — module not found.
 Create `packages/art/src/Pattern/variants/Rings.tsx`:
 
 ```tsx
-import { useMemo } from "react";
-import { rngToPalette } from "../palette";
-import { seedToRng } from "../seed";
-import type { PatternProps, Renderer } from "../types";
+import { useMemo } from 'react';
+import { rngToPalette } from '../palette';
+import { seedToRng } from '../seed';
+import type { PatternProps, Renderer } from '../types';
 
 export const renderRings: Renderer = (rng, palette, w, h) => {
   const centreCount = 3 + Math.floor(rng() * 4);
@@ -761,7 +834,13 @@ export const renderRings: Renderer = (rng, palette, w, h) => {
   );
 };
 
-export const RingsPattern = ({ seed, width = 400, height = 250, className, style }: PatternProps) => {
+export const RingsPattern = ({
+  seed,
+  width = 400,
+  height = 250,
+  className,
+  style,
+}: PatternProps) => {
   const rng = useMemo(() => seedToRng(seed), [seed]);
   const palette = useMemo(() => rngToPalette(rng), [rng]);
   return (
@@ -796,6 +875,7 @@ Expected: 12 tests pass.
 ### Task 7: Crosses variant
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/variants/Crosses.tsx`
 - Modify: `packages/art/src/Pattern/__tests__/determinism.test.ts`
 
@@ -804,27 +884,35 @@ Expected: 12 tests pass.
 At the top of `determinism.test.ts`, add:
 
 ```tsx
-import { CrossesPattern } from "../variants/Crosses";
+import { CrossesPattern } from '../variants/Crosses';
 ```
 
 Inside the outer describe, append:
 
 ```tsx
-describe("CrossesPattern", () => {
-  it("produces identical markup on repeat renders with the same seed", () => {
-    const a = renderToStaticMarkup(<CrossesPattern seed="fixture" width={400} height={250} />);
-    const b = renderToStaticMarkup(<CrossesPattern seed="fixture" width={400} height={250} />);
+describe('CrossesPattern', () => {
+  it('produces identical markup on repeat renders with the same seed', () => {
+    const a = renderToStaticMarkup(
+      <CrossesPattern seed="fixture" width={400} height={250} />,
+    );
+    const b = renderToStaticMarkup(
+      <CrossesPattern seed="fixture" width={400} height={250} />,
+    );
     expect(a).toBe(b);
   });
 
-  it("renders an svg with lines", () => {
-    const markup = renderToStaticMarkup(<CrossesPattern seed="fixture" width={400} height={250} />);
-    expect(markup.startsWith("<svg")).toBe(true);
-    expect(markup).toContain("<line");
+  it('renders an svg with lines', () => {
+    const markup = renderToStaticMarkup(
+      <CrossesPattern seed="fixture" width={400} height={250} />,
+    );
+    expect(markup.startsWith('<svg')).toBe(true);
+    expect(markup).toContain('<line');
   });
 
-  it("matches snapshot for the determinism fixture seed", () => {
-    const markup = renderToStaticMarkup(<CrossesPattern seed="determinism-fixture" width={400} height={250} />);
+  it('matches snapshot for the determinism fixture seed', () => {
+    const markup = renderToStaticMarkup(
+      <CrossesPattern seed="determinism-fixture" width={400} height={250} />,
+    );
     expect(markup).toMatchSnapshot();
   });
 });
@@ -837,10 +925,10 @@ Run: `pnpm --filter @codaco/art test -- determinism.test.ts`. Expected: FAIL.
 Create `packages/art/src/Pattern/variants/Crosses.tsx`:
 
 ```tsx
-import { useMemo } from "react";
-import { rngToPalette } from "../palette";
-import { seedToRng } from "../seed";
-import type { PatternProps, Renderer } from "../types";
+import { useMemo } from 'react';
+import { rngToPalette } from '../palette';
+import { seedToRng } from '../seed';
+import type { PatternProps, Renderer } from '../types';
 
 export const renderCrosses: Renderer = (rng, palette, w, h) => {
   const cell = 24 + Math.floor(rng() * 16);
@@ -890,7 +978,13 @@ export const renderCrosses: Renderer = (rng, palette, w, h) => {
   );
 };
 
-export const CrossesPattern = ({ seed, width = 400, height = 250, className, style }: PatternProps) => {
+export const CrossesPattern = ({
+  seed,
+  width = 400,
+  height = 250,
+  className,
+  style,
+}: PatternProps) => {
   const rng = useMemo(() => seedToRng(seed), [seed]);
   const palette = useMemo(() => rngToPalette(rng), [rng]);
   return (
@@ -925,6 +1019,7 @@ Expected: 15 tests pass.
 ### Task 8: Squiggles variant
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/variants/Squiggles.tsx`
 - Modify: `packages/art/src/Pattern/__tests__/determinism.test.ts`
 
@@ -933,27 +1028,35 @@ Expected: 15 tests pass.
 At the top of `determinism.test.ts`, add:
 
 ```tsx
-import { SquigglesPattern } from "../variants/Squiggles";
+import { SquigglesPattern } from '../variants/Squiggles';
 ```
 
 Inside the outer describe, append:
 
 ```tsx
-describe("SquigglesPattern", () => {
-  it("produces identical markup on repeat renders with the same seed", () => {
-    const a = renderToStaticMarkup(<SquigglesPattern seed="fixture" width={400} height={250} />);
-    const b = renderToStaticMarkup(<SquigglesPattern seed="fixture" width={400} height={250} />);
+describe('SquigglesPattern', () => {
+  it('produces identical markup on repeat renders with the same seed', () => {
+    const a = renderToStaticMarkup(
+      <SquigglesPattern seed="fixture" width={400} height={250} />,
+    );
+    const b = renderToStaticMarkup(
+      <SquigglesPattern seed="fixture" width={400} height={250} />,
+    );
     expect(a).toBe(b);
   });
 
-  it("renders an svg with paths", () => {
-    const markup = renderToStaticMarkup(<SquigglesPattern seed="fixture" width={400} height={250} />);
-    expect(markup.startsWith("<svg")).toBe(true);
-    expect(markup).toContain("<path");
+  it('renders an svg with paths', () => {
+    const markup = renderToStaticMarkup(
+      <SquigglesPattern seed="fixture" width={400} height={250} />,
+    );
+    expect(markup.startsWith('<svg')).toBe(true);
+    expect(markup).toContain('<path');
   });
 
-  it("matches snapshot for the determinism fixture seed", () => {
-    const markup = renderToStaticMarkup(<SquigglesPattern seed="determinism-fixture" width={400} height={250} />);
+  it('matches snapshot for the determinism fixture seed', () => {
+    const markup = renderToStaticMarkup(
+      <SquigglesPattern seed="determinism-fixture" width={400} height={250} />,
+    );
     expect(markup).toMatchSnapshot();
   });
 });
@@ -966,10 +1069,10 @@ Run: `pnpm --filter @codaco/art test -- determinism.test.ts`. Expected: FAIL.
 Create `packages/art/src/Pattern/variants/Squiggles.tsx`:
 
 ```tsx
-import { useMemo } from "react";
-import { rngToPalette } from "../palette";
-import { seedToRng } from "../seed";
-import type { PatternProps, Renderer } from "../types";
+import { useMemo } from 'react';
+import { rngToPalette } from '../palette';
+import { seedToRng } from '../seed';
+import type { PatternProps, Renderer } from '../types';
 
 export const renderSquiggles: Renderer = (rng, palette, w, h) => {
   const rowCount = 5 + Math.floor(rng() * 5);
@@ -988,13 +1091,15 @@ export const renderSquiggles: Renderer = (rng, palette, w, h) => {
       const xMid = s * (wavelength / 2) + wavelength / 4;
       const xEnd = (s + 1) * (wavelength / 2);
       const yMid = baseY + direction * amp;
-      d.push(`Q ${xMid.toFixed(2)} ${yMid.toFixed(2)}, ${xEnd.toFixed(2)} ${baseY.toFixed(2)}`);
+      d.push(
+        `Q ${xMid.toFixed(2)} ${yMid.toFixed(2)}, ${xEnd.toFixed(2)} ${baseY.toFixed(2)}`,
+      );
       direction *= -1;
     }
     paths.push(
       <path
         key={i}
-        d={d.join(" ")}
+        d={d.join(' ')}
         fill="none"
         stroke={colors[i % colors.length]}
         strokeWidth={stroke}
@@ -1010,7 +1115,13 @@ export const renderSquiggles: Renderer = (rng, palette, w, h) => {
   );
 };
 
-export const SquigglesPattern = ({ seed, width = 400, height = 250, className, style }: PatternProps) => {
+export const SquigglesPattern = ({
+  seed,
+  width = 400,
+  height = 250,
+  className,
+  style,
+}: PatternProps) => {
   const rng = useMemo(() => seedToRng(seed), [seed]);
   const palette = useMemo(() => rngToPalette(rng), [rng]);
   return (
@@ -1045,6 +1156,7 @@ Expected: 18 tests pass.
 ### Task 9: Truchet variant
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/variants/Truchet.tsx`
 - Modify: `packages/art/src/Pattern/__tests__/determinism.test.ts`
 
@@ -1053,28 +1165,36 @@ Expected: 18 tests pass.
 At the top of `determinism.test.ts`, add:
 
 ```tsx
-import { TruchetPattern } from "../variants/Truchet";
+import { TruchetPattern } from '../variants/Truchet';
 ```
 
 Inside the outer describe, append:
 
 ```tsx
-describe("TruchetPattern", () => {
-  it("produces identical markup on repeat renders with the same seed", () => {
-    const a = renderToStaticMarkup(<TruchetPattern seed="fixture" width={400} height={250} />);
-    const b = renderToStaticMarkup(<TruchetPattern seed="fixture" width={400} height={250} />);
+describe('TruchetPattern', () => {
+  it('produces identical markup on repeat renders with the same seed', () => {
+    const a = renderToStaticMarkup(
+      <TruchetPattern seed="fixture" width={400} height={250} />,
+    );
+    const b = renderToStaticMarkup(
+      <TruchetPattern seed="fixture" width={400} height={250} />,
+    );
     expect(a).toBe(b);
   });
 
-  it("renders an svg with arc paths", () => {
-    const markup = renderToStaticMarkup(<TruchetPattern seed="fixture" width={400} height={250} />);
-    expect(markup.startsWith("<svg")).toBe(true);
-    expect(markup).toContain("<path");
-    expect(markup).toContain("A ");
+  it('renders an svg with arc paths', () => {
+    const markup = renderToStaticMarkup(
+      <TruchetPattern seed="fixture" width={400} height={250} />,
+    );
+    expect(markup.startsWith('<svg')).toBe(true);
+    expect(markup).toContain('<path');
+    expect(markup).toContain('A ');
   });
 
-  it("matches snapshot for the determinism fixture seed", () => {
-    const markup = renderToStaticMarkup(<TruchetPattern seed="determinism-fixture" width={400} height={250} />);
+  it('matches snapshot for the determinism fixture seed', () => {
+    const markup = renderToStaticMarkup(
+      <TruchetPattern seed="determinism-fixture" width={400} height={250} />,
+    );
     expect(markup).toMatchSnapshot();
   });
 });
@@ -1087,10 +1207,10 @@ Run: `pnpm --filter @codaco/art test -- determinism.test.ts`. Expected: FAIL.
 Create `packages/art/src/Pattern/variants/Truchet.tsx`:
 
 ```tsx
-import { useMemo } from "react";
-import { rngToPalette } from "../palette";
-import { seedToRng } from "../seed";
-import type { PatternProps, Renderer } from "../types";
+import { useMemo } from 'react';
+import { rngToPalette } from '../palette';
+import { seedToRng } from '../seed';
+import type { PatternProps, Renderer } from '../types';
 
 export const renderTruchet: Renderer = (rng, palette, w, h) => {
   const tile = 24 + Math.floor(rng() * 24);
@@ -1112,8 +1232,20 @@ export const renderTruchet: Renderer = (rng, palette, w, h) => {
         ? `M ${x + tile / 2} ${y + tile} A ${tile / 2} ${tile / 2} 0 0 1 ${x + tile} ${y + tile / 2}`
         : `M ${x + tile / 2} ${y} A ${tile / 2} ${tile / 2} 0 0 0 ${x + tile} ${y + tile / 2}`;
       paths.push(
-        <path key={`a-${row}-${col}`} d={a} fill="none" stroke={color} strokeWidth={stroke} />,
-        <path key={`b-${row}-${col}`} d={b} fill="none" stroke={color} strokeWidth={stroke} />,
+        <path
+          key={`a-${row}-${col}`}
+          d={a}
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+        />,
+        <path
+          key={`b-${row}-${col}`}
+          d={b}
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+        />,
       );
     }
   }
@@ -1125,7 +1257,13 @@ export const renderTruchet: Renderer = (rng, palette, w, h) => {
   );
 };
 
-export const TruchetPattern = ({ seed, width = 400, height = 250, className, style }: PatternProps) => {
+export const TruchetPattern = ({
+  seed,
+  width = 400,
+  height = 250,
+  className,
+  style,
+}: PatternProps) => {
   const rng = useMemo(() => seedToRng(seed), [seed]);
   const palette = useMemo(() => rngToPalette(rng), [rng]);
   return (
@@ -1162,6 +1300,7 @@ Expected: 21 tests pass.
 ### Task 10: Pattern dispatcher
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/Pattern.tsx`
 - Modify: `packages/art/src/Pattern/__tests__/determinism.test.ts`
 
@@ -1170,22 +1309,28 @@ Expected: 21 tests pass.
 At the top of `determinism.test.ts`, add:
 
 ```tsx
-import { Pattern } from "../Pattern";
+import { Pattern } from '../Pattern';
 ```
 
 Inside the outer describe, append:
 
 ```tsx
-describe("Pattern dispatcher", () => {
-  it("produces identical markup on repeat renders with no variant prop", () => {
-    const a = renderToStaticMarkup(<Pattern seed="dispatch-fixture" width={400} height={250} />);
-    const b = renderToStaticMarkup(<Pattern seed="dispatch-fixture" width={400} height={250} />);
+describe('Pattern dispatcher', () => {
+  it('produces identical markup on repeat renders with no variant prop', () => {
+    const a = renderToStaticMarkup(
+      <Pattern seed="dispatch-fixture" width={400} height={250} />,
+    );
+    const b = renderToStaticMarkup(
+      <Pattern seed="dispatch-fixture" width={400} height={250} />,
+    );
     expect(a).toBe(b);
   });
 
-  it("renders the explicit variant when provided", () => {
-    const markup = renderToStaticMarkup(<Pattern seed="fixture" variant="dots" width={400} height={250} />);
-    expect(markup).toContain("<circle");
+  it('renders the explicit variant when provided', () => {
+    const markup = renderToStaticMarkup(
+      <Pattern seed="fixture" variant="dots" width={400} height={250} />,
+    );
+    expect(markup).toContain('<circle');
   });
 });
 ```
@@ -1200,16 +1345,20 @@ Expected: FAIL — module not found (`../Pattern`).
 Create `packages/art/src/Pattern/Pattern.tsx`:
 
 ```tsx
-import { useMemo } from "react";
-import { seedToRng } from "./seed";
-import { PATTERN_VARIANTS, type PatternProps, type PatternVariant } from "./types";
-import { CrossesPattern } from "./variants/Crosses";
-import { DotsPattern } from "./variants/Dots";
-import { FlowPattern } from "./variants/Flow";
-import { RingsPattern } from "./variants/Rings";
-import { SquigglesPattern } from "./variants/Squiggles";
-import { TilesPattern } from "./variants/Tiles";
-import { TruchetPattern } from "./variants/Truchet";
+import { useMemo } from 'react';
+import { seedToRng } from './seed';
+import {
+  PATTERN_VARIANTS,
+  type PatternProps,
+  type PatternVariant,
+} from './types';
+import { CrossesPattern } from './variants/Crosses';
+import { DotsPattern } from './variants/Dots';
+import { FlowPattern } from './variants/Flow';
+import { RingsPattern } from './variants/Rings';
+import { SquigglesPattern } from './variants/Squiggles';
+import { TilesPattern } from './variants/Tiles';
+import { TruchetPattern } from './variants/Truchet';
 
 const componentByVariant = {
   dots: DotsPattern,
@@ -1254,6 +1403,7 @@ Expected: 23 tests pass.
 ### Task 11: Smoke test sweep
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/__tests__/smoke.test.ts`
 
 - [ ] **Step 1: Write the smoke test**
@@ -1261,19 +1411,29 @@ Expected: 23 tests pass.
 Create `packages/art/src/Pattern/__tests__/smoke.test.ts`:
 
 ```tsx
-import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
-import { Pattern } from "../Pattern";
-import { PATTERN_VARIANTS } from "../types";
+import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it } from 'vitest';
+import { Pattern } from '../Pattern';
+import { PATTERN_VARIANTS } from '../types';
 
-describe("smoke", () => {
-  it.each(PATTERN_VARIANTS)("variant %s renders 50 sequential seeds without throwing", (variant) => {
-    for (let i = 0; i < 50; i++) {
-      const markup = renderToStaticMarkup(<Pattern seed={String(i)} variant={variant} width={400} height={250} />);
-      expect(markup.length).toBeGreaterThan(50);
-      expect(markup.startsWith("<svg")).toBe(true);
-    }
-  });
+describe('smoke', () => {
+  it.each(PATTERN_VARIANTS)(
+    'variant %s renders 50 sequential seeds without throwing',
+    (variant) => {
+      for (let i = 0; i < 50; i++) {
+        const markup = renderToStaticMarkup(
+          <Pattern
+            seed={String(i)}
+            variant={variant}
+            width={400}
+            height={250}
+          />,
+        );
+        expect(markup.length).toBeGreaterThan(50);
+        expect(markup.startsWith('<svg')).toBe(true);
+      }
+    },
+  );
 });
 ```
 
@@ -1294,6 +1454,7 @@ Expected: 7 tests pass.
 ### Task 12: Public exports
 
 **Files:**
+
 - Modify: `packages/art/src/index.ts`
 
 - [ ] **Step 1: Rewrite index.ts**
@@ -1301,17 +1462,17 @@ Expected: 7 tests pass.
 Replace `packages/art/src/index.ts` contents:
 
 ```ts
-import BackgroundBlobs from "./BackgroundBlobs/BackgroundBlobs";
-import useCanvas from "./BackgroundBlobs/useCanvas";
-import { Pattern } from "./Pattern/Pattern";
-import type { PatternProps, PatternVariant } from "./Pattern/types";
-import { CrossesPattern } from "./Pattern/variants/Crosses";
-import { DotsPattern } from "./Pattern/variants/Dots";
-import { FlowPattern } from "./Pattern/variants/Flow";
-import { RingsPattern } from "./Pattern/variants/Rings";
-import { SquigglesPattern } from "./Pattern/variants/Squiggles";
-import { TilesPattern } from "./Pattern/variants/Tiles";
-import { TruchetPattern } from "./Pattern/variants/Truchet";
+import BackgroundBlobs from './BackgroundBlobs/BackgroundBlobs';
+import useCanvas from './BackgroundBlobs/useCanvas';
+import { Pattern } from './Pattern/Pattern';
+import type { PatternProps, PatternVariant } from './Pattern/types';
+import { CrossesPattern } from './Pattern/variants/Crosses';
+import { DotsPattern } from './Pattern/variants/Dots';
+import { FlowPattern } from './Pattern/variants/Flow';
+import { RingsPattern } from './Pattern/variants/Rings';
+import { SquigglesPattern } from './Pattern/variants/Squiggles';
+import { TilesPattern } from './Pattern/variants/Tiles';
+import { TruchetPattern } from './Pattern/variants/Truchet';
 
 export {
   BackgroundBlobs,
@@ -1352,6 +1513,7 @@ git commit -m "feat(art): export Pattern and seven variants"
 ### Task 13: Storybook scaffolding
 
 **Files:**
+
 - Modify: `packages/art/package.json`
 - Create: `packages/art/.storybook/main.ts`
 - Create: `packages/art/.storybook/preview.tsx`
@@ -1386,19 +1548,19 @@ Run: `pnpm install`. Expected: installs without error.
 Create `packages/art/.storybook/main.ts`:
 
 ```ts
-import { defineMain } from "@storybook/react-vite/node";
-import tailwindcss from "@tailwindcss/vite";
+import { defineMain } from '@storybook/react-vite/node';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineMain({
-  addons: ["@storybook/addon-docs", "@storybook/addon-a11y"],
+  addons: ['@storybook/addon-docs', '@storybook/addon-a11y'],
   framework: {
-    name: "@storybook/react-vite",
+    name: '@storybook/react-vite',
     options: {},
   },
   typescript: {
     check: false,
   },
-  stories: ["../src/**/*.stories.tsx"],
+  stories: ['../src/**/*.stories.tsx'],
   viteFinal: async (config) => {
     config.plugins = [...(config.plugins ?? []), tailwindcss()];
     return config;
@@ -1411,8 +1573,8 @@ export default defineMain({
 Create `packages/art/.storybook/preview.css`:
 
 ```css
-@import "tailwindcss";
-@import "@codaco/fresco-ui/styles.css";
+@import 'tailwindcss';
+@import '@codaco/fresco-ui/styles.css';
 
 body {
   padding: 1rem;
@@ -1424,15 +1586,15 @@ body {
 Create `packages/art/.storybook/preview.tsx`:
 
 ```tsx
-import addonA11y from "@storybook/addon-a11y";
-import addonDocs from "@storybook/addon-docs";
-import { definePreview } from "@storybook/react-vite";
-import "./preview.css";
+import addonA11y from '@storybook/addon-a11y';
+import addonDocs from '@storybook/addon-docs';
+import { definePreview } from '@storybook/react-vite';
+import './preview.css';
 
 export default definePreview({
   addons: [addonDocs(), addonA11y()],
   parameters: {
-    layout: "centered",
+    layout: 'centered',
     controls: { matchers: { color: /(background|color)$/i } },
   },
 });
@@ -1443,7 +1605,7 @@ export default definePreview({
 Create `packages/art/.storybook/ProtocolCardMock.tsx`:
 
 ```tsx
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
 
 type Props = {
   title: string;
@@ -1451,31 +1613,38 @@ type Props = {
   children: ReactNode;
 };
 
-export const ProtocolCardMock = ({ title, meta = "Modified May 18, 2026", children }: Props) => (
+export const ProtocolCardMock = ({
+  title,
+  meta = 'Modified May 18, 2026',
+  children,
+}: Props) => (
   <div
     style={{
       width: 320,
       height: 200,
       borderRadius: 12,
-      overflow: "hidden",
-      position: "relative",
-      boxShadow: "0 6px 18px -8px rgba(0,0,0,0.25)",
-      background: "#fff",
+      overflow: 'hidden',
+      position: 'relative',
+      boxShadow: '0 6px 18px -8px rgba(0,0,0,0.25)',
+      background: '#fff',
     }}
   >
-    <div style={{ position: "absolute", inset: 0 }}>{children}</div>
+    <div style={{ position: 'absolute', inset: 0 }}>{children}</div>
     <div
       style={{
-        position: "absolute",
+        position: 'absolute',
         left: 0,
         right: 0,
         bottom: 0,
-        padding: "12px 16px",
-        background: "linear-gradient(to top, rgba(255,255,255,0.97) 50%, rgba(255,255,255,0))",
-        color: "#1a1330",
+        padding: '12px 16px',
+        background:
+          'linear-gradient(to top, rgba(255,255,255,0.97) 50%, rgba(255,255,255,0))',
+        color: '#1a1330',
       }}
     >
-      <div style={{ fontWeight: 600, fontSize: 16, lineHeight: 1.2 }}>{title}</div>
+      <div style={{ fontWeight: 600, fontSize: 16, lineHeight: 1.2 }}>
+        {title}
+      </div>
       <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>{meta}</div>
     </div>
   </div>
@@ -1500,6 +1669,7 @@ git commit -m "feat(art): scaffold Storybook for the art package"
 ### Task 14: Dots stories
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/variants/Dots.stories.tsx`
 
 - [ ] **Step 1: Create the story file**
@@ -1507,21 +1677,21 @@ git commit -m "feat(art): scaffold Storybook for the art package"
 Create `packages/art/src/Pattern/variants/Dots.stories.tsx`:
 
 ```tsx
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ProtocolCardMock } from "../../../.storybook/ProtocolCardMock";
-import { DotsPattern } from "./Dots";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { ProtocolCardMock } from '../../../.storybook/ProtocolCardMock';
+import { DotsPattern } from './Dots';
 
 const meta = {
-  title: "Patterns/Dots",
+  title: 'Patterns/Dots',
   component: DotsPattern,
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
-    seed: { control: "text" },
-    width: { control: { type: "number", min: 100, max: 1200, step: 10 } },
-    height: { control: { type: "number", min: 100, max: 1200, step: 10 } },
+    seed: { control: 'text' },
+    width: { control: { type: 'number', min: 100, max: 1200, step: 10 } },
+    height: { control: { type: 'number', min: 100, max: 1200, step: 10 } },
   },
   args: {
-    seed: "Family Networks 2024",
+    seed: 'Family Networks 2024',
     width: 400,
     height: 250,
   },
@@ -1533,7 +1703,7 @@ type Story = StoryObj<typeof meta>;
 export const Gallery: Story = {
   render: (args) => (
     <div style={{ width: 400, height: 250 }}>
-      <DotsPattern {...args} style={{ width: "100%", height: "100%" }} />
+      <DotsPattern {...args} style={{ width: '100%', height: '100%' }} />
     </div>
   ),
 };
@@ -1541,7 +1711,7 @@ export const Gallery: Story = {
 export const OnCard: Story = {
   render: (args) => (
     <ProtocolCardMock title={args.seed} meta="Dots variant">
-      <DotsPattern {...args} style={{ width: "100%", height: "100%" }} />
+      <DotsPattern {...args} style={{ width: '100%', height: '100%' }} />
     </ProtocolCardMock>
   ),
 };
@@ -1561,6 +1731,7 @@ git commit -m "feat(art): add Storybook stories for Dots pattern"
 ### Task 15: Tiles stories
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/variants/Tiles.stories.tsx`
 
 - [ ] **Step 1: Create the story file**
@@ -1568,21 +1739,21 @@ git commit -m "feat(art): add Storybook stories for Dots pattern"
 Create `packages/art/src/Pattern/variants/Tiles.stories.tsx`:
 
 ```tsx
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ProtocolCardMock } from "../../../.storybook/ProtocolCardMock";
-import { TilesPattern } from "./Tiles";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { ProtocolCardMock } from '../../../.storybook/ProtocolCardMock';
+import { TilesPattern } from './Tiles';
 
 const meta = {
-  title: "Patterns/Tiles",
+  title: 'Patterns/Tiles',
   component: TilesPattern,
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
-    seed: { control: "text" },
-    width: { control: { type: "number", min: 100, max: 1200, step: 10 } },
-    height: { control: { type: "number", min: 100, max: 1200, step: 10 } },
+    seed: { control: 'text' },
+    width: { control: { type: 'number', min: 100, max: 1200, step: 10 } },
+    height: { control: { type: 'number', min: 100, max: 1200, step: 10 } },
   },
   args: {
-    seed: "Drug Use Among Young Adults",
+    seed: 'Drug Use Among Young Adults',
     width: 400,
     height: 250,
   },
@@ -1594,7 +1765,7 @@ type Story = StoryObj<typeof meta>;
 export const Gallery: Story = {
   render: (args) => (
     <div style={{ width: 400, height: 250 }}>
-      <TilesPattern {...args} style={{ width: "100%", height: "100%" }} />
+      <TilesPattern {...args} style={{ width: '100%', height: '100%' }} />
     </div>
   ),
 };
@@ -1602,7 +1773,7 @@ export const Gallery: Story = {
 export const OnCard: Story = {
   render: (args) => (
     <ProtocolCardMock title={args.seed} meta="Tiles variant">
-      <TilesPattern {...args} style={{ width: "100%", height: "100%" }} />
+      <TilesPattern {...args} style={{ width: '100%', height: '100%' }} />
     </ProtocolCardMock>
   ),
 };
@@ -1622,6 +1793,7 @@ git commit -m "feat(art): add Storybook stories for Tiles pattern"
 ### Task 16: Flow stories
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/variants/Flow.stories.tsx`
 
 - [ ] **Step 1: Create the story file**
@@ -1629,21 +1801,21 @@ git commit -m "feat(art): add Storybook stories for Tiles pattern"
 Create `packages/art/src/Pattern/variants/Flow.stories.tsx`:
 
 ```tsx
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ProtocolCardMock } from "../../../.storybook/ProtocolCardMock";
-import { FlowPattern } from "./Flow";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { ProtocolCardMock } from '../../../.storybook/ProtocolCardMock';
+import { FlowPattern } from './Flow';
 
 const meta = {
-  title: "Patterns/Flow",
+  title: 'Patterns/Flow',
   component: FlowPattern,
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
-    seed: { control: "text" },
-    width: { control: { type: "number", min: 100, max: 1200, step: 10 } },
-    height: { control: { type: "number", min: 100, max: 1200, step: 10 } },
+    seed: { control: 'text' },
+    width: { control: { type: 'number', min: 100, max: 1200, step: 10 } },
+    height: { control: { type: 'number', min: 100, max: 1200, step: 10 } },
   },
   args: {
-    seed: "Migration Pathways",
+    seed: 'Migration Pathways',
     width: 400,
     height: 250,
   },
@@ -1655,7 +1827,7 @@ type Story = StoryObj<typeof meta>;
 export const Gallery: Story = {
   render: (args) => (
     <div style={{ width: 400, height: 250 }}>
-      <FlowPattern {...args} style={{ width: "100%", height: "100%" }} />
+      <FlowPattern {...args} style={{ width: '100%', height: '100%' }} />
     </div>
   ),
 };
@@ -1663,7 +1835,7 @@ export const Gallery: Story = {
 export const OnCard: Story = {
   render: (args) => (
     <ProtocolCardMock title={args.seed} meta="Flow variant">
-      <FlowPattern {...args} style={{ width: "100%", height: "100%" }} />
+      <FlowPattern {...args} style={{ width: '100%', height: '100%' }} />
     </ProtocolCardMock>
   ),
 };
@@ -1683,6 +1855,7 @@ git commit -m "feat(art): add Storybook stories for Flow pattern"
 ### Task 17: Rings stories
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/variants/Rings.stories.tsx`
 
 - [ ] **Step 1: Create the story file**
@@ -1690,21 +1863,21 @@ git commit -m "feat(art): add Storybook stories for Flow pattern"
 Create `packages/art/src/Pattern/variants/Rings.stories.tsx`:
 
 ```tsx
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ProtocolCardMock } from "../../../.storybook/ProtocolCardMock";
-import { RingsPattern } from "./Rings";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { ProtocolCardMock } from '../../../.storybook/ProtocolCardMock';
+import { RingsPattern } from './Rings';
 
 const meta = {
-  title: "Patterns/Rings",
+  title: 'Patterns/Rings',
   component: RingsPattern,
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
-    seed: { control: "text" },
-    width: { control: { type: "number", min: 100, max: 1200, step: 10 } },
-    height: { control: { type: "number", min: 100, max: 1200, step: 10 } },
+    seed: { control: 'text' },
+    width: { control: { type: 'number', min: 100, max: 1200, step: 10 } },
+    height: { control: { type: 'number', min: 100, max: 1200, step: 10 } },
   },
   args: {
-    seed: "Social Capital Study",
+    seed: 'Social Capital Study',
     width: 400,
     height: 250,
   },
@@ -1716,7 +1889,7 @@ type Story = StoryObj<typeof meta>;
 export const Gallery: Story = {
   render: (args) => (
     <div style={{ width: 400, height: 250 }}>
-      <RingsPattern {...args} style={{ width: "100%", height: "100%" }} />
+      <RingsPattern {...args} style={{ width: '100%', height: '100%' }} />
     </div>
   ),
 };
@@ -1724,7 +1897,7 @@ export const Gallery: Story = {
 export const OnCard: Story = {
   render: (args) => (
     <ProtocolCardMock title={args.seed} meta="Rings variant">
-      <RingsPattern {...args} style={{ width: "100%", height: "100%" }} />
+      <RingsPattern {...args} style={{ width: '100%', height: '100%' }} />
     </ProtocolCardMock>
   ),
 };
@@ -1744,6 +1917,7 @@ git commit -m "feat(art): add Storybook stories for Rings pattern"
 ### Task 18: Crosses stories
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/variants/Crosses.stories.tsx`
 
 - [ ] **Step 1: Create the story file**
@@ -1751,21 +1925,21 @@ git commit -m "feat(art): add Storybook stories for Rings pattern"
 Create `packages/art/src/Pattern/variants/Crosses.stories.tsx`:
 
 ```tsx
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ProtocolCardMock } from "../../../.storybook/ProtocolCardMock";
-import { CrossesPattern } from "./Crosses";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { ProtocolCardMock } from '../../../.storybook/ProtocolCardMock';
+import { CrossesPattern } from './Crosses';
 
 const meta = {
-  title: "Patterns/Crosses",
+  title: 'Patterns/Crosses',
   component: CrossesPattern,
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
-    seed: { control: "text" },
-    width: { control: { type: "number", min: 100, max: 1200, step: 10 } },
-    height: { control: { type: "number", min: 100, max: 1200, step: 10 } },
+    seed: { control: 'text' },
+    width: { control: { type: 'number', min: 100, max: 1200, step: 10 } },
+    height: { control: { type: 'number', min: 100, max: 1200, step: 10 } },
   },
   args: {
-    seed: "Health Worker Networks",
+    seed: 'Health Worker Networks',
     width: 400,
     height: 250,
   },
@@ -1777,7 +1951,7 @@ type Story = StoryObj<typeof meta>;
 export const Gallery: Story = {
   render: (args) => (
     <div style={{ width: 400, height: 250 }}>
-      <CrossesPattern {...args} style={{ width: "100%", height: "100%" }} />
+      <CrossesPattern {...args} style={{ width: '100%', height: '100%' }} />
     </div>
   ),
 };
@@ -1785,7 +1959,7 @@ export const Gallery: Story = {
 export const OnCard: Story = {
   render: (args) => (
     <ProtocolCardMock title={args.seed} meta="Crosses variant">
-      <CrossesPattern {...args} style={{ width: "100%", height: "100%" }} />
+      <CrossesPattern {...args} style={{ width: '100%', height: '100%' }} />
     </ProtocolCardMock>
   ),
 };
@@ -1805,6 +1979,7 @@ git commit -m "feat(art): add Storybook stories for Crosses pattern"
 ### Task 19: Squiggles stories
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/variants/Squiggles.stories.tsx`
 
 - [ ] **Step 1: Create the story file**
@@ -1812,21 +1987,21 @@ git commit -m "feat(art): add Storybook stories for Crosses pattern"
 Create `packages/art/src/Pattern/variants/Squiggles.stories.tsx`:
 
 ```tsx
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ProtocolCardMock } from "../../../.storybook/ProtocolCardMock";
-import { SquigglesPattern } from "./Squiggles";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { ProtocolCardMock } from '../../../.storybook/ProtocolCardMock';
+import { SquigglesPattern } from './Squiggles';
 
 const meta = {
-  title: "Patterns/Squiggles",
+  title: 'Patterns/Squiggles',
   component: SquigglesPattern,
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
-    seed: { control: "text" },
-    width: { control: { type: "number", min: 100, max: 1200, step: 10 } },
-    height: { control: { type: "number", min: 100, max: 1200, step: 10 } },
+    seed: { control: 'text' },
+    width: { control: { type: 'number', min: 100, max: 1200, step: 10 } },
+    height: { control: { type: 'number', min: 100, max: 1200, step: 10 } },
   },
   args: {
-    seed: "Kinship and Caregiving",
+    seed: 'Kinship and Caregiving',
     width: 400,
     height: 250,
   },
@@ -1838,7 +2013,7 @@ type Story = StoryObj<typeof meta>;
 export const Gallery: Story = {
   render: (args) => (
     <div style={{ width: 400, height: 250 }}>
-      <SquigglesPattern {...args} style={{ width: "100%", height: "100%" }} />
+      <SquigglesPattern {...args} style={{ width: '100%', height: '100%' }} />
     </div>
   ),
 };
@@ -1846,7 +2021,7 @@ export const Gallery: Story = {
 export const OnCard: Story = {
   render: (args) => (
     <ProtocolCardMock title={args.seed} meta="Squiggles variant">
-      <SquigglesPattern {...args} style={{ width: "100%", height: "100%" }} />
+      <SquigglesPattern {...args} style={{ width: '100%', height: '100%' }} />
     </ProtocolCardMock>
   ),
 };
@@ -1866,6 +2041,7 @@ git commit -m "feat(art): add Storybook stories for Squiggles pattern"
 ### Task 20: Truchet stories
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/variants/Truchet.stories.tsx`
 
 - [ ] **Step 1: Create the story file**
@@ -1873,21 +2049,21 @@ git commit -m "feat(art): add Storybook stories for Squiggles pattern"
 Create `packages/art/src/Pattern/variants/Truchet.stories.tsx`:
 
 ```tsx
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ProtocolCardMock } from "../../../.storybook/ProtocolCardMock";
-import { TruchetPattern } from "./Truchet";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { ProtocolCardMock } from '../../../.storybook/ProtocolCardMock';
+import { TruchetPattern } from './Truchet';
 
 const meta = {
-  title: "Patterns/Truchet",
+  title: 'Patterns/Truchet',
   component: TruchetPattern,
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
-    seed: { control: "text" },
-    width: { control: { type: "number", min: 100, max: 1200, step: 10 } },
-    height: { control: { type: "number", min: 100, max: 1200, step: 10 } },
+    seed: { control: 'text' },
+    width: { control: { type: 'number', min: 100, max: 1200, step: 10 } },
+    height: { control: { type: 'number', min: 100, max: 1200, step: 10 } },
   },
   args: {
-    seed: "Adolescent Friendships",
+    seed: 'Adolescent Friendships',
     width: 400,
     height: 250,
   },
@@ -1899,7 +2075,7 @@ type Story = StoryObj<typeof meta>;
 export const Gallery: Story = {
   render: (args) => (
     <div style={{ width: 400, height: 250 }}>
-      <TruchetPattern {...args} style={{ width: "100%", height: "100%" }} />
+      <TruchetPattern {...args} style={{ width: '100%', height: '100%' }} />
     </div>
   ),
 };
@@ -1907,7 +2083,7 @@ export const Gallery: Story = {
 export const OnCard: Story = {
   render: (args) => (
     <ProtocolCardMock title={args.seed} meta="Truchet variant">
-      <TruchetPattern {...args} style={{ width: "100%", height: "100%" }} />
+      <TruchetPattern {...args} style={{ width: '100%', height: '100%' }} />
     </ProtocolCardMock>
   ),
 };
@@ -1927,6 +2103,7 @@ git commit -m "feat(art): add Storybook stories for Truchet pattern"
 ### Task 21: Pattern overview stories
 
 **Files:**
+
 - Create: `packages/art/src/Pattern/Pattern.stories.tsx`
 
 - [ ] **Step 1: Create the overview story file**
@@ -1934,23 +2111,23 @@ git commit -m "feat(art): add Storybook stories for Truchet pattern"
 Create `packages/art/src/Pattern/Pattern.stories.tsx`:
 
 ```tsx
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import type { CSSProperties } from "react";
-import { ProtocolCardMock } from "../../.storybook/ProtocolCardMock";
-import { Pattern } from "./Pattern";
-import { PATTERN_VARIANTS, type PatternVariant } from "./types";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { CSSProperties } from 'react';
+import { ProtocolCardMock } from '../../.storybook/ProtocolCardMock';
+import { Pattern } from './Pattern';
+import { PATTERN_VARIANTS, type PatternVariant } from './types';
 
 const meta = {
-  title: "Patterns/Overview",
+  title: 'Patterns/Overview',
   component: Pattern,
   argTypes: {
-    seed: { control: "text" },
-    variant: { control: "select", options: [undefined, ...PATTERN_VARIANTS] },
-    width: { control: { type: "number", min: 100, max: 1200, step: 10 } },
-    height: { control: { type: "number", min: 100, max: 1200, step: 10 } },
+    seed: { control: 'text' },
+    variant: { control: 'select', options: [undefined, ...PATTERN_VARIANTS] },
+    width: { control: { type: 'number', min: 100, max: 1200, step: 10 } },
+    height: { control: { type: 'number', min: 100, max: 1200, step: 10 } },
   },
   args: {
-    seed: "Family Networks 2024",
+    seed: 'Family Networks 2024',
     width: 400,
     height: 250,
   },
@@ -1963,28 +2140,41 @@ const tileBox: CSSProperties = {
   width: 200,
   height: 125,
   borderRadius: 8,
-  overflow: "hidden",
-  border: "1px solid rgba(0,0,0,0.08)",
+  overflow: 'hidden',
+  border: '1px solid rgba(0,0,0,0.08)',
 };
 
 export const SeedPlayground: Story = {
   render: (args) => (
     <div style={{ width: 400, height: 250 }}>
-      <Pattern {...args} style={{ width: "100%", height: "100%" }} />
+      <Pattern {...args} style={{ width: '100%', height: '100%' }} />
     </div>
   ),
 };
 
 export const AllVariants: Story = {
-  args: { seed: "Comparison Seed" },
+  args: { seed: 'Comparison Seed' },
   render: (args) => (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, maxWidth: 900 }}>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: 12,
+        maxWidth: 900,
+      }}
+    >
       {PATTERN_VARIANTS.map((variant) => (
         <div key={variant}>
           <div style={tileBox}>
-            <Pattern seed={args.seed} variant={variant} style={{ width: "100%", height: "100%" }} />
+            <Pattern
+              seed={args.seed}
+              variant={variant}
+              style={{ width: '100%', height: '100%' }}
+            />
           </div>
-          <div style={{ fontSize: 12, marginTop: 4, fontFamily: "monospace" }}>{variant}</div>
+          <div style={{ fontSize: 12, marginTop: 4, fontFamily: 'monospace' }}>
+            {variant}
+          </div>
         </div>
       ))}
     </div>
@@ -1992,28 +2182,46 @@ export const AllVariants: Story = {
 };
 
 const SEED_GRID_SEEDS = [
-  "alpha", "beta", "gamma", "delta",
-  "epsilon", "zeta", "eta", "theta",
-  "iota", "kappa", "lambda", "mu",
+  'alpha',
+  'beta',
+  'gamma',
+  'delta',
+  'epsilon',
+  'zeta',
+  'eta',
+  'theta',
+  'iota',
+  'kappa',
+  'lambda',
+  'mu',
 ] as const;
 
 export const SeedGrid: Story = {
-  args: { variant: "dots", seed: "" },
+  args: { variant: 'dots', seed: '' },
   argTypes: {
-    variant: { control: "select", options: PATTERN_VARIANTS },
+    variant: { control: 'select', options: PATTERN_VARIANTS },
   },
   render: (args) => (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, maxWidth: 900 }}>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: 12,
+        maxWidth: 900,
+      }}
+    >
       {SEED_GRID_SEEDS.map((seed) => (
         <div key={seed}>
           <div style={tileBox}>
             <Pattern
               seed={seed}
-              variant={(args.variant ?? "dots") as PatternVariant}
-              style={{ width: "100%", height: "100%" }}
+              variant={(args.variant ?? 'dots') as PatternVariant}
+              style={{ width: '100%', height: '100%' }}
             />
           </div>
-          <div style={{ fontSize: 12, marginTop: 4, fontFamily: "monospace" }}>{seed}</div>
+          <div style={{ fontSize: 12, marginTop: 4, fontFamily: 'monospace' }}>
+            {seed}
+          </div>
         </div>
       ))}
     </div>
@@ -2021,21 +2229,28 @@ export const SeedGrid: Story = {
 };
 
 const PROTOCOL_NAMES = [
-  "Family Networks 2024",
-  "Drug Use Among Young Adults",
-  "Migration Pathways",
-  "Social Capital Study",
-  "Health Worker Networks",
-  "Kinship and Caregiving",
-  "Adolescent Friendships",
+  'Family Networks 2024',
+  'Drug Use Among Young Adults',
+  'Migration Pathways',
+  'Social Capital Study',
+  'Health Worker Networks',
+  'Kinship and Caregiving',
+  'Adolescent Friendships',
 ] as const;
 
 export const OnCardGrid: Story = {
   render: () => (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16, maxWidth: 1080 }}>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+        gap: 16,
+        maxWidth: 1080,
+      }}
+    >
       {PROTOCOL_NAMES.map((name) => (
         <ProtocolCardMock key={name} title={name}>
-          <Pattern seed={name} style={{ width: "100%", height: "100%" }} />
+          <Pattern seed={name} style={{ width: '100%', height: '100%' }} />
         </ProtocolCardMock>
       ))}
     </div>
@@ -2081,6 +2296,7 @@ Run: `pnpm knip`. Expected: no new warnings inside `packages/art`. Pre-existing 
 - [ ] **Step 5: Storybook build**
 
 Run: `pnpm --filter @codaco/art build-storybook`. Expected: success; output at `packages/art/storybook-static/`. Story tree:
+
 - `Patterns/Overview` (4 stories)
 - `Patterns/Dots` through `Patterns/Truchet` (2 stories each)
 
