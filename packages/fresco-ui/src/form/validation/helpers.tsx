@@ -183,9 +183,7 @@ export function makeValidationHints(props: Record<string, unknown>) {
       )({});
 
       // Extract hint from the schema's metadata via global registry
-      const meta = z.globalRegistry.get(validationFn) as
-        | { hint?: string }
-        | undefined;
+      const meta = z.globalRegistry.get(validationFn);
       if (meta?.hint) {
         hints.push(meta.hint);
       }

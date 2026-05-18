@@ -14,7 +14,7 @@
 
 declare module 'zod/v4/core' {
   interface GlobalMeta {
-    hintText?: string;
+    hint?: string;
   }
 }
 
