@@ -1,4 +1,3 @@
-import { motion } from 'motion/react';
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 
