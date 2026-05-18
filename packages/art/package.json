@@ -8,7 +8,9 @@
 	},
 	"license": "MIT",
 	"scripts": {
+		"build-storybook": "storybook build",
 		"clean": "rm -rf .turbo node_modules",
+		"storybook": "storybook dev -p 6007",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"typecheck": "tsgo --noEmit"
@@ -18,7 +20,12 @@
 		"d3-interpolate-path": "^2.3.0"
 	},
 	"devDependencies": {
+		"@codaco/tailwind-config": "workspace:*",
 		"@codaco/tsconfig": "workspace:*",
+		"@storybook/addon-a11y": "^10.4.0",
+		"@storybook/addon-docs": "^10.4.0",
+		"@storybook/react-vite": "^10.4.0",
+		"@tailwindcss/vite": "catalog:",
 		"@types/d3-interpolate-path": "^2.0.3",
 		"@types/node": "catalog:",
 		"@types/react": "catalog:",
@@ -27,6 +34,8 @@
 		"jsdom": "^29.1.1",
 		"react": "catalog:",
 		"react-dom": "catalog:",
+		"storybook": "^10.4.0",
+		"tailwindcss": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:"
 	},
