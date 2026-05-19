@@ -1,7 +1,9 @@
+import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { TextArea } from '~/components/Form/Fields';
+import { useProjectMountAnimation } from '~/components/ProjectNav/projectMountAnimationContext';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   updateProtocolDescription,
@@ -14,6 +16,11 @@ const ProtocolInfoCard = () => {
   const name = useSelector(getProtocolName);
   const protocol = useSelector(getProtocol);
   const description = protocol?.description ?? '';
+  const shouldReduceMotion = useReducedMotion();
+  const { isInitialLoad } = useProjectMountAnimation();
+  // Snapshot at first render — Timeline flips markAnimated() on mount, which
+  // would cause this card's `initial` to drop mid-flight on the resulting re-render.
+  const [animate] = useState(() => !shouldReduceMotion && isInitialLoad);
 
   const [localName, setLocalName] = useState(name ?? '');
 
@@ -22,7 +29,12 @@ const ProtocolInfoCard = () => {
   }, [name]);
 
   return (
-    <div className="bg-surface-1 relative mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded shadow-md">
+    <motion.div
+      initial={animate ? { y: -80, opacity: 0 } : false}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className="bg-surface-1 relative mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded shadow-md"
+    >
       <div className="px-(--space-lg) py-(--space-md)">
         <input
           type="text"
@@ -51,7 +63,7 @@ const ProtocolInfoCard = () => {
           }}
         />
       </div>
-    </div>
+    </motion.div>
   );
 };
 

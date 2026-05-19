@@ -1,9 +1,10 @@
 import { get } from 'es-toolkit/compat';
 import { motion, Reorder, useReducedMotion, type Variants } from 'motion/react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
+import { useProjectMountAnimation } from '~/components/ProjectNav/projectMountAnimationContext';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   type DialogConfig,
@@ -25,17 +26,20 @@ const getTimelineImage = (type: string) =>
 
 const timelineContainerVariants: Variants = {
   hidden: {},
-  visible: {},
+  visible: {
+    transition: {
+      delayChildren: 0.6,
+      staggerChildren: 0.08,
+    },
+  },
 };
 
-// Uniform delay across all items (no per-index stagger) so total animation
-// duration is independent of timeline length — matches Architect desktop.
 const timelineStageVariants: Variants = {
   hidden: { scale: 0, opacity: 0 },
   visible: {
     scale: 1,
     opacity: 1,
-    transition: { type: 'spring', delay: 0.2 },
+    transition: { type: 'spring' },
   },
 };
 
@@ -43,7 +47,7 @@ const timelineInsertVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { delay: 0.45 },
+    transition: { duration: 0.3 },
   },
 };
 
@@ -52,6 +56,14 @@ const Timeline = () => {
   const dispatch = useAppDispatch();
   const pointerStart = useRef({ x: 0, y: 0 });
   const shouldReduceMotion = useReducedMotion();
+  const { isInitialLoad, markAnimated } = useProjectMountAnimation();
+  // Snapshot at first render — flipping markAnimated() in the effect below
+  // would otherwise unmount the line cover mid-animation on re-render.
+  const [animate] = useState(() => !shouldReduceMotion && isInitialLoad);
+
+  useEffect(() => {
+    if (isInitialLoad) markAnimated();
+  }, [isInitialLoad, markAnimated]);
 
   const deleteStage = useCallback(
     (stageId: string) => {
@@ -133,13 +145,14 @@ const Timeline = () => {
       {/* Wrapper with timeline line. Top padding leaves a stretch of line below
 			    the protocol overview card so the timeline visually connects to it. */}
       <div className="relative pt-(--space-xl)">
-        {/* Timeline line via CSS - height is 100% minus small offset to stop at add button center */}
+        {/* Line — clipped from below on initial mount so it reveals top-to-bottom.
+            clip-path doesn't share the transform property with Tailwind's
+            -translate-x-1/2, so there's no positioning conflict. */}
         <motion.div
           className="bg-timeline pointer-events-none absolute top-0 left-1/2 h-[calc(100%-1.25rem)] w-(--space-xs) -translate-x-1/2"
-          style={{ transformOrigin: 'top' }}
-          initial={shouldReduceMotion ? false : { scaleY: 0 }}
-          animate={{ scaleY: 1 }}
-          transition={{ delay: 0.2, duration: 0.5, ease: 'easeOut' }}
+          initial={animate ? { clipPath: 'inset(0 0 100% 0)' } : false}
+          animate={{ clipPath: 'inset(0 0 0% 0)' }}
+          transition={{ delay: 0.5, duration: 1.4, ease: 'easeOut' }}
         />
 
         <Reorder.Group
@@ -147,7 +160,7 @@ const Timeline = () => {
           onReorder={handleReorder}
           className="relative grid grid-cols-1 justify-items-center gap-1"
           values={stages}
-          initial={shouldReduceMotion ? false : 'hidden'}
+          initial={animate ? 'hidden' : false}
           animate="visible"
           variants={timelineContainerVariants}
         >
