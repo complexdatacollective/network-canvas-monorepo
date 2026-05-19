@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'wouter';
 
+import BackgroundBlobsLayer from '~/components/BackgroundBlobsLayer';
 import DialogManager from '~/components/DialogManager';
 import { JsonPreviewOverlay } from '~/components/JsonPreviewOverlay';
 import ProtocolGuardedRouter from '~/components/ProtocolGuardedRouter';
@@ -19,6 +20,7 @@ const AppContents = () => {
 
   return (
     <>
+      <BackgroundBlobsLayer intensity={location === '/' ? 'bold' : 'dim'} />
       <ScrollToTop />
       <Routes />
       <DialogManager />

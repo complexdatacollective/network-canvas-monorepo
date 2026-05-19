@@ -451,6 +451,9 @@ importers:
       '@base-ui/react':
         specifier: 'catalog:'
         version: 1.4.1(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@codaco/art':
+        specifier: workspace:*
+        version: link:../../packages/art
       '@codaco/fresco-ui':
         specifier: workspace:*
         version: link:../../packages/fresco-ui
