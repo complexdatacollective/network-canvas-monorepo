@@ -393,7 +393,9 @@ export async function verifyPin(args: {
   pin: string;
 }): Promise<{ ok: true } | { ok: false; message: string }> {
   const validation = validatePin(args.pin);
-  if (!validation.ok) return validation;
+  if (!validation.ok) {
+    return { ok: false, message: 'Incorrect PIN' };
+  }
   const record = readVault();
   if (!record) return { ok: false, message: 'Vault not configured' };
   if (record.mode !== 'pin' || !record.kdfSaltB64 || !record.kdfIterations) {

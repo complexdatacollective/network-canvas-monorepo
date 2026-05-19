@@ -98,6 +98,38 @@ describe('vault passphrase mode', () => {
   });
 });
 
+describe('verifyPin', () => {
+  beforeEach(() => {
+    deleteVault();
+  });
+
+  it('returns ok:true when PIN is correct, ok:false when wrong', async () => {
+    const pin = '12345678';
+    await vault.setupPin({ pin });
+    expect((await vault.verifyPin({ pin })).ok).toBe(true);
+    expect((await vault.verifyPin({ pin: '87654321' })).ok).toBe(false);
+  });
+
+  it('returns generic message on policy failure, not the validation error', async () => {
+    await vault.setupPin({ pin: '12345678' });
+    const r = await vault.verifyPin({ pin: 'short' });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.message).toBe('Incorrect PIN');
+      expect(r.message).not.toMatch(/digits|length/i);
+    }
+  });
+
+  it('does not change the unlocked DEK', async () => {
+    const pin = '12345678';
+    await vault.setupPin({ pin });
+    await vault.lock();
+    await vault.verifyPin({ pin });
+    const status = await vault.status();
+    expect(status.locked).toBe(true);
+  });
+});
+
 afterAll(() => {
   rmSync(tmp, { recursive: true, force: true });
 });
