@@ -37,7 +37,7 @@ declare global {
   type AuthStatus = {
     configured: boolean;
     locked: boolean;
-    mode?: 'webauthn' | 'pin' | 'none';
+    mode?: 'webauthn' | 'biometric-native' | 'pin' | 'passphrase' | 'none';
     credentialIdB64?: string;
     saltB64?: string;
   };

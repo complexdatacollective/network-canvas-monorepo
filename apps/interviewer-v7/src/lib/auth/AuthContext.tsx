@@ -16,7 +16,12 @@ import * as vaultMetadata from './vaultMetadata';
 
 export type AuthStateKind = 'loading' | 'unconfigured' | 'locked' | 'unlocked';
 
-export type AuthMode = 'webauthn' | 'pin' | 'none';
+export type AuthMode =
+  | 'webauthn'
+  | 'biometric-native'
+  | 'pin'
+  | 'passphrase'
+  | 'none';
 
 export type IdleTimeoutMinutes = 1 | 5 | 15 | 30 | 60;
 
@@ -25,7 +30,9 @@ export type AuthState = {
   authenticatorSupported: boolean;
   mode?: AuthMode;
   credentialMetadata?: { credentialIdB64: string; enrolledAt: string };
+  biometricNativeMetadata?: { enrolledAt: string };
   pinMetadata?: { enrolledAt: string };
+  passphraseMetadata?: { enrolledAt: string };
   idleTimeoutMinutes: IdleTimeoutMinutes;
 };
 
@@ -82,7 +89,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const metadata = await vaultMetadata.read();
     const mode: AuthMode | undefined = s.mode ?? metadata?.mode;
     let credentialMetadata: AuthState['credentialMetadata'];
+    let biometricNativeMetadata: AuthState['biometricNativeMetadata'];
     let pinMetadata: AuthState['pinMetadata'];
+    let passphraseMetadata: AuthState['passphraseMetadata'];
     if (mode === 'webauthn') {
       const credentialIdB64 =
         metadata?.mode === 'webauthn'
@@ -96,6 +105,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else if (mode === 'pin') {
       pinMetadata = {
         enrolledAt: metadata?.mode === 'pin' ? metadata.enrolledAt : '',
+      };
+    } else if (mode === 'passphrase') {
+      passphraseMetadata = {
+        enrolledAt: metadata?.mode === 'passphrase' ? metadata.enrolledAt : '',
+      };
+    } else if (mode === 'biometric-native') {
+      biometricNativeMetadata = {
+        enrolledAt:
+          metadata?.mode === 'biometric-native' ? metadata.enrolledAt : '',
       };
     }
 
@@ -112,7 +130,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authenticatorSupported,
       mode,
       credentialMetadata,
+      biometricNativeMetadata,
       pinMetadata,
+      passphraseMetadata,
       idleTimeoutMinutes,
     });
   }, []);
