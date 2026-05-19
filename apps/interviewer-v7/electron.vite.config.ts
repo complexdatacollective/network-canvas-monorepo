@@ -4,7 +4,9 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 
-export default defineConfig({
+const frescoUiSrc = resolve(__dirname, '../../packages/fresco-ui/src');
+
+export default defineConfig(({ command }) => ({
   main: {
     plugins: [externalizeDepsPlugin()],
     build: {
@@ -35,6 +37,15 @@ export default defineConfig({
     root: '.',
     resolve: {
       tsconfigPaths: true,
+      alias:
+        command === 'serve'
+          ? [
+              {
+                find: /^@codaco\/fresco-ui\/(.+)$/,
+                replacement: `${frescoUiSrc}/$1`,
+              },
+            ]
+          : [],
     },
     plugins: [react(), tailwindcss()],
     build: {
@@ -47,4 +58,4 @@ export default defineConfig({
       port: 5181,
     },
   },
-});
+}));
