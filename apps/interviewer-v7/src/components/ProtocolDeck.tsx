@@ -136,6 +136,46 @@ export function ProtocolDeck({
     });
   }, []);
 
+  // Translate vertical mouse-wheel strokes into discrete card advances, so
+  // wheel scrolling animates the same as the chevron buttons. Trackpad
+  // horizontal pans emit deltaX and pass through to native scroll-snap
+  // untouched; this only intercepts deltaY-dominant input.
+  //
+  // We accumulate deltaY between events, advance one card once it crosses
+  // the threshold, then enforce a cooldown so a hard wheel spin doesn't skip
+  // the deck. The accumulator resets if the user pauses, so a slow wheel
+  // doesn't summon a stale advance later.
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const ADVANCE_THRESHOLD = 30;
+    const COOLDOWN_MS = 320;
+    const IDLE_RESET_MS = 120;
+    let accumulator = 0;
+    let cooldownUntil = 0;
+    let lastEventAt = 0;
+    const onWheel = (event: WheelEvent) => {
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      event.preventDefault();
+      const now = performance.now();
+      if (now - lastEventAt > IDLE_RESET_MS) accumulator = 0;
+      lastEventAt = now;
+      if (now < cooldownUntil) return;
+      accumulator += event.deltaY;
+      if (Math.abs(accumulator) < ADVANCE_THRESHOLD) return;
+      const direction = accumulator > 0 ? 1 : -1;
+      const next = Math.max(
+        0,
+        Math.min(deck.length - 1, activeIdxRef.current + direction),
+      );
+      accumulator = 0;
+      cooldownUntil = now + COOLDOWN_MS;
+      if (next !== activeIdxRef.current) scrollToIndex(next);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [deck.length, scrollToIndex]);
+
   // Slide the wrapper's perspective-origin so it tracks the scroll viewport's
   // centre. Without this, perspective is anchored to the wrapper's middle (the
   // middle of all scroll content) and cards near either end look distorted.
