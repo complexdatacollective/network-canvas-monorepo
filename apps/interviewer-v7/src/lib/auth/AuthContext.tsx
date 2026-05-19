@@ -43,15 +43,27 @@ type AuthActions = {
   ) => Promise<{ ok: boolean; message?: string }>;
   enrolWithPin: (pin: string) => Promise<{ ok: boolean; message?: string }>;
   enrolWithoutLock: () => Promise<{ ok: boolean; message?: string }>;
+  enrolWithBiometricNative: () => Promise<{ ok: boolean; message?: string }>;
+  enrolWithPassphrase: (
+    phrase: string,
+  ) => Promise<{ ok: boolean; message?: string }>;
   unlockWithAuthenticator: (
     signal?: AbortSignal,
   ) => Promise<{ ok: boolean; message?: string }>;
   unlockWithPin: (pin: string) => Promise<{ ok: boolean; message?: string }>;
+  unlockWithBiometricNative: () => Promise<{ ok: boolean; message?: string }>;
+  unlockWithPassphrase: (
+    phrase: string,
+  ) => Promise<{ ok: boolean; message?: string }>;
   lock: () => Promise<void>;
   reEnrol: (signal?: AbortSignal) => Promise<{ ok: boolean; message?: string }>;
   reEnrolWithPin: (args: {
     currentPin: string;
     nextPin: string;
+  }) => Promise<{ ok: boolean; message?: string }>;
+  reEnrolWithPassphrase: (args: {
+    currentPhrase: string;
+    nextPhrase: string;
   }) => Promise<{ ok: boolean; message?: string }>;
   revoke: () => Promise<void>;
   setIdleTimeoutMinutes: (minutes: IdleTimeoutMinutes) => Promise<void>;
@@ -216,6 +228,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
+  const enrolWithBiometricNative = useCallback(async () => {
+    const result = await authApi.enrolWithBiometricNative();
+    if (result.ok) await refresh();
+    return result;
+  }, [refresh]);
+
+  const enrolWithPassphrase = useCallback(
+    async (phrase: string) => {
+      const result = await authApi.enrolWithPassphrase(phrase);
+      if (result.ok) await refresh();
+      return result;
+    },
+    [refresh],
+  );
+
+  const unlockWithBiometricNative = useCallback(async () => {
+    const result = await authApi.unlockWithBiometricNative();
+    if (result.ok) await refresh();
+    return result;
+  }, [refresh]);
+
+  const unlockWithPassphrase = useCallback(
+    async (phrase: string) => {
+      const result = await authApi.unlockWithPassphrase(phrase);
+      if (result.ok) await refresh();
+      return result;
+    },
+    [refresh],
+  );
+
+  const reEnrolWithPassphrase = useCallback(
+    async (args: { currentPhrase: string; nextPhrase: string }) => {
+      const result = await authApi.reEnrolWithPassphrase(args);
+      if (result.ok) await refresh();
+      return result;
+    },
+    [refresh],
+  );
+
   const revoke = useCallback(async () => {
     await authApi.revoke();
     await refresh();
@@ -236,11 +287,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       enrolAuthenticator,
       enrolWithPin,
       enrolWithoutLock,
+      enrolWithBiometricNative,
+      enrolWithPassphrase,
       unlockWithAuthenticator,
       unlockWithPin,
+      unlockWithBiometricNative,
+      unlockWithPassphrase,
       lock,
       reEnrol,
       reEnrolWithPin,
+      reEnrolWithPassphrase,
       revoke,
       setIdleTimeoutMinutes,
     }),
@@ -250,11 +306,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       enrolAuthenticator,
       enrolWithPin,
       enrolWithoutLock,
+      enrolWithBiometricNative,
+      enrolWithPassphrase,
       unlockWithAuthenticator,
       unlockWithPin,
+      unlockWithBiometricNative,
+      unlockWithPassphrase,
       lock,
       reEnrol,
       reEnrolWithPin,
+      reEnrolWithPassphrase,
       revoke,
       setIdleTimeoutMinutes,
     ],

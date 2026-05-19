@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import * as authApi from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
 
 import BiometricUnlockForm from './UnlockForms/BiometricUnlockForm';
@@ -11,7 +10,14 @@ import PasswordUnlockForm from './UnlockForms/PasswordUnlockForm';
 import PinUnlockForm from './UnlockForms/PinUnlockForm';
 
 export function LockScreen() {
-  const { kind, mode, unlockWithAuthenticator, unlockWithPin } = useAuth();
+  const {
+    kind,
+    mode,
+    unlockWithAuthenticator,
+    unlockWithPin,
+    unlockWithBiometricNative,
+    unlockWithPassphrase,
+  } = useAuth();
 
   if (kind !== 'locked') return null;
 
@@ -28,9 +34,7 @@ export function LockScreen() {
       break;
     case 'biometric-native':
       formContent = (
-        <BiometricUnlockForm
-          onSubmit={() => authApi.unlockWithBiometricNative()}
-        />
+        <BiometricUnlockForm onSubmit={() => unlockWithBiometricNative()} />
       );
       break;
     case 'pin':
@@ -41,7 +45,7 @@ export function LockScreen() {
       leadText = 'Enter your passphrase to unlock this device.';
       formContent = (
         <PasswordUnlockForm
-          onSubmit={(phrase) => authApi.unlockWithPassphrase(phrase)}
+          onSubmit={(phrase) => unlockWithPassphrase(phrase)}
         />
       );
       break;
