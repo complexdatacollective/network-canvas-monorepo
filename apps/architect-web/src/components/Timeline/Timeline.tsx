@@ -1,4 +1,5 @@
 import { get } from 'es-toolkit/compat';
+import { Plus } from 'lucide-react';
 import { motion, Reorder, useReducedMotion, type Variants } from 'motion/react';
 import { useCallback, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
@@ -236,8 +237,8 @@ const Timeline = () => {
             variants={timelineInsertVariants}
           >
             <div />
-            <div className="bg-action text-primary-foreground flex h-10 w-10 items-center justify-center rounded-full text-4xl font-medium transition-transform duration-300 ease-in-out group-hover:scale-110">
-              +
+            <div className="bg-action text-primary-foreground flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110">
+              <Plus className="h-6 w-6" strokeWidth={2.5} />
             </div>
             <span className="justify-self-start text-lg font-semibold transition-all group-hover:font-bold">
               Add new stage
