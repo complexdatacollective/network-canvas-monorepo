@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, session, shell } from 'electron';
 
 import { bootstrapNoLock } from './auth/vault';
 import { migrateLegacyDbFilename } from './db/service';
@@ -11,6 +11,30 @@ import { registerDbHandlers } from './handlers/dbHandlers';
 const isDev = !app.isPackaged;
 const RENDERER_DEV_URL =
   process.env.ELECTRON_RENDERER_URL ?? 'http://localhost:5181';
+
+// Vite HMR injects inline scripts/styles and uses a WebSocket back to the dev
+// server, so dev CSP must permit those. unsafe-eval is deliberately omitted —
+// keeping it out silences Electron's "Insecure Content-Security-Policy" warning
+// without blocking ESM-based HMR.
+const CSP_DEV = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline' ${RENDERER_DEV_URL}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  `connect-src 'self' ${RENDERER_DEV_URL} ${RENDERER_DEV_URL.replace(/^http/, 'ws')}`,
+  "worker-src 'self' blob:",
+].join('; ');
+
+const CSP_PROD = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "worker-src 'self' blob:",
+].join('; ');
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -77,6 +101,14 @@ app.whenReady().then(() => {
     app.exit(1);
     return;
   }
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [isDev ? CSP_DEV : CSP_PROD],
+      },
+    });
+  });
   registerDbHandlers();
   registerAuthHandlers();
   bootstrapNoLock();

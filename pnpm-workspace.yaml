@@ -47,7 +47,7 @@ catalog:
   es-toolkit: ^1.46.1
   immer: ^11.1.8
   lucide-react: ^1.16.0
-  motion: ^12.38.0
+  motion: ^12.39.0
   next: ^16.2.6
   posthog-js: ^1.373.4
   react: ^19.2.6
