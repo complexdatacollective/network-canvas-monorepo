@@ -73,6 +73,7 @@ export function HomeRoute() {
         protocols={protocols}
         sessions={sessions}
         initialProtocolHash={settings?.lastActiveProtocolHash}
+        expandingProtocolHash={pendingProtocolHash ?? undefined}
         onImport={() => setOpenDialog('import')}
         onStartInterview={setPendingProtocolHash}
       />
@@ -109,6 +110,7 @@ export function HomeRoute() {
               <NewSessionDialog
                 open
                 protocol={pendingProtocol}
+                layoutId={`protocol-card-${pendingProtocolHash}`}
                 onClose={() => setPendingProtocolHash(null)}
                 onCreated={(session) => {
                   setPendingProtocolHash(null);
