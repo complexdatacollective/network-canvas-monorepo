@@ -57,6 +57,8 @@ export type StoredSettings = {
   lastActiveProtocolHash?: string;
   lastActiveSessionId?: string;
   idleTimeoutMinutes: IdleTimeoutMinutes;
+  requireUnlockOnResume: boolean;
+  requireUnlockOnExport: boolean;
 };
 
 export type ProtocolWithCounts = StoredProtocol & {
@@ -72,4 +74,6 @@ export const DEFAULT_SETTINGS: StoredSettings = {
   screenLayoutWidth: 1920,
   dismissedUpdates: [],
   idleTimeoutMinutes: 15,
+  requireUnlockOnResume: true,
+  requireUnlockOnExport: false,
 };

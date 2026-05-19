@@ -59,6 +59,8 @@ const DEFAULT_SETTINGS = {
   screenLayoutWidth: 1920,
   dismissedUpdates: [] as string[],
   idleTimeoutMinutes: 15,
+  requireUnlockOnResume: true,
+  requireUnlockOnExport: false,
 };
 
 const DB_FILENAME = 'interviewer-v7.encrypted.db';
