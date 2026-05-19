@@ -57,6 +57,12 @@ const authBridge = {
   }) => ipcRenderer.invoke('auth:reEnrol', args),
   reEnrolPin: (args: { currentPin: string; nextPin: string }) =>
     ipcRenderer.invoke('auth:reEnrolPin', args),
+  setupPassphrase: (args: { phrase: string }) =>
+    ipcRenderer.invoke('auth:setup:passphrase', args),
+  unlockPassphrase: (args: { phrase: string }) =>
+    ipcRenderer.invoke('auth:unlock:passphrase', args),
+  reEnrolPassphrase: (args: { currentPhrase: string; nextPhrase: string }) =>
+    ipcRenderer.invoke('auth:reEnrol:passphrase', args),
   revoke: () => ipcRenderer.invoke('auth:revoke'),
 };
 

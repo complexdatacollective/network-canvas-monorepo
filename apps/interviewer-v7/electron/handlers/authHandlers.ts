@@ -39,5 +39,18 @@ export function registerAuthHandlers(): void {
     async (_e, args: { currentPin: string; nextPin: string }) =>
       vault.reEnrolPin(args),
   );
+  ipcMain.handle(
+    'auth:setup:passphrase',
+    async (_e, args: { phrase: string }) => vault.setupPassphrase(args),
+  );
+  ipcMain.handle(
+    'auth:unlock:passphrase',
+    async (_e, args: { phrase: string }) => vault.unlockPassphrase(args),
+  );
+  ipcMain.handle(
+    'auth:reEnrol:passphrase',
+    async (_e, args: { currentPhrase: string; nextPhrase: string }) =>
+      vault.reEnrolPassphrase(args),
+  );
   ipcMain.handle('auth:revoke', async () => vault.revoke());
 }
