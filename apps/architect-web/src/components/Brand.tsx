@@ -31,7 +31,11 @@ const Brand = ({ onClick, className, variant = 'pill' }: BrandProps) => {
           type="button"
           onClick={onClick}
           aria-label="Return to start screen"
-          className={cx('shrink-0 bg-transparent p-0', INTERACTIVE, className)}
+          className={cx(
+            'flex shrink-0 bg-transparent p-0',
+            INTERACTIVE,
+            className,
+          )}
         >
           {iconImg}
         </button>

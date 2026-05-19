@@ -46,7 +46,7 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
       <motion.div
         className={cx(
           NAV_SURFACE,
-          'mx-auto flex max-w-7xl flex-wrap items-center gap-(--space-md) rounded-full py-3 pr-6 pl-2 sm:pr-10 sm:pl-3',
+          'mx-auto flex max-w-7xl flex-wrap items-center gap-(--space-md) rounded-full py-3 pr-6 pl-3 sm:pr-10 sm:pl-4',
         )}
         variants={containerVariants}
         initial={shouldReduceMotion ? false : 'hidden'}
