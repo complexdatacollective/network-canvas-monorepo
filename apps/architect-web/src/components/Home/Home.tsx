@@ -144,8 +144,8 @@ const Home = () => {
 
         {/* Hero section */}
 
-        <main className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-8 overflow-y-auto px-8 pb-8">
-          <div className="flex min-h-0 w-full flex-1 flex-col items-start gap-8 md:flex-row">
+        <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-8 overflow-y-auto px-8 pb-8 xl:gap-12 xl:px-12">
+          <div className="flex min-h-0 w-full flex-1 flex-col items-stretch gap-8 md:flex-row">
             <div
               aria-hidden
               className="pointer-events-none hidden h-full shrink-0 md:block md:w-1/2"
@@ -153,9 +153,9 @@ const Home = () => {
               <TransitMap stops={TIMELINE_SCRIPT} count={visibleCount} />
             </div>
 
-            <div className="flex flex-1 flex-col items-start gap-6 pt-12 text-left">
+            <div className="flex flex-1 flex-col items-start justify-center gap-6 text-left xl:gap-8">
               <div>
-                <h1 className="hero mb-3">
+                <h1 className="hero mb-3 xl:text-8xl">
                   Welcome to <span className="text-action">Architect</span>
                 </h1>
                 <p className="lead max-w-xl">

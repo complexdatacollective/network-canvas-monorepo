@@ -64,7 +64,7 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
         viewBox={`0 0 ${DESIGN_W} ${DESIGN_H}`}
         width="100%"
         height="100%"
-        preserveAspectRatio="xMidYMin meet"
+        preserveAspectRatio="xMidYMid meet"
       >
         <title>Protocol timeline</title>
         <defs>
