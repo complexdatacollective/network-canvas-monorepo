@@ -1,11 +1,104 @@
-import type { ReactNode } from 'react';
+import { useId, useRef } from 'react';
 
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
+import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { useAuth } from '~/lib/auth/AuthContext';
 
 import BiometricUnlockForm from './UnlockForms/BiometricUnlockForm';
-import PasswordUnlockForm from './UnlockForms/PasswordUnlockForm';
-import PinUnlockForm from './UnlockForms/PinUnlockForm';
+import PasswordUnlockField from './UnlockForms/PasswordUnlockField';
+import PinUnlockField from './UnlockForms/PinUnlockField';
+
+function PinLockBody({
+  onSubmit,
+}: {
+  onSubmit: (pin: string) => Promise<FormSubmissionResult>;
+}) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const formId = useId();
+
+  return (
+    <FormStoreProvider>
+      <Dialog
+        open
+        dismissible={false}
+        title="Device locked"
+        description="Enter your PIN to unlock this device."
+        footer={
+          <SubmitButton form={formId} submittingText="Unlocking…">
+            Unlock
+          </SubmitButton>
+        }
+      >
+        <FormWithoutProvider
+          id={formId}
+          ref={formRef}
+          onSubmit={(values) =>
+            onSubmit(typeof values.pin === 'string' ? values.pin : '')
+          }
+        >
+          <PinUnlockField onComplete={() => formRef.current?.requestSubmit()} />
+        </FormWithoutProvider>
+      </Dialog>
+    </FormStoreProvider>
+  );
+}
+
+function PassphraseLockBody({
+  onSubmit,
+}: {
+  onSubmit: (phrase: string) => Promise<FormSubmissionResult>;
+}) {
+  const formId = useId();
+
+  return (
+    <FormStoreProvider>
+      <Dialog
+        open
+        dismissible={false}
+        title="Device locked"
+        description="Enter your passphrase to unlock this device."
+        footer={
+          <SubmitButton form={formId} submittingText="Unlocking…">
+            Unlock
+          </SubmitButton>
+        }
+      >
+        <FormWithoutProvider
+          id={formId}
+          onSubmit={(values) =>
+            onSubmit(
+              typeof values.passphrase === 'string' ? values.passphrase : '',
+            )
+          }
+        >
+          <PasswordUnlockField />
+        </FormWithoutProvider>
+      </Dialog>
+    </FormStoreProvider>
+  );
+}
+
+function BiometricLockDialog({
+  onSubmit,
+}: {
+  onSubmit: (
+    signal?: AbortSignal,
+  ) => Promise<{ ok: boolean; message?: string }>;
+}) {
+  return (
+    <Dialog
+      open
+      dismissible={false}
+      title="Device locked"
+      description="Authenticate to unlock this device and resume your work."
+    >
+      <BiometricUnlockForm onSubmit={onSubmit} />
+    </Dialog>
+  );
+}
 
 export function LockScreen() {
   const {
@@ -19,26 +112,20 @@ export function LockScreen() {
 
   if (kind !== 'locked') return null;
 
-  let formContent: ReactNode = null;
-  let description = 'Authenticate to unlock this device and resume your work.';
-
   switch (mode) {
     case 'webauthn':
-      formContent = (
-        <BiometricUnlockForm
+      return (
+        <BiometricLockDialog
           onSubmit={(signal) => unlockWithAuthenticator(signal)}
         />
       );
-      break;
     case 'biometric-native':
-      formContent = (
-        <BiometricUnlockForm onSubmit={() => unlockWithBiometricNative()} />
+      return (
+        <BiometricLockDialog onSubmit={() => unlockWithBiometricNative()} />
       );
-      break;
     case 'pin':
-      description = 'Enter your PIN to unlock this device.';
-      formContent = (
-        <PinUnlockForm
+      return (
+        <PinLockBody
           onSubmit={async (pin) => {
             const result = await unlockWithPin(pin);
             return result.ok
@@ -50,11 +137,9 @@ export function LockScreen() {
           }}
         />
       );
-      break;
     case 'passphrase':
-      description = 'Enter your passphrase to unlock this device.';
-      formContent = (
-        <PasswordUnlockForm
+      return (
+        <PassphraseLockBody
           onSubmit={async (phrase) => {
             const result = await unlockWithPassphrase(phrase);
             return result.ok
@@ -66,20 +151,8 @@ export function LockScreen() {
           }}
         />
       );
-      break;
     case 'none':
     case undefined:
       return null;
   }
-
-  return (
-    <Dialog
-      open
-      dismissible={false}
-      title="Device locked"
-      description={description}
-    >
-      {formContent}
-    </Dialog>
-  );
 }
