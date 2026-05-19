@@ -8,6 +8,7 @@ import {
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { AppDispatch } from '~/ducks/store';
 import { assetDb } from '~/utils/assetDB';
+import { clearScrollPositions } from '~/utils/scrollPositions';
 
 import { timelineActions } from '../middleware/timeline';
 import assetManifest from './protocol/assetManifest';
@@ -24,6 +25,7 @@ const activeProtocolSlice = createSlice({
   initialState,
   reducers: {
     setActiveProtocol: (_state, action: PayloadAction<CurrentProtocol>) => {
+      clearScrollPositions();
       // Replace the entire state with the new protocol
       return action.payload;
     },

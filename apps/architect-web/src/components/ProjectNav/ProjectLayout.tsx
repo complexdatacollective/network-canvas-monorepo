@@ -4,13 +4,12 @@ import { useLocation } from 'wouter';
 
 import ProjectNav from '~/components/ProjectNav/ProjectNav';
 import { cx } from '~/utils/cva';
+import { getScrollPosition, setScrollPosition } from '~/utils/scrollPositions';
 
 type ProjectLayoutProps = {
   children: React.ReactNode;
   className?: string;
 };
-
-const scrollPositions = new Map<string, number>();
 
 const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
   const [location] = useLocation();
@@ -19,14 +18,14 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const saved = scrollPositions.get(location);
+    const saved = getScrollPosition(location);
     if (saved !== undefined) {
       el.scrollTop = saved;
     }
   }, [location]);
 
   const handleScroll = (e: UIEvent<HTMLDivElement>) => {
-    scrollPositions.set(location, e.currentTarget.scrollTop);
+    setScrollPosition(location, e.currentTarget.scrollTop);
   };
 
   return (
