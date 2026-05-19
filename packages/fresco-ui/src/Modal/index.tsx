@@ -24,16 +24,28 @@ import { ModalBackdrop } from './ModalBackdrop';
 export default function Modal({
   open,
   onOpenChange,
+  dismissible = true,
   children,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * When false, the modal cannot be closed by clicking outside or pressing
+   * Escape. The host is responsible for hiding any explicit close affordances
+   * (e.g. close buttons).
+   * @default true
+   */
+  dismissible?: boolean;
   children: ReactNode;
 }) {
   const portalContainer = usePortalContainer();
 
   return (
-    <BaseDialog.Root open={open} onOpenChange={onOpenChange}>
+    <BaseDialog.Root
+      open={open}
+      onOpenChange={onOpenChange}
+      dismissible={dismissible}
+    >
       <AnimatePresence>
         {open && (
           <BaseDialog.Portal

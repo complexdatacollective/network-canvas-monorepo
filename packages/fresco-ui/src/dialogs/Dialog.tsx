@@ -34,6 +34,13 @@ export type DialogProps = {
   children?: ReactNode;
   className?: string;
   layoutId?: string;
+  /**
+   * When false, the dialog cannot be dismissed: the close button is hidden,
+   * and clicks outside / Escape no longer trigger `closeDialog`. Use this for
+   * forced flows like a lock screen that the user must complete.
+   * @default true
+   */
+  dismissible?: boolean;
 } & SurfaceVariants;
 
 /**
@@ -58,11 +65,13 @@ export default function Dialog({
   footer,
   open = false,
   className,
+  dismissible = true,
   ...rest
 }: DialogProps) {
   return (
     <Modal
       open={open}
+      dismissible={dismissible}
       onOpenChange={(isOpen) => {
         if (!isOpen && closeDialog) {
           closeDialog();
@@ -88,7 +97,7 @@ export default function Dialog({
           <BaseDialog.Title render={<Heading level="h2" margin="none" />}>
             {title}
           </BaseDialog.Title>
-          <BaseDialog.Close render={<CloseButton />} />
+          {dismissible && <BaseDialog.Close render={<CloseButton />} />}
         </DialogHeader>
         <DialogContent>
           {description && (

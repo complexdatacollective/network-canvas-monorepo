@@ -1,4 +1,3 @@
-import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import BiometricUnlockForm from '~/components/UnlockForms/BiometricUnlockForm';
 import PasswordUnlockForm from '~/components/UnlockForms/PasswordUnlockForm';
@@ -86,11 +85,6 @@ export default function StepUpAuthDialog({
       open={open}
       closeDialog={handleCancel}
       title="Confirm your identity"
-      footer={
-        <Button type="button" variant="outline" onClick={handleCancel}>
-          Cancel
-        </Button>
-      }
     >
       {renderForm()}
     </Dialog>
