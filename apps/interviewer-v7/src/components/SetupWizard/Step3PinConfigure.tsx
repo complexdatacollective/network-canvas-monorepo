@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
+import SegmentedCodeField from '@codaco/fresco-ui/form/fields/SegmentedCodeField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import * as authApi from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
@@ -44,33 +45,31 @@ export default function Step3PinConfigure() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium">Enter PIN</label>
-        <input
-          type="password"
-          inputMode="numeric"
-          maxLength={8}
-          autoComplete="off"
+        <label className="text-sm font-medium" htmlFor="pin-enter">
+          Enter PIN
+        </label>
+        <SegmentedCodeField
+          id="pin-enter"
+          name="pin"
+          segments={8}
+          characterSet="numeric"
           value={pin}
-          onChange={(e) =>
-            setPin(e.target.value.replace(/\D/g, '').slice(0, 8))
-          }
+          onChange={(v) => setPin(v ?? '')}
           aria-label="Enter PIN"
-          className="border-surface-2 bg-surface-1 font-monospace rounded-lg border px-3 py-2 text-center text-2xl tracking-[0.5em]"
         />
       </div>
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium">Confirm PIN</label>
-        <input
-          type="password"
-          inputMode="numeric"
-          maxLength={8}
-          autoComplete="off"
+        <label className="text-sm font-medium" htmlFor="pin-confirm">
+          Confirm PIN
+        </label>
+        <SegmentedCodeField
+          id="pin-confirm"
+          name="pin-confirm"
+          segments={8}
+          characterSet="numeric"
           value={confirm}
-          onChange={(e) =>
-            setConfirm(e.target.value.replace(/\D/g, '').slice(0, 8))
-          }
+          onChange={(v) => setConfirm(v ?? '')}
           aria-label="Confirm PIN"
-          className="border-surface-2 bg-surface-1 font-monospace rounded-lg border px-3 py-2 text-center text-2xl tracking-[0.5em]"
         />
       </div>
       {confirm.length > 0 && pin !== confirm && (
