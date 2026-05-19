@@ -106,7 +106,7 @@ export function HomeRoute() {
           onClose={() => setPendingProtocolHash(null)}
           onCreated={(session) => {
             setPendingProtocolHash(null);
-            navigate(`/interview/${session.id}`);
+            navigate(`/interview/${session.id}`, { state: { fresh: true } });
           }}
         />
       ) : null}

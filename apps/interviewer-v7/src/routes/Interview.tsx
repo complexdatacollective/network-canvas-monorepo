@@ -1,6 +1,7 @@
 import { LogOut } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
+import { useHistoryState } from 'wouter/use-browser-location';
 
 import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -37,9 +38,12 @@ type LoadState =
       resolver: (id: string) => Promise<string>;
     };
 
+type InterviewLocationState = { fresh?: boolean } | undefined;
+
 export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const historyState = useHistoryState<InterviewLocationState>();
   const { requireFreshUnlock } = useStepUpAuth();
   const [currentStep, setCurrentStep] = useState(0);
   // SessionPayload from @codaco/interview's onSync does not carry the current
@@ -50,9 +54,18 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
 
   useEffect(() => {
     let active = true;
+    // `requireUnlockOnResume` should only fire when *resuming* — i.e. opening
+    // a session that wasn't just created. The new-session flow signals "fresh"
+    // by passing `{ state: { fresh: true } }` to `navigate`. We replace the
+    // history entry to clear the flag, so a subsequent refresh re-enters as
+    // a resume.
+    const isFreshSession = historyState?.fresh === true;
+    if (isFreshSession) {
+      navigate(location, { replace: true, state: null });
+    }
     const load = async () => {
       const settings = await getSettings();
-      if (settings.requireUnlockOnResume) {
+      if (!isFreshSession && settings.requireUnlockOnResume) {
         const result = await requireFreshUnlock();
         if (!result.ok) {
           if (active) navigate('/');
@@ -99,6 +112,10 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     return () => {
       active = false;
     };
+    // `historyState` and `location` are read once at mount to consume the
+    // fresh-session signal; we deliberately do not re-fire the gate when the
+    // history state changes after the replace.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, navigate, requireFreshUnlock]);
 
   const analytics = useMemo(

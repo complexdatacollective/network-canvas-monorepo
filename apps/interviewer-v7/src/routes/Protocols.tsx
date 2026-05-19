@@ -183,7 +183,7 @@ export function ProtocolsRoute() {
           onClose={() => setNewSessionProtocolHash(null)}
           onCreated={(session) => {
             setNewSessionProtocolHash(null);
-            navigate(`/interview/${session.id}`);
+            navigate(`/interview/${session.id}`, { state: { fresh: true } });
           }}
         />
       ) : null}
