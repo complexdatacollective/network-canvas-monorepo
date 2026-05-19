@@ -16,8 +16,13 @@ const PrintProtocolAction = () => {
     const now = new Date();
     const dateString = `${dateWithSafeChars(now.toLocaleDateString(), '-')} ${dateWithSafeChars(now.toLocaleTimeString(), '.')}`;
     const fileName = `${protocolName} Protocol Summary (Created ${dateString}).pdf`;
+    const previousTitle = window.document.title;
     window.document.title = fileName;
-    window.print();
+    try {
+      window.print();
+    } finally {
+      window.document.title = previousTitle;
+    }
   };
 
   return (

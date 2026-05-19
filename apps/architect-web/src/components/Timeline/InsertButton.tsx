@@ -7,7 +7,9 @@ type InsertButtonProps = {
 };
 
 const InsertButton = ({ onClick, variants }: InsertButtonProps) => (
-  <motion.div
+  <motion.button
+    type="button"
+    aria-label="Add stage here"
     className="group grid w-2xl cursor-pointer grid-cols-[1fr_auto_1fr] items-center gap-10 px-4 py-1"
     onClick={onClick}
     variants={variants}
@@ -22,7 +24,7 @@ const InsertButton = ({ onClick, variants }: InsertButtonProps) => (
     <span className="justify-self-start text-lg font-semibold opacity-0 transition-all group-hover:font-bold group-hover:opacity-100">
       Add stage here
     </span>
-  </motion.div>
+  </motion.button>
 );
 
 export default InsertButton;

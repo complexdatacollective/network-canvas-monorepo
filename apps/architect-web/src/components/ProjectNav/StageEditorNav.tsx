@@ -36,7 +36,7 @@ const StageEditorNav = ({
   const protocolName = useSelector(getProtocolName);
   const issuesRef = useRef<IssuesHandle>(null);
   const shouldReduceMotion = useReducedMotion();
-  const layout = shouldReduceMotion ? false : true;
+  const layout = !shouldReduceMotion;
 
   const breadcrumbItems: BreadcrumbItem[] = [
     { label: protocolName ?? 'Untitled protocol', onClick: onCancel },

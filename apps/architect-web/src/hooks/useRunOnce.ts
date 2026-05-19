@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 const seen = new Set<string>();
 
@@ -10,7 +10,7 @@ const seen = new Set<string>();
  * Reset by a hard refresh, or by calling resetRunOnce().
  */
 export const useRunOnce = (key: string): boolean => {
-  const [isFirst] = useState(() => !seen.has(key));
+  const isFirst = !seen.has(key);
   useEffect(() => {
     seen.add(key);
   }, [key]);

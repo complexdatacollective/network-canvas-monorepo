@@ -99,25 +99,10 @@ const Asset = ({
     return ASSET_COMPONENTS[assetType] || FallBackAssetComponent;
   }, [type]);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        if (onClick) {
-          onClick(id);
-        } else if (onPreview) {
-          onPreview(id);
-        }
-      }
-    },
-    [onClick, onPreview, id],
-  );
-
   return (
     <button
       type="button"
       onClick={handleClick}
-      onKeyDown={handleKeyDown}
       className={cx(
         'group relative size-full',
         (onClick || onPreview) && 'cursor-pointer',

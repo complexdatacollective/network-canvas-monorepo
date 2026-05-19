@@ -121,7 +121,14 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
                     />
                   </div>
                   <LayoutGroup id={drawerLayoutId}>
-                    <div className="[&_a]:focusable [&_a]:hover:bg-surface-1-foreground/10 [&_a[aria-current=page]]:bg-sea-green/20 [&_a[aria-current=page]]:text-sea-green flex flex-1 flex-col items-start gap-1 p-4 [&_a]:flex [&_a]:min-h-11 [&_a]:w-full [&_a]:items-center [&_a]:gap-3 [&_a]:rounded-lg [&_a]:px-4 [&_a]:py-3 [&_a]:text-lg [&_a]:font-semibold [&_a]:no-underline [&_a]:transition-colors [&_a>[aria-hidden]]:hidden">
+                    <div
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest('a')) {
+                          closeMenu();
+                        }
+                      }}
+                      className="[&_a]:focusable [&_a]:hover:bg-surface-1-foreground/10 [&_a[aria-current=page]]:bg-sea-green/20 [&_a[aria-current=page]]:text-sea-green flex flex-1 flex-col items-start gap-1 p-4 [&_a]:flex [&_a]:min-h-11 [&_a]:w-full [&_a]:items-center [&_a]:gap-3 [&_a]:rounded-lg [&_a]:px-4 [&_a]:py-3 [&_a]:text-lg [&_a]:font-semibold [&_a]:no-underline [&_a]:transition-colors [&_a>[aria-hidden]]:hidden"
+                    >
                       {trailing}
                     </div>
                   </LayoutGroup>

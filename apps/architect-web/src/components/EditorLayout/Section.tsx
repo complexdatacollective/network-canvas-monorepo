@@ -84,7 +84,7 @@ const Section = ({
     >
       {title != null && (
         <div>
-          <legend
+          <div
             className={cx(
               'flex items-center gap-4 text-right',
               layout === 'vertical' && 'text-xl font-semibold tracking-tight',
@@ -110,7 +110,7 @@ const Section = ({
                 )}
               />
             )}
-          </legend>
+          </div>
           <div className="text-current/70">{summary}</div>
         </div>
       )}
