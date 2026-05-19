@@ -81,18 +81,35 @@ const flatIconBuffer = await sharp(backgroundPngPath)
   .toBuffer();
 await fs.writeFile(iconOnlyPngPath, flatIconBuffer);
 
+// Windows + Linux ship a raw bitmap rather than a system-masked adaptive icon,
+// so we pre-apply a circular alpha mask to match macOS (rounded) and Android
+// (system-masked). The mask is regenerated per output size so small ICO entries
+// (16/24/32) keep a crisp circle instead of being resampled from the 1024 edge.
+const circleMaskSvg = (size) =>
+  Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="#fff"/></svg>`,
+  );
+
 // Linux: electron-builder auto-detects build-resources/icon.png (>=512px).
-await fs.writeFile(electronIconPngPath, flatIconBuffer);
+const electronPngBuffer = await sharp(flatIconBuffer)
+  .composite([{ input: circleMaskSvg(SIZE), blend: 'dest-in' }])
+  .png()
+  .toBuffer();
+await fs.writeFile(electronIconPngPath, electronPngBuffer);
 
 // Windows: a multi-resolution ICO so Explorer/taskbar/tray pick the right
 // rasterisation instead of downsampling a single 256px entry.
 const icoSourceBuffers = await Promise.all(
-  ICO_SIZES.map((size) =>
-    sharp(flatIconBuffer)
+  ICO_SIZES.map(async (size) => {
+    const resized = await sharp(flatIconBuffer)
       .resize(size, size, { fit: 'contain' })
       .png()
-      .toBuffer(),
-  ),
+      .toBuffer();
+    return sharp(resized)
+      .composite([{ input: circleMaskSvg(size), blend: 'dest-in' }])
+      .png()
+      .toBuffer();
+  }),
 );
 await fs.writeFile(electronIconIcoPath, await pngToIco(icoSourceBuffers));
 
