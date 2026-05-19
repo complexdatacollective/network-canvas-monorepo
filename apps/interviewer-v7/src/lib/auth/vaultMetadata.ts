@@ -11,7 +11,18 @@ export type VaultMetadata =
       enrolledAt: string;
     }
   | {
+      mode: 'biometric-native';
+      enrolledAt: string;
+    }
+  | {
       mode: 'pin';
+      kdfSaltB64: string;
+      kdfIterations: number;
+      verifierB64: string;
+      enrolledAt: string;
+    }
+  | {
+      mode: 'passphrase';
       kdfSaltB64: string;
       kdfIterations: number;
       verifierB64: string;
@@ -132,6 +143,28 @@ export async function read(): Promise<VaultMetadata | null> {
     };
   }
 
+  if (mode === 'passphrase') {
+    const [kdfSaltB64, kdfIterationsRaw, verifierB64] = await Promise.all([
+      readEntry(KEY_KDF_SALT),
+      readEntry(KEY_KDF_ITERATIONS),
+      readEntry(KEY_VERIFIER),
+    ]);
+    if (!kdfSaltB64 || !kdfIterationsRaw || !verifierB64) return null;
+    const kdfIterations = Number.parseInt(kdfIterationsRaw, 10);
+    if (!Number.isFinite(kdfIterations) || kdfIterations <= 0) return null;
+    return {
+      mode: 'passphrase',
+      kdfSaltB64,
+      kdfIterations,
+      verifierB64,
+      enrolledAt,
+    };
+  }
+
+  if (mode === 'biometric-native') {
+    return { mode: 'biometric-native', enrolledAt };
+  }
+
   const [credentialIdB64, saltB64] = await Promise.all([
     readEntry(KEY_CREDENTIAL_ID),
     readEntry(KEY_SALT),
@@ -180,6 +213,31 @@ export async function writeNone(): Promise<void> {
   await clear();
   await Promise.all([
     writeEntry(KEY_MODE, 'none'),
+    writeEntry(KEY_ENROLLED_AT, enrolledAt),
+  ]);
+}
+
+export async function writePassphrase(args: {
+  kdfSaltB64: string;
+  kdfIterations: number;
+  verifierB64: string;
+}): Promise<void> {
+  const enrolledAt = new Date().toISOString();
+  await clear();
+  await Promise.all([
+    writeEntry(KEY_MODE, 'passphrase'),
+    writeEntry(KEY_KDF_SALT, args.kdfSaltB64),
+    writeEntry(KEY_KDF_ITERATIONS, String(args.kdfIterations)),
+    writeEntry(KEY_VERIFIER, args.verifierB64),
+    writeEntry(KEY_ENROLLED_AT, enrolledAt),
+  ]);
+}
+
+export async function writeBiometricNative(): Promise<void> {
+  const enrolledAt = new Date().toISOString();
+  await clear();
+  await Promise.all([
+    writeEntry(KEY_MODE, 'biometric-native'),
     writeEntry(KEY_ENROLLED_AT, enrolledAt),
   ]);
 }
