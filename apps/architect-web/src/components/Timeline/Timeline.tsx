@@ -1,16 +1,16 @@
 import { get } from 'es-toolkit/compat';
 import { motion, Reorder, useReducedMotion, type Variants } from 'motion/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
-import { useProjectMountAnimation } from '~/components/ProjectNav/projectMountAnimationContext';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   type DialogConfig,
   actionCreators as dialogsActions,
 } from '~/ducks/modules/dialogs';
 import { actionCreators as stageActions } from '~/ducks/modules/protocol/stages';
+import { useRunOnce } from '~/hooks/useRunOnce';
 import timelineImages from '~/images/timeline';
 import filterIcon from '~/images/timeline/filter-icon.svg';
 import skipLogicIcon from '~/images/timeline/skip-logic-icon.svg';
@@ -56,14 +56,8 @@ const Timeline = () => {
   const dispatch = useAppDispatch();
   const pointerStart = useRef({ x: 0, y: 0 });
   const shouldReduceMotion = useReducedMotion();
-  const { isInitialLoad, markAnimated } = useProjectMountAnimation();
-  // Snapshot at first render — flipping markAnimated() in the effect below
-  // would otherwise unmount the line cover mid-animation on re-render.
-  const [animate] = useState(() => !shouldReduceMotion && isInitialLoad);
-
-  useEffect(() => {
-    if (isInitialLoad) markAnimated();
-  }, [isInitialLoad, markAnimated]);
+  const isFirstMount = useRunOnce('timeline-entrance');
+  const animate = !shouldReduceMotion && isFirstMount;
 
   const deleteStage = useCallback(
     (stageId: string) => {

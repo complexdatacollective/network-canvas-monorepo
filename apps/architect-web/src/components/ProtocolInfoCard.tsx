@@ -3,12 +3,12 @@ import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { TextArea } from '~/components/Form/Fields';
-import { useProjectMountAnimation } from '~/components/ProjectNav/projectMountAnimationContext';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   updateProtocolDescription,
   updateProtocolName,
 } from '~/ducks/modules/activeProtocol';
+import { useRunOnce } from '~/hooks/useRunOnce';
 import { getProtocol, getProtocolName } from '~/selectors/protocol';
 
 const ProtocolInfoCard = () => {
@@ -17,10 +17,8 @@ const ProtocolInfoCard = () => {
   const protocol = useSelector(getProtocol);
   const description = protocol?.description ?? '';
   const shouldReduceMotion = useReducedMotion();
-  const { isInitialLoad } = useProjectMountAnimation();
-  // Snapshot at first render — Timeline flips markAnimated() on mount, which
-  // would cause this card's `initial` to drop mid-flight on the resulting re-render.
-  const [animate] = useState(() => !shouldReduceMotion && isInitialLoad);
+  const isFirstMount = useRunOnce('protocol-summary-entrance');
+  const animate = !shouldReduceMotion && isFirstMount;
 
   const [localName, setLocalName] = useState(name ?? '');
 
