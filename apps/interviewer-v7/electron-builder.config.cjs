@@ -1,9 +1,10 @@
 /**
  * Electron Builder configuration for Network Canvas Interviewer v7.
  * @see https://www.electron.build/configuration/configuration
+ * @type {import('electron-builder').Configuration}
  */
 module.exports = {
-  appId: 'org.complexdatacollective.networkcanvas.interviewer',
+  appId: 'org.complexdatacollective.interviewer7',
   productName: 'Network Canvas Interviewer v7',
   copyright: `Copyright © ${new Date().getFullYear()} Complex Data Collective`,
   directories: {
@@ -33,11 +34,12 @@ module.exports = {
     category: 'public.app-category.education',
     hardenedRuntime: true,
     gatekeeperAssess: false,
+    icon: 'build-resources/icon.icon',
     target: [
       { target: 'dmg', arch: ['x64', 'arm64'] },
       { target: 'zip', arch: ['x64', 'arm64'] },
     ],
-    notarize: false,
+    notarize: true,
   },
   win: {
     target: [{ target: 'nsis', arch: ['x64'] }],

@@ -25,6 +25,11 @@
     "capacitor:run:android": "pnpm build && cap run android",
     "capacitor:dev:android": "pnpm build && CAP_DEV_SERVER_URL=http://10.0.2.2:5180 cap sync android && concurrently -k -s first -n vite,cap \"vite\" \"CAP_DEV_SERVER_URL=http://10.0.2.2:5180 cap run android ${CAP_ANDROID_TARGET:+--target $CAP_ANDROID_TARGET}\"",
     "capacitor:dev:ios": "pnpm build && CAP_DEV_SERVER_URL=http://localhost:5180 cap sync ios && concurrently -k -s first -n vite,cap \"vite\" \"CAP_DEV_SERVER_URL=http://localhost:5180 cap run ios\"",
+    "assets:generate-inputs": "node scripts/generate-icon-assets.mjs",
+    "assets:generate-android": "pnpm assets:generate-inputs && capacitor-assets generate --android --iconBackgroundColor \"#f3f2f0\"",
+    "assets:generate-ios": "pnpm assets:generate-inputs && capacitor-assets generate --ios --iconBackgroundColor \"#f3f2f0\" && node scripts/add-ios-app-icon.mjs",
+    "assets:generate-all": "pnpm assets:generate-inputs && capacitor-assets generate --android --ios --iconBackgroundColor \"#f3f2f0\" && node scripts/add-ios-app-icon.mjs",
+    "capacitor:sync:before": "pnpm assets:generate-all",
     "electron:rebuild": "electron-rebuild -f -w better-sqlite3-multiple-ciphers"
   },
   "dependencies": {
@@ -57,6 +62,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.3.4",
     "@electron/rebuild": "^4.0.4",
     "@types/react": "catalog:",
@@ -66,8 +72,10 @@
     "electron": "catalog:",
     "electron-builder": "^26.8.1",
     "electron-vite": "^6.0.0-beta.1",
+    "sharp": "^0.34.2",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "xcode": "^3.0.1"
   }
 }

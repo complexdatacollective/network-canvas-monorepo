@@ -43,6 +43,7 @@ next-env.d.ts
 
 dist
 dist-electron
+release-builds
 
 # protocol validation test protocols
 /packages/protocol-validation/src/__tests__/data
