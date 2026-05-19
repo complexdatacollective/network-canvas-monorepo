@@ -1,5 +1,9 @@
 import { db } from '../db/db';
-import { isElectron } from '../platform/platform';
+import { isCapacitor, isElectron } from '../platform/platform';
+import {
+  isBiometricNativeAvailable,
+  verifyBiometric as verifyBiometricNativePlugin,
+} from './biometricNative';
 import * as electronAuth from './electron';
 import * as vaultMetadata from './vaultMetadata';
 import {
@@ -265,6 +269,47 @@ export async function enrolWithPin(
     kdfIterations: PBKDF2_ITERATIONS,
     verifierB64,
   });
+  writeWebUnlocked(true);
+  return { ok: true };
+}
+
+export async function enrolWithBiometricNative(): Promise<{
+  ok: boolean;
+  message?: string;
+}> {
+  if (!isCapacitor) {
+    return { ok: false, message: 'Biometric authentication is not available' };
+  }
+  const availability = await isBiometricNativeAvailable();
+  if (!availability.ok) {
+    return {
+      ok: false,
+      message: 'Biometric authentication is not available on this device',
+    };
+  }
+  const verification = await verifyBiometricNativePlugin();
+  if (!verification.ok) return verification;
+  await vaultMetadata.writeBiometricNative();
+  writeWebUnlocked(true);
+  return { ok: true };
+}
+
+export async function unlockWithBiometricNative(): Promise<{
+  ok: boolean;
+  message?: string;
+}> {
+  if (!isCapacitor) {
+    return { ok: false, message: 'Biometric authentication is not available' };
+  }
+  const metadata = await vaultMetadata.read();
+  if (!metadata || metadata.mode !== 'biometric-native') {
+    return {
+      ok: false,
+      message: 'Biometric authentication is not configured on this device',
+    };
+  }
+  const verification = await verifyBiometricNativePlugin();
+  if (!verification.ok) return verification;
   writeWebUnlocked(true);
   return { ok: true };
 }
