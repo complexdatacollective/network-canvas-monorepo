@@ -5,6 +5,7 @@ import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
 import { getSettings, markSessionsExported } from '~/lib/db/api';
 import type { ExportProgress } from '~/lib/export/exportSessions';
 import { buildExportOptions, runExport } from '~/lib/export/exportSessions';
@@ -25,6 +26,7 @@ export function ExportDialog({ open, sessionIds, onClose }: ExportDialogProps) {
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
+  const { requireFreshUnlock } = useStepUpAuth();
 
   useEffect(() => {
     if (!open) {
@@ -37,10 +39,17 @@ export function ExportDialog({ open, sessionIds, onClose }: ExportDialogProps) {
   }, [open]);
 
   const start = useCallback(async () => {
+    const settings = await getSettings();
+    if (settings.requireUnlockOnExport) {
+      const result = await requireFreshUnlock();
+      if (!result.ok) {
+        onClose();
+        return;
+      }
+    }
     setStatus('running');
     setError(null);
     try {
-      const settings = await getSettings();
       const options = buildExportOptions({
         exportGraphML: settings.exportGraphML,
         exportCSV: settings.exportCSV,
@@ -96,7 +105,7 @@ export function ExportDialog({ open, sessionIds, onClose }: ExportDialogProps) {
       setError(cause instanceof Error ? cause.message : String(cause));
       setStatus('error');
     }
-  }, [sessionIds, toast]);
+  }, [sessionIds, toast, requireFreshUnlock, onClose]);
 
   const progress = total > 0 ? (current / total) * 100 : 0;
 
