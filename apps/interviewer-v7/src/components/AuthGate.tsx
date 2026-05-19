@@ -12,12 +12,16 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const openedRef = useRef(false);
 
   useEffect(() => {
-    if (kind === 'unconfigured' && !openedRef.current) {
-      openedRef.current = true;
+    if (kind !== 'unconfigured' || openedRef.current) return;
+    openedRef.current = true;
+    // Defer to a microtask so we don't trigger fresco-ui's flushSync during the
+    // passive-effect commit phase. Calling openDialog synchronously here makes
+    // React complain that flushSync was called from inside a lifecycle method.
+    queueMicrotask(() => {
       void openSetupWizard().finally(() => {
         openedRef.current = false;
       });
-    }
+    });
   }, [kind, openSetupWizard]);
 
   if (kind === 'loading') {
