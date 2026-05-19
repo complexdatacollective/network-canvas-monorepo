@@ -1,8 +1,53 @@
-// TODO (Task 17): Replace this stub with the real intro step content.
-// Task 17 should also surface an explicit "Continue without security" button.
-// The fresco-ui wizard doesn't expose closeDialog(null) from inside a step
-// component, so this will require a creative approach — e.g. setBeforeNext to
-// call a callback injected through wizard data, or a custom escape hatch.
+import { useEffect } from 'react';
+
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { isElectron } from '~/lib/platform/platform';
+
 export default function Step1Intro() {
-  return <div>Step 1 — Intro (TODO: Task 17)</div>;
+  const { setNextEnabled } = useWizard();
+
+  useEffect(() => {
+    setNextEnabled(true);
+  }, [setNextEnabled]);
+
+  // TODO: Add an explicit "Continue without security" button here. This requires
+  // calling closeDialog(dialogId, null) from inside the step. The dialog ID is
+  // not exposed via useWizard, so this affordance is deferred until fresco-ui
+  // exposes a closeDialog escape hatch (or the wizard passes onDismiss via
+  // wizard data).
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Paragraph>
+        This wizard will help you set up app-level security for Network Canvas
+        Interviewer. You can choose a biometric method, a PIN code, or a
+        passphrase to lock the app and protect your collected data. You can
+        change or remove security at any time from Settings.
+      </Paragraph>
+      {isElectron ? (
+        <Alert variant="warning">
+          <AlertTitle>Encryption required for data protection</AlertTitle>
+          <AlertDescription>
+            If you do not enable security, your data will be stored without
+            encryption on this device. Anyone with access to this device or its
+            files will be able to read all collected data.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <Alert variant="info">
+          <AlertTitle>
+            Platform sandboxing provides baseline protection
+          </AlertTitle>
+          <AlertDescription>
+            Even without app security, your data is sandboxed by the operating
+            system and is not directly accessible to other apps. Enabling app
+            security adds protection if the device itself is unlocked and
+            physically accessed by someone else.
+          </AlertDescription>
+        </Alert>
+      )}
+    </div>
+  );
 }
