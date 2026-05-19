@@ -8,6 +8,7 @@ import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
 import { Toaster } from '@codaco/fresco-ui/Toast';
 import { TooltipProvider } from '@codaco/fresco-ui/Tooltip';
 import { AuthProvider } from '~/lib/auth/AuthContext';
+import { StepUpAuthProvider } from '~/lib/auth/StepUpAuthProvider';
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
@@ -17,7 +18,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
           <TooltipProvider>
             <DndStoreProvider>
               <DialogProvider>
-                <AuthProvider>{children}</AuthProvider>
+                <AuthProvider>
+                  <StepUpAuthProvider>{children}</StepUpAuthProvider>
+                </AuthProvider>
               </DialogProvider>
             </DndStoreProvider>
           </TooltipProvider>
