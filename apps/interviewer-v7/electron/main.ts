@@ -1,12 +1,21 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 
-import { app, BrowserWindow, dialog, ipcMain, session, shell } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  session,
+  shell,
+} from 'electron';
 
 import { bootstrapNoLock } from './auth/vault';
 import { migrateLegacyDbFilename } from './db/service';
 import { registerAuthHandlers } from './handlers/authHandlers';
 import { registerDbHandlers } from './handlers/dbHandlers';
+import { buildMenu } from './menu';
 
 const isDev = !app.isPackaged;
 const RENDERER_DEV_URL =
@@ -54,6 +63,8 @@ function createWindow() {
       additionalArguments: app.isPackaged ? ['--isPackaged'] : [],
     },
   });
+
+  Menu.setApplicationMenu(buildMenu(mainWindow));
 
   if (isDev) {
     void mainWindow.loadURL(RENDERER_DEV_URL);
