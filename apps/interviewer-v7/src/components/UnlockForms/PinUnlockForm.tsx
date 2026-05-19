@@ -1,71 +1,45 @@
-import { useState } from 'react';
+import { useRef } from 'react';
 
-import Button from '@codaco/fresco-ui/Button';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import SegmentedCodeField from '@codaco/fresco-ui/form/fields/SegmentedCodeField';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Form from '@codaco/fresco-ui/form/Form';
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
+import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
 type PinUnlockFormProps = {
-  onSubmit: (value: string) => Promise<{ ok: boolean; message?: string }>;
+  onSubmit: (
+    pin: string,
+  ) => FormSubmissionResult | Promise<FormSubmissionResult>;
   submitLabel?: string;
-  disabled?: boolean;
 };
 
 export default function PinUnlockForm({
   onSubmit,
   submitLabel = 'Unlock',
-  disabled,
 }: PinUnlockFormProps) {
-  const [pin, setPin] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  const submit = async () => {
-    setError(null);
-    setSubmitting(true);
-    const result = await onSubmit(pin);
-    setSubmitting(false);
-    if (result.ok) {
-      setPin('');
-    } else {
-      setError(result.message ?? 'Incorrect PIN.');
-      setPin('');
-    }
-  };
+  const formRef = useRef<HTMLFormElement>(null);
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        void submit();
+    <Form
+      ref={formRef}
+      onSubmit={(values) => {
+        const pin = typeof values.pin === 'string' ? values.pin : '';
+        return onSubmit(pin);
       }}
-      className="flex flex-col gap-4"
     >
-      <SegmentedCodeField
+      <Field
+        component={SegmentedCodeField}
         name="pin"
-        aria-label="PIN"
+        label="PIN"
         segments={8}
         characterSet="numeric"
-        value={pin}
-        onChange={(v) => setPin(v ?? '')}
-        onComplete={() => void submit()}
-        disabled={disabled ?? submitting}
+        required
+        minLength={8}
+        maxLength={8}
         autoComplete="one-time-code"
+        onComplete={() => formRef.current?.requestSubmit()}
       />
-      {error && (
-        <div
-          className="bg-destructive text-destructive-contrast rounded p-4"
-          role="alert"
-        >
-          <Paragraph margin="none">{error}</Paragraph>
-        </div>
-      )}
-      <Button
-        type="submit"
-        color="primary"
-        disabled={(disabled ?? submitting) || pin.length !== 8}
-      >
-        {submitting ? 'Unlocking…' : submitLabel}
-      </Button>
-    </form>
+      <SubmitButton submittingText="Unlocking…">{submitLabel}</SubmitButton>
+    </Form>
   );
 }

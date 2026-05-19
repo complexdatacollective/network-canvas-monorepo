@@ -48,8 +48,12 @@ export default function StepUpAuthDialog({
             const result = await authApi.verifyWithPin(pin);
             if (result.ok) {
               onResolve({ ok: true });
+              return { success: true };
             }
-            return result;
+            return {
+              success: false,
+              formErrors: [result.message ?? 'Incorrect PIN.'],
+            };
           }}
         />
       );
@@ -63,8 +67,12 @@ export default function StepUpAuthDialog({
             const result = await authApi.verifyWithPassphrase(phrase);
             if (result.ok) {
               onResolve({ ok: true });
+              return { success: true };
             }
-            return result;
+            return {
+              success: false,
+              formErrors: [result.message ?? 'Incorrect passphrase.'],
+            };
           }}
         />
       );

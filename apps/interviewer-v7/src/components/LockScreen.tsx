@@ -39,13 +39,33 @@ export function LockScreen() {
       break;
     case 'pin':
       leadText = 'Enter your PIN to unlock this device.';
-      formContent = <PinUnlockForm onSubmit={(pin) => unlockWithPin(pin)} />;
+      formContent = (
+        <PinUnlockForm
+          onSubmit={async (pin) => {
+            const result = await unlockWithPin(pin);
+            return result.ok
+              ? { success: true }
+              : {
+                  success: false,
+                  formErrors: [result.message ?? 'Incorrect PIN.'],
+                };
+          }}
+        />
+      );
       break;
     case 'passphrase':
       leadText = 'Enter your passphrase to unlock this device.';
       formContent = (
         <PasswordUnlockForm
-          onSubmit={(phrase) => unlockWithPassphrase(phrase)}
+          onSubmit={async (phrase) => {
+            const result = await unlockWithPassphrase(phrase);
+            return result.ok
+              ? { success: true }
+              : {
+                  success: false,
+                  formErrors: [result.message ?? 'Incorrect passphrase.'],
+                };
+          }}
         />
       );
       break;
