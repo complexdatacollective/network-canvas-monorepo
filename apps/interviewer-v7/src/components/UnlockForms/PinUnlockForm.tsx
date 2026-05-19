@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
+import SegmentedCodeField from '@codaco/fresco-ui/form/fields/SegmentedCodeField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 type PinUnlockFormProps = {
@@ -18,8 +19,7 @@ export default function PinUnlockForm({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = async () => {
     setError(null);
     setSubmitting(true);
     const result = await onSubmit(pin);
@@ -34,21 +34,22 @@ export default function PinUnlockForm({
 
   return (
     <form
-      onSubmit={(e) => void handleSubmit(e)}
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit();
+      }}
       className="flex flex-col gap-4"
     >
-      <input
-        type="password"
-        inputMode="numeric"
-        pattern="\d{8}"
-        maxLength={8}
-        autoComplete="current-password"
-        ref={(node) => node?.focus()}
-        value={pin}
-        onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
-        disabled={disabled ?? submitting}
+      <SegmentedCodeField
+        name="pin"
         aria-label="PIN"
-        className="border-surface-2 bg-surface-1 font-monospace rounded-lg border px-3 py-2 text-center text-2xl tracking-[0.5em]"
+        segments={8}
+        characterSet="numeric"
+        value={pin}
+        onChange={(v) => setPin(v ?? '')}
+        onComplete={() => void submit()}
+        disabled={disabled ?? submitting}
+        autoComplete="one-time-code"
       />
       {error && (
         <div
