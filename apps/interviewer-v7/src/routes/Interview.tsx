@@ -15,9 +15,11 @@ import {
   buildResolvedAssets,
   makeAssetResolver,
 } from '~/lib/assets/assetResolver';
+import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
 import {
   getProtocolByHash,
   getSession,
+  getSettings,
   markSessionFinished,
   updateSession,
   updateSettings,
@@ -38,6 +40,7 @@ type LoadState =
 export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [, navigate] = useLocation();
+  const { requireFreshUnlock } = useStepUpAuth();
   const [currentStep, setCurrentStep] = useState(0);
   // SessionPayload from @codaco/interview's onSync does not carry the current
   // step. Mirror it into a ref so handleSync sees the latest value rather
@@ -48,6 +51,15 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     let active = true;
     const load = async () => {
+      const settings = await getSettings();
+      if (settings.requireUnlockOnResume) {
+        const result = await requireFreshUnlock();
+        if (!result.ok) {
+          if (active) navigate('/');
+          return;
+        }
+      }
+      if (!active) return;
       const session = await getSession(sessionId);
       if (!session) {
         if (active) setState({ kind: 'missing' });
@@ -87,7 +99,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     return () => {
       active = false;
     };
-  }, [sessionId]);
+  }, [sessionId, navigate, requireFreshUnlock]);
 
   const analytics = useMemo(
     () => ({ installationId: getInstallationId(), hostApp: hostAppName }),
