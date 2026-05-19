@@ -26,6 +26,7 @@ const assetsDir = path.join(appRoot, 'assets');
 const foregroundPngPath = path.join(assetsDir, 'icon-foreground.png');
 const backgroundPngPath = path.join(assetsDir, 'icon-background.png');
 const iconOnlyPngPath = path.join(assetsDir, 'icon-only.png');
+const logoPngPath = path.join(assetsDir, 'logo.png');
 
 await fs.mkdir(assetsDir, { recursive: true });
 
@@ -59,6 +60,17 @@ await sharp(backgroundSvgPath, { density: 384 })
   .png()
   .toFile(backgroundPngPath);
 
+// logo.png feeds capacitor-assets' splash generation (composited onto a solid
+// colour). Splashes aren't masked like Android adaptive icons, so we render
+// the foreground SVG to fill the canvas — no safe-zone padding.
+await sharp(foregroundSvgPath, { density: 384 })
+  .resize(SIZE, SIZE, {
+    fit: 'contain',
+    background: { r: 0, g: 0, b: 0, alpha: 0 },
+  })
+  .png()
+  .toFile(logoPngPath);
+
 // `@capacitor/assets generate` requires at least one of {logo, icon, splash}
 // to be present, otherwise it errors before touching adaptive icon inputs.
 // Compose foreground over background to produce that single flat icon, which
@@ -71,3 +83,4 @@ await sharp(backgroundPngPath)
 console.log(`wrote ${path.relative(appRoot, foregroundPngPath)}`);
 console.log(`wrote ${path.relative(appRoot, backgroundPngPath)}`);
 console.log(`wrote ${path.relative(appRoot, iconOnlyPngPath)}`);
+console.log(`wrote ${path.relative(appRoot, logoPngPath)}`);

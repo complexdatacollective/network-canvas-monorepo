@@ -26,9 +26,9 @@
     "capacitor:dev:android": "pnpm build && CAP_DEV_SERVER_URL=http://10.0.2.2:5180 cap sync android && concurrently -k -s first -n vite,cap \"vite\" \"CAP_DEV_SERVER_URL=http://10.0.2.2:5180 cap run android ${CAP_ANDROID_TARGET:+--target $CAP_ANDROID_TARGET}\"",
     "capacitor:dev:ios": "pnpm build && CAP_DEV_SERVER_URL=http://localhost:5180 cap sync ios && concurrently -k -s first -n vite,cap \"vite\" \"CAP_DEV_SERVER_URL=http://localhost:5180 cap run ios\"",
     "assets:generate-inputs": "node scripts/generate-icon-assets.mjs",
-    "assets:generate-android": "pnpm assets:generate-inputs && capacitor-assets generate --android --iconBackgroundColor \"#f3f2f0\"",
-    "assets:generate-ios": "pnpm assets:generate-inputs && capacitor-assets generate --ios --iconBackgroundColor \"#f3f2f0\" && node scripts/add-ios-app-icon.mjs",
-    "assets:generate-all": "pnpm assets:generate-inputs && capacitor-assets generate --android --ios --iconBackgroundColor \"#f3f2f0\" && node scripts/add-ios-app-icon.mjs",
+    "assets:generate-android": "pnpm assets:generate-inputs && capacitor-assets generate --android --iconBackgroundColor \"#f3f2f0\" --splashBackgroundColor \"#f3f2f0\" --logoSplashScale 0.3",
+    "assets:generate-ios": "pnpm assets:generate-inputs && capacitor-assets generate --ios --iconBackgroundColor \"#f3f2f0\" --splashBackgroundColor \"#f3f2f0\" --logoSplashScale 0.3 && node scripts/add-ios-app-icon.mjs",
+    "assets:generate-all": "pnpm assets:generate-inputs && capacitor-assets generate --android --ios --iconBackgroundColor \"#f3f2f0\" --splashBackgroundColor \"#f3f2f0\" --logoSplashScale 0.3 && node scripts/add-ios-app-icon.mjs",
     "capacitor:sync:before": "pnpm assets:generate-all",
     "electron:rebuild": "electron-rebuild -f -w better-sqlite3-multiple-ciphers"
   },
