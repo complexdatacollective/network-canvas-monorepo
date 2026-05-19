@@ -17,11 +17,11 @@ export function AppProviders({ children }: { children: ReactNode }) {
         <Toast.Provider limit={7}>
           <TooltipProvider>
             <DndStoreProvider>
-              <DialogProvider>
-                <AuthProvider>
+              <AuthProvider>
+                <DialogProvider>
                   <StepUpAuthProvider>{children}</StepUpAuthProvider>
-                </AuthProvider>
-              </DialogProvider>
+                </DialogProvider>
+              </AuthProvider>
             </DndStoreProvider>
           </TooltipProvider>
           <Toaster />
