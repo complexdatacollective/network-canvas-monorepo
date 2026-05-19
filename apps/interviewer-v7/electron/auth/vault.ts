@@ -24,6 +24,8 @@ const IV_BYTES = 12;
 const PBKDF2_ITERATIONS = 600_000;
 const PBKDF2_SALT_BYTES = 32;
 const PIN_LENGTH = 8;
+const PASSPHRASE_MIN_LENGTH = 12;
+const PASSPHRASE_MIN_CLASSES = 3;
 
 let unlockedKeyHex: string | null = null;
 
@@ -52,6 +54,30 @@ function validatePin(
   return { ok: true };
 }
 
+function validatePassphrase(
+  phrase: string,
+): { ok: true } | { ok: false; message: string } {
+  if (phrase.length < PASSPHRASE_MIN_LENGTH) {
+    return {
+      ok: false,
+      message: `Passphrase must be at least ${PASSPHRASE_MIN_LENGTH} characters`,
+    };
+  }
+  let classes = 0;
+  if (/[a-z]/.test(phrase)) classes += 1;
+  if (/[A-Z]/.test(phrase)) classes += 1;
+  if (/[0-9]/.test(phrase)) classes += 1;
+  if (/[^a-zA-Z0-9]/.test(phrase)) classes += 1;
+  if (classes < PASSPHRASE_MIN_CLASSES) {
+    return {
+      ok: false,
+      message:
+        'Passphrase must be stronger — combine uppercase, lowercase, numbers, and symbols',
+    };
+  }
+  return { ok: true };
+}
+
 async function importKekFromBytes(raw: Buffer): Promise<WebCryptoKey> {
   const sized =
     raw.length === KEY_LEN_BYTES
@@ -71,6 +97,34 @@ async function deriveKekFromPin(
   const material = await webcrypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(pin),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveKey'],
+  );
+  return webcrypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt,
+      iterations,
+      hash: 'SHA-256',
+    },
+    material,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt'],
+  );
+}
+
+async function deriveKekFromPassphrase(
+  phrase: string,
+  salt: Buffer,
+  iterations: number,
+): Promise<WebCryptoKey> {
+  // Identical PBKDF2/AES-GCM derivation as deriveKekFromPin — kept separate so
+  // future tuning can diverge.
+  const material = await webcrypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(phrase),
     { name: 'PBKDF2' },
     false,
     ['deriveKey'],
@@ -118,7 +172,7 @@ async function aesDecrypt(
 export async function status(): Promise<{
   configured: boolean;
   locked: boolean;
-  mode?: 'webauthn' | 'pin' | 'none';
+  mode?: 'webauthn' | 'pin' | 'passphrase' | 'none';
   credentialIdB64?: string;
   saltB64?: string;
 }> {
@@ -145,8 +199,9 @@ export async function status(): Promise<{
     configured: true,
     locked: record.mode === 'none' ? false : unlockedKeyHex === null,
     mode: record.mode,
-    credentialIdB64: record.credentialIdB64,
-    saltB64: record.saltB64,
+    credentialIdB64:
+      record.mode === 'webauthn' ? record.credentialIdB64 : undefined,
+    saltB64: record.mode === 'webauthn' ? record.saltB64 : undefined,
   };
 }
 
@@ -303,7 +358,7 @@ export async function unlockPin(args: {
   if (!validation.ok) return validation;
   const record = readVault();
   if (!record) return { ok: false, message: 'Vault not configured' };
-  if (record.mode !== 'pin' || !record.kdfSaltB64 || !record.kdfIterations) {
+  if (record.mode !== 'pin') {
     return { ok: false, message: 'Vault is not configured for PIN' };
   }
   try {
@@ -404,7 +459,7 @@ export async function reEnrolPin(args: {
   if (!nextValidation.ok) return nextValidation;
   const record = readVault();
   if (!record) return { ok: false, message: 'Vault not configured' };
-  if (record.mode !== 'pin' || !record.kdfSaltB64 || !record.kdfIterations) {
+  if (record.mode !== 'pin') {
     return { ok: false, message: 'Vault is not configured for PIN' };
   }
   try {
@@ -433,6 +488,140 @@ export async function reEnrolPin(args: {
     const next: VaultRecord = {
       version: CURRENT_VAULT_VERSION,
       mode: 'pin',
+      kdfSaltB64: bufToB64(nextSalt),
+      kdfIterations: PBKDF2_ITERATIONS,
+      wrapIvB64: bufToB64(wrapped.iv),
+      wrapCiphertextB64: bufToB64(wrapped.ciphertext),
+    };
+    writeVault(next);
+    return { ok: true };
+  } catch (cause) {
+    return {
+      ok: false,
+      message: cause instanceof Error ? cause.message : String(cause),
+    };
+  }
+}
+
+export async function setupPassphrase(args: {
+  phrase: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const validation = validatePassphrase(args.phrase);
+  if (!validation.ok) return validation;
+  if (isVaultConfigured()) {
+    return { ok: false, message: 'Vault already configured' };
+  }
+  try {
+    const dek = randomBytes(KEY_LEN_BYTES);
+    const kdfSalt = randomBytes(PBKDF2_SALT_BYTES);
+    const kek = await deriveKekFromPassphrase(
+      args.phrase,
+      kdfSalt,
+      PBKDF2_ITERATIONS,
+    );
+    const wrapped = await aesEncrypt(kek, dek);
+    const record: VaultRecord = {
+      version: CURRENT_VAULT_VERSION,
+      mode: 'passphrase',
+      kdfSaltB64: bufToB64(kdfSalt),
+      kdfIterations: PBKDF2_ITERATIONS,
+      wrapIvB64: bufToB64(wrapped.iv),
+      wrapCiphertextB64: bufToB64(wrapped.ciphertext),
+    };
+    writeVault(record);
+    const hex = bytesToHex(dek);
+    openDatabase(hex);
+    unlockedKeyHex = hex;
+    return { ok: true };
+  } catch (cause) {
+    return {
+      ok: false,
+      message: cause instanceof Error ? cause.message : String(cause),
+    };
+  }
+}
+
+export async function unlockPassphrase(args: {
+  phrase: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const validation = validatePassphrase(args.phrase);
+  if (!validation.ok) {
+    return { ok: false, message: 'Incorrect passphrase' };
+  }
+  const record = readVault();
+  if (!record) return { ok: false, message: 'Vault not configured' };
+  if (record.mode !== 'passphrase') {
+    return { ok: false, message: 'Vault is not configured for passphrase' };
+  }
+  try {
+    const kek = await deriveKekFromPassphrase(
+      args.phrase,
+      b64ToBuf(record.kdfSaltB64),
+      record.kdfIterations,
+    );
+    let dek: Buffer;
+    try {
+      dek = await aesDecrypt(
+        kek,
+        b64ToBuf(record.wrapIvB64),
+        b64ToBuf(record.wrapCiphertextB64),
+      );
+    } catch {
+      return { ok: false, message: 'Incorrect passphrase' };
+    }
+    const hex = bytesToHex(dek);
+    openDatabase(hex);
+    unlockedKeyHex = hex;
+    return { ok: true };
+  } catch (cause) {
+    return {
+      ok: false,
+      message: cause instanceof Error ? cause.message : String(cause),
+    };
+  }
+}
+
+export async function reEnrolPassphrase(args: {
+  currentPhrase: string;
+  nextPhrase: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const currentValidation = validatePassphrase(args.currentPhrase);
+  if (!currentValidation.ok) {
+    return { ok: false, message: 'Current passphrase is incorrect' };
+  }
+  const nextValidation = validatePassphrase(args.nextPhrase);
+  if (!nextValidation.ok) return nextValidation;
+  const record = readVault();
+  if (!record) return { ok: false, message: 'Vault not configured' };
+  if (record.mode !== 'passphrase') {
+    return { ok: false, message: 'Vault is not configured for passphrase' };
+  }
+  try {
+    const currentKek = await deriveKekFromPassphrase(
+      args.currentPhrase,
+      b64ToBuf(record.kdfSaltB64),
+      record.kdfIterations,
+    );
+    let dek: Buffer;
+    try {
+      dek = await aesDecrypt(
+        currentKek,
+        b64ToBuf(record.wrapIvB64),
+        b64ToBuf(record.wrapCiphertextB64),
+      );
+    } catch {
+      return { ok: false, message: 'Current passphrase is incorrect' };
+    }
+    const nextSalt = randomBytes(PBKDF2_SALT_BYTES);
+    const nextKek = await deriveKekFromPassphrase(
+      args.nextPhrase,
+      nextSalt,
+      PBKDF2_ITERATIONS,
+    );
+    const wrapped = await aesEncrypt(nextKek, dek);
+    const next: VaultRecord = {
+      version: CURRENT_VAULT_VERSION,
+      mode: 'passphrase',
       kdfSaltB64: bufToB64(nextSalt),
       kdfIterations: PBKDF2_ITERATIONS,
       wrapIvB64: bufToB64(wrapped.iv),

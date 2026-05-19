@@ -6,16 +6,39 @@ import { app } from 'electron';
 const FILE_NAME = 'vault.json';
 const VAULT_VERSION = 4;
 
-export type VaultRecord = {
-  version: number;
-  mode: 'webauthn' | 'pin' | 'none';
-  wrapIvB64: string;
-  wrapCiphertextB64: string;
-  credentialIdB64?: string;
-  saltB64?: string;
-  kdfSaltB64?: string;
-  kdfIterations?: number;
-};
+export const CURRENT_VAULT_VERSION = VAULT_VERSION;
+
+export type VaultRecord =
+  | {
+      version: typeof CURRENT_VAULT_VERSION;
+      mode: 'none';
+      wrapIvB64: string;
+      wrapCiphertextB64: string;
+    }
+  | {
+      version: typeof CURRENT_VAULT_VERSION;
+      mode: 'webauthn';
+      credentialIdB64: string;
+      saltB64: string;
+      wrapIvB64: string;
+      wrapCiphertextB64: string;
+    }
+  | {
+      version: typeof CURRENT_VAULT_VERSION;
+      mode: 'pin';
+      kdfSaltB64: string;
+      kdfIterations: number;
+      wrapIvB64: string;
+      wrapCiphertextB64: string;
+    }
+  | {
+      version: typeof CURRENT_VAULT_VERSION;
+      mode: 'passphrase';
+      kdfSaltB64: string;
+      kdfIterations: number;
+      wrapIvB64: string;
+      wrapCiphertextB64: string;
+    };
 
 function vaultPath(): string {
   return join(app.getPath('userData'), FILE_NAME);
@@ -47,5 +70,3 @@ export function writeVault(record: VaultRecord): void {
 export function deleteVault(): void {
   if (existsSync(vaultPath())) rmSync(vaultPath());
 }
-
-export const CURRENT_VAULT_VERSION = VAULT_VERSION;
