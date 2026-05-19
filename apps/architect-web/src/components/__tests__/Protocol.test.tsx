@@ -24,17 +24,23 @@ vi.mock('~/hooks/useProtocolLoader', () => ({
 }));
 
 // Mock motion/react to avoid animation issues in tests
-vi.mock('motion/react', () => ({
-  motion: {
-    div: ({
-      children,
-      ...props
-    }: Record<string, unknown> & { children?: ReactNode }) => (
-      <div {...props}>{children}</div>
-    ),
-  },
-  useScroll: () => ({ scrollY: { onChange: vi.fn() } }),
-}));
+vi.mock('motion/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('motion/react')>();
+  return {
+    ...actual,
+    motion: {
+      ...actual.motion,
+      div: ({
+        children,
+        ...props
+      }: Record<string, unknown> & { children?: ReactNode }) => (
+        <div {...props}>{children}</div>
+      ),
+    },
+    useScroll: () => ({ scrollY: { onChange: vi.fn() } }),
+    useReducedMotion: () => false,
+  };
+});
 
 const mockProtocolName = 'Test Protocol';
 const mockProtocolDescription = 'test description';
