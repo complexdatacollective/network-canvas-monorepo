@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
-import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import SegmentedCodeField from '@codaco/fresco-ui/form/fields/SegmentedCodeField';
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import * as authApi from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
@@ -11,20 +12,21 @@ import { useAuth } from '~/lib/auth/AuthContext';
 export default function Step3PinConfigure() {
   const wizard = useWizard();
   const { enrolWithPin } = useAuth();
-  const [pin, setPin] = useState('');
-  const [confirm, setConfirm] = useState('');
   const [affirmed, setAffirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const isValid = /^\d{8}$/.test(pin) && pin === confirm && affirmed;
+  const { pin } = useFormValue<readonly ['pin'], string>(['pin']);
 
   useEffect(() => {
-    wizard.setNextEnabled(isValid);
-  }, [isValid, wizard]);
+    // The wizard runs validateForm() on Next click; that covers length and
+    // sameAs mismatches. Here we only gate Next on the affirmation and on
+    // having a value at all (so the button isn't enabled before any input).
+    wizard.setNextEnabled(affirmed && Boolean(pin));
+  }, [affirmed, pin, wizard]);
 
   useEffect(() => {
     wizard.setBeforeNext(async () => {
       setError(null);
+      if (typeof pin !== 'string' || pin.length !== 8) return false;
 
       const status = await authApi.status();
       if (status.configured && status.mode !== 'none') {
@@ -45,30 +47,30 @@ export default function Step3PinConfigure() {
 
   return (
     <div className="flex flex-col gap-4">
-      <UnconnectedField
+      <Field
+        component={SegmentedCodeField}
         name="pin"
         label="Enter PIN"
         hint="An 8-digit numeric PIN."
-        component={SegmentedCodeField}
         segments={8}
         characterSet="numeric"
-        value={pin}
-        onChange={(v) => setPin(v ?? '')}
+        required
+        minLength={8}
+        maxLength={8}
+        validateOnChange
       />
-      <UnconnectedField
+      <Field
+        component={SegmentedCodeField}
         name="pin-confirm"
         label="Confirm PIN"
-        component={SegmentedCodeField}
         segments={8}
         characterSet="numeric"
-        value={confirm}
-        onChange={(v) => setConfirm(v ?? '')}
+        required
+        minLength={8}
+        maxLength={8}
+        sameAs="pin"
+        validateOnChange
       />
-      {confirm.length > 0 && pin !== confirm && (
-        <Paragraph margin="none" className="text-destructive text-sm">
-          PINs do not match.
-        </Paragraph>
-      )}
       {error && (
         <div
           className="bg-destructive text-destructive-contrast rounded p-4"
