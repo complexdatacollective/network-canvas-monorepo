@@ -22,3 +22,15 @@ body {
   -webkit-user-select: none;
   user-select: none;
 }
+
+/* Electron: invisible draggable region for the frameless titlebar area.
+   Children that need to remain clickable opt out with .app-no-drag. */
+.app-drag {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.app-no-drag {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
