@@ -1,4 +1,5 @@
 import { Play, Plus } from 'lucide-react';
+import { motion } from 'motion/react';
 import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from 'react';
 import {
   forwardRef,
@@ -118,6 +119,7 @@ type DeckCardProps = {
   cardWidth: number;
   cardHeight: number;
   isActive: boolean;
+  isExpanding: boolean;
   sessionCount: number;
   onActivate: (idx: number) => void;
 };
@@ -133,6 +135,7 @@ const DeckCardInner = forwardRef<HTMLDivElement, DeckCardProps>(
       cardWidth,
       cardHeight,
       isActive,
+      isExpanding,
       sessionCount,
       onActivate,
     },
@@ -209,7 +212,8 @@ const DeckCardInner = forwardRef<HTMLDivElement, DeckCardProps>(
 
     return (
       <div ref={slotRef} className={SLOT_CLASS} style={{ width: slotWidth }}>
-        <div
+        <motion.div
+          layoutId={`protocol-card-${protocol.hash}`}
           ref={(el) => {
             cardRef.current = el;
           }}
@@ -217,7 +221,12 @@ const DeckCardInner = forwardRef<HTMLDivElement, DeckCardProps>(
           tabIndex={0}
           onClick={onTap}
           onKeyDown={onCardKeyDown}
-          style={{ width: cardWidth, height: cardHeight, boxShadow }}
+          style={{
+            width: cardWidth,
+            height: cardHeight,
+            boxShadow,
+            opacity: isExpanding ? 0 : 1,
+          }}
           className={`${cardBase()} ${protocolCardClass()} will-change-transform`}
           aria-label={`${protocol.name}${isActive ? ' (active)' : ''}`}
         >
@@ -275,7 +284,7 @@ const DeckCardInner = forwardRef<HTMLDivElement, DeckCardProps>(
               </Button>
             </div>
           ) : null}
-        </div>
+        </motion.div>
       </div>
     );
   },
