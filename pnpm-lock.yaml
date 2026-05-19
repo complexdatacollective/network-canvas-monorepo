@@ -72,6 +72,9 @@ catalogs:
     dotenv:
       specifier: ^17.4.2
       version: 17.4.2
+    effect:
+      specifier: ^3.21.2
+      version: 3.21.2
     electron:
       specifier: ^42.1.0
       version: 42.1.0
@@ -1200,7 +1203,7 @@ importers:
         specifier: ^4.4.2
         version: 4.4.2
       effect:
-        specifier: ^3.21.2
+        specifier: 'catalog:'
         version: 3.21.2
       jszip:
         specifier: ^3.10.1
@@ -1704,7 +1707,7 @@ importers:
         specifier: ^0.9.10
         version: 0.9.10
       effect:
-        specifier: ^3.21.2
+        specifier: 'catalog:'
         version: 3.21.2
       es-toolkit:
         specifier: 'catalog:'

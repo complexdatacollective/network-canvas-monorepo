@@ -46,7 +46,7 @@
     "@tailwindcss/vite": "catalog:",
     "better-sqlite3-multiple-ciphers": "^12.9.0",
     "dexie": "^4.4.2",
-    "effect": "^3.21.2",
+    "effect": "catalog:",
     "jszip": "^3.10.1",
     "lucide-react": "catalog:",
     "motion": "catalog:",
