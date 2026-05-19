@@ -2,7 +2,6 @@ import AssetBrowser from '~/components/AssetBrowser';
 import { Layout } from '~/components/EditorLayout';
 import ExternalLink from '~/components/ExternalLink';
 import PageHeading from '~/components/ProjectNav/PageHeading';
-import ProjectActions from '~/components/ProjectNav/ProjectActions';
 import useProtocolLoader from '~/hooks/useProtocolLoader';
 
 const AssetsPage = () => {
@@ -11,7 +10,6 @@ const AssetsPage = () => {
 
   return (
     <Layout>
-      <ProjectActions />
       <PageHeading
         title="Resource Library"
         description={

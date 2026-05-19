@@ -1,4 +1,5 @@
 import { ArrowLeftToLine, Check, Download, Redo, Undo } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
@@ -29,6 +30,8 @@ const ProjectActions = ({
   const canUndo = useSelector(getCanUndo);
   const canRedo = useSelector(getCanRedo);
   const handleReturnToStart = useReturnToStartDialog();
+  const shouldReduceMotion = useReducedMotion();
+  const layout = shouldReduceMotion ? false : true;
 
   const [isExporting, setIsExporting] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
@@ -62,15 +65,26 @@ const ProjectActions = ({
 
   return (
     <ActionToolbar>
-      {showReturnToStart && (
-        <Button
-          onClick={handleReturnToStart}
-          color="platinum"
-          icon={<ArrowLeftToLine />}
-        >
-          Return to Start Screen
-        </Button>
-      )}
+      <AnimatePresence initial={false}>
+        {showReturnToStart && (
+          <motion.div
+            key="return-to-start"
+            layout={layout}
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.85 }}
+            transition={{ duration: 0.18 }}
+          >
+            <Button
+              onClick={handleReturnToStart}
+              color="platinum"
+              icon={<ArrowLeftToLine />}
+            >
+              Return to Start Screen
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {additionalActions}
       {!readOnly && (
         <>

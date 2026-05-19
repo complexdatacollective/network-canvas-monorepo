@@ -6,6 +6,9 @@ import ProjectNav from '~/components/ProjectNav/ProjectNav';
 import { cx } from '~/utils/cva';
 import { getScrollPosition, setScrollPosition } from '~/utils/scrollPositions';
 
+import PrintProtocolAction from './PrintProtocolAction';
+import ProjectActions from './ProjectActions';
+
 type ProjectLayoutProps = {
   children: React.ReactNode;
   className?: string;
@@ -28,6 +31,9 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
     setScrollPosition(location, e.currentTarget.scrollTop);
   };
 
+  const isTimeline = location === '/protocol';
+  const isSummary = location === '/protocol/summary';
+
   return (
     <div
       ref={ref}
@@ -39,6 +45,11 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
     >
       <ProjectNav />
       {children}
+      <ProjectActions
+        showReturnToStart={isTimeline}
+        readOnly={isSummary}
+        additionalActions={isSummary ? <PrintProtocolAction /> : null}
+      />
     </div>
   );
 };
