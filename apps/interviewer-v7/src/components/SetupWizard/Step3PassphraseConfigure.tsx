@@ -9,6 +9,8 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import * as authApi from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
 
+import NoRecoveryNotice from './NoRecoveryNotice';
+
 export default function Step3PassphraseConfigure() {
   const wizard = useWizard();
   const { enrolWithPassphrase } = useAuth();
@@ -85,6 +87,7 @@ export default function Step3PassphraseConfigure() {
           <Paragraph margin="none">{error}</Paragraph>
         </div>
       )}
+      <NoRecoveryNotice method="passphrase" />
       <label className="flex cursor-pointer items-start gap-3">
         <Checkbox value={affirmed} onChange={(v) => setAffirmed(v ?? false)} />
         <span className="text-sm leading-snug">

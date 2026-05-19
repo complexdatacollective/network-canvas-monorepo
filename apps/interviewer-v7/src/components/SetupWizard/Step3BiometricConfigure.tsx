@@ -7,6 +7,8 @@ import * as authApi from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
 import { isCapacitor } from '~/lib/platform/platform';
 
+import NoRecoveryNotice from './NoRecoveryNotice';
+
 export default function Step3BiometricConfigure() {
   const wizard = useWizard();
   const { enrolWithBiometricNative, enrolAuthenticator } = useAuth();
@@ -54,6 +56,7 @@ export default function Step3BiometricConfigure() {
           <Paragraph margin="none">{error}</Paragraph>
         </div>
       )}
+      <NoRecoveryNotice method="biometric" />
       <label className="flex cursor-pointer items-start gap-3">
         <Checkbox value={affirmed} onChange={(v) => setAffirmed(v ?? false)} />
         <span className="text-sm leading-snug">
