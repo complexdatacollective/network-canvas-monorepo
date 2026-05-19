@@ -33,6 +33,7 @@
     "electron:rebuild": "electron-rebuild -f -w better-sqlite3-multiple-ciphers"
   },
   "dependencies": {
+    "@aparajita/capacitor-biometric-auth": "^9.0.0",
     "@base-ui/react": "catalog:",
     "@capacitor/android": "^8.3.4",
     "@capacitor/app": "^8.1.0",
