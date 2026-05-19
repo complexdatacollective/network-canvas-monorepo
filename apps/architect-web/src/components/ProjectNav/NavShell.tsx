@@ -12,7 +12,6 @@ import { useLocation } from 'wouter';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import Brand from '~/components/Brand';
 import Modal from '~/components/NewComponents/Modal';
-import { useReturnToStartDialog } from '~/hooks/useReturnToStartDialog';
 import { useRunOnce } from '~/hooks/useRunOnce';
 import { IconButton } from '~/lib/legacy-ui/components/Button';
 import { cx } from '~/utils/cva';
@@ -51,17 +50,20 @@ type NavShellProps = {
 };
 
 const NavShell = ({ leading, trailing }: NavShellProps) => {
-  const handleReturnToStart = useReturnToStartDialog();
   const shouldReduceMotion = useReducedMotion();
   const isFirstMount = useRunOnce('nav-bar-entrance');
   const animate = !shouldReduceMotion && isFirstMount;
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const inlineLayoutId = useId();
   const drawerLayoutId = useId();
 
   const isAtStart = location === '/';
+  const handleReturnToStart = useCallback(
+    () => setLocation('/'),
+    [setLocation],
+  );
 
   return (
     <header className="pointer-events-none sticky top-0 z-(--z-global-ui) w-full px-4 py-(--space-md) sm:px-6 print:static print:hidden">

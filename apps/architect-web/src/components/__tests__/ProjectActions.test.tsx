@@ -163,19 +163,13 @@ describe('<ProjectActions />', () => {
     ).toBeNull();
   });
 
-  it('opens the warning dialog when Return-to-start is clicked', () => {
+  it('navigates to the start screen when Return-to-start is clicked', () => {
     const store = createTestStore();
     render(<ProjectActions showReturnToStart />, { wrapper: wrap(store) });
 
     fireEvent.click(
       screen.getByRole('button', { name: /return to start screen/i }),
     );
-    expect(openDialogMock).toHaveBeenCalledTimes(1);
-    const config = openDialogMock.mock.calls[0]?.[0] as {
-      type: string;
-      title: string;
-    };
-    expect(config.type).toBe('Warning');
-    expect(config.title).toMatch(/clear editor/i);
+    expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 });

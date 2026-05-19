@@ -3,13 +3,13 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
+import { useLocation } from 'wouter';
 
 import Tooltip from '~/components/NewComponents/Tooltip';
 import { useAppDispatch } from '~/ducks/hooks';
 import { redo, undo } from '~/ducks/modules/activeProtocol';
 import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
-import { useReturnToStartDialog } from '~/hooks/useReturnToStartDialog';
 import Button, { IconButton } from '~/lib/legacy-ui/components/Button';
 import { getCanRedo, getCanUndo } from '~/selectors/protocol';
 
@@ -29,7 +29,11 @@ const ProjectActions = ({
   const dispatch = useAppDispatch();
   const canUndo = useSelector(getCanUndo);
   const canRedo = useSelector(getCanRedo);
-  const handleReturnToStart = useReturnToStartDialog();
+  const [, setLocation] = useLocation();
+  const handleReturnToStart = useCallback(
+    () => setLocation('/'),
+    [setLocation],
+  );
   const shouldReduceMotion = useReducedMotion();
   const layout = shouldReduceMotion ? false : true;
 
