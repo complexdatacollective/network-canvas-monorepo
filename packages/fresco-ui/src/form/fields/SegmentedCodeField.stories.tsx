@@ -65,6 +65,15 @@ const meta: Meta<typeof SegmentedCodeField> = {
         defaultValue: { summary: 'false' },
       },
     },
+    'sensitive': {
+      control: 'boolean',
+      description:
+        'Mask each segment as a password input so the value is not visible while typing. Also disables autocomplete.',
+      table: {
+        type: { summary: 'boolean' },
+        defaultValue: { summary: 'false' },
+      },
+    },
     'readOnly': {
       control: 'boolean',
       description: 'Whether all segments are read-only',
@@ -325,6 +334,31 @@ export const States: Story = {
 
     const readonlySegment = canvas.getAllByLabelText(/Digit 1 of 6/)[2];
     await expect(readonlySegment).toHaveAttribute('readonly');
+  },
+};
+
+export const Sensitive: Story = {
+  args: {
+    segments: 8,
+    characterSet: 'numeric',
+    sensitive: true,
+    size: 'lg',
+  },
+  render: function Render(args) {
+    const [value, setValue] = useState('');
+    return (
+      <div className="flex flex-col items-center gap-4">
+        <SegmentedCodeField
+          {...args}
+          value={value}
+          onChange={(v) => setValue(v ?? '')}
+          data-testid="sensitive-code"
+        />
+        <Paragraph margin="none" className="text-xs opacity-70">
+          Length: {value.length}
+        </Paragraph>
+      </div>
+    );
   },
 };
 

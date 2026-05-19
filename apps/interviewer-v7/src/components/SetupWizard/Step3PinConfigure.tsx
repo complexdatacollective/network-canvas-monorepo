@@ -59,6 +59,7 @@ export default function Step3PinConfigure() {
         hint="An 8-digit numeric PIN."
         segments={8}
         characterSet="numeric"
+        sensitive
         required
         minLength={8}
         maxLength={8}
@@ -70,6 +71,7 @@ export default function Step3PinConfigure() {
         label="Confirm PIN"
         segments={8}
         characterSet="numeric"
+        sensitive
         required
         minLength={8}
         maxLength={8}
@@ -86,8 +88,9 @@ export default function Step3PinConfigure() {
       )}
       <NoRecoveryNotice method="pin" />
       <UnconnectedField
+        inline
         name="pin-affirmation"
-        label="I understand there is no recovery."
+        label="I understand there is no recovery"
         component={Checkbox}
         value={affirmed}
         onChange={(v) => setAffirmed(v ?? false)}

@@ -13,6 +13,7 @@ export default function PinUnlockField({ onComplete }: PinUnlockFieldProps) {
       label="PIN"
       segments={8}
       characterSet="numeric"
+      sensitive
       required
       minLength={8}
       maxLength={8}
