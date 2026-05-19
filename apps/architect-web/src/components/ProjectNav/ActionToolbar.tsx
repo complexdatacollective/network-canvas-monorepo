@@ -23,6 +23,10 @@ const ActionToolbar = ({
           aria-label={ariaLabel}
           className={cx(
             'flex items-center gap-(--space-sm) py-3 pr-3 pl-2 sm:px-3',
+            // Shrink buttons to size="small" equivalent below md.
+            'max-md:[&_button]:h-8 max-md:[&_button]:text-xs',
+            'max-md:[&_button.aspect-square]:w-8',
+            'max-md:[&_button:not(.aspect-square)]:px-4',
             className,
           )}
         >

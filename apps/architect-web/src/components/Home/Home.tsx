@@ -1,8 +1,17 @@
-import { FilePlus, FolderOpen, Upload } from 'lucide-react';
+import {
+  BookOpen,
+  CodeXml,
+  FilePlus,
+  FolderOpen,
+  Upload,
+  Users,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
+import Badge from '~/components/Badge';
 import NewProtocolDialog from '~/components/NewProtocolDialog';
+import NavShell from '~/components/ProjectNav/NavShell';
 import { SAMPLE_PROTOCOL_URL } from '~/config';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
@@ -11,12 +20,30 @@ import {
   openRemoteNetcanvas,
 } from '~/ducks/modules/userActions/userActions';
 import Button from '~/lib/legacy-ui/components/Button';
+import { appVersion } from '~/utils/appVersion';
 
 import DevTools from './DevTools';
-import Header from './Header';
 import ProtocolLoadingOverlay from './ProtocolLoadingOverlay';
 import { TIMELINE_SCRIPT } from './timelineScript';
 import TransitMap from './TransitMap';
+
+const NAV_LINKS = [
+  {
+    href: 'https://documentation.networkcanvas.com',
+    label: 'Docs',
+    Icon: BookOpen,
+  },
+  {
+    href: 'https://community.networkcanvas.com',
+    label: 'Community',
+    Icon: Users,
+  },
+  {
+    href: 'https://github.com/complexdatacollective',
+    label: 'GitHub',
+    Icon: CodeXml,
+  },
+];
 
 const Home = () => {
   const dispatch = useAppDispatch();
@@ -91,7 +118,29 @@ const Home = () => {
           />
         )}
 
-        <Header />
+        <NavShell
+          trailing={
+            <>
+              {NAV_LINKS.map(({ href, label, Icon }) => (
+                <a
+                  key={href}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-action relative cursor-pointer text-base leading-none font-semibold text-current no-underline transition-colors"
+                >
+                  <span className="relative inline-flex items-center gap-2">
+                    <Icon className="size-4 shrink-0" aria-hidden />
+                    {label}
+                  </span>
+                </a>
+              ))}
+              <Badge color="platinum">
+                <span className="bg-active h-2 w-2 rounded-full" />v{appVersion}
+              </Badge>
+            </>
+          }
+        />
 
         {/* Hero section */}
 
