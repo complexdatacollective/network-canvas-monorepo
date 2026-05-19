@@ -63,6 +63,12 @@ const authBridge = {
     ipcRenderer.invoke('auth:unlock:passphrase', args),
   reEnrolPassphrase: (args: { currentPhrase: string; nextPhrase: string }) =>
     ipcRenderer.invoke('auth:reEnrol:passphrase', args),
+  verifyWebAuthn: (args: { prfOutputB64: string }) =>
+    ipcRenderer.invoke('auth:verify:webauthn', args),
+  verifyPin: (args: { pin: string }) =>
+    ipcRenderer.invoke('auth:verify:pin', args),
+  verifyPassphrase: (args: { phrase: string }) =>
+    ipcRenderer.invoke('auth:verify:passphrase', args),
   revoke: () => ipcRenderer.invoke('auth:revoke'),
 };
 

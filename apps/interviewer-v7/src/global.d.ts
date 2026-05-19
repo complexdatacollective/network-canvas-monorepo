@@ -123,6 +123,15 @@ declare global {
       currentPhrase: string;
       nextPhrase: string;
     }) => Promise<{ ok: boolean; message?: string }>;
+    verifyWebAuthn: (args: {
+      prfOutputB64: string;
+    }) => Promise<{ ok: boolean; message?: string }>;
+    verifyPin: (args: {
+      pin: string;
+    }) => Promise<{ ok: boolean; message?: string }>;
+    verifyPassphrase: (args: {
+      phrase: string;
+    }) => Promise<{ ok: boolean; message?: string }>;
     revoke: () => Promise<void>;
   };
 

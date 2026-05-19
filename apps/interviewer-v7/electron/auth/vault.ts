@@ -389,6 +389,114 @@ export async function unlockPin(args: {
   }
 }
 
+export async function verifyPin(args: {
+  pin: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const validation = validatePin(args.pin);
+  if (!validation.ok) return validation;
+  const record = readVault();
+  if (!record) return { ok: false, message: 'Vault not configured' };
+  if (record.mode !== 'pin' || !record.kdfSaltB64 || !record.kdfIterations) {
+    return { ok: false, message: 'Vault is not configured for PIN' };
+  }
+  try {
+    const kek = await deriveKekFromPin(
+      args.pin,
+      b64ToBuf(record.kdfSaltB64),
+      record.kdfIterations,
+    );
+    try {
+      await aesDecrypt(
+        kek,
+        b64ToBuf(record.wrapIvB64),
+        b64ToBuf(record.wrapCiphertextB64),
+      );
+    } catch {
+      return { ok: false, message: 'Incorrect PIN' };
+    }
+    return { ok: true };
+  } catch (cause) {
+    return {
+      ok: false,
+      message: cause instanceof Error ? cause.message : String(cause),
+    };
+  }
+}
+
+export async function verifyPassphrase(args: {
+  phrase: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const validation = validatePassphrase(args.phrase);
+  if (!validation.ok) {
+    return { ok: false, message: 'Incorrect passphrase' };
+  }
+  const record = readVault();
+  if (!record) return { ok: false, message: 'Vault not configured' };
+  if (
+    record.mode !== 'passphrase' ||
+    !record.kdfSaltB64 ||
+    !record.kdfIterations
+  ) {
+    return { ok: false, message: 'Vault is not configured for passphrase' };
+  }
+  try {
+    const kek = await deriveKekFromPassphrase(
+      args.phrase,
+      b64ToBuf(record.kdfSaltB64),
+      record.kdfIterations,
+    );
+    try {
+      await aesDecrypt(
+        kek,
+        b64ToBuf(record.wrapIvB64),
+        b64ToBuf(record.wrapCiphertextB64),
+      );
+    } catch {
+      return { ok: false, message: 'Incorrect passphrase' };
+    }
+    return { ok: true };
+  } catch (cause) {
+    return {
+      ok: false,
+      message: cause instanceof Error ? cause.message : String(cause),
+    };
+  }
+}
+
+export async function verifyWebAuthn(args: {
+  prfOutputB64: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (!args.prfOutputB64) {
+    return {
+      ok: false,
+      message: 'WebAuthn PRF extension is required and was not provided',
+    };
+  }
+  const record = readVault();
+  if (!record) return { ok: false, message: 'Vault not configured' };
+  if (record.mode !== 'webauthn') {
+    return { ok: false, message: 'Vault is not configured for WebAuthn' };
+  }
+  try {
+    const kek = await importKekFromBytes(b64ToBuf(args.prfOutputB64));
+    try {
+      await aesDecrypt(
+        kek,
+        b64ToBuf(record.wrapIvB64),
+        b64ToBuf(record.wrapCiphertextB64),
+      );
+    } catch {
+      return { ok: false, message: 'Authenticator unwrap failed' };
+    }
+    return { ok: true };
+  } catch (cause) {
+    return {
+      ok: false,
+      message: cause instanceof Error ? cause.message : String(cause),
+    };
+  }
+}
+
 export async function lock(): Promise<void> {
   const record = readVault();
   // mode='none' has no unlock path, so closing the DB would leave the app in

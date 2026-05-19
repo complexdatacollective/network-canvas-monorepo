@@ -570,6 +570,89 @@ export async function reEnrolWithPassphrase(args: {
   return { ok: true };
 }
 
+export async function verifyBiometric(
+  signal?: AbortSignal,
+): Promise<{ ok: boolean; message?: string }> {
+  if (isCapacitor) {
+    return verifyBiometricNativePlugin();
+  }
+  if (!isWebAuthnAvailable()) {
+    return { ok: false, message: 'This browser does not support WebAuthn' };
+  }
+  const metadata = await vaultMetadata.read();
+  const s = isElectron ? await electronAuth.status() : null;
+  const credentialIdB64 = isElectron
+    ? s?.credentialIdB64
+    : metadata?.mode === 'webauthn'
+      ? metadata.credentialIdB64
+      : undefined;
+  const saltB64 = isElectron
+    ? s?.saltB64
+    : metadata?.mode === 'webauthn'
+      ? metadata.saltB64
+      : undefined;
+  if (!credentialIdB64 || !saltB64) {
+    return { ok: false, message: 'No authenticator enrolled' };
+  }
+  const result = await authenticatePasskey({
+    credentialId: fromBase64(credentialIdB64),
+    salt: fromBase64(saltB64),
+    signal,
+  });
+  if (!result.ok) return { ok: false, message: result.error };
+  if (isElectron) {
+    return electronAuth.verifyWebAuthn({
+      prfOutputB64: toBase64(result.enrolment.prfOutput),
+    });
+  }
+  return { ok: true };
+}
+
+export async function verifyWithPin(
+  pin: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const validation = validatePin(pin);
+  if (!validation.ok) return { ok: false, message: 'Incorrect PIN' };
+  if (isElectron) return electronAuth.verifyPin({ pin });
+  const metadata = await vaultMetadata.read();
+  if (!metadata || metadata.mode !== 'pin') {
+    return { ok: false, message: 'PIN is not configured on this device' };
+  }
+  const verifier = await derivePinVerifier(
+    pin,
+    metadata.kdfSaltB64,
+    metadata.kdfIterations,
+  );
+  if (!constantTimeEqual(verifier, metadata.verifierB64)) {
+    return { ok: false, message: 'Incorrect PIN' };
+  }
+  return { ok: true };
+}
+
+export async function verifyWithPassphrase(
+  phrase: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const validation = validatePassphrase(phrase);
+  if (!validation.ok) return { ok: false, message: 'Incorrect passphrase' };
+  if (isElectron) return electronAuth.verifyPassphrase({ phrase });
+  const metadata = await vaultMetadata.read();
+  if (!metadata || metadata.mode !== 'passphrase') {
+    return {
+      ok: false,
+      message: 'Passphrase is not configured on this device',
+    };
+  }
+  const verifier = await derivePassphraseVerifier(
+    phrase,
+    metadata.kdfSaltB64,
+    metadata.kdfIterations,
+  );
+  if (!constantTimeEqual(verifier, metadata.verifierB64)) {
+    return { ok: false, message: 'Incorrect passphrase' };
+  }
+  return { ok: true };
+}
+
 export async function revoke(): Promise<void> {
   if (isElectron) {
     await electronAuth.revoke();

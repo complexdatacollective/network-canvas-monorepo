@@ -74,6 +74,28 @@ describe('vault passphrase mode', () => {
     });
     expect(r.ok).toBe(false);
   });
+
+  it('verifyPassphrase returns ok:true when phrase is correct, ok:false when wrong', async () => {
+    const phrase = 'Tr0ub4dor&3-clever';
+    await vault.setupPassphrase({ phrase });
+    expect((await vault.verifyPassphrase({ phrase })).ok).toBe(true);
+    expect(
+      (await vault.verifyPassphrase({ phrase: 'WRONG-PASSPHRASE-1!' })).ok,
+    ).toBe(false);
+  });
+
+  it('verifyPassphrase does not unlock the database after lock', async () => {
+    const { openDatabase } = await import('../../db/service');
+    const phrase = 'Tr0ub4dor&3-clever';
+    await vault.setupPassphrase({ phrase });
+    await vault.lock();
+    const callsBefore = (openDatabase as ReturnType<typeof vi.fn>).mock.calls
+      .length;
+    await vault.verifyPassphrase({ phrase });
+    expect((openDatabase as ReturnType<typeof vi.fn>).mock.calls.length).toBe(
+      callsBefore,
+    );
+  });
 });
 
 afterAll(() => {

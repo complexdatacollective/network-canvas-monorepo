@@ -82,6 +82,24 @@ export async function reEnrolPassphrase(args: {
   return ipc().reEnrolPassphrase(args);
 }
 
+export async function verifyWebAuthn(args: {
+  prfOutputB64: string;
+}): Promise<{ ok: boolean; message?: string }> {
+  return ipc().verifyWebAuthn(args);
+}
+
+export async function verifyPin(args: {
+  pin: string;
+}): Promise<{ ok: boolean; message?: string }> {
+  return ipc().verifyPin(args);
+}
+
+export async function verifyPassphrase(args: {
+  phrase: string;
+}): Promise<{ ok: boolean; message?: string }> {
+  return ipc().verifyPassphrase(args);
+}
+
 export async function revoke(): Promise<void> {
   return ipc().revoke();
 }

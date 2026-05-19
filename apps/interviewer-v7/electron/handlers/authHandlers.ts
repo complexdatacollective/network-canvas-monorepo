@@ -52,5 +52,17 @@ export function registerAuthHandlers(): void {
     async (_e, args: { currentPhrase: string; nextPhrase: string }) =>
       vault.reEnrolPassphrase(args),
   );
+  ipcMain.handle(
+    'auth:verify:webauthn',
+    async (_event, args: { prfOutputB64: string }) =>
+      vault.verifyWebAuthn(args),
+  );
+  ipcMain.handle('auth:verify:pin', async (_event, args: { pin: string }) =>
+    vault.verifyPin(args),
+  );
+  ipcMain.handle(
+    'auth:verify:passphrase',
+    async (_event, args: { phrase: string }) => vault.verifyPassphrase(args),
+  );
   ipcMain.handle('auth:revoke', async () => vault.revoke());
 }
