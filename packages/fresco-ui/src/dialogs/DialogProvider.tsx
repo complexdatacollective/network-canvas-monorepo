@@ -96,6 +96,7 @@ export type WizardDialog = BaseDialog & {
     title: string;
     description: string;
   };
+  cancelLabel?: string;
 };
 
 // Helper type to extract return type from a dialog

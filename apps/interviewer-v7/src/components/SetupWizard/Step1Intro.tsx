@@ -12,12 +12,6 @@ export default function Step1Intro() {
     setNextEnabled(true);
   }, [setNextEnabled]);
 
-  // TODO: Add an explicit "Continue without security" button here. This requires
-  // calling closeDialog(dialogId, null) from inside the step. The dialog ID is
-  // not exposed via useWizard, so this affordance is deferred until fresco-ui
-  // exposes a closeDialog escape hatch (or the wizard passes onDismiss via
-  // wizard data).
-
   return (
     <div className="flex flex-col gap-4">
       <Paragraph>

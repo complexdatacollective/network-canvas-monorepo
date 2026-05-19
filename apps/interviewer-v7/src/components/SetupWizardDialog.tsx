@@ -42,6 +42,7 @@ export function useSetupWizard() {
           ? 'Your data will be stored without encryption on this device. Anyone with access to the device or its files will be able to read all collected data. You can enable security later from Settings.'
           : 'Your data is sandboxed by the operating system and is not directly accessible to other apps. Enabling app security adds protection if the device itself is unlocked and physically accessed. You can enable security later from Settings.',
       },
+      cancelLabel: 'Continue without security',
       steps: [
         { title: 'Secure this device', content: Step1Intro },
         {
