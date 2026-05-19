@@ -37,6 +37,7 @@ declare global {
   type AuthStatus = {
     configured: boolean;
     locked: boolean;
+    mode?: 'webauthn' | 'pin' | 'none';
     credentialIdB64?: string;
     saltB64?: string;
   };
@@ -91,8 +92,15 @@ declare global {
       saltB64: string;
       prfOutputB64: string;
     }) => Promise<{ ok: boolean; message?: string }>;
+    setupPin: (args: {
+      pin: string;
+    }) => Promise<{ ok: boolean; message?: string }>;
+    setupNone: () => Promise<{ ok: boolean; message?: string }>;
     unlock: (args: {
       prfOutputB64: string;
+    }) => Promise<{ ok: boolean; message?: string }>;
+    unlockPin: (args: {
+      pin: string;
     }) => Promise<{ ok: boolean; message?: string }>;
     lock: () => Promise<void>;
     reEnrol: (args: {
@@ -100,6 +108,10 @@ declare global {
       nextCredentialIdB64: string;
       nextSaltB64: string;
       nextPrfOutputB64: string;
+    }) => Promise<{ ok: boolean; message?: string }>;
+    reEnrolPin: (args: {
+      currentPin: string;
+      nextPin: string;
     }) => Promise<{ ok: boolean; message?: string }>;
     revoke: () => Promise<void>;
   };

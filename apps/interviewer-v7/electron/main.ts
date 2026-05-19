@@ -3,6 +3,7 @@ import { basename, join } from 'node:path';
 
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 
+import { bootstrapNoLock } from './auth/vault';
 import { migrateLegacyDbFilename } from './db/service';
 import { registerAuthHandlers } from './handlers/authHandlers';
 import { registerDbHandlers } from './handlers/dbHandlers';
@@ -78,6 +79,7 @@ app.whenReady().then(() => {
   }
   registerDbHandlers();
   registerAuthHandlers();
+  bootstrapNoLock();
   createWindow();
 
   app.on('activate', () => {

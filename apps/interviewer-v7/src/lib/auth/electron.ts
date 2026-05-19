@@ -18,10 +18,29 @@ export async function setup(args: {
   return ipc().setup(args);
 }
 
+export async function setupPin(args: {
+  pin: string;
+}): Promise<{ ok: boolean; message?: string }> {
+  return ipc().setupPin(args);
+}
+
+export async function setupNone(): Promise<{
+  ok: boolean;
+  message?: string;
+}> {
+  return ipc().setupNone();
+}
+
 export async function unlock(args: {
   prfOutputB64: string;
 }): Promise<{ ok: boolean; message?: string }> {
   return ipc().unlock(args);
+}
+
+export async function unlockPin(args: {
+  pin: string;
+}): Promise<{ ok: boolean; message?: string }> {
+  return ipc().unlockPin(args);
 }
 
 export async function lock(): Promise<void> {
@@ -35,6 +54,13 @@ export async function reEnrol(args: {
   nextPrfOutputB64: string;
 }): Promise<{ ok: boolean; message?: string }> {
   return ipc().reEnrol(args);
+}
+
+export async function reEnrolPin(args: {
+  currentPin: string;
+  nextPin: string;
+}): Promise<{ ok: boolean; message?: string }> {
+  return ipc().reEnrolPin(args);
 }
 
 export async function revoke(): Promise<void> {

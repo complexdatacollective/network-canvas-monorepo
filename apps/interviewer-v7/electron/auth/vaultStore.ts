@@ -4,14 +4,17 @@ import { join } from 'node:path';
 import { app } from 'electron';
 
 const FILE_NAME = 'vault.json';
-const VAULT_VERSION = 3;
+const VAULT_VERSION = 4;
 
 export type VaultRecord = {
   version: number;
-  credentialIdB64: string;
-  saltB64: string;
+  mode: 'webauthn' | 'pin' | 'none';
   wrapIvB64: string;
   wrapCiphertextB64: string;
+  credentialIdB64?: string;
+  saltB64?: string;
+  kdfSaltB64?: string;
+  kdfIterations?: number;
 };
 
 function vaultPath(): string {

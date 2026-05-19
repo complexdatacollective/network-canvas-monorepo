@@ -11,8 +11,15 @@ export function registerAuthHandlers(): void {
       args: { credentialIdB64: string; saltB64: string; prfOutputB64: string },
     ) => vault.setup(args),
   );
+  ipcMain.handle('auth:setupPin', async (_e, args: { pin: string }) =>
+    vault.setupPin(args),
+  );
+  ipcMain.handle('auth:setupNone', async () => vault.setupNone());
   ipcMain.handle('auth:unlock', async (_e, args: { prfOutputB64: string }) =>
     vault.unlock(args),
+  );
+  ipcMain.handle('auth:unlockPin', async (_e, args: { pin: string }) =>
+    vault.unlockPin(args),
   );
   ipcMain.handle('auth:lock', async () => vault.lock());
   ipcMain.handle(
@@ -26,6 +33,11 @@ export function registerAuthHandlers(): void {
         nextPrfOutputB64: string;
       },
     ) => vault.reEnrol(args),
+  );
+  ipcMain.handle(
+    'auth:reEnrolPin',
+    async (_e, args: { currentPin: string; nextPin: string }) =>
+      vault.reEnrolPin(args),
   );
   ipcMain.handle('auth:revoke', async () => vault.revoke());
 }

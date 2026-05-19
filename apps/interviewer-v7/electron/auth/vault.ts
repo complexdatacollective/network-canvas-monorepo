@@ -1,7 +1,12 @@
 import { randomBytes, webcrypto } from 'node:crypto';
 import { unlink } from 'node:fs/promises';
 
-import { closeDatabase, getDbPath, openDatabase } from '../db/service';
+import {
+  closeDatabase,
+  getDbPath,
+  openDatabase,
+  openDatabasePlain,
+} from '../db/service';
 import {
   CURRENT_VAULT_VERSION,
   deleteVault,
@@ -16,6 +21,9 @@ type WebBufferSource = ArrayBufferView | ArrayBuffer;
 
 const KEY_LEN_BYTES = 32;
 const IV_BYTES = 12;
+const PBKDF2_ITERATIONS = 600_000;
+const PBKDF2_SALT_BYTES = 32;
+const PIN_LENGTH = 8;
 
 let unlockedKeyHex: string | null = null;
 
@@ -32,6 +40,18 @@ function b64ToBuf(b64: string): Buffer {
   return Buffer.from(b64, 'base64');
 }
 
+function validatePin(
+  pin: string,
+): { ok: true } | { ok: false; message: string } {
+  if (pin.length !== PIN_LENGTH || !/^\d+$/.test(pin)) {
+    return {
+      ok: false,
+      message: `PIN must be exactly ${PIN_LENGTH} digits`,
+    };
+  }
+  return { ok: true };
+}
+
 async function importKekFromBytes(raw: Buffer): Promise<WebCryptoKey> {
   const sized =
     raw.length === KEY_LEN_BYTES
@@ -41,6 +61,32 @@ async function importKekFromBytes(raw: Buffer): Promise<WebCryptoKey> {
     'encrypt',
     'decrypt',
   ]);
+}
+
+async function deriveKekFromPin(
+  pin: string,
+  salt: Buffer,
+  iterations: number,
+): Promise<WebCryptoKey> {
+  const material = await webcrypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(pin),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveKey'],
+  );
+  return webcrypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt,
+      iterations,
+      hash: 'SHA-256',
+    },
+    material,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt'],
+  );
 }
 
 async function aesEncrypt(
@@ -72,6 +118,7 @@ async function aesDecrypt(
 export async function status(): Promise<{
   configured: boolean;
   locked: boolean;
+  mode?: 'webauthn' | 'pin' | 'none';
   credentialIdB64?: string;
   saltB64?: string;
 }> {
@@ -88,8 +135,6 @@ export async function status(): Promise<{
     );
     return { configured: false, locked: false };
   }
-  // readVault() returns null for unsupported schema versions; same treatment —
-  // setup will overwrite the stale file rather than brick the app.
   if (!record) {
     console.warn(
       '[auth] vault file present but schema version mismatched, treating as unconfigured',
@@ -98,14 +143,46 @@ export async function status(): Promise<{
   }
   return {
     configured: true,
-    locked: unlockedKeyHex === null,
+    locked: record.mode === 'none' ? false : unlockedKeyHex === null,
+    mode: record.mode,
     credentialIdB64: record.credentialIdB64,
     saltB64: record.saltB64,
   };
 }
 
-// WebAuthn PRF derives a KEK that unwraps a random DEK; envelope encryption
-// keeps re-enrolment cheap (no full DB re-encrypt).
+// Opens the plain DB at process start when the vault is in 'none' mode so the
+// renderer can issue db:* IPCs without an unlock step.
+export function bootstrapNoLock(): void {
+  if (!isVaultConfigured()) return;
+  const record = readVault();
+  if (record?.mode !== 'none') return;
+  openDatabasePlain();
+}
+
+export async function setupNone(): Promise<
+  { ok: true } | { ok: false; message: string }
+> {
+  if (isVaultConfigured()) {
+    return { ok: false, message: 'Vault already configured' };
+  }
+  try {
+    const record: VaultRecord = {
+      version: CURRENT_VAULT_VERSION,
+      mode: 'none',
+      wrapIvB64: '',
+      wrapCiphertextB64: '',
+    };
+    writeVault(record);
+    openDatabasePlain();
+    return { ok: true };
+  } catch (cause) {
+    return {
+      ok: false,
+      message: cause instanceof Error ? cause.message : String(cause),
+    };
+  }
+}
+
 export async function setup(args: {
   credentialIdB64: string;
   saltB64: string;
@@ -127,8 +204,43 @@ export async function setup(args: {
     const wrapped = await aesEncrypt(kek, dek);
     const record: VaultRecord = {
       version: CURRENT_VAULT_VERSION,
+      mode: 'webauthn',
       credentialIdB64: args.credentialIdB64,
       saltB64: args.saltB64,
+      wrapIvB64: bufToB64(wrapped.iv),
+      wrapCiphertextB64: bufToB64(wrapped.ciphertext),
+    };
+    writeVault(record);
+    const hex = bytesToHex(dek);
+    openDatabase(hex);
+    unlockedKeyHex = hex;
+    return { ok: true };
+  } catch (cause) {
+    return {
+      ok: false,
+      message: cause instanceof Error ? cause.message : String(cause),
+    };
+  }
+}
+
+export async function setupPin(args: {
+  pin: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const validation = validatePin(args.pin);
+  if (!validation.ok) return validation;
+  if (isVaultConfigured()) {
+    return { ok: false, message: 'Vault already configured' };
+  }
+  try {
+    const dek = randomBytes(KEY_LEN_BYTES);
+    const kdfSalt = randomBytes(PBKDF2_SALT_BYTES);
+    const kek = await deriveKekFromPin(args.pin, kdfSalt, PBKDF2_ITERATIONS);
+    const wrapped = await aesEncrypt(kek, dek);
+    const record: VaultRecord = {
+      version: CURRENT_VAULT_VERSION,
+      mode: 'pin',
+      kdfSaltB64: bufToB64(kdfSalt),
+      kdfIterations: PBKDF2_ITERATIONS,
       wrapIvB64: bufToB64(wrapped.iv),
       wrapCiphertextB64: bufToB64(wrapped.ciphertext),
     };
@@ -156,6 +268,9 @@ export async function unlock(args: {
   }
   const record = readVault();
   if (!record) return { ok: false, message: 'Vault not configured' };
+  if (record.mode !== 'webauthn') {
+    return { ok: false, message: 'Vault is not configured for WebAuthn' };
+  }
   try {
     const prf = b64ToBuf(args.prfOutputB64);
     const kek = await importKekFromBytes(prf);
@@ -181,13 +296,53 @@ export async function unlock(args: {
   }
 }
 
+export async function unlockPin(args: {
+  pin: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const validation = validatePin(args.pin);
+  if (!validation.ok) return validation;
+  const record = readVault();
+  if (!record) return { ok: false, message: 'Vault not configured' };
+  if (record.mode !== 'pin' || !record.kdfSaltB64 || !record.kdfIterations) {
+    return { ok: false, message: 'Vault is not configured for PIN' };
+  }
+  try {
+    const kek = await deriveKekFromPin(
+      args.pin,
+      b64ToBuf(record.kdfSaltB64),
+      record.kdfIterations,
+    );
+    let dek: Buffer;
+    try {
+      dek = await aesDecrypt(
+        kek,
+        b64ToBuf(record.wrapIvB64),
+        b64ToBuf(record.wrapCiphertextB64),
+      );
+    } catch {
+      return { ok: false, message: 'Incorrect PIN' };
+    }
+    const hex = bytesToHex(dek);
+    openDatabase(hex);
+    unlockedKeyHex = hex;
+    return { ok: true };
+  } catch (cause) {
+    return {
+      ok: false,
+      message: cause instanceof Error ? cause.message : String(cause),
+    };
+  }
+}
+
 export async function lock(): Promise<void> {
+  const record = readVault();
+  // mode='none' has no unlock path, so closing the DB would leave the app in
+  // an unrecoverable "locked" state with nothing to enter. Skip.
+  if (record?.mode === 'none') return;
   closeDatabase();
   unlockedKeyHex = null;
 }
 
-// Unwraps the DEK with the current PRF, re-wraps with the new PRF, then writes
-// the new VaultRecord. The old record persists until the new wrap succeeds.
 export async function reEnrol(args: {
   currentPrfOutputB64: string;
   nextCredentialIdB64: string;
@@ -202,6 +357,9 @@ export async function reEnrol(args: {
   }
   const record = readVault();
   if (!record) return { ok: false, message: 'Vault not configured' };
+  if (record.mode !== 'webauthn') {
+    return { ok: false, message: 'Vault is not configured for WebAuthn' };
+  }
   try {
     const currentKek = await importKekFromBytes(
       b64ToBuf(args.currentPrfOutputB64),
@@ -220,6 +378,7 @@ export async function reEnrol(args: {
     const wrapped = await aesEncrypt(nextKek, dek);
     const next: VaultRecord = {
       version: CURRENT_VAULT_VERSION,
+      mode: 'webauthn',
       credentialIdB64: args.nextCredentialIdB64,
       saltB64: args.nextSaltB64,
       wrapIvB64: bufToB64(wrapped.iv),
@@ -235,8 +394,66 @@ export async function reEnrol(args: {
   }
 }
 
+export async function reEnrolPin(args: {
+  currentPin: string;
+  nextPin: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const currentValidation = validatePin(args.currentPin);
+  if (!currentValidation.ok) return currentValidation;
+  const nextValidation = validatePin(args.nextPin);
+  if (!nextValidation.ok) return nextValidation;
+  const record = readVault();
+  if (!record) return { ok: false, message: 'Vault not configured' };
+  if (record.mode !== 'pin' || !record.kdfSaltB64 || !record.kdfIterations) {
+    return { ok: false, message: 'Vault is not configured for PIN' };
+  }
+  try {
+    const currentKek = await deriveKekFromPin(
+      args.currentPin,
+      b64ToBuf(record.kdfSaltB64),
+      record.kdfIterations,
+    );
+    let dek: Buffer;
+    try {
+      dek = await aesDecrypt(
+        currentKek,
+        b64ToBuf(record.wrapIvB64),
+        b64ToBuf(record.wrapCiphertextB64),
+      );
+    } catch {
+      return { ok: false, message: 'Current PIN is incorrect' };
+    }
+    const nextSalt = randomBytes(PBKDF2_SALT_BYTES);
+    const nextKek = await deriveKekFromPin(
+      args.nextPin,
+      nextSalt,
+      PBKDF2_ITERATIONS,
+    );
+    const wrapped = await aesEncrypt(nextKek, dek);
+    const next: VaultRecord = {
+      version: CURRENT_VAULT_VERSION,
+      mode: 'pin',
+      kdfSaltB64: bufToB64(nextSalt),
+      kdfIterations: PBKDF2_ITERATIONS,
+      wrapIvB64: bufToB64(wrapped.iv),
+      wrapCiphertextB64: bufToB64(wrapped.ciphertext),
+    };
+    writeVault(next);
+    return { ok: true };
+  } catch (cause) {
+    return {
+      ok: false,
+      message: cause instanceof Error ? cause.message : String(cause),
+    };
+  }
+}
+
 export async function revoke(): Promise<void> {
-  await lock();
+  // lock() is a no-op for mode='none', but a revoke must always close the
+  // open DB handle — otherwise a subsequent setup would early-return out of
+  // openDatabase/openDatabasePlain with a stale handle pointing at deleted files.
+  closeDatabase();
+  unlockedKeyHex = null;
   const dbPath = getDbPath();
   for (const path of [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]) {
     try {

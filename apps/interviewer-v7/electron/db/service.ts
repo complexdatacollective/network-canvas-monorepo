@@ -120,6 +120,24 @@ export function openDatabase(rawKeyHex: string): void {
   dbInstance = handle;
 }
 
+// Opens the DB without any cipher pragmas. Used when the user opts out of
+// any device lock — data is written to disk in plain SQLite format and
+// on-disk confidentiality relies entirely on OS-level protections.
+export function openDatabasePlain(): void {
+  if (dbInstance) return;
+  const path = getDbPath();
+  const handle = new Database(path);
+  handle.pragma('journal_mode = WAL');
+  handle.pragma('foreign_keys = ON');
+  try {
+    handle.exec(SCHEMA_SQL);
+  } catch (cause) {
+    handle.close();
+    throw cause;
+  }
+  dbInstance = handle;
+}
+
 export function closeDatabase(): void {
   if (!dbInstance) return;
   dbInstance.close();

@@ -13,6 +13,11 @@ import {
 const PASSKEY_USER_ID = new TextEncoder().encode('interviewer-v7:device');
 const PASSKEY_USER_NAME = 'Network Canvas Interviewer';
 
+const PBKDF2_ITERATIONS = 600_000;
+const PBKDF2_SALT_BYTES = 32;
+const PBKDF2_KEY_BYTES = 32;
+const PIN_LENGTH = 8;
+
 // Non-Electron renderers hold the unlock flag in sessionStorage, not in a
 // module-level variable: a page reload (Vite HMR escalation, F5, etc.) wipes
 // module state and would otherwise re-show the LockScreen on every dev save.
@@ -34,23 +39,96 @@ function writeWebUnlocked(value: boolean): void {
   }
 }
 
+function validatePin(
+  pin: string,
+): { ok: true } | { ok: false; message: string } {
+  if (pin.length !== PIN_LENGTH || !/^\d+$/.test(pin)) {
+    return {
+      ok: false,
+      message: `PIN must be exactly ${PIN_LENGTH} digits`,
+    };
+  }
+  return { ok: true };
+}
+
+async function derivePinVerifier(
+  pin: string,
+  saltB64: string,
+  iterations: number,
+): Promise<string> {
+  const salt = fromBase64(saltB64);
+  const material = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(pin),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits'],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt,
+      iterations,
+      hash: 'SHA-256',
+    },
+    material,
+    PBKDF2_KEY_BYTES * 8,
+  );
+  return toBase64(new Uint8Array(bits));
+}
+
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 export function isAuthenticatorSupported(): boolean {
   if (!isWebAuthnAvailable()) return false;
-  // Electron main calls app.configureWebAuthn() at bootstrap; the OS-level
-  // requirements (signed binary + Touch ID / Windows Hello entitlements) must
-  // also be met for navigator.credentials to surface a platform-authenticator
-  // prompt, but those are deployment concerns, not runtime gates we can check here.
+  // Unsigned Electron dev: the WebAuthn API surface exists but the OS prompt
+  // never appears (Touch ID requires a signed binary + keychainAccessGroup),
+  // so navigator.credentials.create() hangs until the 60s timeout. Treat as
+  // unsupported so the user is routed to the PIN / no-lock fallback.
+  if (
+    isElectron &&
+    typeof window !== 'undefined' &&
+    window.electronAPI &&
+    !window.electronAPI.isPackaged
+  ) {
+    return false;
+  }
   return true;
 }
 
 export async function status(): Promise<AuthStatus> {
   if (isElectron) return electronAuth.status();
   const metadata = await vaultMetadata.read();
+  if (!metadata) {
+    return { configured: false, locked: false };
+  }
+  if (metadata.mode === 'webauthn') {
+    return {
+      configured: true,
+      locked: !readWebUnlocked(),
+      mode: 'webauthn',
+      credentialIdB64: metadata.credentialIdB64,
+      saltB64: metadata.saltB64,
+    };
+  }
+  if (metadata.mode === 'pin') {
+    return {
+      configured: true,
+      locked: !readWebUnlocked(),
+      mode: 'pin',
+    };
+  }
   return {
-    configured: metadata !== null,
-    locked: metadata !== null && !readWebUnlocked(),
-    credentialIdB64: metadata?.credentialIdB64,
-    saltB64: metadata?.saltB64,
+    configured: true,
+    locked: false,
+    mode: 'none',
   };
 }
 
@@ -80,7 +158,40 @@ export async function enrol(
       prfOutputB64: toBase64(result.enrolment.prfOutput),
     });
   }
-  await vaultMetadata.write({ credentialIdB64, saltB64 });
+  await vaultMetadata.writeWebAuthn({ credentialIdB64, saltB64 });
+  writeWebUnlocked(true);
+  return { ok: true };
+}
+
+export async function enrolWithoutLock(): Promise<{
+  ok: boolean;
+  message?: string;
+}> {
+  if (isElectron) {
+    return electronAuth.setupNone();
+  }
+  await vaultMetadata.writeNone();
+  writeWebUnlocked(true);
+  return { ok: true };
+}
+
+export async function enrolWithPin(
+  pin: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const validation = validatePin(pin);
+  if (!validation.ok) return validation;
+  if (isElectron) {
+    return electronAuth.setupPin({ pin });
+  }
+  const salt = new Uint8Array(PBKDF2_SALT_BYTES);
+  crypto.getRandomValues(salt);
+  const saltB64 = toBase64(salt);
+  const verifierB64 = await derivePinVerifier(pin, saltB64, PBKDF2_ITERATIONS);
+  await vaultMetadata.writePin({
+    kdfSaltB64: saltB64,
+    kdfIterations: PBKDF2_ITERATIONS,
+    verifierB64,
+  });
   writeWebUnlocked(true);
   return { ok: true };
 }
@@ -92,8 +203,14 @@ export async function unlock(
   const s = isElectron ? await electronAuth.status() : null;
   const credentialIdB64 = isElectron
     ? s?.credentialIdB64
-    : metadata?.credentialIdB64;
-  const saltB64 = isElectron ? s?.saltB64 : metadata?.saltB64;
+    : metadata?.mode === 'webauthn'
+      ? metadata.credentialIdB64
+      : undefined;
+  const saltB64 = isElectron
+    ? s?.saltB64
+    : metadata?.mode === 'webauthn'
+      ? metadata.saltB64
+      : undefined;
   if (!credentialIdB64 || !saltB64) {
     return { ok: false, message: 'No authenticator enrolled' };
   }
@@ -107,6 +224,30 @@ export async function unlock(
     return electronAuth.unlock({
       prfOutputB64: toBase64(result.enrolment.prfOutput),
     });
+  }
+  writeWebUnlocked(true);
+  return { ok: true };
+}
+
+export async function unlockWithPin(
+  pin: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const validation = validatePin(pin);
+  if (!validation.ok) return validation;
+  if (isElectron) {
+    return electronAuth.unlockPin({ pin });
+  }
+  const metadata = await vaultMetadata.read();
+  if (!metadata || metadata.mode !== 'pin') {
+    return { ok: false, message: 'PIN is not configured on this device' };
+  }
+  const verifier = await derivePinVerifier(
+    pin,
+    metadata.kdfSaltB64,
+    metadata.kdfIterations,
+  );
+  if (!constantTimeEqual(verifier, metadata.verifierB64)) {
+    return { ok: false, message: 'Incorrect PIN' };
   }
   writeWebUnlocked(true);
   return { ok: true };
@@ -130,8 +271,14 @@ export async function reEnrol(
   const metadata = isElectron ? null : await vaultMetadata.read();
   const currentCredentialIdB64 = isElectron
     ? current?.credentialIdB64
-    : metadata?.credentialIdB64;
-  const currentSaltB64 = isElectron ? current?.saltB64 : metadata?.saltB64;
+    : metadata?.mode === 'webauthn'
+      ? metadata.credentialIdB64
+      : undefined;
+  const currentSaltB64 = isElectron
+    ? current?.saltB64
+    : metadata?.mode === 'webauthn'
+      ? metadata.saltB64
+      : undefined;
   if (!currentCredentialIdB64 || !currentSaltB64) {
     return { ok: false, message: 'No authenticator enrolled' };
   }
@@ -163,9 +310,50 @@ export async function reEnrol(
       nextPrfOutputB64: toBase64(next.enrolment.prfOutput),
     });
   }
-  await vaultMetadata.write({
+  await vaultMetadata.writeWebAuthn({
     credentialIdB64: nextCredentialIdB64,
     saltB64: nextSaltB64,
+  });
+  writeWebUnlocked(true);
+  return { ok: true };
+}
+
+export async function reEnrolWithPin(args: {
+  currentPin: string;
+  nextPin: string;
+}): Promise<{ ok: boolean; message?: string }> {
+  const nextValidation = validatePin(args.nextPin);
+  if (!nextValidation.ok) return nextValidation;
+  const currentValidation = validatePin(args.currentPin);
+  if (!currentValidation.ok)
+    return { ok: false, message: 'Current PIN is incorrect' };
+  if (isElectron) {
+    return electronAuth.reEnrolPin(args);
+  }
+  const metadata = await vaultMetadata.read();
+  if (!metadata || metadata.mode !== 'pin') {
+    return { ok: false, message: 'PIN is not configured on this device' };
+  }
+  const currentVerifier = await derivePinVerifier(
+    args.currentPin,
+    metadata.kdfSaltB64,
+    metadata.kdfIterations,
+  );
+  if (!constantTimeEqual(currentVerifier, metadata.verifierB64)) {
+    return { ok: false, message: 'Current PIN is incorrect' };
+  }
+  const nextSalt = new Uint8Array(PBKDF2_SALT_BYTES);
+  crypto.getRandomValues(nextSalt);
+  const nextSaltB64 = toBase64(nextSalt);
+  const nextVerifierB64 = await derivePinVerifier(
+    args.nextPin,
+    nextSaltB64,
+    PBKDF2_ITERATIONS,
+  );
+  await vaultMetadata.writePin({
+    kdfSaltB64: nextSaltB64,
+    kdfIterations: PBKDF2_ITERATIONS,
+    verifierB64: nextVerifierB64,
   });
   writeWebUnlocked(true);
   return { ok: true };

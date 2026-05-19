@@ -3,15 +3,42 @@ import { Preferences } from '@capacitor/preferences';
 
 import { isCapacitor } from '../platform/platform';
 
-export type VaultMetadata = {
-  credentialIdB64: string;
-  saltB64: string;
-  enrolledAt: string;
-};
+export type VaultMetadata =
+  | {
+      mode: 'webauthn';
+      credentialIdB64: string;
+      saltB64: string;
+      enrolledAt: string;
+    }
+  | {
+      mode: 'pin';
+      kdfSaltB64: string;
+      kdfIterations: number;
+      verifierB64: string;
+      enrolledAt: string;
+    }
+  | {
+      mode: 'none';
+      enrolledAt: string;
+    };
 
+const KEY_MODE = 'auth.mode';
 const KEY_CREDENTIAL_ID = 'auth.credentialId';
 const KEY_SALT = 'auth.salt';
+const KEY_KDF_SALT = 'auth.kdfSalt';
+const KEY_KDF_ITERATIONS = 'auth.kdfIterations';
+const KEY_VERIFIER = 'auth.verifier';
 const KEY_ENROLLED_AT = 'auth.enrolledAt';
+
+const ALL_KEYS = [
+  KEY_MODE,
+  KEY_CREDENTIAL_ID,
+  KEY_SALT,
+  KEY_KDF_SALT,
+  KEY_KDF_ITERATIONS,
+  KEY_VERIFIER,
+  KEY_ENROLLED_AT,
+] as const;
 
 // On iOS, @capacitor/preferences is backed by the Keychain which is
 // inaccessible immediately after a cold boot until the user enters their
@@ -79,31 +106,84 @@ async function removeEntry(key: string): Promise<void> {
 }
 
 export async function read(): Promise<VaultMetadata | null> {
-  const [credentialIdB64, saltB64, enrolledAt] = await Promise.all([
+  const mode = await readEntry(KEY_MODE);
+  const enrolledAt = await readEntry(KEY_ENROLLED_AT);
+  if (!enrolledAt) return null;
+
+  if (mode === 'none') {
+    return { mode: 'none', enrolledAt };
+  }
+
+  if (mode === 'pin') {
+    const [kdfSaltB64, kdfIterationsRaw, verifierB64] = await Promise.all([
+      readEntry(KEY_KDF_SALT),
+      readEntry(KEY_KDF_ITERATIONS),
+      readEntry(KEY_VERIFIER),
+    ]);
+    if (!kdfSaltB64 || !kdfIterationsRaw || !verifierB64) return null;
+    const kdfIterations = Number.parseInt(kdfIterationsRaw, 10);
+    if (!Number.isFinite(kdfIterations) || kdfIterations <= 0) return null;
+    return {
+      mode: 'pin',
+      kdfSaltB64,
+      kdfIterations,
+      verifierB64,
+      enrolledAt,
+    };
+  }
+
+  const [credentialIdB64, saltB64] = await Promise.all([
     readEntry(KEY_CREDENTIAL_ID),
     readEntry(KEY_SALT),
-    readEntry(KEY_ENROLLED_AT),
   ]);
-  if (!credentialIdB64 || !saltB64 || !enrolledAt) return null;
-  return { credentialIdB64, saltB64, enrolledAt };
+  if (!credentialIdB64 || !saltB64) return null;
+  return {
+    mode: 'webauthn',
+    credentialIdB64,
+    saltB64,
+    enrolledAt,
+  };
 }
 
-export async function write(args: {
+export async function writeWebAuthn(args: {
   credentialIdB64: string;
   saltB64: string;
 }): Promise<void> {
   const enrolledAt = new Date().toISOString();
+  await clear();
   await Promise.all([
+    writeEntry(KEY_MODE, 'webauthn'),
     writeEntry(KEY_CREDENTIAL_ID, args.credentialIdB64),
     writeEntry(KEY_SALT, args.saltB64),
     writeEntry(KEY_ENROLLED_AT, enrolledAt),
   ]);
 }
 
-export async function clear(): Promise<void> {
+export async function writePin(args: {
+  kdfSaltB64: string;
+  kdfIterations: number;
+  verifierB64: string;
+}): Promise<void> {
+  const enrolledAt = new Date().toISOString();
+  await clear();
   await Promise.all([
-    removeEntry(KEY_CREDENTIAL_ID),
-    removeEntry(KEY_SALT),
-    removeEntry(KEY_ENROLLED_AT),
+    writeEntry(KEY_MODE, 'pin'),
+    writeEntry(KEY_KDF_SALT, args.kdfSaltB64),
+    writeEntry(KEY_KDF_ITERATIONS, String(args.kdfIterations)),
+    writeEntry(KEY_VERIFIER, args.verifierB64),
+    writeEntry(KEY_ENROLLED_AT, enrolledAt),
   ]);
+}
+
+export async function writeNone(): Promise<void> {
+  const enrolledAt = new Date().toISOString();
+  await clear();
+  await Promise.all([
+    writeEntry(KEY_MODE, 'none'),
+    writeEntry(KEY_ENROLLED_AT, enrolledAt),
+  ]);
+}
+
+export async function clear(): Promise<void> {
+  await Promise.all(ALL_KEYS.map(removeEntry));
 }

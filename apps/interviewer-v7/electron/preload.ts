@@ -41,8 +41,13 @@ const authBridge = {
     saltB64: string;
     prfOutputB64: string;
   }) => ipcRenderer.invoke('auth:setup', args),
+  setupPin: (args: { pin: string }) =>
+    ipcRenderer.invoke('auth:setupPin', args),
+  setupNone: () => ipcRenderer.invoke('auth:setupNone'),
   unlock: (args: { prfOutputB64: string }) =>
     ipcRenderer.invoke('auth:unlock', args),
+  unlockPin: (args: { pin: string }) =>
+    ipcRenderer.invoke('auth:unlockPin', args),
   lock: () => ipcRenderer.invoke('auth:lock'),
   reEnrol: (args: {
     currentPrfOutputB64: string;
@@ -50,6 +55,8 @@ const authBridge = {
     nextSaltB64: string;
     nextPrfOutputB64: string;
   }) => ipcRenderer.invoke('auth:reEnrol', args),
+  reEnrolPin: (args: { currentPin: string; nextPin: string }) =>
+    ipcRenderer.invoke('auth:reEnrolPin', args),
   revoke: () => ipcRenderer.invoke('auth:revoke'),
 };
 
