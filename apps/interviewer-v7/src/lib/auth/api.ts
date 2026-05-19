@@ -77,6 +77,65 @@ async function derivePinVerifier(
   return toBase64(new Uint8Array(bits));
 }
 
+const PASSPHRASE_MIN_LENGTH = 12;
+const PASSPHRASE_MIN_CLASSES = 3;
+
+function countCharacterClasses(s: string): number {
+  let n = 0;
+  if (/[a-z]/.test(s)) n += 1;
+  if (/[A-Z]/.test(s)) n += 1;
+  if (/[0-9]/.test(s)) n += 1;
+  if (/[^a-zA-Z0-9]/.test(s)) n += 1;
+  return n;
+}
+
+function validatePassphrase(
+  phrase: string,
+): { ok: true } | { ok: false; message: string } {
+  if (phrase.length < PASSPHRASE_MIN_LENGTH) {
+    return {
+      ok: false,
+      message: `Passphrase must be at least ${PASSPHRASE_MIN_LENGTH} characters`,
+    };
+  }
+  if (countCharacterClasses(phrase) < PASSPHRASE_MIN_CLASSES) {
+    return {
+      ok: false,
+      message:
+        'Passphrase must be stronger — combine uppercase, lowercase, numbers, and symbols',
+    };
+  }
+  return { ok: true };
+}
+
+async function derivePassphraseVerifier(
+  phrase: string,
+  saltB64: string,
+  iterations: number,
+): Promise<string> {
+  // Same derivation as PIN — but kept separate so future tuning (e.g. argon2)
+  // can be passphrase-specific without disturbing PIN.
+  const salt = fromBase64(saltB64);
+  const material = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(phrase),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits'],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt,
+      iterations,
+      hash: 'SHA-256',
+    },
+    material,
+    PBKDF2_KEY_BYTES * 8,
+  );
+  return toBase64(new Uint8Array(bits));
+}
+
 function constantTimeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
@@ -123,6 +182,20 @@ export async function status(): Promise<AuthStatus> {
       configured: true,
       locked: !readWebUnlocked(),
       mode: 'pin',
+    };
+  }
+  if (metadata.mode === 'passphrase') {
+    return {
+      configured: true,
+      locked: !readWebUnlocked(),
+      mode: 'passphrase',
+    };
+  }
+  if (metadata.mode === 'biometric-native') {
+    return {
+      configured: true,
+      locked: !readWebUnlocked(),
+      mode: 'biometric-native',
     };
   }
   return {
@@ -351,6 +424,99 @@ export async function reEnrolWithPin(args: {
     PBKDF2_ITERATIONS,
   );
   await vaultMetadata.writePin({
+    kdfSaltB64: nextSaltB64,
+    kdfIterations: PBKDF2_ITERATIONS,
+    verifierB64: nextVerifierB64,
+  });
+  writeWebUnlocked(true);
+  return { ok: true };
+}
+
+export async function enrolWithPassphrase(
+  phrase: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const validation = validatePassphrase(phrase);
+  if (!validation.ok) return validation;
+  if (isElectron) {
+    return electronAuth.setupPassphrase({ phrase });
+  }
+  const salt = new Uint8Array(PBKDF2_SALT_BYTES);
+  crypto.getRandomValues(salt);
+  const saltB64 = toBase64(salt);
+  const verifierB64 = await derivePassphraseVerifier(
+    phrase,
+    saltB64,
+    PBKDF2_ITERATIONS,
+  );
+  await vaultMetadata.writePassphrase({
+    kdfSaltB64: saltB64,
+    kdfIterations: PBKDF2_ITERATIONS,
+    verifierB64,
+  });
+  writeWebUnlocked(true);
+  return { ok: true };
+}
+
+export async function unlockWithPassphrase(
+  phrase: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const validation = validatePassphrase(phrase);
+  if (!validation.ok) return { ok: false, message: 'Incorrect passphrase' };
+  if (isElectron) {
+    return electronAuth.unlockPassphrase({ phrase });
+  }
+  const metadata = await vaultMetadata.read();
+  if (!metadata || metadata.mode !== 'passphrase') {
+    return {
+      ok: false,
+      message: 'Passphrase is not configured on this device',
+    };
+  }
+  const verifier = await derivePassphraseVerifier(
+    phrase,
+    metadata.kdfSaltB64,
+    metadata.kdfIterations,
+  );
+  if (!constantTimeEqual(verifier, metadata.verifierB64)) {
+    return { ok: false, message: 'Incorrect passphrase' };
+  }
+  writeWebUnlocked(true);
+  return { ok: true };
+}
+
+export async function reEnrolWithPassphrase(args: {
+  currentPhrase: string;
+  nextPhrase: string;
+}): Promise<{ ok: boolean; message?: string }> {
+  const nextValidation = validatePassphrase(args.nextPhrase);
+  if (!nextValidation.ok) return nextValidation;
+  if (isElectron) {
+    return electronAuth.reEnrolPassphrase(args);
+  }
+  const metadata = await vaultMetadata.read();
+  if (!metadata || metadata.mode !== 'passphrase') {
+    return {
+      ok: false,
+      message: 'Passphrase is not configured on this device',
+    };
+  }
+  const currentVerifier = await derivePassphraseVerifier(
+    args.currentPhrase,
+    metadata.kdfSaltB64,
+    metadata.kdfIterations,
+  );
+  if (!constantTimeEqual(currentVerifier, metadata.verifierB64)) {
+    return { ok: false, message: 'Current passphrase is incorrect' };
+  }
+  const nextSalt = new Uint8Array(PBKDF2_SALT_BYTES);
+  crypto.getRandomValues(nextSalt);
+  const nextSaltB64 = toBase64(nextSalt);
+  const nextVerifierB64 = await derivePassphraseVerifier(
+    args.nextPhrase,
+    nextSaltB64,
+    PBKDF2_ITERATIONS,
+  );
+  await vaultMetadata.writePassphrase({
     kdfSaltB64: nextSaltB64,
     kdfIterations: PBKDF2_ITERATIONS,
     verifierB64: nextVerifierB64,

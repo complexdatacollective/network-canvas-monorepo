@@ -113,6 +113,16 @@ declare global {
       currentPin: string;
       nextPin: string;
     }) => Promise<{ ok: boolean; message?: string }>;
+    setupPassphrase: (args: {
+      phrase: string;
+    }) => Promise<{ ok: boolean; message?: string }>;
+    unlockPassphrase: (args: {
+      phrase: string;
+    }) => Promise<{ ok: boolean; message?: string }>;
+    reEnrolPassphrase: (args: {
+      currentPhrase: string;
+      nextPhrase: string;
+    }) => Promise<{ ok: boolean; message?: string }>;
     revoke: () => Promise<void>;
   };
 

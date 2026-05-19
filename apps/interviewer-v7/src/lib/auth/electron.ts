@@ -63,6 +63,25 @@ export async function reEnrolPin(args: {
   return ipc().reEnrolPin(args);
 }
 
+export async function setupPassphrase(args: {
+  phrase: string;
+}): Promise<{ ok: boolean; message?: string }> {
+  return ipc().setupPassphrase(args);
+}
+
+export async function unlockPassphrase(args: {
+  phrase: string;
+}): Promise<{ ok: boolean; message?: string }> {
+  return ipc().unlockPassphrase(args);
+}
+
+export async function reEnrolPassphrase(args: {
+  currentPhrase: string;
+  nextPhrase: string;
+}): Promise<{ ok: boolean; message?: string }> {
+  return ipc().reEnrolPassphrase(args);
+}
+
 export async function revoke(): Promise<void> {
   return ipc().revoke();
 }
