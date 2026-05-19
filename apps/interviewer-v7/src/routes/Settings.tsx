@@ -1,6 +1,7 @@
 import { Lock, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
+import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -185,15 +186,43 @@ export function SettingsRoute() {
       </Surface>
 
       <Surface level={1} spacing="lg" className="flex flex-col gap-4">
-        <Heading level="h3">Idle timeout</Heading>
+        <Heading level="h3">Lock behavior</Heading>
+        {(auth.mode === 'none' || !auth.mode) && (
+          <Alert variant="info">
+            Enable app security to use these options.
+          </Alert>
+        )}
         <UnconnectedField
           name="idleTimeoutMinutes"
-          label="Lock the app after"
+          label="Auto-lock after"
           hint="How long the app may sit idle before automatically locking."
           component={SelectField}
           options={IDLE_TIMEOUT_OPTIONS}
           value={String(auth.idleTimeoutMinutes)}
           onChange={(value) => void handleIdleTimeoutChange(value)}
+          disabled={auth.mode === 'none' || !auth.mode}
+        />
+        <UnconnectedField
+          name="requireUnlockOnResume"
+          label="Require unlock before resuming an interview"
+          inline
+          component={ToggleField}
+          value={settings?.requireUnlockOnResume ?? false}
+          onChange={(value) =>
+            void persistExport({ requireUnlockOnResume: Boolean(value) })
+          }
+          disabled={auth.mode === 'none' || !auth.mode}
+        />
+        <UnconnectedField
+          name="requireUnlockOnExport"
+          label="Require unlock before exporting data"
+          inline
+          component={ToggleField}
+          value={settings?.requireUnlockOnExport ?? false}
+          onChange={(value) =>
+            void persistExport({ requireUnlockOnExport: Boolean(value) })
+          }
+          disabled={auth.mode === 'none' || !auth.mode}
         />
       </Surface>
 
