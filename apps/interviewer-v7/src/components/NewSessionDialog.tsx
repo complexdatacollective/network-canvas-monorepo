@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react';
-
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -7,43 +5,35 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-import { useToast } from '@codaco/fresco-ui/Toast';
 import { createInitialNetwork } from '@codaco/interview';
-import { createSession, getProtocolByHash } from '~/lib/db/api';
-import type { StoredSession } from '~/lib/db/types';
+import { createSession } from '~/lib/db/api';
+import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
 
 type NewSessionDialogProps = {
   open: boolean;
-  protocolHash: string;
+  protocol: ProtocolWithCounts;
   onClose: () => void;
   onCreated: (session: StoredSession) => void;
+  layoutId?: string;
 };
 
 const FORM_ID = 'new-session-form';
 
 export function NewSessionDialog({
   open,
-  protocolHash,
+  protocol,
   onClose,
   onCreated,
+  layoutId,
 }: NewSessionDialogProps) {
-  const [protocolName, setProtocolName] = useState<string>('');
-  const toast = useToast();
-
-  useEffect(() => {
-    if (!open) return;
-    void getProtocolByHash(protocolHash).then((p) =>
-      setProtocolName(p?.name ?? ''),
-    );
-  }, [open, protocolHash]);
-
   return (
     <FormStoreProvider>
       <Dialog
         open={open}
         closeDialog={onClose}
+        layoutId={layoutId}
         title="Start a new interview"
-        description={protocolName ? `Using ${protocolName}` : undefined}
+        description={`Using ${protocol.name}`}
         footer={
           <>
             <Button type="button" variant="outline" onClick={onClose}>
@@ -63,17 +53,8 @@ export function NewSessionDialog({
                 fieldErrors: { caseId: ['Case ID is required'] },
               };
             }
-            const protocol = await getProtocolByHash(protocolHash);
-            if (!protocol) {
-              toast.add({
-                title: 'Protocol missing',
-                description: 'Cannot find the selected protocol.',
-                variant: 'destructive',
-              });
-              return { success: false };
-            }
             const session = await createSession({
-              protocolHash,
+              protocolHash: protocol.hash,
               protocolName: protocol.name,
               caseId,
               initialNetwork: createInitialNetwork(),

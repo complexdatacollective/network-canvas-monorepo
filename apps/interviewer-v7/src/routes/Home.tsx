@@ -99,17 +99,27 @@ export function HomeRoute() {
         onClose={() => setOpenDialog(null)}
       />
 
-      {pendingProtocolHash ? (
-        <NewSessionDialog
-          open
-          protocolHash={pendingProtocolHash}
-          onClose={() => setPendingProtocolHash(null)}
-          onCreated={(session) => {
-            setPendingProtocolHash(null);
-            navigate(`/interview/${session.id}`, { state: { fresh: true } });
-          }}
-        />
-      ) : null}
+      {pendingProtocolHash
+        ? (() => {
+            const pendingProtocol = protocols.find(
+              (p) => p.hash === pendingProtocolHash,
+            );
+            if (!pendingProtocol) return null;
+            return (
+              <NewSessionDialog
+                open
+                protocol={pendingProtocol}
+                onClose={() => setPendingProtocolHash(null)}
+                onCreated={(session) => {
+                  setPendingProtocolHash(null);
+                  navigate(`/interview/${session.id}`, {
+                    state: { fresh: true },
+                  });
+                }}
+              />
+            );
+          })()
+        : null}
     </div>
   );
 }
