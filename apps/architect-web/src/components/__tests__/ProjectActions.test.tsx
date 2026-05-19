@@ -154,18 +154,9 @@ describe('<ProjectActions />', () => {
     expect(exportNetcanvasMock).toHaveBeenCalled();
   });
 
-  it('hides the Return-to-start button by default', () => {
-    const store = createTestStore();
-    render(<ProjectActions />, { wrapper: wrap(store) });
-
-    expect(
-      screen.queryByRole('button', { name: /return to start/i }),
-    ).toBeNull();
-  });
-
   it('navigates to the start screen when Return-to-start is clicked', () => {
     const store = createTestStore();
-    render(<ProjectActions showReturnToStart />, { wrapper: wrap(store) });
+    render(<ProjectActions />, { wrapper: wrap(store) });
 
     fireEvent.click(
       screen.getByRole('button', { name: /return to start screen/i }),

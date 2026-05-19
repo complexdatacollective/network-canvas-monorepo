@@ -31,7 +31,6 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
     setScrollPosition(location, e.currentTarget.scrollTop);
   };
 
-  const isTimeline = location === '/protocol';
   const isSummary = location === '/protocol/summary';
 
   return (
@@ -46,7 +45,6 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
       <ProjectNav />
       {children}
       <ProjectActions
-        showReturnToStart={isTimeline}
         readOnly={isSummary}
         additionalActions={isSummary ? <PrintProtocolAction /> : null}
       />
