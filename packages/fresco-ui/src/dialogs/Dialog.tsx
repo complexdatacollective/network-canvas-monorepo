@@ -9,7 +9,7 @@ import {
   type SurfaceVariants,
   surfaceSpacingVariants,
 } from '../layout/Surface';
-import Modal from '../Modal/Modal';
+import Modal from '../Modal';
 import { ScrollArea } from '../ScrollArea';
 import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';

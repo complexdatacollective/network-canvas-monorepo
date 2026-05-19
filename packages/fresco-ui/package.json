@@ -89,8 +89,8 @@
       "default": "./dist/Toast.js"
     },
     "./Modal": {
-      "types": "./dist/Modal/Modal.d.ts",
-      "default": "./dist/Modal/Modal.js"
+      "types": "./dist/Modal/index.d.ts",
+      "default": "./dist/Modal/index.js"
     },
     "./Modal/ModalPopup": {
       "types": "./dist/Modal/ModalPopup.d.ts",

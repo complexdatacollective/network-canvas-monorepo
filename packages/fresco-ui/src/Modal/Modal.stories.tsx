@@ -3,11 +3,11 @@ import { motion } from 'motion/react';
 import { useState } from 'react';
 import { fn } from 'storybook/test';
 
+import Modal from '.';
 import Button from '../Button';
 import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
-import Modal from './Modal';
 import ModalPopup from './ModalPopup';
 
 const meta: Meta<typeof Modal> = {
