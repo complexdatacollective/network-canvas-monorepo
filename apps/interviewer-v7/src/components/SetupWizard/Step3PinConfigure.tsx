@@ -7,13 +7,11 @@ import SegmentedCodeField from '@codaco/fresco-ui/form/fields/SegmentedCodeField
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import * as authApi from '~/lib/auth/api';
-import { useAuth } from '~/lib/auth/AuthContext';
 
 import NoRecoveryNotice from './NoRecoveryNotice';
 
 export default function Step3PinConfigure() {
   const wizard = useWizard();
-  const { enrolWithPin } = useAuth();
   const [affirmed, setAffirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { pin } = useFormValue<readonly ['pin'], string>(['pin']);
@@ -35,7 +33,11 @@ export default function Step3PinConfigure() {
         await authApi.revoke();
       }
 
-      const result = await enrolWithPin(pin);
+      // Use authApi directly — context actions trigger refresh() which would
+      // flip AuthGate to `unlocked` and reveal the home screen behind the
+      // still-open wizard. SetupWizardDialog runs a single refresh after the
+      // wizard closes so the Home transition happens at the right moment.
+      const result = await authApi.enrolWithPin(pin);
 
       if (!result.ok) {
         setError(result.message ?? 'PIN setup failed.');
@@ -45,7 +47,7 @@ export default function Step3PinConfigure() {
       wizard.setStepData({ enrolmentCommitted: true });
       return true;
     });
-  }, [wizard, enrolWithPin, pin]);
+  }, [wizard, pin]);
 
   return (
     <div className="flex flex-col gap-4">

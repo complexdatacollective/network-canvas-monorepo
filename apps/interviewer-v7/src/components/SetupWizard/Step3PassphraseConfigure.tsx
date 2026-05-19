@@ -7,13 +7,11 @@ import { getPasswordStrength } from '@codaco/fresco-ui/form/fields/getPasswordSt
 import PasswordField from '@codaco/fresco-ui/form/fields/PasswordField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import * as authApi from '~/lib/auth/api';
-import { useAuth } from '~/lib/auth/AuthContext';
 
 import NoRecoveryNotice from './NoRecoveryNotice';
 
 export default function Step3PassphraseConfigure() {
   const wizard = useWizard();
-  const { enrolWithPassphrase } = useAuth();
   const [phrase, setPhrase] = useState('');
   const [confirm, setConfirm] = useState('');
   const [affirmed, setAffirmed] = useState(false);
@@ -39,7 +37,11 @@ export default function Step3PassphraseConfigure() {
         await authApi.revoke();
       }
 
-      const result = await enrolWithPassphrase(phrase);
+      // Use authApi directly — context actions trigger refresh() which would
+      // flip AuthGate to `unlocked` and reveal the home screen behind the
+      // still-open wizard. SetupWizardDialog runs a single refresh after the
+      // wizard closes so the Home transition happens at the right moment.
+      const result = await authApi.enrolWithPassphrase(phrase);
 
       if (!result.ok) {
         setError(result.message ?? 'Passphrase setup failed.');
@@ -49,7 +51,7 @@ export default function Step3PassphraseConfigure() {
       wizard.setStepData({ enrolmentCommitted: true });
       return true;
     });
-  }, [wizard, enrolWithPassphrase, phrase]);
+  }, [wizard, phrase]);
 
   return (
     <div className="flex flex-col gap-4">

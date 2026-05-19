@@ -4,14 +4,12 @@ import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import * as authApi from '~/lib/auth/api';
-import { useAuth } from '~/lib/auth/AuthContext';
 import { isCapacitor } from '~/lib/platform/platform';
 
 import NoRecoveryNotice from './NoRecoveryNotice';
 
 export default function Step3BiometricConfigure() {
   const wizard = useWizard();
-  const { enrolWithBiometricNative, enrolAuthenticator } = useAuth();
   const [affirmed, setAffirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,9 +26,13 @@ export default function Step3BiometricConfigure() {
         await authApi.revoke();
       }
 
+      // Use authApi directly — context actions trigger refresh() which would
+      // flip AuthGate to `unlocked` and reveal the home screen behind the
+      // still-open wizard. SetupWizardDialog runs a single refresh after the
+      // wizard closes so the Home transition happens at the right moment.
       const result = isCapacitor
-        ? await enrolWithBiometricNative()
-        : await enrolAuthenticator();
+        ? await authApi.enrolWithBiometricNative()
+        : await authApi.enrol();
 
       if (!result.ok) {
         setError(result.message ?? 'Biometric enrolment failed.');
@@ -40,7 +42,7 @@ export default function Step3BiometricConfigure() {
       wizard.setStepData({ enrolmentCommitted: true });
       return true;
     });
-  }, [wizard, enrolWithBiometricNative, enrolAuthenticator]);
+  }, [wizard]);
 
   return (
     <div className="flex flex-col gap-4">
