@@ -262,20 +262,26 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
   const openDialog = useCallback(
     <D extends AnyDialog>(dialogProps: D): Promise<DialogReturnType<D>> => {
       return new Promise((resolveCallback) => {
-        flushSync(() =>
-          setDialogs((prevDialogs) => [
-            ...prevDialogs,
-            {
-              onConfirmHandler: null,
-              ...dialogProps,
-              id: dialogProps.id ?? generatePublicId(),
-              resolveCallback,
-              open: true,
-              abortController: null,
-              error: null,
-            } as DialogState,
-          ]),
-        );
+        // Defer to a microtask so callers in React lifecycle methods (e.g.
+        // useEffect mount handlers) don't trigger "flushSync was called from
+        // inside a lifecycle method" — flushSync would otherwise execute while
+        // the commit phase is still running.
+        queueMicrotask(() => {
+          flushSync(() =>
+            setDialogs((prevDialogs) => [
+              ...prevDialogs,
+              {
+                onConfirmHandler: null,
+                ...dialogProps,
+                id: dialogProps.id ?? generatePublicId(),
+                resolveCallback,
+                open: true,
+                abortController: null,
+                error: null,
+              } as DialogState,
+            ]),
+          );
+        });
       });
     },
     [],
