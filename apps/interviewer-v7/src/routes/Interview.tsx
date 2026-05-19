@@ -5,6 +5,7 @@ import { useHistoryState } from 'wouter/use-browser-location';
 
 import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
@@ -157,7 +158,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   if (state.kind === 'loading') {
     return (
       <div className="bg-background flex h-dvh items-center justify-center">
-        <Paragraph emphasis="muted">Loading interview...</Paragraph>
+        <Spinner size="lg" />
       </div>
     );
   }

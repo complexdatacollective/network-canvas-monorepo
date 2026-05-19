@@ -13,7 +13,7 @@ export default function Step1Intro() {
   }, [setNextEnabled]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
       <Paragraph>
         This wizard will help you set up app-level security for Network Canvas
         Interviewer. You can choose a biometric method, a PIN code, or a
@@ -42,6 +42,6 @@ export default function Step1Intro() {
           </AlertDescription>
         </Alert>
       )}
-    </div>
+    </>
   );
 }

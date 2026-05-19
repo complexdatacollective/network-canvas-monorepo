@@ -34,7 +34,7 @@ const segmentVariants = compose(
   interactiveStateVariants,
   cva({
     base: cx(
-      'font-monospace aspect-square min-w-0 text-center caret-transparent',
+      'font-monospace aspect-square min-w-0 rounded-sm text-center caret-transparent ring-0',
       'focus-visible:focus-styles outline-current',
       'placeholder:text-input-contrast/30',
     ),

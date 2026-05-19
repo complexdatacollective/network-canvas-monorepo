@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import SegmentedCodeField from '@codaco/fresco-ui/form/fields/SegmentedCodeField';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
@@ -50,7 +51,7 @@ export default function Step3PinConfigure() {
   }, [wizard, pin]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
       <Field
         component={SegmentedCodeField}
         name="pin"
@@ -84,12 +85,13 @@ export default function Step3PinConfigure() {
         </div>
       )}
       <NoRecoveryNotice method="pin" />
-      <label className="flex cursor-pointer items-start gap-3">
-        <Checkbox value={affirmed} onChange={(v) => setAffirmed(v ?? false)} />
-        <span className="text-sm leading-snug">
-          I understand there is no recovery.
-        </span>
-      </label>
-    </div>
+      <UnconnectedField
+        name="pin-affirmation"
+        label="I understand there is no recovery."
+        component={Checkbox}
+        value={affirmed}
+        onChange={(v) => setAffirmed(v ?? false)}
+      />
+    </>
   );
 }

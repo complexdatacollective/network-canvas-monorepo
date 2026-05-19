@@ -68,11 +68,11 @@ function ReadOnlySummary({
         : 'Passphrase configured.';
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
       <Paragraph>{label}</Paragraph>
       <Button type="button" color="primary" onClick={onChange}>
         Change
       </Button>
-    </div>
+    </>
   );
 }

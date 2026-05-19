@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import ncMarkUrl from '~/assets/NC-Flat.svg';
+import ncMarkUrl from '~/assets/NC-Flat.png';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 

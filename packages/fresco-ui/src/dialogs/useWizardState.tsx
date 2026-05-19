@@ -236,7 +236,7 @@ export default function useWizardState({
             </div>
           )
         )}
-        <div className="phone-landscape:flex-row phone-landscape:justify-between flex flex-col gap-2">
+        <div className="phone-landscape:flex-row phone-landscape:justify-between flex flex-col gap-8">
           <Button onClick={handleCancel}>
             {dialog.cancelLabel ?? 'Cancel'}
           </Button>

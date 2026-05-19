@@ -21,13 +21,15 @@ const isDev = !app.isPackaged;
 const RENDERER_DEV_URL =
   process.env.ELECTRON_RENDERER_URL ?? 'http://localhost:5181';
 
-// Vite HMR injects inline scripts/styles and uses a WebSocket back to the dev
-// server, so dev CSP must permit those. unsafe-eval is deliberately omitted —
-// keeping it out silences Electron's "Insecure Content-Security-Policy" warning
-// without blocking ESM-based HMR.
+// Dev CSP: Vite serves source modules from RENDERER_DEV_URL and HMR uses a
+// WebSocket back to the dev server. `unsafe-inline` covers Vite's inline
+// bootstrap; `unsafe-eval` is required because several dev-pulled libraries
+// (motion's core bundle, csvtojson, react-refresh metadata) rely on dynamic
+// code evaluation. This trips Electron's "Insecure CSP" warning — accepted
+// in dev only; prod CSP stays locked down.
 const CSP_DEV = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' ${RENDERER_DEV_URL}`,
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${RENDERER_DEV_URL}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
@@ -53,8 +55,12 @@ function createWindow() {
     height: 800,
     minWidth: 900,
     minHeight: 600,
-    title: 'Network Canvas Interviewer v7',
-    backgroundColor: '#1c1c1c',
+    title: 'Network Canvas Interviewer 7',
+    backgroundColor: '#232053', // navy taupe
+    // remove the default titlebar
+    titleBarStyle: 'hidden',
+    // expose window controls in Windows/Linux
+    ...(process.platform !== 'darwin' ? { titleBarOverlay: true } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.cjs'),
       contextIsolation: true,

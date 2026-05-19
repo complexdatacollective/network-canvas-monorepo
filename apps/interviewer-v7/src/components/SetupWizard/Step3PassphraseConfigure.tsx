@@ -54,7 +54,7 @@ export default function Step3PassphraseConfigure() {
   }, [wizard, phrase]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
       <UnconnectedField
         name="passphrase"
         label="Enter passphrase"
@@ -90,12 +90,13 @@ export default function Step3PassphraseConfigure() {
         </div>
       )}
       <NoRecoveryNotice method="passphrase" />
-      <label className="flex cursor-pointer items-start gap-3">
-        <Checkbox value={affirmed} onChange={(v) => setAffirmed(v ?? false)} />
-        <span className="text-sm leading-snug">
-          I understand there is no recovery.
-        </span>
-      </label>
-    </div>
+      <UnconnectedField
+        name="passphrase-affirmation"
+        label="I understand there is no recovery."
+        component={Checkbox}
+        value={affirmed}
+        onChange={(v) => setAffirmed(v ?? false)}
+      />
+    </>
   );
 }

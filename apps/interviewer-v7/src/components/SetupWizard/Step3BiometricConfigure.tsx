@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import * as authApi from '~/lib/auth/api';
@@ -45,7 +46,7 @@ export default function Step3BiometricConfigure() {
   }, [wizard]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
       <Paragraph>
         You'll be prompted to use your device's biometric sensor when you click
         Next.
@@ -59,12 +60,13 @@ export default function Step3BiometricConfigure() {
         </div>
       )}
       <NoRecoveryNotice method="biometric" />
-      <label className="flex cursor-pointer items-start gap-3">
-        <Checkbox value={affirmed} onChange={(v) => setAffirmed(v ?? false)} />
-        <span className="text-sm leading-snug">
-          I understand there is no recovery.
-        </span>
-      </label>
-    </div>
+      <UnconnectedField
+        name="biometric-affirmation"
+        label="I understand there is no recovery."
+        component={Checkbox}
+        value={affirmed}
+        onChange={(v) => setAffirmed(v ?? false)}
+      />
+    </>
   );
 }
