@@ -1,0 +1,168 @@
+---
+title: FAQ for IT Departments
+date: 19th May 2026
+navOrder: 4
+---
+
+<SummaryCard>
+
+<SummarySection>
+
+This article answers common questions raised by IT departments, sysadmins, and information security teams who are supporting a researcher with deploying Fresco. It covers what Fresco is, what infrastructure it needs, how it handles participant data, and the security posture of the application.
+
+</SummarySection>
+
+<PrerequisitesSection>
+
+This article assumes familiarity with deploying modern web applications. For background on what Fresco is and how researchers use it, see [About Fresco](/en/fresco/about). For broader compliance guidance covering both Fresco and Interviewer, see the [GDPR Compliance Guide](/en/desktop/project-information/gdpr-compliance).
+
+</PrerequisitesSection>
+
+</SummaryCard>
+
+Fresco is a self-hosted research tool. The Network Canvas project team does not host researcher deployments and has no access to participant data. This means IT departments often need to evaluate Fresco before a researcher can deploy it within an institutional environment. This article is intended to make that evaluation faster.
+
+## What is Fresco, and what does it do?
+
+Fresco is an open-source web application that allows researchers to administer Network Canvas social network interviews through a browser. Researchers upload a protocol (an interview definition file), generate participant URLs, and collect interview responses through a web-based dashboard.
+
+Fresco is not a SaaS product. There is no central server operated by the development team, and no participant data is ever transmitted to the developers. Each research group runs their own independent instance.
+
+The source code is publicly available on [GitHub](https://github.com/complexdatacollective/Fresco) under an open-source license.
+
+## What infrastructure does Fresco require?
+
+Fresco is a Next.js application (Node.js 20+) backed by a PostgreSQL database and an S3-compatible object store. A typical deployment needs:
+
+- **Application hosting** that can run a Next.js server. This can be a serverless platform (Netlify, Vercel), a Docker host, a VPS, or institutional infrastructure that supports containerised Node.js applications.
+- **A PostgreSQL 16.x database**, either managed (Neon is the recommended provider) or self-hosted.
+- **An UploadThing account**, which provides an S3 wrapper used to store protocol assets (videos, images, roster files). The free tier defaults to US-based S3; paid tiers allow EU region selection.
+- **A domain name with HTTPS**. Fresco requires TLS. Free certificates from Let's Encrypt are sufficient.
+- **Inbound HTTPS on port 443**, at minimum to the `/api/uploadthing` endpoint, which is used as a callback target for S3 uploads.
+
+For full details on self-hosted deployments, see the [Advanced Deployment](./advanced) guide. For the recommended cloud-based path, see the [Deployment Guide](./guide).
+
+## Where is participant data stored?
+
+All participant data is stored exclusively in infrastructure that the researcher (or your institution) controls:
+
+- **Interview response data** is stored in the PostgreSQL database the researcher provisions.
+- **Researcher-supplied study assets** (protocol media files, roster CSVs) are stored in S3 via UploadThing.
+- **No participant data is ever transmitted to the Network Canvas project team.**
+
+The research institution is the Data Controller. The Network Canvas developers are not a Data Processor under GDPR, because no participant data ever reaches them.
+
+## Does Fresco store participant uploads or media?
+
+No. Fresco does not collect binary data (photos, audio, video) from participants during interviews. The S3-backed asset store is used only for **researcher-supplied** materials such as introduction videos, protocol logos, and participant rosters.
+
+Roster files may contain participant PII depending on study design, so the S3 region selected via UploadThing should match your data residency requirements.
+
+## Is data encrypted at rest and in transit?
+
+- **In transit:** All traffic is HTTPS. Database connections from the application use TLS when supported by the provider.
+- **At rest (database):** Encryption at rest depends on the provider. Neon encrypts all data at rest by default. For self-hosted PostgreSQL, encryption at rest is the operator's responsibility (typically via encrypted disk volumes or filesystem-level encryption such as LUKS).
+- **At rest (assets):** S3 storage via UploadThing enforces server-side encryption (SSE-S3 or SSE-KMS). Assets are not publicly accessible and are served via signed URLs.
+
+Fresco does not implement an additional application-layer encryption envelope on top of these.
+
+## What authentication does Fresco use?
+
+Fresco uses a single administrator account for the researcher dashboard. Authentication is session-cookie based, with cookies marked HTTP-only and secure. Passwords are hashed before storage.
+
+Be aware of these design choices, which are intentional and reflect Fresco's pilot scope:
+
+- **Only one administrator account exists per instance.** Multiple researchers must share credentials, or run separate instances.
+- **There is no password reset flow.** If credentials are lost and the database is inaccessible, the only recovery option is a database reset, which destroys all data. We recommend storing credentials in an institutional password manager.
+- **There is no built-in MFA.** If MFA is a requirement, deploy Fresco behind an institutional SSO/reverse proxy (e.g. Cloudflare Access, an OIDC proxy, or a VPN gateway) that enforces it before requests reach the application.
+
+Participant-facing URLs do not require authentication; access is controlled by the unguessability of the per-participant URL. If your IRB requires stronger participant authentication, this should be layered externally.
+
+## Does Fresco send data to third parties?
+
+Fresco itself does not transmit participant data to third parties. The following outbound calls do occur:
+
+- **Database and S3/UploadThing requests** to the providers the researcher has configured. These are required for the app to function.
+- **GitHub API requests** from the Settings screen to check for new releases. No identifiable data is sent.
+- **Optional anonymous usage and error analytics**, which collect feature usage, error types, and performance metrics. No participant data is included. This can be disabled by setting `DISABLE_ANALYTICS=true` in the environment, or blocked at the network layer.
+
+There are no third-party tracking pixels, advertising scripts, or analytics SDKs running in the participant interview experience.
+
+## What network access does the deployment need?
+
+At a minimum:
+
+- **Inbound HTTPS (port 443)** to the application server, so participants and researchers can reach the dashboard and interview URLs. If the dashboard must be private, the `/api/uploadthing` endpoint still needs to be reachable from the public Internet to receive S3 upload callbacks.
+- **Outbound HTTPS** from the application server to the PostgreSQL host, the UploadThing/S3 endpoints, and (optionally) the GitHub API and analytics endpoint.
+
+Fresco can run behind an institutional firewall or reverse proxy, provided the upload callback endpoint remains reachable.
+
+## Can Fresco be deployed entirely on institutional infrastructure?
+
+Largely, yes. The application and the PostgreSQL database can both run on institutional hardware via Docker; the [Advanced Deployment](./advanced) guide documents this path.
+
+The one exception is asset storage: Fresco uses UploadThing, a hosted S3 wrapper, and this dependency cannot currently be swapped for an in-house S3-compatible store. If your institution prohibits any external cloud storage, Fresco is not currently a fit. If it permits external storage with appropriate region and DPA controls, UploadThing paid plans allow EU region selection.
+
+## Is Fresco GDPR-compliant? HIPAA?
+
+Fresco **can be deployed in a GDPR-compliant manner**, but compliance is achieved by the institution, not by the software. The research institution is the Data Controller and is responsible for lawful basis, data residency, retention, participant rights, and DPIA where applicable.
+
+Practical steps for GDPR alignment:
+
+- Select an EU region for the PostgreSQL database (Neon offers this).
+- Use a paid UploadThing plan and select an EU S3 region.
+- Obtain Data Processing Agreements from your hosting, database, and storage providers.
+- Disable optional analytics if your policy requires it.
+
+The Network Canvas developers do not act as a Data Processor and therefore do not provide a DPA themselves — there is no data flow to them to cover.
+
+Fresco has **not** been certified for HIPAA. Deploying for HIPAA-regulated data would require a BAA with every involved provider (hosting, database, S3), tightly controlled access, audit logging, and institutional sign-off. This is possible in principle on infrastructure that supports BAAs, but is outside the documented deployment paths and should be reviewed carefully with your compliance team.
+
+For a fuller treatment, see the [GDPR Compliance Guide](/en/desktop/project-information/gdpr-compliance).
+
+## What logging and audit information is available?
+
+Fresco includes an in-app activity feed that records significant researcher and participant events (protocol uploads, participants starting and completing interviews, deletions). This is visible from the dashboard.
+
+The application does not log participant IP addresses, and does not maintain a separate immutable audit log. If your institutional policy requires detailed audit logs, capture them at the hosting/reverse-proxy layer.
+
+## How are updates and security patches handled?
+
+Updates are the deployer's responsibility. The Network Canvas team does not push updates to deployed instances.
+
+- New releases are announced on the [User Community](https://community.networkcanvas.com/).
+- Researchers update by following the [Upgrade Guide](./upgrading) — typically pulling the latest code (or Docker image), running database migrations, and redeploying.
+- Docker images are tagged with both `latest` and `vX.Y.Z` semantic version tags, allowing pinning to a known version.
+
+We recommend subscribing to release announcements and applying security-relevant updates promptly. Dependency vulnerabilities are tracked through GitHub's standard Dependabot tooling on the upstream repository.
+
+## How do backups work?
+
+Backup responsibility lies with the deployer.
+
+- For Neon-hosted databases, backups and point-in-time recovery are provided by Neon; see the [Neon backups documentation](https://neon.com/docs/manage/backups).
+- For self-hosted PostgreSQL, standard `pg_dump`/`pg_basebackup` or volume snapshots should be configured according to institutional policy.
+- Researcher-supplied assets held in S3 via UploadThing should also be included in backup planning where retention is required.
+
+Periodic restoration tests are strongly recommended.
+
+## What happens to data if the deployment is decommissioned?
+
+Because the deployment is entirely under researcher control, decommissioning is a matter of:
+
+1. Exporting any required interview data from the dashboard.
+2. Deleting the database (and any backups according to retention policy).
+3. Removing assets from UploadThing/S3.
+4. Tearing down the application hosting.
+
+No data persists outside the researcher's infrastructure, so no developer-side deletion request is needed or possible.
+
+## What devices and browsers are supported?
+
+Participants and researchers use the latest versions of Chrome, Safari, or Firefox on a desktop, laptop, or tablet (landscape orientation). Internet Explorer and Edge Legacy are not supported. Smartphones are not supported for interviews.
+
+## Where can we get help with an institutional deployment?
+
+There is no commercial support contract for Fresco. Community support is available via the [User Community forum](https://community.networkcanvas.com/). For research collaborations or institutional engagements, contact the project team at [info@networkcanvas.com](mailto:info@networkcanvas.com).
+
+The [Troubleshooting](./troubleshooting) article covers common deployment issues.
