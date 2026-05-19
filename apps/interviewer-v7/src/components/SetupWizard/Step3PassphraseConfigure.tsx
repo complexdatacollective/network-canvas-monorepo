@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import { getPasswordStrength } from '@codaco/fresco-ui/form/fields/getPasswordStrength';
 import PasswordField from '@codaco/fresco-ui/form/fields/PasswordField';
@@ -50,28 +51,27 @@ export default function Step3PassphraseConfigure() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium">Enter passphrase</label>
-        <PasswordField
-          value={phrase}
-          onChange={(v) => setPhrase(v ?? '')}
-          autoComplete="off"
-          showStrengthMeter={true}
-          aria-label="Enter passphrase"
-          placeholder="Enter passphrase"
-        />
-      </div>
-      <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium">Confirm passphrase</label>
-        <PasswordField
-          value={confirm}
-          onChange={(v) => setConfirm(v ?? '')}
-          autoComplete="off"
-          showStrengthMeter={false}
-          aria-label="Confirm passphrase"
-          placeholder="Confirm passphrase"
-        />
-      </div>
+      <UnconnectedField
+        name="passphrase"
+        label="Enter passphrase"
+        hint="A password of at least 12 characters that combines uppercase, lowercase, numbers, and symbols."
+        component={PasswordField}
+        value={phrase}
+        onChange={(v) => setPhrase(v ?? '')}
+        autoComplete="off"
+        showStrengthMeter={true}
+        placeholder="Enter passphrase"
+      />
+      <UnconnectedField
+        name="passphrase-confirm"
+        label="Confirm passphrase"
+        component={PasswordField}
+        value={confirm}
+        onChange={(v) => setConfirm(v ?? '')}
+        autoComplete="off"
+        showStrengthMeter={false}
+        placeholder="Confirm passphrase"
+      />
       {confirm.length > 0 && phrase !== confirm && (
         <Paragraph margin="none" className="text-destructive text-sm">
           Passphrases do not match.

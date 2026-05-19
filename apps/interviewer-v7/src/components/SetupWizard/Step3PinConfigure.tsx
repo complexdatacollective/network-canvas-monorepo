@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import SegmentedCodeField from '@codaco/fresco-ui/form/fields/SegmentedCodeField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -44,34 +45,25 @@ export default function Step3PinConfigure() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium" htmlFor="pin-enter">
-          Enter PIN
-        </label>
-        <SegmentedCodeField
-          id="pin-enter"
-          name="pin"
-          segments={8}
-          characterSet="numeric"
-          value={pin}
-          onChange={(v) => setPin(v ?? '')}
-          aria-label="Enter PIN"
-        />
-      </div>
-      <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium" htmlFor="pin-confirm">
-          Confirm PIN
-        </label>
-        <SegmentedCodeField
-          id="pin-confirm"
-          name="pin-confirm"
-          segments={8}
-          characterSet="numeric"
-          value={confirm}
-          onChange={(v) => setConfirm(v ?? '')}
-          aria-label="Confirm PIN"
-        />
-      </div>
+      <UnconnectedField
+        name="pin"
+        label="Enter PIN"
+        hint="An 8-digit numeric PIN."
+        component={SegmentedCodeField}
+        segments={8}
+        characterSet="numeric"
+        value={pin}
+        onChange={(v) => setPin(v ?? '')}
+      />
+      <UnconnectedField
+        name="pin-confirm"
+        label="Confirm PIN"
+        component={SegmentedCodeField}
+        segments={8}
+        characterSet="numeric"
+        value={confirm}
+        onChange={(v) => setConfirm(v ?? '')}
+      />
       {confirm.length > 0 && pin !== confirm && (
         <Paragraph margin="none" className="text-destructive text-sm">
           PINs do not match.
