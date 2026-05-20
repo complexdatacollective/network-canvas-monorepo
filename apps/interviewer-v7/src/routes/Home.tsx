@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 
 import { BrandHeader } from '~/components/BrandHeader';
@@ -82,8 +82,22 @@ export function HomeRoute() {
     ? protocols.find((p) => p.hash === pendingProtocolHash)
     : undefined;
 
+  // Default the active card to the user's last-used protocol; fall back to
+  // the most-recently-imported one if they've never opened a protocol (or
+  // the remembered one has since been deleted).
+  const initialProtocolHash = useMemo(() => {
+    const lastUsed = settings?.lastActiveProtocolHash;
+    if (lastUsed && protocols.some((p) => p.hash === lastUsed)) {
+      return lastUsed;
+    }
+    if (protocols.length === 0) return undefined;
+    return [...protocols].toSorted((a, b) =>
+      b.importedAt.localeCompare(a.importedAt),
+    )[0]?.hash;
+  }, [settings?.lastActiveProtocolHash, protocols]);
+
   return (
-    <div className="flex min-h-dvh w-full flex-col gap-8 overflow-hidden">
+    <div className="flex h-dvh w-full flex-col overflow-hidden">
       {/* Header/status own their inset; the protocol deck spans full width so
           cards can swing all the way to the screen edges. */}
       <header className="flex items-center justify-between px-11 pt-9">
@@ -105,7 +119,7 @@ export function HomeRoute() {
             <ProtocolDeck
               protocols={protocols}
               sessions={sessions}
-              initialProtocolHash={settings?.lastActiveProtocolHash}
+              initialProtocolHash={initialProtocolHash}
               onImport={() => setOpenDialog('import')}
               onStartInterview={setPendingProtocolHash}
             />
