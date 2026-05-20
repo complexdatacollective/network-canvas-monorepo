@@ -11,6 +11,7 @@ import RadioGroupField from './fields/RadioGroup';
 import SelectField from './fields/Select/Native';
 import TextAreaField from './fields/TextArea';
 import Form from './Form';
+import FormErrors from './FormErrors';
 import useFormStore from './hooks/useFormStore';
 import SubmitButton from './SubmitButton';
 
@@ -534,6 +535,137 @@ export const SubmissionHandling: Story = {
       description: {
         story:
           'Demonstrates async form submission with loading state. The submit button will show a loading indicator during the simulated API call.',
+      },
+    },
+  },
+};
+
+export const FormErrorsVariants: Story = {
+  render: () => (
+    <div className="flex flex-col gap-6">
+      <section>
+        <p className="text-text/70 mb-2 text-sm">
+          <strong>No errors:</strong> renders nothing.
+        </p>
+        <FormErrors errors={null} />
+        <FormErrors errors={[]} />
+      </section>
+      <section>
+        <p className="text-text/70 mb-2 text-sm">
+          <strong>Single error:</strong> renders a <code>Paragraph</code> inside
+          a destructive <code>Alert</code>.
+        </p>
+        <FormErrors
+          errors={['Your session has expired. Please sign in again.']}
+        />
+      </section>
+      <section>
+        <p className="text-text/70 mb-2 text-sm">
+          <strong>Multiple errors:</strong> renders an{' '}
+          <code>UnorderedList</code> inside a destructive <code>Alert</code>.
+        </p>
+        <FormErrors
+          errors={[
+            'Username is already taken.',
+            'Password must contain at least one number.',
+            'Email domain is not allowed.',
+          ]}
+        />
+      </section>
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          '`FormErrors` adapts its layout based on the number of errors: a single error renders as a `Paragraph`, while multiple errors render as an `UnorderedList`. Both variants are wrapped in a destructive `Alert`. Passing `null` or an empty array renders nothing.',
+      },
+    },
+  },
+};
+
+export const ServerSideValidation: Story = {
+  render: () => (
+    <Form
+      onSubmit={async (data) => {
+        action('form-submitting')(data);
+        // Simulate a server round-trip
+        await new Promise((resolve) => setTimeout(resolve, 800));
+
+        const username = typeof data.username === 'string' ? data.username : '';
+        const email = typeof data.email === 'string' ? data.email : '';
+
+        const fieldErrors: Record<string, string[]> = {};
+        const formErrors: string[] = [];
+
+        if (username.toLowerCase() === 'throttle') {
+          formErrors.push(
+            'Too many sign-up attempts from this IP. Try again in a few minutes.',
+          );
+        }
+        if (username.toLowerCase() === 'taken') {
+          fieldErrors.username = ['That username is already in use.'];
+        }
+        if (email.toLowerCase().includes('blocked')) {
+          fieldErrors.email = ['This email domain is not allowed.'];
+        }
+        if (username.toLowerCase() === 'conflict') {
+          formErrors.push(
+            'Account creation is temporarily disabled while we investigate an outage.',
+          );
+          fieldErrors.username = [
+            'Reserved for staff while the outage is being investigated.',
+          ];
+        }
+
+        if (formErrors.length === 0 && Object.keys(fieldErrors).length === 0) {
+          action('form-submitted')(data);
+          return { success: true };
+        }
+
+        action('form-submission-rejected')({ formErrors, fieldErrors });
+        return {
+          success: false,
+          ...(formErrors.length > 0 && { formErrors }),
+          ...(Object.keys(fieldErrors).length > 0 && { fieldErrors }),
+        };
+      }}
+    >
+      <div className="bg-surface-1 text-text/70 rounded-sm p-3 text-sm">
+        Submit to trigger a simulated server response. Try these values:
+        <ul className="ml-5 list-disc">
+          <li>
+            <code className="bg-surface-2 rounded px-1">username=taken</code> →
+            field-level error on username
+          </li>
+          <li>
+            <code className="bg-surface-2 rounded px-1">
+              email=user@blocked.com
+            </code>{' '}
+            → field-level error on email
+          </li>
+          <li>
+            <code className="bg-surface-2 rounded px-1">username=throttle</code>{' '}
+            → form-level error only
+          </li>
+          <li>
+            <code className="bg-surface-2 rounded px-1">username=conflict</code>{' '}
+            → both form-level and field-level errors at once
+          </li>
+          <li>anything else → success</li>
+        </ul>
+      </div>
+      <Field name="username" label="Username" component={InputField} required />
+      <Field name="email" label="Email" component={InputField} required />
+      <Field name="password" label="Password" component={InputField} required />
+      <SubmitButton>Create Account</SubmitButton>
+    </Form>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Demonstrates server-side validation. `onSubmit` returns `{ success: false }` with optional `fieldErrors` (keyed by field name) and `formErrors` (top-level array). Field errors render under the offending field; form errors render in a `FormErrorsList` at the top of the form. The shape mirrors Zod's `flattenError()` output so server validators that already speak Zod can return their result directly.",
       },
     },
   },
