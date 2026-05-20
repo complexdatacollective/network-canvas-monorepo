@@ -78,6 +78,30 @@ export function HomeRoute() {
         onStartInterview={setPendingProtocolHash}
       />
 
+      {/* Always rendered so AnimatePresence inside Modal survives the close
+          animation — unmounting NewSessionDialog kills its AnimatePresence
+          before the reverse layoutId morph can play. */}
+      {(() => {
+        const pendingProtocol = pendingProtocolHash
+          ? (protocols.find((p) => p.hash === pendingProtocolHash) ?? null)
+          : null;
+        return (
+          <NewSessionDialog
+            protocol={pendingProtocol}
+            layoutId={
+              pendingProtocolHash
+                ? `protocol-card-${pendingProtocolHash}`
+                : undefined
+            }
+            onClose={() => setPendingProtocolHash(null)}
+            onCreated={(session) => {
+              setPendingProtocolHash(null);
+              navigate(`/interview/${session.id}`, { state: { fresh: true } });
+            }}
+          />
+        );
+      })()}
+
       <div className="px-11 pb-5">
         <StatusRow
           protocolCount={protocols.length}
@@ -99,29 +123,6 @@ export function HomeRoute() {
         open={openDialog === 'settings'}
         onClose={() => setOpenDialog(null)}
       />
-
-      {pendingProtocolHash
-        ? (() => {
-            const pendingProtocol = protocols.find(
-              (p) => p.hash === pendingProtocolHash,
-            );
-            if (!pendingProtocol) return null;
-            return (
-              <NewSessionDialog
-                open
-                protocol={pendingProtocol}
-                layoutId={`protocol-card-${pendingProtocolHash}`}
-                onClose={() => setPendingProtocolHash(null)}
-                onCreated={(session) => {
-                  setPendingProtocolHash(null);
-                  navigate(`/interview/${session.id}`, {
-                    state: { fresh: true },
-                  });
-                }}
-              />
-            );
-          })()
-        : null}
     </div>
   );
 }

@@ -176,27 +176,21 @@ export function ProtocolsRoute() {
         </Table>
       )}
 
-      {newSessionProtocolHash
-        ? (() => {
-            const protocol = protocols.find(
-              (p) => p.hash === newSessionProtocolHash,
-            );
-            if (!protocol) return null;
-            return (
-              <NewSessionDialog
-                open
-                protocol={protocol}
-                onClose={() => setNewSessionProtocolHash(null)}
-                onCreated={(session) => {
-                  setNewSessionProtocolHash(null);
-                  navigate(`/interview/${session.id}`, {
-                    state: { fresh: true },
-                  });
-                }}
-              />
-            );
-          })()
-        : null}
+      {(() => {
+        const pendingProtocol = newSessionProtocolHash
+          ? (protocols.find((p) => p.hash === newSessionProtocolHash) ?? null)
+          : null;
+        return (
+          <NewSessionDialog
+            protocol={pendingProtocol}
+            onClose={() => setNewSessionProtocolHash(null)}
+            onCreated={(session) => {
+              setNewSessionProtocolHash(null);
+              navigate(`/interview/${session.id}`, { state: { fresh: true } });
+            }}
+          />
+        );
+      })()}
 
       <ImportFromUrlDialog
         open={urlDialogOpen}

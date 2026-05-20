@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { useId } from 'react';
+import { useId, useRef } from 'react';
 
 import { Pattern, seedToPatternPalette } from '@codaco/art';
 import Button from '@codaco/fresco-ui/Button';
@@ -16,18 +16,16 @@ import { createInitialNetwork } from '@codaco/interview';
 import { createSession } from '~/lib/db/api';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
 
-import { cardActiveShadow } from './DeckCard';
+import { CARD_RADIUS_PX, cardActiveShadow, MORPH_TRANSITION } from './DeckCard';
 
 type NewSessionDialogProps = {
-  open: boolean;
-  protocol: ProtocolWithCounts;
+  protocol: ProtocolWithCounts | null;
   onClose: () => void;
   onCreated: (session: StoredSession) => void;
   layoutId?: string;
 };
 
 export function NewSessionDialog({
-  open,
   protocol,
   onClose,
   onCreated,
@@ -35,15 +33,32 @@ export function NewSessionDialog({
 }: NewSessionDialogProps) {
   const formId = useId();
 
-  const popupProps = layoutId ? { layoutId } : {};
-  const interviewLabel =
-    protocol.sessionCount === 1 ? 'interview' : 'interviews';
-  const palette = seedToPatternPalette(protocol.name);
+  // Keep the last non-null protocol so popup content stays visible during the
+  // close animation — when the parent sets `protocol={null}` to start the
+  // exit morph, we still need to render the banner/form/footer until the
+  // reverse layout animation finishes. Matches fresco-ui's ArrayField pattern
+  // (parent always renders the dialog editor; only `open` toggles).
+  const lastProtocolRef = useRef<ProtocolWithCounts | null>(protocol);
+  if (protocol) lastProtocolRef.current = protocol;
+  const display = lastProtocolRef.current;
 
-  // Match the deck card's `rounded-[3rem]` (48px) and ACTIVE_DROP_SHADOW with
-  // a 6px palette ring so the morph reads as the same surface as the card.
+  if (!display) {
+    return (
+      <Modal open={false} onOpenChange={() => {}}>
+        <></>
+      </Modal>
+    );
+  }
+
+  const popupProps = layoutId ? { layoutId, transition: MORPH_TRANSITION } : {};
+  const interviewLabel =
+    display.sessionCount === 1 ? 'interview' : 'interviews';
+  const palette = seedToPatternPalette(display.name);
+
+  // Match the deck card's radius and ACTIVE_DROP_SHADOW with a 6px palette
+  // ring so the morph reads as the same surface as the card.
   const popupStyle = {
-    borderRadius: 48,
+    borderRadius: CARD_RADIUS_PX,
     boxShadow: cardActiveShadow(palette.backgroundTop, 6),
   };
 
@@ -52,13 +67,13 @@ export function NewSessionDialog({
   const enterAfterMorph = {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
-    transition: { delay: 0.15, duration: 0.2 },
+    transition: { delay: 0.2, duration: 0.25 },
   };
 
   return (
     <FormStoreProvider>
       <Modal
-        open={open}
+        open={protocol !== null}
         onOpenChange={(isOpen) => {
           if (!isOpen) onClose();
         }}
@@ -70,7 +85,7 @@ export function NewSessionDialog({
         >
           <div className="relative min-h-[200px] w-full overflow-hidden p-6 pb-8">
             <Pattern
-              seed={protocol.name}
+              seed={display.name}
               className="absolute inset-0 size-full"
             />
             <motion.div layout="position" className="relative">
@@ -79,26 +94,26 @@ export function NewSessionDialog({
                 margin="none"
                 className="max-w-[90%] leading-[0.98] font-black tracking-tight text-white"
               >
-                {protocol.name}
+                {display.name}
               </Heading>
               <div className="font-monospace mt-2.5 text-xs text-white/85">
-                Schema v{protocol.schemaVersion}
+                Schema v{display.schemaVersion}
               </div>
             </motion.div>
           </div>
 
           <div className="font-monospace flex items-center justify-between px-6 pt-4 text-xs">
             <span className="text-text/60">
-              Imported <TimeAgo date={protocol.importedAt} />
+              Imported <TimeAgo date={display.importedAt} />
             </span>
             <span className="text-text/60">
-              {protocol.sessionCount} {interviewLabel}
+              {display.sessionCount} {interviewLabel}
             </span>
           </div>
 
-          {protocol.description ? (
+          {display.description ? (
             <p className="text-text/80 px-6 pt-3.5 text-sm leading-[1.45]">
-              {protocol.description}
+              {display.description}
             </p>
           ) : null}
 
@@ -114,8 +129,8 @@ export function NewSessionDialog({
                   };
                 }
                 const session = await createSession({
-                  protocolHash: protocol.hash,
-                  protocolName: protocol.name,
+                  protocolHash: display.hash,
+                  protocolName: display.name,
                   caseId,
                   initialNetwork: createInitialNetwork(),
                 });

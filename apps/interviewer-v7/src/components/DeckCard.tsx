@@ -38,6 +38,24 @@ const ACTIVE_DROP_SHADOW = '0 30px 60px oklch(0.10 0.05 281 / 0.7)';
 export const cardActiveShadow = (accent: string, ringPx = 2): string =>
   `${ACTIVE_DROP_SHADOW}, 0 0 0 ${ringPx}px ${accent}`;
 
+// The card's `rounded-[3rem]` resolves to 48px. Setting the same value via
+// `style` (instead of just className) on the layoutId-morphing element gives
+// motion a stable inline value to interpolate against — otherwise it briefly
+// clears the radius to 0 at the start of the layout animation.
+export const CARD_RADIUS_PX = 48;
+
+// Subtle weighty spring — slower than motion's default, low bounce so it
+// doesn't oscillate. Applied to the layout animation only so opacity fades
+// (enter/exit) still feel snappy.
+export const MORPH_TRANSITION = {
+  layout: {
+    type: 'spring',
+    stiffness: 220,
+    damping: 28,
+    mass: 1.15,
+  },
+} as const;
+
 // `shrink-0` keeps the card at its explicit pixel size; the slot is narrower
 // than the card so adjacent cards visually overlap. Dimensions come in as
 // inline styles from the parent — we avoid `h-[%]` + `aspect-ratio` here
@@ -233,6 +251,7 @@ const DeckCardInner = forwardRef<HTMLDivElement, DeckCardProps>(
       <div ref={slotRef} className={SLOT_CLASS} style={{ width: slotWidth }}>
         <motion.div
           layoutId={`protocol-card-${protocol.hash}`}
+          transition={MORPH_TRANSITION}
           ref={(el) => {
             cardRef.current = el;
           }}
@@ -243,6 +262,7 @@ const DeckCardInner = forwardRef<HTMLDivElement, DeckCardProps>(
           style={{
             width: cardWidth,
             height: cardHeight,
+            borderRadius: CARD_RADIUS_PX,
             boxShadow,
           }}
           className={`${cardBase()} ${protocolCardClass()} will-change-transform`}
