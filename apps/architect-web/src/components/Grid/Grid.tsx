@@ -1,5 +1,4 @@
-import { throttle } from 'es-toolkit/compat';
-import React, { Component } from 'react';
+import { Component, createRef } from 'react';
 import GridLayout, { type Layout } from 'react-grid-layout';
 
 import Icon from '~/lib/legacy-ui/components/Icon';
@@ -38,32 +37,33 @@ type GridProps = {
 };
 
 type GridState = {
-  width: number;
+  width: number | null;
 };
 
 class Grid extends Component<GridProps, GridState> {
-  private ref = React.createRef<HTMLDivElement>();
-  private resizeSensor?: NodeJS.Timeout;
+  private containerRef = createRef<HTMLDivElement>();
+  private resizeObserver?: ResizeObserver;
 
-  constructor(props: GridProps) {
-    super(props);
-
-    this.state = {
-      width: 100,
-    };
-  }
+  state: GridState = { width: null };
 
   componentDidMount() {
-    this.resizeSensor = setInterval(this.checkSize, 50);
+    this.resizeObserver = new ResizeObserver((entries) => {
+      const measured = entries[0]?.contentRect.width;
+      if (measured == null) {
+        return;
+      }
+      this.setState((prev) =>
+        prev.width === measured ? null : { width: measured },
+      );
+    });
+    if (this.containerRef.current) {
+      this.resizeObserver.observe(this.containerRef.current);
+    }
   }
 
   componentWillUnmount() {
-    clearInterval(this.resizeSensor);
+    this.resizeObserver?.disconnect();
   }
-
-  setWidth = throttle((width: number) => {
-    this.setState({ width });
-  }, 500);
 
   handleDragStop = (layout: Layout[], from: Layout) => {
     const { fields, items } = this.props;
@@ -86,24 +86,6 @@ class Grid extends Component<GridProps, GridState> {
       size,
     };
     fields.splice(index, 1, newItem);
-  };
-
-  checkSize = () => {
-    const { width } = this.state;
-    if (!this.ref.current) {
-      return;
-    }
-
-    const parent = this.ref.current.parentElement;
-    if (!parent) {
-      return;
-    }
-
-    const nextWidth = parent.offsetWidth;
-
-    if (width !== nextWidth) {
-      this.setWidth(nextWidth);
-    }
   };
 
   render() {
@@ -134,44 +116,50 @@ class Grid extends Component<GridProps, GridState> {
     }
 
     return (
-      <div ref={this.ref}>
-        <GridLayout
-          className="bg-surface-accent h-112.5 rounded-lg"
-          layout={getLayout(items, capacity)}
-          cols={1}
-          rowHeight={100}
-          autoSize={false}
-          width={width}
-          onDragStop={this.handleDragStop}
-          onResizeStop={this.handleResizeStop}
-          draggableCancel=".grid-item-action"
-          resizeHandle={(axis, ref) => (
-            <span
-              ref={ref as React.Ref<HTMLSpanElement>}
-              className={`react-resizable-handle react-resizable-handle-${axis} after:hidden`}
-            >
-              <span
-                aria-hidden="true"
-                className="rounded-br-base absolute right-0 bottom-0 block size-7 border-r-2 border-b-2 border-solid border-(--color-active)"
-              />
-            </span>
-          )}
+      <div>
+        <div
+          ref={this.containerRef}
+          className="bg-surface-accent h-162.5 overflow-hidden rounded-lg"
         >
-          {items.map(({ id, ...item }, index) => (
-            <div key={id} className="relative">
-              <GridItem
-                id={id}
-                index={index}
-                fields={fields}
-                previewComponent={previewComponent}
-                onEditItem={onEditItem}
-                editField={editField}
-                // eslint-disable-next-line react/jsx-props-no-spreading
-                {...item}
-              />
-            </div>
-          ))}
-        </GridLayout>
+          {width !== null && (
+            <GridLayout
+              layout={getLayout(items, capacity)}
+              cols={1}
+              rowHeight={150}
+              autoSize={false}
+              width={width}
+              onDragStop={this.handleDragStop}
+              onResizeStop={this.handleResizeStop}
+              draggableCancel=".grid-item-action"
+              resizeHandle={(axis, ref) => (
+                <span
+                  ref={ref as React.Ref<HTMLSpanElement>}
+                  className={`react-resizable-handle react-resizable-handle-${axis} after:hidden`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="rounded-br-base absolute right-0 bottom-0 block size-7 border-r-2 border-b-2 border-solid border-(--color-active)"
+                  />
+                </span>
+              )}
+            >
+              {items.map(({ id, ...item }, index) => (
+                <div key={id} className="relative">
+                  <GridItem
+                    id={id}
+                    index={index}
+                    fields={fields}
+                    previewComponent={previewComponent}
+                    onEditItem={onEditItem}
+                    editField={editField}
+                    // eslint-disable-next-line react/jsx-props-no-spreading
+                    {...item}
+                  />
+                </div>
+              ))}
+            </GridLayout>
+          )}
+        </div>
 
         {showError && (
           <p

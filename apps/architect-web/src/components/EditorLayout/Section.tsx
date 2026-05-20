@@ -11,7 +11,7 @@ const containerClasses =
 
 type SectionProps = {
   id?: string | null;
-  title: string;
+  title?: React.ReactNode;
   summary?: React.ReactNode;
   disabled?: boolean;
   disabledMessage?: string;
@@ -22,6 +22,7 @@ type SectionProps = {
   startExpanded?: boolean;
   handleToggleChange?: (state: boolean) => Promise<boolean> | boolean;
   layout?: 'horizontal' | 'vertical';
+  required?: boolean;
 };
 
 const Section = ({
@@ -37,6 +38,7 @@ const Section = ({
   startExpanded = true,
   handleToggleChange = (state) => state,
   layout = 'horizontal',
+  required = true,
 }: SectionProps) => {
   const [isOpen, setIsOpen] = useState(startExpanded);
 
@@ -63,7 +65,7 @@ const Section = ({
   // as the "vertical" layout
   const classes = cx(
     layout === 'horizontal' &&
-      'lg:min-w-2xl lg:rounded lg:bg-(--current-surface) lg:p-6 lg:text-(--current-surface-foreground) lg:shadow-md',
+      'lg:min-w-2xl lg:overflow-hidden lg:rounded lg:bg-(--current-surface) lg:p-6 lg:text-(--current-surface-foreground) lg:shadow-md',
     'relative',
   );
 
@@ -80,38 +82,42 @@ const Section = ({
         className,
       )}
     >
-      <div>
-        <legend
-          className={cx(
-            'flex items-center gap-4 text-right',
-            layout === 'vertical' && 'text-xl font-semibold tracking-tight',
-            layout === 'horizontal' &&
-              'lg:small-heading lg:bg-border max-lg:text-xl max-lg:font-semibold max-lg:tracking-tight lg:sticky lg:top-2 lg:flex-row-reverse lg:items-center lg:justify-between lg:rounded lg:px-6 lg:py-2',
-          )}
-        >
-          <span>
-            {title}
-            {!toggleable && <span className="text-error ms-1">*</span>}
-          </span>
-          {toggleable && (
-            <Switch
-              title="Turn this feature on or off"
-              checked={isOpen}
-              onCheckedChange={changeToggleState}
-              disabled={disabled}
-              className={cx(
-                'shrink-0 grow-0',
-                disabled && 'cursor-not-allowed opacity-50',
+      {title != null && (
+        <div>
+          <div
+            className={cx(
+              'flex items-center gap-4 text-right',
+              layout === 'vertical' && 'text-xl font-semibold tracking-tight',
+              layout === 'horizontal' &&
+                'lg:small-heading lg:bg-border max-lg:text-xl max-lg:font-semibold max-lg:tracking-tight lg:sticky lg:top-2 lg:flex-row-reverse lg:items-center lg:justify-between lg:rounded lg:px-6 lg:py-2',
+            )}
+          >
+            <span>
+              {title}
+              {!toggleable && required && (
+                <span className="text-error ms-1">*</span>
               )}
-            />
-          )}
-        </legend>
-        <div className="text-current/70">{summary}</div>
-      </div>
+            </span>
+            {toggleable && (
+              <Switch
+                title="Turn this feature on or off"
+                checked={isOpen}
+                onCheckedChange={changeToggleState}
+                disabled={disabled}
+                className={cx(
+                  'shrink-0 grow-0',
+                  disabled && 'cursor-not-allowed opacity-50',
+                )}
+              />
+            )}
+          </div>
+          <div className="text-current/70">{summary}</div>
+        </div>
+      )}
       <fieldset className={classes}>
         {disabled ? (
           layout === 'horizontal' ? (
-            <div className="bg-border/75 text-foreground/70 flex items-center justify-center rounded font-semibold italic max-lg:p-8 max-lg:text-center lg:absolute lg:inset-0 lg:h-full lg:w-full">
+            <div className="bg-border/75 text-foreground/70 flex items-center justify-center font-semibold italic max-lg:rounded max-lg:p-8 max-lg:text-center lg:absolute lg:inset-0 lg:h-full lg:w-full">
               {disabledMessage}
             </div>
           ) : (
@@ -129,7 +135,12 @@ const Section = ({
             )}
           </>
         )}
-        {id && <IssueAnchor fieldName={id} description={title} />}
+        {id && (
+          <IssueAnchor
+            fieldName={id}
+            description={typeof title === 'string' ? title : ''}
+          />
+        )}
       </fieldset>
     </div>
   );
