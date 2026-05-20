@@ -1,13 +1,16 @@
 import concaveman from 'concaveman';
 import { useEffect, useRef } from 'react';
 
+import type {
+  VariableOption,
+  VariableOptionValue,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
 } from '@codaco/shared-consts';
 import type { CanvasStoreApi } from '~/canvas/useCanvasStore';
-import type { VariableOption, VariableOptionValue } from '~/utils/codebook';
 
 type ConvexHullLayerProps = {
   store: CanvasStoreApi;

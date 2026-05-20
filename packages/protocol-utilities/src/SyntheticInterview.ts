@@ -1,6 +1,10 @@
 import { invariant } from 'es-toolkit';
 
-import type { Stage } from '@codaco/protocol-validation';
+import type {
+  ComponentType,
+  Stage,
+  VariableType,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -31,7 +35,6 @@ import type {
   AddTieStrengthCensusPromptInput,
   AddVariableInput,
   CategoricalBinPromptEntry,
-  ComponentType,
   DiseaseNominationStepEntry,
   DyadCensusPromptEntry,
   EdgeEntry,
@@ -50,7 +53,6 @@ import type {
   StageType,
   TieStrengthCensusPromptEntry,
   VariableEntry,
-  VariableType,
 } from './types';
 import { ValueGenerator } from './ValueGenerator';
 

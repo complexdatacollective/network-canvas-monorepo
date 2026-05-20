@@ -116,7 +116,6 @@ Modelled on `@codaco/network-query`'s package (which is the simplest current sib
     "zod": "catalog:",
   },
   "devDependencies": {
-    "@codaco/interview": "workspace:^",
     "@codaco/tsconfig": "workspace:*",
     "typescript": "catalog:",
     "vite": "catalog:",
@@ -142,41 +141,38 @@ Plain `defineConfig({ test: { environment: 'node' } })` is enough — both moved
 
 ## Code-level changes during the move
 
-### `generateNetwork.ts` — resolve the two parent-dir imports
+### Relocate the shared session-metadata schemas into `@codaco/shared-consts`
 
-Today:
+`generateNetwork.ts` and its test reach into the interview package today for two shared symbols:
 
 ```ts
+// in generateNetwork.ts
 import type { DyadCensusMetadataItem } from '../store/modules/session';
 import type { VariableOptions } from '../utils/codebook';
-```
 
-After the move:
-
-- `DyadCensusMetadataItem` → inline at the top of `generateNetwork.ts` as
-  `type DyadCensusMetadataItem = [number, string, string, boolean];`
-  with a one-line comment noting the structural mirror with `@codaco/interview`'s
-  Zod tuple. The two definitions are independent uses of the same shape; the
-  engine's Zod tuple stays put.
-- `VariableOptions` → copy the 5-line shim verbatim (with the existing TODO
-  comment about `@codaco/protocol-validation`) into `src/types.ts`. The TODO
-  still applies — moving the shim does not solve it.
-
-### `generateNetwork.test.ts` — switch the path alias
-
-Today:
-
-```ts
+// in generateNetwork.test.ts
 import { StageMetadataSchema } from '~/store/modules/session';
 ```
 
-After the move:
+These symbols describe the cross-package contract between synthetic-generation output and the interview engine's session state. They belong in a package both sides depend on, not in either consumer. Action plan:
 
-```ts
-import { StageMetadataSchema } from '@codaco/interview';
-```
+- Create `packages/shared-consts/src/stage-metadata.ts` and move the four schema definitions verbatim (`FamilyPedigreeStageMetadataSchema`, `DyadCensusMetadataItemSchema`, `DyadCensusStageMetadataSchema`, `StageMetadataSchema`) plus the inferred `DyadCensusMetadataItem` and `StageMetadata` types. Register via `export * from './stage-metadata'` in `shared-consts/src/index.ts` (matching the existing barrel).
+- In `packages/interview/src/store/modules/session.ts`, delete the local schema block, drop the now-unused `import { z } from 'zod/mini'`, and add `StageMetadata` (and any other needed symbols) to the existing `@codaco/shared-consts` import.
+- In `packages/interview/src/session-schemas.ts` and `src/index.ts`, drop `StageMetadataSchema` from the re-export chain (per the global "no convenience re-exports" rule — external consumers import from `@codaco/shared-consts` directly).
+- In `packages/interview/.storybook/StoryInterviewShell.tsx`, import `StageMetadataSchema` from `@codaco/shared-consts` instead of `../src`.
+- In `packages/interview/src/interfaces/DyadCensus/{DyadCensus.tsx,helpers.ts}` and `src/interfaces/TieStrengthCensus/TieStrengthCensus.tsx`, switch `DyadCensusMetadataItem` imports from `~/store/modules/session` to `@codaco/shared-consts`.
+- In `packages/protocol-utilities/src/generateNetwork.ts`, import `DyadCensusMetadataItem` from `@codaco/shared-consts` directly. No inlined mirror is needed.
+- In `packages/protocol-utilities/src/__tests__/generateNetwork.test.ts`, import `StageMetadataSchema` from `@codaco/shared-consts`.
 
-`StageMetadataSchema` is already publicly exported from `@codaco/interview`'s `src/index.ts` via `./session-schemas`. The test continues to validate that `generateNetwork`'s output conforms to the engine's runtime schema. This is the dev-dep cycle described under [Workspace dependency direction](#workspace-dependency-direction) below; it's intentional and benign.
+The `VariableOptions` shim (`packages/interview/src/utils/codebook.ts`) is independent and small — copy it verbatim into `packages/protocol-utilities/src/types.ts` alongside the existing `VariableOption` (note the two are distinct: the existing `VariableOption` is the post-filter form with `value: string | number`; `VariableOptions`'s elements permit `boolean`. Keep both, with a comment explaining the distinction). The existing TODO pointing at `@codaco/protocol-validation` is preserved and still applies — moving the shim does not solve it.
+
+### `SyntheticInterview.test.ts`
+
+The `../SyntheticInterview` relative import stays as-is. No other changes needed.
+
+### `SyntheticInterview.ts`, `ValueGenerator.ts`, `constants.ts`
+
+Move verbatim. None of them import outside `synthetic/` today.
 
 ### `SyntheticInterview.test.ts`
 
@@ -208,6 +204,8 @@ Move verbatim. None of them import outside `synthetic/` today, so the move is me
 
 ## Workspace dependency direction
 
+There is no workspace cycle. Both `@codaco/interview` and `@codaco/protocol-utilities` depend on `@codaco/shared-consts` (where the relocated schemas live); neither depends on the other at runtime, and the test setup needs no cross-package import.
+
 Runtime edges, after the change:
 
 ```
@@ -216,20 +214,19 @@ Runtime edges, after the change:
                         ▶ @codaco/interview ─▶ (no edge to protocol-utilities)
 ```
 
-Dev-dep edges (cyclic, intentional):
+Dev-dep edges (one-way only):
 
 ```
-@codaco/protocol-utilities  devDeps──▶  @codaco/interview   (test imports StageMetadataSchema)
-@codaco/interview           devDeps──▶  @codaco/protocol-utilities  (stories import SyntheticInterview)
+@codaco/interview  devDeps──▶  @codaco/protocol-utilities  (stories import SyntheticInterview)
 ```
 
-The cycle is confined to dev dependencies — pnpm with `linkWorkspacePackages: true` handles this. Runtime resolution stays acyclic.
+`@codaco/protocol-utilities` does not depend on `@codaco/interview` at all — the moved test imports `StageMetadataSchema` from `@codaco/shared-consts`. This was an explicit course-correction during implementation: an earlier proposal kept `StageMetadataSchema` in `@codaco/interview` and accepted a dev-dep cycle, which pnpm tolerated but Turbo's task scheduler rejected.
 
 ## Verification
 
 Run from the repo root after the move:
 
-- `pnpm install` — pnpm picks up the new workspace package and links the new dev-dep cycle.
+- `pnpm install` — pnpm picks up the new workspace package.
 - `pnpm --filter @codaco/protocol-utilities build` — produces `dist/index.{js,d.ts}`.
 - `pnpm --filter @codaco/protocol-utilities test` — both moved test files pass.
 - `pnpm --filter @codaco/protocol-utilities typecheck` — clean.
@@ -245,4 +242,4 @@ Run from the repo root after the move:
 - **Move only `generateNetwork`, leave `SyntheticInterview` behind.** Would force duplicating `ValueGenerator`, the shared types, and constants between two packages, since the two builders share that infrastructure. The duplication cost outweighs any benefit from keeping `SyntheticInterview` private.
 - **Move everything but keep `SyntheticInterview` behind a `/internal` subpath export.** Avoids committing to its public API in the new package, but `SyntheticInterview` is large (1640 lines) and the 16 in-repo callers already pin every method it has. Hiding it behind a subpath signals a privacy that isn't real. Plain public export.
 - **Solve the `VariableOptions` TODO by adding the type to `@codaco/protocol-validation` first.** Out of scope — the shim is five lines and the TODO is independent of this extraction.
-- **Move `StageMetadataSchema` to the new package.** Wrong owner — that schema describes session state managed by the interview engine. Keeping it in `@codaco/interview` and accepting a dev-dep cycle is the simpler and more accurate placement.
+- **Move `StageMetadataSchema` to the new package or keep it in `@codaco/interview`.** Either choice creates a workspace cycle (interview ↔ protocol-utilities) once stories import from the new package. The schema is the cross-package contract between synthetic-generation output and engine session state, so its proper home is `@codaco/shared-consts` — a package both sides already depend on. The relocation moves four small Zod schemas (and two inferred types) about 30 lines up the graph.

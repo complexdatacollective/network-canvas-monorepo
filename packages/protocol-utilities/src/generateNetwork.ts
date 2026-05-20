@@ -1,8 +1,14 @@
 import { v4 as uuid } from 'uuid';
 
 import { filter as getFilter, getQuery } from '@codaco/network-query';
-import type { Filter, SkipLogic, Stage } from '@codaco/protocol-validation';
+import type {
+  Filter,
+  SkipLogic,
+  Stage,
+  VariableOptions,
+} from '@codaco/protocol-validation';
 import {
+  type DyadCensusMetadataItem,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcEdge,
@@ -10,9 +16,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import type { DyadCensusMetadataItem } from '../store/modules/session';
-import type { VariableOptions } from '../utils/codebook';
-import type { VariableEntry, VariableOption } from './types';
+import type { VariableEntry } from './types';
 import { ValueGenerator } from './ValueGenerator';
 
 type NcAttributeValue =
@@ -75,9 +79,7 @@ function toVariableEntry(
     name: variable.name,
     type: variable.type as VariableEntry['type'],
     component: variable.component as VariableEntry['component'],
-    options: variable.options?.filter(
-      (o): o is VariableOption => typeof o.value !== 'boolean',
-    ),
+    options: variable.options?.filter((o) => typeof o.value !== 'boolean'),
     validation: variable.validation,
   };
 }
@@ -617,14 +619,12 @@ export function generateNetwork(
 
           const varDef = nodeTypeDef.variables[varId];
           const options =
-            varDef.options?.filter(
-              (o): o is VariableOption => typeof o.value !== 'boolean',
-            ) ?? [];
+            varDef.options?.filter((o) => typeof o.value !== 'boolean') ?? [];
           if (options.length === 0) continue;
 
           for (const node of subjectNodes) {
             const count = valueGen.randomInt(1, Math.min(2, options.length));
-            const picked: (number | string)[] = [];
+            const picked: (number | string | boolean)[] = [];
             const startIdx = valueGen.randomInt(0, options.length - 1);
             for (let c = 0; c < count; c++) {
               picked.push(options[(startIdx + c) % options.length]!.value);

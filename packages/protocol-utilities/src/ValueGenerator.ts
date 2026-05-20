@@ -33,7 +33,7 @@ export class ValueGenerator {
         const options = variable.options ?? [];
         if (options.length === 0) return null;
         const count = 1 + (index % 2);
-        const picked: (number | string)[] = [];
+        const picked: (number | string | boolean)[] = [];
         for (let i = 0; i < count && i < options.length; i++) {
           picked.push(options[(index + i) % options.length]!.value);
         }

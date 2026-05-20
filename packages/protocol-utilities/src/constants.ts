@@ -1,4 +1,8 @@
-import type { ComponentType, VariableOption, VariableType } from './types';
+import type {
+  ComponentType,
+  VariableOption,
+  VariableType,
+} from '@codaco/protocol-validation';
 
 export const COMPONENT_TO_VARIABLE_TYPE: Record<ComponentType, VariableType> = {
   Text: 'text',

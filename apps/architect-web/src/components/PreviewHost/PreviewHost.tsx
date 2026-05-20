@@ -3,11 +3,11 @@ import { v4 as uuid } from 'uuid';
 
 import {
   createInitialNetwork,
-  generateNetwork,
   type InterviewPayload,
   type SessionPayload,
   Shell,
 } from '@codaco/interview';
+import { generateNetwork } from '@codaco/protocol-utilities';
 
 import { currentProtocolToPayload } from './currentProtocolToPayload';
 import { isPreviewMessage, type PreviewPayload } from './messages';

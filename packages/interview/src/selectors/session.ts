@@ -8,6 +8,7 @@ import type {
   Codebook,
   NodeDefinition,
   StageSubject,
+  VariableOptions,
 } from '@codaco/protocol-validation';
 import {
   type EntityPrimaryKey,
@@ -19,7 +20,6 @@ import {
 
 import { getCodebook, getStages } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
-import type { VariableOptions } from '../utils/codebook';
 import { calculateProgress } from './utils';
 
 type NavigationInfo = {

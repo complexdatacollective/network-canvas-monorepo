@@ -1,15 +1,8 @@
 import type {
-  ComponentTypesKeys,
-  VariableTypesKeys,
+  ComponentType,
+  VariableOption,
+  VariableType,
 } from '@codaco/protocol-validation';
-
-export type VariableType = (typeof VariableTypesKeys)[number];
-export type ComponentType = (typeof ComponentTypesKeys)[number];
-
-export type VariableOption = {
-  label: string;
-  value: number | string;
-};
 
 export type VariableEntry = {
   id: string;

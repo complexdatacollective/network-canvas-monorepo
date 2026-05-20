@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import type { DyadCensusMetadataItem } from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
 import Pair from '~/components/Pair';
 import Prompts from '~/components/Prompts';
@@ -21,7 +22,6 @@ import {
 } from '~/selectors/session';
 import {
   addEdge,
-  type DyadCensusMetadataItem,
   deleteEdge,
   edgeExists,
   updateStageMetadata,

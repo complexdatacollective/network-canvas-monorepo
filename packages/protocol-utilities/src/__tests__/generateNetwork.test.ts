@@ -4,8 +4,8 @@ import { type Stage, stageSchema } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  StageMetadataSchema,
 } from '@codaco/shared-consts';
-import { StageMetadataSchema } from '~/store/modules/session';
 
 import { generateNetwork } from '../generateNetwork';
 

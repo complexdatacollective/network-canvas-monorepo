@@ -9,7 +9,12 @@ import RichSelectGroupField, {
   type RichSelectOption,
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import type {
+  VariableOptions,
+  VariableOptionValue,
+} from '@codaco/protocol-validation';
 import {
+  type DyadCensusMetadataItem,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
@@ -31,7 +36,6 @@ import {
 import { getCodebook } from '~/store/modules/protocol';
 import {
   addEdge,
-  type DyadCensusMetadataItem,
   deleteEdge,
   edgeExists,
   updateEdge,
@@ -39,7 +43,6 @@ import {
 } from '~/store/modules/session';
 import { useAppDispatch } from '~/store/store';
 import type { StageProps } from '~/types';
-import type { VariableOptions, VariableOptionValue } from '~/utils/codebook';
 
 import {
   getNodePair,

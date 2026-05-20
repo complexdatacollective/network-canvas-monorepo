@@ -20,11 +20,10 @@ import {
   PopoverTrigger,
 } from '@codaco/fresco-ui/Popover';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
-import type { Stage } from '@codaco/protocol-validation';
+import type { Stage, VariableOption } from '@codaco/protocol-validation';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import { getSubjectType } from '~/selectors/session';
 import { getCodebook } from '~/store/modules/protocol';
-import type { VariableOption } from '~/utils/codebook';
 
 type NarrativeStage = Extract<Stage, { type: 'Narrative' }>;
 type Preset = NarrativeStage['presets'][number];

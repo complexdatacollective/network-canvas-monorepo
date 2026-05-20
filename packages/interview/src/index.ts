@@ -21,13 +21,6 @@ export type {
 export { default as Shell } from './Shell';
 
 // Schemas / contracts
-export { createInitialNetwork, StageMetadataSchema } from './session-schemas';
-export type {
-  GenerateNetworkOptions,
-  GenerateNetworkResult,
-} from './synthetic/generateNetwork';
-
-// Synthetic
-export { generateNetwork } from './synthetic/generateNetwork';
+export { createInitialNetwork } from './session-schemas';
 // Public utilities (consumed by sibling monorepo packages, e.g. network-exporters)
 export { getNodeLabelAttribute } from './utils/getNodeLabelAttribute';
