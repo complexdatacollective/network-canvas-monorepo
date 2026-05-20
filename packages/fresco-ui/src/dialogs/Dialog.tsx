@@ -71,7 +71,6 @@ export default function Dialog({
   return (
     <Modal
       open={open}
-      dismissible={dismissible}
       onOpenChange={(isOpen) => {
         if (!isOpen && closeDialog) {
           closeDialog();
