@@ -254,55 +254,128 @@ export const RealWorldExamples: Story = {
   ),
 };
 
+export const IconAlignment: Story = {
+  name: 'Icon Alignment',
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The leading icon must align with the first line of whichever child renders first — `AlertTitle` (a heading) or `AlertDescription` (a paragraph) — without per-variant magic-number offsets. The icon wrapper is sized to one line-height (`h-lh`) of the inherited text and centres the icon vertically within that slot, so alignment stays correct regardless of which child comes first or what mix of children is rendered.',
+      },
+    },
+  },
+  render: () => (
+    <div className="flex flex-col gap-4">
+      <Alert variant="info">
+        <AlertTitle>Title only</AlertTitle>
+      </Alert>
+
+      <Alert variant="info">
+        <AlertDescription>
+          Description only — icon should align with the first line of this
+          paragraph, not float above it.
+        </AlertDescription>
+      </Alert>
+
+      <Alert variant="info">
+        <AlertTitle>Title and description</AlertTitle>
+        <AlertDescription>Icon aligns with the title line.</AlertDescription>
+      </Alert>
+
+      <Alert variant="info">
+        <AlertDescription>
+          Multi-line description with no title. The icon should sit on the first
+          line — even when the body wraps onto several lines because the alert
+          is narrow, the icon stays anchored to the top of the first line of
+          text and does not drift downward.
+        </AlertDescription>
+      </Alert>
+
+      <Alert variant="info">
+        <p className="m-0">
+          Raw paragraph (no AlertDescription wrapper) — icon should still align
+          with this line.
+        </p>
+      </Alert>
+    </div>
+  ),
+};
+
 export const AccessibilityDemo: Story = {
   name: 'Accessibility Features',
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Live-region semantics are derived from the variant. Destructive alerts use `role="alert"` (implicit `aria-live="assertive"` + `aria-atomic="true"`) and interrupt the screen reader immediately. Every other variant uses `role="status"` (implicit `aria-live="polite"`), which waits for the user to be idle. A visually-hidden context prefix (e.g. "Error:", "Warning:") is announced before the content so screen-reader users get the variant meaning that sighted users get from colour + icon. The icon itself is `aria-hidden` so it isn\'t re-announced.',
+      },
+    },
+  },
   render: () => (
     <div className="flex flex-col gap-4">
       <div className="rounded-lg border p-4">
         <Heading level="h3" margin="none" className="mb-2 text-base">
-          Accessibility Features:
+          Live-region semantics by variant
         </Heading>
         <UnorderedList className="space-y-1 text-sm">
           <li>
-            <code>{'role="alert"'}</code> - Announces the alert to screen
-            readers
+            <strong>destructive</strong> → <code>{'role="alert"'}</code>{' '}
+            (implicit <code>aria-live=&quot;assertive&quot;</code>) — interrupts
+            the user immediately for errors that need attention now
           </li>
           <li>
-            <code>{'aria-live="assertive"'}</code> - For destructive/error
-            alerts, interrupts immediately
+            <strong>info / success / warning / default</strong> →{' '}
+            <code>{'role="status"'}</code> (implicit{' '}
+            <code>aria-live=&quot;polite&quot;</code>) — announced when the
+            screen reader is idle
           </li>
           <li>
-            <code>{'aria-live="polite"'}</code> - For info/success/warning,
-            announces when user is idle
+            A visually-hidden{' '}
+            <code>
+              &lt;span className=&quot;sr-only&quot;&gt;Error:&lt;/span&gt;
+            </code>{' '}
+            prefix is rendered before the content so screen-reader users hear
+            the variant&apos;s meaning (no <code>aria-label</code> override,
+            which would have masked the visible content)
           </li>
           <li>
-            <code>{'aria-atomic="true"'}</code> - Entire alert is read when
-            updated
-          </li>
-          <li>
-            <code>aria-label</code> - Provides semantic meaning (Information,
-            Success, Error, Warning, Notice)
-          </li>
-          <li>
-            <code>{'aria-hidden="true"'}</code> on icons - Prevents redundant
+            <code>{'aria-hidden="true"'}</code> on the icon prevents redundant
             announcements
+          </li>
+          <li>
+            <code>aria-live</code> and <code>aria-atomic</code> are <em>not</em>{' '}
+            set explicitly — the role implies them, and setting both can confuse
+            some screen readers
           </li>
         </UnorderedList>
       </div>
 
       <Alert variant="destructive">
-        <AlertTitle>Critical Error</AlertTitle>
+        <AlertTitle>Critical error</AlertTitle>
         <AlertDescription>
-          Destructive alerts use aria-live=&quot;assertive&quot; for immediate
-          announcement.
+          Announced as &ldquo;Error: Critical error. …&rdquo; immediately,
+          interrupting whatever the screen reader was reading.
+        </AlertDescription>
+      </Alert>
+
+      <Alert variant="warning">
+        <AlertTitle>Heads up</AlertTitle>
+        <AlertDescription>
+          Announced as &ldquo;Warning: Heads up. …&rdquo; when the user pauses.
         </AlertDescription>
       </Alert>
 
       <Alert variant="info">
         <AlertTitle>Informational</AlertTitle>
         <AlertDescription>
-          Info alerts use aria-live=&quot;polite&quot; and wait for user to be
-          idle.
+          Announced as &ldquo;Information: Informational. …&rdquo; politely.
+        </AlertDescription>
+      </Alert>
+
+      <Alert variant="success">
+        <AlertTitle>All done</AlertTitle>
+        <AlertDescription>
+          Announced as &ldquo;Success: All done. …&rdquo; politely.
         </AlertDescription>
       </Alert>
     </div>

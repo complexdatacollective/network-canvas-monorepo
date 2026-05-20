@@ -15,7 +15,7 @@ import { paragraphVariants } from './typography/Paragraph';
 import { cva, cx, type VariantProps } from './utils/cva';
 
 const alertVariants = cva({
-  base: 'text-contrast inset-surface my-6 flex w-full gap-3 rounded last:mb-0',
+  base: 'inset-surface my-6 flex w-full gap-3 rounded last:mb-0',
   variants: {
     variant: {
       default: '',
@@ -35,10 +35,9 @@ const alertVariants = cva({
   },
 });
 
-const variantIcons: Record<
-  NonNullable<VariantProps<typeof alertVariants>['variant']>,
-  LucideIcon | null
-> = {
+type Variant = NonNullable<VariantProps<typeof alertVariants>['variant']>;
+
+const variantIcons: Record<Variant, LucideIcon | null> = {
   default: null,
   info: Info,
   destructive: AlertCircle,
@@ -46,15 +45,33 @@ const variantIcons: Record<
   warning: AlertTriangle,
 };
 
-const variantAriaLabels: Record<
-  NonNullable<VariantProps<typeof alertVariants>['variant']>,
-  string
-> = {
+/**
+ * Variant → live-region role. `role="alert"` carries implicit
+ * aria-live="assertive" + aria-atomic="true" and is reserved for content
+ * that must interrupt the user (errors). Everything else uses
+ * `role="status"` (implicit aria-live="polite" + aria-atomic="true") so
+ * announcements wait for the user to be idle.
+ */
+const variantRoles: Record<Variant, 'alert' | 'status'> = {
+  default: 'status',
+  info: 'status',
+  success: 'status',
+  warning: 'status',
+  destructive: 'alert',
+};
+
+/**
+ * Visually-hidden context prefix announced before the alert content so
+ * screen-reader users get the variant's semantic meaning that sighted
+ * users get from color + icon. Prepended inside the content block to
+ * avoid adding a flex slot (which would inherit the parent gap).
+ */
+const variantContextLabels: Record<Variant, string> = {
   default: 'Notice',
   info: 'Information',
-  destructive: 'Error',
   success: 'Success',
   warning: 'Warning',
+  destructive: 'Error',
 };
 
 type AlertProps = React.HTMLAttributes<HTMLDivElement> &
@@ -66,16 +83,11 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
   ({ className, variant = 'default', icon, children, ...props }, ref) => {
     const IconComponent =
       icon === false ? null : (icon ?? variantIcons[variant]);
-    const ariaLabel = variantAriaLabels[variant];
-    const ariaLive = variant === 'destructive' ? 'assertive' : 'polite';
 
     return (
       <Surface
         ref={ref}
-        role="alert"
-        aria-live={ariaLive}
-        aria-atomic="true"
-        aria-label={ariaLabel}
+        role={variantRoles[variant]}
         spacing="sm"
         className={cx(alertVariants({ variant }), className)}
         noContainer
@@ -83,12 +95,21 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
         {...props}
       >
         {IconComponent && (
-          <IconComponent
-            className="tablet-landscape:block mt-[0.33em] hidden size-4 shrink-0" // mt is optical adjustment so that the SVG aligns with the heading
+          <span
             aria-hidden="true"
-          />
+            // `h-[1lh]` matches one line-height of the inherited text so the
+            // icon's slot is exactly one text line tall; `items-center` then
+            // centres it against the first line of whatever child renders
+            // first, working for both Heading and Paragraph leading children.
+            className="tablet-landscape:inline-flex hidden h-lh shrink-0 items-center"
+          >
+            <IconComponent className="size-4" />
+          </span>
         )}
-        <div>{children}</div>
+        <div>
+          <span className="sr-only">{variantContextLabels[variant]}: </span>
+          {children}
+        </div>
       </Surface>
     );
   },
@@ -103,7 +124,7 @@ const AlertTitle = React.forwardRef<
     level="h4"
     variant="all-caps"
     ref={ref}
-    className={className}
+    className={cx('mt-0!', className)}
     {...props}
   />
 ));
