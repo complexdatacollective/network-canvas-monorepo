@@ -310,23 +310,9 @@ const DeckCardInner = forwardRef<HTMLDivElement, DeckCardProps>(
           </div>
 
           {/* CTA pinned to bottom, centred. `mt-auto` consumes the free space
-              between the description block and the card's lower edge. The
-              spring-in animation lands a beat AFTER the reverse morph
-              settles, so it reads as a discrete "card-is-back" gesture rather
-              than the morph itself. */}
+              between the description block and the card's lower edge. */}
           {isActive ? (
-            <motion.div
-              initial={{ opacity: 0, y: 24, scale: 0.85 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{
-                delay: 0.32,
-                type: 'spring',
-                stiffness: 320,
-                damping: 22,
-                mass: 0.8,
-              }}
-              className="mt-auto flex justify-center pb-6"
-            >
+            <div className="mt-auto flex justify-center pb-6">
               <Button
                 icon={<Play className="stroke-[3px]!" aria-hidden />}
                 className="bg-sea-green text-primary-contrast border-b-sea-green-dark border-b-8 text-base font-black tracking-[0.08em] uppercase"
@@ -338,7 +324,7 @@ const DeckCardInner = forwardRef<HTMLDivElement, DeckCardProps>(
               >
                 Start new interview
               </Button>
-            </motion.div>
+            </div>
           ) : null}
         </motion.div>
       </div>

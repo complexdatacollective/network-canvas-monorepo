@@ -59,21 +59,6 @@ export function NewSessionDialog({
     boxShadow: cardActiveShadow(palette.backgroundTop, 6),
   };
 
-  // The form area + footer don't exist on the source card, so they animate
-  // in from below after the morph settles. Bigger offset + spring gives this
-  // a more decisive "the dialog has landed" feel.
-  const enterAfterMorph = {
-    initial: { opacity: 0, y: 32, scale: 0.94 },
-    animate: { opacity: 1, y: 0, scale: 1 },
-    transition: {
-      delay: 0.28,
-      type: 'spring' as const,
-      stiffness: 260,
-      damping: 24,
-      mass: 0.9,
-    },
-  };
-
   return (
     <FormStoreProvider>
       <Modal
@@ -110,47 +95,45 @@ export function NewSessionDialog({
             </motion.div>
           </div>
 
-          <motion.div {...enterAfterMorph}>
-            <FormWithoutProvider
-              id={formId}
-              onSubmit={async (values) => {
-                const caseId = String(values.caseId ?? '').trim();
-                if (!caseId) {
-                  return {
-                    success: false,
-                    fieldErrors: { caseId: ['Case ID is required'] },
-                  };
-                }
-                const session = await createSession({
-                  protocolHash: display.hash,
-                  protocolName: display.name,
-                  caseId,
-                  initialNetwork: createInitialNetwork(),
-                });
-                onCreated(session);
-                return { success: true };
-              }}
-            >
-              <div className="px-6 pt-5">
-                <Field
-                  name="caseId"
-                  label="Case ID"
-                  hint="A label used to identify this interview in exports."
-                  component={InputField}
-                  required="Case ID is required"
-                  minLength={1}
-                  validateOnChange
-                />
-              </div>
-            </FormWithoutProvider>
+          <FormWithoutProvider
+            id={formId}
+            onSubmit={async (values) => {
+              const caseId = String(values.caseId ?? '').trim();
+              if (!caseId) {
+                return {
+                  success: false,
+                  fieldErrors: { caseId: ['Case ID is required'] },
+                };
+              }
+              const session = await createSession({
+                protocolHash: display.hash,
+                protocolName: display.name,
+                caseId,
+                initialNetwork: createInitialNetwork(),
+              });
+              onCreated(session);
+              return { success: true };
+            }}
+          >
+            <div className="px-6 pt-5">
+              <Field
+                name="caseId"
+                label="Case ID"
+                hint="A label used to identify this interview in exports."
+                component={InputField}
+                required="Case ID is required"
+                minLength={1}
+                validateOnChange
+              />
+            </div>
+          </FormWithoutProvider>
 
-            <footer className="phone-landscape:flex-row phone-landscape:justify-end mt-6 flex flex-col gap-2 px-6 pb-6">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              <SubmitButton form={formId}>Start interview</SubmitButton>
-            </footer>
-          </motion.div>
+          <footer className="phone-landscape:flex-row phone-landscape:justify-end mt-6 flex flex-col gap-2 px-6 pb-6">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <SubmitButton form={formId}>Start interview</SubmitButton>
+          </footer>
         </ModalPopup>
       </Modal>
     </FormStoreProvider>
