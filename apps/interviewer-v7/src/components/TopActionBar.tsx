@@ -1,7 +1,8 @@
-import { Database, Settings, Upload } from 'lucide-react';
+import { Database, Lock, Settings, Upload } from 'lucide-react';
 import { motion } from 'motion/react';
 
 import { Button, IconButton } from '@codaco/fresco-ui/Button';
+import { useAuth } from '~/lib/auth/AuthContext';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -21,6 +22,9 @@ export function TopActionBar({
   onOpenData,
   onOpenSettings,
 }: TopActionBarProps) {
+  const { mode, lock } = useAuth();
+  const showLock = mode !== undefined && mode !== 'none';
+
   return (
     <div className="flex items-center gap-3">
       <motion.span
@@ -57,10 +61,30 @@ export function TopActionBar({
           Data
         </Button>
       </motion.span>
+      {showLock && (
+        <motion.span
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.32, ease: EASE }}
+          whileHover={{ y: -2 }}
+          whileTap={{ scale: 0.94 }}
+          className="inline-flex"
+        >
+          <IconButton
+            variant="text"
+            icon={<Lock size={22} className="stroke-[3px]" aria-hidden />}
+            aria-label="Lock app"
+            onClick={() => {
+              void lock();
+            }}
+            className={GLASS_PILL}
+          />
+        </motion.span>
+      )}
       <motion.span
         initial={{ opacity: 0, y: -6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, delay: 0.32, ease: EASE }}
+        transition={{ duration: 0.55, delay: 0.39, ease: EASE }}
         whileHover={{ y: -2, rotate: -8 }}
         whileTap={{ scale: 0.94 }}
         className="inline-flex"
