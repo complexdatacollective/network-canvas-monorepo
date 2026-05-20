@@ -1,23 +1,22 @@
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect } from 'react';
+import { useLocation } from 'wouter';
 
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { useAuth } from '~/lib/auth/AuthContext';
 
 import { LockScreen } from './LockScreen';
-import { useSetupWizard } from './SetupWizardDialog';
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const { kind } = useAuth();
-  const { openSetupWizard } = useSetupWizard();
-  const openedRef = useRef(false);
+  const [location, navigate] = useLocation();
 
   useEffect(() => {
-    if (kind !== 'unconfigured' || openedRef.current) return;
-    openedRef.current = true;
-    void openSetupWizard().finally(() => {
-      openedRef.current = false;
-    });
-  }, [kind, openSetupWizard]);
+    if (kind === 'unconfigured' && location !== '/welcome') {
+      navigate('/welcome', { replace: true });
+    } else if (kind === 'unlocked' && location === '/welcome') {
+      navigate('/', { replace: true });
+    }
+  }, [kind, location, navigate]);
 
   if (kind === 'loading') {
     return (
@@ -25,13 +24,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
         <Spinner size="lg" />
       </div>
     );
-  }
-
-  if (kind === 'unconfigured') {
-    // The wizard dialog mounts above this content via DialogProvider.
-    // Render an empty placeholder so the global background blobs (rendered by
-    // App.tsx) are the only visual underneath the dialog.
-    return <div className="min-h-dvh" aria-hidden />;
   }
 
   if (kind === 'locked') return <LockScreen />;
