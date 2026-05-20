@@ -32,6 +32,12 @@ const FAN_Z_STEP = 400;
 const INACTIVE_SHADOW = '0 20px 40px oklch(0.10 0.05 281 / 0.5)';
 const ACTIVE_DROP_SHADOW = '0 30px 60px oklch(0.10 0.05 281 / 0.7)';
 
+// 6px ring on the morphed dialog reads as "this is the protocol you picked"
+// without dominating the larger surface; 2px on the deck keeps the resting
+// active state subtle.
+export const cardActiveShadow = (accent: string, ringPx = 2): string =>
+  `${ACTIVE_DROP_SHADOW}, 0 0 0 ${ringPx}px ${accent}`;
+
 // `shrink-0` keeps the card at its explicit pixel size; the slot is narrower
 // than the card so adjacent cards visually overlap. Dimensions come in as
 // inline styles from the parent — we avoid `h-[%]` + `aspect-ratio` here
@@ -201,7 +207,7 @@ const DeckCardInner = forwardRef<HTMLDivElement, DeckCardProps>(
     const protocol = entry.protocol;
     const palette = seedToPatternPalette(protocol.name);
     const boxShadow = isActive
-      ? `${ACTIVE_DROP_SHADOW}, 0 0 0 2px ${palette.backgroundTop}`
+      ? cardActiveShadow(palette.backgroundTop)
       : INACTIVE_SHADOW;
     const onCardKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
       if (event.key === 'Enter' || event.key === ' ') {
@@ -209,6 +215,19 @@ const DeckCardInner = forwardRef<HTMLDivElement, DeckCardProps>(
         onTap();
       }
     };
+
+    // While the card is morphing into the dialog, unmount it so motion has a
+    // clean source→target handoff (matches fresco-ui's ArrayField pattern).
+    // The slot div stays so the deck doesn't reflow.
+    if (isExpanding) {
+      return (
+        <div
+          ref={slotRef}
+          className={SLOT_CLASS}
+          style={{ width: slotWidth }}
+        />
+      );
+    }
 
     return (
       <div ref={slotRef} className={SLOT_CLASS} style={{ width: slotWidth }}>
@@ -225,7 +244,6 @@ const DeckCardInner = forwardRef<HTMLDivElement, DeckCardProps>(
             width: cardWidth,
             height: cardHeight,
             boxShadow,
-            opacity: isExpanding ? 0 : 1,
           }}
           className={`${cardBase()} ${protocolCardClass()} will-change-transform`}
           aria-label={`${protocol.name}${isActive ? ' (active)' : ''}`}
@@ -236,7 +254,7 @@ const DeckCardInner = forwardRef<HTMLDivElement, DeckCardProps>(
               seed={protocol.name}
               className="absolute inset-0 size-full"
             />
-            <div className="relative">
+            <motion.div layout="position" className="relative">
               <Heading
                 level="h2"
                 margin="none"
@@ -247,7 +265,7 @@ const DeckCardInner = forwardRef<HTMLDivElement, DeckCardProps>(
               <div className="font-monospace mt-2.5 text-xs text-white/85">
                 Schema v{protocol.schemaVersion}
               </div>
-            </div>
+            </motion.div>
           </div>
 
           {/* Meta row */}
