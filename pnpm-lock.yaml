@@ -538,9 +538,6 @@ importers:
       react-dropzone:
         specifier: ^15.0.0
         version: 15.0.0(react@19.2.6)
-      react-flip-toolkit:
-        specifier: ^6.6.9
-        version: 6.6.9(prop-types@15.8.1)(react@19.2.6)
       react-grid-layout:
         specifier: ^1.5.3
         version: 1.5.3(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -23702,12 +23699,6 @@ snapshots:
     dependencies:
       prop-types: 15.8.1
       react: 16.14.0
-      rematrix: 0.2.2
-
-  react-flip-toolkit@6.6.9(prop-types@15.8.1)(react@19.2.6):
-    dependencies:
-      prop-types: 15.8.1
-      react: 19.2.6
       rematrix: 0.2.2
 
   react-grid-layout@0.16.6(react-dom@16.14.0(react@16.14.0))(react@16.14.0):
