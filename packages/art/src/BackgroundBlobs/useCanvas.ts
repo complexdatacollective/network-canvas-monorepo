@@ -36,8 +36,10 @@ const useCanvas = (
       return undefined;
     }
 
-    // Setting canvas.width/height resets the context transform, so we must
-    // re-apply the DPR scale every time we resize the backing store.
+    // Setting canvas.width/height clears the bitmap and resets the context
+    // transform, so we must re-apply the DPR scale and synchronously repaint
+    // before the next browser paint — otherwise the canvas flashes blank
+    // between the resize and the next requestAnimationFrame.
     const syncSize = (cssWidth: number, cssHeight: number) => {
       const ratio = window.devicePixelRatio || 1;
       const targetWidth = Math.round(cssWidth * ratio);
@@ -46,6 +48,10 @@ const useCanvas = (
         canvas.width = targetWidth;
         canvas.height = targetHeight;
         context.scale(ratio, ratio);
+        const time = performance.now();
+        predraw(context, time, canvasRef);
+        draw(context, time, canvasRef);
+        postdraw(context, time, canvasRef);
       }
     };
 
@@ -76,7 +82,12 @@ const useCanvas = (
 
     let requestAnimationId: number | null = null;
 
-    const render = (time: number) => {
+    // `performance.now()` instead of rAF's frame-start time so this loop and
+    // syncSize share one monotonic clock — the blobs library throws if a
+    // later timestamp is smaller than an earlier one, and the rAF parameter
+    // can be behind a `performance.now()` call from the same task.
+    const render = () => {
+      const time = performance.now();
       predraw(context, time, canvasRef);
       draw(context, time, canvasRef);
       postdraw(context, time, canvasRef);
