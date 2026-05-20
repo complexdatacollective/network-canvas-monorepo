@@ -52,11 +52,11 @@ export function NewSessionDialog({
   const popupProps = layoutId ? { layoutId, transition: MORPH_TRANSITION } : {};
   const palette = seedToPatternPalette(display.name);
 
-  // Match the deck card's radius and ACTIVE_DROP_SHADOW with a 6px palette
-  // ring so the morph reads as the same surface as the card.
+  // Same radius and box-shadow (including ring) as the active card so the
+  // morph reads as the same surface — no width change at handoff.
   const popupStyle = {
     borderRadius: CARD_RADIUS_PX,
-    boxShadow: cardActiveShadow(palette.backgroundTop, 6),
+    boxShadow: cardActiveShadow(palette.backgroundTop),
   };
 
   return (

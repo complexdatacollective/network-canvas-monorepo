@@ -32,11 +32,8 @@ const FAN_Z_STEP = 400;
 const INACTIVE_SHADOW = '0 20px 40px oklch(0.10 0.05 281 / 0.5)';
 const ACTIVE_DROP_SHADOW = '0 30px 60px oklch(0.10 0.05 281 / 0.7)';
 
-// 6px ring on the morphed dialog reads as "this is the protocol you picked"
-// without dominating the larger surface; 2px on the deck keeps the resting
-// active state subtle.
-export const cardActiveShadow = (accent: string, ringPx = 2): string =>
-  `${ACTIVE_DROP_SHADOW}, 0 0 0 ${ringPx}px ${accent}`;
+export const cardActiveShadow = (accent: string): string =>
+  `${ACTIVE_DROP_SHADOW}, 0 0 0 2px ${accent}`;
 
 // The card's `rounded-[3rem]` resolves to 48px. Setting the same value via
 // `style` (instead of just className) on the layoutId-morphing element gives
