@@ -39,7 +39,10 @@ function PinLockBody({
             onSubmit(typeof values.pin === 'string' ? values.pin : '')
           }
         >
-          <PinUnlockField onComplete={() => formRef.current?.requestSubmit()} />
+          <PinUnlockField
+            autoFocus
+            onComplete={() => formRef.current?.requestSubmit()}
+          />
         </FormWithoutProvider>
       </Dialog>
     </FormStoreProvider>
@@ -74,7 +77,7 @@ function PassphraseLockBody({
             )
           }
         >
-          <PasswordUnlockField />
+          <PasswordUnlockField autoFocus />
         </FormWithoutProvider>
       </Dialog>
     </FormStoreProvider>
@@ -110,7 +113,9 @@ export function LockScreen() {
     unlockWithPassphrase,
   } = useAuth();
 
-  if (kind !== 'locked') return null;
+  if (kind !== 'locked') {
+    return null;
+  }
 
   switch (mode) {
     case 'webauthn':
@@ -153,6 +158,8 @@ export function LockScreen() {
       );
     case 'none':
     case undefined:
+      return null;
+    default:
       return null;
   }
 }
