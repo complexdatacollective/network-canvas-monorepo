@@ -39,4 +39,3 @@
 @plugin '../shared/plugins/elevation';
 @plugin '../shared/plugins/inset-surface';
 @plugin '../shared/plugins/motion-spring';
-@plugin '@tailwindcss/forms';

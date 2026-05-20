@@ -27,12 +27,12 @@ import plugin from 'tailwindcss/plugin';
 
 const DEFAULT_BG = 'oklch(50% 0 0)';
 
-const insetSurfacePlugin: ReturnType<typeof plugin> = plugin((api) => {
-  const toColorVar = (value: string) =>
-    typeof value === 'string' && value.startsWith('var(--')
-      ? value.replace(/^var\(--/, 'var(--color-')
-      : value;
+const toColorVar = (value: string) =>
+  typeof value === 'string' && value.startsWith('var(--')
+    ? value.replace(/^var\(--/, 'var(--color-')
+    : value;
 
+const insetSurfacePlugin: ReturnType<typeof plugin> = plugin((api) => {
   api.matchUtilities(
     {
       bg: (value) => ({
