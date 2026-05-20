@@ -16,70 +16,9 @@ type SortState = {
   desc: boolean;
 };
 
-// Ported verbatim from react-table v7's default `alphanumeric` sortType:
-// stringifies values, splits on number groups, and compares numerically
-// where possible. Handles numbers, mixed alphanumeric, null/undefined.
-const reSplitAlphaNumeric = /([0-9]+)/gm;
+// Natural sort, so "item2" sorts before "item10".
+const collator = new Intl.Collator(undefined, { numeric: true });
 
-const toComparableString = (value: unknown): string => {
-  if (typeof value === 'number') {
-    if (Number.isNaN(value) || value === Infinity || value === -Infinity) {
-      return '';
-    }
-    return String(value);
-  }
-  if (typeof value === 'string') {
-    return value;
-  }
-  // Everything else (booleans, null, undefined, objects) compares as the empty
-  // string, matching react-table v7's `toString` helper.
-  return '';
-};
-
-const alphanumericCompare = (rawA: unknown, rawB: unknown): number => {
-  let a = toComparableString(rawA).split(reSplitAlphaNumeric).filter(Boolean);
-  let b = toComparableString(rawB).split(reSplitAlphaNumeric).filter(Boolean);
-
-  while (a.length && b.length) {
-    const aa = a.shift()!;
-    const bb = b.shift()!;
-    const an = parseInt(aa, 10);
-    const bn = parseInt(bb, 10);
-    const aIsNaN = Number.isNaN(an);
-    const bIsNaN = Number.isNaN(bn);
-
-    // Both are strings
-    if (aIsNaN && bIsNaN) {
-      if (aa > bb) {
-        return 1;
-      }
-      if (bb > aa) {
-        return -1;
-      }
-      continue;
-    }
-
-    // One is a string, one is a number (numbers sort before strings)
-    if (aIsNaN || bIsNaN) {
-      return aIsNaN ? -1 : 1;
-    }
-
-    // Both are numbers
-    if (an > bn) {
-      return 1;
-    }
-    if (bn > an) {
-      return -1;
-    }
-  }
-
-  return a.length - b.length;
-};
-
-// Matches how react-table v7's default cell renderer hands the raw value to
-// React: strings/numbers render as text; booleans, null, and undefined render
-// as nothing. Non-primitive values (which React would otherwise reject) are
-// stringified defensively.
 const renderCellValue = (value: unknown): ReactNode => {
   if (typeof value === 'string' || typeof value === 'number') {
     return value;
@@ -120,8 +59,7 @@ const tableClasses = cx(
 const Table = ({ data, columns }: TableProps) => {
   const [sort, setSort] = useState<SortState | null>(null);
 
-  // Replicates react-table v7's 3-state toggle cycle with sortDescFirst=false
-  // and sort removal enabled: unsorted -> asc -> desc -> unsorted.
+  // Cycle: unsorted -> asc -> desc -> unsorted.
   const toggleSort = (id: string) => {
     setSort((current) => {
       if (!current || current.id !== id) {
@@ -141,7 +79,11 @@ const Table = ({ data, columns }: TableProps) => {
     const direction = sort.desc ? -1 : 1;
     return data.toSorted(
       (rowA, rowB) =>
-        direction * alphanumericCompare(rowA[sort.id], rowB[sort.id]),
+        direction *
+        collator.compare(
+          String(rowA[sort.id] ?? ''),
+          String(rowB[sort.id] ?? ''),
+        ),
     );
   }, [data, sort]);
 
