@@ -72,7 +72,11 @@ const Asset = ({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // Only act on keys pressed on the wrapper itself, so Enter/Space on the
+      // inner buttons (preview/download/delete) don't bubble up and re-trigger.
+      if (e.target !== e.currentTarget) return;
       if (e.key === 'Enter' || e.key === ' ') {
+        e.stopPropagation();
         e.preventDefault();
         activate();
       }
