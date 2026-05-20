@@ -1275,6 +1275,9 @@ importers:
       electron-vite:
         specifier: ^6.0.0-beta.1
         version: 6.0.0-beta.1(@swc/core@1.15.21)(vite@8.0.13(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.99.0)(terser@5.47.0)(tsx@4.22.0)(yaml@2.9.0))
+      jsdom:
+        specifier: ^29.1.1
+        version: 29.1.1
       png-to-ico:
         specifier: ^3.0.1
         version: 3.0.1
