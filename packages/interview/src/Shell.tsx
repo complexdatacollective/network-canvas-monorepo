@@ -44,7 +44,7 @@ const variants = {
   exit: { opacity: 0 },
 };
 
-function Interview() {
+function Interview({ onExit }: { onExit?: () => void }) {
   const {
     stage,
     displayedStep,
@@ -136,6 +136,7 @@ function Interview() {
             orientation={navigationOrientation}
             forwardButtonRef={forwardButtonRef}
             backButtonRef={backButtonRef}
+            onExit={onExit}
           />
           {/*
            * Self-contained Toast.Provider for the interview manager so
@@ -172,6 +173,7 @@ type ShellProps = {
   analytics: InterviewAnalyticsMetadata;
   posthogClient?: PostHog;
   disableAnalytics?: boolean;
+  onExit?: () => void;
 };
 
 const Shell = ({
@@ -185,6 +187,7 @@ const Shell = ({
   analytics,
   posthogClient,
   disableAnalytics = false,
+  onExit,
 }: ShellProps) => {
   // Anchor onSync in a ref so the store factory receives a stable callback
   // (the sync middleware closes over it once at store creation). Hosts
@@ -257,7 +260,7 @@ const Shell = ({
             currentStep={currentStep}
             onStepChange={onStepChange}
           >
-            <Interview />
+            <Interview onExit={onExit} />
           </CurrentStepProvider>
         </ContractProvider>
       </Provider>

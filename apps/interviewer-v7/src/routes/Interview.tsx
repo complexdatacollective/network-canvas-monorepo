@@ -1,4 +1,3 @@
-import { LogOut } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useHistoryState } from 'wouter/use-browser-location';
@@ -183,7 +182,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <div className="relative flex h-dvh w-dvw">
+    <div className="flex h-dvh w-dvw">
       <Shell
         payload={state.payload}
         currentStep={currentStep}
@@ -193,17 +192,8 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         onRequestAsset={state.resolver}
         analytics={analytics}
         disableAnalytics
+        onExit={() => navigate('/')}
       />
-      <Button
-        variant="outline"
-        size="sm"
-        icon={<LogOut className="size-4" />}
-        className="bg-background/90 absolute top-3 left-3 z-50 backdrop-blur"
-        onClick={() => navigate('/')}
-        aria-label="Exit interview and return to dashboard"
-      >
-        Exit
-      </Button>
     </div>
   );
 }
