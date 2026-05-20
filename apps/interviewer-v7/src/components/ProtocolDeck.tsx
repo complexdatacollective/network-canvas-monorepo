@@ -25,7 +25,6 @@ type ProtocolDeckProps = {
   protocols: ProtocolWithCounts[];
   sessions: StoredSession[];
   initialProtocolHash?: string;
-  expandingProtocolHash?: string;
   onImport: () => void;
   onStartInterview: (protocolHash: string) => void;
 };
@@ -34,7 +33,6 @@ export function ProtocolDeck({
   protocols,
   sessions,
   initialProtocolHash,
-  expandingProtocolHash,
   onImport,
   onStartInterview,
 }: ProtocolDeckProps) {
@@ -327,10 +325,6 @@ export function ProtocolDeck({
               cardWidth={cardWidth}
               cardHeight={cardHeight}
               isActive={i === activeIdx}
-              isExpanding={
-                entry.kind === 'protocol' &&
-                entry.protocol.hash === expandingProtocolHash
-              }
               sessionCount={
                 entry.kind === 'protocol'
                   ? (sessionCounts.get(entry.protocol.hash) ?? 0)

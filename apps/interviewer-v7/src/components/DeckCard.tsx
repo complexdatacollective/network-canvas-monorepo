@@ -140,7 +140,6 @@ type DeckCardProps = {
   cardWidth: number;
   cardHeight: number;
   isActive: boolean;
-  isExpanding: boolean;
   sessionCount: number;
   onActivate: (idx: number) => void;
 };
@@ -156,7 +155,6 @@ const DeckCardInner = forwardRef<HTMLDivElement, DeckCardProps>(
       cardWidth,
       cardHeight,
       isActive,
-      isExpanding,
       sessionCount,
       onActivate,
     },
@@ -230,19 +228,6 @@ const DeckCardInner = forwardRef<HTMLDivElement, DeckCardProps>(
         onTap();
       }
     };
-
-    // While the card is morphing into the dialog, unmount it so motion has a
-    // clean source→target handoff (matches fresco-ui's ArrayField pattern).
-    // The slot div stays so the deck doesn't reflow.
-    if (isExpanding) {
-      return (
-        <div
-          ref={slotRef}
-          className={SLOT_CLASS}
-          style={{ width: slotWidth }}
-        />
-      );
-    }
 
     return (
       <div ref={slotRef} className={SLOT_CLASS} style={{ width: slotWidth }}>

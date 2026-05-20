@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { useId, useRef } from 'react';
+import { useId } from 'react';
 
 import { Pattern, seedToPatternPalette } from '@codaco/art';
 import Button from '@codaco/fresco-ui/Button';
@@ -18,7 +18,7 @@ import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
 import { CARD_RADIUS_PX, cardActiveShadow, MORPH_TRANSITION } from './DeckCard';
 
 type NewSessionDialogProps = {
-  protocol: ProtocolWithCounts | null;
+  protocol: ProtocolWithCounts;
   onClose: () => void;
   onCreated: (session: StoredSession) => void;
   layoutId?: string;
@@ -32,28 +32,9 @@ export function NewSessionDialog({
 }: NewSessionDialogProps) {
   const formId = useId();
 
-  // Keep the last non-null protocol so popup content stays visible during the
-  // close animation — when the parent sets `protocol={null}` to start the
-  // exit morph, we still need to render the banner/form/footer until the
-  // reverse layout animation finishes. Matches fresco-ui's ArrayField pattern
-  // (parent always renders the dialog editor; only `open` toggles).
-  const lastProtocolRef = useRef<ProtocolWithCounts | null>(protocol);
-  if (protocol) lastProtocolRef.current = protocol;
-  const display = lastProtocolRef.current;
-
-  if (!display) {
-    return (
-      <Modal open={false} onOpenChange={() => {}}>
-        <></>
-      </Modal>
-    );
-  }
-
   const popupProps = layoutId ? { layoutId, transition: MORPH_TRANSITION } : {};
-  const palette = seedToPatternPalette(display.name);
+  const palette = seedToPatternPalette(protocol.name);
 
-  // Same radius and box-shadow (including ring) as the active card so the
-  // morph reads as the same surface — no width change at handoff.
   const popupStyle = {
     borderRadius: CARD_RADIUS_PX,
     boxShadow: cardActiveShadow(palette.backgroundTop),
@@ -62,7 +43,7 @@ export function NewSessionDialog({
   return (
     <FormStoreProvider>
       <Modal
-        open={protocol !== null}
+        open
         onOpenChange={(isOpen) => {
           if (!isOpen) onClose();
         }}
@@ -74,11 +55,11 @@ export function NewSessionDialog({
         >
           <div className="relative min-h-[200px] w-full overflow-hidden p-6 pb-8">
             <Pattern
-              seed={display.name}
+              seed={protocol.name}
               className="absolute inset-0 size-full"
             />
             <motion.div
-              layoutId={`protocol-banner-${display.hash}`}
+              layoutId={`protocol-banner-${protocol.hash}`}
               transition={MORPH_TRANSITION}
               className="relative"
             >
@@ -87,10 +68,10 @@ export function NewSessionDialog({
                 margin="none"
                 className="max-w-[90%] leading-[0.98] font-black tracking-tight text-white"
               >
-                {display.name}
+                {protocol.name}
               </Heading>
               <div className="font-monospace mt-2.5 text-xs text-white/85">
-                Schema v{display.schemaVersion}
+                Schema v{protocol.schemaVersion}
               </div>
             </motion.div>
           </div>
@@ -106,8 +87,8 @@ export function NewSessionDialog({
                 };
               }
               const session = await createSession({
-                protocolHash: display.hash,
-                protocolName: display.name,
+                protocolHash: protocol.hash,
+                protocolName: protocol.name,
                 caseId,
                 initialNetwork: createInitialNetwork(),
               });

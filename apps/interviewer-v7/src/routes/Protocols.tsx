@@ -1,4 +1,5 @@
 import { FilePlus2, Globe, PlayCircle, Trash2 } from 'lucide-react';
+import { AnimatePresence } from 'motion/react';
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 
@@ -176,21 +177,27 @@ export function ProtocolsRoute() {
         </Table>
       )}
 
-      {(() => {
-        const pendingProtocol = newSessionProtocolHash
-          ? (protocols.find((p) => p.hash === newSessionProtocolHash) ?? null)
-          : null;
-        return (
-          <NewSessionDialog
-            protocol={pendingProtocol}
-            onClose={() => setNewSessionProtocolHash(null)}
-            onCreated={(session) => {
-              setNewSessionProtocolHash(null);
-              navigate(`/interview/${session.id}`, { state: { fresh: true } });
-            }}
-          />
-        );
-      })()}
+      <AnimatePresence>
+        {(() => {
+          const pendingProtocol = newSessionProtocolHash
+            ? protocols.find((p) => p.hash === newSessionProtocolHash)
+            : undefined;
+          if (!pendingProtocol) return null;
+          return (
+            <NewSessionDialog
+              key={pendingProtocol.hash}
+              protocol={pendingProtocol}
+              onClose={() => setNewSessionProtocolHash(null)}
+              onCreated={(session) => {
+                setNewSessionProtocolHash(null);
+                navigate(`/interview/${session.id}`, {
+                  state: { fresh: true },
+                });
+              }}
+            />
+          );
+        })()}
+      </AnimatePresence>
 
       <ImportFromUrlDialog
         open={urlDialogOpen}

@@ -1,3 +1,4 @@
+import { AnimatePresence } from 'motion/react';
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 
@@ -69,38 +70,41 @@ export function HomeRoute() {
         />
       </header>
 
-      <ProtocolDeck
-        protocols={protocols}
-        sessions={sessions}
-        initialProtocolHash={settings?.lastActiveProtocolHash}
-        expandingProtocolHash={pendingProtocolHash ?? undefined}
-        onImport={() => setOpenDialog('import')}
-        onStartInterview={setPendingProtocolHash}
-      />
-
-      {/* Always rendered so AnimatePresence inside Modal survives the close
-          animation — unmounting NewSessionDialog kills its AnimatePresence
-          before the reverse layoutId morph can play. */}
-      {(() => {
-        const pendingProtocol = pendingProtocolHash
-          ? (protocols.find((p) => p.hash === pendingProtocolHash) ?? null)
-          : null;
-        return (
-          <NewSessionDialog
-            protocol={pendingProtocol}
-            layoutId={
-              pendingProtocolHash
-                ? `protocol-card-${pendingProtocolHash}`
-                : undefined
-            }
-            onClose={() => setPendingProtocolHash(null)}
-            onCreated={(session) => {
-              setPendingProtocolHash(null);
-              navigate(`/interview/${session.id}`, { state: { fresh: true } });
-            }}
-          />
-        );
-      })()}
+      {/* AnimatePresence wraps both the deck and the dialog so motion can
+          coordinate the shared-layout morph. The deck stays mounted; the
+          dialog is conditionally rendered. When pendingProtocolHash flips
+          null, AnimatePresence keeps NewSessionDialog mounted until the
+          reverse morph completes. */}
+      <AnimatePresence>
+        <ProtocolDeck
+          key="deck"
+          protocols={protocols}
+          sessions={sessions}
+          initialProtocolHash={settings?.lastActiveProtocolHash}
+          onImport={() => setOpenDialog('import')}
+          onStartInterview={setPendingProtocolHash}
+        />
+        {(() => {
+          const pendingProtocol = pendingProtocolHash
+            ? protocols.find((p) => p.hash === pendingProtocolHash)
+            : undefined;
+          if (!pendingProtocol) return null;
+          return (
+            <NewSessionDialog
+              key={pendingProtocol.hash}
+              protocol={pendingProtocol}
+              layoutId={`protocol-card-${pendingProtocol.hash}`}
+              onClose={() => setPendingProtocolHash(null)}
+              onCreated={(session) => {
+                setPendingProtocolHash(null);
+                navigate(`/interview/${session.id}`, {
+                  state: { fresh: true },
+                });
+              }}
+            />
+          );
+        })()}
+      </AnimatePresence>
 
       <div className="px-11 pb-5">
         <StatusRow
