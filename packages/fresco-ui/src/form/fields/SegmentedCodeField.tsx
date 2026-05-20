@@ -35,7 +35,7 @@ const segmentVariants = compose(
   cva({
     base: cx(
       'font-monospace aspect-square min-w-0 rounded-sm text-center caret-transparent ring-0',
-      'focus-visible:focus-styles outline-current',
+      'focusable',
       'placeholder:text-input-contrast/30',
     ),
     variants: {
@@ -112,6 +112,7 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
     className,
     onBlur,
     id,
+    autoFocus,
     name: _name,
     ...rest
   } = props;
@@ -258,6 +259,8 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
               inputRefs.current[i] = el;
             }}
             id={i === 0 ? id : undefined}
+            // oxlint-disable-next-line jsx-a11y/no-autofocus
+            autoFocus={i === 0 ? autoFocus : undefined}
             type={sensitive ? 'password' : 'text'}
             inputMode={inputMode}
             autoComplete={sensitive ? 'off' : i === 0 ? 'one-time-code' : 'off'}
