@@ -8,6 +8,11 @@ import { getProtocolName } from '~/selectors/protocol';
 const dateWithSafeChars = (date: string, replaceWith = '-') =>
   date.replace(/[^a-zA-Z\d\s]/gi, replaceWith).toLowerCase();
 
+// Strip characters that are invalid in filenames on common platforms, keeping
+// the name otherwise readable (case and spacing preserved).
+const fileNameWithSafeChars = (name: string) =>
+  name.replace(/[/\\:*?"<>|]/g, '-').trim();
+
 const PrintProtocolAction = () => {
   const protocolName = useSelector(getProtocolName);
 
@@ -15,7 +20,7 @@ const PrintProtocolAction = () => {
     if (!protocolName) return;
     const now = new Date();
     const dateString = `${dateWithSafeChars(now.toLocaleDateString(), '-')} ${dateWithSafeChars(now.toLocaleTimeString(), '.')}`;
-    const fileName = `${protocolName} Protocol Summary (Created ${dateString}).pdf`;
+    const fileName = `${fileNameWithSafeChars(protocolName)} Protocol Summary (Created ${dateString}).pdf`;
     const previousTitle = window.document.title;
     window.document.title = fileName;
     try {

@@ -15,13 +15,20 @@ import type { AppDispatch } from '~/ducks/store';
 //   Tracked at the window event level (not via React state) because React 19's
 //   useSyncExternalStore re-renders synchronously inside popstate, so a
 //   useEffect-based tracker would have already updated to the new URL by the
-//   time our popstate handler runs.
+//   time our popstate handler runs. Stored as the full path (pathname + search
+//   + hash) so restoring it preserves query params that pages depend on (e.g.
+//   StageEditorPage reads insertAtIndex/type from the search string).
+const getFullPath = () =>
+  window.location.pathname + window.location.search + window.location.hash;
+
 export const guardState = {
   bypass: false,
   prompting: false,
-  prevPath: window.location.pathname,
+  prevPath: getFullPath(),
 };
 
+// path may include a search/hash suffix; pathname always comes first, so a
+// prefix check still correctly identifies protocol routes.
 export const isProtocolPath = (path: string) => path.startsWith('/protocol');
 
 // Opens the leave-editor confirmation. On confirm, clears the active protocol
@@ -65,11 +72,11 @@ export const useProtocolNavGuard = () => {
     // event wouter dispatches from its monkey-patch. Use it to keep prevPath
     // in sync with the URL at all times.
     const updatePrevPath = () => {
-      guardState.prevPath = window.location.pathname;
+      guardState.prevPath = getFullPath();
     };
 
     const onPop = () => {
-      const newPath = window.location.pathname;
+      const newPath = getFullPath();
       const oldPath = guardState.prevPath;
       const leaving = isProtocolPath(oldPath) && !isProtocolPath(newPath);
 

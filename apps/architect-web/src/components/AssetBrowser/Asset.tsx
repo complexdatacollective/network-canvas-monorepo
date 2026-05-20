@@ -54,16 +54,30 @@ const Asset = ({
   onPreview = null,
   type,
 }: AssetProps) => {
+  const activate = useCallback(() => {
+    if (onClick) {
+      onClick(id);
+    } else if (onPreview) {
+      onPreview(id);
+    }
+  }, [onClick, onPreview, id]);
+
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (onClick) {
-        onClick(id);
-      } else if (onPreview) {
-        onPreview(id);
+      activate();
+    },
+    [activate],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        activate();
       }
     },
-    [onClick, onPreview, id],
+    [activate],
   );
 
   const handleDelete = useCallback(
@@ -99,21 +113,25 @@ const Asset = ({
     return ASSET_COMPONENTS[assetType] || FallBackAssetComponent;
   }, [type]);
 
+  const isInteractive = !!(onClick || onPreview);
+
   return (
-    <button
-      type="button"
-      onClick={handleClick}
+    <div
+      {...(isInteractive
+        ? {
+            role: 'button',
+            tabIndex: 0,
+            onClick: handleClick,
+            onKeyDown: handleKeyDown,
+          }
+        : {})}
       className={cx(
         'group relative size-full',
-        (onClick || onPreview) && 'cursor-pointer',
+        isInteractive && 'cursor-pointer',
       )}
     >
       <div className="flex size-full items-center justify-center">
-        <PreviewComponent
-          id={id}
-          interactive={!!(onClick || onPreview)}
-          fullWidth
-        />
+        <PreviewComponent id={id} interactive={isInteractive} fullWidth />
       </div>
 
       <div
@@ -170,7 +188,7 @@ const Asset = ({
           Unused
         </span>
       )}
-    </button>
+    </div>
   );
 };
 
