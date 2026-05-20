@@ -1,5 +1,5 @@
-import { motion } from 'motion/react';
-import { Route, Switch } from 'wouter';
+import { AnimatePresence, motion } from 'motion/react';
+import { Route, Switch, useLocation } from 'wouter';
 
 import { BackgroundBlobs } from '@codaco/art';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
@@ -14,8 +14,20 @@ import { NotFoundRoute } from './routes/NotFound';
 import { ProtocolsRoute } from './routes/Protocols';
 import { SessionsRoute } from './routes/Sessions';
 import { SettingsRoute } from './routes/Settings';
+import { WelcomeRoute } from './routes/Welcome';
+
+const pageWrapperVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { when: 'beforeChildren', duration: 0.4 },
+  },
+  exit: { opacity: 0, transition: { duration: 0.4 } },
+} as const;
 
 export default function App() {
+  const [location] = useLocation();
+
   return (
     <AppProviders>
       <ThemedRegion theme="interview" className="isolate">
@@ -29,37 +41,43 @@ export default function App() {
           className="fixed inset-0 -z-10 blur-[10rem]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.8 }}
-          transition={{
-            duration: 2,
-          }}
+          transition={{ duration: 2 }}
         >
           <BackgroundBlobs
             large={0}
             medium={4}
             small={0}
-            // speedFactor={40}
-            // filter="blur(10rem)"
-            // compositeOperation="screen"
             compositeOperation="color-dodge"
           />
         </motion.div>
         <AuthGate>
-          <Switch>
-            <Route path="/interview/:sessionId">
-              {({ sessionId }) => <InterviewRoute sessionId={sessionId} />}
-            </Route>
-            <Route path="/" component={HomeRoute} />
-            <Route>
-              <AppShell>
-                <Switch>
-                  <Route path="/protocols" component={ProtocolsRoute} />
-                  <Route path="/sessions" component={SessionsRoute} />
-                  <Route path="/settings" component={SettingsRoute} />
-                  <Route component={NotFoundRoute} />
-                </Switch>
-              </AppShell>
-            </Route>
-          </Switch>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location}
+              variants={pageWrapperVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              <Switch location={location}>
+                <Route path="/welcome" component={WelcomeRoute} />
+                <Route path="/interview/:sessionId">
+                  {({ sessionId }) => <InterviewRoute sessionId={sessionId} />}
+                </Route>
+                <Route path="/" component={HomeRoute} />
+                <Route>
+                  <AppShell>
+                    <Switch location={location}>
+                      <Route path="/protocols" component={ProtocolsRoute} />
+                      <Route path="/sessions" component={SessionsRoute} />
+                      <Route path="/settings" component={SettingsRoute} />
+                      <Route component={NotFoundRoute} />
+                    </Switch>
+                  </AppShell>
+                </Route>
+              </Switch>
+            </motion.div>
+          </AnimatePresence>
         </AuthGate>
       </ThemedRegion>
     </AppProviders>
