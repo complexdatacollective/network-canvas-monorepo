@@ -1,12 +1,12 @@
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 
 import { BrandHeader } from '~/components/BrandHeader';
+import { DataView } from '~/components/DataView';
 import { ImportDialog } from '~/components/ImportDialog';
-import { InterviewsDialog } from '~/components/InterviewsDialog';
 import { NewSessionDialog } from '~/components/NewSessionDialog';
-import { ProtocolDeck } from '~/components/ProtocolDeck';
+import { ProtocolDeck } from '~/components/ProtocolCarousel/ProtocolDeck';
 import { ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
 import { StatusRow } from '~/components/StatusRow';
@@ -18,7 +18,28 @@ import type {
   StoredSettings,
 } from '~/lib/db/types';
 
-type OpenDialog = 'import' | 'data' | 'settings' | null;
+type OpenDialog = 'import' | 'settings' | null;
+type View = 'protocols' | 'data';
+
+const VIEW_EASE = [0.22, 1, 0.36, 1] as const;
+
+const viewVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.3, ease: VIEW_EASE },
+  },
+  exit: {
+    opacity: 0,
+    y: -8,
+    transition: { duration: 0.25, ease: VIEW_EASE },
+  },
+} as const;
+
+function viewFromLocation(location: string): View {
+  return location === '/data' ? 'data' : 'protocols';
+}
 
 export function HomeRoute() {
   const [protocols, setProtocols] = useState<ProtocolWithCounts[]>([]);
@@ -28,7 +49,8 @@ export function HomeRoute() {
   const [pendingProtocolHash, setPendingProtocolHash] = useState<string | null>(
     null,
   );
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const view = viewFromLocation(location);
 
   const reload = useCallback(async () => {
     const [p, s, st] = await Promise.all([
@@ -67,55 +89,64 @@ export function HomeRoute() {
       <header className="flex items-center justify-between px-11 pt-9">
         <BrandHeader />
         <ResumePill sessions={sessions} />
-        <TopActionBar
-          onOpenImport={() => setOpenDialog('import')}
-          onOpenData={() => setOpenDialog('data')}
-          onOpenSettings={() => setOpenDialog('settings')}
-        />
+        <TopActionBar onOpenSettings={() => setOpenDialog('settings')} />
       </header>
 
-      <ProtocolDeck
-        protocols={protocols}
-        sessions={sessions}
-        initialProtocolHash={settings?.lastActiveProtocolHash}
-        onImport={() => setOpenDialog('import')}
-        onStartInterview={setPendingProtocolHash}
-      />
+      <AnimatePresence mode="wait" initial={false}>
+        {view === 'protocols' ? (
+          <motion.div
+            key="protocols"
+            variants={viewVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="flex min-h-0 w-full flex-1 flex-col gap-8"
+          >
+            <ProtocolDeck
+              protocols={protocols}
+              sessions={sessions}
+              initialProtocolHash={settings?.lastActiveProtocolHash}
+              onImport={() => setOpenDialog('import')}
+              onStartInterview={setPendingProtocolHash}
+            />
 
-      {/* Card and dialog share a layoutId, so motion auto-crossfades when
-          both are on the page. AnimatePresence holds the dialog in the DOM
-          while it morphs back to the card on close. */}
-      <AnimatePresence>
-        {pendingProtocol && (
-          <NewSessionDialog
-            key={pendingProtocol.hash}
-            protocol={pendingProtocol}
-            layoutId={`protocol-card-${pendingProtocol.hash}`}
-            onClose={() => setPendingProtocolHash(null)}
-            onCreated={(session) => {
-              setPendingProtocolHash(null);
-              navigate(`/interview/${session.id}`, { state: { fresh: true } });
-            }}
-          />
+            <NewSessionDialog
+              open={!!pendingProtocol}
+              protocol={pendingProtocol}
+              onClose={() => setPendingProtocolHash(null)}
+              onCreated={(session) => {
+                setPendingProtocolHash(null);
+                navigate(`/interview/${session.id}`, {
+                  state: { fresh: true },
+                });
+              }}
+            />
+
+            <div className="px-11 pb-5">
+              <StatusRow
+                protocolCount={protocols.length}
+                interviewCount={sessions.length}
+              />
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="data"
+            variants={viewVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="flex min-h-0 w-full flex-1 flex-col"
+          >
+            <DataView sessions={sessions} onReload={reload} />
+          </motion.div>
         )}
       </AnimatePresence>
-
-      <div className="px-11 pb-5">
-        <StatusRow
-          protocolCount={protocols.length}
-          interviewCount={sessions.length}
-          onOpenData={() => setOpenDialog('data')}
-        />
-      </div>
 
       <ImportDialog
         open={openDialog === 'import'}
         onClose={() => setOpenDialog(null)}
         onImported={handleImported}
-      />
-      <InterviewsDialog
-        open={openDialog === 'data'}
-        onClose={() => setOpenDialog(null)}
       />
       <SettingsDialog
         open={openDialog === 'settings'}

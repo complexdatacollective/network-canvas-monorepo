@@ -1,7 +1,8 @@
-import { Database, Lock, Settings, Upload } from 'lucide-react';
+import { Lock, Settings } from 'lucide-react';
 import { motion } from 'motion/react';
 
-import { Button, IconButton } from '@codaco/fresco-ui/Button';
+import { IconButton } from '@codaco/fresco-ui/Button';
+import { ViewSwitcher } from '~/components/ViewSwitcher';
 import { useAuth } from '~/lib/auth/AuthContext';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -12,55 +13,16 @@ export const GLASS_PILL =
   'border border-outline bg-surface/50 backdrop-blur-md shadow-md uppercase text-sm font-black';
 
 type TopActionBarProps = {
-  onOpenImport: () => void;
-  onOpenData: () => void;
   onOpenSettings: () => void;
 };
 
-export function TopActionBar({
-  onOpenImport,
-  onOpenData,
-  onOpenSettings,
-}: TopActionBarProps) {
+export function TopActionBar({ onOpenSettings }: TopActionBarProps) {
   const { mode, lock } = useAuth();
   const showLock = mode !== undefined && mode !== 'none';
 
   return (
     <div className="flex items-center gap-3">
-      <motion.span
-        initial={{ opacity: 0, y: -6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, delay: 0.18, ease: EASE }}
-        whileHover={{ y: -2 }}
-        whileTap={{ scale: 0.97 }}
-        className="inline-flex"
-      >
-        <Button
-          variant="text"
-          icon={<Upload size={18} className="stroke-[3px]" aria-hidden />}
-          onClick={onOpenImport}
-          className={`${GLASS_PILL} gap-2.5 px-6`}
-        >
-          Import
-        </Button>
-      </motion.span>
-      <motion.span
-        initial={{ opacity: 0, y: -6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, delay: 0.25, ease: EASE }}
-        whileHover={{ y: -2 }}
-        whileTap={{ scale: 0.97 }}
-        className="inline-flex"
-      >
-        <Button
-          variant="text"
-          icon={<Database size={18} className="stroke-[3px]" aria-hidden />}
-          onClick={onOpenData}
-          className={`${GLASS_PILL} gap-2.5 px-6`}
-        >
-          Data
-        </Button>
-      </motion.span>
+      <ViewSwitcher />
       {showLock && (
         <motion.span
           initial={{ opacity: 0, y: -6 }}

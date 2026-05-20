@@ -4,9 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { useToast } from '@codaco/fresco-ui/Toast';
-import Heading from '@codaco/fresco-ui/typography/Heading';
-import { HomeModal } from '~/components/HomeModal';
-import { getSettings, listSessions, markSessionsExported } from '~/lib/db/api';
+import { getSettings, markSessionsExported } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
 import {
   buildExportOptions,
@@ -15,9 +13,9 @@ import {
 } from '~/lib/export/exportSessions';
 import { downloadBlob } from '~/lib/files/download';
 
-type InterviewsDialogProps = {
-  open: boolean;
-  onClose: () => void;
+type DataViewProps = {
+  sessions: StoredSession[];
+  onReload: () => Promise<void>;
 };
 
 type StatusKind = 'in-progress' | 'complete' | 'exported';
@@ -54,31 +52,28 @@ const CELL_CLASS = 'px-3.5 py-3.5';
 const FILTER_PILL_BASE =
   'px-[18px] py-2.5 border-0 rounded-full cursor-pointer font-heading font-extrabold text-xs tracking-[0.06em] uppercase';
 
-export function InterviewsDialog({ open, onClose }: InterviewsDialogProps) {
+export function DataView({ sessions, onReload }: DataViewProps) {
   const toast = useToast();
-  const [sessions, setSessions] = useState<StoredSession[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<FilterKind>('all');
   const [search, setSearch] = useState('');
   const [sortDescending, setSortDescending] = useState(true);
   const [exporting, setExporting] = useState(false);
 
-  const reload = useCallback(async () => {
-    setSessions(await listSessions());
-  }, []);
-
+  // Drop selections that no longer correspond to a current session (after a
+  // reload removed them).
   useEffect(() => {
-    if (!open) return;
-    void reload();
-  }, [open, reload]);
-
-  useEffect(() => {
-    if (!open) {
-      setSelected(new Set());
-      setFilter('all');
-      setSearch('');
-    }
-  }, [open]);
+    setSelected((prev) => {
+      const ids = new Set(sessions.map((s) => s.id));
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (ids.has(id)) next.add(id);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [sessions]);
 
   const counts = useMemo(() => {
     let inProgress = 0;
@@ -163,7 +158,7 @@ export function InterviewsDialog({ open, onClose }: InterviewsDialogProps) {
         });
       }
       setSelected(new Set());
-      await reload();
+      await onReload();
     } catch (cause) {
       toast.add({
         title: 'Export failed',
@@ -173,7 +168,7 @@ export function InterviewsDialog({ open, onClose }: InterviewsDialogProps) {
     } finally {
       setExporting(false);
     }
-  }, [exporting, reload, selected, toast]);
+  }, [exporting, onReload, selected, toast]);
 
   const filterOptions: { id: FilterKind; label: string; count: number }[] = [
     { id: 'all', label: 'All', count: counts.all },
@@ -181,32 +176,9 @@ export function InterviewsDialog({ open, onClose }: InterviewsDialogProps) {
     { id: 'complete', label: 'Complete', count: counts.complete },
   ];
 
-  const exportAction =
-    selected.size > 0 ? (
-      <Button
-        color="primary"
-        size="sm"
-        icon={<Download size={14} strokeWidth={2.5} aria-hidden />}
-        onClick={() => void handleExport()}
-        disabled={exporting}
-      >
-        {exporting ? 'Exporting…' : `Export ${selected.size} selected`}
-      </Button>
-    ) : null;
-
   return (
-    <HomeModal
-      open={open}
-      onClose={onClose}
-      maxWidth={1080}
-      title={
-        <Heading level="h3" margin="none">
-          Interview data
-        </Heading>
-      }
-      action={exportAction}
-    >
-      <div className="mb-[18px] flex flex-wrap items-center gap-2.5">
+    <div className="flex min-h-0 w-full flex-1 flex-col gap-[18px] overflow-y-auto px-11 pb-8">
+      <div className="flex flex-wrap items-center gap-2.5">
         <div className="bg-surface flex gap-1.5 rounded-full p-1">
           {filterOptions.map((option) => {
             const active = filter === option.id;
@@ -251,6 +223,17 @@ export function InterviewsDialog({ open, onClose }: InterviewsDialogProps) {
         >
           Sort
         </Button>
+        {selected.size > 0 ? (
+          <Button
+            color="primary"
+            size="sm"
+            icon={<Download size={14} strokeWidth={2.5} aria-hidden />}
+            onClick={() => void handleExport()}
+            disabled={exporting}
+          >
+            {exporting ? 'Exporting…' : `Export ${selected.size} selected`}
+          </Button>
+        ) : null}
       </div>
 
       <Surface
@@ -356,6 +339,6 @@ export function InterviewsDialog({ open, onClose }: InterviewsDialogProps) {
           </tbody>
         </table>
       </Surface>
-    </HomeModal>
+    </div>
   );
 }

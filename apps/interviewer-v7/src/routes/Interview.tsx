@@ -141,7 +141,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const handleFinish = useCallback(
     async (id: string) => {
       await markSessionFinished(id);
-      navigate('/sessions');
+      navigate('/data');
     },
     [navigate],
   );

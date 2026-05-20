@@ -4,16 +4,12 @@ import { Route, Switch, useLocation } from 'wouter';
 import { BackgroundBlobs } from '@codaco/art';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 
-import { AppShell } from './components/AppShell';
 import { AuthGate } from './components/AuthGate';
 import { isElectron } from './lib/platform/platform';
 import { AppProviders } from './providers/AppProviders';
 import { HomeRoute } from './routes/Home';
 import { InterviewRoute } from './routes/Interview';
 import { NotFoundRoute } from './routes/NotFound';
-import { ProtocolsRoute } from './routes/Protocols';
-import { SessionsRoute } from './routes/Sessions';
-import { SettingsRoute } from './routes/Settings';
 import { WelcomeRoute } from './routes/Welcome';
 
 const pageWrapperVariants = {
@@ -24,6 +20,13 @@ const pageWrapperVariants = {
   },
   exit: { opacity: 0, transition: { duration: 0.4 } },
 } as const;
+
+// The Home route serves both Protocols (/) and Data (/data) as in-page views.
+// Grouping them under a single page-level key keeps HomeRoute mounted across
+// view switches so the within-Home AnimatePresence owns the transition.
+function pageKeyFor(location: string): string {
+  return location === '/' || location === '/data' ? 'home' : location;
+}
 
 export default function App() {
   const [location] = useLocation();
@@ -53,7 +56,7 @@ export default function App() {
         <AuthGate>
           <AnimatePresence mode="wait">
             <motion.div
-              key={location}
+              key={pageKeyFor(location)}
               variants={pageWrapperVariants}
               initial="hidden"
               animate="visible"
@@ -64,17 +67,15 @@ export default function App() {
                 <Route path="/interview/:sessionId">
                   {({ sessionId }) => <InterviewRoute sessionId={sessionId} />}
                 </Route>
-                <Route path="/" component={HomeRoute} />
-                <Route>
-                  <AppShell>
-                    <Switch location={location}>
-                      <Route path="/protocols" component={ProtocolsRoute} />
-                      <Route path="/sessions" component={SessionsRoute} />
-                      <Route path="/settings" component={SettingsRoute} />
-                      <Route component={NotFoundRoute} />
-                    </Switch>
-                  </AppShell>
+                <Route path="/:view?">
+                  {(params) => {
+                    if (params.view !== undefined && params.view !== 'data') {
+                      return <NotFoundRoute />;
+                    }
+                    return <HomeRoute />;
+                  }}
                 </Route>
+                <Route component={NotFoundRoute} />
               </Switch>
             </motion.div>
           </AnimatePresence>

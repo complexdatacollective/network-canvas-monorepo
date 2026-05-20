@@ -17,6 +17,8 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cva } from '@codaco/fresco-ui/utils/cva';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 
+import { getScrollTimelineCtor } from './scrollTimeline';
+
 // Slot width = SLOT_TO_CARD_RATIO × card width. This sets both the scroll
 // distance per snap AND the visual gap between adjacent cards. 0.66 reproduces
 // the original fan spacing.
@@ -93,21 +95,6 @@ const protocolCardClass = cva({
 export type DeckEntry =
   | { kind: 'protocol'; protocol: ProtocolWithCounts }
   | { kind: 'import' };
-
-// ScrollTimeline isn't yet in lib.dom in all TS versions. Declared narrowly
-// here rather than reaching into `any`.
-type ScrollTimelineOptions = {
-  source: Element;
-  axis?: 'block' | 'inline' | 'x' | 'y';
-};
-type ScrollTimelineCtor = new (
-  options: ScrollTimelineOptions,
-) => AnimationTimeline;
-const getScrollTimelineCtor = (): ScrollTimelineCtor | undefined => {
-  if (typeof globalThis === 'undefined') return undefined;
-  return (globalThis as unknown as { ScrollTimeline?: ScrollTimelineCtor })
-    .ScrollTimeline;
-};
 
 // Builds the per-card keyframes. Keyframe k corresponds to "card k centred in
 // the deck", at which point this card has integer offset (index - k). Linear
@@ -231,84 +218,87 @@ const DeckCardInner = forwardRef<HTMLDivElement, DeckCardProps>(
 
     return (
       <div ref={slotRef} className={SLOT_CLASS} style={{ width: slotWidth }}>
-        <motion.div
-          layoutId={`protocol-card-${protocol.hash}`}
-          transition={MORPH_TRANSITION}
+        {/* WAAPI writes transform + opacity here for the fan effect; it sits
+            above inline styles in the CSS cascade, which is why motion's
+            layoutId styles cannot live on the same element. */}
+        <div
           ref={(el) => {
             cardRef.current = el;
           }}
-          role="button"
-          tabIndex={0}
-          onClick={onTap}
-          onKeyDown={onCardKeyDown}
-          style={{
-            width: cardWidth,
-            height: cardHeight,
-            borderRadius: CARD_RADIUS_PX,
-            boxShadow,
-          }}
-          className={`${cardBase()} ${protocolCardClass()} will-change-transform`}
-          aria-label={`${protocol.name}${isActive ? ' (active)' : ''}`}
+          style={{ width: cardWidth, height: cardHeight }}
+          className="will-change-transform"
         >
-          {/* Cover — 200/470 of original card height */}
-          <div className="relative h-[42.5%] w-full overflow-hidden p-6">
-            <Pattern
-              seed={protocol.name}
-              className="absolute inset-0 size-full"
-            />
-            <motion.div
-              layoutId={`protocol-banner-${protocol.hash}`}
-              transition={MORPH_TRANSITION}
-              className="relative"
-            >
-              <Heading
-                level="h2"
-                margin="none"
-                className="mt-2 max-w-[90%] leading-[0.98] font-black tracking-tight text-white"
-              >
-                {protocol.name}
-              </Heading>
-              <div className="font-monospace mt-2.5 text-xs text-white/85">
-                Schema v{protocol.schemaVersion}
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Meta row */}
-          <div className="font-monospace flex items-center justify-between px-6 pt-4 text-xs">
-            <span className="text-text/60">
-              Imported <TimeAgo date={protocol.importedAt} />
-            </span>
-            <span className="text-text/60">
-              {sessionCount} {sessionCount === 1 ? 'interview' : 'interviews'}
-            </span>
-          </div>
-
-          {/* Description */}
-          <div className="px-6 pt-3.5 pb-[18px]">
-            <p className="text-text/80 line-clamp-3 text-sm leading-[1.45]">
-              {protocol.description ?? 'No description provided.'}
-            </p>
-          </div>
-
-          {/* CTA pinned to bottom, centred. `mt-auto` consumes the free space
-              between the description block and the card's lower edge. */}
-          {isActive ? (
-            <div className="mt-auto flex justify-center pb-6">
-              <Button
-                icon={<Play className="stroke-[3px]!" aria-hidden />}
-                className="bg-sea-green text-primary-contrast border-b-sea-green-dark border-b-8 text-base font-black tracking-[0.08em] uppercase"
-                size="lg"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onTap();
-                }}
-              >
-                Start new interview
-              </Button>
+          <motion.div
+            layoutId={`active-protocol-card-${protocol.hash}`}
+            role="button"
+            tabIndex={0}
+            onClick={onTap}
+            onKeyDown={onCardKeyDown}
+            style={{
+              width: '100%',
+              height: '100%',
+              borderRadius: CARD_RADIUS_PX,
+              boxShadow,
+            }}
+            className={`${cardBase()} ${protocolCardClass()}`}
+            aria-label={`${protocol.name}${isActive ? ' (active)' : ''}`}
+          >
+            {/* Cover — 200/470 of original card height */}
+            <div className="relative h-[42.5%] w-full overflow-hidden p-6">
+              <Pattern
+                seed={protocol.name}
+                className="absolute inset-0 size-full"
+              />
+              <motion.div className="relative">
+                <Heading
+                  level="h2"
+                  margin="none"
+                  className="mt-2 max-w-[90%] leading-[0.98] font-black tracking-tight text-white"
+                >
+                  {protocol.name}
+                </Heading>
+                <div className="font-monospace mt-2.5 text-xs text-white/85">
+                  Schema v{protocol.schemaVersion}
+                </div>
+              </motion.div>
             </div>
-          ) : null}
-        </motion.div>
+
+            {/* Meta row */}
+            <div className="font-monospace flex items-center justify-between px-6 pt-4 text-xs">
+              <span className="text-text/60">
+                Imported <TimeAgo date={protocol.importedAt} />
+              </span>
+              <span className="text-text/60">
+                {sessionCount} {sessionCount === 1 ? 'interview' : 'interviews'}
+              </span>
+            </div>
+
+            {/* Description */}
+            <div className="px-6 pt-3.5 pb-[18px]">
+              <p className="text-text/80 line-clamp-3 text-sm leading-[1.45]">
+                {protocol.description ?? 'No description provided.'}
+              </p>
+            </div>
+
+            {/* CTA pinned to bottom, centred. `mt-auto` consumes the free space
+              between the description block and the card's lower edge. */}
+            {isActive ? (
+              <div className="mt-auto flex justify-center pb-6">
+                <Button
+                  icon={<Play className="stroke-[3px]!" aria-hidden />}
+                  className="bg-sea-green text-primary-contrast border-b-sea-green-dark border-b-8 text-base font-black tracking-[0.08em] uppercase"
+                  size="lg"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onTap();
+                  }}
+                >
+                  Start new interview
+                </Button>
+              </div>
+            ) : null}
+          </motion.div>
+        </div>
       </div>
     );
   },

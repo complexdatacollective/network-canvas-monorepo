@@ -22,22 +22,21 @@ import {
 } from './ProtocolCarousel/DeckCard';
 
 type NewSessionDialogProps = {
-  protocol: ProtocolWithCounts;
+  open: boolean;
+  protocol?: ProtocolWithCounts;
   onClose: () => void;
   onCreated: (session: StoredSession) => void;
-  layoutId?: string;
 };
 
 export function NewSessionDialog({
+  open,
   protocol,
   onClose,
   onCreated,
-  layoutId,
 }: NewSessionDialogProps) {
   const formId = useId();
 
-  const popupProps = layoutId ? { layoutId, transition: MORPH_TRANSITION } : {};
-  const palette = seedToPatternPalette(protocol.name);
+  const palette = seedToPatternPalette(protocol?.name ?? '');
 
   const popupStyle = {
     borderRadius: CARD_RADIUS_PX,
@@ -47,23 +46,23 @@ export function NewSessionDialog({
   return (
     <FormStoreProvider>
       <Modal
-        open
+        open={open}
         onOpenChange={(isOpen) => {
           if (!isOpen) onClose();
         }}
       >
         <ModalPopup
-          {...popupProps}
           style={popupStyle}
           className="tablet-portrait:w-auto bg-surface-1 fixed top-1/2 left-1/2 flex w-[calc(100%-var(--spacing-base)*8)] max-w-2xl -translate-1/2 flex-col overflow-hidden"
+          layoutId={`active-protocol-card-${protocol?.hash}`}
         >
           <div className="relative min-h-[200px] w-full overflow-hidden p-6 pb-8">
             <Pattern
-              seed={protocol.name}
+              seed={protocol?.name ?? ''}
               className="absolute inset-0 size-full"
             />
             <motion.div
-              layoutId={`protocol-banner-${protocol.hash}`}
+              layoutId={`active-protocol-banner-${protocol?.hash}`}
               transition={MORPH_TRANSITION}
               className="relative"
             >
@@ -72,10 +71,10 @@ export function NewSessionDialog({
                 margin="none"
                 className="max-w-[90%] leading-[0.98] font-black tracking-tight text-white"
               >
-                {protocol.name}
+                {protocol?.name}
               </Heading>
               <div className="font-monospace mt-2.5 text-xs text-white/85">
-                Schema v{protocol.schemaVersion}
+                Schema v{protocol?.schemaVersion}
               </div>
             </motion.div>
           </div>
@@ -91,8 +90,8 @@ export function NewSessionDialog({
                 };
               }
               const session = await createSession({
-                protocolHash: protocol.hash,
-                protocolName: protocol.name,
+                protocolHash: protocol?.hash,
+                protocolName: protocol?.name,
                 caseId,
                 initialNetwork: createInitialNetwork(),
               });
