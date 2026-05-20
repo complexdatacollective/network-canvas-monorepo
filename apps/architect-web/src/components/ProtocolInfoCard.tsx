@@ -21,9 +21,9 @@ const ProtocolInfoCard = () => {
   const isFirstMount = useRunOnce('protocol-summary-entrance');
   const animate = !shouldReduceMotion && isFirstMount;
 
-  const stageCount = protocol?.stages.length ?? 0;
-  const nodeTypeCount = Object.keys(protocol?.codebook.node ?? {}).length;
-  const edgeTypeCount = Object.keys(protocol?.codebook.edge ?? {}).length;
+  const stageCount = protocol?.stages?.length ?? 0;
+  const nodeTypeCount = Object.keys(protocol?.codebook?.node ?? {}).length;
+  const edgeTypeCount = Object.keys(protocol?.codebook?.edge ?? {}).length;
 
   const [localName, setLocalName] = useState(name ?? '');
 
