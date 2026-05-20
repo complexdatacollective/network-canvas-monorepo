@@ -172,7 +172,7 @@ function ComboboxField(props: ComboboxFieldProps) {
                 className={cx(
                   'flex flex-col',
                   'min-w-(--anchor-width)',
-                  'gap-2',
+                  'gap-4',
                 )}
               />
             }
@@ -200,7 +200,7 @@ function ComboboxField(props: ComboboxFieldProps) {
                 }}
               />
             )}
-            <Combobox.Empty className="text-surface-popover-contrast/50 text-center text-sm italic empty:hidden">
+            <Combobox.Empty className="text-center text-sm text-current/50 italic empty:hidden">
               {emptyMessage}
             </Combobox.Empty>
             <Combobox.List
