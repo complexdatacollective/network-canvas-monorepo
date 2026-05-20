@@ -68,6 +68,10 @@ export function ProtocolsRoute() {
     }
   }, [reload, toast]);
 
+  const pendingProtocol = newSessionProtocolHash
+    ? protocols.find((p) => p.hash === newSessionProtocolHash)
+    : undefined;
+
   const handleDelete = useCallback(
     async (protocol: ProtocolWithCounts) => {
       const result = await confirm({
@@ -178,25 +182,17 @@ export function ProtocolsRoute() {
       )}
 
       <AnimatePresence>
-        {(() => {
-          const pendingProtocol = newSessionProtocolHash
-            ? protocols.find((p) => p.hash === newSessionProtocolHash)
-            : undefined;
-          if (!pendingProtocol) return null;
-          return (
-            <NewSessionDialog
-              key={pendingProtocol.hash}
-              protocol={pendingProtocol}
-              onClose={() => setNewSessionProtocolHash(null)}
-              onCreated={(session) => {
-                setNewSessionProtocolHash(null);
-                navigate(`/interview/${session.id}`, {
-                  state: { fresh: true },
-                });
-              }}
-            />
-          );
-        })()}
+        {pendingProtocol && (
+          <NewSessionDialog
+            key={pendingProtocol.hash}
+            protocol={pendingProtocol}
+            onClose={() => setNewSessionProtocolHash(null)}
+            onCreated={(session) => {
+              setNewSessionProtocolHash(null);
+              navigate(`/interview/${session.id}`, { state: { fresh: true } });
+            }}
+          />
+        )}
       </AnimatePresence>
 
       <ImportFromUrlDialog
