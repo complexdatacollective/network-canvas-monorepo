@@ -1,13 +1,58 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { motion } from 'motion/react';
-import { useCallback, useEffect, useMemo } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { createPortal } from 'react-dom';
+import type { Swiper as SwiperClass } from 'swiper';
+import { A11y, EffectCreative, Keyboard, Mousewheel } from 'swiper/modules';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import 'swiper/css';
+import 'swiper/css/effect-creative';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
 
+import { NewSessionCardOverlay } from '../NewSessionCardOverlay';
 import { GLASS_PILL } from '../TopActionBar';
 import { DeckCard, type DeckEntry } from './DeckCard';
-import { useDeckCarousel } from './useDeckCarousel';
+
+// Visual proportions of the fanned deck — tuned together. Changing one
+// without re-checking the others desyncs the snap distance from the
+// painted fan.
+const CARD_ASPECT = 36 / 47;
+// Slot stride as a fraction of card width. Adjacent cards translate by
+// this much per progress step, so 0.7 reproduces the original 30% overlap.
+const SLOT_TO_CARD_RATIO = 0.7;
+// Top/bottom inset so the deck sits below the header instead of hugging it,
+// and so the card's drop shadow has room to render. Scaled with section
+// height: short viewports (Electron default 1280×800 leaves ~470px) get a
+// smaller padding so the card itself doesn't shrink below readability;
+// tall viewports get the original 100px breathing room.
+const SECTION_PADDING_RATIO = 0.12;
+const MIN_SECTION_PADDING = 24;
+const MAX_SECTION_PADDING = 100;
+
+function computeSectionPadding(sectionHeight: number): number {
+  return Math.min(
+    MAX_SECTION_PADDING,
+    Math.max(MIN_SECTION_PADDING, sectionHeight * SECTION_PADDING_RATIO),
+  );
+}
+// Per-offset depth (px). With perspective 1800px, translateZ(-400)
+// projects a card to (1800/2200) ≈ 82% of its size — cards further from
+// active naturally appear behind via real 3D depth, not z-index.
+const FAN_Z_STEP = 400;
+const FAN_ROTATE_DEG = 3;
+const FAN_DROP_PCT = 4;
+// Translate by a percentage of slide width so the fan stride scales with
+// the slide's measured size without re-initialising Swiper on resize.
+const SLOT_TRANSLATE_PCT = SLOT_TO_CARD_RATIO * 100;
 
 type ProtocolDeckProps = {
   protocols: ProtocolWithCounts[];
@@ -15,7 +60,45 @@ type ProtocolDeckProps = {
   initialProtocolHash?: string;
   onImport: () => void;
   onStartInterview: (protocolHash: string) => void;
+  // When set, the matching card is rendered in its expanded "new session"
+  // state: scaled up, case-ID form swapped in for the description + Start
+  // button, swipe/keyboard navigation locked, and sibling slides faded out.
+  newSessionProtocolHash?: string | null;
+  onCancelNewSession?: () => void;
+  onSessionCreated?: (session: StoredSession) => void;
 };
+
+// Explicit exit transitions so `AnimatePresence mode="wait"` doesn't
+// stall on motion's default unbounded spring before the data view can
+// enter. Enter keeps the default spring for the existing feel.
+const sectionVariants = {
+  hidden: { opacity: 0, y: '10%' },
+  visible: {
+    opacity: 1,
+    y: 0,
+  },
+  exit: {
+    opacity: 0,
+    y: '10%',
+    transition: { duration: 0.3, ease: 'easeIn' },
+  },
+} as const;
+
+// Chevron row needs both a view-transition cascade (hidden/visible/exit)
+// and a "fade out while the new-session form is open" toggle. We model
+// the toggle as a `muted` variant and drive `animate` explicitly when it
+// applies — outside of `muted`, `animate="visible"` lines up with the
+// state that the parent cascade is propagating anyway.
+const chevronRowVariants = {
+  hidden: { opacity: 0, y: '10%' },
+  visible: { opacity: 1, y: 0 },
+  muted: { opacity: 0, y: 0 },
+  exit: {
+    opacity: 0,
+    y: '10%',
+    transition: { duration: 0.2, ease: 'easeIn' },
+  },
+} as const;
 
 export function ProtocolDeck({
   protocols,
@@ -23,7 +106,31 @@ export function ProtocolDeck({
   initialProtocolHash,
   onImport,
   onStartInterview,
+  newSessionProtocolHash,
+  onCancelNewSession,
+  onSessionCreated,
 }: ProtocolDeckProps) {
+  const newSessionActive = Boolean(newSessionProtocolHash);
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const swiperRef = useRef<SwiperClass | null>(null);
+  const didInitialScroll = useRef(false);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [sectionHeight, setSectionHeight] = useState(0);
+  // Captured rect of the active slide at the moment the new-session
+  // flow opens. The overlay mounts at this rect (matching the slide
+  // card pixel-for-pixel) and animates outward from there.
+  const [slideRect, setSlideRect] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  // Whether the in-slide DeckCard should render invisible so the portal
+  // overlay can stand in for it. Held independently of newSessionActive
+  // so we can keep the slide hidden through the overlay's exit animation
+  // and only restore it after `onExitComplete` fires.
+  const [hideActiveInSlide, setHideActiveInSlide] = useState(false);
+
   const deck = useMemo<DeckEntry[]>(() => {
     const entries: DeckEntry[] = protocols.map((p) => ({
       kind: 'protocol',
@@ -44,31 +151,43 @@ export function ProtocolDeck({
   }, [sessions]);
 
   const initialIndex = useMemo(() => {
-    if (!initialProtocolHash) return null;
+    if (!initialProtocolHash) return 0;
     const idx = protocols.findIndex((p) => p.hash === initialProtocolHash);
-    return idx < 0 ? null : idx;
+    return idx < 0 ? 0 : idx;
   }, [initialProtocolHash, protocols]);
 
-  // The hook owns every imperative bit of the carousel: sizing, scroll→active
-  // tracking, wheel-to-snap, ScrollTimeline perspective, initial scroll,
-  // out-of-range clamping, and arrow-key navigation.
-  const {
-    sectionRef,
-    wrapperRef,
-    cardRefs,
-    activeIdx,
-    scrollToIndex,
-    sectionPadding,
-    paddingInline,
-    slotWidth,
-    cardWidth,
-    cardHeight,
-  } = useDeckCarousel({ itemCount: deck.length, initialIndex });
+  // Observe the section (not the outer container) so cardHeight tracks the
+  // space actually available to Swiper. The outer container also holds the
+  // chevron+dots row, and subtracting only the padding would size cards by
+  // ~80px more than the section can hold — they'd overflow vertically.
+  // Read borderBoxSize; contentRect excludes our own padding and would feed
+  // back into the calculation.
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const box = entry.borderBoxSize?.[0];
+      const height = box?.blockSize ?? entry.target.clientHeight;
+      setSectionHeight(height);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const { cardWidth, cardHeight, sectionPadding } = useMemo(() => {
+    const padding = computeSectionPadding(sectionHeight);
+    const innerHeight = Math.max(0, sectionHeight - padding * 2);
+    const ch = Math.round(innerHeight);
+    const cw = Math.round(ch * CARD_ASPECT);
+    return { cardHeight: ch, cardWidth: cw, sectionPadding: padding };
+  }, [sectionHeight]);
 
   const handleActivate = useCallback(
     (idx: number) => {
       if (idx !== activeIdx) {
-        scrollToIndex(idx);
+        swiperRef.current?.slideTo(idx);
         return;
       }
       const entry = deck[idx];
@@ -79,13 +198,29 @@ export function ProtocolDeck({
       }
       onStartInterview(entry.protocol.hash);
     },
-    [activeIdx, deck, scrollToIndex, onImport, onStartInterview],
+    [activeIdx, deck, onImport, onStartInterview],
   );
+
+  // Protocols load async, so the first render typically has an empty deck
+  // and Swiper's `initialSlide` is applied at index 0. Once the requested
+  // index is reachable, jump (no animation) — but only the first time, so
+  // we don't fight the user's scrolling later.
+  useEffect(() => {
+    if (didInitialScroll.current) return;
+    if (initialIndex <= 0) return;
+    if (initialIndex >= deck.length) return;
+    const swiper = swiperRef.current;
+    if (!swiper) return;
+    didInitialScroll.current = true;
+    swiper.slideTo(initialIndex, 0);
+  }, [initialIndex, deck.length]);
 
   // Enter activates the current card. Skip when focus is on another
   // interactive control (chevrons, dot navs, the card itself) or in an
-  // editable target — those handle Enter themselves.
+  // editable target — those handle Enter themselves. Suppressed entirely
+  // while the new-session form is open: that form owns the Enter key.
   useEffect(() => {
+    if (newSessionActive) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Enter') return;
       const target = event.target;
@@ -107,91 +242,270 @@ export function ProtocolDeck({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [activeIdx, handleActivate]);
+  }, [activeIdx, handleActivate, newSessionActive]);
+
+  // Esc cancels the new-session form. Listen at the window so it works
+  // regardless of which form control currently has focus.
+  useEffect(() => {
+    if (!newSessionActive) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCancelNewSession?.();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [newSessionActive, onCancelNewSession]);
+
+  // Swiper's creative-effect opacity is linear; the original deck plateaus
+  // at 1 for slides ≤ 2 away and fades to 0 by 4. Reapply our curve every
+  // time Swiper retranslates so the opacity tracks scroll position in the
+  // same frame as the fan transform. Swiper attaches `progress` to each
+  // slide at runtime but the typing is `HTMLElement[]`, so narrow via `in`.
+  // While the new-session form is open we force every non-active slide to
+  // opacity 0 so the backdrop reads as covering the rest of the deck.
+  //
+  // No CSS transition is applied here — Swiper updates opacity per frame
+  // during swipes, and a transition would tween each frame and visibly
+  // lag the fan. The discrete fade on newSessionActive flip is handled
+  // by the useEffect below, which sets the transition for the duration
+  // of that one animation and clears it afterwards.
+  const applyOpacityCurve = useCallback(
+    (swiper: SwiperClass) => {
+      for (const slide of swiper.slides) {
+        if (!('progress' in slide)) continue;
+        const progress = slide.progress;
+        if (typeof progress !== 'number') continue;
+        const abs = Math.abs(progress);
+        let opacity = abs <= 2 ? 1 : abs >= 4 ? 0 : 1 - (abs - 2) / 2;
+        if (newSessionActive && abs > 0.01) opacity = 0;
+        slide.style.opacity = String(opacity);
+      }
+    },
+    [newSessionActive],
+  );
+
+  // Reapply the curve when the new-session mode flips so neighbours fade
+  // out (and back in on cancel) without waiting for the next Swiper
+  // translate event. Set a one-shot CSS transition on each slide so the
+  // opacity change tweens; clear it after the tween so per-frame swipe
+  // updates remain instant.
+  useEffect(() => {
+    const swiper = swiperRef.current;
+    if (!swiper) return;
+    for (const slide of swiper.slides) {
+      slide.style.transition = 'opacity 240ms ease-out';
+    }
+    applyOpacityCurve(swiper);
+    const t = window.setTimeout(() => {
+      for (const slide of swiper.slides) {
+        slide.style.transition = '';
+      }
+    }, 280);
+    return () => window.clearTimeout(t);
+  }, [applyOpacityCurve]);
+
+  // Gate Swiper user input imperatively. The React wrapper does not
+  // reliably re-apply prop changes to `mousewheel` / `keyboard` /
+  // `allowTouchMove` on already-mounted instances, so toggling props
+  // alone leaves the wheel and keyboard live while the new-session form
+  // is open. `disable()` blocks every input pathway (touch, mouse drag,
+  // wheel, keyboard) but keeps the imperative `slideTo` API working.
+  useEffect(() => {
+    const swiper = swiperRef.current;
+    if (!swiper) return;
+    if (newSessionActive) {
+      swiper.disable();
+    } else {
+      swiper.enable();
+    }
+  }, [newSessionActive]);
+
+  // Measure the active slide's bounding rect synchronously when the
+  // new-session flow opens, then hide the in-slide DeckCard. Runs in a
+  // layout effect so the rect read and the opacity flip both land
+  // before the browser paints — no visible duplicate of the card.
+  // Reads from Swiper's own `.slides[]` (an HTMLElement array) because
+  // `SwiperSlide` is a plain functional component and doesn't forward
+  // refs to its DOM node — attaching a ref to it silently no-ops.
+  useLayoutEffect(() => {
+    if (!newSessionActive) return;
+    const swiper = swiperRef.current;
+    if (!swiper) return;
+    const slide = swiper.slides[activeIdx];
+    if (!slide) return;
+    const rect = slide.getBoundingClientRect();
+    setSlideRect({
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    });
+    setHideActiveInSlide(true);
+  }, [newSessionActive, activeIdx]);
+
+  const pendingProtocol = useMemo(() => {
+    if (!newSessionProtocolHash) return undefined;
+    return protocols.find((p) => p.hash === newSessionProtocolHash);
+  }, [newSessionProtocolHash, protocols]);
+
+  const creativeEffectConfig = useMemo(
+    () => ({
+      // Clamp at the largest possible offset so far-away cards still get
+      // their full transform — opacity 0 from applyOpacityCurve does the
+      // hiding, not clamping.
+      limitProgress: Math.max(deck.length, 2),
+      progressMultiplier: 1,
+      perspective: true,
+      prev: {
+        // Mutable arrays — Swiper's CreativeEffectOptions type rejects
+        // `readonly` tuples, so don't tighten with `as const` here.
+        translate: [`-${SLOT_TRANSLATE_PCT}%`, `${FAN_DROP_PCT}%`, -FAN_Z_STEP],
+        rotate: [0, 0, -FAN_ROTATE_DEG],
+        opacity: 1,
+        // Rotation pivots around the card's bottom edge — matches the
+        // original `origin-[center_bottom]` on the inner card.
+        origin: 'center bottom',
+      },
+      next: {
+        translate: [`${SLOT_TRANSLATE_PCT}%`, `${FAN_DROP_PCT}%`, -FAN_Z_STEP],
+        rotate: [0, 0, FAN_ROTATE_DEG],
+        opacity: 1,
+        origin: 'center bottom',
+      },
+    }),
+    [deck.length],
+  );
 
   const atStart = activeIdx === 0;
   const atEnd = activeIdx === deck.length - 1;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 36, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.75, delay: 0.65, type: 'spring' }}
-      className="flex min-h-0 w-full flex-1 flex-col perspective-[1800px] transform-3d"
-    >
+    <div className="flex min-h-0 w-full flex-1 flex-col">
       <motion.section
-        layoutScroll
         ref={sectionRef}
+        variants={sectionVariants}
         aria-label="Protocol deck"
-        // The section is the SCROLLER. It can't host perspective itself
-        // because `overflow-x: auto` forces `transform-style: flat` per the
-        // CSS spec, breaking the 3D chain.
-        style={{ paddingBlock: sectionPadding }}
-        className="relative min-h-0 w-full flex-1 touch-pan-x snap-x snap-proximity scrollbar-none overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden"
+        // Lift the section above the new-session backdrop (rendered at
+        // z-40 in Home) so the active card stays on top of the overlay.
+        // The Swiper's perspective root is its own stacking context, so
+        // this z-index only competes with siblings in Home — non-active
+        // slides are faded to opacity 0 in applyOpacityCurve to honour
+        // the "only this card on top" requirement.
+        style={{
+          paddingBlock: sectionPadding,
+          zIndex: newSessionActive ? 50 : undefined,
+        }}
+        // overflow-visible lets the card's drop shadow extend into the
+        // section's padding zone without clipping. Swiper sets
+        // `overflow: hidden` on itself; we override below so shadows can
+        // paint outside the slide rectangle.
+        className="relative min-h-0 w-full flex-1"
       >
-        {/* 3D wrapper — single shared perspective context for every card,
-            so 3D depth (translateZ in keyframes) is what stacks the fan,
-            not z-index or DOM order. `inline-flex` lets the wrapper grow to
-            the width of its slots so the section scrolls horizontally. */}
-        <div
-          ref={wrapperRef}
-          className="inline-flex h-full items-stretch perspective-[1800px] transform-3d"
-          style={{ paddingInline }}
-        >
-          {deck.map((entry, i) => (
-            <DeckCard
-              key={entry.kind === 'import' ? 'import' : entry.protocol.hash}
-              ref={(el) => {
-                cardRefs.current[i] = el;
-              }}
-              entry={entry}
-              index={i}
-              totalCards={deck.length}
-              sectionRef={sectionRef}
-              slotWidth={slotWidth}
-              cardWidth={cardWidth}
-              cardHeight={cardHeight}
-              isActive={i === activeIdx}
-              sessionCount={
-                entry.kind === 'protocol'
-                  ? (sessionCounts.get(entry.protocol.hash) ?? 0)
-                  : 0
-              }
-              onActivate={handleActivate}
-            />
-          ))}
-        </div>
+        {cardHeight > 0 ? (
+          <Swiper
+            modules={[EffectCreative, Mousewheel, Keyboard, A11y]}
+            effect="creative"
+            creativeEffect={creativeEffectConfig}
+            slidesPerView="auto"
+            centeredSlides
+            grabCursor={!newSessionActive}
+            allowTouchMove={!newSessionActive}
+            speed={320}
+            initialSlide={initialIndex}
+            // Deeper perspective than Swiper's default 1200px to match the
+            // original — set inline so it wins against `.swiper-3d`.
+            style={{ perspective: '1800px' }}
+            keyboard={{
+              enabled: !newSessionActive,
+              onlyInViewport: false,
+            }}
+            // `forceToAxis: false` lets a vertical scroll wheel advance
+            // the deck, not just trackpad swipes — the mouse-wheel was
+            // the one input mode the original deck supported that Swiper
+            // ignores by default. Disabled while the new-session form is
+            // open so wheel scrolling can't desync the active card.
+            mousewheel={
+              newSessionActive
+                ? false
+                : {
+                    forceToAxis: false,
+                    thresholdDelta: 30,
+                    releaseOnEdges: true,
+                    sensitivity: 1,
+                  }
+            }
+            onSwiper={(s) => {
+              swiperRef.current = s;
+              applyOpacityCurve(s);
+            }}
+            onSlideChange={(s) => setActiveIdx(s.activeIndex)}
+            onSetTranslate={applyOpacityCurve}
+            // !overflow-visible overrides Swiper's bundled
+            // `.swiper { overflow: hidden }` so card drop shadows can
+            // paint beyond the swiper rect into the section padding.
+            className="protocol-deck-swiper h-full w-full !overflow-visible"
+          >
+            {deck.map((entry, i) => (
+              <SwiperSlide
+                key={entry.kind === 'import' ? 'import' : entry.protocol.hash}
+                style={{ width: cardWidth, height: cardHeight }}
+                // `!overflow-visible` overrides Swiper's bundled
+                // `.swiper-slide { overflow: hidden }` so the card's
+                // drop shadow paints beyond the slide rect. The
+                // `@container` query root used to live here; it now sits
+                // on the DeckCard itself so the overlay's expanded width
+                // drives the queries instead of the frozen `cardWidth`.
+                className="!flex origin-[center_bottom] items-center justify-center !overflow-visible will-change-transform"
+              >
+                <DeckCard
+                  entry={entry}
+                  cardWidth={cardWidth}
+                  cardHeight={cardHeight}
+                  isActive={i === activeIdx}
+                  sessionCount={
+                    entry.kind === 'protocol'
+                      ? (sessionCounts.get(entry.protocol.hash) ?? 0)
+                      : 0
+                  }
+                  onActivate={() => handleActivate(i)}
+                  hideInSlide={i === activeIdx && hideActiveInSlide}
+                />
+              </SwiperSlide>
+            ))}
+          </Swiper>
+        ) : null}
       </motion.section>
 
-      {deck.length > 1 ? (
+      {deck.length > 1 && (
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, delay: 1.05, type: 'spring' }}
+          variants={chevronRowVariants}
+          initial="hidden"
+          animate={newSessionActive ? 'muted' : 'visible'}
+          exit="exit"
+          // Hide the row from assistive tech and pointer/keyboard events
+          // while the form is open so it can't be tabbed into behind the
+          // backdrop.
+          aria-hidden={newSessionActive || undefined}
+          inert={newSessionActive}
           className="z-6 flex shrink-0 items-center justify-center gap-7"
         >
-          <motion.span
-            whileHover={{ scale: 1.06 }}
-            whileTap={{ scale: 0.92 }}
-            transition={{ duration: 0.2 }}
-            className="inline-flex"
-          >
-            <IconButton
-              size="xl"
-              variant="text"
-              icon={<ChevronLeft strokeWidth={2.8} aria-hidden />}
-              aria-label="Previous protocol"
-              onClick={() => scrollToIndex(Math.max(0, activeIdx - 1))}
-              disabled={atStart}
-              className={GLASS_PILL}
-            />
-          </motion.span>
+          <IconButton
+            size="xl"
+            variant="text"
+            icon={<ChevronLeft strokeWidth={2.8} aria-hidden />}
+            aria-label="Previous protocol"
+            onClick={() => swiperRef.current?.slidePrev()}
+            disabled={atStart}
+            className={GLASS_PILL}
+          />
           <div className="flex items-center gap-2.5">
             {deck.map((entry, i) => (
               <button
                 key={entry.kind === 'import' ? 'import' : entry.protocol.hash}
                 type="button"
-                onClick={() => scrollToIndex(i)}
+                onClick={() => swiperRef.current?.slideTo(i)}
                 aria-label={`Go to card ${i + 1}`}
                 aria-current={i === activeIdx ? 'true' : undefined}
                 className={`h-3 cursor-pointer rounded-full border-0 p-0 transition-all duration-200 ${
@@ -200,26 +514,48 @@ export function ProtocolDeck({
               />
             ))}
           </div>
-          <motion.span
-            whileHover={{ scale: 1.06 }}
-            whileTap={{ scale: 0.92 }}
-            transition={{ duration: 0.2 }}
-            className="inline-flex"
-          >
-            <IconButton
-              size="xl"
-              variant="text"
-              icon={<ChevronRight strokeWidth={2.8} aria-hidden />}
-              aria-label="Next protocol"
-              onClick={() =>
-                scrollToIndex(Math.min(deck.length - 1, activeIdx + 1))
-              }
-              disabled={atEnd}
-              className={GLASS_PILL}
-            />
-          </motion.span>
+          <IconButton
+            size="xl"
+            variant="text"
+            icon={<ChevronRight strokeWidth={2.8} aria-hidden />}
+            aria-label="Next protocol"
+            onClick={() => swiperRef.current?.slideNext()}
+            disabled={atEnd}
+            className={GLASS_PILL}
+          />
         </motion.div>
-      ) : null}
-    </motion.div>
+      )}
+
+      {/* Portal the expanded card to document.body so it escapes the
+          Swiper's perspective root, the slide's frozen size, and its
+          @container reference. `onExitComplete` is the load-bearing bit:
+          it holds the in-slide card invisible until the overlay's exit
+          animation has finished tucking back into the slide rect — then
+          the slide reveals without a flash of the unstyled card. */}
+      {createPortal(
+        <AnimatePresence
+          onExitComplete={() => {
+            setSlideRect(null);
+            setHideActiveInSlide(false);
+          }}
+        >
+          {newSessionActive &&
+            slideRect &&
+            pendingProtocol &&
+            onCancelNewSession &&
+            onSessionCreated && (
+              <NewSessionCardOverlay
+                key="new-session-overlay"
+                protocol={pendingProtocol}
+                sessionCount={sessionCounts.get(pendingProtocol.hash) ?? 0}
+                slideRect={slideRect}
+                onCancel={onCancelNewSession}
+                onCreated={onSessionCreated}
+              />
+            )}
+        </AnimatePresence>,
+        document.body,
+      )}
+    </div>
   );
 }

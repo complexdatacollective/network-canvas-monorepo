@@ -5,7 +5,6 @@ import { useLocation } from 'wouter';
 import { BrandHeader } from '~/components/BrandHeader';
 import { DataView } from '~/components/DataView';
 import { ImportDialog } from '~/components/ImportDialog';
-import { NewSessionDialog } from '~/components/NewSessionDialog';
 import { ProtocolDeck } from '~/components/ProtocolCarousel/ProtocolDeck';
 import { ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
@@ -21,19 +20,35 @@ import type {
 type OpenDialog = 'import' | 'settings' | null;
 type View = 'protocols' | 'data';
 
-const VIEW_EASE = [0.22, 1, 0.36, 1] as const;
-
-const viewVariants = {
-  hidden: { opacity: 0, y: 12 },
+const containerVariants = {
+  hidden: {},
   visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.3, ease: VIEW_EASE },
+    transition: {
+      when: 'beforeChildren',
+      staggerChildren: 0.05,
+    },
   },
   exit: {
-    opacity: 0,
-    y: -8,
-    transition: { duration: 0.25, ease: VIEW_EASE },
+    transition: { when: 'afterChildren', staggerChildren: 0.05 },
+  },
+} as const;
+
+// Cascade-only variants for the Protocols branch. AnimatePresence needs
+// the keyed child to be a motion component so descendant exits can
+// complete before unmount; these variants don't animate the wrapper
+// itself, they only propagate hidden / visible / exit state names to
+// the deck section, chevron row, and StatusRow.
+const protocolsContainerVariants = {
+  hidden: {},
+  visible: {
+    transition: { when: 'beforeChildren', staggerChildren: 0.08 },
+  },
+  exit: {
+    transition: {
+      when: 'afterChildren',
+      staggerChildren: 0.06,
+      staggerDirection: -1,
+    },
   },
 } as const;
 
@@ -78,9 +93,12 @@ export function HomeRoute() {
     [reload],
   );
 
-  const pendingProtocol = pendingProtocolHash
-    ? protocols.find((p) => p.hash === pendingProtocolHash)
-    : undefined;
+  // If the pending hash has since been deleted (e.g. cascade-delete from
+  // the Protocols route while a card was still pending), drop the pending
+  // state so the backdrop doesn't strand on an empty stage.
+  const newSessionActive =
+    pendingProtocolHash !== null &&
+    protocols.some((p) => p.hash === pendingProtocolHash);
 
   // Default the active card to the user's last-used protocol; fall back to
   // the most-recently-imported one if they've never opened a protocol (or
@@ -96,21 +114,64 @@ export function HomeRoute() {
     )[0]?.hash;
   }, [settings?.lastActiveProtocolHash, protocols]);
 
+  const handleSessionCreated = useCallback(
+    (session: StoredSession) => {
+      setPendingProtocolHash(null);
+      navigate(`/interview/${session.id}`, { state: { fresh: true } });
+    },
+    [navigate],
+  );
+  const closeNewSession = useCallback(() => setPendingProtocolHash(null), []);
+
   return (
-    <div className="flex h-dvh w-full flex-col overflow-hidden">
+    <motion.div
+      variants={containerVariants}
+      className="flex h-dvh w-full flex-col overflow-hidden"
+    >
       {/* Header/status own their inset; the protocol deck spans full width so
-          cards can swing all the way to the screen edges. */}
-      <header className="flex items-center justify-between px-11 pt-9">
+          cards can swing all the way to the screen edges. The backdrop
+          rendered below this header sits at z-40; the header itself has no
+          z-index so it is visually overlaid, and `inert` keeps its
+          controls out of the tab order while the new-session form is up. */}
+      <header
+        className="flex items-center justify-between px-11 pt-9"
+        inert={newSessionActive}
+      >
         <BrandHeader />
-        <ResumePill sessions={sessions} />
+        <AnimatePresence>
+          {view === 'protocols' ? (
+            <ResumePill key="resume-pill" sessions={sessions} />
+          ) : null}
+        </AnimatePresence>
         <TopActionBar onOpenSettings={() => setOpenDialog('settings')} />
       </header>
 
-      <AnimatePresence mode="wait" initial={false}>
+      {/* Backdrop for the in-card "new session" form. Sits between the
+          page chrome (header + StatusRow + chevron row) and the active
+          DeckCard, which the ProtocolDeck section lifts to z-50 while
+          this is mounted. Clicking dismisses, matching modal semantics
+          without going through Base-UI's Dialog. */}
+      <AnimatePresence>
+        {newSessionActive && (
+          <motion.button
+            type="button"
+            key="new-session-backdrop"
+            aria-label="Cancel new interview"
+            onClick={closeNewSession}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="bg-overlay publish-colors fixed inset-0 z-40 cursor-default border-0 p-0 backdrop-blur-xs"
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence mode="wait">
         {view === 'protocols' ? (
           <motion.div
             key="protocols"
-            variants={viewVariants}
+            variants={protocolsContainerVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
@@ -122,21 +183,12 @@ export function HomeRoute() {
               initialProtocolHash={initialProtocolHash}
               onImport={() => setOpenDialog('import')}
               onStartInterview={setPendingProtocolHash}
+              newSessionProtocolHash={pendingProtocolHash}
+              onCancelNewSession={closeNewSession}
+              onSessionCreated={handleSessionCreated}
             />
 
-            <NewSessionDialog
-              open={!!pendingProtocol}
-              protocol={pendingProtocol}
-              onClose={() => setPendingProtocolHash(null)}
-              onCreated={(session) => {
-                setPendingProtocolHash(null);
-                navigate(`/interview/${session.id}`, {
-                  state: { fresh: true },
-                });
-              }}
-            />
-
-            <div className="px-11 pb-5">
+            <div inert={newSessionActive} className="contents">
               <StatusRow
                 protocolCount={protocols.length}
                 interviewCount={sessions.length}
@@ -144,16 +196,7 @@ export function HomeRoute() {
             </div>
           </motion.div>
         ) : (
-          <motion.div
-            key="data"
-            variants={viewVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="flex min-h-0 w-full flex-1 flex-col"
-          >
-            <DataView sessions={sessions} onReload={reload} />
-          </motion.div>
+          <DataView key="data" sessions={sessions} onReload={reload} />
         )}
       </AnimatePresence>
 
@@ -166,6 +209,6 @@ export function HomeRoute() {
         open={openDialog === 'settings'}
         onClose={() => setOpenDialog(null)}
       />
-    </div>
+    </motion.div>
   );
 }

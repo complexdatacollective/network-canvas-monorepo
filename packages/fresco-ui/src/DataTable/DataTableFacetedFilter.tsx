@@ -1,0 +1,58 @@
+'use client';
+
+import { type Column } from '@tanstack/react-table';
+import { useMemo } from 'react';
+
+import ComboboxField from '../form/fields/Combobox/Combobox';
+import { type ComboboxOption } from '../form/fields/Combobox/shared';
+import { type Option } from './types';
+
+type DataTableFacetedFilterProps<TData, TValue> = {
+  column?: Column<TData, TValue>;
+  title?: string;
+  options: Option[];
+  className?: string;
+};
+
+export function DataTableFacetedFilter<TData, TValue>({
+  column,
+  title,
+  options,
+  className,
+}: DataTableFacetedFilterProps<TData, TValue>) {
+  // TanStack Table returns a mutable ref with stable identity, defeating React Compiler memoization.
+  'use no memo';
+  const selectedValues = (column?.getFilterValue() as string[]) ?? [];
+
+  const comboboxOptions: ComboboxOption[] = useMemo(
+    () =>
+      options.map((option) => ({
+        value: option.value,
+        label: option.label,
+      })),
+    [options],
+  );
+
+  const handleChange = (newValues: (string | number)[] | undefined) => {
+    if (!newValues || newValues.length === 0) {
+      column?.setFilterValue(undefined);
+    } else {
+      column?.setFilterValue(newValues);
+    }
+  };
+
+  return (
+    <ComboboxField
+      name={`filter-${title}`}
+      options={comboboxOptions}
+      placeholder={`Filter ${title}...`}
+      searchPlaceholder={`Search ${title}...`}
+      emptyMessage={`No ${title?.toLowerCase()} found.`}
+      value={selectedValues}
+      onChange={handleChange}
+      showSelectAll
+      showDeselectAll
+      className={className}
+    />
+  );
+}

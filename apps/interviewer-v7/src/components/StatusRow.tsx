@@ -1,7 +1,6 @@
 import { motion } from 'motion/react';
 import { Link } from 'wouter';
 
-const EASE = [0.22, 1, 0.36, 1] as const;
 const APP_VERSION = '7.0.0';
 
 type StatusRowProps = {
@@ -9,13 +8,28 @@ type StatusRowProps = {
   interviewCount: number;
 };
 
+const variants = {
+  hidden: { opacity: 0, y: '100%' },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: 'spring', stiffness: 280, damping: 26 },
+  },
+  // Tween instead of motion's default unbounded spring: a y: '100%' exit
+  // with the default spring settled in ~1.5s, which made
+  // `AnimatePresence mode="wait"` hold up the data view's enter.
+  exit: {
+    opacity: 0,
+    y: '100%',
+    transition: { duration: 0.25, ease: 'easeIn' },
+  },
+} as const;
+
 export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.55, delay: 1.2, ease: EASE }}
-      className="font-monospace text-text/60 flex items-center justify-between text-xs"
+      variants={variants}
+      className="font-monospace text-text/60 flex items-center justify-between px-11 pb-4 text-xs"
     >
       <Link
         href="/data"

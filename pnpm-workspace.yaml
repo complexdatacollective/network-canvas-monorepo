@@ -34,6 +34,7 @@ catalog:
   '@tailwindcss/postcss': ^4.3.0
   '@tailwindcss/typography': ^0.5.19
   '@tailwindcss/vite': ^4.3.0
+  '@tanstack/react-table': ^8.21.3
   '@types/node': ^24.12.4
   '@types/react': ^19.2.14
   '@types/react-dom': ^19.2.3

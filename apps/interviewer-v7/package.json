@@ -52,6 +52,7 @@
     "@codaco/tailwind-config": "workspace:*",
     "@codaco/tsconfig": "workspace:*",
     "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-table": "catalog:",
     "better-sqlite3-multiple-ciphers": "^12.9.0",
     "dexie": "^4.4.2",
     "effect": "catalog:",
@@ -60,6 +61,7 @@
     "motion": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "swiper": "^12.1.4",
     "uuid": "catalog:",
     "wouter": "^3.9.0",
     "zod": "catalog:"
