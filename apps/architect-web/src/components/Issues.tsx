@@ -14,7 +14,7 @@ import { getFormSyncErrors, hasSubmitFailed } from 'redux-form';
 
 import Button from '~/lib/legacy-ui/components/Button';
 
-import { flattenIssues, getFieldId } from '../utils/issues';
+import { candidateIdsFor, flattenIssues, getFieldId } from '../utils/issues';
 import scrollTo from '../utils/scrollTo';
 import {
   Popover,
@@ -26,6 +26,16 @@ import { formName } from './StageEditor/configuration';
 export type IssuesHandle = {
   open: () => void;
   hasIssues: boolean;
+};
+
+const resolveTarget = (field: string): HTMLElement | null => {
+  for (const id of candidateIdsFor(field)) {
+    const el = document.getElementById(id);
+    if (el instanceof HTMLElement) {
+      return el;
+    }
+  }
+  return null;
 };
 
 const Issues = forwardRef<IssuesHandle>((_, ref) => {
@@ -71,7 +81,7 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
     if (!open) return;
     flatIssues.forEach(({ field }: { field: string; issue: string }) => {
       const fieldId = getFieldId(field);
-      const targetField = document.querySelector(`#${fieldId}`);
+      const targetField = document.getElementById(fieldId);
       if (!targetField) return;
       const fieldName =
         targetField.getAttribute('data-name') || targetField.textContent;
@@ -83,15 +93,15 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
 
   if (!hasIssues || !submitFailed) return null;
 
-  const handleClickIssue = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleClickIssue = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    field: string,
+  ) => {
     e.preventDefault();
-    const link = e.currentTarget.getAttribute('href');
-    if (link) {
-      const destination = document.querySelector(link);
-      if (destination instanceof HTMLElement) {
-        scrollTo(destination);
-        setOpen(false);
-      }
+    const destination = resolveTarget(field);
+    if (destination) {
+      scrollTo(destination);
+      setOpen(false);
     }
   };
 
@@ -125,7 +135,7 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
               >
                 <a
                   href={`#${fieldId}`}
-                  onClick={handleClickIssue}
+                  onClick={(e) => handleClickIssue(e, field)}
                   className="text-primary-foreground block w-full px-(--space-md) py-(--space-sm) no-underline before:mr-(--space-sm) before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
                 >
                   <span ref={(el) => setIssueRef(el, fieldId)}>{field}</span> -{' '}

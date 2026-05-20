@@ -484,9 +484,6 @@ importers:
       '@types/redux-logger':
         specifier: ^3.0.13
         version: 3.0.13
-      animejs:
-        specifier: ^2.2.0
-        version: 2.2.0
       csvtojson:
         specifier: ^2.0.14
         version: 2.0.14

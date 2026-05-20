@@ -1,32 +1,24 @@
-import anime from 'animejs';
 import scrollparent from 'scrollparent';
 
-import {
-  getCSSVariableAsNumber,
-  getCSSVariableAsObject,
-} from '~/lib/legacy-ui/utils/CSSVariables';
-
-const scrollTo = (destination: HTMLElement, offset = 0) => {
-  if (!destination) {
+const scrollTo = (target: HTMLElement, offset = -200) => {
+  if (!target) {
     return;
   }
-  const scroller = scrollparent(destination);
-  const scrollStart =
-    scroller instanceof Document
-      ? document.documentElement.scrollTop
-      : scroller.scrollTop;
-  const destinationOffset = Number.parseInt(
-    String(destination.getBoundingClientRect().top),
-    10,
-  );
-  const scrollEnd = scrollStart + destinationOffset + offset;
 
-  anime({
-    targets: scroller,
-    scrollTop: scrollEnd,
-    easing: getCSSVariableAsObject('--animation-easing-js'),
-    duration: getCSSVariableAsNumber('--animation-duration-fast-ms'),
-  });
+  const scroller = scrollparent(target);
+  const targetTop = target.getBoundingClientRect().top;
+
+  if (scroller instanceof Document) {
+    window.scrollTo({
+      top: targetTop + window.scrollY + offset,
+      behavior: 'smooth',
+    });
+    return;
+  }
+
+  const scrollerTop = scroller.getBoundingClientRect().top;
+  const top = targetTop - scrollerTop + scroller.scrollTop + offset;
+  scroller.scrollTo({ top, behavior: 'smooth' });
 };
 
 export default scrollTo;
