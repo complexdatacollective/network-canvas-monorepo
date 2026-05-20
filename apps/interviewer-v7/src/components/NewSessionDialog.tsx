@@ -15,7 +15,11 @@ import { createInitialNetwork } from '@codaco/interview';
 import { createSession } from '~/lib/db/api';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
 
-import { CARD_RADIUS_PX, cardActiveShadow, MORPH_TRANSITION } from './DeckCard';
+import {
+  CARD_RADIUS_PX,
+  cardActiveShadow,
+  MORPH_TRANSITION,
+} from './ProtocolCarousel/DeckCard';
 
 type NewSessionDialogProps = {
   protocol: ProtocolWithCounts;
