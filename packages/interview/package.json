@@ -1,7 +1,7 @@
 {
   "name": "@codaco/interview",
-  "version": "1.0.0-alpha.20",
-  "description": "Network Canvas interview engine — Shell component, synthetic network generator, session contract.",
+  "version": "1.0.0-alpha.21",
+  "description": "Network Canvas interview engine — Shell component, session contract.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -61,7 +61,6 @@
     "redux-logger": "catalog:",
     "redux-thunk": "^3.1.0",
     "uuid": "catalog:",
-    "zod": "catalog:",
     "zustand": "catalog:"
   },
   "devDependencies": {

@@ -19,7 +19,8 @@
     }
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "tag": "alpha"
   },
   "scripts": {
     "build": "vite build",
@@ -35,8 +36,7 @@
     "@codaco/shared-consts": "workspace:^",
     "@faker-js/faker": "catalog:",
     "es-toolkit": "catalog:",
-    "uuid": "catalog:",
-    "zod": "catalog:"
+    "uuid": "catalog:"
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:*",

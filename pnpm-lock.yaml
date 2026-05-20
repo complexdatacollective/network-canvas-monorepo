@@ -1367,7 +1367,7 @@ importers:
     dependencies:
       '@codaco/shared-consts':
         specifier: 5.0.0
-        version: link:../shared-consts
+        version: 5.0.0
       '@codaco/tailwind-config':
         specifier: workspace:^
         version: link:../../tooling/tailwind
@@ -1630,9 +1630,6 @@ importers:
       uuid:
         specifier: 'catalog:'
         version: 14.0.0
-      zod:
-        specifier: 'catalog:'
-        version: 4.4.3
       zustand:
         specifier: 'catalog:'
         version: 5.0.13(@types/react@19.2.14)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
@@ -1828,9 +1825,6 @@ importers:
       uuid:
         specifier: 'catalog:'
         version: 14.0.0
-      zod:
-        specifier: 'catalog:'
-        version: 4.4.3
     devDependencies:
       '@codaco/tsconfig':
         specifier: workspace:*
@@ -3018,6 +3012,10 @@ packages:
 
   '@codaco/shared-consts@0.0.2':
     resolution: {integrity: sha512-qPmZQm50NhIuQGznQx00kdCxXJ/rOW8UkCrLPQObmPFjq3iIOTwBjAWddq7gRBsDByRfdB/gMCwcd7Pay2aOFQ==}
+
+  '@codaco/shared-consts@5.0.0':
+    resolution: {integrity: sha512-7neTWHNjw6Y7FdVOU8htO2OshADlpS9vI+5mQEDWOdtlL8BdHmBflqQlZE8lFjzBin8tUI9jIlxsLlMYOpjm/w==}
+    engines: {node: '>=20.0.0'}
 
   '@codaco/ui@5.8.6':
     resolution: {integrity: sha512-vjrAI2YPvzg55F5EpVXae7RAZzIpqTsUSjUcQ/laPaH3ZWjVgMeiMEFPCE+C85Oe16rNh0iOMN/XU7kxGaK4Vg==}
@@ -15835,6 +15833,10 @@ snapshots:
     optional: true
 
   '@codaco/shared-consts@0.0.2': {}
+
+  '@codaco/shared-consts@5.0.0':
+    dependencies:
+      zod: 4.4.3
 
   '@codaco/ui@5.8.6(@types/react@19.2.14)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:

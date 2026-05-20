@@ -24,7 +24,6 @@ export default defineConfig({
         '@faker-js/faker',
         'es-toolkit',
         'uuid',
-        'zod',
       ],
     },
   },

@@ -1,6 +1,6 @@
 {
   "name": "@codaco/shared-consts",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "description": "Shared constants and typescript definitions for the Network Canvas project.",
   "keywords": [
     "library",
@@ -26,6 +26,9 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsgo --noEmit && vite build",
