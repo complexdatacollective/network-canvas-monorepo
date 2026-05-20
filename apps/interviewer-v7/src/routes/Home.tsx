@@ -134,16 +134,25 @@ export function HomeRoute() {
           z-index so it is visually overlaid, and `inert` keeps its
           controls out of the tab order while the new-session form is up. */}
       <header
-        className="flex items-center justify-between px-11 pt-9"
+        className="relative flex items-center justify-between px-11 pt-9"
         inert={newSessionActive}
       >
         <BrandHeader />
-        <AnimatePresence>
-          {view === 'protocols' ? (
-            <ResumePill key="resume-pill" sessions={sessions} />
-          ) : null}
-        </AnimatePresence>
         <TopActionBar onOpenSettings={() => setOpenDialog('settings')} />
+        {/* Absolute overlay so the resume pill draws on top of other
+            header items (and can grow as wide as it needs without
+            pushing them around). The wrapper mirrors the header's
+            padding + items-center so the pill aligns with BrandHeader
+            and TopActionBar vertically. pointer-events-none lets clicks
+            pass through the empty area to the items below; the pill
+            itself opts back in via pointer-events-auto. */}
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-11 pt-9">
+          <AnimatePresence>
+            {view === 'protocols' ? (
+              <ResumePill key="resume-pill" sessions={sessions} />
+            ) : null}
+          </AnimatePresence>
+        </div>
       </header>
 
       {/* Backdrop for the in-card "new session" form. Sits between the
