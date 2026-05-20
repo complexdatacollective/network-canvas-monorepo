@@ -18,9 +18,16 @@ const AppContents = () => {
     if (location === '/') resetRunOnce();
   }, [location]);
 
+  const blobIntensity =
+    location === '/'
+      ? 'bold'
+      : location.startsWith('/protocol/stage/')
+        ? 'dim'
+        : 'medium';
+
   return (
     <>
-      <BackgroundBlobsLayer intensity={location === '/' ? 'bold' : 'dim'} />
+      <BackgroundBlobsLayer intensity={blobIntensity} />
       <ScrollToTop />
       <Routes />
       <DialogManager />

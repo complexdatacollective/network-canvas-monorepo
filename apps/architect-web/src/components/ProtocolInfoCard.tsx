@@ -33,10 +33,10 @@ const ProtocolInfoCard = () => {
 
   return (
     <motion.div
-      initial={animate ? { y: -80, opacity: 0 } : false}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="bg-surface-1 relative mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded shadow-md"
+      initial={animate ? { scale: 0, opacity: 0 } : false}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+      className="bg-surface-1 relative mx-auto flex w-full max-w-3xl flex-col overflow-hidden rounded shadow-md"
     >
       <div className="relative h-32 w-full overflow-hidden px-(--space-lg) py-(--space-md)">
         <Pattern

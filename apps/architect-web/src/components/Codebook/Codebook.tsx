@@ -12,9 +12,6 @@ type CodebookProps = {
   onEditEntity?: (entity: string, type?: string) => void;
 };
 
-const dividerClasses =
-  'border-divider mt-(--space-md) mb-(--space-lg) border-t-[0.2rem]';
-
 const Codebook = ({ onEditEntity }: CodebookProps) => {
   const codebook = useSelector(getCodebook);
   const {
@@ -44,8 +41,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
       {hasEgoVariables && (
         <div className="mb-(--space-lg)">
-          <h2 className="my-0">Ego</h2>
-          <div className={dividerClasses} />
+          <h2 className="mt-0 mb-(--space-md)">Ego</h2>
           <Section layout="vertical" required={false}>
             <EgoType />
           </Section>
@@ -54,8 +50,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
       {hasNodes && (
         <div className="mb-(--space-lg)">
-          <h2 className="my-0">Node Types</h2>
-          <div className={dividerClasses} />
+          <h2 className="mt-0 mb-(--space-md)">Node Types</h2>
           {nodes.map((node) => (
             <EntityType
               key={node.type}
@@ -71,8 +66,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
       {hasEdges && (
         <div className="mb-(--space-lg)">
-          <h2 className="my-0">Edge Types</h2>
-          <div className={dividerClasses} />
+          <h2 className="mt-0 mb-(--space-md)">Edge Types</h2>
           {edges.map((edge) => (
             <EntityType
               key={edge.type}
@@ -88,8 +82,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
       {hasNetworkAssets && (
         <div className="mb-(--space-lg)">
-          <h2 className="my-0">Network Assets</h2>
-          <div className={dividerClasses} />
+          <h2 className="mt-0 mb-(--space-md)">Network Assets</h2>
           {processedNetworkAssets.map((networkAsset) => (
             <ExternalEntity
               key={networkAsset.id}
