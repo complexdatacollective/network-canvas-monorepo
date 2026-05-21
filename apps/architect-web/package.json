@@ -31,7 +31,7 @@
     "is-hotkey": "^0.2.0",
     "jszip": "^3.10.1",
     "lucide-react": "catalog:",
-    "luxon": "^1.28.1",
+    "luxon": "^3.7.2",
     "mapbox-gl": "^3.23.1",
     "motion": "^12.38.0",
     "ohash": "^2.0.11",
