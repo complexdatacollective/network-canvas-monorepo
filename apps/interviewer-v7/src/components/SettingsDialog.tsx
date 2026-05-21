@@ -274,7 +274,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         </nav>
 
         <ScrollArea viewportClassName="pr-4">
-          {section === 'about' ? (
+          {section === 'about' && settings ? (
             <>
               <SettingsRow
                 title="App version"
@@ -307,6 +307,17 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                   <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
                     {installationId}
                   </span>
+                }
+              />
+              <UnconnectedField
+                name="showSampleProtocol"
+                label="Show sample protocol on home screen"
+                hint="Re-shows the one-click sample protocol card next to the Import card."
+                inline
+                component={ToggleField}
+                value={!settings.sampleProtocolDismissed}
+                onChange={(next: boolean | undefined) =>
+                  void persist({ sampleProtocolDismissed: next !== true })
                 }
               />
             </>
