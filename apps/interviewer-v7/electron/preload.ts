@@ -85,6 +85,8 @@ const electronAPI = {
   openFile: () => ipcRenderer.invoke('dialog:openProtocol'),
   saveFile: (suggestedName: string, data: Uint8Array) =>
     ipcRenderer.invoke('dialog:saveFile', suggestedName, data),
+  fetchProtocolFromUrl: (url: string) =>
+    ipcRenderer.invoke('protocol:fetchFromUrl', url),
   platform: process.platform as 'darwin' | 'win32' | 'linux',
   isPackaged: process.argv.includes('--isPackaged'),
   db: dbBridge,

@@ -11,6 +11,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import { saveProtocol } from '../db/api';
+import { fetchProtocolFromUrl } from '../files/fetchFromUrl';
 
 const APP_SCHEMA_VERSION = 8;
 
@@ -165,9 +166,9 @@ function deriveNameFromUrl(url: string): string {
 export async function importProtocolFromUrl(
   url: string,
 ): Promise<ImportProtocolResult> {
-  let response: Response;
+  let buffer: Uint8Array;
   try {
-    response = await fetch(url, { redirect: 'follow' });
+    buffer = await fetchProtocolFromUrl(url);
   } catch (cause) {
     return {
       success: false,
@@ -175,13 +176,5 @@ export async function importProtocolFromUrl(
       message: cause instanceof Error ? cause.message : String(cause),
     };
   }
-  if (!response.ok) {
-    return {
-      success: false,
-      error: 'fetch-failed',
-      message: `Server responded with ${response.status} ${response.statusText}`,
-    };
-  }
-  const buffer = new Uint8Array(await response.arrayBuffer());
   return importFromBuffer(buffer, deriveNameFromUrl(url));
 }

@@ -165,6 +165,11 @@ declare global {
       suggestedName: string,
       data: Uint8Array,
     ) => Promise<{ canceled: boolean; path?: string }>;
+    fetchProtocolFromUrl: (
+      url: string,
+    ) => Promise<
+      { ok: true; data: Uint8Array } | { ok: false; message: string }
+    >;
     platform: 'darwin' | 'win32' | 'linux';
     isPackaged: boolean;
     db: DbBridge;

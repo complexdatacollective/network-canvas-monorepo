@@ -180,6 +180,97 @@ ipcMain.handle(
   },
 );
 
+// Renderer's CSP stays at `connect-src 'self'`; this handler is the only path
+// out to the network, so any change to size cap / scheme allowlist applies
+// uniformly to URL imports.
+const FETCH_PROTOCOL_MAX_BYTES = 200 * 1024 * 1024;
+const FETCH_PROTOCOL_TIMEOUT_MS = 30_000;
+
+ipcMain.handle('protocol:fetchFromUrl', async (_event, url: unknown) => {
+  if (typeof url !== 'string') {
+    return { ok: false, message: 'URL must be a string' };
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { ok: false, message: 'Invalid URL' };
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    return {
+      ok: false,
+      message: 'Only http: and https: URLs are supported',
+    };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    FETCH_PROTOCOL_TIMEOUT_MS,
+  );
+
+  try {
+    const response = await fetch(parsed.toString(), {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      return {
+        ok: false,
+        message: `Server responded with ${response.status} ${response.statusText}`,
+      };
+    }
+    const declared = response.headers.get('content-length');
+    if (declared && Number(declared) > FETCH_PROTOCOL_MAX_BYTES) {
+      return {
+        ok: false,
+        message: `Protocol exceeds ${FETCH_PROTOCOL_MAX_BYTES} byte size limit`,
+      };
+    }
+    const reader = response.body?.getReader();
+    if (!reader) {
+      return { ok: false, message: 'Response body unavailable' };
+    }
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > FETCH_PROTOCOL_MAX_BYTES) {
+        await reader.cancel();
+        return {
+          ok: false,
+          message: `Protocol exceeds ${FETCH_PROTOCOL_MAX_BYTES} byte size limit`,
+        };
+      }
+      chunks.push(value);
+    }
+    const data = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      data.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return { ok: true, data };
+  } catch (cause) {
+    if (controller.signal.aborted) {
+      return {
+        ok: false,
+        message: `Request timed out after ${FETCH_PROTOCOL_TIMEOUT_MS}ms`,
+      };
+    }
+    return {
+      ok: false,
+      message: cause instanceof Error ? cause.message : String(cause),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+});
+
 ipcMain.handle('system:platform', () => process.platform);
 
 ipcMain.handle('system:storageInfo', async () => {
