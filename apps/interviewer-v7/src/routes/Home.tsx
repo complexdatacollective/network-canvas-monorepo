@@ -6,7 +6,9 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { BrandHeader } from '~/components/BrandHeader';
 import { DataView } from '~/components/DataView';
+import type { ImportRequest } from '~/components/ImportDialog';
 import { ImportDialog } from '~/components/ImportDialog';
+import type { PendingImport } from '~/components/ProtocolCarousel/DeckCard';
 import { ProtocolDeck } from '~/components/ProtocolCarousel/ProtocolDeck';
 import { ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
@@ -17,6 +19,7 @@ import {
   getSettings,
   listProtocols,
   listSessions,
+  updateSettings,
 } from '~/lib/db/api';
 import type {
   ProtocolWithCounts,
@@ -24,6 +27,12 @@ import type {
   StoredSessionLite,
   StoredSettings,
 } from '~/lib/db/types';
+import {
+  type ImportProgressEvent,
+  importProtocolFromFile,
+  importProtocolFromUrl,
+} from '~/lib/protocol/importProtocol';
+import { SAMPLE_PROTOCOL } from '~/lib/protocol/sampleProtocol';
 
 type OpenDialog = 'import' | 'settings' | null;
 type View = 'protocols' | 'data';
@@ -95,6 +104,8 @@ export function HomeRoute() {
   const dialog = useDialog();
   const toast = useToast();
 
+  const [pendingImports, setPendingImports] = useState<PendingImport[]>([]);
+
   const reload = useCallback(async () => {
     const [p, s, st] = await Promise.all([
       listProtocols(),
@@ -110,15 +121,79 @@ export function HomeRoute() {
     void reload();
   }, [reload]);
 
-  const handleImported = useCallback(
-    (hash?: string) => {
-      void reload();
-      // ImportDialog's "Start an interview" CTA forwards the imported protocol's
-      // hash so we can open the new-session flow directly. A bare close-after-import
-      // (no hash) just refreshes the deck.
-      if (hash) setPendingProtocolHash(hash);
+  const startImport = useCallback(
+    (request: ImportRequest | { source: 'sample' }) => {
+      const id =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random()}`;
+      const initial: PendingImport = (() => {
+        if (request.source === 'file') {
+          return {
+            id,
+            label: request.label,
+            source: 'file',
+            phase: 'extracting',
+          };
+        }
+        if (request.source === 'url') {
+          return { id, label: request.label, source: 'url', phase: 'fetching' };
+        }
+        return {
+          id,
+          label: SAMPLE_PROTOCOL.name,
+          source: 'sample',
+          phase: 'fetching',
+        };
+      })();
+      setPendingImports((prev) => [...prev, initial]);
+
+      const onProgress = (event: ImportProgressEvent) => {
+        setPendingImports((prev) =>
+          prev.map((entry) =>
+            entry.id === id
+              ? { ...entry, phase: event.phase, progress: event.progress }
+              : entry,
+          ),
+        );
+      };
+
+      const run = async () => {
+        let result;
+        if (request.source === 'file') {
+          result = await importProtocolFromFile(request.file, onProgress);
+        } else if (request.source === 'url') {
+          result = await importProtocolFromUrl(request.url, onProgress);
+        } else {
+          result = await importProtocolFromUrl(SAMPLE_PROTOCOL.url, onProgress);
+        }
+
+        if (result.success) {
+          if (request.source === 'sample') {
+            await updateSettings({ sampleProtocolDismissed: true });
+          }
+          await reload();
+          setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
+          toast.add({
+            title: 'Protocol imported',
+            description: result.migrated
+              ? `${result.protocol.name} was migrated to the current schema.`
+              : `${result.protocol.name} is ready to use.`,
+            variant: 'success',
+          });
+        } else {
+          setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
+          toast.add({
+            title: 'Import failed',
+            description: result.message,
+            variant: 'destructive',
+          });
+        }
+      };
+
+      void run();
     },
-    [reload],
+    [reload, toast],
   );
 
   // If the pending hash has since been deleted (e.g. cascade-delete from
@@ -141,6 +216,22 @@ export function HomeRoute() {
       b.importedAt.localeCompare(a.importedAt),
     )[0]?.hash;
   }, [settings?.lastActiveProtocolHash, protocols]);
+
+  const handleImportSubmit = useCallback(
+    (request: ImportRequest) => {
+      startImport(request);
+    },
+    [startImport],
+  );
+
+  const handleInstallSample = useCallback(() => {
+    startImport({ source: 'sample' });
+  }, [startImport]);
+
+  const handleDismissSample = useCallback(async () => {
+    await updateSettings({ sampleProtocolDismissed: true });
+    await reload();
+  }, [reload]);
 
   const handleSessionCreated = useCallback(
     (session: StoredSession) => {
@@ -288,9 +379,15 @@ export function HomeRoute() {
               protocols={protocols}
               sessions={sessions}
               initialProtocolHash={initialProtocolHash}
+              showSampleCard={
+                settings ? !settings.sampleProtocolDismissed : false
+              }
+              pendingImports={pendingImports}
               onImport={() => setOpenDialog('import')}
               onStartInterview={setPendingProtocolHash}
               onDeleteProtocol={handleDeleteProtocol}
+              onInstallSample={handleInstallSample}
+              onDismissSample={handleDismissSample}
               newSessionProtocolHash={pendingProtocolHash}
               onCancelNewSession={closeNewSession}
               onSessionCreated={handleSessionCreated}
@@ -311,7 +408,7 @@ export function HomeRoute() {
       <ImportDialog
         open={openDialog === 'import'}
         onClose={() => setOpenDialog(null)}
-        onImported={handleImported}
+        onSubmit={handleImportSubmit}
       />
       <SettingsDialog
         open={openDialog === 'settings'}

@@ -19,10 +19,7 @@ export type ImportRequest =
 type ImportDialogProps = {
   open: boolean;
   onClose: () => void;
-  // TODO(Task 7): make required and remove onImported bridge
-  onSubmit?: (request: ImportRequest) => void;
-  // Bridge prop — matches the current HomeRoute call site; remove in Task 7
-  onImported?: (hash: string) => void;
+  onSubmit: (request: ImportRequest) => void;
 };
 
 function isProbablyValidUrl(value: string): boolean {
@@ -53,7 +50,7 @@ export function ImportDialog({ open, onClose, onSubmit }: ImportDialogProps) {
 
   const submitFile = useCallback(
     (file: File) => {
-      onSubmit?.({ source: 'file', file, label: file.name });
+      onSubmit({ source: 'file', file, label: file.name });
       handleClose();
     },
     [handleClose, onSubmit],
@@ -87,7 +84,7 @@ export function ImportDialog({ open, onClose, onSubmit }: ImportDialogProps) {
       });
       return;
     }
-    onSubmit?.({
+    onSubmit({
       source: 'url',
       url: trimmed,
       label: deriveNameFromUrl(trimmed),
