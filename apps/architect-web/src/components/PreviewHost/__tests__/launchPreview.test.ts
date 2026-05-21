@@ -58,7 +58,7 @@ describe('launchPreview', () => {
       useSyntheticData: true,
     });
 
-    expect(openSpy).toHaveBeenCalledWith('/preview', '_blank');
+    expect(openSpy).toHaveBeenCalledWith('/preview/', '_blank');
 
     postReadyFromSource(popup);
     await promise;
