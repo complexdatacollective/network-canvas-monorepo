@@ -143,6 +143,12 @@ export async function markSessionsExported(ids: string[]): Promise<void> {
     : dexieSessions.markSessionsExported(ids);
 }
 
+export async function deleteSessions(ids: string[]): Promise<void> {
+  return isElectron
+    ? electronSessions.deleteSessions(ids)
+    : dexieSessions.deleteSessions(ids);
+}
+
 export async function countSyntheticSessions(): Promise<number> {
   return isElectron
     ? electronSessions.countSyntheticSessions()

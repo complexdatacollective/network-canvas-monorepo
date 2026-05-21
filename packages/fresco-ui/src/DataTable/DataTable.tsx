@@ -39,6 +39,7 @@ type DataTableProps<TData> = {
   surfaceLevel?: 0 | 1 | 2 | 3;
   emptyText?: string;
   getRowClasses?: (row: Row<TData>) => string | undefined;
+  onRowClick?: (row: Row<TData>) => void;
   bodyScroll?: boolean;
 };
 
@@ -50,6 +51,7 @@ export function DataTable<TData>({
   surfaceLevel = 0,
   emptyText = 'No results.',
   getRowClasses,
+  onRowClick,
   bodyScroll = false,
 }: DataTableProps<TData>) {
   // TanStack Table returns a mutable ref with stable identity, defeating React Compiler memoization.
@@ -86,6 +88,7 @@ export function DataTable<TData>({
                 key={row.id}
                 data-state={row.getIsSelected() && 'selected'}
                 className={getRowClasses?.(row)}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
               >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell

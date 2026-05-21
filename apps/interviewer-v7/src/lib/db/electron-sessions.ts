@@ -68,6 +68,10 @@ export async function markSessionsExported(ids: string[]): Promise<void> {
   return ipc().sessions.markExported(ids);
 }
 
+export async function deleteSessions(ids: string[]): Promise<void> {
+  return ipc().sessions.deleteMany(ids);
+}
+
 export async function countSyntheticSessions(): Promise<number> {
   return ipc().sessions.countSynthetic();
 }

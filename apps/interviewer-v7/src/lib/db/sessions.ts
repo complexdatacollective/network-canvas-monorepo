@@ -299,6 +299,11 @@ export async function markSessionsExported(ids: string[]): Promise<void> {
   });
 }
 
+export async function deleteSessions(ids: readonly string[]): Promise<void> {
+  if (ids.length === 0) return;
+  await db.sessions.bulkDelete([...ids]);
+}
+
 export async function countSyntheticSessions(): Promise<number> {
   // IndexedDB does not accept booleans as keys, so we filter rather than
   // .where('isSynthetic').equals(true). The isSynthetic index still helps

@@ -12,16 +12,19 @@ import {
   Download,
   Filter as FilterIcon,
   Search,
+  Trash2,
   X,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'wouter';
 
 import Button from '@codaco/fresco-ui/Button';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import { DataTableFacetedFilter } from '@codaco/fresco-ui/DataTable/DataTableFacetedFilter';
 import BooleanFilter from '@codaco/fresco-ui/DataTable/filters/BooleanFilter';
 import DateFilter from '@codaco/fresco-ui/DataTable/filters/DateFilter';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import {
@@ -33,10 +36,12 @@ import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import {
+  deleteSessions,
   getSettings,
   markSessionsExported,
   queryMatchingSessionIds,
   querySessions,
+  updateSettings,
 } from '~/lib/db/api';
 import type {
   ProtocolWithCounts,
@@ -73,7 +78,7 @@ function statusLabel(kind: SessionStatusKind): string {
 }
 
 const CHIP_BASE =
-  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-pill)] font-heading font-extrabold text-xs uppercase tracking-[0.08em]';
+  'rounded-sm inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-pill)] font-heading font-extrabold text-xs uppercase tracking-[0.08em]';
 
 function statusChipClass(kind: SessionStatusKind): string {
   if (kind === 'in-progress') return `${CHIP_BASE} bg-mustard/22 text-mustard`;
@@ -322,6 +327,8 @@ export function DataView({ protocols, onReload }: DataViewProps) {
   }, [protocols]);
 
   const toast = useToast();
+  const dialog = useDialog();
+  const [, navigate] = useLocation();
   const [selection, setSelection] = useState<Selection>({ mode: 'none' });
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -338,6 +345,7 @@ export function DataView({ protocols, onReload }: DataViewProps) {
     statusCounts: { all: number; inProgress: number; complete: number };
   } | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
 
   // Derive server query params from the UI state. Column filter values are
@@ -451,14 +459,24 @@ export function DataView({ protocols, onReload }: DataViewProps) {
           const id = row.original.id;
           const checked = isRowSelected(selection, id);
           return (
-            <Checkbox
-              size="sm"
-              aria-label={`Select ${row.original.caseId}`}
-              checked={checked}
-              onCheckedChange={() => {
-                setSelection((prev) => toggleRow(prev, id));
-              }}
-            />
+            // The presentation span blocks click-bubbling so the row-level
+            // resume handler doesn't fire when the user toggles the
+            // checkbox. Keyboard activation goes straight to the
+            // Checkbox.Root button — the span is invisible to AT.
+            <span
+              role="presentation"
+              className="inline-flex"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Checkbox
+                size="sm"
+                aria-label={`Select ${row.original.caseId}`}
+                checked={checked}
+                onCheckedChange={() => {
+                  setSelection((prev) => toggleRow(prev, id));
+                }}
+              />
+            </span>
           );
         },
       },
@@ -518,6 +536,7 @@ export function DataView({ protocols, onReload }: DataViewProps) {
             <div className="flex items-center gap-2">
               <div className="w-24">
                 <ProgressBar
+                  nudge={false}
                   orientation="horizontal"
                   percentProgress={percent}
                   label={`step ${session.currentStep + 1} of ${totalStages || '?'}`}
@@ -747,6 +766,50 @@ export function DataView({ protocols, onReload }: DataViewProps) {
     toast,
   ]);
 
+  const handleDelete = useCallback(async () => {
+    if (selectedCount === 0 || deleting) return;
+    const noun = selectedCount === 1 ? 'interview' : 'interviews';
+    const confirmed = await dialog.openDialog({
+      type: 'choice',
+      title: `Delete ${selectedCount} ${noun}?`,
+      description: `${selectedCount === 1 ? 'This record' : 'These records'} will be permanently removed from this device. This cannot be undone.`,
+      intent: 'destructive',
+      actions: {
+        primary: { label: 'Delete', value: true },
+        cancel: { label: 'Cancel', value: false },
+      },
+    });
+    if (confirmed !== true) return;
+    setDeleting(true);
+    try {
+      const ids = await resolveSelectedIds();
+      if (ids.length === 0) return;
+      await deleteSessions(ids);
+      toast.add({
+        title: `Deleted ${ids.length} ${ids.length === 1 ? 'interview' : 'interviews'}`,
+        variant: 'success',
+      });
+      setSelection({ mode: 'none' });
+      await Promise.all([onReload(), reloadData()]);
+    } catch (cause) {
+      toast.add({
+        title: 'Delete failed',
+        description: cause instanceof Error ? cause.message : String(cause),
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleting(false);
+    }
+  }, [
+    deleting,
+    dialog,
+    onReload,
+    reloadData,
+    resolveSelectedIds,
+    selectedCount,
+    toast,
+  ]);
+
   const isFilterActive = columnFilters.length > 0;
 
   const toolbar = (
@@ -910,17 +973,31 @@ export function DataView({ protocols, onReload }: DataViewProps) {
       </motion.div>
 
       {selectedCount > 0 ? (
-        <motion.div variants={toolbarItemVariants}>
-          <Button
-            color="primary"
-            size="md"
-            icon={<Download size={14} strokeWidth={2.5} aria-hidden />}
-            onClick={() => void handleExport()}
-            disabled={exporting}
-          >
-            {exporting ? 'Exporting…' : `Export ${selectedCount} selected`}
-          </Button>
-        </motion.div>
+        <>
+          <motion.div variants={toolbarItemVariants}>
+            <Button
+              color="destructive"
+              variant="outline"
+              size="md"
+              icon={<Trash2 size={14} strokeWidth={2.5} aria-hidden />}
+              onClick={() => void handleDelete()}
+              disabled={deleting || exporting}
+            >
+              {deleting ? 'Deleting…' : `Delete ${selectedCount} selected`}
+            </Button>
+          </motion.div>
+          <motion.div variants={toolbarItemVariants}>
+            <Button
+              color="primary"
+              size="md"
+              icon={<Download size={14} strokeWidth={2.5} aria-hidden />}
+              onClick={() => void handleExport()}
+              disabled={exporting || deleting}
+            >
+              {exporting ? 'Exporting…' : `Export ${selectedCount} selected`}
+            </Button>
+          </motion.div>
+        </>
       ) : null}
     </motion.div>
   );
@@ -988,6 +1065,18 @@ export function DataView({ protocols, onReload }: DataViewProps) {
         <DataTable
           table={table}
           bodyScroll
+          getRowClasses={(row) =>
+            row.original.statusKind === 'in-progress'
+              ? 'cursor-pointer hover:bg-sea-green/8'
+              : undefined
+          }
+          onRowClick={(row) => {
+            if (row.original.statusKind !== 'in-progress') return;
+            const id = row.original.id;
+            void updateSettings({ lastActiveSessionId: id }).then(() =>
+              navigate(`/interview/${id}`),
+            );
+          }}
           emptyText={
             data === null
               ? 'Loading interviews…'
