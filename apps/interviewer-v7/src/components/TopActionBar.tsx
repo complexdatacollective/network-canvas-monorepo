@@ -5,15 +5,19 @@ import { IconButton } from '@codaco/fresco-ui/Button';
 import { ViewSwitcher } from '~/components/ViewSwitcher';
 import { useAuth } from '~/lib/auth/AuthContext';
 
-const EASE = [0.22, 1, 0.36, 1] as const;
-
 // Glass-pill treatment layered over the standard Button: backdrop-blur surface
 // with the theme outline, sized to match BrandHeader's height (h-14).
 export const GLASS_PILL =
-  'border border-outline bg-surface/50 backdrop-blur-md shadow-md uppercase text-sm font-black';
+  'border border-outline bg-surface/50 backdrop-blur-md shadow-md uppercase font-black';
 
 type TopActionBarProps = {
   onOpenSettings: () => void;
+};
+
+const variants = {
+  hidden: { opacity: 0, y: -6 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.55 } },
+  exit: { opacity: 0, y: -6, transition: { duration: 0.55 } },
 };
 
 export function TopActionBar({ onOpenSettings }: TopActionBarProps) {
@@ -25,9 +29,7 @@ export function TopActionBar({ onOpenSettings }: TopActionBarProps) {
       <ViewSwitcher />
       {showLock && (
         <motion.span
-          initial={{ opacity: 0, y: -6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, delay: 0.32, ease: EASE }}
+          variants={variants}
           whileHover={{ y: -2 }}
           whileTap={{ scale: 0.94 }}
           className="inline-flex"
@@ -44,9 +46,7 @@ export function TopActionBar({ onOpenSettings }: TopActionBarProps) {
         </motion.span>
       )}
       <motion.span
-        initial={{ opacity: 0, y: -6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, delay: 0.39, ease: EASE }}
+        variants={variants}
         whileHover={{ y: -2, rotate: -8 }}
         whileTap={{ scale: 0.94 }}
         className="inline-flex"

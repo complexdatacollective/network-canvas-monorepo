@@ -14,11 +14,15 @@ const CONTAINER_CLASS =
 const SEGMENT_CLASS =
   'relative inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-black uppercase tracking-wide transition-colors';
 
-const EASE = [0.22, 1, 0.36, 1] as const;
-
 function activeView(location: string): View {
   return location === '/data' ? 'data' : 'protocols';
 }
+
+const variants = {
+  hidden: { opacity: 0, y: -6 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.55 } },
+  exit: { opacity: 0, y: -6, transition: { duration: 0.55 } },
+};
 
 export function ViewSwitcher() {
   const [location] = useLocation();
@@ -26,9 +30,7 @@ export function ViewSwitcher() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.55, delay: 0.18, ease: EASE }}
+      variants={variants}
       className={CONTAINER_CLASS}
       role="tablist"
       aria-label="Home view"

@@ -1,13 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Swiper as SwiperClass } from 'swiper';
 import { A11y, EffectCreative, Keyboard, Mousewheel } from 'swiper/modules';
@@ -116,20 +109,6 @@ export function ProtocolDeck({
   const didInitialScroll = useRef(false);
   const [activeIdx, setActiveIdx] = useState(0);
   const [sectionHeight, setSectionHeight] = useState(0);
-  // Captured rect of the active slide at the moment the new-session
-  // flow opens. The overlay mounts at this rect (matching the slide
-  // card pixel-for-pixel) and animates outward from there.
-  const [slideRect, setSlideRect] = useState<{
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-  } | null>(null);
-  // Whether the in-slide DeckCard should render invisible so the portal
-  // overlay can stand in for it. Held independently of newSessionActive
-  // so we can keep the slide hidden through the overlay's exit animation
-  // and only restore it after `onExitComplete` fires.
-  const [hideActiveInSlide, setHideActiveInSlide] = useState(false);
 
   const deck = useMemo<DeckEntry[]>(() => {
     const entries: DeckEntry[] = protocols.map((p) => ({
@@ -263,48 +242,18 @@ export function ProtocolDeck({
   // time Swiper retranslates so the opacity tracks scroll position in the
   // same frame as the fan transform. Swiper attaches `progress` to each
   // slide at runtime but the typing is `HTMLElement[]`, so narrow via `in`.
-  // While the new-session form is open we force every non-active slide to
-  // opacity 0 so the backdrop reads as covering the rest of the deck.
-  //
-  // No CSS transition is applied here — Swiper updates opacity per frame
-  // during swipes, and a transition would tween each frame and visibly
-  // lag the fan. The discrete fade on newSessionActive flip is handled
-  // by the useEffect below, which sets the transition for the duration
-  // of that one animation and clears it afterwards.
-  const applyOpacityCurve = useCallback(
-    (swiper: SwiperClass) => {
-      for (const slide of swiper.slides) {
-        if (!('progress' in slide)) continue;
-        const progress = slide.progress;
-        if (typeof progress !== 'number') continue;
-        const abs = Math.abs(progress);
-        let opacity = abs <= 2 ? 1 : abs >= 4 ? 0 : 1 - (abs - 2) / 2;
-        if (newSessionActive && abs > 0.01) opacity = 0;
-        slide.style.opacity = String(opacity);
-      }
-    },
-    [newSessionActive],
-  );
-
-  // Reapply the curve when the new-session mode flips so neighbours fade
-  // out (and back in on cancel) without waiting for the next Swiper
-  // translate event. Set a one-shot CSS transition on each slide so the
-  // opacity change tweens; clear it after the tween so per-frame swipe
-  // updates remain instant.
-  useEffect(() => {
-    const swiper = swiperRef.current;
-    if (!swiper) return;
+  // Non-active slides stay visible while the new-session form is open —
+  // the carousel should remain underneath the backdrop, not vanish.
+  const applyOpacityCurve = useCallback((swiper: SwiperClass) => {
     for (const slide of swiper.slides) {
-      slide.style.transition = 'opacity 240ms ease-out';
+      if (!('progress' in slide)) continue;
+      const progress = slide.progress;
+      if (typeof progress !== 'number') continue;
+      const abs = Math.abs(progress);
+      const opacity = abs <= 2 ? 1 : abs >= 4 ? 0 : 1 - (abs - 2) / 2;
+      slide.style.opacity = String(opacity);
     }
-    applyOpacityCurve(swiper);
-    const t = window.setTimeout(() => {
-      for (const slide of swiper.slides) {
-        slide.style.transition = '';
-      }
-    }, 280);
-    return () => window.clearTimeout(t);
-  }, [applyOpacityCurve]);
+  }, []);
 
   // Gate Swiper user input imperatively. The React wrapper does not
   // reliably re-apply prop changes to `mousewheel` / `keyboard` /
@@ -321,29 +270,6 @@ export function ProtocolDeck({
       swiper.enable();
     }
   }, [newSessionActive]);
-
-  // Measure the active slide's bounding rect synchronously when the
-  // new-session flow opens, then hide the in-slide DeckCard. Runs in a
-  // layout effect so the rect read and the opacity flip both land
-  // before the browser paints — no visible duplicate of the card.
-  // Reads from Swiper's own `.slides[]` (an HTMLElement array) because
-  // `SwiperSlide` is a plain functional component and doesn't forward
-  // refs to its DOM node — attaching a ref to it silently no-ops.
-  useLayoutEffect(() => {
-    if (!newSessionActive) return;
-    const swiper = swiperRef.current;
-    if (!swiper) return;
-    const slide = swiper.slides[activeIdx];
-    if (!slide) return;
-    const rect = slide.getBoundingClientRect();
-    setSlideRect({
-      left: rect.left,
-      top: rect.top,
-      width: rect.width,
-      height: rect.height,
-    });
-    setHideActiveInSlide(true);
-  }, [newSessionActive, activeIdx]);
 
   const pendingProtocol = useMemo(() => {
     if (!newSessionProtocolHash) return undefined;
@@ -447,33 +373,45 @@ export function ProtocolDeck({
             // paint beyond the swiper rect into the section padding.
             className="protocol-deck-swiper h-full w-full !overflow-visible"
           >
-            {deck.map((entry, i) => (
-              <SwiperSlide
-                key={entry.kind === 'import' ? 'import' : entry.protocol.hash}
-                style={{ width: cardWidth, height: cardHeight }}
-                // `!overflow-visible` overrides Swiper's bundled
-                // `.swiper-slide { overflow: hidden }` so the card's
-                // drop shadow paints beyond the slide rect. The
-                // `@container` query root used to live here; it now sits
-                // on the DeckCard itself so the overlay's expanded width
-                // drives the queries instead of the frozen `cardWidth`.
-                className="!flex origin-[center_bottom] items-center justify-center !overflow-visible will-change-transform"
-              >
-                <DeckCard
-                  entry={entry}
-                  cardWidth={cardWidth}
-                  cardHeight={cardHeight}
-                  isActive={i === activeIdx}
-                  sessionCount={
-                    entry.kind === 'protocol'
-                      ? (sessionCounts.get(entry.protocol.hash) ?? 0)
-                      : 0
-                  }
-                  onActivate={() => handleActivate(i)}
-                  hideInSlide={i === activeIdx && hideActiveInSlide}
-                />
-              </SwiperSlide>
-            ))}
+            {deck.map((entry, i) => {
+              // Unmount the DeckCard whose protocol is being promoted to
+              // the overlay so motion sees a single `layoutId` per render
+              // — that's what triggers the shared-element morph. The
+              // SwiperSlide itself stays mounted so Swiper's slide
+              // geometry doesn't shift while the overlay is open.
+              const isMorphingOut =
+                entry.kind === 'protocol' &&
+                entry.protocol.hash === newSessionProtocolHash;
+              return (
+                <SwiperSlide
+                  key={entry.kind === 'import' ? 'import' : entry.protocol.hash}
+                  style={{ width: cardWidth, height: cardHeight }}
+                  // `!overflow-visible` overrides Swiper's bundled
+                  // `.swiper-slide { overflow: hidden }` so the card's
+                  // drop shadow paints beyond the slide rect. The
+                  // `@container` query root used to live here; it now
+                  // sits on the DeckCard itself so the overlay's
+                  // expanded width drives the queries instead of the
+                  // frozen `cardWidth`.
+                  className="!flex origin-[center_bottom] items-center justify-center !overflow-visible will-change-transform"
+                >
+                  {!isMorphingOut && (
+                    <DeckCard
+                      entry={entry}
+                      cardWidth={cardWidth}
+                      cardHeight={cardHeight}
+                      isActive={i === activeIdx}
+                      sessionCount={
+                        entry.kind === 'protocol'
+                          ? (sessionCounts.get(entry.protocol.hash) ?? 0)
+                          : 0
+                      }
+                      onActivate={() => handleActivate(i)}
+                    />
+                  )}
+                </SwiperSlide>
+              );
+            })}
           </Swiper>
         ) : null}
       </motion.section>
@@ -526,21 +464,15 @@ export function ProtocolDeck({
         </motion.div>
       )}
 
-      {/* Portal the expanded card to document.body so it escapes the
-          Swiper's perspective root, the slide's frozen size, and its
-          @container reference. `onExitComplete` is the load-bearing bit:
-          it holds the in-slide card invisible until the overlay's exit
-          animation has finished tucking back into the slide rect — then
-          the slide reveals without a flash of the unstyled card. */}
+      {/* Portal the overlay to document.body so it escapes Swiper's
+          perspective stacking context. Motion's `layoutId` does the
+          morph in both directions automatically: when this mounts,
+          motion animates it from the (just-unmounted) in-slide
+          DeckCard's last rect; when it unmounts, motion animates the
+          re-mounting DeckCard from this overlay's last rect. */}
       {createPortal(
-        <AnimatePresence
-          onExitComplete={() => {
-            setSlideRect(null);
-            setHideActiveInSlide(false);
-          }}
-        >
+        <AnimatePresence>
           {newSessionActive &&
-            slideRect &&
             pendingProtocol &&
             onCancelNewSession &&
             onSessionCreated && (
@@ -548,7 +480,6 @@ export function ProtocolDeck({
                 key="new-session-overlay"
                 protocol={pendingProtocol}
                 sessionCount={sessionCounts.get(pendingProtocol.hash) ?? 0}
-                slideRect={slideRect}
                 onCancel={onCancelNewSession}
                 onCreated={onSessionCreated}
               />

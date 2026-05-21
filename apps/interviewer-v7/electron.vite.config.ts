@@ -1,10 +1,8 @@
 import { resolve } from 'node:path';
 
-import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 
-const frescoUiSrc = resolve(__dirname, '../../packages/fresco-ui/src');
+import { createRendererConfig } from './vite.renderer.config';
 
 export default defineConfig(({ command }) => ({
   main: {
@@ -35,27 +33,11 @@ export default defineConfig(({ command }) => ({
   },
   renderer: {
     root: '.',
-    resolve: {
-      tsconfigPaths: true,
-      alias:
-        command === 'serve'
-          ? [
-              {
-                find: /^@codaco\/fresco-ui\/(.+)$/,
-                replacement: `${frescoUiSrc}/$1`,
-              },
-            ]
-          : [],
-    },
-    plugins: [react(), tailwindcss()],
-    build: {
+    ...createRendererConfig({
+      command,
       outDir: 'dist-electron/renderer',
-      rollupOptions: {
-        input: resolve(__dirname, 'index.html'),
-      },
-    },
-    server: {
       port: 5181,
-    },
+      rollupInput: resolve(__dirname, 'index.html'),
+    }),
   },
 }));

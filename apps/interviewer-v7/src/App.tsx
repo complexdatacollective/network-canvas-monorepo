@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, stagger } from 'motion/react';
 import { Route, Switch, useLocation } from 'wouter';
 
 import { BackgroundBlobs } from '@codaco/art';
@@ -18,7 +18,7 @@ const pageWrapperVariants = {
     opacity: 1,
     transition: { when: 'beforeChildren', duration: 0.4 },
   },
-  exit: { opacity: 0, transition: { duration: 0.4 } },
+  exit: { opacity: 0, transition: { duration: 0.4, when: 'afterChildren' } },
 } as const;
 
 // The Home route serves both Protocols (/) and Data (/data) as in-page views.

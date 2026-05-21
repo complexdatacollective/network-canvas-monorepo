@@ -725,7 +725,7 @@ export function DataView({ sessions, onReload }: DataViewProps) {
         <motion.div variants={toolbarItemVariants}>
           <Button
             color="primary"
-            size="sm"
+            size="md"
             icon={<Download size={14} strokeWidth={2.5} aria-hidden />}
             onClick={() => void handleExport()}
             disabled={exporting}
