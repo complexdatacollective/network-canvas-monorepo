@@ -4,6 +4,7 @@ import type { EntityDefinition } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import createSorter, {
+  type LegacyOrProtocolSortRule,
   type ProtocolSortRule,
   processProtocolSortRule,
 } from '../createSorter';
@@ -1443,7 +1444,7 @@ describe('processProtocolSortRule', () => {
 
     type MockItem = (typeof mockItems)[number];
 
-    const rules = [
+    const rules: LegacyOrProtocolSortRule[] = [
       {
         property: 'type',
         type: 'hierarchy',
@@ -1457,7 +1458,7 @@ describe('processProtocolSortRule', () => {
         property: 'name_variable',
         direction: 'asc',
       },
-    ] as ProtocolSortRule[];
+    ];
 
     const codebookVariables: EntityDefinition['variables'] = {
       name_variable: {

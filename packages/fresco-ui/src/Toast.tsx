@@ -63,7 +63,12 @@ type ToastItemProps = {
 };
 
 function ToastItem({ toast }: ToastItemProps) {
-  const variant = (toast.type ?? 'default') as ToastVariant;
+  const variant: ToastVariant =
+    toast.type === 'info' ||
+    toast.type === 'success' ||
+    toast.type === 'destructive'
+      ? toast.type
+      : 'default';
   const IconComponent = variantIcons[variant];
 
   return (
