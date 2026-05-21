@@ -11,9 +11,17 @@ import {
 } from '@codaco/protocol-validation';
 
 import { saveProtocol } from '../db/api';
-import { fetchProtocolFromUrl } from '../files/fetchFromUrl';
 
 const APP_SCHEMA_VERSION = 8;
+
+export type ImportPhase = 'fetching' | 'extracting' | 'saving';
+
+export type ImportProgressEvent = {
+  phase: ImportPhase;
+  progress?: number;
+};
+
+export type OnImportProgress = (event: ImportProgressEvent) => void;
 
 export type ImportProtocolSuccess = {
   success: true;
@@ -71,7 +79,10 @@ async function extractZip(
 async function importFromBuffer(
   buffer: Uint8Array,
   sourceName: string,
+  onProgress?: OnImportProgress,
 ): Promise<ImportProtocolResult> {
+  onProgress?.({ phase: 'extracting' });
+
   let extracted: { protocol: unknown; assets: ExtractedAsset[] };
   try {
     extracted = await extractZip(buffer);
@@ -132,6 +143,8 @@ async function importFromBuffer(
   const validated = validation.data as CurrentProtocol;
   const hash = hashProtocol(validated);
 
+  onProgress?.({ phase: 'saving' });
+
   try {
     await saveProtocol(validated, hash, extracted.assets);
   } catch (cause) {
@@ -147,12 +160,13 @@ async function importFromBuffer(
 
 export async function importProtocolFromFile(
   file: File,
+  onProgress?: OnImportProgress,
 ): Promise<ImportProtocolResult> {
   const buffer = new Uint8Array(await file.arrayBuffer());
-  return importFromBuffer(buffer, file.name);
+  return importFromBuffer(buffer, file.name, onProgress);
 }
 
-function deriveNameFromUrl(url: string): string {
+export function deriveNameFromUrl(url: string): string {
   try {
     const parsed = new URL(url);
     const last = parsed.pathname.split('/').filter(Boolean).pop();
@@ -163,12 +177,50 @@ function deriveNameFromUrl(url: string): string {
   return 'protocol.netcanvas';
 }
 
+async function readStreamedBuffer(
+  response: Response,
+  onProgress?: OnImportProgress,
+): Promise<Uint8Array> {
+  const body = response.body;
+  if (!body) {
+    onProgress?.({ phase: 'fetching' });
+    return new Uint8Array(await response.arrayBuffer());
+  }
+  const reader = body.getReader();
+  const contentLengthHeader = response.headers.get('content-length');
+  const contentLength = contentLengthHeader
+    ? Number.parseInt(contentLengthHeader, 10)
+    : Number.NaN;
+  const hasContentLength = Number.isFinite(contentLength) && contentLength > 0;
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    chunks.push(value);
+    received += value.byteLength;
+    onProgress?.({
+      phase: 'fetching',
+      progress: hasContentLength ? received / contentLength : undefined,
+    });
+  }
+  const buffer = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    buffer.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return buffer;
+}
+
 export async function importProtocolFromUrl(
   url: string,
+  onProgress?: OnImportProgress,
 ): Promise<ImportProtocolResult> {
-  let buffer: Uint8Array;
+  let response: Response;
   try {
-    buffer = await fetchProtocolFromUrl(url);
+    response = await fetch(url, { redirect: 'follow' });
   } catch (cause) {
     return {
       success: false,
@@ -176,5 +228,13 @@ export async function importProtocolFromUrl(
       message: cause instanceof Error ? cause.message : String(cause),
     };
   }
-  return importFromBuffer(buffer, deriveNameFromUrl(url));
+  if (!response.ok) {
+    return {
+      success: false,
+      error: 'fetch-failed',
+      message: `Server responded with ${response.status} ${response.statusText}`,
+    };
+  }
+  const buffer = await readStreamedBuffer(response, onProgress);
+  return importFromBuffer(buffer, deriveNameFromUrl(url), onProgress);
 }
