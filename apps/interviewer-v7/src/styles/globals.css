@@ -34,3 +34,15 @@ body {
   -webkit-app-region: no-drag;
   app-region: no-drag;
 }
+
+/* Indeterminate-progress sweep used by the in-flight import ghost card
+   when no Content-Length is available. The bar slides left-to-right and
+   loops. */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
