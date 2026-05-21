@@ -17,7 +17,7 @@ import type {
 
 import { NewSessionCardOverlay } from '../NewSessionCardOverlay';
 import { GLASS_PILL } from '../TopActionBar';
-import { DeckCard, type DeckEntry } from './DeckCard';
+import { DeckCard, type DeckEntry, type PendingImport } from './DeckCard';
 
 // Visual proportions of the fanned deck — tuned together. Changing one
 // without re-checking the others desyncs the snap distance from the
@@ -55,9 +55,13 @@ type ProtocolDeckProps = {
   protocols: ProtocolWithCounts[];
   sessions: StoredSessionLite[];
   initialProtocolHash?: string;
+  showSampleCard?: boolean;
+  pendingImports?: PendingImport[];
   onImport: () => void;
   onStartInterview: (protocolHash: string) => void;
   onDeleteProtocol: (hash: string) => void;
+  onInstallSample?: () => void;
+  onDismissSample?: () => void;
   // When set, the matching card is rendered in its expanded "new session"
   // state: scaled up, case-ID form swapped in for the description + Start
   // button, swipe/keyboard navigation locked, and sibling slides faded out.
@@ -102,9 +106,13 @@ export function ProtocolDeck({
   protocols,
   sessions,
   initialProtocolHash,
+  showSampleCard = false,
+  pendingImports = [],
   onImport,
   onStartInterview,
   onDeleteProtocol,
+  onInstallSample = () => {},
+  onDismissSample = () => {},
   newSessionProtocolHash,
   onCancelNewSession,
   onSessionCreated,
@@ -121,9 +129,12 @@ export function ProtocolDeck({
       kind: 'protocol',
       protocol: p,
     }));
+    if (showSampleCard) entries.push({ kind: 'sample' });
+    for (const pending of pendingImports)
+      entries.push({ kind: 'pending', pending });
     entries.push({ kind: 'import' });
     return entries;
-  }, [protocols]);
+  }, [protocols, showSampleCard, pendingImports]);
 
   // Per-protocol session count, hoisted here so DeckCard doesn't take the
   // whole sessions array (which would break memo when other sessions change).
@@ -181,10 +192,16 @@ export function ProtocolDeck({
         onImport();
         return;
       }
-      if (entry.kind !== 'protocol') return;
+      if (entry.kind === 'sample') {
+        onInstallSample();
+        return;
+      }
+      if (entry.kind === 'pending') {
+        return;
+      }
       onStartInterview(entry.protocol.hash);
     },
-    [activeIdx, deck, onImport, onStartInterview],
+    [activeIdx, deck, onImport, onInstallSample, onStartInterview],
   );
 
   // Protocols load async, so the first render typically has an empty deck
@@ -390,11 +407,17 @@ export function ProtocolDeck({
               const isMorphingOut =
                 entry.kind === 'protocol' &&
                 entry.protocol.hash === newSessionProtocolHash;
+              const key =
+                entry.kind === 'import'
+                  ? 'import'
+                  : entry.kind === 'sample'
+                    ? 'sample'
+                    : entry.kind === 'pending'
+                      ? `pending-${entry.pending.id}`
+                      : entry.protocol.hash;
               return (
                 <SwiperSlide
-                  key={
-                    entry.kind === 'protocol' ? entry.protocol.hash : entry.kind
-                  }
+                  key={key}
                   style={{ width: cardWidth, height: cardHeight }}
                   // `!overflow-visible` overrides Swiper's bundled
                   // `.swiper-slide { overflow: hidden }` so the card's
@@ -421,6 +444,12 @@ export function ProtocolDeck({
                         entry.kind === 'protocol'
                           ? () => onDeleteProtocol(entry.protocol.hash)
                           : undefined
+                      }
+                      onInstallSample={
+                        entry.kind === 'sample' ? onInstallSample : undefined
+                      }
+                      onDismissSample={
+                        entry.kind === 'sample' ? onDismissSample : undefined
                       }
                     />
                   )}
@@ -454,20 +483,28 @@ export function ProtocolDeck({
             className={GLASS_PILL}
           />
           <div className="flex items-center gap-2.5">
-            {deck.map((entry, i) => (
-              <button
-                key={
-                  entry.kind === 'protocol' ? entry.protocol.hash : entry.kind
-                }
-                type="button"
-                onClick={() => swiperRef.current?.slideTo(i)}
-                aria-label={`Go to card ${i + 1}`}
-                aria-current={i === activeIdx ? 'true' : undefined}
-                className={`h-3 cursor-pointer rounded-full border-0 p-0 transition-all duration-200 ${
-                  i === activeIdx ? 'bg-sea-green w-9' : 'bg-outline w-3'
-                }`}
-              />
-            ))}
+            {deck.map((entry, i) => {
+              const key =
+                entry.kind === 'import'
+                  ? 'import'
+                  : entry.kind === 'sample'
+                    ? 'sample'
+                    : entry.kind === 'pending'
+                      ? `pending-${entry.pending.id}`
+                      : entry.protocol.hash;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => swiperRef.current?.slideTo(i)}
+                  aria-label={`Go to card ${i + 1}`}
+                  aria-current={i === activeIdx ? 'true' : undefined}
+                  className={`h-3 cursor-pointer rounded-full border-0 p-0 transition-all duration-200 ${
+                    i === activeIdx ? 'bg-sea-green w-9' : 'bg-outline w-3'
+                  }`}
+                />
+              );
+            })}
           </div>
           <IconButton
             size="xl"
