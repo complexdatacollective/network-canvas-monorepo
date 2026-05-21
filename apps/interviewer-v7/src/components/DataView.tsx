@@ -72,29 +72,8 @@ type Selection =
 
 const DEFAULT_PAGE_SIZE = 25;
 
-function statusLabel(kind: SessionStatusKind): string {
-  if (kind === 'in-progress') return 'In progress';
-  if (kind === 'complete') return 'Complete';
-  return 'Exported';
-}
-
-const CHIP_BASE =
-  'rounded-sm inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-pill)] font-heading font-extrabold text-xs uppercase tracking-[0.08em]';
-
-function statusChipClass(kind: SessionStatusKind): string {
-  if (kind === 'in-progress') return `${CHIP_BASE} bg-mustard/22 text-mustard`;
-  if (kind === 'complete') return `${CHIP_BASE} bg-sea-green/22 text-sea-green`;
-  return `${CHIP_BASE} bg-cerulean/22 text-cerulean`;
-}
-
 const FILTER_PILL_BASE =
   'relative px-[18px] py-2.5 border-0 rounded-full cursor-pointer font-heading font-extrabold text-xs tracking-[0.06em] uppercase transition-colors bg-transparent';
-
-const STATUS_OPTIONS = [
-  { value: 'in-progress', label: 'In progress' },
-  { value: 'complete', label: 'Complete' },
-  { value: 'exported', label: 'Exported' },
-];
 
 const containerVariants = {
   hidden: {},
@@ -220,7 +199,6 @@ const SORT_COLUMN_BY_ID: Record<string, SessionSortColumn> = {
   startedAt: 'startedAt',
   updatedAt: 'updatedAt',
   progress: 'progress',
-  status: 'status',
   exportedAt: 'exportedAt',
 };
 
@@ -364,7 +342,7 @@ export function DataView({ protocols, onReload }: DataViewProps) {
     const protocolNames = readStringArray(filterValue('protocolName'));
     const startedRange = readDateRange(filterValue('startedAt'));
     const updatedRange = readDateRange(filterValue('updatedAt'));
-    const statuses = readStatusArray(filterValue('status'));
+    const statuses = readStatusArray(filterValue('progress'));
     const exported = readBoolean(filterValue('exportedAt'));
     return {
       search: search.length > 0 ? search : undefined,
@@ -517,7 +495,6 @@ export function DataView({ protocols, onReload }: DataViewProps) {
         id: 'progress',
         header: ({ column }) => <SortHeader column={column} title="Progress" />,
         enableSorting: true,
-        enableColumnFilter: false,
         cell: ({ row }) => {
           const session = row.original;
           const totalStages =
@@ -537,17 +514,6 @@ export function DataView({ protocols, onReload }: DataViewProps) {
                 {Math.round(percent)}%
               </span>
             </div>
-          );
-        },
-      },
-      {
-        id: 'status',
-        header: ({ column }) => <SortHeader column={column} title="Status" />,
-        enableSorting: true,
-        cell: ({ row }) => {
-          const kind = row.original.statusKind;
-          return (
-            <span className={statusChipClass(kind)}>{statusLabel(kind)}</span>
           );
         },
       },
@@ -639,7 +605,7 @@ export function DataView({ protocols, onReload }: DataViewProps) {
   }, [protocols]);
 
   const statusFilterValue = readStatusArray(
-    table.getColumn('status')?.getFilterValue(),
+    table.getColumn('progress')?.getFilterValue(),
   );
   const chipFilter: ChipFilter | null = useMemo(() => {
     if (statusFilterValue.length === 0) return 'all';
@@ -660,12 +626,12 @@ export function DataView({ protocols, onReload }: DataViewProps) {
   }, [statusFilterValue]);
 
   const setChipFilter = (next: ChipFilter) => {
-    const statusColumn = table.getColumn('status');
-    if (!statusColumn) return;
-    if (next === 'all') statusColumn.setFilterValue(undefined);
+    const progressColumn = table.getColumn('progress');
+    if (!progressColumn) return;
+    if (next === 'all') progressColumn.setFilterValue(undefined);
     else if (next === 'in-progress')
-      statusColumn.setFilterValue(['in-progress']);
-    else statusColumn.setFilterValue(['complete', 'exported']);
+      progressColumn.setFilterValue(['in-progress']);
+    else progressColumn.setFilterValue(['complete', 'exported']);
   };
 
   const chipOptions: { id: ChipFilter; label: string; count: number }[] = [
@@ -948,15 +914,6 @@ export function DataView({ protocols, onReload }: DataViewProps) {
                     table.getColumn('updatedAt')?.setFilterValue(next)
                   }
                   config={{ type: 'date' }}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <div className="font-heading text-xs font-bold">Status</div>
-                <DataTableFacetedFilter
-                  column={table.getColumn('status')}
-                  title="Status"
-                  options={STATUS_OPTIONS}
                 />
               </div>
 

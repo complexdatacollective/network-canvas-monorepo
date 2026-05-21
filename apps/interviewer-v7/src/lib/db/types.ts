@@ -72,7 +72,6 @@ export type SessionSortColumn =
   | 'startedAt'
   | 'updatedAt'
   | 'progress'
-  | 'status'
   | 'exportedAt';
 
 export type SessionQueryParams = {

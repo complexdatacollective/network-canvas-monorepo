@@ -112,12 +112,6 @@ function matchesNonStatusFilters(
   return true;
 }
 
-const STATUS_ORDER: Record<SessionStatusKind, number> = {
-  'in-progress': 0,
-  'complete': 1,
-  'exported': 2,
-};
-
 function compareLite(
   a: StoredSessionLite,
   b: StoredSessionLite,
@@ -132,9 +126,6 @@ function compareLite(
     return a.lastUpdatedAt.localeCompare(b.lastUpdatedAt);
   }
   if (column === 'progress') return a.progressPercent - b.progressPercent;
-  if (column === 'status') {
-    return STATUS_ORDER[a.statusKind] - STATUS_ORDER[b.statusKind];
-  }
   // column === 'exportedAt'. Null positioning is symmetric with direction:
   // nulls last on ASC, first on DESC. Returning +1 for null `a` here pushes
   // it to the end on ASC; the direction flip in sortLite pulls it to the
