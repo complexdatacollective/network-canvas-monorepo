@@ -2,6 +2,8 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { useToast } from '@codaco/fresco-ui/Toast';
 import { BrandHeader } from '~/components/BrandHeader';
 import { DataView } from '~/components/DataView';
 import { ImportDialog } from '~/components/ImportDialog';
@@ -10,7 +12,12 @@ import { ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
 import { StatusRow } from '~/components/StatusRow';
 import { TopActionBar } from '~/components/TopActionBar';
-import { getSettings, listProtocols, listSessions } from '~/lib/db/api';
+import {
+  deleteProtocol,
+  getSettings,
+  listProtocols,
+  listSessions,
+} from '~/lib/db/api';
 import type {
   ProtocolWithCounts,
   StoredSession,
@@ -66,6 +73,8 @@ export function HomeRoute() {
   );
   const [location, navigate] = useLocation();
   const view = viewFromLocation(location);
+  const dialog = useDialog();
+  const toast = useToast();
 
   const reload = useCallback(async () => {
     const [p, s, st] = await Promise.all([
@@ -122,6 +131,76 @@ export function HomeRoute() {
     [navigate],
   );
   const closeNewSession = useCallback(() => setPendingProtocolHash(null), []);
+
+  const handleDeleteProtocol = useCallback(
+    async (hash: string) => {
+      const protocol = protocols.find((p) => p.hash === hash);
+      if (!protocol) return;
+      const protocolSessions = sessions.filter((s) => s.protocolHash === hash);
+      const unexportedCount = protocolSessions.filter(
+        (s) => s.exportedAt === null,
+      ).length;
+      const totalCount = protocolSessions.length;
+
+      const hasUnexported = unexportedCount > 0;
+      const title = `Delete ${protocol.name}?`;
+      let description: string;
+      let primaryLabel: string;
+      let intent: 'default' | 'destructive';
+
+      if (hasUnexported) {
+        const recordsClause =
+          unexportedCount === 1
+            ? '1 interview record has not been exported and will be permanently lost'
+            : `${unexportedCount} interview records have not been exported and will be permanently lost`;
+        description = `${recordsClause} if you delete this protocol. Export them first if you want to keep the data. This cannot be undone.`;
+        primaryLabel = 'Delete anyway';
+        intent = 'destructive';
+      } else {
+        let body = 'Removes the protocol from this device.';
+        if (totalCount > 0) {
+          const recordsPhrase =
+            totalCount === 1
+              ? '1 interview record'
+              : `${totalCount} interview records`;
+          body += ` ${recordsPhrase} will also be deleted.`;
+        }
+        body += ' This cannot be undone.';
+        description = body;
+        primaryLabel = 'Delete';
+        intent = 'default';
+      }
+
+      const confirmed = await dialog.openDialog({
+        type: 'choice',
+        title,
+        description,
+        intent,
+        actions: {
+          primary: { label: primaryLabel, value: true },
+          cancel: { label: 'Cancel', value: false },
+        },
+      });
+      if (confirmed !== true) return;
+
+      try {
+        await deleteProtocol(hash);
+        toast.add({
+          title: 'Protocol deleted',
+          description: protocol.name,
+          variant: 'success',
+        });
+        await reload();
+      } catch (cause) {
+        toast.add({
+          title: 'Could not delete protocol',
+          description: cause instanceof Error ? cause.message : String(cause),
+          variant: 'destructive',
+        });
+      }
+    },
+    [dialog, protocols, reload, sessions, toast],
+  );
 
   return (
     <motion.div
@@ -192,6 +271,7 @@ export function HomeRoute() {
               initialProtocolHash={initialProtocolHash}
               onImport={() => setOpenDialog('import')}
               onStartInterview={setPendingProtocolHash}
+              onDeleteProtocol={handleDeleteProtocol}
               newSessionProtocolHash={pendingProtocolHash}
               onCancelNewSession={closeNewSession}
               onSessionCreated={handleSessionCreated}

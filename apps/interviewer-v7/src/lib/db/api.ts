@@ -48,6 +48,12 @@ export async function saveProtocol(
     : dexieProtocols.saveProtocol(protocol, hash, assets);
 }
 
+export async function deleteProtocol(hash: string): Promise<void> {
+  return isElectron
+    ? electronProtocols.deleteProtocol(hash)
+    : dexieProtocols.deleteProtocol(hash);
+}
+
 export async function getProtocolAssets(hash: string): Promise<StoredAsset[]> {
   return isElectron
     ? electronProtocols.getProtocolAssets(hash)

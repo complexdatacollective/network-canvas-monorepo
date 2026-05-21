@@ -1,4 +1,4 @@
-import { Play, Plus } from 'lucide-react';
+import { Play, Plus, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -8,7 +8,7 @@ import {
 } from 'react';
 
 import { Pattern, seedToPatternPalette } from '@codaco/art';
-import Button from '@codaco/fresco-ui/Button';
+import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cva } from '@codaco/fresco-ui/utils/cva';
@@ -72,6 +72,7 @@ type DeckCardProps = {
   isActive: boolean;
   sessionCount: number;
   onActivate: () => void;
+  onDelete?: () => void;
 };
 
 // Static lookup so Tailwind's scanner sees every possible class name at
@@ -146,6 +147,7 @@ export function DeckCard({
   isActive,
   sessionCount,
   onActivate,
+  onDelete,
 }: DeckCardProps) {
   if (entry.kind === 'import') {
     return (
@@ -242,21 +244,40 @@ export function DeckCard({
       />
 
       {isActive && (
-        <Button
-          icon={
-            <Play
-              className="size-3 stroke-[3px]! @min-[320px]:size-5 @min-3xs:size-4"
-              aria-hidden
+        <div className="mx-3 mb-3 flex items-center gap-2 @min-[320px]:mx-5 @min-[320px]:mb-5 @min-[380px]:mx-6 @min-[380px]:mb-6 @min-3xs:mx-4 @min-3xs:mb-4">
+          <Button
+            icon={
+              <Play
+                className="size-3 stroke-[3px]! @min-[320px]:size-5 @min-3xs:size-4"
+                aria-hidden
+              />
+            }
+            color="primary"
+            className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-[10px] font-black tracking-[0.04em] uppercase @min-[320px]:h-13 @min-[320px]:gap-2.5 @min-[320px]:px-5 @min-[320px]:text-sm @min-[320px]:tracking-[0.07em] @min-[380px]:h-14 @min-[380px]:gap-3 @min-[380px]:px-6 @min-[380px]:text-base @min-[380px]:tracking-[0.08em] @min-3xs:h-11 @min-3xs:gap-2 @min-3xs:rounded-2xl @min-3xs:px-4 @min-3xs:text-xs @min-3xs:tracking-[0.06em]"
+            onClick={() => {
+              onActivate();
+            }}
+          >
+            Start new interview
+          </Button>
+          {onDelete && (
+            <IconButton
+              color="destructive"
+              icon={
+                <Trash2
+                  className="size-3 @min-[320px]:size-5 @min-3xs:size-4"
+                  aria-hidden
+                />
+              }
+              aria-label={`Delete ${protocol.name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="h-9 @min-[320px]:h-13 @min-[380px]:h-14 @min-3xs:h-11"
             />
-          }
-          color="primary"
-          className="mx-3 mb-3 flex h-9 items-center justify-center gap-1.5 rounded-xl px-3 text-[10px] font-black tracking-[0.04em] uppercase @min-[320px]:mx-5 @min-[320px]:mb-5 @min-[320px]:h-13 @min-[320px]:gap-2.5 @min-[320px]:px-5 @min-[320px]:text-sm @min-[320px]:tracking-[0.07em] @min-[380px]:mx-6 @min-[380px]:mb-6 @min-[380px]:h-14 @min-[380px]:gap-3 @min-[380px]:px-6 @min-[380px]:text-base @min-[380px]:tracking-[0.08em] @min-3xs:mx-4 @min-3xs:mb-4 @min-3xs:h-11 @min-3xs:gap-2 @min-3xs:rounded-2xl @min-3xs:px-4 @min-3xs:text-xs @min-3xs:tracking-[0.06em]"
-          onClick={() => {
-            onActivate();
-          }}
-        >
-          Start new interview
-        </Button>
+          )}
+        </div>
       )}
     </motion.div>
   );

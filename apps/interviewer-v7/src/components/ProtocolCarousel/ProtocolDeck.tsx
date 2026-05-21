@@ -53,6 +53,7 @@ type ProtocolDeckProps = {
   initialProtocolHash?: string;
   onImport: () => void;
   onStartInterview: (protocolHash: string) => void;
+  onDeleteProtocol: (hash: string) => void;
   // When set, the matching card is rendered in its expanded "new session"
   // state: scaled up, case-ID form swapped in for the description + Start
   // button, swipe/keyboard navigation locked, and sibling slides faded out.
@@ -99,6 +100,7 @@ export function ProtocolDeck({
   initialProtocolHash,
   onImport,
   onStartInterview,
+  onDeleteProtocol,
   newSessionProtocolHash,
   onCancelNewSession,
   onSessionCreated,
@@ -193,6 +195,11 @@ export function ProtocolDeck({
     didInitialScroll.current = true;
     swiper.slideTo(initialIndex, 0);
   }, [initialIndex, deck.length]);
+
+  useEffect(() => {
+    if (activeIdx < deck.length) return;
+    swiperRef.current?.slideTo(Math.max(0, deck.length - 1), 0);
+  }, [deck.length, activeIdx]);
 
   // Enter activates the current card. Skip when focus is on another
   // interactive control (chevrons, dot navs, the card itself) or in an
@@ -403,6 +410,11 @@ export function ProtocolDeck({
                           : 0
                       }
                       onActivate={() => handleActivate(i)}
+                      onDelete={
+                        entry.kind === 'protocol'
+                          ? () => onDeleteProtocol(entry.protocol.hash)
+                          : undefined
+                      }
                     />
                   )}
                 </SwiperSlide>
