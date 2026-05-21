@@ -50,7 +50,7 @@ describe('launchPreview', () => {
     openSpy.mockRestore();
   });
 
-  it('opens /preview, then delivers the payload on receiving preview:ready', async () => {
+  it('opens /preview/, then delivers the payload on receiving preview:ready', async () => {
     const protocol = makeProtocol();
     const promise = launchPreview({
       protocol,
