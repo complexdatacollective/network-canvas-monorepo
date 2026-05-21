@@ -60,7 +60,11 @@ const candidateIdsFor = (field: string): string[] => {
   const ids: string[] = [];
   const push = (p: string) => {
     ids.push(getFieldId(p));
-    ids.push(getFieldId(`${p}._error`));
+    // Skip the synthetic `._error` variant when the path already targets an
+    // `_error` node, which would otherwise yield a dead `..._error._error` id.
+    if (!p.endsWith('._error')) {
+      ids.push(getFieldId(`${p}._error`));
+    }
   };
   let path = field;
   push(path);

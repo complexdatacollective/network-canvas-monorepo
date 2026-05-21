@@ -94,7 +94,21 @@ const Table = ({ data, columns }: TableProps) => {
           {columns.map((column) => (
             <th
               key={column.accessor}
+              aria-sort={
+                sort?.id === column.accessor
+                  ? sort.desc
+                    ? 'descending'
+                    : 'ascending'
+                  : 'none'
+              }
+              tabIndex={0}
               onClick={() => toggleSort(column.accessor)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  toggleSort(column.accessor);
+                }
+              }}
               style={{ cursor: 'pointer' }}
               title="Toggle SortBy"
             >

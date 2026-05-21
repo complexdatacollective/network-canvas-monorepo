@@ -36,7 +36,7 @@ const SliderInput = ({
 
   const min = 0;
   const max = isLikert ? Math.max(0, optionsArray.length - 1) : 1;
-  const step = isLikert ? 1 : 0.0005;
+  const step = isLikert ? 1 : 0.001;
 
   // Translate the stored value into the numeric position base-ui expects.
   // LIKERT stores the option's value, so we look up its index; VAS stores the

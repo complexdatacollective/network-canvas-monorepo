@@ -81,7 +81,10 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
     if (!open) return;
     flatIssues.forEach(({ field }: { field: string; issue: string }) => {
       const fieldId = getFieldId(field);
-      const targetField = document.getElementById(fieldId);
+      // Resolve via the same ancestor-aware lookup the click handler uses, so
+      // fields only reachable through a trimmed ancestor candidate still get a
+      // friendly label instead of leaving the raw path in the list.
+      const targetField = resolveTarget(field);
       if (!targetField) return;
       const fieldName =
         targetField.getAttribute('data-name') || targetField.textContent;

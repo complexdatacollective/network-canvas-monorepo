@@ -40,6 +40,7 @@ const GridItem = ({
             className="grid-item-action hover:bg-foreground/10 flex cursor-pointer items-center justify-center rounded-xs border-none bg-transparent p-(--space-sm) text-inherit transition-colors duration-(--animation-duration-fast) ease-(--animation-easing) [&_.icon]:size-(--space-md)!"
             onClick={() => onEditItem(fieldId)}
             type="button"
+            aria-label="Edit item"
           >
             <Icon name="edit" />
           </button>
@@ -47,6 +48,7 @@ const GridItem = ({
             className="grid-item-action hover:bg-error/20 ml-(--space-sm) flex cursor-pointer items-center justify-center rounded-xs border-none bg-transparent p-(--space-sm) text-inherit transition-colors duration-(--animation-duration-fast) ease-(--animation-easing) [&_.icon]:size-(--space-md)!"
             onClick={() => fields.remove(index)}
             type="button"
+            aria-label="Delete item"
           >
             <Icon name="delete" />
           </button>
