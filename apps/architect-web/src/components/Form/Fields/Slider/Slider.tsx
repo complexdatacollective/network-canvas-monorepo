@@ -72,9 +72,9 @@ const SliderInput = ({
   );
 
   const normalizeValue = useCallback(
-    (val: number): string | number => {
+    (val: number): string | number | null => {
       if (isLikert) {
-        return optionsArray[val]?.value ?? 0;
+        return optionsArray[val]?.value ?? null;
       }
       return round(val, 3);
     },
