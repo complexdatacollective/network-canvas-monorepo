@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import type { UserConfig } from 'vite';
+import type { Plugin, UserConfig } from 'vite';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const frescoUiSrc = resolve(here, '../../packages/fresco-ui/src');
@@ -16,6 +16,37 @@ const frescoUiSrc = resolve(here, '../../packages/fresco-ui/src');
 const appVersion = JSON.parse(
   readFileSync(resolve(here, 'package.json'), 'utf8'),
 ).version as string;
+
+// Production CSP injected into index.html as a meta tag for the web build and
+// the Capacitor build (which copies the same dist/). Electron's response-header
+// CSP (in electron/main.ts) must mirror this — the browser intersects header
+// and meta, so divergence silently breaks the renderer. Vite HMR needs
+// 'unsafe-eval' / inline scripts in dev, so this is build-only.
+const CSP_DIRECTIVES = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "worker-src 'self' blob:",
+  "base-uri 'none'",
+  "object-src 'none'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+];
+
+function injectCspMeta(): Plugin {
+  const policy = CSP_DIRECTIVES.join('; ');
+  return {
+    name: 'inject-csp-meta',
+    apply: 'build',
+    transformIndexHtml(html) {
+      const meta = `<meta http-equiv="Content-Security-Policy" content="${policy}" />`;
+      return html.replace(/<head>/i, `<head>\n    ${meta}`);
+    },
+  };
+}
 
 type RendererOptions = {
   command: 'build' | 'serve';
@@ -65,7 +96,7 @@ export function createRendererConfig({
       // stale dep cache can carry over a separately-bundled copy.
       include: ['swiper', 'swiper/react'],
     },
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), injectCspMeta()],
     server:
       port == null
         ? undefined

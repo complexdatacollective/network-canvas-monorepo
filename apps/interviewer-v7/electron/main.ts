@@ -36,8 +36,15 @@ const CSP_DEV = [
   "font-src 'self' data:",
   `connect-src 'self' ${RENDERER_DEV_URL} ${RENDERER_DEV_URL.replace(/^http/, 'ws')}`,
   "worker-src 'self' blob:",
+  "base-uri 'none'",
+  "object-src 'none'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
 ].join('; ');
 
+// Keep in sync with `CSP_DIRECTIVES` in vite.renderer.config.ts — the renderer
+// injects the same policy as a meta tag, and the browser intersects header
+// with meta. Any divergence silently breaks the renderer.
 const CSP_PROD = [
   "default-src 'self'",
   "script-src 'self'",
@@ -46,6 +53,10 @@ const CSP_PROD = [
   "font-src 'self' data:",
   "connect-src 'self'",
   "worker-src 'self' blob:",
+  "base-uri 'none'",
+  "object-src 'none'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
 ].join('; ');
 
 let mainWindow: BrowserWindow | null = null;
