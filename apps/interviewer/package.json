@@ -96,7 +96,7 @@
     "postcss-preset-env": "~9.1.4",
     "promise": "7.1.1",
     "prop-types": "^15.8.1",
-    "react": "^16.14.0",
+    "react": "^19.2.6",
     "react-dom": "^16.14.0",
     "react-flip-toolkit": "^5.0.5",
     "react-redux": "^7.2.9",
