@@ -28,6 +28,12 @@ export const deckCardHeadingLayoutId = (protocolHash: string): string =>
 export const deckCardMetaLayoutId = (protocolHash: string): string =>
   `deck-card-meta-${protocolHash}`;
 
+// Motion-wrapped Heading so we keep the semantic h2 (and Heading's
+// variant classes) while motion drives the layout animation via the
+// ref Heading forwards to its rendered element. Defined at module
+// scope so the same component identity is reused across renders.
+export const MotionHeading = motion.create(Heading);
+
 const INACTIVE_SHADOW = '0 20px 40px oklch(0.10 0.05 281 / 0.5)';
 const ACTIVE_DROP_SHADOW = '0 30px 60px oklch(0.10 0.05 281 / 0.7)';
 
@@ -203,20 +209,21 @@ export function DeckCard({
     >
       <div className="relative flex w-full flex-col justify-between gap-4 overflow-hidden p-4 @min-3xs:min-h-[40%] @min-2xs:p-6">
         <Pattern seed={protocol.name} className="absolute inset-0 size-full" />
-        {/* EXPERIMENT: motion.div instead of motion.h2 to test whether
-            `<h2>`'s user-agent defaults (margin-block: 0.83em,
-            font-size: 1.5em) were colliding with motion's bounding-rect
-            measurement. role/aria-level preserve heading semantics.
-            Class string mirrors the metadata's shape (which morphs
-            correctly) — minimal so nothing else is in the way. */}
-        <motion.div
+        {/* `layout="position"` is what makes the morph work despite the
+            responsive text-size changes between the in-slide card and
+            the wider overlay: motion only interpolates position, so the
+            size flip at the edges doesn't fight a competing size tween.
+            `relative` keeps the heading above the absolutely-positioned
+            Pattern. */}
+        <MotionHeading
+          layout="position"
           layoutId={deckCardHeadingLayoutId(protocol.hash)}
-          role="heading"
-          aria-level={2}
-          className="font-heading relative m-0 text-2xl leading-tight font-black"
+          level="h2"
+          margin="none"
+          className="relative text-lg leading-tight font-black tracking-tighter text-balance @min-[320px]:text-2xl @min-[380px]:text-3xl @min-3xs:text-xl @min-2xs:mt-2"
         >
           {protocol.name}
-        </motion.div>
+        </MotionHeading>
         <motion.div
           layoutId={deckCardMetaLayoutId(protocol.hash)}
           className="font-monospace relative hidden items-center justify-between gap-2 text-[12px] @min-3xs:flex @min-xs:text-xs @min-sm:text-sm"
@@ -236,7 +243,6 @@ export function DeckCard({
 
       {isActive && (
         <Button
-          size="xl"
           icon={
             <Play
               className="size-3 stroke-[3px]! @min-[320px]:size-5 @min-3xs:size-4"
@@ -244,11 +250,7 @@ export function DeckCard({
             />
           }
           color="primary"
-          // No `size` prop: fresco's `size` locks `h-16`, `text-lg`,
-          // `gap-3` — that fights container-query scaling and leaves a
-          // huge button with tiny text on narrow cards. Drive every
-          // dimension here so the button shrinks together with the card.
-          className="mx-3 flex items-center justify-center rounded-xl px-3 font-black tracking-[0.04em] uppercase @min-[320px]:mx-5 @min-[320px]:mb-5 @min-[320px]:h-13 @min-[320px]:gap-2.5 @min-[320px]:px-5 @min-[320px]:text-sm @min-[320px]:tracking-[0.07em] @min-[380px]:mx-6 @min-[380px]:mb-6 @min-[380px]:h-14 @min-[380px]:gap-3 @min-[380px]:px-6 @min-[380px]:text-base @min-[380px]:tracking-[0.08em] @min-3xs:mx-4 @min-3xs:mb-4 @min-3xs:h-11 @min-3xs:gap-2 @min-3xs:rounded-2xl @min-3xs:px-4 @min-3xs:text-xs @min-3xs:tracking-[0.06em]"
+          className="mx-3 mb-3 flex h-9 items-center justify-center gap-1.5 rounded-xl px-3 text-[10px] font-black tracking-[0.04em] uppercase @min-[320px]:mx-5 @min-[320px]:mb-5 @min-[320px]:h-13 @min-[320px]:gap-2.5 @min-[320px]:px-5 @min-[320px]:text-sm @min-[320px]:tracking-[0.07em] @min-[380px]:mx-6 @min-[380px]:mb-6 @min-[380px]:h-14 @min-[380px]:gap-3 @min-[380px]:px-6 @min-[380px]:text-base @min-[380px]:tracking-[0.08em] @min-3xs:mx-4 @min-3xs:mb-4 @min-3xs:h-11 @min-3xs:gap-2 @min-3xs:rounded-2xl @min-3xs:px-4 @min-3xs:text-xs @min-3xs:tracking-[0.06em]"
           onClick={() => {
             onActivate();
           }}

@@ -313,16 +313,12 @@ export function ProtocolDeck({
         ref={sectionRef}
         variants={sectionVariants}
         aria-label="Protocol deck"
-        // Lift the section above the new-session backdrop (rendered at
-        // z-40 in Home) so the active card stays on top of the overlay.
-        // The Swiper's perspective root is its own stacking context, so
-        // this z-index only competes with siblings in Home — non-active
-        // slides are faded to opacity 0 in applyOpacityCurve to honour
-        // the "only this card on top" requirement.
-        style={{
-          paddingBlock: sectionPadding,
-          zIndex: newSessionActive ? 50 : undefined,
-        }}
+        // Section stays in its default stacking context so the backdrop
+        // (z-40 in Home) sits on top of the carousel. Non-active cards
+        // remain visible but read as "behind glass" through the
+        // backdrop's blur/dim, while the overlay (portal, z-60) sits
+        // above everything.
+        style={{ paddingBlock: sectionPadding }}
         // overflow-visible lets the card's drop shadow extend into the
         // section's padding zone without clipping. Swiper sets
         // `overflow: hidden` on itself; we override below so shadows can

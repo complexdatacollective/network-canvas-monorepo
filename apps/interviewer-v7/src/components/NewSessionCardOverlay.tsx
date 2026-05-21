@@ -11,6 +11,7 @@ import {
   deckCardHeadingLayoutId,
   deckCardLayoutId,
   deckCardMetaLayoutId,
+  MotionHeading,
 } from './ProtocolCarousel/DeckCard';
 
 type NewSessionCardOverlayProps = {
@@ -52,17 +53,18 @@ export function NewSessionCardOverlay({
             seed={protocol.name}
             className="absolute inset-0 size-full"
           />
-          {/* EXPERIMENT — see DeckCard.tsx. Element type and class
-              string must match its pair exactly, otherwise the layoutId
-              morph re-introduces a jump. */}
-          <motion.div
+          {/* Must mirror DeckCard.tsx exactly — see comment there for
+              why this is `layout="position"`. Responsive sizes on the
+              overlay's wider @container kick the heading up to text-3xl. */}
+          <MotionHeading
+            layout="position"
             layoutId={deckCardHeadingLayoutId(protocol.hash)}
-            role="heading"
-            aria-level={2}
-            className="font-heading relative m-0 text-2xl leading-tight font-black"
+            level="h2"
+            margin="none"
+            className="relative text-lg leading-tight font-black tracking-tighter text-balance @min-[320px]:text-2xl @min-[380px]:text-3xl @min-3xs:text-xl @min-2xs:mt-2"
           >
             {protocol.name}
-          </motion.div>
+          </MotionHeading>
           <motion.div
             layoutId={deckCardMetaLayoutId(protocol.hash)}
             className="font-monospace relative hidden items-center justify-between gap-2 text-[12px] @min-3xs:flex @min-xs:text-xs @min-sm:text-sm"
