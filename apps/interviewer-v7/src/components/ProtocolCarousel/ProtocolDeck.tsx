@@ -9,7 +9,11 @@ import 'swiper/css';
 import 'swiper/css/effect-creative';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
-import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
+import type {
+  ProtocolWithCounts,
+  StoredSession,
+  StoredSessionLite,
+} from '~/lib/db/types';
 
 import { NewSessionCardOverlay } from '../NewSessionCardOverlay';
 import { GLASS_PILL } from '../TopActionBar';
@@ -49,7 +53,7 @@ const SLOT_TRANSLATE_PCT = SLOT_TO_CARD_RATIO * 100;
 
 type ProtocolDeckProps = {
   protocols: ProtocolWithCounts[];
-  sessions: StoredSession[];
+  sessions: StoredSessionLite[];
   initialProtocolHash?: string;
   onImport: () => void;
   onStartInterview: (protocolHash: string) => void;

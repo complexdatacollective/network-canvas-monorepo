@@ -26,6 +26,12 @@ export function registerDbHandlers(): void {
   );
 
   ipcMain.handle('db:sessions:list', async () => sessions.list());
+  ipcMain.handle('db:sessions:query', async (_e, params) =>
+    sessions.query(params),
+  );
+  ipcMain.handle('db:sessions:queryMatchingIds', async (_e, params) =>
+    sessions.queryMatchingIds(params),
+  );
   ipcMain.handle('db:sessions:get', async (_e, id: string) => sessions.get(id));
   ipcMain.handle('db:sessions:getByIds', async (_e, ids: string[]) =>
     sessions.getByIds(ids),

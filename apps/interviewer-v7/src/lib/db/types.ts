@@ -46,6 +46,60 @@ export type StoredSession = {
   isSynthetic?: boolean;
 };
 
+export type SessionStatusKind = 'in-progress' | 'complete' | 'exported';
+
+// Stripped-down session metadata used by everything except the interview
+// engine and the export pipeline. Excludes the heavy `network` blob and
+// adds the two server-computed fields the table needs.
+export type StoredSessionLite = {
+  id: string;
+  protocolHash: string;
+  protocolName: string;
+  caseId: string;
+  startedAt: string;
+  lastUpdatedAt: string;
+  finishedAt: string | null;
+  exportedAt: string | null;
+  currentStep: number;
+  isSynthetic?: boolean;
+  statusKind: SessionStatusKind;
+  progressPercent: number;
+};
+
+export type SessionSortColumn =
+  | 'caseId'
+  | 'protocolName'
+  | 'startedAt'
+  | 'updatedAt'
+  | 'progress'
+  | 'status'
+  | 'exportedAt';
+
+export type SessionQueryParams = {
+  search?: string;
+  caseId?: string;
+  protocolNames?: string[];
+  startedRange?: { from: string; to: string };
+  updatedRange?: { from: string; to: string };
+  statuses?: SessionStatusKind[];
+  exported?: boolean;
+  sort: { column: SessionSortColumn; direction: 'asc' | 'desc' };
+  page: number;
+  pageSize: number;
+};
+
+export type SessionStatusCounts = {
+  all: number;
+  inProgress: number;
+  complete: number;
+};
+
+export type SessionQueryResult = {
+  rows: StoredSessionLite[];
+  totalCount: number;
+  statusCounts: SessionStatusCounts;
+};
+
 export type IdleTimeoutMinutes = 1 | 5 | 15 | 30 | 60;
 
 export type StoredSettings = {

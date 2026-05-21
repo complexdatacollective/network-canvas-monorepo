@@ -21,6 +21,7 @@ import {
 import type {
   ProtocolWithCounts,
   StoredSession,
+  StoredSessionLite,
   StoredSettings,
 } from '~/lib/db/types';
 
@@ -65,7 +66,7 @@ function viewFromLocation(location: string): View {
 
 export function HomeRoute() {
   const [protocols, setProtocols] = useState<ProtocolWithCounts[]>([]);
-  const [sessions, setSessions] = useState<StoredSession[]>([]);
+  const [sessions, setSessions] = useState<StoredSessionLite[]>([]);
   const [settings, setSettings] = useState<StoredSettings | null>(null);
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null);
   const [pendingProtocolHash, setPendingProtocolHash] = useState<string | null>(
@@ -285,7 +286,7 @@ export function HomeRoute() {
             </div>
           </motion.div>
         ) : (
-          <DataView key="data" sessions={sessions} onReload={reload} />
+          <DataView key="data" protocols={protocols} onReload={reload} />
         )}
       </AnimatePresence>
 

@@ -1,47 +1,50 @@
 import {
+  type Column,
   type ColumnDef,
   type ColumnFiltersState,
-  type FilterFn,
-  type Row,
-  type RowSelectionState,
-  type SortingFn,
+  type PaginationState,
   type SortingState,
   getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
 import {
   ArrowDown,
-  ArrowDownUp,
-  ArrowUp,
-  Check,
   Download,
   Filter as FilterIcon,
   Search,
+  X,
 } from 'lucide-react';
-import { motion } from 'motion/react';
-import { useCallback, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import { DataTableFacetedFilter } from '@codaco/fresco-ui/DataTable/DataTableFacetedFilter';
+import BooleanFilter from '@codaco/fresco-ui/DataTable/filters/BooleanFilter';
 import DateFilter from '@codaco/fresco-ui/DataTable/filters/DateFilter';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@codaco/fresco-ui/DropdownMenu';
+import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@codaco/fresco-ui/Popover';
+import ProgressBar from '@codaco/fresco-ui/ProgressBar';
+import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import { useToast } from '@codaco/fresco-ui/Toast';
-import { getSettings, markSessionsExported } from '~/lib/db/api';
-import type { StoredSession } from '~/lib/db/types';
+import {
+  getSettings,
+  markSessionsExported,
+  queryMatchingSessionIds,
+  querySessions,
+} from '~/lib/db/api';
+import type {
+  ProtocolWithCounts,
+  SessionQueryParams,
+  SessionSortColumn,
+  SessionStatusKind,
+  StoredSessionLite,
+} from '~/lib/db/types';
 import {
   buildExportOptions,
   type ExportProgress,
@@ -50,34 +53,29 @@ import {
 import { downloadBlob } from '~/lib/files/download';
 
 type DataViewProps = {
-  sessions: StoredSession[];
+  protocols: ProtocolWithCounts[];
   onReload: () => Promise<void>;
 };
 
-type StatusKind = 'in-progress' | 'complete' | 'exported';
 type ChipFilter = 'all' | 'in-progress' | 'complete';
 
-function getStatus(session: StoredSession): StatusKind {
-  if (session.exportedAt) return 'exported';
-  if (session.finishedAt) return 'complete';
-  return 'in-progress';
-}
+type Selection =
+  | { mode: 'none' }
+  | { mode: 'page'; ids: Set<string> }
+  | { mode: 'allMatching'; excluded: Set<string> };
 
-function statusLabel(kind: StatusKind): string {
-  switch (kind) {
-    case 'in-progress':
-      return 'In progress';
-    case 'complete':
-      return 'Complete';
-    case 'exported':
-      return 'Exported';
-  }
+const DEFAULT_PAGE_SIZE = 25;
+
+function statusLabel(kind: SessionStatusKind): string {
+  if (kind === 'in-progress') return 'In progress';
+  if (kind === 'complete') return 'Complete';
+  return 'Exported';
 }
 
 const CHIP_BASE =
   'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-pill)] font-heading font-extrabold text-xs uppercase tracking-[0.08em]';
 
-function statusChipClass(kind: StatusKind): string {
+function statusChipClass(kind: SessionStatusKind): string {
   if (kind === 'in-progress') return `${CHIP_BASE} bg-mustard/22 text-mustard`;
   if (kind === 'complete') return `${CHIP_BASE} bg-sea-green/22 text-sea-green`;
   return `${CHIP_BASE} bg-cerulean/22 text-cerulean`;
@@ -86,28 +84,12 @@ function statusChipClass(kind: StatusKind): string {
 const FILTER_PILL_BASE =
   'relative px-[18px] py-2.5 border-0 rounded-full cursor-pointer font-heading font-extrabold text-xs tracking-[0.06em] uppercase transition-colors bg-transparent';
 
-const STATUS_ORDER: Record<StatusKind, number> = {
-  'in-progress': 0,
-  'complete': 1,
-  'exported': 2,
-};
-
 const STATUS_OPTIONS = [
   { value: 'in-progress', label: 'In progress' },
   { value: 'complete', label: 'Complete' },
   { value: 'exported', label: 'Exported' },
 ];
 
-const SORTABLE_COLUMNS: { id: string; label: string }[] = [
-  { id: 'caseId', label: 'Case ID' },
-  { id: 'protocolName', label: 'Protocol' },
-  { id: 'startedAt', label: 'Started' },
-  { id: 'status', label: 'Status' },
-];
-
-// Outer stagger between the toolbar (index 0) and the table (index 1).
-// Set so the table only enters after the toolbar's inner item cascade
-// has put all of its items on screen.
 const containerVariants = {
   hidden: {},
   visible: {
@@ -179,57 +161,17 @@ const tableVariants = {
   },
 } as const;
 
-const globalSearchFilterFn: FilterFn<StoredSession> = (
-  row,
-  _columnId,
-  filterValue,
-) => {
-  if (typeof filterValue !== 'string') return true;
-  const q = filterValue.trim().toLowerCase();
-  if (q.length === 0) return true;
-  const { caseId, protocolName } = row.original;
-  return (
-    caseId.toLowerCase().includes(q) || protocolName.toLowerCase().includes(q)
-  );
-};
+const noopExportEvent = (_event: ExportProgress) => {};
 
-const caseIdFilterFn: FilterFn<StoredSession> = (row, _columnId, value) => {
-  if (typeof value !== 'string') return true;
-  const q = value.trim().toLowerCase();
-  if (q.length === 0) return true;
-  return row.original.caseId.toLowerCase().includes(q);
-};
-
-const protocolFilterFn: FilterFn<StoredSession> = (row, _columnId, value) => {
-  if (!Array.isArray(value) || value.length === 0) return true;
-  return value.includes(row.original.protocolName);
-};
-
-const startedAtFilterFn: FilterFn<StoredSession> = (row, _columnId, value) => {
-  if (typeof value !== 'object' || value === null) return true;
-  const from =
-    'from' in value && typeof value.from === 'string' ? value.from : null;
-  const to = 'to' in value && typeof value.to === 'string' ? value.to : null;
-  if (!from || !to) return true;
-  const rowDate = new Date(row.original.startedAt);
-  if (Number.isNaN(rowDate.getTime())) return false;
-  const fromDate = new Date(from);
-  const toDate = new Date(to);
-  toDate.setHours(23, 59, 59, 999);
-  return rowDate >= fromDate && rowDate <= toDate;
-};
-
-const statusFilterFn: FilterFn<StoredSession> = (row, _columnId, value) => {
-  if (!Array.isArray(value) || value.length === 0) return true;
-  return value.includes(getStatus(row.original));
-};
-
-const statusSortFn: SortingFn<StoredSession> = (
-  rowA: Row<StoredSession>,
-  rowB: Row<StoredSession>,
-) =>
-  STATUS_ORDER[getStatus(rowA.original)] -
-  STATUS_ORDER[getStatus(rowB.original)];
+const bannerVariants = {
+  hidden: { opacity: 0, height: 0 },
+  visible: {
+    opacity: 1,
+    height: 'auto',
+    transition: { duration: 0.2 },
+  },
+  exit: { opacity: 0, height: 0, transition: { duration: 0.15 } },
+} as const;
 
 function readDateRange(
   value: unknown,
@@ -247,78 +189,284 @@ function readStringArray(value: unknown): string[] {
   return value.filter((v): v is string => typeof v === 'string');
 }
 
-export function DataView({ sessions, onReload }: DataViewProps) {
+function readStatusArray(value: unknown): SessionStatusKind[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (v): v is SessionStatusKind =>
+      v === 'in-progress' || v === 'complete' || v === 'exported',
+  );
+}
+
+function readBoolean(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
+}
+
+function readString(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+// Tanstack column IDs use 'updatedAt'/'exportedAt' for ergonomics; the server
+// column names need 'updatedAt'/'exportedAt' too — they happen to match here,
+// so the mapping is direct.
+const SORT_COLUMN_BY_ID: Record<string, SessionSortColumn> = {
+  caseId: 'caseId',
+  protocolName: 'protocolName',
+  startedAt: 'startedAt',
+  updatedAt: 'updatedAt',
+  progress: 'progress',
+  status: 'status',
+  exportedAt: 'exportedAt',
+};
+
+function isRowSelected(selection: Selection, id: string): boolean {
+  if (selection.mode === 'none') return false;
+  if (selection.mode === 'page') return selection.ids.has(id);
+  return !selection.excluded.has(id);
+}
+
+function toggleRow(selection: Selection, id: string): Selection {
+  if (selection.mode === 'allMatching') {
+    const excluded = new Set(selection.excluded);
+    if (excluded.has(id)) excluded.delete(id);
+    else excluded.add(id);
+    return { mode: 'allMatching', excluded };
+  }
+  if (selection.mode === 'page') {
+    const ids = new Set(selection.ids);
+    if (ids.has(id)) ids.delete(id);
+    else ids.add(id);
+    if (ids.size === 0) return { mode: 'none' };
+    return { mode: 'page', ids };
+  }
+  return { mode: 'page', ids: new Set([id]) };
+}
+
+function toggleAllOnPage(
+  selection: Selection,
+  pageIds: readonly string[],
+  allSelectedOnPage: boolean,
+): Selection {
+  if (allSelectedOnPage) {
+    if (selection.mode === 'allMatching') {
+      const excluded = new Set(selection.excluded);
+      for (const id of pageIds) excluded.add(id);
+      return { mode: 'allMatching', excluded };
+    }
+    if (selection.mode === 'page') {
+      const ids = new Set(selection.ids);
+      for (const id of pageIds) ids.delete(id);
+      if (ids.size === 0) return { mode: 'none' };
+      return { mode: 'page', ids };
+    }
+    return { mode: 'none' };
+  }
+  if (selection.mode === 'allMatching') {
+    const excluded = new Set(selection.excluded);
+    for (const id of pageIds) excluded.delete(id);
+    return { mode: 'allMatching', excluded };
+  }
+  const ids =
+    selection.mode === 'page' ? new Set(selection.ids) : new Set<string>();
+  for (const id of pageIds) ids.add(id);
+  return { mode: 'page', ids };
+}
+
+function selectionCount(selection: Selection, totalCount: number): number {
+  if (selection.mode === 'none') return 0;
+  if (selection.mode === 'page') return selection.ids.size;
+  return Math.max(0, totalCount - selection.excluded.size);
+}
+
+function SortHeader<TData>({
+  column,
+  title,
+}: {
+  column: Column<TData>;
+  title: string;
+}) {
+  const sortDir = column.getIsSorted();
+  const isActive = sortDir !== false;
+  return (
+    <Button
+      size="sm"
+      variant={isActive ? 'default' : 'text'}
+      color={isActive ? 'primary' : 'dynamic'}
+      iconPosition="right"
+      icon={
+        sortDir ? (
+          <motion.span
+            initial={false}
+            animate={{ rotate: sortDir === 'asc' ? 180 : 0 }}
+            transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+            className="inline-flex"
+          >
+            <ArrowDown size={14} aria-hidden />
+          </motion.span>
+        ) : undefined
+      }
+      onClick={() => column.toggleSorting()}
+      className="-mx-4 min-w-max px-4! text-base"
+    >
+      {title}
+    </Button>
+  );
+}
+
+export function DataView({ protocols, onReload }: DataViewProps) {
+  const protocolStageCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const protocol of protocols) {
+      map.set(protocol.hash, protocol.protocol.stages?.length ?? 0);
+    }
+    return map;
+  }, [protocols]);
+
   const toast = useToast();
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [selection, setSelection] = useState<Selection>({ mode: 'none' });
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'startedAt', desc: true },
   ]);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+  const [data, setData] = useState<{
+    rows: StoredSessionLite[];
+    totalCount: number;
+    statusCounts: { all: number; inProgress: number; complete: number };
+  } | null>(null);
   const [exporting, setExporting] = useState(false);
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
 
-  const columns = useMemo<ColumnDef<StoredSession>[]>(
+  // Derive server query params from the UI state. Column filter values are
+  // unknown by Tanstack contract; pull each one through a typed reader so we
+  // don't need `as` casts.
+  const queryParams = useMemo<SessionQueryParams>(() => {
+    const filterValue = (id: string) =>
+      columnFilters.find((f) => f.id === id)?.value;
+    const sortEntry = sorting[0];
+    const sortColumn: SessionSortColumn = sortEntry
+      ? (SORT_COLUMN_BY_ID[sortEntry.id] ?? 'startedAt')
+      : 'startedAt';
+    const search = globalFilter.trim();
+    const caseId = readString(filterValue('caseId')).trim();
+    const protocolNames = readStringArray(filterValue('protocolName'));
+    const startedRange = readDateRange(filterValue('startedAt'));
+    const updatedRange = readDateRange(filterValue('updatedAt'));
+    const statuses = readStatusArray(filterValue('status'));
+    const exported = readBoolean(filterValue('exportedAt'));
+    return {
+      search: search.length > 0 ? search : undefined,
+      caseId: caseId.length > 0 ? caseId : undefined,
+      protocolNames: protocolNames.length > 0 ? protocolNames : undefined,
+      startedRange,
+      updatedRange,
+      statuses: statuses.length > 0 ? statuses : undefined,
+      exported,
+      sort: { column: sortColumn, direction: sortEntry?.desc ? 'desc' : 'asc' },
+      page: pagination.pageIndex,
+      pageSize: pagination.pageSize,
+    };
+  }, [columnFilters, globalFilter, sorting, pagination]);
+
+  // The hash captures every filter (search/case/protocol/dates/status/export);
+  // when it changes we reset selection — the row set semantically shifts.
+  // Sort and pagination changes are intentionally excluded: same rows, just
+  // reordered/repaged, so the selection still means what it did.
+  const filtersKey = useMemo(() => {
+    const f = queryParams;
+    return JSON.stringify({
+      s: f.search ?? '',
+      c: f.caseId ?? '',
+      p: f.protocolNames ?? [],
+      sr: f.startedRange ?? null,
+      ur: f.updatedRange ?? null,
+      st: f.statuses ?? [],
+      e: f.exported ?? null,
+    });
+  }, [queryParams]);
+  const previousFiltersKey = useRef(filtersKey);
+  useEffect(() => {
+    if (previousFiltersKey.current !== filtersKey) {
+      previousFiltersKey.current = filtersKey;
+      setSelection({ mode: 'none' });
+      setPagination((prev) =>
+        prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 },
+      );
+    }
+  }, [filtersKey]);
+
+  // Stale-response guard: a slow query mustn't overwrite a newer result.
+  const requestIdRef = useRef(0);
+  const reloadData = useCallback(async () => {
+    const id = ++requestIdRef.current;
+    const result = await querySessions(queryParams);
+    if (id !== requestIdRef.current) return;
+    setData(result);
+  }, [queryParams]);
+
+  useEffect(() => {
+    void reloadData();
+  }, [reloadData]);
+
+  const rows: StoredSessionLite[] = data?.rows ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const pageCount =
+    pagination.pageSize > 0
+      ? Math.max(1, Math.ceil(totalCount / pagination.pageSize))
+      : 1;
+
+  const pageIds = useMemo(
+    () => (data?.rows ?? []).map((r) => r.id),
+    [data?.rows],
+  );
+  const allOnPageSelected =
+    rows.length > 0 && pageIds.every((id) => isRowSelected(selection, id));
+  const someOnPageSelected =
+    !allOnPageSelected && pageIds.some((id) => isRowSelected(selection, id));
+
+  const columns = useMemo<ColumnDef<StoredSessionLite>[]>(
     () => [
       {
         id: 'select',
         enableSorting: false,
         enableColumnFilter: false,
         enableGlobalFilter: false,
-        header: ({ table }) => {
-          const allSelected = table.getIsAllRowsSelected();
-          const someSelected = table.getIsSomeRowsSelected();
-          return (
-            <button
-              type="button"
-              aria-label="Select all interviews"
-              aria-pressed={allSelected}
-              onClick={() => table.toggleAllRowsSelected(!allSelected)}
-              className={`text-primary-contrast inline-flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-md border-2 p-0 ${
-                allSelected || someSelected
-                  ? 'border-sea-green bg-sea-green'
-                  : 'border-outline bg-transparent'
-              }`}
-            >
-              {allSelected ? (
-                <Check size={12} strokeWidth={3.4} aria-hidden />
-              ) : someSelected ? (
-                <span
-                  aria-hidden
-                  className="bg-primary-contrast h-[2px] w-2.5 rounded-full"
-                />
-              ) : null}
-            </button>
-          );
-        },
+        header: () => (
+          <Checkbox
+            size="sm"
+            aria-label="Select all interviews on this page"
+            checked={allOnPageSelected}
+            indeterminate={someOnPageSelected}
+            onCheckedChange={() => {
+              setSelection((prev) =>
+                toggleAllOnPage(prev, pageIds, allOnPageSelected),
+              );
+            }}
+          />
+        ),
         cell: ({ row }) => {
-          const isSelected = row.getIsSelected();
+          const id = row.original.id;
+          const checked = isRowSelected(selection, id);
           return (
-            <button
-              type="button"
+            <Checkbox
+              size="sm"
               aria-label={`Select ${row.original.caseId}`}
-              aria-pressed={isSelected}
-              onClick={() => row.toggleSelected(!isSelected)}
-              className={`text-primary-contrast inline-flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-md border-2 p-0 ${
-                isSelected
-                  ? 'border-sea-green bg-sea-green'
-                  : 'border-outline bg-transparent'
-              }`}
-            >
-              {isSelected ? (
-                <Check size={12} strokeWidth={3.4} aria-hidden />
-              ) : null}
-            </button>
+              checked={checked}
+              onCheckedChange={() => {
+                setSelection((prev) => toggleRow(prev, id));
+              }}
+            />
           );
         },
       },
       {
         id: 'caseId',
         accessorKey: 'caseId',
-        header: 'Case ID',
+        header: ({ column }) => <SortHeader column={column} title="Case ID" />,
         enableSorting: true,
-        sortingFn: 'alphanumeric',
-        filterFn: caseIdFilterFn,
         cell: ({ getValue }) => (
           <span className="font-monospace text-xs font-bold">
             {getValue<string>()}
@@ -328,10 +476,8 @@ export function DataView({ sessions, onReload }: DataViewProps) {
       {
         id: 'protocolName',
         accessorKey: 'protocolName',
-        header: 'Protocol',
+        header: ({ column }) => <SortHeader column={column} title="Protocol" />,
         enableSorting: true,
-        sortingFn: 'alphanumeric',
-        filterFn: protocolFilterFn,
         cell: ({ getValue }) => (
           <span className="inline-flex items-center gap-2">
             <span
@@ -347,89 +493,115 @@ export function DataView({ sessions, onReload }: DataViewProps) {
       {
         id: 'startedAt',
         accessorKey: 'startedAt',
-        header: 'Started',
+        header: ({ column }) => <SortHeader column={column} title="Started" />,
         enableSorting: true,
-        sortingFn: 'alphanumeric',
-        enableGlobalFilter: false,
-        filterFn: startedAtFilterFn,
-        cell: ({ getValue }) => new Date(getValue<string>()).toLocaleString(),
+        cell: ({ getValue }) => <TimeAgo date={getValue<string>()} />,
       },
       {
-        id: 'duration',
-        header: 'Duration',
-        enableSorting: false,
-        enableColumnFilter: false,
-        enableGlobalFilter: false,
-        cell: () => '—',
+        id: 'updatedAt',
+        accessorKey: 'lastUpdatedAt',
+        header: ({ column }) => <SortHeader column={column} title="Updated" />,
+        enableSorting: true,
+        cell: ({ getValue }) => <TimeAgo date={getValue<string>()} />,
       },
       {
         id: 'progress',
-        header: 'Progress',
-        enableSorting: false,
+        header: ({ column }) => <SortHeader column={column} title="Progress" />,
+        enableSorting: true,
         enableColumnFilter: false,
-        enableGlobalFilter: false,
-        cell: ({ row }) => (
-          <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
-            step {row.original.currentStep + 1}
-          </span>
-        ),
+        cell: ({ row }) => {
+          const session = row.original;
+          const totalStages =
+            protocolStageCounts.get(session.protocolHash) ?? 0;
+          const percent = session.progressPercent;
+          return (
+            <div className="flex items-center gap-2">
+              <div className="w-24">
+                <ProgressBar
+                  orientation="horizontal"
+                  percentProgress={percent}
+                  label={`step ${session.currentStep + 1} of ${totalStages || '?'}`}
+                />
+              </div>
+              <span className="font-monospace text-text/60 text-xs tabular-nums">
+                {Math.round(percent)}%
+              </span>
+            </div>
+          );
+        },
       },
       {
         id: 'status',
-        header: 'Status',
+        header: ({ column }) => <SortHeader column={column} title="Status" />,
         enableSorting: true,
-        sortingFn: statusSortFn,
-        enableGlobalFilter: false,
-        filterFn: statusFilterFn,
         cell: ({ row }) => {
-          const kind = getStatus(row.original);
+          const kind = row.original.statusKind;
           return (
             <span className={statusChipClass(kind)}>{statusLabel(kind)}</span>
           );
         },
       },
+      {
+        id: 'exportedAt',
+        accessorKey: 'exportedAt',
+        header: ({ column }) => (
+          <SortHeader column={column} title="Export status" />
+        ),
+        enableSorting: true,
+        cell: ({ getValue }) => {
+          const value = getValue<string | null>();
+          return value ? (
+            <TimeAgo date={value} />
+          ) : (
+            <span className="text-text/60 text-xs">Not exported</span>
+          );
+        },
+      },
     ],
-    [],
+    [
+      allOnPageSelected,
+      someOnPageSelected,
+      pageIds,
+      selection,
+      protocolStageCounts,
+    ],
   );
 
   const table = useReactTable({
-    data: sessions,
+    data: rows,
     columns,
-    state: { rowSelection, columnFilters, globalFilter, sorting },
+    state: { columnFilters, globalFilter, sorting, pagination },
     getRowId: (row) => row.id,
-    enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
+    manualPagination: true,
+    manualSorting: true,
+    manualFiltering: true,
+    pageCount,
+    rowCount: totalCount,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
     onSortingChange: setSorting,
-    globalFilterFn: globalSearchFilterFn,
+    onPaginationChange: setPagination,
+    enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
   });
 
-  const counts = useMemo(() => {
-    let inProgress = 0;
-    let complete = 0;
-    for (const session of sessions) {
-      const kind = getStatus(session);
-      if (kind === 'in-progress') inProgress += 1;
-      else complete += 1;
-    }
-    return { all: sessions.length, inProgress, complete };
-  }, [sessions]);
+  const statusCounts = data?.statusCounts ?? {
+    all: 0,
+    inProgress: 0,
+    complete: 0,
+  };
 
   const protocolOptions = useMemo(() => {
-    const seen = new Set<string>();
-    for (const session of sessions) {
-      if (session.protocolName) seen.add(session.protocolName);
-    }
+    const names = protocols
+      .map((p) => p.name)
+      .filter((n): n is string => typeof n === 'string' && n.length > 0);
+    const seen = new Set<string>(names);
     return Array.from(seen)
       .toSorted((a, b) => a.localeCompare(b))
       .map((name) => ({ value: name, label: name }));
-  }, [sessions]);
+  }, [protocols]);
 
-  const statusFilterValue = readStringArray(
+  const statusFilterValue = readStatusArray(
     table.getColumn('status')?.getFilterValue(),
   );
   const chipFilter: ChipFilter | null = useMemo(() => {
@@ -460,29 +632,14 @@ export function DataView({ sessions, onReload }: DataViewProps) {
   };
 
   const chipOptions: { id: ChipFilter; label: string; count: number }[] = [
-    { id: 'all', label: 'All', count: counts.all },
-    { id: 'in-progress', label: 'In progress', count: counts.inProgress },
-    { id: 'complete', label: 'Complete', count: counts.complete },
+    { id: 'all', label: 'All', count: statusCounts.all },
+    {
+      id: 'in-progress',
+      label: 'In progress',
+      count: statusCounts.inProgress,
+    },
+    { id: 'complete', label: 'Complete', count: statusCounts.complete },
   ];
-
-  const selectedRows = table.getSelectedRowModel().rows;
-  const selectedIds = useMemo(
-    () => selectedRows.map((row) => row.original.id),
-    [selectedRows],
-  );
-
-  const activeSort = sorting[0];
-  const activeSortLabel =
-    SORTABLE_COLUMNS.find((c) => c.id === activeSort?.id)?.label ?? 'Started';
-
-  const handleSortClick = (columnId: string) => {
-    const current = sorting[0];
-    if (current?.id === columnId) {
-      setSorting([{ id: columnId, desc: !current.desc }]);
-    } else {
-      setSorting([{ id: columnId, desc: true }]);
-    }
-  };
 
   const caseIdRawFilter = table.getColumn('caseId')?.getFilterValue();
   const caseIdColumnFilter =
@@ -490,11 +647,46 @@ export function DataView({ sessions, onReload }: DataViewProps) {
   const startedAtColumnFilter = readDateRange(
     table.getColumn('startedAt')?.getFilterValue(),
   );
+  const updatedAtColumnFilter = readDateRange(
+    table.getColumn('updatedAt')?.getFilterValue(),
+  );
+  const exportedColumnFilter = readBoolean(
+    table.getColumn('exportedAt')?.getFilterValue(),
+  );
+
+  const selectedCount = selectionCount(selection, totalCount);
+  // The banner appears when the user has filled the visible page and there
+  // are still more matching rows beyond it — offering the upgrade to
+  // filter-wide selection. It also stays visible while in allMatching mode
+  // so the user can see and clear the wide selection.
+  const showSelectAllPrompt =
+    selection.mode === 'page' &&
+    allOnPageSelected &&
+    rows.length > 0 &&
+    totalCount > rows.length;
+  const showBanner = showSelectAllPrompt || selection.mode === 'allMatching';
+
+  const expandSelectionToAll = () => {
+    setSelection({ mode: 'allMatching', excluded: new Set() });
+  };
+  const clearSelection = () => setSelection({ mode: 'none' });
+
+  const resolveSelectedIds = useCallback(async (): Promise<string[]> => {
+    if (selection.mode === 'none') return [];
+    if (selection.mode === 'page') return Array.from(selection.ids);
+    const ids = await queryMatchingSessionIds(queryParams);
+    return ids.filter((id) => !selection.excluded.has(id));
+  }, [selection, queryParams]);
 
   const handleExport = useCallback(async () => {
-    if (selectedIds.length === 0 || exporting) return;
+    if (selectedCount === 0 || exporting) return;
     setExporting(true);
     try {
+      const ids = await resolveSelectedIds();
+      if (ids.length === 0) {
+        setExporting(false);
+        return;
+      }
       const settings = await getSettings();
       const options = buildExportOptions({
         exportGraphML: settings.exportGraphML,
@@ -503,11 +695,10 @@ export function DataView({ sessions, onReload }: DataViewProps) {
         screenLayoutHeight: settings.screenLayoutHeight,
         screenLayoutWidth: settings.screenLayoutWidth,
       });
-      const onEvent = (_event: ExportProgress) => {};
       const { result, blob, fileName } = await runExport({
         options,
-        sessionIds: selectedIds,
-        onEvent,
+        sessionIds: ids,
+        onEvent: noopExportEvent,
       });
       if (!blob || !fileName) {
         throw new Error('Export produced no file');
@@ -536,8 +727,8 @@ export function DataView({ sessions, onReload }: DataViewProps) {
           variant: 'success',
         });
       }
-      setRowSelection({});
-      await onReload();
+      setSelection({ mode: 'none' });
+      await Promise.all([onReload(), reloadData()]);
     } catch (cause) {
       toast.add({
         title: 'Export failed',
@@ -547,9 +738,15 @@ export function DataView({ sessions, onReload }: DataViewProps) {
     } finally {
       setExporting(false);
     }
-  }, [exporting, onReload, selectedIds, toast]);
+  }, [
+    exporting,
+    onReload,
+    reloadData,
+    resolveSelectedIds,
+    selectedCount,
+    toast,
+  ]);
 
-  const isSortActive = !(activeSort?.id === 'startedAt' && activeSort.desc);
   const isFilterActive = columnFilters.length > 0;
 
   const toolbar = (
@@ -607,43 +804,6 @@ export function DataView({ sessions, onReload }: DataViewProps) {
       </motion.div>
 
       <motion.div variants={toolbarItemVariants}>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                size="md"
-                color={isSortActive ? 'primary' : 'default'}
-                icon={<ArrowDownUp size={14} strokeWidth={2.5} aria-hidden />}
-              >
-                Sort: {activeSortLabel} {activeSort?.desc ? '↓' : '↑'}
-              </Button>
-            }
-            nativeButton
-          />
-          <DropdownMenuContent align="end">
-            {SORTABLE_COLUMNS.map((option) => {
-              const isActive = activeSort?.id === option.id;
-              return (
-                <DropdownMenuItem
-                  key={option.id}
-                  onClick={() => handleSortClick(option.id)}
-                >
-                  <span className="flex-1">{option.label}</span>
-                  {isActive ? (
-                    activeSort?.desc ? (
-                      <ArrowDown size={14} aria-hidden />
-                    ) : (
-                      <ArrowUp size={14} aria-hidden />
-                    )
-                  ) : null}
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </motion.div>
-
-      <motion.div variants={toolbarItemVariants}>
         <Popover open={filterPopoverOpen} onOpenChange={setFilterPopoverOpen}>
           <PopoverTrigger
             render={
@@ -659,8 +819,8 @@ export function DataView({ sessions, onReload }: DataViewProps) {
             }
             nativeButton
           />
-          <PopoverContent align="end">
-            <div className="flex w-72 flex-col gap-4 p-1">
+          <PopoverContent align="end" className="w-md">
+            <div className="flex w-full flex-col gap-4 p-1">
               <div className="font-heading text-text/60 text-xs font-extrabold tracking-widest uppercase">
                 Filters
               </div>
@@ -700,11 +860,39 @@ export function DataView({ sessions, onReload }: DataViewProps) {
               </div>
 
               <div className="flex flex-col gap-1.5">
+                <div className="font-heading text-xs font-bold">Updated</div>
+                <DateFilter
+                  value={updatedAtColumnFilter}
+                  onChange={(next) =>
+                    table.getColumn('updatedAt')?.setFilterValue(next)
+                  }
+                  config={{ type: 'date' }}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
                 <div className="font-heading text-xs font-bold">Status</div>
                 <DataTableFacetedFilter
                   column={table.getColumn('status')}
                   title="Status"
                   options={STATUS_OPTIONS}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <div className="font-heading text-xs font-bold">
+                  Export status
+                </div>
+                <BooleanFilter
+                  value={exportedColumnFilter}
+                  onChange={(next) =>
+                    table.getColumn('exportedAt')?.setFilterValue(next)
+                  }
+                  config={{
+                    type: 'boolean',
+                    trueLabel: 'Exported',
+                    falseLabel: 'Not exported',
+                  }}
                 />
               </div>
 
@@ -721,7 +909,7 @@ export function DataView({ sessions, onReload }: DataViewProps) {
         </Popover>
       </motion.div>
 
-      {selectedIds.length > 0 ? (
+      {selectedCount > 0 ? (
         <motion.div variants={toolbarItemVariants}>
           <Button
             color="primary"
@@ -730,7 +918,7 @@ export function DataView({ sessions, onReload }: DataViewProps) {
             onClick={() => void handleExport()}
             disabled={exporting}
           >
-            {exporting ? 'Exporting…' : `Export ${selectedIds.length} selected`}
+            {exporting ? 'Exporting…' : `Export ${selectedCount} selected`}
           </Button>
         </motion.div>
       ) : null}
@@ -743,17 +931,69 @@ export function DataView({ sessions, onReload }: DataViewProps) {
       initial="hidden"
       animate="visible"
       exit="exit"
-      className="flex min-h-0 w-full flex-1 flex-col gap-6 overflow-y-auto px-11 pt-8 pb-8"
+      className="flex min-h-0 w-full flex-1 flex-col gap-6 px-11 pt-8 pb-8"
     >
       {toolbar}
-      <motion.div variants={tableVariants}>
+
+      <AnimatePresence initial={false}>
+        {showBanner ? (
+          <motion.div
+            key="select-all-banner"
+            variants={bannerVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="bg-sea-green/10 text-text overflow-hidden rounded-lg"
+          >
+            <div className="font-heading flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+              {selection.mode === 'allMatching' ? (
+                <>
+                  <span>
+                    All <strong>{selectedCount}</strong> matching interviews are
+                    selected.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearSelection}
+                    className="text-sea-green inline-flex items-center gap-1 font-extrabold tracking-wide uppercase hover:underline"
+                  >
+                    <X size={14} aria-hidden />
+                    Clear selection
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span>
+                    All <strong>{rows.length}</strong> on this page are
+                    selected.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={expandSelectionToAll}
+                    className="text-sea-green font-extrabold tracking-wide uppercase hover:underline"
+                  >
+                    Select all {totalCount} matching →
+                  </button>
+                </>
+              )}
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <motion.div
+        variants={tableVariants}
+        className="flex min-h-0 flex-1 flex-col"
+      >
         <DataTable
           table={table}
-          showPagination={false}
+          bodyScroll
           emptyText={
-            sessions.length === 0
-              ? 'No interviews recorded yet.'
-              : 'No interviews match this filter.'
+            data === null
+              ? 'Loading interviews…'
+              : isFilterActive || globalFilter.length > 0
+                ? 'No interviews match this filter.'
+                : 'No interviews recorded yet.'
           }
         />
       </motion.div>

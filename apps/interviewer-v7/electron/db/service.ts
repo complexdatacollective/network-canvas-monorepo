@@ -34,6 +34,78 @@ type SessionRow = {
   isSynthetic: number;
 };
 
+// Local mirror of the renderer-side SessionStatusKind / StoredSessionLite /
+// SessionQueryParams / SessionQueryResult contract. The main process compiles
+// against a separate tsconfig (electron/tsconfig.node.json) and cannot import
+// from src/lib/db/types. The IPC layer only marshals plain JSON, so the field
+// names here must match the renderer types exactly.
+type SessionStatusKind = 'in-progress' | 'complete' | 'exported';
+
+type SessionSortColumn =
+  | 'caseId'
+  | 'protocolName'
+  | 'startedAt'
+  | 'updatedAt'
+  | 'progress'
+  | 'status'
+  | 'exportedAt';
+
+type SessionQueryParams = {
+  search?: string;
+  caseId?: string;
+  protocolNames?: string[];
+  startedRange?: { from: string; to: string };
+  updatedRange?: { from: string; to: string };
+  statuses?: SessionStatusKind[];
+  exported?: boolean;
+  sort: { column: SessionSortColumn; direction: 'asc' | 'desc' };
+  page: number;
+  pageSize: number;
+};
+
+type StoredSessionLite = {
+  id: string;
+  protocolHash: string;
+  protocolName: string;
+  caseId: string;
+  startedAt: string;
+  lastUpdatedAt: string;
+  finishedAt: string | null;
+  exportedAt: string | null;
+  currentStep: number;
+  isSynthetic?: boolean;
+  statusKind: SessionStatusKind;
+  progressPercent: number;
+};
+
+type SessionStatusCounts = {
+  all: number;
+  inProgress: number;
+  complete: number;
+};
+
+type SessionQueryResult = {
+  rows: StoredSessionLite[];
+  totalCount: number;
+  statusCounts: SessionStatusCounts;
+};
+
+// Shape returned by the lite SELECT (joined against protocols for progress).
+type SessionLiteRow = {
+  id: string;
+  protocolHash: string;
+  protocolName: string;
+  caseId: string;
+  startedAt: string;
+  lastUpdatedAt: string;
+  finishedAt: string | null;
+  exportedAt: string | null;
+  currentStep: number;
+  isSynthetic: number;
+  statusKind: SessionStatusKind;
+  progressPercent: number;
+};
+
 type AssetRow = {
   id: string;
   protocolHash: string;
@@ -205,6 +277,151 @@ function rowToSession(row: SessionRow) {
       : undefined,
     isSynthetic: row.isSynthetic === 1,
   };
+}
+
+function rowToSessionLite(row: SessionLiteRow): StoredSessionLite {
+  return {
+    id: row.id,
+    protocolHash: row.protocolHash,
+    protocolName: row.protocolName,
+    caseId: row.caseId,
+    startedAt: row.startedAt,
+    lastUpdatedAt: row.lastUpdatedAt,
+    finishedAt: row.finishedAt,
+    exportedAt: row.exportedAt,
+    currentStep: row.currentStep,
+    isSynthetic: row.isSynthetic === 1,
+    statusKind: row.statusKind,
+    progressPercent: row.progressPercent,
+  };
+}
+
+// Columns shared by sessions.list() and sessions.query(), with the joined
+// statusKind / progressPercent computed once per row.
+const SESSION_LITE_COLUMNS = `
+  s.id, s.protocolHash, s.protocolName, s.caseId, s.startedAt, s.lastUpdatedAt,
+  s.finishedAt, s.exportedAt, s.currentStep, s.isSynthetic,
+  CASE
+    WHEN s.exportedAt IS NOT NULL THEN 'exported'
+    WHEN s.finishedAt IS NOT NULL THEN 'complete'
+    ELSE 'in-progress'
+  END AS statusKind,
+  CASE
+    WHEN s.finishedAt IS NOT NULL THEN 100.0
+    ELSE COALESCE(
+      s.currentStep * 100.0
+        / NULLIF(json_array_length(json_extract(p.protocol_json, '$.stages')), 0),
+      0
+    )
+  END AS progressPercent
+`;
+
+const STATUS_KIND_SQL = `CASE
+  WHEN s.exportedAt IS NOT NULL THEN 'exported'
+  WHEN s.finishedAt IS NOT NULL THEN 'complete'
+  ELSE 'in-progress'
+END`;
+
+// `to` is the inclusive end of a date range. The renderer-side
+// dateRangeFilterFn pads with 23:59:59.999 before comparing; preserve that
+// semantics here so server-side filtering matches what users saw before.
+function padRangeTo(to: string): string {
+  // If the upper bound already carries a time-of-day component (T...Z), trust
+  // it. Otherwise treat the bare YYYY-MM-DD as the end of that calendar day.
+  if (to.includes('T')) return to;
+  return `${to}T23:59:59.999Z`;
+}
+
+type WhereClause = { sql: string; params: unknown[] };
+
+function buildWhereClause(
+  params: SessionQueryParams,
+  options: { includeStatuses: boolean },
+): WhereClause {
+  const predicates: string[] = [];
+  const values: unknown[] = [];
+
+  const search = params.search?.trim();
+  if (search) {
+    predicates.push('(LOWER(s.caseId) LIKE ? OR LOWER(s.protocolName) LIKE ?)');
+    const pattern = `%${search.toLowerCase()}%`;
+    values.push(pattern, pattern);
+  }
+
+  const caseId = params.caseId?.trim();
+  if (caseId) {
+    predicates.push('LOWER(s.caseId) LIKE ?');
+    values.push(`%${caseId.toLowerCase()}%`);
+  }
+
+  if (params.protocolNames && params.protocolNames.length > 0) {
+    const placeholders = params.protocolNames.map(() => '?').join(',');
+    predicates.push(`s.protocolName IN (${placeholders})`);
+    values.push(...params.protocolNames);
+  }
+
+  if (params.startedRange) {
+    predicates.push('s.startedAt BETWEEN ? AND ?');
+    values.push(params.startedRange.from, padRangeTo(params.startedRange.to));
+  }
+
+  if (params.updatedRange) {
+    predicates.push('s.lastUpdatedAt BETWEEN ? AND ?');
+    values.push(params.updatedRange.from, padRangeTo(params.updatedRange.to));
+  }
+
+  if (
+    options.includeStatuses &&
+    params.statuses &&
+    params.statuses.length > 0
+  ) {
+    const placeholders = params.statuses.map(() => '?').join(',');
+    predicates.push(`(${STATUS_KIND_SQL}) IN (${placeholders})`);
+    values.push(...params.statuses);
+  }
+
+  if (typeof params.exported === 'boolean') {
+    predicates.push(
+      params.exported ? 's.exportedAt IS NOT NULL' : 's.exportedAt IS NULL',
+    );
+  }
+
+  return {
+    sql: predicates.length === 0 ? '' : `WHERE ${predicates.join(' AND ')}`,
+    params: values,
+  };
+}
+
+function buildOrderClause(sort: SessionQueryParams['sort']): string {
+  const direction = sort.direction === 'desc' ? 'DESC' : 'ASC';
+  // `exportedAt` and `status` need a composite expression so the chosen sort
+  // direction sorts nulls / kinds in a useful order.
+  if (sort.column === 'caseId') {
+    return `ORDER BY s.caseId ${direction}, s.id ASC`;
+  }
+  if (sort.column === 'protocolName') {
+    return `ORDER BY s.protocolName ${direction}, s.id ASC`;
+  }
+  if (sort.column === 'startedAt') {
+    return `ORDER BY s.startedAt ${direction}, s.id ASC`;
+  }
+  if (sort.column === 'updatedAt') {
+    return `ORDER BY s.lastUpdatedAt ${direction}, s.id ASC`;
+  }
+  if (sort.column === 'exportedAt') {
+    return `ORDER BY (CASE WHEN s.exportedAt IS NULL THEN 1 ELSE 0 END) ${direction === 'ASC' ? 'ASC' : 'DESC'}, s.exportedAt ${direction}, s.id ASC`;
+  }
+  if (sort.column === 'status') {
+    return `ORDER BY (CASE WHEN s.exportedAt IS NOT NULL THEN 2 WHEN s.finishedAt IS NOT NULL THEN 1 ELSE 0 END) ${direction}, s.id ASC`;
+  }
+  return `ORDER BY (CASE
+    WHEN s.finishedAt IS NOT NULL THEN 100.0
+    ELSE COALESCE(
+      s.currentStep * 100.0
+        / NULLIF(json_array_length(json_extract(p.protocol_json, '$.stages')), 0),
+      0
+    )
+  END) ${direction}, s.id ASC`;
 }
 
 function rowToWireAsset(row: AssetRow) {
@@ -387,13 +604,78 @@ export const protocols = {
 };
 
 export const sessions = {
-  list() {
+  list(): StoredSessionLite[] {
     const rows = getDb()
-      .prepare<[], SessionRow>(
-        'SELECT * FROM sessions ORDER BY lastUpdatedAt DESC',
+      .prepare<[], SessionLiteRow>(
+        `SELECT ${SESSION_LITE_COLUMNS}
+         FROM sessions s
+         LEFT JOIN protocols p ON s.protocolHash = p.hash
+         ORDER BY s.lastUpdatedAt DESC, s.id ASC`,
       )
       .all();
-    return rows.map(rowToSession);
+    return rows.map(rowToSessionLite);
+  },
+  query(params: SessionQueryParams): SessionQueryResult {
+    const handle = getDb();
+    const where = buildWhereClause(params, { includeStatuses: true });
+    const whereForCounts = buildWhereClause(params, { includeStatuses: false });
+    const orderClause = buildOrderClause(params.sort);
+    const pageSize = Math.max(1, params.pageSize);
+    const offset = Math.max(0, params.page) * pageSize;
+
+    const rowSql = `
+      SELECT ${SESSION_LITE_COLUMNS}
+      FROM sessions s
+      LEFT JOIN protocols p ON s.protocolHash = p.hash
+      ${where.sql}
+      ${orderClause}
+      LIMIT ? OFFSET ?
+    `;
+    const rows = handle
+      .prepare<unknown[], SessionLiteRow>(rowSql)
+      .all(...where.params, pageSize, offset);
+
+    const countRow = handle
+      .prepare<unknown[], { n: number }>(
+        `SELECT COUNT(*) AS n FROM sessions s ${where.sql}`,
+      )
+      .get(...where.params);
+    const totalCount = countRow?.n ?? 0;
+
+    const statusGroups = handle
+      .prepare<unknown[], { k: SessionStatusKind; n: number }>(
+        `SELECT ${STATUS_KIND_SQL} AS k, COUNT(*) AS n
+         FROM sessions s
+         ${whereForCounts.sql}
+         GROUP BY k`,
+      )
+      .all(...whereForCounts.params);
+
+    let all = 0;
+    let inProgress = 0;
+    let complete = 0;
+    for (const group of statusGroups) {
+      all += group.n;
+      if (group.k === 'in-progress') inProgress += group.n;
+      // The Complete chip in the UI counts every finished session, whether or
+      // not it has subsequently been exported.
+      else complete += group.n;
+    }
+
+    return {
+      rows: rows.map(rowToSessionLite),
+      totalCount,
+      statusCounts: { all, inProgress, complete },
+    };
+  },
+  queryMatchingIds(params: SessionQueryParams): string[] {
+    const where = buildWhereClause(params, { includeStatuses: true });
+    const rows = getDb()
+      .prepare<unknown[], { id: string }>(
+        `SELECT s.id FROM sessions s ${where.sql}`,
+      )
+      .all(...where.params);
+    return rows.map((r) => r.id);
   },
   get(id: string) {
     const row = getDb()

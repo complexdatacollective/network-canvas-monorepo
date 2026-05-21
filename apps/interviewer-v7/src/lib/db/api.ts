@@ -10,9 +10,12 @@ import * as dexieProtocols from './protocols';
 import * as dexieSessions from './sessions';
 import type {
   ProtocolWithCounts,
+  SessionQueryParams,
+  SessionQueryResult,
   StoredAsset,
   StoredProtocol,
   StoredSession,
+  StoredSessionLite,
   StoredSettings,
 } from './types';
 
@@ -69,10 +72,26 @@ export async function getProtocolAsset(
     : dexieProtocols.getProtocolAsset(hash, assetId);
 }
 
-export async function listSessions(): Promise<StoredSession[]> {
+export async function listSessions(): Promise<StoredSessionLite[]> {
   return isElectron
     ? electronSessions.listSessions()
     : dexieSessions.listSessions();
+}
+
+export async function querySessions(
+  params: SessionQueryParams,
+): Promise<SessionQueryResult> {
+  return isElectron
+    ? electronSessions.querySessions(params)
+    : dexieSessions.querySessions(params);
+}
+
+export async function queryMatchingSessionIds(
+  params: SessionQueryParams,
+): Promise<string[]> {
+  return isElectron
+    ? electronSessions.queryMatchingSessionIds(params)
+    : dexieSessions.queryMatchingSessionIds(params);
 }
 
 export async function getSession(

@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useLocation } from 'wouter';
 
 import { updateSettings } from '~/lib/db/api';
-import type { StoredSession } from '~/lib/db/types';
+import type { StoredSessionLite } from '~/lib/db/types';
 
 // Enter: drops in from above as a circle, then the content panel
 // springs open to reveal text + play button. The 0.7s delay on the drop
@@ -45,7 +45,7 @@ const contentPanelVariants = {
 } as const;
 
 type ResumePillProps = {
-  sessions: StoredSession[];
+  sessions: StoredSessionLite[];
 };
 
 // No inner AnimatePresence — the outer AnimatePresence in Home owns the

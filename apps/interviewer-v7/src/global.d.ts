@@ -5,8 +5,11 @@ import type { NcNetwork } from '@codaco/shared-consts';
 
 import type {
   ProtocolWithCounts,
+  SessionQueryParams,
+  SessionQueryResult,
   StoredProtocol,
   StoredSession,
+  StoredSessionLite,
   StoredSettings,
 } from './lib/db/types';
 
@@ -64,7 +67,9 @@ declare global {
       }) => Promise<WireAsset | null>;
     };
     sessions: {
-      list: () => Promise<StoredSession[]>;
+      list: () => Promise<StoredSessionLite[]>;
+      query: (params: SessionQueryParams) => Promise<SessionQueryResult>;
+      queryMatchingIds: (params: SessionQueryParams) => Promise<string[]>;
       get: (id: string) => Promise<StoredSession | undefined>;
       getByIds: (ids: string[]) => Promise<StoredSession[]>;
       create: (args: {

@@ -25,4 +25,4 @@ export type DataTableFilterableColumn<TData> = {
   options: Option[];
 } & DataTableSearchableColumn<TData>;
 
-export const pageSizes = [10, 20, 50, 100] as const;
+export const pageSizes = [10, 25, 50, 100] as const;

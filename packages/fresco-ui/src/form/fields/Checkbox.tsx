@@ -57,6 +57,7 @@ const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>(
       defaultChecked = false,
       disabled,
       readOnly,
+      indeterminate,
       'aria-invalid': ariaInvalid,
       ...props
     },
@@ -95,6 +96,7 @@ const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>(
         ref={ref}
         onCheckedChange={handleCheckedChange}
         disabled={disabled ?? readOnly}
+        indeterminate={indeterminate}
         {...(isControlled
           ? { checked: controlledChecked }
           : { defaultChecked })}
@@ -126,12 +128,12 @@ const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>(
             strokeWidth="3"
           >
             <path
-              d="M4 12L10 18L20 6"
+              d={indeterminate ? 'M5 12L19 12' : 'M4 12L10 18L20 6'}
               pathLength={1}
               style={{
                 strokeDasharray: 1,
-                strokeDashoffset: isChecked ? 0 : 1,
-                strokeLinecap: isChecked ? 'round' : 'butt',
+                strokeDashoffset: indeterminate || isChecked ? 0 : 1,
+                strokeLinecap: indeterminate || isChecked ? 'round' : 'butt',
                 transition: 'stroke-dashoffset 0.2s ease-out',
               }}
             />

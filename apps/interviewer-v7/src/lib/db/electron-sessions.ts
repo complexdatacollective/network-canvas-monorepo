@@ -1,6 +1,11 @@
 import type { NcNetwork } from '@codaco/shared-consts';
 
-import type { StoredSession } from './types';
+import type {
+  SessionQueryParams,
+  SessionQueryResult,
+  StoredSession,
+  StoredSessionLite,
+} from './types';
 
 function ipc() {
   const api = window.electronAPI;
@@ -10,8 +15,20 @@ function ipc() {
   return api.db;
 }
 
-export async function listSessions(): Promise<StoredSession[]> {
+export async function listSessions(): Promise<StoredSessionLite[]> {
   return ipc().sessions.list();
+}
+
+export async function querySessions(
+  params: SessionQueryParams,
+): Promise<SessionQueryResult> {
+  return ipc().sessions.query(params);
+}
+
+export async function queryMatchingSessionIds(
+  params: SessionQueryParams,
+): Promise<string[]> {
+  return ipc().sessions.queryMatchingIds(params);
 }
 
 export async function getSession(

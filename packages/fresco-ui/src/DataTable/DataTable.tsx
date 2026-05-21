@@ -39,6 +39,7 @@ type DataTableProps<TData> = {
   surfaceLevel?: 0 | 1 | 2 | 3;
   emptyText?: string;
   getRowClasses?: (row: Row<TData>) => string | undefined;
+  bodyScroll?: boolean;
 };
 
 export function DataTable<TData>({
@@ -49,16 +50,17 @@ export function DataTable<TData>({
   surfaceLevel = 0,
   emptyText = 'No results.',
   getRowClasses,
+  bodyScroll = false,
 }: DataTableProps<TData>) {
   // TanStack Table returns a mutable ref with stable identity, defeating React Compiler memoization.
   'use no memo';
   const columnCount = table.getAllColumns().length;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className={cx('flex flex-col gap-6', bodyScroll && 'h-full min-h-0')}>
       {toolbar}
-      <Table surfaceProps={{ level: surfaceLevel }}>
-        <TableHeader>
+      <Table surfaceProps={{ level: surfaceLevel }} bodyScroll={bodyScroll}>
+        <TableHeader className={cx(bodyScroll && 'sticky top-0 z-10')}>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => (

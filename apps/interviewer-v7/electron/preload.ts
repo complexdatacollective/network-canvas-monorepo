@@ -16,6 +16,9 @@ const dbBridge = {
   },
   sessions: {
     list: () => ipcRenderer.invoke('db:sessions:list'),
+    query: (params: unknown) => ipcRenderer.invoke('db:sessions:query', params),
+    queryMatchingIds: (params: unknown) =>
+      ipcRenderer.invoke('db:sessions:queryMatchingIds', params),
     get: (id: string) => ipcRenderer.invoke('db:sessions:get', id),
     getByIds: (ids: string[]) =>
       ipcRenderer.invoke('db:sessions:getByIds', ids),
