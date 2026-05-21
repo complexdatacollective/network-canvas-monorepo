@@ -50,7 +50,7 @@ describe('launchPreview', () => {
     openSpy.mockRestore();
   });
 
-  it('opens /preview, then delivers the payload on receiving preview:ready', async () => {
+  it('opens /preview/, then delivers the payload on receiving preview:ready', async () => {
     const protocol = makeProtocol();
     const promise = launchPreview({
       protocol,
@@ -58,7 +58,7 @@ describe('launchPreview', () => {
       useSyntheticData: true,
     });
 
-    expect(openSpy).toHaveBeenCalledWith('/preview', '_blank');
+    expect(openSpy).toHaveBeenCalledWith('/preview/', '_blank');
 
     postReadyFromSource(popup);
     await promise;
