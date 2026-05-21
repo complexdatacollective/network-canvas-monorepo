@@ -11,6 +11,7 @@ import {
   ArrowDown,
   Download,
   Filter as FilterIcon,
+  Play,
   Search,
   Trash2,
   X,
@@ -459,24 +460,14 @@ export function DataView({ protocols, onReload }: DataViewProps) {
           const id = row.original.id;
           const checked = isRowSelected(selection, id);
           return (
-            // The presentation span blocks click-bubbling so the row-level
-            // resume handler doesn't fire when the user toggles the
-            // checkbox. Keyboard activation goes straight to the
-            // Checkbox.Root button — the span is invisible to AT.
-            <span
-              role="presentation"
-              className="inline-flex"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Checkbox
-                size="sm"
-                aria-label={`Select ${row.original.caseId}`}
-                checked={checked}
-                onCheckedChange={() => {
-                  setSelection((prev) => toggleRow(prev, id));
-                }}
-              />
-            </span>
+            <Checkbox
+              size="sm"
+              aria-label={`Select ${row.original.caseId}`}
+              checked={checked}
+              onCheckedChange={() => {
+                setSelection((prev) => toggleRow(prev, id));
+              }}
+            />
           );
         },
       },
@@ -576,6 +567,31 @@ export function DataView({ protocols, onReload }: DataViewProps) {
           );
         },
       },
+      {
+        id: 'resume',
+        enableSorting: false,
+        enableColumnFilter: false,
+        enableGlobalFilter: false,
+        header: () => <span className="sr-only">Resume</span>,
+        cell: ({ row }) => {
+          if (row.original.statusKind !== 'in-progress') return null;
+          const id = row.original.id;
+          return (
+            <Button
+              size="sm"
+              color="primary"
+              icon={<Play size={14} strokeWidth={2.5} aria-hidden />}
+              onClick={() => {
+                void updateSettings({ lastActiveSessionId: id }).then(() =>
+                  navigate(`/interview/${id}`),
+                );
+              }}
+            >
+              Resume
+            </Button>
+          );
+        },
+      },
     ],
     [
       allOnPageSelected,
@@ -583,6 +599,7 @@ export function DataView({ protocols, onReload }: DataViewProps) {
       pageIds,
       selection,
       protocolStageCounts,
+      navigate,
     ],
   );
 
@@ -977,9 +994,8 @@ export function DataView({ protocols, onReload }: DataViewProps) {
           <motion.div variants={toolbarItemVariants}>
             <Button
               color="destructive"
-              variant="outline"
               size="md"
-              icon={<Trash2 size={14} strokeWidth={2.5} aria-hidden />}
+              icon={<Trash2 aria-hidden />}
               onClick={() => void handleDelete()}
               disabled={deleting || exporting}
             >
@@ -990,7 +1006,7 @@ export function DataView({ protocols, onReload }: DataViewProps) {
             <Button
               color="primary"
               size="md"
-              icon={<Download size={14} strokeWidth={2.5} aria-hidden />}
+              icon={<Download aria-hidden />}
               onClick={() => void handleExport()}
               disabled={exporting || deleting}
             >
@@ -1065,18 +1081,6 @@ export function DataView({ protocols, onReload }: DataViewProps) {
         <DataTable
           table={table}
           bodyScroll
-          getRowClasses={(row) =>
-            row.original.statusKind === 'in-progress'
-              ? 'cursor-pointer hover:bg-sea-green/8'
-              : undefined
-          }
-          onRowClick={(row) => {
-            if (row.original.statusKind !== 'in-progress') return;
-            const id = row.original.id;
-            void updateSettings({ lastActiveSessionId: id }).then(() =>
-              navigate(`/interview/${id}`),
-            );
-          }}
           emptyText={
             data === null
               ? 'Loading interviews…'
