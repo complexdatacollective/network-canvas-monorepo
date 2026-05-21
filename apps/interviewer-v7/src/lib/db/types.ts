@@ -114,6 +114,7 @@ export type StoredSettings = {
   idleTimeoutMinutes: IdleTimeoutMinutes;
   requireUnlockOnResume: boolean;
   requireUnlockOnExport: boolean;
+  sampleProtocolDismissed: boolean;
 };
 
 export type ProtocolWithCounts = StoredProtocol & {
@@ -131,4 +132,5 @@ export const DEFAULT_SETTINGS: StoredSettings = {
   idleTimeoutMinutes: 15,
   requireUnlockOnResume: true,
   requireUnlockOnExport: false,
+  sampleProtocolDismissed: false,
 };
