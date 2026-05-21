@@ -35,17 +35,6 @@ export async function estimateStorage(): Promise<StorageEstimate> {
   }
 }
 
-export async function isStoragePersistent(): Promise<boolean> {
-  if (typeof navigator === 'undefined' || !navigator.storage?.persisted) {
-    return false;
-  }
-  try {
-    return await navigator.storage.persisted();
-  } catch {
-    return false;
-  }
-}
-
 export function formatBytes(bytes: number | null): string {
   if (bytes === null) return 'unknown';
   if (bytes < 1024) return `${bytes} B`;

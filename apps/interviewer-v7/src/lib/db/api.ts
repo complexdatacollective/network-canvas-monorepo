@@ -48,12 +48,6 @@ export async function saveProtocol(
     : dexieProtocols.saveProtocol(protocol, hash, assets);
 }
 
-export async function deleteProtocol(hash: string): Promise<void> {
-  return isElectron
-    ? electronProtocols.deleteProtocol(hash)
-    : dexieProtocols.deleteProtocol(hash);
-}
-
 export async function getProtocolAssets(hash: string): Promise<StoredAsset[]> {
   return isElectron
     ? electronProtocols.getProtocolAssets(hash)
@@ -121,12 +115,6 @@ export async function markSessionsExported(ids: string[]): Promise<void> {
   return isElectron
     ? electronSessions.markSessionsExported(ids)
     : dexieSessions.markSessionsExported(ids);
-}
-
-export async function deleteSessions(ids: string[]): Promise<void> {
-  return isElectron
-    ? electronSessions.deleteSessions(ids)
-    : dexieSessions.deleteSessions(ids);
 }
 
 export async function getSettings(): Promise<StoredSettings> {

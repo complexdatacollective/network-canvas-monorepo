@@ -49,10 +49,6 @@ export async function saveProtocol(
   return ipc().protocols.save({ protocol, hash, assets: serialisedAssets });
 }
 
-export async function deleteProtocol(hash: string): Promise<void> {
-  return ipc().protocols.delete(hash);
-}
-
 export async function getProtocolAssets(hash: string): Promise<StoredAsset[]> {
   const raw = await ipc().protocols.listAssets(hash);
   return raw.map(deserialiseAsset);

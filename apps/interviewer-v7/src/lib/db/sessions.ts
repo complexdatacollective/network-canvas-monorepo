@@ -87,7 +87,3 @@ export async function markSessionsExported(ids: string[]): Promise<void> {
     }
   });
 }
-
-export async function deleteSessions(ids: string[]): Promise<void> {
-  await db.sessions.bulkDelete(ids);
-}

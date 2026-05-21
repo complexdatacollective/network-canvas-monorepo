@@ -80,16 +80,6 @@ export async function saveProtocol(
   return stored;
 }
 
-export async function deleteProtocol(hash: string): Promise<void> {
-  await db.transaction('rw', db.protocols, db.sessions, db.assets, async () => {
-    const protocol = await getProtocolByHash(hash);
-    if (!protocol) return;
-    await db.protocols.delete(protocol.id);
-    await db.assets.where('protocolHash').equals(hash).delete();
-    await db.sessions.where('protocolHash').equals(hash).delete();
-  });
-}
-
 export async function getProtocolAssets(hash: string): Promise<StoredAsset[]> {
   return db.assets.where('protocolHash').equals(hash).toArray();
 }
