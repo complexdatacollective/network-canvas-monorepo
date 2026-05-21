@@ -334,7 +334,7 @@ export function DataView({ protocols, onReload }: DataViewProps) {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [sorting, setSorting] = useState<SortingState>([
-    { id: 'startedAt', desc: true },
+    { id: 'updatedAt', desc: true },
   ]);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -357,8 +357,8 @@ export function DataView({ protocols, onReload }: DataViewProps) {
       columnFilters.find((f) => f.id === id)?.value;
     const sortEntry = sorting[0];
     const sortColumn: SessionSortColumn = sortEntry
-      ? (SORT_COLUMN_BY_ID[sortEntry.id] ?? 'startedAt')
-      : 'startedAt';
+      ? (SORT_COLUMN_BY_ID[sortEntry.id] ?? 'updatedAt')
+      : 'updatedAt';
     const search = globalFilter.trim();
     const caseId = readString(filterValue('caseId')).trim();
     const protocolNames = readStringArray(filterValue('protocolName'));
@@ -579,6 +579,7 @@ export function DataView({ protocols, onReload }: DataViewProps) {
           return (
             <Button
               size="sm"
+              variant="text"
               color="primary"
               icon={<Play size={14} strokeWidth={2.5} aria-hidden />}
               onClick={() => {
