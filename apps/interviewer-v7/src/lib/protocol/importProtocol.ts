@@ -11,6 +11,8 @@ import {
 } from '@codaco/protocol-validation';
 
 import { saveProtocol } from '../db/api';
+import { fetchProtocolFromUrl } from '../files/fetchFromUrl';
+import { isCapacitor, isElectron } from '../platform/platform';
 
 const APP_SCHEMA_VERSION = 8;
 
@@ -218,9 +220,26 @@ export async function importProtocolFromUrl(
   url: string,
   onProgress?: OnImportProgress,
 ): Promise<ImportProtocolResult> {
-  let response: Response;
+  let buffer: Uint8Array;
   try {
-    response = await fetch(url, { redirect: 'follow' });
+    if (isElectron || isCapacitor) {
+      // Native HTTP path doesn't expose per-chunk progress; emit one
+      // indeterminate fetching event so the UI still shows activity.
+      onProgress?.({ phase: 'fetching' });
+      buffer = await fetchProtocolFromUrl(url);
+    } else {
+      // Web: stream the response so we can report determinate progress
+      // when Content-Length is present.
+      const response = await fetch(url, { redirect: 'follow' });
+      if (!response.ok) {
+        return {
+          success: false,
+          error: 'fetch-failed',
+          message: `Server responded with ${response.status} ${response.statusText}`,
+        };
+      }
+      buffer = await readStreamedBuffer(response, onProgress);
+    }
   } catch (cause) {
     return {
       success: false,
@@ -228,13 +247,5 @@ export async function importProtocolFromUrl(
       message: cause instanceof Error ? cause.message : String(cause),
     };
   }
-  if (!response.ok) {
-    return {
-      success: false,
-      error: 'fetch-failed',
-      message: `Server responded with ${response.status} ${response.statusText}`,
-    };
-  }
-  const buffer = await readStreamedBuffer(response, onProgress);
   return importFromBuffer(buffer, deriveNameFromUrl(url), onProgress);
 }
