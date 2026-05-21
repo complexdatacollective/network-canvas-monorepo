@@ -89,15 +89,8 @@ class Grid extends Component<GridProps, GridState> {
   };
 
   render() {
-    const {
-      items,
-      capacity,
-      previewComponent,
-      onEditItem,
-      fields,
-      meta,
-      editField = '',
-    } = this.props;
+    const { items, capacity, previewComponent, onEditItem, fields, meta } =
+      this.props;
 
     const { error, submitFailed } = meta;
 
@@ -151,7 +144,6 @@ class Grid extends Component<GridProps, GridState> {
                     fields={fields}
                     previewComponent={previewComponent}
                     onEditItem={onEditItem}
-                    editField={editField}
                     // eslint-disable-next-line react/jsx-props-no-spreading
                     {...item}
                   />

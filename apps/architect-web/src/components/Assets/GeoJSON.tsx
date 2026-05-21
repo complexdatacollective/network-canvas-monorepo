@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Column } from 'react-table';
 
 import { getAssetById } from '~/utils/assetUtils';
 
-import Table from './Table';
+import Table, { type TableColumn } from './Table';
 import withAssetPath from './withAssetPath';
 
 const ROW_LIMIT = 100;
@@ -29,7 +28,7 @@ const getGeoJSON = async (assetId: string): Promise<GeoJSON> => {
 const getRows = (geojson: GeoJSON): Record<string, unknown>[] =>
   (geojson.features ?? []).map(({ properties }: GeoJSONFeature) => properties);
 
-const getColumns = (geojson: GeoJSON): Column<Record<string, unknown>>[] => {
+const getColumns = (geojson: GeoJSON): TableColumn[] => {
   const properties = (geojson.features ?? []).map(
     (feature: GeoJSONFeature) => feature.properties,
   );

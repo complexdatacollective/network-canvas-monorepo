@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { cx } from '~/utils/cva';
 
-import IssueAnchor from '../IssueAnchor';
 import Switch from '../NewComponents/Switch';
 
 const containerClasses =
@@ -71,6 +70,8 @@ const Section = ({
 
   return (
     <div
+      id={id ?? undefined}
+      data-name={typeof title === 'string' ? title : undefined}
       className={cx(
         '[--input-background:var(--color-surface-1)] [--slider-color:hsl(var(--charcoal))]',
         'relative [--current-surface-foreground:var(--color-surface-1-foreground)] [--current-surface:var(--color-surface-1)]',
@@ -134,12 +135,6 @@ const Section = ({
               </div>
             )}
           </>
-        )}
-        {id && (
-          <IssueAnchor
-            fieldName={id}
-            description={typeof title === 'string' ? title : ''}
-          />
         )}
       </fieldset>
     </div>

@@ -4,8 +4,6 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Dialog } from '../Dialogs';
 import { Dialogs } from '../Dialogs';
 
-vi.mock('../../utils/CSSVariables');
-
 const warningDialog = (): Dialog => ({
   id: String(Math.random()),
   type: 'Warning',
