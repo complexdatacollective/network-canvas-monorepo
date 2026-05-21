@@ -181,6 +181,7 @@ export function ProtocolDeck({
         onImport();
         return;
       }
+      if (entry.kind !== 'protocol') return;
       onStartInterview(entry.protocol.hash);
     },
     [activeIdx, deck, onImport, onStartInterview],
@@ -391,7 +392,9 @@ export function ProtocolDeck({
                 entry.protocol.hash === newSessionProtocolHash;
               return (
                 <SwiperSlide
-                  key={entry.kind === 'import' ? 'import' : entry.protocol.hash}
+                  key={
+                    entry.kind === 'protocol' ? entry.protocol.hash : entry.kind
+                  }
                   style={{ width: cardWidth, height: cardHeight }}
                   // `!overflow-visible` overrides Swiper's bundled
                   // `.swiper-slide { overflow: hidden }` so the card's
@@ -453,7 +456,9 @@ export function ProtocolDeck({
           <div className="flex items-center gap-2.5">
             {deck.map((entry, i) => (
               <button
-                key={entry.kind === 'import' ? 'import' : entry.protocol.hash}
+                key={
+                  entry.kind === 'protocol' ? entry.protocol.hash : entry.kind
+                }
                 type="button"
                 onClick={() => swiperRef.current?.slideTo(i)}
                 aria-label={`Go to card ${i + 1}`}

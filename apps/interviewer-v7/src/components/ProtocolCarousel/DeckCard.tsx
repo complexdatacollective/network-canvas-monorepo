@@ -1,4 +1,4 @@
-import { Play, Plus, Trash2 } from 'lucide-react';
+import { Download, Play, Plus, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -13,6 +13,7 @@ import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cva } from '@codaco/fresco-ui/utils/cva';
 import type { ProtocolWithCounts } from '~/lib/db/types';
+import type { ImportPhase } from '~/lib/protocol/importProtocol';
 
 // Stable per-protocol layoutIds for the shared-element morph between
 // the in-slide DeckCard and NewSessionCardOverlay. Motion pairs each
@@ -61,8 +62,18 @@ const protocolCardClass = cva({
   ].join(' '),
 });
 
+export type PendingImport = {
+  id: string;
+  label: string;
+  source: 'file' | 'url' | 'sample';
+  phase: ImportPhase;
+  progress?: number;
+};
+
 export type DeckEntry =
   | { kind: 'protocol'; protocol: ProtocolWithCounts }
+  | { kind: 'sample' }
+  | { kind: 'pending'; pending: PendingImport }
   | { kind: 'import' };
 
 type DeckCardProps = {
@@ -73,6 +84,8 @@ type DeckCardProps = {
   sessionCount: number;
   onActivate: () => void;
   onDelete?: () => void;
+  onInstallSample?: () => void;
+  onDismissSample?: () => void;
 };
 
 // Static lookup so Tailwind's scanner sees every possible class name at
@@ -148,6 +161,8 @@ export function DeckCard({
   sessionCount,
   onActivate,
   onDelete,
+  onInstallSample,
+  onDismissSample,
 }: DeckCardProps) {
   if (entry.kind === 'import') {
     return (
@@ -176,6 +191,146 @@ export function DeckCard({
           file
         </div>
       </button>
+    );
+  }
+
+  if (entry.kind === 'sample') {
+    return (
+      <button
+        type="button"
+        onClick={() => onInstallSample?.()}
+        style={{
+          width: cardWidth,
+          height: cardHeight,
+          boxShadow: INACTIVE_SHADOW,
+          borderRadius: CARD_RADIUS_PX,
+        }}
+        className={`${cardBase()} ${importCardClass()} @container relative cursor-pointer`}
+        aria-label="Install the sample protocol"
+      >
+        <div className="bg-surface text-sea-green inline-flex h-[84px] w-[84px] items-center justify-center rounded-full">
+          <Download size={36} strokeWidth={2.5} aria-hidden />
+        </div>
+        <Heading level="h2" margin="none" className="text-text font-black">
+          Sample Protocol
+        </Heading>
+        <div className="text-text/80 px-8 text-center text-sm">
+          A complete reference protocol from the Network Canvas team — useful
+          for exploring how stages, prompts, and codebooks fit together.
+        </div>
+        {isActive ? (
+          <div className="mx-3 mb-3 flex items-center gap-2 @min-[320px]:mx-5 @min-[320px]:mb-5 @min-[380px]:mx-6 @min-[380px]:mb-6 @min-3xs:mx-4 @min-3xs:mb-4">
+            <div className="@container h-9 min-w-0 flex-1 @min-[320px]:h-13 @min-[380px]:h-14 @min-3xs:h-11">
+              <Button
+                color="primary"
+                icon={
+                  <Download
+                    className="size-3 shrink-0 stroke-[3px]! @min-[240px]:size-4 @min-[300px]:size-5"
+                    aria-hidden
+                  />
+                }
+                className="flex h-full w-full items-center justify-center gap-1.5 rounded-xl px-3 font-black tracking-[0.04em] uppercase @min-[240px]:gap-2 @min-[240px]:rounded-2xl @min-[240px]:px-4 @min-[240px]:tracking-[0.06em] @min-[300px]:gap-2.5 @min-[300px]:px-5 @min-[300px]:tracking-[0.07em] @min-[360px]:gap-3 @min-[360px]:px-6 @min-[360px]:tracking-[0.08em]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onInstallSample?.();
+                }}
+              >
+                <span className="min-w-0 truncate text-[10px] @min-[240px]:text-xs @min-[300px]:text-sm @min-[360px]:text-base">
+                  Install sample protocol
+                </span>
+              </Button>
+            </div>
+            {onDismissSample ? (
+              <IconButton
+                variant="text"
+                icon={
+                  <Trash2
+                    className="size-3 @min-[320px]:size-5 @min-3xs:size-4"
+                    aria-hidden
+                  />
+                }
+                aria-label="Dismiss the sample protocol"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDismissSample();
+                }}
+                className="hover:bg-destructive! hover:text-destructive-contrast! h-9 shrink-0 @min-[320px]:h-13 @min-[380px]:h-14 @min-3xs:h-11"
+              />
+            ) : null}
+          </div>
+        ) : null}
+      </button>
+    );
+  }
+
+  if (entry.kind === 'pending') {
+    const { pending } = entry;
+    const palette = seedToPatternPalette(pending.label);
+    const phaseLabel =
+      pending.phase === 'fetching'
+        ? 'Fetching…'
+        : pending.phase === 'extracting'
+          ? 'Extracting…'
+          : 'Saving…';
+    const progress = pending.progress;
+    const determinate =
+      typeof progress === 'number' && Number.isFinite(progress);
+    const pct = determinate ? Math.min(1, Math.max(0, progress)) * 100 : 0;
+    return (
+      <div
+        style={{
+          width: cardWidth,
+          height: cardHeight,
+          borderRadius: CARD_RADIUS_PX,
+          boxShadow: INACTIVE_SHADOW,
+        }}
+        className={`${cardBase()} ${protocolCardClass()} @container`}
+        aria-label={`Importing ${pending.label}`}
+        aria-busy="true"
+      >
+        <div className="relative flex w-full flex-col justify-between gap-4 overflow-hidden p-4 @min-3xs:min-h-[40%] @min-2xs:p-6">
+          <Pattern
+            seed={pending.label}
+            className="absolute inset-0 size-full opacity-60"
+          />
+          <Heading
+            level="h2"
+            margin="none"
+            className="relative text-lg leading-tight font-black tracking-tighter text-balance @min-[320px]:text-2xl @min-[380px]:text-3xl @min-3xs:text-xl @min-2xs:mt-2"
+          >
+            {pending.label}
+          </Heading>
+          <div className="font-monospace relative hidden items-center justify-between gap-2 text-[12px] @min-3xs:flex @min-xs:text-xs @min-sm:text-sm">
+            <span style={{ color: palette.backgroundTop }}>{phaseLabel}</span>
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 px-3 pt-2 @min-2xs:px-6 @min-2xs:pt-3.5">
+          <span className="text-text/80 text-xs @min-2xs:text-sm @min-xs:text-base @min-md:text-lg">
+            {phaseLabel}
+          </span>
+        </div>
+        <div className="mx-3 mb-3 @min-[320px]:mx-5 @min-[320px]:mb-5 @min-[380px]:mx-6 @min-[380px]:mb-6 @min-3xs:mx-4 @min-3xs:mb-4">
+          <progress
+            className="sr-only"
+            max={100}
+            value={determinate ? Math.round(pct) : undefined}
+            aria-label={`Importing ${pending.label}: ${phaseLabel}`}
+          />
+          <div
+            className="bg-surface-2 relative h-2 w-full overflow-hidden rounded-full"
+            aria-hidden="true"
+          >
+            {determinate ? (
+              <div
+                className="bg-sea-green h-full transition-[width] duration-150 ease-out"
+                style={{ width: `${pct}%` }}
+              />
+            ) : (
+              <div className="bg-sea-green/70 absolute inset-y-0 left-0 h-full w-1/3 animate-[shimmer_1.2s_linear_infinite]" />
+            )}
+          </div>
+        </div>
+      </div>
     );
   }
 
