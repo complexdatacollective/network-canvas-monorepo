@@ -29,6 +29,7 @@ import type {
 } from '~/lib/db/types';
 import {
   type ImportProgressEvent,
+  type ImportProtocolResult,
   importProtocolFromFile,
   importProtocolFromUrl,
 } from '~/lib/protocol/importProtocol';
@@ -159,7 +160,7 @@ export function HomeRoute() {
       };
 
       const run = async () => {
-        let result;
+        let result: ImportProtocolResult;
         if (request.source === 'file') {
           result = await importProtocolFromFile(request.file, onProgress);
         } else if (request.source === 'url') {
