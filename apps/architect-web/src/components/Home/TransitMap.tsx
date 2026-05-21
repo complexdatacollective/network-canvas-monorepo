@@ -89,6 +89,16 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
               fill="url(#nc-timeline-fade)"
             />
           </mask>
+          {/* Forces the (default-black) icon shapes to solid white while
+              preserving their alpha — the SVG-native equivalent of the
+              `brightness-0 invert` CSS filter, which is reliable in Safari
+              where `<img>` inside `<foreignObject>` is not. */}
+          <filter id="nc-icon-white">
+            <feColorMatrix
+              type="matrix"
+              values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0"
+            />
+          </filter>
         </defs>
 
         <g mask="url(#nc-timeline-mask)">
@@ -254,21 +264,15 @@ function Station({
         )}
         <circle cx={x} cy={y} r={STATION_R} fill="#fff" />
         <circle cx={x} cy={y} r={STATION_INNER_R} fill={meta.color} />
-        <foreignObject
+        <image
+          href={meta.icon}
           x={x - ICON_SIZE / 2}
           y={y - ICON_SIZE / 2}
           width={ICON_SIZE}
           height={ICON_SIZE}
-          overflow="visible"
-        >
-          <div className="flex h-full w-full items-center justify-center brightness-0 invert">
-            <img
-              src={meta.icon}
-              alt=""
-              style={{ width: ICON_SIZE, height: ICON_SIZE }}
-            />
-          </div>
-        </foreignObject>
+          preserveAspectRatio="xMidYMid meet"
+          filter="url(#nc-icon-white)"
+        />
       </motion.g>
 
       {/* Label pill: slide in from its outer side */}
