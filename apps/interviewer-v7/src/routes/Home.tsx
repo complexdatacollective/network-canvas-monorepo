@@ -413,7 +413,10 @@ export function HomeRoute() {
       />
       <SettingsDialog
         open={openDialog === 'settings'}
-        onClose={() => setOpenDialog(null)}
+        onClose={() => {
+          setOpenDialog(null);
+          void reload();
+        }}
       />
     </motion.div>
   );

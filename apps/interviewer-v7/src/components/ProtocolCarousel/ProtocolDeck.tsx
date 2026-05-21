@@ -223,6 +223,17 @@ export function ProtocolDeck({
     swiperRef.current?.slideTo(Math.max(0, deck.length - 1), 0);
   }, [deck.length, activeIdx]);
 
+  const previousPendingCountRef = useRef(0);
+  useEffect(() => {
+    const previous = previousPendingCountRef.current;
+    const current = pendingImports.length;
+    previousPendingCountRef.current = current;
+    if (current <= previous) return;
+    const newPendingIndex =
+      protocols.length + (showSampleCard ? 1 : 0) + (current - 1);
+    swiperRef.current?.slideTo(newPendingIndex);
+  }, [pendingImports, protocols.length, showSampleCard]);
+
   // Enter activates the current card. Skip when focus is on another
   // interactive control (chevrons, dot navs, the card itself) or in an
   // editable target — those handle Enter themselves. Suppressed entirely
