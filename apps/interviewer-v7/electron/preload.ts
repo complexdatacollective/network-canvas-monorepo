@@ -27,6 +27,8 @@ const dbBridge = {
       ipcRenderer.invoke('db:sessions:markExported', ids),
     deleteMany: (ids: string[]) =>
       ipcRenderer.invoke('db:sessions:deleteMany', ids),
+    countSynthetic: () => ipcRenderer.invoke('db:sessions:countSynthetic'),
+    deleteSynthetic: () => ipcRenderer.invoke('db:sessions:deleteSynthetic'),
   },
   settings: {
     get: () => ipcRenderer.invoke('db:settings:get'),
@@ -72,6 +74,10 @@ const authBridge = {
   revoke: () => ipcRenderer.invoke('auth:revoke'),
 };
 
+const systemBridge = {
+  storageInfo: () => ipcRenderer.invoke('system:storageInfo'),
+};
+
 const electronAPI = {
   openFile: () => ipcRenderer.invoke('dialog:openProtocol'),
   saveFile: (suggestedName: string, data: Uint8Array) =>
@@ -80,6 +86,7 @@ const electronAPI = {
   isPackaged: process.argv.includes('--isPackaged'),
   db: dbBridge,
   auth: authBridge,
+  system: systemBridge,
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

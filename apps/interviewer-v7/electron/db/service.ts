@@ -31,6 +31,7 @@ type SessionRow = {
   currentStep: number;
   network_json: string;
   stageMetadata_json: string | null;
+  isSynthetic: number;
 };
 
 type AssetRow = {
@@ -104,6 +105,25 @@ export function getDbPath(): string {
   return join(app.getPath('userData'), DB_FILENAME);
 }
 
+// Idempotent column-level migrations applied immediately after SCHEMA_SQL.
+// CREATE TABLE IF NOT EXISTS won't add columns to an already-existing table,
+// so any new column has to be ALTERed in here as well. Each guard inspects
+// PRAGMA table_info before issuing the ADD COLUMN so re-running is a no-op.
+function applyColumnMigrations(handle: DatabaseType): void {
+  type TableInfoRow = { name: string };
+  const sessionCols = handle
+    .prepare<[], TableInfoRow>('PRAGMA table_info(sessions)')
+    .all();
+  const hasIsSynthetic = sessionCols.some((c) => c.name === 'isSynthetic');
+  if (!hasIsSynthetic) {
+    handle
+      .prepare(
+        'ALTER TABLE sessions ADD COLUMN isSynthetic INTEGER NOT NULL DEFAULT 0',
+      )
+      .run();
+  }
+}
+
 export function openDatabase(rawKeyHex: string): void {
   if (dbInstance) return;
   const path = getDbPath();
@@ -115,6 +135,7 @@ export function openDatabase(rawKeyHex: string): void {
   handle.pragma('foreign_keys = ON');
   try {
     handle.exec(SCHEMA_SQL);
+    applyColumnMigrations(handle);
   } catch (cause) {
     handle.close();
     throw cause;
@@ -133,6 +154,7 @@ export function openDatabasePlain(): void {
   handle.pragma('foreign_keys = ON');
   try {
     handle.exec(SCHEMA_SQL);
+    applyColumnMigrations(handle);
   } catch (cause) {
     handle.close();
     throw cause;
@@ -181,6 +203,7 @@ function rowToSession(row: SessionRow) {
     stageMetadata: row.stageMetadata_json
       ? JSON.parse(row.stageMetadata_json)
       : undefined,
+    isSynthetic: row.isSynthetic === 1,
   };
 }
 
@@ -393,14 +416,15 @@ export const sessions = {
     protocolName: string;
     caseId: string;
     initialNetwork: unknown;
+    isSynthetic?: boolean;
   }) {
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
     const network_json = JSON.stringify(args.initialNetwork);
     getDb()
       .prepare(
-        `INSERT INTO sessions (id, protocolHash, protocolName, caseId, startedAt, lastUpdatedAt, finishedAt, exportedAt, currentStep, network_json, stageMetadata_json)
-				 VALUES (@id, @protocolHash, @protocolName, @caseId, @startedAt, @lastUpdatedAt, NULL, NULL, 0, @network_json, NULL)`,
+        `INSERT INTO sessions (id, protocolHash, protocolName, caseId, startedAt, lastUpdatedAt, finishedAt, exportedAt, currentStep, network_json, stageMetadata_json, isSynthetic)
+				 VALUES (@id, @protocolHash, @protocolName, @caseId, @startedAt, @lastUpdatedAt, NULL, NULL, 0, @network_json, NULL, @isSynthetic)`,
       )
       .run({
         id,
@@ -410,6 +434,7 @@ export const sessions = {
         startedAt: now,
         lastUpdatedAt: now,
         network_json,
+        isSynthetic: args.isSynthetic ? 1 : 0,
       });
     const stored = sessions.get(id);
     if (!stored) throw new Error('Session create failed');
@@ -434,7 +459,8 @@ export const sessions = {
 				   exportedAt = @exportedAt,
 				   currentStep = @currentStep,
 				   network_json = @network_json,
-				   stageMetadata_json = @stageMetadata_json
+				   stageMetadata_json = @stageMetadata_json,
+				   isSynthetic = @isSynthetic
 				 WHERE id = @id`,
       )
       .run({
@@ -450,6 +476,7 @@ export const sessions = {
         stageMetadata_json: merged.stageMetadata
           ? JSON.stringify(merged.stageMetadata)
           : null,
+        isSynthetic: merged.isSynthetic ? 1 : 0,
       });
     return sessions.get(args.id);
   },
@@ -479,6 +506,20 @@ export const sessions = {
     getDb()
       .prepare(`DELETE FROM sessions WHERE id IN (${placeholders})`)
       .run(...ids);
+  },
+  countSynthetic(): number {
+    const row = getDb()
+      .prepare<[], { n: number }>(
+        'SELECT COUNT(*) AS n FROM sessions WHERE isSynthetic = 1',
+      )
+      .get();
+    return row?.n ?? 0;
+  },
+  deleteSynthetic(): number {
+    const info = getDb()
+      .prepare('DELETE FROM sessions WHERE isSynthetic = 1')
+      .run();
+    return info.changes;
   },
 };
 

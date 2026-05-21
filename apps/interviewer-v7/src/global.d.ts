@@ -72,6 +72,7 @@ declare global {
         protocolName: string;
         caseId: string;
         initialNetwork: NcNetwork;
+        isSynthetic?: boolean;
       }) => Promise<StoredSession>;
       update: (args: {
         id: string;
@@ -80,6 +81,8 @@ declare global {
       markFinished: (id: string) => Promise<void>;
       markExported: (ids: string[]) => Promise<void>;
       deleteMany: (ids: string[]) => Promise<void>;
+      countSynthetic: () => Promise<number>;
+      deleteSynthetic: () => Promise<number>;
     };
     settings: {
       get: () => Promise<StoredSettings>;
@@ -139,6 +142,14 @@ declare global {
     revoke: () => Promise<void>;
   };
 
+  type SystemBridge = {
+    storageInfo: () => Promise<{
+      dbBytes: number | null;
+      diskFreeBytes: number | null;
+      diskTotalBytes: number | null;
+    }>;
+  };
+
   type ElectronAPI = {
     openFile: () => Promise<{
       canceled: boolean;
@@ -153,6 +164,7 @@ declare global {
     isPackaged: boolean;
     db: DbBridge;
     auth: AuthBridge;
+    system: SystemBridge;
   };
 
   // `interface` is required (not `type`) so this declaration MERGES with

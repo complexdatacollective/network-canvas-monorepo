@@ -96,6 +96,7 @@ export async function createSession(args: {
   protocolName: string;
   caseId: string;
   initialNetwork: NcNetwork;
+  isSynthetic?: boolean;
 }): Promise<StoredSession> {
   return isElectron
     ? electronSessions.createSession(args)
@@ -121,6 +122,18 @@ export async function markSessionsExported(ids: string[]): Promise<void> {
   return isElectron
     ? electronSessions.markSessionsExported(ids)
     : dexieSessions.markSessionsExported(ids);
+}
+
+export async function countSyntheticSessions(): Promise<number> {
+  return isElectron
+    ? electronSessions.countSyntheticSessions()
+    : dexieSessions.countSyntheticSessions();
+}
+
+export async function deleteSyntheticSessions(): Promise<number> {
+  return isElectron
+    ? electronSessions.deleteSyntheticSessions()
+    : dexieSessions.deleteSyntheticSessions();
 }
 
 export async function getSettings(): Promise<StoredSettings> {

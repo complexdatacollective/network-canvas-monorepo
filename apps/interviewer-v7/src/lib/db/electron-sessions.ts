@@ -31,6 +31,7 @@ export async function createSession(args: {
   protocolName: string;
   caseId: string;
   initialNetwork: NcNetwork;
+  isSynthetic?: boolean;
 }): Promise<StoredSession> {
   return ipc().sessions.create(args);
 }
@@ -48,4 +49,12 @@ export async function markSessionFinished(id: string): Promise<void> {
 
 export async function markSessionsExported(ids: string[]): Promise<void> {
   return ipc().sessions.markExported(ids);
+}
+
+export async function countSyntheticSessions(): Promise<number> {
+  return ipc().sessions.countSynthetic();
+}
+
+export async function deleteSyntheticSessions(): Promise<number> {
+  return ipc().sessions.deleteSynthetic();
 }

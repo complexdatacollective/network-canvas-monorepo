@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import DialogPopup from '@codaco/fresco-ui/dialogs/DialogPopup';
 import Modal from '@codaco/fresco-ui/Modal';
+import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 
 type HomeModalProps = {
   open: boolean;
@@ -12,6 +13,11 @@ type HomeModalProps = {
   action?: ReactNode;
   maxWidth?: number;
   children: ReactNode;
+  /**
+   * Defaults to true. Set false when the consumer renders its own
+   * ScrollArea — e.g. a fixed sidebar + scrolling content column.
+   */
+  scroll?: boolean;
 };
 
 // ModalPopup spreads consumer props before applying its own inline style for borderRadius,
@@ -35,6 +41,7 @@ export function HomeModal({
   action,
   maxWidth = 880,
   children,
+  scroll = true,
 }: HomeModalProps) {
   return (
     <Modal
@@ -44,7 +51,7 @@ export function HomeModal({
       }}
     >
       <DialogPopup className={maxWidthClass(maxWidth)}>
-        <div className="flex items-center justify-between gap-4 px-8 pt-6">
+        <div className="flex shrink-0 items-center justify-between gap-4 px-8 pt-6">
           <BaseDialog.Title
             render={<div className="flex min-w-0 items-center gap-3.5" />}
           >
@@ -55,7 +62,13 @@ export function HomeModal({
             <CloseButton onClick={onClose} />
           </div>
         </div>
-        <div className="px-8 pt-6 pb-8">{children}</div>
+        {scroll ? (
+          <ScrollArea viewportClassName="px-8 pt-6 pb-8">{children}</ScrollArea>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-8 pt-6 pb-8">
+            {children}
+          </div>
+        )}
       </DialogPopup>
     </Modal>
   );

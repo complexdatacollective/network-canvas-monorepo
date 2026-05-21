@@ -42,6 +42,8 @@ export type StoredSession = {
   currentStep: number;
   network: NcNetwork;
   stageMetadata?: Record<string, unknown>;
+  // Optional so pre-existing rows (undefined) read as not synthetic.
+  isSynthetic?: boolean;
 };
 
 export type IdleTimeoutMinutes = 1 | 5 | 15 | 30 | 60;

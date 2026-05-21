@@ -29,6 +29,7 @@ export async function createSession(args: {
   protocolName: string;
   caseId: string;
   initialNetwork: NcNetwork;
+  isSynthetic?: boolean;
 }): Promise<StoredSession> {
   const now = new Date().toISOString();
   const session: StoredSession = {
@@ -43,6 +44,7 @@ export async function createSession(args: {
     currentStep: 0,
     network: args.initialNetwork,
     stageMetadata: undefined,
+    isSynthetic: args.isSynthetic ?? false,
   };
   await db.sessions.put(session);
   return session;
@@ -86,4 +88,15 @@ export async function markSessionsExported(ids: string[]): Promise<void> {
       });
     }
   });
+}
+
+export async function countSyntheticSessions(): Promise<number> {
+  // IndexedDB does not accept booleans as keys, so we filter rather than
+  // .where('isSynthetic').equals(true). The isSynthetic index still helps
+  // Dexie restrict the scan to rows where the field is defined.
+  return db.sessions.filter((s) => s.isSynthetic === true).count();
+}
+
+export async function deleteSyntheticSessions(): Promise<number> {
+  return db.sessions.filter((s) => s.isSynthetic === true).delete();
 }

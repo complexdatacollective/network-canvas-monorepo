@@ -45,6 +45,12 @@ export function registerDbHandlers(): void {
   ipcMain.handle('db:sessions:deleteMany', async (_e, ids: string[]) =>
     sessions.deleteMany(ids),
   );
+  ipcMain.handle('db:sessions:countSynthetic', async () =>
+    sessions.countSynthetic(),
+  );
+  ipcMain.handle('db:sessions:deleteSynthetic', async () =>
+    sessions.deleteSynthetic(),
+  );
 
   ipcMain.handle('db:settings:get', async () => settings.get());
   ipcMain.handle('db:settings:update', async (_e, patch) =>

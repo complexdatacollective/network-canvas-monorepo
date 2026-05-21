@@ -1,74 +1,63 @@
 import {
-  HardDrive,
+  FlaskConical,
   Info,
-  Lock,
   Shield,
-  Sun,
+  Trash2,
   Upload as UploadIcon,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 
+import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import SelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
+import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { HomeModal } from '~/components/HomeModal';
-import { ManageAuthenticator } from '~/components/ManageAuthenticator';
-import { type IdleTimeoutMinutes, useAuth } from '~/lib/auth/AuthContext';
-import { getSettings, updateSettings } from '~/lib/db/api';
-import type { StoredSettings } from '~/lib/db/types';
+import {
+  ManageAuthenticator,
+  ResetDeviceRow,
+} from '~/components/ManageAuthenticator';
+import SecurityBehaviorControls, {
+  type Behavior,
+} from '~/components/SecurityBehaviorControls';
+import { SettingsRow } from '~/components/SettingsRow';
+import { useAuth } from '~/lib/auth/AuthContext';
+import {
+  countSyntheticSessions,
+  deleteSyntheticSessions,
+  getSettings,
+  listProtocols,
+  updateSettings,
+} from '~/lib/db/api';
+import type { ProtocolWithCounts, StoredSettings } from '~/lib/db/types';
 import { APP_VERSION } from '~/lib/platform/appVersion';
 import { getInstallationId } from '~/lib/platform/installationId';
-import { hostAppName } from '~/lib/platform/platform';
+import { isElectron } from '~/lib/platform/platform';
 import {
   estimateStorage,
   formatBytes,
   type StorageEstimate,
 } from '~/lib/platform/storage';
+import { generateSyntheticSessions } from '~/lib/synthetic/generate';
 
 type SettingsDialogProps = {
   open: boolean;
   onClose: () => void;
 };
 
-type Section = 'device' | 'display' | 'data' | 'security' | 'about';
-
-const IDLE_TIMEOUT_OPTIONS: IdleTimeoutMinutes[] = [1, 5, 15, 30, 60];
+type Section = 'about' | 'data' | 'security' | 'synthetic';
 
 const NAV_BUTTON_BASE =
   'flex w-full items-center gap-3 px-4 py-3 border-0 rounded-[var(--radius-pill)] font-heading font-extrabold text-sm text-left cursor-pointer';
 
-const INPUT_PILL_CLASS =
-  'rounded-[var(--radius-pill)] border-0 bg-surface-2 px-4 py-2.5 font-heading text-sm font-bold text-text';
-
-function Row({
-  title,
-  desc,
-  control,
-}: {
-  title: string;
-  desc?: string;
-  control: ReactNode;
-}) {
-  return (
-    <div className="border-outline/60 flex items-center justify-between gap-6 border-b px-1 py-4">
-      <div className="min-w-0">
-        <Heading level="label" margin="none">
-          {title}
-        </Heading>
-        {desc ? (
-          <div className="text-text/60 mt-0.5 text-sm">{desc}</div>
-        ) : null}
-      </div>
-      <div className="shrink-0">{control}</div>
-    </div>
-  );
-}
-
-function Progress({ value }: { value: number }) {
+function StorageProgress({ value }: { value: number }) {
   const clamped = Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
   return (
     <ProgressBar
@@ -80,25 +69,41 @@ function Progress({ value }: { value: number }) {
   );
 }
 
-const NAV_ITEMS: { id: Section; label: string; icon: typeof HardDrive }[] = [
-  { id: 'device', label: 'Device', icon: HardDrive },
-  { id: 'display', label: 'Display', icon: Sun },
+const NAV_ITEMS: { id: Section; label: string; icon: typeof Info }[] = [
+  { id: 'about', label: 'About', icon: Info },
   { id: 'data', label: 'Data export', icon: UploadIcon },
   { id: 'security', label: 'Security', icon: Shield },
-  { id: 'about', label: 'About', icon: Info },
+  { id: 'synthetic', label: 'Synthetic data', icon: FlaskConical },
 ];
 
 export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const auth = useAuth();
   const toast = useToast();
-  const [section, setSection] = useState<Section>('device');
+  const { confirm } = useDialog();
+  const [section, setSection] = useState<Section>('about');
   const [settings, setSettings] = useState<StoredSettings | null>(null);
   const [storage, setStorage] = useState<StorageEstimate>({
     usage: null,
     quota: null,
+    free: null,
     percent: null,
   });
   const [installationId, setInstallationId] = useState('');
+
+  // Synthetic data section state.
+  const [protocols, setProtocols] = useState<ProtocolWithCounts[]>([]);
+  const [selectedProtocolHash, setSelectedProtocolHash] = useState('');
+  const [syntheticCount, setSyntheticCount] = useState(0);
+  const [count, setCount] = useState(10);
+  const [simulateDropOut, setSimulateDropOut] = useState(true);
+  const [respectSkipLogicAndFiltering, setRespectSkipLogicAndFiltering] =
+    useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [progress, setProgress] = useState<{ current: number; total: number }>({
+    current: 0,
+    total: 0,
+  });
 
   const reload = useCallback(async () => {
     const [s, e] = await Promise.all([getSettings(), estimateStorage()]);
@@ -107,10 +112,25 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     setInstallationId(getInstallationId());
   }, []);
 
+  const reloadSynthetic = useCallback(async () => {
+    const [ps, n] = await Promise.all([
+      listProtocols(),
+      countSyntheticSessions(),
+    ]);
+    setProtocols(ps);
+    setSyntheticCount(n);
+    // Default to the first protocol when none is selected yet.
+    setSelectedProtocolHash((current) => {
+      if (current && ps.some((p) => p.hash === current)) return current;
+      return ps[0]?.hash ?? '';
+    });
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     void reload();
-  }, [open, reload]);
+    void reloadSynthetic();
+  }, [open, reload, reloadSynthetic]);
 
   const persist = useCallback(
     async (patch: Partial<Omit<StoredSettings, 'id'>>) => {
@@ -120,48 +140,120 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     [],
   );
 
-  const handleIdleTimeoutChange = useCallback(
-    async (value: string) => {
-      const parsed = Number.parseInt(value, 10);
-      if (
-        parsed === 1 ||
-        parsed === 5 ||
-        parsed === 15 ||
-        parsed === 30 ||
-        parsed === 60
-      ) {
-        await auth.setIdleTimeoutMinutes(parsed);
+  const handleBehaviorChange = useCallback(
+    (next: Behavior) => {
+      if (!settings) return;
+      if (next.idleTimeoutMinutes !== auth.idleTimeoutMinutes) {
+        void auth.setIdleTimeoutMinutes(next.idleTimeoutMinutes);
+      }
+      const patch: Partial<Omit<StoredSettings, 'id'>> = {};
+      if (next.requireUnlockOnResume !== settings.requireUnlockOnResume) {
+        patch.requireUnlockOnResume = next.requireUnlockOnResume;
+      }
+      if (next.requireUnlockOnExport !== settings.requireUnlockOnExport) {
+        patch.requireUnlockOnExport = next.requireUnlockOnExport;
+      }
+      if (Object.keys(patch).length > 0) {
+        void persist(patch);
       }
     },
-    [auth],
+    [auth, persist, settings],
   );
 
-  const handleLockNow = useCallback(async () => {
-    await auth.lock();
-    onClose();
-    toast.add({ title: 'App locked', variant: 'default' });
-  }, [auth, onClose, toast]);
+  const handleGenerate = useCallback(async () => {
+    if (!selectedProtocolHash) return;
+    setIsGenerating(true);
+    setProgress({ current: 0, total: count });
+    try {
+      const created = await generateSyntheticSessions({
+        protocolHash: selectedProtocolHash,
+        count,
+        simulateDropOut,
+        respectSkipLogicAndFiltering,
+        onProgress: (current, total) => setProgress({ current, total }),
+      });
+      toast.add({
+        title: `Generated ${created} synthetic session${created === 1 ? '' : 's'}`,
+        variant: 'success',
+      });
+      await reloadSynthetic();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast.add({
+        title: 'Generation failed',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [
+    selectedProtocolHash,
+    count,
+    simulateDropOut,
+    respectSkipLogicAndFiltering,
+    toast,
+    reloadSynthetic,
+  ]);
+
+  const handleDeleteSynthetic = useCallback(async () => {
+    if (syntheticCount === 0) return;
+    await confirm({
+      title: `Delete ${syntheticCount} synthetic session${syntheticCount === 1 ? '' : 's'}?`,
+      description: 'This cannot be undone.',
+      confirmLabel: 'Delete',
+      intent: 'destructive',
+      onConfirm: async () => {
+        setIsDeleting(true);
+        try {
+          const deleted = await deleteSyntheticSessions();
+          toast.add({
+            title: `Deleted ${deleted} synthetic session${deleted === 1 ? '' : 's'}`,
+            variant: 'success',
+          });
+          await reloadSynthetic();
+        } finally {
+          setIsDeleting(false);
+        }
+      },
+    });
+  }, [confirm, reloadSynthetic, syntheticCount, toast]);
 
   const storagePercent = storage.percent !== null ? storage.percent / 100 : 0;
-  const storageLabel =
-    storage.usage !== null && storage.quota !== null
-      ? `${formatBytes(storage.usage)} of ${formatBytes(storage.quota)}${
-          storage.percent !== null ? ` (${storage.percent.toFixed(1)}%)` : ''
-        }`
-      : 'Unknown';
+  const storageHasValues = storage.usage !== null && storage.quota !== null;
+  const storageLabel = storageHasValues
+    ? `${formatBytes(storage.usage)} of ${formatBytes(storage.quota)}${
+        storage.percent !== null ? ` (${storage.percent.toFixed(1)}%)` : ''
+      }${isElectron && storage.free !== null ? ` · ${formatBytes(storage.free)} free` : ''}`
+    : 'Unknown';
+
+  const protocolOptions = protocols.map((p) => ({
+    value: p.hash,
+    label: p.name,
+  }));
+  const noProtocols = protocols.length === 0;
+  const percentProgress =
+    progress.total > 0 ? (progress.current / progress.total) * 100 : 0;
+
+  const behavior: Behavior = {
+    idleTimeoutMinutes: auth.idleTimeoutMinutes,
+    requireUnlockOnResume: settings?.requireUnlockOnResume ?? true,
+    requireUnlockOnExport: settings?.requireUnlockOnExport ?? false,
+  };
 
   return (
     <HomeModal
       open={open}
       onClose={onClose}
       maxWidth={1000}
+      scroll={false}
       title={
         <Heading level="h3" margin="none">
           Settings
         </Heading>
       }
     >
-      <div className="grid grid-cols-[210px_1fr] gap-7">
+      <div className="grid min-h-0 flex-1 grid-cols-[210px_1fr] gap-7">
         <nav aria-label="Settings sections" className="flex flex-col gap-1">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
@@ -181,164 +273,10 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           })}
         </nav>
 
-        <div>
-          {section === 'device' ? (
-            <>
-              <Row
-                title="Storage"
-                desc={storageLabel}
-                control={
-                  <div className="w-[220px]">
-                    <Progress value={storagePercent} />
-                  </div>
-                }
-              />
-              <Row
-                title="Platform"
-                desc="Host application this device is running"
-                control={
-                  <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
-                    {hostAppName}
-                  </span>
-                }
-              />
-              <Row
-                title="Installation ID"
-                desc="Unique per-device identifier"
-                control={
-                  <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
-                    {installationId}
-                  </span>
-                }
-              />
-            </>
-          ) : null}
-
-          {section === 'display' ? (
-            <Row
-              title="Display preferences"
-              desc="Brightness, theme, and text size will follow the operating system."
-              control={
-                <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
-                  —
-                </span>
-              }
-            />
-          ) : null}
-
-          {section === 'data' && settings ? (
-            <>
-              <Row
-                title="Export GraphML"
-                desc="Include GraphML files in interview exports."
-                control={
-                  <ToggleField
-                    value={settings.exportGraphML}
-                    onChange={(next) => void persist({ exportGraphML: next })}
-                  />
-                }
-              />
-              <Row
-                title="Export CSV"
-                desc="Include CSV files (attributes, edges, ego) in interview exports."
-                control={
-                  <ToggleField
-                    value={settings.exportCSV}
-                    onChange={(next) => void persist({ exportCSV: next })}
-                  />
-                }
-              />
-              <Row
-                title="Export node positions as screen-coordinate pixels"
-                desc="Sociogram node positions are exported in pixel coordinates relative to the layout below."
-                control={
-                  <ToggleField
-                    value={settings.useScreenLayoutCoordinates}
-                    onChange={(next) =>
-                      void persist({ useScreenLayoutCoordinates: next })
-                    }
-                  />
-                }
-              />
-              <Row
-                title="Screen layout width"
-                desc="Pixels"
-                control={
-                  <InputField
-                    type="number"
-                    min={1}
-                    value={settings.screenLayoutWidth}
-                    onChange={(event) => {
-                      const parsed = Number.parseInt(event ?? '', 10);
-                      if (Number.isFinite(parsed) && parsed > 0) {
-                        void persist({ screenLayoutWidth: parsed });
-                      }
-                    }}
-                    aria-label="Screen layout width"
-                  />
-                }
-              />
-              <Row
-                title="Screen layout height"
-                desc="Pixels"
-                control={
-                  <InputField
-                    type="number"
-                    min={1}
-                    value={settings.screenLayoutHeight}
-                    onChange={(event) => {
-                      const parsed = Number.parseInt(event ?? '', 10);
-                      if (Number.isFinite(parsed) && parsed > 0) {
-                        void persist({ screenLayoutHeight: parsed });
-                      }
-                    }}
-                    aria-label="Screen layout height"
-                  />
-                }
-              />
-            </>
-          ) : null}
-
-          {section === 'security' ? (
-            <>
-              <Row
-                title="Idle timeout"
-                desc="How long the app may sit idle before automatically locking."
-                control={
-                  <select
-                    value={String(auth.idleTimeoutMinutes)}
-                    onChange={(event) =>
-                      void handleIdleTimeoutChange(event.target.value)
-                    }
-                    aria-label="Idle timeout"
-                    className={`${INPUT_PILL_CLASS} min-w-[180px] font-bold`}
-                  >
-                    {IDLE_TIMEOUT_OPTIONS.map((minutes) => (
-                      <option key={minutes} value={String(minutes)}>
-                        {minutes} minute{minutes === 1 ? '' : 's'}
-                      </option>
-                    ))}
-                  </select>
-                }
-              />
-              <div className="border-outline/60 border-b px-1 py-5">
-                <ManageAuthenticator />
-              </div>
-              <div className="flex justify-end pt-6">
-                <Button
-                  variant="outline"
-                  icon={<Lock size={16} aria-hidden />}
-                  onClick={() => void handleLockNow()}
-                >
-                  Lock now
-                </Button>
-              </div>
-            </>
-          ) : null}
-
+        <ScrollArea viewportClassName="pr-4">
           {section === 'about' ? (
             <>
-              <Row
+              <SettingsRow
                 title="App version"
                 desc="Network Canvas Interviewer"
                 control={
@@ -347,16 +285,22 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                   </span>
                 }
               />
-              <Row
-                title="Platform"
-                desc="Host application this device is running"
+              <SettingsRow
+                title="Storage"
+                desc={storageLabel}
                 control={
-                  <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
-                    {hostAppName}
-                  </span>
+                  storageHasValues ? (
+                    <div className="w-[220px]">
+                      <StorageProgress value={storagePercent} />
+                    </div>
+                  ) : (
+                    <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
+                      —
+                    </span>
+                  )
                 }
               />
-              <Row
+              <SettingsRow
                 title="Installation ID"
                 desc="Unique per-device identifier"
                 control={
@@ -367,7 +311,203 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
               />
             </>
           ) : null}
-        </div>
+
+          {section === 'data' && settings ? (
+            <>
+              <UnconnectedField
+                name="exportGraphML"
+                label="Export GraphML"
+                hint="Include GraphML files in interview exports."
+                inline
+                component={ToggleField}
+                value={settings.exportGraphML}
+                onChange={(next: boolean | undefined) =>
+                  void persist({ exportGraphML: next === true })
+                }
+              />
+              <UnconnectedField
+                name="exportCSV"
+                label="Export CSV"
+                hint="Include CSV files (attributes, edges, ego) in interview exports."
+                inline
+                component={ToggleField}
+                value={settings.exportCSV}
+                onChange={(next: boolean | undefined) =>
+                  void persist({ exportCSV: next === true })
+                }
+              />
+              <UnconnectedField
+                name="useScreenLayoutCoordinates"
+                label="Export node positions as screen-coordinate pixels"
+                hint="Sociogram node positions are exported in pixel coordinates relative to the layout below."
+                inline
+                component={ToggleField}
+                value={settings.useScreenLayoutCoordinates}
+                onChange={(next: boolean | undefined) =>
+                  void persist({ useScreenLayoutCoordinates: next === true })
+                }
+              />
+              <UnconnectedField
+                inline
+                name="screenLayoutWidth"
+                label="Screen layout width"
+                hint="Pixels"
+                component={InputField}
+                type="number"
+                min={1}
+                value={String(settings.screenLayoutWidth)}
+                onChange={(next: string | undefined) => {
+                  const parsed = Number.parseInt(next ?? '', 10);
+                  if (Number.isFinite(parsed) && parsed > 0) {
+                    void persist({ screenLayoutWidth: parsed });
+                  }
+                }}
+              />
+              <UnconnectedField
+                inline
+                name="screenLayoutHeight"
+                label="Screen layout height"
+                hint="Pixels"
+                component={InputField}
+                type="number"
+                min={1}
+                value={String(settings.screenLayoutHeight)}
+                onChange={(next: string | undefined) => {
+                  const parsed = Number.parseInt(next ?? '', 10);
+                  if (Number.isFinite(parsed) && parsed > 0) {
+                    void persist({ screenLayoutHeight: parsed });
+                  }
+                }}
+              />
+            </>
+          ) : null}
+
+          {section === 'security' && settings ? (
+            <>
+              <ManageAuthenticator />
+              {auth.mode !== 'none' ? (
+                <>
+                  <Alert variant="info">
+                    Use the lock button in the top bar to lock immediately.
+                  </Alert>
+                  <SecurityBehaviorControls
+                    value={behavior}
+                    onChange={handleBehaviorChange}
+                  />
+                </>
+              ) : null}
+              <ResetDeviceRow />
+            </>
+          ) : null}
+
+          {section === 'synthetic' ? (
+            <>
+              <Paragraph intent="smallText" emphasis="muted">
+                Generate synthetic interview sessions to validate the export
+                pipeline. Synthetic sessions appear in the regular Sessions list
+                and export identically to real sessions.
+              </Paragraph>
+
+              <UnconnectedField
+                name="syntheticProtocol"
+                label="Protocol"
+                hint={
+                  noProtocols
+                    ? 'Import a protocol first.'
+                    : 'The protocol used to shape generated sessions.'
+                }
+                component={SelectField}
+                options={protocolOptions}
+                value={selectedProtocolHash}
+                disabled={isGenerating || noProtocols}
+                onChange={(v: string | number | undefined) =>
+                  setSelectedProtocolHash(typeof v === 'string' ? v : '')
+                }
+              />
+              <UnconnectedField
+                name="syntheticCount"
+                label="Number of sessions"
+                component={InputField}
+                type="number"
+                min={1}
+                max={1000}
+                value={String(count)}
+                disabled={isGenerating}
+                onChange={(next: string | undefined) => {
+                  const parsed = Number.parseInt(next ?? '', 10);
+                  if (Number.isFinite(parsed) && parsed > 0) {
+                    setCount(Math.min(1000, Math.max(1, parsed)));
+                  }
+                }}
+              />
+              <UnconnectedField
+                name="simulateDropOut"
+                label="Simulate participant drop-out"
+                hint="Some sessions will be left incomplete to mirror real-world data."
+                inline
+                component={ToggleField}
+                value={simulateDropOut}
+                disabled={isGenerating}
+                onChange={(v: boolean | undefined) =>
+                  setSimulateDropOut(v === true)
+                }
+              />
+              <UnconnectedField
+                name="respectSkipLogicAndFiltering"
+                label="Respect skip logic and filtering"
+                hint="Apply protocol skip logic and stage filters during generation."
+                inline
+                component={ToggleField}
+                value={respectSkipLogicAndFiltering}
+                disabled={isGenerating}
+                onChange={(v: boolean | undefined) =>
+                  setRespectSkipLogicAndFiltering(v === true)
+                }
+              />
+
+              <div className="my-6">
+                <Button
+                  onClick={() => void handleGenerate()}
+                  disabled={
+                    !selectedProtocolHash || isGenerating || noProtocols
+                  }
+                  icon={<FlaskConical className="size-4" aria-hidden />}
+                >
+                  {isGenerating ? 'Generating…' : 'Generate'}
+                </Button>
+              </div>
+
+              {isGenerating ? (
+                <div className="my-6">
+                  <ProgressBar
+                    orientation="horizontal"
+                    percentProgress={percentProgress}
+                    label="Generation progress"
+                    className="text-sea-green h-2"
+                  />
+                  <div className="text-text/60 mt-2 text-sm">
+                    {progress.current} / {progress.total} interviews generated
+                  </div>
+                </div>
+              ) : null}
+
+              <SettingsRow
+                title="Delete synthetic data"
+                desc={`There ${syntheticCount === 1 ? 'is' : 'are'} currently ${syntheticCount} synthetic session${syntheticCount === 1 ? '' : 's'} on this device.`}
+                control={
+                  <Button
+                    color="destructive"
+                    onClick={() => void handleDeleteSynthetic()}
+                    disabled={syntheticCount === 0 || isDeleting}
+                    icon={<Trash2 className="size-4" aria-hidden />}
+                  >
+                    Delete All
+                  </Button>
+                }
+              />
+            </>
+          ) : null}
+        </ScrollArea>
       </div>
     </HomeModal>
   );

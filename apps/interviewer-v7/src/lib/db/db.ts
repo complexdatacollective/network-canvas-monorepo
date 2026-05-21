@@ -23,6 +23,13 @@ class InterviewerV7DB extends Dexie {
       assets: 'id, protocolHash, assetId',
       settings: 'id',
     });
+    // v2 adds the isSynthetic index so synthetic-data count/bulk-delete can
+    // hit the index instead of scanning. Existing rows have no value for the
+    // field; Dexie treats them as undefined which sorts/filters as non-true.
+    this.version(2).stores({
+      sessions:
+        'id, protocolHash, caseId, startedAt, lastUpdatedAt, finishedAt, exportedAt, isSynthetic',
+    });
   }
 }
 

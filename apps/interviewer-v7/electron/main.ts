@@ -1,4 +1,5 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { statfsSync } from 'node:fs';
+import { readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 
 import {
@@ -12,7 +13,7 @@ import {
 } from 'electron';
 
 import { bootstrapNoLock } from './auth/vault';
-import { migrateLegacyDbFilename } from './db/service';
+import { getDbPath, migrateLegacyDbFilename } from './db/service';
 import { registerAuthHandlers } from './handlers/authHandlers';
 import { registerDbHandlers } from './handlers/dbHandlers';
 import { buildMenu } from './menu';
@@ -180,3 +181,27 @@ ipcMain.handle(
 );
 
 ipcMain.handle('system:platform', () => process.platform);
+
+ipcMain.handle('system:storageInfo', async () => {
+  // Three independent measurements: DB file size, disk free, disk total.
+  // Each can fail (file absent, statfs unsupported, permission denied) and
+  // surfaces as null in the result rather than tearing the whole IPC.
+  let dbBytes: number | null = null;
+  try {
+    const s = await stat(getDbPath());
+    dbBytes = s.size;
+  } catch {
+    dbBytes = null;
+  }
+  let diskFreeBytes: number | null = null;
+  let diskTotalBytes: number | null = null;
+  try {
+    const fs = statfsSync(app.getPath('userData'));
+    diskFreeBytes = fs.bavail * fs.bsize;
+    diskTotalBytes = fs.blocks * fs.bsize;
+  } catch {
+    diskFreeBytes = null;
+    diskTotalBytes = null;
+  }
+  return { dbBytes, diskFreeBytes, diskTotalBytes };
+});

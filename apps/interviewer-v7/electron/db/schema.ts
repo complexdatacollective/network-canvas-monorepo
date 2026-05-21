@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   exportedAt TEXT,
   currentStep INTEGER NOT NULL DEFAULT 0,
   network_json TEXT NOT NULL,
-  stageMetadata_json TEXT
+  stageMetadata_json TEXT,
+  isSynthetic INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_protocolHash ON sessions(protocolHash);
 CREATE INDEX IF NOT EXISTS idx_sessions_lastUpdatedAt ON sessions(lastUpdatedAt);
