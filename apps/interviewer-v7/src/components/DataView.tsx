@@ -581,7 +581,7 @@ export function DataView({ protocols, onReload }: DataViewProps) {
               size="sm"
               variant="text"
               color="primary"
-              icon={<Play size={14} strokeWidth={2.5} aria-hidden />}
+              icon={<Play aria-hidden />}
               onClick={() => {
                 void updateSettings({ lastActiveSessionId: id }).then(() =>
                   navigate(`/interview/${id}`),

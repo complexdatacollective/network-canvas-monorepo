@@ -198,6 +198,13 @@ export function DeckCard({
       // layoutId — motion auto-morphs between in-slide and overlay when
       // one unmounts and the other mounts.
       layoutId={deckCardLayoutId(protocol.hash)}
+      // Lock re-measurement to the protocol identity so Swiper's
+      // post-commit fan transforms and ResizeObserver-driven
+      // cardWidth/cardHeight re-renders don't read as layout changes
+      // and animate the cards into position on first paint. The
+      // morph still works because motion snapshots the rect at the
+      // moment of unmount.
+      layoutDependency={protocol.hash}
       tabIndex={0}
       onKeyDown={onCardKeyDown}
       style={{
@@ -220,6 +227,7 @@ export function DeckCard({
         <MotionHeading
           layout="position"
           layoutId={deckCardHeadingLayoutId(protocol.hash)}
+          layoutDependency={protocol.hash}
           level="h2"
           margin="none"
           className="relative text-lg leading-tight font-black tracking-tighter text-balance @min-[320px]:text-2xl @min-[380px]:text-3xl @min-3xs:text-xl @min-2xs:mt-2"
@@ -228,6 +236,7 @@ export function DeckCard({
         </MotionHeading>
         <motion.div
           layoutId={deckCardMetaLayoutId(protocol.hash)}
+          layoutDependency={protocol.hash}
           className="font-monospace relative hidden items-center justify-between gap-2 text-[12px] @min-3xs:flex @min-xs:text-xs @min-sm:text-sm"
         >
           <span>
@@ -245,24 +254,36 @@ export function DeckCard({
 
       {isActive && (
         <div className="mx-3 mb-3 flex items-center gap-2 @min-[320px]:mx-5 @min-[320px]:mb-5 @min-[380px]:mx-6 @min-[380px]:mb-6 @min-3xs:mx-4 @min-3xs:mb-4">
-          <Button
-            icon={
-              <Play
-                className="size-3 stroke-[3px]! @min-[320px]:size-5 @min-3xs:size-4"
-                aria-hidden
-              />
-            }
-            color="primary"
-            className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-[10px] font-black tracking-[0.04em] uppercase @min-[320px]:h-13 @min-[320px]:gap-2.5 @min-[320px]:px-5 @min-[320px]:text-sm @min-[320px]:tracking-[0.07em] @min-[380px]:h-14 @min-[380px]:gap-3 @min-[380px]:px-6 @min-[380px]:text-base @min-[380px]:tracking-[0.08em] @min-3xs:h-11 @min-3xs:gap-2 @min-3xs:rounded-2xl @min-3xs:px-4 @min-3xs:text-xs @min-3xs:tracking-[0.06em]"
-            onClick={() => {
-              onActivate();
-            }}
-          >
-            Start new interview
-          </Button>
+          {/* Inner @container so the Start button's text, icon, padding,
+              gap, and tracking scale with the Button's own width — not
+              the card's. The wrapper's height stays card-driven so the
+              Button's vertical scale tracks the card; horizontal content
+              adapts to whatever space the IconButton leaves. The text
+              span carries min-w-0 + truncate as a safety net for the
+              cases where uppercase+tracking text outgrows the available
+              width even at the smallest tier. */}
+          <div className="@container h-9 min-w-0 flex-1 @min-[320px]:h-13 @min-[380px]:h-14 @min-3xs:h-11">
+            <Button
+              icon={
+                <Play
+                  className="size-3 shrink-0 stroke-[3px]! @min-[240px]:size-4 @min-[300px]:size-5"
+                  aria-hidden
+                />
+              }
+              color="primary"
+              className="flex h-full w-full items-center justify-center gap-1.5 rounded-xl px-3 font-black tracking-[0.04em] uppercase @min-[240px]:gap-2 @min-[240px]:rounded-2xl @min-[240px]:px-4 @min-[240px]:tracking-[0.06em] @min-[300px]:gap-2.5 @min-[300px]:px-5 @min-[300px]:tracking-[0.07em] @min-[360px]:gap-3 @min-[360px]:px-6 @min-[360px]:tracking-[0.08em]"
+              onClick={() => {
+                onActivate();
+              }}
+            >
+              <span className="min-w-0 truncate text-[10px] @min-[240px]:text-xs @min-[300px]:text-sm @min-[360px]:text-base">
+                Start new interview
+              </span>
+            </Button>
+          </div>
           {onDelete && (
             <IconButton
-              color="destructive"
+              variant="text"
               icon={
                 <Trash2
                   className="size-3 @min-[320px]:size-5 @min-3xs:size-4"
@@ -274,7 +295,7 @@ export function DeckCard({
                 e.stopPropagation();
                 onDelete();
               }}
-              className="h-9 @min-[320px]:h-13 @min-[380px]:h-14 @min-3xs:h-11"
+              className="hover:bg-destructive! hover:text-destructive-contrast! h-9 shrink-0 @min-[320px]:h-13 @min-[380px]:h-14 @min-3xs:h-11"
             />
           )}
         </div>

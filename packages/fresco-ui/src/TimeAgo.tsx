@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 
+import { cx } from './utils/cva';
 import { withNoSSRWrapper } from './utils/NoSSRWrapper';
 
 const DEFAULT_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
@@ -19,6 +20,8 @@ type TimeAgoProps = React.TimeHTMLAttributes<HTMLTimeElement> & {
 const TimeAgo: React.FC<TimeAgoProps> = ({
   date: dateProp,
   dateOptions,
+  className,
+  onClick,
   ...props
 }) => {
   const date = useMemo(() => new Date(dateProp), [dateProp]);
@@ -29,6 +32,9 @@ const TimeAgo: React.FC<TimeAgoProps> = ({
   ).format(date);
 
   const [timeAgo, setTimeAgo] = useState<string>('');
+  // Click anywhere on the time element to flip between the relative
+  // ("2 days ago") rendering and the raw locale-formatted timestamp.
+  const [showRaw, setShowRaw] = useState(false);
 
   useEffect(() => {
     const calculateTimeAgo = () => {
@@ -69,8 +75,13 @@ const TimeAgo: React.FC<TimeAgoProps> = ({
       data-testid="time-ago"
       dateTime={localisedDate}
       title={localisedDate}
+      onClick={(event) => {
+        setShowRaw((prev) => !prev);
+        onClick?.(event);
+      }}
+      className={cx('cursor-pointer select-none', className)}
     >
-      {timeAgo}
+      {showRaw ? localisedDate : timeAgo}
     </time>
   );
 };

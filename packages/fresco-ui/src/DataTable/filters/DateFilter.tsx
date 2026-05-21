@@ -107,6 +107,7 @@ export default function DateFilter({
           size="sm"
           value={value?.from ?? ''}
           onChange={(val) => handleFromChange(val ?? '')}
+          className="min-w-0 flex-1"
         />
         <span className="text-text/60 text-xs">to</span>
         <InputField
@@ -115,6 +116,7 @@ export default function DateFilter({
           size="sm"
           value={value?.to ?? ''}
           onChange={(val) => handleToChange(val ?? '')}
+          className="min-w-0 flex-1"
         />
       </div>
     </div>

@@ -107,7 +107,7 @@ export function ResumePill({ sessions }: ResumePillProps) {
           <div className="font-heading text-text/60 mb-0.5 text-xs font-black tracking-widest uppercase">
             Resume last interview
           </div>
-          <div className="font-heading text-sm font-extrabold">
+          <div className="font-heading max-w-xs overflow-hidden text-sm font-extrabold text-ellipsis">
             {inProgress.protocolName} – {inProgress.caseId || 'Untitled'}
           </div>
         </div>

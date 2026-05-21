@@ -46,10 +46,18 @@ const containerVariants = {
 // complete before unmount; these variants don't animate the wrapper
 // itself, they only propagate hidden / visible / exit state names to
 // the deck section, chevron row, and StatusRow.
+// Entry uses staggerDirection: -1 so the cascade walks the JSX tree in
+// reverse — StatusRow first, deck section last — matching the visual
+// expectation that the deck is the focal element and arrives after its
+// surrounding chrome.
 const protocolsContainerVariants = {
   hidden: {},
   visible: {
-    transition: { when: 'beforeChildren', staggerChildren: 0.08 },
+    transition: {
+      when: 'beforeChildren',
+      staggerChildren: 0.08,
+      staggerDirection: -1,
+    },
   },
   exit: {
     transition: {
