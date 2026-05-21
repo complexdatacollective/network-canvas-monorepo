@@ -195,10 +195,21 @@ export function DeckCard({
   }
 
   if (entry.kind === 'sample') {
+    const onSampleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        onInstallSample?.();
+      }
+    };
+
     return (
-      <button
-        type="button"
+      // oxlint-disable-next-line prefer-tag-over-role
+      // The card has nested Install + Dismiss buttons, so the outer element cannot be a <button>.
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => onInstallSample?.()}
+        onKeyDown={onSampleKeyDown}
         style={{
           width: cardWidth,
           height: cardHeight,
@@ -259,7 +270,7 @@ export function DeckCard({
             ) : null}
           </div>
         ) : null}
-      </button>
+      </div>
     );
   }
 
