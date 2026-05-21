@@ -17,9 +17,3 @@ declare module 'react-recompose' {
   // biome-ignore lint/correctness/noUndeclaredDependencies: reexporting types from @types/recompose for compatibility
   export * from 'recompose';
 }
-
-// Type declaration for scrollparent module
-declare module 'scrollparent' {
-  function scrollparent(element: HTMLElement): HTMLElement | Document;
-  export default scrollparent;
-}

@@ -574,9 +574,6 @@ importers:
       sass:
         specifier: ^1.99.0
         version: 1.99.0
-      scrollparent:
-        specifier: ^2.1.0
-        version: 2.1.0
       slate:
         specifier: ^0.57.3
         version: 0.57.3

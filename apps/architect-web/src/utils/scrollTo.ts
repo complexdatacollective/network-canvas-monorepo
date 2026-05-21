@@ -1,24 +1,13 @@
-import scrollparent from 'scrollparent';
-
-const scrollTo = (target: HTMLElement, offset = -200) => {
+const scrollTo = (target: HTMLElement) => {
   if (!target) {
     return;
   }
 
-  const scroller = scrollparent(target);
-  const targetTop = target.getBoundingClientRect().top;
-
-  if (scroller instanceof Document) {
-    window.scrollTo({
-      top: targetTop + window.scrollY + offset,
-      behavior: 'smooth',
-    });
-    return;
-  }
-
-  const scrollerTop = scroller.getBoundingClientRect().top;
-  const top = targetTop - scrollerTop + scroller.scrollTop + offset;
-  scroller.scrollTo({ top, behavior: 'smooth' });
+  // Preserve the legacy 200px offset: land the target below the top edge rather
+  // than flush against it. `scroll-margin-top` applies the offset to the native
+  // `scrollIntoView` — alignment only, no layout impact.
+  target.style.scrollMarginTop = '200px';
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
 export default scrollTo;
