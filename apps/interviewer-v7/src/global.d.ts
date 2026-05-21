@@ -13,6 +13,10 @@ import type {
 declare module '*.css';
 
 declare global {
+  // Injected at build time by `vite.renderer.config.ts` (read from
+  // apps/interviewer-v7/package.json `version`). Renderer-only.
+  const __APP_VERSION__: string;
+
   type WireAsset = {
     id: string;
     protocolHash: string;

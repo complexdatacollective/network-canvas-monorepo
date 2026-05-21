@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -7,6 +8,14 @@ import type { UserConfig } from 'vite';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const frescoUiSrc = resolve(here, '../../packages/fresco-ui/src');
+
+// Inject the app version from package.json at build time. Read here once
+// (rather than imported as JSON) so the renderer bundle gets a single
+// inlined string and TypeScript doesn't need package.json on its include
+// path. Consumed via the ambient `__APP_VERSION__` declared in global.d.ts.
+const appVersion = JSON.parse(
+  readFileSync(resolve(here, 'package.json'), 'utf8'),
+).version as string;
 
 type RendererOptions = {
   command: 'build' | 'serve';
@@ -31,6 +40,9 @@ export function createRendererConfig({
   rollupInput,
 }: RendererOptions): UserConfig {
   return {
+    define: {
+      __APP_VERSION__: JSON.stringify(appVersion),
+    },
     resolve: {
       tsconfigPaths: true,
       // pnpm can hand prebundled deps (Swiper React) a different React copy
@@ -65,9 +77,7 @@ export function createRendererConfig({
     build: {
       outDir,
       emptyOutDir,
-      ...(rollupInput == null
-        ? {}
-        : { rollupOptions: { input: rollupInput } }),
+      ...(rollupInput == null ? {} : { rollupOptions: { input: rollupInput } }),
     },
   };
 }

@@ -17,8 +17,7 @@ import { InterviewRepository } from '@codaco/network-exporters/services/Intervie
 import { ProtocolRepository } from '@codaco/network-exporters/services/ProtocolRepository';
 
 import { getProtocolsByHashes, getSessionsByIds } from '../db/api';
-
-const APP_VERSION = '0.1.0';
+import { APP_VERSION } from '../platform/appVersion';
 
 export type ExportProgress = ExportEvent;
 

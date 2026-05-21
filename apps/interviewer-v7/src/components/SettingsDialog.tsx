@@ -10,6 +10,8 @@ import type { ReactNode } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -18,6 +20,7 @@ import { ManageAuthenticator } from '~/components/ManageAuthenticator';
 import { type IdleTimeoutMinutes, useAuth } from '~/lib/auth/AuthContext';
 import { getSettings, updateSettings } from '~/lib/db/api';
 import type { StoredSettings } from '~/lib/db/types';
+import { APP_VERSION } from '~/lib/platform/appVersion';
 import { getInstallationId } from '~/lib/platform/installationId';
 import { hostAppName } from '~/lib/platform/platform';
 import {
@@ -32,8 +35,6 @@ type SettingsDialogProps = {
 };
 
 type Section = 'device' | 'display' | 'data' | 'security' | 'about';
-
-const APP_VERSION = '7.0.0';
 
 const IDLE_TIMEOUT_OPTIONS: IdleTimeoutMinutes[] = [1, 5, 15, 30, 60];
 
@@ -64,36 +65,6 @@ function Row({
       </div>
       <div className="shrink-0">{control}</div>
     </div>
-  );
-}
-
-function Toggle({
-  on,
-  onChange,
-  label,
-}: {
-  on: boolean;
-  onChange: (next: boolean) => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      onClick={() => onChange(!on)}
-      className={`h-8 w-[52px] cursor-pointer rounded-full border-0 p-[3px] transition-colors duration-150 ${
-        on ? 'bg-sea-green' : 'bg-surface-3'
-      }`}
-    >
-      <span
-        aria-hidden
-        className={`block h-[26px] w-[26px] rounded-full bg-white transition-transform duration-200 ${
-          on ? 'translate-x-5' : 'translate-x-0'
-        }`}
-      />
-    </button>
   );
 }
 
@@ -261,9 +232,8 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                 title="Export GraphML"
                 desc="Include GraphML files in interview exports."
                 control={
-                  <Toggle
-                    label="Export GraphML"
-                    on={settings.exportGraphML}
+                  <ToggleField
+                    value={settings.exportGraphML}
                     onChange={(next) => void persist({ exportGraphML: next })}
                   />
                 }
@@ -272,9 +242,8 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                 title="Export CSV"
                 desc="Include CSV files (attributes, edges, ego) in interview exports."
                 control={
-                  <Toggle
-                    label="Export CSV"
-                    on={settings.exportCSV}
+                  <ToggleField
+                    value={settings.exportCSV}
                     onChange={(next) => void persist({ exportCSV: next })}
                   />
                 }
@@ -283,9 +252,8 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                 title="Export node positions as screen-coordinate pixels"
                 desc="Sociogram node positions are exported in pixel coordinates relative to the layout below."
                 control={
-                  <Toggle
-                    label="Use screen layout coordinates"
-                    on={settings.useScreenLayoutCoordinates}
+                  <ToggleField
+                    value={settings.useScreenLayoutCoordinates}
                     onChange={(next) =>
                       void persist({ useScreenLayoutCoordinates: next })
                     }
@@ -296,18 +264,17 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                 title="Screen layout width"
                 desc="Pixels"
                 control={
-                  <input
+                  <InputField
                     type="number"
                     min={1}
                     value={settings.screenLayoutWidth}
                     onChange={(event) => {
-                      const parsed = Number.parseInt(event.target.value, 10);
+                      const parsed = Number.parseInt(event ?? '', 10);
                       if (Number.isFinite(parsed) && parsed > 0) {
                         void persist({ screenLayoutWidth: parsed });
                       }
                     }}
                     aria-label="Screen layout width"
-                    className={`${INPUT_PILL_CLASS} w-[140px] font-bold`}
                   />
                 }
               />
@@ -315,18 +282,17 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                 title="Screen layout height"
                 desc="Pixels"
                 control={
-                  <input
+                  <InputField
                     type="number"
                     min={1}
                     value={settings.screenLayoutHeight}
                     onChange={(event) => {
-                      const parsed = Number.parseInt(event.target.value, 10);
+                      const parsed = Number.parseInt(event ?? '', 10);
                       if (Number.isFinite(parsed) && parsed > 0) {
                         void persist({ screenLayoutHeight: parsed });
                       }
                     }}
                     aria-label="Screen layout height"
-                    className={`${INPUT_PILL_CLASS} w-[140px] font-bold`}
                   />
                 }
               />

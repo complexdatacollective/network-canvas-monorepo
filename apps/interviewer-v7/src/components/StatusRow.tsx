@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import { Link } from 'wouter';
 
-const APP_VERSION = '7.0.0';
+import { APP_VERSION } from '~/lib/platform/appVersion';
 
 type StatusRowProps = {
   protocolCount: number;
