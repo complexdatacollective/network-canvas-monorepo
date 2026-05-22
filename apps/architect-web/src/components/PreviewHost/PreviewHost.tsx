@@ -10,6 +10,7 @@ import {
   type SessionPayload,
   Shell,
 } from '@codaco/interview';
+import Button from '~/lib/legacy-ui/components/Button';
 
 import { currentProtocolToPayload } from './currentProtocolToPayload';
 import { isPreviewMessage, type PreviewPayload } from './messages';
@@ -96,13 +97,9 @@ export function PreviewHost() {
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
         <h1 className="text-2xl font-semibold">This preview has ended</h1>
         <p>Return to Architect and click Preview again to start a new one.</p>
-        <button
-          type="button"
-          onClick={() => window.close()}
-          className="bg-accent rounded-md px-4 py-2 text-white"
-        >
+        <Button color="sea-green" onClick={() => window.close()}>
           Close tab
-        </button>
+        </Button>
       </div>
     );
   }
@@ -118,23 +115,18 @@ export function PreviewHost() {
           longer responding.
         </p>
         <div className="flex gap-3">
-          <button
-            type="button"
+          <Button
+            color="sea-green"
             onClick={() => {
               setTimedOut(false);
               setRetryNonce((n) => n + 1);
             }}
-            className="bg-accent rounded-md px-4 py-2 text-white"
           >
             Try again
-          </button>
-          <button
-            type="button"
-            onClick={() => window.close()}
-            className="bg-input-active rounded-md px-4 py-2"
-          >
+          </Button>
+          <Button color="platinum" onClick={() => window.close()}>
             Close tab
-          </button>
+          </Button>
         </div>
       </div>
     );
