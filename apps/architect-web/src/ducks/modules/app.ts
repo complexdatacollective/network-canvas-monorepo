@@ -38,4 +38,17 @@ export function getPreviewUseSyntheticData(
   return raw === undefined ? true : Boolean(raw);
 }
 
+const PREVIEW_IGNORE_SKIP_LOGIC_KEY = 'previewIgnoreSkipLogic';
+
+export function setPreviewIgnoreSkipLogic(value: boolean) {
+  return setProperty({ key: PREVIEW_IGNORE_SKIP_LOGIC_KEY, value });
+}
+
+export function getPreviewIgnoreSkipLogic(
+  state: Pick<RootState, 'app'>,
+): boolean {
+  const raw = get(state, ['app', PREVIEW_IGNORE_SKIP_LOGIC_KEY]);
+  return raw === undefined ? true : Boolean(raw);
+}
+
 export default appSlice.reducer;
