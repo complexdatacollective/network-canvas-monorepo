@@ -296,7 +296,7 @@ const StageEditor = (props: StageEditorProps) => {
               }
             />
             <span className="text-sm">
-              Always show stages in preview when skip logic would hide them
+              Always show this stage in preview when skip logic would hide it
             </span>
           </label>
         </div>
