@@ -41,6 +41,10 @@ export function useSetupWizard() {
         description: isElectron
           ? 'Your data will be stored without encryption on this device. Anyone with access to the device or its files will be able to read all collected data. You can enable security later from Settings, but this will require wiping all data.'
           : 'Your data is sandboxed by the operating system and is not directly accessible to other apps. Enabling app security adds protection if the device itself is unlocked and physically accessed. You can enable security later from Settings.',
+        primaryLabel: isElectron ? 'Use app without security' : 'Skip app lock',
+        cancelLabel: isElectron
+          ? 'Continue setting up security'
+          : 'Continue setting up app lock',
       },
       cancelLabel: 'Skip',
       steps: [
