@@ -95,6 +95,8 @@ export type WizardDialog = BaseDialog & {
   confirmCancel?: {
     title: string;
     description: string;
+    primaryLabel?: string;
+    cancelLabel?: string;
   };
   cancelLabel?: string;
 };
@@ -231,8 +233,15 @@ function WizardDialogRenderer({
         description: dialog.confirmCancel.description,
         intent: 'destructive',
         actions: {
-          primary: { label: 'Exit and lose progress', value: true },
-          cancel: { label: 'Continue editing', value: false },
+          primary: {
+            label:
+              dialog.confirmCancel.primaryLabel ?? 'Exit and lose progress',
+            value: true,
+          },
+          cancel: {
+            label: dialog.confirmCancel.cancelLabel ?? 'Continue editing',
+            value: false,
+          },
         },
       });
 
