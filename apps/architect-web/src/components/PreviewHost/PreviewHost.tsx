@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import CloseButton from '@codaco/fresco-ui/CloseButton';
 import {
   createInitialNetwork,
   generateNetwork,
@@ -40,6 +42,13 @@ export function PreviewHost() {
   const [currentStep, setCurrentStep] = useState(0);
   const [timedOut, setTimedOut] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
+  // Index of the stage whose skip logic was bypassed for preview, or null.
+  // The notice only shows while that stage is the one being viewed.
+  const [bypassedStageIndex, setBypassedStageIndex] = useState<number | null>(
+    null,
+  );
+  const [skipLogicNoticeDismissed, setSkipLogicNoticeDismissed] =
+    useState(false);
   const onRequestAsset = useAssetResolver();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: retryNonce is the deliberate retrigger key
@@ -62,6 +71,10 @@ export function PreviewHost() {
         session: buildSession(previewPayload),
       });
       setCurrentStep(previewPayload.startStage);
+      setBypassedStageIndex(
+        previewPayload.skipLogicBypassed ? previewPayload.startStage : null,
+      );
+      setSkipLogicNoticeDismissed(false);
       setTimedOut(false);
     };
 
@@ -137,6 +150,21 @@ export function PreviewHost() {
 
   return (
     <div className="h-screen">
+      {currentStep === bypassedStageIndex && !skipLogicNoticeDismissed && (
+        <div className="fixed right-8 bottom-6 z-50 max-w-sm">
+          <Alert variant="info" icon={false} className="my-0">
+            <AlertDescription className="pr-10 text-sm">
+              This stage has skip logic, so depending on a participant’s
+              responses it may not be shown during an interview.
+            </AlertDescription>
+            <CloseButton
+              size="sm"
+              onClick={() => setSkipLogicNoticeDismissed(true)}
+              className="absolute top-2 right-2"
+            />
+          </Alert>
+        </div>
+      )}
       <Shell
         payload={interviewPayload}
         onSync={noopSync}

@@ -10,6 +10,7 @@ type LaunchOptions = {
   protocol: CurrentProtocol;
   startStage: number;
   useSyntheticData: boolean;
+  skipLogicBypassed: boolean;
 };
 
 type LaunchPreviewResult = { kind: 'delivered' } | { kind: 'popup-blocked' };
@@ -18,6 +19,7 @@ export function launchPreview({
   protocol,
   startStage,
   useSyntheticData,
+  skipLogicBypassed,
 }: LaunchOptions): Promise<LaunchPreviewResult> {
   // Trailing slash is required: a bare '/preview' hits Vite's SPA html fallback
   // (and equivalent static-host fallbacks) and serves the main app's index.html
@@ -40,6 +42,7 @@ export function launchPreview({
     protocol,
     startStage,
     useSyntheticData,
+    skipLogicBypassed,
   };
 
   return new Promise<LaunchPreviewResult>((resolve, reject) => {

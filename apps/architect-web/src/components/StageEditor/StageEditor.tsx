@@ -161,10 +161,12 @@ const StageEditor = (props: StageEditorProps) => {
       return;
     }
 
-    // When ignoring skip logic, strip it from the previewed stage so the
-    // interview never bounces off the stage the user launched into. The
-    // previewed stage is always the one targeted by `startStage`.
-    const omitKeys = ignoreSkipLogic
+    // With "Always show this stage in preview" on (the default), strip skip
+    // logic from the previewed stage so the interview doesn't bounce off the
+    // stage the user launched into. We only consider it "bypassed" when the
+    // stage actually had skip logic to strip.
+    const skipLogicBypassed = ignoreSkipLogic && Boolean(formValues.skipLogic);
+    const omitKeys = skipLogicBypassed
       ? ['_modified', 'skipLogic']
       : ['_modified'];
     const normalizedStage = omit(formValues, omitKeys) as Stage;
@@ -197,6 +199,7 @@ const StageEditor = (props: StageEditorProps) => {
         protocol: previewProtocol,
         startStage,
         useSyntheticData,
+        skipLogicBypassed,
       });
       if (result.kind === 'popup-blocked') {
         dispatch(
