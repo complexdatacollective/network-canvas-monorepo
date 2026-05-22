@@ -57,6 +57,7 @@ type ProtocolDeckProps = {
   initialProtocolHash?: string;
   showSampleCard?: boolean;
   pendingImports?: PendingImport[];
+  recentImportMorphs?: Map<string, string>;
   onImport: () => void;
   onStartInterview: (protocolHash: string) => void;
   onDeleteProtocol: (hash: string) => void;
@@ -108,6 +109,7 @@ export function ProtocolDeck({
   initialProtocolHash,
   showSampleCard = false,
   pendingImports = [],
+  recentImportMorphs = new Map(),
   onImport,
   onStartInterview,
   onDeleteProtocol,
@@ -233,6 +235,15 @@ export function ProtocolDeck({
       protocols.length + (showSampleCard ? 1 : 0) + (current - 1);
     swiperRef.current?.slideTo(newPendingIndex);
   }, [pendingImports, protocols.length, showSampleCard]);
+
+  useEffect(() => {
+    if (recentImportMorphs.size === 0) return;
+    const hashes = new Set(recentImportMorphs.keys());
+    const idx = deck.findIndex(
+      (e) => e.kind === 'protocol' && hashes.has(e.protocol.hash),
+    );
+    if (idx >= 0) swiperRef.current?.slideTo(idx);
+  }, [recentImportMorphs, deck]);
 
   // Enter activates the current card. Skip when focus is on another
   // interactive control (chevrons, dot navs, the card itself) or in an
@@ -461,6 +472,11 @@ export function ProtocolDeck({
                       }
                       onDismissSample={
                         entry.kind === 'sample' ? onDismissSample : undefined
+                      }
+                      morphFromLayoutId={
+                        entry.kind === 'protocol'
+                          ? recentImportMorphs.get(entry.protocol.hash)
+                          : undefined
                       }
                     />
                   )}

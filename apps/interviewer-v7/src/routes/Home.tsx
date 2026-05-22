@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -106,6 +106,16 @@ export function HomeRoute() {
   const toast = useToast();
 
   const [pendingImports, setPendingImports] = useState<PendingImport[]>([]);
+  const [recentImportMorphs, setRecentImportMorphs] = useState<
+    Map<string, string>
+  >(new Map());
+  const recentImportMorphsRef = useRef(recentImportMorphs);
+
+  // Keep a ref in sync so rAF callbacks can read the latest map without
+  // capturing a stale closure.
+  useEffect(() => {
+    recentImportMorphsRef.current = recentImportMorphs;
+  }, [recentImportMorphs]);
 
   const reload = useCallback(async () => {
     const [p, s, st] = await Promise.all([
@@ -132,13 +142,18 @@ export function HomeRoute() {
         if (request.source === 'file') {
           return {
             id,
-            label: request.label,
+            label: request.label.replace(/\.netcanvas$/i, ''),
             source: 'file',
             phase: 'extracting',
           };
         }
         if (request.source === 'url') {
-          return { id, label: request.label, source: 'url', phase: 'fetching' };
+          return {
+            id,
+            label: request.label.replace(/\.netcanvas$/i, ''),
+            source: 'url',
+            phase: 'fetching',
+          };
         }
         return {
           id,
@@ -159,6 +174,11 @@ export function HomeRoute() {
         );
       };
 
+      const pendingLayoutId =
+        request.source === 'sample'
+          ? 'ghost-import-sample'
+          : `ghost-import-${id}`;
+
       const run = async () => {
         let result: ImportProtocolResult;
         if (request.source === 'file') {
@@ -166,15 +186,32 @@ export function HomeRoute() {
         } else if (request.source === 'url') {
           result = await importProtocolFromUrl(request.url, onProgress);
         } else {
-          result = await importProtocolFromUrl(SAMPLE_PROTOCOL.url, onProgress);
+          result = await importProtocolFromUrl(
+            SAMPLE_PROTOCOL.url,
+            onProgress,
+            SAMPLE_PROTOCOL.name,
+          );
         }
 
         if (result.success) {
           if (request.source === 'sample') {
             await updateSettings({ sampleProtocolDismissed: true });
           }
+          setRecentImportMorphs((prev) => {
+            const next = new Map(prev);
+            next.set(result.hash, pendingLayoutId);
+            return next;
+          });
           await reload();
           setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
+          requestAnimationFrame(() => {
+            setRecentImportMorphs((prev) => {
+              if (!prev.has(result.hash)) return prev;
+              const next = new Map(prev);
+              next.delete(result.hash);
+              return next;
+            });
+          });
           toast.add({
             title: 'Protocol imported',
             description: result.migrated
@@ -381,9 +418,13 @@ export function HomeRoute() {
               sessions={sessions}
               initialProtocolHash={initialProtocolHash}
               showSampleCard={
-                settings ? !settings.sampleProtocolDismissed : false
+                settings
+                  ? !settings.sampleProtocolDismissed &&
+                    !pendingImports.some((p) => p.source === 'sample')
+                  : false
               }
               pendingImports={pendingImports}
+              recentImportMorphs={recentImportMorphs}
               onImport={() => setOpenDialog('import')}
               onStartInterview={setPendingProtocolHash}
               onDeleteProtocol={handleDeleteProtocol}

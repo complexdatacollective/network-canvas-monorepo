@@ -86,6 +86,7 @@ type DeckCardProps = {
   onDelete?: () => void;
   onInstallSample?: () => void;
   onDismissSample?: () => void;
+  morphFromLayoutId?: string;
 };
 
 // Static lookup so Tailwind's scanner sees every possible class name at
@@ -163,6 +164,7 @@ export function DeckCard({
   onDelete,
   onInstallSample,
   onDismissSample,
+  morphFromLayoutId,
 }: DeckCardProps) {
   if (entry.kind === 'import') {
     return (
@@ -205,7 +207,10 @@ export function DeckCard({
     return (
       // oxlint-disable-next-line prefer-tag-over-role
       // The card has nested Install + Dismiss buttons, so the outer element cannot be a <button>.
-      <div
+      // layoutId pairs with the pending card that replaces it during install so motion morphs
+      // between them automatically.
+      <motion.div
+        layoutId="ghost-import-sample"
         role="button"
         tabIndex={0}
         onClick={() => onInstallSample?.()}
@@ -230,7 +235,24 @@ export function DeckCard({
           for exploring how stages, prompts, and codebooks fit together.
         </div>
         {isActive ? (
-          <div className="mx-3 mb-3 flex items-center gap-2 @min-[320px]:mx-5 @min-[320px]:mb-5 @min-[380px]:mx-6 @min-[380px]:mb-6 @min-3xs:mx-4 @min-3xs:mb-4">
+          <div className="mx-3 mb-3 flex flex-col gap-2 @min-[300px]:flex-row @min-[300px]:items-center @min-[320px]:mx-5 @min-[320px]:mb-5 @min-[380px]:mx-6 @min-[380px]:mb-6 @min-3xs:mx-4 @min-3xs:mb-4">
+            {onDismissSample ? (
+              <IconButton
+                variant="text"
+                icon={
+                  <Trash2
+                    className="size-3 @min-[320px]:size-5 @min-3xs:size-4"
+                    aria-hidden
+                  />
+                }
+                aria-label="Dismiss the sample protocol"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDismissSample();
+                }}
+                className="hover:bg-destructive! hover:text-destructive-contrast! h-9 shrink-0 @min-[300px]:order-last @min-[320px]:h-13 @min-[380px]:h-14 @min-3xs:h-11"
+              />
+            ) : null}
             <div className="@container h-9 min-w-0 flex-1 @min-[320px]:h-13 @min-[380px]:h-14 @min-3xs:h-11">
               <Button
                 color="primary"
@@ -251,26 +273,9 @@ export function DeckCard({
                 </span>
               </Button>
             </div>
-            {onDismissSample ? (
-              <IconButton
-                variant="text"
-                icon={
-                  <Trash2
-                    className="size-3 @min-[320px]:size-5 @min-3xs:size-4"
-                    aria-hidden
-                  />
-                }
-                aria-label="Dismiss the sample protocol"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDismissSample();
-                }}
-                className="hover:bg-destructive! hover:text-destructive-contrast! h-9 shrink-0 @min-[320px]:h-13 @min-[380px]:h-14 @min-3xs:h-11"
-              />
-            ) : null}
           </div>
         ) : null}
-      </div>
+      </motion.div>
     );
   }
 
@@ -288,7 +293,12 @@ export function DeckCard({
       typeof progress === 'number' && Number.isFinite(progress);
     const pct = determinate ? Math.min(1, Math.max(0, progress)) * 100 : 0;
     return (
-      <div
+      <motion.div
+        layoutId={
+          pending.source === 'sample'
+            ? 'ghost-import-sample'
+            : `ghost-import-${pending.id}`
+        }
         style={{
           width: cardWidth,
           height: cardHeight,
@@ -341,7 +351,7 @@ export function DeckCard({
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
@@ -360,10 +370,11 @@ export function DeckCard({
 
   return (
     <motion.div
-      // Paired with NewSessionCardOverlay's motion.div by the same
-      // layoutId — motion auto-morphs between in-slide and overlay when
-      // one unmounts and the other mounts.
-      layoutId={deckCardLayoutId(protocol.hash)}
+      // When morphFromLayoutId is set, adopt that id for this render so motion
+      // morphs the pending (or sample) card into this protocol card. The next
+      // render clears morphFromLayoutId and restores the standard layoutId,
+      // which pairs with NewSessionCardOverlay for the Start interview morph.
+      layoutId={morphFromLayoutId ?? deckCardLayoutId(protocol.hash)}
       // Lock re-measurement to the protocol identity so Swiper's
       // post-commit fan transforms and ResizeObserver-driven
       // cardWidth/cardHeight re-renders don't read as layout changes
@@ -419,7 +430,7 @@ export function DeckCard({
       />
 
       {isActive && (
-        <div className="mx-3 mb-3 flex items-center gap-2 @min-[320px]:mx-5 @min-[320px]:mb-5 @min-[380px]:mx-6 @min-[380px]:mb-6 @min-3xs:mx-4 @min-3xs:mb-4">
+        <div className="mx-3 mb-3 flex flex-col gap-2 @min-[300px]:flex-row @min-[300px]:items-center @min-[320px]:mx-5 @min-[320px]:mb-5 @min-[380px]:mx-6 @min-[380px]:mb-6 @min-3xs:mx-4 @min-3xs:mb-4">
           {/* Inner @container so the Start button's text, icon, padding,
               gap, and tracking scale with the Button's own width — not
               the card's. The wrapper's height stays card-driven so the
@@ -427,7 +438,9 @@ export function DeckCard({
               adapts to whatever space the IconButton leaves. The text
               span carries min-w-0 + truncate as a safety net for the
               cases where uppercase+tracking text outgrows the available
-              width even at the smallest tier. */}
+              width even at the smallest tier. At narrow widths the row
+              stacks vertically; the Trash button appears below the Start
+              button via the default column order. */}
           <div className="@container h-9 min-w-0 flex-1 @min-[320px]:h-13 @min-[380px]:h-14 @min-3xs:h-11">
             <Button
               icon={

@@ -82,6 +82,7 @@ async function importFromBuffer(
   buffer: Uint8Array,
   sourceName: string,
   onProgress?: OnImportProgress,
+  nameOverride?: string,
 ): Promise<ImportProtocolResult> {
   onProgress?.({ phase: 'extracting' });
 
@@ -114,7 +115,7 @@ async function importFromBuffer(
         extracted.protocol,
         APP_SCHEMA_VERSION,
         {
-          name: sourceName.replace(/\.netcanvas$/i, ''),
+          name: nameOverride ?? sourceName.replace(/\.netcanvas$/i, ''),
         },
       );
       didMigrate = true;
@@ -163,9 +164,10 @@ async function importFromBuffer(
 export async function importProtocolFromFile(
   file: File,
   onProgress?: OnImportProgress,
+  nameOverride?: string,
 ): Promise<ImportProtocolResult> {
   const buffer = new Uint8Array(await file.arrayBuffer());
-  return importFromBuffer(buffer, file.name, onProgress);
+  return importFromBuffer(buffer, file.name, onProgress, nameOverride);
 }
 
 export function deriveNameFromUrl(url: string): string {
@@ -219,6 +221,7 @@ async function readStreamedBuffer(
 export async function importProtocolFromUrl(
   url: string,
   onProgress?: OnImportProgress,
+  nameOverride?: string,
 ): Promise<ImportProtocolResult> {
   let buffer: Uint8Array;
   try {
@@ -247,5 +250,10 @@ export async function importProtocolFromUrl(
       message: cause instanceof Error ? cause.message : String(cause),
     };
   }
-  return importFromBuffer(buffer, deriveNameFromUrl(url), onProgress);
+  return importFromBuffer(
+    buffer,
+    deriveNameFromUrl(url),
+    onProgress,
+    nameOverride,
+  );
 }
