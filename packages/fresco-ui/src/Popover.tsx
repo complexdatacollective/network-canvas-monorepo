@@ -226,7 +226,7 @@ export function ArrowSvg(props: ComponentProps<'svg'>) {
         d="M0 8H2.13172C3.11989 8 4.07308 7.63423 4.80758 6.97318L9.66437 2.60207C10.0447 2.25979 10.622 2.2598 11.0023 2.60207L15.8591 6.97318C16.5936 7.63423 17.5468 8 18.5349 8H20"
         className="stroke-outline"
         fill="none"
-        strokeWidth={1}
+        strokeWidth={2}
         vectorEffect="non-scaling-stroke"
       />
     </svg>

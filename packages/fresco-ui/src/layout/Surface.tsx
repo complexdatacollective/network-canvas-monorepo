@@ -47,7 +47,7 @@ export const surfaceVariants = compose(
         1: 'text-surface-1-contrast bg-surface-1',
         2: 'text-surface-2-contrast bg-surface-2',
         3: 'text-surface-3-contrast bg-surface-3',
-        popover: 'text-surface-popover-contrast bg-surface-popover border',
+        popover: 'text-surface-popover-contrast bg-surface-popover border-2',
       },
       spacing: {
         none: '',
