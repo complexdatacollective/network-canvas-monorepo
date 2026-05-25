@@ -71,32 +71,6 @@
 
     --shadow-color: oklch(5% 0.01 260);
 
-    /*
-     * Shadow utilities are overridden in this theme because dark-on-dark
-     * shadows at the default 12–22% opacity essentially disappear against
-     * the navy-taupe background. Opacity is bumped ~3x so popover-level
-     * surfaces layered over the main surface read as elevated rather than
-     * flat. Blur radii are kept identical to theme.css so layouts stay
-     * consistent — only the apparent intensity changes.
-     */
-    --shadow-sm:
-      0 1px 3px 0 color-mix(in oklab, var(--shadow-color) 35%, transparent),
-      0 1px 2px -1px color-mix(in oklab, var(--shadow-color) 45%, transparent);
-    --shadow:
-      0 4px 6px -1px color-mix(in oklab, var(--shadow-color) 35%, transparent),
-      0 2px 4px -2px color-mix(in oklab, var(--shadow-color) 45%, transparent);
-    --shadow-md:
-      0 6px 10px -2px color-mix(in oklab, var(--shadow-color) 40%, transparent),
-      0 3px 6px -3px color-mix(in oklab, var(--shadow-color) 50%, transparent);
-    --shadow-lg:
-      0 10px 15px -3px color-mix(in oklab, var(--shadow-color) 45%, transparent),
-      0 4px 6px -4px color-mix(in oklab, var(--shadow-color) 55%, transparent);
-    --shadow-xl:
-      0 20px 25px -5px color-mix(in oklab, var(--shadow-color) 45%, transparent),
-      0 8px 10px -6px color-mix(in oklab, var(--shadow-color) 55%, transparent);
-    --shadow-2xl: 0 25px 50px -12px
-      color-mix(in oklab, var(--shadow-color) 70%, transparent);
-
     --background: oklch(var(--navy-taupe));
     --text: oklch(var(--white));
 
@@ -212,6 +186,53 @@
     --cat-10: oklch(var(--slate-blue));
 
     --radius-base: 2rem;
+  }
+}
+
+/*
+ * Stronger shadows for dark-on-dark in the interview theme.
+ *
+ * theme.css declares --shadow-* inside @theme inline { … }, which bakes
+ * the opacity literals into each generated .shadow-* utility at build
+ * time. Redeclaring --shadow-* in the @theme block above is a no-op for
+ * the utility classes — only var(--shadow-color) is preserved at use-site,
+ * not the surrounding 12–22% opacities. So we override --tw-shadow
+ * directly per utility, scoped to [data-theme-interview]. Tailwind v4
+ * composes box-shadow as `…rings…, var(--tw-shadow)` so swapping the var
+ * is enough; the ring/inset layers keep working.
+ *
+ * Opacities bumped ~3x (12–22% → 35–55%, 2xl 30% → 70%); blur radii
+ * unchanged so layouts stay consistent.
+ */
+@layer utilities {
+  [data-theme-interview] .shadow-sm {
+    --tw-shadow:
+      0 1px 3px 0 color-mix(in oklab, var(--shadow-color) 35%, transparent),
+      0 1px 2px -1px color-mix(in oklab, var(--shadow-color) 45%, transparent);
+  }
+  [data-theme-interview] .shadow {
+    --tw-shadow:
+      0 4px 6px -1px color-mix(in oklab, var(--shadow-color) 35%, transparent),
+      0 2px 4px -2px color-mix(in oklab, var(--shadow-color) 45%, transparent);
+  }
+  [data-theme-interview] .shadow-md {
+    --tw-shadow:
+      0 6px 10px -2px color-mix(in oklab, var(--shadow-color) 40%, transparent),
+      0 3px 6px -3px color-mix(in oklab, var(--shadow-color) 50%, transparent);
+  }
+  [data-theme-interview] .shadow-lg {
+    --tw-shadow:
+      0 10px 15px -3px color-mix(in oklab, var(--shadow-color) 45%, transparent),
+      0 4px 6px -4px color-mix(in oklab, var(--shadow-color) 55%, transparent);
+  }
+  [data-theme-interview] .shadow-xl {
+    --tw-shadow:
+      0 20px 25px -5px color-mix(in oklab, var(--shadow-color) 45%, transparent),
+      0 8px 10px -6px color-mix(in oklab, var(--shadow-color) 55%, transparent);
+  }
+  [data-theme-interview] .shadow-2xl {
+    --tw-shadow: 0 25px 50px -12px
+      color-mix(in oklab, var(--shadow-color) 70%, transparent);
   }
 }
 
