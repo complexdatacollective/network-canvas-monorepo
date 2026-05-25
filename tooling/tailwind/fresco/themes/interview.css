@@ -71,6 +71,32 @@
 
     --shadow-color: oklch(5% 0.01 260);
 
+    /*
+     * Shadow utilities are overridden in this theme because dark-on-dark
+     * shadows at the default 12–22% opacity essentially disappear against
+     * the navy-taupe background. Opacity is bumped ~3x so popover-level
+     * surfaces layered over the main surface read as elevated rather than
+     * flat. Blur radii are kept identical to theme.css so layouts stay
+     * consistent — only the apparent intensity changes.
+     */
+    --shadow-sm:
+      0 1px 3px 0 color-mix(in oklab, var(--shadow-color) 35%, transparent),
+      0 1px 2px -1px color-mix(in oklab, var(--shadow-color) 45%, transparent);
+    --shadow:
+      0 4px 6px -1px color-mix(in oklab, var(--shadow-color) 35%, transparent),
+      0 2px 4px -2px color-mix(in oklab, var(--shadow-color) 45%, transparent);
+    --shadow-md:
+      0 6px 10px -2px color-mix(in oklab, var(--shadow-color) 40%, transparent),
+      0 3px 6px -3px color-mix(in oklab, var(--shadow-color) 50%, transparent);
+    --shadow-lg:
+      0 10px 15px -3px color-mix(in oklab, var(--shadow-color) 45%, transparent),
+      0 4px 6px -4px color-mix(in oklab, var(--shadow-color) 55%, transparent);
+    --shadow-xl:
+      0 20px 25px -5px color-mix(in oklab, var(--shadow-color) 45%, transparent),
+      0 8px 10px -6px color-mix(in oklab, var(--shadow-color) 55%, transparent);
+    --shadow-2xl: 0 25px 50px -12px
+      color-mix(in oklab, var(--shadow-color) 70%, transparent);
+
     --background: oklch(var(--navy-taupe));
     --text: oklch(var(--white));
 
