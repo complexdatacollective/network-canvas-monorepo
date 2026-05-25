@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -107,16 +107,6 @@ export function HomeRoute() {
   const toast = useToast();
 
   const [pendingImports, setPendingImports] = useState<PendingImport[]>([]);
-  const [recentImportMorphs, setRecentImportMorphs] = useState<
-    Map<string, string>
-  >(new Map());
-  const recentImportMorphsRef = useRef(recentImportMorphs);
-
-  // Keep a ref in sync so rAF callbacks can read the latest map without
-  // capturing a stale closure.
-  useEffect(() => {
-    recentImportMorphsRef.current = recentImportMorphs;
-  }, [recentImportMorphs]);
 
   const reload = useCallback(async () => {
     const [p, s, st] = await Promise.all([
@@ -186,11 +176,6 @@ export function HomeRoute() {
         );
       };
 
-      const pendingLayoutId =
-        request.source === 'sample'
-          ? 'ghost-import-sample'
-          : `ghost-import-${id}`;
-
       const run = async () => {
         let result: ImportProtocolResult;
         if (request.source === 'file') {
@@ -213,21 +198,8 @@ export function HomeRoute() {
           if (request.source === 'sample') {
             await updateSettings({ sampleProtocolDismissed: true });
           }
-          setRecentImportMorphs((prev) => {
-            const next = new Map(prev);
-            next.set(result.hash, pendingLayoutId);
-            return next;
-          });
           await reload();
           setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
-          requestAnimationFrame(() => {
-            setRecentImportMorphs((prev) => {
-              if (!prev.has(result.hash)) return prev;
-              const next = new Map(prev);
-              next.delete(result.hash);
-              return next;
-            });
-          });
           toast.add({
             title: 'Protocol imported',
             description: result.migrated
@@ -440,7 +412,6 @@ export function HomeRoute() {
                   : false
               }
               pendingImports={pendingImports}
-              recentImportMorphs={recentImportMorphs}
               onImport={() => setOpenDialog('import')}
               onStartInterview={setPendingProtocolHash}
               onDeleteProtocol={handleDeleteProtocol}

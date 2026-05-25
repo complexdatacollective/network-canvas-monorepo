@@ -86,7 +86,6 @@ type DeckCardProps = {
   onDelete?: () => void;
   onInstallSample?: () => void;
   onDismissSample?: () => void;
-  morphFromLayoutId?: string;
 };
 
 // Static lookup so Tailwind's scanner sees every possible class name at
@@ -164,7 +163,6 @@ export function DeckCard({
   onDelete,
   onInstallSample,
   onDismissSample,
-  morphFromLayoutId,
 }: DeckCardProps) {
   if (entry.kind === 'import') {
     return (
@@ -207,11 +205,7 @@ export function DeckCard({
     return (
       // oxlint-disable-next-line prefer-tag-over-role
       // The card has nested Install + Dismiss buttons, so the outer element cannot be a <button>.
-      // layoutId pairs with the pending card that replaces it during install so motion morphs
-      // between them automatically.
       <motion.div
-        layoutId="ghost-import-sample"
-        transition={{ layout: { duration: 0.4, ease: [0.4, 0, 0.2, 1] } }}
         role="button"
         tabIndex={0}
         onClick={() => onInstallSample?.()}
@@ -222,7 +216,7 @@ export function DeckCard({
           boxShadow: INACTIVE_SHADOW,
           borderRadius: CARD_RADIUS_PX,
         }}
-        className={`${cardBase()} ${importCardClass()} @container relative cursor-pointer`}
+        className={`${cardBase()} ${importCardClass()} @container relative cursor-pointer justify-between!`}
         aria-label="Install the sample protocol"
       >
         {isActive && onDismissSample ? (
@@ -242,13 +236,15 @@ export function DeckCard({
             className="hover:bg-destructive! hover:text-destructive-contrast! absolute top-2 right-2 z-10 shrink-0"
           />
         ) : null}
-        <div className="bg-surface text-sea-green inline-flex h-[84px] w-[84px] items-center justify-center rounded-full">
-          <Download size={36} strokeWidth={2.5} aria-hidden />
+        <div className="flex flex-col items-center gap-3">
+          <div className="bg-surface text-sea-green inline-flex h-[84px] w-[84px] items-center justify-center rounded-full">
+            <Download size={36} strokeWidth={2.5} aria-hidden />
+          </div>
+          <Heading level="h2" margin="none" className="text-text font-black">
+            Sample Protocol
+          </Heading>
         </div>
-        <Heading level="h2" margin="none" className="text-text font-black">
-          Sample Protocol
-        </Heading>
-        <div className="text-text/80 px-8 text-center text-sm">
+        <div className="text-text/80 hidden px-8 text-center text-sm @min-[300px]:block">
           A complete reference protocol from the Network Canvas team — useful
           for exploring how stages, prompts, and codebooks fit together.
         </div>
@@ -293,12 +289,6 @@ export function DeckCard({
     const pct = determinate ? Math.min(1, Math.max(0, progress)) * 100 : 0;
     return (
       <motion.div
-        layoutId={
-          pending.source === 'sample'
-            ? 'ghost-import-sample'
-            : `ghost-import-${pending.id}`
-        }
-        transition={{ layout: { duration: 0.4, ease: [0.4, 0, 0.2, 1] } }}
         style={{
           width: cardWidth,
           height: cardHeight,
@@ -390,11 +380,7 @@ export function DeckCard({
 
   return (
     <motion.div
-      // When morphFromLayoutId is set, adopt that id for this render so motion
-      // morphs the pending (or sample) card into this protocol card. The next
-      // render clears morphFromLayoutId and restores the standard layoutId,
-      // which pairs with NewSessionCardOverlay for the Start interview morph.
-      layoutId={morphFromLayoutId ?? deckCardLayoutId(protocol.hash)}
+      layoutId={deckCardLayoutId(protocol.hash)}
       // Lock re-measurement to the protocol identity so Swiper's
       // post-commit fan transforms and ResizeObserver-driven
       // cardWidth/cardHeight re-renders don't read as layout changes

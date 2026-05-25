@@ -14,10 +14,33 @@ import type {
   StoredSession,
   StoredSessionLite,
 } from '~/lib/db/types';
+import { SAMPLE_PROTOCOL } from '~/lib/protocol/sampleProtocol';
 
 import { NewSessionCardOverlay } from '../NewSessionCardOverlay';
 import { GLASS_PILL } from '../TopActionBar';
 import { DeckCard, type DeckEntry, type PendingImport } from './DeckCard';
+
+// High-codepoint sentinel so the import card always sorts last under a
+// case-insensitive locale comparison.
+const IMPORT_SLOT_KEY = '￿__import__';
+
+function entrySlotKey(entry: DeckEntry): string {
+  if (entry.kind === 'protocol') return entry.protocol.name;
+  if (entry.kind === 'sample') return SAMPLE_PROTOCOL.name;
+  if (entry.kind === 'pending') return entry.pending.label;
+  return IMPORT_SLOT_KEY;
+}
+
+// Pending wins over sample wins over protocol wins over import when two
+// entries collide on the same slot key (e.g. a sample-source pending and
+// the sample card, or a freshly-imported protocol overlapping its
+// just-cleared pending entry).
+function entryPriority(entry: DeckEntry): number {
+  if (entry.kind === 'pending') return 4;
+  if (entry.kind === 'sample') return 3;
+  if (entry.kind === 'protocol') return 2;
+  return 1;
+}
 
 // Visual proportions of the fanned deck — tuned together. Changing one
 // without re-checking the others desyncs the snap distance from the
@@ -57,7 +80,6 @@ type ProtocolDeckProps = {
   initialProtocolHash?: string;
   showSampleCard?: boolean;
   pendingImports?: PendingImport[];
-  recentImportMorphs?: Map<string, string>;
   onImport: () => void;
   onStartInterview: (protocolHash: string) => void;
   onDeleteProtocol: (hash: string) => void;
@@ -109,7 +131,6 @@ export function ProtocolDeck({
   initialProtocolHash,
   showSampleCard = false,
   pendingImports = [],
-  recentImportMorphs = new Map(),
   onImport,
   onStartInterview,
   onDeleteProtocol,
@@ -127,15 +148,33 @@ export function ProtocolDeck({
   const [sectionHeight, setSectionHeight] = useState(0);
 
   const deck = useMemo<DeckEntry[]>(() => {
-    const entries: DeckEntry[] = protocols.map((p) => ({
+    const candidates: DeckEntry[] = protocols.map((p) => ({
       kind: 'protocol',
       protocol: p,
     }));
-    if (showSampleCard) entries.push({ kind: 'sample' });
+    if (showSampleCard) candidates.push({ kind: 'sample' });
     for (const pending of pendingImports)
-      entries.push({ kind: 'pending', pending });
-    entries.push({ kind: 'import' });
-    return entries;
+      candidates.push({ kind: 'pending', pending });
+    candidates.push({ kind: 'import' });
+
+    // Group by slotKey, pick the highest-priority entry per slot.
+    // Array order is preserved as the tiebreaker within a kind because
+    // we walk candidates in insertion order and only replace when the
+    // contender strictly beats the current pick.
+    const bySlot = new Map<string, DeckEntry>();
+    for (const candidate of candidates) {
+      const key = entrySlotKey(candidate);
+      const existing = bySlot.get(key);
+      if (!existing || entryPriority(candidate) > entryPriority(existing)) {
+        bySlot.set(key, candidate);
+      }
+    }
+
+    return Array.from(bySlot.entries())
+      .toSorted(([a], [b]) =>
+        a.localeCompare(b, undefined, { sensitivity: 'base' }),
+      )
+      .map(([, entry]) => entry);
   }, [protocols, showSampleCard, pendingImports]);
 
   // Per-protocol session count, hoisted here so DeckCard doesn't take the
@@ -150,9 +189,11 @@ export function ProtocolDeck({
 
   const initialIndex = useMemo(() => {
     if (!initialProtocolHash) return 0;
-    const idx = protocols.findIndex((p) => p.hash === initialProtocolHash);
+    const idx = deck.findIndex(
+      (e) => e.kind === 'protocol' && e.protocol.hash === initialProtocolHash,
+    );
     return idx < 0 ? 0 : idx;
-  }, [initialProtocolHash, protocols]);
+  }, [initialProtocolHash, deck]);
 
   // Observe the section (not the outer container) so cardHeight tracks the
   // space actually available to Swiper. The outer container also holds the
@@ -231,19 +272,37 @@ export function ProtocolDeck({
     const current = pendingImports.length;
     previousPendingCountRef.current = current;
     if (current <= previous) return;
-    const newPendingIndex =
-      protocols.length + (showSampleCard ? 1 : 0) + (current - 1);
-    swiperRef.current?.slideTo(newPendingIndex);
-  }, [pendingImports, protocols.length, showSampleCard]);
-
-  useEffect(() => {
-    if (recentImportMorphs.size === 0) return;
-    const hashes = new Set(recentImportMorphs.keys());
+    const newPending = pendingImports[current - 1];
+    if (!newPending) return;
     const idx = deck.findIndex(
-      (e) => e.kind === 'protocol' && hashes.has(e.protocol.hash),
+      (e) => e.kind === 'pending' && e.pending.id === newPending.id,
     );
     if (idx >= 0) swiperRef.current?.slideTo(idx);
-  }, [recentImportMorphs, deck]);
+  }, [pendingImports, deck]);
+
+  // After a successful import, slide to the newly-arrived protocol's
+  // slot. Tracks the set of hashes seen on the previous render so a
+  // grow-by-one detects the newcomer regardless of where alphabetical
+  // sorting places it.
+  const previousProtocolHashesRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const previous = previousProtocolHashesRef.current;
+    const current = new Set(protocols.map((p) => p.hash));
+    previousProtocolHashesRef.current = current;
+    if (current.size <= previous.size) return;
+    let newHash: string | undefined;
+    for (const hash of current) {
+      if (!previous.has(hash)) {
+        newHash = hash;
+        break;
+      }
+    }
+    if (!newHash) return;
+    const idx = deck.findIndex(
+      (e) => e.kind === 'protocol' && e.protocol.hash === newHash,
+    );
+    if (idx >= 0) swiperRef.current?.slideTo(idx);
+  }, [protocols, deck]);
 
   // Enter activates the current card. Skip when focus is on another
   // interactive control (chevrons, dot navs, the card itself) or in an
@@ -429,17 +488,16 @@ export function ProtocolDeck({
               const isMorphingOut =
                 entry.kind === 'protocol' &&
                 entry.protocol.hash === newSessionProtocolHash;
-              const key =
-                entry.kind === 'import'
-                  ? 'import'
-                  : entry.kind === 'sample'
-                    ? 'sample'
-                    : entry.kind === 'pending'
-                      ? `pending-${entry.pending.id}`
-                      : entry.protocol.hash;
+              const slotKey = entrySlotKey(entry);
+              const phaseKey =
+                entry.kind === 'pending'
+                  ? `pending-${entry.pending.phase}`
+                  : entry.kind === 'protocol'
+                    ? `protocol-${entry.protocol.hash}`
+                    : entry.kind;
               return (
                 <SwiperSlide
-                  key={key}
+                  key={slotKey}
                   style={{ width: cardWidth, height: cardHeight }}
                   // `!overflow-visible` overrides Swiper's bundled
                   // `.swiper-slide { overflow: hidden }` so the card's
@@ -450,36 +508,49 @@ export function ProtocolDeck({
                   // frozen `cardWidth`.
                   className="!flex origin-[center_bottom] items-center justify-center !overflow-visible will-change-transform"
                 >
-                  {!isMorphingOut && (
-                    <DeckCard
-                      entry={entry}
-                      cardWidth={cardWidth}
-                      cardHeight={cardHeight}
-                      isActive={i === activeIdx}
-                      sessionCount={
-                        entry.kind === 'protocol'
-                          ? (sessionCounts.get(entry.protocol.hash) ?? 0)
-                          : 0
-                      }
-                      onActivate={() => handleActivate(i)}
-                      onDelete={
-                        entry.kind === 'protocol'
-                          ? () => onDeleteProtocol(entry.protocol.hash)
-                          : undefined
-                      }
-                      onInstallSample={
-                        entry.kind === 'sample' ? onInstallSample : undefined
-                      }
-                      onDismissSample={
-                        entry.kind === 'sample' ? onDismissSample : undefined
-                      }
-                      morphFromLayoutId={
-                        entry.kind === 'protocol'
-                          ? recentImportMorphs.get(entry.protocol.hash)
-                          : undefined
-                      }
-                    />
-                  )}
+                  <AnimatePresence mode="wait" initial={false}>
+                    {!isMorphingOut && (
+                      <motion.div
+                        key={phaseKey}
+                        initial={{ y: -24, opacity: 0, scale: 0.96 }}
+                        animate={{ y: 0, opacity: 1, scale: 1 }}
+                        exit={{ y: 0, opacity: 0, scale: 0 }}
+                        transition={{
+                          duration: 0.25,
+                          ease: [0.4, 0, 0.2, 1],
+                        }}
+                        style={{ width: cardWidth, height: cardHeight }}
+                      >
+                        <DeckCard
+                          entry={entry}
+                          cardWidth={cardWidth}
+                          cardHeight={cardHeight}
+                          isActive={i === activeIdx}
+                          sessionCount={
+                            entry.kind === 'protocol'
+                              ? (sessionCounts.get(entry.protocol.hash) ?? 0)
+                              : 0
+                          }
+                          onActivate={() => handleActivate(i)}
+                          onDelete={
+                            entry.kind === 'protocol'
+                              ? () => onDeleteProtocol(entry.protocol.hash)
+                              : undefined
+                          }
+                          onInstallSample={
+                            entry.kind === 'sample'
+                              ? onInstallSample
+                              : undefined
+                          }
+                          onDismissSample={
+                            entry.kind === 'sample'
+                              ? onDismissSample
+                              : undefined
+                          }
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </SwiperSlide>
               );
             })}
@@ -510,28 +581,18 @@ export function ProtocolDeck({
             className={GLASS_PILL}
           />
           <div className="flex items-center gap-2.5">
-            {deck.map((entry, i) => {
-              const key =
-                entry.kind === 'import'
-                  ? 'import'
-                  : entry.kind === 'sample'
-                    ? 'sample'
-                    : entry.kind === 'pending'
-                      ? `pending-${entry.pending.id}`
-                      : entry.protocol.hash;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => swiperRef.current?.slideTo(i)}
-                  aria-label={`Go to card ${i + 1}`}
-                  aria-current={i === activeIdx ? 'true' : undefined}
-                  className={`h-3 cursor-pointer rounded-full border-0 p-0 transition-all duration-200 ${
-                    i === activeIdx ? 'bg-sea-green w-9' : 'bg-outline w-3'
-                  }`}
-                />
-              );
-            })}
+            {deck.map((entry, i) => (
+              <button
+                key={entrySlotKey(entry)}
+                type="button"
+                onClick={() => swiperRef.current?.slideTo(i)}
+                aria-label={`Go to card ${i + 1}`}
+                aria-current={i === activeIdx ? 'true' : undefined}
+                className={`h-3 cursor-pointer rounded-full border-0 p-0 transition-all duration-200 ${
+                  i === activeIdx ? 'bg-sea-green w-9' : 'bg-outline w-3'
+                }`}
+              />
+            ))}
           </div>
           <IconButton
             size="xl"
