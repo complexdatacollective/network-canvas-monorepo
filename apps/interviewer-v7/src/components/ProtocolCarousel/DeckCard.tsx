@@ -1,5 +1,5 @@
 import { Download, Play, Plus, Trash2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   useEffect,
@@ -211,6 +211,7 @@ export function DeckCard({
       // between them automatically.
       <motion.div
         layoutId="ghost-import-sample"
+        transition={{ layout: { duration: 0.4, ease: [0.4, 0, 0.2, 1] } }}
         role="button"
         tabIndex={0}
         onClick={() => onInstallSample?.()}
@@ -224,6 +225,23 @@ export function DeckCard({
         className={`${cardBase()} ${importCardClass()} @container relative cursor-pointer`}
         aria-label="Install the sample protocol"
       >
+        {isActive && onDismissSample ? (
+          <IconButton
+            variant="text"
+            icon={
+              <Trash2
+                className="size-3 @min-[320px]:size-5 @min-3xs:size-4"
+                aria-hidden
+              />
+            }
+            aria-label="Dismiss the sample protocol"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDismissSample();
+            }}
+            className="hover:bg-destructive! hover:text-destructive-contrast! absolute top-2 right-2 z-10 shrink-0"
+          />
+        ) : null}
         <div className="bg-surface text-sea-green inline-flex h-[84px] w-[84px] items-center justify-center rounded-full">
           <Download size={36} strokeWidth={2.5} aria-hidden />
         </div>
@@ -235,24 +253,7 @@ export function DeckCard({
           for exploring how stages, prompts, and codebooks fit together.
         </div>
         {isActive ? (
-          <div className="mx-3 mb-3 flex flex-col gap-2 @min-[300px]:flex-row @min-[300px]:items-center @min-[320px]:mx-5 @min-[320px]:mb-5 @min-[380px]:mx-6 @min-[380px]:mb-6 @min-3xs:mx-4 @min-3xs:mb-4">
-            {onDismissSample ? (
-              <IconButton
-                variant="text"
-                icon={
-                  <Trash2
-                    className="size-3 @min-[320px]:size-5 @min-3xs:size-4"
-                    aria-hidden
-                  />
-                }
-                aria-label="Dismiss the sample protocol"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDismissSample();
-                }}
-                className="hover:bg-destructive! hover:text-destructive-contrast! h-9 shrink-0 @min-[300px]:order-last @min-[320px]:h-13 @min-[380px]:h-14 @min-3xs:h-11"
-              />
-            ) : null}
+          <div className="mx-3 mb-3 @min-[320px]:mx-5 @min-[320px]:mb-5 @min-[380px]:mx-6 @min-[380px]:mb-6 @min-3xs:mx-4 @min-3xs:mb-4">
             <div className="@container h-9 min-w-0 flex-1 @min-[320px]:h-13 @min-[380px]:h-14 @min-3xs:h-11">
               <Button
                 color="primary"
@@ -299,6 +300,7 @@ export function DeckCard({
             ? 'ghost-import-sample'
             : `ghost-import-${pending.id}`
         }
+        transition={{ layout: { duration: 0.4, ease: [0.4, 0, 0.2, 1] } }}
         style={{
           width: cardWidth,
           height: cardHeight,
@@ -322,13 +324,33 @@ export function DeckCard({
             {pending.label}
           </Heading>
           <div className="font-monospace relative hidden items-center justify-between gap-2 text-[12px] @min-3xs:flex @min-xs:text-xs @min-sm:text-sm">
-            <span style={{ color: palette.backgroundTop }}>{phaseLabel}</span>
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={pending.phase}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.2 }}
+                style={{ color: palette.backgroundTop }}
+              >
+                {phaseLabel}
+              </motion.span>
+            </AnimatePresence>
           </div>
         </div>
         <div className="min-h-0 flex-1 px-3 pt-2 @min-2xs:px-6 @min-2xs:pt-3.5">
-          <span className="text-text/80 text-xs @min-2xs:text-sm @min-xs:text-base @min-md:text-lg">
-            {phaseLabel}
-          </span>
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={pending.phase}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2 }}
+              className="text-text/80 text-xs @min-2xs:text-sm @min-xs:text-base @min-md:text-lg"
+            >
+              {phaseLabel}
+            </motion.span>
+          </AnimatePresence>
         </div>
         <div className="mx-3 mb-3 @min-[320px]:mx-5 @min-[320px]:mb-5 @min-[380px]:mx-6 @min-[380px]:mb-6 @min-3xs:mx-4 @min-3xs:mb-4">
           <progress

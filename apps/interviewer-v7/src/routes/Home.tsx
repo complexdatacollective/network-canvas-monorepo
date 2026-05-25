@@ -32,6 +32,7 @@ import {
   type ImportProtocolResult,
   importProtocolFromFile,
   importProtocolFromUrl,
+  peekProtocolName,
 } from '~/lib/protocol/importProtocol';
 import { SAMPLE_PROTOCOL } from '~/lib/protocol/sampleProtocol';
 
@@ -133,16 +134,27 @@ export function HomeRoute() {
   }, [reload]);
 
   const startImport = useCallback(
-    (request: ImportRequest | { source: 'sample' }) => {
+    async (request: ImportRequest | { source: 'sample' }) => {
       const id =
         typeof crypto !== 'undefined' && 'randomUUID' in crypto
           ? crypto.randomUUID()
           : `${Date.now()}-${Math.random()}`;
+
+      const fileBuffer =
+        request.source === 'file'
+          ? new Uint8Array(await request.file.arrayBuffer())
+          : null;
+      const peekedName = fileBuffer ? await peekProtocolName(fileBuffer) : null;
+      const fileLabel =
+        request.source === 'file'
+          ? (peekedName ?? request.label.replace(/\.netcanvas$/i, ''))
+          : '';
+
       const initial: PendingImport = (() => {
         if (request.source === 'file') {
           return {
             id,
-            label: request.label.replace(/\.netcanvas$/i, ''),
+            label: fileLabel,
             source: 'file',
             phase: 'extracting',
           };
@@ -182,7 +194,11 @@ export function HomeRoute() {
       const run = async () => {
         let result: ImportProtocolResult;
         if (request.source === 'file') {
-          result = await importProtocolFromFile(request.file, onProgress);
+          result = await importProtocolFromFile(
+            request.file,
+            onProgress,
+            peekedName ?? undefined,
+          );
         } else if (request.source === 'url') {
           result = await importProtocolFromUrl(request.url, onProgress);
         } else {
@@ -257,13 +273,13 @@ export function HomeRoute() {
 
   const handleImportSubmit = useCallback(
     (request: ImportRequest) => {
-      startImport(request);
+      void startImport(request);
     },
     [startImport],
   );
 
   const handleInstallSample = useCallback(() => {
-    startImport({ source: 'sample' });
+    void startImport({ source: 'sample' });
   }, [startImport]);
 
   const handleDismissSample = useCallback(async () => {

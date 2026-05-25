@@ -48,6 +48,23 @@ export type ImportProtocolResult =
   | ImportProtocolSuccess
   | ImportProtocolFailure;
 
+export async function peekProtocolName(
+  buffer: Uint8Array,
+): Promise<string | null> {
+  try {
+    const zip = await JSZip.loadAsync(buffer);
+    const json = await zip.file('protocol.json')?.async('string');
+    if (!json) return null;
+    const parsed = JSON.parse(json) as { name?: unknown };
+    if (typeof parsed.name === 'string' && parsed.name.trim().length > 0) {
+      return parsed.name;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 async function extractZip(
   buffer: Uint8Array,
 ): Promise<{ protocol: unknown; assets: ExtractedAsset[] }> {
