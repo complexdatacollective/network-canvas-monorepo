@@ -512,12 +512,14 @@ export function ProtocolDeck({
                     {!isMorphingOut && (
                       <motion.div
                         key={phaseKey}
-                        initial={{ y: -24, opacity: 0, scale: 0.96 }}
+                        initial={{ y: -48, opacity: 0, scale: 0.9 }}
                         animate={{ y: 0, opacity: 1, scale: 1 }}
                         exit={{ y: 0, opacity: 0, scale: 0 }}
                         transition={{
-                          duration: 0.25,
-                          ease: [0.4, 0, 0.2, 1],
+                          type: 'spring',
+                          stiffness: 140,
+                          damping: 12,
+                          mass: 1.1,
                         }}
                         style={{ width: cardWidth, height: cardHeight }}
                       >
