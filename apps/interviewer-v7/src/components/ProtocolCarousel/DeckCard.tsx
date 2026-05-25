@@ -253,27 +253,25 @@ export function DeckCard({
           for exploring how stages, prompts, and codebooks fit together.
         </div>
         {isActive ? (
-          <div className="mx-3 mb-3 @min-[320px]:mx-5 @min-[320px]:mb-5 @min-[380px]:mx-6 @min-[380px]:mb-6 @min-3xs:mx-4 @min-3xs:mb-4">
-            <div className="@container h-9 min-w-0 flex-1 @min-[320px]:h-13 @min-[380px]:h-14 @min-3xs:h-11">
-              <Button
-                color="primary"
-                icon={
-                  <Download
-                    className="size-3 shrink-0 stroke-[3px]! @min-[240px]:size-4 @min-[300px]:size-5"
-                    aria-hidden
-                  />
-                }
-                className="flex h-full w-full items-center justify-center gap-1.5 rounded-xl px-3 font-black tracking-[0.04em] uppercase @min-[240px]:gap-2 @min-[240px]:rounded-2xl @min-[240px]:px-4 @min-[240px]:tracking-[0.06em] @min-[300px]:gap-2.5 @min-[300px]:px-5 @min-[300px]:tracking-[0.07em] @min-[360px]:gap-3 @min-[360px]:px-6 @min-[360px]:tracking-[0.08em]"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onInstallSample?.();
-                }}
-              >
-                <span className="min-w-0 truncate text-[10px] @min-[240px]:text-xs @min-[300px]:text-sm @min-[360px]:text-base">
-                  Install sample protocol
-                </span>
-              </Button>
-            </div>
+          <div className="w-full px-3 pb-3 @min-[320px]:px-5 @min-[320px]:pb-5 @min-[380px]:px-6 @min-[380px]:pb-6 @min-3xs:px-4 @min-3xs:pb-4">
+            <Button
+              color="primary"
+              icon={
+                <Download
+                  className="size-3 shrink-0 stroke-[3px]! @min-[240px]:size-4 @min-[300px]:size-5"
+                  aria-hidden
+                />
+              }
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 font-black tracking-[0.04em] uppercase @min-[240px]:gap-2 @min-[240px]:rounded-2xl @min-[240px]:px-4 @min-[240px]:py-2.5 @min-[240px]:tracking-[0.06em] @min-[300px]:gap-2.5 @min-[300px]:px-5 @min-[300px]:py-3 @min-[300px]:tracking-[0.07em] @min-[360px]:gap-3 @min-[360px]:px-6 @min-[360px]:tracking-[0.08em]"
+              onClick={(e) => {
+                e.stopPropagation();
+                onInstallSample?.();
+              }}
+            >
+              <span className="min-w-0 truncate text-[10px] @min-[240px]:text-xs @min-[300px]:text-sm @min-[360px]:text-base">
+                Install sample protocol
+              </span>
+            </Button>
           </div>
         ) : null}
       </motion.div>
