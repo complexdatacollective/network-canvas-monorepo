@@ -509,20 +509,20 @@ export function ProtocolDeck({
                   className="!flex origin-[center_bottom] items-center justify-center !overflow-visible will-change-transform"
                 >
                   <AnimatePresence mode="wait" initial={false}>
-                    {!isMorphingOut && (
-                      <motion.div
-                        key={phaseKey}
-                        initial={{ y: -48, opacity: 0, scale: 0.9 }}
-                        animate={{ y: 0, opacity: 1, scale: 1 }}
-                        exit={{ y: 0, opacity: 0, scale: 0 }}
-                        transition={{
-                          type: 'spring',
-                          stiffness: 140,
-                          damping: 12,
-                          mass: 1.1,
-                        }}
-                        style={{ width: cardWidth, height: cardHeight }}
-                      >
+                    <motion.div
+                      key={phaseKey}
+                      initial={{ y: -48, opacity: 0, scale: 0.9 }}
+                      animate={{ y: 0, opacity: 1, scale: 1 }}
+                      exit={{ y: 0, opacity: 0, scale: 0 }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 140,
+                        damping: 12,
+                        mass: 1.1,
+                      }}
+                      style={{ width: cardWidth, height: cardHeight }}
+                    >
+                      {!isMorphingOut && (
                         <DeckCard
                           entry={entry}
                           cardWidth={cardWidth}
@@ -550,8 +550,8 @@ export function ProtocolDeck({
                               : undefined
                           }
                         />
-                      </motion.div>
-                    )}
+                      )}
+                    </motion.div>
                   </AnimatePresence>
                 </SwiperSlide>
               );
