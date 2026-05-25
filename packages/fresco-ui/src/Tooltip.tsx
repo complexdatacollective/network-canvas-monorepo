@@ -58,7 +58,7 @@ const TooltipContent = React.forwardRef<
                   level="popover"
                   spacing="sm"
                   className={cx(
-                    'max-w-(--available-width) overflow-visible border border-current/40 text-sm',
+                    'max-w-(--available-width) overflow-visible text-sm',
                     className,
                   )}
                   initial={{ opacity: 0, scale: 0.96 }}

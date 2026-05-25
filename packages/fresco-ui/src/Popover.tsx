@@ -188,7 +188,7 @@ function PopoverContent({
             <BasePopover.Popup
               render={
                 <BaseUISharedPopoverContainer
-                  className={cx('border border-current/40', className)}
+                  className={className}
                   spacing="md"
                 />
               }
