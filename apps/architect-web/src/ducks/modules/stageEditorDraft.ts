@@ -93,10 +93,6 @@ export const resetDraft = (values: Stage | null) => (dispatch: AppDispatch) => {
   dispatch(draftTimelineActions.reset(values));
 };
 
-export const draftSnapshotNow = (values: Stage) => (dispatch: AppDispatch) => {
-  dispatch(draftSnapshot(values));
-};
-
 export const draftUndo =
   () => (dispatch: AppDispatch, getState: () => RootState) => {
     const state = getState();
