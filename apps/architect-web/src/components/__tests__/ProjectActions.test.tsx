@@ -68,6 +68,15 @@ const createTestStore = ({ canUndo = true, canRedo = true } = {}) =>
           future: canRedo ? [{}] : [],
         },
       ) => state,
+      // ProjectActions now reads draft undo/redo state via useScopedUndoRedo.
+      // On the '/protocol' route the draft scope is inactive, but the hook
+      // still reads these selectors unconditionally, so the slice must exist.
+      stageEditorDraft: (
+        state = {
+          history: { past: [], present: null, timeline: [], future: [] },
+          ui: { restoring: false, initialValues: null },
+        },
+      ) => state,
     },
   });
 

@@ -1,16 +1,14 @@
 import { ArrowLeftToLine, Check, Download, Redo, Undo } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
 import Tooltip from '~/components/NewComponents/Tooltip';
 import { useAppDispatch } from '~/ducks/hooks';
-import { redo, undo } from '~/ducks/modules/activeProtocol';
 import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
+import { useScopedUndoRedo } from '~/hooks/useScopedUndoRedo';
 import Button, { IconButton } from '~/lib/legacy-ui/components/Button';
-import { getCanRedo, getCanUndo } from '~/selectors/protocol';
 
 import ActionToolbar from './ActionToolbar';
 
@@ -24,8 +22,12 @@ const ProjectActions = ({
   readOnly = false,
 }: ProjectActionsProps) => {
   const dispatch = useAppDispatch();
-  const canUndo = useSelector(getCanUndo);
-  const canRedo = useSelector(getCanRedo);
+  const {
+    canUndo,
+    canRedo,
+    undo: scopedUndo,
+    redo: scopedRedo,
+  } = useScopedUndoRedo();
   const [, setLocation] = useLocation();
   const handleReturnToStart = useCallback(
     () => setLocation('/'),
@@ -35,8 +37,8 @@ const ProjectActions = ({
   const [isExporting, setIsExporting] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
-  const handleUndo = useCallback(() => dispatch(undo()), [dispatch]);
-  const handleRedo = useCallback(() => dispatch(redo()), [dispatch]);
+  const handleUndo = useCallback(() => scopedUndo(), [scopedUndo]);
+  const handleRedo = useCallback(() => scopedRedo(), [scopedRedo]);
 
   const handleDownload = useCallback(async () => {
     try {

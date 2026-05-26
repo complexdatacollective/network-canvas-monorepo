@@ -82,18 +82,12 @@ export const getExperiments = (state: RootState) => {
 };
 
 // Timeline selector
-export const getTimelineLocus = (state: RootState) => {
-  // Check new activeProtocol store first
-  const activeProtocolTimeline = state.activeProtocol?.timeline;
-  if (activeProtocolTimeline?.length > 0) {
-    return activeProtocolTimeline[activeProtocolTimeline.length - 1];
-  }
-
-  // Fall back to old protocol store
-  const protocolTimeline = state.activeProtocol.timeline;
-
-  if (protocolTimeline && protocolTimeline.length > 0) {
-    return protocolTimeline[protocolTimeline.length - 1];
+export const getTimelineLocus = (state: RootState): string | null => {
+  // Timeline entries are now Locus objects ({ id, path }); return the id.
+  const timeline = state.activeProtocol?.timeline;
+  if (timeline && timeline.length > 0) {
+    const entry = timeline[timeline.length - 1];
+    return entry?.id ?? null;
   }
 
   return null;

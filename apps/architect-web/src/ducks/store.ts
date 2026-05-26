@@ -5,6 +5,7 @@ import { analyticsListenerMiddleware } from './middleware/analyticsListener';
 import logger from './middleware/logger';
 import { protocolValidationListenerMiddleware } from './middleware/protocolValidationListener';
 import { scrollPositionsListenerMiddleware } from './middleware/scrollPositionsListener';
+import { stageEditorDraftListenerMiddleware } from './middleware/stageEditorDraftListener';
 import type { RootState } from './modules/root';
 import { rootReducer } from './modules/root';
 
@@ -26,7 +27,8 @@ const store = configureStore({
       .concat(logger)
       .prepend(protocolValidationListenerMiddleware.middleware)
       .prepend(analyticsListenerMiddleware.middleware)
-      .prepend(scrollPositionsListenerMiddleware.middleware),
+      .prepend(scrollPositionsListenerMiddleware.middleware)
+      .prepend(stageEditorDraftListenerMiddleware.middleware),
   enhancers: (getDefaultEnhancers) =>
     getDefaultEnhancers().concat(
       rememberEnhancer(
