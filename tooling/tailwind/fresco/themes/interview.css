@@ -81,23 +81,23 @@
      * from accumulation rather than per-layer intensity.
      */
     --shadow-sm-base:
-      0 4px 10px -2px color-mix(in oklab, var(--shadow-color) 35%, transparent),
-      0 2px 5px -1px color-mix(in oklab, var(--shadow-color) 50%, transparent);
+      0 4px 10px -2px color-mix(in oklab, var(--shadow-color) 55%, transparent),
+      0 2px 5px -1px color-mix(in oklab, var(--shadow-color) 70%, transparent);
     --shadow-base:
-      0 10px 20px -3px color-mix(in oklab, var(--shadow-color) 35%, transparent),
-      0 4px 10px -2px color-mix(in oklab, var(--shadow-color) 50%, transparent);
+      0 10px 20px -3px color-mix(in oklab, var(--shadow-color) 55%, transparent),
+      0 4px 10px -2px color-mix(in oklab, var(--shadow-color) 70%, transparent);
     --shadow-md-base:
-      0 18px 36px -4px color-mix(in oklab, var(--shadow-color) 40%, transparent),
-      0 8px 18px -4px color-mix(in oklab, var(--shadow-color) 55%, transparent);
+      0 18px 36px -4px color-mix(in oklab, var(--shadow-color) 60%, transparent),
+      0 8px 18px -4px color-mix(in oklab, var(--shadow-color) 75%, transparent);
     --shadow-lg-base:
-      0 28px 56px -8px color-mix(in oklab, var(--shadow-color) 45%, transparent),
-      0 12px 24px -6px color-mix(in oklab, var(--shadow-color) 55%, transparent);
+      0 28px 56px -8px color-mix(in oklab, var(--shadow-color) 65%, transparent),
+      0 12px 24px -6px color-mix(in oklab, var(--shadow-color) 75%, transparent);
     --shadow-xl-base:
       0 44px 80px -12px
-        color-mix(in oklab, var(--shadow-color) 50%, transparent),
-      0 18px 36px -8px color-mix(in oklab, var(--shadow-color) 60%, transparent);
+        color-mix(in oklab, var(--shadow-color) 70%, transparent),
+      0 18px 36px -8px color-mix(in oklab, var(--shadow-color) 80%, transparent);
     --shadow-2xl-base: 0 56px 120px -20px
-      color-mix(in oklab, var(--shadow-color) 65%, transparent);
+      color-mix(in oklab, var(--shadow-color) 85%, transparent);
 
     /*
      * Inset-surface plugin's adaptive formula bottoms out at 0.1 alpha on
@@ -108,8 +108,8 @@
      * a subtle light bottom-edge highlight for definition.
      */
     --inset-surface-shadow:
-      inset 0 5px 14px 0 oklch(0% 0 0 / 0.4),
-      inset 0 -1px 4px 0 oklch(100% 0 0 / 0.1);
+      inset 0 5px 14px 0 oklch(0% 0 0 / 0.6),
+      inset 0 -1px 4px 0 oklch(100% 0 0 / 0.12);
 
     --background: oklch(var(--navy-taupe));
     --text: oklch(var(--white));
