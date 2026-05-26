@@ -69,35 +69,33 @@
      * (set in the @layer base block above) makes max-w-* / @sm: / etc.
      * scale with the themed root size automatically. */
 
-    --shadow-color: oklch(5% 0.01 260);
+    --shadow-color: oklch(0.1 0.05 281);
 
     /*
-     * Interview shadows favour diffusion over crispness: blur radii roughly
-     * double the default-theme tokens, with deeper negative spreads to
-     * soften the near-surface edge, so dark-on-dark elevation reads as an
-     * ambient halo around the surface rather than a hard drop. Opacities
-     * are lower than a single-layer shadow at the same blur would need —
-     * because each tier stacks two layers, the perceived darkness comes
-     * from accumulation rather than per-layer intensity.
+     * Interview shadow scale is anchored on the DeckCard look:
+     *   ACTIVE drop  = 0 30px 60px var(--shadow-color)/70%
+     *   INACTIVE drop = 0 20px 40px var(--shadow-color)/50%
+     *
+     * Single-layer drops with a tinted shadow color (no neutral grey, no
+     * stacked layers, no negative spread) — that's the visual character
+     * we want every elevated surface in the interview theme to share.
+     * `--shadow-2xl-base` matches ACTIVE; `--shadow-xl-base` matches
+     * INACTIVE. Smaller tiers scale offset and blur down at a roughly
+     * constant 1:2 ratio (matching the DeckCard) with opacities trending
+     * down so subtle elements stay subtle.
      */
-    --shadow-sm-base:
-      0 4px 10px -2px color-mix(in oklab, var(--shadow-color) 55%, transparent),
-      0 2px 5px -1px color-mix(in oklab, var(--shadow-color) 70%, transparent);
-    --shadow-base:
-      0 10px 20px -3px color-mix(in oklab, var(--shadow-color) 55%, transparent),
-      0 4px 10px -2px color-mix(in oklab, var(--shadow-color) 70%, transparent);
-    --shadow-md-base:
-      0 18px 36px -4px color-mix(in oklab, var(--shadow-color) 60%, transparent),
-      0 8px 18px -4px color-mix(in oklab, var(--shadow-color) 75%, transparent);
-    --shadow-lg-base:
-      0 28px 56px -8px color-mix(in oklab, var(--shadow-color) 65%, transparent),
-      0 12px 24px -6px color-mix(in oklab, var(--shadow-color) 75%, transparent);
-    --shadow-xl-base:
-      0 44px 80px -12px
-        color-mix(in oklab, var(--shadow-color) 70%, transparent),
-      0 18px 36px -8px color-mix(in oklab, var(--shadow-color) 80%, transparent);
-    --shadow-2xl-base: 0 56px 120px -20px
-      color-mix(in oklab, var(--shadow-color) 85%, transparent);
+    --shadow-sm-base: 0 3px 7px
+      color-mix(in oklab, var(--shadow-color) 18%, transparent);
+    --shadow-base: 0 6px 14px
+      color-mix(in oklab, var(--shadow-color) 25%, transparent);
+    --shadow-md-base: 0 10px 22px
+      color-mix(in oklab, var(--shadow-color) 32%, transparent);
+    --shadow-lg-base: 0 14px 30px
+      color-mix(in oklab, var(--shadow-color) 40%, transparent);
+    --shadow-xl-base: 0 20px 40px
+      color-mix(in oklab, var(--shadow-color) 50%, transparent);
+    --shadow-2xl-base: 0 30px 60px
+      color-mix(in oklab, var(--shadow-color) 70%, transparent);
 
     /*
      * Inset-surface plugin's adaptive formula bottoms out at 0.1 alpha on
