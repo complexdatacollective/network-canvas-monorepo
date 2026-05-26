@@ -25,6 +25,7 @@ export default function DrawingControls({
       noContainer
       className="bg-surface/80 absolute bottom-10 left-10 z-10 flex items-center rounded-2xl backdrop-blur-md"
       spacing="none"
+      elevation="none"
       layout
     >
       <Toggle

@@ -40,6 +40,11 @@ export const surfaceVariants = compose(
     // `scrollIntoView`/focus auto-scroll to move a descendant into view by
     // scrolling the Surface itself, which in dialogs pushes the header off
     // screen when content exceeds the clipped area.
+    //
+    // Padding (`spacing`) and shadow (`elevation`) are intentionally
+    // separate axes: a Combobox popup wants compact padding but heavy
+    // elevation when stacked on top of another popover, and a floating
+    // bar wants subtle padding with a strong elevation cue.
     base: 'publish-colors relative min-h-0 overflow-clip rounded',
     variants: {
       level: {
@@ -49,7 +54,7 @@ export const surfaceVariants = compose(
         3: 'text-surface-3-contrast bg-surface-3',
         popover: 'text-surface-popover-contrast bg-surface-popover border-2',
       },
-      spacing: {
+      elevation: {
         none: '',
         xs: 'shadow',
         sm: 'shadow-md',
@@ -60,7 +65,7 @@ export const surfaceVariants = compose(
     },
     defaultVariants: {
       level: 0,
-      spacing: 'md',
+      elevation: 'md',
     },
   }),
 );
@@ -100,6 +105,7 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
       children,
       level,
       spacing,
+      elevation,
       section,
       className,
       maxWidth,
@@ -118,6 +124,7 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
           surfaceVariants({
             level,
             spacing,
+            elevation,
             section,
           }),
           className,

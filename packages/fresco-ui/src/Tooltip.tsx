@@ -57,6 +57,7 @@ const TooltipContent = React.forwardRef<
                 <MotionSurface
                   level="popover"
                   spacing="sm"
+                  elevation="sm"
                   className={cx(
                     'max-w-(--available-width) overflow-visible text-sm',
                     className,

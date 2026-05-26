@@ -22,7 +22,7 @@ export default function ChildrenDetailStep() {
       </Paragraph>
       <div className="flex flex-col gap-6">
         {Array.from({ length: count }, (_, i) => (
-          <Surface key={i} level={1} spacing="sm">
+          <Surface key={i} level={1} spacing="sm" elevation="sm">
             <Heading level="h3">Child {i + 1}</Heading>
             <PersonFields namespace={`childWithPartner[${String(i)}]`} />
           </Surface>

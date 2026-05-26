@@ -3,6 +3,7 @@ import type { DragEvent } from 'react';
 import { useCallback, useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { useToast } from '@codaco/fresco-ui/Toast';
@@ -30,8 +31,6 @@ function isProbablyValidUrl(value: string): boolean {
     return false;
   }
 }
-
-const codeChipClass = 'rounded-md bg-surface-2 px-2 py-0.5';
 
 export function ImportDialog({ open, onClose, onSubmit }: ImportDialogProps) {
   const toast = useToast();
@@ -98,11 +97,13 @@ export function ImportDialog({ open, onClose, onSubmit }: ImportDialogProps) {
     : 'bg-surface';
 
   return (
-    <HomeModal open={open} onClose={handleClose} title="Import a protocol">
+    <Dialog open={open} closeDialog={handleClose} title="Import a protocol">
       <Paragraph>
         Protocol files end in{' '}
-        <code className={`mono ${codeChipClass}`}>.netcanvas</code> and
-        configure every stage of the interview.
+        <code className="bg-surface-2 font-monospace rounded px-2 py-0.5">
+          .netcanvas
+        </code>{' '}
+        and configure every stage of the interview.
       </Paragraph>
 
       <button
@@ -123,7 +124,11 @@ export function ImportDialog({ open, onClose, onSubmit }: ImportDialogProps) {
           <Upload size={32} aria-hidden />
         </span>
         <span className="mb-1.5 block text-xl font-extrabold">
-          Drop a <code className={codeChipClass}>.netcanvas</code> file
+          Drop a{' '}
+          <code className="bg-surface-2 font-monospace rounded px-2 py-0.5">
+            .netcanvas
+          </code>{' '}
+          file
         </span>
         <span className="inline-flex items-center gap-2 text-sm">
           <Folder size={16} strokeWidth={2.5} aria-hidden /> or use the file
@@ -137,7 +142,7 @@ export function ImportDialog({ open, onClose, onSubmit }: ImportDialogProps) {
         <span aria-hidden className="bg-outline h-px flex-1" />
       </div>
 
-      <Surface as="section" level={1} spacing="md" noContainer>
+      <Surface as="section" level={1} spacing="md" elevation="md" noContainer>
         <Heading level="h4">Import from URL</Heading>
         <Paragraph intent="smallText">
           Paste a link to a hosted protocol file.
@@ -161,6 +166,6 @@ export function ImportDialog({ open, onClose, onSubmit }: ImportDialogProps) {
           </Button>
         </div>
       </Surface>
-    </HomeModal>
+    </Dialog>
   );
 }

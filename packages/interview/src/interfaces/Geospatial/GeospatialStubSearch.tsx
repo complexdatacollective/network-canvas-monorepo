@@ -71,6 +71,7 @@ export default function GeospatialStubSearch({ className }: Props) {
           <MotionSurface
             noContainer
             spacing="none"
+            elevation="none"
             className="bg-surface/80 w-sm rounded-xl shadow-xl backdrop-blur-md"
           >
             <InputField
@@ -105,6 +106,7 @@ export default function GeospatialStubSearch({ className }: Props) {
             <MotionSurface
               noContainer
               spacing="none"
+              elevation="none"
               level="popover"
               className="absolute left-0 mt-2 flex max-h-64 w-sm flex-col shadow-xl"
             >

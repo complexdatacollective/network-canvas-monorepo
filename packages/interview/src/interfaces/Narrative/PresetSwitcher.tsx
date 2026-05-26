@@ -150,6 +150,7 @@ export default function PresetSwitcher({
           drag
           dragConstraints={dragConstraints}
           spacing="xs"
+          elevation="xs"
           className="flex items-center gap-2 rounded-full"
           dragControls={dragControls}
           dragListener={false}

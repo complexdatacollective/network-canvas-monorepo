@@ -37,7 +37,7 @@ export default function BioParentsForm() {
         even if they did not raise you.
       </Paragraph>
       <div className="flex flex-col gap-6">
-        <Surface level={1} spacing="sm">
+        <Surface level={1} spacing="sm" elevation="sm">
           <FieldNamespace prefix="egg-parent">
             <div className="mb-8">
               <Heading level="h3">Egg Parent</Heading>
@@ -74,7 +74,7 @@ export default function BioParentsForm() {
             {fieldComponents}
           </FieldNamespace>
         </Surface>
-        <Surface level={1} spacing="sm">
+        <Surface level={1} spacing="sm" elevation="sm">
           <FieldNamespace prefix="sperm-parent">
             <Heading level="h3">Sperm Parent</Heading>
             <Alert variant="info">
@@ -108,7 +108,7 @@ export default function BioParentsForm() {
             values['egg-parent.gestationalCarrier'] === false
           }
         >
-          <Surface level={1} spacing="sm">
+          <Surface level={1} spacing="sm" elevation="sm">
             <FieldNamespace prefix="gestational-carrier">
               <div className="mb-8">
                 <Heading level="h3">Gestational Carrier</Heading>

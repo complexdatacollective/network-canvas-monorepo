@@ -168,6 +168,7 @@ function ComboboxField(props: ComboboxFieldProps) {
               <Surface
                 level="popover"
                 spacing="xs"
+                elevation="lg"
                 noContainer
                 className={cx(
                   'flex flex-col',

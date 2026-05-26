@@ -272,6 +272,7 @@ export default function PedigreeChecklist({
           dragConstraints={dragConstraints}
           noContainer
           spacing="sm"
+          elevation="sm"
           initial={{ scale: 0.4, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0, opacity: 0 }}
