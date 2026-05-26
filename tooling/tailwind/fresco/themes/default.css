@@ -43,6 +43,30 @@
 
     --shadow-color: oklch(0.16 0.09 var(--base-hue));
 
+    /*
+     * Shadow expressions. `theme.css` exposes these to Tailwind via
+     * `--shadow-X: var(--shadow-X-base)`, so themes can redeclare any
+     * of these slots to swap the entire shadow (opacity/blur/offsets),
+     * not just the color.
+     */
+    --shadow-sm-base:
+      0 1px 3px 0 color-mix(in oklab, var(--shadow-color) 12%, transparent),
+      0 1px 2px -1px color-mix(in oklab, var(--shadow-color) 20%, transparent);
+    --shadow-base:
+      0 4px 6px -1px color-mix(in oklab, var(--shadow-color) 12%, transparent),
+      0 2px 4px -2px color-mix(in oklab, var(--shadow-color) 20%, transparent);
+    --shadow-md-base:
+      0 6px 10px -2px color-mix(in oklab, var(--shadow-color) 14%, transparent),
+      0 3px 6px -3px color-mix(in oklab, var(--shadow-color) 22%, transparent);
+    --shadow-lg-base:
+      0 10px 15px -3px color-mix(in oklab, var(--shadow-color) 16%, transparent),
+      0 4px 6px -4px color-mix(in oklab, var(--shadow-color) 24%, transparent);
+    --shadow-xl-base:
+      0 20px 25px -5px color-mix(in oklab, var(--shadow-color) 16%, transparent),
+      0 8px 10px -6px color-mix(in oklab, var(--shadow-color) 24%, transparent);
+    --shadow-2xl-base: 0 25px 50px -12px
+      color-mix(in oklab, var(--shadow-color) 30%, transparent);
+
     --background: color-mix(in oklab, var(--brand) 3%, white);
     --text: color-mix(in oklab, var(--brand) 75%, black);
 
