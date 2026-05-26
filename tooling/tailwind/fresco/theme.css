@@ -24,12 +24,39 @@
  * up the closest themed ancestor's override. Same applies to the type scale
  * via `var(--theme-root-size)`, and spacing via `var(--spacing-base)`.
  */
+/*
+ * Audit of frozen literals in this block — themes can only override values
+ * exposed through an inner `var()` reference; bare literals are baked into
+ * the generated utility CSS at build time and become invisible to
+ * `[data-theme-*]` overrides. Categories below either expose a runtime
+ * slot or document a deliberate reason for keeping the literal.
+ *
+ *   Colors             → `var(--X)`              themable ✓
+ *   Shadows            → `var(--shadow-X-base)`  themable ✓
+ *   Radius             → `var(--radius-base)`    themable ✓
+ *   Spacing            → `var(--spacing-base)`   themable ✓
+ *   Fonts              → `var(--*-font)`         themable ✓
+ *   Overlay tone       → `var(--overlay-tone)`   themable ✓
+ *
+ *   Container widths   `em` literals  — Tailwind requires static numbers
+ *                                       inside `@container (min-width: ...)`
+ *   Breakpoints        `px` literals  — same restriction for `@media`
+ *
+ *   Type scale         clamp() literals (multipliers + line-heights +
+ *                                       letter-spacings) — runtime-themable
+ *                                       via `--theme-root-size` for size;
+ *                                       not currently themed per-axis
+ *   Animations         literal durations/easings — no current need
+ *   Node sizes         clamp() literals — domain-specific, not theme-axis
+ *
+ * Extend this list when adding new tokens with hidden literals.
+ */
 @theme inline {
   /*
    * Typography
    *
-   * Uses clamping for fluid scaling of font sizes between a defined min and    
-   * max, based on viewport width.                                              
+   * Uses clamping for fluid scaling of font sizes between a defined min and
+   * max, based on viewport width.
    */
 
   --text-*: initial; /* Reset TW theme defaults */
@@ -219,7 +246,13 @@
   --color-input: var(--input);
   --color-input-contrast: var(--input-contrast);
 
-  --color-overlay: oklch(from var(--overlay) l c h / 0.45);
+  /*
+   * Overlay tone is the full expression, not just `--overlay`, because the
+   * baked 0.45 alpha would otherwise be locked into the utility CSS — same
+   * trap as the shadow tokens. Themes redeclare `--overlay-tone` to change
+   * either color or opacity.
+   */
+  --color-overlay: var(--overlay-tone);
 
   /* Color sequences */
   --color-node-1: var(--node-1);

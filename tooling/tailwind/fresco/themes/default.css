@@ -125,6 +125,7 @@
     --input-contrast: oklch(var(--cyber-grape));
 
     --overlay: oklch(10% 0.075 var(--base-hue));
+    --overlay-tone: oklch(from var(--overlay) l c h / 0.45);
 
     /* Sequences */
     --node-1: oklch(var(--neon-coral));
