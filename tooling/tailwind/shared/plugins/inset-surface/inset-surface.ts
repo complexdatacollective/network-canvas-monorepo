@@ -23,6 +23,13 @@ import plugin from 'tailwindcss/plugin';
  *
  * Usage:
  *   <div class="bg-primary/10 inset-surface">
+ *
+ * Theme override:
+ * The full inset shadow expression is wrapped in `var(--inset-surface-shadow, …)`
+ * with the adaptive formula as the fallback, so themes can replace the
+ * entire shadow when the chroma-driven formula isn't enough — e.g. the
+ * interview theme's low-chroma dark surfaces bottom out at the formula's
+ * 0.1 alpha floor and need a stronger fixed shadow to read as recessed.
  */
 
 const DEFAULT_BG = 'oklch(50% 0 0)';
@@ -52,10 +59,12 @@ const insetSurfacePlugin: ReturnType<typeof plugin> = plugin((api) => {
   const shadow = `oklch(from var(--inset-bg, ${DEFAULT_BG}) 0.15 clamp(0, calc(c * 0.3), 0.08) h / clamp(0.1, calc(0.1 + c * 0.4), 0.22))`;
   const highlight = `oklch(from var(--inset-bg, ${DEFAULT_BG}) 0.98 clamp(0, calc(c * 0.15), 0.04) h / clamp(0.35, calc(0.25 + l * 0.35 - c * 0.5), 0.65))`;
 
+  const adaptiveShadow = `inset 0 2px 4px 0 ${shadow}, inset 0 -1px 2px 0 ${highlight}`;
+
   api.addUtilities({
     '.inset-surface': {
       'border': '1px solid oklch(0% 0 0 / 0.1)',
-      'box-shadow': `inset 0 2px 4px 0 ${shadow}, inset 0 -1px 2px 0 ${highlight}`,
+      'box-shadow': `var(--inset-surface-shadow, ${adaptiveShadow})`,
     },
   });
 });
