@@ -2,7 +2,10 @@ import { useCallback, useMemo } from 'react';
 import { useLocation } from 'wouter';
 
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
-import { redo, undo } from '~/ducks/modules/activeProtocol';
+import {
+  redoWithNavigation,
+  undoWithNavigation,
+} from '~/ducks/modules/activeProtocol';
 import { draftRedo, draftUndo } from '~/ducks/modules/stageEditorDraft';
 import { getCanRedo, getCanUndo } from '~/selectors/protocol';
 import { getCanRedoDraft, getCanUndoDraft } from '~/selectors/stageEditorDraft';
@@ -35,7 +38,7 @@ export const useScopedUndoRedo = (): ScopedUndoRedo => {
     if (isStageEditor) {
       dispatch(draftUndo());
     } else {
-      dispatch(undo());
+      dispatch(undoWithNavigation());
     }
   }, [dispatch, isStageEditor]);
 
@@ -43,7 +46,7 @@ export const useScopedUndoRedo = (): ScopedUndoRedo => {
     if (isStageEditor) {
       dispatch(draftRedo());
     } else {
-      dispatch(redo());
+      dispatch(redoWithNavigation());
     }
   }, [dispatch, isStageEditor]);
 

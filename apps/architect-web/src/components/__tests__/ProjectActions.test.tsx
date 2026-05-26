@@ -35,6 +35,9 @@ const clearActiveProtocolMock = vi.fn(() => ({
 }));
 
 vi.mock('~/ducks/modules/activeProtocol', () => ({
+  // useScopedUndoRedo dispatches the navigation-aware variants on the main timeline.
+  undoWithNavigation: () => undoMock(),
+  redoWithNavigation: () => redoMock(),
   undo: () => undoMock(),
   redo: () => redoMock(),
   clearActiveProtocol: () => clearActiveProtocolMock(),
