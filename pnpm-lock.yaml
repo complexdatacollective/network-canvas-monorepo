@@ -1124,7 +1124,7 @@ importers:
         specifier: ^0.3.8
         version: 0.3.8
 
-  apps/website:
+  apps/networkcanvas.com:
     dependencies:
       '@base-ui/react':
         specifier: 'catalog:'
