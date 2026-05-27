@@ -61,6 +61,9 @@ const StageEditorNav = ({
           className="flex items-center gap-(--space-sm)"
         >
           <Issues ref={issuesRef} />
+          <Button onClick={onCancel} color="platinum" icon={<X />}>
+            Cancel
+          </Button>
           <IconButton
             variant="text"
             icon={<Undo />}
@@ -75,9 +78,6 @@ const StageEditorNav = ({
             disabled={!canRedo}
             aria-label="Redo"
           />
-          <Button onClick={onCancel} color="platinum" icon={<X />}>
-            Cancel
-          </Button>
           <AnimatePresence initial={false}>
             {hasUnsavedChanges && (
               <motion.div
