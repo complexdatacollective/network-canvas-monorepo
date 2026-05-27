@@ -487,7 +487,7 @@
     "chromatic": "catalog:",
     "jsdom": "^29.1.1",
     "playwright": "^1.60.0",
-    "storybook": "^10.4.0",
+    "storybook": "^10.4.1",
     "tinyglobby": "^0.2.16",
     "typescript": "catalog:",
     "vite": "catalog:",
