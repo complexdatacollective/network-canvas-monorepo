@@ -32,6 +32,7 @@ jobs:
       fresco_ui_storybook: ${{ steps.flags.outputs.fresco_ui_storybook }}
       interview_storybook: ${{ steps.flags.outputs.interview_storybook }}
       interview_e2e: ${{ steps.flags.outputs.interview_e2e }}
+      interviewer_v7_changeset: ${{ steps.flags.outputs.interviewer_v7_changeset }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -102,6 +103,17 @@ jobs:
           intv=$(flag @codaco/interview)
           any_app=false
           if [[ "$docs" == "true" || "$arch" == "true" ]]; then any_app=true; fi
+
+          # PR-only: detect changeset frontmatter touching @codaco/interviewer-v7.
+          # Gates the snapshot Electron build job below.
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] && \
+             compgen -G '.changeset/*.md' > /dev/null && \
+             grep -lE '"?@codaco/interviewer-v7"?[[:space:]]*:' .changeset/*.md > /dev/null 2>&1; then
+            interviewer_v7_changeset=true
+          else
+            interviewer_v7_changeset=false
+          fi
+
           {
             echo "any_app=$any_app"
             echo "docs=$docs"
@@ -109,6 +121,7 @@ jobs:
             echo "fresco_ui_storybook=$fui"
             echo "interview_storybook=$intv"
             echo "interview_e2e=$intv"
+            echo "interviewer_v7_changeset=$interviewer_v7_changeset"
           } >> "$GITHUB_OUTPUT"
 
   # Cache design: every Turbo-using job restores `.turbo` from the same
