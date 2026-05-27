@@ -143,16 +143,12 @@ const EditableList = ({
         initial={{ opacity: 0.9999 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0.9999 }}
-        header={<h2 className="m-0">{title}</h2>}
+        title={title}
         footer={
           <>
             <Dialog.Close
               nativeButton={false}
-              render={
-                <Button onClick={handleCancelEdit} color="platinum">
-                  Cancel
-                </Button>
-              }
+              render={<Button color="platinum">Cancel</Button>}
             />
             <Button type="submit" form="editable-list-form" color="sea-green">
               Save

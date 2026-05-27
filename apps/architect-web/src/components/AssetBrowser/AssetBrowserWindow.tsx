@@ -23,18 +23,12 @@ const AssetBrowserWindow = ({
     <Dialog
       open={show}
       onOpenChange={(open) => !open && onCancel()}
-      onCancel={onCancel}
-      cancelText="Cancel"
-      header={<h2 className="m-0">Resource Browser</h2>}
+      title="Resource Browser"
       footer={
-        <Button
-          onClick={() => {
-            onCancel();
-          }}
-          color="platinum"
-        >
-          Cancel
-        </Button>
+        <Dialog.Close
+          nativeButton={false}
+          render={<Button color="platinum">Cancel</Button>}
+        />
       }
     >
       <Layout>

@@ -66,21 +66,12 @@ function DialogPopup({
             {children}
           </div>
           {footer && (
-            <div className="bg-accent text-accent-foreground sticky bottom-0 flex justify-end gap-(--space-sm) px-(--space-lg) py-(--space-md)">
+            <div className="bg-accent text-accent-foreground sticky bottom-0 flex justify-end gap-(--space-sm) px-(--space-lg) py-(--space-md) [&>*:first-child:not(:only-child)]:mr-auto">
               {footer}
             </div>
           )}
         </motion.div>
       }
-    />
-  );
-}
-
-function DialogTitle(props: BaseDialog.Title.Props) {
-  return (
-    <BaseDialog.Title
-      className="m-0 pb-(--space-lg) text-2xl font-semibold"
-      {...props}
     />
   );
 }
@@ -114,7 +105,7 @@ type DialogProps = {
 function Dialog({
   open,
   onOpenChange,
-  title = 'Confirm',
+  title,
   description,
   header,
   footer,
@@ -132,13 +123,9 @@ function Dialog({
       <BaseDialog.Close
         nativeButton={false}
         render={
-          <Button
-            onClick={() => {
-              onCancel?.();
-              onOpenChange(false);
-            }}
-            color="platinum"
-          >
+          // Base UI's Close drives onOpenChange(false); we only run the
+          // optional side-effect here so button / Esc / backdrop converge.
+          <Button onClick={onCancel} color="platinum">
             {cancelText}
           </Button>
         }
@@ -151,15 +138,22 @@ function Dialog({
     </>
   );
 
+  // Headings always live in the accent header bar. A plain `title` string is
+  // the common case; `header` overrides it for fully custom header content.
+  const resolvedHeader =
+    header ??
+    (title ? (
+      <BaseDialog.Title className="m-0">{title}</BaseDialog.Title>
+    ) : undefined);
+
   return (
     <Modal open={open} onOpenChange={onOpenChange}>
       <DialogPopup
-        header={header}
+        header={resolvedHeader}
         footer={resolvedFooter}
         onAnimationComplete={onAnimationComplete}
         {...popupProps}
       >
-        {title && !header && <DialogTitle>{title}</DialogTitle>}
         {description && <DialogDescription>{description}</DialogDescription>}
         {children}
       </DialogPopup>
