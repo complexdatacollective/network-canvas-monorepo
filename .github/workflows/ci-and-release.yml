@@ -104,14 +104,23 @@ jobs:
           any_app=false
           if [[ "$docs" == "true" || "$arch" == "true" ]]; then any_app=true; fi
 
-          # PR-only: detect changeset frontmatter touching @codaco/interviewer-v7.
-          # Gates the snapshot Electron build job below.
-          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] && \
-             compgen -G '.changeset/*.md' > /dev/null && \
-             grep -lE '"?@codaco/interviewer-v7"?[[:space:]]*:' .changeset/*.md > /dev/null 2>&1; then
-            interviewer_v7_changeset=true
-          else
-            interviewer_v7_changeset=false
+          # PR-only: detect a changeset ADDED/CHANGED in this PR whose frontmatter
+          # touches @codaco/interviewer-v7. Gates the snapshot Electron build job
+          # below. Scoping to changed files (not the whole .changeset tree) keeps
+          # unrelated PRs from triggering the build just because an interviewer-v7
+          # changeset already exists in the checkout.
+          interviewer_v7_changeset=false
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            if [[ -z "$PREV" ]]; then
+              # First push on the branch (no parent) — be conservative, scan all.
+              changesets=$(compgen -G '.changeset/*.md' || true)
+            else
+              changesets=$(git diff --name-only --diff-filter=d "$PREV" "$CURR" -- '.changeset/*.md')
+            fi
+            if [[ -n "$changesets" ]] && \
+               grep -lE '"?@codaco/interviewer-v7"?[[:space:]]*:' $changesets > /dev/null 2>&1; then
+              interviewer_v7_changeset=true
+            fi
           fi
 
           {

@@ -15,7 +15,7 @@ Network Canvas Interviewer v7 is a single-user, offline-first research-data-coll
 
 ## Architecture — process boundaries
 
-```
+```text
 +-----------------------------------------------+
 |                  Renderer                     |
 |  React 19 + wouter + fresco-ui + base-ui +    |
@@ -55,7 +55,7 @@ Network Canvas Interviewer v7 is a single-user, offline-first research-data-coll
 
 ## Architecture — auth flow
 
-```
+```text
 Setup (first launch)
 --------------------
 SetupScreen.enrol()
@@ -92,7 +92,7 @@ tablet/web: drop in-memory flag
 
 ## Data flow — protocol import
 
-```
+```text
 pickProtocolFile()  (Electron: dialog:openProtocol; web/Capacitor: <input type=file>)
        |
        v
@@ -126,7 +126,7 @@ saveProtocol(validated, hash, assets)
 
 ## Data flow — bulk export
 
-```
+```text
 ExportDialog selects sessionIds + options
        |
        v
@@ -209,4 +209,4 @@ pnpm build
 pnpm typecheck
 ```
 
-Lint and format with the monorepo root `pnpm lint` / `pnpm lint:fix` (Biome — tabs, double quotes, 120-char width).
+Lint and format with the monorepo root `pnpm lint` / `pnpm lint:fix` (oxlint + oxfmt — 2-space indentation, single quotes).

@@ -10,8 +10,10 @@ export function registerDbHandlers(): void {
   ipcMain.handle('db:protocols:getByHashes', async (_e, hashes: string[]) =>
     protocols.getByHashes(hashes),
   );
-  ipcMain.handle('db:protocols:save', async (_e, input) =>
-    protocols.save(input),
+  ipcMain.handle(
+    'db:protocols:save',
+    async (_e, input: Parameters<typeof protocols.save>[0]) =>
+      protocols.save(input),
   );
   ipcMain.handle('db:protocols:delete', async (_e, hash: string) =>
     protocols.delete(hash),
@@ -26,21 +28,29 @@ export function registerDbHandlers(): void {
   );
 
   ipcMain.handle('db:sessions:list', async () => sessions.list());
-  ipcMain.handle('db:sessions:query', async (_e, params) =>
-    sessions.query(params),
+  ipcMain.handle(
+    'db:sessions:query',
+    async (_e, params: Parameters<typeof sessions.query>[0]) =>
+      sessions.query(params),
   );
-  ipcMain.handle('db:sessions:queryMatchingIds', async (_e, params) =>
-    sessions.queryMatchingIds(params),
+  ipcMain.handle(
+    'db:sessions:queryMatchingIds',
+    async (_e, params: Parameters<typeof sessions.queryMatchingIds>[0]) =>
+      sessions.queryMatchingIds(params),
   );
   ipcMain.handle('db:sessions:get', async (_e, id: string) => sessions.get(id));
   ipcMain.handle('db:sessions:getByIds', async (_e, ids: string[]) =>
     sessions.getByIds(ids),
   );
-  ipcMain.handle('db:sessions:create', async (_e, args) =>
-    sessions.create(args),
+  ipcMain.handle(
+    'db:sessions:create',
+    async (_e, args: Parameters<typeof sessions.create>[0]) =>
+      sessions.create(args),
   );
-  ipcMain.handle('db:sessions:update', async (_e, args) =>
-    sessions.update(args),
+  ipcMain.handle(
+    'db:sessions:update',
+    async (_e, args: Parameters<typeof sessions.update>[0]) =>
+      sessions.update(args),
   );
   ipcMain.handle('db:sessions:markFinished', async (_e, id: string) =>
     sessions.markFinished(id),
@@ -59,7 +69,9 @@ export function registerDbHandlers(): void {
   );
 
   ipcMain.handle('db:settings:get', async () => settings.get());
-  ipcMain.handle('db:settings:update', async (_e, patch) =>
-    settings.update(patch),
+  ipcMain.handle(
+    'db:settings:update',
+    async (_e, patch: Parameters<typeof settings.update>[0]) =>
+      settings.update(patch),
   );
 }

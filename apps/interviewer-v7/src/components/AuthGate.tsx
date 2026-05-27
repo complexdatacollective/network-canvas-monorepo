@@ -10,15 +10,21 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const { kind } = useAuth();
   const [location, navigate] = useLocation();
 
+  const shouldRedirectToWelcome =
+    kind === 'unconfigured' && location !== '/welcome';
+  const shouldRedirectToHome = kind === 'unlocked' && location === '/welcome';
+
   useEffect(() => {
-    if (kind === 'unconfigured' && location !== '/welcome') {
+    if (shouldRedirectToWelcome) {
       navigate('/welcome', { replace: true });
-    } else if (kind === 'unlocked' && location === '/welcome') {
+    } else if (shouldRedirectToHome) {
       navigate('/', { replace: true });
     }
-  }, [kind, location, navigate]);
+  }, [navigate, shouldRedirectToWelcome, shouldRedirectToHome]);
 
-  if (kind === 'loading') {
+  // Hold the spinner while a redirect is pending so the old route's content
+  // can't paint for a frame before navigation runs in the effect above.
+  if (kind === 'loading' || shouldRedirectToWelcome || shouldRedirectToHome) {
     return (
       <div className="bg-background flex min-h-dvh items-center justify-center">
         <Spinner size="lg" />

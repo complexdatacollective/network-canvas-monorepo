@@ -1,6 +1,7 @@
 import { statfsSync } from 'node:fs';
 import { readFile, stat, writeFile } from 'node:fs/promises';
-import { basename, join } from 'node:path';
+import { basename, extname, isAbsolute, join, relative } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import {
   app,
@@ -8,6 +9,8 @@ import {
   dialog,
   ipcMain,
   Menu,
+  net,
+  protocol,
   session,
   shell,
 } from 'electron';
@@ -21,6 +24,16 @@ import { buildMenu } from './menu';
 const isDev = !app.isPackaged;
 const RENDERER_DEV_URL =
   process.env.ELECTRON_RENDERER_URL ?? 'http://localhost:5181';
+
+// Packaged builds serve the renderer from this custom scheme rather than
+// file://. WebAuthn (the biometric/passkey unlock) only runs in a secure
+// context — file:// is not one, so navigator.credentials throws a
+// SecurityError. A scheme registered `secure: true` is treated as trustworthy,
+// and using host `localhost` keeps `getRpId()` (renderer webauthn.ts) returning
+// the exact relying-party id that already works against the dev server.
+const RENDERER_SCHEME = 'app';
+const RENDERER_HOST = 'localhost';
+const RENDERER_ORIGIN = `${RENDERER_SCHEME}://${RENDERER_HOST}`;
 
 // Dev CSP: Vite serves source modules from RENDERER_DEV_URL and HMR uses a
 // WebSocket back to the dev server. `unsafe-inline` covers Vite's inline
@@ -61,6 +74,19 @@ const CSP_PROD = [
 
 let mainWindow: BrowserWindow | null = null;
 
+// Hand a URL to the OS browser only when it is a web/mail link. Never open
+// file:// or other schemes, which could trigger unintended local handlers.
+function openExternalIfWebUrl(url: string) {
+  try {
+    const { protocol: scheme } = new URL(url);
+    if (scheme === 'http:' || scheme === 'https:' || scheme === 'mailto:') {
+      void shell.openExternal(url);
+    }
+  } catch {
+    // Ignore malformed URLs.
+  }
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -88,24 +114,34 @@ function createWindow() {
     void mainWindow.loadURL(RENDERER_DEV_URL);
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
-    void mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+    void mainWindow.loadURL(`${RENDERER_ORIGIN}/index.html`);
   }
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
+    openExternalIfWebUrl(url);
     return { action: 'deny' };
   });
 
   // Top-level navigation must stay on the bundled renderer. Any nav to a remote
   // origin (e.g. accidental <a href> click) would inherit the preload bridge and
-  // hand DB/auth IPC + file dialogs to untrusted content.
+  // hand DB/auth IPC + file dialogs to untrusted content. Match the renderer
+  // origin exactly — `startsWith` would also accept sibling origins such as
+  // http://localhost:51810. The packaged `app:` scheme has an opaque origin, so
+  // compare scheme + host there instead.
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    const allowed = isDev
-      ? url.startsWith(RENDERER_DEV_URL)
-      : url.startsWith('file://');
+    let allowed = false;
+    try {
+      const target = new URL(url);
+      allowed = isDev
+        ? target.origin === new URL(RENDERER_DEV_URL).origin
+        : target.protocol === `${RENDERER_SCHEME}:` &&
+          target.host === RENDERER_HOST;
+    } catch {
+      allowed = false;
+    }
     if (!allowed) {
       event.preventDefault();
-      void shell.openExternal(url);
+      openExternalIfWebUrl(url);
     }
   });
 
@@ -120,6 +156,37 @@ function createWindow() {
 // for now we enable the default WebAuthn stack only (USB security keys, Windows
 // Hello, Chromium virtual authenticator in dev).
 app.configureWebAuthn({});
+
+// Must run before the `ready` event. Registers the packaged renderer's scheme as
+// standard + secure so WebAuthn sees a trustworthy origin; supportFetchAPI keeps
+// Vite's module/asset fetches working under the scheme.
+if (!isDev) {
+  protocol.registerSchemesAsPrivileged([
+    {
+      scheme: RENDERER_SCHEME,
+      privileges: { standard: true, secure: true, supportFetchAPI: true },
+    },
+  ]);
+}
+
+// Serves the bundled renderer over RENDERER_ORIGIN. Paths without a file
+// extension are client-side (wouter) routes and fall back to the SPA shell;
+// the relative()/isAbsolute() guard blocks traversal outside the renderer dir.
+function registerRendererProtocol() {
+  const rendererDir = join(__dirname, '../renderer');
+  protocol.handle(RENDERER_SCHEME, (request) => {
+    const { pathname } = new URL(request.url);
+    const requested = decodeURIComponent(pathname).replace(/^\/+/, '');
+    const candidate =
+      requested === '' || extname(requested) === '' ? 'index.html' : requested;
+    const resolved = join(rendererDir, candidate);
+    const within = relative(rendererDir, resolved);
+    if (within.startsWith('..') || isAbsolute(within)) {
+      return new Response('Forbidden', { status: 403 });
+    }
+    return net.fetch(pathToFileURL(resolved).toString());
+  });
+}
 
 app.whenReady().then(() => {
   try {
@@ -140,7 +207,15 @@ app.whenReady().then(() => {
   });
   registerDbHandlers();
   registerAuthHandlers();
-  bootstrapNoLock();
+  try {
+    bootstrapNoLock();
+  } catch (cause) {
+    const message = cause instanceof Error ? cause.message : String(cause);
+    dialog.showErrorBox('Cannot start Network Canvas Interviewer v7', message);
+    app.exit(1);
+    return;
+  }
+  if (!isDev) registerRendererProtocol();
   createWindow();
 
   app.on('activate', () => {

@@ -91,7 +91,7 @@ One row per directory. Per-file granularity rots; per-directory framing tells an
 - **No `any`, no `as` assertions to bypass type checking.** Fix the underlying type instead.
 - **No barrel files** (`index.ts` re-export aggregators). Import from the original source.
 - **No re-exports for convenience.** All references to a function/variable should import from the original source.
-- **Biome** formats and lints: tabs for indentation, 120-character line width, double quotes. Pre-commit hooks format staged files. Run `pnpm lint:fix` from the repo root before committing.
+- **oxlint + oxfmt** lint and format: 2-space indentation, single quotes. Pre-commit hooks format staged files. Run `pnpm lint:fix` from the repo root before committing.
 - **Tests** are co-located in `__tests__/` directories with `.test.ts` / `.test.tsx` extensions, using Vitest.
 - **Five auth modes, never combined.** A vault is one of:
   - `webauthn` — PRF unwraps a wrapped DEK; SQLCipher key on Electron. Used on Electron and web for "Biometric authentication" via WebAuthn passkeys.

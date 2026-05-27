@@ -9,7 +9,6 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { HomeModal } from '~/components/HomeModal';
 import { pickProtocolFile } from '~/lib/files/pickFile';
 import { deriveNameFromUrl } from '~/lib/protocol/importProtocol';
 

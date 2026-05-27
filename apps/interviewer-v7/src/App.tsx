@@ -1,4 +1,4 @@
-import { AnimatePresence, motion, stagger } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { Route, Switch, useLocation } from 'wouter';
 
 import { BackgroundBlobs } from '@codaco/art';

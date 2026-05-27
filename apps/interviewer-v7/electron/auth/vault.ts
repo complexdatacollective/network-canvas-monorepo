@@ -227,8 +227,10 @@ export async function setupNone(): Promise<
       wrapIvB64: '',
       wrapCiphertextB64: '',
     };
-    writeVault(record);
+    // Open the DB first; only persist the vault record once it succeeds, so a
+    // failed open cannot leave the install "configured" with no usable DB.
     openDatabasePlain();
+    writeVault(record);
     return { ok: true };
   } catch (cause) {
     return {
@@ -265,9 +267,11 @@ export async function setup(args: {
       wrapIvB64: bufToB64(wrapped.iv),
       wrapCiphertextB64: bufToB64(wrapped.ciphertext),
     };
-    writeVault(record);
+    // Open the DB first; only persist the vault record once it succeeds, so a
+    // failed open cannot leave the install "configured" with no usable DB.
     const hex = bytesToHex(dek);
     openDatabase(hex);
+    writeVault(record);
     unlockedKeyHex = hex;
     return { ok: true };
   } catch (cause) {
@@ -299,9 +303,11 @@ export async function setupPin(args: {
       wrapIvB64: bufToB64(wrapped.iv),
       wrapCiphertextB64: bufToB64(wrapped.ciphertext),
     };
-    writeVault(record);
+    // Open the DB first; only persist the vault record once it succeeds, so a
+    // failed open cannot leave the install "configured" with no usable DB.
     const hex = bytesToHex(dek);
     openDatabase(hex);
+    writeVault(record);
     unlockedKeyHex = hex;
     return { ok: true };
   } catch (cause) {
@@ -638,9 +644,11 @@ export async function setupPassphrase(args: {
       wrapIvB64: bufToB64(wrapped.iv),
       wrapCiphertextB64: bufToB64(wrapped.ciphertext),
     };
-    writeVault(record);
+    // Open the DB first; only persist the vault record once it succeeds, so a
+    // failed open cannot leave the install "configured" with no usable DB.
     const hex = bytesToHex(dek);
     openDatabase(hex);
+    writeVault(record);
     unlockedKeyHex = hex;
     return { ok: true };
   } catch (cause) {

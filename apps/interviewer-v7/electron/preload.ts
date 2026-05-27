@@ -81,13 +81,22 @@ const systemBridge = {
   storageInfo: () => ipcRenderer.invoke('system:storageInfo'),
 };
 
+// Electron only runs on these three platforms; narrow without an `as` cast.
+function rendererPlatform(): 'darwin' | 'win32' | 'linux' {
+  const platform = process.platform;
+  if (platform === 'darwin' || platform === 'win32' || platform === 'linux') {
+    return platform;
+  }
+  return 'linux';
+}
+
 const electronAPI = {
   openFile: () => ipcRenderer.invoke('dialog:openProtocol'),
   saveFile: (suggestedName: string, data: Uint8Array) =>
     ipcRenderer.invoke('dialog:saveFile', suggestedName, data),
   fetchProtocolFromUrl: (url: string) =>
     ipcRenderer.invoke('protocol:fetchFromUrl', url),
-  platform: process.platform as 'darwin' | 'win32' | 'linux',
+  platform: rendererPlatform(),
   isPackaged: process.argv.includes('--isPackaged'),
   db: dbBridge,
   auth: authBridge,

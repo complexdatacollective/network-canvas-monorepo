@@ -124,7 +124,7 @@ Visual design components using blobs and d3-interpolate-path for animated blob g
 
 #### @codaco/development-protocol
 
-Development protocol (protocol.json and assets/) for testing Network Canvas applications during development. Can be zipped into a .netcanvas file.
+Development protocol (protocol.json and assets/) for testing Network Canvas applications during development; it can be zipped into a .netcanvas file.
 
 ### Protocol System
 
