@@ -94,7 +94,6 @@ type DialogProps = {
   footer?: ReactNode;
   children?: ReactNode;
   onConfirm?: () => void;
-  onCancel?: () => void;
   confirmText?: string;
   cancelText?: string;
   confirmColor?: ComponentProps<typeof Button>['color'];
@@ -111,7 +110,6 @@ function Dialog({
   footer,
   children,
   onConfirm,
-  onCancel,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   confirmColor = 'sea-green',
@@ -122,13 +120,9 @@ function Dialog({
     <>
       <BaseDialog.Close
         nativeButton={false}
-        render={
-          // Base UI's Close drives onOpenChange(false); we only run the
-          // optional side-effect here so button / Esc / backdrop converge.
-          <Button onClick={onCancel} color="platinum">
-            {cancelText}
-          </Button>
-        }
+        // Cancel closes via Base UI's Close, which fires onOpenChange(false);
+        // button / Esc / backdrop all converge on that single handler.
+        render={<Button color="platinum">{cancelText}</Button>}
       />
       {onConfirm && (
         <Button onClick={onConfirm} color={confirmColor}>
