@@ -35,11 +35,15 @@ module.exports = {
     hardenedRuntime: true,
     gatekeeperAssess: false,
     icon: 'build-resources/icon.icon',
+    entitlements: 'build-resources/entitlements.mac.plist',
+    entitlementsInherit: 'build-resources/entitlements.mac.inherit.plist',
     target: [
       { target: 'dmg', arch: ['x64', 'arm64'] },
       { target: 'zip', arch: ['x64', 'arm64'] },
     ],
-    notarize: true,
+    notarize: process.env.APPLE_TEAM_ID
+      ? { teamId: process.env.APPLE_TEAM_ID }
+      : true,
   },
   win: {
     target: [{ target: 'nsis', arch: ['x64'] }],
