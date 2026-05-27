@@ -50,7 +50,7 @@ catalog:
   posthog-js: ^1.373.4
   react: ^19.2.6
   react-dom: ^19.2.6
-  react-redux: ^9.2.0
+  react-redux: ^9.3.0
   redux-logger: ^3.0.6
   tailwind-merge: ^3.6.0
   tailwindcss: ^4.3.0

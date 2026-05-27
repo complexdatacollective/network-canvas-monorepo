@@ -94,8 +94,8 @@ catalogs:
       specifier: ^19.2.6
       version: 19.2.6
     react-redux:
-      specifier: ^9.2.0
-      version: 9.2.0
+      specifier: ^9.3.0
+      version: 9.3.0
     redux-logger:
       specifier: ^3.0.6
       version: 3.0.6
@@ -477,7 +477,7 @@ importers:
         version: 0.21.5(slate-react@0.57.3(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(slate@0.57.3))(slate@0.57.3)
       '@reduxjs/toolkit':
         specifier: 'catalog:'
-        version: 2.11.2(react-redux@9.2.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1))(react@19.2.6)
+        version: 2.11.2(react-redux@9.3.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1))(react@19.2.6)
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.3.0(vite@8.0.13(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.99.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))
@@ -543,13 +543,13 @@ importers:
         version: 0.33.0(react@19.2.6)
       react-redux:
         specifier: 'catalog:'
-        version: 9.2.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1)
+        version: 9.3.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1)
       redux:
         specifier: ^5.0.1
         version: 5.0.1
       redux-form:
         specifier: ^8.3.10
-        version: 8.3.10(immutable@4.3.8)(react-redux@9.2.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1))(react@19.2.6)(redux@5.0.1)
+        version: 8.3.10(immutable@4.3.8)(react-redux@9.3.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1))(react@19.2.6)(redux@5.0.1)
       redux-logger:
         specifier: 'catalog:'
         version: 3.0.6
@@ -1408,7 +1408,7 @@ importers:
         version: 1.5.1(mapbox-gl@3.23.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@reduxjs/toolkit':
         specifier: 'catalog:'
-        version: 2.11.2(react-redux@9.2.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1))(react@19.2.6)
+        version: 2.11.2(react-redux@9.3.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1))(react@19.2.6)
       concaveman:
         specifier: ^2.0.0
         version: 2.0.0
@@ -1447,7 +1447,7 @@ importers:
         version: 19.2.6(react@19.2.6)
       react-redux:
         specifier: 'catalog:'
-        version: 9.2.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1)
+        version: 9.3.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1)
       redux-logger:
         specifier: 'catalog:'
         version: 3.0.6
@@ -11107,8 +11107,8 @@ packages:
       react-native:
         optional: true
 
-  react-redux@9.2.0:
-    resolution: {integrity: sha512-ROY9fvHhwOD9ySfrF0wmvu//bKCQ6AeZZq1nJNtbDC+kk5DuSuNX/n6YWYF/SYy7bSba4D4FSz8DJeKY/S/r+g==}
+  react-redux@9.3.0:
+    resolution: {integrity: sha512-KQopgqFo/p/fgmAs5qz6p5RWaNAzq40WAu7fJIXnQpYxFPbJYtsJPWvGeF2rOBaY/kEuV77AVsX8TsQzKm+A/g==}
     peerDependencies:
       '@types/react': ^18.2.25 || ^19
       react: ^18.0 || ^19
@@ -16935,7 +16935,7 @@ snapshots:
     dependencies:
       react: 19.2.6
 
-  '@reduxjs/toolkit@2.11.2(react-redux@9.2.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1))(react@19.2.6)':
+  '@reduxjs/toolkit@2.11.2(react-redux@9.3.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1))(react@19.2.6)':
     dependencies:
       '@standard-schema/spec': 1.1.0
       '@standard-schema/utils': 0.3.0
@@ -16945,7 +16945,7 @@ snapshots:
       reselect: 5.1.1
     optionalDependencies:
       react: 19.2.6
-      react-redux: 9.2.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1)
+      react-redux: 9.3.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1)
 
   '@rolldown/binding-android-arm64@1.0.1':
     optional: true
@@ -23853,7 +23853,7 @@ snapshots:
     optionalDependencies:
       react-dom: 16.14.0(react@16.14.0)
 
-  react-redux@9.2.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1):
+  react-redux@9.3.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1):
     dependencies:
       '@types/use-sync-external-store': 0.0.6
       react: 19.2.6
@@ -24168,7 +24168,7 @@ snapshots:
     optionalDependencies:
       immutable: 4.3.8
 
-  redux-form@8.3.10(immutable@4.3.8)(react-redux@9.2.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1))(react@19.2.6)(redux@5.0.1):
+  redux-form@8.3.10(immutable@4.3.8)(react-redux@9.3.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1))(react@19.2.6)(redux@5.0.1):
     dependencies:
       '@babel/runtime': 7.29.2
       es6-error: 4.1.1
@@ -24179,7 +24179,7 @@ snapshots:
       prop-types: 15.8.1
       react: 19.2.6
       react-is: 16.13.1
-      react-redux: 9.2.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1)
+      react-redux: 9.3.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1)
       redux: 5.0.1
     optionalDependencies:
       immutable: 4.3.8
