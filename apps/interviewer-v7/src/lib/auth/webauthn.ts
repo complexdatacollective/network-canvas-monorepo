@@ -52,6 +52,21 @@ export function isWebAuthnAvailable(): boolean {
   return true;
 }
 
+export async function isPlatformAuthenticatorAvailable(): Promise<boolean> {
+  if (
+    typeof PublicKeyCredential === 'undefined' ||
+    typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !==
+      'function'
+  ) {
+    return false;
+  }
+  try {
+    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  } catch {
+    return false;
+  }
+}
+
 function readPrfOutput(credential: PublicKeyCredential): Bytes | null {
   const extensions =
     credential.getClientExtensionResults() as ExtensionResultsWithPrf;
