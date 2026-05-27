@@ -32,33 +32,15 @@ pnpm test:watch
 
 # Type check all packages (always run before committing)
 pnpm typecheck
-```
 
-### Package-specific Commands
+# Check for dead code and unused dependencies
+pnpm knip
 
-```bash
-# Work with specific packages/apps
-pnpm --filter @codaco/protocol-validation build
-pnpm --filter analytics-web dev
-pnpm --filter @codaco/shared-consts test
-
-# Work with multiple packages by pattern
-pnpm --filter "./packages/*" build
-pnpm --filter "./apps/*" dev
-
-# Package-specific commands from directories
-npm run build    # Build individual package
-npm run dev      # Build package in watch mode
-npm run test     # Run package tests
-npm run typecheck # Type check package
 ```
 
 ### Code Quality (Always Run Before Committing)
 
 ```bash
-# Check formatting and linting
-pnpm lint
-
 # Auto-fix formatting and linting issues
 pnpm lint:fix
 
@@ -67,21 +49,6 @@ pnpm knip
 
 # Run type checking across all packages
 pnpm typecheck
-```
-
-- Oxlint + oxfmt: 2-space indentation, 80 char line width, single quotes
-- Pre-commit hooks automatically lint and format staged files
-
-### Cloudflare Workers
-
-```bash
-# Develop workers locally
-pnpm --filter development-protocol-worker dev
-pnpm --filter posthog-proxy-worker dev
-
-# Deploy workers to Cloudflare
-pnpm --filter development-protocol-worker deploy
-pnpm --filter posthog-proxy-worker deploy
 ```
 
 ### Version Management
@@ -124,16 +91,9 @@ This is a **pnpm workspace** monorepo with catalog dependencies for version cons
 
 - **Build**: Vite for apps, custom build scripts for packages
 - **Validation**: Zod with complex cross-reference validation patterns
-- **Frontend**: React with various stacks (Vite + Redux for architect, Next.js for analytics)
+- **Frontend**: React with various stacks (Vite + Redux for desktop apps and architect-web, Next.js for documentation and others)
 - **Styling**: Tailwind CSS with shared configurations
 - **Testing**: Vitest across all packages
-
-### Critical Validation Patterns
-
-- `validateProtocol()` function in `protocol-validation` package - async function returning ValidationResult
-- Used extensively in architect app save operations
-- Validates both schema structure and business logic with descriptive error messages
-- Use `superRefine` for complex cross-reference validation
 
 #### @codaco/protocol-validation
 
@@ -152,11 +112,7 @@ The core validation system for Network Canvas protocol files (`.netcanvas`). Con
 
 #### @codaco/shared-consts
 
-Shared constants and type definitions used across the ecosystem.
-
-#### @codaco/ui
-
-Reusable React UI components built on shadcn/ui and Tailwind CSS.
+Shared constants and type definitions used across the ecosystem. Place shared code, types, and constants here to avoid circular dependencies between packages.
 
 #### @codaco/analytics
 
@@ -168,7 +124,7 @@ Visual design components using blobs and d3-interpolate-path for animated blob g
 
 #### @codaco/development-protocol
 
-Development protocol assets (protocol.json and assets/) for testing Network Canvas applications during development.
+Development protocol (protocol.json and assets/) for testing Network Canvas applications during development. Can be zipped into a .netcanvas file.
 
 ### Protocol System
 
@@ -183,25 +139,15 @@ Network Canvas uses a protocol-based system where:
 
 1. Protocols are designed in Architect (protocol builder)
 2. Validated using @codaco/protocol-validation
-3. Executed in Interviewer applications (not yet present in this repository)
-4. Data exported and analyzed through Analytics tools
+3. Executed in Interviewer applications
 
 ## Development Guidelines
-
-### Code Style
-
-- Uses oxlint for linting and oxfmt for formatting
-- Enforces unused import/variable removal
-- 2-space indentation, 80-character line width, single quotes
-- Import sorting and Tailwind class sorting handled by oxfmt
-- Pre-commit hooks automatically lint and format staged files
-- ALL code style tasks to pass successfully before committing
 
 ### Code Standards
 
 - **NO `any` types** - explicitly forbidden, always use proper TypeScript typing
 - **No barrel files** - avoid index.js/ts except in exceptional circumstances
-- **Workspace dependencies**: Use `workspace:*` for internal package references
+- **Workspace dependencies**: Use `workspace:*` for dependencies used by multiple packages, or tooling dependencies. Use regular versioning for app-specific dependencies.
 
 ### TypeScript
 
@@ -214,23 +160,4 @@ Network Canvas uses a protocol-based system where:
 - Test files use `.test.ts` or `.test.tsx` extensions
 - Tests are co-located with source files in `__tests__/` directories
 - Uses Vitest for testing framework
-
-### Package Management
-
-- Uses pnpm with workspace support
-- Package versions managed through Changesets
-- Catalog system for dependency management (check `pnpm-workspace.yaml`)
-- Each package has its own `package.json` with proper dependencies
-
-### Dependencies
-
-- React ecosystem with Radix UI components via catalog
-- Node.js >= 20.0.0, pnpm >= 10.0.0 required
-- Heavy use of catalog dependencies in pnpm-workspace.yaml for consistency
-
-### Development Workflow
-
-1. Always run `pnpm lint:fix` before committing
-2. Run `pnpm typecheck` to verify TypeScript compliance
-3. Use changesets for version management - never manually bump versions
-4. Test individual packages with `pnpm --filter <package-name> test`
+- If a storybook exists for a component, consider creating interactive tests within storybook
