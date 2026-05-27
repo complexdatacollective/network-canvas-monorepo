@@ -9,9 +9,9 @@ export function DialogBackdrop(props: BaseDialog.Backdrop.Props) {
       render={
         <motion.div
           className="bg-rich-black/50 fixed inset-0 z-(--z-dialog) min-h-dvh backdrop-blur-md supports-[-webkit-touch-callout:none]:absolute"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          initial={{ opacity: 0, pointerEvents: 'none' }}
+          animate={{ opacity: 1, pointerEvents: 'auto' }}
+          exit={{ opacity: 0, pointerEvents: 'none' }}
           transition={{ duration: 0.5 }}
         />
       }

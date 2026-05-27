@@ -6,6 +6,7 @@ import Icon from '~/lib/legacy-ui/components/Icon';
 import { cx } from '~/utils/cva';
 
 import AssetBrowserWindow from '../../AssetBrowser/AssetBrowserWindow';
+import MarkdownLabel from './MarkdownLabel';
 
 type InputProps = {
   value: string;
@@ -83,23 +84,25 @@ const FileInput = ({
   };
 
   return (
-    <div className={cx('form-field relative m-0 block [&>h4]:m-0', className)}>
-      {label && <h4 className="h3">{label}</h4>}
-      {invalid && touched && (
-        <div className="text-error flex items-center px-(--space-xs) py-(--space-sm) [&_.icon]:mr-(--space-sm) [&_.icon]:size-(--space-md)">
-          <Icon name="warning" />
-          {error}
+    <div className={cx('m-0 block [&>h4]:m-0', className)}>
+      {label && <MarkdownLabel label={label} />}
+      <div className="form-field relative">
+        {invalid && touched && (
+          <div className="text-error flex items-center px-(--space-xs) py-(--space-sm) [&_.icon]:mr-(--space-sm) [&_.icon]:size-(--space-md)">
+            <Icon name="warning" />
+            {error}
+          </div>
+        )}
+        <div
+          className={cx('relative overflow-hidden', value ? 'block' : 'hidden')}
+        >
+          {children?.(value)}
         </div>
-      )}
-      <div
-        className={cx('relative overflow-hidden', value ? 'block' : 'hidden')}
-      >
-        {children?.(value)}
-      </div>
-      <div className="mt-(--space-md)">
-        <Button onClick={handleBrowseLibrary} color="sea-green">
-          {!value ? 'Select resource' : 'Update resource'}
-        </Button>
+        <div className="mt-(--space-md)">
+          <Button onClick={handleBrowseLibrary} color="sea-green">
+            {!value ? 'Select resource' : 'Update resource'}
+          </Button>
+        </div>
       </div>
       <AssetBrowserWindow
         show={showBrowser}

@@ -59,7 +59,7 @@ const Radio = ({
       />
       <div
         className={cx(
-          'relative mr-(--space-sm) inline-block size-(--space-xl) shrink-0',
+          'relative mr-(--space-sm) inline-block size-(--space-lg) shrink-0',
           "before:border-border before:absolute before:inset-0 before:rounded-full before:border-2 before:border-solid before:content-['']",
           'before:transition-[border-color] before:duration-(--animation-duration-standard) before:ease-(--animation-easing)',
           "after:absolute after:inset-1.5 after:content-['']",

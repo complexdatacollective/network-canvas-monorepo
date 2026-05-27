@@ -29,12 +29,12 @@ const PreviewRules = ({
   return (
     <div
       className={cx(
-        'bg-input rounded-t-lg border border-transparent',
-        hasError && 'border-error',
+        'bg-input rounded-sm border-2 border-transparent',
+        hasError && 'border-error rounded-b-none',
       )}
     >
       {rules.length === 0 && (
-        <div className="px-(--space-md) py-(--space-md) italic">
+        <div className="text-input-placeholder px-(--space-md) py-(--space-md) italic">
           Add rule types from the options below.
         </div>
       )}

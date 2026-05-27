@@ -10,7 +10,7 @@ import {
 import type { VariableValue } from '@codaco/shared-consts';
 
 import { networkReader } from '../../utils/protocols/assetTools';
-import Table from './Table';
+import Table, { type TableColumn } from './Table';
 import withAssetPath from './withAssetPath';
 
 const ROW_LIMIT = 100;
@@ -27,7 +27,7 @@ type NetworkNode = {
 const getRows = (data: NetworkType): Record<string, VariableValue>[] =>
   (data.nodes ?? []).map(({ attributes }: NetworkNode) => attributes);
 
-const getColumns = (data: NetworkType) =>
+const getColumns = (data: NetworkType): TableColumn[] =>
   getVariableNamesFromNetwork(data).map((col) => ({
     Header: col,
     accessor: col,

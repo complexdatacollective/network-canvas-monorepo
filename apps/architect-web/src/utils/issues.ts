@@ -13,12 +13,22 @@ const flattenIssues = (
     flatMap(issues, (issue: unknown, field: string) => {
       // field array
       if (Array.isArray(issue)) {
-        return flatMap(issue, (item: unknown, index: number) =>
+        const itemIssues = flatMap(issue, (item: unknown, index: number) =>
           flattenIssues(
             item as Record<string, unknown>,
             `${path}${field}[${index}].`,
           ),
         );
+        // array-level errors live on a non-index `_error` prop that the element
+        // iteration above skips
+        const arrayError = (issue as { _error?: unknown })._error;
+        if (arrayError !== undefined) {
+          return [
+            ...itemIssues,
+            { issue: arrayError as string, field: `${path}${field}._error` },
+          ];
+        }
+        return itemIssues;
       }
       // nested field
       if (isPlainObject(issue)) {
@@ -43,4 +53,30 @@ const getFieldId = (field: string) => {
   return `field_${safeFieldName}`;
 };
 
-export { flattenIssues, getFieldId };
+// Ordered candidate ids for an issue path: exact match first, then progressively
+// trimmed ancestors (each also tried with `._error`), so the nearest mounted
+// anchor can be found when the exact field isn't in the DOM.
+const candidateIdsFor = (field: string): string[] => {
+  const ids: string[] = [];
+  const push = (p: string) => {
+    ids.push(getFieldId(p));
+    // Skip the synthetic `._error` variant when the path already targets an
+    // `_error` node, which would otherwise yield a dead `..._error._error` id.
+    if (!p.endsWith('._error')) {
+      ids.push(getFieldId(`${p}._error`));
+    }
+  };
+  let path = field;
+  push(path);
+  while (/[.[]/.test(path)) {
+    const next = path.replace(/(\.[^.[\]]+|\[\d+\])$/, '');
+    if (!next || next === path) {
+      break;
+    }
+    path = next;
+    push(path);
+  }
+  return ids;
+};
+
+export { candidateIdsFor, flattenIssues, getFieldId };

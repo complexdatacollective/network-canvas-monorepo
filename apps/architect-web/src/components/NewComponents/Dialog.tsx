@@ -58,15 +58,15 @@ function DialogPopup({
           {...props}
         >
           {header && (
-            <div className="bg-accent text-accent-foreground sticky top-0 px-(--space-md) py-(--space-lg)">
+            <div className="bg-accent text-accent-foreground sticky top-0 px-(--space-lg) py-(--space-md)">
               {header}
             </div>
           )}
-          <div className="flex-1 overflow-y-auto px-(--space-md) py-(--space-lg)">
+          <div className="flex-1 overflow-y-auto px-(--space-lg) py-(--space-md)">
             {children}
           </div>
           {footer && (
-            <div className="bg-accent text-accent-foreground sticky bottom-0 flex justify-end gap-(--space-sm) px-(--space-md) py-(--space-lg)">
+            <div className="bg-accent text-accent-foreground sticky bottom-0 flex justify-end gap-(--space-sm) px-(--space-lg) py-(--space-md)">
               {footer}
             </div>
           )}

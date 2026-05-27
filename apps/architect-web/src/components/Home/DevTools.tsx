@@ -1,3 +1,4 @@
+import ActionToolbar from '~/components/ProjectNav/ActionToolbar';
 import { DEVELOPMENT_PROTOCOL_URL } from '~/config';
 import { useAppDispatch } from '~/ducks/hooks';
 import { openRemoteNetcanvas } from '~/ducks/modules/userActions/userActions';
@@ -19,19 +20,15 @@ const DevTools = ({ runAction }: DevToolsProps) => {
     });
 
   return (
-    <footer className="bg-surface-3 text-surface-2-foreground flex flex-wrap items-center gap-x-4 gap-y-2 px-8 py-3">
-      <span className="small-heading">Dev</span>
-      <Button
-        color="platinum"
-        size="small"
-        onClick={installDevelopmentProtocol}
-      >
+    <ActionToolbar aria-label="Development tools">
+      <span className="small-heading px-2">Dev</span>
+      <Button color="platinum" onClick={installDevelopmentProtocol}>
         Install development protocol
       </Button>
-      <Button color="tomato" size="small" onClick={clearAllStorage}>
+      <Button color="tomato" onClick={clearAllStorage}>
         Clear all data
       </Button>
-    </footer>
+    </ActionToolbar>
   );
 };
 

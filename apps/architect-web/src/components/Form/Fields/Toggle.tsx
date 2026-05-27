@@ -61,6 +61,7 @@ const Toggle = ({
       <label
         className={cx(
           'form-field flex cursor-pointer flex-row items-center justify-start',
+          hasError && 'border-error mb-0 rounded-b-none border-2',
           className,
         )}
         htmlFor={id.current}
@@ -106,7 +107,7 @@ const Toggle = ({
         )}
       </label>
       {hasError && (
-        <div className="bg-error text-foreground flex items-center px-(--space-xs) py-(--space-sm) [&_svg]:max-h-(--space-md)">
+        <div className="bg-error text-error-foreground flex items-center rounded-b-sm px-(--space-xs) py-(--space-sm) [&_svg]:max-h-(--space-md)">
           <Icon name="warning" />
           {error}
         </div>

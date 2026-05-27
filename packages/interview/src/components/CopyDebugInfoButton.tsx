@@ -23,7 +23,7 @@ export default function CopyDebugInfoButton({
     if (showToast) {
       add({
         title: 'Debug information copied to clipboard',
-        type: 'success',
+        variant: 'success',
       });
     }
   };
