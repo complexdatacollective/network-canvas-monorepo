@@ -9,6 +9,7 @@ import app from './app';
 import dialogs from './dialogs';
 import protocols from './protocols';
 import protocolValidation from './protocolValidation';
+import stageEditorDraft from './stageEditorDraft';
 
 const protocolPattern = /^(activeProtocol|stages|codebook|assetManifest)\//;
 // Thunk-lifecycle actions dispatched by createAsyncThunk don't carry state mutations themselves;
@@ -37,6 +38,7 @@ export const rootReducer = combineReducers({
   activeProtocol: createTimeline(activeProtocol, timelineOptions),
   protocols,
   protocolValidation,
+  stageEditorDraft,
 });
 
 // Export the root state type
