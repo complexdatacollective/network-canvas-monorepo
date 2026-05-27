@@ -205,8 +205,10 @@ function ComboboxField(props: ComboboxFieldProps) {
               {emptyMessage}
             </Combobox.Empty>
             <Combobox.List
-              className="inset-surface max-h-64 overflow-hidden rounded-sm has-data-empty:hidden"
-              render={<ScrollArea viewportClassName="px-2" fade={false} />}
+              className="max-h-64 overflow-hidden has-data-empty:hidden"
+              render={
+                <ScrollArea viewportClassName="px-2 flex flex-col gap-1 " />
+              }
             >
               {(option: ComboboxOption) => (
                 <Combobox.Item

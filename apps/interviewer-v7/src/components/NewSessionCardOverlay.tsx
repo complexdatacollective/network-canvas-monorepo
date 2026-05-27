@@ -5,9 +5,8 @@ import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
 
 import { NewSessionForm } from './NewSessionForm';
+import { CARD_RADIUS_PX } from './ProtocolCarousel/cardStyles';
 import {
-  CARD_RADIUS_PX,
-  cardActiveShadow,
   deckCardHeadingLayoutId,
   deckCardLayoutId,
   deckCardMetaLayoutId,
@@ -43,7 +42,7 @@ export function NewSessionCardOverlay({
         className="bg-surface-1 text-text @container pointer-events-auto flex w-md flex-col overflow-hidden"
         style={{
           borderRadius: CARD_RADIUS_PX,
-          boxShadow: cardActiveShadow(palette.backgroundTop),
+          boxShadow: `var(--shadow-2xl-base), 0 0 0 2px ${palette.backgroundTop}`,
         }}
       >
         {/* Heading section — mirrors the in-slide DeckCard so the

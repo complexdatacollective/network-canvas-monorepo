@@ -8,7 +8,7 @@ import { BrandHeader } from '~/components/BrandHeader';
 import { DataView } from '~/components/DataView';
 import type { ImportRequest } from '~/components/ImportDialog';
 import { ImportDialog } from '~/components/ImportDialog';
-import type { PendingImport } from '~/components/ProtocolCarousel/DeckCard';
+import type { PendingImport } from '~/components/ProtocolCarousel/PendingImportCard';
 import { ProtocolDeck } from '~/components/ProtocolCarousel/ProtocolDeck';
 import { ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';

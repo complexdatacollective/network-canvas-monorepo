@@ -18,7 +18,19 @@ import { SAMPLE_PROTOCOL } from '~/lib/protocol/sampleProtocol';
 
 import { NewSessionCardOverlay } from '../NewSessionCardOverlay';
 import { GLASS_PILL } from '../TopActionBar';
-import { DeckCard, type DeckEntry, type PendingImport } from './DeckCard';
+import { DeckCard } from './DeckCard';
+import { ImportTriggerCard } from './ImportTriggerCard';
+import { PendingImportCard, type PendingImport } from './PendingImportCard';
+import { SampleProtocolCard } from './SampleProtocolCard';
+
+// Internal union shape that determines which card component to render
+// in a slot. ProtocolDeck owns this — each kind maps to a distinct
+// extracted card component below.
+type DeckEntry =
+  | { kind: 'protocol'; protocol: ProtocolWithCounts }
+  | { kind: 'sample' }
+  | { kind: 'pending'; pending: PendingImport }
+  | { kind: 'import' };
 
 // High-codepoint sentinel so the import card always sorts last under a
 // case-insensitive locale comparison.
@@ -495,6 +507,15 @@ export function ProtocolDeck({
                   : entry.kind === 'protocol'
                     ? `protocol-${entry.protocol.hash}`
                     : entry.kind;
+              // The "ghost" cards (sample + import) want a frosted-glass look.
+              // backdrop-blur applied INSIDE the card is a no-op — Swiper's
+              // per-slide transforms create a stacking context that scopes the
+              // filter to an empty rect. Applied here on the slide's direct
+              // child it reads through to the blob backdrop behind the deck.
+              // Opaque variants skip it so the GPU doesn't pay for an
+              // invisible filter pass.
+              const wantsBackdropBlur =
+                entry.kind === 'sample' || entry.kind === 'import';
               return (
                 <SwiperSlide
                   key={slotKey}
@@ -503,9 +524,9 @@ export function ProtocolDeck({
                   // `.swiper-slide { overflow: hidden }` so the card's
                   // drop shadow paints beyond the slide rect. The
                   // `@container` query root used to live here; it now
-                  // sits on the DeckCard itself so the overlay's
-                  // expanded width drives the queries instead of the
-                  // frozen `cardWidth`.
+                  // sits on the card itself so the overlay's expanded
+                  // width drives the queries instead of the frozen
+                  // slide width.
                   className="!flex origin-[center_bottom] items-center justify-center !overflow-visible will-change-transform"
                 >
                   <AnimatePresence mode="wait" initial={false}>
@@ -520,35 +541,32 @@ export function ProtocolDeck({
                         damping: 12,
                         mass: 1.1,
                       }}
-                      style={{ width: cardWidth, height: cardHeight }}
+                      className={`h-full w-full ${wantsBackdropBlur ? 'backdrop-blur-md' : ''}`}
                     >
-                      {!isMorphingOut && (
+                      {entry.kind === 'protocol' && !isMorphingOut && (
                         <DeckCard
-                          entry={entry}
-                          cardWidth={cardWidth}
-                          cardHeight={cardHeight}
+                          protocol={entry.protocol}
                           isActive={i === activeIdx}
                           sessionCount={
-                            entry.kind === 'protocol'
-                              ? (sessionCounts.get(entry.protocol.hash) ?? 0)
-                              : 0
+                            sessionCounts.get(entry.protocol.hash) ?? 0
                           }
                           onActivate={() => handleActivate(i)}
-                          onDelete={
-                            entry.kind === 'protocol'
-                              ? () => onDeleteProtocol(entry.protocol.hash)
-                              : undefined
-                          }
-                          onInstallSample={
-                            entry.kind === 'sample'
-                              ? onInstallSample
-                              : undefined
-                          }
-                          onDismissSample={
-                            entry.kind === 'sample'
-                              ? onDismissSample
-                              : undefined
-                          }
+                          onDelete={() => onDeleteProtocol(entry.protocol.hash)}
+                        />
+                      )}
+                      {entry.kind === 'sample' && (
+                        <SampleProtocolCard
+                          isActive={i === activeIdx}
+                          onInstall={onInstallSample}
+                          onDismiss={onDismissSample}
+                        />
+                      )}
+                      {entry.kind === 'pending' && (
+                        <PendingImportCard pending={entry.pending} />
+                      )}
+                      {entry.kind === 'import' && (
+                        <ImportTriggerCard
+                          onActivate={() => handleActivate(i)}
                         />
                       )}
                     </motion.div>

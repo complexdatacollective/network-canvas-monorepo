@@ -327,7 +327,7 @@ export const controlLabelVariants = cva({
 // `font-semibold` to stay distinct from the highlight cursor.
 export const dropdownItemVariants = cva({
   base: cx(
-    'flex h-10 cursor-pointer items-center gap-2 rounded px-4',
+    'flex cursor-pointer items-center gap-2 rounded-sm px-4 py-2',
     'transition-colors outline-none select-none',
     // Hover / highlighted / open: subtle translucent background
     'not-data-selected:not-data-checked:hover:bg-surface-1 not-data-selected:not-data-checked:hover:text-surface-1-contrast',

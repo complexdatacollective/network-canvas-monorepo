@@ -1,5 +1,5 @@
-import { Download, Play, Plus, Trash2 } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { Play, Trash2 } from 'lucide-react';
+import { motion } from 'motion/react';
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   useEffect,
@@ -11,9 +11,9 @@ import { Pattern, seedToPatternPalette } from '@codaco/art';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import { cva } from '@codaco/fresco-ui/utils/cva';
 import type { ProtocolWithCounts } from '~/lib/db/types';
-import type { ImportPhase } from '~/lib/protocol/importProtocol';
+
+import { CARD_RADIUS_PX, cardBase, protocolCardClass } from './cardStyles';
 
 // Stable per-protocol layoutIds for the shared-element morph between
 // the in-slide DeckCard and NewSessionCardOverlay. Motion pairs each
@@ -35,57 +35,12 @@ export const deckCardMetaLayoutId = (protocolHash: string): string =>
 // scope so the same component identity is reused across renders.
 export const MotionHeading = motion.create(Heading);
 
-const INACTIVE_SHADOW = '0 20px 40px oklch(0.10 0.05 281 / 0.5)';
-const ACTIVE_DROP_SHADOW = '0 30px 60px oklch(0.10 0.05 281 / 0.7)';
-
-export const cardActiveShadow = (accent: string): string =>
-  `${ACTIVE_DROP_SHADOW}, 0 0 0 2px ${accent}`;
-
-export const CARD_RADIUS_PX = 28;
-
-const cardBase = cva({
-  base: [
-    'focus-visible:ring-sea-green focus-visible:ring-4 focus-visible:outline-none',
-  ],
-});
-
-const importCardClass = cva({
-  base: [
-    'flex flex-col items-center justify-center gap-3 border-[3px] border-dashed border-outline bg-surface/50 backdrop-blur-md',
-    'text-text/80',
-  ].join(' '),
-});
-
-const protocolCardClass = cva({
-  base: [
-    'flex flex-col overflow-hidden border-0 bg-surface-1 p-0 text-text',
-  ].join(' '),
-});
-
-export type PendingImport = {
-  id: string;
-  label: string;
-  source: 'file' | 'url' | 'sample';
-  phase: ImportPhase;
-  progress?: number;
-};
-
-export type DeckEntry =
-  | { kind: 'protocol'; protocol: ProtocolWithCounts }
-  | { kind: 'sample' }
-  | { kind: 'pending'; pending: PendingImport }
-  | { kind: 'import' };
-
 type DeckCardProps = {
-  entry: DeckEntry;
-  cardWidth: number;
-  cardHeight: number;
+  protocol: ProtocolWithCounts;
   isActive: boolean;
   sessionCount: number;
   onActivate: () => void;
-  onDelete?: () => void;
-  onInstallSample?: () => void;
-  onDismissSample?: () => void;
+  onDelete: () => void;
 };
 
 // Static lookup so Tailwind's scanner sees every possible class name at
@@ -154,222 +109,19 @@ function DescriptionBlock({ text }: { text: string }) {
 }
 
 export function DeckCard({
-  entry,
-  cardWidth,
-  cardHeight,
+  protocol,
   isActive,
   sessionCount,
   onActivate,
   onDelete,
-  onInstallSample,
-  onDismissSample,
 }: DeckCardProps) {
-  if (entry.kind === 'import') {
-    return (
-      <button
-        type="button"
-        onClick={onActivate}
-        // Match the protocol card's shadow so the visual footprint
-        // (and therefore perceived size) is identical.
-        style={{
-          width: cardWidth,
-          height: cardHeight,
-          boxShadow: INACTIVE_SHADOW,
-          borderRadius: CARD_RADIUS_PX,
-        }}
-        className={`${cardBase()} ${importCardClass()} @container`}
-        aria-label="Import a protocol"
-      >
-        <div className="bg-surface text-sea-green inline-flex h-[84px] w-[84px] items-center justify-center rounded-full">
-          <Plus size={36} strokeWidth={2.5} aria-hidden />
-        </div>
-        <Heading level="h2" margin="none" className="text-text font-black">
-          Import a protocol
-        </Heading>
-        <div className="px-8 text-center text-sm">
-          Add a <span className="font-monospace text-text">.netcanvas</span>{' '}
-          file
-        </div>
-      </button>
-    );
-  }
-
-  if (entry.kind === 'sample') {
-    const onSampleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        onInstallSample?.();
-      }
-    };
-
-    return (
-      // oxlint-disable-next-line prefer-tag-over-role
-      // The card has nested Install + Dismiss buttons, so the outer element cannot be a <button>.
-      <motion.div
-        role="button"
-        tabIndex={0}
-        onClick={() => onInstallSample?.()}
-        onKeyDown={onSampleKeyDown}
-        style={{
-          width: cardWidth,
-          height: cardHeight,
-          boxShadow: INACTIVE_SHADOW,
-          borderRadius: CARD_RADIUS_PX,
-        }}
-        className={`${cardBase()} ${importCardClass()} @container relative cursor-pointer justify-between!`}
-        aria-label="Install the sample protocol"
-      >
-        {isActive && onDismissSample ? (
-          <IconButton
-            variant="text"
-            icon={
-              <Trash2
-                className="size-3 @min-[320px]:size-5 @min-3xs:size-4"
-                aria-hidden
-              />
-            }
-            aria-label="Dismiss the sample protocol"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDismissSample();
-            }}
-            className="hover:bg-destructive! hover:text-destructive-contrast! absolute top-2 right-2 z-10 shrink-0"
-          />
-        ) : null}
-        <div className="flex flex-col items-center gap-3">
-          <div className="bg-surface text-sea-green inline-flex h-[84px] w-[84px] items-center justify-center rounded-full">
-            <Download size={36} strokeWidth={2.5} aria-hidden />
-          </div>
-          <Heading level="h2" margin="none" className="text-text font-black">
-            Sample Protocol
-          </Heading>
-        </div>
-        <div className="text-text/80 hidden px-8 text-center text-sm @min-[300px]:block">
-          A complete reference protocol from the Network Canvas team — useful
-          for exploring how stages, prompts, and codebooks fit together.
-        </div>
-        {isActive ? (
-          <div className="w-full px-3 pb-3 @min-[320px]:px-5 @min-[320px]:pb-5 @min-[380px]:px-6 @min-[380px]:pb-6 @min-3xs:px-4 @min-3xs:pb-4">
-            <Button
-              color="primary"
-              icon={
-                <Download
-                  className="size-3 shrink-0 stroke-[3px]! @min-[240px]:size-4 @min-[300px]:size-5"
-                  aria-hidden
-                />
-              }
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 font-black tracking-[0.04em] uppercase @min-[240px]:gap-2 @min-[240px]:rounded-2xl @min-[240px]:px-4 @min-[240px]:py-2.5 @min-[240px]:tracking-[0.06em] @min-[300px]:gap-2.5 @min-[300px]:px-5 @min-[300px]:py-3 @min-[300px]:tracking-[0.07em] @min-[360px]:gap-3 @min-[360px]:px-6 @min-[360px]:tracking-[0.08em]"
-              onClick={(e) => {
-                e.stopPropagation();
-                onInstallSample?.();
-              }}
-            >
-              <span className="min-w-0 truncate text-[10px] @min-[240px]:text-xs @min-[300px]:text-sm @min-[360px]:text-base">
-                Install sample protocol
-              </span>
-            </Button>
-          </div>
-        ) : null}
-      </motion.div>
-    );
-  }
-
-  if (entry.kind === 'pending') {
-    const { pending } = entry;
-    const palette = seedToPatternPalette(pending.label);
-    const phaseLabel =
-      pending.phase === 'fetching'
-        ? 'Fetching…'
-        : pending.phase === 'extracting'
-          ? 'Extracting…'
-          : 'Saving…';
-    const progress = pending.progress;
-    const determinate =
-      typeof progress === 'number' && Number.isFinite(progress);
-    const pct = determinate ? Math.min(1, Math.max(0, progress)) * 100 : 0;
-    return (
-      <motion.div
-        style={{
-          width: cardWidth,
-          height: cardHeight,
-          borderRadius: CARD_RADIUS_PX,
-          boxShadow: INACTIVE_SHADOW,
-        }}
-        className={`${cardBase()} ${protocolCardClass()} @container`}
-        aria-label={`Importing ${pending.label}`}
-        aria-busy="true"
-      >
-        <div className="relative flex w-full flex-col justify-between gap-4 overflow-hidden p-4 @min-3xs:min-h-[40%] @min-2xs:p-6">
-          <Pattern
-            seed={pending.label}
-            className="absolute inset-0 size-full opacity-60"
-          />
-          <Heading
-            level="h2"
-            margin="none"
-            className="relative text-lg leading-tight font-black tracking-tighter text-balance @min-[320px]:text-2xl @min-[380px]:text-3xl @min-3xs:text-xl @min-2xs:mt-2"
-          >
-            {pending.label}
-          </Heading>
-          <div className="font-monospace relative hidden items-center justify-between gap-2 text-[12px] @min-3xs:flex @min-xs:text-xs @min-sm:text-sm">
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={pending.phase}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.2 }}
-                style={{ color: palette.backgroundTop }}
-              >
-                {phaseLabel}
-              </motion.span>
-            </AnimatePresence>
-          </div>
-        </div>
-        <div className="min-h-0 flex-1 px-3 pt-2 @min-2xs:px-6 @min-2xs:pt-3.5">
-          <AnimatePresence mode="wait">
-            <motion.span
-              key={pending.phase}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.2 }}
-              className="text-text/80 text-xs @min-2xs:text-sm @min-xs:text-base @min-md:text-lg"
-            >
-              {phaseLabel}
-            </motion.span>
-          </AnimatePresence>
-        </div>
-        <div className="mx-3 mb-3 @min-[320px]:mx-5 @min-[320px]:mb-5 @min-[380px]:mx-6 @min-[380px]:mb-6 @min-3xs:mx-4 @min-3xs:mb-4">
-          <progress
-            className="sr-only"
-            max={100}
-            value={determinate ? Math.round(pct) : undefined}
-            aria-label={`Importing ${pending.label}: ${phaseLabel}`}
-          />
-          <div
-            className="bg-surface-2 relative h-2 w-full overflow-hidden rounded-full"
-            aria-hidden="true"
-          >
-            {determinate ? (
-              <div
-                className="bg-sea-green h-full transition-[width] duration-150 ease-out"
-                style={{ width: `${pct}%` }}
-              />
-            ) : (
-              <div className="bg-sea-green/70 absolute inset-y-0 left-0 h-full w-1/3 animate-[shimmer_1.2s_linear_infinite]" />
-            )}
-          </div>
-        </div>
-      </motion.div>
-    );
-  }
-
-  const protocol = entry.protocol;
   const palette = seedToPatternPalette(protocol.name);
+  // Theme-driven shadow tokens, identical to NewSessionCardOverlay so the
+  // shared-element morph doesn't jitter between the two endpoints. The
+  // active accent ring stays inline because its color is per-protocol.
   const boxShadow = isActive
-    ? cardActiveShadow(palette.backgroundTop)
-    : INACTIVE_SHADOW;
+    ? `var(--shadow-2xl-base), 0 0 0 2px ${palette.backgroundTop}`
+    : 'var(--shadow-xl-base)';
 
   const onCardKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -382,21 +134,18 @@ export function DeckCard({
     <motion.div
       layoutId={deckCardLayoutId(protocol.hash)}
       // Lock re-measurement to the protocol identity so Swiper's
-      // post-commit fan transforms and ResizeObserver-driven
-      // cardWidth/cardHeight re-renders don't read as layout changes
-      // and animate the cards into position on first paint. The
-      // morph still works because motion snapshots the rect at the
-      // moment of unmount.
+      // post-commit fan transforms and ResizeObserver-driven slot
+      // re-renders don't read as layout changes and animate the cards
+      // into position on first paint. The morph still works because
+      // motion snapshots the rect at the moment of unmount.
       layoutDependency={protocol.hash}
       tabIndex={0}
       onKeyDown={onCardKeyDown}
       style={{
-        width: cardWidth,
-        height: cardHeight,
         borderRadius: CARD_RADIUS_PX,
         boxShadow,
       }}
-      className={`${cardBase()} ${protocolCardClass()} @container`}
+      className={`${cardBase()} ${protocolCardClass()} @container h-full w-full`}
       aria-label={`${protocol.name}${isActive ? ' (active)' : ''}`}
     >
       <div className="relative flex w-full flex-col justify-between gap-4 overflow-hidden p-4 @min-3xs:min-h-[40%] @min-2xs:p-6">
@@ -466,23 +215,21 @@ export function DeckCard({
               </span>
             </Button>
           </div>
-          {onDelete && (
-            <IconButton
-              variant="text"
-              icon={
-                <Trash2
-                  className="size-3 @min-[320px]:size-5 @min-3xs:size-4"
-                  aria-hidden
-                />
-              }
-              aria-label={`Delete ${protocol.name}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              className="hover:bg-destructive! hover:text-destructive-contrast! h-9 shrink-0 @min-[320px]:h-13 @min-[380px]:h-14 @min-3xs:h-11"
-            />
-          )}
+          <IconButton
+            variant="text"
+            icon={
+              <Trash2
+                className="size-3 @min-[320px]:size-5 @min-3xs:size-4"
+                aria-hidden
+              />
+            }
+            aria-label={`Delete ${protocol.name}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="hover:bg-destructive! hover:text-destructive-contrast! h-9 shrink-0 @min-[320px]:h-13 @min-[380px]:h-14 @min-3xs:h-11"
+          />
         </div>
       )}
     </motion.div>
