@@ -41,9 +41,7 @@ module.exports = {
       { target: 'dmg', arch: ['x64', 'arm64'] },
       { target: 'zip', arch: ['x64', 'arm64'] },
     ],
-    notarize: process.env.APPLE_TEAM_ID
-      ? { teamId: process.env.APPLE_TEAM_ID }
-      : true,
+    notarize: Boolean(process.env.APPLE_API_KEY),
   },
   win: {
     target: [{ target: 'nsis', arch: ['x64'] }],
