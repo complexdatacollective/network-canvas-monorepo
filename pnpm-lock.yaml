@@ -169,8 +169,8 @@ importers:
         specifier: ^1.64.0
         version: 1.64.0(oxlint-tsgolint@0.22.1)
       oxlint-tailwindcss:
-        specifier: ^0.7.1
-        version: 0.7.1(@oxlint/plugins@1.64.0)
+        specifier: ^0.8.0
+        version: 0.8.0(@oxlint/plugins@1.64.0)
       oxlint-tsgolint:
         specifier: ^0.22.1
         version: 0.22.1
@@ -8044,10 +8044,6 @@ packages:
   end-of-stream@1.4.5:
     resolution: {integrity: sha512-ooEGc6HP26xXq/N+GCGOT0JKCLDGrq2bQUZrQ7gyrJiZANJ/8YDTxTpQBXGMn+WbIQXNVpyWymm7KYVICQnyOg==}
 
-  enhanced-resolve@5.21.0:
-    resolution: {integrity: sha512-otxSQPw4lkOZWkHpB3zaEQs6gWYEsmX4xQF68ElXC/TWvGxGMSGOvoNbaLXm6/cS/fSfHtsEdw90y20PCd+sCA==}
-    engines: {node: '>=10.13.0'}
-
   enhanced-resolve@5.22.0:
     resolution: {integrity: sha512-xYcDWrpELkFzz9SpZ3PlI6Eu6eD93Yf0WLDRxikGhWJ3MAir2SNZTIVCVZqZ/NUyx8AdMc2gT9C0gPiw18kG+A==}
     engines: {node: '>=10.13.0'}
@@ -10314,8 +10310,8 @@ packages:
       svelte:
         optional: true
 
-  oxlint-tailwindcss@0.7.1:
-    resolution: {integrity: sha512-l4WuZt/iKvMwggwnfsIPCNvY/GDMK9FffXiYTWfXrh+PR0WeItRwqzU5UD1iFfV5CC0bfsiYZbLFt1CJLT6t3g==}
+  oxlint-tailwindcss@0.8.0:
+    resolution: {integrity: sha512-vfWnQ9S3AZXb9oqQPxilz9UlUcFvuKKJh7mT7vHw0lyHQVpKPOx117oS5y1/FuSAGSJAZa1gUeXCFNF8Ax28jA==}
     engines: {node: '>=20'}
     peerDependencies:
       '@oxlint/plugins': '>=1.43.0'
@@ -17253,7 +17249,7 @@ snapshots:
   '@tailwindcss/node@4.3.0':
     dependencies:
       '@jridgewell/remapping': 2.3.5
-      enhanced-resolve: 5.21.0
+      enhanced-resolve: 5.22.0
       jiti: 2.7.0
       lightningcss: 1.32.0
       magic-string: 0.30.21
@@ -19789,11 +19785,6 @@ snapshots:
   end-of-stream@1.4.5:
     dependencies:
       once: 1.4.0
-
-  enhanced-resolve@5.21.0:
-    dependencies:
-      graceful-fs: 4.2.11
-      tapable: 2.3.3
 
   enhanced-resolve@5.22.0:
     dependencies:
@@ -22771,7 +22762,7 @@ snapshots:
       '@oxfmt/binding-win32-ia32-msvc': 0.49.0
       '@oxfmt/binding-win32-x64-msvc': 0.49.0
 
-  oxlint-tailwindcss@0.7.1(@oxlint/plugins@1.64.0):
+  oxlint-tailwindcss@0.8.0(@oxlint/plugins@1.64.0):
     dependencies:
       '@oxlint/plugins': 1.64.0
       '@tailwindcss/node': 4.3.0
