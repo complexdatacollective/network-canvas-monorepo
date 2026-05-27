@@ -16,7 +16,7 @@ export function Contractors() {
           contractors.
         </p>
         <p className="mt-3">
-          If you have a skills in Design, User Experience Research,
+          If you have skills in Design, User Experience Research,
           NextJS/React/Tailwind, or other relevant technical skills, please feel
           free to contact us!
         </p>
