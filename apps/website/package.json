@@ -1,0 +1,38 @@
+{
+  "name": "@codaco/website",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "@base-ui/react": "catalog:",
+    "@codaco/fresco-ui": "workspace:*",
+    "@codaco/shared-consts": "workspace:*",
+    "@codaco/tailwind-config": "workspace:*",
+    "@fontsource-variable/inclusive-sans": "^5.2.8",
+    "@fontsource-variable/nunito": "^5.2.7",
+    "lucide-react": "catalog:",
+    "motion": "catalog:",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwind-merge": "catalog:",
+    "zod": "catalog:",
+    "zustand": "catalog:"
+  },
+  "devDependencies": {
+    "@codaco/tsconfig": "workspace:*",
+    "@tailwindcss/postcss": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "postcss": "^8.5.14",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:"
+  }
+}
