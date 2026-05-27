@@ -35,6 +35,13 @@ const RENDERER_SCHEME = 'app';
 const RENDERER_HOST = 'localhost';
 const RENDERER_ORIGIN = `${RENDERER_SCHEME}://${RENDERER_HOST}`;
 
+// Touch ID stores its Secure Enclave credential under this keychain group. The
+// string MUST match `keychain-access-groups` in build-resources/entitlements.mac.plist
+// and the binary must be signed with this team, or the platform authenticator is
+// silently unavailable. The Team ID is not secret — it ships in every signed app.
+const APPLE_TEAM_ID = '85EZ69PQHJ';
+const KEYCHAIN_ACCESS_GROUP = `${APPLE_TEAM_ID}.Network-Canvas-Interviewer-7`;
+
 // Dev CSP: Vite serves source modules from RENDERER_DEV_URL and HMR uses a
 // WebSocket back to the dev server. `unsafe-inline` covers Vite's inline
 // bootstrap; `unsafe-eval` is required because several dev-pulled libraries
@@ -151,11 +158,22 @@ function createWindow() {
 }
 
 // Must be called before any BrowserWindow is created so navigator.credentials
-// surfaces a platform-authenticator prompt in the renderer. macOS Touch ID needs
-// a signed binary + `keychainAccessGroup` (set once we have a signing identity);
-// for now we enable the default WebAuthn stack only (USB security keys, Windows
-// Hello, Chromium virtual authenticator in dev).
-app.configureWebAuthn({});
+// surfaces a platform-authenticator prompt in the renderer. Touch ID needs a
+// signed binary that can claim KEYCHAIN_ACCESS_GROUP, so the Secure Enclave
+// authenticator is enabled only for packaged macOS builds; an unsigned dev
+// binary can't claim the group and navigator.credentials.create() would hang.
+// Everywhere else the default WebAuthn stack is used unchanged (USB security
+// keys, Windows Hello, Chromium virtual authenticator in dev).
+if (process.platform === 'darwin' && app.isPackaged) {
+  app.configureWebAuthn({
+    touchID: {
+      keychainAccessGroup: KEYCHAIN_ACCESS_GROUP,
+      promptReason: 'Unlock Network Canvas Interviewer',
+    },
+  });
+} else {
+  app.configureWebAuthn({});
+}
 
 // Must run before the `ready` event. Registers the packaged renderer's scheme as
 // standard + secure so WebAuthn sees a trustworthy origin; supportFetchAPI keeps
