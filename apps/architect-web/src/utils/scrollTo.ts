@@ -1,31 +1,18 @@
-import anime from 'animejs';
-import scrollparent from 'scrollparent';
-
-import {
-  getCSSVariableAsNumber,
-  getCSSVariableAsObject,
-} from '~/lib/legacy-ui/utils/CSSVariables';
-
-const scrollTo = (destination: HTMLElement, offset = 0) => {
-  if (!destination) {
+const scrollTo = (target: HTMLElement) => {
+  if (!target) {
     return;
   }
-  const scroller = scrollparent(destination);
-  const scrollStart =
-    scroller instanceof Document
-      ? document.documentElement.scrollTop
-      : scroller.scrollTop;
-  const destinationOffset = Number.parseInt(
-    String(destination.getBoundingClientRect().top),
-    10,
-  );
-  const scrollEnd = scrollStart + destinationOffset + offset;
 
-  anime({
-    targets: scroller,
-    scrollTop: scrollEnd,
-    easing: getCSSVariableAsObject('--animation-easing-js'),
-    duration: getCSSVariableAsNumber('--animation-duration-fast-ms'),
+  // Preserve the legacy 200px offset: land the target below the top edge rather
+  // than flush against it. `scroll-margin-top` applies the offset to the native
+  // `scrollIntoView` — alignment only, no layout impact. The destination is
+  // computed synchronously here, so restore the caller's prior inline value on
+  // the next frame rather than leaving a stray offset on their element.
+  const previousScrollMarginTop = target.style.scrollMarginTop;
+  target.style.scrollMarginTop = '200px';
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  requestAnimationFrame(() => {
+    target.style.scrollMarginTop = previousScrollMarginTop;
   });
 };
 

@@ -7,6 +7,9 @@ export type PreviewPayload = {
   protocol: CurrentProtocol;
   startStage: number;
   useSyntheticData: boolean;
+  // True when skip logic was stripped from the previewed stage so it always
+  // shows. The preview surfaces a notice on that stage when this is set.
+  skipLogicBypassed: boolean;
 };
 
 type PreviewMessage = PreviewReady | PreviewPayload;

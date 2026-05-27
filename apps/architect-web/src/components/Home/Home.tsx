@@ -1,8 +1,17 @@
-import { FilePlus, FolderOpen, Upload } from 'lucide-react';
+import {
+  BookOpen,
+  CodeXml,
+  FilePlus,
+  FolderOpen,
+  Upload,
+  Users,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
+import Badge from '~/components/Badge';
 import NewProtocolDialog from '~/components/NewProtocolDialog';
+import NavShell from '~/components/ProjectNav/NavShell';
 import { SAMPLE_PROTOCOL_URL } from '~/config';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
@@ -11,12 +20,30 @@ import {
   openRemoteNetcanvas,
 } from '~/ducks/modules/userActions/userActions';
 import Button from '~/lib/legacy-ui/components/Button';
+import { appVersion } from '~/utils/appVersion';
 
 import DevTools from './DevTools';
-import Header from './Header';
 import ProtocolLoadingOverlay from './ProtocolLoadingOverlay';
 import { TIMELINE_SCRIPT } from './timelineScript';
 import TransitMap from './TransitMap';
+
+const NAV_LINKS = [
+  {
+    href: 'https://documentation.networkcanvas.com',
+    label: 'Docs',
+    Icon: BookOpen,
+  },
+  {
+    href: 'https://community.networkcanvas.com',
+    label: 'Community',
+    Icon: Users,
+  },
+  {
+    href: 'https://github.com/complexdatacollective',
+    label: 'GitHub',
+    Icon: CodeXml,
+  },
+];
 
 const Home = () => {
   const dispatch = useAppDispatch();
@@ -91,12 +118,34 @@ const Home = () => {
           />
         )}
 
-        <Header />
+        <NavShell
+          trailing={
+            <>
+              {NAV_LINKS.map(({ href, label, Icon }) => (
+                <a
+                  key={href}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-action relative cursor-pointer text-base leading-none font-semibold text-current no-underline transition-colors"
+                >
+                  <span className="relative inline-flex items-center gap-2">
+                    <Icon className="size-4 shrink-0" aria-hidden />
+                    {label}
+                  </span>
+                </a>
+              ))}
+              <Badge color="platinum">
+                <span className="bg-active h-2 w-2 rounded-full" />v{appVersion}
+              </Badge>
+            </>
+          }
+        />
 
         {/* Hero section */}
 
-        <main className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-8 overflow-y-auto px-8 pb-8">
-          <div className="flex min-h-0 w-full flex-1 flex-col items-start gap-8 md:flex-row">
+        <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-8 overflow-y-auto px-8 pb-8 xl:gap-12 xl:px-12">
+          <div className="flex min-h-0 w-full flex-1 flex-col items-stretch gap-8 md:flex-row">
             <div
               aria-hidden
               className="pointer-events-none hidden h-full shrink-0 md:block md:w-1/2"
@@ -104,9 +153,9 @@ const Home = () => {
               <TransitMap stops={TIMELINE_SCRIPT} count={visibleCount} />
             </div>
 
-            <div className="flex flex-1 flex-col items-start gap-6 pt-12 text-left">
+            <div className="flex flex-1 flex-col items-start justify-center gap-6 text-left xl:gap-8">
               <div>
-                <h1 className="hero mb-3">
+                <h1 className="hero mb-3 xl:text-8xl">
                   Welcome to <span className="text-action">Architect</span>
                 </h1>
                 <p className="lead max-w-xl">

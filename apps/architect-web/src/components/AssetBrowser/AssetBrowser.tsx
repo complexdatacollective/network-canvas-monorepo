@@ -29,7 +29,7 @@ type AssetBrowserProps = AssetBrowserOwnProps & Partial<InjectedProps>;
 const AssetBrowser = ({
   type = null,
   selected = null,
-  onSelect = () => {},
+  onSelect,
   onDelete,
   disableDelete = false,
   sectionLayout,
@@ -42,7 +42,7 @@ const AssetBrowser = ({
       if (!assetIds[0]) {
         return;
       } // if a single invalid file was uploaded
-      onSelect(assetIds[0]);
+      onSelect?.(assetIds[0]);
     },
     [onSelect],
   );
@@ -52,10 +52,14 @@ const AssetBrowser = ({
 
   return (
     <>
-      <Section title="Import a New Resource" layout={sectionLayout}>
+      <Section
+        title="Import a New Resource"
+        layout={sectionLayout}
+        required={false}
+      >
         <NewAsset onCreate={handleCreate} type={type} />
       </Section>
-      <Section title="Resource Library" layout={sectionLayout}>
+      <Section title="Resource Library" layout={sectionLayout} required={false}>
         <Assets
           onSelect={onSelect}
           onPreview={handleShowPreview}

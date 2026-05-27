@@ -23,7 +23,9 @@ import { launchPreview } from '~/components/PreviewHost/launchPreview';
 import StageEditorNav from '~/components/ProjectNav/StageEditorNav';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
+  getPreviewIgnoreSkipLogic,
   getPreviewUseSyntheticData,
+  setPreviewIgnoreSkipLogic,
   setPreviewUseSyntheticData,
 } from '~/ducks/modules/app';
 import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
@@ -101,6 +103,7 @@ const StageEditor = (props: StageEditorProps) => {
   // Preview state
   const [isOpeningPreview, setIsOpeningPreview] = useState(false);
   const useSyntheticData = useSelector(getPreviewUseSyntheticData);
+  const ignoreSkipLogic = useSelector(getPreviewIgnoreSkipLogic);
 
   // Handle form submission
   const onSubmit = useCallback(
@@ -158,7 +161,15 @@ const StageEditor = (props: StageEditorProps) => {
       return;
     }
 
-    const normalizedStage = omit(formValues, ['_modified']) as Stage;
+    // With "Always show this stage in preview" on (the default), strip skip
+    // logic from the previewed stage so the interview doesn't bounce off the
+    // stage the user launched into. We only consider it "bypassed" when the
+    // stage actually had skip logic to strip.
+    const skipLogicBypassed = ignoreSkipLogic && Boolean(formValues.skipLogic);
+    const omitKeys = skipLogicBypassed
+      ? ['_modified', 'skipLogic']
+      : ['_modified'];
+    const normalizedStage = omit(formValues, omitKeys) as Stage;
     const previewProtocol = buildProtocolWithStage(
       protocol,
       normalizedStage,
@@ -188,6 +199,7 @@ const StageEditor = (props: StageEditorProps) => {
         protocol: previewProtocol,
         startStage,
         useSyntheticData,
+        skipLogicBypassed,
       });
       if (result.kind === 'popup-blocked') {
         dispatch(
@@ -219,6 +231,7 @@ const StageEditor = (props: StageEditorProps) => {
     id,
     insertAtIndex,
     useSyntheticData,
+    ignoreSkipLogic,
   ]);
   const sections = useMemo(
     () => getInterface(interfaceType).sections,
@@ -265,15 +278,28 @@ const StageEditor = (props: StageEditorProps) => {
         sideOffset={8}
         className="bg-surface-accent text-surface-accent-foreground p-3"
       >
-        <label className="flex items-center gap-3">
-          <Switch
-            checked={useSyntheticData}
-            onCheckedChange={(checked) =>
-              dispatch(setPreviewUseSyntheticData(checked))
-            }
-          />
-          <span className="text-sm">Start preview with example data</span>
-        </label>
+        <div className="flex flex-col gap-3">
+          <label className="flex items-center gap-3">
+            <Switch
+              checked={useSyntheticData}
+              onCheckedChange={(checked) =>
+                dispatch(setPreviewUseSyntheticData(checked))
+              }
+            />
+            <span className="text-sm">Start preview with example data</span>
+          </label>
+          <label className="flex items-center gap-3">
+            <Switch
+              checked={ignoreSkipLogic}
+              onCheckedChange={(checked) =>
+                dispatch(setPreviewIgnoreSkipLogic(checked))
+              }
+            />
+            <span className="text-sm">
+              Always show this stage in preview when skip logic would hide it
+            </span>
+          </label>
+        </div>
       </PopoverContent>
     </Popover>
   );

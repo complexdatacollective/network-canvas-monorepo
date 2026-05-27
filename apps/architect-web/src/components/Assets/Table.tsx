@@ -2,32 +2,46 @@ import {
   ArrowDown as ArrowDropDownIcon,
   ArrowUp as ArrowDropUpIcon,
 } from 'lucide-react';
-import {
-  type Column,
-  type TableHeaderProps,
-  useSortBy,
-  useTable,
-} from 'react-table';
+import { type ReactNode, useMemo, useState } from 'react';
 
 import { cx } from '~/utils/cva';
 
-// Type for column with sort properties added by useSortBy
-type ColumnWithSort = Column<Record<string, unknown>> & {
-  isSorted?: boolean;
-  isSortedDesc?: boolean;
-  getSortByToggleProps?: () => TableHeaderProps;
+export type TableColumn = {
+  Header: string;
+  accessor: string;
 };
 
-const getSortIcon = (column: ColumnWithSort) => {
-  if (!column.isSorted) {
+type SortState = {
+  id: string;
+  desc: boolean;
+};
+
+// Natural sort, so "item2" sorts before "item10".
+const collator = new Intl.Collator(undefined, { numeric: true });
+
+const renderCellValue = (value: unknown): ReactNode => {
+  if (typeof value === 'string' || typeof value === 'number') {
+    return value;
+  }
+  if (value === null || value === undefined || typeof value === 'boolean') {
     return null;
   }
-  return column.isSortedDesc ? <ArrowDropDownIcon /> : <ArrowDropUpIcon />;
+  if (Array.isArray(value)) {
+    return value.join('');
+  }
+  return String(value);
+};
+
+const getSortIcon = (column: TableColumn, sort: SortState | null) => {
+  if (!sort || sort.id !== column.accessor) {
+    return null;
+  }
+  return sort.desc ? <ArrowDropDownIcon /> : <ArrowDropUpIcon />;
 };
 
 type TableProps = {
   data: Record<string, unknown>[];
-  columns: Column<Record<string, unknown>>[];
+  columns: TableColumn[];
 };
 
 const tableClasses = cx(
@@ -43,47 +57,78 @@ const tableClasses = cx(
 );
 
 const Table = ({ data, columns }: TableProps) => {
-  const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
-    useTable({ data, columns }, useSortBy);
+  const [sort, setSort] = useState<SortState | null>(null);
+
+  // Cycle: unsorted -> asc -> desc -> unsorted.
+  const toggleSort = (id: string) => {
+    setSort((current) => {
+      if (!current || current.id !== id) {
+        return { id, desc: false };
+      }
+      if (!current.desc) {
+        return { id, desc: true };
+      }
+      return null;
+    });
+  };
+
+  const sortedRows = useMemo(() => {
+    if (!sort) {
+      return data;
+    }
+    const direction = sort.desc ? -1 : 1;
+    return data.toSorted(
+      (rowA, rowB) =>
+        direction *
+        collator.compare(
+          String(rowA[sort.id] ?? ''),
+          String(rowB[sort.id] ?? ''),
+        ),
+    );
+  }, [data, sort]);
 
   return (
-    <table {...getTableProps()} className={tableClasses}>
+    <table className={tableClasses}>
       <thead>
-        {headerGroups.map((headerGroup) => (
-          <tr {...headerGroup.getHeaderGroupProps()} key={headerGroup.id}>
-            {headerGroup.headers.map((column) => {
-              const sortableColumn = column as ColumnWithSort;
-              return (
-                <th
-                  {...column.getHeaderProps(
-                    sortableColumn.getSortByToggleProps
-                      ? sortableColumn.getSortByToggleProps()
-                      : undefined,
-                  )}
-                  key={column.id}
-                >
-                  {column.render('Header')}
-                  {getSortIcon(sortableColumn)}
-                </th>
-              );
-            })}
+        <tr>
+          {columns.map((column) => (
+            <th
+              key={column.accessor}
+              aria-sort={
+                sort?.id === column.accessor
+                  ? sort.desc
+                    ? 'descending'
+                    : 'ascending'
+                  : 'none'
+              }
+              tabIndex={0}
+              onClick={() => toggleSort(column.accessor)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  toggleSort(column.accessor);
+                }
+              }}
+              style={{ cursor: 'pointer' }}
+              title="Toggle SortBy"
+            >
+              {column.Header}
+              {getSortIcon(column, sort)}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {sortedRows.map((row, rowIndex) => (
+          // eslint-disable-next-line react/no-array-index-key
+          <tr key={rowIndex}>
+            {columns.map((column) => (
+              <td key={column.accessor}>
+                {renderCellValue(row[column.accessor])}
+              </td>
+            ))}
           </tr>
         ))}
-      </thead>
-      <tbody {...getTableBodyProps()}>
-        {rows.map((row) => {
-          prepareRow(row);
-
-          return (
-            <tr {...row.getRowProps()} key={row.id}>
-              {row.cells.map((cell) => (
-                <td {...cell.getCellProps()} key={cell.column.id}>
-                  {cell.render('Cell')}
-                </td>
-              ))}
-            </tr>
-          );
-        })}
       </tbody>
     </table>
   );

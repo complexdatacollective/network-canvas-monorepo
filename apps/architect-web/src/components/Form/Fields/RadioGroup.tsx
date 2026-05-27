@@ -105,14 +105,14 @@ const RadioGroup = ({
           orientation === 'vertical'
             ? 'flex flex-col'
             : 'mb-0 flex w-auto flex-row items-center [&_label]:mr-(--space-md) [&_label]:mb-0',
-          hasError && 'border-error mb-0 border-2',
+          hasError && 'border-error mb-0 rounded-b-none border-2',
           className,
         )}
       >
         {options.map(renderOption)}
       </div>
       {hasError && (
-        <div className="bg-error text-foreground flex items-center px-(--space-xs) py-(--space-sm) [&_svg]:max-h-(--space-md)">
+        <div className="bg-error text-error-foreground flex items-center rounded-b-sm px-(--space-xs) py-(--space-sm) [&_svg]:max-h-(--space-md)">
           <Icon name="warning" />
           {error}
         </div>

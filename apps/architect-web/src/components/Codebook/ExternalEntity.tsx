@@ -1,5 +1,6 @@
 import useExternalDataDownload from '~/components/AssetBrowser/useExternalDataDownload';
 import useExternalDataPreview from '~/components/AssetBrowser/useExternalDataPreview';
+import { Section } from '~/components/EditorLayout';
 import useVariablesFromExternalData from '~/hooks/useVariablesFromExternalData';
 import { Button } from '~/lib/legacy-ui/components';
 
@@ -19,31 +20,26 @@ const ExternalEntity = ({ id, name }: ExternalEntityProps) => {
 
   return (
     <>
-      <div className="bg-surface-3 mx-auto my-(--space-xl) overflow-hidden rounded p-(--space-xl)">
-        <div className="flex items-center">
-          <div className="grow-0 basis-(--space-5xl)">
-            <EntityIcon entity="asset" />
+      <Section layout="vertical" required={false}>
+        <div className="flex items-center gap-(--space-md)">
+          <div className="flex shrink-0 basis-(--space-3xl) items-center justify-center">
+            <EntityIcon entity="asset" size="small" />
           </div>
-          <div className="ps-(--space-lg)">
-            <h2>{name}</h2>
-          </div>
-          <div className="flex-1 ps-(--space-xl)" />
-          <div className="flex grow-0 gap-(--space-sm)">
-            <Button onClick={() => handleShowPreview(id)} color="sea-green">
-              Preview
-            </Button>
-            <Button onClick={() => handleDownloadAsset(id)} color="sea-serpent">
-              Download
-            </Button>
-          </div>
+          <h2 className="my-0 me-auto">{name}</h2>
+          <Button onClick={() => handleShowPreview(id)} color="sea-green">
+            Preview
+          </Button>
+          <Button onClick={() => handleDownloadAsset(id)} color="sea-serpent">
+            Download
+          </Button>
         </div>
         {variables.length > 0 && (
-          <div>
+          <div className="mt-(--space-md)">
             <h3>Variables:</h3>
             <VariableList variables={variables} />
           </div>
         )}
-      </div>
+      </Section>
       {preview}
     </>
   );

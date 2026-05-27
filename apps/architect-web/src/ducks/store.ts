@@ -4,6 +4,7 @@ import { rememberEnhancer, rememberReducer } from 'redux-remember';
 import { analyticsListenerMiddleware } from './middleware/analyticsListener';
 import logger from './middleware/logger';
 import { protocolValidationListenerMiddleware } from './middleware/protocolValidationListener';
+import { scrollPositionsListenerMiddleware } from './middleware/scrollPositionsListener';
 import type { RootState } from './modules/root';
 import { rootReducer } from './modules/root';
 
@@ -24,7 +25,8 @@ const store = configureStore({
     })
       .concat(logger)
       .prepend(protocolValidationListenerMiddleware.middleware)
-      .prepend(analyticsListenerMiddleware.middleware),
+      .prepend(analyticsListenerMiddleware.middleware)
+      .prepend(scrollPositionsListenerMiddleware.middleware),
   enhancers: (getDefaultEnhancers) =>
     getDefaultEnhancers().concat(
       rememberEnhancer(

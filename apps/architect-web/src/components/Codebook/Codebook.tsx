@@ -1,8 +1,8 @@
 import { useSelector } from 'react-redux';
 
+import { Section } from '~/components/EditorLayout';
 import { getCodebook } from '~/selectors/protocol';
 
-import CodebookCategory from './CodebookCategory';
 import EgoType from './EgoType';
 import EntityType from './EntityType';
 import ExternalEntity from './ExternalEntity';
@@ -24,12 +24,13 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
     hasNetworkAssets,
   } = useCodebookData(codebook);
 
-  const hasAnyContent = hasEgoVariables || hasNodes || hasEdges;
+  const hasAnyContent =
+    hasEgoVariables || hasNodes || hasEdges || hasNetworkAssets;
 
   return (
-    <div className="space-y-lg my-(--space-xl)">
+    <div className="my-(--space-xl)">
       {!hasAnyContent && (
-        <div className="bg-muted border-border rounded border p-(--space-lg)">
+        <div className="bg-surface-2 border-divider rounded border p-(--space-lg)">
           <p className="text-muted-foreground text-center">
             There are currently no types or variables defined in this protocol.
             When you have created some interview stages, the types and variables
@@ -39,57 +40,57 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
       )}
 
       {hasEgoVariables && (
-        <CodebookCategory title="Ego">
-          <EgoType />
-        </CodebookCategory>
+        <div className="mb-(--space-lg)">
+          <h2 className="mt-0 mb-(--space-md)">Ego</h2>
+          <Section layout="vertical" required={false}>
+            <EgoType />
+          </Section>
+        </div>
       )}
 
       {hasNodes && (
-        <CodebookCategory title="Node Types">
-          <div className="space-y-md">
-            {nodes.map((node) => (
-              <EntityType
-                key={node.type}
-                entity={node.entity}
-                type={node.type}
-                inUse={node.inUse}
-                usage={[...node.usage]}
-                onEditEntity={onEditEntity}
-              />
-            ))}
-          </div>
-        </CodebookCategory>
+        <div className="mb-(--space-lg)">
+          <h2 className="mt-0 mb-(--space-md)">Node Types</h2>
+          {nodes.map((node) => (
+            <EntityType
+              key={node.type}
+              entity={node.entity}
+              type={node.type}
+              inUse={node.inUse}
+              usage={[...node.usage]}
+              onEditEntity={onEditEntity}
+            />
+          ))}
+        </div>
       )}
 
       {hasEdges && (
-        <CodebookCategory title="Edge Types">
-          <div className="space-y-md">
-            {edges.map((edge) => (
-              <EntityType
-                key={edge.type}
-                entity={edge.entity}
-                type={edge.type}
-                inUse={edge.inUse}
-                usage={[...edge.usage]}
-                onEditEntity={onEditEntity}
-              />
-            ))}
-          </div>
-        </CodebookCategory>
+        <div className="mb-(--space-lg)">
+          <h2 className="mt-0 mb-(--space-md)">Edge Types</h2>
+          {edges.map((edge) => (
+            <EntityType
+              key={edge.type}
+              entity={edge.entity}
+              type={edge.type}
+              inUse={edge.inUse}
+              usage={[...edge.usage]}
+              onEditEntity={onEditEntity}
+            />
+          ))}
+        </div>
       )}
 
       {hasNetworkAssets && (
-        <CodebookCategory title="Network Assets">
-          <div className="space-y-sm">
-            {processedNetworkAssets.map((networkAsset) => (
-              <ExternalEntity
-                key={networkAsset.id}
-                id={networkAsset.id}
-                name={networkAsset.name}
-              />
-            ))}
-          </div>
-        </CodebookCategory>
+        <div className="mb-(--space-lg)">
+          <h2 className="mt-0 mb-(--space-md)">Network Assets</h2>
+          {processedNetworkAssets.map((networkAsset) => (
+            <ExternalEntity
+              key={networkAsset.id}
+              id={networkAsset.id}
+              name={networkAsset.name}
+            />
+          ))}
+        </div>
       )}
     </div>
   );

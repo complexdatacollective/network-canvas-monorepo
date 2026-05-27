@@ -3,6 +3,7 @@ import { connect } from 'react-redux';
 import { Link } from 'wouter';
 
 import type { NodeShape } from '@codaco/fresco-ui/Node';
+import { Section } from '~/components/EditorLayout';
 import { actionCreators as dialogActionCreators } from '~/ducks/modules/dialogs';
 import { deleteTypeAsync } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/store';
@@ -82,15 +83,18 @@ const EntityType = ({
   );
 
   return (
-    <div className="bg-surface-3 mx-auto my-(--space-xl) overflow-hidden rounded p-(--space-xl)">
-      <div className="flex items-center">
-        <div className="grow-0 basis-(--space-5xl)">
-          <EntityIcon color={color} entity={entity} shape={shape} />
+    <Section layout="vertical" required={false}>
+      <div className="flex items-center gap-(--space-md)">
+        <div className="flex shrink-0 basis-(--space-3xl) items-center justify-center">
+          <EntityIcon
+            color={color}
+            entity={entity}
+            shape={shape}
+            size="small"
+          />
         </div>
-        <div className="ps-(--space-lg)">
-          <h2>{name}</h2>
-        </div>
-        <div className="flex-1 ps-(--space-xl)">
+        <h2 className="my-0">{name}</h2>
+        <div className="flex-1">
           {!inUse && <Tag>not in use</Tag>}
           {inUse && (
             <>
@@ -98,17 +102,15 @@ const EntityType = ({
             </>
           )}
         </div>
-        <div className="flex grow-0 gap-(--space-sm)">
-          <Button onClick={handleEdit} color="sea-green">
-            Edit entity
-          </Button>
-          <Button color="neon-coral" onClick={handleDelete}>
-            Delete entity
-          </Button>
-        </div>
+        <Button onClick={handleEdit} color="sea-green">
+          Edit entity
+        </Button>
+        <Button color="neon-coral" onClick={handleDelete}>
+          Delete entity
+        </Button>
       </div>
       {variableArray.length > 0 && (
-        <div>
+        <div className="mt-(--space-md)">
           <h3>Variables:</h3>
           <VariablesTyped
             variables={variableArray}
@@ -117,7 +119,7 @@ const EntityType = ({
           />
         </div>
       )}
-    </div>
+    </Section>
   );
 };
 

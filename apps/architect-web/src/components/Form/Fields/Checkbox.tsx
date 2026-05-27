@@ -60,7 +60,7 @@ const Checkbox = ({
       />
       <div
         className={cx(
-          'relative mr-(--space-sm) inline-flex size-(--space-md) shrink-0',
+          'relative mr-(--space-sm) inline-flex size-(--space-lg) shrink-0',
           "before:border-border before:absolute before:inset-0 before:border-2 before:border-solid before:content-['']",
           'before:transition-[border-color] before:duration-(--animation-duration-standard) before:ease-(--animation-easing)',
           "after:absolute after:inset-1.5 after:content-['']",

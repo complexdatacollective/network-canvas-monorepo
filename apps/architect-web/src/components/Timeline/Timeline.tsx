@@ -1,5 +1,6 @@
 import { get } from 'es-toolkit/compat';
-import { motion, Reorder } from 'motion/react';
+import { Plus } from 'lucide-react';
+import { motion, Reorder, useReducedMotion, type Variants } from 'motion/react';
 import { useCallback, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
@@ -10,6 +11,7 @@ import {
   actionCreators as dialogsActions,
 } from '~/ducks/modules/dialogs';
 import { actionCreators as stageActions } from '~/ducks/modules/protocol/stages';
+import { useRunOnce } from '~/hooks/useRunOnce';
 import timelineImages from '~/images/timeline';
 import filterIcon from '~/images/timeline/filter-icon.svg';
 import skipLogicIcon from '~/images/timeline/skip-logic-icon.svg';
@@ -23,10 +25,40 @@ import InsertButton from './InsertButton';
 const getTimelineImage = (type: string) =>
   get(timelineImages, type, timelineImages.Default);
 
+const timelineContainerVariants: Variants = {
+  hidden: {},
+  visible: {
+    transition: {
+      delayChildren: 0.6,
+      staggerChildren: 0.08,
+    },
+  },
+};
+
+const timelineStageVariants: Variants = {
+  hidden: { scale: 0, opacity: 0 },
+  visible: {
+    scale: 1,
+    opacity: 1,
+    transition: { type: 'spring' },
+  },
+};
+
+const timelineInsertVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { duration: 0.3 },
+  },
+};
+
 const Timeline = () => {
   const stages = useSelector(getStageList);
   const dispatch = useAppDispatch();
   const pointerStart = useRef({ x: 0, y: 0 });
+  const shouldReduceMotion = useReducedMotion();
+  const isFirstMount = useRunOnce('timeline-entrance');
+  const animate = !shouldReduceMotion && isFirstMount;
 
   const deleteStage = useCallback(
     (stageId: string) => {
@@ -108,19 +140,30 @@ const Timeline = () => {
       {/* Wrapper with timeline line. Top padding leaves a stretch of line below
 			    the protocol overview card so the timeline visually connects to it. */}
       <div className="relative pt-(--space-xl)">
-        {/* Timeline line via CSS - height is 100% minus small offset to stop at add button center */}
-        <div className="bg-timeline pointer-events-none absolute top-0 left-1/2 h-[calc(100%-1.25rem)] w-(--space-xs) -translate-x-1/2" />
+        {/* Line — clipped from below on initial mount so it reveals top-to-bottom.
+            clip-path doesn't share the transform property with Tailwind's
+            -translate-x-1/2, so there's no positioning conflict. */}
+        <motion.div
+          className="bg-timeline pointer-events-none absolute top-0 left-1/2 h-[calc(100%-1.25rem)] w-(--space-xs) -translate-x-1/2"
+          initial={animate ? { clipPath: 'inset(0 0 100% 0)' } : false}
+          animate={{ clipPath: 'inset(0 0 0% 0)' }}
+          transition={{ delay: 0.5, duration: 1.4, ease: 'easeOut' }}
+        />
 
         <Reorder.Group
           axis="y"
           onReorder={handleReorder}
-          className="relative grid grid-cols-1 justify-items-center gap-6"
+          className="relative grid grid-cols-1 justify-items-center gap-1"
           values={stages}
+          initial={animate ? 'hidden' : false}
+          animate="visible"
+          variants={timelineContainerVariants}
         >
           {stages.flatMap((stage, index) => [
             <InsertButton
               key={`insert_${stage.id}`}
               onClick={() => handleInsertStage(index)}
+              variants={timelineInsertVariants}
             />,
             <Reorder.Item
               tabIndex={0}
@@ -128,6 +171,7 @@ const Timeline = () => {
               value={stage}
               layoutId={`timeline-stage-${stage.id}`}
               className={itemClasses}
+              variants={timelineStageVariants}
               onPointerDown={(e) => {
                 pointerStart.current = { x: e.clientX, y: e.clientY };
               }}
@@ -140,7 +184,7 @@ const Timeline = () => {
               }}
             >
               <img
-                className="pointer-events-none w-40 justify-self-end rounded shadow transition-transform duration-300 ease-in-out select-none group-hover:scale-105"
+                className="pointer-events-none w-56 justify-self-end rounded-xs shadow transition-transform duration-300 ease-in-out select-none group-hover:scale-105"
                 src={getTimelineImage(stage.type)}
                 alt={`${stage.type} interface`}
                 title={`${stage.type} interface`}
@@ -190,10 +234,11 @@ const Timeline = () => {
           <motion.div
             className="group mt-3 grid w-2xl cursor-pointer grid-cols-[1fr_auto_1fr] items-center gap-10 p-4"
             onClick={() => handleInsertStage(stages.length)}
+            variants={timelineInsertVariants}
           >
             <div />
-            <div className="bg-action text-primary-foreground flex h-10 w-10 items-center justify-center rounded-full text-4xl font-medium transition-transform duration-300 ease-in-out group-hover:scale-110">
-              +
+            <div className="bg-action text-primary-foreground flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110">
+              <Plus className="h-6 w-6" strokeWidth={2.5} />
             </div>
             <span className="justify-self-start text-lg font-semibold transition-all group-hover:font-bold">
               Add new stage

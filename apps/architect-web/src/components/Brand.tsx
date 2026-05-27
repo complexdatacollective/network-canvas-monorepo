@@ -19,7 +19,7 @@ const Brand = ({ onClick, className, variant = 'pill' }: BrandProps) => {
   const isPill = variant === 'pill';
   const isIcon = variant === 'icon';
 
-  const iconClassName = isIcon ? 'h-11 w-11' : 'h-10 w-10 sm:h-14 sm:w-14';
+  const iconClassName = 'h-11 w-11';
   const iconImg = (
     <img src={architectIcon} alt="Architect" className={iconClassName} />
   );
@@ -31,7 +31,11 @@ const Brand = ({ onClick, className, variant = 'pill' }: BrandProps) => {
           type="button"
           onClick={onClick}
           aria-label="Return to start screen"
-          className={cx('shrink-0 bg-transparent p-0', INTERACTIVE, className)}
+          className={cx(
+            'flex shrink-0 bg-transparent p-0',
+            INTERACTIVE,
+            className,
+          )}
         >
           {iconImg}
         </button>
