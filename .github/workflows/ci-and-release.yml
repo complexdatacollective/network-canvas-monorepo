@@ -805,6 +805,34 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  # Collect all platform artifacts and create one GitHub Release at tag
+  # `interviewer-v7@v<version>`. make_latest:false keeps the repo's "Latest
+  # release" pointer from bouncing between apps as different apps cut
+  # versions out of this monorepo.
+  interviewer-v7-publish:
+    needs: [release, interviewer-v7-build]
+    if: needs.release.outputs.interviewer_v7_released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: artifacts
+          pattern: interviewer-v7-*
+          merge-multiple: true
+      - name: List collected artifacts
+        run: ls -la artifacts/
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          tag_name: interviewer-v7@v${{ needs.release.outputs.interviewer_v7_version }}
+          name: Interviewer v7 v${{ needs.release.outputs.interviewer_v7_version }}
+          files: artifacts/*
+          fail_on_unmatched_files: true
+          make_latest: 'false'
+          generate_release_notes: true
+
   # Carry forward prior success statuses for conditional jobs that the
   # current push didn't touch. Push-to-push detection (see detect job)
   # deliberately re-runs a job ONLY when its package changed between
