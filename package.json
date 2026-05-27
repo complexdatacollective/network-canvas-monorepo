@@ -28,7 +28,7 @@
     "oxlint": "^1.64.0",
     "oxlint-tailwindcss": "^0.7.1",
     "oxlint-tsgolint": "^0.22.1",
-    "turbo": "^2.9.12",
+    "turbo": "^2.9.14",
     "typescript": "catalog:"
   },
   "lint-staged": {
