@@ -59,7 +59,7 @@
     "tailwind-merge": "catalog:",
     "unified": "^11.0.5",
     "uuid": "catalog:",
-    "wouter": "^3.9.0",
+    "wouter": "^3.10.0",
     "zod": "catalog:"
   },
   "devDependencies": {
