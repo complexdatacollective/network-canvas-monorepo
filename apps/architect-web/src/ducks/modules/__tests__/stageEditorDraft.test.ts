@@ -1,13 +1,24 @@
 import crypto from 'node:crypto';
 
+import { configureStore } from '@reduxjs/toolkit';
+import {
+  change,
+  reducer as formReducer,
+  getFormValues,
+  initialize,
+} from 'redux-form';
 import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Stage } from '@codaco/protocol-validation';
+import type { AppDispatch } from '~/ducks/store';
 
 import reducer, {
+  draftRedo,
   draftSnapshot,
   draftTimelineActions,
+  draftUndo,
+  resetDraft,
   setRestoring,
 } from '../stageEditorDraft';
 
@@ -137,5 +148,57 @@ describe('stageEditorDraft reducer', () => {
       expect(next.history.past).toEqual([]);
       expect(next.history.present).toBe(null);
     });
+  });
+});
+
+describe('draftUndo / draftRedo flush pending edits', () => {
+  const makeStore = () => {
+    const store = configureStore({
+      reducer: { form: formReducer, stageEditorDraft: reducer },
+      middleware: (getDefault) => getDefault({ serializableCheck: false }),
+    });
+    // The thunks are typed against the full RootState; cast once for the test.
+    const dispatch = store.dispatch as unknown as AppDispatch;
+    return { store, dispatch };
+  };
+
+  type Store = ReturnType<typeof makeStore>['store'];
+  const labelOf = (store: Store) =>
+    (getFormValues('edit-stage')(store.getState()) as { label?: string })
+      ?.label;
+
+  // Drives the store to: snapshot 'A', snapshot 'AB', then a still-debounced
+  // (un-snapshotted) edit to 'ABC' — the form is ahead of `present`.
+  const seedPendingEdit = () => {
+    const { store, dispatch } = makeStore();
+    dispatch(initialize('edit-stage', { label: 'A' }));
+    dispatch(resetDraft({ label: 'A' } as unknown as Stage));
+    dispatch(draftSnapshot({ label: 'AB' } as unknown as Stage));
+    dispatch(change('edit-stage', 'label', 'AB'));
+    dispatch(change('edit-stage', 'label', 'ABC')); // pending keystroke
+    return { store, dispatch };
+  };
+
+  it('undo commits the in-progress edit first, reverting to it (not past it)', () => {
+    const { store, dispatch } = seedPendingEdit();
+
+    dispatch(draftUndo());
+
+    // Without the flush, undo would skip 'AB' and jump to 'A'.
+    expect(labelOf(store)).toBe('AB');
+    // The flushed 'ABC' edit is now redoable.
+    expect(
+      store.getState().stageEditorDraft.history.future.length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('redo commits the in-progress edit, branching history (redo unavailable)', () => {
+    const { store, dispatch } = seedPendingEdit();
+
+    dispatch(draftRedo());
+
+    // The pending edit is committed and wins; there is nothing to redo past it.
+    expect(labelOf(store)).toBe('ABC');
+    expect(store.getState().stageEditorDraft.history.future.length).toBe(0);
   });
 });

@@ -10,6 +10,7 @@ import { change, getFormValues } from 'redux-form';
 
 import type { Stage } from '@codaco/protocol-validation';
 import type { AppDispatch, RootState } from '~/ducks/store';
+import { getDraftRestoring } from '~/selectors/stageEditorDraft';
 
 import createTimelineReducer, {
   createTimelineActions,
@@ -93,8 +94,25 @@ export const resetDraft = (values: Stage | null) => (dispatch: AppDispatch) => {
   dispatch(draftTimelineActions.reset(values));
 };
 
+// Leaf-field edits are debounced before they snapshot (see the draft
+// listener), so the latest keystrokes may not be in history yet when the user
+// undoes/redoes — via the keyboard shortcut OR the toolbar button. Commit any
+// such in-progress edit first, so a step never skips or drops it. (The
+// listener's stale debounce timer, if any, is harmless: after the step the form
+// matches `present`, so it dedupes to a no-op; a fresh edit clears it.)
+const flushPendingEdit = (dispatch: AppDispatch, getState: () => RootState) => {
+  const state = getState();
+  if (getDraftRestoring(state)) return;
+  const values = getFormValues('edit-stage')(state);
+  if (!values) return;
+  if (isEqual(values, state.stageEditorDraft.history.present)) return;
+  dispatch(draftSnapshot(values as Stage));
+};
+
 export const draftUndo =
   () => (dispatch: AppDispatch, getState: () => RootState) => {
+    flushPendingEdit(dispatch, getState);
+
     const state = getState();
     const past = state.stageEditorDraft.history.past;
     if (!past || past.length === 0) {
@@ -113,6 +131,10 @@ export const draftUndo =
 
 export const draftRedo =
   () => (dispatch: AppDispatch, getState: () => RootState) => {
+    // A pending edit branches history: committing it correctly clears the redo
+    // stack, so an in-progress edit always wins over a stale redo.
+    flushPendingEdit(dispatch, getState);
+
     const state = getState();
     const future = state.stageEditorDraft.history.future;
     if (!future || future.length === 0) {
