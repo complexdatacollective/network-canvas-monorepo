@@ -24,11 +24,6 @@ const NewProtocolDialog = ({
     setName('');
   }, [name, onSubmit]);
 
-  const handleCancel = useCallback(() => {
-    setName('');
-    onOpenChange(false);
-  }, [onOpenChange]);
-
   const handleOpenChange = useCallback(
     (newOpen: boolean) => {
       if (!newOpen) {
@@ -45,12 +40,13 @@ const NewProtocolDialog = ({
     <Dialog
       open={open}
       onOpenChange={handleOpenChange}
-      header={<h2 className="m-0">Create New Protocol</h2>}
+      title="Create New Protocol"
       footer={
         <>
-          <Button onClick={handleCancel} color="platinum">
-            Cancel
-          </Button>
+          <Dialog.Close
+            nativeButton={false}
+            render={<Button color="platinum">Cancel</Button>}
+          />
           <Button onClick={handleConfirm} color="sea-green" disabled={!isValid}>
             Create Protocol
           </Button>

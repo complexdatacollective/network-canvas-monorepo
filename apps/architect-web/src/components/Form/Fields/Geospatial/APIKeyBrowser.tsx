@@ -54,11 +54,12 @@ const APIKeyBrowser = ({
     <Dialog
       open={show}
       onOpenChange={(open) => !open && close()}
-      header={<h2 className="m-0">API Key Browser</h2>}
+      title="API Key Browser"
       footer={
-        <Button color="platinum" onClick={close}>
-          Cancel
-        </Button>
+        <Dialog.Close
+          nativeButton={false}
+          render={<Button color="platinum">Cancel</Button>}
+        />
       }
     >
       <BasicForm form={formName} onSubmit={handleSubmit}>
