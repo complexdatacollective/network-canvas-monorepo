@@ -78,7 +78,7 @@
     "enzyme": "^3.11.0",
     "enzyme-adapter-react-16": "^1.15.8",
     "enzyme-to-json": "^3.6.2",
-    "eventemitter3": "^3.1.2",
+    "eventemitter3": "^5.0.4",
     "framer-motion": "^2.9.5",
     "fuse.js": "~6.4.6",
     "fuse.js-legacy": "npm:fuse.js@3.4.6",
