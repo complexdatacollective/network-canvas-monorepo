@@ -1,11 +1,33 @@
-import { Component, type ReactNode } from 'react';
+import { Check, Copy } from 'lucide-react';
+import { Component, type ReactNode, useCallback, useState } from 'react';
 
 import { posthog } from '~/analytics';
+import Dialog from '~/components/NewComponents/Dialog';
 import { Button } from '~/lib/legacy-ui/components';
 
 type AppErrorBoundaryProps = {
   children?: ReactNode;
 };
+
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [value]);
+
+  return (
+    <Button
+      color="platinum"
+      icon={copied ? <Check /> : <Copy />}
+      onClick={handleCopy}
+    >
+      {copied ? 'Copied!' : 'Copy error'}
+    </Button>
+  );
+}
 
 type AppErrorBoundaryState = {
   error: Error | null;
@@ -45,24 +67,33 @@ class AppErrorBoundary extends Component<
 
     if (error) {
       return (
-        <div className="text-primary-foreground absolute inset-0 flex size-full items-center justify-center bg-(--modal-overlay)">
-          <div className="bg-cyber-grape w-240 rounded p-(--space-2xl)">
-            <h1>Something went wrong.</h1>
-            <div>
-              <p>
-                The following &quot;
-                {error.message}
-                &quot; error occurred:
-              </p>
-            </div>
-            <pre className="bg-surface-1-foreground my-(--space-md) block max-h-36 overflow-scroll rounded p-(--space-md)">
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) this.resetError();
+          }}
+          title="Something went wrong."
+          footer={
+            <>
+              <CopyButton value={error.stack ?? error.message} />
+              <Dialog.Close
+                nativeButton={false}
+                render={<Button color="platinum">OK</Button>}
+              />
+            </>
+          }
+        >
+          <p>
+            The following &quot;
+            {error.message}
+            &quot; error occurred:
+          </p>
+          <div className="bg-surface-accent text-surface-accent-foreground my-(--space-md) overflow-hidden rounded">
+            <pre className="block max-h-36 overflow-auto p-(--space-md)">
               <code>{error.stack}</code>
             </pre>
-            <Button size="small" color="platinum" onClick={this.resetError}>
-              OK
-            </Button>
           </div>
-        </div>
+        </Dialog>
       );
     }
 
