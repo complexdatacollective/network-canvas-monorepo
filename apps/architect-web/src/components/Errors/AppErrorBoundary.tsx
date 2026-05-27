@@ -13,9 +13,13 @@ function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(async () => {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      posthog.captureException(ensureError(err));
+    }
   }, [value]);
 
   return (
@@ -90,7 +94,7 @@ class AppErrorBoundary extends Component<
           </p>
           <div className="bg-surface-accent text-surface-accent-foreground my-(--space-md) overflow-hidden rounded">
             <pre className="block max-h-36 overflow-auto p-(--space-md)">
-              <code>{error.stack}</code>
+              <code>{error.stack ?? error.message}</code>
             </pre>
           </div>
         </Dialog>
