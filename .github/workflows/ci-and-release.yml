@@ -666,10 +666,14 @@ jobs:
       id-token: write
     env:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+    outputs:
+      interviewer_v7_released: ${{ steps.detect_interviewer_v7.outputs.released }}
+      interviewer_v7_version: ${{ steps.detect_interviewer_v7.outputs.version }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
+          fetch-depth: 2
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
@@ -694,6 +698,32 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
+      - name: Detect interviewer-v7 version bump
+        # changesets/action either opens a "Version Packages" PR or, when no
+        # changesets remain, runs the publish step which has already mutated
+        # apps/interviewer-v7/package.json in-place during the merged version
+        # PR. Diff the file's version against HEAD^ to decide whether to
+        # trigger an Electron build downstream. fetch-depth: 2 above makes
+        # HEAD^ available.
+        id: detect_interviewer_v7
+        env:
+          PKG_JSON: apps/interviewer-v7/package.json
+        run: |
+          current=$(node -p "require('./$PKG_JSON').version")
+          if git cat-file -e "HEAD^:$PKG_JSON" 2>/dev/null; then
+            previous=$(git show "HEAD^:$PKG_JSON" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version")
+          else
+            previous=""
+          fi
+          if [[ "$current" != "$previous" && -n "$current" ]]; then
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "version=$current" >> "$GITHUB_OUTPUT"
+            echo "interviewer-v7 version changed: $previous -> $current"
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "interviewer-v7 version unchanged ($current)"
+          fi
 
   # Carry forward prior success statuses for conditional jobs that the
   # current push didn't touch. Push-to-push detection (see detect job)
