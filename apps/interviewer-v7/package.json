@@ -2,7 +2,7 @@
   "name": "@codaco/interviewer-v7",
   "version": "7.0.0-alpha.0",
   "private": true,
-  "description": "Network Canvas Interviewer v7 — Vite + React 19 dashboard hosting the @codaco/interview engine, with desktop (Electron) and tablet (Capacitor) targets.",
+  "description": "A tool for conducting Network Canvas Interviews.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
   "repository": {
     "type": "git",
@@ -78,7 +78,6 @@
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.3.4",
-    "@electron/rebuild": "^4.0.4",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",

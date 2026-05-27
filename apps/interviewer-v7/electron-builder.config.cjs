@@ -4,8 +4,8 @@
  * @type {import('electron-builder').Configuration}
  */
 module.exports = {
-  appId: 'org.complexdatacollective.interviewer7',
-  productName: 'Network Canvas Interviewer v7',
+  appId: 'Network-Canvas-Interviewer-7',
+  productName: 'Network Canvas Interviewer',
   copyright: `Copyright © ${new Date().getFullYear()} Complex Data Collective`,
   directories: {
     buildResources: 'build-resources',
@@ -27,7 +27,7 @@ module.exports = {
       name: 'Network Canvas Protocol',
       description: 'Network Canvas interview protocol',
       mimeType: 'application/x-netcanvas',
-      role: 'Editor',
+      role: 'Viewer',
     },
   ],
   mac: {
