@@ -118,7 +118,11 @@ function createWindow() {
     void mainWindow.loadURL(RENDERER_DEV_URL);
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
-    void mainWindow.loadURL(`${RENDERER_ORIGIN}/index.html`);
+    // Load `/` (not `/index.html`) so wouter starts with location='/' and
+    // matches the home route. The protocol handler in registerRendererProtocol
+    // already resolves extensionless paths to index.html, so the renderer
+    // still loads correctly.
+    void mainWindow.loadURL(`${RENDERER_ORIGIN}/`);
   }
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
