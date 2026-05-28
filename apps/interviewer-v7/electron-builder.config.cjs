@@ -1,3 +1,18 @@
+const fs = require('node:fs');
+const path = require('node:path');
+
+// The biometric-keystore unlock mode requires the keychain-access-groups
+// entitlement (see build-resources/entitlements.mac.plist). That entitlement
+// is restricted: AMFI will refuse to launch the signed app unless an embedded
+// provisioning profile authorizes the access group. The profile is downloaded
+// from the Apple Developer portal for App ID `Network-Canvas-Interviewer-7`
+// (Keychain Sharing capability enabled) and dropped at the path below. When
+// the file is absent the build still succeeds — producing an app whose
+// biometric mode is unusable (-34018 on enrol) but PIN / passphrase / none
+// still work and the app launches — so Windows / Linux builds and
+// profile-less CI stay green.
+const MAC_PROVISIONING_PROFILE = 'build-resources/embedded.provisionprofile';
+
 /**
  * Electron Builder configuration for Network Canvas Interviewer v7.
  * @see https://www.electron.build/configuration/configuration
@@ -50,6 +65,9 @@ module.exports = {
     icon: 'build-resources/icon.icon',
     entitlements: 'build-resources/entitlements.mac.plist',
     entitlementsInherit: 'build-resources/entitlements.mac.inherit.plist',
+    ...(fs.existsSync(path.join(__dirname, MAC_PROVISIONING_PROFILE))
+      ? { provisioningProfile: MAC_PROVISIONING_PROFILE }
+      : {}),
     target: [
       { target: 'dmg', arch: ['x64', 'arm64'] },
       { target: 'zip', arch: ['x64', 'arm64'] },
