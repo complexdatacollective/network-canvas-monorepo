@@ -1,5 +1,13 @@
 # Biometric Keystore Unlock — Implementation Plan
 
+> **STATUS (2026-05-28): Partially executed. Milestones A and B landed; C–F superseded.**
+>
+> Milestone A (revert WebAuthn scaffolding) and Milestone B (remove the `webauthn` vault mode) are committed on the `interviewer-v7` branch. Milestone C's decision-gate task (C1) found that no maintained npm package implements biometric-bound encrypt/decrypt for Electron; the original assumption that `antelle/node-secure-enclave` was adoptable does not hold (it hard-codes `BiometryCurrentSet`).
+>
+> The follow-up direction is captured in `docs/superpowers/specs/2026-05-28-biometric-keystore-package-survey.md` (Option A: Keychain ACL primitive via a thin napi-rs binding over `apple-native-keyring-store::protected`). Re-plan from that memo before resuming work.
+>
+> The remainder of this document is preserved for historical context.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a `biometric-keystore` desktop unlock mode that wraps the SQLCipher DEK with an OS-biometric-bound key (Secure Enclave / Windows Hello), and remove the non-working `webauthn` mode and its WebAuthn scaffolding.
