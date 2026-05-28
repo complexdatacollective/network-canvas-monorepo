@@ -14,9 +14,5 @@
 	<true/>
 	<key>com.apple.security.inherit</key>
 	<true/>
-	<key>keychain-access-groups</key>
-	<array>
-		<string>85EZ69PQHJ.Network-Canvas-Interviewer-7</string>
-	</array>
 </dict>
 </plist>

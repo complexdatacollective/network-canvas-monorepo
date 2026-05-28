@@ -13,6 +13,11 @@ module.exports = {
   },
   files: [
     'dist-electron/**/*',
+    // The renderer and main process are fully bundled by electron-vite, so the
+    // only node_modules the packaged app needs at runtime are the native
+    // SQLCipher binding and its loader deps. Exclude electron-builder's
+    // automatic production-dependency tree, then re-include just those.
+    '!node_modules/**/*',
     'node_modules/better-sqlite3-multiple-ciphers/**/*',
     'node_modules/bindings/**/*',
     'node_modules/file-uri-to-path/**/*',
