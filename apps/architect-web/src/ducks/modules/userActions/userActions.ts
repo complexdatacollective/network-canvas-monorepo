@@ -1,8 +1,9 @@
-import { createAsyncThunk } from '@reduxjs/toolkit';
+import { createAsyncThunk, type Dispatch } from '@reduxjs/toolkit';
 import { navigate } from 'wouter/use-browser-location';
 
 import {
   type CurrentProtocol,
+  type ExtractedAsset,
   extractProtocol,
   getMigrationInfo,
   migrateProtocol,
@@ -19,8 +20,44 @@ import type { RootState } from '~/ducks/store';
 import { saveProtocolAssets } from '~/utils/assetUtils';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
 import { ensureError } from '~/utils/ensureError';
+import {
+  deleteStoredProtocol,
+  getStoredProtocol,
+  putStoredProtocol,
+} from '~/utils/protocolLibrary';
 
-import { setActiveProtocol } from '../activeProtocol';
+import { clearActiveProtocol, setActiveProtocol } from '../activeProtocol';
+import { getActiveProtocolId, setActiveProtocolId } from '../app';
+
+// Persist a protocol into the library and load it into the editing buffer.
+// Used by every "open" path so each opened protocol becomes a saved, namespaced
+// library entry with its own assets. The library row is written before assets
+// to minimise orphaned-asset windows, and the active id is set before the
+// protocol so the protocol page mounts with the correct asset scope.
+const instantiateProtocol = async (
+  {
+    protocol,
+    assets = [],
+    name,
+    description,
+  }: {
+    protocol: CurrentProtocol;
+    assets?: ExtractedAsset[];
+    name: string;
+    description?: string;
+  },
+  dispatch: Dispatch,
+): Promise<void> => {
+  const protocolId = crypto.randomUUID();
+
+  await putStoredProtocol({ id: protocolId, protocol, name, description });
+  await saveProtocolAssets(assets, protocolId);
+
+  dispatch(setActiveProtocolId(protocolId));
+  dispatch(setActiveProtocol(protocol));
+
+  navigate('/protocol');
+};
 
 export const openLocalNetcanvas = createAsyncThunk(
   'protocol/openLocalNetcanvas',
@@ -63,12 +100,16 @@ export const openLocalNetcanvas = createAsyncThunk(
         return false;
       }
 
-      // Add protocol assets to IndexedDB
-      await saveProtocolAssets(assets);
-
-      dispatch(setActiveProtocol(migratedProtocol as CurrentProtocol));
-
-      navigate('/protocol');
+      const finalProtocol = migratedProtocol as CurrentProtocol;
+      await instantiateProtocol(
+        {
+          protocol: finalProtocol,
+          assets,
+          name: finalProtocol.name ?? protocolName,
+          description: finalProtocol.description,
+        },
+        dispatch,
+      );
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -163,11 +204,10 @@ export const createNetcanvas = createAsyncThunk(
       assetManifest: {},
     } as CurrentProtocol;
 
-    // Set active protocol
-    dispatch(setActiveProtocol(newProtocol));
-
-    // Navigate to the protocol
-    navigate('/protocol');
+    await instantiateProtocol(
+      { protocol: newProtocol, name, description },
+      dispatch,
+    );
   },
 );
 
@@ -184,6 +224,7 @@ export const exportNetcanvas = createAsyncThunk(
     await downloadProtocolAsNetcanvas(
       protocol as CurrentProtocol,
       protocol.name,
+      getActiveProtocolId(state) ?? undefined,
     );
 
     return true;
@@ -241,17 +282,60 @@ export const openRemoteNetcanvas = createAsyncThunk(
         return;
       }
 
-      // Add protocol assets to IndexedDB
-      await saveProtocolAssets(assets);
-
-      dispatch(setActiveProtocol(migratedProtocol as CurrentProtocol));
-
-      navigate('/protocol');
+      // Opening a remote/template protocol instantiates a fresh library entry
+      // (new id), so templates can be opened repeatedly without overwriting.
+      const finalProtocol = migratedProtocol as CurrentProtocol;
+      await instantiateProtocol(
+        {
+          protocol: finalProtocol,
+          assets,
+          name: finalProtocol.name ?? protocolName,
+          description: finalProtocol.description,
+        },
+        dispatch,
+      );
     } catch (error) {
       const errorMessage = ensureError(error).message;
       dispatch(generalErrorDialog('Protocol Import Error', errorMessage));
     } finally {
       controller.abort();
+    }
+  },
+);
+
+// Load a protocol already saved in the library into the editing buffer. Its
+// assets are already namespaced under this id in IndexedDB.
+export const openLibraryProtocol = createAsyncThunk(
+  'webUserActions/openLibraryProtocol',
+  async (id: string, { dispatch }) => {
+    const row = await getStoredProtocol(id);
+    if (!row) {
+      dispatch(
+        generalErrorDialog(
+          'Protocol Not Found',
+          'This protocol could not be found in your library.',
+        ),
+      );
+      return;
+    }
+
+    dispatch(setActiveProtocolId(id));
+    dispatch(setActiveProtocol(row.protocol));
+    navigate('/protocol');
+  },
+);
+
+// Remove a protocol (and its assets) from the library. If it is the one
+// currently being edited, also close the editing buffer.
+export const deleteLibraryProtocol = createAsyncThunk(
+  'webUserActions/deleteLibraryProtocol',
+  async (id: string, { dispatch, getState }) => {
+    await deleteStoredProtocol(id);
+
+    const state = getState() as RootState;
+    if (getActiveProtocolId(state) === id) {
+      dispatch(setActiveProtocolId(null));
+      dispatch(clearActiveProtocol());
     }
   },
 );

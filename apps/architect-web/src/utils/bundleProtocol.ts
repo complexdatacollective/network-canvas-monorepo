@@ -2,9 +2,12 @@ import JSZip from 'jszip';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
-import { assetDb } from './assetDB';
+import { getAssetById } from './assetUtils';
 
-async function getAllProtocolAssets(protocol: CurrentProtocol) {
+async function getAllProtocolAssets(
+  protocol: CurrentProtocol,
+  protocolId?: string,
+) {
   const assets: Array<{ id: string; source: string; data: Blob | string }> = [];
 
   if (!protocol.assetManifest) {
@@ -15,7 +18,7 @@ async function getAllProtocolAssets(protocol: CurrentProtocol) {
     protocol.assetManifest,
   )) {
     try {
-      const assetData = await assetDb.assets.get(assetId);
+      const assetData = await getAssetById(assetId, protocolId);
 
       if (!assetData) {
         continue;
@@ -41,14 +44,17 @@ async function getAllProtocolAssets(protocol: CurrentProtocol) {
   return assets;
 }
 
-async function bundleProtocol(protocol: CurrentProtocol): Promise<Blob> {
+async function bundleProtocol(
+  protocol: CurrentProtocol,
+  protocolId?: string,
+): Promise<Blob> {
   const zip = new JSZip();
 
   const protocolJson = JSON.stringify(protocol, null, 2);
   zip.file('protocol.json', protocolJson);
 
   if (protocol.assetManifest) {
-    const assets = await getAllProtocolAssets(protocol);
+    const assets = await getAllProtocolAssets(protocol, protocolId);
 
     const assetsFolder = zip.folder('assets');
     if (assetsFolder) {
@@ -69,9 +75,10 @@ async function bundleProtocol(protocol: CurrentProtocol): Promise<Blob> {
 export async function downloadProtocolAsNetcanvas(
   protocol: CurrentProtocol,
   protocolName?: string,
+  protocolId?: string,
 ): Promise<void> {
   try {
-    const blob = await bundleProtocol(protocol);
+    const blob = await bundleProtocol(protocol, protocolId);
 
     // build local timestamp YYYY-MM-DD_HH-MM
     const now = new Date();
