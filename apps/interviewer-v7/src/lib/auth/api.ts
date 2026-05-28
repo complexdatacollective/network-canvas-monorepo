@@ -6,21 +6,26 @@ import {
 } from './biometricNative';
 import * as electronAuth from './electron';
 import * as vaultMetadata from './vaultMetadata';
-import {
-  authenticatePasskey,
-  createPasskey,
-  fromBase64,
-  isWebAuthnAvailable,
-  toBase64,
-} from './webauthn';
-
-const PASSKEY_USER_ID = new TextEncoder().encode('interviewer-v7:device');
-const PASSKEY_USER_NAME = 'Network Canvas Interviewer';
 
 const PBKDF2_ITERATIONS = 600_000;
 const PBKDF2_SALT_BYTES = 32;
 const PBKDF2_KEY_BYTES = 32;
 const PIN_LENGTH = 8;
+
+function fromBase64(b64: string): Uint8Array<ArrayBuffer> {
+  const binary = atob(b64);
+  const buffer = new ArrayBuffer(binary.length);
+  const out = new Uint8Array(buffer);
+  for (let i = 0; i < binary.length; i += 1) out[i] = binary.charCodeAt(i);
+  return out;
+}
+
+function toBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 1)
+    binary += String.fromCharCode(bytes[i]!);
+  return btoa(binary);
+}
 
 // Non-Electron renderers hold the unlock flag in sessionStorage, not in a
 // module-level variable: a page reload (Vite HMR escalation, F5, etc.) wipes
@@ -149,21 +154,11 @@ function constantTimeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
+// Synchronous predicate retained for legacy call sites; biometric-keystore
+// availability is async and exposed via `isBiometricSupported` (added in
+// Milestone C).
 export function isAuthenticatorSupported(): boolean {
-  if (!isWebAuthnAvailable()) return false;
-  // Unsigned Electron dev: the WebAuthn API surface exists but the OS prompt
-  // never appears (Touch ID requires a signed binary + keychainAccessGroup),
-  // so navigator.credentials.create() hangs until the 60s timeout. Treat as
-  // unsupported so the user is routed to the PIN / no-lock fallback.
-  if (
-    isElectron &&
-    typeof window !== 'undefined' &&
-    window.electronAPI &&
-    !window.electronAPI.isPackaged
-  ) {
-    return false;
-  }
-  return true;
+  return false;
 }
 
 export async function status(): Promise<AuthStatus> {
@@ -171,15 +166,6 @@ export async function status(): Promise<AuthStatus> {
   const metadata = await vaultMetadata.read();
   if (!metadata) {
     return { configured: false, locked: false };
-  }
-  if (metadata.mode === 'webauthn') {
-    return {
-      configured: true,
-      locked: !readWebUnlocked(),
-      mode: 'webauthn',
-      credentialIdB64: metadata.credentialIdB64,
-      saltB64: metadata.saltB64,
-    };
   }
   if (metadata.mode === 'pin') {
     return {
@@ -210,34 +196,9 @@ export async function status(): Promise<AuthStatus> {
 }
 
 export async function enrol(
-  signal?: AbortSignal,
+  _signal?: AbortSignal,
 ): Promise<{ ok: boolean; message?: string }> {
-  if (!isWebAuthnAvailable()) {
-    return { ok: false, message: 'This browser does not support WebAuthn' };
-  }
-  const salt = new Uint8Array(32);
-  crypto.getRandomValues(salt);
-  const result = await createPasskey({
-    userId: PASSKEY_USER_ID,
-    userName: PASSKEY_USER_NAME,
-    salt,
-    signal,
-  });
-  if (!result.ok) {
-    return { ok: false, message: result.error };
-  }
-  const credentialIdB64 = toBase64(result.enrolment.credentialId);
-  const saltB64 = toBase64(salt);
-  if (isElectron) {
-    return electronAuth.setup({
-      credentialIdB64,
-      saltB64,
-      prfOutputB64: toBase64(result.enrolment.prfOutput),
-    });
-  }
-  await vaultMetadata.writeWebAuthn({ credentialIdB64, saltB64 });
-  writeWebUnlocked(true);
-  return { ok: true };
+  return { ok: false, message: 'Biometric authentication is not available' };
 }
 
 export async function enrolWithoutLock(): Promise<{
@@ -315,36 +276,9 @@ export async function unlockWithBiometricNative(): Promise<{
 }
 
 export async function unlock(
-  signal?: AbortSignal,
+  _signal?: AbortSignal,
 ): Promise<{ ok: boolean; message?: string }> {
-  const metadata = await vaultMetadata.read();
-  const s = isElectron ? await electronAuth.status() : null;
-  const credentialIdB64 = isElectron
-    ? s?.credentialIdB64
-    : metadata?.mode === 'webauthn'
-      ? metadata.credentialIdB64
-      : undefined;
-  const saltB64 = isElectron
-    ? s?.saltB64
-    : metadata?.mode === 'webauthn'
-      ? metadata.saltB64
-      : undefined;
-  if (!credentialIdB64 || !saltB64) {
-    return { ok: false, message: 'No authenticator enrolled' };
-  }
-  const result = await authenticatePasskey({
-    credentialId: fromBase64(credentialIdB64),
-    salt: fromBase64(saltB64),
-    signal,
-  });
-  if (!result.ok) return { ok: false, message: result.error };
-  if (isElectron) {
-    return electronAuth.unlock({
-      prfOutputB64: toBase64(result.enrolment.prfOutput),
-    });
-  }
-  writeWebUnlocked(true);
-  return { ok: true };
+  return { ok: false, message: 'Biometric authentication is not available' };
 }
 
 export async function unlockWithPin(
@@ -380,60 +314,9 @@ export async function lock(): Promise<void> {
 }
 
 export async function reEnrol(
-  signal?: AbortSignal,
+  _signal?: AbortSignal,
 ): Promise<{ ok: boolean; message?: string }> {
-  if (!isWebAuthnAvailable()) {
-    return { ok: false, message: 'This browser does not support WebAuthn' };
-  }
-  const current = isElectron ? await electronAuth.status() : null;
-  const metadata = isElectron ? null : await vaultMetadata.read();
-  const currentCredentialIdB64 = isElectron
-    ? current?.credentialIdB64
-    : metadata?.mode === 'webauthn'
-      ? metadata.credentialIdB64
-      : undefined;
-  const currentSaltB64 = isElectron
-    ? current?.saltB64
-    : metadata?.mode === 'webauthn'
-      ? metadata.saltB64
-      : undefined;
-  if (!currentCredentialIdB64 || !currentSaltB64) {
-    return { ok: false, message: 'No authenticator enrolled' };
-  }
-
-  const currentAuth = await authenticatePasskey({
-    credentialId: fromBase64(currentCredentialIdB64),
-    salt: fromBase64(currentSaltB64),
-    signal,
-  });
-  if (!currentAuth.ok) return { ok: false, message: currentAuth.error };
-
-  const nextSalt = new Uint8Array(32);
-  crypto.getRandomValues(nextSalt);
-  const next = await createPasskey({
-    userId: PASSKEY_USER_ID,
-    userName: PASSKEY_USER_NAME,
-    salt: nextSalt,
-    signal,
-  });
-  if (!next.ok) return { ok: false, message: next.error };
-
-  const nextCredentialIdB64 = toBase64(next.enrolment.credentialId);
-  const nextSaltB64 = toBase64(nextSalt);
-  if (isElectron) {
-    return electronAuth.reEnrol({
-      currentPrfOutputB64: toBase64(currentAuth.enrolment.prfOutput),
-      nextCredentialIdB64,
-      nextSaltB64,
-      nextPrfOutputB64: toBase64(next.enrolment.prfOutput),
-    });
-  }
-  await vaultMetadata.writeWebAuthn({
-    credentialIdB64: nextCredentialIdB64,
-    saltB64: nextSaltB64,
-  });
-  writeWebUnlocked(true);
-  return { ok: true };
+  return { ok: false, message: 'Biometric authentication is not available' };
 }
 
 export async function reEnrolWithPin(args: {
@@ -571,41 +454,12 @@ export async function reEnrolWithPassphrase(args: {
 }
 
 export async function verifyBiometric(
-  signal?: AbortSignal,
+  _signal?: AbortSignal,
 ): Promise<{ ok: boolean; message?: string }> {
   if (isCapacitor) {
     return verifyBiometricNativePlugin();
   }
-  if (!isWebAuthnAvailable()) {
-    return { ok: false, message: 'This browser does not support WebAuthn' };
-  }
-  const metadata = await vaultMetadata.read();
-  const s = isElectron ? await electronAuth.status() : null;
-  const credentialIdB64 = isElectron
-    ? s?.credentialIdB64
-    : metadata?.mode === 'webauthn'
-      ? metadata.credentialIdB64
-      : undefined;
-  const saltB64 = isElectron
-    ? s?.saltB64
-    : metadata?.mode === 'webauthn'
-      ? metadata.saltB64
-      : undefined;
-  if (!credentialIdB64 || !saltB64) {
-    return { ok: false, message: 'No authenticator enrolled' };
-  }
-  const result = await authenticatePasskey({
-    credentialId: fromBase64(credentialIdB64),
-    salt: fromBase64(saltB64),
-    signal,
-  });
-  if (!result.ok) return { ok: false, message: result.error };
-  if (isElectron) {
-    return electronAuth.verifyWebAuthn({
-      prfOutputB64: toBase64(result.enrolment.prfOutput),
-    });
-  }
-  return { ok: true };
+  return { ok: false, message: 'Biometric authentication is not available' };
 }
 
 export async function verifyWithPin(

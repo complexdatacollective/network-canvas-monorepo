@@ -5,12 +5,6 @@ import { isCapacitor } from '../platform/platform';
 
 export type VaultMetadata =
   | {
-      mode: 'webauthn';
-      credentialIdB64: string;
-      saltB64: string;
-      enrolledAt: string;
-    }
-  | {
       mode: 'biometric-native';
       enrolledAt: string;
     }
@@ -34,8 +28,6 @@ export type VaultMetadata =
     };
 
 const KEY_MODE = 'auth.mode';
-const KEY_CREDENTIAL_ID = 'auth.credentialId';
-const KEY_SALT = 'auth.salt';
 const KEY_KDF_SALT = 'auth.kdfSalt';
 const KEY_KDF_ITERATIONS = 'auth.kdfIterations';
 const KEY_VERIFIER = 'auth.verifier';
@@ -43,8 +35,6 @@ const KEY_ENROLLED_AT = 'auth.enrolledAt';
 
 const ALL_KEYS = [
   KEY_MODE,
-  KEY_CREDENTIAL_ID,
-  KEY_SALT,
   KEY_KDF_SALT,
   KEY_KDF_ITERATIONS,
   KEY_VERIFIER,
@@ -165,31 +155,7 @@ export async function read(): Promise<VaultMetadata | null> {
     return { mode: 'biometric-native', enrolledAt };
   }
 
-  const [credentialIdB64, saltB64] = await Promise.all([
-    readEntry(KEY_CREDENTIAL_ID),
-    readEntry(KEY_SALT),
-  ]);
-  if (!credentialIdB64 || !saltB64) return null;
-  return {
-    mode: 'webauthn',
-    credentialIdB64,
-    saltB64,
-    enrolledAt,
-  };
-}
-
-export async function writeWebAuthn(args: {
-  credentialIdB64: string;
-  saltB64: string;
-}): Promise<void> {
-  const enrolledAt = new Date().toISOString();
-  await clear();
-  await Promise.all([
-    writeEntry(KEY_MODE, 'webauthn'),
-    writeEntry(KEY_CREDENTIAL_ID, args.credentialIdB64),
-    writeEntry(KEY_SALT, args.saltB64),
-    writeEntry(KEY_ENROLLED_AT, enrolledAt),
-  ]);
+  return null;
 }
 
 export async function writePin(args: {

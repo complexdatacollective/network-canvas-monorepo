@@ -17,14 +17,6 @@ export type VaultRecord =
     }
   | {
       version: typeof CURRENT_VAULT_VERSION;
-      mode: 'webauthn';
-      credentialIdB64: string;
-      saltB64: string;
-      wrapIvB64: string;
-      wrapCiphertextB64: string;
-    }
-  | {
-      version: typeof CURRENT_VAULT_VERSION;
       mode: 'pin';
       kdfSaltB64: string;
       kdfIterations: number;

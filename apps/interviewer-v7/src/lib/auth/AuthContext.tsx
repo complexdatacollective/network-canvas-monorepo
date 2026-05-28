@@ -16,12 +16,7 @@ import * as vaultMetadata from './vaultMetadata';
 
 export type AuthStateKind = 'loading' | 'unconfigured' | 'locked' | 'unlocked';
 
-export type AuthMode =
-  | 'webauthn'
-  | 'biometric-native'
-  | 'pin'
-  | 'passphrase'
-  | 'none';
+export type AuthMode = 'biometric-native' | 'pin' | 'passphrase' | 'none';
 
 export type IdleTimeoutMinutes = 1 | 5 | 15 | 30 | 60;
 
@@ -29,7 +24,6 @@ export type AuthState = {
   kind: AuthStateKind;
   authenticatorSupported: boolean;
   mode?: AuthMode;
-  credentialMetadata?: { credentialIdB64: string; enrolledAt: string };
   biometricNativeMetadata?: { enrolledAt: string };
   pinMetadata?: { enrolledAt: string };
   passphraseMetadata?: { enrolledAt: string };
@@ -100,21 +94,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const metadata = await vaultMetadata.read();
     const mode: AuthMode | undefined = s.mode ?? metadata?.mode;
-    let credentialMetadata: AuthState['credentialMetadata'];
     let biometricNativeMetadata: AuthState['biometricNativeMetadata'];
     let pinMetadata: AuthState['pinMetadata'];
     let passphraseMetadata: AuthState['passphraseMetadata'];
-    if (mode === 'webauthn') {
-      const credentialIdB64 =
-        metadata?.mode === 'webauthn'
-          ? metadata.credentialIdB64
-          : s.credentialIdB64;
-      const enrolledAt =
-        metadata?.mode === 'webauthn' ? metadata.enrolledAt : '';
-      if (credentialIdB64) {
-        credentialMetadata = { credentialIdB64, enrolledAt };
-      }
-    } else if (mode === 'pin') {
+    if (mode === 'pin') {
       pinMetadata = {
         enrolledAt: metadata?.mode === 'pin' ? metadata.enrolledAt : '',
       };
@@ -141,7 +124,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       kind,
       authenticatorSupported,
       mode,
-      credentialMetadata,
       biometricNativeMetadata,
       pinMetadata,
       passphraseMetadata,

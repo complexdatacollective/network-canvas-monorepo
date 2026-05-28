@@ -41,25 +41,12 @@ const dbBridge = {
 
 const authBridge = {
   status: () => ipcRenderer.invoke('auth:status'),
-  setup: (args: {
-    credentialIdB64: string;
-    saltB64: string;
-    prfOutputB64: string;
-  }) => ipcRenderer.invoke('auth:setup', args),
   setupPin: (args: { pin: string }) =>
     ipcRenderer.invoke('auth:setupPin', args),
   setupNone: () => ipcRenderer.invoke('auth:setupNone'),
-  unlock: (args: { prfOutputB64: string }) =>
-    ipcRenderer.invoke('auth:unlock', args),
   unlockPin: (args: { pin: string }) =>
     ipcRenderer.invoke('auth:unlockPin', args),
   lock: () => ipcRenderer.invoke('auth:lock'),
-  reEnrol: (args: {
-    currentPrfOutputB64: string;
-    nextCredentialIdB64: string;
-    nextSaltB64: string;
-    nextPrfOutputB64: string;
-  }) => ipcRenderer.invoke('auth:reEnrol', args),
   reEnrolPin: (args: { currentPin: string; nextPin: string }) =>
     ipcRenderer.invoke('auth:reEnrolPin', args),
   setupPassphrase: (args: { phrase: string }) =>
@@ -68,8 +55,6 @@ const authBridge = {
     ipcRenderer.invoke('auth:unlock:passphrase', args),
   reEnrolPassphrase: (args: { currentPhrase: string; nextPhrase: string }) =>
     ipcRenderer.invoke('auth:reEnrol:passphrase', args),
-  verifyWebAuthn: (args: { prfOutputB64: string }) =>
-    ipcRenderer.invoke('auth:verify:webauthn', args),
   verifyPin: (args: { pin: string }) =>
     ipcRenderer.invoke('auth:verify:pin', args),
   verifyPassphrase: (args: { phrase: string }) =>

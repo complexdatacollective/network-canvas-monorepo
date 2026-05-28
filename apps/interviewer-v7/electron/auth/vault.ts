@@ -78,17 +78,6 @@ function validatePassphrase(
   return { ok: true };
 }
 
-async function importKekFromBytes(raw: Buffer): Promise<WebCryptoKey> {
-  const sized =
-    raw.length === KEY_LEN_BYTES
-      ? raw
-      : Buffer.from(raw.subarray(0, KEY_LEN_BYTES));
-  return webcrypto.subtle.importKey('raw', sized, { name: 'AES-GCM' }, false, [
-    'encrypt',
-    'decrypt',
-  ]);
-}
-
 async function deriveKekFromPin(
   pin: string,
   salt: Buffer,
@@ -172,9 +161,7 @@ async function aesDecrypt(
 export async function status(): Promise<{
   configured: boolean;
   locked: boolean;
-  mode?: 'webauthn' | 'pin' | 'passphrase' | 'none';
-  credentialIdB64?: string;
-  saltB64?: string;
+  mode?: 'pin' | 'passphrase' | 'none';
 }> {
   if (!isVaultConfigured()) {
     return { configured: false, locked: false };
@@ -199,9 +186,6 @@ export async function status(): Promise<{
     configured: true,
     locked: record.mode === 'none' ? false : unlockedKeyHex === null,
     mode: record.mode,
-    credentialIdB64:
-      record.mode === 'webauthn' ? record.credentialIdB64 : undefined,
-    saltB64: record.mode === 'webauthn' ? record.saltB64 : undefined,
   };
 }
 
@@ -240,48 +224,6 @@ export async function setupNone(): Promise<
   }
 }
 
-export async function setup(args: {
-  credentialIdB64: string;
-  saltB64: string;
-  prfOutputB64: string;
-}): Promise<{ ok: true } | { ok: false; message: string }> {
-  if (!args.prfOutputB64) {
-    return {
-      ok: false,
-      message: 'WebAuthn PRF extension is required and was not provided',
-    };
-  }
-  if (isVaultConfigured()) {
-    return { ok: false, message: 'Vault already configured' };
-  }
-  try {
-    const dek = randomBytes(KEY_LEN_BYTES);
-    const prf = b64ToBuf(args.prfOutputB64);
-    const kek = await importKekFromBytes(prf);
-    const wrapped = await aesEncrypt(kek, dek);
-    const record: VaultRecord = {
-      version: CURRENT_VAULT_VERSION,
-      mode: 'webauthn',
-      credentialIdB64: args.credentialIdB64,
-      saltB64: args.saltB64,
-      wrapIvB64: bufToB64(wrapped.iv),
-      wrapCiphertextB64: bufToB64(wrapped.ciphertext),
-    };
-    // Open the DB first; only persist the vault record once it succeeds, so a
-    // failed open cannot leave the install "configured" with no usable DB.
-    const hex = bytesToHex(dek);
-    openDatabase(hex);
-    writeVault(record);
-    unlockedKeyHex = hex;
-    return { ok: true };
-  } catch (cause) {
-    return {
-      ok: false,
-      message: cause instanceof Error ? cause.message : String(cause),
-    };
-  }
-}
-
 export async function setupPin(args: {
   pin: string;
 }): Promise<{ ok: true } | { ok: false; message: string }> {
@@ -308,45 +250,6 @@ export async function setupPin(args: {
     const hex = bytesToHex(dek);
     openDatabase(hex);
     writeVault(record);
-    unlockedKeyHex = hex;
-    return { ok: true };
-  } catch (cause) {
-    return {
-      ok: false,
-      message: cause instanceof Error ? cause.message : String(cause),
-    };
-  }
-}
-
-export async function unlock(args: {
-  prfOutputB64: string;
-}): Promise<{ ok: true } | { ok: false; message: string }> {
-  if (!args.prfOutputB64) {
-    return {
-      ok: false,
-      message: 'WebAuthn PRF extension is required and was not provided',
-    };
-  }
-  const record = readVault();
-  if (!record) return { ok: false, message: 'Vault not configured' };
-  if (record.mode !== 'webauthn') {
-    return { ok: false, message: 'Vault is not configured for WebAuthn' };
-  }
-  try {
-    const prf = b64ToBuf(args.prfOutputB64);
-    const kek = await importKekFromBytes(prf);
-    let dek: Buffer;
-    try {
-      dek = await aesDecrypt(
-        kek,
-        b64ToBuf(record.wrapIvB64),
-        b64ToBuf(record.wrapCiphertextB64),
-      );
-    } catch {
-      return { ok: false, message: 'Authenticator unwrap failed' };
-    }
-    const hex = bytesToHex(dek);
-    openDatabase(hex);
     unlockedKeyHex = hex;
     return { ok: true };
   } catch (cause) {
@@ -471,40 +374,6 @@ export async function verifyPassphrase(args: {
   }
 }
 
-export async function verifyWebAuthn(args: {
-  prfOutputB64: string;
-}): Promise<{ ok: true } | { ok: false; message: string }> {
-  if (!args.prfOutputB64) {
-    return {
-      ok: false,
-      message: 'WebAuthn PRF extension is required and was not provided',
-    };
-  }
-  const record = readVault();
-  if (!record) return { ok: false, message: 'Vault not configured' };
-  if (record.mode !== 'webauthn') {
-    return { ok: false, message: 'Vault is not configured for WebAuthn' };
-  }
-  try {
-    const kek = await importKekFromBytes(b64ToBuf(args.prfOutputB64));
-    try {
-      await aesDecrypt(
-        kek,
-        b64ToBuf(record.wrapIvB64),
-        b64ToBuf(record.wrapCiphertextB64),
-      );
-    } catch {
-      return { ok: false, message: 'Authenticator unwrap failed' };
-    }
-    return { ok: true };
-  } catch (cause) {
-    return {
-      ok: false,
-      message: cause instanceof Error ? cause.message : String(cause),
-    };
-  }
-}
-
 export async function lock(): Promise<void> {
   const record = readVault();
   // mode='none' has no unlock path, so closing the DB would leave the app in
@@ -512,57 +381,6 @@ export async function lock(): Promise<void> {
   if (record?.mode === 'none') return;
   closeDatabase();
   unlockedKeyHex = null;
-}
-
-export async function reEnrol(args: {
-  currentPrfOutputB64: string;
-  nextCredentialIdB64: string;
-  nextSaltB64: string;
-  nextPrfOutputB64: string;
-}): Promise<{ ok: true } | { ok: false; message: string }> {
-  if (!args.currentPrfOutputB64 || !args.nextPrfOutputB64) {
-    return {
-      ok: false,
-      message: 'WebAuthn PRF extension is required and was not provided',
-    };
-  }
-  const record = readVault();
-  if (!record) return { ok: false, message: 'Vault not configured' };
-  if (record.mode !== 'webauthn') {
-    return { ok: false, message: 'Vault is not configured for WebAuthn' };
-  }
-  try {
-    const currentKek = await importKekFromBytes(
-      b64ToBuf(args.currentPrfOutputB64),
-    );
-    let dek: Buffer;
-    try {
-      dek = await aesDecrypt(
-        currentKek,
-        b64ToBuf(record.wrapIvB64),
-        b64ToBuf(record.wrapCiphertextB64),
-      );
-    } catch {
-      return { ok: false, message: 'Current authenticator unwrap failed' };
-    }
-    const nextKek = await importKekFromBytes(b64ToBuf(args.nextPrfOutputB64));
-    const wrapped = await aesEncrypt(nextKek, dek);
-    const next: VaultRecord = {
-      version: CURRENT_VAULT_VERSION,
-      mode: 'webauthn',
-      credentialIdB64: args.nextCredentialIdB64,
-      saltB64: args.nextSaltB64,
-      wrapIvB64: bufToB64(wrapped.iv),
-      wrapCiphertextB64: bufToB64(wrapped.ciphertext),
-    };
-    writeVault(next);
-    return { ok: true };
-  } catch (cause) {
-    return {
-      ok: false,
-      message: cause instanceof Error ? cause.message : String(cause),
-    };
-  }
 }
 
 export async function reEnrolPin(args: {

@@ -118,12 +118,6 @@ export function LockScreen() {
   }
 
   switch (mode) {
-    case 'webauthn':
-      return (
-        <BiometricLockDialog
-          onSubmit={(signal) => unlockWithAuthenticator(signal)}
-        />
-      );
     case 'biometric-native':
       return (
         <BiometricLockDialog onSubmit={() => unlockWithBiometricNative()} />

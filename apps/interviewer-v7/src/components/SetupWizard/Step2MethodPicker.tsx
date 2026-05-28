@@ -4,8 +4,7 @@ import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import { isAuthenticatorSupported } from '~/lib/auth/api';
 import { isBiometricNativeAvailable } from '~/lib/auth/biometricNative';
-import { isPlatformAuthenticatorAvailable } from '~/lib/auth/webauthn';
-import { isCapacitor, isElectron } from '~/lib/platform/platform';
+import { isCapacitor } from '~/lib/platform/platform';
 
 import type { WizardSelectedMethod } from '../SetupWizardDialog';
 
@@ -60,13 +59,6 @@ export default function Step2MethodPicker() {
           });
         }
       } else if (!isAuthenticatorSupported()) {
-        setBiometric({
-          status: 'unavailable',
-          reason: UNAVAILABLE_REASON_TEXT['no-hardware'],
-        });
-      } else if (isElectron && !(await isPlatformAuthenticatorAvailable())) {
-        // Packaged Electron with no Touch ID / Windows Hello: offering biometric
-        // would hang on navigator.credentials.create(). Route to PIN/passphrase.
         setBiometric({
           status: 'unavailable',
           reason: UNAVAILABLE_REASON_TEXT['no-hardware'],

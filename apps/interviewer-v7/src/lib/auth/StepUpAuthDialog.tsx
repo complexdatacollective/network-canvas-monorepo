@@ -151,7 +151,7 @@ export default function StepUpAuthDialog({
     onResolve({ ok: false, reason: 'cancelled' });
   };
 
-  if (mode === 'webauthn' || mode === 'biometric-native') {
+  if (mode === 'biometric-native') {
     return (
       <BiometricStepUp
         open={open}

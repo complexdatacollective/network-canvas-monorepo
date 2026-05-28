@@ -44,9 +44,7 @@ declare global {
   type AuthStatus = {
     configured: boolean;
     locked: boolean;
-    mode?: 'webauthn' | 'biometric-native' | 'pin' | 'passphrase' | 'none';
-    credentialIdB64?: string;
-    saltB64?: string;
+    mode?: 'biometric-native' | 'pin' | 'passphrase' | 'none';
   };
 
   type DbBridge = {
@@ -99,28 +97,14 @@ declare global {
 
   type AuthBridge = {
     status: () => Promise<AuthStatus>;
-    setup: (args: {
-      credentialIdB64: string;
-      saltB64: string;
-      prfOutputB64: string;
-    }) => Promise<{ ok: boolean; message?: string }>;
     setupPin: (args: {
       pin: string;
     }) => Promise<{ ok: boolean; message?: string }>;
     setupNone: () => Promise<{ ok: boolean; message?: string }>;
-    unlock: (args: {
-      prfOutputB64: string;
-    }) => Promise<{ ok: boolean; message?: string }>;
     unlockPin: (args: {
       pin: string;
     }) => Promise<{ ok: boolean; message?: string }>;
     lock: () => Promise<void>;
-    reEnrol: (args: {
-      currentPrfOutputB64: string;
-      nextCredentialIdB64: string;
-      nextSaltB64: string;
-      nextPrfOutputB64: string;
-    }) => Promise<{ ok: boolean; message?: string }>;
     reEnrolPin: (args: {
       currentPin: string;
       nextPin: string;
@@ -134,9 +118,6 @@ declare global {
     reEnrolPassphrase: (args: {
       currentPhrase: string;
       nextPhrase: string;
-    }) => Promise<{ ok: boolean; message?: string }>;
-    verifyWebAuthn: (args: {
-      prfOutputB64: string;
     }) => Promise<{ ok: boolean; message?: string }>;
     verifyPin: (args: {
       pin: string;
