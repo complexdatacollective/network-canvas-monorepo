@@ -93,7 +93,7 @@ One row per directory. Per-file granularity rots; per-directory framing tells an
 - **No re-exports for convenience.** All references to a function/variable should import from the original source.
 - **oxlint + oxfmt** lint and format: 2-space indentation, single quotes. Pre-commit hooks format staged files. Run `pnpm lint:fix` from the repo root before committing.
 - **Tests** are co-located in `__tests__/` directories with `.test.ts` / `.test.tsx` extensions, using Vitest.
-- **Four auth modes, never combined.** A vault is one of:
+- **Five auth modes, never combined.** A vault is one of:
   - `biometric-keystore` — Electron macOS only. The SQLCipher DEK is stored directly in the OS keychain as a generic password item with `kSecAttrAccessControl = USER_PRESENCE`, so `SecItemCopyMatching` on the read prompts Touch ID (or device passcode as fallback). Native binding lives at `apps/interviewer-v7/native/biometric-keystore` (Rust + napi-rs over `security-framework`); the renderer dispatches via `electronAuth.{setup,unlock,verify}Biometric()` and uses `isBiometricSupported()` to gate the wizard. No ECIES wrap, no Secure Enclave key — the keychain ACL is the security primitive. See `docs/superpowers/specs/2026-05-28-biometric-keystore-package-survey.md` for why this primitive was chosen.
   - `biometric-native` — Capacitor-only; native plugin (`@aparajita/capacitor-biometric-auth`) wraps `LAContext` / `BiometricPrompt`. Pure gate, no key derivation — at-rest protection is the OS sandbox. Used on iOS / Android for "Biometric authentication".
   - `pin` — exactly 8 digits, PBKDF2-HMAC-SHA256 (600k iterations, 32-byte salt) → KEK that unwraps the DEK on Electron; verifier-only on web/Capacitor.
