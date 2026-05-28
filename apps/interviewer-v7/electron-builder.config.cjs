@@ -34,10 +34,14 @@ module.exports = {
     // loader deps. Exclude electron-builder's automatic production-dependency
     // tree, then re-include just those.
     '!node_modules/**/*',
-    'node_modules/better-sqlite3-multiple-ciphers/**/*',
+    'node_modules/better-sqlite3-multiple-ciphers/package.json',
+    'node_modules/better-sqlite3-multiple-ciphers/lib/**',
+    'node_modules/better-sqlite3-multiple-ciphers/build/Release/better_sqlite3.node',
     'node_modules/bindings/**/*',
     'node_modules/file-uri-to-path/**/*',
-    'node_modules/@codaco/biometric-keystore/**/*',
+    'node_modules/@codaco/biometric-keystore/package.json',
+    'node_modules/@codaco/biometric-keystore/index.cjs',
+    'node_modules/@codaco/biometric-keystore/*.node',
     '!**/*.{map,ts,md}',
     '!**/test/**',
     '!**/__tests__/**',
