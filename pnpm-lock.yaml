@@ -1168,6 +1168,9 @@ importers:
       '@codaco/art':
         specifier: workspace:*
         version: link:../../packages/art
+      '@codaco/biometric-keystore':
+        specifier: workspace:*
+        version: link:native/biometric-keystore
       '@codaco/fresco-ui':
         specifier: workspace:*
         version: link:../../packages/fresco-ui
@@ -1289,6 +1292,8 @@ importers:
       xcode:
         specifier: ^3.0.1
         version: 3.0.1
+
+  apps/interviewer-v7/native/biometric-keystore: {}
 
   packages/art:
     dependencies:

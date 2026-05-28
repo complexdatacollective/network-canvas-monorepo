@@ -1,0 +1,19 @@
+{
+  "name": "@codaco/biometric-keystore",
+  "version": "0.1.0",
+  "private": true,
+  "description": "macOS Keychain biometric ACL bindings for interviewer-v7's DEK storage",
+  "files": [
+    "index.cjs",
+    "index.d.ts",
+    "biometric-keystore.darwin-arm64.node",
+    "biometric-keystore.darwin-x64.node"
+  ],
+  "main": "index.cjs",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "postinstall": "node scripts/build.mjs",
+    "clean": "rm -rf target *.node"
+  }
+}
