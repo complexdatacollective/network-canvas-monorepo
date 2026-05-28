@@ -8,8 +8,14 @@ export function registerAuthHandlers(): void {
     vault.setupPin(args),
   );
   ipcMain.handle('auth:setupNone', async () => vault.setupNone());
+  ipcMain.handle('auth:setupBiometric', async () => vault.setupBiometric());
   ipcMain.handle('auth:unlockPin', async (_e, args: { pin: string }) =>
     vault.unlockPin(args),
+  );
+  ipcMain.handle('auth:unlockBiometric', async () => vault.unlockBiometric());
+  ipcMain.handle('auth:verifyBiometric', async () => vault.verifyBiometric());
+  ipcMain.handle('auth:biometricAvailable', async () =>
+    vault.biometricAvailable(),
   );
   ipcMain.handle('auth:lock', async () => vault.lock());
   ipcMain.handle(

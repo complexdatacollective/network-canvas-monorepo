@@ -118,6 +118,12 @@ export function LockScreen() {
   }
 
   switch (mode) {
+    case 'biometric-keystore':
+      return (
+        <BiometricLockDialog
+          onSubmit={(signal) => unlockWithAuthenticator(signal)}
+        />
+      );
     case 'biometric-native':
       return (
         <BiometricLockDialog onSubmit={() => unlockWithBiometricNative()} />

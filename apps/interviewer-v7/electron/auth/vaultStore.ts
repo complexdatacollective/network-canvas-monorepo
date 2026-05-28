@@ -17,6 +17,10 @@ export type VaultRecord =
     }
   | {
       version: typeof CURRENT_VAULT_VERSION;
+      mode: 'biometric-keystore';
+    }
+  | {
+      version: typeof CURRENT_VAULT_VERSION;
       mode: 'pin';
       kdfSaltB64: string;
       kdfIterations: number;

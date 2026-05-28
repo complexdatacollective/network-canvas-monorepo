@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-28
 **Context:** decision-gate for `docs/superpowers/plans/2026-05-28-biometric-keystore-unlock.md` Task C1
-**Status:** **Decided 2026-05-28 — Option D selected.** A+B are committed on the `interviewer-v7` branch; Option A is the follow-up direction for the actual biometric implementation. The original plan is marked superseded for C+ and points back here. A Tauri-vs-Electron investigation (same date) confirmed Tauri does not meaningfully change the biometric primitive answer; a separate strategic decision on the Tauri direction is tracked outside this memo.
+**Status:** **Implemented 2026-05-28.** Option A is the shipped design. The DEK is stored as a generic-password keychain item with `kSecAttrAccessControl = USER_PRESENCE` via a thin napi-rs Rust crate at `apps/interviewer-v7/native/biometric-keystore/` (calls `security-framework` directly, not via `apple-native-keyring-store::protected` — chose the direct route to avoid the Data Protection Keychain entitlement and to keep the choice of ACL flag open). `USER_PRESENCE` rather than `BIOMETRY_ANY` so the user can fall back to device passcode if Touch ID fails. macOS only; Windows remains PIN/passphrase pending either a maintained NCrypt package or the [[interviewer-v7-tauri-under-consideration]] direction. The Tauri-vs-Electron investigation confirmed Tauri does not meaningfully change the biometric primitive answer.
 
 ## TL;DR
 

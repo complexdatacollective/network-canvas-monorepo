@@ -7,6 +7,7 @@ import {
   openDatabase,
   openDatabasePlain,
 } from '../db/service';
+import * as biometricKeystore from './biometricKeystore';
 import {
   CURRENT_VAULT_VERSION,
   deleteVault,
@@ -161,7 +162,7 @@ async function aesDecrypt(
 export async function status(): Promise<{
   configured: boolean;
   locked: boolean;
-  mode?: 'pin' | 'passphrase' | 'none';
+  mode?: 'biometric-keystore' | 'pin' | 'passphrase' | 'none';
 }> {
   if (!isVaultConfigured()) {
     return { configured: false, locked: false };
@@ -222,6 +223,92 @@ export async function setupNone(): Promise<
       message: cause instanceof Error ? cause.message : String(cause),
     };
   }
+}
+
+export async function setupBiometric(): Promise<
+  { ok: true } | { ok: false; message: string }
+> {
+  if (isVaultConfigured()) {
+    return { ok: false, message: 'Vault already configured' };
+  }
+  try {
+    const dek = randomBytes(KEY_LEN_BYTES);
+    // Store the DEK in the OS keychain under a biometric ACL. Writing does
+    // not prompt for Touch ID; only subsequent reads do.
+    await biometricKeystore.storeDek(dek);
+    const hex = bytesToHex(dek);
+    try {
+      openDatabase(hex);
+    } catch (cause) {
+      // If the DB open fails after we wrote to the keychain, remove the
+      // keystore item so the install isn't left "half configured".
+      await biometricKeystore.deleteDek().catch(() => undefined);
+      throw cause;
+    }
+    writeVault({
+      version: CURRENT_VAULT_VERSION,
+      mode: 'biometric-keystore',
+    });
+    unlockedKeyHex = hex;
+    return { ok: true };
+  } catch (cause) {
+    return {
+      ok: false,
+      message: cause instanceof Error ? cause.message : String(cause),
+    };
+  }
+}
+
+export async function unlockBiometric(): Promise<
+  { ok: true } | { ok: false; message: string }
+> {
+  const record = readVault();
+  if (!record) return { ok: false, message: 'Vault not configured' };
+  if (record.mode !== 'biometric-keystore') {
+    return {
+      ok: false,
+      message: 'Vault is not configured for biometric unlock',
+    };
+  }
+  try {
+    const dek = await biometricKeystore.loadDek();
+    const hex = bytesToHex(dek);
+    openDatabase(hex);
+    unlockedKeyHex = hex;
+    return { ok: true };
+  } catch (cause) {
+    return {
+      ok: false,
+      message: cause instanceof Error ? cause.message : String(cause),
+    };
+  }
+}
+
+export async function verifyBiometric(): Promise<
+  { ok: true } | { ok: false; message: string }
+> {
+  const record = readVault();
+  if (record?.mode !== 'biometric-keystore') {
+    return {
+      ok: false,
+      message: 'Vault is not configured for biometric unlock',
+    };
+  }
+  try {
+    // Read-and-discard: triggers the Touch ID prompt without changing
+    // unlock state.
+    await biometricKeystore.loadDek();
+    return { ok: true };
+  } catch (cause) {
+    return {
+      ok: false,
+      message: cause instanceof Error ? cause.message : String(cause),
+    };
+  }
+}
+
+export async function biometricAvailable(): Promise<boolean> {
+  return biometricKeystore.isAvailable();
 }
 
 export async function setupPin(args: {
@@ -577,6 +664,7 @@ export async function revoke(): Promise<void> {
   // lock() is a no-op for mode='none', but a revoke must always close the
   // open DB handle — otherwise a subsequent setup would early-return out of
   // openDatabase/openDatabasePlain with a stale handle pointing at deleted files.
+  const previousMode = readVault()?.mode;
   closeDatabase();
   unlockedKeyHex = null;
   const dbPath = getDbPath();
@@ -591,6 +679,11 @@ export async function revoke(): Promise<void> {
         throw cause;
       }
     }
+  }
+  if (previousMode === 'biometric-keystore') {
+    // Best-effort: a leftover keychain item without its vault record is
+    // harmless (no way to use it), but should be cleaned up. Swallow errors.
+    await biometricKeystore.deleteDek().catch(() => undefined);
   }
   deleteVault();
 }

@@ -16,7 +16,12 @@ import * as vaultMetadata from './vaultMetadata';
 
 export type AuthStateKind = 'loading' | 'unconfigured' | 'locked' | 'unlocked';
 
-export type AuthMode = 'biometric-native' | 'pin' | 'passphrase' | 'none';
+export type AuthMode =
+  | 'biometric-keystore'
+  | 'biometric-native'
+  | 'pin'
+  | 'passphrase'
+  | 'none';
 
 export type IdleTimeoutMinutes = 1 | 5 | 15 | 30 | 60;
 
@@ -84,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // service throws while the vault is locked, and loading settings first would
   // strand AuthGate in 'loading' on first launch.
   const refresh = useCallback(async () => {
-    const authenticatorSupported = authApi.isAuthenticatorSupported();
+    const authenticatorSupported = await authApi.isBiometricSupported();
     const s = await authApi.status();
     const kind: AuthStateKind = !s.configured
       ? 'unconfigured'

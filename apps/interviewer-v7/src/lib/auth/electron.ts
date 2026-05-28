@@ -23,6 +23,31 @@ export async function setupNone(): Promise<{
   return ipc().setupNone();
 }
 
+export async function setupBiometric(): Promise<{
+  ok: boolean;
+  message?: string;
+}> {
+  return ipc().setupBiometric();
+}
+
+export async function unlockBiometric(): Promise<{
+  ok: boolean;
+  message?: string;
+}> {
+  return ipc().unlockBiometric();
+}
+
+export async function verifyBiometric(): Promise<{
+  ok: boolean;
+  message?: string;
+}> {
+  return ipc().verifyBiometric();
+}
+
+export async function biometricAvailable(): Promise<boolean> {
+  return ipc().biometricAvailable();
+}
+
 export async function unlockPin(args: {
   pin: string;
 }): Promise<{ ok: boolean; message?: string }> {

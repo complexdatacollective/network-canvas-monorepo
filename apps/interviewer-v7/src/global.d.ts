@@ -44,7 +44,12 @@ declare global {
   type AuthStatus = {
     configured: boolean;
     locked: boolean;
-    mode?: 'biometric-native' | 'pin' | 'passphrase' | 'none';
+    mode?:
+      | 'biometric-keystore'
+      | 'biometric-native'
+      | 'pin'
+      | 'passphrase'
+      | 'none';
   };
 
   type DbBridge = {
@@ -101,9 +106,13 @@ declare global {
       pin: string;
     }) => Promise<{ ok: boolean; message?: string }>;
     setupNone: () => Promise<{ ok: boolean; message?: string }>;
+    setupBiometric: () => Promise<{ ok: boolean; message?: string }>;
     unlockPin: (args: {
       pin: string;
     }) => Promise<{ ok: boolean; message?: string }>;
+    unlockBiometric: () => Promise<{ ok: boolean; message?: string }>;
+    verifyBiometric: () => Promise<{ ok: boolean; message?: string }>;
+    biometricAvailable: () => Promise<boolean>;
     lock: () => Promise<void>;
     reEnrolPin: (args: {
       currentPin: string;

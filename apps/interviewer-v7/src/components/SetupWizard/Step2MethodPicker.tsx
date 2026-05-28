@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
-import { isAuthenticatorSupported } from '~/lib/auth/api';
+import { isBiometricSupported } from '~/lib/auth/api';
 import { isBiometricNativeAvailable } from '~/lib/auth/biometricNative';
 import { isCapacitor } from '~/lib/platform/platform';
 
@@ -58,7 +58,7 @@ export default function Step2MethodPicker() {
             reason: UNAVAILABLE_REASON_TEXT[result.reason],
           });
         }
-      } else if (!isAuthenticatorSupported()) {
+      } else if (!(await isBiometricSupported())) {
         setBiometric({
           status: 'unavailable',
           reason: UNAVAILABLE_REASON_TEXT['no-hardware'],

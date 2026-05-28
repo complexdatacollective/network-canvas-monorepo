@@ -44,8 +44,12 @@ const authBridge = {
   setupPin: (args: { pin: string }) =>
     ipcRenderer.invoke('auth:setupPin', args),
   setupNone: () => ipcRenderer.invoke('auth:setupNone'),
+  setupBiometric: () => ipcRenderer.invoke('auth:setupBiometric'),
   unlockPin: (args: { pin: string }) =>
     ipcRenderer.invoke('auth:unlockPin', args),
+  unlockBiometric: () => ipcRenderer.invoke('auth:unlockBiometric'),
+  verifyBiometric: () => ipcRenderer.invoke('auth:verifyBiometric'),
+  biometricAvailable: () => ipcRenderer.invoke('auth:biometricAvailable'),
   lock: () => ipcRenderer.invoke('auth:lock'),
   reEnrolPin: (args: { currentPin: string; nextPin: string }) =>
     ipcRenderer.invoke('auth:reEnrolPin', args),

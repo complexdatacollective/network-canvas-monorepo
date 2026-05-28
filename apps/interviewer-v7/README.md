@@ -9,7 +9,7 @@ Network Canvas Interviewer v7 is a single-user, offline-first research-data-coll
 - **Web**: Vite 8
 - **UI runtime**: React 19, wouter routing, `@codaco/fresco-ui`, `@base-ui/react`, `motion`, `@codaco/art` (animated blob background)
 - **Data**: Dexie 4 (renderer / IndexedDB), `better-sqlite3-multiple-ciphers` SQLCipher (Electron main)
-- **Auth**: WebAuthn with the PRF extension (sole authentication mechanism on every platform)
+- **Auth**: per-platform — `biometric-keystore` on Electron macOS (Touch ID via a Rust napi-rs binding over `security-framework`), `biometric-native` on Capacitor (iOS/Android), PIN or passphrase elsewhere, or `none`. See [CLAUDE.md](./CLAUDE.md#conventions) for the full mode list.
 - **Export pipeline**: Effect 3 + `@codaco/network-exporters`, JSZip
 - **Validation/migration**: `@codaco/protocol-validation`
 
@@ -26,26 +26,29 @@ Network Canvas Interviewer v7 is a single-user, offline-first research-data-coll
 |       Settings / Interview)                   |
 |                                               |
 |  src/lib/db/api.ts      (platform facade)     |
-|  src/lib/auth/*         (WebAuthn client)     |
+|  src/lib/auth/*         (auth client)         |
 |  src/lib/protocol/      (import pipeline)     |
 |  src/lib/export/        (Effect export)       |
 +-------------|------------------|--------------+
-              | isElectron?      | navigator.credentials
-              v                  v               (browser/Capacitor)
+              | isElectron?      | Capacitor plugin / PIN / passphrase
+              v                  v
 +-------------v-----------+   +--v--------------------------+
 | Electron preload        |   | Capacitor / Web             |
 | contextBridge           |   | - Dexie 4 (IndexedDB)       |
 | window.electronAPI.     |   | - @capacitor/filesystem     |
 |   {db, auth,            |   |   for export save           |
-|    openFile, saveFile}  |   |                             |
-+-------------|-----------+   | - @capacitor/preferences    |
-              |               |   for auth metadata         |
-              v               | - WebAuthn for app gate     |
-+-------------v-----------+   |   (no storage key)          |
-| Electron main           |   +-----------------------------+
+|    openFile, saveFile}  |   | - @capacitor/preferences    |
++-------------|-----------+   |   for auth metadata         |
+              |               | - biometric-native / PIN /  |
+              v               |   passphrase for app gate   |
++-------------v-----------+   +-----------------------------+
+| Electron main           |
 | - IPC handlers          |
 | - auth/vault.ts         |
-|   (PRF -> KEK -> DEK)   |
+|   (PIN/passphrase wrap, |
+|    biometric-keystore   |
+|    via @codaco/         |
+|    biometric-keystore)  |
 | - db/service.ts         |
 |   (SQLCipher)           |
 | - dialog.openProtocol   |
@@ -56,38 +59,48 @@ Network Canvas Interviewer v7 is a single-user, offline-first research-data-coll
 ## Architecture — auth flow
 
 ```text
-Setup (first launch)
---------------------
-SetupScreen.enrol()
-  -> navigator.credentials.create(prf eval first = random salt)
-  -> credentialId, prfOutput
-  desktop:  ipc auth:setup(credentialIdB64, saltB64, prfOutputB64)
-            main.vault.setup():
-              DEK = randomBytes(32)
-              KEK = importKey(prfOutput, AES-GCM)
-              wrappedDEK = AES-GCM(KEK, DEK)
-              write VaultRecord{ credentialIdB64, saltB64, wrapIv, wrapCt }
-              openDatabase(DEK hex)
-  tablet/web: vaultMetadata.write({ credentialIdB64, saltB64 })
-              renderer holds an in-memory unlock flag
+Setup (first launch) — Electron biometric-keystore (macOS Touch ID)
+-------------------------------------------------------------------
+SetupWizard -> Biometric authentication -> authApi.enrol()
+  ipc auth:setupBiometric
+    main.vault.setupBiometric():
+      DEK = randomBytes(32)
+      biometricKeystore.storeDek(DEK)
+        -> @codaco/biometric-keystore (Rust napi-rs)
+        -> SecItemAdd { service, account, secret,
+                        accessControl: USER_PRESENCE }   (no prompt)
+      openDatabase(DEK hex)
+      write VaultRecord { mode: 'biometric-keystore' }
 
-Unlock (subsequent launches)
-----------------------------
-LockScreen.unlock()
-  -> read vaultMetadata -> credentialId + salt
-  -> navigator.credentials.get(allowCredentials, prf eval first = salt)
-  -> prfOutput
-  desktop:  ipc auth:unlock(prfOutputB64)
-            main.vault.unlock():
-              KEK = importKey(prfOutput, AES-GCM)
-              DEK = AES-GCM-decrypt(KEK, wrappedDEK)
-              openDatabase(DEK hex)
-  tablet/web: renderer sets the in-memory unlock flag
+Setup — PIN / passphrase (Electron + web + Capacitor)
+-----------------------------------------------------
+SetupWizard -> PIN | Passphrase -> authApi.enrolWith{Pin,Passphrase}()
+  desktop: ipc auth:setupPin / auth:setup:passphrase
+           main.vault wraps DEK with PBKDF2-derived KEK
+  web/cap: localStorage / Capacitor Preferences holds a verifier
 
-Lock
-----
+Unlock — biometric-keystore
+---------------------------
+LockScreen -> unlockWithAuthenticator() -> ipc auth:unlockBiometric
+  main.vault.unlockBiometric():
+    DEK = biometricKeystore.loadDek()
+      -> SecItemCopyMatching       (macOS prompts Touch ID / passcode)
+    openDatabase(DEK hex)
+
+Unlock — PIN / passphrase
+-------------------------
+LockScreen -> unlockWith{Pin,Passphrase}(secret)
+  desktop: ipc auth:unlockPin / auth:unlock:passphrase
+           PBKDF2 -> KEK -> AES-GCM-decrypt(wrappedDEK)
+  web/cap: re-derive verifier, compare
+
+Lock / revoke
+-------------
 desktop:    ipc auth:lock -> closeDatabase + zero in-memory key
-tablet/web: drop in-memory flag
+            ipc auth:revoke -> wipe DB + delete vault record;
+                               for biometric-keystore also
+                               biometricKeystore.deleteDek()
+web/cap:    drop in-memory unlock flag (lock); clear Dexie + metadata (revoke)
 ```
 
 ## Data flow — protocol import
@@ -153,7 +166,7 @@ markSessionsExported(ids) -> updates exportedAt timestamp
 ## Why this structure
 
 - **`src/lib/db/api.ts` facade**: SPEC §Storage requires different storage at-rest behaviour per platform (encrypted SQLCipher on desktop, platform-protected Dexie elsewhere). The facade isolates that split so routes/components don't branch on `isElectron`.
-- **Renderer-side WebAuthn, main-process key custody**: WebAuthn lives in the browser/renderer (no Node WebAuthn surface). The PRF output is transported to the Electron main process via a one-shot IPC and never persisted there; the wrapped DEK is the only durable artefact. This keeps the key-handling minimal-surface.
+- **Main-process key custody**: the DEK never crosses IPC. PIN and passphrase send the user's secret to main, which derives the KEK and unwraps locally. `biometric-keystore` invokes the OS keychain from main and never exposes the DEK to the renderer. The renderer's only view of authentication state is `{ configured, locked, mode }`.
 - **Effect-TS pipeline for export**: the export pipeline composes multiple repositories, an event stream, and a sink Layer; Effect's `Layer.mergeAll` cleanly assembles the renderer-specific Layers (in-renderer repositories + Blob sink) without leaking implementation details into the shared `@codaco/network-exporters` package.
 - **fresco-ui first**: every component in this repo that needs a Button, Surface, Form, Dialog, Toast, or typography token should reach for fresco-ui first. Falling back to `@base-ui/react` + `motion` is reserved for visual primitives fresco-ui doesn't ship (the fanned protocol deck animation, the translucent-blur pill treatment, the animated blob background).
 
@@ -161,18 +174,19 @@ markSessionsExported(ids) -> updates exportedAt timestamp
 
 - **Single-user**: there is no concept of users in the schema. `installationId` identifies the device, not a user. No code path may introduce a user identifier.
 - **Auth gate is unconditional**: every platform shows the AuthGate before any data view renders. The renderer has no "security disabled" branch.
-- **Desktop database is never opened without a successful unlock**: `electron/db/service.ts:openDatabase` is only called from `vault.setup()` or `vault.unlock()`, both of which require a PRF output. There is no fallback open path.
-- **Re-enrolment is atomic**: `vault.reEnrol()` writes the new `VaultRecord` only after the new wrap succeeds. The old record is preserved until then so a failed re-enrol leaves the previous credential usable.
+- **Desktop database is never opened without a successful unlock**: `electron/db/service.ts:openDatabase` is only called from `vault.setup{Pin,Passphrase,Biometric}()` or `vault.unlock{Pin,Passphrase,Biometric}()`, all of which require a fresh credential proof. The `none` mode uses `openDatabasePlain()` instead and the renderer treats it as `locked: false` permanently.
+- **PIN / passphrase re-enrolment is atomic**: `vault.reEnrolPin()` / `vault.reEnrolPassphrase()` write the new `VaultRecord` only after the new wrap succeeds. The old record is preserved until then so a failed re-enrol leaves the previous credential usable. `biometric-keystore` has no re-enrol — switching mode requires `revoke()` first.
 - **Protocol hash identifies a protocol uniquely**: `hashProtocol(validated)` produces a stable hash; sessions reference protocols by hash, not by id. Cascade-delete is keyed on hash.
 
 ## Tradeoffs
 
-| Decision                                                          | Cost                                                                            | Benefit                                                                                                           |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Envelope encryption (PRF -> KEK -> DEK) over direct-key SQLCipher | Slightly more code in `vault.ts`; one extra in-memory transformation per unlock | Re-enrolment is O(1); no full DB re-encrypt; the on-disk key remains constant across credential rotation          |
-| WebAuthn-only (no passphrase fallback)                            | Users without PRF support cannot use the app; no account recovery path          | Strong, modern auth; smallest possible auth surface; spec-aligned                                                 |
-| Drop encrypted renderer vault on tablet/web                       | Tablet/web data is platform-protected, not app-encrypted                        | Massive simplification of the renderer auth code; matches what the spec actually says about non-desktop platforms |
-| Variation F as handed off                                         | The pending "split selector + meta" iteration is deferred                       | Faithful to the design that exists; no unbacked design judgement                                                  |
+| Decision                                                 | Cost                                                                                                                       | Benefit                                                                                                                                                                   |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PIN / passphrase use PBKDF2 envelope (KEK wraps DEK)     | Slightly more code in `vault.ts`; one extra in-memory transformation per unlock                                            | Re-enrol is O(1); no full DB re-encrypt; the on-disk key remains constant across PIN/passphrase changes                                                                   |
+| `biometric-keystore` stores DEK directly in keychain ACL | No Secure Enclave hardware binding; the DEK lives in the OS keychain (still gated by Touch ID via `kSecAttrAccessControl`) | No hand-rolled crypto, no ECIES wrap layer, no provisioning profile required. Decision write-up: `docs/superpowers/specs/2026-05-28-biometric-keystore-package-survey.md` |
+| `biometric-keystore` is macOS only                       | Windows / Linux Electron users get PIN or passphrase, not biometric                                                        | No off-the-shelf NCrypt + Hello encrypt/decrypt npm package exists; bespoke binding deferred. Capacitor handles iOS / Android biometric via `biometric-native`            |
+| Drop encrypted renderer vault on tablet/web              | Tablet/web data is platform-protected, not app-encrypted                                                                   | Massive simplification of the renderer auth code; matches what the spec actually says about non-desktop platforms                                                         |
+| Variation F as handed off                                | The pending "split selector + meta" iteration is deferred                                                                  | Faithful to the design that exists; no unbacked design judgement                                                                                                          |
 
 ## Known one-time data losses for prototype users
 

@@ -154,10 +154,17 @@ function constantTimeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-// Synchronous predicate retained for legacy call sites; biometric-keystore
-// availability is async and exposed via `isBiometricSupported` (added in
-// Milestone C).
+// Synchronous predicate retained for legacy call sites that can't await.
+// Always false; the authoritative async check is `isBiometricSupported()`.
 export function isAuthenticatorSupported(): boolean {
+  return false;
+}
+
+// Async availability check used by the setup wizard. On Electron this asks
+// the main process whether the platform's biometric keystore is reachable
+// (macOS only today); on web/Capacitor we have no Electron-side biometric.
+export async function isBiometricSupported(): Promise<boolean> {
+  if (isElectron) return electronAuth.biometricAvailable();
   return false;
 }
 
@@ -198,6 +205,9 @@ export async function status(): Promise<AuthStatus> {
 export async function enrol(
   _signal?: AbortSignal,
 ): Promise<{ ok: boolean; message?: string }> {
+  if (isElectron) {
+    return electronAuth.setupBiometric();
+  }
   return { ok: false, message: 'Biometric authentication is not available' };
 }
 
@@ -278,6 +288,9 @@ export async function unlockWithBiometricNative(): Promise<{
 export async function unlock(
   _signal?: AbortSignal,
 ): Promise<{ ok: boolean; message?: string }> {
+  if (isElectron) {
+    return electronAuth.unlockBiometric();
+  }
   return { ok: false, message: 'Biometric authentication is not available' };
 }
 
@@ -458,6 +471,9 @@ export async function verifyBiometric(
 ): Promise<{ ok: boolean; message?: string }> {
   if (isCapacitor) {
     return verifyBiometricNativePlugin();
+  }
+  if (isElectron) {
+    return electronAuth.verifyBiometric();
   }
   return { ok: false, message: 'Biometric authentication is not available' };
 }
