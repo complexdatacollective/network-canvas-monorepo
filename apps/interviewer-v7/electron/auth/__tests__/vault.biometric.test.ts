@@ -75,15 +75,11 @@ describe('vault biometric-keystore mode', () => {
   it('lock → unlock round-trip reopens the DB with the same DEK', async () => {
     const { openDatabase } = await import('../../db/service');
     await vault.setupBiometric();
-    const setupKey = (openDatabase as ReturnType<typeof vi.fn>).mock.calls.at(
-      -1,
-    )?.[0];
+    const setupKey = vi.mocked(openDatabase).mock.calls.at(-1)?.[0];
     await vault.lock();
     const unlock = await vault.unlockBiometric();
     expect(unlock.ok).toBe(true);
-    const unlockKey = (openDatabase as ReturnType<typeof vi.fn>).mock.calls.at(
-      -1,
-    )?.[0];
+    const unlockKey = vi.mocked(openDatabase).mock.calls.at(-1)?.[0];
     expect(unlockKey).toBe(setupKey);
     expect((await vault.status()).locked).toBe(false);
   });
@@ -104,13 +100,10 @@ describe('vault biometric-keystore mode', () => {
     const { openDatabase } = await import('../../db/service');
     await vault.setupBiometric();
     await vault.lock();
-    const callsBefore = (openDatabase as ReturnType<typeof vi.fn>).mock.calls
-      .length;
+    const callsBefore = vi.mocked(openDatabase).mock.calls.length;
     const verify = await vault.verifyBiometric();
     expect(verify.ok).toBe(true);
-    expect((openDatabase as ReturnType<typeof vi.fn>).mock.calls.length).toBe(
-      callsBefore,
-    );
+    expect(vi.mocked(openDatabase).mock.calls.length).toBe(callsBefore);
     expect((await vault.status()).locked).toBe(true);
   });
 
