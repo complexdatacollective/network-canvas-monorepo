@@ -18,7 +18,7 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsgo --noEmit && vite build",
+    "build": "vite build",
     "dev": "npm run build -- --watch",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run",
