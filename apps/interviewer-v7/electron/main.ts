@@ -1,4 +1,4 @@
-import { statfsSync, writeFileSync } from 'node:fs';
+import { statfsSync } from 'node:fs';
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, extname, isAbsolute, join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -38,16 +38,6 @@ protocol.registerSchemesAsPrivileged([
     privileges: { standard: true, secure: true, supportFetchAPI: true },
   },
 ]);
-
-// Touch ID stores its Secure Enclave credential under this keychain group. The
-// string MUST match `keychain-access-groups` in build-resources/entitlements.mac.plist
-// and the binary must be signed with this team, or the platform authenticator is
-// silently unavailable. The Team ID is not secret — it ships in every signed app.
-const APPLE_TEAM_ID = '85EZ69PQHJ';
-// Electron's docs store the Secure Enclave WebAuthn credential under a
-// `.webauthn`-suffixed keychain group; the provisioning profile authorises
-// `85EZ69PQHJ.*`, so any suffix under the team prefix is valid.
-const KEYCHAIN_ACCESS_GROUP = `${APPLE_TEAM_ID}.Network-Canvas-Interviewer-7.webauthn`;
 
 // Dev CSP: Vite serves source modules from RENDERER_DEV_URL and HMR uses a
 // WebSocket back to the dev server. `unsafe-inline` covers Vite's inline
@@ -131,31 +121,6 @@ function createWindow() {
     void mainWindow.loadURL(`${RENDERER_ORIGIN}/index.html`);
   }
 
-  // TEMP DIAGNOSTIC: capture renderer origin + WebAuthn origin-check outcome.
-  mainWindow.webContents.on('did-finish-load', () => {
-    void mainWindow?.webContents
-      .executeJavaScript(
-        `(async () => {
-          const out = { href: location.href, origin: location.origin, hostname: location.hostname, isSecureContext: window.isSecureContext, hasPublicKeyCredential: typeof PublicKeyCredential !== 'undefined' };
-          try { out.iuvpaa = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); } catch (e) { out.iuvpaaError = String(e); }
-          try {
-            await navigator.credentials.get({ publicKey: { challenge: new Uint8Array(32), rpId: location.hostname, timeout: 500, userVerification: 'discouraged', allowCredentials: [] } });
-            out.getOutcome = 'no-throw';
-          } catch (e) { out.getError = e.name + ': ' + e.message; }
-          return out;
-        })()`,
-      )
-      .then((r) =>
-        writeFileSync(
-          '/tmp/nci-webauthn-diag.json',
-          JSON.stringify(r, null, 2),
-        ),
-      )
-      .catch((e) =>
-        writeFileSync('/tmp/nci-webauthn-diag.json', `EXEC ERR ${String(e)}`),
-      );
-  });
-
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     openExternalIfWebUrl(url);
     return { action: 'deny' };
@@ -207,24 +172,6 @@ function registerRendererProtocol() {
 }
 
 app.whenReady().then(() => {
-  // Enable platform authenticators before any renderer loads. The macOS Touch ID
-  // path touches Chromium's ResourceBundle, which is only initialised by the
-  // `ready` event — calling configureWebAuthn at module top level (before ready)
-  // trips a ResourceBundle CHECK and crashes (EXC_BREAKPOINT). whenReady is the
-  // earliest safe point and still precedes createWindow. Touch ID is enabled only
-  // for packaged + signed macOS builds (an unsigned dev binary can't claim
-  // KEYCHAIN_ACCESS_GROUP); everywhere else the default WebAuthn stack is used.
-  if (process.platform === 'darwin' && app.isPackaged) {
-    app.configureWebAuthn({
-      touchID: {
-        keychainAccessGroup: KEYCHAIN_ACCESS_GROUP,
-        promptReason: 'Unlock Network Canvas Interviewer',
-      },
-    });
-  } else {
-    app.configureWebAuthn({});
-  }
-
   try {
     migrateLegacyDbFilename();
   } catch (cause) {
