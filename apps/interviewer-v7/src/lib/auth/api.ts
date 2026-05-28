@@ -154,12 +154,6 @@ function constantTimeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-// Synchronous predicate retained for legacy call sites that can't await.
-// Always false; the authoritative async check is `isBiometricSupported()`.
-export function isAuthenticatorSupported(): boolean {
-  return false;
-}
-
 // Async availability check used by the setup wizard. On Electron this asks
 // the main process whether the platform's biometric keystore is reachable
 // (macOS only today); on web/Capacitor we have no Electron-side biometric.

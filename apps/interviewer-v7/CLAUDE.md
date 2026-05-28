@@ -27,7 +27,6 @@ pnpm electron:dist            # platform-detected packaged build
 pnpm electron:dist:mac        # explicit macOS build
 pnpm electron:dist:win
 pnpm electron:dist:linux
-pnpm electron:rebuild         # rebind better-sqlite3-multiple-ciphers to Electron ABI
 
 # Capacitor tablet
 pnpm capacitor:sync
