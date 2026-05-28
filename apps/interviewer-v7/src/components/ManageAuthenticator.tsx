@@ -17,7 +17,6 @@ const PIN_PATTERN = /^\d{8}$/;
 
 export function ManageAuthenticator() {
   const auth = useAuth();
-  const { confirm } = useDialog();
   const toast = useToast();
   const [showPinForm, setShowPinForm] = useState(false);
   const [currentPin, setCurrentPin] = useState('');

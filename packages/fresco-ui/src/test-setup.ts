@@ -330,11 +330,16 @@ class PinnedDateTimeFormat extends OriginalDateTimeFormat {
     super(locales ?? 'en-US', options);
   }
 }
-// Cast matches the pattern already used for `global.Worker = WorkerMock as
-// unknown as typeof Worker` below — `Intl.DateTimeFormat`'s type includes a
-// call-without-`new` signature that ES classes can't express directly.
-Intl.DateTimeFormat =
-  PinnedDateTimeFormat as unknown as typeof Intl.DateTimeFormat;
+// `Intl.DateTimeFormat`'s type includes a call-without-`new` signature that
+// ES classes can't express, so a direct assignment would need an `as unknown
+// as typeof Intl.DateTimeFormat` cast. `Object.defineProperty` accepts the
+// value via PropertyDescriptor (typed `any`), letting the test substitute the
+// constructor without a type assertion.
+Object.defineProperty(Intl, 'DateTimeFormat', {
+  value: PinnedDateTimeFormat,
+  writable: true,
+  configurable: true,
+});
 
 // ---------------------------------------------------------------------------
 // HTMLElement.offsetWidth / offsetHeight polyfill
@@ -388,4 +393,13 @@ class WorkerMock implements Worker {
   }
 }
 
-global.Worker = WorkerMock as unknown as typeof Worker;
+// `typeof Worker` includes a static `prototype: Worker`, so a direct
+// assignment would need an `as unknown as typeof Worker` cast.
+// `Object.defineProperty` accepts the value via PropertyDescriptor (typed
+// `any`), letting the test substitute the constructor without a type
+// assertion.
+Object.defineProperty(global, 'Worker', {
+  value: WorkerMock,
+  writable: true,
+  configurable: true,
+});
