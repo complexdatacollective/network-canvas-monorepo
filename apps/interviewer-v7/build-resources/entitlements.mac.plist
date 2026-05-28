@@ -10,17 +10,5 @@
 	<false/>
 	<key>com.apple.security.cs.disable-library-validation</key>
 	<true/>
-	<!--
-	Required for keychain items with biometric access control
-	(kSecAttrAccessControl + USER_PRESENCE). Without this entitlement,
-	SecItemAdd returns errSecMissingEntitlement (-34018) even on a
-	Developer-ID-signed binary. The single entry below is the app's
-	DEFAULT keychain access group (Team ID + bundle identifier);
-	declaring it does not require a provisioning profile.
-	-->
-	<key>keychain-access-groups</key>
-	<array>
-		<string>85EZ69PQHJ.Network-Canvas-Interviewer-7</string>
-	</array>
 </dict>
 </plist>
