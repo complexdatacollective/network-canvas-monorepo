@@ -36,6 +36,7 @@ import {
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import { useToast } from '@codaco/fresco-ui/Toast';
+import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
 import {
   deleteSessions,
   getSettings,
@@ -307,6 +308,7 @@ export function DataView({ protocols, onReload }: DataViewProps) {
 
   const toast = useToast();
   const dialog = useDialog();
+  const { requireFreshUnlock } = useStepUpAuth();
   const [, navigate] = useLocation();
   const [selection, setSelection] = useState<Selection>({ mode: 'none' });
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -691,6 +693,13 @@ export function DataView({ protocols, onReload }: DataViewProps) {
         return;
       }
       const settings = await getSettings();
+      if (settings.requireUnlockOnExport) {
+        const stepUp = await requireFreshUnlock();
+        if (!stepUp.ok) {
+          setExporting(false);
+          return;
+        }
+      }
       const options = buildExportOptions({
         exportGraphML: settings.exportGraphML,
         exportCSV: settings.exportCSV,
@@ -745,6 +754,7 @@ export function DataView({ protocols, onReload }: DataViewProps) {
     exporting,
     onReload,
     reloadData,
+    requireFreshUnlock,
     resolveSelectedIds,
     selectedCount,
     toast,
