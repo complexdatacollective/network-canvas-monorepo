@@ -1,4 +1,5 @@
-import { Download, Loader2, Trash2 } from 'lucide-react';
+import { Download, Info, Loader2, Plus, Trash2 } from 'lucide-react';
+import { DateTime } from 'luxon';
 import { useCallback, useState } from 'react';
 
 import Badge from '~/components/Badge';
@@ -8,13 +9,14 @@ import {
   TabsPanel,
   TabsTab,
 } from '~/components/NewComponents/Tabs';
+import Tooltip from '~/components/NewComponents/Tooltip';
 import { useAppDispatch } from '~/ducks/hooks';
 import { openDialog } from '~/ducks/modules/dialogs';
 import { deleteLibraryProtocol } from '~/ducks/modules/userActions/userActions';
 import { useProtocolLibrary } from '~/hooks/useProtocolLibrary';
 import fileIcon from '~/images/file-icon.svg';
-import { IconButton } from '~/lib/legacy-ui/components/Button';
-import { type StoredProtocolRow } from '~/utils/assetDB';
+import Button, { IconButton } from '~/lib/legacy-ui/components/Button';
+import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
 import { cx } from '~/utils/cva';
 
@@ -25,10 +27,20 @@ const withStop = (handler: () => void) => (event: React.MouseEvent) => {
   handler();
 };
 
+const formatProtocolMeta = (protocol: StoredProtocolRow): string => {
+  const stageCount = protocol.protocol.stages.length;
+  const stages = `${stageCount} ${stageCount === 1 ? 'stage' : 'stages'}`;
+  const updated = DateTime.fromMillis(protocol.updatedAt);
+  const secondsAgo = -updated.diffNow('seconds').seconds;
+  const edited = secondsAgo < 60 ? '< 1 min ago' : updated.toRelative();
+  return edited ? `${stages} · edited ${edited}` : stages;
+};
+
 type PanelRowProps = {
   name: string;
   description?: string;
   downloading?: boolean;
+  actionLabel?: string;
   onOpen: () => void;
   onDownload?: () => void;
   onDelete?: () => void;
@@ -38,6 +50,7 @@ const PanelRow = ({
   name,
   description,
   downloading = false,
+  actionLabel,
   onOpen,
   onDownload,
   onDelete,
@@ -74,13 +87,25 @@ const PanelRow = ({
         )}
       </span>
 
-      {(onDownload || onDelete) && (
+      {(onDownload || onDelete || actionLabel) && (
         <span
           className={cx(
-            'flex shrink-0 items-center gap-(--space-xs) transition-opacity',
-            downloading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+            'flex shrink-0 items-center gap-(--space-xs) transition-all duration-200 ease-out',
+            downloading
+              ? 'translate-x-0 opacity-100'
+              : 'translate-x-2 opacity-0 group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:translate-x-0 group-hover:opacity-100',
           )}
         >
+          {actionLabel && (
+            <Button
+              variant="text"
+              size="small"
+              icon={<Plus />}
+              content={actionLabel}
+              className="text-action"
+              onClick={withStop(onOpen)}
+            />
+          )}
           {onDownload && (
             <IconButton
               variant="text"
@@ -121,9 +146,8 @@ type LibraryPanelProps = {
   onOpenDevProtocol: () => void;
 };
 
-// Fixed-height scroll area shared by both tab panels.
 const PANEL_CLASSES =
-  'h-52 overflow-y-auto px-(--space-sm) pt-(--space-sm) pb-(--space-xl)';
+  'h-[min(13rem,50dvh)] overflow-y-auto px-(--space-sm) pt-(--space-sm) pb-(--space-xl)';
 
 const LibraryPanel = ({
   onOpenProtocol,
@@ -152,7 +176,7 @@ const LibraryPanel = ({
     async (protocol: StoredProtocolRow) => {
       const confirmed = await dispatch(
         openDialog({
-          type: 'Confirm',
+          type: 'Warning',
           title: 'Delete protocol?',
           message: `"${protocol.name}" and its assets will be permanently removed from this device. This cannot be undone.`,
           confirmLabel: 'Delete',
@@ -168,11 +192,32 @@ const LibraryPanel = ({
     [dispatch],
   );
 
+  const handleClearAll = useCallback(async () => {
+    const confirmed = await dispatch(
+      openDialog({
+        type: 'Warning',
+        title: 'Remove all data?',
+        message:
+          'Every protocol, asset, and saved setting stored in this browser will be permanently removed. This cannot be undone.',
+        confirmLabel: 'Remove all',
+        cancelLabel: 'Cancel',
+        canCancel: true,
+      }),
+    ).unwrap();
+
+    if (confirmed) {
+      // Wipes storage and reloads the app from a clean slate.
+      await clearAllStorage();
+    }
+  }, [dispatch]);
+
   const templateCount = import.meta.env.DEV ? 2 : 1;
-  const count =
-    tab === 'recent'
-      ? `${protocols.length} ${protocols.length === 1 ? 'protocol' : 'protocols'}`
-      : `${templateCount} ${templateCount === 1 ? 'template' : 'templates'}`;
+  const templateLabel = `${templateCount} ${templateCount === 1 ? 'template' : 'templates'}`;
+  const protocolCount = protocols.length;
+  const storageTooltip =
+    protocolCount === 1
+      ? 'Your 1 protocol is saved only in this browser, on this device. It is never uploaded to a server.'
+      : `Your ${protocolCount} protocols are saved only in this browser, on this device. They are never uploaded to a server.`;
 
   return (
     <Tabs
@@ -182,16 +227,40 @@ const LibraryPanel = ({
           setTab(value);
         }
       }}
-      className="bg-surface-1 text-surface-1-foreground w-full max-w-xl overflow-hidden rounded shadow-md"
+      className="bg-surface-1 text-surface-1-foreground flex max-h-[85dvh] w-full max-w-xl flex-col overflow-hidden rounded shadow-md"
     >
-      <div className="flex items-center px-(--space-lg) py-(--space-md)">
+      <div className="flex shrink-0 items-center px-(--space-lg) py-(--space-md)">
         <TabsList>
           <TabsTab value="recent">Recent</TabsTab>
           <TabsTab value="templates">Templates</TabsTab>
         </TabsList>
-        <Badge color="platinum" className="ml-auto shadow-none">
-          {count}
-        </Badge>
+        {tab === 'recent' ? (
+          <div className="ml-auto flex items-center gap-(--space-sm)">
+            <Badge color="platinum" className="shadow-none">
+              {protocolCount} {protocolCount === 1 ? 'protocol' : 'protocols'}
+            </Badge>
+            <Tooltip content={storageTooltip} side="bottom">
+              <Info
+                className="text-muted-foreground size-5"
+                aria-label="Where your protocols are stored"
+              />
+            </Tooltip>
+            <Tooltip content="Clear all from this browser" side="bottom">
+              <button
+                type="button"
+                aria-label="Clear all from this browser"
+                onClick={() => void handleClearAll()}
+                className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              >
+                <Trash2 className="size-5" />
+              </button>
+            </Tooltip>
+          </div>
+        ) : (
+          <Badge color="platinum" className="ml-auto shadow-none">
+            {templateLabel}
+          </Badge>
+        )}
       </div>
 
       <TabsPanel value="recent" className={PANEL_CLASSES}>
@@ -204,7 +273,7 @@ const LibraryPanel = ({
             <PanelRow
               key={protocol.id}
               name={protocol.name}
-              description={protocol.description}
+              description={formatProtocolMeta(protocol)}
               downloading={downloadingId === protocol.id}
               onOpen={() => onOpenProtocol(protocol.id)}
               onDownload={() => handleDownload(protocol)}
@@ -217,13 +286,15 @@ const LibraryPanel = ({
       <TabsPanel value="templates" className={PANEL_CLASSES}>
         <PanelRow
           name="Sample Protocol"
-          description="This is a demonstration protocol designed to illustrate the features of the Network Canvas Interviewer app."
+          description="First time? Explore a sample protocol"
+          actionLabel="Use this template"
           onOpen={onOpenSample}
         />
         {import.meta.env.DEV && (
           <PanelRow
             name="Development Protocol"
-            description="Includes examples of every stage type."
+            description="Includes examples of every stage type"
+            actionLabel="Use this template"
             onOpen={onOpenDevProtocol}
           />
         )}
