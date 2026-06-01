@@ -66,7 +66,7 @@ export function DataTableSkeleton({
         <TableBody>
           {Array.from({ length: rowCount }).map((_, i) => (
             <TableRow key={i} className="hover:bg-transparent">
-              {Array.from({ length: columnCount }).map((_, j) => (
+              {Array.from({ length: columnCount }).map((_col, j) => (
                 <TableCell key={j} className="min-w-32">
                   <Skeleton className="h-6 w-24" />
                 </TableCell>

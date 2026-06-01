@@ -20,7 +20,6 @@ export type {
 // Runtime
 export { default as Shell } from './Shell';
 
-// Schemas / contracts
-export { createInitialNetwork } from './session-schemas';
+export { createInitialNetwork } from './store/modules/session';
 // Public utilities (consumed by sibling monorepo packages, e.g. network-exporters)
 export { getNodeLabelAttribute } from './utils/getNodeLabelAttribute';

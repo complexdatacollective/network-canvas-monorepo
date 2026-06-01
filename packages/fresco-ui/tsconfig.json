@@ -12,7 +12,6 @@
     "src/**/*.stories.tsx",
     "src/**/*.test.*",
     "src/**/*.spec.*",
-    "**/__tests__/**",
-    "src/test-setup.ts"
+    "**/__tests__/**"
   ]
 }

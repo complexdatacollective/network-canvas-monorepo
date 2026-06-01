@@ -16,10 +16,9 @@ export function ImportTriggerCard({ onActivate }: ImportTriggerCardProps) {
       // Match the protocol card's shadow so the visual footprint
       // (and therefore perceived size) is identical.
       style={{
-        boxShadow: 'var(--shadow-xl-base)',
         borderRadius: CARD_RADIUS_PX,
       }}
-      className={`${cardBase()} ${importCardClass()} @container h-full w-full`}
+      className={`${cardBase()} ${importCardClass()} effect-shadow-xl @container h-full w-full`}
       aria-label="Import a protocol"
     >
       <div className="bg-surface text-sea-green inline-flex h-[84px] w-[84px] items-center justify-center rounded-full">

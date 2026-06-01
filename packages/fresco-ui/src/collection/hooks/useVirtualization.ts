@@ -122,7 +122,7 @@ export function useVirtualization({
 
   // Binary search to find first visible row (row that intersects or is below scrollTop)
   const findFirstVisibleRow = useCallback(
-    (scrollTop: number): number => {
+    (scrollOffset: number): number => {
       if (rows.length === 0) return 0;
 
       let low = 0;
@@ -133,7 +133,7 @@ export function useVirtualization({
         const row = rows[mid];
         if (!row) break;
 
-        if (row.yStart + row.height < scrollTop) {
+        if (row.yStart + row.height < scrollOffset) {
           low = mid + 1;
         } else {
           high = mid;

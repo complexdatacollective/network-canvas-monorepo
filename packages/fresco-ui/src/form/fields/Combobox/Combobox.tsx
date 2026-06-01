@@ -168,7 +168,7 @@ function ComboboxField(props: ComboboxFieldProps) {
               <Surface
                 level="popover"
                 spacing="xs"
-                elevation="lg"
+                shadow="lg"
                 noContainer
                 className={cx(
                   'flex flex-col',
@@ -181,12 +181,12 @@ function ComboboxField(props: ComboboxFieldProps) {
             {showSearch && (
               <Combobox.Input
                 placeholder={searchPlaceholder}
-                render={({ onChange, ...rest }) => {
+                render={({ onChange: renderOnChange, ...renderProps }) => {
                   // base-ui's render prop types (HTMLProps) are structurally
                   // incompatible with InputField's types (e.g. value, onBlur,
                   // aria-required differ) but semantically correct at runtime.
                   const inputFieldProps =
-                    rest as unknown as React.ComponentPropsWithRef<
+                    renderProps as unknown as React.ComponentPropsWithRef<
                       typeof InputField
                     >;
                   return (
@@ -195,7 +195,7 @@ function ComboboxField(props: ComboboxFieldProps) {
                       size="sm"
                       prefixComponent={<SearchIcon />}
                       className="w-full"
-                      nativeOnChange={onChange}
+                      nativeOnChange={renderOnChange}
                     />
                   );
                 }}

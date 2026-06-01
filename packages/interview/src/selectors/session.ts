@@ -313,7 +313,7 @@ export const makeGetNodeById = createSelector(
     }
 
     const node = nodes.find(
-      (node) => node[entityPrimaryKeyProperty] === nodeId,
+      (candidate) => candidate[entityPrimaryKeyProperty] === nodeId,
     );
     return node ?? null;
   },

@@ -23,7 +23,7 @@ const CollapsablePrompts = (props: {
       dragConstraints={dragConstraints}
       noContainer
       spacing="sm"
-      elevation="sm"
+      shadow="sm"
       variants={{
         initial: {
           scale: 0.4,

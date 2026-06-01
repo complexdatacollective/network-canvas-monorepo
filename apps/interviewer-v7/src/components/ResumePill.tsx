@@ -84,7 +84,7 @@ export function ResumePill({ sessions }: ResumePillProps) {
       exit="exit"
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.98 }}
-      className="border-outline text-text bg-surface/50 pointer-events-auto relative inline-flex h-20 cursor-pointer items-center overflow-hidden rounded-full border shadow-md backdrop-blur-md"
+      className="border-outline text-text bg-surface/50 effect-shadow-md pointer-events-auto relative inline-flex h-20 cursor-pointer items-center overflow-hidden rounded-full border backdrop-blur-md"
     >
       {/* Always-visible circle, sized to match the pill height so the
           collapsed state is a true circle. */}

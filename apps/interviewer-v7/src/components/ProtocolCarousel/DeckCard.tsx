@@ -120,8 +120,8 @@ export function DeckCard({
   // shared-element morph doesn't jitter between the two endpoints. The
   // active accent ring stays inline because its color is per-protocol.
   const boxShadow = isActive
-    ? `var(--shadow-2xl-base), 0 0 0 2px ${palette.backgroundTop}`
-    : 'var(--shadow-xl-base)';
+    ? `var(--effect-shadow-2xl), 0 0 0 2px ${palette.backgroundTop}`
+    : 'var(--effect-shadow-xl)';
 
   const onCardKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' || event.key === ' ') {

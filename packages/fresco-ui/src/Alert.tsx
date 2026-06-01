@@ -89,7 +89,7 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
         ref={ref}
         role={variantRoles[variant]}
         spacing="sm"
-        elevation="sm"
+        shadow="sm"
         className={cx(alertVariants({ variant }), className)}
         noContainer
         maxWidth="3xl"

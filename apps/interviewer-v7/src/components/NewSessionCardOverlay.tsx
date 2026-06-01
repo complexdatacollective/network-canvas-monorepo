@@ -42,7 +42,7 @@ export function NewSessionCardOverlay({
         className="bg-surface-1 text-text @container pointer-events-auto flex w-md flex-col overflow-hidden"
         style={{
           borderRadius: CARD_RADIUS_PX,
-          boxShadow: `var(--shadow-2xl-base), 0 0 0 2px ${palette.backgroundTop}`,
+          boxShadow: `var(--effect-shadow-2xl), 0 0 0 2px ${palette.backgroundTop}`,
         }}
       >
         {/* Heading section — mirrors the in-slide DeckCard so the

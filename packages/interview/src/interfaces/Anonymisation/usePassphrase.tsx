@@ -36,10 +36,10 @@ export const usePassphrase = () => {
   }, [passphrase, dispatch, showPrompter]);
 
   const setPassphrase = useCallback(
-    (passphrase: string) => {
+    (newPassphrase: string) => {
       dispatch(setShowPassphrasePrompter(false));
 
-      dispatch(setPassphraseAction(passphrase));
+      dispatch(setPassphraseAction(newPassphrase));
     },
     [dispatch],
   );

@@ -76,7 +76,7 @@ function AnonymisationInner(props: AnonymisationProps) {
           <MotionSurface
             noContainer
             spacing="lg"
-            elevation="lg"
+            shadow="lg"
             className="bg-surface/80 max-w-2xl backdrop-blur-xs"
             initial={{
               scale: 0.8,
@@ -121,12 +121,7 @@ function AnonymisationInner(props: AnonymisationProps) {
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <Surface
-                    level={1}
-                    className="mt-6"
-                    spacing="sm"
-                    elevation="sm"
-                  >
+                  <Surface level={1} className="mt-6" spacing="sm" shadow="sm">
                     <FormWithoutProvider
                       onSubmit={handleSetPassphrase}
                       ref={formRef}

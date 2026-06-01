@@ -69,33 +69,7 @@
      * (set in the @layer base block above) makes max-w-* / @sm: / etc.
      * scale with the themed root size automatically. */
 
-    --shadow-color: oklch(0.1 0.05 281);
-
-    /*
-     * Interview shadow scale is anchored on the DeckCard look:
-     *   ACTIVE drop  = 0 30px 60px var(--shadow-color)/70%
-     *   INACTIVE drop = 0 20px 40px var(--shadow-color)/50%
-     *
-     * Single-layer drops with a tinted shadow color (no neutral grey, no
-     * stacked layers, no negative spread) — that's the visual character
-     * we want every elevated surface in the interview theme to share.
-     * `--shadow-2xl-base` matches ACTIVE; `--shadow-xl-base` matches
-     * INACTIVE. Smaller tiers scale offset and blur down at a roughly
-     * constant 1:2 ratio (matching the DeckCard) with opacities trending
-     * down so subtle elements stay subtle.
-     */
-    --shadow-sm-base: 0 3px 7px
-      color-mix(in oklab, var(--shadow-color) 18%, transparent);
-    --shadow-base: 0 6px 14px
-      color-mix(in oklab, var(--shadow-color) 25%, transparent);
-    --shadow-md-base: 0 10px 22px
-      color-mix(in oklab, var(--shadow-color) 32%, transparent);
-    --shadow-lg-base: 0 14px 30px
-      color-mix(in oklab, var(--shadow-color) 40%, transparent);
-    --shadow-xl-base: 0 20px 40px
-      color-mix(in oklab, var(--shadow-color) 50%, transparent);
-    --shadow-2xl-base: 0 30px 60px
-      color-mix(in oklab, var(--shadow-color) 70%, transparent);
+    --shadow-color: oklch(5% 0.01 260);
 
     /*
      * Inset-surface plugin's adaptive formula bottoms out at 0.1 alpha on

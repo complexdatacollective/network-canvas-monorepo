@@ -2,6 +2,7 @@ import { AnimatePresence } from 'motion/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
+import type { SortRule } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
 import { ConnectedMotionNode } from '~/components/ConnectedNode';
@@ -17,7 +18,6 @@ import { getNetworkEdges, getNetworkNodesForType } from '~/selectors/session';
 import { edgeExists, toggleEdge } from '~/store/modules/session';
 import { useAppDispatch } from '~/store/store';
 import type { StageProps } from '~/types';
-import type { ProtocolSortRule } from '~/utils/createSorter';
 
 type OneToManyDyadCensusProps = StageProps<'OneToManyDyadCensus'>;
 
@@ -43,8 +43,8 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
     promptIndex,
   } = usePrompts<{
     createEdge: string;
-    bucketSortOrder?: ProtocolSortRule[];
-    binSortOrder?: ProtocolSortRule[];
+    bucketSortOrder?: SortRule[];
+    binSortOrder?: SortRule[];
   }>();
 
   const nodes = useStageSelector(getNetworkNodesForType);

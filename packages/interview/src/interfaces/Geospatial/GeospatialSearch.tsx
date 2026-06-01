@@ -250,7 +250,7 @@ export default function GeospatialSearch({
             <MotionSurface
               noContainer
               spacing="none"
-              elevation="none"
+              shadow="none"
               className="bg-surface/80 w-sm rounded-xl shadow-md backdrop-blur-md"
               initial={{ opacity: 0, x: '-2rem' }}
               animate={{ opacity: 1, x: 0 }}
@@ -293,7 +293,7 @@ export default function GeospatialSearch({
                 <MotionSurface
                   noContainer
                   spacing="none"
-                  elevation="none"
+                  shadow="none"
                   level="popover"
                   className="absolute left-0 mt-2 flex max-h-64 w-sm flex-col shadow-xl"
                   initial={{ opacity: 0, y: '-0.5rem' }}

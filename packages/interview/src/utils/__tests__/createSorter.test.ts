@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import type { EntityDefinition } from '@codaco/protocol-validation';
+import type { EntityDefinition, SortRule } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import createSorter, {
   type LegacyOrProtocolSortRule,
-  type ProtocolSortRule,
   processProtocolSortRule,
 } from '../createSorter';
 
@@ -1097,7 +1096,7 @@ describe('processProtocolSortRule', () => {
       property: 'name',
       type: 'string',
       direction: 'asc',
-    } as ProtocolSortRule;
+    } as SortRule;
     expect(processProtocolSortRule({})(rule)).toEqual(rule);
   });
 
@@ -1105,7 +1104,7 @@ describe('processProtocolSortRule', () => {
     const rule = {
       property: 'name',
       direction: 'asc',
-    } as ProtocolSortRule;
+    } as SortRule;
     expect(processProtocolSortRule({})(rule)).toEqual({
       ...rule,
       type: 'string',
@@ -1117,7 +1116,7 @@ describe('processProtocolSortRule', () => {
       const rule = {
         property: 'name',
         direction: 'asc',
-      } as ProtocolSortRule;
+      } as SortRule;
 
       const codebookVariables: EntityDefinition['variables'] = {
         name: { type: 'text', name: 'name' },
@@ -1130,7 +1129,7 @@ describe('processProtocolSortRule', () => {
       const rule = {
         property: 'type',
         direction: 'asc',
-      } as ProtocolSortRule;
+      } as SortRule;
 
       const codebookVariables: EntityDefinition['variables'] = {
         type: { type: 'text', name: 'type' },
@@ -1182,7 +1181,7 @@ describe('processProtocolSortRule', () => {
       const rule = {
         property: '*',
         direction: 'asc',
-      } as ProtocolSortRule;
+      } as SortRule;
       expect(processProtocolSortRule(codebookVariables)(rule)).toEqual({
         ...rule,
         type: 'string',
@@ -1193,7 +1192,7 @@ describe('processProtocolSortRule', () => {
       const rule = {
         property: 'name',
         direction: 'asc',
-      } as ProtocolSortRule;
+      } as SortRule;
       expect(processProtocolSortRule(codebookVariables)(rule).type).toEqual(
         'string',
       );
@@ -1203,7 +1202,7 @@ describe('processProtocolSortRule', () => {
       const rule = {
         property: 'age',
         direction: 'asc',
-      } as ProtocolSortRule;
+      } as SortRule;
       expect(processProtocolSortRule(codebookVariables)(rule).type).toEqual(
         'number',
       );
@@ -1213,7 +1212,7 @@ describe('processProtocolSortRule', () => {
       const rule = {
         property: 'date',
         direction: 'asc',
-      } as ProtocolSortRule;
+      } as SortRule;
       expect(processProtocolSortRule(codebookVariables)(rule).type).toEqual(
         'date',
       );
@@ -1223,7 +1222,7 @@ describe('processProtocolSortRule', () => {
       const rule = {
         property: 'isAlive',
         direction: 'asc',
-      } as ProtocolSortRule;
+      } as SortRule;
       expect(processProtocolSortRule(codebookVariables)(rule).type).toEqual(
         'boolean',
       );
@@ -1233,7 +1232,7 @@ describe('processProtocolSortRule', () => {
       const rule = {
         property: 'category',
         direction: 'asc',
-      } as ProtocolSortRule;
+      } as SortRule;
       expect(processProtocolSortRule(codebookVariables)(rule).type).toEqual(
         'categorical',
       );
@@ -1243,7 +1242,7 @@ describe('processProtocolSortRule', () => {
       const rule = {
         property: 'order',
         direction: 'asc',
-      } as ProtocolSortRule;
+      } as SortRule;
       expect(processProtocolSortRule(codebookVariables)(rule).type).toEqual(
         'hierarchy',
       );
@@ -1253,7 +1252,7 @@ describe('processProtocolSortRule', () => {
       const rule = {
         property: 'scale',
         direction: 'asc',
-      } as ProtocolSortRule;
+      } as SortRule;
       expect(processProtocolSortRule(codebookVariables)(rule).type).toEqual(
         'number',
       );
@@ -1263,7 +1262,7 @@ describe('processProtocolSortRule', () => {
       const rule = {
         property: 'layout',
         direction: 'asc',
-      } as ProtocolSortRule;
+      } as SortRule;
       expect(processProtocolSortRule(codebookVariables)(rule).type).toEqual(
         'string',
       );

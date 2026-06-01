@@ -38,6 +38,25 @@ pnpm knip
 
 ```
 
+### Running tasks through turbo
+
+Turbo's dependency graph (`dependsOn: ["^build"]`) and cache only apply when a task
+is invoked via `turbo run` — running a package script directly with `pnpm <script>`
+bypasses both, so workspace dependencies may be unbuilt or stale. The root scripts
+above (`build`, `test`, `typecheck`, `dev`) already wrap `turbo run`, so prefer them.
+
+For a per-package task that requires its workspace dependencies to be built first
+(e.g. a native module or an app that consumes one), wrap its command with
+`scripts/with-turbo.mjs`:
+
+```jsonc
+// in the package's package.json
+"electron:dev": "node ../../scripts/with-turbo.mjs electron-vite dev"
+```
+
+When such a task is run directly it prints a notice and self-routes through
+`turbo run <task> --filter=<package>`, so dependencies are built before it runs.
+
 ### Code Quality (Always Run Before Committing)
 
 ```bash
@@ -75,6 +94,7 @@ This is a **pnpm workspace** monorepo with catalog dependencies for version cons
   - `documentation` - Documentation site
 - **Packages**: Shared libraries and utilities
   - `protocol-validation` - Zod schemas for protocol validation and migration
+  - `protocol-utilities` - Synthetic network generation and interview-payload builder
   - `shared-consts` - Shared constants and TypeScript definitions
   - `analytics` - PostHog analytics wrapper with installation ID tracking
   - `ui` - React components (built on shadcn/ui and Tailwind CSS)
@@ -109,6 +129,13 @@ The core validation system for Network Canvas protocol files (`.netcanvas`). Con
   - `filters/` - Filter rules and sort order schemas
   - `common/` - Shared schemas (subjects, prompts, forms, skip logic)
   - `assets/` - Asset management schemas
+
+#### @codaco/protocol-utilities
+
+Synthetic network generation and interview-payload builder for Network Canvas protocols. Provides:
+
+- **`generateNetwork`**: a pure function that produces an `NcNetwork` (plus stage metadata and step state) for a given codebook and stages, with optional seeding for deterministic output. Used by `architect-web`'s PreviewHost and by tests that need a deterministic network shape.
+- **`SyntheticInterview`**: a fluent builder for codebooks, stages, prompts, forms, and full interview payloads. Used by `@codaco/interview`'s Storybook stories.
 
 #### @codaco/shared-consts
 

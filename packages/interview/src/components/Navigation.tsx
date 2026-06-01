@@ -136,7 +136,7 @@ const Navigation = ({
       role="navigation"
       className={navigationVariants({ orientation })}
       spacing="xs"
-      elevation="xs"
+      shadow="xs"
       noContainer
       variants={containerVariants}
       custom={orientation}

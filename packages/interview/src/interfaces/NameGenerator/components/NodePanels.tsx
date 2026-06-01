@@ -57,13 +57,13 @@ function NodePanels(props: NodePanelsProps) {
 
   const createDropHandler = useCallback(
     (dataSource: string) => (metadata?: Record<string, unknown>) => {
-      const meta = metadata as NcNode | undefined;
-      if (!meta) return;
+      const droppedNode = metadata as NcNode | undefined;
+      if (!droppedNode) return;
 
       if (dataSource === 'existing') {
-        void removeNodeFromPrompt(meta[entityPrimaryKeyProperty]);
+        void removeNodeFromPrompt(droppedNode[entityPrimaryKeyProperty]);
       } else {
-        deleteNode(meta[entityPrimaryKeyProperty]);
+        deleteNode(droppedNode[entityPrimaryKeyProperty]);
       }
     },
     [deleteNode, removeNodeFromPrompt],
@@ -142,9 +142,9 @@ function NodePanels(props: NodePanelsProps) {
       }
 
       setPanelIndexes((prev) => {
-        const panelIndexes = [...prev];
-        panelIndexes[index] = { count: displayCount, index: nodeIndex };
-        return panelIndexes;
+        const nextPanelIndexes = [...prev];
+        nextPanelIndexes[index] = { count: displayCount, index: nodeIndex };
+        return nextPanelIndexes;
       });
     },
     [setPanelIndexes, panelIndexes],

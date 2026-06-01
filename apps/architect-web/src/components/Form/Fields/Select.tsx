@@ -93,11 +93,11 @@ const Select = ({
           )}
         >
           <BaseSelect.Value className="min-w-0 flex-1 truncate">
-            {(currentValue: string | null) => {
+            {(selectedValue: string | null) => {
               if (
-                currentValue === null ||
-                currentValue === undefined ||
-                currentValue === ''
+                selectedValue === null ||
+                selectedValue === undefined ||
+                selectedValue === ''
               ) {
                 return (
                   <span className="text-surface-2-foreground italic">
@@ -105,8 +105,8 @@ const Select = ({
                   </span>
                 );
               }
-              const option = options.find((o) => o.value === currentValue);
-              return option?.label ?? currentValue;
+              const option = options.find((o) => o.value === selectedValue);
+              return option?.label ?? selectedValue;
             }}
           </BaseSelect.Value>
           <BaseSelect.Icon className="shrink-0">

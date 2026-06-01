@@ -140,13 +140,13 @@ export const useFieldHandlers = ({
       const options = get(existingVariables, [value, 'options'], null);
       const parameters = get(existingVariables, [value, 'parameters'], null);
       const validation = get(existingVariables, [value, 'validation'], null);
-      const component = get(existingVariables, [value, 'component'], null);
+      const nextComponent = get(existingVariables, [value, 'component'], null);
 
       // If value was set to something from codebook, reset this flag
       if (has(existingVariables, value)) {
         changeField('_createNewVariable', null);
       }
-      changeField('component', component);
+      changeField('component', nextComponent);
       changeField('options', options);
       changeField('parameters', parameters);
       changeField('validation', validation);
@@ -155,8 +155,8 @@ export const useFieldHandlers = ({
   );
 
   const handleDeleteVariable = useCallback(
-    (variable: string) => {
-      deleteVariable(variable);
+    (variableToDelete: string) => {
+      deleteVariable(variableToDelete);
     },
     [deleteVariable],
   );

@@ -74,7 +74,7 @@ function ParentSection({
   const onlyNewOption = options.length === 1 && options[0]?.value === 'new';
 
   return (
-    <Surface level={1} spacing="sm" elevation="sm" noContainer>
+    <Surface level={1} spacing="sm" shadow="sm" noContainer>
       <Heading level="h4">{roleLabel}</Heading>
       {onlyNewOption ? (
         <div className="hidden">
@@ -168,7 +168,7 @@ export default function BioTriadStep() {
         watch={['egg-parent-carried']}
         condition={(values) => values['egg-parent-carried'] === false}
       >
-        <Surface level={1} spacing="sm" elevation="sm" noContainer>
+        <Surface level={1} spacing="sm" shadow="sm" noContainer>
           <Heading level="h4">Gestational Carrier</Heading>
           {carrierOnlyNewOption ? (
             <div className="hidden">

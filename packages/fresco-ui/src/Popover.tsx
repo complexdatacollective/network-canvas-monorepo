@@ -25,7 +25,7 @@ export function BaseUISharedPopoverContainer({
     <MotionSurface
       level="popover"
       spacing="xs"
-      elevation="md"
+      shadow="md"
       noContainer
       className={cx('max-w-(--available-width) overflow-visible', className)}
       initial={{ opacity: 0, scale: 0.96 }}

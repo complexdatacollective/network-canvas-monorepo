@@ -147,7 +147,7 @@ const BothContent = () => (
   <div className="flex flex-col gap-4 p-4">
     {Array.from({ length: 15 }, (_, rowIndex) => (
       <div key={rowIndex} className="flex gap-4">
-        {Array.from({ length: 10 }, (_, colIndex) => (
+        {Array.from({ length: 10 }, (_col, colIndex) => (
           <div
             key={colIndex}
             className={cx(

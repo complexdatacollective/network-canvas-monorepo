@@ -91,17 +91,17 @@ const getAttributeTypes = (
       if (attributeKey.includes('_')) {
         const uuid = attributeKey.substring(0, attributeKey.indexOf('_'));
         const option = attributeKey.substring(attributeKey.indexOf('_'));
-        const codebookType = codebookDefinition.variables?.[uuid]?.type;
-        if (codebookType && includes(VariableTypes, codebookType)) {
+        const optionCodebookType = codebookDefinition.variables?.[uuid]?.type;
+        if (optionCodebookType && includes(VariableTypes, optionCodebookType)) {
           if (option === '_x' || option === '_y') {
             return {
               ...acc,
-              [attributeKey]: `${codebookType}${option}` as VariableType,
+              [attributeKey]: `${optionCodebookType}${option}` as VariableType,
             };
           }
           return {
             ...acc,
-            [attributeKey]: `${codebookType}_option` as VariableType,
+            [attributeKey]: `${optionCodebookType}_option` as VariableType,
           };
         }
       }

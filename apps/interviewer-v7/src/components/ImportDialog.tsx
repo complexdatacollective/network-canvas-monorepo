@@ -141,7 +141,7 @@ export function ImportDialog({ open, onClose, onSubmit }: ImportDialogProps) {
         <span aria-hidden className="bg-outline h-px flex-1" />
       </div>
 
-      <Surface as="section" level={1} spacing="md" elevation="md" noContainer>
+      <Surface as="section" level={1} spacing="md" shadow="md" noContainer>
         <Heading level="h4">Import from URL</Heading>
         <Paragraph intent="smallText">
           Paste a link to a hosted protocol file.

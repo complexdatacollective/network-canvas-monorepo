@@ -75,12 +75,12 @@ const Prompts = ({
       <motion.div variants={containerVariants}>
         <AnimatePresence custom={backwards} mode="wait" initial={false}>
           {prompts.map(
-            ({ id, text }) =>
+            ({ id: promptId, text }) =>
               currentIndex >= 0 &&
-              prompts[currentIndex]?.id === id && (
+              prompts[currentIndex]?.id === promptId && (
                 <Prompt
-                  key={id}
-                  id={id}
+                  key={promptId}
+                  id={promptId}
                   text={text}
                   backwards={backwards}
                   small={small}

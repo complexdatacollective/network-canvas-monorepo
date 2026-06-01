@@ -35,9 +35,8 @@ export function PendingImportCard({ pending }: PendingImportCardProps) {
     <motion.div
       style={{
         borderRadius: CARD_RADIUS_PX,
-        boxShadow: 'var(--shadow-xl-base)',
       }}
-      className={`${cardBase()} ${protocolCardClass()} @container h-full w-full`}
+      className={`${cardBase()} ${protocolCardClass()} effect-shadow-xl @container h-full w-full`}
       aria-label={`Importing ${pending.label}`}
       aria-busy="true"
     >

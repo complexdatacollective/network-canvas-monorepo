@@ -10,7 +10,7 @@ const SEGMENTS = [
 type View = (typeof SEGMENTS)[number]['view'];
 
 const CONTAINER_CLASS =
-  'border border-outline bg-surface/50 backdrop-blur-md shadow-md inline-flex items-center rounded-full p-1';
+  'border border-outline bg-surface/50 backdrop-blur-md effect-shadow-md inline-flex items-center rounded-full p-1';
 const SEGMENT_CLASS =
   'relative inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-black uppercase tracking-wide transition-colors';
 

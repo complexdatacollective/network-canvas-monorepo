@@ -67,6 +67,28 @@
     --shadow-2xl-base: 0 25px 50px -12px
       color-mix(in oklab, var(--shadow-color) 30%, transparent);
 
+    /*
+     * Effect-shadow scale. Prominent single-layer drops for elevated
+     * dashboard surfaces (protocol deck cards, floating chrome) that want a
+     * stronger cue than the standard `shadow-*` scale. Consumed by the
+     * `effect-shadow-*` utilities and, where a composite box-shadow needs to
+     * add a ring, referenced directly as `var(--effect-shadow-*)`. The inner
+     * `var(--shadow-color)` re-resolves per theme, so each theme re-tints
+     * them without redeclaring the scale.
+     */
+    --effect-shadow-sm: 0 3px 7px
+      color-mix(in oklab, var(--shadow-color) 18%, transparent);
+    --effect-shadow: 0 6px 14px
+      color-mix(in oklab, var(--shadow-color) 25%, transparent);
+    --effect-shadow-md: 0 10px 22px
+      color-mix(in oklab, var(--shadow-color) 32%, transparent);
+    --effect-shadow-lg: 0 14px 30px
+      color-mix(in oklab, var(--shadow-color) 40%, transparent);
+    --effect-shadow-xl: 0 20px 40px
+      color-mix(in oklab, var(--shadow-color) 50%, transparent);
+    --effect-shadow-2xl: 0 30px 60px
+      color-mix(in oklab, var(--shadow-color) 70%, transparent);
+
     --background: color-mix(in oklab, var(--brand) 3%, white);
     --text: color-mix(in oklab, var(--brand) 75%, black);
 

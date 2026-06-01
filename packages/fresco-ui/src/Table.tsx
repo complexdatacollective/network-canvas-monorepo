@@ -13,7 +13,7 @@ const Table = React.forwardRef<
   <Surface
     maxWidth="none"
     spacing="none"
-    elevation="none"
+    shadow="none"
     {...surfaceProps}
     className={cx(
       'mx-auto w-full max-w-full overflow-x-auto rounded border',

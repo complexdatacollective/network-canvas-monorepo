@@ -168,7 +168,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         <Surface
           level={1}
           spacing="lg"
-          elevation="lg"
+          shadow="lg"
           className="flex flex-col items-center gap-4 text-center"
         >
           <Heading level="h1">Interview not found</Heading>

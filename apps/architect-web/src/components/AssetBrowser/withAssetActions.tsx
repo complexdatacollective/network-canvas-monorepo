@@ -21,7 +21,7 @@ const connectActions = connect(null, {
 
 const assetHandlers = withHandlers<ConnectedActions, object>({
   onDelete:
-    ({ deleteAsset, openDialog }: ConnectedActions) =>
+    ({ deleteAsset: dispatchDeleteAsset, openDialog }: ConnectedActions) =>
     (assetId: string, isUsed = false) => {
       if (isUsed) {
         openDialog({
@@ -40,7 +40,7 @@ const assetHandlers = withHandlers<ConnectedActions, object>({
         message:
           'Are you sure you want to delete this resource? This action cannot be undone.',
         confirmLabel: 'Delete Resource',
-        onConfirm: () => deleteAsset(assetId),
+        onConfirm: () => dispatchDeleteAsset(assetId),
       });
     },
 });

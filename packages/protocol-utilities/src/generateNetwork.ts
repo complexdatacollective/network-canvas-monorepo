@@ -587,12 +587,16 @@ export function generateNetwork(
           if (!varId || !nodeTypeDef?.variables?.[varId]) continue;
 
           const varDef = nodeTypeDef.variables[varId];
-          const options = varDef.options ?? [];
-          if (options.length === 0) continue;
+          const variableOptions = varDef.options ?? [];
+          if (variableOptions.length === 0) continue;
 
           for (const node of subjectNodes) {
-            const optionIndex = valueGen.randomInt(0, options.length - 1);
-            node[entityAttributesProperty][varId] = options[optionIndex]!.value;
+            const optionIndex = valueGen.randomInt(
+              0,
+              variableOptions.length - 1,
+            );
+            node[entityAttributesProperty][varId] =
+              variableOptions[optionIndex]!.value;
           }
         }
         break;
@@ -618,16 +622,21 @@ export function generateNetwork(
           if (!varId || !nodeTypeDef?.variables?.[varId]) continue;
 
           const varDef = nodeTypeDef.variables[varId];
-          const options =
+          const variableOptions =
             varDef.options?.filter((o) => typeof o.value !== 'boolean') ?? [];
-          if (options.length === 0) continue;
+          if (variableOptions.length === 0) continue;
 
           for (const node of subjectNodes) {
-            const count = valueGen.randomInt(1, Math.min(2, options.length));
+            const count = valueGen.randomInt(
+              1,
+              Math.min(2, variableOptions.length),
+            );
             const picked: (number | string | boolean)[] = [];
-            const startIdx = valueGen.randomInt(0, options.length - 1);
+            const startIdx = valueGen.randomInt(0, variableOptions.length - 1);
             for (let c = 0; c < count; c++) {
-              picked.push(options[(startIdx + c) % options.length]!.value);
+              picked.push(
+                variableOptions[(startIdx + c) % variableOptions.length]!.value,
+              );
             }
             node[entityAttributesProperty][varId] = picked;
           }
@@ -665,8 +674,8 @@ export function generateNetwork(
 
         const formVarIds = form.fields.map((f) => f.variable);
 
-        for (let i = 0; i < subjectNodes.length; i++) {
-          const node = subjectNodes[i]!;
+        for (let nodeIndex = 0; nodeIndex < subjectNodes.length; nodeIndex++) {
+          const node = subjectNodes[nodeIndex]!;
           for (const varId of formVarIds) {
             const varDef = nodeTypeDef.variables[varId];
             if (varDef) {
@@ -674,7 +683,7 @@ export function generateNetwork(
               node[entityAttributesProperty][varId] = generateValue(
                 valueGen,
                 entry,
-                i,
+                nodeIndex,
               );
             }
           }
@@ -703,8 +712,8 @@ export function generateNetwork(
 
         const formVarIds = form.fields.map((f) => f.variable);
 
-        for (let i = 0; i < subjectEdges.length; i++) {
-          const edge = subjectEdges[i]!;
+        for (let edgeIndex = 0; edgeIndex < subjectEdges.length; edgeIndex++) {
+          const edge = subjectEdges[edgeIndex]!;
           for (const varId of formVarIds) {
             const varDef = edgeTypeDef.variables[varId];
             if (varDef) {
@@ -712,7 +721,7 @@ export function generateNetwork(
               edge[entityAttributesProperty][varId] = generateValue(
                 valueGen,
                 entry,
-                i,
+                edgeIndex,
               );
             }
           }
@@ -738,17 +747,17 @@ export function generateNetwork(
         if (!nodeType) break;
 
         const familyNodes: NcNode[] = [];
-        for (let i = 0; i < nodeCount; i++) {
+        for (let nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++) {
           const attrs = generateAttributes(
             nodeTypeDef?.variables,
             valueGen,
-            nodes.length + i,
+            nodes.length + nodeIndex,
           );
 
           const nodeIsEgoVar = stageRecord.nodeIsEgoVariable as
             | string
             | undefined;
-          if (nodeIsEgoVar && i === 0) {
+          if (nodeIsEgoVar && nodeIndex === 0) {
             attrs[nodeIsEgoVar] = true;
           }
 
@@ -763,16 +772,20 @@ export function generateNetwork(
         nodes.push(...familyNodes);
 
         if (edgeType && familyNodes.length > 1) {
-          for (let i = 1; i < familyNodes.length; i++) {
+          for (
+            let childIndex = 1;
+            childIndex < familyNodes.length;
+            childIndex++
+          ) {
             const parentIdx = valueGen.randomInt(
               0,
-              Math.min(i - 1, familyNodes.length - 1),
+              Math.min(childIndex - 1, familyNodes.length - 1),
             );
             edges.push({
               [entityPrimaryKeyProperty]: uuid(),
               type: edgeType,
               from: familyNodes[parentIdx]![entityPrimaryKeyProperty],
-              to: familyNodes[i]![entityPrimaryKeyProperty],
+              to: familyNodes[childIndex]![entityPrimaryKeyProperty],
               [entityAttributesProperty]: {},
             } as NcEdge);
           }

@@ -24,33 +24,6 @@
  * up the closest themed ancestor's override. Same applies to the type scale
  * via `var(--theme-root-size)`, and spacing via `var(--spacing-base)`.
  */
-/*
- * Audit of frozen literals in this block — themes can only override values
- * exposed through an inner `var()` reference; bare literals are baked into
- * the generated utility CSS at build time and become invisible to
- * `[data-theme-*]` overrides. Categories below either expose a runtime
- * slot or document a deliberate reason for keeping the literal.
- *
- *   Colors             → `var(--X)`              themable ✓
- *   Shadows            → `var(--shadow-X-base)`  themable ✓
- *   Radius             → `var(--radius-base)`    themable ✓
- *   Spacing            → `var(--spacing-base)`   themable ✓
- *   Fonts              → `var(--*-font)`         themable ✓
- *   Overlay tone       → `var(--overlay-tone)`   themable ✓
- *
- *   Container widths   `em` literals  — Tailwind requires static numbers
- *                                       inside `@container (min-width: ...)`
- *   Breakpoints        `px` literals  — same restriction for `@media`
- *
- *   Type scale         clamp() literals (multipliers + line-heights +
- *                                       letter-spacings) — runtime-themable
- *                                       via `--theme-root-size` for size;
- *                                       not currently themed per-axis
- *   Animations         literal durations/easings — no current need
- *   Node sizes         clamp() literals — domain-specific, not theme-axis
- *
- * Extend this list when adding new tokens with hidden literals.
- */
 @theme inline {
   /*
    * Typography
@@ -246,12 +219,6 @@
   --color-input: var(--input);
   --color-input-contrast: var(--input-contrast);
 
-  /*
-   * Overlay tone is the full expression, not just `--overlay`, because the
-   * baked 0.45 alpha would otherwise be locked into the utility CSS — same
-   * trap as the shadow tokens. Themes redeclare `--overlay-tone` to change
-   * either color or opacity.
-   */
   --color-overlay: var(--overlay-tone);
 
   /* Color sequences */
@@ -445,18 +412,7 @@
   --radius-3xl: calc(var(--radius) * 4); /* 112px */
   --radius-full: 9999px; /* 9999px */
 
-  /*
-   * Shadows
-   *
-   * Each Tailwind shadow token points at a runtime slot declared by the
-   * theme files (--shadow-X-base). Same indirection pattern as colors:
-   * `@theme inline` substitutes the inner var() into the generated
-   * `.shadow-X` utility, so descendants under [data-theme-*] can swap the
-   * full shadow expression by redeclaring `--shadow-X-base`. Without this
-   * indirection, the literal opacity/blur/offset numbers would be baked
-   * into the utility CSS at build time and themes could only influence
-   * `--shadow-color`.
-   */
+  /* Shadows */
   --shadow-sm: var(--shadow-sm-base);
   --shadow: var(--shadow-base);
   --shadow-md: var(--shadow-md-base);

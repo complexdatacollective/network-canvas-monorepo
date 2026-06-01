@@ -8,7 +8,7 @@ import { useAuth } from '~/lib/auth/AuthContext';
 // Glass-pill treatment layered over the standard Button: backdrop-blur surface
 // with the theme outline, sized to match BrandHeader's height (h-14).
 export const GLASS_PILL =
-  'border border-outline bg-surface/50 backdrop-blur-md shadow-md uppercase font-black';
+  'border border-outline bg-surface/50 backdrop-blur-md effect-shadow-md uppercase font-black';
 
 type TopActionBarProps = {
   onOpenSettings: () => void;

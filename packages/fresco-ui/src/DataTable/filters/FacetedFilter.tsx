@@ -80,7 +80,7 @@ export default function FacetedFilter({
       <div className="flex flex-col gap-3">
         <Combobox.Input
           placeholder="Search..."
-          render={({ onChange, ...rest }) => {
+          render={({ onChange: renderOnChange, ...rest }) => {
             const inputFieldProps =
               rest as unknown as React.ComponentPropsWithRef<typeof InputField>;
             return (
@@ -89,7 +89,7 @@ export default function FacetedFilter({
                 size="sm"
                 prefixComponent={<SearchIcon />}
                 className="w-full"
-                nativeOnChange={onChange}
+                nativeOnChange={renderOnChange}
               />
             );
           }}

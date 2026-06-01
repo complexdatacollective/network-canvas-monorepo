@@ -34,10 +34,9 @@ export function SampleProtocolCard({
       onClick={onInstall}
       onKeyDown={onKeyDown}
       style={{
-        boxShadow: 'var(--shadow-xl-base)',
         borderRadius: CARD_RADIUS_PX,
       }}
-      className={`${cardBase()} ${importCardClass()} @container relative h-full w-full cursor-pointer justify-between!`}
+      className={`${cardBase()} ${importCardClass()} effect-shadow-xl @container relative h-full w-full cursor-pointer justify-between!`}
       aria-label="Install the sample protocol"
     >
       {isActive ? (

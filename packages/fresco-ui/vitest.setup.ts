@@ -149,7 +149,7 @@ const { motionMockModule } = vi.hoisted(() => {
     skipAnimations: false,
   });
 
-  const motionMockModule = {
+  const mockModule = {
     motion: motionComponents,
     AnimatePresence,
     LayoutGroup,
@@ -176,7 +176,7 @@ const { motionMockModule } = vi.hoisted(() => {
     usePresence: () => [true, null] as const,
   };
 
-  return { motionMockModule };
+  return { motionMockModule: mockModule };
 });
 
 // Mock motion/react (the primary import path used by the project)
