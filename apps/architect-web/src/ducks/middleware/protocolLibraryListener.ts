@@ -12,6 +12,7 @@ import {
 } from '../modules/activeProtocol';
 import { getActiveProtocolId } from '../modules/app';
 import type { RootState } from '../modules/root';
+import { generalErrorDialog } from '../modules/userActions/dialogs';
 import type { AppDispatch } from '../store';
 
 const DEBOUNCE_MS = 600;
@@ -34,9 +35,15 @@ let pending: {
   snapshot: ProtocolSnapshot;
 } | null = null;
 
-// Persist a snapshot, surfacing IndexedDB/quota errors rather than dropping the
-// promise (a silent autosave failure would lose user edits without warning).
-const flush = (snapshot: ProtocolSnapshot): void => {
+// Whether the user has already been warned about the current autosave-failure
+// streak. Throttles the dialog to once per streak (it fires on every debounced
+// save otherwise) and resets on the next successful save.
+let autosaveErrorNotified = false;
+
+// Persist a snapshot. A silent autosave failure would let the user keep editing
+// while their work isn't being saved, so surface it to them (throttled) and log
+// the details rather than dropping the promise.
+const flush = (snapshot: ProtocolSnapshot, dispatch: AppDispatch): void => {
   const { protocol } = snapshot;
   if (!protocol) {
     return;
@@ -55,8 +62,20 @@ const flush = (snapshot: ProtocolSnapshot): void => {
         name: snapshot.name,
         description: snapshot.description,
       });
+      autosaveErrorNotified = false;
     } catch (error: unknown) {
       console.error('Autosave to protocol library failed', error);
+      if (!autosaveErrorNotified) {
+        autosaveErrorNotified = true;
+        void dispatch(
+          generalErrorDialog(
+            'Autosave failed',
+            "Your recent changes could not be saved to this browser's " +
+              'storage, which can happen if it is full or unavailable. To ' +
+              'avoid losing work, download a copy of your protocol.',
+          ),
+        );
+      }
     }
   })();
 };
@@ -83,6 +102,7 @@ startAppListening({
     );
   },
   effect: (_action, listenerApi) => {
+    const { dispatch } = listenerApi;
     const state = listenerApi.getState();
     const protocol = getProtocol(state);
     const id = getActiveProtocolId(state);
@@ -105,13 +125,13 @@ startAppListening({
       // The active protocol changed mid-window: flush the previous edits now so
       // they aren't discarded when we re-debounce for the new protocol.
       if (pending.snapshot.id !== snapshot.id) {
-        flush(pending.snapshot);
+        flush(pending.snapshot, dispatch);
       }
     }
 
     const timer = setTimeout(() => {
       pending = null;
-      flush(snapshot);
+      flush(snapshot, dispatch);
     }, DEBOUNCE_MS);
 
     pending = { timer, snapshot };

@@ -22,10 +22,15 @@ import { cx } from '~/utils/cva';
 
 type Tab = 'recent' | 'templates';
 
-const withStop = (handler: () => void) => (event: React.MouseEvent) => {
-  event.stopPropagation();
-  handler();
-};
+const withStop =
+  (handler: () => void | Promise<void>) => (event: React.MouseEvent) => {
+    event.stopPropagation();
+    // Handlers may be async; swallow rejections so they don't become unhandled
+    // promise rejections (each handler surfaces its own user-facing errors).
+    void Promise.resolve(handler()).catch((error: unknown) => {
+      console.error('LibraryPanel action failed', error);
+    });
+  };
 
 const formatProtocolMeta = (protocol: StoredProtocolRow): string => {
   const stageCount = protocol.protocol.stages.length;
