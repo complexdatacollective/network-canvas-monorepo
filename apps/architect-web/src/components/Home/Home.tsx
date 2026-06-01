@@ -50,6 +50,10 @@ const Home = () => {
   const dispatch = useAppDispatch();
   const [isLoading, setIsLoading] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const [pendingTemplate, setPendingTemplate] = useState<{
+    url: string;
+    defaultName: string;
+  } | null>(null);
   const [visibleCount, setVisibleCount] = useState(3);
 
   useEffect(() => {
@@ -93,17 +97,34 @@ const Home = () => {
     noKeyboard: true,
   });
 
+  // Templates are named before opening, so the new library entry lands in
+  // Recents under a user-chosen name. Selecting a template opens the naming
+  // dialog; confirming it fetches and instantiates the protocol.
   const handleOpenSample = useCallback(() => {
-    void runAction(async () => {
-      await dispatch(openRemoteNetcanvas(SAMPLE_PROTOCOL_URL));
+    setPendingTemplate({
+      url: SAMPLE_PROTOCOL_URL,
+      defaultName: 'Sample Protocol',
     });
-  }, [dispatch, runAction]);
+  }, []);
 
   const handleOpenDevProtocol = useCallback(() => {
-    void runAction(async () => {
-      await dispatch(openRemoteNetcanvas(DEVELOPMENT_PROTOCOL_URL));
+    setPendingTemplate({
+      url: DEVELOPMENT_PROTOCOL_URL,
+      defaultName: 'Development Protocol',
     });
-  }, [dispatch, runAction]);
+  }, []);
+
+  const handleConfirmTemplate = useCallback(
+    ({ name }: { name: string }) => {
+      const template = pendingTemplate;
+      setPendingTemplate(null);
+      if (!template) return;
+      void runAction(async () => {
+        await dispatch(openRemoteNetcanvas({ url: template.url, name }));
+      });
+    },
+    [dispatch, pendingTemplate, runAction],
+  );
 
   const handleOpenLibraryProtocol = useCallback(
     (id: string) => {
@@ -121,6 +142,15 @@ const Home = () => {
         open={showNewDialog}
         onOpenChange={setShowNewDialog}
         onSubmit={handleCreate}
+      />
+      <NewProtocolDialog
+        open={pendingTemplate !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingTemplate(null);
+        }}
+        onSubmit={handleConfirmTemplate}
+        title="Name your protocol"
+        initialName={pendingTemplate?.defaultName}
       />
 
       <div {...getRootProps()} className="flex h-dvh flex-col">

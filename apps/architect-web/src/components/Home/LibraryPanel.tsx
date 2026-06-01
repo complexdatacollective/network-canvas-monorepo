@@ -1,6 +1,6 @@
 import { Download, Info, Loader2, Plus, Trash2 } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import Badge from '~/components/Badge';
 import {
@@ -156,9 +156,19 @@ const LibraryPanel = ({
   onOpenDevProtocol,
 }: LibraryPanelProps) => {
   const dispatch = useAppDispatch();
-  const protocols = useProtocolLibrary();
-  const [tab, setTab] = useState<Tab>('recent');
+  const { protocols, isLoaded } = useProtocolLibrary();
+  // null until the user picks a tab; the default is chosen once the library has
+  // loaded (Templates when there are no recents, Recent otherwise).
+  const [tab, setTab] = useState<Tab | null>(null);
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (tab === null && isLoaded) {
+      setTab(protocols.length === 0 ? 'templates' : 'recent');
+    }
+  }, [tab, isLoaded, protocols.length]);
+
+  const activeTab = tab ?? 'recent';
 
   const handleDownload = useCallback(async (protocol: StoredProtocolRow) => {
     setDownloadingIds((prev) => new Set(prev).add(protocol.id));
@@ -226,7 +236,7 @@ const LibraryPanel = ({
 
   return (
     <Tabs
-      value={tab}
+      value={activeTab}
       onValueChange={(value) => {
         if (value === 'recent' || value === 'templates') {
           setTab(value);
@@ -239,7 +249,7 @@ const LibraryPanel = ({
           <TabsTab value="recent">Recent</TabsTab>
           <TabsTab value="templates">Templates</TabsTab>
         </TabsList>
-        {tab === 'recent' ? (
+        {activeTab === 'recent' ? (
           <div className="ml-auto flex items-center gap-(--space-sm)">
             <Badge color="platinum" className="shadow-none">
               {protocolCount} {protocolCount === 1 ? 'protocol' : 'protocols'}
@@ -250,10 +260,13 @@ const LibraryPanel = ({
                 aria-label="Where your protocols are stored"
               />
             </Tooltip>
-            <Tooltip content="Clear all from this browser" side="bottom">
+            <Tooltip
+              content="Clear all protocols from this browser"
+              side="bottom"
+            >
               <button
                 type="button"
-                aria-label="Clear all from this browser"
+                aria-label="Clear all protocols from this browser"
                 onClick={() => void handleClearAll()}
                 className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
               >

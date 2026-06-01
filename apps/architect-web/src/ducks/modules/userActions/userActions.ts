@@ -240,7 +240,7 @@ export const exportNetcanvas = createAsyncThunk(
 
 export const openRemoteNetcanvas = createAsyncThunk(
   'webUserActions/openRemoteNetcanvas',
-  async (url: string, { dispatch }) => {
+  async ({ url, name }: { url: string; name?: string }, { dispatch }) => {
     const controller = new AbortController();
 
     try {
@@ -290,13 +290,16 @@ export const openRemoteNetcanvas = createAsyncThunk(
       }
 
       // Opening a remote/template protocol instantiates a fresh library entry
-      // (new id), so templates can be opened repeatedly without overwriting.
+      // (new id), so templates can be opened repeatedly without overwriting. A
+      // caller-supplied `name` (the template-naming flow) overrides the
+      // protocol's own name so the library row and the editor agree.
       const finalProtocol = migratedProtocol as CurrentProtocol;
+      const finalName = name ?? finalProtocol.name ?? protocolName;
       await instantiateProtocol(
         {
-          protocol: finalProtocol,
+          protocol: name ? { ...finalProtocol, name } : finalProtocol,
           assets,
-          name: finalProtocol.name ?? protocolName,
+          name: finalName,
           description: finalProtocol.description,
         },
         dispatch,
