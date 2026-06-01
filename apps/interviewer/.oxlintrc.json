@@ -3,7 +3,7 @@
   "jsPlugins": ["oxlint-tailwindcss"],
   "settings": {
     "tailwindcss": {
-      "entryPoint": ["tooling/tailwind/fresco/fresco.css"]
+      "entryPoint": "tooling/tailwind/fresco/fresco.css"
     }
   },
   "rules": {
