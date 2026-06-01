@@ -43,7 +43,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@aparajita/capacitor-biometric-auth": "^9.0.0",
+    "@aparajita/capacitor-biometric-auth": "^10.0.0",
     "@base-ui/react": "catalog:",
     "@capacitor/android": "^8.3.4",
     "@capacitor/app": "^8.1.0",
@@ -64,16 +64,16 @@
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-table": "catalog:",
     "better-sqlite3-multiple-ciphers": "^12.9.0",
-    "dexie": "^4.4.2",
+    "dexie": "^4.4.3",
     "effect": "catalog:",
     "jszip": "^3.10.1",
     "lucide-react": "catalog:",
     "motion": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "swiper": "^12.1.4",
+    "swiper": "^12.2.0",
     "uuid": "catalog:",
-    "wouter": "^3.9.0",
+    "wouter": "^3.10.0",
     "zod": "catalog:"
   },
   "devDependencies": {
