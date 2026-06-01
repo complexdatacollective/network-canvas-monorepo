@@ -526,14 +526,14 @@
     "access": "public"
   },
   "scripts": {
-    "build": "vite build",
-    "dev": "vite build --watch",
+    "build": "node ../../scripts/with-turbo.mjs vite build",
+    "dev": "node ../../scripts/with-turbo.mjs --with-deps vite build --watch",
     "typecheck": "tsc --build --noEmit && tsc -p tsconfig.node.json --noEmit",
     "test": "vitest run --project=unit",
     "test:unit": "vitest run --project=unit",
     "test:storybook": "vitest run --project=storybook",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
+    "storybook": "node ../../scripts/with-turbo.mjs --watch-deps storybook dev -p 6006",
+    "build-storybook": "node ../../scripts/with-turbo.mjs storybook build",
     "chromatic": "chromatic --exit-once-uploaded",
     "prepublishOnly": "pnpm build",
     "clean": "rm -rf .turbo node_modules dist"

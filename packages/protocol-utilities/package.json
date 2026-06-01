@@ -23,8 +23,8 @@
     "tag": "alpha"
   },
   "scripts": {
-    "build": "vite build",
-    "dev": "vite build --watch",
+    "build": "node ../../scripts/with-turbo.mjs vite build",
+    "dev": "node ../../scripts/with-turbo.mjs --with-deps vite build --watch",
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

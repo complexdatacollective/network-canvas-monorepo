@@ -10,8 +10,8 @@
   },
   "main": "out/main/index.js",
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build",
+    "dev": "node ../../scripts/with-turbo.mjs --watch-deps electron-vite dev",
+    "build": "node ../../scripts/with-turbo.mjs electron-vite build",
     "preview": "electron-vite preview",
     "build:electron": "electron-vite build",
     "pack": "npm run build && electron-builder --dir",

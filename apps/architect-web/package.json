@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "node ../../scripts/with-turbo.mjs --with-deps vite",
+    "build": "node ../../scripts/with-turbo.mjs vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --build --noEmit"

@@ -21,8 +21,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "vite build",
-    "dev": "npm run build -- --watch",
+    "build": "node ../../scripts/with-turbo.mjs vite build",
+    "dev": "node ../../scripts/with-turbo.mjs --with-deps vite build --watch",
     "test": "vitest --run",
     "test:watch": "vitest",
     "typecheck": "tsc --build --noEmit"

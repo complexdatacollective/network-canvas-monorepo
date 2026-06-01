@@ -11,9 +11,9 @@
   "main": "dist/main/index.js",
   "scripts": {
     "copy-interviewer": "node scripts/copy-interviewer-dist.js",
-    "dev": "electron-vite dev",
+    "dev": "node ../../scripts/with-turbo.mjs --watch-deps electron-vite dev",
     "prebuild": "npm run copy-interviewer",
-    "build": "electron-vite build",
+    "build": "node ../../scripts/with-turbo.mjs electron-vite build",
     "preview": "electron-vite preview",
     "lint": "biome check .",
     "lint:fix": "biome check . --write",
