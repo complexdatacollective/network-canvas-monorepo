@@ -14,7 +14,6 @@ import {
   getRedoTargetPath,
   getUndoTargetPath,
 } from '~/selectors/protocol';
-import { assetDb } from '~/utils/assetDB';
 import { resolveTimelineNavTarget } from '~/utils/timelineNavigation';
 
 import { timelineActions } from '../middleware/timeline';
@@ -61,7 +60,9 @@ const activeProtocolSlice = createSlice({
       return { ...state, lastModified: action.payload };
     },
     clearActiveProtocol: (_state) => {
-      assetDb.assets.clear(); // Clear asset database
+      // Assets are namespaced per protocol and owned by the library; deleting a
+      // protocol (deleteLibraryProtocol) removes its assets. Closing the active
+      // protocol must NOT clear the shared asset store.
       return initialState;
     },
   },
