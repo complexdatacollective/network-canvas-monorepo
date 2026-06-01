@@ -12,17 +12,18 @@ import { useDropzone } from 'react-dropzone';
 import Badge from '~/components/Badge';
 import NewProtocolDialog from '~/components/NewProtocolDialog';
 import NavShell from '~/components/ProjectNav/NavShell';
-import { SAMPLE_PROTOCOL_URL } from '~/config';
+import { DEVELOPMENT_PROTOCOL_URL, SAMPLE_PROTOCOL_URL } from '~/config';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   createNetcanvas,
+  openLibraryProtocol,
   openLocalNetcanvas,
   openRemoteNetcanvas,
 } from '~/ducks/modules/userActions/userActions';
 import Button from '~/lib/legacy-ui/components/Button';
 import { appVersion } from '~/utils/appVersion';
 
-import DevTools from './DevTools';
+import LibraryPanel from './LibraryPanel';
 import ProtocolLoadingOverlay from './ProtocolLoadingOverlay';
 import { TIMELINE_SCRIPT } from './timelineScript';
 import TransitMap from './TransitMap';
@@ -49,6 +50,10 @@ const Home = () => {
   const dispatch = useAppDispatch();
   const [isLoading, setIsLoading] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const [pendingTemplate, setPendingTemplate] = useState<{
+    url: string;
+    defaultName: string;
+  } | null>(null);
   const [visibleCount, setVisibleCount] = useState(3);
 
   useEffect(() => {
@@ -97,11 +102,43 @@ const Home = () => {
     noKeyboard: true,
   });
 
-  const handleOpenSample = () => {
-    void runAction(async () => {
-      await dispatch(openRemoteNetcanvas(SAMPLE_PROTOCOL_URL));
+  // Templates are named before opening, so the new library entry lands in
+  // Recents under a user-chosen name. Selecting a template opens the naming
+  // dialog; confirming it fetches and instantiates the protocol.
+  const handleOpenSample = useCallback(() => {
+    setPendingTemplate({
+      url: SAMPLE_PROTOCOL_URL,
+      defaultName: 'Sample Protocol',
     });
-  };
+  }, []);
+
+  const handleOpenDevProtocol = useCallback(() => {
+    setPendingTemplate({
+      url: DEVELOPMENT_PROTOCOL_URL,
+      defaultName: 'Development Protocol',
+    });
+  }, []);
+
+  const handleConfirmTemplate = useCallback(
+    ({ name }: { name: string }) => {
+      const template = pendingTemplate;
+      setPendingTemplate(null);
+      if (!template) return;
+      void runAction(async () => {
+        await dispatch(openRemoteNetcanvas({ url: template.url, name }));
+      });
+    },
+    [dispatch, pendingTemplate, runAction],
+  );
+
+  const handleOpenLibraryProtocol = useCallback(
+    (id: string) => {
+      void runAction(async () => {
+        await dispatch(openLibraryProtocol(id));
+      });
+    },
+    [dispatch, runAction],
+  );
 
   return (
     <>
@@ -110,6 +147,15 @@ const Home = () => {
         open={showNewDialog}
         onOpenChange={setShowNewDialog}
         onSubmit={handleCreate}
+      />
+      <NewProtocolDialog
+        open={pendingTemplate !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingTemplate(null);
+        }}
+        onSubmit={handleConfirmTemplate}
+        title="Name your protocol"
+        initialName={pendingTemplate?.defaultName}
       />
 
       <div {...getRootProps()} className="flex h-dvh flex-col">
@@ -159,58 +205,48 @@ const Home = () => {
             </div>
 
             <div className="flex flex-1 flex-col items-start justify-center gap-6 text-left xl:gap-8">
-              <div>
-                <h1 className="hero mb-3 xl:text-8xl">
-                  Welcome to <span className="text-action">Architect</span>
-                </h1>
-                <p className="lead max-w-xl">
-                  Architect is the protocol designer for Network Canvas. Compose
-                  name generators, capture ordinal and categorical data, map
-                  connections, and explore narratives.
-                </p>
-              </div>
+              <div className="flex flex-col items-start gap-4">
+                <div>
+                  <h1 className="hero mb-3 xl:text-8xl">
+                    Welcome to <span className="text-action">Architect</span>
+                  </h1>
+                  <p className="lead my-0 max-w-xl">
+                    Architect is the protocol designer for Network Canvas.
+                    Compose name generators, capture ordinal and categorical
+                    data, map connections, and explore narratives.
+                  </p>
+                </div>
 
-              <div className="flex flex-col gap-3">
-                <Button
-                  size="large"
-                  color="sea-green"
-                  onClick={() => setShowNewDialog(true)}
-                >
-                  <FilePlus />
-                  Create a new protocol
-                </Button>
-                <Button
-                  size="large"
-                  color="slate-blue"
-                  onClick={openFileDialog}
-                >
-                  <FolderOpen />
-                  Open existing protocol
-                </Button>
-              </div>
-
-              <div>
-                <p className="text-sm">
-                  First time?{' '}
-                  <button
-                    type="button"
-                    onClick={handleOpenSample}
-                    className="action-link"
+                <div className="flex items-center gap-3">
+                  <Button
+                    size="large"
+                    color="sea-green"
+                    onClick={() => setShowNewDialog(true)}
                   >
-                    Explore a sample protocol
-                  </button>
-                </p>
-                <p className="hint flex items-center gap-1.5">
+                    <FilePlus />
+                    Create a new protocol
+                  </Button>
+                  <Button size="large" color="slate-blue" onClick={open}>
+                    <FolderOpen />
+                    Open existing protocol
+                  </Button>
+                </div>
+
+                <p className="hint my-0 flex items-center gap-1.5">
                   <Upload className="h-3.5 w-3.5" />
                   Or drop a <code className="code">.netcanvas</code> file
                   anywhere on this page
                 </p>
               </div>
+
+              <LibraryPanel
+                onOpenProtocol={handleOpenLibraryProtocol}
+                onOpenSample={handleOpenSample}
+                onOpenDevProtocol={handleOpenDevProtocol}
+              />
             </div>
           </div>
         </main>
-
-        <DevTools runAction={runAction} />
       </div>
     </>
   );

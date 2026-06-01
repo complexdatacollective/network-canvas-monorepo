@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Row, Section } from '~/components/EditorLayout';
 import Text from '~/components/Form/Fields/Text';
@@ -9,14 +9,26 @@ type NewProtocolDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: { name: string }) => void;
+  title?: string;
+  initialName?: string;
 };
 
 const NewProtocolDialog = ({
   open,
   onOpenChange,
   onSubmit,
+  title = 'Create New Protocol',
+  initialName = '',
 }: NewProtocolDialogProps) => {
-  const [name, setName] = useState('');
+  const [name, setName] = useState(initialName);
+
+  // The dialog stays mounted, so reseed the field from `initialName` each time
+  // it opens (different templates prefill different default names).
+  useEffect(() => {
+    if (open) {
+      setName(initialName);
+    }
+  }, [open, initialName]);
 
   const handleConfirm = useCallback(() => {
     if (!name.trim()) return;
@@ -40,7 +52,7 @@ const NewProtocolDialog = ({
     <Dialog
       open={open}
       onOpenChange={handleOpenChange}
-      title="Create New Protocol"
+      title={title}
       footer={
         <>
           <Dialog.Close
