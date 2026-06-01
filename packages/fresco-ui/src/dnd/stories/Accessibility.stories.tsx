@@ -880,6 +880,7 @@ export const AccessibilityPlayground: Story = {
             >
               <input
                 type="checkbox"
+                aria-label="Enhanced Focus Indicators"
                 checked={config.showFocusRings}
                 onChange={(e) =>
                   setConfig((prev) => ({
@@ -896,6 +897,7 @@ export const AccessibilityPlayground: Story = {
             >
               <input
                 type="checkbox"
+                aria-label="Screen Reader Announcements"
                 checked={config.enableAnnouncements}
                 onChange={(e) =>
                   setConfig((prev) => ({
@@ -912,6 +914,7 @@ export const AccessibilityPlayground: Story = {
             >
               <input
                 type="checkbox"
+                aria-label="Show ARIA Labels Visually"
                 checked={config.showAriaLabels}
                 onChange={(e) =>
                   setConfig((prev) => ({
@@ -928,6 +931,7 @@ export const AccessibilityPlayground: Story = {
             >
               <input
                 type="checkbox"
+                aria-label="Keyboard-Only Mode"
                 checked={config.keyboardOnly}
                 onChange={(e) =>
                   setConfig((prev) => ({

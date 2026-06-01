@@ -12,9 +12,13 @@ const DEFAULT_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
   minute: 'numeric',
 };
 
-type TimeAgoProps = React.TimeHTMLAttributes<HTMLTimeElement> & {
+type TimeAgoProps = Omit<
+  React.TimeHTMLAttributes<HTMLTimeElement>,
+  'onClick'
+> & {
   date: Date | string | number;
   dateOptions?: Intl.DateTimeFormatOptions;
+  onClick?: React.MouseEventHandler<HTMLSpanElement>;
 };
 
 const TimeAgo: React.FC<TimeAgoProps> = ({
@@ -70,19 +74,30 @@ const TimeAgo: React.FC<TimeAgoProps> = ({
   }, [date, localisedDate]);
 
   return (
-    <time
-      {...props}
-      data-testid="time-ago"
-      dateTime={localisedDate}
-      title={localisedDate}
+    <span
+      role="button"
+      tabIndex={0}
       onClick={(event) => {
         setShowRaw((prev) => !prev);
         onClick?.(event);
       }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          setShowRaw((prev) => !prev);
+        }
+      }}
       className={cx('cursor-pointer select-none', className)}
     >
-      {showRaw ? localisedDate : timeAgo}
-    </time>
+      <time
+        {...props}
+        data-testid="time-ago"
+        dateTime={localisedDate}
+        title={localisedDate}
+      >
+        {showRaw ? localisedDate : timeAgo}
+      </time>
+    </span>
   );
 };
 

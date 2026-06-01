@@ -87,6 +87,7 @@ export default function RangeFilter({
         />
         <input
           type="range"
+          aria-label="Minimum"
           min={config.min}
           max={config.max}
           step={step}
@@ -96,6 +97,7 @@ export default function RangeFilter({
         />
         <input
           type="range"
+          aria-label="Maximum"
           min={config.min}
           max={config.max}
           step={step}

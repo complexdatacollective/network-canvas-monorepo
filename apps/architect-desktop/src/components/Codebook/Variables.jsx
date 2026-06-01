@@ -77,8 +77,8 @@ const Variables = ({ variables, onDelete, sortBy, sortDirection, sort }) => {
             <Heading name="usageString" {...headingProps}>
               Used In
             </Heading>
-            <th />
-            <th />
+            <th aria-label="Actions" />
+            <th aria-label="Actions" />
           </tr>
         </thead>
         <tbody>

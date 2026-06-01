@@ -87,6 +87,7 @@ function VideoPlayer({
       <video
         loop
         controls
+        aria-label={name}
         autoPlay={!isE2E}
         muted={!isE2E}
         playsInline
@@ -154,7 +155,11 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
       );
     case 'audio':
       return (
-        <audio controls autoPlay>
+        <audio
+          controls
+          autoPlay
+          aria-label={item.description ?? assetMeta.name}
+        >
           <source
             src={url}
             type={getMediaMimeType(assetMeta.name, 'audio/mpeg')}

@@ -185,6 +185,7 @@ const ShapeVariableMapping = ({
           <span>Map variable to shape</span>
           <button
             type="button"
+            aria-label="Map variable to shape"
             className={cx(
               'relative h-6 w-11 cursor-pointer rounded-full border-0',
               'transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)',
@@ -273,6 +274,7 @@ const ShapeVariableMapping = ({
                   <span className="text-muted-foreground text-sm">≥</span>
                   <input
                     type="number"
+                    aria-label="Threshold value"
                     className="bg-surface-2 border-surface-2 text-foreground w-17.5 rounded-xs border p-(--space-xs) text-center"
                     value={threshold.value}
                     onChange={(e) =>

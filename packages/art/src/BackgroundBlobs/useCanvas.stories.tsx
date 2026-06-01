@@ -43,7 +43,11 @@ const UseCanvasDemo = ({
   const ref = useCanvas(draw, predraw, postdraw);
   return (
     <div style={stageStyle(width, height, background)}>
-      <canvas ref={ref} style={{ width: '100%', height: '100%' }} />
+      <canvas
+        ref={ref}
+        aria-hidden="true"
+        style={{ width: '100%', height: '100%' }}
+      />
     </div>
   );
 };
