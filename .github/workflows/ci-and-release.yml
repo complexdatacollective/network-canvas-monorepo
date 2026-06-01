@@ -493,7 +493,12 @@ jobs:
 
   chromatic-fresco-ui:
     needs: [quality, detect]
-    if: needs.detect.outputs.fresco_ui_storybook == 'true'
+    # `quality` is needed only to order this job after it (so it reuses the
+    # .turbo cache quality writes); this job runs its own install + build and
+    # does NOT consume quality's result. `!cancelled()` opts out of the
+    # implicit needs-success gate so an unrelated quality failure can't
+    # cascade-skip a flagged run, while a superseded (cancelled) run still skips.
+    if: ${{ !cancelled() && needs.detect.outputs.fresco_ui_storybook == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -528,7 +533,9 @@ jobs:
 
   chromatic-interview:
     needs: [quality, detect]
-    if: needs.detect.outputs.interview_storybook == 'true'
+    # See chromatic-fresco-ui: `quality` orders this job for cache reuse only;
+    # `!cancelled()` keeps a quality failure from cascade-skipping a flagged run.
+    if: ${{ !cancelled() && needs.detect.outputs.interview_storybook == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -562,7 +569,9 @@ jobs:
 
   interview-e2e:
     needs: [quality, detect]
-    if: needs.detect.outputs.interview_e2e == 'true'
+    # See chromatic-fresco-ui: `quality` orders this job for cache reuse only;
+    # `!cancelled()` keeps a quality failure from cascade-skipping a flagged run.
+    if: ${{ !cancelled() && needs.detect.outputs.interview_e2e == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     outputs:
