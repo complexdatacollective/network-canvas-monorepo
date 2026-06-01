@@ -66,21 +66,12 @@ function DialogPopup({
             {children}
           </div>
           {footer && (
-            <div className="bg-accent text-accent-foreground sticky bottom-0 flex justify-end gap-(--space-sm) px-(--space-lg) py-(--space-md)">
+            <div className="bg-accent text-accent-foreground sticky bottom-0 flex justify-end gap-(--space-sm) px-(--space-lg) py-(--space-md) [&>*:first-child:not(:only-child)]:mr-auto">
               {footer}
             </div>
           )}
         </motion.div>
       }
-    />
-  );
-}
-
-function DialogTitle(props: BaseDialog.Title.Props) {
-  return (
-    <BaseDialog.Title
-      className="m-0 pb-(--space-lg) text-2xl font-semibold"
-      {...props}
     />
   );
 }
@@ -103,7 +94,6 @@ type DialogProps = {
   footer?: ReactNode;
   children?: ReactNode;
   onConfirm?: () => void;
-  onCancel?: () => void;
   confirmText?: string;
   cancelText?: string;
   confirmColor?: ComponentProps<typeof Button>['color'];
@@ -114,13 +104,12 @@ type DialogProps = {
 function Dialog({
   open,
   onOpenChange,
-  title = 'Confirm',
+  title,
   description,
   header,
   footer,
   children,
   onConfirm,
-  onCancel,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   confirmColor = 'sea-green',
@@ -131,17 +120,9 @@ function Dialog({
     <>
       <BaseDialog.Close
         nativeButton={false}
-        render={
-          <Button
-            onClick={() => {
-              onCancel?.();
-              onOpenChange(false);
-            }}
-            color="platinum"
-          >
-            {cancelText}
-          </Button>
-        }
+        // Cancel closes via Base UI's Close, which fires onOpenChange(false);
+        // button / Esc / backdrop all converge on that single handler.
+        render={<Button color="platinum">{cancelText}</Button>}
       />
       {onConfirm && (
         <Button onClick={onConfirm} color={confirmColor}>
@@ -151,15 +132,22 @@ function Dialog({
     </>
   );
 
+  // Headings always live in the accent header bar. A plain `title` string is
+  // the common case; `header` overrides it for fully custom header content.
+  const resolvedHeader =
+    header ??
+    (title ? (
+      <BaseDialog.Title className="m-0">{title}</BaseDialog.Title>
+    ) : undefined);
+
   return (
     <Modal open={open} onOpenChange={onOpenChange}>
       <DialogPopup
-        header={header}
+        header={resolvedHeader}
         footer={resolvedFooter}
         onAnimationComplete={onAnimationComplete}
         {...popupProps}
       >
-        {title && !header && <DialogTitle>{title}</DialogTitle>}
         {description && <DialogDescription>{description}</DialogDescription>}
         {children}
       </DialogPopup>

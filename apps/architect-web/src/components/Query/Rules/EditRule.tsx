@@ -43,7 +43,6 @@ class EditRule extends Component<EditRuleProps> {
         onOpenChange={(open) => !open && onCancel()}
         title="Construct a Rule"
         onConfirm={onSave}
-        onCancel={onCancel}
         confirmText="Finish and Close"
         cancelText="Cancel"
       >

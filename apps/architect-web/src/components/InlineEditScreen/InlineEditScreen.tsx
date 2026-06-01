@@ -41,17 +41,13 @@ const InlineEditScreen = ({
           onCancel();
         }
       }}
-      header={title ? <h2 className="m-0">{title}</h2> : undefined}
+      title={title ?? undefined}
       footer={
         <>
-          <Button
-            onClick={() => {
-              onCancel();
-            }}
-            color="platinum"
-          >
-            Cancel
-          </Button>
+          <Dialog.Close
+            nativeButton={false}
+            render={<Button color="platinum">Cancel</Button>}
+          />
           <Button onClick={handleSubmit} color="sea-green">
             Save and Close
           </Button>

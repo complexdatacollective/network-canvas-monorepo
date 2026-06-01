@@ -291,9 +291,10 @@ const NewStageScreen = ({
         </div>
       }
       footer={
-        <Button onClick={() => onOpenChange(false)} color="platinum">
-          Cancel
-        </Button>
+        <Dialog.Close
+          nativeButton={false}
+          render={<Button color="platinum">Cancel</Button>}
+        />
       }
       className="h-[80%]"
     >
