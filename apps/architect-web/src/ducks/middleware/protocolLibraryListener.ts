@@ -40,6 +40,8 @@ let pending: {
 // save otherwise) and resets on the next successful save.
 let autosaveErrorNotified = false;
 
+const writeLocks = new Map<string, Promise<void>>();
+
 // Persist a snapshot. A silent autosave failure would let the user keep editing
 // while their work isn't being saved, so surface it to them (throttled) and log
 // the details rather than dropping the promise.
@@ -48,7 +50,10 @@ const flush = (snapshot: ProtocolSnapshot, dispatch: AppDispatch): void => {
   if (!protocol) {
     return;
   }
-  void (async () => {
+
+  const previous = writeLocks.get(snapshot.id) ?? Promise.resolve();
+  const run = (async () => {
+    await previous;
     try {
       // A pending timer can fire after the protocol was deleted during the
       // debounce window; bail if the row is gone so we don't resurrect it.
@@ -78,6 +83,13 @@ const flush = (snapshot: ProtocolSnapshot, dispatch: AppDispatch): void => {
       }
     }
   })();
+
+  writeLocks.set(snapshot.id, run);
+  void run.finally(() => {
+    if (writeLocks.get(snapshot.id) === run) {
+      writeLocks.delete(snapshot.id);
+    }
+  });
 };
 
 // Autosave: debounce a write of the active protocol into its library row.

@@ -173,7 +173,8 @@ const LibraryPanel = ({
     }
   }, [tab, isLoaded, protocols.length]);
 
-  const activeTab = tab ?? 'recent';
+  const loadedDefault: Tab = protocols.length === 0 ? 'templates' : 'recent';
+  const activeTab = tab ?? (isLoaded ? loadedDefault : null);
 
   const handleDownload = useCallback(
     async (protocol: StoredProtocolRow) => {
@@ -220,8 +221,21 @@ const LibraryPanel = ({
         }),
       ).unwrap();
 
-      if (confirmed) {
-        await dispatch(deleteLibraryProtocol(protocol.id));
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        await dispatch(deleteLibraryProtocol(protocol.id)).unwrap();
+      } catch (error) {
+        void dispatch(
+          openDialog({
+            type: 'Error',
+            title: 'Delete failed',
+            message: `"${protocol.name}" could not be deleted.`,
+            error: error instanceof Error ? error : String(error),
+          }),
+        );
       }
     },
     [dispatch],
@@ -240,9 +254,22 @@ const LibraryPanel = ({
       }),
     ).unwrap();
 
-    if (confirmed) {
+    if (!confirmed) {
+      return;
+    }
+
+    try {
       // Wipes storage and reloads the app from a clean slate.
       await clearAllStorage();
+    } catch (error) {
+      void dispatch(
+        openDialog({
+          type: 'Error',
+          title: 'Could not remove data',
+          message: 'The stored data could not be removed from this browser.',
+          error: error instanceof Error ? error : String(error),
+        }),
+      );
     }
   }, [dispatch]);
 
