@@ -40,6 +40,11 @@ export const sliderTrackVariants = cva({
   base: cx(
     'inset-surface relative h-4 w-full rounded border-2',
     'transition-colors duration-200',
+    // At the extreme values the thumb overflows the track edge; WebKit then
+    // drops the track's inset-surface box-shadow. Promoting the track to its
+    // own compositing layer makes the inset shadow rasterize independently of
+    // the overflowing thumb.
+    'transform-[translateZ(0)]',
   ),
   variants: {
     state: {
