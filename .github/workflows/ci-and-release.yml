@@ -931,19 +931,22 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  # Carry forward prior success statuses for conditional jobs that the
-  # current push didn't touch. Push-to-push detection (see detect job)
+  # Carry forward prior statuses for conditional jobs that the current
+  # push didn't touch. Push-to-push detection (see detect job)
   # deliberately re-runs a job ONLY when its package changed between
   # consecutive PR commits, but GitHub renders the latest workflow run's
-  # check list — so jobs that ran successfully on an earlier PR commit
-  # would appear "skipped" on the new tip and (depending on branch
-  # protection config) block merge.
+  # check list — so jobs that ran on an earlier PR commit would appear
+  # "skipped" on the new tip and (depending on branch protection config)
+  # block merge.
   #
   # This step republishes a check_run on the current SHA — same name,
-  # conclusion "success" — pointing at the prior run that did succeed.
-  # Branch protection sees the most-recent check_run for each name and
-  # treats the job as passing without burning runner time re-executing
-  # work that's still valid.
+  # same conclusion as the job's most recent CONCLUSIVE prior run —
+  # pointing at that run. Crucially it carries the prior verdict faithfully:
+  # a job that last FAILED for unchanged code stays red, rather than being
+  # masked by an even-older green run. Branch protection sees the
+  # most-recent check_run for each name, so a still-valid pass merges
+  # without re-running and a still-valid failure keeps blocking — both
+  # without burning runner time re-executing work that hasn't changed.
   #
   # First push on a PR: no prior runs exist, so nothing to carry; the
   # detect logic already runs the relevant jobs at least once because
@@ -998,8 +1001,17 @@ jobs:
             }
 
             // Walk prior workflow runs on this PR's source branch, most recent
-            // first, looking for the latest successful execution of each
-            // skipped job. We stop walking once every skipped job is resolved.
+            // first, looking for the latest CONCLUSIVE execution of each skipped
+            // job — the run whose verdict still describes the current code,
+            // since the job was skipped on this push precisely because its
+            // package didn't change. The first conclusive verdict we encounter
+            // is authoritative whether it passed or failed; carrying a stale
+            // success over an intervening failure would misrepresent the branch.
+            // "success", "failure" and "timed_out" are conclusive verdicts;
+            // "skipped", "cancelled" (superseded by a newer push — see the
+            // cancel-in-progress concurrency above) and in-flight runs carry no
+            // verdict, so we walk past them.
+            const CONCLUSIVE = new Set(["success", "failure", "timed_out"]);
             const remaining = new Set(skippedJobs);
             const resolutions = new Map();
             let page = 1;
@@ -1034,10 +1046,9 @@ jobs:
                 });
                 for (const job of jobs.jobs) {
                   if (!remaining.has(job.name)) continue;
-                  if (job.conclusion === "success") {
-                    resolutions.set(job.name, { run, job });
-                    remaining.delete(job.name);
-                  }
+                  if (!CONCLUSIVE.has(job.conclusion)) continue;
+                  resolutions.set(job.name, { run, job });
+                  remaining.delete(job.name);
                 }
                 if (remaining.size === 0) break outer;
               }
@@ -1046,26 +1057,31 @@ jobs:
             }
 
             for (const [name, { run, job }] of resolutions) {
+              const conclusion = job.conclusion;
+              const passed = conclusion === "success";
+              const outcome = passed
+                ? `ran successfully`
+                : `last ran to a \`${conclusion}\` conclusion`;
               await github.rest.checks.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 name,
                 head_sha: context.sha,
                 status: "completed",
-                conclusion: "success",
+                conclusion,
                 details_url: job.html_url,
                 output: {
                   title: `Carried forward from ${run.head_sha.substring(0, 7)}`,
                   summary: [
-                    `This job ran successfully on an earlier commit of this PR and the latest push did not touch its package, so it was not re-executed.`,
+                    `This job ${outcome} on an earlier commit of this PR and the latest push did not touch its package, so it was not re-executed. That result still applies to the current code.`,
                     ``,
                     `Source run: [#${run.run_number}](${run.html_url}) on commit \`${run.head_sha.substring(0, 7)}\`.`,
                   ].join("\n"),
                 },
               });
-              core.info(`Carried forward ${name} from run #${run.run_number} (${run.head_sha.substring(0, 7)}).`);
+              core.info(`Carried forward ${name} (${conclusion}) from run #${run.run_number} (${run.head_sha.substring(0, 7)}).`);
             }
 
             for (const name of remaining) {
-              core.info(`No prior successful run found for ${name}; leaving its skipped status as-is.`);
+              core.info(`No prior conclusive run found for ${name}; leaving its skipped status as-is.`);
             }
