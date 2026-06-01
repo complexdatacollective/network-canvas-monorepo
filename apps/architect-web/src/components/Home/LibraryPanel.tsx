@@ -170,22 +170,37 @@ const LibraryPanel = ({
 
   const activeTab = tab ?? 'recent';
 
-  const handleDownload = useCallback(async (protocol: StoredProtocolRow) => {
-    setDownloadingIds((prev) => new Set(prev).add(protocol.id));
-    try {
-      await downloadProtocolAsNetcanvas(
-        protocol.protocol,
-        protocol.name,
-        protocol.id,
-      );
-    } finally {
-      setDownloadingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(protocol.id);
-        return next;
-      });
-    }
-  }, []);
+  const handleDownload = useCallback(
+    async (protocol: StoredProtocolRow) => {
+      setDownloadingIds((prev) => new Set(prev).add(protocol.id));
+      try {
+        await downloadProtocolAsNetcanvas(
+          protocol.protocol,
+          protocol.name,
+          protocol.id,
+        );
+      } catch (error) {
+        // Surface bundling/download failures instead of letting the promise
+        // reject unhandled with no feedback. Not awaited so the spinner clears
+        // immediately rather than waiting for the user to dismiss the dialog.
+        void dispatch(
+          openDialog({
+            type: 'Error',
+            title: 'Download failed',
+            message: `"${protocol.name}" could not be downloaded.`,
+            error: error instanceof Error ? error : String(error),
+          }),
+        );
+      } finally {
+        setDownloadingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(protocol.id);
+          return next;
+        });
+      }
+    },
+    [dispatch],
+  );
 
   const handleDelete = useCallback(
     async (protocol: StoredProtocolRow) => {

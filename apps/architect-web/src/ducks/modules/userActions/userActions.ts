@@ -329,9 +329,39 @@ export const openLibraryProtocol = createAsyncThunk(
       return;
     }
 
-    dispatch(setActiveProtocolId(id));
-    dispatch(setActiveProtocol(row.protocol));
-    navigate('/protocol');
+    try {
+      // Rows are written at the then-current schema version, so a newer app
+      // build may need to migrate them on open just like file/remote opens.
+      const migratedProtocol = await dispatch(
+        handleProtocolMigration({ protocol: row.protocol, name: row.name }),
+      ).unwrap();
+
+      // User declined the upgrade, or the app is too old to open this version.
+      if (!migratedProtocol) {
+        return;
+      }
+
+      // Persist the upgrade back to the same row so we don't re-prompt next time.
+      if (migratedProtocol.schemaVersion !== row.protocol.schemaVersion) {
+        await putStoredProtocol({
+          id,
+          protocol: migratedProtocol,
+          name: row.name,
+          description: row.description,
+        });
+      }
+
+      dispatch(setActiveProtocolId(id));
+      dispatch(setActiveProtocol(migratedProtocol));
+      navigate('/protocol');
+    } catch (error) {
+      void dispatch(
+        generalErrorDialog(
+          'Failed to Open Protocol',
+          ensureError(error).message,
+        ),
+      );
+    }
   },
 );
 

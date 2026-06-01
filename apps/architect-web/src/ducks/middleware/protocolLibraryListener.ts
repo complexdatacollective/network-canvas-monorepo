@@ -4,7 +4,7 @@ import {
 } from '@reduxjs/toolkit';
 
 import { getProtocol } from '~/selectors/protocol';
-import { putStoredProtocol } from '~/utils/protocolLibrary';
+import { getStoredProtocol, putStoredProtocol } from '~/utils/protocolLibrary';
 
 import {
   setActiveProtocol,
@@ -37,17 +37,28 @@ let pending: {
 // Persist a snapshot, surfacing IndexedDB/quota errors rather than dropping the
 // promise (a silent autosave failure would lose user edits without warning).
 const flush = (snapshot: ProtocolSnapshot): void => {
-  if (!snapshot.protocol) {
+  const { protocol } = snapshot;
+  if (!protocol) {
     return;
   }
-  void putStoredProtocol({
-    id: snapshot.id,
-    protocol: snapshot.protocol,
-    name: snapshot.name,
-    description: snapshot.description,
-  }).catch((error: unknown) => {
-    console.error('Autosave to protocol library failed', error);
-  });
+  void (async () => {
+    try {
+      // A pending timer can fire after the protocol was deleted during the
+      // debounce window; bail if the row is gone so we don't resurrect it.
+      const existing = await getStoredProtocol(snapshot.id);
+      if (!existing) {
+        return;
+      }
+      await putStoredProtocol({
+        id: snapshot.id,
+        protocol,
+        name: snapshot.name,
+        description: snapshot.description,
+      });
+    } catch (error: unknown) {
+      console.error('Autosave to protocol library failed', error);
+    }
+  })();
 };
 
 // Autosave: debounce a write of the active protocol into its library row.
