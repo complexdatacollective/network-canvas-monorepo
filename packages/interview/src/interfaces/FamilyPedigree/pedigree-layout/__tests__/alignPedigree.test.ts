@@ -726,7 +726,7 @@ describe('traditional family regression', () => {
 });
 
 it('adoption by relative: no duplicate group lines', () => {
-  const sp = (parentIndex: number): ParentConnection => ({
+  const bioParent = (parentIndex: number): ParentConnection => ({
     parentIndex,
     edgeType: 'biological',
   });
@@ -736,8 +736,8 @@ it('adoption by relative: no duplicate group lines', () => {
     parents: [
       [],
       [],
-      [sp(0), sp(1)],
-      [sp(0), sp(1)],
+      [bioParent(0), bioParent(1)],
+      [bioParent(0), bioParent(1)],
       [],
       [
         { parentIndex: 2, edgeType: 'biological' },

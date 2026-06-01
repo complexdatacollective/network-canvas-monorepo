@@ -5,11 +5,11 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import {
   createInitialNetwork,
-  generateNetwork,
   type InterviewPayload,
   type SessionPayload,
   Shell,
 } from '@codaco/interview';
+import { generateNetwork } from '@codaco/protocol-utilities';
 import Button from '~/lib/legacy-ui/components/Button';
 
 import { currentProtocolToPayload } from './currentProtocolToPayload';

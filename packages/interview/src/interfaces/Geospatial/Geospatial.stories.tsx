@@ -4,8 +4,8 @@ import SuperJSON from 'superjson';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { SyntheticInterview } from '@codaco/protocol-utilities';
 import StoryInterviewShell from '~/.storybook/StoryInterviewShell';
-import { SyntheticInterview } from '~/synthetic/SyntheticInterview';
 
 // Requires STORYBOOK_MAPBOX_TOKEN env var to be set
 const MAPBOX_TOKEN = import.meta.env.STORYBOOK_MAPBOX_TOKEN as string;

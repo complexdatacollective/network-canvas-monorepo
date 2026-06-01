@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import type { VariableOption } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
-import type { VariableOption } from '~/utils/codebook';
 
 import { groupNodesByVariable } from '../ConvexHullLayer';
 

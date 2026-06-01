@@ -16,6 +16,8 @@ import { ComponentTypes, VariableTypes } from './types';
 import { validations } from './validation';
 
 export type VariableOptions = z.infer<typeof categoricalOptionsSchema>;
+export type VariableOption = VariableOptions[number];
+export type VariableOptionValue = VariableOption['value'];
 
 // Variable Schema
 const baseVariableSchema = z.strictObject({

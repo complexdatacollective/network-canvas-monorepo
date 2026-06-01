@@ -16,7 +16,7 @@ const ExampleForm = ({ show, onComplete, onBlur }) => (
   <Modal show={show} onBlur={onBlur}>
     <div style={{ background: 'white', padding: '20px', borderRadius: '20px' }}>
       Name:
-      <input type="text" />
+      <input type="text" aria-label="Name" />
       <button type="button" onClick={onComplete}>
         Confirm
       </button>

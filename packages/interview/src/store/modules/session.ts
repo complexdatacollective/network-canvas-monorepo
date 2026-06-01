@@ -7,7 +7,6 @@ import {
 import { invariant } from 'es-toolkit';
 import { find, get } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
-import { z } from 'zod/mini';
 
 import type { Codebook } from '@codaco/protocol-validation';
 import {
@@ -21,6 +20,7 @@ import {
   type NcEntity,
   type NcNetwork,
   type NcNode,
+  type StageMetadata,
   type VariableValue,
 } from '@codaco/shared-consts';
 import { generateSecureAttributes } from '~/interfaces/Anonymisation/utils';
@@ -79,60 +79,6 @@ export function edgeExists(
   return false;
 }
 
-const FamilyPedigreeStageMetadataSchema = z.object({
-  isNetworkCommitted: z.boolean(),
-  nodes: z.optional(
-    z.array(
-      z.object({
-        id: z.string(),
-        label: z.string(),
-        isEgo: z.boolean(),
-      }),
-    ),
-  ),
-  edges: z.optional(
-    z.array(
-      z.object({
-        id: z.string(),
-        from: z.string(),
-        to: z.string(),
-        attributes: z.record(
-          z.string(),
-          z.union([
-            z.string(),
-            z.number(),
-            z.boolean(),
-            z.null(),
-            z.array(z.number()),
-            z.array(z.union([z.string(), z.number(), z.boolean()])),
-            z.record(
-              z.string(),
-              z.union([z.string(), z.boolean(), z.number()]),
-            ),
-          ]),
-        ),
-      }),
-    ),
-  ),
-});
-
-const DyadCensusMetadataItem = z.tuple([
-  z.number(), // prompt index
-  z.string(), // entity a
-  z.string(), // entity b
-  z.boolean(), // is present
-]);
-
-export type DyadCensusMetadataItem = z.infer<typeof DyadCensusMetadataItem>;
-
-const DyadCensusStageMetadataSchema = z.array(DyadCensusMetadataItem);
-
-export const StageMetadataSchema = z.record(
-  z.string(), // stage ID
-  z.union([FamilyPedigreeStageMetadataSchema, DyadCensusStageMetadataSchema]),
-);
-
-type StageMetadata = z.infer<typeof StageMetadataSchema>;
 type StageMetadataEntry = StageMetadata[string];
 
 export type SessionState = {

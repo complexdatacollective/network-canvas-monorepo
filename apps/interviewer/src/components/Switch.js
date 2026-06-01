@@ -18,6 +18,7 @@ const Switch = ({ label, on, disabled, className, onChange }) => {
       <input
         className="switch__input"
         id={id.current}
+        aria-label={label ?? undefined}
         checked={on}
         disabled={disabled}
         type="checkbox"

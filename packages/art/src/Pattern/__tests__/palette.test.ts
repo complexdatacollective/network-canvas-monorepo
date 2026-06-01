@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { BASE_PALETTE, rngToPalette, seedToDeepAccent } from '../palette';
+import {
+  BASE_PALETTE,
+  rngToPalette,
+  seedToDeepAccent,
+  seedToPatternPalette,
+} from '../palette';
 import { seedToRng } from '../seed';
 
 const parseOklch = (s: string) => {
@@ -57,5 +62,28 @@ describe('seedToDeepAccent', () => {
 
   it('is deterministic for the same seed', () => {
     expect(seedToDeepAccent('alice')).toBe(seedToDeepAccent('alice'));
+  });
+});
+
+describe('seedToPatternPalette', () => {
+  it('matches the palette that Pattern variants paint for the same seed', () => {
+    const { foreground, backgroundTop, backgroundBottom } =
+      seedToPatternPalette('alice');
+    const variantPalette = rngToPalette(seedToRng('alice'));
+    expect(foreground).toBe(variantPalette.foreground);
+    expect(backgroundTop).toBe(variantPalette.backgroundTop);
+    expect(backgroundBottom).toBe(variantPalette.backgroundBottom);
+  });
+
+  it('matches seedToDeepAccent for the same seed', () => {
+    expect(seedToPatternPalette('alice').deepAccent).toBe(
+      seedToDeepAccent('alice'),
+    );
+  });
+
+  it('is deterministic for the same seed', () => {
+    expect(seedToPatternPalette('alice')).toEqual(
+      seedToPatternPalette('alice'),
+    );
   });
 });

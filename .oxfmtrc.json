@@ -35,6 +35,7 @@
     "**/coverage/**",
     "**/.turbo/**",
     "**/public/**/*.*",
-    "**/worker-configuration.d.ts"
+    "**/worker-configuration.d.ts",
+    "**/*.xcassets/**/Contents.json"
   ]
 }

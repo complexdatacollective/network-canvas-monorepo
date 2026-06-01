@@ -54,7 +54,7 @@ export default function RelativeDatePickerField(
       min={minYmd}
       max={maxYmd}
       value={value}
-      onChange={(value) => onChange?.(String(value))}
+      onChange={(inputValue) => onChange?.(String(inputValue))}
       onBlur={rest.onBlur}
       name={name ?? ''}
       placeholder={placeholder}

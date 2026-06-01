@@ -2,7 +2,6 @@
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "ignoreWorkspaces": ["apps/interviewer", "apps/architect-desktop"],
   "ignoreExportsUsedInFile": { "type": true },
-  "ignoreDependencies": ["oxlint-tailwindcss"],
   "tags": ["-public"],
   "workspaces": {
     "packages/ui": {},
@@ -48,6 +47,22 @@
         "@fontsource-variable/nunito"
       ]
     },
+    "apps/interviewer-v7": {
+      "entry": [
+        "index.html!",
+        "electron.vite.config.ts",
+        "vite.renderer.config.ts",
+        "electron-builder.config.cjs",
+        "electron/main.ts",
+        "electron/preload.ts"
+      ],
+      "vite": true,
+      "project": ["src/**/*.{ts,tsx}", "electron/**/*.ts"],
+      "paths": {
+        "~/*": ["./src/*"]
+      },
+      "ignore": ["src/**/*.d.ts"]
+    },
     "apps/architect-web": {
       "entry": ["index.html!", "preview/index.html!", "src/preview-main.tsx!"],
       "vite": true,
@@ -56,7 +71,7 @@
         "~/*": ["./src/*"]
       },
       "ignoreDependencies": ["@types/recompose"],
-      "ignore": ["src/**/*.d.ts", "src/test/**"]
+      "ignore": ["src/**/*.d.ts"]
     },
     "workers/development-protocol": {},
     "workers/posthog-proxy": {}

@@ -40,6 +40,12 @@ export const surfaceVariants = compose(
     // `scrollIntoView`/focus auto-scroll to move a descendant into view by
     // scrolling the Surface itself, which in dialogs pushes the header off
     // screen when content exceeds the clipped area.
+    //
+    // Padding (`spacing`) and shadow (`shadow`) are intentionally separate
+    // axes: a Combobox popup wants compact padding but a heavy shadow when
+    // stacked on top of another popover, and a floating bar wants subtle
+    // padding with a strong shadow cue. Named `shadow` (not `elevation`) to
+    // avoid clashing with the `elevation-*` Tailwind plugin utilities.
     base: 'publish-colors relative min-h-0 overflow-clip rounded',
     variants: {
       level: {
@@ -47,10 +53,9 @@ export const surfaceVariants = compose(
         1: 'text-surface-1-contrast bg-surface-1',
         2: 'text-surface-2-contrast bg-surface-2',
         3: 'text-surface-3-contrast bg-surface-3',
-        popover:
-          'text-surface-popover-contrast bg-surface-popover [--focus-color:white]',
+        popover: 'text-surface-popover-contrast bg-surface-popover border-2',
       },
-      spacing: {
+      shadow: {
         none: '',
         xs: 'shadow',
         sm: 'shadow-md',
@@ -61,7 +66,7 @@ export const surfaceVariants = compose(
     },
     defaultVariants: {
       level: 0,
-      spacing: 'md',
+      shadow: 'md',
     },
   }),
 );
@@ -88,8 +93,8 @@ type SurfaceProps<T extends ElementType = 'div'> = {
  * being nested.
  *
  * Implementation note: Uses a ::before pseudo-element for the background layer
- * to ensure elevation shadows correctly reference the parent's background color
- * while keeping a single DOM element for clean layout control.
+ * to ensure shadows correctly reference the parent's background color while
+ * keeping a single DOM element for clean layout control.
  *
  * To override the background color, use `before:bg-*` classes in className:
  * <Surface className="before:bg-primary text-primary-contrast">
@@ -101,6 +106,7 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
       children,
       level,
       spacing,
+      shadow,
       section,
       className,
       maxWidth,
@@ -119,6 +125,7 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
           surfaceVariants({
             level,
             spacing,
+            shadow,
             section,
           }),
           className,

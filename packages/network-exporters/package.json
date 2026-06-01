@@ -1,6 +1,6 @@
 {
   "name": "@codaco/network-exporters",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Effect-TS pipeline for exporting Network Canvas interview data as CSV and GraphML.",
   "license": "GPL-3.0-or-later",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
@@ -57,8 +57,8 @@
     }
   },
   "scripts": {
-    "build": "tsgo --noEmit && vite build",
-    "dev": "npm run build -- --watch",
+    "build": "node ../../scripts/with-turbo.mjs vite build",
+    "dev": "node ../../scripts/with-turbo.mjs --with-deps vite build --watch",
     "typecheck": "tsgo --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest"
@@ -67,9 +67,9 @@
     "@codaco/protocol-validation": "workspace:*",
     "@codaco/shared-consts": "workspace:*",
     "@xmldom/xmldom": "^0.9.10",
-    "effect": "^3.21.2",
+    "effect": "catalog:",
     "es-toolkit": "catalog:",
-    "fflate": "^0.8.2",
+    "fflate": "^0.8.3",
     "ohash": "^2.0.11",
     "sanitize-filename": "^1.6.4",
     "zod": "catalog:"

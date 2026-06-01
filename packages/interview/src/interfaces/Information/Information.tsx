@@ -87,6 +87,7 @@ function VideoPlayer({
       <video
         loop
         controls
+        aria-label={name}
         autoPlay={!isE2E}
         muted={!isE2E}
         playsInline
@@ -154,7 +155,11 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
       );
     case 'audio':
       return (
-        <audio controls autoPlay>
+        <audio
+          controls
+          autoPlay
+          aria-label={item.description ?? assetMeta.name}
+        >
           <source
             src={url}
             type={getMediaMimeType(assetMeta.name, 'audio/mpeg')}
@@ -195,7 +200,7 @@ const Information = ({ stage: { title, items } }: InformationProps) => {
   return (
     <ScrollArea className="m-0 size-full">
       <div className="interface allow-text-selection mx-auto flex min-h-full max-w-[80ch] flex-col justify-center">
-        <Surface className="grow-0" noContainer spacing="lg">
+        <Surface className="grow-0" noContainer spacing="lg" shadow="lg">
           <Heading level="h1" className="text-center">
             {title}
           </Heading>

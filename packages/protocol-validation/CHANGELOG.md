@@ -1,5 +1,24 @@
 # @codaco/protocol-validation
 
+## 11.6.0
+
+### Minor Changes
+
+- Add `VariableOption` and `VariableOptionValue` exports, derived from the existing `VariableOptions` (`z.infer<typeof categoricalOptionsSchema>`):
+
+  ```ts
+  export type VariableOption = VariableOptions[number];
+  export type VariableOptionValue = VariableOption['value'];
+  ```
+
+  Consumers that previously hand-rolled equivalent shims (`@codaco/interview`'s `utils/codebook.ts`, `@codaco/protocol-utilities`'s `types.ts`) should import from here instead. Both shims have been deleted in their respective packages' next releases.
+
+## 11.5.0
+
+### Minor Changes
+
+- Add `hashProtocol(protocol)` export — content-only hash of `{ codebook, stages }` for cross-package protocol identification (dedup, analytics, migration). Computed via `ohash`.
+
 ## 11.4.0
 
 ### Minor Changes

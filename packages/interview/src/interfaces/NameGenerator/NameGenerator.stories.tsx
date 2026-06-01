@@ -3,9 +3,9 @@ import { useMemo } from 'react';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
+import { SyntheticInterview } from '@codaco/protocol-utilities';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import StoryInterviewShell from '~/.storybook/StoryInterviewShell';
-import { SyntheticInterview } from '~/synthetic/SyntheticInterview';
 
 type StageType = 'NameGenerator' | 'NameGeneratorQuickAdd';
 

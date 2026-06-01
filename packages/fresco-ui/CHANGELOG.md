@@ -1,6 +1,36 @@
 # @codaco/fresco-ui
 
-## 2.10.1
+## 2.11.0
+
+### Minor Changes
+
+- New `DataTable` component family at `./DataTable`: `DataTable`, `ColumnHeader`, `DataTableFacetedFilter`, `DataTableFloatingBar`, `DataTablePagination`, `DataTableSkeleton`, `DataTableToolbar`, `SelectAllHeader`, plus filter helpers. Built on `@tanstack/react-table` with built-in pagination, sorting, faceted filters, row selection, and a floating bulk-action bar. Ports the prior `interviewer-v7` DataView implementation up into the shared component library.
+
+- `WizardDialog` accepts an optional `cancelLabel` prop so consumers can override the default cancel-button copy (used by `interviewer-v7`'s setup wizard for "Continue without security").
+
+- `Dialog` accepts a `dismissible` prop (default `true`) that controls whether the close button renders and whether outside-clicks/Esc dismiss the dialog. `Modal` no longer passes the prop through — gating happens locally inside `Dialog`. Used by `interviewer-v7`'s `LockScreen` to require explicit unlock before the dialog can close.
+
+- `SegmentedCodeField` gains a `sensitive` prop that masks character display (suitable for PIN entry).
+
+- `SegmentedCodeField` forwards `autoFocus` to its first segment using the shared `focusable` utility, so wizard steps can autofocus into PIN entry.
+
+### Patch Changes
+
+- `openDialog` defers its internal `flushSync` to a microtask so callers can invoke `openDialog` from inside `useEffect` (previously threw the "flushSync cannot be called from inside a lifecycle method" error).
+
+- `Alert` icon alignment refined and the alert region announces correctly to assistive tech via a proper live-region role.
+
+- `FormErrors` now renders via the `Alert` component for visual and semantic consistency with the rest of the form layer.
+
+- `Combobox` list spacing fix; empty-state color switched to a neutral foreground token.
+
+- Zod `GlobalMeta` augmentation repaired (the `.hint` field now actually propagates), and `collectNetworkValues` tightened.
+
+- Type assertions stripped by `oxlint --fix` were restored where soundness required them.
+
+- Internal: `Modal/Modal.tsx` renamed to `Modal/index.tsx`. `popover` Surface variant drops its `--focus-color` override (now inherited from the surrounding theme). New Storybook coverage for the elevation/inset-surface/motion-spring plugins and a `ServerSideValidation` Form demo.
+
+## 2.10.2
 
 ### Patch Changes
 

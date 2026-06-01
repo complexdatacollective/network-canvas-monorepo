@@ -207,13 +207,13 @@ const EgoFormInner = (props: EgoFormProps) => {
     <>
       <ScrollArea className="m-0 size-full" ref={scrollAreaRef}>
         <div className="interface mx-auto max-w-[80ch] flex-col">
-          <Surface spacing="lg">
+          <Surface spacing="lg" shadow="lg">
             <Heading level="h1">{introductionPanel.title}</Heading>
             <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
               {introductionPanel.text}
             </RenderMarkdown>
           </Surface>
-          <Surface spacing="lg">
+          <Surface spacing="lg" shadow="lg">
             <FormWithoutProvider onSubmit={handleSubmitForm}>
               {fieldComponents}
             </FormWithoutProvider>
@@ -227,6 +227,7 @@ const EgoFormInner = (props: EgoFormProps) => {
             noContainer
             level="popover"
             spacing="xs"
+            shadow="xs"
             role="status"
             aria-live="polite"
             className="scroll-nudge absolute bottom-4 left-1/2 z-10 flex translate-x-[-50%]"

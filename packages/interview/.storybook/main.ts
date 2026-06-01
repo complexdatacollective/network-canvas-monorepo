@@ -1,5 +1,3 @@
-import { resolve } from 'node:path';
-
 import { defineMain } from '@storybook/react-vite/node';
 import tailwindcss from '@tailwindcss/vite';
 import { mergeConfig } from 'vite';
@@ -27,15 +25,22 @@ export default defineMain({
       plugins: [tailwindcss()],
       resolve: {
         tsconfigPaths: true,
-        alias: {
-          '@codaco/fresco-ui': resolve(
-            import.meta.dirname,
-            '../../fresco-ui/src',
-          ),
-        },
       },
       optimizeDeps: {
         include: ['d3-force'],
+        // Workspace libraries are consumed as built `dist` and kept fresh by
+        // their `dev` watchers (run via `with-turbo --watch-deps`). Exclude them
+        // from Vite's dependency pre-bundling so Storybook resolves the current
+        // `dist` instead of a stale pre-bundle cached under
+        // `.cache/storybook/**/sb-vite/deps`.
+        exclude: [
+          '@codaco/fresco-ui',
+          '@codaco/shared-consts',
+          '@codaco/protocol-validation',
+          '@codaco/protocol-utilities',
+          '@codaco/network-query',
+          '@codaco/network-exporters',
+        ],
       },
     }),
 });

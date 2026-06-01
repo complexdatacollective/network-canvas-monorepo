@@ -154,7 +154,9 @@ export default function DatePickerField(props: DatePickerFieldProps) {
           options={years}
           placeholder="Year"
           value={selectedYear}
-          onChange={(value) => handleChange(String(value), undefined)}
+          onChange={(selectValue) =>
+            handleChange(String(selectValue), undefined)
+          }
           onBlur={onBlur}
           disabled={disabled ?? readOnly}
           aria-invalid={rest['aria-invalid']}
@@ -166,7 +168,9 @@ export default function DatePickerField(props: DatePickerFieldProps) {
           options={availableMonths}
           placeholder="Month"
           value={selectedMonth}
-          onChange={(value) => handleChange(undefined, String(value))}
+          onChange={(selectValue) =>
+            handleChange(undefined, String(selectValue))
+          }
           onBlur={onBlur}
           disabled={disabled ?? readOnly ?? !selectedYear}
           aria-invalid={rest['aria-invalid']}

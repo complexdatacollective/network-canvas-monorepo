@@ -34,8 +34,8 @@ const segmentVariants = compose(
   interactiveStateVariants,
   cva({
     base: cx(
-      'font-monospace aspect-square min-w-0 text-center caret-transparent',
-      'focus-visible:focus-styles outline-current',
+      'font-monospace aspect-square min-w-0 rounded-sm text-center caret-transparent ring-0',
+      'focusable',
       'placeholder:text-input-contrast/30',
     ),
     variants: {
@@ -91,6 +91,7 @@ type SegmentedCodeFieldProps = CreateFormFieldProps<
     size?: VariantProps<typeof textSizeVariants>['size'];
     separatorAfter?: number[];
     separatorChar?: string;
+    sensitive?: boolean;
     onComplete?: (value: string) => void;
   }
 >;
@@ -102,6 +103,7 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
     size = 'md',
     separatorAfter = [],
     separatorChar = '\u2013',
+    sensitive = false,
     onComplete,
     value = '',
     onChange,
@@ -110,6 +112,7 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
     className,
     onBlur,
     id,
+    autoFocus,
     name: _name,
     ...rest
   } = props;
@@ -256,16 +259,22 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
               inputRefs.current[i] = el;
             }}
             id={i === 0 ? id : undefined}
-            type="text"
+            // oxlint-disable-next-line jsx-a11y/no-autofocus
+            autoFocus={i === 0 ? autoFocus : undefined}
+            type={sensitive ? 'password' : 'text'}
             inputMode={inputMode}
-            autoComplete={i === 0 ? 'one-time-code' : 'off'}
+            autoComplete={sensitive ? 'off' : i === 0 ? 'one-time-code' : 'off'}
             maxLength={1}
             className={segmentVariants({ size, state })}
             value={chars[i] ?? ''}
             placeholder={'\u00B7'}
             disabled={disabled}
             readOnly={readOnly}
-            aria-label={`Digit ${String(i + 1)} of ${String(segments)}`}
+            aria-label={
+              sensitive
+                ? `Digit ${String(i + 1)} of ${String(segments)}, hidden`
+                : `Digit ${String(i + 1)} of ${String(segments)}`
+            }
             aria-invalid={rest['aria-invalid']}
             aria-describedby={i === 0 ? rest['aria-describedby'] : undefined}
             aria-required={i === 0 ? rest['aria-required'] : undefined}

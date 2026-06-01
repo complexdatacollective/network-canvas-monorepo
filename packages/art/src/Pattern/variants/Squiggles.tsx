@@ -49,9 +49,14 @@ export const SquigglesPattern = ({
 }: PatternProps) => {
   const { palette, content } = useMemo(() => {
     const rng = seedToRng(seed);
-    const palette = rngToPalette(rng);
-    const content = renderSquiggles(rng, palette, width, height);
-    return { palette, content };
+    const generatedPalette = rngToPalette(rng);
+    const renderedContent = renderSquiggles(
+      rng,
+      generatedPalette,
+      width,
+      height,
+    );
+    return { palette: generatedPalette, content: renderedContent };
   }, [seed, width, height]);
   return (
     <PatternSvg

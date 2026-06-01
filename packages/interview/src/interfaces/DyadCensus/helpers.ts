@@ -1,5 +1,8 @@
-import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
-import type { DyadCensusMetadataItem } from '~/store/modules/session';
+import {
+  type DyadCensusMetadataItem,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 type Pair = [string, string];
 

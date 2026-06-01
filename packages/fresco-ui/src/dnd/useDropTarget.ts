@@ -250,9 +250,11 @@ export function useDropTarget(
     // Store cleanup function with proper event listener removal
     (element as HTMLElement & { __dndCleanup?: () => void }).__dndCleanup =
       () => {
-        scrollListeners.forEach(({ element: el, handler, options }) => {
-          el.removeEventListener('scroll', handler, options);
-        });
+        scrollListeners.forEach(
+          ({ element: el, handler, options: listenerOptions }) => {
+            el.removeEventListener('scroll', handler, listenerOptions);
+          },
+        );
         window.removeEventListener('resize', handleResize, windowResizeOptions);
       };
   }, [
@@ -297,15 +299,15 @@ export function useDropTarget(
   useEffect(() => {
     const unsubscribe = storeApi.subscribe(
       (state) => state.isDragging,
-      (isDragging, wasDragging) => {
+      (dragging, wasDragging) => {
         // Drag just started - update bounds immediately
-        if (isDragging && !wasDragging) {
+        if (dragging && !wasDragging) {
           updateBoundsImmediate();
           dropOccurredRef.current = false; // Reset drop flag for new drag
         }
 
         // Drag just ended
-        if (!isDragging && wasDragging) {
+        if (!dragging && wasDragging) {
           const state = storeApi.getState();
           const wasOver = state.activeDropTargetId === dropIdRef.current;
           const draggedItem = lastDragItemRef.current;
@@ -353,10 +355,10 @@ export function useDropTarget(
 
   // Clean up on unmount or when disabled
   useEffect(() => {
-    const id = dropIdRef.current;
+    const cleanupId = dropIdRef.current;
 
     return () => {
-      unregisterDropTarget(id);
+      unregisterDropTarget(cleanupId);
       resizeObserverRef.current?.disconnect();
       intersectionObserverRef.current?.disconnect();
       updateBoundsThrottled.cancel();

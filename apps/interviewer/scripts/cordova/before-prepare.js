@@ -19,9 +19,9 @@ module.exports = (_ctx) =>
       const xml = data;
 
       // Parse XML to JS Obj
-      xml2js.parseString(xml, (err, result) => {
-        if (err) {
-          reject(err);
+      xml2js.parseString(xml, (parseErr, result) => {
+        if (parseErr) {
+          reject(parseErr);
         }
 
         // Get JS Obj
@@ -43,12 +43,12 @@ module.exports = (_ctx) =>
 
         // Build XML from JS Obj
         const builder = new xml2js.Builder();
-        const xml = builder.buildObject(obj);
+        const updatedXml = builder.buildObject(obj);
 
         // Write config.xml
-        fs.writeFile('config.xml', xml, (err) => {
-          if (err) {
-            reject(err);
+        fs.writeFile('config.xml', updatedXml, (writeErr) => {
+          if (writeErr) {
+            reject(writeErr);
           }
           resolve();
         });

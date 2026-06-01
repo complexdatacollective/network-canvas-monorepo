@@ -101,6 +101,7 @@ const Search = ({
 
           <input
             className="search__input"
+            aria-label="Search"
             onChange={onQueryChange}
             name="searchTerm"
             value={searchTerm}
