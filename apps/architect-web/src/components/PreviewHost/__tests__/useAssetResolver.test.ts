@@ -6,9 +6,12 @@ import { useAssetResolver } from '../useAssetResolver';
 const getMock = vi.fn();
 
 const SCOPE = 'p1';
+// Mutable so tests can exercise the null-scope branch in getAssetById. Read
+// lazily inside the mock factory, then reset in beforeEach for isolation.
+let mockScope: string | null = SCOPE;
 
 vi.mock('~/utils/activeProtocolScope', () => ({
-  getActiveProtocolScope: () => SCOPE,
+  getActiveProtocolScope: () => mockScope,
 }));
 
 vi.mock('~/utils/assetDB', () => ({
@@ -27,6 +30,7 @@ let urlCounter = 0;
 
 beforeEach(() => {
   getMock.mockReset();
+  mockScope = SCOPE;
   urlCounter = 0;
   globalThis.URL.createObjectURL = vi.fn(() => `blob:test/${++urlCounter}`);
   globalThis.URL.revokeObjectURL = vi.fn();
@@ -85,6 +89,13 @@ describe('useAssetResolver', () => {
     getMock.mockResolvedValueOnce(undefined);
     const { result } = renderHook(() => useAssetResolver());
     await expect(result.current('missing')).rejects.toThrow(/missing/);
+  });
+
+  it('rejects when there is no active protocol scope', async () => {
+    mockScope = null;
+    const { result } = renderHook(() => useAssetResolver());
+    await expect(result.current('a1')).rejects.toThrow(/a1/);
+    expect(getMock).not.toHaveBeenCalled();
   });
 
   it('rejects when assetDb returns a string-typed data field', async () => {

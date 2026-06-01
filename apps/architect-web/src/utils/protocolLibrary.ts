@@ -44,6 +44,16 @@ export const putStoredProtocol = async ({
 };
 
 export const deleteStoredProtocol = async (id: string): Promise<void> => {
-  await assetDb.protocols.delete(id);
-  await deleteProtocolAssets(id);
+  // Delete the row and its assets atomically: if asset deletion fails the row
+  // delete rolls back too, so we never strand orphaned assets under a missing
+  // protocol (or vice versa).
+  await assetDb.transaction(
+    'rw',
+    assetDb.protocols,
+    assetDb.assets,
+    async () => {
+      await assetDb.protocols.delete(id);
+      await deleteProtocolAssets(id);
+    },
+  );
 };

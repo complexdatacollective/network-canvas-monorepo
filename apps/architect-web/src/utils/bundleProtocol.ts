@@ -17,28 +17,31 @@ async function getAllProtocolAssets(
   for (const [assetId, assetDefinition] of Object.entries(
     protocol.assetManifest,
   )) {
-    try {
-      const assetData = await getAssetById(assetId, protocolId);
+    // apikey assets have no file data to bundle (and no `source`).
+    if (assetDefinition.type === 'apikey') {
+      continue;
+    }
 
-      if (!assetData) {
-        continue;
-      }
+    const assetData = await getAssetById(assetId, protocolId);
 
-      if (typeof assetData.data === 'string') {
-        continue;
-      }
+    // A missing asset means an unresolvable scope or stranded manifest entry;
+    // bundling it silently would produce a broken .netcanvas, so fail loudly.
+    if (!assetData) {
+      throw new Error(
+        `Cannot resolve asset "${assetId}" for export. Pass the owning ` +
+          `protocolId or set an active protocol scope before bundling.`,
+      );
+    }
 
-      // Skip apikey type assets as they don't have a source property
-      if (assetDefinition.type === 'apikey') {
-        continue;
-      }
+    if (typeof assetData.data === 'string') {
+      continue;
+    }
 
-      assets.push({
-        id: assetId,
-        source: assetDefinition.source,
-        data: assetData.data,
-      });
-    } catch (_error) {}
+    assets.push({
+      id: assetId,
+      source: assetDefinition.source,
+      data: assetData.data,
+    });
   }
 
   return assets;

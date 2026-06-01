@@ -51,7 +51,14 @@ const instantiateProtocol = async (
   const protocolId = crypto.randomUUID();
 
   await putStoredProtocol({ id: protocolId, protocol, name, description });
-  await saveProtocolAssets(assets, protocolId);
+  try {
+    await saveProtocolAssets(assets, protocolId);
+  } catch (error) {
+    // Don't leave a library row whose assetManifest points at assets that were
+    // never persisted; remove the orphaned row before surfacing the failure.
+    await deleteStoredProtocol(protocolId);
+    throw error;
+  }
 
   dispatch(setActiveProtocolId(protocolId));
   dispatch(setActiveProtocol(protocol));

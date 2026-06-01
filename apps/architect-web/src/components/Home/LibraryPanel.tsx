@@ -66,6 +66,7 @@ const PanelRow = ({
 
   return (
     <div
+      role="button"
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={handleKeyDown}
@@ -157,10 +158,10 @@ const LibraryPanel = ({
   const dispatch = useAppDispatch();
   const protocols = useProtocolLibrary();
   const [tab, setTab] = useState<Tab>('recent');
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
 
   const handleDownload = useCallback(async (protocol: StoredProtocolRow) => {
-    setDownloadingId(protocol.id);
+    setDownloadingIds((prev) => new Set(prev).add(protocol.id));
     try {
       await downloadProtocolAsNetcanvas(
         protocol.protocol,
@@ -168,7 +169,11 @@ const LibraryPanel = ({
         protocol.id,
       );
     } finally {
-      setDownloadingId(null);
+      setDownloadingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(protocol.id);
+        return next;
+      });
     }
   }, []);
 
@@ -274,7 +279,7 @@ const LibraryPanel = ({
               key={protocol.id}
               name={protocol.name}
               description={formatProtocolMeta(protocol)}
-              downloading={downloadingId === protocol.id}
+              downloading={downloadingIds.has(protocol.id)}
               onOpen={() => onOpenProtocol(protocol.id)}
               onDownload={() => handleDownload(protocol)}
               onDelete={() => handleDelete(protocol)}

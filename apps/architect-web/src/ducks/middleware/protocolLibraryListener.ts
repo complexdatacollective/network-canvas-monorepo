@@ -22,7 +22,33 @@ type AppStartListening = TypedStartListening<RootState, AppDispatch>;
 const startAppListening =
   protocolLibraryListenerMiddleware.startListening as AppStartListening;
 
-let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+type ProtocolSnapshot = {
+  id: string;
+  protocol: ReturnType<typeof getProtocol>;
+  name: string;
+  description?: string;
+};
+
+let pending: {
+  timer: ReturnType<typeof setTimeout>;
+  snapshot: ProtocolSnapshot;
+} | null = null;
+
+// Persist a snapshot, surfacing IndexedDB/quota errors rather than dropping the
+// promise (a silent autosave failure would lose user edits without warning).
+const flush = (snapshot: ProtocolSnapshot): void => {
+  if (!snapshot.protocol) {
+    return;
+  }
+  void putStoredProtocol({
+    id: snapshot.id,
+    protocol: snapshot.protocol,
+    name: snapshot.name,
+    description: snapshot.description,
+  }).catch((error: unknown) => {
+    console.error('Autosave to protocol library failed', error);
+  });
+};
 
 // Autosave: debounce a write of the active protocol into its library row.
 startAppListening({
@@ -46,27 +72,37 @@ startAppListening({
     );
   },
   effect: (_action, listenerApi) => {
-    if (pendingTimer !== null) {
-      clearTimeout(pendingTimer);
+    const state = listenerApi.getState();
+    const protocol = getProtocol(state);
+    const id = getActiveProtocolId(state);
+
+    if (!protocol || !id) {
+      return;
     }
 
-    pendingTimer = setTimeout(() => {
-      pendingTimer = null;
+    // Snapshot the protocol at schedule time so a switch/delete during the
+    // debounce window can't make the timer save the wrong (later) protocol.
+    const snapshot: ProtocolSnapshot = {
+      id,
+      protocol,
+      name: protocol.name,
+      description: protocol.description,
+    };
 
-      const state = listenerApi.getState();
-      const protocol = getProtocol(state);
-      const id = getActiveProtocolId(state);
-
-      if (!protocol || !id) {
-        return;
+    if (pending !== null) {
+      clearTimeout(pending.timer);
+      // The active protocol changed mid-window: flush the previous edits now so
+      // they aren't discarded when we re-debounce for the new protocol.
+      if (pending.snapshot.id !== snapshot.id) {
+        flush(pending.snapshot);
       }
+    }
 
-      void putStoredProtocol({
-        id,
-        protocol,
-        name: protocol.name,
-        description: protocol.description,
-      });
+    const timer = setTimeout(() => {
+      pending = null;
+      flush(snapshot);
     }, DEBOUNCE_MS);
+
+    pending = { timer, snapshot };
   },
 });
