@@ -4,10 +4,18 @@ import {
   type PayloadAction,
   type UnknownAction,
 } from '@reduxjs/toolkit';
+import { navigate } from 'wouter/use-browser-location';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import type { AppDispatch } from '~/ducks/store';
+import type { AppDispatch, RootState } from '~/ducks/store';
+import {
+  getCanRedo,
+  getCanUndo,
+  getRedoTargetPath,
+  getUndoTargetPath,
+} from '~/selectors/protocol';
 import { assetDb } from '~/utils/assetDB';
+import { resolveTimelineNavTarget } from '~/utils/timelineNavigation';
 
 import { timelineActions } from '../middleware/timeline';
 import assetManifest from './protocol/assetManifest';
@@ -124,10 +132,52 @@ export const actionCreators = {
 // Export the reducer as default
 export default activeProtocolSlice.reducer;
 
+// Raw timeline operations. These apply silently and are used by the protocol
+// validation listener's auto-revert; do not navigate from here. `undo` is
+// exported for the listener; `redo` is only used internally below.
 export const undo = () => (dispatch: AppDispatch) => {
   dispatch(timelineActions.undo());
 };
 
-export const redo = () => (dispatch: AppDispatch) => {
+const redo = () => (dispatch: AppDispatch) => {
   dispatch(timelineActions.redo());
 };
+
+const currentPath = () =>
+  typeof window !== 'undefined' && window.location
+    ? window.location.pathname
+    : '';
+
+// User-facing undo/redo. Navigation is a discrete, visible step: when the
+// change to be undone/redone was committed on another page, the first press
+// just navigates there (so the change is reverted in view, never off-screen)
+// and the next press applies it. Committed stage edits resolve to the stage
+// list rather than re-opening the editor (see resolveTimelineNavTarget). Same-
+// page and legacy (path-less) entries apply in place.
+export const undoWithNavigation =
+  () => (dispatch: AppDispatch, getState: () => RootState) => {
+    const state = getState();
+    if (!getCanUndo(state)) return;
+
+    const targetPage = resolveTimelineNavTarget(getUndoTargetPath(state));
+    if (targetPage && targetPage !== currentPath()) {
+      navigate(targetPage);
+      return;
+    }
+
+    dispatch(undo());
+  };
+
+export const redoWithNavigation =
+  () => (dispatch: AppDispatch, getState: () => RootState) => {
+    const state = getState();
+    if (!getCanRedo(state)) return;
+
+    const targetPage = resolveTimelineNavTarget(getRedoTargetPath(state));
+    if (targetPage && targetPage !== currentPath()) {
+      navigate(targetPage);
+      return;
+    }
+
+    dispatch(redo());
+  };
