@@ -32,39 +32,52 @@ import plugin from 'tailwindcss/plugin';
  * 0.1 alpha floor and need a stronger fixed shadow to read as recessed.
  */
 
-const DEFAULT_BG = 'oklch(50% 0 0)';
-
-const toColorVar = (value: string) =>
-  typeof value === 'string' && value.startsWith('var(--')
-    ? value.replace(/^var\(--/, 'var(--color-')
-    : value;
+// Rewrite `var(--color-X)` references to `var(--X)` so --scoped-bg /
+// --scoped-text point at the bare semantic tokens declared by the
+// theme files (`--background`, `--text`, etc.) rather than going
+// through Tailwind's `--color-*` indirection. Tailwind's
+// `api.theme(...)` resolves color tokens to their `--color-*` form
+// regardless of `@theme inline`, so we strip the prefix at plugin
+// emit time. Literal values (oklch(...), currentColor) are
+// unchanged because they don't match the pattern.
+const stripColorPrefix = (value: string) =>
+  value.replace(/var\(--color-/g, 'var(--');
 
 const insetSurfacePlugin: ReturnType<typeof plugin> = plugin((api) => {
   api.matchUtilities(
     {
       bg: (value) => ({
-        '--inset-bg': toColorVar(value),
+        '--inset-bg': stripColorPrefix(value),
       }),
     },
     {
-      values: (api.theme?.('backgroundColor') ??
-        api.theme?.('colors') ??
-        {}) as Record<string, string>,
+      values: api.theme?.('backgroundColor') ?? api.theme?.('colors') ?? {},
+      modifiers: 'any',
     },
   );
 
-  // Shadow: opacity scales up with chroma (neutrals subtle, vivid pronounced)
-  // Highlight: opacity scales up with lightness and down with chroma (bright on
-  //        light neutrals where the dark shadow alone isn't enough contrast)
-  const shadow = `oklch(from var(--inset-bg, ${DEFAULT_BG}) 0.15 clamp(0, calc(c * 0.3), 0.08) h / clamp(0.1, calc(0.1 + c * 0.4), 0.22))`;
-  const highlight = `oklch(from var(--inset-bg, ${DEFAULT_BG}) 0.98 clamp(0, calc(c * 0.15), 0.04) h / clamp(0.35, calc(0.25 + l * 0.35 - c * 0.5), 0.65))`;
+  // Shadow: opacity scales *inversely* with lightness because the near-black
+  //        shadow (l 0.1) has low contrast on dark surfaces and high contrast
+  //        on light ones. So dark backgrounds (the interview navy palette) need
+  //        high opacity (~0.6) to read as recessed, while white needs little
+  //        (~0.12) or it looks heavy. The shadow color stays hue-tinted by the
+  //        background via the chroma term; only the opacity is lightness-driven.
+  // Highlight: opacity is driven by lightness plus a plain `c` chroma boost
+  //        (not gated by lightness via `c * l`), so saturation lifts the highlight
+  //        even on dark surfaces — a dark vivid color gets a prominent
+  //        highlight, while a dark *muted* color (navy-taupe) stays near the
+  //        0.2 floor. The offset keeps low-chroma darks down; light saturated
+  //        colors (primary) reach the cap and light neutrals keep a visible
+  //        highlight via the lightness term.
+  const shadow = `oklch(from var(--inset-bg) 0.1 clamp(0, calc(c * 0.8), 0.08) h / clamp(0.12, calc(0.79 - l * 0.67), 0.6))`;
+  const highlight = `oklch(from var(--inset-bg) 1 clamp(0, calc(c * 0.15), 0.04) h / clamp(0.2, calc(l * 0.95 + c * 2.8 - 0.32), 1))`;
 
   const adaptiveShadow = `inset 0 2px 4px 0 ${shadow}, inset 0 -1px 2px 0 ${highlight}`;
 
   api.addUtilities({
     '.inset-surface': {
       'border': '1px solid oklch(0% 0 0 / 0.1)',
-      'box-shadow': `var(--inset-surface-shadow, ${adaptiveShadow})`,
+      'box-shadow': adaptiveShadow,
     },
   });
 });
