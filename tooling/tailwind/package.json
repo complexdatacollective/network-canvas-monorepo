@@ -27,9 +27,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsgo --noEmit",
-    "prepublishOnly": "pnpm build"
+    "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
     "@fontsource-variable/inclusive-sans": "^5.2.8",

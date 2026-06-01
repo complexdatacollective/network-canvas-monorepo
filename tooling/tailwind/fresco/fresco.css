@@ -33,9 +33,10 @@
 @import './themes/default.css';
 @import './themes/interview.css';
 
-/* Custom Tailwind plugins. Bare specifiers resolve through Node module
-   resolution against the consumer's `node_modules`, mapped via this
-   package's `exports` field to compiled JS in `dist/shared/plugins/...`. */
-@plugin '../shared/plugins/elevation';
-@plugin '../shared/plugins/inset-surface';
-@plugin '../shared/plugins/motion-spring';
+/* Custom Tailwind plugins, loaded from TypeScript source. Tailwind compiles
+   `@plugin` modules through jiti, which handles TS directly and registers the
+   files for watching — so plugin edits hot-reload in consumers without a
+   precompile step. Paths are relative to this file. */
+@plugin '../shared/plugins/elevation/index.ts';
+@plugin '../shared/plugins/inset-surface/index.ts';
+@plugin '../shared/plugins/motion-spring.ts';
