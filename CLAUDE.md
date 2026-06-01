@@ -47,15 +47,46 @@ above (`build`, `test`, `typecheck`, `dev`) already wrap `turbo run`, so prefer 
 
 For a per-package task that requires its workspace dependencies to be built first
 (e.g. a native module or an app that consumes one), wrap its command with
-`scripts/with-turbo.mjs`:
+`scripts/with-turbo.mjs`. When run directly it prints a notice and self-routes
+through turbo so dependencies are satisfied first.
+
+#### Dev servers and dependency watchers
+
+`scripts/with-turbo.mjs` takes an optional leading flag selecting how workspace
+dependencies are satisfied when a wrapped script is run directly:
+
+- **(no flag)** — one-shot tasks (`build`, `build-storybook`, `electron:build`).
+  Re-dispatches `turbo run <task> --filter=<pkg>`; dependencies are built once via
+  `^build`.
+- **`--with-deps`** — non-Electron dev servers (`dev`). Re-dispatches
+  `turbo run dev --filter=...<pkg>`, running the package's dev server and every
+  dependency's `dev` watcher in one turbo process.
+- **`--watch-deps`** — Storybook and every Electron dev server. Builds the
+  dependency closure once, runs the dependencies' `dev` watchers in the background
+  (`turbo run dev --filter=<pkg>^... --ui=stream`), and runs the server in the
+  foreground, stopping the watchers on exit. (Used where `--filter=...<pkg>` would
+  wrongly fan the task out onto dependencies that share its name, e.g. Storybook.)
 
 ```jsonc
 // in the package's package.json
-"electron:dev": "node ../../scripts/with-turbo.mjs electron-vite dev"
+"dev": "node ../../scripts/with-turbo.mjs --with-deps vite",
+"storybook": "node ../../scripts/with-turbo.mjs --watch-deps storybook dev -p 6006",
+"electron:dev": "node ../../scripts/with-turbo.mjs --watch-deps electron-vite dev",
+"build": "node ../../scripts/with-turbo.mjs vite build"
 ```
 
-When such a task is run directly it prints a notice and self-routes through
-`turbo run <task> --filter=<package>`, so dependencies are built before it runs.
+Equivalent manual commands:
+
+```bash
+turbo run dev --filter=...<pkg>     # a dev server plus its dependencies' watchers
+pnpm dev                            # (root) turbo watch dev — every package
+turbo run dev --filter=<pkg>^...    # only a package's dependencies' watchers
+```
+
+Only wrap a script whose task name is a real turbo task (`build`, `dev`,
+`storybook`, `build-storybook`, or a package-specific task like
+`electron:dev`/`electron:build`); the guard re-dispatches `turbo run <task>`, which
+must exist.
 
 ### Code Quality (Always Run Before Committing)
 

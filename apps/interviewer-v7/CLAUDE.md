@@ -20,7 +20,9 @@ All commands run from this directory unless noted. The monorepo-wide `pnpm lint`
 # Web (Vite dev server)
 pnpm dev
 
-# Electron desktop
+# Electron desktop. electron:dev/build self-route through turbo (via
+# scripts/with-turbo.mjs) so workspace deps — the @codaco/biometric-keystore
+# native module and the Electron-ABI better-sqlite3 rebuild — are built first.
 pnpm electron:dev
 pnpm electron:build
 pnpm electron:dist            # platform-detected packaged build
