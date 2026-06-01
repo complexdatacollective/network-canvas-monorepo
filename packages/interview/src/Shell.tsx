@@ -81,6 +81,11 @@ function Interview({ onExit }: { onExit?: () => void }) {
         <main
           className={cx(
             'relative flex size-full flex-1 overflow-hidden',
+            // Viewport-width ramp for the --theme-root-size type-scale sentinel,
+            // scoped to the Shell so only the full-screen interview scales (not
+            // other themed regions). Keep breakpoints synced with
+            // --breakpoint-laptop / --breakpoint-desktop-lg in theme.css.
+            'laptop:[--theme-root-size:1.125rem] desktop-lg:[--theme-root-size:1.25rem] [--theme-root-size:1rem]',
             isPortraitAspectRatio ? 'flex-col' : 'flex-row-reverse',
           )}
         />
