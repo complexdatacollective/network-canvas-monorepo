@@ -27,7 +27,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The `inset-surface` plugin adds a single utility — `inset-surface` — that draws an inset (pressed-in) shadow plus highlight derived from the element's **own** background color. Shadow strength scales with the background's chroma: vivid colors get pronounced shadows, neutrals stay subtle. Used in Alert, Combobox popovers, ToggleField, and slider tracks.",
+          "The `inset-surface` plugin adds a single utility — `inset-surface` — that draws an inset (pressed-in) shadow plus highlight derived from the element's **own** background color. Shadow opacity scales inversely with the background's lightness — dark surfaces need a stronger shadow to read as recessed, white needs very little. Highlight opacity scales with chroma, so saturated colors get a prominent highlight even when dark. Used in Alert, Combobox popovers, ToggleField, and slider tracks.",
       },
     },
   },
@@ -67,15 +67,19 @@ export const ChromaScaling: Story = {
           Chroma Scaling
         </Heading>
         <Paragraph margin="none" className="text-text/70 mb-6 text-sm">
-          Shadow opacity is computed as `clamp(0.1, 0.1 + c * 0.4, 0.22)`, so
-          fully-saturated brand colors produce visibly stronger shadows than
-          neutral surfaces. Highlight opacity scales inversely with chroma,
-          brightening light neutrals where a dark shadow alone lacks contrast.
+          Highlight opacity is computed as `clamp(0.2, l * 0.95 + c * 2.8 -
+          0.32, 1)`, so fully-saturated brand colors get a brighter highlight
+          than neutral surfaces. The chroma term is not gated by lightness, so a
+          saturated color reads even when dark. Shadow opacity, by contrast, is
+          lightness-driven.
         </Paragraph>
       </div>
       <div className="tablet-landscape:grid-cols-4 grid grid-cols-2 gap-6">
         <Tile bg="bg-surface" label="neutral" />
-        <Tile bg="bg-primary/10" label="primary/10 (tinted)" />
+        <Tile
+          bg="bg-[color-mix(in_oklab,currentColor_80%,var(--primary))] text-primary-contrast"
+          label="primary 20% (tinted)"
+        />
         <Tile
           bg="bg-primary text-primary-contrast"
           label="primary (saturated)"
@@ -95,7 +99,9 @@ export const StatusColors: Story = {
         </Heading>
         <Paragraph margin="none" className="text-text/70 mb-6 text-sm">
           The Alert component uses `inset-surface` with each status color token.
-          The chroma-driven shadow keeps the inset depth consistent across hues.
+          These tokens sit at similar lightness, so the lightness-driven shadow
+          keeps a consistent inset depth across hues, while each color's chroma
+          lifts its highlight.
         </Paragraph>
       </div>
       <div className="tablet-landscape:grid-cols-2 grid grid-cols-1 gap-6">
