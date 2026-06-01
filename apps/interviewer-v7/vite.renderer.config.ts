@@ -7,7 +7,6 @@ import react from '@vitejs/plugin-react';
 import type { Plugin, UserConfig } from 'vite';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const frescoUiSrc = resolve(here, '../../packages/fresco-ui/src');
 
 // Inject the app version from package.json at build time. Read here once
 // (rather than imported as JSON) so the renderer bundle gets a single
@@ -49,7 +48,6 @@ function injectCspMeta(): Plugin {
 }
 
 type RendererOptions = {
-  command: 'build' | 'serve';
   outDir: string;
   port?: number;
   emptyOutDir?: boolean;
@@ -64,7 +62,6 @@ type RendererOptions = {
 // place prevents drift — e.g. updating Swiper / Tailwind plugin / resolve.dedupe
 // in only one config and ending up with two divergent dev pipelines.
 export function createRendererConfig({
-  command,
   outDir,
   port,
   emptyOutDir = true,
@@ -80,21 +77,24 @@ export function createRendererConfig({
       // than the host app uses, which produces "Invalid hook call". Dedupe
       // both to keep a single React instance across the bundle graph.
       dedupe: ['react', 'react-dom'],
-      alias:
-        command === 'serve'
-          ? [
-              {
-                find: /^@codaco\/fresco-ui\/(.+)$/,
-                replacement: `${frescoUiSrc}/$1`,
-              },
-            ]
-          : [],
     },
     optimizeDeps: {
       // Pre-bundle Swiper React together with React so Vite's optimizer
       // resolves both against the same React instance. Without this, a
       // stale dep cache can carry over a separately-bundled copy.
       include: ['swiper', 'swiper/react'],
+      // Workspace libraries are consumed as built `dist` and kept fresh by
+      // their `dev` watchers (`with-turbo --with-deps`); exclude them from
+      // pre-bundling so the dev server resolves the current `dist` rather than
+      // a stale pre-bundle.
+      exclude: [
+        '@codaco/fresco-ui',
+        '@codaco/interview',
+        '@codaco/network-exporters',
+        '@codaco/protocol-utilities',
+        '@codaco/protocol-validation',
+        '@codaco/shared-consts',
+      ],
     },
     plugins: [react(), tailwindcss(), injectCspMeta()],
     server:

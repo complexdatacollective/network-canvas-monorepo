@@ -4,7 +4,7 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 
 import { createRendererConfig } from './vite.renderer.config';
 
-export default defineConfig(({ command }) => ({
+export default defineConfig(() => ({
   main: {
     plugins: [externalizeDepsPlugin()],
     build: {
@@ -34,7 +34,6 @@ export default defineConfig(({ command }) => ({
   renderer: {
     root: '.',
     ...createRendererConfig({
-      command,
       outDir: 'dist-electron/renderer',
       port: 5181,
       rollupInput: resolve(__dirname, 'index.html'),
