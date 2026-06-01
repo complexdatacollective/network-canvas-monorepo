@@ -226,7 +226,11 @@ const Home = () => {
                     <FilePlus />
                     Create a new protocol
                   </Button>
-                  <Button size="large" color="slate-blue" onClick={open}>
+                  <Button
+                    size="large"
+                    color="slate-blue"
+                    onClick={openFileDialog}
+                  >
                     <FolderOpen />
                     Open existing protocol
                   </Button>
