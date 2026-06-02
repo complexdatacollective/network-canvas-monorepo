@@ -2,8 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
-const { captureMock } = vi.hoisted(() => ({ captureMock: vi.fn() }));
+const { captureMock, scopeMock } = vi.hoisted(() => ({
+  captureMock: vi.fn(),
+  scopeMock: vi.fn<() => string | null>(),
+}));
 vi.mock('~/analytics', () => ({ posthog: { capture: captureMock } }));
+vi.mock('~/utils/activeProtocolScope', () => ({
+  getActiveProtocolScope: () => scopeMock(),
+}));
 
 import { launchPreview } from '../launchPreview';
 
@@ -40,6 +46,8 @@ describe('launchPreview', () => {
 
   beforeEach(() => {
     captureMock.mockReset();
+    scopeMock.mockReset();
+    scopeMock.mockReturnValue('lib-protocol-1');
     popup = makePopupStub();
     openSpy = vi.spyOn(window, 'open').mockReturnValue(popup);
     vi.useFakeTimers();
@@ -68,6 +76,7 @@ describe('launchPreview', () => {
       {
         type: 'preview:payload',
         protocol,
+        protocolId: 'lib-protocol-1',
         startStage: 2,
         useSyntheticData: true,
         skipLogicBypassed: false,
@@ -107,6 +116,19 @@ describe('launchPreview', () => {
     ).resolves.toEqual({
       kind: 'popup-blocked',
     });
+  });
+
+  it('rejects without opening a popup when there is no active protocol scope', async () => {
+    scopeMock.mockReturnValue(null);
+    await expect(
+      launchPreview({
+        protocol: makeProtocol(),
+        startStage: 0,
+        useSyntheticData: true,
+        skipLogicBypassed: false,
+      }),
+    ).rejects.toThrow(/no active protocol/i);
+    expect(openSpy).not.toHaveBeenCalled();
   });
 
   it('ignores ready messages from a different source', async () => {

@@ -6,13 +6,6 @@ import { useAssetResolver } from '../useAssetResolver';
 const getMock = vi.fn();
 
 const SCOPE = 'p1';
-// Mutable so tests can exercise the null-scope branch in getAssetById. Read
-// lazily inside the mock factory, then reset in beforeEach for isolation.
-let mockScope: string | null = SCOPE;
-
-vi.mock('~/utils/activeProtocolScope', () => ({
-  getActiveProtocolScope: () => mockScope,
-}));
 
 vi.mock('~/utils/assetDB', () => ({
   assetKey: (protocolId: string, assetId: string) =>
@@ -30,7 +23,6 @@ let urlCounter = 0;
 
 beforeEach(() => {
   getMock.mockReset();
-  mockScope = SCOPE;
   urlCounter = 0;
   globalThis.URL.createObjectURL = vi.fn(() => `blob:test/${++urlCounter}`);
   globalThis.URL.revokeObjectURL = vi.fn();
@@ -48,7 +40,7 @@ describe('useAssetResolver', () => {
     const blob = new Blob(['x'], { type: 'image/png' });
     getMock.mockResolvedValueOnce({ id: `${SCOPE}::a1`, data: blob });
 
-    const { result } = renderHook(() => useAssetResolver());
+    const { result } = renderHook(() => useAssetResolver(SCOPE));
     const url = await result.current('a1');
 
     expect(url).toBe('blob:test/1');
@@ -60,7 +52,7 @@ describe('useAssetResolver', () => {
     const blob = new Blob(['x']);
     getMock.mockResolvedValue({ id: `${SCOPE}::a1`, data: blob });
 
-    const { result } = renderHook(() => useAssetResolver());
+    const { result } = renderHook(() => useAssetResolver(SCOPE));
     const first = await result.current('a1');
     const second = await result.current('a1');
 
@@ -74,7 +66,7 @@ describe('useAssetResolver', () => {
       Promise.resolve({ id: key, data: new Blob([key]) }),
     );
 
-    const { result, unmount } = renderHook(() => useAssetResolver());
+    const { result, unmount } = renderHook(() => useAssetResolver(SCOPE));
     const u1 = await result.current('a1');
     const u2 = await result.current('a2');
     expect(u1).not.toBe(u2);
@@ -87,20 +79,19 @@ describe('useAssetResolver', () => {
 
   it('rejects when assetDb returns no entry', async () => {
     getMock.mockResolvedValueOnce(undefined);
-    const { result } = renderHook(() => useAssetResolver());
+    const { result } = renderHook(() => useAssetResolver(SCOPE));
     await expect(result.current('missing')).rejects.toThrow(/missing/);
   });
 
   it('rejects when there is no active protocol scope', async () => {
-    mockScope = null;
-    const { result } = renderHook(() => useAssetResolver());
+    const { result } = renderHook(() => useAssetResolver(null));
     await expect(result.current('a1')).rejects.toThrow(/a1/);
     expect(getMock).not.toHaveBeenCalled();
   });
 
   it('rejects when assetDb returns a string-typed data field', async () => {
     getMock.mockResolvedValueOnce({ id: `${SCOPE}::a1`, data: 'not-a-blob' });
-    const { result } = renderHook(() => useAssetResolver());
+    const { result } = renderHook(() => useAssetResolver(SCOPE));
     await expect(result.current('a1')).rejects.toThrow();
   });
 });
