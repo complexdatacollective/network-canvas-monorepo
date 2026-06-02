@@ -241,6 +241,29 @@ const LibraryPanel = ({
     [dispatch],
   );
 
+  const handleShowStorageInfo = useCallback(() => {
+    void dispatch(
+      openDialog({
+        type: 'Notice',
+        title: 'Protocol Storage',
+        message: (
+          <>
+            <p>
+              Your protocols are saved only in this browser, on this device.
+              They are never uploaded to a server.
+            </p>
+            <p>
+              Because your work lives in this browser's storage, clearing your
+              browsing data, or using "Clear all protocols", will permanently
+              remove it. Download the protocol as a <code>.netcanvas</code> file
+              to save a copy or move it to another device.
+            </p>
+          </>
+        ),
+      }),
+    );
+  }, [dispatch]);
+
   const handleClearAll = useCallback(async () => {
     const confirmed = await dispatch(
       openDialog({
@@ -259,7 +282,6 @@ const LibraryPanel = ({
     }
 
     try {
-      // Wipes storage and reloads the app from a clean slate.
       await clearAllStorage();
     } catch (error) {
       void dispatch(
@@ -302,23 +324,25 @@ const LibraryPanel = ({
               {protocolCount} {protocolCount === 1 ? 'protocol' : 'protocols'}
             </Badge>
             <Tooltip content={storageTooltip} side="bottom">
-              <Info
-                className="text-muted-foreground size-5"
+              <IconButton
+                variant="text"
+                size="small"
                 aria-label="Where your protocols are stored"
+                onClick={handleShowStorageInfo}
+                icon={<Info />}
               />
             </Tooltip>
             <Tooltip
               content="Clear all protocols from this browser"
               side="bottom"
             >
-              <button
-                type="button"
+              <IconButton
+                variant="text"
+                size="small"
                 aria-label="Clear all protocols from this browser"
                 onClick={() => void handleClearAll()}
-                className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-              >
-                <Trash2 className="size-5" />
-              </button>
+                icon={<Trash2 />}
+              />
             </Tooltip>
           </div>
         ) : (
