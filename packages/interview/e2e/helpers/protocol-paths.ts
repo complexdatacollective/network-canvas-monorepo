@@ -5,5 +5,5 @@ import path from 'node:path';
 // module so it is independent of the caller's working directory.
 export const SILOS_PROTOCOL_PATH = path.resolve(
   import.meta.dirname,
-  '../data/silos_chicago-2026-06-02_14-50.netcanvas',
+  '../data/silos_chicago-2026-06-02_17-31.netcanvas',
 );
