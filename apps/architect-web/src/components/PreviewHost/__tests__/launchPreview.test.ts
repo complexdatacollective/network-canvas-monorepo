@@ -4,6 +4,9 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 const { captureMock } = vi.hoisted(() => ({ captureMock: vi.fn() }));
 vi.mock('~/analytics', () => ({ posthog: { capture: captureMock } }));
+vi.mock('~/utils/activeProtocolScope', () => ({
+  getActiveProtocolScope: () => 'lib-protocol-1',
+}));
 
 import { launchPreview } from '../launchPreview';
 
@@ -68,6 +71,7 @@ describe('launchPreview', () => {
       {
         type: 'preview:payload',
         protocol,
+        protocolId: 'lib-protocol-1',
         startStage: 2,
         useSyntheticData: true,
         skipLogicBypassed: false,

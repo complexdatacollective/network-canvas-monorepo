@@ -1,5 +1,6 @@
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { posthog } from '~/analytics';
+import { getActiveProtocolScope } from '~/utils/activeProtocolScope';
 
 import { isPreviewMessage, type PreviewPayload } from './messages';
 
@@ -40,6 +41,7 @@ export function launchPreview({
   const payload: PreviewPayload = {
     type: 'preview:payload',
     protocol,
+    protocolId: getActiveProtocolScope(),
     startStage,
     useSyntheticData,
     skipLogicBypassed,

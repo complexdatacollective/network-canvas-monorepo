@@ -40,6 +40,7 @@ function buildSession(payload: PreviewPayload): SessionPayload {
 export function PreviewHost() {
   const [interviewPayload, setInterviewPayload] =
     useState<InterviewPayload | null>(null);
+  const [protocolId, setProtocolId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [timedOut, setTimedOut] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
@@ -50,7 +51,7 @@ export function PreviewHost() {
   );
   const [skipLogicNoticeDismissed, setSkipLogicNoticeDismissed] =
     useState(false);
-  const onRequestAsset = useAssetResolver();
+  const onRequestAsset = useAssetResolver(protocolId);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: retryNonce is the deliberate retrigger key
   useEffect(() => {
@@ -71,6 +72,7 @@ export function PreviewHost() {
         protocol: currentProtocolToPayload(previewPayload.protocol),
         session: buildSession(previewPayload),
       });
+      setProtocolId(previewPayload.protocolId);
       setCurrentStep(previewPayload.startStage);
       setBypassedStageIndex(
         previewPayload.skipLogicBypassed ? previewPayload.startStage : null,
