@@ -22,6 +22,15 @@ export function launchPreview({
   useSyntheticData,
   skipLogicBypassed,
 }: LaunchOptions): Promise<LaunchPreviewResult> {
+  const protocolId = getActiveProtocolScope();
+  if (!protocolId) {
+    return Promise.reject(
+      new Error(
+        'No active protocol to preview. Open or save a protocol first.',
+      ),
+    );
+  }
+
   // Trailing slash is required: a bare '/preview' hits Vite's SPA html fallback
   // (and equivalent static-host fallbacks) and serves the main app's index.html
   // instead of the preview entry, leaving a blank tab.
@@ -41,7 +50,7 @@ export function launchPreview({
   const payload: PreviewPayload = {
     type: 'preview:payload',
     protocol,
-    protocolId: getActiveProtocolScope(),
+    protocolId,
     startStage,
     useSyntheticData,
     skipLogicBypassed,

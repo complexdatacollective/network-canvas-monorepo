@@ -5,7 +5,7 @@ type PreviewReady = { type: 'preview:ready' };
 export type PreviewPayload = {
   type: 'preview:payload';
   protocol: CurrentProtocol;
-  protocolId: string | null;
+  protocolId: string;
   startStage: number;
   useSyntheticData: boolean;
   // True when skip logic was stripped from the previewed stage so it always
