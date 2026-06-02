@@ -15,6 +15,7 @@ import type {
   ProtocolPayload,
   ResolvedAsset,
 } from '../../src/contract/types.ts';
+import { SILOS_PROTOCOL_PATH } from '../helpers/protocol-paths.ts';
 
 type AssetEntry = {
   name: string;
@@ -27,9 +28,7 @@ const HOST_URL = 'http://localhost:4101';
 const ASSET_SERVER_URL = 'http://localhost:4200';
 const ASSET_DIR = path.resolve(import.meta.dirname, '..', '.assets');
 
-const protocolPath =
-  process.argv[2] ??
-  path.resolve(import.meta.dirname, '..', 'data', 'silos.netcanvas');
+const protocolPath = process.argv[2] ?? SILOS_PROTOCOL_PATH;
 // Slug names the asset-server-served directory holding both the prepared
 // `bootstrap.json` and the extracted asset files. Stable per protocol so the
 // auto-bootstrap URL (`?bootstrap=<slug>`) doesn't change between runs.

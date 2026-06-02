@@ -135,7 +135,11 @@ const AlertDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cx(paragraphVariants(), className)} {...props} />
+  <div
+    ref={ref}
+    className={cx(paragraphVariants({ margin: 'none' }), className)}
+    {...props}
+  />
 ));
 AlertDescription.displayName = 'AlertDescription';
 

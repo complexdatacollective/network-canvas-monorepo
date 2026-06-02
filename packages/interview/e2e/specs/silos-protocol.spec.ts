@@ -5,15 +5,9 @@
  * Includes both the happy path (male at birth) and the female ineligibility path.
  */
 
-import path from 'node:path';
-
 import { expect, test } from '../fixtures/interview-test.js';
 import { expectURL } from '../helpers/expectations.js';
-
-const SILOS_PROTOCOL_PATH = path.resolve(
-  import.meta.dirname,
-  '../data/silos.netcanvas',
-);
+import { SILOS_PROTOCOL_PATH } from '../helpers/protocol-paths.js';
 
 // Shared protocol ID across all test suites
 let sharedProtocolId: string;
@@ -155,16 +149,16 @@ test.describe('SILOS Protocol', () => {
         'Gay',
       );
 
-      // 3. Sex assigned at birth (ToggleButtonGroup)
-      await stage.form.selectToggleButton(
-        'f3d7559b-3a07-4719-8e4a-1db49d270f7b',
+      // 3. Sex assigned at birth (RadioGroup)
+      await stage.form.selectRadio(
+        '128e62aa-3074-42ff-b48d-11882893d830',
         'Male',
       );
 
       // 4. Gender identity (RadioGroup)
       await stage.form.selectRadio(
         'a06f06f5-b688-487c-8e3b-ca916aed2b84',
-        'Cisgender Male',
+        'Cisgender Man',
       );
 
       // 5. Race/ethnicity (CheckboxGroup)
@@ -232,7 +226,41 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 7: Map Selection Information', async ({ page, interview }) => {
+    test('Stage 7: Ego Information - Employment and Housing', async ({
+      page,
+      interview,
+      stage,
+    }) => {
+      await interview.captureInitial();
+      // Verify the form heading is visible
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+      // Fill all required fields
+      // 1. Employment status (Boolean)
+      await stage.form.selectRadio(
+        'af36f2d2-1641-4185-90e7-a23169ca870e',
+        'Yes',
+      );
+
+      // 2. Weeks employed in the last 26 (Number — min 0 / max 26)
+      await stage.form.fillNumber('3eee632c-cb7c-402f-ae0e-92f59e5a3be2', '12');
+
+      // 3. Living arrangement (RadioGroup)
+      await stage.form.selectRadio(
+        '723d26fc-cec9-49b8-9f7b-9b338e2daa09',
+        'Living in a place which you RENT',
+      );
+
+      // 4. Housing stability (LikertScale)
+      await stage.form.selectLikert(
+        'f84863b4-118f-4ba6-83a8-2c7d2c20dd8c',
+        'Never',
+      );
+
+      await interview.captureFinal();
+    });
+
+    test('Stage 8: Map Selection Information', async ({ page, interview }) => {
       await interview.captureInitial();
       await expect(
         page.getByRole('heading', { name: 'Map Selection' }),
@@ -247,7 +275,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 8: Geospatial Interface', async ({ interview, stage }) => {
+    test('Stage 9: Geospatial Interface', async ({ interview, stage }) => {
       await stage.geospatial.waitForGeoJsonRendered();
       await interview.captureInitial();
 
@@ -364,7 +392,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 9: Ego Substances', async ({ page, stage, interview }) => {
+    test('Stage 10: Ego Substances', async ({ page, stage, interview }) => {
       await interview.captureInitial();
       // Verify the form heading is visible
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
@@ -409,7 +437,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 10: Name Generator Instructions', async ({
+    test('Stage 11: Name Generator Instructions', async ({
       page,
       interview,
     }) => {
@@ -428,13 +456,13 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 11: Name Generator (Close Ties and Drug)', async ({
+    test('Stage 12: Name Generator (Close Ties)', async ({
       page,
       interview,
       stage,
     }) => {
       await interview.captureInitial();
-      // Verify the first prompt is visible (close ties)
+      // Verify the prompt is visible (close ties)
       await expect(stage.getPrompt()).toBeVisible();
 
       // --- Test validation: attempt to add person without required age ---
@@ -445,7 +473,7 @@ test.describe('SILOS Protocol', () => {
       await stage.form.fillText('b1eb909a-13cd-4dc6-ab90-c77e7bc2c5d3', 'Dan');
       await stage.form.selectToggleButton(
         '8f5d456b-06fb-4958-9a92-da6e87008bce',
-        'Romantic Partner',
+        'Spouse / Partner',
       );
 
       // Attempt to submit - should be blocked due to missing age
@@ -464,7 +492,7 @@ test.describe('SILOS Protocol', () => {
       await stage.form.fillNumber('6621dc88-9cde-43a1-85ec-6fc7689b2211', '27');
       await stage.nameGenerator.submitForm();
 
-      // Verify romantic partner was added
+      // Verify the close tie was added
       await expect(stage.getNode('Dan')).toBeVisible();
 
       // Validation released - pulse animation visible
@@ -494,14 +522,22 @@ test.describe('SILOS Protocol', () => {
       await stage.nameGenerator.submitForm();
       await expect(stage.getNode('Bob')).toBeVisible();
 
-      // --- Proceed to next prompt (drug use) ---
-      await interview.nextButton.click();
+      await expect(interview.nextButton).toBeEnabled();
 
-      // Verify we're on the second prompt (drug use)
+      await interview.captureFinal();
+    });
+
+    test('Stage 13: Name Generator (Drug Ties)', async ({
+      page,
+      interview,
+      stage,
+    }) => {
+      await interview.captureInitial();
+      // Verify the drug-use prompt is visible
       await expect(stage.getPrompt(/marijuana|drugs/i)).toBeVisible();
 
       // --- Test drag and drop from side panel ---
-      // The side panel should show previously added nodes
+      // The side panel should show previously added (close-tie) nodes
       await expect(stage.nodePanel.panel).toBeVisible();
 
       // Find Alice in the side panel
@@ -514,7 +550,7 @@ test.describe('SILOS Protocol', () => {
       const aliceInMainList = mainList.getByRole('option', { name: 'Alice' });
       await expect(aliceInMainList).not.toBeVisible();
 
-      // Perform drag and drop using fixture
+      // Perform drag and drop using fixture (adds Alice to the drug-use prompt)
       await stage.nodePanel.dragNodeToMainList('Alice');
 
       // Verify Alice now appears in the main node list (not just the panel)
@@ -525,7 +561,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 12: Sex Partner Nomination', async ({
+    test('Stage 14: Sex Partner Nomination', async ({
       page,
       interview,
       stage,
@@ -576,7 +612,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 13: Sociogram (Close Ties and Drug Partners)', async ({
+    test('Stage 15: Sociogram (Close Ties and Drug Partners)', async ({
       interview,
       stage,
     }) => {
@@ -645,7 +681,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 14: Sex Sociogram', async ({ interview, stage }) => {
+    test('Stage 16: Sex Sociogram', async ({ interview, stage }) => {
       await stage.sociogram.waitForSimulationSettled();
 
       await interview.captureInitial();
@@ -681,7 +717,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 15: Ordinal Bins (Relationship Strength)', async ({
+    test('Stage 17: Ordinal Bins (Relationship Strength)', async ({
       page,
       interview,
       stage,
@@ -750,7 +786,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 16: Categorical Bins (4 prompts)', async ({
+    test('Stage 18: Categorical Bins (4 prompts)', async ({
       interview,
       stage,
     }) => {
@@ -874,7 +910,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 17: Lives in City', async ({ interview, stage }) => {
+    test('Stage 19: Lives in City', async ({ interview, stage }) => {
       await interview.captureInitial();
       // Verify prompt is visible
       await expect(stage.getPrompt()).toBeVisible();
@@ -917,7 +953,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 18: Alter Census Tract - Introduction', async ({
+    test('Stage 20: Alter Census Tract - Introduction', async ({
       page,
       interview,
     }) => {
@@ -934,7 +970,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 19: Alter Census Tract (Geospatial)', async ({
+    test('Stage 21: Alter Census Tract (Geospatial)', async ({
       interview,
       stage,
     }) => {
@@ -969,7 +1005,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 20: Sex Partners and Activity - Introduction', async ({
+    test('Stage 22: Sex Partners and Activity - Introduction', async ({
       page,
       interview,
     }) => {
@@ -985,7 +1021,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 21: Ego PrEP', async ({ page, stage, interview }) => {
+    test('Stage 23: Ego PrEP', async ({ page, stage, interview }) => {
       await interview.captureInitial();
       // Verify the form heading
       await expect(
@@ -1001,15 +1037,15 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    // Stage 22 (Ego ART) is skipped — only shown when HIV status = HIV Positive
+    // Stage 24 (Ego ART) is skipped — only shown when HIV status = HIV Positive
 
-    test('Stage 23: Anal Sex Categorical Check', async ({
+    test('Stage 25: Anal Sex Categorical Check', async ({
       interview,
       stage,
     }) => {
       await interview.captureInitial();
-      // Assert that this is actually step 23 (skip logic worked)
-      await expect(interview.page).toHaveURL(/step=23/);
+      // Assert that this is actually step 25 (skip logic worked — Ego ART skipped)
+      await expect(interview.page).toHaveURL(/step=25/);
 
       // This stage only shows sex partners (Bob, Evan)
       await expect(stage.getPrompt()).toBeVisible();
@@ -1029,7 +1065,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 24: Anal Sex Counts (AlterForm)', async ({
+    test('Stage 26: Anal Sex Counts (AlterForm)', async ({
       interview,
       stage,
     }) => {
@@ -1053,7 +1089,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 25: Sex Partner Form (AlterForm)', async ({
+    test('Stage 27: Sex Partner Form (AlterForm)', async ({
       interview,
       stage,
     }) => {
@@ -1111,7 +1147,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 26: Alter PrEP (CategoricalBin)', async ({
+    test('Stage 28: Alter PrEP (CategoricalBin)', async ({
       interview,
       stage,
     }) => {
@@ -1148,12 +1184,12 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 27: Alter ART (CategoricalBin)', async ({
+    test('Stage 29: Alter ART (CategoricalBin)', async ({
       interview,
       stage,
     }) => {
       await interview.captureInitial();
-      await expect(interview.page).toHaveURL(/step=27/);
+      await expect(interview.page).toHaveURL(/step=29/);
       // Only shows partners whose HIV status IS HIV Positive
       await expect(stage.getPrompt()).toBeVisible();
 
@@ -1177,7 +1213,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 28: Alter Substances (AlterForm)', async ({
+    test('Stage 30: Alter Substances (AlterForm)', async ({
       interview,
       stage,
     }) => {
@@ -1202,7 +1238,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 29: Sex Partner Place Met (CategoricalBin)', async ({
+    test('Stage 31: Sex Partner Place Met (CategoricalBin)', async ({
       interview,
       stage,
     }) => {
@@ -1247,7 +1283,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 30: Name Place Met (AlterForm)', async ({
+    test('Stage 32: Name Place Met (AlterForm)', async ({
       interview,
       stage,
     }) => {
@@ -1264,7 +1300,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 31: Name App Met (AlterForm)', async ({ interview, stage }) => {
+    test('Stage 33: Name App Met (AlterForm)', async ({ interview, stage }) => {
       await interview.captureInitial();
       // Only shows partners who met online
       await interview.dismissIntro();
@@ -1278,10 +1314,10 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    // Stages 32-33 (Poppers and Methamphetamine) are skipped
-    // — conditional on ego Poppers=Yes and Meth=Yes respectively (both set to No in Stage 9)
+    // Stages 34-35 (Poppers and Methamphetamine) are skipped
+    // — conditional on ego Poppers=Yes and Meth=Yes respectively (both set to No in Stage 10)
 
-    test('Stage 34: Venue Nomination Instructions', async ({
+    test('Stage 36: Venue Nomination Instructions', async ({
       page,
       interview,
     }) => {
@@ -1298,7 +1334,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 35: Venue Nomination - Socialize', async ({
+    test('Stage 37: Venue Nomination - Socialize', async ({
       interview,
       stage,
     }) => {
@@ -1320,7 +1356,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 36: Venue Nomination - Meet People', async ({
+    test('Stage 38: Venue Nomination - Meet People', async ({
       interview,
       stage,
     }) => {
@@ -1340,7 +1376,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 37: Venue Frequency (OrdinalBin)', async ({
+    test('Stage 39: Venue Frequency (OrdinalBin)', async ({
       interview,
       stage,
     }) => {
@@ -1381,7 +1417,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 38: Venue Type (CategoricalBin)', async ({
+    test('Stage 40: Venue Type (CategoricalBin)', async ({
       interview,
       stage,
     }) => {
@@ -1413,7 +1449,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 39: Venue Census Tract - Introduction', async ({
+    test('Stage 41: Venue Census Tract - Introduction', async ({
       page,
       interview,
     }) => {
@@ -1430,7 +1466,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 40: Venue Census Tract (Geospatial)', async ({
+    test('Stage 42: Venue Census Tract (Geospatial)', async ({
       interview,
       stage,
     }) => {
@@ -1459,7 +1495,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 41: Venue Attributes (Sociogram - LGBTQ highlighting)', async ({
+    test('Stage 43: Venue Attributes (Sociogram - LGBTQ highlighting)', async ({
       interview,
       stage,
     }) => {
@@ -1490,7 +1526,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 42: Venue - Heavy Drinking (OrdinalBin)', async ({
+    test('Stage 44: Venue - Heavy Drinking (OrdinalBin)', async ({
       interview,
       stage,
     }) => {
@@ -1519,7 +1555,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 43: Venue - Substance Use (OrdinalBin)', async ({
+    test('Stage 45: Venue - Substance Use (OrdinalBin)', async ({
       interview,
       stage,
     }) => {
@@ -1538,7 +1574,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 44: Venue - Meet for Sex (OrdinalBin)', async ({
+    test('Stage 46: Venue - Meet for Sex (OrdinalBin)', async ({
       interview,
       stage,
     }) => {
@@ -1557,7 +1593,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 45: App Instructions', async ({ page, interview }) => {
+    test('Stage 47: App Instructions', async ({ page, interview }) => {
       await interview.captureInitial();
       await expect(
         page.getByRole('heading', { name: 'Apps and Websites You Use' }),
@@ -1571,7 +1607,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 46: App Nomination', async ({ interview, stage }) => {
+    test('Stage 48: App Nomination', async ({ interview, stage }) => {
       await interview.captureInitial();
       await expect(stage.getPrompt()).toBeVisible();
 
@@ -1587,7 +1623,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 47: Healthcare Access (EgoForm)', async ({
+    test('Stage 49: Healthcare Access (EgoForm)', async ({
       page,
       interview,
       stage,
@@ -1606,7 +1642,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 48: Healthcare Nomination', async ({ interview, stage }) => {
+    test('Stage 50: Healthcare Nomination', async ({ interview, stage }) => {
       await interview.captureInitial();
       await expect(stage.getPrompt()).toBeVisible();
 
@@ -1619,7 +1655,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 49: Healthcare Census Tract - Information', async ({
+    test('Stage 51: Healthcare Census Tract - Information', async ({
       page,
       interview,
     }) => {
@@ -1636,7 +1672,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 50: Healthcare Census Tract (Geospatial)', async ({
+    test('Stage 52: Healthcare Census Tract (Geospatial)', async ({
       interview,
       stage,
     }) => {
@@ -1660,35 +1696,17 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 51: Social Support - Introduction', async ({
-      page,
-      interview,
-    }) => {
-      await interview.captureInitial();
-      await expect(
-        page.getByRole('heading', {
-          name: 'Your Thoughts and Feelings',
-        }),
-      ).toBeVisible();
-
-      await expect(interview.nextButton).toBeEnabled();
-
-      await interview.captureFinal();
-    });
-
-    test('Stage 52: Ego Social Support (EgoForm)', async ({
+    test('Stage 53: Ego Social Support (EgoForm)', async ({
       page,
       interview,
       stage,
     }) => {
       await interview.captureInitial();
-      await expect(
-        page.getByRole('heading', { name: 'About You', level: 1 }),
-      ).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
       // Verify validation blocks advancement (all 12 fields are required)
       await interview.nextButton.click();
-      await expectURL(page, /step=52/);
+      await expectURL(page, /step=53/);
 
       // Verify at least one field error is visible
       await expect(
@@ -1771,7 +1789,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 53: Finish Interview', async ({ interview }) => {
+    test('Stage 54: Finish Interview', async ({ interview }) => {
       await interview.captureInitial();
       interview.skipNext = true;
       // finishInterview() asserts the heading and dialog are visible and
@@ -1872,16 +1890,16 @@ test.describe('SILOS Protocol', () => {
         'Bisexual',
       );
 
-      // 3. Sex assigned at birth (ToggleButtonGroup) - select FEMALE (triggers ineligibility)
-      await stage.form.selectToggleButton(
-        'f3d7559b-3a07-4719-8e4a-1db49d270f7b',
+      // 3. Sex assigned at birth (RadioGroup) - select FEMALE (triggers ineligibility)
+      await stage.form.selectRadio(
+        '128e62aa-3074-42ff-b48d-11882893d830',
         'Female',
       );
 
       // 4. Gender identity (RadioGroup)
       await stage.form.selectRadio(
         'a06f06f5-b688-487c-8e3b-ca916aed2b84',
-        'Cisgender Female',
+        'Cisgender Woman',
       );
 
       // 5. Race/ethnicity (CheckboxGroup)
@@ -1938,10 +1956,10 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 53: Finish Interview', async ({ interview }) => {
+    test('Stage 54: Finish Interview', async ({ interview }) => {
       await interview.captureInitial();
-      // Assert that we skipped to stage 53
-      await expect(interview.page).toHaveURL(/step=53/);
+      // Assert that we skipped to stage 54
+      await expect(interview.page).toHaveURL(/step=54/);
 
       interview.skipNext = true;
       // finishInterview() asserts the heading and dialog are visible and
