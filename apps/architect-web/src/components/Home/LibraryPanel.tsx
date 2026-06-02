@@ -1,6 +1,6 @@
 import {
   Download,
-  EllipsisVertical,
+  Ellipsis,
   FolderOpen,
   Info,
   Loader2,
@@ -10,7 +10,6 @@ import {
 import { DateTime } from 'luxon';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 
-import { Pattern } from '@codaco/art';
 import Table from '~/components/Assets/Table';
 import Badge from '~/components/Badge';
 import Dialog from '~/components/NewComponents/Dialog';
@@ -30,6 +29,7 @@ import { useAppDispatch } from '~/ducks/hooks';
 import { openDialog } from '~/ducks/modules/dialogs';
 import { deleteLibraryProtocol } from '~/ducks/modules/userActions/userActions';
 import { useProtocolLibrary } from '~/hooks/useProtocolLibrary';
+import fileIcon from '~/images/file-icon.svg';
 import Button, { IconButton } from '~/lib/legacy-ui/components/Button';
 import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
 import { getProtocolAssetCount } from '~/utils/assetUtils';
@@ -69,12 +69,13 @@ const formatTimestamp = (millis: number): string => {
 
 type MetaStat = { label: string; value: string };
 
-const formatProtocolMeta = (protocol: StoredProtocolRow): MetaStat[] => {
+const formatProtocolMeta = (protocol: StoredProtocolRow): string => {
+  const stageCount = protocol.protocol.stages.length;
   return [
-    { label: 'Added', value: formatTimestamp(protocol.createdAt) },
-    { label: 'Edited', value: formatTimestamp(protocol.updatedAt) },
-    { label: 'Stages', value: String(protocol.protocol.stages.length) },
-  ];
+    `${stageCount} ${stageCount === 1 ? 'stage' : 'stages'}`,
+    `Added ${formatTimestamp(protocol.createdAt)}`,
+    `Edited ${formatTimestamp(protocol.updatedAt)}`,
+  ].join(' · ');
 };
 
 const RowMenuItem = ({
@@ -108,7 +109,7 @@ const RowMenuItem = ({
 type PanelRowProps = {
   name: string;
   description?: string;
-  meta?: MetaStat[];
+  meta?: string;
   downloading?: boolean;
   actionLabel?: string;
   onOpen: () => void;
@@ -154,28 +155,24 @@ const PanelRow = ({
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={handleKeyDown}
-      className="group focusable relative flex w-full shrink-0 cursor-pointer items-center gap-(--space-sm) overflow-hidden rounded-sm px-(--space-lg) py-(--space-md) text-left text-white shadow-sm transition-shadow hover:shadow-md"
+      className="group focusable hover:bg-surface-2 flex w-full shrink-0 cursor-pointer items-center gap-(--space-sm) rounded-sm px-(--space-md) py-(--space-sm) text-left transition-colors"
     >
-      <Pattern aria-hidden seed={name} className="absolute inset-0 size-full" />
+      <img
+        src={fileIcon}
+        alt=""
+        aria-hidden
+        className="size-10 shrink-0 object-contain"
+      />
 
-      <span className="relative min-w-0 flex-1">
-        <span className="h4 my-0 block truncate leading-tight">{name}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-semibold">{name}</span>
         {meta ? (
-          <span className="mt-(--space-xs) grid grid-cols-3 gap-x-(--space-md) gap-y-(--space-xs)">
-            {meta.map((stat) => (
-              <span key={stat.label} className="flex min-w-0 flex-col">
-                <span className="text-xs leading-tight font-semibold tracking-wider text-white/70 uppercase">
-                  {stat.label}
-                </span>
-                <span className="truncate text-sm text-white/80">
-                  {stat.value}
-                </span>
-              </span>
-            ))}
+          <span className="text-muted-foreground block truncate text-sm">
+            {meta}
           </span>
         ) : (
           description && (
-            <span className="mt-(--space-xs) block truncate text-sm text-white/80">
+            <span className="text-muted-foreground block truncate text-sm">
               {description}
             </span>
           )
@@ -183,25 +180,24 @@ const PanelRow = ({
       </span>
 
       {actionLabel && (
-        <span className="relative flex shrink-0 translate-x-2 items-center opacity-0 transition-all duration-200 ease-out group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:translate-x-0 group-hover:opacity-100">
+        <span className="flex shrink-0 translate-x-2 items-center opacity-0 transition-all duration-200 ease-out group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:translate-x-0 group-hover:opacity-100">
           <Button
             variant="text"
             size="small"
             icon={<Plus />}
             content={actionLabel}
-            className="text-white"
+            className="text-action"
             onClick={withStop(onOpen)}
           />
         </span>
       )}
 
       {hasMenu && (
-        <span className="relative flex shrink-0 items-center">
+        <span className="flex shrink-0 items-center">
           <Popover open={menuOpen} onOpenChange={setMenuOpen}>
             <PopoverTrigger asChild>
               <IconButton
                 variant="text"
-                className="text-white"
                 aria-label={`Actions for ${name}`}
                 disabled={downloading}
                 onClick={(event) => event.stopPropagation()}
@@ -209,7 +205,7 @@ const PanelRow = ({
                   downloading ? (
                     <Loader2 className="animate-spin" />
                   ) : (
-                    <EllipsisVertical />
+                    <Ellipsis />
                   )
                 }
               />
@@ -264,7 +260,7 @@ type LibraryPanelProps = {
 };
 
 const PANEL_CLASSES =
-  'flex h-[min(13rem,50dvh)] flex-col gap-(--space-sm) overflow-y-auto px-(--space-sm) pb-(--space-xl)';
+  'h-[min(13rem,50dvh)] overflow-y-auto px-(--space-sm) pb-(--space-xl)';
 
 const LibraryPanel = ({
   onOpenProtocol,
@@ -457,7 +453,7 @@ const LibraryPanel = ({
             <TabsTab value="templates">Templates</TabsTab>
           </TabsList>
           {activeTab === 'recent' ? (
-            <div className="ml-auto flex items-center gap-(--space-sm)">
+            <div className="ml-auto flex h-8 items-center gap-(--space-sm)">
               <Badge color="platinum" className="shadow-none">
                 {protocolCount} {protocolCount === 1 ? 'protocol' : 'protocols'}
               </Badge>
@@ -484,9 +480,11 @@ const LibraryPanel = ({
               </Tooltip>
             </div>
           ) : (
-            <Badge color="platinum" className="ml-auto shadow-none">
-              {templateLabel}
-            </Badge>
+            <div className="ml-auto flex h-8 items-center">
+              <Badge color="platinum" className="shadow-none">
+                {templateLabel}
+              </Badge>
+            </div>
           )}
         </div>
 
