@@ -21,7 +21,7 @@ export function useAssetResolver(
   return useCallback(
     async (assetId: string) => {
       if (!protocolId) {
-        throw new Error(`Asset ${assetId} not found in local store`);
+        throw new Error(`Missing protocol scope for asset ${assetId}`);
       }
 
       const key = assetKey(protocolId, assetId);
