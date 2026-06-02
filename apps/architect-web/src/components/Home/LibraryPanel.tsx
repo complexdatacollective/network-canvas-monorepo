@@ -2,6 +2,7 @@ import { Download, Info, Loader2, Plus, Trash2 } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { useCallback, useEffect, useState } from 'react';
 
+import { Pattern } from '@codaco/art';
 import Badge from '~/components/Badge';
 import {
   Tabs,
@@ -14,7 +15,6 @@ import { useAppDispatch } from '~/ducks/hooks';
 import { openDialog } from '~/ducks/modules/dialogs';
 import { deleteLibraryProtocol } from '~/ducks/modules/userActions/userActions';
 import { useProtocolLibrary } from '~/hooks/useProtocolLibrary';
-import fileIcon from '~/images/file-icon.svg';
 import Button, { IconButton } from '~/lib/legacy-ui/components/Button';
 import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
@@ -32,18 +32,40 @@ const withStop =
     });
   };
 
-const formatProtocolMeta = (protocol: StoredProtocolRow): string => {
-  const stageCount = protocol.protocol.stages.length;
-  const stages = `${stageCount} ${stageCount === 1 ? 'stage' : 'stages'}`;
-  const updated = DateTime.fromMillis(protocol.updatedAt);
-  const secondsAgo = -updated.diffNow('seconds').seconds;
-  const edited = secondsAgo < 60 ? '< 1 min ago' : updated.toRelative();
-  return edited ? `${stages} · edited ${edited}` : stages;
+const RELATIVE_CUTOFF_DAYS = 7;
+
+const formatTimestamp = (millis: number): string => {
+  const dt = DateTime.fromMillis(millis);
+  const secondsAgo = -dt.diffNow('seconds').seconds;
+  if (secondsAgo < 60) {
+    return '< 1 min ago';
+  }
+  const absolute = dt.toLocaleString({
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  if (secondsAgo < RELATIVE_CUTOFF_DAYS * 86_400) {
+    return dt.toRelative() ?? absolute;
+  }
+  return absolute;
+};
+
+type MetaStat = { label: string; value: string };
+
+const formatProtocolMeta = (protocol: StoredProtocolRow): MetaStat[] => {
+  return [
+    { label: 'Added', value: formatTimestamp(protocol.createdAt) },
+    { label: 'Edited', value: formatTimestamp(protocol.updatedAt) },
+    { label: 'Stages', value: String(protocol.protocol.stages.length) },
+  ];
 };
 
 type PanelRowProps = {
   name: string;
   description?: string;
+  meta?: MetaStat[];
   downloading?: boolean;
   actionLabel?: string;
   onOpen: () => void;
@@ -54,6 +76,7 @@ type PanelRowProps = {
 const PanelRow = ({
   name,
   description,
+  meta,
   downloading = false,
   actionLabel,
   onOpen,
@@ -75,28 +98,38 @@ const PanelRow = ({
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={handleKeyDown}
-      className="group focusable hover:bg-surface-2 flex w-full cursor-pointer items-center gap-(--space-sm) rounded-sm px-(--space-md) py-(--space-sm) text-left transition-colors"
+      className="group focusable relative flex w-full shrink-0 cursor-pointer items-center gap-(--space-sm) overflow-hidden rounded-sm px-(--space-lg) py-(--space-md) text-left text-white shadow-sm transition-shadow hover:shadow-md"
     >
-      <img
-        src={fileIcon}
-        alt=""
-        aria-hidden
-        className="size-10 shrink-0 object-contain"
-      />
+      <Pattern aria-hidden seed={name} className="absolute inset-0 size-full" />
 
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-semibold">{name}</span>
-        {description && (
-          <span className="text-muted-foreground block truncate text-sm">
-            {description}
+      <span className="relative min-w-0 flex-1">
+        <span className="h4 my-0 block truncate leading-tight">{name}</span>
+        {meta ? (
+          <span className="mt-(--space-xs) grid grid-cols-3 gap-x-(--space-md) gap-y-(--space-xs)">
+            {meta.map((stat) => (
+              <span key={stat.label} className="flex min-w-0 flex-col">
+                <span className="text-xs leading-tight font-semibold tracking-wider text-white/70 uppercase">
+                  {stat.label}
+                </span>
+                <span className="truncate text-sm text-white/80">
+                  {stat.value}
+                </span>
+              </span>
+            ))}
           </span>
+        ) : (
+          description && (
+            <span className="mt-(--space-xs) block truncate text-sm text-white/80">
+              {description}
+            </span>
+          )
         )}
       </span>
 
       {(onDownload || onDelete || actionLabel) && (
         <span
           className={cx(
-            'flex shrink-0 items-center gap-(--space-xs) transition-all duration-200 ease-out',
+            'relative flex shrink-0 items-center gap-(--space-xs) transition-all duration-200 ease-out',
             downloading
               ? 'translate-x-0 opacity-100'
               : 'translate-x-2 opacity-0 group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:translate-x-0 group-hover:opacity-100',
@@ -108,13 +141,14 @@ const PanelRow = ({
               size="small"
               icon={<Plus />}
               content={actionLabel}
-              className="text-action"
+              className="text-white"
               onClick={withStop(onOpen)}
             />
           )}
           {onDownload && (
             <IconButton
               variant="text"
+              className="text-white"
               aria-label={
                 downloading ? `Downloading ${name}` : `Download ${name}`
               }
@@ -132,6 +166,7 @@ const PanelRow = ({
           {onDelete && (
             <IconButton
               variant="text"
+              className="text-white"
               aria-label={`Delete ${name}`}
               onClick={withStop(onDelete)}
               icon={<Trash2 />}
@@ -153,7 +188,7 @@ type LibraryPanelProps = {
 };
 
 const PANEL_CLASSES =
-  'h-[min(13rem,50dvh)] overflow-y-auto px-(--space-sm) pt-(--space-sm) pb-(--space-xl)';
+  'flex h-[min(13rem,50dvh)] flex-col gap-(--space-sm) overflow-y-auto px-(--space-sm) pb-(--space-xl)';
 
 const LibraryPanel = ({
   onOpenProtocol,
@@ -362,7 +397,7 @@ const LibraryPanel = ({
             <PanelRow
               key={protocol.id}
               name={protocol.name}
-              description={formatProtocolMeta(protocol)}
+              meta={formatProtocolMeta(protocol)}
               downloading={downloadingIds.has(protocol.id)}
               onOpen={() => onOpenProtocol(protocol.id)}
               onDownload={() => handleDownload(protocol)}
