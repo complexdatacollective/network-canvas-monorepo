@@ -1,6 +1,8 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import path from 'node:path';
 
+import { SILOS_PROTOCOL_PATH } from '../helpers/protocol-paths.ts';
+
 // Orchestrates a one-command dev experience for the e2e host:
 //   1. Run bootstrap-host to extract the silos protocol into e2e/.assets/silos/
 //   2. Spawn the asset server (port 4200)
@@ -72,7 +74,7 @@ async function main(): Promise<void> {
     'exec',
     'tsx',
     'e2e/scripts/bootstrap-host.ts',
-    'e2e/data/silos.netcanvas',
+    SILOS_PROTOCOL_PATH,
     SLUG,
   ]);
 

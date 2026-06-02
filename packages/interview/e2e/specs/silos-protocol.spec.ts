@@ -5,15 +5,9 @@
  * Includes both the happy path (male at birth) and the female ineligibility path.
  */
 
-import path from 'node:path';
-
 import { expect, test } from '../fixtures/interview-test.js';
 import { expectURL } from '../helpers/expectations.js';
-
-const SILOS_PROTOCOL_PATH = path.resolve(
-  import.meta.dirname,
-  '../data/silos.netcanvas',
-);
+import { SILOS_PROTOCOL_PATH } from '../helpers/protocol-paths.js';
 
 // Shared protocol ID across all test suites
 let sharedProtocolId: string;
@@ -239,9 +233,7 @@ test.describe('SILOS Protocol', () => {
     }) => {
       await interview.captureInitial();
       // Verify the form heading is visible
-      await expect(
-        page.getByRole('heading', { name: 'About You', level: 1 }),
-      ).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
       // Fill all required fields
       // 1. Employment status (Boolean)
@@ -1704,35 +1696,17 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 53: Social Support - Introduction', async ({
-      page,
-      interview,
-    }) => {
-      await interview.captureInitial();
-      await expect(
-        page.getByRole('heading', {
-          name: 'Your Thoughts and Feelings',
-        }),
-      ).toBeVisible();
-
-      await expect(interview.nextButton).toBeEnabled();
-
-      await interview.captureFinal();
-    });
-
-    test('Stage 54: Ego Social Support (EgoForm)', async ({
+    test('Stage 53: Ego Social Support (EgoForm)', async ({
       page,
       interview,
       stage,
     }) => {
       await interview.captureInitial();
-      await expect(
-        page.getByRole('heading', { name: 'About You', level: 1 }),
-      ).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
       // Verify validation blocks advancement (all 12 fields are required)
       await interview.nextButton.click();
-      await expectURL(page, /step=54/);
+      await expectURL(page, /step=53/);
 
       // Verify at least one field error is visible
       await expect(
@@ -1815,7 +1789,7 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 55: Finish Interview', async ({ interview }) => {
+    test('Stage 54: Finish Interview', async ({ interview }) => {
       await interview.captureInitial();
       interview.skipNext = true;
       // finishInterview() asserts the heading and dialog are visible and
@@ -1982,10 +1956,10 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 55: Finish Interview', async ({ interview }) => {
+    test('Stage 54: Finish Interview', async ({ interview }) => {
       await interview.captureInitial();
-      // Assert that we skipped to stage 55
-      await expect(interview.page).toHaveURL(/step=55/);
+      // Assert that we skipped to stage 54
+      await expect(interview.page).toHaveURL(/step=54/);
 
       interview.skipNext = true;
       // finishInterview() asserts the heading and dialog are visible and

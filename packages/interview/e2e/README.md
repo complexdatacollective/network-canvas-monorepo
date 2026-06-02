@@ -32,7 +32,6 @@ the protocol, creates an interview, and redirects to step 0 on its own.
 ```
 e2e/
 ├── data/                  Real .netcanvas protocols used as fixtures
-│   └── silos.netcanvas
 ├── host/                  Vite app that mounts <Shell /> for tests + dev:host
 │   ├── index.html
 │   ├── vite.config.ts     Aliases @codaco/interview to ../src

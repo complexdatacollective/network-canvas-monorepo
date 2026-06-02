@@ -63,7 +63,7 @@ const Asset = ({ id, size }) => {
                 key="preview-image"
                 className="protocol-summary-asset-manifest__asset-media"
               >
-                <video src={url} ref={ref} preload="auto">
+                <video src={url} ref={ref} preload="auto" aria-label={name}>
                   <source src={`${url}#t=1`} type="video/mp4" />
                 </video>
               </div>,
@@ -80,7 +80,15 @@ const Asset = ({ id, size }) => {
             ...(size ? [['Block Size', size]] : []),
             ['Type', 'Audio'],
             ['Duration', state.duration],
-            ['Preview', <audio key="preview-audio" src={url} ref={ref} />],
+            [
+              'Preview',
+              <audio
+                key="preview-audio"
+                src={url}
+                ref={ref}
+                aria-label={name}
+              />,
+            ],
           ]}
         />
       )}

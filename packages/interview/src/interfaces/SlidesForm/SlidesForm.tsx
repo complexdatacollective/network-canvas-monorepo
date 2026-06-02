@@ -243,6 +243,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
             noContainer
             className="tablet-portrait:min-w-lg w-full max-w-2xl shrink-0"
             spacing="lg"
+            shadow="lg"
           >
             <FormWithoutProvider
               onSubmit={handleSubmit}

@@ -105,7 +105,7 @@ export const NavigationMenuDemo = () => {
                   </Trigger>
                   <Content className="absolute top-0 right-0 w-full">
                     <ul className="m-0 grid w-full grid-cols-3 gap-4 p-6">
-                      {link.menu.map((subLink, _i) => (
+                      {link.menu.map((subLink, _subIndex) => (
                         <li
                           key={subLink.titleTranslationKey}
                           className="col-span-1 grid"

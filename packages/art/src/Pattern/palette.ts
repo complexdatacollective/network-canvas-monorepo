@@ -38,3 +38,14 @@ export function seedToDeepAccent(seed: string): string {
   const l = Math.max(0.15, base.l - 0.4);
   return `oklch(${l.toFixed(3)} ${base.c} ${base.h})`;
 }
+
+export type PatternPalette = Palette & { deepAccent: string };
+
+// Resolve the colors a <Pattern seed={seed} /> will paint, plus a
+// coordinating deep-accent in the same hue family for surrounding UI.
+export function seedToPatternPalette(seed: string): PatternPalette {
+  return {
+    ...rngToPalette(seedToRng(seed)),
+    deepAccent: seedToDeepAccent(seed),
+  };
+}

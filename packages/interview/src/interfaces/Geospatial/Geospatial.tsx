@@ -441,6 +441,7 @@ export default function GeospatialInterface({
           noContainer
           level={0}
           spacing="none"
+          shadow="none"
           className="bg-surface/80 absolute right-4 bottom-4 z-5 flex flex-col gap-2 rounded-xl p-2 shadow-2xl backdrop-blur-md"
           data-testid="map-toolbar"
           variants={{

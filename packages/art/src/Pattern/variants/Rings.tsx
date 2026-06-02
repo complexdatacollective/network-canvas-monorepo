@@ -43,9 +43,9 @@ export const RingsPattern = ({
 }: PatternProps) => {
   const { palette, content } = useMemo(() => {
     const rng = seedToRng(seed);
-    const palette = rngToPalette(rng);
-    const content = renderRings(rng, palette, width, height);
-    return { palette, content };
+    const generatedPalette = rngToPalette(rng);
+    const renderedContent = renderRings(rng, generatedPalette, width, height);
+    return { palette: generatedPalette, content: renderedContent };
   }, [seed, width, height]);
   return (
     <PatternSvg

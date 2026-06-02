@@ -390,10 +390,10 @@ const max: ValidationFunction<number | string> = (maxParam) => () => {
 /**
  * Require that an array have a minimum number of elements
  */
-const minSelected: ValidationFunction<number> = (min) => () => {
-  invariant(typeof min === 'number', 'Min items must be specified');
+const minSelected: ValidationFunction<number> = (minParam) => () => {
+  invariant(typeof minParam === 'number', 'Min items must be specified');
 
-  const hint = `Select at least ${min} value${min === 1 ? '' : 's'}.`;
+  const hint = `Select at least ${minParam} value${minParam === 1 ? '' : 's'}.`;
 
   return z
     .prefault(
@@ -401,8 +401,8 @@ const minSelected: ValidationFunction<number> = (min) => () => {
         .array(z.unknown())
         .check(
           z.minLength(
-            min,
-            `Too few selected. Select at least ${min} value${min === 1 ? '' : 's'}.`,
+            minParam,
+            `Too few selected. Select at least ${minParam} value${minParam === 1 ? '' : 's'}.`,
           ),
         ),
       [],
@@ -413,10 +413,10 @@ const minSelected: ValidationFunction<number> = (min) => () => {
 /**
  * Require that an array have a maximum number of elements
  */
-const maxSelected: ValidationFunction<number> = (max) => () => {
-  invariant(typeof max === 'number', 'Max items must be specified');
+const maxSelected: ValidationFunction<number> = (maxParam) => () => {
+  invariant(typeof maxParam === 'number', 'Max items must be specified');
 
-  const hint = `Select a maximum of ${max} value${max === 1 ? '' : 's'}.`;
+  const hint = `Select a maximum of ${maxParam} value${maxParam === 1 ? '' : 's'}.`;
 
   return z
     .prefault(
@@ -424,11 +424,11 @@ const maxSelected: ValidationFunction<number> = (max) => () => {
         .array(z.unknown())
         .check(
           z.maxLength(
-            max,
-            `Too many items selected. Select a maximum of ${max} value${max === 1 ? '' : 's'}.`,
+            maxParam,
+            `Too many items selected. Select a maximum of ${maxParam} value${maxParam === 1 ? '' : 's'}.`,
           ),
         ),
-      Array.from({ length: max }, () => null),
+      Array.from({ length: maxParam }, () => null),
     )
     .check(z.meta({ hint }));
 };

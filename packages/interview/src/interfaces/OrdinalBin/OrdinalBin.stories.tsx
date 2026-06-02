@@ -2,9 +2,9 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
 import SuperJSON from 'superjson';
 
+import { SyntheticInterview } from '@codaco/protocol-utilities';
+import type { VariableOption } from '@codaco/protocol-validation';
 import StoryInterviewShell from '~/.storybook/StoryInterviewShell';
-import { SyntheticInterview } from '~/synthetic/SyntheticInterview';
-import type { VariableOption } from '~/synthetic/types';
 
 const ORDINAL_LABELS = [
   'Strongly Disagree',

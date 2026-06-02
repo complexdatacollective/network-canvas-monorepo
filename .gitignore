@@ -42,6 +42,8 @@ next-env.d.ts
 .turbo
 
 dist
+dist-electron
+release-builds
 
 # protocol validation test protocols
 /packages/protocol-validation/src/__tests__/data
@@ -63,10 +65,6 @@ apps/documentation/public/sidebar.json
 **/playwright-report/
 **/.playwright-mcp/
 packages/interview/e2e/.assets/
-
-# e2e host seed-silos generated artifacts (regenerated per script run)
-packages/interview/e2e/host/public/silos-state.json
-packages/interview/e2e/host/public/silos-assets/
 
 # Storybook build output
 storybook-static/

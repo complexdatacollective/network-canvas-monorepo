@@ -173,6 +173,60 @@ describe('Wizard Dialog', () => {
     expect(onResult).toHaveBeenCalledWith(null);
   });
 
+  it('should render a custom cancelLabel when provided', async () => {
+    function TestCustomCancelLabel({
+      onResult,
+    }: {
+      onResult: (result: unknown) => void;
+    }) {
+      const { openDialog } = useDialog();
+
+      const handleOpen = async () => {
+        const result = await openDialog({
+          type: 'wizard',
+          title: 'Test Wizard',
+          cancelLabel: 'Continue without security',
+          steps: [{ title: 'Step 1', content: SimpleStep }],
+        });
+        onResult(result);
+      };
+
+      return (
+        <button type="button" onClick={handleOpen}>
+          Open
+        </button>
+      );
+    }
+
+    const onResult = vi.fn();
+
+    render(
+      <DialogProvider>
+        <TestCustomCancelLabel onResult={onResult} />
+      </DialogProvider>,
+    );
+
+    await user.click(screen.getByText('Open'));
+    await screen.findByRole('dialog');
+
+    expect(
+      screen.getByRole('button', { name: 'Continue without security' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Cancel' }),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: 'Continue without security' }),
+    );
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+
+    expect(onResult).toHaveBeenCalledWith(null);
+  });
+
   it('should transform data with onFinish', async () => {
     const onResult = vi.fn();
 

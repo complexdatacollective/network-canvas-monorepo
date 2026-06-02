@@ -298,10 +298,10 @@ export const createFormStore = (): FormStoreApi => {
           if (!result.success) {
             set((draft) => {
               const form = draft;
-              const field = form?.fields.get(fieldName);
-              if (field) {
-                field.meta.isValidating = false;
-                field.meta.isValid = false;
+              const draftField = form?.fields.get(fieldName);
+              if (draftField) {
+                draftField.meta.isValidating = false;
+                draftField.meta.isValid = false;
 
                 const prevFormErrors = form.errors ?? {
                   formErrors: [],

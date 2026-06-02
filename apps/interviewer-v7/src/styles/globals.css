@@ -1,0 +1,48 @@
+/*
+ * Tailwind v4 entry, design tokens, fresco theme + components.
+ * Fonts are imported via JS (see src/main.tsx) so url() refs resolve
+ * through the Vite bundler.
+ */
+@import '@codaco/tailwind-config/fresco.css';
+
+@import '@codaco/fresco-ui/styles.css';
+@import '@codaco/interview/styles.css';
+
+/* Make the root container fill the viewport so the dashboard / interview
+   shell can size to the full screen on tablet + desktop without scrolling
+   the body. */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Electron: invisible draggable region for the frameless titlebar area.
+   Children that need to remain clickable opt out with .app-no-drag. */
+.app-drag {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.app-no-drag {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* Indeterminate-progress sweep used by the in-flight import ghost card
+   when no Content-Length is available. The bar slides left-to-right and
+   loops. */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}

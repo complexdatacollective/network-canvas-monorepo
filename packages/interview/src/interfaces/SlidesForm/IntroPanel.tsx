@@ -23,6 +23,7 @@ export default function IntroPanel({ title, text }: IntroPanelProps) {
     <MotionSurface
       className="h-auto max-h-[75%] max-w-2xl shadow-xl"
       spacing="lg"
+      shadow="lg"
       variants={introVariants}
       initial="initial"
       animate="animate"

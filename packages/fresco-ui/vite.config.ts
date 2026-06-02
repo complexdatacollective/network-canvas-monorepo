@@ -59,7 +59,6 @@ export default defineConfig({
           'src/**/*.{ts,tsx}',
           '!src/**/*.{stories,test,spec}.{ts,tsx}',
           '!src/**/__tests__/**',
-          '!src/test-setup.ts',
         ],
         {
           cwd: here,
@@ -91,7 +90,6 @@ export default defineConfig({
           '**/*.test.*',
           '**/*.spec.*',
           '**/__tests__/**',
-          '**/test-setup.ts',
         ],
         // Strip the `src/` prefix so dts outputs land alongside the JS in `dist/`.
         entryRoot: 'src',

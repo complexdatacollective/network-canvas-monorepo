@@ -3,6 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  LogOut,
 } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import type { ComponentProps, Ref } from 'react';
@@ -110,6 +111,7 @@ type NavigationProps = {
   orientation?: 'horizontal' | 'vertical';
   forwardButtonRef?: Ref<HTMLButtonElement>;
   backButtonRef?: Ref<HTMLButtonElement>;
+  onExit?: () => void;
 };
 
 const Navigation = ({
@@ -122,6 +124,7 @@ const Navigation = ({
   orientation = 'vertical',
   forwardButtonRef,
   backButtonRef,
+  onExit,
 }: NavigationProps) => {
   const BackIcon = orientation === 'vertical' ? ChevronUp : ChevronLeft;
   const ForwardIcon = orientation === 'vertical' ? ChevronDown : ChevronRight;
@@ -133,6 +136,7 @@ const Navigation = ({
       role="navigation"
       className={navigationVariants({ orientation })}
       spacing="xs"
+      shadow="xs"
       noContainer
       variants={containerVariants}
       custom={orientation}
@@ -140,6 +144,15 @@ const Navigation = ({
       animate="animate"
       exit="exit"
     >
+      {onExit && (
+        <NavigationButton
+          onClick={onExit}
+          icon={<LogOut />}
+          className="[&>.lucide]:h-[1.5em]!"
+          aria-label="Exit interview"
+          data-testid="exit-button"
+        />
+      )}
       <NavigationButton
         onClick={moveBackward}
         disabled={disableMoveBackward}

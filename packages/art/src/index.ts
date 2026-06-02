@@ -1,5 +1,7 @@
 import BackgroundBlobs from './BackgroundBlobs/BackgroundBlobs';
 import useCanvas from './BackgroundBlobs/useCanvas';
+import { seedToPatternPalette } from './Pattern/palette';
+import type { PatternPalette } from './Pattern/palette';
 import { Pattern } from './Pattern/Pattern';
 import type { PatternProps, PatternVariant } from './Pattern/types';
 import { CrossesPattern } from './Pattern/variants/Crosses';
@@ -10,7 +12,7 @@ import { SquigglesPattern } from './Pattern/variants/Squiggles';
 import { TilesPattern } from './Pattern/variants/Tiles';
 import { TruchetPattern } from './Pattern/variants/Truchet';
 
-export type { PatternProps, PatternVariant };
+export type { PatternPalette, PatternProps, PatternVariant };
 export {
   BackgroundBlobs,
   CrossesPattern,
@@ -18,6 +20,7 @@ export {
   FlowPattern,
   Pattern,
   RingsPattern,
+  seedToPatternPalette,
   SquigglesPattern,
   TilesPattern,
   TruchetPattern,

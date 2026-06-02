@@ -47,7 +47,6 @@ type ToastData = {
   description?: string | React.ReactNode;
   variant?: ToastVariant;
   icon?: React.ReactNode;
-  type?: ToastVariant;
   timeout?: number;
   onCancel?: () => void;
   onClose?: () => void;
@@ -64,7 +63,12 @@ type ToastItemProps = {
 };
 
 function ToastItem({ toast }: ToastItemProps) {
-  const variant = (toast.type ?? 'default') as ToastVariant;
+  const variant: ToastVariant =
+    toast.type === 'info' ||
+    toast.type === 'success' ||
+    toast.type === 'destructive'
+      ? toast.type
+      : 'default';
   const IconComponent = variantIcons[variant];
 
   return (
@@ -143,20 +147,24 @@ export function useToast(): TypedUseToastManager {
   const toastManager = Toast.useToastManager();
 
   const add = (toastData: ToastData) => {
-    const { onCancel, onClose, icon, ...rest } = toastData;
+    const { onCancel, onClose, icon, variant, ...rest } = toastData;
     return toastManager.add({
       ...rest,
+      type: variant,
       onClose,
       data: { onCancel, icon },
     });
   };
 
   const update = (id: string, toastData: Partial<ToastData>) => {
-    const { onCancel, onClose, ...rest } = toastData;
+    const { onCancel, onClose, icon, variant, ...rest } = toastData;
     toastManager.update(id, {
       ...rest,
+      ...(variant !== undefined && { type: variant }),
       ...(onClose !== undefined && { onClose }),
-      ...(onCancel !== undefined && { data: { onCancel } }),
+      ...((onCancel !== undefined || icon !== undefined) && {
+        data: { onCancel, icon },
+      }),
     });
   };
 

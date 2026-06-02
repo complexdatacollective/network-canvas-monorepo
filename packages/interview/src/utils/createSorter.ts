@@ -2,13 +2,21 @@ import { get } from 'es-toolkit/compat';
 
 import type {
   EntityDefinition,
-  SortOrder,
   VariableType,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
-// TODO: This type should be exported directly from protocol-validation. Fixed in latest version.
-export type ProtocolSortRule = SortOrder[number];
+// The shape `processProtocolSortRule` actually accepts. Wider than the
+// protocol `SortRule` so that rules carrying their own `type`/`hierarchy` pass
+// through the compatibility layer. Such rules are not legacy: `type` and
+// `hierarchy` are designed to drive the sorter in scenarios outside the
+// interview, such as dashboard UI.
+export type LegacyOrProtocolSortRule = {
+  property: string;
+  direction?: 'asc' | 'desc';
+  type?: SortType;
+  hierarchy?: (string | number | boolean)[];
+};
 
 /**
  * Creating a collator that is reused by string comparison is significantly faster
@@ -366,9 +374,9 @@ export const mapNCType = (type?: VariableType) => {
 /**
  * Add the entity attributes property to the property path of a sort rule.
  */
-const propertyWithAttributePath = (
-  rule: SortOrder[number],
-): string[] | string => {
+const propertyWithAttributePath = (rule: {
+  property: string;
+}): string[] | string => {
   // 'type' rules are a special case - they exist in the protocol, but do not
   // refer to an entity attribute (they refer to a model property)
   if (rule.property === 'type') {
@@ -393,7 +401,7 @@ const propertyWithAttributePath = (
  */
 export const processProtocolSortRule =
   (codebookVariables: EntityDefinition['variables']) =>
-  (sortRule: ProtocolSortRule): ProcessedSortRule => {
+  (sortRule: LegacyOrProtocolSortRule): ProcessedSortRule => {
     const variableDefinition = get(codebookVariables, sortRule.property, null);
 
     // Don't modify the rule if there is no variable definition matching the

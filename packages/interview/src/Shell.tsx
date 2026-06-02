@@ -44,7 +44,7 @@ const variants = {
   exit: { opacity: 0 },
 };
 
-function Interview() {
+function Interview({ onExit }: { onExit?: () => void }) {
   const {
     stage,
     displayedStep,
@@ -81,6 +81,11 @@ function Interview() {
         <main
           className={cx(
             'relative flex size-full flex-1 overflow-hidden',
+            // Viewport-width ramp for the --theme-root-size type-scale sentinel,
+            // scoped to the Shell so only the full-screen interview scales (not
+            // other themed regions). Keep breakpoints synced with
+            // --breakpoint-laptop / --breakpoint-desktop-lg in theme.css.
+            'laptop:[--theme-root-size:1.125rem] desktop-lg:[--theme-root-size:1.25rem] [--theme-root-size:1rem]',
             isPortraitAspectRatio ? 'flex-col' : 'flex-row-reverse',
           )}
         />
@@ -136,6 +141,7 @@ function Interview() {
             orientation={navigationOrientation}
             forwardButtonRef={forwardButtonRef}
             backButtonRef={backButtonRef}
+            onExit={onExit}
           />
           {/*
            * Self-contained Toast.Provider for the interview manager so
@@ -172,6 +178,7 @@ type ShellProps = {
   analytics: InterviewAnalyticsMetadata;
   posthogClient?: PostHog;
   disableAnalytics?: boolean;
+  onExit?: () => void;
 };
 
 const Shell = ({
@@ -185,6 +192,7 @@ const Shell = ({
   analytics,
   posthogClient,
   disableAnalytics = false,
+  onExit,
 }: ShellProps) => {
   // Anchor onSync in a ref so the store factory receives a stable callback
   // (the sync middleware closes over it once at store creation). Hosts
@@ -257,7 +265,7 @@ const Shell = ({
             currentStep={currentStep}
             onStepChange={onStepChange}
           >
-            <Interview />
+            <Interview onExit={onExit} />
           </CurrentStepProvider>
         </ContractProvider>
       </Provider>

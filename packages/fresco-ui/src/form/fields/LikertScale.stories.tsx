@@ -5,6 +5,7 @@ import { expect, fireEvent, userEvent, within } from 'storybook/test';
 import Surface from '../../layout/Surface';
 import Paragraph from '../../typography/Paragraph';
 import LikertScaleField from './LikertScale';
+import { withPointerCaptureStubbed } from './sliderTestHelpers';
 
 const meta = {
   title: 'Systems/Form/Fields/LikertScaleField',
@@ -245,20 +246,22 @@ export const ClickTrackSetsClickedValue: Story = {
     const control = thumb.parentElement!.parentElement!.parentElement!;
     const rect = control.getBoundingClientRect();
 
-    await fireEvent.pointerDown(control, {
-      clientX: rect.right - 2,
-      clientY: rect.top + rect.height / 2,
-      pointerId: 1,
-      pointerType: 'mouse',
-      button: 0,
-      buttons: 1,
-    });
-    await fireEvent.pointerUp(control, {
-      clientX: rect.right - 2,
-      clientY: rect.top + rect.height / 2,
-      pointerId: 1,
-      pointerType: 'mouse',
-      button: 0,
+    await withPointerCaptureStubbed(async () => {
+      await fireEvent.pointerDown(control, {
+        clientX: rect.right - 2,
+        clientY: rect.top + rect.height / 2,
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+        buttons: 1,
+      });
+      await fireEvent.pointerUp(control, {
+        clientX: rect.right - 2,
+        clientY: rect.top + rect.height / 2,
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+      });
     });
 
     await expect(valueDisplay).toHaveTextContent('5');
@@ -278,22 +281,25 @@ export const UnsetClickMidpoint: Story = {
 
     await expect(valueDisplay).toHaveTextContent('unset');
 
-    // Click on the thumb at the midpoint - should set value to 3
+    // Click the pristine, midpoint-positioned thumb - commits value 3 via
+    // onValueCommitted (no movement required).
     const thumbRect = thumb.getBoundingClientRect();
-    await fireEvent.pointerDown(thumb, {
-      clientX: thumbRect.left + thumbRect.width / 2,
-      clientY: thumbRect.top + thumbRect.height / 2,
-      pointerId: 1,
-      pointerType: 'mouse',
-      button: 0,
-      buttons: 1,
-    });
-    await fireEvent.pointerUp(thumb, {
-      clientX: thumbRect.left + thumbRect.width / 2,
-      clientY: thumbRect.top + thumbRect.height / 2,
-      pointerId: 1,
-      pointerType: 'mouse',
-      button: 0,
+    await withPointerCaptureStubbed(async () => {
+      await fireEvent.pointerDown(thumb, {
+        clientX: thumbRect.left + thumbRect.width / 2,
+        clientY: thumbRect.top + thumbRect.height / 2,
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+        buttons: 1,
+      });
+      await fireEvent.pointerUp(thumb, {
+        clientX: thumbRect.left + thumbRect.width / 2,
+        clientY: thumbRect.top + thumbRect.height / 2,
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+      });
     });
 
     await expect(valueDisplay).toHaveTextContent('3');
@@ -313,9 +319,10 @@ export const UnsetKeyboardEnter: Story = {
 
     await expect(valueDisplay).toHaveTextContent('unset');
 
-    // Tab to the slider thumb and press Enter to confirm midpoint
+    // Tab to the slider input (the single tab stop) and press Enter to confirm
+    // midpoint.
     await userEvent.tab();
-    await expect(thumb.closest('[tabindex]')!).toHaveFocus();
+    await expect(thumb).toHaveFocus();
     await userEvent.keyboard('{Enter}');
     await expect(valueDisplay).toHaveTextContent('3');
   },
@@ -334,11 +341,49 @@ export const UnsetKeyboardSpace: Story = {
 
     await expect(valueDisplay).toHaveTextContent('unset');
 
-    // Tab to the slider thumb and press Space to confirm midpoint
+    // Tab to the slider input (the single tab stop) and press Space to confirm
+    // midpoint.
     await userEvent.tab();
-    await expect(thumb.closest('[tabindex]')!).toHaveFocus();
+    await expect(thumb).toHaveFocus();
     await userEvent.keyboard(' ');
     await expect(valueDisplay).toHaveTextContent('3');
+  },
+};
+
+export const KeyboardNavigatesToMaximum: Story = {
+  args: {
+    options: agreementOptions,
+    value: undefined,
+  },
+  render: (args) => <UnsetLikertWithValueDisplay {...args} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const slider = canvas.getByRole('slider');
+    const valueDisplay = canvas.getByTestId('likert-value');
+
+    slider.focus();
+
+    // Step all the way left to the minimum option.
+    for (let i = 0; i < agreementOptions.length; i++) {
+      await userEvent.keyboard('{ArrowLeft}');
+    }
+    await expect(valueDisplay).toHaveTextContent('1');
+    await expect(slider).toHaveAttribute(
+      'aria-label',
+      'Select value on scale: Strongly Disagree',
+    );
+
+    // Step right exactly once per remaining option. Every keypress must
+    // advance the value (regression guard for a Firefox-only failure where the
+    // slider dropped one increment and stalled one step short of the maximum).
+    for (let i = 0; i < agreementOptions.length - 1; i++) {
+      await userEvent.keyboard('{ArrowRight}');
+    }
+    await expect(valueDisplay).toHaveTextContent('5');
+    await expect(slider).toHaveAttribute(
+      'aria-label',
+      'Select value on scale: Strongly Agree',
+    );
   },
 };
 

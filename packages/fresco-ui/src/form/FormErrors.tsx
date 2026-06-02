@@ -1,32 +1,25 @@
-import { AlertCircle } from 'lucide-react';
-
-import { cx } from '../utils/cva';
+import { Alert } from '../Alert';
+import Paragraph from '../typography/Paragraph';
+import { UnorderedList } from '../typography/UnorderedList';
 
 type FormErrorsProps = {
   errors: string[] | null;
-  className?: string;
 };
 
-export default function FormErrors({ errors, className }: FormErrorsProps) {
+export default function FormErrors({ errors }: FormErrorsProps) {
   if (!errors || errors.length === 0) return null;
 
   return (
-    <div
-      className={cx(
-        'border-destructive/20 bg-destructive/5 rounded border p-4 not-last:mb-6',
-        className,
-      )}
-    >
-      <div className="flex gap-2 align-middle">
-        <AlertCircle className="text-destructive size-5 shrink-0" />
-        <div className="space-y-1">
+    <Alert variant="destructive">
+      {errors.length === 1 ? (
+        <Paragraph margin="none">{errors[0]}</Paragraph>
+      ) : (
+        <UnorderedList>
           {errors.map((error, index) => (
-            <p key={index} className="text-destructive text-sm" role="alert">
-              {error}
-            </p>
+            <li key={index}>{error}</li>
           ))}
-        </div>
-      </div>
-    </div>
+        </UnorderedList>
+      )}
+    </Alert>
   );
 }

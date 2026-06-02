@@ -127,6 +127,8 @@ export default function ToggleField(props: ToggleFieldProps) {
     'aria-describedby': ariaDescribedBy,
     'aria-disabled': ariaDisabled,
     'aria-readonly': ariaReadonly,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledBy,
   } = props;
 
   const isInvalid = !!ariaInvalid;
@@ -151,6 +153,8 @@ export default function ToggleField(props: ToggleFieldProps) {
       render={
         <button
           type="button"
+          aria-label={ariaLabel}
+          aria-labelledby={ariaLabelledBy}
           className={toggleContainerVariants({
             size,
             checked: value,

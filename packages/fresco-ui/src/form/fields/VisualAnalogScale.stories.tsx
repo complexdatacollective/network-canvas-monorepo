@@ -4,6 +4,7 @@ import { expect, userEvent, within } from 'storybook/test';
 
 import Surface from '../../layout/Surface';
 import Paragraph from '../../typography/Paragraph';
+import { withPointerCaptureStubbed } from './sliderTestHelpers';
 import VisualAnalogScaleField from './VisualAnalogScale';
 
 const meta = {
@@ -215,7 +216,9 @@ export const Unset: Story = {
     await expect(valueDisplay).toHaveTextContent('unset');
 
     // Click the thumb to commit the midpoint value
-    await userEvent.click(thumb);
+    await withPointerCaptureStubbed(async () => {
+      await userEvent.click(thumb);
+    });
     await expect(valueDisplay).toHaveTextContent('50');
   },
 };
@@ -234,9 +237,10 @@ export const UnsetKeyboardEnter: Story = {
 
     await expect(valueDisplay).toHaveTextContent('unset');
 
-    // Tab to the slider thumb and press Enter to confirm midpoint
+    // Tab to the slider input (the single tab stop) and press Enter to confirm
+    // midpoint.
     await userEvent.tab();
-    await expect(thumb.closest('[tabindex]')!).toHaveFocus();
+    await expect(thumb).toHaveFocus();
     await userEvent.keyboard('{Enter}');
     await expect(valueDisplay).toHaveTextContent('50');
   },
@@ -256,9 +260,10 @@ export const UnsetKeyboardSpace: Story = {
 
     await expect(valueDisplay).toHaveTextContent('unset');
 
-    // Tab to the slider thumb and press Space to confirm midpoint
+    // Tab to the slider input (the single tab stop) and press Space to confirm
+    // midpoint.
     await userEvent.tab();
-    await expect(thumb.closest('[tabindex]')!).toHaveFocus();
+    await expect(thumb).toHaveFocus();
     await userEvent.keyboard(' ');
     await expect(valueDisplay).toHaveTextContent('50');
   },

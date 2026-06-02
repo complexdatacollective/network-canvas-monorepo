@@ -38,7 +38,7 @@ export function useInterviewToastContext() {
 }
 
 const arrowVariants = cva({
-  base: 'size-2.5 rotate-45 rounded-br-sm data-[side=bottom]:-top-[5px] data-[side=left]:-right-[5px] data-[side=right]:-left-[5px] data-[side=top]:-bottom-[5px]',
+  base: 'size-2.5 rotate-45 rounded-br-sm data-[side=bottom]:top-[-5px] data-[side=left]:right-[-5px] data-[side=right]:left-[-5px] data-[side=top]:bottom-[-5px]',
   variants: {
     variant: {
       default: 'bg-surface',

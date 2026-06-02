@@ -153,7 +153,7 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
     () =>
       Object.keys(existingVariables)
         .filter((variableId) => variableId !== uuid) // Exclude current variable being edited
-        .map((variable) => get(existingVariables[variable], 'name')),
+        .map((variableId) => get(existingVariables[variableId], 'name')),
     [existingVariables, uuid],
   );
 
