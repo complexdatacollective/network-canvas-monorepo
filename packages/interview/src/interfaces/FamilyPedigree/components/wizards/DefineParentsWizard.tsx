@@ -7,8 +7,9 @@ import type {
 
 import ParentPartnershipsStep from '../quickStartWizard/ParentPartnershipsStep';
 import GenericAdditionalParentsStep from './steps/GenericAdditionalParentsStep';
-import GenericBioParentsStep from './steps/GenericBioParentsStep';
+import GenericEggParentStep from './steps/GenericEggParentStep';
 import GenericOtherParentsStep from './steps/GenericOtherParentsStep';
+import GenericSpermParentStep from './steps/GenericSpermParentStep';
 import {
   type EgoCellResult,
   egoCellTransform,
@@ -44,8 +45,12 @@ export async function openDefineParentsWizard(
     progress: null,
     steps: [
       {
-        title,
-        content: GenericBioParentsStep,
+        title: 'Egg Parent',
+        content: GenericEggParentStep,
+      },
+      {
+        title: 'Sperm Parent',
+        content: GenericSpermParentStep,
       },
       {
         title: 'Other parents',

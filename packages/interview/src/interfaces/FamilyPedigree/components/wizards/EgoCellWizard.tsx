@@ -8,11 +8,13 @@ import ActionButton from '~/components/ActionButton';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
 import AdditionalParentsStep from '../quickStartWizard/AdditionalParentsStep';
-import BioParentsStep from '../quickStartWizard/BioParentsStep';
+import BioParentsIntroStep from '../quickStartWizard/BioParentsIntroStep';
 import ChildrenDetailStep from '../quickStartWizard/ChildrenDetailStep';
+import EggParentStep from '../quickStartWizard/EggParentStep';
 import OtherParentsStep from '../quickStartWizard/OtherParentsStep';
 import ParentPartnershipsStep from '../quickStartWizard/ParentPartnershipsStep';
 import PartnerAndChildrenStep from '../quickStartWizard/PartnerAndChildrenStep';
+import SpermParentStep from '../quickStartWizard/SpermParentStep';
 import {
   type EgoCellResult,
   egoCellTransform,
@@ -41,7 +43,15 @@ export default function EgoCellWizard({
       steps: [
         {
           title: 'Your biological parents',
-          content: BioParentsStep,
+          content: BioParentsIntroStep,
+        },
+        {
+          title: 'Egg Parent',
+          content: EggParentStep,
+        },
+        {
+          title: 'Sperm Parent',
+          content: SpermParentStep,
         },
         {
           title: 'Other parents',
