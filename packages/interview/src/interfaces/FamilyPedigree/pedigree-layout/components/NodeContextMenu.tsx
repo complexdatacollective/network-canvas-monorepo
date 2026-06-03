@@ -1,11 +1,14 @@
 'use client';
 
-import { Menu } from '@base-ui/react/menu';
 import type { ReactElement } from 'react';
 
-import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
-import { ArrowSvg } from '@codaco/fresco-ui/Popover';
-import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@codaco/fresco-ui/DropdownMenu';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 export type NodeContextMenuAction =
@@ -41,84 +44,61 @@ export default function NodeContextMenu({
   onAction,
   children,
 }: NodeContextMenuProps) {
-  const portalContainer = usePortalContainer();
-
   return (
-    <Menu.Root>
-      <Menu.Trigger render={children} />
-      <Menu.Portal container={portalContainer ?? undefined}>
-        <Menu.Positioner sideOffset={8}>
-          <Menu.Popup>
-            <Menu.Arrow className="data-[side=bottom]:top-[-15px] data-[side=left]:right-[-13px] data-[side=left]:rotate-90 data-[side=right]:left-[-13px] data-[side=right]:-rotate-90 data-[side=top]:bottom-[-14px] data-[side=top]:rotate-180">
-              <ArrowSvg />
-            </Menu.Arrow>
-            <MotionSurface
-              level="popover"
-              spacing="none"
-              shadow="none"
-              noContainer
-              className={cx(
-                'max-w-(--available-width) overflow-hidden shadow-xl',
-              )}
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ type: 'spring', duration: 0.5 }}
+    <DropdownMenu>
+      <DropdownMenuTrigger render={children} />
+      <DropdownMenuContent>
+        {canAddParent && (
+          <DropdownMenuItem
+            className={menuItemClass}
+            onClick={() => onAction('parent')}
+          >
+            Add parent
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem
+          className={menuItemClass}
+          onClick={() => onAction('child')}
+        >
+          Add child
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className={menuItemClass}
+          onClick={() => onAction('partner')}
+        >
+          Add partner
+        </DropdownMenuItem>
+        {canAddSibling && (
+          <DropdownMenuItem
+            className={menuItemClass}
+            onClick={() => onAction('sibling')}
+          >
+            Add sibling
+          </DropdownMenuItem>
+        )}
+        {!isEgo && (
+          <>
+            <DropdownMenuSeparator className="my-1 h-px bg-current/20" />
+            <DropdownMenuItem
+              className={menuItemClass}
+              onClick={() => onAction('editName')}
             >
-              {canAddParent && (
-                <Menu.Item
-                  className={menuItemClass}
-                  onClick={() => onAction('parent')}
-                >
-                  Add parent
-                </Menu.Item>
-              )}
-              <Menu.Item
-                className={menuItemClass}
-                onClick={() => onAction('child')}
-              >
-                Add child
-              </Menu.Item>
-              <Menu.Item
-                className={menuItemClass}
-                onClick={() => onAction('partner')}
-              >
-                Add partner
-              </Menu.Item>
-              {canAddSibling && (
-                <Menu.Item
-                  className={menuItemClass}
-                  onClick={() => onAction('sibling')}
-                >
-                  Add sibling
-                </Menu.Item>
-              )}
-              {!isEgo && (
-                <>
-                  <Menu.Separator className="my-1 h-px bg-current/20" />
-                  <Menu.Item
-                    className={menuItemClass}
-                    onClick={() => onAction('editName')}
-                  >
-                    Edit name
-                  </Menu.Item>
-                </>
-              )}
-              {!isEgo && (
-                <>
-                  <Menu.Separator className="my-1 h-px bg-current/20" />
-                  <Menu.Item
-                    className={destructiveMenuItemClass}
-                    onClick={() => onAction('delete')}
-                  >
-                    Delete
-                  </Menu.Item>
-                </>
-              )}
-            </MotionSurface>
-          </Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
-    </Menu.Root>
+              Edit name
+            </DropdownMenuItem>
+          </>
+        )}
+        {!isEgo && (
+          <>
+            <DropdownMenuSeparator className="my-1 h-px bg-current/20" />
+            <DropdownMenuItem
+              className={destructiveMenuItemClass}
+              onClick={() => onAction('delete')}
+            >
+              Delete
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
