@@ -5,7 +5,9 @@ import type {
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 
-import ParentPartnershipsStep from '../quickStartWizard/ParentPartnershipsStep';
+import ParentPartnershipsStep, {
+  PartnershipSubjectProvider,
+} from '../quickStartWizard/ParentPartnershipsStep';
 import GenericAdditionalParentsStep from './steps/GenericAdditionalParentsStep';
 import GenericEggParentStep from './steps/GenericEggParentStep';
 import GenericGestationalCarrierStep from './steps/GenericGestationalCarrierStep';
@@ -30,6 +32,25 @@ function getNodeDisplayName(
     : "This Person's";
 }
 
+/**
+ * Mid-sentence possessive for the focal person (e.g. "your", "Linda's",
+ * "this person's"), used to label that person's unnamed parents in the shared
+ * partnership step.
+ */
+export function getNodeSubjectPossessive(
+  nodeId: string,
+  nodes: Map<string, NcNode>,
+  variableConfig: VariableConfig,
+): string {
+  const node = nodes.get(nodeId);
+  if (!node) return "this person's";
+  if (node.attributes[variableConfig.egoVariable] === true) return 'your';
+  const name = node.attributes[variableConfig.nodeLabelVariable];
+  return typeof name === 'string' && name.length > 0
+    ? `${name}'s`
+    : "this person's";
+}
+
 export async function openDefineParentsWizard(
   openDialog: ReturnType<typeof useDialog>['openDialog'],
   focalNodeId: string,
@@ -39,6 +60,11 @@ export async function openDefineParentsWizard(
 ): Promise<CommitBatch | null> {
   const displayName = getNodeDisplayName(focalNodeId, nodes, variableConfig);
   const title = `${displayName} Biological Parents`;
+  const subjectPossessive = getNodeSubjectPossessive(
+    focalNodeId,
+    nodes,
+    variableConfig,
+  );
 
   const result = await openDialog({
     type: 'wizard',
@@ -70,7 +96,11 @@ export async function openDefineParentsWizard(
       },
       {
         title: 'Parent partnerships',
-        content: ParentPartnershipsStep,
+        content: () => (
+          <PartnershipSubjectProvider possessive={subjectPossessive}>
+            <ParentPartnershipsStep />
+          </PartnershipSubjectProvider>
+        ),
       },
     ],
     onFinish: (formValues: Record<string, unknown>) => {

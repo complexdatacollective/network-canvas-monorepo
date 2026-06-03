@@ -27,7 +27,9 @@ describe('egoCellTransform', () => {
         'name': 'Robert',
       },
       'hasOtherParents': false,
-      'partnership-egg-parent-sperm-parent': 'current',
+      'partnerships': {
+        'egg-parent': [{ id: 'sperm-parent', value: 'current' }],
+      },
     };
 
     const { batch } = egoCellTransform(
@@ -111,9 +113,13 @@ describe('egoCellTransform', () => {
       'hasOtherParents': true,
       'otherParentCount': 1,
       'additional-parent': [{ role: 'raised-me', name: 'Patricia' }],
-      'partnership-egg-parent-sperm-parent': 'none',
-      'partnership-egg-parent-additional-parent-0': 'current',
-      'partnership-sperm-parent-additional-parent-0': 'none',
+      'partnerships': {
+        'egg-parent': [
+          { id: 'sperm-parent', value: 'none' },
+          { id: 'additional-parent-0', value: 'current' },
+        ],
+        'sperm-parent': [{ id: 'additional-parent-0', value: 'none' }],
+      },
     };
 
     const { batch } = egoCellTransform(
@@ -178,13 +184,17 @@ describe('egoCellTransform', () => {
         'name': '',
       },
       'gestational-carrier': {
-        'is-donor': false,
+        'is-surrogate': false,
         'name': 'Mum',
       },
       'hasOtherParents': false,
-      'partnership-egg-parent-sperm-parent': 'none',
-      'partnership-egg-parent-gestational-carrier': 'none',
-      'partnership-sperm-parent-gestational-carrier': 'none',
+      'partnerships': {
+        'egg-parent': [
+          { id: 'sperm-parent', value: 'none' },
+          { id: 'gestational-carrier', value: 'none' },
+        ],
+        'sperm-parent': [{ id: 'gestational-carrier', value: 'none' }],
+      },
     };
 
     const { batch } = egoCellTransform(
@@ -244,9 +254,13 @@ describe('egoCellTransform', () => {
       'hasOtherParents': true,
       'otherParentCount': 1,
       'additional-parent': [{ role: 'step-parent', name: 'Karen' }],
-      'partnership-egg-parent-sperm-parent': 'ex',
-      'partnership-egg-parent-additional-parent-0': 'none',
-      'partnership-sperm-parent-additional-parent-0': 'current',
+      'partnerships': {
+        'egg-parent': [
+          { id: 'sperm-parent', value: 'ex' },
+          { id: 'additional-parent-0', value: 'none' },
+        ],
+        'sperm-parent': [{ id: 'additional-parent-0', value: 'current' }],
+      },
     };
 
     const { batch } = egoCellTransform(
@@ -300,12 +314,20 @@ describe('egoCellTransform', () => {
           name: 'Barbara',
         },
       ],
-      'partnership-egg-parent-sperm-parent': 'none',
-      'partnership-egg-parent-additional-parent-0': 'none',
-      'partnership-egg-parent-additional-parent-1': 'none',
-      'partnership-sperm-parent-additional-parent-0': 'none',
-      'partnership-sperm-parent-additional-parent-1': 'none',
-      'partnership-additional-parent-0-additional-parent-1': 'current',
+      'partnerships': {
+        'egg-parent': [
+          { id: 'sperm-parent', value: 'none' },
+          { id: 'additional-parent-0', value: 'none' },
+          { id: 'additional-parent-1', value: 'none' },
+        ],
+        'sperm-parent': [
+          { id: 'additional-parent-0', value: 'none' },
+          { id: 'additional-parent-1', value: 'none' },
+        ],
+        'additional-parent-0': [
+          { id: 'additional-parent-1', value: 'current' },
+        ],
+      },
     };
 
     const result = egoCellTransform(
@@ -353,7 +375,9 @@ describe('egoCellTransform', () => {
         'name': 'Robert',
       },
       'hasOtherParents': false,
-      'partnership-egg-parent-sperm-parent': 'current',
+      'partnerships': {
+        'egg-parent': [{ id: 'sperm-parent', value: 'current' }],
+      },
     };
 
     const result = egoCellTransform(
@@ -381,7 +405,9 @@ describe('egoCellTransform', () => {
         'name': 'Robert',
       },
       'hasOtherParents': false,
-      'partnership-egg-parent-sperm-parent': 'current',
+      'partnerships': {
+        'egg-parent': [{ id: 'sperm-parent', value: 'current' }],
+      },
     };
 
     const { batch } = egoCellTransform(
@@ -411,7 +437,9 @@ describe('egoCellTransform', () => {
         'name': 'Robert',
       },
       'hasOtherParents': false,
-      'partnership-egg-parent-sperm-parent': 'current',
+      'partnerships': {
+        'egg-parent': [{ id: 'sperm-parent', value: 'current' }],
+      },
       'hasPartner': true,
       'partner': {
         name: 'Sophia',
@@ -467,7 +495,9 @@ describe('egoCellTransform', () => {
         'name': 'Robert',
       },
       'hasOtherParents': false,
-      'partnership-egg-parent-sperm-parent': 'current',
+      'partnerships': {
+        'egg-parent': [{ id: 'sperm-parent', value: 'current' }],
+      },
       'hasPartner': false,
     };
 

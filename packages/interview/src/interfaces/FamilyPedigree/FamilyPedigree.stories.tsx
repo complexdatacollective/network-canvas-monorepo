@@ -377,6 +377,31 @@ async function setFieldInput(
   await userEvent.type(input, value);
 }
 
+/**
+ * Set one cell of a partnership matrix. The matrix for `focalId` lists every
+ * parent below it; `partnerLabel` is the displayed label of the row (a name,
+ * or a role fallback like "your sperm parent"). `optionLabel` is one of
+ * "Current partner" / "Ex-partner" / "Not a partner". Pairs left at the
+ * default ("Not a partner") need no call.
+ */
+async function setPartnership(
+  focalId: string,
+  partnerLabel: string,
+  optionLabel: string,
+) {
+  const dialog = await getDialog();
+  const matrix = dialog.querySelector(
+    `[data-field-name="${CSS.escape(`partnerships.${focalId}`)}"]`,
+  );
+  if (!matrix) throw new Error(`No partnership matrix for focal "${focalId}"`);
+  const group = within(matrix as HTMLElement).getByRole('radiogroup', {
+    name: partnerLabel,
+  });
+  await userEvent.click(
+    within(group).getByRole('radio', { name: optionLabel }),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Scenario stories
 // ---------------------------------------------------------------------------
@@ -414,10 +439,7 @@ export const NuclearFamily: ScenarioStory = {
     await setFieldInput('hasOtherParents', false);
     await clickContinue();
 
-    await setFieldInput(
-      'partnership-egg-parent-sperm-parent',
-      'Current partners',
-    );
+    await setPartnership('egg-parent', 'Robert', 'Current partner');
     await clickContinue();
 
     // Partner and children
@@ -461,10 +483,7 @@ export const SingleParent: ScenarioStory = {
     await setFieldInput('hasOtherParents', false);
     await clickContinue();
 
-    await setFieldInput(
-      'partnership-egg-parent-sperm-parent',
-      'Never partners',
-    );
+    // Linda and the absent father are not partners (matrix default)
     await clickContinue();
 
     // Partner and children
@@ -505,18 +524,8 @@ export const SameSexMothers: ScenarioStory = {
     await setFieldInput('additional-parent[0].gender_identity', 'Woman/girl');
     await clickContinue();
 
-    await setFieldInput(
-      'partnership-egg-parent-sperm-parent',
-      'Never partners',
-    );
-    await setFieldInput(
-      'partnership-egg-parent-additional-parent-0',
-      'Current partners',
-    );
-    await setFieldInput(
-      'partnership-sperm-parent-additional-parent-0',
-      'Never partners',
-    );
+    // Patricia is Linda's current partner; the donor partners no one
+    await setPartnership('egg-parent', 'Patricia', 'Current partner');
     await clickContinue();
 
     // Partner and children
@@ -556,18 +565,8 @@ export const SpermDonor: ScenarioStory = {
     await setFieldInput('additional-parent[0].gender_identity', 'Woman/girl');
     await clickContinue();
 
-    await setFieldInput(
-      'partnership-egg-parent-sperm-parent',
-      'Never partners',
-    );
-    await setFieldInput(
-      'partnership-egg-parent-additional-parent-0',
-      'Current partners',
-    );
-    await setFieldInput(
-      'partnership-sperm-parent-additional-parent-0',
-      'Never partners',
-    );
+    // Patricia is Linda's current partner; Carlos partners no one
+    await setPartnership('egg-parent', 'Patricia', 'Current partner');
     await clickContinue();
 
     // Partner and children
@@ -609,15 +608,9 @@ export const BlendedFamily: ScenarioStory = {
     await setFieldInput('additional-parent[0].gender_identity', 'Woman/girl');
     await clickContinue();
 
-    await setFieldInput('partnership-egg-parent-sperm-parent', 'Ex-partners');
-    await setFieldInput(
-      'partnership-egg-parent-additional-parent-0',
-      'Never partners',
-    );
-    await setFieldInput(
-      'partnership-sperm-parent-additional-parent-0',
-      'Current partners',
-    );
+    // Susan and Robert are exes; Robert and Karen are current partners
+    await setPartnership('egg-parent', 'Robert', 'Ex-partner');
+    await setPartnership('sperm-parent', 'Karen', 'Current partner');
     await clickContinue();
 
     // Partner and children
@@ -658,18 +651,8 @@ export const TransParent: ScenarioStory = {
     await setFieldInput('additional-parent[0].gender_identity', 'Woman/girl');
     await clickContinue();
 
-    await setFieldInput(
-      'partnership-egg-parent-sperm-parent',
-      'Never partners',
-    );
-    await setFieldInput(
-      'partnership-egg-parent-additional-parent-0',
-      'Current partners',
-    );
-    await setFieldInput(
-      'partnership-sperm-parent-additional-parent-0',
-      'Never partners',
-    );
+    // Priya is Alex's current partner; the donor partners no one
+    await setPartnership('egg-parent', 'Priya', 'Current partner');
     await clickContinue();
 
     // Partner and children
@@ -704,10 +687,7 @@ export const NonBinaryEgo: ScenarioStory = {
     await setFieldInput('hasOtherParents', false);
     await clickContinue();
 
-    await setFieldInput(
-      'partnership-egg-parent-sperm-parent',
-      'Current partners',
-    );
+    await setPartnership('egg-parent', 'Kenji', 'Current partner');
     await clickContinue();
 
     // Partner and children
@@ -759,45 +739,31 @@ export const AdoptedIn: ScenarioStory = {
     await setFieldInput('additional-parent[1].gender_identity', 'Woman/girl');
     await clickContinue();
 
-    // Both biological parents were left unnamed, so the partnership labels
-    // should fall back to role descriptions ("your egg parent"), not to
-    // sex-derived text. Named parents (James) keep their name.
+    // Unnamed bio parents fall back to role labels in the matrix; the focal
+    // person frames the question and named parents use their name.
     const partnershipDialog = await getDialog();
     expect(
-      partnershipDialog.querySelector(
-        '[data-field-name="partnership-egg-parent-sperm-parent"]',
-      )?.textContent,
-    ).toContain('Are your egg parent and your sperm parent partners?');
+      within(partnershipDialog).getByText(
+        'Which of these people are or were partners of your egg parent?',
+      ),
+    ).toBeTruthy();
+    const eggMatrix = partnershipDialog.querySelector(
+      '[data-field-name="partnerships.egg-parent"]',
+    );
+    if (!eggMatrix) throw new Error('No egg-parent partnership matrix');
     expect(
-      partnershipDialog.querySelector(
-        '[data-field-name="partnership-egg-parent-additional-parent-0"]',
-      )?.textContent,
-    ).toContain('Are your egg parent and James partners?');
+      within(eggMatrix as HTMLElement).getByRole('radiogroup', {
+        name: 'your sperm parent',
+      }),
+    ).toBeTruthy();
+    expect(
+      within(eggMatrix as HTMLElement).getByRole('radiogroup', {
+        name: 'James',
+      }),
+    ).toBeTruthy();
 
-    await setFieldInput(
-      'partnership-egg-parent-sperm-parent',
-      'Never partners',
-    );
-    await setFieldInput(
-      'partnership-egg-parent-additional-parent-0',
-      'Never partners',
-    );
-    await setFieldInput(
-      'partnership-egg-parent-additional-parent-1',
-      'Never partners',
-    );
-    await setFieldInput(
-      'partnership-sperm-parent-additional-parent-0',
-      'Never partners',
-    );
-    await setFieldInput(
-      'partnership-sperm-parent-additional-parent-1',
-      'Never partners',
-    );
-    await setFieldInput(
-      'partnership-additional-parent-0-additional-parent-1',
-      'Current partners',
-    );
+    // James and Barbara (the adoptive parents) are current partners
+    await setPartnership('additional-parent-0', 'Barbara', 'Current partner');
     await clickContinue();
 
     // Partner and children
@@ -823,7 +789,7 @@ export const SingleParentTwoDonors: ScenarioStory = {
     await clickContinue();
 
     // Gestational carrier step: Mum (not a surrogate — she is the intended mother)
-    await setFieldInput('gestational-carrier.is-donor', false);
+    await setFieldInput('gestational-carrier.is-surrogate', false);
     await setFieldInput('gestational-carrier.name', 'Mum');
     await setFieldInput('gestational-carrier.gender_identity', 'Woman/girl');
     await clickContinue();
@@ -837,18 +803,8 @@ export const SingleParentTwoDonors: ScenarioStory = {
     await setFieldInput('hasOtherParents', false);
     await clickContinue();
 
-    await setFieldInput(
-      'partnership-egg-parent-sperm-parent',
-      'Never partners',
-    );
-    await setFieldInput(
-      'partnership-egg-parent-gestational-carrier',
-      'Never partners',
-    );
-    await setFieldInput(
-      'partnership-sperm-parent-gestational-carrier',
-      'Never partners',
-    );
+    // Two anonymous donors and the carrier are none of them partners
+    // (matrix default)
     await clickContinue();
 
     // Partner and children
@@ -883,10 +839,7 @@ export const WithPartnerAndChildren: ScenarioStory = {
     await setFieldInput('hasOtherParents', false);
     await clickContinue();
 
-    await setFieldInput(
-      'partnership-egg-parent-sperm-parent',
-      'Current partners',
-    );
+    await setPartnership('egg-parent', 'Robert', 'Current partner');
     await clickContinue();
 
     // Partner and children

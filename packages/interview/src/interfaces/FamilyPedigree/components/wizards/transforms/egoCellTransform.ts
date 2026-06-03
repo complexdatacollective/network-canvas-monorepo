@@ -6,6 +6,7 @@ import type {
 
 const KNOWN_BIO_PARENT_KEYS = new Set([
   'is-donor',
+  'is-surrogate',
   'name',
   'gestationalCarrier',
 ]);
@@ -47,7 +48,11 @@ function buildBioParent(
   donorType: 'donor' | 'surrogate',
   variableConfig: VariableConfig,
 ): ParentEntry {
-  const isDonor = parent['is-donor'] === true;
+  // The egg/sperm steps store their "is this a donor?" answer under
+  // `is-donor`; the gestational-carrier step stores "is this a surrogate?"
+  // under `is-surrogate`. Either maps this parent to its non-biological type.
+  const flagKey = donorType === 'surrogate' ? 'is-surrogate' : 'is-donor';
+  const isNonBiological = parent[flagKey] === true;
   const name = (parent.name as string | undefined) ?? '';
   const extraAttrs = extractUnknownAttributes(parent, KNOWN_BIO_PARENT_KEYS);
 
@@ -58,7 +63,7 @@ function buildBioParent(
       [variableConfig.egoVariable]: false,
       ...extraAttrs,
     },
-    relationshipType: isDonor ? donorType : 'biological',
+    relationshipType: isNonBiological ? donorType : 'biological',
     isGestationalCarrier: false,
   };
 }
@@ -163,14 +168,11 @@ export function egoCellTransform(
     'partner',
     'childrenWithPartnerCount',
     'childWithPartner',
+    'partnerships',
   ]);
   const egoCustomAttrs: Record<string, VariableValue> = {};
   for (const [key, val] of Object.entries(values)) {
-    if (
-      !egoKnownKeys.has(key) &&
-      !key.startsWith('partnership-') &&
-      val !== undefined
-    ) {
+    if (!egoKnownKeys.has(key) && val !== undefined) {
       egoCustomAttrs[key] = val as VariableValue;
     }
   }
@@ -211,23 +213,28 @@ export function egoCellTransform(
     });
   }
 
-  // Parse partnership fields (partnership-{id1}-{id2})
-  const parentTempIds = parents.map((p) => p.tempId);
-  for (let i = 0; i < parentTempIds.length; i++) {
-    for (let j = i + 1; j < parentTempIds.length; j++) {
-      const key = `partnership-${parentTempIds[i]}-${parentTempIds[j]}`;
-      const val = values[key] as string | undefined;
-      if (val === 'current' || val === 'ex') {
-        batch.edges.push({
-          source: parentTempIds[i]!,
-          target: parentTempIds[j]!,
-          data: {
-            attributes: {
-              [variableConfig.relationshipTypeVariable]: 'partner',
-              [variableConfig.isActiveVariable]: val === 'current',
+  // Parse partnership matrices: `values.partnerships` maps each focal parent's
+  // tempId to an array of { id, value } entries — one per candidate partner
+  // listed below it (each pair is asked exactly once).
+  const partnerships = values.partnerships as
+    | Record<string, { id: string; value: string }[]>
+    | undefined;
+  if (partnerships) {
+    for (const [focalId, matrix] of Object.entries(partnerships)) {
+      if (!Array.isArray(matrix)) continue;
+      for (const entry of matrix) {
+        if (entry?.value === 'current' || entry?.value === 'ex') {
+          batch.edges.push({
+            source: focalId,
+            target: entry.id,
+            data: {
+              attributes: {
+                [variableConfig.relationshipTypeVariable]: 'partner',
+                [variableConfig.isActiveVariable]: entry.value === 'current',
+              },
             },
-          },
-        });
+          });
+        }
       }
     }
   }

@@ -1,17 +1,43 @@
 'use client';
 
-import { useMemo } from 'react';
+import { createContext, type ReactNode, useContext, useMemo } from 'react';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
+import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
+import RadioMatrixField from '@codaco/fresco-ui/form/fields/RadioMatrixField';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 const partnershipOptions = [
-  { value: 'current', label: 'Current partners' },
-  { value: 'ex', label: 'Ex-partners' },
-  { value: 'none', label: 'Never partners' },
+  { value: 'current', label: 'Current partner' },
+  { value: 'ex', label: 'Ex-partner' },
+  { value: 'none', label: 'Not a partner' },
 ];
+
+/**
+ * Supplies the possessive used to label a parent who was left unnamed
+ * ("your egg parent" vs "Linda's egg parent"). Defaults to "your" for the ego
+ * quick start; the define-parents wizard overrides it with the focal person's
+ * possessive when the focal person is not the interviewee.
+ */
+const PartnershipSubjectContext = createContext<{ possessive: string }>({
+  possessive: 'your',
+});
+
+export function PartnershipSubjectProvider({
+  possessive,
+  children,
+}: {
+  possessive: string;
+  children: ReactNode;
+}) {
+  const value = useMemo(() => ({ possessive }), [possessive]);
+  return (
+    <PartnershipSubjectContext.Provider value={value}>
+      {children}
+    </PartnershipSubjectContext.Provider>
+  );
+}
 
 type ParentEntry = {
   id: string;
@@ -22,12 +48,6 @@ type ParentEntry = {
 
 const MAX_ADDITIONAL_PARENTS = 20;
 
-const ADDITIONAL_PARENT_ROLE_LABELS: Record<string, string> = {
-  'step-parent': 'your step-parent',
-  'adoptive-parent': 'your adoptive parent',
-  'raised-me': 'your parent who raised you',
-};
-
 const BIO_PARENT_FIELDS = [
   'egg-parent.name',
   'egg-parent.gestationalCarrier',
@@ -37,17 +57,8 @@ const BIO_PARENT_FIELDS = [
   'otherParentCount',
   ...Array.from({ length: MAX_ADDITIONAL_PARENTS }, (_, i) => [
     `additional-parent[${String(i)}].name`,
-    `additional-parent[${String(i)}].role`,
   ]).flat(),
 ] as const;
-
-function additionalParentRoleLabel(
-  role: string | undefined,
-  index: number,
-): string {
-  const known = role ? ADDITIONAL_PARENT_ROLE_LABELS[role] : undefined;
-  return known ?? `your additional parent ${String(index + 1)}`;
-}
 
 function getParentLabel(parent: ParentEntry): string {
   return parent.name ? parent.name : parent.roleLabel;
@@ -55,18 +66,19 @@ function getParentLabel(parent: ParentEntry): string {
 
 export default function ParentPartnershipsStep() {
   const values = useFormValue(BIO_PARENT_FIELDS);
+  const { possessive } = useContext(PartnershipSubjectContext);
 
   const parents = useMemo<ParentEntry[]>(() => {
     const list: ParentEntry[] = [
       {
         id: 'egg-parent',
         name: values['egg-parent.name'] as string | undefined,
-        roleLabel: 'your egg parent',
+        roleLabel: `${possessive} egg parent`,
       },
       {
         id: 'sperm-parent',
         name: values['sperm-parent.name'] as string | undefined,
-        roleLabel: 'your sperm parent',
+        roleLabel: `${possessive} sperm parent`,
       },
     ];
 
@@ -74,7 +86,7 @@ export default function ParentPartnershipsStep() {
       list.push({
         id: 'gestational-carrier',
         name: values['gestational-carrier.name'] as string | undefined,
-        roleLabel: 'your gestational carrier',
+        roleLabel: `${possessive} gestational carrier`,
       });
     }
 
@@ -86,28 +98,15 @@ export default function ParentPartnershipsStep() {
           name: values[`additional-parent[${String(i)}].name`] as
             | string
             | undefined,
-          roleLabel: additionalParentRoleLabel(
-            values[`additional-parent[${String(i)}].role`] as
-              | string
-              | undefined,
-            i,
-          ),
+          // Additional parents always require a name, so this fallback is a
+          // safety net rather than something the participant normally sees.
+          roleLabel: `${possessive} additional parent`,
         });
       }
     }
 
     return list;
-  }, [values]);
-
-  const pairs = useMemo(() => {
-    const result: [number, number][] = [];
-    for (let i = 0; i < parents.length; i++) {
-      for (let j = i + 1; j < parents.length; j++) {
-        result.push([i, j]);
-      }
-    }
-    return result;
-  }, [parents.length]);
+  }, [values, possessive]);
 
   if (parents.length < 2) return null;
 
@@ -125,21 +124,29 @@ export default function ParentPartnershipsStep() {
           whether they were partners while both were alive.
         </Paragraph>
       </div>
-      {pairs.map(([i, j]) => {
-        const parentI = parents[i]!;
-        const parentJ = parents[j]!;
+      <FieldNamespace prefix="partnerships">
+        {parents.map((focal, index) => {
+          // Each focal parent is asked about every parent listed below it, so
+          // each pair is covered exactly once.
+          const candidates = parents.slice(index + 1);
+          if (candidates.length === 0) return null;
 
-        return (
-          <Field
-            key={`partnership-${parentI.id}-${parentJ.id}`}
-            name={`partnership-${parentI.id}-${parentJ.id}`}
-            label={`Are ${getParentLabel(parentI)} and ${getParentLabel(parentJ)} partners?`}
-            component={RadioGroupField}
-            options={partnershipOptions}
-            required
-          />
-        );
-      })}
+          return (
+            <Field
+              key={focal.id}
+              name={focal.id}
+              label={`Which of these people are or were partners of ${getParentLabel(focal)}?`}
+              component={RadioMatrixField}
+              rows={candidates.map((parent) => ({
+                id: parent.id,
+                label: getParentLabel(parent),
+              }))}
+              options={partnershipOptions}
+              defaultOption="none"
+            />
+          );
+        })}
+      </FieldNamespace>
     </>
   );
 }
