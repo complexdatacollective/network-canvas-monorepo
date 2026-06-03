@@ -37,6 +37,7 @@ export default function SpermParentStep() {
           label="What is their name?"
           component={InputField}
           hint="Leave blank if the name is not known"
+          autoFocus
         />
         <Field
           name="is-donor"

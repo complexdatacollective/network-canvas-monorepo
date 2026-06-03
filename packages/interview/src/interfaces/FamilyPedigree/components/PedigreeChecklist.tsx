@@ -1,5 +1,6 @@
 'use client';
 
+import { HelpCircle } from 'lucide-react';
 import {
   AnimatePresence,
   LayoutGroup,
@@ -8,13 +9,15 @@ import {
 } from 'motion/react';
 import { type RefObject, useCallback, useMemo, useState } from 'react';
 
-import { Button } from '@codaco/fresco-ui/Button';
+import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { useStageSelector } from '~/hooks/useStageSelector';
 
+import { buildPedigreeDialog } from '../buildPedigreeDialog';
 import { useFamilyPedigreeStore } from '../FamilyPedigreeProvider';
 import { getRelationshipTypeVariable } from '../utils/edgeUtils';
 import { getEgoVariable, getNodeLabelVariable } from '../utils/nodeUtils';
@@ -40,6 +43,7 @@ export default function PedigreeChecklist({
   const relationshipTypeVariable = useStageSelector(
     getRelationshipTypeVariable,
   );
+  const { openDialog } = useDialog();
 
   const [dismissed, setDismissed] = useState(false);
   const [manuallyChecked, setManuallyChecked] = useState<Set<string>>(
@@ -266,7 +270,7 @@ export default function PedigreeChecklist({
       {!dismissed && (
         <MotionSurface
           key="pedigree-checklist"
-          className="bg-surface/80 absolute bottom-4 left-4 z-20 w-72 cursor-move overflow-hidden border-b-2 shadow-2xl backdrop-blur-md"
+          className="bg-surface/80 absolute bottom-4 left-4 z-20 w-80 cursor-move overflow-hidden border-b-2 shadow-2xl backdrop-blur-md"
           layout
           drag
           dragConstraints={dragConstraints}
@@ -279,12 +283,21 @@ export default function PedigreeChecklist({
           transition={{ type: 'spring', duration: 0.5 }}
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1">
-              <Heading level="h4" margin="none">
-                Pedigree Checklist
-              </Heading>
+            <Heading level="h4" margin="none">
+              Pedigree Checklist
+            </Heading>
+
+            <div className="flex items-center">
+              <IconButton
+                size="sm"
+                color="dynamic"
+                variant="text"
+                aria-label="How to build your pedigree"
+                icon={<HelpCircle />}
+                onClick={() => void openDialog(buildPedigreeDialog)}
+              />
+              <CloseButton size="sm" onClick={() => setDismissed(true)} />
             </div>
-            <CloseButton size="sm" onClick={() => setDismissed(true)} />
           </div>
           <motion.div className="mt-4 max-h-64" style={{ overflowY }}>
             <LayoutGroup>
