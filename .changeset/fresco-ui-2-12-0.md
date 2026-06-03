@@ -1,6 +1,15 @@
 ---
-'@codaco/fresco-ui': patch
+'@codaco/fresco-ui': minor
 ---
+
+New `RadioMatrixField` at `./form/fields/RadioMatrixField`: a form field that
+asks the same single-choice question across many rows, laid out as a matrix
+(rows × shared option columns). Each row is an independent radio group; the field
+value is an array of `{ id, value }` entries, with an optional `defaultOption`
+pre-selected for unanswered rows. It uses the standard input-control container and
+collapses to stacked per-row groups on narrow containers. `RadioItem` gains
+optional `className` / `labelClassName` props so callers can place a bare radio in
+a grid cell.
 
 Field rendering tweaks:
 

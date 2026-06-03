@@ -54,6 +54,10 @@ type RadioItemProps = {
   readOnly?: boolean;
   size?: VariantProps<typeof radioIndicatorVariants>['size'];
   id?: string;
+  /** Extra classes for the wrapping `<label>` (e.g. layout overrides). */
+  className?: string;
+  /** Extra classes for the label text span (e.g. `@md:sr-only` to hide it). */
+  labelClassName?: string;
 };
 
 export function RadioItem({
@@ -63,6 +67,8 @@ export function RadioItem({
   readOnly,
   size = 'md',
   id,
+  className,
+  labelClassName,
 }: RadioItemProps) {
   const generatedId = useId();
   const optionId = id ?? generatedId;
@@ -76,7 +82,7 @@ export function RadioItem({
   return (
     <label
       htmlFor={optionId}
-      className={groupOptionVariants({ size, disabled })}
+      className={cx(groupOptionVariants({ size, disabled }), className)}
     >
       <motion.div
         whileTap={disabled ? undefined : { scale: 0.85 }}
@@ -130,6 +136,7 @@ export function RadioItem({
           controlLabelVariants({ size }),
           'cursor-[inherit] transition-colors duration-200',
           disabled && 'opacity-50',
+          labelClassName,
         )}
       >
         <RenderMarkdown>{label}</RenderMarkdown>
