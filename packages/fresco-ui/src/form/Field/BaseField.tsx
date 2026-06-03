@@ -61,7 +61,7 @@ export function BaseField({
   return (
     <div
       {...containerProps}
-      className={cx('group w-full grow not-last:mb-6', 'flex flex-col')}
+      className={cx('group w-full grow not-last:mb-8', 'flex flex-col')}
     >
       <div
         className={cx(
