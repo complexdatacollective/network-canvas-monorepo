@@ -270,7 +270,7 @@ export default function PedigreeChecklist({
       {!dismissed && (
         <MotionSurface
           key="pedigree-checklist"
-          className="bg-surface/80 absolute bottom-4 left-4 z-20 w-80 cursor-move overflow-hidden border-b-2 shadow-2xl backdrop-blur-md"
+          className="bg-surface/80 absolute bottom-4 left-4 z-20 w-72 cursor-move overflow-hidden border-b-2 shadow-2xl backdrop-blur-md"
           layout
           drag
           dragConstraints={dragConstraints}

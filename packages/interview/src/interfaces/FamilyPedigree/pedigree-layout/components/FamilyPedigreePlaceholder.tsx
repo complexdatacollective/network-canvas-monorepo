@@ -112,7 +112,7 @@ export default function FamilyPedigreePlaceholder({
   const r = 170; // circle radius & half-side length for squares
   const rNew = 130; // radius of the grown-in "new relative" node
   const rx = 100; // square corner radius
-  const sw = 25; // stroke width
+  const sw = 20; // stroke width
 
   const father = { x: 1000, y: 260 }; // square
   const mother = { x: 1800, y: 260 }; // circle
