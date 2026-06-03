@@ -1,5 +1,6 @@
 'use client';
 
+import { BookOpen, ClipboardList, DraftingCompass } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -41,6 +42,18 @@ const getImageForProject = (project: Project) => {
         height={40}
       />
     );
+  }
+
+  if (project === 'reference') {
+    return <BookOpen className="h-10 w-10" strokeWidth={1.5} />;
+  }
+
+  if (project === 'build-protocol') {
+    return <DraftingCompass className="h-10 w-10" strokeWidth={1.5} />;
+  }
+
+  if (project === 'run-interview') {
+    return <ClipboardList className="h-10 w-10" strokeWidth={1.5} />;
   }
 };
 

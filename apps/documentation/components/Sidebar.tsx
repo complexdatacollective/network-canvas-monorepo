@@ -22,6 +22,7 @@ import { cn } from '~/lib/utils';
 
 const PATH_SEPARATOR_REGEX = /[\\/]/;
 
+import AppTabs, { appTabsFor } from './AppTabs';
 import DocSearchComponent from './DocSearchComponent';
 import ProjectSwitcher from './ProjectSwitcher';
 
@@ -291,6 +292,17 @@ export function Sidebar({ className }: { className?: string }) {
   const sidebarContainerRef = useRef<HTMLDivElement>(null);
   const [sidebarData, setSidebarData] = useState<TSideBar | null>(null);
 
+  // Tabbed sections (Build, Run) keep the active app tab in local state, which
+  // also drives which articles render beneath the tab strip. Reset it whenever
+  // the section changes so the first tab is selected on each section.
+  const tabs = appTabsFor(project);
+  const [activeTab, setActiveTab] = useState<string | undefined>(
+    tabs?.[0]?.value,
+  );
+  useEffect(() => {
+    setActiveTab(appTabsFor(project)?.[0]?.value);
+  }, [project]);
+
   useEffect(() => {
     fetch('/sidebar.json')
       .then((res) => res.json())
@@ -312,6 +324,49 @@ export function Sidebar({ className }: { className?: string }) {
   }
 
   const formattedSidebarData = sidebarData[locale][project].children;
+  const childrenEntries = Object.entries(formattedSidebarData);
+
+  // Tabbed section: shared (root) pages render above the tab strip, then the
+  // active tab's folder contents render below it.
+  if (tabs) {
+    const sharedItems = sortSidebarItems(
+      childrenEntries
+        .map(([, item]) => item)
+        .filter((item) => item.type === 'page'),
+    );
+
+    const activeFolder = childrenEntries.find(
+      ([slug, item]) => slug === activeTab && item.type === 'folder',
+    )?.[1];
+    const tabItems =
+      activeFolder && activeFolder.type === 'folder'
+        ? sortSidebarItems(Object.values(activeFolder.children))
+        : [];
+
+    return (
+      <nav className={cn('flex w-full grow flex-col', className)}>
+        <DocSearchComponent className="hidden lg:flex" />
+        <ProjectSwitcher />
+
+        <div ref={sidebarContainerRef} className="flex-1 overflow-y-auto p-2">
+          {sharedItems.length > 0 && (
+            <SidebarFolder label="Shared" alwaysOpen>
+              {sharedItems.map((item) =>
+                renderSidebarItem(item, locale, sidebarContainerRef),
+              )}
+            </SidebarFolder>
+          )}
+
+          <AppTabs tabs={tabs} value={activeTab} onValueChange={setActiveTab} />
+
+          {tabItems.map((item) =>
+            renderSidebarItem(item, locale, sidebarContainerRef),
+          )}
+        </div>
+      </nav>
+    );
+  }
+
   const sortedSidebarItems = sortSidebarItems(
     Object.values(formattedSidebarData),
   );

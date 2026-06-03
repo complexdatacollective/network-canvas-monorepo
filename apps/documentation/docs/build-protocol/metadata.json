@@ -1,0 +1,6 @@
+{
+  "type": "project",
+  "slug": "build-protocol",
+  "localeLabels": { "en": "Build Protocols" },
+  "localeIndexFiles": { "en": "index.en.mdx" }
+}

@@ -1,5 +1,17 @@
 {
   "ProjectSwitcher": {
+    "reference": {
+      "label": "Reference",
+      "description": "App-agnostic concepts shared across Network Canvas: the codebook, variables, stages, skip logic, prompts and forms."
+    },
+    "build-protocol": {
+      "label": "Build Protocols",
+      "description": "Create interview protocols."
+    },
+    "run-interview": {
+      "label": "Run Interviews",
+      "description": "Collect data by running your protocol in Fresco or Interviewer."
+    },
     "fresco": {
       "label": "Fresco",
       "description": "A new project that brings Network Canvas interviews to the web browser."

@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
-export const projects = ['desktop', 'fresco'] as const;
+export const projects = [
+  'reference',
+  'build-protocol',
+  'run-interview',
+  'desktop',
+  'fresco',
+] as const;
 
 export type Project = (typeof projects)[number];
 
