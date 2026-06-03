@@ -271,7 +271,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
         />
         <div
           ref={containerRef}
-          className="relative flex size-full grow items-center justify-center"
+          className="relative flex min-h-0 w-full grow items-center justify-center"
         >
           {isDevelopment && (
             <div className="absolute top-2 right-2 z-50 flex gap-1">
@@ -347,9 +347,9 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
           )}
           {showQuickStart ? (
             <>
-              <div className="flex flex-col items-center gap-12">
-                <FamilyPedigreePlaceholder className="w-[50rem] max-w-full" />
-                <div className="max-w-prose text-center">
+              <div className="flex h-full w-full flex-col items-center justify-center gap-12 py-10">
+                <FamilyPedigreePlaceholder className="hidden min-h-0 w-full flex-1 [@media_((min-height:800px))]:block" />
+                <div className="max-w-prose shrink-0 text-center">
                   <Heading level="h3">Build your family pedigree</Heading>
                   <Paragraph emphasis="muted">
                     A family pedigree is a diagram of your relatives and how
