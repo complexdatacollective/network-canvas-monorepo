@@ -1,5 +1,6 @@
 'use client';
 
+import { motion, useReducedMotion } from 'motion/react';
 /**
  * FamilyPedigreePlaceholder
  *
@@ -30,9 +31,11 @@
  * Geometry keeps the existing 10× coordinate scale (radius 170,
  * viewBox 0 0 2800 1600) to avoid sub-pixel rounding.
  */
-
-import { motion, useReducedMotion } from 'motion/react';
 import type { Easing, Transition } from 'motion/react';
+
+import { cx } from '@codaco/fresco-ui/utils/cva';
+import { useStageSelector } from '~/hooks/useStageSelector';
+import { getNodeColorSelector } from '~/selectors/session';
 
 // ---- Loop timing (seconds) ------------------------------------------------
 const BASE = 8.6; // length of the base timeline (seconds)
@@ -91,6 +94,19 @@ export default function FamilyPedigreePlaceholder({
   className?: string;
 }) {
   const reduce = useReducedMotion();
+  const nodeColor = useStageSelector(getNodeColorSelector);
+
+  const nodeClassNames = cx(
+    'stroke-platinum',
+    nodeColor === 'node-color-seq-1' && 'fill-node-1',
+    nodeColor === 'node-color-seq-2' && 'fill-node-2',
+    nodeColor === 'node-color-seq-3' && 'fill-node-3',
+    nodeColor === 'node-color-seq-4' && 'fill-node-4',
+    nodeColor === 'node-color-seq-5' && 'fill-node-5',
+    nodeColor === 'node-color-seq-6' && 'fill-node-6',
+    nodeColor === 'node-color-seq-7' && 'fill-node-7',
+    nodeColor === 'node-color-seq-8' && 'fill-node-8',
+  );
 
   // ---- Geometry (viewBox 0 0 2800 1600) ----
   const r = 170; // circle radius & half-side length for squares
@@ -215,7 +231,7 @@ export default function FamilyPedigreePlaceholder({
       {/* squares = one sex, circles = the other — both shapes always present. */}
       {/* They sketch as platinum outlines, then each fills primary in turn.  */}
       <motion.rect
-        className="stroke-platinum fill-primary"
+        className={nodeClassNames}
         x={father.x - r}
         y={father.y - r}
         width={r * 2}
@@ -227,7 +243,7 @@ export default function FamilyPedigreePlaceholder({
         {...(reduce ? {} : nodeAnim(0.15, 0.7, 2.4, 2.85))}
       />
       <motion.circle
-        className="stroke-platinum fill-primary"
+        className={nodeClassNames}
         cx={mother.x}
         cy={mother.y}
         r={r}
@@ -237,7 +253,7 @@ export default function FamilyPedigreePlaceholder({
         {...(reduce ? {} : nodeAnim(0.28, 0.85, 2.7, 3.15))}
       />
       <motion.circle
-        className="stroke-platinum fill-primary"
+        className={nodeClassNames}
         cx={child1.x}
         cy={child1.y}
         r={r}
@@ -247,7 +263,7 @@ export default function FamilyPedigreePlaceholder({
         {...(reduce ? {} : nodeAnim(1.3, 1.85, 3.0, 3.45))}
       />
       <motion.rect
-        className="stroke-platinum fill-primary"
+        className={nodeClassNames}
         x={ego.x - r}
         y={ego.y - r}
         width={r * 2}
@@ -259,7 +275,7 @@ export default function FamilyPedigreePlaceholder({
         {...(reduce ? {} : nodeAnim(1.45, 1.95, 3.3, 3.75))}
       />
       <motion.circle
-        className="stroke-platinum fill-primary"
+        className={nodeClassNames}
         cx={child3.x}
         cy={child3.y}
         r={r}
@@ -271,7 +287,7 @@ export default function FamilyPedigreePlaceholder({
 
       {/* new relative node — draws on and fills after the tap pulse */}
       <motion.circle
-        className="stroke-platinum fill-primary"
+        className={nodeClassNames}
         cx={newKid.x}
         cy={newKid.y}
         r={rNew}
@@ -285,7 +301,7 @@ export default function FamilyPedigreePlaceholder({
       {!reduce && (
         <>
           <motion.circle
-            className="text-accent"
+            className="text-selected"
             cx={ego.x}
             cy={ego.y}
             r={r}
@@ -304,7 +320,7 @@ export default function FamilyPedigreePlaceholder({
             }}
           />
           <motion.circle
-            className="fill-accent"
+            className="fill-selected"
             cx={ego.x}
             cy={ego.y}
             r={46}
