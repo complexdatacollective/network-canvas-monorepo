@@ -9,7 +9,7 @@ import {
 } from 'motion/react';
 import { type RefObject, useCallback, useMemo, useState } from 'react';
 
-import { Button, IconButton } from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
@@ -286,18 +286,7 @@ export default function PedigreeChecklist({
             <Heading level="h4" margin="none">
               Pedigree Checklist
             </Heading>
-
-            <div className="flex items-center">
-              <IconButton
-                size="sm"
-                color="dynamic"
-                variant="text"
-                aria-label="How to build your pedigree"
-                icon={<HelpCircle />}
-                onClick={() => void openDialog(buildPedigreeDialog)}
-              />
-              <CloseButton size="sm" onClick={() => setDismissed(true)} />
-            </div>
+            <CloseButton size="sm" onClick={() => setDismissed(true)} />
           </div>
           <motion.div className="mt-4 max-h-64" style={{ overflowY }}>
             <LayoutGroup>
@@ -326,11 +315,7 @@ export default function PedigreeChecklist({
                       }
                     }}
                   >
-                    <span
-                      className="contents"
-                      onClickCapture={(e) => e.stopPropagation()}
-                      onKeyDownCapture={(e) => e.stopPropagation()}
-                    >
+                    <span className="contents">
                       <Checkbox
                         value={item.done}
                         onChange={() => toggleManualCheck(item.id)}
@@ -355,15 +340,25 @@ export default function PedigreeChecklist({
               </ul>
             </LayoutGroup>
           </motion.div>
-          {allDone && (
+          <motion.div
+            layout
+            className="mt-4 flex flex-col justify-between gap-2"
+          >
+            {allDone && (
+              <Button color="primary" onClick={onFinalize}>
+                Finalize family pedigree
+              </Button>
+            )}
             <Button
-              color="primary"
-              className="mt-2 w-full"
-              onClick={onFinalize}
+              color="dynamic"
+              variant="text"
+              aria-label="How to build your pedigree"
+              icon={<HelpCircle />}
+              onClick={() => void openDialog(buildPedigreeDialog)}
             >
-              Finalize family pedigree
+              Help
             </Button>
-          )}
+          </motion.div>
         </MotionSurface>
       )}
     </AnimatePresence>
