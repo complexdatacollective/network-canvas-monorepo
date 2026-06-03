@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { screen, userEvent, within } from 'storybook/test';
+import { expect, screen, userEvent, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -758,6 +758,21 @@ export const AdoptedIn: ScenarioStory = {
     await setFieldInput('additional-parent[1].name', 'Barbara');
     await setFieldInput('additional-parent[1].gender_identity', 'Woman/girl');
     await clickContinue();
+
+    // Both biological parents were left unnamed, so the partnership labels
+    // should fall back to role descriptions ("your egg parent"), not to
+    // sex-derived text. Named parents (James) keep their name.
+    const partnershipDialog = await getDialog();
+    expect(
+      partnershipDialog.querySelector(
+        '[data-field-name="partnership-egg-parent-sperm-parent"]',
+      )?.textContent,
+    ).toContain('Are your egg parent and your sperm parent partners?');
+    expect(
+      partnershipDialog.querySelector(
+        '[data-field-name="partnership-egg-parent-additional-parent-0"]',
+      )?.textContent,
+    ).toContain('Are your egg parent and James partners?');
 
     await setFieldInput(
       'partnership-egg-parent-sperm-parent',

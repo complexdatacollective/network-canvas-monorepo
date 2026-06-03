@@ -20,11 +20,8 @@ const WATCHED_FIELDS = [
   'sperm-source',
   'carrier-source',
   'new-egg-source.name',
-  'new-egg-source.sex-at-birth',
   'new-sperm-source.name',
-  'new-sperm-source.sex-at-birth',
   'new-carrier.name',
-  'new-carrier.sex-at-birth',
 ] as const;
 
 type ParentKey = 'egg-source' | 'sperm-source' | 'carrier-source';
@@ -51,12 +48,6 @@ function getNewParentLabel(
     'carrier-source': 'new-carrier.name',
   };
 
-  const sexMap: Record<ParentKey, string> = {
-    'egg-source': 'new-egg-source.sex-at-birth',
-    'sperm-source': 'new-sperm-source.sex-at-birth',
-    'carrier-source': 'new-carrier.sex-at-birth',
-  };
-
   const fallbackMap: Record<ParentKey, string> = {
     'egg-source': 'New egg parent',
     'sperm-source': 'New sperm parent',
@@ -65,11 +56,6 @@ function getNewParentLabel(
 
   const name = values[nameMap[key]];
   if (typeof name === 'string' && name.length > 0) return name;
-
-  const sex = values[sexMap[key]];
-  if (typeof sex === 'string' && sex.length > 0) {
-    return `${fallbackMap[key]} (assigned ${sex} at birth)`;
-  }
 
   return fallbackMap[key];
 }

@@ -16,30 +16,41 @@ const partnershipOptions = [
 type ParentEntry = {
   id: string;
   name: string | undefined;
-  sex: string | undefined;
+  /** Label used in the partnership question when no name was provided. */
+  roleLabel: string;
 };
 
 const MAX_ADDITIONAL_PARENTS = 20;
 
+const ADDITIONAL_PARENT_ROLE_LABELS: Record<string, string> = {
+  'step-parent': 'your step-parent',
+  'adoptive-parent': 'your adoptive parent',
+  'raised-me': 'your parent who raised you',
+};
+
 const BIO_PARENT_FIELDS = [
   'egg-parent.name',
-  'egg-parent.sex-at-birth',
   'egg-parent.gestationalCarrier',
   'sperm-parent.name',
-  'sperm-parent.sex-at-birth',
   'gestational-carrier.name',
-  'gestational-carrier.sex-at-birth',
   'hasOtherParents',
   'otherParentCount',
   ...Array.from({ length: MAX_ADDITIONAL_PARENTS }, (_, i) => [
     `additional-parent[${String(i)}].name`,
-    `additional-parent[${String(i)}].sex-at-birth`,
+    `additional-parent[${String(i)}].role`,
   ]).flat(),
 ] as const;
 
-function getParentLabel(parent: ParentEntry, index: number) {
-  if (parent.name) return parent.name;
-  return `Parent ${String(index + 1)} (assigned ${parent.sex ?? 'unknown'} at birth)`;
+function additionalParentRoleLabel(
+  role: string | undefined,
+  index: number,
+): string {
+  const known = role ? ADDITIONAL_PARENT_ROLE_LABELS[role] : undefined;
+  return known ?? `your additional parent ${String(index + 1)}`;
+}
+
+function getParentLabel(parent: ParentEntry): string {
+  return parent.name ? parent.name : parent.roleLabel;
 }
 
 export default function ParentPartnershipsStep() {
@@ -50,12 +61,12 @@ export default function ParentPartnershipsStep() {
       {
         id: 'egg-parent',
         name: values['egg-parent.name'] as string | undefined,
-        sex: values['egg-parent.sex-at-birth'] as string | undefined,
+        roleLabel: 'your egg parent',
       },
       {
         id: 'sperm-parent',
         name: values['sperm-parent.name'] as string | undefined,
-        sex: values['sperm-parent.sex-at-birth'] as string | undefined,
+        roleLabel: 'your sperm parent',
       },
     ];
 
@@ -63,7 +74,7 @@ export default function ParentPartnershipsStep() {
       list.push({
         id: 'gestational-carrier',
         name: values['gestational-carrier.name'] as string | undefined,
-        sex: values['gestational-carrier.sex-at-birth'] as string | undefined,
+        roleLabel: 'your gestational carrier',
       });
     }
 
@@ -75,9 +86,12 @@ export default function ParentPartnershipsStep() {
           name: values[`additional-parent[${String(i)}].name`] as
             | string
             | undefined,
-          sex: values[`additional-parent[${String(i)}].sex-at-birth`] as
-            | string
-            | undefined,
+          roleLabel: additionalParentRoleLabel(
+            values[`additional-parent[${String(i)}].role`] as
+              | string
+              | undefined,
+            i,
+          ),
         });
       }
     }
@@ -119,7 +133,7 @@ export default function ParentPartnershipsStep() {
           <Field
             key={`partnership-${parentI.id}-${parentJ.id}`}
             name={`partnership-${parentI.id}-${parentJ.id}`}
-            label={`Are ${getParentLabel(parentI, i)} and ${getParentLabel(parentJ, j)} partners?`}
+            label={`Are ${getParentLabel(parentI)} and ${getParentLabel(parentJ)} partners?`}
             component={RadioGroupField}
             options={partnershipOptions}
             required
