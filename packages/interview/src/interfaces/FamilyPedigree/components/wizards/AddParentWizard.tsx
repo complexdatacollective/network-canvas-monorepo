@@ -60,7 +60,7 @@ function ExistingParentPartnershipsStep({
   if (existingParents.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-6">
+    <>
       {existingParents.map((parent) => (
         <Field
           key={`partnership-${parent.id}`}
@@ -71,7 +71,7 @@ function ExistingParentPartnershipsStep({
           required
         />
       ))}
-    </div>
+    </>
   );
 }
 

@@ -111,23 +111,21 @@ export default function ParentPartnershipsStep() {
           whether they were partners while both were alive.
         </Paragraph>
       </div>
-      <div className="flex flex-col gap-6">
-        {pairs.map(([i, j]) => {
-          const parentI = parents[i]!;
-          const parentJ = parents[j]!;
+      {pairs.map(([i, j]) => {
+        const parentI = parents[i]!;
+        const parentJ = parents[j]!;
 
-          return (
-            <Field
-              key={`partnership-${parentI.id}-${parentJ.id}`}
-              name={`partnership-${parentI.id}-${parentJ.id}`}
-              label={`Are ${getParentLabel(parentI, i)} and ${getParentLabel(parentJ, j)} partners?`}
-              component={RadioGroupField}
-              options={partnershipOptions}
-              required
-            />
-          );
-        })}
-      </div>
+        return (
+          <Field
+            key={`partnership-${parentI.id}-${parentJ.id}`}
+            name={`partnership-${parentI.id}-${parentJ.id}`}
+            label={`Are ${getParentLabel(parentI, i)} and ${getParentLabel(parentJ, j)} partners?`}
+            component={RadioGroupField}
+            options={partnershipOptions}
+            required
+          />
+        );
+      })}
     </>
   );
 }

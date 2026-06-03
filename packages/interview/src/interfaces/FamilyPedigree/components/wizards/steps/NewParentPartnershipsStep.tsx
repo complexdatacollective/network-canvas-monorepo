@@ -155,18 +155,16 @@ export default function NewParentPartnershipsStep() {
           never romantically involved.
         </Paragraph>
       </div>
-      <div className="flex flex-col gap-6">
-        {pairs.map(([a, b]) => (
-          <Field
-            key={`partnership-${a.key}-${b.key}`}
-            name={`partnership-${a.key}-${b.key}`}
-            label={`Are ${a.label} and ${b.label} partners?`}
-            component={RadioGroupField}
-            options={partnershipOptions}
-            required
-          />
-        ))}
-      </div>
+      {pairs.map(([a, b]) => (
+        <Field
+          key={`partnership-${a.key}-${b.key}`}
+          name={`partnership-${a.key}-${b.key}`}
+          label={`Are ${a.label} and ${b.label} partners?`}
+          component={RadioGroupField}
+          options={partnershipOptions}
+          required
+        />
+      ))}
     </>
   );
 }
