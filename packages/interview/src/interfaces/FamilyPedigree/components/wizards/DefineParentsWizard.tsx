@@ -8,6 +8,7 @@ import type {
 import ParentPartnershipsStep from '../quickStartWizard/ParentPartnershipsStep';
 import GenericAdditionalParentsStep from './steps/GenericAdditionalParentsStep';
 import GenericEggParentStep from './steps/GenericEggParentStep';
+import GenericGestationalCarrierStep from './steps/GenericGestationalCarrierStep';
 import GenericOtherParentsStep from './steps/GenericOtherParentsStep';
 import GenericSpermParentStep from './steps/GenericSpermParentStep';
 import {
@@ -47,6 +48,12 @@ export async function openDefineParentsWizard(
       {
         title: 'Egg Parent',
         content: GenericEggParentStep,
+      },
+      {
+        title: 'Gestational Carrier',
+        content: GenericGestationalCarrierStep,
+        skip: ({ getFieldValue }) =>
+          getFieldValue('egg-parent.gestationalCarrier') !== false,
       },
       {
         title: 'Sperm Parent',

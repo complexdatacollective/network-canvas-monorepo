@@ -11,6 +11,7 @@ import AdditionalParentsStep from '../quickStartWizard/AdditionalParentsStep';
 import BioParentsIntroStep from '../quickStartWizard/BioParentsIntroStep';
 import ChildrenDetailStep from '../quickStartWizard/ChildrenDetailStep';
 import EggParentStep from '../quickStartWizard/EggParentStep';
+import GestationalCarrierStep from '../quickStartWizard/GestationalCarrierStep';
 import OtherParentsStep from '../quickStartWizard/OtherParentsStep';
 import ParentPartnershipsStep from '../quickStartWizard/ParentPartnershipsStep';
 import PartnerAndChildrenStep from '../quickStartWizard/PartnerAndChildrenStep';
@@ -48,6 +49,12 @@ export default function EgoCellWizard({
         {
           title: 'Egg Parent',
           content: EggParentStep,
+        },
+        {
+          title: 'Gestational Carrier',
+          content: GestationalCarrierStep,
+          skip: ({ getFieldValue }) =>
+            getFieldValue('egg-parent.gestationalCarrier') !== false,
         },
         {
           title: 'Sperm Parent',

@@ -114,7 +114,7 @@ export default function BioParentsIntroStep() {
         There are two important concepts to understand when we talk about
         biological parents: the egg parent and the sperm parent.
       </Paragraph>
-      <div className="tablet-portrait:grid-cols-2 my-6 grid gap-4">
+      <div className="tablet-portrait:grid-cols-2 mt-6 grid gap-4">
         <Surface level={1} spacing="sm" shadow="sm">
           <div className="mb-2 flex items-center gap-3">
             <span className="text-primary bg-primary/15 flex size-10 shrink-0 items-center justify-center rounded-full">

@@ -1,10 +1,10 @@
 'use client';
 
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import useProtocolForm from '~/forms/useProtocolForm';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import {
@@ -12,7 +12,7 @@ import {
   getNodeType,
 } from '~/interfaces/FamilyPedigree/utils/nodeUtils';
 
-export default function GenericEggParentStep() {
+export default function GestationalCarrierStep() {
   const nodeType = useStageSelector(getNodeType);
   const nodeForm = useStageSelector(getNodeForm);
 
@@ -26,13 +26,13 @@ export default function GenericEggParentStep() {
 
   return (
     <>
-      <FieldNamespace prefix="egg-parent">
-        <Alert variant="info">
-          <AlertDescription>
-            The egg parent is the person who contributed the egg that this
-            person was conceived with.
-          </AlertDescription>
-        </Alert>
+      <Paragraph>
+        Please answer the following questions about your gestational carrier.
+        This is the person who carried you during pregnancy but did not
+        contribute the egg, including gestational surrogates.
+      </Paragraph>
+      <hr />
+      <FieldNamespace prefix="gestational-carrier">
         <Field
           name="name"
           label="What is their name?"
@@ -41,17 +41,10 @@ export default function GenericEggParentStep() {
         />
         <Field
           name="is-donor"
-          label="Was this person an egg donor?"
+          label="Was this person a gestational surrogate?"
           component={BooleanField}
-          initialValue={false}
           required
-        />
-        <Field
-          name="gestationalCarrier"
-          label="Did this parent carry them during pregnancy?"
-          component={BooleanField}
-          initialValue={true}
-          required
+          inline
         />
         {fieldComponents}
       </FieldNamespace>
