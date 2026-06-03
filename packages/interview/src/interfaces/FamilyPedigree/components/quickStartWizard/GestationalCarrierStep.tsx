@@ -41,8 +41,9 @@ export default function GestationalCarrierStep() {
           autoFocus
         />
         <Field
-          name="is-donor"
+          name="is-surrogate"
           label="Was this person a gestational surrogate?"
+          hint="A surrogate carried the pregnancy for the parents but is not a parent of the child. Choose 'No' if this person carried the pregnancy to become a parent themselves — for example, using a donated egg."
           component={BooleanField}
           required
           inline

@@ -45,6 +45,7 @@ export default function GenericEggParentStep() {
           component={BooleanField}
           initialValue={false}
           required
+          inline
         />
         <Field
           name="gestationalCarrier"
@@ -52,6 +53,7 @@ export default function GenericEggParentStep() {
           component={BooleanField}
           initialValue={true}
           required
+          inline
         />
         {fieldComponents}
       </FieldNamespace>

@@ -44,6 +44,7 @@ export default function GenericSpermParentStep() {
         component={BooleanField}
         initialValue={false}
         required
+        inline
       />
       {fieldComponents}
     </FieldNamespace>
