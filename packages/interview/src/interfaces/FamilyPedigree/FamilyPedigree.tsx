@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
@@ -150,7 +151,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
             type: 'acknowledge',
             title: 'Pedigree is incomplete',
             description:
-              'Please complete the onboarding wizard before continuing.',
+              'You have not created your family pedigree yet. Please complete the pedigree wizard to create your pedigree before continuing. Click the button in the bottom right to get started.',
             intent: 'destructive',
             actions: {
               primary: { label: 'OK', value: true as const },
@@ -345,16 +346,23 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
           )}
           {showQuickStart ? (
             <>
-              <div className="flex flex-col items-center gap-6">
-                <FamilyPedigreePlaceholder className="w-96 max-w-full opacity-25" />
-                <Paragraph
-                  emphasis="muted"
-                  margin="none"
-                  className="text-center"
-                >
-                  Your family pedigree will appear here. Click the button below
-                  to get started.
-                </Paragraph>
+              <div className="flex flex-col items-center gap-12">
+                <FamilyPedigreePlaceholder className="w-[50rem] max-w-full" />
+                <div className="max-w-prose text-center">
+                  <Heading level="h3">Build your family pedigree</Heading>
+                  <Paragraph emphasis="muted">
+                    A family pedigree is a diagram of your relatives and how
+                    they are connected to you.
+                  </Paragraph>
+                  <Paragraph emphasis="muted">
+                    To begin, we will ask a few quick questions and sketch out
+                    your immediate family for you. From there, you can click on
+                    any person to add more relatives and fill in their details.
+                  </Paragraph>
+                  <Paragraph emphasis="muted" margin="none">
+                    Click the button below to get started.
+                  </Paragraph>
+                </div>
               </div>
             </>
           ) : (
