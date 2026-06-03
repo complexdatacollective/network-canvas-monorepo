@@ -115,8 +115,9 @@ export function siblingCellTransform(
     const isCarrier = parent.roleKey === 'carrier-source';
 
     if (isCarrier) {
-      relationshipType =
-        values['carrier-is-surrogate'] === true ? 'surrogate' : 'biological';
+      // A gestational carrier never contributes the egg, so they are never a
+      // genetic parent — always a (non-genetic) surrogate.
+      relationshipType = 'surrogate';
     } else if (parent.roleKey === 'egg-source') {
       relationshipType =
         values['egg-source-is-donor'] === true ? 'donor' : 'biological';

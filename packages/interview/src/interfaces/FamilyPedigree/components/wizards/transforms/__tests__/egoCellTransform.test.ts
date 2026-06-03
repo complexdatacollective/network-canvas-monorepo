@@ -184,8 +184,7 @@ describe('egoCellTransform', () => {
         'name': '',
       },
       'gestational-carrier': {
-        'is-surrogate': false,
-        'name': 'Mum',
+        name: 'Mum',
       },
       'hasOtherParents': false,
       'partnerships': {
@@ -220,10 +219,10 @@ describe('egoCellTransform', () => {
       [variableConfig.relationshipTypeVariable]: 'donor',
     });
 
-    // Gestational carrier: biological (not surrogate) + GC flag
+    // Gestational carrier: always a (non-genetic) surrogate + GC flag
     const gcEdge = batch.edges.find((e) => e.source === 'gestational-carrier');
     expect(gcEdge?.data.attributes).toMatchObject({
-      [variableConfig.relationshipTypeVariable]: 'biological',
+      [variableConfig.relationshipTypeVariable]: 'surrogate',
       [variableConfig.isGestationalCarrierVariable]: true,
     });
 

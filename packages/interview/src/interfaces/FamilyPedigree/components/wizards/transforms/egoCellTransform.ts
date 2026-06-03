@@ -6,7 +6,6 @@ import type {
 
 const KNOWN_BIO_PARENT_KEYS = new Set([
   'is-donor',
-  'is-surrogate',
   'name',
   'gestationalCarrier',
 ]);
@@ -48,11 +47,7 @@ function buildBioParent(
   donorType: 'donor' | 'surrogate',
   variableConfig: VariableConfig,
 ): ParentEntry {
-  // The egg/sperm steps store their "is this a donor?" answer under
-  // `is-donor`; the gestational-carrier step stores "is this a surrogate?"
-  // under `is-surrogate`. Either maps this parent to its non-biological type.
-  const flagKey = donorType === 'surrogate' ? 'is-surrogate' : 'is-donor';
-  const isNonBiological = parent[flagKey] === true;
+  const isDonor = parent['is-donor'] === true;
   const name = (parent.name as string | undefined) ?? '';
   const extraAttrs = extractUnknownAttributes(parent, KNOWN_BIO_PARENT_KEYS);
 
@@ -63,7 +58,7 @@ function buildBioParent(
       [variableConfig.egoVariable]: false,
       ...extraAttrs,
     },
-    relationshipType: isNonBiological ? donorType : 'biological',
+    relationshipType: isDonor ? donorType : 'biological',
     isGestationalCarrier: false,
   };
 }
@@ -138,6 +133,9 @@ export function egoCellTransform(
       'surrogate',
       variableConfig,
     );
+    // A gestational carrier never contributes the egg, so they are never a
+    // genetic parent — always record them as a (non-genetic) surrogate.
+    entry.relationshipType = 'surrogate';
     entry.isGestationalCarrier = true;
     parents.push(entry);
   }

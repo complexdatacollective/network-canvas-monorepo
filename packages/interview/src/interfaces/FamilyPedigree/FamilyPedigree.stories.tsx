@@ -788,8 +788,7 @@ export const SingleParentTwoDonors: ScenarioStory = {
     await setFieldInput('egg-parent.gender_identity', 'Woman/girl');
     await clickContinue();
 
-    // Gestational carrier step: Mum (not a surrogate — she is the intended mother)
-    await setFieldInput('gestational-carrier.is-surrogate', false);
+    // Gestational carrier step: Mum carried using a donor egg
     await setFieldInput('gestational-carrier.name', 'Mum');
     await setFieldInput('gestational-carrier.gender_identity', 'Woman/girl');
     await clickContinue();

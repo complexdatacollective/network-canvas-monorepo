@@ -2,7 +2,6 @@
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
-import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import useProtocolForm from '~/forms/useProtocolForm';
@@ -39,14 +38,6 @@ export default function GestationalCarrierStep() {
           component={InputField}
           hint="Leave blank if the name is not known"
           autoFocus
-        />
-        <Field
-          name="is-surrogate"
-          label="Was this person a gestational surrogate?"
-          hint="A surrogate carried the pregnancy for the parents but is not a parent of the child. Choose 'No' if this person carried the pregnancy to become a parent themselves — for example, using a donated egg."
-          component={BooleanField}
-          required
-          inline
         />
         {fieldComponents}
       </FieldNamespace>

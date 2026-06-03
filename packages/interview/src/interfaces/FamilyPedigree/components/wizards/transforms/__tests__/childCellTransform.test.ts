@@ -220,7 +220,6 @@ describe('childCellTransform', () => {
         'name-known': true,
         'name': 'Surrogate Sue',
       },
-      'carrier-is-surrogate': true,
     };
 
     const batch = childCellTransform(

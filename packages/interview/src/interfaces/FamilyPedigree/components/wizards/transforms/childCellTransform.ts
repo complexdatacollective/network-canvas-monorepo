@@ -39,7 +39,6 @@ function buildParentFromNew(
   roleKey: RoleKey,
   personValues: Record<string, unknown>,
   isDonor: boolean,
-  isSurrogate: boolean,
   variableConfig: VariableConfig,
 ): ParentEntry {
   const name = (personValues.name as string | undefined) ?? '';
@@ -47,7 +46,9 @@ function buildParentFromNew(
 
   let relationshipType: 'biological' | 'donor' | 'surrogate' = 'biological';
   if (isDonor) relationshipType = 'donor';
-  if (isSurrogate) relationshipType = 'surrogate';
+  // A gestational carrier never contributes the egg, so they are never a
+  // genetic parent — always a (non-genetic) surrogate.
+  if (roleKey === 'carrier-source') relationshipType = 'surrogate';
 
   return {
     tempId: NEW_PERSON_NAMESPACE[roleKey],
@@ -107,12 +108,12 @@ export function childCellTransform(
     if (!selection) continue;
 
     const isDonor = values[`${roleKey}-is-donor`] === true;
-    const isSurrogate =
-      roleKey === 'carrier-source' && values['carrier-is-surrogate'] === true;
 
     let relationshipType: 'biological' | 'donor' | 'surrogate' = 'biological';
     if (isDonor) relationshipType = 'donor';
-    if (isSurrogate) relationshipType = 'surrogate';
+    // A gestational carrier never contributes the egg, so they are never a
+    // genetic parent — always a (non-genetic) surrogate.
+    if (roleKey === 'carrier-source') relationshipType = 'surrogate';
 
     if (selection === 'new') {
       const namespace = NEW_PERSON_NAMESPACE[roleKey];
@@ -121,13 +122,7 @@ export function childCellTransform(
         | undefined;
       if (personValues) {
         parentEntries.push(
-          buildParentFromNew(
-            roleKey,
-            personValues,
-            isDonor,
-            isSurrogate,
-            variableConfig,
-          ),
+          buildParentFromNew(roleKey, personValues, isDonor, variableConfig),
         );
       }
     } else {
