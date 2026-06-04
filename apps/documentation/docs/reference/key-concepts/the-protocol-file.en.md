@@ -12,7 +12,7 @@ A file with the extension .netcanvas that represents your interview protocol and
 
 Network Canvas protocols are stored in a file with the extension .netcanvas. They are just like any other files on your computer, meaning you can move them around, rename them, and you can (and should!) back them up.
 
-The `.netcanvas` file contains all of the data in your protocol. So if you use any [resources](/en/desktop/key-concepts/resources), such as roster data, images, or video, these will be embedded within the file.
+The `.netcanvas` file contains all of the data in your protocol. So if you use any [resources](/en/reference/key-concepts/resources), such as roster data, images, or video, these will be embedded within the file.
 
 ## Authoring Protocol Files
 

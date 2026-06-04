@@ -78,7 +78,7 @@ Make sure the selectable areas from your GeoJSON file are visible within the ini
 
 ## Prompts
 
-The Geospatial Interface can include multiple [prompts](/en/desktop/key-concepts/prompts), each corresponding to a single text variable.
+The Geospatial Interface can include multiple [prompts](/en/reference/key-concepts/prompts), each corresponding to a single text variable.
 The value of each variable is determined by the property of the selected map area from the GeoJSON file.
 
 If a response is made outside the selectable areas on the map, the variable will be assigned `outside-map-area`.
@@ -87,7 +87,7 @@ If a response is made outside the selectable areas on the map, the variable will
 
 <GoodPractice>
 
-Consider using [network filtering](/en/desktop/key-concepts/network-filtering) to narrow down nodes to only those that fall within the
+Consider using [network filtering](/en/reference/key-concepts/network-filtering) to narrow down nodes to only those that fall within the
 selectable map areas. Prior name interpreters, such as [Categorical Bins](/en/reference/interface-documentation/categorical-bin) or [Per Alter Forms](/en/reference/interface-documentation/per-alter-form), can be used to
 capture additional variables that can be used to filter out nodes who are outside the map area. This ensures participants are only prompted to select an area on the map for relevant nodes,
 reducing the chances of assigning `outside-map-area` and minimizing response burden.

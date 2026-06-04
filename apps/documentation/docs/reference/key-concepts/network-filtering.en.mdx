@@ -15,7 +15,7 @@ This is particularly useful in cases where the content of the stage does not app
 
 <TipBox>
 
-Network filtering is different from [skip logic](/en/desktop/key-concepts/skip-logic)! Although the two sound similar in principle, they achieve very different design goals. Whereas network filtering determines which nodes to show _within_ a stage, skip logic determines if a stage should be shown at all. Consult the article on [skip logic](/en/desktop/key-concepts/skip-logic) to learn more.
+Network filtering is different from [skip logic](/en/reference/key-concepts/skip-logic)! Although the two sound similar in principle, they achieve very different design goals. Whereas network filtering determines which nodes to show _within_ a stage, skip logic determines if a stage should be shown at all. Consult the article on [skip logic](/en/reference/key-concepts/skip-logic) to learn more.
 
 </TipBox>
 
@@ -33,7 +33,7 @@ Network filtering is only available on _name interpreter_ interfaces - interface
 
 ### Filtering rules
 
-Similar to [skip logic](/en/desktop/key-concepts/skip-logic) rules, filtering rules have two types that can be targeted at either nodes or edges:
+Similar to [skip logic](/en/reference/key-concepts/skip-logic) rules, filtering rules have two types that can be targeted at either nodes or edges:
 
 - **"Presence" Rules**: These rules allow you to query if a given entity of a specified type exists in the network, using either the `exists` or `not exists` operator. This rule type is not generally useful for most typical filtering operations, but can be used when roster data contains nodes or edges of multiple types.
 - **"Attribute" Rules**: These rules allow you to query the value of a variable on a given entity type. For example, you may query the value of a variable called `age` on an alter type called 'Person'. You can evaluate the result using one of several logical operators, that vary depending on the variable type. For example, number variables will let you query using operators such as 'greater than' and 'less than'.
@@ -82,7 +82,7 @@ network.
 
 ## Network filtering in a side panel
 
-You can also filter the content of Name Generator [side panels](/en/reference/interface-documentation/name-generator-using-forms#side-panels) (where they are used). This feature works exactly the same way as stage level network filtering, except that the results are only applied to the specific side panel you are configuring. Any filtering you set will apply across all [prompts](/en/desktop/key-concepts/prompts) for that stage.
+You can also filter the content of Name Generator [side panels](/en/reference/interface-documentation/name-generator-using-forms#side-panels) (where they are used). This feature works exactly the same way as stage level network filtering, except that the results are only applied to the specific side panel you are configuring. Any filtering you set will apply across all [prompts](/en/reference/key-concepts/prompts) for that stage.
 
 This feature can be particularly useful if you wish to filter elements of a roster. For example, your roster may contain an attribute that represents graduation year that you could use to filter the side panel content for a question about classmates known from a certain year group.
 
@@ -90,8 +90,8 @@ This feature can be particularly useful if you wish to filter elements of a rost
 
 ## Related concepts
 
-- [Skip Logic](/en/desktop/key-concepts/skip-logic) - Conditionally skip or show entire stages
-- [Variables](/en/desktop/key-concepts/variables) - Create variables to use in filtering rules
-- [Interfaces](/en/desktop/key-concepts/interfaces) - Understanding which Interfaces support network filtering
-- [Prompts](/en/desktop/key-concepts/prompts) - Configure questions that work with filtered networks
-- [Resources](/en/desktop/key-concepts/resources) - Import roster data for filtering
+- [Skip Logic](/en/reference/key-concepts/skip-logic) - Conditionally skip or show entire stages
+- [Variables](/en/reference/key-concepts/variables) - Create variables to use in filtering rules
+- [Interfaces](/en/reference/key-concepts/interfaces) - Understanding which Interfaces support network filtering
+- [Prompts](/en/reference/key-concepts/prompts) - Configure questions that work with filtered networks
+- [Resources](/en/reference/key-concepts/resources) - Import roster data for filtering
