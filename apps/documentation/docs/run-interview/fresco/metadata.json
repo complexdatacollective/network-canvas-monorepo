@@ -1,0 +1,7 @@
+{
+  "type": "folder",
+  "slug": "fresco",
+  "localeLabels": { "en": "Fresco" },
+  "localeIndexFiles": { "en": "index.en.mdx" },
+  "navOrder": 2
+}

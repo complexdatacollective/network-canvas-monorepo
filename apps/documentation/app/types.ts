@@ -61,8 +61,19 @@ const SidebarFolderSchema: z.ZodType<TSidebarFolder> = baseSidebarFolder.extend(
 
 export type SidebarFolder = z.infer<typeof SidebarFolderSchema>;
 
+const childDisplayTypes = ['list', 'tabs'] as const;
+
+const SidebarTabSchema = z.object({
+  slug: z.string(),
+  label: z.string(),
+});
+
+export type SidebarTab = z.infer<typeof SidebarTabSchema>;
+
 const SidebarProjectSchema = SidebarItemBase.extend({
   type: z.literal('project'),
+  childDisplay: z.enum(childDisplayTypes).default('list'),
+  tabs: z.array(SidebarTabSchema).optional(),
   children: z.record(
     z.string(),
     z.union([SidebarFolderSchema, SidebarPageSchema]),
@@ -92,6 +103,7 @@ export const MetadataFileSchema = z.object({
   localeIndexFiles: z.record(z.string(), z.string()).optional(),
   isExpanded: z.boolean().optional(),
   navOrder: z.number().optional(),
+  childDisplay: z.enum(childDisplayTypes).optional(),
 });
 
 export type MetadataFile = z.infer<typeof MetadataFileSchema>;

@@ -8,6 +8,7 @@ import type {
   Locale,
   MetadataFile,
   SidebarFolder,
+  SidebarLocaleDefinition,
   SidebarPage,
   SidebarProject,
 } from '~/app/types';
@@ -129,8 +130,33 @@ export const createProjectEntry = (
     type: 'project',
     sourceFile,
     label: metadata.localeLabels?.[locale] ?? file.name,
+    childDisplay: metadata.childDisplay ?? 'list',
     children: {},
   };
+};
+
+const compareByNavOrderThenLabel = (
+  a: SidebarFolder | SidebarPage,
+  b: SidebarFolder | SidebarPage,
+) => {
+  if (a.navOrder !== null && b.navOrder !== null)
+    return a.navOrder - b.navOrder;
+  if (a.navOrder !== null) return -1;
+  if (b.navOrder !== null) return 1;
+  return a.label.localeCompare(b.label);
+};
+
+export const attachProjectTabs = (localeData: SidebarLocaleDefinition) => {
+  for (const project of Object.values(localeData)) {
+    if (project.childDisplay !== 'tabs') continue;
+
+    project.tabs = Object.entries(project.children)
+      .filter(
+        (entry): entry is [string, SidebarFolder] => entry[1].type === 'folder',
+      )
+      .toSorted(([, a], [, b]) => compareByNavOrderThenLabel(a, b))
+      .map(([slug, folder]) => ({ slug, label: folder.label }));
+  }
 };
 
 /**

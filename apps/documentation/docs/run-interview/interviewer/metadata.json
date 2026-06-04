@@ -1,0 +1,7 @@
+{
+  "type": "folder",
+  "slug": "interviewer",
+  "localeLabels": { "en": "Interviewer" },
+  "localeIndexFiles": { "en": "index.en.mdx" },
+  "navOrder": 1
+}

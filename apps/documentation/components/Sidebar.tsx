@@ -1,7 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { Route } from 'next';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
@@ -22,7 +22,7 @@ import { cn } from '~/lib/utils';
 
 const PATH_SEPARATOR_REGEX = /[\\/]/;
 
-import AppTabs, { appTabsFor } from './AppTabs';
+import AppTabs from './AppTabs';
 import DocSearchComponent from './DocSearchComponent';
 import ProjectSwitcher from './ProjectSwitcher';
 
@@ -287,21 +287,13 @@ const renderSidebarItem = (
 export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const locale = useLocale() as Locale;
+  const t = useTranslations('Sidebar');
+  const segments = pathname.split('/');
   // biome-ignore lint/style/noNonNullAssertion: path structure is known
-  const project = pathname.split('/')[2]! as Project;
+  const project = segments[2]! as Project;
+  const urlTab = segments[3];
   const sidebarContainerRef = useRef<HTMLDivElement>(null);
   const [sidebarData, setSidebarData] = useState<TSideBar | null>(null);
-
-  // Tabbed sections (Build, Run) keep the active app tab in local state, which
-  // also drives which articles render beneath the tab strip. Reset it whenever
-  // the section changes so the first tab is selected on each section.
-  const tabs = appTabsFor(project);
-  const [activeTab, setActiveTab] = useState<string | undefined>(
-    tabs?.[0]?.value,
-  );
-  useEffect(() => {
-    setActiveTab(appTabsFor(project)?.[0]?.value);
-  }, [project]);
 
   useEffect(() => {
     fetch('/sidebar.json')
@@ -323,24 +315,33 @@ export function Sidebar({ className }: { className?: string }) {
     );
   }
 
-  const formattedSidebarData = sidebarData[locale][project].children;
+  const projectData = sidebarData[locale][project];
+  const formattedSidebarData = projectData.children;
   const childrenEntries = Object.entries(formattedSidebarData);
 
-  // Tabbed section: shared (root) pages render above the tab strip, then the
-  // active tab's folder contents render below it.
-  if (tabs) {
+  const tabs =
+    projectData.childDisplay === 'tabs' ? projectData.tabs : undefined;
+
+  if (tabs && tabs.length > 0) {
+    const activeTab = tabs.find((tab) => tab.slug === urlTab)?.slug;
+    const displayTab = activeTab ?? tabs[0]?.slug;
+
     const sharedItems = sortSidebarItems(
       childrenEntries
-        .map(([, item]) => item)
-        .filter((item) => item.type === 'page'),
+        .filter(([key, item]) => item.type === 'page' && key !== 'index')
+        .map(([, item]) => item),
     );
 
     const activeFolder = childrenEntries.find(
-      ([slug, item]) => slug === activeTab && item.type === 'folder',
+      ([slug, item]) => slug === displayTab && item.type === 'folder',
     )?.[1];
     const tabItems =
       activeFolder && activeFolder.type === 'folder'
-        ? sortSidebarItems(Object.values(activeFolder.children))
+        ? sortSidebarItems(
+            Object.entries(activeFolder.children)
+              .filter(([key]) => key !== 'index')
+              .map(([, item]) => item),
+          )
         : [];
 
     return (
@@ -350,14 +351,19 @@ export function Sidebar({ className }: { className?: string }) {
 
         <div ref={sidebarContainerRef} className="flex-1 overflow-y-auto p-2">
           {sharedItems.length > 0 && (
-            <SidebarFolder label="Shared" alwaysOpen>
+            <SidebarFolder label={t('shared')} alwaysOpen>
               {sharedItems.map((item) =>
                 renderSidebarItem(item, locale, sidebarContainerRef),
               )}
             </SidebarFolder>
           )}
 
-          <AppTabs tabs={tabs} value={activeTab} onValueChange={setActiveTab} />
+          <AppTabs
+            tabs={tabs}
+            activeSlug={activeTab}
+            locale={locale}
+            project={project}
+          />
 
           {tabItems.map((item) =>
             renderSidebarItem(item, locale, sidebarContainerRef),

@@ -1,0 +1,7 @@
+{
+  "type": "folder",
+  "slug": "architect-desktop",
+  "localeLabels": { "en": "Architect Desktop" },
+  "localeIndexFiles": { "en": "index.en.mdx" },
+  "navOrder": 2
+}
