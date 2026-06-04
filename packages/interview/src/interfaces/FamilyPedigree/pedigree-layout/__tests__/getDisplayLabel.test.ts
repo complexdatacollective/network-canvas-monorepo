@@ -41,11 +41,12 @@ function makeEdges(
       to: string;
       relType: string;
       isActive?: boolean;
+      gameteRole?: 'egg' | 'sperm';
     },
   ][],
 ): Map<string, NcEdge> {
   return new Map(
-    entries.map(([id, { from, to, relType, isActive }]) => [
+    entries.map(([id, { from, to, relType, isActive, gameteRole }]) => [
       id,
       {
         _uid: id,
@@ -56,6 +57,7 @@ function makeEdges(
           [variableConfig.relationshipTypeVariable]: relType,
           [variableConfig.isActiveVariable]: isActive ?? true,
         },
+        ...(gameteRole ? { gameteRole } : {}),
       },
     ]),
   );
@@ -362,6 +364,69 @@ describe('getDisplayLabel', () => {
 
       expect(getDisplayLabel('e', 'ego', nodes, edges, variableConfig)).toBe(
         'Family Member',
+      );
+    });
+  });
+
+  describe('gamete-role labels', () => {
+    it('labels two unnamed biological parents by gamete role', () => {
+      const nodes = makeNodes([
+        ['ego', { name: 'Me', isEgo: true }],
+        ['eggp', {}],
+        ['spermp', {}],
+      ]);
+      const edges = makeEdges([
+        [
+          'e1',
+          { from: 'eggp', to: 'ego', relType: 'biological', gameteRole: 'egg' },
+        ],
+        [
+          'e2',
+          {
+            from: 'spermp',
+            to: 'ego',
+            relType: 'biological',
+            gameteRole: 'sperm',
+          },
+        ],
+      ]);
+
+      expect(getDisplayLabel('eggp', 'ego', nodes, edges, variableConfig)).toBe(
+        'Egg Parent',
+      );
+      expect(
+        getDisplayLabel('spermp', 'ego', nodes, edges, variableConfig),
+      ).toBe('Sperm Parent');
+    });
+
+    it('labels an unnamed donor parent by gamete role', () => {
+      const nodes = makeNodes([
+        ['ego', { name: 'Me', isEgo: true }],
+        ['donor', {}],
+      ]);
+      const edges = makeEdges([
+        [
+          'e1',
+          { from: 'donor', to: 'ego', relType: 'donor', gameteRole: 'sperm' },
+        ],
+      ]);
+
+      expect(
+        getDisplayLabel('donor', 'ego', nodes, edges, variableConfig),
+      ).toBe('Sperm Donor');
+    });
+
+    it('falls back to "Parent" when no gamete role is recorded', () => {
+      const nodes = makeNodes([
+        ['ego', { name: 'Me', isEgo: true }],
+        ['p', {}],
+      ]);
+      const edges = makeEdges([
+        ['e1', { from: 'p', to: 'ego', relType: 'biological' }],
+      ]);
+
+      expect(getDisplayLabel('p', 'ego', nodes, edges, variableConfig)).toBe(
+        'Parent',
       );
     });
   });

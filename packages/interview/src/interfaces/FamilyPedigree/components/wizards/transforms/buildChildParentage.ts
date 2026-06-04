@@ -1,6 +1,7 @@
 import type { VariableValue } from '@codaco/shared-consts';
 import type {
   CommitBatch,
+  GameteRole,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 
@@ -15,6 +16,13 @@ const NEW_PERSON_NAMESPACE: Record<RoleKey, string> = {
   // intentionally 'new-carrier', not 'new-carrier-source'
   'carrier-source': 'new-carrier',
 };
+
+/** The gamete a parent role contributes, for internal relationship labelling. */
+export function gameteRoleForRole(roleKey: RoleKey): GameteRole | undefined {
+  if (roleKey === 'egg-source') return 'egg';
+  if (roleKey === 'sperm-source') return 'sperm';
+  return undefined;
+}
 
 type ResolvedParent = { ref: string; roleKey: RoleKey };
 
@@ -132,9 +140,11 @@ export function buildChildParentage(
     if (entry.isGestationalCarrier) {
       edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
     }
+    const gameteRole = gameteRoleForRole(entry.roleKey);
     edges.push({
       source: entry.tempId,
       target: childTempId,
+      ...(gameteRole ? { gameteRole } : {}),
       data: { attributes: edgeAttributes },
     });
   }
@@ -147,9 +157,11 @@ export function buildChildParentage(
     if (entry.isGestationalCarrier) {
       edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
     }
+    const gameteRole = gameteRoleForRole(entry.roleKey);
     edges.push({
       source: entry.sourceId,
       target: childTempId,
+      ...(gameteRole ? { gameteRole } : {}),
       data: { attributes: edgeAttributes },
     });
   }

@@ -1,5 +1,9 @@
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
-import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
+import type {
+  FamilyEdge,
+  GameteRole,
+  VariableConfig,
+} from '~/interfaces/FamilyPedigree/store';
 
 type PathStep = 'parent' | 'child' | 'partner';
 
@@ -166,6 +170,42 @@ function getParentEdgeType(
   return null;
 }
 
+/**
+ * The gamete role recorded on a direct parent->ego edge, if any. Lets an
+ * unnamed biological/donor parent be labelled as the egg or sperm parent.
+ */
+function getDirectParentGameteRole(
+  nodeId: string,
+  egoId: string,
+  edges: Map<string, FamilyEdge>,
+  variableConfig: VariableConfig,
+): GameteRole | undefined {
+  for (const edge of edges.values()) {
+    const relType = edge.attributes[variableConfig.relationshipTypeVariable] as
+      | string
+      | undefined;
+    if (
+      edge.from === nodeId &&
+      edge.to === egoId &&
+      relType !== 'partner' &&
+      edge.gameteRole
+    ) {
+      return edge.gameteRole;
+    }
+  }
+  return undefined;
+}
+
+/** "Egg Parent"/"Sperm Parent" (biological) or "Egg Donor"/"Sperm Donor". */
+function gameteParentLabel(
+  gameteRole: GameteRole,
+  kind: RelationshipKind,
+): string {
+  const gamete = gameteRole === 'egg' ? 'Egg' : 'Sperm';
+  const base = kind === 'donor' ? 'Donor' : 'Parent';
+  return `${gamete} ${base}`;
+}
+
 const RELATIONSHIP_LABELS: Record<RelationshipKind, string> = {
   'parent': 'Parent',
   'social-parent': 'Social Parent',
@@ -260,6 +300,18 @@ export function getDisplayLabel(
     else if (edgeType === 'surrogate') kind = 'surrogate';
   }
 
+  // Direct genetic parent of ego with a known gamete role: label by gamete so
+  // two unnamed biological parents ("Egg Parent"/"Sperm Parent") are distinct.
+  if (kind === 'parent' || kind === 'donor') {
+    const gameteRole = getDirectParentGameteRole(
+      nodeId,
+      egoId,
+      edges,
+      variableConfig,
+    );
+    if (gameteRole) return gameteParentLabel(gameteRole, kind);
+  }
+
   // Relationships where the direct label is more descriptive than possessive form
   const SKIP_INTERMEDIARY = new Set<RelationshipKind>([
     'sibling',
@@ -328,6 +380,19 @@ export function computeAllDisplayLabels(
       else if (edgeType === 'surrogate') kind = 'surrogate';
     }
 
+    if (kind === 'parent' || kind === 'donor') {
+      const gameteRole = getDirectParentGameteRole(
+        nodeId,
+        egoId,
+        edges,
+        variableConfig,
+      );
+      if (gameteRole) {
+        labels.set(nodeId, gameteParentLabel(gameteRole, kind));
+        continue;
+      }
+    }
+
     if (!SKIP_INTERMEDIARY.has(kind)) {
       const intermediary = findNearestNamedIntermediary(
         entry.intermediaries,
@@ -345,4 +410,29 @@ export function computeAllDisplayLabels(
   }
 
   return labels;
+}
+
+/**
+ * Display label for a node in wizard candidate/reference lists: the stored
+ * name, or a relationship-based label describing the node relative to the
+ * participant ("Egg Parent", "Sperm Parent", "Donor", "Rob's Parent", …) when
+ * the name is unknown.
+ */
+export function getNodeLabel(
+  nodeId: string,
+  nodes: Map<string, NcNode>,
+  edges: Map<string, FamilyEdge>,
+  variableConfig: VariableConfig,
+): string {
+  const egoEntry = [...nodes.entries()].find(
+    ([, n]) => n.attributes[variableConfig.egoVariable] === true,
+  );
+  if (!egoEntry) {
+    const name =
+      nodes.get(nodeId)?.attributes[variableConfig.nodeLabelVariable];
+    return typeof name === 'string' && name.length > 0
+      ? name
+      : 'Unknown person';
+  }
+  return getDisplayLabel(nodeId, egoEntry[0], nodes, edges, variableConfig);
 }

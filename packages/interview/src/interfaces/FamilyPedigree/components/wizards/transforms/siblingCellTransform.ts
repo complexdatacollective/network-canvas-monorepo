@@ -4,6 +4,7 @@ import type {
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 
+import { gameteRoleForRole } from './buildChildParentage';
 import { extractCustomAttributes } from './personAttributes';
 
 function buildPersonAttributes(
@@ -122,9 +123,11 @@ export function siblingCellTransform(
       edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
     }
 
+    const gameteRole = gameteRoleForRole(parent.roleKey);
     batch.edges.push({
       source: parent.tempId,
       target: 'sibling',
+      ...(gameteRole ? { gameteRole } : {}),
       data: { attributes: edgeAttributes },
     });
   }

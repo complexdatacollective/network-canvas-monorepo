@@ -4,10 +4,9 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
-import { useStageSelector } from '~/hooks/useStageSelector';
+import { getNodeLabel } from '~/interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel';
 
 import type { VariableConfig } from '../store';
-import { getNodeLabelVariable } from '../utils/nodeUtils';
 import { PARENT_EDGE_TYPE_OPTIONS_ALTER } from './quickStartWizard/fieldOptions';
 import PersonFields from './quickStartWizard/PersonFields';
 
@@ -23,23 +22,12 @@ type AddPersonFieldsProps = {
   variableConfig: VariableConfig;
 };
 
-function getNodeName(
-  nodeId: string,
-  nodes: Map<string, NcNode>,
-  nodeLabelVariable: string,
-): string {
-  const node = nodes.get(nodeId);
-  return (node?.attributes[nodeLabelVariable] as string) || 'Unknown';
-}
-
 export default function AddPersonFields({
   anchorNodeId,
   nodes,
   edges,
   variableConfig,
 }: AddPersonFieldsProps) {
-  const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
-
   const children = [...edges.values()]
     .filter(
       (edge) =>
@@ -65,7 +53,7 @@ export default function AddPersonFields({
         <Field
           key={`parentType-${childId}`}
           name={`parentType-${childId}`}
-          label={`Parent type for ${getNodeName(childId, nodes, nodeLabelVariable)}?`}
+          label={`Parent type for ${getNodeLabel(childId, nodes, edges, variableConfig)}?`}
           component={RichSelectGroupField}
           options={[
             ...PARENT_EDGE_TYPE_OPTIONS_ALTER,

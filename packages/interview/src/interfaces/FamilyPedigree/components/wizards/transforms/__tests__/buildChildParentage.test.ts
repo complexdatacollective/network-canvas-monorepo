@@ -99,5 +99,26 @@ describe('buildChildParentage', () => {
       relationship: 'surrogate',
       isGC: true,
     });
+    expect(surrogateEdge?.gameteRole).toBeUndefined();
+  });
+
+  it('tags the egg and sperm parent edges with the gamete role', () => {
+    const { edges } = buildChildParentage(
+      'child',
+      {
+        'egg-source': 'ego-1',
+        'sperm-source': 'partner-1',
+        'egg-parent-carried': true,
+      },
+      variableConfig,
+    );
+
+    const eggGeneticEdge = edges.find(
+      (e) => e.source === 'ego-1' && e.data.attributes.isGC === undefined,
+    );
+    expect(eggGeneticEdge?.gameteRole).toBe('egg');
+
+    const spermEdge = edges.find((e) => e.source === 'partner-1');
+    expect(spermEdge?.gameteRole).toBe('sperm');
   });
 });

@@ -1,6 +1,7 @@
 import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import { getNodeLabel } from '~/interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel';
 import type {
   CommitBatch,
   VariableConfig,
@@ -20,6 +21,7 @@ import { childCellTransform } from './transforms/childCellTransform';
 
 function buildNodeOptions(
   nodes: Map<string, NcNode>,
+  edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
 ): { value: string; label: string }[] {
   const options: { value: string; label: string }[] = [];
@@ -28,10 +30,10 @@ function buildNodeOptions(
       options.push({ value: id, label: 'You' });
       continue;
     }
-    const name = node.attributes[variableConfig.nodeLabelVariable];
-    const label =
-      typeof name === 'string' && name.length > 0 ? name : 'Unknown person';
-    options.push({ value: id, label });
+    options.push({
+      value: id,
+      label: getNodeLabel(id, nodes, edges, variableConfig),
+    });
   }
   return options;
 }
@@ -79,7 +81,7 @@ export async function openAddChildWizard(
     edges,
     variableConfig,
   );
-  const existingNodes = buildNodeOptions(nodes, variableConfig);
+  const existingNodes = buildNodeOptions(nodes, edges, variableConfig);
   const bioTriadConfig = { existingNodes, preselection };
 
   const result = await openDialog({

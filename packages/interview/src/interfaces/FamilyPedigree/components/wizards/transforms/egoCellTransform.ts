@@ -1,6 +1,7 @@
 import type { VariableValue } from '@codaco/shared-consts';
 import type {
   CommitBatch,
+  GameteRole,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 
@@ -39,6 +40,7 @@ type ParentEntry = {
     | 'social'
     | 'adoptive';
   isGestationalCarrier: boolean;
+  gameteRole?: GameteRole;
 };
 
 function buildBioParent(
@@ -113,6 +115,7 @@ export function egoCellTransform(
       'donor',
       variableConfig,
     );
+    entry.gameteRole = 'egg';
     if (eggParent.gestationalCarrier === true) {
       entry.isGestationalCarrier = true;
     }
@@ -120,9 +123,14 @@ export function egoCellTransform(
   }
 
   if (spermParent) {
-    parents.push(
-      buildBioParent('sperm-parent', spermParent, 'donor', variableConfig),
+    const entry = buildBioParent(
+      'sperm-parent',
+      spermParent,
+      'donor',
+      variableConfig,
     );
+    entry.gameteRole = 'sperm';
+    parents.push(entry);
   }
 
   const hasGestCarrier = eggParent?.gestationalCarrier === false && gestCarrier;
@@ -207,6 +215,7 @@ export function egoCellTransform(
     batch.edges.push({
       source: parent.tempId,
       target: egoRef,
+      ...(parent.gameteRole ? { gameteRole: parent.gameteRole } : {}),
       data: { attributes: edgeAttributes },
     });
   }

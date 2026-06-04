@@ -6,6 +6,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
+import { getNodeLabel } from '~/interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel';
 import type {
   CommitBatch,
   VariableConfig,
@@ -164,13 +165,10 @@ export async function openAddParentWizard(
   );
   const existingParents = existingParentIds
     .map((id) => {
-      const node = nodes.get(id);
-      if (!node) return null;
-      const name = node.attributes[variableConfig.nodeLabelVariable];
+      if (!nodes.has(id)) return null;
       return {
         id,
-        label:
-          typeof name === 'string' && name.length > 0 ? name : 'Unknown person',
+        label: getNodeLabel(id, nodes, edges, variableConfig),
       };
     })
     .filter((p) => p !== null);
