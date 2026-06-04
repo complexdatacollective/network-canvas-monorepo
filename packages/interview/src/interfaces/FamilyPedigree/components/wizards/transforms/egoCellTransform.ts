@@ -4,6 +4,8 @@ import type {
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 
+import { buildChildParentage } from './buildChildParentage';
+
 const KNOWN_BIO_PARENT_KEYS = new Set([
   'is-donor',
   'name',
@@ -11,8 +13,6 @@ const KNOWN_BIO_PARENT_KEYS = new Set([
 ]);
 
 const KNOWN_ADDITIONAL_PARENT_KEYS = new Set(['role', 'name']);
-
-const KNOWN_PERSON_KEYS = new Set(['name']);
 
 function extractUnknownAttributes(
   obj: Record<string, unknown>,
@@ -271,7 +271,10 @@ export function egoCellTransform(
     });
   }
 
-  // Children with partner
+  // Children with partner — each child's biological parentage is captured per
+  // child via the BioTriad model (egg/sperm/carrier), namespaced under
+  // `childWithPartner[i].parentage`. The partner is only a parent of a child if
+  // the participant selected them as the egg or sperm source.
   const childrenCount = hasPartner
     ? Number(values.childrenWithPartnerCount ?? 0)
     : 0;
@@ -284,7 +287,10 @@ export function egoCellTransform(
     if (!child) continue;
 
     const childName = (child.name as string | undefined) ?? '';
-    const childExtraAttrs = extractUnknownAttributes(child, KNOWN_PERSON_KEYS);
+    const childExtraAttrs = extractUnknownAttributes(
+      child,
+      new Set(['name', 'parentage']),
+    );
     const tempId = `child-${String(i)}`;
 
     batch.nodes.push({
@@ -298,29 +304,14 @@ export function egoCellTransform(
       },
     });
 
-    batch.edges.push({
-      source: egoRef,
-      target: tempId,
-      data: {
-        attributes: {
-          [variableConfig.relationshipTypeVariable]: 'biological',
-          [variableConfig.isActiveVariable]: true,
-        },
-      },
-    });
-
-    if (hasPartner) {
-      batch.edges.push({
-        source: 'partner',
-        target: tempId,
-        data: {
-          attributes: {
-            [variableConfig.relationshipTypeVariable]: 'biological',
-            [variableConfig.isActiveVariable]: true,
-          },
-        },
-      });
-    }
+    const triadValues = (child.parentage ?? {}) as Record<string, unknown>;
+    const { nodes: parentNodes, edges: parentEdges } = buildChildParentage(
+      tempId,
+      triadValues,
+      variableConfig,
+    );
+    batch.nodes.push(...parentNodes);
+    batch.edges.push(...parentEdges);
   }
 
   return {

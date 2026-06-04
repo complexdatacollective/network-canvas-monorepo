@@ -444,7 +444,24 @@ describe('egoCellTransform', () => {
         name: 'Sophia',
       },
       'childrenWithPartnerCount': 2,
-      'childWithPartner': [{ name: 'Olivia' }, { name: 'Liam' }],
+      'childWithPartner': [
+        {
+          name: 'Olivia',
+          parentage: {
+            'egg-source': 'ego',
+            'sperm-source': 'partner',
+            'egg-parent-carried': true,
+          },
+        },
+        {
+          name: 'Liam',
+          parentage: {
+            'egg-source': 'ego',
+            'sperm-source': 'partner',
+            'egg-parent-carried': true,
+          },
+        },
+      ],
     };
 
     const { batch } = egoCellTransform(
@@ -466,20 +483,123 @@ describe('egoCellTransform', () => {
     );
     expect(partnerEdge).toBeDefined();
 
-    // Children: 2 child nodes, each with edges from ego + partner
+    // Children: 2 child nodes, each with biological edges from ego + partner
+    // and a carrier edge from ego (egg-parent-carried: true)
     const child0 = batch.nodes.find((n) => n.tempId === 'child-0');
     const child1 = batch.nodes.find((n) => n.tempId === 'child-1');
     expect(child0?.data.attributes).toMatchObject({ name: 'Olivia' });
     expect(child1?.data.attributes).toMatchObject({ name: 'Liam' });
 
+    // ego biological + ego gestational-carrier + partner biological = 3 edges
     const child0Edges = batch.edges.filter((e) => e.target === 'child-0');
-    expect(child0Edges).toHaveLength(2);
-    expect(child0Edges.map((e) => e.source).toSorted()).toEqual(
-      ['ego', 'partner'].toSorted(),
-    );
+    expect(child0Edges).toHaveLength(3);
+    expect(
+      child0Edges.some(
+        (e) =>
+          e.source === 'ego' &&
+          e.data.attributes[variableConfig.relationshipTypeVariable] ===
+            'biological',
+      ),
+    ).toBe(true);
+    expect(
+      child0Edges.some(
+        (e) =>
+          e.source === 'partner' &&
+          e.data.attributes[variableConfig.relationshipTypeVariable] ===
+            'biological',
+      ),
+    ).toBe(true);
 
     const child1Edges = batch.edges.filter((e) => e.target === 'child-1');
-    expect(child1Edges).toHaveLength(2);
+    expect(child1Edges).toHaveLength(3);
+  });
+
+  it('nuclear family: each child gets biological edges from ego and partner', () => {
+    const values: Record<string, unknown> = {
+      hasPartner: true,
+      partner: { name: 'Partner' },
+      childrenWithPartnerCount: 1,
+      childWithPartner: [
+        {
+          name: 'Kid',
+          parentage: {
+            'egg-source': 'ego',
+            'sperm-source': 'partner',
+            'egg-parent-carried': true,
+          },
+        },
+      ],
+    };
+
+    const { batch } = egoCellTransform(values, variableConfig);
+
+    const child = batch.nodes.find(
+      (n) => n.data.attributes[variableConfig.nodeLabelVariable] === 'Kid',
+    );
+    expect(child).toBeDefined();
+    const childId = child!.tempId;
+
+    const childParentEdges = batch.edges.filter((e) => e.target === childId);
+    // ego biological + ego carrier(GC) + partner biological
+    expect(childParentEdges).toHaveLength(3);
+    expect(
+      childParentEdges.some(
+        (e) =>
+          e.source === 'ego' &&
+          e.data.attributes[variableConfig.relationshipTypeVariable] ===
+            'biological',
+      ),
+    ).toBe(true);
+    expect(
+      childParentEdges.some(
+        (e) =>
+          e.source === 'partner' &&
+          e.data.attributes[variableConfig.relationshipTypeVariable] ===
+            'biological',
+      ),
+    ).toBe(true);
+  });
+
+  it('donor-conceived child: partner is not a parent; a donor is generated', () => {
+    const values: Record<string, unknown> = {
+      hasPartner: true,
+      partner: { name: 'Partner' },
+      childrenWithPartnerCount: 1,
+      childWithPartner: [
+        {
+          name: 'Kid',
+          parentage: {
+            'egg-source': 'ego',
+            'sperm-source': 'new',
+            'new-sperm-source': { name: 'Donor' },
+            'sperm-source-is-donor': true,
+            'egg-parent-carried': true,
+          },
+        },
+      ],
+    };
+
+    const { batch } = egoCellTransform(values, variableConfig);
+
+    const child = batch.nodes.find(
+      (n) => n.data.attributes[variableConfig.nodeLabelVariable] === 'Kid',
+    )!;
+    const donor = batch.nodes.find(
+      (n) => n.data.attributes[variableConfig.nodeLabelVariable] === 'Donor',
+    );
+    expect(donor).toBeDefined();
+
+    expect(
+      batch.edges.some(
+        (e) => e.source === 'partner' && e.target === child.tempId,
+      ),
+    ).toBe(false);
+    const donorEdge = batch.edges.find(
+      (e) => e.source === donor!.tempId && e.target === child.tempId,
+    );
+    expect(
+      donorEdge?.data.attributes[variableConfig.relationshipTypeVariable],
+    ).toBe('donor');
   });
 
   it('skips partner and children when hasPartner is false', () => {

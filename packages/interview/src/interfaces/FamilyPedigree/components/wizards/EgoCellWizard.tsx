@@ -80,7 +80,7 @@ export default function EgoCellWizard({
         },
         {
           title: 'Children details',
-          content: ChildrenDetailStep,
+          content: () => <ChildrenDetailStep egoRef={egoId ?? 'ego'} />,
           skip: ({ getFieldValue }) => {
             if (getFieldValue('hasPartner') !== true) return true;
             return Number(getFieldValue('childrenWithPartnerCount') ?? 0) === 0;
