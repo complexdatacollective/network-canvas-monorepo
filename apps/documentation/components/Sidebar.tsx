@@ -322,8 +322,8 @@ export function Sidebar({ className }: { className?: string }) {
     projectData.childDisplay === 'tabs' ? projectData.tabs : undefined;
 
   if (tabs && tabs.length > 0) {
-    const activeTab = tabs.find((tab) => tab.slug === urlTab)?.slug;
-    const displayTab = activeTab ?? tabs[0]?.slug;
+    const displayTab =
+      tabs.find((tab) => tab.slug === urlTab)?.slug ?? tabs[0]?.slug;
 
     const sharedItems = sortSidebarItems(
       childrenEntries
@@ -334,12 +334,17 @@ export function Sidebar({ className }: { className?: string }) {
     const activeFolder = childrenEntries.find(
       ([slug, item]) => slug === displayTab && item.type === 'folder',
     )?.[1];
+
+    const overviewHref =
+      activeFolder?.type === 'folder'
+        ? processSourceFile('folder', locale, activeFolder.sourceFile)
+        : undefined;
     const tabItems =
-      activeFolder && activeFolder.type === 'folder'
+      activeFolder?.type === 'folder'
         ? sortSidebarItems(
-            Object.entries(activeFolder.children)
-              .filter(([key]) => key !== 'index')
-              .map(([, item]) => item),
+            Object.values(activeFolder.children).filter(
+              (child) => child.sourceFile !== activeFolder.sourceFile,
+            ),
           )
         : [];
 
@@ -355,10 +360,18 @@ export function Sidebar({ className }: { className?: string }) {
 
           <AppTabs
             tabs={tabs}
-            activeSlug={activeTab}
+            activeSlug={displayTab}
             locale={locale}
             project={project}
           />
+
+          {overviewHref && (
+            <SidebarLink
+              href={overviewHref}
+              label="Overview"
+              sidebarContainerRef={sidebarContainerRef}
+            />
+          )}
 
           {tabItems.map((item) =>
             renderSidebarItem(item, locale, sidebarContainerRef),
