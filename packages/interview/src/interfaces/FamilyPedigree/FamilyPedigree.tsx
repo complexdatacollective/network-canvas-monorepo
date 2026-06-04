@@ -383,7 +383,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
                   onToggleAttribute={handleToggleAttribute}
                 />
               ) : (
-                <PedigreeView />
+                <PedigreeView isFinalized={isNetworkCommitted} />
               )}
               {currentStepIndex === 0 && hasNodes && !isNetworkCommitted && (
                 <PedigreeChecklist

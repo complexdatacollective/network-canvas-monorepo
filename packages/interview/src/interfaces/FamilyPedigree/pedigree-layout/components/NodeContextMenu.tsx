@@ -21,6 +21,7 @@ export type NodeContextMenuAction =
 
 type NodeContextMenuProps = {
   isEgo: boolean;
+  isFinalized: boolean;
   canAddParent: boolean;
   canAddSibling: boolean;
   onAction: (action: NodeContextMenuAction) => void;
@@ -39,46 +40,59 @@ const destructiveMenuItemClass = cx(
 
 export default function NodeContextMenu({
   isEgo,
+  isFinalized,
   canAddParent,
   canAddSibling,
   onAction,
   children,
 }: NodeContextMenuProps) {
+  // Once finalized only names may be edited, so the ego (whose name is fixed)
+  // has no available actions and shows no menu.
+  if (isFinalized && isEgo) {
+    return children;
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={children} />
       <DropdownMenuContent>
-        {canAddParent && (
-          <DropdownMenuItem
-            className={menuItemClass}
-            onClick={() => onAction('parent')}
-          >
-            Add parent
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuItem
-          className={menuItemClass}
-          onClick={() => onAction('child')}
-        >
-          Add child
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className={menuItemClass}
-          onClick={() => onAction('partner')}
-        >
-          Add partner
-        </DropdownMenuItem>
-        {canAddSibling && (
-          <DropdownMenuItem
-            className={menuItemClass}
-            onClick={() => onAction('sibling')}
-          >
-            Add sibling
-          </DropdownMenuItem>
+        {!isFinalized && (
+          <>
+            {canAddParent && (
+              <DropdownMenuItem
+                className={menuItemClass}
+                onClick={() => onAction('parent')}
+              >
+                Add parent
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem
+              className={menuItemClass}
+              onClick={() => onAction('child')}
+            >
+              Add child
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className={menuItemClass}
+              onClick={() => onAction('partner')}
+            >
+              Add partner
+            </DropdownMenuItem>
+            {canAddSibling && (
+              <DropdownMenuItem
+                className={menuItemClass}
+                onClick={() => onAction('sibling')}
+              >
+                Add sibling
+              </DropdownMenuItem>
+            )}
+          </>
         )}
         {!isEgo && (
           <>
-            <DropdownMenuSeparator className="my-1 h-px bg-current/20" />
+            {!isFinalized && (
+              <DropdownMenuSeparator className="my-1 h-px bg-current/20" />
+            )}
             <DropdownMenuItem
               className={menuItemClass}
               onClick={() => onAction('editName')}
@@ -87,7 +101,7 @@ export default function NodeContextMenu({
             </DropdownMenuItem>
           </>
         )}
-        {!isEgo && (
+        {!isFinalized && !isEgo && (
           <>
             <DropdownMenuSeparator className="my-1 h-px bg-current/20" />
             <DropdownMenuItem

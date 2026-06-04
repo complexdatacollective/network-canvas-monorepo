@@ -41,6 +41,7 @@ type PedigreeViewProps = {
   overrideEdges?: Map<string, NcEdge>;
   activeNominationVariable?: string | null;
   onToggleAttribute?: (nodeId: string, variable: string) => void;
+  isFinalized?: boolean;
 };
 
 export default function PedigreeView({
@@ -48,6 +49,7 @@ export default function PedigreeView({
   overrideEdges,
   activeNominationVariable: activeNominationVariableProp,
   onToggleAttribute,
+  isFinalized = false,
 }: PedigreeViewProps = {}) {
   const storeNodes = useFamilyPedigreeStore((s) => s.network.nodes);
   const storeEdges = useFamilyPedigreeStore((s) => s.network.edges);
@@ -408,6 +410,7 @@ export default function PedigreeView({
                   )
                 }
                 isEgo={isEgo}
+                isFinalized={isFinalized}
                 onAction={(action) => handleMenuAction(node.id, action)}
               >
                 <PedigreeNode
