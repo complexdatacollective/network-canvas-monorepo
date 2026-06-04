@@ -12,7 +12,7 @@ function relTypeOf(
 }
 
 /** Children, grandchildren, … reached by following parent->child edges down. */
-export function descendantIds(
+function descendantIds(
   nodeId: string,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,

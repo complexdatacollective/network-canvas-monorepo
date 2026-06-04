@@ -6,11 +6,9 @@ import type {
 } from '~/interfaces/FamilyPedigree/store';
 
 import { buildNodeOptions } from './buildNodeOptions';
+import { derivePreselection } from './derivePreselection';
 import { geneticParentCandidates } from './parentCandidates';
-import BioTriadStep, {
-  type BioTriadConfig,
-  BioTriadConfigProvider,
-} from './steps/BioTriadStep';
+import BioTriadStep, { BioTriadConfigProvider } from './steps/BioTriadStep';
 import GenericAdditionalParentsStep from './steps/GenericAdditionalParentsStep';
 import GenericOtherParentsStep from './steps/GenericOtherParentsStep';
 import NewParentPartnershipsStep, {
@@ -30,69 +28,6 @@ function getNodeDisplayName(
   return typeof name === 'string' && name.length > 0
     ? `${name}'s`
     : "This Person's";
-}
-
-/**
- * Mid-sentence possessive for the focal person (e.g. "your", "Linda's",
- * "this person's"), used to label that person's unnamed parents in the shared
- * partnership step.
- */
-export function getNodeSubjectPossessive(
-  nodeId: string,
-  nodes: Map<string, NcNode>,
-  variableConfig: VariableConfig,
-): string {
-  const node = nodes.get(nodeId);
-  if (!node) return "this person's";
-  if (node.attributes[variableConfig.egoVariable] === true) return 'your';
-  const name = node.attributes[variableConfig.nodeLabelVariable];
-  return typeof name === 'string' && name.length > 0
-    ? `${name}'s`
-    : "this person's";
-}
-
-function derivePreselection(
-  anchorNodeId: string,
-  edges: Map<string, NcEdge>,
-  variableConfig: VariableConfig,
-): BioTriadConfig['preselection'] {
-  const parentEdges: { source: string; isGestationalCarrier: boolean }[] = [];
-
-  for (const edge of edges.values()) {
-    if (
-      edge.to === anchorNodeId &&
-      edge.attributes[variableConfig.relationshipTypeVariable] !== 'partner'
-    ) {
-      parentEdges.push({
-        source: edge.from,
-        isGestationalCarrier:
-          edge.attributes[variableConfig.isGestationalCarrierVariable] === true,
-      });
-    }
-  }
-
-  const carrierEdge = parentEdges.find((e) => e.isGestationalCarrier);
-  const otherEdges = parentEdges.filter((e) => !e.isGestationalCarrier);
-
-  const preselection: BioTriadConfig['preselection'] = {};
-
-  if (carrierEdge) {
-    preselection.eggSource = carrierEdge.source;
-    preselection.carrier = 'egg-source';
-  }
-
-  if (otherEdges.length > 0) {
-    if (carrierEdge) {
-      preselection.spermSource = otherEdges[0]?.source;
-    } else if (otherEdges.length >= 2) {
-      preselection.eggSource = otherEdges[0]?.source;
-      preselection.spermSource = otherEdges[1]?.source;
-    } else {
-      preselection.eggSource = otherEdges[0]?.source;
-    }
-  }
-
-  return preselection;
 }
 
 export async function openDefineParentsWizard(
