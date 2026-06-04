@@ -7,14 +7,14 @@ import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import PersonFields from '~/interfaces/FamilyPedigree/components/quickStartWizard/PersonFields';
 
-type NodeOption = {
-  value: string;
-  label: string;
-};
+import { type BioTriadOption, excludeSelectedOption } from './bioTriadOptions';
+
+type NodeOption = BioTriadOption;
 
 type BioTriadConfig = {
   existingNodes?: NodeOption[];
@@ -53,6 +53,8 @@ type ParentSectionProps = {
   donorFieldName: string;
   donorLabel: string;
   options: NodeOption[];
+  /** Field name of the other role; its selected person is disabled here. */
+  excludeSelectionFrom: string;
   initialValue?: string;
   carriedFieldName?: string;
   carriedLabel?: string;
@@ -67,12 +69,21 @@ function ParentSection({
   donorFieldName,
   donorLabel,
   options,
+  excludeSelectionFrom,
   initialValue,
   carriedFieldName,
   carriedLabel,
   carriedHint,
 }: ParentSectionProps) {
-  const onlyNewOption = options.length === 1 && options[0]?.value === 'new';
+  const excludedValue = useFormValue([excludeSelectionFrom])[
+    excludeSelectionFrom
+  ];
+  const resolvedOptions = useMemo(
+    () => excludeSelectedOption(options, excludedValue),
+    [options, excludedValue],
+  );
+  const onlyNewOption =
+    resolvedOptions.length === 1 && resolvedOptions[0]?.value === 'new';
 
   return (
     <Surface level={1} spacing="sm" shadow="sm" noContainer>
@@ -93,7 +104,7 @@ function ParentSection({
           label={selectLabel}
           hint={selectHint}
           component={RadioGroupField}
-          options={options}
+          options={resolvedOptions}
           initialValue={initialValue}
           required
         />
@@ -159,6 +170,7 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
         donorFieldName="egg-source-is-donor"
         donorLabel="Was this person an egg donor?"
         options={parentOptions}
+        excludeSelectionFrom="sperm-source"
         initialValue={preselection?.eggSource}
         carriedFieldName="egg-parent-carried"
         carriedLabel="Did this person carry the pregnancy?"
@@ -209,6 +221,7 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
         donorFieldName="sperm-source-is-donor"
         donorLabel="Was this person a sperm donor?"
         options={parentOptions}
+        excludeSelectionFrom="egg-source"
         initialValue={preselection?.spermSource}
       />
     </div>
