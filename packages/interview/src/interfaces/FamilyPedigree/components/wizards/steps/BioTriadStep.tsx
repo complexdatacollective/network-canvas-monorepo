@@ -4,6 +4,7 @@ import { createContext, type ReactNode, useContext, useMemo } from 'react';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
+import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -131,7 +132,7 @@ function ParentSection({
   );
 }
 
-export default function BioTriadStep() {
+export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
   const { existingNodes, preselection } = useBioTriadConfig();
   const nodeOptions = useMemo(() => existingNodes ?? [], [existingNodes]);
 
@@ -148,7 +149,7 @@ export default function BioTriadStep() {
   const carrierOnlyNewOption =
     carrierOptions.length === 1 && carrierOptions[0]?.value === 'new';
 
-  return (
+  const content = (
     <div className="flex flex-col gap-6">
       <ParentSection
         roleKey="egg-source"
@@ -211,6 +212,12 @@ export default function BioTriadStep() {
         initialValue={preselection?.spermSource}
       />
     </div>
+  );
+
+  return prefix ? (
+    <FieldNamespace prefix={prefix}>{content}</FieldNamespace>
+  ) : (
+    content
   );
 }
 
