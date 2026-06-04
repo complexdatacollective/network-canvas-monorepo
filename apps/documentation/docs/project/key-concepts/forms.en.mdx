@@ -1,0 +1,54 @@
+---
+title: Forms
+---
+
+<Definition>
+  Forms allow you to assign variables to ego, nodes, or edges using a familiar
+  and easy-to-use interface.
+</Definition>
+
+## Details
+
+Forms are one of the primary ways you will assign values to your [variables](/en/project/key-concepts/variables) in Interviewer. They work by associating each **variable** with an **[input control](/en/project/key-concepts/input-controls)**, a **question prompt** and **[validation](/en/project/key-concepts/field-validation) options**, to form a **field**. Each form can have as many fields as you wish, in any order.
+
+![](/assets/img/key-concepts/forms/preview.png)
+
+When using Architect to design your protocol you will encounter several places where you can build a form - particularly when creating stages that use [Interfaces](/en/project/key-concepts/interfaces) such as the Name Generator, the Per Alter Form, and the Ego Form.
+
+## Constructing a form
+
+Forms are comprised of one or more fields, which can be reordered to appear in any sequence. The sequence they appear in Architect is the same sequence they will be shown in Interviewer. To begin creating a form, locate the form section within the Interface you are configuring.
+
+![](/assets/img/key-concepts/forms/form.png)
+
+Set the form heading, and then create fields for each of the variables you wish to capture on this form by clicking the **create new** button.
+
+When creating a new field, you will first either create a new variable or select an existing one from the variable chooser. Next, you will type the question [prompt](/en/project/key-concepts/prompts) to be shown next to the input control.
+
+Next, you must decide which [input control](/en/project/key-concepts/input-controls) to use. For new variables, this will determine the variable type.
+
+<TipBox danger>
+
+Once you set a variable type (by choosing its input type when first used), you cannot change it later. You can still adjust the specific input control on your form after the type is set, as long as the input control is compatible with the variable type.
+
+</TipBox>
+
+After setting the input control, set any variable-specific options and configure the [validation options](/en/project/key-concepts/field-validation) you require. Validation helps ensure data quality by enforcing rules like required fields, format constraints, and value ranges.
+
+![](/assets/img/key-concepts/forms/field.png)
+
+## Considerations
+
+When designing forms, keep these points in mind:
+
+- Although it may be tempting to create long and elaborate forms, as is typical within other more traditional survey software, consider the burden of overloaded forms on participants and data quality. For example, while you can capture categorical data within a form, you might elect to use the Categorical Bin Interface instead. Network Canvas Interviewer is not intended to replace existing survey methods.
+- Making strategic use of forms allows you to capture attribute data systematically. However, you lose the interactive qualities (e.g. dragging and dropping) of other Interfaces that may improve the interview experience for participants and potentially render higher quality data.
+- If you use the same variable in multiple places in your interview (for example in different forms), any changes you make to the input control or validation options will apply to _all_ uses of the variable.
+
+## Related concepts
+
+- [Input Controls](/en/project/key-concepts/input-controls) - Choose appropriate input controls for your variables
+- [Field Validation](/en/project/key-concepts/field-validation) - Ensure data quality with validation rules
+- [Variables](/en/project/key-concepts/variables) - Understanding variable types and configuration
+- [Interfaces](/en/project/key-concepts/interfaces) - Learn about all available Interfaces including form-based ones
+- [Prompts](/en/project/key-concepts/prompts) - Configure participant-facing questions

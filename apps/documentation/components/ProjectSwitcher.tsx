@@ -1,7 +1,8 @@
 'use client';
 
-import { BookOpen, ClipboardList, DraftingCompass } from 'lucide-react';
+import { ClipboardList, DraftingCompass } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { forwardRef } from 'react';
 
@@ -19,8 +20,16 @@ import { cn } from '~/lib/utils';
 import { useRouter } from '~/navigation';
 
 const getImageForProject = (project: Project) => {
-  if (project === 'reference') {
-    return <BookOpen className="h-10 w-10" strokeWidth={1.5} />;
+  if (project === 'project') {
+    return (
+      <Image
+        src="/images/mark.svg"
+        alt=""
+        className="h-10 w-10"
+        width={40}
+        height={40}
+      />
+    );
   }
 
   if (project === 'build-protocol') {

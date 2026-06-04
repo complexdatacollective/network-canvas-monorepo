@@ -1,7 +1,7 @@
 {
   "ProjectSwitcher": {
-    "reference": {
-      "label": "Reference",
+    "project": {
+      "label": "Project",
       "description": "App-agnostic concepts shared across Network Canvas: the codebook, variables, stages, skip logic, prompts and forms."
     },
     "build-protocol": {

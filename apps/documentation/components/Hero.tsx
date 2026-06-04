@@ -1,8 +1,9 @@
 'use client';
 
-import { BookOpen, ClipboardList, DraftingCompass } from 'lucide-react';
+import { ClipboardList, DraftingCompass } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTranslations } from 'next-intl';
+import Image from 'next/image';
 import type { ReactNode } from 'react';
 
 import Paragraph from '~/components/ui/typography/Paragraph';
@@ -132,10 +133,18 @@ export function Hero() {
           }
         />
         <ProjectCard
-          href="en/reference"
-          title={t('ProjectSwitcher.reference.label')}
-          description={t('ProjectSwitcher.reference.description')}
-          icon={<BookOpen className="h-16 w-16 shrink-0" strokeWidth={1.5} />}
+          href="en/project"
+          title={t('ProjectSwitcher.project.label')}
+          description={t('ProjectSwitcher.project.description')}
+          icon={
+            <Image
+              src="/images/mark.svg"
+              alt=""
+              className="h-16 w-16 shrink-0"
+              width={64}
+              height={64}
+            />
+          }
         />
       </div>
     </motion.div>

@@ -1,6 +1,0 @@
-{
-  "type": "project",
-  "slug": "reference",
-  "localeLabels": { "en": "Reference" },
-  "localeIndexFiles": { "en": "index.en.mdx" }
-}
