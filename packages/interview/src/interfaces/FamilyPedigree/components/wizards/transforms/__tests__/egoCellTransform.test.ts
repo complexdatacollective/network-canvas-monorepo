@@ -602,6 +602,38 @@ describe('egoCellTransform', () => {
     ).toBe('donor');
   });
 
+  it('remaps the ego sentinel to an existing ego id for children', () => {
+    const values: Record<string, unknown> = {
+      hasPartner: true,
+      partner: { name: 'Partner' },
+      childrenWithPartnerCount: 1,
+      childWithPartner: [
+        {
+          name: 'Kid',
+          parentage: {
+            'egg-source': 'ego',
+            'sperm-source': 'partner',
+            'egg-parent-carried': true,
+          },
+        },
+      ],
+    };
+
+    const { batch } = egoCellTransform(values, variableConfig, 'real-ego-id');
+
+    const child = batch.nodes.find(
+      (n) => n.data.attributes[variableConfig.nodeLabelVariable] === 'Kid',
+    )!;
+    expect(
+      batch.edges.some(
+        (e) => e.source === 'real-ego-id' && e.target === child.tempId,
+      ),
+    ).toBe(true);
+    expect(
+      batch.edges.some((e) => e.source === 'ego' && e.target === child.tempId),
+    ).toBe(false);
+  });
+
   it('skips partner and children when hasPartner is false', () => {
     const values = {
       'egg-parent': {

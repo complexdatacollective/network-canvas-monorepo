@@ -7,7 +7,6 @@
     }
   },
   "rules": {
-    "react/no-unstable-nested-components": ["warn", { "allowAsProps": true }],
     "react/exhaustive-deps": "warn",
     "tailwindcss/no-unknown-classes": "warn",
     "tailwindcss/no-duplicate-classes": "error",

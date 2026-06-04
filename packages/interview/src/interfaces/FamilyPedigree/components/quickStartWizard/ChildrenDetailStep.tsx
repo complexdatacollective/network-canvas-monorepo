@@ -10,7 +10,7 @@ import BioTriadStep, {
 } from '../wizards/steps/BioTriadStep';
 import PersonFields from './PersonFields';
 
-export default function ChildrenDetailStep({ egoRef }: { egoRef: string }) {
+export default function ChildrenDetailStep() {
   const { childrenWithPartnerCount, partner } = useFormValue([
     'childrenWithPartnerCount',
     'partner',
@@ -23,11 +23,11 @@ export default function ChildrenDetailStep({ egoRef }: { egoRef: string }) {
 
   const bioTriadConfig = {
     existingNodes: [
-      { value: egoRef, label: 'You' },
+      { value: 'ego', label: 'You' },
       { value: 'partner', label: partnerName },
     ],
     preselection: {
-      eggSource: egoRef,
+      eggSource: 'ego',
       spermSource: 'partner',
       carrier: 'egg-source',
     },

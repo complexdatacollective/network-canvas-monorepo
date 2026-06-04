@@ -304,7 +304,18 @@ export function egoCellTransform(
       },
     });
 
-    const triadValues = (child.parentage ?? {}) as Record<string, unknown>;
+    const triadValues = {
+      ...((child.parentage ?? {}) as Record<string, unknown>),
+    };
+    // The children step uses the literal 'ego' for the participant; map it to the
+    // actual ego reference (a pre-existing ego id when revisiting).
+    for (const role of [
+      'egg-source',
+      'sperm-source',
+      'carrier-source',
+    ] as const) {
+      if (triadValues[role] === 'ego') triadValues[role] = egoRef;
+    }
     const { nodes: parentNodes, edges: parentEdges } = buildChildParentage(
       tempId,
       triadValues,
