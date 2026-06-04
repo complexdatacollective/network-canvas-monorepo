@@ -5,18 +5,18 @@ import type {
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 
-import ParentPartnershipsStep, {
-  PartnershipSubjectProvider,
-} from '../quickStartWizard/ParentPartnershipsStep';
+import { buildNodeOptions } from './buildNodeOptions';
+import { geneticParentCandidates } from './parentCandidates';
+import BioTriadStep, {
+  type BioTriadConfig,
+  BioTriadConfigProvider,
+} from './steps/BioTriadStep';
 import GenericAdditionalParentsStep from './steps/GenericAdditionalParentsStep';
-import GenericEggParentStep from './steps/GenericEggParentStep';
-import GenericGestationalCarrierStep from './steps/GenericGestationalCarrierStep';
 import GenericOtherParentsStep from './steps/GenericOtherParentsStep';
-import GenericSpermParentStep from './steps/GenericSpermParentStep';
-import {
-  type EgoCellResult,
-  egoCellTransform,
-} from './transforms/egoCellTransform';
+import NewParentPartnershipsStep, {
+  shouldSkipNewParentPartnerships,
+} from './steps/NewParentPartnershipsStep';
+import { defineParentsTransform } from './transforms/defineParentsTransform';
 
 function getNodeDisplayName(
   nodeId: string,
@@ -51,20 +51,91 @@ export function getNodeSubjectPossessive(
     : "this person's";
 }
 
+function derivePreselection(
+  anchorNodeId: string,
+  edges: Map<string, NcEdge>,
+  variableConfig: VariableConfig,
+): BioTriadConfig['preselection'] {
+  const parentEdges: { source: string; isGestationalCarrier: boolean }[] = [];
+
+  for (const edge of edges.values()) {
+    if (
+      edge.to === anchorNodeId &&
+      edge.attributes[variableConfig.relationshipTypeVariable] !== 'partner'
+    ) {
+      parentEdges.push({
+        source: edge.from,
+        isGestationalCarrier:
+          edge.attributes[variableConfig.isGestationalCarrierVariable] === true,
+      });
+    }
+  }
+
+  const carrierEdge = parentEdges.find((e) => e.isGestationalCarrier);
+  const otherEdges = parentEdges.filter((e) => !e.isGestationalCarrier);
+
+  const preselection: BioTriadConfig['preselection'] = {};
+
+  if (carrierEdge) {
+    preselection.eggSource = carrierEdge.source;
+    preselection.carrier = 'egg-source';
+  }
+
+  if (otherEdges.length > 0) {
+    if (carrierEdge) {
+      preselection.spermSource = otherEdges[0]?.source;
+    } else if (otherEdges.length >= 2) {
+      preselection.eggSource = otherEdges[0]?.source;
+      preselection.spermSource = otherEdges[1]?.source;
+    } else {
+      preselection.eggSource = otherEdges[0]?.source;
+    }
+  }
+
+  return preselection;
+}
+
 export async function openDefineParentsWizard(
   openDialog: ReturnType<typeof useDialog>['openDialog'],
   focalNodeId: string,
   nodes: Map<string, NcNode>,
-  _edges: Map<string, NcEdge>,
+  edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
 ): Promise<CommitBatch | null> {
   const displayName = getNodeDisplayName(focalNodeId, nodes, variableConfig);
   const title = `${displayName} Biological Parents`;
-  const subjectPossessive = getNodeSubjectPossessive(
+
+  const preselection = derivePreselection(focalNodeId, edges, variableConfig);
+  const candidateIds = geneticParentCandidates(
     focalNodeId,
-    nodes,
+    'define-parents',
+    edges,
     variableConfig,
   );
+  const existingNodes = buildNodeOptions(
+    nodes,
+    edges,
+    variableConfig,
+    candidateIds,
+  );
+
+  const bioTriadConfig = { existingNodes, preselection };
+
+  function WrappedBioTriadStep() {
+    return (
+      <BioTriadConfigProvider value={bioTriadConfig}>
+        <BioTriadStep />
+      </BioTriadConfigProvider>
+    );
+  }
+
+  function WrappedPartnershipsStep() {
+    return (
+      <BioTriadConfigProvider value={bioTriadConfig}>
+        <NewParentPartnershipsStep />
+      </BioTriadConfigProvider>
+    );
+  }
 
   const result = await openDialog({
     type: 'wizard',
@@ -72,18 +143,8 @@ export async function openDefineParentsWizard(
     progress: null,
     steps: [
       {
-        title: 'Egg Parent',
-        content: GenericEggParentStep,
-      },
-      {
-        title: 'Gestational Carrier',
-        content: GenericGestationalCarrierStep,
-        skip: ({ getFieldValue }) =>
-          getFieldValue('egg-parent.gestationalCarrier') !== false,
-      },
-      {
-        title: 'Sperm Parent',
-        content: GenericSpermParentStep,
+        title: 'Biological parents',
+        content: WrappedBioTriadStep,
       },
       {
         title: 'Other parents',
@@ -96,20 +157,22 @@ export async function openDefineParentsWizard(
       },
       {
         title: 'Parent partnerships',
-        content: () => (
-          <PartnershipSubjectProvider possessive={subjectPossessive}>
-            <ParentPartnershipsStep />
-          </PartnershipSubjectProvider>
-        ),
+        content: WrappedPartnershipsStep,
+        skip: shouldSkipNewParentPartnerships,
       },
     ],
     onFinish: (formValues: Record<string, unknown>) => {
-      return egoCellTransform(formValues, variableConfig, focalNodeId);
+      return defineParentsTransform(formValues, focalNodeId, variableConfig);
     },
   });
 
-  if (result && typeof result === 'object' && 'batch' in result) {
-    return (result as EgoCellResult).batch;
+  if (
+    result &&
+    typeof result === 'object' &&
+    'nodes' in result &&
+    'edges' in result
+  ) {
+    return result as CommitBatch;
   }
 
   return null;

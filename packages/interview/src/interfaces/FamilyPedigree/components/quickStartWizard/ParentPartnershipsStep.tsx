@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, type ReactNode, useContext, useMemo } from 'react';
+import { useMemo } from 'react';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
@@ -15,29 +15,11 @@ const partnershipOptions = [
 ];
 
 /**
- * Supplies the possessive used to label a parent who was left unnamed
- * ("your egg parent" vs "Linda's egg parent"). Defaults to "your" for the ego
- * quick start; the define-parents wizard overrides it with the focal person's
- * possessive when the focal person is not the interviewee.
+ * Possessive used to label a parent who was left unnamed ("your egg parent").
+ * Fixed to "your" because this quick-start step always describes the
+ * interviewee's own parents.
  */
-const PartnershipSubjectContext = createContext<{ possessive: string }>({
-  possessive: 'your',
-});
-
-export function PartnershipSubjectProvider({
-  possessive,
-  children,
-}: {
-  possessive: string;
-  children: ReactNode;
-}) {
-  const value = useMemo(() => ({ possessive }), [possessive]);
-  return (
-    <PartnershipSubjectContext.Provider value={value}>
-      {children}
-    </PartnershipSubjectContext.Provider>
-  );
-}
+const possessive = 'your';
 
 type ParentEntry = {
   id: string;
@@ -66,7 +48,6 @@ function getParentLabel(parent: ParentEntry): string {
 
 export default function ParentPartnershipsStep() {
   const values = useFormValue(BIO_PARENT_FIELDS);
-  const { possessive } = useContext(PartnershipSubjectContext);
 
   const parents = useMemo<ParentEntry[]>(() => {
     const list: ParentEntry[] = [
@@ -106,7 +87,7 @@ export default function ParentPartnershipsStep() {
     }
 
     return list;
-  }, [values, possessive]);
+  }, [values]);
 
   if (parents.length < 2) return null;
 
