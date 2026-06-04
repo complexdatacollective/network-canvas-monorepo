@@ -4,34 +4,21 @@ import type {
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 
-const KNOWN_PERSON_KEYS = new Set(['name']);
+import { extractCustomAttributes } from './personAttributes';
 
-function extractCustomAttributes(
-  obj: Record<string, unknown>,
-): Record<string, VariableValue> | undefined {
-  const attrs: Record<string, VariableValue> = {};
-  let hasAttrs = false;
-  for (const [key, val] of Object.entries(obj)) {
-    if (!KNOWN_PERSON_KEYS.has(key) && val !== undefined) {
-      attrs[key] = val as VariableValue;
-      hasAttrs = true;
-    }
-  }
-  return hasAttrs ? attrs : undefined;
-}
-
-export type RoleKey = 'egg-source' | 'sperm-source' | 'carrier-source';
-export type ChildRelationshipType = 'biological' | 'donor' | 'surrogate';
+type RoleKey = 'egg-source' | 'sperm-source' | 'carrier-source';
+type ChildRelationshipType = 'biological' | 'donor' | 'surrogate';
 
 const NEW_PERSON_NAMESPACE: Record<RoleKey, string> = {
   'egg-source': 'new-egg-source',
   'sperm-source': 'new-sperm-source',
+  // intentionally 'new-carrier', not 'new-carrier-source'
   'carrier-source': 'new-carrier',
 };
 
-export type ResolvedParent = { ref: string; roleKey: RoleKey };
+type ResolvedParent = { ref: string; roleKey: RoleKey };
 
-export type ChildParentage = {
+type ChildParentage = {
   nodes: CommitBatch['nodes'];
   edges: CommitBatch['edges'];
   /** Ordered parents (new entries first, then existing) for partnership pairing. */

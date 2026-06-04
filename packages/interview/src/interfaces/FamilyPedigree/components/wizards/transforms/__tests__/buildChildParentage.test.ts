@@ -67,6 +67,18 @@ describe('buildChildParentage', () => {
     expect(donorEdge?.data.attributes.relationship).toBe('donor');
   });
 
+  it('treats a missing egg-parent-carried value as carried (default)', () => {
+    const { edges } = buildChildParentage(
+      'child',
+      { 'egg-source': 'ego-1', 'sperm-source': 'partner-1' },
+      variableConfig,
+    );
+    // ego gets a biological edge plus a gestational-carrier edge => 3 total with sperm
+    expect(edges).toHaveLength(3);
+    const egoEdges = edges.filter((e) => e.source === 'ego-1');
+    expect(egoEdges.some((e) => e.data.attributes.isGC === true)).toBe(true);
+  });
+
   it('records a separate gestational carrier as a surrogate', () => {
     const { nodes, edges } = buildChildParentage(
       'child',
