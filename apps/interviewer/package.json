@@ -120,7 +120,7 @@
     "uuid": "^14.0.0",
     "vite": "catalog:",
     "vitest": "catalog:",
-    "whatwg-fetch": "2.0.3",
+    "whatwg-fetch": "3.6.20",
     "xml2js": "~0.6.2",
     "xss": "^0.3.8"
   },
