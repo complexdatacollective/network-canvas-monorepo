@@ -11,7 +11,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 const partnershipOptions = [
   { value: 'current', label: 'Current partner' },
   { value: 'ex', label: 'Ex-partner' },
-  { value: 'none', label: 'Not a partner' },
+  { value: 'none', label: "Not a partner or Don't know" },
 ];
 
 /**
@@ -112,18 +112,15 @@ export default function ParentPartnershipsStep() {
 
   return (
     <>
-      <div className="mb-8">
-        <Paragraph>
-          We now want to ask about relationships between the parents you named.
-          This includes current and past romantic partnerships, but{' '}
-          <strong>not co-parenting partnerships</strong> where the parents were
-          never romantically involved.
-        </Paragraph>
-        <Paragraph>
-          If either parent is <strong>deceased</strong>, please answer based on
-          whether they were partners while both were alive.
-        </Paragraph>
-      </div>
+      <Paragraph>
+        We now want to ask about partnerships between the parents you named.
+      </Paragraph>
+      <Paragraph>
+        Partnership means current and past romantic relationships, but{' '}
+        <strong>not co-parenting</strong> (where two people raised a child
+        together but were never romantically involved).
+      </Paragraph>
+      <hr />
       <FieldNamespace prefix="partnerships">
         {parents.map((focal, index) => {
           // Each focal parent is asked about every parent listed below it, so
@@ -135,7 +132,8 @@ export default function ParentPartnershipsStep() {
             <Field
               key={focal.id}
               name={focal.id}
-              label={`Which of these people are or were partners of ${getParentLabel(focal)}?`}
+              label={`Please indicate which of these people are partners of **${getParentLabel(focal)}**.`}
+              hint="If either person is deceased, please answer based on whether they were partners while both were alive."
               component={RadioMatrixField}
               rows={candidates.map((parent) => ({
                 id: parent.id,
