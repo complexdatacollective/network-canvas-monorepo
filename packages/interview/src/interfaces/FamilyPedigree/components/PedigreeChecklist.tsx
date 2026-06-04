@@ -15,6 +15,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { useStageSelector } from '~/hooks/useStageSelector';
 
 import { buildPedigreeDialog } from '../buildPedigreeDialog';
@@ -275,7 +276,7 @@ export default function PedigreeChecklist({
       {!dismissed && (
         <MotionSurface
           key="pedigree-checklist"
-          className="bg-surface/80 absolute bottom-4 left-4 z-20 w-72 cursor-move overflow-hidden border-b-2 shadow-2xl backdrop-blur-md"
+          className="bg-surface/80 absolute bottom-4 left-4 z-20 w-80 cursor-move overflow-hidden border-b-2 shadow-2xl backdrop-blur-md"
           layout
           drag
           dragConstraints={dragConstraints}
@@ -293,6 +294,10 @@ export default function PedigreeChecklist({
             </Heading>
             <CloseButton size="sm" onClick={() => setDismissed(true)} />
           </div>
+          <Paragraph intent="smallText" className="text-current/50">
+            Complete the following tasks before continuing. If a task doesn't
+            apply you can click it to mark it as done.
+          </Paragraph>
           <motion.div className="mt-4 max-h-64" style={{ overflowY }}>
             <LayoutGroup>
               <ul className="flex flex-col gap-3">
