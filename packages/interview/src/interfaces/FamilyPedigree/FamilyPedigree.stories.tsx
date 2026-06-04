@@ -454,11 +454,18 @@ export const NuclearFamily: ScenarioStory = {
     await setFieldInput('childrenWithPartnerCount', 2);
     await clickContinue();
 
-    // Children details
+    // Children details — name and gender, then confirm parentage defaults
     await setFieldInput('childWithPartner[0].name', 'Olivia');
     await setFieldInput('childWithPartner[0].gender_identity', 'Woman/girl');
     await setFieldInput('childWithPartner[1].name', 'Liam');
     await setFieldInput('childWithPartner[1].gender_identity', 'Man/boy');
+
+    // Both children should show the egg/sperm parent selectors; nuclear-family
+    // defaults (You → egg, Sophia → sperm) are already valid, so no changes needed.
+    const childrenDialog = await getDialog();
+    expect(within(childrenDialog).getAllByText('Egg Parent')).toHaveLength(2);
+    expect(within(childrenDialog).getAllByText('Sperm Parent')).toHaveLength(2);
+
     await clickContinue();
   },
 };
@@ -702,9 +709,15 @@ export const NonBinaryEgo: ScenarioStory = {
     await setFieldInput('childrenWithPartnerCount', 1);
     await clickContinue();
 
-    // Children details
+    // Children details — name and gender, then confirm parentage defaults
     await setFieldInput('childWithPartner[0].name', 'Kai');
     await setFieldInput('childWithPartner[0].gender_identity', 'Non-binary');
+
+    // Confirm the egg/sperm parent selectors are present; defaults are valid.
+    const childDialog = await getDialog();
+    expect(within(childDialog).getByText('Egg Parent')).toBeTruthy();
+    expect(within(childDialog).getByText('Sperm Parent')).toBeTruthy();
+
     await clickContinue();
   },
 };
@@ -854,11 +867,18 @@ export const WithPartnerAndChildren: ScenarioStory = {
     await setFieldInput('childrenWithPartnerCount', 2);
     await clickContinue();
 
-    // Children details
+    // Children details — name and gender, then confirm parentage defaults
     await setFieldInput('childWithPartner[0].name', 'Daniel');
     await setFieldInput('childWithPartner[0].gender_identity', 'Man/boy');
     await setFieldInput('childWithPartner[1].name', 'Emma');
     await setFieldInput('childWithPartner[1].gender_identity', 'Woman/girl');
+
+    // Both children should show the egg/sperm parent selectors; nuclear-family
+    // defaults (You → egg, Jennifer → sperm) are already valid.
+    const childrenDialog = await getDialog();
+    expect(within(childrenDialog).getAllByText('Egg Parent')).toHaveLength(2);
+    expect(within(childrenDialog).getAllByText('Sperm Parent')).toHaveLength(2);
+
     await clickContinue();
   },
 };
