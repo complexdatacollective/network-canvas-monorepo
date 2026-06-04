@@ -174,13 +174,18 @@ export default function PedigreeChecklist({
 
       if (!nameKnown) continue;
 
+      // Only nudge for a parent's own parents when that parent is a genetic
+      // parent of ego. An adoptive or surrogate parent's parents carry no
+      // genetic information about ego, so they are never prompted for. Even for
+      // genetic parents the ancestry may be unknown (e.g. a gamete donor), so
+      // this item is optional and never blocks finalizing.
       const edgeToEgo = [...edges.values()].find(
         (e) => e.from === parentId && e.to === egoId,
       );
       const edgeToEgoRelType = edgeToEgo?.attributes[
         relationshipTypeVariable
       ] as string | undefined;
-      if (edgeToEgoRelType === 'donor' || edgeToEgoRelType === 'surrogate') {
+      if (edgeToEgoRelType !== 'biological' && edgeToEgoRelType !== 'donor') {
         continue;
       }
 
@@ -202,7 +207,7 @@ export default function PedigreeChecklist({
             ? `Add 1 more parent for ${parentName}`
             : `Add parents for ${parentName}`,
         done,
-        required: true,
+        required: false,
       });
     }
 
