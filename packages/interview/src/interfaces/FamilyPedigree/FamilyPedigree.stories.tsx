@@ -386,8 +386,8 @@ async function setFieldInput(
  * Set one cell of a partnership matrix. The matrix for `focalId` lists every
  * parent below it; `partnerLabel` is the displayed label of the row (a name,
  * or a role fallback like "your sperm parent"). `optionLabel` is one of
- * "Current partner" / "Ex-partner" / "Not a partner". Pairs left at the
- * default ("Not a partner") need no call.
+ * "Current partner" / "Ex-partner" / "Not a partner or Don't know". Pairs
+ * left at the default ("Not a partner or Don't know") need no call.
  */
 async function setPartnership(
   focalId: string,
@@ -747,15 +747,16 @@ export const AdoptedIn: ScenarioStory = {
     // Unnamed bio parents fall back to role labels in the matrix; the focal
     // person frames the question and named parents use their name.
     const partnershipDialog = await getDialog();
-    expect(
-      within(partnershipDialog).getByText(
-        'Which of these people are or were partners of your egg parent?',
-      ),
-    ).toBeTruthy();
+
     const eggMatrix = partnershipDialog.querySelector(
       '[data-field-name="partnerships.egg-parent"]',
     );
     if (!eggMatrix) throw new Error('No egg-parent partnership matrix');
+    // The label renders markdown, so the bolded role fallback is a separate
+    // <strong> node — assert against the matrix's combined text content.
+    expect(eggMatrix.textContent).toContain(
+      'Please indicate which of these people are partners of your egg parent',
+    );
     expect(
       within(eggMatrix as HTMLElement).getByRole('radiogroup', {
         name: 'your sperm parent',
