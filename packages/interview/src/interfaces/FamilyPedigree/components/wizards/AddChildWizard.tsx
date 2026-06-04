@@ -8,6 +8,7 @@ import type {
 } from '~/interfaces/FamilyPedigree/store';
 
 import PersonFields from '../quickStartWizard/PersonFields';
+import { geneticParentCandidates } from './parentCandidates';
 import BioTriadStep, {
   type BioTriadConfig,
   BioTriadConfigProvider,
@@ -23,9 +24,11 @@ function buildNodeOptions(
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
+  candidateIds: Set<string>,
 ): { value: string; label: string }[] {
   const options: { value: string; label: string }[] = [];
   for (const [id, node] of nodes) {
+    if (!candidateIds.has(id)) continue;
     if (node.attributes[variableConfig.egoVariable] === true) {
       options.push({ value: id, label: 'You' });
       continue;
@@ -81,7 +84,18 @@ export async function openAddChildWizard(
     edges,
     variableConfig,
   );
-  const existingNodes = buildNodeOptions(nodes, edges, variableConfig);
+  const candidateIds = geneticParentCandidates(
+    anchorNodeId,
+    'child',
+    edges,
+    variableConfig,
+  );
+  const existingNodes = buildNodeOptions(
+    nodes,
+    edges,
+    variableConfig,
+    candidateIds,
+  );
   const bioTriadConfig = { existingNodes, preselection };
 
   const result = await openDialog({
