@@ -16,7 +16,7 @@ export function Logo({
       <img
         src="/images/logos/network-canvas-mark.svg"
         alt=""
-        aria-hidden
+        aria-hidden="true"
         className={cn('h-9 w-9', markClassName)}
       />
       {showWordmark ? (

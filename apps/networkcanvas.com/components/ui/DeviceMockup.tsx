@@ -1,7 +1,9 @@
+import type { ReactNode } from 'react';
+
 import Node from '@codaco/fresco-ui/Node';
 import { cn } from '~/lib/cn';
 
-type Variant = 'interviewer' | 'architect' | 'fresco';
+export type Variant = 'interviewer' | 'architect' | 'fresco';
 
 const screenDots = (
   <div className="flex gap-1.5">
@@ -117,7 +119,7 @@ function FrescoScreen() {
   );
 }
 
-const screens: Record<Variant, React.ReactNode> = {
+const screens: Record<Variant, ReactNode> = {
   interviewer: <InterviewerScreen />,
   architect: <ArchitectScreen />,
   fresco: <FrescoScreen />,

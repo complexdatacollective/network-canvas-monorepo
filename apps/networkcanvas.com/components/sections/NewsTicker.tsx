@@ -33,8 +33,11 @@ export function NewsTicker() {
         <Badge />
         <div className="relative flex-1 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_4%,black_96%,transparent)]">
           <div className="animate-marquee flex w-max gap-12">
-            {[...newsItems, ...newsItems].map((item, i) => (
-              <NewsItem key={i} {...item} />
+            {newsItems.map((item, i) => (
+              <NewsItem key={`first-${i}`} {...item} />
+            ))}
+            {newsItems.map((item, i) => (
+              <NewsItem key={`second-${i}`} {...item} />
             ))}
           </div>
         </div>

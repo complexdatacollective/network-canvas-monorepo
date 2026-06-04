@@ -7,7 +7,6 @@
   "plugins": ["nextjs"],
   "rules": {
     "nextjs/no-img-element": "off",
-    "import/no-unassigned-import": "off",
-    "typescript/no-unsafe-type-assertion": "off"
+    "import/no-unassigned-import": "off"
   }
 }

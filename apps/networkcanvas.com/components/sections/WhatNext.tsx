@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 
 import { MailingListForm } from '~/components/sections/MailingListForm';
 import { Container } from '~/components/ui/Container';
+import { PillLink } from '~/components/ui/PillLink';
 import { Reveal } from '~/components/ui/Reveal';
-import { cn } from '~/lib/cn';
 import { externalLinks } from '~/lib/content';
 
 type Card = {
@@ -13,30 +13,6 @@ type Card = {
   action: ReactNode;
 };
 
-function PillLink({
-  href,
-  label,
-  className,
-}: {
-  href: string;
-  label: string;
-  className: string;
-}) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className={cn(
-        'focusable font-heading elevation-low mt-6 inline-flex rounded-full px-6 py-3 text-sm font-bold tracking-wide text-white uppercase transition-transform hover:-translate-y-0.5',
-        className,
-      )}
-    >
-      {label}
-    </a>
-  );
-}
-
 const cards: Card[] = [
   {
     title: 'Want to learn more?',
@@ -45,9 +21,12 @@ const cards: Card[] = [
     action: (
       <PillLink
         href={externalLinks.documentation}
-        label="Visit Documentation Site"
-        className="bg-neon-coral"
-      />
+        external
+        tone="neon-coral"
+        className="mt-6"
+      >
+        Visit Documentation Site
+      </PillLink>
     ),
   },
   {
@@ -57,9 +36,12 @@ const cards: Card[] = [
     action: (
       <PillLink
         href={externalLinks.community}
-        label="Visit Community Website"
-        className="bg-sea-green"
-      />
+        external
+        tone="sea-green"
+        className="mt-6"
+      >
+        Visit Community Website
+      </PillLink>
     ),
   },
   {
@@ -75,9 +57,12 @@ const cards: Card[] = [
     action: (
       <PillLink
         href={externalLinks.collaboration}
-        label="Explore Collaboration Options"
-        className="bg-mustard"
-      />
+        external
+        tone="mustard"
+        className="mt-6"
+      >
+        Explore Collaboration Options
+      </PillLink>
     ),
   },
 ];
@@ -104,7 +89,7 @@ export function WhatNext() {
             <img
               src={card.icon}
               alt=""
-              aria-hidden
+              aria-hidden="true"
               className="phone-landscape:block tablet-landscape:size-28 hidden size-24 shrink-0"
             />
           </Reveal>

@@ -1,6 +1,5 @@
 'use client';
 
-import type { Route } from 'next';
 import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
 
@@ -51,7 +50,7 @@ export function ButtonLink({
   }
 
   return (
-    <Link href={href as Route} className={classes} {...props}>
+    <Link href={href} className={classes} {...props}>
       {children}
     </Link>
   );

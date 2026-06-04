@@ -6,8 +6,6 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  /** Linting and typechecking run as separate tasks in CI. */
-  typescript: { ignoreBuildErrors: true },
 };
 
 export default nextConfig;

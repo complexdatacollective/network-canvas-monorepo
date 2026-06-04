@@ -4,6 +4,8 @@
  * destinations as the original Framer site.
  */
 
+import type { Variant } from '~/components/ui/DeviceMockup';
+
 export const externalLinks = {
   community: 'https://community.networkcanvas.com/',
   documentation: 'https://documentation.networkcanvas.com/',
@@ -48,6 +50,7 @@ export type Tool = {
   description: string;
   cta: { label: string; href: string };
   color: 'sea-green' | 'neon-coral' | 'cerulean-blue';
+  variant: Variant;
 };
 
 export const tools: Tool[] = [
@@ -57,6 +60,7 @@ export const tools: Tool[] = [
       'A desktop (macOS, Windows, Linux) tool for visually designing Network Canvas interviews. Architect allows subject experts to focus on the design and implementation of their study, without needing to learn complex new technology.',
     cta: { label: 'Download Architect', href: '/download' },
     color: 'sea-green',
+    variant: 'architect',
   },
   {
     name: 'Interviewer',
@@ -64,6 +68,7 @@ export const tools: Tool[] = [
       'A desktop/tablet app for administering Network Canvas interviews in the field. Interviewer provides minimalist, participant-centric interfaces for all the data collection tasks associated with personal network interviewing.',
     cta: { label: 'Download Interviewer', href: '/download' },
     color: 'neon-coral',
+    variant: 'interviewer',
   },
   {
     name: 'Fresco',
@@ -71,6 +76,7 @@ export const tools: Tool[] = [
       'Bringing Network Canvas interviews to the web! Fresco is a pilot project that allows researchers to conduct Network Canvas interviews in a web browser.',
     cta: { label: 'Learn More', href: externalLinks.fresco },
     color: 'cerulean-blue',
+    variant: 'fresco',
   },
 ];
 

@@ -14,8 +14,6 @@ const accents = {
   },
 };
 
-const variants = ['architect', 'interviewer', 'fresco'] as const;
-
 export function Tools() {
   return (
     <Container className="tablet-landscape:py-28 py-20">
@@ -26,7 +24,7 @@ export function Tools() {
       </SectionHeading>
 
       <div className="tablet-landscape:gap-24 mt-16 flex flex-col gap-16">
-        {tools.map((tool, i) => {
+        {tools.map((tool) => {
           const accent = accents[tool.color];
           const isExternal = tool.cta.href.startsWith('http');
           return (
@@ -53,7 +51,7 @@ export function Tools() {
                 </PillLink>
               </div>
               <div className="tablet-landscape:order-2 order-1">
-                <DeviceMockup variant={variants[i]} />
+                <DeviceMockup variant={tool.variant} />
               </div>
             </Reveal>
           );

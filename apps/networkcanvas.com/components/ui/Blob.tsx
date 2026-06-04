@@ -11,7 +11,7 @@ export function Blob({ src, className }: BlobProps) {
     <img
       src={src}
       alt=""
-      aria-hidden
+      aria-hidden="true"
       className={cn(
         'pointer-events-none absolute -z-10 opacity-30 blur-[2px] select-none',
         className,

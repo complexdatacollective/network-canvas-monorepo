@@ -1,4 +1,3 @@
-import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
@@ -63,7 +62,7 @@ export function PillLink({
   }
 
   return (
-    <Link href={href as Route} className={classes} {...props}>
+    <Link href={href} className={classes} {...props}>
       {children}
     </Link>
   );

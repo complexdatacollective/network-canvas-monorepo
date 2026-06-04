@@ -13,18 +13,20 @@ import { navLinks } from '~/lib/content';
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
-      {navLinks.slice(0, 3).map((link) => (
-        <Link
-          key={link.label}
-          href={link.href}
-          target={link.external ? '_blank' : undefined}
-          rel={link.external ? 'noreferrer' : undefined}
-          onClick={onNavigate}
-          className="font-heading text-cyber-grape hover:text-neon-coral text-sm font-bold tracking-[0.12em] uppercase transition-colors"
-        >
-          {link.label}
-        </Link>
-      ))}
+      {navLinks
+        .filter((link) => link.href !== '/download')
+        .map((link) => (
+          <Link
+            key={link.label}
+            href={link.href}
+            target={link.external ? '_blank' : undefined}
+            rel={link.external ? 'noreferrer' : undefined}
+            onClick={onNavigate}
+            className="font-heading text-cyber-grape hover:text-neon-coral text-sm font-bold tracking-[0.12em] uppercase transition-colors"
+          >
+            {link.label}
+          </Link>
+        ))}
     </>
   );
 }

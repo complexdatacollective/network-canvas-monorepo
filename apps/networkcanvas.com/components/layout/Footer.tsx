@@ -57,7 +57,7 @@ export function Footer() {
               ))}
             </div>
             <p className="text-text/70 text-base">
-              Copyright Complex Data Collective 2016-2026
+              Copyright Complex Data Collective 2016-{new Date().getFullYear()}
             </p>
             <div className="flex gap-5">
               {socials.map(({ label, href, Icon }) => (

@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 
 import { Container } from '~/components/ui/Container';
@@ -68,13 +69,14 @@ export function Grants() {
 
       <div className="mt-8 flex justify-center gap-2.5">
         {grants.map((grant, i) => {
-          const isActive = ((index % count) + count) % count === i;
+          const current = ((index % count) + count) % count;
+          const isActive = current === i;
           return (
             <button
               key={grant.title}
               type="button"
               aria-label={`Show grant ${i + 1}`}
-              onClick={() => setState([i, i > index ? 1 : -1])}
+              onClick={() => setState([i, i > current ? 1 : -1])}
               className={cn(
                 'h-2.5 rounded-full transition-all',
                 isActive ? 'bg-neon-coral w-7' : 'bg-cyber-grape/20 w-2.5',
@@ -92,7 +94,7 @@ function CarouselButton({
   label,
   onClick,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   label: string;
   onClick: () => void;
 }) {
