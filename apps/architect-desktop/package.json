@@ -99,7 +99,7 @@
     "postcss-url": "^8.0.0",
     "prop-types": "^15.8.1",
     "react": "^16.14.0",
-    "react-dom": "^16.14.0",
+    "react-dom": "^19.2.7",
     "react-flip-toolkit": "^6.6.9",
     "react-grid-layout": "^0.16.6",
     "react-redux": "^9.3.0",
