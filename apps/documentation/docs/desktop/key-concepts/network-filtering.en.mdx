@@ -11,7 +11,7 @@ title: Network Filtering
 
 Network filtering is a configuration feature you will find in several areas of Architect. It allows you to define one or more rules that determine which nodes or edges should be shown on a given stage (or in a side panel - [see below](#network-filtering-in-a-side-panel)). You can use it to show only a subset of the network.
 
-This is particularly useful in cases where the content of the stage does not apply to all network entities. Consider the example of an interview protocol with two stages - a [Name Generator](/en/desktop/interface-documentation/name-generator-using-forms) and an [Ordinal Bin](/en/desktop/interface-documentation/ordinal-bin). On the first stage, for each alter named the participant is asked if they play sports with the individual. The second stage asks "how often do you play sports with each of these people?". Filtering the network for this second stage to show only those alters with the **plays sports with** attribute will reduce participant burden and make the interview protocol more efficient.
+This is particularly useful in cases where the content of the stage does not apply to all network entities. Consider the example of an interview protocol with two stages - a [Name Generator](/en/reference/interface-documentation/name-generator-using-forms) and an [Ordinal Bin](/en/reference/interface-documentation/ordinal-bin). On the first stage, for each alter named the participant is asked if they play sports with the individual. The second stage asks "how often do you play sports with each of these people?". Filtering the network for this second stage to show only those alters with the **plays sports with** attribute will reduce participant burden and make the interview protocol more efficient.
 
 <TipBox>
 
@@ -62,7 +62,7 @@ This means that the choice of join operator can have an extremely significant im
 
 Since network filtering can be confusing to new users, here is an extended example to illustrate the feature that includes both node and edge rules.
 
-Consider an interview where you use the [Sociogram](/en/desktop/interface-documentation/sociogram) to generate sex ties between alters and to collect boolean attribute data on HIV status of alters. Let's imagine that you then want to use a [Per Alter Form](/en/desktop/interface-documentation/per-alter-form) or another name interpreter to capture data on drug use behavior of alters, but only those who are HIV positive _and_ who have a sex relationship with another alter in the network.
+Consider an interview where you use the [Sociogram](/en/reference/interface-documentation/sociogram) to generate sex ties between alters and to collect boolean attribute data on HIV status of alters. Let's imagine that you then want to use a [Per Alter Form](/en/reference/interface-documentation/per-alter-form) or another name interpreter to capture data on drug use behavior of alters, but only those who are HIV positive _and_ who have a sex relationship with another alter in the network.
 
 To achieve this using network filtering, you can implement the following edge and node rules on the Per Alter Form:
 
@@ -82,7 +82,7 @@ network.
 
 ## Network filtering in a side panel
 
-You can also filter the content of Name Generator [side panels](/en/desktop/interface-documentation/name-generator-using-forms#side-panels) (where they are used). This feature works exactly the same way as stage level network filtering, except that the results are only applied to the specific side panel you are configuring. Any filtering you set will apply across all [prompts](/en/desktop/key-concepts/prompts) for that stage.
+You can also filter the content of Name Generator [side panels](/en/reference/interface-documentation/name-generator-using-forms#side-panels) (where they are used). This feature works exactly the same way as stage level network filtering, except that the results are only applied to the specific side panel you are configuring. Any filtering you set will apply across all [prompts](/en/desktop/key-concepts/prompts) for that stage.
 
 This feature can be particularly useful if you wish to filter elements of a roster. For example, your roster may contain an attribute that represents graduation year that you could use to filter the side panel content for a question about classmates known from a certain year group.
 
