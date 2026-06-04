@@ -244,7 +244,12 @@ function buildScenarioInterview() {
       nodeLabelVariable: nameVar.id,
       egoVariable: isEgoVar.id,
       relationshipVariable: relationshipToEgoVar.id,
-      form: [{ variable: genderVar.id, prompt: 'Gender Identity' }],
+      form: [
+        {
+          variable: genderVar.id,
+          prompt: 'How does this person identify their gender?',
+        },
+      ],
     },
     edgeConfig: {
       type: edgeType.id,
