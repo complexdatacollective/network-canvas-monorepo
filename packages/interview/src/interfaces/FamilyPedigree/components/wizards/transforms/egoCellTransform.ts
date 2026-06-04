@@ -307,8 +307,9 @@ export function egoCellTransform(
     const triadValues = {
       ...((child.parentage ?? {}) as Record<string, unknown>),
     };
-    // The children step uses the literal 'ego' for the participant; map it to the
-    // actual ego reference (a pre-existing ego id when revisiting).
+    // The children step uses the literal 'ego' for the participant in any role
+    // (egg, sperm, or carrier); map it to the actual ego reference (a
+    // pre-existing ego id when revisiting).
     for (const role of [
       'egg-source',
       'sperm-source',

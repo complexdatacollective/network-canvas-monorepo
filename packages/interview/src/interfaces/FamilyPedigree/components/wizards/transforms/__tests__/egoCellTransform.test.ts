@@ -512,6 +512,22 @@ describe('egoCellTransform', () => {
 
     const child1Edges = batch.edges.filter((e) => e.target === 'child-1');
     expect(child1Edges).toHaveLength(3);
+    expect(
+      child1Edges.some(
+        (e) =>
+          e.source === 'ego' &&
+          e.data.attributes[variableConfig.relationshipTypeVariable] ===
+            'biological',
+      ),
+    ).toBe(true);
+    expect(
+      child1Edges.some(
+        (e) =>
+          e.source === 'partner' &&
+          e.data.attributes[variableConfig.relationshipTypeVariable] ===
+            'biological',
+      ),
+    ).toBe(true);
   });
 
   it('nuclear family: each child gets biological edges from ego and partner', () => {
@@ -660,5 +676,21 @@ describe('egoCellTransform', () => {
     // ego + 2 parents only
     expect(batch.nodes).toHaveLength(3);
     expect(batch.nodes.find((n) => n.tempId === 'partner')).toBeUndefined();
+  });
+
+  it('produces no parent edges when a child has no parentage data', () => {
+    const values: Record<string, unknown> = {
+      hasPartner: true,
+      partner: { name: 'Partner' },
+      childrenWithPartnerCount: 1,
+      childWithPartner: [{ name: 'Kid' }],
+    };
+    const { batch } = egoCellTransform(values, variableConfig);
+    const child = batch.nodes.find(
+      (n) => n.data.attributes[variableConfig.nodeLabelVariable] === 'Kid',
+    )!;
+    expect(batch.edges.filter((e) => e.target === child.tempId)).toHaveLength(
+      0,
+    );
   });
 });
