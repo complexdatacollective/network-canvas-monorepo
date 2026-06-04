@@ -36,6 +36,7 @@ export default function GenericGestationalCarrierStep() {
         label="What is their name?"
         component={InputField}
         hint="Leave blank if the name is not known"
+        autoFocus
       />
       {fieldComponents}
     </FieldNamespace>
