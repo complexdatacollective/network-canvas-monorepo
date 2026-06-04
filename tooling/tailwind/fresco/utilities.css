@@ -7,7 +7,7 @@
 @custom-variant focus-visible-within (&:has(:focus-visible));
 
 @utility focus-styles {
-  @apply outline-4 outline-offset-3 transition-all duration-200 ease-in-out;
+  @apply outline-2 outline-offset-3 transition-all duration-200 ease-in-out;
 }
 
 @utility focusable {
@@ -111,6 +111,32 @@
  */
 @utility theme-base {
   @apply bg-background text-text publish-colors font-body;
+}
+
+/*
+ * Effect shadows — prominent drop shadows for elevated dashboard surfaces
+ * (protocol deck cards, floating chrome) that want a stronger cue than the
+ * standard `shadow-*` scale. Values live in the theme as `--effect-shadow-*`
+ * so they re-tint per theme via `--shadow-color`. For composite box-shadows
+ * that add a ring, reference `var(--effect-shadow-*)` directly instead.
+ */
+@utility effect-shadow-sm {
+  box-shadow: var(--effect-shadow-sm);
+}
+@utility effect-shadow {
+  box-shadow: var(--effect-shadow);
+}
+@utility effect-shadow-md {
+  box-shadow: var(--effect-shadow-md);
+}
+@utility effect-shadow-lg {
+  box-shadow: var(--effect-shadow-lg);
+}
+@utility effect-shadow-xl {
+  box-shadow: var(--effect-shadow-xl);
+}
+@utility effect-shadow-2xl {
+  box-shadow: var(--effect-shadow-2xl);
 }
 
 /* Variant for elements with the readonly attribute. The default tailwind

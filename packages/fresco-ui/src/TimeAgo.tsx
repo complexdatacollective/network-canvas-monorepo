@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 
+import { cx } from './utils/cva';
 import { withNoSSRWrapper } from './utils/NoSSRWrapper';
 
 const DEFAULT_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
@@ -11,14 +12,20 @@ const DEFAULT_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
   minute: 'numeric',
 };
 
-type TimeAgoProps = React.TimeHTMLAttributes<HTMLTimeElement> & {
+type TimeAgoProps = Omit<
+  React.TimeHTMLAttributes<HTMLTimeElement>,
+  'onClick'
+> & {
   date: Date | string | number;
   dateOptions?: Intl.DateTimeFormatOptions;
+  onClick?: React.MouseEventHandler<HTMLSpanElement>;
 };
 
 const TimeAgo: React.FC<TimeAgoProps> = ({
   date: dateProp,
   dateOptions,
+  className,
+  onClick,
   ...props
 }) => {
   const date = useMemo(() => new Date(dateProp), [dateProp]);
@@ -29,6 +36,9 @@ const TimeAgo: React.FC<TimeAgoProps> = ({
   ).format(date);
 
   const [timeAgo, setTimeAgo] = useState<string>('');
+  // Click anywhere on the time element to flip between the relative
+  // ("2 days ago") rendering and the raw locale-formatted timestamp.
+  const [showRaw, setShowRaw] = useState(false);
 
   useEffect(() => {
     const calculateTimeAgo = () => {
@@ -64,14 +74,30 @@ const TimeAgo: React.FC<TimeAgoProps> = ({
   }, [date, localisedDate]);
 
   return (
-    <time
-      {...props}
-      data-testid="time-ago"
-      dateTime={localisedDate}
-      title={localisedDate}
+    <span
+      role="button"
+      tabIndex={0}
+      onClick={(event) => {
+        setShowRaw((prev) => !prev);
+        onClick?.(event);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          setShowRaw((prev) => !prev);
+        }
+      }}
+      className={cx('cursor-pointer select-none', className)}
     >
-      {timeAgo}
-    </time>
+      <time
+        {...props}
+        data-testid="time-ago"
+        dateTime={localisedDate}
+        title={localisedDate}
+      >
+        {showRaw ? localisedDate : timeAgo}
+      </time>
+    </span>
   );
 };
 

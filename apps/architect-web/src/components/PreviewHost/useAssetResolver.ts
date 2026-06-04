@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 import type { AssetRequestHandler } from '@codaco/interview';
-import { assetDb } from '~/utils/assetDB';
+import { assetDb, assetKey } from '~/utils/assetDB';
 
-export function useAssetResolver(): AssetRequestHandler {
+export function useAssetResolver(
+  protocolId: string | null,
+): AssetRequestHandler {
   const cache = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
@@ -16,19 +18,27 @@ export function useAssetResolver(): AssetRequestHandler {
     };
   }, []);
 
-  return useCallback(async (assetId: string) => {
-    const cached = cache.current.get(assetId);
-    if (cached) return cached;
+  return useCallback(
+    async (assetId: string) => {
+      if (!protocolId) {
+        throw new Error(`Missing protocol scope for asset ${assetId}`);
+      }
 
-    const entry = await assetDb.assets.get({ id: assetId });
-    if (!entry || typeof entry.data === 'string') {
-      throw new Error(`Asset ${assetId} not found in local store`);
-    }
+      const key = assetKey(protocolId, assetId);
+      const cached = cache.current.get(key);
+      if (cached) return cached;
 
-    const blob =
-      entry.data instanceof Blob ? entry.data : new Blob([entry.data]);
-    const url = URL.createObjectURL(blob);
-    cache.current.set(assetId, url);
-    return url;
-  }, []);
+      const entry = await assetDb.assets.get(key);
+      if (!entry || typeof entry.data === 'string') {
+        throw new Error(`Asset ${assetId} not found in local store`);
+      }
+
+      const blob =
+        entry.data instanceof Blob ? entry.data : new Blob([entry.data]);
+      const url = URL.createObjectURL(blob);
+      cache.current.set(key, url);
+      return url;
+    },
+    [protocolId],
+  );
 }

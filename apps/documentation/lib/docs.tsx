@@ -166,15 +166,18 @@ export const getDocsForRouteSegment = ({
   return results;
 };
 
-// Source files in sidebar.json are recorded as "/<DOCS_PATH>/..." paths. Anchor
-// resolution to the DOCS_PATH subfolder explicitly so Turbopack's static analysis
-// sees a bounded prefix (path.join(process.cwd(), DOCS_PATH, <dynamic>)) instead
-// of treating the join as referring to anything under cwd — which would force
-// the NFT tracer to include the entire project.
+// Source files in sidebar.json are recorded as "/<DOCS_PATH>/..." paths; strip
+// that prefix so the remainder can be re-anchored under the docs/ subfolder by
+// getSourceFile below.
 const stripDocsPrefix = (sourceFile: string) =>
   sourceFile.replace(new RegExp(`^/?${DOCS_PATH}/`), '');
 
-// Get the sourceFile path from the sidebar.json
+// Resolves a sidebar entry to an absolute markdown path. The 'docs' segment is
+// written as a string literal (kept in sync with DOCS_PATH) on purpose:
+// Turbopack's NFT tracer only bounds a path.join(process.cwd(), ...) read to a
+// subfolder when that segment is a literal it can read statically. It does not
+// constant-fold the DOCS_PATH import, so passing the variable here makes it
+// trace the entire project and emit an "unexpected file in NFT list" warning.
 const getSourceFile = (
   locale: string,
   project: string,
@@ -188,7 +191,7 @@ const getSourceFile = (
   ) as string;
 
   if (!pathSegment)
-    return join(process.cwd(), DOCS_PATH, stripDocsPrefix(projectSourceFile));
+    return join(process.cwd(), 'docs', stripDocsPrefix(projectSourceFile));
 
   const pathSegmentWithChildren = pathSegment.flatMap((segment, index) => {
     if (index === 0) {
@@ -206,7 +209,7 @@ const getSourceFile = (
 
   if (!folderSourceFile) return null;
 
-  return join(process.cwd(), DOCS_PATH, stripDocsPrefix(folderSourceFile));
+  return join(process.cwd(), 'docs', stripDocsPrefix(folderSourceFile));
 };
 
 const markdownComponents = {

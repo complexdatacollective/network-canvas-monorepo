@@ -1,15 +1,14 @@
 import { useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
+import type { SortRule } from '@codaco/protocol-validation';
+
 import { getAllVariableUUIDsByEntity } from '../selectors/protocol';
-import createSorter, {
-  type ProtocolSortRule,
-  processProtocolSortRule,
-} from '../utils/createSorter';
+import createSorter, { processProtocolSortRule } from '../utils/createSorter';
 
 export default function useSortedNodeList<T extends Record<string, unknown>[]>(
   nodeList: T,
-  sortRules?: ProtocolSortRule[],
+  sortRules?: SortRule[],
 ): T {
   const codebookVariables = useSelector(getAllVariableUUIDsByEntity);
   const ruleProcessor = processProtocolSortRule(codebookVariables);
@@ -29,7 +28,7 @@ export default function useSortedNodeList<T extends Record<string, unknown>[]>(
 // Version of the above that can be used in selectors without violating rules of hooks
 export function getSortedNodeList<T extends Record<string, unknown>[]>(
   nodeList: T,
-  sortRules: ProtocolSortRule[] | undefined,
+  sortRules: SortRule[] | undefined,
   codebookVariables: ReturnType<typeof getAllVariableUUIDsByEntity>,
 ): T {
   if (!sortRules || sortRules.length === 0) {

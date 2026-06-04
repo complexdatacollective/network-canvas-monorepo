@@ -100,7 +100,7 @@ export default function DownloadPage() {
       <Header />
 
       <Container className="tablet-landscape:py-16 py-12 text-center">
-        <h1 className="font-heading text-cyber-grape tablet-landscape:text-5xl text-3xl font-bold">
+        <h1 className="font-heading text-cyber-grape tablet-landscape:text-[3rem] text-3xl font-bold">
           Download Network Canvas
         </h1>
         <p className="text-text/80 tablet-landscape:text-lg mt-4 text-base">

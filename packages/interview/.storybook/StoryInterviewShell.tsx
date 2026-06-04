@@ -3,13 +3,14 @@
 import { useCallback, useMemo, useState } from 'react';
 import SuperJSON from 'superjson';
 
+import { StageMetadataSchema } from '@codaco/shared-consts';
+
 import {
   type AssetRequestHandler,
   type InterviewPayload,
   isValidAssetType,
   type ResolvedAsset,
   Shell,
-  StageMetadataSchema,
   type StepChangeHandler,
 } from '../src';
 

@@ -7,7 +7,7 @@ import { STAGE_META, type TimelineStop } from './timelineScript';
 // actual rendered size; everything inside scales via viewBox so stations,
 // strokes, labels, and spacing all grow together.
 const DESIGN_W = 634;
-const DESIGN_H = 1100;
+const DESIGN_H = 820;
 const STATION_X = DESIGN_W / 2;
 const STATION_GAP = 140;
 const ANCHOR_Y = DESIGN_H * 0.65;

@@ -1,9 +1,18 @@
 {
-  "extends": [
-    "../../.oxlintrc.json",
-    "../../tooling/oxlint/react.json",
-    "../../tooling/oxlint/tailwind.json"
-  ],
+  "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
+  "jsPlugins": ["oxlint-tailwindcss"],
+  "settings": {
+    "tailwindcss": {
+      "entryPoint": "tooling/tailwind/fresco/fresco.css"
+    }
+  },
+  "rules": {
+    "tailwindcss/no-unknown-classes": "warn",
+    "tailwindcss/no-duplicate-classes": "error",
+    "tailwindcss/no-conflicting-classes": "warn",
+    "tailwindcss/no-unnecessary-whitespace": "error",
+    "tailwindcss/enforce-canonical": "warn"
+  },
   "overrides": [
     {
       "files": ["**/*.stories.ts", "**/*.stories.tsx", ".storybook/**"],

@@ -135,7 +135,7 @@ export function DeviceMockup({
   return (
     <div
       className={cn(
-        'bg-cyber-grape tablet-landscape:p-5 aspect-[4/3] w-full rounded-[1.75rem] p-4 shadow-2xl',
+        'bg-cyber-grape tablet-landscape:p-5 aspect-4/3 w-full rounded-[1.75rem] p-4 shadow-2xl',
         className,
       )}
     >

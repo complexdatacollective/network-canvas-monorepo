@@ -74,9 +74,13 @@ const Preview = ({
     <Dialog
       open={show}
       onOpenChange={(open) => !open && onClose()}
-      header={<h2 className="m-0">{meta.name}</h2>}
+      title={meta.name}
       footer={
         <>
+          <Dialog.Close
+            nativeButton={false}
+            render={<Button color="platinum">Close preview</Button>}
+          />
           {meta.type !== 'apikey' ? (
             <Button
               onClick={handleDownload}
@@ -90,9 +94,6 @@ const Preview = ({
               Copy API Key
             </Button>
           )}
-          <Button onClick={onClose} color="platinum">
-            Close preview
-          </Button>
         </>
       }
     >

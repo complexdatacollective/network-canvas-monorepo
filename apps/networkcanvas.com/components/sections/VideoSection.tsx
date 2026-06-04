@@ -33,7 +33,7 @@ export function VideoSection() {
           aria-label="Watch: What is Network Canvas?"
           className="focusable group relative flex aspect-video items-center justify-center overflow-hidden rounded-[1.75rem] shadow-xl"
         >
-          <span className="animate-background-gradient from-neon-coral via-purple-pizazz to-cerulean-blue absolute inset-0 bg-gradient-to-br bg-[length:200%_200%]" />
+          <span className="animate-background-gradient from-neon-coral via-purple-pizazz to-cerulean-blue absolute inset-0 bg-linear-to-br bg-[length:200%_200%]" />
           <span className="relative flex flex-col items-center gap-5 text-white">
             <Logo markClassName="h-14 w-14" showWordmark={false} />
             <span className="font-heading tablet-landscape:text-3xl text-2xl font-bold">

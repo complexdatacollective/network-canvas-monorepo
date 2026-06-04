@@ -25,6 +25,14 @@ const meta: Meta<typeof Surface> = {
       description: 'Defines the padding inside the Surface.',
       defaultValue: 'md',
     },
+    shadow: {
+      control: {
+        type: 'select',
+        options: ['none', 'xs', 'sm', 'md', 'lg', 'xl'],
+      },
+      description: 'Defines the shadow tier (independent of padding).',
+      defaultValue: 'md',
+    },
     as: {
       control: {
         type: 'select',
@@ -82,6 +90,22 @@ export const DifferentSpacing: StoryFn<typeof Surface> = () => (
         spacing={spacing as SurfaceVariants['spacing']}
       >
         Surface with {spacing} spacing
+      </Surface>
+    ))}
+  </div>
+);
+
+// Surface with Different Elevation (independent of padding)
+export const DifferentElevation: StoryFn<typeof Surface> = () => (
+  <div className="space-y-4">
+    {(['none', 'xs', 'sm', 'md', 'lg', 'xl'] as const).map((shadow) => (
+      <Surface
+        key={shadow}
+        level={1}
+        spacing="sm"
+        shadow={shadow as SurfaceVariants['shadow']}
+      >
+        Surface with {shadow} shadow
       </Surface>
     ))}
   </div>

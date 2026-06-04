@@ -82,21 +82,29 @@ export const getExperiments = (state: RootState) => {
 };
 
 // Timeline selector
-export const getTimelineLocus = (state: RootState) => {
-  // Check new activeProtocol store first
-  const activeProtocolTimeline = state.activeProtocol?.timeline;
-  if (activeProtocolTimeline?.length > 0) {
-    return activeProtocolTimeline[activeProtocolTimeline.length - 1];
-  }
-
-  // Fall back to old protocol store
-  const protocolTimeline = state.activeProtocol.timeline;
-
-  if (protocolTimeline && protocolTimeline.length > 0) {
-    return protocolTimeline[protocolTimeline.length - 1];
+export const getTimelineLocus = (state: RootState): string | null => {
+  // Timeline entries are now Locus objects ({ id, path }); return the id.
+  const timeline = state.activeProtocol?.timeline;
+  if (timeline && timeline.length > 0) {
+    const entry = timeline[timeline.length - 1];
+    return entry?.id ?? null;
   }
 
   return null;
+};
+
+// Path recorded on the entry that the next undo would revert (the locus of the
+// current present) and the next redo would reapply (the head of futureTimeline).
+export const getUndoTargetPath = (state: RootState): string => {
+  const timeline = state.activeProtocol?.timeline;
+  if (!timeline || timeline.length === 0) return '';
+  return timeline[timeline.length - 1]?.path ?? '';
+};
+
+export const getRedoTargetPath = (state: RootState): string => {
+  const futureTimeline = state.activeProtocol?.futureTimeline;
+  if (!futureTimeline || futureTimeline.length === 0) return '';
+  return futureTimeline[0]?.path ?? '';
 };
 
 // Undo/redo selectors

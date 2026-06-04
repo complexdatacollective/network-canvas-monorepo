@@ -272,8 +272,8 @@ export default function RichTextEditorField({
     }),
     content: value,
     editable: !disabled && !readOnly,
-    onBlur: ({ editor }) => {
-      onChange?.(editor.getJSON());
+    onBlur: ({ editor: blurEditor }) => {
+      onChange?.(blurEditor.getJSON());
     },
   });
 

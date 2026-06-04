@@ -12,9 +12,17 @@ import { test as baseTest, expect } from './test.js';
 
 const VISUAL_STYLES = `
   [data-testid="background-blobs"] { visibility: hidden !important; }
+  /* Suppress focus rings so snapshots don't depend on what last held focus.
+     Rings here are outlines (incl. the focusable-after ::after pseudo), so
+     outline:none covers them on the focused element and on focusable-within
+     ancestors. box-shadow:none is scoped to the focused element only — NOT
+     :has(:focus-visible) ancestors — because a focused field's ancestor (e.g.
+     a slider track) carries a real inset-surface box-shadow that must survive. */
   *:focus-visible,
   *:has(:focus-visible) {
     outline: none !important;
+  }
+  *:focus-visible {
     box-shadow: none !important;
   }
   .focusable-after::after,

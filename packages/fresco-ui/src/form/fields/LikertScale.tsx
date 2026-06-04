@@ -126,6 +126,11 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
               <Slider.Thumb
                 render={
                   <motion.div
+                    // base-ui's nested <input type="range"> is the focusable
+                    // control; motion otherwise auto-adds tabIndex={0} to a
+                    // `whileTap` element, which would make the thumb a second
+                    // tab stop. Keep the div out of the tab order.
+                    tabIndex={-1}
                     whileTap={{ scale: 1.1 }}
                     transition={{
                       type: 'spring',

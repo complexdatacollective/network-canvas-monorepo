@@ -5,6 +5,7 @@ import { AnimatePresence } from 'motion/react';
 import * as React from 'react';
 
 import { MotionSurface } from './layout/Surface';
+import { ArrowSvg } from './Popover';
 import { usePortalContainer } from './PortalContainer';
 import { cx } from './utils/cva';
 
@@ -56,6 +57,7 @@ const TooltipContent = React.forwardRef<
                 <MotionSurface
                   level="popover"
                   spacing="sm"
+                  shadow="sm"
                   className={cx(
                     'max-w-(--available-width) overflow-visible text-sm',
                     className,
@@ -80,24 +82,6 @@ const TooltipContent = React.forwardRef<
 );
 TooltipContent.displayName = 'TooltipContent';
 
-function ArrowSvg(props: React.ComponentProps<'svg'>) {
-  return (
-    <svg
-      aria-hidden="true"
-      width="30"
-      height="20"
-      viewBox="0 0 20 10"
-      fill="none"
-      {...props}
-    >
-      <path
-        d="M9.66437 2.60207L4.80758 6.97318C4.07308 7.63423 3.11989 8 2.13172 8H0V10H20V8H18.5349C17.5468 8 16.5936 7.63423 15.8591 6.97318L11.0023 2.60207C10.622 2.2598 10.0447 2.25979 9.66437 2.60207Z"
-        className="fill-surface-popover"
-      />
-    </svg>
-  );
-}
-
 type TooltipArrowProps = React.ComponentPropsWithoutRef<
   typeof BaseTooltip.Arrow
 >;
@@ -109,7 +93,7 @@ const TooltipArrow = React.forwardRef<
   <BaseTooltip.Arrow
     ref={ref}
     className={cx(
-      'data-[side=bottom]:top-[-15px] data-[side=left]:right-[-13px] data-[side=left]:rotate-90 data-[side=right]:left-[-13px] data-[side=right]:-rotate-90 data-[side=top]:bottom-[-14px] data-[side=top]:rotate-180',
+      'data-[side=bottom]:top-[-15px] data-[side=left]:right-[-20px] data-[side=left]:rotate-90 data-[side=right]:left-[-20px] data-[side=right]:-rotate-90 data-[side=top]:bottom-[-15px] data-[side=top]:rotate-180',
       className,
     )}
     {...props}

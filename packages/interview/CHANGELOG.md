@@ -1,5 +1,27 @@
 # @codaco/interview
 
+## 1.0.0-alpha.21
+
+### Prerelease Changes
+
+- **Public-API removal.** `generateNetwork`, `GenerateNetworkOptions`, `GenerateNetworkResult`, and `StageMetadataSchema` are no longer exported. Import paths change as follows:
+
+  ```diff
+  - import { generateNetwork, StageMetadataSchema } from '@codaco/interview';
+  + import { generateNetwork } from '@codaco/protocol-utilities';
+  + import { StageMetadataSchema } from '@codaco/shared-consts';
+  ```
+
+  The synthetic-data code (`generateNetwork`, `SyntheticInterview`, plus shared `ValueGenerator`/types/constants) has moved into the new `@codaco/protocol-utilities` package. The session stage-metadata schemas have moved into `@codaco/shared-consts`. The interview runtime bundle no longer carries either.
+
+- Internal `~/utils/codebook.ts` shim removed (`VariableOption`, `VariableOptionValue`, `VariableOptions` were redefinitions of types now exported from `@codaco/protocol-validation`). All in-tree consumers (`TieStrengthCensus`, `Narrative/ConvexHullLayer`, `Narrative/PresetSwitcher`, `selectors/session`, plus the Narrative test) import from the canonical source.
+
+- Internal `DyadCensusMetadataItem` import redirected from the local session reducer to `@codaco/shared-consts`. Affects `DyadCensus`, `TieStrengthCensus`, and `DyadCensus/helpers`.
+
+- Storybook stories import `SyntheticInterview` from `@codaco/protocol-utilities` (added as a devDependency).
+
+- Dependency cleanup: dropped `zod` from `dependencies` — no source file in the interview runtime imports it directly any more. (Transitive zod usage via `@codaco/protocol-validation` and `@codaco/shared-consts` is unaffected.)
+
 ## 1.0.0-alpha.20
 
 ### Prerelease Changes

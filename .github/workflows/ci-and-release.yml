@@ -32,6 +32,7 @@ jobs:
       fresco_ui_storybook: ${{ steps.flags.outputs.fresco_ui_storybook }}
       interview_storybook: ${{ steps.flags.outputs.interview_storybook }}
       interview_e2e: ${{ steps.flags.outputs.interview_e2e }}
+      interviewer_v7_changeset: ${{ steps.flags.outputs.interviewer_v7_changeset }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -102,6 +103,26 @@ jobs:
           intv=$(flag @codaco/interview)
           any_app=false
           if [[ "$docs" == "true" || "$arch" == "true" ]]; then any_app=true; fi
+
+          # PR-only: detect a changeset ADDED/CHANGED in this PR whose frontmatter
+          # touches @codaco/interviewer-v7. Gates the snapshot Electron build job
+          # below. Scoping to changed files (not the whole .changeset tree) keeps
+          # unrelated PRs from triggering the build just because an interviewer-v7
+          # changeset already exists in the checkout.
+          interviewer_v7_changeset=false
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            if [[ -z "$PREV" ]]; then
+              # First push on the branch (no parent) — be conservative, scan all.
+              changesets=$(compgen -G '.changeset/*.md' || true)
+            else
+              changesets=$(git diff --name-only --diff-filter=d "$PREV" "$CURR" -- '.changeset/*.md')
+            fi
+            if [[ -n "$changesets" ]] && \
+               grep -lE '"?@codaco/interviewer-v7"?[[:space:]]*:' $changesets > /dev/null 2>&1; then
+              interviewer_v7_changeset=true
+            fi
+          fi
+
           {
             echo "any_app=$any_app"
             echo "docs=$docs"
@@ -109,6 +130,7 @@ jobs:
             echo "fresco_ui_storybook=$fui"
             echo "interview_storybook=$intv"
             echo "interview_e2e=$intv"
+            echo "interviewer_v7_changeset=$interviewer_v7_changeset"
           } >> "$GITHUB_OUTPUT"
 
   # Cache design: every Turbo-using job restores `.turbo` from the same
@@ -457,22 +479,12 @@ jobs:
       - name: Dead-link check
         env:
           DOCS_URL: ${{ needs.deploy-docs-preview.outputs.url }}
-        # @jthrilly/dead-link-checker fans out many parallel fetches against
-        # the Netlify preview and gets transient FETCH_ERRORs even though the
-        # URLs resolve fine on retry. Wrap in a short retry loop so we don't
-        # fail the PR on flake.
-        run: |
-          attempt=1
-          max=3
-          until npx --yes @jthrilly/dead-link-checker "$DOCS_URL" -v --yes; do
-            if (( attempt >= max )); then
-              echo "dead-link-checker failed after $max attempts"
-              exit 1
-            fi
-            echo "attempt $attempt failed, retrying in 10s"
-            attempt=$((attempt + 1))
-            sleep 10
-          done
+        # @jthrilly/dead-link-checker >=1.1.0 retries each request on transient
+        # network errors (UND_ERR_SOCKET / connect timeouts), so a single flaky
+        # fetch no longer fails the run. Retrying the whole crawl here was the
+        # wrong layer — it multiplied exposure to the per-request flake instead
+        # of recovering from it — so a single invocation is now correct.
+        run: npx --yes @jthrilly/dead-link-checker@^1.1.0 "$DOCS_URL" -v --yes
       - name: Redirect test
         working-directory: apps/documentation
         env:
@@ -481,7 +493,12 @@ jobs:
 
   chromatic-fresco-ui:
     needs: [quality, detect]
-    if: needs.detect.outputs.fresco_ui_storybook == 'true'
+    # `quality` is needed only to order this job after it (so it reuses the
+    # .turbo cache quality writes); this job runs its own install + build and
+    # does NOT consume quality's result. `!cancelled()` opts out of the
+    # implicit needs-success gate so an unrelated quality failure can't
+    # cascade-skip a flagged run, while a superseded (cancelled) run still skips.
+    if: ${{ !cancelled() && needs.detect.outputs.fresco_ui_storybook == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -516,7 +533,9 @@ jobs:
 
   chromatic-interview:
     needs: [quality, detect]
-    if: needs.detect.outputs.interview_storybook == 'true'
+    # See chromatic-fresco-ui: `quality` orders this job for cache reuse only;
+    # `!cancelled()` keeps a quality failure from cascade-skipping a flagged run.
+    if: ${{ !cancelled() && needs.detect.outputs.interview_storybook == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -550,7 +569,9 @@ jobs:
 
   interview-e2e:
     needs: [quality, detect]
-    if: needs.detect.outputs.interview_e2e == 'true'
+    # See chromatic-fresco-ui: `quality` orders this job for cache reuse only;
+    # `!cancelled()` keeps a quality failure from cascade-skipping a flagged run.
+    if: ${{ !cancelled() && needs.detect.outputs.interview_e2e == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     outputs:
@@ -666,10 +687,14 @@ jobs:
       id-token: write
     env:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+    outputs:
+      interviewer_v7_released: ${{ steps.detect_interviewer_v7.outputs.released }}
+      interviewer_v7_version: ${{ steps.detect_interviewer_v7.outputs.version }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
+          fetch-depth: 2
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
@@ -694,20 +719,243 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
+      - name: Detect interviewer-v7 version bump
+        # changesets/action either opens a "Version Packages" PR or, when no
+        # changesets remain, runs the publish step which has already mutated
+        # apps/interviewer-v7/package.json in-place during the merged version
+        # PR. Diff the file's version against HEAD^ to decide whether to
+        # trigger an Electron build downstream. fetch-depth: 2 above makes
+        # HEAD^ available.
+        id: detect_interviewer_v7
+        env:
+          PKG_JSON: apps/interviewer-v7/package.json
+        run: |
+          current=$(node -p "require('./$PKG_JSON').version")
+          if git cat-file -e "HEAD^:$PKG_JSON" 2>/dev/null; then
+            previous=$(git show "HEAD^:$PKG_JSON" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version")
+          else
+            previous=""
+          fi
+          if [[ "$current" != "$previous" && -n "$current" ]]; then
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "version=$current" >> "$GITHUB_OUTPUT"
+            echo "interviewer-v7 version changed: $previous -> $current"
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "interviewer-v7 version unchanged ($current)"
+          fi
 
-  # Carry forward prior success statuses for conditional jobs that the
-  # current push didn't touch. Push-to-push detection (see detect job)
+  # Per-platform Electron build for interviewer-v7. Triggered only when the
+  # release job above detected a version bump for @codaco/interviewer-v7.
+  # macOS leg signs + notarizes via Apple credentials in repo secrets;
+  # Windows ships unsigned (SmartScreen warning is acceptable for now);
+  # Linux builds AppImage + deb unsigned.
+  interviewer-v7-build:
+    needs: release
+    if: needs.release.outputs.interviewer_v7_released == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+            artifact_name: interviewer-v7-macos
+          - os: windows-latest
+            platform: win
+            artifact_name: interviewer-v7-windows
+          - os: ubuntu-latest
+            platform: linux
+            artifact_name: interviewer-v7-linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      # No --ignore-scripts: electron-builder install-app-deps must rebuild
+      # better-sqlite3-multiple-ciphers against the runner's Electron ABI.
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: ${{ runner.os }}-electron-${{ hashFiles('apps/interviewer-v7/package.json') }}
+          restore-keys: ${{ runner.os }}-electron-
+      # Turbo cache is keyspaced by runner.os; only the ubuntu leg can hit
+      # the cache written by the quality job. Mac/Windows rebuild deps from
+      # scratch (~1-2 min) — acceptable for now.
+      - if: matrix.os == 'ubuntu-latest'
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - name: Build workspace dependencies
+        # ^... builds deps of interviewer-v7 (fresco-ui, interview, etc.)
+        # but NOT interviewer-v7 itself — electron-vite handles that.
+        run: pnpm exec turbo run build --filter=@codaco/interviewer-v7^...
+      - name: Decode App Store Connect API key
+        if: matrix.os == 'macos-latest'
+        env:
+          APPLE_API_KEY_B64: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          key_path="${RUNNER_TEMP}/AuthKey.p8"
+          printf '%s' "$APPLE_API_KEY_B64" | base64 --decode > "$key_path"
+          echo "APPLE_API_KEY=${key_path}" >> "$GITHUB_ENV"
+      - name: Build Electron app (${{ matrix.platform }})
+        working-directory: apps/interviewer-v7
+        env:
+          # macOS-only credentials. Non-mac legs see empty strings, which
+          # electron-builder treats as "not configured" (no signing, no
+          # notarization). Linux has no signing concept; Windows ships
+          # unsigned per the spec.
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          CSC_LINK: ${{ matrix.os == 'macos-latest' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.CSC_KEY_PASSWORD || '' }}
+        run: pnpm electron:dist:${{ matrix.platform }}
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: apps/interviewer-v7/release-builds/*
+          if-no-files-found: error
+          retention-days: 30
+
+  # Collect all platform artifacts and create one GitHub Release at tag
+  # `interviewer-v7@v<version>`. make_latest:false keeps the repo's "Latest
+  # release" pointer from bouncing between apps as different apps cut
+  # versions out of this monorepo.
+  interviewer-v7-publish:
+    needs: [release, interviewer-v7-build]
+    if: needs.release.outputs.interviewer_v7_released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: artifacts
+          pattern: interviewer-v7-*
+          merge-multiple: true
+      - name: List collected artifacts
+        run: ls -la artifacts/
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          tag_name: interviewer-v7@v${{ needs.release.outputs.interviewer_v7_version }}
+          name: Interviewer v7 v${{ needs.release.outputs.interviewer_v7_version }}
+          files: artifacts/*
+          fail_on_unmatched_files: true
+          make_latest: 'false'
+          generate_release_notes: true
+
+  # PR snapshot build for testers. Triggered when the detect job flags a
+  # changeset touching @codaco/interviewer-v7 AND the quality gate passed.
+  # Uses changesets snapshot mode to produce a sha-stamped pre-release
+  # version (e.g. 7.0.1-pr-42-abc1234.0), notarizes the macOS artifact,
+  # uploads to the workflow run only — no GitHub Release is created.
+  interviewer-v7-pr-snapshot:
+    needs: [detect, quality]
+    if: |
+      github.event_name == 'pull_request' &&
+      needs.detect.outputs.interviewer_v7_changeset == 'true' &&
+      needs.quality.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+            artifact_name: interviewer-v7-macos-pr-${{ github.event.pull_request.number }}
+          - os: windows-latest
+            platform: win
+            artifact_name: interviewer-v7-windows-pr-${{ github.event.pull_request.number }}
+          - os: ubuntu-latest
+            platform: linux
+            artifact_name: interviewer-v7-linux-pr-${{ github.event.pull_request.number }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          # Check out the PR head directly. pull_request events default to
+          # the synthetic merge commit; the head sha is what we encode into
+          # the snapshot version string.
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: ${{ runner.os }}-electron-${{ hashFiles('apps/interviewer-v7/package.json') }}
+          restore-keys: ${{ runner.os }}-electron-
+      - if: matrix.os == 'ubuntu-latest'
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - name: Bump versions to PR snapshot
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          short_sha=${PR_SHA:0:7}
+          tag="pr-${PR_NUMBER}-${short_sha}"
+          pnpm exec changeset version --snapshot "$tag"
+          node -p "require('./apps/interviewer-v7/package.json').version"
+      - name: Build workspace dependencies
+        run: pnpm exec turbo run build --filter=@codaco/interviewer-v7^...
+      - name: Decode App Store Connect API key
+        if: matrix.os == 'macos-latest'
+        env:
+          APPLE_API_KEY_B64: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          key_path="${RUNNER_TEMP}/AuthKey.p8"
+          printf '%s' "$APPLE_API_KEY_B64" | base64 --decode > "$key_path"
+          echo "APPLE_API_KEY=${key_path}" >> "$GITHUB_ENV"
+      - name: Build Electron app (${{ matrix.platform }})
+        working-directory: apps/interviewer-v7
+        env:
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          CSC_LINK: ${{ matrix.os == 'macos-latest' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.CSC_KEY_PASSWORD || '' }}
+        run: pnpm electron:dist:${{ matrix.platform }}
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: apps/interviewer-v7/release-builds/*
+          if-no-files-found: error
+          retention-days: 14
+
+  # Carry forward prior statuses for conditional jobs that the current
+  # push didn't touch. Push-to-push detection (see detect job)
   # deliberately re-runs a job ONLY when its package changed between
   # consecutive PR commits, but GitHub renders the latest workflow run's
-  # check list — so jobs that ran successfully on an earlier PR commit
-  # would appear "skipped" on the new tip and (depending on branch
-  # protection config) block merge.
+  # check list — so jobs that ran on an earlier PR commit would appear
+  # "skipped" on the new tip and (depending on branch protection config)
+  # block merge.
   #
   # This step republishes a check_run on the current SHA — same name,
-  # conclusion "success" — pointing at the prior run that did succeed.
-  # Branch protection sees the most-recent check_run for each name and
-  # treats the job as passing without burning runner time re-executing
-  # work that's still valid.
+  # same conclusion as the job's most recent CONCLUSIVE prior run —
+  # pointing at that run. Crucially it carries the prior verdict faithfully:
+  # a job that last FAILED for unchanged code stays red, rather than being
+  # masked by an even-older green run. Branch protection sees the
+  # most-recent check_run for each name, so a still-valid pass merges
+  # without re-running and a still-valid failure keeps blocking — both
+  # without burning runner time re-executing work that hasn't changed.
   #
   # First push on a PR: no prior runs exist, so nothing to carry; the
   # detect logic already runs the relevant jobs at least once because
@@ -762,8 +1010,17 @@ jobs:
             }
 
             // Walk prior workflow runs on this PR's source branch, most recent
-            // first, looking for the latest successful execution of each
-            // skipped job. We stop walking once every skipped job is resolved.
+            // first, looking for the latest CONCLUSIVE execution of each skipped
+            // job — the run whose verdict still describes the current code,
+            // since the job was skipped on this push precisely because its
+            // package didn't change. The first conclusive verdict we encounter
+            // is authoritative whether it passed or failed; carrying a stale
+            // success over an intervening failure would misrepresent the branch.
+            // "success", "failure" and "timed_out" are conclusive verdicts;
+            // "skipped", "cancelled" (superseded by a newer push — see the
+            // cancel-in-progress concurrency above) and in-flight runs carry no
+            // verdict, so we walk past them.
+            const CONCLUSIVE = new Set(["success", "failure", "timed_out"]);
             const remaining = new Set(skippedJobs);
             const resolutions = new Map();
             let page = 1;
@@ -798,10 +1055,9 @@ jobs:
                 });
                 for (const job of jobs.jobs) {
                   if (!remaining.has(job.name)) continue;
-                  if (job.conclusion === "success") {
-                    resolutions.set(job.name, { run, job });
-                    remaining.delete(job.name);
-                  }
+                  if (!CONCLUSIVE.has(job.conclusion)) continue;
+                  resolutions.set(job.name, { run, job });
+                  remaining.delete(job.name);
                 }
                 if (remaining.size === 0) break outer;
               }
@@ -810,26 +1066,31 @@ jobs:
             }
 
             for (const [name, { run, job }] of resolutions) {
+              const conclusion = job.conclusion;
+              const passed = conclusion === "success";
+              const outcome = passed
+                ? `ran successfully`
+                : `last ran to a \`${conclusion}\` conclusion`;
               await github.rest.checks.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 name,
                 head_sha: context.sha,
                 status: "completed",
-                conclusion: "success",
+                conclusion,
                 details_url: job.html_url,
                 output: {
                   title: `Carried forward from ${run.head_sha.substring(0, 7)}`,
                   summary: [
-                    `This job ran successfully on an earlier commit of this PR and the latest push did not touch its package, so it was not re-executed.`,
+                    `This job ${outcome} on an earlier commit of this PR and the latest push did not touch its package, so it was not re-executed. That result still applies to the current code.`,
                     ``,
                     `Source run: [#${run.run_number}](${run.html_url}) on commit \`${run.head_sha.substring(0, 7)}\`.`,
                   ].join("\n"),
                 },
               });
-              core.info(`Carried forward ${name} from run #${run.run_number} (${run.head_sha.substring(0, 7)}).`);
+              core.info(`Carried forward ${name} (${conclusion}) from run #${run.run_number} (${run.head_sha.substring(0, 7)}).`);
             }
 
             for (const name of remaining) {
-              core.info(`No prior successful run found for ${name}; leaving its skipped status as-is.`);
+              core.info(`No prior conclusive run found for ${name}; leaving its skipped status as-is.`);
             }

@@ -18,8 +18,8 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsgo --noEmit && vite build",
-    "dev": "npm run build -- --watch",
+    "build": "node ../../scripts/with-turbo.mjs vite build",
+    "dev": "node ../../scripts/with-turbo.mjs --with-deps vite build --watch",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

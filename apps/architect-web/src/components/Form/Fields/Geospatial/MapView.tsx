@@ -122,12 +122,13 @@ const MapView = ({
       open={true}
       onOpenChange={(open) => !open && close()}
       onAnimationComplete={handleAnimationComplete}
-      header={<h2 className="m-0">Initial Map View</h2>}
+      title="Initial Map View"
       footer={
         <>
-          <Button color="platinum" onClick={close}>
-            Cancel
-          </Button>
+          <Dialog.Close
+            nativeButton={false}
+            render={<Button color="platinum">Cancel</Button>}
+          />
           {isMapChanged && (
             <Button
               color="sea-green"

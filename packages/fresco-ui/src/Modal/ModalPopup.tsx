@@ -66,6 +66,7 @@ type ModalPopupProps = BaseModalPopupProps &
 export default function ModalPopup({
   children,
   className,
+  style,
   ...props
 }: ModalPopupProps) {
   const hasLayoutId = 'layoutId' in props && props.layoutId !== undefined;
@@ -136,7 +137,7 @@ export default function ModalPopup({
           className={className}
           {...props}
           {...animation}
-          style={{ borderRadius: 28 }}
+          style={{ borderRadius: 28, ...style }}
         />
       }
     >

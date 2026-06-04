@@ -2,9 +2,12 @@ import JSZip from 'jszip';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
-import { assetDb } from './assetDB';
+import { getAssetById } from './assetUtils';
 
-async function getAllProtocolAssets(protocol: CurrentProtocol) {
+async function getAllProtocolAssets(
+  protocol: CurrentProtocol,
+  protocolId?: string,
+) {
   const assets: Array<{ id: string; source: string; data: Blob | string }> = [];
 
   if (!protocol.assetManifest) {
@@ -14,41 +17,47 @@ async function getAllProtocolAssets(protocol: CurrentProtocol) {
   for (const [assetId, assetDefinition] of Object.entries(
     protocol.assetManifest,
   )) {
-    try {
-      const assetData = await assetDb.assets.get(assetId);
+    // apikey assets have no file data to bundle (and no `source`).
+    if (assetDefinition.type === 'apikey') {
+      continue;
+    }
 
-      if (!assetData) {
-        continue;
-      }
+    const assetData = await getAssetById(assetId, protocolId);
 
-      if (typeof assetData.data === 'string') {
-        continue;
-      }
+    // A missing asset means an unresolvable scope or stranded manifest entry;
+    // bundling it silently would produce a broken .netcanvas, so fail loudly.
+    if (!assetData) {
+      throw new Error(
+        `Cannot resolve asset "${assetId}" for export. Pass the owning ` +
+          `protocolId or set an active protocol scope before bundling.`,
+      );
+    }
 
-      // Skip apikey type assets as they don't have a source property
-      if (assetDefinition.type === 'apikey') {
-        continue;
-      }
+    if (typeof assetData.data === 'string') {
+      continue;
+    }
 
-      assets.push({
-        id: assetId,
-        source: assetDefinition.source,
-        data: assetData.data,
-      });
-    } catch (_error) {}
+    assets.push({
+      id: assetId,
+      source: assetDefinition.source,
+      data: assetData.data,
+    });
   }
 
   return assets;
 }
 
-async function bundleProtocol(protocol: CurrentProtocol): Promise<Blob> {
+async function bundleProtocol(
+  protocol: CurrentProtocol,
+  protocolId?: string,
+): Promise<Blob> {
   const zip = new JSZip();
 
   const protocolJson = JSON.stringify(protocol, null, 2);
   zip.file('protocol.json', protocolJson);
 
   if (protocol.assetManifest) {
-    const assets = await getAllProtocolAssets(protocol);
+    const assets = await getAllProtocolAssets(protocol, protocolId);
 
     const assetsFolder = zip.folder('assets');
     if (assetsFolder) {
@@ -69,9 +78,10 @@ async function bundleProtocol(protocol: CurrentProtocol): Promise<Blob> {
 export async function downloadProtocolAsNetcanvas(
   protocol: CurrentProtocol,
   protocolName?: string,
+  protocolId?: string,
 ): Promise<void> {
   try {
-    const blob = await bundleProtocol(protocol);
+    const blob = await bundleProtocol(protocol, protocolId);
 
     // build local timestamp YYYY-MM-DD_HH-MM
     const now = new Date();

@@ -95,7 +95,10 @@ export type WizardDialog = BaseDialog & {
   confirmCancel?: {
     title: string;
     description: string;
+    primaryLabel?: string;
+    cancelLabel?: string;
   };
+  cancelLabel?: string;
 };
 
 // Helper type to extract return type from a dialog
@@ -230,8 +233,15 @@ function WizardDialogRenderer({
         description: dialog.confirmCancel.description,
         intent: 'destructive',
         actions: {
-          primary: { label: 'Exit and lose progress', value: true },
-          cancel: { label: 'Continue editing', value: false },
+          primary: {
+            label:
+              dialog.confirmCancel.primaryLabel ?? 'Exit and lose progress',
+            value: true,
+          },
+          cancel: {
+            label: dialog.confirmCancel.cancelLabel ?? 'Continue editing',
+            value: false,
+          },
         },
       });
 
@@ -261,20 +271,26 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
   const openDialog = useCallback(
     <D extends AnyDialog>(dialogProps: D): Promise<DialogReturnType<D>> => {
       return new Promise((resolveCallback) => {
-        flushSync(() =>
-          setDialogs((prevDialogs) => [
-            ...prevDialogs,
-            {
-              onConfirmHandler: null,
-              ...dialogProps,
-              id: dialogProps.id ?? generatePublicId(),
-              resolveCallback,
-              open: true,
-              abortController: null,
-              error: null,
-            } as DialogState,
-          ]),
-        );
+        // Defer to a microtask so callers in React lifecycle methods (e.g.
+        // useEffect mount handlers) don't trigger "flushSync was called from
+        // inside a lifecycle method" — flushSync would otherwise execute while
+        // the commit phase is still running.
+        queueMicrotask(() => {
+          flushSync(() =>
+            setDialogs((prevDialogs) => [
+              ...prevDialogs,
+              {
+                onConfirmHandler: null,
+                ...dialogProps,
+                id: dialogProps.id ?? generatePublicId(),
+                resolveCallback,
+                open: true,
+                abortController: null,
+                error: null,
+              } as DialogState,
+            ]),
+          );
+        });
       });
     },
     [],

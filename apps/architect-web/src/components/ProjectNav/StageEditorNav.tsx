@@ -1,11 +1,13 @@
-import { Check, Eye, Loader2, X } from 'lucide-react';
+import { Check, Eye, Loader2, Redo, Undo, X } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { type ReactNode, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
 import Issues, { type IssuesHandle } from '~/components/Issues';
 import Tooltip from '~/components/NewComponents/Tooltip';
+import { useScopedUndoRedo } from '~/hooks/useScopedUndoRedo';
 import { Button } from '~/lib/legacy-ui/components';
+import { IconButton } from '~/lib/legacy-ui/components/Button';
 import { getProtocolName } from '~/selectors/protocol';
 
 import ActionToolbar from './ActionToolbar';
@@ -34,6 +36,7 @@ const StageEditorNav = ({
   hasUnsavedChanges,
 }: StageEditorNavProps) => {
   const protocolName = useSelector(getProtocolName);
+  const { canUndo, canRedo, undo, redo } = useScopedUndoRedo();
   const issuesRef = useRef<IssuesHandle>(null);
   const shouldReduceMotion = useReducedMotion();
   const layout = !shouldReduceMotion;
@@ -61,6 +64,20 @@ const StageEditorNav = ({
           <Button onClick={onCancel} color="platinum" icon={<X />}>
             Cancel
           </Button>
+          <IconButton
+            variant="text"
+            icon={<Undo />}
+            onClick={undo}
+            disabled={!canUndo}
+            aria-label="Undo"
+          />
+          <IconButton
+            variant="text"
+            icon={<Redo />}
+            onClick={redo}
+            disabled={!canRedo}
+            aria-label="Redo"
+          />
           <AnimatePresence initial={false}>
             {hasUnsavedChanges && (
               <motion.div

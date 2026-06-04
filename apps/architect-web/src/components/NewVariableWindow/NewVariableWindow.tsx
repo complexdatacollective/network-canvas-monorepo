@@ -111,8 +111,8 @@ export default function NewVariableWindow({
     <InlineEditScreen
       show={show}
       form={form}
-      onSubmit={(values: unknown) =>
-        handleCreateNewVariable(values as Record<string, unknown>)
+      onSubmit={(formValues: unknown) =>
+        handleCreateNewVariable(formValues as Record<string, unknown>)
       }
       onCancel={onCancel}
       initialValues={mergedInitialValues ?? undefined}

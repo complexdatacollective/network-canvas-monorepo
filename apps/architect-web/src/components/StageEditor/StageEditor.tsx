@@ -2,7 +2,7 @@ import { omit } from 'es-toolkit/compat';
 import { Settings } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { getFormValues, isDirty as isFormDirty, isInvalid } from 'redux-form';
+import { getFormValues, isInvalid } from 'redux-form';
 import { v1 as uuid } from 'uuid';
 import { useLocation } from 'wouter';
 
@@ -30,9 +30,12 @@ import {
 } from '~/ducks/modules/app';
 import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
 import { actionCreators as stageActions } from '~/ducks/modules/protocol/stages';
+import { resetDraft } from '~/ducks/modules/stageEditorDraft';
 import type { RootState } from '~/ducks/store';
+import { useStageEditorKeyboard } from '~/hooks/useStageEditorKeyboard';
 import { IconButton } from '~/lib/legacy-ui/components/Button';
 import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
+import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { ensureError } from '~/utils/ensureError';
 
 import { formName } from './configuration';
@@ -76,6 +79,7 @@ const StageEditor = (props: StageEditorProps) => {
   const { id = null, type, insertAtIndex } = props;
 
   const dispatch = useAppDispatch();
+  useStageEditorKeyboard();
   const [, setLocation] = useLocation();
 
   // Get stage metadata from Redux state
@@ -90,15 +94,17 @@ const StageEditor = (props: StageEditorProps) => {
   const initialValues = stage || { ...template, type: interfaceType };
 
   // Get form state
-  const hasUnsavedChanges = useSelector((state: RootState) =>
-    isFormDirty(formName)(state),
-  );
+  const hasUnsavedChanges = useSelector(getStageDraftDirty);
   const formValues = useSelector((state: RootState) =>
     getFormValues(formName)(state),
   ) as Stage | undefined;
   const isStageInvalid = useSelector((state: RootState) =>
     isInvalid(formName)(state),
   );
+
+  // The draft baseline is seeded by the stageEditorDraft listener on
+  // redux-form INITIALIZE (which fires on mount and on `id` change via
+  // enableReinitialize), so no mount effect is needed here.
 
   // Preview state
   const [isOpeningPreview, setIsOpeningPreview] = useState(false);
@@ -121,6 +127,7 @@ const StageEditor = (props: StageEditorProps) => {
         );
       }
 
+      dispatch(resetDraft(null));
       setLocation('/protocol');
     },
     [id, insertAtIndex, setLocation, dispatch],
@@ -129,6 +136,7 @@ const StageEditor = (props: StageEditorProps) => {
   // Cancel handler with unsaved changes confirmation
   const handleCancel = useCallback((): boolean => {
     if (!hasUnsavedChanges) {
+      dispatch(resetDraft(null));
       setLocation('/protocol');
       return true;
     }
@@ -142,6 +150,7 @@ const StageEditor = (props: StageEditorProps) => {
           'You have unsaved changes. Are you sure you want to leave without saving?',
         confirmLabel: 'Leave Without Saving',
         onConfirm: () => {
+          dispatch(resetDraft(null));
           setLocation('/protocol');
         },
       }),

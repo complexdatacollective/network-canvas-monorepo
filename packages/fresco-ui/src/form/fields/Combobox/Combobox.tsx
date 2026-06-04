@@ -168,11 +168,12 @@ function ComboboxField(props: ComboboxFieldProps) {
               <Surface
                 level="popover"
                 spacing="xs"
+                shadow="lg"
                 noContainer
                 className={cx(
                   'flex flex-col',
                   'min-w-(--anchor-width)',
-                  'gap-2',
+                  'gap-4',
                 )}
               />
             }
@@ -180,12 +181,12 @@ function ComboboxField(props: ComboboxFieldProps) {
             {showSearch && (
               <Combobox.Input
                 placeholder={searchPlaceholder}
-                render={({ onChange, ...rest }) => {
+                render={({ onChange: renderOnChange, ...renderProps }) => {
                   // base-ui's render prop types (HTMLProps) are structurally
                   // incompatible with InputField's types (e.g. value, onBlur,
                   // aria-required differ) but semantically correct at runtime.
                   const inputFieldProps =
-                    rest as unknown as React.ComponentPropsWithRef<
+                    renderProps as unknown as React.ComponentPropsWithRef<
                       typeof InputField
                     >;
                   return (
@@ -194,18 +195,20 @@ function ComboboxField(props: ComboboxFieldProps) {
                       size="sm"
                       prefixComponent={<SearchIcon />}
                       className="w-full"
-                      nativeOnChange={onChange}
+                      nativeOnChange={renderOnChange}
                     />
                   );
                 }}
               />
             )}
-            <Combobox.Empty className="text-surface-popover-contrast/50 text-center text-sm italic empty:hidden">
+            <Combobox.Empty className="text-center text-sm text-current/50 italic empty:hidden">
               {emptyMessage}
             </Combobox.Empty>
             <Combobox.List
-              className="inset-surface max-h-64 overflow-hidden rounded-sm has-data-empty:hidden"
-              render={<ScrollArea viewportClassName="px-2" fade={false} />}
+              className="max-h-64 overflow-hidden has-data-empty:hidden"
+              render={
+                <ScrollArea viewportClassName="px-2 flex flex-col gap-1 " />
+              }
             >
               {(option: ComboboxOption) => (
                 <Combobox.Item

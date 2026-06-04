@@ -177,19 +177,24 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
       },
     ];
 
-    const props = sortOptions.sortableProperties?.map(({ variable, label }) => {
-      const varUuid = convertNamesToUUIDs(nodeVariables, [variable])[0]!;
-      const varDef = nodeVariables[varUuid];
-      const varNcType = mapNCType(varDef?.type);
+    const mappedSortableProperties = sortOptions.sortableProperties?.map(
+      ({ variable, label }) => {
+        const varUuid = convertNamesToUUIDs(nodeVariables, [variable])[0]!;
+        const varDef = nodeVariables[varUuid];
+        const varNcType = mapNCType(varDef?.type);
 
-      return {
-        property: ['data', entityAttributesProperty, varUuid],
-        label,
-        type: toCollectionSortType(varNcType),
-      };
-    });
+        return {
+          property: ['data', entityAttributesProperty, varUuid],
+          label,
+          type: toCollectionSortType(varNcType),
+        };
+      },
+    );
 
-    return { initialSortRules: rules, sortableProperties: props };
+    return {
+      initialSortRules: rules,
+      sortableProperties: mappedSortableProperties,
+    };
   }, [sortOptions, nodeVariables]);
 
   // --- Encryption detection ---

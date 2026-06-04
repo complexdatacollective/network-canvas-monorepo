@@ -4,7 +4,10 @@ import type { Reducer, UnknownAction } from '@reduxjs/toolkit';
 import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import createTimeline, { timelineActions } from '../timeline';
+import createTimeline, {
+  createTimelineActions,
+  timelineActions,
+} from '../timeline';
 
 vi.mock('uuid');
 
@@ -32,8 +35,10 @@ const defaultReducer: Reducer<DummyState> = vi.fn(
 const getRewindableReducer = (
   reducer: Reducer<DummyState> = defaultReducer,
   options: {
+    name?: string;
     limit?: number;
     exclude?: (action: UnknownAction) => boolean;
+    getPath?: () => string;
   } = {},
 ) => createTimeline(reducer, options);
 
@@ -92,13 +97,87 @@ describe('timeline middleware', () => {
       expect(nextState.past.length).toBe(0);
       expect(nextState.timeline.length).toBe(1);
     });
+
+    it('timeline entries are locus objects with id and path', () => {
+      const reducer = getRewindableReducer(defaultReducer, {
+        getPath: () => '/my-path',
+      });
+
+      const nextState = applyTimes(3, reducer);
+
+      for (const entry of nextState.timeline) {
+        expect(entry).toEqual(
+          expect.objectContaining({
+            id: expect.any(String),
+            path: '/my-path',
+          }),
+        );
+      }
+    });
+
+    it('migrates legacy string timeline entries to locus objects', () => {
+      // Simulate pre-upgrade persisted state where timeline/futureTimeline
+      // entries are bare uuid strings rather than Locus objects.
+      const legacyId1 = 'legacy-id-1';
+      const legacyId2 = 'legacy-id-2';
+      const legacyFutureId = 'legacy-future-id';
+
+      // Dispatch an excluded action so the reducer does not treat it as a new
+      // timeline point (which would otherwise clear futureTimeline before we
+      // can assert that its entries were migrated).
+      const excludedType = 'EXCLUDED';
+      const reducer = getRewindableReducer(defaultReducer, {
+        exclude: (action) => action.type === excludedType,
+      });
+
+      const persistedState = {
+        past: [
+          { dummyState: true, randomProperty: 'a' },
+          { dummyState: true, randomProperty: 'b' },
+        ],
+        present: { dummyState: true, randomProperty: 'c' },
+        timeline: [legacyId1, legacyId2],
+        future: [],
+        futureTimeline: [legacyFutureId],
+      } as unknown as ReturnType<typeof reducer>;
+
+      const nextState = reducer(persistedState, { type: excludedType });
+
+      // Each timeline entry is now a Locus object with the original string as
+      // its id and an empty path.
+      expect(nextState.timeline).toEqual(
+        expect.arrayContaining([
+          { id: legacyId1, path: '' },
+          { id: legacyId2, path: '' },
+        ]),
+      );
+      expect(nextState.futureTimeline).toEqual(
+        expect.arrayContaining([{ id: legacyFutureId, path: '' }]),
+      );
+      for (const entry of [
+        ...nextState.timeline,
+        ...nextState.futureTimeline,
+      ]) {
+        expect(typeof entry).toBe('object');
+        expect(entry.path).toBe('');
+      }
+
+      // jump() by the original string id now finds the entry and reverts.
+      const jumpState = reducer(nextState, timelineActions.jump(legacyId1));
+
+      const jumpIndex = nextState.timeline.findIndex((e) => e.id === legacyId1);
+      expect(jumpState.timeline).toEqual(
+        nextState.timeline.slice(0, jumpIndex + 1),
+      );
+      expect(jumpState.present).toEqual(nextState.past[jumpIndex]);
+    });
   });
 
   describe('jump() action', () => {
     it('can revert to a specific point on the timeline', () => {
       const nextState = applyTimes(10, rewindableReducer);
 
-      const timelineEntry = nextState.timeline[4] ?? '';
+      const timelineEntry = nextState.timeline[4]?.id ?? '';
       const rollbackState = rewindableReducer(
         nextState,
         timelineActions.jump(timelineEntry),
@@ -140,6 +219,72 @@ describe('timeline middleware', () => {
       expect(nextState.timeline.length).toBe(10);
       expect(resetState.timeline.length).toBe(1);
       expect(resetState.past.length).toBe(0);
+    });
+
+    it('reset() with no payload recomputes present via the reducer', () => {
+      const nextState = applyTimes(10, rewindableReducer);
+
+      const resetState = rewindableReducer(nextState, timelineActions.reset());
+
+      // defaultReducer always returns dummyState: true with a new random prop
+      expect(resetState.present).toEqual(
+        expect.objectContaining({ dummyState: true }),
+      );
+      expect(resetState.present).not.toBe(nextState.present);
+      expect(resetState.past.length).toBe(0);
+      expect(resetState.future.length).toBe(0);
+      expect(resetState.futureTimeline.length).toBe(0);
+      expect(resetState.timeline.length).toBe(1);
+    });
+
+    it('reset(payload) seeds present with payload and clears history', () => {
+      const nextState = applyTimes(10, rewindableReducer);
+
+      const payload: DummyState = {
+        dummyState: false,
+        randomProperty: 'seeded',
+      };
+
+      const resetState = rewindableReducer(
+        nextState,
+        timelineActions.reset(payload),
+      );
+
+      expect(resetState.present).toEqual(payload);
+      expect(resetState.past.length).toBe(0);
+      expect(resetState.future.length).toBe(0);
+      expect(resetState.futureTimeline.length).toBe(0);
+      expect(resetState.timeline.length).toBe(1);
+    });
+  });
+
+  describe('createTimelineActions()', () => {
+    it('namespaces action types by name', () => {
+      const actions = createTimelineActions('stageEditorDraft');
+
+      expect(actions.undo().type).toBe('stageEditorDraft/undo');
+      expect(actions.redo().type).toBe('stageEditorDraft/redo');
+      expect(actions.jump('x').type).toBe('stageEditorDraft/jump');
+      expect(actions.reset().type).toBe('stageEditorDraft/reset');
+    });
+
+    it('an instance only responds to its own scoped actions', () => {
+      const reducer = getRewindableReducer(defaultReducer, {
+        name: 'stageEditorDraft',
+      });
+
+      const nextState = applyTimes(5, reducer);
+
+      // A foreign-scoped undo is NOT treated as an undo by this instance: it
+      // does not shrink history (past does not decrease by one).
+      const ignored = reducer(nextState, timelineActions.undo());
+      expect(ignored.past.length).not.toBe(nextState.past.length - 1);
+
+      // Its own scoped undo performs the undo.
+      const scoped = createTimelineActions('stageEditorDraft');
+      const undone = reducer(nextState, scoped.undo());
+      expect(undone.past.length).toBe(nextState.past.length - 1);
+      expect(undone.timeline.length).toBe(nextState.timeline.length - 1);
     });
   });
 

@@ -74,7 +74,7 @@ function VariantsDemo() {
 
     add({
       ...messages[variant],
-      type: variant,
+      variant,
     });
   };
 
@@ -126,7 +126,7 @@ function MultipleToastsDemo() {
         add({
           title: `${variant.charAt(0).toUpperCase() + variant.slice(1)} Toast ${countRef.current}`,
           description: `This is a ${variant} notification.`,
-          type: variant,
+          variant,
         });
       }, index * 300);
     });
@@ -177,7 +177,7 @@ function LoadingDemo() {
         update(id, {
           title: 'Export complete!',
           description: 'Your download should start automatically.',
-          type: 'success',
+          variant: 'success',
           timeout: 5000,
         });
       }

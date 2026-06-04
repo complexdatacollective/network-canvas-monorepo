@@ -34,7 +34,7 @@ function AdditionalParentFields({ index }: { index: number }) {
   });
 
   return (
-    <Surface level={1} spacing="sm">
+    <Surface level={1} spacing="sm" shadow="sm">
       <FieldNamespace prefix={`additional-parent[${String(index)}]`}>
         <Heading level="h3">Additional Parent {index + 1}</Heading>
         <Field

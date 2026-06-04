@@ -1,6 +1,6 @@
 {
   "name": "@codaco/fresco-ui",
-  "version": "2.10.2",
+  "version": "2.11.2",
   "description": "Fresco UI components, styles, and utilities",
   "license": "MIT",
   "repository": {
@@ -89,8 +89,8 @@
       "default": "./dist/Toast.js"
     },
     "./Modal": {
-      "types": "./dist/Modal/Modal.d.ts",
-      "default": "./dist/Modal/Modal.js"
+      "types": "./dist/Modal/index.d.ts",
+      "default": "./dist/Modal/index.js"
     },
     "./Modal/ModalPopup": {
       "types": "./dist/Modal/ModalPopup.d.ts",
@@ -420,42 +420,142 @@
       "types": "./dist/form/utils/ymd.d.ts",
       "default": "./dist/form/utils/ymd.js"
     },
-    "./styles.css": "./dist/styles.css"
+    "./styles.css": "./dist/styles.css",
+    "./DataTable/DataTable": {
+      "types": "./dist/DataTable/DataTable.d.ts",
+      "default": "./dist/DataTable/DataTable.js"
+    },
+    "./DataTable/DataTablePagination": {
+      "types": "./dist/DataTable/DataTablePagination.d.ts",
+      "default": "./dist/DataTable/DataTablePagination.js"
+    },
+    "./DataTable/DataTableToolbar": {
+      "types": "./dist/DataTable/DataTableToolbar.d.ts",
+      "default": "./dist/DataTable/DataTableToolbar.js"
+    },
+    "./DataTable/DataTableSkeleton": {
+      "types": "./dist/DataTable/DataTableSkeleton.d.ts",
+      "default": "./dist/DataTable/DataTableSkeleton.js"
+    },
+    "./DataTable/DataTableFloatingBar": {
+      "types": "./dist/DataTable/DataTableFloatingBar.d.ts",
+      "default": "./dist/DataTable/DataTableFloatingBar.js"
+    },
+    "./DataTable/DataTableFacetedFilter": {
+      "types": "./dist/DataTable/DataTableFacetedFilter.d.ts",
+      "default": "./dist/DataTable/DataTableFacetedFilter.js"
+    },
+    "./DataTable/ColumnHeader": {
+      "types": "./dist/DataTable/ColumnHeader.d.ts",
+      "default": "./dist/DataTable/ColumnHeader.js"
+    },
+    "./DataTable/SelectAllHeader": {
+      "types": "./dist/DataTable/SelectAllHeader.d.ts",
+      "default": "./dist/DataTable/SelectAllHeader.js"
+    },
+    "./DataTable/types": {
+      "types": "./dist/DataTable/types.d.ts",
+      "default": "./dist/DataTable/types.js"
+    },
+    "./DataTable/filters/types": {
+      "types": "./dist/DataTable/filters/types.d.ts",
+      "default": "./dist/DataTable/filters/types.js"
+    },
+    "./DataTable/filters/filterFns": {
+      "types": "./dist/DataTable/filters/filterFns.d.ts",
+      "default": "./dist/DataTable/filters/filterFns.js"
+    },
+    "./DataTable/filters/BooleanFilter": {
+      "types": "./dist/DataTable/filters/BooleanFilter.d.ts",
+      "default": "./dist/DataTable/filters/BooleanFilter.js"
+    },
+    "./DataTable/filters/DateFilter": {
+      "types": "./dist/DataTable/filters/DateFilter.d.ts",
+      "default": "./dist/DataTable/filters/DateFilter.js"
+    },
+    "./DataTable/filters/FacetedFilter": {
+      "types": "./dist/DataTable/filters/FacetedFilter.d.ts",
+      "default": "./dist/DataTable/filters/FacetedFilter.js"
+    },
+    "./DataTable/filters/OperatorFilter": {
+      "types": "./dist/DataTable/filters/OperatorFilter.d.ts",
+      "default": "./dist/DataTable/filters/OperatorFilter.js"
+    },
+    "./DataTable/filters/RangeFilter": {
+      "types": "./dist/DataTable/filters/RangeFilter.d.ts",
+      "default": "./dist/DataTable/filters/RangeFilter.js"
+    },
+    "./DataTable/filters/TextFilter": {
+      "types": "./dist/DataTable/filters/TextFilter.d.ts",
+      "default": "./dist/DataTable/filters/TextFilter.js"
+    },
+    "./Modal/ModalBackdrop": {
+      "types": "./dist/Modal/ModalBackdrop.d.ts",
+      "default": "./dist/Modal/ModalBackdrop.js"
+    },
+    "./dialogs/DialogPopup": {
+      "types": "./dist/dialogs/DialogPopup.d.ts",
+      "default": "./dist/dialogs/DialogPopup.js"
+    },
+    "./dialogs/DialogTrigger": {
+      "types": "./dist/dialogs/DialogTrigger.d.ts",
+      "default": "./dist/dialogs/DialogTrigger.js"
+    },
+    "./dnd/DndStoreProvider": {
+      "types": "./dist/dnd/DndStoreProvider.d.ts",
+      "default": "./dist/dnd/DndStoreProvider.js"
+    },
+    "./form/FieldErrors": {
+      "types": "./dist/form/FieldErrors.d.ts",
+      "default": "./dist/form/FieldErrors.js"
+    },
+    "./form/FormErrors": {
+      "types": "./dist/form/FormErrors.d.ts",
+      "default": "./dist/form/FormErrors.js"
+    },
+    "./form/Hint": {
+      "types": "./dist/form/Hint.d.ts",
+      "default": "./dist/form/Hint.js"
+    },
+    "./form/hooks/useForm": {
+      "types": "./dist/form/hooks/useForm.d.ts",
+      "default": "./dist/form/hooks/useForm.js"
+    }
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "vite build",
-    "dev": "vite build --watch",
+    "build": "node ../../scripts/with-turbo.mjs vite build",
+    "dev": "node ../../scripts/with-turbo.mjs --with-deps vite build --watch",
     "typecheck": "tsc --build --noEmit && tsc -p tsconfig.node.json --noEmit",
     "test": "vitest run --project=unit",
     "test:unit": "vitest run --project=unit",
     "test:storybook": "vitest run --project=storybook",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
+    "storybook": "node ../../scripts/with-turbo.mjs --watch-deps storybook dev -p 6006",
+    "build-storybook": "node ../../scripts/with-turbo.mjs storybook build",
     "chromatic": "chromatic --exit-once-uploaded",
     "prepublishOnly": "pnpm build",
     "clean": "rm -rf .turbo node_modules dist"
   },
   "dependencies": {
     "@radix-ui/react-slot": "catalog:",
-    "@tiptap/core": "^3.23.4",
-    "@tiptap/extension-bullet-list": "^3.23.4",
-    "@tiptap/extension-heading": "^3.23.4",
-    "@tiptap/extension-ordered-list": "^3.23.4",
-    "@tiptap/extension-paragraph": "^3.23.4",
-    "@tiptap/pm": "^3.23.4",
-    "@tiptap/react": "^3.23.4",
-    "@tiptap/starter-kit": "^3.23.4",
+    "@tiptap/core": "^3.24.0",
+    "@tiptap/extension-bullet-list": "^3.24.0",
+    "@tiptap/extension-heading": "^3.24.0",
+    "@tiptap/extension-ordered-list": "^3.24.0",
+    "@tiptap/extension-paragraph": "^3.24.0",
+    "@tiptap/pm": "^3.24.0",
+    "@tiptap/react": "^3.24.0",
+    "@tiptap/starter-kit": "^3.24.0",
     "comlink": "^4.4.2",
     "cva": "1.0.0-beta.4",
     "es-toolkit": "catalog:",
-    "fuse.js": "^7.3.0",
-    "immer": "catalog:",
+    "fuse.js": "^7.4.0",
+    "immer": "^11.1.8",
     "lucide-react": "catalog:",
     "nanoid": "^5.1.11",
-    "react-aria-components": "^1.17.0",
+    "react-aria-components": "^1.18.0",
     "react-best-merge-refs": "^1.0.2",
     "react-markdown": "^10.1.0",
     "rehype-raw": "^7.0.0",
@@ -465,18 +565,19 @@
     "usehooks-ts": "^3.1.1"
   },
   "devDependencies": {
-    "@base-ui/react": "catalog:",
+    "@base-ui/react": "^1.5.0",
     "@chromatic-com/storybook": "catalog:",
     "@codaco/protocol-validation": "workspace:*",
     "@codaco/tsconfig": "workspace:*",
     "@faker-js/faker": "catalog:",
-    "@storybook/addon-a11y": "^10.4.0",
-    "@storybook/addon-docs": "^10.4.0",
-    "@storybook/addon-vitest": "^10.4.0",
-    "@storybook/react-vite": "^10.4.0",
+    "@storybook/addon-a11y": "^10.4.1",
+    "@storybook/addon-docs": "^10.4.1",
+    "@storybook/addon-vitest": "^10.4.1",
+    "@storybook/react-vite": "^10.4.1",
     "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-table": "catalog:",
     "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.0",
+    "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
@@ -487,8 +588,8 @@
     "chromatic": "catalog:",
     "jsdom": "^29.1.1",
     "playwright": "^1.60.0",
-    "storybook": "^10.4.0",
-    "tinyglobby": "^0.2.16",
+    "storybook": "^10.4.1",
+    "tinyglobby": "^0.2.17",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:",
@@ -498,6 +599,7 @@
     "@base-ui/react": "^1.4.0",
     "@codaco/shared-consts": "5.0.0",
     "@codaco/tailwind-config": "workspace:^",
+    "@tanstack/react-table": "catalog:",
     "motion": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

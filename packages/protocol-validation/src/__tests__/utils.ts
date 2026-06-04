@@ -75,7 +75,7 @@ export async function downloadAndDecryptProtocols(): Promise<
 
   // The test protocols are stored in an asset called "protocols.tar.gz.enc" attached to each release
   const asset = release.assets.find(
-    (asset) => asset.name === 'protocols.tar.gz.enc',
+    (releaseAsset) => releaseAsset.name === 'protocols.tar.gz.enc',
   );
 
   if (!asset) {

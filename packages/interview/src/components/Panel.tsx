@@ -76,6 +76,7 @@ const Panel = ({
     <Surface
       className={panelClasses}
       spacing="none"
+      shadow="none"
       noContainer
       data-testid={testId}
     >

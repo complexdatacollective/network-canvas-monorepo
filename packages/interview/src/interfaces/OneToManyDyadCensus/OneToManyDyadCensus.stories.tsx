@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
 import SuperJSON from 'superjson';
 
+import { SyntheticInterview } from '@codaco/protocol-utilities';
 import StoryInterviewShell from '~/.storybook/StoryInterviewShell';
-import { SyntheticInterview } from '~/synthetic/SyntheticInterview';
 
 type StoryArgs = {
   initialNodeCount: number;

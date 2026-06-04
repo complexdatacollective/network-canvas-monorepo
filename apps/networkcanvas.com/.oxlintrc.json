@@ -1,12 +1,19 @@
 {
-  "extends": [
-    "../../.oxlintrc.json",
-    "../../tooling/oxlint/react.json",
-    "../../tooling/oxlint/tailwind.json"
-  ],
+  "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
   "plugins": ["nextjs"],
+  "jsPlugins": ["oxlint-tailwindcss"],
+  "settings": {
+    "tailwindcss": {
+      "entryPoint": "apps/networkcanvas.com/app/globals.css"
+    }
+  },
   "rules": {
     "nextjs/no-img-element": "off",
-    "import/no-unassigned-import": "off"
+    "import/no-unassigned-import": "off",
+    "tailwindcss/no-unknown-classes": "warn",
+    "tailwindcss/no-duplicate-classes": "error",
+    "tailwindcss/no-conflicting-classes": "warn",
+    "tailwindcss/no-unnecessary-whitespace": "error",
+    "tailwindcss/enforce-canonical": "warn"
   }
 }

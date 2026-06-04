@@ -74,7 +74,12 @@ const Asset = ({ id, size = null }: AssetProps) => {
             [
               'Preview',
               <div key="video-preview" className={mediaClass}>
-                <video src={url} ref={videoRef} preload="auto">
+                <video
+                  src={url}
+                  ref={videoRef}
+                  preload="auto"
+                  aria-label={name}
+                >
                   <source src={`${url}#t=1`} type="video/mp4" />
                   <track kind="captions" srcLang="en" label="English" />
                 </video>
@@ -94,7 +99,12 @@ const Asset = ({ id, size = null }: AssetProps) => {
             ['Duration', state.duration],
             [
               'Preview',
-              <audio key="audio-preview" src={url} ref={audioRef}>
+              <audio
+                key="audio-preview"
+                src={url}
+                ref={audioRef}
+                aria-label={name}
+              >
                 <track kind="captions" srcLang="en" label="English" />
               </audio>,
             ],

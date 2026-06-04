@@ -116,7 +116,7 @@ describe('DialogProvider', () => {
       });
     });
 
-    it('should open a choice dialog', () => {
+    it('should open a choice dialog', async () => {
       const { result } = renderHook(() => useDialog(), { wrapper });
 
       let dialogPromise: Promise<unknown>;
@@ -136,6 +136,13 @@ describe('DialogProvider', () => {
 
       // Verify the promise was created
       expect(dialogPromise!).toBeInstanceOf(Promise);
+
+      // openDialog defers its setDialogs update to a microtask, so the dialog
+      // mounts after this synchronous act() exits. Flush that update inside an
+      // act() scope so the resulting render isn't reported as an un-acted update.
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
     });
   });
 

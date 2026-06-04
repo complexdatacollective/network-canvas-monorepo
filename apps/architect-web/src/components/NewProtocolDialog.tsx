@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Row, Section } from '~/components/EditorLayout';
 import Text from '~/components/Form/Fields/Text';
@@ -9,25 +9,32 @@ type NewProtocolDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: { name: string }) => void;
+  title?: string;
+  initialName?: string;
 };
 
 const NewProtocolDialog = ({
   open,
   onOpenChange,
   onSubmit,
+  title = 'Create New Protocol',
+  initialName = '',
 }: NewProtocolDialogProps) => {
-  const [name, setName] = useState('');
+  const [name, setName] = useState(initialName);
+
+  // The dialog stays mounted, so reseed the field from `initialName` each time
+  // it opens (different templates prefill different default names).
+  useEffect(() => {
+    if (open) {
+      setName(initialName);
+    }
+  }, [open, initialName]);
 
   const handleConfirm = useCallback(() => {
     if (!name.trim()) return;
     onSubmit({ name: name.trim() });
     setName('');
   }, [name, onSubmit]);
-
-  const handleCancel = useCallback(() => {
-    setName('');
-    onOpenChange(false);
-  }, [onOpenChange]);
 
   const handleOpenChange = useCallback(
     (newOpen: boolean) => {
@@ -45,12 +52,13 @@ const NewProtocolDialog = ({
     <Dialog
       open={open}
       onOpenChange={handleOpenChange}
-      header={<h2 className="m-0">Create New Protocol</h2>}
+      title={title}
       footer={
         <>
-          <Button onClick={handleCancel} color="platinum">
-            Cancel
-          </Button>
+          <Dialog.Close
+            nativeButton={false}
+            render={<Button color="platinum">Cancel</Button>}
+          />
           <Button onClick={handleConfirm} color="sea-green" disabled={!isValid}>
             Create Protocol
           </Button>

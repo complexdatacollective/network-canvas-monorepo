@@ -62,12 +62,21 @@ describe('useGeospatialSearch', () => {
     vi.unstubAllGlobals();
   });
 
+  // handleQueryChange's debounced fetch awaits suggest(), so its trailing
+  // setSuggestions/setIsLoading run in a microtask after the synchronous act()
+  // returns. Draining that microtask inside act() keeps those updates wrapped
+  // rather than firing outside act() once the test ends.
+  const flushPendingSuggest = () =>
+    act(async () => {
+      await Promise.resolve();
+    });
+
   // -------------------------------------------------------------------------
   // Session token stability
   // -------------------------------------------------------------------------
 
   describe('session token stability', () => {
-    it('uses the same session token for multiple suggest() calls within one session', () => {
+    it('uses the same session token for multiple suggest() calls within one session', async () => {
       const { result } = renderHook(() =>
         useGeospatialSearch({ accessToken: 'test-token', map: mockMap }),
       );
@@ -86,6 +95,8 @@ describe('useGeospatialSearch', () => {
       const secondToken = mockSuggest.mock.calls[1]?.[1]?.sessionToken;
       expect(firstToken).toBeDefined();
       expect(firstToken).toBe(secondToken);
+
+      await flushPendingSuggest();
     });
   });
 
@@ -94,7 +105,7 @@ describe('useGeospatialSearch', () => {
   // -------------------------------------------------------------------------
 
   describe('session token rotation', () => {
-    it('rotates token and cancels pending debounce when resetKey changes', () => {
+    it('rotates token and cancels pending debounce when resetKey changes', async () => {
       const { result, rerender } = renderHook(
         ({ resetKey }: { resetKey: string }) =>
           useGeospatialSearch({
@@ -125,9 +136,11 @@ describe('useGeospatialSearch', () => {
       expect(tokenAfter).toBeDefined();
       expect(tokenAfter).not.toBe(tokenBefore);
       expect(mockCancel).toHaveBeenCalled();
+
+      await flushPendingSuggest();
     });
 
-    it('rotates token and cancels pending debounce on clear()', () => {
+    it('rotates token and cancels pending debounce on clear()', async () => {
       const { result } = renderHook(() =>
         useGeospatialSearch({ accessToken: 'test-token', map: mockMap }),
       );
@@ -152,6 +165,8 @@ describe('useGeospatialSearch', () => {
       expect(tokenAfter).toBeDefined();
       expect(tokenAfter).not.toBe(tokenBefore);
       expect(mockCancel).toHaveBeenCalled();
+
+      await flushPendingSuggest();
     });
 
     it('rotates token and cancels pending debounce on handleSelect()', async () => {
@@ -185,6 +200,8 @@ describe('useGeospatialSearch', () => {
       expect(tokenAfter).toBeDefined();
       expect(tokenAfter).not.toBe(tokenBefore);
       expect(mockCancel).toHaveBeenCalled();
+
+      await flushPendingSuggest();
     });
   });
 

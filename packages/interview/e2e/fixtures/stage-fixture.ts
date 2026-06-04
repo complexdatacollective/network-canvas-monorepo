@@ -131,18 +131,25 @@ class FormFixture {
 
     await slider.focus();
     await slider.press('Home');
+    // Home commits asynchronously through the controlled form; wait for it to
+    // land on a real option before stepping, so we count from a known start.
+    await expect(slider).not.toHaveAttribute('aria-label', /No selection/);
 
     // Arrow right until we find the target label (max steps = option count).
-    // After each key press, wait for the aria-label to update before reading
-    // — WebKit can lag behind on attribute updates after synthetic key events.
     for (let i = 0; i <= max; i++) {
-      await expect(slider).toHaveAttribute('aria-label', /.+/);
-      const label = await slider.getAttribute('aria-label');
-      if (label?.trim().includes(optionLabel)) {
+      const label = (await slider.getAttribute('aria-label'))?.trim();
+      if (label?.includes(optionLabel)) {
         return;
       }
       if (i < max) {
         await slider.press('ArrowRight');
+        // Wait for the controlled value to commit before reading again. The
+        // aria-label reflects the *committed* form value, which re-renders
+        // asynchronously — a slow commit (seen in Firefox) otherwise lets us
+        // read the pre-press label and stop one step short of the target.
+        await expect
+          .poll(async () => (await slider.getAttribute('aria-label'))?.trim())
+          .not.toBe(label);
       }
     }
 

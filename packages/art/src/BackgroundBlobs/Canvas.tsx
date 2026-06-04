@@ -11,7 +11,13 @@ const Canvas = (props: CanvasProps) => {
   const { draw, predraw, postdraw } = props;
   const canvasRef = useCanvas(draw, predraw, postdraw);
 
-  return <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />;
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden="true"
+      style={{ width: '100%', height: '100%' }}
+    />
+  );
 };
 
 export default Canvas;

@@ -31,7 +31,7 @@ export function NewsTicker() {
       {/* Desktop: single-line marquee */}
       <div className="tablet-landscape:flex hidden items-center gap-5 px-6 py-3">
         <Badge />
-        <div className="relative flex-1 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_4%,black_96%,transparent)]">
+        <div className="relative flex-1 overflow-hidden mask-[linear-gradient(to_right,transparent,black_4%,black_96%,transparent)]">
           <div className="animate-marquee flex w-max gap-12">
             {newsItems.map((item, i) => (
               <NewsItem key={`first-${i}`} {...item} />

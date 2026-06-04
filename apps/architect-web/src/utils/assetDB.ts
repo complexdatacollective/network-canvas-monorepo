@@ -1,32 +1,49 @@
 import Dexie, { type EntityTable } from 'dexie';
 
-import type { ExtractedAsset } from '@codaco/protocol-validation';
+import type { CurrentProtocol } from '@codaco/protocol-validation';
 
-export const assetDb = new Dexie('ArchitectAssetDB') as Dexie & {
-  assets: EntityTable<
-    ExtractedAsset,
-    'id' // primary key "id" (for the typings only)
-  >;
+// A protocol saved in the local library. The library is the durable, multi-
+// protocol store surfaced on the home screen; the redux `activeProtocol` slice
+// is the in-session editing buffer that mirrors into its library row.
+export type StoredProtocolRow = {
+  id: string;
+  name: string;
+  description?: string;
+  schemaVersion: number;
+  protocol: CurrentProtocol;
+  createdAt: number;
+  updatedAt: number;
 };
 
-// Schema declaration:
+// An asset row, namespaced to its owning protocol. `id` is the compound primary
+// key `${protocolId}::${assetId}` so the same manifest asset id can exist under
+// multiple protocols (e.g. the sample template opened twice) without colliding.
+// `assetId` is the original (bare) manifest id callers refer to.
+export type StoredAsset = {
+  id: string;
+  assetId: string;
+  protocolId: string;
+  name: string;
+  data: Blob | string;
+};
+
+export const assetKey = (protocolId: string, assetId: string): string =>
+  `${protocolId}::${assetId}`;
+
+export const assetDb = new Dexie('ArchitectProtocolDB') as Dexie & {
+  assets: EntityTable<StoredAsset, 'id'>;
+  protocols: EntityTable<StoredProtocolRow, 'id'>;
+};
+
 assetDb.version(1).stores({
-  assets: '++id, name, data', // primary key "id" (for the runtime!)
+  assets: 'id, protocolId',
+  protocols: 'id, updatedAt',
 });
 
-/**
- * Clear all stored data (protocols, active protocol, assets, etc.)
- * This function clears Redux state, localStorage, and IndexedDB
- */
 export async function clearAllStorage() {
   try {
-    // Clear localStorage
     localStorage.clear();
-
-    // Clear assetDB (IndexedDB)
-    await assetDb.assets.clear();
-
-    // Reload the page to reset Redux state
+    await Promise.all([assetDb.assets.clear(), assetDb.protocols.clear()]);
     window.location.reload();
   } catch (_error) {}
 }

@@ -1,0 +1,48 @@
+{
+  "name": "@codaco/protocol-utilities",
+  "version": "1.0.0-alpha.0",
+  "description": "Synthetic network generation and interview-payload builder for Network Canvas protocols.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+    "directory": "packages/protocol-utilities"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "alpha"
+  },
+  "scripts": {
+    "build": "node ../../scripts/with-turbo.mjs vite build",
+    "dev": "node ../../scripts/with-turbo.mjs --with-deps vite build --watch",
+    "typecheck": "tsc --build --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf .turbo node_modules dist"
+  },
+  "dependencies": {
+    "@codaco/network-query": "workspace:^",
+    "@codaco/protocol-validation": "workspace:^",
+    "@codaco/shared-consts": "workspace:^",
+    "@faker-js/faker": "catalog:",
+    "es-toolkit": "catalog:",
+    "uuid": "catalog:"
+  },
+  "devDependencies": {
+    "@codaco/tsconfig": "workspace:*",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vitest": "catalog:"
+  }
+}
