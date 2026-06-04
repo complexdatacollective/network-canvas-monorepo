@@ -1,7 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { Route } from 'next';
-import { useLocale, useTranslations } from 'next-intl';
+import { useLocale } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
@@ -287,7 +287,6 @@ const renderSidebarItem = (
 export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const locale = useLocale() as Locale;
-  const t = useTranslations('Sidebar');
   const segments = pathname.split('/');
   // biome-ignore lint/style/noNonNullAssertion: path structure is known
   const project = segments[2]! as Project;
@@ -350,12 +349,8 @@ export function Sidebar({ className }: { className?: string }) {
         <ProjectSwitcher />
 
         <div ref={sidebarContainerRef} className="flex-1 overflow-y-auto p-2">
-          {sharedItems.length > 0 && (
-            <SidebarFolder label={t('shared')} alwaysOpen>
-              {sharedItems.map((item) =>
-                renderSidebarItem(item, locale, sidebarContainerRef),
-              )}
-            </SidebarFolder>
+          {sharedItems.map((item) =>
+            renderSidebarItem(item, locale, sidebarContainerRef),
           )}
 
           <AppTabs
