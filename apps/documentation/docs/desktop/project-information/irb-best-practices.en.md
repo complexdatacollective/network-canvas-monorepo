@@ -8,7 +8,7 @@ Network Canvas uses modern security features, and has built on existing technolo
 
 <TipBox>
 
-These best practices are intended for the Network Canvas Desktop Suite. For information about data storage and security in Fresco, see our [Fresco FAQ](/en/fresco/faq#is-the-data-storage-hipaagdpr-compliant-is-it-secure)
+These best practices are intended for the Network Canvas Desktop Suite. For information about data storage and security in Fresco, see our [Fresco FAQ](/en/run-interview/fresco/faq#is-the-data-storage-hipaagdpr-compliant-is-it-secure)
 
 </TipBox>
 

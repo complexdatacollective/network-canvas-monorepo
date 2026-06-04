@@ -15,7 +15,7 @@ Each application of the Network Canvas Desktop Suite can be downloaded and insta
 
 <TipBox>
 
-[Fresco](/en/fresco), a new project that brings Network Canvas interviews to the browser, cannot be directly downloaded and installed. See our guide on the [deployment process](/en/fresco/deployment/guide) for more information.
+[Fresco](/en/run-interview/fresco), a new project that brings Network Canvas interviews to the browser, cannot be directly downloaded and installed. See our guide on the [deployment process](/en/run-interview/fresco/deployment/guide) for more information.
 
 </TipBox>
 
@@ -27,7 +27,7 @@ For desktop applications, we recommend a modern device, featuring a high resolut
 
 You may install and run the software on devices that do not meet these criteria, but we are unfortunately unable to offer support regarding technical issues if you do.
 
-For information on supported browsers, devices, and platforms in Fresco, see the [Fresco FAQ](/en/fresco/faq#which-browsers-are-supported)
+For information on supported browsers, devices, and platforms in Fresco, see the [Fresco FAQ](/en/run-interview/fresco/faq#which-browsers-are-supported)
 
 ## Windows
 

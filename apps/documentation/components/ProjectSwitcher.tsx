@@ -32,18 +32,6 @@ const getImageForProject = (project: Project) => {
     );
   }
 
-  if (project === 'fresco') {
-    return (
-      <Image
-        src="/images/fresco.png"
-        alt={project}
-        className="h-10 w-auto"
-        width={40}
-        height={40}
-      />
-    );
-  }
-
   if (project === 'reference') {
     return <BookOpen className="h-10 w-10" strokeWidth={1.5} />;
   }

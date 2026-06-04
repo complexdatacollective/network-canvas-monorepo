@@ -5,7 +5,6 @@ export const projects = [
   'build-protocol',
   'run-interview',
   'desktop',
-  'fresco',
 ] as const;
 
 export type Project = (typeof projects)[number];

@@ -127,7 +127,7 @@ export function Hero() {
           icon="images/desktop.png"
         />
         <ProjectCard
-          href="en/fresco"
+          href="en/run-interview/fresco"
           title={t('ProjectSwitcher.fresco.label')}
           description={t('ProjectSwitcher.fresco.description')}
           icon="images/fresco.png"

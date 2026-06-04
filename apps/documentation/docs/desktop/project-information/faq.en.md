@@ -7,7 +7,7 @@ navOrder: 5
 
 ## What is Network Canvas?
 
-Network Canvas is a suite of three applications designed to assist researchers in the collection of social network data. These applications are: Architect for building interview protocols, Interviewer for use in the field to collect data, and [Fresco](/en/fresco) for deploying protocols in the web browser.
+Network Canvas is a suite of three applications designed to assist researchers in the collection of social network data. These applications are: Architect for building interview protocols, Interviewer for use in the field to collect data, and [Fresco](/en/run-interview/fresco) for deploying protocols in the web browser.
 
 We have designed our software to overcome a few distinct barriers to social network data collection:
 
@@ -55,7 +55,7 @@ The Network Canvas suite consists of three applications, with each component run
 
 - Architect is a desktop app, and will run on Windows, macOS, and Linux operating systems.
 - Interviewer is a hybrid desktop/mobile app, and will run on Windows, Mac, iOS and Android. It will work best with a touch screen device, but will also function well with a conventional computer that uses a keyboard and mouse. Specific functionality may vary by operating system.
-- Fresco is a web-based application. For information on supported browsers, devices, and platforms, see our [Fresco FAQ](/en/fresco/faq#which-browsers-are-supported).
+- Fresco is a web-based application. For information on supported browsers, devices, and platforms, see our [Fresco FAQ](/en/run-interview/fresco/faq#which-browsers-are-supported).
 
 Our development test devices have included a Samsung Chromebook Plus, iPad Pros (both 9.7" and 12.1"), and the Google Pixel C tablet. We have also completed Network Canvas studies using 27 inch “all in one” touchscreen computers with positive results.
 
