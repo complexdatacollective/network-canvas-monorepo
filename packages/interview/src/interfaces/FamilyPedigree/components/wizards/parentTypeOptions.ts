@@ -13,10 +13,8 @@ export function countGeneticParents(
   let count = 0;
   for (const edge of edges.values()) {
     if (edge.to !== nodeId) continue;
-    const rel = edge.attributes[variableConfig.relationshipTypeVariable] as
-      | string
-      | undefined;
-    if (rel && GENETIC_RELATIONSHIPS.has(rel)) count += 1;
+    const rel = edge.attributes[variableConfig.relationshipTypeVariable];
+    if (typeof rel === 'string' && GENETIC_RELATIONSHIPS.has(rel)) count += 1;
   }
   return count;
 }
@@ -26,7 +24,9 @@ export function countGeneticParents(
  * genetic parents (egg + sperm), so once both genetic slots are filled the
  * genetic types (`biological`/`donor`) are removed, leaving non-genetic options.
  */
-export function addableParentTypeOptions(geneticParentCount: number) {
+export function addableParentTypeOptions(
+  geneticParentCount: number,
+): typeof PARENT_EDGE_TYPE_OPTIONS_ALTER {
   if (geneticParentCount >= 2) {
     return PARENT_EDGE_TYPE_OPTIONS_ALTER.filter(
       (o) => o.value !== 'biological' && o.value !== 'donor',

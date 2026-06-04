@@ -52,4 +52,10 @@ describe('addableParentTypeOptions', () => {
     expect(values).toContain('biological');
     expect(values).toContain('donor');
   });
+
+  it('offers all types when there are no genetic parents', () => {
+    const values = addableParentTypeOptions(0).map((o) => o.value);
+    expect(values).toContain('biological');
+    expect(values).toContain('donor');
+  });
 });
