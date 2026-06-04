@@ -14,6 +14,10 @@ import { openAddChildWizard } from '~/interfaces/FamilyPedigree/components/wizar
 import { openAddParentWizard } from '~/interfaces/FamilyPedigree/components/wizards/AddParentWizard';
 import { openAddSiblingWizard } from '~/interfaces/FamilyPedigree/components/wizards/AddSiblingWizard';
 import { openDefineParentsWizard } from '~/interfaces/FamilyPedigree/components/wizards/DefineParentsWizard';
+import {
+  addableParentTypeOptions,
+  countGeneticParents,
+} from '~/interfaces/FamilyPedigree/components/wizards/parentTypeOptions';
 import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeProvider';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 import {
@@ -220,21 +224,17 @@ export default function PedigreeView({
   };
 
   const handleAddParent = async (nodeId: string) => {
-    const bioParentCount = [...edges.values()].filter(
-      (e) =>
-        e.to === nodeId &&
-        e.attributes[relationshipTypeVariable] !== 'partner' &&
-        e.attributes[relationshipTypeVariable] !== 'social',
-    ).length;
+    const geneticCount = countGeneticParents(nodeId, edges, variableConfig);
 
     const result =
-      bioParentCount >= 2
+      geneticCount >= 2
         ? await openAddParentWizard(
             openDialog,
             nodeId,
             nodes,
             edges,
             variableConfig,
+            addableParentTypeOptions(geneticCount),
           )
         : await openDefineParentsWizard(
             openDialog,

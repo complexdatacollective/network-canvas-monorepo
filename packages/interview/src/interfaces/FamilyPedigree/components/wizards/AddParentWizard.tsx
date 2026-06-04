@@ -11,7 +11,7 @@ import type {
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 
-import { PARENT_EDGE_TYPE_OPTIONS_ALTER } from '../quickStartWizard/fieldOptions';
+import { type PARENT_EDGE_TYPE_OPTIONS_ALTER } from '../quickStartWizard/fieldOptions';
 import PersonFields from '../quickStartWizard/PersonFields';
 
 const KNOWN_PERSON_KEYS = new Set(['name']);
@@ -36,7 +36,11 @@ const partnershipOptions = [
   { value: 'none', label: 'Never partners' },
 ];
 
-function ParentDetailsStep() {
+function ParentDetailsStep({
+  parentTypeOptions,
+}: {
+  parentTypeOptions: typeof PARENT_EDGE_TYPE_OPTIONS_ALTER;
+}) {
   return (
     <>
       <PersonFields namespace="parent" />
@@ -44,8 +48,8 @@ function ParentDetailsStep() {
         name="edgeType"
         label="Parent type"
         component={RichSelectGroupField}
-        options={PARENT_EDGE_TYPE_OPTIONS_ALTER}
-        initialValue="biological"
+        options={parentTypeOptions}
+        initialValue={parentTypeOptions[0]?.value ?? 'social'}
         required
       />
     </>
@@ -166,6 +170,7 @@ export async function openAddParentWizard(
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
+  parentTypeOptions: typeof PARENT_EDGE_TYPE_OPTIONS_ALTER,
 ): Promise<CommitBatch | null> {
   const existingParentIds = getExistingParentIds(
     anchorNodeId,
@@ -192,7 +197,9 @@ export async function openAddParentWizard(
     steps: [
       {
         title: 'Parent details',
-        content: ParentDetailsStep,
+        content: () => (
+          <ParentDetailsStep parentTypeOptions={parentTypeOptions} />
+        ),
       },
       {
         title: 'Partnerships',
