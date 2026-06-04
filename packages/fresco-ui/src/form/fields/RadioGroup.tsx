@@ -233,7 +233,10 @@ export default function RadioGroupField(props: RadioGroupFieldProps) {
             key={String(option.value)}
             value={option.value}
             label={option.label}
-            disabled={disabled ?? option.disabled}
+            // An option is disabled when the whole field is disabled OR the
+            // option itself is. Using `??` here dropped per-option `disabled`
+            // whenever the field passed an explicit `disabled={false}`.
+            disabled={Boolean(disabled) || Boolean(option.disabled)}
             readOnly={readOnly}
             size={size}
             id={`${optionIdPrefix}-${String(option.value)}`}
