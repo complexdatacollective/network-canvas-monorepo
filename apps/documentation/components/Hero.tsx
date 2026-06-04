@@ -1,8 +1,9 @@
 'use client';
 
+import { BookOpen, ClipboardList, DraftingCompass } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTranslations } from 'next-intl';
-import Image from 'next/image';
+import type { ReactNode } from 'react';
 
 import Paragraph from '~/components/ui/typography/Paragraph';
 import { cn } from '~/lib/utils';
@@ -21,10 +22,10 @@ function ProjectCard({
   href: string;
   title: string;
   description: string;
-  icon: string;
+  icon: ReactNode;
 }) {
   return (
-    <Link href={href} className="basis-1/2">
+    <Link href={href} className="flex-1">
       <div
         className={cn(
           'border-border bg-card flex h-full cursor-pointer flex-col gap-2 rounded-xl border p-4 shadow-xl transition-colors md:p-6',
@@ -32,13 +33,7 @@ function ProjectCard({
         )}
       >
         <div className="flex shrink-0 items-center gap-4">
-          <Image
-            src={icon}
-            className="h-16 w-auto"
-            alt={title}
-            width={64}
-            height={64}
-          />
+          {icon}
           <FancyHeading variant="h2" margin="none">
             {title}
           </FancyHeading>
@@ -121,16 +116,26 @@ export function Hero() {
       </div>
       <div className="flex flex-col gap-6 md:flex-row">
         <ProjectCard
-          href="en/desktop"
-          title={t('ProjectSwitcher.desktop.label')}
-          description={t('ProjectSwitcher.desktop.description')}
-          icon="images/desktop.png"
+          href="en/build-protocol"
+          title={t('ProjectSwitcher.build-protocol.label')}
+          description={t('ProjectSwitcher.build-protocol.description')}
+          icon={
+            <DraftingCompass className="h-16 w-16 shrink-0" strokeWidth={1.5} />
+          }
         />
         <ProjectCard
-          href="en/run-interview/fresco"
-          title={t('ProjectSwitcher.fresco.label')}
-          description={t('ProjectSwitcher.fresco.description')}
-          icon="images/fresco.png"
+          href="en/run-interview"
+          title={t('ProjectSwitcher.run-interview.label')}
+          description={t('ProjectSwitcher.run-interview.description')}
+          icon={
+            <ClipboardList className="h-16 w-16 shrink-0" strokeWidth={1.5} />
+          }
+        />
+        <ProjectCard
+          href="en/reference"
+          title={t('ProjectSwitcher.reference.label')}
+          description={t('ProjectSwitcher.reference.description')}
+          icon={<BookOpen className="h-16 w-16 shrink-0" strokeWidth={1.5} />}
         />
       </div>
     </motion.div>

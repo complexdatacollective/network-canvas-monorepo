@@ -1,5 +1,5 @@
 ---
-title: Installation Guide
+title: Desktop App Installation Guide
 navOrder: 3
 last_modified_at: 2024-07-25
 wip: false

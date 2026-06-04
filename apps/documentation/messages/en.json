@@ -15,14 +15,6 @@
       "label": "Run Interviews",
       "description": "Collect data by running your protocol in Fresco or Interviewer."
     },
-    "fresco": {
-      "label": "Fresco",
-      "description": "A new project that brings Network Canvas interviews to the web browser."
-    },
-    "desktop": {
-      "label": "Desktop Suite",
-      "description": "The traditional Network Canvas suite of desktop and tablet applications (Architect and Interviewer)."
-    },
     "studio": {
       "label": "Studio",
       "description": "A web-based platform for creating and sharing network data collection instruments."

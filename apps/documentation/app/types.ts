@@ -4,7 +4,6 @@ export const projects = [
   'reference',
   'build-protocol',
   'run-interview',
-  'desktop',
 ] as const;
 
 export type Project = (typeof projects)[number];
