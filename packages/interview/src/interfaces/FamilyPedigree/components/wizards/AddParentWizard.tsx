@@ -13,22 +13,7 @@ import type {
 
 import { type PARENT_EDGE_TYPE_OPTIONS_ALTER } from '../quickStartWizard/fieldOptions';
 import PersonFields from '../quickStartWizard/PersonFields';
-
-const KNOWN_PERSON_KEYS = new Set(['name']);
-
-function extractCustomAttributes(
-  obj: Record<string, unknown>,
-): Record<string, VariableValue> | undefined {
-  const attrs: Record<string, VariableValue> = {};
-  let hasAttrs = false;
-  for (const [key, val] of Object.entries(obj)) {
-    if (!KNOWN_PERSON_KEYS.has(key) && val !== undefined) {
-      attrs[key] = val as VariableValue;
-      hasAttrs = true;
-    }
-  }
-  return hasAttrs ? attrs : undefined;
-}
+import { extractCustomAttributes } from './transforms/personAttributes';
 
 const partnershipOptions = [
   { value: 'current', label: 'Current partners' },
