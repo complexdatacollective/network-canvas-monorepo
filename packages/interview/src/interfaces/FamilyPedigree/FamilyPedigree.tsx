@@ -261,6 +261,25 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   const showResetOption =
     currentStepIndex === 0 && hasNodes && isNetworkCommitted;
 
+  const [dumpCopied, setDumpCopied] = useState(false);
+  const dumpCopiedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(dumpCopiedTimer.current), []);
+
+  const handleDumpNetwork = async () => {
+    const json = JSON.stringify(
+      {
+        nodes: Object.fromEntries(nodesMap.entries()),
+        edges: Object.fromEntries(edgesMap.entries()),
+      },
+      null,
+      2,
+    );
+    await navigator.clipboard.writeText(json);
+    setDumpCopied(true);
+    clearTimeout(dumpCopiedTimer.current);
+    dumpCopiedTimer.current = setTimeout(() => setDumpCopied(false), 1500);
+  };
+
   return (
     <>
       <div className="interface p-0">
@@ -278,23 +297,9 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
               <button
                 type="button"
                 className="rounded bg-black/50 px-2 py-1 text-xs text-white opacity-50 hover:opacity-100"
-                onClick={() => {
-                  const json = JSON.stringify(
-                    {
-                      nodes: Object.fromEntries(
-                        [...nodesMap.entries()].map(([id, n]) => [id, n]),
-                      ),
-                      edges: Object.fromEntries(
-                        [...edgesMap.entries()].map(([id, e]) => [id, e]),
-                      ),
-                    },
-                    null,
-                    2,
-                  );
-                  void navigator.clipboard.writeText(json);
-                }}
+                onClick={handleDumpNetwork}
               >
-                Dump
+                {dumpCopied ? 'Copied to clipboard!' : 'Dump'}
               </button>
               <button
                 type="button"
