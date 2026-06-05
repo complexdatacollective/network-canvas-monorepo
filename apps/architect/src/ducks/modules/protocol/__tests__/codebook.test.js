@@ -4,11 +4,17 @@ import { getThunkMocks } from '@app/__tests__/testHelpers';
 import { set } from 'lodash';
 import configureStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import testState from '../../../../__tests__/testState.json';
 import reducer, { actionCreators, actionTypes, test } from '../codebook';
 import { test as stageActions } from '../stages';
+
+// This suite exercises codebook delete/dispatch logic with intentionally minimal
+// stage stubs, so the protocol-validation result is not what's under test.
+vi.mock('@app/utils/validateProtocol', () => ({
+  default: vi.fn(() => Promise.resolve()),
+}));
 
 const mockStore = configureStore([thunk]);
 

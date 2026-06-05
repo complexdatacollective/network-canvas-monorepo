@@ -10,6 +10,7 @@ import createTimeline, { actionCreators } from '../timeline';
 // Mock uuid to generate random IDs
 vi.mock('uuid', () => ({
   default: () => crypto.randomBytes(20).toString('hex'),
+  v4: () => crypto.randomBytes(20).toString('hex'),
 }));
 
 const defaultReducer = vi.fn(() => ({
