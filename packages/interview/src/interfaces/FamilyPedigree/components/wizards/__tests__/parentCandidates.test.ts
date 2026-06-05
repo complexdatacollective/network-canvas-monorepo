@@ -86,6 +86,23 @@ describe('geneticParentCandidates', () => {
     expect(result.has('mum')).toBe(false);
     expect(result.has('dad')).toBe(false);
   });
+
+  it("define-parents: never offers the anchor's own partner, even if they are a donor", () => {
+    const edges = new Map<string, NcEdge>([
+      ...makeEdges(),
+      edge('ego', 'spouse', 'partner'),
+      // The spouse has also donated elsewhere, so they enter the donor pool.
+      edge('spouse', 'spouses-other-child', 'donor'),
+    ]);
+    const result = geneticParentCandidates(
+      'ego',
+      'define-parents',
+      edges,
+      variableConfig,
+    );
+    expect(result.has('spouse')).toBe(false);
+    expect(result.has('steve')).toBe(true);
+  });
 });
 
 describe('socialParentCandidates', () => {
@@ -114,6 +131,23 @@ describe('socialParentCandidates', () => {
     expect(result.has('kid')).toBe(false);
     expect(result.has('mum')).toBe(false);
     expect(result.has('dad')).toBe(false);
+  });
+
+  it("excludes the anchor's own partner (a partner cannot be a parent)", () => {
+    const nodes = new Map(
+      ['ego', 'mum', 'dad', 'grandma', 'kid', 'steve', 'spouse'].map((id) => [
+        id,
+        { _uid: id, type: 'person', attributes: {} },
+      ]),
+    );
+    const edges = new Map<string, NcEdge>([
+      ...makeEdges(),
+      edge('ego', 'spouse', 'partner'),
+    ]);
+    const result = socialParentCandidates('ego', nodes, edges, variableConfig);
+    expect(result.has('spouse')).toBe(false);
+    // A grandparent is still a valid social/adoptive parent.
+    expect(result.has('grandma')).toBe(true);
   });
 });
 

@@ -136,6 +136,10 @@ export function geneticParentCandidates(
       for (const p of parentIdsOf(anchorId, edges, variableConfig)) {
         candidates.delete(p);
       }
+      // A node's own partner can never be its (genetic) parent.
+      for (const p of partnerIdsOf(anchorId, edges, variableConfig)) {
+        candidates.delete(p);
+      }
     }
   }
 
@@ -144,8 +148,8 @@ export function geneticParentCandidates(
 
 /**
  * Existing people who can be a social/adoptive/surrogate parent of `anchorId`.
- * No genetic-generation constraint — only the node itself, its descendants, and
- * its existing parents are excluded.
+ * No genetic-generation constraint — only the node itself, its descendants, its
+ * existing parents, and its partners are excluded (a partner can't be a parent).
  */
 export function socialParentCandidates(
   anchorId: string,
@@ -158,6 +162,9 @@ export function socialParentCandidates(
     excluded.add(d);
   }
   for (const p of parentIdsOf(anchorId, edges, variableConfig)) {
+    excluded.add(p);
+  }
+  for (const p of partnerIdsOf(anchorId, edges, variableConfig)) {
     excluded.add(p);
   }
   const result = new Set<string>();
