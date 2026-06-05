@@ -4,6 +4,7 @@ import { filter as customFilter } from '@codaco/network-query';
 
 import { getEntityAttributes } from '../ducks/modules/network';
 import { asWorkerAgentNetwork } from '../utils/networkFormat';
+import { adaptFilter } from '../utils/networkQueryFilter';
 import { getProtocolCodebook } from './protocol';
 import { getActiveSession, getStageSubjectType } from './session';
 import { createDeepEqualSelector } from './utils';
@@ -19,7 +20,7 @@ export const getFilteredNetwork = createDeepEqualSelector(
   (_, props) => props?.stage?.filter,
   (network, nodeFilter) => {
     if (nodeFilter && typeof nodeFilter !== 'function') {
-      const filterFunction = customFilter(nodeFilter);
+      const filterFunction = customFilter(adaptFilter(nodeFilter));
       return filterFunction(network);
     }
     return network;

@@ -3,6 +3,7 @@ import { createSelector } from 'reselect';
 import { getQuery } from '@codaco/network-query';
 
 import { SkipLogicAction } from '../protocol-consts';
+import { adaptFilter } from '../utils/networkQueryFilter';
 import { getNetwork } from './network';
 import { getProtocolStages } from './protocol';
 
@@ -50,7 +51,7 @@ export const isStageSkipped = (index) =>
         return !!skipOnMatch;
       }
 
-      const queryParameters = formatQueryParameters(logic.filter);
+      const queryParameters = formatQueryParameters(adaptFilter(logic.filter));
       const result = getQuery(queryParameters)(network);
       const isSkipped = (skipOnMatch && result) || (!skipOnMatch && !result);
 

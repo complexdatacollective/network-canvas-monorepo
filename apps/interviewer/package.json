@@ -24,7 +24,7 @@
     "preflight": "npm run lint && npm test -- --coverage"
   },
   "dependencies": {
-    "@codaco/network-query": "1.0.1",
+    "@codaco/network-query": "workspace:*",
     "@xmldom/xmldom": "~0.8.13",
     "archiver": "^7.0.1",
     "d3-force": "~3.0.0",

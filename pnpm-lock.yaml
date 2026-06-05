@@ -850,8 +850,8 @@ importers:
   apps/interviewer:
     dependencies:
       '@codaco/network-query':
-        specifier: 1.0.1
-        version: 1.0.1
+        specifier: workspace:*
+        version: link:../../packages/network-query
       '@xmldom/xmldom':
         specifier: ~0.8.13
         version: 0.8.13
@@ -2848,13 +2848,6 @@ packages:
     engines: {node: '>=16'}
     cpu: [x64]
     os: [win32]
-
-  '@codaco/network-query@1.0.1':
-    resolution: {integrity: sha512-v93+t6ZM3HykaN9MjsFQc4abUlQPJ5gEgGxpa5XAaE6ZCKoJG95EKBI1llBTvwid25FfTSWAZYgHYY036i2CUA==}
-
-  '@codaco/protocol-validation@11.4.0':
-    resolution: {integrity: sha512-mfoZqpPc9YW+qk9rPULrkyrUNlgJnaOgDBCb9gPzklpgV6NQDazala9DUvneBHTuBFlGq0hIfrIKBwkkyxNC2A==}
-    hasBin: true
 
   '@codaco/protocol-validation@3.0.0':
     resolution: {integrity: sha512-23/nKuVKyKzHfEzQKVFFpCIibe+j3biLPuYKK+Ly7kyNygeEO/MydMGHWYTQUoAKUjIlBXRryGhdHt5uen9/8A==}
@@ -14980,18 +14973,6 @@ snapshots:
 
   '@cloudflare/workerd-windows-64@1.20260526.1':
     optional: true
-
-  '@codaco/network-query@1.0.1':
-    dependencies:
-      '@codaco/protocol-validation': 11.4.0
-      '@codaco/shared-consts': 5.0.0
-      es-toolkit: 1.47.0
-
-  '@codaco/protocol-validation@11.4.0':
-    dependencies:
-      '@codaco/shared-consts': 5.0.0
-      '@faker-js/faker': 10.4.0
-      zod: 4.4.3
 
   '@codaco/protocol-validation@3.0.0': {}
 

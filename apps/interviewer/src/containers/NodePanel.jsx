@@ -12,6 +12,7 @@ import {
 } from '../selectors/interface';
 import { getNetworkEdges, getNetworkEgo } from '../selectors/network';
 import { get } from '../utils/lodash-replacements';
+import { adaptFilter } from '../utils/networkQueryFilter';
 import withExternalData from './withExternalData';
 
 class NodePanel extends PureComponent {
@@ -126,7 +127,7 @@ const makeMapStateToProps = () => {
 
     const nodeFilter = props.filter;
     if (nodeFilter && typeof nodeFilter !== 'function') {
-      const filterFunction = customFilter(nodeFilter);
+      const filterFunction = customFilter(adaptFilter(nodeFilter));
       return filterFunction({
         nodes,
         edges: getNetworkEdges(state, props),
