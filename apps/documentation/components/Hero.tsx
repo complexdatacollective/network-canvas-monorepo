@@ -1,6 +1,5 @@
 'use client';
 
-import { ClipboardList, DraftingCompass } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
@@ -121,7 +120,13 @@ export function Hero() {
           title={t('ProjectSwitcher.build-protocol.label')}
           description={t('ProjectSwitcher.build-protocol.description')}
           icon={
-            <DraftingCompass className="h-16 w-16 shrink-0" strokeWidth={1.5} />
+            <Image
+              src="/images/architect-icon.png"
+              alt=""
+              className="h-16 w-16 shrink-0"
+              width={64}
+              height={64}
+            />
           }
         />
         <ProjectCard
@@ -129,7 +134,22 @@ export function Hero() {
           title={t('ProjectSwitcher.run-interview.label')}
           description={t('ProjectSwitcher.run-interview.description')}
           icon={
-            <ClipboardList className="h-16 w-16 shrink-0" strokeWidth={1.5} />
+            <div className="flex shrink-0 items-center gap-2">
+              <Image
+                src="/images/interviewer.png"
+                alt=""
+                className="h-12 w-12"
+                width={48}
+                height={48}
+              />
+              <Image
+                src="/images/fresco.png"
+                alt=""
+                className="h-12 w-12"
+                width={48}
+                height={48}
+              />
+            </div>
           }
         />
         <ProjectCard

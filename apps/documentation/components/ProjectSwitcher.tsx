@@ -1,6 +1,5 @@
 'use client';
 
-import { ClipboardList, DraftingCompass } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -33,11 +32,36 @@ const getImageForProject = (project: Project) => {
   }
 
   if (project === 'build-protocol') {
-    return <DraftingCompass className="h-10 w-10" strokeWidth={1.5} />;
+    return (
+      <Image
+        src="/images/architect-icon.png"
+        alt=""
+        className="h-10 w-10"
+        width={40}
+        height={40}
+      />
+    );
   }
 
   if (project === 'run-interview') {
-    return <ClipboardList className="h-10 w-10" strokeWidth={1.5} />;
+    return (
+      <div className="flex items-center gap-1">
+        <Image
+          src="/images/interviewer.png"
+          alt=""
+          className="h-8 w-8"
+          width={32}
+          height={32}
+        />
+        <Image
+          src="/images/fresco.png"
+          alt=""
+          className="h-8 w-8"
+          width={32}
+          height={32}
+        />
+      </div>
+    );
   }
 };
 
