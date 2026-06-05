@@ -53,17 +53,17 @@ export default function AddPersonFields({
         <Field
           key={`parentType-${childId}`}
           name={`parentType-${childId}`}
-          label={`Parent type for ${getNodeLabel(childId, nodes, edges, variableConfig)}?`}
+          label={`Is this person also a parent of **${getNodeLabel(childId, nodes, edges, variableConfig)}**?`}
           component={RichSelectGroupField}
           options={[
-            ...PARENT_EDGE_TYPE_OPTIONS_ALTER,
             {
               value: 'none',
               label: 'Not a parent',
-              description: 'Select this if you are not a parent of this child',
+              description: 'Select this if not a parent of this child',
             },
+            ...PARENT_EDGE_TYPE_OPTIONS_ALTER,
           ]}
-          initialValue="biological"
+          initialValue="none"
         />
       ))}
     </>

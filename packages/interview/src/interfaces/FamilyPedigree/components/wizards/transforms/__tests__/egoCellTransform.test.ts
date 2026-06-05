@@ -490,9 +490,9 @@ describe('egoCellTransform', () => {
     expect(child0?.data.attributes).toMatchObject({ name: 'Olivia' });
     expect(child1?.data.attributes).toMatchObject({ name: 'Liam' });
 
-    // ego biological + ego gestational-carrier + partner biological = 3 edges
+    // One edge per parent: ego (egg, flagged as carrier) + partner.
     const child0Edges = batch.edges.filter((e) => e.target === 'child-0');
-    expect(child0Edges).toHaveLength(3);
+    expect(child0Edges).toHaveLength(2);
     expect(
       child0Edges.some(
         (e) =>
@@ -511,7 +511,7 @@ describe('egoCellTransform', () => {
     ).toBe(true);
 
     const child1Edges = batch.edges.filter((e) => e.target === 'child-1');
-    expect(child1Edges).toHaveLength(3);
+    expect(child1Edges).toHaveLength(2);
     expect(
       child1Edges.some(
         (e) =>
@@ -556,8 +556,8 @@ describe('egoCellTransform', () => {
     const childId = child!.tempId;
 
     const childParentEdges = batch.edges.filter((e) => e.target === childId);
-    // ego biological + ego carrier(GC) + partner biological
-    expect(childParentEdges).toHaveLength(3);
+    // One edge per parent: ego (egg, also flagged carrier) + partner.
+    expect(childParentEdges).toHaveLength(2);
     expect(
       childParentEdges.some(
         (e) =>

@@ -15,7 +15,7 @@ const variableConfig: VariableConfig = {
 };
 
 describe('buildChildParentage', () => {
-  it('emits biological edges from two existing parents, plus a carrier edge when the egg parent carried', () => {
+  it('emits one edge per existing parent, flagging the egg parent as carrier when they carried', () => {
     const { nodes, edges, parents } = buildChildParentage(
       'child',
       {
@@ -27,18 +27,15 @@ describe('buildChildParentage', () => {
     );
 
     expect(nodes).toHaveLength(0);
-    expect(edges).toHaveLength(3);
+    // One edge per parent: the egg parent who also carried gets a single edge
+    // flagged as gestational carrier, not a duplicate carrier edge.
+    expect(edges).toHaveLength(2);
 
     const egoEdges = edges.filter((e) => e.source === 'ego-1');
-    expect(egoEdges).toHaveLength(2);
-    expect(
-      egoEdges.some(
-        (e) =>
-          e.data.attributes.relationship === 'biological' &&
-          e.data.attributes.isGC === undefined,
-      ),
-    ).toBe(true);
-    expect(egoEdges.some((e) => e.data.attributes.isGC === true)).toBe(true);
+    expect(egoEdges).toHaveLength(1);
+    expect(egoEdges[0]?.data.attributes.relationship).toBe('biological');
+    expect(egoEdges[0]?.data.attributes.isGC).toBe(true);
+    expect(egoEdges[0]?.gameteRole).toBe('egg');
 
     const spermEdge = edges.find((e) => e.source === 'partner-1');
     expect(spermEdge?.data.attributes.relationship).toBe('biological');
@@ -73,10 +70,11 @@ describe('buildChildParentage', () => {
       { 'egg-source': 'ego-1', 'sperm-source': 'partner-1' },
       variableConfig,
     );
-    // ego gets a biological edge plus a gestational-carrier edge => 3 total with sperm
-    expect(edges).toHaveLength(3);
+    // One edge per parent; the egg parent's edge is flagged as carrier.
+    expect(edges).toHaveLength(2);
     const egoEdges = edges.filter((e) => e.source === 'ego-1');
-    expect(egoEdges.some((e) => e.data.attributes.isGC === true)).toBe(true);
+    expect(egoEdges).toHaveLength(1);
+    expect(egoEdges[0]?.data.attributes.isGC).toBe(true);
   });
 
   it('records a separate gestational carrier as a surrogate', () => {
@@ -113,10 +111,8 @@ describe('buildChildParentage', () => {
       variableConfig,
     );
 
-    const eggGeneticEdge = edges.find(
-      (e) => e.source === 'ego-1' && e.data.attributes.isGC === undefined,
-    );
-    expect(eggGeneticEdge?.gameteRole).toBe('egg');
+    const eggEdge = edges.find((e) => e.source === 'ego-1');
+    expect(eggEdge?.gameteRole).toBe('egg');
 
     const spermEdge = edges.find((e) => e.source === 'partner-1');
     expect(spermEdge?.gameteRole).toBe('sperm');

@@ -110,16 +110,16 @@ export function buildChildParentage(
     }
   }
 
-  // When the egg parent carried, the egg source is also the gestational carrier.
-  // Existing egg source => add a second (carrier) edge; new egg source => flag it.
+  // When the egg parent carried, they are also the gestational carrier. Flag
+  // that single egg edge rather than adding a second (carrier) edge, so a parent
+  // who is both the egg source and the carrier has exactly one parent->child
+  // edge (a new egg source is flagged the same way below).
   if (eggParentCarried) {
     if (resolvedEggSourceId) {
-      existingParentEdges.push({
-        sourceId: resolvedEggSourceId,
-        roleKey: 'carrier-source',
-        relationshipType: 'biological',
-        isGestationalCarrier: true,
-      });
+      const eggEdge = existingParentEdges.find(
+        (e) => e.roleKey === 'egg-source',
+      );
+      if (eggEdge) eggEdge.isGestationalCarrier = true;
     } else {
       const eggEntry = parentEntries.find(
         (e) => e.tempId === NEW_PERSON_NAMESPACE['egg-source'],
