@@ -84,6 +84,23 @@ function partnerIdsOf(
   return result;
 }
 
+/** Full or half siblings: other children of the node's parents. */
+function siblingIds(
+  nodeId: string,
+  edges: Map<string, NcEdge>,
+  variableConfig: VariableConfig,
+): Set<string> {
+  const parents = parentIdsOf(nodeId, edges, variableConfig);
+  const result = new Set<string>();
+  for (const edge of edges.values()) {
+    if (relTypeOf(edge, variableConfig) === 'partner') continue;
+    if (parents.has(edge.from) && edge.to !== nodeId) {
+      result.add(edge.to);
+    }
+  }
+  return result;
+}
+
 function donorIds(
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
@@ -112,6 +129,12 @@ export function geneticParentCandidates(
     candidates.add(anchorId);
     for (const p of partnerIdsOf(anchorId, edges, variableConfig)) {
       candidates.add(p);
+    }
+    // A sibling is the same generation as the anchor, so they can be a gamete
+    // donor for the anchor's child (e.g. a sister donating an egg combined with
+    // the partner's sperm — a standard ART scenario, not consanguineous).
+    for (const s of siblingIds(anchorId, edges, variableConfig)) {
+      candidates.add(s);
     }
   } else {
     const parents = parentIdsOf(anchorId, edges, variableConfig);

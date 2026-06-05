@@ -73,6 +73,33 @@ describe('geneticParentCandidates', () => {
     expect(result.has('mum')).toBe(false);
   });
 
+  it("offers the anchor's siblings as child donors, but never as the anchor's own or a new sibling's parent", () => {
+    const edges = new Map<string, NcEdge>([
+      ...makeEdges(),
+      edge('mum', 'sis', 'biological'),
+      edge('dad', 'sis', 'biological'),
+    ]);
+    // A sibling can donate a gamete for the anchor's child.
+    expect(
+      geneticParentCandidates('ego', 'child', edges, variableConfig).has('sis'),
+    ).toBe(true);
+    // But a same-generation sibling can't be the anchor's own parent…
+    expect(
+      geneticParentCandidates(
+        'ego',
+        'define-parents',
+        edges,
+        variableConfig,
+      ).has('sis'),
+    ).toBe(false);
+    // …nor a new sibling's parent.
+    expect(
+      geneticParentCandidates('ego', 'sibling', edges, variableConfig).has(
+        'sis',
+      ),
+    ).toBe(false);
+  });
+
   it('define-parents: partners of existing parents + donors, excludes anchor and its existing parents', () => {
     const result = geneticParentCandidates(
       'ego',
