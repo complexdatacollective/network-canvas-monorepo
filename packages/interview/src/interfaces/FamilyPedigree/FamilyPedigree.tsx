@@ -9,6 +9,7 @@ import { useTrack } from '~/analytics/useTrack';
 import Prompts from '~/components/Prompts/Prompts';
 import { useContractFlags } from '~/contract/context';
 import useBeforeNext from '~/hooks/useBeforeNext';
+import useReadyForNextStage from '~/hooks/useReadyForNextStage';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import {
   getNetworkEdges,
@@ -50,6 +51,8 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   const dispatch = useAppDispatch();
   const { confirm, openDialog } = useDialog();
   const { isDevelopment } = useContractFlags();
+  const { moveForward } = props.getNavigationHelpers();
+  const { updateReady } = useReadyForNextStage();
   const nodesMap = useFamilyPedigreeStore((s) => s.network.nodes);
   const edgesMap = useFamilyPedigreeStore((s) => s.network.edges);
   const addNode = useFamilyPedigreeStore((s) => s.addNode);
@@ -129,8 +132,24 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
     text: string;
     variable?: string;
   }[];
+  const hasNominationPrompts = allPrompts.length > 1;
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+
+  // moveForward() re-runs the registered beforeNext handlers; this lets our
+  // handler wave through the navigation we trigger ourselves after finalizing a
+  // pedigree that has no nomination prompts.
+  const bypassBeforeNextRef = useRef(false);
+
+  // Pulse the "next" control once every pedigree checklist item is checked,
+  // nudging the participant to finalize. Scoped to the building phase — the
+  // nomination steps manage their own progression.
+  const [checklistComplete, setChecklistComplete] = useState(false);
+  const buildingPhase =
+    currentStepIndex === 0 && hasNodes && !isNetworkCommitted;
+  useEffect(() => {
+    updateReady(buildingPhase && checklistComplete);
+  }, [updateReady, buildingPhase, checklistComplete]);
 
   const updateNominationVariable = (stepIndex: number) => {
     const prompt = allPrompts[stepIndex];
@@ -141,11 +160,25 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
     if (direction === 'forwards') {
       // Step 0 → finalize before advancing
       if (currentStepIndex === 0) {
+        // Navigation we trigger ourselves (moveForward, after finalizing a
+        // pedigree with no nomination prompts) should pass straight through.
+        if (bypassBeforeNextRef.current) {
+          bypassBeforeNextRef.current = false;
+          return true;
+        }
+
         if (isNetworkCommitted) {
-          // Already finalized (revisiting) — skip straight to nomination
-          setCurrentStepIndex(1);
-          updateNominationVariable(1);
-        } else if (!hasNodes) {
+          if (hasNominationPrompts) {
+            // Already finalized (revisiting) — skip straight to nomination
+            setCurrentStepIndex(1);
+            updateNominationVariable(1);
+            return false;
+          }
+          // Finalized with no nomination prompts — leave the stage.
+          return true;
+        }
+
+        if (!hasNodes) {
           // Ego wizard not yet completed
           void openDialog({
             type: 'acknowledge',
@@ -229,8 +262,14 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
     });
 
     if (result === true) {
-      setCurrentStepIndex(1);
-      updateNominationVariable(1);
+      if (hasNominationPrompts) {
+        setCurrentStepIndex(1);
+        updateNominationVariable(1);
+      } else {
+        // No nomination prompts — finalizing leaves the stage.
+        bypassBeforeNextRef.current = true;
+        moveForward();
+      }
     }
   };
 
@@ -389,6 +428,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
                 <PedigreeChecklist
                   dragConstraints={containerRef}
                   onFinalize={() => void handleConfirmAndAdvance()}
+                  onAllDoneChange={setChecklistComplete}
                 />
               )}
               {showResetOption && (

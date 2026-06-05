@@ -7,7 +7,13 @@ import {
   motion,
   useMotionValue,
 } from 'motion/react';
-import { type RefObject, useCallback, useMemo, useState } from 'react';
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 import { Button } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
@@ -31,9 +37,11 @@ import {
 export default function PedigreeChecklist({
   dragConstraints,
   onFinalize,
+  onAllDoneChange,
 }: {
   dragConstraints: RefObject<HTMLElement | null>;
   onFinalize: () => void;
+  onAllDoneChange?: (allDone: boolean) => void;
 }) {
   const nodes = useFamilyPedigreeStore((s) => s.network.nodes);
   const edges = useFamilyPedigreeStore((s) => s.network.edges);
@@ -272,6 +280,10 @@ export default function PedigreeChecklist({
   );
 
   const allDone = sortedItems.every((i) => i.done);
+
+  useEffect(() => {
+    onAllDoneChange?.(allDone);
+  }, [allDone, onAllDoneChange]);
 
   const overflowY = useMotionValue('auto');
 
