@@ -9,7 +9,7 @@ const LAYOUT_SPACE = 1000;
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 3;
 
-const suggestZoom = (nodes, layoutSpace, screen) => {
+const suggestZoom = (nodes, layoutSpace = LAYOUT_SPACE, screen) => {
   if (nodes.length <= 1) {
     return 1;
   }

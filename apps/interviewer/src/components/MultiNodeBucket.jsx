@@ -56,7 +56,7 @@ const MultiNodeBucket = (props) => {
         clearTimeout(refreshTimer);
       }
     };
-  }, [nodes, sortOrder, listId, currentListId]);
+  }, [nodes, sortOrder, listId]);
 
   return (
     <TransitionGroup className="node-list" exit={exit}>

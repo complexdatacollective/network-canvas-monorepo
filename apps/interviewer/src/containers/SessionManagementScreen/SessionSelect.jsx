@@ -1,5 +1,5 @@
 import { difference } from 'lodash';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { SessionCard } from '@codaco/ui/lib/components/Cards';
@@ -21,44 +21,58 @@ const SessionSelect = ({ selectedSessions, setSelectedSessions }) => {
 
   const handleFilterChange = (term) => setFilterTerm(term);
 
-  const handleSessionCardClick = (sessionUUID) => {
-    if (selectedSessions.includes(sessionUUID)) {
-      setSelectedSessions(
-        selectedSessions.filter((session) => session !== sessionUUID),
-      );
+  const handleSessionCardClick = useCallback(
+    (sessionUUID) => {
+      if (selectedSessions.includes(sessionUUID)) {
+        setSelectedSessions(
+          selectedSessions.filter((session) => session !== sessionUUID),
+        );
 
-      return;
-    }
+        return;
+      }
 
-    setSelectedSessions((alreadySelected) => [...alreadySelected, sessionUUID]);
-  };
+      setSelectedSessions((alreadySelected) => [
+        ...alreadySelected,
+        sessionUUID,
+      ]);
+    },
+    [selectedSessions, setSelectedSessions],
+  );
 
-  const formattedSessions = Object.keys(sessions).map((sessionUUID) => {
-    const session = sessions[sessionUUID];
+  // Memoized so the value is stable across renders that don't change its
+  // inputs. Without this, the filtering effect below (which calls a setter)
+  // would see a new array every render and loop infinitely.
+  const formattedSessions = useMemo(
+    () =>
+      Object.keys(sessions).map((sessionUUID) => {
+        const session = sessions[sessionUUID];
 
-    const { caseId, startedAt, updatedAt, finishedAt, exportedAt } = session;
+        const { caseId, startedAt, updatedAt, finishedAt, exportedAt } =
+          session;
 
-    const protocol = get(installedProtocols, [session.protocolUID]);
-    const progress = Math.round(
-      (oneBasedIndex(session.stageIndex) /
-        oneBasedIndex(protocol.stages.length)) *
-        100,
-    );
+        const protocol = get(installedProtocols, [session.protocolUID]);
+        const progress = Math.round(
+          (oneBasedIndex(session.stageIndex) /
+            oneBasedIndex(protocol.stages.length)) *
+            100,
+        );
 
-    return {
-      caseId,
-      progress,
-      startedAt: formatDatestamp(startedAt),
-      finishedAt: formatDatestamp(finishedAt),
-      updatedAt: formatDatestamp(updatedAt),
-      exportedAt: formatDatestamp(exportedAt),
-      key: sessionUUID,
-      protocolName: protocol.name,
-      sessionUUID,
-      selected: selectedSessions.includes(sessionUUID),
-      onClickHandler: () => handleSessionCardClick(sessionUUID),
-    };
-  });
+        return {
+          caseId,
+          progress,
+          startedAt: formatDatestamp(startedAt),
+          finishedAt: formatDatestamp(finishedAt),
+          updatedAt: formatDatestamp(updatedAt),
+          exportedAt: formatDatestamp(exportedAt),
+          key: sessionUUID,
+          protocolName: protocol.name,
+          sessionUUID,
+          selected: selectedSessions.includes(sessionUUID),
+          onClickHandler: () => handleSessionCardClick(sessionUUID),
+        };
+      }),
+    [sessions, installedProtocols, selectedSessions, handleSessionCardClick],
+  );
 
   const [filteredSessions, setFilteredSessions] = useState(formattedSessions);
   const filteredIds = filteredSessions.map(({ sessionUUID }) => sessionUUID);

@@ -96,7 +96,17 @@ const SearchableList = (props) => {
     setSortDirection,
   ] = useSort(results, initialSortOrder);
 
+  // Switch to relevance sorting while searching, and restore the initial sort
+  // when the query is cleared. Only act when `hasQuery` actually transitions:
+  // the sort setters are recreated every render, so without this guard the
+  // effect would run on every render and reset the user's chosen sort.
+  const previousHasQuery = useRef(hasQuery);
   useEffect(() => {
+    if (previousHasQuery.current === hasQuery) {
+      return;
+    }
+    previousHasQuery.current = hasQuery;
+
     if (hasQuery) {
       setSortByProperty(['relevance']);
       setSortType('number');

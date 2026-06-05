@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { defaultTo } from 'lodash';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import { Icon } from '@codaco/ui';
@@ -29,12 +29,17 @@ export const SelfDismissingNote = (Wrapped) => {
     const timeout = useRef(null);
     const key = useRef(uuid());
 
-    const handleHide = () => {
+    // Keep the latest onHideCallback in a ref so handleHide can stay stable
+    // and effects don't re-run (rescheduling the dismiss timer) every render.
+    const onHideCallbackRef = useRef(onHideCallback);
+    onHideCallbackRef.current = onHideCallback;
+
+    const handleHide = useCallback(() => {
       if (timeoutDuration > 0) {
         setVisible(false);
-        onHideCallback();
+        onHideCallbackRef.current();
       }
-    };
+    }, [timeoutDuration]);
 
     useEffect(() => {
       if (show) {

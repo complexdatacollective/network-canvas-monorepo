@@ -31,7 +31,7 @@ const CollapsablePrompts = React.memo((props) => {
     if (minimized) {
       setMinimized(false);
     }
-  }, [minimized]);
+  }, [currentPromptIndex]);
 
   return (
     <motion.div

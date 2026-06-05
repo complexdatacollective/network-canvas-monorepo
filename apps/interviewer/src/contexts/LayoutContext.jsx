@@ -63,6 +63,12 @@ export const LayoutProvider = ({
 }) => {
   const dispatch = useDispatch();
 
+  // A stable listener keeps `initialize` (which depends on it) stable. Without
+  // this, the default no-op listener is recreated every render, giving
+  // `initialize` a new identity and re-triggering the effect that spawns the
+  // simulation worker, re-initializing it on every render.
+  const simulationListener = useCallback(() => {}, []);
+
   const {
     state: forceSimulation,
     screen,
@@ -75,7 +81,7 @@ export const LayoutProvider = ({
     moveNode,
     releaseNode,
     updateNetwork,
-  } = useForceSimulation();
+  } = useForceSimulation(simulationListener);
 
   const [simulationEnabled, setSimulationEnabled] = useState(true);
   const [links, setLinks] = useState([]);
@@ -99,14 +105,11 @@ export const LayoutProvider = ({
       );
       return get(nodes, [index, 'attributes', layoutVariable]);
     };
-  }, [
-    nodes,
-    simulationEnabled,
-    allowAutomaticLayout,
-    layout,
-    twoMode,
-    forceSimulation.current.nodes,
-  ]);
+    // NB: `forceSimulation.current.nodes` must NOT be a dependency — it is a
+    // ref read that is null until the simulation initialises, so evaluating it
+    // in the deps array on the first render throws. (Biome's exhaustive-deps
+    // auto-fix wrongly added it.)
+  }, [nodes, simulationEnabled, allowAutomaticLayout, layout, twoMode]);
 
   const updateNetworkInStore = useCallback(() => {
     if (!forceSimulation.current) {

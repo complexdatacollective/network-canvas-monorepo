@@ -61,16 +61,7 @@ const NodeForm = (props) => {
       setShow(false);
       onClose();
     },
-    [
-      selectedNode,
-      newNodeModelData,
-      newNodeAttributes,
-      onClose /**
-       *  addNode(modelData, attributeData);
-       */,
-      addNode,
-      updateNode,
-    ],
+    [selectedNode, newNodeModelData, newNodeAttributes, onClose],
   );
 
   // When a selected node is passed in, we are editing an existing node.

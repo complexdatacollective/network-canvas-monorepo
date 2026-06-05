@@ -2,7 +2,7 @@ import ExpandLessIcon from '@material-ui/icons/ExpandLessRounded';
 import cx from 'classnames';
 import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { Modal } from '@codaco/ui';
@@ -49,11 +49,17 @@ const Overlay = (props) => {
 
   const [fullscreen, setFullscreen] = useState(startFullscreen);
 
+  // Only resync `fullscreen` when `startFullscreen` actually transitions.
+  // Depending on `fullscreen` here would revert the user's manual maximize
+  // toggle on the very next render, so we guard on the previous value instead.
+  const previousStartFullscreen = useRef(startFullscreen);
   useEffect(() => {
-    if (fullscreen !== startFullscreen) {
-      setFullscreen(startFullscreen);
+    if (previousStartFullscreen.current === startFullscreen) {
+      return;
     }
-  }, [startFullscreen, fullscreen]);
+    previousStartFullscreen.current = startFullscreen;
+    setFullscreen(startFullscreen);
+  }, [startFullscreen]);
 
   const overlayClasses = cx(
     'overlay',

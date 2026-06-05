@@ -57,7 +57,13 @@ export default defineConfig({
       format: 'es',
     },
     optimizeDeps: {
-      include: ['react-resize-aware', '@codaco/ui'],
+      // csvtojson's CJS browser build is imported only from csvDecoder.worker.js;
+      // include it so the dep optimizer pre-bundles it (CJS->ESM) for the worker.
+      include: [
+        'react-resize-aware',
+        '@codaco/ui',
+        'csvtojson/browser/browser.js',
+      ],
       // protocol-validation dynamically imports ./schemas/<version>.js at runtime;
       // the dep optimizer can't follow that, so serve it unbundled.
       exclude: ['@codaco/protocol-validation'],

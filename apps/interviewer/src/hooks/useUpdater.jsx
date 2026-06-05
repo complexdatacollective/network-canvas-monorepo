@@ -1,6 +1,6 @@
 import compareVersions from 'compare-versions';
 import { find } from 'lodash';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 
 import { Button } from '@codaco/ui';
@@ -190,15 +190,22 @@ const useUpdater = (updateEndpoint, timeout = 0) => {
     );
   };
 
+  // `checkForUpdate` is recreated every render (it closes over dismissedUpdates
+  // and dispatches toasts/dialogs that trigger re-renders). Depending on it would
+  // re-run the effect each render, re-scheduling timers and re-fetching. Keep the
+  // latest in a ref and depend only on the stable primitives.
+  const checkForUpdateRef = useRef(checkForUpdate);
+  checkForUpdateRef.current = checkForUpdate;
+
   useEffect(() => {
     if (isPreviewMode) {
       return;
     }
 
-    const delay = setTimeout(checkForUpdate, timeout);
+    const delay = setTimeout(() => checkForUpdateRef.current(), timeout);
 
     return () => clearTimeout(delay);
-  }, [isPreviewMode, checkForUpdate, timeout]);
+  }, [isPreviewMode, timeout]);
 };
 
 export default useUpdater;
