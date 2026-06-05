@@ -17,6 +17,25 @@ import fse from 'fs-extra';
 import log from './log.js';
 
 /**
+ * Resolve `target` and require it to be inside the app's temp or userData
+ * directory before a destructive filesystem operation, mirroring the allowlist
+ * in network-exporters' `removeDirectory`. Throws otherwise.
+ */
+const assertUnderSafeRoot = (target, op) => {
+  const resolved = path.resolve(target);
+  const roots = [app.getPath('temp'), app.getPath('userData')];
+  const allowed = roots.some(
+    (root) => resolved === root || resolved.startsWith(root + path.sep),
+  );
+  if (!allowed) {
+    throw new Error(
+      `Refusing to ${op} outside the app's temp/userData directories: ${target}`,
+    );
+  }
+  return resolved;
+};
+
+/**
  * Register all IPC handlers
  */
 export const registerIpcHandlers = () => {
@@ -104,16 +123,6 @@ export const registerIpcHandlers = () => {
   // File System Handlers
   // ===================
 
-  ipcMain.handle('fs:readJson', async (_, filePath) => {
-    log.info('fs:readJson', filePath);
-    return fse.readJson(filePath);
-  });
-
-  ipcMain.handle('fs:writeJson', async (_, filePath, data, options) => {
-    log.info('fs:writeJson', filePath);
-    return fse.writeJson(filePath, data, options);
-  });
-
   ipcMain.handle('fs:readFile', async (_, filePath, encoding) => {
     log.info('fs:readFile', filePath);
     if (encoding) {
@@ -140,66 +149,14 @@ export const registerIpcHandlers = () => {
     return fse.writeFile(filePath, data);
   });
 
-  ipcMain.handle('fs:copy', async (_, src, dest) => {
-    log.info('fs:copy', src, '->', dest);
-    return fse.copy(src, dest);
-  });
-
-  ipcMain.handle('fs:unlink', async (_, filePath) => {
-    log.info('fs:unlink', filePath);
-    return fse.unlink(filePath);
-  });
-
-  ipcMain.handle('fs:remove', async (_, filePath) => {
-    log.info('fs:remove', filePath);
-    return fse.remove(filePath);
-  });
-
   ipcMain.handle('fs:rename', async (_, oldPath, newPath) => {
     log.info('fs:rename', oldPath, '->', newPath);
     return fse.rename(oldPath, newPath);
   });
 
-  ipcMain.handle('fs:access', async (_, filePath, mode) => {
-    log.info('fs:access', filePath);
-    try {
-      await fse.access(filePath, mode);
-      return true;
-    } catch {
-      return false;
-    }
-  });
-
-  ipcMain.handle('fs:stat', async (_, filePath) => {
-    log.info('fs:stat', filePath);
-    const stats = await fse.stat(filePath);
-    return {
-      isFile: stats.isFile(),
-      isDirectory: stats.isDirectory(),
-      size: stats.size,
-      mtime: stats.mtime,
-      ctime: stats.ctime,
-    };
-  });
-
   ipcMain.handle('fs:mkdirp', async (_, dirPath) => {
     log.info('fs:mkdirp', dirPath);
     return fse.mkdirp(dirPath);
-  });
-
-  ipcMain.handle('fs:pathExists', async (_, filePath) => {
-    log.info('fs:pathExists', filePath);
-    return fse.pathExists(filePath);
-  });
-
-  ipcMain.handle('fs:readdir', async (_, dirPath) => {
-    log.info('fs:readdir', dirPath);
-    return fse.readdir(dirPath);
-  });
-
-  ipcMain.handle('fs:outputFile', async (_, filePath, data) => {
-    log.info('fs:outputFile', filePath);
-    return fse.outputFile(filePath, data);
   });
 
   ipcMain.handle('fs:mkdir', async (_, dirPath, options) => {
@@ -209,23 +166,9 @@ export const registerIpcHandlers = () => {
 
   ipcMain.handle('fs:rmdir', async (_, dirPath) => {
     log.info('fs:rmdir', dirPath);
+    // Destructive: only allow removing inside the app's temp / userData dirs.
     // `remove` is idempotent (no ENOENT on missing path) and not deprecated.
-    return fse.remove(dirPath);
-  });
-
-  ipcMain.handle('fs:existsSync', async (_, filePath) => {
-    log.info('fs:existsSync', filePath);
-    return fse.existsSync(filePath);
-  });
-
-  ipcMain.handle('fs:createWriteStream', async (_, filePath) => {
-    log.info('fs:createWriteStream', filePath);
-    // Note: We can't actually return a stream over IPC, but we can ensure
-    // the directory exists and return success. Actual streaming should be
-    // handled differently (e.g., chunked writes via fs:writeFile or fs:outputFile)
-    const dirPath = path.dirname(filePath);
-    await fse.mkdirp(dirPath);
-    return { path: filePath, ready: true };
+    return fse.remove(assertUnderSafeRoot(dirPath, 'remove a directory'));
   });
 
   // ===================
@@ -392,24 +335,12 @@ export const removeIpcHandlers = () => {
     'app:getPath',
     'app:getAppPath',
     'app:getVersion',
-    'fs:readJson',
-    'fs:writeJson',
     'fs:readFile',
     'fs:writeFile',
-    'fs:copy',
-    'fs:unlink',
-    'fs:remove',
     'fs:rename',
-    'fs:access',
-    'fs:stat',
     'fs:mkdirp',
-    'fs:pathExists',
-    'fs:readdir',
-    'fs:outputFile',
     'fs:mkdir',
     'fs:rmdir',
-    'fs:existsSync',
-    'fs:createWriteStream',
     'path:join',
     'path:basename',
     'path:dirname',
