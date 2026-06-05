@@ -55,11 +55,10 @@
   //    they defaulted to `start` and did not inherit. Without this, inputs in a
   //    centered container (case-id and developer-options forms) have their text
   //    centered instead of left-aligned.
-  input,
-  textarea,
-  select {
-    text-align: start;
-  }
+  //    The reset is `input,textarea,select { text-align: start }`, but
+  //    lightningcss strips it from the production bundle as a redundant initial
+  //    value, so it lives instead as an inline <style> in index.html (unbundled,
+  //    where Chromium 148 honors the native @layer). See index.html.
 }
 
 // @codaco/ui's `.form-field` applies flex centering (`justify-items: center`)

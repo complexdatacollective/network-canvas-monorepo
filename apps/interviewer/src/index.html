@@ -20,6 +20,22 @@
       content="initial-scale=1, maximum-scale=1, user-scalable=no, width=device-width, viewport-fit=cover"
     />
     <title>Network Canvas Interviewer</title>
+    <!--
+      UA-stylesheet compat (companion to src/styles/_ua-compat.scss). This one
+      rule lives inline because lightningcss strips `text-align: start` from the
+      bundled CSS as a redundant initial value (it can't see that it overrides
+      Chrome 148's new inherited value). An unbundled inline <style> survives,
+      and Chromium 148 honors the native @layer so it still loses to author rules.
+    -->
+    <style>
+      @layer legacy-ua {
+        input,
+        textarea,
+        select {
+          text-align: start;
+        }
+      }
+    </style>
     <style type="text/css">
       :root {
         --color-neon-coral: rgb(226, 33, 91);
