@@ -1925,10 +1925,7 @@ const NODE_RENDERERS: Record<string, NodeRenderer> = {
         size="sm"
       >
         {node.attributes[STORY_EGO_VAR] === true && (
-          <EgoIcon
-            className="pointer-events-none absolute top-1/2 left-1/2 size-8 -translate-1/2"
-            variant="platinum"
-          />
+          <EgoIcon className="pointer-events-none absolute top-1/2 left-1/2 size-8 -translate-1/2" />
         )}
       </Node>
     );
@@ -1947,10 +1944,7 @@ const NODE_RENDERERS: Record<string, NodeRenderer> = {
         size="sm"
       >
         {node.attributes[STORY_EGO_VAR] === true && (
-          <EgoIcon
-            className="pointer-events-none absolute top-1/2 left-1/2 size-8 -translate-1/2"
-            variant="platinum"
-          />
+          <EgoIcon className="pointer-events-none absolute top-1/2 left-1/2 size-8 -translate-1/2" />
         )}
       </Node>
     );

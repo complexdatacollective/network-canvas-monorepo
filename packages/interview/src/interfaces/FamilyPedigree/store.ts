@@ -29,6 +29,16 @@ export type NodeMetadata = {
   readOnly: boolean;
 };
 
+/**
+ * Which gamete a biological/donor parent contributed. Internal pedigree state:
+ * persisted to stage metadata for relationship labelling, never written to the
+ * interview network as an attribute.
+ */
+export type GameteRole = 'egg' | 'sperm';
+
+/** A pedigree edge plus its internal, non-network gamete-role marker. */
+export type FamilyEdge = NcEdge & { gameteRole?: GameteRole };
+
 export type CommitBatch = {
   nodes: {
     tempId: string;
@@ -39,6 +49,7 @@ export type CommitBatch = {
   edges: {
     source: string;
     target: string;
+    gameteRole?: GameteRole;
     data: {
       attributes: Record<string, VariableValue>;
     };
@@ -50,7 +61,7 @@ type FamilyPedigreeState = {
   activeNominationVariable: string | null;
   network: {
     nodes: Map<string, NcNode>;
-    edges: Map<string, NcEdge>;
+    edges: Map<string, FamilyEdge>;
   };
   nodeMetadata: Map<string, NodeMetadata>;
   storeToReduxIdMap: Map<string, string>;
@@ -67,6 +78,7 @@ type NetworkActions = {
     from: string;
     to: string;
     attributes: Record<string, VariableValue>;
+    gameteRole?: GameteRole;
     id?: string;
   }) => string;
   removeEdge: (id: string) => void;
@@ -89,6 +101,32 @@ export const createFamilyPedigreeStore = (
   dispatch?: ReturnType<typeof useAppDispatch>,
   currentStep?: number,
 ) => {
+  // Guard the network invariant that at most one edge of a given relationship
+  // type connects any pair of nodes. Throwing surfaces edge-creation bugs (e.g.
+  // a parent ending up with two biological edges to the same child) loudly
+  // rather than letting silent duplicates accumulate.
+  const assertUniqueEdge = (
+    edges: Map<string, FamilyEdge>,
+    from: string,
+    to: string,
+    attributes: Record<string, VariableValue>,
+  ) => {
+    const relationshipType =
+      attributes[variableConfig.relationshipTypeVariable];
+    for (const edge of edges.values()) {
+      if (
+        edge.attributes[variableConfig.relationshipTypeVariable] ===
+          relationshipType &&
+        ((edge.from === from && edge.to === to) ||
+          (edge.from === to && edge.to === from))
+      ) {
+        throw new Error(
+          `Duplicate FamilyPedigree edge: a "${String(relationshipType)}" edge already connects "${from}" and "${to}".`,
+        );
+      }
+    }
+  };
+
   return createStore<FamilyPedigreeStore>()(
     immer((set, get) => {
       return {
@@ -155,16 +193,18 @@ export const createFamilyPedigreeStore = (
         },
 
         addEdge: (edge) => {
-          const { id, from, to, attributes } = edge;
+          const { id, from, to, attributes, gameteRole } = edge;
           const edgeId = id ?? crypto.randomUUID();
 
           set((state) => {
+            assertUniqueEdge(state.network.edges, from, to, attributes);
             state.network.edges.set(edgeId, {
               _uid: edgeId,
               type: variableConfig.edgeType,
               from,
               to,
               attributes,
+              ...(gameteRole ? { gameteRole } : {}),
             });
           });
 
@@ -207,6 +247,12 @@ export const createFamilyPedigreeStore = (
                 tempIdToRealId.get(edge.source) ?? edge.source;
               const resolvedTarget =
                 tempIdToRealId.get(edge.target) ?? edge.target;
+              assertUniqueEdge(
+                state.network.edges,
+                resolvedSource,
+                resolvedTarget,
+                edge.data.attributes,
+              );
               const edgeId = crypto.randomUUID();
               state.network.edges.set(edgeId, {
                 _uid: edgeId,
@@ -214,6 +260,7 @@ export const createFamilyPedigreeStore = (
                 from: resolvedSource,
                 to: resolvedTarget,
                 attributes: edge.data.attributes,
+                ...(edge.gameteRole ? { gameteRole: edge.gameteRole } : {}),
               });
             }
           });
@@ -253,6 +300,7 @@ export const createFamilyPedigreeStore = (
             from: edge.from,
             to: edge.to,
             attributes: edge.attributes,
+            ...(edge.gameteRole ? { gameteRole: edge.gameteRole } : {}),
           }));
 
           dispatch?.(

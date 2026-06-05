@@ -1,8 +1,11 @@
 import type { VariableValue } from '@codaco/shared-consts';
 import type {
   CommitBatch,
+  GameteRole,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
+
+import { buildChildParentage } from './buildChildParentage';
 
 const KNOWN_BIO_PARENT_KEYS = new Set([
   'is-donor',
@@ -11,8 +14,6 @@ const KNOWN_BIO_PARENT_KEYS = new Set([
 ]);
 
 const KNOWN_ADDITIONAL_PARENT_KEYS = new Set(['role', 'name']);
-
-const KNOWN_PERSON_KEYS = new Set(['name']);
 
 function extractUnknownAttributes(
   obj: Record<string, unknown>,
@@ -39,6 +40,7 @@ type ParentEntry = {
     | 'social'
     | 'adoptive';
   isGestationalCarrier: boolean;
+  gameteRole?: GameteRole;
 };
 
 function buildBioParent(
@@ -113,6 +115,7 @@ export function egoCellTransform(
       'donor',
       variableConfig,
     );
+    entry.gameteRole = 'egg';
     if (eggParent.gestationalCarrier === true) {
       entry.isGestationalCarrier = true;
     }
@@ -120,9 +123,14 @@ export function egoCellTransform(
   }
 
   if (spermParent) {
-    parents.push(
-      buildBioParent('sperm-parent', spermParent, 'donor', variableConfig),
+    const entry = buildBioParent(
+      'sperm-parent',
+      spermParent,
+      'donor',
+      variableConfig,
     );
+    entry.gameteRole = 'sperm';
+    parents.push(entry);
   }
 
   const hasGestCarrier = eggParent?.gestationalCarrier === false && gestCarrier;
@@ -133,6 +141,9 @@ export function egoCellTransform(
       'surrogate',
       variableConfig,
     );
+    // A gestational carrier never contributes the egg, so they are never a
+    // genetic parent — always record them as a (non-genetic) surrogate.
+    entry.relationshipType = 'surrogate';
     entry.isGestationalCarrier = true;
     parents.push(entry);
   }
@@ -163,14 +174,11 @@ export function egoCellTransform(
     'partner',
     'childrenWithPartnerCount',
     'childWithPartner',
+    'partnerships',
   ]);
   const egoCustomAttrs: Record<string, VariableValue> = {};
   for (const [key, val] of Object.entries(values)) {
-    if (
-      !egoKnownKeys.has(key) &&
-      !key.startsWith('partnership-') &&
-      val !== undefined
-    ) {
+    if (!egoKnownKeys.has(key) && val !== undefined) {
       egoCustomAttrs[key] = val as VariableValue;
     }
   }
@@ -207,27 +215,41 @@ export function egoCellTransform(
     batch.edges.push({
       source: parent.tempId,
       target: egoRef,
+      ...(parent.gameteRole ? { gameteRole: parent.gameteRole } : {}),
       data: { attributes: edgeAttributes },
     });
   }
 
-  // Parse partnership fields (partnership-{id1}-{id2})
-  const parentTempIds = parents.map((p) => p.tempId);
-  for (let i = 0; i < parentTempIds.length; i++) {
-    for (let j = i + 1; j < parentTempIds.length; j++) {
-      const key = `partnership-${parentTempIds[i]}-${parentTempIds[j]}`;
-      const val = values[key] as string | undefined;
-      if (val === 'current' || val === 'ex') {
-        batch.edges.push({
-          source: parentTempIds[i]!,
-          target: parentTempIds[j]!,
-          data: {
-            attributes: {
-              [variableConfig.relationshipTypeVariable]: 'partner',
-              [variableConfig.isActiveVariable]: val === 'current',
+  // Parse partnership matrices: `values.partnerships` maps each focal parent's
+  // tempId to an array of { id, value } entries — one per candidate partner
+  // listed below it (each pair is asked exactly once).
+  const partnerships = values.partnerships as
+    | Record<string, { id: string; value: string }[]>
+    | undefined;
+  if (partnerships) {
+    // A partnership matrix can retain rows for parents that were later removed
+    // (e.g. additional parents after toggling "other parents" off). Only emit
+    // edges between parents that were actually materialized as nodes.
+    const materializedIds = new Set(batch.nodes.map((node) => node.tempId));
+    for (const [focalId, matrix] of Object.entries(partnerships)) {
+      if (!Array.isArray(matrix)) continue;
+      for (const entry of matrix) {
+        if (
+          (entry?.value === 'current' || entry?.value === 'ex') &&
+          materializedIds.has(focalId) &&
+          materializedIds.has(entry.id)
+        ) {
+          batch.edges.push({
+            source: focalId,
+            target: entry.id,
+            data: {
+              attributes: {
+                [variableConfig.relationshipTypeVariable]: 'partner',
+                [variableConfig.isActiveVariable]: entry.value === 'current',
+              },
             },
-          },
-        });
+          });
+        }
       }
     }
   }
@@ -266,7 +288,10 @@ export function egoCellTransform(
     });
   }
 
-  // Children with partner
+  // Children with partner — each child's biological parentage is captured per
+  // child via the BioTriad model (egg/sperm/carrier), namespaced under
+  // `childWithPartner[i].parentage`. The partner is only a parent of a child if
+  // the participant selected them as the egg or sperm source.
   const childrenCount = hasPartner
     ? Number(values.childrenWithPartnerCount ?? 0)
     : 0;
@@ -279,7 +304,10 @@ export function egoCellTransform(
     if (!child) continue;
 
     const childName = (child.name as string | undefined) ?? '';
-    const childExtraAttrs = extractUnknownAttributes(child, KNOWN_PERSON_KEYS);
+    const childExtraAttrs = extractUnknownAttributes(
+      child,
+      new Set(['name', 'parentage']),
+    );
     const tempId = `child-${String(i)}`;
 
     batch.nodes.push({
@@ -293,29 +321,26 @@ export function egoCellTransform(
       },
     });
 
-    batch.edges.push({
-      source: egoRef,
-      target: tempId,
-      data: {
-        attributes: {
-          [variableConfig.relationshipTypeVariable]: 'biological',
-          [variableConfig.isActiveVariable]: true,
-        },
-      },
-    });
-
-    if (hasPartner) {
-      batch.edges.push({
-        source: 'partner',
-        target: tempId,
-        data: {
-          attributes: {
-            [variableConfig.relationshipTypeVariable]: 'biological',
-            [variableConfig.isActiveVariable]: true,
-          },
-        },
-      });
+    const triadValues = {
+      ...((child.parentage ?? {}) as Record<string, unknown>),
+    };
+    // The children step uses the literal 'ego' for the participant in any role
+    // (egg, sperm, or carrier); map it to the actual ego reference (a
+    // pre-existing ego id when revisiting).
+    for (const role of [
+      'egg-source',
+      'sperm-source',
+      'carrier-source',
+    ] as const) {
+      if (triadValues[role] === 'ego') triadValues[role] = egoRef;
     }
+    const { nodes: parentNodes, edges: parentEdges } = buildChildParentage(
+      tempId,
+      triadValues,
+      variableConfig,
+    );
+    batch.nodes.push(...parentNodes);
+    batch.edges.push(...parentEdges);
   }
 
   return {

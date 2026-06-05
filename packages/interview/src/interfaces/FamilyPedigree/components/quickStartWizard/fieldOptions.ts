@@ -1,8 +1,8 @@
 import type { RichSelectOption } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 
-export const PARENT_EDGE_TYPE_OPTIONS_ALTER: (RichSelectOption & {
-  value: string;
-})[] = [
+export type ParentEdgeTypeOption = RichSelectOption & { value: string };
+
+export const PARENT_EDGE_TYPE_OPTIONS_ALTER: ParentEdgeTypeOption[] = [
   {
     value: 'biological',
     label: 'Biological Parent',

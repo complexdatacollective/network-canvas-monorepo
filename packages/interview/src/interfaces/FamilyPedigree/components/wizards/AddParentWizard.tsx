@@ -3,32 +3,20 @@
 import type { SkipContext } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
+import { getNodeLabel } from '~/interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel';
 import type {
   CommitBatch,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 
-import { PARENT_EDGE_TYPE_OPTIONS_ALTER } from '../quickStartWizard/fieldOptions';
+import type { ParentEdgeTypeOption } from '../quickStartWizard/fieldOptions';
 import PersonFields from '../quickStartWizard/PersonFields';
-
-const KNOWN_PERSON_KEYS = new Set(['name']);
-
-function extractCustomAttributes(
-  obj: Record<string, unknown>,
-): Record<string, VariableValue> | undefined {
-  const attrs: Record<string, VariableValue> = {};
-  let hasAttrs = false;
-  for (const [key, val] of Object.entries(obj)) {
-    if (!KNOWN_PERSON_KEYS.has(key) && val !== undefined) {
-      attrs[key] = val as VariableValue;
-      hasAttrs = true;
-    }
-  }
-  return hasAttrs ? attrs : undefined;
-}
+import { socialParentCandidates } from './parentCandidates';
+import { extractCustomAttributes } from './transforms/personAttributes';
 
 const partnershipOptions = [
   { value: 'current', label: 'Current partners' },
@@ -36,16 +24,54 @@ const partnershipOptions = [
   { value: 'none', label: 'Never partners' },
 ];
 
-function ParentDetailsStep() {
+function ParentDetailsStep({
+  parentTypeOptions,
+  candidateOptions,
+}: {
+  parentTypeOptions: ParentEdgeTypeOption[];
+  candidateOptions: { value: string; label: string }[];
+}) {
+  const selectionOptions = [
+    ...candidateOptions,
+    { value: 'new', label: 'Create a new person' },
+  ];
+  const onlyNew =
+    selectionOptions.length === 1 && selectionOptions[0]?.value === 'new';
   return (
     <>
-      <PersonFields namespace="parent" />
+      {onlyNew ? (
+        <div className="hidden">
+          <Field
+            name="parent-selection"
+            label="Who is this parent?"
+            component={RadioGroupField}
+            options={[{ value: 'new', label: 'new' }]}
+            initialValue="new"
+          />
+        </div>
+      ) : (
+        <Field
+          name="parent-selection"
+          label="Who is this parent?"
+          hint="Select an existing person or create a new one."
+          component={RadioGroupField}
+          options={selectionOptions}
+          initialValue="new"
+          required
+        />
+      )}
+      <FieldGroup
+        watch={['parent-selection']}
+        condition={(values) => values['parent-selection'] === 'new'}
+      >
+        <PersonFields namespace="parent" />
+      </FieldGroup>
       <Field
         name="edgeType"
         label="Parent type"
         component={RichSelectGroupField}
-        options={PARENT_EDGE_TYPE_OPTIONS_ALTER}
-        initialValue="biological"
+        options={parentTypeOptions}
+        initialValue={parentTypeOptions[0]?.value ?? 'social'}
         required
       />
     </>
@@ -60,7 +86,7 @@ function ExistingParentPartnershipsStep({
   if (existingParents.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-6">
+    <>
       {existingParents.map((parent) => (
         <Field
           key={`partnership-${parent.id}`}
@@ -71,7 +97,7 @@ function ExistingParentPartnershipsStep({
           required
         />
       ))}
-    </div>
+    </>
   );
 }
 
@@ -92,19 +118,15 @@ function getExistingParentIds(
   return parentIds;
 }
 
-function transformToCommitBatch(
+export function transformToCommitBatch(
   formValues: Record<string, unknown>,
   anchorNodeId: string,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
 ): CommitBatch {
-  const parentValues = (formValues.parent ?? {}) as Record<string, unknown>;
-  const name = (parentValues.name as string | undefined) ?? '';
-  const customAttrs = extractCustomAttributes(parentValues);
-
+  const selection =
+    (formValues['parent-selection'] as string | undefined) ?? 'new';
   const edgeType = (formValues.edgeType as string | undefined) ?? 'biological';
-
-  const parentTempId = '__new-parent__';
 
   const edgeAttributes: Record<string, VariableValue> = {
     [variableConfig.relationshipTypeVariable]: edgeType,
@@ -114,27 +136,33 @@ function transformToCommitBatch(
     edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
   }
 
-  const batch: CommitBatch = {
-    nodes: [
-      {
-        tempId: parentTempId,
-        data: {
-          attributes: {
-            [variableConfig.nodeLabelVariable]: name,
-            [variableConfig.egoVariable]: false,
-            ...customAttrs,
-          },
+  const batch: CommitBatch = { nodes: [], edges: [] };
+
+  let parentRef: string;
+  if (selection === 'new') {
+    const parentValues = (formValues.parent ?? {}) as Record<string, unknown>;
+    const name = (parentValues.name as string | undefined) ?? '';
+    const customAttrs = extractCustomAttributes(parentValues);
+    parentRef = '__new-parent__';
+    batch.nodes.push({
+      tempId: parentRef,
+      data: {
+        attributes: {
+          [variableConfig.nodeLabelVariable]: name,
+          [variableConfig.egoVariable]: false,
+          ...customAttrs,
         },
       },
-    ],
-    edges: [
-      {
-        source: parentTempId,
-        target: anchorNodeId,
-        data: { attributes: edgeAttributes },
-      },
-    ],
-  };
+    });
+  } else {
+    parentRef = selection;
+  }
+
+  batch.edges.push({
+    source: parentRef,
+    target: anchorNodeId,
+    data: { attributes: edgeAttributes },
+  });
 
   const existingParentIds = getExistingParentIds(
     anchorNodeId,
@@ -145,7 +173,7 @@ function transformToCommitBatch(
     const value = formValues[`partnership-${parentId}`] as string | undefined;
     if (value === 'current' || value === 'ex') {
       batch.edges.push({
-        source: parentTempId,
+        source: parentRef,
         target: parentId,
         data: {
           attributes: {
@@ -166,6 +194,7 @@ export async function openAddParentWizard(
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
+  parentTypeOptions: ParentEdgeTypeOption[],
 ): Promise<CommitBatch | null> {
   const existingParentIds = getExistingParentIds(
     anchorNodeId,
@@ -174,16 +203,22 @@ export async function openAddParentWizard(
   );
   const existingParents = existingParentIds
     .map((id) => {
-      const node = nodes.get(id);
-      if (!node) return null;
-      const name = node.attributes[variableConfig.nodeLabelVariable];
+      if (!nodes.has(id)) return null;
       return {
         id,
-        label:
-          typeof name === 'string' && name.length > 0 ? name : 'Unknown person',
+        label: getNodeLabel(id, nodes, edges, variableConfig),
       };
     })
     .filter((p) => p !== null);
+
+  const candidateOptions = [
+    ...socialParentCandidates(anchorNodeId, nodes, edges, variableConfig),
+  ]
+    .filter((id) => nodes.has(id))
+    .map((id) => ({
+      value: id,
+      label: getNodeLabel(id, nodes, edges, variableConfig),
+    }));
 
   const result = await openDialog({
     type: 'wizard',
@@ -192,7 +227,12 @@ export async function openAddParentWizard(
     steps: [
       {
         title: 'Parent details',
-        content: ParentDetailsStep,
+        content: () => (
+          <ParentDetailsStep
+            parentTypeOptions={parentTypeOptions}
+            candidateOptions={candidateOptions}
+          />
+        ),
       },
       {
         title: 'Partnerships',

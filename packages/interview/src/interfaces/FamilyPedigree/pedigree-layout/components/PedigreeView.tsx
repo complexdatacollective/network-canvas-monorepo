@@ -1,23 +1,21 @@
 'use client';
 
-import { useMemo } from 'react';
-
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Node from '@codaco/fresco-ui/Node';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import { useStageSelector } from '~/hooks/useStageSelector';
-import AddPersonFields, {
-  type AddPersonMode,
-} from '~/interfaces/FamilyPedigree/components/AddPersonForm';
+import AddPersonFields from '~/interfaces/FamilyPedigree/components/AddPersonForm';
+import PersonFields from '~/interfaces/FamilyPedigree/components/quickStartWizard/PersonFields';
 import { openAddChildWizard } from '~/interfaces/FamilyPedigree/components/wizards/AddChildWizard';
 import { openAddParentWizard } from '~/interfaces/FamilyPedigree/components/wizards/AddParentWizard';
 import { openAddSiblingWizard } from '~/interfaces/FamilyPedigree/components/wizards/AddSiblingWizard';
 import { openDefineParentsWizard } from '~/interfaces/FamilyPedigree/components/wizards/DefineParentsWizard';
+import {
+  addableParentTypeOptions,
+  countGeneticParents,
+} from '~/interfaces/FamilyPedigree/components/wizards/parentTypeOptions';
 import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeProvider';
-import type { ParentEdge } from '~/interfaces/FamilyPedigree/schema';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 import {
   getEdgeTypeKey,
@@ -41,6 +39,7 @@ type PedigreeViewProps = {
   overrideEdges?: Map<string, NcEdge>;
   activeNominationVariable?: string | null;
   onToggleAttribute?: (nodeId: string, variable: string) => void;
+  isFinalized?: boolean;
 };
 
 export default function PedigreeView({
@@ -48,6 +47,7 @@ export default function PedigreeView({
   overrideEdges,
   activeNominationVariable: activeNominationVariableProp,
   onToggleAttribute,
+  isFinalized = false,
 }: PedigreeViewProps = {}) {
   const storeNodes = useFamilyPedigreeStore((s) => s.network.nodes);
   const storeEdges = useFamilyPedigreeStore((s) => s.network.edges);
@@ -95,15 +95,14 @@ export default function PedigreeView({
     component: <Node size="sm" />,
   });
 
-  const handleAddPerson = async (nodeId: string, mode: AddPersonMode) => {
+  const handleAddPerson = async (nodeId: string) => {
     const result = await openDialog({
       type: 'form',
-      title: `Add ${mode}`,
+      title: 'Add partner',
       submitLabel: 'Add',
       cancelLabel: 'Cancel',
       children: (
         <AddPersonFields
-          mode={mode}
           anchorNodeId={nodeId}
           nodes={nodes}
           edges={edges}
@@ -131,133 +130,53 @@ export default function PedigreeView({
       },
     });
 
-    switch (mode) {
-      case 'parent': {
+    addEdge({
+      from: nodeId,
+      to: newNodeId,
+      attributes: {
+        [relationshipTypeVariable]: 'partner',
+        [isActiveVariable]: result.current !== 'ex',
+      },
+    });
+
+    for (const [key, value] of Object.entries(result)) {
+      if (!key.startsWith('parentType-')) continue;
+      const childId = key.replace('parentType-', '');
+      if (
+        value === 'biological' ||
+        value === 'social' ||
+        value === 'donor' ||
+        value === 'surrogate'
+      ) {
         addEdge({
           from: newNodeId,
-          to: nodeId,
+          to: childId,
           attributes: {
-            [relationshipTypeVariable]:
-              (result.edgeType as ParentEdge['relationshipType'] | undefined) ??
-              'biological',
+            [relationshipTypeVariable]: value,
             [isActiveVariable]: true,
           },
         });
-
-        for (const [key, value] of Object.entries(result)) {
-          if (!key.startsWith('partnership-')) continue;
-          const parentId = key.replace('partnership-', '');
-          if (value === 'current' || value === 'ex') {
-            addEdge({
-              from: newNodeId,
-              to: parentId,
-              attributes: {
-                [relationshipTypeVariable]: 'partner',
-                [isActiveVariable]: value === 'current',
-              },
-            });
-          }
-        }
-        break;
-      }
-      case 'child': {
-        addEdge({
-          from: nodeId,
-          to: newNodeId,
-          attributes: {
-            [relationshipTypeVariable]: 'biological',
-            [isActiveVariable]: true,
-          },
-        });
-        const partnerId = result.partnerId as string | undefined;
-        if (partnerId) {
-          addEdge({
-            from: partnerId,
-            to: newNodeId,
-            attributes: {
-              [relationshipTypeVariable]: 'biological',
-              [isActiveVariable]: true,
-            },
-          });
-        }
-        break;
-      }
-      case 'partner': {
-        addEdge({
-          from: nodeId,
-          to: newNodeId,
-          attributes: {
-            [relationshipTypeVariable]: 'partner',
-            [isActiveVariable]: result.current !== 'ex',
-          },
-        });
-
-        for (const [key, value] of Object.entries(result)) {
-          if (!key.startsWith('parentType-')) continue;
-          const childId = key.replace('parentType-', '');
-          if (
-            value === 'biological' ||
-            value === 'social' ||
-            value === 'donor' ||
-            value === 'surrogate'
-          ) {
-            addEdge({
-              from: newNodeId,
-              to: childId,
-              attributes: {
-                [relationshipTypeVariable]: value,
-                [isActiveVariable]: true,
-              },
-            });
-          }
-        }
-        break;
-      }
-      case 'sibling': {
-        const sharedParents = Array.isArray(result.sharedParents)
-          ? new Set(result.sharedParents.map(String))
-          : null;
-
-        for (const edge of edges.values()) {
-          const edgeRelType = edge.attributes[relationshipTypeVariable];
-          if (edgeRelType !== 'partner' && edge.to === nodeId) {
-            if (sharedParents && !sharedParents.has(edge.from)) continue;
-
-            addEdge({
-              from: edge.from,
-              to: newNodeId,
-              attributes: {
-                [relationshipTypeVariable]: edgeRelType as string,
-                [isActiveVariable]: true,
-              },
-            });
-          }
-        }
-        break;
       }
     }
   };
 
-  const handleEditName = async (nodeId: string) => {
+  const handleEdit = async (nodeId: string) => {
     const currentNode = nodes.get(nodeId);
+    if (!currentNode) return;
+
     const currentName =
-      typeof currentNode?.attributes[nodeLabelVariable] === 'string'
+      typeof currentNode.attributes[nodeLabelVariable] === 'string'
         ? currentNode.attributes[nodeLabelVariable]
         : '';
 
     const result = await openDialog({
       type: 'form',
-      title: 'Edit name',
+      title: 'Edit',
       submitLabel: 'Done',
       cancelLabel: 'Cancel',
       children: (
-        <Field
-          name="name"
-          label="Name"
-          component={InputField}
-          initialValue={currentName}
-          hint="Leave blank if the name is not known"
-          autoFocus
+        <PersonFields
+          initial={{ name: currentName, attributes: currentNode.attributes }}
         />
       ),
     });
@@ -265,10 +184,18 @@ export default function PedigreeView({
     if (!result) return;
 
     const name = typeof result.name === 'string' ? result.name : '';
-    if (!currentNode) return;
+
+    const formAttrs: Record<string, VariableValue> = {};
+    for (const field of resolvedFormFields) {
+      if (result[field.variableId] !== undefined) {
+        formAttrs[field.variableId] = result[field.variableId] as VariableValue;
+      }
+    }
+
     updateNode(nodeId, {
       ...currentNode.attributes,
       [nodeLabelVariable]: name,
+      ...formAttrs,
     });
   };
 
@@ -299,21 +226,17 @@ export default function PedigreeView({
   };
 
   const handleAddParent = async (nodeId: string) => {
-    const bioParentCount = [...edges.values()].filter(
-      (e) =>
-        e.to === nodeId &&
-        e.attributes[relationshipTypeVariable] !== 'partner' &&
-        e.attributes[relationshipTypeVariable] !== 'social',
-    ).length;
+    const geneticCount = countGeneticParents(nodeId, edges, variableConfig);
 
     const result =
-      bioParentCount >= 2
+      geneticCount >= 2
         ? await openAddParentWizard(
             openDialog,
             nodeId,
             nodes,
             edges,
             variableConfig,
+            addableParentTypeOptions(nodeId, edges, variableConfig),
           )
         : await openDefineParentsWizard(
             openDialog,
@@ -333,8 +256,8 @@ export default function PedigreeView({
   };
 
   const handleMenuAction = (nodeId: string, action: NodeContextMenuAction) => {
-    if (action === 'editName') {
-      void handleEditName(nodeId);
+    if (action === 'edit') {
+      void handleEdit(nodeId);
     } else if (action === 'child') {
       void handleAddChild(nodeId);
     } else if (action === 'sibling') {
@@ -344,16 +267,9 @@ export default function PedigreeView({
     } else if (action === 'delete') {
       handleDeleteNode(nodeId);
     } else {
-      void handleAddPerson(nodeId, action);
+      void handleAddPerson(nodeId);
     }
   };
-
-  const egoId = useMemo(() => {
-    for (const [id, node] of nodes) {
-      if (node.attributes[egoVariable] === true) return id;
-    }
-    return null;
-  }, [nodes, egoVariable]);
 
   const displayLabels = computeNodeDisplayLabels(nodes, edges, variableConfig);
 
@@ -389,15 +305,6 @@ export default function PedigreeView({
               />
             ) : (
               <NodeContextMenu
-                canAddParent={
-                  isEgo ||
-                  ![...edges.values()].some(
-                    (e) =>
-                      e.attributes[relationshipTypeVariable] === 'partner' &&
-                      (e.from === egoId || e.to === egoId) &&
-                      (e.from === node.id || e.to === node.id),
-                  )
-                }
                 canAddSibling={
                   isEgo ||
                   [...edges.values()].some(
@@ -408,6 +315,7 @@ export default function PedigreeView({
                   )
                 }
                 isEgo={isEgo}
+                isFinalized={isFinalized}
                 onAction={(action) => handleMenuAction(node.id, action)}
               >
                 <PedigreeNode

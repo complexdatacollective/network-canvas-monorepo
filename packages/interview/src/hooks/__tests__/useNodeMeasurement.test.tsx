@@ -44,7 +44,7 @@ function TestConsumer({ component }: { component: React.ReactElement }) {
     component,
   });
   return (
-    <div>
+    <div data-testid="consumer-root">
       {measurementContainer}
       <div data-testid="width">{nodeWidth}</div>
       <div data-testid="height">{nodeHeight}</div>
@@ -71,14 +71,23 @@ describe('useNodeMeasurement', () => {
     expect(getByTestId('height').textContent).toBe('0');
   });
 
-  test('creates a hidden container on document.body', () => {
+  test('renders the hidden container inline within the consumer subtree', () => {
     setup();
-    render(<TestConsumer component={<div>test</div>} />);
+    const { getByTestId } = render(
+      <TestConsumer component={<div>test</div>} />,
+    );
 
-    const containers = document.querySelectorAll(
+    const container = document.querySelector<HTMLElement>(
       'div[style*="visibility: hidden"]',
     );
-    expect(containers.length).toBeGreaterThanOrEqual(1);
+    expect(container).not.toBeNull();
+
+    // The measurement node must live inside the consumer's subtree (not
+    // portaled to document.body) so it inherits the consumer's CSS cascade
+    // — in particular the themed/scaled `--theme-root-size` that drives node
+    // sizing. Portaling to body would resolve the base size and mis-measure.
+    expect(getByTestId('consumer-root').contains(container)).toBe(true);
+    expect(container!.parentElement).not.toBe(document.body);
   });
 
   test('renders content into the hidden container', () => {

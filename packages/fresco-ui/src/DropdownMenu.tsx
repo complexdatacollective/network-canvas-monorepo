@@ -5,7 +5,7 @@ import { Check, CheckIcon, ChevronRight } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import * as React from 'react';
 
-import { BaseUISharedPopoverContainer } from './Popover';
+import { ArrowSvg, BaseUISharedPopoverContainer } from './Popover';
 import { usePortalContainer } from './PortalContainer';
 import {
   dropdownItemVariants,
@@ -118,15 +118,18 @@ const DropdownMenuContent = React.forwardRef<
     side?: 'top' | 'right' | 'bottom' | 'left';
     align?: 'start' | 'center' | 'end';
     keepMounted?: boolean;
+    showArrow?: boolean;
   }
 >(
   (
     {
       className,
-      sideOffset = 4,
+      sideOffset = 10,
       side = 'bottom',
       align = 'center',
       keepMounted = true,
+      showArrow = true,
+      children,
       ...props
     },
     ref,
@@ -146,7 +149,14 @@ const DropdownMenuContent = React.forwardRef<
                 ref={ref}
                 render={<BaseUISharedPopoverContainer className={className} />}
                 {...props}
-              />
+              >
+                {showArrow && (
+                  <Menu.Arrow className="data-[side=bottom]:top-[-15px] data-[side=left]:right-[-20px] data-[side=left]:rotate-90 data-[side=right]:left-[-20px] data-[side=right]:-rotate-90 data-[side=top]:bottom-[-15px] data-[side=top]:rotate-180">
+                    <ArrowSvg />
+                  </Menu.Arrow>
+                )}
+                {children}
+              </Menu.Popup>
             </Menu.Positioner>
           )}
         </AnimatePresence>

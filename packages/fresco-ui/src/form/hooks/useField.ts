@@ -269,8 +269,12 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       'data-field-name': resolvedName, // Used for scrolling to field errors
     },
     fieldProps: {
-      // Use initialValue as fallback before field is registered in the store
-      'value': fieldState?.value ?? initialValue,
+      // Fall back to initialValue only before the field is registered. Once
+      // registered, honour the stored value verbatim — including an explicit
+      // `undefined` from clearing the field. Using `?? initialValue` here
+      // re-applied the initial value on every clear, so a field with an
+      // initialValue could never be cleared.
+      'value': fieldState ? fieldState.value : initialValue,
       'onChange': handleChange,
       'onBlur': handleBlur,
       'disabled': isDisabled ?? false,
