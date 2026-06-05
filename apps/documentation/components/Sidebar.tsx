@@ -331,6 +331,12 @@ export function Sidebar({ className }: { className?: string }) {
         .map(([, item]) => item),
     );
 
+    const projectOverviewHref = processSourceFile(
+      'folder',
+      locale,
+      projectData.sourceFile,
+    );
+
     const activeFolder = childrenEntries.find(
       ([slug, item]) => slug === displayTab && item.type === 'folder',
     )?.[1];
@@ -354,6 +360,14 @@ export function Sidebar({ className }: { className?: string }) {
         <ProjectSwitcher />
 
         <div ref={sidebarContainerRef} className="flex-1 overflow-y-auto p-2">
+          {projectOverviewHref && (
+            <SidebarLink
+              href={projectOverviewHref}
+              label="Overview"
+              sidebarContainerRef={sidebarContainerRef}
+            />
+          )}
+
           {sharedItems.map((item) =>
             renderSidebarItem(item, locale, sidebarContainerRef),
           )}

@@ -1,6 +1,6 @@
 ---
 navOrder: 2
-title: Building a protocol using Architect
+title: Building a protocol
 toc: true
 ---
 
@@ -9,7 +9,7 @@ toc: true
 
 This tutorial will guide you through the process of creating a
 Network Canvas protocol using Architect. We will be rebuilding the sample
-protocol that is available to install within Interviewer, which was discussed
+protocol that is available to install within Interviewer and Fresco, which was discussed
 extensively in the tutorial on [using Interviewer](/en/run-interview/interviewer/tutorials/using-interviewer). If
 you would like to download and open the finished protocol, you can do so [from
 here](</protocols/Sample Protocol v4.netcanvas>).
@@ -19,47 +19,12 @@ here](</protocols/Sample Protocol v4.netcanvas>).
 
 This tutorial assumes you are familiar with the general concepts of the Network Canvas software, have read the [project overview](/en/project/project-information/project-overview), and have read the tutorial on [using Interviewer](/en/run-interview/interviewer/tutorials/using-interviewer).
 
-We recommend following along using your own computer, so you should also [download and install Architect](https://networkcanvas.com/download)
+We recommend following along using your own computer. Before you begin, read [Getting started with Architect Web](/en/build-protocol/architect-web) or [Getting started with Architect Desktop](/en/build-protocol/architect-desktop) to set up your tool and create a protocol.
 
 </PrerequisitesSection>
 </SummaryCard>
 
-## What is Architect?
-
-Architect is a desktop application which runs on Windows, macOS, and Linux operating systems. The purpose of Architect is to provide a simple means for researchers to build Network Canvas interview protocols, without needing extensive technical knowledge. It aims to provide a visual and intuitive user interface, so that you can focus on the content of your interviews. You don't need to run Architect on the computer that you use to run Interviewer or Fresco, but you can if you wish.
-
-## Opening Architect
-
-![The Architect start screen](/assets/img/architect-guide/start-screen.png)
-
-Upon opening Architect, you are greeted by the **start screen**. Like the start screen in Interviewer, you will see a welcome panel that contains links to the project overview video and the documentation website, with other sections becoming available as needed. When opened for the first time, the Architect start screen presents two task options: (1) create a blank new protocol, or (2) open an existing protocol from your computer.
-
-In this tutorial we will be building a protocol from scratch, so we are going to start by creating a blank protocol. Click the "Create New Protocol" button within the tasks panel. Save the file with a name and location that you will be able to find later.
-
-<KeyConcept title="Key Concept: the Protocol File">
-
-Network Canvas protocols are stored in a file with the extension `.netcanvas`.
-They are just like any other files on your computer, meaning you can move them
-around, rename them (more about this later), and you can (and should!) back
-them up. The `.netcanvas` file contains all of the data in your protocol. So
-if you use roster data, images, or video, these will be embedded within the
-file.
-
-</KeyConcept>
-
-## The protocol overview screen
-
-Once you have created or opened a protocol, you will be taken to the **protocol overview screen**. This screen is designed around the vertical "timeline" metaphor also used by Interviewer. It visually represents the stages of your interview in the sequence that your participants will see them.
-
-![The overview screen](/assets/img/architect-guide/overview-screen.png)
-
-The protocol card at the top displays the protocol name and description, and provides three buttons: download printable codebook, access resource library, and manage codebook. This card appears when you import the protocol into Interviewer. The protocol description is optional and will appear in the Interviewer app on the start screen.
-
-In Fresco, the protocol name will be displayed on the protocols page. For more information about protocol management in Fresco, see the [using Fresco](/en/run-interview/fresco/using-fresco#uploading-protocols) tutorial.
-
-In the bottom left, you can see the "Return to Start Screen" button. Clicking this button will take you out of the current protocol, and back to the start screen.
-
-Since we have just created a new protocol, we have a single button at the bottom of the screen, which enables us to add our first stage.
+This article covers the steps for building a protocol — adding stages through finishing off your protocol — that are shared between Architect Web and Architect Desktop.
 
 ## Adding a stage
 
@@ -151,26 +116,6 @@ Click the **Create New** button in the prompt section to open the new prompt edi
 ![](/assets/img/architect-guide/edit-prompt.png)
 
 Your first prompt will ask the participant to name the people with whom they have felt close to or discussed important matters. Enter the text "Within the past 6 months, who have you felt close to, or discussed important personal matters with?" and click **Save and Close**.
-
-### Preview mode
-
-You can now see what your stage will look like in the finished interview by using the preview feature.
-
-Click the **Preview** button to open a window with the current stage loaded, showing the interface functioning as it will in Interviewer on a study device.
-
-<KeyConcept title="Key Concept: Preview Mode">
-
-Preview mode is designed to let you understand how your stage will be presented to your participants, taking into account the device that you will be using. You can choose between different device presets, to mimic the look of a specific piece of hardware (for example you can emulate the screen size of an iPad, or a widescreen laptop).
-
-If the window becomes too large, you can scale it so that you can fit it within your workspace.
-
-It is important to note that although you can enter data in preview mode - for example by creating nodes - the data does not persist after you close the window!
-
-</KeyConcept>
-
-Click the pink **Preview** button in the bottom left corner of the stage editor to open the preview window.
-
-![](/assets/img/architect-guide/preview-mode.png)
 
 Click **Save and Return** on the stage editor to return to the timeline view with your new stage visible.
 
@@ -533,7 +478,7 @@ Now we will configure both the network filtering on the stage as well as the ski
 
 ![](/assets/img/architect-guide/filter-skip.png)
 
-To enable skip logic, we toggle the "Skip Logic" switch to "on." Then we select "Show this stage if" and click the "Add Alter Rule" button. First, we configure the skip logic rule according to the following: node type “Person", rule type “Presence”, and operator “Exists.” Next, we configure a second skip logic rule as follows: node type “Person”, rule type “Attribute, variable query “discuss_network_research”, operator “is exactly”, and attribute value of “True.”.
+To enable skip logic, we toggle the "Skip Logic" switch to "on." Then we select "Show this stage if" and click the "Add Alter Rule" button. First, we configure the skip logic rule according to the following: node type "Person", rule type "Presence", and operator "Exists." Next, we configure a second skip logic rule as follows: node type "Person", rule type "Attribute, variable query "discuss_network_research", operator "is exactly", and attribute value of "True."
 
 ![](/assets/img/architect-guide/skip.png)
 
