@@ -129,8 +129,8 @@ const mockState = {
     mockProtocol: {
       codebook: {
         node: {
-          person: {},
-          place: {},
+          person: { variables: { name: { type: 'text' } } },
+          place: { variables: { name: { type: 'text' } } },
         },
       },
       stages: [
@@ -163,8 +163,8 @@ const mockTwoModeState = {
     mockProtocol: {
       codebook: {
         node: {
-          person: {},
-          place: {},
+          person: { variables: { name: { type: 'text' } } },
+          place: { variables: { name: { type: 'text' } } },
         },
       },
       stages: [
