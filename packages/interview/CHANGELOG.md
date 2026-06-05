@@ -1,5 +1,11 @@
 # @codaco/interview
 
+## 1.0.0-alpha.25
+
+### Prerelease Changes
+
+- `FamilyPedigree`: when re-opening the define-parents and add-sibling wizards, a separate gestational carrier (a `surrogate` edge) is no longer mistaken for the egg parent. The egg and sperm parents are identified by their recorded gamete role, and the surrogate is preselected as the gestational carrier with the egg parent marked as not having carried the pregnancy.
+
 ## 1.0.0-alpha.24
 
 ### Prerelease Changes
