@@ -1361,8 +1361,8 @@ importers:
   packages/fresco-ui:
     dependencies:
       '@codaco/shared-consts':
-        specifier: 5.0.0
-        version: 5.0.0
+        specifier: workspace:^
+        version: link:../shared-consts
       '@codaco/tailwind-config':
         specifier: workspace:^
         version: link:../../tooling/tailwind
@@ -2848,10 +2848,6 @@ packages:
     engines: {node: '>=16'}
     cpu: [x64]
     os: [win32]
-
-  '@codaco/shared-consts@5.0.0':
-    resolution: {integrity: sha512-7neTWHNjw6Y7FdVOU8htO2OshADlpS9vI+5mQEDWOdtlL8BdHmBflqQlZE8lFjzBin8tUI9jIlxsLlMYOpjm/w==}
-    engines: {node: '>=20.0.0'}
 
   '@codaco/ui@5.8.6':
     resolution: {integrity: sha512-vjrAI2YPvzg55F5EpVXae7RAZzIpqTsUSjUcQ/laPaH3ZWjVgMeiMEFPCE+C85Oe16rNh0iOMN/XU7kxGaK4Vg==}
@@ -14956,10 +14952,6 @@ snapshots:
 
   '@cloudflare/workerd-windows-64@1.20260526.1':
     optional: true
-
-  '@codaco/shared-consts@5.0.0':
-    dependencies:
-      zod: 4.4.3
 
   '@codaco/ui@5.8.6(@types/react@19.2.15)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:
