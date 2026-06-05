@@ -1,7 +1,4 @@
-import {
-  getGeoJsonVariables,
-  getNetworkVariables,
-} from '@app/utils/protocols/assetTools';
+import { getNetworkVariables } from '@app/utils/protocols/assetTools';
 import { pathSync } from '@utils/electronBridge';
 import { get } from 'lodash';
 
@@ -54,20 +51,3 @@ export const makeGetNetworkAssetVariables =
 
     return variables;
   };
-
-export const makeGetGeoJsonAssetVariables = (state) => async (dataSource) => {
-  const assetPath = getAssetPath(state, dataSource);
-
-  if (!assetPath) {
-    return null;
-  }
-
-  const variables = await getGeoJsonVariables(assetPath);
-
-  const variableOptions = variables.map((attribute) => ({
-    label: attribute,
-    value: attribute,
-  }));
-
-  return variableOptions;
-};

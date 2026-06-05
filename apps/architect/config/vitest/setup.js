@@ -108,8 +108,6 @@ global.jest = vi;
 
 // Auto-mock modules that need it
 vi.mock('@codaco/ui/lib/utils/CSSVariables');
-vi.mock('mapbox-gl/dist/mapbox-gl-unminified');
-vi.mock('mapbox-gl/dist/mapbox-gl.css', () => ({}));
 
 // Mock @codaco/ui to avoid ESM resolution issues with the package's internal imports
 vi.mock('@codaco/ui', async () => {

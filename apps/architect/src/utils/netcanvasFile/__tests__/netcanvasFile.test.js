@@ -68,11 +68,11 @@ vi.mock('@app/utils/protocols/lib/archive', () => ({
   extract: vi.fn(),
 }));
 
-vi.mock('@codaco/protocol-validation', () => ({
+vi.mock('protocol-validation/migrations/canUpgrade', () => ({
   default: vi.fn(),
-  canUpgrade: vi.fn(),
-  migrateProtocol: vi.fn(),
-  validateProtocol: vi.fn(() => Promise.resolve({ isValid: true })),
+}));
+vi.mock('protocol-validation/migrations/migrateProtocol', () => ({
+  default: vi.fn(),
 }));
 
 vi.mock('@app/utils/pruneProtocolAssets', () => ({
@@ -103,8 +103,8 @@ import { archive, extract } from '@app/utils/protocols/lib/archive';
 import { pruneProtocol } from '@app/utils/prune';
 import validateProtocol from '@app/utils/validateProtocol';
 import { electronAPI } from '@utils/electronBridge';
-
-import { canUpgrade, migrateProtocol } from '@codaco/protocol-validation';
+import canUpgrade from 'protocol-validation/migrations/canUpgrade';
+import migrateProtocol from 'protocol-validation/migrations/migrateProtocol';
 
 import { errors } from '../errors';
 import {

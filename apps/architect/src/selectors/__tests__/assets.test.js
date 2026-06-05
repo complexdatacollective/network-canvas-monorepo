@@ -18,7 +18,6 @@ const { mockGetNetworkVariables } = vi.hoisted(() => ({
 
 vi.mock('@app/utils/protocols/assetTools', () => ({
   getNetworkVariables: mockGetNetworkVariables,
-  getGeoJsonVariables: vi.fn(() => Promise.resolve([])),
 }));
 
 describe('assets', () => {

@@ -6,9 +6,9 @@ import validateProtocol from '@app/utils/validateProtocol';
 import { electronAPI, pathSync } from '@utils/electronBridge';
 import log from '@utils/logger';
 import { isEqual } from 'lodash';
+import canUpgrade from 'protocol-validation/migrations/canUpgrade';
+import migrateProtocol from 'protocol-validation/migrations/migrateProtocol';
 import { v4 as uuid } from 'uuid';
-
-import { canUpgrade, migrateProtocol } from '@codaco/protocol-validation';
 
 import { errors, handleError } from './errors';
 import {

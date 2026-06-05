@@ -2,11 +2,10 @@ import { getSupportedAssetType } from '@app/utils/protocols/importAsset';
 import { electronAPI } from '@utils/electronBridge';
 import csv from 'csvtojson';
 import { get } from 'lodash';
-
 import {
   getVariableNamesFromNetwork,
   validateNames,
-} from '@codaco/protocol-validation';
+} from 'protocol-validation/validation/validateExternalData';
 
 /**
  * Generate a switching function that takes a filepath as an argument
@@ -106,10 +105,4 @@ export const validateAsset = async (filePath) => {
   }
 
   return true;
-};
-
-export const getGeoJsonVariables = async (filePath) => {
-  // process GeoJSON
-  const geoJson = await electronAPI.fs.readJson(filePath);
-  return Object.keys(geoJson.features[0].properties);
 };

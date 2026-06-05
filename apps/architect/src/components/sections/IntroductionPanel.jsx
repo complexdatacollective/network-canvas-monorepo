@@ -1,16 +1,13 @@
 import { Row, Section } from '@components/EditorLayout';
-import PropTypes from 'prop-types';
 
 import { Field as RichText } from '@codaco/ui/lib/components/Fields/RichText';
 import TextField from '@codaco/ui/lib/components/Fields/Text';
 
 import { ValidatedField } from '../Form';
 
-const Name = ({ interfaceType }) => {
+const Name = () => {
   const summaryText =
-    interfaceType === 'Geospatial'
-      ? 'This panel is shown prior to the interface, and should serve as an introduction to the task.'
-      : 'This panel is shown prior to completion of the forms, and should serve as an introduction to the task.';
+    'This panel is shown prior to completion of the forms, and should serve as an introduction to the task.';
 
   return (
     <Section title="Introduction Panel" summary={<p>{summaryText}</p>}>
@@ -34,10 +31,6 @@ const Name = ({ interfaceType }) => {
       </Row>
     </Section>
   );
-};
-
-Name.propTypes = {
-  interfaceType: PropTypes.string.isRequired,
 };
 
 export default Name;

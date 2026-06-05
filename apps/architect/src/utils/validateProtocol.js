@@ -1,10 +1,6 @@
 import log from '@utils/logger';
-
-import {
-  errToString,
-  validateLogic,
-  validateSchema,
-} from '@codaco/protocol-validation';
+import { validateLogic, validateSchema } from 'protocol-validation/validation';
+import { errToString } from 'protocol-validation/validation/helpers';
 
 const asyncValidateSchema = async (protocol) =>
   new Promise((resolve, reject) => {

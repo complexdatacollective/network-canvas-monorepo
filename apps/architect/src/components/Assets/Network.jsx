@@ -1,9 +1,8 @@
 import { get } from 'lodash';
 import PropTypes from 'prop-types';
+import { getVariableNamesFromNetwork } from 'protocol-validation/validation/validateExternalData';
 import { useEffect, useMemo, useState } from 'react';
 import { compose } from 'redux';
-
-import { getVariableNamesFromNetwork } from '@codaco/protocol-validation';
 
 import { networkReader } from '../../utils/protocols/assetTools';
 import Table from './Table';

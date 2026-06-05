@@ -10,7 +10,7 @@ import { v1 as uuid } from 'uuid';
  * Uses the mime type where possible, and falls back to the file extension.
  *
  * @param {string} asset - the filename of the asset
- * @return {string} Returns one of network, image, audio, video, geojson, env, or returns false if
+ * @return {string} Returns one of network, image, audio, video, env, or returns false if
  * type is unsupported
  */
 export const getSupportedAssetType = async (filePath) => {

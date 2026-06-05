@@ -68,11 +68,6 @@ vi.mock('@app/utils/protocols/lib/archive', () => ({
   extract: vi.fn(),
 }));
 
-vi.mock('@codaco/protocol-validation', () => ({
-  default: vi.fn(),
-  validateProtocol: vi.fn(() => Promise.resolve({ isValid: true })),
-}));
-
 vi.mock('@app/utils/pruneProtocolAssets', () => ({
   default: vi.fn(() => Promise.resolve()),
 }));

@@ -1,8 +1,7 @@
 import { electronAPI } from '@utils/electronBridge';
 import csvParse from 'csv-parse';
 import { first, get } from 'lodash';
-
-import { getVariableNamesFromNetwork } from '@codaco/protocol-validation';
+import { getVariableNamesFromNetwork } from 'protocol-validation/validation/validateExternalData';
 
 /**
  * Generate a switching function that takes a filepath as an argument

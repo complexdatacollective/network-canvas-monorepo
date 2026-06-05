@@ -28,9 +28,8 @@ import CancellationError from '@utils/cancellationError';
 import { electronAPI } from '@utils/electronBridge';
 import { getNewFileName } from '@utils/netcanvasFile/netcanvasFile';
 import axios from 'axios';
+import getMigrationNotes from 'protocol-validation/migrations/getMigrationNotes';
 import { v4 as uuid } from 'uuid';
-
-import { getMigrationNotes } from '@codaco/protocol-validation';
 
 import { createImportToast, updateDownloadProgress } from './userActionToasts';
 

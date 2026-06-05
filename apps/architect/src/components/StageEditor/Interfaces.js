@@ -11,10 +11,8 @@ import {
   ExternalDataSource,
   FilteredEdgeType,
   Form,
-  GeospatialPrompts,
   InterviewScript,
   IntroductionPanel,
-  MapOptions,
   MinMaxAlterLimits,
   NameGeneratorPrompts,
   NameGeneratorRosterPrompts,
@@ -210,19 +208,6 @@ const TieStrengthCensus = {
     'https://documentation.networkcanvas.com/interface-documentation/tie-strength-census/',
 };
 
-const Geospatial = {
-  sections: [
-    FilteredNodeType,
-    IntroductionPanel,
-    MapOptions,
-    GeospatialPrompts,
-    SkipLogic,
-    InterviewScript,
-  ],
-  documentation:
-    'https://documentation.networkcanvas.com/interface-documentation/geospatial/',
-};
-
 const Anonymisation = {
   sections: [
     AnonymisationExplanation,
@@ -249,7 +234,6 @@ const interfaces = {
   OrdinalBin,
   Sociogram,
   TieStrengthCensus,
-  Geospatial,
   Anonymisation,
 };
 
