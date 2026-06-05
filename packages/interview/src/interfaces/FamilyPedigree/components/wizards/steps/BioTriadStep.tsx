@@ -1,18 +1,28 @@
 'use client';
 
-import { createContext, type ReactNode, useContext, useMemo } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
-import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
+import FieldNamespace, {
+  useFieldNamespace,
+} from '@codaco/fresco-ui/form/FieldNamespace';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import PersonFields from '~/interfaces/FamilyPedigree/components/quickStartWizard/PersonFields';
 
-import { type BioTriadOption, excludeSelectedOption } from './bioTriadOptions';
+import type { BioTriadOption } from './bioTriadOptions';
 
 type NodeOption = BioTriadOption;
 
@@ -53,7 +63,10 @@ type ParentSectionProps = {
   donorFieldName: string;
   donorLabel: string;
   options: NodeOption[];
-  /** Field name of the other role; its selected person is disabled here. */
+  /**
+   * Field name of the other role. Choosing its currently-selected person here
+   * clears it there, so one person can't be both the egg and sperm parent.
+   */
   excludeSelectionFrom: string;
   initialValue?: string;
   carriedFieldName?: string;
@@ -75,15 +88,32 @@ function ParentSection({
   carriedLabel,
   carriedHint,
 }: ParentSectionProps) {
-  const excludedValue = useFormValue([excludeSelectionFrom])[
-    excludeSelectionFrom
-  ];
-  const resolvedOptions = useMemo(
-    () => excludeSelectedOption(options, excludedValue),
-    [options, excludedValue],
-  );
-  const onlyNewOption =
-    resolvedOptions.length === 1 && resolvedOptions[0]?.value === 'new';
+  const ownValue = useFormValue([roleKey])[roleKey];
+  const otherValue = useFormValue([excludeSelectionFrom])[excludeSelectionFrom];
+  const namespace = useFieldNamespace();
+  const setFieldValue = useFormStore((state) => state.setFieldValue);
+
+  // When this role is set to the person already chosen for the other role,
+  // clear the other role (rather than disabling the option, which would make a
+  // short list unchangeable). Both roles are required, so the user must re-pick.
+  const previousOwnValue = useRef(ownValue);
+  useEffect(() => {
+    const changed = ownValue !== previousOwnValue.current;
+    previousOwnValue.current = ownValue;
+    if (
+      changed &&
+      typeof ownValue === 'string' &&
+      ownValue !== 'new' &&
+      ownValue === otherValue
+    ) {
+      const resolvedOther = namespace
+        ? `${namespace}.${excludeSelectionFrom}`
+        : excludeSelectionFrom;
+      setFieldValue(resolvedOther, undefined);
+    }
+  }, [ownValue, otherValue, namespace, excludeSelectionFrom, setFieldValue]);
+
+  const onlyNewOption = options.length === 1 && options[0]?.value === 'new';
 
   return (
     <Surface level={1} spacing="sm" shadow="sm" noContainer>
@@ -104,7 +134,7 @@ function ParentSection({
           label={selectLabel}
           hint={selectHint}
           component={RadioGroupField}
-          options={resolvedOptions}
+          options={options}
           initialValue={initialValue}
           required
         />

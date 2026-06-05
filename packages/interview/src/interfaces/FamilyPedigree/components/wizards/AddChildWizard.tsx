@@ -1,5 +1,4 @@
 import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import type {
   CommitBatch,
@@ -84,12 +83,7 @@ export async function openAddChildWizard(
     steps: [
       {
         title: 'Child details',
-        content: () => (
-          <>
-            <Heading level="h4">Child details</Heading>
-            <PersonFields namespace="child" />
-          </>
-        ),
+        content: () => <PersonFields namespace="child" />,
       },
       {
         title: 'Biological parents',
