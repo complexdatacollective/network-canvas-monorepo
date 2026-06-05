@@ -196,7 +196,7 @@ importers:
         specifier: 'catalog:'
         version: 6.0.3
 
-  apps/architect-desktop:
+  apps/architect:
     dependencies:
       archiver:
         specifier: ^7.0.1
