@@ -1,5 +1,11 @@
 # @codaco/fresco-ui
 
+## 2.12.1
+
+### Patch Changes
+
+- `RadioMatrixField`: untouched rows that have neither an answer nor a configured `defaultOption` are now omitted from the emitted value instead of being serialized with an empty-string value.
+
 ## 2.12.0
 
 ### Minor Changes

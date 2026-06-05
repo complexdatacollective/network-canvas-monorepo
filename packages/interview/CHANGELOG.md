@@ -1,5 +1,14 @@
 # @codaco/interview
 
+## 1.0.0-alpha.26
+
+### Prerelease Changes
+
+- `FamilyPedigree`: ego is now labelled explicitly (its name, or "You") in candidate and reference lists instead of falling through to "Family Member" — e.g. the add-partner flow no longer asks "Is this person also a parent of Family Member?" when adding a partner to one of ego's parents.
+- `FamilyPedigree`: the quick-start no longer emits partner edges for partnership-matrix rows whose endpoints were not materialized as nodes (e.g. stale "additional parent" rows after toggling "other parents" off).
+- `FamilyPedigree`: the biological-parents intro derives its SVG roughen-filter ids per instance (via `useId`), avoiding duplicate DOM ids when multiple instances mount.
+- `FamilyPedigree`: fix a typo in the incomplete-pedigree dialog copy.
+
 ## 1.0.0-alpha.25
 
 ### Prerelease Changes
