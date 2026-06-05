@@ -130,7 +130,7 @@ const VariableSpotlight = (props) => {
       Object.keys(existingVariables).map((variable) =>
         get(existingVariables[variable], 'name'),
       ),
-    [],
+    [existingVariables],
   );
 
   const invalidVariableName = useMemo(() => {

@@ -21,7 +21,7 @@ const FilteredEdgeType = (props) => {
   const handleResetStage = useCallback(() => {
     const fieldsToReset = difference(fields, SUBJECT_INDEPENDENT_FIELDS);
     fieldsToReset.forEach((field) => dispatch(change(form, field, null)));
-  }, []);
+  }, [fields, dispatch, form]);
 
   const currentSubject = get(formValues, 'subject');
 

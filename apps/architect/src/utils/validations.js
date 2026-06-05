@@ -137,21 +137,23 @@ export const uniqueArrayAttribute =
     return undefined;
   };
 
-export const uniqueByList = (list, message) => (value) => {
-  if (!value) {
+export const uniqueByList =
+  (list = [], message) =>
+  (value) => {
+    if (!value) {
+      return undefined;
+    }
+
+    const existsAlready = list.some((existingValue) =>
+      isRoughlyEqual(existingValue, value),
+    );
+
+    if (existsAlready) {
+      return messageWithDefault(message, `"${value}" is already in use`);
+    }
+
     return undefined;
-  }
-
-  const existsAlready = list.some((existingValue) =>
-    isRoughlyEqual(existingValue, value),
-  );
-
-  if (existsAlready) {
-    return messageWithDefault(message, `"${value}" is already in use`);
-  }
-
-  return undefined;
-};
+  };
 
 export const ISODate = (dateFormat, message) => (value) => {
   const dt = DateTime.fromISO(value);

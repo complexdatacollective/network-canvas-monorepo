@@ -35,7 +35,7 @@ const NodeType = (props) => {
   const handleResetStage = useCallback(() => {
     const fieldsToReset = difference(fields, SUBJECT_INDEPENDENT_FIELDS);
     fieldsToReset.forEach((field) => dispatch(change(form, field, null)));
-  }, []);
+  }, [fields, dispatch, form]);
 
   const screenMessageListener = makeScreenMessageListener('type');
   const typeScreenMessage = useSelector((state) =>
