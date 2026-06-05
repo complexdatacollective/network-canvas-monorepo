@@ -1,4 +1,4 @@
-import window from '@app/behaviours/window';
+import asWindow from '@app/behaviours/window';
 import Stackable from '@components/Stackable';
 import cx from 'classnames';
 import PropTypes from 'prop-types';
@@ -74,4 +74,4 @@ Dialog.defaultProps = {
   onBlur: () => {},
 };
 
-export default compose(window(document.body))(Dialog);
+export default compose(asWindow(document.body))(Dialog);

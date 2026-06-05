@@ -1,4 +1,4 @@
-import window from '@app/behaviours/window';
+import asWindow from '@app/behaviours/window';
 import Stackable from '@components/Stackable';
 import cx from 'classnames';
 import PropTypes from 'prop-types';
@@ -67,4 +67,4 @@ Window.defaultProps = {
   title: null,
 };
 
-export default compose(window(document.body))(Window);
+export default compose(asWindow(document.body))(Window);

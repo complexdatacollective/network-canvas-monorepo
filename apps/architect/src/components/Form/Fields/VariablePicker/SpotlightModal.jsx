@@ -1,4 +1,4 @@
-import window from '@app/behaviours/window';
+import asWindow from '@app/behaviours/window';
 import { AnimatePresence, motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 import { Component } from 'react';
@@ -63,4 +63,4 @@ SpotlightModal.defaultProps = {
   onBlur: () => {},
 };
 
-export default compose(window(document.body))(SpotlightModal);
+export default compose(asWindow(document.body))(SpotlightModal);
