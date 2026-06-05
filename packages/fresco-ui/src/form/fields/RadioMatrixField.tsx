@@ -69,12 +69,19 @@ export default function RadioMatrixField(props: RadioMatrixFieldProps) {
 
   const handleRowChange = (rowId: string, next: string) => {
     if (readOnly) return;
-    // Emit the complete matrix so the value is always unambiguous: untouched
-    // rows fall back to their default rather than being omitted.
-    const nextValue: RadioMatrixValue = rows.map((row) => ({
-      id: row.id,
-      value: row.id === rowId ? next : rowValue(current, row.id, defaultOption),
-    }));
+    // Emit one entry per row that has a value: the changed row, any
+    // already-answered row, and — when configured — unanswered rows falling back
+    // to the default. Rows with neither an answer nor a default are omitted
+    // rather than serialized with an empty-string value.
+    const nextValue: RadioMatrixValue = rows.flatMap((row) => {
+      if (row.id === rowId) return [{ id: row.id, value: next }];
+      const existing = current.find((entry) => entry.id === row.id)?.value;
+      if (existing !== undefined) return [{ id: row.id, value: existing }];
+      if (defaultOption !== undefined) {
+        return [{ id: row.id, value: defaultOption }];
+      }
+      return [];
+    });
     if (isControlled) onChange(nextValue);
     else setInternal(nextValue);
   };

@@ -434,5 +434,12 @@ export function getNodeLabel(
       ? name
       : 'Unknown person';
   }
+  // The BFS never revisits its start node, so ego has no relationship path and
+  // would fall through to the generic fallback. Label it explicitly.
+  if (nodeId === egoEntry[0]) {
+    const name =
+      nodes.get(nodeId)?.attributes[variableConfig.nodeLabelVariable];
+    return typeof name === 'string' && name.length > 0 ? name : 'You';
+  }
   return getDisplayLabel(nodeId, egoEntry[0], nodes, edges, variableConfig);
 }

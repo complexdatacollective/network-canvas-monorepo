@@ -227,10 +227,18 @@ export function egoCellTransform(
     | Record<string, { id: string; value: string }[]>
     | undefined;
   if (partnerships) {
+    // A partnership matrix can retain rows for parents that were later removed
+    // (e.g. additional parents after toggling "other parents" off). Only emit
+    // edges between parents that were actually materialized as nodes.
+    const materializedIds = new Set(batch.nodes.map((node) => node.tempId));
     for (const [focalId, matrix] of Object.entries(partnerships)) {
       if (!Array.isArray(matrix)) continue;
       for (const entry of matrix) {
-        if (entry?.value === 'current' || entry?.value === 'ex') {
+        if (
+          (entry?.value === 'current' || entry?.value === 'ex') &&
+          materializedIds.has(focalId) &&
+          materializedIds.has(entry.id)
+        ) {
           batch.edges.push({
             source: focalId,
             target: entry.id,

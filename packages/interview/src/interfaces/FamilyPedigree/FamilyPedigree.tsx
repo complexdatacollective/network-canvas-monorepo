@@ -234,7 +234,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
         title: 'Pedigree is incomplete',
         intent: 'destructive',
         description:
-          "It looks like you haven'nt completed all the required tasks for your family pedigree. The following issues must be resolved before you can continue:",
+          "It looks like you haven't completed all the required tasks for your family pedigree. The following issues must be resolved before you can continue:",
         children: (
           <ul className="list-disc space-y-1 pl-5">
             {issues.map((issue) => (

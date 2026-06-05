@@ -1,5 +1,7 @@
 'use client';
 
+import { useId } from 'react';
+
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -31,12 +33,13 @@ function RoughenFilter({ id }: { id: string }) {
 
 /** Small ovum glyph: a cell with a nucleus, ringed by a corona of ticks. */
 function EggGlyph() {
+  const filterId = useId();
   return (
     <svg viewBox="0 0 36 36" fill="none" aria-hidden="true" className="size-6">
       <defs>
-        <RoughenFilter id="egg-rough" />
+        <RoughenFilter id={filterId} />
       </defs>
-      <g filter="url(#egg-rough)">
+      <g filter={`url(#${filterId})`}>
         <g
           className="stroke-current/45"
           strokeWidth="1.4"
@@ -72,12 +75,13 @@ function EggGlyph() {
 
 /** Small spermatozoon glyph: an oval head with a wavy flagellum. */
 function SpermGlyph() {
+  const filterId = useId();
   return (
     <svg viewBox="0 0 36 36" fill="none" aria-hidden="true" className="size-6">
       <defs>
-        <RoughenFilter id="sperm-rough" />
+        <RoughenFilter id={filterId} />
       </defs>
-      <g filter="url(#sperm-rough)">
+      <g filter={`url(#${filterId})`}>
         <path
           d="M17 18 q3.5 -5 7 0 t7 0"
           className="stroke-current"

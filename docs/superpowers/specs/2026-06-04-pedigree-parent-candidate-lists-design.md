@@ -76,7 +76,7 @@ Used by `BioTriadStep` in **add child**, **add sibling**, and the genetic
 **define parents** flow. The candidate must be genetically plausible as the
 target's parent.
 
-```
+```text
 geneticParentCandidates(anchorId, relation, edges, variableConfig):
   naturalCoParents =
     relation === 'child'         -> {anchorId} ∪ partnerIds(anchorId)
@@ -100,7 +100,7 @@ Used by `AddParentWizard` (adding a non-genetic parent to A). A social parent ha
 no genetic-generation constraint — a grandparent, aunt/uncle, or unrelated person
 can fill the role.
 
-```
+```text
 socialParentCandidates(anchorId, edges, variableConfig):
   return allNodeIds \ ({anchorId} ∪ descendantIds(anchorId) ∪ parentIds(anchorId))
 ```

@@ -78,7 +78,7 @@ parents — the egg contributor and the sperm contributor.
 Extract the per-child triad→edges logic currently embedded in
 `childCellTransform` into a pure helper:
 
-```
+```text
 buildChildParentage(childTempId, triadValues, variableConfig)
   → { nodes: CommitBatch['nodes']; edges: CommitBatch['edges'] }
 ```
