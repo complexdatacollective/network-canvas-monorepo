@@ -58,6 +58,10 @@ function createFamilyPedigreeInterview(seed: number) {
     name: 'Has Disease',
     type: 'boolean',
   });
+  const diabetesVar = nodeType.addVariable({
+    name: 'Has Diabetes',
+    type: 'boolean',
+  });
   const isEgoVar = nodeType.addVariable({
     name: 'Is Ego',
     type: 'boolean',
@@ -95,6 +99,7 @@ function createFamilyPedigreeInterview(seed: number) {
     nameVar,
     genderVar,
     diseaseVar,
+    diabetesVar,
     isEgoVar,
     relationshipToEgoVar,
     edgeType,
@@ -217,12 +222,14 @@ export const Default: Story = {
 // Helpers for wizard interaction tests
 // ---------------------------------------------------------------------------
 
-function buildScenarioInterview() {
+function buildScenarioInterview({ withNomination = false } = {}) {
   const {
     si,
     nodeType,
     nameVar,
     genderVar,
+    diseaseVar,
+    diabetesVar,
     edgeType,
     relationshipVar,
     isActiveVar,
@@ -258,6 +265,20 @@ function buildScenarioInterview() {
       isGestationalCarrierVariable: isGestCarrierVar.id,
     },
     censusPrompt: 'Please create your family pedigree.',
+    ...(withNomination && {
+      nominationPrompts: [
+        {
+          id: '1',
+          text: 'Please nominate any family members who have been diagnosed with breast cancer.',
+          variable: diseaseVar.id,
+        },
+        {
+          id: '2',
+          text: 'Please nominate any family members who have been diagnosed with type 2 diabetes.',
+          variable: diabetesVar.id,
+        },
+      ],
+    }),
   });
 
   si.addInformationStage({
@@ -828,6 +849,76 @@ export const SingleParentTwoDonors: ScenarioStory = {
     // Partner and children
     await setFieldInput('hasPartner', false);
     await clickContinue();
+  },
+};
+
+/**
+ * A pedigree configured with multiple disease nomination prompts. After the
+ * pedigree is built and finalized, the stage advances through each nomination
+ * step in turn, where the prompt is shown and family members can be toggled to
+ * nominate them.
+ */
+export const DiseaseNomination: ScenarioStory = {
+  args: { scaffoldingText: '' },
+  render: () => (
+    <FamilyPedigreeStoryWrapper
+      buildFn={() => buildScenarioInterview({ withNomination: true })}
+    />
+  ),
+  play: async () => {
+    // Build a small pedigree: ego with two named parents.
+    await clickGetStarted();
+    await clickContinue(); // intro
+
+    await setFieldInput('egg-parent.is-donor', false);
+    await setFieldInput('egg-parent.name', 'Linda');
+    await setFieldInput('egg-parent.gestationalCarrier', true);
+    await setFieldInput('egg-parent.gender_identity', 'Woman/girl');
+    await clickContinue();
+
+    await setFieldInput('sperm-parent.is-donor', false);
+    await setFieldInput('sperm-parent.name', 'Robert');
+    await setFieldInput('sperm-parent.gender_identity', 'Man/boy');
+    await clickContinue();
+
+    await setFieldInput('hasOtherParents', false);
+    await clickContinue();
+
+    await setPartnership('egg-parent', 'Robert', 'Current partner');
+    await clickContinue();
+
+    await setFieldInput('hasPartner', false);
+    await clickContinue();
+
+    // The wizard opens a "how to build your pedigree" dialog on completion.
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Got it' }),
+    );
+
+    // Finalize via the interview's next-stage navigation, which only requires
+    // ego to have two parents.
+    await userEvent.click(await screen.findByTestId('next-button'));
+    const confirmDialog = await getDialog();
+    await userEvent.click(
+      within(confirmDialog).getByRole('button', { name: 'Finalize' }),
+    );
+
+    // First nomination prompt (breast cancer): nominate Linda.
+    await screen.findByText(/diagnosed with breast cancer/i);
+    await userEvent.click(await screen.findByRole('button', { name: 'Linda' }));
+    await screen.findByRole('button', { name: 'Linda', pressed: true });
+
+    // Advance to the second nomination prompt (type 2 diabetes): nominate Robert.
+    await userEvent.click(await screen.findByTestId('next-button'));
+    await screen.findByText(/diagnosed with type 2 diabetes/i);
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Robert' }),
+    );
+    await screen.findByRole('button', { name: 'Robert', pressed: true });
+
+    // The final nomination prompt advances out of the stage.
+    await userEvent.click(await screen.findByTestId('next-button'));
+    await screen.findByText('After the main stage.');
   },
 };
 
