@@ -4,21 +4,8 @@ import type {
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 
-const KNOWN_PERSON_KEYS = new Set(['name']);
-
-function extractCustomAttributes(
-  obj: Record<string, unknown>,
-): Record<string, VariableValue> | undefined {
-  const attrs: Record<string, VariableValue> = {};
-  let hasAttrs = false;
-  for (const [key, val] of Object.entries(obj)) {
-    if (!KNOWN_PERSON_KEYS.has(key) && val !== undefined) {
-      attrs[key] = val as VariableValue;
-      hasAttrs = true;
-    }
-  }
-  return hasAttrs ? attrs : undefined;
-}
+import { gameteRoleForRole } from './buildChildParentage';
+import { extractCustomAttributes } from './personAttributes';
 
 function buildPersonAttributes(
   person: Record<string, unknown>,
@@ -115,8 +102,9 @@ export function siblingCellTransform(
     const isCarrier = parent.roleKey === 'carrier-source';
 
     if (isCarrier) {
-      relationshipType =
-        values['carrier-is-surrogate'] === true ? 'surrogate' : 'biological';
+      // A gestational carrier never contributes the egg, so they are never a
+      // genetic parent — always a (non-genetic) surrogate.
+      relationshipType = 'surrogate';
     } else if (parent.roleKey === 'egg-source') {
       relationshipType =
         values['egg-source-is-donor'] === true ? 'donor' : 'biological';
@@ -135,9 +123,11 @@ export function siblingCellTransform(
       edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
     }
 
+    const gameteRole = gameteRoleForRole(parent.roleKey);
     batch.edges.push({
       source: parent.tempId,
       target: 'sibling',
+      ...(gameteRole ? { gameteRole } : {}),
       data: { attributes: edgeAttributes },
     });
   }

@@ -1358,8 +1358,8 @@ importers:
   packages/fresco-ui:
     dependencies:
       '@codaco/shared-consts':
-        specifier: 5.0.0
-        version: 5.0.0
+        specifier: workspace:^
+        version: link:../shared-consts
       '@codaco/tailwind-config':
         specifier: workspace:^
         version: link:../../tooling/tailwind
@@ -2851,10 +2851,6 @@ packages:
 
   '@codaco/shared-consts@0.0.2':
     resolution: {integrity: sha512-qPmZQm50NhIuQGznQx00kdCxXJ/rOW8UkCrLPQObmPFjq3iIOTwBjAWddq7gRBsDByRfdB/gMCwcd7Pay2aOFQ==}
-
-  '@codaco/shared-consts@5.0.0':
-    resolution: {integrity: sha512-7neTWHNjw6Y7FdVOU8htO2OshADlpS9vI+5mQEDWOdtlL8BdHmBflqQlZE8lFjzBin8tUI9jIlxsLlMYOpjm/w==}
-    engines: {node: '>=20.0.0'}
 
   '@codaco/ui@5.8.6':
     resolution: {integrity: sha512-vjrAI2YPvzg55F5EpVXae7RAZzIpqTsUSjUcQ/laPaH3ZWjVgMeiMEFPCE+C85Oe16rNh0iOMN/XU7kxGaK4Vg==}
@@ -11801,7 +11797,7 @@ packages:
     resolution: {integrity: sha512-VG2K63Igkiv9p76tk1lilczEK1cT+kCjKtkdhw1dQZV3k3IXJbd3o6Ho8b9zJZaHSnT2hKe4I+ObmX9w6m5SmQ==}
 
   protocol-validation@https://codeload.github.com/complexdatacollective/protocol-validation/tar.gz/6f5967ffa8ce8b5d3fa411f4c9553565403dfd24:
-    resolution: {gitHosted: true, integrity: sha512-Xtpe+MMTlQdzqspdKFyBUbdRYJa11eHhdY1FvaCUaEZI/768kKqiDjF524g7yr2oDU+YQdVE7am2/dHB78Dccg==, tarball: https://codeload.github.com/complexdatacollective/protocol-validation/tar.gz/6f5967ffa8ce8b5d3fa411f4c9553565403dfd24}
+    resolution: {gitHosted: true, tarball: https://codeload.github.com/complexdatacollective/protocol-validation/tar.gz/6f5967ffa8ce8b5d3fa411f4c9553565403dfd24}
     version: 2.0.0
     engines: {node: 12.14.1, npm: 7.6.3}
 
@@ -15539,10 +15535,6 @@ snapshots:
   '@codaco/protocol-validation@3.0.0': {}
 
   '@codaco/shared-consts@0.0.2': {}
-
-  '@codaco/shared-consts@5.0.0':
-    dependencies:
-      zod: 4.4.3
 
   '@codaco/ui@5.8.6(@types/react@19.2.15)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:

@@ -37,7 +37,7 @@ const Label = React.forwardRef<
       htmlFor={htmlFor}
       className={cx(
         'inline-block',
-        headingVariants({ level: 'label' }),
+        headingVariants({ level: 'label', margin: 'none' }),
         'peer-disabled:opacity-70',
         className,
       )}

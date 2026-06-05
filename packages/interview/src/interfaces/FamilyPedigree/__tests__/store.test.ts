@@ -298,6 +298,69 @@ describe('addEdge', () => {
   });
 });
 
+describe('duplicate edge guard', () => {
+  function newStore() {
+    return createFamilyPedigreeStore(
+      new Map(),
+      new Map(),
+      new Map(),
+      testConfig,
+    );
+  }
+  function bio(from: string, to: string) {
+    return {
+      from,
+      to,
+      attributes: {
+        [testConfig.relationshipTypeVariable]: 'biological',
+        [testConfig.isActiveVariable]: true,
+      },
+    };
+  }
+
+  it('throws when a second edge of the same type connects the same pair', () => {
+    const store = newStore();
+    store.getState().addEdge(bio('parent', 'child'));
+    expect(() => store.getState().addEdge(bio('parent', 'child'))).toThrow(
+      /Duplicate/,
+    );
+  });
+
+  it('throws regardless of edge direction', () => {
+    const store = newStore();
+    store.getState().addEdge(bio('a', 'b'));
+    expect(() => store.getState().addEdge(bio('b', 'a'))).toThrow(/Duplicate/);
+  });
+
+  it('allows the same relationship type between different pairs', () => {
+    const store = newStore();
+    store.getState().addEdge(bio('mum', 'child'));
+    expect(() => store.getState().addEdge(bio('dad', 'child'))).not.toThrow();
+  });
+
+  it('throws when a commit batch would create a duplicate', () => {
+    const store = newStore();
+    store.getState().addEdge(bio('parent', 'child'));
+    expect(() =>
+      store.getState().commitBatch({
+        nodes: [],
+        edges: [
+          {
+            source: 'parent',
+            target: 'child',
+            data: {
+              attributes: {
+                [testConfig.relationshipTypeVariable]: 'biological',
+                [testConfig.isActiveVariable]: true,
+              },
+            },
+          },
+        ],
+      }),
+    ).toThrow(/Duplicate/);
+  });
+});
+
 describe('removeEdge', () => {
   it('deletes the edge', () => {
     const store = createFamilyPedigreeStore(

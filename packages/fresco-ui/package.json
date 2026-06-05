@@ -1,6 +1,6 @@
 {
   "name": "@codaco/fresco-ui",
-  "version": "2.11.2",
+  "version": "2.12.1",
   "description": "Fresco UI components, styles, and utilities",
   "license": "MIT",
   "repository": {
@@ -332,6 +332,10 @@
       "types": "./dist/form/fields/RadioGroup.d.ts",
       "default": "./dist/form/fields/RadioGroup.js"
     },
+    "./form/fields/RadioMatrixField": {
+      "types": "./dist/form/fields/RadioMatrixField.d.ts",
+      "default": "./dist/form/fields/RadioMatrixField.js"
+    },
     "./form/fields/RelativeDatePicker": {
       "types": "./dist/form/fields/RelativeDatePicker.d.ts",
       "default": "./dist/form/fields/RelativeDatePicker.js"
@@ -597,7 +601,7 @@
   },
   "peerDependencies": {
     "@base-ui/react": "^1.4.0",
-    "@codaco/shared-consts": "5.0.0",
+    "@codaco/shared-consts": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "@tanstack/react-table": "catalog:",
     "motion": "catalog:",

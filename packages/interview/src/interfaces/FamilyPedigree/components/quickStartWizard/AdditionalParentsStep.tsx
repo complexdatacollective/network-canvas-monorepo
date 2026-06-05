@@ -48,7 +48,6 @@ function AdditionalParentFields({ index }: { index: number }) {
           name="name"
           label="What is their name?"
           component={InputField}
-          autoFocus
           required
         />
         {fieldComponents}

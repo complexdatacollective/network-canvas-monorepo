@@ -1,8 +1,23 @@
-import { Download, Info, Loader2, Plus, Trash2 } from 'lucide-react';
+import {
+  Download,
+  Ellipsis,
+  FolderOpen,
+  Info,
+  Loader2,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { DateTime } from 'luxon';
-import { useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 
+import Table from '~/components/Assets/Table';
 import Badge from '~/components/Badge';
+import Dialog from '~/components/NewComponents/Dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '~/components/NewComponents/Popover';
 import {
   Tabs,
   TabsList,
@@ -17,8 +32,8 @@ import { useProtocolLibrary } from '~/hooks/useProtocolLibrary';
 import fileIcon from '~/images/file-icon.svg';
 import Button, { IconButton } from '~/lib/legacy-ui/components/Button';
 import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
+import { getProtocolAssetCount } from '~/utils/assetUtils';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
-import { cx } from '~/utils/cva';
 
 type Tab = 'recent' | 'templates';
 
@@ -32,34 +47,90 @@ const withStop =
     });
   };
 
+const RELATIVE_CUTOFF_DAYS = 7;
+
+const formatTimestamp = (millis: number): string => {
+  const dt = DateTime.fromMillis(millis);
+  const secondsAgo = -dt.diffNow('seconds').seconds;
+  if (secondsAgo < 60) {
+    return '< 1 min ago';
+  }
+  const absolute = dt.toLocaleString({
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  if (secondsAgo < RELATIVE_CUTOFF_DAYS * 86_400) {
+    return dt.toRelative() ?? absolute;
+  }
+  return absolute;
+};
+
+type MetaStat = { label: string; value: string };
+
 const formatProtocolMeta = (protocol: StoredProtocolRow): string => {
   const stageCount = protocol.protocol.stages.length;
-  const stages = `${stageCount} ${stageCount === 1 ? 'stage' : 'stages'}`;
-  const updated = DateTime.fromMillis(protocol.updatedAt);
-  const secondsAgo = -updated.diffNow('seconds').seconds;
-  const edited = secondsAgo < 60 ? '< 1 min ago' : updated.toRelative();
-  return edited ? `${stages} · edited ${edited}` : stages;
+  return [
+    `${stageCount} ${stageCount === 1 ? 'stage' : 'stages'}`,
+    `Added ${formatTimestamp(protocol.createdAt)}`,
+    `Edited ${formatTimestamp(protocol.updatedAt)}`,
+  ].join(' · ');
 };
+
+const RowMenuItem = ({
+  icon,
+  label,
+  onClick,
+  disabled = false,
+}: {
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) => (
+  <button
+    type="button"
+    role="menuitem"
+    disabled={disabled}
+    onClick={(event) => {
+      event.stopPropagation();
+      onClick();
+    }}
+    className="flex w-full items-center gap-(--space-sm) rounded-sm px-(--space-sm) py-(--space-xs) text-left text-sm transition-colors hover:bg-current/10 disabled:pointer-events-none disabled:opacity-50"
+  >
+    <span aria-hidden className="shrink-0 [&_svg]:size-4">
+      {icon}
+    </span>
+    {label}
+  </button>
+);
 
 type PanelRowProps = {
   name: string;
   description?: string;
+  meta?: string;
   downloading?: boolean;
   actionLabel?: string;
   onOpen: () => void;
   onDownload?: () => void;
   onDelete?: () => void;
+  onShowInfo?: () => void;
 };
 
 const PanelRow = ({
   name,
   description,
+  meta,
   downloading = false,
   actionLabel,
   onOpen,
   onDownload,
   onDelete,
+  onShowInfo,
 }: PanelRowProps) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const handleKeyDown = (event: React.KeyboardEvent) => {
     // Ignore keys on the inner action buttons so they don't also open the row.
     if (event.target !== event.currentTarget) return;
@@ -69,13 +140,22 @@ const PanelRow = ({
     }
   };
 
+  const runMenuAction = (action: () => void | Promise<void>) => () => {
+    setMenuOpen(false);
+    void Promise.resolve(action()).catch((error: unknown) => {
+      console.error('LibraryPanel action failed', error);
+    });
+  };
+
+  const hasMenu = Boolean(onDownload || onDelete || onShowInfo);
+
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={handleKeyDown}
-      className="group focusable hover:bg-surface-2 flex w-full cursor-pointer items-center gap-(--space-sm) rounded-sm px-(--space-md) py-(--space-sm) text-left transition-colors"
+      className="group focusable hover:bg-surface-2 flex w-full shrink-0 cursor-pointer items-center gap-(--space-sm) rounded-sm px-(--space-md) py-(--space-sm) text-left transition-colors"
     >
       <img
         src={fileIcon}
@@ -86,57 +166,84 @@ const PanelRow = ({
 
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold">{name}</span>
-        {description && (
+        {meta ? (
           <span className="text-muted-foreground block truncate text-sm">
-            {description}
+            {meta}
           </span>
+        ) : (
+          description && (
+            <span className="text-muted-foreground block truncate text-sm">
+              {description}
+            </span>
+          )
         )}
       </span>
 
-      {(onDownload || onDelete || actionLabel) && (
-        <span
-          className={cx(
-            'flex shrink-0 items-center gap-(--space-xs) transition-all duration-200 ease-out',
-            downloading
-              ? 'translate-x-0 opacity-100'
-              : 'translate-x-2 opacity-0 group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:translate-x-0 group-hover:opacity-100',
-          )}
-        >
-          {actionLabel && (
-            <Button
-              variant="text"
-              size="small"
-              icon={<Plus />}
-              content={actionLabel}
-              className="text-action"
-              onClick={withStop(onOpen)}
-            />
-          )}
-          {onDownload && (
-            <IconButton
-              variant="text"
-              aria-label={
-                downloading ? `Downloading ${name}` : `Download ${name}`
-              }
-              disabled={downloading}
-              onClick={withStop(onDownload)}
-              icon={
-                downloading ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <Download />
-                )
-              }
-            />
-          )}
-          {onDelete && (
-            <IconButton
-              variant="text"
-              aria-label={`Delete ${name}`}
-              onClick={withStop(onDelete)}
-              icon={<Trash2 />}
-            />
-          )}
+      {actionLabel && (
+        <span className="flex shrink-0 translate-x-2 items-center opacity-0 transition-all duration-200 ease-out group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:translate-x-0 group-hover:opacity-100">
+          <Button
+            variant="text"
+            size="small"
+            icon={<Plus />}
+            content={actionLabel}
+            className="text-action"
+            onClick={withStop(onOpen)}
+          />
+        </span>
+      )}
+
+      {hasMenu && (
+        <span className="flex shrink-0 items-center">
+          <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+            <PopoverTrigger asChild>
+              <IconButton
+                variant="text"
+                aria-label={`Actions for ${name}`}
+                disabled={downloading}
+                onClick={(event) => event.stopPropagation()}
+                icon={
+                  downloading ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Ellipsis />
+                  )
+                }
+              />
+            </PopoverTrigger>
+            <PopoverContent
+              side="bottom"
+              align="end"
+              className="bg-surface-accent text-surface-accent-foreground min-w-48 p-(--space-xs)"
+            >
+              <RowMenuItem
+                icon={<FolderOpen />}
+                label="Open"
+                onClick={runMenuAction(onOpen)}
+              />
+              {onShowInfo && (
+                <RowMenuItem
+                  icon={<Info />}
+                  label="See more info"
+                  onClick={runMenuAction(onShowInfo)}
+                />
+              )}
+              {onDownload && (
+                <RowMenuItem
+                  icon={<Download />}
+                  label="Download"
+                  disabled={downloading}
+                  onClick={runMenuAction(onDownload)}
+                />
+              )}
+              {onDelete && (
+                <RowMenuItem
+                  icon={<Trash2 />}
+                  label="Delete"
+                  onClick={runMenuAction(onDelete)}
+                />
+              )}
+            </PopoverContent>
+          </Popover>
         </span>
       )}
     </div>
@@ -153,7 +260,7 @@ type LibraryPanelProps = {
 };
 
 const PANEL_CLASSES =
-  'h-[min(13rem,50dvh)] overflow-y-auto px-(--space-sm) pt-(--space-sm) pb-(--space-xl)';
+  'h-[min(13rem,50dvh)] overflow-y-auto px-(--space-sm) pb-(--space-xl)';
 
 const LibraryPanel = ({
   onOpenProtocol,
@@ -166,6 +273,11 @@ const LibraryPanel = ({
   // loaded (Templates when there are no recents, Recent otherwise).
   const [tab, setTab] = useState<Tab | null>(null);
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
+  const [info, setInfo] = useState<{
+    protocol: StoredProtocolRow;
+    stats: MetaStat[];
+  } | null>(null);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   useEffect(() => {
     if (tab === null && isLoaded) {
@@ -241,6 +353,50 @@ const LibraryPanel = ({
     [dispatch],
   );
 
+  const handleShowInfo = useCallback(async (protocol: StoredProtocolRow) => {
+    const { codebook } = protocol.protocol;
+    const assetCount = await getProtocolAssetCount(protocol.id);
+    const stats: MetaStat[] = [
+      { label: 'Stages', value: String(protocol.protocol.stages.length) },
+      {
+        label: 'Node types',
+        value: String(Object.keys(codebook.node ?? {}).length),
+      },
+      {
+        label: 'Edge types',
+        value: String(Object.keys(codebook.edge ?? {}).length),
+      },
+      { label: 'Assets', value: String(assetCount) },
+      { label: 'Added', value: formatTimestamp(protocol.createdAt) },
+      { label: 'Edited', value: formatTimestamp(protocol.updatedAt) },
+    ];
+    setInfo({ protocol, stats });
+    setInfoOpen(true);
+  }, []);
+
+  const handleShowStorageInfo = useCallback(() => {
+    void dispatch(
+      openDialog({
+        type: 'Notice',
+        title: 'Protocol Storage',
+        message: (
+          <>
+            <p>
+              Your protocols are saved only in this browser, on this device.
+              They are never uploaded to a server.
+            </p>
+            <p>
+              Because your work lives in this browser's storage, clearing your
+              browsing data, or using "Clear all protocols", will permanently
+              remove it. Download the protocol as a <code>.netcanvas</code> file
+              to save a copy or move it to another device.
+            </p>
+          </>
+        ),
+      }),
+    );
+  }, [dispatch]);
+
   const handleClearAll = useCallback(async () => {
     const confirmed = await dispatch(
       openDialog({
@@ -259,7 +415,6 @@ const LibraryPanel = ({
     }
 
     try {
-      // Wipes storage and reloads the app from a clean slate.
       await clearAllStorage();
     } catch (error) {
       void dispatch(
@@ -282,89 +437,121 @@ const LibraryPanel = ({
       : `Your ${protocolCount} protocols are saved only in this browser, on this device. They are never uploaded to a server.`;
 
   return (
-    <Tabs
-      value={activeTab}
-      onValueChange={(value) => {
-        if (value === 'recent' || value === 'templates') {
-          setTab(value);
-        }
-      }}
-      className="bg-surface-1 text-surface-1-foreground flex max-h-[85dvh] w-full max-w-xl flex-col overflow-hidden rounded shadow-md"
-    >
-      <div className="flex shrink-0 items-center px-(--space-lg) py-(--space-md)">
-        <TabsList>
-          <TabsTab value="recent">Recent</TabsTab>
-          <TabsTab value="templates">Templates</TabsTab>
-        </TabsList>
-        {activeTab === 'recent' ? (
-          <div className="ml-auto flex items-center gap-(--space-sm)">
-            <Badge color="platinum" className="shadow-none">
-              {protocolCount} {protocolCount === 1 ? 'protocol' : 'protocols'}
-            </Badge>
-            <Tooltip content={storageTooltip} side="bottom">
-              <Info
-                className="text-muted-foreground size-5"
-                aria-label="Where your protocols are stored"
-              />
-            </Tooltip>
-            <Tooltip
-              content="Clear all protocols from this browser"
-              side="bottom"
-            >
-              <button
-                type="button"
-                aria-label="Clear all protocols from this browser"
-                onClick={() => void handleClearAll()}
-                className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+    <>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          if (value === 'recent' || value === 'templates') {
+            setTab(value);
+          }
+        }}
+        className="bg-surface-1 text-surface-1-foreground flex max-h-[85dvh] w-full max-w-xl flex-col overflow-hidden rounded shadow-md"
+      >
+        <div className="flex shrink-0 items-center px-(--space-lg) py-(--space-md)">
+          <TabsList>
+            <TabsTab value="recent">Recent</TabsTab>
+            <TabsTab value="templates">Templates</TabsTab>
+          </TabsList>
+          {activeTab === 'recent' ? (
+            <div className="ml-auto flex h-8 items-center gap-(--space-sm)">
+              <Badge color="platinum" className="shadow-none">
+                {protocolCount} {protocolCount === 1 ? 'protocol' : 'protocols'}
+              </Badge>
+              <Tooltip content={storageTooltip} side="bottom">
+                <IconButton
+                  variant="text"
+                  size="small"
+                  aria-label="Where your protocols are stored"
+                  onClick={handleShowStorageInfo}
+                  icon={<Info />}
+                />
+              </Tooltip>
+              <Tooltip
+                content="Clear all protocols from this browser"
+                side="bottom"
               >
-                <Trash2 className="size-5" />
-              </button>
-            </Tooltip>
-          </div>
-        ) : (
-          <Badge color="platinum" className="ml-auto shadow-none">
-            {templateLabel}
-          </Badge>
-        )}
-      </div>
+                <IconButton
+                  variant="text"
+                  size="small"
+                  aria-label="Clear all protocols from this browser"
+                  onClick={() => void handleClearAll()}
+                  icon={<Trash2 />}
+                />
+              </Tooltip>
+            </div>
+          ) : (
+            <div className="ml-auto flex h-8 items-center">
+              <Badge color="platinum" className="shadow-none">
+                {templateLabel}
+              </Badge>
+            </div>
+          )}
+        </div>
 
-      <TabsPanel value="recent" className={PANEL_CLASSES}>
-        {protocols.length === 0 ? (
-          <p className="text-muted-foreground px-(--space-md) py-(--space-xl) text-center text-sm">
-            No recent protocols yet.
-          </p>
-        ) : (
-          protocols.map((protocol) => (
-            <PanelRow
-              key={protocol.id}
-              name={protocol.name}
-              description={formatProtocolMeta(protocol)}
-              downloading={downloadingIds.has(protocol.id)}
-              onOpen={() => onOpenProtocol(protocol.id)}
-              onDownload={() => handleDownload(protocol)}
-              onDelete={() => handleDelete(protocol)}
-            />
-          ))
-        )}
-      </TabsPanel>
+        <TabsPanel value="recent" className={PANEL_CLASSES}>
+          {protocols.length === 0 ? (
+            <p className="text-muted-foreground px-(--space-md) py-(--space-xl) text-center text-sm">
+              No recent protocols yet.
+            </p>
+          ) : (
+            protocols.map((protocol) => (
+              <PanelRow
+                key={protocol.id}
+                name={protocol.name}
+                meta={formatProtocolMeta(protocol)}
+                downloading={downloadingIds.has(protocol.id)}
+                onOpen={() => onOpenProtocol(protocol.id)}
+                onDownload={() => handleDownload(protocol)}
+                onDelete={() => handleDelete(protocol)}
+                onShowInfo={() => handleShowInfo(protocol)}
+              />
+            ))
+          )}
+        </TabsPanel>
 
-      <TabsPanel value="templates" className={PANEL_CLASSES}>
-        <PanelRow
-          name="Sample Protocol"
-          description="First time? Explore a sample protocol"
-          actionLabel="Use this template"
-          onOpen={onOpenSample}
-        />
-        {import.meta.env.DEV && (
+        <TabsPanel value="templates" className={PANEL_CLASSES}>
           <PanelRow
-            name="Development Protocol"
-            description="Includes examples of every stage type"
+            name="Sample Protocol"
+            description="First time? Explore a sample protocol"
             actionLabel="Use this template"
-            onOpen={onOpenDevProtocol}
+            onOpen={onOpenSample}
           />
+          {import.meta.env.DEV && (
+            <PanelRow
+              name="Development Protocol"
+              description="Includes examples of every stage type"
+              actionLabel="Use this template"
+              onOpen={onOpenDevProtocol}
+            />
+          )}
+        </TabsPanel>
+      </Tabs>
+
+      <Dialog
+        open={infoOpen}
+        onOpenChange={setInfoOpen}
+        title={info?.protocol.name ?? ''}
+        cancelText="Close"
+      >
+        {info && (
+          <div className="flex flex-col gap-(--space-md)">
+            <p className="whitespace-pre-wrap">
+              {info.protocol.protocol.description?.trim() ||
+                'This protocol has no description.'}
+            </p>
+            <div className="flex flex-col overflow-hidden rounded">
+              <Table
+                columns={[
+                  { Header: 'Property', accessor: 'label' },
+                  { Header: 'Value', accessor: 'value' },
+                ]}
+                data={info.stats}
+              />
+            </div>
+          </div>
         )}
-      </TabsPanel>
-    </Tabs>
+      </Dialog>
+    </>
   );
 };
 

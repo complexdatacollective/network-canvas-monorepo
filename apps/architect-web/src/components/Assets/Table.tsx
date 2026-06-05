@@ -49,7 +49,7 @@ const tableClasses = cx(
   '[&_td]:min-w-32 [&_th]:min-w-32',
   '[&_th]:text-sm [&_th]:font-semibold [&_th]:tracking-wider [&_th]:break-keep [&_th]:whitespace-nowrap [&_th]:uppercase',
   '[&_th]:px-(--space-md) [&_th]:py-(--space-sm) [&_th]:leading-(--space-xl)',
-  '[&_th_svg]:text-primary [&_th_svg]:relative [&_th_svg]:top-[-0.1rem] [&_th_svg]:size-(--space-xl) [&_th_svg]:align-middle',
+  '[&_th_svg]:text-action [&_th_svg]:size-4',
   '[&_th:not(:last-child)]:border-r-[3px] [&_th:not(:last-child)]:border-r-white',
   '[&_td]:p-(--space-md)',
   '[&_td:not(:last-child)]:border-r-[3px] [&_td:not(:last-child)]:border-r-white',
@@ -112,8 +112,10 @@ const Table = ({ data, columns }: TableProps) => {
               style={{ cursor: 'pointer' }}
               title="Toggle SortBy"
             >
-              {column.Header}
-              {getSortIcon(column, sort)}
+              <span className="inline-flex items-center gap-(--space-xs)">
+                {column.Header}
+                {getSortIcon(column, sort)}
+              </span>
             </th>
           ))}
         </tr>

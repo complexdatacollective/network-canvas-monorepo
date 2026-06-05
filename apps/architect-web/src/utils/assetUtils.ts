@@ -71,6 +71,11 @@ export const deleteProtocolAssets = async (
   await assetDb.assets.where('protocolId').equals(protocolId).delete();
 };
 
+export const getProtocolAssetCount = async (
+  protocolId: string,
+): Promise<number> =>
+  assetDb.assets.where('protocolId').equals(protocolId).count();
+
 const createBlobUrl = (asset: ExtractedAsset): string => {
   if (typeof asset.data === 'string') {
     return asset.data;

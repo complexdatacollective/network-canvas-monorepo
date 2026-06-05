@@ -8,7 +8,10 @@ type ValidationIssue = {
   message: string;
 };
 
-function getBiologicalParentIds(
+// Ego's parents for the structural minimum: any parent-child relationship
+// except a step/foster ('social') parent or a partner edge. Adoptive, donor,
+// surrogate and biological parents all count toward "you have parents defined".
+function getEgoParentIds(
   nodeId: string,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
@@ -39,35 +42,17 @@ export function validatePedigreeCompleteness(
 
   const [egoId] = egoEntry;
 
-  const egoParentIds = getBiologicalParentIds(egoId, edges, variableConfig);
+  // The only hard requirement is that ego has at least two parents. Grandparents
+  // (a parent's own parents) are encouraged via the checklist but never required:
+  // a parent's ancestry may be genuinely unknown (e.g. a gamete donor) or
+  // genetically irrelevant (e.g. an adoptive parent).
+  const egoParentIds = getEgoParentIds(egoId, edges, variableConfig);
   if (egoParentIds.length < 2) {
     issues.push({
       nodeId: egoId,
       nodeName: 'You',
-      message: 'You must have at least two biological parents defined.',
+      message: 'You must have at least two parents defined.',
     });
-  }
-
-  for (const parentId of egoParentIds) {
-    const parent = nodes.get(parentId);
-    const name = parent?.attributes[variableConfig.nodeLabelVariable];
-    const nameKnown = typeof name === 'string' && name.length > 0;
-
-    if (!nameKnown) continue;
-
-    const parentName = name;
-    const grandparentIds = getBiologicalParentIds(
-      parentId,
-      edges,
-      variableConfig,
-    );
-    if (grandparentIds.length < 2) {
-      issues.push({
-        nodeId: parentId,
-        nodeName: parentName,
-        message: `${parentName} must have at least two biological parents defined.`,
-      });
-    }
   }
 
   return issues;
