@@ -145,30 +145,25 @@ function ParentSection({
       >
         <PersonFields namespace={`new-${roleKey}`} />
       </FieldGroup>
-      <FieldGroup
-        watch={[roleKey]}
-        condition={(values) =>
-          values[roleKey] !== undefined && values[roleKey] !== null
-        }
-      >
+      {/* The donor and carrier questions stay visible regardless of the
+          current selection, so resetting a colliding parent never hides them. */}
+      <Field
+        name={donorFieldName}
+        label={donorLabel}
+        component={BooleanField}
+        initialValue={false}
+        required
+      />
+      {carriedFieldName && carriedLabel && (
         <Field
-          name={donorFieldName}
-          label={donorLabel}
+          name={carriedFieldName}
+          label={carriedLabel}
+          hint={carriedHint}
           component={BooleanField}
-          initialValue={false}
+          initialValue={true}
           required
         />
-        {carriedFieldName && carriedLabel && (
-          <Field
-            name={carriedFieldName}
-            label={carriedLabel}
-            hint={carriedHint}
-            component={BooleanField}
-            initialValue={true}
-            required
-          />
-        )}
-      </FieldGroup>
+      )}
     </Surface>
   );
 }

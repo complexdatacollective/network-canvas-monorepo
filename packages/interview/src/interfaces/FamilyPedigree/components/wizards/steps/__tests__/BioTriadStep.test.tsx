@@ -18,19 +18,19 @@ function Probe() {
 }
 
 describe('BioTriadStep egg/sperm mutual exclusion', () => {
-  it('clears the opposite field when its person is chosen here, and disables nothing', async () => {
+  it('resets the egg parent when its person is chosen as sperm, keeps its questions visible, and disables nothing', async () => {
     render(
       <Form onSubmit={() => ({ success: true })}>
         <Probe />
         <BioTriadConfigProvider
           value={{
             existingNodes: [
-              { value: 'a', label: 'Alice' },
-              { value: 'b', label: 'Bob' },
+              { value: 'linda', label: 'Linda' },
+              { value: 'robert', label: 'Robert' },
             ],
             preselection: {
-              eggSource: 'a',
-              spermSource: 'b',
+              eggSource: 'linda',
+              spermSource: 'robert',
               carrier: 'egg-source',
             },
           }}
@@ -42,28 +42,44 @@ describe('BioTriadStep egg/sperm mutual exclusion', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('probe').textContent).toContain(
-        '"egg-source":"a"',
+        '"egg-source":"linda"',
       );
     });
 
-    // Every person stays selectable in both selectors — nothing is disabled.
+    // Egg's donor + carrier questions are visible, and no option is disabled.
+    expect(screen.getByText('Was this person an egg donor?')).toBeTruthy();
+    expect(
+      screen.getByText('Did this person carry the pregnancy?'),
+    ).toBeTruthy();
     const radios = screen.getAllByRole('radio');
     expect(radios.filter(isDisabled)).toHaveLength(0);
 
-    // Choose Alice (the current egg parent) in the sperm selector. The egg
-    // section renders first, so the second "Alice" radio is the sperm one.
-    const aliceRadios = radios.filter(
-      (r) => r.getAttribute('aria-label') === 'Alice',
+    // Choose Linda (the current egg parent) in the sperm selector. The egg
+    // section renders first, so the second "Linda" radio is the sperm one.
+    const lindaRadios = radios.filter(
+      (r) => r.getAttribute('aria-label') === 'Linda',
     );
-    expect(aliceRadios).toHaveLength(2);
-    fireEvent.click(aliceRadios[1]!);
+    expect(lindaRadios).toHaveLength(2);
+    fireEvent.click(lindaRadios[1]!);
 
-    // sperm-source becomes Alice; egg-source (which was Alice) is cleared — a
-    // cleared value is undefined, so JSON.stringify drops the key entirely.
     await waitFor(() => {
       const text = screen.getByTestId('probe').textContent ?? '';
-      expect(text).toContain('"sperm-source":"a"');
+      // sperm-source becomes Linda; egg-source (which was Linda) is cleared.
+      expect(text).toContain('"sperm-source":"linda"');
       expect(text).not.toContain('"egg-source"');
     });
+
+    // The egg radio visually deselects (Linda no longer checked in the egg
+    // selector), while it stays checked in the sperm selector.
+    const lindaAfter = screen.getAllByRole('radio', { name: 'Linda' });
+    expect(lindaAfter[0]?.getAttribute('aria-checked')).toBe('false');
+    expect(lindaAfter[1]?.getAttribute('aria-checked')).toBe('true');
+
+    // The egg donor + carrier questions remain visible even though the egg
+    // parent was reset.
+    expect(screen.getByText('Was this person an egg donor?')).toBeTruthy();
+    expect(
+      screen.getByText('Did this person carry the pregnancy?'),
+    ).toBeTruthy();
   });
 });
