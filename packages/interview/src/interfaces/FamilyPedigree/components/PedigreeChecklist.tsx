@@ -22,13 +22,11 @@ import { buildPedigreeDialog } from '../buildPedigreeDialog';
 import { useFamilyPedigreeStore } from '../FamilyPedigreeProvider';
 import { getRelationshipTypeVariable } from '../utils/edgeUtils';
 import { getEgoVariable, getNodeLabelVariable } from '../utils/nodeUtils';
-
-type ChecklistItem = {
-  id: string;
-  label: string;
-  done: boolean;
-  required: boolean;
-};
+import {
+  buildParentsItem,
+  type ChecklistItem,
+  partnersNeedingParents,
+} from './pedigreeChecklistItems';
 
 export default function PedigreeChecklist({
   dragConstraints,
@@ -169,11 +167,8 @@ export default function PedigreeChecklist({
     const list: ChecklistItem[] = [];
 
     for (const parentId of egoParentIds) {
-      const parentNode = nodes.get(parentId);
-      const rawName = parentNode?.attributes[nodeLabelVariable];
-      const nameKnown = typeof rawName === 'string' && rawName.length > 0;
-
-      if (!nameKnown) continue;
+      const rawName = nodes.get(parentId)?.attributes[nodeLabelVariable];
+      if (typeof rawName !== 'string' || rawName.length === 0) continue;
 
       // Only nudge for a parent's own parents when that parent is a genetic
       // parent of ego. An adoptive or surrogate parent's parents carry no
@@ -183,33 +178,44 @@ export default function PedigreeChecklist({
       const edgeToEgo = [...edges.values()].find(
         (e) => e.from === parentId && e.to === egoId,
       );
-      const edgeToEgoRelType = edgeToEgo?.attributes[
-        relationshipTypeVariable
-      ] as string | undefined;
-      if (edgeToEgoRelType !== 'biological' && edgeToEgoRelType !== 'donor') {
+      const relTypeToEgo = edgeToEgo?.attributes[relationshipTypeVariable];
+      if (relTypeToEgo !== 'biological' && relTypeToEgo !== 'donor') {
         continue;
       }
 
-      const parentName = rawName;
-      const grandparentCount = [...edges.values()].filter((e) => {
-        const rt = e.attributes[relationshipTypeVariable] as string | undefined;
-        return e.to === parentId && rt !== 'partner' && rt !== 'social';
-      }).length;
-      const done =
-        grandparentCount >= 2 ||
-        manuallyChecked.has(`grandparents-${parentId}`);
+      list.push(
+        buildParentsItem(
+          parentId,
+          rawName,
+          'grandparents',
+          edges,
+          relationshipTypeVariable,
+          manuallyChecked,
+        ),
+      );
+    }
 
-      const remaining = Math.max(0, 2 - grandparentCount);
-      list.push({
-        id: `grandparents-${parentId}`,
-        label: done
-          ? `Add parents for ${parentName}`
-          : remaining === 1
-            ? `Add 1 more parent for ${parentName}`
-            : `Add parents for ${parentName}`,
-        done,
-        required: false,
-      });
+    // Once a partner has had children with ego, that partner contributes to the
+    // next generation, so their own parents become relevant to those children's
+    // family history (the same reason ego's parents are nudged above).
+    for (const partnerId of partnersNeedingParents(
+      egoId,
+      edges,
+      relationshipTypeVariable,
+    )) {
+      const rawName = nodes.get(partnerId)?.attributes[nodeLabelVariable];
+      if (typeof rawName !== 'string' || rawName.length === 0) continue;
+
+      list.push(
+        buildParentsItem(
+          partnerId,
+          rawName,
+          'partner-parents',
+          edges,
+          relationshipTypeVariable,
+          manuallyChecked,
+        ),
+      );
     }
 
     list.push({
