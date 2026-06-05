@@ -4,6 +4,7 @@ $font-path: '@codaco/ui/lib/assets/fonts';
 @import 'react-resizable/css/styles.css';
 @import 'tippy.js/dist/tippy.css';
 @import '@codaco/ui/lib/styles/all';
+@import './ua-compat';
 @import './hotfix';
 @import './ui';
 @import './theme';
