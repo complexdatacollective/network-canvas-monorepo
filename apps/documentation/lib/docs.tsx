@@ -50,6 +50,7 @@ import {
   UnorderedList,
 } from '~/components/ui/typography/Lists';
 import Paragraph from '~/components/ui/typography/Paragraph';
+import { getCompatibility } from '~/lib/interfaceCompatibility';
 
 import { DOCS_PATH, get } from './helper_functions';
 import processPreTags from './processPreTags';
@@ -212,7 +213,7 @@ const getSourceFile = (
   return join(process.cwd(), 'docs', stripDocsPrefix(folderSourceFile));
 };
 
-const markdownComponents = {
+const createMarkdownComponents = (docSlug?: string) => ({
   h1: (props: ComponentProps<typeof Heading>) => (
     <Heading variant="h1" {...props} />
   ),
@@ -304,7 +305,7 @@ const markdownComponents = {
     type: string;
     creates: string;
     usesprompts: string;
-  }) => <InterfaceMeta {...props} />,
+  }) => <InterfaceMeta {...props} compatibility={getCompatibility(docSlug)} />,
   definition: (props: { children: ReactNode }) => (
     <div className="text-lg font-normal">{props.children}</div>
   ),
@@ -318,7 +319,7 @@ const markdownComponents = {
   ),
   details: Details,
   summary: Summary,
-};
+});
 
 export async function getDocumentForPath({
   locale,
@@ -337,6 +338,8 @@ export async function getDocumentForPath({
 
   const markdownFile = readFileSync(sourceFile, 'utf-8');
 
+  const docSlug = pathSegment?.at(-1);
+
   const result = await unified()
     .use(remarkParse, { fragment: true })
     .use(remarkGfm)
@@ -353,7 +356,7 @@ export async function getDocumentForPath({
       Fragment,
       jsx,
       jsxs,
-      components: markdownComponents,
+      components: createMarkdownComponents(docSlug),
     } as Options)
     .process(markdownFile);
 
