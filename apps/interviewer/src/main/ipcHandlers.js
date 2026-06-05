@@ -46,15 +46,34 @@ export const registerIpcHandlers = () => {
   // ===================
 
   ipcMain.handle('protocol:download', async (_, uri) => {
-    log.info('protocol:download', uri);
-    const response = await fetch(uri);
-    if (!response.ok) {
-      throw new Error(`Failed to download protocol (HTTP ${response.status})`);
+    const url = new URL(uri);
+    // Only http(s); reject other schemes (file:, etc.) and embedded
+    // credentials (so they are never fetched or written to the log).
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      throw new Error(`Unsupported protocol for download: ${url.protocol}`);
     }
-    const buffer = Buffer.from(await response.arrayBuffer());
-    const destination = path.join(app.getPath('temp'), randomUUID());
-    await fse.writeFile(destination, buffer);
-    return destination;
+    if (url.username || url.password) {
+      throw new Error('Credentials are not allowed in a protocol download URL');
+    }
+    // Log origin + path only (no credentials or query string).
+    log.info('protocol:download', `${url.origin}${url.pathname}`);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60_000);
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) {
+        throw new Error(
+          `Failed to download protocol (HTTP ${response.status})`,
+        );
+      }
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const destination = path.join(app.getPath('temp'), randomUUID());
+      await fse.writeFile(destination, buffer);
+      return destination;
+    } finally {
+      clearTimeout(timeout);
+    }
   });
 
   // ===================
