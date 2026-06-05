@@ -1,13 +1,12 @@
 'use client';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Node from '@codaco/fresco-ui/Node';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import AddPersonFields from '~/interfaces/FamilyPedigree/components/AddPersonForm';
+import PersonFields from '~/interfaces/FamilyPedigree/components/quickStartWizard/PersonFields';
 import { openAddChildWizard } from '~/interfaces/FamilyPedigree/components/wizards/AddChildWizard';
 import { openAddParentWizard } from '~/interfaces/FamilyPedigree/components/wizards/AddParentWizard';
 import { openAddSiblingWizard } from '~/interfaces/FamilyPedigree/components/wizards/AddSiblingWizard';
@@ -161,26 +160,23 @@ export default function PedigreeView({
     }
   };
 
-  const handleEditName = async (nodeId: string) => {
+  const handleEdit = async (nodeId: string) => {
     const currentNode = nodes.get(nodeId);
+    if (!currentNode) return;
+
     const currentName =
-      typeof currentNode?.attributes[nodeLabelVariable] === 'string'
+      typeof currentNode.attributes[nodeLabelVariable] === 'string'
         ? currentNode.attributes[nodeLabelVariable]
         : '';
 
     const result = await openDialog({
       type: 'form',
-      title: 'Edit name',
+      title: 'Edit',
       submitLabel: 'Done',
       cancelLabel: 'Cancel',
       children: (
-        <Field
-          name="name"
-          label="Name"
-          component={InputField}
-          initialValue={currentName}
-          hint="Leave blank if the name is not known"
-          autoFocus
+        <PersonFields
+          initial={{ name: currentName, attributes: currentNode.attributes }}
         />
       ),
     });
@@ -188,10 +184,18 @@ export default function PedigreeView({
     if (!result) return;
 
     const name = typeof result.name === 'string' ? result.name : '';
-    if (!currentNode) return;
+
+    const formAttrs: Record<string, VariableValue> = {};
+    for (const field of resolvedFormFields) {
+      if (result[field.variableId] !== undefined) {
+        formAttrs[field.variableId] = result[field.variableId] as VariableValue;
+      }
+    }
+
     updateNode(nodeId, {
       ...currentNode.attributes,
       [nodeLabelVariable]: name,
+      ...formAttrs,
     });
   };
 
@@ -252,8 +256,8 @@ export default function PedigreeView({
   };
 
   const handleMenuAction = (nodeId: string, action: NodeContextMenuAction) => {
-    if (action === 'editName') {
-      void handleEditName(nodeId);
+    if (action === 'edit') {
+      void handleEdit(nodeId);
     } else if (action === 'child') {
       void handleAddChild(nodeId);
     } else if (action === 'sibling') {

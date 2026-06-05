@@ -36,7 +36,7 @@ export const Editable: Story = {
       'Add child',
       'Add partner',
       'Add sibling',
-      'Edit name',
+      'Edit',
       'Delete',
     ]) {
       expect(screen.getByRole('menuitem', { name })).toBeTruthy();
@@ -48,18 +48,9 @@ export const Finalized: Story = {
   args: { isFinalized: true },
   play: async () => {
     await openMenu();
-    await waitFor(() =>
-      expect(screen.getByRole('menuitem', { name: 'Edit name' })).toBeTruthy(),
-    );
-    for (const name of [
-      'Add parent',
-      'Add child',
-      'Add partner',
-      'Add sibling',
-      'Delete',
-    ]) {
-      expect(screen.queryByRole('menuitem', { name })).toBeNull();
-    }
+    // Nodes can only be changed while building the pedigree, so a finalized node
+    // renders without a menu.
+    expect(screen.queryByRole('menuitem')).toBeNull();
   },
 };
 
@@ -67,8 +58,6 @@ export const FinalizedEgo: Story = {
   args: { isFinalized: true, isEgo: true },
   play: async () => {
     await openMenu();
-    // The ego has no editable name, so finalizing leaves no actions and the
-    // node renders without a menu.
     expect(screen.queryByRole('menuitem')).toBeNull();
   },
 };
