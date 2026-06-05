@@ -12,6 +12,7 @@ import {
   inSequence,
   readFile,
   removeDirectory,
+  writeFile,
   writeStream,
 } from '../filesystem';
 import friendlyErrorMessage from '../friendlyErrorMessage';
@@ -57,9 +58,13 @@ const extractZipDirectory = inEnvironment((environment) => {
 
 const extractZipFile = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
+    // JSZip's nodeStream() does not work in the Vite/Electron renderer; use the
+    // browser-native async('uint8array') and write the buffer via secure IPC.
     return (zipObject, destination) => {
       const extractPath = pathSync.join(destination, zipObject.name);
-      return writeStream(extractPath, zipObject.nodeStream());
+      return zipObject
+        .async('uint8array')
+        .then((data) => writeFile(extractPath, data));
     };
   }
 

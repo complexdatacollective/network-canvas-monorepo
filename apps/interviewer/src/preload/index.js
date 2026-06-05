@@ -95,8 +95,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('fs:writeJson', filePath, data, options),
     readFile: (filePath, encoding) =>
       ipcRenderer.invoke('fs:readFile', filePath, encoding),
-    writeFile: (filePath, data) =>
-      ipcRenderer.invoke('fs:writeFile', filePath, data),
+    writeFile: (filePath, data, isBinary) =>
+      ipcRenderer.invoke('fs:writeFile', filePath, data, isBinary),
     copy: (src, dest) => ipcRenderer.invoke('fs:copy', src, dest),
     unlink: (filePath) => ipcRenderer.invoke('fs:unlink', filePath),
     remove: (filePath) => ipcRenderer.invoke('fs:remove', filePath),
@@ -130,6 +130,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     resolve: (...args) => ipcRenderer.invoke('path:resolve', ...args),
     normalize: (filePath) => ipcRenderer.invoke('path:normalize', filePath),
     relative: (from, to) => ipcRenderer.invoke('path:relative', from, to),
+  },
+
+  // ===================
+  // Protocol Operations
+  // ===================
+  protocol: {
+    download: (uri) => ipcRenderer.invoke('protocol:download', uri),
   },
 
   // ===================

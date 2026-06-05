@@ -5,7 +5,7 @@ import { v4 as uuid } from 'uuid';
 import friendlyErrorMessage from '../../utils/friendlyErrorMessage';
 import inEnvironment from '../Environment';
 import environments from '../environments';
-import { tempDataPath, writeFile } from '../filesystem';
+import { tempDataPath } from '../filesystem';
 
 const getURL = (uri) =>
   new Promise((resolve, reject) => {
@@ -24,9 +24,6 @@ const urlError = friendlyErrorMessage(
 const networkError = friendlyErrorMessage(
   "We weren't able to fetch your protocol. Your device may not have an active network connection, or you may have mistyped the URL. Ensure you are connected to a network, double check your URL, and try again.",
 );
-const fileError = friendlyErrorMessage(
-  'The protocol could not be saved to your device. You might not have enough storage available. ',
-);
 
 /**
  * Download a protocol from a remote URL.
@@ -37,20 +34,14 @@ const fileError = friendlyErrorMessage(
 const downloadProtocol = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     return async (uri) => {
-      const destination = `${tempDataPath()}/${getProtocolName()}`;
-
       const url = await getURL(uri).catch(urlError);
 
-      const response = await fetch(url.href).catch(networkError);
-      if (!response.ok) {
-        throw networkError(new Error(`HTTP ${response.status}`));
+      if (!window.electronAPI?.protocol?.download) {
+        throw new Error('electronAPI not available');
       }
 
-      const arrayBuffer = await response.arrayBuffer();
-      const data = new Uint8Array(arrayBuffer);
-      await writeFile(destination, data).catch(fileError);
-
-      return destination;
+      // Download in the main process to avoid renderer cross-origin (CORS) restrictions.
+      return window.electronAPI.protocol.download(url.href).catch(networkError);
     };
   }
 

@@ -172,6 +172,7 @@ export const importProtocolFromURI = (uri) => {
         return resolve();
       }, catchError)
       .catch((error) => {
+        console.error('[protocol import] URL import failed:', error);
         dispatch(toastActions.removeToast(toastUUID));
 
         if (protocolUid) cleanUpProtocol(protocolUid);
@@ -298,6 +299,7 @@ export const importProtocolFromFile = (filePath, name) => {
       return Promise.resolve();
     }, catchError)
     .catch((error) => {
+      console.error('[protocol import] file import failed:', error);
       dispatch(toastActions.removeToast(toastUUID));
 
       if (protocolUid) cleanUpProtocol(protocolUid);

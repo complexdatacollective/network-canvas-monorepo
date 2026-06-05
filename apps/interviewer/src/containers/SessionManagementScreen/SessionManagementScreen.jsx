@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import sanitizeFilename from 'sanitize-filename';
 
@@ -42,11 +42,11 @@ const DataExportScreen = ({ show, onClose }) => {
   const deleteSession = (id) => dispatch(sessionsActions.removeSession(id));
   const openDialog = (dialog) => dispatch(dialogActions.openDialog(dialog));
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setFilename(getInitialFilename());
     setSelectedSessions([]);
     setStep(1);
-  };
+  }, []);
 
   const forward = () => {
     setStep(step + 1);

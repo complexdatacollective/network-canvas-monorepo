@@ -3,7 +3,7 @@ export const PROTOCOL_EXTENSION = '.netcanvas';
 // Target protocol schema version. Used to determine compatibility & migration
 export const APP_SCHEMA_VERSION = 7;
 
-export const APP_SUPPORTED_SCHEMA_VERSIONS = [4, 5, 6, 7, 8];
+export const APP_SUPPORTED_SCHEMA_VERSIONS = [4, 5, 6, 7];
 
 export const DEVELOPMENT_PROTOCOL_URL_V4 =
   'https://github.com/complexdatacollective/development-protocol/releases/download/20201207104100-8547e9b/Development.netcanvas';

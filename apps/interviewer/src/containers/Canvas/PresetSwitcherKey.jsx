@@ -5,7 +5,7 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { compose } from 'recompose';
 
-import { Icon, window } from '@codaco/ui';
+import { Icon, window as Window } from '@codaco/ui';
 import { MarkdownLabel, Radio } from '@codaco/ui/lib/components/Fields';
 
 import {
@@ -150,4 +150,4 @@ const makeMapStateToProps = () => {
 
 export { PresetSwitcherKey as UnconnectedPresetSwitcherKey };
 
-export default compose(window, connect(makeMapStateToProps))(PresetSwitcherKey);
+export default compose(Window, connect(makeMapStateToProps))(PresetSwitcherKey);

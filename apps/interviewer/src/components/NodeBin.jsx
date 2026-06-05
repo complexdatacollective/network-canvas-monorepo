@@ -2,7 +2,7 @@ import cx from 'classnames';
 import PropTypes from 'prop-types';
 import { compose, withProps } from 'recompose';
 
-import { window } from '@codaco/ui/lib/components/window';
+import { window as Window } from '@codaco/ui/lib/components/window';
 
 import { DropTarget, MonitorDropTarget } from '../behaviours/DragAndDrop';
 
@@ -29,7 +29,7 @@ NodeBin.defaultProps = {
   willAccept: false,
 };
 
-export default window(
+export default Window(
   compose(
     withProps((props) => ({
       accepts: ({ meta }) => props.accepts(meta),

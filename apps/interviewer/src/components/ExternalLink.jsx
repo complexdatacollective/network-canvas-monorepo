@@ -39,6 +39,6 @@ ExternalLink.propTypes = {
   href: PropTypes.string.isRequired,
 };
 
-export { ExternalLink };
+export { ExternalLink, openExternalLink };
 
 export default ExternalLink;

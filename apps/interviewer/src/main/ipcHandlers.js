@@ -6,6 +6,7 @@
  * providing a controlled API for file system, dialogs, and other operations.
  */
 
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
 import archiver from 'archiver';
@@ -38,6 +39,22 @@ export const registerIpcHandlers = () => {
   ipcMain.handle('dialog:showMessageBox', async (event, options) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     return dialog.showMessageBox(window, options);
+  });
+
+  // ===================
+  // Protocol Download (runs in main to avoid renderer CORS)
+  // ===================
+
+  ipcMain.handle('protocol:download', async (_, uri) => {
+    log.info('protocol:download', uri);
+    const response = await fetch(uri);
+    if (!response.ok) {
+      throw new Error(`Failed to download protocol (HTTP ${response.status})`);
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const destination = path.join(app.getPath('temp'), randomUUID());
+    await fse.writeFile(destination, buffer);
+    return destination;
   });
 
   // ===================
@@ -88,11 +105,14 @@ export const registerIpcHandlers = () => {
     return buffer.toString('base64');
   });
 
-  ipcMain.handle('fs:writeFile', async (_, filePath, data) => {
+  ipcMain.handle('fs:writeFile', async (_, filePath, data, isBinary) => {
     log.info('fs:writeFile', filePath);
-    // Handle base64 encoded data
+    // Explicit binary flag from the renderer is authoritative (any size).
+    if (isBinary) {
+      return fse.writeFile(filePath, Buffer.from(data, 'base64'));
+    }
+    // Fallback heuristic for callers that don't set the flag (e.g. streams).
     if (typeof data === 'string' && data.length > 0) {
-      // Check if it looks like base64
       const isBase64 = /^[A-Za-z0-9+/]+=*$/.test(data.substring(0, 100));
       if (isBase64 && data.length > 1000) {
         return fse.writeFile(filePath, Buffer.from(data, 'base64'));
@@ -170,7 +190,8 @@ export const registerIpcHandlers = () => {
 
   ipcMain.handle('fs:rmdir', async (_, dirPath) => {
     log.info('fs:rmdir', dirPath);
-    return fse.rmdir(dirPath, { recursive: true });
+    // `remove` is idempotent (no ENOENT on missing path) and not deprecated.
+    return fse.remove(dirPath);
   });
 
   ipcMain.handle('fs:existsSync', async (_, filePath) => {

@@ -6,23 +6,26 @@ import { maxLength, required } from '../../utils/Validations';
 import Form from '../Form';
 import Overlay from '../Overlay';
 
-const NewSessionOverlay = ({ handleSubmit, show, onClose }) => {
-  const formConfig = {
-    formName: 'case-id-form',
-    fields: [
-      {
-        label: null,
-        name: 'case_id',
-        component: 'Text',
-        placeholder: 'Enter a unique case ID',
-        validate: [
-          required('You must enter a case ID before you can continue.'),
-          maxLength(30),
-        ],
-      },
-    ],
-  };
+// Defined at module scope so the field `validate` functions keep a stable
+// identity across renders; otherwise redux-form re-registers/re-validates the
+// field on every store change, causing an infinite update loop.
+const formConfig = {
+  formName: 'case-id-form',
+  fields: [
+    {
+      label: null,
+      name: 'case_id',
+      component: 'Text',
+      placeholder: 'Enter a unique case ID',
+      validate: [
+        required('You must enter a case ID before you can continue.'),
+        maxLength(30),
+      ],
+    },
+  ],
+};
 
+const NewSessionOverlay = ({ handleSubmit, show, onClose }) => {
   const onSubmitForm = (fields) => {
     handleSubmit(fields.case_id);
   };
