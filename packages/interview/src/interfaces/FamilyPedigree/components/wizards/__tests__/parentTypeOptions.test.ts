@@ -18,11 +18,24 @@ const variableConfig: VariableConfig = {
   isGestationalCarrierVariable: 'isGC',
 };
 
-function edge(from: string, to: string, rel: string): [string, NcEdge] {
+function edge(
+  from: string,
+  to: string,
+  rel: string,
+  isGC = false,
+): [string, NcEdge] {
   const id = `${from}->${to}:${rel}`;
   return [
     id,
-    { _uid: id, type: 'family', from, to, attributes: { rel, isActive: true } },
+    {
+      _uid: id,
+      type: 'family',
+      from,
+      to,
+      attributes: isGC
+        ? { rel, isActive: true, isGC: true }
+        : { rel, isActive: true },
+    },
   ];
 }
 
@@ -40,22 +53,54 @@ describe('countGeneticParents', () => {
 });
 
 describe('addableParentTypeOptions', () => {
-  it('excludes biological and donor when both genetic slots are filled', () => {
-    const values = addableParentTypeOptions(2).map((o) => o.value);
+  function optionValues(childId: string, edges: Map<string, NcEdge>): string[] {
+    return addableParentTypeOptions(childId, edges, variableConfig).map(
+      (o) => o.value,
+    );
+  }
+
+  it('excludes biological and donor once both gamete parents are known', () => {
+    const edges = new Map<string, NcEdge>([
+      edge('mum', 'kid', 'biological'),
+      edge('dad', 'kid', 'biological'),
+    ]);
+    const values = optionValues('kid', edges);
+    expect(values).not.toContain('biological');
+    expect(values).not.toContain('donor');
+    expect(values).toContain('social');
+    expect(values).toContain('surrogate'); // no carrier recorded yet
+  });
+
+  it('excludes surrogate when the egg parent also carried', () => {
+    const edges = new Map<string, NcEdge>([
+      edge('mum', 'kid', 'biological', true), // egg parent who also carried
+      edge('dad', 'kid', 'biological'),
+    ]);
+    const values = optionValues('kid', edges);
+    expect(values).not.toContain('surrogate');
     expect(values).not.toContain('biological');
     expect(values).not.toContain('donor');
     expect(values).toContain('social');
   });
 
-  it('offers all types when fewer than two genetic parents exist', () => {
-    const values = addableParentTypeOptions(1).map((o) => o.value);
+  it('excludes surrogate when a separate gestational carrier exists, independent of the genetic slots', () => {
+    const edges = new Map<string, NcEdge>([
+      edge('mum', 'kid', 'biological'),
+      edge('surr', 'kid', 'surrogate', true),
+    ]);
+    const values = optionValues('kid', edges);
+    expect(values).not.toContain('surrogate');
+    // only one genetic parent so far, so a second is still offerable
     expect(values).toContain('biological');
     expect(values).toContain('donor');
+    expect(values).toContain('social');
   });
 
-  it('offers all types when there are no genetic parents', () => {
-    const values = addableParentTypeOptions(0).map((o) => o.value);
+  it('offers all types when no roles are filled', () => {
+    const values = optionValues('kid', new Map<string, NcEdge>());
     expect(values).toContain('biological');
     expect(values).toContain('donor');
+    expect(values).toContain('surrogate');
+    expect(values).toContain('social');
   });
 });

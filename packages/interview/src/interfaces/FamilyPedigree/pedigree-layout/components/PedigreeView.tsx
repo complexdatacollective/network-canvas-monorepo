@@ -232,7 +232,7 @@ export default function PedigreeView({
             nodes,
             edges,
             variableConfig,
-            addableParentTypeOptions(geneticCount),
+            addableParentTypeOptions(nodeId, edges, variableConfig),
           )
         : await openDefineParentsWizard(
             openDialog,

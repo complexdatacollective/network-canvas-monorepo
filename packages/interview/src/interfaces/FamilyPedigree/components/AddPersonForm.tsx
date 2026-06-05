@@ -7,8 +7,8 @@ import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import { getNodeLabel } from '~/interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel';
 
 import type { VariableConfig } from '../store';
-import { PARENT_EDGE_TYPE_OPTIONS_ALTER } from './quickStartWizard/fieldOptions';
 import PersonFields from './quickStartWizard/PersonFields';
+import { addableParentTypeOptions } from './wizards/parentTypeOptions';
 
 const CURRENT_EX_OPTIONS = [
   { value: 'current', label: 'Current' },
@@ -43,7 +43,7 @@ export default function AddPersonFields({
 
       <Field
         name="current"
-        label="Current or ex partner?"
+        label="Are they a current or ex partner?"
         component={RadioGroupField}
         options={CURRENT_EX_OPTIONS}
         initialValue="current"
@@ -61,7 +61,7 @@ export default function AddPersonFields({
               label: 'Not a parent',
               description: 'Select this if not a parent of this child',
             },
-            ...PARENT_EDGE_TYPE_OPTIONS_ALTER,
+            ...addableParentTypeOptions(childId, edges, variableConfig),
           ]}
           initialValue="none"
         />
