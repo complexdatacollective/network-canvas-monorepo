@@ -21,6 +21,7 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import PersonFields from '~/interfaces/FamilyPedigree/components/quickStartWizard/PersonFields';
+import type { GameteRole } from '~/interfaces/FamilyPedigree/store';
 
 import type { BioTriadOption } from './bioTriadOptions';
 
@@ -28,6 +29,11 @@ type NodeOption = BioTriadOption;
 
 type BioTriadConfig = {
   existingNodes?: NodeOption[];
+  /**
+   * The gamete role each existing node is already nominated for elsewhere. A
+   * known egg parent is dropped from the sperm list and vice versa.
+   */
+  gameteRoles?: Map<string, GameteRole>;
   preselection?: {
     eggSource?: string;
     spermSource?: string;
@@ -169,12 +175,25 @@ function ParentSection({
 }
 
 export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
-  const { existingNodes, preselection } = useBioTriadConfig();
+  const { existingNodes, preselection, gameteRoles } = useBioTriadConfig();
   const nodeOptions = useMemo(() => existingNodes ?? [], [existingNodes]);
 
-  const parentOptions = useMemo(
-    () => [...nodeOptions, { value: 'new', label: 'Create a new person' }],
-    [nodeOptions],
+  // A node already nominated as an egg parent elsewhere can't be a sperm parent
+  // here, and vice versa. The carrier can be anyone, so it stays unfiltered.
+  const eggOptions = useMemo(
+    () => [
+      ...nodeOptions.filter((o) => gameteRoles?.get(o.value) !== 'sperm'),
+      { value: 'new', label: 'Create a new person' },
+    ],
+    [nodeOptions, gameteRoles],
+  );
+
+  const spermOptions = useMemo(
+    () => [
+      ...nodeOptions.filter((o) => gameteRoles?.get(o.value) !== 'egg'),
+      { value: 'new', label: 'Create a new person' },
+    ],
+    [nodeOptions, gameteRoles],
   );
 
   const carrierOptions = useMemo(
@@ -194,7 +213,7 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
         selectHint="Select the person who contributed the egg. If this was an egg donor, you can indicate that below."
         donorFieldName="egg-source-is-donor"
         donorLabel="Was this person an egg donor?"
-        options={parentOptions}
+        options={eggOptions}
         excludeSelectionFrom="sperm-source"
         initialValue={preselection?.eggSource}
         carriedFieldName="egg-parent-carried"
@@ -245,7 +264,7 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
         selectHint="Select the person who contributed the sperm. If this was a sperm donor, you can indicate that below."
         donorFieldName="sperm-source-is-donor"
         donorLabel="Was this person a sperm donor?"
-        options={parentOptions}
+        options={spermOptions}
         excludeSelectionFrom="egg-source"
         initialValue={preselection?.spermSource}
       />

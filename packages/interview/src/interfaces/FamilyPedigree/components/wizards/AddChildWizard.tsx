@@ -7,7 +7,10 @@ import type {
 
 import PersonFields from '../quickStartWizard/PersonFields';
 import { buildNodeOptions } from './buildNodeOptions';
-import { geneticParentCandidates } from './parentCandidates';
+import {
+  geneticParentCandidates,
+  nominatedGameteRoles,
+} from './parentCandidates';
 import BioTriadStep, {
   type BioTriadConfig,
   BioTriadConfigProvider,
@@ -74,7 +77,11 @@ export async function openAddChildWizard(
     variableConfig,
     candidateIds,
   );
-  const bioTriadConfig = { existingNodes, preselection };
+  const bioTriadConfig = {
+    existingNodes,
+    preselection,
+    gameteRoles: nominatedGameteRoles(edges),
+  };
 
   const result = await openDialog({
     type: 'wizard',

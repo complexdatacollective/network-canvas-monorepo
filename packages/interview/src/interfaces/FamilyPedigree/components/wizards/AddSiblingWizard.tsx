@@ -8,7 +8,10 @@ import type {
 import PersonFields from '../quickStartWizard/PersonFields';
 import { buildNodeOptions } from './buildNodeOptions';
 import { derivePreselection } from './derivePreselection';
-import { geneticParentCandidates } from './parentCandidates';
+import {
+  geneticParentCandidates,
+  nominatedGameteRoles,
+} from './parentCandidates';
 import BioTriadStep, { BioTriadConfigProvider } from './steps/BioTriadStep';
 import GenericAdditionalParentsStep from './steps/GenericAdditionalParentsStep';
 import GenericOtherParentsStep from './steps/GenericOtherParentsStep';
@@ -42,7 +45,11 @@ export async function openAddSiblingWizard(
     candidateIds,
   );
 
-  const bioTriadConfig = { existingNodes, preselection };
+  const bioTriadConfig = {
+    existingNodes,
+    preselection,
+    gameteRoles: nominatedGameteRoles(edges),
+  };
 
   function WrappedBioTriadStep() {
     return (

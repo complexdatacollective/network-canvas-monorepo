@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import type { NcEdge } from '@codaco/shared-consts';
-import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
+import type {
+  FamilyEdge,
+  VariableConfig,
+} from '~/interfaces/FamilyPedigree/store';
 
 import {
   geneticParentCandidates,
+  nominatedGameteRoles,
   socialParentCandidates,
 } from '../parentCandidates';
 
@@ -110,5 +114,48 @@ describe('socialParentCandidates', () => {
     expect(result.has('kid')).toBe(false);
     expect(result.has('mum')).toBe(false);
     expect(result.has('dad')).toBe(false);
+  });
+});
+
+describe('nominatedGameteRoles', () => {
+  function gameteEdge(
+    from: string,
+    to: string,
+    gameteRole: 'egg' | 'sperm',
+  ): [string, FamilyEdge] {
+    const id = `${from}->${to}:${gameteRole}`;
+    return [
+      id,
+      {
+        _uid: id,
+        type: 'family',
+        from,
+        to,
+        attributes: { rel: 'biological', isActive: true },
+        gameteRole,
+      },
+    ];
+  }
+
+  it('maps each node to the gamete role it was nominated for', () => {
+    // Linda is the egg parent of ego; Robert the sperm parent.
+    const edges = new Map<string, FamilyEdge>([
+      gameteEdge('linda', 'ego', 'egg'),
+      gameteEdge('robert', 'ego', 'sperm'),
+      gameteEdge('linda', 'robert', 'egg'),
+    ]);
+    const roles = nominatedGameteRoles(edges);
+    expect(roles.get('linda')).toBe('egg');
+    expect(roles.get('robert')).toBe('sperm');
+    expect(roles.has('ego')).toBe(false);
+  });
+
+  it('ignores edges without a gamete role', () => {
+    const edges = new Map<string, FamilyEdge>([
+      edge('mum', 'ego', 'biological'),
+      edge('dad', 'ego', 'biological'),
+    ]);
+    const roles = nominatedGameteRoles(edges);
+    expect(roles.size).toBe(0);
   });
 });

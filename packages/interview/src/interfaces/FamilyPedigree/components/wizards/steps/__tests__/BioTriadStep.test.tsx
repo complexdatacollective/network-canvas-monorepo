@@ -82,4 +82,36 @@ describe('BioTriadStep egg/sperm mutual exclusion', () => {
       screen.getByText('Did this person carry the pregnancy?'),
     ).toBeTruthy();
   });
+
+  it('drops a known egg parent from the sperm list and a known sperm parent from the egg list', () => {
+    render(
+      <Form onSubmit={() => ({ success: true })}>
+        <BioTriadConfigProvider
+          value={{
+            existingNodes: [
+              { value: 'linda', label: 'Linda' },
+              { value: 'robert', label: 'Robert' },
+            ],
+            gameteRoles: new Map<string, 'egg' | 'sperm'>([
+              ['linda', 'egg'],
+              ['robert', 'sperm'],
+            ]),
+            preselection: {
+              eggSource: 'linda',
+              spermSource: 'robert',
+              carrier: 'egg-source',
+            },
+          }}
+        >
+          <BioTriadStep />
+        </BioTriadConfigProvider>
+      </Form>,
+    );
+
+    // Linda (a known egg parent) is offered only in the egg selector; Robert
+    // (a known sperm parent) only in the sperm selector. Each therefore appears
+    // exactly once rather than in both selectors.
+    expect(screen.getAllByRole('radio', { name: 'Linda' })).toHaveLength(1);
+    expect(screen.getAllByRole('radio', { name: 'Robert' })).toHaveLength(1);
+  });
 });

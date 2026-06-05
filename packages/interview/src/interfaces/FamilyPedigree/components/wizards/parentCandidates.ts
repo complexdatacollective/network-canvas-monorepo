@@ -1,7 +1,28 @@
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
-import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
+import type {
+  FamilyEdge,
+  GameteRole,
+  VariableConfig,
+} from '~/interfaces/FamilyPedigree/store';
 
 export type ParentRelation = 'child' | 'sibling' | 'define-parents';
+
+/**
+ * The gamete role each node has already been nominated for elsewhere in the
+ * pedigree (the `from` of a parent edge carrying a `gameteRole`). Used to stop a
+ * known egg parent being offered as a sperm parent, and vice versa.
+ */
+export function nominatedGameteRoles(
+  edges: Map<string, FamilyEdge>,
+): Map<string, GameteRole> {
+  const roles = new Map<string, GameteRole>();
+  for (const edge of edges.values()) {
+    if (edge.gameteRole === 'egg' || edge.gameteRole === 'sperm') {
+      roles.set(edge.from, edge.gameteRole);
+    }
+  }
+  return roles;
+}
 
 function relTypeOf(
   edge: NcEdge,
