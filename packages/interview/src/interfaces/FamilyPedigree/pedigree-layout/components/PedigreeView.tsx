@@ -1,7 +1,5 @@
 'use client';
 
-import { useMemo } from 'react';
-
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -269,13 +267,6 @@ export default function PedigreeView({
     }
   };
 
-  const egoId = useMemo(() => {
-    for (const [id, node] of nodes) {
-      if (node.attributes[egoVariable] === true) return id;
-    }
-    return null;
-  }, [nodes, egoVariable]);
-
   const displayLabels = computeNodeDisplayLabels(nodes, edges, variableConfig);
 
   return (
@@ -310,15 +301,6 @@ export default function PedigreeView({
               />
             ) : (
               <NodeContextMenu
-                canAddParent={
-                  isEgo ||
-                  ![...edges.values()].some(
-                    (e) =>
-                      e.attributes[relationshipTypeVariable] === 'partner' &&
-                      (e.from === egoId || e.to === egoId) &&
-                      (e.from === node.id || e.to === node.id),
-                  )
-                }
                 canAddSibling={
                   isEgo ||
                   [...edges.values()].some(

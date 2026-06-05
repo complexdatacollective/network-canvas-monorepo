@@ -9,7 +9,6 @@ const meta: Meta<typeof NodeContextMenu> = {
   args: {
     isEgo: false,
     isFinalized: false,
-    canAddParent: true,
     canAddSibling: true,
     onAction: () => {},
     children: (

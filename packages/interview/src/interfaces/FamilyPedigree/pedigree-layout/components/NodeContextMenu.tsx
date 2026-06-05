@@ -22,7 +22,6 @@ export type NodeContextMenuAction =
 type NodeContextMenuProps = {
   isEgo: boolean;
   isFinalized: boolean;
-  canAddParent: boolean;
   canAddSibling: boolean;
   onAction: (action: NodeContextMenuAction) => void;
   children: ReactElement;
@@ -41,7 +40,6 @@ const destructiveMenuItemClass = cx(
 export default function NodeContextMenu({
   isEgo,
   isFinalized,
-  canAddParent,
   canAddSibling,
   onAction,
   children,
@@ -58,14 +56,12 @@ export default function NodeContextMenu({
       <DropdownMenuContent>
         {!isFinalized && (
           <>
-            {canAddParent && (
-              <DropdownMenuItem
-                className={menuItemClass}
-                onClick={() => onAction('parent')}
-              >
-                Add parent
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem
+              className={menuItemClass}
+              onClick={() => onAction('parent')}
+            >
+              Add parent
+            </DropdownMenuItem>
             <DropdownMenuItem
               className={menuItemClass}
               onClick={() => onAction('child')}
