@@ -38,6 +38,8 @@ type BioTriadConfig = {
     eggSource?: string;
     spermSource?: string;
     carrier?: string;
+    /** Whether the egg parent carried the pregnancy themselves. Defaults true. */
+    eggParentCarried?: boolean;
   };
 };
 
@@ -78,6 +80,7 @@ type ParentSectionProps = {
   carriedFieldName?: string;
   carriedLabel?: string;
   carriedHint?: string;
+  carriedInitialValue?: boolean;
 };
 
 function ParentSection({
@@ -93,6 +96,7 @@ function ParentSection({
   carriedFieldName,
   carriedLabel,
   carriedHint,
+  carriedInitialValue = true,
 }: ParentSectionProps) {
   const ownValue = useFormValue([roleKey])[roleKey];
   const otherValue = useFormValue([excludeSelectionFrom])[excludeSelectionFrom];
@@ -166,7 +170,7 @@ function ParentSection({
           label={carriedLabel}
           hint={carriedHint}
           component={BooleanField}
-          initialValue={true}
+          initialValue={carriedInitialValue}
           required
         />
       )}
@@ -216,6 +220,7 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
         options={eggOptions}
         excludeSelectionFrom="sperm-source"
         initialValue={preselection?.eggSource}
+        carriedInitialValue={preselection?.eggParentCarried ?? true}
         carriedFieldName="egg-parent-carried"
         carriedLabel="Did this person carry the pregnancy?"
         carriedHint="If someone else carried the pregnancy (e.g. a gestational carrier or surrogate), select 'No'."

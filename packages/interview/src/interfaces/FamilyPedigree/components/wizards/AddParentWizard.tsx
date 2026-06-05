@@ -13,7 +13,7 @@ import type {
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 
-import { type PARENT_EDGE_TYPE_OPTIONS_ALTER } from '../quickStartWizard/fieldOptions';
+import type { ParentEdgeTypeOption } from '../quickStartWizard/fieldOptions';
 import PersonFields from '../quickStartWizard/PersonFields';
 import { socialParentCandidates } from './parentCandidates';
 import { extractCustomAttributes } from './transforms/personAttributes';
@@ -28,7 +28,7 @@ function ParentDetailsStep({
   parentTypeOptions,
   candidateOptions,
 }: {
-  parentTypeOptions: typeof PARENT_EDGE_TYPE_OPTIONS_ALTER;
+  parentTypeOptions: ParentEdgeTypeOption[];
   candidateOptions: { value: string; label: string }[];
 }) {
   const selectionOptions = [
@@ -194,7 +194,7 @@ export async function openAddParentWizard(
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
-  parentTypeOptions: typeof PARENT_EDGE_TYPE_OPTIONS_ALTER,
+  parentTypeOptions: ParentEdgeTypeOption[],
 ): Promise<CommitBatch | null> {
   const existingParentIds = getExistingParentIds(
     anchorNodeId,

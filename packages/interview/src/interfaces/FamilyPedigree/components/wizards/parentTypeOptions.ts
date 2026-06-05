@@ -1,7 +1,10 @@
 import type { NcEdge } from '@codaco/shared-consts';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
-import { PARENT_EDGE_TYPE_OPTIONS_ALTER } from '../quickStartWizard/fieldOptions';
+import {
+  PARENT_EDGE_TYPE_OPTIONS_ALTER,
+  type ParentEdgeTypeOption,
+} from '../quickStartWizard/fieldOptions';
 
 const GENETIC_RELATIONSHIPS = new Set(['biological', 'donor']);
 
@@ -46,7 +49,7 @@ export function addableParentTypeOptions(
   nodeId: string,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
-): typeof PARENT_EDGE_TYPE_OPTIONS_ALTER {
+): ParentEdgeTypeOption[] {
   const bothGametesKnown =
     countGeneticParents(nodeId, edges, variableConfig) >= 2;
   const carrierKnown = hasGestationalCarrier(nodeId, edges, variableConfig);

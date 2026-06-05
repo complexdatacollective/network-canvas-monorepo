@@ -29,7 +29,7 @@ export const buildPedigreeDialog: AcknowledgeDialog = {
       <figure className="phone-landscape:flex hidden shrink-0 flex-col items-center gap-2">
         <img
           src={contextMenuHintUrl}
-          alt="Example of the context menu showing options to add parent, child, partner, sibling, edit name, or delete"
+          alt="Example of the context menu showing options to add parent, child, partner, sibling, edit, or delete"
           className="w-40 rounded-lg shadow-lg"
         />
         <figcaption className="text-muted text-xs">
