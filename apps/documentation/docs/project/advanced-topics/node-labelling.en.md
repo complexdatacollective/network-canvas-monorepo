@@ -23,6 +23,12 @@ See also: [working with assets](../key-concepts/resources#network).
 
 ## Custom Node Labelling (Advanced)
 
+<TipBox>
+
+Custom node labelling is not supported in [Fresco](/en/run-interview/fresco). The `nodeLabelWorker` described below only runs in Interviewer.
+
+</TipBox>
+
 For more flexible labelling of nodes, you can implement a custom labelling function. To accomplish this, you would:
 
 - Add `nodeLabelWorker.js` to your protocol (see: [the protocol file format](../advanced-topics/protocol-schema-information) for details of how to do this)

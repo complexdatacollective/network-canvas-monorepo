@@ -6,7 +6,7 @@
     },
     "build-protocol": {
       "label": "Build Protocols",
-      "description": "Create interview protocols."
+      "description": "Create interview protocols in Architect."
     },
     "run-interview": {
       "label": "Run Interviews",
