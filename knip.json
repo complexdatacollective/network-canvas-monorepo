@@ -54,6 +54,9 @@
       ],
       "project": ["src/**/*.{js,jsx}"],
       "paths": { "@/*": ["./src/*"] },
+      "ignore": [
+        "src/shims/react-resize-aware.js" // wired via electron.vite.config resolve.alias, not a normal import
+      ],
       "ignoreDependencies": [
         "buffer" // Node.js Buffer polyfill imported as 'buffer/' in network-exporters/src/utils/filesystem.js
       ]
