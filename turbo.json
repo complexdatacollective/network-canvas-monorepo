@@ -3,6 +3,7 @@
   "ui": "tui",
   "globalDependencies": ["pnpm-lock.yaml", "pnpm-workspace.yaml"],
   "globalPassThroughEnv": [
+    "NC_PREVIEW_HOST",
     "NEXT_PUBLIC_ALGOLIA_APPLICATION_ID",
     "NEXT_PUBLIC_ALGOLIA_INDEX_NAME",
     "NEXT_PUBLIC_ALGOLIA_API_KEY",
@@ -142,7 +143,7 @@
       "outputs": []
     },
     "network-canvas-architect#build": {
-      "dependsOn": ["^build", "network-canvas-interviewer#build"],
+      "dependsOn": ["^build"],
       "inputs": [
         "src/**",
         "public/**",

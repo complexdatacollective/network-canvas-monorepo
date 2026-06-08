@@ -310,6 +310,9 @@ importers:
       luxon:
         specifier: ^1.28.1
         version: 1.28.1
+      network-canvas-interviewer:
+        specifier: workspace:*
+        version: link:../interviewer
       postcss:
         specifier: ^8.5.15
         version: 8.5.15

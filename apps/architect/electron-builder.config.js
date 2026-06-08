@@ -17,7 +17,6 @@ module.exports = {
   files: [
     'dist/**/*',
     '!dist/main/_dummy.js',
-    'network-canvas/dist/**/*',
     'node_modules/**/*',
     '!node_modules/**/node_modules/**',
     '!**/*.{map,ts,md}',
@@ -32,6 +31,19 @@ module.exports = {
     {
       from: 'public/icons',
       to: 'icons',
+    },
+    // The preview window renders the Interviewer app. Bundle its built renderer
+    // and preload (produced by `network-canvas-interviewer#build`, on which
+    // Architect's build depends via the workspace dependency) into
+    // resources/interviewer; createPreviewWindow.js loads them from
+    // process.resourcesPath in packaged builds.
+    {
+      from: '../interviewer/out/renderer',
+      to: 'interviewer/renderer',
+    },
+    {
+      from: '../interviewer/out/preload',
+      to: 'interviewer/preload',
     },
   ],
 

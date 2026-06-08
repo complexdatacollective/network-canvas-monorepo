@@ -5,10 +5,16 @@ import { registerIpcHandlers } from './ipcHandlers.js';
 import loadDevTools from './loadDevTools.js';
 import log from './log.js';
 
+// When Architect runs the Interviewer purely to serve its preview window's
+// renderer (NC_PREVIEW_HOST), stay headless: Architect owns the visible window
+// and hosts the preview IPC, so we only keep the Vite dev server alive and skip
+// this instance's own window, dev tools, and CDP port.
+const isPreviewHost = process.env.NC_PREVIEW_HOST === 'true';
+
 // Dev-only: expose the Chrome DevTools Protocol so the renderer can be driven
 // and inspected over CDP (e.g. for automated testing). Never enabled in a
 // packaged build. Must be set before the app is ready.
-if (!app.isPackaged) {
+if (!app.isPackaged && !isPreviewHost) {
   app.commandLine.appendSwitch('remote-debugging-port', '9222');
 }
 
@@ -38,6 +44,14 @@ if (!gotTheLock) {
   // Some APIs can only be used after this event occurs.
   app.on('ready', () => {
     registerIpcHandlers();
+
+    // Headless preview-host: serve the renderer (the Vite dev server stays up
+    // because no window is created and `window-all-closed` never fires) without
+    // opening this instance's own window.
+    if (isPreviewHost) {
+      return;
+    }
+
     appManager.start();
     loadDevTools();
   });

@@ -74,6 +74,10 @@
       "ignoreDependencies": [
         "react-resizable", // CSS only — @import in main.scss, invisible to knip
         "tippy.js", // CSS only — @import in main.scss, peer dep of @tippyjs/react
+        // The preview window renders this app: createPreviewWindow.js resolves it
+        // via require.resolve('network-canvas-interviewer/package.json') and
+        // electron-builder.config.js bundles its out/ — neither a static import.
+        "network-canvas-interviewer",
         // Used only by the CJS public/ Electron main process, which is excluded
         // from `project` above: knip's CJS export --fix corrupts module.exports
         // in the main-process modules, so that tree is left out of analysis.
