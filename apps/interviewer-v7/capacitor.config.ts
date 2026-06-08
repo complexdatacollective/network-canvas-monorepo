@@ -11,7 +11,10 @@ const config: CapacitorConfig = {
     ...(devServerUrl ? { url: devServerUrl, cleartext: true } : {}),
   },
   ios: {
-    contentInset: 'always',
+    // Edge-to-edge so iPadOS 26's window controls sit over the app's own
+    // content (a transparent titlebar) rather than a system-coloured bar. The
+    // app keeps its top content clear of the controls via env(safe-area-inset).
+    contentInset: 'never',
   },
   android: {
     allowMixedContent: Boolean(devServerUrl),
