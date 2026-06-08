@@ -1,14 +1,13 @@
 ---
 title: Getting started with Architect Web
 toc: true
-wip: true
 ---
 
 ## What is Architect Web?
 
 Architect Web is the browser-based version of Architect, the protocol designer for Network Canvas. It runs entirely in your web browser — there is nothing to download or install — and lets you compose name generators, capture ordinal and categorical data, map connections, and explore narratives, just as you can in the desktop application.
 
-Because Architect Web runs in the browser, your protocols are saved locally in that browser rather than as files on your computer. See [Where your protocols are stored](#where-your-protocols-are-stored) below for what this means for backing up and moving your work.
+Architect Web and Architect Desktop share the same interface and protocol-building workflow, but they are **not interchangeable**: Architect Web builds protocols on the latest schema (version 8), for running interviews in [Fresco](/en/run-interview/fresco/about), while Architect Desktop builds on schema 7, for running interviews in the desktop and tablet [Interviewer](/en/run-interview/interviewer) app. Which you should use depends on where you intend to run your interviews — see the comparison in [About Architect](/en/build-protocol) and the [protocol schema information](/en/project/advanced-topics/protocol-schema-information) article for full details.
 
 ## Opening Architect Web
 
@@ -16,24 +15,28 @@ Architect Web is available at [architect.networkcanvas.com](https://architect.ne
 
 When you open Architect Web, you are greeted by the **home screen**. A welcome panel introduces the app, with links to the documentation, community, and code repository. From here you have two main tasks: create a new protocol, or open an existing one.
 
+![The Architect Web home screen.](/assets/img/architect-web/home-screen.png)
+
 ## Creating a new protocol
 
 To build a protocol from scratch, click **Create a new protocol**. A dialog appears asking you to give your protocol a name — a name is required before you can continue. Enter a name and click **Create Protocol**. Your new, empty protocol opens in the editor.
+
+![The new protocol dialog.](/assets/img/architect-web/new-protocol-dialog.png)
 
 ## Opening an existing protocol
 
 If you already have a protocol saved as a `.netcanvas` file, click **Open existing protocol** and choose the file, or simply drag and drop a `.netcanvas` file anywhere on the home screen.
 
-You can also reopen protocols you have worked on previously, directly from the home screen:
+## Your protocol library
+
+You can also reopen protocols you have worked on previously, directly from the home screen. Architect Web keeps a **library** of your protocols, saved in this browser:
 
 - The **Recent** tab lists the protocols saved in this browser, showing how many stages each one has and when it was added and last edited. Click a protocol to open it.
 - The **Templates** tab includes a **Sample Protocol** — a good starting point if this is your first time using Architect. Select **Use this template**, give your copy a name, and it opens ready to edit.
 
-## Where your protocols are stored
+![The Recent and Templates tabs on the home screen.](/assets/img/architect-web/library-tabs.png)
 
-In Architect Web, your protocols are saved only in this browser, on this device. They are never uploaded to a server.
-
-Because your work lives in the browser's storage, clearing your browsing data — or using **Clear all protocols** — will permanently remove it. To keep a backup, move a protocol to another device, or open it in Interviewer or Fresco, **download** it as a `.netcanvas` file.
+Because this library lives in your browser rather than on a server, it is important to understand what that means for backing up and moving your work. See [Storing your work](/en/build-protocol/architect-web/storing-your-work).
 
 ## The protocol overview screen
 
@@ -41,19 +44,16 @@ Once you have created or opened a protocol, you are taken to the **protocol over
 
 Below the card is the **timeline**, which represents the stages of your interview in the sequence that your participants will see them. Since you have just created a new protocol, the timeline is empty apart from a button that enables you to add your first stage.
 
-At any time, you can use **Download** to export your protocol as a `.netcanvas` file — for example to back it up, or to deploy it in [Interviewer](/en/run-interview/interviewer/tutorials/using-interviewer) or [Fresco](/en/run-interview/fresco/using-fresco#uploading-protocols).
+![The protocol overview screen with an empty timeline.](/assets/img/architect-web/overview-screen.png)
 
-## Previewing your stages
-
-As you build, you can preview any stage to see how it will appear to participants in Interviewer. Open a stage in the editor and click **Preview**. The stage opens in a new browser tab, running just as it would during a real interview. Nothing you enter in preview is saved — close the tab when you are finished.
-
-Next to the **Preview** button, a settings menu controls how previews behave:
-
-- **Start preview with example data** — on by default. Architect fills the preview with automatically generated example nodes and edges, so interfaces that rely on a network (such as sociograms and bins) have something to display. Turn it off to preview with an empty network.
-- **Always show this stage in preview when skip logic would hide it** — on by default. The stage is shown in preview even when its skip logic would normally hide it, so you can check stages that would otherwise be skipped. A notice appears on the stage to remind you that skip logic was bypassed.
-
-Unlike Architect Desktop, Architect Web previews your stage in a browser tab at your current window size rather than emulating specific devices, so there are no device-size or orientation presets to choose.
+At any time, you can use **Download** to export your protocol as a `.netcanvas` file — for example to back it up, or to upload it to [Fresco](/en/run-interview/fresco/using-fresco#uploading-protocols) to run interviews.
 
 ## Building your protocol
 
 Now that you've opened Architect Web and created a protocol, the steps for adding stages through finishing off your protocol are shared with Architect Desktop. Continue with [building a protocol](/en/build-protocol/building-a-protocol).
+
+You may also want to read:
+
+- [Storing your work](/en/build-protocol/architect-web/storing-your-work) — how Architect Web saves protocols, and how to back them up.
+- [Previewing your stages](/en/build-protocol/architect-web/previewing-stages) — see how a stage will appear to participants.
+- [Frequently Asked Questions](/en/build-protocol/architect-web/faq).

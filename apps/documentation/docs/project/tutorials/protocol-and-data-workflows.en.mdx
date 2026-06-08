@@ -25,7 +25,18 @@ To follow along, you should:
 
 ## Introduction
 
-This guide will walk you through two possible workflows for conducting research using the Network Canvas tools. These approaches cover both scenarios with and without network connectivity, as well as using tablets or laptop/desktop devices.
+This guide will walk you through several possible workflows for conducting research using the Network Canvas tools.
+
+The first two are **desktop workflows** built around the [Interviewer](/en/run-interview/interviewer) app, and cover both scenarios with and without network connectivity, using tablets or laptop/desktop devices:
+
+- **Option 1: Online workflow** — deploy protocols and export data via a cloud file sharing service.
+- **Option 2: Offline workflow** — deploy protocols and export data via a USB flash drive or other external storage.
+
+The third is a **web-based workflow** built around [Architect Web](/en/build-protocol/architect-web) and [Fresco](/en/run-interview/fresco/about), which removes the need to install software on, or copy files to and from, each interview device:
+
+- **Option 3: Web-based workflow** — author protocols in Architect Web, upload them to a Fresco dashboard, and let participants complete interviews in their browser, with all data stored centrally and exported from the dashboard.
+
+In the desktop workflows, you deploy a protocol to each device and collect an export from each device. In the web-based workflow, protocol deployment and data export are both handled centrally through the Fresco dashboard.
 
 <TipBox>
 
@@ -121,6 +132,55 @@ As above, the only option for exporting data in an offline setting is to use a U
 2. Once you have conducted your interviews, navigate to the 'Manage or Export Sessions' card on the start screen of Interviewer and select the files you wish to export. You will be prompted to choose a location to save the export.
    - If you are using a PC or Mac, you will be prompted to choose a location on the device's filesystem to save the export. Navigate to the external storage device's folder that you created in step 1.
    - If you are using a tablet device, you will be prompted to choose an app to handle the export. The export functionality on tablet devices works using the "share" feature built into both Android and iOS. This means that options for saving exported data are determined by which apps you have installed on your device. You therefore need to install a third-party file management app such as "[CX File Explorer](https://play.google.com/store/apps/details?id=com.cxinventor.file.explorer)". Once installed, choose the file manager app from the share menu. The app will then open and you will be prompted to choose a location to save the export. Navigate to the external storage device's folder that you created in step 1.
+
+## Option 3: Web-based workflow (Architect Web + Fresco)
+
+If you want to conduct interviews remotely in a web browser without installing software on each device, you can use the web-based tooling: author your protocol in [Architect Web](/en/build-protocol/architect-web) and run your study using [Fresco](/en/run-interview/fresco/about).
+
+This workflow greatly simplifies protocol deployment and data export compared with the desktop workflows above. There is no copying of files to each interview device and no collecting of separate exports from each device — protocols are deployed once by uploading them to your Fresco dashboard, and all collected data is exported centrally from that same dashboard.
+
+<TipBox>
+
+The web-based workflow requires a deployed Fresco instance. Fresco is self-hosted, so you (or your institution's IT department) will need to deploy it before you can run a study. See the [deployment guide](/en/run-interview/fresco/deployment/guide) to get started, or explore the [sandbox](/en/run-interview/fresco/sandbox) to try Fresco without deploying it yourself.
+
+</TipBox>
+
+### Authoring the protocol
+
+Design your protocol in [Architect Web](/en/build-protocol/architect-web), the browser-based version of the Architect protocol designer. There is nothing to install — it runs entirely in your web browser. Architect Web produces schema 8 protocols and exports a standard `.netcanvas` file, exactly like the desktop Architect.
+
+### Protocol deployment
+
+Rather than sharing the `.netcanvas` file via a cloud service or USB drive and importing it on each device, you upload the file once to your Fresco dashboard. Fresco validates the protocol, uploads any assets it contains, and makes it available to participants.
+
+1. Open your deployed Fresco instance and log in to the dashboard.
+2. Navigate to the **protocols** page in the dashboard.
+3. Click the **Upload protocol** button.
+4. Select the `.netcanvas` file you exported from Architect Web.
+5. Click **Upload**.
+
+Once the protocol is listed on the protocols page, you can add participants and share a participation URL with them. For the full set of steps — including adding participants, choosing a recruitment strategy, and generating participant URLs — see the [Using Fresco guide](/en/run-interview/fresco/using-fresco).
+
+### Conducting interviews
+
+Participants complete the interview **in a web browser** by visiting a participation URL — there is no app to install and no per-device protocol deployment. Participants can use any computer or tablet with a [supported browser](/en/run-interview/fresco/faq#which-browsers-are-supported); tablets should be used in landscape mode. Smartphones and small-screen devices are not supported.
+
+### Data export
+
+Interview data is stored centrally in Fresco's database (PostgreSQL), so there is no per-device export step to manage. Once participants have completed interviews, you export all collected data directly from the Fresco dashboard.
+
+1. Navigate to the **interviews** page in the dashboard.
+2. Either select the checkboxes next to the interviews you wish to export and click **Export selected**, or click **Export Interview Data** to export all (or all unexported) interviews.
+3. Confirm the file types and export options you wish to use (the same CSV and GraphML options described below).
+4. Click **Start export process**.
+
+Because data is collected and exported centrally, the offline/USB and per-device cloud export concerns described in the desktop workflows do not apply. For full details on exporting and monitoring your study, see the [Using Fresco guide](/en/run-interview/fresco/using-fresco#exporting-data).
+
+<TipBox>
+
+Fresco is a pilot project with some [known limitations](/en/run-interview/fresco/about#known-limitations) compared with the desktop applications. Review these before choosing the web-based workflow, especially if you intend to compare data collected with Fresco against data collected with Interviewer.
+
+</TipBox>
 
 ## Data Organization and Backup Best Practices
 

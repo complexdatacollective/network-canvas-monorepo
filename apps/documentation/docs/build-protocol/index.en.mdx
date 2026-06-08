@@ -2,11 +2,13 @@
 title: About Architect
 ---
 
-Architect is the protocol designer for Network Canvas — the tool you use to build the interview protocols that run in Interviewer and Fresco. It comes in two versions that build the **same protocol**: **Architect Web**, which runs in your browser with nothing to install, and **Architect Desktop**, a downloadable application. The table below compares them — the main difference is how each one stores and moves your work.
+Architect is the protocol designer for Network Canvas — the tool you use to build the interview protocols that run in Interviewer and Fresco. It comes in two versions: **Architect Web**, which runs in your browser with nothing to install, and **Architect Desktop**, a downloadable application. They share the same interface and protocol-building workflow, but they are **not interchangeable** — each builds a different version of the protocol file format ("schema"), and that version determines which app you can run your interviews in. The table below compares them; which you should use depends mainly on where you will run your interviews.
 
 <KeyConcept title="Not sure which to use?">
 
-Choose **Architect Web** — it's the default for new studies and needs no setup.
+Choose **Architect Web** if you'll run your interviews in **Fresco**, the browser-based interview app — it's the default for new studies and needs no setup.
+
+Choose **Architect Desktop** if you'll run your interviews in the desktop or tablet **Interviewer** app, which cannot run protocols built in Architect Web.
 
 [Open Architect Web →](https://architect.networkcanvas.com)
 
@@ -15,8 +17,12 @@ Choose **Architect Web** — it's the default for new studies and needs no setup
 |                      | Architect Web                                        | Architect Desktop                                            |
 | -------------------- | ---------------------------------------------------- | ------------------------------------------------------------ |
 | Install              | Nothing — runs in the browser                        | Download and install (Windows, macOS, Linux)                 |
+| Protocol schema      | Schema 8 (latest)                                    | Schema 7 and earlier                                         |
+| Run interviews in    | Fresco only                                          | Interviewer (desktop & tablet); also Fresco                  |
 | Where protocols live | In your browser, on this device                      | `.netcanvas` files on your computer                          |
 | Backup & moving      | Download a `.netcanvas` file to keep or share a copy | Your `.netcanvas` file is already on disk — copy it anywhere |
 | Updates              | Always the latest, automatically                     | Download each new release yourself                           |
-| Best for             | New studies and most users                           | Existing file-based workflows; fully offline or archival use |
+| Best for             | New studies run remotely in Fresco                   | Studies run on managed devices in the Interviewer app        |
 | Status               | Actively developed                                   | Maintenance mode — bug fixes only                            |
+
+Architect Web can open a schema 7 protocol made in Architect Desktop and upgrade it to schema 8, but this is one-way — a schema 8 protocol cannot be converted back or opened in Architect Desktop. For a full explanation of schema versions and compatibility, see [Protocol Schema Information](/en/project/advanced-topics/protocol-schema-information).

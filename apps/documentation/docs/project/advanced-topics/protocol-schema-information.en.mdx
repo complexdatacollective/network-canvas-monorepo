@@ -11,6 +11,8 @@ Interviewer and Architect (from version 4.2.0 onward) implement a feature that t
 
 Although every effort is made to maintain compatibility with new schema versions, any features implemented that require a schema update will be unavailable to you until you migrate your protocol. We _strongly_ encourage you to update your protocol files wherever possible, so that you are able to use the newest Network Canvas features.
 
+The current, latest protocol schema version is **8**. Schema 8 is supported only by the web apps — **Architect Web** and **Fresco** — and is not supported by the desktop and tablet apps (Architect Desktop and Interviewer). See [Schema version 8](#schema-version-8) below for details.
+
 <TipBox danger>
 
 We urge iPadOS and Android users to follow the advice set out in the [configuring devices prior to starting data collection](../getting-started/configuring-devices) article, and disable automatic app updates so that they are not caught out by breaking changes that result from new protocol schema versions.
@@ -75,12 +77,49 @@ Migrating a protocol happens within Architect, and is automatic. The process wor
 3. Architect will inform you that the protocol file can be upgraded, which happens by creating a copy (so that your original file is preserved). If you choose to continue, you will be prompted for a location to save your upgraded protocol.
 4. Architect will automatically append "(schema version X)" to the filename, which may help you to keep track of the different versions of your protocol, and to differentiate them within Interviewer.
 
+## Schema version 8
+
+Schema version 8 is the current, latest protocol schema version. It differs from earlier versions in an important way: it is **not** supported by the desktop and tablet apps.
+
+- **Architect Web** and **Fresco** support schema 8.
+- **Architect Desktop** and **Interviewer** (desktop and tablet) support schema 7 and earlier.
+
+This has two practical consequences:
+
+1. To create or edit a schema 8 protocol, you must use **Architect Web**. Architect Desktop cannot create, open, or migrate protocols to schema 8.
+2. A schema 8 protocol can only be run in **Fresco**. The desktop and tablet Interviewer apps cannot run schema 8 protocols, and will mark them as incompatible/unsupported.
+
+Fresco accepts both schema 7 and schema 8 protocols (anything older is rejected). When you import a schema 7 `.netcanvas` file, Fresco automatically upgrades it to schema 8 in place — so existing schema 7 protocols continue to work in Fresco without any manual migration step.
+
+<TipBox danger>
+
+If you open a schema 8 protocol in Architect Desktop, or attempt to install one in the desktop or tablet Interviewer app, it will be reported as incompatible/unsupported. If you need to continue working in the desktop apps, keep your protocols on schema 7.
+
+</TipBox>
+
+### What's new in schema 8
+
+Schema version 8 introduces several new interfaces and authoring features:
+
+- **New "Geospatial" interface.** Allows the participant to select a location on a map based on a GeoJSON shapefile.
+- **New experimental "Anonymisation" interface.** Allows the participant to encrypt sensitive or identifiable information so that it cannot be read by the researcher. This is not enabled by default — contact the team for details.
+- **New "One-to-many dyad census" interface.** Allows the participant to link multiple alters at a time.
+- **New "Family pedigree" interface.** A pedigree-building interface designed for genetic disease monitoring, with configurable node and edge types, relationship variables, and optional disease/condition nomination prompts.
+- **New form-field validation options:** `greaterThanVariable` and `lessThanVariable`.
+- **New comparator options for skip logic and filters:** "contains" and "does not contain".
+- **Multi-selection support** for the "includes"/"excludes" comparators on ordinal and categorical variables.
+- **Configurable node "shape" property** (default circle); the previous `iconVariant` property was renamed to `icon`.
+- **Optional "hint" property on form fields** (a markdown string shown as extra guidance to participants), plus a `showValidationHints` option to automatically display hints derived from validation rules.
+- **New top-level `experiments` field on protocols.** A JSON channel (default `{}`) that carries protocol-level experiment/feature toggles consumed by the interview engine, allowing opt-in interview behaviours to be introduced without further schema changes.
+- **Various cleanup:** removed the deprecated, unused `displayVariable` property and the unused `options` property on boolean Toggle variables; filter rule entity naming was standardized; and a `name` property is now required on the protocol.
+
 ## Compatibility Table
 
-Consult the table below for information about which schema versions are supported by each released version of the Network Canvas software.
+Consult the table below for information about which schema versions are supported by each released version of the Network Canvas software. Note that schema 8 is no longer tied to specific Architect Desktop / Interviewer version numbers — it is supported only by the Architect Web and Fresco web apps.
 
-| Schema Version | Features                                                                                                                                        | Architect Versions                | Interviewer Versions |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | -------------------- |
+| Schema Version | Features                                                                                                                                                                                                                                              | Architect Versions                | Interviewer Versions |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | -------------------- |
+| 8              | New Geospatial, experimental Anonymisation, One-to-many dyad census, and Family pedigree interfaces. New `greaterThanVariable`/`lessThanVariable` validation and "contains"/"does not contain" comparators. Configurable node shape and form-field hints. | Architect Web                     | Fresco               |
 | 7              | Minimum/maximum alter counts on name generators. Additional skip logic options for categorical variables.                                       | 6.4.0                             | \> 6.3.0             |
 | 6              | New "roster name generator" interface. Automatic node layout on the sociogram.                                                                  | 6.3.0, 6.3.1                      | \> 6.2.0             |
 | 5              | Supports "tie-strength census" interface. Adds "unique", "same as", and "different from" validation options. Adds the interview script section. | 6.1.0, 6.1.1, 6.2.0, 6.2.1, 6.2.2 | \> 6.1.0             |

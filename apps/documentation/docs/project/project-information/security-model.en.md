@@ -11,7 +11,7 @@ Security is an important consideration when handling study data.
 
 <TipBox>
 
-This overview covers the security model for the Network Canvas Desktop Suite. For information about data storage and security in Fresco, see our [Fresco FAQ](/en/run-interview/fresco/faq#is-the-data-storage-hipaagdpr-compliant-is-it-secure)
+This overview covers the security model for the Network Canvas Desktop Suite. For information about data storage and security in Fresco, see our [Fresco FAQ](/en/run-interview/fresco/faq#is-fresco-gdpr-compliant)
 
 </TipBox>
 
