@@ -4,11 +4,6 @@ import { Buffer } from 'buffer';
 import { isCordova, isElectron } from '../Environment';
 import { writeFile } from '../filesystem';
 
-const blobToUint8Array = async (blob) => {
-  const arrayBuffer = await blob.arrayBuffer();
-  return new Uint8Array(arrayBuffer);
-};
-
 /**
  * Save an exported zip Blob to disk in a cross-platform way.
  *
@@ -23,7 +18,7 @@ const blobToUint8Array = async (blob) => {
  * @returns {Promise<{ saved: boolean, path: string | null }>}
  */
 export const saveExportBlob = async ({ blob, fileName }) => {
-  const bytes = await blobToUint8Array(blob);
+  const arrayBuffer = await blob.arrayBuffer();
 
   if (isElectron()) {
     const { canceled, filePath } =
@@ -37,7 +32,7 @@ export const saveExportBlob = async ({ blob, fileName }) => {
     }
 
     // writeFile base64-encodes Buffer/Uint8Array/ArrayBuffer for IPC transport.
-    await writeFile(filePath, Buffer.from(bytes));
+    await writeFile(filePath, Buffer.from(arrayBuffer));
     return { saved: true, path: filePath };
   }
 
@@ -45,8 +40,12 @@ export const saveExportBlob = async ({ blob, fileName }) => {
     // NOTE: writes into the app's private data directory. A subsequent share
     // step (e.g. cordova-plugin-x-socialsharing) may be desired so the user can
     // move the file off-device; that is not wired here.
+    //
+    // Pass the raw ArrayBuffer: Cordova's FileWriter.write expects an
+    // ArrayBuffer for binary data (a Uint8Array is not reliably accepted across
+    // implementations), matching the ArrayBuffer codepaths in filesystem.js.
     const destination = `${cordova.file.dataDirectory}${fileName}`;
-    await writeFile(destination, bytes);
+    await writeFile(destination, arrayBuffer);
     return { saved: true, path: destination };
   }
 
