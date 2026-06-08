@@ -196,7 +196,15 @@ export const BreakpointMatrix: Story = {
             style={{ width: w, height: 480 }}
           >
             <DeckCard
-              protocol={makeProtocol({ name, description, importedAt })}
+              protocol={makeProtocol({
+                name,
+                description,
+                importedAt,
+                // Unique per card: DeckCard derives its Framer Motion
+                // layoutIds from protocol.hash, so a shared hash across the
+                // matrix would collide in one React tree.
+                hash: `story-protocol-${w}`,
+              })}
               isActive={isActive}
               sessionCount={sessionCount}
               onActivate={() => {}}
