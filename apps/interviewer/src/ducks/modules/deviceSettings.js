@@ -42,14 +42,11 @@ const initialState = {
   enableExperimentalSounds: false,
 };
 
-// This provides additional default state based on information unavailable before 'deviceready'.
+// Synchronous defaults for dynamic scaling and full-screen forms based on platform.
 // Rehydration may occur before this, so only overwrite static default values.
 const getDeviceReadyState = (state) => {
-  let { description } = state;
   let { useDynamicScaling, useFullScreenForms } = state;
-  if (description === initialState.description) {
-    description = deviceDescription();
-  }
+
   if (useDynamicScaling === initialState.useDynamicScaling) {
     useDynamicScaling = shouldUseDynamicScaling();
   }
@@ -60,7 +57,6 @@ const getDeviceReadyState = (state) => {
 
   return {
     ...state,
-    description,
     useDynamicScaling,
     useFullScreenForms,
   };
@@ -95,9 +91,13 @@ export default function reducer(state = initialState, action = {}) {
   }
 }
 
-const deviceReady = () => ({
-  type: DEVICE_READY,
-});
+// Thunk: dispatches DEVICE_READY for synchronous platform defaults, then
+// resolves the async device description and dispatches SET_DESCRIPTION.
+const deviceReady = () => async (dispatch) => {
+  dispatch({ type: DEVICE_READY });
+  const description = await deviceDescription();
+  dispatch({ type: SET_DESCRIPTION, description });
+};
 
 const setDescription = (description) => ({
   type: SET_DESCRIPTION,

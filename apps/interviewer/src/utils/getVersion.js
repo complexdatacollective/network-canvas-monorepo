@@ -1,22 +1,21 @@
-/**
- * Get app version with secure API support.
- */
-/* global cordova */
-import { isCordova, isElectron } from './Environment';
+import { App } from '@capacitor/app';
 
-const getVersion = () => {
+import { isCapacitor, isElectron } from './Environment';
+
+const getVersion = async () => {
   if (isElectron()) {
     if (window.electronAPI?.app?.getVersion) {
       return window.electronAPI.app.getVersion();
     }
-    return Promise.resolve('0.0.0');
+    return '0.0.0';
   }
 
-  if (isCordova()) {
-    return cordova.getAppVersion.getVersionNumber();
+  if (isCapacitor()) {
+    const info = await App.getInfo();
+    return info.version;
   }
 
-  return Promise.resolve('0.0.0');
+  return '0.0.0';
 };
 
 export default getVersion;
