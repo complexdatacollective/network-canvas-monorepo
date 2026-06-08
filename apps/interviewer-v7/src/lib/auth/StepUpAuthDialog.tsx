@@ -59,7 +59,10 @@ function PinStepUp({
             };
           }}
         >
-          <PinUnlockField onComplete={() => formRef.current?.requestSubmit()} />
+          <PinUnlockField
+            autoFocus
+            onComplete={() => formRef.current?.requestSubmit()}
+          />
         </FormWithoutProvider>
       </Dialog>
     </FormStoreProvider>
@@ -105,7 +108,7 @@ function PassphraseStepUp({
             };
           }}
         >
-          <PasswordUnlockField />
+          <PasswordUnlockField autoFocus />
         </FormWithoutProvider>
       </Dialog>
     </FormStoreProvider>
