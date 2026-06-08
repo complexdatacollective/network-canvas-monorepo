@@ -1,0 +1,39 @@
+/*
+ * Network Canvas marketing site — Tailwind + Fresco design system.
+ *
+ * Import order matters:
+ *   1. Fresco foundation (Tailwind runtime + theme + plugins + variants)
+ *   2. Explicit @source for the fresco-ui compiled output so Tailwind's
+ *      class scanner emits the utilities those components reference.
+ */
+@import '@codaco/tailwind-config/fresco.css';
+
+/* The package's own styles.css uses a dist-relative @source that can't be
+   resolved from here, so point Tailwind at the compiled output directly. */
+@source '../node_modules/@codaco/fresco-ui/dist/**/*.js';
+
+/* The Fresco theme resets the text scale; re-add the slightly-smaller-than
+   -base size used for secondary and meta copy. */
+@theme {
+  --text-base-sm: clamp(0.9rem, 0.28vw + 0.79rem, 1.01rem);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Continuous horizontal marquee used by the desktop news ticker. */
+@keyframes marquee-x {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@utility animate-marquee {
+  animation: marquee-x 32s linear infinite;
+}
