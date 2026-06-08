@@ -1,8 +1,8 @@
 import { BrowserWindow, ipcMain } from 'electron';
 
+import FileExportManager from '../utils/network-exporters/src/FileExportManager.js';
 import log from './log.js';
 
-let FileExportManager;
 let currentExport = null;
 
 /**
@@ -11,28 +11,9 @@ let currentExport = null;
 export const registerExportHandlers = () => {
   log.info('Registering export handlers...');
 
-  // Lazy load FileExportManager to avoid circular dependencies during startup
-  if (!FileExportManager) {
-    // Dynamic import for the network-exporters module
-    import('../utils/network-exporters/src/FileExportManager.js')
-      .then((module) => {
-        FileExportManager = module.default;
-      })
-      .catch((err) => {
-        log.error('Failed to load FileExportManager:', err);
-      });
-  }
-
   ipcMain.handle(
     'export:start',
     async (event, { sessions, protocols, exportOptions }) => {
-      // Ensure FileExportManager is loaded
-      if (!FileExportManager) {
-        const module =
-          await import('../utils/network-exporters/src/FileExportManager.js');
-        FileExportManager = module.default;
-      }
-
       const window = BrowserWindow.fromWebContents(event.sender);
       const fileExportManager = new FileExportManager(exportOptions);
 
