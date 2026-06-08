@@ -304,5 +304,3 @@ const makeMapStateToProps = () => {
 };
 
 export default compose(withPrompt, connect(makeMapStateToProps))(DyadCensus);
-
-export { DyadCensus as UnconnectedDyadCensus };

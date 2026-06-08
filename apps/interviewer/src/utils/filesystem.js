@@ -13,87 +13,9 @@ import { trimChars } from 'lodash/fp';
 import inEnvironment, { isElectron } from './Environment';
 import environments from './environments';
 
-/**
- * A browser-compatible writable stream that buffers data.
- * Used as a replacement for Node.js Writable in the renderer process.
- */
-class BufferWriteStream {
-  constructor(options = {}) {
-    this.chunks = [];
-    this.onFinish = options.onFinish || (() => {});
-    this.onError = options.onError || (() => {});
-    this._finished = false;
-    this._destroyed = false;
-  }
-
-  write(chunk, _encoding, callback) {
-    if (this._destroyed) {
-      const err = new Error('Stream destroyed');
-      if (callback) callback(err);
-      return false;
-    }
-
-    // Convert to Uint8Array if needed
-    if (typeof chunk === 'string') {
-      this.chunks.push(new TextEncoder().encode(chunk));
-    } else if (Buffer.isBuffer(chunk)) {
-      this.chunks.push(new Uint8Array(chunk));
-    } else if (chunk instanceof Uint8Array) {
-      this.chunks.push(chunk);
-    } else if (chunk instanceof ArrayBuffer) {
-      this.chunks.push(new Uint8Array(chunk));
-    } else {
-      this.chunks.push(chunk);
-    }
-
-    if (callback) callback();
-    return true;
-  }
-
-  end(chunk, encoding, callback) {
-    if (chunk) {
-      this.write(chunk, encoding);
-    }
-    this._finished = true;
-    this.onFinish();
-    if (callback) callback();
-  }
-
-  on(event, handler) {
-    if (event === 'finish') {
-      this.onFinish = handler;
-    } else if (event === 'error') {
-      this.onError = handler;
-    }
-    return this;
-  }
-
-  destroy(err) {
-    this._destroyed = true;
-    if (err) {
-      this.onError(err);
-    }
-  }
-
-  getBuffer() {
-    // Concatenate all chunks into a single Buffer
-    const totalLength = this.chunks.reduce(
-      (sum, chunk) => sum + chunk.length,
-      0,
-    );
-    const result = new Uint8Array(totalLength);
-    let offset = 0;
-    for (const chunk of this.chunks) {
-      result.set(chunk, offset);
-      offset += chunk.length;
-    }
-    return Buffer.from(result);
-  }
-}
-
 const trimPath = trimChars('/ ');
 
-export const splitUrl = (targetPath) => {
+const splitUrl = (targetPath) => {
   const pathParts = trimPath(targetPath).split('/');
   const baseDirectory = `${pathParts.slice(0, -1).join('/')}/`;
   const directory = `${pathParts.slice(-1)}`;
@@ -166,59 +88,6 @@ const userDataPath = inEnvironment((environment) => {
   throw new Error(`userDataPath() not available on platform ${environment}`);
 });
 
-/**
- * Get the application path.
- * Returns a Promise in Electron (using secure IPC).
- */
-const appPath = inEnvironment((environment) => {
-  if (environment === environments.ELECTRON) {
-    return async () => {
-      if (pathCache.appPath) {
-        return pathCache.appPath;
-      }
-      if (isElectron() && window.electronAPI?.app?.getAppPath) {
-        pathCache.appPath = await window.electronAPI.app.getAppPath();
-        return pathCache.appPath;
-      }
-      throw new Error('electronAPI not available');
-    };
-  }
-
-  if (environment === environments.CORDOVA) {
-    return () => cordova.file.applicationDirectory;
-  }
-
-  throw new Error(`appPath() not available on platform ${environment}`);
-});
-
-/**
- * Clear the path cache (useful for testing)
- */
-export const clearPathCache = () => {
-  pathCache = {};
-};
-
-const getFileEntry = (filename, fileSystem) =>
-  new Promise((resolve, reject) => {
-    fileSystem.root.getFile(
-      filename,
-      { create: true, exclusive: false },
-      (fileEntry) => resolve(fileEntry),
-      (err) => reject(err),
-    );
-  });
-
-export const getTempFileSystem = () =>
-  new Promise((resolve, reject) => {
-    window.resolveLocalFileSystemURL(
-      cordova.file.cacheDirectory,
-      (dirEntry) => {
-        resolve(dirEntry);
-      },
-      (error) => reject(error),
-    );
-  });
-
 const resolveFileSystemUrl = inEnvironment((environment) => {
   if (environment === environments.CORDOVA) {
     return (path) =>
@@ -274,20 +143,12 @@ const readFile = inEnvironment((environment) => {
   throw new Error(`readFile() not available on platform ${environment}`);
 });
 
-export const makeFileWriter = (fileEntry) =>
+const makeFileWriter = (fileEntry) =>
   new Promise((resolve, reject) => {
     fileEntry.createWriter(resolve, reject);
   });
 
-export const createReader = (fileEntry) =>
-  new Promise((resolve, reject) => {
-    fileEntry.file(
-      (file) => resolve(file),
-      (err) => reject(err),
-    );
-  });
-
-export const newFile = (directoryEntry, filename) =>
+const newFile = (directoryEntry, filename) =>
   new Promise((resolve, reject) => {
     directoryEntry.getFile(filename, { create: true }, resolve, reject);
   });
@@ -578,107 +439,6 @@ const writeStream = inEnvironment((environment) => {
 });
 
 /**
- * Create a writable stream for a destination path.
- * In Electron, returns a Writable stream that buffers data and writes via IPC on end.
- */
-export const createWriteStream = inEnvironment((environment) => {
-  if (environment === environments.ELECTRON) {
-    return (destination) => {
-      if (!isElectron() || !window.electronAPI?.fs?.writeFile) {
-        return Promise.reject(new Error('electronAPI not available'));
-      }
-
-      const ws = new BufferWriteStream();
-
-      // Override the onFinish to write the file via IPC
-      const originalOnFinish = ws.onFinish;
-      ws.onFinish = () => {
-        const buffer = ws.getBuffer();
-        const base64Data = buffer.toString('base64');
-        window.electronAPI.fs
-          .writeFile(destination, base64Data)
-          .then(() => {
-            if (originalOnFinish) originalOnFinish();
-          })
-          .catch((err) => {
-            ws.onError(err);
-          });
-      };
-
-      return Promise.resolve(ws);
-    };
-  }
-
-  if (environment === environments.CORDOVA) {
-    return (destUrl) => {
-      const [baseDirectory, filename] = splitUrl(destUrl);
-      return new Promise((resolve, reject) => {
-        resolveFileSystemUrl(baseDirectory)
-          .then((directoryEntry) => newFile(directoryEntry, filename))
-          .then(makeFileWriter)
-          .then((fileWriter) => {
-            let bufferedChunkBytes = new Uint8Array();
-            let previousFileWriterLength = 0;
-
-            const handleError = (err) => {
-              if (fileWriter && fileWriter.readyState === FileWriter.WRITING) {
-                fileWriter.abort();
-              }
-              reject(err);
-            };
-
-            const writeChunk = (chunkByteArray) => {
-              previousFileWriterLength = fileWriter.length;
-              const { byteLength } = chunkByteArray;
-              const data = chunkByteArray.slice(0, byteLength);
-              try {
-                fileWriter.write(data.buffer);
-              } catch (err) {
-                handleError(err);
-              }
-            };
-
-            const onChunkWritten = () => {
-              const bytesWritten = fileWriter.length - previousFileWriterLength;
-              bufferedChunkBytes = bufferedChunkBytes.slice(bytesWritten);
-              if (fileWriter.error) {
-                // already handled by onerror
-              } else if (bufferedChunkBytes.length) {
-                writeChunk(bufferedChunkBytes);
-              }
-            };
-
-            const onChunkReceived = (chunkByteArray) => {
-              bufferedChunkBytes = concatTypedArrays(
-                bufferedChunkBytes,
-                chunkByteArray,
-              );
-              if (fileWriter.readyState !== FileWriter.WRITING) {
-                writeChunk(chunkByteArray);
-              }
-            };
-
-            fileWriter.onwriteend = onChunkWritten;
-            fileWriter.onerror = handleError;
-
-            const ws = new BufferWriteStream();
-            ws.write = (chunk, _encoding, callback) => {
-              onChunkReceived(chunk);
-              if (callback) callback();
-              return true;
-            };
-            resolve(ws);
-          });
-      });
-    };
-  }
-
-  throw new Error(
-    `createWriteStream() not available on platform ${environment}`,
-  );
-});
-
-/**
  * Ensure a path exists, creating directories as needed.
  * In Electron, uses secure IPC.
  */
@@ -730,12 +490,9 @@ const ensurePathExists = inEnvironment((environment) => {
 });
 
 export {
-  getFileEntry,
   userDataPath,
   tempDataPath,
-  appPath,
   ensurePathExists,
-  createDirectory,
   rename,
   removeDirectory,
   readFile,

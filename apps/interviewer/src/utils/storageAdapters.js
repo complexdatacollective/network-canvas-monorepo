@@ -122,7 +122,7 @@ const createTable = () =>
 /**
  * Helper function for inspecting the contents of the table.
  */
-export const getAll = () => {
+const getAll = () => {
   query(`SELECT key, value FROM ${TABLE_NAME}`).then((_results) => {});
 };
 
@@ -131,14 +131,14 @@ window.getAll = getAll;
 /**
  * Delete all records from table
  */
-export const resetDB = () => query(`DROP TABLE IF EXISTS ${TABLE_NAME}`, []);
+const resetDB = () => query(`DROP TABLE IF EXISTS ${TABLE_NAME}`, []);
 
 window.resetDB = resetDB;
 
 /**
  * Delete sqlite database and all content
  */
-export const deleteDB = (dbName = DATABASE_NAME) =>
+const deleteDB = (dbName = DATABASE_NAME) =>
   new Promise((resolve, reject) => {
     window.sqlitePlugin.deleteDatabase(
       {

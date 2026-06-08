@@ -58,7 +58,7 @@
         "src/shims/react-resize-aware.js" // wired via electron.vite.config resolve.alias, not a normal import
       ],
       "ignoreDependencies": [
-        "buffer" // Node.js Buffer polyfill imported as 'buffer/' in network-exporters/src/utils/filesystem.js
+        "buffer" // npm Buffer polyfill — `import { Buffer } from 'buffer'` in filesystem.js + saveExport.js; knip treats 'buffer' as a Node built-in
       ]
     },
     "apps/architect": {
