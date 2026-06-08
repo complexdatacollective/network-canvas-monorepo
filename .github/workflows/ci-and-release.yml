@@ -242,23 +242,13 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
   deploy-docs-prod:
-    needs:
-      [
-        detect,
-        quality,
-        chromatic-fresco-ui,
-        chromatic-interview,
-        interview-e2e-report,
-      ]
+    needs: [detect, quality]
     if: |
       always() &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       needs.detect.outputs.docs == 'true' &&
-      needs.quality.result == 'success' &&
-      needs.chromatic-fresco-ui.result != 'failure' &&
-      needs.chromatic-interview.result != 'failure' &&
-      needs.interview-e2e-report.result != 'failure'
+      needs.quality.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
