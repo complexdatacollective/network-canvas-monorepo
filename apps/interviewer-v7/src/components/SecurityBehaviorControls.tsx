@@ -5,7 +5,8 @@ import type { IdleTimeoutMinutes } from '~/lib/auth/AuthContext';
 
 export type Behavior = {
   idleTimeoutMinutes: IdleTimeoutMinutes;
-  requireUnlockOnResume: boolean;
+  requireUnlockOnEnter: boolean;
+  requireUnlockOnExit: boolean;
   requireUnlockOnExport: boolean;
 };
 
@@ -52,14 +53,25 @@ export default function SecurityBehaviorControls({
         }
       />
       <UnconnectedField
-        name="requireUnlockOnResume"
-        label="Require unlock before resuming an interview"
+        name="requireUnlockOnEnter"
+        label="Require unlock when entering an interview"
         inline
         component={ToggleField}
-        value={value.requireUnlockOnResume}
+        value={value.requireUnlockOnEnter}
         disabled={disabled}
         onChange={(v: boolean | undefined) =>
-          update({ requireUnlockOnResume: v === true })
+          update({ requireUnlockOnEnter: v === true })
+        }
+      />
+      <UnconnectedField
+        name="requireUnlockOnExit"
+        label="Require unlock when exiting an interview"
+        inline
+        component={ToggleField}
+        value={value.requireUnlockOnExit}
+        disabled={disabled}
+        onChange={(v: boolean | undefined) =>
+          update({ requireUnlockOnExit: v === true })
         }
       />
       <UnconnectedField

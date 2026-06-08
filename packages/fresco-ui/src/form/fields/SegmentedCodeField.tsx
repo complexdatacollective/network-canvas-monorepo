@@ -121,6 +121,7 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
   void _name;
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const groupRef = useRef<HTMLFieldSetElement>(null);
   const { pattern, inputMode } = CHARACTER_SETS[characterSet];
 
   const chars = value.split('').slice(0, segments);
@@ -247,8 +248,21 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
   const state = getInputState(props);
   const separatorSet = new Set(separatorAfter);
 
+  // A masked code (e.g. a PIN) is type="password", which password managers
+  // offer to fill/save — inappropriate here. Opt the major ones out.
+  const passwordManagerOptOut = sensitive
+    ? {
+        'data-1p-ignore': '',
+        'data-bwignore': '',
+        'data-protonpass-ignore': '',
+        'data-lpignore': 'true',
+        'data-form-type': 'other',
+      }
+    : {};
+
   return (
     <fieldset
+      ref={groupRef}
       className={cx(segmentGroupVariants({ size }), className)}
       aria-label={rest['aria-describedby'] ? undefined : 'Code input'}
     >
@@ -264,6 +278,7 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
             type={sensitive ? 'password' : 'text'}
             inputMode={inputMode}
             autoComplete={sensitive ? 'off' : i === 0 ? 'one-time-code' : 'off'}
+            {...passwordManagerOptOut}
             maxLength={1}
             className={segmentVariants({ size, state })}
             value={chars[i] ?? ''}
@@ -287,13 +302,14 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
             onPaste={(e) => handlePaste(i, e)}
             onFocus={handleFocus}
             onBlur={(e) => {
-              const relatedTarget = e.relatedTarget as HTMLElement | null;
-              const isWithinGroup = e.currentTarget
-                .closest('[role="group"]')
-                ?.contains(relatedTarget);
-              if (!isWithinGroup) {
-                onBlur?.(e);
+              // Only report blur to the form (which validates) when focus
+              // leaves the whole group — not on the automatic focus moves
+              // between segments, which would validate the half-typed code.
+              const next = e.relatedTarget;
+              if (next instanceof Node && groupRef.current?.contains(next)) {
+                return;
               }
+              onBlur?.(e);
             }}
           />
           {separatorSet.has(i) && (

@@ -12,6 +12,13 @@ import StepUpAuthDialog, { type StepUpResult } from './StepUpAuthDialog';
 
 type StepUpAuthContextValue = {
   requireFreshUnlock: () => Promise<StepUpResult>;
+  // The interview whose entry gate has already been satisfied in the current
+  // unlock session. Lets InterviewRoute skip the enter gate when an idle-lock
+  // /unlock cycle remounts the same interview — the user already authenticated
+  // at the LockScreen, so a second step-up prompt would be redundant. Held in a
+  // ref on this provider, which sits above AuthGate, so it survives the remount.
+  getAuthorizedInterviewId: () => string | null;
+  setAuthorizedInterviewId: (sessionId: string | null) => void;
 };
 
 const StepUpAuthContext = createContext<StepUpAuthContextValue | null>(null);
@@ -38,8 +45,23 @@ export function StepUpAuthProvider({ children }: { children: ReactNode }) {
     });
   }, [auth.kind, auth.mode]);
 
+  const authorizedInterviewId = useRef<string | null>(null);
+  const getAuthorizedInterviewId = useCallback(
+    () => authorizedInterviewId.current,
+    [],
+  );
+  const setAuthorizedInterviewId = useCallback((sessionId: string | null) => {
+    authorizedInterviewId.current = sessionId;
+  }, []);
+
   return (
-    <StepUpAuthContext.Provider value={{ requireFreshUnlock }}>
+    <StepUpAuthContext.Provider
+      value={{
+        requireFreshUnlock,
+        getAuthorizedInterviewId,
+        setAuthorizedInterviewId,
+      }}
+    >
       {children}
       <StepUpAuthDialog open={open} onResolve={handleResolve} />
     </StepUpAuthContext.Provider>
