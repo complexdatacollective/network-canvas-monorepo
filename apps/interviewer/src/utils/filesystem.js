@@ -273,7 +273,12 @@ const ensurePathExists = inEnvironment((environment) => {
           recursive: true,
         });
       } catch (error) {
-        if (!/exist/i.test(error?.message || '')) throw error;
+        // Suppress only the "directory already exists" case (mkdir recursive);
+        // re-throw genuine failures, including "no such file"/"does not exist".
+        const message = error?.message || '';
+        if (!/exist/i.test(message) || /not exist|no such/i.test(message)) {
+          throw error;
+        }
       }
       return targetPath;
     };
