@@ -53,7 +53,10 @@
         "electron.vite.config.js"
       ],
       "project": ["src/**/*.{js,jsx}"],
-      "paths": { "@/*": ["./src/*"] }
+      "paths": { "@/*": ["./src/*"] },
+      "ignoreDependencies": [
+        "buffer" // Node.js Buffer polyfill imported as 'buffer/' in network-exporters/src/utils/filesystem.js
+      ]
     },
     "apps/architect": {
       "entry": [
@@ -64,7 +67,11 @@
         "electron.vite.config.js",
         "electron-builder.config.js"
       ],
-      "project": ["src/**/*.{js,jsx}"],
+      "project": ["src/**/*.{js,jsx}", "public/**/*.js"],
+      "ignoreDependencies": [
+        "react-resizable", // CSS only — @import in main.scss, invisible to knip
+        "tippy.js" // CSS only — @import in main.scss, peer dep of @tippyjs/react
+      ],
       "paths": {
         "@app/*": ["./src/*"],
         "@components/*": ["./src/components/*"],
