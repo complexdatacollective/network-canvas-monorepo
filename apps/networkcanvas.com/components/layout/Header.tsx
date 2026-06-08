@@ -54,9 +54,13 @@ function MobileLinks({ onNavigate }: { onNavigate: () => void }) {
       ))}
 
       <div className="flex flex-col gap-3">
-        <span className="font-heading text-cyber-grape/60 text-xs font-bold tracking-[0.12em] uppercase">
+        <Link
+          href="/#projects"
+          onClick={onNavigate}
+          className="font-heading text-cyber-grape/60 hover:text-neon-coral text-xs font-bold tracking-[0.12em] uppercase transition-colors"
+        >
           Projects
-        </span>
+        </Link>
         {projects.map((project) => (
           <a
             key={project.name}

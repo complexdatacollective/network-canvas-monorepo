@@ -42,12 +42,19 @@ function ProjectCard({ project }: { project: Project }) {
       rel="noreferrer"
       closeOnClick
       className="focusable block rounded-[1.75rem]"
+      // Drive the animation from the focusable element (the link) itself, so
+      // keyboard focus triggers the same reveal as pointer hover. Framer Motion
+      // propagates the active variant down to the motion children below.
+      render={
+        <motion.a
+          initial="rest"
+          animate="rest"
+          whileHover="hover"
+          whileFocus="hover"
+        />
+      }
     >
       <motion.div
-        initial="rest"
-        animate="rest"
-        whileHover="hover"
-        whileFocus="hover"
         variants={cardVariants}
         transition={{ type: 'spring', stiffness: 320, damping: 26 }}
         className={cn(
