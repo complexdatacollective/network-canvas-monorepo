@@ -18,8 +18,8 @@ export default defineConfig({
   },
   // host: true (0.0.0.0) so on-device targets can reach the dev server — the
   // Android emulator hits the host via 10.0.2.2, which can't see a localhost-only
-  // bind (the iOS sim shares the host loopback, so it works either way).
-  // strictPort so a stale server surfaces an error instead of silently shifting
-  // the port away from CAP_DEV_SERVER_URL.
-  server: { port: 5181, host: true, strictPort: true },
+  // bind (the iOS sim shares the host loopback, so it works either way). 5181 is
+  // only a preferred port: the cap:dev runner reads whichever port Vite actually
+  // bound and syncs the native app to it, so a busy port just rolls to the next.
+  server: { port: 5181, host: true },
 });

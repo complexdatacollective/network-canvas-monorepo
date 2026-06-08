@@ -30,8 +30,8 @@
     "cap:add:android": "cap add android",
     "cap:run:ios": "pnpm version:sync && pnpm build:web && cap run ios",
     "cap:run:android": "pnpm version:sync && pnpm build:web && cap run android --target Pixel_Tablet_API_35",
-    "cap:dev:ios": "pnpm version:sync && pnpm build:web && CAP_DEV_SERVER_URL=http://localhost:5181 cap sync ios && node scripts/free-port.mjs 5181 && concurrently --kill-others-on-fail -n vite,cap \"vite --config vite.web.config.js\" \"CAP_DEV_SERVER_URL=http://localhost:5181 cap run ios\"",
-    "cap:dev:android": "pnpm version:sync && pnpm build:web && CAP_DEV_SERVER_URL=http://10.0.2.2:5181 cap sync android && node scripts/free-port.mjs 5181 && concurrently --kill-others-on-fail -n vite,cap \"vite --config vite.web.config.js\" \"CAP_DEV_SERVER_URL=http://10.0.2.2:5181 cap run android --target Pixel_Tablet_API_35\""
+    "cap:dev:ios": "pnpm version:sync && pnpm build:web && node scripts/cap-dev.mjs ios --target \"iPad Pro 13-inch (M5)\"",
+    "cap:dev:android": "pnpm version:sync && pnpm build:web && node scripts/cap-dev.mjs android --target Pixel_Tablet_API_35"
   },
   "dependencies": {
     "@capacitor/android": "catalog:",
@@ -78,7 +78,6 @@
     "color": "^2.0.1",
     "compare-versions": "^3.6.0",
     "concaveman": "^1.2.1",
-    "concurrently": "^9.1.0",
     "connected-react-router": "^6.9.3",
     "csvtojson": "^2.0.14",
     "electron": "catalog:",
