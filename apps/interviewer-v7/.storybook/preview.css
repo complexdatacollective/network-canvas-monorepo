@@ -1,0 +1,23 @@
+/*
+ * Storybook tailwind entry. Mirrors the app's `src/styles/globals.css`:
+ * fresco-ui and @codaco/interview are consumed as built `dist` (kept fresh by
+ * their `dev` watchers), so we import their compiled stylesheets — the
+ * documented consumption pattern — rather than @source-ing their source. The
+ * app's own components under `src/` are picked up by tailwind's automatic
+ * source detection (this file lives inside the app), so they need no @source.
+ *
+ * Fonts are imported in JS (see preview.tsx) so url() paths resolve through
+ * the Vite bundler.
+ */
+@import '@codaco/tailwind-config/fresco.css';
+@import '@codaco/fresco-ui/styles.css';
+@import '@codaco/interview/styles.css';
+
+@layer base {
+  /* Autodocs renders each story in a `.sbdocs-preview` wrapper that lives
+     outside the canvas iframe, so the body theme attribute doesn't reach it.
+     Paint the docs preview canvas with the theme background directly. */
+  .sbdocs-preview {
+    @apply bg-background!;
+  }
+}
