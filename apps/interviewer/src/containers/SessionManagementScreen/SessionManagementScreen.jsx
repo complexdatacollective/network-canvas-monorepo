@@ -12,7 +12,7 @@ import ExportOptions from '../../components/SettingsMenu/Sections/ExportOptions'
 import { actionCreators as dialogActions } from '../../ducks/modules/dialogs';
 import { withErrorDialog } from '../../ducks/modules/errors';
 import { actionCreators as sessionsActions } from '../../ducks/modules/sessions';
-import { isCapacitor } from '../../utils/Environment';
+import { isCordova } from '../../utils/Environment';
 import { exportToFile } from '../../utils/exportProcess';
 import { get } from '../../utils/lodash-replacements';
 import { Overlay } from '../Overlay';
@@ -241,7 +241,7 @@ const DataExportScreen = ({ show, onClose }) => {
                   filename itself (networkCanvasExport-<timestamp>.zip), so this
                   custom-name input no longer changes the saved filename. Kept
                   for now to avoid a UI change; revisit if user-naming is needed. */}
-              {isCapacitor() && (
+              {isCordova() && (
                 <>
                   <h2>Filename for export:</h2>
                   <p>

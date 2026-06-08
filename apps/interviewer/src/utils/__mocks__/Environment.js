@@ -10,6 +10,9 @@ export const isMacOS = vi.fn(() => false);
 export const isWindows = vi.fn(() => false);
 export const isLinux = vi.fn(() => false);
 export const isCapacitor = vi.fn(() => false);
+// TEMP shim — mirrors the isCordova shim in Environment.js while the
+// Cordova->Capacitor migration is in progress (removed in the final sweep).
+export const isCordova = vi.fn(() => false);
 export const isIOS = vi.fn(() => false);
 export const isAndroid = vi.fn(() => false);
 export const isWeb = vi.fn(() => true);

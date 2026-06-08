@@ -2,14 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../Environment', () => ({
   isElectron: vi.fn(),
-  isCapacitor: vi.fn(),
+  isCordova: vi.fn(),
 }));
 
 vi.mock('../../filesystem', () => ({
   writeFile: vi.fn(() => Promise.resolve()),
 }));
 
-import { isCapacitor, isElectron } from '../../Environment';
+import { isCordova, isElectron } from '../../Environment';
 import { writeFile } from '../../filesystem';
 import { saveExportBlob } from '../saveExport';
 
@@ -24,7 +24,7 @@ describe('saveExportBlob', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     isElectron.mockReturnValue(false);
-    isCapacitor.mockReturnValue(false);
+    isCordova.mockReturnValue(false);
     delete global.cordova;
   });
 
@@ -68,7 +68,7 @@ describe('saveExportBlob', () => {
   });
 
   it('on Cordova, writes a raw ArrayBuffer into the data directory', async () => {
-    isCapacitor.mockReturnValue(true);
+    isCordova.mockReturnValue(true);
     global.cordova = { file: { dataDirectory: 'file:///data/' } };
 
     const result = await saveExportBlob({

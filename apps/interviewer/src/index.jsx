@@ -11,12 +11,7 @@ import App from './containers/App';
 import { actionCreators as deviceActions } from './ducks/modules/deviceSettings';
 import { history, store, persistor as storePersistor } from './ducks/store';
 import AppRouter from './routes';
-import {
-  getEnv,
-  isAndroid,
-  isCapacitor,
-  isElectron,
-} from './utils/Environment';
+import { getEnv, isAndroid, isCordova, isElectron } from './utils/Environment';
 import initFileOpener from './utils/initFileOpener';
 import initMenuActions from './utils/initMenuActions';
 import remote from './utils/remote';
@@ -98,7 +93,7 @@ if (isElectron()) {
   }
 }
 
-if (isCapacitor()) {
+if (isCordova()) {
   document.addEventListener('deviceready', startApp, false);
 } else if (document.readyState === 'complete') {
   startApp();

@@ -2,7 +2,7 @@
  * Device information with secure API support.
  */
 /* globals device */
-import { isCapacitor, isElectron } from './Environment';
+import { isCordova, isElectron } from './Environment';
 
 const versioned = (name) => `${name} - ${device.version || '?'}`;
 
@@ -81,10 +81,10 @@ const iosDescription = () => {
 };
 
 const deviceDescription = () => {
-  if (isCapacitor() && device.platform === 'iOS') {
+  if (isCordova() && device.platform === 'iOS') {
     return iosDescription();
   }
-  if (isCapacitor() && device.platform === 'Android') {
+  if (isCordova() && device.platform === 'Android') {
     return androidDescription();
   }
   if (isElectron()) {
@@ -93,8 +93,8 @@ const deviceDescription = () => {
   return 'Unknown device';
 };
 
-const shouldUseDynamicScaling = () => !isCapacitor();
+const shouldUseDynamicScaling = () => !isCordova();
 
-const shouldUseFullScreenForm = () => isCapacitor();
+const shouldUseFullScreenForm = () => isCordova();
 
 export { deviceDescription, shouldUseDynamicScaling, shouldUseFullScreenForm };

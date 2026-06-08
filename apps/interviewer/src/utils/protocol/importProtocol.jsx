@@ -11,7 +11,7 @@ import { PROTOCOL_EXTENSION } from '../../config';
 import { actionCreators as installedProtocolActions } from '../../ducks/modules/installedProtocols';
 import { actionCreators as toastActions } from '../../ducks/modules/toasts';
 import { store } from '../../ducks/store';
-import { isCapacitor, isElectron } from '../../utils/Environment';
+import { isCordova, isElectron } from '../../utils/Environment';
 import { removeDirectory } from '../../utils/filesystem';
 import checkExistingProtocol, {
   moveToExistingProtocol,
@@ -199,7 +199,7 @@ export const beginLocalProtocolImport = () => {
     }
   }
 
-  if (isCapacitor()) {
+  if (isCordova()) {
     window.chooser.getFile().then((file) => {
       if (file?.uri) {
         importProtocolFromFile(file.uri, file.name);

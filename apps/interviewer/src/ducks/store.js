@@ -5,7 +5,7 @@ import { persistReducer, persistStore } from 'redux-persist';
 import autoMergeLevel2 from 'redux-persist/lib/stateReconciler/autoMergeLevel2';
 import thunk from 'redux-thunk';
 
-import { getEnv, isCapacitor } from '../utils/Environment';
+import { getEnv, isCordova } from '../utils/Environment';
 import {
   localStorageEngine,
   sqliteStorageEngine,
@@ -21,7 +21,7 @@ const getStorageEngine = () => {
     persistor.persist();
   };
 
-  if (isCapacitor()) {
+  if (isCordova()) {
     return sqliteStorageEngine(onPersistReady);
   }
 
