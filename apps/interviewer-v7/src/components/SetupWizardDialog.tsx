@@ -17,14 +17,16 @@ export type SetupWizardData = {
   enrolmentCommitted: boolean;
   behavior: {
     idleTimeoutMinutes: IdleTimeoutMinutes;
-    requireUnlockOnResume: boolean;
+    requireUnlockOnEnter: boolean;
+    requireUnlockOnExit: boolean;
     requireUnlockOnExport: boolean;
   };
 };
 
 const DEFAULT_BEHAVIOR: SetupWizardData['behavior'] = {
   idleTimeoutMinutes: 15,
-  requireUnlockOnResume: true,
+  requireUnlockOnEnter: true,
+  requireUnlockOnExit: false,
   requireUnlockOnExport: false,
 };
 
@@ -80,7 +82,8 @@ export function useSetupWizard() {
       const behavior = data.behavior ?? DEFAULT_BEHAVIOR;
       await updateSettings({
         idleTimeoutMinutes: behavior.idleTimeoutMinutes,
-        requireUnlockOnResume: behavior.requireUnlockOnResume,
+        requireUnlockOnEnter: behavior.requireUnlockOnEnter,
+        requireUnlockOnExit: behavior.requireUnlockOnExit,
         requireUnlockOnExport: behavior.requireUnlockOnExport,
       });
     }

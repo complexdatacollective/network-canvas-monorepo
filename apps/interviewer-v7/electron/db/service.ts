@@ -132,7 +132,8 @@ const DEFAULT_SETTINGS = {
   screenLayoutWidth: 1920,
   dismissedUpdates: [] as string[],
   idleTimeoutMinutes: 15,
-  requireUnlockOnResume: true,
+  requireUnlockOnEnter: true,
+  requireUnlockOnExit: false,
   requireUnlockOnExport: false,
 };
 

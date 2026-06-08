@@ -147,8 +147,11 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         void auth.setIdleTimeoutMinutes(next.idleTimeoutMinutes);
       }
       const patch: Partial<Omit<StoredSettings, 'id'>> = {};
-      if (next.requireUnlockOnResume !== settings.requireUnlockOnResume) {
-        patch.requireUnlockOnResume = next.requireUnlockOnResume;
+      if (next.requireUnlockOnEnter !== settings.requireUnlockOnEnter) {
+        patch.requireUnlockOnEnter = next.requireUnlockOnEnter;
+      }
+      if (next.requireUnlockOnExit !== settings.requireUnlockOnExit) {
+        patch.requireUnlockOnExit = next.requireUnlockOnExit;
       }
       if (next.requireUnlockOnExport !== settings.requireUnlockOnExport) {
         patch.requireUnlockOnExport = next.requireUnlockOnExport;
@@ -237,7 +240,8 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
 
   const behavior: Behavior = {
     idleTimeoutMinutes: auth.idleTimeoutMinutes,
-    requireUnlockOnResume: settings?.requireUnlockOnResume ?? true,
+    requireUnlockOnEnter: settings?.requireUnlockOnEnter ?? true,
+    requireUnlockOnExit: settings?.requireUnlockOnExit ?? false,
     requireUnlockOnExport: settings?.requireUnlockOnExport ?? false,
   };
 

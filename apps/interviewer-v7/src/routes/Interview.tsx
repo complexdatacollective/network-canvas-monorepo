@@ -54,7 +54,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
 
   useEffect(() => {
     let active = true;
-    // `requireUnlockOnResume` should only fire when *resuming* — i.e. opening
+    // `requireUnlockOnEnter` should only fire when *resuming* — i.e. opening
     // a session that wasn't just created. The new-session flow signals "fresh"
     // by passing `{ state: { fresh: true } }` to `navigate`. We replace the
     // history entry to clear the flag, so a subsequent refresh re-enters as
@@ -65,7 +65,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     }
     const load = async () => {
       const settings = await getSettings();
-      if (!isFreshSession && settings.requireUnlockOnResume) {
+      if (!isFreshSession && settings.requireUnlockOnEnter) {
         const result = await requireFreshUnlock();
         if (!result.ok) {
           if (active) navigate('/');

@@ -112,7 +112,8 @@ export type StoredSettings = {
   lastActiveProtocolHash?: string;
   lastActiveSessionId?: string;
   idleTimeoutMinutes: IdleTimeoutMinutes;
-  requireUnlockOnResume: boolean;
+  requireUnlockOnEnter: boolean;
+  requireUnlockOnExit: boolean;
   requireUnlockOnExport: boolean;
   sampleProtocolDismissed: boolean;
 };
@@ -130,7 +131,8 @@ export const DEFAULT_SETTINGS: StoredSettings = {
   screenLayoutWidth: 1920,
   dismissedUpdates: [],
   idleTimeoutMinutes: 15,
-  requireUnlockOnResume: true,
+  requireUnlockOnEnter: true,
+  requireUnlockOnExit: false,
   requireUnlockOnExport: false,
   sampleProtocolDismissed: false,
 };
