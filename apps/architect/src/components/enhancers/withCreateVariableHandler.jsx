@@ -12,7 +12,7 @@ const mapDispatchToProps = {
   changeField: change,
 };
 
-export const normalizeKeyDown = (event) => {
+const normalizeKeyDown = (event) => {
   const check = safeName(event.key);
 
   if (isEmpty(check)) {

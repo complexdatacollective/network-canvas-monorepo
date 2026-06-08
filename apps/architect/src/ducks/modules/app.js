@@ -44,11 +44,6 @@ export const selectors = {
   getProperty,
 };
 
-export const actionTypes = {
-  SET_PROPERTY,
-  CLEAR_PROPERTY,
-};
-
 export const actionCreators = {
   setProperty,
   clearProperty,

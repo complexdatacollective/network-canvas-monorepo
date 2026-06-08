@@ -38,6 +38,4 @@ const autoFileDrop = compose(
   }),
 );
 
-export { autoFileDrop };
-
 export default autoFileDrop(Dropzone);

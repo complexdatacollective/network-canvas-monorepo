@@ -19,7 +19,7 @@ const log = require("./log");
 const isPathAllowed = (filePath) => {
 	if (!filePath) return false;
 
-	const normalizedPath = path.normalize(filePath);
+	const resolvedPath = path.resolve(filePath);
 	const allowedPaths = [
 		app.getPath("temp"),
 		app.getPath("userData"),
@@ -29,8 +29,13 @@ const isPathAllowed = (filePath) => {
 		app.getPath("desktop"),
 	];
 
-	// Allow paths within any of the allowed directories
-	return allowedPaths.some((allowedPath) => normalizedPath.startsWith(allowedPath));
+	// Anchored prefix check: the path must BE an allowed directory or sit
+	// beneath it. An unanchored startsWith would let a sibling such as
+	// `<userData>-evil` (sharing the string prefix) bypass the allowlist.
+	return allowedPaths.some((allowedPath) => {
+		const base = path.resolve(allowedPath);
+		return resolvedPath === base || resolvedPath.startsWith(base + path.sep);
+	});
 };
 
 /**

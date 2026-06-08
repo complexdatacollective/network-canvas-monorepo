@@ -139,6 +139,4 @@ Rules.defaultProps = {
   draftRule: {},
 };
 
-export { Rules };
-
 export default compose(withDraftRule, withRulesChangeHandlers)(Rules);

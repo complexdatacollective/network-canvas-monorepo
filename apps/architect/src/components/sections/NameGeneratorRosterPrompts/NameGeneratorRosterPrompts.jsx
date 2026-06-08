@@ -24,8 +24,6 @@ const NameGeneratorRosterPrompts = (props) => (
   />
 );
 
-export { NameGeneratorRosterPrompts };
-
 export default compose(
   withSubject,
   withMapFormToProps('dataSource'),

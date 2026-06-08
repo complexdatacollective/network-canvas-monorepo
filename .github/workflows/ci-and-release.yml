@@ -175,9 +175,7 @@ jobs:
           } > packages/protocol-validation/.env
       - name: Run all gates
         run: |
-          pnpm exec turbo run //#lint //#knip typecheck build test \
-            --filter='!network-canvas-interviewer' \
-            --filter='!network-canvas-architect'
+          pnpm exec turbo run //#lint //#knip typecheck build test
 
   # Deploy jobs are split per-app and per-environment so:
   #   * one app's build failure never blocks the other app's deploy
@@ -769,6 +767,10 @@ jobs:
     outputs:
       interviewer_v7_released: ${{ steps.detect_interviewer_v7.outputs.released }}
       interviewer_v7_version: ${{ steps.detect_interviewer_v7.outputs.version }}
+      interviewer_released: ${{ steps.detect_interviewer.outputs.released }}
+      interviewer_version: ${{ steps.detect_interviewer.outputs.version }}
+      architect_released: ${{ steps.detect_architect.outputs.released }}
+      architect_version: ${{ steps.detect_architect.outputs.version }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -823,6 +825,42 @@ jobs:
             echo "released=false" >> "$GITHUB_OUTPUT"
             echo "version=" >> "$GITHUB_OUTPUT"
             echo "interviewer-v7 version unchanged ($current)"
+          fi
+      - name: Detect interviewer version bump
+        id: detect_interviewer
+        env:
+          PKG_JSON: apps/interviewer/package.json
+        run: |
+          current=$(node -p "require('./$PKG_JSON').version")
+          if git cat-file -e "HEAD^:$PKG_JSON" 2>/dev/null; then
+            previous=$(git show "HEAD^:$PKG_JSON" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version")
+          else
+            previous=""
+          fi
+          if [[ "$current" != "$previous" && -n "$current" ]]; then
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "version=$current" >> "$GITHUB_OUTPUT"
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Detect architect version bump
+        id: detect_architect
+        env:
+          PKG_JSON: apps/architect/package.json
+        run: |
+          current=$(node -p "require('./$PKG_JSON').version")
+          if git cat-file -e "HEAD^:$PKG_JSON" 2>/dev/null; then
+            previous=$(git show "HEAD^:$PKG_JSON" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version")
+          else
+            previous=""
+          fi
+          if [[ "$current" != "$previous" && -n "$current" ]]; then
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "version=$current" >> "$GITHUB_OUTPUT"
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
           fi
 
   # Per-platform Electron build for interviewer-v7. Triggered only when the
@@ -932,6 +970,128 @@ jobs:
           fail_on_unmatched_files: true
           make_latest: 'false'
           generate_release_notes: true
+
+  interviewer-release-build:
+    needs: release
+    if: needs.release.outputs.interviewer_released == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+          - os: ubuntu-latest
+            platform: linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - if: matrix.os == 'ubuntu-latest'
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - name: Build app + workspace deps
+        run: pnpm exec turbo run build --filter=network-canvas-interviewer
+      - name: Decode App Store Connect API key
+        if: matrix.os == 'macos-latest'
+        env:
+          APPLE_API_KEY_B64: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          key_path="${RUNNER_TEMP}/AuthKey.p8"
+          printf '%s' "$APPLE_API_KEY_B64" | base64 --decode > "$key_path"
+          echo "APPLE_API_KEY=${key_path}" >> "$GITHUB_ENV"
+      - name: Package (+ publish when token present)
+        working-directory: apps/interviewer
+        env:
+          GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          CSC_LINK: ${{ matrix.os == 'macos-latest' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.CSC_KEY_PASSWORD || '' }}
+        run: |
+          if [[ -n "$GH_TOKEN" ]]; then
+            pnpm exec electron-builder --${{ matrix.platform }} --publish always
+          else
+            echo "LEGACY_RELEASE_GH_TOKEN not set — building without publishing."
+            pnpm exec electron-builder --${{ matrix.platform }} --publish never
+          fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: interviewer-${{ matrix.platform }}
+          path: apps/interviewer/release-builds/*
+          if-no-files-found: error
+          retention-days: 30
+
+  architect-release-build:
+    needs: release
+    if: needs.release.outputs.architect_released == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+          - os: ubuntu-latest
+            platform: linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - if: matrix.os == 'ubuntu-latest'
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - name: Build app + workspace deps
+        run: pnpm exec turbo run build --filter=network-canvas-architect
+      - name: Decode App Store Connect API key
+        if: matrix.os == 'macos-latest'
+        env:
+          APPLE_API_KEY_B64: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          key_path="${RUNNER_TEMP}/AuthKey.p8"
+          printf '%s' "$APPLE_API_KEY_B64" | base64 --decode > "$key_path"
+          echo "APPLE_API_KEY=${key_path}" >> "$GITHUB_ENV"
+      - name: Package (+ publish when token present)
+        working-directory: apps/architect
+        env:
+          GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          CSC_LINK: ${{ matrix.os == 'macos-latest' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.CSC_KEY_PASSWORD || '' }}
+        run: |
+          if [[ -n "$GH_TOKEN" ]]; then
+            pnpm exec electron-builder --${{ matrix.platform }} --config electron-builder.config.js --publish always
+          else
+            echo "LEGACY_RELEASE_GH_TOKEN not set — building without publishing."
+            pnpm exec electron-builder --${{ matrix.platform }} --config electron-builder.config.js --publish never
+          fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: architect-${{ matrix.platform }}
+          path: apps/architect/release-builds/*
+          if-no-files-found: error
+          retention-days: 30
 
   # PR snapshot build for testers. Triggered when the detect job flags a
   # changeset touching @codaco/interviewer-v7 AND the quality gate passed.

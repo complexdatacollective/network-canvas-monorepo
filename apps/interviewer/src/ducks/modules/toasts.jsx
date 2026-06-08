@@ -52,43 +52,12 @@ function reducer(state = initialState, action = {}) {
   }
 }
 
-const withToast =
-  (actionCreator) =>
-  (...args) =>
-  (dispatch) => {
-    const action = actionCreator(...args);
-    dispatch(action);
-    switch (action.type) {
-      case 'SET_SERVER': {
-        return dispatch(
-          addToast({
-            type: 'success',
-            title: 'Pairing complete!',
-            content: (
-              <p>
-                You have successfully paired with Server. You may now fetch
-                protocols and upload data.
-              </p>
-            ),
-          }),
-        );
-      }
-      default:
-        return null;
-    }
-  };
-
 const actionCreators = {
   addToast,
   updateToast,
   removeToast,
 };
 
-const actionTypes = {
-  ADD_TOAST,
-  REMOVE_TOAST,
-};
-
-export { actionCreators, actionTypes, withToast };
+export { actionCreators };
 
 export default reducer;

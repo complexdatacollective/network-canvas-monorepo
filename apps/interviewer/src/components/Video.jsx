@@ -46,6 +46,4 @@ Video.defaultProps = {
   description: '',
 };
 
-export { Video };
-
 export default injectAssetUrl(Video);

@@ -25,6 +25,4 @@ ImageThumbnail.defaultProps = {
   contain: false,
 };
 
-export { ImageThumbnail };
-
 export default withAssetUrl(ImageThumbnail);

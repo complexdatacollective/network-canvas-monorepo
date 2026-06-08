@@ -161,14 +161,6 @@ const actionCreators = {
   deletePrompt: deletePromptThunk,
 };
 
-const actionTypes = {
-  CREATE_STAGE,
-  UPDATE_STAGE,
-  DELETE_STAGE,
-  MOVE_STAGE,
-  DELETE_PROMPT,
-};
-
 const test = {
   createStage,
   updateStage,
@@ -177,4 +169,4 @@ const test = {
   deletePrompt,
 };
 
-export { actionCreators, actionTypes, test };
+export { actionCreators, test };

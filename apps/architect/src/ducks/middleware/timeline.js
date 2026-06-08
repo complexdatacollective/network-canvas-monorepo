@@ -103,10 +103,6 @@ const createTimelineReducer = (reducer, customOptions) => {
   return timelineReducer;
 };
 
-export const actionTypes = {
-  RESET,
-};
-
 export const actionCreators = {
   jump,
   reset,

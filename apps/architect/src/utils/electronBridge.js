@@ -236,18 +236,3 @@ export const pathSync = {
 /**
  * Re-export individual namespaces for convenience
  */
-export {
-  ipc,
-  dialog,
-  app,
-  fs,
-  pathUtils as path,
-  archive,
-  shell,
-  windowApi as window,
-  webContents,
-  getPlatform,
-  isElectron,
-};
-
-export default electronAPI;

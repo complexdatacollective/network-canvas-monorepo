@@ -64,21 +64,4 @@ const getInterface = (interfaceConfig) => {
   );
 };
 
-export {
-  NameGenerator,
-  NameGeneratorQuickAdd,
-  NameGeneratorAutoComplete,
-  NameGeneratorList,
-  NameGeneratorRoster,
-  Sociogram,
-  Information,
-  CategoricalBin,
-  OrdinalBin,
-  Narrative,
-  AlterForm,
-  EgoForm,
-  AlterEdgeForm,
-  DyadCensus,
-};
-
 export default getInterface;

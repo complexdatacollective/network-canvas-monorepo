@@ -15,7 +15,7 @@ export const getNetwork = createDeepEqualSelector(
 );
 
 // Filtered network
-export const getFilteredNetwork = createDeepEqualSelector(
+const getFilteredNetwork = createDeepEqualSelector(
   getNetwork,
   (_, props) => props?.stage?.filter,
   (network, nodeFilter) => {

@@ -58,11 +58,6 @@ const actionCreators = {
   removeToast,
 };
 
-const actionTypes = {
-  ADD_TOAST,
-  REMOVE_TOAST,
-};
-
-export { actionCreators, actionTypes };
+export { actionCreators };
 
 export default reducer;

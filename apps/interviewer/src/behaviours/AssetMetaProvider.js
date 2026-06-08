@@ -19,6 +19,4 @@ const withAssetMeta = connect(mapStateToProps);
 const AssetMetaProvider = ({ children, dispatch, id, ...rest }) =>
   children({ ...rest });
 
-export { withAssetMeta, AssetMetaProvider };
-
 export default withAssetMeta(AssetMetaProvider);

@@ -19,5 +19,3 @@ const SCREEN_INDEX = {
 const getScreenComponent = (screen) => get(SCREEN_INDEX, screen, NotFound);
 
 export { getScreenComponent };
-
-export default SCREEN_INDEX;

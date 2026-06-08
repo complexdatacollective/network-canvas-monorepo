@@ -35,7 +35,7 @@ const getStageIndexFromPath = (path) => {
 const codebookVariableReferenceRegex =
   /codebook\.(ego|node\[([^\]]+)\]|edge\[([^\]]+)\])\.variables\[(.*?)\].validation\.(sameAs|differentFrom)/;
 
-export const getCodebookVariableIndexFromValidationPath = (path) => {
+const getCodebookVariableIndexFromValidationPath = (path) => {
   const match = path.match(codebookVariableReferenceRegex);
 
   return get(match, 4, null);

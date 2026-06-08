@@ -2,7 +2,7 @@ import { getVariablesForSubject } from '@selectors/codebook';
 import { get, omit, reduce } from 'lodash';
 import { formValueSelector } from 'redux-form';
 
-export const CODEBOOK_PROPERTIES = [
+const CODEBOOK_PROPERTIES = [
   'options',
   'parameters',
   'component',

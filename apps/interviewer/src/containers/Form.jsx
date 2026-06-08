@@ -188,5 +188,3 @@ export default compose(
     onSubmitFail: scrollToFirstError,
   }),
 )(Form);
-
-export { Form };

@@ -50,9 +50,4 @@ const actionCreators = {
   initializeSessionWorkersThunk,
 };
 
-const actionTypes = {
-  SET_WORKER_MAP,
-  RESET_WORKER_MAP,
-};
-
-export { actionCreators, actionTypes };
+export { actionCreators };

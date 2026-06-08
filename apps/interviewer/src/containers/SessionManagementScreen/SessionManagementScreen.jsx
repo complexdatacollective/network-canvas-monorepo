@@ -15,7 +15,6 @@ import { actionCreators as sessionsActions } from '../../ducks/modules/sessions'
 import { isCordova } from '../../utils/Environment';
 import { exportToFile } from '../../utils/exportProcess';
 import { get } from '../../utils/lodash-replacements';
-import { asNetworkWithSessionVariables } from '../../utils/networkFormat';
 import { Overlay } from '../Overlay';
 import SessionSelect from './SessionSelect';
 
@@ -56,24 +55,12 @@ const DataExportScreen = ({ show, onClose }) => {
     setStep(step - 1);
   };
 
-  const sessions = useSelector((state) => state.sessions);
-  const installedProtocols = useSelector((state) => state.installedProtocols);
-
-  const getExportableSessions = () =>
-    selectedSessions.map((session) => {
-      const sessionProtocol = installedProtocols[sessions[session].protocolUID];
-
-      return asNetworkWithSessionVariables(
-        session,
-        sessions[session],
-        sessionProtocol,
-      );
-    });
-
   const exportSessions = () => {
     setStep(3);
 
-    exportToFile(getExportableSessions(), filename)
+    // The maintained @codaco/network-exporters pipeline maps raw sessions
+    // itself, so we pass the selected session keys (not pre-formatted networks).
+    exportToFile(selectedSessions)
       .then(({ run, abort, setConsideringAbort }) => {
         setAbortHandlers({
           abort,
@@ -250,6 +237,10 @@ const DataExportScreen = ({ show, onClose }) => {
                 margin: '0 auto',
               }}
             >
+              {/* NOTE: the @codaco/network-exporters pipeline derives the zip
+                  filename itself (networkCanvasExport-<timestamp>.zip), so this
+                  custom-name input no longer changes the saved filename. Kept
+                  for now to avoid a UI change; revisit if user-naming is needed. */}
               {isCordova() && (
                 <>
                   <h2>Filename for export:</h2>
