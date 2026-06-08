@@ -1,17 +1,27 @@
-/* global FileWriter, FileError, cordova */
 /**
  * Filesystem utilities with secure API support.
  *
- * This module provides filesystem operations for both Electron and Cordova platforms.
+ * This module provides filesystem operations for Electron and Capacitor platforms.
  * In Electron, it uses the secure electronAPI (via IPC) instead of direct Node.js access.
+ * In Capacitor, it uses @capacitor/filesystem for native mobile file access.
  */
 
 import { Buffer } from 'buffer';
 
+import { Filesystem } from '@capacitor/filesystem';
 import { trimChars } from 'lodash/fp';
 
+import { capacitorPath } from './capacitorPath';
 import inEnvironment, { isElectron } from './Environment';
 import environments from './environments';
+
+const toBase64 = (data) => {
+  if (typeof data === 'string') return Buffer.from(data).toString('base64');
+  if (Buffer.isBuffer(data)) return data.toString('base64');
+  if (data instanceof ArrayBuffer) return Buffer.from(data).toString('base64');
+  if (data instanceof Uint8Array) return Buffer.from(data).toString('base64');
+  return Buffer.from(data).toString('base64');
+};
 
 const trimPath = trimChars('/ ');
 
@@ -56,6 +66,10 @@ const tempDataPath = inEnvironment((environment) => {
     };
   }
 
+  if (environment === environments.CAPACITOR) {
+    return () => 'tmp/';
+  }
+
   if (environment === environments.CORDOVA) {
     return () => cordova.file.cacheDirectory;
   }
@@ -81,6 +95,10 @@ const userDataPath = inEnvironment((environment) => {
     };
   }
 
+  if (environment === environments.CAPACITOR) {
+    return () => '';
+  }
+
   if (environment === environments.CORDOVA) {
     return () => cordova.file.dataDirectory;
   }
@@ -89,6 +107,13 @@ const userDataPath = inEnvironment((environment) => {
 });
 
 const resolveFileSystemUrl = inEnvironment((environment) => {
+  if (environment === environments.CAPACITOR) {
+    return async (path) => {
+      const { uri } = await Filesystem.getUri(capacitorPath(path));
+      return { toURL: () => uri, nativeURL: uri };
+    };
+  }
+
   if (environment === environments.CORDOVA) {
     return (path) =>
       new Promise((resolve, reject) => {
@@ -118,6 +143,13 @@ const readFile = inEnvironment((environment) => {
         return Buffer.from(data, 'base64');
       }
       return data;
+    };
+  }
+
+  if (environment === environments.CAPACITOR) {
+    return async (filename) => {
+      const { data } = await Filesystem.readFile(capacitorPath(filename));
+      return Buffer.from(data, 'base64');
     };
   }
 
@@ -158,6 +190,17 @@ const newFile = (directoryEntry, filename) =>
  * In Electron, uses secure IPC.
  */
 const writeFile = inEnvironment((environment) => {
+  if (environment === environments.CAPACITOR) {
+    return async (filePath, data) => {
+      await Filesystem.writeFile({
+        ...capacitorPath(filePath),
+        data: toBase64(data),
+        recursive: true,
+      });
+      return filePath;
+    };
+  }
+
   if (environment === environments.CORDOVA) {
     return (fileUrl, data) => {
       const [baseDirectory, filename] = splitUrl(fileUrl);
@@ -226,6 +269,20 @@ const createDirectory = inEnvironment((environment) => {
     };
   }
 
+  if (environment === environments.CAPACITOR) {
+    return async (targetPath) => {
+      try {
+        await Filesystem.mkdir({
+          ...capacitorPath(targetPath),
+          recursive: true,
+        });
+      } catch (error) {
+        if (!/exist/i.test(error?.message || '')) throw error;
+      }
+      return targetPath;
+    };
+  }
+
   if (environment === environments.CORDOVA) {
     const appendDirectory = (directoryEntry, directoryToAppend) =>
       new Promise((resolve, reject) => {
@@ -260,6 +317,18 @@ const rename = inEnvironment((environment) => {
         throw new Error('electronAPI not available');
       }
       await window.electronAPI.fs.rename(oldPath, newPath);
+      return newPath;
+    };
+  }
+
+  if (environment === environments.CAPACITOR) {
+    return async (oldPath, newPath) => {
+      await Filesystem.rename({
+        from: capacitorPath(oldPath).path,
+        to: capacitorPath(newPath).path,
+        directory: capacitorPath(oldPath).directory,
+        toDirectory: capacitorPath(newPath).directory,
+      });
       return newPath;
     };
   }
@@ -302,6 +371,21 @@ const removeDirectory = inEnvironment((environment) => {
       }
 
       await window.electronAPI.fs.rmdir(targetPath);
+      return targetPath;
+    };
+  }
+
+  if (environment === environments.CAPACITOR) {
+    return async (targetPath) => {
+      try {
+        await Filesystem.rmdir({
+          ...capacitorPath(targetPath),
+          recursive: true,
+        });
+      } catch (error) {
+        if (!/not.*exist|does not exist/i.test(error?.message || ''))
+          throw error;
+      }
       return targetPath;
     };
   }
@@ -350,6 +434,28 @@ const writeStream = inEnvironment((environment) => {
               const buffer = Buffer.concat(chunks);
               const base64Data = buffer.toString('base64');
               await window.electronAPI.fs.writeFile(destination, base64Data);
+              resolve(destination);
+            } catch (error) {
+              reject(error);
+            }
+          });
+      });
+  }
+
+  if (environment === environments.CAPACITOR) {
+    return (destination, stream) =>
+      new Promise((resolve, reject) => {
+        const chunks = [];
+        stream
+          .on('data', (chunk) => chunks.push(chunk))
+          .on('error', reject)
+          .on('end', async () => {
+            try {
+              await Filesystem.writeFile({
+                ...capacitorPath(destination),
+                data: Buffer.concat(chunks).toString('base64'),
+                recursive: true,
+              });
               resolve(destination);
             } catch (error) {
               reject(error);
@@ -454,6 +560,23 @@ const ensurePathExists = inEnvironment((environment) => {
       }
 
       await window.electronAPI.fs.mkdirp(targetPath);
+    };
+  }
+
+  if (environment === environments.CAPACITOR) {
+    return async (targetPath) => {
+      if (!targetPath) {
+        throw new Error('No path provided to ensurePathExists');
+      }
+      try {
+        await Filesystem.mkdir({
+          ...capacitorPath(targetPath),
+          recursive: true,
+        });
+      } catch (error) {
+        if (!/exist/i.test(error?.message || '')) throw error;
+      }
+      return targetPath;
     };
   }
 
