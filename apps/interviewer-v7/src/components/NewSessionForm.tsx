@@ -7,7 +7,8 @@ import Form from '@codaco/fresco-ui/form/Form';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { createInitialNetwork } from '@codaco/interview';
-import { createSession } from '~/lib/db/api';
+import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
+import { createSession, getSettings } from '~/lib/db/api';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
 
 type NewSessionFormProps = {
@@ -22,6 +23,7 @@ export function NewSessionForm({
   onCreated,
 }: NewSessionFormProps) {
   const formId = useId();
+  const { requireFreshUnlock, setAuthorizedInterviewId } = useStepUpAuth();
 
   return (
     <Form
@@ -35,12 +37,22 @@ export function NewSessionForm({
             fieldErrors: { caseId: ['Case ID is required'] },
           };
         }
+        // Run the enter gate before creating the session so a declined or
+        // failed unlock doesn't leave an orphan session behind.
+        const settings = await getSettings();
+        if (settings.requireUnlockOnEnter) {
+          const result = await requireFreshUnlock();
+          if (!result.ok) return { success: false };
+        }
         const session = await createSession({
           protocolHash: protocol.hash,
           protocolName: protocol.name,
           caseId,
           initialNetwork: createInitialNetwork(),
         });
+        // The user just satisfied the enter gate for this session; mark it
+        // authorized so the InterviewRoute mount doesn't prompt again.
+        setAuthorizedInterviewId(session.id);
         onCreated(session);
         return { success: true };
       }}
