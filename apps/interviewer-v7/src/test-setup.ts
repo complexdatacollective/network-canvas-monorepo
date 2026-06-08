@@ -1,4 +1,10 @@
-import { vi } from 'vitest';
+import '@testing-library/jest-dom/vitest';
+import { cleanup } from '@testing-library/react';
+import { afterEach, vi } from 'vitest';
+
+afterEach(() => {
+  cleanup();
+});
 
 // The @aparajita/capacitor-biometric-auth ESM build re-exports from './definitions'
 // without the .js extension, which Node ESM refuses to resolve in jsdom test mode.
