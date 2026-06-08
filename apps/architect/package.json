@@ -15,8 +15,6 @@
     "prebuild": "npm run copy-interviewer",
     "build": "node ../../scripts/with-turbo.mjs electron-vite build",
     "preview": "electron-vite preview",
-    "lint": "biome check .",
-    "lint:fix": "biome check . --write",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -33,7 +31,7 @@
     "publish": "pnpm run build && electron-builder --publish always --config electron-builder.config.js",
     "generate-icons": "node scripts/generate-app-icons.js",
     "bump": "node scripts/bump.js",
-    "preflight": "pnpm run lint && pnpm test"
+    "preflight": "oxlint . && vitest run"
   },
   "dependencies": {
     "archiver": "^7.0.1",

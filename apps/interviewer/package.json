@@ -21,7 +21,7 @@
     "dist:linux": "npm run build && electron-builder -l",
     "dist:mac": "npm run build && electron-builder -m --x64",
     "dist:win": "npm run build && electron-builder -w",
-    "preflight": "npm run lint && npm test -- --coverage"
+    "preflight": "oxlint . && vitest run --coverage"
   },
   "dependencies": {
     "@codaco/network-query": "workspace:*",
