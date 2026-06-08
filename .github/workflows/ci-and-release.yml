@@ -172,9 +172,7 @@ jobs:
           } > packages/protocol-validation/.env
       - name: Run all gates
         run: |
-          pnpm exec turbo run //#lint //#knip typecheck build test \
-            --filter='!network-canvas-interviewer' \
-            --filter='!network-canvas-architect'
+          pnpm exec turbo run //#lint //#knip typecheck build test
 
   # Deploy jobs are split per-app and per-environment so:
   #   * one app's build failure never blocks the other app's deploy
