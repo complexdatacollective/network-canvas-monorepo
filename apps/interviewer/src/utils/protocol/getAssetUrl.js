@@ -25,14 +25,16 @@ const assetUrl = (environment) => {
   }
 
   if (environment === environments.CAPACITOR) {
-    return (
+    return async (
       protocolUID = isRequired('protocolUID'),
       assetPath = isRequired('assetPath'),
     ) => {
-      const sourceFilename = protocolPath(protocolUID, `assets/${assetPath}`);
-      return resolveFileSystemUrl(sourceFilename).then((entry) =>
-        window.Capacitor.convertFileSrc(entry.toURL()),
+      const sourceFilename = await protocolPath(
+        protocolUID,
+        `assets/${assetPath}`,
       );
+      const entry = await resolveFileSystemUrl(sourceFilename);
+      return window.Capacitor.convertFileSrc(entry.toURL());
     };
   }
 

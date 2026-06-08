@@ -45,16 +45,18 @@ describe('protocolPath', () => {
       getEnvironment.mockReturnValue(environments.CAPACITOR);
     });
 
-    it('Generates an asset path for the file', () => {
-      expect(protocolPath('foo.canvas', 'protocol.json')).toEqual(
-        'protocols/foo.canvas/protocol.json',
-      );
+    it('Generates an asset path for the file', async () => {
+      await expect(
+        protocolPath('foo.canvas', 'protocol.json'),
+      ).resolves.toEqual('protocols/foo.canvas/protocol.json');
 
-      expect(protocolPath('foo.canvas')).toEqual('protocols/foo.canvas/');
+      await expect(protocolPath('foo.canvas')).resolves.toEqual(
+        'protocols/foo.canvas/',
+      );
     });
 
-    it('Thows an error if the protocol is not specified', () => {
-      expect(() => protocolPath()).toThrow();
+    it('Thows an error if the protocol is not specified', async () => {
+      await expect(protocolPath()).rejects.toThrow();
     });
   });
 });

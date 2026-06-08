@@ -42,7 +42,9 @@ const protocolPath = (environment) => {
   }
 
   if (environment === environments.CAPACITOR) {
-    return (protocolUID, filePath) => {
+    // Async to match the Electron contract: callers (e.g. parseProtocol) do
+    // `protocolPath(...).then(...)`, and others `await` it.
+    return async (protocolUID, filePath) => {
       if (!isValidProtocolUID(protocolUID))
         throw Error('Protocol name is not valid');
       if (!filePath) return `protocols/${protocolUID}/`;

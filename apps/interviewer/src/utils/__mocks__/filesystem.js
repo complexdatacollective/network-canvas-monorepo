@@ -3,7 +3,6 @@ import { vi } from 'vitest';
 const readFile = vi.fn(console.log);
 const writeFile = vi.fn(() => Promise.resolve());
 const ensurePathExists = vi.fn(console.log);
-const writeStream = vi.fn(console.log);
 const userDataPath = vi.fn(() => 'tmp/mock/user/path/');
 
 const resolveFileSystemUrl = vi.fn(() =>
@@ -22,7 +21,6 @@ export {
   writeFile,
   ensurePathExists,
   resolveFileSystemUrl,
-  writeStream,
   userDataPath,
   tempDataPath,
 };

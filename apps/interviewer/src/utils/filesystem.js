@@ -244,63 +244,6 @@ const removeDirectory = inEnvironment((environment) => {
 });
 
 /**
- * Write a stream to a file.
- * In Electron, uses secure IPC (collects stream data and writes as single file).
- */
-const writeStream = inEnvironment((environment) => {
-  if (environment === environments.ELECTRON) {
-    return (destination, stream) =>
-      new Promise((resolve, reject) => {
-        if (!isElectron() || !window.electronAPI?.fs?.writeFile) {
-          reject(new Error('electronAPI not available'));
-          return;
-        }
-
-        const chunks = [];
-        stream
-          .on('data', (chunk) => {
-            chunks.push(chunk);
-          })
-          .on('error', reject)
-          .on('end', async () => {
-            try {
-              const buffer = Buffer.concat(chunks);
-              const base64Data = buffer.toString('base64');
-              await window.electronAPI.fs.writeFile(destination, base64Data);
-              resolve(destination);
-            } catch (error) {
-              reject(error);
-            }
-          });
-      });
-  }
-
-  if (environment === environments.CAPACITOR) {
-    return (destination, stream) =>
-      new Promise((resolve, reject) => {
-        const chunks = [];
-        stream
-          .on('data', (chunk) => chunks.push(chunk))
-          .on('error', reject)
-          .on('end', async () => {
-            try {
-              await Filesystem.writeFile({
-                ...capacitorPath(destination),
-                data: Buffer.concat(chunks).toString('base64'),
-                recursive: true,
-              });
-              resolve(destination);
-            } catch (error) {
-              reject(error);
-            }
-          });
-      });
-  }
-
-  throw new Error(`writeStream() not available on platform ${environment}`);
-});
-
-/**
  * Ensure a path exists, creating directories as needed.
  * In Electron, uses secure IPC.
  */
@@ -350,6 +293,5 @@ export {
   readFile,
   resolveFileSystemUrl,
   writeFile,
-  writeStream,
   inSequence,
 };

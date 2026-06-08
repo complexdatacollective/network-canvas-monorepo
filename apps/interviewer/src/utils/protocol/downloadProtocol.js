@@ -1,3 +1,6 @@
+import { Buffer } from 'buffer';
+
+import { CapacitorHttp } from '@capacitor/core';
 import { v4 as uuid } from 'uuid';
 
 import friendlyErrorMessage from '../../utils/friendlyErrorMessage';
@@ -48,13 +51,21 @@ const downloadProtocol = inEnvironment((environment) => {
       const url = await getURL(uri).catch(urlError);
       const destination = `${tempDataPath()}${getProtocolName()}`;
 
-      const response = await fetch(url.href).catch(networkError);
+      // Download via native HTTP (CapacitorHttp), not a webview fetch: the
+      // webview is subject to CORS and most protocol hosts don't send CORS
+      // headers — the same reason the Electron branch downloads in its main
+      // process. CapacitorHttp follows redirects (e.g. a GitHub release to its
+      // CDN) and returns an `arraybuffer` response body as a base64 string.
+      const response = await CapacitorHttp.get({
+        url: url.href,
+        responseType: 'arraybuffer',
+      }).catch(networkError);
 
-      if (!response.ok) {
+      if (response.status < 200 || response.status >= 300) {
         throw new Error(`Failed to download protocol: HTTP ${response.status}`);
       }
 
-      const data = await response.arrayBuffer();
+      const data = Buffer.from(response.data, 'base64');
       await writeFile(destination, data);
       return destination;
     };

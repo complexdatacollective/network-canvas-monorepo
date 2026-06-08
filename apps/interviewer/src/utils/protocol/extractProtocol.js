@@ -13,7 +13,6 @@ import {
   readFile,
   removeDirectory,
   writeFile,
-  writeStream,
 } from '../filesystem';
 import friendlyErrorMessage from '../friendlyErrorMessage';
 import protocolPath from './protocolPath';
@@ -69,9 +68,13 @@ const extractZipFile = inEnvironment((environment) => {
   }
 
   if (environment === environments.CAPACITOR) {
+    // Mirror the Electron branch: JSZip's streaming APIs stall in the
+    // Vite-built webview, so read the whole entry and write the buffer.
     return (zipObject, destination) => {
       const extractPath = `${destination}${zipObject.name}`;
-      return writeStream(extractPath, zipObject.internalStream('uint8array'));
+      return zipObject
+        .async('uint8array')
+        .then((data) => writeFile(extractPath, data));
     };
   }
 
