@@ -10,7 +10,7 @@ export const validTypes = new Set(
 );
 
 // List of operators
-export const operators = {
+const operators = {
   EXACTLY: 'EXACTLY',
   EXISTS: 'EXISTS',
   INCLUDES: 'INCLUDES',

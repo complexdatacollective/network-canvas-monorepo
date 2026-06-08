@@ -46,11 +46,6 @@ const actionCreators = {
   setProtocol,
 };
 
-const actionTypes = {
-  UPDATE_OPTIONS,
-  SET_PROTOCOL,
-};
-
 const test = {
   updateOptions,
 };
@@ -67,4 +62,4 @@ export default reduceReducers(protocolReducer, (state, action) => ({
   assetManifest: assetManifest(state.assetManifest, action),
 }));
 
-export { actionCreators, actionTypes, test };
+export { actionCreators, test };

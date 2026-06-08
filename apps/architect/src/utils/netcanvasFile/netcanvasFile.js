@@ -190,9 +190,7 @@ const utils = {
 export {
   checkSchemaVersion,
   createNetcanvas,
-  verifyNetcanvas,
   getNewFileName,
-  importNetcanvas,
   migrateNetcanvas,
   saveNetcanvas,
   schemaVersionStates,

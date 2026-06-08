@@ -46,8 +46,6 @@ CategoricalBinPrompts.defaultProps = {
   type: null,
 };
 
-export { CategoricalBinPrompts };
-
 export default compose(
   withSubject,
   withDisabledSubjectRequired,

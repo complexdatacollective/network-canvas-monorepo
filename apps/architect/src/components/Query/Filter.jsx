@@ -28,6 +28,4 @@ Filter.defaultProps = {
   error: null,
 };
 
-export { Filter };
-
 export default Filter;

@@ -75,7 +75,7 @@ export const VARIABLE_TYPES = {
   },
 };
 
-export const COMPONENTS = {
+const COMPONENTS = {
   TextInput: {
     label: 'Text Input',
     value: 'Text',
@@ -162,7 +162,7 @@ export const COMPONENTS = {
   },
 };
 
-export const VARIABLE_TYPES_COMPONENTS = [
+const VARIABLE_TYPES_COMPONENTS = [
   ['number', [COMPONENTS.NumberInput], '-- Number Types -- '],
   ['scalar', [COMPONENTS.VisualAnalogScale], '-- Scalar Types --'],
   [
@@ -188,9 +188,9 @@ export const VARIABLE_TYPES_COMPONENTS = [
   ],
 ];
 
-export const VARIABLE_TYPES_WITH_OPTIONS = ['ordinal', 'categorical'];
+const VARIABLE_TYPES_WITH_OPTIONS = ['ordinal', 'categorical'];
 
-export const VARIABLE_TYPES_WITH_PARAMETERS = ['scalar', 'datetime'];
+const VARIABLE_TYPES_WITH_PARAMETERS = ['scalar', 'datetime'];
 
 export const VARIABLE_TYPES_WITH_COMPONENTS = VARIABLE_TYPES_COMPONENTS.map(
   ([type]) => type,
@@ -254,9 +254,7 @@ const getIconForType = (type) =>
   get(VARIABLE_TYPES, `${type}.icon`, DefaultVariable);
 
 export {
-  INPUT_OPTIONS as inputOptions,
   formattedInputOptions,
-  VARIABLE_OPTIONS as variableOptions,
   getTypeForComponent,
   getComponentsForType,
   getIconForType,
@@ -265,5 +263,3 @@ export {
   isVariableTypeWithParameters,
   isBooleanWithOptions,
 };
-
-export default INPUT_OPTIONS;

@@ -219,6 +219,4 @@ PromptFields.defaultProps = {
   type: null,
 };
 
-export { PromptFields };
-
 export default compose(withFieldsHandlers)(PromptFields);
