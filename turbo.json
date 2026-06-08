@@ -116,8 +116,11 @@
       "dependsOn": ["^build", "network-canvas-interviewer#build"],
       "inputs": [
         "src/**",
+        "public/**",
+        "index.html",
         "scripts/**",
-        "tsconfig*.json",
+        "babel.config.*",
+        "postcss.config.*",
         "electron.vite.config.*",
         "electron-builder.config.*",
         "package.json"
