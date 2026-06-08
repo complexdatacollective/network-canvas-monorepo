@@ -248,6 +248,18 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
   const state = getInputState(props);
   const separatorSet = new Set(separatorAfter);
 
+  // A masked code (e.g. a PIN) is type="password", which password managers
+  // offer to fill/save — inappropriate here. Opt the major ones out.
+  const passwordManagerOptOut = sensitive
+    ? {
+        'data-1p-ignore': '',
+        'data-bwignore': '',
+        'data-protonpass-ignore': '',
+        'data-lpignore': 'true',
+        'data-form-type': 'other',
+      }
+    : {};
+
   return (
     <fieldset
       ref={groupRef}
@@ -266,6 +278,7 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
             type={sensitive ? 'password' : 'text'}
             inputMode={inputMode}
             autoComplete={sensitive ? 'off' : i === 0 ? 'one-time-code' : 'off'}
+            {...passwordManagerOptOut}
             maxLength={1}
             className={segmentVariants({ size, state })}
             value={chars[i] ?? ''}
