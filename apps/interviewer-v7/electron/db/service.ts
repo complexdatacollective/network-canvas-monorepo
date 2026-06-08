@@ -6,6 +6,11 @@ import Database, {
 } from 'better-sqlite3-multiple-ciphers';
 import { app } from 'electron';
 
+// Single source of truth for the settings contract. `types.ts` is a pure
+// data-model module (types + this constant, no renderer runtime), so the main
+// process shares it directly rather than mirroring a second copy that could
+// drift from the renderer's `StoredSettings` shape.
+import { DEFAULT_SETTINGS } from '../../src/lib/db/types';
 import { SCHEMA_SQL } from './schema';
 
 type ProtocolRow = {
@@ -121,21 +126,6 @@ type AssetRow = {
 type SettingsRow = {
   id: string;
   settings_json: string;
-};
-
-const DEFAULT_SETTINGS = {
-  id: 'device',
-  exportGraphML: true,
-  exportCSV: true,
-  useScreenLayoutCoordinates: false,
-  screenLayoutHeight: 1080,
-  screenLayoutWidth: 1920,
-  dismissedUpdates: [] as string[],
-  idleTimeoutMinutes: 15,
-  requireUnlockOnEnter: true,
-  requireUnlockOnExit: false,
-  requireUnlockOnExport: false,
-  sampleProtocolDismissed: false,
 };
 
 const DB_FILENAME = 'interviewer-v7.encrypted.db';
