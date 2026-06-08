@@ -5,14 +5,19 @@ import type {
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 
-import ParentPartnershipsStep from '../quickStartWizard/ParentPartnershipsStep';
-import GenericAdditionalParentsStep from './steps/GenericAdditionalParentsStep';
-import GenericBioParentsStep from './steps/GenericBioParentsStep';
-import GenericOtherParentsStep from './steps/GenericOtherParentsStep';
+import { buildNodeOptions } from './buildNodeOptions';
+import { derivePreselection } from './derivePreselection';
 import {
-  type EgoCellResult,
-  egoCellTransform,
-} from './transforms/egoCellTransform';
+  geneticParentCandidates,
+  nominatedGameteRoles,
+} from './parentCandidates';
+import BioTriadStep, { BioTriadConfigProvider } from './steps/BioTriadStep';
+import GenericAdditionalParentsStep from './steps/GenericAdditionalParentsStep';
+import GenericOtherParentsStep from './steps/GenericOtherParentsStep';
+import NewParentPartnershipsStep, {
+  shouldSkipNewParentPartnerships,
+} from './steps/NewParentPartnershipsStep';
+import { defineParentsTransform } from './transforms/defineParentsTransform';
 
 function getNodeDisplayName(
   nodeId: string,
@@ -32,11 +37,47 @@ export async function openDefineParentsWizard(
   openDialog: ReturnType<typeof useDialog>['openDialog'],
   focalNodeId: string,
   nodes: Map<string, NcNode>,
-  _edges: Map<string, NcEdge>,
+  edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
 ): Promise<CommitBatch | null> {
   const displayName = getNodeDisplayName(focalNodeId, nodes, variableConfig);
   const title = `${displayName} Biological Parents`;
+
+  const preselection = derivePreselection(focalNodeId, edges, variableConfig);
+  const candidateIds = geneticParentCandidates(
+    focalNodeId,
+    'define-parents',
+    edges,
+    variableConfig,
+  );
+  const existingNodes = buildNodeOptions(
+    nodes,
+    edges,
+    variableConfig,
+    candidateIds,
+  );
+
+  const bioTriadConfig = {
+    existingNodes,
+    preselection,
+    gameteRoles: nominatedGameteRoles(edges),
+  };
+
+  function WrappedBioTriadStep() {
+    return (
+      <BioTriadConfigProvider value={bioTriadConfig}>
+        <BioTriadStep />
+      </BioTriadConfigProvider>
+    );
+  }
+
+  function WrappedPartnershipsStep() {
+    return (
+      <BioTriadConfigProvider value={bioTriadConfig}>
+        <NewParentPartnershipsStep />
+      </BioTriadConfigProvider>
+    );
+  }
 
   const result = await openDialog({
     type: 'wizard',
@@ -44,8 +85,8 @@ export async function openDefineParentsWizard(
     progress: null,
     steps: [
       {
-        title,
-        content: GenericBioParentsStep,
+        title: 'Biological parents',
+        content: WrappedBioTriadStep,
       },
       {
         title: 'Other parents',
@@ -58,16 +99,22 @@ export async function openDefineParentsWizard(
       },
       {
         title: 'Parent partnerships',
-        content: ParentPartnershipsStep,
+        content: WrappedPartnershipsStep,
+        skip: shouldSkipNewParentPartnerships,
       },
     ],
     onFinish: (formValues: Record<string, unknown>) => {
-      return egoCellTransform(formValues, variableConfig, focalNodeId);
+      return defineParentsTransform(formValues, focalNodeId, variableConfig);
     },
   });
 
-  if (result && typeof result === 'object' && 'batch' in result) {
-    return (result as EgoCellResult).batch;
+  if (
+    result &&
+    typeof result === 'object' &&
+    'nodes' in result &&
+    'edges' in result
+  ) {
+    return result as CommitBatch;
   }
 
   return null;

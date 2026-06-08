@@ -37,11 +37,14 @@ const useDropMonitor = (id, props = defaultProps) => {
     updateState(status);
   };
 
+  const updateMonitorPropsRef = useRef(updateMonitorProps);
+  updateMonitorPropsRef.current = updateMonitorProps;
+
   useEffect(() => {
-    const unsubscribe = store.subscribe(updateMonitorProps);
+    const unsubscribe = store.subscribe(() => updateMonitorPropsRef.current());
 
     return unsubscribe;
-  }, [updateMonitorProps]);
+  }, []);
 
   return state;
 };

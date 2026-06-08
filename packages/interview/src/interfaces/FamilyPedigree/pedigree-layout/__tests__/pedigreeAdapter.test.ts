@@ -52,6 +52,7 @@ function makeEdges(
     to: string;
     relationshipType: string;
     isActive?: boolean;
+    isGestationalCarrier?: boolean;
   }[],
 ): Map<string, NcEdge> {
   const map = new Map<string, NcEdge>();
@@ -62,10 +63,16 @@ function makeEdges(
       type: 'family',
       from: e.from,
       to: e.to,
-      attributes: {
-        [variableConfig.relationshipTypeVariable]: e.relationshipType,
-        [variableConfig.isActiveVariable]: e.isActive ?? true,
-      },
+      attributes: e.isGestationalCarrier
+        ? {
+            [variableConfig.relationshipTypeVariable]: e.relationshipType,
+            [variableConfig.isActiveVariable]: e.isActive ?? true,
+            [variableConfig.isGestationalCarrierVariable]: true,
+          }
+        : {
+            [variableConfig.relationshipTypeVariable]: e.relationshipType,
+            [variableConfig.isActiveVariable]: e.isActive ?? true,
+          },
     });
   }
   return map;
@@ -125,6 +132,73 @@ describe('storeToPedigreeInput', () => {
 
     expect(input.parents[fatherIdx]).toHaveLength(0);
     expect(input.parents[motherIdx]).toHaveLength(0);
+  });
+
+  test('promotes the gestational carrier to a primary parent when the child has no primary parent', () => {
+    // Donor-conceived child carried by a gestational carrier ("single parent,
+    // two donors"). Per NSGC nomenclature the child descends from the carrier;
+    // the carrier's edge is promoted so it anchors the line of descent.
+    const nodes = makeNodes([
+      { id: 'eggDonor' },
+      { id: 'spermDonor' },
+      { id: 'carrier' },
+      { id: 'child', isEgo: true },
+    ]);
+    const edges = makeEdges([
+      { from: 'eggDonor', to: 'child', relationshipType: 'donor' },
+      { from: 'spermDonor', to: 'child', relationshipType: 'donor' },
+      {
+        from: 'carrier',
+        to: 'child',
+        relationshipType: 'surrogate',
+        isGestationalCarrier: true,
+      },
+    ]);
+
+    const { input, idToIndex } = storeToPedigreeInput(
+      nodes,
+      edges,
+      variableConfig,
+    );
+    const childParents = input.parents[idToIndex.get('child')!]!;
+    const carrierConn = childParents.find(
+      (p) => p.parentIndex === idToIndex.get('carrier')!,
+    );
+    const eggConn = childParents.find(
+      (p) => p.parentIndex === idToIndex.get('eggDonor')!,
+    );
+
+    expect(carrierConn?.edgeType).toBe('social');
+    expect(eggConn?.edgeType).toBe('donor');
+  });
+
+  test('leaves the surrogate auxiliary when the child also has a primary parent', () => {
+    const nodes = makeNodes([
+      { id: 'mum' },
+      { id: 'dad' },
+      { id: 'surr' },
+      { id: 'child', isEgo: true },
+    ]);
+    const edges = makeEdges([
+      { from: 'mum', to: 'child', relationshipType: 'biological' },
+      { from: 'dad', to: 'child', relationshipType: 'biological' },
+      {
+        from: 'surr',
+        to: 'child',
+        relationshipType: 'surrogate',
+        isGestationalCarrier: true,
+      },
+    ]);
+
+    const { input, idToIndex } = storeToPedigreeInput(
+      nodes,
+      edges,
+      variableConfig,
+    );
+    const surrConn = input.parents[idToIndex.get('child')!]!.find(
+      (p) => p.parentIndex === idToIndex.get('surr')!,
+    );
+    expect(surrConn?.edgeType).toBe('surrogate');
   });
 
   test('three-generation pedigree produces correct indexing', () => {

@@ -1,5 +1,11 @@
 # @codaco/shared-consts
 
+## 5.2.0
+
+### Minor Changes
+
+- `FamilyPedigreeStageMetadataSchema`: edges may now carry an optional internal `gameteRole` (`'egg' | 'sperm'`) recording which gamete a biological/donor parent contributed. It is persisted in stage metadata for relationship labelling and is never written to the interview network.
+
 ## 5.1.0
 
 ### Minor Changes

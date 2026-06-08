@@ -6,6 +6,13 @@ import { registerIpcHandlers } from './ipcHandlers.js';
 import loadDevTools from './loadDevTools.js';
 import log from './log.js';
 
+// Dev-only: expose the Chrome DevTools Protocol so the renderer can be driven
+// and inspected over CDP (e.g. for automated testing). Never enabled in a
+// packaged build. Must be set before the app is ready.
+if (!app.isPackaged) {
+  app.commandLine.appendSwitch('remote-debugging-port', '9222');
+}
+
 protocol.registerSchemesAsPrivileged([
   {
     scheme: 'asset',

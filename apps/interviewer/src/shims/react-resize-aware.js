@@ -26,21 +26,28 @@ const listenerStyle = {
 const ResizeListener = ({ onResize }) => {
   const ref = useRef();
 
-  const getWindow = () => {
+  // `onResize` (and thus the handlers below) is recreated each render; the effect
+  // must mount once and the listener it adds must keep the same identity for the
+  // add/remove pair to match. Keep the latest `onResize` in a ref and use stable
+  // handlers, so the effect can run with empty deps (mount/unmount only).
+  const onResizeRef = useRef(onResize);
+  onResizeRef.current = onResize;
+
+  const getWindow = useCallback(() => {
     return ref.current?.contentDocument?.defaultView;
-  };
+  }, []);
 
-  const handleResize = () => {
-    onResize(ref);
-  };
+  const handleResize = useCallback(() => {
+    onResizeRef.current(ref);
+  }, []);
 
-  const handleLoad = () => {
+  const handleLoad = useCallback(() => {
     handleResize();
     const win = getWindow();
     if (win) {
       win.addEventListener('resize', handleResize);
     }
-  };
+  }, [getWindow, handleResize]);
 
   useEffect(() => {
     if (getWindow()) {

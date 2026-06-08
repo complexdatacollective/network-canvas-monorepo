@@ -1,8 +1,4 @@
-import {
-  errToString,
-  validateLogic,
-  validateSchema,
-} from '@codaco/protocol-validation';
+import { validateProtocol as runProtocolValidation } from '@codaco/protocol-validation';
 
 import { APP_SUPPORTED_SCHEMA_VERSIONS } from '../../config';
 import friendlyErrorMessage from '../../utils/friendlyErrorMessage';
@@ -18,17 +14,18 @@ const validationError = friendlyErrorMessage(
 
 // Basic validation on protocol format;
 // any error will halt loading and display a message to the user.
-const validateProtocol = (protocol) => {
-  const schemaErrors = validateSchema(protocol);
-  const logicErrors = validateLogic(protocol);
+const validateProtocol = async (protocol) => {
+  const { isValid, schemaErrors, logicErrors } =
+    await runProtocolValidation(protocol);
 
-  if (schemaErrors.length > 0 || logicErrors.length > 0) {
-    return Promise.reject(
-      new Error([...schemaErrors, ...logicErrors].map(errToString).join('')),
-    );
+  if (!isValid) {
+    const message = [...schemaErrors, ...logicErrors]
+      .map(({ path, message: errorMessage }) => `${path}: ${errorMessage}`)
+      .join('\n');
+    return Promise.reject(new Error(message));
   }
 
-  return Promise.resolve(protocol);
+  return protocol;
 };
 
 const checkSchemaVersion = (protocol) => {
@@ -44,7 +41,8 @@ const checkSchemaVersion = (protocol) => {
 };
 
 const parseProtocol = (protocolUID, name) =>
-  readFile(protocolPath(protocolUID, 'protocol.json'))
+  protocolPath(protocolUID, 'protocol.json')
+    .then((filePath) => readFile(filePath))
     .then((json) => JSON.parse(json))
     .then((protocol) => checkSchemaVersion(protocol))
     .then((protocol) => validateProtocol(protocol))

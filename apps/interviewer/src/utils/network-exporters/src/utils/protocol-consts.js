@@ -1,6 +1,7 @@
+/* eslint-disable import/prefer-default-export */
 // Docs: https://github.com/codaco/Network-Canvas/wiki/Variable-Types
 
-export const VariableType = Object.freeze({
+const VariableType = Object.freeze({
   boolean: 'boolean',
   text: 'text',
   number: 'number',
@@ -10,3 +11,5 @@ export const VariableType = Object.freeze({
   scalar: 'scalar',
   datetime: 'datetime',
 });
+
+module.exports = { VariableType };

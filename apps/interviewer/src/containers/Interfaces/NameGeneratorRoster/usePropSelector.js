@@ -17,7 +17,7 @@ import { useSelector } from 'react-redux';
  *
  * const results = usePropSelector(makeOldSelector, props, true);
  */
-const usePropSelector = (selector, props, isFactory, equalityFn) => {
+const usePropSelector = (selector, props, isFactory = false, equalityFn) => {
   const memoizedSelector = useMemo(() => {
     if (isFactory) {
       return selector();

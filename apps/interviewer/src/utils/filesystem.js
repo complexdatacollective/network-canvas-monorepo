@@ -320,16 +320,21 @@ const writeFile = inEnvironment((environment) => {
       if (!isElectron() || !window.electronAPI?.fs?.writeFile) {
         throw new Error('electronAPI not available');
       }
-      // Convert Buffer/ArrayBuffer to base64 for IPC transfer
+      // Binary data is base64-encoded for IPC; flag it so main decodes it
+      // reliably (regardless of size) rather than guessing.
       let dataToWrite = data;
+      let isBinary = false;
       if (Buffer.isBuffer(data)) {
         dataToWrite = data.toString('base64');
+        isBinary = true;
       } else if (data instanceof ArrayBuffer) {
         dataToWrite = Buffer.from(data).toString('base64');
+        isBinary = true;
       } else if (data instanceof Uint8Array) {
         dataToWrite = Buffer.from(data).toString('base64');
+        isBinary = true;
       }
-      await window.electronAPI.fs.writeFile(filePath, dataToWrite);
+      await window.electronAPI.fs.writeFile(filePath, dataToWrite, isBinary);
       return filePath;
     };
   }

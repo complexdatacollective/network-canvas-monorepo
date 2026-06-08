@@ -103,6 +103,25 @@ export function storeToPedigreeInput(
     }
   }
 
+  // A child with no primary (biological/social/adoptive) parent — e.g. a
+  // donor-conceived child carried by a gestational carrier ("single parent, two
+  // donors") — descends from the carrier. Promote the carrier's edge to a
+  // primary type so it anchors the line of descent (the carrier's line of
+  // descent is solid in standard pedigree nomenclature), with the gamete donors
+  // remaining auxiliary. Without this the child has only auxiliary parents,
+  // forms no family unit, and renders no line of descent at all.
+  for (let i = 0; i < n; i++) {
+    const hasPrimaryParent = parents[i]!.some(
+      (p) =>
+        p.edgeType === 'biological' ||
+        p.edgeType === 'social' ||
+        p.edgeType === 'adoptive',
+    );
+    if (hasPrimaryParent) continue;
+    const carrier = parents[i]!.find((p) => p.isGestationalCarrier);
+    if (carrier) carrier.edgeType = 'social';
+  }
+
   return {
     input: {
       id,

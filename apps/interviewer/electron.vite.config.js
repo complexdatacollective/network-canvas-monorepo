@@ -26,7 +26,7 @@ export default defineConfig({
     },
   },
   renderer: {
-    root: resolve(__dirname, 'src/renderer'),
+    root: resolve(__dirname, 'src'),
     define: {
       // Provide module shim for libraries that check module.hot (like redux-form)
       'module.hot': 'undefined',
@@ -38,19 +38,10 @@ export default defineConfig({
         transformMixedEsModules: true,
       },
       rollupOptions: {
-        input: resolve(__dirname, 'src/renderer/index.html'),
+        input: resolve(__dirname, 'src/index.html'),
       },
     },
-    plugins: [
-      react({
-        include: ['src/**/*.js', 'src/**/*.jsx'],
-        babel: {
-          babelrc: false,
-          configFile: false,
-          presets: [['@babel/preset-react', { runtime: 'automatic' }]],
-        },
-      }),
-    ],
+    plugins: [react()],
     resolve: {
       alias: {
         '@': resolve(__dirname, 'src'),
@@ -65,19 +56,17 @@ export default defineConfig({
     worker: {
       format: 'es',
     },
-    esbuild: {
-      jsx: 'automatic',
-      jsxImportSource: 'react',
-    },
     optimizeDeps: {
-      include: ['react-resize-aware', '@codaco/ui'],
-      esbuildOptions: {
-        loader: {
-          '.js': 'jsx',
-        },
-        jsx: 'automatic',
-        jsxImportSource: 'react',
-      },
+      // csvtojson's CJS browser build is imported only from csvDecoder.worker.js;
+      // include it so the dep optimizer pre-bundles it (CJS->ESM) for the worker.
+      include: [
+        'react-resize-aware',
+        '@codaco/ui',
+        'csvtojson/browser/browser.js',
+      ],
+      // protocol-validation dynamically imports ./schemas/<version>.js at runtime;
+      // the dep optimizer can't follow that, so serve it unbundled.
+      exclude: ['@codaco/protocol-validation'],
     },
     css: {
       preprocessorOptions: {

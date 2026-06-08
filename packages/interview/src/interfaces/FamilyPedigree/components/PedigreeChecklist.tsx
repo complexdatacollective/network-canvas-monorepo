@@ -1,37 +1,47 @@
 'use client';
 
+import { HelpCircle } from 'lucide-react';
 import {
   AnimatePresence,
   LayoutGroup,
   motion,
   useMotionValue,
 } from 'motion/react';
-import { type RefObject, useCallback, useMemo, useState } from 'react';
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 import { Button } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { useStageSelector } from '~/hooks/useStageSelector';
 
+import { buildPedigreeDialog } from '../buildPedigreeDialog';
 import { useFamilyPedigreeStore } from '../FamilyPedigreeProvider';
 import { getRelationshipTypeVariable } from '../utils/edgeUtils';
 import { getEgoVariable, getNodeLabelVariable } from '../utils/nodeUtils';
-
-type ChecklistItem = {
-  id: string;
-  label: string;
-  done: boolean;
-  required: boolean;
-};
+import {
+  buildParentsItem,
+  type ChecklistItem,
+  partnersNeedingParents,
+} from './pedigreeChecklistItems';
 
 export default function PedigreeChecklist({
   dragConstraints,
   onFinalize,
+  onAllDoneChange,
 }: {
   dragConstraints: RefObject<HTMLElement | null>;
   onFinalize: () => void;
+  onAllDoneChange?: (allDone: boolean) => void;
 }) {
   const nodes = useFamilyPedigreeStore((s) => s.network.nodes);
   const edges = useFamilyPedigreeStore((s) => s.network.edges);
@@ -40,6 +50,7 @@ export default function PedigreeChecklist({
   const relationshipTypeVariable = useStageSelector(
     getRelationshipTypeVariable,
   );
+  const { openDialog } = useDialog();
 
   const [dismissed, setDismissed] = useState(false);
   const [manuallyChecked, setManuallyChecked] = useState<Set<string>>(
@@ -164,42 +175,55 @@ export default function PedigreeChecklist({
     const list: ChecklistItem[] = [];
 
     for (const parentId of egoParentIds) {
-      const parentNode = nodes.get(parentId);
-      const rawName = parentNode?.attributes[nodeLabelVariable];
-      const nameKnown = typeof rawName === 'string' && rawName.length > 0;
+      const rawName = nodes.get(parentId)?.attributes[nodeLabelVariable];
+      if (typeof rawName !== 'string' || rawName.length === 0) continue;
 
-      if (!nameKnown) continue;
-
+      // Only nudge for a parent's own parents when that parent is a genetic
+      // parent of ego. An adoptive or surrogate parent's parents carry no
+      // genetic information about ego, so they are never prompted for. Even for
+      // genetic parents the ancestry may be unknown (e.g. a gamete donor), so
+      // this item is optional and never blocks finalizing.
       const edgeToEgo = [...edges.values()].find(
         (e) => e.from === parentId && e.to === egoId,
       );
-      const edgeToEgoRelType = edgeToEgo?.attributes[
-        relationshipTypeVariable
-      ] as string | undefined;
-      if (edgeToEgoRelType === 'donor' || edgeToEgoRelType === 'surrogate') {
+      const relTypeToEgo = edgeToEgo?.attributes[relationshipTypeVariable];
+      if (relTypeToEgo !== 'biological' && relTypeToEgo !== 'donor') {
         continue;
       }
 
-      const parentName = rawName;
-      const grandparentCount = [...edges.values()].filter((e) => {
-        const rt = e.attributes[relationshipTypeVariable] as string | undefined;
-        return e.to === parentId && rt !== 'partner' && rt !== 'social';
-      }).length;
-      const done =
-        grandparentCount >= 2 ||
-        manuallyChecked.has(`grandparents-${parentId}`);
+      list.push(
+        buildParentsItem(
+          parentId,
+          rawName,
+          'grandparents',
+          edges,
+          relationshipTypeVariable,
+          manuallyChecked,
+        ),
+      );
+    }
 
-      const remaining = Math.max(0, 2 - grandparentCount);
-      list.push({
-        id: `grandparents-${parentId}`,
-        label: done
-          ? `Add parents for ${parentName}`
-          : remaining === 1
-            ? `Add 1 more parent for ${parentName}`
-            : `Add parents for ${parentName}`,
-        done,
-        required: true,
-      });
+    // Once a partner has had children with ego, that partner contributes to the
+    // next generation, so their own parents become relevant to those children's
+    // family history (the same reason ego's parents are nudged above).
+    for (const partnerId of partnersNeedingParents(
+      egoId,
+      edges,
+      relationshipTypeVariable,
+    )) {
+      const rawName = nodes.get(partnerId)?.attributes[nodeLabelVariable];
+      if (typeof rawName !== 'string' || rawName.length === 0) continue;
+
+      list.push(
+        buildParentsItem(
+          partnerId,
+          rawName,
+          'partner-parents',
+          edges,
+          relationshipTypeVariable,
+          manuallyChecked,
+        ),
+      );
     }
 
     list.push({
@@ -257,6 +281,10 @@ export default function PedigreeChecklist({
 
   const allDone = sortedItems.every((i) => i.done);
 
+  useEffect(() => {
+    onAllDoneChange?.(allDone);
+  }, [allDone, onAllDoneChange]);
+
   const overflowY = useMotionValue('auto');
 
   if (items.length === 0) return null;
@@ -266,7 +294,7 @@ export default function PedigreeChecklist({
       {!dismissed && (
         <MotionSurface
           key="pedigree-checklist"
-          className="bg-surface/80 absolute bottom-4 left-4 z-20 w-72 cursor-move overflow-hidden border-b-2 shadow-2xl backdrop-blur-md"
+          className="bg-surface/80 absolute bottom-4 left-4 z-20 w-80 cursor-move overflow-hidden border-b-2 shadow-2xl backdrop-blur-md"
           layout
           drag
           dragConstraints={dragConstraints}
@@ -279,13 +307,15 @@ export default function PedigreeChecklist({
           transition={{ type: 'spring', duration: 0.5 }}
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1">
-              <Heading level="h4" margin="none">
-                Pedigree Checklist
-              </Heading>
-            </div>
+            <Heading level="h4" margin="none">
+              Pedigree Checklist
+            </Heading>
             <CloseButton size="sm" onClick={() => setDismissed(true)} />
           </div>
+          <Paragraph intent="smallText" className="text-current/50">
+            Complete the following tasks before continuing. If a task doesn't
+            apply you can click it to mark it as done.
+          </Paragraph>
           <motion.div className="mt-4 max-h-64" style={{ overflowY }}>
             <LayoutGroup>
               <ul className="flex flex-col gap-3">
@@ -313,11 +343,7 @@ export default function PedigreeChecklist({
                       }
                     }}
                   >
-                    <span
-                      className="contents"
-                      onClickCapture={(e) => e.stopPropagation()}
-                      onKeyDownCapture={(e) => e.stopPropagation()}
-                    >
+                    <span className="contents">
                       <Checkbox
                         value={item.done}
                         onChange={() => toggleManualCheck(item.id)}
@@ -342,15 +368,25 @@ export default function PedigreeChecklist({
               </ul>
             </LayoutGroup>
           </motion.div>
-          {allDone && (
+          <motion.div
+            layout
+            className="mt-4 flex flex-col justify-between gap-2"
+          >
+            {allDone && (
+              <Button color="primary" onClick={onFinalize}>
+                Finalize family pedigree
+              </Button>
+            )}
             <Button
-              color="primary"
-              className="mt-2 w-full"
-              onClick={onFinalize}
+              color="dynamic"
+              variant="text"
+              aria-label="How to build your pedigree"
+              icon={<HelpCircle />}
+              onClick={() => void openDialog(buildPedigreeDialog)}
             >
-              Finalize family pedigree
+              Help
             </Button>
-          )}
+          </motion.div>
         </MotionSurface>
       )}
     </AnimatePresence>
