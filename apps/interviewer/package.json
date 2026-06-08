@@ -23,13 +23,14 @@
     "dist:win": "npm run build && electron-builder -w",
     "build:web": "vite build --config vite.web.config.js",
     "preflight": "oxlint . && vitest run --coverage",
-    "cap:sync": "pnpm build:web && cap sync",
+    "version:sync": "node scripts/sync-platform-versions.mjs",
+    "cap:sync": "pnpm version:sync && pnpm build:web && cap sync",
     "cap:add:ios": "cap add ios",
     "cap:add:android": "cap add android",
-    "cap:run:ios": "pnpm build:web && cap run ios",
-    "cap:run:android": "pnpm build:web && cap run android",
-    "cap:dev:ios": "pnpm build:web && CAP_DEV_SERVER_URL=http://localhost:5181 cap sync ios && concurrently -k -s first -n vite,cap \"vite --config vite.web.config.js\" \"CAP_DEV_SERVER_URL=http://localhost:5181 cap run ios\"",
-    "cap:dev:android": "pnpm build:web && CAP_DEV_SERVER_URL=http://10.0.2.2:5181 cap sync android && concurrently -k -s first -n vite,cap \"vite --config vite.web.config.js\" \"CAP_DEV_SERVER_URL=http://10.0.2.2:5181 cap run android\""
+    "cap:run:ios": "pnpm version:sync && pnpm build:web && cap run ios",
+    "cap:run:android": "pnpm version:sync && pnpm build:web && cap run android",
+    "cap:dev:ios": "pnpm version:sync && pnpm build:web && CAP_DEV_SERVER_URL=http://localhost:5181 cap sync ios && concurrently -k -s first -n vite,cap \"vite --config vite.web.config.js\" \"CAP_DEV_SERVER_URL=http://localhost:5181 cap run ios\"",
+    "cap:dev:android": "pnpm version:sync && pnpm build:web && CAP_DEV_SERVER_URL=http://10.0.2.2:5181 cap sync android && concurrently -k -s first -n vite,cap \"vite --config vite.web.config.js\" \"CAP_DEV_SERVER_URL=http://10.0.2.2:5181 cap run android\""
   },
   "dependencies": {
     "@capacitor/android": "^8.3.4",
