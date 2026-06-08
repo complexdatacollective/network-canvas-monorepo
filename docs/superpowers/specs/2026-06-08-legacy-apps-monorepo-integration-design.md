@@ -1,7 +1,18 @@
 # Legacy interviewer & architect — monorepo workflow integration
 
 **Date:** 2026-06-08
-**Status:** Approved design
+**Status:** Implemented (branch `legacy-apps-ci-integration`)
+
+> **Implementation note:** during execution the knip "full purge" surfaced the
+> vendored CommonJS `apps/interviewer/src/utils/network-exporters/` copy (knip's
+> `--fix` corrupts CJS). Rather than exclude it, we **migrated the interviewer
+> export feature off the vendored copy onto the workspace `@codaco/network-exporters`
+> package** — moving export execution into the renderer (cross-platform: Electron +
+> Cordova/Capacitor) modelled on `apps/interviewer-v7`, deleting the vendored tree.
+> That export feature has no automated coverage and was **not runtime-verified** in
+> this environment — it needs a real export tested on desktop and mobile. Two
+> pre-existing path-traversal guards surfaced by the commit security review were
+> also hardened (architect `isPathAllowed`).
 
 ## Problem
 
