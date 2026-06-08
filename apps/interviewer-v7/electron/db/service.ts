@@ -135,6 +135,7 @@ const DEFAULT_SETTINGS = {
   requireUnlockOnEnter: true,
   requireUnlockOnExit: false,
   requireUnlockOnExport: false,
+  sampleProtocolDismissed: false,
 };
 
 const DB_FILENAME = 'interviewer-v7.encrypted.db';
