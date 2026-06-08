@@ -41,6 +41,15 @@ const protocolPath = (environment) => {
     };
   }
 
+  if (environment === environments.CAPACITOR) {
+    return (protocolUID, filePath) => {
+      if (!isValidProtocolUID(protocolUID))
+        throw Error('Protocol name is not valid');
+      if (!filePath) return `protocols/${protocolUID}/`;
+      return `protocols/${protocolUID}/${filePath}`;
+    };
+  }
+
   if (environment === environments.CORDOVA) {
     return (protocolUID, filePath) => {
       if (!isValidProtocolUID(protocolUID))

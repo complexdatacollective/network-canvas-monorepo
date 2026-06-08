@@ -17,7 +17,11 @@ export default defineConfig({
       'platforms',
       'src/utils/network-exporters',
       'src/utils/networkQuery',
-      'src/utils/protocol',
+      // These protocol tests are excluded until the Task 12 cordova-reference
+      // sweep updates them: protocolPath still references environments.CORDOVA,
+      // and preloadWorkers is missing its vi.mock('../../Environment') call.
+      'src/utils/protocol/__tests__/protocolPath.test.js',
+      'src/utils/protocol/__tests__/preloadWorkers.test.js',
     ],
     css: true,
   },

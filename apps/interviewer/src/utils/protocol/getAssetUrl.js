@@ -24,6 +24,18 @@ const assetUrl = (environment) => {
     };
   }
 
+  if (environment === environments.CAPACITOR) {
+    return (
+      protocolUID = isRequired('protocolUID'),
+      assetPath = isRequired('assetPath'),
+    ) => {
+      const sourceFilename = protocolPath(protocolUID, `assets/${assetPath}`);
+      return resolveFileSystemUrl(sourceFilename).then((entry) =>
+        window.Capacitor.convertFileSrc(entry.toURL()),
+      );
+    };
+  }
+
   if (environment === environments.CORDOVA) {
     return (
       protocolUID = isRequired('protocolUID'),
