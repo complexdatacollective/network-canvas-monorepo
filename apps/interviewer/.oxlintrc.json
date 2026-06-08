@@ -13,8 +13,5 @@
     "tailwindcss/no-conflicting-classes": "warn",
     "tailwindcss/no-unnecessary-whitespace": "error",
     "tailwindcss/enforce-canonical": "warn"
-  },
-  "ignorePatterns": [
-    "src/behaviours/withOptionsFromSelector.jsx"
-  ]
+  }
 }

@@ -12,7 +12,7 @@ const pairTransition = {
   when: 'afterChildren',
 };
 
-const getPairVariants = () => {
+export const getPairVariants = () => {
   const translateUp = `${animationTarget - animationOffset}%`;
   const translateDown = `${animationTarget + animationOffset}%`;
   const translateTarget = `${animationTarget}%`;

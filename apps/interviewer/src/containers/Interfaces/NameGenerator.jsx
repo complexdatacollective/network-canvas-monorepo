@@ -231,3 +231,5 @@ NameGenerator.propTypes = {
 };
 
 export default compose(withPrompt)(NameGenerator);
+
+export { NameGenerator as UnconnectedNameGenerator };

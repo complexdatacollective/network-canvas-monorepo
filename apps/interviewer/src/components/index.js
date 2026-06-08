@@ -1,9 +1,16 @@
 export { default as Audio } from './Audio';
 export { default as BackgroundImage } from './BackgroundImage';
+export { default as Card } from './Card';
 export { default as CardList } from './CardList';
 export { default as CategoricalItem } from './CategoricalItem';
+export { default as CloseButton } from './CloseButton';
+export { default as DropZone } from './DropZone';
+export { default as Edge } from './Edge';
+export { default as ExternalLink } from './ExternalLink';
 export { default as FilterableListWrapper } from './FilterableListWrapper';
+export { default as Image } from './Image';
 export { default as MultiNodeBucket } from './MultiNodeBucket';
+export { default as NewFilterableListWrapper } from './NewFilterableListWrapper';
 export { default as NodeBin } from './NodeBin';
 export { default as NodeList } from './NodeList';
 export { default as Panel } from './Panel';

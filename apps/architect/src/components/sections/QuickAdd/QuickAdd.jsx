@@ -72,6 +72,8 @@ QuickAdd.defaultProps = {
   options: [],
 };
 
+export { QuickAdd };
+
 export default compose(
   withSubject,
   withDisabledSubjectRequired,

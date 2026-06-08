@@ -23,6 +23,8 @@ const NameGeneratorPrompts = (props) => (
   />
 );
 
+export { NameGeneratorPrompts };
+
 export default compose(
   withSubject,
   withDisabledSubjectRequired,

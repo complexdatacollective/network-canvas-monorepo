@@ -202,4 +202,6 @@ Dropzone.propTypes = {
   disabled: PropTypes.bool,
 };
 
+export { Dropzone };
+
 export default Dropzone;

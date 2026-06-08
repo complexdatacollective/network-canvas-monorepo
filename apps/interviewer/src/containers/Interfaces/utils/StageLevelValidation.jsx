@@ -17,7 +17,7 @@ import { FIRST_LOAD_UI_ELEMENT_DELAY } from './constants';
  * @param {*} rest - Other props to pass to the component
  * @returns {Component} - Wrapped component
  */
-const SelfDismissingNote = (Wrapped) => {
+export const SelfDismissingNote = (Wrapped) => {
   const SelfDismissingNoteWrapper = ({
     show,
     onHideCallback = () => {},

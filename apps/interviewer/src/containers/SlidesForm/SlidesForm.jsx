@@ -354,4 +354,6 @@ const makeMapStateToProps = () => {
 
 const withStore = connect(makeMapStateToProps);
 
+export { SlidesForm };
+
 export default withStore(SlidesForm);

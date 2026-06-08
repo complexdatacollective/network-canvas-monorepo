@@ -43,6 +43,8 @@ OrdinalBinPrompts.defaultProps = {
   type: null,
 };
 
+export { OrdinalBinPrompts };
+
 export default compose(
   withSubject,
   withDisabledSubjectRequired,

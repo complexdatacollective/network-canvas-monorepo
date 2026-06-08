@@ -17,4 +17,6 @@ BackgroundImage.propTypes = {
   url: PropTypes.string.isRequired,
 };
 
+export { BackgroundImage };
+
 export default withAssetUrl(BackgroundImage);

@@ -41,7 +41,7 @@ const getLastActiveSession = (state) => {
   };
 };
 
-const getInstalledProtocols = (state) => state.installedProtocols;
+export const getInstalledProtocols = (state) => state.installedProtocols;
 
 export const getCurrentSessionProtocol = createSelector(
   (state, props) => getActiveSession(state, props),

@@ -17,4 +17,6 @@ Audio.defaultProps = {
   description: '',
 };
 
+export { Audio };
+
 export default withAssetUrl(Audio);

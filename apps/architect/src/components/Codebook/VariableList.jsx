@@ -46,4 +46,6 @@ Variables.defaultProps = {
   onDelete: () => {},
 };
 
+export { Variables };
+
 export default compose(withSort)(Variables);

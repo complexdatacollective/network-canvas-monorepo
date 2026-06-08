@@ -104,6 +104,13 @@ const previewStageFromForm = (stageMeta, formName) => (dispatch, getState) => {
   dispatch(previewDraft(draftProtocol, stageIndex));
 };
 
+const actionTypes = {
+  PREVIEW_DRAFT,
+  SET_ZOOM,
+  REFRESH_PREVIEW,
+  CLEAR_PREVIEW,
+};
+
 const actionCreators = {
   closePreview,
   clearPreview,
@@ -113,4 +120,4 @@ const actionCreators = {
   refresh,
 };
 
-export { actionCreators };
+export { actionTypes, actionCreators };

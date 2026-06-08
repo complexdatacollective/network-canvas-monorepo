@@ -95,9 +95,20 @@ export default function reducer(state = initialState, action = {}) {
   }
 }
 
+const actionCreators = {
+  busy,
+  ready,
+};
+
+const actionTypes = {
+  BUSY,
+  READY,
+  NOOP,
+};
+
 const selectors = {
   getStatus,
   getIsBusy,
 };
 
-export { selectors };
+export { actionCreators, actionTypes, selectors };

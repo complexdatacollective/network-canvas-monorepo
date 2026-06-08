@@ -37,7 +37,7 @@ const importAsset = (filename) => ({
  * @param {string} filename - Name of file
  * @param {string} fileType - File MIME type
  */
-const importAssetComplete = (filename, name, assetType) => ({
+export const importAssetComplete = (filename, name, assetType) => ({
   id: uuid(),
   type: IMPORT_ASSET_COMPLETE,
   name,
@@ -106,7 +106,7 @@ const importAssetThunk = (filePath) => (dispatch, getState) => {
  * @param {string} name - The name of the API key
  * @param {string} value - The value of the API key
  */
-const addApiKeyAsset = (name, value) => ({
+export const addApiKeyAsset = (name, value) => ({
   type: ADD_API_KEY_ASSET,
   id: uuid(),
   name,
@@ -153,9 +153,17 @@ const actionCreators = {
   addApiKeyAsset: saveableChange(addApiKeyAsset),
 };
 
+const actionTypes = {
+  IMPORT_ASSET,
+  IMPORT_ASSET_COMPLETE,
+  IMPORT_ASSET_FAILED,
+  DELETE_ASSET,
+  ADD_API_KEY_ASSET,
+};
+
 const test = {
   importAssetComplete,
   deleteAsset,
 };
 
-export { actionCreators, test };
+export { actionCreators, actionTypes, test };

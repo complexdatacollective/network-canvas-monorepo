@@ -28,4 +28,6 @@ VideoThumbnail.defaultProps = {
   },
 };
 
+export { VideoThumbnail };
+
 export default withAssetMeta(VideoThumbnail);

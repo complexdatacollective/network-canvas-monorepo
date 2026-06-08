@@ -6,6 +6,6 @@ const UNKNOWN = Symbol('ENVIRONMENT/UNKNOWN');
 module.exports = {
   CORDOVA,
   ELECTRON,
-  WEB,
   UNKNOWN,
+  WEB,
 };

@@ -9,7 +9,7 @@ import { isArray, isString } from 'lodash';
 import { pathSync } from '../electronAPI';
 import inEnvironment from '../Environment';
 import environments from '../environments';
-import { userDataPath } from '../filesystem';
+import { appPath, userDataPath } from '../filesystem';
 
 const isValidProtocolUID = (protocolUID) =>
   isString(protocolUID) && protocolUID.length > 0;
@@ -20,6 +20,34 @@ const ensureArray = (filePath = []) => {
   }
 
   return filePath;
+};
+
+/**
+ * Get path to factory protocol (bundled with the app).
+ * Returns a Promise in Electron.
+ */
+export const factoryProtocolPath = (environment) => {
+  if (environment === environments.ELECTRON) {
+    return async (protocolUID, filePath = '') => {
+      if (!isValidProtocolUID(protocolUID))
+        throw Error('Protocol name is not valid');
+      const basePath = await appPath();
+      return pathSync.join(basePath, 'protocols', protocolUID, filePath);
+    };
+  }
+
+  if (environment === environments.CORDOVA) {
+    return (protocolUID, filePath) => {
+      if (!isValidProtocolUID(protocolUID))
+        throw Error('Protocol name is not valid');
+
+      return [appPath(), 'www', 'protocols', protocolUID]
+        .concat([filePath])
+        .join('/');
+    };
+  }
+
+  throw new Error('factoryProtocolPath() is not supported on this platform');
 };
 
 /**

@@ -119,4 +119,6 @@ NewVariableWindow.defaultProps = {
   initialValues: null,
 };
 
+export { NewVariableWindow };
+
 export default withNewVariableHandler(NewVariableWindow);

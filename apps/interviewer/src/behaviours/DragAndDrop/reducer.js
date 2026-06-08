@@ -323,6 +323,6 @@ const actionTypes = {
   DRAG_END,
 };
 
-export { actionCreators, actionTypes };
+export { actionCreators, actionTypes, reducer };
 
 export default reducer;

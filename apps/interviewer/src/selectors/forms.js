@@ -10,7 +10,7 @@ const propStageSubject = (_, props) => props.subject || { entity: 'ego' };
 
 // MemoedSelectors
 
-const rehydrateField = ({ codebook, entity, type, field }) => {
+export const rehydrateField = ({ codebook, entity, type, field }) => {
   if (!field.variable) {
     return field;
   }

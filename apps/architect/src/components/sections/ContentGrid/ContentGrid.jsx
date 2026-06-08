@@ -44,4 +44,6 @@ const ContentGrid = (props) => (
   />
 );
 
+export { ContentGrid };
+
 export default ContentGrid;

@@ -101,4 +101,6 @@ SessionPanel.propTypes = {
   percentProgress: PropTypes.number.isRequired,
 };
 
+export { SessionPanel };
+
 export default compose(DropObstacle)(SessionPanel);

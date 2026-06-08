@@ -131,6 +131,8 @@ PromptFields.defaultProps = {
   layoutVariable: null,
 };
 
+export { PromptFields };
+
 export default compose(
   withLayoutOptions,
   withCanCreateEdgesState,

@@ -108,6 +108,8 @@ SearchOptions.propTypes = {
   disabled: PropTypes.bool.isRequired,
 };
 
+export { SearchOptions };
+
 export default compose(
   withMapFormToProps(['dataSource']),
   withDisabledAssetRequired,

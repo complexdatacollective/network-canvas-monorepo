@@ -1,4 +1,5 @@
 const { isNil } = require('lodash');
+const { VariableType } = require('../../utils/protocol-consts');
 const { entityAttributesProperty } = require('../../utils/reservedAttributes');
 
 const getEntityAttributes = (node) =>
@@ -17,6 +18,8 @@ const formatXml = (xml, tab = '\t') => {
   });
   return formatted.substring(1, formatted.length - 3);
 };
+
+const VariableTypeValues = Object.freeze(Object.values(VariableType));
 
 /**
  * For a given key, return a valid Graphml data 'type' for encoding
@@ -76,6 +79,22 @@ const getEgoVariableInfo = (codebook, key) =>
   codebook.ego && codebook.ego.variables && codebook.ego.variables[key];
 
 /**
+ * Determine if a given variable is one of the valid NC vattribute types
+ * @param {*} codebook
+ * @param {*} type
+ * @param {*} element
+ * @param {*} key
+ */
+const codebookExists = (codebook, type, element, key) => {
+  const variableInfo = getVariableInfo(codebook, type, element, key);
+  return (
+    variableInfo &&
+    variableInfo.type &&
+    VariableTypeValues.includes(variableInfo.type)
+  );
+};
+
+/**
  * Get the 'type' of a given variable from the codebook
  * @param {*} codebook
  * @param {*} type node, edge, or ego
@@ -113,9 +132,14 @@ const createDataElement = (xmlDoc, attributes, text) =>
   createElement(xmlDoc, 'data', attributes, xmlDoc.createTextNode(text));
 
 module.exports = {
+  codebookExists,
   createDataElement,
+  createElement,
   formatXml,
   getAttributePropertyFromCodebook,
+  getEgoVariableInfo,
   getEntityAttributes,
   getGraphMLTypeForKey,
+  getVariableInfo,
+  VariableTypeValues,
 };

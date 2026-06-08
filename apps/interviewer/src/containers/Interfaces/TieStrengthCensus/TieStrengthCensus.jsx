@@ -348,3 +348,5 @@ export default compose(
   withPrompt,
   connect(makeMapStateToProps),
 )(TieStrengthCensus);
+
+export { TieStrengthCensus as UnconnectedTieStrengthCensus };

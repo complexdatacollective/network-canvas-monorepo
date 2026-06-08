@@ -297,4 +297,6 @@ NodeLayout.defaultProps = {
 
 NodeLayout.contextType = LayoutContext;
 
+export { NodeLayout };
+
 export default NodeLayout;

@@ -68,3 +68,5 @@ FolderTransition.propTypes = {
 FolderTransition.defaultProps = {
   children: null,
 };
+
+export default FolderTransition;

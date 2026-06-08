@@ -323,3 +323,46 @@ export const registerIpcHandlers = () => {
 
   log.info('IPC handlers registered successfully');
 };
+
+/**
+ * Remove all IPC handlers (for cleanup)
+ */
+export const removeIpcHandlers = () => {
+  const handlers = [
+    'dialog:showOpen',
+    'dialog:showSave',
+    'dialog:showMessageBox',
+    'app:getPath',
+    'app:getAppPath',
+    'app:getVersion',
+    'fs:readFile',
+    'fs:writeFile',
+    'fs:rename',
+    'fs:mkdirp',
+    'fs:mkdir',
+    'fs:rmdir',
+    'path:join',
+    'path:basename',
+    'path:dirname',
+    'path:extname',
+    'path:parse',
+    'path:resolve',
+    'path:normalize',
+    'path:relative',
+    'archive:create',
+    'archive:extract',
+    'shell:openExternal',
+    'shell:openPath',
+    'window:hide',
+    'window:show',
+    'window:close',
+    'window:setFullScreen',
+    'window:isFullScreen',
+    'webFrame:setVisualZoomLevelLimits',
+    'webContents:printToPDF',
+  ];
+
+  handlers.forEach((channel) => {
+    ipcMain.removeHandler(channel);
+  });
+};

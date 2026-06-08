@@ -49,6 +49,8 @@ export const isIOS = () => isCordova() && /iOS/i.test(window.device?.platform);
 export const isAndroid = () =>
   isCordova() && /Android/i.test(window.device?.platform);
 
+export const isWeb = () => !isCordova() && !isElectron();
+
 const getEnvironment = () => {
   if (isCordova()) return environments.CORDOVA;
   if (isElectron()) return environments.ELECTRON;

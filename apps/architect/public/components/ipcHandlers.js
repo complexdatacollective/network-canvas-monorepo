@@ -13,6 +13,27 @@ const decompress = require("decompress");
 const log = require("./log");
 
 /**
+ * Validates that a file path is within allowed directories.
+ * This is a security measure to prevent arbitrary file access.
+ */
+const isPathAllowed = (filePath) => {
+	if (!filePath) return false;
+
+	const normalizedPath = path.normalize(filePath);
+	const allowedPaths = [
+		app.getPath("temp"),
+		app.getPath("userData"),
+		app.getPath("home"),
+		app.getPath("documents"),
+		app.getPath("downloads"),
+		app.getPath("desktop"),
+	];
+
+	// Allow paths within any of the allowed directories
+	return allowedPaths.some((allowedPath) => normalizedPath.startsWith(allowedPath));
+};
+
+/**
  * Register all IPC handlers
  */
 const registerIpcHandlers = () => {
@@ -315,6 +336,62 @@ const registerIpcHandlers = () => {
 	log.info("IPC handlers registered successfully");
 };
 
+/**
+ * Remove all IPC handlers (for cleanup)
+ */
+const removeIpcHandlers = () => {
+	const handlers = [
+		"dialog:showOpen",
+		"dialog:showSave",
+		"dialog:showMessageBox",
+		"app:getPath",
+		"app:getAppPath",
+		"app:getVersion",
+		"fs:readJson",
+		"fs:writeJson",
+		"fs:readFile",
+		"fs:writeFile",
+		"fs:copy",
+		"fs:unlink",
+		"fs:remove",
+		"fs:rename",
+		"fs:access",
+		"fs:stat",
+		"fs:mkdirp",
+		"fs:pathExists",
+		"fs:readdir",
+		"fs:outputFile",
+		"fs:mkdir",
+		"fs:rmdir",
+		"fs:existsSync",
+		"path:join",
+		"path:basename",
+		"path:dirname",
+		"path:extname",
+		"path:parse",
+		"path:resolve",
+		"path:normalize",
+		"path:relative",
+		"archive:create",
+		"archive:extract",
+		"shell:openExternal",
+		"shell:openPath",
+		"window:hide",
+		"window:show",
+		"window:close",
+		"window:setFullScreen",
+		"window:isFullScreen",
+		"webFrame:setVisualZoomLevelLimits",
+		"webContents:printToPDF",
+	];
+
+	handlers.forEach((channel) => {
+		ipcMain.removeHandler(channel);
+	});
+};
+
 module.exports = {
 	registerIpcHandlers,
+	removeIpcHandlers,
+	isPathAllowed,
 };

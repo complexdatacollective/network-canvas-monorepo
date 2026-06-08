@@ -5,7 +5,7 @@ import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
-const handleDeactivateSkipLogic = async (openDialog) => {
+export const handleDeactivateSkipLogic = async (openDialog) => {
   const result = await openDialog({
     type: 'Warning',
     title: 'This will clear your skip logic',
@@ -68,5 +68,7 @@ const SkipLogicSection = () => {
 SkipLogicSection.propTypes = {};
 
 SkipLogicSection.defaultProps = {};
+
+export { SkipLogicSection };
 
 export default SkipLogicSection;

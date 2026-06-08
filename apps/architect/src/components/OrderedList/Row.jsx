@@ -13,3 +13,5 @@ Row.propTypes = {
 Row.defaultProps = {
   children: null,
 };
+
+export default Row;

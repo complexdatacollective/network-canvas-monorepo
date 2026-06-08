@@ -32,6 +32,11 @@ export const selectors = {
   getDismissedUpdates,
 };
 
+export const actionTypes = {
+  DISMISS_UPDATE,
+  RESET,
+};
+
 export const actionCreators = {
   dismissUpdate,
 };

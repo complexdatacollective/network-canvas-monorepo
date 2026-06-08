@@ -41,4 +41,9 @@ const actionCreators = {
   toggle,
 };
 
-export { actionCreators };
+const actionTypes = {
+  UPDATE,
+  TOGGLE,
+};
+
+export { actionCreators, actionTypes };

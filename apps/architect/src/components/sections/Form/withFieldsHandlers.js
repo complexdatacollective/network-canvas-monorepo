@@ -121,4 +121,6 @@ const fieldsHandlers = withHandlers({
     },
 });
 
+export { fieldsState, fieldsHandlers };
+
 export default compose(fieldsState, fieldsHandlers);

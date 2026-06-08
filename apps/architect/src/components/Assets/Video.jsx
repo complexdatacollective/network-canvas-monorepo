@@ -17,4 +17,6 @@ Video.defaultProps = {
   description: '',
 };
 
+export { Video };
+
 export default withAssetUrl(Video);

@@ -141,6 +141,8 @@ const makeMapStateToProps = () => {
   };
 };
 
+export { NodePanel };
+
 export default compose(
   withExternalData('externalDataSource', 'externalData'),
   connect(makeMapStateToProps),

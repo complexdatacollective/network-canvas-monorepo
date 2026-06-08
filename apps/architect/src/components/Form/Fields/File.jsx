@@ -110,4 +110,6 @@ FileInput.defaultProps = {
   children: (value) => value,
 };
 
+export { FileInput };
+
 export default withShowBrowser(FileInput);

@@ -137,7 +137,7 @@ const resetSession = () => (dispatch) => {
 // Decorate this event with the current protocol validation
 // status so that we can selectively enable/disable the
 // native save function.
-const protocolChanged = (protocolIsValid) => ({
+export const protocolChanged = (protocolIsValid) => ({
   type: PROTOCOL_CHANGED,
   protocolIsValid,
   ipc: true,

@@ -42,4 +42,9 @@ const actionCreators = {
   reset,
 };
 
-export { actionCreators };
+const actionTypes = {
+  UPDATE_PROGRESS,
+  RESET,
+};
+
+export { actionCreators, actionTypes };

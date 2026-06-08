@@ -1,6 +1,8 @@
 import { find, findIndex, get, reduce } from 'lodash';
 import { createSelector } from 'reselect';
 
+const propStageId = (_, props) => props.stageId;
+
 export const getProtocol = (state) => state.protocol.present;
 export const getAssetManifest = (state) =>
   get(state, 'protocol.present.assetManifest', {});
@@ -35,6 +37,12 @@ export const getStageIndex = (state, id) => {
 
   return stageIndex;
 };
+
+// TODO: replace this with getStage
+export const makeGetStage = () =>
+  createSelector(getProtocol, propStageId, (protocol, stageId) =>
+    find(protocol.stages, ['id', stageId]),
+  );
 
 const networkTypes = new Set(['network', 'async:network']);
 

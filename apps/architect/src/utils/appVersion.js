@@ -21,7 +21,19 @@ const getCodename = async () => {
   return cachedCodename;
 };
 
+// For synchronous access after initialization
+const getAppVersionSync = () => cachedVersion || 'unknown';
+const getCodenameSync = () => cachedCodename || '';
+
 // Initialize on module load (async)
 getAppVersion();
 
-export { getCodename, getAppVersion };
+export default getAppVersionSync;
+
+export {
+  getCodename,
+  getAppVersion,
+  getAppVersionSync,
+  getCodenameSync,
+  getAppVersionSync as appVersion,
+};

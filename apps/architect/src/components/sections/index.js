@@ -8,6 +8,7 @@ export { default as CategoricalBinPrompts } from './CategoricalBinPrompts';
 export { default as ContentGrid } from './ContentGrid';
 export { default as DyadCensusPrompts } from './DyadCensusPrompts';
 export { default as ExternalDataSource } from './ExternalDataSource';
+export { default as Filter } from './Filter';
 export { default as FilteredEdgeType } from './FilteredEdgeType';
 export { default as Form } from './Form';
 export { default as InterviewScript } from './InterviewScript';

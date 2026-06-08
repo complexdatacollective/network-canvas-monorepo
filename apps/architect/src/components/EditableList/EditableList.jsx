@@ -147,4 +147,6 @@ EditableList.defaultProps = {
   editField: null,
 };
 
+export { EditableList };
+
 export default compose(withDefaultFieldName, withEditHandlers)(EditableList);

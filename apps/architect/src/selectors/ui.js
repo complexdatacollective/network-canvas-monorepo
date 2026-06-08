@@ -1,6 +1,6 @@
 import { isEqual } from 'lodash';
 
-const getScreensMessage = (state) => state.ui.screens.message;
+export const getScreensMessage = (state) => state.ui.screens.message;
 
 export const getScreensStack = (state) => state.ui.screens.screens;
 

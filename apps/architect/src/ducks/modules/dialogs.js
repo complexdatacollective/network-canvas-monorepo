@@ -93,6 +93,11 @@ const actionCreators = {
   closeDialog,
 };
 
-export { actionCreators };
+const actionTypes = {
+  OPEN_DIALOG,
+  CLOSE_DIALOG,
+};
+
+export { actionCreators, actionTypes };
 
 export default reducer;

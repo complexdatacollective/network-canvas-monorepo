@@ -80,4 +80,6 @@ const EdgeLayout = () => {
   );
 };
 
+export { EdgeLayout };
+
 export default EdgeLayout;

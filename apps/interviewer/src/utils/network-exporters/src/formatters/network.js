@@ -270,6 +270,7 @@ const unionOfNetworks = (sessionsByProtocol) =>
 
 module.exports = {
   processEntityVariables,
+  insertNetworkEgo,
   insertEgoIntoSessionNetworks,
   partitionNetworkByType,
   resequenceIds,

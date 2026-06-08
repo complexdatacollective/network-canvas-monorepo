@@ -40,4 +40,6 @@ Query.defaultProps = {
   meta: {},
 };
 
+export { Query };
+
 export default Query;

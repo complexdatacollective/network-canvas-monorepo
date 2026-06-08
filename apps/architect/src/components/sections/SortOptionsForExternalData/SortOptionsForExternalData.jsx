@@ -100,6 +100,8 @@ SortOptions.propTypes = {
   disabled: PropTypes.bool.isRequired,
 };
 
+export { SortOptions };
+
 export default compose(
   withMapFormToProps('dataSource'),
   withDisabledAssetRequired,

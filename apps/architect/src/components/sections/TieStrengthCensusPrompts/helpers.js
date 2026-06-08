@@ -22,3 +22,6 @@ export const itemSelector =
       variableOptions,
     };
   };
+
+// Strip variableOptions
+export const normalizeField = ({ variableOptions, ...prompt }) => prompt;

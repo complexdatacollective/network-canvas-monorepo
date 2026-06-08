@@ -23,7 +23,7 @@ import {
 
 const EDIT_COMPLETE_BUTTON_ID = 'editCompleteButton';
 
-const BaseVariablePill = React.forwardRef((props, ref) => {
+export const BaseVariablePill = React.forwardRef((props, ref) => {
   const { type, children } = props;
 
   const icon = useMemo(() => getIconForType(type), [type]);

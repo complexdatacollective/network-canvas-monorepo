@@ -111,4 +111,6 @@ class AttributeListFormatter {
 
 module.exports = {
   AttributeListFormatter,
+  asAttributeList,
+  toCSVStream,
 };

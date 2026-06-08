@@ -1,8 +1,13 @@
+import { get } from 'lodash';
 import PropTypes from 'prop-types';
 import { Component } from 'react';
 import { Flipped } from 'react-flip-toolkit';
+import { connect } from 'react-redux';
 
 import ProtocolStack from './ProtocolStack';
+
+const getRecentProtocols = (state) =>
+  get(state, 'recentProtocols', []).slice(0, 4);
 
 class RecentProtocols extends Component {
   renderRecentProtocol = (protocol) => (
@@ -56,6 +61,10 @@ class RecentProtocols extends Component {
   }
 }
 
+const mapStateToProps = (state) => ({
+  recentProtocols: getRecentProtocols(state),
+});
+
 RecentProtocols.propTypes = {
   recentProtocols: PropTypes.array.isRequired,
   show: PropTypes.bool,
@@ -66,3 +75,5 @@ RecentProtocols.defaultProps = {
 };
 
 export { RecentProtocols as UnconnectedRecentProtocols };
+
+export default connect(mapStateToProps)(RecentProtocols);

@@ -98,6 +98,8 @@ CardDisplayOptions.propTypes = {
   disabled: PropTypes.bool.isRequired,
 };
 
+export { CardDisplayOptions };
+
 export default compose(
   withMapFormToProps('dataSource'),
   withDisabledAssetRequired,

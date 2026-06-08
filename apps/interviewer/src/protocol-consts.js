@@ -3,7 +3,7 @@
 // be kept in sync manually.
 
 // Docs: https://github.com/codaco/Network-Canvas/wiki/Variable-Types
-const VariableType = Object.freeze({
+export const VariableType = Object.freeze({
   boolean: 'boolean',
   text: 'text',
   number: 'number',
@@ -15,13 +15,13 @@ const VariableType = Object.freeze({
 });
 
 // Docs: https://github.com/complexdatacollective/Network-Canvas/wiki/protocol.json#variable-registry
-const Entity = Object.freeze({
+export const Entity = Object.freeze({
   edge: 'edge',
   node: 'node',
 });
 
 // Docs: https://github.com/complexdatacollective/Network-Canvas/wiki/Skip-Logic
-const FilterJoin = Object.freeze({
+export const FilterJoin = Object.freeze({
   OR: 'OR',
   AND: 'AND',
 });
@@ -29,7 +29,7 @@ const FilterJoin = Object.freeze({
 // Docs: https://github.com/complexdatacollective/Network-Canvas/wiki/Skip-Logic
 // TODO: expected to match https://github.com/complexdatacollective/networkQuery/blob/master/predicate.js;
 //       could support node syntax there, or introduce babel-node here.
-const FilterOptionsOperator = Object.freeze({
+export const FilterOptionsOperator = Object.freeze({
   EXISTS: 'EXISTS',
   NOT_EXISTS: 'NOT_EXISTS',
   EXACTLY: 'EXACTLY',
@@ -71,7 +71,7 @@ export const AssetType = Object.freeze({
 });
 
 // Docs: https://github.com/complexdatacollective/Network-Canvas/wiki/Skip-Logic#skip-logic-api
-const RuleType = Object.freeze({
+export const RuleType = Object.freeze({
   alter: 'alter',
   ego: 'ego',
   edge: 'edge',
@@ -84,7 +84,7 @@ export const SkipLogicAction = Object.freeze({
 });
 
 // Docs: https://github.com/complexdatacollective/Network-Canvas/wiki/Skip-Logic
-const SkipLogicOperator = Object.freeze({
+export const SkipLogicOperator = Object.freeze({
   ANY: 'ANY',
   NONE: 'NONE',
   EXACTLY: 'EXACTLY',

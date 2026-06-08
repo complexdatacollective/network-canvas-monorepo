@@ -19,7 +19,7 @@ const AddItem = (props) => (
     Add new
   </Button>
 );
-const OptionsField = compose(
+export const OptionsField = compose(
   defaultProps({
     lockAxis: 'y',
     useDragHandle: true,

@@ -89,4 +89,6 @@ const mapStateToProps = (state) => ({
 
 const formState = connect(mapStateToProps, mapDispatchToProps);
 
+export { formState, formHandlers };
+
 export default compose(formState, formHandlers);

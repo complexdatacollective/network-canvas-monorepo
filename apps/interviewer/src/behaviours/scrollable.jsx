@@ -2,7 +2,7 @@ import { compose } from 'redux';
 
 import { Scroller } from '@codaco/ui';
 
-const scrollable = (WrappedComponent) => {
+export const scrollable = (WrappedComponent) => {
   const Scrollable = (props) => {
     const { onScroll } = props;
 

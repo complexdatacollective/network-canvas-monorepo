@@ -141,3 +141,5 @@ HeaderSection.propTypes = {};
 HeaderSection.defaultProps = {};
 
 export default HeaderSection;
+
+export { HeaderSection as UnconnectedHeaderSection };

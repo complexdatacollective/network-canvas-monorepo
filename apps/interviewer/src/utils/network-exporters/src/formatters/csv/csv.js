@@ -58,5 +58,6 @@ const sanitizedCellValue = (value) => {
 
 module.exports = {
   csvEOL,
+  quoteValue,
   sanitizedCellValue,
 };

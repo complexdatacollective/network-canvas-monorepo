@@ -48,3 +48,5 @@ const mapDispatchToProps = {
 };
 
 export default connect(null, mapDispatchToProps)(FinishSession);
+
+export { FinishSession as UnconnectedFinishSession };

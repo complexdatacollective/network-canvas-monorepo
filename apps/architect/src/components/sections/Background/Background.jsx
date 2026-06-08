@@ -109,4 +109,6 @@ Background.propTypes = {
   useImage: PropTypes.bool.isRequired,
 };
 
+export { Background };
+
 export default compose(withBackgroundChangeHandler)(Background);

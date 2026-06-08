@@ -38,6 +38,16 @@ const sleep =
   (passThrough) =>
     new Promise((resolve) => setTimeout(() => resolve(passThrough), time));
 
+// Utility method for use during testing.
+const randomFail = (passThrough) =>
+  new Promise((resolve, reject) => {
+    if (Math.random() >= 0.5) {
+      reject(new Error('Error happened!'));
+    }
+
+    resolve(passThrough);
+  });
+
 const makeFilename = (prefix, entityType, exportFormat, extension) => {
   let name = prefix;
   if (extension !== `.${exportFormat}`) {
@@ -83,6 +93,8 @@ const getFilePrefix = (session, protocol, unifyNetworks) => {
 
   return `${sanitizeFilename(session.sessionVariables[caseProperty])}_${session.sessionVariables[sessionProperty]}`;
 };
+
+const extensionPattern = new RegExp(`${Object.values(extensions).join('|')}$`);
 
 const handlePlatformSaveDialog = (zipLocation, filename) =>
   new Promise((resolve, reject) => {
@@ -160,12 +172,16 @@ class ObservableValue {
 }
 
 module.exports = {
+  escapeFilePart,
+  extensionPattern,
+  extensions,
   getEntityAttributes,
   getFileExtension,
   getFilePrefix,
   makeFilename,
   verifySessionVariables,
   sleep,
+  randomFail,
   handlePlatformSaveDialog,
   ObservableValue,
 };

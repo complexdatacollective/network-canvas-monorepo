@@ -71,6 +71,12 @@ export default (state = initialState, action) => {
   }
 };
 
+export const actionTypes = {
+  REGISTER_STACKABLE,
+  UNREGISTER_STACKABLE,
+  MOVE_TO_TOP,
+};
+
 export const actionCreators = {
   registerStackable,
   unregisterStackable,

@@ -23,6 +23,8 @@ const OneToManyDyadCensusPrompts = (props) => (
   />
 );
 
+export { OneToManyDyadCensusPrompts };
+
 export default compose(
   withSubject,
   withDisabledSubjectRequired,

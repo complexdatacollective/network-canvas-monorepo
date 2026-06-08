@@ -97,7 +97,7 @@ StageEditor.defaultProps = {
   stagePath: null,
 };
 
-export { formName };
+export { formName, StageEditor };
 
 export default compose(
   defaultProps({

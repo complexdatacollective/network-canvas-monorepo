@@ -59,4 +59,6 @@ NodeBucket.propTypes = {
   allowPositioning: PropTypes.bool.isRequired,
 };
 
+export { NodeBucket };
+
 export default compose(DropObstacle)(NodeBucket);

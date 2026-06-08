@@ -148,3 +148,5 @@ const extractProtocol = inEnvironment((environment) => {
 });
 
 export default extractProtocol;
+
+export { checkZipPaths };

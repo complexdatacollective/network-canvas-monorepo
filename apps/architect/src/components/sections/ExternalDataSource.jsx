@@ -46,6 +46,8 @@ ExternalDataSource.propTypes = {
   changeForm: PropTypes.func.isRequired,
 };
 
+export { ExternalDataSource };
+
 export default compose(
   withChangeDataSourceHandler,
   withSubject,

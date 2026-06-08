@@ -41,3 +41,9 @@ export default function reducer(state = initialState, action = {}) {
       return state;
   }
 }
+
+const actionCreators = {};
+
+const actionTypes = {};
+
+export { actionCreators, actionTypes };
