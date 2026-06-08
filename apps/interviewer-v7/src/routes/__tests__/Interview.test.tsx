@@ -7,8 +7,14 @@ vi.mock('wouter', () => ({
 }));
 
 const requireFreshUnlockMock = vi.fn();
+const getAuthorizedInterviewIdMock = vi.fn<() => string | null>();
+const setAuthorizedInterviewIdMock = vi.fn();
 vi.mock('~/lib/auth/StepUpAuthProvider', () => ({
-  useStepUpAuth: () => ({ requireFreshUnlock: requireFreshUnlockMock }),
+  useStepUpAuth: () => ({
+    requireFreshUnlock: requireFreshUnlockMock,
+    getAuthorizedInterviewId: getAuthorizedInterviewIdMock,
+    setAuthorizedInterviewId: setAuthorizedInterviewIdMock,
+  }),
 }));
 
 const getSettingsMock = vi.fn();
@@ -37,9 +43,16 @@ vi.mock('~/lib/platform/platform', () => ({
   isCapacitor: false,
 }));
 
-const { shellMock } = vi.hoisted(() => ({ shellMock: vi.fn() }));
+type CapturedShellProps = {
+  onExit: () => void;
+  onFinish: (id: string) => Promise<void>;
+};
+
+const { shellMock } = vi.hoisted(() => ({
+  shellMock: vi.fn<(props: CapturedShellProps) => void>(),
+}));
 vi.mock('@codaco/interview', () => ({
-  Shell: (props: Record<string, unknown>) => {
+  Shell: (props: CapturedShellProps) => {
     shellMock(props);
     return <div data-testid="shell-mounted" />;
   },
@@ -72,8 +85,10 @@ function makeProtocol() {
   };
 }
 
-function lastShellProps(): Record<string, unknown> {
-  return shellMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+function lastShellProps(): CapturedShellProps {
+  const props = shellMock.mock.calls.at(-1)?.[0];
+  if (!props) throw new Error('Shell was never rendered');
+  return props;
 }
 
 async function invoke(fn: () => unknown) {
@@ -88,6 +103,7 @@ beforeEach(() => {
   getSessionMock.mockResolvedValue(makeSession());
   getProtocolByHashMock.mockResolvedValue(makeProtocol());
   requireFreshUnlockMock.mockResolvedValue({ ok: true });
+  getAuthorizedInterviewIdMock.mockReturnValue(null);
 });
 
 describe('InterviewRoute enter gate', () => {
@@ -119,6 +135,21 @@ describe('InterviewRoute enter gate', () => {
 
     expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
     expect(requireFreshUnlockMock).not.toHaveBeenCalled();
+    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith('s1');
+  });
+
+  it('skips the enter gate when entry is already authorized (lock/unlock remount)', async () => {
+    getSettingsMock.mockResolvedValue({
+      requireUnlockOnEnter: true,
+      requireUnlockOnExit: false,
+      requireUnlockOnExport: false,
+    });
+    getAuthorizedInterviewIdMock.mockReturnValue('s1');
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(requireFreshUnlockMock).not.toHaveBeenCalled();
   });
 });
 
@@ -139,18 +170,19 @@ describe('InterviewRoute exit gate', () => {
       reason: 'cancelled',
     });
 
-    await invoke(lastShellProps().onExit as () => void);
+    await invoke(lastShellProps().onExit);
 
     expect(navigateMock).not.toHaveBeenCalledWith('/');
   });
 
-  it('navigates home when the exit gate passes', async () => {
+  it('navigates home and clears authorization when the exit gate passes', async () => {
     render(<InterviewRoute sessionId="s1" />);
     await screen.findByTestId('shell-mounted');
 
-    await invoke(lastShellProps().onExit as () => void);
+    await invoke(lastShellProps().onExit);
 
     await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/'));
+    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
   });
 });
 
@@ -168,7 +200,7 @@ describe('InterviewRoute finish flow', () => {
     await screen.findByTestId('shell-mounted');
 
     await act(async () => {
-      await (lastShellProps().onFinish as (id: string) => Promise<void>)('s1');
+      await lastShellProps().onFinish('s1');
     });
 
     expect(markSessionFinishedMock).toHaveBeenCalledWith('s1');
@@ -185,5 +217,28 @@ describe('InterviewRoute finish flow', () => {
 
     expect(await screen.findByText('Interview complete')).toBeInTheDocument();
     expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
+  });
+
+  it('applies the exit gate from the completion screen', async () => {
+    getSettingsMock.mockResolvedValue({
+      requireUnlockOnEnter: false,
+      requireUnlockOnExit: true,
+      requireUnlockOnExport: false,
+    });
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+
+    await act(async () => {
+      await lastShellProps().onFinish('s1');
+    });
+    await screen.findByText('Interview complete');
+
+    requireFreshUnlockMock.mockResolvedValue({
+      ok: false,
+      reason: 'cancelled',
+    });
+    await invoke(() => screen.getByRole('button', { name: /exit/i }).click());
+
+    expect(navigateMock).not.toHaveBeenCalledWith('/');
   });
 });

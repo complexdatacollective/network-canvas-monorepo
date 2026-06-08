@@ -41,7 +41,11 @@ type LoadState =
 export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [, navigate] = useLocation();
-  const { requireFreshUnlock } = useStepUpAuth();
+  const {
+    requireFreshUnlock,
+    getAuthorizedInterviewId,
+    setAuthorizedInterviewId,
+  } = useStepUpAuth();
   const [finished, setFinished] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   // SessionPayload from @codaco/interview's onSync does not carry the current
@@ -56,14 +60,20 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       const result = await requireFreshUnlock();
       if (!result.ok) return;
     }
+    setAuthorizedInterviewId(null);
     navigate('/');
-  }, [requireFreshUnlock, navigate]);
+  }, [requireFreshUnlock, navigate, setAuthorizedInterviewId]);
 
   useEffect(() => {
     let active = true;
     const load = async () => {
       const settings = await getSettings();
-      if (settings.requireUnlockOnEnter) {
+      // Skip the enter gate when this interview's entry was already authorized
+      // in the current unlock session — i.e. an idle-lock/unlock cycle remounted
+      // the same interview. The user just authenticated at the LockScreen, so a
+      // second step-up prompt would be redundant.
+      const alreadyAuthorized = getAuthorizedInterviewId() === sessionId;
+      if (settings.requireUnlockOnEnter && !alreadyAuthorized) {
         const result = await requireFreshUnlock();
         if (!result.ok) {
           if (active) navigate('/');
@@ -76,6 +86,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         if (active) setState({ kind: 'missing' });
         return;
       }
+      // Entry is now authorized for the rest of the unlock session, so a
+      // subsequent lock/unlock remount of this interview won't re-prompt.
+      setAuthorizedInterviewId(sessionId);
       if (session.finishedAt) {
         if (active) setFinished(true);
         return;
@@ -114,7 +127,13 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     return () => {
       active = false;
     };
-  }, [sessionId, navigate, requireFreshUnlock]);
+  }, [
+    sessionId,
+    navigate,
+    requireFreshUnlock,
+    getAuthorizedInterviewId,
+    setAuthorizedInterviewId,
+  ]);
 
   const analytics = useMemo(
     () => ({ installationId: getInstallationId(), hostApp: hostAppName }),
