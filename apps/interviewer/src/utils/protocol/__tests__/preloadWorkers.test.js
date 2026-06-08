@@ -3,10 +3,18 @@ import { vi } from 'vitest';
 import { getEnvironment } from '../../Environment';
 import environments from '../../environments';
 import { readFile } from '../../filesystem';
-import * as workerAgentHelpers from '../../WorkerAgent';
+import { urlForWorkerSource } from '../../WorkerAgent';
 import preloadWorkers from '../preloadWorkers';
 
+vi.mock('../../Environment');
 vi.mock('../../filesystem');
+vi.mock('../../WorkerAgent', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    urlForWorkerSource: vi.fn(),
+  };
+});
 
 const mockUrl = 'blob:file://script.js';
 
@@ -22,7 +30,7 @@ describe('preloadWorkers', () => {
   describe('when script exists', () => {
     beforeAll(() => {
       readFile.mockReturnValue(Promise.resolve('function myWorker() {}'));
-      workerAgentHelpers.urlForWorkerSource = vi.fn().mockReturnValue(mockUrl);
+      urlForWorkerSource.mockReturnValue(mockUrl);
     });
 
     it('returns a promise', () => {

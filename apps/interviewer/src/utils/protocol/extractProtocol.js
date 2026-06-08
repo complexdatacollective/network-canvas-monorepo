@@ -45,7 +45,7 @@ const extractZipDirectory = inEnvironment((environment) => {
     };
   }
 
-  if (environment === environments.CORDOVA) {
+  if (environment === environments.CAPACITOR) {
     return (zipObject, destination) => {
       const extractPath = `${destination}${zipObject.name}`;
       return ensurePathExists(extractPath);
@@ -68,7 +68,7 @@ const extractZipFile = inEnvironment((environment) => {
     };
   }
 
-  if (environment === environments.CORDOVA) {
+  if (environment === environments.CAPACITOR) {
     return (zipObject, destination) => {
       const extractPath = `${destination}${zipObject.name}`;
       return writeStream(extractPath, zipObject.internalStream('uint8array'));
@@ -81,7 +81,7 @@ const extractZipFile = inEnvironment((environment) => {
 
 const extractZip = inEnvironment((environment) => {
   if (
-    environment === environments.CORDOVA ||
+    environment === environments.CAPACITOR ||
     environment === environments.ELECTRON
   ) {
     return (zip, destination) =>
@@ -102,7 +102,7 @@ const extractZip = inEnvironment((environment) => {
 
 const loadZip = inEnvironment((environment) => {
   if (
-    environment === environments.CORDOVA ||
+    environment === environments.CAPACITOR ||
     environment === environments.ELECTRON
   ) {
     return (source) =>
@@ -116,7 +116,7 @@ const loadZip = inEnvironment((environment) => {
 
 const importZip = inEnvironment((environment) => {
   if (
-    environment === environments.CORDOVA ||
+    environment === environments.CAPACITOR ||
     environment === environments.ELECTRON
   ) {
     return (protocolFile, protocolName, destination) =>
@@ -134,7 +134,7 @@ const importZip = inEnvironment((environment) => {
 const extractProtocol = inEnvironment((environment) => {
   if (
     environment === environments.ELECTRON ||
-    environment === environments.CORDOVA
+    environment === environments.CAPACITOR
   ) {
     return async (protocolFile = isRequired('protocolFile')) => {
       const protocolName = generateProtocolUID();

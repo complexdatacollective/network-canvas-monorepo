@@ -54,12 +54,6 @@ export const isIOS = () => getCapacitorPlatform() === 'ios';
 
 export const isAndroid = () => getCapacitorPlatform() === 'android';
 
-// TEMP shim: the Cordova->Capacitor migration replaces each consumer's Cordova
-// branch in its own task. This keeps still-unmigrated consumers building and
-// behaving exactly as before until the final sweep removes them and this shim.
-export const isCordova = () =>
-  typeof window !== 'undefined' && !!window.cordova;
-
 const getEnvironment = () => {
   if (isCapacitor()) return environments.CAPACITOR;
   if (isElectron()) return environments.ELECTRON;

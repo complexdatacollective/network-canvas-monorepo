@@ -50,20 +50,6 @@ const protocolPath = (environment) => {
     };
   }
 
-  if (environment === environments.CORDOVA) {
-    return (protocolUID, filePath) => {
-      if (!isValidProtocolUID(protocolUID))
-        throw Error('Protocol name is not valid');
-
-      if (!filePath) {
-        // Cordova expects a trailing slash:
-        return `${userDataPath()}protocols/${protocolUID}/`;
-      }
-
-      return `${userDataPath()}protocols/${protocolUID}/${filePath}`;
-    };
-  }
-
   throw new Error('protocolPath() not specified on this platform');
 };
 
