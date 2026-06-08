@@ -29,6 +29,7 @@ jobs:
       any_app: ${{ steps.flags.outputs.any_app }}
       docs: ${{ steps.flags.outputs.docs }}
       architect: ${{ steps.flags.outputs.architect }}
+      website: ${{ steps.flags.outputs.website }}
       fresco_ui_storybook: ${{ steps.flags.outputs.fresco_ui_storybook }}
       interview_storybook: ${{ steps.flags.outputs.interview_storybook }}
       interview_e2e: ${{ steps.flags.outputs.interview_e2e }}
@@ -99,10 +100,11 @@ jobs:
           }
           docs=$(flag @codaco/documentation)
           arch=$(flag @codaco/architect-web)
+          web=$(flag networkcanvas.com)
           fui=$(flag @codaco/fresco-ui)
           intv=$(flag @codaco/interview)
           any_app=false
-          if [[ "$docs" == "true" || "$arch" == "true" ]]; then any_app=true; fi
+          if [[ "$docs" == "true" || "$arch" == "true" || "$web" == "true" ]]; then any_app=true; fi
 
           # PR-only: detect a changeset ADDED/CHANGED in this PR whose frontmatter
           # touches @codaco/interviewer-v7. Gates the snapshot Electron build job
@@ -127,6 +129,7 @@ jobs:
             echo "any_app=$any_app"
             echo "docs=$docs"
             echo "architect=$arch"
+            echo "website=$web"
             echo "fresco_ui_storybook=$fui"
             echo "interview_storybook=$intv"
             echo "interview_e2e=$intv"
@@ -342,15 +345,59 @@ jobs:
           url=$(echo "$json" | jq -r '.deploy_url')
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
+  deploy-website-preview:
+    # Same shape as deploy-architect-preview: wait for quality (cache +
+    # write-slot) but don't gate the preview deploy on its success.
+    needs: [detect, quality]
+    if: |
+      always() &&
+      github.event_name == 'pull_request' &&
+      needs.detect.outputs.website == 'true' &&
+      needs.quality.result != 'cancelled'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - id: deploy
+        name: Build and deploy networkcanvas.com preview
+        run: |
+          pnpm exec turbo run build --filter=networkcanvas.com
+          json=$(npx --yes netlify-cli@22 deploy --no-build \
+                   --filter=networkcanvas.com \
+                   --dir=apps/networkcanvas.com/out \
+                   --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" \
+                   --alias="pr-${{ github.event.number }}" --json)
+          echo "$json" | jq .
+          url=$(echo "$json" | jq -r '.deploy_url')
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
   # Single PR comment summarising whichever preview(s) deployed. Uses a hidden
   # HTML marker to locate the existing comment on subsequent runs so we update
   # in place rather than spamming the PR with one new comment per run.
   comment-preview-urls:
-    needs: [deploy-docs-preview, deploy-architect-preview]
+    needs:
+      [deploy-docs-preview, deploy-architect-preview, deploy-website-preview]
     if: |
       always() &&
       github.event_name == 'pull_request' &&
-      (needs.deploy-docs-preview.result == 'success' || needs.deploy-architect-preview.result == 'success')
+      (needs.deploy-docs-preview.result == 'success' || needs.deploy-architect-preview.result == 'success' || needs.deploy-website-preview.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -360,13 +407,15 @@ jobs:
         env:
           DOCS_URL: ${{ needs.deploy-docs-preview.outputs.url }}
           ARCHITECT_URL: ${{ needs.deploy-architect-preview.outputs.url }}
+          WEBSITE_URL: ${{ needs.deploy-website-preview.outputs.url }}
         with:
           script: |
             const marker = '<!-- ci:deploy-previews -->';
             const lines = [marker, '🚀 **Deploy previews**'];
-            const { DOCS_URL, ARCHITECT_URL } = process.env;
+            const { DOCS_URL, ARCHITECT_URL, WEBSITE_URL } = process.env;
             if (DOCS_URL) lines.push(`- documentation → ${DOCS_URL}`);
             if (ARCHITECT_URL) lines.push(`- architect-web → ${ARCHITECT_URL}`);
+            if (WEBSITE_URL) lines.push(`- networkcanvas.com → ${WEBSITE_URL}`);
             const body = lines.join('\n');
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -440,6 +489,56 @@ jobs:
                    --filter=@codaco/architect-web \
                    --dir=apps/architect-web/dist \
                    --site="${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}" --json)
+          echo "$json" | jq .
+          url=$(echo "$json" | jq -r '.deploy_url')
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+  deploy-website-prod:
+    needs:
+      [
+        detect,
+        quality,
+        chromatic-fresco-ui,
+        chromatic-interview,
+        interview-e2e-report,
+      ]
+    if: |
+      always() &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.detect.outputs.website == 'true' &&
+      needs.quality.result == 'success' &&
+      needs.chromatic-fresco-ui.result != 'failure' &&
+      needs.chromatic-interview.result != 'failure' &&
+      needs.interview-e2e-report.result != 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - id: deploy
+        name: Build and deploy networkcanvas.com production
+        run: |
+          pnpm exec turbo run build --filter=networkcanvas.com
+          json=$(npx --yes netlify-cli@22 deploy --no-build --prod \
+                   --filter=networkcanvas.com \
+                   --dir=apps/networkcanvas.com/out \
+                   --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" --json)
           echo "$json" | jq .
           url=$(echo "$json" | jq -r '.deploy_url')
           echo "url=$url" >> "$GITHUB_OUTPUT"
@@ -965,6 +1064,7 @@ jobs:
       - detect
       - deploy-docs-preview
       - deploy-architect-preview
+      - deploy-website-preview
       - chromatic-fresco-ui
       - chromatic-interview
       - interview-e2e
@@ -983,6 +1083,7 @@ jobs:
           # docs-preview-checks on deploy-docs-preview, so they share flags.
           FLAG_DOCS: ${{ needs.detect.outputs.docs }}
           FLAG_ARCHITECT: ${{ needs.detect.outputs.architect }}
+          FLAG_WEBSITE: ${{ needs.detect.outputs.website }}
           FLAG_FRESCO_UI_STORYBOOK: ${{ needs.detect.outputs.fresco_ui_storybook }}
           FLAG_INTERVIEW_STORYBOOK: ${{ needs.detect.outputs.interview_storybook }}
           FLAG_INTERVIEW_E2E: ${{ needs.detect.outputs.interview_e2e }}
@@ -993,6 +1094,7 @@ jobs:
             const flagToJobs = {
               FLAG_DOCS: ["deploy-docs-preview", "docs-preview-checks"],
               FLAG_ARCHITECT: ["deploy-architect-preview"],
+              FLAG_WEBSITE: ["deploy-website-preview"],
               FLAG_FRESCO_UI_STORYBOOK: ["chromatic-fresco-ui"],
               FLAG_INTERVIEW_STORYBOOK: ["chromatic-interview"],
               FLAG_INTERVIEW_E2E: ["interview-e2e", "interview-e2e-report"],
