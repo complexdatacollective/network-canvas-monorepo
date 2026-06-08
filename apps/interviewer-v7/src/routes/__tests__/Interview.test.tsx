@@ -219,6 +219,19 @@ describe('InterviewRoute finish flow', () => {
     expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
   });
 
+  it('clears authorization when returning home from the missing screen', async () => {
+    getProtocolByHashMock.mockResolvedValue(null);
+
+    render(<InterviewRoute sessionId="s1" />);
+    const button = await screen.findByRole('button', { name: /return home/i });
+
+    setAuthorizedInterviewIdMock.mockClear();
+    await invoke(() => button.click());
+
+    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
+    expect(navigateMock).toHaveBeenCalledWith('/');
+  });
+
   it('applies the exit gate from the completion screen', async () => {
     getSettingsMock.mockResolvedValue({
       requireUnlockOnEnter: false,

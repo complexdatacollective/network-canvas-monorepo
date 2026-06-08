@@ -194,7 +194,17 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
             This interview may have been deleted, or the protocol it used is no
             longer installed.
           </Paragraph>
-          <Button onClick={() => navigate('/')}>Return home</Button>
+          <Button
+            onClick={() => {
+              // Not gated (don't trap the user on an error screen), but clear
+              // the entry authorization so a transient load failure can't leave
+              // a stale id that would later skip the enter gate.
+              setAuthorizedInterviewId(null);
+              navigate('/');
+            }}
+          >
+            Return home
+          </Button>
         </Surface>
       </div>
     );
