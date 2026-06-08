@@ -1,7 +1,6 @@
 import { app, protocol } from 'electron';
 
 import appManager from './appManager.js';
-import { registerExportHandlers } from './exportHandler.js';
 import { registerIpcHandlers } from './ipcHandlers.js';
 import loadDevTools from './loadDevTools.js';
 import log from './log.js';
@@ -39,7 +38,6 @@ if (!gotTheLock) {
   // Some APIs can only be used after this event occurs.
   app.on('ready', () => {
     registerIpcHandlers();
-    registerExportHandlers();
     appManager.start();
     loadDevTools();
   });
