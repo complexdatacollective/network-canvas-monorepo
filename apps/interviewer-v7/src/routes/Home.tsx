@@ -262,7 +262,7 @@ export function HomeRoute() {
   const handleSessionCreated = useCallback(
     (session: StoredSession) => {
       setPendingProtocolHash(null);
-      navigate(`/interview/${session.id}`, { state: { fresh: true } });
+      navigate(`/interview/${session.id}`);
     },
     [navigate],
   );

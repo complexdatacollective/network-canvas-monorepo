@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { useHistoryState } from 'wouter/use-browser-location';
 
 import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -12,6 +11,7 @@ import {
   type SessionPayload,
   Shell,
 } from '@codaco/interview';
+import { InterviewComplete } from '~/components/InterviewComplete';
 import {
   buildResolvedAssets,
   makeAssetResolver,
@@ -38,34 +38,32 @@ type LoadState =
       resolver: (id: string) => Promise<string>;
     };
 
-type InterviewLocationState = { fresh?: boolean } | undefined;
-
 export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
-  const [location, navigate] = useLocation();
-  const historyState = useHistoryState<InterviewLocationState>();
+  const [, navigate] = useLocation();
   const { requireFreshUnlock } = useStepUpAuth();
+  const [finished, setFinished] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   // SessionPayload from @codaco/interview's onSync does not carry the current
   // step. Mirror it into a ref so handleSync sees the latest value rather
-  // than the stale closure value (which would overwrite a step that
-  // handleStepChange just persisted).
+  // than the stale closure value.
   const currentStepRef = useRef(0);
+
+  // Gated exit shared by the Shell exit button and the completion screen.
+  const handleExit = useCallback(async () => {
+    const settings = await getSettings();
+    if (settings.requireUnlockOnExit) {
+      const result = await requireFreshUnlock();
+      if (!result.ok) return;
+    }
+    navigate('/');
+  }, [requireFreshUnlock, navigate]);
 
   useEffect(() => {
     let active = true;
-    // `requireUnlockOnEnter` should only fire when *resuming* — i.e. opening
-    // a session that wasn't just created. The new-session flow signals "fresh"
-    // by passing `{ state: { fresh: true } }` to `navigate`. We replace the
-    // history entry to clear the flag, so a subsequent refresh re-enters as
-    // a resume.
-    const isFreshSession = historyState?.fresh === true;
-    if (isFreshSession) {
-      navigate(location, { replace: true, state: null });
-    }
     const load = async () => {
       const settings = await getSettings();
-      if (!isFreshSession && settings.requireUnlockOnEnter) {
+      if (settings.requireUnlockOnEnter) {
         const result = await requireFreshUnlock();
         if (!result.ok) {
           if (active) navigate('/');
@@ -76,6 +74,10 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       const session = await getSession(sessionId);
       if (!session) {
         if (active) setState({ kind: 'missing' });
+        return;
+      }
+      if (session.finishedAt) {
+        if (active) setFinished(true);
         return;
       }
       const protocol = await getProtocolByHash(session.protocolHash);
@@ -112,10 +114,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     return () => {
       active = false;
     };
-    // `historyState` and `location` are read once at mount to consume the
-    // fresh-session signal; we deliberately do not re-fire the gate when the
-    // history state changes after the replace.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, navigate, requireFreshUnlock]);
 
   const analytics = useMemo(
@@ -137,13 +135,10 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     [],
   );
 
-  const handleFinish = useCallback(
-    async (id: string) => {
-      await markSessionFinished(id);
-      navigate('/data');
-    },
-    [navigate],
-  );
+  const handleFinish = useCallback(async (id: string) => {
+    await markSessionFinished(id);
+    setFinished(true);
+  }, []);
 
   const handleStepChange = useCallback(
     (step: number) => {
@@ -153,6 +148,10 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     },
     [sessionId],
   );
+
+  if (finished) {
+    return <InterviewComplete onExit={() => void handleExit()} />;
+  }
 
   if (state.kind === 'loading') {
     return (
@@ -193,7 +192,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         onRequestAsset={state.resolver}
         analytics={analytics}
         disableAnalytics
-        onExit={() => navigate('/')}
+        onExit={() => void handleExit()}
       />
     </div>
   );
