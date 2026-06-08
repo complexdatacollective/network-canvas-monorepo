@@ -1,7 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import type { Swiper as SwiperClass } from 'swiper';
 import { A11y, EffectCreative, Keyboard, Mousewheel } from 'swiper/modules';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -398,6 +397,13 @@ export function ProtocolDeck({
     return protocols.find((p) => p.hash === newSessionProtocolHash);
   }, [newSessionProtocolHash, protocols]);
 
+  const [displayedProtocol, setDisplayedProtocol] = useState<
+    ProtocolWithCounts | undefined
+  >(undefined);
+  useEffect(() => {
+    if (pendingProtocol) setDisplayedProtocol(pendingProtocol);
+  }, [pendingProtocol]);
+
   const creativeEffectConfig = useMemo(
     () => ({
       // Clamp at the largest possible offset so far-away cards still get
@@ -626,28 +632,14 @@ export function ProtocolDeck({
         </motion.div>
       )}
 
-      {/* Portal the overlay to document.body so it escapes Swiper's
-          perspective stacking context. Motion's `layoutId` does the
-          morph in both directions automatically: when this mounts,
-          motion animates it from the (just-unmounted) in-slide
-          DeckCard's last rect; when it unmounts, motion animates the
-          re-mounting DeckCard from this overlay's last rect. */}
-      {createPortal(
-        <AnimatePresence>
-          {newSessionActive &&
-            pendingProtocol &&
-            onCancelNewSession &&
-            onSessionCreated && (
-              <NewSessionCardOverlay
-                key="new-session-overlay"
-                protocol={pendingProtocol}
-                sessionCount={sessionCounts.get(pendingProtocol.hash) ?? 0}
-                onCancel={onCancelNewSession}
-                onCreated={onSessionCreated}
-              />
-            )}
-        </AnimatePresence>,
-        document.body,
+      {displayedProtocol && onCancelNewSession && onSessionCreated && (
+        <NewSessionCardOverlay
+          open={newSessionActive}
+          protocol={displayedProtocol}
+          sessionCount={sessionCounts.get(displayedProtocol.hash) ?? 0}
+          onCancel={onCancelNewSession}
+          onCreated={onSessionCreated}
+        />
       )}
     </div>
   );
