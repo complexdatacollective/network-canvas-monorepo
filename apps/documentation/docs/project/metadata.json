@@ -1,6 +1,7 @@
 {
   "type": "project",
   "slug": "project",
+  "navOrder": 0,
   "localeLabels": { "en": "Project" },
   "localeIndexFiles": { "en": "index.en.mdx" }
 }
