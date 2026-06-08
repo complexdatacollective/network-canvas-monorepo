@@ -1,4 +1,4 @@
-import { useId, useRef } from 'react';
+import { useId } from 'react';
 
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
@@ -7,7 +7,7 @@ import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import BiometricUnlockForm from '~/components/UnlockForms/BiometricUnlockForm';
 import PasswordUnlockField from '~/components/UnlockForms/PasswordUnlockField';
-import PinUnlockField from '~/components/UnlockForms/PinUnlockField';
+import { PinUnlockForm } from '~/components/UnlockForms/PinUnlockForm';
 
 import * as authApi from './api';
 import { useAuth } from './AuthContext';
@@ -28,7 +28,6 @@ function PinStepUp({
   onResolve: (result: StepUpResult) => void;
   handleCancel: () => void;
 }) {
-  const formRef = useRef<HTMLFormElement>(null);
   const formId = useId();
 
   return (
@@ -43,27 +42,14 @@ function PinStepUp({
           </SubmitButton>
         }
       >
-        <FormWithoutProvider
-          id={formId}
-          ref={formRef}
-          onSubmit={async (values): Promise<FormSubmissionResult> => {
-            const pin = typeof values.pin === 'string' ? values.pin : '';
+        <PinUnlockForm
+          formId={formId}
+          verifyPin={async (pin) => {
             const result = await authApi.verifyWithPin(pin);
-            if (result.ok) {
-              onResolve({ ok: true });
-              return { success: true };
-            }
-            return {
-              success: false,
-              formErrors: [result.message ?? 'Incorrect PIN.'],
-            };
+            if (result.ok) onResolve({ ok: true });
+            return result;
           }}
-        >
-          <PinUnlockField
-            autoFocus
-            onComplete={() => formRef.current?.requestSubmit()}
-          />
-        </FormWithoutProvider>
+        />
       </Dialog>
     </FormStoreProvider>
   );

@@ -1,4 +1,4 @@
-import { useId, useRef } from 'react';
+import { useId } from 'react';
 
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
@@ -9,14 +9,13 @@ import { useAuth } from '~/lib/auth/AuthContext';
 
 import BiometricUnlockForm from './UnlockForms/BiometricUnlockForm';
 import PasswordUnlockField from './UnlockForms/PasswordUnlockField';
-import PinUnlockField from './UnlockForms/PinUnlockField';
+import { PinUnlockForm } from './UnlockForms/PinUnlockForm';
 
 function PinLockBody({
-  onSubmit,
+  verifyPin,
 }: {
-  onSubmit: (pin: string) => Promise<FormSubmissionResult>;
+  verifyPin: (pin: string) => Promise<{ ok: boolean; message?: string }>;
 }) {
-  const formRef = useRef<HTMLFormElement>(null);
   const formId = useId();
 
   return (
@@ -32,18 +31,7 @@ function PinLockBody({
           </SubmitButton>
         }
       >
-        <FormWithoutProvider
-          id={formId}
-          ref={formRef}
-          onSubmit={(values) =>
-            onSubmit(typeof values.pin === 'string' ? values.pin : '')
-          }
-        >
-          <PinUnlockField
-            autoFocus
-            onComplete={() => formRef.current?.requestSubmit()}
-          />
-        </FormWithoutProvider>
+        <PinUnlockForm formId={formId} verifyPin={verifyPin} />
       </Dialog>
     </FormStoreProvider>
   );
@@ -131,14 +119,11 @@ export function LockScreen() {
     case 'pin':
       return (
         <PinLockBody
-          onSubmit={async (pin) => {
+          verifyPin={async (pin) => {
             const result = await unlockWithPin(pin);
             return result.ok
-              ? { success: true }
-              : {
-                  success: false,
-                  formErrors: [result.message ?? 'Incorrect PIN.'],
-                };
+              ? { ok: true }
+              : { ok: false, message: result.message ?? 'Incorrect PIN.' };
           }}
         />
       );
