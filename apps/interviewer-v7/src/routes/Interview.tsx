@@ -86,6 +86,10 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         if (active) setState({ kind: 'missing' });
         return;
       }
+      // Bail if a sessionId change / unmount tore down this load while we
+      // awaited — otherwise a stale load could write the shared authorization
+      // ref and skip the enter gate for the wrong session on a later mount.
+      if (!active) return;
       // Entry is now authorized for the rest of the unlock session, so a
       // subsequent lock/unlock remount of this interview won't re-prompt.
       setAuthorizedInterviewId(sessionId);

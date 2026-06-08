@@ -151,6 +151,33 @@ describe('InterviewRoute enter gate', () => {
     expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
     expect(requireFreshUnlockMock).not.toHaveBeenCalled();
   });
+
+  it('does not authorize entry when unmounted mid-load', async () => {
+    getSettingsMock.mockResolvedValue({
+      requireUnlockOnEnter: false,
+      requireUnlockOnExit: false,
+      requireUnlockOnExport: false,
+    });
+    let resolveSession!: (session: unknown) => void;
+    getSessionMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSession = resolve;
+      }),
+    );
+
+    const { unmount } = render(<InterviewRoute sessionId="s1" />);
+    // Let getSettings resolve so the loader parks at the getSession await.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    unmount();
+    await act(async () => {
+      resolveSession(makeSession());
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(setAuthorizedInterviewIdMock).not.toHaveBeenCalledWith('s1');
+  });
 });
 
 describe('InterviewRoute exit gate', () => {
