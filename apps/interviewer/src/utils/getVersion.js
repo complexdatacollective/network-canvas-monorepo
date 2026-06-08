@@ -2,7 +2,7 @@
  * Get app version with secure API support.
  */
 /* global cordova */
-import { isCordova, isElectron } from './Environment';
+import { isCapacitor, isElectron } from './Environment';
 
 const getVersion = () => {
   if (isElectron()) {
@@ -12,7 +12,7 @@ const getVersion = () => {
     return Promise.resolve('0.0.0');
   }
 
-  if (isCordova()) {
+  if (isCapacitor()) {
     return cordova.getAppVersion.getVersionNumber();
   }
 

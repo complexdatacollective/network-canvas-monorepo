@@ -3,7 +3,7 @@
  */
 
 import { pathSync } from '../electronAPI';
-import { isCordova } from '../Environment';
+import { isCapacitor } from '../Environment';
 import { readFile } from '../filesystem';
 import { supportedWorkers, urlForWorkerSource } from '../WorkerAgent';
 import protocolPath from './protocolPath';
@@ -71,7 +71,7 @@ const preloadWorkers = async (protocolUID) => {
     supportedWorkers.map((workerName) => {
       let workerFile;
 
-      if (isCordova()) {
+      if (isCapacitor()) {
         workerFile = `${basePath}${workerName}.js`;
       } else {
         workerFile = pathSync.join(basePath, `${workerName}.js`);

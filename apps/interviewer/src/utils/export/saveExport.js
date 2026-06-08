@@ -1,7 +1,7 @@
 /* global cordova */
 import { Buffer } from 'buffer';
 
-import { isCordova, isElectron } from '../Environment';
+import { isCapacitor, isElectron } from '../Environment';
 import { writeFile } from '../filesystem';
 
 /**
@@ -36,7 +36,7 @@ export const saveExportBlob = async ({ blob, fileName }) => {
     return { saved: true, path: filePath };
   }
 
-  if (isCordova()) {
+  if (isCapacitor()) {
     // NOTE: writes into the app's private data directory. A subsequent share
     // step (e.g. cordova-plugin-x-socialsharing) may be desired so the user can
     // move the file off-device; that is not wired here.

@@ -9,7 +9,7 @@ import { compose } from 'recompose';
 import { Toggle } from '@codaco/ui/lib/components/Fields';
 
 import { actionCreators as deviceSettingsActions } from '../../../ducks/modules/deviceSettings';
-import { isCordova, isElectron } from '../../../utils/Environment';
+import { isCapacitor, isElectron } from '../../../utils/Environment';
 
 const VisualPreferences = (props) => {
   const {
@@ -86,7 +86,7 @@ const VisualPreferences = (props) => {
           </p>
         </div>
       </motion.article>
-      {!isCordova() && (
+      {!isCapacitor() && (
         <motion.article className="settings-element">
           <Toggle
             input={{

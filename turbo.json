@@ -142,6 +142,17 @@
       ],
       "outputs": []
     },
+    "network-canvas-interviewer#build:web": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "src/**",
+        "index.html",
+        "vite.web.config.*",
+        "vite.renderer.shared.*",
+        "package.json"
+      ],
+      "outputs": ["dist-web/**"]
+    },
     "network-canvas-architect#build": {
       "dependsOn": ["^build"],
       "inputs": [
