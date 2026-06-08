@@ -1,5 +1,4 @@
 import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import type {
   CommitBatch,
@@ -7,6 +6,11 @@ import type {
 } from '~/interfaces/FamilyPedigree/store';
 
 import PersonFields from '../quickStartWizard/PersonFields';
+import { buildNodeOptions } from './buildNodeOptions';
+import {
+  geneticParentCandidates,
+  nominatedGameteRoles,
+} from './parentCandidates';
 import BioTriadStep, {
   type BioTriadConfig,
   BioTriadConfigProvider,
@@ -17,24 +21,6 @@ import NewParentPartnershipsStep, {
   shouldSkipNewParentPartnerships,
 } from './steps/NewParentPartnershipsStep';
 import { childCellTransform } from './transforms/childCellTransform';
-
-function buildNodeOptions(
-  nodes: Map<string, NcNode>,
-  variableConfig: VariableConfig,
-): { value: string; label: string }[] {
-  const options: { value: string; label: string }[] = [];
-  for (const [id, node] of nodes) {
-    if (node.attributes[variableConfig.egoVariable] === true) {
-      options.push({ value: id, label: 'You' });
-      continue;
-    }
-    const name = node.attributes[variableConfig.nodeLabelVariable];
-    const label =
-      typeof name === 'string' && name.length > 0 ? name : 'Unknown person';
-    options.push({ value: id, label });
-  }
-  return options;
-}
 
 function getPreselection(
   anchorNodeId: string,
@@ -79,8 +65,23 @@ export async function openAddChildWizard(
     edges,
     variableConfig,
   );
-  const existingNodes = buildNodeOptions(nodes, variableConfig);
-  const bioTriadConfig = { existingNodes, preselection };
+  const candidateIds = geneticParentCandidates(
+    anchorNodeId,
+    'child',
+    edges,
+    variableConfig,
+  );
+  const existingNodes = buildNodeOptions(
+    nodes,
+    edges,
+    variableConfig,
+    candidateIds,
+  );
+  const bioTriadConfig = {
+    existingNodes,
+    preselection,
+    gameteRoles: nominatedGameteRoles(edges),
+  };
 
   const result = await openDialog({
     type: 'wizard',
@@ -89,12 +90,7 @@ export async function openAddChildWizard(
     steps: [
       {
         title: 'Child details',
-        content: () => (
-          <>
-            <Heading level="h4">Child details</Heading>
-            <PersonFields namespace="child" />
-          </>
-        ),
+        content: () => <PersonFields namespace="child" />,
       },
       {
         title: 'Biological parents',

@@ -3,43 +3,47 @@
 import { useMemo } from 'react';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
+import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
+import RadioMatrixField from '@codaco/fresco-ui/form/fields/RadioMatrixField';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 const partnershipOptions = [
-  { value: 'current', label: 'Current partners' },
-  { value: 'ex', label: 'Ex-partners' },
-  { value: 'none', label: 'Never partners' },
+  { value: 'current', label: 'Current partner' },
+  { value: 'ex', label: 'Ex-partner' },
+  { value: 'none', label: "Not a partner or Don't know" },
 ];
+
+/**
+ * Possessive used to label a parent who was left unnamed ("your egg parent").
+ * Fixed to "your" because this quick-start step always describes the
+ * interviewee's own parents.
+ */
+const possessive = 'your';
 
 type ParentEntry = {
   id: string;
   name: string | undefined;
-  sex: string | undefined;
+  /** Label used in the partnership question when no name was provided. */
+  roleLabel: string;
 };
 
 const MAX_ADDITIONAL_PARENTS = 20;
 
 const BIO_PARENT_FIELDS = [
   'egg-parent.name',
-  'egg-parent.sex-at-birth',
   'egg-parent.gestationalCarrier',
   'sperm-parent.name',
-  'sperm-parent.sex-at-birth',
   'gestational-carrier.name',
-  'gestational-carrier.sex-at-birth',
   'hasOtherParents',
   'otherParentCount',
   ...Array.from({ length: MAX_ADDITIONAL_PARENTS }, (_, i) => [
     `additional-parent[${String(i)}].name`,
-    `additional-parent[${String(i)}].sex-at-birth`,
   ]).flat(),
 ] as const;
 
-function getParentLabel(parent: ParentEntry, index: number) {
-  if (parent.name) return parent.name;
-  return `Parent ${String(index + 1)} (assigned ${parent.sex ?? 'unknown'} at birth)`;
+function getParentLabel(parent: ParentEntry): string {
+  return parent.name ? parent.name : parent.roleLabel;
 }
 
 export default function ParentPartnershipsStep() {
@@ -50,12 +54,12 @@ export default function ParentPartnershipsStep() {
       {
         id: 'egg-parent',
         name: values['egg-parent.name'] as string | undefined,
-        sex: values['egg-parent.sex-at-birth'] as string | undefined,
+        roleLabel: `${possessive} egg parent`,
       },
       {
         id: 'sperm-parent',
         name: values['sperm-parent.name'] as string | undefined,
-        sex: values['sperm-parent.sex-at-birth'] as string | undefined,
+        roleLabel: `${possessive} sperm parent`,
       },
     ];
 
@@ -63,7 +67,7 @@ export default function ParentPartnershipsStep() {
       list.push({
         id: 'gestational-carrier',
         name: values['gestational-carrier.name'] as string | undefined,
-        sex: values['gestational-carrier.sex-at-birth'] as string | undefined,
+        roleLabel: `${possessive} gestational carrier`,
       });
     }
 
@@ -75,9 +79,9 @@ export default function ParentPartnershipsStep() {
           name: values[`additional-parent[${String(i)}].name`] as
             | string
             | undefined,
-          sex: values[`additional-parent[${String(i)}].sex-at-birth`] as
-            | string
-            | undefined,
+          // Additional parents always require a name, so this fallback is a
+          // safety net rather than something the participant normally sees.
+          roleLabel: `${possessive} additional parent`,
         });
       }
     }
@@ -85,49 +89,43 @@ export default function ParentPartnershipsStep() {
     return list;
   }, [values]);
 
-  const pairs = useMemo(() => {
-    const result: [number, number][] = [];
-    for (let i = 0; i < parents.length; i++) {
-      for (let j = i + 1; j < parents.length; j++) {
-        result.push([i, j]);
-      }
-    }
-    return result;
-  }, [parents.length]);
-
   if (parents.length < 2) return null;
 
   return (
     <>
-      <div className="mb-8">
-        <Paragraph>
-          We now want to ask about relationships between the parents you named.
-          This includes current and past romantic partnerships, but{' '}
-          <strong>not co-parenting partnerships</strong> where the parents were
-          never romantically involved.
-        </Paragraph>
-        <Paragraph>
-          If either parent is <strong>deceased</strong>, please answer based on
-          whether they were partners while both were alive.
-        </Paragraph>
-      </div>
-      <div className="flex flex-col gap-6">
-        {pairs.map(([i, j]) => {
-          const parentI = parents[i]!;
-          const parentJ = parents[j]!;
+      <Paragraph>
+        We now want to ask about partnerships between the parents you named.
+      </Paragraph>
+      <Paragraph>
+        Partnership means current and past romantic relationships, but{' '}
+        <strong>not co-parenting</strong> (where two people raised a child
+        together but were never romantically involved).
+      </Paragraph>
+      <hr />
+      <FieldNamespace prefix="partnerships">
+        {parents.map((focal, index) => {
+          // Each focal parent is asked about every parent listed below it, so
+          // each pair is covered exactly once.
+          const candidates = parents.slice(index + 1);
+          if (candidates.length === 0) return null;
 
           return (
             <Field
-              key={`partnership-${parentI.id}-${parentJ.id}`}
-              name={`partnership-${parentI.id}-${parentJ.id}`}
-              label={`Are ${getParentLabel(parentI, i)} and ${getParentLabel(parentJ, j)} partners?`}
-              component={RadioGroupField}
+              key={focal.id}
+              name={focal.id}
+              label={`Please indicate which of these people are partners of **${getParentLabel(focal)}**.`}
+              hint="If either person is deceased, please answer based on whether they were partners while both were alive."
+              component={RadioMatrixField}
+              rows={candidates.map((parent) => ({
+                id: parent.id,
+                label: getParentLabel(parent),
+              }))}
               options={partnershipOptions}
-              required
+              defaultOption="none"
             />
           );
         })}
-      </div>
+      </FieldNamespace>
     </>
   );
 }

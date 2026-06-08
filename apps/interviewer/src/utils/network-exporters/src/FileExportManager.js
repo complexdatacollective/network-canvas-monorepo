@@ -1,20 +1,21 @@
+/* eslint-disable global-require */
 const { merge, isEmpty, groupBy } = require('lodash');
 const sanitizeFilename = require('sanitize-filename');
 const { EventEmitter } = require('eventemitter3');
 const queue = require('async/queue');
-const path = require('node:path');
-const { protocolProperty } = require('@codaco/shared-consts');
+const path = require('path');
+const { protocolProperty } = require('./utils/reservedAttributes');
 const { tempDataPath, createDirectory } = require('./utils/filesystem');
 const exportFile = require('./exportFile');
 const {
   insertEgoIntoSessionNetworks,
   resequenceIds,
-  partitionByType,
-  getFilePrefix,
-} = require('@codaco/network-exporters');
-const { unionOfNetworks } = require('./formatters/network');
+  partitionNetworkByType,
+  unionOfNetworks,
+} = require('./formatters/network');
 const {
   verifySessionVariables,
+  getFilePrefix,
   sleep,
   handlePlatformSaveDialog,
   ObservableValue,
@@ -23,6 +24,7 @@ const archive = require('./utils/archive');
 const { ExportError, ErrorMessages } = require('./errors/ExportError');
 const ProgressMessages = require('./ProgressMessages');
 const UserCancelledExport = require('./errors/UserCancelledExport');
+const { isElectron, isCordova } = require('./utils/Environment');
 
 const defaultCSVOptions = {
   adjacencyMatrix: false,
@@ -53,11 +55,23 @@ const defaultExportOptions = {
 const getTempDir = () => {
   const osTempDir = tempDataPath();
   const dirName = `network-canvas-export-${Date.now()}`;
-  const dirPath = path.join(osTempDir, dirName);
+
+  let dirPath = null;
+
+  if (isCordova()) {
+    dirPath = `${osTempDir}${dirName}/`;
+  }
+
+  if (isElectron()) {
+    dirPath = path.join(osTempDir, dirName);
+  }
 
   try {
     createDirectory(dirPath);
-  } catch (_e) {}
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('Error creating temp directory:', e);
+  }
 
   return dirPath;
 };
@@ -83,6 +97,8 @@ class FileExportManager {
 
   emit(event, payload) {
     if (!event) {
+      // eslint-disable-next-line no-console
+      console.warn('Malformed emit.');
       return;
     }
 
@@ -116,7 +132,9 @@ class FileExportManager {
     // This queue instance accepts one or more promises and limits their
     // concurrency for better usability in consuming apps
     // https://caolan.github.io/async/v3/docs.html#queue
-    const QUEUE_CONCURRENCY = 50;
+
+    // Set concurrency to conservative values for now, based on platform
+    const QUEUE_CONCURRENCY = isElectron() ? 50 : 1;
 
     const q = queue((task, callback) => {
       task()
@@ -243,7 +261,7 @@ class FileExportManager {
                   exportFormats.forEach((format) => {
                     // Partitioning the network based on node and edge type so we can create
                     // an individual export file for each type
-                    const partitionedNetworks = partitionByType(
+                    const partitionedNetworks = partitionNetworkByType(
                       protocol.codebook,
                       session,
                       format,
@@ -442,7 +460,11 @@ class FileExportManager {
         }); // End run()
 
       const abort = () => {
+        // eslint-disable-next-line no-console
+        console.info('Aborting file export.');
         if (!shouldContinue()) {
+          // eslint-disable-next-line no-console
+          console.warn('This export already aborted. Cancelling abort!');
           return;
         }
         cancelled = true;

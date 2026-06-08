@@ -1,10 +1,8 @@
-const path = require('node:path');
+/* eslint-disable global-require */
 const { createWriteStream } = require('./utils/filesystem');
-const {
-  getFileExtension,
-  makeFilename,
-  getFormatterClass,
-} = require('@codaco/network-exporters');
+const { getFileExtension, makeFilename } = require('./utils/general');
+const { isCordova, isElectron } = require('./utils/Environment');
+const getFormatterClass = require('./utils/getFormatterClass');
 const { ExportError } = require('./errors/ExportError');
 const UserCancelledExport = require('./errors/UserCancelledExport');
 
@@ -40,14 +38,18 @@ const exportFile = (
     );
   }
 
+  // Establish variables to hold the stream controller (needed to handle abort method)
+  // and the stream itself.
   let streamController;
   let writeStream;
   let promiseResolve;
   let promiseReject;
 
+  // Create a promise
   const pathPromise = new Promise((resolve, reject) => {
     promiseResolve = resolve;
     promiseReject = reject;
+    let filePath;
 
     const formatter = new Formatter(network, codebook, exportOptions);
     const outputName = makeFilename(
@@ -56,7 +58,14 @@ const exportFile = (
       exportFormat,
       extension,
     );
-    const filePath = path.join(outDir, outputName);
+    if (isElectron()) {
+      const path = require('path');
+      filePath = path.join(outDir, outputName);
+    }
+
+    if (isCordova()) {
+      filePath = `${outDir}${outputName}`;
+    }
 
     createWriteStream(filePath).then((ws) => {
       writeStream = ws;
@@ -71,6 +80,8 @@ const exportFile = (
     });
   });
 
+  // Decorate the promise with an abort method that also tears down the
+  // streamController and the writeStream
   pathPromise.abort = () => {
     if (streamController) {
       streamController.abort();

@@ -6,6 +6,7 @@
  * providing a controlled API for file system, dialogs, and other operations.
  */
 
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
 import archiver from 'archiver';
@@ -14,6 +15,25 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import fse from 'fs-extra';
 
 import log from './log.js';
+
+/**
+ * Resolve `target` and require it to be inside the app's temp or userData
+ * directory before a destructive filesystem operation, mirroring the allowlist
+ * in network-exporters' `removeDirectory`. Throws otherwise.
+ */
+const assertUnderSafeRoot = (target, op) => {
+  const resolved = path.resolve(target);
+  const roots = [app.getPath('temp'), app.getPath('userData')];
+  const allowed = roots.some(
+    (root) => resolved === root || resolved.startsWith(root + path.sep),
+  );
+  if (!allowed) {
+    throw new Error(
+      `Refusing to ${op} outside the app's temp/userData directories: ${target}`,
+    );
+  }
+  return resolved;
+};
 
 /**
  * Register all IPC handlers
@@ -38,6 +58,41 @@ export const registerIpcHandlers = () => {
   ipcMain.handle('dialog:showMessageBox', async (event, options) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     return dialog.showMessageBox(window, options);
+  });
+
+  // ===================
+  // Protocol Download (runs in main to avoid renderer CORS)
+  // ===================
+
+  ipcMain.handle('protocol:download', async (_, uri) => {
+    const url = new URL(uri);
+    // Only http(s); reject other schemes (file:, etc.) and embedded
+    // credentials (so they are never fetched or written to the log).
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      throw new Error(`Unsupported protocol for download: ${url.protocol}`);
+    }
+    if (url.username || url.password) {
+      throw new Error('Credentials are not allowed in a protocol download URL');
+    }
+    // Log origin + path only (no credentials or query string).
+    log.info('protocol:download', `${url.origin}${url.pathname}`);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60_000);
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) {
+        throw new Error(
+          `Failed to download protocol (HTTP ${response.status})`,
+        );
+      }
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const destination = path.join(app.getPath('temp'), randomUUID());
+      await fse.writeFile(destination, buffer);
+      return destination;
+    } finally {
+      clearTimeout(timeout);
+    }
   });
 
   // ===================
@@ -68,16 +123,6 @@ export const registerIpcHandlers = () => {
   // File System Handlers
   // ===================
 
-  ipcMain.handle('fs:readJson', async (_, filePath) => {
-    log.info('fs:readJson', filePath);
-    return fse.readJson(filePath);
-  });
-
-  ipcMain.handle('fs:writeJson', async (_, filePath, data, options) => {
-    log.info('fs:writeJson', filePath);
-    return fse.writeJson(filePath, data, options);
-  });
-
   ipcMain.handle('fs:readFile', async (_, filePath, encoding) => {
     log.info('fs:readFile', filePath);
     if (encoding) {
@@ -88,11 +133,14 @@ export const registerIpcHandlers = () => {
     return buffer.toString('base64');
   });
 
-  ipcMain.handle('fs:writeFile', async (_, filePath, data) => {
+  ipcMain.handle('fs:writeFile', async (_, filePath, data, isBinary) => {
     log.info('fs:writeFile', filePath);
-    // Handle base64 encoded data
+    // Explicit binary flag from the renderer is authoritative (any size).
+    if (isBinary) {
+      return fse.writeFile(filePath, Buffer.from(data, 'base64'));
+    }
+    // Fallback heuristic for callers that don't set the flag (e.g. streams).
     if (typeof data === 'string' && data.length > 0) {
-      // Check if it looks like base64
       const isBase64 = /^[A-Za-z0-9+/]+=*$/.test(data.substring(0, 100));
       if (isBase64 && data.length > 1000) {
         return fse.writeFile(filePath, Buffer.from(data, 'base64'));
@@ -101,66 +149,14 @@ export const registerIpcHandlers = () => {
     return fse.writeFile(filePath, data);
   });
 
-  ipcMain.handle('fs:copy', async (_, src, dest) => {
-    log.info('fs:copy', src, '->', dest);
-    return fse.copy(src, dest);
-  });
-
-  ipcMain.handle('fs:unlink', async (_, filePath) => {
-    log.info('fs:unlink', filePath);
-    return fse.unlink(filePath);
-  });
-
-  ipcMain.handle('fs:remove', async (_, filePath) => {
-    log.info('fs:remove', filePath);
-    return fse.remove(filePath);
-  });
-
   ipcMain.handle('fs:rename', async (_, oldPath, newPath) => {
     log.info('fs:rename', oldPath, '->', newPath);
     return fse.rename(oldPath, newPath);
   });
 
-  ipcMain.handle('fs:access', async (_, filePath, mode) => {
-    log.info('fs:access', filePath);
-    try {
-      await fse.access(filePath, mode);
-      return true;
-    } catch {
-      return false;
-    }
-  });
-
-  ipcMain.handle('fs:stat', async (_, filePath) => {
-    log.info('fs:stat', filePath);
-    const stats = await fse.stat(filePath);
-    return {
-      isFile: stats.isFile(),
-      isDirectory: stats.isDirectory(),
-      size: stats.size,
-      mtime: stats.mtime,
-      ctime: stats.ctime,
-    };
-  });
-
   ipcMain.handle('fs:mkdirp', async (_, dirPath) => {
     log.info('fs:mkdirp', dirPath);
     return fse.mkdirp(dirPath);
-  });
-
-  ipcMain.handle('fs:pathExists', async (_, filePath) => {
-    log.info('fs:pathExists', filePath);
-    return fse.pathExists(filePath);
-  });
-
-  ipcMain.handle('fs:readdir', async (_, dirPath) => {
-    log.info('fs:readdir', dirPath);
-    return fse.readdir(dirPath);
-  });
-
-  ipcMain.handle('fs:outputFile', async (_, filePath, data) => {
-    log.info('fs:outputFile', filePath);
-    return fse.outputFile(filePath, data);
   });
 
   ipcMain.handle('fs:mkdir', async (_, dirPath, options) => {
@@ -170,22 +166,9 @@ export const registerIpcHandlers = () => {
 
   ipcMain.handle('fs:rmdir', async (_, dirPath) => {
     log.info('fs:rmdir', dirPath);
-    return fse.rmdir(dirPath, { recursive: true });
-  });
-
-  ipcMain.handle('fs:existsSync', async (_, filePath) => {
-    log.info('fs:existsSync', filePath);
-    return fse.existsSync(filePath);
-  });
-
-  ipcMain.handle('fs:createWriteStream', async (_, filePath) => {
-    log.info('fs:createWriteStream', filePath);
-    // Note: We can't actually return a stream over IPC, but we can ensure
-    // the directory exists and return success. Actual streaming should be
-    // handled differently (e.g., chunked writes via fs:writeFile or fs:outputFile)
-    const dirPath = path.dirname(filePath);
-    await fse.mkdirp(dirPath);
-    return { path: filePath, ready: true };
+    // Destructive: only allow removing inside the app's temp / userData dirs.
+    // `remove` is idempotent (no ENOENT on missing path) and not deprecated.
+    return fse.remove(assertUnderSafeRoot(dirPath, 'remove a directory'));
   });
 
   // ===================
@@ -352,24 +335,12 @@ export const removeIpcHandlers = () => {
     'app:getPath',
     'app:getAppPath',
     'app:getVersion',
-    'fs:readJson',
-    'fs:writeJson',
     'fs:readFile',
     'fs:writeFile',
-    'fs:copy',
-    'fs:unlink',
-    'fs:remove',
     'fs:rename',
-    'fs:access',
-    'fs:stat',
     'fs:mkdirp',
-    'fs:pathExists',
-    'fs:readdir',
-    'fs:outputFile',
     'fs:mkdir',
     'fs:rmdir',
-    'fs:existsSync',
-    'fs:createWriteStream',
     'path:join',
     'path:basename',
     'path:dirname',

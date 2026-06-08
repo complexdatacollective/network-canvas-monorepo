@@ -61,10 +61,7 @@ export function BaseField({
   return (
     <div
       {...containerProps}
-      className={cx(
-        'group desktop:not-last:mb-10 tablet-landscape:not-last:mb-8 w-full grow not-last:mb-6',
-        'flex flex-col',
-      )}
+      className={cx('group w-full grow not-last:mb-8', 'flex flex-col')}
     >
       <div
         className={cx(
@@ -73,7 +70,7 @@ export function BaseField({
           'flex flex-col',
         )}
       >
-        <div className={cx(inline && 'min-w-0', !inline && 'mb-4')}>
+        <div className={cx(inline && 'min-w-0', !inline && 'mb-2')}>
           <FieldLabel id={`${id}-label`} htmlFor={id} required={required}>
             {label}
           </FieldLabel>

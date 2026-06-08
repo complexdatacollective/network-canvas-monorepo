@@ -5,28 +5,75 @@ import { AnimatePresence, motion } from 'motion/react';
 import Link from 'next/link';
 import { useState } from 'react';
 
+import { ProjectsMenu } from '~/components/layout/ProjectsMenu';
 import { ButtonLink } from '~/components/ui/ButtonLink';
 import { Container } from '~/components/ui/Container';
 import { Logo } from '~/components/ui/Logo';
-import { navLinks } from '~/lib/content';
+import { navLinks, projects } from '~/lib/content';
 
-function NavItems({ onNavigate }: { onNavigate?: () => void }) {
+const linkClasses =
+  'font-heading text-cyber-grape hover:text-neon-coral text-sm font-bold tracking-[0.12em] uppercase transition-colors';
+
+/** Top-level nav links, excluding the Projects dropdown and the Download CTA. */
+const topLevelLinks = navLinks.filter(
+  (link) => link.href !== '/download' && link.href !== '/#projects',
+);
+
+function DesktopLinks() {
   return (
     <>
-      {navLinks
-        .filter((link) => link.href !== '/download')
-        .map((link) => (
-          <Link
-            key={link.label}
-            href={link.href}
-            target={link.external ? '_blank' : undefined}
-            rel={link.external ? 'noreferrer' : undefined}
+      {topLevelLinks.map((link) => (
+        <Link
+          key={link.label}
+          href={link.href}
+          target={link.external ? '_blank' : undefined}
+          rel={link.external ? 'noreferrer' : undefined}
+          className={linkClasses}
+        >
+          {link.label}
+        </Link>
+      ))}
+    </>
+  );
+}
+
+function MobileLinks({ onNavigate }: { onNavigate: () => void }) {
+  return (
+    <>
+      {topLevelLinks.map((link) => (
+        <Link
+          key={link.label}
+          href={link.href}
+          target={link.external ? '_blank' : undefined}
+          rel={link.external ? 'noreferrer' : undefined}
+          onClick={onNavigate}
+          className={linkClasses}
+        >
+          {link.label}
+        </Link>
+      ))}
+
+      <div className="flex flex-col gap-3">
+        <Link
+          href="/#projects"
+          onClick={onNavigate}
+          className="font-heading text-cyber-grape/60 hover:text-neon-coral text-xs font-bold tracking-[0.12em] uppercase transition-colors"
+        >
+          Projects
+        </Link>
+        {projects.map((project) => (
+          <a
+            key={project.name}
+            href={project.href}
+            target="_blank"
+            rel="noreferrer"
             onClick={onNavigate}
-            className="font-heading text-cyber-grape hover:text-neon-coral text-sm font-bold tracking-[0.12em] uppercase transition-colors"
+            className={`${linkClasses} pl-3`}
           >
-            {link.label}
-          </Link>
+            {project.name}
+          </a>
         ))}
+      </div>
     </>
   );
 }
@@ -42,7 +89,8 @@ export function Header() {
         </Link>
 
         <nav className="tablet-landscape:flex hidden items-center gap-9">
-          <NavItems />
+          <DesktopLinks />
+          <ProjectsMenu />
           <ButtonLink href="/download" color="primary" className="rounded-full">
             Download
           </ButtonLink>
@@ -69,7 +117,7 @@ export function Header() {
             className="bg-surface tablet-landscape:hidden absolute inset-x-4 top-full z-50 rounded-[1.75rem] p-6 shadow-xl"
           >
             <nav className="flex flex-col gap-5">
-              <NavItems onNavigate={() => setOpen(false)} />
+              <MobileLinks onNavigate={() => setOpen(false)} />
               <ButtonLink
                 href="/download"
                 color="primary"

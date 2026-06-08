@@ -50,7 +50,7 @@ export const getIsPreviouslyAnsweredNo = (state, prompt, pair) => {
   return false;
 };
 
-export const stageStateReducer = (state, { pair, prompt, value }) => {
+export const stageStateReducer = (state = [], { pair, prompt, value }) => {
   // Remove existing entry, if it exists, and add new one on the end
   const newState = [
     ...state.filter((item) => !matchEntry(prompt, pair)(item)),

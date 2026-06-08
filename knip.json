@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
-  "ignoreWorkspaces": ["apps/interviewer", "apps/architect-desktop"],
+  "ignoreWorkspaces": ["apps/interviewer", "apps/architect"],
   "ignoreExportsUsedInFile": { "type": true },
   "tags": ["-public"],
   "workspaces": {

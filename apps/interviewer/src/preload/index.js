@@ -90,28 +90,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // File System Operations
   // ===================
   fs: {
-    readJson: (filePath) => ipcRenderer.invoke('fs:readJson', filePath),
-    writeJson: (filePath, data, options) =>
-      ipcRenderer.invoke('fs:writeJson', filePath, data, options),
     readFile: (filePath, encoding) =>
       ipcRenderer.invoke('fs:readFile', filePath, encoding),
-    writeFile: (filePath, data) =>
-      ipcRenderer.invoke('fs:writeFile', filePath, data),
-    copy: (src, dest) => ipcRenderer.invoke('fs:copy', src, dest),
-    unlink: (filePath) => ipcRenderer.invoke('fs:unlink', filePath),
-    remove: (filePath) => ipcRenderer.invoke('fs:remove', filePath),
+    writeFile: (filePath, data, isBinary) =>
+      ipcRenderer.invoke('fs:writeFile', filePath, data, isBinary),
     rename: (oldPath, newPath) =>
       ipcRenderer.invoke('fs:rename', oldPath, newPath),
-    access: (filePath, mode) => ipcRenderer.invoke('fs:access', filePath, mode),
-    stat: (filePath) => ipcRenderer.invoke('fs:stat', filePath),
     mkdirp: (dirPath) => ipcRenderer.invoke('fs:mkdirp', dirPath),
-    pathExists: (filePath) => ipcRenderer.invoke('fs:pathExists', filePath),
-    readdir: (dirPath) => ipcRenderer.invoke('fs:readdir', dirPath),
-    outputFile: (filePath, data) =>
-      ipcRenderer.invoke('fs:outputFile', filePath, data),
-    // Additional methods needed by network-canvas
-    createWriteStream: (filePath) =>
-      ipcRenderer.invoke('fs:createWriteStream', filePath),
     mkdir: (dirPath, options) =>
       ipcRenderer.invoke('fs:mkdir', dirPath, options),
     rmdir: (dirPath) => ipcRenderer.invoke('fs:rmdir', dirPath),
@@ -130,6 +115,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     resolve: (...args) => ipcRenderer.invoke('path:resolve', ...args),
     normalize: (filePath) => ipcRenderer.invoke('path:normalize', filePath),
     relative: (from, to) => ipcRenderer.invoke('path:relative', from, to),
+  },
+
+  // ===================
+  // Protocol Operations
+  // ===================
+  protocol: {
+    download: (uri) => ipcRenderer.invoke('protocol:download', uri),
   },
 
   // ===================

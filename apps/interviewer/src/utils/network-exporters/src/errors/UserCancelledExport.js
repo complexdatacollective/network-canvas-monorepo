@@ -6,4 +6,4 @@ class UserCancelledExport extends Error {
   }
 }
 
-export default UserCancelledExport;
+module.exports = UserCancelledExport;

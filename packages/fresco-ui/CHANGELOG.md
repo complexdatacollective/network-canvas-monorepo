@@ -1,5 +1,30 @@
 # @codaco/fresco-ui
 
+## 2.12.1
+
+### Patch Changes
+
+- `RadioMatrixField`: untouched rows that have neither an answer nor a configured `defaultOption` are now omitted from the emitted value instead of being serialized with an empty-string value.
+
+## 2.12.0
+
+### Minor Changes
+
+- New `RadioMatrixField` at `./form/fields/RadioMatrixField`: a form field that asks the same single-choice question across many rows, laid out as a matrix (rows × shared option columns). Each row is an independent radio group; the field value is an array of `{ id, value }` entries, with an optional `defaultOption` pre-selected for unanswered rows. It uses the standard input-control container and collapses to stacked per-row groups on narrow containers. `RadioItem` gains optional `className` / `labelClassName` props so callers can place a bare radio in a grid cell.
+
+  Field rendering tweaks:
+  - `BaseField` now uses a uniform `not-last:mb-8` bottom margin between fields instead of ramping the gap up on larger screens (`tablet-landscape:not-last:mb-8`, `desktop:not-last:mb-10`), giving form fields a consistent vertical rhythm across all breakpoints.
+  - `Label` no longer carries the heading `label` variant's default bottom margin (`margin: 'none'`), so field labels sit tighter to their control.
+  - `InputField` number steppers now use a subtle contrast-tinted hover (`hover:bg-input-contrast/10`) instead of switching to the accent color.
+
+  `DropdownMenuContent` now renders the same pointer arrow as `Popover`. It gained a `showArrow` prop (defaulting to `true`) that draws the shared `ArrowSvg` with per-side rotation, and its default `sideOffset` increased from `4` to `10` so the arrow clears the trigger.
+
+### Patch Changes
+
+- `useField`: a field with an `initialValue` can now be cleared. The value passed to the field component was computed as `fieldState?.value ?? initialValue`, which re-applied the `initialValue` whenever the stored value was `undefined` — so calling `setFieldValue(name, undefined)` (or otherwise clearing the field) left the component still showing the initial value. The fallback to `initialValue` now applies only before the field is registered; once registered, the stored value (including an explicit `undefined`) is honoured.
+
+- `RadioGroupField`: respect a per-option `disabled` flag even when the field itself is not disabled. The per-option disabled state was computed with `disabled ?? option.disabled`, which discarded `option.disabled` whenever the field passed an explicit `disabled={false}` (the normal case via `useField`), so individual options could never be disabled.
+
 ## 2.11.0
 
 ### Minor Changes

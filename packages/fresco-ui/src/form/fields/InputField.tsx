@@ -80,7 +80,7 @@ const stepperButtonVariants = cx(
   'aspect-square h-full! rounded-none',
   'elevation-none! translate-y-0!',
   'bg-input-contrast/5 text-input-contrast',
-  'hover:bg-accent hover:text-accent-contrast',
+  'hover:bg-input-contrast/10',
   'disabled:pointer-events-none disabled:opacity-30',
 );
 

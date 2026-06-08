@@ -6,14 +6,13 @@ import { CancellationError } from '../CancellationError';
 import { removeDirectory, rename } from '../filesystem';
 import protocolPath from './protocolPath';
 
-const renameProtocol = (previousUuid, currentUuid) => {
+const renameProtocol = async (previousUuid, currentUuid) => {
   // delete contents of previous uuid, and move current content directory to previous uuid location
-  const previousDir = protocolPath(previousUuid);
-  const currentDir = protocolPath(currentUuid);
+  const previousDir = await protocolPath(previousUuid);
+  const currentDir = await protocolPath(currentUuid);
 
-  return removeDirectory(previousDir).then(() =>
-    rename(currentDir, previousDir),
-  );
+  await removeDirectory(previousDir);
+  return rename(currentDir, previousDir);
 };
 
 const checkExistingSession = (currentName) => {

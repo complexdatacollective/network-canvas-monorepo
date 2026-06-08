@@ -109,7 +109,9 @@ describe('childCellTransform', () => {
         e.data.attributes[variableConfig.relationshipTypeVariable] !==
           'partner',
     );
-    expect(parentEdges).toHaveLength(3);
+    // One edge per parent: the egg parent who carried is flagged on their
+    // single edge rather than getting a second carrier edge.
+    expect(parentEdges).toHaveLength(2);
 
     const eggEdge = parentEdges.find((e) => e.source === egoId);
     expect(eggEdge?.data.attributes).toMatchObject({
@@ -220,7 +222,6 @@ describe('childCellTransform', () => {
         'name-known': true,
         'name': 'Surrogate Sue',
       },
-      'carrier-is-surrogate': true,
     };
 
     const batch = childCellTransform(
@@ -244,7 +245,7 @@ describe('childCellTransform', () => {
     });
   });
 
-  it('carrier same as egg source does not duplicate node', () => {
+  it('carrier same as egg source does not duplicate the node or edge', () => {
     const values: Record<string, unknown> = {
       'child': { name: 'Baby' },
       'egg-source': egoId,
@@ -262,27 +263,14 @@ describe('childCellTransform', () => {
 
     expect(batch.nodes).toHaveLength(1);
 
+    // The egg parent who also carried has a single edge, flagged as the
+    // gestational carrier — not a duplicate carrier edge.
     const egoEdges = batch.edges.filter((e) => e.source === egoId);
-    expect(egoEdges).toHaveLength(2);
-
-    const gcEdge = egoEdges.find(
-      (e) =>
-        e.data.attributes[variableConfig.relationshipTypeVariable] !==
-          'partner' &&
-        e.data.attributes[variableConfig.isGestationalCarrierVariable] === true,
-    );
-    expect(gcEdge).toBeDefined();
-
-    const bioEdge = egoEdges.find(
-      (e) =>
-        e.data.attributes[variableConfig.relationshipTypeVariable] !==
-          'partner' &&
-        e.data.attributes[variableConfig.isGestationalCarrierVariable] ===
-          undefined,
-    );
-    expect(bioEdge?.data.attributes).toMatchObject({
+    expect(egoEdges).toHaveLength(1);
+    expect(egoEdges[0]?.data.attributes).toMatchObject({
       [variableConfig.relationshipTypeVariable]: 'biological',
       [variableConfig.isActiveVariable]: true,
+      [variableConfig.isGestationalCarrierVariable]: true,
     });
   });
 });

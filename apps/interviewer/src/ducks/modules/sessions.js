@@ -258,7 +258,8 @@ const addNode =
   };
 
 const updateNode =
-  (nodeId, newModelData, newAttributeData, sound) => (dispatch, getState) => {
+  (nodeId, newModelData = {}, newAttributeData = {}, sound) =>
+  (dispatch, getState) => {
     const { activeSessionId } = getState();
 
     dispatch({
