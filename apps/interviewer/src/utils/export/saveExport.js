@@ -1,7 +1,9 @@
-/* global cordova */
 import { Buffer } from 'buffer';
 
-import { isCordova, isElectron } from '../Environment';
+import { Directory, Filesystem } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+
+import { isCapacitor, isElectron } from '../Environment';
 import { writeFile } from '../filesystem';
 
 /**
@@ -10,7 +12,8 @@ import { writeFile } from '../filesystem';
  * ELECTRON: prompt with a native save dialog (default name = fileName), then
  * write the bytes to the chosen path via the app's writeFile helper.
  *
- * CORDOVA: write the bytes to cordova.file.dataDirectory + fileName.
+ * CAPACITOR: base64-encode the bytes, write to the OS cache directory, then
+ * open the native share sheet so the user can move the file off-device.
  *
  * @param {Object} args
  * @param {Blob} args.blob The produced zip contents.
@@ -36,17 +39,15 @@ export const saveExportBlob = async ({ blob, fileName }) => {
     return { saved: true, path: filePath };
   }
 
-  if (isCordova()) {
-    // NOTE: writes into the app's private data directory. A subsequent share
-    // step (e.g. cordova-plugin-x-socialsharing) may be desired so the user can
-    // move the file off-device; that is not wired here.
-    //
-    // Pass the raw ArrayBuffer: Cordova's FileWriter.write expects an
-    // ArrayBuffer for binary data (a Uint8Array is not reliably accepted across
-    // implementations), matching the ArrayBuffer codepaths in filesystem.js.
-    const destination = `${cordova.file.dataDirectory}${fileName}`;
-    await writeFile(destination, arrayBuffer);
-    return { saved: true, path: destination };
+  if (isCapacitor()) {
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+    const { uri } = await Filesystem.writeFile({
+      path: fileName,
+      data: base64,
+      directory: Directory.Cache,
+    });
+    await Share.share({ title: fileName, url: uri });
+    return { saved: true, path: uri };
   }
 
   throw new Error('saveExportBlob() is not supported on this platform');
