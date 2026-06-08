@@ -1,22 +1,26 @@
-import { useId, useRef } from 'react';
+import { Fingerprint, KeyRound, RectangleEllipsis } from 'lucide-react';
+import { useId } from 'react';
 
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { useAuth } from '~/lib/auth/AuthContext';
 
 import BiometricUnlockForm from './UnlockForms/BiometricUnlockForm';
 import PasswordUnlockField from './UnlockForms/PasswordUnlockField';
-import PinUnlockField from './UnlockForms/PinUnlockField';
+import { PinUnlockForm } from './UnlockForms/PinUnlockForm';
+import { UnlockEmblem } from './UnlockForms/UnlockEmblem';
+
+const LOCK_TITLE = 'Welcome back';
 
 function PinLockBody({
-  onSubmit,
+  verifyPin,
 }: {
-  onSubmit: (pin: string) => Promise<FormSubmissionResult>;
+  verifyPin: (pin: string) => Promise<{ ok: boolean; message?: string }>;
 }) {
-  const formRef = useRef<HTMLFormElement>(null);
   const formId = useId();
 
   return (
@@ -24,26 +28,20 @@ function PinLockBody({
       <Dialog
         open
         dismissible={false}
-        title="Device locked"
-        description="Enter your PIN to unlock this device."
+        title={LOCK_TITLE}
         footer={
           <SubmitButton form={formId} submittingText="Unlocking…">
             Unlock
           </SubmitButton>
         }
       >
-        <FormWithoutProvider
-          id={formId}
-          ref={formRef}
-          onSubmit={(values) =>
-            onSubmit(typeof values.pin === 'string' ? values.pin : '')
-          }
-        >
-          <PinUnlockField
-            autoFocus
-            onComplete={() => formRef.current?.requestSubmit()}
-          />
-        </FormWithoutProvider>
+        <div className="mb-6 flex flex-col items-center gap-4 text-center">
+          <UnlockEmblem icon={KeyRound} seed="pin-unlock" />
+          <Paragraph margin="none" emphasis="muted">
+            Enter your PIN to unlock and pick up where you left off.
+          </Paragraph>
+        </div>
+        <PinUnlockForm formId={formId} verifyPin={verifyPin} />
       </Dialog>
     </FormStoreProvider>
   );
@@ -61,14 +59,19 @@ function PassphraseLockBody({
       <Dialog
         open
         dismissible={false}
-        title="Device locked"
-        description="Enter your passphrase to unlock this device."
+        title={LOCK_TITLE}
         footer={
           <SubmitButton form={formId} submittingText="Unlocking…">
             Unlock
           </SubmitButton>
         }
       >
+        <div className="mb-6 flex flex-col items-center gap-4 text-center">
+          <UnlockEmblem icon={RectangleEllipsis} seed="passphrase-unlock" />
+          <Paragraph margin="none" emphasis="muted">
+            Enter your passphrase to unlock and pick up where you left off.
+          </Paragraph>
+        </div>
         <FormWithoutProvider
           id={formId}
           onSubmit={(values) =>
@@ -92,12 +95,13 @@ function BiometricLockDialog({
   ) => Promise<{ ok: boolean; message?: string }>;
 }) {
   return (
-    <Dialog
-      open
-      dismissible={false}
-      title="Device locked"
-      description="Authenticate to unlock this device and resume your work."
-    >
+    <Dialog open dismissible={false} title={LOCK_TITLE}>
+      <div className="mb-6 flex flex-col items-center gap-4 text-center">
+        <UnlockEmblem icon={Fingerprint} seed="biometric-unlock" />
+        <Paragraph margin="none" emphasis="muted">
+          Authenticate to unlock and pick up where you left off.
+        </Paragraph>
+      </div>
       <BiometricUnlockForm onSubmit={onSubmit} />
     </Dialog>
   );
@@ -131,14 +135,11 @@ export function LockScreen() {
     case 'pin':
       return (
         <PinLockBody
-          onSubmit={async (pin) => {
+          verifyPin={async (pin) => {
             const result = await unlockWithPin(pin);
             return result.ok
-              ? { success: true }
-              : {
-                  success: false,
-                  formErrors: [result.message ?? 'Incorrect PIN.'],
-                };
+              ? { ok: true }
+              : { ok: false, message: result.message ?? 'Incorrect PIN.' };
           }}
         />
       );

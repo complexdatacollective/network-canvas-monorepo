@@ -64,8 +64,8 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
     "@types/is-hotkey": "^0.1.10",
     "@types/luxon": "^3.7.1",
     "@types/react": "catalog:",

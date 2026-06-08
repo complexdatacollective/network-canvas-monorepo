@@ -6,6 +6,18 @@ import Database, {
 } from 'better-sqlite3-multiple-ciphers';
 import { app } from 'electron';
 
+// The settings contract and the session query/result types are owned by the
+// renderer-side data-model module `types.ts` (pure types + constants, no
+// renderer runtime). The main process imports them directly rather than
+// mirroring copies that could drift; the IPC layer only marshals plain JSON, so
+// the shared shapes must match on both sides — importing guarantees that.
+import {
+  DEFAULT_SETTINGS,
+  type SessionQueryParams,
+  type SessionQueryResult,
+  type SessionStatusKind,
+  type StoredSessionLite,
+} from '../../src/lib/db/types';
 import { SCHEMA_SQL } from './schema';
 
 type ProtocolRow = {
@@ -32,62 +44,6 @@ type SessionRow = {
   network_json: string;
   stageMetadata_json: string | null;
   isSynthetic: number;
-};
-
-// Local mirror of the renderer-side SessionStatusKind / StoredSessionLite /
-// SessionQueryParams / SessionQueryResult contract. The main process compiles
-// against a separate tsconfig (electron/tsconfig.node.json) and cannot import
-// from src/lib/db/types. The IPC layer only marshals plain JSON, so the field
-// names here must match the renderer types exactly.
-type SessionStatusKind = 'in-progress' | 'complete' | 'exported';
-
-type SessionSortColumn =
-  | 'caseId'
-  | 'protocolName'
-  | 'startedAt'
-  | 'updatedAt'
-  | 'progress'
-  | 'status'
-  | 'exportedAt';
-
-type SessionQueryParams = {
-  search?: string;
-  caseId?: string;
-  protocolNames?: string[];
-  startedRange?: { from: string; to: string };
-  updatedRange?: { from: string; to: string };
-  statuses?: SessionStatusKind[];
-  exported?: boolean;
-  sort: { column: SessionSortColumn; direction: 'asc' | 'desc' };
-  page: number;
-  pageSize: number;
-};
-
-type StoredSessionLite = {
-  id: string;
-  protocolHash: string;
-  protocolName: string;
-  caseId: string;
-  startedAt: string;
-  lastUpdatedAt: string;
-  finishedAt: string | null;
-  exportedAt: string | null;
-  currentStep: number;
-  isSynthetic?: boolean;
-  statusKind: SessionStatusKind;
-  progressPercent: number;
-};
-
-type SessionStatusCounts = {
-  all: number;
-  inProgress: number;
-  complete: number;
-};
-
-type SessionQueryResult = {
-  rows: StoredSessionLite[];
-  totalCount: number;
-  statusCounts: SessionStatusCounts;
 };
 
 // Shape returned by the lite SELECT (joined against protocols for progress).
@@ -121,19 +77,6 @@ type AssetRow = {
 type SettingsRow = {
   id: string;
   settings_json: string;
-};
-
-const DEFAULT_SETTINGS = {
-  id: 'device',
-  exportGraphML: true,
-  exportCSV: true,
-  useScreenLayoutCoordinates: false,
-  screenLayoutHeight: 1080,
-  screenLayoutWidth: 1920,
-  dismissedUpdates: [] as string[],
-  idleTimeoutMinutes: 15,
-  requireUnlockOnResume: true,
-  requireUnlockOnExport: false,
 };
 
 const DB_FILENAME = 'interviewer-v7.encrypted.db';

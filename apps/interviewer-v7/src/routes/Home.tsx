@@ -262,7 +262,7 @@ export function HomeRoute() {
   const handleSessionCreated = useCallback(
     (session: StoredSession) => {
       setPendingProtocolHash(null);
-      navigate(`/interview/${session.id}`, { state: { fresh: true } });
+      navigate(`/interview/${session.id}`);
     },
     [navigate],
   );
@@ -369,27 +369,6 @@ export function HomeRoute() {
           </AnimatePresence>
         </div>
       </header>
-
-      {/* Backdrop for the in-card "new session" form. Sits between the
-          page chrome (header + StatusRow + chevron row) and the active
-          DeckCard, which the ProtocolDeck section lifts to z-50 while
-          this is mounted. Clicking dismisses, matching modal semantics
-          without going through Base-UI's Dialog. */}
-      <AnimatePresence>
-        {newSessionActive && (
-          <motion.button
-            type="button"
-            key="new-session-backdrop"
-            aria-label="Cancel new interview"
-            onClick={closeNewSession}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="bg-overlay publish-colors fixed inset-0 z-40 cursor-default border-0 p-0 backdrop-blur-xs"
-          />
-        )}
-      </AnimatePresence>
 
       <AnimatePresence mode="wait">
         {view === 'protocols' ? (
