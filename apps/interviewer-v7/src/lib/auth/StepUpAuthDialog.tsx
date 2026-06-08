@@ -1,3 +1,4 @@
+import { Fingerprint, KeyRound, RectangleEllipsis } from 'lucide-react';
 import { useId } from 'react';
 
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
@@ -5,9 +6,11 @@ import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import BiometricUnlockForm from '~/components/UnlockForms/BiometricUnlockForm';
 import PasswordUnlockField from '~/components/UnlockForms/PasswordUnlockField';
 import { PinUnlockForm } from '~/components/UnlockForms/PinUnlockForm';
+import { UnlockEmblem } from '~/components/UnlockForms/UnlockEmblem';
 
 import * as authApi from './api';
 import { useAuth } from './AuthContext';
@@ -42,6 +45,12 @@ function PinStepUp({
           </SubmitButton>
         }
       >
+        <div className="mb-6 flex flex-col items-center gap-4 text-center">
+          <UnlockEmblem icon={KeyRound} seed="pin-unlock" />
+          <Paragraph margin="none" emphasis="muted">
+            Enter your PIN to continue.
+          </Paragraph>
+        </div>
         <PinUnlockForm
           formId={formId}
           verifyPin={async (pin) => {
@@ -78,6 +87,12 @@ function PassphraseStepUp({
           </SubmitButton>
         }
       >
+        <div className="mb-6 flex flex-col items-center gap-4 text-center">
+          <UnlockEmblem icon={RectangleEllipsis} seed="passphrase-unlock" />
+          <Paragraph margin="none" emphasis="muted">
+            Enter your passphrase to continue.
+          </Paragraph>
+        </div>
         <FormWithoutProvider
           id={formId}
           onSubmit={async (values): Promise<FormSubmissionResult> => {
@@ -116,6 +131,12 @@ function BiometricStepUp({
       closeDialog={handleCancel}
       title="Confirm your identity"
     >
+      <div className="mb-6 flex flex-col items-center gap-4 text-center">
+        <UnlockEmblem icon={Fingerprint} seed="biometric-unlock" />
+        <Paragraph margin="none" emphasis="muted">
+          Authenticate to continue.
+        </Paragraph>
+      </div>
       <BiometricUnlockForm
         submitLabel="Verify identity"
         onSubmit={async (signal) => {
