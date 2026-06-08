@@ -1,5 +1,3 @@
-'use client';
-
 import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { Toast } from '@base-ui/react/toast';
 import { MotionConfig } from 'motion/react';
