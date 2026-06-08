@@ -18,5 +18,3 @@ Button.defaultProps = {
   children: null,
   type: 'button',
 };
-
-export default Button;

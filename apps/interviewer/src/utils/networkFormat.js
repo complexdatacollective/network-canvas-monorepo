@@ -30,7 +30,7 @@ import {
  *
  * @private
  */
-export const getEntityAttributesWithNamesResolved = (
+const getEntityAttributesWithNamesResolved = (
   entity,
   entityVariables,
   ignoreExternalProps = false,
@@ -47,39 +47,6 @@ export const getEntityAttributesWithNamesResolved = (
     }
     return acc;
   }, {});
-};
-
-/**
- * Given a variable name ("age") and the relevant section of the variable registry, returns the
- * ID/key for that name.
- */
-const getVariableIdFromName = (variableName, variableDefinitions) => {
-  const entry = Object.entries(variableDefinitions).find(
-    ([, variable]) => variable.name === variableName,
-  );
-  return entry?.[0];
-};
-
-/**
- * The inverse of getEntityAttributesWithNamesResolved
- */
-export const getNodeWithIdAttributes = (node, nodeVariables) => {
-  if (!nodeVariables) {
-    return {};
-  }
-  const attrs = getEntityAttributes(node);
-  const mappedAttrs = Object.keys(attrs).reduce((acc, varName) => {
-    const variableId = getVariableIdFromName(varName, nodeVariables);
-    if (variableId) {
-      acc[variableId] = attrs[varName];
-    }
-    return acc;
-  }, {});
-
-  return {
-    ...node,
-    [entityAttributesProperty]: mappedAttrs,
-  };
 };
 
 /**

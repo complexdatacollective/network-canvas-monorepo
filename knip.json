@@ -56,6 +56,10 @@
       "paths": { "@/*": ["./src/*"] },
       "ignoreDependencies": [
         "buffer" // Node.js Buffer polyfill imported as 'buffer/' in network-exporters/src/utils/filesystem.js
+      ],
+      "ignore": [
+        // CJS module — knip cannot trace require() consumers; exports are used externally
+        "src/utils/network-exporters/src/utils/environments.js"
       ]
     },
     "apps/architect": {
@@ -68,6 +72,10 @@
         "electron-builder.config.js"
       ],
       "project": ["src/**/*.{js,jsx}", "public/**/*.js"],
+      "ignore": [
+        // CJS module required by electron-starter.js — knip cannot trace require() consumers
+        "public/components/assetProtocol.js"
+      ],
       "ignoreDependencies": [
         "react-resizable", // CSS only — @import in main.scss, invisible to knip
         "tippy.js" // CSS only — @import in main.scss, peer dep of @tippyjs/react

@@ -97,6 +97,4 @@ const shouldUseDynamicScaling = () => !isCordova();
 
 const shouldUseFullScreenForm = () => isCordova();
 
-export default deviceDescription;
-
 export { deviceDescription, shouldUseDynamicScaling, shouldUseFullScreenForm };

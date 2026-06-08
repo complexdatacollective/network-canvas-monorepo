@@ -12,5 +12,3 @@ Group.propTypes = {
 Group.defaultProps = {
   children: null,
 };
-
-export default Group;

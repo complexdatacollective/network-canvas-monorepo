@@ -85,8 +85,6 @@ Form.defaultProps = {
   entity: null,
 };
 
-export { Form };
-
 export default compose(
   withSubject,
   withFormHandlers,

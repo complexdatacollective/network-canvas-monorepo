@@ -34,8 +34,6 @@ TieStrengthCensusPrompts.propTypes = {
 
 TieStrengthCensusPrompts.defaultProps = {};
 
-export { TieStrengthCensusPrompts };
-
 export default compose(
   withSubject,
   withDisabledSubjectRequired,

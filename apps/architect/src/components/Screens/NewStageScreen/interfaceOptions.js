@@ -1,6 +1,6 @@
 import StandardPropTypes from 'prop-types';
 
-export const CATEGORIES = {
+const CATEGORIES = {
   GENERATORS: 'Name and Edge Generators',
   SOCIOGRAMS: 'Sociograms',
   INTERPRETERS: 'Name and Edge Interpreters',
@@ -179,5 +179,3 @@ export const PropTypes = {
     title: StandardPropTypes.string,
   }),
 };
-
-export default INTERFACE_TYPES;

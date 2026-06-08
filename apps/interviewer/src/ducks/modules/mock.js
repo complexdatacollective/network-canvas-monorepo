@@ -9,8 +9,6 @@ import {
 
 import { actionCreators as sessionsActions } from './sessions';
 
-const MOCK_GENERATE_NODES = 'MOCK/GENERATE_NODES';
-
 const mockCoord = () =>
   faker.random.number({ min: 0, max: 1, precision: 0.000001 });
 
@@ -151,8 +149,4 @@ const actionCreators = {
   generateMockSessions,
 };
 
-const actionTypes = {
-  MOCK_GENERATE_NODES,
-};
-
-export { actionCreators, actionTypes };
+export { actionCreators };

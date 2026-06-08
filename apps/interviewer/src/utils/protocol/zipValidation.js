@@ -117,9 +117,4 @@ const checkZipPaths = inEnvironment((environment) => {
     Promise.reject(new Error('checkZipPaths() not available on platform'));
 });
 
-export {
-  assertNonEmptyPath,
-  assertNoTraversalInPath,
-  assertRelativePath,
-  checkZipPaths,
-};
+export { checkZipPaths };

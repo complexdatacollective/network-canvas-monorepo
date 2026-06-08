@@ -62,17 +62,17 @@ export const required = (isRequired, message) => (value) => {
   return hasValue(value) ? undefined : messageWithDefault(message, 'Required');
 };
 
-export const requiredAcceptsZero = (isRequired, message) => (value) =>
+const requiredAcceptsZero = (isRequired, message) => (value) =>
   !isNil(value) && isRequired
     ? undefined
     : messageWithDefault(message, 'Required');
 
-export const requiredAcceptsNull = (isRequired, message) => (value) =>
+const requiredAcceptsNull = (isRequired, message) => (value) =>
   !isUndefined(value) && isRequired
     ? undefined
     : messageWithDefault(message, 'Required');
 
-export const positiveNumber = (_, message) => (value) =>
+const positiveNumber = (_, message) => (value) =>
   value && Math.sign(value) === -1
     ? messageWithDefault(message, 'Number must be positive')
     : undefined;
@@ -110,32 +110,31 @@ export const maxSelected = (max, message) => (value) =>
       )
     : undefined;
 
-export const uniqueArrayAttribute =
-  (_, message) => (value, allValues, __, name) => {
-    if (!value) {
-      return undefined;
-    }
-
-    // expects `name` of format: `fieldName[n].attribute`
-    const fieldName = name.split('[')[0];
-    const attribute = name.split('.')[1];
-    const instanceCount = get(allValues, fieldName).reduce((count, option) => {
-      const optionValue = option[attribute];
-
-      if (isRoughlyEqual(optionValue, value)) {
-        return count + 1;
-      }
-      return count;
-    }, 0);
-
-    if (instanceCount >= 2) {
-      return messageWithDefault(
-        message,
-        `${capitalize(attribute)}s must be unique`,
-      );
-    }
+const uniqueArrayAttribute = (_, message) => (value, allValues, __, name) => {
+  if (!value) {
     return undefined;
-  };
+  }
+
+  // expects `name` of format: `fieldName[n].attribute`
+  const fieldName = name.split('[')[0];
+  const attribute = name.split('.')[1];
+  const instanceCount = get(allValues, fieldName).reduce((count, option) => {
+    const optionValue = option[attribute];
+
+    if (isRoughlyEqual(optionValue, value)) {
+      return count + 1;
+    }
+    return count;
+  }, 0);
+
+  if (instanceCount >= 2) {
+    return messageWithDefault(
+      message,
+      `${capitalize(attribute)}s must be unique`,
+    );
+  }
+  return undefined;
+};
 
 export const uniqueByList =
   (list = [], message) =>
@@ -155,7 +154,7 @@ export const uniqueByList =
     return undefined;
   };
 
-export const ISODate = (dateFormat, message) => (value) => {
+const ISODate = (dateFormat, message) => (value) => {
   const dt = DateTime.fromISO(value);
   if ((value && dateFormat.length !== value.length) || (value && !dt.isValid)) {
     return messageWithDefault(
@@ -177,9 +176,9 @@ export const allowedVariableName =
     return undefined;
   };
 
-export const allowedNMToken = allowedVariableName;
+const allowedNMToken = allowedVariableName;
 
-export const validRegExp = (_, message) => (value) => {
+const validRegExp = (_, message) => (value) => {
   try {
     const regexp = new RegExp(value);
     if (isRegExp(regexp)) {
@@ -249,5 +248,3 @@ export const getValidator = (validation = {}) => {
     return errors;
   };
 };
-
-export default validations;

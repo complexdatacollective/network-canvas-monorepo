@@ -94,18 +94,3 @@ export const registerExportHandlers = () => {
 
   log.info('Export handlers registered');
 };
-
-/**
- * Remove export IPC handlers (for cleanup)
- */
-export const removeExportHandlers = () => {
-  const handlers = [
-    'export:start',
-    'export:abort',
-    'export:setConsideringAbort',
-  ];
-
-  handlers.forEach((channel) => {
-    ipcMain.removeHandler(channel);
-  });
-};

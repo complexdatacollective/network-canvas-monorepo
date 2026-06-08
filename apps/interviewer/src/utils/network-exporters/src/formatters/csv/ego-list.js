@@ -157,6 +157,4 @@ class EgoListFormatter {
 
 module.exports = {
   EgoListFormatter,
-  asEgoAndSessionVariablesList,
-  toCSVStream,
 };

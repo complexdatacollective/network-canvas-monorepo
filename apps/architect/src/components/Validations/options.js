@@ -100,12 +100,8 @@ const getValidationOptionsForVariableType = (variableType, entity) =>
   }));
 
 export {
-  getValidationsForVariableType,
   getValidationOptionsForVariableType,
   isValidationWithNumberValue,
   isValidationWithListValue,
   isValidationWithoutValue,
-  VALIDATIONS,
 };
-
-export default VALIDATIONS;

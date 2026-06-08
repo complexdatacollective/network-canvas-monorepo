@@ -164,6 +164,4 @@ class EdgeListFormatter {
 
 module.exports = {
   EdgeListFormatter,
-  asEdgeList,
-  toCSVStream,
 };

@@ -176,8 +176,6 @@ const mapStateToProps = (state, props) => ({
   sessionCodebook: getProtocolCodebook(state, props),
 });
 
-export { SessionInformation };
-
 export default compose(connect(mapStateToProps, mapDispatchToProps))(
   SessionInformation,
 );

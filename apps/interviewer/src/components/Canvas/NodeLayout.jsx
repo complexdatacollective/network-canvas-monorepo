@@ -113,6 +113,4 @@ NodeLayout.defaultProps = {
   destinationRestriction: null,
 };
 
-export { NodeLayout };
-
 export default NodeLayout;

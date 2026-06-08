@@ -1,7 +1,5 @@
 import PropTypes from 'prop-types';
 
-import withAssetUrl from './withAssetUrl';
-
 const Image = ({ url, alt, ...props }) => (
   <img src={url} alt={alt} {...props} />
 );
@@ -14,7 +12,3 @@ Image.propTypes = {
 Image.defaultProps = {
   alt: '',
 };
-
-export { Image };
-
-export default withAssetUrl(Image);

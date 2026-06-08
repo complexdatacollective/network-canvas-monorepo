@@ -79,4 +79,4 @@ const actionTypes = {
   SET_SESSION,
 };
 
-export { actionCreators, actionTypes, initialState };
+export { actionCreators, actionTypes };

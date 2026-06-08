@@ -42,8 +42,6 @@ const NarrativePresets = (props) => (
   />
 );
 
-export { NarrativePresets };
-
 export default compose(
   withSubject,
   withDisabledSubjectRequired,

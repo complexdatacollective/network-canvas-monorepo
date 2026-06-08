@@ -63,6 +63,4 @@ AssetBrowserScreen.defaultProps = {
   layoutId: null,
 };
 
-export { AssetBrowserScreen };
-
 export default AssetBrowserScreen;

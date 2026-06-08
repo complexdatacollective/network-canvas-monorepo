@@ -261,5 +261,4 @@ class AdjacencyMatrixFormatter {
 
 module.exports = {
   AdjacencyMatrixFormatter,
-  asAdjacencyMatrix,
 };

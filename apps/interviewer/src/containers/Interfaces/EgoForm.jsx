@@ -17,7 +17,7 @@ import { getNetworkEgo } from '../../selectors/network';
 import { getSessionProgress } from '../../selectors/session';
 import Form from '../Form';
 
-export const elementHasOverflow = ({
+const elementHasOverflow = ({
   clientWidth,
   clientHeight,
   scrollWidth,

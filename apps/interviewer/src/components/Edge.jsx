@@ -38,6 +38,4 @@ Edge.propTypes = {
   type: PropTypes.string.isRequired,
 };
 
-export { Edge };
-
 export default connect(mapStateToProps)(Edge);

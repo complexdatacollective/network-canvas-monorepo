@@ -143,8 +143,6 @@ const withDefaultFieldName = defaultProps({
 
 const withEditingState = withState('editField', 'setEditField', null);
 
-export { GridManager };
-
 export default compose(
   withDefaultFieldName,
   withEditingState,
