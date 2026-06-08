@@ -72,6 +72,9 @@ export type SessionSortColumn =
   | 'startedAt'
   | 'updatedAt'
   | 'progress'
+  // Sorts by completion state (in-progress < complete < exported). Supported by
+  // the query backend; not yet surfaced as a sortable column in the dashboard.
+  | 'status'
   | 'exportedAt';
 
 export type SessionQueryParams = {
