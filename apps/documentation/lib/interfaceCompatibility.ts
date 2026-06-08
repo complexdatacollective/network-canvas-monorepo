@@ -3,10 +3,8 @@
 // Not every interface can be configured/run in every app — availability is
 // schema dependent. Rather than hand-authoring app support per interface, we
 // author only the schema version each interface was introduced in, and derive
-// app support from each app's maximum supported schema version. The newer apps
-// (Architect Web, Fresco) are supersets of the older ones (Architect Desktop,
-// Interviewer): anything the older apps support, the newer ones do too.
-//
+// app support from each app's maximum supported schema version.
+
 // Sources of truth for `introducedIn` values are the protocol-validation
 // migration files (`packages/protocol-validation/src/schemas/*/migration.ts`).
 
@@ -18,29 +16,23 @@ export type AppId =
   | 'interviewer'
   | 'fresco';
 
-export const APPS: Record<
-  AppId,
-  { label: string; role: AppRole; maxSchema: number }
-> = {
-  'architect-desktop': {
-    label: 'Architect (Desktop)',
-    role: 'configure',
-    maxSchema: 7,
-  },
-  'architect-web': {
-    label: 'Architect (Web)',
-    role: 'configure',
-    maxSchema: 8,
-  },
-  'interviewer': { label: 'Interviewer', role: 'run', maxSchema: 7 },
-  'fresco': { label: 'Fresco', role: 'run', maxSchema: 8 },
-};
+const APPS: Record<AppId, { label: string; role: AppRole; maxSchema: number }> =
+  {
+    'architect-desktop': {
+      label: 'Architect (Desktop)',
+      role: 'configure',
+      maxSchema: 7,
+    },
+    'architect-web': {
+      label: 'Architect (Web)',
+      role: 'configure',
+      maxSchema: 8,
+    },
+    'interviewer': { label: 'Interviewer', role: 'run', maxSchema: 7 },
+    'fresco': { label: 'Fresco', role: 'run', maxSchema: 8 },
+  };
 
-// Keyed by interface-documentation doc slug (filename without locale/extension).
-// Only the schema-introduction version is authored here; app support is derived.
-// 'shared' is intentionally omitted — it documents shared concepts, not an
-// interface, so it receives no compatibility badges.
-export const INTERFACE_INTRODUCED_IN: Record<string, number> = {
+const INTERFACE_INTRODUCED_IN: Record<string, number> = {
   // Schema 8 additions (schemas/8/migration.ts)
   'geospatial': 8,
   'anonymisation': 8,
