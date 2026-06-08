@@ -29,9 +29,9 @@
     "cap:add:ios": "cap add ios",
     "cap:add:android": "cap add android",
     "cap:run:ios": "pnpm version:sync && pnpm build:web && cap run ios",
-    "cap:run:android": "pnpm version:sync && pnpm build:web && cap run android",
-    "cap:dev:ios": "pnpm version:sync && pnpm build:web && CAP_DEV_SERVER_URL=http://localhost:5181 cap sync ios && concurrently -k -s first -n vite,cap \"vite --config vite.web.config.js\" \"CAP_DEV_SERVER_URL=http://localhost:5181 cap run ios\"",
-    "cap:dev:android": "pnpm version:sync && pnpm build:web && CAP_DEV_SERVER_URL=http://10.0.2.2:5181 cap sync android && concurrently -k -s first -n vite,cap \"vite --config vite.web.config.js\" \"CAP_DEV_SERVER_URL=http://10.0.2.2:5181 cap run android\""
+    "cap:run:android": "pnpm version:sync && pnpm build:web && cap run android --target Pixel_Tablet_API_35",
+    "cap:dev:ios": "pnpm version:sync && pnpm build:web && CAP_DEV_SERVER_URL=http://localhost:5181 cap sync ios && concurrently --kill-others-on-fail -n vite,cap \"vite --config vite.web.config.js\" \"CAP_DEV_SERVER_URL=http://localhost:5181 cap run ios\"",
+    "cap:dev:android": "pnpm version:sync && pnpm build:web && CAP_DEV_SERVER_URL=http://10.0.2.2:5181 cap sync android && concurrently --kill-others-on-fail -n vite,cap \"vite --config vite.web.config.js\" \"CAP_DEV_SERVER_URL=http://10.0.2.2:5181 cap run android --target Pixel_Tablet_API_35\""
   },
   "dependencies": {
     "@capacitor/android": "^8.3.4",
