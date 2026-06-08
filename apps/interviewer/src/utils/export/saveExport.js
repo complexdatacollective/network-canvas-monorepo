@@ -46,7 +46,19 @@ export const saveExportBlob = async ({ blob, fileName }) => {
       data: base64,
       directory: Directory.Cache,
     });
-    await Share.share({ title: fileName, url: uri });
+
+    // The file is written; the share sheet is an optional "move it off-device"
+    // step. iOS rejects Share.share with "Share canceled" when the user
+    // dismisses the sheet without choosing an activity (and after a successful
+    // "Save to Files" the sheet may linger until dismissed) — that's a
+    // cancellation, not a failure, so swallow it. Re-throw any real error.
+    try {
+      await Share.share({ title: fileName, url: uri });
+    } catch (error) {
+      if (!/cancel/i.test(error?.message ?? '')) {
+        throw error;
+      }
+    }
     return { saved: true, path: uri };
   }
 

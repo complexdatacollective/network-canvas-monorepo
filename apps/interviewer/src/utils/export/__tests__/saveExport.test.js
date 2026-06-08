@@ -101,6 +101,28 @@ describe('saveExportBlob', () => {
     expect(result).toEqual({ saved: true, path: 'file:///CACHE/out.zip' });
   });
 
+  it('on Capacitor, swallows a share cancellation and still resolves saved:true', async () => {
+    isCapacitor.mockReturnValue(true);
+    Share.share.mockRejectedValueOnce(new Error('Share canceled'));
+
+    const result = await saveExportBlob({
+      blob: makeBlob(),
+      fileName: 'out.zip',
+    });
+
+    expect(Filesystem.writeFile).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ saved: true, path: 'file:///CACHE/out.zip' });
+  });
+
+  it('on Capacitor, re-throws a genuine (non-cancellation) share error', async () => {
+    isCapacitor.mockReturnValue(true);
+    Share.share.mockRejectedValueOnce(new Error('No delegate found'));
+
+    await expect(
+      saveExportBlob({ blob: makeBlob(), fileName: 'out.zip' }),
+    ).rejects.toThrow(/No delegate/);
+  });
+
   it('throws on an unsupported platform', async () => {
     await expect(
       saveExportBlob({ blob: makeBlob(), fileName: 'out.zip' }),
