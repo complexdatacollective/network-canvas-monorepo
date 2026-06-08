@@ -284,6 +284,19 @@ const ensurePathExists = inEnvironment((environment) => {
   );
 });
 
+// Capacitor only: list a directory's entries, used to skip reads for files that
+// don't exist (the native Filesystem plugin logs a failed read as an error).
+const readDirectory = inEnvironment((environment) => {
+  if (environment === environments.CAPACITOR) {
+    return async (path) => {
+      const { files } = await Filesystem.readdir(capacitorPath(path));
+      return files.map((file) => (typeof file === 'string' ? file : file.name));
+    };
+  }
+
+  throw new Error(`readDirectory() not available on platform ${environment}`);
+});
+
 export {
   userDataPath,
   tempDataPath,
@@ -291,6 +304,7 @@ export {
   rename,
   removeDirectory,
   readFile,
+  readDirectory,
   resolveFileSystemUrl,
   writeFile,
   inSequence,

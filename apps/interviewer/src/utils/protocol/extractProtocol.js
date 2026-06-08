@@ -11,7 +11,6 @@ import {
   ensurePathExists,
   inSequence,
   readFile,
-  removeDirectory,
   writeFile,
 } from '../filesystem';
 import friendlyErrorMessage from '../friendlyErrorMessage';
@@ -30,7 +29,9 @@ const loadError = friendlyErrorMessage(
 );
 
 const prepareDestination = async (destination) => {
-  await removeDirectory(destination);
+  // The destination is always a freshly generated UUID directory, so there is
+  // nothing to remove first — and removing a non-existent directory logs a
+  // native filesystem error on Capacitor.
   await ensurePathExists(destination);
 };
 

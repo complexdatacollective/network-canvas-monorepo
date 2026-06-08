@@ -4,7 +4,7 @@
 
 import { pathSync } from '../electronAPI';
 import { isCapacitor } from '../Environment';
-import { readFile } from '../filesystem';
+import { readDirectory, readFile } from '../filesystem';
 import { supportedWorkers, urlForWorkerSource } from '../WorkerAgent';
 import protocolPath from './protocolPath';
 
@@ -67,19 +67,27 @@ const compileWorker = (src, funcName) => {
 const preloadWorkers = async (protocolUID) => {
   const basePath = await protocolPath(protocolUID);
 
+  // On Capacitor, reading a non-existent worker file logs a native error, so
+  // list the protocol directory up front and only read workers that exist.
+  // Other platforms fall through to readFile's own (quiet) miss handling.
+  let presentFiles = null;
+  if (isCapacitor()) {
+    presentFiles = await readDirectory(basePath).catch(() => []);
+  }
+
   return Promise.all(
     supportedWorkers.map((workerName) => {
-      let workerFile;
+      const workerFileName = `${workerName}.js`;
 
-      if (isCapacitor()) {
-        workerFile = `${basePath}${workerName}.js`;
-      } else {
-        workerFile = pathSync.join(basePath, `${workerName}.js`);
+      if (presentFiles && !presentFiles.includes(workerFileName)) {
+        return Promise.resolve(null);
       }
 
-      const promise = readFile(workerFile);
+      const workerFile = isCapacitor()
+        ? `${basePath}${workerFileName}`
+        : pathSync.join(basePath, workerFileName);
 
-      return promise
+      return readFile(workerFile)
         .then((buf) => new TextDecoder().decode(buf))
         .then((str) => compileWorker(str, workerName))
         .then((source) => new Blob([source], { type: 'text/plain' }))
