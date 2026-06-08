@@ -1,0 +1,32 @@
+# To get started with Dependabot version updates, you'll need to specify which
+# package ecosystems to update and where the package manifests are located.
+# Please see the documentation for all configuration options:
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    # The legacy apps (apps/architect, apps/interviewer) pin strict dependency
+    # versions and break on routine version bumps. exclude-paths (GA Aug 2025)
+    # is applied before manifest parsing, so Dependabot never reads these
+    # package.json files and never opens version-update PRs that touch them. The
+    # modern apps keep receiving all updates, including dependencies the legacy
+    # apps also use (react, vite, electron, ...). Paths are relative to the repo
+    # root. Note: exclude-paths suppresses version updates only — it does NOT
+    # stop security (CVE) update PRs, which are repo-level and can still target
+    # the legacy apps.
+    exclude-paths:
+      - 'apps/architect/**'
+      - 'apps/interviewer/**'
+
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    groups:
+      actions:
+        patterns:
+          - '*'

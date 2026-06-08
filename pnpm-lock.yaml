@@ -67,8 +67,8 @@ catalogs:
       specifier: ^4.1.7
       version: 4.1.7
     chromatic:
-      specifier: ^17.1.0
-      version: 17.1.0
+      specifier: ^17.3.0
+      version: 17.3.0
     class-variance-authority:
       specifier: 0.7.1
       version: 0.7.1
@@ -184,8 +184,8 @@ importers:
         specifier: ^1.67.0
         version: 1.67.0(oxlint-tsgolint@0.23.0)
       oxlint-tailwindcss:
-        specifier: ^1.1.0
-        version: 1.1.0(@oxlint/plugins@1.64.0)
+        specifier: ^1.2.0
+        version: 1.2.0(@oxlint/plugins@1.64.0)
       oxlint-tsgolint:
         specifier: ^0.23.0
         version: 0.23.0
@@ -1014,22 +1014,22 @@ importers:
         version: 1.5.0(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@capacitor/android':
         specifier: ^8.3.4
-        version: 8.3.4(@capacitor/core@8.3.4)
+        version: 8.3.4(@capacitor/core@8.4.0)
       '@capacitor/app':
         specifier: ^8.1.0
-        version: 8.1.0(@capacitor/core@8.3.4)
+        version: 8.1.0(@capacitor/core@8.4.0)
       '@capacitor/core':
-        specifier: ^8.3.4
-        version: 8.3.4
+        specifier: ^8.4.0
+        version: 8.4.0
       '@capacitor/filesystem':
         specifier: ^8.1.2
-        version: 8.1.2(@capacitor/core@8.3.4)
+        version: 8.1.2(@capacitor/core@8.4.0)
       '@capacitor/ios':
         specifier: ^8.3.4
-        version: 8.3.4(@capacitor/core@8.3.4)
+        version: 8.3.4(@capacitor/core@8.4.0)
       '@capacitor/preferences':
         specifier: ^8.0.1
-        version: 8.0.1(@capacitor/core@8.3.4)
+        version: 8.0.1(@capacitor/core@8.4.0)
       '@codaco/art':
         specifier: workspace:*
         version: link:../../packages/art
@@ -1156,6 +1156,73 @@ importers:
         version: 3.0.1
 
   apps/interviewer-v7/native/biometric-keystore: {}
+
+  apps/networkcanvas.com:
+    dependencies:
+      '@base-ui/react':
+        specifier: 'catalog:'
+        version: 1.5.0(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@codaco/fresco-ui':
+        specifier: workspace:*
+        version: link:../../packages/fresco-ui
+      '@codaco/shared-consts':
+        specifier: workspace:*
+        version: link:../../packages/shared-consts
+      '@codaco/tailwind-config':
+        specifier: workspace:*
+        version: link:../../tooling/tailwind
+      '@fontsource-variable/inclusive-sans':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource-variable/nunito':
+        specifier: ^5.2.7
+        version: 5.2.7
+      lucide-react:
+        specifier: 'catalog:'
+        version: 1.17.0(react@19.2.6)
+      motion:
+        specifier: 'catalog:'
+        version: 12.40.0(@emotion/is-prop-valid@0.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      next:
+        specifier: 'catalog:'
+        version: 16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0)
+      react:
+        specifier: 'catalog:'
+        version: 19.2.6
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.2.6(react@19.2.6)
+      zod:
+        specifier: 'catalog:'
+        version: 4.4.3
+      zustand:
+        specifier: 'catalog:'
+        version: 5.0.14(@types/react@19.2.15)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+    devDependencies:
+      '@codaco/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
+      '@tailwindcss/postcss':
+        specifier: 'catalog:'
+        version: 4.3.0
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.12.4
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.15
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.2.3(@types/react@19.2.15)
+      postcss:
+        specifier: ^8.5.14
+        version: 8.5.15
+      tailwindcss:
+        specifier: 'catalog:'
+        version: 4.3.0
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
 
   packages/art:
     dependencies:
@@ -1384,7 +1451,7 @@ importers:
         version: 4.1.7(playwright@1.60.0)(vite@8.0.14(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.7)
       chromatic:
         specifier: 'catalog:'
-        version: 17.1.0
+        version: 17.3.0
       jsdom:
         specifier: ^29.1.1
         version: 29.1.1
@@ -1556,7 +1623,7 @@ importers:
         version: 5.6.2
       chromatic:
         specifier: 'catalog:'
-        version: 17.1.0
+        version: 17.3.0
       jsdom:
         specifier: ^29.1.1
         version: 29.1.1
@@ -2579,6 +2646,9 @@ packages:
 
   '@capacitor/core@8.3.4':
     resolution: {integrity: sha512-CqRQCkb6HXxcx/N7s+hHTN6ef2CmamFiRMITwm4qB840ph56mS42bzUgn6tKCP+RZjdDweiRHj9ytDDeN6jFag==}
+
+  '@capacitor/core@8.4.0':
+    resolution: {integrity: sha512-LrS1xPIrqLtJABBIPDGXxxKmI9OyesrzWw8DiHbxhSC9JoiLUleUAJlX1a0LWIVLRbuY4Szgf9huFeRqYH2SAQ==}
 
   '@capacitor/filesystem@8.1.2':
     resolution: {integrity: sha512-doaaMfGoFR2hWU6aV6u83I+5ZsGyJVq+Gz4r9lMpJzUKMm1eMu0hLnFdV1aXZlU9FlK/RndFrVD8oRZfNOqWgQ==}
@@ -7403,10 +7473,9 @@ packages:
       '@chromatic-com/vitest':
         optional: true
 
-  chromatic@17.1.0:
-    resolution: {integrity: sha512-TApQvyoFJHmeSqgvtGQ8JVQmHcPENub76B/uJGBx+G2Ju6AVo2f4Buh3Rhe0IcBh2N/fBdqEU4MDavhJeVnS+Q==}
+  chromatic@17.3.0:
+    resolution: {integrity: sha512-x6fjCx72uvc37RyqHxa8I8LqaYhiwzvGg0KyOR1Pwgx+KQ9w1SA7e1rg4oBhGW14gcpcyptLVnVaGxX8wSkaxA==}
     engines: {node: '>=22.0.0'}
-    deprecated: Deprecating backend data format
     hasBin: true
     peerDependencies:
       '@chromatic-com/cypress': ^0.*.* || ^1.0.0
@@ -10788,8 +10857,8 @@ packages:
       vite-plus:
         optional: true
 
-  oxlint-tailwindcss@1.1.0:
-    resolution: {integrity: sha512-ZsHZY+YS7gndEl4HVULh83nFjg3wNtNLxrn4n/lG/ZXcQcOvkt1ejhXIeX8bOru4bj5jRxi5sgJZzT63EX0RlQ==}
+  oxlint-tailwindcss@1.2.0:
+    resolution: {integrity: sha512-qUAguxH9aPmzQI3GyDwqqKqxXv6U/QrxohKnF9s1dKvv2x/3mSwOQajT1+ZvCw9DFBVeMbXGagMBoe5v5nhl0Q==}
     engines: {node: '>=20'}
     peerDependencies:
       '@oxlint/plugins': '>=1.43.0'
@@ -11400,7 +11469,7 @@ packages:
     resolution: {integrity: sha512-VG2K63Igkiv9p76tk1lilczEK1cT+kCjKtkdhw1dQZV3k3IXJbd3o6Ho8b9zJZaHSnT2hKe4I+ObmX9w6m5SmQ==}
 
   protocol-validation@https://codeload.github.com/complexdatacollective/protocol-validation/tar.gz/6f5967ffa8ce8b5d3fa411f4c9553565403dfd24:
-    resolution: {gitHosted: true, tarball: https://codeload.github.com/complexdatacollective/protocol-validation/tar.gz/6f5967ffa8ce8b5d3fa411f4c9553565403dfd24}
+    resolution: {gitHosted: true, integrity: sha512-Xtpe+MMTlQdzqspdKFyBUbdRYJa11eHhdY1FvaCUaEZI/768kKqiDjF524g7yr2oDU+YQdVE7am2/dHB78Dccg==, tarball: https://codeload.github.com/complexdatacollective/protocol-validation/tar.gz/6f5967ffa8ce8b5d3fa411f4c9553565403dfd24}
     version: 2.0.0
     engines: {node: 12.14.1, npm: 7.6.3}
 
@@ -14775,9 +14844,17 @@ snapshots:
     dependencies:
       '@capacitor/core': 8.3.4
 
+  '@capacitor/android@8.3.4(@capacitor/core@8.4.0)':
+    dependencies:
+      '@capacitor/core': 8.4.0
+
   '@capacitor/app@8.1.0(@capacitor/core@8.3.4)':
     dependencies:
       '@capacitor/core': 8.3.4
+
+  '@capacitor/app@8.1.0(@capacitor/core@8.4.0)':
+    dependencies:
+      '@capacitor/core': 8.4.0
 
   '@capacitor/assets@3.0.5(@swc/core@1.15.40(@swc/helpers@0.5.23))(@types/node@24.12.4)(encoding@0.1.13)(typescript@6.0.3)':
     dependencies:
@@ -14852,18 +14929,26 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@capacitor/filesystem@8.1.2(@capacitor/core@8.3.4)':
+  '@capacitor/core@8.4.0':
     dependencies:
-      '@capacitor/core': 8.3.4
+      tslib: 2.8.1
+
+  '@capacitor/filesystem@8.1.2(@capacitor/core@8.4.0)':
+    dependencies:
+      '@capacitor/core': 8.4.0
       '@capacitor/synapse': 1.0.4
 
   '@capacitor/ios@8.3.4(@capacitor/core@8.3.4)':
     dependencies:
       '@capacitor/core': 8.3.4
 
-  '@capacitor/preferences@8.0.1(@capacitor/core@8.3.4)':
+  '@capacitor/ios@8.3.4(@capacitor/core@8.4.0)':
     dependencies:
-      '@capacitor/core': 8.3.4
+      '@capacitor/core': 8.4.0
+
+  '@capacitor/preferences@8.0.1(@capacitor/core@8.4.0)':
+    dependencies:
+      '@capacitor/core': 8.4.0
 
   '@capacitor/synapse@1.0.4': {}
 
@@ -19398,7 +19483,7 @@ snapshots:
     dependencies:
       semver: 7.8.1
 
-  chromatic@17.1.0:
+  chromatic@17.3.0:
     dependencies:
       semver: 7.8.1
 
@@ -23668,7 +23753,7 @@ snapshots:
       '@oxfmt/binding-win32-ia32-msvc': 0.52.0
       '@oxfmt/binding-win32-x64-msvc': 0.52.0
 
-  oxlint-tailwindcss@1.1.0(@oxlint/plugins@1.64.0):
+  oxlint-tailwindcss@1.2.0(@oxlint/plugins@1.64.0):
     dependencies:
       '@oxlint/plugins': 1.64.0
       '@tailwindcss/node': 4.3.0
