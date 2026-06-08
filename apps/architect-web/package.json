@@ -54,7 +54,7 @@
     "remark-parse": "^11.0.0",
     "remark-slate": "^1.8.6",
     "sass": "^1.100.0",
-    "slate": "^0.57.3",
+    "slate": "^0.124.1",
     "slate-history": "^0.59.0",
     "slate-react": "^0.57.3",
     "tailwind-merge": "catalog:",
