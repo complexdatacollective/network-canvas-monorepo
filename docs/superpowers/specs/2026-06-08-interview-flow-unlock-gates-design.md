@@ -15,8 +15,8 @@ settings drive it:
 - `requireUnlockOnResume` (default `true`) — fires when **resuming** an
   existing in-progress interview, but **not** when starting a new one.
   The new-session flow signals "fresh" via `navigate(..., { state: {
-fresh: true } })` (`src/routes/Home.tsx:265`), which `Interview.tsx`
-  reads to skip the gate.
+fresh: true } })` (in `handleSessionCreated` in `src/routes/Home.tsx`),
+  which `Interview.tsx` reads to skip the gate.
 - `requireUnlockOnExport` (default `false`) — fires before data export.
 
 Both toggles are rendered by a single shared component,
@@ -133,7 +133,8 @@ if (settings.requireUnlockOnEnter) {
 Remove the dead `fresh` plumbing end-to-end: the
 `InterviewLocationState` type, `historyState`, the
 `navigate(location, { replace, state: null })` reset, and the
-`{ state: { fresh: true } }` argument in `src/routes/Home.tsx:265`.
+`{ state: { fresh: true } }` argument in `handleSessionCreated` in
+`src/routes/Home.tsx`.
 
 Edge case (documented, accepted): cancelling the gate on a
 just-created new session leaves an empty session in the list — same

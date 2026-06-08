@@ -1000,9 +1000,9 @@ In the `src/routes/` row, change the `Interview.tsx` description from
 `` `Interview.tsx` (hosts the `@codaco/interview` Shell) `` to
 `` `Interview.tsx` (hosts the `@codaco/interview` Shell, with enter/exit unlock gates and the post-finish `InterviewComplete` screen) ``.
 
-In the `src/components/` row, append `InterviewComplete` to the component list (e.g. after `ManageAuthenticator`): `, InterviewComplete`.
+For the `src/components/` row, append `InterviewComplete` to the component list (e.g. after `ManageAuthenticator`): `, InterviewComplete`.
 
-In the `src/lib/db/` row, change `` `StoredSettings` (includes `requireUnlockOnResume` and `requireUnlockOnExport` boolean fields) `` to `` `StoredSettings` (includes `requireUnlockOnEnter`, `requireUnlockOnExit`, and `requireUnlockOnExport` boolean fields) ``.
+Finally, update the `src/lib/db/` row, changing `` `StoredSettings` (includes `requireUnlockOnResume` and `requireUnlockOnExport` boolean fields) `` to `` `StoredSettings` (includes `requireUnlockOnEnter`, `requireUnlockOnExit`, and `requireUnlockOnExport` boolean fields) ``.
 
 - [ ] **Step 4: Commit**
 
