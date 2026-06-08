@@ -13,5 +13,12 @@
       "files": ["src/utils/webShims/**"],
       "rules": { "no-unused-expressions": "off" }
     }
+  ],
+  "ignorePatterns": [
+    "src/utils/protocols/bundleProtocol.js",
+    "src/utils/protocols/createProtocol.js",
+    "src/utils/protocols/loadProtocolConfiguration.js",
+    "src/utils/protocols/saveProtocol.js",
+    "src/utils/protocols/unbundleProtocol.js"
   ]
 }
