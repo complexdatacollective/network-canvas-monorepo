@@ -1,6 +1,5 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
-  "ignoreWorkspaces": ["apps/interviewer", "apps/architect"],
   "ignoreExportsUsedInFile": { "type": true },
   "tags": ["-public"],
   "workspaces": {
@@ -45,6 +44,35 @@
         "@fontsource-variable/inclusive-sans",
         "@fontsource-variable/nunito"
       ]
+    },
+    "apps/interviewer": {
+      "entry": [
+        "src/index.jsx!",
+        "src/main/index.js!",
+        "src/preload/index.js!",
+        "electron.vite.config.js"
+      ],
+      "project": ["src/**/*.{js,jsx}"],
+      "paths": { "@/*": ["./src/*"] }
+    },
+    "apps/architect": {
+      "entry": [
+        "src/index.jsx!",
+        "public/electron-starter.js!",
+        "public/preload/appPreload.js!",
+        "public/preload/summaryPreload.js!",
+        "electron.vite.config.js",
+        "electron-builder.config.js"
+      ],
+      "project": ["src/**/*.{js,jsx}"],
+      "paths": {
+        "@app/*": ["./src/*"],
+        "@components/*": ["./src/components/*"],
+        "@selectors/*": ["./src/selectors/*"],
+        "@hooks/*": ["./src/hooks/*"],
+        "@modules/*": ["./src/ducks/modules/*"],
+        "@utils/*": ["./src/utils/*"]
+      }
     },
     "apps/interviewer-v7": {
       "entry": [
