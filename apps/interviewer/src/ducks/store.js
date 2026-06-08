@@ -5,10 +5,10 @@ import { persistReducer, persistStore } from 'redux-persist';
 import autoMergeLevel2 from 'redux-persist/lib/stateReconciler/autoMergeLevel2';
 import thunk from 'redux-thunk';
 
-import { getEnv, isCordova } from '../utils/Environment';
+import { getEnv, isCapacitor } from '../utils/Environment';
 import {
+  localforageStorageEngine,
   localStorageEngine,
-  sqliteStorageEngine,
 } from '../utils/storageAdapters';
 import logger from './middleware/logger';
 import sound from './middleware/sound';
@@ -21,8 +21,8 @@ const getStorageEngine = () => {
     persistor.persist();
   };
 
-  if (isCordova()) {
-    return sqliteStorageEngine(onPersistReady);
+  if (isCapacitor()) {
+    return localforageStorageEngine(onPersistReady);
   }
 
   return localStorageEngine(onPersistReady);
