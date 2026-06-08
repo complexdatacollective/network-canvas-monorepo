@@ -1,0 +1,5 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Card component > renders selected card 1`] = `ShallowWrapper {}`;
+
+exports[`Card component > renders unselected card 1`] = `ShallowWrapper {}`;

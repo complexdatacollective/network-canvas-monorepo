@@ -93,13 +93,20 @@ const useSearch = (list, options, initialQuery = '') => {
     [fuse, isLargeList],
   );
 
+  // `search` is recreated every render here (it depends on `fuse`, which is
+  // rebuilt whenever `list`/`options` change identity each render). Depending on
+  // it below would re-run the effect every render -> setResults -> re-render ->
+  // infinite loop. Keep the latest `search` in a ref and depend only on `query`.
+  const searchRef = useRef(search);
+  searchRef.current = search;
+
   useEffect(() => {
     if (!hasQuery) {
       return;
     }
 
-    search(query);
-  }, [query, hasQuery, search]);
+    searchRef.current(query);
+  }, [query, hasQuery]);
 
   const returnResults = useMemo(
     () => (hasQuery ? results : list),

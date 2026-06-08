@@ -1,6 +1,6 @@
 import { mapKeys, mapValues } from 'lodash';
 import { hash as objectHash } from 'ohash';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import {
@@ -58,8 +58,12 @@ const useExternalData = (dataSource, subject) => {
 
   const [externalData, setExternalData] = useState(null);
   const [status, setStatus] = useState({ isLoading: false, error: null });
-  const updateStatus = (newStatus) =>
-    setStatus((s) => ({ ...s, ...newStatus }));
+  // Stable identity so it doesn't retrigger the effect below on every render
+  // (an unstable dep here re-runs the loader each render -> worker spawn loop).
+  const updateStatus = useCallback(
+    (newStatus) => setStatus((s) => ({ ...s, ...newStatus })),
+    [],
+  );
 
   useEffect(() => {
     if (!dataSource) {
