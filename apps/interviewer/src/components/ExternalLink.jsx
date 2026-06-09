@@ -16,7 +16,9 @@ const openExternalLink = (href) => {
   }
 
   if (isCapacitor()) {
-    Browser.open({ url: href });
+    Browser.open({ url: href }).catch((error) => {
+      console.error('[external link] failed to open:', error);
+    });
     return false;
   }
 

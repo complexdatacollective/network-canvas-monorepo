@@ -37,6 +37,7 @@ body {
   color: palette('text');
   background: palette('background');
   width: 100%;
+
   // `vh` measures the full window on iPadOS 26's resizable windows (which include
   // a titlebar), pushing content off the bottom. `dvh` tracks the actual visible
   // viewport. The `vh` line is a fallback for WebKit < 15.4 (no dvh support).
