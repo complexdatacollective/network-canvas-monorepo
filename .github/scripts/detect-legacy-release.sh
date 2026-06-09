@@ -34,17 +34,23 @@ if [[ "$released" != "true" ]]; then
   fi
 fi
 
-# 3. Idempotent first-time check: release if the external repo has no published
-#    release for this version yet. (A 404 also covers a pending draft, so a failed
-#    run is retried until a published release exists.)
+# 3. Idempotent first-time check: release unless the external repo already has a
+#    *published* release for this version. A pre-existing draft (e.g. a prior run
+#    that created the draft but failed before publishing) is treated as "needs
+#    release" so the rerun can finish the mirror/build/publish. We list releases
+#    and match on tag_name + draft==false rather than GET /releases/tags/<tag>,
+#    which only reflects published releases and can't distinguish "draft exists"
+#    from "nothing exists".
 if [[ "$released" != "true" && -n "${GH_TOKEN:-}" ]]; then
-  status=$(curl -sS -o /dev/null -w '%{http_code}' \
+  published=$(curl -sS \
     -H "Authorization: Bearer $GH_TOKEN" \
     -H "Accept: application/vnd.github+json" \
-    "https://api.github.com/repos/$EXTERNAL_REPO/releases/tags/v$current" || echo "000")
-  if [[ "$status" == "404" ]]; then
+    "https://api.github.com/repos/$EXTERNAL_REPO/releases?per_page=100" \
+    | jq -r --arg tag "v$current" \
+        '[.[] | select(.tag_name == $tag and .draft == false)] | length' 2>/dev/null || echo "0")
+  if [[ "$published" != "1" ]]; then
     released=true
-    reason="no v$current release on $EXTERNAL_REPO yet"
+    reason="no published v$current release on $EXTERNAL_REPO (none or draft)"
   fi
 fi
 

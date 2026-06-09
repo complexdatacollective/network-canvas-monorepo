@@ -40,11 +40,20 @@ coverage/
 .DS_Store
 `;
 
+// Strip any embedded credentials (e.g. the tokenized clone URL
+// https://x-access-token:<token>@github.com/...) before putting a string into a
+// thrown error, so LEGACY_RELEASE_GH_TOKEN never reaches the logs.
+function redact(text) {
+  return String(text ?? '').replace(/\/\/[^/@\s]+@/g, '//***@');
+}
+
 function run(cmd, args, opts = {}) {
   const result = spawnSync(cmd, args, { stdio: 'inherit', ...opts });
   if (result.error) throw result.error;
   if (result.status !== 0) {
-    throw new Error(`${cmd} ${args.join(' ')} exited with ${result.status}`);
+    throw new Error(
+      `${cmd} ${redact(args.join(' '))} exited with ${result.status}`,
+    );
   }
   return result;
 }
@@ -54,7 +63,7 @@ function capture(cmd, args, opts = {}) {
   if (result.error) throw result.error;
   if (result.status !== 0) {
     throw new Error(
-      `${cmd} ${args.join(' ')} exited with ${result.status}\n${result.stderr}`,
+      `${cmd} ${redact(args.join(' '))} exited with ${result.status}\n${redact(result.stderr)}`,
     );
   }
   return result.stdout.trim();

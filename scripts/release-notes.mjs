@@ -10,7 +10,7 @@
 //
 // Usage:
 //   node scripts/release-notes.mjs --app <appDir> --pkg <packageName> --version <version> [--out <path>]
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -23,23 +23,27 @@ function splitChangeset(contents) {
   return { frontmatter: match[1], body: match[2].trim() };
 }
 
-export function notesFromChangesets(pkgName, changesetDir) {
-  if (!existsSync(changesetDir)) return '';
-  const bodies = [];
-  for (const file of readdirSync(changesetDir)) {
-    if (!file.endsWith('.md') || file.toUpperCase() === 'README.MD') continue;
-    const { frontmatter, body } = splitChangeset(
-      readFileSync(join(changesetDir, file), 'utf8'),
-    );
-    // Frontmatter lines look like:  'network-canvas-architect': patch
-    const targetsPkg = frontmatter
-      .split('\n')
-      .some((line) =>
-        line.replace(/['"]/g, '').trim().startsWith(`${pkgName}:`),
-      );
-    if (targetsPkg && body) bodies.push(body);
-  }
-  return bodies.join('\n\n');
+// Notes from the dedicated `release-<version>.md` changeset only. Using a single
+// version-named file (rather than every pending changeset that happens to target
+// the package) keeps the forced-release notes deterministic — unrelated pending
+// changesets for the same package don't bleed into the release body.
+export function notesFromDedicatedChangeset(pkgName, version, changesetDir) {
+  // Accept both the dotted version and the dashed form used by changeset
+  // filenames in this repo (e.g. release-6.6.0.md / release-6-6-0.md).
+  const candidates = [
+    `release-${version}.md`,
+    `release-${version.replace(/\./g, '-')}.md`,
+  ];
+  const file = candidates
+    .map((name) => join(changesetDir, name))
+    .find((path) => existsSync(path));
+  if (!file) return '';
+  const { frontmatter, body } = splitChangeset(readFileSync(file, 'utf8'));
+  // Frontmatter lines look like:  'network-canvas-architect': patch
+  const targetsPkg = frontmatter
+    .split('\n')
+    .some((line) => line.replace(/['"]/g, '').trim().startsWith(`${pkgName}:`));
+  return targetsPkg ? body : '';
 }
 
 export function notesFromChangelog(appDir, version) {
@@ -57,11 +61,12 @@ export function notesFromChangelog(appDir, version) {
 }
 
 export function releaseNotes({ appDir, pkgName, version }) {
-  const fromChangesets = notesFromChangesets(
+  const dedicated = notesFromDedicatedChangeset(
     pkgName,
+    version,
     join(repoRoot, '.changeset'),
   );
-  if (fromChangesets) return fromChangesets;
+  if (dedicated) return dedicated;
   const fromChangelog = notesFromChangelog(appDir, version);
   if (fromChangelog) return fromChangelog;
   return `Release v${version}`;
