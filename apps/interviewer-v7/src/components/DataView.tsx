@@ -36,6 +36,7 @@ import {
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import { useToast } from '@codaco/fresco-ui/Toast';
+import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
 import {
   deleteSessions,
@@ -308,6 +309,7 @@ export function DataView({ protocols, onReload }: DataViewProps) {
 
   const toast = useToast();
   const dialog = useDialog();
+  const analytics = useAnalytics();
   const { requireFreshUnlock } = useStepUpAuth();
   const [, navigate] = useLocation();
   const [selection, setSelection] = useState<Selection>({ mode: 'none' });
@@ -726,6 +728,13 @@ export function DataView({ protocols, onReload }: DataViewProps) {
       await markSessionsExported(
         result.successfulExports.map((s) => s.sessionId),
       );
+      // Counts only — never session contents, case IDs, or file names.
+      analytics.track('data_exported', {
+        interview_count: result.successfulExports.length,
+        failed_count: result.failedExports.length,
+        export_graphml: settings.exportGraphML,
+        export_csv: settings.exportCSV,
+      });
       if (result.failedExports.length > 0) {
         toast.add({
           title: 'Export completed with errors',
@@ -742,6 +751,7 @@ export function DataView({ protocols, onReload }: DataViewProps) {
       setSelection({ mode: 'none' });
       await Promise.all([onReload(), reloadData()]);
     } catch (cause) {
+      analytics.captureException(cause, { feature: 'export' });
       toast.add({
         title: 'Export failed',
         description: cause instanceof Error ? cause.message : String(cause),
@@ -751,6 +761,7 @@ export function DataView({ protocols, onReload }: DataViewProps) {
       setExporting(false);
     }
   }, [
+    analytics,
     exporting,
     onReload,
     reloadData,

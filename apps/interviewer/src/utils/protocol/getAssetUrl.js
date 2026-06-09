@@ -3,7 +3,7 @@
  */
 
 import { pathSync } from '../electronAPI';
-import inEnvironment, { isElectron } from '../Environment';
+import inEnvironment from '../Environment';
 import environments from '../environments';
 import { resolveFileSystemUrl } from '../filesystem';
 import protocolPath from './protocolPath';
@@ -24,29 +24,17 @@ const assetUrl = (environment) => {
     };
   }
 
-  if (environment === environments.CORDOVA) {
-    return (
+  if (environment === environments.CAPACITOR) {
+    return async (
       protocolUID = isRequired('protocolUID'),
       assetPath = isRequired('assetPath'),
     ) => {
-      const sourceFilename = protocolPath(protocolUID, `assets/${assetPath}`);
-      return resolveFileSystemUrl(sourceFilename).then((url) => {
-        const toURL = url.toURL();
-
-        // Check for development mode using secure API
-        const isDevelopment = isElectron()
-          ? window.electronAPI?.env?.isDevelopment
-          : false;
-
-        if (isDevelopment) {
-          const parsedUrl = new URL(toURL);
-          parsedUrl.host = 'localhost';
-          parsedUrl.port = '';
-          return parsedUrl.toString();
-        }
-
-        return toURL;
-      });
+      const sourceFilename = await protocolPath(
+        protocolUID,
+        `assets/${assetPath}`,
+      );
+      const entry = await resolveFileSystemUrl(sourceFilename);
+      return window.Capacitor.convertFileSrc(entry.toURL());
     };
   }
 

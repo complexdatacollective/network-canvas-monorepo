@@ -48,11 +48,8 @@ export default function Step4Behavior() {
 
   useEffect(() => {
     wizard.setNextEnabled(true);
-    wizard.setNextLabel('Finish');
+    wizard.setNextLabel('Continue');
     wizard.setBeforeNext(null);
-    return () => {
-      wizard.setNextLabel('Continue');
-    };
   }, [wizard]);
 
   return (

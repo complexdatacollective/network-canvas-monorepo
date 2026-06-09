@@ -21,5 +21,8 @@ describe('smoke', () => {
         expect(markup.startsWith('<svg')).toBe(true);
       }
     },
+    // 50 heavy renders per variant; the first case also absorbs the jsdom
+    // environment warmup, which can exceed the 5s default on cold CI runners.
+    30000,
   );
 });

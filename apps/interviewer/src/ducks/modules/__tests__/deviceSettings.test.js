@@ -1,3 +1,14 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('../../../utils/DeviceInfo');
+vi.mock('../../../utils/Environment');
+
+import {
+  deviceDescription,
+  shouldUseDynamicScaling,
+  shouldUseFullScreenForm,
+} from '../../../utils/DeviceInfo';
+import { isCapacitor } from '../../../utils/Environment';
 import reducer, { actionCreators, actionTypes } from '../deviceSettings';
 
 const initialState = {
@@ -27,27 +38,19 @@ describe('deviceSettings reducer', () => {
     expect(reducer(undefined, {})).toEqual(initialState);
   });
 
-  describe('Cordova', () => {
+  describe('Capacitor (mobile)', () => {
     beforeEach(() => {
-      global.cordova = {};
+      isCapacitor.mockReturnValue(true);
+      shouldUseDynamicScaling.mockReturnValue(false);
+      shouldUseFullScreenForm.mockReturnValue(true);
     });
 
-    it('provides better Android defaults after device_ready', () => {
-      global.device = { platform: 'Android', isVirtual: true };
+    it('sets useDynamicScaling=false and useFullScreenForms=true after DEVICE_READY', () => {
       const newState = reducer(initialState, {
         type: actionTypes.DEVICE_READY,
       });
-      expect(newState.description).toMatch('Android');
       expect(newState.useDynamicScaling).toBe(false);
-    });
-
-    it('provides better iOS defaults after device_ready', () => {
-      global.device = { platform: 'iOS', isVirtual: true };
-      const newState = reducer(initialState, {
-        type: actionTypes.DEVICE_READY,
-      });
-      expect(newState.description).toMatch('iOS');
-      expect(newState.useDynamicScaling).toBe(false);
+      expect(newState.useFullScreenForms).toBe(true);
     });
   });
 
@@ -78,6 +81,23 @@ describe('deviceSettings reducer', () => {
     expect(reduced).toEqual({
       ...initialState,
       interfaceScale: mockInterfaceScale,
+    });
+  });
+});
+
+describe('deviceReady thunk', () => {
+  it('dispatches DEVICE_READY then SET_DESCRIPTION with awaited device description', async () => {
+    deviceDescription.mockResolvedValue('iPad Air - 17.0');
+    shouldUseDynamicScaling.mockReturnValue(false);
+    shouldUseFullScreenForm.mockReturnValue(true);
+
+    const dispatch = vi.fn();
+    await actionCreators.deviceReady()(dispatch);
+
+    expect(dispatch).toHaveBeenCalledWith({ type: actionTypes.DEVICE_READY });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: actionTypes.SET_DESCRIPTION,
+      description: 'iPad Air - 17.0',
     });
   });
 });

@@ -14,6 +14,7 @@ import { ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
 import { StatusRow } from '~/components/StatusRow';
 import { TopActionBar } from '~/components/TopActionBar';
+import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import {
   deleteProtocol,
   getSettings,
@@ -105,6 +106,7 @@ export function HomeRoute() {
   const view = viewFromLocation(location);
   const dialog = useDialog();
   const toast = useToast();
+  const analytics = useAnalytics();
 
   const [pendingImports, setPendingImports] = useState<PendingImport[]>([]);
 
@@ -200,6 +202,13 @@ export function HomeRoute() {
           }
           await reload();
           setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
+          // No protocol name or contents — only the anonymous content hash,
+          // import source, and whether a schema migration ran.
+          analytics.track('protocol_installed', {
+            source: request.source,
+            migrated: result.migrated,
+            protocol_hash: result.hash,
+          });
           toast.add({
             title: 'Protocol imported',
             description: result.migrated
@@ -209,6 +218,10 @@ export function HomeRoute() {
           });
         } else {
           setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
+          analytics.track('protocol_install_failed', {
+            source: request.source,
+            reason: result.error,
+          });
           toast.add({
             title: 'Import failed',
             description: result.message,
@@ -219,7 +232,7 @@ export function HomeRoute() {
 
       void run();
     },
-    [reload, toast],
+    [analytics, reload, toast],
   );
 
   // If the pending hash has since been deleted (e.g. cascade-delete from

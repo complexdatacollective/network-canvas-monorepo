@@ -93,18 +93,19 @@ const runCap = (args) =>
     );
   });
 
-const shutdown = (code) => {
-  server.close().finally(() => process.exit(code));
+const shutdown = async (code) => {
+  await server.close();
+  process.exit(code);
 };
-process.on('SIGINT', () => shutdown(0));
-process.on('SIGTERM', () => shutdown(0));
+process.on('SIGINT', () => void shutdown(0));
+process.on('SIGTERM', () => void shutdown(0));
 
 try {
   await runCap(['sync', platform]);
   await runCap(['run', platform, ...runArgs]);
 } catch (error) {
   console.error(`[cap-dev] ${error.message}`);
-  shutdown(1);
+  await shutdown(1);
 }
 
 // cap run has exited; the open Vite server keeps this process alive for live

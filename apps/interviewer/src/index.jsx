@@ -11,7 +11,7 @@ import App from './containers/App';
 import { actionCreators as deviceActions } from './ducks/modules/deviceSettings';
 import { history, store, persistor as storePersistor } from './ducks/store';
 import AppRouter from './routes';
-import { getEnv, isAndroid, isCordova, isElectron } from './utils/Environment';
+import { getEnv, isElectron } from './utils/Environment';
 import initFileOpener from './utils/initFileOpener';
 import initMenuActions from './utils/initMenuActions';
 import remote from './utils/remote';
@@ -42,23 +42,6 @@ const Persist = ({ persistor, children }) => {
 
 const startApp = () => {
   store.dispatch(deviceActions.deviceReady());
-
-  // Enable fullscreen mode on Android using cordova-plugin-fullscreen
-  if (isAndroid()) {
-    window.AndroidFullScreen.isImmersiveModeSupported(
-      () => {
-        window.AndroidFullScreen.immersiveMode(
-          () => {
-            window.addEventListener('keyboardDidHide', () => {
-              window.AndroidFullScreen.immersiveMode();
-            });
-          },
-          () => {},
-        );
-      },
-      () => {},
-    );
-  }
 
   ReactDOM.render(
     <Provider store={store}>
@@ -93,18 +76,17 @@ if (isElectron()) {
   }
 }
 
-if (isCordova()) {
-  document.addEventListener('deviceready', startApp, false);
-} else if (document.readyState === 'complete') {
+const boot = () => {
   startApp();
-  // Listen for file open events.
   initFileOpener();
+};
+
+if (document.readyState === 'complete') {
+  boot();
 } else {
   document.onreadystatechange = () => {
     if (document.readyState === 'complete') {
-      startApp();
-      // Listen for file open events.
-      initFileOpener();
+      boot();
     }
   };
 }

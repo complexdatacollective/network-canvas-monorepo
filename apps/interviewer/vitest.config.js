@@ -17,7 +17,6 @@ export default defineConfig({
       'platforms',
       'src/utils/network-exporters',
       'src/utils/networkQuery',
-      'src/utils/protocol',
     ],
     css: true,
   },
