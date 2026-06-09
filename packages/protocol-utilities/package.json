@@ -19,8 +19,7 @@
     }
   },
   "publishConfig": {
-    "access": "public",
-    "tag": "alpha"
+    "access": "public"
   },
   "scripts": {
     "build": "node ../../scripts/with-turbo.mjs vite build",
