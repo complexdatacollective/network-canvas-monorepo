@@ -9,7 +9,7 @@ export const getEnv = vi.fn(() => ({}));
 export const isMacOS = vi.fn(() => false);
 export const isWindows = vi.fn(() => false);
 export const isLinux = vi.fn(() => false);
-export const isCordova = vi.fn(() => false);
+export const isCapacitor = vi.fn(() => false);
 export const isIOS = vi.fn(() => false);
 export const isAndroid = vi.fn(() => false);
 export const isWeb = vi.fn(() => true);

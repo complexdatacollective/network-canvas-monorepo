@@ -16,7 +16,7 @@ const resetProtocolFiles = inEnvironment((environment) => {
     };
   }
 
-  if (environment === environments.CORDOVA) {
+  if (environment === environments.CAPACITOR) {
     return () => {
       const protocolsPath = [userDataPath(), 'protocols'].join('/');
       return removeDirectory(protocolsPath);

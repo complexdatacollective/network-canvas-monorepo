@@ -46,7 +46,7 @@ const isAbsolutePath = (pathname) =>
 
 /**
  * Guard against directory traversal / escape
- * On Cordova, no traversal is allowed (even if it doesn't result in escaping the directory).
+ * On mobile (Capacitor), no traversal is allowed (even if it doesn't result in escaping the directory).
  * @param {string} pathname a pathname contained in a protocol archive
  * @throws {Error} If pathname escapes directory
  */
@@ -59,7 +59,7 @@ const assertNoTraversalInPath = inEnvironment((environment) => {
       }
     };
   }
-  if (environment === environments.CORDOVA) {
+  if (environment === environments.CAPACITOR) {
     return (pathname) => {
       if (pathname.startsWith('..') || pathname.includes('../')) {
         throw new Error(message);
@@ -82,7 +82,7 @@ const assertRelativePath = inEnvironment((environment) => {
       }
     };
   }
-  if (environment === environments.CORDOVA) {
+  if (environment === environments.CAPACITOR) {
     return (pathname) => {
       if (pathname.startsWith('/')) {
         throw new Error(message);
@@ -95,7 +95,7 @@ const assertRelativePath = inEnvironment((environment) => {
 const checkZipPaths = inEnvironment((environment) => {
   if (
     environment === environments.ELECTRON ||
-    environment === environments.CORDOVA
+    environment === environments.CAPACITOR
   ) {
     return (zipPaths) =>
       new Promise((resolve, reject) => {

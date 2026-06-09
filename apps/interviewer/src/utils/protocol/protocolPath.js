@@ -41,17 +41,14 @@ const protocolPath = (environment) => {
     };
   }
 
-  if (environment === environments.CORDOVA) {
-    return (protocolUID, filePath) => {
+  if (environment === environments.CAPACITOR) {
+    // Async to match the Electron contract: callers (e.g. parseProtocol) do
+    // `protocolPath(...).then(...)`, and others `await` it.
+    return async (protocolUID, filePath) => {
       if (!isValidProtocolUID(protocolUID))
         throw Error('Protocol name is not valid');
-
-      if (!filePath) {
-        // Cordova expects a trailing slash:
-        return `${userDataPath()}protocols/${protocolUID}/`;
-      }
-
-      return `${userDataPath()}protocols/${protocolUID}/${filePath}`;
+      if (!filePath) return `protocols/${protocolUID}/`;
+      return `protocols/${protocolUID}/${filePath}`;
     };
   }
 
