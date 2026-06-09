@@ -119,6 +119,10 @@ export type StoredSettings = {
   requireUnlockOnExit: boolean;
   requireUnlockOnExport: boolean;
   sampleProtocolDismissed: boolean;
+  // Opt-out analytics. Defaults to true; when false, no anonymous usage or
+  // error telemetry is sent. Never carries participant data or a user
+  // identifier — only the per-device installation id (see installationId.ts).
+  analyticsEnabled: boolean;
 };
 
 export type ProtocolWithCounts = StoredProtocol & {
@@ -138,4 +142,5 @@ export const DEFAULT_SETTINGS: StoredSettings = {
   requireUnlockOnExit: false,
   requireUnlockOnExport: false,
   sampleProtocolDismissed: false,
+  analyticsEnabled: true,
 };

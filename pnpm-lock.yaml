@@ -1108,6 +1108,9 @@ importers:
       motion:
         specifier: 'catalog:'
         version: 12.40.0(@emotion/is-prop-valid@0.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      posthog-js:
+        specifier: 'catalog:'
+        version: 1.376.5
       react:
         specifier: 'catalog:'
         version: 19.2.6
