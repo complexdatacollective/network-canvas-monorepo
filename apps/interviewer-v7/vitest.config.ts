@@ -15,6 +15,11 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  // `__APP_VERSION__` is injected by vite.renderer.config.ts for real builds;
+  // stub it here so modules reading APP_VERSION can be imported under test.
+  define: {
+    __APP_VERSION__: JSON.stringify('0.0.0-test'),
+  },
   test: {
     exclude: ['**/node_modules/**', '**/dist/**', '**/storybook-static/**'],
     projects: [

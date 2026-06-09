@@ -73,6 +73,7 @@
     "jszip": "catalog:",
     "lucide-react": "catalog:",
     "motion": "catalog:",
+    "posthog-js": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "swiper": "^12.2.0",

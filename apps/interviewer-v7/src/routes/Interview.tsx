@@ -12,6 +12,7 @@ import {
   Shell,
 } from '@codaco/interview';
 import { InterviewComplete } from '~/components/InterviewComplete';
+import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import {
   buildResolvedAssets,
   makeAssetResolver,
@@ -26,6 +27,7 @@ import {
   updateSettings,
 } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
+import { APP_VERSION } from '~/lib/platform/appVersion';
 import { getInstallationId } from '~/lib/platform/installationId';
 import { hostAppName } from '~/lib/platform/platform';
 
@@ -139,8 +141,14 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     setAuthorizedInterviewId,
   ]);
 
+  const { client: posthogClient, enabled: analyticsEnabled } = useAnalytics();
+
   const analytics = useMemo(
-    () => ({ installationId: getInstallationId(), hostApp: hostAppName }),
+    () => ({
+      installationId: getInstallationId(),
+      hostApp: hostAppName,
+      hostVersion: APP_VERSION,
+    }),
     [],
   );
 
@@ -224,7 +232,8 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         onFinish={handleFinish}
         onRequestAsset={state.resolver}
         analytics={analytics}
-        disableAnalytics
+        posthogClient={posthogClient ?? undefined}
+        disableAnalytics={!analyticsEnabled}
         onExit={() => void handleExit()}
       />
     </div>

@@ -1,14 +1,48 @@
 import UIKit
 import Capacitor
+import PostHog
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
 
+    // PostHog API key + proxy host, matching the JS layer and Android.
+    private let posthogApiKey = "phc_OThPUolJumHmf142W78TKWtjoYYAxGlF0ZZmhcV7J3c"
+    private let posthogHost = "https://ph-relay.networkcanvas.com"
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        setUpAnalytics()
         return true
+    }
+
+    // Initialises the PostHog iOS SDK for native crash/error tracking.
+    //
+    // The renderer (WebView) cannot call the native SDK directly, so it mirrors
+    // the user's analytics preference into Capacitor Preferences. On iOS,
+    // Capacitor Preferences stores values in UserDefaults with the key prefixed
+    // by its group, so the flag lives at "CapacitorStorage.analytics_enabled".
+    // We read it here — before any web code runs — so the native SDK honours the
+    // same opt-out choice as the JS layer. A toggle therefore takes effect for
+    // native error capture on the next launch.
+    //
+    // No participant data is ever captured: screen views, app-lifecycle
+    // autocapture, and session replay are all disabled, leaving only
+    // crash/error reports keyed to the anonymous installation id.
+    // https://posthog.com/docs/error-tracking/installation/ios
+    private func setUpAnalytics() {
+        // Default to enabled (matches StoredSettings.analyticsEnabled) until the
+        // renderer has written a value.
+        let stored = UserDefaults.standard.string(forKey: "CapacitorStorage.analytics_enabled")
+        let analyticsEnabled = stored != "false"
+
+        let config = PostHogConfig(apiKey: posthogApiKey, host: posthogHost)
+        config.captureScreenViews = false
+        config.captureApplicationLifecycleEvents = false
+        config.sessionReplay = false
+        config.optOut = !analyticsEnabled
+
+        PostHogSDK.shared.setup(config)
     }
 
     func applicationWillResignActive(_ application: UIApplication) {

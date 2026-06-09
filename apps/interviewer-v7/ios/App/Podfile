@@ -19,7 +19,10 @@ end
 
 target 'App' do
   capacitor_pods
-  # Add your Pods here
+  # PostHog iOS SDK — native crash/error tracking. Honours the analytics
+  # preference mirrored into Capacitor Preferences (read in AppDelegate).
+  # https://posthog.com/docs/error-tracking/installation/ios
+  pod 'PostHog', '~> 3.0'
 end
 
 post_install do |installer|
