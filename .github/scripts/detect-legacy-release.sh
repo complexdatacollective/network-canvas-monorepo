@@ -42,12 +42,24 @@ fi
 #    which only reflects published releases and can't distinguish "draft exists"
 #    from "nothing exists".
 if [[ "$released" != "true" && -n "${GH_TOKEN:-}" ]]; then
-  published=$(curl -sS \
+  # Fail fast on API/auth/network errors rather than silently coercing them into
+  # a release decision — a transient failure must not skip (or spuriously trigger)
+  # a release without an actionable error.
+  response=$(curl -sS --connect-timeout 10 --max-time 30 -w $'\n%{http_code}' \
     -H "Authorization: Bearer $GH_TOKEN" \
     -H "Accept: application/vnd.github+json" \
-    "https://api.github.com/repos/$EXTERNAL_REPO/releases?per_page=100" \
-    | jq -r --arg tag "v$current" \
-        '[.[] | select(.tag_name == $tag and .draft == false)] | length' 2>/dev/null || echo "0")
+    "https://api.github.com/repos/$EXTERNAL_REPO/releases?per_page=100") || {
+    echo "release check: curl failed for $EXTERNAL_REPO" >&2
+    exit 1
+  }
+  http_code=$(tail -n1 <<<"$response")
+  body=$(sed '$d' <<<"$response")
+  if [[ "$http_code" != "200" ]]; then
+    echo "release check: unexpected HTTP $http_code from $EXTERNAL_REPO releases API" >&2
+    exit 1
+  fi
+  published=$(jq -r --arg tag "v$current" \
+    '[.[] | select(.tag_name == $tag and .draft == false)] | length' <<<"$body")
   if [[ "$published" != "1" ]]; then
     released=true
     reason="no published v$current release on $EXTERNAL_REPO (none or draft)"

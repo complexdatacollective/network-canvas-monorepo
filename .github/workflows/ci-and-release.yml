@@ -844,9 +844,11 @@ jobs:
   # version is always the current apps/<app>/package.json version.
   legacy-release-detect:
     needs: quality
+    # Only ever runs on main — a manual workflow_dispatch from a feature branch
+    # must not mirror/publish branch-only code to the external app repos.
     if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      github.event_name == 'workflow_dispatch'
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:

@@ -126,15 +126,20 @@ function vendorInterviewerPreview(appDir, staging) {
     cpSync(from, join(vendorDir, part), { recursive: true });
   }
   const configPath = join(staging, 'electron-builder.config.js');
-  const config = readFileSync(configPath, 'utf8')
-    .replace(
-      /['"]\.\.\/interviewer\/out\/renderer['"]/g,
-      "'interviewer-preview/renderer'",
-    )
-    .replace(
-      /['"]\.\.\/interviewer\/out\/preload['"]/g,
-      "'interviewer-preview/preload'",
+  const original = readFileSync(configPath, 'utf8');
+  const rendererPattern = /['"]\.\.\/interviewer\/out\/renderer['"]/g;
+  const preloadPattern = /['"]\.\.\/interviewer\/out\/preload['"]/g;
+  // Fail loudly rather than silently leaving broken extraResources paths in the
+  // mirror if the source config's path text ever drifts.
+  if (!rendererPattern.test(original) || !preloadPattern.test(original)) {
+    throw new Error(
+      `Expected ../interviewer/out renderer+preload paths in ${configPath}; ` +
+        'the Architect preview vendoring rewrite would be a no-op.',
     );
+  }
+  const config = original
+    .replace(rendererPattern, "'interviewer-preview/renderer'")
+    .replace(preloadPattern, "'interviewer-preview/preload'");
   writeFileSync(configPath, config);
 }
 
@@ -213,31 +218,44 @@ function main() {
   copyTree(staging, checkout, ['.git']);
   run('git', ['-C', checkout, 'add', '-A']);
 
-  const sourceSha =
-    process.env.MONOREPO_SHA || capture('git', ['rev-parse', 'HEAD']);
-  const message = `Release v${version} (mirrored from monorepo ${sourceSha})`;
-  const authorName =
-    process.env.GIT_AUTHOR_NAME || 'Network Canvas Release Bot';
-  const authorEmail =
-    process.env.GIT_AUTHOR_EMAIL || 'releases@networkcanvas.com';
-  run('git', [
-    '-C',
-    checkout,
-    '-c',
-    `user.name=${authorName}`,
-    '-c',
-    `user.email=${authorEmail}`,
-    '-c',
-    'commit.gpgsign=false',
-    'commit',
-    '-m',
-    message,
-  ]);
+  // If the mirrored tree is byte-identical to current master (e.g. a forced
+  // re-release with no source change), there's nothing to commit — `git commit`
+  // would exit non-zero and abort the rerun. Skip commit/push and reuse HEAD.
+  const hasChanges =
+    spawnSync('git', ['-C', checkout, 'diff', '--cached', '--quiet']).status !==
+    0;
 
-  if (dryRun) {
-    console.error('[mirror] MIRROR_DRY_RUN=true — skipping push.');
+  if (hasChanges) {
+    const sourceSha =
+      process.env.MONOREPO_SHA || capture('git', ['rev-parse', 'HEAD']);
+    const message = `Release v${version} (mirrored from monorepo ${sourceSha})`;
+    const authorName =
+      process.env.GIT_AUTHOR_NAME || 'Network Canvas Release Bot';
+    const authorEmail =
+      process.env.GIT_AUTHOR_EMAIL || 'releases@networkcanvas.com';
+    run('git', [
+      '-C',
+      checkout,
+      '-c',
+      `user.name=${authorName}`,
+      '-c',
+      `user.email=${authorEmail}`,
+      '-c',
+      'commit.gpgsign=false',
+      'commit',
+      '-m',
+      message,
+    ]);
+
+    if (dryRun) {
+      console.error('[mirror] MIRROR_DRY_RUN=true — skipping push.');
+    } else {
+      run('git', ['-C', checkout, 'push', 'origin', 'master']);
+    }
   } else {
-    run('git', ['-C', checkout, 'push', 'origin', 'master']);
+    console.error(
+      '[mirror] no content changes vs current master; reusing existing HEAD.',
+    );
   }
 
   const mirrorSha = capture('git', ['-C', checkout, 'rev-parse', 'HEAD']);
