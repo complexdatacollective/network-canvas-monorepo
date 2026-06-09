@@ -15,7 +15,7 @@ import type {
 } from '~/lib/db/types';
 import { SAMPLE_PROTOCOL } from '~/lib/protocol/sampleProtocol';
 
-import { NewSessionCardOverlay } from '../NewSessionCardOverlay';
+import { NewSessionDialog } from '../NewSessionDialog';
 import { GLASS_PILL } from '../TopActionBar';
 import { DeckCard } from './DeckCard';
 import { ImportTriggerCard } from './ImportTriggerCard';
@@ -30,6 +30,12 @@ type DeckEntry =
   | { kind: 'sample' }
   | { kind: 'pending'; pending: PendingImport }
   | { kind: 'import' };
+
+// A Geospatial stage renders an online map (tile server), so a protocol that
+// contains one can't be administered while offline.
+function protocolRequiresInternet(protocol: ProtocolWithCounts): boolean {
+  return protocol.protocol.stages.some((stage) => stage.type === 'Geospatial');
+}
 
 // High-codepoint sentinel so the import card always sorts last under a
 // case-insensitive locale comparison.
@@ -436,22 +442,16 @@ export function ProtocolDeck({
   const atEnd = activeIdx === deck.length - 1;
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col">
+    <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center">
       <motion.section
         ref={sectionRef}
         variants={sectionVariants}
         aria-label="Protocol deck"
-        // Section stays in its default stacking context so the backdrop
-        // (z-40 in Home) sits on top of the carousel. Non-active cards
-        // remain visible but read as "behind glass" through the
-        // backdrop's blur/dim, while the overlay (portal, z-60) sits
-        // above everything.
-        style={{ paddingBlock: sectionPadding }}
         // overflow-visible lets the card's drop shadow extend into the
         // section's padding zone without clipping. Swiper sets
         // `overflow: hidden` on itself; we override below so shadows can
         // paint outside the slide rectangle.
-        className="relative min-h-0 w-full flex-1"
+        className="flex max-h-[45rem] min-h-0 w-full flex-1 items-center justify-center"
       >
         {cardHeight > 0 ? (
           <Swiper
@@ -495,17 +495,9 @@ export function ProtocolDeck({
             // !overflow-visible overrides Swiper's bundled
             // `.swiper { overflow: hidden }` so card drop shadows can
             // paint beyond the swiper rect into the section padding.
-            className="protocol-deck-swiper h-full w-full !overflow-visible"
+            className="protocol-deck-swiper w-full !overflow-visible"
           >
             {deck.map((entry, i) => {
-              // Unmount the DeckCard whose protocol is being promoted to
-              // the overlay so motion sees a single `layoutId` per render
-              // — that's what triggers the shared-element morph. The
-              // SwiperSlide itself stays mounted so Swiper's slide
-              // geometry doesn't shift while the overlay is open.
-              const isMorphingOut =
-                entry.kind === 'protocol' &&
-                entry.protocol.hash === newSessionProtocolHash;
               const slotKey = entrySlotKey(entry);
               const phaseKey =
                 entry.kind === 'pending'
@@ -549,13 +541,16 @@ export function ProtocolDeck({
                       }}
                       className={`h-full w-full ${wantsBackdropBlur ? 'backdrop-blur-md' : ''}`}
                     >
-                      {entry.kind === 'protocol' && !isMorphingOut && (
+                      {entry.kind === 'protocol' && (
                         <DeckCard
                           protocol={entry.protocol}
                           isActive={i === activeIdx}
                           sessionCount={
                             sessionCounts.get(entry.protocol.hash) ?? 0
                           }
+                          requiresInternetConnection={protocolRequiresInternet(
+                            entry.protocol,
+                          )}
                           onActivate={() => handleActivate(i)}
                           onDelete={() => onDeleteProtocol(entry.protocol.hash)}
                         />
@@ -633,10 +628,9 @@ export function ProtocolDeck({
       )}
 
       {displayedProtocol && onCancelNewSession && onSessionCreated && (
-        <NewSessionCardOverlay
+        <NewSessionDialog
           open={newSessionActive}
           protocol={displayedProtocol}
-          sessionCount={sessionCounts.get(displayedProtocol.hash) ?? 0}
           onCancel={onCancelNewSession}
           onCreated={onSessionCreated}
         />

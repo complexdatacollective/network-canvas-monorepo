@@ -1,10 +1,6 @@
-import { useId } from 'react';
-
-import Button from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import Form from '@codaco/fresco-ui/form/Form';
-import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { createInitialNetwork } from '@codaco/interview';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
@@ -12,21 +8,22 @@ import { createSession, getSettings } from '~/lib/db/api';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
 
 type NewSessionFormProps = {
+  // Shared with the dialog footer's SubmitButton (`form={formId}`) so the
+  // button can submit this form despite living outside the <form> element.
+  formId: string;
   protocol: ProtocolWithCounts;
-  onCancel: () => void;
   onCreated: (session: StoredSession) => void;
 };
 
 export function NewSessionForm({
+  formId,
   protocol,
-  onCancel,
   onCreated,
 }: NewSessionFormProps) {
-  const formId = useId();
   const { requireFreshUnlock, setAuthorizedInterviewId } = useStepUpAuth();
 
   return (
-    <Form
+    <FormWithoutProvider
       id={formId}
       onSubmit={async (values) => {
         const raw = values.caseId;
@@ -56,7 +53,6 @@ export function NewSessionForm({
         onCreated(session);
         return { success: true };
       }}
-      className="p-4"
     >
       <Paragraph>
         Before the interview begins, enter a case ID. This will be shown on the
@@ -73,12 +69,6 @@ export function NewSessionForm({
         validateOnChange
         autoFocus
       />
-      <div className="flex flex-col gap-2 @min-2xs:flex-row @min-2xs:justify-end">
-        <Button onClick={onCancel} type="button">
-          Cancel
-        </Button>
-        <SubmitButton form={formId}>Start interview</SubmitButton>
-      </div>
-    </Form>
+    </FormWithoutProvider>
   );
 }

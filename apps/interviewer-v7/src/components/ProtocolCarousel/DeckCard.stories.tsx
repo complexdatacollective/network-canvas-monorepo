@@ -66,7 +66,7 @@ function ResizableFrame({
 }) {
   return (
     <div
-      className="ring-outline/40 resize overflow-hidden rounded-[28px] ring-2"
+      className="ring-outline/40 resize overflow-hidden ring-2"
       style={{ width, height, minWidth: 140, minHeight: 220 }}
     >
       {children}
@@ -80,6 +80,7 @@ type StoryArgs = {
   importedAt: string;
   isActive: boolean;
   sessionCount: number;
+  requiresInternetConnection: boolean;
   width: number;
   height: number;
 };
@@ -104,6 +105,7 @@ const meta: Meta<StoryArgs> = {
     importedAt: '2026-05-20T10:00:00.000Z',
     isActive: true,
     sessionCount: 3,
+    requiresInternetConnection: false,
     width: 360,
     height: 520,
   },
@@ -119,6 +121,12 @@ const meta: Meta<StoryArgs> = {
       description: 'Active cards show the accent ring + Start/Delete row',
     },
     sessionCount: { control: { type: 'number', min: 0 } },
+    requiresInternetConnection: {
+      control: 'boolean',
+      description:
+        'Derived in ProtocolDeck from the protocol stages (true when a ' +
+        'Geospatial stage is present); toggles the offline/online pill.',
+    },
     width: { control: { type: 'range', min: 140, max: 720, step: 4 } },
     height: { control: { type: 'range', min: 220, max: 720, step: 4 } },
   },
