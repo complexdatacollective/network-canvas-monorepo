@@ -31,15 +31,24 @@ const resolveTarget = (args) => {
     return args;
   }
 
-  const { devices } = JSON.parse(
-    execFileSync('xcrun', [
-      'simctl',
-      'list',
-      'devices',
-      'available',
-      '--json',
-    ]).toString(),
-  );
+  let devices;
+  try {
+    devices = JSON.parse(
+      execFileSync('xcrun', [
+        'simctl',
+        'list',
+        'devices',
+        'available',
+        '--json',
+      ]).toString(),
+    ).devices;
+  } catch (error) {
+    console.error(
+      `[cap-dev] failed to list iOS simulators for target "${wanted}": ${error.message}`,
+    );
+    process.exit(1);
+  }
+
   const match = Object.values(devices)
     .flat()
     .find((device) => device.name === wanted);
