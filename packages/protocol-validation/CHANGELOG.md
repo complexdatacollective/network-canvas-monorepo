@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 11.6.1
+
+### Patch Changes
+
+- Add `hashProtocol(protocol)` export — content-only hash of `{ codebook, stages }` for cross-package protocol identification (dedup, analytics, migration). Computed via ohash.
+
 ## 11.6.0
 
 ### Minor Changes

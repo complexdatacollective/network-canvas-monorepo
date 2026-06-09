@@ -1,5 +1,9 @@
 # @codaco/interview
 
+## 1.0.0
+
+First stable release of `@codaco/interview`, the host-pluggable Network Canvas interview engine. This promotes the `1.0.0-alpha` development series to a stable `1.0.0` with no further functional changes; see the `1.0.0-alpha.*` entries below for the detailed history.
+
 ## 1.0.0-alpha.26
 
 ### Prerelease Changes
