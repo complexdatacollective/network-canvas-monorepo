@@ -590,7 +590,7 @@
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "chromatic": "catalog:",
-    "jsdom": "^29.1.1",
+    "jsdom": "catalog:",
     "playwright": "^1.60.0",
     "storybook": "catalog:",
     "tinyglobby": "^0.2.17",

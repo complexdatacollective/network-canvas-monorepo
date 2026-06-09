@@ -100,7 +100,7 @@
     "electron": "catalog:",
     "electron-builder": "^26.8.1",
     "electron-vite": "catalog:",
-    "jsdom": "^29.1.1",
+    "jsdom": "catalog:",
     "playwright": "^1.60.0",
     "png-to-ico": "^3.0.1",
     "sharp": "^0.34.2",

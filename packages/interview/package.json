@@ -85,7 +85,7 @@
     "@vitest/browser-playwright": "catalog:",
     "chalk": "5.6.2",
     "chromatic": "catalog:",
-    "jsdom": "^29.1.1",
+    "jsdom": "catalog:",
     "playwright": "^1.60.0",
     "storybook": "catalog:",
     "superjson": "^2.2.6",
