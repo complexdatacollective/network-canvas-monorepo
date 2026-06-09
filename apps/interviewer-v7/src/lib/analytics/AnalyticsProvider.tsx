@@ -75,6 +75,10 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   const [enabled, setEnabledState] = useState(false);
   const clientRef = useRef<PostHog | null>(null);
   const [client, setClient] = useState<PostHog | null>(null);
+  // Bumped on every explicit user toggle. The async init() captures this at
+  // start and bails if it changed, so a slow settings load can't clobber a
+  // newer user choice that landed while it was in flight.
+  const preferenceRevisionRef = useRef(0);
 
   // Load the stored preference once the app is unlocked, then initialise the
   // client and apply. Reading settings is DB-backed; on Electron the SQLCipher
@@ -84,13 +88,17 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (kind !== 'unlocked') return;
     let active = true;
+    const revisionAtStart = preferenceRevisionRef.current;
     const init = async () => {
       try {
         const [settings, resolved] = await Promise.all([
           getSettings(),
           getAnalyticsClient(),
         ]);
-        if (!active) return;
+        // Bail if torn down, or if the user toggled while we were loading —
+        // their choice (already applied by setEnabled) must win.
+        if (!active || revisionAtStart !== preferenceRevisionRef.current)
+          return;
         clientRef.current = resolved;
         setClient(resolved);
         setEnabledState(settings.analyticsEnabled);
@@ -111,6 +119,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     // often `void` this, so the promise must never reject: a DB/IPC failure in
     // updateSettings or a misbehaving client must not surface as an unhandled
     // rejection (telemetry must never break the app).
+    preferenceRevisionRef.current += 1;
     setEnabledState(next);
     try {
       await updateSettings({ analyticsEnabled: next });
