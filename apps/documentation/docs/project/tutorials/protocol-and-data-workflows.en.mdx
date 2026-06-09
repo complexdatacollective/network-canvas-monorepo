@@ -97,6 +97,12 @@ However, if you are comfortable with the potential risks, it should be possible 
 
 If you are working in a scenario where you do not have access to an internet connection, you can use the following workflow to deploy protocols and export data.
 
+<TipBox>
+
+The offline workflow assumes every interface in your protocol works offline. Some schema-8 interfaces in **Interviewer 7** — notably [Geospatial](/en/project/interface-documentation/geospatial), which loads maps over the internet — require a connection *during the interview*, so a protocol that uses them cannot be run fully offline. Schema-7 protocols in **Interviewer 6.x** are unaffected.
+
+</TipBox>
+
 <ImageFullWidth
   src="/assets/img/offline-data/offline.png"
   alt="Offline workflow diagram"

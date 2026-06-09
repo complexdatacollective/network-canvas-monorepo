@@ -11,7 +11,7 @@ Interviewer and Architect (from version 4.2.0 onward) implement a feature that t
 
 Although every effort is made to maintain compatibility with new schema versions, any features implemented that require a schema update will be unavailable to you until you migrate your protocol. We _strongly_ encourage you to update your protocol files wherever possible, so that you are able to use the newest Network Canvas features.
 
-The current, latest protocol schema version is **8**. Schema 8 is supported only by the web apps — **Architect Web** and **Fresco** — and is not supported by the desktop and tablet apps (Architect Desktop and Interviewer). See [Schema version 8](#schema-version-8) below for details.
+The current, latest protocol schema version is **8**. Schema 8 is supported by **Architect Web**, **Fresco**, and the new **Interviewer 7** (beta) app. It is **not** supported by **Architect Desktop** or **Interviewer 6.x**, which support schema 7 and earlier. See [Schema version 8](#schema-version-8) below for details.
 
 <TipBox danger>
 
@@ -79,21 +79,21 @@ Migrating a protocol happens within Architect, and is automatic. The process wor
 
 ## Schema version 8
 
-Schema version 8 is the current, latest protocol schema version. It differs from earlier versions in an important way: it is **not** supported by the desktop and tablet apps.
+Schema version 8 is the current, latest protocol schema version. Support for it depends on which apps you use:
 
-- **Architect Web** and **Fresco** support schema 8.
-- **Architect Desktop** and **Interviewer** (desktop and tablet) support schema 7 and earlier.
+- **Architect Web**, **Fresco**, and **Interviewer 7** (beta) support schema 8.
+- **Architect Desktop** and **Interviewer 6.x** support schema 7 and earlier.
 
 This has two practical consequences:
 
 1. To create or edit a schema 8 protocol, you must use **Architect Web**. Architect Desktop cannot create, open, or migrate protocols to schema 8.
-2. A schema 8 protocol can only be run in **Fresco**. The desktop and tablet Interviewer apps cannot run schema 8 protocols, and will mark them as incompatible/unsupported.
+2. A schema 8 protocol can only be run in **Fresco** or **Interviewer 7**. The older **Interviewer 6.x** desktop and tablet apps cannot run schema 8 protocols, and will mark them as incompatible/unsupported.
 
-Fresco accepts both schema 7 and schema 8 protocols (anything older is rejected). When you import a schema 7 `.netcanvas` file, Fresco automatically upgrades it to schema 8 in place — so existing schema 7 protocols continue to work in Fresco without any manual migration step.
+Both Fresco and Interviewer 7 accept schema 7 and schema 8 protocols (anything older is rejected), so your existing protocols continue to work without a manual migration step. When Fresco imports a schema 7 `.netcanvas` file, it automatically upgrades it to schema 8 in place.
 
 <TipBox danger>
 
-If you open a schema 8 protocol in Architect Desktop, or attempt to install one in the desktop or tablet Interviewer app, it will be reported as incompatible/unsupported. If you need to continue working in the desktop apps, keep your protocols on schema 7.
+If you open a schema 8 protocol in Architect Desktop, or attempt to install one in **Interviewer 6.x**, it will be reported as incompatible/unsupported. If you need to continue working in the older desktop apps, keep your protocols on schema 7 — or move to **Architect Web** and **Interviewer 7**, which support schema 8.
 
 </TipBox>
 
@@ -115,11 +115,11 @@ Schema version 8 introduces several new interfaces and authoring features:
 
 ## Compatibility Table
 
-Consult the table below for information about which schema versions are supported by each released version of the Network Canvas software. Note that schema 8 is no longer tied to specific Architect Desktop / Interviewer version numbers — it is supported only by the Architect Web and Fresco web apps.
+Consult the table below for information about which schema versions are supported by each released version of the Network Canvas software. Note that schema 8 is no longer tied to specific Architect Desktop / Interviewer 6.x version numbers — it is supported by the Architect Web and Fresco web apps and by Interviewer 7.
 
 | Schema Version | Features                                                                                                                                                                                                                                              | Architect Versions                | Interviewer Versions |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | -------------------- |
-| 8              | New Geospatial, experimental Anonymisation, One-to-many dyad census, and Family pedigree interfaces. New `greaterThanVariable`/`lessThanVariable` validation and "contains"/"does not contain" comparators. Configurable node shape and form-field hints. | Architect Web                     | Fresco               |
+| 8              | New Geospatial, experimental Anonymisation, One-to-many dyad census, and Family pedigree interfaces. New `greaterThanVariable`/`lessThanVariable` validation and "contains"/"does not contain" comparators. Configurable node shape and form-field hints. | Architect Web                     | Fresco, Interviewer 7 |
 | 7              | Minimum/maximum alter counts on name generators. Additional skip logic options for categorical variables.                                       | 6.4.0                             | \> 6.3.0             |
 | 6              | New "roster name generator" interface. Automatic node layout on the sociogram.                                                                  | 6.3.0, 6.3.1                      | \> 6.2.0             |
 | 5              | Supports "tie-strength census" interface. Adds "unique", "same as", and "different from" validation options. Adds the interview script section. | 6.1.0, 6.1.1, 6.2.0, 6.2.1, 6.2.2 | \> 6.1.0             |

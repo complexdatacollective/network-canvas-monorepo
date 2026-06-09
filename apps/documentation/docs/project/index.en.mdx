@@ -55,12 +55,17 @@ of the tools. You'll find these subsections in the sidebar to the left:
 
 ## At a glance
 
-|                   | Runs where            | Install           | Step in workflow | Supported Schemas |
-| ----------------- | --------------------- | ----------------- | ---------------- | ----------------- |
-| Architect Web     | Browser               | None              | Build protocol   | V8                |
-| Architect Desktop | Windows, macOS, Linux | Download          | Build protocol   | V7                |
-| Interviewer       | Desktop & tablet      | Download          | Run interviews   | V7                |
-| Fresco            | Browser (self-hosted) | Deploy to the web | Run interviews   | V8                |
+|                      | Runs where            | Install           | Step in workflow | Supported Schemas |
+| -------------------- | --------------------- | ----------------- | ---------------- | ----------------- |
+| Architect Web        | Browser               | None              | Build protocol   | V8                |
+| Architect Desktop    | Windows, macOS, Linux | Download          | Build protocol   | V7                |
+| Interviewer 6.x      | Desktop & tablet      | Download          | Run interviews   | V7                |
+| Interviewer 7 (beta) | Desktop & tablet      | Download          | Run interviews   | V8                |
+| Fresco               | Browser (self-hosted) | Deploy to the web | Run interviews   | V8                |
+
+**Interviewer 7** (beta) runs on the same new platform as Fresco 4.0, supports schema 8, and is compatible with all existing protocols — it's recommended for new studies. **Interviewer 6.x** remains supported and isn't going away.
+
+Which app can run a given protocol depends on the tool it was built in. See [Protocol compatibility](/en/project/protocol-compatibility) for a visual matrix of what runs where, or [Protocol Schema Information](/en/project/advanced-topics/protocol-schema-information) for a full explanation of schema versions and automatic migration.
 
 Whichever tools you choose, the shape of a study is the same: design a protocol, run it
 to collect data, and export that data for analysis. For a detailed walkthrough of one such

@@ -10,7 +10,7 @@ toc: true
 
 Each application of the Network Canvas Desktop Suite can be downloaded and installed individually. You do not need to install all applications to use the software.
 
-- Install **Interviewer** on any device you will use to interview participants. It runs your Network Canvas protocols and collects data in the field.
+- Install **Interviewer** on any device you will use to interview participants. It runs your Network Canvas protocols and collects data in the field. Interviewer comes in two versions: **Interviewer 6.x**, the established release (schema 7, fully offline), and **Interviewer 7** (beta), built on the same new platform as Fresco 4.0 (schema 8, recommended for new studies). Both are supported, can be installed side by side, and download from the same [download page](https://networkcanvas.com/download).
 - Install **Architect** on a desktop computer that you will to use to design your Network Canvas interview protocol.
 
 <TipBox>

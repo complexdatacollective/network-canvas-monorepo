@@ -19,6 +19,12 @@ This page summarizes the practical best practices for each tool. For a comprehen
 
 ## Desktop Suite (Interviewer & Architect Desktop)
 
+<TipBox>
+
+This describes **Interviewer 6.x**, which is fully offline. **Interviewer 7** (beta) stores interview data locally in the same way, but some schema-8 interfaces (e.g. [Geospatial](/en/project/interface-documentation/geospatial)) require an internet connection and contact third-party services during the interview — factor this into your risk assessment if you use them.
+
+</TipBox>
+
 The desktop applications are fully offline tools designed to run on researcher-controlled devices. Our data security approach for the Suite focuses on data transfer, since we work on the assumption that devices running the Suite will be fully controlled by researchers. This means that **data transfer (exporting data off the device) is the most vulnerable step in the workflow.**
 
 ### Data storage

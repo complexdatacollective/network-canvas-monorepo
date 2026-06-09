@@ -26,6 +26,7 @@ import {
   BadPractice,
   GoodPractice,
 } from '~/components/customComponents/BestPractices';
+import CompatibilityMatrix from '~/components/customComponents/CompatibilityMatrix';
 import ImageFullWidth from '~/components/customComponents/ImageFullWidth';
 import {
   InterfaceMeta,
@@ -56,6 +57,7 @@ import { DOCS_PATH, get } from './helper_functions';
 import processPreTags from './processPreTags';
 import processYamlMatter from './processYamlMatter';
 import { type HeadingNode, headingTree } from './tableOfContents';
+import unwrapBlockComponents from './unwrapBlockComponents';
 import { cn } from './utils';
 
 const getSidebar = (): Partial<TSideBar> => {
@@ -301,6 +303,7 @@ const createMarkdownComponents = (docSlug?: string) => ({
   interfacesummary: (props: { children: ReactNode }) => (
     <InterfaceSummary {...props} />
   ),
+  compatibilitymatrix: () => <CompatibilityMatrix />,
   interfacemeta: (props: {
     type: string;
     creates: string;
@@ -348,6 +351,7 @@ export async function getDocumentForPath({
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeFigure)
     .use(rehypeRaw)
+    .use(unwrapBlockComponents)
     .use(slug)
     .use(headingTree)
     .use(processPreTags)

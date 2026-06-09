@@ -116,6 +116,20 @@ export function Hero() {
       </div>
       <div className="flex flex-col gap-6 md:flex-row">
         <ProjectCard
+          href="en/project"
+          title={t('ProjectSwitcher.project.label')}
+          description={t('ProjectSwitcher.project.description')}
+          icon={
+            <Image
+              src="/images/mark.svg"
+              alt=""
+              className="h-16 w-16 shrink-0"
+              width={64}
+              height={64}
+            />
+          }
+        />
+        <ProjectCard
           href="en/build-protocol"
           title={t('ProjectSwitcher.build-protocol.label')}
           description={t('ProjectSwitcher.build-protocol.description')}
@@ -150,20 +164,6 @@ export function Hero() {
                 height={48}
               />
             </div>
-          }
-        />
-        <ProjectCard
-          href="en/project"
-          title={t('ProjectSwitcher.project.label')}
-          description={t('ProjectSwitcher.project.description')}
-          icon={
-            <Image
-              src="/images/mark.svg"
-              alt=""
-              className="h-16 w-16 shrink-0"
-              width={64}
-              height={64}
-            />
           }
         />
       </div>
