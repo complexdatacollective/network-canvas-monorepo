@@ -107,10 +107,18 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   }, [kind]);
 
   const setEnabled = useCallback(async (next: boolean) => {
-    await updateSettings({ analyticsEnabled: next });
+    // Reflect the choice in the UI immediately, then persist + apply. Callers
+    // often `void` this, so the promise must never reject: a DB/IPC failure in
+    // updateSettings or a misbehaving client must not surface as an unhandled
+    // rejection (telemetry must never break the app).
     setEnabledState(next);
-    if (clientRef.current) applyPreference(clientRef.current, next);
-    await writeNativeAnalyticsPreference(next);
+    try {
+      await updateSettings({ analyticsEnabled: next });
+      if (clientRef.current) applyPreference(clientRef.current, next);
+      await writeNativeAnalyticsPreference(next);
+    } catch {
+      // Swallow — the in-memory preference still took effect above.
+    }
   }, []);
 
   const track = useCallback(
