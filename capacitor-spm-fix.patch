@@ -1,0 +1,133 @@
+From f1c893b9c0188540679c0a76f7d911ef88ec1af4 Mon Sep 17 00:00:00 2001
+From: Joshua Melville <joshua@northwestern.edu>
+Date: Tue, 9 Jun 2026 11:53:29 +0000
+Subject: [PATCH] fix(capacitor): detect iOS platform installed via Swift
+ Package Manager
+
+The Capacitor plugin only checked for ios/App/Podfile to determine
+whether the iOS platform is installed, marking @capacitor/ios as unused
+for projects that use Swift Package Manager (Capacitor 6+) instead of
+CocoaPods. SPM-based projects have ios/App/CapApp-SPM/Package.swift
+rather than a Podfile, so detect either file.
+
+Closes #1785
+---
+ .../plugins/capacitor-spm/capacitor.config.ts | 10 +++++++
+ .../ios/App/CapApp-SPM/Package.swift          | 26 +++++++++++++++++++
+ .../plugins/capacitor-spm/package.json        |  6 +++++
+ packages/knip/src/plugins/capacitor/index.ts  |  5 +++-
+ .../knip/test/plugins/capacitor-spm.test.ts   | 23 ++++++++++++++++
+ 5 files changed, 69 insertions(+), 1 deletion(-)
+ create mode 100644 packages/knip/fixtures/plugins/capacitor-spm/capacitor.config.ts
+ create mode 100644 packages/knip/fixtures/plugins/capacitor-spm/ios/App/CapApp-SPM/Package.swift
+ create mode 100644 packages/knip/fixtures/plugins/capacitor-spm/package.json
+ create mode 100644 packages/knip/test/plugins/capacitor-spm.test.ts
+
+diff --git a/packages/knip/fixtures/plugins/capacitor-spm/capacitor.config.ts b/packages/knip/fixtures/plugins/capacitor-spm/capacitor.config.ts
+new file mode 100644
+index 0000000..7218ac6
+--- /dev/null
++++ b/packages/knip/fixtures/plugins/capacitor-spm/capacitor.config.ts
+@@ -0,0 +1,10 @@
++import type { CapacitorConfig } from '@capacitor/cli';
++
++const config: CapacitorConfig = {
++  appId: 'com.company.name',
++  appName: 'name',
++  includePlugins: ['@capacitor/app'],
++  plugins: {},
++};
++
++export default config;
+diff --git a/packages/knip/fixtures/plugins/capacitor-spm/ios/App/CapApp-SPM/Package.swift b/packages/knip/fixtures/plugins/capacitor-spm/ios/App/CapApp-SPM/Package.swift
+new file mode 100644
+index 0000000..c67f6be
+--- /dev/null
++++ b/packages/knip/fixtures/plugins/capacitor-spm/ios/App/CapApp-SPM/Package.swift
+@@ -0,0 +1,26 @@
++// swift-tools-version: 5.9
++import PackageDescription
++
++// DO NOT MODIFY THIS FILE - managed by Capacitor CLI commands
++let package = Package(
++    name: "CapApp-SPM",
++    platforms: [.iOS(.v14)],
++    products: [
++        .library(
++            name: "CapApp-SPM",
++            targets: ["CapApp-SPM"])
++    ],
++    dependencies: [
++        .package(name: "Capacitor", path: "../../../node_modules/@capacitor/ios"),
++        .package(name: "CapacitorApp", path: "../../../node_modules/@capacitor/app")
++    ],
++    targets: [
++        .target(
++            name: "CapApp-SPM",
++            dependencies: [
++                .product(name: "Capacitor", package: "Capacitor"),
++                .product(name: "Cordova", package: "Capacitor"),
++                .product(name: "CapacitorApp", package: "CapacitorApp")
++            ])
++    ]
++)
+diff --git a/packages/knip/fixtures/plugins/capacitor-spm/package.json b/packages/knip/fixtures/plugins/capacitor-spm/package.json
+new file mode 100644
+index 0000000..7a82ad1
+--- /dev/null
++++ b/packages/knip/fixtures/plugins/capacitor-spm/package.json
+@@ -0,0 +1,6 @@
++{
++  "name": "@plugins/capacitor-spm",
++  "devDependencies": {
++    "@capacitor/cli": "*"
++  }
++}
+diff --git a/packages/knip/src/plugins/capacitor/index.ts b/packages/knip/src/plugins/capacitor/index.ts
+index a820625..64eac90 100644
+--- a/packages/knip/src/plugins/capacitor/index.ts
++++ b/packages/knip/src/plugins/capacitor/index.ts
+@@ -17,7 +17,10 @@ const config = ['capacitor.config.{json,ts}'];
+ const resolveConfig: ResolveConfig<CapacitorConfig> = async (config, { configFileDir }) => {
+   const plugins = config.includePlugins ?? [];
+   const android = isFile(configFileDir, 'android/capacitor.settings.gradle') ? ['@capacitor/android'] : [];
+-  const ios = isFile(configFileDir, 'ios/App/Podfile') ? ['@capacitor/ios'] : [];
++  const ios =
++    isFile(configFileDir, 'ios/App/Podfile') || isFile(configFileDir, 'ios/App/CapApp-SPM/Package.swift')
++      ? ['@capacitor/ios']
++      : [];
+ 
+   return [...plugins, ...android, ...ios].map(id => toDependency(id));
+ };
+diff --git a/packages/knip/test/plugins/capacitor-spm.test.ts b/packages/knip/test/plugins/capacitor-spm.test.ts
+new file mode 100644
+index 0000000..01a893c
+--- /dev/null
++++ b/packages/knip/test/plugins/capacitor-spm.test.ts
+@@ -0,0 +1,23 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import { main } from '../../src/index.ts';
++import baseCounters from '../helpers/baseCounters.ts';
++import { createOptions } from '../helpers/create-options.ts';
++import { resolve } from '../helpers/resolve.ts';
++
++const cwd = resolve('fixtures/plugins/capacitor-spm');
++
++test('Find dependencies with the Capacitor plugin (Swift Package Manager)', async () => {
++  const options = await createOptions({ cwd });
++  const { issues, counters } = await main(options);
++
++  assert(issues.unlisted['capacitor.config.ts']['@capacitor/app']);
++  assert(issues.unlisted['capacitor.config.ts']['@capacitor/ios']);
++
++  assert.deepEqual(counters, {
++    ...baseCounters,
++    unlisted: 2,
++    processed: 1,
++    total: 1,
++  });
++});
+-- 
+2.43.0
+
