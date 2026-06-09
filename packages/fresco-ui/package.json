@@ -569,7 +569,7 @@
     "usehooks-ts": "^3.1.1"
   },
   "devDependencies": {
-    "@base-ui/react": "^1.5.0",
+    "@base-ui/react": "catalog:",
     "@chromatic-com/storybook": "catalog:",
     "@codaco/protocol-validation": "workspace:*",
     "@codaco/tsconfig": "workspace:*",
@@ -580,8 +580,8 @@
     "@storybook/react-vite": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-table": "catalog:",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
@@ -591,7 +591,7 @@
     "@vitest/browser-playwright": "catalog:",
     "chromatic": "catalog:",
     "jsdom": "catalog:",
-    "playwright": "^1.60.0",
+    "playwright": "catalog:",
     "storybook": "catalog:",
     "tinyglobby": "^0.2.17",
     "typescript": "catalog:",
