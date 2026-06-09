@@ -1,5 +1,170 @@
 # @codaco/interview
 
+## 1.0.0
+
+### Major Changes
+
+- Initial alpha release of `@codaco/interview` — the Network Canvas interview engine extracted from Fresco's `lib/interviewer/` into a standalone, host-pluggable package.
+
+  The package exposes a single `Shell` component plus the supporting context for embedding the interview UI in any React host (Next.js, Vite, Electron, etc.). It owns its own theme, Redux store, AnimatePresence-based stage navigation, and synthetic network generator; the host plugs in `currentStep`, `onStepChange`, `onSync`, `onFinish`, and `onRequestAsset`.
+
+  Key design decisions baked in for 1.0.0:
+  - `currentStep` is held in host state and threaded in through React Context (`CurrentStepContext`), not in the Redux store. `useStageSelector` reads a lagging `displayedStep` so selectors keep returning the OLD stage's data while the exit animation plays — the swap to the new stage only happens once `onExitComplete` fires.
+  - All in-package selectors that depend on the current stage are parameterised — they take `currentStep` as their second argument and compose via reselect.
+  - Stage components consume those selectors through `useStageSelector` rather than `useSelector`, so a stale stage subtree never reads new-stage data during the two-phase navigation transition.
+  - Theme tokens, font-size scale, and the `interface` / `focusable` / `scroll-area-viewport` utilities live in `@codaco/tailwind-config` and are scoped to the `<main data-interview>` root the Shell renders, so the host's typography is unaffected.
+  - E2E coverage is the SILOS protocol replay (56 tests × 3 browsers = 168 visual snapshots) running in the Playwright Docker image for snapshot determinism.
+
+### Minor Changes
+
+- Extract the synthetic network generator and `SyntheticInterview` builder into a new workspace package, `@codaco/protocol-utilities`.
+
+  **Breaking for `@codaco/interview`:** `generateNetwork`, `GenerateNetworkOptions`, `GenerateNetworkResult`, and `StageMetadataSchema` are no longer exported from `@codaco/interview`. Import `generateNetwork` and friends from `@codaco/protocol-utilities`; import `StageMetadataSchema` (and the related `DyadCensusMetadataItem` / `StageMetadata` types) from `@codaco/shared-consts`.
+
+  ```diff
+  - import { generateNetwork, StageMetadataSchema } from '@codaco/interview';
+  + import { generateNetwork } from '@codaco/protocol-utilities';
+  + import { StageMetadataSchema } from '@codaco/shared-consts';
+  ```
+
+  The new `@codaco/protocol-utilities` also publicly exports `SyntheticInterview` (previously internal to `@codaco/interview`), along with the `ComponentType` and `VariableOption` types used by its public methods.
+
+  `@codaco/shared-consts` gains the session-stage-metadata schemas (`StageMetadataSchema`, `DyadCensusMetadataItem`, `StageMetadata`) as the cross-package contract between synthetic-generation output and the interview engine's session state.
+
+  `@codaco/interview`'s runtime entry point and other public exports are untouched. The interview engine no longer carries the synthetic-data code in its published bundle.
+
+### Patch Changes
+
+- Accessibility lint fix: the Information interface's video and audio players now
+  carry an `aria-label` derived from the asset name/description.
+
+  Dependency bumps: `immer` (→ ^11.1.8), `mapbox-gl` (→ ^3.24.0).
+
+### Prerelease Changes
+
+- Refactor: extract shared `actionButtonVariants` (circle, plus-badge, icon classes) used by `ActionButton`, `NodeForm`, and `QuickAddField`. Custom kebab-case icons and Lucide icons now size consistently across all three call sites — Lucide icons are constrained to `h-16` while custom icons fill the container. Storybook stories for `NodeForm` and `QuickAddField` now expose an `icon` control so all icons can be exercised interactively.
+
+- Sync with `@codaco/tailwind-config@1.0.0-alpha.9` and `@codaco/fresco-ui@2.5.3`. The new release picks up the foundational base-layer rules and the global `prefers-reduced-motion` override that now ship inside `@codaco/tailwind-config/fresco/utilities.css`. No interview-package source change.
+
+- Sync with `@codaco/tailwind-config@1.0.0-alpha.11` and `@codaco/fresco-ui@2.5.4`. The dev/test host CSS (`styles/host.css`, used only by the e2e Vite host and Storybook preview) drops its now-redundant `@import "tailwindcss"` — that line is now owned by `@codaco/tailwind-config/fresco.css` and was loading Tailwind's runtime twice. No published interview-package source change.
+
+- Add a published CSS entry: `@codaco/interview/styles.css` (resolves to `dist/styles.css`). It contains a single `@source "./**/*.{js,ts,tsx}"` directive scoped to the package's compiled JS, so consumers no longer hand-roll `@source '../node_modules/@codaco/interview/dist/**/*.js'` in their globals.
+
+  This pairs with the parallel `@codaco/fresco-ui@2.6.0` cleanup. Each CSS file in the chain now owns one concern: tailwind-config owns Tailwind v4 + theme + plugins + fonts, fresco-ui owns its scanner glue, and interview owns its scanner glue. Consumer entry CSS becomes:
+
+  ```css
+  @import '@codaco/tailwind-config/fresco.css';
+  @import '@codaco/fresco-ui/styles.css';
+  @import '@codaco/interview/styles.css';
+  ```
+
+  The interview package's vite build now copies `src/**/*.css` verbatim into `dist/` via a `cssCopyPlugin` (mirroring fresco-ui), so the `@source` directive ships through with its path intact.
+
+- Document the canonical CSS chain in `dist/styles.css` more emphatically: importing `@codaco/interview/styles.css` is **mandatory** for any host loading the package — without it, Tailwind v4's auto-detection won't reach `node_modules/@codaco/interview/dist` and the stage interface utilities (`.interface`, ActionButton sizing, QuickAdd toggle dimensions, etc.) won't be generated, leaving components unstyled.
+
+  The header now also calls out the source-alias case explicitly: hosts that alias `@codaco/interview` at the package's `src` directory should still `@import` this file unless they've added their own `@source` covering the interview source tree, since Tailwind's auto-source scanner is rooted at the consumer's Vite root and won't always reach into a sibling package's source.
+
+  No runtime change. The single `@source "./**/*.{js,ts,tsx}"` directive that does the actual work is unchanged from `1.0.0-alpha.12`.
+
+- `Shell` now scopes the interview theme purely declaratively via `<ThemedRegion theme="interview">` (from `@codaco/fresco-ui/ThemedRegion`). Removed the host-side `useLayoutEffect` requirement that previously toggled `data-theme-interview` on `<html>`.
+
+  Hosts mount `Shell` anywhere in the tree and the theme — plus a portal container that re-roots Base-UI portals (dialogs, popovers, dropdowns, tooltips, toasts, selects, comboboxes) inside the themed subtree — travels with it. The `<main data-theme-interview>` marker on the rendered DOM is unchanged, so existing test/e2e selectors continue to match.
+
+  For interview-themed UI rendered **outside** `Shell` (e.g. a post-interview "thank you" page), use `<ThemedRegion theme="interview">` directly. See README → _Theming & DOM scope_.
+
+  `CategoricalBin` now exposes a `data-cb-layout-pending` attribute on its outer container while its ResizeObserver-driven layout debounce is in flight. The attribute is cleared once `cols`/`rows` are committed. Runtime behaviour is unchanged for end users; the signal exists so e2e tests can deterministically wait for the catbin layout to settle before capturing screenshots.
+
+- Pairs with `@codaco/fresco-ui@2.8.0` and `@codaco/tailwind-config@1.0.0-alpha.16` to make the scoped interview theme actually paint when `data-theme-interview` is applied to the `<main>` wrapper instead of `:root`.
+
+  `Shell` no longer hardcodes the `scheme-dark` utility on `<main>` — it's now applied automatically by `<ThemedRegion theme="interview">` (fresco-ui 2.8.0). No consumer-visible change beyond the upgrade requirement: the rendered DOM still has `data-theme-interview` and `scheme-dark` on the same element.
+
+  `canvas` selectors (`getPlacedNodes`, `getEdges`, `getNodes`, `getUnplacedNodes`) converted from JS to TypeScript. Runtime behaviour is unchanged for valid protocols — dead branches that the type system rules out (array-shaped subjects, type-keyed `layoutVariable` lookups) were dropped during the conversion.
+
+- Move `immer` from `peerDependencies` to `dependencies`. Hosts no longer have to declare `immer` themselves — interview ships its own resolved version (catalog `^11.1.4`, aligned with fresco-ui and the workspace `@reduxjs/toolkit` / `zustand` transitives via a `pnpm.overrides` entry). The single-instance contract that `enableMapSet()` and Draft tracking rely on is preserved; consumers just don't have to opt in.
+
+  Also bundles the trash-bin icon with the package: `NodeBin` no longer references `bg-[url(/images/node-bin.svg)]` (which required consumers to serve the asset themselves) and instead imports the SVG via Vite, which inlines it as a data URI on a sibling JS module. Consumers can drop their `public/images/node-bin.svg` copies on upgrade.
+
+  Adds the `publish-colors` utility (from `@codaco/tailwind-config@1.0.0-alpha.16`'s elevation plugin) to `Shell`'s `<main>` element so semantic color tokens flow through to descendants under the scoped interview theme. Drops `--color-` prefixes from a handful of arbitrary `bg-[--…]` values now that tailwind-config alpha.16 exposes bare semantic tokens via `@theme inline`.
+
+- `Narrative/PresetSwitcher` rebuilt on top of fresco-ui's `Popover`/`Accordion`/`RadioItem` wrappers, with a drag-handle button driven by `useDragControls` and a pure-toggle popover (only the trigger opens or closes it). The floating panel uses `Surface spacing='sm'` with explicit `shadow-xl`, accordion sections flatten their header into a single `Trigger` that applies `headingVariants()` directly, and the unused `presetLabelVariants`/`presetContentVariants`/`prevPresetRef` from the prior `AnimatePresence`-based version are removed.
+
+  `OneToManyDyadCensus` rebuilt around the shared `Panel` + `NodeList` primitives. Replaces the hand-rolled `Surface`/`Heading`/`Collection` stack so the targets list matches the established node-list pattern (header, sizing, animation, DnD-ready). Focal source renders at size `'md'`, collection items at `'sm'`. `Panel` now forwards `className` so consumers can constrain its width. Panel title copy clarified.
+
+  `DyadCensus` and `TieStrengthCensus` migrated to listbox semantics. `TieStrengthCensus` replaces `BooleanOption` with `RichSelectGroup` (horizontal listbox); `BooleanOption` is deleted. The two duplicate `Pair` components consolidate into a single shared component with an optional SR-only `labelId`. Both stages wire `aria-labelledby` on the response field to the pair label + `Prompts` id, so screen readers announce "Alice and Bob, [prompt], listbox, [option]" on focus arrival. `Prompts` accepts and forwards an `id` prop.
+
+  Intro/explanation markdown bodies now render through `ALLOWED_MARKDOWN_SECTION_TAGS`, so plain-text content renders inside `<p>` instead of being unwrapped. `IntroPanel` drops the wrapping `<span>` (invalid markup around block content).
+
+  Synthetic data:
+  - `addNodeType` auto-adds a `'name'` text variable to every node type. The existing `getNetwork` attribute-fill path already populates text variables with faker `firstNames`, and `getNodeLabelAttribute` already prefers a variable named `'name'`, so synthetic nodes now get realistic seed-deterministic labels instead of the `'Person'`-typed fallback.
+  - `addStage`'s `initialNodes: number` is now `{ count, promptIndex? }`. The optional `promptIndex` resolves to a real `promptID` at `getNetwork()` time so panel nodes carry a realistic prior promptID.
+
+  Theme cascade + `Shell` consolidation: extract a `theme-base` utility and apply it inside `ThemedRegion` (and `<body>`) so descendants re-resolve themed values; mount `DndStoreProvider` and the interview `Toast.Provider` inside `Shell` (hosts no longer need them); drop the unused `InterviewToastViewport` and `interviewToastManager` public exports. `ProgressBar`/`Spinner`/`NodeBin`/`PassphrasePrompter` switch from `rem` to `var(--theme-root-size)` so sizes scale with the theme's root size at breakpoints. `--radius` indirects through `--radius-base` so the bare `rounded` utility keeps a `var()` reference at use-site.
+
+  Spacing/container tokens now scale with `--theme-root-size` (via `@codaco/tailwind-config@1.0.0-alpha.17`). `Node` drops per-breakpoint `size-XX` variants; `Collection` layouts express `gap` in Tailwind spacing units (internal pixel math resolves the same `calc(N * var(--spacing-base, 0.25rem))` via a hidden measurement element); spacing tweaks across `NodeList`, `Panel`, `Prompt`, `FamilyPedigree`, `NameGenerator QuickAddField`/`Roster`, and `OneToManyDyadCensus`. The `pedigree-context-menu-hint` PNG is bundled via Vite import.
+
+  `NodeBin` renders the SVG via `<img src>` rather than `style={{ backgroundImage: url(...) }}` on a motion child (the inline `style` was silently dropped by React under `motion.div`). Interview's flex panel only applies `overflow: hidden` during collapse.
+
+  Storybook: `withTheme` decorator now also wraps stories in `ThemedRegion`; `data-theme-interview` restored on `document.body`; `NameGenerator` quick-add wires to the real codebook variable id (fixes `NETWORK/ADD_NODE/rejected`); `viteFinal` uses `mergeConfig` and pre-bundles `d3-force`.
+
+  Internal: adopt the `~/*` path alias via `tsconfig` paths. Relative imports deeper than one directory up rewrite to `~/...`; single-up (`../foo`) and same-dir (`./foo`) imports are left untouched. Vite rollup `external` excludes `~/*` so `preserveModules` resolves the alias to relative paths in the published `dist`.
+
+- Switch the `Shell.tsx` interview-theme import to the new `@codaco/tailwind-config/fresco/themes/interview.css` path introduced in tailwind-config 0.5.0. Required so consumers of `@codaco/interview` resolve the theme under the package's exports field. No runtime behaviour change.
+
+- **Public-API removal.** `generateNetwork`, `GenerateNetworkOptions`, `GenerateNetworkResult`, and `StageMetadataSchema` are no longer exported from `@codaco/interview`. Import them from their new homes:
+
+  ```diff
+  - import { generateNetwork, StageMetadataSchema } from '@codaco/interview';
+  + import { generateNetwork } from '@codaco/protocol-utilities';
+  + import { StageMetadataSchema } from '@codaco/shared-consts';
+  ```
+
+  The synthetic-data code (`generateNetwork`, `SyntheticInterview`, plus shared `ValueGenerator`/types/constants) has moved into the new `@codaco/protocol-utilities` workspace package. The session stage-metadata schemas have moved into `@codaco/shared-consts`. The interview runtime bundle no longer carries either.
+
+  Internal cleanup: removed the `~/utils/codebook.ts` shim (replaced by canonical types from `@codaco/protocol-validation`); redirected `DyadCensusMetadataItem` imports to `@codaco/shared-consts`; Storybook stories import `SyntheticInterview` from `@codaco/protocol-utilities` (devDependency); dropped now-unused `zod` from `dependencies` (transitive usage via `@codaco/protocol-validation` and `@codaco/shared-consts` is unaffected).
+
+- Update peer dependency on `@codaco/tailwind-config` to track its 1.0 alpha. No source changes — the package's CSS imports already use paths that survived the tailwind-config 1.0 reorganization (`fresco.css` and `fresco/themes/interview.css`).
+
+- **Breaking** (still pre-1.0): replace `onError` callback with built-in PostHog analytics.
+  - New required Shell prop `analytics: InterviewAnalyticsMetadata` — `installationId` and `hostApp` are required, `hostVersion` optional.
+  - New optional `posthogClient` (host can supply its own client) and `disableAnalytics` (default `false`, set `true` for E2E and synthetic-interview runs).
+  - `ProtocolPayload.hash` is now required — host computes via `hashProtocol` from `@codaco/protocol-validation` at protocol-import time; the package forwards as `protocol_hash` super-property.
+  - `onError` Shell prop and `ErrorHandler` exported type are removed; render errors and asset-load failures now report via `posthog.captureException` internally.
+
+  Per-interface and stage-level events instrumented across name generators, sociogram, censuses, bins, narrative, family pedigree, anonymisation, geospatial, and the form family. PII is enforced by construction: events never include protocol-author content, codebook variable names, alter labels, free-text input, or passphrases — only structural identifiers, codebook internal ids, counts, durations, and package-defined discriminators.
+
+- Fill in deferred analytics events:
+  - Sociogram: `simulation_started` and `simulation_finished` now fire from `useForceSimulation`'s worker lifecycle (first tick → started; `end` → finished, with `duration_ms`, `node_count`, `edge_count`).
+  - NameGeneratorRoster: `roster_filter_changed` (debounced; `has_filter` boolean) wired through Collection's `onFilterChange`.
+  - Geospatial: `geospatial_search_performed` fires from inside `useGeospatialSearch`'s debounced query callback.
+  - Narrative: `narrative_preset_updated` now also fires for `changed: 'group'` and `changed: 'edge_type'` (previously only `'highlight'`).
+  - FamilyPedigree: `pedigree_wizard_abandoned` fires when the wizard dialog closes without producing a `batch` result.
+  - Form family: `form_dismissed_without_save` fires on the discard-changes confirm path in both SlidesForm (AlterForm/AlterEdgeForm/SlidesForm) and EgoForm. `form_validation_failed` now includes `field_errors: Array<{ field_index, component, message }>` (engine validation messages — may include codebook variable references on the `differentFrom`/`sameAs` rules; that leak is acceptable per spec).
+  - Stage validation: `stage_validation_failed` fires from `useStageValidation` when a constraint blocks navigation, with structural `validation_kind` per constraint and `direction`.
+
+- Inline the Sociogram force-simulation Web Workers via `?worker&inline` so the published bundle no longer emits absolute `/assets/<hash>.js` worker URLs paired with `/* @vite-ignore */`. The previous emission only resolved under a Vite host runtime; Turbopack (Next.js 16's default bundler) treats the leading `/` as a server-relative import and fails the build with "server relative imports are not implemented yet". Workers are now embedded as Blob URLs at build time, which is bundler-agnostic. Trade-off: the d3-force worker code (~36 kB unminified, ~8 kB gzipped) ships in the main chunk instead of a separate request.
+
+- Two changes that ride on `@codaco/tailwind-config@1.0.0-alpha.7`:
+  1. **Shell's interview theme attribute is now `data-theme-interview`** (was `data-interview`). The `<main>` element rendered by `Shell` carries this attribute, and the interview theme's selectors in `@codaco/tailwind-config` activate against it.
+  2. **Shell no longer self-imports the interview theme CSS.** Both themes now ship inside `@codaco/tailwind-config/fresco.css` (re-exported via `@codaco/fresco-ui/styles.css`), so any host that loads fresco-ui's styles already has the interview theme available. The previous explicit `import "@codaco/tailwind-config/fresco/themes/interview.css"` from `Shell.tsx` is gone.
+
+  E2E test fixtures and Storybook decorators in this package update their selectors to match the new attribute.
+
+- Shell now mirrors `data-theme-interview` onto `<html>` via a `useLayoutEffect` (set on mount, removed on unmount), in addition to the existing static attribute on its `<main>`. Pairs with `@codaco/tailwind-config@1.0.0-alpha.8`'s `:root[data-theme-interview]` selectors so `1rem` tracks the interview theme's responsive font-size override (16/18/20px at tablet / desktop) — every `text-*` and `p-*` / `gap-*` utility now scales together without the em-compounding regression that landed in alpha.7.
+
+  The marker on `<main data-theme-interview>` is preserved as a stable selector for tests, e2e fixtures, and storybook hooks.
+
+  The interview package's Storybook decorator (`.storybook/preview.tsx`) does the same: it mounts an `InterviewThemeRoot` component that toggles the attribute on `<html>` so every story in this package renders in interview mode.
+
+- Several CategoricalBin layout/render fixes and motion-gating cleanup:
+  - **CategoricalBin no longer renders bins until layout has settled.** `useCircleLayout` now exposes `isReady`; `CategoricalBin.tsx` gates its `<AnimatePresence>` subtree on it. The hook also waits for a 120ms ResizeObserver-quiet window (and rejects measurements smaller than 64px) before committing dimensions, so the bins land in their final grid on first paint instead of briefly stacking vertically while parent flex/sibling motion settles. The `containerRef` moved from the inner `motion.div` to the outer `.catbin-outer` (the actual `flex-1` element whose dimensions drive the layout decision).
+  - **CategoricalBin wrapper class fixed for WebKit flex-determined sizing.** `<div className="flex size-full flex-col items-center gap-2">` → `<div className="flex w-full min-h-0 flex-1 flex-col items-center gap-2">`. The previous `size-full` (= `height: 100%`) didn't resolve definitely on WebKit when the parent's height was flex-determined.
+  - **Removed per-component `isE2E` motion skips** in `Shell.tsx` and `QuickNodeForm.tsx`. Animation disabling is the responsibility of the host's `MotionConfig` (the e2e host now uses `reducedMotion="always" skipAnimations`); individual motion components shouldn't replicate that. The `isE2E` flag remains for non-motion concerns (mock data, test instrumentation, mapbox stubbing, video stability).
+  - **`Navigation.tsx` `animate-pulse-glow` CSS class is now gated on `useReducedMotion()`** so the pulse stops cleanly under reduced-motion preference.
+
+- The viewport-width ramp for the `--theme-root-size` type-scale sentinel (1rem → 1.125rem → 1.25rem) now lives on the interview `Shell`'s `<main>` instead of on every `[data-theme-interview]` element. The `[data-theme-interview]` rule in `@codaco/tailwind-config` keeps only the non-responsive base (`--theme-root-size: 1rem` + `font-size`), so only the full-screen interview scales its type with the viewport — other themed regions (app chrome, Storybook wrappers, embedded previews) stay at the base size.
+
+  The mid-tier breakpoint is corrected from a hardcoded `1080px` to the `--breakpoint-laptop` token (`1280px`); the upper tier remains `--breakpoint-desktop-lg` (`1920px`). Between 1080–1279px the interview now renders at the base 1rem instead of 1.125rem.
+
 ## 1.0.0-alpha.26
 
 ### Prerelease Changes
