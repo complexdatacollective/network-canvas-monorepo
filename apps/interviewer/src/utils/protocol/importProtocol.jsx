@@ -2,6 +2,7 @@
  * Import protocol utility with secure API support.
  */
 
+import { FilePicker } from '@capawesome/capacitor-file-picker';
 import React from 'react';
 import { v4 as uuid } from 'uuid';
 
@@ -11,7 +12,7 @@ import { PROTOCOL_EXTENSION } from '../../config';
 import { actionCreators as installedProtocolActions } from '../../ducks/modules/installedProtocols';
 import { actionCreators as toastActions } from '../../ducks/modules/toasts';
 import { store } from '../../ducks/store';
-import { isCordova, isElectron } from '../../utils/Environment';
+import { isCapacitor, isElectron } from '../../utils/Environment';
 import { removeDirectory } from '../../utils/filesystem';
 import checkExistingProtocol, {
   moveToExistingProtocol,
@@ -193,17 +194,22 @@ export const importProtocolFromURI = (uri) => {
 
 export const beginLocalProtocolImport = () => {
   if (isElectron()) {
-    // Use secure IPC API instead of window.require('electron')
     if (window.electronAPI?.ipc?.send) {
       window.electronAPI.ipc.send('OPEN_DIALOG');
     }
+    return undefined;
   }
 
-  if (isCordova()) {
-    window.chooser.getFile().then((file) => {
-      if (file?.uri) {
-        importProtocolFromFile(file.uri, file.name);
+  if (isCapacitor()) {
+    return FilePicker.pickFiles({
+      types: ['application/octet-stream'],
+      limit: 1,
+    }).then((result) => {
+      const file = result.files?.[0];
+      if (file?.path) {
+        return importProtocolFromFile(file.path, file.name);
       }
+      return undefined;
     });
   }
 

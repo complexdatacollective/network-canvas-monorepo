@@ -64,9 +64,8 @@ const resetEdgesOfType = (edgeType) => (dispatch, getState) => {
 const resetAppState = () => (dispatch) => {
   dispatch({ type: RESET_STATE });
   resetProtocolFiles();
-  // Dispatch deviceReady to re-populate any device defaults.
-  // On Cordova, reset is guaranteed to happen after 'deviceready';
-  // on other platforms, it's safe to call at any time (even after page load).
+  // Dispatch deviceReady to re-populate any device defaults. Safe to call at any
+  // time on every platform (no native deviceready handshake under Capacitor).
   dispatch(deviceActions.deviceReady());
 };
 

@@ -47,7 +47,6 @@
     },
     "apps/interviewer": {
       "entry": [
-        "src/index.jsx!",
         "src/main/index.js!",
         "src/preload/index.js!",
         "electron.vite.config.js"
@@ -58,12 +57,16 @@
         "src/shims/react-resize-aware.js" // wired via electron.vite.config resolve.alias, not a normal import
       ],
       "ignoreDependencies": [
-        "buffer" // npm Buffer polyfill — `import { Buffer } from 'buffer'` in filesystem.js + saveExport.js; knip treats 'buffer' as a Node built-in
+        "buffer", // npm Buffer polyfill — `import { Buffer } from 'buffer'` in filesystem.js + saveExport.js; knip treats 'buffer' as a Node built-in
+        // knip's Capacitor plugin resolves @capacitor/android from
+        // android/capacitor.settings.gradle, but only detects iOS via a CocoaPods
+        // Podfile — this iOS project uses Swift Package Manager (CapApp-SPM), so
+        // @capacitor/ios (native-only, never JS-imported) must be ignored here.
+        "@capacitor/ios"
       ]
     },
     "apps/architect": {
       "entry": [
-        "src/index.jsx!",
         "public/electron-starter.js!",
         "public/preload/appPreload.js!",
         "public/preload/summaryPreload.js!",

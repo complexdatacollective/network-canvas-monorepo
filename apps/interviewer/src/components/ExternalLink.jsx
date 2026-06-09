@@ -2,9 +2,10 @@
  * External link component with secure API support.
  */
 
+import { Browser } from '@capacitor/browser';
 import PropTypes from 'prop-types';
 
-import { isCordova, isElectron } from '../utils/Environment';
+import { isCapacitor, isElectron } from '../utils/Environment';
 
 const openExternalLink = (href) => {
   if (isElectron()) {
@@ -14,8 +15,11 @@ const openExternalLink = (href) => {
     return false;
   }
 
-  if (isCordova()) {
-    window.cordova.InAppBrowser.open(href, '_system', 'location=yes');
+  if (isCapacitor()) {
+    Browser.open({ url: href }).catch((error) => {
+      console.error('[external link] failed to open:', error);
+    });
+    return false;
   }
 
   return false;

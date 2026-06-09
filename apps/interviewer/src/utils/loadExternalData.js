@@ -1,7 +1,6 @@
 import CSVWorker from './csvDecoder.worker?worker';
 import inEnvironment from './Environment';
 import environments from './environments';
-import { readFile } from './filesystem';
 import { get } from './lodash-replacements';
 import getAssetUrl from './protocol/getAssetUrl';
 
@@ -28,6 +27,7 @@ const convertCSVToJsonWithWorker = (data) =>
 const fetchNetwork = inEnvironment((environment) => {
   if (
     environment === environments.ELECTRON ||
+    environment === environments.CAPACITOR ||
     environment === environments.WEB
   ) {
     return (url, fileType) =>
@@ -38,21 +38,6 @@ const fetchNetwork = inEnvironment((environment) => {
           }
 
           return response.json();
-        })
-        .then((json) => {
-          const nodes = get(json, 'nodes', []);
-          return { nodes };
-        });
-  }
-
-  if (environment === environments.CORDOVA) {
-    return (url, fileType) =>
-      readFile(url)
-        .then((response) => {
-          if (fileType === 'csv') {
-            return convertCSVToJsonWithWorker(response.toString('utf8'));
-          }
-          return JSON.parse(response);
         })
         .then((json) => {
           const nodes = get(json, 'nodes', []);

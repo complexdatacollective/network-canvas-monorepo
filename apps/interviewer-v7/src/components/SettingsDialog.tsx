@@ -1,6 +1,7 @@
 import {
   FlaskConical,
   Info,
+  LineChart,
   Shield,
   Trash2,
   Upload as UploadIcon,
@@ -28,6 +29,7 @@ import SecurityBehaviorControls, {
   type Behavior,
 } from '~/components/SecurityBehaviorControls';
 import { SettingsRow } from '~/components/SettingsRow';
+import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { useAuth } from '~/lib/auth/AuthContext';
 import {
   countSyntheticSessions,
@@ -52,7 +54,7 @@ type SettingsDialogProps = {
   onClose: () => void;
 };
 
-type Section = 'about' | 'data' | 'security' | 'synthetic';
+type Section = 'about' | 'data' | 'privacy' | 'security' | 'synthetic';
 
 const NAV_BUTTON_BASE =
   'flex w-full items-center gap-3 px-4 py-3 border-0 rounded-[var(--radius-pill)] font-heading font-extrabold text-sm text-left cursor-pointer';
@@ -72,12 +74,14 @@ function StorageProgress({ value }: { value: number }) {
 const NAV_ITEMS: { id: Section; label: string; icon: typeof Info }[] = [
   { id: 'about', label: 'About', icon: Info },
   { id: 'data', label: 'Data export', icon: UploadIcon },
+  { id: 'privacy', label: 'Privacy', icon: LineChart },
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'synthetic', label: 'Synthetic data', icon: FlaskConical },
 ];
 
 export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const auth = useAuth();
+  const analytics = useAnalytics();
   const toast = useToast();
   const { confirm } = useDialog();
   const [section, setSection] = useState<Section>('about');
@@ -394,6 +398,48 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                   }
                 }}
               />
+            </>
+          ) : null}
+
+          {section === 'privacy' ? (
+            <>
+              <UnconnectedField
+                name="analyticsEnabled"
+                label="Enable analytics"
+                hint="Send anonymous usage and error data to help the Network Canvas team improve the app."
+                inline
+                component={ToggleField}
+                value={analytics.enabled}
+                onChange={(next: boolean | undefined) =>
+                  void analytics.setEnabled(next === true)
+                }
+              />
+              <Paragraph intent="smallText" emphasis="muted">
+                When analytics are enabled, the app sends a small amount of
+                anonymous information about how it is used — for example which
+                interview stages and features are exercised, when protocols are
+                imported, when data is exported, and details of any errors or
+                crashes. This helps us find bugs and decide what to improve.
+              </Paragraph>
+              <Alert variant="info">
+                <strong>No participant data is ever collected.</strong> Network
+                data, responses, case IDs, protocol contents, and asset files
+                never leave this device. Analytics also contain no
+                user-identifiable information: events are associated only with a
+                random per-device installation ID
+                {installationId ? (
+                  <>
+                    {' '}
+                    (
+                    <span className="font-monospace text-xs">
+                      {installationId}
+                    </span>
+                    )
+                  </>
+                ) : null}
+                , never your name, email, or any account. You can turn analytics
+                off at any time, and the change applies immediately.
+              </Alert>
             </>
           ) : null}
 
