@@ -14,13 +14,13 @@
     "build": "node ../../scripts/with-turbo.mjs electron-vite build",
     "preview": "electron-vite preview",
     "build:electron": "electron-vite build",
-    "pack": "npm run build && electron-builder --dir",
+    "pack": "npm run build && electron-builder --dir --config electron-builder.config.cjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:update-snapshots": "vitest run --update",
-    "dist:linux": "npm run build && electron-builder -l",
-    "dist:mac": "npm run build && electron-builder -m --x64",
-    "dist:win": "npm run build && electron-builder -w",
+    "dist:linux": "npm run build && electron-builder -l --config electron-builder.config.cjs",
+    "dist:mac": "npm run build && electron-builder -m --x64 --config electron-builder.config.cjs",
+    "dist:win": "npm run build && electron-builder -w --config electron-builder.config.cjs",
     "preflight": "oxlint . && vitest run --coverage"
   },
   "dependencies": {
@@ -59,7 +59,7 @@
     "connected-react-router": "^6.9.3",
     "csvtojson": "^2.0.14",
     "electron": "catalog:",
-    "electron-builder": "^26.8.1",
+    "electron-builder": "catalog:",
     "electron-devtools-installer": "^3.2.1",
     "electron-vite": "catalog:",
     "enzyme": "^3.11.0",
@@ -102,106 +102,6 @@
     "node": ">=22.0.0"
   },
   "packageManager": "pnpm@9.15.4",
-  "build": {
-    "extends": null,
-    "files": [
-      "out/**/*",
-      "node_modules/**/*",
-      "!node_modules/.bin",
-      "!node_modules/.cache",
-      "!node_modules/.pnpm",
-      "!node_modules/**/*.md",
-      "!node_modules/**/*.d.ts",
-      "!node_modules/**/test/**",
-      "!node_modules/**/tests/**",
-      "!node_modules/**/__tests__/**",
-      "!node_modules/**/docs/**",
-      "!node_modules/**/LICENSE*",
-      "!node_modules/**/CHANGELOG*",
-      "!node_modules/**/README*",
-      "!node_modules/**/*.map",
-      "!node_modules/**/app-builder-lib/**",
-      "!node_modules/**/dmg-builder/**",
-      "!node_modules/**/electron-builder/**",
-      "!node_modules/**/electron-publish/**",
-      "!node_modules/**/builder-util/**",
-      "!node_modules/**/builder-util-runtime/**",
-      "!node_modules/**/node-gyp/**",
-      "!node_modules/**/cacache/**",
-      "!node_modules/**/npm/**",
-      "!node_modules/**/gyp/**",
-      "!node_modules/**/@electron/rebuild/**",
-      "!node_modules/**/eslint*/**",
-      "!node_modules/**/typescript/**",
-      "!node_modules/**/stylelint*/**",
-      "!node_modules/**/vitest/**",
-      "!node_modules/**/@vitest/**",
-      "!node_modules/**/vite/**",
-      "!node_modules/**/@babel/core/**",
-      "!node_modules/**/@babel/parser/**",
-      "!node_modules/**/lodash/**"
-    ],
-    "extraResources": [
-      "./build-resources/externals/**"
-    ],
-    "appId": "Network-Canvas-Interviewer-6",
-    "afterSign": "./build-resources/scripts/afterSignHook.js",
-    "directories": {
-      "buildResources": "build-resources",
-      "output": "release-builds"
-    },
-    "nsis": {
-      "include": "build-resources/scripts/bonjour.nsh"
-    },
-    "win": {
-      "target": "nsis"
-    },
-    "mac": {
-      "category": "public.app-category.education",
-      "hardenedRuntime": true,
-      "entitlements": "./build-resources/entitlements.mac.inherit.plist"
-    },
-    "linux": {
-      "maintainer": "Joshua Melville <joshmelville@gmail.com>",
-      "target": [
-        {
-          "target": "deb",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "rpm",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "tar.gz",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ]
-    },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "complexdatacollective",
-        "repo": "interviewer"
-      }
-    ]
-  },
   "cordova": {
     "platforms": [
       "ios",
