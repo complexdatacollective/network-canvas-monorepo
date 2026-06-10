@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { CARD_RADIUS_PX, cardBase, importCardClass } from './cardStyles';
 
@@ -18,7 +19,11 @@ export function ImportTriggerCard({ onActivate }: ImportTriggerCardProps) {
       style={{
         borderRadius: CARD_RADIUS_PX,
       }}
-      className={`${cardBase()} ${importCardClass()} effect-shadow-xl @container h-full w-full`}
+      className={cx(
+        cardBase(),
+        importCardClass(),
+        'effect-shadow-xl @container h-full w-full',
+      )}
       aria-label="Import a protocol"
     >
       <div className="bg-surface text-sea-green inline-flex h-[84px] w-[84px] items-center justify-center rounded-full">

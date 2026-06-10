@@ -31,10 +31,10 @@ function makeProtocol(name: string, description: string): ProtocolWithCounts {
 }
 
 // Interactive harness for the deck's slide lifecycle: activate the import
-// card to add a protocol (drop-in + auto-scroll), delete a protocol (scale
-// out, then the carousel travels to the neighbour), and install the sample
-// (the slot's content swaps in place with simulated progress — no enter/exit
-// animation between its states).
+// card to run a simulated import (pending card drops in, the deck travels
+// to it, then the slot fills with the installed protocol), delete a
+// protocol (scale out, neighbours close the gap), and install the sample
+// (the slot's content swaps in place with simulated progress).
 function DeckHarness() {
   const [protocols, setProtocols] = useState<ProtocolWithCounts[]>([
     makeProtocol('Friendship Ties', 'A quick two-prompt name generator.'),
@@ -47,13 +47,25 @@ function DeckHarness() {
   const [pending, setPending] = useState<PendingImport[]>([]);
   const counterRef = useRef(0);
 
+  // Mirrors useProtocolImport's flow: the pending entry appears first (the
+  // deck travels to its card), the import "runs", then the slot fills in
+  // place with the installed protocol.
   const addProtocol = useCallback(() => {
     counterRef.current += 1;
     const n = counterRef.current;
-    setProtocols((prev) => [
+    const name = `Imported Protocol ${n}`;
+    const id = `import-${n}`;
+    setPending((prev) => [
       ...prev,
-      makeProtocol(`Imported Protocol ${n}`, 'Added via the story harness.'),
+      { id, label: name, source: 'file', phase: 'extracting', progress: 0.4 },
     ]);
+    window.setTimeout(() => {
+      setProtocols((prev) => [
+        ...prev,
+        makeProtocol(name, 'Added via the story harness.'),
+      ]);
+      setPending((prev) => prev.filter((entry) => entry.id !== id));
+    }, 1500);
   }, []);
 
   const installSample = useCallback(() => {
@@ -169,14 +181,58 @@ export const KeyboardNavigation: Story = {
     await waitFor(async () => {
       const updated = await canvas.findAllByLabelText(/Go to card/);
       expect(updated).toHaveLength(5);
+      // The deck travels to the new pending card ("Imported Protocol 1"
+      // sorts to index 1) when the import starts.
+      expect(updated[1]).toHaveAttribute('aria-current', 'true');
     });
 
     await userEvent.keyboard('{ArrowLeft}');
     await waitFor(async () => {
       const updated = await canvas.findAllByLabelText(/Go to card/);
-      // After insertion the import card is index 4; ArrowLeft moves to 3.
-      expect(updated[3]).toHaveAttribute('aria-current', 'true');
+      expect(updated[0]).toHaveAttribute('aria-current', 'true');
     });
+  },
+};
+
+// Starting an import pulls the deck to the pending card, which then fills
+// in place with the installed protocol.
+export const ImportTravelsToPendingCard: Story = {
+  render: () => <DeckHarness />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dots = await canvas.findAllByLabelText(/Go to card/);
+    await expect(dots).toHaveLength(4);
+
+    const importCard = await canvas.findByRole('button', {
+      name: 'Import a protocol',
+    });
+    await userEvent.click(canvas.getByLabelText('Go to card 4'));
+    await waitFor(() =>
+      expect(canvas.getByLabelText('Go to card 4')).toHaveAttribute(
+        'aria-current',
+        'true',
+      ),
+    );
+
+    await userEvent.click(importCard);
+    await waitFor(async () => {
+      const updated = await canvas.findAllByLabelText(/Go to card/);
+      expect(updated).toHaveLength(5);
+      expect(updated[1]).toHaveAttribute('aria-current', 'true');
+    });
+
+    // The slot fills in place with the installed protocol; the deck stays
+    // on the same card.
+    await waitFor(
+      async () => {
+        expect(
+          canvas.getByText('Added via the story harness.'),
+        ).toBeInTheDocument();
+        const updated = await canvas.findAllByLabelText(/Go to card/);
+        expect(updated[1]).toHaveAttribute('aria-current', 'true');
+      },
+      { timeout: 4000 },
+    );
   },
 };
 

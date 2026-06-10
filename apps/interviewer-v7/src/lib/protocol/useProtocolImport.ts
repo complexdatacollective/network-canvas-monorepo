@@ -33,6 +33,12 @@ export type PendingImport = {
 // import itself finishes faster.
 const MIN_PENDING_VISIBLE_MS = 1500;
 
+// Pause between the pending card appearing and the import work starting.
+// The deck travels to the new card when it mounts (~400ms spring), and the
+// import's synchronous heavy lifting (JSZip extraction, validation) would
+// stall that animation mid-flight if it started immediately.
+const IMPORT_START_DELAY_MS = 600;
+
 function createPendingImport(
   id: string,
   request: ImportRequest | { source: 'sample' },
@@ -161,7 +167,7 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
         }
       };
 
-      void run();
+      window.setTimeout(() => void run(), IMPORT_START_DELAY_MS);
     },
     [analytics, onInstalled, toast],
   );

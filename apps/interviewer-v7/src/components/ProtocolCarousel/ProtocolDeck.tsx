@@ -208,7 +208,15 @@ export function ProtocolDeck({
     [slides],
   );
 
+  // Slot keys that were pending in the last committed deck, so a slot that
+  // just TURNED pending (a user-started import) can be detected below.
+  const prevPendingKeysRef = useRef<ReadonlySet<string>>(new Set());
+
   useEffect(() => {
+    const prevPendingKeys = prevPendingKeysRef.current;
+    prevPendingKeysRef.current = new Set(
+      slides.filter((s) => s.entry.kind === 'pending').map((s) => s.key),
+    );
     // One-time deep link once the requested protocol is in the deck
     // (protocols load async). jumpTo is a no-op before the carousel mounts;
     // in that case the carousel initialises its position at activeIndex.
@@ -225,6 +233,22 @@ export function ProtocolDeck({
         activeSlotKeyRef.current = slides[idx]?.key ?? null;
         return;
       }
+    }
+    // A slot that just turned pending is a user-started import: travel to
+    // its card. The import hook holds the heavy work back long enough
+    // (IMPORT_START_DELAY_MS) for this travel to play out jank-free. For
+    // the sample card (installable only while active) the slot is already
+    // centred, so this is a no-op.
+    let newPendingIndex = -1;
+    slides.forEach((slide, index) => {
+      if (slide.entry.kind === 'pending' && !prevPendingKeys.has(slide.key)) {
+        newPendingIndex = index;
+      }
+    });
+    if (newPendingIndex >= 0) {
+      setActiveIndexState(newPendingIndex);
+      activeSlotKeyRef.current = slides[newPendingIndex]?.key ?? null;
+      return;
     }
     // Keep the active card stable across slot changes; if the active slot
     // itself vanished, the right neighbour inherits its index (clamped for

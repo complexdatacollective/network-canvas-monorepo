@@ -192,8 +192,8 @@ export function DeckCard(props: DeckCardProps) {
           cardBase(),
           'min-h-[300px] min-w-[325px]',
           'text-navy-taupe bg-platinum publish-colors',
-          '@container relative h-full w-full overflow-clip rounded shadow-xl',
-          isActive && 'spring-medium shadow-2xl',
+          'effect-shadow-xl @container relative h-full w-full overflow-clip rounded',
+          isActive && 'spring-medium effect-shadow-2xl',
           'border-platinum-dark border-[0.15cqi]',
         )}
       >
