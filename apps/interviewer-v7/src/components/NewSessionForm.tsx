@@ -1,6 +1,8 @@
+import Button from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import Form from '@codaco/fresco-ui/form/Form';
+import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { createInitialNetwork } from '@codaco/interview';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
@@ -8,23 +10,20 @@ import { createSession, getSettings } from '~/lib/db/api';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
 
 type NewSessionFormProps = {
-  // Shared with the dialog footer's SubmitButton (`form={formId}`) so the
-  // button can submit this form despite living outside the <form> element.
-  formId: string;
   protocol: ProtocolWithCounts;
   onCreated: (session: StoredSession) => void;
+  onCancel: () => void;
 };
 
 export function NewSessionForm({
-  formId,
   protocol,
   onCreated,
+  onCancel,
 }: NewSessionFormProps) {
   const { requireFreshUnlock, setAuthorizedInterviewId } = useStepUpAuth();
 
   return (
-    <FormWithoutProvider
-      id={formId}
+    <Form
       onSubmit={async (values) => {
         const raw = values.caseId;
         const caseId = typeof raw === 'string' ? raw.trim() : '';
@@ -69,6 +68,12 @@ export function NewSessionForm({
         validateOnChange
         autoFocus
       />
-    </FormWithoutProvider>
+      <div className="flex items-center justify-end gap-[2cqi]">
+        <Button type="button" variant="text" color="dynamic" onClick={onCancel}>
+          Cancel
+        </Button>
+        <SubmitButton>Start interview</SubmitButton>
+      </div>
+    </Form>
   );
 }

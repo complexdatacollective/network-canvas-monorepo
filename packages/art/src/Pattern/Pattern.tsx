@@ -28,9 +28,16 @@ const componentByVariant: Record<
   truchet: TruchetPattern,
 };
 
+// Background for the empty-seed state. Uses the fresco theme's platinum-dark
+// primitive when rendered inside a themed app; the literal fallback is the
+// same oklch triple for consumers without the theme.
+const EMPTY_SEED_BACKGROUND = 'oklch(var(--platinum--dark, 0.9093 0.009 281))';
+
 export const Pattern = ({
   seed,
   variant,
+  className,
+  style,
   ...rest
 }: PatternProps & { variant?: PatternVariant }) => {
   const resolvedVariant = useMemo<PatternVariant>(() => {
@@ -41,6 +48,20 @@ export const Pattern = ({
     );
   }, [seed, variant]);
 
+  // No seed yet (e.g. a protocol card still loading): render a plain
+  // platinum-dark surface instead of a generated pattern.
+  if (seed === '') {
+    return (
+      <div
+        role="presentation"
+        className={className}
+        style={{ ...style, background: EMPTY_SEED_BACKGROUND }}
+      />
+    );
+  }
+
   const Component = componentByVariant[resolvedVariant];
-  return <Component seed={seed} {...rest} />;
+  return (
+    <Component seed={seed} className={className} style={style} {...rest} />
+  );
 };

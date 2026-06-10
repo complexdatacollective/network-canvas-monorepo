@@ -1,9 +1,9 @@
+import { motion } from 'motion/react';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
+import { BackgroundBlobs } from '@codaco/art';
 import Button from '@codaco/fresco-ui/Button';
-import Surface from '@codaco/fresco-ui/layout/Surface';
-import Heading from '@codaco/fresco-ui/typography/Heading';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 
 type Props = {
@@ -29,22 +29,34 @@ class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (!this.state.hasError) return this.props.children;
+    // The crashed tree (including the ambient blob layer in App.tsx) is
+    // unmounted by React, so re-create the backdrop here and present the
+    // fallback as a dialog over it. Reload is the only way forward.
     return (
-      <div className="bg-background flex h-dvh items-center justify-center p-8">
-        <Surface
-          level={1}
-          spacing="lg"
-          shadow="lg"
-          className="flex max-w-lg flex-col items-center gap-4 text-center"
+      <>
+        <motion.div
+          className="fixed inset-0 -z-10 blur-[10rem]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.8 }}
+          transition={{ duration: 2 }}
         >
-          <Heading level="h1">Something went wrong</Heading>
-          <Paragraph>
-            The app hit an unexpected error. Your collected data is saved on
-            this device and is not affected. Try reloading to continue.
-          </Paragraph>
-          <Button onClick={() => window.location.reload()}>Reload</Button>
-        </Surface>
-      </div>
+          <BackgroundBlobs
+            large={0}
+            medium={4}
+            small={0}
+            compositeOperation="color-dodge"
+          />
+        </motion.div>
+        <Dialog
+          open
+          dismissible={false}
+          title="Something went wrong"
+          description="The app hit an unexpected error. Your collected data is saved on this device and is not affected. Try reloading to continue."
+          footer={
+            <Button onClick={() => window.location.reload()}>Reload</Button>
+          }
+        />
+      </>
     );
   }
 }

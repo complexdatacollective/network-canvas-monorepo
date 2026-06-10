@@ -1,6 +1,13 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { motion } from 'motion/react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { Swiper as SwiperClass } from 'swiper';
 import { A11y, EffectCreative, Keyboard, Mousewheel } from 'swiper/modules';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -13,14 +20,27 @@ import type {
   StoredSession,
   StoredSessionLite,
 } from '~/lib/db/types';
+import type { ImportPhase } from '~/lib/protocol/importProtocol';
 import { SAMPLE_PROTOCOL } from '~/lib/protocol/sampleProtocol';
+import type { PendingImport } from '~/lib/protocol/useProtocolImport';
 
-import { NewSessionDialog } from '../NewSessionDialog';
+import { NewSessionForm } from '../NewSessionForm';
 import { GLASS_PILL } from '../TopActionBar';
-import { DeckCard } from './DeckCard';
+import {
+  DeckCard,
+  DeckCardFooter,
+  DeckCardFooterButton,
+  type DeckCardProps,
+  DeckCardProgressFooter,
+} from './DeckCard';
 import { ImportTriggerCard } from './ImportTriggerCard';
-import { PendingImportCard, type PendingImport } from './PendingImportCard';
-import { SampleProtocolCard } from './SampleProtocolCard';
+
+// Status line shown on the loading card for each import phase.
+const PHASE_LABEL: Record<ImportPhase, string> = {
+  fetching: 'Fetching…',
+  extracting: 'Extracting…',
+  saving: 'Saving…',
+};
 
 // Internal union shape that determines which card component to render
 // in a slot. ProtocolDeck owns this — each kind maps to a distinct
@@ -91,6 +111,20 @@ const FAN_DROP_PCT = 4;
 // the slide's measured size without re-initialising Swiper on resize.
 const SLOT_TRANSLATE_PCT = SLOT_TO_CARD_RATIO * 100;
 
+// Swiper's slide-change duration.
+const SLIDE_SPEED_MS = 320;
+
+// Slide lifecycle poses. A slide animates in once when its slot is added and
+// out once when its slot is removed; content changes within a slot (sample →
+// installing → protocol) swap without any animation.
+const SLIDE_ENTER = { y: -48, opacity: 0, scale: 0.9 };
+const SLIDE_REST = { y: 0, opacity: 1, scale: 1 };
+const SLIDE_EXIT = { y: 0, opacity: 0, scale: 0 };
+
+// A rendered carousel slot: a live deck entry, or a removed entry retained
+// while its exit choreography plays (scale out, carousel travel, unmount).
+type RenderSlot = { key: string; entry: DeckEntry; exiting: boolean };
+
 type ProtocolDeckProps = {
   protocols: ProtocolWithCounts[];
   sessions: StoredSessionLite[];
@@ -102,9 +136,9 @@ type ProtocolDeckProps = {
   onDeleteProtocol: (hash: string) => void;
   onInstallSample?: () => void;
   onDismissSample?: () => void;
-  // When set, the matching card is rendered in its expanded "new session"
-  // state: scaled up, case-ID form swapped in for the description + Start
-  // button, swipe/keyboard navigation locked, and sibling slides faded out.
+  // When set, the matching card is rendered in its "new session" state: the
+  // case-ID form replaces the description, metadata, and Start button in the
+  // card footer, and swipe/keyboard navigation is locked.
   newSessionProtocolHash?: string | null;
   onCancelNewSession?: () => void;
   onSessionCreated?: (session: StoredSession) => void;
@@ -194,6 +228,66 @@ export function ProtocolDeck({
       .map(([, entry]) => entry);
   }, [protocols, showSampleCard, pendingImports]);
 
+  // Slots whose deck entry vanished but whose exit choreography is still
+  // playing. Derived during render (the setState-during-render "adjust state
+  // from props" pattern) so a removed slide never unmounts for a frame
+  // before the exit starts.
+  const [prevDeck, setPrevDeck] = useState<DeckEntry[]>(deck);
+  const [exiting, setExiting] = useState<ReadonlyMap<string, DeckEntry>>(
+    new Map(),
+  );
+  if (prevDeck !== deck) {
+    setPrevDeck(deck);
+    const currentKeys = new Set(deck.map(entrySlotKey));
+    const next = new Map(exiting);
+    let changed = false;
+    for (const entry of prevDeck) {
+      const key = entrySlotKey(entry);
+      if (!currentKeys.has(key) && !next.has(key)) {
+        next.set(key, entry);
+        changed = true;
+      }
+    }
+    // A slot that comes back while its exit is still playing is live again.
+    for (const key of next.keys()) {
+      if (currentKeys.has(key)) {
+        next.delete(key);
+        changed = true;
+      }
+    }
+    if (changed) setExiting(next);
+  }
+
+  // The rendered slide list: live entries plus exiting holdovers, in stable
+  // slot order so list indexes always match Swiper's slide indexes.
+  const renderDeck = useMemo<RenderSlot[]>(() => {
+    const slots: RenderSlot[] = deck.map((entry) => ({
+      key: entrySlotKey(entry),
+      entry,
+      exiting: false,
+    }));
+    for (const [key, entry] of exiting) {
+      slots.push({ key, entry, exiting: true });
+    }
+    return slots.toSorted((a, b) =>
+      a.key.localeCompare(b.key, undefined, { sensitivity: 'base' }),
+    );
+  }, [deck, exiting]);
+
+  const renderDeckRef = useRef(renderDeck);
+  useEffect(() => {
+    renderDeckRef.current = renderDeck;
+  }, [renderDeck]);
+
+  // Slot keys present in the last committed render. A slide whose key is not
+  // here mounts with the drop-in pose; slides in the very first commit mount
+  // settled (the section-level cascade animates the deck in as a whole).
+  const committedKeysRef = useRef<ReadonlySet<string> | null>(null);
+  const committedKeys = committedKeysRef.current;
+  useEffect(() => {
+    committedKeysRef.current = new Set(renderDeck.map((s) => s.key));
+  }, [renderDeck]);
+
   // Per-protocol session count, hoisted here so DeckCard doesn't take the
   // whole sessions array (which would break memo when other sessions change).
   const sessionCounts = useMemo(() => {
@@ -206,11 +300,13 @@ export function ProtocolDeck({
 
   const initialIndex = useMemo(() => {
     if (!initialProtocolHash) return 0;
-    const idx = deck.findIndex(
-      (e) => e.kind === 'protocol' && e.protocol.hash === initialProtocolHash,
+    const idx = renderDeck.findIndex(
+      (s) =>
+        s.entry.kind === 'protocol' &&
+        s.entry.protocol.hash === initialProtocolHash,
     );
     return idx < 0 ? 0 : idx;
-  }, [initialProtocolHash, deck]);
+  }, [initialProtocolHash, renderDeck]);
 
   // Observe the section (not the outer container) so cardHeight tracks the
   // space actually available to Swiper. The outer container also holds the
@@ -246,8 +342,9 @@ export function ProtocolDeck({
         swiperRef.current?.slideTo(idx);
         return;
       }
-      const entry = deck[idx];
-      if (!entry) return;
+      const slot = renderDeck[idx];
+      if (!slot || slot.exiting) return;
+      const entry = slot.entry;
       if (entry.kind === 'import') {
         onImport();
         return;
@@ -261,7 +358,7 @@ export function ProtocolDeck({
       }
       onStartInterview(entry.protocol.hash);
     },
-    [activeIdx, deck, onImport, onInstallSample, onStartInterview],
+    [activeIdx, renderDeck, onImport, onInstallSample, onStartInterview],
   );
 
   // Protocols load async, so the first render typically has an empty deck
@@ -271,55 +368,111 @@ export function ProtocolDeck({
   useEffect(() => {
     if (didInitialScroll.current) return;
     if (initialIndex <= 0) return;
-    if (initialIndex >= deck.length) return;
+    if (initialIndex >= renderDeck.length) return;
     const swiper = swiperRef.current;
     if (!swiper) return;
     didInitialScroll.current = true;
     swiper.slideTo(initialIndex, 0);
-  }, [initialIndex, deck.length]);
+  }, [initialIndex, renderDeck.length]);
 
   useEffect(() => {
-    if (activeIdx < deck.length) return;
-    swiperRef.current?.slideTo(Math.max(0, deck.length - 1), 0);
-  }, [deck.length, activeIdx]);
+    if (activeIdx < renderDeck.length) return;
+    swiperRef.current?.slideTo(Math.max(0, renderDeck.length - 1), 0);
+  }, [renderDeck.length, activeIdx]);
 
-  const previousPendingCountRef = useRef(0);
-  useEffect(() => {
-    const previous = previousPendingCountRef.current;
-    const current = pendingImports.length;
-    previousPendingCountRef.current = current;
-    if (current <= previous) return;
-    const newPending = pendingImports[current - 1];
-    if (!newPending) return;
-    const idx = deck.findIndex(
-      (e) => e.kind === 'pending' && e.pending.id === newPending.id,
-    );
-    if (idx >= 0) swiperRef.current?.slideTo(idx);
-  }, [pendingImports, deck]);
+  const finishExit = useCallback((key: string) => {
+    setExiting((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Map(prev);
+      next.delete(key);
+      return next;
+    });
+  }, []);
 
-  // After a successful import, slide to the newly-arrived protocol's
-  // slot. Tracks the set of hashes seen on the previous render so a
-  // grow-by-one detects the newcomer regardless of where alphabetical
-  // sorting places it.
-  const previousProtocolHashesRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    const previous = previousProtocolHashesRef.current;
-    const current = new Set(protocols.map((p) => p.hash));
-    previousProtocolHashesRef.current = current;
-    if (current.size <= previous.size) return;
-    let newHash: string | undefined;
-    for (const hash of current) {
-      if (!previous.has(hash)) {
-        newHash = hash;
-        break;
+  // Applied (speed 0, before paint) after an exited slot unmounts, so the
+  // slide the carousel travelled to stays visually centred when the removal
+  // shifts indexes left.
+  const indexFixRef = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const fix = indexFixRef.current;
+    if (fix === null) return;
+    indexFixRef.current = null;
+    swiperRef.current?.slideTo(fix, 0);
+  }, [renderDeck]);
+
+  // While the carousel travels away from an emptied slot, re-renders must
+  // not be triggered: the Swiper React wrapper responds to any children
+  // change with swiper.update(), which snaps the translate and kills the
+  // slide animation. activeIdx sync is the one render trigger during the
+  // travel, so it's suppressed until the transition completes.
+  const suppressActiveSyncRef = useRef(false);
+
+  // A removed slide finished scaling out. The emptied slot is held in the
+  // DOM while the carousel animates to the next available slide; only after
+  // that travel completes is the slot dropped (with an invisible index
+  // rebind when the removal shifts indexes).
+  const handleScaleOutComplete = useCallback(
+    (key: string) => {
+      const swiper = swiperRef.current;
+      const slots = renderDeckRef.current;
+      const idx = slots.findIndex((s) => s.key === key);
+      if (!swiper || idx < 0) {
+        finishExit(key);
+        return;
       }
-    }
-    if (!newHash) return;
-    const idx = deck.findIndex(
-      (e) => e.kind === 'protocol' && e.protocol.hash === newHash,
-    );
-    if (idx >= 0) swiperRef.current?.slideTo(idx);
-  }, [protocols, deck]);
+
+      const active = swiper.activeIndex;
+      if (idx !== active) {
+        // Off-centre removal: no travel; just keep the centred slide put.
+        if (idx < active) indexFixRef.current = active - 1;
+        finishExit(key);
+        return;
+      }
+
+      // Next available slide: prefer the right neighbour, fall back left.
+      let target = -1;
+      for (let j = idx + 1; j < slots.length; j += 1) {
+        if (!slots[j]?.exiting) {
+          target = j;
+          break;
+        }
+      }
+      if (target === -1) {
+        for (let j = idx - 1; j >= 0; j -= 1) {
+          if (!slots[j]?.exiting) {
+            target = j;
+            break;
+          }
+        }
+      }
+      if (target === -1) {
+        finishExit(key);
+        return;
+      }
+
+      let done = false;
+      const complete = () => {
+        if (done) return;
+        done = true;
+        suppressActiveSyncRef.current = false;
+        const sw = swiperRef.current;
+        if (sw) {
+          setActiveIdx(sw.activeIndex);
+          // Dropping a slot left of the travelled-to slide shifts indexes
+          // down by one; rebind before paint so nothing visibly moves.
+          if (idx < sw.activeIndex) indexFixRef.current = sw.activeIndex - 1;
+        }
+        finishExit(key);
+      };
+
+      suppressActiveSyncRef.current = true;
+      swiper.once('transitionEnd', complete);
+      swiper.slideTo(target, SLIDE_SPEED_MS);
+      // Fallback in case transitionEnd never fires (e.g. reduced motion).
+      window.setTimeout(complete, SLIDE_SPEED_MS + 120);
+    },
+    [finishExit],
+  );
 
   // Enter activates the current card. Skip when focus is on another
   // interactive control (chevrons, dot navs, the card itself) or in an
@@ -398,24 +551,12 @@ export function ProtocolDeck({
     }
   }, [newSessionActive]);
 
-  const pendingProtocol = useMemo(() => {
-    if (!newSessionProtocolHash) return undefined;
-    return protocols.find((p) => p.hash === newSessionProtocolHash);
-  }, [newSessionProtocolHash, protocols]);
-
-  const [displayedProtocol, setDisplayedProtocol] = useState<
-    ProtocolWithCounts | undefined
-  >(undefined);
-  useEffect(() => {
-    if (pendingProtocol) setDisplayedProtocol(pendingProtocol);
-  }, [pendingProtocol]);
-
   const creativeEffectConfig = useMemo(
     () => ({
       // Clamp at the largest possible offset so far-away cards still get
       // their full transform — opacity 0 from applyOpacityCurve does the
       // hiding, not clamping.
-      limitProgress: Math.max(deck.length, 2),
+      limitProgress: Math.max(renderDeck.length, 2),
       progressMultiplier: 1,
       perspective: true,
       prev: {
@@ -435,11 +576,11 @@ export function ProtocolDeck({
         origin: 'center bottom',
       },
     }),
-    [deck.length],
+    [renderDeck.length],
   );
 
   const atStart = activeIdx === 0;
-  const atEnd = activeIdx === deck.length - 1;
+  const atEnd = activeIdx === renderDeck.length - 1;
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center">
@@ -462,10 +603,8 @@ export function ProtocolDeck({
             centeredSlides
             grabCursor={!newSessionActive}
             allowTouchMove={!newSessionActive}
-            speed={320}
+            speed={SLIDE_SPEED_MS}
             initialSlide={initialIndex}
-            // Deeper perspective than Swiper's default 1200px to match the
-            // original — set inline so it wins against `.swiper-3d`.
             style={{ perspective: '1800px' }}
             keyboard={{
               enabled: !newSessionActive,
@@ -490,33 +629,131 @@ export function ProtocolDeck({
               swiperRef.current = s;
               applyOpacityCurve(s);
             }}
-            onSlideChange={(s) => setActiveIdx(s.activeIndex)}
+            onSlideChange={(s) => {
+              if (suppressActiveSyncRef.current) return;
+              setActiveIdx(s.activeIndex);
+            }}
             onSetTranslate={applyOpacityCurve}
             // !overflow-visible overrides Swiper's bundled
             // `.swiper { overflow: hidden }` so card drop shadows can
             // paint beyond the swiper rect into the section padding.
             className="protocol-deck-swiper w-full !overflow-visible"
           >
-            {deck.map((entry, i) => {
-              const slotKey = entrySlotKey(entry);
-              const phaseKey =
-                entry.kind === 'pending'
-                  ? `pending-${entry.pending.phase}`
-                  : entry.kind === 'protocol'
-                    ? `protocol-${entry.protocol.hash}`
-                    : entry.kind;
-              // The "ghost" cards (sample + import) want a frosted-glass look.
+            {renderDeck.map((slot, i) => {
+              const { entry, exiting: isExiting } = slot;
+              // A slot absent from the last committed render is newly added:
+              // it mounts with the drop-in pose. Content changes within a
+              // slot (sample → installing → protocol) swap with no animation.
+              const isNewSlide =
+                committedKeys !== null && !committedKeys.has(slot.key);
+
+              // All card kinds render through ONE DeckCard element at a
+              // stable position, so the component instance — and with it the
+              // LayoutGroup driving the in-card `layout` animations —
+              // survives kind changes within a slot. Separate conditional
+              // elements would remount the card and snap content into place.
+              const cardProps = ((): DeckCardProps | null => {
+                if (entry.kind === 'protocol') {
+                  // The case-ID form takes over the footer (and the space
+                  // the description occupied) while a new session is being
+                  // started for this protocol.
+                  const isNewSession =
+                    newSessionActive &&
+                    entry.protocol.hash === newSessionProtocolHash &&
+                    onCancelNewSession !== undefined &&
+                    onSessionCreated !== undefined;
+                  return {
+                    protocol: entry.protocol,
+                    isActive: i === activeIdx,
+                    sessionCount: sessionCounts.get(entry.protocol.hash) ?? 0,
+                    requiresInternetConnection: protocolRequiresInternet(
+                      entry.protocol,
+                    ),
+                    onActivate: () => handleActivate(i),
+                    // The delete control clears out with the rest of the
+                    // card chrome while the case-ID form is open.
+                    onDelete: isNewSession
+                      ? undefined
+                      : () => onDeleteProtocol(entry.protocol.hash),
+                    footer: isNewSession ? (
+                      <DeckCardFooter key="new-session">
+                        <NewSessionForm
+                          protocol={entry.protocol}
+                          onCancel={onCancelNewSession}
+                          onCreated={onSessionCreated}
+                        />
+                      </DeckCardFooter>
+                    ) : i === activeIdx ? (
+                      <DeckCardFooter key="start-interview">
+                        <DeckCardFooterButton onClick={() => handleActivate(i)}>
+                          Start new interview
+                        </DeckCardFooterButton>
+                      </DeckCardFooter>
+                    ) : undefined,
+                  };
+                }
+                if (entry.kind === 'sample') {
+                  return {
+                    loading: true,
+                    protocol: {
+                      name: SAMPLE_PROTOCOL.name,
+                      description: SAMPLE_PROTOCOL.description,
+                    },
+                    isActive: i === activeIdx,
+                    hideMetadata: true,
+                    onActivate: () => handleActivate(i),
+                    onDelete: onDismissSample,
+                    deleteLabel: 'Dismiss the sample protocol',
+                    footer:
+                      i === activeIdx ? (
+                        <DeckCardFooter key="install-sample">
+                          <DeckCardFooterButton
+                            color="primary"
+                            icon={
+                              <Download
+                                aria-hidden
+                                className="size-[max(14px,3.5cqi)] shrink-0"
+                              />
+                            }
+                            onClick={onInstallSample}
+                          >
+                            Install sample protocol
+                          </DeckCardFooterButton>
+                        </DeckCardFooter>
+                      ) : undefined,
+                  };
+                }
+                if (entry.kind === 'pending') {
+                  return {
+                    loading: true,
+                    protocol: {
+                      name: entry.pending.label || undefined,
+                      description: undefined,
+                    },
+                    footer: (
+                      <DeckCardFooter key="import-progress">
+                        <DeckCardProgressFooter
+                          progress={entry.pending.progress}
+                          message={PHASE_LABEL[entry.pending.phase]}
+                        />
+                      </DeckCardFooter>
+                    ),
+                  };
+                }
+                return null;
+              })();
+              // The "ghost" import card wants a frosted-glass look.
               // backdrop-blur applied INSIDE the card is a no-op — Swiper's
               // per-slide transforms create a stacking context that scopes the
               // filter to an empty rect. Applied here on the slide's direct
               // child it reads through to the blob backdrop behind the deck.
-              // Opaque variants skip it so the GPU doesn't pay for an
+              // Opaque variants (including the sample card, now a solid
+              // DeckCard preview) skip it so the GPU doesn't pay for an
               // invisible filter pass.
-              const wantsBackdropBlur =
-                entry.kind === 'sample' || entry.kind === 'import';
+              const wantsBackdropBlur = entry.kind === 'import';
               return (
                 <SwiperSlide
-                  key={slotKey}
+                  key={slot.key}
                   style={{ width: cardWidth, height: cardHeight }}
                   // `!overflow-visible` overrides Swiper's bundled
                   // `.swiper-slide { overflow: hidden }` so the card's
@@ -527,51 +764,31 @@ export function ProtocolDeck({
                   // slide width.
                   className="!flex origin-[center_bottom] items-center justify-center !overflow-visible will-change-transform"
                 >
-                  <AnimatePresence mode="wait" initial={false}>
-                    <motion.div
-                      key={phaseKey}
-                      initial={{ y: -48, opacity: 0, scale: 0.9 }}
-                      animate={{ y: 0, opacity: 1, scale: 1 }}
-                      exit={{ y: 0, opacity: 0, scale: 0 }}
-                      transition={{
-                        type: 'spring',
-                        stiffness: 140,
-                        damping: 12,
-                        mass: 1.1,
-                      }}
-                      className={`h-full w-full ${wantsBackdropBlur ? 'backdrop-blur-md' : ''}`}
-                    >
-                      {entry.kind === 'protocol' && (
-                        <DeckCard
-                          protocol={entry.protocol}
-                          isActive={i === activeIdx}
-                          sessionCount={
-                            sessionCounts.get(entry.protocol.hash) ?? 0
+                  <motion.div
+                    initial={isNewSlide ? SLIDE_ENTER : false}
+                    animate={isExiting ? SLIDE_EXIT : SLIDE_REST}
+                    transition={
+                      isExiting
+                        ? { duration: 0.3, ease: 'easeIn' }
+                        : {
+                            type: 'spring',
+                            stiffness: 140,
+                            damping: 12,
+                            mass: 1.1,
                           }
-                          requiresInternetConnection={protocolRequiresInternet(
-                            entry.protocol,
-                          )}
-                          onActivate={() => handleActivate(i)}
-                          onDelete={() => onDeleteProtocol(entry.protocol.hash)}
-                        />
-                      )}
-                      {entry.kind === 'sample' && (
-                        <SampleProtocolCard
-                          isActive={i === activeIdx}
-                          onInstall={onInstallSample}
-                          onDismiss={onDismissSample}
-                        />
-                      )}
-                      {entry.kind === 'pending' && (
-                        <PendingImportCard pending={entry.pending} />
-                      )}
-                      {entry.kind === 'import' && (
-                        <ImportTriggerCard
-                          onActivate={() => handleActivate(i)}
-                        />
-                      )}
-                    </motion.div>
-                  </AnimatePresence>
+                    }
+                    onAnimationComplete={() => {
+                      if (isExiting) handleScaleOutComplete(slot.key);
+                    }}
+                    aria-hidden={isExiting || undefined}
+                    className={`h-full w-full ${wantsBackdropBlur ? 'backdrop-blur-md' : ''} ${isExiting ? 'pointer-events-none' : ''}`}
+                  >
+                    {cardProps ? (
+                      <DeckCard {...cardProps} />
+                    ) : (
+                      <ImportTriggerCard onActivate={() => handleActivate(i)} />
+                    )}
+                  </motion.div>
                 </SwiperSlide>
               );
             })}
@@ -579,7 +796,7 @@ export function ProtocolDeck({
         ) : null}
       </motion.section>
 
-      {deck.length > 1 && (
+      {renderDeck.length > 1 && (
         <motion.div
           variants={chevronRowVariants}
           initial="hidden"
@@ -602,9 +819,9 @@ export function ProtocolDeck({
             className={GLASS_PILL}
           />
           <div className="flex items-center gap-2.5">
-            {deck.map((entry, i) => (
+            {renderDeck.map((slot, i) => (
               <button
-                key={entrySlotKey(entry)}
+                key={slot.key}
                 type="button"
                 onClick={() => swiperRef.current?.slideTo(i)}
                 aria-label={`Go to card ${i + 1}`}
@@ -625,15 +842,6 @@ export function ProtocolDeck({
             className={GLASS_PILL}
           />
         </motion.div>
-      )}
-
-      {displayedProtocol && onCancelNewSession && onSessionCreated && (
-        <NewSessionDialog
-          open={newSessionActive}
-          protocol={displayedProtocol}
-          onCancel={onCancelNewSession}
-          onCreated={onSessionCreated}
-        />
       )}
     </div>
   );

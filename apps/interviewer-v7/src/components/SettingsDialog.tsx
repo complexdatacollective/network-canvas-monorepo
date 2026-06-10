@@ -424,10 +424,9 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
               <Alert variant="info">
                 <AlertTitle>No participant data is ever collected.</AlertTitle>
                 <AlertDescription>
-                Network
-                data, responses, case IDs, protocol contents, and asset files
-                never leave this device. Analytics also contain no
-                user-identifiable information.
+                  Network data, responses, case IDs, protocol contents, and
+                  asset files never leave this device. Analytics also contain no
+                  user-identifiable information.
                 </AlertDescription>
               </Alert>
             </>

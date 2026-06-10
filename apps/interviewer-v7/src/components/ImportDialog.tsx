@@ -9,12 +9,12 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import { pickProtocolFile } from '~/lib/files/pickFile';
 import { deriveNameFromUrl } from '~/lib/protocol/importProtocol';
+import type { ImportRequest } from '~/lib/protocol/useProtocolImport';
 
-export type ImportRequest =
-  | { source: 'file'; file: File; label: string }
-  | { source: 'url'; url: string; label: string };
+import { ExternalLink } from './ExternalLink';
 
 type ImportDialogProps = {
   open: boolean;
@@ -98,11 +98,15 @@ export function ImportDialog({ open, onClose, onSubmit }: ImportDialogProps) {
   return (
     <Dialog open={open} closeDialog={handleClose} title="Import a protocol">
       <Paragraph>
-        Protocol files end in{' '}
+        Network Canvas protocol files end in{' '}
         <code className="bg-surface-2 font-monospace rounded px-2 py-0.5">
           .netcanvas
         </code>{' '}
-        and configure every stage of the interview.
+        . Author a protocol file using{' '}
+        <ExternalLink href="https://architect.networkcanvas.com">
+          Architect Web
+        </ExternalLink>
+        , or the desktop version of Architect.
       </Paragraph>
 
       <button
@@ -114,7 +118,11 @@ export function ImportDialog({ open, onClose, onSubmit }: ImportDialogProps) {
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
-        className={`text-text mb-[22px] block w-full cursor-pointer rounded-lg border-2 border-dashed px-8 py-11 text-center font-[inherit] transition-all duration-180 ${dropZoneBorder} ${dropZoneBackground}`}
+        className={cx(
+          'text-text block w-full cursor-pointer rounded-lg border-2 border-dashed px-8 py-11 text-center font-[inherit] transition-all duration-180',
+          dropZoneBorder,
+          dropZoneBackground,
+        )}
       >
         <span
           aria-hidden
@@ -143,9 +151,6 @@ export function ImportDialog({ open, onClose, onSubmit }: ImportDialogProps) {
 
       <Surface as="section" level={1} spacing="md" shadow="md" noContainer>
         <Heading level="h4">Import from URL</Heading>
-        <Paragraph intent="smallText">
-          Paste a link to a hosted protocol file.
-        </Paragraph>
         <div className="flex gap-2.5">
           <InputField
             type="url"

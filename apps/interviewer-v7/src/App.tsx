@@ -33,9 +33,9 @@ export default function App() {
   const [location] = useLocation();
 
   return (
-    <AppProviders>
+    <ThemedRegion theme="interview" className="isolate">
       <AppErrorBoundary>
-        <ThemedRegion theme="interview" className="isolate">
+        <AppProviders>
           {isElectron && (
             <div
               aria-hidden
@@ -84,8 +84,8 @@ export default function App() {
               </motion.div>
             </AnimatePresence>
           </AuthGate>
-        </ThemedRegion>
+        </AppProviders>
       </AppErrorBoundary>
-    </AppProviders>
+    </ThemedRegion>
   );
 }

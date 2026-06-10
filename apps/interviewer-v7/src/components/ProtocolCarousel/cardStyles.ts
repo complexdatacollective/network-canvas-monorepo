@@ -18,9 +18,3 @@ export const importCardClass = cva({
     'border-outline bg-surface/50 text-text/80 flex flex-col items-center justify-center gap-3 border-[3px] border-dashed',
   ],
 });
-
-export const protocolCardClass = cva({
-  base: [
-    'flex flex-col overflow-hidden border-0 bg-surface-1 p-0 text-text',
-  ].join(' '),
-});

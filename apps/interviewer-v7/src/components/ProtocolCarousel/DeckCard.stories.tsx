@@ -3,8 +3,14 @@ import type { ReactNode } from 'react';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolWithCounts } from '~/lib/db/types';
+import { SAMPLE_PROTOCOL } from '~/lib/protocol/sampleProtocol';
 
-import { DeckCard } from './DeckCard';
+import {
+  DeckCard,
+  DeckCardFooter,
+  DeckCardFooterButton,
+  DeckCardProgressFooter,
+} from './DeckCard';
 
 // DeckCard is "the protocol card" — the card the user sees for each imported
 // protocol in the deck. Its entire internal layout (heading size, meta row,
@@ -83,6 +89,9 @@ type StoryArgs = {
   requiresInternetConnection: boolean;
   width: number;
   height: number;
+  // Loading-state stories only: import progress fraction + status message.
+  progress?: number;
+  progressMessage?: string;
 };
 
 const meta: Meta<StoryArgs> = {
@@ -146,6 +155,15 @@ const meta: Meta<StoryArgs> = {
         sessionCount={sessionCount}
         onActivate={() => {}}
         onDelete={() => {}}
+        footer={
+          isActive ? (
+            <DeckCardFooter key="start-interview">
+              <DeckCardFooterButton onClick={() => {}}>
+                Start new interview
+              </DeckCardFooterButton>
+            </DeckCardFooter>
+          ) : undefined
+        }
       />
     </ResizableFrame>
   ),
@@ -187,6 +205,58 @@ export const LongDescription: Story = {
   },
 };
 
+/**
+ * The loading/installing state with no information yet: empty Pattern seed
+ * (plain platinum-dark surface), skeleton heading, description, and all
+ * three metadata cells, and an indeterminate progress bar in place of the
+ * Start button.
+ */
+export const Loading: Story = {
+  render: ({ width, height }) => (
+    <ResizableFrame width={width} height={height}>
+      <DeckCard
+        loading
+        protocol={{}}
+        footer={
+          <DeckCardFooter key="import-progress">
+            <DeckCardProgressFooter message="Fetching…" />
+          </DeckCardFooter>
+        }
+      />
+    </ResizableFrame>
+  ),
+};
+
+/**
+ * Loading with partial information: areas fill in progressively as values
+ * become available, while the rest remain skeletons. The pattern is seeded
+ * by the protocol name, so it appears together with the heading. The
+ * progress fraction and status message are passed through from the protocol
+ * import process.
+ */
+export const LoadingPartial: Story = {
+  args: {
+    progress: 0.45,
+    progressMessage: 'Extracting…',
+  },
+  render: ({ name, description, progress, progressMessage, width, height }) => (
+    <ResizableFrame width={width} height={height}>
+      <DeckCard
+        loading
+        protocol={{ name, description }}
+        footer={
+          <DeckCardFooter key="import-progress">
+            <DeckCardProgressFooter
+              progress={progress}
+              message={progressMessage}
+            />
+          </DeckCardFooter>
+        }
+      />
+    </ResizableFrame>
+  ),
+};
+
 // A fixed matrix of card widths so every container tier is visible at once —
 // the quickest way to eyeball responsiveness without dragging. Heights are
 // generous so the description and (when active) the button row have room.
@@ -217,10 +287,51 @@ export const BreakpointMatrix: Story = {
               sessionCount={sessionCount}
               onActivate={() => {}}
               onDelete={() => {}}
+              footer={
+                isActive ? (
+                  <DeckCardFooter key="start-interview">
+                    <DeckCardFooterButton onClick={() => {}}>
+                      Start new interview
+                    </DeckCardFooterButton>
+                  </DeckCardFooter>
+                ) : undefined
+              }
             />
           </div>
         </div>
       ))}
     </div>
+  ),
+};
+
+/**
+ * The sample-protocol slot: the loading presentation (known name +
+ * description, skeleton metadata) with an install button footer and a
+ * dismiss control — composed entirely from DeckCard's footer and onDelete
+ * props.
+ */
+export const SampleProtocol: Story = {
+  render: ({ width, height }) => (
+    <ResizableFrame width={width} height={height}>
+      <DeckCard
+        loading
+        protocol={{
+          name: SAMPLE_PROTOCOL.name,
+          description: SAMPLE_PROTOCOL.description,
+        }}
+        isActive
+        hideMetadata
+        onActivate={() => {}}
+        onDelete={() => {}}
+        deleteLabel="Dismiss the sample protocol"
+        footer={
+          <DeckCardFooter key="install-sample">
+            <DeckCardFooterButton color="primary" onClick={() => {}}>
+              Install sample protocol
+            </DeckCardFooterButton>
+          </DeckCardFooter>
+        }
+      />
+    </ResizableFrame>
   ),
 };

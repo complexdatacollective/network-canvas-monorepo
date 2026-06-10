@@ -1,9 +1,16 @@
 import { CalendarPlus, CalendarSync, Globe, Trash2 } from 'lucide-react';
-import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
+import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
+import {
+  useId,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from 'react';
 import { Link } from 'wouter';
 
 import { Pattern } from '@codaco/art';
 import { buttonVariants, IconButton } from '@codaco/fresco-ui/Button';
+import ProgressBar from '@codaco/fresco-ui/ProgressBar';
+import { Skeleton } from '@codaco/fresco-ui/Skeleton';
 import { proportionalLucideIconVariants } from '@codaco/fresco-ui/styles/controlVariants';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -55,39 +62,78 @@ function withUnderscoreBreaks(name: string): ReactNode[] {
   );
 }
 
-type DeckCardProps = {
-  protocol: ProtocolWithCounts;
-  isActive: boolean;
-  sessionCount: number;
-  onActivate: () => void;
-  onDelete: () => void;
+// The subset of protocol fields the card renders. In the loading state any
+// of them may still be unknown; the matching area shows a skeleton until the
+// value arrives.
+type DeckCardData = Pick<
+  ProtocolWithCounts,
+  'name' | 'description' | 'importedAt' | 'lastModified'
+>;
+
+export type DeckCardProps = {
   requiresInternetConnection?: boolean;
-};
+  // Content for the card's footer slot — a start button, install button,
+  // import progress, or a case-ID form. Rendered beneath a divider in a
+  // `mode="wait"` presence group keyed by this element's key (normally
+  // `<DeckCardFooter key="…">`), so swapping footer content animates the
+  // old footer fully out before the new one enters.
+  footer?: ReactNode;
+  // When provided, the top-right remove control is shown and wired to it.
+  onDelete?: () => void;
+  deleteLabel?: string;
+  // Omit the metadata row entirely (e.g. the sample-protocol preview, where
+  // dates and session counts don't exist yet and skeletons would mislead).
+  hideMetadata?: boolean;
+  // Omit the description (e.g. while the new-session form occupies the
+  // footer, so the card has room for it).
+  hideDescription?: boolean;
+} & (
+  | {
+      loading?: false;
+      protocol: ProtocolWithCounts;
+      isActive: boolean;
+      sessionCount: number;
+      onActivate: () => void;
+    }
+  | {
+      // Loading/installing: fields render progressively as they become
+      // available; missing areas show skeletons.
+      loading: true;
+      protocol: Partial<DeckCardData>;
+      isActive?: boolean;
+      sessionCount?: number;
+      onActivate?: () => void;
+    }
+);
 
-// Description shows up to six lines, then trails off. line-clamp must be a
-// static utility class so Tailwind's scanner emits it — a dynamic
-// `line-clamp-${n}` would never be generated. The inner span carries the
-// clamp (line-clamp makes it a `-webkit-box`); the wrapper is a normal block
-// flex item pinned with `shrink-0` so the column — whose heading claims
-// `flex-1` — can't squeeze the description below its six lines.
-function DescriptionBlock({ text }: { text: string }) {
-  return (
-    <div className="shrink-0 text-left">
-      <span className="line-clamp-6 text-[3.5cqi] leading-tight text-current/80">
-        {text}
-      </span>
-    </div>
-  );
-}
+const MotionHeading = motion.create(Heading);
 
-export function DeckCard({
-  protocol,
-  isActive,
-  sessionCount,
-  onActivate,
-  onDelete,
-  requiresInternetConnection = false,
-}: DeckCardProps) {
+// Presence poses shared by the card's swappable regions (delete control,
+// description, metadata, and the divider+footer group). The footer group is
+// the single keyed child of an `AnimatePresence mode="wait"`, so motion
+// itself sequences footer swaps — the old footer fully animates out before
+// the new one (e.g. the case-ID form) animates in, with description and
+// metadata exits running alongside the first phase. No transition delays
+// anywhere.
+const PRESENCE_INITIAL = { opacity: 0, y: 10 };
+const PRESENCE_ENTER = { opacity: 1, y: 0 };
+const PRESENCE_EXIT = { opacity: 0 };
+
+export function DeckCard(props: DeckCardProps) {
+  const {
+    protocol,
+    isActive = false,
+    sessionCount,
+    onActivate,
+    onDelete,
+    deleteLabel,
+    hideMetadata = false,
+    hideDescription = false,
+    requiresInternetConnection = false,
+    footer,
+  } = props;
+  const loading = props.loading === true;
+
   const onCardKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     // Only the card itself activates. Key events bubbling up from the nested
     // delete button must not trigger a second action — that button handles
@@ -95,89 +141,261 @@ export function DeckCard({
     if (event.target !== event.currentTarget) return;
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      onActivate();
+      onActivate?.();
     }
   };
 
+  const id = useId();
+
+  const showDescription =
+    !hideDescription && Boolean(protocol.description ?? loading);
+  const showMetadata = !hideMetadata;
+
   return (
-    <div
-      aria-label={`${protocol.name}${isActive ? ' (active)' : ''}`}
-      onKeyDown={onCardKeyDown}
-      // Border echoes the color the Pattern paints for this protocol's seed.
-      // style={{ borderColor: seedToPatternPalette(protocol.name).backgroundTop }}
+    <LayoutGroup id={id}>
+      <motion.div
+        layout
+        aria-label={`${protocol.name ?? 'Protocol'}${isActive ? ' (active)' : ''}`}
+        aria-busy={loading || undefined}
+        onKeyDown={onCardKeyDown}
+        // Border echoes the color the Pattern paints for this protocol's seed.
+        // style={{ borderColor: seedToPatternPalette(protocol.name).backgroundTop }}
+        className={cx(
+          cardBase(),
+          'min-h-[300px] min-w-[325px]',
+          'text-navy-taupe bg-platinum publish-colors',
+          '@container relative h-full w-full overflow-clip rounded shadow-xl',
+          isActive && 'spring-medium shadow-2xl',
+          'border-platinum-dark border-[0.15cqi]',
+        )}
+      >
+        <AnimatePresence mode="popLayout" initial={false}>
+          <Pattern
+            key="pattern"
+            seed={protocol.name ?? ''}
+            className="absolute inset-0 size-full"
+          />
+          <div
+            key="gradient"
+            className="to-platinum from-rich-black/20 via-platinum/80 absolute inset-0 size-full bg-linear-to-b via-30% to-70%"
+          />
+
+          <div
+            key="content"
+            className="relative z-10 flex size-full flex-col justify-between gap-6 p-[6cqi]"
+          >
+            <div className="flex items-center justify-end gap-4">
+              {requiresInternetConnection && (
+                <Pill icon={<Globe />} intent="warning">
+                  Requires Internet
+                </Pill>
+              )}
+
+              {/* Direct presence parent: gives the control real enter/exit
+                  animations and a fresh presence context, so the outer
+                  presence's initial={false} doesn't suppress later mounts. */}
+              <AnimatePresence mode="wait" initial={false}>
+                {onDelete && (
+                  <motion.div
+                    key="delete"
+                    initial={PRESENCE_INITIAL}
+                    animate={PRESENCE_ENTER}
+                    exit={PRESENCE_EXIT}
+                  >
+                    <IconButton
+                      icon={<Trash2 />}
+                      aria-label={deleteLabel ?? 'Delete Protocol'}
+                      variant="outline"
+                      color="dynamic"
+                      className="bg-rich-black/60 text-platinum size-[max(40px,10cqi)] border text-[max(16px,4cqi)]"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onDelete();
+                      }}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            <div className="flex flex-1 items-center justify-start">
+              {protocol.name ? (
+                <MotionHeading
+                  level="h2"
+                  className="w-full text-left text-[8cqi] leading-[1.1] font-black wrap-break-word hyphens-auto"
+                  margin="none"
+                  layout
+                >
+                  {withUnderscoreBreaks(protocol.name)}
+                </MotionHeading>
+              ) : (
+                <div className="w-full">
+                  <Skeleton className="h-[7cqi] w-4/5" />
+                  <Skeleton className="mt-[2.5cqi] h-[7cqi] w-3/5" />
+                </div>
+              )}
+            </div>
+
+            <AnimatePresence initial={false}>
+              {showDescription && (
+                // Description shows up to six lines, then trails off.
+                // line-clamp must be a static utility class so Tailwind's
+                // scanner emits it — a dynamic `line-clamp-${n}` would never
+                // be generated. The inner span carries the clamp (line-clamp
+                // makes it a `-webkit-box`); the wrapper is a normal block
+                // flex item pinned with `shrink-0` so the column — whose
+                // heading claims `flex-1` — can't squeeze the description
+                // below its six lines.
+                <motion.div
+                  key="description"
+                  layout
+                  initial={PRESENCE_INITIAL}
+                  animate={PRESENCE_ENTER}
+                  exit={PRESENCE_EXIT}
+                  className="shrink-0 text-left"
+                >
+                  {protocol.description ? (
+                    <span className="line-clamp-6 text-[3.5cqi] leading-tight text-current/80">
+                      {protocol.description}
+                    </span>
+                  ) : (
+                    <div className="space-y-[1.5cqi]">
+                      <Skeleton className="h-[3cqi] w-full" />
+                      <Skeleton className="h-[3cqi] w-11/12" />
+                      <Skeleton className="h-[3cqi] w-2/3" />
+                    </div>
+                  )}
+                </motion.div>
+              )}
+              {showMetadata && (
+                <motion.div
+                  key="metadata"
+                  layout
+                  initial={PRESENCE_INITIAL}
+                  animate={PRESENCE_ENTER}
+                  exit={PRESENCE_EXIT}
+                  className="font-monospace flex items-center justify-between gap-4 text-[2.5cqi]"
+                >
+                  {protocol.importedAt ? (
+                    <span className="flex items-center gap-2">
+                      <CalendarPlus className="inline-block" size={16} />
+                      <TimeAgo date={protocol.importedAt} />
+                    </span>
+                  ) : (
+                    <Skeleton className="h-[3cqi] w-[22cqi]" />
+                  )}
+
+                  {protocol.lastModified ? (
+                    <span className="flex items-center gap-2">
+                      <CalendarSync className="inline-block" size={16} />
+                      <TimeAgo date={protocol.lastModified} />
+                    </span>
+                  ) : (
+                    loading && <Skeleton className="h-[3cqi] w-[22cqi]" />
+                  )}
+
+                  {loading ? (
+                    sessionCount === undefined ? (
+                      <Skeleton className="h-[3cqi] w-[18cqi]" />
+                    ) : (
+                      <span>
+                        {sessionCount}{' '}
+                        {sessionCount === 1 ? 'interview' : 'interviews'}
+                      </span>
+                    )
+                  ) : (
+                    <Link href="/data" className="hover:underline">
+                      {sessionCount ?? 0}{' '}
+                      {sessionCount === 1 ? 'interview' : 'interviews'}
+                    </Link>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <hr className="my-0" />
+            {/* mode="wait" sequences footer swaps: the old footer fully
+                exits before the new one enters. */}
+            <AnimatePresence mode="popLayout" initial={false}>
+              {isActive && footer != null && footer}
+            </AnimatePresence>
+          </div>
+        </AnimatePresence>
+      </motion.div>
+    </LayoutGroup>
+  );
+}
+
+// Footer building blocks for the slot above, co-located so every footer
+// shares the card's container-query sizing.
+
+// Standard footer wrapper. Give it a key identifying the CONTENT (e.g.
+// "start-interview", "import-progress") — the key identifies the card's
+// footer group, so changing it makes the `mode="wait"` AnimatePresence
+// animate the old footer out before the new one enters.
+export function DeckCardFooter({ children }: { children: ReactNode }) {
+  return (
+    <motion.div layout className="flex flex-col">
+      {children}
+    </motion.div>
+  );
+}
+
+export function DeckCardFooterButton({
+  onClick,
+  color = 'success',
+  icon,
+  children,
+}: {
+  onClick: () => void;
+  color?: 'success' | 'primary';
+  icon?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
       className={cx(
-        cardBase(),
-        'min-h-[300px] min-w-[325px]',
-        'text-charcoal',
-        '@container relative h-full w-full overflow-clip rounded shadow-xl',
-        isActive && 'spring-medium shadow-2xl transition-transform',
-        'border-platinum-dark border-[0.2cqi]',
+        buttonVariants({ color }),
+        'flex h-auto items-center justify-center gap-[1.5cqi] border-b-[1.25cqi] p-[2.5cqi] text-[3cqi] font-extrabold tracking-widest uppercase',
+        // 3D bottom edge: the translucent black border paints over the
+        // button's own background (border-box clipping), darkening whatever
+        // the color resolves to in the active theme.
+        'border-black/25',
       )}
     >
-      <Pattern seed={protocol.name} className="absolute inset-0 size-full" />
-      <div className="to-platinum from-rich-black/20 via-platinum/80 absolute inset-0 size-full bg-linear-to-b via-30% to-70%" />
+      {icon}
+      {children}
+    </button>
+  );
+}
 
-      <div className="relative z-10 flex size-full flex-col justify-between gap-4 p-[6cqi]">
-        <div className="flex items-center justify-end gap-4">
-          {requiresInternetConnection && (
-            <Pill icon={<Globe />} intent="warning">
-              Requires Internet
-            </Pill>
-          )}
-          <IconButton
-            icon={<Trash2 />}
-            aria-label="Delete Protocol"
-            variant="outline"
-            color="dynamic"
-            className="bg-platinum/60 size-[max(40px,10cqi)] border text-[max(16px,4cqi)] text-current/60"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete();
-            }}
-          />
-        </div>
-        <div className="flex flex-1 items-center justify-start">
-          <Heading
-            level="h2"
-            className="w-full text-left text-[8cqi] leading-[1.1] font-black wrap-break-word hyphens-auto"
-            margin="none"
-          >
-            {withUnderscoreBreaks(protocol.name)}
-          </Heading>
-        </div>
-        {protocol.description && (
-          <DescriptionBlock text={protocol.description} />
+export function DeckCardProgressFooter({
+  progress,
+  message,
+}: {
+  // Fraction (0–1) from the protocol import process; undefined renders an
+  // indeterminate bar.
+  progress?: number;
+  // Status line from the protocol import process (e.g. "Extracting…").
+  message?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-[1.5cqi] py-[2.5cqi]">
+      <ProgressBar
+        orientation="horizontal"
+        indeterminate={progress === undefined}
+        percentProgress={
+          progress === undefined
+            ? 0
+            : Math.min(100, Math.max(0, progress * 100))
+        }
+        label={message ?? 'Loading protocol'}
+        className="h-[2cqi] min-h-2"
+      />
+      <div className="font-monospace flex min-h-lh items-center justify-between text-[2.8cqi]">
+        <span>{message}</span>
+        {progress !== undefined && (
+          <span>{Math.round(Math.min(1, Math.max(0, progress)) * 100)}%</span>
         )}
-        <hr className="my-2" />
-        <div className="font-monospace mb-[2cqi] flex items-center gap-4 text-[2.8cqi]">
-          <span className="flex items-center gap-2">
-            <CalendarPlus className="inline-block" size={16} />
-            <TimeAgo date={protocol.importedAt} />
-          </span>
-
-          {protocol.lastModified && (
-            <>
-              <span className="flex items-center gap-2">
-                <CalendarSync className="inline-block" size={16} />
-                <TimeAgo date={protocol.lastModified} />
-              </span>
-            </>
-          )}
-
-          <Link href="/data" className="hover:underline">
-            {sessionCount} {sessionCount === 1 ? 'interview' : 'interviews'}
-          </Link>
-        </div>
-        <button
-          onClick={onActivate}
-          className={cx(
-            buttonVariants({ color: 'success' }),
-            'font-monospace border-sea-green-dark hidden h-auto border-b-[1.25cqi] p-[2.25cqi] text-[3.5cqi] tracking-wide uppercase',
-            isActive && 'inline-flex',
-          )}
-        >
-          Start new interview
-        </button>
       </div>
     </div>
   );

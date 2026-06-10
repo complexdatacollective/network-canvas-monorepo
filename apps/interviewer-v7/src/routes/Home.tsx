@@ -1,103 +1,43 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { BrandHeader } from '~/components/BrandHeader';
 import { DataView } from '~/components/DataView';
-import type { ImportRequest } from '~/components/ImportDialog';
 import { ImportDialog } from '~/components/ImportDialog';
-import type { PendingImport } from '~/components/ProtocolCarousel/PendingImportCard';
 import { ProtocolDeck } from '~/components/ProtocolCarousel/ProtocolDeck';
 import { ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
 import { StatusRow } from '~/components/StatusRow';
 import { TopActionBar } from '~/components/TopActionBar';
-import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
+import { deleteProtocol, updateSettings } from '~/lib/db/api';
+import type { StoredSession } from '~/lib/db/types';
 import {
-  deleteProtocol,
-  getSettings,
-  listProtocols,
-  listSessions,
-  updateSettings,
-} from '~/lib/db/api';
-import type {
-  ProtocolWithCounts,
-  StoredSession,
-  StoredSessionLite,
-  StoredSettings,
-} from '~/lib/db/types';
+  type ImportRequest,
+  useProtocolImport,
+} from '~/lib/protocol/useProtocolImport';
+
+import { buildDeleteProtocolMessage } from './deleteProtocolMessage';
 import {
-  type ImportProgressEvent,
-  type ImportProtocolResult,
-  importProtocolFromFile,
-  importProtocolFromUrl,
-  peekProtocolName,
-} from '~/lib/protocol/importProtocol';
-import { SAMPLE_PROTOCOL } from '~/lib/protocol/sampleProtocol';
+  containerVariants,
+  protocolsContainerVariants,
+} from './homeAnimations';
+import { useHomeData } from './useHomeData';
 
 type OpenDialog = 'import' | 'settings' | null;
 type View = 'protocols' | 'data';
-
-const containerVariants = {
-  hidden: {},
-  visible: {
-    transition: {
-      when: 'beforeChildren',
-      staggerChildren: 0.05,
-    },
-  },
-  exit: {
-    transition: { when: 'afterChildren', staggerChildren: 0.05 },
-  },
-} as const;
-
-// Cascade variants for the Protocols branch. AnimatePresence needs the
-// keyed child to be a motion component so descendant exits can complete
-// before unmount; these variants don't visually animate the wrapper —
-// `opacity: 1` is an identity value used so motion treats the variant
-// as real and reliably propagates the hidden / visible / exit labels
-// down to the deck section, chevron row, and StatusRow. With empty
-// variants motion can short-circuit on first mount and skip the
-// cascade entirely, leaving children at their natural state.
-//
-// `when: 'beforeChildren'` is intentionally omitted: the wrapper has no
-// real animation to "complete" first, and pairing it with empty
-// variants is what was suppressing the entry cascade. Instead,
-// `delayChildren` + `staggerChildren` drive timing explicitly.
-//
-// Entry uses staggerDirection: -1 so the cascade walks the JSX tree in
-// reverse — StatusRow first, deck section last — matching the visual
-// expectation that the deck is the focal element and arrives after its
-// surrounding chrome.
-const protocolsContainerVariants = {
-  hidden: { opacity: 1 },
-  visible: {
-    opacity: 1,
-    transition: {
-      delayChildren: 0.08,
-      staggerChildren: 0.25,
-      staggerDirection: -1,
-    },
-  },
-  exit: {
-    transition: {
-      when: 'afterChildren',
-      staggerChildren: 0.06,
-      staggerDirection: -1,
-    },
-  },
-} as const;
 
 function viewFromLocation(location: string): View {
   return location === '/data' ? 'data' : 'protocols';
 }
 
 export function HomeRoute() {
-  const [protocols, setProtocols] = useState<ProtocolWithCounts[]>([]);
-  const [sessions, setSessions] = useState<StoredSessionLite[]>([]);
-  const [settings, setSettings] = useState<StoredSettings | null>(null);
+  const { protocols, sessions, settings, reload } = useHomeData();
+  const { pendingImports, startImport } = useProtocolImport({
+    onInstalled: reload,
+  });
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null);
   const [pendingProtocolHash, setPendingProtocolHash] = useState<string | null>(
     null,
@@ -106,134 +46,6 @@ export function HomeRoute() {
   const view = viewFromLocation(location);
   const dialog = useDialog();
   const toast = useToast();
-  const analytics = useAnalytics();
-
-  const [pendingImports, setPendingImports] = useState<PendingImport[]>([]);
-
-  const reload = useCallback(async () => {
-    const [p, s, st] = await Promise.all([
-      listProtocols(),
-      listSessions(),
-      getSettings(),
-    ]);
-    setProtocols(p);
-    setSessions(s);
-    setSettings(st);
-  }, []);
-
-  useEffect(() => {
-    void reload();
-  }, [reload]);
-
-  const startImport = useCallback(
-    async (request: ImportRequest | { source: 'sample' }) => {
-      const id =
-        typeof crypto !== 'undefined' && 'randomUUID' in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random()}`;
-
-      const fileBuffer =
-        request.source === 'file'
-          ? new Uint8Array(await request.file.arrayBuffer())
-          : null;
-      const peekedName = fileBuffer ? await peekProtocolName(fileBuffer) : null;
-      const fileLabel =
-        request.source === 'file'
-          ? (peekedName ?? request.label.replace(/\.netcanvas$/i, ''))
-          : '';
-
-      const initial: PendingImport = (() => {
-        if (request.source === 'file') {
-          return {
-            id,
-            label: fileLabel,
-            source: 'file',
-            phase: 'extracting',
-          };
-        }
-        if (request.source === 'url') {
-          return {
-            id,
-            label: request.label.replace(/\.netcanvas$/i, ''),
-            source: 'url',
-            phase: 'fetching',
-          };
-        }
-        return {
-          id,
-          label: SAMPLE_PROTOCOL.name,
-          source: 'sample',
-          phase: 'fetching',
-        };
-      })();
-      setPendingImports((prev) => [...prev, initial]);
-
-      const onProgress = (event: ImportProgressEvent) => {
-        setPendingImports((prev) =>
-          prev.map((entry) =>
-            entry.id === id
-              ? { ...entry, phase: event.phase, progress: event.progress }
-              : entry,
-          ),
-        );
-      };
-
-      const run = async () => {
-        let result: ImportProtocolResult;
-        if (request.source === 'file') {
-          result = await importProtocolFromFile(
-            request.file,
-            onProgress,
-            peekedName ?? undefined,
-          );
-        } else if (request.source === 'url') {
-          result = await importProtocolFromUrl(request.url, onProgress);
-        } else {
-          result = await importProtocolFromUrl(
-            SAMPLE_PROTOCOL.url,
-            onProgress,
-            SAMPLE_PROTOCOL.name,
-          );
-        }
-
-        if (result.success) {
-          if (request.source === 'sample') {
-            await updateSettings({ sampleProtocolDismissed: true });
-          }
-          await reload();
-          setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
-          // No protocol name or contents — only the anonymous content hash,
-          // import source, and whether a schema migration ran.
-          analytics.track('protocol_installed', {
-            source: request.source,
-            migrated: result.migrated,
-            protocol_hash: result.hash,
-          });
-          toast.add({
-            title: 'Protocol imported',
-            description: result.migrated
-              ? `${result.protocol.name} was migrated to the current schema.`
-              : `${result.protocol.name} is ready to use.`,
-            variant: 'success',
-          });
-        } else {
-          setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
-          analytics.track('protocol_install_failed', {
-            source: request.source,
-            reason: result.error,
-          });
-          toast.add({
-            title: 'Import failed',
-            description: result.message,
-            variant: 'destructive',
-          });
-        }
-      };
-
-      void run();
-    },
-    [analytics, reload, toast],
-  );
 
   // If the pending hash has since been deleted (e.g. cascade-delete from
   // the Protocols route while a card was still pending), drop the pending
@@ -285,48 +97,18 @@ export function HomeRoute() {
     async (hash: string) => {
       const protocol = protocols.find((p) => p.hash === hash);
       if (!protocol) return;
-      const protocolSessions = sessions.filter((s) => s.protocolHash === hash);
-      const unexportedCount = protocolSessions.filter(
-        (s) => s.exportedAt === null,
-      ).length;
-      const totalCount = protocolSessions.length;
-
-      const hasUnexported = unexportedCount > 0;
-      const title = `Delete ${protocol.name}?`;
-      let description: string;
-      let primaryLabel: string;
-      let intent: 'default' | 'destructive';
-
-      if (hasUnexported) {
-        const recordsClause =
-          unexportedCount === 1
-            ? '1 interview record has not been exported and will be permanently lost'
-            : `${unexportedCount} interview records have not been exported and will be permanently lost`;
-        description = `${recordsClause} if you delete this protocol. Export them first if you want to keep the data. This cannot be undone.`;
-        primaryLabel = 'Delete anyway';
-        intent = 'destructive';
-      } else {
-        let body = 'Removes the protocol from this device.';
-        if (totalCount > 0) {
-          const recordsPhrase =
-            totalCount === 1
-              ? '1 interview record'
-              : `${totalCount} interview records`;
-          body += ` ${recordsPhrase} will also be deleted.`;
-        }
-        body += ' This cannot be undone.';
-        description = body;
-        primaryLabel = 'Delete';
-        intent = 'default';
-      }
+      const { description, hasUnexported } = buildDeleteProtocolMessage(
+        protocol.name,
+        sessions.filter((s) => s.protocolHash === hash),
+      );
 
       const confirmed = await dialog.openDialog({
         type: 'choice',
-        title,
+        title: 'Delete this protocol?',
         description,
-        intent,
+        intent: hasUnexported ? 'destructive' : 'default',
         actions: {
-          primary: { label: primaryLabel, value: true },
+          primary: { label: 'Delete Protocol', value: true },
           cancel: { label: 'Cancel', value: false },
         },
       });
