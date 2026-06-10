@@ -1,10 +1,12 @@
 import { CalendarPlus, CalendarSync, Globe, Trash2 } from 'lucide-react';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import {
+  isValidElement,
+  useEffect,
   useId,
+  useRef,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
-  type Ref,
 } from 'react';
 import { Link } from 'wouter';
 
@@ -75,9 +77,10 @@ export type DeckCardProps = {
   requiresInternetConnection?: boolean;
   // Content for the card's footer slot — a start button, install button,
   // import progress, or a case-ID form. Rendered beneath a divider in a
-  // `mode="wait"` presence group keyed by this element's key (normally
-  // `<DeckCardFooter key="…">`), so swapping footer content animates the
-  // old footer fully out before the new one enters.
+  // presence group keyed by this element's key (normally
+  // `<DeckCardFooter key="…">`); swapping footer content fades the old
+  // footer fully out before the new one fades in, while the layout
+  // reflows immediately.
   footer?: ReactNode;
   // When provided, the top-right remove control is shown and wired to it.
   onDelete?: () => void;
@@ -110,10 +113,11 @@ export type DeckCardProps = {
 const MotionHeading = motion.create(Heading);
 
 // Presence poses shared by the card's swappable regions (delete control,
-// description, metadata, divider, and footer). Footer swaps use
-// `mode="popLayout"`, so an outgoing footer is popped out of the layout
-// flow and crossfades with the incoming one — exits and enters run
-// concurrently, never in sequence.
+// description, metadata, divider, and footer). Exits always pop out of the
+// layout flow (`mode="popLayout"`), so the column reflows concurrently
+// with the outgoing fade; on footer REPLACEMENTS the incoming footer's
+// fade additionally waits for the outgoing one to clear (see the
+// footer-key tracking in DeckCard).
 const PRESENCE_INITIAL = { opacity: 0, y: 10 };
 const PRESENCE_ENTER = { opacity: 1, y: 0 };
 const PRESENCE_EXIT = { opacity: 0 };
@@ -156,6 +160,25 @@ export function DeckCard(props: DeckCardProps) {
     !hideDescription && Boolean(protocol.description ?? loading);
   const showMetadata = !hideMetadata;
 
+  // The footer group's identity, taken from the consumer's key on the
+  // footer element (e.g. "start-interview" → "new-session"). A change
+  // between two non-null rendered keys is a REPLACEMENT: the incoming
+  // footer takes its space immediately (the column reflows alongside the
+  // outgoing footer's pop-fade) but holds its own fade until the outgoing
+  // one has cleared, so swaps read as exit-then-enter instead of two
+  // footers blended together. A fresh appearance (activation) enters with
+  // no delay.
+  const footerKey = isValidElement(footer) ? (footer.key ?? 'footer') : null;
+  const renderedFooterKey = isActive && footer != null ? footerKey : null;
+  const committedFooterKeyRef = useRef<string | null>(renderedFooterKey);
+  const isFooterSwap =
+    renderedFooterKey !== null &&
+    committedFooterKeyRef.current !== null &&
+    committedFooterKeyRef.current !== renderedFooterKey;
+  useEffect(() => {
+    committedFooterKeyRef.current = renderedFooterKey;
+  });
+
   return (
     <LayoutGroup id={id}>
       <motion.div
@@ -189,7 +212,10 @@ export function DeckCard(props: DeckCardProps) {
             key="content"
             className="relative z-10 flex size-full flex-col justify-between gap-6 p-[6cqi]"
           >
-            <div className="flex items-center justify-end gap-4">
+            {/* min-h reserves the delete control's height, so the control
+                fading in or out never reflows the heading and content
+                below it — the fade is the whole animation. */}
+            <div className="flex min-h-[max(40px,10cqi)] items-center justify-end gap-4">
               {requiresInternetConnection && (
                 <Pill icon={<Globe />} intent="warning">
                   Requires Internet
@@ -350,7 +376,27 @@ export function DeckCard(props: DeckCardProps) {
                   className="my-0"
                 />
               )}
-              {isActive && footer != null && footer}
+              {isActive && footer != null && (
+                <motion.div
+                  key={footerKey}
+                  layout="position"
+                  initial={PRESENCE_INITIAL}
+                  animate={{
+                    ...PRESENCE_ENTER,
+                    transition: isFooterSwap
+                      ? {
+                          ...REGION_TRANSITION,
+                          delay: REGION_TRANSITION.duration,
+                        }
+                      : REGION_TRANSITION,
+                  }}
+                  exit={PRESENCE_EXIT}
+                  transition={REGION_TRANSITION}
+                  className="flex flex-col"
+                >
+                  {footer}
+                </motion.div>
+              )}
             </AnimatePresence>
           </div>
         </AnimatePresence>
@@ -363,35 +409,14 @@ export function DeckCard(props: DeckCardProps) {
 // shares the card's container-query sizing.
 
 // Standard footer wrapper. Give it a key identifying the CONTENT (e.g.
-// "start-interview", "import-progress") — changing the key makes the
-// `mode="popLayout"` AnimatePresence pop the old footer out of the layout
-// flow and crossfade it with the new one.
-//
-// The ref MUST be accepted and forwarded: popLayout needs the DOM node of a
-// custom-component child to pop it out of the flow. Without it, motion
-// silently leaves the exiting footer in the layout, the column only
-// reflows on unmount, and every footer transition plays as two turns
-// (fade, then glide).
-export function DeckCardFooter({
-  children,
-  ref,
-}: {
-  children: ReactNode;
-  ref?: Ref<HTMLDivElement>;
-}) {
-  return (
-    <motion.div
-      ref={ref}
-      layout="position"
-      className="flex flex-col"
-      initial={PRESENCE_INITIAL}
-      animate={PRESENCE_ENTER}
-      exit={PRESENCE_EXIT}
-      transition={REGION_TRANSITION}
-    >
-      {children}
-    </motion.div>
-  );
+// "start-interview", "import-progress") — DeckCard reads that key to drive
+// the footer presence group: key changes pop the old footer out of the
+// layout flow and delay the new footer's fade until the old one clears.
+// The animated element is DeckCard's own wrapper (a direct motion child of
+// the AnimatePresence, which popLayout requires); this component is just
+// the shared column layout.
+export function DeckCardFooter({ children }: { children: ReactNode }) {
+  return <div className="flex flex-col">{children}</div>;
 }
 
 export function DeckCardFooterButton({
