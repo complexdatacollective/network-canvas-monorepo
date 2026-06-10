@@ -123,7 +123,7 @@ export class InterviewFixture {
       await this.waitForMotionCommit();
 
       const hasScrollableContent = await this.page.evaluate(() => {
-        const modified: [HTMLElement, string][] = [];
+        const modified = new Map<HTMLElement, string>();
         const scrollers = Array.from(
           document.querySelectorAll<HTMLElement>('*'),
         ).filter((el) => {
@@ -136,7 +136,9 @@ export class InterviewFixture {
         for (const scroller of scrollers) {
           let el: HTMLElement | null = scroller;
           while (el) {
-            modified.push([el, el.style.cssText]);
+            if (!modified.has(el)) {
+              modified.set(el, el.style.cssText);
+            }
             el.style.height = 'auto';
             el.style.maxHeight = 'none';
             el.style.overflowY = 'visible';
