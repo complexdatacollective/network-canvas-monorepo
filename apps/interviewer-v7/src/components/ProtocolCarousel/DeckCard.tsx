@@ -4,7 +4,9 @@ import {
   isValidElement,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
+  useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react';
@@ -75,12 +77,46 @@ function withUnderscoreBreaks(name: string): ReactNode[] {
 // measurement loop, no reflow jitter, and the classes are static literals
 // so Tailwind's scanner emits them. Names are identifiers (machine-style
 // names often differ only at the END), so shrinking is preferred over
-// truncation; the line-clamp in the heading is only a backstop for
+// truncation; the fitted line clamp below is only a backstop for
 // pathological lengths.
 function headingSizeClass(name: string): string {
   if (name.length <= 24) return 'text-[8cqi]';
   if (name.length <= 48) return 'text-[6.5cqi]';
   return 'text-[5cqi]';
+}
+
+// Clamp the heading to however many whole lines fit its flexed region. The
+// region is the column's only flexible row (flex-1 + min-h-0), so this is
+// what guarantees a pathological name can never grow the column past the
+// card edge and evict the footer — and the whole-line count means the
+// backstop never clips text mid-line. A fixed line-clamp can't do this:
+// the budget depends on which siblings (controls row, description,
+// metadata, footer) are present.
+function useFittedHeadingClamp(name: string | undefined) {
+  const regionRef = useRef<HTMLDivElement | null>(null);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const [lines, setLines] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    const region = regionRef.current;
+    const heading = headingRef.current;
+    if (!region || !heading) return;
+    const measure = () => {
+      const lineHeight = parseFloat(getComputedStyle(heading).lineHeight);
+      if (!Number.isFinite(lineHeight) || lineHeight <= 0) return;
+      const fit = Math.max(1, Math.floor(region.clientHeight / lineHeight));
+      setLines((previous) => (previous === fit ? previous : fit));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    // The region resizes when siblings come and go; the heading resizes
+    // when a card-width change alters the computed line height.
+    observer.observe(region);
+    observer.observe(heading);
+    return () => observer.disconnect();
+  }, [name]);
+
+  return { regionRef, headingRef, lines };
 }
 
 // The subset of protocol fields the card renders. In the loading state any
@@ -182,6 +218,8 @@ export function DeckCard(props: DeckCardProps) {
   const showDescription =
     !hideDescription && Boolean(protocol.description ?? loading);
   const showMetadata = !hideMetadata;
+
+  const headingClamp = useFittedHeadingClamp(protocol.name);
 
   // The footer group's identity, taken from the consumer's key on the
   // footer element (e.g. "start-interview" → "new-session"). A change
@@ -291,16 +329,38 @@ export function DeckCard(props: DeckCardProps) {
                 </motion.div>
               )}
             </AnimatePresence>
-            <div className="flex flex-1 items-center justify-start">
+            {/* min-h-0 lets the heading region shrink to the column's real
+                leftover budget (a flex item's implicit min-height: auto
+                would otherwise force the column past the card edge and
+                evict the footer). The fitted clamp keeps the truncation on
+                whole-line boundaries. */}
+            <div
+              ref={headingClamp.regionRef}
+              className="flex min-h-0 flex-1 items-center justify-start overflow-hidden"
+            >
               {protocol.name ? (
                 <MotionHeading
+                  ref={headingClamp.headingRef}
                   level="h2"
                   title={protocol.name}
                   className={cx(
-                    'w-full text-left leading-[1.1] font-black wrap-break-word hyphens-auto',
-                    'line-clamp-6',
+                    'w-full text-left font-black wrap-break-word hyphens-auto',
                     headingSizeClass(protocol.name),
                   )}
+                  // line-height must be inline: leading-* utilities lose to
+                  // the Heading component's own typography classes, so a
+                  // class here silently has no effect.
+                  style={{
+                    lineHeight: 1.05,
+                    ...(headingClamp.lines === null
+                      ? undefined
+                      : {
+                          display: '-webkit-box',
+                          WebkitBoxOrient: 'vertical',
+                          WebkitLineClamp: headingClamp.lines,
+                          overflow: 'hidden',
+                        }),
+                  }}
                   margin="none"
                   layout="position"
                   transition={REGION_TRANSITION}

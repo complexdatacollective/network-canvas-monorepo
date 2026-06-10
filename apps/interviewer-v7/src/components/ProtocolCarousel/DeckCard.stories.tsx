@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
+import { expect, waitFor, within } from 'storybook/test';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolWithCounts } from '~/lib/db/types';
@@ -235,10 +236,30 @@ export const LongNaturalLanguageName: Story = {
   },
 };
 
+// Asserts the card's core layout guarantee: no matter how long the name,
+// the heading region absorbs the squeeze (fitted whole-line clamp) and the
+// footer button stays fully inside the card.
+async function expectFooterInsideCard(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  const button = await canvas.findByRole('button', {
+    name: 'Start new interview',
+  });
+  const card = button.closest('[aria-label]');
+  if (!card) throw new Error('card root not found');
+  await waitFor(() => {
+    const buttonRect = button.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    expect(buttonRect.bottom).toBeLessThanOrEqual(cardRect.bottom + 1);
+    expect(buttonRect.top).toBeGreaterThanOrEqual(cardRect.top);
+    expect(buttonRect.height).toBeGreaterThan(0);
+  });
+}
+
 /**
- * Pathological length: the smallest heading step plus the heading's
- * line-clamp backstop. The full name stays available via the heading's
- * `title` attribute and the card's aria-label.
+ * Pathological length: the smallest heading step plus the fitted line-clamp
+ * backstop — the heading takes only the lines that fit its region, so the
+ * footer is never pushed off the card. The full name stays available via
+ * the heading's `title` attribute and the card's aria-label.
  */
 export const ExtremelyLongName: Story = {
   args: {
@@ -247,6 +268,31 @@ export const ExtremelyLongName: Story = {
       'HEALTH_RESOURCE_ACCESS_AMONG_RECENT_MIGRANT_FAMILIES_PILOT_REVISION_' +
       'FINAL_V2_APPROVED_COPY_DO_NOT_EDIT',
     description: 'Somebody exported this from a shared drive.',
+  },
+  play: async ({ canvasElement }) => {
+    await expectFooterInsideCard(canvasElement);
+  },
+};
+
+/**
+ * Worst case both ways: pathological name AND a description long enough to
+ * hit its own clamp. The heading region is the column's only flexible row,
+ * so it absorbs the entire squeeze.
+ */
+export const ExtremelyLongNameAndDescription: Story = {
+  args: {
+    name:
+      'COHORT_2026_BASELINE_BRE_F03-KMP_FB_01_SOCIAL_SUPPORT_AND_COMMUNITY_' +
+      'HEALTH_RESOURCE_ACCESS_AMONG_RECENT_MIGRANT_FAMILIES_PILOT_REVISION_' +
+      'FINAL_V2_APPROVED_COPY_DO_NOT_EDIT',
+    description:
+      'A comprehensive multi-stage protocol covering household composition, ' +
+      'social support, health-service access, and community resource mapping ' +
+      'across three waves of data collection with consent, screening, and ' +
+      'debrief stages for each participating household member.',
+  },
+  play: async ({ canvasElement }) => {
+    await expectFooterInsideCard(canvasElement);
   },
 };
 
