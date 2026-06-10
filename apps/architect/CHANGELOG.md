@@ -1,16 +1,6 @@
----
-'network-canvas-interviewer': patch
----
+# network-canvas-architect
 
-# Network Canvas Interviewer 6.6.0
-
-This is a maintenance release of Network Canvas Interviewer. **We recommend that all existing
-users update.**
-
-There are no new features or changes to how the app works — everything behaves exactly as it
-did before.
-
-## What's changed
+## 6.6.0
 
 - **Updated core dependencies.** The technology the app is built on has been brought up to
   date, which improves stability and performance and lays the groundwork for future
