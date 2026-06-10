@@ -32,7 +32,11 @@ function Pill({
   intent?: 'default' | 'error' | 'success' | 'warning';
 }) {
   return (
-    <div
+    // layout="position": the pill glides (on the shared region clock) when
+    // the delete control entering/leaving changes its position in the row.
+    <motion.div
+      layout="position"
+      transition={REGION_TRANSITION}
       className={cx(
         'font-monospace flex items-center gap-2 rounded-full border px-[2cqi] py-[0.75cqi] text-[max(12px,2.5cqi)] uppercase',
         proportionalLucideIconVariants(),
@@ -47,7 +51,7 @@ function Pill({
     >
       {icon}
       {children}
-    </div>
+    </motion.div>
   );
 }
 
@@ -63,6 +67,20 @@ function withUnderscoreBreaks(name: string): ReactNode[] {
   return parts.flatMap((part, index) =>
     index < parts.length - 1 ? [`${part}_`, <wbr key={index} />] : [part],
   );
+}
+
+// Step the heading size down as names get longer so multi-line names stay
+// inside the heading's flex region instead of squeezing the description and
+// footer. Thresholds are pre-wrap character counts — crude, but stable: no
+// measurement loop, no reflow jitter, and the classes are static literals
+// so Tailwind's scanner emits them. Names are identifiers (machine-style
+// names often differ only at the END), so shrinking is preferred over
+// truncation; the line-clamp in the heading is only a backstop for
+// pathological lengths.
+function headingSizeClass(name: string): string {
+  if (name.length <= 24) return 'text-[8cqi]';
+  if (name.length <= 48) return 'text-[6.5cqi]';
+  return 'text-[5cqi]';
 }
 
 // The subset of protocol fields the card renders. In the loading state any
@@ -88,6 +106,10 @@ export type DeckCardProps = {
   // Omit the metadata row entirely (e.g. the sample-protocol preview, where
   // dates and session counts don't exist yet and skeletons would mislead).
   hideMetadata?: boolean;
+  // Remove the whole top controls row (requires-internet pill + delete
+  // control), surrendering its reserved height to the heading region —
+  // long names need that room while the case-ID form occupies the footer.
+  hideControls?: boolean;
   // Omit the description (e.g. while the new-session form occupies the
   // footer, so the card has room for it).
   hideDescription?: boolean;
@@ -138,6 +160,7 @@ export function DeckCard(props: DeckCardProps) {
     deleteLabel,
     hideMetadata = false,
     hideDescription = false,
+    hideControls = false,
     requiresInternetConnection = false,
     footer,
   } = props;
@@ -212,48 +235,72 @@ export function DeckCard(props: DeckCardProps) {
             key="content"
             className="relative z-10 flex size-full flex-col justify-between gap-6 p-[6cqi]"
           >
-            {/* min-h reserves the delete control's height, so the control
-                fading in or out never reflows the heading and content
-                below it — the fade is the whole animation. */}
-            <div className="flex min-h-[max(40px,10cqi)] items-center justify-end gap-4">
-              {requiresInternetConnection && (
-                <Pill icon={<Globe />} intent="warning">
-                  Requires Internet
-                </Pill>
-              )}
+            {/* The whole controls row (pill + delete) leaves while the
+                case-ID form is up — its reserved height goes to the
+                heading region, which long names need. popLayout frees the
+                space at exit start so the heading glides up concurrently
+                with the row's fade. */}
+            <AnimatePresence mode="popLayout" initial={false}>
+              {!hideControls && (
+                <motion.div
+                  key="controls"
+                  layout="position"
+                  initial={PRESENCE_INITIAL}
+                  animate={PRESENCE_ENTER}
+                  exit={PRESENCE_EXIT}
+                  transition={REGION_TRANSITION}
+                  // min-h reserves the delete control's height, so the
+                  // control fading in or out (e.g. a pending card becoming
+                  // deletable) never reflows the content below the row.
+                  className="flex min-h-[max(40px,10cqi)] items-center justify-end gap-4"
+                >
+                  {requiresInternetConnection && (
+                    <Pill icon={<Globe />} intent="warning">
+                      Requires Internet
+                    </Pill>
+                  )}
 
-              {/* Direct presence parent: gives the control real enter/exit
+                  {/* Direct presence parent: gives the control real enter/exit
                   animations and a fresh presence context, so the outer
-                  presence's initial={false} doesn't suppress later mounts. */}
-              <AnimatePresence mode="wait" initial={false}>
-                {onDelete && (
-                  <motion.div
-                    key="delete"
-                    initial={PRESENCE_INITIAL}
-                    animate={PRESENCE_ENTER}
-                    exit={PRESENCE_EXIT}
-                    transition={REGION_TRANSITION}
-                  >
-                    <IconButton
-                      icon={<Trash2 />}
-                      aria-label={deleteLabel ?? 'Delete Protocol'}
-                      variant="outline"
-                      color="dynamic"
-                      className="bg-rich-black/60 text-platinum size-[max(40px,10cqi)] border text-[max(16px,4cqi)]"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onDelete();
-                      }}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                  presence's initial={false} doesn't suppress later mounts.
+                  popLayout frees the control's row space at exit START so
+                  the pill glides concurrently with the fade. */}
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    {onDelete && (
+                      <motion.div
+                        key="delete"
+                        initial={PRESENCE_INITIAL}
+                        animate={PRESENCE_ENTER}
+                        exit={PRESENCE_EXIT}
+                        transition={REGION_TRANSITION}
+                      >
+                        <IconButton
+                          icon={<Trash2 />}
+                          aria-label={deleteLabel ?? 'Delete Protocol'}
+                          variant="outline"
+                          color="dynamic"
+                          className="bg-rich-black/60 text-platinum size-[max(40px,10cqi)] border text-[max(16px,4cqi)]"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onDelete();
+                          }}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
             <div className="flex flex-1 items-center justify-start">
               {protocol.name ? (
                 <MotionHeading
                   level="h2"
-                  className="w-full text-left text-[8cqi] leading-[1.1] font-black wrap-break-word hyphens-auto"
+                  title={protocol.name}
+                  className={cx(
+                    'w-full text-left leading-[1.1] font-black wrap-break-word hyphens-auto',
+                    'line-clamp-6',
+                    headingSizeClass(protocol.name),
+                  )}
                   margin="none"
                   layout="position"
                   transition={REGION_TRANSITION}

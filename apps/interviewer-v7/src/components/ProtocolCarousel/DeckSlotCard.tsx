@@ -61,16 +61,14 @@ function slotCardProps({
       sessionCount,
       requiresInternetConnection: protocolRequiresInternet(entry.protocol),
       onActivate: activate,
-      // While the case-ID form is open it takes over the card: description
-      // and metadata animate out (their exits run alongside the footer
-      // swap) so the form has room.
+      // While the case-ID form is open it takes over the card: the
+      // controls row, description, and metadata animate out (their exits
+      // run alongside the footer swap) so the form — and a long heading —
+      // have room.
       hideDescription: newSession !== undefined,
       hideMetadata: newSession !== undefined,
-      // The delete control clears out with the rest of the card chrome
-      // while the case-ID form is open.
-      onDelete: newSession
-        ? undefined
-        : () => onDeleteProtocol(entry.protocol.hash),
+      hideControls: newSession !== undefined,
+      onDelete: () => onDeleteProtocol(entry.protocol.hash),
       footer: newSession ? (
         <DeckCardFooter key="new-session">
           <NewSessionForm

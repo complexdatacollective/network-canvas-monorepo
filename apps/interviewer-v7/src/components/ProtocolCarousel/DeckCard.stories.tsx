@@ -13,12 +13,13 @@ import {
 } from './DeckCard';
 
 // DeckCard is "the protocol card" — the card the user sees for each imported
-// protocol in the deck. Its entire internal layout (heading size, meta row,
-// description line-clamp, Start/Delete button row) is driven by `@container`
-// queries against the card's OWN width, so these stories deliberately size the
-// card via a resizable frame rather than the viewport. Drag the bottom-right
-// corner of the frame (or use the BreakpointMatrix story) to exercise every
-// container breakpoint.
+// protocol in the deck. The deck renders cards at a 1/1 aspect ratio
+// (ProtocolDeck's CARD_ASPECT), so these stories default to square frames
+// sized by a single `size` control. The card's internal layout (heading
+// size, meta row, description line-clamp, Start/Delete button row) is
+// driven by `@container` queries against the card's OWN width; the frame
+// stays hand-resizable (drag the bottom-right corner) for exploring
+// non-square edge cases and every container breakpoint.
 
 // A minimal but type-correct protocol. DeckCard only reads `name`, `hash`,
 // `description`, and `importedAt`, but `ProtocolWithCounts` requires the full
@@ -60,20 +61,19 @@ function makeProtocol({
 
 // Resizable frame so the card's container queries can be exercised by dragging
 // the native bottom-right resize handle. The card is `h-full w-full`, so the
-// frame's content box is exactly the card's container width.
+// frame's content box is exactly the card's container width. Initial size is
+// square to match the deck's 1/1 card aspect.
 function ResizableFrame({
-  width = 360,
-  height = 520,
+  size = 480,
   children,
 }: {
-  width?: number;
-  height?: number;
+  size?: number;
   children: ReactNode;
 }) {
   return (
     <div
       className="ring-outline/40 resize overflow-hidden ring-2"
-      style={{ width, height, minWidth: 140, minHeight: 220 }}
+      style={{ width: size, height: size, minWidth: 140, minHeight: 140 }}
     >
       {children}
     </div>
@@ -87,8 +87,11 @@ type StoryArgs = {
   isActive: boolean;
   sessionCount: number;
   requiresInternetConnection: boolean;
-  width: number;
-  height: number;
+  // Toggle the delete control to watch the requires-internet pill glide to
+  // its new position in the top row.
+  showDelete: boolean;
+  // Square frame edge — the deck renders cards at a 1/1 aspect ratio.
+  size: number;
   // Loading-state stories only: import progress fraction + status message.
   progress?: number;
   progressMessage?: string;
@@ -115,8 +118,8 @@ const meta: Meta<StoryArgs> = {
     isActive: true,
     sessionCount: 3,
     requiresInternetConnection: false,
-    width: 360,
-    height: 520,
+    showDelete: true,
+    size: 480,
   },
   argTypes: {
     name: { control: 'text', description: 'Protocol name (heading + seed)' },
@@ -136,8 +139,13 @@ const meta: Meta<StoryArgs> = {
         'Derived in ProtocolDeck from the protocol stages (true when a ' +
         'Geospatial stage is present); toggles the offline/online pill.',
     },
-    width: { control: { type: 'range', min: 140, max: 720, step: 4 } },
-    height: { control: { type: 'range', min: 220, max: 720, step: 4 } },
+    showDelete: {
+      control: 'boolean',
+      description:
+        'Toggling exercises the top-row choreography: the requires-internet ' +
+        'pill glides to its new position as the delete control comes and goes',
+    },
+    size: { control: { type: 'range', min: 140, max: 720, step: 4 } },
   },
   render: ({
     name,
@@ -145,16 +153,18 @@ const meta: Meta<StoryArgs> = {
     importedAt,
     isActive,
     sessionCount,
-    width,
-    height,
+    requiresInternetConnection,
+    showDelete,
+    size,
   }) => (
-    <ResizableFrame width={width} height={height}>
+    <ResizableFrame size={size}>
       <DeckCard
         protocol={makeProtocol({ name, description, importedAt })}
         isActive={isActive}
         sessionCount={sessionCount}
+        requiresInternetConnection={requiresInternetConnection}
         onActivate={() => {}}
-        onDelete={() => {}}
+        onDelete={showDelete ? () => {} : undefined}
         footer={
           isActive ? (
             <DeckCardFooter key="start-interview">
@@ -206,14 +216,99 @@ export const LongDescription: Story = {
 };
 
 /**
+ * Long names step the heading size down (8cqi → 6.5cqi → 5cqi by character
+ * count) so multi-line names stay inside the heading region instead of
+ * squeezing the description and footer. Machine-style names wrap at
+ * underscores (injected `<wbr>`) and hyphens.
+ */
+export const LongMachineName: Story = {
+  args: {
+    name: 'BRE_F03-KMP_FB_01_BASELINE_COHORT_2026_VARIANT_A',
+    description: 'Wave one baseline collection for the FB cohort.',
+  },
+};
+
+export const LongNaturalLanguageName: Story = {
+  args: {
+    name: 'Longitudinal Study of Social Support and Health Resource Access Among Recent Migrant Families',
+    description: 'A study with a title that reads like its own abstract.',
+  },
+};
+
+/**
+ * Pathological length: the smallest heading step plus the heading's
+ * line-clamp backstop. The full name stays available via the heading's
+ * `title` attribute and the card's aria-label.
+ */
+export const ExtremelyLongName: Story = {
+  args: {
+    name:
+      'COHORT_2026_BASELINE_BRE_F03-KMP_FB_01_SOCIAL_SUPPORT_AND_COMMUNITY_' +
+      'HEALTH_RESOURCE_ACCESS_AMONG_RECENT_MIGRANT_FAMILIES_PILOT_REVISION_' +
+      'FINAL_V2_APPROVED_COPY_DO_NOT_EDIT',
+    description: 'Somebody exported this from a shared drive.',
+  },
+};
+
+/**
+ * The requires-internet pill shares the top row with the delete control.
+ * Toggle `showDelete` in the controls panel: the pill glides to its new
+ * position (shared region timing) while the control fades.
+ */
+export const RequiresInternetPill: Story = {
+  args: {
+    requiresInternetConnection: true,
+  },
+};
+
+/**
+ * The layout the case-ID form needs: the controls row, description, and
+ * metadata all clear out (hideControls/hideDescription/hideMetadata), so a
+ * long heading and the form share the card. The footer here is a stand-in
+ * for NewSessionForm, which needs app providers the story can't host.
+ */
+export const CaseIdFormLayout: Story = {
+  args: {
+    name: 'Longitudinal Study of Social Support and Health Resource Access Among Recent Migrant Families',
+  },
+  render: ({ name, size }) => (
+    <ResizableFrame size={size}>
+      <DeckCard
+        protocol={makeProtocol({ name })}
+        isActive
+        sessionCount={0}
+        onActivate={() => {}}
+        onDelete={() => {}}
+        hideControls
+        hideDescription
+        hideMetadata
+        footer={
+          <DeckCardFooter key="new-session">
+            <div className="flex flex-col gap-[2.5cqi] text-[3.5cqi]">
+              <span>
+                Before the interview begins, enter a case ID. This stand-in
+                occupies the space the real case-ID form would.
+              </span>
+              <div className="border-navy-taupe/40 rounded border px-[2.5cqi] py-[2cqi]">
+                Case ID
+              </div>
+            </div>
+          </DeckCardFooter>
+        }
+      />
+    </ResizableFrame>
+  ),
+};
+
+/**
  * The loading/installing state with no information yet: empty Pattern seed
  * (plain platinum-dark surface), skeleton heading, description, and all
  * three metadata cells, and an indeterminate progress bar in place of the
  * Start button.
  */
 export const Loading: Story = {
-  render: ({ width, height }) => (
-    <ResizableFrame width={width} height={height}>
+  render: ({ size }) => (
+    <ResizableFrame size={size}>
       <DeckCard
         loading
         protocol={{}}
@@ -239,8 +334,8 @@ export const LoadingPartial: Story = {
     progress: 0.45,
     progressMessage: 'Extracting…',
   },
-  render: ({ name, description, progress, progressMessage, width, height }) => (
-    <ResizableFrame width={width} height={height}>
+  render: ({ name, description, progress, progressMessage, size }) => (
+    <ResizableFrame size={size}>
       <DeckCard
         loading
         protocol={{ name, description }}
@@ -257,9 +352,9 @@ export const LoadingPartial: Story = {
   ),
 };
 
-// A fixed matrix of card widths so every container tier is visible at once —
-// the quickest way to eyeball responsiveness without dragging. Heights are
-// generous so the description and (when active) the button row have room.
+// A fixed matrix of card sizes so every container tier is visible at once —
+// the quickest way to eyeball responsiveness without dragging. Tiles are
+// square, matching the deck's 1/1 card aspect.
 const MATRIX_WIDTHS = [180, 240, 300, 360, 480] as const;
 
 export const BreakpointMatrix: Story = {
@@ -271,7 +366,7 @@ export const BreakpointMatrix: Story = {
           <span className="font-monospace text-text/70 text-xs">{w}px</span>
           <div
             className="overflow-hidden rounded-[28px]"
-            style={{ width: w, height: 480 }}
+            style={{ width: w, height: w }}
           >
             <DeckCard
               protocol={makeProtocol({
@@ -311,8 +406,8 @@ export const BreakpointMatrix: Story = {
  * props.
  */
 export const SampleProtocol: Story = {
-  render: ({ width, height }) => (
-    <ResizableFrame width={width} height={height}>
+  render: ({ size }) => (
+    <ResizableFrame size={size}>
       <DeckCard
         loading
         protocol={{
