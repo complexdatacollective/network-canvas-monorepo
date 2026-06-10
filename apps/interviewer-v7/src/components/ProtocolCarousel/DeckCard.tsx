@@ -4,6 +4,7 @@ import {
   useId,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
+  type Ref,
 } from 'react';
 import { Link } from 'wouter';
 
@@ -241,7 +242,11 @@ export function DeckCard(props: DeckCardProps) {
               )}
             </div>
 
-            <AnimatePresence initial={false}>
+            {/* popLayout: an exiting description/metadata row is popped out
+                of the layout flow at exit START, so the column (and an
+                entering footer, e.g. the case-ID form) reflows concurrently
+                with the fade instead of waiting for the unmount. */}
+            <AnimatePresence mode="popLayout" initial={false}>
               {showDescription && (
                 // Description shows up to six lines, then trails off.
                 // line-clamp must be a static utility class so Tailwind's
@@ -361,9 +366,22 @@ export function DeckCard(props: DeckCardProps) {
 // "start-interview", "import-progress") — changing the key makes the
 // `mode="popLayout"` AnimatePresence pop the old footer out of the layout
 // flow and crossfade it with the new one.
-export function DeckCardFooter({ children }: { children: ReactNode }) {
+//
+// The ref MUST be accepted and forwarded: popLayout needs the DOM node of a
+// custom-component child to pop it out of the flow. Without it, motion
+// silently leaves the exiting footer in the layout, the column only
+// reflows on unmount, and every footer transition plays as two turns
+// (fade, then glide).
+export function DeckCardFooter({
+  children,
+  ref,
+}: {
+  children: ReactNode;
+  ref?: Ref<HTMLDivElement>;
+}) {
   return (
     <motion.div
+      ref={ref}
       layout="position"
       className="flex flex-col"
       initial={PRESENCE_INITIAL}
