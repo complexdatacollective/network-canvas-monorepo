@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useCallback, useRef, useState } from 'react';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolWithCounts } from '~/lib/db/types';
@@ -121,4 +122,106 @@ type Story = StoryObj<typeof meta>;
 
 export const Playground: Story = {
   render: () => <DeckHarness />,
+};
+
+// Chevrons and dots are plain buttons driving the controlled activeIndex.
+export const ChevronAndDotNavigation: Story = {
+  render: () => <DeckHarness />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dots = await canvas.findAllByLabelText(/Go to card/);
+    await expect(dots).toHaveLength(4);
+    await expect(dots[0]).toHaveAttribute('aria-current', 'true');
+
+    await userEvent.click(canvas.getByLabelText('Next protocol'));
+    await waitFor(() =>
+      expect(dots[1]).toHaveAttribute('aria-current', 'true'),
+    );
+
+    await userEvent.click(canvas.getByLabelText('Go to card 4'));
+    await waitFor(() =>
+      expect(dots[3]).toHaveAttribute('aria-current', 'true'),
+    );
+    await expect(canvas.getByLabelText('Next protocol')).toBeDisabled();
+
+    await userEvent.click(canvas.getByLabelText('Previous protocol'));
+    await waitFor(() =>
+      expect(dots[2]).toHaveAttribute('aria-current', 'true'),
+    );
+  },
+};
+
+// Window-level arrows step the deck; Enter activates the active card (the
+// import card's primary action adds a protocol in this harness).
+export const KeyboardNavigation: Story = {
+  render: () => <DeckHarness />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dots = await canvas.findAllByLabelText(/Go to card/);
+    await expect(dots).toHaveLength(4);
+
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
+    await waitFor(() =>
+      expect(dots[3]).toHaveAttribute('aria-current', 'true'),
+    );
+
+    await userEvent.keyboard('{Enter}');
+    await waitFor(async () => {
+      const updated = await canvas.findAllByLabelText(/Go to card/);
+      expect(updated).toHaveLength(5);
+    });
+
+    await userEvent.keyboard('{ArrowLeft}');
+    await waitFor(async () => {
+      const updated = await canvas.findAllByLabelText(/Go to card/);
+      // After insertion the import card is index 4; ArrowLeft moves to 3.
+      expect(updated[3]).toHaveAttribute('aria-current', 'true');
+    });
+  },
+};
+
+// Tapping a non-active card navigates to it instead of activating it.
+export const ClickToNavigate: Story = {
+  render: () => <DeckHarness />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dots = await canvas.findAllByLabelText(/Go to card/);
+    await expect(dots[0]).toHaveAttribute('aria-current', 'true');
+
+    // The carousel mounts only after the ResizeObserver delivers a height,
+    // so wait for the card rather than querying synchronously.
+    await userEvent.click(await canvas.findByText('Social Support Networks'));
+    await waitFor(() =>
+      expect(dots[2]).toHaveAttribute('aria-current', 'true'),
+    );
+  },
+};
+
+// Removal: the card exits in place and neighbours close the gap; the
+// active slot follows the clamp (right neighbour inherits the index).
+export const DeleteActiveProtocol: Story = {
+  render: () => <DeckHarness />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dots = await canvas.findAllByLabelText(/Go to card/);
+    await expect(dots).toHaveLength(4);
+
+    // The active card is Friendship Ties; its delete button is the first.
+    // find* waits for the carousel to mount once the ResizeObserver delivers
+    // a section height.
+    const deleteButton = (
+      await canvas.findAllByLabelText('Delete Protocol')
+    )[0];
+    if (!deleteButton) throw new Error('Delete Protocol button not found');
+    await userEvent.click(deleteButton);
+
+    await waitFor(
+      async () => {
+        const updated = await canvas.findAllByLabelText(/Go to card/);
+        expect(updated).toHaveLength(3);
+        expect(updated[0]).toHaveAttribute('aria-current', 'true');
+      },
+      { timeout: 3000 },
+    );
+  },
 };
