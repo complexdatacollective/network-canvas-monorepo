@@ -29,8 +29,7 @@ function Pill({
   intent?: 'default' | 'error' | 'success' | 'warning';
 }) {
   return (
-    <motion.div
-      layout
+    <div
       className={cx(
         'font-monospace flex items-center gap-2 rounded-full border px-[2cqi] py-[0.75cqi] text-[max(12px,2.5cqi)] uppercase',
         proportionalLucideIconVariants(),
@@ -45,7 +44,7 @@ function Pill({
     >
       {icon}
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -110,15 +109,19 @@ export type DeckCardProps = {
 const MotionHeading = motion.create(Heading);
 
 // Presence poses shared by the card's swappable regions (delete control,
-// description, metadata, and the divider+footer group). The footer group is
-// the single keyed child of an `AnimatePresence mode="wait"`, so motion
-// itself sequences footer swaps — the old footer fully animates out before
-// the new one (e.g. the case-ID form) animates in, with description and
-// metadata exits running alongside the first phase. No transition delays
-// anywhere.
+// description, metadata, divider, and footer). Footer swaps use
+// `mode="popLayout"`, so an outgoing footer is popped out of the layout
+// flow and crossfades with the incoming one — exits and enters run
+// concurrently, never in sequence.
 const PRESENCE_INITIAL = { opacity: 0, y: 10 };
 const PRESENCE_ENTER = { opacity: 1, y: 0 };
 const PRESENCE_EXIT = { opacity: 0 };
+
+// One timing for every swappable region — poses AND layout glides. When a
+// state change touches several regions at once (activation, the case-ID
+// form, install progress), identical timing makes them read as a single
+// coordinated reflow instead of animations taking turns.
+const REGION_TRANSITION = { duration: 0.3, ease: 'easeOut' } as const;
 
 export function DeckCard(props: DeckCardProps) {
   const {
@@ -202,6 +205,7 @@ export function DeckCard(props: DeckCardProps) {
                     initial={PRESENCE_INITIAL}
                     animate={PRESENCE_ENTER}
                     exit={PRESENCE_EXIT}
+                    transition={REGION_TRANSITION}
                   >
                     <IconButton
                       icon={<Trash2 />}
@@ -225,6 +229,7 @@ export function DeckCard(props: DeckCardProps) {
                   className="w-full text-left text-[8cqi] leading-[1.1] font-black wrap-break-word hyphens-auto"
                   margin="none"
                   layout="position"
+                  transition={REGION_TRANSITION}
                 >
                   {withUnderscoreBreaks(protocol.name)}
                 </MotionHeading>
@@ -258,6 +263,7 @@ export function DeckCard(props: DeckCardProps) {
                   initial={PRESENCE_INITIAL}
                   animate={PRESENCE_ENTER}
                   exit={PRESENCE_EXIT}
+                  transition={REGION_TRANSITION}
                   className="shrink-0 text-left"
                 >
                   {protocol.description ? (
@@ -274,23 +280,20 @@ export function DeckCard(props: DeckCardProps) {
                 </motion.div>
               )}
               {showMetadata && (
-                // The enter pose waits a beat: a row mounting mid layout-shift
-                // (sample → installing adds it below the description) renders
-                // at its final rect while its siblings are still gliding to
-                // theirs, which reads as the row appearing ABOVE the
-                // description. Delaying only the enter (pose-embedded, so
-                // layout glides and the exit stay immediate) lets the column
-                // settle first, then fades the row in where it belongs.
+                // A row mounting mid layout-shift (sample → installing adds
+                // it below the description) must move on the same clock as
+                // its gliding siblings — REGION_TRANSITION everywhere —
+                // otherwise it pops in at its final rect while the
+                // description is still rising, reading as the row appearing
+                // ABOVE it.
                 <motion.div
                   key="metadata"
                   layout="position"
                   data-testid="deck-card-metadata"
                   initial={PRESENCE_INITIAL}
-                  animate={{
-                    ...PRESENCE_ENTER,
-                    transition: { delay: 0.25 },
-                  }}
+                  animate={PRESENCE_ENTER}
                   exit={PRESENCE_EXIT}
+                  transition={REGION_TRANSITION}
                   className="font-monospace flex items-center justify-between gap-4 text-[2.5cqi]"
                 >
                   {protocol.importedAt ? (
@@ -329,10 +332,19 @@ export function DeckCard(props: DeckCardProps) {
                 </motion.div>
               )}
             </AnimatePresence>
-            <hr className="my-0" />
-            {/* mode="wait" sequences footer swaps: the old footer fully
-                exits before the new one enters. */}
-            <AnimatePresence mode="popLayout" initial={false}>
+
+            <AnimatePresence mode="popLayout">
+              {isActive && footer != null && (
+                <motion.hr
+                  key="break"
+                  layout="position"
+                  initial={PRESENCE_INITIAL}
+                  animate={PRESENCE_ENTER}
+                  exit={PRESENCE_EXIT}
+                  transition={REGION_TRANSITION}
+                  className="my-0"
+                />
+              )}
               {isActive && footer != null && footer}
             </AnimatePresence>
           </div>
@@ -346,12 +358,19 @@ export function DeckCard(props: DeckCardProps) {
 // shares the card's container-query sizing.
 
 // Standard footer wrapper. Give it a key identifying the CONTENT (e.g.
-// "start-interview", "import-progress") — the key identifies the card's
-// footer group, so changing it makes the `mode="wait"` AnimatePresence
-// animate the old footer out before the new one enters.
+// "start-interview", "import-progress") — changing the key makes the
+// `mode="popLayout"` AnimatePresence pop the old footer out of the layout
+// flow and crossfade it with the new one.
 export function DeckCardFooter({ children }: { children: ReactNode }) {
   return (
-    <motion.div layout className="flex flex-col">
+    <motion.div
+      layout="position"
+      className="flex flex-col"
+      initial={PRESENCE_INITIAL}
+      animate={PRESENCE_ENTER}
+      exit={PRESENCE_EXIT}
+      transition={REGION_TRANSITION}
+    >
       {children}
     </motion.div>
   );
