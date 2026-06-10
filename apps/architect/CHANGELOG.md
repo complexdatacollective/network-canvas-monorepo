@@ -1,6 +1,6 @@
 # network-canvas-architect
 
-## 6.6.1
+## 6.6.0
 
 ### Patch Changes
 

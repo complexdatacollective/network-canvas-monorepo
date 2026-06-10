@@ -1,6 +1,6 @@
 # @codaco/architect-web
 
-## 7.6.1
+## 7.0.0-beta.1
 
 ### Patch Changes
 
