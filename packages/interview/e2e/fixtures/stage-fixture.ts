@@ -918,6 +918,88 @@ class GeospatialFixture {
   }
 
   /**
+   * Intercept the Mapbox Search Box API with deterministic fixtures.
+   *
+   * The live API is nondeterministic: results vary by region/session, and
+   * a failed retrieve is silently swallowed by the app (the fly-to simply
+   * never happens), so a test that exercises search gets a different final
+   * map view depending on network conditions. Install this before typing
+   * a query. Stub-mode browsers never call these endpoints, so the routes
+   * are inert there.
+   *
+   * The retrieve fixture targets Sidetrack (Lakeview, Chicago), which
+   * differs from the silos protocol's initial center/zoom so the fly-to
+   * always moves the camera.
+   */
+  async mockSearchApi(): Promise<void> {
+    const corsHeaders = { 'access-control-allow-origin': '*' };
+    await this.page.route(
+      /https:\/\/api\.mapbox\.com\/search\/searchbox\/v1\/suggest/,
+      (route) =>
+        route.fulfill({
+          headers: corsHeaders,
+          json: {
+            suggestions: [
+              {
+                name: 'Sidetrack',
+                mapbox_id: 'e2e-mock-sidetrack',
+                feature_type: 'poi',
+                place_formatted: 'Chicago, Illinois, United States',
+                language: 'en',
+                maki: 'marker',
+              },
+            ],
+            attribution: 'e2e mock',
+            response_id: 'e2e-mock-response',
+          },
+        }),
+    );
+    await this.page.route(
+      /https:\/\/api\.mapbox\.com\/search\/searchbox\/v1\/retrieve\//,
+      (route) =>
+        route.fulfill({
+          headers: corsHeaders,
+          json: {
+            type: 'FeatureCollection',
+            features: [
+              {
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: [-87.6497, 41.9399] },
+                properties: {
+                  name: 'Sidetrack',
+                  mapbox_id: 'e2e-mock-sidetrack',
+                  feature_type: 'poi',
+                },
+              },
+            ],
+            attribution: 'e2e mock',
+          },
+        }),
+    );
+  }
+
+  /**
+   * Wait for the fly-to triggered by selecting a search suggestion to
+   * start and finish.
+   *
+   * The selection handler awaits a network retrieve() before calling
+   * map.flyTo, so the camera move begins well after the click returns
+   * and data-map-idle still reads "true" from before the click —
+   * calling waitForMapIdle() alone races and returns early. Observe the
+   * move actually starting (idle flips false) before waiting for idle.
+   * No-op in stub mode, where suggestion clicks don't move a map.
+   */
+  async waitForSearchFlyTo(): Promise<void> {
+    const isStub =
+      (await this.mapContainer.getAttribute('data-geospatial-stub')) === 'true';
+    if (isStub) return;
+    await expect(this.mapContainer).toHaveAttribute('data-map-idle', 'false', {
+      timeout: 10000,
+    });
+    await this.waitForMapIdle();
+  }
+
+  /**
    * Search for a location by typing in the search input.
    * Waits for suggestions to appear after typing.
    * @param query - The search query to type
@@ -944,7 +1026,7 @@ class GeospatialFixture {
     const suggestion = this.page.getByRole('option', { name: text });
     await expect(suggestion).toBeVisible();
     await suggestion.click();
-    await this.waitForMapIdle();
+    await this.waitForSearchFlyTo();
   }
 
   /**

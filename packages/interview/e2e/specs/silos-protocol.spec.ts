@@ -314,6 +314,10 @@ test.describe('SILOS Protocol', () => {
       await expect(stage.geospatial.searchInput).toBeVisible();
 
       // --- Test actual search functionality ---
+      // Deterministic suggest/retrieve fixtures: the live API varies by
+      // region and a failed retrieve silently skips the fly-to, which made
+      // the rest of this test (and its snapshots) timing-dependent.
+      await stage.geospatial.mockSearchApi();
       await stage.geospatial.searchInput.fill('Sidetrack');
 
       // Wait for suggestions to appear
@@ -325,16 +329,20 @@ test.describe('SILOS Protocol', () => {
       const suggestionCount = await stage.geospatial.getSuggestions().count();
       expect(suggestionCount).toBeGreaterThan(0);
 
-      // Select the first suggestion - this should pan the map
+      // Select the first suggestion - this pans the map to the result.
+      // Wait for that fly-to to start and settle before touching any other
+      // control: clicking buttons while the camera animates starves
+      // chromium's pre-click actionability checks past the action timeout.
       await stage.geospatial.getSuggestions().first().click();
+      await stage.geospatial.waitForSearchFlyTo();
+
+      // Return to the initial view so the remaining interactions and the
+      // final snapshot are independent of the search result's location.
+      await stage.geospatial.recenter();
 
       // Clear search and close panel
       await stage.geospatial.closeSearch();
       expect(await stage.geospatial.isSearchOpen()).toBe(false);
-
-      // Wait for the map to settle after the search-triggered zoom/pan
-      // so tile labels are fully rendered before any screenshot.
-      await stage.geospatial.waitForMapIdle();
 
       // --- Test map selection by clicking on a selectable area ---
       // The silos protocol uses Chicago neighborhoods - click near center of map
