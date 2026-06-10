@@ -98,7 +98,7 @@
     "@vitest/browser-playwright": "catalog:",
     "chromatic": "catalog:",
     "electron": "catalog:",
-    "electron-builder": "^26.8.1",
+    "electron-builder": "catalog:",
     "electron-vite": "catalog:",
     "jsdom": "catalog:",
     "playwright": "catalog:",

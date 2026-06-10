@@ -1,5 +1,9 @@
 # @codaco/tailwind-config
 
+## 1.0.0
+
+First stable release of `@codaco/tailwind-config`, the shared Tailwind configuration and design tokens for Network Canvas. This promotes the `1.0.0-alpha` development series to a stable `1.0.0` with no further functional changes; see the `1.0.0-alpha.*` entries below for the detailed history.
+
 ## 1.0.0-alpha.18
 
 ### Prerelease Changes

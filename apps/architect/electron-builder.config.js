@@ -85,7 +85,10 @@ module.exports = {
         arch: ['x64', 'arm64'],
       },
     ],
-    notarize: false,
+    // Notarize via electron-builder's built-in notarytool when App Store Connect
+    // API credentials are present (APPLE_API_KEY/APPLE_API_KEY_ID/APPLE_API_ISSUER).
+    // Evaluates to false on local/unsigned builds, which skips notarization.
+    notarize: Boolean(process.env.APPLE_API_KEY),
   },
 
   // DMG configuration
@@ -105,9 +108,6 @@ module.exports = {
     sign: false,
   },
 
-  // After sign hook for notarization
-  afterSign: 'build-resources/scripts/afterSignHook.js',
-
   // Windows configuration
   win: {
     icon: 'build-resources/icon.ico',
@@ -117,7 +117,7 @@ module.exports = {
         arch: ['x64'],
       },
     ],
-    certificateSubjectName: 'Complex Data Collective',
+    // Windows builds ship unsigned (no code-signing certificate configured).
   },
 
   // NSIS installer configuration

@@ -2,6 +2,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 
 type CaptureOptions = {
   mask?: Locator[];
+  fullPage?: boolean;
 };
 
 type CaptureInterviewFn = (
@@ -104,26 +105,63 @@ export class InterviewFixture {
     await this.capture(`${prefix}stage-${stageIndex}`);
   }
 
+  /**
+   * Capture the stage's end state, rendering the full content of any
+   * inner scroll container regardless of length.
+   *
+   * The app shell is viewport-sized and scrolls inside nested elements,
+   * so a plain fullPage screenshot would still only show one viewport.
+   * Instead, every scrollable element (and its ancestors, whose
+   * height/overflow constraints would otherwise clip it) is temporarily
+   * expanded so the document itself grows, the screenshot is taken with
+   * fullPage, and the inline styles are restored before the test
+   * proceeds.
+   */
   async captureFinal(): Promise<void> {
     const step = this.getCurrentStep();
     if (step) {
-      await this.page.evaluate(() => {
-        const all = Array.from(document.querySelectorAll<HTMLElement>('*'));
-        const scrollables = all.filter((el) => {
-          const style = getComputedStyle(el);
-          const overflowY = style.overflowY;
-          const canScroll = overflowY === 'auto' || overflowY === 'scroll';
-          return canScroll && el.scrollHeight > el.clientHeight;
-        });
-        scrollables.forEach((el) => {
-          el.scrollTop = el.scrollHeight;
-        });
-        window.scrollTo(0, document.documentElement.scrollHeight);
-      });
       await this.waitForMotionCommit();
 
+      const hasScrollableContent = await this.page.evaluate(() => {
+        const modified = new Map<HTMLElement, string>();
+        const scrollers = Array.from(
+          document.querySelectorAll<HTMLElement>('*'),
+        ).filter((el) => {
+          const overflowY = getComputedStyle(el).overflowY;
+          return (
+            (overflowY === 'auto' || overflowY === 'scroll') &&
+            el.scrollHeight > el.clientHeight
+          );
+        });
+        for (const scroller of scrollers) {
+          let el: HTMLElement | null = scroller;
+          while (el) {
+            if (!modified.has(el)) {
+              modified.set(el, el.style.cssText);
+            }
+            el.style.height = 'auto';
+            el.style.maxHeight = 'none';
+            el.style.overflowY = 'visible';
+            el = el.parentElement;
+          }
+        }
+        window.__restoreExpandedScrollers = () => {
+          for (const [el, cssText] of modified) {
+            el.style.cssText = cssText;
+          }
+          delete window.__restoreExpandedScrollers;
+        };
+        return scrollers.length > 0;
+      });
+
       const prefix = this.snapshotPrefix ? `${this.snapshotPrefix}-` : '';
-      await this.capture(`${prefix}stage-${step}-final`);
+      await this.capture(`${prefix}stage-${step}-final`, {
+        fullPage: hasScrollableContent,
+      });
+
+      await this.page.evaluate(() => {
+        window.__restoreExpandedScrollers?.();
+      });
     }
   }
 

@@ -918,6 +918,27 @@ class GeospatialFixture {
   }
 
   /**
+   * Wait for the fly-to triggered by selecting a search suggestion to
+   * start and finish.
+   *
+   * The selection handler awaits a network retrieve() before calling
+   * map.flyTo, so the camera move begins well after the click returns
+   * and data-map-idle still reads "true" from before the click —
+   * calling waitForMapIdle() alone races and returns early. Observe the
+   * move actually starting (idle flips false) before waiting for idle.
+   * No-op in stub mode, where suggestion clicks don't move a map.
+   */
+  async waitForSearchFlyTo(): Promise<void> {
+    const isStub =
+      (await this.mapContainer.getAttribute('data-geospatial-stub')) === 'true';
+    if (isStub) return;
+    await expect(this.mapContainer).toHaveAttribute('data-map-idle', 'false', {
+      timeout: 10000,
+    });
+    await this.waitForMapIdle();
+  }
+
+  /**
    * Search for a location by typing in the search input.
    * Waits for suggestions to appear after typing.
    * @param query - The search query to type
@@ -944,7 +965,7 @@ class GeospatialFixture {
     const suggestion = this.page.getByRole('option', { name: text });
     await expect(suggestion).toBeVisible();
     await suggestion.click();
-    await this.waitForMapIdle();
+    await this.waitForSearchFlyTo();
   }
 
   /**

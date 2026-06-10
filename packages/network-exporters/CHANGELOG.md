@@ -1,5 +1,11 @@
 # @codaco/network-exporters
 
+## 1.0.3
+
+### Patch Changes
+
+- Dependency bump: `fflate` (→ ^0.8.3).
+
 ## 1.0.2
 
 ### Patch Changes
