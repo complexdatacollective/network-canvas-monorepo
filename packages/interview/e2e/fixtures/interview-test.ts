@@ -36,6 +36,7 @@ const VISUAL_STYLES = `
 
 type CaptureInterviewOptions = {
   mask?: Locator[];
+  fullPage?: boolean;
 };
 
 type InterviewTestFixtures = {
@@ -211,7 +212,7 @@ export const test = baseTest.extend<
           );
         });
       await expect.soft(page).toHaveScreenshot(`${name}.png`, {
-        fullPage: false,
+        fullPage: options.fullPage ?? false,
         mask: options.mask,
       });
     });

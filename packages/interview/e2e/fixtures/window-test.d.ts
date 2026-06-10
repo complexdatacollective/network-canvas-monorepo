@@ -21,6 +21,8 @@ declare global {
       resize(): void;
       triggerRepaint(): void;
     };
+    /** Set transiently by captureFinal while a full-page capture is in flight. */
+    __restoreExpandedScrollers?: () => void;
   }
 
   var __test: Window['__test'];
