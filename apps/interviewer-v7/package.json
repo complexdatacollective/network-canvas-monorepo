@@ -101,6 +101,7 @@
     "electron": "catalog:",
     "electron-builder": "^26.8.1",
     "electron-vite": "catalog:",
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "catalog:",
     "playwright": "catalog:",
     "png-to-ico": "^3.0.1",

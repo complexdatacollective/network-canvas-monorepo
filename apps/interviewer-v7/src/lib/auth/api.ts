@@ -525,7 +525,9 @@ export async function revoke(): Promise<void> {
   // Order matters: drop the Dexie DB first, then clear metadata. If we fail
   // mid-revoke, leaving metadata behind keeps the install in a recoverable
   // "configured but locked" state instead of an orphaned DB without a vault.
-  await db.delete();
+  // disableAutoOpen: false keeps the singleton usable so re-enrolment in the
+  // same session (reset → setup wizard) can reopen a fresh database.
+  await db.delete({ disableAutoOpen: false });
   await vaultMetadata.clear();
   writeWebUnlocked(false);
 }
