@@ -218,8 +218,9 @@ export function DeckCarousel({
         transformStyle: 'preserve-3d',
       }}
       // touch-pan-y: vertical touch gestures stay with the browser;
-      // horizontal ones drive the deck.
-      className={`relative w-full touch-pan-y ${
+      // horizontal ones drive the deck. select-none: a mouse drag must
+      // scrub the deck, not start a text selection across the cards.
+      className={`relative w-full touch-pan-y select-none ${
         disabled ? '' : dragging ? 'cursor-grabbing' : 'cursor-grab'
       }`}
     >

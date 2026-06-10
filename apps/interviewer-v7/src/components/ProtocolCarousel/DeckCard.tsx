@@ -29,7 +29,8 @@ function Pill({
   intent?: 'default' | 'error' | 'success' | 'warning';
 }) {
   return (
-    <div
+    <motion.div
+      layout
       className={cx(
         'font-monospace flex items-center gap-2 rounded-full border px-[2cqi] py-[0.75cqi] text-[max(12px,2.5cqi)] uppercase',
         proportionalLucideIconVariants(),
@@ -44,7 +45,7 @@ function Pill({
     >
       {icon}
       {children}
-    </div>
+    </motion.div>
   );
 }
 
@@ -223,7 +224,7 @@ export function DeckCard(props: DeckCardProps) {
                   level="h2"
                   className="w-full text-left text-[8cqi] leading-[1.1] font-black wrap-break-word hyphens-auto"
                   margin="none"
-                  layout
+                  layout="position"
                 >
                   {withUnderscoreBreaks(protocol.name)}
                 </MotionHeading>
@@ -245,9 +246,15 @@ export function DeckCard(props: DeckCardProps) {
                 // flex item pinned with `shrink-0` so the column — whose
                 // heading claims `flex-1` — can't squeeze the description
                 // below its six lines.
+                // layout="position" (not full layout) on the swappable text
+                // regions: full layout animations interpolate size with a
+                // scale transform, which visibly stretches text when a
+                // content swap changes the region's height (skeletons →
+                // real description on import completion). Position-only
+                // keeps the glide without the distortion.
                 <motion.div
                   key="description"
-                  layout
+                  layout="position"
                   initial={PRESENCE_INITIAL}
                   animate={PRESENCE_ENTER}
                   exit={PRESENCE_EXIT}
@@ -267,11 +274,22 @@ export function DeckCard(props: DeckCardProps) {
                 </motion.div>
               )}
               {showMetadata && (
+                // The enter pose waits a beat: a row mounting mid layout-shift
+                // (sample → installing adds it below the description) renders
+                // at its final rect while its siblings are still gliding to
+                // theirs, which reads as the row appearing ABOVE the
+                // description. Delaying only the enter (pose-embedded, so
+                // layout glides and the exit stay immediate) lets the column
+                // settle first, then fades the row in where it belongs.
                 <motion.div
                   key="metadata"
-                  layout
+                  layout="position"
+                  data-testid="deck-card-metadata"
                   initial={PRESENCE_INITIAL}
-                  animate={PRESENCE_ENTER}
+                  animate={{
+                    ...PRESENCE_ENTER,
+                    transition: { delay: 0.25 },
+                  }}
                   exit={PRESENCE_EXIT}
                   className="font-monospace flex items-center justify-between gap-4 text-[2.5cqi]"
                 >
