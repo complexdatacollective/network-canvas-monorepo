@@ -6,6 +6,7 @@ import type {
 } from '@playwright/test';
 
 import { InterviewFixture } from './interview-fixture.js';
+import { installMapboxMocks } from './mapbox-mocks.js';
 import { ProtocolFixture } from './protocol-fixture.js';
 import { StageFixture } from './stage-fixture.js';
 import { test as baseTest, expect } from './test.js';
@@ -111,6 +112,9 @@ export const test = baseTest.extend<
   sharedPage: [
     async ({ sharedContext }, use) => {
       const page = await sharedContext.newPage();
+      // Before anything can mount a map: stages initialise mapbox during
+      // navigation, so the routes must exist before the first goto.
+      await installMapboxMocks(page);
       // Navigate to the host app so that installTestHooks() runs and
       // window.__test is available before protocol.install() calls page.evaluate().
       await page.goto('/');

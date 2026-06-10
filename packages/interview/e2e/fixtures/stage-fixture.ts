@@ -918,67 +918,6 @@ class GeospatialFixture {
   }
 
   /**
-   * Intercept the Mapbox Search Box API with deterministic fixtures.
-   *
-   * The live API is nondeterministic: results vary by region/session, and
-   * a failed retrieve is silently swallowed by the app (the fly-to simply
-   * never happens), so a test that exercises search gets a different final
-   * map view depending on network conditions. Install this before typing
-   * a query. Stub-mode browsers never call these endpoints, so the routes
-   * are inert there.
-   *
-   * The retrieve fixture targets Sidetrack (Lakeview, Chicago), which
-   * differs from the silos protocol's initial center/zoom so the fly-to
-   * always moves the camera.
-   */
-  async mockSearchApi(): Promise<void> {
-    const corsHeaders = { 'access-control-allow-origin': '*' };
-    await this.page.route(
-      /https:\/\/api\.mapbox\.com\/search\/searchbox\/v1\/suggest/,
-      (route) =>
-        route.fulfill({
-          headers: corsHeaders,
-          json: {
-            suggestions: [
-              {
-                name: 'Sidetrack',
-                mapbox_id: 'e2e-mock-sidetrack',
-                feature_type: 'poi',
-                place_formatted: 'Chicago, Illinois, United States',
-                language: 'en',
-                maki: 'marker',
-              },
-            ],
-            attribution: 'e2e mock',
-            response_id: 'e2e-mock-response',
-          },
-        }),
-    );
-    await this.page.route(
-      /https:\/\/api\.mapbox\.com\/search\/searchbox\/v1\/retrieve\//,
-      (route) =>
-        route.fulfill({
-          headers: corsHeaders,
-          json: {
-            type: 'FeatureCollection',
-            features: [
-              {
-                type: 'Feature',
-                geometry: { type: 'Point', coordinates: [-87.6497, 41.9399] },
-                properties: {
-                  name: 'Sidetrack',
-                  mapbox_id: 'e2e-mock-sidetrack',
-                  feature_type: 'poi',
-                },
-              },
-            ],
-            attribution: 'e2e mock',
-          },
-        }),
-    );
-  }
-
-  /**
    * Wait for the fly-to triggered by selecting a search suggestion to
    * start and finish.
    *

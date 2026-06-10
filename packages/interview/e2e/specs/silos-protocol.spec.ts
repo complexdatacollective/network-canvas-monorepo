@@ -276,6 +276,12 @@ test.describe('SILOS Protocol', () => {
     });
 
     test('Stage 9: Geospatial Interface', async ({ interview, stage }) => {
+      // Real Mapbox tiles load over the network on chromium; the initial
+      // idle wait alone has been observed to take 16s+, which together
+      // with the search/fly-to/selection flow can exceed the default 30s
+      // test timeout. slow() triples it.
+      test.slow();
+
       await stage.geospatial.waitForGeoJsonRendered();
       await interview.captureInitial();
 
@@ -314,10 +320,8 @@ test.describe('SILOS Protocol', () => {
       await expect(stage.geospatial.searchInput).toBeVisible();
 
       // --- Test actual search functionality ---
-      // Deterministic suggest/retrieve fixtures: the live API varies by
-      // region and a failed retrieve silently skips the fly-to, which made
-      // the rest of this test (and its snapshots) timing-dependent.
-      await stage.geospatial.mockSearchApi();
+      // Suggest/retrieve responses come from the shared Mapbox mocks
+      // (fixtures/mapbox-mocks.ts), so results are deterministic.
       await stage.geospatial.searchInput.fill('Sidetrack');
 
       // Wait for suggestions to appear
@@ -982,6 +986,10 @@ test.describe('SILOS Protocol', () => {
       interview,
       stage,
     }) => {
+      // Real Mapbox tile loads on chromium can stall the initial idle
+      // wait well past the default test timeout. slow() triples it.
+      test.slow();
+
       await stage.geospatial.waitForGeoJsonRendered();
       await interview.captureInitial();
 
@@ -1478,6 +1486,10 @@ test.describe('SILOS Protocol', () => {
       interview,
       stage,
     }) => {
+      // Real Mapbox tile loads on chromium can stall the initial idle
+      // wait well past the default test timeout. slow() triples it.
+      test.slow();
+
       await stage.geospatial.waitForGeoJsonRendered();
       await interview.captureInitial();
 
@@ -1684,6 +1696,10 @@ test.describe('SILOS Protocol', () => {
       interview,
       stage,
     }) => {
+      // Real Mapbox tile loads on chromium can stall the initial idle
+      // wait well past the default test timeout. slow() triples it.
+      test.slow();
+
       await stage.geospatial.waitForGeoJsonRendered();
       await interview.captureInitial();
 
