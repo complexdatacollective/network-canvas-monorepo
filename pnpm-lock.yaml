@@ -139,8 +139,8 @@ catalogs:
       specifier: ^17.4.2
       version: 17.4.2
     effect:
-      specifier: ^3.21.2
-      version: 3.21.2
+      specifier: ^3.21.3
+      version: 3.21.3
     electron:
       specifier: ^42.3.0
       version: 42.3.0
@@ -918,7 +918,7 @@ importers:
         version: 4.2.1
       effect:
         specifier: 'catalog:'
-        version: 3.21.2
+        version: 3.21.3
       electron-log:
         specifier: ^5.4.4
         version: 5.4.4
@@ -1195,7 +1195,7 @@ importers:
         version: 4.4.3
       effect:
         specifier: 'catalog:'
-        version: 3.21.2
+        version: 3.21.3
       jszip:
         specifier: 'catalog:'
         version: 3.10.1
@@ -1825,7 +1825,7 @@ importers:
         version: 0.9.10
       effect:
         specifier: 'catalog:'
-        version: 3.21.2
+        version: 3.21.3
       es-toolkit:
         specifier: 'catalog:'
         version: 1.47.0
@@ -8387,8 +8387,8 @@ packages:
     engines: {node: '>=14'}
     hasBin: true
 
-  effect@3.21.2:
-    resolution: {integrity: sha512-rXd2FGDM8KdjSIrc+mqEELo7ScW7xTVxEf1iInmPSpIde9/nyGuFM710cjTo7/EreGXiUX2MOonPpprbz2XHCg==}
+  effect@3.21.3:
+    resolution: {integrity: sha512-RqwU7WnJ6CqYhyjpOVJA5vh1Sgkn6eVECO6mnD0EjlbWcC2M3LJaPglXXr13Rdo/Y+B+wTEPzGRYFNL2xKxNeQ==}
 
   ejs@3.1.10:
     resolution: {integrity: sha512-UeJmFfOrAQS8OJWPZ4qtgHyWExa088/MtK5UEyoJGFH67cDEXkZSviOiKRCZ4Xij0zxI3JECgYs3oKx+AizQBA==}
@@ -20399,7 +20399,7 @@ snapshots:
       minimatch: 9.0.9
       semver: 7.8.1
 
-  effect@3.21.2:
+  effect@3.21.3:
     dependencies:
       '@standard-schema/spec': 1.1.0
       fast-check: 3.23.2
