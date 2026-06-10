@@ -156,6 +156,60 @@ export const test = baseTest.extend<
         await page.addStyleTag({ content: VISUAL_STYLES });
         stylesInjected = true;
       }
+      // Wait out motion entrance choreography. Elements animating in sit
+      // at their framer `initial` state (inline opacity 0) until the
+      // animation scheduler's first frame applies — under load that can
+      // lag mount by hundreds of ms. toHaveScreenshot cannot see this:
+      // two identical pre-entrance frames count as "stable", which is
+      // exactly how CategoricalBin stages captured without their bin
+      // circles on firefox.
+      //
+      // Resolves on the first evaluation when nothing is pending, so the
+      // settled-state cost is one round-trip per capture. Only elements
+      // covering a significant area count as pending: small overlays
+      // (the node bin, action-button badges) and zero-height collapsed
+      // containers (the node drawer body) are transparent AT REST by
+      // design, and treating them as pending would make every capture on
+      // their stage pay the full timeout. The timeout log below surfaces
+      // anything that still stalls the wait.
+      const MIN_PENDING_AREA = 24_000;
+      await page
+        .waitForFunction(
+          (minArea) =>
+            !Array.from(
+              document.querySelectorAll<HTMLElement>('main [style*="opacity"]'),
+            ).some((el) => {
+              if (el.style.opacity !== '0') return false;
+              const rect = el.getBoundingClientRect();
+              return rect.width * rect.height >= minArea;
+            }),
+          MIN_PENDING_AREA,
+          { timeout: 3000 },
+        )
+        .catch(async () => {
+          const offenders = await page.evaluate(
+            (minArea) =>
+              Array.from(
+                document.querySelectorAll<HTMLElement>(
+                  'main [style*="opacity"]',
+                ),
+              )
+                .filter((el) => {
+                  if (el.style.opacity !== '0') return false;
+                  const rect = el.getBoundingClientRect();
+                  return rect.width * rect.height >= minArea;
+                })
+                .map(
+                  (el) =>
+                    `${el.tagName}.${el.className.toString().slice(0, 60)} testid=${el.getAttribute('data-testid')}`,
+                ),
+            MIN_PENDING_AREA,
+          );
+          console.log(
+            '[capture] entrance-settle wait timed out on:',
+            offenders.join(' | '),
+          );
+        });
       await expect.soft(page).toHaveScreenshot(`${name}.png`, {
         fullPage: false,
         mask: options.mask,
