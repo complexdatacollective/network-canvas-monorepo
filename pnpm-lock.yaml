@@ -1214,9 +1214,6 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.2.6(react@19.2.6)
-      swiper:
-        specifier: ^12.2.0
-        version: 12.2.0
       uuid:
         specifier: 'catalog:'
         version: 14.0.0
@@ -12969,10 +12966,6 @@ packages:
   svg2png@4.1.1:
     resolution: {integrity: sha512-9tOp9Ugjlunuf1ugqkhiYboTmTaTI7p48dz5ZjNA5NQJ5xS1NLTZZ1tF8vkJOIBb/ZwxGJsKZvRWqVpo4q9z9Q==}
     hasBin: true
-
-  swiper@12.2.0:
-    resolution: {integrity: sha512-K8uXsBZU6ME97Ia3xbBge8IRCnR1lOmIILzvY/jGVic7dSTQ530s3uO8RvXbPUtkkXLWIwmZLRPbtDxRWVAFdg==}
-    engines: {node: '>= 4.7.0'}
 
   symbol-observable@1.2.0:
     resolution: {integrity: sha512-e900nM8RRtGhlV36KGEU9k65K3mPb1WV70OdjfxlG2EAuM1noi/E/BaW/uMhL7bPEssK8QV57vN3esixjUvcXQ==}
@@ -26414,8 +26407,6 @@ snapshots:
       yargs: 6.6.0
     transitivePeerDependencies:
       - supports-color
-
-  swiper@12.2.0: {}
 
   symbol-observable@1.2.0: {}
 
