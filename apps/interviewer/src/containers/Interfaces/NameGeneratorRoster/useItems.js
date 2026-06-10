@@ -17,7 +17,7 @@ import usePropSelector from './usePropSelector';
 /**
  * Format details needed for list cards
  */
-export const detailsWithVariableUUIDs = (props) => (node) => {
+const detailsWithVariableUUIDs = (props) => (node) => {
   const { nodeTypeDefinition, visibleSupplementaryFields } = props;
 
   const nodeTypeVariables = nodeTypeDefinition.variables;

@@ -137,7 +137,7 @@ const triggerDrop = (state, source) => {
   });
 };
 
-const reducer = (state, action) => {
+const reducer = (state = _initialState, action) => {
   switch (action.type) {
     case UPSERT_TARGET: {
       const targets = [
@@ -323,6 +323,6 @@ const actionTypes = {
   DRAG_END,
 };
 
-export { actionCreators, actionTypes, reducer };
+export { actionCreators, actionTypes };
 
 export default reducer;

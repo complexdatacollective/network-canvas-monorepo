@@ -15,7 +15,7 @@ import { paragraphVariants } from './typography/Paragraph';
 import { cva, cx, type VariantProps } from './utils/cva';
 
 const alertVariants = cva({
-  base: 'inset-surface my-6 flex w-full gap-3 rounded last:mb-0',
+  base: 'inset-surface my-6 flex w-full gap-3 rounded first:mt-0 last:mb-0',
   variants: {
     variant: {
       default: '',

@@ -10,6 +10,15 @@ on:
         description: 'Force all conditional jobs (deploys, chromatic, e2e) to run regardless of turbo-ignore detection.'
         type: boolean
         default: false
+      release_app:
+        description: 'Force a legacy desktop app release (Architect/Interviewer) at the version currently in package.json, regardless of version-bump detection.'
+        type: choice
+        default: none
+        options:
+          - none
+          - architect
+          - interviewer
+          - both
 
 permissions:
   contents: read
@@ -29,6 +38,7 @@ jobs:
       any_app: ${{ steps.flags.outputs.any_app }}
       docs: ${{ steps.flags.outputs.docs }}
       architect: ${{ steps.flags.outputs.architect }}
+      website: ${{ steps.flags.outputs.website }}
       fresco_ui_storybook: ${{ steps.flags.outputs.fresco_ui_storybook }}
       interview_storybook: ${{ steps.flags.outputs.interview_storybook }}
       interview_e2e: ${{ steps.flags.outputs.interview_e2e }}
@@ -99,10 +109,11 @@ jobs:
           }
           docs=$(flag @codaco/documentation)
           arch=$(flag @codaco/architect-web)
+          web=$(flag networkcanvas.com)
           fui=$(flag @codaco/fresco-ui)
           intv=$(flag @codaco/interview)
           any_app=false
-          if [[ "$docs" == "true" || "$arch" == "true" ]]; then any_app=true; fi
+          if [[ "$docs" == "true" || "$arch" == "true" || "$web" == "true" ]]; then any_app=true; fi
 
           # PR-only: detect a changeset ADDED/CHANGED in this PR whose frontmatter
           # touches @codaco/interviewer-v7. Gates the snapshot Electron build job
@@ -127,6 +138,7 @@ jobs:
             echo "any_app=$any_app"
             echo "docs=$docs"
             echo "architect=$arch"
+            echo "website=$web"
             echo "fresco_ui_storybook=$fui"
             echo "interview_storybook=$intv"
             echo "interview_e2e=$intv"
@@ -172,9 +184,7 @@ jobs:
           } > packages/protocol-validation/.env
       - name: Run all gates
         run: |
-          pnpm exec turbo run //#lint //#knip typecheck build test \
-            --filter='!network-canvas-interviewer' \
-            --filter='!network-canvas-architect'
+          pnpm exec turbo run //#lint //#knip typecheck build test
 
   # Deploy jobs are split per-app and per-environment so:
   #   * one app's build failure never blocks the other app's deploy
@@ -239,23 +249,13 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
   deploy-docs-prod:
-    needs:
-      [
-        detect,
-        quality,
-        chromatic-fresco-ui,
-        chromatic-interview,
-        interview-e2e-report,
-      ]
+    needs: [detect, quality]
     if: |
       always() &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       needs.detect.outputs.docs == 'true' &&
-      needs.quality.result == 'success' &&
-      needs.chromatic-fresco-ui.result != 'failure' &&
-      needs.chromatic-interview.result != 'failure' &&
-      needs.interview-e2e-report.result != 'failure'
+      needs.quality.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -342,15 +342,59 @@ jobs:
           url=$(echo "$json" | jq -r '.deploy_url')
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
+  deploy-website-preview:
+    # Same shape as deploy-architect-preview: wait for quality (cache +
+    # write-slot) but don't gate the preview deploy on its success.
+    needs: [detect, quality]
+    if: |
+      always() &&
+      github.event_name == 'pull_request' &&
+      needs.detect.outputs.website == 'true' &&
+      needs.quality.result != 'cancelled'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - id: deploy
+        name: Build and deploy networkcanvas.com preview
+        run: |
+          pnpm exec turbo run build --filter=networkcanvas.com
+          json=$(npx --yes netlify-cli@22 deploy --no-build \
+                   --filter=networkcanvas.com \
+                   --dir=apps/networkcanvas.com/out \
+                   --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" \
+                   --alias="pr-${{ github.event.number }}" --json)
+          echo "$json" | jq .
+          url=$(echo "$json" | jq -r '.deploy_url')
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
   # Single PR comment summarising whichever preview(s) deployed. Uses a hidden
   # HTML marker to locate the existing comment on subsequent runs so we update
   # in place rather than spamming the PR with one new comment per run.
   comment-preview-urls:
-    needs: [deploy-docs-preview, deploy-architect-preview]
+    needs:
+      [deploy-docs-preview, deploy-architect-preview, deploy-website-preview]
     if: |
       always() &&
       github.event_name == 'pull_request' &&
-      (needs.deploy-docs-preview.result == 'success' || needs.deploy-architect-preview.result == 'success')
+      (needs.deploy-docs-preview.result == 'success' || needs.deploy-architect-preview.result == 'success' || needs.deploy-website-preview.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -360,13 +404,15 @@ jobs:
         env:
           DOCS_URL: ${{ needs.deploy-docs-preview.outputs.url }}
           ARCHITECT_URL: ${{ needs.deploy-architect-preview.outputs.url }}
+          WEBSITE_URL: ${{ needs.deploy-website-preview.outputs.url }}
         with:
           script: |
             const marker = '<!-- ci:deploy-previews -->';
             const lines = [marker, '🚀 **Deploy previews**'];
-            const { DOCS_URL, ARCHITECT_URL } = process.env;
+            const { DOCS_URL, ARCHITECT_URL, WEBSITE_URL } = process.env;
             if (DOCS_URL) lines.push(`- documentation → ${DOCS_URL}`);
             if (ARCHITECT_URL) lines.push(`- architect-web → ${ARCHITECT_URL}`);
+            if (WEBSITE_URL) lines.push(`- networkcanvas.com → ${WEBSITE_URL}`);
             const body = lines.join('\n');
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -440,6 +486,46 @@ jobs:
                    --filter=@codaco/architect-web \
                    --dir=apps/architect-web/dist \
                    --site="${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}" --json)
+          echo "$json" | jq .
+          url=$(echo "$json" | jq -r '.deploy_url')
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+  deploy-website-prod:
+    needs: [detect, quality]
+    if: |
+      always() &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.detect.outputs.website == 'true' &&
+      needs.quality.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - id: deploy
+        name: Build and deploy networkcanvas.com production
+        run: |
+          pnpm exec turbo run build --filter=networkcanvas.com
+          json=$(npx --yes netlify-cli@22 deploy --no-build --prod \
+                   --filter=networkcanvas.com \
+                   --dir=apps/networkcanvas.com/out \
+                   --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" --json)
           echo "$json" | jq .
           url=$(echo "$json" | jq -r '.deploy_url')
           echo "url=$url" >> "$GITHUB_OUTPUT"
@@ -746,6 +832,54 @@ jobs:
             echo "interviewer-v7 version unchanged ($current)"
           fi
 
+  # Decide whether to (re)release the legacy desktop apps. A release fires when:
+  #   * a workflow_dispatch selected the app (forced release at the current
+  #     package.json version, even with no version change — used for the initial
+  #     6.6.0 cut), OR
+  #   * the app's external repo has no release for the current version yet
+  #     (idempotent first-time check — also makes a normal push to main release a
+  #     newly-bumped version, and a no-op once that version is already published), OR
+  #   * the version changed versus the previous commit (defensive: covers bumps
+  #     even if the release somehow predates this check).
+  # version is always the current apps/<app>/package.json version.
+  legacy-release-detect:
+    needs: quality
+    # Only ever runs on main — a manual workflow_dispatch from a feature branch
+    # must not mirror/publish branch-only code to the external app repos.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      architect_released: ${{ steps.architect.outputs.released }}
+      architect_version: ${{ steps.architect.outputs.version }}
+      interviewer_released: ${{ steps.interviewer.outputs.released }}
+      interviewer_version: ${{ steps.interviewer.outputs.version }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+      - name: Detect architect release
+        id: architect
+        env:
+          PKG_JSON: apps/architect/package.json
+          EXTERNAL_REPO: complexdatacollective/architect
+          FORCED: ${{ (github.event_name == 'workflow_dispatch' && (inputs.release_app == 'architect' || inputs.release_app == 'both')) }}
+          GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
+        run: bash .github/scripts/detect-legacy-release.sh
+      - name: Detect interviewer release
+        id: interviewer
+        env:
+          PKG_JSON: apps/interviewer/package.json
+          EXTERNAL_REPO: complexdatacollective/interviewer
+          FORCED: ${{ (github.event_name == 'workflow_dispatch' && (inputs.release_app == 'interviewer' || inputs.release_app == 'both')) }}
+          GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
+        run: bash .github/scripts/detect-legacy-release.sh
+
   # Per-platform Electron build for interviewer-v7. Triggered only when the
   # release job above detected a version bump for @codaco/interviewer-v7.
   # macOS leg signs + notarizes via Apple credentials in repo secrets;
@@ -853,6 +987,268 @@ jobs:
           fail_on_unmatched_files: true
           make_latest: 'false'
           generate_release_notes: true
+
+  interviewer-release-build:
+    needs: legacy-release-detect
+    if: needs.legacy-release-detect.outputs.interviewer_released == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+          - os: ubuntu-latest
+            platform: linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - if: matrix.os == 'ubuntu-latest'
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - name: Build app + workspace deps
+        run: pnpm exec turbo run build --filter=network-canvas-interviewer
+      - name: Decode App Store Connect API key
+        if: matrix.os == 'macos-latest'
+        env:
+          APPLE_API_KEY_B64: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          key_path="${RUNNER_TEMP}/AuthKey.p8"
+          printf '%s' "$APPLE_API_KEY_B64" | base64 --decode > "$key_path"
+          echo "APPLE_API_KEY=${key_path}" >> "$GITHUB_ENV"
+      # Build only — the release lifecycle (tag, draft, attach, publish) is owned
+      # by the mirror + publish jobs, so electron-builder must not publish.
+      # macOS notarization runs automatically when APPLE_API_KEY is set (the
+      # config gates `notarize` on it); Windows ships unsigned (no CSC_LINK).
+      - name: Package
+        working-directory: apps/interviewer
+        env:
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          CSC_LINK: ${{ matrix.os == 'macos-latest' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.CSC_KEY_PASSWORD || '' }}
+        run: pnpm exec electron-builder --${{ matrix.platform }} --config electron-builder.config.cjs --publish never
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          # Distinct prefix so the publish job's glob doesn't also collect the
+          # `interviewer-v7-*` artifacts built in the same run.
+          name: interviewer-release-${{ matrix.platform }}
+          path: apps/interviewer/release-builds/*
+          if-no-files-found: error
+          retention-days: 30
+
+  architect-release-build:
+    needs: legacy-release-detect
+    if: needs.legacy-release-detect.outputs.architect_released == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+          - os: ubuntu-latest
+            platform: linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - if: matrix.os == 'ubuntu-latest'
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - name: Build app + workspace deps
+        run: pnpm exec turbo run build --filter=network-canvas-architect
+      - name: Decode App Store Connect API key
+        if: matrix.os == 'macos-latest'
+        env:
+          APPLE_API_KEY_B64: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          key_path="${RUNNER_TEMP}/AuthKey.p8"
+          printf '%s' "$APPLE_API_KEY_B64" | base64 --decode > "$key_path"
+          echo "APPLE_API_KEY=${key_path}" >> "$GITHUB_ENV"
+      # Build only — the release lifecycle (tag, draft, attach, publish) is owned
+      # by the mirror + publish jobs, so electron-builder must not publish.
+      # macOS notarization runs automatically when APPLE_API_KEY is set (the
+      # config gates `notarize` on it); Windows ships unsigned (no CSC_LINK,
+      # no certificateSubjectName).
+      - name: Package
+        working-directory: apps/architect
+        env:
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          CSC_LINK: ${{ matrix.os == 'macos-latest' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.CSC_KEY_PASSWORD || '' }}
+        run: pnpm exec electron-builder --${{ matrix.platform }} --config electron-builder.config.js --publish never
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: architect-${{ matrix.platform }}
+          path: apps/architect/release-builds/*
+          if-no-files-found: error
+          retention-days: 30
+
+  # Mirror Interviewer source into complexdatacollective/interviewer master
+  # (linear-append commit, npm-installable manifest, no node_modules) and create a
+  # DRAFT GitHub release on that repo. Runs in parallel with the build job.
+  interviewer-mirror:
+    needs: legacy-release-detect
+    if: needs.legacy-release-detect.outputs.interviewer_released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      mirror_sha: ${{ steps.mirror.outputs.mirror_sha }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+      - name: Mirror source to external master
+        id: mirror
+        env:
+          LEGACY_RELEASE_GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
+          MONOREPO_SHA: ${{ github.sha }}
+        run: >-
+          node scripts/mirror-app.mjs
+          --app apps/interviewer
+          --repo complexdatacollective/interviewer
+          --version ${{ needs.legacy-release-detect.outputs.interviewer_version }}
+      - name: Extract release notes
+        run: >-
+          node scripts/release-notes.mjs
+          --app apps/interviewer
+          --pkg network-canvas-interviewer
+          --version ${{ needs.legacy-release-detect.outputs.interviewer_version }}
+          --out "${RUNNER_TEMP}/notes.md"
+      - name: Create draft release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          repository: complexdatacollective/interviewer
+          token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
+          tag_name: v${{ needs.legacy-release-detect.outputs.interviewer_version }}
+          target_commitish: ${{ steps.mirror.outputs.mirror_sha }}
+          name: Network Canvas Interviewer v${{ needs.legacy-release-detect.outputs.interviewer_version }}
+          body_path: ${{ runner.temp }}/notes.md
+          draft: true
+          make_latest: 'false'
+
+  # Collect Interviewer platform artifacts, attach to the draft release, publish it.
+  interviewer-release-publish:
+    needs:
+      [legacy-release-detect, interviewer-mirror, interviewer-release-build]
+    if: needs.legacy-release-detect.outputs.interviewer_released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: artifacts
+          pattern: interviewer-release-*
+          merge-multiple: true
+      - run: ls -la artifacts/
+      - name: Attach artifacts and publish
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          repository: complexdatacollective/interviewer
+          token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
+          tag_name: v${{ needs.legacy-release-detect.outputs.interviewer_version }}
+          files: artifacts/*
+          fail_on_unmatched_files: true
+          draft: false
+          make_latest: 'false'
+
+  # Mirror Architect source into complexdatacollective/architect master and create
+  # a DRAFT release. Builds the Interviewer preview bundle first so it can be
+  # vendored into the mirror (the standalone repo has no monorepo sibling to copy
+  # ../interviewer/out from).
+  architect-mirror:
+    needs: legacy-release-detect
+    if: needs.legacy-release-detect.outputs.architect_released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    outputs:
+      mirror_sha: ${{ steps.mirror.outputs.mirror_sha }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: Build Interviewer preview bundle (vendored into the mirror)
+        run: pnpm exec turbo run build --filter=network-canvas-interviewer
+      - name: Mirror source to external master
+        id: mirror
+        env:
+          LEGACY_RELEASE_GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
+          MONOREPO_SHA: ${{ github.sha }}
+        run: >-
+          node scripts/mirror-app.mjs
+          --app apps/architect
+          --repo complexdatacollective/architect
+          --version ${{ needs.legacy-release-detect.outputs.architect_version }}
+      - name: Extract release notes
+        run: >-
+          node scripts/release-notes.mjs
+          --app apps/architect
+          --pkg network-canvas-architect
+          --version ${{ needs.legacy-release-detect.outputs.architect_version }}
+          --out "${RUNNER_TEMP}/notes.md"
+      - name: Create draft release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          repository: complexdatacollective/architect
+          token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
+          tag_name: v${{ needs.legacy-release-detect.outputs.architect_version }}
+          target_commitish: ${{ steps.mirror.outputs.mirror_sha }}
+          name: Network Canvas Architect v${{ needs.legacy-release-detect.outputs.architect_version }}
+          body_path: ${{ runner.temp }}/notes.md
+          draft: true
+          make_latest: 'false'
+
+  # Collect Architect platform artifacts, attach to the draft release, publish it.
+  architect-release-publish:
+    needs: [legacy-release-detect, architect-mirror, architect-release-build]
+    if: needs.legacy-release-detect.outputs.architect_released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: artifacts
+          pattern: architect-*
+          merge-multiple: true
+      - run: ls -la artifacts/
+      - name: Attach artifacts and publish
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          repository: complexdatacollective/architect
+          token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
+          tag_name: v${{ needs.legacy-release-detect.outputs.architect_version }}
+          files: artifacts/*
+          fail_on_unmatched_files: true
+          draft: false
+          make_latest: 'false'
 
   # PR snapshot build for testers. Triggered when the detect job flags a
   # changeset touching @codaco/interviewer-v7 AND the quality gate passed.
@@ -965,6 +1361,7 @@ jobs:
       - detect
       - deploy-docs-preview
       - deploy-architect-preview
+      - deploy-website-preview
       - chromatic-fresco-ui
       - chromatic-interview
       - interview-e2e
@@ -983,6 +1380,7 @@ jobs:
           # docs-preview-checks on deploy-docs-preview, so they share flags.
           FLAG_DOCS: ${{ needs.detect.outputs.docs }}
           FLAG_ARCHITECT: ${{ needs.detect.outputs.architect }}
+          FLAG_WEBSITE: ${{ needs.detect.outputs.website }}
           FLAG_FRESCO_UI_STORYBOOK: ${{ needs.detect.outputs.fresco_ui_storybook }}
           FLAG_INTERVIEW_STORYBOOK: ${{ needs.detect.outputs.interview_storybook }}
           FLAG_INTERVIEW_E2E: ${{ needs.detect.outputs.interview_e2e }}
@@ -993,6 +1391,7 @@ jobs:
             const flagToJobs = {
               FLAG_DOCS: ["deploy-docs-preview", "docs-preview-checks"],
               FLAG_ARCHITECT: ["deploy-architect-preview"],
+              FLAG_WEBSITE: ["deploy-website-preview"],
               FLAG_FRESCO_UI_STORYBOOK: ["chromatic-fresco-ui"],
               FLAG_INTERVIEW_STORYBOOK: ["chromatic-interview"],
               FLAG_INTERVIEW_E2E: ["interview-e2e", "interview-e2e-report"],

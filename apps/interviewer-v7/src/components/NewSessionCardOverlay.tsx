@@ -1,6 +1,8 @@
 import { motion } from 'motion/react';
 
 import { Pattern, seedToPatternPalette } from '@codaco/art';
+import Modal from '@codaco/fresco-ui/Modal';
+import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
 
@@ -14,6 +16,7 @@ import {
 } from './ProtocolCarousel/DeckCard';
 
 type NewSessionCardOverlayProps = {
+  open: boolean;
   protocol: ProtocolWithCounts;
   sessionCount: number;
   onCancel: () => void;
@@ -21,6 +24,7 @@ type NewSessionCardOverlayProps = {
 };
 
 export function NewSessionCardOverlay({
+  open,
   protocol,
   sessionCount,
   onCancel,
@@ -29,32 +33,25 @@ export function NewSessionCardOverlay({
   const palette = seedToPatternPalette(protocol.name);
 
   return (
-    // Full-viewport wrapper centers the card via flexbox. `pointer-events:
-    // none` lets clicks outside the card fall through to Home's backdrop
-    // (which handles cancel); the card itself opts back in.
-    <div className="pointer-events-none fixed inset-0 z-60 flex items-center justify-center">
-      <motion.div
-        // Paired with the in-slide DeckCard's motion.div via this
-        // layoutId. Motion measures both rects automatically and
-        // animates the morph in both directions (mount → grow to
-        // centre, unmount → tuck back into the slide).
+    <Modal
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onCancel();
+      }}
+    >
+      <ModalPopup
         layoutId={deckCardLayoutId(protocol.hash)}
-        className="bg-surface-1 text-text @container pointer-events-auto flex w-md flex-col overflow-hidden"
+        className="bg-surface-1 text-text @container fixed top-1/2 left-1/2 flex max-h-[calc(100dvh-var(--spacing-base)*10)] w-md max-w-[calc(100vw-var(--spacing-base)*8)] -translate-1/2 flex-col overflow-hidden"
         style={{
           borderRadius: CARD_RADIUS_PX,
           boxShadow: `var(--effect-shadow-2xl), 0 0 0 2px ${palette.backgroundTop}`,
         }}
       >
-        {/* Heading section — mirrors the in-slide DeckCard so the
-            visual through the morph reads as the same card growing. */}
         <div className="relative flex w-full flex-col justify-between gap-4 overflow-hidden p-4 @min-2xs:p-6">
           <Pattern
             seed={protocol.name}
             className="absolute inset-0 size-full"
           />
-          {/* Must mirror DeckCard.tsx exactly — see comment there for
-              why this is `layout="position"`. Responsive sizes on the
-              overlay's wider @container kick the heading up to text-3xl. */}
           <MotionHeading
             layout="position"
             layoutId={deckCardHeadingLayoutId(protocol.hash)}
@@ -87,7 +84,7 @@ export function NewSessionCardOverlay({
             onCreated={onCreated}
           />
         </motion.div>
-      </motion.div>
-    </div>
+      </ModalPopup>
+    </Modal>
   );
 }

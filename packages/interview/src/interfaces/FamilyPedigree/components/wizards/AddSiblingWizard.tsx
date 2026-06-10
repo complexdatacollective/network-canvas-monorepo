@@ -6,78 +6,19 @@ import type {
 } from '~/interfaces/FamilyPedigree/store';
 
 import PersonFields from '../quickStartWizard/PersonFields';
-import BioTriadStep, {
-  type BioTriadConfig,
-  BioTriadConfigProvider,
-} from './steps/BioTriadStep';
+import { buildNodeOptions } from './buildNodeOptions';
+import { derivePreselection } from './derivePreselection';
+import {
+  geneticParentCandidates,
+  nominatedGameteRoles,
+} from './parentCandidates';
+import BioTriadStep, { BioTriadConfigProvider } from './steps/BioTriadStep';
 import GenericAdditionalParentsStep from './steps/GenericAdditionalParentsStep';
 import GenericOtherParentsStep from './steps/GenericOtherParentsStep';
 import NewParentPartnershipsStep, {
   shouldSkipNewParentPartnerships,
 } from './steps/NewParentPartnershipsStep';
 import { siblingCellTransform } from './transforms/siblingCellTransform';
-
-function buildNodeOptions(
-  nodes: Map<string, NcNode>,
-  variableConfig: VariableConfig,
-): { value: string; label: string }[] {
-  const options: { value: string; label: string }[] = [];
-  for (const [id, node] of nodes) {
-    if (node.attributes[variableConfig.egoVariable] === true) {
-      options.push({ value: id, label: 'You' });
-      continue;
-    }
-    const name = node.attributes[variableConfig.nodeLabelVariable];
-    const label =
-      typeof name === 'string' && name.length > 0 ? name : 'Unknown person';
-    options.push({ value: id, label });
-  }
-  return options;
-}
-
-function derivePreselection(
-  anchorNodeId: string,
-  edges: Map<string, NcEdge>,
-  variableConfig: VariableConfig,
-): BioTriadConfig['preselection'] {
-  const parentEdges: { source: string; isGestationalCarrier: boolean }[] = [];
-
-  for (const edge of edges.values()) {
-    if (
-      edge.to === anchorNodeId &&
-      edge.attributes[variableConfig.relationshipTypeVariable] !== 'partner'
-    ) {
-      parentEdges.push({
-        source: edge.from,
-        isGestationalCarrier:
-          edge.attributes[variableConfig.isGestationalCarrierVariable] === true,
-      });
-    }
-  }
-
-  const carrierEdge = parentEdges.find((e) => e.isGestationalCarrier);
-  const otherEdges = parentEdges.filter((e) => !e.isGestationalCarrier);
-
-  const preselection: BioTriadConfig['preselection'] = {};
-
-  if (carrierEdge) {
-    preselection.eggSource = carrierEdge.source;
-    preselection.carrier = 'egg-source';
-  }
-
-  if (otherEdges.length > 0) {
-    if (carrierEdge) {
-      preselection.spermSource = otherEdges[0]?.source;
-    } else if (otherEdges.length >= 2) {
-      preselection.eggSource = otherEdges[0]?.source;
-      preselection.spermSource = otherEdges[1]?.source;
-    } else {
-      preselection.eggSource = otherEdges[0]?.source;
-    }
-  }
-
-  return preselection;
-}
 
 function PersonDetailsStep() {
   return <PersonFields namespace="sibling" />;
@@ -91,9 +32,24 @@ export async function openAddSiblingWizard(
   variableConfig: VariableConfig,
 ): Promise<CommitBatch | null> {
   const preselection = derivePreselection(anchorNodeId, edges, variableConfig);
-  const existingNodes = buildNodeOptions(nodes, variableConfig);
+  const candidateIds = geneticParentCandidates(
+    anchorNodeId,
+    'sibling',
+    edges,
+    variableConfig,
+  );
+  const existingNodes = buildNodeOptions(
+    nodes,
+    edges,
+    variableConfig,
+    candidateIds,
+  );
 
-  const bioTriadConfig = { existingNodes, preselection };
+  const bioTriadConfig = {
+    existingNodes,
+    preselection,
+    gameteRoles: nominatedGameteRoles(edges),
+  };
 
   function WrappedBioTriadStep() {
     return (

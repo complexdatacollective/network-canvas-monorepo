@@ -5,18 +5,6 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
-  esbuild: {
-    loader: 'jsx',
-    include: /src\/.*\.jsx?$/,
-    exclude: [],
-  },
-  optimizeDeps: {
-    esbuildOptions: {
-      loader: {
-        '.js': 'jsx',
-      },
-    },
-  },
   test: {
     globals: true,
     environment: 'jsdom',
@@ -29,7 +17,6 @@ export default defineConfig({
       'platforms',
       'src/utils/network-exporters',
       'src/utils/networkQuery',
-      'src/utils/protocol',
     ],
     css: true,
   },

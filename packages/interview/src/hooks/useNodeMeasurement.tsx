@@ -8,19 +8,17 @@ import {
   useRef,
   useState,
 } from 'react';
-import { createPortal } from 'react-dom';
 
 type NodeMeasurement = {
   nodeWidth: number;
   nodeHeight: number;
   /**
-   * Hidden React node that renders the measurement component into
-   * `document.body` via a portal. Render this anywhere in the caller's
-   * JSX — its position in the tree is irrelevant because it portals to
-   * `document.body`. The hook measures it with a `ResizeObserver`.
-   *
-   * The caller MUST render this node somewhere so the measurement
-   * component actually mounts.
+   * Hidden React node that renders the measurement component off-screen.
+   * The caller MUST render this somewhere inside the subtree whose sizing
+   * context it wants to measure — the measured component inherits its CSS
+   * cascade from where it sits in the DOM (see note below), so it must
+   * live under the same themed/scaled region as the real items. The hook
+   * measures it with a `ResizeObserver`.
    */
   measurementContainer: ReactNode;
 };
@@ -30,15 +28,19 @@ type NodeMeasurement = {
  * for use in layouts that need to know an item's size before computing
  * positions (e.g. `<PedigreeLayout>`).
  *
- * Implementation note: this hook historically rendered the measurement
- * component in a secondary React root created with `createRoot`. That
- * worked but was fragile (two roots sharing the scheduler, async
- * unmount with `setTimeout`, etc.). The current implementation uses
- * `createPortal`, which keeps the measurement subtree inside the
- * caller's React tree while still rendering into `document.body`. This
- * is simpler, shares React context (so the measured component behaves
- * identically to how it would render normally), and has no bespoke
- * unmount teardown.
+ * The measurement element is rendered INLINE (not portaled to
+ * `document.body`) so it inherits the CSS cascade — crucially
+ * `--theme-root-size` — from wherever the caller places it. Network
+ * Canvas node sizes derive from `--theme-root-size` (via Tailwind's
+ * `--spacing-base`), and the interview Shell ramps that variable with
+ * viewport width. A measurement portaled to `document.body` escapes the
+ * Shell's scope and resolves the base `1rem`, so it under-measures the
+ * nodes that actually render larger inside the Shell — breaking the
+ * layout at larger breakpoints. Rendering inline keeps the measured node
+ * in the same scaled context as the rendered nodes.
+ *
+ * `position: fixed` off-screen plus `visibility: hidden` keep it out of
+ * flow and invisible without affecting the caller's layout or scroll size.
  */
 export function useNodeMeasurement({
   component,
@@ -80,9 +82,8 @@ export function useNodeMeasurement({
     return () => observer.disconnect();
   }, []);
 
-  const measurementContainer = useMemo(() => {
-    if (typeof document === 'undefined') return null;
-    return createPortal(
+  const measurementContainer = useMemo(
+    () => (
       <div
         ref={wrapperRef}
         aria-hidden="true"
@@ -96,10 +97,10 @@ export function useNodeMeasurement({
         }}
       >
         {component}
-      </div>,
-      document.body,
-    );
-  }, [component]);
+      </div>
+    ),
+    [component],
+  );
 
   return {
     nodeWidth: dimensions.nodeWidth,

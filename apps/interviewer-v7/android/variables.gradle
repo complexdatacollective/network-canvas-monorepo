@@ -13,4 +13,7 @@ ext {
     androidxJunitVersion = '1.2.1'
     androidxEspressoCoreVersion = '3.6.1'
     cordovaAndroidVersion = '10.1.1'
+    // Pinned for reproducible native builds. Confirm against the latest 3.x
+    // release (and its error-tracking API) when bumping.
+    posthogAndroidVersion = '3.11.1'
 }

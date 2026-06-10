@@ -41,18 +41,21 @@ export const isWindows = () => isElectron() && getPlatform() === 'win32';
 
 export const isLinux = () => isElectron() && getPlatform() === 'linux';
 
-export const isCordova = () =>
-  typeof window !== 'undefined' && !!window.cordova;
+export const isCapacitor = () =>
+  typeof window !== 'undefined' &&
+  !!window.Capacitor &&
+  typeof window.Capacitor.isNativePlatform === 'function' &&
+  window.Capacitor.isNativePlatform();
 
-export const isIOS = () => isCordova() && /iOS/i.test(window.device?.platform);
+const getCapacitorPlatform = () =>
+  isCapacitor() ? window.Capacitor.getPlatform() : 'web';
 
-export const isAndroid = () =>
-  isCordova() && /Android/i.test(window.device?.platform);
+export const isIOS = () => getCapacitorPlatform() === 'ios';
 
-export const isWeb = () => !isCordova() && !isElectron();
+export const isAndroid = () => getCapacitorPlatform() === 'android';
 
 const getEnvironment = () => {
-  if (isCordova()) return environments.CORDOVA;
+  if (isCapacitor()) return environments.CAPACITOR;
   if (isElectron()) return environments.ELECTRON;
   return environments.WEB;
 };

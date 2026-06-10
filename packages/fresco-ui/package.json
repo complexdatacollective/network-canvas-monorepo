@@ -1,6 +1,6 @@
 {
   "name": "@codaco/fresco-ui",
-  "version": "2.11.2",
+  "version": "2.12.2",
   "description": "Fresco UI components, styles, and utilities",
   "license": "MIT",
   "repository": {
@@ -332,6 +332,10 @@
       "types": "./dist/form/fields/RadioGroup.d.ts",
       "default": "./dist/form/fields/RadioGroup.js"
     },
+    "./form/fields/RadioMatrixField": {
+      "types": "./dist/form/fields/RadioMatrixField.d.ts",
+      "default": "./dist/form/fields/RadioMatrixField.js"
+    },
     "./form/fields/RelativeDatePicker": {
       "types": "./dist/form/fields/RelativeDatePicker.d.ts",
       "default": "./dist/form/fields/RelativeDatePicker.js"
@@ -565,19 +569,19 @@
     "usehooks-ts": "^3.1.1"
   },
   "devDependencies": {
-    "@base-ui/react": "^1.5.0",
+    "@base-ui/react": "catalog:",
     "@chromatic-com/storybook": "catalog:",
     "@codaco/protocol-validation": "workspace:*",
     "@codaco/tsconfig": "workspace:*",
     "@faker-js/faker": "catalog:",
-    "@storybook/addon-a11y": "^10.4.1",
-    "@storybook/addon-docs": "^10.4.1",
-    "@storybook/addon-vitest": "^10.4.1",
-    "@storybook/react-vite": "^10.4.1",
+    "@storybook/addon-a11y": "catalog:",
+    "@storybook/addon-docs": "catalog:",
+    "@storybook/addon-vitest": "catalog:",
+    "@storybook/react-vite": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-table": "catalog:",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
@@ -586,9 +590,9 @@
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "chromatic": "catalog:",
-    "jsdom": "^29.1.1",
-    "playwright": "^1.60.0",
-    "storybook": "^10.4.1",
+    "jsdom": "catalog:",
+    "playwright": "catalog:",
+    "storybook": "catalog:",
     "tinyglobby": "^0.2.17",
     "typescript": "catalog:",
     "vite": "catalog:",
@@ -597,7 +601,7 @@
   },
   "peerDependencies": {
     "@base-ui/react": "^1.4.0",
-    "@codaco/shared-consts": "5.0.0",
+    "@codaco/shared-consts": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "@tanstack/react-table": "catalog:",
     "motion": "catalog:",

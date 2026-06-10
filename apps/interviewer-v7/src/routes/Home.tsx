@@ -14,6 +14,7 @@ import { ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
 import { StatusRow } from '~/components/StatusRow';
 import { TopActionBar } from '~/components/TopActionBar';
+import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import {
   deleteProtocol,
   getSettings,
@@ -105,6 +106,7 @@ export function HomeRoute() {
   const view = viewFromLocation(location);
   const dialog = useDialog();
   const toast = useToast();
+  const analytics = useAnalytics();
 
   const [pendingImports, setPendingImports] = useState<PendingImport[]>([]);
 
@@ -200,6 +202,13 @@ export function HomeRoute() {
           }
           await reload();
           setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
+          // No protocol name or contents — only the anonymous content hash,
+          // import source, and whether a schema migration ran.
+          analytics.track('protocol_installed', {
+            source: request.source,
+            migrated: result.migrated,
+            protocol_hash: result.hash,
+          });
           toast.add({
             title: 'Protocol imported',
             description: result.migrated
@@ -209,6 +218,10 @@ export function HomeRoute() {
           });
         } else {
           setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
+          analytics.track('protocol_install_failed', {
+            source: request.source,
+            reason: result.error,
+          });
           toast.add({
             title: 'Import failed',
             description: result.message,
@@ -219,7 +232,7 @@ export function HomeRoute() {
 
       void run();
     },
-    [reload, toast],
+    [analytics, reload, toast],
   );
 
   // If the pending hash has since been deleted (e.g. cascade-delete from
@@ -262,7 +275,7 @@ export function HomeRoute() {
   const handleSessionCreated = useCallback(
     (session: StoredSession) => {
       setPendingProtocolHash(null);
-      navigate(`/interview/${session.id}`, { state: { fresh: true } });
+      navigate(`/interview/${session.id}`);
     },
     [navigate],
   );
@@ -369,27 +382,6 @@ export function HomeRoute() {
           </AnimatePresence>
         </div>
       </header>
-
-      {/* Backdrop for the in-card "new session" form. Sits between the
-          page chrome (header + StatusRow + chevron row) and the active
-          DeckCard, which the ProtocolDeck section lifts to z-50 while
-          this is mounted. Clicking dismisses, matching modal semantics
-          without going through Base-UI's Dialog. */}
-      <AnimatePresence>
-        {newSessionActive && (
-          <motion.button
-            type="button"
-            key="new-session-backdrop"
-            aria-label="Cancel new interview"
-            onClick={closeNewSession}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="bg-overlay publish-colors fixed inset-0 z-40 cursor-default border-0 p-0 backdrop-blur-xs"
-          />
-        )}
-      </AnimatePresence>
 
       <AnimatePresence mode="wait">
         {view === 'protocols' ? (

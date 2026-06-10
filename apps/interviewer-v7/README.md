@@ -103,6 +103,38 @@ desktop:    ipc auth:lock -> closeDatabase + zero in-memory key
 web/cap:    drop in-memory unlock flag (lock); clear Dexie + metadata (revoke)
 ```
 
+## Step-up auth & interview-flow gates
+
+Beyond the global `AuthGate`, sensitive actions re-authenticate without
+unlocking the whole app. `StepUpAuthProvider.requireFreshUnlock()` opens a
+verify-only `StepUpAuthDialog` (Touch ID re-prompt for `biometric-keystore`,
+the Capacitor plugin for `biometric-native`, or a verifier recompute for
+`pin` / `passphrase`) and resolves `{ ok }` without flipping the global lock
+state. Under `mode: none` it resolves `{ ok: true }` immediately — there is
+no "security-disabled" branch.
+
+Three persisted `StoredSettings` flags gate interview actions, all edited in
+one shared control (`src/components/SecurityBehaviorControls.tsx`) surfaced
+both in the first-launch wizard (`SetupWizard/Step4Behavior`) and in Settings
+(`SettingsDialog`):
+
+| Setting                 | Default | Gate                                              |
+| ----------------------- | ------- | ------------------------------------------------- |
+| `requireUnlockOnEnter`  | `true`  | Entering any interview — newly started or resumed |
+| `requireUnlockOnExit`   | `false` | Exiting an interview back to the dashboard        |
+| `requireUnlockOnExport` | `false` | Before exporting session data                     |
+
+Finishing an interview no longer auto-returns to the dashboard. `InterviewRoute`
+renders a terminal `InterviewComplete` screen (no navigation bar) whose only
+control is an exit gated by `requireUnlockOnExit`; re-opening an
+already-finished session shows the same screen. This stops a completed device
+from being handed back into the researcher's dashboard without a fresh unlock.
+
+The enter gate is tracked per-interview for the current unlock session
+(`StepUpAuthProvider` holds the authorized interview id in a ref above
+`AuthGate`), so an idle-lock/unlock cycle that remounts the same interview does
+not re-prompt — the LockScreen unlock already satisfied it.
+
 ## Data flow — protocol import
 
 ```text

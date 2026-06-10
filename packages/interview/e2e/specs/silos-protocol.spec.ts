@@ -276,6 +276,12 @@ test.describe('SILOS Protocol', () => {
     });
 
     test('Stage 9: Geospatial Interface', async ({ interview, stage }) => {
+      // Real Mapbox tiles load over the network on chromium; the initial
+      // idle wait alone has been observed to take 16s+, which together
+      // with the search/fly-to/selection flow can exceed the default 30s
+      // test timeout. slow() triples it.
+      test.slow();
+
       await stage.geospatial.waitForGeoJsonRendered();
       await interview.captureInitial();
 
@@ -314,6 +320,8 @@ test.describe('SILOS Protocol', () => {
       await expect(stage.geospatial.searchInput).toBeVisible();
 
       // --- Test actual search functionality ---
+      // Suggest/retrieve responses come from the shared Mapbox mocks
+      // (fixtures/mapbox-mocks.ts), so results are deterministic.
       await stage.geospatial.searchInput.fill('Sidetrack');
 
       // Wait for suggestions to appear
@@ -325,16 +333,20 @@ test.describe('SILOS Protocol', () => {
       const suggestionCount = await stage.geospatial.getSuggestions().count();
       expect(suggestionCount).toBeGreaterThan(0);
 
-      // Select the first suggestion - this should pan the map
+      // Select the first suggestion - this pans the map to the result.
+      // Wait for that fly-to to start and settle before touching any other
+      // control: clicking buttons while the camera animates starves
+      // chromium's pre-click actionability checks past the action timeout.
       await stage.geospatial.getSuggestions().first().click();
+      await stage.geospatial.waitForSearchFlyTo();
+
+      // Return to the initial view so the remaining interactions and the
+      // final snapshot are independent of the search result's location.
+      await stage.geospatial.recenter();
 
       // Clear search and close panel
       await stage.geospatial.closeSearch();
       expect(await stage.geospatial.isSearchOpen()).toBe(false);
-
-      // Wait for the map to settle after the search-triggered zoom/pan
-      // so tile labels are fully rendered before any screenshot.
-      await stage.geospatial.waitForMapIdle();
 
       // --- Test map selection by clicking on a selectable area ---
       // The silos protocol uses Chicago neighborhoods - click near center of map
@@ -974,6 +986,10 @@ test.describe('SILOS Protocol', () => {
       interview,
       stage,
     }) => {
+      // Real Mapbox tile loads on chromium can stall the initial idle
+      // wait well past the default test timeout. slow() triples it.
+      test.slow();
+
       await stage.geospatial.waitForGeoJsonRendered();
       await interview.captureInitial();
 
@@ -1470,6 +1486,10 @@ test.describe('SILOS Protocol', () => {
       interview,
       stage,
     }) => {
+      // Real Mapbox tile loads on chromium can stall the initial idle
+      // wait well past the default test timeout. slow() triples it.
+      test.slow();
+
       await stage.geospatial.waitForGeoJsonRendered();
       await interview.captureInitial();
 
@@ -1676,6 +1696,10 @@ test.describe('SILOS Protocol', () => {
       interview,
       stage,
     }) => {
+      // Real Mapbox tile loads on chromium can stall the initial idle
+      // wait well past the default test timeout. slow() triples it.
+      test.slow();
+
       await stage.geospatial.waitForGeoJsonRendered();
       await interview.captureInitial();
 

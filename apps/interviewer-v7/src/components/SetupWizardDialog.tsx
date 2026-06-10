@@ -1,4 +1,5 @@
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import * as authApi from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
 import type { IdleTimeoutMinutes } from '~/lib/auth/AuthContext';
@@ -9,6 +10,7 @@ import Step1Intro from './SetupWizard/Step1Intro';
 import Step2MethodPicker from './SetupWizard/Step2MethodPicker';
 import Step3Configure from './SetupWizard/Step3Configure';
 import Step4Behavior from './SetupWizard/Step4Behavior';
+import Step5Analytics from './SetupWizard/Step5Analytics';
 
 export type WizardSelectedMethod = 'biometric' | 'pin' | 'passphrase';
 
@@ -17,20 +19,25 @@ export type SetupWizardData = {
   enrolmentCommitted: boolean;
   behavior: {
     idleTimeoutMinutes: IdleTimeoutMinutes;
-    requireUnlockOnResume: boolean;
+    requireUnlockOnEnter: boolean;
+    requireUnlockOnExit: boolean;
     requireUnlockOnExport: boolean;
   };
+  // Undefined when the user never touched the toggle — defaults to enabled.
+  analyticsEnabled?: boolean;
 };
 
 const DEFAULT_BEHAVIOR: SetupWizardData['behavior'] = {
   idleTimeoutMinutes: 15,
-  requireUnlockOnResume: true,
+  requireUnlockOnEnter: true,
+  requireUnlockOnExit: false,
   requireUnlockOnExport: false,
 };
 
 export function useSetupWizard() {
   const { openDialog } = useDialog();
   const { refresh } = useAuth();
+  const analytics = useAnalytics();
 
   const openSetupWizard = async (): Promise<void> => {
     const result = await openDialog({
@@ -62,6 +69,11 @@ export function useSetupWizard() {
           title: 'Lock behavior',
           description: 'Decide when the app re-locks.',
           content: Step4Behavior,
+        },
+        {
+          title: 'Help improve the app',
+          description: 'Optional anonymous analytics.',
+          content: Step5Analytics,
           nextLabel: 'Finish',
         },
       ],
@@ -80,9 +92,14 @@ export function useSetupWizard() {
       const behavior = data.behavior ?? DEFAULT_BEHAVIOR;
       await updateSettings({
         idleTimeoutMinutes: behavior.idleTimeoutMinutes,
-        requireUnlockOnResume: behavior.requireUnlockOnResume,
+        requireUnlockOnEnter: behavior.requireUnlockOnEnter,
+        requireUnlockOnExit: behavior.requireUnlockOnExit,
         requireUnlockOnExport: behavior.requireUnlockOnExport,
       });
+      // Persist + apply the analytics choice (defaults to enabled). Routes
+      // through the provider so opt-in/out and the native preference mirror
+      // take effect immediately.
+      await analytics.setEnabled(data.analyticsEnabled ?? true);
     }
 
     await refresh();

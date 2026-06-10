@@ -1,5 +1,6 @@
-/* global FileTransfer */
+import { Buffer } from 'buffer';
 
+import { CapacitorHttp } from '@capacitor/core';
 import { v4 as uuid } from 'uuid';
 
 import friendlyErrorMessage from '../../utils/friendlyErrorMessage';
@@ -24,9 +25,6 @@ const urlError = friendlyErrorMessage(
 const networkError = friendlyErrorMessage(
   "We weren't able to fetch your protocol. Your device may not have an active network connection, or you may have mistyped the URL. Ensure you are connected to a network, double check your URL, and try again.",
 );
-const fileError = friendlyErrorMessage(
-  'The protocol could not be saved to your device. You might not have enough storage available. ',
-);
 
 /**
  * Download a protocol from a remote URL.
@@ -37,52 +35,39 @@ const fileError = friendlyErrorMessage(
 const downloadProtocol = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     return async (uri) => {
-      const destination = `${tempDataPath()}/${getProtocolName()}`;
-
       const url = await getURL(uri).catch(urlError);
 
-      const response = await fetch(url.href).catch(networkError);
-      if (!response.ok) {
-        throw networkError(new Error(`HTTP ${response.status}`));
+      if (!window.electronAPI?.protocol?.download) {
+        throw new Error('electronAPI not available');
       }
 
-      const arrayBuffer = await response.arrayBuffer();
-      const data = new Uint8Array(arrayBuffer);
-      await writeFile(destination, data).catch(fileError);
-
-      return destination;
+      // Download in the main process to avoid renderer cross-origin (CORS) restrictions.
+      return window.electronAPI.protocol.download(url.href).catch(networkError);
     };
   }
 
-  if (environment === environments.CORDOVA) {
-    return (uri) => {
-      const promisedResponse = getURL(uri)
-        .then((url) => url.href)
-        .catch(urlError)
-        .then(
-          (href) =>
-            new Promise((resolve, reject) => {
-              // The filetransfer plugin requires a folder to write to
-              const destinationWithFolder = `${tempDataPath()}${getProtocolName()}`;
+  if (environment === environments.CAPACITOR) {
+    return async (uri) => {
+      const url = await getURL(uri).catch(urlError);
+      const destination = `${tempDataPath()}${getProtocolName()}`;
 
-              const fileTransfer = new FileTransfer();
-              fileTransfer.download(
-                href,
-                destinationWithFolder,
-                () => resolve(destinationWithFolder),
-                (error) => reject(error),
-              );
-            }),
-        );
+      // Download via native HTTP (CapacitorHttp), not a webview fetch: the
+      // webview is subject to CORS and most protocol hosts don't send CORS
+      // headers — the same reason the Electron branch downloads in its main
+      // process. CapacitorHttp follows redirects (e.g. a GitHub release to its
+      // CDN) and returns an `arraybuffer` response body as a base64 string.
+      const response = await CapacitorHttp.get({
+        url: url.href,
+        responseType: 'arraybuffer',
+      }).catch(networkError);
 
-      return promisedResponse.catch((error) => {
-        const getErrorMessage = ({ code }) => {
-          if (code === 3) return networkError;
-          return urlError;
-        };
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(`Failed to download protocol: HTTP ${response.status}`);
+      }
 
-        getErrorMessage(error)(error);
-      });
+      const data = Buffer.from(response.data, 'base64');
+      await writeFile(destination, data);
+      return destination;
     };
   }
 

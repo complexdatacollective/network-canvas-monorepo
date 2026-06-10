@@ -2,10 +2,10 @@
   "name": "network-canvas-monorepo",
   "private": true,
   "scripts": {
-    "build": "turbo run build --filter=!network-canvas-interviewer --filter=!network-canvas-architect",
+    "build": "turbo run build",
     "dev": "turbo watch dev",
-    "test": "turbo run test --filter=!network-canvas-interviewer --filter=!network-canvas-architect",
-    "test:watch": "turbo watch test:watch --filter=!network-canvas-interviewer --filter=!network-canvas-architect",
+    "test": "turbo run test",
+    "test:watch": "turbo watch test:watch",
     "publish-packages": "pnpm exec changeset publish",
     "version-packages": "pnpm exec changeset version && pnpm install --no-frozen-lockfile && pnpm lint:fix",
     "changeset": "changeset add",
@@ -13,7 +13,7 @@
     "lint:fix": "oxlint --fix && oxfmt .",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "typecheck": "turbo run typecheck --continue --filter=!network-canvas-interviewer --filter=!network-canvas-architect",
+    "typecheck": "turbo run typecheck --continue",
     "prepare": "husky",
     "knip": "knip --exclude catalog"
   },
@@ -26,7 +26,7 @@
     "lint-staged": "^17.0.7",
     "oxfmt": "^0.52.0",
     "oxlint": "^1.67.0",
-    "oxlint-tailwindcss": "^1.1.0",
+    "oxlint-tailwindcss": "^1.2.0",
     "oxlint-tsgolint": "^0.23.0",
     "turbo": "^2.9.16",
     "typescript": "catalog:"

@@ -1,3 +1,5 @@
+import csv from 'csvtojson/browser/browser.js';
+
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 /**
@@ -6,11 +8,9 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
  *  @param {string} data - the contents of a CSV file
  *
  * See: https://github.com/Keyang/node-csvtojson We may want to introduce buffering
- * to this function to increase performance particularly on cordova.
+ * to this function to increase performance particularly on mobile.
  *
  */
-
-const csv = require('../../node_modules/csvtojson/browser/browser.js');
 
 const CSVToJSONNetworkFormat = (data) => {
   const withTypeAndAttributes = (node) => ({

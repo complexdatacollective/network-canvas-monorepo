@@ -1,6 +1,6 @@
 {
   "name": "@codaco/protocol-utilities",
-  "version": "1.0.0-alpha.0",
+  "version": "1.0.0",
   "description": "Synthetic network generation and interview-payload builder for Network Canvas protocols.",
   "license": "MIT",
   "repository": {
@@ -19,8 +19,7 @@
     }
   },
   "publishConfig": {
-    "access": "public",
-    "tag": "alpha"
+    "access": "public"
   },
   "scripts": {
     "build": "node ../../scripts/with-turbo.mjs vite build",

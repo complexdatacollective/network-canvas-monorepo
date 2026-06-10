@@ -12,12 +12,12 @@ This monorepo is organized into four main categories:
 
 ### Apps
 
-| App                                             | Description                                                                                          |
-| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| [`architect-web`](./apps/architect-web)         | Protocol designer application (Vite + React + Redux) for creating Network Canvas interview protocols |
-| [`architect-desktop`](./apps/architect-desktop) | Legacy Electron build of Architect, the Network Canvas protocol designer (maintenance mode)          |
-| [`interviewer`](./apps/interviewer)             | Network Canvas Interviewer — the desktop/mobile app (Electron + Cordova) used to conduct interviews  |
-| [`documentation`](./apps/documentation)         | Next.js documentation website with MDX support and search functionality                              |
+| App                                     | Description                                                                                          |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| [`architect-web`](./apps/architect-web) | Protocol designer application (Vite + React + Redux) for creating Network Canvas interview protocols |
+| [`architect`](./apps/architect)         | Legacy Electron build of Architect, the Network Canvas protocol designer (maintenance mode)          |
+| [`interviewer`](./apps/interviewer)     | Network Canvas Interviewer — the desktop/mobile app (Electron + Cordova) used to conduct interviews  |
+| [`documentation`](./apps/documentation) | Next.js documentation website with MDX support and search functionality                              |
 
 ### Packages
 

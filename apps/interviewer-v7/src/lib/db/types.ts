@@ -72,6 +72,9 @@ export type SessionSortColumn =
   | 'startedAt'
   | 'updatedAt'
   | 'progress'
+  // Sorts by completion state (in-progress < complete < exported). Supported by
+  // the query backend; not yet surfaced as a sortable column in the dashboard.
+  | 'status'
   | 'exportedAt';
 
 export type SessionQueryParams = {
@@ -112,9 +115,14 @@ export type StoredSettings = {
   lastActiveProtocolHash?: string;
   lastActiveSessionId?: string;
   idleTimeoutMinutes: IdleTimeoutMinutes;
-  requireUnlockOnResume: boolean;
+  requireUnlockOnEnter: boolean;
+  requireUnlockOnExit: boolean;
   requireUnlockOnExport: boolean;
   sampleProtocolDismissed: boolean;
+  // Opt-out analytics. Defaults to true; when false, no anonymous usage or
+  // error telemetry is sent. Never carries participant data or a user
+  // identifier — only the per-device installation id (see installationId.ts).
+  analyticsEnabled: boolean;
 };
 
 export type ProtocolWithCounts = StoredProtocol & {
@@ -130,7 +138,9 @@ export const DEFAULT_SETTINGS: StoredSettings = {
   screenLayoutWidth: 1920,
   dismissedUpdates: [],
   idleTimeoutMinutes: 15,
-  requireUnlockOnResume: true,
+  requireUnlockOnEnter: true,
+  requireUnlockOnExit: false,
   requireUnlockOnExport: false,
   sampleProtocolDismissed: false,
+  analyticsEnabled: true,
 };

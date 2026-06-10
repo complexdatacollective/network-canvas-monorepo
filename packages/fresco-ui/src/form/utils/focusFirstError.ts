@@ -49,24 +49,34 @@ export const focusFirstError = (errors: FlattenedErrors | null) => {
   // Focus after smooth scroll completes. Using preventScroll avoids the
   // browser snap-scrolling the element into view and interrupting the
   // smooth animation.
-  const focusTarget = () => focusableElement.focus({ preventScroll: true });
+  //
+  // The deferred focus is skipped if focus has moved since invocation:
+  // by the time it fires the user may have clicked into another control,
+  // and yanking focus back to a stale error field is hostile (and made
+  // e2e snapshots nondeterministic — chromium scrolls a date input's
+  // segment selection into view even with preventScroll).
+  const initiallyActive = document.activeElement;
+  const focusTarget = () => {
+    if (document.activeElement !== initiallyActive) return;
+    focusableElement.focus({ preventScroll: true });
+  };
 
-  // Use scrollend event when supported, with a timeout fallback.
+  // Use scrollend event when supported, with a timeout fallback for when
+  // scrollend doesn't fire (already at target, or unsupported browser).
+  // Whichever path runs first cancels the other.
   const cleanup = new AbortController();
+
+  const fallback = setTimeout(() => {
+    cleanup.abort();
+    focusTarget();
+  }, 800);
 
   scroller.addEventListener(
     'scrollend',
     () => {
-      cleanup.abort();
+      clearTimeout(fallback);
       focusTarget();
     },
     { once: true, signal: cleanup.signal },
   );
-
-  // Fallback: if scrollend doesn't fire (e.g. already at target), focus
-  // after a generous delay that covers typical smooth scroll durations.
-  setTimeout(() => {
-    cleanup.abort();
-    focusTarget();
-  }, 800);
 };

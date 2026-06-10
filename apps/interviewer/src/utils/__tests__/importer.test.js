@@ -16,9 +16,9 @@ describe('importer', () => {
     it('copies the protocol files to the user data directory', () => {});
   });
 
-  describe('Cordova', () => {
+  describe('Capacitor', () => {
     beforeAll(() => {
-      getEnvironment.mockReturnValue(environments.CORDOVA);
+      getEnvironment.mockReturnValue(environments.CAPACITOR);
     });
 
     it('copies the protocol files to the user data directory', () => {});

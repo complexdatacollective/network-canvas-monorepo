@@ -5,9 +5,23 @@ import { vi } from 'vitest';
 // Configure Enzyme
 configure({ adapter: new Adapter() });
 
-// Polyfills
-global.requestAnimationFrame = (callback) => setTimeout(callback, 0);
-global.cancelAnimationFrame = () => {};
+// Polyfills. requestAnimationFrame is backed by a timer, so a queued animation
+// callback (e.g. animejs's engine loop) can fire AFTER jsdom teardown, when
+// globals like requestAnimationFrame are gone — animejs then re-references the
+// missing global and throws a ReferenceError that surfaces as an unhandled
+// exception and flakily fails the run. cancelAnimationFrame clears the timer so
+// well-behaved callers can stop their loop; the try/catch swallows the
+// post-teardown case (purely a test-env artifact — rAF always exists in a real
+// browser) without hiding any in-test failure.
+global.requestAnimationFrame = (callback) =>
+  setTimeout(() => {
+    try {
+      callback(Date.now());
+    } catch {
+      // animation callback fired after environment teardown; ignore.
+    }
+  }, 0);
+global.cancelAnimationFrame = (id) => clearTimeout(id);
 global.SVGElement = global.Element;
 
 // window.matchMedia stub

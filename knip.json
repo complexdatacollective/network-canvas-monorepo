@@ -1,6 +1,5 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
-  "ignoreWorkspaces": ["apps/interviewer", "apps/architect-desktop"],
   "ignoreExportsUsedInFile": { "type": true },
   "tags": ["-public"],
   "workspaces": {
@@ -45,6 +44,59 @@
         "@fontsource-variable/inclusive-sans",
         "@fontsource-variable/nunito"
       ]
+    },
+    "apps/interviewer": {
+      "entry": [
+        "src/main/index.js!",
+        "src/preload/index.js!",
+        "electron.vite.config.js"
+      ],
+      "project": ["src/**/*.{js,jsx}"],
+      "paths": { "@/*": ["./src/*"] },
+      "ignore": [
+        "src/shims/react-resize-aware.js" // wired via electron.vite.config resolve.alias, not a normal import
+      ],
+      "ignoreDependencies": [
+        "buffer", // npm Buffer polyfill — `import { Buffer } from 'buffer'` in filesystem.js + saveExport.js; knip treats 'buffer' as a Node built-in
+        // knip's Capacitor plugin resolves @capacitor/android from
+        // android/capacitor.settings.gradle, but only detects iOS via a CocoaPods
+        // Podfile — this iOS project uses Swift Package Manager (CapApp-SPM), so
+        // @capacitor/ios (native-only, never JS-imported) must be ignored here.
+        "@capacitor/ios"
+      ]
+    },
+    "apps/architect": {
+      "entry": [
+        "public/electron-starter.js!",
+        "public/preload/appPreload.js!",
+        "public/preload/summaryPreload.js!",
+        "electron.vite.config.js",
+        "electron-builder.config.js"
+      ],
+      "project": ["src/**/*.{js,jsx}"],
+      "ignoreDependencies": [
+        "react-resizable", // CSS only — @import in main.scss, invisible to knip
+        "tippy.js", // CSS only — @import in main.scss, peer dep of @tippyjs/react
+        // The preview window renders this app: createPreviewWindow.js resolves it
+        // via require.resolve('network-canvas-interviewer/package.json') and
+        // electron-builder.config.js bundles its out/ — neither a static import.
+        "network-canvas-interviewer",
+        // Used only by the CJS public/ Electron main process, which is excluded
+        // from `project` above: knip's CJS export --fix corrupts module.exports
+        // in the main-process modules, so that tree is left out of analysis.
+        "archiver",
+        "decompress",
+        "electron-log",
+        "electron-devtools-installer"
+      ],
+      "paths": {
+        "@app/*": ["./src/*"],
+        "@components/*": ["./src/components/*"],
+        "@selectors/*": ["./src/selectors/*"],
+        "@hooks/*": ["./src/hooks/*"],
+        "@modules/*": ["./src/ducks/modules/*"],
+        "@utils/*": ["./src/utils/*"]
+      }
     },
     "apps/interviewer-v7": {
       "entry": [

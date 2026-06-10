@@ -8,7 +8,8 @@ import type { IdleTimeoutMinutes } from '~/lib/auth/AuthContext';
 
 const DEFAULT_BEHAVIOR: Behavior = {
   idleTimeoutMinutes: 15,
-  requireUnlockOnResume: true,
+  requireUnlockOnEnter: true,
+  requireUnlockOnExit: false,
   requireUnlockOnExport: false,
 };
 
@@ -26,10 +27,14 @@ function asBehavior(value: unknown): Behavior {
       : DEFAULT_BEHAVIOR.idleTimeoutMinutes;
   return {
     idleTimeoutMinutes,
-    requireUnlockOnResume:
-      typeof obj.requireUnlockOnResume === 'boolean'
-        ? obj.requireUnlockOnResume
-        : DEFAULT_BEHAVIOR.requireUnlockOnResume,
+    requireUnlockOnEnter:
+      typeof obj.requireUnlockOnEnter === 'boolean'
+        ? obj.requireUnlockOnEnter
+        : DEFAULT_BEHAVIOR.requireUnlockOnEnter,
+    requireUnlockOnExit:
+      typeof obj.requireUnlockOnExit === 'boolean'
+        ? obj.requireUnlockOnExit
+        : DEFAULT_BEHAVIOR.requireUnlockOnExit,
     requireUnlockOnExport:
       typeof obj.requireUnlockOnExport === 'boolean'
         ? obj.requireUnlockOnExport
@@ -43,11 +48,8 @@ export default function Step4Behavior() {
 
   useEffect(() => {
     wizard.setNextEnabled(true);
-    wizard.setNextLabel('Finish');
+    wizard.setNextLabel('Continue');
     wizard.setBeforeNext(null);
-    return () => {
-      wizard.setNextLabel('Continue');
-    };
   }, [wizard]);
 
   return (

@@ -1,13 +1,16 @@
-import { useId, useRef } from 'react';
+import { Fingerprint, KeyRound, RectangleEllipsis } from 'lucide-react';
+import { useId } from 'react';
 
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import BiometricUnlockForm from '~/components/UnlockForms/BiometricUnlockForm';
 import PasswordUnlockField from '~/components/UnlockForms/PasswordUnlockField';
-import PinUnlockField from '~/components/UnlockForms/PinUnlockField';
+import { PinUnlockForm } from '~/components/UnlockForms/PinUnlockForm';
+import { UnlockEmblem } from '~/components/UnlockForms/UnlockEmblem';
 
 import * as authApi from './api';
 import { useAuth } from './AuthContext';
@@ -28,7 +31,6 @@ function PinStepUp({
   onResolve: (result: StepUpResult) => void;
   handleCancel: () => void;
 }) {
-  const formRef = useRef<HTMLFormElement>(null);
   const formId = useId();
 
   return (
@@ -43,24 +45,20 @@ function PinStepUp({
           </SubmitButton>
         }
       >
-        <FormWithoutProvider
-          id={formId}
-          ref={formRef}
-          onSubmit={async (values): Promise<FormSubmissionResult> => {
-            const pin = typeof values.pin === 'string' ? values.pin : '';
+        <div className="mb-6 flex flex-col items-center gap-4 text-center">
+          <UnlockEmblem icon={KeyRound} seed="pin-unlock" />
+          <Paragraph margin="none" emphasis="muted">
+            Enter your PIN to continue.
+          </Paragraph>
+        </div>
+        <PinUnlockForm
+          formId={formId}
+          verifyPin={async (pin) => {
             const result = await authApi.verifyWithPin(pin);
-            if (result.ok) {
-              onResolve({ ok: true });
-              return { success: true };
-            }
-            return {
-              success: false,
-              formErrors: [result.message ?? 'Incorrect PIN.'],
-            };
+            if (result.ok) onResolve({ ok: true });
+            return result;
           }}
-        >
-          <PinUnlockField onComplete={() => formRef.current?.requestSubmit()} />
-        </FormWithoutProvider>
+        />
       </Dialog>
     </FormStoreProvider>
   );
@@ -89,6 +87,12 @@ function PassphraseStepUp({
           </SubmitButton>
         }
       >
+        <div className="mb-6 flex flex-col items-center gap-4 text-center">
+          <UnlockEmblem icon={RectangleEllipsis} seed="passphrase-unlock" />
+          <Paragraph margin="none" emphasis="muted">
+            Enter your passphrase to continue.
+          </Paragraph>
+        </div>
         <FormWithoutProvider
           id={formId}
           onSubmit={async (values): Promise<FormSubmissionResult> => {
@@ -105,7 +109,7 @@ function PassphraseStepUp({
             };
           }}
         >
-          <PasswordUnlockField />
+          <PasswordUnlockField autoFocus />
         </FormWithoutProvider>
       </Dialog>
     </FormStoreProvider>
@@ -127,6 +131,12 @@ function BiometricStepUp({
       closeDialog={handleCancel}
       title="Confirm your identity"
     >
+      <div className="mb-6 flex flex-col items-center gap-4 text-center">
+        <UnlockEmblem icon={Fingerprint} seed="biometric-unlock" />
+        <Paragraph margin="none" emphasis="muted">
+          Authenticate to continue.
+        </Paragraph>
+      </div>
       <BiometricUnlockForm
         submitLabel="Verify identity"
         onSubmit={async (signal) => {

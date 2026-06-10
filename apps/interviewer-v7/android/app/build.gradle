@@ -36,6 +36,11 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    // PostHog Android SDK — native crash/error tracking. Honours the
+    // analytics-enabled preference mirrored into Capacitor Preferences; see
+    // AnalyticsApplication. Version pinned in variables.gradle for reproducible
+    // builds. https://posthog.com/docs/error-tracking/installation/android
+    implementation "com.posthog:posthog-android:$posthogAndroidVersion"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
