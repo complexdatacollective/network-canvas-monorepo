@@ -70,7 +70,7 @@ If your protocol is marked as obsolete, and you wish to continue collecting data
 
 ## Migrating a protocol
 
-Migrating a protocol happens within Architect, and is automatic. The process works as follows:
+Migrating a protocol happens within Architect, Fresco, and Interviewer 7, and is automatic. The process works as follows:
 
 1. Ensure you are on the latest version of the Architect app. When opening the app with an active internet connection, the app will check for updates automatically, and notify you if any are found. Alternatively, you can manually update the app, by visiting our download page and installing the latest version for your platform.
 2. Once you are running the latest version, open the protocol file that you wish to migrate.
@@ -89,7 +89,7 @@ This has two practical consequences:
 1. To create or edit a schema 8 protocol, you must use **Architect Web**. Architect Desktop cannot create, open, or migrate protocols to schema 8.
 2. A schema 8 protocol can only be run in **Fresco** or **Interviewer 7**. The older **Interviewer 6.x** desktop and tablet apps cannot run schema 8 protocols, and will mark them as incompatible/unsupported.
 
-Both Fresco and Interviewer 7 accept schema 7 and schema 8 protocols (anything older is rejected), so your existing protocols continue to work without a manual migration step. When Fresco imports a schema 7 `.netcanvas` file, it automatically upgrades it to schema 8 in place.
+Both Fresco and Interviewer 7 accept schema 7 and schema 8 protocols (anything older is rejected), so your existing protocols continue to work without a manual migration step. When Fresco or Interviewer 7 imports a schema 7 `.netcanvas` file, it automatically upgrades it to schema 8 in place.
 
 <TipBox danger>
 
@@ -117,14 +117,14 @@ Schema version 8 introduces several new interfaces and authoring features:
 
 Consult the table below for information about which schema versions are supported by each released version of the Network Canvas software. Note that schema 8 is no longer tied to specific Architect Desktop / Interviewer 6.x version numbers — it is supported by the Architect Web and Fresco web apps and by Interviewer 7.
 
-| Schema Version | Features                                                                                                                                                                                                                                              | Architect Versions                | Interviewer Versions |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | -------------------- |
+| Schema Version | Features                                                                                                                                                                                                                                                  | Architect Versions                | Interviewer Versions  |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | --------------------- |
 | 8              | New Geospatial, experimental Anonymisation, One-to-many dyad census, and Family pedigree interfaces. New `greaterThanVariable`/`lessThanVariable` validation and "contains"/"does not contain" comparators. Configurable node shape and form-field hints. | Architect Web                     | Fresco, Interviewer 7 |
-| 7              | Minimum/maximum alter counts on name generators. Additional skip logic options for categorical variables.                                       | 6.4.0                             | \> 6.3.0             |
-| 6              | New "roster name generator" interface. Automatic node layout on the sociogram.                                                                  | 6.3.0, 6.3.1                      | \> 6.2.0             |
-| 5              | Supports "tie-strength census" interface. Adds "unique", "same as", and "different from" validation options. Adds the interview script section. | 6.1.0, 6.1.1, 6.2.0, 6.2.1, 6.2.2 | \> 6.1.0             |
-| 4              | Initial stable release schema. Introduces stricter variable naming requirements.                                                                | 6.0.0, 6.0.1, 6.0.2, 6.0.3        | \> 6.0.0             |
-| 1.0.0          | Obsolete alpha schema.                                                                                                                          |                                   |                      |
+| 7              | Minimum/maximum alter counts on name generators. Additional skip logic options for categorical variables.                                                                                                                                                 | 6.4.0                             | \> 6.3.0              |
+| 6              | New "roster name generator" interface. Automatic node layout on the sociogram.                                                                                                                                                                            | 6.3.0, 6.3.1                      | \> 6.2.0              |
+| 5              | Supports "tie-strength census" interface. Adds "unique", "same as", and "different from" validation options. Adds the interview script section.                                                                                                           | 6.1.0, 6.1.1, 6.2.0, 6.2.1, 6.2.2 | \> 6.1.0              |
+| 4              | Initial stable release schema. Introduces stricter variable naming requirements.                                                                                                                                                                          | 6.0.0, 6.0.1, 6.0.2, 6.0.3        | \> 6.0.0              |
+| 1.0.0          | Obsolete alpha schema.                                                                                                                                                                                                                                    |                                   |                       |
 
 ## Technical implementation of schema migration
 

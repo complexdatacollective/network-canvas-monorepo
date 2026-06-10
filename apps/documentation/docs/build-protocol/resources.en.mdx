@@ -3,15 +3,19 @@ title: Resources
 ---
 
 <Definition>
-  Resources are external files, such as audio, images, video, and network roster
-  data, that you can use within your interview protocol.
+  Resources are external files and credentials — such as audio, images, video,
+  network roster data, and API keys — that you can use within your interview
+  protocol.
 </Definition>
 
 ## Details
 
-In Architect, resources are any external files that you use within your interview. These can be media files, such as audio, images, or video. They can also be network data files that you can use as a roster. Careful use of resources can improve the interview experience for your participants or enable different types of interview workflow.
+In Architect, resources are any external files that you use within your interview. These can be media files, such as audio, images, or video. They can also be network data files that you can use as a roster, or API keys that let an interface communicate with a third-party service. Careful use of resources can improve the interview experience for your participants or enable different types of interview workflow.
 
-Once you add resources to your protocol in Architect, they are stored within the `.netcanvas` file itself. Because of this, you must handle updating or removing resources from within Architect.
+Once you add resources to your protocol, they are stored as part of the protocol itself, so you must handle updating or removing them from within Architect. Where the protocol — and therefore its resources — is stored depends on which version of Architect you use:
+
+- In **Architect Desktop**, your protocol is a `.netcanvas` file on your computer, and resources are stored inside that file.
+- In **Architect Web**, your protocol and its resources are saved in your browser's [library](/en/build-protocol/architect-web/storing-your-work) as you work, and are embedded into a `.netcanvas` file when you download it. Because this library lives in your browser rather than as a file you control, download a copy of any protocol with resources you can't afford to lose — see [Storing your work](/en/build-protocol/architect-web/storing-your-work).
 
 <TipBox danger>
 
@@ -41,7 +45,7 @@ In the resource library screen, you can browse, filter, and delete any existing 
 
 You will notice that existing resources that are unused show a red **unused** pill. This indicates that you can delete them. Attempting to delete a resource that is in use within your interview will be prevented. You must first update or remove all uses of a resource before you can delete it.
 
-## Supported file types
+## Supported resource types
 
 ### Image
 
@@ -59,9 +63,13 @@ Interviewer supports MP4 and MOV video file formats. Take special care when usin
 
 Interviewer supports network data in CSV format. The heading row will be used to set [variable](/en/project/key-concepts/variables) names for any nodes brought into the interview. Ensure that you have a column called `name` to take advantage of automatic [node labelling](/en/project/advanced-topics/node-labelling). Download a simple example CSV file from [here](/assets/previousInterview.csv).
 
+### API keys
+
+The [Geospatial](/en/project/interface-documentation/geospatial) interface communicates with a third-party service that requires an API key — a Mapbox token used to load maps. Unlike the other resource types, an API key is a credential you paste in rather than a file you upload, but it is stored in the resource library alongside your other resources, where it can be copied, deleted, or replaced as needed.
+
 ## Related concepts
 
 - [Interfaces](/en/project/key-concepts/interfaces) - Learn which Interfaces use resources
-- [Codebook](/en/project/key-concepts/codebook) - View network asset summaries in the codebook
+- [Codebook](/en/build-protocol/codebook) - View network asset summaries in the codebook
 - [Network Filtering](/en/project/key-concepts/network-filtering) - Filter roster data on stages
 - [Variables](/en/project/key-concepts/variables) - Understand how roster columns become variables

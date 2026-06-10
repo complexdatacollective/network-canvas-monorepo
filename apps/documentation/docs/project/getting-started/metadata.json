@@ -1,0 +1,12 @@
+{
+  "type": "folder",
+  "navOrder": 0,
+  "localeLabels": {
+    "en": "Getting Started"
+  },
+  "localeIndexFiles": {
+    "en": "network-canvas.en.mdx"
+  },
+  "isExpanded": true,
+  "slug": "getting-started"
+}

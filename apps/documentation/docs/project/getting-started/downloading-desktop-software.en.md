@@ -10,8 +10,8 @@ toc: true
 
 Each application of the Network Canvas Desktop Suite can be downloaded and installed individually. You do not need to install all applications to use the software.
 
-- Install **Interviewer** on any device you will use to interview participants. It runs your Network Canvas protocols and collects data in the field. Interviewer comes in two versions: **Interviewer 6.x**, the established release (schema 7, fully offline), and **Interviewer 7** (beta), built on the same new platform as Fresco 4.0 (schema 8, recommended for new studies). Both are supported, can be installed side by side, and download from the same [download page](https://networkcanvas.com/download).
-- Install **Architect** on a desktop computer that you will to use to design your Network Canvas interview protocol.
+- Install **Interviewer** on any device you will use to interview participants. It runs your Network Canvas protocols and collects data in the field. Interviewer comes in two versions: **Interviewer 6.x** (schema 7, fully offline), and **Interviewer 7** (beta, schema 8, recommended for new studies). Both are supported and can be downloaded from the same [download page](https://networkcanvas.com/download).
+- If you need to create a schema 7 protocol, download **Architect** on a desktop computer that you will to use to design your Network Canvas interview protocol.
 
 <TipBox>
 
@@ -23,7 +23,7 @@ Each application of the Network Canvas Desktop Suite can be downloaded and insta
 
 ## System Requirements
 
-Both desktop applications are supported only when running on Windows 10 (1909) or newer, macOS 10.15.4 or newer, Android 10 or newer, and iPadOS 14.2 or newer.
+The desktop applications are supported only when running on Windows 10 (1909) or newer, macOS 10.15.4 or newer, Android 10 or newer, and iPadOS 14.2 or newer.
 
 For desktop applications, we recommend a modern device, featuring a high resolution screen (greater than 900 pixels effective vertical resolution), ample RAM, and dedicated graphics. Performance may differ considerably depending on the power of the device that you use, and you should be aware that this can negatively impact the interview experience for your research participants, leading to poorer quality data.
 

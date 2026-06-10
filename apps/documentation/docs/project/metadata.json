@@ -3,5 +3,5 @@
   "slug": "project",
   "navOrder": 0,
   "localeLabels": { "en": "Project" },
-  "localeIndexFiles": { "en": "index.en.mdx" }
+  "localeIndexFiles": { "en": "getting-started/network-canvas.en.mdx" }
 }

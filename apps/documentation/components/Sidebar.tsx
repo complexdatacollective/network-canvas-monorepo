@@ -337,6 +337,10 @@ export function Sidebar({ className }: { className?: string }) {
       projectData.sourceFile,
     );
 
+    const projectIndex = formattedSidebarData.index;
+    const projectOverviewLabel =
+      projectIndex?.type === 'page' ? projectIndex.label : 'Overview';
+
     const activeFolder = childrenEntries.find(
       ([slug, item]) => slug === displayTab && item.type === 'folder',
     )?.[1];
@@ -363,7 +367,7 @@ export function Sidebar({ className }: { className?: string }) {
           {projectOverviewHref && (
             <SidebarLink
               href={projectOverviewHref}
-              label="Overview"
+              label={projectOverviewLabel}
               sidebarContainerRef={sidebarContainerRef}
             />
           )}
