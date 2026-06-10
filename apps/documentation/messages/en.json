@@ -2,11 +2,11 @@
   "ProjectSwitcher": {
     "project": {
       "label": "Project",
-      "description": "App-agnostic concepts shared across Network Canvas: the codebook, variables, stages, skip logic, prompts and forms."
+      "description": "App-agnostic concepts shared across Network Canvas."
     },
     "build-protocol": {
       "label": "Build Protocols",
-      "description": "Create interview protocols in Architect."
+      "description": "Create interview protocols in Architect Web or Architect Desktop."
     },
     "run-interview": {
       "label": "Run Interviews",
