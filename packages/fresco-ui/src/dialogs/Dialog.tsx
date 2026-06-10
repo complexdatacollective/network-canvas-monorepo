@@ -22,6 +22,7 @@ export const STATE_VARIANTS = [
   'destructive',
   'success',
   'info',
+  'warning',
 ] as const;
 
 export type DialogProps = {
@@ -88,6 +89,8 @@ export default function Dialog({
           accent === 'info' && '[--primary:var(--info)]',
           accent === 'destructive' &&
             '[--primary-contrast:var(--destructive-contrast)] [--primary:var(--destructive)]',
+          accent === 'warning' &&
+            '[--primary-contrast:var(--warning-contrast)] [--primary:var(--warning)]',
           className,
         )}
         {...rest}

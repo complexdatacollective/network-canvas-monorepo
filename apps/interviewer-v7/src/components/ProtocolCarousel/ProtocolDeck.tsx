@@ -62,7 +62,7 @@ function entryPriority(entry: DeckEntry): number {
 // Visual proportions of the fanned deck — tuned together. Changing one
 // without re-checking the others desyncs the snap distance from the
 // painted fan.
-const CARD_ASPECT = 36 / 47;
+const CARD_ASPECT = 1 / 1;
 // Slot stride as a fraction of card width. Adjacent cards translate by
 // this much per progress step, so 0.7 reproduces the original 30% overlap.
 const SLOT_TO_CARD_RATIO = 0.7;
@@ -232,12 +232,12 @@ export function ProtocolDeck({
     return () => ro.disconnect();
   }, []);
 
-  const { cardWidth, cardHeight, sectionPadding } = useMemo(() => {
+  const { cardWidth, cardHeight } = useMemo(() => {
     const padding = computeSectionPadding(sectionHeight);
     const innerHeight = Math.max(0, sectionHeight - padding * 2);
     const ch = Math.round(innerHeight);
     const cw = Math.round(ch * CARD_ASPECT);
-    return { cardHeight: ch, cardWidth: cw, sectionPadding: padding };
+    return { cardHeight: ch, cardWidth: cw };
   }, [sectionHeight]);
 
   const handleActivate = useCallback(

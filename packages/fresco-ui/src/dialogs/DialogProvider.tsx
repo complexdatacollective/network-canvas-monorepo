@@ -22,7 +22,7 @@ type BaseDialog = {
   id?: string;
   title: string;
   description?: string;
-  intent?: 'default' | 'destructive' | 'success' | 'info';
+  intent?: 'default' | 'destructive' | 'success' | 'info' | 'warning';
   children?: React.ReactNode;
   className?: string;
 };
@@ -40,7 +40,7 @@ export type AcknowledgeDialog = BaseDialog & {
 // Make a choice - no is a valid option
 export type ChoiceDialog<P = unknown, S = unknown, C = null> = BaseDialog & {
   type: 'choice';
-  intent: 'default' | 'destructive' | 'success' | 'info';
+  intent: 'default' | 'destructive' | 'success' | 'info' | 'warning';
   actions: {
     primary: {
       label: string;
@@ -97,6 +97,7 @@ export type WizardDialog = BaseDialog & {
     description: string;
     primaryLabel?: string;
     cancelLabel?: string;
+    intent?: 'default' | 'destructive' | 'success' | 'info' | 'warning';
   };
   cancelLabel?: string;
 };
@@ -134,7 +135,7 @@ type ConfirmOptions = {
   description?: string;
   confirmLabel: string;
   cancelLabel?: string;
-  intent?: 'default' | 'destructive';
+  intent?: 'default' | 'destructive' | 'warning';
 };
 
 export type DialogContextType = {
@@ -231,7 +232,7 @@ function WizardDialogRenderer({
         type: 'choice',
         title: dialog.confirmCancel.title,
         description: dialog.confirmCancel.description,
-        intent: 'destructive',
+        intent: dialog.confirmCancel.intent ?? 'default',
         actions: {
           primary: {
             label:
@@ -439,8 +440,12 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     if (dialog.type === 'choice') {
+      // Destructive/warning choices autofocus cancel so the discouraged
+      // action requires deliberate navigation.
       const autoFocusButton: 'primary' | 'cancel' =
-        dialog.intent === 'destructive' ? 'cancel' : 'primary';
+        dialog.intent === 'destructive' || dialog.intent === 'warning'
+          ? 'cancel'
+          : 'primary';
 
       const isLoading = dialog.abortController !== null;
 

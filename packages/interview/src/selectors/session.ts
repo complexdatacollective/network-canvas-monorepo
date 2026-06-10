@@ -41,11 +41,9 @@ const getActiveSession = (state: RootState) => {
 export const getInterviewId = (state: RootState) => state.session.id;
 
 /**
- * Identity selector for the host-supplied current stage index. Components
- * obtain the value from `useCurrentStep()` (which resolves controlled vs.
- * uncontrolled mode) and pass it as the second argument to any selector
- * downstream of `getStageIndex`. The package no longer stores currentStep in
- * Redux, so every selector that needs it must accept it from the caller.
+ * The package no longer stores currentStep in Redux, so every selector that
+ * needs it must accept it from the caller. Current step should be derived from
+ * the URL in consumers.
  */
 export const getStageIndex = (_state: RootState, currentStep: number): number =>
   currentStep;

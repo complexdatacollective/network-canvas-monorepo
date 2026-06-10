@@ -29,9 +29,9 @@ export default function Step5Analytics() {
     <>
       <Paragraph>
         You can help us improve Network Canvas Interviewer by sending anonymous
-        usage and error data. This tells us which features are used, when
-        protocols are imported or data is exported, and details of any errors or
-        crashes — so we can fix bugs and decide what to build next.
+        usage and error data. This tells us which features are used and details
+        of any errors or crashes, so we can fix bugs and decide what to build
+        next.
       </Paragraph>
       <UnconnectedField
         name="analyticsEnabled"
@@ -46,11 +46,11 @@ export default function Step5Analytics() {
       <Alert variant="info">
         <AlertTitle>No participant or personal data is collected</AlertTitle>
         <AlertDescription>
-          Network data, interview responses, case IDs, protocol contents, and
-          asset files never leave this device. Analytics contain no
-          user-identifiable information — events are tied only to a random
-          per-device installation ID, never your name, email, or any account.
-          You can change this any time in Settings → Privacy.
+          Network data, interview responses, case IDs, and protocol contents
+          never leave this device. Analytics contain no user-identifiable
+          information — events are tied only to a random per-device installation
+          ID, never your name, email, or any account. You can change this any
+          time in Settings → Privacy.
         </AlertDescription>
       </Alert>
     </>
