@@ -35,7 +35,7 @@ jobs:
       interview_e2e: ${{ steps.flags.outputs.interview_e2e }}
       interviewer_v7_changeset: ${{ steps.flags.outputs.interviewer_v7_changeset }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
@@ -150,7 +150,7 @@ jobs:
     # interview, …) compute the same task hash across all those jobs and the
     # cache that quality writes is actually reusable downstream.
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
@@ -213,7 +213,7 @@ jobs:
       NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
       NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
@@ -260,7 +260,7 @@ jobs:
       NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
       NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
@@ -308,7 +308,7 @@ jobs:
       # doesn't pollute the production PostHog project.
       VITE_DISABLE_ANALYTICS: 'true'
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
@@ -351,7 +351,7 @@ jobs:
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
@@ -457,7 +457,7 @@ jobs:
       VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
       # Production bundle has analytics enabled (no VITE_DISABLE_ANALYTICS set).
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
@@ -497,7 +497,7 @@ jobs:
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
@@ -529,7 +529,7 @@ jobs:
     if: needs.deploy-docs-preview.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
@@ -579,7 +579,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           fetch-depth: 0
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
@@ -616,7 +616,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           fetch-depth: 0
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
@@ -654,7 +654,7 @@ jobs:
     outputs:
       slug: ${{ steps.meta.outputs.slug }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
@@ -714,7 +714,7 @@ jobs:
           name: interview-playwright-report
           path: new-report
       - name: Fetch existing pages content
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           ref: gh-pages
           path: existing-pages
@@ -772,7 +772,7 @@ jobs:
       architect_released: ${{ steps.detect_architect.outputs.released }}
       architect_version: ${{ steps.detect_architect.outputs.version }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
           fetch-depth: 2
@@ -792,7 +792,7 @@ jobs:
         # publishes to npm. Apps (./apps/*) are private:true and don't need to
         # build successfully here; their deploy pipeline is per-app deploy jobs.
         run: pnpm exec turbo run build --filter='./packages/*'
-      - uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1
+      - uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1
         with:
           version: pnpm run version-packages
           publish: pnpm run publish-packages
@@ -887,7 +887,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
@@ -962,7 +962,7 @@ jobs:
           merge-multiple: true
       - name: List collected artifacts
         run: ls -la artifacts/
-      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+      - uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           tag_name: interviewer-v7@v${{ needs.release.outputs.interviewer_v7_version }}
           name: Interviewer v7 v${{ needs.release.outputs.interviewer_v7_version }}
@@ -987,7 +987,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
@@ -1048,7 +1048,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
@@ -1120,7 +1120,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           # Check out the PR head directly. pull_request events default to
           # the synthetic merge commit; the head sha is what we encode into
