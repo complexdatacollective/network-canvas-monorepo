@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
-import { isBiometricSupported } from '~/lib/auth/api';
-import { isBiometricNativeAvailable } from '~/lib/auth/biometricNative';
-import { isCapacitor } from '~/lib/platform/platform';
+import { useBiometric } from '~/lib/auth/useBiometric';
 
 import type { WizardSelectedMethod } from '../SetupWizardDialog';
 
@@ -12,32 +11,17 @@ const WIZARD_METHODS: WizardSelectedMethod[] = [
   'biometric',
   'pin',
   'passphrase',
+  'none',
 ];
 
 function isWizardSelectedMethod(value: unknown): value is WizardSelectedMethod {
   return typeof value === 'string' && WIZARD_METHODS.some((m) => m === value);
 }
 
-type BiometricState =
-  | { status: 'checking' }
-  | { status: 'available' }
-  | { status: 'unavailable'; reason: string };
-
-const UNAVAILABLE_REASON_TEXT: Record<
-  'no-hardware' | 'not-enrolled' | 'no-device-passcode' | 'unknown',
-  string
-> = {
-  'no-hardware': 'No biometric sensor available on this device',
-  'not-enrolled': 'No biometric is enrolled on this device',
-  'no-device-passcode': 'Set a device passcode first',
-  'unknown': 'Biometric authentication is not available',
-};
-
 export default function Step2MethodPicker() {
   const { data, setStepData, setNextEnabled } = useWizard();
-  const [biometric, setBiometric] = useState<BiometricState>({
-    status: 'checking',
-  });
+  const { confirm } = useDialog();
+  const biometric = useBiometric();
 
   const rawMethod = data.selectedMethod;
   const selectedMethod = isWizardSelectedMethod(rawMethod) ? rawMethod : null;
@@ -45,31 +29,6 @@ export default function Step2MethodPicker() {
   useEffect(() => {
     setNextEnabled(selectedMethod !== null);
   }, [selectedMethod, setNextEnabled]);
-
-  useEffect(() => {
-    async function checkBiometric() {
-      if (isCapacitor) {
-        const result = await isBiometricNativeAvailable();
-        if (result.ok) {
-          setBiometric({ status: 'available' });
-        } else {
-          setBiometric({
-            status: 'unavailable',
-            reason: UNAVAILABLE_REASON_TEXT[result.reason],
-          });
-        }
-      } else if (!(await isBiometricSupported())) {
-        setBiometric({
-          status: 'unavailable',
-          reason: UNAVAILABLE_REASON_TEXT['no-hardware'],
-        });
-      } else {
-        setBiometric({ status: 'available' });
-      }
-    }
-
-    void checkBiometric();
-  }, []);
 
   const biometricDisabled =
     biometric.status === 'checking' || biometric.status === 'unavailable';
@@ -98,6 +57,13 @@ export default function Step2MethodPicker() {
       description: 'A password of at least 12 characters.',
       disabled: false,
     },
+    { type: 'spacer' as const },
+    {
+      value: 'none' as const,
+      label: 'No security (not recommended)',
+      description:
+        'Skip app security. Your data will not be protected by the app.',
+    },
   ];
 
   return (
@@ -105,9 +71,21 @@ export default function Step2MethodPicker() {
       options={options}
       value={selectedMethod ?? undefined}
       onChange={(value) => {
-        if (isWizardSelectedMethod(value)) {
-          setStepData({ selectedMethod: value });
+        if (!isWizardSelectedMethod(value)) return;
+        if (value === 'none') {
+          void confirm({
+            title: 'Continue without security?',
+            description:
+              'Your data will not be protected by an app lock or encryption managed by this app. Anyone with access to this device may be able to view collected data.',
+            confirmLabel: 'Continue without security',
+            intent: 'warning',
+            onConfirm: () => {
+              setStepData({ selectedMethod: 'none' });
+            },
+          });
+          return;
         }
+        setStepData({ selectedMethod: value });
       }}
       orientation="vertical"
       size="md"

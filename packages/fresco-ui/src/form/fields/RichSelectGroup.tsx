@@ -121,6 +121,20 @@ const descriptionVariants = cva({
   },
 });
 
+const spacerVariants = cva({
+  variants: {
+    orientation: {
+      // my-0 overrides the global `hr { my-6 }` theme rule so the spacer sits
+      // flush in the list without extra vertical gap.
+      vertical: 'my-0',
+      horizontal: 'self-stretch',
+    },
+  },
+  defaultVariants: {
+    orientation: 'vertical',
+  },
+});
+
 const selectionSpring = {
   type: 'spring' as const,
   duration: 0.3,
@@ -132,13 +146,25 @@ export type RichSelectOption = {
   label: string;
   description?: string;
   disabled?: boolean;
+  className?: string;
 };
+
+export type RichSelectSpacer = {
+  type: 'spacer';
+  className?: string;
+};
+
+function isSpacer(
+  item: RichSelectOption | RichSelectSpacer,
+): item is RichSelectSpacer {
+  return 'type' in item && item.type === 'spacer';
+}
 
 type RichSelectGroupProps = CreateFormFieldProps<
   string | number | (string | number)[],
   'fieldset',
   {
-    options: RichSelectOption[];
+    options: (RichSelectOption | RichSelectSpacer)[];
     multiple?: boolean;
     defaultValue?: string | number | (string | number)[];
     orientation?: 'horizontal' | 'vertical';
@@ -190,10 +216,11 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
   useEffect(() => {
     if (!autoFocus) return;
     const selectedIndex = options.findIndex(
-      (opt) => !(disabled ?? opt.disabled) && isSelected(opt.value),
+      (opt) =>
+        !isSpacer(opt) && !(disabled ?? opt.disabled) && isSelected(opt.value),
     );
     const firstEnabledIndex = options.findIndex(
-      (opt) => !(disabled ?? opt.disabled),
+      (opt) => !isSpacer(opt) && !(disabled ?? opt.disabled),
     );
     const targetIndex = selectedIndex >= 0 ? selectedIndex : firstEnabledIndex;
     if (targetIndex >= 0) {
@@ -228,9 +255,9 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
       if (multiple) return;
 
       const enabledIndices = options
-        .map((opt, i) => ({ disabled: disabled ?? opt.disabled, index: i }))
-        .filter((opt) => !opt.disabled)
-        .map((opt) => opt.index);
+        .map((opt, i) => ({ opt, i }))
+        .filter(({ opt }) => !isSpacer(opt) && !(disabled ?? opt.disabled))
+        .map(({ i }) => i);
 
       const currentEnabledIndex = enabledIndices.indexOf(index);
       if (currentEnabledIndex === -1) return;
@@ -309,7 +336,24 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
   );
 
   function renderOptions() {
-    return options.map((option, index) => {
+    const firstOptionIndex = options.findIndex((item) => !isSpacer(item));
+    return options.map((item, index) => {
+      if (isSpacer(item)) {
+        return (
+          // aria-hidden: hr's implicit separator role is not valid listbox
+          // content, and the spacer is purely decorative.
+          <hr
+            key={`spacer-${index}`}
+            aria-hidden
+            className={spacerVariants({
+              orientation,
+              className: item.className,
+            })}
+          />
+        );
+      }
+
+      const option = item;
       const isOptionDisabled = disabled ?? option.disabled;
       const optionSelected = isSelected(option.value);
       const optionState = isOptionDisabled
@@ -325,7 +369,9 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
             'role': 'option' as const,
             'aria-selected': optionSelected,
             'tabIndex':
-              optionSelected || (!currentValue && index === 0) ? 0 : -1,
+              optionSelected || (!currentValue && index === firstOptionIndex)
+                ? 0
+                : -1,
           }
         : {
             'aria-pressed': optionSelected,
@@ -343,6 +389,7 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
             selected: optionSelected,
             state: optionState,
             size,
+            className: option.className,
           })}
           onClick={() => {
             if (!isOptionDisabled && !readOnly) {

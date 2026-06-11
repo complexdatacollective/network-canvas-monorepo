@@ -21,9 +21,9 @@ Network Canvas Interviewer v7 is a single-user, offline-first research-data-coll
 |  React 19 + wouter + fresco-ui + base-ui +    |
 |  motion + @codaco/art                         |
 |                                               |
-|  AppProviders > AuthGate > AppShell           |
-|    > Routes (Home / Protocols / Sessions /    |
-|       Settings / Interview)                   |
+|  AppErrorBoundary > AppProviders > AuthGate   |
+|    > Routes (Welcome / Home [Protocols `/`    |
+|       + Data `/data` views] / Interview)      |
 |                                               |
 |  src/lib/db/api.ts      (platform facade)     |
 |  src/lib/auth/*         (auth client)         |
@@ -172,7 +172,7 @@ saveProtocol(validated, hash, assets)
 ## Data flow — bulk export
 
 ```text
-ExportDialog selects sessionIds + options
+DataView (sessions table) selects sessionIds + options
        |
        v
 runExport({ options, sessionIds, onEvent })  [src/lib/export/exportSessions.ts]
@@ -218,7 +218,7 @@ markSessionsExported(ids) -> updates exportedAt timestamp
 | `biometric-keystore` stores DEK directly in keychain ACL | No Secure Enclave hardware binding; the DEK lives in the OS keychain (still gated by Touch ID via `kSecAttrAccessControl`) | No hand-rolled crypto, no ECIES wrap layer, no provisioning profile required. Decision write-up: `docs/superpowers/specs/2026-05-28-biometric-keystore-package-survey.md` |
 | `biometric-keystore` is macOS only                       | Windows / Linux Electron users get PIN or passphrase, not biometric                                                        | No off-the-shelf NCrypt + Hello encrypt/decrypt npm package exists; bespoke binding deferred. Capacitor handles iOS / Android biometric via `biometric-native`            |
 | Drop encrypted renderer vault on tablet/web              | Tablet/web data is platform-protected, not app-encrypted                                                                   | Massive simplification of the renderer auth code; matches what the spec actually says about non-desktop platforms                                                         |
-| Variation F as handed off                                | The pending "split selector + meta" iteration is deferred                                                                  | Faithful to the design that exists; no unbacked design judgement                                                                                                          |
+| Bespoke motion-native deck carousel (no Swiper)          | We own drag/flick/wheel feel; tuning constants in `DeckCarousel.tsx` need hands-on passes on tablet hardware               | One animation system owns every transform — no Swiper↔motion bridging state machines (exit choreography, index rebinds, input-gating workarounds)                         |
 
 ## Known one-time data losses for prototype users
 

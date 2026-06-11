@@ -1,237 +1,589 @@
-import { Play, Trash2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { CalendarPlus, CalendarSync, Globe, Trash2 } from 'lucide-react';
+import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import {
-  type KeyboardEvent as ReactKeyboardEvent,
+  isValidElement,
   useEffect,
+  useId,
+  useLayoutEffect,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
 } from 'react';
+import { Link } from 'wouter';
 
-import { Pattern, seedToPatternPalette } from '@codaco/art';
-import Button, { IconButton } from '@codaco/fresco-ui/Button';
+import { Pattern } from '@codaco/art';
+import { buttonVariants, IconButton } from '@codaco/fresco-ui/Button';
+import ProgressBar from '@codaco/fresco-ui/ProgressBar';
+import { Skeleton } from '@codaco/fresco-ui/Skeleton';
+import { proportionalLucideIconVariants } from '@codaco/fresco-ui/styles/controlVariants';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 
-import { CARD_RADIUS_PX, cardBase, protocolCardClass } from './cardStyles';
+import { cardBase } from './cardStyles';
 
-// Stable per-protocol layoutIds for the shared-element morph between
-// the in-slide DeckCard and NewSessionCardOverlay. Motion pairs each
-// pair by its ID and animates the size/position transition
-// automatically. Nested IDs (heading, meta) sit inside the outer card
-// ID so the title and meta row morph in lock-step with the card itself.
-export const deckCardLayoutId = (protocolHash: string): string =>
-  `deck-card-${protocolHash}`;
-
-export const deckCardHeadingLayoutId = (protocolHash: string): string =>
-  `deck-card-heading-${protocolHash}`;
-
-export const deckCardMetaLayoutId = (protocolHash: string): string =>
-  `deck-card-meta-${protocolHash}`;
-
-// Motion-wrapped Heading so we keep the semantic h2 (and Heading's
-// variant classes) while motion drives the layout animation via the
-// ref Heading forwards to its rendered element. Defined at module
-// scope so the same component identity is reused across renders.
-export const MotionHeading = motion.create(Heading);
-
-type DeckCardProps = {
-  protocol: ProtocolWithCounts;
-  isActive: boolean;
-  sessionCount: number;
-  onActivate: () => void;
-  onDelete: () => void;
-};
-
-// Static lookup so Tailwind's scanner sees every possible class name at
-// build time — `line-clamp-${n}` constructed dynamically would not get
-// generated. Indices 1–10 cover every realistic card height.
-const LINE_CLAMP_CLASS: Record<number, string> = {
-  1: 'line-clamp-1',
-  2: 'line-clamp-2',
-  3: 'line-clamp-3',
-  4: 'line-clamp-4',
-  5: 'line-clamp-5',
-  6: 'line-clamp-6',
-  7: 'line-clamp-7',
-  8: 'line-clamp-8',
-  9: 'line-clamp-9',
-  10: 'line-clamp-10',
-};
-const MAX_LINE_CLAMP = 10;
-
-function DescriptionBlock({ text }: { text: string }) {
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const pRef = useRef<HTMLParagraphElement | null>(null);
-  const [lineClamp, setLineClamp] = useState(2);
-
-  useEffect(() => {
-    const wrapper = wrapperRef.current;
-    const p = pRef.current;
-    if (!wrapper || !p) return;
-    const recompute = () => {
-      const lineHeightPx = parseFloat(getComputedStyle(p).lineHeight);
-      if (!Number.isFinite(lineHeightPx) || lineHeightPx <= 0) return;
-      const available = wrapper.clientHeight;
-      const lines = Math.min(
-        MAX_LINE_CLAMP,
-        Math.max(1, Math.floor(available / lineHeightPx)),
-      );
-      setLineClamp((prev) => (prev === lines ? prev : lines));
-    };
-    recompute();
-    const ro = new ResizeObserver(recompute);
-    ro.observe(wrapper);
-    return () => ro.disconnect();
-  }, []);
-
-  // Tailwind's `line-clamp-N` sets `display`, `-webkit-box-orient`,
-  // `overflow`, and `-webkit-line-clamp` together in one declaration —
-  // applying them via inline `style` instead leaves the browser free to
-  // promote the element to a `flow-root` BFC and silently drop the
-  // clamp, so go through the utility class.
-  const clampClass =
-    LINE_CLAMP_CLASS[lineClamp] ?? `line-clamp-${MAX_LINE_CLAMP}`;
-
+function Pill({
+  children,
+  icon,
+  intent,
+}: {
+  children: ReactNode;
+  icon: ReactNode;
+  intent?: 'default' | 'error' | 'success' | 'warning';
+}) {
   return (
-    <div
-      ref={wrapperRef}
-      className="min-h-0 flex-1 px-3 pt-2 @min-2xs:px-6 @min-2xs:pt-3.5"
+    // layout="position": the pill glides (on the shared region clock) when
+    // the delete control entering/leaving changes its position in the row.
+    <motion.div
+      layout="position"
+      transition={REGION_TRANSITION}
+      className={cx(
+        'font-monospace flex items-center gap-2 rounded-full border px-[2cqi] py-[0.75cqi] text-[max(12px,2.5cqi)] uppercase',
+        proportionalLucideIconVariants(),
+        'backdrop-blur-xs',
+        intent === 'error' &&
+          'text-destructive border-destructive bg-[color-mix(in_oklab,oklch(var(--destructive))_10%,oklch(var(--rich-black)))]/60',
+        intent === 'success' &&
+          'text-sea-green border-sea-green bg-[color-mix(in_oklab,oklch(var(--sea-green))_10%,oklch(var(--rich-black)))]/60',
+        intent === 'warning' &&
+          'text-neon-carrot border-neon-carrot bg-[color-mix(in_oklab,oklch(var(--neon-carrot))_20%,oklch(var(--rich-black)))]/60',
+      )}
     >
-      <span
-        ref={pRef}
-        className={`text-text/80 ${clampClass} text-xs @min-2xs:text-sm @min-xs:text-base @min-md:text-lg`}
-      >
-        {text}
-      </span>
-    </div>
+      {icon}
+      {children}
+    </motion.div>
   );
 }
 
-export function DeckCard({
-  protocol,
-  isActive,
-  sessionCount,
-  onActivate,
-  onDelete,
-}: DeckCardProps) {
-  const palette = seedToPatternPalette(protocol.name);
-  // Theme-driven shadow tokens, identical to NewSessionCardOverlay so the
-  // shared-element morph doesn't jitter between the two endpoints. The
-  // active accent ring stays inline because its color is per-protocol.
-  const boxShadow = isActive
-    ? `var(--effect-shadow-2xl), 0 0 0 2px ${palette.backgroundTop}`
-    : 'var(--effect-shadow-xl)';
+// CSS line-breaking treats `_` as part of a word, so an underscore is never a
+// wrap opportunity on its own — only spaces, hyphens (`-`) and soft hyphens
+// (U+00AD) break natively. Inject a <wbr> after each underscore so long
+// machine-style names (e.g. "BRE_F03-KMP_FB_01…") can wrap there too. The
+// greedy line breaker still prefers the earlier opportunities (space, then
+// `-`, then `_`), falling back to hyphenation (hyphens-auto, below) only for
+// an unbroken run that would otherwise overflow.
+function withUnderscoreBreaks(name: string): ReactNode[] {
+  const parts = name.split('_');
+  return parts.flatMap((part, index) =>
+    index < parts.length - 1 ? [`${part}_`, <wbr key={index} />] : [part],
+  );
+}
+
+// Step the heading size down as names get longer so multi-line names stay
+// inside the heading's flex region instead of squeezing the description and
+// footer. Thresholds are pre-wrap character counts — crude, but stable: no
+// measurement loop, no reflow jitter, and the classes are static literals
+// so Tailwind's scanner emits them. Names are identifiers (machine-style
+// names often differ only at the END), so shrinking is preferred over
+// truncation; the fitted line clamp below is only a backstop for
+// pathological lengths.
+function headingSizeClass(name: string): string {
+  if (name.length <= 24) return 'text-[8cqi]';
+  if (name.length <= 48) return 'text-[6.5cqi]';
+  return 'text-[5cqi]';
+}
+
+// Clamp the heading to however many whole lines fit its flexed region. The
+// region is the column's only flexible row (flex-1 + min-h-0), so this is
+// what guarantees a pathological name can never grow the column past the
+// card edge and evict the footer — and the whole-line count means the
+// backstop never clips text mid-line. A fixed line-clamp can't do this:
+// the budget depends on which siblings (controls row, description,
+// metadata, footer) are present.
+function useFittedHeadingClamp(name: string | undefined) {
+  const regionRef = useRef<HTMLDivElement | null>(null);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const [lines, setLines] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    const region = regionRef.current;
+    const heading = headingRef.current;
+    if (!region || !heading) return;
+    const measure = () => {
+      const lineHeight = parseFloat(getComputedStyle(heading).lineHeight);
+      if (!Number.isFinite(lineHeight) || lineHeight <= 0) return;
+      const fit = Math.max(1, Math.floor(region.clientHeight / lineHeight));
+      setLines((previous) => (previous === fit ? previous : fit));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    // The region resizes when siblings come and go; the heading resizes
+    // when a card-width change alters the computed line height.
+    observer.observe(region);
+    observer.observe(heading);
+    return () => observer.disconnect();
+  }, [name]);
+
+  return { regionRef, headingRef, lines };
+}
+
+// The subset of protocol fields the card renders. In the loading state any
+// of them may still be unknown; the matching area shows a skeleton until the
+// value arrives.
+type DeckCardData = Pick<
+  ProtocolWithCounts,
+  'name' | 'description' | 'importedAt' | 'lastModified'
+>;
+
+export type DeckCardProps = {
+  requiresInternetConnection?: boolean;
+  // Content for the card's footer slot — a start button, install button,
+  // import progress, or a case-ID form. Rendered beneath a divider in a
+  // presence group keyed by this element's key (normally
+  // `<DeckCardFooter key="…">`); swapping footer content fades the old
+  // footer fully out before the new one fades in, while the layout
+  // reflows immediately.
+  footer?: ReactNode;
+  // When provided, the top-right remove control is shown and wired to it.
+  onDelete?: () => void;
+  deleteLabel?: string;
+  // Omit the metadata row entirely (e.g. the sample-protocol preview, where
+  // dates and session counts don't exist yet and skeletons would mislead).
+  hideMetadata?: boolean;
+  // Remove the whole top controls row (requires-internet pill + delete
+  // control), surrendering its reserved height to the heading region —
+  // long names need that room while the case-ID form occupies the footer.
+  hideControls?: boolean;
+  // Omit the description (e.g. while the new-session form occupies the
+  // footer, so the card has room for it).
+  hideDescription?: boolean;
+} & (
+  | {
+      loading?: false;
+      protocol: ProtocolWithCounts;
+      isActive: boolean;
+      sessionCount: number;
+      onActivate: () => void;
+    }
+  | {
+      // Loading/installing: fields render progressively as they become
+      // available; missing areas show skeletons.
+      loading: true;
+      protocol: Partial<DeckCardData>;
+      isActive?: boolean;
+      sessionCount?: number;
+      onActivate?: () => void;
+    }
+);
+
+const MotionHeading = motion.create(Heading);
+
+// Presence poses shared by the card's swappable regions (delete control,
+// description, metadata, divider, and footer). Exits always pop out of the
+// layout flow (`mode="popLayout"`), so the column reflows concurrently
+// with the outgoing fade; on footer REPLACEMENTS the incoming footer's
+// fade additionally waits for the outgoing one to clear (see the
+// footer-key tracking in DeckCard).
+const PRESENCE_INITIAL = { opacity: 0, y: 10 };
+const PRESENCE_ENTER = { opacity: 1, y: 0 };
+const PRESENCE_EXIT = { opacity: 0 };
+
+// One timing for every swappable region — poses AND layout glides. When a
+// state change touches several regions at once (activation, the case-ID
+// form, install progress), identical timing makes them read as a single
+// coordinated reflow instead of animations taking turns.
+const REGION_TRANSITION = { duration: 0.3, ease: 'easeOut' } as const;
+
+export function DeckCard(props: DeckCardProps) {
+  const {
+    protocol,
+    isActive = false,
+    sessionCount,
+    onActivate,
+    onDelete,
+    deleteLabel,
+    hideMetadata = false,
+    hideDescription = false,
+    hideControls = false,
+    requiresInternetConnection = false,
+    footer,
+  } = props;
+  const loading = props.loading === true;
 
   const onCardKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    // Only the card itself activates. Key events bubbling up from the nested
+    // delete button must not trigger a second action — that button handles
+    // its own Enter/Space natively.
+    if (event.target !== event.currentTarget) return;
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      onActivate();
+      onActivate?.();
     }
   };
 
+  const id = useId();
+
+  const showDescription =
+    !hideDescription && Boolean(protocol.description ?? loading);
+  const showMetadata = !hideMetadata;
+
+  const headingClamp = useFittedHeadingClamp(protocol.name);
+
+  // The footer group's identity, taken from the consumer's key on the
+  // footer element (e.g. "start-interview" → "new-session"). A change
+  // between two non-null rendered keys is a REPLACEMENT: the incoming
+  // footer takes its space immediately (the column reflows alongside the
+  // outgoing footer's pop-fade) but holds its own fade until the outgoing
+  // one has cleared, so swaps read as exit-then-enter instead of two
+  // footers blended together. A fresh appearance (activation) enters with
+  // no delay.
+  const footerKey = isValidElement(footer) ? (footer.key ?? 'footer') : null;
+  const renderedFooterKey = isActive && footer != null ? footerKey : null;
+  const committedFooterKeyRef = useRef<string | null>(renderedFooterKey);
+  const isFooterSwap =
+    renderedFooterKey !== null &&
+    committedFooterKeyRef.current !== null &&
+    committedFooterKeyRef.current !== renderedFooterKey;
+  useEffect(() => {
+    committedFooterKeyRef.current = renderedFooterKey;
+  });
+
   return (
-    <motion.div
-      layoutId={deckCardLayoutId(protocol.hash)}
-      // Lock re-measurement to the protocol identity so Swiper's
-      // post-commit fan transforms and ResizeObserver-driven slot
-      // re-renders don't read as layout changes and animate the cards
-      // into position on first paint. The morph still works because
-      // motion snapshots the rect at the moment of unmount.
-      layoutDependency={protocol.hash}
-      tabIndex={0}
-      onKeyDown={onCardKeyDown}
-      style={{
-        borderRadius: CARD_RADIUS_PX,
-        boxShadow,
-      }}
-      className={`${cardBase()} ${protocolCardClass()} @container h-full w-full`}
-      aria-label={`${protocol.name}${isActive ? ' (active)' : ''}`}
-    >
-      <div className="relative flex w-full flex-col justify-between gap-4 overflow-hidden p-4 @min-3xs:min-h-[40%] @min-2xs:p-6">
-        <Pattern seed={protocol.name} className="absolute inset-0 size-full" />
-        {/* `layout="position"` is what makes the morph work despite the
-            responsive text-size changes between the in-slide card and
-            the wider overlay: motion only interpolates position, so the
-            size flip at the edges doesn't fight a competing size tween.
-            `relative` keeps the heading above the absolutely-positioned
-            Pattern. */}
-        <MotionHeading
-          layout="position"
-          layoutId={deckCardHeadingLayoutId(protocol.hash)}
-          layoutDependency={protocol.hash}
-          level="h2"
-          margin="none"
-          className="relative text-lg leading-tight font-black tracking-tighter text-balance @min-[320px]:text-2xl @min-[380px]:text-3xl @min-3xs:text-xl @min-2xs:mt-2"
-        >
-          {protocol.name}
-        </MotionHeading>
-        <motion.div
-          layoutId={deckCardMetaLayoutId(protocol.hash)}
-          layoutDependency={protocol.hash}
-          className="font-monospace relative hidden items-center justify-between gap-2 text-[12px] @min-3xs:flex @min-xs:text-xs @min-sm:text-sm"
-        >
-          <span>
-            Imported <TimeAgo date={protocol.importedAt} />
-          </span>
-          <span>
-            {sessionCount} {sessionCount === 1 ? 'interview' : 'interviews'}
-          </span>
-        </motion.div>
-      </div>
-
-      <DescriptionBlock
-        text={protocol.description ?? 'No description provided.'}
-      />
-
-      {isActive && (
-        <div className="mx-3 mb-3 flex flex-col gap-2 @min-[300px]:flex-row @min-[300px]:items-center @min-[320px]:mx-5 @min-[320px]:mb-5 @min-[380px]:mx-6 @min-[380px]:mb-6 @min-3xs:mx-4 @min-3xs:mb-4">
-          {/* Inner @container so the Start button's text, icon, padding,
-              gap, and tracking scale with the Button's own width — not
-              the card's. The wrapper's height stays card-driven so the
-              Button's vertical scale tracks the card; horizontal content
-              adapts to whatever space the IconButton leaves. The text
-              span carries min-w-0 + truncate as a safety net for the
-              cases where uppercase+tracking text outgrows the available
-              width even at the smallest tier. At narrow widths the row
-              stacks vertically; the Trash button appears below the Start
-              button via the default column order. */}
-          <div className="@container h-9 min-w-0 flex-1 @min-[320px]:h-13 @min-[380px]:h-14 @min-3xs:h-11">
-            <Button
-              icon={
-                <Play
-                  className="size-3 shrink-0 stroke-[3px]! @min-[240px]:size-4 @min-[300px]:size-5"
-                  aria-hidden
-                />
-              }
-              color="primary"
-              className="flex h-full w-full items-center justify-center gap-1.5 rounded-xl px-3 font-black tracking-[0.04em] uppercase @min-[240px]:gap-2 @min-[240px]:rounded-2xl @min-[240px]:px-4 @min-[240px]:tracking-[0.06em] @min-[300px]:gap-2.5 @min-[300px]:px-5 @min-[300px]:tracking-[0.07em] @min-[360px]:gap-3 @min-[360px]:px-6 @min-[360px]:tracking-[0.08em]"
-              onClick={() => {
-                onActivate();
-              }}
-            >
-              <span className="min-w-0 truncate text-[10px] @min-[240px]:text-xs @min-[300px]:text-sm @min-[360px]:text-base">
-                Start new interview
-              </span>
-            </Button>
-          </div>
-          <IconButton
-            variant="text"
-            icon={
-              <Trash2
-                className="size-3 @min-[320px]:size-5 @min-3xs:size-4"
-                aria-hidden
-              />
-            }
-            aria-label={`Delete ${protocol.name}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="hover:bg-destructive! hover:text-destructive-contrast! h-9 shrink-0 @min-[320px]:h-13 @min-[380px]:h-14 @min-3xs:h-11"
+    <LayoutGroup id={id}>
+      <motion.div
+        layout
+        aria-label={`${protocol.name ?? 'Protocol'}${isActive ? ' (active)' : ''}`}
+        aria-busy={loading || undefined}
+        onKeyDown={onCardKeyDown}
+        // Border echoes the color the Pattern paints for this protocol's seed.
+        // style={{ borderColor: seedToPatternPalette(protocol.name).backgroundTop }}
+        className={cx(
+          cardBase(),
+          'min-h-[300px] min-w-[325px]',
+          'text-navy-taupe bg-platinum publish-colors',
+          'effect-shadow-xl @container relative h-full w-full overflow-clip rounded',
+          isActive && 'spring-medium effect-shadow-2xl',
+          'border-platinum-dark border-[0.15cqi]',
+        )}
+      >
+        <AnimatePresence mode="popLayout" initial={false}>
+          <Pattern
+            key="pattern"
+            seed={protocol.name ?? ''}
+            className="absolute inset-0 size-full"
           />
-        </div>
+          <div
+            key="gradient"
+            className="to-platinum from-rich-black/20 via-platinum/80 absolute inset-0 size-full bg-linear-to-b via-30% to-70%"
+          />
+
+          <div
+            key="content"
+            className="relative z-10 flex size-full flex-col justify-between gap-6 p-[6cqi]"
+          >
+            {/* The whole controls row (pill + delete) leaves while the
+                case-ID form is up — its reserved height goes to the
+                heading region, which long names need. popLayout frees the
+                space at exit start so the heading glides up concurrently
+                with the row's fade. */}
+            <AnimatePresence mode="popLayout" initial={false}>
+              {!hideControls && (
+                <motion.div
+                  key="controls"
+                  layout="position"
+                  initial={PRESENCE_INITIAL}
+                  animate={PRESENCE_ENTER}
+                  exit={PRESENCE_EXIT}
+                  transition={REGION_TRANSITION}
+                  // min-h reserves the delete control's height, so the
+                  // control fading in or out (e.g. a pending card becoming
+                  // deletable) never reflows the content below the row.
+                  className="flex min-h-[max(40px,10cqi)] items-center justify-end gap-4"
+                >
+                  {requiresInternetConnection && (
+                    <Pill icon={<Globe />} intent="warning">
+                      Requires Internet
+                    </Pill>
+                  )}
+
+                  {/* Direct presence parent: gives the control real enter/exit
+                  animations and a fresh presence context, so the outer
+                  presence's initial={false} doesn't suppress later mounts.
+                  popLayout frees the control's row space at exit START so
+                  the pill glides concurrently with the fade. */}
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    {onDelete && (
+                      <motion.div
+                        key="delete"
+                        initial={PRESENCE_INITIAL}
+                        animate={PRESENCE_ENTER}
+                        exit={PRESENCE_EXIT}
+                        transition={REGION_TRANSITION}
+                      >
+                        <IconButton
+                          icon={<Trash2 />}
+                          aria-label={deleteLabel ?? 'Delete Protocol'}
+                          variant="outline"
+                          color="dynamic"
+                          className="bg-rich-black/60 text-platinum size-[max(40px,10cqi)] border text-[max(16px,4cqi)]"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onDelete();
+                          }}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {/* min-h-0 lets the heading region shrink to the column's real
+                leftover budget (a flex item's implicit min-height: auto
+                would otherwise force the column past the card edge and
+                evict the footer). The fitted clamp keeps the truncation on
+                whole-line boundaries. */}
+            <div
+              ref={headingClamp.regionRef}
+              className="flex min-h-0 flex-1 items-center justify-start overflow-hidden"
+            >
+              {protocol.name ? (
+                <MotionHeading
+                  ref={headingClamp.headingRef}
+                  level="h2"
+                  title={protocol.name}
+                  className={cx(
+                    'w-full text-left font-black wrap-break-word hyphens-auto',
+                    headingSizeClass(protocol.name),
+                  )}
+                  // line-height must be inline: leading-* utilities lose to
+                  // the Heading component's own typography classes, so a
+                  // class here silently has no effect.
+                  style={{
+                    lineHeight: 1.05,
+                    ...(headingClamp.lines === null
+                      ? undefined
+                      : {
+                          display: '-webkit-box',
+                          WebkitBoxOrient: 'vertical',
+                          WebkitLineClamp: headingClamp.lines,
+                          overflow: 'hidden',
+                        }),
+                  }}
+                  margin="none"
+                  layout="position"
+                  transition={REGION_TRANSITION}
+                >
+                  {withUnderscoreBreaks(protocol.name)}
+                </MotionHeading>
+              ) : (
+                <div className="w-full">
+                  <Skeleton className="h-[7cqi] w-4/5" />
+                  <Skeleton className="mt-[2.5cqi] h-[7cqi] w-3/5" />
+                </div>
+              )}
+            </div>
+
+            {/* popLayout: an exiting description/metadata row is popped out
+                of the layout flow at exit START, so the column (and an
+                entering footer, e.g. the case-ID form) reflows concurrently
+                with the fade instead of waiting for the unmount. */}
+            <AnimatePresence mode="popLayout" initial={false}>
+              {showDescription && (
+                // Description shows up to six lines, then trails off.
+                // line-clamp must be a static utility class so Tailwind's
+                // scanner emits it — a dynamic `line-clamp-${n}` would never
+                // be generated. The inner span carries the clamp (line-clamp
+                // makes it a `-webkit-box`); the wrapper is a normal block
+                // flex item pinned with `shrink-0` so the column — whose
+                // heading claims `flex-1` — can't squeeze the description
+                // below its six lines.
+                // layout="position" (not full layout) on the swappable text
+                // regions: full layout animations interpolate size with a
+                // scale transform, which visibly stretches text when a
+                // content swap changes the region's height (skeletons →
+                // real description on import completion). Position-only
+                // keeps the glide without the distortion.
+                <motion.div
+                  key="description"
+                  layout="position"
+                  initial={PRESENCE_INITIAL}
+                  animate={PRESENCE_ENTER}
+                  exit={PRESENCE_EXIT}
+                  transition={REGION_TRANSITION}
+                  className="shrink-0 text-left"
+                >
+                  {protocol.description ? (
+                    <span className="line-clamp-6 text-[3.5cqi] leading-tight text-current/80">
+                      {protocol.description}
+                    </span>
+                  ) : (
+                    <div className="space-y-[1.5cqi]">
+                      <Skeleton className="h-[3cqi] w-full" />
+                      <Skeleton className="h-[3cqi] w-11/12" />
+                      <Skeleton className="h-[3cqi] w-2/3" />
+                    </div>
+                  )}
+                </motion.div>
+              )}
+              {showMetadata && (
+                // A row mounting mid layout-shift (sample → installing adds
+                // it below the description) must move on the same clock as
+                // its gliding siblings — REGION_TRANSITION everywhere —
+                // otherwise it pops in at its final rect while the
+                // description is still rising, reading as the row appearing
+                // ABOVE it.
+                <motion.div
+                  key="metadata"
+                  layout="position"
+                  data-testid="deck-card-metadata"
+                  initial={PRESENCE_INITIAL}
+                  animate={PRESENCE_ENTER}
+                  exit={PRESENCE_EXIT}
+                  transition={REGION_TRANSITION}
+                  className="font-monospace flex items-center justify-between gap-4 text-[2.5cqi]"
+                >
+                  {protocol.importedAt ? (
+                    <span className="flex items-center gap-2">
+                      <CalendarPlus className="inline-block" size={16} />
+                      <TimeAgo date={protocol.importedAt} />
+                    </span>
+                  ) : (
+                    <Skeleton className="h-[3cqi] w-[22cqi]" />
+                  )}
+
+                  {protocol.lastModified ? (
+                    <span className="flex items-center gap-2">
+                      <CalendarSync className="inline-block" size={16} />
+                      <TimeAgo date={protocol.lastModified} />
+                    </span>
+                  ) : (
+                    loading && <Skeleton className="h-[3cqi] w-[22cqi]" />
+                  )}
+
+                  {loading ? (
+                    sessionCount === undefined ? (
+                      <Skeleton className="h-[3cqi] w-[18cqi]" />
+                    ) : (
+                      <span>
+                        {sessionCount}{' '}
+                        {sessionCount === 1 ? 'interview' : 'interviews'}
+                      </span>
+                    )
+                  ) : (
+                    <Link href="/data" className="hover:underline">
+                      {sessionCount ?? 0}{' '}
+                      {sessionCount === 1 ? 'interview' : 'interviews'}
+                    </Link>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence mode="popLayout">
+              {isActive && footer != null && (
+                <motion.hr
+                  key="break"
+                  layout="position"
+                  initial={PRESENCE_INITIAL}
+                  animate={PRESENCE_ENTER}
+                  exit={PRESENCE_EXIT}
+                  transition={REGION_TRANSITION}
+                  className="my-0"
+                />
+              )}
+              {isActive && footer != null && (
+                <motion.div
+                  key={footerKey}
+                  layout="position"
+                  initial={PRESENCE_INITIAL}
+                  animate={{
+                    ...PRESENCE_ENTER,
+                    transition: isFooterSwap
+                      ? {
+                          ...REGION_TRANSITION,
+                          delay: REGION_TRANSITION.duration,
+                        }
+                      : REGION_TRANSITION,
+                  }}
+                  exit={PRESENCE_EXIT}
+                  transition={REGION_TRANSITION}
+                  className="flex flex-col"
+                >
+                  {footer}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </AnimatePresence>
+      </motion.div>
+    </LayoutGroup>
+  );
+}
+
+// Footer building blocks for the slot above, co-located so every footer
+// shares the card's container-query sizing.
+
+// Standard footer wrapper. Give it a key identifying the CONTENT (e.g.
+// "start-interview", "import-progress") — DeckCard reads that key to drive
+// the footer presence group: key changes pop the old footer out of the
+// layout flow and delay the new footer's fade until the old one clears.
+// The animated element is DeckCard's own wrapper (a direct motion child of
+// the AnimatePresence, which popLayout requires); this component is just
+// the shared column layout.
+export function DeckCardFooter({ children }: { children: ReactNode }) {
+  return <div className="flex flex-col">{children}</div>;
+}
+
+export function DeckCardFooterButton({
+  onClick,
+  color = 'success',
+  icon,
+  children,
+}: {
+  onClick: () => void;
+  color?: 'success' | 'primary';
+  icon?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cx(
+        buttonVariants({ color }),
+        'flex h-auto items-center justify-center gap-[1.5cqi] border-b-[1.25cqi] p-[2.5cqi] text-[3cqi] font-extrabold tracking-widest uppercase',
+        // 3D bottom edge: the translucent black border paints over the
+        // button's own background (border-box clipping), darkening whatever
+        // the color resolves to in the active theme.
+        'border-black/25',
       )}
-    </motion.div>
+    >
+      {icon}
+      {children}
+    </button>
+  );
+}
+
+export function DeckCardProgressFooter({
+  progress,
+  message,
+}: {
+  // Fraction (0–1) from the protocol import process; undefined renders an
+  // indeterminate bar.
+  progress?: number;
+  // Status line from the protocol import process (e.g. "Extracting…").
+  message?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-[1.5cqi] py-[2.5cqi]">
+      <ProgressBar
+        orientation="horizontal"
+        indeterminate={progress === undefined}
+        percentProgress={
+          progress === undefined
+            ? 0
+            : Math.min(100, Math.max(0, progress * 100))
+        }
+        label={message ?? 'Loading protocol'}
+        className="h-[2cqi] min-h-2"
+      />
+      <div className="font-monospace flex min-h-lh items-center justify-between text-[2.8cqi]">
+        <span>{message}</span>
+        {progress !== undefined && (
+          <span>{Math.round(Math.min(1, Math.max(0, progress)) * 100)}%</span>
+        )}
+      </div>
+    </div>
   );
 }

@@ -578,7 +578,7 @@
   }
 
   hr {
-    @apply my-6 rounded border-[1.2px] border-current/5;
+    @apply my-6 rounded border-[1.2px] border-current/10;
   }
 
   kbd {

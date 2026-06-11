@@ -1,5 +1,3 @@
-import { useId } from 'react';
-
 import Button from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -13,21 +11,19 @@ import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
 
 type NewSessionFormProps = {
   protocol: ProtocolWithCounts;
-  onCancel: () => void;
   onCreated: (session: StoredSession) => void;
+  onCancel: () => void;
 };
 
 export function NewSessionForm({
   protocol,
-  onCancel,
   onCreated,
+  onCancel,
 }: NewSessionFormProps) {
-  const formId = useId();
   const { requireFreshUnlock, setAuthorizedInterviewId } = useStepUpAuth();
 
   return (
     <Form
-      id={formId}
       onSubmit={async (values) => {
         const raw = values.caseId;
         const caseId = typeof raw === 'string' ? raw.trim() : '';
@@ -56,7 +52,6 @@ export function NewSessionForm({
         onCreated(session);
         return { success: true };
       }}
-      className="p-4"
     >
       <Paragraph>
         Before the interview begins, enter a case ID. This will be shown on the
@@ -73,11 +68,11 @@ export function NewSessionForm({
         validateOnChange
         autoFocus
       />
-      <div className="flex flex-col gap-2 @min-2xs:flex-row @min-2xs:justify-end">
-        <Button onClick={onCancel} type="button">
+      <div className="flex items-center justify-end gap-[2cqi]">
+        <Button type="button" variant="text" color="dynamic" onClick={onCancel}>
           Cancel
         </Button>
-        <SubmitButton form={formId}>Start interview</SubmitButton>
+        <SubmitButton>Start interview</SubmitButton>
       </div>
     </Form>
   );

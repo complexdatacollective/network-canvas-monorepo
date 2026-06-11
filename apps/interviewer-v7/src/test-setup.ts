@@ -6,6 +6,16 @@ afterEach(() => {
   cleanup();
 });
 
+// jsdom has no ResizeObserver; components that measure (e.g. DeckCard's
+// fitted heading clamp, ProtocolDeck's section sizing) just never observe a
+// resize under test — jsdom has no layout to measure anyway.
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver ??= ResizeObserverStub;
+
 // The @aparajita/capacitor-biometric-auth ESM build re-exports from './definitions'
 // without the .js extension, which Node ESM refuses to resolve in jsdom test mode.
 // Tests that exercise Capacitor-only code paths should override this mock with

@@ -94,10 +94,10 @@ const toggleThumbVariants = cva({
   ),
   variants: {
     state: {
-      normal: 'bg-input',
+      normal: 'bg-input interview:bg-input-contrast',
       disabled: 'bg-input-contrast/30',
       readOnly: 'bg-input-contrast/40',
-      invalid: 'bg-input',
+      invalid: 'bg-input interview:bg-input-contrast',
     },
   },
   defaultVariants: {

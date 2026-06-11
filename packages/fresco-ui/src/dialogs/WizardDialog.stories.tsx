@@ -951,6 +951,9 @@ export const BeforeNextDeterministic: StoryObj<Meta<WizardStoryArgs>> = {
  * Demonstrates the `confirmCancel` option, which shows a confirmation
  * dialog when the user clicks Cancel or the close button. If confirmed,
  * the wizard closes with `null`. If dismissed, the wizard stays open.
+ *
+ * The confirmation dialog's accent can be set via `confirmCancel.intent`
+ * (defaults to `default`).
  */
 export const ConfirmCancel: StoryObj<Meta<WizardStoryArgs>> = {
   args: {

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-import { Alert } from '@codaco/fresco-ui/Alert';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
@@ -422,23 +422,12 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                 crashes. This helps us find bugs and decide what to improve.
               </Paragraph>
               <Alert variant="info">
-                <strong>No participant data is ever collected.</strong> Network
-                data, responses, case IDs, protocol contents, and asset files
-                never leave this device. Analytics also contain no
-                user-identifiable information: events are associated only with a
-                random per-device installation ID
-                {installationId ? (
-                  <>
-                    {' '}
-                    (
-                    <span className="font-monospace text-xs">
-                      {installationId}
-                    </span>
-                    )
-                  </>
-                ) : null}
-                , never your name, email, or any account. You can turn analytics
-                off at any time, and the change applies immediately.
+                <AlertTitle>No participant data is ever collected.</AlertTitle>
+                <AlertDescription>
+                  Network data, responses, case IDs, protocol contents, and
+                  asset files never leave this device. Analytics also contain no
+                  user-identifiable information.
+                </AlertDescription>
               </Alert>
             </>
           ) : null}
