@@ -34,26 +34,28 @@ const WelcomeToast = () => {
   const { add, close } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  // Guards against the effect adding a second toast (e.g. StrictMode double
-  // invocation). The toast id lets the "learn more" action dismiss the toast.
-  const shownRef = useRef(false);
-  const toastIdRef = useRef<string | null>(null);
+  // `useToast` returns fresh `add`/`close` each render, so read them through
+  // refs and run the toast effect once on mount rather than re-running (and
+  // re-adding the toast) on every render.
+  const addRef = useRef(add);
+  const closeRef = useRef(close);
+  addRef.current = add;
+  closeRef.current = close;
 
   useEffect(() => {
-    if (shownRef.current || hasSeenWelcome()) {
-      return;
+    if (hasSeenWelcome()) {
+      return undefined;
     }
-    shownRef.current = true;
+
+    let toastId = '';
 
     const openDialog = () => {
       markWelcomeSeen();
       setDialogOpen(true);
-      if (toastIdRef.current) {
-        close(toastIdRef.current);
-      }
+      closeRef.current(toastId);
     };
 
-    toastIdRef.current = add({
+    toastId = addRef.current({
       title: 'Welcome to Architect Web!',
       description: (
         <button
@@ -70,7 +72,14 @@ const WelcomeToast = () => {
       // Closing the toast (via the close button, swipe, etc.) records the flag.
       onClose: markWelcomeSeen,
     });
-  }, [add, close]);
+
+    // The toast is persistent (`timeout: 0`) and lives in the app-level
+    // provider, so close it when the start screen unmounts to stop it
+    // lingering on other routes.
+    return () => {
+      closeRef.current(toastId);
+    };
+  }, []);
 
   return <WelcomeDialog open={dialogOpen} onOpenChange={setDialogOpen} />;
 };
