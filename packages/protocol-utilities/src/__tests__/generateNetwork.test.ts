@@ -286,6 +286,190 @@ describe('generateNetwork', () => {
     });
   });
 
+  describe('inProgressStageIndex option', () => {
+    function makeBinCodebook(): Codebook {
+      return makeCodebook({
+        node: {
+          'node-type-1': {
+            color: 'node-color-seq-1',
+            variables: {
+              'var-name': { name: 'Name', type: 'text' },
+              'var-ordinal': {
+                name: 'Closeness',
+                type: 'ordinal',
+                options: [
+                  { label: 'Low', value: 1 },
+                  { label: 'Mid', value: 2 },
+                  { label: 'High', value: 3 },
+                ],
+              },
+              'var-cat': {
+                name: 'Group',
+                type: 'categorical',
+                options: [
+                  { label: 'A', value: 'a' },
+                  { label: 'B', value: 'b' },
+                ],
+              },
+              'var-other': { name: 'Other group', type: 'text' },
+            },
+          },
+        },
+      });
+    }
+
+    function makeOrdinalBinStage(): Stage {
+      return {
+        id: 'stage-ob',
+        label: 'Ordinal Bin',
+        type: 'OrdinalBin',
+        subject: { entity: 'node', type: 'node-type-1' },
+        prompts: [
+          { id: 'prompt-ob', text: 'How close?', variable: 'var-ordinal' },
+        ],
+      } as Stage;
+    }
+
+    function makeCategoricalBinStage(): Stage {
+      return {
+        id: 'stage-cb',
+        label: 'Categorical Bin',
+        type: 'CategoricalBin',
+        subject: { entity: 'node', type: 'node-type-1' },
+        prompts: [
+          {
+            id: 'prompt-cb',
+            text: 'Which group?',
+            variable: 'var-cat',
+            otherVariable: 'var-other',
+          },
+        ],
+      } as Stage;
+    }
+
+    it('leaves every node placed when the option is not set', () => {
+      const codebook = makeBinCodebook();
+      const stages = [makeNameGeneratorStage(), makeOrdinalBinStage()];
+
+      const { network } = generateNetwork(codebook, stages, 42);
+
+      expect(network.nodes.length).toBeGreaterThan(0);
+      for (const node of network.nodes) {
+        expect(node[entityAttributesProperty]['var-ordinal']).not.toBeNull();
+      }
+    });
+
+    it('clears the prompt variable on roughly half the nodes of an in-progress OrdinalBin', () => {
+      const codebook = makeBinCodebook();
+      const stages = [makeNameGeneratorStage(), makeOrdinalBinStage()];
+
+      const { network } = generateNetwork(codebook, stages, 42, {
+        inProgressStageIndex: 1,
+      });
+
+      const nodeCount = network.nodes.length;
+      const unplaced = network.nodes.filter(
+        (n) => n[entityAttributesProperty]['var-ordinal'] === null,
+      );
+      const placed = network.nodes.filter(
+        (n) => n[entityAttributesProperty]['var-ordinal'] !== null,
+      );
+
+      expect(unplaced.length).toBe(Math.max(1, Math.floor(nodeCount / 2)));
+      expect(placed.length).toBeGreaterThan(0);
+
+      const optionValues = new Set([1, 2, 3]);
+      for (const node of placed) {
+        expect(
+          optionValues.has(
+            node[entityAttributesProperty]['var-ordinal'] as number,
+          ),
+        ).toBe(true);
+      }
+    });
+
+    it('clears both the prompt variable and otherVariable of an in-progress CategoricalBin', () => {
+      const codebook = makeBinCodebook();
+      const stages = [makeNameGeneratorStage(), makeCategoricalBinStage()];
+
+      const { network } = generateNetwork(codebook, stages, 42, {
+        inProgressStageIndex: 1,
+      });
+
+      const uncategorised = network.nodes.filter(
+        (n) => n[entityAttributesProperty]['var-cat'] === null,
+      );
+      expect(uncategorised.length).toBeGreaterThan(0);
+
+      for (const node of uncategorised) {
+        expect(node[entityAttributesProperty]['var-other']).toBeNull();
+      }
+    });
+
+    it('clears the layout variable of an in-progress Sociogram', () => {
+      const codebook = makeCodebook({
+        node: {
+          'node-type-1': {
+            color: 'node-color-seq-1',
+            variables: {
+              'var-name': { name: 'Name', type: 'text' },
+              'var-layout': { name: 'Layout', type: 'layout' },
+            },
+          },
+        },
+      });
+      const stages = [
+        makeNameGeneratorStage(),
+        {
+          id: 'stage-soc',
+          label: 'Sociogram',
+          type: 'Sociogram',
+          subject: { entity: 'node', type: 'node-type-1' },
+          prompts: [
+            {
+              id: 'prompt-soc',
+              text: 'Place people',
+              layout: { layoutVariable: 'var-layout' },
+            },
+          ],
+        } as Stage,
+      ];
+
+      const { network } = generateNetwork(codebook, stages, 42, {
+        inProgressStageIndex: 1,
+      });
+
+      const unplaced = network.nodes.filter(
+        (n) => n[entityAttributesProperty]['var-layout'] === null,
+      );
+      expect(unplaced.length).toBe(
+        Math.max(1, Math.floor(network.nodes.length / 2)),
+      );
+    });
+
+    it('has no effect when the in-progress stage is not interaction-driven', () => {
+      const codebook = makeBinCodebook();
+      const stages = [makeNameGeneratorStage(), makeOrdinalBinStage()];
+
+      const { network } = generateNetwork(codebook, stages, 42, {
+        inProgressStageIndex: 0,
+      });
+
+      for (const node of network.nodes) {
+        expect(node[entityAttributesProperty]['var-ordinal']).not.toBeNull();
+      }
+    });
+
+    it('ignores an out-of-range stage index', () => {
+      const codebook = makeBinCodebook();
+      const stages = [makeNameGeneratorStage(), makeOrdinalBinStage()];
+
+      expect(() =>
+        generateNetwork(codebook, stages, 42, { inProgressStageIndex: 99 }),
+      ).not.toThrow();
+    });
+  });
+
   describe('stage type coverage', () => {
     it('should handle every stage type defined in the protocol validation schema', () => {
       const allStageTypes = getAllStageTypes();

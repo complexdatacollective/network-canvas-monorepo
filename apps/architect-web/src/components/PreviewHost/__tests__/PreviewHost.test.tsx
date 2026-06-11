@@ -134,6 +134,67 @@ describe('PreviewHost', () => {
     expect(call.currentStep).toBe(0);
   });
 
+  it('leaves the previewed stage partially complete in synthetic data', () => {
+    render(<PreviewHost />);
+    const protocol = {
+      name: 'T',
+      description: '',
+      schemaVersion: 8,
+      stages: [
+        {
+          id: 's1',
+          type: 'NameGenerator',
+          label: 'NG',
+          subject: { entity: 'node', type: 'node-1' },
+          prompts: [{ id: 'p1', text: 'Add people' }],
+          behaviours: { minNodes: 4, maxNodes: 8 },
+        },
+        {
+          id: 's2',
+          type: 'OrdinalBin',
+          label: 'OB',
+          subject: { entity: 'node', type: 'node-1' },
+          prompts: [{ id: 'p2', text: 'How close?', variable: 'var-ord' }],
+        },
+      ],
+      codebook: {
+        node: {
+          'node-1': {
+            variables: {
+              'var-ord': {
+                name: 'Closeness',
+                type: 'ordinal',
+                options: [
+                  { label: 'Low', value: 1 },
+                  { label: 'High', value: 2 },
+                ],
+              },
+            },
+          },
+        },
+        edge: {},
+        ego: {},
+      },
+      assetManifest: {},
+    };
+    postPayload(openerStub, {
+      type: 'preview:payload',
+      protocol,
+      startStage: 1,
+      useSyntheticData: true,
+    });
+
+    const call = shellMock.mock.calls.at(-1)?.[0] as {
+      payload: InterviewPayload;
+    };
+    const nodes = call.payload.session.network.nodes;
+    expect(nodes.length).toBeGreaterThan(0);
+    const unplaced = nodes.filter((n) => n.attributes['var-ord'] === null);
+    const placed = nodes.filter((n) => n.attributes['var-ord'] !== null);
+    expect(unplaced.length).toBeGreaterThan(0);
+    expect(placed.length).toBeGreaterThan(0);
+  });
+
   it('ignores payload messages from a non-opener source', () => {
     render(<PreviewHost />);
     const protocol = makeProtocol();

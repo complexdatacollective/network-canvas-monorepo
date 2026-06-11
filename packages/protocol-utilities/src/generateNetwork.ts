@@ -61,6 +61,14 @@ type Codebook = {
 export type GenerateNetworkOptions = {
   simulateDropOut?: boolean;
   respectSkipLogicAndFiltering?: boolean;
+  /**
+   * Index of a stage to treat as in progress rather than complete. For
+   * interaction-driven stages (OrdinalBin, CategoricalBin, Sociogram), a
+   * subset of subject nodes is left without a value for the stage's prompt
+   * variables, so the stage's interaction can still be exercised. Has no
+   * effect on stage types where complete data is preferable (e.g. forms).
+   */
+  inProgressStageIndex?: number;
 };
 
 export type GenerateNetworkResult = {
@@ -317,6 +325,82 @@ function getStageFilteredEdges(
   return getEdgesOfType(filtered.edges, edgeType);
 }
 
+/**
+ * Variables an in-progress stage would not yet have written for unvisited
+ * nodes. Clearing these returns a node to the stage's "unplaced" bucket.
+ */
+function getInProgressClearableVariables(stage: Stage): string[] {
+  const prompts = getStagePrompts(stage);
+
+  switch (getStageType(stage)) {
+    case 'OrdinalBin':
+      return prompts.flatMap((p) =>
+        typeof p.variable === 'string' ? [p.variable] : [],
+      );
+    case 'CategoricalBin':
+      // A node only counts as uncategorised when both the prompt variable
+      // and any "other" variable are nil.
+      return prompts.flatMap((p) =>
+        [p.variable, p.otherVariable].filter(
+          (v): v is string => typeof v === 'string',
+        ),
+      );
+    case 'Sociogram':
+      return prompts.flatMap((p) => {
+        const layout = p.layout as { layoutVariable?: string } | undefined;
+        return layout?.layoutVariable ? [layout.layoutVariable] : [];
+      });
+    default:
+      return [];
+  }
+}
+
+/**
+ * Clears the stage's prompt variables on roughly half of its subject nodes
+ * (always at least one) so the stage presents as partially complete: some
+ * nodes already placed, others still awaiting interaction.
+ */
+function markStageInProgress(
+  stage: Stage,
+  nodes: NcNode[],
+  edges: NcEdge[],
+  egoUid: string,
+  egoAttributes: Record<string, unknown>,
+  valueGen: ValueGenerator,
+  respectFiltering: boolean,
+): void {
+  const variables = getInProgressClearableVariables(stage);
+  if (variables.length === 0) return;
+
+  const subject = getStageSubject(stage);
+  if (subject?.entity !== 'node') return;
+
+  const subjectNodes = getStageFilteredNodes(
+    nodes,
+    edges,
+    egoUid,
+    egoAttributes,
+    stage,
+    subject.type,
+    respectFiltering,
+  );
+  if (subjectNodes.length === 0) return;
+
+  const indices = subjectNodes.map((_, idx) => idx);
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = valueGen.randomInt(0, i);
+    [indices[i], indices[j]] = [indices[j]!, indices[i]!];
+  }
+
+  const clearCount = Math.max(1, Math.floor(subjectNodes.length / 2));
+  for (const idx of indices.slice(0, clearCount)) {
+    const attrs = subjectNodes[idx]![entityAttributesProperty];
+    for (const varId of variables) {
+      attrs[varId] = null;
+    }
+  }
+}
+
 export function generateNetwork(
   codebook: Codebook,
   stages: Stage[],
@@ -332,8 +416,11 @@ export function generateNetwork(
   const stageMetadata: Record<string, unknown> = {};
   const egoUid = uuid();
 
-  const { simulateDropOut = false, respectSkipLogicAndFiltering = false } =
-    options;
+  const {
+    simulateDropOut = false,
+    respectSkipLogicAndFiltering = false,
+    inProgressStageIndex,
+  } = options;
   const totalStages = stages.length;
   let currentStep = 0;
   let droppedOut = false;
@@ -834,6 +921,25 @@ export function generateNetwork(
             'Synthetic data generation does not yet support this stage type.',
         );
     }
+  }
+
+  // Applied as a post-pass: node creation populates every codebook variable,
+  // and later stages may rewrite the same variable, so values must be cleared
+  // after all stages have run.
+  const inProgressStage =
+    inProgressStageIndex !== undefined
+      ? stages[inProgressStageIndex]
+      : undefined;
+  if (inProgressStage) {
+    markStageInProgress(
+      inProgressStage,
+      nodes,
+      edges,
+      egoUid,
+      egoAttributes,
+      valueGen,
+      respectSkipLogicAndFiltering,
+    );
   }
 
   if (!droppedOut) {
