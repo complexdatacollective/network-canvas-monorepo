@@ -1,8 +1,8 @@
+import { Toast } from '@base-ui/react/toast';
 import { useEffect, useRef, useState } from 'react';
 
-import { useToast } from '@codaco/fresco-ui/Toast';
-
 import WelcomeDialog from './WelcomeDialog';
+import type { WelcomeToastData } from './WelcomeToaster';
 
 // Persists across visits so the first-run welcome toast is shown only once.
 const WELCOME_SEEN_KEY = 'architect-web-welcome-seen';
@@ -27,20 +27,17 @@ const markWelcomeSeen = () => {
 
 /**
  * Shows a one-time welcome toast on the start screen the first time a user
- * visits. Clicking the toast opens the {@link WelcomeDialog}; dismissing it
- * (or opening the dialog) records a "seen" flag so it never shows again.
+ * visits. Clicking it opens the {@link WelcomeDialog}; dismissing it (or
+ * opening the dialog) records a "seen" flag so it never shows again.
  */
 const WelcomeToast = () => {
-  const { add, close } = useToast();
+  const manager = Toast.useToastManager<WelcomeToastData>();
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  // `useToast` returns fresh `add`/`close` each render, so read them through
-  // refs and run the toast effect once on mount rather than re-running (and
-  // re-adding the toast) on every render.
-  const addRef = useRef(add);
-  const closeRef = useRef(close);
-  addRef.current = add;
-  closeRef.current = close;
+  // The manager is read through a ref so the toast effect can run once on
+  // mount/unmount without re-adding the toast on every render.
+  const managerRef = useRef(manager);
+  managerRef.current = manager;
 
   useEffect(() => {
     if (hasSeenWelcome()) {
@@ -52,32 +49,30 @@ const WelcomeToast = () => {
     const openDialog = () => {
       markWelcomeSeen();
       setDialogOpen(true);
-      closeRef.current(toastId);
+      managerRef.current.close(toastId);
     };
 
-    toastId = addRef.current({
+    toastId = managerRef.current.add({
       title: 'Welcome to Architect Web!',
       description: (
         <button
           type="button"
           onClick={openDialog}
-          className="cursor-pointer text-left underline underline-offset-2"
+          className="text-action cursor-pointer text-left underline underline-offset-2"
         >
           Click here to learn more about this software.
         </button>
       ),
-      variant: 'success',
-      icon: <span className="text-xl leading-none">🎉</span>,
+      data: { icon: '🎉' },
       timeout: 0,
       // Closing the toast (via the close button, swipe, etc.) records the flag.
       onClose: markWelcomeSeen,
     });
 
-    // The toast is persistent (`timeout: 0`) and lives in the app-level
-    // provider, so close it when the start screen unmounts to stop it
-    // lingering on other routes.
+    // The toast lives in the app-level provider, so close it when the start
+    // screen unmounts to stop it lingering on other routes.
     return () => {
-      closeRef.current(toastId);
+      managerRef.current.close(toastId);
     };
   }, []);
 
