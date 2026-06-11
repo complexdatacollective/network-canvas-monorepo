@@ -8,11 +8,11 @@ type Node = {
 };
 
 // Custom MDX components that render block-level markup. When authored inline in
-// markdown (e.g. `<CompatibilityMatrix></CompatibilityMatrix>` on a single
+// markdown (e.g. `<AppCompatibilityTable></AppCompatibilityTable>` on a single
 // line), remark wraps them in a paragraph, producing invalid `<p><div></p>`
 // nesting and a hydration error. This plugin lifts such a component out of its
 // wrapping `<p>` so authoring style no longer matters.
-const BLOCK_COMPONENTS = new Set(['compatibilitymatrix', 'appswitch']);
+const BLOCK_COMPONENTS = new Set(['appcompatibilitytable', 'appswitch']);
 
 const isMeaningful = (child: Node) =>
   child.type === 'element' ||

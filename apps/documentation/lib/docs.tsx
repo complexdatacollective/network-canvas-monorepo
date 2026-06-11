@@ -22,12 +22,12 @@ import type {
   SidebarProject,
   TSideBar,
 } from '~/app/types';
+import AppCompatibilityTable from '~/components/customComponents/AppCompatibilityTable';
 import { AppOption, AppSwitch } from '~/components/customComponents/AppSwitch';
 import {
   BadPractice,
   GoodPractice,
 } from '~/components/customComponents/BestPractices';
-import CompatibilityMatrix from '~/components/customComponents/CompatibilityMatrix';
 import ImageFullWidth from '~/components/customComponents/ImageFullWidth';
 import {
   InterfaceMeta,
@@ -304,7 +304,7 @@ const createMarkdownComponents = (docSlug?: string) => ({
   interfacesummary: (props: { children: ReactNode }) => (
     <InterfaceSummary {...props} />
   ),
-  compatibilitymatrix: () => <CompatibilityMatrix />,
+  appcompatibilitytable: () => <AppCompatibilityTable />,
   interfacemeta: (props: {
     type: string;
     creates: string;
