@@ -395,7 +395,25 @@ export const useMapbox = ({
       setIsMapIdleEvent(false);
     });
 
+    // Keep the Mapbox canvas in sync with its container. The interview shell
+    // resizes the stage area whenever the browser window is resized or the
+    // navigation flips between portrait and landscape orientation. We don't
+    // ship Mapbox's stylesheet (which would absolutely-position the canvas), so
+    // the canvas participates in normal layout flow: a stale, oversized canvas
+    // forces the stage wider than the viewport and pushes the navigation bar
+    // off-screen. Resizing the map on every container size change keeps the
+    // canvas matched to the available space.
+    const container = mapContainerRef.current;
+    let resizeObserver: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        mapRef.current?.resize();
+      });
+      resizeObserver.observe(container);
+    }
+
     return () => {
+      resizeObserver?.disconnect();
       mapRef.current?.remove();
     };
   }, [
