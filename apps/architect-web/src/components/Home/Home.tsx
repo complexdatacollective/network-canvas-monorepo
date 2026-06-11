@@ -27,6 +27,7 @@ import LibraryPanel from './LibraryPanel';
 import ProtocolLoadingOverlay from './ProtocolLoadingOverlay';
 import { TIMELINE_SCRIPT } from './timelineScript';
 import TransitMap from './TransitMap';
+import WelcomeToast from './WelcomeToast';
 
 const NAV_LINKS = [
   {
@@ -142,6 +143,7 @@ const Home = () => {
 
   return (
     <>
+      <WelcomeToast />
       <ProtocolLoadingOverlay open={isLoading} />
       <NewProtocolDialog
         open={showNewDialog}
