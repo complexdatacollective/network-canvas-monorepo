@@ -63,6 +63,9 @@ import { downloadBlob } from '~/lib/files/download';
 type DataViewProps = {
   protocols: ProtocolWithCounts[];
   onReload: () => Promise<void>;
+  // Bumped by the parent when sessions change outside this view (e.g.
+  // synthetic-data generation/deletion in Settings) so the table re-queries.
+  refreshKey?: number;
 };
 
 type ChipFilter = 'all' | 'in-progress' | 'complete';
@@ -298,7 +301,7 @@ function SortHeader<TData>({
   );
 }
 
-export function DataView({ protocols, onReload }: DataViewProps) {
+export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
   const protocolStageCounts = useMemo(() => {
     const map = new Map<string, number>();
     for (const protocol of protocols) {
@@ -400,7 +403,7 @@ export function DataView({ protocols, onReload }: DataViewProps) {
 
   useEffect(() => {
     void reloadData();
-  }, [reloadData]);
+  }, [reloadData, refreshKey]);
 
   const rows: StoredSessionLite[] = data?.rows ?? [];
   const totalCount = data?.totalCount ?? 0;
