@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ChartColumn } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
@@ -147,10 +147,10 @@ export function Hero() {
       </div>
       <div className="flex w-full flex-col gap-6 md:flex-row">
         <ProjectCard
-          href="en/project"
+          href="en/get-started"
           seed="project"
-          title={t('ProjectSwitcher.project.label')}
-          description={t('ProjectSwitcher.project.description')}
+          title={t('ProjectSwitcher.get-started.label')}
+          description={t('ProjectSwitcher.get-started.description')}
           icon={
             <Image
               src="/images/mark.svg"
@@ -162,10 +162,10 @@ export function Hero() {
           }
         />
         <ProjectCard
-          href="en/build-protocol"
+          href="en/design-protocols"
           seed="build"
-          title={t('ProjectSwitcher.build-protocol.label')}
-          description={t('ProjectSwitcher.build-protocol.description')}
+          title={t('ProjectSwitcher.design-protocols.label')}
+          description={t('ProjectSwitcher.design-protocols.description')}
           icon={
             <Image
               src="/images/architect-icon.png"
@@ -177,10 +177,10 @@ export function Hero() {
           }
         />
         <ProjectCard
-          href="en/run-interview"
+          href="en/collect-data"
           seed="collect-data"
-          title={t('ProjectSwitcher.run-interview.label')}
-          description={t('ProjectSwitcher.run-interview.description')}
+          title={t('ProjectSwitcher.collect-data.label')}
+          description={t('ProjectSwitcher.collect-data.description')}
           icon={
             <div className="flex shrink-0 items-center gap-1">
               <Image
@@ -199,6 +199,13 @@ export function Hero() {
               />
             </div>
           }
+        />
+        <ProjectCard
+          href="en/analyze-data"
+          seed="analyze"
+          title={t('ProjectSwitcher.analyze-data.label')}
+          description={t('ProjectSwitcher.analyze-data.description')}
+          icon={<ChartColumn className="h-12 w-12 shrink-0" />}
         />
       </div>
     </motion.div>

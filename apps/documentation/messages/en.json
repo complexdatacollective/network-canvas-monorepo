@@ -1,16 +1,20 @@
 {
   "ProjectSwitcher": {
-    "project": {
-      "label": "Project",
-      "description": "App-agnostic concepts shared across Network Canvas."
+    "get-started": {
+      "label": "Get Started",
+      "description": "Install the software, learn the core concepts, and find your way around Network Canvas."
     },
-    "build-protocol": {
-      "label": "Build Protocols",
-      "description": "Create interview protocols in Architect Web or Architect Desktop."
+    "design-protocols": {
+      "label": "Design Protocols",
+      "description": "Build interview protocols in Architect Web or Architect Desktop."
     },
-    "run-interview": {
-      "label": "Run Interviews",
-      "description": "Collect data by running your protocol in Fresco or Interviewer."
+    "collect-data": {
+      "label": "Collect Data",
+      "description": "Run your protocol and gather responses with Interviewer or Fresco."
+    },
+    "analyze-data": {
+      "label": "Analyze Data",
+      "description": "Export, transform, and work with the network data your interviews produce."
     },
     "studio": {
       "label": "Studio",

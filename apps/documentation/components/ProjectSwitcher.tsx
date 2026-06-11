@@ -1,5 +1,6 @@
 'use client';
 
+import { ChartColumn } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -19,7 +20,7 @@ import { cn } from '~/lib/utils';
 import { useRouter } from '~/navigation';
 
 const getImageForProject = (project: Project) => {
-  if (project === 'project') {
+  if (project === 'get-started') {
     return (
       <Image
         src="/images/mark.svg"
@@ -31,7 +32,7 @@ const getImageForProject = (project: Project) => {
     );
   }
 
-  if (project === 'build-protocol') {
+  if (project === 'design-protocols') {
     return (
       <Image
         src="/images/architect-icon.png"
@@ -43,7 +44,7 @@ const getImageForProject = (project: Project) => {
     );
   }
 
-  if (project === 'run-interview') {
+  if (project === 'collect-data') {
     return (
       <div className="flex items-center gap-1">
         <Image
@@ -62,6 +63,10 @@ const getImageForProject = (project: Project) => {
         />
       </div>
     );
+  }
+
+  if (project === 'analyze-data') {
+    return <ChartColumn className="h-10 w-10" />;
   }
 };
 

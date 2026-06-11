@@ -1,0 +1,263 @@
+---
+title: Deployment Guide
+date: 8th October 2025
+navOrder: 1
+---
+
+<SummaryCard duration="60 minutes">
+
+<SummarySection>
+This guide will walk you through the process of deploying your instance of Fresco.
+
+</SummarySection>
+
+<PrerequisitesSection>
+Before you get started, you should:
+
+- Read the [about Fresco](/en/collect-data/fresco/about) article to understand what Fresco is and how it works.
+- Create an account on [GitHub](https://github.com/signup) if you do not already have one.
+- Set aside enough time to complete the deployment process in one sitting.
+
+</PrerequisitesSection>
+</SummaryCard>
+
+Thank you for taking the time to deploy Fresco! We hope you find it a valuable tool for your research and data collection. This guide will walk you through the process of deploying your instance of Fresco.
+
+Fresco is different from other software that you may have installed previously. It is a web application, meaning that you do not install it on a laptop or desktop. Instead, you "deploy" it to one or more servers (your "infrastructure"), which you can then access from your web browser.
+
+This approach allows researchers to manage their own data and customize the nature of their infrastructure to suit their needs.
+
+This _also_ means that you are responsible for the security and maintenance of your own deployment! The Network Canvas project team by design has no access to your data or infrastructure.
+
+To deploy Fresco, we will use the following services and technologies:
+
+- **GitHub**: A platform for hosting and sharing code owned and operated by Microsoft. The Fresco code is shared via GitHub, and you will need a GitHub account to deploy it. If you do not have a GitHub account, you can create one for free at <a href="https://github.com/signup" target="_blank">github.com</a>.
+- **PostgreSQL**: A powerful, open-source relational database system. Fresco uses PostgreSQL to store data about your study, participants, and responses.
+- **UploadThing**: A cloud-based file storage service that Fresco uses to store protocol assets such as media files.
+
+To make the deployment process as simple as possible, we designed Fresco to be deployed using <a href="https://www.netlify.com/" target="_blank">Netlify</a>, which is a cloud platform that specializes in deploying web applications. It is designed to be easy to use and has a generous free tier that is suitable for
+most research projects. It is not a requirement to use Netlify to host Fresco, but it is the simplest way to get started and is the method we will be using in this guide.
+
+We previously suggested deploying to Fresco to another cloud platform, Vercel, which offers many of the same features as Netlify. The Vercel deployment guide is [still available](/en/collect-data/fresco/deployment/guide-vercel), should you wish to use it.
+
+## How much does deploying Fresco cost?
+
+Deploying Fresco for your study can be achieved entirely for free using the steps detailed in this guide. We built it this way to allow the broadest possible access to the software. The free deployment method does come with some limitations, such as the amount of data you can store and transfer, and the overall performance of the application.
+
+If you are running a large study, require guaranteed levels of performance, or have special requirements imposed by your IRB regarding participant data, you may wish to use a paid plan or a different approach to deployment. Consult the [cloud pricing](./cloud-pricing) page for more information. Please note that the Network Canvas team does not benefit financially in any way from your choice of cloud provider.
+
+It is also possible to use whatever infrastructure you may have access to in order to deploy Fresco. For information on this, see our [advanced deployment](./advanced) guide.
+
+## Create a fork of Fresco
+
+Deploying Fresco involves setting up your own unique version of the project, which we refer to as your **instance**. The first step in creating this instance is to create a copy (or "fork") of the Fresco code on GitHub.
+
+To do this, ensure you have a GitHub account and are signed in, and then:
+
+1. Visit the <a href="https://github.com/complexdatacollective/Fresco" target="_blank">Fresco repository on GitHub</a>, and click **"Fork"**.
+
+   ![](/assets/img/fresco-images/github-fork1.png)
+
+2. Enter a repository name (this will be your Fresco instance name, so you may wish to use your study name or the name of your project), along with a description, and click **"Create Fork"**. Leave the "copy main branch" option selected.
+
+   ![](/assets/img/fresco-images/github-fork2.png)
+
+Once you have completed this step, you will be redirected to your forked repository on GitHub. This copy of the Fresco code is now yours to deploy or modify as you wish.
+``
+
+## Create a database
+
+Fresco uses a PostgreSQL database to store data about your study, participants, and responses. We will next create a new database using the <a href="https://www.neon.com/" target="_blank">Neon</a> platform.
+
+1. Visit the <a href="https://neon.com" target="_blank">Neon website</a> and click **Login**. We recommend connecting to Neon with GitHub by clicking the **GitHub** button. You will be redirected to the Neon dashboard.
+
+2. From your dashboard, select **Create Project**.
+
+   ![Create a Neon database](/assets/img/fresco-images/neon-db-1.png)
+
+3. Give your database a name and optionally choose a region from the dropdown. By default, the database will be created on the Free tier. For more information on database tier pricing, consult the [cloud pricing](./cloud-pricing) page. Then, click **Create**. Your database will be generated and you will be redirected to the Project dashboard.
+
+<TipBox>
+
+We recommend selecting **AWS US East 2 (Ohio)** as your database region.
+This region is the same as Netlify’s free-tier hosting region, which can help improve connection speed between your app and database.
+
+</TipBox>
+   
+   ![Create database](/assets/img/fresco-images/neon-db-2.png)
+
+4. Under the heading 'Connect to your databse' click **Connect**.
+
+   ![Click Connect](/assets/img/fresco-images/neon-db-3.png)
+
+5. Choose **Prisma** from the dropdown and select the **.env** tab. You will see environment variables for your database. Click **"Copy Snippet"** to copy the environment variables to your clipboard.
+
+   ![Select Prisma and click the `.env` tab, and copy the environment variables](/assets/img/fresco-images/neon-db-4.png)
+
+6. Paste the environment variables into a text file or notes app for safekeeping. You will need these environment variables later in the deployment process.
+
+<Tipbox danger>
+
+You **must delete the "#"** in front of `DATABSE_URL_UNPOOLED`. Make this edit in the text file or notes app where you pasted these variables.
+
+The edited file should look something like this:
+
+```bash
+
+DATABASE_URL="postgresql://neondb_owner:***************@ep-wispy-thunder-aduy7cf8-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+# uncomment next line if you use Prisma <5.10
+DATABASE_URL_UNPOOLED="postgresql://neondb_owner:*************@ep-wispy-thunder-aduy7cf8.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
+```
+
+</Tipbox>
+
+## Create a project on Netlify
+
+Next, we will deploy your fork of the application to the Netlify platform. You can use the Free tier or paid plans (for more information about cloud pricing, read our [cloud pricing](./cloud-pricing) documentation), but for the purposes of this guide, we will use the free tier.
+
+<Tipbox>
+
+Should you run into any issues, please consult the [troubleshooting](/en/collect-data/fresco/deployment/troubleshooting) guide or reach out to the <a href="https://community.networkcanvas.com" target="_blank">user community</a>.
+
+</Tipbox>
+
+1. Click <a href="https://app.netlify.com/start" target="_blank">here</a> to create a new project on Netlify. Sign in using GitHub, if you are not already signed in.
+
+2. Under the **Let's deploy your project with...** header, select **GitHub**.
+
+   ![Import Git Repository](/assets/img/fresco-images/netlify-1.png)
+
+3. Authorize GitHub permissions. You will be redirected back to the Netlify project creation dashboard.
+
+4. Find the name of your Fresco instance from the list of your git repositories and click on it.
+
+5. Give your project a name. The project name determines the default URL for your project. If none is provided, a random project name will be generated for you.
+
+   ![Name your project](/assets/img/fresco-images/netlify-2.png)
+
+6. Open the text editor or notes app where you stored your environment variables from the Neon database. Select **all** of the text, and copy it to your clipboard.
+
+7. Scroll to the bottom of the screen. Click "Add environment variables". Then, click **Import from a .env file**.
+
+   ![Add environment variables](/assets/img/fresco-images/netlify-3.png)
+
+8. Paste your variables into the "Contents of .env file" text box (with the `EXAMPLE_KEY_1=my-secret-value-1` placeholder). Your variables will be automatically added. Then, check the box beside **Contains secret values**.
+
+   ![When you paste your variables, they will be added automatically](/assets/img/fresco-images/netlify-4.png)
+
+9. Click the **"Deploy"** button, and wait for the deployment to finish. Netlify is now building your Fresco instance! This will take 2-5 minutes.
+
+10. Once your app is deployed, click on the deployment URL. It will be listen in green under your project name once it is deployed.
+
+![Deployment URL](/assets/img/fresco-images/netlify-5.png)
+
+## Configuration and setup
+
+To use Fresco, you need to set up an administrator account which will enable you to access the protected parts of the app for study management. Only one administrator account can be created.
+
+<TipBox danger>
+
+To ensure the security of your deployment, you have **2 hours** from when the app is deployed to complete the configuration and setup. If this time elapses before completing all setup steps, your configuration will expire. To redeploy, follow our guide to [reset your database](/en/collect-data/fresco/deployment/troubleshooting#instance-expired-message-during-the-setup-process).
+
+</TipBox>
+
+### Create a user account
+
+Visit your deployed app and create an account by entering a username and password. Ensure you make the password as strong as possible!
+
+<TipBox>
+
+Only **one** user account can be created in Fresco. If you need access for multiple team members, we recommend using a shared username and password for the administrator account to ensure that your team can access the platform.
+
+</TipBox>
+
+![Enter a username and password](/assets/img/fresco-images/fresco1.png)
+
+<TipBox danger>
+
+If you forget your password, you **will not be able to reset it**. We recommend keeping a record of your username and password in a secure location.
+
+</TipBox>
+
+### Create a storage bucket using UploadThing
+
+Fresco uses a third-party service called 'UploadThing' to store media files, including protocol assets. In order to use this service, you need to create an account with UploadThing that will allow you to generate an API key that Fresco can use to securely communicate with it.
+
+<Tipbox>
+
+Your UploadThing account is unique to you, meaning that no one else will have access to the files stored in your instance of Fresco. For more information about UploadThing, please review the <a href="https://docs.uploadthing.com" target="_blank">UploadThing Docs</a>.
+
+</Tipbox>
+
+To create an app on UploadThing:
+
+1. Go to <a href="https://uploadthing.com" target="_blank">uploadthing.com</a>.
+
+2. Click **"Get started"**.
+
+   ![Select "Get Started"](/assets/img/fresco-images/uploadthing1.png)
+
+3. Sign in with Github.
+
+4. Authorize UploadThing by clicking **"Authorize pingdotgg"**.
+
+5. You will be prompted to navigate to your dashboard. From the dashboard Click **"Create a new app"**.
+
+   ![Create a new app](/assets/img/fresco-images/uploadthing4.png)
+
+6. Give your app a name and click **"Create App"**. Do not change the region.
+
+   ![Create app](/assets/img/fresco-images/uploadthing5.png)
+
+7. From your dashboard, navigate to the **"API Keys"** section from the sidebar and copy your environment variable using the copy button.
+
+   ![Copy your API keys](/assets/img/fresco-images/uploadthing6.png)
+
+8. Paste your environment variable into the UPLOADTHING_TOKEN field on the form. It should look something like this:
+
+   ```bash
+   UPLOADTHING_TOKEN='abCdefGHiJkLmNopQrsTuvWxYz.......'
+   ```
+
+   ![Paste your environment variable into the form](/assets/img/fresco-images/fresco2.png)
+
+### Upload a protocol
+
+You can optionally upload a protocol. Protocols can also be uploaded from the protocols page once the setup steps are completed.
+
+![Upload a protocol](/assets/img/fresco-images/fresco3.png)
+
+### Configure participation
+
+- **Import participants**: You can optionally upload a CSV file containing participants you wish to recruit to your study. Participants can also be uploaded from the participants page once the setup steps are completed.
+
+- **Allow anonymous recruitment**: You can enable this setting to allow your participants to join your study by visiting a URL. More information about anonymous recruitment can be found in the [using Fresco](/en/collect-data/fresco/using-fresco) guide.
+
+![Import participants and optionally allow anonymous recruitment](/assets/img/fresco-images/fresco4.png)
+
+### Visit the dashboard
+
+Click the **"Go to the dashboard"** button and to begin using Fresco!
+
+<TipBox>
+
+We use anonymous analytics to gather error data from instances of Fresco to troubleshoot issues. No identifiable information of any kind is collected or sent to us.
+
+If you would like to disable all analytics, you can do so on the settings page.
+
+By leaving Disable Analytics set to `false` (the default) you will help us identify bugs and improve the app.
+
+</TipBox>
+
+## Set up a custom domain (optional)
+
+If you prefer to use a custom domain for your Fresco instance, you can configure this in the Netlify dashboard by following these steps:
+
+1. Navigate to your project dashboard. Click on the **Domain Management** tab.
+
+2. In the Domains section, you have two options:
+   - If you have a purchased domain, you can add it here by clicking **Add a domain**.
+   - Alternatively, you can modify the default Netlify domain to suit your needs by clicking **Options** and then **Edit project name**.
+
+   ![Domain setup options](/assets/img/fresco-images/netlify-domain.png)

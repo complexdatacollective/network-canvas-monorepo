@@ -1,7 +1,0 @@
-{
-  "type": "project",
-  "slug": "run-interview",
-  "localeLabels": { "en": "Run Interviews" },
-  "localeIndexFiles": { "en": "index.en.mdx" },
-  "childDisplay": "tabs"
-}

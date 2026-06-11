@@ -1,0 +1,35 @@
+---
+title: Protocol Compatibility
+navOrder: 1
+toc: true
+---
+
+Network Canvas has several applications for building and running protocols. A protocol's schema version, determined by the tool it was
+built in, controls which apps can open it.
+
+The project began as a suite of desktop and tablet apps. These remain fully supported, but their active feature development has concluded, so **Interviewer 6.x** and **Architect Desktop** do not support the latest schema version (schema 8).
+
+The newer tools — **Architect Web**, **Fresco**, and **Interviewer 7** — all do.
+
+The matrix below shows every build protocol → run intervirew combination at a glance.
+
+<CompatibilityMatrix></CompatibilityMatrix>
+
+## How to read it
+
+- **Architect Web** builds **schema 8** protocols; **Architect Desktop** builds
+  **schema 7**.
+- **Interviewer 6.x** runs schema 7 and earlier. **Interviewer 7** and
+  **Fresco** run schema 8, and accept a schema 7 protocol too — upgrading it to
+  schema 8 automatically when you import it.
+- A **schema 8** protocol therefore cannot run in **Interviewer 6.x**, which
+  predates schema 8.
+
+The automatic upgrade is **one-way**: once a protocol has been upgraded to schema
+8 it cannot be converted back to an earlier schema, nor reopened in Architect
+Desktop. If you need to keep using the older desktop apps, keep your protocols on
+schema 7.
+
+For a full explanation of schema versions, what changed in each, and how
+migration works under the hood, see
+[Protocol Schema Information](/en/get-started/advanced-topics/protocol-schema-information).

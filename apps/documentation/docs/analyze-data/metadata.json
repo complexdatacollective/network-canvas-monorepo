@@ -1,0 +1,6 @@
+{
+  "type": "project",
+  "slug": "analyze-data",
+  "localeLabels": { "en": "Analyze Data" },
+  "localeIndexFiles": { "en": "index.en.mdx" }
+}

@@ -1,0 +1,94 @@
+---
+title: Configuring Devices Prior To Starting Data Collection
+wip: false
+toc: true
+---
+
+Take the time to optimize the interview experience before starting data collection. Configure Interviewer to suit your hardware, research population, and individual participant needs to create the ideal interview environment.
+
+Beyond these customizations, you should also complete some fundamental steps to ensure secure and stable data collection. This article describes these steps in sequence.
+
+## Prerequisites
+
+Before configuring your devices, ensure you have:
+
+- Installed Interviewer on your target devices (tablets, computers, or both)
+- Access to device settings on your Android, iOS, macOS, Windows, or Linux devices
+- A protocol ready to import, or plan to create one for testing your configuration
+
+<TipBox>
+
+This article covers **Interviewer 6.x**. If you are running protocols in **Interviewer 7** (beta) that use internet-dependent schema-8 interfaces (such as [Geospatial](/en/get-started/interface-documentation/geospatial)), make sure the interview device will have a reliable internet connection in the field — those interfaces cannot run offline.
+
+</TipBox>
+
+## Disable automatic updates
+
+Google and Apple tablet devices automatically update software by default. This could create a situation where a new release of Interviewer renders your protocol unable to run, or where an update changes behavior in the middle of your data collection, leading to inconsistency. For this reason, **we recommend that you disable app updates entirely on these devices and handle this process manually**.
+
+<details>
+
+<summary>
+
+#### Instructions for disabling app auto-updates on Android devices
+
+</summary>
+
+1. Open the Google Play Store app.
+2. On the upper left side of the screen, tap the menu icon.
+3. Tap **Settings**.
+4. Tap **Auto-update apps**.
+5. Tap **Don't auto-update apps**.
+6. Tap **Done**.
+
+</details>
+
+<details>
+
+<summary>
+
+#### Instructions for disabling auto-updates on iOS devices
+
+</summary>
+
+1. Tap the **Settings** app on your main screen.
+2. Tap **General** > **Software Update** > **Automatic Updates**.
+3. Disable automatic updates by switching it off.
+
+</details>
+
+<TipBox>
+
+If you are running Interviewer on macOS, Windows, or Linux, you do not need to complete this step.
+
+</TipBox>
+
+## Turn on device-level encryption features
+
+Network Canvas cannot secure your data at rest or when someone else has physical access to your device. To mitigate these risks, take the time to ensure you follow general security best practices. Enable disk encryption on your device, and use strong user authentication, screen lock timeouts, and other physical security measures to secure your device.
+
+## Configure the behavior and visual properties of Interviewer
+
+The settings menu in Interviewer provides several important options that help you tailor the interview experience to your device and your participant's needs.
+
+### Text size
+
+You will most often need to adjust the overall **text size** of the Interviewer interface. From the **visual properties** tab of the settings menu, two options control this setting.
+
+![Settings menu](/assets/uploads/screen-shot-2022-06-30-at-11.58.52-am.png 'The visual properties tab of the settings menu in Interviewer')
+
+To scale all text _and interface elements_, increase or decrease the **interface scale** dropdown. By default, Interviewer automatically increases text size and spacing as its window size increases. To disable this behavior and set a static window size, turn off **use dynamic scaling**.
+
+<TipBox>
+
+Remember that you can and should adjust these settings during the interview when required.
+
+</TipBox>
+
+### Fullscreen forms
+
+If you are using a device that lacks a physical keyboard, we recommend turning on the **use fullscreen forms** option. This enables a specially adapted fullscreen interface for name generator forms, allowing the participant to see their input while the software keyboard is shown. Consult the images below to see how this looks in practice.
+
+![A form with "use fullscreen forms" turned off](/assets/uploads/screen-shot-2022-06-30-at-11.43.40-am.png 'A form with "use fullscreen forms" turned off')
+
+![A form with "use fullscreen forms" turned on](/assets/uploads/screen-shot-2022-06-30-at-11.43.58-am.png 'A form with "use fullscreen forms" turned on')
