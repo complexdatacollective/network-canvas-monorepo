@@ -1,12 +1,11 @@
 'use client';
 
-import { ArrowRight, ChartColumn } from 'lucide-react';
+import { ChartNetwork, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
-import { Pattern, seedToPatternPalette } from '@codaco/art';
 import Paragraph from '~/components/ui/typography/Paragraph';
 import { cn } from '~/lib/utils';
 import { Link } from '~/navigation';
@@ -15,60 +14,54 @@ import DocSearchComponent from './DocSearchComponent';
 import FancyHeading from './FancyHeading';
 import FancyParagraph from './FancyParagraph';
 
+const bannerClasses = {
+  'slate-blue': 'bg-slate-blue',
+  'sea-green': 'bg-sea-green',
+  'neon-coral': 'bg-neon-coral',
+  'cerulean-blue': 'bg-cerulean-blue',
+} as const;
+
+type CardColor = keyof typeof bannerClasses;
+
+function StepArrow() {
+  return (
+    <ChevronRight
+      className="text-foreground hidden h-8 w-8 shrink-0 self-center md:block"
+      strokeWidth={3}
+      aria-hidden
+    />
+  );
+}
+
 function ProjectCard({
   href,
   title,
   description,
   icon,
-  seed,
+  color,
 }: {
   href: string;
   title: string;
   description: string;
   icon: ReactNode;
-  // <Pattern>'s hue is derived deterministically from the seed (one of the 5
-  // base hues in @codaco/art). These seeds are chosen to land on the colors we
-  // want per card: "project" -> slate-blue, "build" -> sea-green,
-  // "collect-data" -> neon-coral.
-  seed: string;
+  color: CardColor;
 }) {
-  // The arrow button fills with this card's own pattern hue on hover.
-  const accent = seedToPatternPalette(seed).backgroundTop;
   return (
-    <Link href={href} className="group focusable flex-1 rounded-3xl">
-      <div
-        className={cn(
-          'bg-card relative flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl shadow-xl transition-transform',
-          'group-hover:-translate-y-1',
-        )}
-        style={{ '--card-accent': accent } as CSSProperties}
-      >
-        {/* Colored pattern banner with the icon and a light title. */}
-        <div className="relative flex shrink-0 items-center gap-4 p-4">
-          <Pattern seed={seed} className="absolute inset-0 h-full w-full" />
-          {/* White wash, stronger on the left so the icon reads with more
-              contrast, fading back to the pattern on the right. */}
-          <div className="absolute inset-0 bg-linear-to-r from-white/45 via-white/20 to-white/10" />
-          <span className="relative flex shrink-0 items-center">{icon}</span>
-          <FancyHeading
-            variant="h2"
-            margin="none"
-            className="relative text-lg text-white"
-          >
-            {title}
-          </FancyHeading>
-        </div>
-        {/* Body: description with a hover-filled arrow button alongside.
-            text-foreground inverts with the theme (dark on the light card,
-            light on the dark card) — unlike muted-foreground, which doesn't. */}
-        <div className="flex flex-1 items-center gap-4 p-4">
-          <Paragraph className="text-foreground flex-1 text-base">
-            {description}
-          </Paragraph>
-          <span className="border-foreground/10 bg-foreground/5 text-foreground/60 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-colors group-hover:border-transparent group-hover:bg-(--card-accent) group-hover:text-white">
-            <ArrowRight className="h-4 w-4" />
-          </span>
-        </div>
+    <Link
+      href={href}
+      className={cn(
+        'group focusable flex min-h-56 flex-1 flex-col gap-6 rounded-3xl p-6 text-white shadow-lg transition-transform hover:-translate-y-1 hover:shadow-xl',
+        bannerClasses[color],
+      )}
+    >
+      <span className="flex h-12 w-fit min-w-12 shrink-0 items-center justify-center gap-1 rounded-2xl bg-white/15 px-2">
+        {icon}
+      </span>
+      <div className="mt-auto flex flex-col gap-2">
+        <FancyHeading variant="h2" margin="none" className="text-xl text-white">
+          {title}
+        </FancyHeading>
+        <Paragraph className="text-base text-white/85">{description}</Paragraph>
       </div>
     </Link>
   );
@@ -78,7 +71,7 @@ export function Hero() {
   const t = useTranslations();
   return (
     <motion.div
-      className="mx-4 flex max-w-5xl flex-col items-center gap-10 pt-2 sm:mx-8 md:flex-1 md:justify-center md:pt-3 lg:gap-16"
+      className="mx-4 flex max-w-7xl flex-col items-center gap-10 pt-2 sm:mx-8 md:flex-1 md:justify-center md:pt-3 lg:gap-16"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
@@ -145,67 +138,70 @@ export function Hero() {
           </motion.div>
         </div>
       </div>
-      <div className="flex w-full flex-col gap-6 md:flex-row">
+      <div className="flex w-full flex-col gap-4 md:flex-row md:items-stretch md:gap-3">
         <ProjectCard
           href="en/get-started"
-          seed="project"
+          color="slate-blue"
           title={t('ProjectSwitcher.get-started.label')}
           description={t('ProjectSwitcher.get-started.description')}
           icon={
             <Image
               src="/images/mark.svg"
               alt=""
-              className="h-12 w-12 shrink-0"
-              width={48}
-              height={48}
+              className="h-7 w-7"
+              width={28}
+              height={28}
             />
           }
         />
+        <StepArrow />
         <ProjectCard
           href="en/design-protocols"
-          seed="build"
+          color="sea-green"
           title={t('ProjectSwitcher.design-protocols.label')}
           description={t('ProjectSwitcher.design-protocols.description')}
           icon={
             <Image
               src="/images/architect-icon.png"
               alt=""
-              className="h-12 w-12 shrink-0"
-              width={48}
-              height={48}
+              className="h-7 w-7"
+              width={28}
+              height={28}
             />
           }
         />
+        <StepArrow />
         <ProjectCard
           href="en/collect-data"
-          seed="collect-data"
+          color="neon-coral"
           title={t('ProjectSwitcher.collect-data.label')}
           description={t('ProjectSwitcher.collect-data.description')}
           icon={
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="flex items-center gap-1">
               <Image
                 src="/images/interviewer.png"
                 alt=""
-                className="h-10 w-10"
-                width={40}
-                height={40}
+                className="h-7 w-7"
+                width={28}
+                height={28}
               />
               <Image
                 src="/images/fresco.png"
                 alt=""
-                className="h-10 w-10"
-                width={40}
-                height={40}
+                className="h-7 w-7"
+                width={28}
+                height={28}
               />
             </div>
           }
         />
+        <StepArrow />
         <ProjectCard
           href="en/analyze-data"
-          seed="analyze"
+          color="cerulean-blue"
           title={t('ProjectSwitcher.analyze-data.label')}
           description={t('ProjectSwitcher.analyze-data.description')}
-          icon={<ChartColumn className="h-12 w-12 shrink-0" />}
+          icon={<ChartNetwork className="h-6 w-6" />}
         />
       </div>
     </motion.div>

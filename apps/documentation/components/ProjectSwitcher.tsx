@@ -1,6 +1,6 @@
 'use client';
 
-import { ChartColumn } from 'lucide-react';
+import { ChartNetwork } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -66,7 +66,11 @@ const getImageForProject = (project: Project) => {
   }
 
   if (project === 'analyze-data') {
-    return <ChartColumn className="h-10 w-10" />;
+    return (
+      <div className="bg-cerulean-blue flex h-10 w-10 items-center justify-center rounded-xl text-white">
+        <ChartNetwork className="h-6 w-6" />
+      </div>
+    );
   }
 };
 

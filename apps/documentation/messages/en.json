@@ -2,7 +2,7 @@
   "ProjectSwitcher": {
     "get-started": {
       "label": "Get Started",
-      "description": "Install the software, learn the core concepts, and find your way around Network Canvas."
+      "description": "Install the software and learn about Network Canvas."
     },
     "design-protocols": {
       "label": "Design Protocols",
@@ -10,11 +10,11 @@
     },
     "collect-data": {
       "label": "Collect Data",
-      "description": "Run your protocol and gather responses with Interviewer or Fresco."
+      "description": "Run your protocol and collect data with Interviewer or Fresco."
     },
     "analyze-data": {
       "label": "Analyze Data",
-      "description": "Export, transform, and work with the network data your interviews produce."
+      "description": "Export and analyze the network data your interviews produce."
     },
     "studio": {
       "label": "Studio",
