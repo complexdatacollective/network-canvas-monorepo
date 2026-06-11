@@ -22,6 +22,7 @@ import type {
   SidebarProject,
   TSideBar,
 } from '~/app/types';
+import { AppOption, AppSwitch } from '~/components/customComponents/AppSwitch';
 import {
   BadPractice,
   GoodPractice,
@@ -312,6 +313,12 @@ const createMarkdownComponents = (docSlug?: string) => ({
   definition: (props: { children: ReactNode }) => (
     <div className="text-lg font-normal">{props.children}</div>
   ),
+  appswitch: (props: { children: ReactNode }) => <AppSwitch {...props} />,
+  appoption: (props: {
+    label: string;
+    icon?: 'globe' | 'desktop';
+    children: ReactNode;
+  }) => <AppOption {...props} />,
   table: (props: { children: ReactNode }) => (
     <div className="overflow-x-auto">
       <table

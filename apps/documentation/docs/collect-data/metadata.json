@@ -2,6 +2,5 @@
   "type": "project",
   "slug": "collect-data",
   "localeLabels": { "en": "Collect Data" },
-  "localeIndexFiles": { "en": "index.en.mdx" },
-  "childDisplay": "tabs"
+  "localeIndexFiles": { "en": "index.en.mdx" }
 }

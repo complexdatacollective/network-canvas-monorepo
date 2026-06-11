@@ -61,7 +61,7 @@ The Network Canvas suite consists of three applications, with each component run
 
 Our development test devices have included a Samsung Chromebook Plus, iPad Pros (both 9.7" and 12.1"), and the Google Pixel C tablet. We have also completed Network Canvas studies using 27 inch “all in one” touchscreen computers with positive results.
 
-Although Network Canvas has not been tested on all possible hardware configurations, we anticipate that most mid to high-end laptop computers and tablets will be capable of running the software well. Please see our article on [choosing hardware for a study](/en/collect-data/interviewer/getting-started/choosing-hardware) for more information. If you are planning data collection and have specific questions, please create a post on our [user community](https://community.networkcanvas.com).
+Although Network Canvas has not been tested on all possible hardware configurations, we anticipate that most mid to high-end laptop computers and tablets will be capable of running the software well. Please see our article on [choosing hardware for a study](/en/collect-data/interviewer/choosing-hardware) for more information. If you are planning data collection and have specific questions, please create a post on our [user community](https://community.networkcanvas.com).
 
 ## How do I cite the Network Canvas suite of tools in a paper or grant application?
 

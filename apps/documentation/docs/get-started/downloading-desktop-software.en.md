@@ -17,7 +17,7 @@ Each application of the Network Canvas Desktop Suite can be downloaded and insta
 
 [Fresco](/en/collect-data/fresco), a new project that brings Network Canvas interviews to the browser, cannot be directly downloaded and installed. See our guide on the [deployment process](/en/collect-data/fresco/deployment/guide) for more information.
 
-[Architect Web](/en/design-protocols/architect-web) likewise runs entirely in your browser, with nothing to download or install.
+[Architect Web](/en/design-protocols/getting-started) likewise runs entirely in your browser, with nothing to download or install.
 
 </TipBox>
 

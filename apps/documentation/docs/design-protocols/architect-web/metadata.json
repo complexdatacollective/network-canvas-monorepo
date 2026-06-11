@@ -1,7 +1,0 @@
-{
-  "type": "folder",
-  "slug": "architect-web",
-  "localeLabels": { "en": "Architect Web" },
-  "localeIndexFiles": { "en": "index.en.mdx" },
-  "navOrder": 1
-}

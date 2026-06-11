@@ -1,0 +1,10 @@
+{
+  "type": "folder",
+  "localeLabels": {
+    "en": "Interface documentation",
+    "ru": "Документация интерфейса"
+  },
+  "isExpanded": false,
+  "navOrder": 6,
+  "slug": "interface-documentation"
+}

@@ -3,5 +3,6 @@
   "slug": "fresco",
   "localeLabels": { "en": "Fresco" },
   "localeIndexFiles": { "en": "about.en.mdx" },
-  "navOrder": 2
+  "navOrder": 2,
+  "isExpanded": true
 }

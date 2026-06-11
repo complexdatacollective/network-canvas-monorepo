@@ -22,7 +22,6 @@ import { cn } from '~/lib/utils';
 
 const PATH_SEPARATOR_REGEX = /[\\/]/;
 
-import AppTabs from './AppTabs';
 import DocSearchComponent from './DocSearchComponent';
 import ProjectSwitcher from './ProjectSwitcher';
 
@@ -159,8 +158,8 @@ const SidebarFolder = ({
   const memoizedIsOpen = useMemo(() => {
     if (alwaysOpen) return true;
     if (defaultOpen) return true;
-    return (children as React.ReactElement<{ href?: string }>[]).some(
-      (child) => child.props.href === pathname,
+    return (children as (React.ReactElement<{ href?: string }> | null)[]).some(
+      (child) => child?.props.href === pathname,
     );
   }, [alwaysOpen, defaultOpen, children, pathname]);
 
@@ -290,7 +289,6 @@ export function Sidebar({ className }: { className?: string }) {
   const segments = pathname.split('/');
   // biome-ignore lint/style/noNonNullAssertion: path structure is known
   const project = segments[2]! as Project;
-  const urlTab = segments[3];
   const sidebarContainerRef = useRef<HTMLDivElement>(null);
   const [sidebarData, setSidebarData] = useState<TSideBar | null>(null);
 
@@ -316,88 +314,6 @@ export function Sidebar({ className }: { className?: string }) {
 
   const projectData = sidebarData[locale][project];
   const formattedSidebarData = projectData.children;
-  const childrenEntries = Object.entries(formattedSidebarData);
-
-  const tabs =
-    projectData.childDisplay === 'tabs' ? projectData.tabs : undefined;
-
-  if (tabs && tabs.length > 0) {
-    const displayTab =
-      tabs.find((tab) => tab.slug === urlTab)?.slug ?? tabs[0]?.slug;
-
-    const sharedItems = sortSidebarItems(
-      childrenEntries
-        .filter(([key, item]) => item.type === 'page' && key !== 'index')
-        .map(([, item]) => item),
-    );
-
-    const projectOverviewHref = processSourceFile(
-      'folder',
-      locale,
-      projectData.sourceFile,
-    );
-
-    const projectIndex = formattedSidebarData.index;
-    const projectOverviewLabel =
-      projectIndex?.type === 'page' ? projectIndex.label : 'Overview';
-
-    const activeFolder = childrenEntries.find(
-      ([slug, item]) => slug === displayTab && item.type === 'folder',
-    )?.[1];
-
-    const overviewHref =
-      activeFolder?.type === 'folder'
-        ? processSourceFile('folder', locale, activeFolder.sourceFile)
-        : undefined;
-    const tabItems =
-      activeFolder?.type === 'folder'
-        ? sortSidebarItems(
-            Object.values(activeFolder.children).filter(
-              (child) => child.sourceFile !== activeFolder.sourceFile,
-            ),
-          )
-        : [];
-
-    return (
-      <nav className={cn('flex w-full grow flex-col', className)}>
-        <DocSearchComponent className="hidden lg:flex" />
-        <ProjectSwitcher />
-
-        <div ref={sidebarContainerRef} className="flex-1 overflow-y-auto p-2">
-          {projectOverviewHref && (
-            <SidebarLink
-              href={projectOverviewHref}
-              label={projectOverviewLabel}
-              sidebarContainerRef={sidebarContainerRef}
-            />
-          )}
-
-          {sharedItems.map((item) =>
-            renderSidebarItem(item, locale, sidebarContainerRef),
-          )}
-
-          <AppTabs
-            tabs={tabs}
-            activeSlug={displayTab}
-            locale={locale}
-            project={project}
-          />
-
-          {overviewHref && (
-            <SidebarLink
-              href={overviewHref}
-              label="Overview"
-              sidebarContainerRef={sidebarContainerRef}
-            />
-          )}
-
-          {tabItems.map((item) =>
-            renderSidebarItem(item, locale, sidebarContainerRef),
-          )}
-        </div>
-      </nav>
-    );
-  }
 
   const sortedSidebarItems = sortSidebarItems(
     Object.values(formattedSidebarData),

@@ -12,7 +12,7 @@ type Node = {
 // line), remark wraps them in a paragraph, producing invalid `<p><div></p>`
 // nesting and a hydration error. This plugin lifts such a component out of its
 // wrapping `<p>` so authoring style no longer matters.
-const BLOCK_COMPONENTS = new Set(['compatibilitymatrix']);
+const BLOCK_COMPONENTS = new Set(['compatibilitymatrix', 'appswitch']);
 
 const isMeaningful = (child: Node) =>
   child.type === 'element' ||

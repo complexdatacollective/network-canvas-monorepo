@@ -12,7 +12,6 @@ import {
 } from '~/app/types';
 
 import {
-  attachProjectTabs,
   createFolderEntry,
   createPageEntry,
   createProjectEntry,
@@ -117,10 +116,6 @@ function generateSidebarData() {
       [...nestedPath, key],
       createPageEntry(file, matterResult, parentPath),
     );
-  }
-
-  for (const locale of Object.keys(sidebarData) as Locale[]) {
-    attachProjectTabs(sidebarData[locale]);
   }
 
   return sidebarData;
