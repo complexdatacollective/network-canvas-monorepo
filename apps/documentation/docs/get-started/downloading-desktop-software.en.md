@@ -10,7 +10,7 @@ toc: true
 
 Each application of the Network Canvas Desktop Suite can be downloaded and installed individually. You do not need to install all applications to use the software.
 
-- Install **Interviewer** on any device you will use to interview participants. It runs your Network Canvas protocols and collects data in the field. Interviewer comes in two versions: **Interviewer 6.x** (schema 7, fully offline), and **Interviewer 7** (beta, schema 8, recommended for new studies). Both are supported and can be downloaded from the same [download page](https://networkcanvas.com/download).
+- Install **Interviewer** on any device you will use to interview participants. It runs your Network Canvas protocols and collects data in the field. Interviewer comes in two versions: **Interviewer 6.x** (schema 7, fully offline), and **Interviewer 8** (beta, schema 8, recommended for new studies). Both are supported and can be downloaded from the same [download page](https://networkcanvas.com/download).
 - If you need to create a schema 7 protocol, download **Architect** on a desktop computer that you will to use to design your Network Canvas interview protocol.
 
 <TipBox>

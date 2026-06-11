@@ -9,7 +9,7 @@ navOrder: 5
 
 Network Canvas is a suite of three applications designed to assist researchers in the collection of social network data. These applications are: Architect for building interview protocols, Interviewer for use in the field to collect data, and [Fresco](/en/collect-data/fresco) for deploying protocols in the web browser.
 
-Interviewer comes in two supported versions: the established **Interviewer 6.x**, and **Interviewer 7** (beta), which is built on the same new platform as Fresco, supports schema 8, and is recommended for new studies. See [Running Interviews](/en/run-interview) for a comparison of the interview apps.
+Interviewer comes in two supported versions: the established **Interviewer 6.x**, and **Interviewer 8** (beta), which is built on the same new platform as Fresco, supports schema 8, and is recommended for new studies. See [Running Interviews](/en/run-interview) for a comparison of the interview apps.
 
 We have designed our software to overcome a few distinct barriers to social network data collection:
 

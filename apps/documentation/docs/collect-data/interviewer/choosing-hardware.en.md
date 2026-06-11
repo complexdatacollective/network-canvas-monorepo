@@ -17,7 +17,7 @@ The second is that you must **be mindful of your data management workflow**. How
 
 The third is that **hardware performance is directly correlated with user experience**. Interviewer makes extensive use of animations and GPU intensive interactions. Using a device that has poor GPU performance will lead to stuttering and other side effects that may be perceived as unpleasant by participants, in turn leading to poorer quality data. Similarly, CPU performance will impact how long it takes to open roster interfaces which may make these functions more tedious to use.
 
-The fourth is **connectivity**. If you plan to use **Interviewer 7** (beta) with internet-dependent schema-8 interfaces such as [Geospatial](/en/design-protocols/interface-documentation/geospatial), the interview device will need a reliable internet connection in the field. **Interviewer 6.x**, and protocols that don't use such interfaces, run fully offline.
+The fourth is **connectivity**. If you plan to use **Interviewer 8** (beta) with internet-dependent schema-8 interfaces such as [Geospatial](/en/design-protocols/interface-documentation/geospatial), the interview device will need a reliable internet connection in the field. **Interviewer 6.x**, and protocols that don't use such interfaces, run fully offline.
 
 ## Platform Comparison
 
