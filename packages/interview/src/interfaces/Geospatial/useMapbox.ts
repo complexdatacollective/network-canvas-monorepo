@@ -403,16 +403,26 @@ export const useMapbox = ({
     // forces the stage wider than the viewport and pushes the navigation bar
     // off-screen. Resizing the map on every container size change keeps the
     // canvas matched to the available space.
+    //
+    // ResizeObserver can fire several times during a single layout pass, so we
+    // coalesce the work into one resize per animation frame to avoid redundant
+    // map re-layout and ResizeObserver loop-limit warnings.
     const container = mapContainerRef.current;
     let resizeObserver: ResizeObserver | undefined;
+    let resizeFrame: number | null = null;
     if (typeof ResizeObserver !== 'undefined') {
       resizeObserver = new ResizeObserver(() => {
-        mapRef.current?.resize();
+        if (resizeFrame !== null) return;
+        resizeFrame = requestAnimationFrame(() => {
+          resizeFrame = null;
+          mapRef.current?.resize();
+        });
       });
       resizeObserver.observe(container);
     }
 
     return () => {
+      if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
       resizeObserver?.disconnect();
       mapRef.current?.remove();
     };
