@@ -167,7 +167,19 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
         }
       };
 
-      window.setTimeout(() => void run(), IMPORT_START_DELAY_MS);
+      window.setTimeout(() => {
+        void run().catch((error: unknown) => {
+          setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
+          toast.add({
+            title: 'Import failed',
+            description:
+              error instanceof Error
+                ? error.message
+                : 'An unexpected error occurred.',
+            variant: 'destructive',
+          });
+        });
+      }, IMPORT_START_DELAY_MS);
     },
     [analytics, onInstalled, toast],
   );

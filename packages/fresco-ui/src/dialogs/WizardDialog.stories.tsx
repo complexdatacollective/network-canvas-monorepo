@@ -953,7 +953,7 @@ export const BeforeNextDeterministic: StoryObj<Meta<WizardStoryArgs>> = {
  * the wizard closes with `null`. If dismissed, the wizard stays open.
  *
  * The confirmation dialog's accent can be set via `confirmCancel.intent`
- * (defaults to `info`).
+ * (defaults to `default`).
  */
 export const ConfirmCancel: StoryObj<Meta<WizardStoryArgs>> = {
   args: {

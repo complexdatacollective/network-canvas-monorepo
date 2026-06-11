@@ -28,28 +28,43 @@ export function useBiometric(): BiometricState {
   });
 
   useEffect(() => {
+    let active = true;
     async function checkBiometric() {
-      if (isCapacitor) {
-        const result = await isBiometricNativeAvailable();
-        if (result.ok) {
-          setBiometric({ status: 'available' });
-        } else {
+      try {
+        if (isCapacitor) {
+          const result = await isBiometricNativeAvailable();
+          if (!active) return;
+          if (result.ok) {
+            setBiometric({ status: 'available' });
+          } else {
+            setBiometric({
+              status: 'unavailable',
+              reason: UNAVAILABLE_REASON_TEXT[result.reason],
+            });
+          }
+        } else if (!(await isBiometricSupported())) {
+          if (!active) return;
           setBiometric({
             status: 'unavailable',
-            reason: UNAVAILABLE_REASON_TEXT[result.reason],
+            reason: UNAVAILABLE_REASON_TEXT['no-hardware'],
           });
+        } else {
+          if (!active) return;
+          setBiometric({ status: 'available' });
         }
-      } else if (!(await isBiometricSupported())) {
+      } catch {
+        if (!active) return;
         setBiometric({
           status: 'unavailable',
-          reason: UNAVAILABLE_REASON_TEXT['no-hardware'],
+          reason: UNAVAILABLE_REASON_TEXT['unknown'],
         });
-      } else {
-        setBiometric({ status: 'available' });
       }
     }
 
     void checkBiometric();
+    return () => {
+      active = false;
+    };
   }, []);
 
   return biometric;

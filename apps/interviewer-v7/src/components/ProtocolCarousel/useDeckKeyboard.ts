@@ -36,6 +36,7 @@ export function useDeckKeyboard({
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         if (isEditableTarget(event.target)) return;
+        event.preventDefault();
         onStep(event.key === 'ArrowLeft' ? -1 : 1);
         return;
       }

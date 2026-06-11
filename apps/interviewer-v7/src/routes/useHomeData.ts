@@ -16,14 +16,18 @@ export function useHomeData() {
   const [settings, setSettings] = useState<StoredSettings | null>(null);
 
   const reload = useCallback(async () => {
-    const [p, s, st] = await Promise.all([
-      listProtocols(),
-      listSessions(),
-      getSettings(),
-    ]);
-    setProtocols(p);
-    setSessions(s);
-    setSettings(st);
+    try {
+      const [p, s, st] = await Promise.all([
+        listProtocols(),
+        listSessions(),
+        getSettings(),
+      ]);
+      setProtocols(p);
+      setSessions(s);
+      setSettings(st);
+    } catch {
+      // Load failures leave state empty; the DB facade logs the underlying error.
+    }
   }, []);
 
   useEffect(() => {

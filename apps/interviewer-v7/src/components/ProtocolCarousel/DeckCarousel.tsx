@@ -172,8 +172,12 @@ export function DeckCarousel({
   };
 
   const handlePanEnd = (_event: PointerEvent, info: PanInfo) => {
-    if (disabled || settleTarget.current !== null) return;
     setDragging(false);
+    if (disabled) {
+      settleTo(activeIndex);
+      return;
+    }
+    if (settleTarget.current !== null) return;
     // Velocity in index units/s; project a little ahead so flicks advance
     // past the halfway point feel right.
     const velocity = -info.velocity.x / stride;

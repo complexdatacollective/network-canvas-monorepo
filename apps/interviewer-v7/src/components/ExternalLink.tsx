@@ -1,10 +1,11 @@
-export function ExternalLink({
-  href,
-  children,
-}: {
+import type { ReactNode } from 'react';
+
+type ExternalLinkProps = {
   href: string;
-  children: React.ReactNode;
-}) {
+  children: ReactNode;
+};
+
+export function ExternalLink({ href, children }: ExternalLinkProps) {
   return (
     <a
       href={href}
