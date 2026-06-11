@@ -27,6 +27,8 @@ versioning via `ignore` in `.changeset/config.json`).
 
 ### Fixed
 
+- Generating or deleting synthetic data in Settings now refreshes the data
+  table immediately, instead of leaving it showing stale sessions.
 - App error boundary now shows a non-dismissible modal with a reload action.
 - Dexie remains usable after a web storage revoke.
 - Privacy/analytics copy clarified; toggle thumb styling corrected.

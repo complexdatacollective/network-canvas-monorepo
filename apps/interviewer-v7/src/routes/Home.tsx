@@ -42,6 +42,9 @@ export function HomeRoute() {
   const [pendingProtocolHash, setPendingProtocolHash] = useState<string | null>(
     null,
   );
+  // Bumped when sessions are mutated outside the DataView (synthetic-data
+  // generation/deletion in Settings) so the data table re-queries.
+  const [dataRefreshKey, setDataRefreshKey] = useState(0);
   const [location, navigate] = useLocation();
   const view = viewFromLocation(location);
   const dialog = useDialog();
@@ -92,6 +95,13 @@ export function HomeRoute() {
     [navigate],
   );
   const closeNewSession = useCallback(() => setPendingProtocolHash(null), []);
+
+  // Synthetic data was generated or deleted in Settings: refresh the home
+  // data (protocol counts, StatusRow) and signal the DataView to re-query.
+  const handleSyntheticDataChange = useCallback(async () => {
+    setDataRefreshKey((key) => key + 1);
+    await reload();
+  }, [reload]);
 
   const handleDeleteProtocol = useCallback(
     async (hash: string) => {
@@ -204,7 +214,12 @@ export function HomeRoute() {
             </div>
           </motion.div>
         ) : (
-          <DataView key="data" protocols={protocols} onReload={reload} />
+          <DataView
+            key="data"
+            protocols={protocols}
+            onReload={reload}
+            refreshKey={dataRefreshKey}
+          />
         )}
       </AnimatePresence>
 
@@ -219,6 +234,7 @@ export function HomeRoute() {
           setOpenDialog(null);
           void reload();
         }}
+        onDataChange={handleSyntheticDataChange}
       />
     </motion.div>
   );

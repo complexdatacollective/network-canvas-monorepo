@@ -52,6 +52,9 @@ import { generateSyntheticSessions } from '~/lib/synthetic/generate';
 type SettingsDialogProps = {
   open: boolean;
   onClose: () => void;
+  // Invoked after synthetic sessions are generated or deleted so the host can
+  // refresh views that read sessions (StatusRow, the data table).
+  onDataChange?: () => void;
 };
 
 type Section = 'about' | 'data' | 'privacy' | 'security' | 'synthetic';
@@ -79,7 +82,11 @@ const NAV_ITEMS: { id: Section; label: string; icon: typeof Info }[] = [
   { id: 'synthetic', label: 'Synthetic data', icon: FlaskConical },
 ];
 
-export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
+export function SettingsDialog({
+  open,
+  onClose,
+  onDataChange,
+}: SettingsDialogProps) {
   const auth = useAuth();
   const analytics = useAnalytics();
   const toast = useToast();
@@ -184,6 +191,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         variant: 'success',
       });
       await reloadSynthetic();
+      onDataChange?.();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       toast.add({
@@ -201,6 +209,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     respectSkipLogicAndFiltering,
     toast,
     reloadSynthetic,
+    onDataChange,
   ]);
 
   const handleDeleteSynthetic = useCallback(async () => {
@@ -219,12 +228,13 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             variant: 'success',
           });
           await reloadSynthetic();
+          onDataChange?.();
         } finally {
           setIsDeleting(false);
         }
       },
     });
-  }, [confirm, reloadSynthetic, syntheticCount, toast]);
+  }, [confirm, onDataChange, reloadSynthetic, syntheticCount, toast]);
 
   const storagePercent = storage.percent !== null ? storage.percent / 100 : 0;
   const storageHasValues = storage.usage !== null && storage.quota !== null;
