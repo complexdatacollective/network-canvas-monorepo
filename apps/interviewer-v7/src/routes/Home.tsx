@@ -98,9 +98,9 @@ export function HomeRoute() {
 
   // Synthetic data was generated or deleted in Settings: refresh the home
   // data (protocol counts, StatusRow) and signal the DataView to re-query.
-  const handleSyntheticDataChange = useCallback(async () => {
+  const handleSyntheticDataChange = useCallback(() => {
     setDataRefreshKey((key) => key + 1);
-    await reload();
+    void reload();
   }, [reload]);
 
   const handleDeleteProtocol = useCallback(
