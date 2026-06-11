@@ -124,7 +124,9 @@ const descriptionVariants = cva({
 const spacerVariants = cva({
   variants: {
     orientation: {
-      vertical: '',
+      // my-0 overrides the global `hr { my-6 }` theme rule so the spacer sits
+      // flush in the list without extra vertical gap.
+      vertical: 'my-0',
       horizontal: 'self-stretch',
     },
   },
