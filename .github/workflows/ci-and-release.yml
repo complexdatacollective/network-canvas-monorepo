@@ -670,7 +670,9 @@ jobs:
     if: ${{ !cancelled() && needs.detect.outputs.interface_images == 'true' }}
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.60.0-noble
+      # v1.60.0-noble, pinned by digest: this job regenerates committed
+      # artifacts and holds a secret, so the environment must be immutable.
+      image: mcr.microsoft.com/playwright@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948
     timeout-minutes: 30
     env:
       STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
@@ -678,7 +680,11 @@ jobs:
       # playwright back at the browsers baked into the image.
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
     steps:
+      # No later step needs git auth; don't leave the token in git config
+      # while running generation code alongside the Mapbox secret.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
@@ -1417,6 +1423,7 @@ jobs:
       - deploy-website-preview
       - chromatic-fresco-ui
       - chromatic-interview
+      - interface-images-check
       - interview-e2e
       - interview-e2e-report
       - docs-preview-checks
@@ -1436,6 +1443,7 @@ jobs:
           FLAG_WEBSITE: ${{ needs.detect.outputs.website }}
           FLAG_FRESCO_UI_STORYBOOK: ${{ needs.detect.outputs.fresco_ui_storybook }}
           FLAG_INTERVIEW_STORYBOOK: ${{ needs.detect.outputs.interview_storybook }}
+          FLAG_INTERFACE_IMAGES: ${{ needs.detect.outputs.interface_images }}
           FLAG_INTERVIEW_E2E: ${{ needs.detect.outputs.interview_e2e }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -1447,6 +1455,7 @@ jobs:
               FLAG_WEBSITE: ["deploy-website-preview"],
               FLAG_FRESCO_UI_STORYBOOK: ["chromatic-fresco-ui"],
               FLAG_INTERVIEW_STORYBOOK: ["chromatic-interview"],
+              FLAG_INTERFACE_IMAGES: ["interface-images-check"],
               FLAG_INTERVIEW_E2E: ["interview-e2e", "interview-e2e-report"],
             };
 

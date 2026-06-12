@@ -32,10 +32,13 @@ if (!existsSync(join(storybookStatic, 'iframe.html'))) {
   process.exit(1);
 }
 
+// Acquire both resources under the same cleanup path so a browser launch
+// failure can't leak the static server.
 const { url, close } = await serveStatic(storybookStatic);
-const browser = await launchBrowser();
+let browser: Awaited<ReturnType<typeof launchBrowser>> | undefined;
 
 try {
+  browser = await launchBrowser();
   const stories = await enumerateCaptureStories(browser, url);
   if (stories.length === 0) {
     throw new Error('No stories tagged "capture" found in the storybook build');
@@ -92,6 +95,6 @@ try {
       `(${changed} ratio sets updated)`,
   );
 } finally {
-  await browser.close();
+  await browser?.close();
   close();
 }

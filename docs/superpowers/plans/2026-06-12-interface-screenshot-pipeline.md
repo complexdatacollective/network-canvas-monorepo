@@ -37,7 +37,7 @@
 
 **Interface coverage (17):** AlterEdgeForm, AlterForm, Anonymisation, CategoricalBin, DyadCensus, EgoForm, FamilyPedigree, Geospatial, Information, NameGenerator, NameGeneratorQuickAdd (interface exists at `src/interfaces/NameGenerator/NameGeneratorQuickAdd`; **no story today — one must be written**), NameGeneratorRoster, Narrative, OneToManyDyadCensus, OrdinalBin, Sociogram, TieStrengthCensus. Architect-web's `Default` placeholder is not an interface and stays a static asset owned by architect-web.
 
-**Known risk — Geospatial:** requires a Mapbox token and live tile fetches at capture time. The capture config supports `env: ['VITE_MAPBOX_TOKEN']`; CI must provide the secret, and tile/style drift means its perceptual diff threshold should be more tolerant. If this proves flaky, mark it `skip: true` and keep a hand-curated image as a registered exception in the manifest generator.
+**Known risk — Geospatial:** requires a Mapbox token and live tile fetches at capture time. The capture config supports `env: ['STORYBOOK_MAPBOX_TOKEN']`; CI must provide the secret, and tile/style drift means its perceptual diff threshold should be more tolerant. If this proves flaky, mark it `skip: true` and keep a hand-curated image as a registered exception in the manifest generator.
 
 ---
 
@@ -87,7 +87,7 @@ export type CaptureParameters = {
 **Files:** `packages/interview/src/interfaces/<Name>/<Name>.capture.stories.tsx` × 15
 
 - [x] One per interface, reusing each interface's existing story builders. **This is the case-by-case curation point**: choose seeds, node counts, names, and stage config so each screenshot presents well — these become the public face of each interface. Tune at all three ratios.
-- [x] Geospatial: wire the token from `import.meta.env.VITE_MAPBOX_TOKEN` into the apikey asset; set `capture: { interface: 'Geospatial', delay: 3000, env: ['VITE_MAPBOX_TOKEN'] }`.
+- [x] Geospatial: wire the token from `import.meta.env.STORYBOOK_MAPBOX_TOKEN` into the apikey asset; set `capture: { interface: 'Geospatial', delay: 3000, env: ['STORYBOOK_MAPBOX_TOKEN'] }`.
 - [x] Checklist: AlterEdgeForm, AlterForm, Anonymisation, CategoricalBin, DyadCensus, EgoForm, FamilyPedigree, Geospatial, Information, NameGeneratorRoster, Narrative, OneToManyDyadCensus, OrdinalBin, TieStrengthCensus, NameGenerator (plain).
 
 ### Task 4: `@codaco/interface-images` package skeleton
@@ -172,7 +172,7 @@ Renders `<picture>` with one `<source type="image/webp" media? srcSet sizes>` pe
 "@codaco/interface-images#generate": {
   "dependsOn": ["@codaco/interview#build-storybook"],
   "inputs": ["scripts/**", "package.json"],
-  "env": ["VITE_MAPBOX_TOKEN"],
+  "env": ["STORYBOOK_MAPBOX_TOKEN"],
   "outputs": ["src/generated/**"]
 }
 ```
@@ -187,7 +187,7 @@ This is the regeneration trigger chain: `generate` → `@codaco/interview#build-
 
 - Create/modify: GitHub Actions workflow (e.g. `.github/workflows/interface-images.yml`)
 
-- [x] Job runs on PRs touching `packages/interview/**`, `packages/fresco-ui/**`, or `packages/interface-images/**`; container `mcr.microsoft.com/playwright:v1.60.0-noble`; `VITE_MAPBOX_TOKEN` from secrets; steps: pnpm install → `turbo run generate --filter=@codaco/interface-images` → `git diff --exit-code packages/interface-images/src/generated`.
+- [x] Job runs on PRs touching `packages/interview/**`, `packages/fresco-ui/**`, or `packages/interface-images/**`; container `mcr.microsoft.com/playwright:v1.60.0-noble`; `STORYBOOK_MAPBOX_TOKEN` from secrets; steps: pnpm install → `turbo run generate --filter=@codaco/interface-images` → `git diff --exit-code packages/interface-images/src/generated`.
 - [x] On failure: upload the regenerated images as a workflow artifact and print "images are stale — run `pnpm generate:interface-images` and commit". (Fail-the-check is chosen over auto-commit so a human approves visual changes; revisit if it becomes friction.)
 - [x] Turbo remote cache makes the green path cheap: unchanged inputs → cache hit → diff is trivially clean.
 
@@ -217,7 +217,7 @@ Implemented in full, with these deviations from the plan as written:
 2. **Story enumeration uses `__STORYBOOK_PREVIEW__.extract()`** in the live preview (the way Storybook's test-runner does) because `index.json` carries tags but not parameters.
 3. **New `advance` capture parameter** (with a `showNavigation` prop on CaptureStory): interfaces with an internal introduction step (DyadCensus, TieStrengthCensus, AlterForm, AlterEdgeForm) render with the navigation mounted, the runner clicks Next N times, then removes the navigation from the DOM before screenshotting.
 4. **Capture stories render with `isDevelopment: false`** so dev-only UI (FamilyPedigree's Dump/Load buttons) never appears in screenshots.
-5. **The Mapbox env var is `STORYBOOK_MAPBOX_TOKEN`** (matching the existing Geospatial stories), not `VITE_MAPBOX_TOKEN`. The committed baseline now renders the full map. Two storybook-build fixes were required for it: bundling mapbox-gl breaks its embedded worker (ESM `import.meta` in a classic blob worker), so `.storybook/preview.tsx` points `mapboxgl.workerUrl` at the untransformed `mapbox-gl-csp-worker.js` asset, and `.storybook/main.ts` sets `worker: { format: 'es' }` so vite's own inlined workers (e.g. Sociogram's force simulation) load as module workers.
+5. **The Mapbox env var is `STORYBOOK_MAPBOX_TOKEN`** (matching the existing Geospatial stories), not `STORYBOOK_MAPBOX_TOKEN`. The committed baseline now renders the full map. Two storybook-build fixes were required for it: bundling mapbox-gl breaks its embedded worker (ESM `import.meta` in a classic blob worker), so `.storybook/preview.tsx` points `mapboxgl.workerUrl` at the untransformed `mapbox-gl-csp-worker.js` asset, and `.storybook/main.ts` sets `worker: { format: 'es' }` so vite's own inlined workers (e.g. Sociogram's force simulation) load as module workers.
 6. **Anonymisation has a 0.25 diff threshold** — its animated canvas background never settles, so the churn guard must tolerate background drift.
 7. **Documentation migration**: the `desktop` docs tree depicts the legacy v6 apps, so its hand-shot images were left alone. Instead, an `interfacepicture` MDX component (wrapping `InterfacePicture`) was registered in `lib/docs.tsx` for use in new content.
 8. **FamilyPedigree replays a scenario story**: its capture reuses the `WithPartnerAndChildren` play function (the real quick-start wizard), so the screenshot shows a valid three-generation pedigree; the runner now waits for Storybook play functions to finish (render phase `finished`) before screenshotting. The committed baselines were generated outside the pinned Docker image, so the first `pnpm generate:interface-images` run in Docker may rewrite them once.

@@ -136,6 +136,9 @@ export type StoryArgs = {
 
 const meta: Meta<StoryArgs> = {
   title: 'Interfaces/FamilyPedigree',
+  // buildScenarioInterview is a runtime export consumed by the capture
+  // story; keep it out of the story index.
+  excludeStories: ['buildScenarioInterview'],
   parameters: {
     layout: 'fullscreen',
   },

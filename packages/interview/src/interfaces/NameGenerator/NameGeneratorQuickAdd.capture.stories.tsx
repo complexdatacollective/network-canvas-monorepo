@@ -22,6 +22,11 @@ const build = () => {
     quickAdd: nameVar.id,
     initialNodes: { count: 4, promptIndex: 0 },
   });
+  // The seeded generator occasionally produces a node whose label falls back
+  // to the variable name; pin presentable names instead.
+  ['Aaliyah', 'Max', 'Christina', 'Jamal'].forEach((name, i) => {
+    si.setNodeAttribute(i, nameVar.id, name);
+  });
   stage.addPrompt({
     text: 'Within the past 6 months, who have you discussed important matters with?',
   });
