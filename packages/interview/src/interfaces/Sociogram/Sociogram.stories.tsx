@@ -147,6 +147,35 @@ export const WithEdges: Story = {
   render: () => <SociogramStoryWrapper buildFn={buildWithEdges} />,
 };
 
+// Regression case: diamond nodes are rendered via a rotated background layer,
+// which must not affect node centering (edge endpoints, drag position).
+const buildDiamondNodes = () => {
+  const { si, nt, layoutVar, et } = createSociogramInterview(14);
+  nt.setShape({ default: 'diamond' });
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  const stage = si.addStage('Sociogram', { initialNodes: { count: 5 } });
+  stage.addPrompt({
+    layout: { layoutVariable: layoutVar.id },
+    edges: { create: et.id, display: [et.id] },
+  });
+  si.addEdges([
+    [0, 1],
+    [0, 2],
+    [1, 3],
+    [2, 4],
+    [3, 4],
+  ]);
+  si.addInformationStage({
+    title: 'Complete',
+    text: 'After the main stage.',
+  });
+  return si;
+};
+
+export const DiamondNodes: Story = {
+  render: () => <SociogramStoryWrapper buildFn={buildDiamondNodes} />,
+};
+
 const buildWithHighlighting = () => {
   const { si, layoutVar, highlightVar } = createSociogramInterview(6);
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
