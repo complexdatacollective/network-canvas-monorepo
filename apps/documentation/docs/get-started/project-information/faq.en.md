@@ -9,7 +9,7 @@ navOrder: 5
 
 Network Canvas is a suite of three applications designed to assist researchers in the collection of social network data. These applications are: Architect for building interview protocols, Interviewer for use in the field to collect data, and [Fresco](/en/collect-data/fresco) for deploying protocols in the web browser.
 
-Interviewer comes in two supported versions: the established **Interviewer 6.x**, and **Interviewer 8** (beta), which is built on the same new platform as Fresco, supports schema 8, and is recommended for new studies. See [Running Interviews](/en/run-interview) for a comparison of the interview apps.
+Interviewer comes in two supported versions: the established **Interviewer 6.x**, and **Interviewer 8** (beta), which is built on the same new platform as Fresco, supports schema 8, and is recommended for new studies. See [Running Interviews](/en/collect-data) for a comparison of the interview apps.
 
 We have designed our software to overcome a few distinct barriers to social network data collection:
 
@@ -77,7 +77,7 @@ The software has been built to allow it to be extended and improved by anyone wi
 
 Our software was conceived in the context of research of a highly sensitive nature, so we understand that for many researchers security is of the utmost importance.
 
-We do not transmit, collect or retain any data from or about your study. The data you collect in the field is yours, and is only ever stored on your devices. This provides a baseline level of security, but also means that a large part of the responsibility for securing devices and data falls on the researcher. Please review our articles on [configuring devices prior to starting data collection](../getting-started/configuring-devices), and [IRB and security best practices](./irb-best-practices) to ensure that you are aware of the most common weaknesses. You should also consult with your institutional IT or security experts.
+We do not transmit, collect or retain any data from or about your study. The data you collect in the field is yours, and is only ever stored on your devices. This provides a baseline level of security, but also means that a large part of the responsibility for securing devices and data falls on the researcher. Please review our articles on [configuring devices prior to starting data collection](/en/collect-data/interviewer/configuring-devices), and [IRB and security best practices](./irb-best-practices) to ensure that you are aware of the most common weaknesses. You should also consult with your institutional IT or security experts.
 
 If you are working in a scenario where you have access to a network connection with internet access, you can use an [online workflow](/en/get-started/tutorials/protocol-and-data-workflows#option-1-online-workflow) or you can implement an entirely [offline workflow](../tutorials/protocol-and-data-workflows#option-2-offline-workflow) that does not require data to be transmitted. Further details of the security model we implement can be [found here](./security-model).
 
