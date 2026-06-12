@@ -20,7 +20,11 @@ import { useCurrentStep } from '~/contexts/CurrentStepContext';
 import useReadyForNextStage from '~/hooks/useReadyForNextStage';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import { makeGetCodebookForNodeType } from '~/selectors/protocol';
-import { getNodeColorSelector } from '~/selectors/session';
+import {
+  getNodeColorSelector,
+  getNodeTypeDefinition,
+  resolveNodeShape,
+} from '~/selectors/session';
 import { updateNode } from '~/store/modules/session';
 import { useAppDispatch } from '~/store/store';
 import type { StageProps } from '~/types';
@@ -160,6 +164,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
   const { currentStep } = useCurrentStep();
   const { openDialog } = useDialog();
   const nodeColor = useStageSelector(getNodeColorSelector);
+  const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
   const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
 
   const handleDropNode = async (node: NcNode, binIndex: number) => {
@@ -192,6 +197,14 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
             <div className="shrink-0">
               <UINode
                 color={nodeColor}
+                shape={
+                  nodeTypeDefinition
+                    ? resolveNodeShape(
+                        nodeTypeDefinition.shape,
+                        node[entityAttributesProperty],
+                      )
+                    : undefined
+                }
                 label={getNodeLabel(node, getCodebookForNodeType)}
               />
             </div>

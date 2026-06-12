@@ -36,8 +36,10 @@ import { getCodebookVariablesForSubjectType } from '~/selectors/protocol';
 import {
   getNetworkNodesForPrompt,
   getNodeColorSelector,
+  getNodeTypeDefinition,
   getPromptAdditionalAttributes,
   getStageNodeCount,
+  resolveNodeShape,
 } from '~/selectors/session';
 import { addNode, deleteNode } from '~/store/modules/session';
 import { useAppDispatch } from '~/store/store';
@@ -94,6 +96,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   const nodesForPrompt = useStageSelector(getNetworkNodesForPrompt);
 
   const dropNodeColor = useStageSelector(getNodeColorSelector);
+  const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
 
   const { status: itemsStatus, items, excludeItems } = useItems(props);
 
@@ -336,6 +339,14 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
       return (
         <Node
           color={dropNodeColor ?? 'node-color-seq-1'}
+          shape={
+            nodeTypeDefinition && item.data
+              ? resolveNodeShape(
+                  nodeTypeDefinition.shape,
+                  item.data[entityAttributesProperty],
+                )
+              : undefined
+          }
           label={item.props.label}
           size="md"
         />
@@ -436,6 +447,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                   <DropOverlay
                     dropTargetId={sourceDropTargetId}
                     nodeColor={dropNodeColor}
+                    nodeShape={nodeTypeDefinition?.shape.default}
                     message="Drop here to remove"
                   />
                 )}

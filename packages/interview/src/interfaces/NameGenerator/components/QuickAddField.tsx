@@ -30,7 +30,12 @@ import {
 import { useCelebrate } from '~/hooks/useCelebrate';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import { getNodeIconName } from '~/selectors/name-generator';
-import { getNodeColorSelector } from '~/selectors/session';
+import {
+  getNodeColorSelector,
+  getNodeTypeDefinition,
+  getPromptAdditionalAttributes,
+  resolveNodeShape,
+} from '~/selectors/session';
 
 function convertToNodeColor(color: NodeColorSequence): string {
   switch (color) {
@@ -140,7 +145,16 @@ export default function QuickAddField({
   };
 
   const nodeColor = useStageSelector(getNodeColorSelector);
+  const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
+  const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
   const icon = useStageSelector(getNodeIconName);
+
+  // When open, the toggle previews the node being created, so it takes the
+  // shape the new node will have (resolved against the prompt's additional
+  // attributes, which are the only attributes set at creation time).
+  const nodeShape = nodeTypeDefinition
+    ? resolveNodeShape(nodeTypeDefinition.shape, newNodeAttributes)
+    : 'circle';
 
   // Close form when disabled
   useEffect(() => {
@@ -245,7 +259,9 @@ export default function QuickAddField({
               data-toggle-circle
               className={cx(
                 actionCircleVariants(),
-                'relative aspect-square size-28 transition-[background-color,filter] duration-300',
+                'relative aspect-square size-28 transition-[background-color,filter,border-radius,rotate,scale] duration-300',
+                checked && nodeShape !== 'circle' && 'rounded',
+                checked && nodeShape === 'diamond' && 'scale-[0.85] rotate-45',
                 disabled ? 'cursor-not-allowed saturate-0' : 'cursor-pointer',
               )}
               style={{
@@ -261,7 +277,12 @@ export default function QuickAddField({
                     initial={{ y: '-100%' }}
                     animate={{ y: 0 }}
                     exit={{ y: '-100%' }}
-                    className="flex h-full items-center justify-center"
+                    className={cx(
+                      'flex h-full items-center justify-center',
+                      // Counter-rotate content inside the rotated diamond,
+                      // mirroring the Node component's treatment.
+                      nodeShape === 'diamond' && 'scale-[1.176] -rotate-45',
+                    )}
                   >
                     {fieldProps.value ? (
                       <span className={labelVariants()}>
