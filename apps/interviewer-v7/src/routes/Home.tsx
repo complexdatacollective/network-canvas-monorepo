@@ -5,7 +5,7 @@ import { useLocation } from 'wouter';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { BrandHeader } from '~/components/BrandHeader';
-import { DataView } from '~/components/DataView';
+import { DataView } from '~/components/DataView/DataView';
 import { ImportDialog } from '~/components/ImportDialog';
 import { ProtocolDeck } from '~/components/ProtocolCarousel/ProtocolDeck';
 import { ResumePill } from '~/components/ResumePill';

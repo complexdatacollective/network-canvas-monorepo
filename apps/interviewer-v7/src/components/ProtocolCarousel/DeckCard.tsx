@@ -20,7 +20,7 @@ import { proportionalLucideIconVariants } from '@codaco/fresco-ui/styles/control
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import { protocolDataViewPath } from '~/components/dataViewUrlState';
+import { protocolDataViewPath } from '~/components/DataView/dataViewUrlState';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 
 import { cardBase } from './cardStyles';
