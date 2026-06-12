@@ -172,6 +172,7 @@
       "dependsOn": ["@codaco/interview#build-storybook"],
       "inputs": ["scripts/**", "package.json"],
       "env": ["STORYBOOK_MAPBOX_TOKEN"],
+      "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"],
       "outputs": ["src/generated/**"]
     },
     "build-storybook": {
