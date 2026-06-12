@@ -68,7 +68,9 @@ const InterfaceThumbnail = ({
       <div className="mx-6 flex items-center gap-10">
         <img
           className="h-auto w-40 shrink-0 rounded-sm"
-          src={image}
+          src={image?.src}
+          width={image?.width}
+          height={image?.height}
           alt={title}
         />
         <div className="flex flex-col">

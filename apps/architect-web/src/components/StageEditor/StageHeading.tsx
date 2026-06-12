@@ -86,6 +86,7 @@ const StageHeading = ({ stageNumber, totalStages }: StageHeadingProps) => {
   const interfaceMeta = getInterface(type as StageType);
   const typeLabel = interfaceMeta.name;
   const documentationLink = interfaceMeta.documentation;
+  const image = getTimelineImage(type);
 
   return (
     <div className="w-full pt-(--space-lg) max-lg:flex max-lg:flex-col max-lg:gap-(--space-md) sm:pt-(--space-xl) lg:grid lg:grid-cols-[20rem_auto] lg:gap-8">
@@ -98,7 +99,9 @@ const StageHeading = ({ stageNumber, totalStages }: StageHeadingProps) => {
          */}
         <div className="before:border-neon-coral relative before:absolute before:-top-13 before:left-[50%] before:h-56 before:border-l-10 before:mask-[linear-gradient(180deg,transparent,rgb(0,0,0)_20%,rgb(0,0,0)_80%,transparent_100%)]">
           <img
-            src={getTimelineImage(type)}
+            src={image.src}
+            width={image.width}
+            height={image.height}
             alt={`${typeLabel} interface`}
             title={`${typeLabel} interface`}
             className="relative h-28 w-auto rounded"

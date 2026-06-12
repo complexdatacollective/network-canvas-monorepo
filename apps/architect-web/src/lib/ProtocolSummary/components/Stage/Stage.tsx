@@ -57,6 +57,7 @@ type StageProps = {
 
 const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
   const { index } = useContext(SummaryContext);
+  const image = getInterfaceImage(type);
 
   const stageVariables = sortBy(variablesOnStage(index)(id), [
     (variable) => variable[1].toLowerCase(),
@@ -212,7 +213,12 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
           </div>
           <div className="relative flex flex-[0_0_5cm] items-center">
             <div className="flex-1 [&_img]:w-full [&_img]:rounded">
-              <img src={getInterfaceImage(type)} alt="" />
+              <img
+                src={image?.src}
+                width={image?.width}
+                height={image?.height}
+                alt=""
+              />
             </div>
           </div>
         </div>
