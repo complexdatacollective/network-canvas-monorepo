@@ -55,6 +55,12 @@ describe('parseDataViewSearch', () => {
     expect(state.sorting).toEqual(DEFAULT_SORTING);
     expect(state.columnFilters).toEqual([]);
   });
+
+  it('rejects prototype keys as sort columns', () => {
+    expect(parseDataViewSearch('sort=toString&dir=asc').sorting).toEqual(
+      DEFAULT_SORTING,
+    );
+  });
 });
 
 describe('serializeDataViewState', () => {
@@ -102,6 +108,16 @@ describe('serializeDataViewState', () => {
         sorting: [{ id: 'updatedAt', desc: false }],
       }),
     ).toBe('sort=updatedAt&dir=asc');
+  });
+
+  it('omits sort columns outside the allowlist', () => {
+    expect(
+      serializeDataViewState({
+        globalFilter: '',
+        columnFilters: [],
+        sorting: [{ id: 'toString', desc: false }],
+      }),
+    ).toBe('');
   });
 });
 

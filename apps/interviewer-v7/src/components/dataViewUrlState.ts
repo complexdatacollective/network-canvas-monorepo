@@ -117,8 +117,10 @@ export function parseDataViewSearch(search: string): DataViewUrlState {
 
   const sortId = params.get('sort');
   const direction = params.get('dir');
+  // Object.hasOwn, not `in`: the query string is user-controlled, and a
+  // prototype key like `sort=toString` must not pass the allowlist.
   const sorting: SortingState =
-    sortId && sortId in SORT_COLUMN_BY_ID
+    sortId && Object.hasOwn(SORT_COLUMN_BY_ID, sortId)
       ? [{ id: sortId, desc: direction !== 'asc' }]
       : DEFAULT_SORTING;
 
@@ -171,6 +173,7 @@ export function serializeDataViewState(state: DataViewUrlState): string {
   if (
     sortEntry &&
     defaultSort &&
+    Object.hasOwn(SORT_COLUMN_BY_ID, sortEntry.id) &&
     (sortEntry.id !== defaultSort.id || sortEntry.desc !== defaultSort.desc)
   ) {
     params.set('sort', sortEntry.id);

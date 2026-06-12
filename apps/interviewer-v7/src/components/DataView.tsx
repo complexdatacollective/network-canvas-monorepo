@@ -320,6 +320,12 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
       columnFilters,
       sorting,
     });
+    // Skip the no-op replace when the URL already encodes this state (the
+    // common case for the run this effect triggers via its own navigation).
+    const current = searchString.startsWith('?')
+      ? searchString.slice(1)
+      : searchString;
+    if (current === search) return;
     navigate(search.length > 0 ? `/data?${search}` : '/data', {
       replace: true,
     });
