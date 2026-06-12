@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
+import { expect, waitFor } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -174,6 +175,65 @@ const buildDiamondNodes = () => {
 
 export const DiamondNodes: Story = {
   render: () => <SociogramStoryWrapper buildFn={buildDiamondNodes} />,
+  // Asserts the regression invariant: every edge endpoint (drawn at the
+  // node's stored position) coincides with the center of that node's
+  // bounding box, i.e. the diamond's rotated background layer does not
+  // shift the visual center.
+  play: async ({ canvasElement }) => {
+    const sociogram = await waitFor(() => {
+      const el = canvasElement.querySelector<HTMLElement>(
+        '[data-testid="sociogram"]',
+      );
+      expect(el).not.toBeNull();
+      return el!;
+    });
+
+    // EdgeLayer creates the lines on mount but only positions them on the
+    // next animation frame, so wait until every endpoint is populated.
+    const lines = await waitFor(() => {
+      const found = [
+        ...sociogram.querySelectorAll<SVGLineElement>(
+          'svg[viewBox="0 0 1 1"] line',
+        ),
+      ];
+      expect(found).toHaveLength(5);
+      for (const line of found) {
+        expect(line.getAttribute('x1')).not.toBeNull();
+      }
+      return found;
+    });
+
+    // Canvas nodes are the buttons positioned via inline left/top.
+    const nodeCenters = [
+      ...sociogram.querySelectorAll<HTMLButtonElement>('button[aria-label]'),
+    ]
+      .filter((button) => button.style.left !== '')
+      .map((button) => {
+        const rect = button.getBoundingClientRect();
+        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      });
+    expect(nodeCenters).toHaveLength(5);
+
+    const svgRect = sociogram
+      .querySelector('svg[viewBox="0 0 1 1"]')!
+      .getBoundingClientRect();
+
+    for (const line of lines) {
+      for (const [xAttr, yAttr] of [
+        ['x1', 'y1'],
+        ['x2', 'y2'],
+      ] as const) {
+        const x =
+          svgRect.left + Number(line.getAttribute(xAttr)) * svgRect.width;
+        const y =
+          svgRect.top + Number(line.getAttribute(yAttr)) * svgRect.height;
+        const distanceToNearestCenter = Math.min(
+          ...nodeCenters.map((c) => Math.hypot(c.x - x, c.y - y)),
+        );
+        expect(distanceToNearestCenter).toBeLessThan(2);
+      }
+    }
+  },
 };
 
 const buildWithHighlighting = () => {
