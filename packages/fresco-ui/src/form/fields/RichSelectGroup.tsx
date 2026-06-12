@@ -64,6 +64,15 @@ const optionCardVariants = compose(
         readOnly: 'pointer-events-none cursor-default',
         invalid: 'border-destructive',
       },
+      // In horizontal orientation the group wraps onto multiple lines once the
+      // options no longer fit side by side. `grow` lets a wrapped card expand to
+      // fill its line so every option reaches the container edge regardless of
+      // how long its description is. It is a no-op when cards already share a
+      // line in a `w-fit` container (no free space to distribute).
+      orientation: {
+        vertical: '',
+        horizontal: 'grow',
+      },
     },
     compoundVariants: [
       {
@@ -80,6 +89,7 @@ const optionCardVariants = compose(
     defaultVariants: {
       selected: false,
       state: 'normal',
+      orientation: 'vertical',
     },
   }),
 );
@@ -389,6 +399,7 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
             selected: optionSelected,
             state: optionState,
             size,
+            orientation,
             className: option.className,
           })}
           onClick={() => {
