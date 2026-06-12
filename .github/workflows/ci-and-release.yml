@@ -674,6 +674,9 @@ jobs:
     timeout-minutes: 30
     env:
       STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
+      # Container jobs override HOME and drop the image's env, so point
+      # playwright back at the browsers baked into the image.
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093

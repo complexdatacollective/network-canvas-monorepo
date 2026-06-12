@@ -1,12 +1,7 @@
-import { createReadStream, existsSync, statSync } from 'node:fs';
+import { createReadStream } from 'node:fs';
+import { readdir } from 'node:fs/promises';
 import http from 'node:http';
-import {
-  extname,
-  join,
-  normalize,
-  resolve as resolvePath,
-  sep,
-} from 'node:path';
+import { extname, join } from 'node:path';
 
 import { type Browser, chromium } from 'playwright';
 
@@ -33,35 +28,50 @@ const MIME_TYPES: Record<string, string> = {
   '.wasm': 'application/wasm',
 };
 
-/** Serve a static directory on an ephemeral port. */
-export const serveStatic = (
+/**
+ * Serve a static directory on an ephemeral port.
+ *
+ * The directory is indexed once at startup and requests are resolved by
+ * exact lookup against that index, so request data is never used in a
+ * filesystem path expression (no traversal surface).
+ */
+export const serveStatic = async (
   dir: string,
-): Promise<{ url: string; close: () => void }> =>
-  new Promise((resolve) => {
-    const root = resolvePath(dir);
-    const server = http.createServer((req, res) => {
-      const requestPath = normalize(
-        decodeURIComponent((req.url ?? '/').split('?')[0] ?? '/'),
-      );
-      // Resolve and require the result to stay inside the served root
-      // (the separator suffix prevents sibling-directory prefix matches).
-      let file = resolvePath(join(root, requestPath));
-      if (file !== root && !file.startsWith(root + sep)) {
-        res.writeHead(403).end();
-        return;
+): Promise<{ url: string; close: () => void }> => {
+  const files = new Map<string, string>();
+  const indexDirectory = async (absolute: string, urlPath: string) => {
+    for (const entry of await readdir(absolute, { withFileTypes: true })) {
+      const entryAbsolute = join(absolute, entry.name);
+      const entryUrl = `${urlPath}/${entry.name}`;
+      if (entry.isDirectory()) {
+        await indexDirectory(entryAbsolute, entryUrl);
+      } else if (entry.isFile()) {
+        files.set(entryUrl, entryAbsolute);
+        if (entry.name === 'index.html') {
+          files.set(urlPath === '' ? '/' : urlPath, entryAbsolute);
+          files.set(`${urlPath}/`, entryAbsolute);
+        }
       }
-      if (existsSync(file) && statSync(file).isDirectory()) {
-        file = join(file, 'index.html');
-      }
-      if (!existsSync(file)) {
-        res.writeHead(404).end();
-        return;
-      }
-      res.writeHead(200, {
-        'content-type': MIME_TYPES[extname(file)] ?? 'application/octet-stream',
-      });
-      createReadStream(file).pipe(res);
+    }
+  };
+  await indexDirectory(dir, '');
+
+  const server = http.createServer((req, res) => {
+    const requestPath = decodeURIComponent(
+      (req.url ?? '/').split('?')[0] ?? '/',
+    );
+    const file = files.get(requestPath);
+    if (!file) {
+      res.writeHead(404).end();
+      return;
+    }
+    res.writeHead(200, {
+      'content-type': MIME_TYPES[extname(file)] ?? 'application/octet-stream',
     });
+    createReadStream(file).pipe(res);
+  });
+
+  return new Promise((resolve) => {
     server.listen(0, '127.0.0.1', () => {
       const address = server.address();
       if (address === null || typeof address === 'string') {
@@ -73,6 +83,7 @@ export const serveStatic = (
       });
     });
   });
+};
 
 /** parameters.capture contract — mirrors CaptureParameters in
  * packages/interview/.storybook/CaptureStory.tsx. */

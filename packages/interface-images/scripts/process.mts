@@ -75,10 +75,15 @@ export const processMaster = async (
       .resize({ width: w, withoutEnlargement: true })
       .webp({ quality: WEBP_QUALITY })
       .toBuffer({ resolveWithObject: true });
+    // Name files by the ENCODED width: withoutEnlargement may clamp below
+    // the requested width, and several requested widths can clamp to the
+    // same size — filenames, manifest entries, and prune tracking must all
+    // describe the file that actually exists.
+    if (encoded.some((variant) => variant.w === info.width)) continue;
     encoded.push({
       w: info.width,
       h: info.height,
-      file: variantFileName(interfaceName, ratio, w),
+      file: variantFileName(interfaceName, ratio, info.width),
       data,
     });
   }

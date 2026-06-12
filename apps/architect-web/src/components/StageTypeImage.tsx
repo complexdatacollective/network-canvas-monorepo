@@ -7,7 +7,7 @@ import manifest, {
 import { defaultStageImage } from '~/images/timeline';
 
 const isInterfaceType = (type: string): type is InterfaceType =>
-  type in manifest;
+  Object.hasOwn(manifest, type);
 
 type StageTypeImageProps = Omit<InterfacePictureProps, 'type' | 'alt'> & {
   /** Stage type — falls back to the Default placeholder when no generated
