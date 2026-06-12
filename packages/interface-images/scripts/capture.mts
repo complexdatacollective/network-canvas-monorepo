@@ -1,6 +1,12 @@
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import http from 'node:http';
-import { extname, join, normalize } from 'node:path';
+import {
+  extname,
+  join,
+  normalize,
+  resolve as resolvePath,
+  sep,
+} from 'node:path';
 
 import { type Browser, chromium } from 'playwright';
 
@@ -32,12 +38,15 @@ export const serveStatic = (
   dir: string,
 ): Promise<{ url: string; close: () => void }> =>
   new Promise((resolve) => {
+    const root = resolvePath(dir);
     const server = http.createServer((req, res) => {
-      const path = normalize(
+      const requestPath = normalize(
         decodeURIComponent((req.url ?? '/').split('?')[0] ?? '/'),
       );
-      let file = join(dir, path);
-      if (!file.startsWith(dir)) {
+      // Resolve and require the result to stay inside the served root
+      // (the separator suffix prevents sibling-directory prefix matches).
+      let file = resolvePath(join(root, requestPath));
+      if (file !== root && !file.startsWith(root + sep)) {
         res.writeHead(403).end();
         return;
       }
