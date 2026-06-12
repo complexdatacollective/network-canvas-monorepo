@@ -1,7 +1,10 @@
 import { motion } from 'motion/react';
 
 import { type DndStore, useDndStore } from '@codaco/fresco-ui/dnd/dnd';
-import UINode, { type NodeColorSequence } from '@codaco/fresco-ui/Node';
+import UINode, {
+  type NodeColorSequence,
+  type NodeShape,
+} from '@codaco/fresco-ui/Node';
 
 const variants = {
   visible: { opacity: 1 },
@@ -29,12 +32,14 @@ const iconVariants = {
 type DropOverlayProps = {
   dropTargetId: string;
   nodeColor: NodeColorSequence;
+  nodeShape?: NodeShape;
   message: string;
 };
 
 const DropOverlay = ({
   dropTargetId,
   nodeColor,
+  nodeShape,
   message,
 }: DropOverlayProps) => {
   const isOver = useDndStore(
@@ -50,7 +55,7 @@ const DropOverlay = ({
       exit="hidden"
     >
       <motion.div variants={iconVariants} animate={isOver ? 'over' : 'initial'}>
-        <UINode label="" color={nodeColor} />
+        <UINode label="" color={nodeColor} shape={nodeShape} />
       </motion.div>
       <h2>{message}</h2>
     </motion.div>
