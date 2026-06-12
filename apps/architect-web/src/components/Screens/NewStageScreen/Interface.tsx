@@ -2,12 +2,10 @@ import { find, get } from 'es-toolkit/compat';
 import { motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 
+import StageTypeImage from '~/components/StageTypeImage';
 import Tag from '~/components/Tag';
-import timelineImages from '~/images/timeline';
 
 import { INTERFACE_TYPES, TAG_COLORS } from './interfaceOptions';
-
-const getTimelineImage = (type: string) => get(timelineImages, type);
 
 type InterfaceThumbnailProps = {
   type: string;
@@ -29,7 +27,6 @@ const InterfaceThumbnail = ({
     () => find(INTERFACE_TYPES, ['type', interfaceType]),
     [interfaceType],
   );
-  const image = getTimelineImage(interfaceType);
   const { title, tags, description } = meta ?? {
     title: '',
     tags: [],
@@ -66,11 +63,15 @@ const InterfaceThumbnail = ({
       onMouseLeave={removeHighlighted}
     >
       <div className="mx-6 flex items-center gap-10">
-        <img
-          className="h-auto w-40 shrink-0 rounded-sm"
-          src={image}
-          alt={title}
-        />
+        <div className="shrink-0">
+          <StageTypeImage
+            type={interfaceType}
+            ratio="4:3"
+            sizes="10rem"
+            alt={title}
+            className="h-auto w-40 rounded-sm"
+          />
+        </div>
         <div className="flex flex-col">
           <h4 className={`mt-0 mb-2 ${highlighted ? 'text-white' : ''}`}>
             {title}

@@ -4,16 +4,13 @@ import { useId } from 'react';
 import type { StageType } from '@codaco/protocol-validation';
 import Badge from '~/components/Badge';
 import ExternalLink from '~/components/ExternalLink';
-import timelineImages from '~/images/timeline';
+import StageTypeImage from '~/components/StageTypeImage';
 import { cx } from '~/utils/cva';
 
 import { useFormContext } from '../Editor';
 import ValidatedField from '../Form/ValidatedField';
 import IssueAnchor from '../IssueAnchor';
 import { getInterface } from './Interfaces';
-
-const getTimelineImage = (type: string) =>
-  get(timelineImages, type, timelineImages.Default);
 
 type HeadingInputProps = {
   input?: {
@@ -97,10 +94,11 @@ const StageHeading = ({ stageNumber, totalStages }: StageHeadingProps) => {
          * - border-l-10 (10px) stroke matches the badge timeline accent width
          */}
         <div className="before:border-neon-coral relative before:absolute before:-top-13 before:left-[50%] before:h-56 before:border-l-10 before:mask-[linear-gradient(180deg,transparent,rgb(0,0,0)_20%,rgb(0,0,0)_80%,transparent_100%)]">
-          <img
-            src={getTimelineImage(type)}
+          <StageTypeImage
+            type={type}
+            ratio="4:3"
+            sizes="10rem"
             alt={`${typeLabel} interface`}
-            title={`${typeLabel} interface`}
             className="relative h-28 w-auto rounded"
           />
         </div>

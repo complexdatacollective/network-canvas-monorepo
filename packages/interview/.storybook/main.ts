@@ -26,6 +26,14 @@ export default defineMain({
       resolve: {
         tsconfigPaths: true,
       },
+      // mapbox-gl's worker bundle contains import.meta; the default classic
+      // (iife) worker emission loads it as a non-module script and the worker
+      // dies with "Cannot use 'import.meta' outside a module", leaving the
+      // Geospatial map without tiles. ES format workers are loaded with
+      // { type: 'module' } and run it fine.
+      worker: {
+        format: 'es',
+      },
       optimizeDeps: {
         include: ['d3-force'],
         // Workspace libraries are consumed as built `dist` and kept fresh by

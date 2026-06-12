@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@codaco/art": "workspace:*",
+    "@codaco/interface-images": "workspace:*",
     "@docsearch/css": "^4.6.3",
     "@docsearch/react": "^4.6.3",
     "@fontsource-variable/quicksand": "^5.2.10",

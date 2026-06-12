@@ -29,6 +29,7 @@
     },
     "packages/protocol-validation": {},
     "packages/network-exporters": {},
+    "packages/interface-images": {},
     "tooling/tailwind": {
       "entry": [
         "shared/plugins/elevation/index.ts",
