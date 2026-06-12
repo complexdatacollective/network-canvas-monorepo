@@ -71,7 +71,7 @@ export function Hero() {
   const t = useTranslations();
   return (
     <motion.div
-      className="mx-4 flex max-w-7xl flex-col items-center gap-10 pt-2 sm:mx-8 md:flex-1 md:justify-center md:pt-3 lg:gap-16"
+      className="mx-4 flex max-w-7xl flex-col items-center gap-10 pt-2 sm:mx-8 md:flex-1 md:justify-between md:pt-3 lg:gap-16"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
@@ -93,7 +93,7 @@ export function Hero() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
           >
             <svg
-              className="h-auto w-full"
+              className="mx-auto h-auto max-h-[45vh] w-full"
               viewBox="0 0 513.93 841.78"
               fill="currentColor"
               xmlns="http://www.w3.org/2000/svg"

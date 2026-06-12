@@ -32,7 +32,7 @@ export const AppSwitch = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <Tabs.Root defaultValue={0} className="my-4">
+    <Tabs.Root defaultValue={0} className="py-8">
       <Tabs.List className="border-accent/15 bg-accent/10 inline-grid w-full auto-cols-fr grid-flow-col gap-1 rounded-xl border p-1">
         {options.map((option, index) => {
           const Icon = option.icon ? ICONS[option.icon] : null;
@@ -41,9 +41,9 @@ export const AppSwitch = ({ children }: { children: ReactNode }) => {
               key={`${option.label}-${index}`}
               value={index}
               className={cn(
-                'focusable text-muted-foreground flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors',
-                'hover:text-foreground hover:bg-card/40',
-                'data-active:bg-card data-active:text-foreground data-active:hover:bg-card data-active:shadow-sm',
+                'focusable text-foreground/70 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors',
+                'hover:text-foreground hover:bg-accent/20',
+                'data-active:bg-accent data-active:text-accent-foreground data-active:hover:bg-accent data-active:shadow-sm',
               )}
             >
               {Icon && <Icon className="h-4 w-4 shrink-0" aria-hidden />}
@@ -56,7 +56,7 @@ export const AppSwitch = ({ children }: { children: ReactNode }) => {
         <Tabs.Panel
           key={`${option.label}-${index}`}
           value={index}
-          className="mt-2"
+          className="mt-6"
         >
           {option.children}
         </Tabs.Panel>

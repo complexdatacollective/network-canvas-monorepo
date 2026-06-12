@@ -97,7 +97,7 @@ const StatusCell = ({ status, schema }: { status: Status; schema: number }) => {
     );
   }
 
-  return <span className="text-muted-foreground/70">Not supported</span>;
+  return <span className="text-foreground/60">Not supported</span>;
 };
 
 const AppCompatibilityTable = () => (
@@ -158,7 +158,7 @@ const AppCompatibilityTable = () => (
                   <td className="text-foreground px-4 py-3 font-bold">
                     {row.app}
                   </td>
-                  <td className="text-muted-foreground/80 px-4 py-3">
+                  <td className="text-foreground/70 px-4 py-3">
                     {row.platform}
                   </td>
                   <td className="px-4 py-3">
@@ -181,7 +181,7 @@ const AppCompatibilityTable = () => (
         className={cn(WARNING_TEXT, 'mt-0.5 h-4 w-4 shrink-0')}
         aria-hidden
       />
-      <p className="text-muted-foreground/90 text-sm">
+      <p className="text-foreground/80 text-sm">
         <strong className={cn(WARNING_TEXT, 'font-semibold')}>
           Migration is one-way.
         </strong>{' '}
