@@ -164,6 +164,9 @@ export const captureStory = async (
     reducedMotion: 'reduce',
     timezoneId: 'UTC',
     locale: 'en-US',
+    // Captures fetch live third-party assets (Mapbox tiles); tolerate
+    // TLS-intercepting proxies in sandboxed/corporate environments.
+    ignoreHTTPSErrors: true,
   });
   try {
     const page = await context.newPage();
@@ -174,12 +177,30 @@ export const captureStory = async (
       waitUntil: 'load',
     });
 
+    // Wait for the story's render lifecycle — including any play function
+    // (e.g. FamilyPedigree replays its quick-start wizard) — to finish.
+    const renderPhase = () => {
+      const preview = (
+        window as unknown as {
+          __STORYBOOK_PREVIEW__?: { storyRenders?: Array<{ phase?: string }> };
+        }
+      ).__STORYBOOK_PREVIEW__;
+      return preview?.storyRenders?.[0]?.phase;
+    };
+    // Terminal phases: 'finished' (SB10; older versions used 'completed'),
+    // 'errored', 'aborted'.
+    await page.waitForFunction(
+      `['finished', 'completed', 'errored', 'aborted'].includes((${renderPhase.toString()})())`,
+      undefined,
+      { timeout: 120_000 },
+    );
+
     // Fail loudly if the story errored rather than screenshotting the overlay.
-    const errored = await page.evaluate(() =>
-      document.body.classList.contains('sb-show-errordisplay'),
+    const errored = await page.evaluate(
+      `document.body.classList.contains('sb-show-errordisplay') || !['finished', 'completed'].includes((${renderPhase.toString()})())`,
     );
     if (errored) {
-      throw new Error(`Story ${storyId} rendered Storybook's error display`);
+      throw new Error(`Story ${storyId} errored while rendering or playing`);
     }
 
     await page.evaluate(() => document.fonts.ready);
