@@ -1,6 +1,5 @@
 import type { Action } from '@reduxjs/toolkit';
 import { LocateFixed, ZoomIn, ZoomOut } from 'lucide-react';
-// import 'mapbox-gl/dist/mapbox-gl.css';
 import { AnimatePresence, motion, type Variants } from 'motion/react';
 import {
   lazy,
@@ -366,7 +365,7 @@ export default function GeospatialInterface({
   return (
     <div className="relative flex size-full flex-col" ref={dragSafeRef}>
       <motion.div
-        className="size-full"
+        className="size-full min-h-0 min-w-0 overflow-hidden"
         ref={useStub ? undefined : mapContainerRef}
         variants={fadeVariants}
         data-testid="map-container"
