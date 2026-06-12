@@ -24,15 +24,12 @@ const noopFinish = async () => {};
 function buildSession(payload: PreviewPayload): SessionPayload {
   const now = new Date().toISOString();
   const network = payload.useSyntheticData
-    ? generateNetwork(
-        payload.protocol.codebook,
-        payload.protocol.stages,
-        undefined,
+    ? generateNetwork(payload.protocol.codebook, payload.protocol.stages, {
         // Leave the previewed stage partially complete so interaction-driven
         // interfaces (ordinal/categorical bins, sociogram) still have
         // unplaced nodes to work with.
-        { inProgressStageIndex: payload.startStage },
-      ).network
+        inProgressStageIndex: payload.startStage,
+      }).network
     : createInitialNetwork();
   return {
     id: uuid(),

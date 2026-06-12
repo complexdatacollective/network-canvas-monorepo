@@ -59,6 +59,10 @@ type Codebook = {
 };
 
 export type GenerateNetworkOptions = {
+  /**
+   * Seed for deterministic output. A random seed is used when omitted.
+   */
+  seed?: number;
   simulateDropOut?: boolean;
   respectSkipLogicAndFiltering?: boolean;
   /**
@@ -404,9 +408,15 @@ function markStageInProgress(
 export function generateNetwork(
   codebook: Codebook,
   stages: Stage[],
-  seed?: number,
   options: GenerateNetworkOptions = {},
 ): GenerateNetworkResult {
+  const {
+    seed,
+    simulateDropOut = false,
+    respectSkipLogicAndFiltering = false,
+    inProgressStageIndex,
+  } = options;
+
   const valueGen = new ValueGenerator(
     seed ?? Math.floor(Math.random() * 100000),
   );
@@ -415,12 +425,6 @@ export function generateNetwork(
   const egoAttributes: Record<string, unknown> = {};
   const stageMetadata: Record<string, unknown> = {};
   const egoUid = uuid();
-
-  const {
-    simulateDropOut = false,
-    respectSkipLogicAndFiltering = false,
-    inProgressStageIndex,
-  } = options;
   const totalStages = stages.length;
   let currentStep = 0;
   let droppedOut = false;
