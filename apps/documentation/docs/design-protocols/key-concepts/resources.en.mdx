@@ -1,0 +1,75 @@
+---
+title: Resources
+---
+
+<Definition>
+  Resources are external files and credentials — such as audio, images, video,
+  network roster data, and API keys — that you can use within your interview
+  protocol.
+</Definition>
+
+## Details
+
+In Architect, resources are any external files that you use within your interview. These can be media files, such as audio, images, or video. They can also be network data files that you can use as a roster, or API keys that let an interface communicate with a third-party service. Careful use of resources can improve the interview experience for your participants or enable different types of interview workflow.
+
+Once you add resources to your protocol, they are stored as part of the protocol itself, so you must handle updating or removing them from within Architect. Where the protocol — and therefore its resources — is stored depends on which version of Architect you use:
+
+- In **Architect Desktop**, your protocol is a `.netcanvas` file on your computer, and resources are stored inside that file.
+- In **Architect Web**, your protocol and its resources are saved in your browser's [library](/en/design-protocols/saving-and-backing-up) as you work, and are embedded into a `.netcanvas` file when you download it. Because this library lives in your browser rather than as a file you control, download a copy of any protocol with resources you can't afford to lose — see [Saving and backing up](/en/design-protocols/saving-and-backing-up).
+
+<TipBox danger>
+
+Using large numbers of resources or poorly optimized resources in your protocol can heavily impact performance. This means that protocols take longer to install on devices and some stages may take much longer to load. Take special care to appropriately resize and compress your resources before importing them, and ensure that you test your protocol on your intended field devices to verify performance levels.
+
+As a general guide, aim to keep your total protocol file size under 10MB.
+
+</TipBox>
+
+## Adding resources to a stage
+
+Many stages allow you to add resources directly while configuring them. This is designed to provide a more seamless flow when creating your interview protocol. Examples of this include background images on the Sociogram Interface, roster files in either of the roster Name Generators, and media files on the Information Interface.
+
+If the stage you are configuring uses a resource, it will provide an interface for you to add it directly and will give instructions about which type of resource is required.
+
+![](/assets/img/key-concepts/assets/bg-asset.png)
+
+## Adding and removing resources from the resource library
+
+For a broader overview of all resources within your current protocol, click the **resource library** button in the upper right hand corner of the protocol overview card when looking at the timeline. This will open the resource library.
+
+![](/assets/img/key-concepts/assets/manage-assets-button.png)
+
+In the resource library screen, you can browse, filter, and delete any existing resources, as well as add new ones. To add a new resource to the resource library, drag and drop a file into the designated area or browse for the file you wish to import.
+
+![](/assets/img/key-concepts/assets/asset-library.png)
+
+You will notice that existing resources that are unused show a red **unused** pill. This indicates that you can delete them. Attempting to delete a resource that is in use within your interview will be prevented. You must first update or remove all uses of a resource before you can delete it.
+
+## Supported resource types
+
+### Image
+
+Interviewer supports JPEG, GIF, and PNG image file formats.
+
+### Audio
+
+Interviewer supports MP3, AIFF, M4A, and MP4 audio file formats.
+
+### Video
+
+Interviewer supports MP4 and MOV video file formats. Take special care when using video to make your files as small as possible.
+
+### Network
+
+Interviewer supports network data in CSV format. The heading row will be used to set [variable](/en/design-protocols/key-concepts/variables) names for any nodes brought into the interview. Ensure that you have a column called `name` to take advantage of automatic [node labelling](/en/get-started/advanced-topics/node-labelling). Download a simple example CSV file from [here](/assets/previousInterview.csv).
+
+### API keys
+
+The [Geospatial](/en/design-protocols/interface-documentation/geospatial) interface communicates with a third-party service that requires an API key — a Mapbox token used to load maps. Unlike the other resource types, an API key is a credential you paste in rather than a file you upload, but it is stored in the resource library alongside your other resources, where it can be copied, deleted, or replaced as needed.
+
+## Related concepts
+
+- [Interfaces](/en/design-protocols/key-concepts/interfaces) - Learn which Interfaces use resources
+- [Codebook](/en/design-protocols/key-concepts/codebook) - View network asset summaries in the codebook
+- [Network Filtering](/en/design-protocols/key-concepts/network-filtering) - Filter roster data on stages
+- [Variables](/en/design-protocols/key-concepts/variables) - Understand how roster columns become variables

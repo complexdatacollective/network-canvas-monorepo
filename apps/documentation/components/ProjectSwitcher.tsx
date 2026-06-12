@@ -1,5 +1,6 @@
 'use client';
 
+import { ChartNetwork } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -19,27 +20,56 @@ import { cn } from '~/lib/utils';
 import { useRouter } from '~/navigation';
 
 const getImageForProject = (project: Project) => {
-  if (project === 'desktop') {
+  if (project === 'get-started') {
     return (
       <Image
-        src="/images/desktop.png"
-        alt={project}
-        className="h-10 w-auto"
+        src="/images/mark.svg"
+        alt=""
+        className="h-10 w-10"
         width={40}
         height={40}
       />
     );
   }
 
-  if (project === 'fresco') {
+  if (project === 'design-protocols') {
     return (
       <Image
-        src="/images/fresco.png"
-        alt={project}
-        className="h-10 w-auto"
+        src="/images/architect-icon.png"
+        alt=""
+        className="h-10 w-10"
         width={40}
         height={40}
       />
+    );
+  }
+
+  if (project === 'collect-data') {
+    return (
+      <div className="flex items-center gap-1">
+        <Image
+          src="/images/interviewer.png"
+          alt=""
+          className="h-8 w-8"
+          width={32}
+          height={32}
+        />
+        <Image
+          src="/images/fresco.png"
+          alt=""
+          className="h-8 w-8"
+          width={32}
+          height={32}
+        />
+      </div>
+    );
+  }
+
+  if (project === 'analyze-data') {
+    return (
+      <div className="bg-cerulean-blue flex h-10 w-10 items-center justify-center rounded-xl text-white">
+        <ChartNetwork className="h-6 w-6" />
+      </div>
     );
   }
 };

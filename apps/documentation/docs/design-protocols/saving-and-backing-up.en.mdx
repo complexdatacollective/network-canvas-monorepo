@@ -1,0 +1,94 @@
+---
+title: Saving and backing up
+toc: false
+navOrder: 3
+---
+
+Architect Web and Architect Desktop store your protocols in different ways. Understanding how — and what it means for backing up and moving your work — will help you avoid losing a protocol you have spent time building.
+
+<AppSwitch>
+<AppOption label="Architect Web" icon="globe">
+
+## How Architect Web saves your work
+
+Architect Web saves automatically. As you edit, your changes are continuously written to a **library** stored inside your web browser. There is no **Save** button, and no file to keep track of while you work — the protocol you see on the home screen is always up to date with your latest changes.
+
+This is different from Architect Desktop, where your protocol is a `.netcanvas` file on your computer that you save explicitly.
+
+## Your library is per-browser and per-device
+
+Because the library lives in your browser's local storage, it is tied to **this browser, on this device**. Your protocols are never uploaded to a server.
+
+That means a protocol you create in one browser will not appear if you:
+
+- open Architect Web in a **different browser** (for example, switching from Chrome to Firefox),
+- open it on a **different computer or device**, or
+- open it in a **private** or **incognito** window.
+
+To work on a protocol somewhere else — or simply to keep a safe copy — download it as a `.netcanvas` file, as described below.
+
+## Backing up and moving protocols
+
+At any time, use **Download** on the protocol overview screen to export your protocol as a `.netcanvas` file. This file is a complete, self-contained copy of your protocol, including any roster data, images, or media it uses.
+
+A downloaded `.netcanvas` file lets you:
+
+- **Keep a backup** outside the browser, in case your browser's data is cleared.
+- **Move your work** to another browser, computer, or collaborator — open it again from the home screen.
+- **Deploy your protocol** in [Fresco](/en/collect-data/fresco/using-fresco#uploading-protocols) or [Interviewer 8](/en/collect-data/interviewer/about) to run interviews
+
+<KeyConcept title="Download your protocols regularly">
+
+Because Architect Web stores your protocols in the browser rather than as files you control, downloading a `.netcanvas` file is the only way to guarantee you have a copy you won't lose. Get into the habit of downloading after any significant work — and always before clearing your browser data or switching devices.
+
+</KeyConcept>
+
+## What removes your protocols
+
+You can manually remove protocols from the Recent library in two ways:
+
+- **Delete a single protocol** using the three-dots menu on its row.
+- **Clear all protocols** to permanently remove every protocol in this browser's library at once.
+
+Anything that clears your browser's storage will also remove the protocols saved in Architect Web. This includes:
+
+- **Clearing your browsing data** for the site (history, cookies, and site data).
+- Closing a **private** or **incognito** window, which discards everything created in that session.
+
+These actions cannot be undone, and a removed protocol can only be recovered from a `.netcanvas` file you downloaded earlier.
+
+## Storage limits
+
+Browsers limit how much data a site may store, and Architect Web shares that allowance with the rest of the site's data. Very large protocols, particularly those with many or large media assets, consume more of this allowance.
+
+Browsers also treat this kind of local data as **best-effort**: under heavy storage pressure, or after long periods without visiting the site, a browser may remove it to reclaim space. This is uncommon in normal use, but it is another reason to download a `.netcanvas` copy of any protocol you cannot afford to lose.
+
+## Undo and redo
+
+While you are editing a protocol, Architect Web keeps a history of your changes. Use **Undo** and **Redo** in the editor toolbar to step backward and forward through recent edits — useful for recovering from a change you didn't mean to make. This history applies to the current editing session and is separate from the backups you create by downloading a `.netcanvas` file.
+
+</AppOption>
+<AppOption label="Architect Desktop" icon="desktop">
+
+## How Architect Desktop saves your work
+
+In Architect Desktop, your protocol is a [`.netcanvas` file](/en/design-protocols/key-concepts/the-protocol-file) on your computer that you save and manage yourself. Unlike Architect Web, there is no in-browser library: you choose where the file lives, and Architect prompts you to save your changes as you work.
+
+Because it is a normal file, you can move it, rename it, and copy it like any other. The `.netcanvas` file is self-contained. Any [resources](/en/design-protocols/key-concepts/resources) you add, such as roster data, images, or video, are embedded inside it.
+
+## Finding your protocols
+
+When you open Architect Desktop, the **Resume Editing** section of the start screen lists the protocols you have worked on recently. Each entry shows the protocol's name, its full location on your computer, the date it was last modified, and the [schema version](/en/get-started/advanced-topics/protocol-schema-information) it was built on, making it easy to reopen it.
+
+![The Resume Editing section of the Architect Desktop start screen, listing recent protocols with their file paths, last-modified dates, and schema versions.](/assets/img/architect-guide/resume-editing.png)
+
+## Keeping your work safe
+
+A few practices keep your work safe:
+
+- **Back up regularly.** Keep copies of your `.netcanvas` file somewhere other than your working computer, such as a cloud drive or external storage.
+- **Version after deploying.** Once you have deployed a protocol, save a renamed copy before making further changes, so each deployed version stays intact. See [The Protocol File](/en/design-protocols/key-concepts/the-protocol-file) for why this matters.
+- **Follow a workflow.** The [Protocol and Data Workflows](/en/get-started/tutorials/protocol-and-data-workflows) tutorial walks through deploying protocols and organising and backing up your files for both online and offline studies.
+
+</AppOption>
+</AppSwitch>

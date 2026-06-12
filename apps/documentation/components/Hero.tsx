@@ -1,8 +1,10 @@
 'use client';
 
+import { ChartNetwork, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
+import type { ReactNode } from 'react';
 
 import Paragraph from '~/components/ui/typography/Paragraph';
 import { cn } from '~/lib/utils';
@@ -12,38 +14,54 @@ import DocSearchComponent from './DocSearchComponent';
 import FancyHeading from './FancyHeading';
 import FancyParagraph from './FancyParagraph';
 
+const bannerClasses = {
+  'slate-blue': 'bg-slate-blue',
+  'sea-green': 'bg-sea-green',
+  'neon-coral': 'bg-neon-coral',
+  'cerulean-blue': 'bg-cerulean-blue',
+} as const;
+
+type CardColor = keyof typeof bannerClasses;
+
+function StepArrow() {
+  return (
+    <ChevronRight
+      className="text-foreground hidden h-8 w-8 shrink-0 self-center md:block"
+      strokeWidth={3}
+      aria-hidden
+    />
+  );
+}
+
 function ProjectCard({
   href,
   title,
   description,
   icon,
+  color,
 }: {
   href: string;
   title: string;
   description: string;
-  icon: string;
+  icon: ReactNode;
+  color: CardColor;
 }) {
   return (
-    <Link href={href} className="basis-1/2">
-      <div
-        className={cn(
-          'border-border bg-card flex h-full cursor-pointer flex-col gap-2 rounded-xl border p-4 shadow-xl transition-colors md:p-6',
-          'hover:border-accent hover:bg-accent hover:text-accent-foreground',
-        )}
-      >
-        <div className="flex shrink-0 items-center gap-4">
-          <Image
-            src={icon}
-            className="h-16 w-auto"
-            alt={title}
-            width={64}
-            height={64}
-          />
-          <FancyHeading variant="h2" margin="none">
-            {title}
-          </FancyHeading>
-        </div>
-        <Paragraph>{description}</Paragraph>
+    <Link
+      href={href}
+      className={cn(
+        'group focusable flex min-h-56 flex-1 flex-col gap-6 rounded-3xl p-6 text-white shadow-lg transition-transform hover:-translate-y-1 hover:shadow-xl',
+        bannerClasses[color],
+      )}
+    >
+      <span className="flex h-12 w-fit min-w-12 shrink-0 items-center justify-center gap-1 rounded-2xl bg-white/15 px-2">
+        {icon}
+      </span>
+      <div className="mt-auto flex flex-col gap-2">
+        <FancyHeading variant="h2" margin="none" className="text-xl text-white">
+          {title}
+        </FancyHeading>
+        <Paragraph className="text-base text-white/85">{description}</Paragraph>
       </div>
     </Link>
   );
@@ -53,28 +71,29 @@ export function Hero() {
   const t = useTranslations();
   return (
     <motion.div
-      className="mx-4 flex max-w-5xl flex-col items-center gap-10 sm:mx-8 md:-mt-8 md:flex-1 md:justify-center lg:gap-16"
+      className="mx-4 flex max-w-7xl flex-col items-center gap-10 pt-2 sm:mx-8 md:flex-1 md:justify-between md:pt-3 lg:gap-16"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
-      <div className="flex flex-col-reverse items-center justify-center text-center md:flex-row md:justify-start md:text-left">
-        <div className="flex flex-col items-center justify-center">
+      <div className="flex w-full flex-col-reverse items-center justify-center text-center md:flex-row md:justify-start md:text-left">
+        <div className="flex flex-col items-center justify-center md:items-start">
           <FancyHeading variant="h1" className="text-4xl">
             {t('Hero.title')}
           </FancyHeading>
           <FancyParagraph variant="lead">{t('Hero.tagline')}</FancyParagraph>
           <DocSearchComponent
-            className="mt-4 hidden !w-full text-base lg:inline-flex"
+            className="mt-4 hidden !w-full max-w-2xl rounded-3xl text-base lg:inline-flex"
             large
           />
         </div>
         <div className="basis-auto items-center justify-center md:flex md:basis-1/2 lg:basis-2/5">
           <motion.div
+            className="mx-auto w-52 md:w-72"
             initial={{ opacity: 1, y: 0, scale: 1 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
           >
             <svg
-              className="h-auto w-full"
+              className="mx-auto h-auto max-h-[45vh] w-full"
               viewBox="0 0 513.93 841.78"
               fill="currentColor"
               xmlns="http://www.w3.org/2000/svg"
@@ -119,18 +138,70 @@ export function Hero() {
           </motion.div>
         </div>
       </div>
-      <div className="flex flex-col gap-6 md:flex-row">
+      <div className="flex w-full flex-col gap-4 md:flex-row md:items-stretch md:gap-3">
         <ProjectCard
-          href="en/desktop"
-          title={t('ProjectSwitcher.desktop.label')}
-          description={t('ProjectSwitcher.desktop.description')}
-          icon="images/desktop.png"
+          href="en/get-started"
+          color="slate-blue"
+          title={t('ProjectSwitcher.get-started.label')}
+          description={t('ProjectSwitcher.get-started.description')}
+          icon={
+            <Image
+              src="/images/mark.svg"
+              alt=""
+              className="h-7 w-7"
+              width={28}
+              height={28}
+            />
+          }
         />
+        <StepArrow />
         <ProjectCard
-          href="en/fresco"
-          title={t('ProjectSwitcher.fresco.label')}
-          description={t('ProjectSwitcher.fresco.description')}
-          icon="images/fresco.png"
+          href="en/design-protocols"
+          color="sea-green"
+          title={t('ProjectSwitcher.design-protocols.label')}
+          description={t('ProjectSwitcher.design-protocols.description')}
+          icon={
+            <Image
+              src="/images/architect-icon.png"
+              alt=""
+              className="h-7 w-7"
+              width={28}
+              height={28}
+            />
+          }
+        />
+        <StepArrow />
+        <ProjectCard
+          href="en/collect-data"
+          color="neon-coral"
+          title={t('ProjectSwitcher.collect-data.label')}
+          description={t('ProjectSwitcher.collect-data.description')}
+          icon={
+            <div className="flex items-center gap-1">
+              <Image
+                src="/images/interviewer.png"
+                alt=""
+                className="h-7 w-7"
+                width={28}
+                height={28}
+              />
+              <Image
+                src="/images/fresco.png"
+                alt=""
+                className="h-7 w-7"
+                width={28}
+                height={28}
+              />
+            </div>
+          }
+        />
+        <StepArrow />
+        <ProjectCard
+          href="en/analyze-data"
+          color="cerulean-blue"
+          title={t('ProjectSwitcher.analyze-data.label')}
+          description={t('ProjectSwitcher.analyze-data.description')}
+          icon={<ChartNetwork className="h-6 w-6" />}
         />
       </div>
     </motion.div>

@@ -22,6 +22,8 @@ import type {
   SidebarProject,
   TSideBar,
 } from '~/app/types';
+import AppCompatibilityTable from '~/components/customComponents/AppCompatibilityTable';
+import { AppOption, AppSwitch } from '~/components/customComponents/AppSwitch';
 import {
   BadPractice,
   GoodPractice,
@@ -50,11 +52,13 @@ import {
   UnorderedList,
 } from '~/components/ui/typography/Lists';
 import Paragraph from '~/components/ui/typography/Paragraph';
+import { getCompatibility } from '~/lib/interfaceCompatibility';
 
 import { DOCS_PATH, get } from './helper_functions';
 import processPreTags from './processPreTags';
 import processYamlMatter from './processYamlMatter';
 import { type HeadingNode, headingTree } from './tableOfContents';
+import unwrapBlockComponents from './unwrapBlockComponents';
 import { cn } from './utils';
 
 const getSidebar = (): Partial<TSideBar> => {
@@ -212,7 +216,7 @@ const getSourceFile = (
   return join(process.cwd(), 'docs', stripDocsPrefix(folderSourceFile));
 };
 
-const markdownComponents = {
+const createMarkdownComponents = (docSlug?: string) => ({
   h1: (props: ComponentProps<typeof Heading>) => (
     <Heading variant="h1" {...props} />
   ),
@@ -300,14 +304,21 @@ const markdownComponents = {
   interfacesummary: (props: { children: ReactNode }) => (
     <InterfaceSummary {...props} />
   ),
+  appcompatibilitytable: () => <AppCompatibilityTable />,
   interfacemeta: (props: {
     type: string;
     creates: string;
     usesprompts: string;
-  }) => <InterfaceMeta {...props} />,
+  }) => <InterfaceMeta {...props} compatibility={getCompatibility(docSlug)} />,
   definition: (props: { children: ReactNode }) => (
     <div className="text-lg font-normal">{props.children}</div>
   ),
+  appswitch: (props: { children: ReactNode }) => <AppSwitch {...props} />,
+  appoption: (props: {
+    label: string;
+    icon?: 'globe' | 'desktop';
+    children: ReactNode;
+  }) => <AppOption {...props} />,
   table: (props: { children: ReactNode }) => (
     <div className="overflow-x-auto">
       <table
@@ -318,7 +329,7 @@ const markdownComponents = {
   ),
   details: Details,
   summary: Summary,
-};
+});
 
 export async function getDocumentForPath({
   locale,
@@ -337,6 +348,8 @@ export async function getDocumentForPath({
 
   const markdownFile = readFileSync(sourceFile, 'utf-8');
 
+  const docSlug = pathSegment?.at(-1);
+
   const result = await unified()
     .use(remarkParse, { fragment: true })
     .use(remarkGfm)
@@ -345,6 +358,7 @@ export async function getDocumentForPath({
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeFigure)
     .use(rehypeRaw)
+    .use(unwrapBlockComponents)
     .use(slug)
     .use(headingTree)
     .use(processPreTags)
@@ -353,7 +367,7 @@ export async function getDocumentForPath({
       Fragment,
       jsx,
       jsxs,
-      components: markdownComponents,
+      components: createMarkdownComponents(docSlug),
     } as Options)
     .process(markdownFile);
 

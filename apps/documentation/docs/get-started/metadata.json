@@ -1,0 +1,7 @@
+{
+  "type": "project",
+  "slug": "get-started",
+  "navOrder": 0,
+  "localeLabels": { "en": "Get Started" },
+  "localeIndexFiles": { "en": "network-canvas.en.mdx" }
+}

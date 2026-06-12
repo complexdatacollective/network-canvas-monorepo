@@ -1,0 +1,97 @@
+---
+title: Accounts & Security
+date: 12th June 2026
+navOrder: 3
+---
+
+Fresco protects the researcher dashboard with one or more accounts. This guide covers signing in, adding team members, and
+securing accounts with passkeys and two-factor authentication.
+
+<TipBox>
+
+Multiple accounts, passkeys, and two-factor authentication require **Fresco v4 or later**.
+Earlier versions supported only a single password-protected account.
+
+</TipBox>
+
+## Signing in
+
+Sign in from the dashboard login screen with your username and password (or passkey). If
+two-factor authentication is enabled, you will then be prompted for a 6-digit code from
+your authenticator app (or a recovery code). Repeated failed attempts are rate-limited.
+
+## Changing your password
+
+To change your password, open **Settings → User Management → Change Password**, enter your
+current password, then set and confirm a new one. New passwords must be at least 8
+characters and include a lowercase letter, an uppercase letter, a number, and a symbol.
+
+If your account uses a passkey instead of a password, there is no password to change.
+
+## Adding team members
+
+<TipBox danger>
+
+**All Fresco accounts are equal.** There are no roles or permission tiers: every account
+is a full administrator with complete access to all data, and can create or delete other
+accounts. Only create accounts for people you trust with the entire study.
+
+</TipBox>
+
+Give each person their own account rather than sharing credentials. Open **Settings → User
+Management**, click **Add User**, and set a username and initial password (the new user can
+switch to a passkey afterwards). Select accounts and delete them to remove users.
+
+You cannot delete your own account while signed in to it, and at least one account must
+always remain.
+
+![The User Management screen, showing the signed-in account's passkeys and the All Users table.](/assets/img/fresco-images/user-management.png)
+
+## Passkeys
+
+A passkey lets you sign in using your device's biometrics (Touch ID, Windows Hello) or a
+hardware security key instead of a password. It can be an account's primary sign-in method
+or a second factor alongside a password.
+
+From **Settings**, use **Add passkey** to register one (you can register more than one and
+name each), or **Remove** to delete one. An account can also **Switch to Passkey
+Authentication** or **Switch to Password Authentication** at any time.
+
+## Two-factor authentication
+
+Two-factor authentication adds a one-time code on top of your password. Fresco uses standard
+TOTP, compatible with apps such as Google Authenticator, 1Password, and Authy.
+
+Open **Settings → Two-Factor Authentication**, scan the QR code into your authenticator app,
+and enter the current code to confirm. You will then be asked for a code each time you sign
+in. When you enable it, Fresco gives you single-use **recovery codes** to sign in if you
+lose your authenticator device.
+
+<TipBox danger>
+
+Store your recovery codes somewhere safe and separate from your authenticator device, such
+as an institutional password manager. You can regenerate a fresh set at any time, which
+invalidates the previous codes.
+
+</TipBox>
+
+## Recovering access
+
+Fresco has **no email-based "forgot password" flow**. You can only [change your
+password](#changing-your-password) while signed in. If you are locked out, your options, in
+order of preference, are:
+
+1. **Use a recovery code** to sign in (if two-factor authentication was enabled).
+2. **Ask another administrator** to **Reset Auth** for your account from User Management.
+   This clears your existing passkeys and two-factor authentication and gives the
+   administrator a temporary password to pass to you, which you use to sign back in and set
+   up new credentials.
+3. As a last resort, if every account is inaccessible and no recovery codes remain,
+   [reset your database](/en/collect-data/fresco/deployment/troubleshooting#instance-expired---reset-your-database).
+   **This destroys all data and unexported interviews.**
+
+Because of this, keep your credentials and recovery codes somewhere safe and enrol more than
+one administrator, so a second person can always restore access.
+
+For how authentication works at the infrastructure level (session cookies, encryption, rate
+limiting), see the [FAQ for IT Departments](/en/collect-data/fresco/deployment/it-faq).

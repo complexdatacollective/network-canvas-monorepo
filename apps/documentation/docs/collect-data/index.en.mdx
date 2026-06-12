@@ -1,0 +1,34 @@
+---
+title: Collecting Data in Network Canvas
+navOrder: 0
+---
+
+Once your protocol is built, you run it to collect data. Network Canvas offers two applications for this: **Interviewer**, the desktop and tablet app for in-person, interviewer-assisted interviews, and **Fresco**, which lets participants complete interviews remotely in a web browser. The main difference is where the interview happens and who is in control. Which app can run a given protocol also depends on its schema version — see [App compatibility by schema version](/en/get-started/release-announcements). The table below compares them.
+
+<KeyConcept title="Not sure which to use?">
+
+Choose **Interviewer** for in-person interviews guided by a trained interviewer on a device you control.
+
+Choose **Fresco** if you need participants to complete interviews remotely, in their own browser, and you can host the app yourself.
+
+</KeyConcept>
+
+<KeyConcept title="Interviewer 6.x and Interviewer 8">
+
+Interviewer comes in two versions, and both are supported — you can install them side by side and use whichever suits your study:
+
+- **Interviewer 6.x** — the established desktop and tablet app. Runs schema 7 protocols, works fully offline, and isn't going away.
+- **Interviewer 8** (beta) — built on the same new platform as Fresco 4.0, so it gains the improved interview experience, data export, and other enhancements. It supports **schema 8** and is compatible with all your existing protocols. Because some schema-8 interfaces (such as [Geospatial](/en/design-protocols/interface-documentation/geospatial)) need an internet connection, fully offline data collection isn't always possible. **Recommended for all new studies.**
+
+</KeyConcept>
+
+|                                   | [Interviewer](/en/collect-data/interviewer)                                                                                                                               | [Fresco](/en/collect-data/fresco/about)                                                             |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Runs on                           | Desktop & tablet app                                                                                                                                                      | Web browser (desktop or laptop — not mobile)                                                        |
+| Setup                             | [Download and install](/en/get-started/downloading-desktop-software) on each device                                                                                       | [Deploy and host your own instance](/en/collect-data/fresco/deployment/guide)                       |
+| How interviews happen             | In person, guided by a trained interviewer on a controlled device                                                                                                         | Remotely — participants visit a URL and complete it themselves                                      |
+| Connectivity                      | 6.x works fully offline; 8 is offline-capable, but some schema-8 interfaces (e.g. [Geospatial](/en/design-protocols/interface-documentation/geospatial)) require internet | Requires internet; runs on a server                                                                 |
+| Where data lives                  | On the device, exported as files you transfer yourself                                                                                                                    | In a database on your server, exported from the dashboard                                           |
+| Protocol & participant management | Per device, via file or URL import                                                                                                                                        | Centralized web dashboard                                                                           |
+| Best for                          | In-person, interviewer-assisted studies; offline settings                                                                                                                 | Remote data collection and centralized study management                                             |
+| Status                            | 6.x stable and supported; 8 in beta                                                                                                                                       | Pilot project — supported, with some [limitations](/en/collect-data/fresco/about#known-limitations) |

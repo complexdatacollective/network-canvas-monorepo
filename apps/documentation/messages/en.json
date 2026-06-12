@@ -1,12 +1,20 @@
 {
   "ProjectSwitcher": {
-    "fresco": {
-      "label": "Fresco",
-      "description": "A new project that brings Network Canvas interviews to the web browser."
+    "get-started": {
+      "label": "Get Started",
+      "description": "Install the software and learn about Network Canvas."
     },
-    "desktop": {
-      "label": "Desktop Suite",
-      "description": "The traditional Network Canvas suite of desktop and tablet applications (Architect and Interviewer)."
+    "design-protocols": {
+      "label": "Design Protocols",
+      "description": "Build interview protocols in Architect Web or Architect Desktop."
+    },
+    "collect-data": {
+      "label": "Collect Data",
+      "description": "Run your protocol and collect data with Interviewer or Fresco."
+    },
+    "analyze-data": {
+      "label": "Analyze Data",
+      "description": "Export and analyze the network data your interviews produce."
     },
     "studio": {
       "label": "Studio",
