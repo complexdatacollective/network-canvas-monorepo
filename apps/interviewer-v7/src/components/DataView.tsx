@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, useSearch } from 'wouter';
 
 import Button from '@codaco/fresco-ui/Button';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
@@ -36,6 +36,16 @@ import {
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import { useToast } from '@codaco/fresco-ui/Toast';
+import {
+  parseDataViewSearch,
+  readBoolean,
+  readDateRange,
+  readStatusArray,
+  readString,
+  readStringArray,
+  serializeDataViewState,
+  SORT_COLUMN_BY_ID,
+} from '~/components/dataViewUrlState';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
 import {
@@ -50,7 +60,6 @@ import type {
   ProtocolWithCounts,
   SessionQueryParams,
   SessionSortColumn,
-  SessionStatusKind,
   StoredSessionLite,
 } from '~/lib/db/types';
 import {
@@ -163,50 +172,6 @@ const bannerVariants = {
   exit: { opacity: 0, height: 0, transition: { duration: 0.15 } },
 } as const;
 
-function readDateRange(
-  value: unknown,
-): { from: string; to: string } | undefined {
-  if (typeof value !== 'object' || value === null) return undefined;
-  if (!('from' in value) || !('to' in value)) return undefined;
-  if (typeof value.from !== 'string' || typeof value.to !== 'string') {
-    return undefined;
-  }
-  return { from: value.from, to: value.to };
-}
-
-function readStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((v): v is string => typeof v === 'string');
-}
-
-function readStatusArray(value: unknown): SessionStatusKind[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter(
-    (v): v is SessionStatusKind =>
-      v === 'in-progress' || v === 'complete' || v === 'exported',
-  );
-}
-
-function readBoolean(value: unknown): boolean | undefined {
-  return typeof value === 'boolean' ? value : undefined;
-}
-
-function readString(value: unknown): string {
-  return typeof value === 'string' ? value : '';
-}
-
-// Tanstack column IDs use 'updatedAt'/'exportedAt' for ergonomics; the server
-// column names need 'updatedAt'/'exportedAt' too — they happen to match here,
-// so the mapping is direct.
-const SORT_COLUMN_BY_ID: Record<string, SessionSortColumn> = {
-  caseId: 'caseId',
-  protocolName: 'protocolName',
-  startedAt: 'startedAt',
-  updatedAt: 'updatedAt',
-  progress: 'progress',
-  exportedAt: 'exportedAt',
-};
-
 function isRowSelected(selection: Selection, id: string): boolean {
   if (selection.mode === 'none') return false;
   if (selection.mode === 'page') return selection.ids.has(id);
@@ -314,13 +279,20 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
   const dialog = useDialog();
   const analytics = useAnalytics();
   const { requireFreshUnlock } = useStepUpAuth();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const searchString = useSearch();
+  // The URL is the deep-link input: parse it once on mount (e.g. arriving
+  // via a deck card's interviews link). After that, state flows one way —
+  // state → URL — in the effect below.
+  const [initialUrlState] = useState(() => parseDataViewSearch(searchString));
   const [selection, setSelection] = useState<Selection>({ mode: 'none' });
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [globalFilter, setGlobalFilter] = useState('');
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: 'updatedAt', desc: true },
-  ]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(
+    initialUrlState.columnFilters,
+  );
+  const [globalFilter, setGlobalFilter] = useState(
+    initialUrlState.globalFilter,
+  );
+  const [sorting, setSorting] = useState<SortingState>(initialUrlState.sorting);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -333,6 +305,25 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
+
+  // Mirror sort + filter state into the query string so the view is
+  // shareable and survives a reload. Replace rather than push: filter tweaks
+  // shouldn't pile up history entries. searchString is a dependency so an
+  // outside navigation to a different query (e.g. re-clicking the Data tab,
+  // which goes to a bare /data) gets the state re-imposed on the URL. The
+  // location guard keeps the exit animation (this component stays mounted
+  // briefly after navigating away) from yanking the URL back to /data.
+  useEffect(() => {
+    if (location !== '/data') return;
+    const search = serializeDataViewState({
+      globalFilter,
+      columnFilters,
+      sorting,
+    });
+    navigate(search.length > 0 ? `/data?${search}` : '/data', {
+      replace: true,
+    });
+  }, [columnFilters, globalFilter, sorting, location, navigate, searchString]);
 
   // Derive server query params from the UI state. Column filter values are
   // unknown by Tanstack contract; pull each one through a typed reader so we
