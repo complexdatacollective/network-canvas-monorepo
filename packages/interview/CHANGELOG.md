@@ -1,5 +1,17 @@
 # @codaco/interview
 
+## 1.0.2
+
+### Patch Changes
+
+- 5af36c5: Fix the navigation bar disappearing off-screen when the browser is resized
+  smaller while a Geospatial stage is open. The Mapbox canvas participates in
+  layout flow (the package doesn't ship Mapbox's stylesheet), so a stale,
+  oversized canvas was forcing the stage wider than the viewport. The map now
+  resizes with its container via a `ResizeObserver`, the map container clips its
+  overflow, and the stage flex item can shrink horizontally (`min-w-0`).
+- 818bbe1: Respect the codebook node shape everywhere nodes are rendered: per-alter and per-alter-edge form headers no longer force a circle, the categorical bin "specify other" dialog, the roster drag preview, and the roster drop overlay now resolve the node shape, and the quick-add toggle previews the shape of the node being created.
+
 ## 1.0.1
 
 ### Patch Changes

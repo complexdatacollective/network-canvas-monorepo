@@ -1,5 +1,12 @@
 # @codaco/fresco-ui
 
+## 2.13.1
+
+### Patch Changes
+
+- d3481c5: Fix diamond-shaped nodes rendering with an offset visual center. The diamond's `rotate`/`scale` was applied to the Node's root element, where it composed with inline `transform` positioning (sociogram centering) and motion layout projection — shifting edge endpoints away from the node center, making dragged nodes jump under the cursor, and breaking layout animations (OneToManyDyadCensus, NodeDrawer). The shape transform now lives on an inner background layer, keeping the root element transform-free.
+- 164c2dc: Fix `RichSelectGroup` option cards not filling the container width when a `horizontal` group wraps onto multiple lines. Wrapped cards now `grow` to the full width of their line, so every option reaches the container edge regardless of how long its description is. Cards that share a line in a content-sized group are unaffected.
+
 ## 2.13.0
 
 ### Minor Changes
