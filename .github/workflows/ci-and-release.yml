@@ -42,6 +42,7 @@ jobs:
       fresco_ui_storybook: ${{ steps.flags.outputs.fresco_ui_storybook }}
       interview_storybook: ${{ steps.flags.outputs.interview_storybook }}
       interview_e2e: ${{ steps.flags.outputs.interview_e2e }}
+      interface_images: ${{ steps.flags.outputs.interface_images }}
       interviewer_v7_changeset: ${{ steps.flags.outputs.interviewer_v7_changeset }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -112,6 +113,7 @@ jobs:
           web=$(flag networkcanvas.com)
           fui=$(flag @codaco/fresco-ui)
           intv=$(flag @codaco/interview)
+          ifimg=$(flag @codaco/interface-images)
           any_app=false
           if [[ "$docs" == "true" || "$arch" == "true" || "$web" == "true" ]]; then any_app=true; fi
 
@@ -142,6 +144,7 @@ jobs:
             echo "fresco_ui_storybook=$fui"
             echo "interview_storybook=$intv"
             echo "interview_e2e=$intv"
+            echo "interface_images=$ifimg"
             echo "interviewer_v7_changeset=$interviewer_v7_changeset"
           } >> "$GITHUB_OUTPUT"
 
@@ -652,6 +655,53 @@ jobs:
         # chromatic re-runs `pnpm build-storybook` into a tmp dir and the
         # turbo cache savings evaporate.
         run: npx --yes chromatic --exit-once-uploaded --auto-accept-changes main --storybook-build-dir=storybook-static
+
+  # Staleness gate for the generated interface screenshots in
+  # @codaco/interface-images. Runs inside the pinned Playwright image (the
+  # same one the interview e2e suite uses) so font rendering matches the
+  # canonical environment, regenerates via the turbo task (cache hit when
+  # nothing in the interview/fresco-ui dep tree changed), and fails when the
+  # committed images differ. The generator's perceptual-diff churn guard
+  # keeps visually-identical regenerations byte-stable.
+  interface-images-check:
+    needs: [quality, detect]
+    # See chromatic-fresco-ui: `quality` orders this job for cache reuse only;
+    # `!cancelled()` keeps a quality failure from cascade-skipping a flagged run.
+    if: ${{ !cancelled() && needs.detect.outputs.interface_images == 'true' }}
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble
+    timeout-minutes: 30
+    env:
+      STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - name: Regenerate interface screenshots
+        run: pnpm exec turbo run generate --filter=@codaco/interface-images
+      - name: Check committed images are current
+        run: |
+          if ! git diff --exit-code -- packages/interface-images/src/generated; then
+            echo "::error::Interface screenshots are stale. Run 'pnpm generate:interface-images' locally and commit the result."
+            exit 1
+          fi
+      - name: Upload regenerated images
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: regenerated-interface-images
+          path: packages/interface-images/src/generated/
+          retention-days: 14
 
   interview-e2e:
     needs: [quality, detect]

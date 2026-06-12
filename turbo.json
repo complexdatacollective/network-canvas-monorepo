@@ -168,6 +168,12 @@
       ],
       "outputs": ["out/**", "dist/**"]
     },
+    "@codaco/interface-images#generate": {
+      "dependsOn": ["@codaco/interview#build-storybook"],
+      "inputs": ["scripts/**", "package.json"],
+      "env": ["STORYBOOK_MAPBOX_TOKEN"],
+      "outputs": ["src/generated/**"]
+    },
     "build-storybook": {
       "dependsOn": ["^build"],
       "inputs": [
@@ -177,7 +183,7 @@
         "package.json",
         "tsconfig*.json"
       ],
-      "env": ["NODE_ENV"],
+      "env": ["NODE_ENV", "STORYBOOK_MAPBOX_TOKEN"],
       "outputs": ["storybook-static/**"]
     },
     "storybook": {

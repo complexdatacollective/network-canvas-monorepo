@@ -48,10 +48,10 @@
 - Modify: `packages/interview/src/Shell.tsx`
 - Modify: `packages/interview/.storybook/StoryInterviewShell.tsx`
 
-- [ ] Add `hideNavigation?: boolean` (default `false`) to `ShellProps`, threaded into the internal `Interview` component; when set, skip rendering `<Navigation …/>` (Shell.tsx ~line 134). The toast viewport and providers are unaffected.
-- [ ] Thread `hideNavigation` through `StoryInterviewShell` props to `Shell`.
-- [ ] Verify in Storybook that an existing story with `hideNavigation` renders the stage full-bleed with no nav rail in either orientation.
-- [ ] `pnpm typecheck`, `pnpm --filter @codaco/interview test`.
+- [x] Add `hideNavigation?: boolean` (default `false`) to `ShellProps`, threaded into the internal `Interview` component; when set, skip rendering `<Navigation …/>` (Shell.tsx ~line 134). The toast viewport and providers are unaffected.
+- [x] Thread `hideNavigation` through `StoryInterviewShell` props to `Shell`.
+- [x] Verify in Storybook that an existing story with `hideNavigation` renders the stage full-bleed with no nav rail in either orientation.
+- [x] `pnpm typecheck`, `pnpm --filter @codaco/interview test`.
 
 ### Task 2: Capture story convention + first two capture stories
 
@@ -61,7 +61,7 @@
 - Create: `packages/interview/src/interfaces/NameGenerator/NameGeneratorQuickAdd.capture.stories.tsx`
 - Create: `packages/interview/src/types/capture.ts` (the `parameters.capture` type, exported for the runner)
 
-- [ ] Define the capture parameters contract:
+- [x] Define the capture parameters contract:
 
 ```ts
 export type CaptureParameters = {
@@ -78,17 +78,17 @@ export type CaptureParameters = {
 };
 ```
 
-- [ ] Write `Sociogram.capture.stories.tsx`: reuse `createSociogramInterview` with a hand-picked seed, `currentStep: 1`, `hideNavigation`, `tags: ['capture']`, `parameters: { layout: 'fullscreen', capture: { interface: 'Sociogram' } }`. Exactly one story export per capture file (`export const Capture`). This is the template every other interface copies.
-- [ ] Write the NameGeneratorQuickAdd capture story (NameGenerator stage with `quickAdd` config — first story for this interface; seed data so several nodes are visible).
-- [ ] Verify both render nav-free in Storybook and appear under tag `capture` in `storybook-static/index.json` after `pnpm --filter @codaco/interview build-storybook`.
+- [x] Write `Sociogram.capture.stories.tsx`: reuse `createSociogramInterview` with a hand-picked seed, `currentStep: 1`, `hideNavigation`, `tags: ['capture']`, `parameters: { layout: 'fullscreen', capture: { interface: 'Sociogram' } }`. Exactly one story export per capture file (`export const Capture`). This is the template every other interface copies.
+- [x] Write the NameGeneratorQuickAdd capture story (NameGenerator stage with `quickAdd` config — first story for this interface; seed data so several nodes are visible).
+- [x] Verify both render nav-free in Storybook and appear under tag `capture` in `storybook-static/index.json` after `pnpm --filter @codaco/interview build-storybook`.
 
 ### Task 3: Capture stories for the remaining 15 interfaces
 
 **Files:** `packages/interview/src/interfaces/<Name>/<Name>.capture.stories.tsx` × 15
 
-- [ ] One per interface, reusing each interface's existing story builders. **This is the case-by-case curation point**: choose seeds, node counts, names, and stage config so each screenshot presents well — these become the public face of each interface. Tune at all three ratios.
-- [ ] Geospatial: wire the token from `import.meta.env.VITE_MAPBOX_TOKEN` into the apikey asset; set `capture: { interface: 'Geospatial', delay: 3000, env: ['VITE_MAPBOX_TOKEN'] }`.
-- [ ] Checklist: AlterEdgeForm, AlterForm, Anonymisation, CategoricalBin, DyadCensus, EgoForm, FamilyPedigree, Geospatial, Information, NameGeneratorRoster, Narrative, OneToManyDyadCensus, OrdinalBin, TieStrengthCensus, NameGenerator (plain).
+- [x] One per interface, reusing each interface's existing story builders. **This is the case-by-case curation point**: choose seeds, node counts, names, and stage config so each screenshot presents well — these become the public face of each interface. Tune at all three ratios.
+- [x] Geospatial: wire the token from `import.meta.env.VITE_MAPBOX_TOKEN` into the apikey asset; set `capture: { interface: 'Geospatial', delay: 3000, env: ['VITE_MAPBOX_TOKEN'] }`.
+- [x] Checklist: AlterEdgeForm, AlterForm, Anonymisation, CategoricalBin, DyadCensus, EgoForm, FamilyPedigree, Geospatial, Information, NameGeneratorRoster, Narrative, OneToManyDyadCensus, OrdinalBin, TieStrengthCensus, NameGenerator (plain).
 
 ### Task 4: `@codaco/interface-images` package skeleton
 
@@ -122,8 +122,8 @@ export type CaptureParameters = {
 }
 ```
 
-- [ ] Package ships **untranspiled TSX** (like a source-shipping internal package): architect-web's Vite consumes it directly; documentation adds `transpilePackages: ['@codaco/interface-images']` in `next.config.ts`.
-- [ ] `InterfacePicture` component API:
+- [x] Package ships **untranspiled TSX** (like a source-shipping internal package): architect-web's Vite consumes it directly; documentation adds `transpilePackages: ['@codaco/interface-images']` in `next.config.ts`.
+- [x] `InterfacePicture` component API:
 
 ```tsx
 type InterfacePictureProps = {
@@ -141,7 +141,7 @@ type InterfacePictureProps = {
 
 Renders `<picture>` with one `<source type="image/webp" media? srcSet sizes>` per art-direction entry (plus the base ratio), and an `<img>` fallback using the base ratio's largest variant with explicit `width`/`height` so space is always reserved (no layout shift — same fix as architect-web's timeline).
 
-- [ ] Unit-test the rendered markup with Vitest + testing-library (srcset string, width/height presence, art-direction source order).
+- [x] Unit-test the rendered markup with Vitest + testing-library (srcset string, width/height presence, art-direction source order).
 
 ### Task 5: Capture runner + sharp pipeline
 
@@ -153,10 +153,10 @@ Renders `<picture>` with one `<source type="image/webp" media? srcSet sizes>` pe
 - Create: `packages/interface-images/scripts/config.mts` (ratios, viewports, widths, quality, diff threshold)
 - Output (committed): `packages/interface-images/src/generated/assets/<Interface>.<ratio>.<width>.webp`, `packages/interface-images/src/generated/manifest.ts`
 
-- [ ] **capture.mts**: statically serve `packages/interview/storybook-static`; read `index.json`; select stories tagged `capture` (error on duplicate `parameters.capture.interface`, warn on interfaces with no capture story); for each story × ratio: launch chromium with the ratio's viewport, `deviceScaleFactor: 2`, `reducedMotion: 'reduce'`, `timezoneId`/`locale` pinned; `goto iframe.html?id=<storyId>&viewMode=story`; wait for network idle + `capture.delay`; full-viewport PNG to a temp dir (masters are not committed).
-- [ ] **process.mts**: for each master, sharp-resize to the ratio's shipped widths, encode WebP (quality 82). **Churn guard**: decode the freshly-encoded variant and the committed variant, pixel-diff (e.g. `pixelmatch`); overwrite only if >0.1% of pixels differ (Geospatial: 2%). Delete committed variants whose story/ratio no longer exists.
-- [ ] **manifest generation**: emit `src/generated/manifest.ts` — per interface, per ratio: `{ width, height, srcSet: [{ w, url: new URL('./assets/….webp', import.meta.url).href }] }`, plus a derived `InterfaceType` union. The file carries a "generated — do not edit" header. (Single-module manifest is acceptable: consumers like the architect-web timeline need the full map anyway, and unreferenced emitted assets are static files that are never downloaded unless used.)
-- [ ] Add generated paths to oxlint/oxfmt ignores and configure knip so generated manifest + assets aren't flagged.
+- [x] **capture.mts**: statically serve `packages/interview/storybook-static`; read `index.json`; select stories tagged `capture` (error on duplicate `parameters.capture.interface`, warn on interfaces with no capture story); for each story × ratio: launch chromium with the ratio's viewport, `deviceScaleFactor: 2`, `reducedMotion: 'reduce'`, `timezoneId`/`locale` pinned; `goto iframe.html?id=<storyId>&viewMode=story`; wait for network idle + `capture.delay`; full-viewport PNG to a temp dir (masters are not committed).
+- [x] **process.mts**: for each master, sharp-resize to the ratio's shipped widths, encode WebP (quality 82). **Churn guard**: decode the freshly-encoded variant and the committed variant, pixel-diff (e.g. `pixelmatch`); overwrite only if >0.1% of pixels differ (Geospatial: 2%). Delete committed variants whose story/ratio no longer exists.
+- [x] **manifest generation**: emit `src/generated/manifest.ts` — per interface, per ratio: `{ width, height, srcSet: [{ w, url: new URL('./assets/….webp', import.meta.url).href }] }`, plus a derived `InterfaceType` union. The file carries a "generated — do not edit" header. (Single-module manifest is acceptable: consumers like the architect-web timeline need the full map anyway, and unreferenced emitted assets are static files that are never downloaded unless used.)
+- [x] Add generated paths to oxlint/oxfmt ignores and configure knip so generated manifest + assets aren't flagged.
 
 ### Task 6: Turbo wiring + Docker wrapper
 
@@ -166,7 +166,7 @@ Renders `<picture>` with one `<source type="image/webp" media? srcSet sizes>` pe
 - Create: `packages/interface-images/scripts/run-docker.sh` (mirrors `packages/interview/e2e/scripts/run.sh`: pinned `mcr.microsoft.com/playwright:v1.60.0-noble`, named node_modules volume, runs the turbo task inside)
 - Modify: root `package.json` (`"generate:interface-images": "packages/interface-images/scripts/run-docker.sh"`)
 
-- [ ] turbo task:
+- [x] turbo task:
 
 ```jsonc
 "@codaco/interface-images#generate": {
@@ -179,7 +179,7 @@ Renders `<picture>` with one `<source type="image/webp" media? srcSet sizes>` pe
 
 This is the regeneration trigger chain: `generate` → `@codaco/interview#build-storybook` (inputs: `src/**`, `.storybook/**`) → `^build` → `@codaco/fresco-ui#build`. **Any change to an interface, a capture story, or fresco-ui changes the hash and invalidates `generate`**; an unchanged tree is a cache hit / no-op.
 
-- [ ] Document in the package README: regeneration must run via the Docker wrapper for committable output; bare `pnpm --filter @codaco/interface-images generate` is for local iteration only (host fonts make output non-canonical).
+- [x] Document in the package README: regeneration must run via the Docker wrapper for committable output; bare `pnpm --filter @codaco/interface-images generate` is for local iteration only (host fonts make output non-canonical).
 
 ### Task 7: CI staleness gate
 
@@ -187,9 +187,9 @@ This is the regeneration trigger chain: `generate` → `@codaco/interview#build-
 
 - Create/modify: GitHub Actions workflow (e.g. `.github/workflows/interface-images.yml`)
 
-- [ ] Job runs on PRs touching `packages/interview/**`, `packages/fresco-ui/**`, or `packages/interface-images/**`; container `mcr.microsoft.com/playwright:v1.60.0-noble`; `VITE_MAPBOX_TOKEN` from secrets; steps: pnpm install → `turbo run generate --filter=@codaco/interface-images` → `git diff --exit-code packages/interface-images/src/generated`.
-- [ ] On failure: upload the regenerated images as a workflow artifact and print "images are stale — run `pnpm generate:interface-images` and commit". (Fail-the-check is chosen over auto-commit so a human approves visual changes; revisit if it becomes friction.)
-- [ ] Turbo remote cache makes the green path cheap: unchanged inputs → cache hit → diff is trivially clean.
+- [x] Job runs on PRs touching `packages/interview/**`, `packages/fresco-ui/**`, or `packages/interface-images/**`; container `mcr.microsoft.com/playwright:v1.60.0-noble`; `VITE_MAPBOX_TOKEN` from secrets; steps: pnpm install → `turbo run generate --filter=@codaco/interface-images` → `git diff --exit-code packages/interface-images/src/generated`.
+- [x] On failure: upload the regenerated images as a workflow artifact and print "images are stale — run `pnpm generate:interface-images` and commit". (Fail-the-check is chosen over auto-commit so a human approves visual changes; revisit if it becomes friction.)
+- [x] Turbo remote cache makes the green path cheap: unchanged inputs → cache hit → diff is trivially clean.
 
 ### Task 8: Consumer migration
 
@@ -199,10 +199,25 @@ This is the regeneration trigger chain: `generate` → `@codaco/interview#build-
 - Delete: `apps/architect-web/src/images/timeline/stage--*.webp` and the image map in `index.ts` (keep `Default`, `filter-icon.svg`, `skip-logic-icon.svg`)
 - Modify: `apps/documentation/next.config.ts` (+ MDX/components where interface screenshots appear)
 
-- [ ] architect-web: add `@codaco/interface-images` (workspace:\*); timeline renders `<InterfacePicture type={stage.type} ratio="4:3" sizes="14rem" …/>` with a `Default` fallback for unknown types; preload helper switches to the manifest's smallest 4:3 variants. Width/height handling moves into the component (supersedes the hand-maintained dimension table from the previous change).
-- [ ] documentation: `transpilePackages: ['@codaco/interface-images']`; replace the per-interface hero screenshots under `public/assets/img/interface-documentation/*/` with `InterfacePicture` (art-directed: 1:1 below `40rem`, 16:9 above). Step-by-step UI screenshots (e.g. `upload-api-key.png`) are out of scope — they show workflows, not interfaces.
-- [ ] Full gate: `pnpm lint:fix && pnpm typecheck && pnpm test && pnpm knip`, plus production builds of architect-web and documentation.
+- [x] architect-web: add `@codaco/interface-images` (workspace:\*); timeline renders `<InterfacePicture type={stage.type} ratio="4:3" sizes="14rem" …/>` with a `Default` fallback for unknown types; preload helper switches to the manifest's smallest 4:3 variants. Width/height handling moves into the component (supersedes the hand-maintained dimension table from the previous change).
+- [x] documentation: `transpilePackages: ['@codaco/interface-images']`; replace the per-interface hero screenshots under `public/assets/img/interface-documentation/*/` with `InterfacePicture` (art-directed: 1:1 below `40rem`, 16:9 above). Step-by-step UI screenshots (e.g. `upload-api-key.png`) are out of scope — they show workflows, not interfaces.
+- [x] Full gate: `pnpm lint:fix && pnpm typecheck && pnpm test && pnpm knip`, plus production builds of architect-web and documentation.
 
 ---
 
 **Sequencing:** Tasks 1→2 unblock everything; 4→5→6 can proceed in parallel with 3 (the runner is testable with just the two template stories); 7 after 6; 8 last. Task 3 is the long tail and is intentionally curation-heavy.
+
+---
+
+## Completion notes (2026-06-12)
+
+Implemented in full, with these deviations from the plan as written:
+
+1. **`CaptureParameters` lives in `packages/interview/.storybook/CaptureStory.tsx`** (colocated with the shared capture render wrapper) rather than `src/types/capture.ts`; the runner keeps its own structural copy since `parameters.capture` crosses the package boundary as JSON.
+2. **Story enumeration uses `__STORYBOOK_PREVIEW__.extract()`** in the live preview (the way Storybook's test-runner does) because `index.json` carries tags but not parameters.
+3. **New `advance` capture parameter** (with a `showNavigation` prop on CaptureStory): interfaces with an internal introduction step (DyadCensus, TieStrengthCensus, AlterForm, AlterEdgeForm) render with the navigation mounted, the runner clicks Next N times, then removes the navigation from the DOM before screenshotting.
+4. **Capture stories render with `isDevelopment: false`** so dev-only UI (FamilyPedigree's Dump/Load buttons) never appears in screenshots.
+5. **The Mapbox env var is `STORYBOOK_MAPBOX_TOKEN`** (matching the existing Geospatial stories), not `VITE_MAPBOX_TOKEN`. The committed Geospatial baseline was generated without a token (blank map); once the secret is provided to CI/local regeneration the images upgrade automatically and surface as a normal staleness diff.
+6. **Anonymisation has a 0.25 diff threshold** — its animated canvas background never settles, so the churn guard must tolerate background drift.
+7. **Documentation migration**: the `desktop` docs tree depicts the legacy v6 apps, so its hand-shot images were left alone. Instead, an `interfacepicture` MDX component (wrapping `InterfacePicture`) was registered in `lib/docs.tsx` for use in new content.
+8. **Known curation follow-up**: FamilyPedigree captures its scaffolding introduction screen (populating a believable pedigree requires interaction beyond Next-clicks); the committed baseline was generated outside the pinned Docker image, so the first `pnpm generate:interface-images` run in Docker may rewrite baselines once.

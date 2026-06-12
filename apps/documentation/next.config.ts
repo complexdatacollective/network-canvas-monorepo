@@ -15,6 +15,8 @@ const isProduction =
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: 'export',
+  // Ships untranspiled TSX + assets referenced via new URL(..., import.meta.url)
+  transpilePackages: ['@codaco/interface-images'],
   images: {
     unoptimized: true,
   },

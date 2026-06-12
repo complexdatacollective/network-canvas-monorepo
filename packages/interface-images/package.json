@@ -1,0 +1,31 @@
+{
+  "name": "@codaco/interface-images",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Generated screenshots of Network Canvas interview interfaces, with React components for responsive display",
+  "type": "module",
+  "exports": {
+    "./InterfacePicture": "./src/InterfacePicture.tsx",
+    "./manifest": "./src/generated/manifest.ts"
+  },
+  "scripts": {
+    "generate": "node scripts/generate.mts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@codaco/tsconfig": "workspace:*",
+    "@testing-library/react": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "jsdom": "catalog:",
+    "playwright": "catalog:",
+    "react-dom": "catalog:",
+    "sharp": "^0.35.1",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "catalog:"
+  }
+}

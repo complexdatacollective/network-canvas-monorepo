@@ -1,4 +1,3 @@
-import { get } from 'es-toolkit/compat';
 import { Plus } from 'lucide-react';
 import { motion, Reorder, useReducedMotion, type Variants } from 'motion/react';
 import { useCallback, useRef, useState } from 'react';
@@ -12,7 +11,6 @@ import {
 } from '~/ducks/modules/dialogs';
 import { actionCreators as stageActions } from '~/ducks/modules/protocol/stages';
 import { useRunOnce } from '~/hooks/useRunOnce';
-import timelineImages from '~/images/timeline';
 import filterIcon from '~/images/timeline/filter-icon.svg';
 import skipLogicIcon from '~/images/timeline/skip-logic-icon.svg';
 import { Button } from '~/lib/legacy-ui/components';
@@ -20,10 +18,8 @@ import { getStageList } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 
 import NewStageScreen from '../Screens/NewStageScreen';
+import StageTypeImage from '../StageTypeImage';
 import InsertButton from './InsertButton';
-
-const getTimelineImage = (type: string) =>
-  get(timelineImages, type, timelineImages.Default);
 
 const timelineContainerVariants: Variants = {
   hidden: {},
@@ -160,7 +156,6 @@ const Timeline = () => {
           variants={timelineContainerVariants}
         >
           {stages.flatMap((stage, index) => {
-            const image = getTimelineImage(stage.type);
             return [
               <InsertButton
                 key={`insert_${stage.id}`}
@@ -185,14 +180,14 @@ const Timeline = () => {
                   }
                 }}
               >
-                <img
-                  className="pointer-events-none w-56 justify-self-end rounded-xs shadow transition-transform duration-300 ease-in-out select-none group-hover:scale-105"
-                  src={image.src}
-                  width={image.width}
-                  height={image.height}
-                  alt={`${stage.type} interface`}
-                  title={`${stage.type} interface`}
-                />
+                <div className="justify-self-end">
+                  <StageTypeImage
+                    type={stage.type}
+                    ratio="4:3"
+                    sizes="14rem"
+                    className="pointer-events-none w-56 rounded-xs shadow transition-transform duration-300 ease-in-out select-none group-hover:scale-105"
+                  />
+                </div>
                 <div className="bg-timeline text-timeline-foreground flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110">
                   {index + 1}
                 </div>
