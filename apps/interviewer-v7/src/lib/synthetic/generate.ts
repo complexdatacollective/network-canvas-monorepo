@@ -40,7 +40,6 @@ export async function generateSyntheticSessions(
     const { network, stageMetadata, currentStep, droppedOut } = generateNetwork(
       protocol.codebook,
       protocol.protocol.stages,
-      undefined,
       genOptions,
     );
 
@@ -75,7 +74,6 @@ export async function generateSyntheticSessions(
         const { network, stageMetadata, currentStep } = generateNetwork(
           protocol.codebook,
           protocol.protocol.stages,
-          undefined,
           { ...genOptions, simulateDropOut: false },
         );
         await updateSession(row.sessionId, {
