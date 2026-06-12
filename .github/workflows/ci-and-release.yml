@@ -700,6 +700,10 @@ jobs:
         run: pnpm exec turbo run generate --filter=@codaco/interface-images
       - name: Check committed images are current
         run: |
+          # The container user doesn't own the bind-mounted workspace; without
+          # this, git's dubious-ownership protection refuses to discover the
+          # repo and `git diff` degrades into a --no-index usage error.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           if ! git diff --exit-code -- packages/interface-images/src/generated; then
             echo "::error::Interface screenshots are stale. Run 'pnpm generate:interface-images' locally and commit the result."
             exit 1
