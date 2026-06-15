@@ -1,8 +1,11 @@
 # Proposed Template Protocols for Architect
 
-> **Status:** Proposal for discussion. Five candidate template protocols to add to the
+> **Status:** Proposal for discussion. Six candidate template protocols to add to the
 > Architect "Use this template" library / Protocol Gallery, drawn from a review of the
 > social-network-analysis and public-health literature and an audit of the existing gallery.
+>
+> Each template is named for the **general method/construct it exemplifies** (not a single
+> study), and each is sketched as a sequence of **≥5 stages** using real schema-v8 stage types.
 >
 > **Audience:** Network Canvas team / protocol design leads.
 
@@ -10,397 +13,308 @@
 
 Network Canvas is an **interviewer-assisted, visual, _egocentric_ (personal-network)**
 data-collection suite: a respondent (ego) names network members (alters), reports attributes
-of each alter, and — where the design calls for it — reports the ties _among_ alters. This
-shapes what makes a good template: it must be expressible as a sequence of name generators,
-interpreters, and sociogram/visualisation stages, not as a whole-network roster of a closed
-population (though roster-based "lookup" designs are supported too).
+of each alter, and — where the design calls for it — reports the ties _among_ alters. A good
+template must therefore be expressible as a sequence of name generators, interpreters, and
+sociogram/visualisation stages.
 
-The software's primary users are **NIH-funded researchers** studying:
+The software's primary users are **NIH-funded researchers** studying disease spread, social
+contagion of health states/behaviours, and migrant-community integration. These six templates
+give those researchers credible, literature-aligned starting points to fork, while each
+showcases a distinct Network Canvas technique.
 
-- **disease spread** through social, behavioural, and physical-proximity ties;
-- **social contagion** of health states and behaviours (obesity, smoking, etc.);
-- **migrant / immigrant community** integration, support, and transnational ties.
+### 1.1 The proposed slate
 
-The goal of these templates is to give those researchers a credible, literature-aligned
-_starting point_ they can fork and adapt, while each template also showcases a distinct
-Network Canvas data-collection technique.
+| # | Template (general case) | Exemplar / population | Signature technique it showcases |
+|---|---|---|---|
+| 1 | **Transnational Networks** | Migrant / immigrant integration | `Geospatial` origin-mapping + paired host/transnational name generators |
+| 2 | **Mental Health Networks** | Support & strain in mental-health management | **Dual-tone** name generators (supportive *and* difficult ties) + disclosure mapping |
+| 3 | **Social Connection & Isolation** | Loneliness / ageing | Concentric `OrdinalBin` closeness + `EgoForm` with validated isolation/loneliness scales |
+| 4 | **Behavioural Influence Networks** | Health-behaviour contagion/diffusion (obesity, smoking/vaping, activity) | Multiplex behaviour-specific generators + ego/alter homophily capture |
+| 5 | **Care & Support Networks** | Functional support around a care episode (perinatal exemplar) | Function-typed support generators + `CategoricalBin` formal-vs-informal sources |
+| 6 | **Sexual & Injection Risk Networks** | HIV / STI / bloodborne transmission | Partnership enumeration with **start/end dates → concurrency** + `Anonymisation` |
 
-### 1.1 What the gallery already covers (audit)
+**How this fills gaps in the current gallery.** The existing gallery (Test-to-PrEP, JCOIN,
+GATE, KAYA, Sixhumene, ROBUST) is concentrated on HIV-testing/PrEP and substance use, with
+nothing for migration, mental health, ageing/loneliness, maternal/care support, or a reusable
+behavioural-influence design. Template 6 deliberately differs from **Test-to-PrEP** (which maps
+PrEP-information reach via a dyad census): it focuses on the ego's **partnership portfolio and
+transmission risk**, including partnership *timing* for concurrency. A respiratory
+contact-diary template (POLYMOD-style) remains a strong future addition but is out of scope for
+this slate per current priorities.
 
-From `protocolgallery.networkcanvas.com`:
+### 1.2 Capabilities these build on
 
-| Existing protocol | Domain | Signature technique |
-|---|---|---|
-| **Test-to-PrEP** | HIV testing / PrEP information reach | Dyad census over all alter pairs + per-alter edge forms |
-| **JCOIN** | Substance-use disorder, justice-involved | Support + drug-use network structure |
-| **GATE** | Opioid treatment, prison re-entry | Multiple name generators across relationship domains; ego–alter pair attributes |
-| **KAYA** | Dementia caregiving, rural South Africa | Side panels within successive name generators (reduce burden) |
-| **Sixhumene** | Youth sexual health, South Africa | Longitudinal lookup rosters; whole-network across 3 waves |
-| **ROBUST** | Obesity reduction via social ties | Narrative interface as a visualisation tool |
-
-**Coverage gaps.** The gallery is heavy on **HIV/STI** and **substance use** (3 of 6
-protocols) and on **sub-Saharan-African field studies**. It has **nothing** for:
-
-- **migrant / immigrant networks** — despite this being a named core user base;
-- **respiratory / airborne infectious-disease contact patterns** (the dominant paradigm
-  for transmission modelling since COVID-19);
-- **social isolation & loneliness in ageing** — a top-tier NIH/NIA and Surgeon-General
-  priority;
-- **maternal & perinatal** health and support — a flagship NIH equity priority;
-- a **reusable behavioural-contagion measurement design** that isn't tied to one behaviour
-  (ROBUST is specifically an obesity _intervention_ visualisation).
-
-The five proposals below target exactly these gaps.
-
-### 1.2 Network Canvas capabilities these proposals build on
-
-For reference, the stage types available in schema v8 (`packages/protocol-validation/src/schemas/8/stages/`)
-and used below:
-
-`EgoForm`, `Information`, `NameGenerator`, `NameGeneratorQuickAdd`, `NameGeneratorRoster`,
-`FamilyPedigree`, `DyadCensus`, `OneToManyDyadCensus`, `TieStrengthCensus`, `Sociogram`,
-`Narrative`, `OrdinalBin`, `CategoricalBin`, `AlterForm`, `AlterEdgeForm`, `Geospatial`,
-`Anonymisation`.
+Stage types (schema v8, `packages/protocol-validation/src/schemas/8/stages/`): `EgoForm`,
+`Information`, `NameGenerator`, `NameGeneratorQuickAdd`, `NameGeneratorRoster`, `FamilyPedigree`,
+`DyadCensus`, `OneToManyDyadCensus`, `TieStrengthCensus`, `Sociogram`, `Narrative`, `OrdinalBin`,
+`CategoricalBin`, `AlterForm`, `AlterEdgeForm`, `Geospatial`, `Anonymisation`.
 
 Variable types: `text`, `number`, `boolean`, `ordinal`, `categorical`, `datetime`, `scalar`,
-`layout`, `location`. Components include `Text`/`TextArea`, `Number`, `Boolean`/`Toggle`,
+`layout`, `location`. Components: `Text`/`TextArea`, `Number`, `Boolean`/`Toggle`,
 `RadioGroup`/`CheckboxGroup`/`ToggleButtonGroup`, `LikertScale`, `VisualAnalogScale`,
 `DatePicker`/`RelativeDatePicker`.
 
 ---
 
-## 2. The five proposed templates
+## 2. Templates & stage sketches
 
-| # | Working title | Population / domain | Signature technique it showcases |
-|---|---|---|---|
-| 1 | **Pathways** — Migrant Integration & Transnational Networks | Immigrants / migrants | `Geospatial` origin-mapping + paired host/transnational name generators |
-| 2 | **Daily Contacts** — Respiratory Contact-Pattern Diary | Infectious-disease transmission | High-volume `NameGeneratorQuickAdd` + `RelativeDatePicker` reference day + `CategoricalBin` settings |
-| 3 | **Circles** — Social Connection & Loneliness in Older Adults | Ageing / social isolation | Concentric `OrdinalBin` closeness + `EgoForm` with validated loneliness scales |
-| 4 | **Ripple** — Health-Behaviour Social Influence | Behavioural contagion (multi-behaviour) | Multiplex behaviour-specific name generators + ego/alter homophily capture |
-| 5 | **Beginnings** — Perinatal & Maternal Support Networks | Maternal / perinatal health | Function-typed support generators + `CategoricalBin` formal-vs-informal sources |
-
-Each section gives: **why** (literature + who would use it), **what it measures**, the
-**Network Canvas build** (codebook + stage sequence + key variables), and **distinctiveness**
-versus the existing gallery.
+Each template lists **why / who**, its **signature technique**, key **codebook** elements, and a
+**stage sketch** (the minimum viable sequence; all are ≥5 stages and can be trimmed or extended).
 
 ---
 
-### Template 1 — *Pathways*: Migrant Integration & Transnational Networks
+### Template 1 — Transnational Networks
 
-**Why.** Personal-network analysis is the dominant method for studying how migrants
-integrate into a host society while maintaining ties to their origin country. The canonical
-design measures **structural assimilation** (the share/strength of host-country ties) against
-**transnationalism** (ties back to the origin country), and shows these network features
-predict integration outcomes *over and above* individual characteristics like nationality,
-age, years since migration, and education (Vacca, Solano, Lubbers, Molina & McCarty, *Social
-Networks*, 2018). Transnational ties cut both ways for mental health — visits and remittances
-can be protective *or* a source of strain, e.g. for depression among Latino immigrants — so
-researchers need to capture tie *direction and composition*, not just count. A 2025 *International
-Migration* review (Vacca et al.) frames social support and social capital as the dominant
-lenses and calls for designs that connect **local and transnational** networks. This community
-(McCarty, Molina, Lubbers, Vacca — the EgoNet lineage) is a natural Network Canvas audience and
-is currently unserved by the gallery.
+*General case of: personal networks that span a host society and one or more origin/other
+countries (migrant integration, structural assimilation vs transnationalism).*
 
-**Who uses it.** Migration sociologists; immigrant-health and health-equity researchers;
-refugee-resettlement and acculturative-stress studies.
+**Why / who.** Personal-network measures of host-country ties vs origin-country ties predict
+integration outcomes above and beyond individual traits (Vacca, Solano, Lubbers, Molina &
+McCarty, *Social Networks*, 2018); transnational ties have mixed mental-health effects; a 2025
+*International Migration* review centres support and social capital. Users: migration
+sociologists, immigrant-health and refugee-resettlement researchers.
 
-**What it measures.** Network composition (co-ethnic vs host-national vs other-origin),
-geographic spread of ties (here vs origin country vs third countries), support by type
-(emotional, informational, practical, financial), tie origin (how/where met), and the
-density/structure of the personal network.
+**Signature technique.** Two parallel name generators (host vs transnational) plus the `Geospatial`
+map stage — the gallery's first real use of map-based ego networks.
 
-**Network Canvas build.**
+**Codebook.** *Ego:* country of birth, arrival year, residency context, language proficiency,
+acculturative-stress items. *Node `person`:* relationship, alter country of origin, current
+location (`location`), co-ethnic (`boolean`), shared language, how/where met, support provided.
+*Edge `knows`:* alter–alter ties (density).
 
-- **Codebook**
-  - Ego variables: country/region of birth (`categorical`), year of arrival
-    (`datetime`/`RelativeDatePicker`), legal/residency context (`categorical`), language
-    proficiency (`ordinal` `LikertScale`), a short acculturative-stress / wellbeing scale
-    (`ordinal`), generation.
-  - Node type **person** with variables: relationship (`categorical`), alter's
-    country of origin (`categorical`), where the alter currently lives (`location`),
-    co-ethnic (`boolean`), language spoken together (`categorical`), how/where they met
-    (`categorical`: in origin country / on arrival / through work / family / etc.), support
-    provided (`categorical` multi-select), closeness (`ordinal`).
-  - Edge type **knows** for alter–alter ties (to compute density / clustering).
-- **Stage sequence**
-  1. `Information` — study intro & consent framing.
-  2. `EgoForm` — migration history & background.
-  3. `NameGenerator` (host-country ties) — "people here who are important to you."
-  4. `NameGenerator` (transnational ties) — "people in [origin country] or elsewhere abroad
-     who are important to you." *(Two parallel generators make the host/transnational split a
-     first-class structural variable.)*
-  5. `Geospatial` — **signature step:** place each alter on a world map (origin and/or current
-     residence), producing the local↔transnational geometry that defines this literature.
-  6. `CategoricalBin` — sort alters by support type / co-ethnicity.
-  7. `Sociogram` with a `knows` edge prompt — capture alter–alter ties for density.
-  8. `Narrative` — review the integrated picture with the participant.
-
-**Distinctiveness.** No existing gallery protocol is about migration, and **`Geospatial` is
-essentially unused** in the gallery — this template would be the flagship demonstration of
-map-based ego-network data and of the host-vs-transnational dual-generator pattern.
+**Stage sketch.**
+1. `Information` — study intro, consent framing.
+2. `EgoForm` — migration history & background.
+3. `NameGenerator` — **host-country** important ties.
+4. `NameGenerator` — **transnational** ties (origin country / elsewhere abroad).
+5. `Geospatial` — place each alter on a world map (origin and/or current residence).
+6. `CategoricalBin` — sort alters by support type / co-ethnicity.
+7. `Sociogram` (`knows` prompt) — alter–alter ties for network density.
+8. `Narrative` — review the integrated local↔transnational picture.
 
 ---
 
-### Template 2 — *Daily Contacts*: Respiratory Contact-Pattern Diary
+### Template 2 — Mental Health Networks  *(new)*
 
-**Why.** Transmission models for airborne/close-contact infections (influenza, RSV,
-SARS-CoV-2, TB, measles) are built on **social contact surveys** — the "who-meets-whom"
-mixing matrices pioneered by POLYMOD (Mossong et al., *PLoS Medicine*, 2008; 5(3):e74) across
-eight European countries, and since standardised by a systematic review of contact surveys
-(Hoang et al., *Epidemiology*, 2019). Network Canvas's own positioning papers explicitly pitch
-it as a tool for **contact-network data** for epidemiology, yet the gallery's only
-transmission-adjacent protocol (Test-to-PrEP) is HIV/sexual-network, not respiratory. A
-contact-diary template directly serves NIH pandemic-preparedness and respiratory-disease
-modelling work and is highly reusable across pathogens and settings.
+*General case of: how personal networks both support and strain people managing a mental-health
+condition — supportive ties, difficult/draining ties, disclosure, and help-seeking pathways.*
 
-**Who uses it.** Infectious-disease epidemiologists and modellers; pandemic-preparedness
-programmes; school/workplace transmission studies.
+**Why / who.** People managing mental-health problems often have smaller, "fractious" networks;
+they actively seek effective confidants while fearing stigma and rejection, and may restrict
+ties during acute periods (BMC Psychiatry, 2020, *Negotiating support…*; multilevel studies of
+support networks in severe mental disorders). Support is multidimensional (emotional,
+informational, instrumental, appraisal) and **negative ties independently harm wellbeing** —
+so a credible design must capture both poles. Users: psychiatric-epidemiology, recovery/peer-support,
+and mental-health-services researchers.
 
-**What it measures (per the standardised contact-survey design).**
+**Signature technique.** **Dual-tone elicitation** — separate generators for *supportive* and
+*difficult/draining* ties (the same alter can appear in both → ambivalent ties), plus
+disclosure ("who knows") and a formal-vs-informal help-seeking split. No current template
+captures negative ties.
 
-- **Contact definition** offered to interviewers two ways: *physical* (skin-to-skin —
-  handshake, hug) and *conversational* (a two-way exchange of ≥3 words within ~2 m).
-- **Reference period:** the **previous day** (POLYMOD standard), ideally one weekday + one
-  weekend day — implemented with a `RelativeDatePicker` anchored to "yesterday."
-- **Per-contact attributes** (the review's most-collected fields): age (`number`/`ordinal`
-  band) and sex (`categorical`) of contact — recorded by ~56%+ of surveys; **setting/location**
-  (~77%): home / work / school / transport / leisure / other; **duration** (~67%); **frequency**
-  (~52%: daily / weekly / first time); whether **physical**; and optional **mask/PPE use** and
-  **symptoms**.
-- Typical volume ~8–14 contacts/day (much higher in school settings), so capture must be fast.
+> *Sensitivity note for the template:* include interviewer framing and a safety/closing screen;
+> this is an emotionally sensitive topic.
 
-**Network Canvas build.**
+**Codebook.** *Ego:* a brief validated distress/wellbeing screen (e.g. K6-style `ordinal`
+items), self-rated mental health, treatment status. *Node `person`:* relationship, support types
+provided (`categorical` multi: emotional/informational/instrumental/appraisal), is a
+formal/clinical source (`boolean`), knows about my condition / disclosure (`boolean`), contact
+frequency, closeness, **is a source of stress/conflict** (`boolean`).
 
-- **Codebook:** node type **contact** with the attribute set above; ego variables for
-  age band, household size, occupation, and the diary day.
-- **Stage sequence**
-  1. `Information` — defines what counts as a "contact" (physical vs conversational), with the
-     2 m / 3-word rule shown to the interviewer.
-  2. `EgoForm` — demographics + `RelativeDatePicker` to fix the reference day.
-  3. `NameGeneratorQuickAdd` — **signature step:** rapidly enumerate every contact from the
-     reference day using a minimal single-field add (initials/identifier). High-volume,
-     low-friction entry is exactly what `QuickAdd` is for.
-  4. `CategoricalBin` — sort contacts by **setting** (home/work/school/transport/leisure/other).
-  5. `AlterForm` — per-contact form: age band, sex, duration, frequency, physical (y/n),
-     mask use, symptoms. (`TieStrengthCensus` is an alternative for an ordinal "intensity"
-     read if alter–alter mixing is in scope.)
-  6. `Information` — close-out / repeat-for-second-day prompt.
-
-**Distinctiveness.** Brings the **POLYMOD/contact-diary paradigm** — the backbone of modern
-transmission modelling — into the gallery for the first time, and showcases high-throughput
-`NameGeneratorQuickAdd` + reference-day `RelativeDatePicker`, a different technique mix from
-every existing protocol.
+**Stage sketch.**
+1. `Information` — intro, sensitive-topic framing, consent.
+2. `EgoForm` — background + brief distress/wellbeing screen.
+3. `NameGenerator` — **supportive ties** ("people you can talk to / who support you").
+4. `NameGenerator` — **difficult/draining ties** ("people who are a source of stress or conflict").
+5. `AlterForm` — per alter: relationship, support types, disclosure, formal/clinical, frequency.
+6. `OrdinalBin` — closeness / reliance.
+7. `CategoricalBin` — sort help sources into **informal vs formal/clinical** (help-seeking pathways).
+8. `Narrative` — review supportive vs difficult ties (preset highlighting) + closing/safety screen.
 
 ---
 
-### Template 3 — *Circles*: Social Connection & Loneliness in Older Adults
+### Template 3 — Social Connection & Isolation
 
-**Why.** Social isolation and loneliness in older adults are a flagship public-health
-priority: the National Academies' 2020 report *Social Isolation and Loneliness in Older Adults*
-and the 2023 U.S. Surgeon General advisory *Our Epidemic of Loneliness and Isolation* both
-tie them to heart disease, depression, and cognitive decline, and NIA funds a large portfolio
-here (e.g. older adults living alone with cognitive impairment). Critically, **isolation
-(objective, structural) and loneliness (subjective) are distinct** — ~28% of older adults live
-alone but many are neither isolated nor lonely — so the design must capture *both* the network
-structure and validated subjective measures. Egocentric methods are ideal, and researchers
-increasingly examine **how networks change in response to loneliness** over time.
+*General case of: distinguishing objective social isolation (network structure) from subjective
+loneliness, with validated scales (ageing/loneliness is the lead exemplar).*
 
-**Who uses it.** Gerontology / NIA-funded ageing researchers; social-prescribing and
-befriending-intervention evaluations; caregiver-network studies.
+**Why / who.** Isolation and loneliness are distinct and both predict heart disease, depression,
+and cognitive decline (National Academies, 2020; U.S. Surgeon General advisory, 2023; NIA
+portfolio); ~28% of older adults live alone but aren't necessarily lonely — so capture both the
+structure and validated subjective measures. Users: NIA-funded ageing researchers,
+social-prescribing/befriending evaluations.
 
-**What it measures.** Network size and composition; emotional vs structural closeness;
-contact frequency and **mode** (in-person / phone / digital); support function; co-residence;
-intergenerational mix — paired with standardised loneliness/isolation instruments.
+**Signature technique.** Concentric `OrdinalBin` closeness map + standardised scales embedded in
+`EgoForm` (UCLA-3, De Jong Gierveld 6-item, Lubben LSNS-6), so structure and subjective
+loneliness sit in one dataset.
 
-**Network Canvas build.**
+**Codebook.** *Ego:* loneliness/isolation scale items (`ordinal` `LikertScale`), living
+situation, self-rated health. *Node `person`:* relationship, contact frequency, contact mode
+(`categorical` multi: in-person/phone/digital), lives with ego (`boolean`), provides
+emotional/practical support (`boolean`), age band. *Edge `knows`:* alter–alter ties (fragmentation).
 
-- **Codebook**
-  - Ego variables embedding **validated short scales** as `ordinal`/`LikertScale` items:
-    UCLA 3-item loneliness, De Jong Gierveld 6-item (emotional + social loneliness), and the
-    Lubben Social Network Scale (LSNS-6). Plus living situation and self-rated health.
-  - Node type **person**: relationship (`categorical`), contact frequency (`ordinal`), contact
-    mode (`categorical` multi-select), lives with ego (`boolean`), provides emotional support
-    (`boolean`), provides practical support (`boolean`), alter age band (`ordinal`).
-  - Edge **knows** for alter–alter ties (to read network fragmentation/bridging).
-- **Stage sequence**
-  1. `EgoForm` (A) — demographics + living situation.
-  2. `NameGenerator` — confidants & important others ("people you discuss important matters
-     with / who are important to you").
-  3. `OrdinalBin` — **signature step:** drag each alter into concentric closeness bands
-     ("very close → not close"), the classic participant-aided-sociogram closeness measure.
-  4. `AlterForm` — contact frequency, mode, support, co-residence.
-  5. `Sociogram` (`knows` prompt) — alter–alter ties to reveal isolation vs a connected core.
-  6. `EgoForm` (B) — the UCLA / De Jong Gierveld / LSNS-6 scale items, so subjective
-     loneliness sits alongside the objective network in one dataset.
-
-**Distinctiveness.** First ageing/loneliness template; demonstrates **embedding standardised
-psychometric instruments in `EgoForm`** and the concentric-`OrdinalBin` closeness map — and
-deliberately captures the isolation-vs-loneliness distinction that the field insists on.
+**Stage sketch.**
+1. `EgoForm` (A) — demographics + living situation.
+2. `NameGenerator` — confidants & important others.
+3. `OrdinalBin` — drag alters into concentric closeness bands ("very close → not close").
+4. `AlterForm` — contact frequency, mode, support, co-residence, age band.
+5. `Sociogram` (`knows` prompt) — alter–alter ties → isolated vs connected core.
+6. `EgoForm` (B) — UCLA-3 / De Jong Gierveld / LSNS-6 scale items.
 
 ---
 
-### Template 4 — *Ripple*: Health-Behaviour Social Influence
+### Template 4 — Behavioural Influence Networks
 
-**Why.** "Social contagion" of health behaviour is the user base's named interest. The
-foundational work — Christakis & Fowler on the spread of **obesity** (*NEJM*, 2007; 357:370–379)
-and **smoking cessation** (*NEJM*, 2008; 358:2249–2258) in the Framingham network — proposed a
-"three degrees of influence" pattern, and a large literature now studies behavioural influence
-in **adolescent** networks (vaping, alcohol, marijuana) distinguishing **cohesion** (direct
-ties) from **structural equivalence**, and **influence** from **homophily/selection**. Whereas
-the gallery's ROBUST protocol is a *specific obesity-reduction intervention* using the narrative
-interface, *Ripple* is a **reusable measurement scaffold** for behavioural exposure and
-homophily that a researcher can retarget to any behaviour (physical activity, diet, smoking/
-vaping, alcohol, screen time) and any population (adults or in-school adolescents).
+*General case of: social influence/diffusion of health behaviour ("contagion") — obesity,
+smoking/vaping, physical activity, diet, alcohol.*
 
-> **Methodological honesty (worth surfacing in the template's notes):** egocentric data
-> cleanly measures **behavioural homophily and perceived exposure**, but *causal* contagion
-> claims from observational network data are contested (the Christakis–Fowler estimates were
-> challenged on confounding/shared-environment grounds). The template should frame outputs as
-> exposure/composition measures, not proof of contagion.
+**Why / who.** The foundational social-contagion work (Christakis & Fowler, *NEJM* 2007 on
+obesity; 2008 on smoking; "three degrees of influence") and a large adolescent-network
+literature (vaping, alcohol; cohesion vs structural equivalence; influence vs homophily) motivate
+a reusable, behaviour-agnostic measurement scaffold — distinct from ROBUST's single obesity
+*intervention*. Users: obesity/behavioural-health researchers; NIDA adolescent substance-use/vaping
+studies; activity/nutrition interventionists.
 
-**Who uses it.** Behavioural-health and obesity researchers; NIDA-funded adolescent
-substance-use / vaping studies; physical-activity and nutrition interventionists.
+> *Methodological note for the template:* egocentric data measures **homophily and perceived
+> exposure** cleanly; *causal* contagion from observational network data is contested
+> (Christakis–Fowler estimates were challenged on confounding grounds). Frame outputs as
+> exposure/composition, not proof of contagion.
 
-**What it measures.** For each behaviour domain: who the ego does it *with*, each alter's own
-behaviour (as perceived by ego), tie closeness and frequency, and ego's own behaviour — yielding
-exposure and homophily indices per behaviour.
+**Signature technique.** Behaviour-specific name generators (the same alter recurs across
+behaviours → multiplex), with per-behaviour alter attributes and an ego self-report reference
+point for homophily.
 
-**Network Canvas build.**
+**Codebook.** *Ego:* own behaviour measures (e.g. activity minutes/week, smoking/vaping status,
+diet). *Node `person`:* relationship, closeness, and **per-behaviour perceived status**
+(`alter_smokes` `categorical`, `alter_active` `ordinal`, `alter_diet` `ordinal`, …).
 
-- **Codebook**
-  - Ego variables: the ego's own behaviour measures (e.g. activity minutes/week `number`,
-    smoking/vaping status `categorical`, diet `ordinal`).
-  - Node type **person** with **multiplex** behaviour attributes: relationship (`categorical`),
-    closeness (`ordinal`), and *per-behaviour* perceived status (e.g. `alter_smokes`
-    `categorical`, `alter_active` `ordinal`, `alter_diet` `ordinal`).
-- **Stage sequence**
-  1. `EgoForm` — ego's own behaviours (the homophily reference point).
-  2. **Behaviour-specific name generators** (`NameGenerator`), one per domain —
-     "people you **exercise** with," "people you **eat meals** with," "people you **smoke/vape**
-     with," "people you **drink** with." *(Behaviour-specific elicitation is the signature
-     move; the same alter can recur, building a multiplex picture.)*
-  3. `CategoricalBin` / `AlterForm` — record each alter's perceived behaviour for the relevant
-     domain(s).
-  4. `OrdinalBin` — closeness / contact frequency (influence is moderated by tie strength).
-  5. `Sociogram` or `Narrative` — review clustering of behaviour in the network.
-
-  *(For adolescent in-school designs, swap step 2's free recall for `NameGeneratorRoster`
-  against a class/grade roster to support fixed-choice peer nomination.)*
-
-**Distinctiveness.** Generalises beyond ROBUST's single-behaviour intervention into a
-**multi-behaviour, multiplex influence-measurement** template, and demonstrates behaviour-specific
-name generators + per-behaviour alter attributes — directly serving the "obesity *or other health
-behaviours*" framing.
+**Stage sketch.**
+1. `EgoForm` — ego's own behaviours (homophily reference).
+2. `NameGenerator` — behaviour-specific prompts ("people you **exercise** with," "**eat** with,"
+   "**smoke/vape** with," "**drink** with"). *(For in-school adolescent designs, swap to a
+   `NameGeneratorRoster` against a class/grade list for fixed-choice peer nomination.)*
+3. `CategoricalBin` / `AlterForm` — record each alter's perceived behaviour per relevant domain.
+4. `OrdinalBin` — closeness / contact frequency (moderates influence).
+5. `Sociogram` or `Narrative` — review behavioural clustering across the network.
 
 ---
 
-### Template 5 — *Beginnings*: Perinatal & Maternal Support Networks
+### Template 5 — Care & Support Networks
 
-**Why.** Maternal and perinatal health is a top NIH equity priority (the maternal-mortality
-crisis; the NIH IMPROVE initiative). Social support during pregnancy and postpartum is a robust
-protective factor: stronger perinatal support predicts **lower postpartum depression** and better
-**infant social-emotional outcomes**, and support shortfalls — worsened during the pandemic's
-social distancing — drive adverse maternal mental-health outcomes. Effective support spans
-**informal** (partner, family, friends, peer mothers) and **formal** (OB/midwife, doula,
-community health worker, home-visiting nurse) sources, and multiple **functions** (emotional,
-informational, instrumental/practical, financial). Mapping who provides what — and where the gaps
-are — is exactly an egocentric-network question, and nothing in the gallery addresses maternal
-health.
+*General case of: who provides which functions of support across formal and informal sources
+during a care episode (perinatal/maternal health is the lead exemplar; reusable for caregiving,
+chronic-disease self-management, recovery).*
 
-**Who uses it.** Maternal-and-child-health and perinatal-mental-health researchers; home-visiting
-and doula-program evaluations; SDOH-for-pregnant/postpartum studies.
+**Why / who.** Maternal/perinatal health is an NIH equity priority (maternal-mortality crisis;
+IMPROVE initiative); stronger perinatal support predicts lower postpartum depression and better
+infant social-emotional outcomes, and support spans informal (partner, family, peer parents) and
+formal (OB/midwife, doula, CHW, home-visiting nurse) sources across functions (emotional,
+informational, instrumental, financial). Users: maternal-and-child-health, perinatal-mental-health,
+home-visiting/doula-program researchers.
 
-**What it measures.** Support network size and composition; **formal vs informal** balance;
-support by **function**; reliance/closeness; and gaps (functions with no provider) — alongside a
-validated mood screen.
+**Signature technique.** Function-typed support generators (same person recurs across functions;
+unfilled functions surface as **support gaps**) + a formal-vs-informal `CategoricalBin` split.
 
-**Network Canvas build.**
+**Codebook.** *Ego:* care-episode stage (e.g. pregnancy/postpartum via `RelativeDatePicker`),
+brief mood screen (EPDS-style `ordinal`), living situation. *Node `supporter`:* relationship,
+formal vs informal (`categorical`), support functions provided (`categorical` multi:
+emotional/informational/practical-childcare/financial), proximity (`categorical`: same household/
+nearby/distant/online), contact frequency, reliance/closeness.
 
-- **Codebook**
-  - Ego variables: pregnancy/postpartum stage (`categorical`/`RelativeDatePicker` from due/birth
-    date), parity, an EPDS-style mood screen (`ordinal` `LikertScale`), living situation.
-  - Node type **supporter**: relationship (`categorical`), **formal vs informal** (`categorical`),
-    support functions provided (`categorical` multi-select: emotional / informational /
-    practical / financial / childcare), contact frequency (`ordinal`), reliance/closeness
-    (`ordinal`), proximity (`categorical`: same household / nearby / distant / online).
-- **Stage sequence**
-  1. `EgoForm` — pregnancy/postpartum context + EPDS items.
-  2. **Function-typed name generators** (`NameGenerator`) — "who gives you **emotional**
-     support," "who do you turn to for **information/advice** about pregnancy or the baby," "who
-     helps with **practical/childcare** tasks," "who provides **financial** help." *(Function-first
-     elicitation is the signature technique — the same person can appear under several functions,
-     and unfilled functions surface as support gaps.)*
-  3. `CategoricalBin` — sort supporters into **formal vs informal** (and by function).
-  4. `AlterForm` — proximity, frequency, reliance per supporter.
-  5. `OrdinalBin` — reliance/closeness banding.
-  6. `Narrative` — review the support map and visible gaps with the participant.
+**Stage sketch.**
+1. `EgoForm` — care-episode context + brief mood screen.
+2. `NameGenerator` — function-typed prompts ("who gives **emotional** support," "who you ask for
+   **information/advice**," "who helps with **practical/childcare** tasks," "who provides
+   **financial** help").
+3. `CategoricalBin` — sort supporters into **formal vs informal** (and by function).
+4. `AlterForm` — proximity, frequency, reliance per supporter.
+5. `OrdinalBin` — reliance/closeness banding.
+6. `Narrative` — review the support map and visible gaps with the participant.
 
-**Distinctiveness.** First maternal/perinatal template; demonstrates **function-typed
-multiplex support generators** and the formal-vs-informal `CategoricalBin` split — a support-mapping
-pattern reusable for other support-centred studies (chronic-disease self-management, caregiving).
+---
+
+### Template 6 — Sexual & Injection Risk Networks  *(new)*
+
+*General case of: mapping an ego's transmission-relevant partnerships (sexual and/or injection)
+with the attributes and **timing** that drive HIV/STI/bloodborne spread.*
+
+**Why / who.** Egocentric partnership data — number, attributes, and **timing** of partnerships —
+underpins HIV/STI transmission inference (e.g. the ARTnet study of MSM egocentric sexual networks).
+Key drivers include partner **concurrency** (overlapping partnerships), unknown/serodiscordant
+**serostatus mixing**, relationship type (condom use differs for "serious" vs "casual"), age/race
+mixing, and injection-equipment sharing. Users: HIV/STI epidemiologists, "Ending the HIV Epidemic"
+programmes, harm-reduction researchers. *(Distinct from Test-to-PrEP, which maps PrEP-information
+reach via a dyad census.)*
+
+**Signature technique.** Partnership enumeration capturing **start & end dates per partnership**
+(`DatePicker`) so researchers can derive concurrency, plus the `Anonymisation` stage to protect
+sensitive partner identifiers.
+
+**Codebook.** *Ego:* demographics, HIV status, PrEP/ART use, testing history, injection status.
+*Node `partner`:* partner type (`categorical`: main/casual/exchange), age, gender, perceived
+HIV/STI serostatus (`categorical`: pos/neg/unknown), condom use (`ordinal`), injection-equipment
+sharing (`boolean`), partnership **start** & **end** dates (`datetime`).
+
+**Stage sketch.**
+1. `Information` — intro, confidentiality/anonymity framing, reference period (e.g. past 6–12 months).
+2. `Anonymisation` — passphrase to encrypt partner identifiers.
+3. `EgoForm` — demographics, HIV/PrEP/ART/testing status, injection status.
+4. `NameGenerator` (or `NameGeneratorQuickAdd`) — enumerate **sexual partners** in the reference period.
+5. `NameGenerator` — enumerate **injection partners** (people injected with) *(optional, study-dependent)*.
+6. `AlterForm` / `AlterEdgeForm` — per partnership: type, partner age/gender, serostatus, condom use,
+   equipment sharing, **start/end dates** (for concurrency).
+7. `Sociogram` or `DyadCensus` — optional: ties among partners / network overlap.
 
 ---
 
 ## 3. Build & shipping notes
 
-How templates are wired today (confirmed in the codebase):
+Templates are **URL-referenced `.netcanvas` files** (not bundled): URLs live in
+`apps/architect-web/src/config/index.ts`; the library UI is in
+`apps/architect-web/src/components/Home/{Home,LibraryPanel}.tsx`. A `.netcanvas` is a ZIP of
+`protocol.json` (schema v8) + `assets/`; the richest worked reference is
+`packages/development-protocol/protocol.json` (all stage/variable types exercised).
 
-- Templates are **URL-referenced `.netcanvas` files**, not bundled in the app. The Sample and
-  Development protocol URLs live in `apps/architect-web/src/config/index.ts`
-  (`SAMPLE_PROTOCOL_URL`, `DEVELOPMENT_PROTOCOL_URL`); the library/tabs UI is in
-  `apps/architect-web/src/components/Home/LibraryPanel.tsx` and `Home.tsx`. Selecting a
-  template fetches the file and instantiates it via the protocol import → validate → migrate
-  pipeline.
-- A `.netcanvas` file is a ZIP of `protocol.json` (schema v8) plus an `assets/` folder. The
-  richest worked reference is `packages/development-protocol/protocol.json` (28 stages, all
-  stage/variable types exercised).
+**To ship:** author each `protocol.json` against the v8 Zod schema (validate with
+`@codaco/protocol-validation`; sanity-check shapes with `@codaco/protocol-utilities`
+`generateNetwork`), package as `.netcanvas`, host on `assets.networkcanvas.com`, and register in
+the Architect library config + gallery (lead each gallery entry with its signature technique).
 
-**Suggested path to ship these:**
-
-1. Author each `protocol.json` against the v8 Zod schema (validate with
-   `@codaco/protocol-validation`); use `packages/development-protocol` as the reference build,
-   and `@codaco/protocol-utilities` `generateNetwork` to sanity-check shapes.
-2. Package each as a `.netcanvas`, host on `assets.networkcanvas.com` alongside the Sample
-   Protocol, and register them in the Architect library config + the Protocol Gallery.
-3. Mirror the gallery's house style: each gallery entry leads with the **signature technique**
-   (the right-hand column in §2's table) so the set reads as a methods showcase.
-
-**Suggested build order** (impact × distinctiveness × low asset complexity):
-**(2) Daily Contacts** and **(3) Circles** first — broadest reuse, self-contained, no external
-rosters; then **(1) Pathways** (needs `Geospatial`/Mapbox config) and **(5) Beginnings**; then
-**(4) Ripple** (offer both free-recall and roster variants).
+**Suggested build order:** **3 (Social Connection & Isolation)** and **2 (Mental Health Networks)**
+first — broad reuse, self-contained, no external rosters; then **6 (Sexual & Injection Risk)** and
+**5 (Care & Support)**; then **1 (Transnational)** — needs `Geospatial`/Mapbox config — and **4
+(Behavioural Influence)** with both free-recall and roster variants.
 
 ---
 
 ## 4. References
 
-Tool & method:
-
-- Mossong J, Hens N, Jit M, et al. *Social Contacts and Mixing Patterns Relevant to the Spread
-  of Infectious Diseases.* PLoS Medicine. 2008;5(3):e74. (POLYMOD)
-- Hoang T, Coletti P, Melegaro A, et al. *A Systematic Review of Social Contact Surveys to
-  Inform Transmission Models of Close-contact Infections.* Epidemiology. 2019;30(5):723–736.
-- Hogan B, et al. *Network Canvas: Key decisions in the design of an interviewer-assisted
-  network data collection software suite.* Social Networks. 2021.
-- *Network Canvas: an open-source tool for capturing social and contact network data.* 2023
-  (PMC10396415).
 - Vacca R, Solano G, Lubbers MJ, Molina JL, McCarty C. *A personal network approach to the study
   of immigrant structural assimilation and transnationalism.* Social Networks. 2018;53:72–89.
 - Vacca R, et al. *Social networks in migration and migrant incorporation: New developments and
   challenges.* International Migration. 2025.
-- Lubbers MJ, Molina JL, McCarty C, et al. *Changing times: Migrants' social network analysis and
-  the challenges of longitudinal research.* Social Networks. 2018.
-- Christakis NA, Fowler JH. *The Spread of Obesity in a Large Social Network over 32 Years.* NEJM.
-  2007;357:370–379.
-- Christakis NA, Fowler JH. *The Collective Dynamics of Smoking in a Large Social Network.* NEJM.
-  2008;358:2249–2258.
+- *Negotiating support from relationships and resources: a longitudinal study examining the role of
+  personal support networks in the management of severe and enduring mental health problems.* BMC
+  Psychiatry. 2020;20:50.
+- *The structure of social support: a multilevel analysis of the personal networks of people with
+  severe mental disorders.* (PMC9661735.)
 - National Academies of Sciences, Engineering, and Medicine. *Social Isolation and Loneliness in
   Older Adults: Opportunities for the Health Care System.* 2020.
 - Office of the U.S. Surgeon General. *Our Epidemic of Loneliness and Isolation.* 2023.
 - De Jong Gierveld J, Van Tilburg T. *A 6-item scale for overall, emotional, and social
-  loneliness.* Research on Aging. 2006. (and the UCLA 3-item scale; Lubben LSNS-6, The
-  Gerontologist, 2006.)
+  loneliness.* Research on Aging. 2006. (Also UCLA 3-item scale; Lubben LSNS-6, The Gerontologist,
+  2006.)
+- Christakis NA, Fowler JH. *The Spread of Obesity in a Large Social Network over 32 Years.* NEJM.
+  2007;357:370–379.
+- Christakis NA, Fowler JH. *The Collective Dynamics of Smoking in a Large Social Network.* NEJM.
+  2008;358:2249–2258.
+- Weiss RE, et al. *Egocentric Sexual Networks of Men Who Have Sex with Men in the United States:
+  Results from the ARTnet Study.* (medRxiv / Epidemics, 2020.)
+- Morris M, Kretzschmar M. *Concurrent partnerships and the spread of HIV.* AIDS. 1997 — on
+  partnership concurrency and transmission.
+- Hogan B, et al. *Network Canvas: Key decisions in the design of an interviewer-assisted network
+  data collection software suite.* Social Networks. 2021.
 
-(Adolescent substance-use/vaping network studies in *Social Science & Medicine* and *Substance
-Use & Misuse*, and perinatal social-support studies linking support to postpartum depression and
-infant outcomes, also informed Templates 4 and 5; full citations available on request.)
+(Perinatal social-support studies linking support to postpartum depression and infant outcomes,
+and adolescent vaping/substance-use network studies, also informed Templates 5 and 4; full
+citations available on request.)
