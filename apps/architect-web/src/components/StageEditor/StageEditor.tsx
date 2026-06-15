@@ -1,13 +1,11 @@
 import { omit } from 'es-toolkit/compat';
 import { Settings } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { getFormValues, isInvalid } from 'redux-form';
-import { v1 as uuid } from 'uuid';
 import { useLocation } from 'wouter';
 
 import {
-  type CurrentProtocol,
   type Stage,
   type StageType,
   validateProtocol,
@@ -37,8 +35,8 @@ import { IconButton } from '~/lib/legacy-ui/components/Button';
 import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
 import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { ensureError } from '~/utils/ensureError';
-import prune from '~/utils/prune';
 
+import { buildProtocolWithStage } from './buildProtocolWithStage';
 import { formName } from './configuration';
 import type { SectionComponent } from './Interfaces';
 import { getInterface } from './Interfaces';
@@ -49,42 +47,6 @@ type StageEditorProps = {
   insertAtIndex?: number;
   type?: string;
 };
-
-/**
- * Builds a protocol with the current wip stage inserted or updated.
- * Allows for validating and previewing the protocol with the current stage changes.
- * If inserting a new stage (i.e., stageId is null), generates a temporary ID for the stage for validation/preview purposes.
- *
- * The stage is pruned (null/empty values stripped) so that preview validates the
- * exact shape a save would commit. Without this, in-progress drafts can carry
- * placeholder nulls that the strict protocol schema rejects — e.g. a freshly
- * created side panel seeds `filter: null`, which fails `FilterSchema.optional()`
- * (optional accepts `undefined`, not `null`). `updateStage`/`createStage` prune on
- * commit, so previewing the unpruned draft would otherwise report "invalid" for a
- * stage that saves and reopens perfectly fine.
- */
-function buildProtocolWithStage(
-  protocol: CurrentProtocol,
-  stage: Stage,
-  stageId: string | null,
-  insertAtIndex?: number,
-): CurrentProtocol {
-  const prunedStage = prune(stage as Record<string, unknown>) as Stage;
-
-  // For new stages, generate a temp ID for validation/preview
-  const stageWithId = stageId ? prunedStage : { ...prunedStage, id: uuid() };
-
-  return {
-    ...protocol,
-    stages: stageId
-      ? protocol.stages.map((s) => (s.id === stageId ? stageWithId : s))
-      : [
-          ...protocol.stages.slice(0, insertAtIndex ?? protocol.stages.length),
-          stageWithId,
-          ...protocol.stages.slice(insertAtIndex ?? protocol.stages.length),
-        ],
-  };
-}
 
 const StageEditor = (props: StageEditorProps) => {
   const { id = null, type, insertAtIndex } = props;
@@ -109,13 +71,64 @@ const StageEditor = (props: StageEditorProps) => {
   const formValues = useSelector((state: RootState) =>
     getFormValues(formName)(state),
   ) as Stage | undefined;
-  const isStageInvalid = useSelector((state: RootState) =>
+  const isFormSyncInvalid = useSelector((state: RootState) =>
     isInvalid(formName)(state),
   );
+
+  // Whether the wip protocol (committed protocol + current stage edits) passes
+  // full schema validation. We disable preview whenever it does not, so the
+  // button reflects "this would be a valid protocol to preview" rather than
+  // only redux-form's field-level (mount-dependent) sync state. This covers
+  // structural problems the sync validators miss — e.g. a side panel with no
+  // title (`title` pruned away -> required field missing) or with a malformed
+  // filter — even when the relevant section is collapsed and its fields are
+  // unmounted. `true` until proven otherwise so we don't flash the button
+  // disabled on first mount before the async check resolves.
+  const [isWipProtocolValid, setIsWipProtocolValid] = useState(true);
 
   // The draft baseline is seeded by the stageEditorDraft listener on
   // redux-form INITIALIZE (which fires on mount and on `id` change via
   // enableReinitialize), so no mount effect is needed here.
+  useEffect(() => {
+    if (!protocol || !formValues) {
+      setIsWipProtocolValid(false);
+      return;
+    }
+
+    let cancelled = false;
+    // Debounce so we don't validate on every keystroke; the trailing run
+    // reflects the settled form values.
+    const handle = setTimeout(() => {
+      const stageToValidate = omit(formValues, '_modified') as Stage;
+      const wipProtocol = buildProtocolWithStage(
+        protocol,
+        stageToValidate,
+        id,
+        insertAtIndex,
+      );
+      void validateProtocol(wipProtocol)
+        .then((result) => {
+          if (!cancelled) {
+            setIsWipProtocolValid(result.success);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setIsWipProtocolValid(false);
+          }
+        });
+    }, 200);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [protocol, formValues, id, insertAtIndex]);
+
+  // Preview is disabled when the form has obvious field-level errors (immediate
+  // feedback) or when the wip protocol fails schema validation (comprehensive,
+  // and independent of which sections are currently mounted).
+  const isStageInvalid = isFormSyncInvalid || !isWipProtocolValid;
 
   // Preview state
   const [isOpeningPreview, setIsOpeningPreview] = useState(false);
