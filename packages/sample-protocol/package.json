@@ -1,0 +1,30 @@
+{
+  "name": "@codaco/sample-protocol",
+  "version": "1.0.0",
+  "description": "Sample protocol for onboarding and demos in Network Canvas applications",
+  "keywords": [
+    "network-canvas",
+    "protocol",
+    "sample"
+  ],
+  "license": "GPL-3.0-or-later",
+  "author": "Complex Data Collective <hello@complexdatacollective.org>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+    "directory": "packages/sample-protocol"
+  },
+  "files": [
+    "protocol.json",
+    "assets"
+  ],
+  "type": "module",
+  "main": "./protocol.json",
+  "exports": {
+    ".": "./protocol.json",
+    "./assets/*": "./assets/*"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
