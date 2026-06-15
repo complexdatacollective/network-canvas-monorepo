@@ -1,5 +1,13 @@
 # @codaco/tailwind-config
 
+## 1.0.1
+
+### Patch Changes
+
+- 36d29eb: Bump the global `hr` border opacity from `border-current/5` to
+  `border-current/10` so separators read a little stronger against themed
+  surfaces.
+
 ## 1.0.0
 
 First stable release of `@codaco/tailwind-config`, the shared Tailwind configuration and design tokens for Network Canvas. This promotes the `1.0.0-alpha` development series to a stable `1.0.0` with no further functional changes; see the `1.0.0-alpha.*` entries below for the detailed history.

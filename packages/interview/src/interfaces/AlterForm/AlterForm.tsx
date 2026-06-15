@@ -51,7 +51,7 @@ const AlterForm = (props: StageProps<'AlterForm'>) => {
       <Node
         nodeId={item[entityPrimaryKeyProperty]}
         type={item.type}
-        className="shrink-0 rounded-full"
+        className="shrink-0"
       />
     );
   }, []);

@@ -16,6 +16,9 @@ import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { z } from 'zod';
 
+import InterfacePicture, {
+  type InterfacePictureProps,
+} from '@codaco/interface-images/InterfacePicture';
 import type {
   SidebarFolder,
   SidebarPage,
@@ -260,6 +263,17 @@ const createMarkdownComponents = (docSlug?: string) => ({
   imagefullwidth: (props: { src: string; alt: string }) => (
     <ImageFullWidth {...props} />
   ),
+  // Generated interface screenshots from @codaco/interface-images, e.g.
+  // <interfacepicture type="Sociogram" ratio="16:9" alt="..." />
+  interfacepicture: (props: InterfacePictureProps) => (
+    <div className="my-10 w-full px-8">
+      <InterfacePicture
+        sizes="(min-width: 56rem) 48rem, 100vw"
+        {...props}
+        className="w-full rounded"
+      />
+    </div>
+  ),
   figure: (props: { children: ReactNode }) => (
     <figure
       {...props}
@@ -301,7 +315,7 @@ const createMarkdownComponents = (docSlug?: string) => ({
   summarysection: (props: { children: ReactNode }) => (
     <SummarySection {...props} />
   ),
-  interfacesummary: (props: { children: ReactNode }) => (
+  interfacesummary: (props: { type: string; children: ReactNode }) => (
     <InterfaceSummary {...props} />
   ),
   appcompatibilitytable: () => <AppCompatibilityTable />,

@@ -1,5 +1,14 @@
 # @codaco/interview
 
+## 1.0.1
+
+### Patch Changes
+
+- 1a6d441: Move `allNodes`, `allEdges`, and `stageMetadata` selector calls before the
+  `variableConfig` object in `FamilyPedigree` so hook call order is consistent
+  across renders. Also trims the `getStageIndex` JSDoc to its essential
+  invariant.
+
 ## 1.0.0
 
 First stable release of `@codaco/interview`, the host-pluggable Network Canvas interview engine. This promotes the `1.0.0-alpha` development series to a stable `1.0.0` with no further functional changes; see the `1.0.0-alpha.*` entries below for the detailed history.

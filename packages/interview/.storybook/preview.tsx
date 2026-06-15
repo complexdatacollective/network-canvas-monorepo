@@ -10,12 +10,22 @@ import {
 import addonVitest from '@storybook/addon-vitest';
 import { definePreview } from '@storybook/react-vite';
 import isChromatic from 'chromatic/isChromatic';
+import mapboxgl from 'mapbox-gl';
+// Serve mapbox-gl's worker as an untransformed asset (?url). Bundling
+// mapbox-gl rewrites its embedded worker source into ESM (import.meta),
+// which the classic blob worker it spawns can't execute — the worker dies
+// with "Cannot use 'import.meta' outside a module" and maps render no
+// tiles in the static storybook build. workerUrl is mapbox-gl's documented
+// CSP escape hatch and sidesteps the bundler entirely.
+import mapboxWorkerUrl from 'mapbox-gl/dist/mapbox-gl-csp-worker.js?url';
 import { type PropsWithChildren, StrictMode } from 'react';
 
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 
 import './preview.css';
 import Providers from './Providers';
+
+(mapboxgl as unknown as { workerUrl: string }).workerUrl = mapboxWorkerUrl;
 
 // This package's storybook only renders interview-themed stories, so apply
 // `data-theme-interview` to <body> once at module load. The body's own

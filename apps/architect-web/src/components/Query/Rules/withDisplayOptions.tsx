@@ -1,6 +1,8 @@
 import { get } from 'es-toolkit/compat';
 import { withProps } from 'react-recompose';
 
+import type { NodeShape } from '@codaco/fresco-ui/Node';
+
 type OptionItem = {
   value: string | number;
   label: string;
@@ -17,7 +19,12 @@ type InputProps = {
   codebook: {
     node?: Record<
       string,
-      { name: string; color: string; variables?: Record<string, unknown> }
+      {
+        name: string;
+        color: string;
+        shape?: { default: NodeShape };
+        variables?: Record<string, unknown>;
+      }
     >;
     edge?: Record<
       string,
@@ -38,6 +45,14 @@ const withDisplayOptions = withProps<{ options: unknown }, InputProps>(
     const typeColor = options.type
       ? get(codebook, [entityType, options.type, 'color'], '#000')
       : '#000'; // noop for ego
+    const typeShape =
+      type === 'node' && options.type
+        ? (get(
+            codebook,
+            [entityType, options.type, 'shape', 'default'],
+            undefined,
+          ) as NodeShape | undefined)
+        : undefined; // only nodes have shapes
     const variablePath =
       options.attribute && type === 'ego'
         ? (['ego', 'variables', options.attribute, 'name'] as const)
@@ -117,6 +132,7 @@ const withDisplayOptions = withProps<{ options: unknown }, InputProps>(
         ...options,
         ...(typeLabel ? { typeLabel } : {}),
         ...(typeColor ? { typeColor } : {}),
+        ...(typeShape ? { typeShape } : {}),
         attribute: variableLabel,
         variableType,
         value: valueWithFormatting(),

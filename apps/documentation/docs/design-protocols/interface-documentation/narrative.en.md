@@ -2,9 +2,7 @@
 title: Narrative
 ---
 
-<InterfaceSummary>
-
-![Narrative Interface](/assets/img/interface-documentation/narrative/narrative-example.png)
+<InterfaceSummary type="Narrative">
 
 <InterfaceMeta type="Visualization" creates="Does not create data" usesprompts="false">
 

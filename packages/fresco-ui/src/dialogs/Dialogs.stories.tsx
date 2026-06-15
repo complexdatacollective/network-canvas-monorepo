@@ -78,12 +78,13 @@ import useDialog from './useDialog';
  *
  * ## Intent / Accent
  *
- * Dialogs support four accent variants that affect button styling:
+ * Dialogs support five accent variants that affect button styling:
  *
  * - `default` - Standard dialog appearance
  * - `destructive` - Red accent for dangerous actions (auto-focuses cancel button)
  * - `success` - Green accent for positive confirmations
  * - `info` - Blue accent for informational dialogs
+ * - `warning` - Amber accent for discouraged actions (auto-focuses cancel button)
  *
  * ## Type Safety
  *
@@ -232,8 +233,9 @@ export const DialogTypes: Story = {
 };
 
 /**
- * Dialogs support four intent variants that affect visual styling.
- * For destructive intents, the cancel button is auto-focused to prevent accidental actions.
+ * Dialogs support five intent variants that affect visual styling.
+ * For destructive and warning intents, the cancel button is auto-focused to
+ * prevent accidental actions.
  */
 export const Intents: Story = {
   name: 'Intent Variants',
@@ -241,13 +243,14 @@ export const Intents: Story = {
     const { openDialog } = useDialog();
 
     const showDialog = async (
-      intent: 'default' | 'destructive' | 'success' | 'info',
+      intent: 'default' | 'destructive' | 'success' | 'info' | 'warning',
     ) => {
       const titles = {
         default: 'Confirm Action',
         destructive: 'Delete Item',
         success: 'Operation Complete',
         info: 'Important Information',
+        warning: 'Continue Without Security?',
       };
 
       const descriptions = {
@@ -256,6 +259,8 @@ export const Intents: Story = {
           'This will permanently delete the item. This action cannot be undone.',
         success: 'Your operation completed successfully.',
         info: 'Please review the following information before continuing.',
+        warning:
+          'This choice is not recommended. Review the consequences before continuing.',
       };
 
       const result = await openDialog({
@@ -279,6 +284,9 @@ export const Intents: Story = {
         </Button>
         <Button onClick={() => showDialog('success')}>Success</Button>
         <Button onClick={() => showDialog('info')}>Info</Button>
+        <Button color="warning" onClick={() => showDialog('warning')}>
+          Warning
+        </Button>
       </div>
     );
   },

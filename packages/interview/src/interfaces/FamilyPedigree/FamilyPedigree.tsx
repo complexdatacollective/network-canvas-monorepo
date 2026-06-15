@@ -78,6 +78,16 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   const isGestationalCarrierVariable = useStageSelector(
     getIsGestationalCarrierVariable,
   );
+
+  const allNodes = useStageSelector(getNetworkNodes);
+  const allEdges = useStageSelector(getNetworkEdges);
+
+  const stageMetadata = useStageSelector(getStageMetadata) as
+    | { isNetworkCommitted?: boolean }
+    | undefined;
+
+  const isNetworkCommitted = stageMetadata?.isNetworkCommitted === true;
+
   const variableConfig: VariableConfig = {
     nodeType,
     edgeType,
@@ -87,14 +97,6 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
     isActiveVariable,
     isGestationalCarrierVariable,
   };
-
-  const allNodes = useStageSelector(getNetworkNodes);
-  const allEdges = useStageSelector(getNetworkEdges);
-
-  const stageMetadata = useStageSelector(getStageMetadata) as
-    | { isNetworkCommitted?: boolean }
-    | undefined;
-  const isNetworkCommitted = stageMetadata?.isNetworkCommitted === true;
 
   const reduxNodesMap = useMemo(
     () => new Map<string, NcNode>(allNodes.map((n) => [n._uid, n])),

@@ -21,11 +21,12 @@ const UsageColumn = ({ inUse, usage }: UsageColumnProps) => {
     );
   }
 
-  const stages = usage.map(({ id, label }) => {
+  const stages = usage.map(({ id, label }, index) => {
     // If there is no id, don't create a link. This is the case for
-    // variables that are only in use as validation options.
+    // variables that are only in use as validation options. Include the index
+    // in the key since validation labels can repeat (e.g. "unknown").
     if (!id) {
-      return <Tag key="validation-option">{label}</Tag>;
+      return <Tag key={`validation-option-${index}`}>{label}</Tag>;
     }
 
     const href = `/protocol/stage/${id}`;

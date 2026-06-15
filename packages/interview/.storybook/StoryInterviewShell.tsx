@@ -114,7 +114,13 @@ function buildPayload(raw: RawSyntheticPayload): {
   };
 }
 
-const StoryInterviewShell = (props: { rawPayload: string }) => {
+const StoryInterviewShell = (props: {
+  rawPayload: string;
+  hideNavigation?: boolean;
+  /** Set for capture stories so dev-only UI (e.g. FamilyPedigree's
+   * Dump/Load buttons) never appears in screenshots. */
+  isDevelopment?: boolean;
+}) => {
   const { payload, initialStep, assetUrls } = useMemo(() => {
     const raw = SuperJSON.parse<RawSyntheticPayload>(props.rawPayload);
     return buildPayload(raw);
@@ -152,9 +158,10 @@ const StoryInterviewShell = (props: { rawPayload: string }) => {
       onSync={onSync}
       onFinish={onFinish}
       onRequestAsset={onRequestAsset}
-      flags={{ isDevelopment: true }}
+      flags={{ isDevelopment: props.isDevelopment ?? true }}
       analytics={{ installationId: 'storybook', hostApp: 'storybook' }}
       disableAnalytics={true}
+      hideNavigation={props.hideNavigation}
     />
   );
 };

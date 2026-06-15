@@ -2,7 +2,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 
 import Paragraph from '../../typography/Paragraph';
-import RichSelectGroupField, { type RichSelectOption } from './RichSelectGroup';
+import RichSelectGroupField, {
+  type RichSelectOption,
+  type RichSelectSpacer,
+} from './RichSelectGroup';
 
 const meta: Meta<typeof RichSelectGroupField> = {
   title: 'Systems/Form/Fields/RichSelectGroup',
@@ -166,6 +169,47 @@ export const Horizontal: Story = {
           onChange={setValue}
           orientation="horizontal"
           aria-label="Select an option"
+        />
+      </div>
+    );
+  },
+};
+
+export const HorizontalWrapping: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'In `horizontal` orientation, when the available width cannot fit every option on one line the options wrap into a vertical stack. Each wrapped option should still extend to the full width of the container, even when their descriptions differ in length.',
+      },
+    },
+  },
+  render: function Render() {
+    const [value, setValue] = useState<
+      string | number | (string | number)[] | undefined
+    >('passkey');
+
+    return (
+      <div className="w-full max-w-xl">
+        <RichSelectGroupField
+          options={[
+            {
+              value: 'passkey',
+              label: 'Passkey',
+              description:
+                'Use biometrics or your device security to sign in. No password to remember — the most secure option.',
+            },
+            {
+              value: 'password',
+              label: 'Password',
+              description:
+                'Traditional username and password. Requires a strong password.',
+            },
+          ]}
+          value={value}
+          onChange={setValue}
+          orientation="horizontal"
+          aria-label="Select an authentication method"
         />
       </div>
     );
@@ -338,6 +382,99 @@ export const AllStates: Story = {
             aria-label="Invalid state"
           />
         </div>
+      </div>
+    );
+  },
+};
+
+export const WithSpacer: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Insert `{ type: "spacer" }` entries in `options` to visually separate groups of options. Spacers are skipped by keyboard navigation and hidden from assistive technology. Pass `className` on the spacer to restyle the divider.',
+      },
+    },
+  },
+  render: function Render() {
+    const [value, setValue] = useState<
+      string | number | (string | number)[] | undefined
+    >(undefined);
+
+    const options: (RichSelectOption | RichSelectSpacer)[] = [
+      {
+        value: 'biometric',
+        label: 'Biometric authentication',
+        description: 'Use a fingerprint or face scan to unlock.',
+      },
+      {
+        value: 'pin',
+        label: 'PIN code',
+        description: 'An 8-digit numeric PIN.',
+      },
+      { type: 'spacer' },
+      {
+        value: 'none',
+        label: 'No lock (not recommended)',
+        description: 'Skip app security entirely.',
+      },
+    ];
+
+    return (
+      <div className="w-full max-w-lg">
+        <RichSelectGroupField
+          options={options}
+          value={value}
+          onChange={setValue}
+          aria-label="Select a security method"
+        />
+      </div>
+    );
+  },
+};
+
+export const WithCustomOptionClassNames: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Each option accepts a `className`, merged into the option card. Useful for highlighting a destructive or discouraged choice.',
+      },
+    },
+  },
+  render: function Render() {
+    const [value, setValue] = useState<
+      string | number | (string | number)[] | undefined
+    >(undefined);
+
+    const options: (RichSelectOption | RichSelectSpacer)[] = [
+      {
+        value: 'pin',
+        label: 'PIN code',
+        description: 'An 8-digit numeric PIN.',
+      },
+      {
+        value: 'passphrase',
+        label: 'Passphrase',
+        description: 'A password of at least 12 characters.',
+      },
+      { type: 'spacer', className: 'border-destructive/40 border-dashed' },
+      {
+        value: 'none',
+        label: 'No lock (not recommended)',
+        description: 'Skip app security. Your data will not be protected.',
+        className: 'border-destructive/40 text-destructive',
+      },
+    ];
+
+    return (
+      <div className="w-full max-w-lg">
+        <RichSelectGroupField
+          options={options}
+          value={value}
+          onChange={setValue}
+          aria-label="Select a security method"
+        />
       </div>
     );
   },

@@ -343,7 +343,7 @@ sub-path exports — host code never reaches into the package's internals.
 
 ### Synthetic data
 
-- `generateNetwork(codebook, stages, seed?, options?)` — deterministic
+- `generateNetwork(codebook, stages, options?)` — deterministic
   network generator that walks a protocol's stages and produces nodes,
   edges, ego attributes, and stage metadata. Use it for storybook
   fixtures, load tests, and the synthetic preview mode.

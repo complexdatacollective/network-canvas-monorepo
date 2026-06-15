@@ -44,7 +44,13 @@ const variants = {
   exit: { opacity: 0 },
 };
 
-function Interview({ onExit }: { onExit?: () => void }) {
+function Interview({
+  onExit,
+  hideNavigation = false,
+}: {
+  onExit?: () => void;
+  hideNavigation?: boolean;
+}) {
   const {
     stage,
     displayedStep,
@@ -104,7 +110,7 @@ function Interview({ onExit }: { onExit?: () => void }) {
                   <motion.div
                     key={displayedStep}
                     data-stage-step={displayedStep}
-                    className="flex min-h-0 flex-1"
+                    className="flex min-h-0 min-w-0 flex-1"
                     initial="initial"
                     animate="animate"
                     exit="exit"
@@ -131,18 +137,20 @@ function Interview({ onExit }: { onExit?: () => void }) {
               </AnimatePresence>
             </InterviewToastProvider>
           </StageMetadataProvider>
-          <Navigation
-            moveBackward={moveBackward}
-            moveForward={moveForward}
-            disableMoveForward={disableMoveForward}
-            disableMoveBackward={disableMoveBackward}
-            pulseNext={pulseNext}
-            progress={progress}
-            orientation={navigationOrientation}
-            forwardButtonRef={forwardButtonRef}
-            backButtonRef={backButtonRef}
-            onExit={onExit}
-          />
+          {!hideNavigation && (
+            <Navigation
+              moveBackward={moveBackward}
+              moveForward={moveForward}
+              disableMoveForward={disableMoveForward}
+              disableMoveBackward={disableMoveBackward}
+              pulseNext={pulseNext}
+              progress={progress}
+              orientation={navigationOrientation}
+              forwardButtonRef={forwardButtonRef}
+              backButtonRef={backButtonRef}
+              onExit={onExit}
+            />
+          )}
           {/*
            * Self-contained Toast.Provider for the interview manager so
            * the viewport's portal lands inside ThemedRegion (themed
@@ -179,6 +187,12 @@ type ShellProps = {
   posthogClient?: PostHog;
   disableAnalytics?: boolean;
   onExit?: () => void;
+  /**
+   * Render the interview without the Navigation rail/bar so the stage fills
+   * the viewport. Used by screenshot-capture stories; not intended for
+   * production interviews.
+   */
+  hideNavigation?: boolean;
 };
 
 const Shell = ({
@@ -193,6 +207,7 @@ const Shell = ({
   posthogClient,
   disableAnalytics = false,
   onExit,
+  hideNavigation,
 }: ShellProps) => {
   // Anchor onSync in a ref so the store factory receives a stable callback
   // (the sync middleware closes over it once at store creation). Hosts
@@ -265,7 +280,7 @@ const Shell = ({
             currentStep={currentStep}
             onStepChange={onStepChange}
           >
-            <Interview onExit={onExit} />
+            <Interview onExit={onExit} hideNavigation={hideNavigation} />
           </CurrentStepProvider>
         </ContractProvider>
       </Provider>

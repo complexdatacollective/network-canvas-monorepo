@@ -1,13 +1,11 @@
 import { omit } from 'es-toolkit/compat';
 import { Settings } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { getFormValues, isInvalid } from 'redux-form';
-import { v1 as uuid } from 'uuid';
 import { useLocation } from 'wouter';
 
 import {
-  type CurrentProtocol,
   type Stage,
   type StageType,
   validateProtocol,
@@ -38,6 +36,10 @@ import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
 import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { ensureError } from '~/utils/ensureError';
 
+import {
+  buildProtocolWithStage,
+  normalizePreviewStage,
+} from './buildProtocolWithStage';
 import { formName } from './configuration';
 import type { SectionComponent } from './Interfaces';
 import { getInterface } from './Interfaces';
@@ -48,32 +50,6 @@ type StageEditorProps = {
   insertAtIndex?: number;
   type?: string;
 };
-
-/**
- * Builds a protocol with the current wip stage inserted or updated.
- * Allows for validating and previewing the protocol with the current stage changes.
- * If inserting a new stage (i.e., stageId is null), generates a temporary ID for the stage for validation/preview purposes.
- */
-function buildProtocolWithStage(
-  protocol: CurrentProtocol,
-  stage: Stage,
-  stageId: string | null,
-  insertAtIndex?: number,
-): CurrentProtocol {
-  // For new stages, generate a temp ID for validation/preview
-  const stageWithId = stageId ? stage : { ...stage, id: uuid() };
-
-  return {
-    ...protocol,
-    stages: stageId
-      ? protocol.stages.map((s) => (s.id === stageId ? stageWithId : s))
-      : [
-          ...protocol.stages.slice(0, insertAtIndex ?? protocol.stages.length),
-          stageWithId,
-          ...protocol.stages.slice(insertAtIndex ?? protocol.stages.length),
-        ],
-  };
-}
 
 const StageEditor = (props: StageEditorProps) => {
   const { id = null, type, insertAtIndex } = props;
@@ -98,18 +74,88 @@ const StageEditor = (props: StageEditorProps) => {
   const formValues = useSelector((state: RootState) =>
     getFormValues(formName)(state),
   ) as Stage | undefined;
-  const isStageInvalid = useSelector((state: RootState) =>
+  const isFormSyncInvalid = useSelector((state: RootState) =>
     isInvalid(formName)(state),
   );
-
-  // The draft baseline is seeded by the stageEditorDraft listener on
-  // redux-form INITIALIZE (which fires on mount and on `id` change via
-  // enableReinitialize), so no mount effect is needed here.
 
   // Preview state
   const [isOpeningPreview, setIsOpeningPreview] = useState(false);
   const useSyntheticData = useSelector(getPreviewUseSyntheticData);
   const ignoreSkipLogic = useSelector(getPreviewIgnoreSkipLogic);
+
+  // Whether the wip protocol (committed protocol + current stage edits) passes
+  // full schema validation. We disable preview whenever it does not, so the
+  // button reflects "this would be a valid protocol to preview" rather than
+  // only redux-form's field-level (mount-dependent) sync state. This covers
+  // structural problems the sync validators miss — e.g. a side panel with no
+  // title (`title` pruned away -> required field missing) or with a malformed
+  // filter — even when the relevant section is collapsed and its fields are
+  // unmounted. Starts `false` (disabled until proven valid) so preview can't be
+  // clicked before the first validation resolves; the first run is immediate
+  // (see below) so a freshly-opened valid stage doesn't visibly sit disabled.
+  const [isWipProtocolValid, setIsWipProtocolValid] = useState(false);
+  const hasValidatedOnce = useRef(false);
+
+  // The draft baseline is seeded by the stageEditorDraft listener on
+  // redux-form INITIALIZE (which fires on mount and on `id` change via
+  // enableReinitialize), so no mount effect is needed here.
+  useEffect(() => {
+    if (!protocol || !formValues) {
+      setIsWipProtocolValid(false);
+      return;
+    }
+
+    let cancelled = false;
+    // Validate the exact stage shape preview will launch (same skip-logic
+    // handling) so the disabled state can't disagree with what clicking Preview
+    // would actually do.
+    const runValidation = () => {
+      const { stage: stageToValidate } = normalizePreviewStage(
+        formValues,
+        ignoreSkipLogic,
+      );
+      const wipProtocol = buildProtocolWithStage(
+        protocol,
+        stageToValidate,
+        id,
+        insertAtIndex,
+      );
+      void validateProtocol(wipProtocol)
+        .then((result) => {
+          if (!cancelled) {
+            hasValidatedOnce.current = true;
+            setIsWipProtocolValid(result.success);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            hasValidatedOnce.current = true;
+            setIsWipProtocolValid(false);
+          }
+        });
+    };
+
+    // Run the first validation immediately so the button settles promptly on
+    // open; debounce subsequent edits so we don't validate on every keystroke.
+    if (!hasValidatedOnce.current) {
+      runValidation();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const handle = setTimeout(runValidation, 200);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [protocol, formValues, id, insertAtIndex, ignoreSkipLogic]);
+
+  // Preview is disabled when the form has obvious field-level errors (immediate
+  // feedback) or when the wip protocol fails schema validation (comprehensive,
+  // and independent of which sections are currently mounted).
+  const isStageInvalid = isFormSyncInvalid || !isWipProtocolValid;
 
   // Handle form submission
   const onSubmit = useCallback(
@@ -170,15 +216,10 @@ const StageEditor = (props: StageEditorProps) => {
       return;
     }
 
-    // With "Always show this stage in preview" on (the default), strip skip
-    // logic from the previewed stage so the interview doesn't bounce off the
-    // stage the user launched into. We only consider it "bypassed" when the
-    // stage actually had skip logic to strip.
-    const skipLogicBypassed = ignoreSkipLogic && Boolean(formValues.skipLogic);
-    const omitKeys = skipLogicBypassed
-      ? ['_modified', 'skipLogic']
-      : ['_modified'];
-    const normalizedStage = omit(formValues, omitKeys) as Stage;
+    const { stage: normalizedStage, skipLogicBypassed } = normalizePreviewStage(
+      formValues,
+      ignoreSkipLogic,
+    );
     const previewProtocol = buildProtocolWithStage(
       protocol,
       normalizedStage,

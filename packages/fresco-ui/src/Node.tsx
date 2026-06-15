@@ -39,7 +39,6 @@ const nodeVariants = cva({
     'aspect-square',
     'text-white',
     '[--base:var(--node-1)] [--dark:oklch(from_var(--base)_calc(l-0.05)_c_h)]',
-    'bg-[linear-gradient(145deg,var(--base)_0%,var(--base)_50%,var(--dark)_50%,var(--dark)_100%)]',
   ],
   variants: {
     size: {
@@ -52,7 +51,7 @@ const nodeVariants = cva({
     shape: {
       circle: 'rounded-full',
       square: 'rounded',
-      diamond: 'scale-[0.85] rotate-45 rounded',
+      diamond: 'rounded',
     },
     color: {
       'node-color-seq-1': 'outline-node-1 [--base:var(--node-1)]',
@@ -88,6 +87,28 @@ const nodeVariants = cva({
     shape: 'circle',
     color: 'node-color-seq-1',
     disabled: false,
+  },
+});
+
+// Background layer carrying the gradient and, for diamonds, the rotation.
+// Shape transforms must live here rather than on the root element: the root
+// receives inline `transform` positioning (e.g. translate(-50%, -50%)
+// centering on the sociogram canvas) and motion layout projection, both of
+// which compose incorrectly with static `rotate`/`scale` properties.
+const shapeLayerVariants = cva({
+  base: [
+    'pointer-events-none absolute inset-0 rounded-[inherit]',
+    'bg-[linear-gradient(145deg,var(--base)_0%,var(--base)_50%,var(--dark)_50%,var(--dark)_100%)]',
+  ],
+  variants: {
+    shape: {
+      circle: '',
+      square: '',
+      diamond: 'scale-[0.85] rotate-45',
+    },
+  },
+  defaultVariants: {
+    shape: 'circle',
   },
 });
 
@@ -152,7 +173,7 @@ type UINodeProps = {
  *
  * Visual states:
  * - Focus: outline ring (via focusable utility)
- * - Selected: box-shadow ring with spring animation (on main element)
+ * - Selected: box-shadow ring with spring animation (on the shape layer)
  * - Linking: pulsing box-shadow ring (separate layer, can be active with selected)
  * - Disabled: desaturated, no pointer events
  *
@@ -161,7 +182,10 @@ type UINodeProps = {
  * - style.cursor provided: uses that cursor (e.g., 'grab' from drag systems)
  *
  * Shapes:
- * - Circle (default), square, or diamond (rotated square with counter-rotated content)
+ * - Circle (default), square, or diamond. The shape (including the diamond's
+ *   rotation) is rendered by an inner background layer so the root element
+ *   stays transform-free — inline `transform` positioning and motion layout
+ *   animations would otherwise compose incorrectly with the rotation.
  */
 export default function Node(props: UINodeProps) {
   const {
@@ -187,7 +211,6 @@ export default function Node(props: UINodeProps) {
   } = props;
 
   const labelWithEllipsis = truncateNodeLabel(label);
-  const isDiamond = shape === 'diamond';
 
   // Infer interaction mode from props
   const hasClickHandler = !!onClick;
@@ -212,8 +235,9 @@ export default function Node(props: UINodeProps) {
     disabled,
   });
 
-  // Scope for selected state animation (box-shadow on main element)
-  const [stateScope, animate] = useSafeAnimate();
+  // Scope for selected state animation (box-shadow on the shape layer, so
+  // the ring follows the shape's border radius and rotation)
+  const [stateScope, animate] = useSafeAnimate<HTMLSpanElement>();
 
   // Track previous states for animation transitions
   const prevSelected = usePrevious(selected);
@@ -273,7 +297,7 @@ export default function Node(props: UINodeProps) {
       tabIndex={
         hasClickHandler ? buttonProps.tabIndex : (buttonProps.tabIndex ?? -1)
       }
-      ref={useMergeRefs({ ref, scope, stateScope })}
+      ref={useMergeRefs({ ref, scope })}
       type="button"
       disabled={disabled}
       aria-label={ariaLabel ?? label}
@@ -309,44 +333,46 @@ export default function Node(props: UINodeProps) {
       onKeyUp={composeEventHandlers(externalKeyUp, nodeProps.onKeyUp)}
       onClick={onClick}
     >
-      {/* Linking indicator - separate element so it can animate independently */}
-      <AnimatePresence>
-        {linking && (
-          <motion.span
-            className="pointer-events-none absolute inset-0 rounded-[inherit]"
-            initial={{
-              boxShadow: '0 0 0 0.08em var(--selected)',
-            }}
-            animate={{
-              boxShadow: [
-                '0 0 0 0.08em var(--selected)',
-                '0 0 0 0.7em var(--selected)',
-              ],
-            }}
-            exit={{ opacity: 0, boxShadow: '0 0 0 0 var(--selected)' }}
-            transition={{
-              boxShadow: {
-                duration: 0.4,
-                repeat: Number.POSITIVE_INFINITY,
-                repeatType: 'reverse',
-                ease: [0.2, 0, 0.6, 1],
-              },
-            }}
-            aria-hidden
-          />
-        )}
-      </AnimatePresence>
-      {isDiamond ? (
-        <span className="scale-[1.176] -rotate-45">
-          {nodeContent}
-          {props.children}
-        </span>
-      ) : (
-        <>
-          {nodeContent}
-          {props.children}
-        </>
-      )}
+      {/* Shape layer - carries the background, state box-shadows, and (for
+          diamonds) the rotation, keeping the root element transform-free */}
+      <span
+        ref={stateScope}
+        className={shapeLayerVariants({ shape })}
+        aria-hidden
+      >
+        {/* Linking indicator - separate element so it can animate independently */}
+        <AnimatePresence>
+          {linking && (
+            <motion.span
+              className="pointer-events-none absolute inset-0 rounded-[inherit]"
+              initial={{
+                boxShadow: '0 0 0 0.08em var(--selected)',
+              }}
+              animate={{
+                boxShadow: [
+                  '0 0 0 0.08em var(--selected)',
+                  '0 0 0 0.7em var(--selected)',
+                ],
+              }}
+              exit={{ opacity: 0, boxShadow: '0 0 0 0 var(--selected)' }}
+              transition={{
+                boxShadow: {
+                  duration: 0.4,
+                  repeat: Number.POSITIVE_INFINITY,
+                  repeatType: 'reverse',
+                  ease: [0.2, 0, 0.6, 1],
+                },
+              }}
+              aria-hidden
+            />
+          )}
+        </AnimatePresence>
+      </span>
+      {/* Content layer - positioned so it paints above the shape layer */}
+      <span className="relative flex size-full items-center justify-center">
+        {nodeContent}
+        {props.children}
+      </span>
     </motion.button>
   );
 }

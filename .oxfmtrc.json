@@ -36,6 +36,7 @@
     "**/.turbo/**",
     "**/public/**/*.*",
     "**/worker-configuration.d.ts",
-    "**/*.xcassets/**/Contents.json"
+    "**/*.xcassets/**/Contents.json",
+    "packages/interface-images/src/generated/**"
   ]
 }

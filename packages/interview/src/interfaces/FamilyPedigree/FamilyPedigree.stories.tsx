@@ -128,12 +128,17 @@ function FamilyPedigreeStoryWrapper({
   );
 }
 
-type StoryArgs = {
+// Exported for the capture story, which replays a scenario play function and
+// must match its PlayFunctionContext typing.
+export type StoryArgs = {
   scaffoldingText: string;
 };
 
 const meta: Meta<StoryArgs> = {
   title: 'Interfaces/FamilyPedigree',
+  // buildScenarioInterview is a runtime export consumed by the capture
+  // story; keep it out of the story index.
+  excludeStories: ['buildScenarioInterview'],
   parameters: {
     layout: 'fullscreen',
   },
@@ -222,7 +227,10 @@ export const Default: Story = {
 // Helpers for wizard interaction tests
 // ---------------------------------------------------------------------------
 
-function buildScenarioInterview({ withNomination = false } = {}) {
+// Exported for the capture story (FamilyPedigree.capture.stories.tsx), which
+// replays a scenario through the real quick-start wizard so the published
+// screenshot shows a pedigree built from valid data.
+export function buildScenarioInterview({ withNomination = false } = {}) {
   const {
     si,
     nodeType,
