@@ -6,7 +6,10 @@ import {
   validateProtocol,
 } from '@codaco/protocol-validation';
 
-import { buildProtocolWithStage } from '../buildProtocolWithStage';
+import {
+  buildProtocolWithStage,
+  normalizePreviewStage,
+} from '../buildProtocolWithStage';
 
 // A minimal, valid v8 protocol containing a single name generator stage whose
 // codebook subject ("person") exists. Tests insert/replace panels onto this
@@ -131,5 +134,48 @@ describe('buildProtocolWithStage', () => {
     expect(built.stages).toHaveLength(2);
     expect(built.stages[0]?.id).toBeTruthy();
     expect(built.stages[1]?.id).toBe(STAGE_ID);
+  });
+});
+
+describe('normalizePreviewStage', () => {
+  const stageWithSkipLogic = {
+    id: STAGE_ID,
+    type: 'NameGenerator',
+    label: 'Name some people',
+    _modified: true,
+    skipLogic: { action: 'SKIP', filter: { join: 'AND', rules: [] } },
+  } as unknown as Stage;
+
+  it('always drops the editor-only _modified field', () => {
+    const { stage } = normalizePreviewStage(stageWithSkipLogic, false);
+    expect(stage).not.toHaveProperty('_modified');
+  });
+
+  it('keeps skip logic when ignoreSkipLogic is off', () => {
+    const { stage, skipLogicBypassed } = normalizePreviewStage(
+      stageWithSkipLogic,
+      false,
+    );
+    expect(skipLogicBypassed).toBe(false);
+    expect(stage).toHaveProperty('skipLogic');
+  });
+
+  it('strips skip logic and flags bypass when ignoreSkipLogic is on and the stage has skip logic', () => {
+    const { stage, skipLogicBypassed } = normalizePreviewStage(
+      stageWithSkipLogic,
+      true,
+    );
+    expect(skipLogicBypassed).toBe(true);
+    expect(stage).not.toHaveProperty('skipLogic');
+  });
+
+  it('does not flag bypass when ignoreSkipLogic is on but the stage has no skip logic', () => {
+    const stageWithout = {
+      id: STAGE_ID,
+      type: 'NameGenerator',
+      label: 'No skip logic',
+    } as unknown as Stage;
+    const { skipLogicBypassed } = normalizePreviewStage(stageWithout, true);
+    expect(skipLogicBypassed).toBe(false);
   });
 });

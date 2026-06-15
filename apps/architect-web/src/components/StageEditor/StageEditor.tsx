@@ -36,7 +36,10 @@ import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
 import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { ensureError } from '~/utils/ensureError';
 
-import { buildProtocolWithStage } from './buildProtocolWithStage';
+import {
+  buildProtocolWithStage,
+  normalizePreviewStage,
+} from './buildProtocolWithStage';
 import { formName } from './configuration';
 import type { SectionComponent } from './Interfaces';
 import { getInterface } from './Interfaces';
@@ -75,6 +78,11 @@ const StageEditor = (props: StageEditorProps) => {
     isInvalid(formName)(state),
   );
 
+  // Preview state
+  const [isOpeningPreview, setIsOpeningPreview] = useState(false);
+  const useSyntheticData = useSelector(getPreviewUseSyntheticData);
+  const ignoreSkipLogic = useSelector(getPreviewIgnoreSkipLogic);
+
   // Whether the wip protocol (committed protocol + current stage edits) passes
   // full schema validation. We disable preview whenever it does not, so the
   // button reflects "this would be a valid protocol to preview" rather than
@@ -97,9 +105,14 @@ const StageEditor = (props: StageEditorProps) => {
 
     let cancelled = false;
     // Debounce so we don't validate on every keystroke; the trailing run
-    // reflects the settled form values.
+    // reflects the settled form values. Validate the exact stage shape preview
+    // will launch (same skip-logic handling) so the disabled state can't
+    // disagree with what clicking Preview would actually do.
     const handle = setTimeout(() => {
-      const stageToValidate = omit(formValues, '_modified') as Stage;
+      const { stage: stageToValidate } = normalizePreviewStage(
+        formValues,
+        ignoreSkipLogic,
+      );
       const wipProtocol = buildProtocolWithStage(
         protocol,
         stageToValidate,
@@ -123,17 +136,12 @@ const StageEditor = (props: StageEditorProps) => {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [protocol, formValues, id, insertAtIndex]);
+  }, [protocol, formValues, id, insertAtIndex, ignoreSkipLogic]);
 
   // Preview is disabled when the form has obvious field-level errors (immediate
   // feedback) or when the wip protocol fails schema validation (comprehensive,
   // and independent of which sections are currently mounted).
   const isStageInvalid = isFormSyncInvalid || !isWipProtocolValid;
-
-  // Preview state
-  const [isOpeningPreview, setIsOpeningPreview] = useState(false);
-  const useSyntheticData = useSelector(getPreviewUseSyntheticData);
-  const ignoreSkipLogic = useSelector(getPreviewIgnoreSkipLogic);
 
   // Handle form submission
   const onSubmit = useCallback(
@@ -194,15 +202,10 @@ const StageEditor = (props: StageEditorProps) => {
       return;
     }
 
-    // With "Always show this stage in preview" on (the default), strip skip
-    // logic from the previewed stage so the interview doesn't bounce off the
-    // stage the user launched into. We only consider it "bypassed" when the
-    // stage actually had skip logic to strip.
-    const skipLogicBypassed = ignoreSkipLogic && Boolean(formValues.skipLogic);
-    const omitKeys = skipLogicBypassed
-      ? ['_modified', 'skipLogic']
-      : ['_modified'];
-    const normalizedStage = omit(formValues, omitKeys) as Stage;
+    const { stage: normalizedStage, skipLogicBypassed } = normalizePreviewStage(
+      formValues,
+      ignoreSkipLogic,
+    );
     const previewProtocol = buildProtocolWithStage(
       protocol,
       normalizedStage,
