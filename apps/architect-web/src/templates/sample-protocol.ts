@@ -43,7 +43,13 @@ export const loadSampleAssets = async (): Promise<ExtractedAsset[]> => {
         if (!url) {
           throw new Error(`Missing bundled Sample asset: ${entry.source}`);
         }
-        const data = await (await fetch(url)).blob();
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch bundled Sample asset ${entry.source}: ${response.status}`,
+          );
+        }
+        const data = await response.blob();
         return { id: entry.id, name: entry.name, data };
       }),
   );

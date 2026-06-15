@@ -245,8 +245,7 @@
           "type": "datetime",
           "component": "DatePicker",
           "parameters": {
-            "type": "full",
-            "max": "2002-01-01"
+            "type": "full"
           }
         },
         "92326a8e-f5a1-4918-8717-a4d6917a9264": {

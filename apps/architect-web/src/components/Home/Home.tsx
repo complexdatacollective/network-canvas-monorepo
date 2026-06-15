@@ -18,6 +18,7 @@ import NewProtocolDialog from '~/components/NewProtocolDialog';
 import NavShell from '~/components/ProjectNav/NavShell';
 import { DEVELOPMENT_PROTOCOL_URL } from '~/config';
 import { useAppDispatch } from '~/ducks/hooks';
+import { generalErrorDialog } from '~/ducks/modules/userActions/dialogs';
 import {
   createNetcanvas,
   openBundledTemplate,
@@ -151,9 +152,17 @@ const Home = () => {
       if (!template) return;
       void runAction(async () => {
         if (template.kind === 'bundled') {
-          const assets = template.loadAssets
-            ? await template.loadAssets()
-            : undefined;
+          let assets: ExtractedAsset[] | undefined;
+          try {
+            assets = template.loadAssets
+              ? await template.loadAssets()
+              : undefined;
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : String(error);
+            dispatch(generalErrorDialog('Protocol Import Error', message));
+            return;
+          }
           await dispatch(
             openBundledTemplate({ protocol: template.protocol, name, assets }),
           );

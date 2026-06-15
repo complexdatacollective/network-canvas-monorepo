@@ -39,7 +39,13 @@ export const loadTemplateAssets = async (
         if (!url) {
           throw new Error(`Missing bundled template asset: ${entry.source}`);
         }
-        const data = await (await fetch(url)).blob();
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch bundled template asset ${entry.source}: ${response.status}`,
+          );
+        }
+        const data = await response.blob();
         return { id: entry.id, name: entry.name, data };
       }),
   );
