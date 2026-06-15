@@ -4,9 +4,7 @@ import InterfacePicture from '@codaco/interface-images/InterfacePicture';
 import manifest, {
   type InterfaceType,
 } from '@codaco/interface-images/manifest';
-import Paragraph from '~/components/ui/typography/Paragraph';
 import type { InterfaceCompatibility } from '~/lib/interfaceCompatibility';
-import { cn } from '~/lib/utils';
 
 const isInterfaceType = (type: string): type is InterfaceType =>
   Object.hasOwn(manifest, type);
@@ -29,13 +27,13 @@ export const InterfaceSummary = ({
     );
   }
   return (
-    <div className="mb-4 flex flex-col sm:flex-row sm:items-center">
-      <div className="my-10 w-full px-8">
+    <div className="mb-4 flex flex-col gap-6 sm:flex-row sm:items-center">
+      <div className="my-6 min-w-0 flex-1">
         <InterfacePicture
           type={type}
           ratio="16:9"
           artDirection={[{ media: '(max-width: 40rem)', ratio: '1:1' }]}
-          sizes="(min-width: 40rem) 28rem, 100vw"
+          sizes="(min-width: 40rem) 32rem, 100vw"
           alt={`${humanizeType(type)} interface`}
           className="w-full rounded"
         />
@@ -44,6 +42,21 @@ export const InterfaceSummary = ({
     </div>
   );
 };
+
+const SpecField = ({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) => (
+  <div>
+    <dt className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+      {label}
+    </dt>
+    <dd className="mt-1 text-base">{children}</dd>
+  </div>
+);
 
 export const InterfaceMeta = ({
   type,
@@ -56,51 +69,38 @@ export const InterfaceMeta = ({
   usesprompts: string;
   compatibility?: InterfaceCompatibility | null;
 }) => {
+  const usesPromptsLabel = usesprompts === 'true' ? 'Yes' : 'No';
+  const supportedApps = compatibility?.apps.filter((app) => app.supported);
+
   return (
-    <div className="flex flex-col content-center justify-center space-y-6 sm:pl-6">
-      <Paragraph>
-        <strong className="uppercase">Type:</strong> <br /> {type}
-      </Paragraph>
-      <Paragraph>
-        <strong className="uppercase">Creates:</strong> <br /> {creates}
-      </Paragraph>
-      <Paragraph>
-        <strong className="uppercase">Uses Prompts:</strong> <br />
-        {usesprompts}
-      </Paragraph>
-      {compatibility && (
-        <>
-          <Paragraph>
-            <strong className="uppercase">Schema:</strong> <br />
-            <span className="bg-primary text-primary-foreground mt-1 inline-block rounded-lg px-3 py-1.5 text-sm font-semibold">
+    <dl className="flex shrink-0 flex-col gap-5 sm:w-64 sm:pl-6">
+      <SpecField label="Type">{type}</SpecField>
+      <SpecField label="Creates">{creates}</SpecField>
+      <div className="grid grid-cols-2 gap-5">
+        <SpecField label="Uses Prompts">{usesPromptsLabel}</SpecField>
+        {compatibility && (
+          <SpecField label="Schema">
+            <span className="bg-primary text-primary-foreground inline-block rounded-md px-3 py-1 text-sm font-semibold">
               v{compatibility.introducedIn}+
             </span>
-          </Paragraph>
-          <Paragraph>
-            <strong className="uppercase">Available In:</strong> <br />
-            <span className="mt-1 flex flex-wrap gap-2">
-              {compatibility.apps.map((app) => (
-                <span
-                  key={app.id}
-                  title={
-                    app.supported
-                      ? `${app.role === 'configure' ? 'Configure' : 'Run'} in ${app.label}`
-                      : `Not available — requires schema v${compatibility.introducedIn}`
-                  }
-                  className={cn(
-                    'inline-block rounded-lg px-3 py-1.5 text-sm font-semibold',
-                    app.supported
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground line-through opacity-70',
-                  )}
-                >
-                  {app.label}
-                </span>
-              ))}
-            </span>
-          </Paragraph>
-        </>
+          </SpecField>
+        )}
+      </div>
+      {supportedApps && supportedApps.length > 0 && (
+        <SpecField label="Available In">
+          <span className="flex flex-wrap gap-1.5">
+            {supportedApps.map((app) => (
+              <span
+                key={app.id}
+                title={`${app.role === 'configure' ? 'Configure' : 'Run'} in ${app.label}`}
+                className="bg-primary text-primary-foreground inline-block rounded-md px-3 py-1 text-sm font-semibold"
+              >
+                {app.label}
+              </span>
+            ))}
+          </span>
+        </SpecField>
       )}
-    </div>
+    </dl>
   );
 };

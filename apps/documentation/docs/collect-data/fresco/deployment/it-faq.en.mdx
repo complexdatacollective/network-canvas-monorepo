@@ -26,9 +26,9 @@ Fresco is a Next.js application (Node.js 24) backed by a PostgreSQL database and
   - **UploadThing** — a hosted S3 wrapper. Easiest to set up; the free tier is US-only, paid tiers offer EU regions.
   - **Any S3-compatible endpoint** — AWS S3, MinIO (self-hosted), Cloudflare R2, Backblaze B2, etc. Configured with endpoint URL, bucket, region, and access key/secret.
 - **A domain name with HTTPS**. Fresco requires TLS. Free certificates from Let's Encrypt are sufficient.
-- **Inbound HTTPS on port 443**. If using UploadThing, the `/api/uploadthing` endpoint must additionally be reachable from the public Internet, because it is the callback target for S3 uploads. The S3-compatible backend does not require this external callback.
+- **Inbound HTTPS on port 443**. If using UploadThing, the `/api/uploadthing` endpoint must additionally be reachable from the public Internet, because it is the callback target for UploadThing uploads. A directly-configured S3-compatible backend does not require this external callback.
 
-For full details on self-hosted deployments, see the [Advanced Deployment](./advanced) guide. For the recommended cloud-based path, see the [Deployment Guide](./guide).
+For step-by-step storage setup, see [Configure storage](./guide#configure-storage) in the deployment guide. For full details on self-hosted deployments, see the [Advanced Deployment](./advanced) guide. For the recommended cloud-based path, see the [Deployment Guide](./guide).
 
 ## Where is participant data stored?
 

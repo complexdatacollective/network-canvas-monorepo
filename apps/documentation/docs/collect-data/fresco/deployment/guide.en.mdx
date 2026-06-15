@@ -33,7 +33,7 @@ To deploy Fresco, we will use the following services and technologies:
 
 - **GitHub**: A platform for hosting and sharing code owned and operated by Microsoft. The Fresco code is shared via GitHub, and you will need a GitHub account to deploy it. If you do not have a GitHub account, you can create one for free at <a href="https://github.com/signup" target="_blank">github.com</a>.
 - **PostgreSQL**: A powerful, open-source relational database system. Fresco uses PostgreSQL to store data about your study, participants, and responses.
-- **UploadThing**: A cloud-based file storage service that Fresco uses to store protocol assets such as media files.
+- **Object storage**: Fresco stores protocol assets (such as media files) in an S3-compatible object store. You can use **UploadThing** — a managed service that is the simplest option — or bring your own **S3-compatible bucket** (AWS S3, Cloudflare R2, MinIO, or Backblaze B2).
 
 To make the deployment process as simple as possible, we designed Fresco to be deployed using <a href="https://www.netlify.com/" target="_blank">Netlify</a>, which is a cloud platform that specializes in deploying web applications. It is designed to be easy to use and has a generous free tier that is suitable for
 most research projects. It is not a requirement to use Netlify to host Fresco, but it is the simplest way to get started and is the method we will be using in this guide.
@@ -172,17 +172,36 @@ In **Fresco v4 and later**, if multiple team members need access, give each pers
 
 </TipBox>
 
-![Enter a username and password](/assets/img/fresco-images/fresco1.png)
+![Create an admin account](/assets/img/fresco-images/fresco1.png)
 
 <TipBox danger>
 
-Fresco has no email-based password reset. If you forget your password, you can recover access using a two-factor recovery code, by having another administrator reset your account's authentication, or, as a last resort, by resetting the database (which destroys all data). Keep your credentials in a secure location and enrol more than one administrator. See [Accounts & security](/en/collect-data/fresco/accounts) for details.
+Fresco has no email-based password reset. If you forget your password, you can recover access using a recovery code, by having another administrator reset your account's authentication, or, as a last resort, by resetting the database (which destroys all data). Keep your credentials in a secure location and enrol more than one administrator. See [Accounts & security](/en/collect-data/fresco/accounts) for details.
 
 </TipBox>
 
-### Create a storage bucket using UploadThing
+### Configure storage
 
-Fresco uses a third-party service called 'UploadThing' to store media files, including protocol assets. In order to use this service, you need to create an account with UploadThing that will allow you to generate an API key that Fresco can use to securely communicate with it.
+Fresco stores protocol assets — such as images, audio, video, and network files — in an S3-compatible object store. You can use one of two storage providers:
+
+- **UploadThing** — a managed storage service. This is the simplest option and what we recommend for most studies: you create an account, generate a token, and paste it in.
+- **An S3-compatible bucket** — AWS S3, Cloudflare R2, MinIO, Backblaze B2, or any S3-compatible endpoint. Consider this if you need control over the storage region and data residency, want to keep all components within your own infrastructure, or already have S3 storage available.
+
+<TipBox danger>
+
+Choose your storage provider carefully during setup. Afterward, the dashboard lets you update the credentials for your chosen provider, but it **does not let you switch the provider type**.
+
+</TipBox>
+
+<TipBox>
+
+The maximum size for a single uploaded protocol `.netcanvas` file is **256 MB**, regardless of which storage provider you choose.
+
+</TipBox>
+
+#### Create a storage bucket using UploadThing
+
+Fresco can use a third-party service called 'UploadThing' to store media files, including protocol assets. To use this service, you create an account with UploadThing that lets you generate an API token that Fresco uses to securely communicate with it.
 
 <Tipbox>
 
@@ -221,6 +240,22 @@ To create an app on UploadThing:
    ```
 
    ![Paste your environment variable into the form](/assets/img/fresco-images/fresco2.png)
+
+#### Use an S3-compatible bucket
+
+If you would rather use your own storage, select **S3 / S3-Compatible** on the storage step instead of UploadThing.
+
+Before you start, create a bucket with your S3 provider (AWS S3, Cloudflare R2, MinIO, Backblaze B2, etc.), generate an access key and secret with read and write access to it, and set the bucket's CORS policy to allow requests from your Fresco domain.
+
+Then complete the form:
+
+1. **Endpoint URL** — your provider's S3 endpoint (for example `https://s3.amazonaws.com`).
+2. **Public URL** — the URL browsers use to reach the storage. For AWS S3 or Cloudflare R2 this is usually the same as the endpoint URL.
+3. **Bucket Name**, **Region**, **Access Key ID**, and **Secret Access Key** for your bucket.
+
+Click **Save and continue**. Fresco verifies the connection before moving on.
+
+![Selecting an S3-compatible bucket on the storage step](/assets/img/fresco-images/configure-storage-s3.png)
 
 ### Upload a protocol
 

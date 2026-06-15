@@ -54,9 +54,32 @@ However, we recommend **not** hosting different studies on the same instance of 
 
 ![The protocols page in the dashboard.](/assets/img/fresco-images/protocols-page.png)
 
-Fresco will then validate and upload your protocol. If it contains any assets (images, audio, video, or network files), Fresco will upload these to the UploadThing service and link them to your protocol.
+Fresco will then validate and upload your protocol. If it contains any assets (images, audio, video, or network files), Fresco will upload these to your configured storage provider and link them to your protocol.
 
 Once the process is finished, you will see your protocol listed on the protocols page. You can click on the protocol to view its details, and to see the unique URL that you will share with participants to conduct interviews.
+
+## Generating synthetic test data
+
+Before recruiting real participants, you may want to populate your study with fake interviews so that you can check that a protocol behaves as expected, preview how responses appear on the interviews page, and test your export workflow end to end. Fresco can generate **synthetic interview data** for any uploaded protocol from the settings page.
+
+![The Synthetic Interview Data panel on the settings page.](/assets/img/fresco-images/synthetic-interview-data.png)
+
+To generate synthetic interviews:
+
+1. Navigate to the settings page in the dashboard.
+2. In the **Synthetic Interview Data** panel, select a protocol from the dropdown.
+3. Choose how many interviews to create (between 1 and 1000).
+4. Optionally configure the generation options described below.
+5. Click **Generate**.
+
+You can adjust how the synthetic interviews are generated using two options:
+
+- **Simulate participant drop-out**: When enabled, generated participants have an increasing chance of abandoning the interview at each stage, producing a realistic mix of complete and incomplete interviews rather than only finished ones.
+- **Respect skip logic and filtering**: When enabled, generation evaluates the skip logic and stage network filters in your protocol. Stages are skipped, or nodes filtered out, based on the network state at that point, so the resulting data reflects the paths real participants would actually take.
+
+All interviews and participants created this way are flagged as synthetic, which keeps them clearly distinguished from real study data.
+
+To remove synthetic data, use the **Delete All** button in the same panel. The panel shows how many synthetic interviews and test participants currently exist, and deletes all of them at once, with a progress indicator shown while the deletion runs. This only affects data flagged as synthetic; your real interviews and participants are left untouched.
 
 ## Participants
 

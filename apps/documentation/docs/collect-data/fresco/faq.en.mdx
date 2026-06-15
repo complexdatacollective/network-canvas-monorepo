@@ -38,7 +38,7 @@ The core technology stack for Fresco is as follows:
   - tRPC - for defining and handling API routes
   - PostgreSQL - for storing all data
   - Prisma - for interacting with the database
-  - UploadThing - for storing protocol assets
+  - UploadThing or an S3-compatible bucket (AWS S3, MinIO, Cloudflare R2, Backblaze B2) - for storing protocol assets
 
 To deploy Fresco, you will need to have access to one or more servers that can run these technologies. For example you might have a server that runs the Next.js frontend and another server that runs the PostgreSQL database.
 
@@ -76,8 +76,8 @@ Fresco and Interviewer are software tools that can be used in a GDPR-compliant m
 - You deploy and host Fresco on your own infrastructure
 - All participant data remains under your control at all times
 - Interview data is stored in Postgres (encrypted at rest when using providers like Neon)
-- Study assets are stored in S3 via UploadThing (server-side encryption enforced)
-- GDPR-compliant hosting is possible when selecting an EU region (available on paid UploadThing plans)
+- Study assets are stored in an S3-compatible bucket — either UploadThing (server-side encryption enforced) or your own S3 storage (AWS S3, MinIO, Cloudflare R2, Backblaze B2)
+- GDPR-compliant hosting is possible by selecting an EU region — an EU-region UploadThing paid plan, or an EU-region S3 bucket
 - Optional anonymous usage/error analytics can be disabled
 
 **Your Responsibilities:**
