@@ -64,7 +64,11 @@ due.
 
 `@codaco/architect-web` and `@codaco/documentation` builds depend on
 `generate`, so versioning interview flows fresh images into their next build
-and deploy.
+and deploy. In CI the deploy jobs restore `generate`'s output from the
+`quality` job's cache rather than re-running it, so they must set the same
+`STORYBOOK_MAPBOX_TOKEN` and `INTERVIEW_RELEASE_VERSION` for the cache key to
+match — otherwise they recompute the hash, miss the cache, and try to capture
+without a browser.
 
 ## Regenerating
 

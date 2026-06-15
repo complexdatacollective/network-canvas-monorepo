@@ -297,6 +297,7 @@ jobs:
         name: Build and deploy docs preview
         env:
           INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
+          STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
         run: |
           pnpm exec turbo run build --filter=@codaco/documentation
           cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
@@ -346,6 +347,7 @@ jobs:
         name: Build and deploy docs production
         env:
           INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
+          STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
         run: |
           pnpm exec turbo run build --filter=@codaco/documentation
           cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
@@ -396,6 +398,7 @@ jobs:
         name: Build and deploy architect-web preview
         env:
           INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
+          STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
         run: |
           pnpm exec turbo run build --filter=@codaco/architect-web
           json=$(npx --yes netlify-cli@22 deploy --no-build \
@@ -547,6 +550,7 @@ jobs:
         name: Build and deploy architect-web production
         env:
           INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
+          STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
         run: |
           pnpm exec turbo run build --filter=@codaco/architect-web
           json=$(npx --yes netlify-cli@22 deploy --no-build --prod \
