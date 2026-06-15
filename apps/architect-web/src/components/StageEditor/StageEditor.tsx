@@ -1,6 +1,6 @@
 import { omit } from 'es-toolkit/compat';
 import { Settings } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { getFormValues, isInvalid } from 'redux-form';
 import { useLocation } from 'wouter';
@@ -90,9 +90,11 @@ const StageEditor = (props: StageEditorProps) => {
   // structural problems the sync validators miss — e.g. a side panel with no
   // title (`title` pruned away -> required field missing) or with a malformed
   // filter — even when the relevant section is collapsed and its fields are
-  // unmounted. `true` until proven otherwise so we don't flash the button
-  // disabled on first mount before the async check resolves.
-  const [isWipProtocolValid, setIsWipProtocolValid] = useState(true);
+  // unmounted. Starts `false` (disabled until proven valid) so preview can't be
+  // clicked before the first validation resolves; the first run is immediate
+  // (see below) so a freshly-opened valid stage doesn't visibly sit disabled.
+  const [isWipProtocolValid, setIsWipProtocolValid] = useState(false);
+  const hasValidatedOnce = useRef(false);
 
   // The draft baseline is seeded by the stageEditorDraft listener on
   // redux-form INITIALIZE (which fires on mount and on `id` change via
@@ -104,11 +106,10 @@ const StageEditor = (props: StageEditorProps) => {
     }
 
     let cancelled = false;
-    // Debounce so we don't validate on every keystroke; the trailing run
-    // reflects the settled form values. Validate the exact stage shape preview
-    // will launch (same skip-logic handling) so the disabled state can't
-    // disagree with what clicking Preview would actually do.
-    const handle = setTimeout(() => {
+    // Validate the exact stage shape preview will launch (same skip-logic
+    // handling) so the disabled state can't disagree with what clicking Preview
+    // would actually do.
+    const runValidation = () => {
       const { stage: stageToValidate } = normalizePreviewStage(
         formValues,
         ignoreSkipLogic,
@@ -122,15 +123,28 @@ const StageEditor = (props: StageEditorProps) => {
       void validateProtocol(wipProtocol)
         .then((result) => {
           if (!cancelled) {
+            hasValidatedOnce.current = true;
             setIsWipProtocolValid(result.success);
           }
         })
         .catch(() => {
           if (!cancelled) {
+            hasValidatedOnce.current = true;
             setIsWipProtocolValid(false);
           }
         });
-    }, 200);
+    };
+
+    // Run the first validation immediately so the button settles promptly on
+    // open; debounce subsequent edits so we don't validate on every keystroke.
+    if (!hasValidatedOnce.current) {
+      runValidation();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const handle = setTimeout(runValidation, 200);
 
     return () => {
       cancelled = true;
