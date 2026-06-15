@@ -1,4 +1,3 @@
-import type { ComponentProps } from 'react';
 import { useState } from 'react';
 import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
@@ -31,19 +30,35 @@ type VariablesComponentProps = {
 
 type EgoTypeProps = {
   variables?: Record<string, Variable>;
+  search?: string;
+  unusedOnly?: boolean;
 };
 
-const EgoType = ({ variables = {} }: EgoTypeProps) => {
+const EgoType = ({
+  variables = {},
+  search = '',
+  unusedOnly = false,
+}: EgoTypeProps) => {
   const [showAddVariable, setShowAddVariable] = useState(false);
 
   const variableArray = Object.values(variables);
+  const term = search.trim().toLowerCase();
+  const filteredVariables = variableArray.filter((variable) => {
+    if (unusedOnly && variable.inUse) {
+      return false;
+    }
+    if (term && !variable.name.toLowerCase().includes(term)) {
+      return false;
+    }
+    return true;
+  });
+
   const VariablesTyped =
     Variables as unknown as React.ComponentType<VariablesComponentProps>;
 
   return (
     <div className="py-(--space-md)">
-      <div className="flex items-center gap-(--space-md)">
-        <h3 className="my-0">Variables:</h3>
+      <div className="flex justify-end">
         <Button
           color="sea-green"
           size="small"
@@ -52,11 +67,13 @@ const EgoType = ({ variables = {} }: EgoTypeProps) => {
           Add variable
         </Button>
       </div>
-      {variableArray.length > 0 ? (
-        <VariablesTyped variables={variableArray} entity="ego" />
+      {filteredVariables.length > 0 ? (
+        <VariablesTyped variables={filteredVariables} entity="ego" />
       ) : (
         <p className="text-muted-foreground mt-(--space-md)">
-          No ego variables yet.
+          {variableArray.length === 0
+            ? 'No ego variables yet.'
+            : 'No ego variables match the current filter.'}
         </p>
       )}
       <NewVariableWindow
@@ -75,6 +92,12 @@ const mapStateToProps = (state: RootState) => {
   return entityProperties;
 };
 
-export default compose<ComponentProps<typeof EgoType>, typeof EgoType>(
-  connect(mapStateToProps),
-)(EgoType);
+// Props passed in by the parent; `variables` is injected by `connect`.
+type EgoOwnProps = {
+  search?: string;
+  unusedOnly?: boolean;
+};
+
+export default compose<EgoTypeProps, EgoOwnProps>(connect(mapStateToProps))(
+  EgoType,
+);

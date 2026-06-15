@@ -123,8 +123,7 @@ const EntityType = ({
         </span>
       </div>
       <div className="mt-(--space-md)">
-        <div className="flex items-center gap-(--space-md)">
-          <h3 className="my-0">Variables:</h3>
+        <div className="flex justify-end">
           <Button
             color="sea-green"
             size="small"

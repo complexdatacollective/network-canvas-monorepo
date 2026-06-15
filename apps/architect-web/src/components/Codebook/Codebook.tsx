@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { Section } from '~/components/EditorLayout';
+import Checkbox from '~/components/Form/Fields/Checkbox';
 import { Button } from '~/lib/legacy-ui/components';
 import { getCodebook } from '~/selectors/protocol';
 
@@ -60,24 +61,23 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
   return (
     <div className="my-(--space-xl)">
-      <div className="mb-(--space-lg) flex flex-wrap items-center gap-(--space-md)">
+      <div className="bg-surface-1 mb-(--space-lg) flex flex-wrap items-center gap-(--space-lg) rounded p-6 shadow-md">
         <input
           type="text"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search node and edge types by name…"
-          aria-label="Search node and edge types by name"
-          className="border-divider bg-surface-2 flex-1 rounded border px-(--space-md) py-(--space-xs)"
+          placeholder="Search types and variables by name…"
+          aria-label="Search the codebook by name"
+          className="border-border bg-surface-2 h-12 flex-1 rounded border px-(--space-md) text-lg"
         />
-        <label className="flex items-center gap-(--space-xs)">
-          <input
-            type="checkbox"
-            checked={unusedOnly}
-            onChange={(event) => setUnusedOnly(event.target.checked)}
-            aria-label="Show unused entities only"
-          />
-          <span>Unused only</span>
-        </label>
+        <Checkbox
+          label="Show unused only"
+          input={{
+            name: 'codebook-unused-only',
+            value: unusedOnly,
+            onChange: (value) => setUnusedOnly(Boolean(value)),
+          }}
+        />
       </div>
 
       {!hasAnyContent && (
@@ -93,7 +93,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
       <div className="mb-(--space-lg)">
         <h2 className="mt-0 mb-(--space-md)">Ego</h2>
         <Section layout="vertical" required={false}>
-          <EgoType />
+          <EgoType search={search} unusedOnly={unusedOnly} />
         </Section>
       </div>
 
