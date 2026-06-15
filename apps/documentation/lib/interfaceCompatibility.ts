@@ -28,7 +28,7 @@ const APPS: Record<AppId, { label: string; role: AppRole; maxSchema: number }> =
       role: 'configure',
       maxSchema: 8,
     },
-    'interviewer': { label: 'Interviewer', role: 'run', maxSchema: 7 },
+    'interviewer': { label: 'Interviewer', role: 'run', maxSchema: 8 },
     'fresco': { label: 'Fresco', role: 'run', maxSchema: 8 },
   };
 
