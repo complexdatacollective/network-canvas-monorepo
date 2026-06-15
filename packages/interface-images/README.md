@@ -32,32 +32,49 @@ apps must add it to `transpilePackages`. Asset URLs use
 
 Each interface has a hand-tuned capture story in `@codaco/interview`
 (`src/interfaces/<Name>/<Name>.capture.stories.tsx`, tagged `capture`, with
-a `parameters.capture` block). The `generate` task screenshots each story
-with Playwright at one live viewport per aspect ratio (so each ratio is a
-true responsive re-layout, not a crop), then derives WebP width variants
-with sharp into `src/generated/`, which is committed.
+a `parameters.capture` block). The `generate` task builds the interview
+storybook, screenshots each story with Playwright at one live viewport per
+aspect ratio (so each ratio is a true responsive re-layout, not a crop),
+then derives WebP width variants with sharp into `src/generated/assets/`.
+
+`src/generated/assets/` is **turbo-cached, not committed** (it is gitignored).
+Only `src/generated/manifest.ts` — a small generated file mapping each
+interface and ratio to its variant URLs and dimensions — is committed, so
+typechecking and tooling work without running a capture. `manifest.ts` only
+changes when interfaces are added/removed or the ratio config changes.
 
 To change how an interface is pictured, edit its capture story. To add an
-interface, add a capture story; to remove one, delete the story — stale
-assets are pruned on the next generation.
+interface, add a capture story; to remove one, delete the story.
+
+## When images regenerate
+
+The `generate` cache is keyed on the **`@codaco/interview` release version**
+— the version in its `package.json`, or the pending version when a changeset
+bumps it — passed in as `INTERVIEW_RELEASE_VERSION`. It is **not** keyed on
+interview or fresco-ui source content. So images regenerate only when you
+deliberately version the interview package, not on every code change.
+
+This trade-off is intentional: between versions the cached images can lag the
+code. `@codaco/interview`'s Chromatic build snapshots the `capture` stories,
+so a rendering change shows up there as a visual diff — that is the prompt to
+add an interview changeset, which moves the version and regenerates the
+images. Treat Chromatic on the capture stories as the signal that a regen is
+due.
+
+`@codaco/architect-web` and `@codaco/documentation` builds depend on
+`generate`, so versioning interview flows fresh images into their next build
+and deploy.
 
 ## Regenerating
 
 ```sh
-# Canonical, committable output (pinned Playwright Docker image):
-pnpm generate:interface-images   # from the repo root
-
-# Local iteration only — host fonts make output non-canonical:
-pnpm exec turbo run generate --filter=@codaco/interface-images
+pnpm generate:interface-images   # from the repo root; builds storybook + captures
 ```
 
-Regeneration is wired into turbo's task graph: `generate` depends on
-`@codaco/interview#build-storybook`, which depends on `^build` (including
-`@codaco/fresco-ui`). Any change to an interface, a capture story, or
-fresco-ui invalidates the task; CI regenerates in the pinned container and
-fails if the committed images are stale. A perceptual-diff churn guard
-(see `scripts/config.mts`) keeps visually-identical regenerations from
-dirtying git.
-
-`STORYBOOK_MAPBOX_TOKEN` must be set for the Geospatial story to render a map
-(it is baked in at storybook build time).
+Runs on the host — no Docker, because the output is cached rather than diffed
+against a committed reference, so cross-environment rendering differences do
+not matter. Needs a Chromium browser
+(`pnpm exec playwright install chromium`) and, for the Geospatial map,
+`STORYBOOK_MAPBOX_TOKEN` set (baked in at storybook build time). Because the
+assets are not committed, run this once to populate images for local
+development of architect-web or the documentation site.
