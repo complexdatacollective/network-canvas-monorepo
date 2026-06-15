@@ -62,11 +62,17 @@ researcher attaches two assets in Architect and points the stage's `mapOptions` 
 The map is centred on `[0, 20]` at `initialZoom: 1` so the whole world is visible for placing both
 host-country and transnational alters.
 
-## Suggested openly-licensed images (optional — not embedded)
+## Welcome banner image (embedded)
 
-The template uses only text content, per the authoring guide. If a researcher wishes to add a
-welcome image to the Information stage, the following are openly licensed (verify the licence at
-time of use); do not embed without attaching as an Architect asset:
+The welcome ("About this study") Information stage opens with an embedded, self-authored brand
+illustration: `assets/transnational-networks-hero.svg`. It is referenced from `assetManifest`
+and shown as the first `asset` item on that stage. The artwork is an abstract node-link motif —
+a "home" community and connections living abroad joined by ties across a stylised globe — drawn
+in the Network Canvas palette, so it ships license-clean (no third-party imagery) and scales
+crisply. Replace it with your own asset in Architect if you prefer.
+
+If you would rather use a photograph, these are openly licensed (verify the licence at time of
+use, and attach as an Architect asset rather than hot-linking):
 
 - Unsplash (free licence, https://unsplash.com/license) — search "world map", "passport",
   "family", e.g. https://unsplash.com/s/photos/world-map

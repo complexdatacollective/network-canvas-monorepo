@@ -194,6 +194,14 @@
       }
     }
   },
+  "assetManifest": {
+    "656a9889-18b5-44ca-9bf4-282f9568a372": {
+      "id": "656a9889-18b5-44ca-9bf4-282f9568a372",
+      "name": "Sexual and injection risk networks welcome banner",
+      "type": "image",
+      "source": "sexual-injection-risk-networks-hero.svg"
+    }
+  },
   "stages": [
     {
       "id": "information-intro",
@@ -201,6 +209,12 @@
       "label": "Welcome & Confidentiality",
       "title": "About this interview",
       "items": [
+        {
+          "id": "f3bf7f4b-501d-4d81-aed1-3987f6ba0060",
+          "type": "asset",
+          "content": "656a9889-18b5-44ca-9bf4-282f9568a372",
+          "size": "LARGE"
+        },
         {
           "id": "intro-confidentiality",
           "type": "text",

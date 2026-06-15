@@ -249,6 +249,14 @@
       }
     }
   },
+  "assetManifest": {
+    "2be9b4f4-a20e-4727-b72e-e696d76b483c": {
+      "id": "2be9b4f4-a20e-4727-b72e-e696d76b483c",
+      "name": "Transnational networks welcome banner",
+      "type": "image",
+      "source": "transnational-networks-hero.svg"
+    }
+  },
   "stages": [
     {
       "id": "information-intro",
@@ -256,6 +264,12 @@
       "label": "Welcome and consent",
       "title": "About this study",
       "items": [
+        {
+          "id": "ff73e267-693e-45fc-ab12-c0324910d232",
+          "type": "asset",
+          "content": "2be9b4f4-a20e-4727-b72e-e696d76b483c",
+          "size": "LARGE"
+        },
         {
           "id": "intro-welcome",
           "type": "text",

@@ -253,6 +253,14 @@
       }
     }
   },
+  "assetManifest": {
+    "4ec8b66d-c7a9-4c01-af59-37fb0d8bde3d": {
+      "id": "4ec8b66d-c7a9-4c01-af59-37fb0d8bde3d",
+      "name": "Mental health networks welcome banner",
+      "type": "image",
+      "source": "mental-health-networks-hero.svg"
+    }
+  },
   "stages": [
     {
       "id": "information-intro",
@@ -260,6 +268,12 @@
       "label": "Welcome and consent",
       "title": "About this interview",
       "items": [
+        {
+          "id": "23f6497e-ca9e-44fa-9c27-c30c2c085fd0",
+          "type": "asset",
+          "content": "4ec8b66d-c7a9-4c01-af59-37fb0d8bde3d",
+          "size": "LARGE"
+        },
         {
           "id": "intro-welcome",
           "type": "text",
