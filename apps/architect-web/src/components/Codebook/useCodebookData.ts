@@ -16,6 +16,7 @@ type UsageMeta = {
 type EntityWithUsage = {
   readonly entity: 'node' | 'edge';
   readonly type: string;
+  readonly name: string;
   readonly inUse: boolean;
   readonly usage: readonly UsageMeta[];
 };
@@ -63,8 +64,12 @@ const useEntityProcessors = () => {
 const processEntityEntries = (
   entries: [string, unknown][],
   processor: (value: unknown, id: string) => unknown,
+  getName: (value: unknown, id: string) => string,
 ): EntityWithUsage[] => {
-  return entries.map(([id, value]) => processor(value, id) as EntityWithUsage);
+  return entries.map(([id, value]) => ({
+    ...(processor(value, id) as EntityWithUsage),
+    name: getName(value, id),
+  }));
 };
 
 const processNetworkAssets = (
@@ -97,13 +102,21 @@ export const useCodebookData = (codebook: Codebook | null): CodebookData => {
   // Memoize node processing
   const nodes = useMemo(() => {
     if (!codebook?.node) return [];
-    return processEntityEntries(Object.entries(codebook.node), nodeProcessor);
+    return processEntityEntries(
+      Object.entries(codebook.node),
+      nodeProcessor,
+      (_value, id) => codebook.node?.[id]?.name ?? id,
+    );
   }, [codebook?.node, nodeProcessor]);
 
   // Memoize edge processing
   const edges = useMemo(() => {
     if (!codebook?.edge) return [];
-    return processEntityEntries(Object.entries(codebook.edge), edgeProcessor);
+    return processEntityEntries(
+      Object.entries(codebook.edge),
+      edgeProcessor,
+      (_value, id) => codebook.edge?.[id]?.name ?? id,
+    );
   }, [codebook?.edge, edgeProcessor]);
 
   // Memoize network assets processing

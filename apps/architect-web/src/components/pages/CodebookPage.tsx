@@ -36,7 +36,7 @@ const CodebookPage = () => {
       <Layout>
         <PageHeading
           title="Codebook"
-          description="Overview of the node and edge types defined in your protocol. Unused entities can be deleted."
+          description="Overview of the ego, node and edge types, their variables, and network assets defined in your protocol. Create, edit, and delete types and variables here. Unused entities can be deleted."
         />
         <div className="mx-(--space-5xl) w-full max-w-7xl">
           <Codebook onEditEntity={handleOpenEntityDialog} />

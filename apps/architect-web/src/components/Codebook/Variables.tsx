@@ -49,12 +49,24 @@ const Heading = ({
     ? SortDirection.ASC
     : reverseSort(sortDirection);
 
+  const ariaSort = !isSorted
+    ? 'none'
+    : sortDirection === SortDirection.ASC
+      ? 'ascending'
+      : 'descending';
+
   return (
     <th
       className="m-0 px-(--space-sm) py-(--space-md) text-left align-middle text-base font-black normal-case"
-      onClick={() => onSort({ sortBy: name, sortDirection: newSortDirection })}
+      aria-sort={ariaSort}
     >
-      <span className="inline-flex items-center gap-(--space-xs)">
+      <button
+        type="button"
+        className="inline-flex cursor-pointer appearance-none items-center gap-(--space-xs) border-0 bg-transparent p-0 text-left font-[inherit]"
+        onClick={() =>
+          onSort({ sortBy: name, sortDirection: newSortDirection })
+        }
+      >
         {children}
         {isSorted &&
           (sortDirection === SortDirection.ASC ? (
@@ -62,7 +74,7 @@ const Heading = ({
           ) : (
             <ChevronUp size={16} className="text-action" />
           ))}
-      </span>
+      </button>
     </th>
   );
 };
@@ -131,7 +143,6 @@ const Variables = ({
             >
               Used In
             </Heading>
-            <th aria-label="Actions" />
             <th aria-label="Actions" />
           </tr>
         </thead>
