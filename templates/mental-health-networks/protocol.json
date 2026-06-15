@@ -1,0 +1,545 @@
+{
+  "name": "Mental Health Networks",
+  "description": "A personal-network interview exploring how the people around you both support and strain you while managing your mental health. It uses dual-tone elicitation (separate name generators for supportive ties and for difficult or draining ties), maps who knows about your mental health (disclosure), and separates informal from formal/clinical sources of help. This is an emotionally sensitive topic, so the protocol includes consent framing and a closing safety screen that signposts support services. Designed as a starting template for psychiatric-epidemiology, recovery/peer-support, and mental-health-services researchers to fork and adapt.",
+  "schemaVersion": 8,
+  "lastModified": "2026-06-15T00:00:00.000Z",
+  "experiments": {
+    "encryptedVariables": false
+  },
+  "codebook": {
+    "ego": {
+      "variables": {
+        "k6_1": {
+          "name": "k6_1",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "None of the time", "value": 0 },
+            { "label": "A little of the time", "value": 1 },
+            { "label": "Some of the time", "value": 2 },
+            { "label": "Most of the time", "value": 3 },
+            { "label": "All of the time", "value": 4 }
+          ],
+          "validation": { "required": true }
+        },
+        "k6_2": {
+          "name": "k6_2",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "None of the time", "value": 0 },
+            { "label": "A little of the time", "value": 1 },
+            { "label": "Some of the time", "value": 2 },
+            { "label": "Most of the time", "value": 3 },
+            { "label": "All of the time", "value": 4 }
+          ],
+          "validation": { "required": true }
+        },
+        "k6_3": {
+          "name": "k6_3",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "None of the time", "value": 0 },
+            { "label": "A little of the time", "value": 1 },
+            { "label": "Some of the time", "value": 2 },
+            { "label": "Most of the time", "value": 3 },
+            { "label": "All of the time", "value": 4 }
+          ],
+          "validation": { "required": true }
+        },
+        "k6_4": {
+          "name": "k6_4",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "None of the time", "value": 0 },
+            { "label": "A little of the time", "value": 1 },
+            { "label": "Some of the time", "value": 2 },
+            { "label": "Most of the time", "value": 3 },
+            { "label": "All of the time", "value": 4 }
+          ],
+          "validation": { "required": true }
+        },
+        "k6_5": {
+          "name": "k6_5",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "None of the time", "value": 0 },
+            { "label": "A little of the time", "value": 1 },
+            { "label": "Some of the time", "value": 2 },
+            { "label": "Most of the time", "value": 3 },
+            { "label": "All of the time", "value": 4 }
+          ],
+          "validation": { "required": true }
+        },
+        "k6_6": {
+          "name": "k6_6",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "None of the time", "value": 0 },
+            { "label": "A little of the time", "value": 1 },
+            { "label": "Some of the time", "value": 2 },
+            { "label": "Most of the time", "value": 3 },
+            { "label": "All of the time", "value": 4 }
+          ],
+          "validation": { "required": true }
+        },
+        "self_rated_mental_health": {
+          "name": "self_rated_mental_health",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "Poor", "value": 1 },
+            { "label": "Fair", "value": 2 },
+            { "label": "Good", "value": 3 },
+            { "label": "Very good", "value": 4 },
+            { "label": "Excellent", "value": 5 }
+          ],
+          "validation": { "required": true }
+        },
+        "in_treatment": {
+          "name": "in_treatment",
+          "type": "boolean",
+          "component": "Boolean",
+          "options": [
+            { "label": "Yes", "value": true },
+            { "label": "No", "value": false }
+          ]
+        }
+      }
+    },
+    "node": {
+      "person": {
+        "name": "Person",
+        "color": "node-color-seq-1",
+        "icon": "add-a-person",
+        "shape": { "default": "circle" },
+        "variables": {
+          "alter_name": {
+            "name": "alter_name",
+            "type": "text",
+            "component": "Text",
+            "validation": { "required": true }
+          },
+          "relationship": {
+            "name": "relationship",
+            "type": "categorical",
+            "component": "CheckboxGroup",
+            "options": [
+              { "label": "Partner or spouse", "value": "partner" },
+              { "label": "Parent", "value": "parent" },
+              { "label": "Child", "value": "child" },
+              { "label": "Sibling", "value": "sibling" },
+              { "label": "Other family member", "value": "other_family" },
+              { "label": "Friend", "value": "friend" },
+              { "label": "Neighbour", "value": "neighbour" },
+              { "label": "Co-worker or classmate", "value": "coworker" },
+              {
+                "label": "Health or care professional",
+                "value": "professional"
+              },
+              { "label": "Peer or support-group member", "value": "peer" },
+              { "label": "Other", "value": "other" }
+            ]
+          },
+          "support_emotional": {
+            "name": "support_emotional",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              { "label": "Yes", "value": true },
+              { "label": "No", "value": false }
+            ]
+          },
+          "support_practical": {
+            "name": "support_practical",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              { "label": "Yes", "value": true },
+              { "label": "No", "value": false }
+            ]
+          },
+          "support_informational": {
+            "name": "support_informational",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              { "label": "Yes", "value": true },
+              { "label": "No", "value": false }
+            ]
+          },
+          "is_clinical": {
+            "name": "is_clinical",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              { "label": "Yes", "value": true },
+              { "label": "No", "value": false }
+            ]
+          },
+          "knows_about_mh": {
+            "name": "knows_about_mh",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              { "label": "Yes", "value": true },
+              { "label": "No", "value": false }
+            ]
+          },
+          "is_source_of_stress": {
+            "name": "is_source_of_stress",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              { "label": "Yes", "value": true },
+              { "label": "No", "value": false }
+            ]
+          },
+          "help_source_type": {
+            "name": "help_source_type",
+            "type": "categorical",
+            "component": "CheckboxGroup",
+            "options": [
+              {
+                "label": "Informal (family, friends, peers)",
+                "value": "informal"
+              },
+              {
+                "label": "Formal or clinical (professionals, services)",
+                "value": "formal"
+              }
+            ]
+          },
+          "contact_frequency": {
+            "name": "contact_frequency",
+            "type": "ordinal",
+            "component": "RadioGroup",
+            "options": [
+              { "label": "Daily", "value": 5 },
+              { "label": "A few times a week", "value": 4 },
+              { "label": "About once a week", "value": 3 },
+              { "label": "About once a month", "value": 2 },
+              { "label": "Less than once a month", "value": 1 }
+            ]
+          },
+          "closeness": {
+            "name": "closeness",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              { "label": "Not at all close", "value": 1 },
+              { "label": "A little close", "value": 2 },
+              { "label": "Fairly close", "value": 3 },
+              { "label": "Very close", "value": 4 },
+              { "label": "Extremely close", "value": 5 }
+            ]
+          },
+          "layout": {
+            "name": "layout",
+            "type": "layout"
+          }
+        }
+      }
+    },
+    "edge": {
+      "knows": {
+        "name": "Knows",
+        "color": "edge-color-seq-1"
+      }
+    }
+  },
+  "stages": [
+    {
+      "id": "information-intro",
+      "type": "Information",
+      "label": "Welcome and consent",
+      "title": "About this interview",
+      "items": [
+        {
+          "id": "intro-welcome",
+          "type": "text",
+          "size": "MEDIUM",
+          "content": "## Thank you for taking part\n\nIn this interview we will talk about the people in your life and how they relate to your mental health and wellbeing. We will ask you to name people who **support** you, and also people who are sometimes a **source of stress, conflict, or strain**. There are no right or wrong answers — we are simply interested in your own experience."
+        },
+        {
+          "id": "intro-sensitive",
+          "type": "text",
+          "size": "MEDIUM",
+          "content": "### Some of these questions are personal\n\nWe will ask about how you have been feeling recently and about who knows about your mental health. You are free to skip any question, to pause, or to stop the interview at any time, and you do not have to give a reason. The people you name are recorded only by the first name or nickname you choose, and your answers are kept confidential and used only for research."
+        },
+        {
+          "id": "intro-consent",
+          "type": "text",
+          "size": "MEDIUM",
+          "content": "### Your consent\n\nBy continuing, you confirm that the researcher has explained the study to you, that you have had the chance to ask questions, and that you agree to take part. If you would like to stop at any point, just let the interviewer know.\n\n**If talking about these topics brings up difficult feelings, please tell the interviewer — support is available, and there is a list of services at the end of the interview.**"
+        }
+      ]
+    },
+    {
+      "id": "ego-form-background",
+      "type": "EgoForm",
+      "label": "About you",
+      "introductionPanel": {
+        "title": "A few questions about you",
+        "text": "Before we talk about the people in your life, we would like to ask how you have been feeling **over the last 30 days**. Please answer as honestly as you can. Remember you can skip any question you would prefer not to answer."
+      },
+      "form": {
+        "title": "How you have been feeling",
+        "fields": [
+          {
+            "variable": "k6_1",
+            "prompt": "During the **last 30 days**, about how often did you feel nervous?"
+          },
+          {
+            "variable": "k6_2",
+            "prompt": "During the **last 30 days**, about how often did you feel hopeless?"
+          },
+          {
+            "variable": "k6_3",
+            "prompt": "During the **last 30 days**, about how often did you feel restless or fidgety?"
+          },
+          {
+            "variable": "k6_4",
+            "prompt": "During the **last 30 days**, about how often did you feel so depressed that nothing could cheer you up?"
+          },
+          {
+            "variable": "k6_5",
+            "prompt": "During the **last 30 days**, about how often did you feel that everything was an effort?"
+          },
+          {
+            "variable": "k6_6",
+            "prompt": "During the **last 30 days**, about how often did you feel worthless?"
+          },
+          {
+            "variable": "self_rated_mental_health",
+            "prompt": "In general, how would you rate your mental health these days?"
+          },
+          {
+            "variable": "in_treatment",
+            "prompt": "Are you currently receiving any treatment or support for your mental health (for example from a doctor, therapist, counsellor, or support service)?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ng-supportive",
+      "type": "NameGenerator",
+      "label": "People who support you",
+      "interviewScript": "This generator elicits supportive ties. Encourage the participant to think broadly — these can be people they confide in, turn to for advice, or rely on for practical help. The same person may also be named later as a source of stress; that is expected.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "form": {
+        "title": "Add a person who supports you",
+        "fields": [
+          {
+            "variable": "alter_name",
+            "prompt": "What is this person's first name or a nickname you will recognise?"
+          }
+        ]
+      },
+      "behaviours": {
+        "minNodes": 0
+      },
+      "prompts": [
+        {
+          "id": "ng-support-confide",
+          "text": "Who are the people you can **talk to about how you're feeling**, or confide in about personal matters?",
+          "additionalAttributes": [
+            { "variable": "support_emotional", "value": true }
+          ]
+        },
+        {
+          "id": "ng-support-advice",
+          "text": "Who do you turn to for **advice or guidance** when you have an important decision to make about your health or your life?",
+          "additionalAttributes": [
+            { "variable": "support_informational", "value": true }
+          ]
+        },
+        {
+          "id": "ng-support-practical",
+          "text": "Who would you ask for **practical help** — for example if you were unwell and needed help for a couple of weeks?",
+          "additionalAttributes": [
+            { "variable": "support_practical", "value": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ng-difficult",
+      "type": "NameGenerator",
+      "label": "People who are difficult or draining",
+      "interviewScript": "This generator elicits difficult or draining ties (negative and ambivalent relationships). Reassure the participant that almost everyone has people like this, and that naming someone here does not mean the relationship is all bad. If a person they already named as supportive is also a source of stress, they can add them again here — this captures ambivalent ties.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "form": {
+        "title": "Add a person who is a source of stress",
+        "fields": [
+          {
+            "variable": "alter_name",
+            "prompt": "What is this person's first name or a nickname you will recognise?"
+          }
+        ]
+      },
+      "behaviours": {
+        "minNodes": 0
+      },
+      "prompts": [
+        {
+          "id": "ng-difficult-demanding",
+          "text": "Thinking about the people in your life, who do you **sometimes find demanding or difficult**, or who are a source of stress or conflict for you?",
+          "additionalAttributes": [
+            { "variable": "is_source_of_stress", "value": true }
+          ]
+        },
+        {
+          "id": "ng-difficult-draining",
+          "text": "Who tends to **drain your energy** or leave you feeling worse after spending time with them? (You can name someone you have already mentioned.)",
+          "additionalAttributes": [
+            { "variable": "is_source_of_stress", "value": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "alter-form-attributes",
+      "type": "AlterForm",
+      "label": "About each person",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "introductionPanel": {
+        "title": "Tell us a little about each person",
+        "text": "For each person you named, we would like to understand your relationship with them, what kinds of support they provide, whether they know about your mental health, and how often you are in contact. There are no right answers — just describe things as they are for you."
+      },
+      "form": {
+        "title": "About this person",
+        "fields": [
+          {
+            "variable": "relationship",
+            "prompt": "How is this person related to you?"
+          },
+          {
+            "variable": "support_emotional",
+            "prompt": "Do they give you **emotional support** — someone you can talk to about how you feel?"
+          },
+          {
+            "variable": "support_practical",
+            "prompt": "Do they help you with **practical things** — such as tasks, money, or getting around?"
+          },
+          {
+            "variable": "support_informational",
+            "prompt": "Do they give you **information or advice** that helps you cope or make decisions?"
+          },
+          {
+            "variable": "knows_about_mh",
+            "prompt": "Does this person **know about your mental health** — have you disclosed it to them?"
+          },
+          {
+            "variable": "is_clinical",
+            "prompt": "Is this person a **formal or clinical source of help** — for example a doctor, therapist, counsellor, or other professional?"
+          },
+          {
+            "variable": "is_source_of_stress",
+            "prompt": "Is this person sometimes a **source of stress or conflict** for you?"
+          },
+          {
+            "variable": "contact_frequency",
+            "prompt": "How often are you usually in contact with this person?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ordinal-bin-closeness",
+      "type": "OrdinalBin",
+      "label": "How close you feel",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "bin-closeness",
+          "text": "Drag each person into the band that best describes **how close you feel to them**.",
+          "variable": "closeness"
+        }
+      ]
+    },
+    {
+      "id": "categorical-bin-help-source",
+      "type": "CategoricalBin",
+      "label": "Where your help comes from",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "bin-help-source",
+          "text": "Sort the people you named by the kind of help they represent: **informal** help (family, friends, peers) or **formal/clinical** help (professionals and services).",
+          "variable": "help_source_type"
+        }
+      ]
+    },
+    {
+      "id": "narrative-support-vs-strain",
+      "type": "Narrative",
+      "label": "Your network of support and strain",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "presets": [
+        {
+          "id": "preset-support-strain",
+          "label": "Supportive vs difficult ties",
+          "layoutVariable": "layout",
+          "highlight": ["support_emotional", "is_source_of_stress"]
+        },
+        {
+          "id": "preset-disclosure",
+          "label": "Who knows about your mental health",
+          "layoutVariable": "layout",
+          "highlight": ["knows_about_mh", "is_clinical"]
+        }
+      ],
+      "background": {
+        "concentricCircles": 3,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "freeDraw": true,
+        "allowRepositioning": true
+      }
+    },
+    {
+      "id": "information-safety",
+      "type": "Information",
+      "label": "Thank you and support services",
+      "title": "Thank you — and where to find support",
+      "items": [
+        {
+          "id": "safety-thanks",
+          "type": "text",
+          "size": "MEDIUM",
+          "content": "## Thank you for sharing\n\nTalking about your mental health and your relationships takes courage, and we are grateful for your time and honesty."
+        },
+        {
+          "id": "safety-services",
+          "type": "text",
+          "size": "MEDIUM",
+          "content": "### If you would like support\n\nIf any of these questions brought up difficult feelings, please consider reaching out for support:\n\n- **Talk to the interviewer now** if you would like to stop and take a moment.\n- **Contact your doctor or usual mental-health service.**\n- **If you are in crisis or thinking about harming yourself, please contact your local emergency services or a crisis line immediately.** _The researcher will insert the specific local and national helpline numbers for your study site here (for example, in the US: call or text 988; in the UK: Samaritans on 116 123)._\n\nYou do not have to face difficult feelings alone, and reaching out for help is a sign of strength."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,560 @@
+{
+  "name": "Social Connection & Isolation",
+  "description": "An egocentric personal-network protocol that distinguishes OBJECTIVE social isolation (the structure and composition of a respondent's network) from SUBJECTIVE loneliness (validated self-report scales). Ageing/loneliness is the lead exemplar. The signature technique is a concentric OrdinalBin closeness map combined with standardised loneliness and social-network scales (UCLA-3, De Jong Gierveld 6-item, Lubben LSNS-6) embedded in an EgoForm, so network structure and subjective loneliness sit in one dataset.",
+  "schemaVersion": 8,
+  "lastModified": "2026-06-15T00:00:00.000Z",
+  "codebook": {
+    "ego": {
+      "variables": {
+        "living_situation": {
+          "name": "living_situation",
+          "type": "categorical",
+          "component": "ToggleButtonGroup",
+          "options": [
+            { "label": "I live alone", "value": "alone" },
+            {
+              "label": "I live with a spouse or partner only",
+              "value": "partner"
+            },
+            {
+              "label": "I live with family (other than a partner)",
+              "value": "family"
+            },
+            {
+              "label": "I live with friends or housemates",
+              "value": "housemates"
+            },
+            {
+              "label": "I live in a care or residential setting",
+              "value": "residential"
+            },
+            { "label": "Other living arrangement", "value": "other" }
+          ],
+          "validation": { "required": true }
+        },
+        "self_rated_health": {
+          "name": "self_rated_health",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "Poor", "value": 1 },
+            { "label": "Fair", "value": 2 },
+            { "label": "Good", "value": 3 },
+            { "label": "Very good", "value": 4 },
+            { "label": "Excellent", "value": 5 }
+          ],
+          "validation": { "required": true }
+        },
+        "ucla_1": {
+          "name": "ucla_1",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "Hardly ever", "value": 1 },
+            { "label": "Some of the time", "value": 2 },
+            { "label": "Often", "value": 3 }
+          ],
+          "validation": { "required": true }
+        },
+        "ucla_2": {
+          "name": "ucla_2",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "Hardly ever", "value": 1 },
+            { "label": "Some of the time", "value": 2 },
+            { "label": "Often", "value": 3 }
+          ],
+          "validation": { "required": true }
+        },
+        "ucla_3": {
+          "name": "ucla_3",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "Hardly ever", "value": 1 },
+            { "label": "Some of the time", "value": 2 },
+            { "label": "Often", "value": 3 }
+          ],
+          "validation": { "required": true }
+        },
+        "djg_1": {
+          "name": "djg_1",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "No", "value": 1 },
+            { "label": "More or less", "value": 2 },
+            { "label": "Yes", "value": 3 }
+          ],
+          "validation": { "required": true }
+        },
+        "djg_2": {
+          "name": "djg_2",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "No", "value": 1 },
+            { "label": "More or less", "value": 2 },
+            { "label": "Yes", "value": 3 }
+          ],
+          "validation": { "required": true }
+        },
+        "djg_3": {
+          "name": "djg_3",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "No", "value": 1 },
+            { "label": "More or less", "value": 2 },
+            { "label": "Yes", "value": 3 }
+          ],
+          "validation": { "required": true }
+        },
+        "djg_4": {
+          "name": "djg_4",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "No", "value": 1 },
+            { "label": "More or less", "value": 2 },
+            { "label": "Yes", "value": 3 }
+          ],
+          "validation": { "required": true }
+        },
+        "djg_5": {
+          "name": "djg_5",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "No", "value": 1 },
+            { "label": "More or less", "value": 2 },
+            { "label": "Yes", "value": 3 }
+          ],
+          "validation": { "required": true }
+        },
+        "djg_6": {
+          "name": "djg_6",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "No", "value": 1 },
+            { "label": "More or less", "value": 2 },
+            { "label": "Yes", "value": 3 }
+          ],
+          "validation": { "required": true }
+        },
+        "lsns_1": {
+          "name": "lsns_1",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "None", "value": 0 },
+            { "label": "One", "value": 1 },
+            { "label": "Two", "value": 2 },
+            { "label": "Three or four", "value": 3 },
+            { "label": "Five thru eight", "value": 4 },
+            { "label": "Nine or more", "value": 5 }
+          ],
+          "validation": { "required": true }
+        },
+        "lsns_2": {
+          "name": "lsns_2",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "None", "value": 0 },
+            { "label": "One", "value": 1 },
+            { "label": "Two", "value": 2 },
+            { "label": "Three or four", "value": 3 },
+            { "label": "Five thru eight", "value": 4 },
+            { "label": "Nine or more", "value": 5 }
+          ],
+          "validation": { "required": true }
+        },
+        "lsns_3": {
+          "name": "lsns_3",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "None", "value": 0 },
+            { "label": "One", "value": 1 },
+            { "label": "Two", "value": 2 },
+            { "label": "Three or four", "value": 3 },
+            { "label": "Five thru eight", "value": 4 },
+            { "label": "Nine or more", "value": 5 }
+          ],
+          "validation": { "required": true }
+        },
+        "lsns_4": {
+          "name": "lsns_4",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "None", "value": 0 },
+            { "label": "One", "value": 1 },
+            { "label": "Two", "value": 2 },
+            { "label": "Three or four", "value": 3 },
+            { "label": "Five thru eight", "value": 4 },
+            { "label": "Nine or more", "value": 5 }
+          ],
+          "validation": { "required": true }
+        },
+        "lsns_5": {
+          "name": "lsns_5",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "None", "value": 0 },
+            { "label": "One", "value": 1 },
+            { "label": "Two", "value": 2 },
+            { "label": "Three or four", "value": 3 },
+            { "label": "Five thru eight", "value": 4 },
+            { "label": "Nine or more", "value": 5 }
+          ],
+          "validation": { "required": true }
+        },
+        "lsns_6": {
+          "name": "lsns_6",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "None", "value": 0 },
+            { "label": "One", "value": 1 },
+            { "label": "Two", "value": 2 },
+            { "label": "Three or four", "value": 3 },
+            { "label": "Five thru eight", "value": 4 },
+            { "label": "Nine or more", "value": 5 }
+          ],
+          "validation": { "required": true }
+        }
+      }
+    },
+    "node": {
+      "person": {
+        "name": "Person",
+        "color": "node-color-seq-1",
+        "icon": "add-a-person",
+        "shape": { "default": "circle" },
+        "variables": {
+          "alter_name": {
+            "name": "alter_name",
+            "type": "text",
+            "component": "Text",
+            "validation": { "required": true }
+          },
+          "relationship": {
+            "name": "relationship",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "options": [
+              { "label": "Spouse or partner", "value": "partner" },
+              { "label": "Other family member", "value": "family" },
+              { "label": "Friend", "value": "friend" },
+              { "label": "Neighbour", "value": "neighbour" },
+              { "label": "Co-worker", "value": "coworker" },
+              { "label": "Other", "value": "other" }
+            ]
+          },
+          "contact_frequency": {
+            "name": "contact_frequency",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              { "label": "Less than once a year", "value": 1 },
+              { "label": "A few times a year", "value": 2 },
+              { "label": "Monthly", "value": 3 },
+              { "label": "Weekly", "value": 4 },
+              { "label": "Daily", "value": 5 }
+            ]
+          },
+          "contact_mode": {
+            "name": "contact_mode",
+            "type": "categorical",
+            "component": "CheckboxGroup",
+            "options": [
+              { "label": "In person", "value": "in_person" },
+              { "label": "Phone", "value": "phone" },
+              { "label": "Video call", "value": "video_call" },
+              { "label": "Text or messaging", "value": "text" },
+              { "label": "Social media", "value": "social_media" }
+            ]
+          },
+          "lives_with": {
+            "name": "lives_with",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              { "label": "Yes", "value": true },
+              { "label": "No", "value": false }
+            ]
+          },
+          "support_emotional": {
+            "name": "support_emotional",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              { "label": "Yes", "value": true },
+              { "label": "No", "value": false }
+            ]
+          },
+          "support_practical": {
+            "name": "support_practical",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              { "label": "Yes", "value": true },
+              { "label": "No", "value": false }
+            ]
+          },
+          "age_band": {
+            "name": "age_band",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              { "label": "Under 18", "value": 1 },
+              { "label": "18 to 29", "value": 2 },
+              { "label": "30 to 49", "value": 3 },
+              { "label": "50 to 64", "value": 4 },
+              { "label": "65 to 79", "value": 5 },
+              { "label": "80 or older", "value": 6 }
+            ]
+          },
+          "closeness": {
+            "name": "closeness",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              { "label": "Not close", "value": 1 },
+              { "label": "Somewhat close", "value": 2 },
+              { "label": "Close", "value": 3 },
+              { "label": "Very close", "value": 4 }
+            ]
+          },
+          "layout": {
+            "name": "layout",
+            "type": "layout"
+          }
+        }
+      }
+    },
+    "edge": {
+      "knows": {
+        "name": "Knows",
+        "color": "edge-color-seq-1"
+      }
+    }
+  },
+  "stages": [
+    {
+      "id": "ego-form-demographics",
+      "type": "EgoForm",
+      "label": "About You",
+      "introductionPanel": {
+        "title": "About you and your household",
+        "text": "To begin, we would like to ask a few questions about **you** and your current living situation. Your answers help us understand the context of your social connections."
+      },
+      "form": {
+        "title": "Your background",
+        "fields": [
+          {
+            "variable": "living_situation",
+            "prompt": "Which of the following best describes your current living situation?"
+          },
+          {
+            "variable": "self_rated_health",
+            "prompt": "In general, how would you rate your health?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "name-generator-confidants",
+      "type": "NameGenerator",
+      "label": "People You Discuss Important Matters With",
+      "interviewScript": "Use the standard General Social Survey 'important matters' confidant generator. Allow the respondent to name as many or as few people as they wish; do not prompt for a target number.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "form": {
+        "title": "Add a person",
+        "fields": [
+          {
+            "variable": "alter_name",
+            "prompt": "What is this person's first name or initials?"
+          }
+        ]
+      },
+      "prompts": [
+        {
+          "id": "gss-important-matters",
+          "text": "Looking back over the last six months, who are the people with whom you discussed matters important to you?"
+        }
+      ]
+    },
+    {
+      "id": "ordinal-bin-closeness",
+      "type": "OrdinalBin",
+      "label": "How Close Are They?",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "closeness-bands",
+          "text": "Place each person into the band that best describes how close you feel to them, from **not close** in the outer band to **very close** in the centre.",
+          "variable": "closeness"
+        }
+      ]
+    },
+    {
+      "id": "alter-form-attributes",
+      "type": "AlterForm",
+      "label": "About Each Person",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "introductionPanel": {
+        "title": "A little more about each person",
+        "text": "For each person you named, we would like to ask about your **contact** with them and the kinds of **support** they provide."
+      },
+      "form": {
+        "title": "About this person",
+        "fields": [
+          {
+            "variable": "relationship",
+            "prompt": "What is this person's relationship to you?"
+          },
+          {
+            "variable": "age_band",
+            "prompt": "Roughly how old is this person?"
+          },
+          {
+            "variable": "contact_frequency",
+            "prompt": "How often are you in contact with this person?"
+          },
+          {
+            "variable": "contact_mode",
+            "prompt": "How do you usually keep in contact with this person? (Select all that apply.)"
+          },
+          {
+            "variable": "lives_with",
+            "prompt": "Does this person live with you?"
+          },
+          {
+            "variable": "support_emotional",
+            "prompt": "Could you turn to this person for **emotional** support, such as talking things over when you feel down?"
+          },
+          {
+            "variable": "support_practical",
+            "prompt": "Could you turn to this person for **practical** support, such as help with tasks, transport, or money?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "sociogram-ties",
+      "type": "Sociogram",
+      "label": "Connections Between People",
+      "interviewScript": "Ask the respondent to draw a tie between any two people who know one another. A network where alters cluster together suggests a connected core; isolated nodes suggest fragmentation.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "background": {
+        "concentricCircles": 4,
+        "skewedTowardCenter": true
+      },
+      "prompts": [
+        {
+          "id": "alter-alter-ties",
+          "text": "Draw a line between any two people who **know one another**. This helps us see which of your contacts are connected.",
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "edges": {
+            "create": "knows",
+            "display": ["knows"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "ego-form-scales",
+      "type": "EgoForm",
+      "label": "Your Feelings About Connection",
+      "introductionPanel": {
+        "title": "Your feelings about social connection",
+        "text": "Finally, we would like to understand how you **feel** about your social connections. There are no right or wrong answers. These questions use three well-established sets of items, so the wording is fixed."
+      },
+      "form": {
+        "title": "How you feel",
+        "fields": [
+          {
+            "variable": "ucla_1",
+            "prompt": "How often do you feel that you lack companionship?"
+          },
+          {
+            "variable": "ucla_2",
+            "prompt": "How often do you feel left out?"
+          },
+          {
+            "variable": "ucla_3",
+            "prompt": "How often do you feel isolated from others?"
+          },
+          {
+            "variable": "djg_1",
+            "prompt": "I experience a general sense of emptiness."
+          },
+          {
+            "variable": "djg_2",
+            "prompt": "I miss having people around me."
+          },
+          {
+            "variable": "djg_3",
+            "prompt": "I often feel rejected."
+          },
+          {
+            "variable": "djg_4",
+            "prompt": "There are plenty of people I can rely on when I have problems."
+          },
+          {
+            "variable": "djg_5",
+            "prompt": "There are many people I can trust completely."
+          },
+          {
+            "variable": "djg_6",
+            "prompt": "There are enough people I feel close to."
+          },
+          {
+            "variable": "lsns_1",
+            "prompt": "Considering people you are related to: how many relatives do you see or hear from at least once a month?"
+          },
+          {
+            "variable": "lsns_2",
+            "prompt": "How many relatives do you feel at ease with that you can talk about private matters?"
+          },
+          {
+            "variable": "lsns_3",
+            "prompt": "How many relatives do you feel close to such that you could call on them for help?"
+          },
+          {
+            "variable": "lsns_4",
+            "prompt": "Considering all of your friends: how many of your friends do you see or hear from at least once a month?"
+          },
+          {
+            "variable": "lsns_5",
+            "prompt": "How many friends do you feel at ease with that you can talk about private matters?"
+          },
+          {
+            "variable": "lsns_6",
+            "prompt": "How many friends do you feel close to such that you could call on them for help?"
+          }
+        ]
+      }
+    }
+  ]
+}
