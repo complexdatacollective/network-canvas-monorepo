@@ -37,6 +37,7 @@ import { IconButton } from '~/lib/legacy-ui/components/Button';
 import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
 import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { ensureError } from '~/utils/ensureError';
+import prune from '~/utils/prune';
 
 import { formName } from './configuration';
 import type { SectionComponent } from './Interfaces';
@@ -53,6 +54,14 @@ type StageEditorProps = {
  * Builds a protocol with the current wip stage inserted or updated.
  * Allows for validating and previewing the protocol with the current stage changes.
  * If inserting a new stage (i.e., stageId is null), generates a temporary ID for the stage for validation/preview purposes.
+ *
+ * The stage is pruned (null/empty values stripped) so that preview validates the
+ * exact shape a save would commit. Without this, in-progress drafts can carry
+ * placeholder nulls that the strict protocol schema rejects — e.g. a freshly
+ * created side panel seeds `filter: null`, which fails `FilterSchema.optional()`
+ * (optional accepts `undefined`, not `null`). `updateStage`/`createStage` prune on
+ * commit, so previewing the unpruned draft would otherwise report "invalid" for a
+ * stage that saves and reopens perfectly fine.
  */
 function buildProtocolWithStage(
   protocol: CurrentProtocol,
@@ -60,8 +69,10 @@ function buildProtocolWithStage(
   stageId: string | null,
   insertAtIndex?: number,
 ): CurrentProtocol {
+  const prunedStage = prune(stage as Record<string, unknown>) as Stage;
+
   // For new stages, generate a temp ID for validation/preview
-  const stageWithId = stageId ? stage : { ...stage, id: uuid() };
+  const stageWithId = stageId ? prunedStage : { ...prunedStage, id: uuid() };
 
   return {
     ...protocol,
