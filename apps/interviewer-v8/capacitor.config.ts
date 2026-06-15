@@ -3,8 +3,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const devServerUrl = process.env.CAP_DEV_SERVER_URL;
 
 const config: CapacitorConfig = {
-  appId: 'org.complexdatacollective.interviewer7',
-  appName: 'Network Canvas Interviewer 7',
+  appId: 'org.complexdatacollective.networkcanvas.interviewer',
+  appName: 'Network Canvas Interviewer',
   webDir: 'dist',
   server: {
     androidScheme: 'https',
