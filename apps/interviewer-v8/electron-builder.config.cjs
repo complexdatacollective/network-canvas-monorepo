@@ -5,7 +5,7 @@ const path = require('node:path');
 // entitlement (see build-resources/entitlements.mac.plist). That entitlement
 // is restricted: AMFI will refuse to launch the signed app unless an embedded
 // provisioning profile authorizes the access group. The profile is downloaded
-// from the Apple Developer portal for App ID `Network-Canvas-Interviewer-7`
+// from the Apple Developer portal for App ID `Network-Canvas-Interviewer-8`
 // (Keychain Sharing capability enabled) and dropped at the path below. When
 // the file is absent the build still succeeds — producing an app whose
 // biometric mode is unusable (-34018 on enrol) but PIN / passphrase / none
@@ -19,7 +19,7 @@ const MAC_PROVISIONING_PROFILE = 'build-resources/embedded.provisionprofile';
  * @type {import('electron-builder').Configuration}
  */
 module.exports = {
-  appId: 'Network-Canvas-Interviewer-7',
+  appId: 'Network-Canvas-Interviewer-8',
   productName: 'Network Canvas Interviewer',
   copyright: `Copyright © ${new Date().getFullYear()} Complex Data Collective`,
   directories: {
