@@ -49,12 +49,24 @@ const Heading = ({
     ? SortDirection.ASC
     : reverseSort(sortDirection);
 
+  const ariaSort = !isSorted
+    ? 'none'
+    : sortDirection === SortDirection.ASC
+      ? 'ascending'
+      : 'descending';
+
   return (
     <th
-      className="m-0 px-(--space-sm) py-(--space-md) text-left align-middle text-base font-black normal-case"
-      onClick={() => onSort({ sortBy: name, sortDirection: newSortDirection })}
+      className="bg-surface-2 border-border m-0 border-b-2 px-(--space-md) py-(--space-md) text-left align-middle text-base font-black normal-case"
+      aria-sort={ariaSort}
     >
-      <span className="inline-flex items-center gap-(--space-xs)">
+      <button
+        type="button"
+        className="inline-flex cursor-pointer appearance-none items-center gap-(--space-xs) border-0 bg-transparent p-0 text-left font-[inherit]"
+        onClick={() =>
+          onSort({ sortBy: name, sortDirection: newSortDirection })
+        }
+      >
         {children}
         {isSorted &&
           (sortDirection === SortDirection.ASC ? (
@@ -62,7 +74,7 @@ const Heading = ({
           ) : (
             <ChevronUp size={16} className="text-action" />
           ))}
-      </span>
+      </button>
     </th>
   );
 };
@@ -106,8 +118,8 @@ const Variables = ({
   };
 
   return (
-    <div>
-      <table className="mt-(--space-lg) w-full">
+    <div className="border-border mt-(--space-lg) overflow-hidden rounded border">
+      <table className="w-full border-collapse">
         <thead>
           <tr>
             <Heading
@@ -118,36 +130,31 @@ const Variables = ({
               Name
             </Heading>
             <Heading
-              name="component"
-              // eslint-disable-next-line react/jsx-props-no-spreading
-              {...headingProps}
-            >
-              Input control
-            </Heading>
-            <Heading
               name="usageString"
               // eslint-disable-next-line react/jsx-props-no-spreading
               {...headingProps}
             >
               Used In
             </Heading>
-            <th aria-label="Actions" />
-            <th aria-label="Actions" />
+            <th
+              aria-label="Actions"
+              className="bg-surface-2 border-border w-px border-b-2"
+            />
           </tr>
         </thead>
         <tbody>
-          {variables.map(({ id, component, inUse, usage }) => (
-            <tr key={id}>
-              <td className="m-0 px-(--space-sm) py-(--space-sm) text-base">
+          {variables.map(({ id, inUse, usage }) => (
+            <tr
+              key={id}
+              className="border-border/40 hover:bg-surface-2/40 border-b last:border-b-0"
+            >
+              <td className="m-0 px-(--space-md) py-(--space-sm) text-base">
                 <EditableVariablePill uuid={id} width="25rem" />
               </td>
-              <td className="m-0 px-(--space-sm) py-(--space-sm) text-base">
-                {component}
-              </td>
-              <td className="m-0 px-(--space-sm) py-(--space-sm) text-base">
+              <td className="border-border/40 m-0 border-l px-(--space-md) py-(--space-sm) text-base">
                 <UsageColumn inUse={inUse} usage={usage} />
               </td>
-              <td className="m-0 px-(--space-sm) py-(--space-sm) text-base">
+              <td className="border-border/40 m-0 border-l px-(--space-md) py-(--space-sm) text-right text-base">
                 <ControlsColumn onDelete={onDelete} inUse={inUse} id={id} />
               </td>
             </tr>

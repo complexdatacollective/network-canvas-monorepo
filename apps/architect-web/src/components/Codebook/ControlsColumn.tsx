@@ -8,17 +8,23 @@ type ControlsColumnProps = {
   onDelete: (id: string) => void;
 };
 
-const ControlsColumn = ({ id, inUse, onDelete }: ControlsColumnProps) => (
-  <>
-    {!inUse && (
+const ControlsColumn = ({ id, inUse, onDelete }: ControlsColumnProps) => {
+  const label = inUse ? 'In use — cannot be deleted' : 'Delete variable';
+
+  // The title lives on the wrapping span rather than the Button: a disabled
+  // Button gets `pointer-events-none`, so a `title` on it would never show on
+  // hover. `disabled` already blocks the click, so no extra guard is needed.
+  return (
+    <span title={label} className="inline-block">
       <Button
         color="neon-coral"
         icon={<DeleteIcon />}
         onClick={() => onDelete(id)}
-        title="Delete variable"
+        disabled={inUse}
+        aria-label={label}
       />
-    )}
-  </>
-);
+    </span>
+  );
+};
 
 export default ControlsColumn;
