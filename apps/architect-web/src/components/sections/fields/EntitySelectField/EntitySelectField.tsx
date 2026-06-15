@@ -96,25 +96,29 @@ const EntitySelectField = ({
     setShowNewTypeDialog(false);
   }, []);
 
-  const PreviewComponent = useMemo(() => {
-    if (entityType === 'edge') {
-      return PreviewEdge;
-    }
-    return PreviewNode;
-  }, [entityType]);
-
   const renderOptions = useCallback(
     () =>
-      options.map(({ label: optionLabel, color, value: optionValue }) => (
-        <PreviewComponent
-          key={optionValue}
-          label={optionLabel}
-          color={color ?? 'node-color-seq-1'}
-          onClick={() => handleClickItem(optionValue)}
-          selected={value === optionValue}
-        />
-      )),
-    [options, value, handleClickItem, PreviewComponent],
+      options.map(({ label: optionLabel, color, shape, value: optionValue }) =>
+        entityType === 'edge' ? (
+          <PreviewEdge
+            key={optionValue}
+            label={optionLabel}
+            color={color ?? 'edge-color-seq-1'}
+            onClick={() => handleClickItem(optionValue)}
+            selected={value === optionValue}
+          />
+        ) : (
+          <PreviewNode
+            key={optionValue}
+            label={optionLabel}
+            color={color ?? 'node-color-seq-1'}
+            shape={shape}
+            onClick={() => handleClickItem(optionValue)}
+            selected={value === optionValue}
+          />
+        ),
+      ),
+    [options, value, handleClickItem, entityType],
   );
 
   return (

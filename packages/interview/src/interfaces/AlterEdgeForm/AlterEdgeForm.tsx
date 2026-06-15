@@ -42,7 +42,6 @@ function EdgeHeader({ item }: { item: NcEdge }) {
         <Node
           nodeId={fromNode[entityPrimaryKeyProperty]}
           type={fromNode.type}
-          className="rounded-full"
         />
       )}
       <div
@@ -52,11 +51,7 @@ function EdgeHeader({ item }: { item: NcEdge }) {
         )}
       />
       {toNode && (
-        <Node
-          nodeId={toNode[entityPrimaryKeyProperty]}
-          type={toNode.type}
-          className="rounded-full"
-        />
+        <Node nodeId={toNode[entityPrimaryKeyProperty]} type={toNode.type} />
       )}
     </div>
   );

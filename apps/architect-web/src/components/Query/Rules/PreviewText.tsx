@@ -1,7 +1,7 @@
 import { get, isArray, isNil, join } from 'es-toolkit/compat';
 import type { CSSProperties } from 'react';
 
-import Node from '@codaco/fresco-ui/Node';
+import Node, { type NodeShape } from '@codaco/fresco-ui/Node';
 
 import { SimpleVariablePill } from '../../Form/Fields/VariablePicker/VariablePill';
 import PreviewEdge from '../../sections/fields/EntitySelectField/PreviewEdge';
@@ -122,14 +122,15 @@ const Copy = ({ children = '' }: CopyProps) => <div>{children}</div>;
 type RuleEntityProps = {
   type: string;
   color: string;
+  shape?: NodeShape;
   label: string;
 };
 
-const RuleEntity = ({ type, color, label }: RuleEntityProps) =>
+const RuleEntity = ({ type, color, shape, label }: RuleEntityProps) =>
   type === 'edge' ? (
     <PreviewEdge color={color} label={label} surface={2} />
   ) : (
-    <PreviewNode color={color} label={label} size="xs" />
+    <PreviewNode color={color} shape={shape} label={label} size="xs" />
   );
 
 const PreviewText = ({ type, options, summary }: PreviewTextProps) => {
@@ -174,6 +175,7 @@ const PreviewText = ({ type, options, summary }: PreviewTextProps) => {
         <RuleEntity
           type={type}
           color={options.typeColor ?? ''}
+          shape={options.typeShape}
           label={options.typeLabel ?? ''}
         />
         <TypeOperator value={options.operator} />
@@ -186,6 +188,7 @@ const PreviewText = ({ type, options, summary }: PreviewTextProps) => {
         <RuleEntity
           type={type}
           color={options.typeColor ?? ''}
+          shape={options.typeShape}
           label={options.typeLabel ?? ''}
         />
         <Operator value={options.operator} />
@@ -198,6 +201,7 @@ const PreviewText = ({ type, options, summary }: PreviewTextProps) => {
       <RuleEntity
         type={type}
         color={options.typeColor ?? ''}
+        shape={options.typeShape}
         label={options.typeLabel ?? ''}
       />
       <Copy>where</Copy>
@@ -232,6 +236,7 @@ type PreviewTextOptions = {
   value?: string | number | boolean | Array<string | number>;
   variableType?: string;
   typeColor?: string;
+  typeShape?: NodeShape;
   typeLabel?: string;
 };
 

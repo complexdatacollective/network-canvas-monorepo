@@ -103,7 +103,7 @@
         "@utils/*": ["./src/utils/*"]
       }
     },
-    "apps/interviewer-v7": {
+    "apps/interviewer-v8": {
       "entry": [
         "index.html!",
         "electron.vite.config.ts",

@@ -175,6 +175,47 @@ export const Horizontal: Story = {
   },
 };
 
+export const HorizontalWrapping: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'In `horizontal` orientation, when the available width cannot fit every option on one line the options wrap into a vertical stack. Each wrapped option should still extend to the full width of the container, even when their descriptions differ in length.',
+      },
+    },
+  },
+  render: function Render() {
+    const [value, setValue] = useState<
+      string | number | (string | number)[] | undefined
+    >('passkey');
+
+    return (
+      <div className="w-full max-w-xl">
+        <RichSelectGroupField
+          options={[
+            {
+              value: 'passkey',
+              label: 'Passkey',
+              description:
+                'Use biometrics or your device security to sign in. No password to remember — the most secure option.',
+            },
+            {
+              value: 'password',
+              label: 'Password',
+              description:
+                'Traditional username and password. Requires a strong password.',
+            },
+          ]}
+          value={value}
+          onChange={setValue}
+          orientation="horizontal"
+          aria-label="Select an authentication method"
+        />
+      </div>
+    );
+  },
+};
+
 export const WithColumns: Story = {
   render: function Render() {
     const manyOptions: RichSelectOption[] = Array.from(

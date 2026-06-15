@@ -1,5 +1,6 @@
 import { map, pickBy } from 'es-toolkit/compat';
 
+import type { NodeShape } from '@codaco/fresco-ui/Node';
 import type { VariableOptions } from '@codaco/protocol-validation';
 
 const extraProperties = new Set(['type', 'color']);
@@ -9,6 +10,7 @@ type Item = {
   name: string;
   type?: string;
   color?: string;
+  shape?: { default: NodeShape };
   options?: VariableOptions;
   [key: string]: unknown;
 };
@@ -18,6 +20,7 @@ type Option = {
   value: string;
   type?: string;
   color?: string;
+  shape?: NodeShape;
   options?: VariableOptions;
 };
 
@@ -31,6 +34,9 @@ const asOption = (item: Item, id: string): Option => {
     (value, key) => value && extraProperties.has(key),
   ) as Pick<Option, 'type' | 'color'>;
 
+  // Node type definitions carry a shape; surface the default for previews
+  const shapeField = item.shape ? { shape: item.shape.default } : {};
+
   // Include options for categorical/ordinal variables
   const optionsField =
     item.type && typesWithOptions.has(item.type) && item.options
@@ -39,6 +45,7 @@ const asOption = (item: Item, id: string): Option => {
 
   return {
     ...extra,
+    ...shapeField,
     ...optionsField,
     ...required,
   };
