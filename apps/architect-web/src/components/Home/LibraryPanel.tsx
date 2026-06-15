@@ -31,6 +31,7 @@ import { deleteLibraryProtocol } from '~/ducks/modules/userActions/userActions';
 import { useProtocolLibrary } from '~/hooks/useProtocolLibrary';
 import fileIcon from '~/images/file-icon.svg';
 import Button, { IconButton } from '~/lib/legacy-ui/components/Button';
+import type { BundledTemplate } from '~/templates';
 import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
 import { getProtocolAssetCount } from '~/utils/assetUtils';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
@@ -257,6 +258,10 @@ type LibraryPanelProps = {
   onOpenSample: () => void;
   // Open the development protocol (shown as a template in dev mode only).
   onOpenDevProtocol: () => void;
+  // Research-grounded starter templates bundled with the app.
+  templates: BundledTemplate[];
+  // Open one of the bundled research templates.
+  onOpenTemplate: (template: BundledTemplate) => void;
 };
 
 const PANEL_CLASSES =
@@ -266,6 +271,8 @@ const LibraryPanel = ({
   onOpenProtocol,
   onOpenSample,
   onOpenDevProtocol,
+  templates,
+  onOpenTemplate,
 }: LibraryPanelProps) => {
   const dispatch = useAppDispatch();
   const { protocols, isLoaded } = useProtocolLibrary();
@@ -428,7 +435,7 @@ const LibraryPanel = ({
     }
   }, [dispatch]);
 
-  const templateCount = import.meta.env.DEV ? 2 : 1;
+  const templateCount = (import.meta.env.DEV ? 2 : 1) + templates.length;
   const templateLabel = `${templateCount} ${templateCount === 1 ? 'template' : 'templates'}`;
   const protocolCount = protocols.length;
   const storageTooltip =
@@ -524,6 +531,15 @@ const LibraryPanel = ({
               onOpen={onOpenDevProtocol}
             />
           )}
+          {templates.map((template) => (
+            <PanelRow
+              key={template.id}
+              name={template.name}
+              description={template.description}
+              actionLabel="Use this template"
+              onOpen={() => onOpenTemplate(template)}
+            />
+          ))}
         </TabsPanel>
       </Tabs>
 

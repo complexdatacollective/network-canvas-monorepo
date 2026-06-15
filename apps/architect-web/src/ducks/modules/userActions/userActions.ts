@@ -218,6 +218,37 @@ export const createNetcanvas = createAsyncThunk(
   },
 );
 
+// Open one of the app's bundled research templates. The protocol object is
+// already at the current schema version, so we skip the fetch/extract and
+// migration steps and validate it directly. Like the remote-template flow, a
+// fresh library entry (new id) is created so a template can be opened
+// repeatedly without overwriting earlier copies.
+export const openBundledTemplate = createAsyncThunk(
+  'webUserActions/openBundledTemplate',
+  async (
+    { protocol, name }: { protocol: CurrentProtocol; name?: string },
+    { dispatch },
+  ) => {
+    const validationResult = await validateProtocol(protocol);
+
+    if (!validationResult.success) {
+      const errorMessage = ensureError(validationResult.error).message;
+      dispatch(validationErrorDialog(errorMessage));
+      return;
+    }
+
+    const finalName = name ?? protocol.name;
+    await instantiateProtocol(
+      {
+        protocol: name ? { ...protocol, name } : protocol,
+        name: finalName,
+        description: protocol.description,
+      },
+      dispatch,
+    );
+  },
+);
+
 // Export protocol as .netcanvas file
 export const exportNetcanvas = createAsyncThunk(
   'webUserActions/exportNetcanvas',
