@@ -38,7 +38,7 @@
       ],
       "outputs": ["biometric-keystore.darwin-*.node"]
     },
-    "@codaco/interviewer-v7#electron:build": {
+    "@codaco/interviewer-v8#electron:build": {
       "dependsOn": ["^build"],
       "inputs": [
         "electron/**",
@@ -52,10 +52,10 @@
       "env": ["NODE_ENV"],
       "outputs": ["dist-electron/**"]
     },
-    "@codaco/interviewer-v7#electron:rebuild-deps": {
+    "@codaco/interviewer-v8#electron:rebuild-deps": {
       "cache": false
     },
-    "@codaco/interviewer-v7#electron:dev": {
+    "@codaco/interviewer-v8#electron:dev": {
       "dependsOn": ["^build", "electron:rebuild-deps"],
       "cache": false,
       "persistent": true

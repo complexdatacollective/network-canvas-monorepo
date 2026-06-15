@@ -42,7 +42,7 @@ jobs:
       fresco_ui_storybook: ${{ steps.flags.outputs.fresco_ui_storybook }}
       interview_storybook: ${{ steps.flags.outputs.interview_storybook }}
       interview_e2e: ${{ steps.flags.outputs.interview_e2e }}
-      interviewer_v7_changeset: ${{ steps.flags.outputs.interviewer_v7_changeset }}
+      interviewer_v8_changeset: ${{ steps.flags.outputs.interviewer_v8_changeset }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -116,11 +116,11 @@ jobs:
           if [[ "$docs" == "true" || "$arch" == "true" || "$web" == "true" ]]; then any_app=true; fi
 
           # PR-only: detect a changeset ADDED/CHANGED in this PR whose frontmatter
-          # touches @codaco/interviewer-v7. Gates the snapshot Electron build job
+          # touches @codaco/interviewer-v8. Gates the snapshot Electron build job
           # below. Scoping to changed files (not the whole .changeset tree) keeps
-          # unrelated PRs from triggering the build just because an interviewer-v7
+          # unrelated PRs from triggering the build just because an interviewer-v8
           # changeset already exists in the checkout.
-          interviewer_v7_changeset=false
+          interviewer_v8_changeset=false
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
             if [[ -z "$PREV" ]]; then
               # First push on the branch (no parent) — be conservative, scan all.
@@ -129,8 +129,8 @@ jobs:
               changesets=$(git diff --name-only --diff-filter=d "$PREV" "$CURR" -- '.changeset/*.md')
             fi
             if [[ -n "$changesets" ]] && \
-               grep -lE '"?@codaco/interviewer-v7"?[[:space:]]*:' $changesets > /dev/null 2>&1; then
-              interviewer_v7_changeset=true
+               grep -lE '"?@codaco/interviewer-v8"?[[:space:]]*:' $changesets > /dev/null 2>&1; then
+              interviewer_v8_changeset=true
             fi
           fi
 
@@ -142,7 +142,7 @@ jobs:
             echo "fresco_ui_storybook=$fui"
             echo "interview_storybook=$intv"
             echo "interview_e2e=$intv"
-            echo "interviewer_v7_changeset=$interviewer_v7_changeset"
+            echo "interviewer_v8_changeset=$interviewer_v8_changeset"
           } >> "$GITHUB_OUTPUT"
 
   # Cache design: every Turbo-using job restores `.turbo` from the same
@@ -774,8 +774,8 @@ jobs:
     env:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
     outputs:
-      interviewer_v7_released: ${{ steps.detect_interviewer_v7.outputs.released }}
-      interviewer_v7_version: ${{ steps.detect_interviewer_v7.outputs.version }}
+      interviewer_v8_released: ${{ steps.detect_interviewer_v8.outputs.released }}
+      interviewer_v8_version: ${{ steps.detect_interviewer_v8.outputs.version }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -805,16 +805,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
-      - name: Detect interviewer-v7 version bump
+      - name: Detect interviewer-v8 version bump
         # changesets/action either opens a "Version Packages" PR or, when no
         # changesets remain, runs the publish step which has already mutated
-        # apps/interviewer-v7/package.json in-place during the merged version
+        # apps/interviewer-v8/package.json in-place during the merged version
         # PR. Diff the file's version against HEAD^ to decide whether to
         # trigger an Electron build downstream. fetch-depth: 2 above makes
         # HEAD^ available.
-        id: detect_interviewer_v7
+        id: detect_interviewer_v8
         env:
-          PKG_JSON: apps/interviewer-v7/package.json
+          PKG_JSON: apps/interviewer-v8/package.json
         run: |
           current=$(node -p "require('./$PKG_JSON').version")
           if git cat-file -e "HEAD^:$PKG_JSON" 2>/dev/null; then
@@ -825,11 +825,11 @@ jobs:
           if [[ "$current" != "$previous" && -n "$current" ]]; then
             echo "released=true" >> "$GITHUB_OUTPUT"
             echo "version=$current" >> "$GITHUB_OUTPUT"
-            echo "interviewer-v7 version changed: $previous -> $current"
+            echo "interviewer-v8 version changed: $previous -> $current"
           else
             echo "released=false" >> "$GITHUB_OUTPUT"
             echo "version=" >> "$GITHUB_OUTPUT"
-            echo "interviewer-v7 version unchanged ($current)"
+            echo "interviewer-v8 version unchanged ($current)"
           fi
 
   # Decide whether to (re)release the legacy desktop apps. A release fires when:
@@ -880,27 +880,27 @@ jobs:
           GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
         run: bash .github/scripts/detect-legacy-release.sh
 
-  # Per-platform Electron build for interviewer-v7. Triggered only when the
-  # release job above detected a version bump for @codaco/interviewer-v7.
+  # Per-platform Electron build for interviewer-v8. Triggered only when the
+  # release job above detected a version bump for @codaco/interviewer-v8.
   # macOS leg signs + notarizes via Apple credentials in repo secrets;
   # Windows ships unsigned (SmartScreen warning is acceptable for now);
   # Linux builds AppImage + deb unsigned.
-  interviewer-v7-build:
+  interviewer-v8-build:
     needs: release
-    if: needs.release.outputs.interviewer_v7_released == 'true'
+    if: needs.release.outputs.interviewer_v8_released == 'true'
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-latest
             platform: mac
-            artifact_name: interviewer-v7-macos
+            artifact_name: interviewer-v8-macos
           - os: windows-latest
             platform: win
-            artifact_name: interviewer-v7-windows
+            artifact_name: interviewer-v8-windows
           - os: ubuntu-latest
             platform: linux
-            artifact_name: interviewer-v7-linux
+            artifact_name: interviewer-v8-linux
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
@@ -918,7 +918,7 @@ jobs:
           path: |
             ~/.cache/electron
             ~/.cache/electron-builder
-          key: ${{ runner.os }}-electron-${{ hashFiles('apps/interviewer-v7/package.json') }}
+          key: ${{ runner.os }}-electron-${{ hashFiles('apps/interviewer-v8/package.json') }}
           restore-keys: ${{ runner.os }}-electron-
       # Turbo cache is keyspaced by runner.os; only the ubuntu leg can hit
       # the cache written by the quality job. Mac/Windows rebuild deps from
@@ -930,9 +930,9 @@ jobs:
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
       - name: Build workspace dependencies
-        # ^... builds deps of interviewer-v7 (fresco-ui, interview, etc.)
-        # but NOT interviewer-v7 itself — electron-vite handles that.
-        run: pnpm exec turbo run build --filter=@codaco/interviewer-v7^...
+        # ^... builds deps of interviewer-v8 (fresco-ui, interview, etc.)
+        # but NOT interviewer-v8 itself — electron-vite handles that.
+        run: pnpm exec turbo run build --filter=@codaco/interviewer-v8^...
       - name: Decode App Store Connect API key
         if: matrix.os == 'macos-latest'
         env:
@@ -942,7 +942,7 @@ jobs:
           printf '%s' "$APPLE_API_KEY_B64" | base64 --decode > "$key_path"
           echo "APPLE_API_KEY=${key_path}" >> "$GITHUB_ENV"
       - name: Build Electron app (${{ matrix.platform }})
-        working-directory: apps/interviewer-v7
+        working-directory: apps/interviewer-v8
         env:
           # macOS-only credentials. Non-mac legs see empty strings, which
           # electron-builder treats as "not configured" (no signing, no
@@ -956,17 +956,17 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact_name }}
-          path: apps/interviewer-v7/release-builds/*
+          path: apps/interviewer-v8/release-builds/*
           if-no-files-found: error
           retention-days: 30
 
   # Collect all platform artifacts and create one GitHub Release at tag
-  # `interviewer-v7@v<version>`. make_latest:false keeps the repo's "Latest
+  # `interviewer-v8@v<version>`. make_latest:false keeps the repo's "Latest
   # release" pointer from bouncing between apps as different apps cut
   # versions out of this monorepo.
-  interviewer-v7-publish:
-    needs: [release, interviewer-v7-build]
-    if: needs.release.outputs.interviewer_v7_released == 'true'
+  interviewer-v8-publish:
+    needs: [release, interviewer-v8-build]
+    if: needs.release.outputs.interviewer_v8_released == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -975,14 +975,14 @@ jobs:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: artifacts
-          pattern: interviewer-v7-*
+          pattern: interviewer-v8-*
           merge-multiple: true
       - name: List collected artifacts
         run: ls -la artifacts/
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
-          tag_name: interviewer-v7@v${{ needs.release.outputs.interviewer_v7_version }}
-          name: Interviewer v7 v${{ needs.release.outputs.interviewer_v7_version }}
+          tag_name: interviewer-v8@v${{ needs.release.outputs.interviewer_v8_version }}
+          name: Interviewer v8 v${{ needs.release.outputs.interviewer_v8_version }}
           files: artifacts/*
           fail_on_unmatched_files: true
           make_latest: 'false'
@@ -1042,7 +1042,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           # Distinct prefix so the publish job's glob doesn't also collect the
-          # `interviewer-v7-*` artifacts built in the same run.
+          # `interviewer-v8-*` artifacts built in the same run.
           name: interviewer-release-${{ matrix.platform }}
           path: apps/interviewer/release-builds/*
           if-no-files-found: error
@@ -1251,15 +1251,15 @@ jobs:
           make_latest: 'false'
 
   # PR snapshot build for testers. Triggered when the detect job flags a
-  # changeset touching @codaco/interviewer-v7 AND the quality gate passed.
+  # changeset touching @codaco/interviewer-v8 AND the quality gate passed.
   # Uses changesets snapshot mode to produce a sha-stamped pre-release
   # version (e.g. 7.0.1-pr-42-abc1234.0), notarizes the macOS artifact,
   # uploads to the workflow run only — no GitHub Release is created.
-  interviewer-v7-pr-snapshot:
+  interviewer-v8-pr-snapshot:
     needs: [detect, quality]
     if: |
       github.event_name == 'pull_request' &&
-      needs.detect.outputs.interviewer_v7_changeset == 'true' &&
+      needs.detect.outputs.interviewer_v8_changeset == 'true' &&
       needs.quality.result == 'success'
     strategy:
       fail-fast: false
@@ -1267,13 +1267,13 @@ jobs:
         include:
           - os: macos-latest
             platform: mac
-            artifact_name: interviewer-v7-macos-pr-${{ github.event.pull_request.number }}
+            artifact_name: interviewer-v8-macos-pr-${{ github.event.pull_request.number }}
           - os: windows-latest
             platform: win
-            artifact_name: interviewer-v7-windows-pr-${{ github.event.pull_request.number }}
+            artifact_name: interviewer-v8-windows-pr-${{ github.event.pull_request.number }}
           - os: ubuntu-latest
             platform: linux
-            artifact_name: interviewer-v7-linux-pr-${{ github.event.pull_request.number }}
+            artifact_name: interviewer-v8-linux-pr-${{ github.event.pull_request.number }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
@@ -1294,7 +1294,7 @@ jobs:
           path: |
             ~/.cache/electron
             ~/.cache/electron-builder
-          key: ${{ runner.os }}-electron-${{ hashFiles('apps/interviewer-v7/package.json') }}
+          key: ${{ runner.os }}-electron-${{ hashFiles('apps/interviewer-v8/package.json') }}
           restore-keys: ${{ runner.os }}-electron-
       - if: matrix.os == 'ubuntu-latest'
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -1310,9 +1310,9 @@ jobs:
           short_sha=${PR_SHA:0:7}
           tag="pr-${PR_NUMBER}-${short_sha}"
           pnpm exec changeset version --snapshot "$tag"
-          node -p "require('./apps/interviewer-v7/package.json').version"
+          node -p "require('./apps/interviewer-v8/package.json').version"
       - name: Build workspace dependencies
-        run: pnpm exec turbo run build --filter=@codaco/interviewer-v7^...
+        run: pnpm exec turbo run build --filter=@codaco/interviewer-v8^...
       - name: Decode App Store Connect API key
         if: matrix.os == 'macos-latest'
         env:
@@ -1322,7 +1322,7 @@ jobs:
           printf '%s' "$APPLE_API_KEY_B64" | base64 --decode > "$key_path"
           echo "APPLE_API_KEY=${key_path}" >> "$GITHUB_ENV"
       - name: Build Electron app (${{ matrix.platform }})
-        working-directory: apps/interviewer-v7
+        working-directory: apps/interviewer-v8
         env:
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
@@ -1332,7 +1332,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact_name }}
-          path: apps/interviewer-v7/release-builds/*
+          path: apps/interviewer-v8/release-builds/*
           if-no-files-found: error
           retention-days: 14
 

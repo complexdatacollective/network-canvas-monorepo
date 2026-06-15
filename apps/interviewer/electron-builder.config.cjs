@@ -4,7 +4,7 @@
  *
  * Moved out of package.json's `build` field so macOS notarization can be
  * gated on the presence of App Store Connect API credentials at build time
- * (matching apps/interviewer-v7 and apps/architect).
+ * (matching apps/interviewer-v8 and apps/architect).
  */
 module.exports = {
   extends: null,

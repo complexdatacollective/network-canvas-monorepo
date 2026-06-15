@@ -9,7 +9,7 @@
   "updateInternalDependencies": "patch",
   "ignore": [
     "@codaco/architect-web",
-    "@codaco/interviewer-v7",
+    "@codaco/interviewer-v8",
     "@codaco/documentation",
     "networkcanvas.com",
     "network-canvas-architect",
