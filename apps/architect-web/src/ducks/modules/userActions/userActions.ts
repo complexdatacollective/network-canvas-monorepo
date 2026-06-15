@@ -229,23 +229,30 @@ export const openBundledTemplate = createAsyncThunk(
     { protocol, name }: { protocol: CurrentProtocol; name?: string },
     { dispatch },
   ) => {
-    const validationResult = await validateProtocol(protocol);
+    try {
+      const validationResult = await validateProtocol(protocol);
 
-    if (!validationResult.success) {
-      const errorMessage = ensureError(validationResult.error).message;
-      dispatch(validationErrorDialog(errorMessage));
-      return;
+      if (!validationResult.success) {
+        const errorMessage = ensureError(validationResult.error).message;
+        dispatch(validationErrorDialog(errorMessage));
+        return false;
+      }
+
+      const finalName = name ?? protocol.name;
+      await instantiateProtocol(
+        {
+          protocol: name ? { ...protocol, name } : protocol,
+          name: finalName,
+          description: protocol.description,
+        },
+        dispatch,
+      );
+      return true;
+    } catch (error) {
+      const errorMessage = ensureError(error).message;
+      dispatch(generalErrorDialog('Protocol Import Error', errorMessage));
+      return false;
     }
-
-    const finalName = name ?? protocol.name;
-    await instantiateProtocol(
-      {
-        protocol: name ? { ...protocol, name } : protocol,
-        name: finalName,
-        description: protocol.description,
-      },
-      dispatch,
-    );
   },
 );
 

@@ -15,9 +15,11 @@ export type BundledTemplate = {
 };
 
 // Research-grounded starting points shown in Architect's "Templates" tab. The
-// canonical, validated sources live at the repo root in
-// `/templates/<id>/protocol.json`; the copies imported here are bundled into the
-// app so a template can be opened without a network fetch. Keep the two in sync.
+// canonical, validated source for each template lives at the repo root in
+// `/templates/<id>/protocol.json`. The copies imported here are generated from
+// those sources by `scripts/sync-templates.mjs` and bundled into the app so a
+// template opens without a network fetch; `__tests__/bundled-sync.test.ts` fails
+// CI if a copy drifts from its canonical source.
 export const BUNDLED_TEMPLATES: BundledTemplate[] = [
   {
     id: 'transnational-networks',

@@ -202,7 +202,7 @@
           "help_source_type": {
             "name": "help_source_type",
             "type": "categorical",
-            "component": "CheckboxGroup",
+            "component": "ToggleButtonGroup",
             "options": [
               {
                 "label": "Informal (family, friends, peers)",
@@ -212,7 +212,8 @@
                 "label": "Formal or clinical (professionals, services)",
                 "value": "formal"
               }
-            ]
+            ],
+            "validation": { "required": true, "maxSelected": 1 }
           },
           "contact_frequency": {
             "name": "contact_frequency",

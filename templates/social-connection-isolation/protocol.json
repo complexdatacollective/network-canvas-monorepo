@@ -116,9 +116,9 @@
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": "No", "value": 1 },
+            { "label": "No", "value": 3 },
             { "label": "More or less", "value": 2 },
-            { "label": "Yes", "value": 3 }
+            { "label": "Yes", "value": 1 }
           ],
           "validation": { "required": true }
         },
@@ -127,9 +127,9 @@
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": "No", "value": 1 },
+            { "label": "No", "value": 3 },
             { "label": "More or less", "value": 2 },
-            { "label": "Yes", "value": 3 }
+            { "label": "Yes", "value": 1 }
           ],
           "validation": { "required": true }
         },
@@ -138,9 +138,9 @@
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": "No", "value": 1 },
+            { "label": "No", "value": 3 },
             { "label": "More or less", "value": 2 },
-            { "label": "Yes", "value": 3 }
+            { "label": "Yes", "value": 1 }
           ],
           "validation": { "required": true }
         },
