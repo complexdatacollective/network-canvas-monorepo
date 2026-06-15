@@ -2,7 +2,8 @@
 
 Generated screenshots of every Network Canvas interview interface, shipped
 with a React component for responsive display. Internal and unversioned —
-not published.
+not published. Consumed by `architect-web` (stage thumbnails) and the
+`documentation` site (the hero image on each interface-documentation page).
 
 ## Consuming
 
