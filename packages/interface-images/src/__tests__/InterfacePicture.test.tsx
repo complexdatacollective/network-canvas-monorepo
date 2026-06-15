@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import manifest from '../generated/manifest';
 import InterfacePicture from '../InterfacePicture';
@@ -74,5 +74,60 @@ describe('InterfacePicture', () => {
         '(min-width: 64rem) 50vw, 100vw',
       );
     }
+  });
+
+  // The fallback and "no variants" branches are unreachable with the real
+  // generated manifest (every interface ships all three ratios), so exercise
+  // them against a manifest mocked to a restricted/empty shape for a real
+  // interface key — keeping the props statically valid (no type suppression).
+  it('falls back to the next available ratio when the requested one is missing', async () => {
+    vi.resetModules();
+    vi.doMock('../generated/manifest', () => ({
+      default: {
+        Sociogram: {
+          '4:3': {
+            width: 1024,
+            height: 768,
+            variants: [{ w: 320, h: 240, url: '/sociogram.4x3.320.webp' }],
+          },
+        },
+      },
+    }));
+    const { default: PictureWithRestrictedManifest } =
+      await import('../InterfacePicture');
+    const { container } = render(
+      <PictureWithRestrictedManifest
+        type="Sociogram"
+        ratio="16:9"
+        alt="Sociogram interface"
+      />,
+    );
+    const source = container.querySelector('picture > source:not([media])');
+    expect(source?.getAttribute('srcset')).toContain(
+      '/sociogram.4x3.320.webp 320w',
+    );
+    const img = container.querySelector('img');
+    expect(img?.getAttribute('width')).toBe('320');
+    expect(img?.getAttribute('height')).toBe('240');
+    vi.doUnmock('../generated/manifest');
+    vi.resetModules();
+  });
+
+  it('throws when the interface has no generated images', async () => {
+    vi.resetModules();
+    vi.doMock('../generated/manifest', () => ({ default: { Sociogram: {} } }));
+    const { default: PictureWithEmptyManifest } =
+      await import('../InterfacePicture');
+    expect(() =>
+      render(
+        <PictureWithEmptyManifest
+          type="Sociogram"
+          ratio="16:9"
+          alt="Sociogram interface"
+        />,
+      ),
+    ).toThrow('No images generated for interface "Sociogram"');
+    vi.doUnmock('../generated/manifest');
+    vi.resetModules();
   });
 });
