@@ -17,6 +17,7 @@
     "@codaco/interview": "workspace:*",
     "@codaco/protocol-utilities": "workspace:*",
     "@codaco/protocol-validation": "workspace:*",
+    "@codaco/sample-protocol": "workspace:*",
     "@codaco/shared-consts": "workspace:*",
     "@codaco/tailwind-config": "workspace:*",
     "@codaco/tsconfig": "workspace:*",

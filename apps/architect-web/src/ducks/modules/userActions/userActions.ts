@@ -226,7 +226,11 @@ export const createNetcanvas = createAsyncThunk(
 export const openBundledTemplate = createAsyncThunk(
   'webUserActions/openBundledTemplate',
   async (
-    { protocol, name }: { protocol: CurrentProtocol; name?: string },
+    {
+      protocol,
+      name,
+      assets,
+    }: { protocol: CurrentProtocol; name?: string; assets?: ExtractedAsset[] },
     { dispatch },
   ) => {
     try {
@@ -242,6 +246,7 @@ export const openBundledTemplate = createAsyncThunk(
       await instantiateProtocol(
         {
           protocol: name ? { ...protocol, name } : protocol,
+          assets,
           name: finalName,
           description: protocol.description,
         },

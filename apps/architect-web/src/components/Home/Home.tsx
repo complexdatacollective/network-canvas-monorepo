@@ -9,11 +9,14 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import type {
+  CurrentProtocol,
+  ExtractedAsset,
+} from '@codaco/protocol-validation';
 import Badge from '~/components/Badge';
 import NewProtocolDialog from '~/components/NewProtocolDialog';
 import NavShell from '~/components/ProjectNav/NavShell';
-import { DEVELOPMENT_PROTOCOL_URL, SAMPLE_PROTOCOL_URL } from '~/config';
+import { DEVELOPMENT_PROTOCOL_URL } from '~/config';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   createNetcanvas,
@@ -24,6 +27,7 @@ import {
 } from '~/ducks/modules/userActions/userActions';
 import Button from '~/lib/legacy-ui/components/Button';
 import { BUNDLED_TEMPLATES, type BundledTemplate } from '~/templates';
+import { loadSampleAssets, sampleProtocol } from '~/templates/sample-protocol';
 import { appVersion } from '~/utils/appVersion';
 
 import LibraryPanel from './LibraryPanel';
@@ -55,7 +59,12 @@ const Home = () => {
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [pendingTemplate, setPendingTemplate] = useState<
     | { kind: 'remote'; url: string; defaultName: string }
-    | { kind: 'bundled'; protocol: CurrentProtocol; defaultName: string }
+    | {
+        kind: 'bundled';
+        protocol: CurrentProtocol;
+        defaultName: string;
+        loadAssets?: () => Promise<ExtractedAsset[]>;
+      }
     | null
   >(null);
   const [visibleCount, setVisibleCount] = useState(3);
@@ -111,8 +120,9 @@ const Home = () => {
   // dialog; confirming it fetches and instantiates the protocol.
   const handleOpenSample = useCallback(() => {
     setPendingTemplate({
-      kind: 'remote',
-      url: SAMPLE_PROTOCOL_URL,
+      kind: 'bundled',
+      protocol: sampleProtocol,
+      loadAssets: loadSampleAssets,
       defaultName: 'Sample Protocol',
     });
   }, []);
@@ -140,8 +150,11 @@ const Home = () => {
       if (!template) return;
       void runAction(async () => {
         if (template.kind === 'bundled') {
+          const assets = template.loadAssets
+            ? await template.loadAssets()
+            : undefined;
           await dispatch(
-            openBundledTemplate({ protocol: template.protocol, name }),
+            openBundledTemplate({ protocol: template.protocol, name, assets }),
           );
         } else {
           await dispatch(openRemoteNetcanvas({ url: template.url, name }));
