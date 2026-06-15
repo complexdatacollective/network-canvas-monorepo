@@ -1,39 +1,33 @@
-import AlterEdgeForm from './stage--AlterEdgeForm.png';
-import AlterForm from './stage--AlterForm.png';
-import Anonymisation from './stage--Anonymisation.png';
-import CategoricalBin from './stage--CategoricalBin.png';
-import Default from './stage--Default.png';
-import DyadCensus from './stage--DyadCensus.png';
-import EgoForm from './stage--EgoForm.png';
-import FamilyPedigree from './stage--FamilyPedigree.png';
-import Geospatial from './stage--Geospatial.png';
-import Information from './stage--Information.png';
-import NameGenerator from './stage--NameGenerator.png';
-import NameGeneratorQuickAdd from './stage--NameGeneratorQuickAdd.png';
-import NameGeneratorRoster from './stage--NameGeneratorRoster.png';
-import Narrative from './stage--Narrative.png';
-import OneToManyDyadCensus from './stage--OneToManyDyadCensus.png';
-import OrdinalBin from './stage--OrdinalBin.png';
-import Sociogram from './stage--Sociogram.png';
-import TieStrengthCensus from './stage--TieStrengthCensus.png';
+import manifest from '@codaco/interface-images/manifest';
 
-export default {
-  CategoricalBin,
-  NameGenerator,
-  NameGeneratorQuickAdd,
-  NameGeneratorRoster,
-  DyadCensus,
-  TieStrengthCensus,
-  Narrative,
-  Information,
-  OrdinalBin,
-  Sociogram,
-  AlterForm,
-  AlterEdgeForm,
-  EgoForm,
-  FamilyPedigree,
-  Geospatial,
-  Anonymisation,
-  OneToManyDyadCensus,
-  Default,
+import Default from './stage--Default.webp';
+
+/**
+ * Placeholder for stage types that have no generated screenshot in
+ * @codaco/interface-images (e.g. types not yet implemented in the
+ * interview package). Dimensions must match the file.
+ */
+export const defaultStageImage = { src: Default, width: 448, height: 307 };
+
+/** The timeline renders stage thumbnails at w-56 (224px), i.e. 448px at 2x. */
+const PRELOAD_TARGET_WIDTH = 448;
+
+/**
+ * Warm the browser cache for the stage-thumbnail variants the timeline and
+ * stage editor render, so they appear immediately on first navigation.
+ */
+export const preloadTimelineImages = () => {
+  for (const entry of Object.values(manifest)) {
+    const variants = entry['4:3']?.variants;
+    if (!variants?.length) continue;
+    const target =
+      variants.find((v) => v.w >= PRELOAD_TARGET_WIDTH) ??
+      variants[variants.length - 1];
+    if (target) {
+      const img = new Image();
+      img.src = target.url;
+    }
+  }
+  const img = new Image();
+  img.src = defaultStageImage.src;
 };

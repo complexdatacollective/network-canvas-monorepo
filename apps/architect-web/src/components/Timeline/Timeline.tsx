@@ -1,4 +1,3 @@
-import { get } from 'es-toolkit/compat';
 import { Plus } from 'lucide-react';
 import { motion, Reorder, useReducedMotion, type Variants } from 'motion/react';
 import { useCallback, useRef, useState } from 'react';
@@ -12,7 +11,6 @@ import {
 } from '~/ducks/modules/dialogs';
 import { actionCreators as stageActions } from '~/ducks/modules/protocol/stages';
 import { useRunOnce } from '~/hooks/useRunOnce';
-import timelineImages from '~/images/timeline';
 import filterIcon from '~/images/timeline/filter-icon.svg';
 import skipLogicIcon from '~/images/timeline/skip-logic-icon.svg';
 import { Button } from '~/lib/legacy-ui/components';
@@ -20,10 +18,8 @@ import { getStageList } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 
 import NewStageScreen from '../Screens/NewStageScreen';
+import StageTypeImage from '../StageTypeImage';
 import InsertButton from './InsertButton';
-
-const getTimelineImage = (type: string) =>
-  get(timelineImages, type, timelineImages.Default);
 
 const timelineContainerVariants: Variants = {
   hidden: {},
@@ -159,77 +155,81 @@ const Timeline = () => {
           animate="visible"
           variants={timelineContainerVariants}
         >
-          {stages.flatMap((stage, index) => [
-            <InsertButton
-              key={`insert_${stage.id}`}
-              onClick={() => handleInsertStage(index)}
-              variants={timelineInsertVariants}
-            />,
-            <Reorder.Item
-              tabIndex={0}
-              key={stage.id}
-              value={stage}
-              layoutId={`timeline-stage-${stage.id}`}
-              className={itemClasses}
-              variants={timelineStageVariants}
-              onPointerDown={(e) => {
-                pointerStart.current = { x: e.clientX, y: e.clientY };
-              }}
-              onClick={(e) => {
-                const dx = e.clientX - pointerStart.current.x;
-                const dy = e.clientY - pointerStart.current.y;
-                if (dx * dx + dy * dy < 25) {
-                  handleEditStage(stage.id);
-                }
-              }}
-            >
-              <img
-                className="pointer-events-none w-56 justify-self-end rounded-xs shadow transition-transform duration-300 ease-in-out select-none group-hover:scale-105"
-                src={getTimelineImage(stage.type)}
-                alt={`${stage.type} interface`}
-                title={`${stage.type} interface`}
-              />
-              <div className="bg-timeline text-timeline-foreground flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110">
-                {index + 1}
-              </div>
-              <div className="justify-self-start">
-                <h4 className="transition-all group-hover:font-bold">
-                  {stage.label || '\u00A0'}
-                </h4>
-                {(stage.hasFilter || stage.hasSkipLogic) && (
-                  <div className="mt-1 flex items-center gap-1">
-                    {stage.hasFilter && (
-                      <img
-                        src={filterIcon}
-                        alt="Has filter"
-                        title="Has filter"
-                        className="h-5 w-5"
-                      />
-                    )}
-                    {stage.hasSkipLogic && (
-                      <img
-                        src={skipLogicIcon}
-                        alt="Has skip logic"
-                        title="Has skip logic"
-                        className="h-5 w-5"
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
-              <div className="absolute top-1/2 -right-40 -translate-y-1/2 opacity-0 transition-opacity duration-300 ease-in-out group-hover:opacity-100">
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteStage(stage.id);
-                  }}
-                  color="neon-coral"
-                >
-                  Delete stage
-                </Button>
-              </div>
-            </Reorder.Item>,
-          ])}
+          {stages.flatMap((stage, index) => {
+            return [
+              <InsertButton
+                key={`insert_${stage.id}`}
+                onClick={() => handleInsertStage(index)}
+                variants={timelineInsertVariants}
+              />,
+              <Reorder.Item
+                tabIndex={0}
+                key={stage.id}
+                value={stage}
+                layoutId={`timeline-stage-${stage.id}`}
+                className={itemClasses}
+                variants={timelineStageVariants}
+                onPointerDown={(e) => {
+                  pointerStart.current = { x: e.clientX, y: e.clientY };
+                }}
+                onClick={(e) => {
+                  const dx = e.clientX - pointerStart.current.x;
+                  const dy = e.clientY - pointerStart.current.y;
+                  if (dx * dx + dy * dy < 25) {
+                    handleEditStage(stage.id);
+                  }
+                }}
+              >
+                <div className="justify-self-end">
+                  <StageTypeImage
+                    type={stage.type}
+                    ratio="4:3"
+                    sizes="14rem"
+                    className="pointer-events-none w-56 rounded-xs shadow transition-transform duration-300 ease-in-out select-none group-hover:scale-105"
+                  />
+                </div>
+                <div className="bg-timeline text-timeline-foreground flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110">
+                  {index + 1}
+                </div>
+                <div className="justify-self-start">
+                  <h4 className="transition-all group-hover:font-bold">
+                    {stage.label || '\u00A0'}
+                  </h4>
+                  {(stage.hasFilter || stage.hasSkipLogic) && (
+                    <div className="mt-1 flex items-center gap-1">
+                      {stage.hasFilter && (
+                        <img
+                          src={filterIcon}
+                          alt="Has filter"
+                          title="Has filter"
+                          className="h-5 w-5"
+                        />
+                      )}
+                      {stage.hasSkipLogic && (
+                        <img
+                          src={skipLogicIcon}
+                          alt="Has skip logic"
+                          title="Has skip logic"
+                          className="h-5 w-5"
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="absolute top-1/2 -right-40 -translate-y-1/2 opacity-0 transition-opacity duration-300 ease-in-out group-hover:opacity-100">
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteStage(stage.id);
+                    }}
+                    color="neon-coral"
+                  >
+                    Delete stage
+                  </Button>
+                </div>
+              </Reorder.Item>,
+            ];
+          })}
 
           <motion.div
             className="group mt-3 grid w-2xl cursor-pointer grid-cols-[1fr_auto_1fr] items-center gap-10 p-4"

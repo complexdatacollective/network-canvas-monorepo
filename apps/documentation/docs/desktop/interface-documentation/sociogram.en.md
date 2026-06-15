@@ -2,9 +2,7 @@
 title: Sociogram
 ---
 
-<InterfaceSummary>
-
-![Sociogram Interface](/assets/img/interface-documentation/sociogram/sociogram-edges.png)
+<InterfaceSummary type="Sociogram">
 
 <InterfaceMeta type="Name Interpreter and Edge Generator" creates="Edges of multiple types, and attribute data on a single node type" usesprompts="true">
 

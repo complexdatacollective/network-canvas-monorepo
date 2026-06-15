@@ -2,9 +2,7 @@
 title: Ordinal Bin
 ---
 
-<InterfaceSummary>
-
-![Ordinal Bin Interface](/assets/img/interface-documentation/ordinal-bin/example.png)
+<InterfaceSummary type="OrdinalBin">
 
 <InterfaceMeta type="Name Interpreter" creates="Ordinal attribute data on a single node type" usesprompts="true">
 

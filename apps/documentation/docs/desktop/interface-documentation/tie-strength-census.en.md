@@ -2,9 +2,7 @@
 title: Tie-Strength Census
 ---
 
-<InterfaceSummary>
-
-![Tie-Strength Census Interface](/assets/uploads/stage-tiestrengthcensus.png)
+<InterfaceSummary type="TieStrengthCensus">
 
 <InterfaceMeta type="Edge Generator/Edge Interpreter" creates="Edges with weight stored on an ordinal variable" usesprompts="true">
 

@@ -30,6 +30,7 @@ This monorepo is organized into four main categories:
 | [`@codaco/network-query`](./packages/network-query)               | Network filtering and querying utilities for Network Canvas                                          |
 | [`@codaco/fresco-ui`](./packages/fresco-ui)                       | Fresco UI components, styles, and utilities built on Base UI and Tailwind CSS                        |
 | [`@codaco/art`](./packages/art)                                   | Visual design components using blobs and d3-interpolate-path for animated graphics                   |
+| [`@codaco/interface-images`](./packages/interface-images)         | Generated responsive screenshots of every interview interface, with a React `<picture>` component    |
 | [`@codaco/development-protocol`](./packages/development-protocol) | Development protocol assets for testing Network Canvas applications                                  |
 
 ### Workers
@@ -156,6 +157,28 @@ pnpm changeset
 ```
 
 After merging a PR with changesets, a release PR will be created that bumps package versions. Merge that PR to publish the updated packages.
+
+## Interface Screenshots
+
+[`@codaco/interface-images`](./packages/interface-images) ships generated screenshots of every interview interface (Sociogram, Name Generator, …), rendered from dedicated Storybook "capture" stories in `@codaco/interview` with Playwright + sharp. They are consumed by **architect-web** (stage thumbnails) and the **documentation** site (the hero image on each interface-documentation page).
+
+**Cached, not committed.** The screenshot assets (`packages/interface-images/src/generated/assets/`) are produced by the turbo `generate` task and **cached, not committed** — they are gitignored. Only the generated `manifest.ts` beside them (a small text file mapping each interface and ratio to its variant URLs and dimensions) is tracked, so typechecking and tooling work without running a capture.
+
+**Regeneration is keyed on the `@codaco/interview` version, by design.** The `generate` cache is keyed on the `@codaco/interview` _release version_ — the version in its `package.json`, or the pending version when a changeset bumps it — passed to turbo as `INTERVIEW_RELEASE_VERSION` (computed by [`scripts/interview-release-version.mjs`](./scripts/interview-release-version.mjs)). It is **not** keyed on interview/fresco-ui source content, so the images regenerate only when you deliberately version the interview package — not on every interview or fresco-ui edit.
+
+The trade-off is that, between versions, the cached images can lag the code. The safety net: `@codaco/interview`'s Chromatic build snapshots the capture stories, so a rendering change shows up there as a visual diff — that is your cue to add an `@codaco/interview` changeset (which moves the version and triggers regeneration). Treat Chromatic on the capture stories as the signal that a regen is due.
+
+**Versioning interview redeploys both consumers.** `architect-web` and `documentation` builds depend on `generate`, and CI's `detect` job treats a moved interview release version as a change to both apps. So the full chain holds:
+
+> version `@codaco/interview` (or add a changeset bumping it) → the `generate` cache key moves → images regenerate during the `quality` build → `architect-web` and `documentation` rebuild and redeploy with the fresh images.
+
+To regenerate locally — needed once for local development of architect-web or the documentation site, since the assets are not committed:
+
+```bash
+pnpm generate:interface-images   # builds the interview storybook, then captures
+```
+
+Requires a Chromium browser (`pnpm exec playwright install chromium`) and, for the Geospatial map, `STORYBOOK_MAPBOX_TOKEN` set. See [`packages/interface-images`](./packages/interface-images) for details.
 
 ## Contributing
 

@@ -2,9 +2,7 @@
 title: Dyad Census
 ---
 
-<InterfaceSummary>
-
-![Dyad Census Interface](/assets/img/interface-documentation/dyad-census/dyad-example.png)
+<InterfaceSummary type="DyadCensus">
 
 <InterfaceMeta type="Edge Generator" creates="Edges of one or more types" usesprompts="true">
 
