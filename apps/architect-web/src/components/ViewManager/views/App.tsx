@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'wouter';
 
-import BackgroundBlobsLayer from '~/components/BackgroundBlobsLayer';
+import BackgroundLights from '~/components/BackgroundLights';
 import DialogManager from '~/components/DialogManager';
 import { JsonPreviewOverlay } from '~/components/JsonPreviewOverlay';
 import ProtocolGuardedRouter from '~/components/ProtocolGuardedRouter';
@@ -18,7 +18,7 @@ const AppContents = () => {
     if (location === '/') resetRunOnce();
   }, [location]);
 
-  const blobIntensity =
+  const lightsIntensity =
     location === '/'
       ? 'bold'
       : location.startsWith('/protocol/stage/')
@@ -27,7 +27,7 @@ const AppContents = () => {
 
   return (
     <>
-      <BackgroundBlobsLayer intensity={blobIntensity} />
+      <BackgroundLights intensity={lightsIntensity} />
       <ScrollToTop />
       <Routes />
       <DialogManager />
