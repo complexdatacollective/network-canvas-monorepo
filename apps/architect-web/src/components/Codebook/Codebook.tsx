@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { Section } from '~/components/EditorLayout';
@@ -33,31 +33,6 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
   const [search, setSearch] = useState('');
   const [unusedOnly, setUnusedOnly] = useState(false);
-
-  const filterEntities = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return <T extends { name: string; inUse: boolean }>(
-      items: readonly T[],
-    ): readonly T[] =>
-      items.filter((item) => {
-        if (unusedOnly && item.inUse) {
-          return false;
-        }
-        if (term && !item.name.toLowerCase().includes(term)) {
-          return false;
-        }
-        return true;
-      });
-  }, [search, unusedOnly]);
-
-  const filteredNodes = useMemo(
-    () => filterEntities(nodes),
-    [filterEntities, nodes],
-  );
-  const filteredEdges = useMemo(
-    () => filterEntities(edges),
-    [filterEntities, edges],
-  );
 
   return (
     <div className="my-(--space-xl)">
@@ -112,13 +87,15 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         {nodes.length === 0 ? (
           <p className="text-muted-foreground">No node types yet.</p>
         ) : (
-          filteredNodes.map((node) => (
+          nodes.map((node) => (
             <EntityType
               key={node.type}
               entity={node.entity}
               type={node.type}
               inUse={node.inUse}
               usage={[...node.usage]}
+              search={search}
+              unusedOnly={unusedOnly}
               onEditEntity={onEditEntity}
             />
           ))
@@ -140,13 +117,15 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         {edges.length === 0 ? (
           <p className="text-muted-foreground">No edge types yet.</p>
         ) : (
-          filteredEdges.map((edge) => (
+          edges.map((edge) => (
             <EntityType
               key={edge.type}
               entity={edge.entity}
               type={edge.type}
               inUse={edge.inUse}
               usage={[...edge.usage]}
+              search={search}
+              unusedOnly={unusedOnly}
               onEditEntity={onEditEntity}
             />
           ))
