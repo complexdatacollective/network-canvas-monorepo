@@ -222,7 +222,10 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
       - name: Install Playwright Chromium (for interface-image generation)
-        run: pnpm exec playwright install --with-deps chromium
+        # playwright is a devDependency of @codaco/interface-images, not the
+        # root, so run it via --filter (root `pnpm exec playwright` can't resolve
+        # a workspace-package binary).
+        run: pnpm --filter @codaco/interface-images exec playwright install --with-deps chromium
       - name: Write protocol-validation .env (test fixture)
         env:
           PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
