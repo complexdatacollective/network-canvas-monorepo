@@ -70,11 +70,12 @@ const EntityType = ({
   const VariablesTyped =
     Variables as unknown as React.ComponentType<VariablesComponentProps>;
 
-  const stages = usage.map(({ id, label }) => {
+  const stages = usage.map(({ id, label }, index) => {
     // If there is no id, don't create a link. This is the case for
-    // usages that are only present as validation options.
+    // usages that are only present as validation options. Include the index
+    // in the key since validation labels can repeat (e.g. "unknown").
     if (!id) {
-      return <Tag key={`validation-${label}`}>{label}</Tag>;
+      return <Tag key={`validation-${index}-${label}`}>{label}</Tag>;
     }
 
     return (
@@ -108,18 +109,18 @@ const EntityType = ({
         <Button onClick={handleEdit} color="sea-green">
           Edit entity
         </Button>
-        <Button
-          color="neon-coral"
-          onClick={handleDelete}
-          disabled={inUse}
+        <span
           title={
             inUse
               ? `In use in ${usage.length} stage(s) — remove usages first`
               : 'Delete entity'
           }
+          className="inline-block"
         >
-          Delete entity
-        </Button>
+          <Button color="neon-coral" onClick={handleDelete} disabled={inUse}>
+            Delete entity
+          </Button>
+        </span>
       </div>
       <div className="mt-(--space-md)">
         <div className="flex items-center gap-(--space-md)">
