@@ -311,7 +311,7 @@ const markdownComponents = {
   summarysection: (props: { children: ReactNode }) => (
     <SummarySection {...props} />
   ),
-  interfacesummary: (props: { children: ReactNode }) => (
+  interfacesummary: (props: { type: string; children: ReactNode }) => (
     <InterfaceSummary {...props} />
   ),
   interfacemeta: (props: {
