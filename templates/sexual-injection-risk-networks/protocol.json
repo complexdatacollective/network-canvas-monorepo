@@ -73,7 +73,8 @@
             "component": "Text",
             "encrypted": true,
             "validation": {
-              "required": true
+              "required": true,
+              "unique": true
             }
           },
           "partner_type": {
@@ -265,6 +266,13 @@
       "id": "ng-sexual-partners",
       "type": "NameGenerator",
       "label": "Sexual partners",
+      "panels": [
+        {
+          "id": "ng-sexual-partners-existing",
+          "title": "Already listed",
+          "dataSource": "existing"
+        }
+      ],
       "subject": {
         "entity": "node",
         "type": "partner"
@@ -292,6 +300,13 @@
       "id": "ng-injection-partners",
       "type": "NameGenerator",
       "label": "Injection partners",
+      "panels": [
+        {
+          "id": "ng-injection-partners-existing",
+          "title": "Already listed",
+          "dataSource": "existing"
+        }
+      ],
       "subject": {
         "entity": "node",
         "type": "partner"
@@ -301,14 +316,14 @@
         "fields": [
           {
             "variable": "partner_label",
-            "prompt": "Enter initials or a code for this person. If they are someone you have already added, you can use the same label so we know it is the same person."
+            "prompt": "Enter initials or a code for this person. If you already listed them (for example as a sexual partner), use the 'Already listed' panel to add them here instead of typing the label again."
           }
         ]
       },
       "prompts": [
         {
           "id": "p-injection",
-          "text": "Still thinking about the **past 6 months**, who are the people you have **injected drugs with** - for example, people you injected alongside, or shared any injection equipment (needles, syringes, cookers, cotton, or water) with? Add anyone not already listed; if someone is both a sexual and an injection partner, you can add them again with the same label."
+          "text": "Still thinking about the **past 6 months**, who are the people you have **injected drugs with** - for example, people you injected alongside, or shared any injection equipment (needles, syringes, cookers, cotton, or water) with? Add anyone not already listed; if someone is both a sexual and an injection partner, drag them in from the 'Already listed' panel so they remain a single person in the data."
         }
       ],
       "behaviours": {

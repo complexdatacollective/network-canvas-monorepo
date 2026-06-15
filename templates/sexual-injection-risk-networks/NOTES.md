@@ -137,8 +137,9 @@ behavioural-surveillance instruments and egocentric sexual-network studies:
   `validation.maxSelected = 1` (the schema permits only `CheckboxGroup` /
   `ToggleButtonGroup` for `categorical`; `RadioGroup` is reserved for `ordinal`).
 - The two name generators share the `partner` node type, so the same individual
-  can be enumerated as both a sexual and an injection partner; the injection
-  prompt tells respondents to reuse the same label, and the AlterForm then
+  can be enumerated as both a sexual and an injection partner; previously-listed partners are
+  re-selected from each generator's _Already listed_ side panel rather than re-typed (and
+  `partner_label` is marked `unique`), so they stay a single node, and the AlterForm then
   captures both `condom_use` and `shared_injection_equipment` per partner.
 - Both name generators set `behaviours.minNodes = 0` so a respondent with no
   partners of a given kind in the reference period can proceed.

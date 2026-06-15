@@ -177,7 +177,10 @@
               { "label": "Eat meals together", "value": "meals" },
               { "label": "Smoke or vape together", "value": "smoke_vape" },
               { "label": "Drink alcohol together", "value": "drink" }
-            ]
+            ],
+            "validation": {
+              "minSelected": 1
+            }
           },
           "layout": {
             "name": "layout",

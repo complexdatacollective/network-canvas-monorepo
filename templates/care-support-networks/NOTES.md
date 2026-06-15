@@ -18,8 +18,9 @@ _functions_ (emotional, informational, practical/instrumental, financial).
 
 **Signature technique.** _Function-typed_ support name generators. Stage 2 asks four separate
 "who…" prompts — one per support function — against a single `supporter` node type. Because the
-**same person can be named under more than one prompt**, the network captures _multiplex_
-support, and any function for which **no one is named surfaces as a support gap**. Stage 3 then
+**same person can be re-selected under more than one prompt** — via the generator's _Already
+mentioned_ side panel rather than re-typed, and `supporter_name` is marked `unique` — the network
+captures _multiplex_ support, and any function for which **no one is named surfaces as a support gap**. Stage 3 then
 splits every supporter into **formal vs informal** with a `CategoricalBin`, and the closing
 `Narrative` groups the map by that same `formal_informal` variable so gaps and source-mix are
 visible to the participant and interviewer together.

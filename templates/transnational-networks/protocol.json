@@ -93,7 +93,8 @@
             "type": "text",
             "component": "Text",
             "validation": {
-              "required": true
+              "required": true,
+              "unique": true
             }
           },
           "relationship": {
@@ -311,6 +312,13 @@
       "id": "name-generator-host",
       "type": "NameGenerator",
       "label": "Important people here",
+      "panels": [
+        {
+          "id": "name-generator-host-existing",
+          "title": "Already mentioned",
+          "dataSource": "existing"
+        }
+      ],
       "subject": {
         "entity": "node",
         "type": "person"
@@ -343,6 +351,13 @@
       "id": "name-generator-transnational",
       "type": "NameGenerator",
       "label": "Important people abroad",
+      "panels": [
+        {
+          "id": "name-generator-transnational-existing",
+          "title": "Already mentioned",
+          "dataSource": "existing"
+        }
+      ],
       "subject": {
         "entity": "node",
         "type": "person"
@@ -375,16 +390,17 @@
       "id": "geospatial-map",
       "type": "Geospatial",
       "label": "Place people on the map",
+      "interviewScript": "Setup required before fielding: this map stage needs a Mapbox access token and a world-countries GeoJSON file. In Architect, add your OWN Mapbox access token as an asset and select it here — it replaces PLACEHOLDER_TOKEN — and attach a world-countries GeoJSON whose features expose a `name` property (replacing PLACEHOLDER_WORLD_COUNTRIES_GEOJSON). The protocol validates without these, but the map will not render until you provide them.",
       "subject": {
         "entity": "node",
         "type": "person"
       },
       "mapOptions": {
-        "tokenAssetId": "mapbox-access-token",
+        "tokenAssetId": "PLACEHOLDER_TOKEN",
         "style": "mapbox://styles/mapbox/light-v11",
         "center": [0, 20],
         "initialZoom": 1,
-        "dataSourceAssetId": "world-countries-geojson",
+        "dataSourceAssetId": "PLACEHOLDER_WORLD_COUNTRIES_GEOJSON",
         "color": "node-color-seq-1",
         "targetFeatureProperty": "name"
       },

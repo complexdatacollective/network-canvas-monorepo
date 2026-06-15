@@ -97,7 +97,9 @@ is optional but include it. The component MUST match the type:
 | `location`    | —                                      | —                                                          | needed for Geospatial prompt `variable`                              |
 
 `options` (ordinal/categorical) = `[{ "label": "…", "value": <int|string|bool> }]` (ordinal:
-use ascending integers). Examples:
+use integer `value`s that encode the response — normally ascending, but an instrument's official
+scoring may be encoded directly (e.g. reverse-scored EPDS items), so non-ascending integer values
+are allowed). Examples:
 
 ```jsonc
 "alter_name":   { "name": "alter_name", "type": "text", "component": "Text", "validation": { "required": true } },
@@ -112,6 +114,13 @@ use ascending integers). Examples:
 "layout":       { "name": "layout", "type": "layout" },
 "alter_loc":    { "name": "alter_loc", "type": "location" }
 ```
+
+**Avoiding duplicate alters.** When the same person may be named under more than one prompt, or
+across more than one NameGenerator of the same node type, mark the name variable `"unique": true`
+and give each such generator an `existing` side panel
+(`"panels": [{ "id": "…", "title": "Already mentioned", "dataSource": "existing" }]`). The panel
+lets the interviewer re-select an alter named earlier — keeping them one node that accumulates flags
+across prompts — instead of re-typing the name and creating a duplicate node.
 
 ## 5. Stages
 

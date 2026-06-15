@@ -174,7 +174,7 @@
             "name": "supporter_name",
             "type": "text",
             "component": "Text",
-            "validation": { "required": true }
+            "validation": { "required": true, "unique": true }
           },
           "relationship": {
             "name": "relationship",
@@ -265,6 +265,7 @@
       "id": "ego-care-context",
       "type": "EgoForm",
       "label": "About you and your care episode",
+      "interviewScript": "Clinical safety: EPDS item 10 screens for thoughts of self-harm. Before fielding this protocol, put a safety protocol in place — interviewer training, an escalation pathway, and local crisis-line / referral details — for any participant who endorses item 10 or otherwise shows distress. The software records responses but does not act on them.",
       "introductionPanel": {
         "title": "About you right now",
         "text": "First, a few questions about where you are in your care journey, and how you have been feeling.\n\nThe questions about your mood come from the **Edinburgh Postnatal Depression Scale (EPDS)**. There are no right or wrong answers. Please answer based on how you have felt in the **past 7 days**, not just today."
@@ -332,6 +333,13 @@
       "type": "NameGenerator",
       "label": "People who support you",
       "interviewScript": "Use these prompts in turn. The same person can be named under more than one prompt. Functions that no one is named for are meaningful: they may indicate a support gap to explore with the participant.",
+      "panels": [
+        {
+          "id": "ng-support-functions-existing",
+          "title": "Already mentioned",
+          "dataSource": "existing"
+        }
+      ],
       "subject": { "entity": "node", "type": "supporter" },
       "form": {
         "title": "Add a person",

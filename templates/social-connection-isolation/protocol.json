@@ -241,7 +241,7 @@
             "name": "alter_name",
             "type": "text",
             "component": "Text",
-            "validation": { "required": true }
+            "validation": { "required": true, "unique": true }
           },
           "relationship": {
             "name": "relationship",
@@ -372,6 +372,13 @@
       "id": "name-generator-confidants",
       "type": "NameGenerator",
       "label": "People You Discuss Important Matters With",
+      "panels": [
+        {
+          "id": "name-generator-confidants-existing",
+          "title": "Already mentioned",
+          "dataSource": "existing"
+        }
+      ],
       "interviewScript": "Use the standard General Social Survey 'important matters' confidant generator. Allow the respondent to name as many or as few people as they wish; do not prompt for a target number.",
       "subject": {
         "entity": "node",

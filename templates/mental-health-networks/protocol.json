@@ -122,7 +122,7 @@
             "name": "alter_name",
             "type": "text",
             "component": "Text",
-            "validation": { "required": true }
+            "validation": { "required": true, "unique": true }
           },
           "relationship": {
             "name": "relationship",
@@ -329,6 +329,13 @@
       "id": "ng-supportive",
       "type": "NameGenerator",
       "label": "People who support you",
+      "panels": [
+        {
+          "id": "ng-supportive-existing",
+          "title": "Already mentioned",
+          "dataSource": "existing"
+        }
+      ],
       "interviewScript": "This generator elicits supportive ties. Encourage the participant to think broadly — these can be people they confide in, turn to for advice, or rely on for practical help. The same person may also be named later as a source of stress; that is expected.",
       "subject": {
         "entity": "node",
@@ -374,6 +381,13 @@
       "id": "ng-difficult",
       "type": "NameGenerator",
       "label": "People who are difficult or draining",
+      "panels": [
+        {
+          "id": "ng-difficult-existing",
+          "title": "Already mentioned",
+          "dataSource": "existing"
+        }
+      ],
       "interviewScript": "This generator elicits difficult or draining ties (negative and ambivalent relationships). Reassure the participant that almost everyone has people like this, and that naming someone here does not mean the relationship is all bad. If a person they already named as supportive is also a source of stress, they can add them again here — this captures ambivalent ties.",
       "subject": {
         "entity": "node",
@@ -401,7 +415,7 @@
         },
         {
           "id": "ng-difficult-draining",
-          "text": "Who tends to **drain your energy** or leave you feeling worse after spending time with them? (You can name someone you have already mentioned.)",
+          "text": "Who tends to **drain your energy** or leave you feeling worse after spending time with them? (If you have already mentioned them, add them again from the 'Already mentioned' panel so they stay a single person in the data.)",
           "additionalAttributes": [
             { "variable": "is_source_of_stress", "value": true }
           ]
