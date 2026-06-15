@@ -1,6 +1,10 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "ignoreExportsUsedInFile": { "type": true },
+  // `pnpm exec playwright install` runs in the quality CI job to generate
+  // interface screenshots; playwright is a devDependency of
+  // @codaco/interface-images, not the root, so knip sees it as unlisted.
+  "ignoreBinaries": ["playwright"],
   "tags": ["-public"],
   "workspaces": {
     "packages/ui": {},

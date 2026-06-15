@@ -33,28 +33,6 @@ export const WEBP_QUALITY = 82;
 /** Default extra settle time after network idle, ms (parameters.capture.delay). */
 export const DEFAULT_DELAY_MS = 500;
 
-/**
- * Churn guard: a regenerated variant only overwrites the committed one when
- * more than this fraction of pixels changed. Keeps visually-identical
- * regenerations from dirtying git.
- */
-export const DIFF_THRESHOLD = 0.001;
-
-/** Per-interface threshold overrides:
- *  - Geospatial: live map tiles drift between runs
- *  - Anonymisation: continuously-animating canvas background never settles
- *  - NameGeneratorRoster: the square (1:1) roster layout settles to one of two
- *    near-identical states across runs (~0.48% of pixels), so allow a small
- *    tolerance to keep the staleness gate stable */
-export const DIFF_THRESHOLD_OVERRIDES: Record<string, number> = {
-  Geospatial: 0.02,
-  Anonymisation: 0.25,
-  NameGeneratorRoster: 0.01,
-};
-
-/** A pixel counts as different when any channel deviates by more than this. */
-export const PIXEL_TOLERANCE = 12;
-
 /** File name for one generated variant. */
 export const variantFileName = (
   interfaceName: string,

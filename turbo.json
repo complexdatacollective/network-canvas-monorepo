@@ -61,7 +61,7 @@
       "persistent": true
     },
     "@codaco/documentation#build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "@codaco/interface-images#generate"],
       "inputs": [
         "app/**",
         "components/**",
@@ -95,7 +95,7 @@
       "outputs": ["out/**", ".next/**", "!.next/cache/**"]
     },
     "@codaco/architect-web#build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "@codaco/interface-images#generate"],
       "inputs": [
         "src/**",
         "public/**",
@@ -169,9 +169,8 @@
       "outputs": ["out/**", "dist/**"]
     },
     "@codaco/interface-images#generate": {
-      "dependsOn": ["@codaco/interview#build-storybook"],
       "inputs": ["scripts/**", "package.json"],
-      "env": ["STORYBOOK_MAPBOX_TOKEN"],
+      "env": ["STORYBOOK_MAPBOX_TOKEN", "INTERVIEW_RELEASE_VERSION"],
       "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"],
       "outputs": ["src/generated/**"]
     },

@@ -26,8 +26,8 @@ const assetsDir = join(generatedDir, 'assets');
 if (!existsSync(join(storybookStatic, 'iframe.html'))) {
   console.error(
     `No storybook build at ${storybookStatic}.\n` +
-      'Run via turbo so the dependency is built first:\n' +
-      '  pnpm exec turbo run generate --filter=@codaco/interface-images',
+      'Run the package generate script, which builds the storybook first:\n' +
+      '  pnpm --filter @codaco/interface-images generate',
   );
   process.exit(1);
 }
@@ -89,11 +89,7 @@ try {
   await pruneAssets(assetsDir, expectedFiles);
   await writeManifest(generatedDir, results);
 
-  const changed = [...results.values()].flat().filter((r) => r.changed).length;
-  console.log(
-    `Done: ${results.size} interfaces, ${expectedFiles.size} assets ` +
-      `(${changed} ratio sets updated)`,
-  );
+  console.log(`Done: ${results.size} interfaces, ${expectedFiles.size} assets`);
 } finally {
   await browser?.close();
   close();

@@ -9,7 +9,7 @@
     "./manifest": "./src/generated/manifest.ts"
   },
   "scripts": {
-    "generate": "node scripts/generate.mts",
+    "generate": "turbo run build-storybook --filter=@codaco/interview && node scripts/generate.mts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

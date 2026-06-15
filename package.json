@@ -14,7 +14,7 @@
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "typecheck": "turbo run typecheck --continue",
-    "generate:interface-images": "./packages/interface-images/scripts/run-docker.sh",
+    "generate:interface-images": "pnpm --filter @codaco/interface-images generate",
     "prepare": "husky",
     "knip": "knip --exclude catalog"
   },
