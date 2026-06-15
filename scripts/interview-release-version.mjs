@@ -16,6 +16,10 @@ const version = JSON.parse(
   readFileSync(join(root, 'packages/interview/package.json'), 'utf8'),
 ).version;
 
+// Match the @codaco/interview changeset frontmatter key exactly: it is a
+// substring of @codaco/interviewer-v8, so a plain includes() would false-match.
+const INTERVIEW_KEY = /^\s*['"]?@codaco\/interview['"]?\s*:/m;
+
 let fingerprint = '';
 const changesetDir = join(root, '.changeset');
 if (existsSync(changesetDir)) {
@@ -26,7 +30,7 @@ if (existsSync(changesetDir)) {
     .toSorted();
   for (const file of files) {
     const body = readFileSync(join(changesetDir, file), 'utf8');
-    if (body.includes('@codaco/interview')) {
+    if (INTERVIEW_KEY.test(body)) {
       pending = true;
       hash.update(file);
       hash.update(body);
