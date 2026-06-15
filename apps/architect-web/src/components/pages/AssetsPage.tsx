@@ -1,4 +1,5 @@
 import AssetBrowser from '~/components/AssetBrowser';
+import UnusedAssetsAlert from '~/components/AssetBrowser/UnusedAssetsAlert';
 import { Layout } from '~/components/EditorLayout';
 import ExternalLink from '~/components/ExternalLink';
 import PageHeading from '~/components/ProjectNav/PageHeading';
@@ -24,6 +25,7 @@ const AssetsPage = () => {
         }
       />
       <div className="mx-(--space-5xl) my-(--space-xl) w-full max-w-7xl">
+        <UnusedAssetsAlert />
         <AssetBrowser sectionLayout="vertical" />
       </div>
     </Layout>
