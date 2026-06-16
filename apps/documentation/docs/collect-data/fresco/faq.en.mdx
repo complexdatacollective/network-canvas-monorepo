@@ -1,7 +1,7 @@
 ---
 title: Frequently Asked Questions
 date: 9th October 2025
-navOrder: 4
+navOrder: 5
 ---
 
 ## How much does Fresco cost?
@@ -12,12 +12,12 @@ download the latest version of Fresco source-code from the [GitHub repository](h
 We have done our best to make sure that you can deploy Fresco on your own server (if you have one) or to a cloud platform like Netlify
 without any additional costs. However, you may need to pay for server hosting, depending on your needs.
 
-Our [Deployment Guide](./deployment/guide) covers getting started with deploying Fresco
+Our [Deployment Guide](./guide) covers getting started with deploying Fresco
 using the free tier of Netlify, which is sufficient for most small-scale research projects.
 
 Netlify also offers paid plans with greater features and performance. Information about the costs of using Netlify can be found on their [pricing page](https://netlify.com/pricing).
 
-Our [advanced deployment guide](./deployment/advanced) covers deploying Fresco on your own server, which may require additional costs depending on your server provider.
+Our [advanced deployment guide](./advanced) covers deploying Fresco on your own server, which may require additional costs depending on your server provider.
 
 ## How do I get support for Fresco?
 
@@ -27,7 +27,7 @@ If you would like to work more closely with the project team as part of a resear
 
 ## What are the requirements for deploying Fresco?
 
-Fresco is a web application that requires a server to host it. You can deploy Fresco on your own server or use a cloud platform like Netlify. The [Deployment Guide](./deployment/guide) provides detailed instructions on how to deploy Fresco on Netlify, for free.
+Fresco is a web application that requires a server to host it. You can deploy Fresco on your own server or use a cloud platform like Netlify. The [Deployment Guide](./guide) provides detailed instructions on how to deploy Fresco on Netlify, for free.
 
 The core technology stack for Fresco is as follows:
 
@@ -42,7 +42,7 @@ The core technology stack for Fresco is as follows:
 
 To deploy Fresco, you will need to have access to one or more servers that can run these technologies. For example you might have a server that runs the Next.js frontend and another server that runs the PostgreSQL database.
 
-Advanced users can refer to the [advanced deployment guide](./deployment/advanced) for more information on deploying Fresco on their own server.
+Advanced users can refer to the [advanced deployment guide](./advanced) for more information on deploying Fresco on their own server.
 
 ## How do I set up a custom domain for my Fresco deployment?
 
@@ -52,7 +52,7 @@ If you are using a different deployment method, you will need to follow the inst
 
 ## How do I update Fresco to the latest version?
 
-You can update Fresco to the latest version by following the instructions in the [Upgrade Guide](./deployment/upgrading).
+You can update Fresco to the latest version by following the instructions in the [Upgrade Guide](./upgrading).
 
 ## How do I backup my data?
 
@@ -90,7 +90,7 @@ As the Data Controller, you are responsible for:
 - Enabling participant rights (access, rectification, erasure)
 
 **Learn More:**
-For comprehensive guidance on GDPR compliance, including detailed information for researchers, ethics committees, and IT departments, see our [GDPR Compliance Guide](/en/get-started/project-information/gdpr-compliance).
+For comprehensive guidance on GDPR compliance, including detailed information for researchers, ethics committees, and IT departments, see our [GDPR Compliance Guide](/en/get-started/planning-a-study/gdpr-compliance).
 
 ## Can I create more than one user account?
 
@@ -100,7 +100,7 @@ Note that all accounts are equal administrators with no roles or permission tier
 
 ## Where will announcements about releases be posted?
 
-New versions of Fresco will be announced on our <a href="https://community.networkcanvas.com/" target="_blank">User Community</a>. More information about the upgrade process can be found in the [Upgrade Guide](./deployment/upgrading).
+New versions of Fresco will be announced on our <a href="https://community.networkcanvas.com/" target="_blank">User Community</a>. More information about the upgrade process can be found in the [Upgrade Guide](./upgrading).
 
 ## Which browsers are supported?
 
@@ -126,7 +126,7 @@ If you are locked out of an account in **Fresco v4 or later**, you have a few op
 
 - If you enabled two-factor authentication, sign in using one of your **recovery codes**.
 - Ask **another administrator** to **Reset Auth** for your account from User Management. This clears your existing passkeys and two-factor authentication and gives the administrator a temporary password to pass to you, which you use to sign back in. (This is why we recommend creating more than one account.)
-- As a last resort, if every account is inaccessible and no recovery codes remain, you may need to [reset your database](/en/collect-data/fresco/deployment/troubleshooting#instance-expired---reset-your-database). This will result in the loss of all data and unexported interviews.
+- As a last resort, if every account is inaccessible and no recovery codes remain, you may need to [reset your database](/en/collect-data/fresco/deployment-troubleshooting#instance-expired---reset-your-database). This will result in the loss of all data and unexported interviews.
 
 See [Accounts & security](/en/collect-data/fresco/accounts) for more on recovering access.
 

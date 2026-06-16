@@ -26,5 +26,5 @@ If you choose to create or edit a protocol file by hand, you will be responsible
 
 Once your protocol file is complete, you can then use this file in Interviewer or Fresco.
 
-- **Interviewer**: See our [Protocol and Data Workflows Tutorial](/en/get-started/tutorials/protocol-and-data-workflows) for more information about protocol workflows in Interviewer.
+- **Interviewer**: See our [Protocol and Data Workflows Tutorial](/en/collect-data/protocol-and-data-workflows) for more information about protocol workflows in Interviewer.
 - **Fresco**: See [Using Fresco](/en/collect-data/fresco/using-fresco#uploading-protocols) for more information about uploading protocols in Fresco.

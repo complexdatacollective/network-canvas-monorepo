@@ -1,5 +1,6 @@
 ---
 title: IRB and Security Best Practices
+navOrder: 2
 ---
 
 We recognize that data security is a primary concern for most researchers. Network Canvas was born in the context of sensitive public health research with marginalized populations, and we have used our experience conducting studies in this space to guide our security paradigm.
@@ -13,7 +14,7 @@ How that data is stored, and therefore what security measures you need to put in
 
 <TipBox>
 
-This page summarizes the practical best practices for each tool. For a comprehensive deep dive — including roles under GDPR, ethics committee and IT department guidance, and a full security checklist — see our [GDPR Compliance Guide](/en/get-started/project-information/gdpr-compliance). For a complementary technical breakdown of what data needs securing in the desktop apps, see the [Overview of Security Model](/en/get-started/project-information/security-model).
+This page summarizes the practical best practices for each tool. For a comprehensive deep dive — including roles under GDPR, ethics committee and IT department guidance, and a full security checklist — see our [GDPR Compliance Guide](/en/get-started/planning-a-study/gdpr-compliance). For a complementary technical breakdown of what data needs securing in the desktop apps, see the [Overview of Security Model](/en/get-started/project-information/security-model).
 
 </TipBox>
 
@@ -67,6 +68,6 @@ As the Data Controller, you are responsible for:
 
 <TipBox>
 
-If you are working with your institution's IT, sysadmin, or information security team on a Fresco deployment, point them to the [FAQ for IT Departments](/en/collect-data/fresco/deployment/it-faq), which covers infrastructure requirements, encryption, authentication, network access, logging, and the application's security posture in detail. For more on data storage and security in general, see the [Fresco FAQ](/en/collect-data/fresco/faq#is-fresco-gdpr-compliant). For comprehensive, step-by-step compliance guidance, see the [GDPR Compliance Guide](/en/get-started/project-information/gdpr-compliance).
+If you are working with your institution's IT, sysadmin, or information security team on a Fresco deployment, point them to the [FAQ for IT Departments](/en/collect-data/fresco/it-faq), which covers infrastructure requirements, encryption, authentication, network access, logging, and the application's security posture in detail. For more on data storage and security in general, see the [Fresco FAQ](/en/collect-data/fresco/faq#is-fresco-gdpr-compliant). For comprehensive, step-by-step compliance guidance, see the [GDPR Compliance Guide](/en/get-started/planning-a-study/gdpr-compliance).
 
 </TipBox>
