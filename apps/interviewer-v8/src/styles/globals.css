@@ -10,7 +10,14 @@
 
 /* Make the root container fill the viewport so the dashboard / interview
    shell can size to the full screen on tablet + desktop without scrolling
-   the body. */
+   the body.
+
+   `height: 100%` (not `100dvh`/`min-h-dvh`) is load-bearing: the body is
+   padded by env(safe-area-inset-top) below, so its content box is
+   `viewport - inset`. #root inherits that exact height, and full-screen
+   surfaces fill it with `h-full`. Sizing #root (or any surface) to the raw
+   viewport (`dvh`) instead would overflow the inset by the safe-area amount
+   and scroll the whole page — the iPad-portrait overflow bug. */
 html,
 body,
 #root {

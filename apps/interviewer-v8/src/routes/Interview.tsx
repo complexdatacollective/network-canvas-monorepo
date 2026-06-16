@@ -186,7 +186,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
 
   if (state.kind === 'loading') {
     return (
-      <div className="bg-background flex h-dvh items-center justify-center">
+      <div className="bg-background flex h-full items-center justify-center">
         <Spinner size="lg" />
       </div>
     );
@@ -194,7 +194,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
 
   if (state.kind === 'missing') {
     return (
-      <div className="mx-auto flex h-dvh max-w-lg items-center justify-center p-8">
+      <div className="mx-auto flex h-full max-w-lg items-center justify-center p-8">
         <Surface
           level={1}
           spacing="lg"
@@ -223,7 +223,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <div className="flex h-dvh w-dvw">
+    <div className="flex h-full w-full">
       <Shell
         payload={state.payload}
         currentStep={currentStep}
