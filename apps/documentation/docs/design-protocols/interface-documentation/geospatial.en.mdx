@@ -4,7 +4,7 @@ title: Geospatial
 
 <InterfaceSummary type="Geospatial">
 
-<InterfaceMeta type="Name Interpreter" creates="Geospatial attribute data by allowing the user to select areas on a map" usesprompts="true">
+<InterfaceMeta type="Name Interpreter" creates="Geospatial attribute data by allowing the user to select areas on a map" usesprompts="true" requires="Internet, Mapbox account">
 
 </InterfaceMeta>
 
@@ -13,7 +13,7 @@ title: Geospatial
 The Geospatial Interface is a name interpreter Interface that captures geospatial data on the alters in a participant's network.
 When using the Geospatial Interface, participants can select an outlined area on a map, which are defined by a GeoJSON file.
 
-<TipBox>
+<TipBox danger>
 
 Geospatial is a schema 8 interface, so it runs only in **Fresco** and **Interviewer 8** — not in the older Interviewer 6.x app. Because it loads maps from Mapbox, it **requires an internet connection during the interview**. If your study needs to run fully offline, avoid this interface.
 

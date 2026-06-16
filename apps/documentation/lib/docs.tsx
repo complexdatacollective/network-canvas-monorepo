@@ -323,6 +323,7 @@ const createMarkdownComponents = (docSlug?: string) => ({
     type: string;
     creates: string;
     usesprompts: string;
+    requires?: string;
   }) => <InterfaceMeta {...props} compatibility={getCompatibility(docSlug)} />,
   definition: (props: { children: ReactNode }) => (
     <div className="text-lg font-normal">{props.children}</div>

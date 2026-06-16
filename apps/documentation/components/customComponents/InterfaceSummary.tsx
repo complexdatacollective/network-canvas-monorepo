@@ -1,3 +1,4 @@
+import { Database, Globe, KeyRound } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import InterfacePicture from '@codaco/interface-images/InterfacePicture';
@@ -58,19 +59,52 @@ const SpecField = ({
   </div>
 );
 
+const iconForRequirement = (requirement: string) => {
+  const normalized = requirement.toLowerCase();
+  if (normalized.includes('internet') || normalized.includes('connection')) {
+    return <Globe className="h-4 w-4" />;
+  }
+  if (
+    normalized.includes('account') ||
+    normalized.includes('api key') ||
+    normalized.includes('token')
+  ) {
+    return <KeyRound className="h-4 w-4" />;
+  }
+  if (normalized.includes('roster') || normalized.includes('data')) {
+    return <Database className="h-4 w-4" />;
+  }
+  return null;
+};
+
+const RequiresPill = ({ requirement }: { requirement: string }) => (
+  <span className="bg-primary text-primary-foreground inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-semibold">
+    {iconForRequirement(requirement)}
+    {requirement}
+  </span>
+);
+
 export const InterfaceMeta = ({
   type,
   creates,
   usesprompts,
+  requires,
   compatibility,
 }: {
   type: string;
   creates: string;
   usesprompts: string;
+  /** Comma-separated external prerequisites (e.g. "Internet, Mapbox account").
+   * Each entry renders as a pill with a matching icon. */
+  requires?: string;
   compatibility?: InterfaceCompatibility | null;
 }) => {
   const usesPromptsLabel = usesprompts === 'true' ? 'Yes' : 'No';
   const supportedApps = compatibility?.apps.filter((app) => app.supported);
+  const requirements = requires
+    ?.split(',')
+    .map((requirement) => requirement.trim())
+    .filter(Boolean);
 
   return (
     <dl className="flex shrink-0 flex-col gap-5 sm:w-64 sm:pl-6">
@@ -97,6 +131,15 @@ export const InterfaceMeta = ({
               >
                 {app.label}
               </span>
+            ))}
+          </span>
+        </SpecField>
+      )}
+      {requirements && requirements.length > 0 && (
+        <SpecField label="Requires">
+          <span className="flex flex-wrap gap-1.5">
+            {requirements.map((requirement) => (
+              <RequiresPill key={requirement} requirement={requirement} />
             ))}
           </span>
         </SpecField>
