@@ -47,11 +47,11 @@ To deploy Fresco, you'll need:
 
 Fresco ships three ready-to-use Docker Compose files, one per storage option. Each bundles Traefik (TLS), PostgreSQL 17, and the Fresco app:
 
-| Compose file | Storage | Use when |
-| --- | --- | --- |
-| [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.prod.yml) | Bundled **MinIO**, self-hosted on this host | You want everything inside your own infrastructure, with no external storage dependency. |
-| [`docker-compose.external-s3.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.external-s3.yml) | An **external S3-compatible service** (AWS S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces, a managed MinIO, …) | You already have, or want to use, a managed S3 bucket. |
-| [`docker-compose.uploadthing.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.uploadthing.yml) | **UploadThing** (cloud) | You want the simplest managed storage and are comfortable with assets stored off-host. |
+| Compose file                                                                                                                 | Storage                                                                                                              | Use when                                                                                 |
+| ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.prod.yml)               | Bundled **MinIO**, self-hosted on this host                                                                          | You want everything inside your own infrastructure, with no external storage dependency. |
+| [`docker-compose.external-s3.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.external-s3.yml) | An **external S3-compatible service** (AWS S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces, a managed MinIO, …) | You already have, or want to use, a managed S3 bucket.                                   |
+| [`docker-compose.uploadthing.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.uploadthing.yml) | **UploadThing** (cloud)                                                                                              | You want the simplest managed storage and are comfortable with assets stored off-host.   |
 
 Download the one that matches your choice; the [Running Fresco](#running-fresco) section below shows how.
 
@@ -59,12 +59,12 @@ Download the one that matches your choice; the [Running Fresco](#running-fresco)
 
 Each configuration reads its settings from a `.env` file placed next to the compose file. The variables common to all three are:
 
-| **Variable** | **Details** |
-| --- | --- |
-| **DATABASE_URL** | A pooled connection URL for Prisma. With the bundled `postgres` service, point this at `postgres:5432`. |
+| **Variable**              | **Details**                                                                                                                                                    |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **DATABASE_URL**          | A pooled connection URL for Prisma. With the bundled `postgres` service, point this at `postgres:5432`.                                                        |
 | **DATABASE_URL_UNPOOLED** | A non-pooling connection URL for Prisma, used for database migrations during upgrades. If you have no connection pooler, use the same value as `DATABASE_URL`. |
-| **FRESCO_DOMAIN** | The public domain for this deployment (e.g. `study.example.com`). This is the single source of truth for the deployment's domain. |
-| **ACME_EMAIL** | Contact email for Let's Encrypt certificate notifications. |
+| **FRESCO_DOMAIN**         | The public domain for this deployment (e.g. `study.example.com`). This is the single source of truth for the deployment's domain.                              |
+| **ACME_EMAIL**            | Contact email for Let's Encrypt certificate notifications.                                                                                                     |
 
 <TipBox>
 
@@ -141,14 +141,14 @@ S3_ACCESS_KEY_ID=
 S3_SECRET_ACCESS_KEY=
 ```
 
-| **Variable** | **Details** |
-| --- | --- |
-| **STORAGE_PROVIDER** | Set to `s3` for an S3-compatible bucket. When set, the provider is fixed and the storage settings UI is locked. |
-| **S3_ENDPOINT** | Your service's S3 API endpoint. |
-| **S3_PUBLIC_URL** | The URL browsers use to reach the storage. For an external service this is usually the same as `S3_ENDPOINT`. (For the bundled MinIO setup above it is your Fresco domain instead.) |
-| **S3_BUCKET** | An existing bucket name. |
-| **S3_REGION** | The bucket's region (for example `us-east-1`; use `auto` for Cloudflare R2). |
-| **S3_ACCESS_KEY_ID** / **S3_SECRET_ACCESS_KEY** | Credentials with read and write access to the bucket. |
+| **Variable**                                    | **Details**                                                                                                                                                                         |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **STORAGE_PROVIDER**                            | Set to `s3` for an S3-compatible bucket. When set, the provider is fixed and the storage settings UI is locked.                                                                     |
+| **S3_ENDPOINT**                                 | Your service's S3 API endpoint.                                                                                                                                                     |
+| **S3_PUBLIC_URL**                               | The URL browsers use to reach the storage. For an external service this is usually the same as `S3_ENDPOINT`. (For the bundled MinIO setup above it is your Fresco domain instead.) |
+| **S3_BUCKET**                                   | An existing bucket name.                                                                                                                                                            |
+| **S3_REGION**                                   | The bucket's region (for example `us-east-1`; use `auto` for Cloudflare R2).                                                                                                        |
+| **S3_ACCESS_KEY_ID** / **S3_SECRET_ACCESS_KEY** | Credentials with read and write access to the bucket.                                                                                                                               |
 
 Bucket requirements on your S3 service:
 
