@@ -21,6 +21,9 @@
       "description": "A web-based platform for creating and sharing network data collection instruments."
     }
   },
+  "SectionNav": {
+    "workflowLabel": "Workflow"
+  },
   "TipBox": {
     "info": "Good to know:",
     "warning": "Take Care!"
@@ -107,12 +110,5 @@
   },
   "DocPage": {
     "docAvailableTxt": "This document is also available in"
-  },
-  "AIAssistant": {
-    "dialogPlaceholder": "What are the main aims of the Network Canvas project?",
-    "q2": "How do I get started with Network Canvas?",
-    "q1": "What is Network Canvas?",
-    "popupText": "Click this button to open our AI assistant. It's a great way to get quick answers to your questions.",
-    "welcomeMessage": "Hi, I'm an AI assistant trained on the Network Canvas documentation. Ask me anything about Network Canvas."
   }
 }
