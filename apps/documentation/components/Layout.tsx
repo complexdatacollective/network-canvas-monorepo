@@ -5,6 +5,7 @@ import { useLocale } from 'next-intl';
 import { usePathname } from 'next/navigation';
 
 import { BackgroundBlobs } from '@codaco/art';
+import SectionNav from '~/components/SectionNav';
 import { Sidebar } from '~/components/Sidebar';
 import { cn } from '~/lib/utils';
 
@@ -20,6 +21,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
   return (
     <>
       <SharedNav />
+      {!isHomePage && <SectionNav className="w-full px-4 pb-2" />}
       <motion.div
         className="fixed inset-0 z-[-1]"
         initial={{ opacity: 0 }}

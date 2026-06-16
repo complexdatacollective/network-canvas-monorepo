@@ -3,6 +3,7 @@ import { useLocale } from 'next-intl';
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 
+import SectionNav from '~/components/SectionNav';
 import { NavigationMenuMobile } from '~/components/SharedNav/Menu';
 import { Button } from '~/components/ui/Button';
 import { Sheet, SheetContent } from '~/components/ui/sheet';
@@ -49,6 +50,7 @@ export default function MobileSidebarDialog({
         </div>
 
         <NavigationMenuMobile />
+        {!isHomePage && <SectionNav className="my-2" />}
         {!isHomePage && <Sidebar />}
       </SheetContent>
     </Sheet>

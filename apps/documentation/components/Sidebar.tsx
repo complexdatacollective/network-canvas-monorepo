@@ -23,7 +23,6 @@ import { cn } from '~/lib/utils';
 const PATH_SEPARATOR_REGEX = /[\\/]/;
 
 import DocSearchComponent from './DocSearchComponent';
-import ProjectSwitcher from './ProjectSwitcher';
 
 const MotionCollapsibleContent = motion.create(CollapsibleContent);
 const MotionChevron = motion.create(ChevronRight);
@@ -306,7 +305,6 @@ export function Sidebar({ className }: { className?: string }) {
     return (
       <nav className={cn('flex w-full grow flex-col', className)}>
         <DocSearchComponent className="hidden lg:flex" />
-        <ProjectSwitcher />
         <div className="flex-1 p-2">Loading...</div>
       </nav>
     );
@@ -322,7 +320,6 @@ export function Sidebar({ className }: { className?: string }) {
   return (
     <nav className={cn('flex w-full grow flex-col', className)}>
       <DocSearchComponent className="hidden lg:flex" />
-      <ProjectSwitcher />
 
       <div ref={sidebarContainerRef} className="flex-1 overflow-y-auto p-2">
         {sortedSidebarItems.map((item) =>
