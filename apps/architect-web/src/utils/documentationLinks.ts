@@ -14,4 +14,5 @@ export const documentationLinks = {
   geospatialInterface: interfaceDocumentationUrl('geospatial'),
   protocolSchema: `${DOCS_BASE_URL}/get-started/advanced-topics/protocol-schema-information/`,
   protocolGallery: `${DOCS_BASE_URL}/design-protocols/protocol-gallery/`,
+  savingAndBackingUp: `${DOCS_BASE_URL}/design-protocols/saving-and-backing-up/`,
 } as const;

@@ -401,7 +401,11 @@ const LibraryPanel = ({
               Because your work lives in this browser's storage, clearing your
               browsing data, or using "Clear all protocols", will permanently
               remove it. Download the protocol as a <code>.netcanvas</code> file
-              to save a copy or move it to another device.
+              to save a copy or move it to another device. See our guide to{' '}
+              <ExternalLink href={documentationLinks.savingAndBackingUp}>
+                saving and backing up your work
+              </ExternalLink>{' '}
+              for more.
             </p>
             <p>
               Looking for inspiration? Browse example research protocols in the{' '}
