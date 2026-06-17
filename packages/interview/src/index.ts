@@ -18,7 +18,7 @@ export type {
   SyncHandler,
 } from './contract/types';
 // Runtime
-export { default as Shell } from './Shell';
+export { default as Shell, type NavigationOrientation } from './Shell';
 
 export { createInitialNetwork } from './store/modules/session';
 // Public utilities (consumed by sibling monorepo packages, e.g. network-exporters)
