@@ -28,34 +28,111 @@ const redirectTests: RedirectTest[] = [
   },
   {
     from: '/citing-the-software',
-    expectedDestination: '/en/desktop/project-information/citing-the-software',
+    expectedDestination:
+      '/en/get-started/project-information/citing-the-software',
     description: 'Legacy citing-the-software URL',
   },
   {
     from: '/reference/protocol-schema-information',
     expectedDestination:
-      '/en/desktop/advanced-topics/protocol-schema-information',
-    description: 'Protocol schema information redirect (the bug we fixed!)',
+      '/en/get-started/advanced-topics/protocol-schema-information',
+    description: 'Protocol schema information redirect',
   },
   {
     from: '/reference/node-labelling',
-    expectedDestination: '/en/desktop/advanced-topics/node-labelling',
+    expectedDestination: '/en/get-started/advanced-topics/node-labelling',
     description: 'Node labelling redirect',
   },
   {
     from: '/reference/protocol-file-format',
-    expectedDestination: '/en/desktop/advanced-topics/protocol-file-format',
+    expectedDestination: '/en/get-started/advanced-topics/protocol-file-format',
     description: 'Protocol file format redirect',
   },
   {
     from: '/installation-guide',
-    expectedDestination: '/en/desktop/getting-started/installation-guide',
+    expectedDestination: '/en/get-started/network-canvas',
     description: 'Installation guide redirect',
   },
   {
     from: '/some-new-page',
-    expectedDestination: '/en/desktop/some-new-page',
-    description: 'Catch-all redirect for new paths',
+    expectedDestination: '/en/get-started/network-canvas',
+    description: 'Catch-all fallback for unknown legacy paths',
+  },
+
+  // Legacy flat splat rules (path-preserving) and the exact-match rules that
+  // must take precedence over them. These exact-before-splat pairs fail
+  // silently if reordered — the splat still 301s, just to the wrong place.
+  {
+    from: '/interface-documentation/sociogram',
+    expectedDestination:
+      '/en/design-protocols/interface-documentation/sociogram',
+    description: 'interface-documentation splat preserves the path',
+  },
+  {
+    from: '/interface-documentation/family-pedigree',
+    expectedDestination:
+      '/en/design-protocols/interface-documentation/family-tree-census',
+    description:
+      'family-pedigree is renamed (exact rule must beat the splat above it)',
+  },
+  {
+    from: '/key-concepts/data-export',
+    expectedDestination: '/en/analyze-data/data-export',
+    description:
+      'key-concepts/data-export jumps section (exact rule beats key-concepts splat)',
+  },
+  {
+    from: '/advanced-topics/network-canvas-graphml',
+    expectedDestination: '/en/analyze-data/network-canvas-graphml',
+    description:
+      'advanced-topics graphml jumps section (exact rule beats advanced-topics splat)',
+  },
+
+  // Two-section layout: /en/desktop/*
+  {
+    from: '/en/desktop/tutorials/building-a-protocol',
+    expectedDestination: '/en/design-protocols/building-a-protocol',
+    description: 'desktop tutorial remapped into design-protocols',
+  },
+  {
+    from: '/en/desktop/project-information/gdpr-compliance',
+    expectedDestination: '/en/get-started/planning-a-study/gdpr-compliance',
+    description:
+      'desktop gdpr-compliance moves to planning-a-study (exact beats project-information splat)',
+  },
+  {
+    from: '/en/desktop/project-information/contributing-code',
+    expectedDestination:
+      '/en/get-started/project-information/contributing-code',
+    description: 'desktop project-information splat preserves the path',
+  },
+  {
+    from: '/en/desktop/some-removed-page',
+    expectedDestination: '/en/get-started/network-canvas',
+    description: 'unmapped /en/desktop/* falls back to network-canvas',
+  },
+  {
+    from: '/en/desktop',
+    expectedDestination: '/en/get-started/network-canvas',
+    description: 'bare /en/desktop falls back to network-canvas',
+  },
+
+  // Two-section layout: /en/fresco/*
+  {
+    from: '/en/fresco',
+    expectedDestination: '/en/collect-data/fresco/about',
+    description: 'bare /en/fresco lands on the fresco about page',
+  },
+  {
+    from: '/en/fresco/deployment/troubleshooting',
+    expectedDestination: '/en/collect-data/fresco/deployment-troubleshooting',
+    description:
+      'fresco deployment troubleshooting is renamed (exact beats deployment splat)',
+  },
+  {
+    from: '/en/fresco/installation',
+    expectedDestination: '/en/collect-data/fresco/installation',
+    description: 'fresco splat preserves the path',
   },
 ];
 
