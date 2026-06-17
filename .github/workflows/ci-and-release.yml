@@ -42,6 +42,8 @@ jobs:
       fresco_ui_storybook: ${{ steps.flags.outputs.fresco_ui_storybook }}
       interview_storybook: ${{ steps.flags.outputs.interview_storybook }}
       interview_e2e: ${{ steps.flags.outputs.interview_e2e }}
+      interface_images: ${{ steps.flags.outputs.interface_images }}
+      interview_release_version: ${{ steps.flags.outputs.interview_release_version }}
       interviewer_v8_changeset: ${{ steps.flags.outputs.interviewer_v8_changeset }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -112,6 +114,43 @@ jobs:
           web=$(flag networkcanvas.com)
           fui=$(flag @codaco/fresco-ui)
           intv=$(flag @codaco/interview)
+
+          # Interface screenshots regenerate, and their consumers (architect-web,
+          # documentation) redeploy, only when the @codaco/interview RELEASE
+          # VERSION moves — its package.json version, or the pending version a
+          # changeset implies — not on arbitrary interview/fresco-ui edits. The
+          # same value is handed to turbo as INTERVIEW_RELEASE_VERSION so the
+          # `generate` cache key matches.
+          interview_release_version=$(node scripts/interview-release-version.mjs)
+
+          # ifimg: did that release-version signal change in this diff?
+          ifimg=false
+          if [[ "$FORCE_RUN" == "true" || -z "$PREV" ]]; then
+            ifimg=true
+          else
+            if ! git diff --quiet "$PREV" "$CURR" -- packages/interview/package.json; then
+              new_v=$(node -e 'process.stdout.write(require("./packages/interview/package.json").version)')
+              old_v=$(git show "$PREV:packages/interview/package.json" \
+                | node -e 'let d="";process.stdin.on("data",c=>{d+=c}).on("end",()=>{try{process.stdout.write(JSON.parse(d).version)}catch{}})')
+              [[ "$new_v" != "$old_v" ]] && ifimg=true
+            fi
+            # Match the @codaco/interview changeset frontmatter key exactly:
+            # '@codaco/interview' is a substring of '@codaco/interviewer-v8', so a
+            # bare grep would false-trigger on unrelated interviewer changesets.
+            key_re="^[[:space:]]*['\"]?@codaco/interview['\"]?[[:space:]]*:"
+            for f in $(git diff --name-only "$PREV" "$CURR" -- '.changeset/*.md'); do
+              if git show "$CURR:$f" 2>/dev/null | grep -Eq "$key_re" \
+                || git show "$PREV:$f" 2>/dev/null | grep -Eq "$key_re"; then
+                ifimg=true
+              fi
+            done
+          fi
+
+          # An interview version bump regenerates the interface images, which both
+          # architect-web and documentation embed — treat it as a change to each so
+          # their deploys (and the carry-forward / any_app gating) fire.
+          if [[ "$ifimg" == "true" ]]; then docs=true; arch=true; fi
+
           any_app=false
           if [[ "$docs" == "true" || "$arch" == "true" || "$web" == "true" ]]; then any_app=true; fi
 
@@ -142,6 +181,8 @@ jobs:
             echo "fresco_ui_storybook=$fui"
             echo "interview_storybook=$intv"
             echo "interview_e2e=$intv"
+            echo "interface_images=$ifimg"
+            echo "interview_release_version=$interview_release_version"
             echo "interviewer_v8_changeset=$interviewer_v8_changeset"
           } >> "$GITHUB_OUTPUT"
 
@@ -151,7 +192,16 @@ jobs:
   # fallback. Per-package env values (NEXT_PUBLIC_*, VITE_*) are part of each
   # build task's `env:` list in turbo.json so they participate in the cache key.
   quality:
+    needs: detect
     runs-on: ubuntu-latest
+    env:
+      # Quality builds architect-web + documentation, which depend on the
+      # @codaco/interface-images `generate` task. generate runs here only on a
+      # cache miss (i.e. when the interview release version moved) and fills the
+      # shared .turbo cache the deploy jobs read back; INTERVIEW_RELEASE_VERSION
+      # is its cache key and must match the deploy jobs'.
+      INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
+      STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
     # No NEXT_PUBLIC_* / VITE_* env vars here. Quality just verifies the build
     # compiles — env.js has skipValidation:true so missing public env values
     # don't fail the build. Keeping these vars unset in quality matches what
@@ -171,6 +221,15 @@ jobs:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Playwright Chromium (for interface-image generation)
+        # playwright is a devDependency of @codaco/interface-images, not the
+        # root, so run it via --filter (root `pnpm exec playwright` can't resolve
+        # a workspace-package binary).
+        run: pnpm --filter @codaco/interface-images exec playwright install --with-deps chromium
       - name: Write protocol-validation .env (test fixture)
         env:
           PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
@@ -236,6 +295,9 @@ jobs:
           restore-keys: ${{ runner.os }}-turbo-
       - id: deploy
         name: Build and deploy docs preview
+        env:
+          INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
+          STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
         run: |
           pnpm exec turbo run build --filter=@codaco/documentation
           cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
@@ -283,6 +345,9 @@ jobs:
           restore-keys: ${{ runner.os }}-turbo-
       - id: deploy
         name: Build and deploy docs production
+        env:
+          INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
+          STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
         run: |
           pnpm exec turbo run build --filter=@codaco/documentation
           cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
@@ -329,15 +394,11 @@ jobs:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
-      # architect-web's build graph pulls in `@codaco/interface-images#generate`,
-      # which captures interface screenshots with Playwright/Chromium. The browser
-      # binary isn't fetched by `pnpm install --ignore-scripts`; install it via the
-      # package that owns `playwright` (pnpm's isolated node_modules means the
-      # `playwright` bin isn't resolvable from the repo root).
-      - name: Install Playwright Chromium
-        run: pnpm --filter @codaco/interface-images exec playwright install --with-deps chromium
       - id: deploy
         name: Build and deploy architect-web preview
+        env:
+          INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
+          STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
         run: |
           pnpm exec turbo run build --filter=@codaco/architect-web
           json=$(npx --yes netlify-cli@22 deploy --no-build \
@@ -485,15 +546,11 @@ jobs:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
-      # architect-web's build graph pulls in `@codaco/interface-images#generate`,
-      # which captures interface screenshots with Playwright/Chromium. The browser
-      # binary isn't fetched by `pnpm install --ignore-scripts`; install it via the
-      # package that owns `playwright` (pnpm's isolated node_modules means the
-      # `playwright` bin isn't resolvable from the repo root).
-      - name: Install Playwright Chromium
-        run: pnpm --filter @codaco/interface-images exec playwright install --with-deps chromium
       - id: deploy
         name: Build and deploy architect-web production
+        env:
+          INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
+          STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
         run: |
           pnpm exec turbo run build --filter=@codaco/architect-web
           json=$(npx --yes netlify-cli@22 deploy --no-build --prod \

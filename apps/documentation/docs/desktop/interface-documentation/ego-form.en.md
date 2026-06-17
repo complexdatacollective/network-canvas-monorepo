@@ -2,9 +2,7 @@
 title: Ego Form
 ---
 
-<InterfaceSummary>
-
-![Ego Form Interface](/assets/img/interface-documentation/ego-form/egoform-example.png)
+<InterfaceSummary type="EgoForm">
 
 <InterfaceMeta type="Ego Interpreter" creates="Ego attribute data" usesprompts="false">
 

@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 
 import Codebook from '~/components/Codebook/Codebook';
 import EntityTypeDialog from '~/components/Codebook/EntityTypeDialog';
+import UnusedVariablesAlert from '~/components/Codebook/UnusedVariablesAlert';
 import { Layout } from '~/components/EditorLayout';
 import PageHeading from '~/components/ProjectNav/PageHeading';
 import useProtocolLoader from '~/hooks/useProtocolLoader';
@@ -39,6 +40,7 @@ const CodebookPage = () => {
           description="Overview of the ego, node and edge types, their variables, and network assets defined in your protocol. Create, edit, and delete types and variables here. Unused entities can be deleted."
         />
         <div className="mx-(--space-5xl) w-full max-w-7xl">
+          <UnusedVariablesAlert />
           <Codebook onEditEntity={handleOpenEntityDialog} />
         </div>
       </Layout>

@@ -112,6 +112,7 @@
     "**/coverage/**",
     "**/.turbo/**",
     "**/public/**/*.*",
-    "**/worker-configuration.d.ts"
+    "**/worker-configuration.d.ts",
+    "packages/interface-images/src/generated/**"
   ]
 }

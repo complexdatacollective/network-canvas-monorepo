@@ -1,7 +1,7 @@
-import { get, isEmpty, sortBy } from 'es-toolkit/compat';
+import { isEmpty, sortBy } from 'es-toolkit/compat';
 import React, { useContext } from 'react';
 
-import interfaceImage from '~/images/timeline';
+import StageTypeImage from '~/components/StageTypeImage';
 
 import DualLink from '../DualLink';
 import EntityBadge from '../EntityBadge';
@@ -33,8 +33,6 @@ type FormFieldType = {
   variable: string;
   [key: string]: unknown;
 };
-
-const getInterfaceImage = (type: string) => get(interfaceImage, type);
 
 const variablesOnStage =
   (index: Array<{ id: string; name: string; stages: string[] }>) =>
@@ -212,7 +210,15 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
           </div>
           <div className="relative flex flex-[0_0_5cm] items-center">
             <div className="flex-1 [&_img]:w-full [&_img]:rounded">
-              <img src={getInterfaceImage(type)} alt="" />
+              {/* eager: the summary is rendered for print, where lazy
+                  images may never load before the print snapshot. */}
+              <StageTypeImage
+                type={type}
+                ratio="4:3"
+                sizes="5cm"
+                loading="eager"
+                alt=""
+              />
             </div>
           </div>
         </div>

@@ -2,9 +2,7 @@
 title: Per Alter Form
 ---
 
-<InterfaceSummary>
-
-![Per Alter Form Interface](/assets/img/interface-documentation/per-alter-form/example.png)
+<InterfaceSummary type="AlterForm">
 
 <InterfaceMeta type="Name Interpreter" creates="Attribute data on a single node type" usesprompts="false">
 

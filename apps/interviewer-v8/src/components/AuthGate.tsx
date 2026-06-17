@@ -26,7 +26,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   // can't paint for a frame before navigation runs in the effect above.
   if (kind === 'loading' || shouldRedirectToWelcome || shouldRedirectToHome) {
     return (
-      <div className="bg-background flex min-h-dvh items-center justify-center">
+      <div className="bg-background flex h-full items-center justify-center">
         <Spinner size="lg" />
       </div>
     );

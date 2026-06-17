@@ -12,6 +12,7 @@ import type { RootState } from '~/ducks/store';
 import { Button } from '~/lib/legacy-ui/components';
 
 import EntityIcon from './EntityIcon';
+import { filterEntityType } from './filterEntityType';
 import { getEntityProperties } from './helpers';
 import Tag from './Tag';
 import Variables from './Variables';
@@ -47,6 +48,8 @@ type EntityTypeProps = {
   shape?: NodeShape;
   usage: UsageItem[];
   inUse?: boolean;
+  search?: string;
+  unusedOnly?: boolean;
   handleDelete?: () => void;
   handleEdit?: () => void;
   variables?: Record<string, Variable>;
@@ -61,6 +64,8 @@ const EntityType = ({
   entity,
   type,
   variables = {},
+  search = '',
+  unusedOnly = false,
   handleEdit = () => {},
   handleDelete = () => {},
 }: EntityTypeProps) => {
@@ -69,6 +74,18 @@ const EntityType = ({
   const variableArray = Object.values(variables);
   const VariablesTyped =
     Variables as unknown as React.ComponentType<VariablesComponentProps>;
+
+  // Apply the codebook's "Show unused only" / search filters at the variable
+  // level (mirroring EgoType) so a type stays visible when it itself matches
+  // or merely contains matching variables.
+  const { visible, variables: filteredVariables } = filterEntityType(
+    variableArray,
+    { name, inUse, search, unusedOnly },
+  );
+
+  if (!visible) {
+    return null;
+  }
 
   const stages = usage.map(({ id, label }, index) => {
     // If there is no id, don't create a link. This is the case for
@@ -132,9 +149,9 @@ const EntityType = ({
             Add variable
           </Button>
         </div>
-        {variableArray.length > 0 && (
+        {filteredVariables.length > 0 && (
           <VariablesTyped
-            variables={variableArray}
+            variables={filteredVariables}
             entity={entity}
             type={type}
           />
@@ -220,6 +237,8 @@ const withEntityHandlers = compose(
 type OwnProps = StateProps & {
   inUse?: boolean;
   usage: UsageItem[];
+  search?: string;
+  unusedOnly?: boolean;
   onEditEntity?: (entity: string, type?: string) => void;
 };
 

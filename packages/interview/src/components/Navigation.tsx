@@ -13,6 +13,7 @@ import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
+import type { NavigationOrientation } from '../Shell';
 import PassphrasePrompter from './PassphrasePrompter';
 
 const variants = {
@@ -108,7 +109,7 @@ type NavigationProps = {
   disableMoveBackward?: boolean;
   pulseNext: boolean;
   progress: number;
-  orientation?: 'horizontal' | 'vertical';
+  orientation?: NavigationOrientation;
   forwardButtonRef?: Ref<HTMLButtonElement>;
   backButtonRef?: Ref<HTMLButtonElement>;
   onExit?: () => void;
