@@ -1,0 +1,572 @@
+{
+  "name": "Transnational Networks",
+  "description": "A personal-network template for studying how migrants' networks span a host society and one or more origin/other countries. Paired host-country and transnational name generators plus a Geospatial world-map stage capture structural assimilation alongside transnationalism. Codebook and elicitation wording are adapted from the EgoNet / personal-network migration tradition (Vacca, Solano, Lubbers, Molina & McCarty) and the MOS Social Support Survey. See NOTES.md for sources and the Mapbox/GeoJSON assets the Geospatial stage requires.",
+  "schemaVersion": 8,
+  "lastModified": "2026-06-15T00:00:00.000Z",
+  "codebook": {
+    "ego": {
+      "variables": {
+        "birth_country": {
+          "name": "birth_country",
+          "type": "categorical",
+          "component": "CheckboxGroup",
+          "validation": {
+            "required": true,
+            "maxSelected": 1
+          },
+          "options": [
+            { "label": "Host country (where you live now)", "value": "host" },
+            {
+              "label": "Another country (your country of origin)",
+              "value": "origin"
+            }
+          ]
+        },
+        "arrival_year": {
+          "name": "arrival_year",
+          "type": "datetime",
+          "component": "DatePicker",
+          "parameters": {
+            "type": "year",
+            "min": "1940"
+          }
+        },
+        "residency_status": {
+          "name": "residency_status",
+          "type": "categorical",
+          "component": "ToggleButtonGroup",
+          "validation": {
+            "maxSelected": 1
+          },
+          "options": [
+            { "label": "Citizen", "value": "citizen" },
+            { "label": "Permanent resident", "value": "permanent_resident" },
+            { "label": "Temporary visa or permit", "value": "temporary" },
+            { "label": "Refugee or asylum status", "value": "refugee_asylum" },
+            { "label": "Undocumented or in process", "value": "undocumented" },
+            { "label": "Prefer not to say", "value": "prefer_not_to_say" }
+          ]
+        },
+        "language_proficiency": {
+          "name": "language_proficiency",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "Not at all", "value": 1 },
+            { "label": "Not well", "value": 2 },
+            { "label": "Well", "value": 3 },
+            { "label": "Very well", "value": 4 }
+          ]
+        },
+        "years_since_migration": {
+          "name": "years_since_migration",
+          "type": "number",
+          "component": "Number",
+          "validation": {
+            "minValue": 0,
+            "maxValue": 100
+          }
+        },
+        "acculturative_stress": {
+          "name": "acculturative_stress",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "Strongly disagree", "value": 1 },
+            { "label": "Disagree", "value": 2 },
+            { "label": "Neither agree nor disagree", "value": 3 },
+            { "label": "Agree", "value": 4 },
+            { "label": "Strongly agree", "value": 5 }
+          ]
+        }
+      }
+    },
+    "node": {
+      "person": {
+        "name": "Person",
+        "color": "node-color-seq-1",
+        "icon": "add-a-person",
+        "shape": { "default": "circle" },
+        "variables": {
+          "alter_name": {
+            "name": "alter_name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true,
+              "unique": true
+            }
+          },
+          "relationship": {
+            "name": "relationship",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "validation": {
+              "maxSelected": 1
+            },
+            "options": [
+              { "label": "Partner or spouse", "value": "partner" },
+              { "label": "Family member or relative", "value": "family" },
+              { "label": "Friend", "value": "friend" },
+              { "label": "Co-worker or classmate", "value": "coworker" },
+              {
+                "label": "Community or religious member",
+                "value": "community_member"
+              },
+              { "label": "Other", "value": "other" }
+            ]
+          },
+          "origin_country": {
+            "name": "origin_country",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "validation": {
+              "maxSelected": 1
+            },
+            "options": [
+              { "label": "Same origin country as me", "value": "same_origin" },
+              { "label": "The host country", "value": "host_country" },
+              { "label": "A different country", "value": "other_country" },
+              { "label": "Don't know", "value": "dont_know" }
+            ]
+          },
+          "shared_language": {
+            "name": "shared_language",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "validation": {
+              "maxSelected": 1
+            },
+            "options": [
+              {
+                "label": "My first / origin language",
+                "value": "origin_language"
+              },
+              {
+                "label": "The main host-country language",
+                "value": "host_language"
+              },
+              { "label": "Both languages", "value": "both" },
+              { "label": "Another language", "value": "other_language" }
+            ]
+          },
+          "how_met": {
+            "name": "how_met",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "validation": {
+              "maxSelected": 1
+            },
+            "options": [
+              {
+                "label": "In my country of origin",
+                "value": "in_origin_country"
+              },
+              {
+                "label": "Since arriving in the host country",
+                "value": "since_arriving"
+              },
+              { "label": "Through family", "value": "through_family" },
+              { "label": "Through work or study", "value": "through_work" },
+              { "label": "Online", "value": "online" },
+              { "label": "Other", "value": "other" }
+            ]
+          },
+          "co_ethnic": {
+            "name": "co_ethnic",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              { "label": "Yes", "value": true },
+              { "label": "No", "value": false }
+            ]
+          },
+          "support_type": {
+            "name": "support_type",
+            "type": "categorical",
+            "component": "CheckboxGroup",
+            "validation": {
+              "minSelected": 1
+            },
+            "options": [
+              {
+                "label": "Emotional support (someone to confide in or who shows you love and affection)",
+                "value": "emotional"
+              },
+              {
+                "label": "Practical support (help with chores, errands, or a place to stay)",
+                "value": "practical"
+              },
+              {
+                "label": "Informational support (advice and information when you need it)",
+                "value": "informational"
+              },
+              {
+                "label": "Financial support (help with money or sending money)",
+                "value": "financial"
+              }
+            ]
+          },
+          "closeness": {
+            "name": "closeness",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              { "label": "Not close", "value": 1 },
+              { "label": "Somewhat close", "value": 2 },
+              { "label": "Close", "value": 3 },
+              { "label": "Very close", "value": 4 },
+              { "label": "Especially close", "value": 5 }
+            ]
+          },
+          "alter_location": {
+            "name": "alter_location",
+            "type": "location"
+          },
+          "layout": {
+            "name": "layout",
+            "type": "layout"
+          }
+        }
+      }
+    },
+    "edge": {
+      "knows": {
+        "name": "Knows",
+        "color": "edge-color-seq-1",
+        "variables": {
+          "tie_strength": {
+            "name": "tie_strength",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              { "label": "They barely know each other", "value": 1 },
+              { "label": "They know each other a little", "value": 2 },
+              { "label": "They know each other well", "value": 3 }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "assetManifest": {
+    "2be9b4f4-a20e-4727-b72e-e696d76b483c": {
+      "id": "2be9b4f4-a20e-4727-b72e-e696d76b483c",
+      "name": "Transnational networks welcome banner",
+      "type": "image",
+      "source": "transnational-networks-hero.svg"
+    }
+  },
+  "stages": [
+    {
+      "id": "information-intro",
+      "type": "Information",
+      "label": "Welcome and consent",
+      "title": "About this study",
+      "items": [
+        {
+          "id": "ff73e267-693e-45fc-ab12-c0324910d232",
+          "type": "asset",
+          "content": "2be9b4f4-a20e-4727-b72e-e696d76b483c",
+          "size": "LARGE"
+        },
+        {
+          "id": "intro-welcome",
+          "type": "text",
+          "size": "MEDIUM",
+          "content": "## Welcome\n\nThank you for taking part. In this interview we will talk about the **important people in your life** — both those near you here, and those who live in your country of origin or elsewhere abroad.\n\nThere are no right or wrong answers. We are simply interested in your own experience and the people who matter to you."
+        },
+        {
+          "id": "intro-consent",
+          "type": "text",
+          "size": "MEDIUM",
+          "content": "### How it works\n\n- First we will ask a few questions about your own background and migration history.\n- Then you will be asked to name people you are connected to, here and abroad, and answer some questions about each of them.\n- Later you will place some of these people on a map, sort them into groups, and show how they know one another.\n\nYou may skip any question you prefer not to answer, and you can stop at any time. Your answers are confidential and will be used only for research. Please continue when you are ready to begin."
+        },
+        {
+          "id": "intro-references",
+          "type": "text",
+          "size": "SMALL",
+          "content": "## References & sources\n\n_For researchers adapting this template — the instruments and studies it draws on. You can remove or edit this screen before fielding._\n\n- [Vacca R et al. Measuring personal networks of transnational migrants via binational link-tracing. *PLOS ONE*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC8202912/)\n- [Lubbers MJ, Molina JL et al. A Personal Network Approach to the Study of Immigrant Structural Assimilation and Transnationalism.](https://www.researchgate.net/publication/309153406_A_Personal_Network_Approach_to_the_Study_of_Immigrant_Structural_Assimilation_and_Transnationalism)\n- [McCarty, Lubbers, Vacca & Molina (2019). *Conducting Personal Network Research* (Guilford Press).](https://www.guilford.com/books/Conducting-Personal-Network-Research/McCarty-Lubbers-Vacca-Molina/9781462538386/authors)\n- [Sherbourne CD, Stewart AL (1991). The MOS Social Support Survey. *Soc Sci Med* 32(6):705–714.](https://www.rand.org/pubs/reprints/RP218.html)"
+        }
+      ]
+    },
+    {
+      "id": "ego-form-background",
+      "type": "EgoForm",
+      "label": "Your background and migration history",
+      "introductionPanel": {
+        "title": "A little about you",
+        "text": "Before we talk about the people in your life, we would like to understand a bit about **your own background and your migration history**. This helps us put the rest of your answers in context."
+      },
+      "form": {
+        "title": "Your background",
+        "fields": [
+          {
+            "variable": "birth_country",
+            "prompt": "Were you born in the country where you live now, or in another country?"
+          },
+          {
+            "variable": "arrival_year",
+            "prompt": "In what year did you first come to live in this country? (If you were born here, you may skip this question.)"
+          },
+          {
+            "variable": "years_since_migration",
+            "prompt": "About how many years have you lived in this country?"
+          },
+          {
+            "variable": "residency_status",
+            "prompt": "Which of the following best describes your current residency or legal status?"
+          },
+          {
+            "variable": "language_proficiency",
+            "prompt": "How well do you feel you can speak the main language of this country?"
+          },
+          {
+            "variable": "acculturative_stress",
+            "prompt": "How much do you agree with the following: \"Because of where I come from, I often feel out of place or that I do not fully belong here.\""
+          }
+        ]
+      }
+    },
+    {
+      "id": "name-generator-host",
+      "type": "NameGenerator",
+      "label": "Important people here",
+      "panels": [
+        {
+          "id": "name-generator-host-existing",
+          "title": "Already mentioned",
+          "dataSource": "existing"
+        }
+      ],
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "form": {
+        "title": "Add a person",
+        "fields": [
+          {
+            "variable": "alter_name",
+            "prompt": "What is this person's name or a nickname you will recognise?"
+          }
+        ]
+      },
+      "behaviours": {
+        "minNodes": 0,
+        "maxNodes": 15
+      },
+      "prompts": [
+        {
+          "id": "host-discuss",
+          "text": "Thinking about the **place where you live now**, who are the people here that you feel **closest to**, or who are most important to you? These might be family, friends, neighbours, or people from work, study, or your community."
+        },
+        {
+          "id": "host-support",
+          "text": "Still thinking about people **here in this country**, who do you turn to for help — for example, someone to **talk to about something personal**, or who could **help you with a practical problem**?"
+        }
+      ]
+    },
+    {
+      "id": "name-generator-transnational",
+      "type": "NameGenerator",
+      "label": "Important people abroad",
+      "panels": [
+        {
+          "id": "name-generator-transnational-existing",
+          "title": "Already mentioned",
+          "dataSource": "existing"
+        }
+      ],
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "form": {
+        "title": "Add a person",
+        "fields": [
+          {
+            "variable": "alter_name",
+            "prompt": "What is this person's name or a nickname you will recognise?"
+          }
+        ]
+      },
+      "behaviours": {
+        "minNodes": 0,
+        "maxNodes": 15
+      },
+      "prompts": [
+        {
+          "id": "transnational-origin",
+          "text": "Now think about people who live in **your country of origin**. Who are the people there who are **still important in your life** — people you stay in touch with, rely on, or feel close to?"
+        },
+        {
+          "id": "transnational-elsewhere",
+          "text": "Are there other people important to you who live **somewhere else abroad** (not in this country and not in your country of origin)? If so, please add them here."
+        }
+      ]
+    },
+    {
+      "id": "alter-attributes",
+      "type": "AlterForm",
+      "label": "About each person",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "introductionPanel": {
+        "title": "About each person you named",
+        "text": "For each person you named, we will ask a few short questions about your relationship with them, where they are from, and the kinds of support they give you."
+      },
+      "form": {
+        "title": "About this person",
+        "fields": [
+          {
+            "variable": "relationship",
+            "prompt": "What is this person to you?"
+          },
+          {
+            "variable": "shared_language",
+            "prompt": "Which language do you mainly speak together?"
+          },
+          {
+            "variable": "co_ethnic",
+            "prompt": "Would you say this person is from the **same ethnic or cultural background** as you?"
+          },
+          {
+            "variable": "support_type",
+            "prompt": "What kinds of **support** does this person give you? Select all that apply."
+          }
+        ]
+      }
+    },
+    {
+      "id": "ordinal-bin-closeness",
+      "type": "OrdinalBin",
+      "label": "How close you feel to each person",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "bin-closeness",
+          "text": "Sort each person by **how close you feel** to them.",
+          "variable": "closeness"
+        }
+      ]
+    },
+    {
+      "id": "geospatial-map",
+      "type": "Geospatial",
+      "label": "Place people on the map",
+      "interviewScript": "Setup required before fielding: this map stage needs a Mapbox access token and a world-countries GeoJSON file. In Architect, add your OWN Mapbox access token as an asset and select it here — it replaces PLACEHOLDER_TOKEN — and attach a world-countries GeoJSON whose features expose a `name` property (replacing PLACEHOLDER_WORLD_COUNTRIES_GEOJSON). The protocol validates without these, but the map will not render until you provide them.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "mapOptions": {
+        "tokenAssetId": "PLACEHOLDER_TOKEN",
+        "style": "mapbox://styles/mapbox/light-v11",
+        "center": [0, 20],
+        "initialZoom": 1,
+        "dataSourceAssetId": "PLACEHOLDER_WORLD_COUNTRIES_GEOJSON",
+        "color": "node-color-seq-1",
+        "targetFeatureProperty": "name"
+      },
+      "prompts": [
+        {
+          "id": "geo-location",
+          "text": "For each person, please select the **country where they currently live** on the map. This helps us see how your network of important people is spread across the world.",
+          "variable": "alter_location"
+        }
+      ]
+    },
+    {
+      "id": "categorical-bin-support",
+      "type": "CategoricalBin",
+      "label": "Where each person is from, and how you met",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "bin-origin-country",
+          "text": "Sort each person by **where they are from**, in relation to you.",
+          "variable": "origin_country"
+        },
+        {
+          "id": "bin-how-met",
+          "text": "Now sort the same people by **how or where you first met them**.",
+          "variable": "how_met"
+        }
+      ]
+    },
+    {
+      "id": "sociogram-ties",
+      "type": "Sociogram",
+      "label": "How these people know each other",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "behaviours": {
+        "automaticLayout": {
+          "enabled": true
+        }
+      },
+      "prompts": [
+        {
+          "id": "socio-knows",
+          "text": "The people you mentioned are arranged for you automatically below. Please draw a line between any **two people who know each other** — that is, who would recognise one another and have at least a little contact, independently of you.",
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "edges": {
+            "create": "knows",
+            "display": ["knows"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "narrative-review",
+      "type": "Narrative",
+      "label": "Your network, here and abroad",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "presets": [
+        {
+          "id": "preset-origin",
+          "label": "Where people live",
+          "layoutVariable": "layout",
+          "groupVariable": "origin_country",
+          "edges": {
+            "display": ["knows"]
+          },
+          "highlight": ["co_ethnic"]
+        },
+        {
+          "id": "preset-support",
+          "label": "Support across the network",
+          "layoutVariable": "layout",
+          "groupVariable": "support_type",
+          "edges": {
+            "display": ["knows"]
+          }
+        }
+      ],
+      "background": {
+        "concentricCircles": 4,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "freeDraw": true,
+        "allowRepositioning": true
+      }
+    }
+  ]
+}

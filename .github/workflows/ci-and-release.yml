@@ -84,11 +84,24 @@ jobs:
           fi
           echo "comparing $PREV..$CURR"
 
+          # A change to this CI workflow itself can alter how any conditional job
+          # behaves or whether it passes, so a prior run's verdict no longer
+          # describes the new code. Treat a workflow change like FORCE_RUN: run
+          # every conditional job fresh (so the carry-forward job below carries
+          # nothing stale forward for it). Without this, a workflow-only commit
+          # leaves every flag false → jobs skipped → a now-irrelevant prior
+          # verdict gets republished against the new SHA.
+          WORKFLOW_CHANGED=false
+          if [[ -n "$PREV" ]] && ! git diff --quiet "$PREV" "$CURR" -- .github/workflows/ci-and-release.yml; then
+            WORKFLOW_CHANGED=true
+            echo "CI workflow changed in $PREV..$CURR — forcing all conditional jobs to run."
+          fi
+
           # flag <package>: true if any file in the package's workspace dep
           # tree changed between PREV and CURR, false otherwise.
           flag() {
             local pkg=$1
-            if [[ "$FORCE_RUN" == "true" ]]; then
+            if [[ "$FORCE_RUN" == "true" || "$WORKFLOW_CHANGED" == "true" ]]; then
               echo true; return
             fi
             # First commit on a branch (no parent reachable) — be conservative
@@ -394,6 +407,13 @@ jobs:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
+      # The architect-web build graph runs @codaco/interface-images#generate,
+      # which screenshots interfaces via Playwright/Chromium. That task is not a
+      # reliable cross-job turbo cache hit, so this job re-runs it and needs its
+      # own browser. `pnpm install --ignore-scripts` skips the download; run it
+      # via the package that owns playwright (the bin isn't resolvable from root).
+      - name: Install Playwright Chromium
+        run: pnpm --filter @codaco/interface-images exec playwright install --with-deps chromium
       - id: deploy
         name: Build and deploy architect-web preview
         env:
@@ -546,6 +566,13 @@ jobs:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
+      # The architect-web build graph runs @codaco/interface-images#generate,
+      # which screenshots interfaces via Playwright/Chromium. That task is not a
+      # reliable cross-job turbo cache hit, so this job re-runs it and needs its
+      # own browser. `pnpm install --ignore-scripts` skips the download; run it
+      # via the package that owns playwright (the bin isn't resolvable from root).
+      - name: Install Playwright Chromium
+        run: pnpm --filter @codaco/interface-images exec playwright install --with-deps chromium
       - id: deploy
         name: Build and deploy architect-web production
         env:

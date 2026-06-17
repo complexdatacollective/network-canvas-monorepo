@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 460" fill="none" role="img" aria-label="A personal support network: one person at the centre surrounded by supportive relationships and a few more difficult ones.">
+  <title>Mental Health Networks</title>
+  <defs>
+    <linearGradient id="mh-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0f1f8" />
+      <stop offset="1" stop-color="#ffffff" />
+    </linearGradient>
+    <radialGradient id="mh-aura" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#00c38f" stop-opacity="0.22" />
+      <stop offset="1" stop-color="#00c38f" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="460" rx="28" fill="url(#mh-bg)" />
+  <circle cx="600" cy="230" r="220" fill="url(#mh-aura)" />
+
+  <!-- Supportive aura rings -->
+  <g fill="none" stroke="#00c38f">
+    <circle cx="600" cy="230" r="66" stroke-opacity="0.18" stroke-width="2" />
+    <circle cx="600" cy="230" r="48" stroke-opacity="0.28" stroke-width="2" />
+  </g>
+
+  <!-- Alter-to-alter ties -->
+  <g stroke="#6359e0" stroke-opacity="0.3" stroke-width="1.5" stroke-linecap="round">
+    <line x1="360" y1="125" x2="245" y2="275" />
+    <line x1="820" y1="115" x2="945" y2="255" />
+  </g>
+
+  <!-- Supportive ties -->
+  <g stroke="#00c38f" stroke-opacity="0.85" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M600 230 Q 480 150 360 125" />
+    <path d="M600 230 Q 720 150 820 115" />
+    <path d="M600 230 Q 430 240 245 275" />
+    <path d="M600 230 Q 780 230 945 255" />
+    <path d="M600 230 Q 540 330 470 395" />
+  </g>
+
+  <!-- Difficult / strained ties -->
+  <g stroke="#e8004f" stroke-opacity="0.75" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="3 9" fill="none">
+    <path d="M600 230 Q 660 330 715 400" />
+    <path d="M600 230 Q 820 280 975 365" />
+  </g>
+
+  <!-- Alter nodes -->
+  <g>
+    <circle cx="360" cy="125" r="16" fill="#6359e0" />
+    <circle cx="820" cy="115" r="15" fill="#00c38f" />
+    <circle cx="245" cy="275" r="14" fill="#13bde0" />
+    <circle cx="945" cy="255" r="15" fill="#6359e0" />
+    <circle cx="470" cy="395" r="13" fill="#f49324" />
+    <circle cx="715" cy="400" r="14" fill="#272659" />
+    <circle cx="975" cy="365" r="12" fill="#232053" />
+  </g>
+
+  <!-- Ego node -->
+  <circle cx="600" cy="230" r="30" fill="#00c38f" />
+  <circle cx="590" cy="220" r="8" fill="#f0f1f8" opacity="0.45" />
+</svg>

@@ -75,6 +75,23 @@ describe('adjacencyMatrixRows', () => {
     expect(rows.join('')).toBe(expected);
   });
 
+  it('neutralizes a formula-injection node id in header and row labels', () => {
+    const rows = Array.from(
+      adjacencyMatrixRows(
+        mockNetwork([
+          { [ncSourceUUID]: '=cmd', [ncTargetUUID]: '2' },
+        ]) as unknown as SessionWithResequencedIDs,
+        mockCodebook,
+        mockExportOptions,
+      ),
+    );
+    const csv = rows.join('');
+    // The "=cmd" node id is neutralized with a leading single quote wherever it
+    // appears as a header column or a row label.
+    expect(csv).toBe(",2,'=cmd\r\n2,0,1\r\n'=cmd,1,0\r\n");
+    expect(csv).not.toContain(',=cmd');
+  });
+
   it('renders an empty network as an empty header row', () => {
     const rows = Array.from(
       adjacencyMatrixRows(
