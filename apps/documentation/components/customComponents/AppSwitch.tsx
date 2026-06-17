@@ -4,6 +4,7 @@ import { Tabs } from '@base-ui/react/tabs';
 import { Globe, Monitor } from 'lucide-react';
 import { Children, isValidElement, type ReactNode } from 'react';
 
+import { useSelectedApp } from '~/components/customComponents/useSelectedApp';
 import { cn } from '~/lib/utils';
 
 const ICONS = {
@@ -20,6 +21,8 @@ type AppOptionProps = {
 export const AppOption = ({ children }: AppOptionProps) => <>{children}</>;
 
 export const AppSwitch = ({ children }: { children: ReactNode }) => {
+  const [selectedApp, selectApp] = useSelectedApp();
+
   const options = Children.toArray(children)
     .filter(isValidElement)
     .map((child) => child.props as Partial<AppOptionProps>)
@@ -27,19 +30,34 @@ export const AppSwitch = ({ children }: { children: ReactNode }) => {
       (props): props is AppOptionProps => typeof props.label === 'string',
     );
 
-  if (options.length === 0) {
+  const [firstOption] = options;
+  if (!firstOption) {
     return null;
   }
 
+  const activeLabel =
+    selectedApp !== null &&
+    options.some((option) => option.label === selectedApp)
+      ? selectedApp
+      : firstOption.label;
+
   return (
-    <Tabs.Root defaultValue={0} className="py-8">
+    <Tabs.Root
+      value={activeLabel}
+      onValueChange={(value) => {
+        if (typeof value === 'string') {
+          selectApp(value);
+        }
+      }}
+      className="py-8"
+    >
       <Tabs.List className="border-accent/15 bg-accent/10 inline-grid w-full auto-cols-fr grid-flow-col gap-1 rounded-xl border p-1">
         {options.map((option, index) => {
           const Icon = option.icon ? ICONS[option.icon] : null;
           return (
             <Tabs.Tab
               key={`${option.label}-${index}`}
-              value={index}
+              value={option.label}
               className={cn(
                 'focusable text-foreground/70 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors',
                 'hover:text-foreground hover:bg-accent/20',
@@ -55,7 +73,7 @@ export const AppSwitch = ({ children }: { children: ReactNode }) => {
       {options.map((option, index) => (
         <Tabs.Panel
           key={`${option.label}-${index}`}
-          value={index}
+          value={option.label}
           className="mt-6"
         >
           {option.children}

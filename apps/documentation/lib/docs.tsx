@@ -26,7 +26,10 @@ import type {
   TSideBar,
 } from '~/app/types';
 import AppCompatibilityTable from '~/components/customComponents/AppCompatibilityTable';
+import { AppOnly } from '~/components/customComponents/AppOnly';
+import { AppScreenshot } from '~/components/customComponents/AppScreenshot';
 import { AppOption, AppSwitch } from '~/components/customComponents/AppSwitch';
+import type { AppKey } from '~/components/customComponents/appVariants';
 import {
   BadPractice,
   GoodPractice,
@@ -334,6 +337,12 @@ const createMarkdownComponents = (docSlug?: string) => ({
     icon?: 'globe' | 'desktop';
     children: ReactNode;
   }) => <AppOption {...props} />,
+  apponly: (props: { app: AppKey; children: ReactNode }) => (
+    <AppOnly {...props} />
+  ),
+  appscreenshot: (props: { name: string; web?: string; alt?: string }) => (
+    <AppScreenshot {...props} />
+  ),
   table: (props: { children: ReactNode }) => (
     <div className="overflow-x-auto">
       <table
