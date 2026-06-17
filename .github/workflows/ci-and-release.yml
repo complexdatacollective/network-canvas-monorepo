@@ -329,6 +329,11 @@ jobs:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
+      # architect-web's build graph pulls in `@codaco/interface-images#generate`,
+      # which captures interface screenshots with Playwright/Chromium. The browser
+      # binary isn't fetched by `pnpm install --ignore-scripts`, so install it.
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
       - id: deploy
         name: Build and deploy architect-web preview
         run: |
@@ -478,6 +483,11 @@ jobs:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
+      # architect-web's build graph pulls in `@codaco/interface-images#generate`,
+      # which captures interface screenshots with Playwright/Chromium. The browser
+      # binary isn't fetched by `pnpm install --ignore-scripts`, so install it.
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
       - id: deploy
         name: Build and deploy architect-web production
         run: |
