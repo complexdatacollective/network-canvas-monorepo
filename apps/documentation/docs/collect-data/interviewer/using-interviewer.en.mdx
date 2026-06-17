@@ -37,24 +37,91 @@ Interviewer runs on both tablet devices using touch screens, and desktop compute
 
 Once you have collected data with Interviewer, you can export network datafiles to your device or computer.
 
-<KeyConcept title="Interviewer 6.x and Interviewer 8">
+Interviewer comes in two supported versions. Choose the one you are using below — the screenshots and version-specific notes throughout this tutorial update to match.
 
-Interviewer now comes in two versions, and both are supported:
+<AppSwitch axis="interviewer">
+  <AppOption label="Interviewer 8"></AppOption>
+  <AppOption label="Interviewer 6.x"></AppOption>
+</AppSwitch>
 
-- **Interviewer 6.x** — the established desktop and tablet app this tutorial walks through. It runs schema 7 protocols and works fully offline.
-- **Interviewer 8** (beta) — built on the same new platform as Fresco 4.0, so it gains the improved interview experience and data export. It also supports **schema 8** (so it can run protocols built in [Architect Web](/en/design-protocols/getting-started)) and is compatible with your existing protocols. Because some schema-8 interfaces (such as [Geospatial](/en/design-protocols/interface-documentation/geospatial)) need an internet connection, fully offline collection isn't always possible. It's **recommended for new studies**.
+<AppOnly axis="interviewer" app="v6">
 
-The walkthrough below uses Interviewer 6.x. The overall flow — installing protocols, starting interviews, and exporting data — is the same in Interviewer 8, though some screens differ.
+**Interviewer 6.x** is the established desktop and tablet app. It runs schema 7 protocols and works fully offline.
 
-</KeyConcept>
+</AppOnly>
+
+<AppOnly axis="interviewer" app="v8">
+
+**Interviewer 8** (beta) is built on the same new platform as Fresco 4.0. It supports **schema 8** (so it can run protocols built in [Architect Web](/en/design-protocols/getting-started)) and is compatible with your existing protocols, while adding an improved interview experience, data export, and on-device security. Because some schema-8 interfaces (such as [Geospatial](/en/design-protocols/interface-documentation/geospatial)) need an internet connection, fully offline collection isn't always possible. It's **recommended for new studies**.
+
+</AppOnly>
 
 The following introduction to the software describes some of its key features and concepts. To follow along, open Interviewer on your own computer or device.
+
+<AppOnly axis="interviewer" app="v8">
+
+## Security and locking
+
+Interviewer 8 keeps everything it stores — protocols, interviews, and settings — on the device, with no cloud sync or server component. On desktop, that on-device data is **encrypted at rest**, and the same authentication that unlocks the app releases the key used to decrypt it.
+
+### Setting up security
+
+The very first time you open Interviewer 8 you are greeted with a welcome screen and guided through a short setup wizard before you reach the dashboard. Most of what it configures can be changed later from **Settings** (the exception is your security method — see below).
+
+![The Interviewer 8 welcome screen](/assets/img/interviewer-v8-guide/welcome.png)
+
+The wizard opens with a brief overview of what it will cover — securing your data, and setting your app preferences.
+
+![The setup wizard introduction](/assets/img/interviewer-v8-guide/setup-intro.png)
+
+It then explains the two layers that protect your research data: **secure data storage** and **app authorization**. On platforms where the operating system already sandboxes the app's data, encryption isn't required, and the wizard tells you so.
+
+![The 'Securing your data' step of the setup wizard](/assets/img/interviewer-v8-guide/securing-data.png)
+
+Next, you choose how you will unlock the app. Depending on your device, the options are:
+
+- **Biometric** — Touch ID, Face ID, or your device's equivalent (offered only when the device has a sensor).
+- **PIN** — an eight-digit code.
+- **Passphrase** — a phrase of at least twelve characters.
+- **No security** — no app-level protection (your data still relies on the device's own protections).
+
+![Choosing an authentication method](/assets/img/interviewer-v8-guide/auth-method.png)
+
+<TipBox danger={true}>
+
+There is **no way to recover a lost credential**. If you lose the enrolled biometric, PIN, or passphrase — for example on a wiped or replaced device — the encrypted data on that device cannot be recovered. Changing your security method afterwards (for example, switching from a PIN to a passphrase) is also destructive: it requires **revoking the device lock**, which erases **all protocols, sessions, and stored credentials on this device**. For both reasons, **export your interviews regularly** so that losing — or re-securing — a device never means losing your data.
+
+</TipBox>
+
+Finally, the wizard asks whether you would like to share anonymous usage data to help improve the app. No participant or personal data — network data, interview responses, case IDs, or protocol contents — ever leaves the device, and you can change this choice at any time in **Settings → Privacy**.
+
+![The analytics preference step of the setup wizard](/assets/img/interviewer-v8-guide/analytics.png)
+
+### Locking and unlocking
+
+When the app is locked you see only the lock screen — never any protocol names, session counts, or other details about what is stored.
+
+<InterviewerScreenshot name="lock-screen" alt="The Interviewer 8 lock screen"></InterviewerScreenshot>
+
+Interviewer 8 locks itself automatically after a period of inactivity (configurable in **Settings**, from one minute up to an hour), as well as when the app is closed. You can also lock it immediately with **Lock now** in Settings.
+
+For extra protection, you can require re-authentication at interview boundaries — **entering** an interview (on by default), **exiting** to the dashboard, and **exporting** data — each toggled independently in Settings.
+
+### Storage and diagnostics
+
+**Settings** is also where you manage app preferences and check on the app itself. It shows how much storage your interviews are using and warns you when it runs high, prompting you to export and remove older sessions, and it reports the app version, your installation ID, the current platform, and whether storage is durable — useful information when contacting us for support.
+
+![The Interviewer 8 settings screen](/assets/img/interviewer-v8-guide/settings.png)
+
+</AppOnly>
 
 ## The start screen
 
 After opening Interviewer, the first thing you will see is the 'start screen'. This is a 'back-stage' area of Interviewer, designed to be used by the person conducting the study (not the participant). It allows you to configure the software, launch a new interview, resume an existing interview, and manage your data.
 
-![The Interviewer start screen](/assets/img/sample-protocol/start-screen.png)
+<InterviewerScreenshot name="start-screen" alt="The Interviewer start screen"></InterviewerScreenshot>
+
+<AppOnly axis="interviewer" app="v6">
 
 The start screen is divided into sections that group related tasks together, such as "starting an interview" or "exporting and managing interview data". Not all sections are visible all of the time. The start screen intelligently shows options only when they are available to use. For example, the export data section will only become visible once you have conducted one or more interviews.
 
@@ -77,9 +144,35 @@ The **protocols section** which allows you to quickly import a [Network Canvas p
 
 ![The protocols section](/assets/img/sample-protocol/protocols-section.png)
 
+</AppOnly>
+
+<AppOnly axis="interviewer" app="v8">
+
+Interviewer 8 presents this as a dashboard. You switch between two views from the toggle at the top of the screen — **Protocols** and **Data** — with a settings icon alongside them:
+
+- **Protocols** — your installed protocols, shown as a deck you can flip through, alongside a card for importing a new protocol.
+- **Data** — every collected session, ready to resume, review, or export (covered under [Resuming, exporting, and managing interview sessions](#resuming-exporting-and-managing-interview-sessions) below).
+- **Settings** (the gear icon) — app preferences and diagnostics, grouped into About, Data export, Privacy, and Security (see [Security and locking](#security-and-locking) above).
+
+</AppOnly>
+
 ## Installing and managing protocols
 
-Interviewer must be configured using one or more Network Canvas interview protocols before it can be used to collect data. There are two ways to import it into your devices running Interviewer. Which one you choose will depend on the needs of your study.
+Interviewer must be configured using one or more Network Canvas interview protocols before it can be used to collect data.
+
+<AppOnly axis="interviewer" app="v6">
+
+There are two ways to import a protocol into the devices running Interviewer. Which one you choose will depend on the needs of your study.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="v8">
+
+There are two ways to import a protocol into Interviewer 8: from a `.netcanvas` file on your device, or from a URL. Each protocol is validated on import, and any protocol built against an older schema is migrated to schema 8 automatically, with a notification telling you the migration occurred.
+
+![The Import a protocol dialog in Interviewer 8](/assets/img/interviewer-v8-guide/import-protocol.png)
+
+</AppOnly>
 
 ### Importing a file directly
 
@@ -92,6 +185,8 @@ running Interviewer is also the device used to author protocols in Architect.
 
 </TipBox>
 
+<AppOnly axis="interviewer" app="v6">
+
 ### Importing from a URL
 
 This option allows you to download a protocol file directly from any URL that is accessible from the device running Interviewer. It can be useful in circumstances where you have a study website or internet, and need to quickly install a protocol on a device. It can be accessed from the protocols section of the start screen.
@@ -103,27 +198,53 @@ provider to distribute protocol files to multiple devices.
 
 </TipBox>
 
+</AppOnly>
+
 ### Import the Sample Protocol
 
-For the purposes of this tutorial, we will proceed using the built-in sample protocol. To follow along on your own device, **click the "install sample protocol" button in the welcome section of the app** to install the protocol that we will be using. Alternatively, [click here](</protocols/Sample Protocol v4.netcanvas>) to download the file, and then import it into Interviewer using the import from file method described above.
+For the purposes of this tutorial, we will proceed using the built-in sample protocol.
+
+<AppOnly axis="interviewer" app="v6">
+
+To follow along on your own device, **click the "install sample protocol" button in the welcome section of the app** to install the protocol that we will be using. Alternatively, [click here](</protocols/Sample Protocol v4.netcanvas>) to download the file, and then import it into Interviewer using the import from file method described above.
 
 Once a protocol has been imported, a new section will appear on the start screen: the **new interview section**. Inside this section will be a protocol card, representing the protocol you imported.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="v8">
+
+The sample protocol is built into Interviewer 8 — select it from the protocol deck on the **Home** screen to follow along. Alternatively, [click here](</protocols/Sample Protocol v4.netcanvas>) to download the file, and import it from the **Protocols** area.
+
+Once a protocol is installed it appears as a card in the Home deck, representing the protocol you imported.
+
+</AppOnly>
 
 <KeyConcept title="Anatomy of a protocol card">
 
 The protocol card is a visual device representing a Network Canvas interview protocol. It is used throughout Architect and Interviewer, whenever a protocol is used.
 
-![A protocol card](/assets/img/sample-protocol/protocol-card.png)
+<InterviewerScreenshot name="protocol-card" alt="A protocol card"></InterviewerScreenshot>
 
 The protocol card can often be clicked, tapped, or dragged in order to perform an action related to the protocol. The card itself has three main visual elements:
 
 - The protocol name, which is defined by the original file name of the protocol file itself
 - The protocol description, which can contain any descriptive information you like, and is set in Architect
-- The protocol metadata, which summarizes when a protocol was installed and modified, as well as the [schema version](/en/get-started/advanced-topics/protocol-schema-information) of the protocol
+- The protocol metadata, which summarizes when a protocol was installed and modified, along with the number of interviews collected against it
+
+It also contains a **Start new interview** button, a **Requires internet** indicator (shown when the protocol uses internet-dependent interfaces such as Geospatial), and a trash icon for removing the protocol from the device.
+
+<AppOnly axis="interviewer" app="v6">
+
+In Interviewer 6.x the card's metadata shows the protocol's [schema version](/en/get-started/advanced-topics/protocol-schema-information) instead of an interview count, and you start interviews and manage protocols from the start screen rather than from buttons on the card itself.
+
+</AppOnly>
 
 </KeyConcept>
 
 ### Removing or managing installed protocols
+
+<AppOnly axis="interviewer" app="v6">
 
 To help you to manage protocols that are installed in Interviewer, there is a dedicated overlay. This can be opened from the protocols section, which will now display a "manage installed protocols" button.
 
@@ -133,19 +254,39 @@ From within this overlay, you can sort your installed protocols, as well as filt
 
 ![Deleting a protocol by dragging it into the bin](/assets/img/sample-protocol/delete-protocol.png)
 
+</AppOnly>
+
+<AppOnly axis="interviewer" app="v8">
+
+Open the **Protocols** area to manage everything installed on the device. Each protocol lists its schema version, import date, and the number of interviews collected against it. Deleting a protocol asks you to confirm first, since it cannot be undone — and any interviews recorded against that protocol are removed along with it.
+
+![Confirming protocol deletion in Interviewer 8](/assets/img/interviewer-v8-guide/delete-protocol.png)
+
+</AppOnly>
+
 ## Starting a new interview
+
+<AppOnly axis="interviewer" app="v6">
 
 By default, the start a new interview section shows the last protocol you installed (or started an interview with). It can be tapped or clicked to immediately begin an interview.
 
-![The start new interview section, showing the sample protocol installed](/assets/img/sample-protocol/start-new-section.png)
+<InterviewerScreenshot name="start-new-section" alt="Starting a new interview"></InterviewerScreenshot>
 
 If you have more than one protocol installed in Interviewer, a card stack will appear to the right side of the start a new interview section. To access all available protocols, tap or click this card stack. An overlay will open with a list of protocols currently stored in the app. Scroll, filter, or sort the protocol card list to locate the protocol you wish to use for your interview, and tap or click it to begin. This protocol will then appear in the start a new interview section for quicker future access.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="v8">
+
+To begin an interview, find the protocol in the **Home** deck and click **Start new interview** on its card (shown in the card anatomy above). The card you most recently used sits at the front of the deck for quick access; if you have several protocols installed, flip through the deck or open the **Protocols** area to search the full list.
+
+</AppOnly>
 
 ### Entering a case ID
 
 When initiating a new interview, you will immediately be presented with a dialog that asks you to enter a 'case ID'. This is a simple mechanism designed to help you keep track of and identify interview sessions in a way that is meaningful to you and your study. The case ID will be visible in Interviewer anywhere that you see interview sessions, and will also be included in all exported data.
 
-![The case ID form](/assets/img/sample-protocol/case-id.png)
+<InterviewerScreenshot name="case-id" alt="The case ID form"></InterviewerScreenshot>
 
 A case ID can contain any combination of numbers and letters (including spaces) up to 30 characters. There is no requirement that a case ID be unique, since this would not be possible to enforce across multiple devices. Nevertheless, you should strongly consider a consistent system for naming cases that allows you to uniquely identify them.
 
@@ -155,6 +296,8 @@ For example, you might consider:
 - `STUDY_ID-PARTICIPANT_NAME-VISIT_NUMBER` (e.g `NetCanvas-Joshua-4`)
 - ...or simply `PARTICIPANT_NAME` (e.g `James Montgomery Williams`)
 
+<AppOnly axis="interviewer" app="v6">
+
 <TipBox>
 
 The case ID of an interview can be changed from within the interview. Simply
@@ -162,6 +305,8 @@ click the menu icon, and click the 'edit' button in the white session summary
 card that appears on the right.
 
 </TipBox>
+
+</AppOnly>
 
 ## Sample interview walkthrough
 
@@ -180,7 +325,9 @@ The main interview user interface within Interviewer is designed to be simple, u
 
 In terms of the user interface elements that are always visible when within the interview, there are several features of note.
 
-![](/assets/img/sample-protocol/interviewer-ui.png)
+<InterviewerScreenshot name="interviewer-ui" alt="The always-visible interview navigation elements"></InterviewerScreenshot>
+
+<AppOnly axis="interviewer" app="v6">
 
 The **menu button** at the very top of the screen opens the primary app menu, which allows you to:
 
@@ -205,6 +352,28 @@ device, which may help with engagement.
 
 </TipBox>
 
+</AppOnly>
+
+<AppOnly axis="interviewer" app="v8">
+
+Interviewer 8 keeps the interview chrome deliberately minimal. The navigation adapts to the device — a rail down the side on wider, landscape displays, and a bar along the bottom on tall, portrait ones — and contains just three controls:
+
+- An **exit** control (the door icon) that leaves the interview and returns to the dashboard.
+- An **up** arrow to move to the previous stage or prompt.
+- A **down** arrow to advance to the next stage or prompt.
+
+Between the up and down arrows, a **progress bar** fills as the participant moves through the interview. Progress is saved continuously, so you can exit an interview and resume it later from the **Interviews** list without losing data.
+
+There is no separate in-interview menu or stages menu, and no in-interview settings — app settings live in the dashboard **Settings** area, reached after exiting the interview.
+
+<TipBox danger={true}>
+
+If you hand the device to the participant during an interview, first turn on **require authentication when exiting an interview** in Settings. Otherwise a participant who taps the exit control reaches the dashboard, where they could see other participants' data.
+
+</TipBox>
+
+</AppOnly>
+
 ## Stages and interfaces
 
 With a Network Canvas interview protocol, each interview is made up of a series of screens called "stages", where a specific task is completed. You can have as many stages in your interview as you need, and as you will see in other tutorials, there are many ways to structure your interview using different combinations of screens and different front or back loadings of tasks.
@@ -215,7 +384,7 @@ Each stage is an _instance_ of a specialized task-based screen called an ["Inter
 
 The first screens within the sample interview protocol all use the [Information interface](/en/design-protocols/interface-documentation/information), with the very first being the welcome stage.
 
-![The welcome stage](/assets/img/sample-protocol/welcome-info.png)
+<InterviewerScreenshot name="welcome-info" alt="The welcome stage"></InterviewerScreenshot>
 
 You can use the Information interface to build stages that communicate information to a participant, such as providing a study description or instructions for completing a task on a subsequent screen. It can also contain media, such as audio, images, or video. This sample protocol uses numerous Information interfaces to clarify the primary tasks performed in Interviewer, but this article will not describe them to avoid redundancy.
 
@@ -227,13 +396,13 @@ While Interviewer is optimized for collecting data about network members from an
 
 The first use-case for ego data collection demonstrated is an example of a participant consent form.
 
-![A participant consent form built using the Ego Form interface](/assets/img/sample-protocol/consent-form.png)
+<InterviewerScreenshot name="consent-form" alt="A participant consent form built using the Ego Form interface"></InterviewerScreenshot>
 
 It shows a single form field that represents a boolean attribute corresponding to the consent status of the participant. Once the question is answered, the attribute is included in the network data model and exported along with the interview data. You can use it to direct the flow of the interview using [skip logic](/en/design-protocols/key-concepts/skip-logic).
 
 The next Ego Form interface shows a more full-featured example of this interface. In this particular stage, the form asks for a variety of individual level data using numerous input control types.
 
-![A more full-featured ego data collection form, showing a variety of input controls](/assets/img/sample-protocol/ego-form.png)
+<InterviewerScreenshot name="ego-form" alt="A more full-featured ego data collection form, showing a variety of input controls"></InterviewerScreenshot>
 
 The form includes [validation](/en/design-protocols/key-concepts/field-validation), which requires you to enter the first and last name before proceeding to the next screen.
 
@@ -247,7 +416,7 @@ The first name generator stage uses the [Quick Add Name Generator](/en/design-pr
 
 To add nodes, click the **add** button in the bottom right, which reveals the label input. Enter a name and press enter (or click the node icon), and notice that a node appears in the main node list. When you are finished, either click the button again or click away to close the input.
 
-![A Quick-Add Name Generator](/assets/img/sample-protocol/quick-add.png)
+<InterviewerScreenshot name="quick-add" alt="A Quick-Add Name Generator"></InterviewerScreenshot>
 
 This stage is configured with a single [prompt](/en/design-protocols/key-concepts/prompts):
 
@@ -259,7 +428,7 @@ Prompts are defined by the researcher, and frame the data collection task. Many 
 
 Clicking forwards through an information stage and into the next name generator stage, a side panel will appear that contains all of the nodes named on the first stage. We can drag and drop nodes from this side panel into the node list area, or we can create new nodes by clicking on the add button in the bottom right right corner as we did previously.
 
-![A name generator with a side panel](/assets/img/sample-protocol/side-panel.png)
+<InterviewerScreenshot name="side-panel" alt="A name generator with a side panel"></InterviewerScreenshot>
 
 The side panel functionality is available in both of our non-roster specific name generator Interfaces. It is designed for two specific scenarios:
 
@@ -277,13 +446,13 @@ Moving forwards through an additional information screen, you will arrive at the
 
 Although this stage is also a name generator, it uses a [separate interface](/en/design-protocols/interface-documentation/name-generator-using-forms) which makes it behave differently. This time, when clicking the add button in the bottom right, you will see that a dialog is triggered. Network Canvas can be configured to collect more in-depth node information at the time of elicitation, using the concept of "[forms](/en/design-protocols/key-concepts/forms)". In this example, clicking the "add" button shows a form with three fields (name, visit date, and treatment summary).
 
-![A Name Generator that uses forms to collect additional data](/assets/img/sample-protocol/using-forms.png)
+<InterviewerScreenshot name="using-forms" alt="A Name Generator that uses forms to collect additional data"></InterviewerScreenshot>
 
 The forms you design can collect whichever attributes you wish. This is one of the key ways that a researcher can vary the front-facing response burden of naming alters. Collecting a large number of attributes as the node is created can allow for fewer overall stages in your interview, but can also condition the participant against naming large numbers of alters.
 
 Experiment with adding alters on this stage, and notice that these nodes are a different color from the ones we created previously. This is because Network Canvas interviews can collect data on as many node types as the researcher desires.
 
-![Different node types are automatically styled in visually distinctive ways so that participants can always differentiate between them](/assets/img/sample-protocol/blue-nodes.png)
+<InterviewerScreenshot name="blue-nodes" alt="Different node types are automatically styled in visually distinctive ways so that participants can always differentiate between them"></InterviewerScreenshot>
 
 In this case, our name generator will create "clinic" nodes, which are displayed in blue, as opposed to the red "person" nodes we saw previously. This is an element of the ontological flexibility discussed in our [project overview](/en/get-started/project-information/project-overview#ontological-flexibility), and allows for powerful research designs that model networks in sophisticated ways.
 
@@ -291,17 +460,17 @@ In this case, our name generator will create "clinic" nodes, which are displayed
 
 Continue forwards through the sample protocol, until you arrive at a name generator stage with the prompt:
 
-> Please select any members of your degree class that you spend time with **other than when studying**. Tap a card to select, and press the **down arrow** when you are finished.
+> Please indicate any members of your class that you spend time with **other than when studying**. Drag a card from the side panel to add it to the network, and press the **down arrow** when you are finished.
 
 This stage once again behaves differently from the previous name generators due to being based on a different interface. It allows a participant to nominate alters from a predetermined list (i.e. a roster). In this case, "classmate" nodes are added by selecting the appropriate "display card" on the scrollable roster. Multiple alters can be added at one time. Note that you are able to filter and sort the list, which helps when trying to locate a specific roster member. The sortable properties, as well as the information to be displayed on the cards, are all fully customizable within Architect.
 
-![The Small Roster Name Generator](/assets/img/sample-protocol/small-roster.png)
+<InterviewerScreenshot name="small-roster" alt="The Small Roster Name Generator"></InterviewerScreenshot>
 
 Once a member of the roster has been nominated by selecting its card, Interviewer creates a node in the network model using data from the roster. This results in data files that contain only the nodes that the participant nominated. This stage is an example of the [small roster name generator interface](/en/design-protocols/interface-documentation/small-roster-name-generator).
 
 Clicking next again will take you to a second roster-based name generator Interface, but this time designed to work for extremely large rosters. Here, we ask about universities visited or studied at. Our CSV roster data file contains approximately 9,300 nodes.
 
-![The Large Roster Interface](/assets/img/sample-protocol/large-roster.png)
+<InterviewerScreenshot name="large-roster" alt="The Large Roster Interface"></InterviewerScreenshot>
 
 Since this roster is so large, this interface does not display the roster in its entirety. Instead, it offers a search box, and customizable levels of fuzzy matching, in order to help the participant quickly locate the nodes they wish to nominate. This is an example of a stage configured using the [large roster name generator interface](/en/design-protocols/interface-documentation/large-roster-name-generator).
 
@@ -311,7 +480,7 @@ For situations where general purpose data collection is required, form-based int
 
 Clicking next from the university roster stage, you will immediately arrive on a stage that uses the [Per-Alter Form](/en/design-protocols/interface-documentation/per-alter-form) interface to ask follow-up name interpreter questions about all alters that were named on the previous screen.
 
-![The Per-Alter Form interface](/assets/img/sample-protocol/per-alter-form.png)
+<InterviewerScreenshot name="per-alter-form" alt="The Per-Alter Form interface"></InterviewerScreenshot>
 
 As with all [forms](/en/design-protocols/key-concepts/forms) used by Interviewer, the Per-Alter Form allows you to capture different types of data in a series of fields utilizing a variety of input controls. Any data in these forms is stored directly on the alter as attributes. The Per-Alter Form stage cycles through all alters of a given type in the interview network, presenting the form for each.
 
@@ -323,7 +492,7 @@ After clicking through an information stage, you will next arrive at an example 
 
 Network Canvas has been heavily inspired by the long tradition of using visual methods in social networks research, which often feature the sociogram as a means of presenting the network in a way that is intuitive to participants.
 
-![The sociogram interface](/assets/img/sample-protocol/sociogram-positioning.png)
+<InterviewerScreenshot name="sociogram-positioning" alt="The sociogram interface"></InterviewerScreenshot>
 
 The sociogram interface in Interviewer is capable of three main tasks:
 
@@ -337,7 +506,7 @@ As with other Interfaces, every aspect of theses three behaviours is customized 
 
 Some research has preferred more systematic approaches to evaluating the presence of alter-alter ties in ego networks. Immediately following the edge creation sociogram stage in the sample protocol is an illustration of the [dyad census](/en/design-protocols/interface-documentation/dyad-census) interface, which has been designed to accommodate these methods.
 
-![An example of the dyad-census interface](/assets/img/sample-protocol/dyad-census.png)
+<InterviewerScreenshot name="dyad-census" alt="An example of the dyad-census interface"></InterviewerScreenshot>
 
 On this stage, all previously named alters are presented under a researcher-defined prompt and a simple "yes"/"no" user interface. By clicking the 'yes' button, a tie between the alters is created. By clicking the 'no' button, no edge is created. All possible pairs within the network for a particular node type will appear. Note that providing an answer immediately advances to the next pair, significantly speeding up the process.
 
@@ -347,7 +516,7 @@ Apart from general purpose form interfaces, Interviewer also contains a variety 
 
 Continuing through the sample protocol to the "contact frequency" stage, you will find an example of the [ordinal bin](/en/design-protocols/interface-documentation/ordinal-bin) interface, which as the name suggests deals specifically with ordinal variables.
 
-![The contact frequency stage, which uses the ordinal bin interface](/assets/img/sample-protocol/ordinal-bin.png)
+<InterviewerScreenshot name="ordinal-bin" alt="The contact frequency stage, which uses the ordinal bin interface"></InterviewerScreenshot>
 
 The ordinal bin interface allows you to drag nodes into a "bin" representing an ordinal variable value, thereby assigning that value to the alter. Here, we ask:
 
@@ -359,7 +528,7 @@ Once again, the key elements of the Interface are configurable by the researcher
 
 The following stage uses the [categorical bin](/en/design-protocols/interface-documentation/categorical-bin) interface, which follows a similar pattern but for unordered data.
 
-![An example categorical bin stage](/assets/img/sample-protocol/cat-bin.png)
+<InterviewerScreenshot name="cat-bin" alt="An example categorical bin stage"></InterviewerScreenshot>
 
 It allows you to drag nodes into colorful circles, each representing a categorical variable value. When a node is placed within a circle the variable value is assigned to that alter. You can view which nodes were placed in which circle by selecting the circle. This action allows you to move nodes from one circle to another, which may be necessary to correct an error.
 
@@ -379,6 +548,8 @@ For more information on network filtering, see the [network filtering guide](/en
 
 You may wish to navigate back and forth between the quick add name generator and this stage to see the skip logic and network filtering in action.
 
+<AppOnly axis="interviewer" app="v6">
+
 <TipBox>
 
 Remember that at any time during the interview, you can view a menu of all
@@ -387,11 +558,13 @@ to it.
 
 </TipBox>
 
+</AppOnly>
+
 ## The Narrative interface
 
 The final stage of the sample protocol demonstrates an interface that is designed for qualitative personal networks research. The [Narrative](/en/design-protocols/interface-documentation/narrative) interface does not collect any additional data but rather maps data collected elsewhere in the interview to aspects of the visual representation of the network. It aims to represent aspects of the participant's network back to them with the intent to facilitate narrative interrogation of the data in an interview setting.
 
-![](/assets/img/sample-protocol/narrative.png)
+<InterviewerScreenshot name="narrative" alt="The Narrative interface"></InterviewerScreenshot>
 
 The preset menu in the bottom right allows the researcher or the participant to switch between different predefined visual styles. In this example, you can see the two edge types created previously ("know" and "conflict") and the boolean attributes assigned during the variable toggling task on the Sociogram interface. You can also see the categorical groupings collected on the Categorical Bin interface. Each preset can be toggled on or off by tapping on the attribute or edge in the menu.
 
@@ -399,29 +572,65 @@ The Narrative interface also supports free-form annotation using the mouse, a fi
 
 ## The Finish Screen
 
-Each interview protocol has a "finish" screen automatically inserted by Interviewer. This screen presents a single button that will exit the interview and return to the start screen. Clicking this button will also set, or update, the "finished at" property of the interview session. This property is exported along with your interview data, and can be used to calculate interview duration.
+Each interview protocol has a "finish" screen automatically inserted by Interviewer. This screen presents a single button that will exit the interview. Clicking this button will also set, or update, the "finished at" property of the interview session. This property is exported along with your interview data, and can be used to calculate interview duration.
 
-![](/assets/img/sample-protocol/finish.png)
+<InterviewerScreenshot name="finish" alt="The finish screen"></InterviewerScreenshot>
 
-For now click "Finish" to return to the start screen.
+<AppOnly axis="interviewer" app="v8">
+
+Interviewer 8 asks you to confirm before finishing, since responses can't be changed once an interview is marked complete.
+
+![Confirming that you want to finish the interview](/assets/img/interviewer-v8-guide/finish-confirm.png)
+
+After confirming, you arrive at a short completion screen, and from there return to the dashboard.
+
+![The interview-complete screen](/assets/img/interviewer-v8-guide/interview-complete.png)
+
+</AppOnly>
+
+For now click "Finish" to finish the interview.
 
 ## Resuming, exporting, and managing interview sessions
 
+<AppOnly axis="interviewer" app="v6">
+
 Now that you have completed an interview, new sections and options will appear on the start screen for managing and resuming interview sessions.
 
-![](/assets/img/sample-protocol/resume-section.png)
+<InterviewerScreenshot name="resume-section" alt="The resume section"></InterviewerScreenshot>
 
 The **resume section** (above) is displayed immediately below the start new interview section, and works in the same way. Clicking an interview session card will immediately resume the interview at the point that you left off. When multiple existing sessions exist on the device running Interviewer, a card stack icon will appear, that when clicked will allow you to choose between resuming any existing interview session.
 
 Managing and exporting interview data takes place in a dedicated **export and manage interview data** section (below). To remove an interview session from the device, select it, and click the "delete selected" button.
 
-![](/assets/img/sample-protocol/export-section.png)
+<InterviewerScreenshot name="export-section" alt="The export and manage data section"></InterviewerScreenshot>
 
 The data export process consists of selecting one or more sessions from this section, and clicking the "export selected to file". Settings for exported data can be found in the device settings in the welcome section.
 
+</AppOnly>
+
+<AppOnly axis="interviewer" app="v8">
+
+Every session you collect — whether in progress, finished, or already exported — is listed in the **Interviews** area. Each row shows the case ID, the protocol used, when the interview started, and its status.
+
+<InterviewerScreenshot name="resume-section" alt="The Interviews list"></InterviewerScreenshot>
+
+Select a session to resume an in-progress interview or review a finished one. You can also select several sessions at once to **export** or **delete** them in bulk. The data export process is covered below; export formats are configured in **Settings** rather than chosen at export time.
+
+</AppOnly>
+
 ## File types
 
+<AppOnly axis="interviewer" app="v6">
+
 After clicking "export selected to file," you will be prompted to choose a file type for the export. The two options are:
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="v8">
+
+Interviewer 8 packages the sessions you select into a single `.zip` archive, reporting progress as it goes and flagging each session as exported once it completes. The file types included are chosen ahead of time in **Settings** rather than at export time. The two options are:
+
+</AppOnly>
 
 - **CSV**. A common format for representing network data. This format is readable as a table (or series of tables) in Excel, LibreOffice, Keynote, and other tabular programs. The CSV version also complies with the `egor` package standard. Selecting this option will output multiple files, including node and edge lists for each type, and an ego attribute list that also includes session metadata:
   - **Ego attribute list**: This file will have one row per ego, with ego-level variables session metadata. The filename will be in the format `caseID_sessionUUID_ego.csv`.
@@ -435,15 +644,25 @@ Which file type you should choose depends largely on the needs of your analysis 
 
 You may configure a variety of specialized export options that will impact the data you receive in a variety of ways. These options can be left at their default values unless you know that you need to change them.
 
+<AppOnly axis="interviewer" app="v6">
+
 #### Merge sessions by protocol
 
 The option to "Merge Sessions by Protocol" will produce a consolidated file (or files in the case of CSV) that contains all interviews. Although the file(s) will contain all egos, nodes, and edges across all interviews, the ego networks themselves will not be merged in any way.
 
 If this option is left deselected, the export process will produce separate files for each of the interviews completed.
 
+</AppOnly>
+
 #### Use screen layout coordinates
 
 Position data from layout variables used on the Sociogram interface in Interviewer is stored on nodes as normalized x/y coordinates, with the origin in the top left of the screen. This allows you to later visualize these layouts on a canvas of arbitrary size, and to compare layouts that were created on screens with different proportions.
+
+<AppOnly axis="interviewer" app="v8">
+
+In Interviewer 8 you can optionally export node positions as screen-coordinate pixels instead of normalized coordinates, at a resolution you set in **Settings** — useful when you want positions to match a specific screen size.
+
+</AppOnly>
 
 ## Next Steps
 

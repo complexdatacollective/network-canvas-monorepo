@@ -29,7 +29,10 @@ import AppCompatibilityTable from '~/components/customComponents/AppCompatibilit
 import { AppOnly } from '~/components/customComponents/AppOnly';
 import { AppScreenshot } from '~/components/customComponents/AppScreenshot';
 import { AppOption, AppSwitch } from '~/components/customComponents/AppSwitch';
-import type { AppKey } from '~/components/customComponents/appVariants';
+import type {
+  AppKey,
+  InterviewerKey,
+} from '~/components/customComponents/appVariants';
 import {
   BadPractice,
   GoodPractice,
@@ -39,6 +42,7 @@ import {
   InterfaceMeta,
   InterfaceSummary,
 } from '~/components/customComponents/InterfaceSummary';
+import { InterviewerScreenshot } from '~/components/customComponents/InterviewerScreenshot';
 import KeyConcept from '~/components/customComponents/KeyConcept';
 import Pre from '~/components/customComponents/Pre';
 import {
@@ -47,6 +51,7 @@ import {
   SummarySection,
 } from '~/components/customComponents/SummaryCard';
 import TipBox, { type TipBoxProps } from '~/components/customComponents/TipBox';
+import type { AppAxis } from '~/components/customComponents/useSelectedApp';
 import VideoIFrame from '~/components/customComponents/VideoIFrame';
 import Link from '~/components/Link';
 import { Button } from '~/components/ui/Button';
@@ -331,17 +336,24 @@ const createMarkdownComponents = (docSlug?: string) => ({
   definition: (props: { children: ReactNode }) => (
     <div className="text-lg font-normal">{props.children}</div>
   ),
-  appswitch: (props: { children: ReactNode }) => <AppSwitch {...props} />,
+  appswitch: (props: { children: ReactNode; axis?: AppAxis }) => (
+    <AppSwitch {...props} />
+  ),
   appoption: (props: {
     label: string;
     icon?: 'globe' | 'desktop';
     children: ReactNode;
   }) => <AppOption {...props} />,
-  apponly: (props: { app: AppKey; children: ReactNode }) => (
-    <AppOnly {...props} />
-  ),
+  apponly: (
+    props:
+      | { axis?: 'architect'; app: AppKey; children: ReactNode }
+      | { axis: 'interviewer'; app: InterviewerKey; children: ReactNode },
+  ) => <AppOnly {...props} />,
   appscreenshot: (props: { name: string; web?: string; alt?: string }) => (
     <AppScreenshot {...props} />
+  ),
+  interviewerscreenshot: (props: { name: string; alt?: string }) => (
+    <InterviewerScreenshot {...props} />
   ),
   table: (props: { children: ReactNode }) => (
     <div className="overflow-x-auto">

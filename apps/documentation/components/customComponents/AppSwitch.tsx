@@ -4,7 +4,10 @@ import { Tabs } from '@base-ui/react/tabs';
 import { Globe, Monitor } from 'lucide-react';
 import { Children, isValidElement, type ReactNode } from 'react';
 
-import { useSelectedApp } from '~/components/customComponents/useSelectedApp';
+import {
+  type AppAxis,
+  useSelectedApp,
+} from '~/components/customComponents/useSelectedApp';
 import { cn } from '~/lib/utils';
 
 const ICONS = {
@@ -20,8 +23,14 @@ type AppOptionProps = {
 
 export const AppOption = ({ children }: AppOptionProps) => <>{children}</>;
 
-export const AppSwitch = ({ children }: { children: ReactNode }) => {
-  const [selectedApp, selectApp] = useSelectedApp();
+export const AppSwitch = ({
+  children,
+  axis = 'architect',
+}: {
+  children: ReactNode;
+  axis?: AppAxis;
+}) => {
+  const [selectedApp, selectApp] = useSelectedApp(axis);
 
   const options = Children.toArray(children)
     .filter(isValidElement)

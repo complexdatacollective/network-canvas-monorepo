@@ -232,7 +232,7 @@ These identifiers allow you to:
 
 ## Export workflows
 
-### Exporting from Interviewer
+#### Interviewer 6.x
 
 1. Open Interviewer
 2. On the start screen, click the **Manage or Export Sessions** card
@@ -243,6 +243,18 @@ These identifiers allow you to:
 7. Choose a save location:
    - **Windows/macOS/Linux:** Standard file browser appears
    - **iOS/Android:** Share dialog appears—choose your storage location
+
+#### Interviewer 8
+
+Interviewer 8 collects every session on the **Data** page, reached from the dashboard. Each row shows the case ID, the protocol used, when the interview started and was last updated, its completion progress, and its export status.
+
+![The Interviewer 8 Data page, listing collected sessions with progress and export status](/assets/img/interviewer-v8-guide/resume-section.png)
+
+1. Open the **Data** page from the dashboard
+2. Filter by status (**All**, **In progress**, **Complete**) or search by case ID or protocol to find the sessions you want
+3. Select one or more sessions using the checkboxes
+4. Export the selected sessions — they are packaged into a single `.zip` archive, and each is flagged as exported once it completes
+5. Output formats (CSV, GraphML) and screen-coordinate options are set ahead of time in **Settings → Data export**
 
 **Tips:**
 

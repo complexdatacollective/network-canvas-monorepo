@@ -5,21 +5,26 @@ import { type ReactNode } from 'react';
 import {
   APP_LABELS,
   type AppKey,
+  INTERVIEWER_LABELS,
+  type InterviewerKey,
 } from '~/components/customComponents/appVariants';
 import { useSelectedApp } from '~/components/customComponents/useSelectedApp';
 
-type AppOnlyProps = {
-  app: AppKey;
-  children: ReactNode;
-};
+type AppOnlyProps =
+  | { axis?: 'architect'; app: AppKey; children: ReactNode }
+  | { axis: 'interviewer'; app: InterviewerKey; children: ReactNode };
 
-export const AppOnly = ({ app, children }: AppOnlyProps) => {
-  const [selectedApp] = useSelectedApp();
-  const activeApp = selectedApp ?? APP_LABELS.web;
+export const AppOnly = (props: AppOnlyProps) => {
+  const axis = props.axis === 'interviewer' ? 'interviewer' : 'architect';
+  const [selectedApp] = useSelectedApp(axis);
 
-  if (activeApp !== APP_LABELS[app]) {
-    return null;
+  if (props.axis === 'interviewer') {
+    const activeApp = selectedApp ?? INTERVIEWER_LABELS.v8;
+    return activeApp === INTERVIEWER_LABELS[props.app] ? (
+      <>{props.children}</>
+    ) : null;
   }
 
-  return <>{children}</>;
+  const activeApp = selectedApp ?? APP_LABELS.web;
+  return activeApp === APP_LABELS[props.app] ? <>{props.children}</> : null;
 };

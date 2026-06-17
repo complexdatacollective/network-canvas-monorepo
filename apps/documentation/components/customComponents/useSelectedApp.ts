@@ -2,98 +2,116 @@
 
 import { useSyncExternalStore } from 'react';
 
-const STORAGE_KEY = 'nc-docs-selected-app';
+const STORAGE_KEYS = {
+  architect: 'nc-docs-selected-app',
+  interviewer: 'nc-docs-selected-app-interviewer',
+} as const;
 
-let selectedApp: string | null = null;
-let hydrated = false;
+export type AppAxis = keyof typeof STORAGE_KEYS;
 
-const listeners = new Set<() => void>();
+type Store = {
+  value: string | null;
+  hydrated: boolean;
+  listeners: Set<() => void>;
+  onStorage: (event: StorageEvent) => void;
+  select: (app: string) => void;
+};
 
-function emit() {
-  for (const listener of listeners) {
+const stores: Partial<Record<AppAxis, Store>> = {};
+
+function emit(store: Store) {
+  for (const listener of store.listeners) {
     listener();
   }
 }
 
-function readStoredApp(): string | null {
+function writeStoredApp(key: string, app: string) {
   try {
-    return window.localStorage.getItem(STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredApp(app: string) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, app);
+    window.localStorage.setItem(key, app);
   } catch {
     return;
   }
 }
 
-function hydrateOnce() {
-  if (hydrated) {
-    return;
-  }
-  hydrated = true;
-
-  const stored = readStoredApp();
-  if (stored !== null && stored !== selectedApp) {
-    selectedApp = stored;
-    emit();
-  }
-}
-
-function handleStorageEvent(event: StorageEvent) {
-  if (event.key !== STORAGE_KEY) {
-    return;
+function getStore(axis: AppAxis): Store {
+  const existing = stores[axis];
+  if (existing) {
+    return existing;
   }
 
-  const next = event.newValue;
-  if (next !== null && next !== selectedApp) {
-    selectedApp = next;
-    emit();
-  }
-}
+  const key = STORAGE_KEYS[axis];
+  const store: Store = {
+    value: null,
+    hydrated: false,
+    listeners: new Set(),
+    onStorage: () => {},
+    select: () => {},
+  };
 
-function subscribe(listener: () => void): () => void {
-  if (listeners.size === 0) {
-    window.addEventListener('storage', handleStorageEvent);
-  }
-  listeners.add(listener);
-  hydrateOnce();
-
-  return () => {
-    listeners.delete(listener);
-    if (listeners.size === 0) {
-      window.removeEventListener('storage', handleStorageEvent);
+  store.onStorage = (event: StorageEvent) => {
+    if (event.key !== key) {
+      return;
+    }
+    const next = event.newValue;
+    if (next !== null && next !== store.value) {
+      store.value = next;
+      emit(store);
     }
   };
+
+  store.select = (app: string) => {
+    if (app === store.value) {
+      return;
+    }
+    store.value = app;
+    writeStoredApp(key, app);
+    emit(store);
+  };
+
+  stores[axis] = store;
+  return store;
 }
 
-function getSnapshot(): string | null {
-  return selectedApp;
-}
-
-function getServerSnapshot(): string | null {
-  return null;
-}
-
-function selectApp(app: string) {
-  if (app === selectedApp) {
+function hydrateOnce(axis: AppAxis, store: Store) {
+  if (store.hydrated) {
     return;
   }
-  selectedApp = app;
-  writeStoredApp(app);
-  emit();
+  store.hydrated = true;
+
+  let stored: string | null = null;
+  try {
+    stored = window.localStorage.getItem(STORAGE_KEYS[axis]);
+  } catch {
+    stored = null;
+  }
+
+  if (stored !== null && stored !== store.value) {
+    store.value = stored;
+    emit(store);
+  }
 }
 
-export function useSelectedApp() {
+export function useSelectedApp(axis: AppAxis = 'architect') {
+  const store = getStore(axis);
+
   const selected = useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-    getServerSnapshot,
+    (listener: () => void) => {
+      if (store.listeners.size === 0) {
+        window.addEventListener('storage', store.onStorage);
+      }
+      store.listeners.add(listener);
+      hydrateOnce(axis, store);
+
+      return () => {
+        store.listeners.delete(listener);
+        if (store.listeners.size === 0) {
+          window.removeEventListener('storage', store.onStorage);
+        }
+      };
+    },
+    () => store.value,
+    () => null,
   );
 
-  return [selected, selectApp] as const;
+  return [selected, store.select] as const;
 }
