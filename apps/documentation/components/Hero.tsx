@@ -1,71 +1,13 @@
 'use client';
 
-import { ChartNetwork, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTranslations } from 'next-intl';
-import Image from 'next/image';
-import type { ReactNode } from 'react';
 
-import Paragraph from '~/components/ui/typography/Paragraph';
-import { cn } from '~/lib/utils';
-import { Link } from '~/navigation';
+import WorkflowNav from '~/components/WorkflowNav';
 
 import DocSearchComponent from './DocSearchComponent';
 import FancyHeading from './FancyHeading';
 import FancyParagraph from './FancyParagraph';
-
-const bannerClasses = {
-  'slate-blue': 'bg-slate-blue',
-  'sea-green': 'bg-sea-green',
-  'neon-coral': 'bg-neon-coral',
-  'cerulean-blue': 'bg-cerulean-blue',
-} as const;
-
-type CardColor = keyof typeof bannerClasses;
-
-function StepArrow() {
-  return (
-    <ChevronRight
-      className="text-foreground hidden h-8 w-8 shrink-0 self-center md:block"
-      strokeWidth={3}
-      aria-hidden
-    />
-  );
-}
-
-function ProjectCard({
-  href,
-  title,
-  description,
-  icon,
-  color,
-}: {
-  href: string;
-  title: string;
-  description: string;
-  icon: ReactNode;
-  color: CardColor;
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        'group focusable flex min-h-56 flex-1 flex-col gap-6 rounded-3xl p-6 text-white shadow-lg transition-transform hover:-translate-y-1 hover:shadow-xl',
-        bannerClasses[color],
-      )}
-    >
-      <span className="flex h-12 w-fit min-w-12 shrink-0 items-center justify-center gap-1 rounded-2xl bg-white/15 px-2">
-        {icon}
-      </span>
-      <div className="mt-auto flex flex-col gap-2">
-        <FancyHeading variant="h2" margin="none" className="text-xl text-white">
-          {title}
-        </FancyHeading>
-        <Paragraph className="text-base text-white/85">{description}</Paragraph>
-      </div>
-    </Link>
-  );
-}
 
 export function Hero() {
   const t = useTranslations();
@@ -138,72 +80,7 @@ export function Hero() {
           </motion.div>
         </div>
       </div>
-      <div className="flex w-full flex-col gap-4 md:flex-row md:items-stretch md:gap-3">
-        <ProjectCard
-          href="/get-started"
-          color="slate-blue"
-          title={t('ProjectSwitcher.get-started.label')}
-          description={t('ProjectSwitcher.get-started.description')}
-          icon={
-            <Image
-              src="/images/mark.svg"
-              alt=""
-              className="h-7 w-7"
-              width={28}
-              height={28}
-            />
-          }
-        />
-        <StepArrow />
-        <ProjectCard
-          href="/design-protocols"
-          color="sea-green"
-          title={t('ProjectSwitcher.design-protocols.label')}
-          description={t('ProjectSwitcher.design-protocols.description')}
-          icon={
-            <Image
-              src="/images/architect-icon.png"
-              alt=""
-              className="h-7 w-7"
-              width={28}
-              height={28}
-            />
-          }
-        />
-        <StepArrow />
-        <ProjectCard
-          href="/collect-data"
-          color="neon-coral"
-          title={t('ProjectSwitcher.collect-data.label')}
-          description={t('ProjectSwitcher.collect-data.description')}
-          icon={
-            <div className="flex items-center gap-1">
-              <Image
-                src="/images/interviewer.png"
-                alt=""
-                className="h-7 w-7"
-                width={28}
-                height={28}
-              />
-              <Image
-                src="/images/fresco.png"
-                alt=""
-                className="h-7 w-7"
-                width={28}
-                height={28}
-              />
-            </div>
-          }
-        />
-        <StepArrow />
-        <ProjectCard
-          href="/analyze-data"
-          color="cerulean-blue"
-          title={t('ProjectSwitcher.analyze-data.label')}
-          description={t('ProjectSwitcher.analyze-data.description')}
-          icon={<ChartNetwork className="h-6 w-6" />}
-        />
-      </div>
+      <WorkflowNav variant="full" />
     </motion.div>
   );
 }

@@ -5,8 +5,8 @@ import { useLocale } from 'next-intl';
 import { usePathname } from 'next/navigation';
 
 import { BackgroundBlobs } from '@codaco/art';
-import SectionNav from '~/components/SectionNav';
 import { Sidebar } from '~/components/Sidebar';
+import WorkflowNav from '~/components/WorkflowNav';
 import { cn } from '~/lib/utils';
 
 import SharedNav from './SharedNav/SharedNav';
@@ -21,7 +21,9 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
   return (
     <>
       <SharedNav />
-      {!isHomePage && <SectionNav className="w-full px-4 pb-2" />}
+      {!isHomePage && (
+        <WorkflowNav variant="collapsed" className="w-full px-4 pt-4 pb-4" />
+      )}
       <motion.div
         className="fixed inset-0 z-[-1]"
         initial={{ opacity: 0 }}
