@@ -44,12 +44,21 @@ const variants = {
   exit: { opacity: 0 },
 };
 
+/**
+ * Orientation of the interview Navigation. `horizontal` renders the nav as a
+ * bar along the bottom (with the stage above it); `vertical` renders it as a
+ * rail down the side (with the stage beside it).
+ */
+export type NavigationOrientation = 'horizontal' | 'vertical';
+
 function Interview({
   onExit,
   hideNavigation = false,
+  navigationOrientation: orientationProp,
 }: {
   onExit?: () => void;
   hideNavigation?: boolean;
+  navigationOrientation?: NavigationOrientation;
 }) {
   const {
     stage,
@@ -75,10 +84,19 @@ function Interview({
   const forwardButtonRef = useRef<HTMLButtonElement>(null);
   const backButtonRef = useRef<HTMLButtonElement>(null);
 
-  const isPortraitAspectRatio = useMediaQuery('(max-aspect-ratio: 3/4)');
-  const navigationOrientation = isPortraitAspectRatio
-    ? 'horizontal'
-    : 'vertical';
+  // When the host doesn't force an orientation, derive it from the viewport
+  // aspect ratio: tall viewports get a horizontal (bottom) nav bar, wide ones
+  // get a vertical (side) rail.
+  //
+  // The threshold is intentionally generous (5/4 rather than the square 1/1, or
+  // the previous 3/4) so a software keyboard opening on a portrait tablet — which
+  // shrinks the viewport height and can push the aspect ratio just past square —
+  // doesn't flip the nav from bottom to side mid-interview. Hosts with a known
+  // device context can pass `navigationOrientation` to bypass this detection.
+  const prefersHorizontalNav = useMediaQuery('(max-aspect-ratio: 5/4)');
+  const navigationOrientation: NavigationOrientation =
+    orientationProp ?? (prefersHorizontalNav ? 'horizontal' : 'vertical');
+  const isHorizontalNav = navigationOrientation === 'horizontal';
 
   return (
     <ThemedRegion
@@ -92,7 +110,7 @@ function Interview({
             // other themed regions). Keep breakpoints synced with
             // --breakpoint-laptop / --breakpoint-desktop-lg in theme.css.
             'laptop:[--theme-root-size:1.125rem] desktop-lg:[--theme-root-size:1.25rem] [--theme-root-size:1rem]',
-            isPortraitAspectRatio ? 'flex-col' : 'flex-row-reverse',
+            isHorizontalNav ? 'flex-col' : 'flex-row-reverse',
           )}
         />
       }
@@ -193,6 +211,14 @@ type ShellProps = {
    * production interviews.
    */
   hideNavigation?: boolean;
+  /**
+   * Force the Navigation orientation (`horizontal` = bottom bar, `vertical` =
+   * side rail) instead of deriving it from the viewport aspect ratio. Useful
+   * on devices where the viewport resizes dynamically — e.g. a portrait tablet
+   * whose software keyboard would otherwise flip the nav mid-interview. When
+   * omitted, the orientation responds to the aspect ratio automatically.
+   */
+  navigationOrientation?: NavigationOrientation;
 };
 
 const Shell = ({
@@ -208,6 +234,7 @@ const Shell = ({
   disableAnalytics = false,
   onExit,
   hideNavigation,
+  navigationOrientation,
 }: ShellProps) => {
   // Anchor onSync in a ref so the store factory receives a stable callback
   // (the sync middleware closes over it once at store creation). Hosts
@@ -280,7 +307,11 @@ const Shell = ({
             currentStep={currentStep}
             onStepChange={onStepChange}
           >
-            <Interview onExit={onExit} hideNavigation={hideNavigation} />
+            <Interview
+              onExit={onExit}
+              hideNavigation={hideNavigation}
+              navigationOrientation={navigationOrientation}
+            />
           </CurrentStepProvider>
         </ContractProvider>
       </Provider>
