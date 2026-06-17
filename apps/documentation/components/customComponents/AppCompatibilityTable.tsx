@@ -78,7 +78,7 @@ const SUCCESS_TEXT =
 const WARNING_TEXT =
   'text-[color-mix(in_oklab,hsl(var(--warning))_64%,hsl(var(--foreground)))]';
 
-const StatusCell = ({ status, schema }: { status: Status; schema: number }) => {
+const StatusCell = ({ status }: { status: Status }) => {
   if (status === 'native') {
     return <span className={cn(SUCCESS_TEXT, 'font-semibold')}>Native</span>;
   }
@@ -92,7 +92,7 @@ const StatusCell = ({ status, schema }: { status: Status; schema: number }) => {
         )}
       >
         <ArrowUp className="h-4 w-4 shrink-0" aria-hidden />
-        Migrates to {schema}
+        Migrates to 8
       </span>
     );
   }
@@ -162,10 +162,10 @@ const AppCompatibilityTable = () => (
                     {row.platform}
                   </td>
                   <td className="px-4 py-3">
-                    <StatusCell status={row.schema7} schema={7} />
+                    <StatusCell status={row.schema7} />
                   </td>
                   <td className="px-4 py-3">
-                    <StatusCell status={row.schema8} schema={8} />
+                    <StatusCell status={row.schema8} />
                   </td>
                 </tr>
               ))}
