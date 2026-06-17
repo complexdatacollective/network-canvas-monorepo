@@ -84,8 +84,24 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-// `@capacitor/share` rejects with a "share canceled" message when the user
-// dismisses the sheet (iOS); treat that as a non-error cancellation.
+// `@capacitor/share` rejects when the user dismisses the sheet; treat a
+// "cancel" message as a non-error cancellation. The rejection may arrive as an
+// Error, a bare string, or a plugin object carrying `message`, so normalise
+// before matching rather than assuming an Error instance.
 function isShareCanceled(cause: unknown): boolean {
-  return cause instanceof Error && /cancel/i.test(cause.message);
+  return /cancel/i.test(errorMessage(cause));
+}
+
+function errorMessage(cause: unknown): string {
+  if (cause instanceof Error) return cause.message;
+  if (typeof cause === 'string') return cause;
+  if (
+    typeof cause === 'object' &&
+    cause !== null &&
+    'message' in cause &&
+    typeof cause.message === 'string'
+  ) {
+    return cause.message;
+  }
+  return '';
 }

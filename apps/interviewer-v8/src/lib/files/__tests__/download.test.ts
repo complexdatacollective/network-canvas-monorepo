@@ -76,6 +76,15 @@ describe('downloadBlob (Capacitor)', () => {
     expect(Filesystem.deleteFile).toHaveBeenCalled();
   });
 
+  it('treats a non-Error cancellation carrying a message as canceled', async () => {
+    vi.mocked(Share.share).mockRejectedValue({ message: 'Share canceled' });
+
+    const result = await downloadBlob(makeBlob(), 'export.zip');
+
+    expect(result).toEqual({ saved: false });
+    expect(Filesystem.deleteFile).toHaveBeenCalled();
+  });
+
   it('rethrows a non-cancellation share error and still cleans up', async () => {
     vi.mocked(Share.share).mockRejectedValue(new Error('Some native failure'));
 
