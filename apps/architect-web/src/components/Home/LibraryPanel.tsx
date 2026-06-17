@@ -455,7 +455,7 @@ const LibraryPanel = ({
             setTab(value);
           }
         }}
-        className="bg-surface-1 text-surface-1-foreground flex max-h-[85dvh] w-full max-w-xl flex-col overflow-hidden rounded shadow-md"
+        className="bg-surface-1 text-surface-1-foreground flex max-h-[85dvh] w-full max-w-2xl flex-col overflow-hidden rounded shadow-md"
       >
         <div className="flex shrink-0 items-center px-(--space-lg) py-(--space-md)">
           <TabsList>
