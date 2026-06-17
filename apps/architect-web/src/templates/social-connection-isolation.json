@@ -330,10 +330,6 @@
               { "label": "Close", "value": 3 },
               { "label": "Very close", "value": 4 }
             ]
-          },
-          "layout": {
-            "name": "layout",
-            "type": "layout"
           }
         }
       }
@@ -456,29 +452,22 @@
       }
     },
     {
-      "id": "sociogram-ties",
-      "type": "Sociogram",
-      "label": "Connections Between People",
-      "interviewScript": "Ask the respondent to draw a tie between any two people who know one another. A network where alters cluster together suggests a connected core; isolated nodes suggest fragmentation.",
+      "id": "dyad-census-knows",
+      "type": "OneToManyDyadCensus",
+      "label": "Who Knows Whom",
+      "interviewScript": "For each person in turn, the respondent taps everyone else that person knows. This systematically elicits the complete set of alter-alter ties — more reliably than a free-draw sociogram, which tends to under-capture them — giving the density and fragmentation measures that isolation analysis depends on. It is also lower-burden than an all-pairs dyad census.",
       "subject": {
         "entity": "node",
         "type": "person"
       },
-      "background": {
-        "concentricCircles": 4,
-        "skewedTowardCenter": true
+      "behaviours": {
+        "removeAfterConsideration": true
       },
       "prompts": [
         {
-          "id": "alter-alter-ties",
-          "text": "Draw a line between any two people who **know one another**. This helps us see which of your contacts are connected.",
-          "layout": {
-            "layoutVariable": "layout"
-          },
-          "edges": {
-            "create": "knows",
-            "display": ["knows"]
-          }
+          "id": "p-knows",
+          "text": "Here is one of the people you named. Tap **everyone else who knows this person**, as far as you are aware.",
+          "createEdge": "knows"
         }
       ]
     },

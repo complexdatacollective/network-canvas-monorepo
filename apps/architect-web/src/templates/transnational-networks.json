@@ -420,10 +420,6 @@
             "prompt": "What is this person to you?"
           },
           {
-            "variable": "origin_country",
-            "prompt": "Where is this person from, in relation to you?"
-          },
-          {
             "variable": "shared_language",
             "prompt": "Which language do you mainly speak together?"
           },
@@ -432,15 +428,27 @@
             "prompt": "Would you say this person is from the **same ethnic or cultural background** as you?"
           },
           {
-            "variable": "closeness",
-            "prompt": "How **close** do you feel to this person?"
-          },
-          {
             "variable": "support_type",
             "prompt": "What kinds of **support** does this person give you? Select all that apply."
           }
         ]
       }
+    },
+    {
+      "id": "ordinal-bin-closeness",
+      "type": "OrdinalBin",
+      "label": "How close you feel to each person",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "bin-closeness",
+          "text": "Sort each person by **how close you feel** to them.",
+          "variable": "closeness"
+        }
+      ]
     },
     {
       "id": "geospatial-map",
@@ -471,15 +479,20 @@
     {
       "id": "categorical-bin-support",
       "type": "CategoricalBin",
-      "label": "How you met each person",
+      "label": "Where each person is from, and how you met",
       "subject": {
         "entity": "node",
         "type": "person"
       },
       "prompts": [
         {
+          "id": "bin-origin-country",
+          "text": "Sort each person by **where they are from**, in relation to you.",
+          "variable": "origin_country"
+        },
+        {
           "id": "bin-how-met",
-          "text": "Sort each person by **how or where you first met them**.",
+          "text": "Now sort the same people by **how or where you first met them**.",
           "variable": "how_met"
         }
       ]
@@ -492,14 +505,15 @@
         "entity": "node",
         "type": "person"
       },
-      "background": {
-        "concentricCircles": 4,
-        "skewedTowardCenter": true
+      "behaviours": {
+        "automaticLayout": {
+          "enabled": true
+        }
       },
       "prompts": [
         {
           "id": "socio-knows",
-          "text": "Here are the people you mentioned. Please draw a line between any **two people who know each other** — that is, who would recognise one another and have at least a little contact, independently of you.",
+          "text": "The people you mentioned are arranged for you automatically below. Please draw a line between any **two people who know each other** — that is, who would recognise one another and have at least a little contact, independently of you.",
           "layout": {
             "layoutVariable": "layout"
           },

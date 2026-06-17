@@ -479,10 +479,6 @@
           {
             "variable": "is_source_of_stress",
             "prompt": "Is this person sometimes a **source of stress or conflict** for you?"
-          },
-          {
-            "variable": "contact_frequency",
-            "prompt": "How often are you usually in contact with this person?"
           }
         ]
       }
@@ -490,7 +486,7 @@
     {
       "id": "ordinal-bin-closeness",
       "type": "OrdinalBin",
-      "label": "How close you feel",
+      "label": "How close, and how often you're in touch",
       "subject": {
         "entity": "node",
         "type": "person"
@@ -500,6 +496,11 @@
           "id": "bin-closeness",
           "text": "Drag each person into the band that best describes **how close you feel to them**.",
           "variable": "closeness"
+        },
+        {
+          "id": "bin-contact-frequency",
+          "text": "Now drag the same people into the band that best describes **how often you are usually in contact** with them.",
+          "variable": "contact_frequency"
         }
       ]
     },
@@ -523,7 +524,7 @@
       "id": "sociogram-position",
       "type": "Sociogram",
       "label": "Arrange your network",
-      "interviewScript": "Ask the participant to position the people they named — for example placing those who feel emotionally closer nearer the centre — and to draw a line between any two people who know one another. This positioning is what the final review screen uses to lay out the network.",
+      "interviewScript": "This is a reflective, manual-positioning stage (no automatic layout): invite the participant to arrange the people meaningfully — for example supportive people on one side, difficult or draining people on the other, and those they feel closest to nearer the centre of the rings — then draw lines between people who know one another. The arrangement they build becomes the network map they talk through on the final review screen, so the positions are meaningful here rather than incidental.",
       "subject": {
         "entity": "node",
         "type": "person"
@@ -535,7 +536,7 @@
       "prompts": [
         {
           "id": "sociogram-position-knows",
-          "text": "Here are the people you named. Drag each person to arrange them on the screen — for example, placing the people you feel **closest to** nearer the centre. Then draw a line between any **two people who know one another**.",
+          "text": "Here are the people you named. Take a moment to **arrange them in a way that feels right to you** — for example, placing the people who **support you** on one side and those who are **difficult or draining** on the other, and the people you feel **closest to** nearer the centre. Then draw a line between any **two people who know one another**.",
           "layout": {
             "layoutVariable": "layout"
           },

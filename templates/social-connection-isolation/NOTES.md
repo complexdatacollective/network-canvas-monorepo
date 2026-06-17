@@ -16,8 +16,8 @@ network and _validated subjective_ measures, and let researchers analyse the gap
   connected to, how often you have contact, whether ties overlap, and whether you have a
   connected core or a fragmented set of disconnected contacts. In this protocol it is captured
   _structurally_ by the **NameGenerator** (network size), the **AlterForm** (contact frequency,
-  contact mode, co-residence, support functions), and the **Sociogram** (alter–alter `knows`
-  ties → connected core vs. isolated nodes). The **Lubben LSNS-6** ego scale adds a validated
+  contact mode, co-residence, support functions), and the **OneToManyDyadCensus** (alter–alter
+  `knows` ties → connected core vs. isolated nodes). The **Lubben LSNS-6** ego scale adds a validated
   count-based measure of network engagement that maps onto isolation.
 - **Subjective loneliness** is the _felt_ discrepancy between desired and actual connection. It
   is captured by the two validated self-report loneliness scales embedded in the final EgoForm:
@@ -43,8 +43,11 @@ LSNS-6), so subjective closeness, network structure, and validated loneliness si
 4. **AlterForm — per-alter attributes:** relationship, age band, contact frequency, contact mode
    (multi-select), co-residence, and emotional/practical support — the composition side of
    isolation.
-5. **Sociogram — alter–alter ties:** create/display the `knows` edge over a 4-ring
-   concentric-circles background to reveal a connected core vs. isolated members.
+5. **OneToManyDyadCensus — alter–alter ties:** for each named person in turn, the respondent taps
+   everyone else who knows them, creating `knows` edges. This systematic one-to-many census
+   captures the complete tie set (for density, components, and isolates) far more reliably than a
+   free-draw sociogram — which tends to under-capture ties — and is lower-burden than an all-pairs
+   dyad census. Complete tie data is exactly what the isolation/fragmentation analysis needs.
 6. **EgoForm (B) — loneliness & network scales:** UCLA-3, De Jong Gierveld-6, LSNS-6.
 
 ## Scales used, exact wording, and sources
@@ -163,8 +166,7 @@ EgoForm illustration), the following are suggestions; verify the licence at down
 - Pexels (free licence) — "loneliness", "social connection": https://www.pexels.com/search/social%20connection/
 - Wikimedia Commons (check per-file CC licence): https://commons.wikimedia.org/wiki/Category:Loneliness
 
-The Sociogram uses a built-in concentric-circles background (no image asset required). No Mapbox
-or GeoJSON assets are needed for this template.
+No Mapbox or GeoJSON assets are needed for this template.
 
 ## Implementation notes
 
@@ -173,5 +175,5 @@ templates/social-connection-isolation/protocol.json` → `EXIT=0`.
 - `categorical` variables (`living_situation`, `relationship`, `contact_mode`) use
   `CheckboxGroup`/`ToggleButtonGroup` components (the schema reserves `RadioGroup`/`LikertScale`
   for `ordinal`). `contact_mode` is the only intentionally multi-select categorical.
-- `closeness` is the OrdinalBin variable; `layout` (type `layout`) is the Sociogram
-  `layoutVariable`; `knows` is the alter–alter edge created/displayed in the Sociogram.
+- `closeness` is the OrdinalBin variable; `knows` is the alter–alter edge created by the
+  OneToManyDyadCensus (one focal alter shown against all others, multi-select).

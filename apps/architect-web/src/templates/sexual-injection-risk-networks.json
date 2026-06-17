@@ -393,10 +393,15 @@
         "entity": "node",
         "type": "partner"
       },
+      "behaviours": {
+        "automaticLayout": {
+          "enabled": true
+        }
+      },
       "prompts": [
         {
           "id": "p-overlap",
-          "text": "Here are the people you mentioned. Please draw a line between any two people who **know each other**, as far as you are aware. This helps us understand how the partners in your network are connected.",
+          "text": "The people you mentioned are arranged for you automatically below. Please draw a line between any two who **know each other**, as far as you are aware. This helps us understand how the partners in your network are connected.",
           "layout": {
             "layoutVariable": "layout"
           },

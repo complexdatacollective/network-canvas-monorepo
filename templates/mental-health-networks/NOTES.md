@@ -39,17 +39,23 @@ independently harm wellbeing and so must be measured alongside positive support.
    ambivalent ties are produced. `minNodes: 0` on both generators so a participant who has no such
    tie is not forced to invent one.
 5. **AlterForm — per-alter attributes.** Relationship, the three support booleans (re-confirmed
-   per alter), `knows_about_mh` (disclosure), `is_clinical` (formal/clinical source),
-   `is_source_of_stress`, and `contact_frequency`. Disclosure is framed gently ("have you disclosed
+   per alter), `knows_about_mh` (disclosure), `is_clinical` (formal/clinical source), and
+   `is_source_of_stress`. Disclosure is framed gently ("have you disclosed
    it to them?"), reflecting that disclosure of a concealable mental-health condition is a
    deliberate, selective decision.
-6. **OrdinalBin — closeness.** Drag alters into 5 closeness bands (`closeness`, LikertScale).
+6. **OrdinalBin — closeness and contact.** Two sorting passes: drag alters into closeness bands
+   (`closeness`), then into contact-frequency bands (`contact_frequency`). `contact_frequency` was
+   moved here from the alter form to keep that form shorter and lower-burden — bins are a lighter
+   interaction than per-alter form fields.
 7. **CategoricalBin — help source type.** Sorts alters into **informal vs formal/clinical**
    (`help_source_type`), surfacing the help-seeking pathway split.
-8. **Sociogram — arrange your network.** Position the named alters on a concentric-circle
-   background (writes `layout`) and draw `knows` ties between people who know one another. This
-   positioning is required: the Narrative review screen lays the network out from `layout`, so
-   without it the final canvas would be empty.
+8. **Sociogram — arrange your network.** A deliberately **manual-positioning** stage (automatic
+   layout is intentionally _not_ used here). On a concentric-circle background the participant
+   arranges the people in a way that is meaningful to them — e.g. supportive people on one side,
+   difficult/draining on the other, and those they feel closest to nearer the centre — and draws
+   `knows` ties. Because this arrangement is the participant's own reflective map (not incidental
+   positioning), the concentric circles function as a genuine framing device. It writes `layout`,
+   which the Narrative review screen then lays the network out from.
 9. **Narrative — support vs strain.** Two presets on the `layout` variable: one highlighting
    `support_emotional` vs `is_source_of_stress` (the dual-tone payoff — supportive vs difficult
    ties side by side), one highlighting `knows_about_mh` vs `is_clinical` (the disclosure map).
@@ -67,7 +73,7 @@ relationships, so the template brackets the sensitive content with care:
   name/nickname and kept confidential.
 - **Permission to skip** is repeated in the EgoForm intro, because the K6 and disclosure items are
   the most personal.
-- **Closing safety screen** (Stage 9): a deliberate "cool-down" that signposts help. Because Network
+- **Closing safety screen** (Stage 10): a deliberate "cool-down" that signposts help. Because Network
   Canvas protocols are deployed internationally, **specific crisis-line numbers are intentionally
   left as a placeholder for the researcher to localise** (the body text says so explicitly, with
   US 988 and UK Samaritans 116 123 given only as examples). This avoids shipping a number that is
