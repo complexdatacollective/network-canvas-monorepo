@@ -34,7 +34,7 @@
     "jszip": "catalog:",
     "lucide-react": "catalog:",
     "luxon": "^3.7.2",
-    "mapbox-gl": "^3.24.0",
+    "mapbox-gl": "^3.24.1",
     "motion": "catalog:",
     "ohash": "^2.0.11",
     "posthog-js": "catalog:",
