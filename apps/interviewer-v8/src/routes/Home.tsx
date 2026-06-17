@@ -146,7 +146,7 @@ export function HomeRoute() {
   return (
     <motion.div
       variants={containerVariants}
-      className="flex h-dvh w-full flex-col overflow-hidden"
+      className="flex h-full w-full flex-col overflow-hidden"
     >
       {/* Header/status own their inset; the protocol deck spans full width so
           cards can swing all the way to the screen edges. The backdrop
@@ -165,8 +165,15 @@ export function HomeRoute() {
             padding + items-center so the pill aligns with BrandHeader
             and TopActionBar vertically. pointer-events-none lets clicks
             pass through the empty area to the items below; the pill
-            itself opts back in via pointer-events-auto. */}
-        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-11 pt-9">
+            itself opts back in via pointer-events-auto.
+
+            On narrow screens (iPad portrait and below) there isn't room
+            for a centered pill between BrandHeader and TopActionBar, so the
+            expanded pill would cover the protocols/data switcher. Drop it
+            one header-height down (`translate-y-full`) so it sits in the
+            band just below the header — clear of the switcher — and restore
+            the in-header centering once there's room (`tablet-landscape`). */}
+        <div className="tablet-landscape:translate-y-0 pointer-events-none absolute inset-0 z-20 flex translate-y-full items-center justify-center px-11 pt-9">
           <AnimatePresence>
             {view === 'protocols' ? (
               <ResumePill key="resume-pill" sessions={sessions} />
