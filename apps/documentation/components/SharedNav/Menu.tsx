@@ -77,6 +77,10 @@ const links: MenuItem[] = [
     ],
   },
   {
+    translationKey: 'protocolGallery',
+    href: 'https://protocolgallery.networkcanvas.com',
+  },
+  {
     translationKey: 'download',
     style: 'button',
     href: 'https://networkcanvas.com/download',
