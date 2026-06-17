@@ -343,6 +343,26 @@
   },
   "stages": [
     {
+      "id": "information-intro",
+      "type": "Information",
+      "label": "Welcome",
+      "title": "About this study",
+      "items": [
+        {
+          "id": "intro-welcome",
+          "type": "text",
+          "size": "MEDIUM",
+          "content": "## Welcome\n\nThank you for taking part. In this interview we will talk about the **people you are close to and in contact with**, and about how connected you feel. There are no right or wrong answers — we are simply interested in your own experience."
+        },
+        {
+          "id": "intro-references",
+          "type": "text",
+          "size": "SMALL",
+          "content": "## References & sources\n\n_For researchers adapting this template — the validated scales and reports it draws on. You can remove or edit this screen before fielding._\n\n- [Hughes ME, Waite LJ, Hawkley LC, Cacioppo JT (2004). A Short Scale for Measuring Loneliness in Large Surveys (UCLA-3). *Research on Aging*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC2394670/)\n- [De Jong Gierveld J, Van Tilburg T (2006). A 6-Item Scale for Overall, Emotional, and Social Loneliness. *Research on Aging*.](https://journals.sagepub.com/doi/10.1177/0164027506289723)\n- [Lubben J et al. (2006). Lubben Social Network Scale (LSNS-6).](https://www.bc.edu/content/dam/bc1/schools/sw/lubben/LSNS6.pdf)\n- [US Surgeon General (2023). Our Epidemic of Loneliness and Isolation.](https://www.hhs.gov/surgeongeneral/priorities/connection/index.html)"
+        }
+      ]
+    },
+    {
       "id": "ego-form-demographics",
       "type": "EgoForm",
       "label": "About You",

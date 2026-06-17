@@ -262,6 +262,26 @@
   },
   "stages": [
     {
+      "id": "information-intro",
+      "type": "Information",
+      "label": "Welcome",
+      "title": "About this study",
+      "items": [
+        {
+          "id": "intro-welcome",
+          "type": "text",
+          "size": "MEDIUM",
+          "content": "## Welcome\n\nThank you for taking part. In this interview we will talk about the **people who support you** during this period, and the kinds of help they provide. There are no right or wrong answers — we are interested in your own experience."
+        },
+        {
+          "id": "intro-references",
+          "type": "text",
+          "size": "SMALL",
+          "content": "## References & sources\n\n_For researchers adapting this template — the instruments it draws on. **Note:** the EPDS is a screening tool, not a diagnostic instrument, and item 10 requires a clinical safety/escalation pathway (see the template's NOTES). You can remove or edit this screen before fielding._\n\n- [Cox JL, Holden JM, Sagovsky R (1987). Detection of postnatal depression: the 10-item Edinburgh Postnatal Depression Scale (EPDS). *Br J Psychiatry* 150:782–786.](https://pubmed.ncbi.nlm.nih.gov/3651732/)\n- [Sherbourne CD, Stewart AL (1991). The MOS Social Support Survey. *Soc Sci Med* 32(6):705–714.](https://www.rand.org/pubs/reprints/RP218.html)"
+        }
+      ]
+    },
+    {
       "id": "ego-care-context",
       "type": "EgoForm",
       "label": "About you and your care episode",

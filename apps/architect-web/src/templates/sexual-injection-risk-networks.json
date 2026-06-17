@@ -217,6 +217,12 @@
           "type": "text",
           "size": "MEDIUM",
           "content": "## Reference period\n\nUnless we say otherwise, please think about the **past 6 months** (the last half-year up to today). When we ask you to list partners, include everyone you had sexual contact with, or injected drugs with, during that time - whether the relationship was serious, casual, one-time, or anything else.\n\nThere are no right or wrong answers, and you can skip any question you would prefer not to answer."
+        },
+        {
+          "id": "intro-references",
+          "type": "text",
+          "size": "SMALL",
+          "content": "## References & sources\n\n_For researchers adapting this template — the surveillance instruments and studies it draws on. You can remove or edit this screen before fielding._\n\n- [CDC National HIV Behavioral Surveillance (NHBS) — overview.](https://pmc.ncbi.nlm.nih.gov/articles/PMC1804113/)\n- [Weiss KM et al. ARTnet: an egocentric sexual-network study of US MSM.](https://www.medrxiv.org/content/10.1101/19010579v1.full)\n- [Methods for HIV partner / transmission network studies.](https://pmc.ncbi.nlm.nih.gov/articles/PMC5985831/)"
         }
       ]
     },
