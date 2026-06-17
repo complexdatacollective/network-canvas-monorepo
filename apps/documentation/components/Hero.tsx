@@ -140,7 +140,7 @@ export function Hero() {
       </div>
       <div className="flex w-full flex-col gap-4 md:flex-row md:items-stretch md:gap-3">
         <ProjectCard
-          href="en/get-started"
+          href="/get-started"
           color="slate-blue"
           title={t('ProjectSwitcher.get-started.label')}
           description={t('ProjectSwitcher.get-started.description')}
@@ -156,7 +156,7 @@ export function Hero() {
         />
         <StepArrow />
         <ProjectCard
-          href="en/design-protocols"
+          href="/design-protocols"
           color="sea-green"
           title={t('ProjectSwitcher.design-protocols.label')}
           description={t('ProjectSwitcher.design-protocols.description')}
@@ -172,7 +172,7 @@ export function Hero() {
         />
         <StepArrow />
         <ProjectCard
-          href="en/collect-data"
+          href="/collect-data"
           color="neon-coral"
           title={t('ProjectSwitcher.collect-data.label')}
           description={t('ProjectSwitcher.collect-data.description')}
@@ -197,7 +197,7 @@ export function Hero() {
         />
         <StepArrow />
         <ProjectCard
-          href="en/analyze-data"
+          href="/analyze-data"
           color="cerulean-blue"
           title={t('ProjectSwitcher.analyze-data.label')}
           description={t('ProjectSwitcher.analyze-data.description')}
