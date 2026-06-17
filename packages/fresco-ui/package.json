@@ -545,7 +545,7 @@
   "dependencies": {
     "@radix-ui/react-slot": "catalog:",
     "@tiptap/core": "^3.24.0",
-    "@tiptap/extension-bullet-list": "^3.24.0",
+    "@tiptap/extension-bullet-list": "^3.27.0",
     "@tiptap/extension-heading": "^3.24.0",
     "@tiptap/extension-ordered-list": "^3.24.0",
     "@tiptap/extension-paragraph": "^3.24.0",
