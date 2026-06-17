@@ -7,7 +7,7 @@ import {
 
 import type { SessionWithResequencedIDs } from '../../input';
 import type { ExportOptions } from '../../options';
-import { csvEOL, toAsyncBytes } from './csvShared';
+import { csvEOL, sanitizeCellValue, toAsyncBytes } from './csvShared';
 
 class AdjacencyMatrix {
   readonly uniqueNodeIds: string[];
@@ -51,7 +51,12 @@ class AdjacencyMatrix {
 
   *rows(): Generator<string, void, void> {
     const dataColumnCount = this.dimension;
-    yield `,${this.uniqueNodeIds.join(',')}${csvEOL}`;
+    // Node IDs are normally generated UUIDs, but sanitize the header/row labels
+    // anyway for defense-in-depth and consistency with the other CSV formatters.
+    const labels = this.uniqueNodeIds.map((id) =>
+      String(sanitizeCellValue(id) ?? ''),
+    );
+    yield `,${labels.join(',')}${csvEOL}`;
     let matrixIndex = 0;
     for (let row = 0; row < dataColumnCount; row += 1) {
       const cols: number[] = [];
@@ -62,7 +67,7 @@ class AdjacencyMatrix {
         cols.push(((this.arrayView[byteIndex] ?? 0) & bitmask) !== 0 ? 1 : 0);
         matrixIndex += 1;
       }
-      yield `${this.uniqueNodeIds[row]},${cols.join(',')}${csvEOL}`;
+      yield `${labels[row]},${cols.join(',')}${csvEOL}`;
     }
   }
 }
