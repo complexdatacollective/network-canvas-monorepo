@@ -4,7 +4,6 @@ import {
   FolderOpen,
   Info,
   Loader2,
-  Plus,
   Trash2,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
@@ -30,23 +29,13 @@ import { openDialog } from '~/ducks/modules/dialogs';
 import { deleteLibraryProtocol } from '~/ducks/modules/userActions/userActions';
 import { useProtocolLibrary } from '~/hooks/useProtocolLibrary';
 import fileIcon from '~/images/file-icon.svg';
-import Button, { IconButton } from '~/lib/legacy-ui/components/Button';
+import { IconButton } from '~/lib/legacy-ui/components/Button';
 import type { BundledTemplate } from '~/templates';
 import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
 import { getProtocolAssetCount } from '~/utils/assetUtils';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
 
 type Tab = 'recent' | 'templates';
-
-const withStop =
-  (handler: () => void | Promise<void>) => (event: React.MouseEvent) => {
-    event.stopPropagation();
-    // Handlers may be async; swallow rejections so they don't become unhandled
-    // promise rejections (each handler surfaces its own user-facing errors).
-    void Promise.resolve(handler()).catch((error: unknown) => {
-      console.error('LibraryPanel action failed', error);
-    });
-  };
 
 const RELATIVE_CUTOFF_DAYS = 7;
 
@@ -112,7 +101,6 @@ type PanelRowProps = {
   description?: string;
   meta?: string;
   downloading?: boolean;
-  actionLabel?: string;
   onOpen: () => void;
   onDownload?: () => void;
   onDelete?: () => void;
@@ -124,7 +112,6 @@ const PanelRow = ({
   description,
   meta,
   downloading = false,
-  actionLabel,
   onOpen,
   onDownload,
   onDelete,
@@ -173,25 +160,12 @@ const PanelRow = ({
           </span>
         ) : (
           description && (
-            <span className="text-muted-foreground line-clamp-2 text-sm">
+            <span className="text-muted-foreground line-clamp-3 text-sm">
               {description}
             </span>
           )
         )}
       </span>
-
-      {actionLabel && (
-        <span className="flex shrink-0 translate-x-2 items-center opacity-0 transition-all duration-200 ease-out group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:translate-x-0 group-hover:opacity-100">
-          <Button
-            variant="text"
-            size="small"
-            icon={<Plus />}
-            content={actionLabel}
-            className="text-action"
-            onClick={withStop(onOpen)}
-          />
-        </span>
-      )}
 
       {hasMenu && (
         <span className="flex shrink-0 items-center">
@@ -265,7 +239,7 @@ type LibraryPanelProps = {
 };
 
 const PANEL_CLASSES =
-  'h-[min(13rem,50dvh)] overflow-y-auto px-(--space-sm) pb-(--space-xl)';
+  'h-[min(28rem,65dvh)] overflow-y-auto px-(--space-sm) pb-(--space-xl)';
 
 const LibraryPanel = ({
   onOpenProtocol,
@@ -549,14 +523,12 @@ const LibraryPanel = ({
           <PanelRow
             name="Sample Protocol"
             description="First time? Explore a sample protocol"
-            actionLabel="Use this template"
             onOpen={onOpenSample}
           />
           {import.meta.env.DEV && (
             <PanelRow
               name="Development Protocol"
               description="Includes examples of every stage type"
-              actionLabel="Use this template"
               onOpen={onOpenDevProtocol}
             />
           )}
@@ -565,7 +537,6 @@ const LibraryPanel = ({
               key={template.id}
               name={template.name}
               description={template.description}
-              actionLabel="Use this template"
               onOpen={() => onOpenTemplate(template)}
               onShowInfo={() => handleShowTemplateInfo(template)}
             />
