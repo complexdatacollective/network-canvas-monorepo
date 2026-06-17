@@ -7,6 +7,17 @@ const containsDifficultCharacters = (value: string) =>
 
 const quoteValue = (value: string) => `"${value.replace(/"/g, '""')}"`;
 
+// Characters that trigger formula evaluation in spreadsheet applications when
+// they appear at the start of a cell. Prefixing the value with a single quote
+// forces the cell to be treated as literal text, neutralizing CSV/formula
+// injection (OWASP) from untrusted, participant-entered interview data.
+const FORMULA_TRIGGERS = ['=', '+', '-', '@', '\t', '\r'];
+
+const neutralizeFormula = (value: string) =>
+  value.length > 0 && FORMULA_TRIGGERS.includes(value[0]!)
+    ? `'${value}`
+    : value;
+
 export function sanitizeCellValue(
   value: unknown,
 ): string | number | boolean | null | undefined {
@@ -21,7 +32,10 @@ export function sanitizeCellValue(
     return quoteValue(serialized);
   }
   if (typeof value === 'string') {
-    return containsDifficultCharacters(value) ? quoteValue(value) : value;
+    const neutralized = neutralizeFormula(value);
+    return containsDifficultCharacters(neutralized)
+      ? quoteValue(neutralized)
+      : neutralized;
   }
   if (typeof value === 'number' || typeof value === 'boolean') {
     return value;
