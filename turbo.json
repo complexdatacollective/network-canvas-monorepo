@@ -169,6 +169,7 @@
       "outputs": ["out/**", "dist/**"]
     },
     "@codaco/interface-images#generate": {
+      "dependsOn": ["@codaco/interview#build-storybook"],
       "inputs": ["scripts/**", "package.json"],
       "env": ["STORYBOOK_MAPBOX_TOKEN", "INTERVIEW_RELEASE_VERSION"],
       "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"],

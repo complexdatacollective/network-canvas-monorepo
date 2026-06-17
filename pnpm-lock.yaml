@@ -1158,9 +1158,12 @@ importers:
         specifier: ^8.3.4
         version: 8.4.0(@capacitor/core@8.4.0)
       '@capacitor/keyboard':
-        specifier: ^8.0.5
-        version: 8.0.5(@capacitor/core@8.4.0)
+        specifier: ^8.0.3
+        version: 8.0.3(@capacitor/core@8.4.0)
       '@capacitor/preferences':
+        specifier: ^8.0.1
+        version: 8.0.1(@capacitor/core@8.4.0)
+      '@capacitor/share':
         specifier: ^8.0.1
         version: 8.0.1(@capacitor/core@8.4.0)
       '@codaco/art':
@@ -2861,8 +2864,8 @@ packages:
     peerDependencies:
       '@capacitor/core': ^8.4.0
 
-  '@capacitor/keyboard@8.0.5':
-    resolution: {integrity: sha512-oFXygC4eKYA5l2MdpTR06L2M/4x6e2SLD5yS1T9+UBDKTkzyvhWKEhbYLUaTIBPpLKqlfGudJw1X73S1H9eUzQ==}
+  '@capacitor/keyboard@8.0.3':
+    resolution: {integrity: sha512-27Bv5/2w1Ss2njguBgTS98O0Bb8DRJhAARyzXYib0JlT/n6BrJw/EZ0CokM4C8GFUjFDjJnEKF1Ie01buTMEXQ==}
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
@@ -15094,7 +15097,7 @@ snapshots:
     dependencies:
       '@capacitor/core': 8.4.0
 
-  '@capacitor/keyboard@8.0.5(@capacitor/core@8.4.0)':
+  '@capacitor/keyboard@8.0.3(@capacitor/core@8.4.0)':
     dependencies:
       '@capacitor/core': 8.4.0
 

@@ -5,7 +5,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 export function InterviewComplete({ onExit }: { onExit: () => void }) {
   return (
-    <div className="mx-auto flex h-dvh max-w-lg items-center justify-center p-8">
+    <div className="mx-auto flex h-full max-w-lg items-center justify-center p-8">
       <Surface
         level={1}
         spacing="lg"

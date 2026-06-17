@@ -108,5 +108,3 @@ autoInstallPeers: true
 linkWorkspacePackages: false
 patchedDependencies:
   better-sqlite3-multiple-ciphers@12.9.0: patches/better-sqlite3-multiple-ciphers@12.9.0.patch
-minimumReleaseAgeExclude:
-  - '@capacitor/keyboard@8.0.5'
