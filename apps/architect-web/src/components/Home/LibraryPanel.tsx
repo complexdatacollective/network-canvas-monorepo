@@ -11,6 +11,7 @@ import { type ReactNode, useCallback, useEffect, useState } from 'react';
 
 import Table from '~/components/Assets/Table';
 import Badge from '~/components/Badge';
+import ExternalLink from '~/components/ExternalLink';
 import Dialog from '~/components/NewComponents/Dialog';
 import {
   Popover,
@@ -34,6 +35,7 @@ import type { BundledTemplate } from '~/templates';
 import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
 import { getProtocolAssetCount } from '~/utils/assetUtils';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
+import { documentationLinks } from '~/utils/documentationLinks';
 
 type Tab = 'recent' | 'templates';
 
@@ -400,6 +402,13 @@ const LibraryPanel = ({
               browsing data, or using "Clear all protocols", will permanently
               remove it. Download the protocol as a <code>.netcanvas</code> file
               to save a copy or move it to another device.
+            </p>
+            <p>
+              Looking for inspiration? Browse example research protocols in the{' '}
+              <ExternalLink href={documentationLinks.protocolGallery}>
+                Protocol Gallery
+              </ExternalLink>
+              .
             </p>
           </>
         ),
