@@ -23,6 +23,8 @@ export function sanitizeCellValue(
 ): string | number | boolean | null | undefined {
   if (value === null || value === undefined) return value;
   if (typeof value === 'object') {
+    // A JSON.stringify result always begins with `{`, `[`, or `"`, so it can
+    // never start with a formula trigger; no formula neutralization needed here.
     let serialized: string;
     try {
       serialized = JSON.stringify(value) ?? '';
