@@ -78,6 +78,7 @@ const ProtocolInfoCard = () => {
       </div>
       <div className="px-(--space-lg) py-(--space-md)">
         <TextArea
+          className="[&>textarea]:min-h-40"
           placeholder="Enter a description for your protocol..."
           input={{
             value: description,
