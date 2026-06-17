@@ -1163,6 +1163,9 @@ importers:
       '@capacitor/preferences':
         specifier: ^8.0.1
         version: 8.0.1(@capacitor/core@8.4.0)
+      '@capacitor/share':
+        specifier: ^8.0.1
+        version: 8.0.1(@capacitor/core@8.4.0)
       '@codaco/art':
         specifier: workspace:*
         version: link:../../packages/art
