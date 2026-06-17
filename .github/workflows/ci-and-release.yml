@@ -331,9 +331,11 @@ jobs:
           restore-keys: ${{ runner.os }}-turbo-
       # architect-web's build graph pulls in `@codaco/interface-images#generate`,
       # which captures interface screenshots with Playwright/Chromium. The browser
-      # binary isn't fetched by `pnpm install --ignore-scripts`, so install it.
+      # binary isn't fetched by `pnpm install --ignore-scripts`; install it via the
+      # package that owns `playwright` (pnpm's isolated node_modules means the
+      # `playwright` bin isn't resolvable from the repo root).
       - name: Install Playwright Chromium
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm --filter @codaco/interface-images exec playwright install --with-deps chromium
       - id: deploy
         name: Build and deploy architect-web preview
         run: |
@@ -485,9 +487,11 @@ jobs:
           restore-keys: ${{ runner.os }}-turbo-
       # architect-web's build graph pulls in `@codaco/interface-images#generate`,
       # which captures interface screenshots with Playwright/Chromium. The browser
-      # binary isn't fetched by `pnpm install --ignore-scripts`, so install it.
+      # binary isn't fetched by `pnpm install --ignore-scripts`; install it via the
+      # package that owns `playwright` (pnpm's isolated node_modules means the
+      # `playwright` bin isn't resolvable from the repo root).
       - name: Install Playwright Chromium
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm --filter @codaco/interface-images exec playwright install --with-deps chromium
       - id: deploy
         name: Build and deploy architect-web production
         run: |
