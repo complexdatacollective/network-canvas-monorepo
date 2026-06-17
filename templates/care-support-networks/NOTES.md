@@ -27,14 +27,14 @@ visible to the participant and interviewer together.
 
 ## 2. Stage sequence
 
-| #   | id                      | type           | purpose                                                                                                                                                                |
-| --- | ----------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `ego-care-context`      | EgoForm        | Care-episode context (stage, weeks since birth, living situation) + the full EPDS-10 mood screen.                                                                      |
-| 2   | `ng-support-functions`  | NameGenerator  | Function-typed elicitation: four prompts (emotional / information & advice / practical & childcare / financial). The form collects `supporter_name` only.              |
-| 3   | `bin-formal-informal`   | CategoricalBin | Sort each supporter into **informal** vs **formal/professional**.                                                                                                      |
-| 4   | `alter-support-detail`  | AlterForm      | Per supporter: `relationship`, `proximity`, `contact_frequency`, and `support_functions` (multi-select — the explicit per-person record of which functions they fill). |
-| 5   | `bin-reliance`          | OrdinalBin     | Band each supporter by overall `reliance` (5-point LikertScale).                                                                                                       |
-| 6   | `narrative-support-map` | Narrative      | Review the support map; `layoutVariable=layout`, `groupVariable=formal_informal`, highlight by `support_functions`. Free-draw + repositioning on a 3-ring background.  |
+| #   | id                      | type           | purpose                                                                                                                                                                                                                                         |
+| --- | ----------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `ego-care-context`      | EgoForm        | Care-episode context (stage, weeks since birth, living situation) + the full EPDS-10 mood screen.                                                                                                                                               |
+| 2   | `ng-support-functions`  | NameGenerator  | Function-typed elicitation: four prompts (emotional / information & advice / practical & childcare / financial). The form collects `supporter_name` only.                                                                                       |
+| 3   | `bin-formal-informal`   | CategoricalBin | Sort each supporter into **informal** vs **formal/professional**.                                                                                                                                                                               |
+| 4   | `alter-support-detail`  | AlterForm      | Per supporter: `relationship`, `proximity`, `contact_frequency`, and `support_functions` (multi-select — the explicit per-person record of which functions they fill).                                                                          |
+| 5   | `bin-reliance`          | OrdinalBin     | Band each supporter by overall `reliance` (5-point LikertScale).                                                                                                                                                                                |
+| 6   | `narrative-support-map` | Narrative      | Review the support map; `layoutVariable=layout`, `groupVariable=formal_informal`. (No `highlight`: a multi-select like `support_functions` can't be highlighted, since highlight is boolean.) Free-draw + repositioning on a 3-ring background. |
 
 ### Note on `support_functions` capture
 

@@ -30,7 +30,7 @@ General (2023) advisories call for.
 
 ### Signature technique
 
-A **concentric `OrdinalBin` closeness map** (drag each named alter into "not close → very close"
+An **`OrdinalBin` closeness map** (drag each named alter into ordered "not close → very close"
 bands) plus **standardised scales embedded in an `EgoForm`** (UCLA-3, De Jong Gierveld-6,
 LSNS-6), so subjective closeness, network structure, and validated loneliness sit together.
 
@@ -39,7 +39,7 @@ LSNS-6), so subjective closeness, network structure, and validated loneliness si
 1. **EgoForm (A) — "About You":** living situation + self-rated health (context for isolation).
 2. **NameGenerator — confidants:** the GSS "important matters" generator; the form collects only
    `alter_name`. Network _size_ here is itself an isolation indicator.
-3. **OrdinalBin — closeness:** concentric bands for the `closeness` LikertScale variable.
+3. **OrdinalBin — closeness:** ordered bands for the `closeness` LikertScale variable.
 4. **AlterForm — per-alter attributes:** relationship, age band, contact frequency, contact mode
    (multi-select), co-residence, and emotional/practical support — the composition side of
    isolation.

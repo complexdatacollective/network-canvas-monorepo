@@ -37,10 +37,12 @@ and highlight shared-behaviour membership.
 
 1. `ego-behaviours` (EgoForm) — the ego's own behaviours; the homophily reference point.
 2. `ng-behaviours` (NameGenerator) — four behaviour-specific prompts; collects `alter_name`.
-3. `catbin-shared-domains` (CategoricalBin) — `shared_domains` (which behaviours are shared).
-4. `alter-behaviours` (AlterForm) — `relationship` + each alter's perceived behaviours.
-5. `ordbin-closeness` (OrdinalBin) — `closeness` (tie strength moderates influence).
-6. `narrative-clustering` (Narrative) — review clustering, grouped/highlighted by behaviour.
+3. `alter-behaviours` (AlterForm) — `shared_domains` (which behaviours ego shares with each
+   alter, recorded per alter as a multi-select because a person can share several), `relationship`,
+   and each alter's perceived behaviours. (Shared behaviours are captured here in a checkbox form
+   rather than a CategoricalBin, which can only assign one value per person.)
+4. `ordbin-closeness` (OrdinalBin) — `closeness` (tie strength moderates influence).
+5. `narrative-clustering` (Narrative) — review clustering, grouped by each alter's behaviours.
 
 ## Instruments & sources
 

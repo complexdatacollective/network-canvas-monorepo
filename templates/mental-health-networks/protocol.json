@@ -430,7 +430,7 @@
         },
         {
           "id": "ng-difficult-draining",
-          "text": "Who tends to **drain your energy** or leave you feeling worse after spending time with them? (If you have already mentioned them, add them again from the 'Already mentioned' panel so they stay a single person in the data.)",
+          "text": "Who tends to **drain your energy** or leave you feeling worse after spending time with them? (If you have already named them as someone who supports you, drag them in from the 'Already mentioned' panel rather than typing their name again — this keeps them as a single person who is both supportive and difficult.)",
           "additionalAttributes": [
             { "variable": "is_source_of_stress", "value": true }
           ]
@@ -516,6 +516,33 @@
           "id": "bin-help-source",
           "text": "Sort the people you named by the kind of help they represent: **informal** help (family, friends, peers) or **formal/clinical** help (professionals and services).",
           "variable": "help_source_type"
+        }
+      ]
+    },
+    {
+      "id": "sociogram-position",
+      "type": "Sociogram",
+      "label": "Arrange your network",
+      "interviewScript": "Ask the participant to position the people they named — for example placing those who feel emotionally closer nearer the centre — and to draw a line between any two people who know one another. This positioning is what the final review screen uses to lay out the network.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "background": {
+        "concentricCircles": 3,
+        "skewedTowardCenter": true
+      },
+      "prompts": [
+        {
+          "id": "sociogram-position-knows",
+          "text": "Here are the people you named. Drag each person to arrange them on the screen — for example, placing the people you feel **closest to** nearer the centre. Then draw a line between any **two people who know one another**.",
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "edges": {
+            "create": "knows",
+            "display": ["knows"]
+          }
         }
       ]
     },

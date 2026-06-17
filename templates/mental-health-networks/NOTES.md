@@ -46,12 +46,16 @@ independently harm wellbeing and so must be measured alongside positive support.
 6. **OrdinalBin — closeness.** Drag alters into 5 closeness bands (`closeness`, LikertScale).
 7. **CategoricalBin — help source type.** Sorts alters into **informal vs formal/clinical**
    (`help_source_type`), surfacing the help-seeking pathway split.
-8. **Narrative — support vs strain.** Two presets on the `layout` variable: one highlighting
+8. **Sociogram — arrange your network.** Position the named alters on a concentric-circle
+   background (writes `layout`) and draw `knows` ties between people who know one another. This
+   positioning is required: the Narrative review screen lays the network out from `layout`, so
+   without it the final canvas would be empty.
+9. **Narrative — support vs strain.** Two presets on the `layout` variable: one highlighting
    `support_emotional` vs `is_source_of_stress` (the dual-tone payoff — supportive vs difficult
    ties side by side), one highlighting `knows_about_mh` vs `is_clinical` (the disclosure map).
    `freeDraw` + `allowRepositioning` let interviewer and participant talk through the picture.
-9. **Information — Thank you and support services.** Closing safety screen: thanks the participant
-   and signposts support (talk to the interviewer, usual service/doctor, crisis line). See below.
+10. **Information — Thank you and support services.** Closing safety screen: thanks the participant
+    and signposts support (talk to the interviewer, usual service/doctor, crisis line). See below.
 
 ## Sensitivity / safety framing rationale
 
@@ -127,7 +131,10 @@ supportive-but-honest tone of the template.
 ## Notes for researchers forking this template
 
 - **Localise the crisis-line numbers** in the closing "support services" screen before fielding.
-- The two name generators intentionally allow the **same alter to be named twice** (once supportive,
-  once difficult) to capture ambivalent ties; alters are not de-duplicated across generators.
-- The edge type `knows` is defined (optional) for studies that want to add a `Sociogram` or
-  `DyadCensus` of alter–alter ties; it is not used by a stage in this minimal sequence.
+- An alter who is both supportive and difficult should be **re-selected from the "Already
+  mentioned" panel** in the second generator rather than re-typed. The panel reuses the **existing
+  node** (it does not create a duplicate), so the person stays a single node carrying both prompt
+  associations — that is how ambivalent ties are captured. Typing the name fresh in both generators
+  would instead create two separate nodes.
+- The edge type `knows` is drawn in the **Sociogram** stage (who-knows-whom) and feeds the
+  Narrative layout.

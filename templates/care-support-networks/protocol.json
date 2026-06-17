@@ -437,7 +437,7 @@
           "label": "Support map by source (formal vs informal)",
           "layoutVariable": "layout",
           "groupVariable": "formal_informal",
-          "highlight": ["support_functions"]
+          "highlight": []
         }
       ],
       "background": {

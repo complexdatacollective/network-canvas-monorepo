@@ -3,6 +3,7 @@
   "description": "An egocentric template for mapping a participant's transmission-relevant partnerships (sexual and injection) along with the partner attributes and partnership timing that drive HIV, STI, and bloodborne spread. Each partnership records start and end dates so that concurrency (overlapping partnerships) can be derived, and an Anonymisation stage encrypts sensitive partner identifiers so that only the participant can read them. Wording is adapted from CDC National HIV Behavioral Surveillance (NHBS) and the ARTnet egocentric sexual-network study.",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
+  "experiments": { "encryptedVariables": true },
   "codebook": {
     "ego": {
       "variables": {
@@ -180,17 +181,7 @@
       "knows": {
         "name": "Knows",
         "color": "edge-color-seq-1",
-        "variables": {
-          "ever_had_sex": {
-            "name": "ever_had_sex",
-            "type": "boolean",
-            "component": "Boolean",
-            "options": [
-              { "label": "Yes", "value": true },
-              { "label": "No", "value": false }
-            ]
-          }
-        }
+        "variables": {}
       }
     }
   },
@@ -405,7 +396,7 @@
       "prompts": [
         {
           "id": "p-overlap",
-          "text": "Here are the people you mentioned. Please draw a line between any two people who **know each other** or have had sexual contact with each other, as far as you are aware. This helps us understand how partners in your network are connected.",
+          "text": "Here are the people you mentioned. Please draw a line between any two people who **know each other**, as far as you are aware. This helps us understand how the partners in your network are connected.",
           "layout": {
             "layoutVariable": "layout"
           },

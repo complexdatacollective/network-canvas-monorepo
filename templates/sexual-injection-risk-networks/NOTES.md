@@ -64,7 +64,10 @@ therefore takes two precautions:
    respondent** — not the interviewer and not the research team — can read them.
    The validation block requires a reasonably strong passphrase
    (`minLength: 8`, `maxLength: 64`). The Information stage that precedes it makes
-   the confidentiality promise and defines the reference period.
+   the confidentiality promise and defines the reference period. **Encryption is
+   gated by the top-level `experiments.encryptedVariables: true` flag — without it,
+   Network Canvas stores `partner_label` as plaintext and the passphrase encrypts
+   nothing, so any fork of this template must keep that flag set.**
 
 All analytic variables (type, age, gender, serostatus, condom use, equipment
 sharing, dates) are **non-identifying** and are not encrypted, so the de-identified
@@ -125,7 +128,7 @@ behavioural-surveillance instruments and egocentric sexual-network studies:
 - **Ego** — `ego_hiv_status` (categorical), `on_prep` (boolean),
   `on_art` (boolean), `last_hiv_test` (datetime, month), `injects_drugs`
   (boolean).
-- **Edge `knows`** — partner–partner overlap; optional `ever_had_sex` (boolean).
+- **Edge `knows`** — partner–partner connection, drawn in the Sociogram.
 - **Stages (7):** Information (confidentiality + reference period) →
   Anonymisation (passphrase) → EgoForm → NameGenerator (sexual partners) →
   NameGenerator (injection partners, same node type) → AlterForm (all partnership

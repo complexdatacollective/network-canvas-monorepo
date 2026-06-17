@@ -276,22 +276,6 @@
       ]
     },
     {
-      "id": "catbin-shared-domains",
-      "type": "CategoricalBin",
-      "label": "Which behaviours you share",
-      "subject": {
-        "entity": "node",
-        "type": "person"
-      },
-      "prompts": [
-        {
-          "id": "p-shared-domains",
-          "text": "For each person, sort them by **which behaviours you share** with them. A person can belong to more than one group.",
-          "variable": "shared_domains"
-        }
-      ]
-    },
-    {
       "id": "alter-behaviours",
       "type": "AlterForm",
       "label": "Their behaviours",
@@ -306,6 +290,10 @@
       "form": {
         "title": "Their behaviours",
         "fields": [
+          {
+            "variable": "shared_domains",
+            "prompt": "Which of these activities do you ever do **with this person**? Select all that apply."
+          },
           {
             "variable": "relationship",
             "prompt": "What is your relationship to this person?"
@@ -359,21 +347,21 @@
           "label": "Smoking",
           "layoutVariable": "layout",
           "groupVariable": "alter_smokes",
-          "highlight": ["shared_domains"]
+          "highlight": []
         },
         {
           "id": "preset-activity",
           "label": "Physical activity",
           "layoutVariable": "layout",
           "groupVariable": "alter_activity",
-          "highlight": ["shared_domains"]
+          "highlight": []
         },
         {
           "id": "preset-drinking",
           "label": "Drinking",
           "layoutVariable": "layout",
           "groupVariable": "alter_drinks",
-          "highlight": ["shared_domains"]
+          "highlight": []
         }
       ],
       "background": {
