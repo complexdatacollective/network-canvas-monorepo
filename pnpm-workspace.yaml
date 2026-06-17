@@ -61,7 +61,7 @@ catalog:
   '@types/react-dom': ^19.2.3
   '@vitejs/plugin-react': ^6.0.2
   '@vitest/browser': ^4.1.7
-  '@vitest/browser-playwright': ^4.1.7
+  '@vitest/browser-playwright': ^4.1.9
   '@vitest/coverage-v8': ^4.1.7
   chromatic: ^17.3.0
   class-variance-authority: 0.7.1
