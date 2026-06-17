@@ -173,7 +173,7 @@ const PanelRow = ({
           </span>
         ) : (
           description && (
-            <span className="text-muted-foreground block truncate text-sm">
+            <span className="text-muted-foreground line-clamp-2 text-sm">
               {description}
             </span>
           )
@@ -281,7 +281,8 @@ const LibraryPanel = ({
   const [tab, setTab] = useState<Tab | null>(null);
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
   const [info, setInfo] = useState<{
-    protocol: StoredProtocolRow;
+    title: string;
+    description?: string;
     stats: MetaStat[];
   } | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -377,7 +378,35 @@ const LibraryPanel = ({
       { label: 'Added', value: formatTimestamp(protocol.createdAt) },
       { label: 'Edited', value: formatTimestamp(protocol.updatedAt) },
     ];
-    setInfo({ protocol, stats });
+    setInfo({
+      title: protocol.name,
+      description: protocol.protocol.description,
+      stats,
+    });
+    setInfoOpen(true);
+  }, []);
+
+  // Templates aren't stored in the library, so build their info from the
+  // in-memory protocol object rather than the asset DB. This surfaces the
+  // template's full title and (rich) description, which the truncated row can't.
+  const handleShowTemplateInfo = useCallback((template: BundledTemplate) => {
+    const { protocol } = template;
+    const stats: MetaStat[] = [
+      { label: 'Stages', value: String(protocol.stages.length) },
+      {
+        label: 'Node types',
+        value: String(Object.keys(protocol.codebook.node ?? {}).length),
+      },
+      {
+        label: 'Edge types',
+        value: String(Object.keys(protocol.codebook.edge ?? {}).length),
+      },
+    ];
+    setInfo({
+      title: protocol.name ?? template.name,
+      description: protocol.description ?? template.description,
+      stats,
+    });
     setInfoOpen(true);
   }, []);
 
@@ -538,6 +567,7 @@ const LibraryPanel = ({
               description={template.description}
               actionLabel="Use this template"
               onOpen={() => onOpenTemplate(template)}
+              onShowInfo={() => handleShowTemplateInfo(template)}
             />
           ))}
         </TabsPanel>
@@ -546,14 +576,13 @@ const LibraryPanel = ({
       <Dialog
         open={infoOpen}
         onOpenChange={setInfoOpen}
-        title={info?.protocol.name ?? ''}
+        title={info?.title ?? ''}
         cancelText="Close"
       >
         {info && (
           <div className="flex flex-col gap-(--space-md)">
             <p className="whitespace-pre-wrap">
-              {info.protocol.protocol.description?.trim() ||
-                'This protocol has no description.'}
+              {info.description?.trim() || 'This protocol has no description.'}
             </p>
             <div className="flex flex-col overflow-hidden rounded">
               <Table
