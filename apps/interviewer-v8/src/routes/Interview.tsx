@@ -224,6 +224,17 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="flex h-full w-full">
+      {/* The body is inset by env(safe-area-inset-top), so the interview's
+          opaque content starts below the status bar and the global blob
+          backdrop (App.tsx, fixed -z-10) shows through in that top strip.
+          Paint the themed background across the full viewport — fixed, so it
+          escapes the body padding — behind the Shell content but above the
+          blob backdrop, so the interview reads as edge-to-edge up to the
+          status bar. */}
+      <div
+        aria-hidden
+        className="bg-background pointer-events-none fixed inset-0 z-[-1]"
+      />
       <Shell
         payload={state.payload}
         currentStep={currentStep}
