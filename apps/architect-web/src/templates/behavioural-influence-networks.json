@@ -1,0 +1,397 @@
+{
+  "name": "Behavioural Influence Networks",
+  "description": "A reusable, behaviour-agnostic scaffold for studying social influence and diffusion (\"contagion\") of health behaviours - obesity-related behaviours, smoking/vaping, physical activity, diet, and alcohol. Behaviour-specific (multiplex) name generators elicit the people an ego shares each behaviour with, while an ego self-report captures the reference point needed to assess homophily and perceived exposure. Frame outputs as exposure and network composition, not as proof of causal contagion.",
+  "schemaVersion": 8,
+  "lastModified": "2026-06-15T00:00:00.000Z",
+  "codebook": {
+    "ego": {
+      "variables": {
+        "activity_minutes_week": {
+          "name": "activity_minutes_week",
+          "type": "number",
+          "component": "Number",
+          "validation": {
+            "minValue": 0,
+            "maxValue": 10080
+          }
+        },
+        "smoking_status": {
+          "name": "smoking_status",
+          "type": "categorical",
+          "component": "ToggleButtonGroup",
+          "options": [
+            {
+              "label": "Current smoker (smoke every day or some days)",
+              "value": "current"
+            },
+            {
+              "label": "Former smoker (smoked at least 100 cigarettes in my life, but not now)",
+              "value": "former"
+            },
+            {
+              "label": "Never smoker (have not smoked 100 cigarettes in my life)",
+              "value": "never"
+            }
+          ],
+          "validation": {
+            "required": true
+          }
+        },
+        "vaping_status": {
+          "name": "vaping_status",
+          "type": "categorical",
+          "component": "ToggleButtonGroup",
+          "options": [
+            { "label": "I vape every day", "value": "daily" },
+            { "label": "I vape some days", "value": "some_days" },
+            { "label": "I have tried vaping, but not now", "value": "former" },
+            { "label": "I have never vaped", "value": "never" }
+          ],
+          "validation": {
+            "required": true
+          }
+        },
+        "diet_quality": {
+          "name": "diet_quality",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "Poor", "value": 1 },
+            { "label": "Fair", "value": 2 },
+            { "label": "Good", "value": 3 },
+            { "label": "Very good", "value": 4 },
+            { "label": "Excellent", "value": 5 }
+          ],
+          "validation": {
+            "required": true
+          }
+        },
+        "alcohol_frequency": {
+          "name": "alcohol_frequency",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            { "label": "Never", "value": 0 },
+            { "label": "Monthly or less", "value": 1 },
+            { "label": "2 to 4 times a month", "value": 2 },
+            { "label": "2 to 3 times a week", "value": 3 },
+            { "label": "4 or more times a week", "value": 4 }
+          ],
+          "validation": {
+            "required": true
+          }
+        }
+      }
+    },
+    "node": {
+      "person": {
+        "name": "Person",
+        "color": "node-color-seq-1",
+        "icon": "add-a-person",
+        "shape": { "default": "circle" },
+        "variables": {
+          "alter_name": {
+            "name": "alter_name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true,
+              "unique": true
+            }
+          },
+          "relationship": {
+            "name": "relationship",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "options": [
+              { "label": "Partner or spouse", "value": "partner" },
+              { "label": "Family member", "value": "family" },
+              { "label": "Friend", "value": "friend" },
+              { "label": "Co-worker or classmate", "value": "coworker" },
+              { "label": "Neighbour", "value": "neighbour" },
+              { "label": "Other", "value": "other" }
+            ]
+          },
+          "closeness": {
+            "name": "closeness",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              { "label": "Not close", "value": 1 },
+              { "label": "Somewhat close", "value": 2 },
+              { "label": "Close", "value": 3 },
+              { "label": "Very close", "value": 4 }
+            ]
+          },
+          "alter_smokes": {
+            "name": "alter_smokes",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "options": [
+              { "label": "Yes", "value": "yes" },
+              { "label": "No", "value": "no" },
+              { "label": "Don't know", "value": "dont_know" }
+            ]
+          },
+          "alter_activity": {
+            "name": "alter_activity",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              { "label": "Not at all active", "value": 1 },
+              { "label": "Slightly active", "value": 2 },
+              { "label": "Moderately active", "value": 3 },
+              { "label": "Very active", "value": 4 }
+            ]
+          },
+          "alter_diet": {
+            "name": "alter_diet",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              { "label": "Poor", "value": 1 },
+              { "label": "Fair", "value": 2 },
+              { "label": "Good", "value": 3 },
+              { "label": "Very good", "value": 4 },
+              { "label": "Excellent", "value": 5 }
+            ]
+          },
+          "alter_drinks": {
+            "name": "alter_drinks",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "options": [
+              { "label": "Never", "value": "never" },
+              { "label": "Monthly or less", "value": "monthly" },
+              { "label": "Weekly", "value": "weekly" },
+              { "label": "Most days", "value": "most_days" },
+              { "label": "Don't know", "value": "dont_know" }
+            ]
+          },
+          "shared_domains": {
+            "name": "shared_domains",
+            "type": "categorical",
+            "component": "CheckboxGroup",
+            "options": [
+              { "label": "Exercise together", "value": "exercise" },
+              { "label": "Eat meals together", "value": "meals" },
+              { "label": "Smoke or vape together", "value": "smoke_vape" },
+              { "label": "Drink alcohol together", "value": "drink" }
+            ],
+            "validation": {
+              "minSelected": 1
+            }
+          },
+          "layout": {
+            "name": "layout",
+            "type": "layout"
+          }
+        }
+      }
+    },
+    "edge": {
+      "knows": {
+        "name": "Knows",
+        "color": "edge-color-seq-1"
+      }
+    }
+  },
+  "stages": [
+    {
+      "id": "information-intro",
+      "type": "Information",
+      "label": "Welcome",
+      "title": "About this study",
+      "items": [
+        {
+          "id": "intro-welcome",
+          "type": "text",
+          "size": "MEDIUM",
+          "content": "## Welcome\n\nThank you for taking part. In this interview we will talk about some of your everyday **health behaviours** and the **people you spend time with**. There are no right or wrong answers — we are interested in your own experience."
+        },
+        {
+          "id": "intro-references",
+          "type": "text",
+          "size": "SMALL",
+          "content": "## References & sources\n\n_For researchers adapting this template — the instruments and studies it draws on. **Caveat:** behaviours shared among contacts reflect both social influence **and** homophily (selecting similar friends); this design cannot by itself separate the two. You can remove or edit this screen before fielding._\n\n- [Christakis NA, Fowler JH (2007). The Spread of Obesity in a Large Social Network over 32 Years. *NEJM*.](https://www.albany.edu/~ravi/pdfs/christakis_fowler_2007.pdf)\n- [Christakis NA, Fowler JH (2008). The Collective Dynamics of Smoking in a Large Social Network. *NEJM*.](https://www.nejm.org/doi/full/10.1056/NEJMsa0706154)\n- [International Physical Activity Questionnaire (IPAQ) — PhenX Toolkit protocol.](https://www.phenxtoolkit.org/protocols/view/661901)\n- [Separating influence from homophily in network dynamics (SIENA / stochastic actor-based models).](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3469361/)"
+        }
+      ]
+    },
+    {
+      "id": "ego-behaviours",
+      "type": "EgoForm",
+      "label": "Your own behaviours",
+      "introductionPanel": {
+        "title": "About you",
+        "text": "First, a few questions about **your own** everyday behaviours. There are no right or wrong answers. Your responses give us a reference point for understanding the people you will tell us about later."
+      },
+      "form": {
+        "title": "Your behaviours",
+        "fields": [
+          {
+            "variable": "activity_minutes_week",
+            "prompt": "In a usual week, about how many **minutes** do you spend being physically active at a moderate or vigorous level (activities that make you breathe harder than normal), counting only activities done for at least 10 minutes at a time?"
+          },
+          {
+            "variable": "smoking_status",
+            "prompt": "Which best describes your **cigarette smoking**?"
+          },
+          {
+            "variable": "vaping_status",
+            "prompt": "Which best describes your use of **e-cigarettes or vapes**?"
+          },
+          {
+            "variable": "diet_quality",
+            "prompt": "In general, how healthy would you say your **diet** is?"
+          },
+          {
+            "variable": "alcohol_frequency",
+            "prompt": "How often do you have a drink containing **alcohol**?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ng-behaviours",
+      "type": "NameGenerator",
+      "label": "People you share behaviours with",
+      "interviewScript": "These prompts elicit behaviour-specific ties. The same person may be named on more than one prompt - this is expected and produces a multiplex network. Add each person once; if they belong to several prompts they will already appear in the panel of people already mentioned.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "form": {
+        "title": "Add a person",
+        "fields": [
+          {
+            "variable": "alter_name",
+            "prompt": "What is this person's first name or a nickname you will recognise?"
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": "already-mentioned",
+          "title": "People you already mentioned",
+          "dataSource": "existing"
+        }
+      ],
+      "prompts": [
+        {
+          "id": "p-exercise",
+          "text": "Who are the people you usually **exercise or play sport with**?"
+        },
+        {
+          "id": "p-meals",
+          "text": "Who are the people you usually **eat meals with**?"
+        },
+        {
+          "id": "p-smoke-vape",
+          "text": "Who are the people you usually **smoke or vape with**?"
+        },
+        {
+          "id": "p-drink",
+          "text": "Who are the people you usually **drink alcohol with**?"
+        }
+      ]
+    },
+    {
+      "id": "alter-behaviours",
+      "type": "AlterForm",
+      "label": "Their behaviours",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "introductionPanel": {
+        "title": "About each person",
+        "text": "Now we will ask about **each person's own** behaviours, as far as you know them. If you are unsure, give your best impression or choose \"Don't know\"."
+      },
+      "form": {
+        "title": "Their behaviours",
+        "fields": [
+          {
+            "variable": "shared_domains",
+            "prompt": "Which of these activities do you ever do **with this person**? Select all that apply."
+          },
+          {
+            "variable": "relationship",
+            "prompt": "What is your relationship to this person?"
+          },
+          {
+            "variable": "alter_smokes",
+            "prompt": "As far as you know, does this person **smoke**?"
+          },
+          {
+            "variable": "alter_activity",
+            "prompt": "How **physically active** would you say this person is?"
+          },
+          {
+            "variable": "alter_diet",
+            "prompt": "How **healthy** would you say this person's diet is?"
+          },
+          {
+            "variable": "alter_drinks",
+            "prompt": "How often does this person **drink alcohol**, as far as you know?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ordbin-closeness",
+      "type": "OrdinalBin",
+      "label": "How close you are",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "p-closeness",
+          "text": "Place each person by **how close you feel to them**. Closer ties tend to have a stronger influence on our behaviour.",
+          "variable": "closeness"
+        }
+      ]
+    },
+    {
+      "id": "narrative-clustering",
+      "type": "Narrative",
+      "label": "Review behavioural clustering",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "presets": [
+        {
+          "id": "preset-smoking",
+          "label": "Smoking",
+          "layoutVariable": "layout",
+          "groupVariable": "alter_smokes",
+          "highlight": []
+        },
+        {
+          "id": "preset-activity",
+          "label": "Physical activity",
+          "layoutVariable": "layout",
+          "groupVariable": "alter_activity",
+          "highlight": []
+        },
+        {
+          "id": "preset-drinking",
+          "label": "Drinking",
+          "layoutVariable": "layout",
+          "groupVariable": "alter_drinks",
+          "highlight": []
+        }
+      ],
+      "background": {
+        "concentricCircles": 3,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "freeDraw": true,
+        "allowRepositioning": true
+      }
+    }
+  ]
+}

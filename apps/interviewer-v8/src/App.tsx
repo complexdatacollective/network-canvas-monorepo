@@ -33,7 +33,7 @@ export default function App() {
   const [location] = useLocation();
 
   return (
-    <ThemedRegion theme="interview" className="isolate">
+    <ThemedRegion theme="interview" className="isolate h-full">
       <AppErrorBoundary>
         <AppProviders>
           {isElectron && (
@@ -63,6 +63,12 @@ export default function App() {
                 initial="hidden"
                 animate="visible"
                 exit="exit"
+                // Fill the inset #root so the route's full-screen surfaces can
+                // size to the available space with `h-full` rather than the raw
+                // viewport (`h-dvh`). The body is padded by the top safe-area
+                // inset; a viewport-tall child would overflow that inset and
+                // make the whole page scroll (the iPad-portrait overflow bug).
+                className="h-full"
               >
                 <Switch location={location}>
                   <Route path="/welcome" component={WelcomeRoute} />

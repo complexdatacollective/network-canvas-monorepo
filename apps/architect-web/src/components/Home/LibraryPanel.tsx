@@ -4,7 +4,6 @@ import {
   FolderOpen,
   Info,
   Loader2,
-  Plus,
   Trash2,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
@@ -30,22 +29,13 @@ import { openDialog } from '~/ducks/modules/dialogs';
 import { deleteLibraryProtocol } from '~/ducks/modules/userActions/userActions';
 import { useProtocolLibrary } from '~/hooks/useProtocolLibrary';
 import fileIcon from '~/images/file-icon.svg';
-import Button, { IconButton } from '~/lib/legacy-ui/components/Button';
+import { IconButton } from '~/lib/legacy-ui/components/Button';
+import type { BundledTemplate } from '~/templates';
 import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
 import { getProtocolAssetCount } from '~/utils/assetUtils';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
 
 type Tab = 'recent' | 'templates';
-
-const withStop =
-  (handler: () => void | Promise<void>) => (event: React.MouseEvent) => {
-    event.stopPropagation();
-    // Handlers may be async; swallow rejections so they don't become unhandled
-    // promise rejections (each handler surfaces its own user-facing errors).
-    void Promise.resolve(handler()).catch((error: unknown) => {
-      console.error('LibraryPanel action failed', error);
-    });
-  };
 
 const RELATIVE_CUTOFF_DAYS = 7;
 
@@ -111,7 +101,6 @@ type PanelRowProps = {
   description?: string;
   meta?: string;
   downloading?: boolean;
-  actionLabel?: string;
   onOpen: () => void;
   onDownload?: () => void;
   onDelete?: () => void;
@@ -123,7 +112,6 @@ const PanelRow = ({
   description,
   meta,
   downloading = false,
-  actionLabel,
   onOpen,
   onDownload,
   onDelete,
@@ -172,25 +160,12 @@ const PanelRow = ({
           </span>
         ) : (
           description && (
-            <span className="text-muted-foreground block truncate text-sm">
+            <span className="text-muted-foreground line-clamp-3 text-sm">
               {description}
             </span>
           )
         )}
       </span>
-
-      {actionLabel && (
-        <span className="flex shrink-0 translate-x-2 items-center opacity-0 transition-all duration-200 ease-out group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:translate-x-0 group-hover:opacity-100">
-          <Button
-            variant="text"
-            size="small"
-            icon={<Plus />}
-            content={actionLabel}
-            className="text-action"
-            onClick={withStop(onOpen)}
-          />
-        </span>
-      )}
 
       {hasMenu && (
         <span className="flex shrink-0 items-center">
@@ -257,15 +232,21 @@ type LibraryPanelProps = {
   onOpenSample: () => void;
   // Open the development protocol (shown as a template in dev mode only).
   onOpenDevProtocol: () => void;
+  // Research-grounded starter templates bundled with the app.
+  templates: BundledTemplate[];
+  // Open one of the bundled research templates.
+  onOpenTemplate: (template: BundledTemplate) => void;
 };
 
 const PANEL_CLASSES =
-  'h-[min(13rem,50dvh)] overflow-y-auto px-(--space-sm) pb-(--space-xl)';
+  'h-[min(28rem,65dvh)] overflow-y-auto px-(--space-sm) pb-(--space-xl)';
 
 const LibraryPanel = ({
   onOpenProtocol,
   onOpenSample,
   onOpenDevProtocol,
+  templates,
+  onOpenTemplate,
 }: LibraryPanelProps) => {
   const dispatch = useAppDispatch();
   const { protocols, isLoaded } = useProtocolLibrary();
@@ -274,7 +255,8 @@ const LibraryPanel = ({
   const [tab, setTab] = useState<Tab | null>(null);
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
   const [info, setInfo] = useState<{
-    protocol: StoredProtocolRow;
+    title: string;
+    description?: string;
     stats: MetaStat[];
   } | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -370,7 +352,35 @@ const LibraryPanel = ({
       { label: 'Added', value: formatTimestamp(protocol.createdAt) },
       { label: 'Edited', value: formatTimestamp(protocol.updatedAt) },
     ];
-    setInfo({ protocol, stats });
+    setInfo({
+      title: protocol.name,
+      description: protocol.protocol.description,
+      stats,
+    });
+    setInfoOpen(true);
+  }, []);
+
+  // Templates aren't stored in the library, so build their info from the
+  // in-memory protocol object rather than the asset DB. This surfaces the
+  // template's full title and (rich) description, which the truncated row can't.
+  const handleShowTemplateInfo = useCallback((template: BundledTemplate) => {
+    const { protocol } = template;
+    const stats: MetaStat[] = [
+      { label: 'Stages', value: String(protocol.stages.length) },
+      {
+        label: 'Node types',
+        value: String(Object.keys(protocol.codebook.node ?? {}).length),
+      },
+      {
+        label: 'Edge types',
+        value: String(Object.keys(protocol.codebook.edge ?? {}).length),
+      },
+    ];
+    setInfo({
+      title: protocol.name ?? template.name,
+      description: protocol.description ?? template.description,
+      stats,
+    });
     setInfoOpen(true);
   }, []);
 
@@ -428,7 +438,7 @@ const LibraryPanel = ({
     }
   }, [dispatch]);
 
-  const templateCount = import.meta.env.DEV ? 2 : 1;
+  const templateCount = (import.meta.env.DEV ? 2 : 1) + templates.length;
   const templateLabel = `${templateCount} ${templateCount === 1 ? 'template' : 'templates'}`;
   const protocolCount = protocols.length;
   const storageTooltip =
@@ -445,7 +455,7 @@ const LibraryPanel = ({
             setTab(value);
           }
         }}
-        className="bg-surface-1 text-surface-1-foreground flex max-h-[85dvh] w-full max-w-xl flex-col overflow-hidden rounded shadow-md"
+        className="bg-surface-1 text-surface-1-foreground flex max-h-[85dvh] w-full max-w-2xl flex-col overflow-hidden rounded shadow-md"
       >
         <div className="flex shrink-0 items-center px-(--space-lg) py-(--space-md)">
           <TabsList>
@@ -513,31 +523,37 @@ const LibraryPanel = ({
           <PanelRow
             name="Sample Protocol"
             description="First time? Explore a sample protocol"
-            actionLabel="Use this template"
             onOpen={onOpenSample}
           />
           {import.meta.env.DEV && (
             <PanelRow
               name="Development Protocol"
               description="Includes examples of every stage type"
-              actionLabel="Use this template"
               onOpen={onOpenDevProtocol}
             />
           )}
+          {templates.map((template) => (
+            <PanelRow
+              key={template.id}
+              name={template.name}
+              description={template.description}
+              onOpen={() => onOpenTemplate(template)}
+              onShowInfo={() => handleShowTemplateInfo(template)}
+            />
+          ))}
         </TabsPanel>
       </Tabs>
 
       <Dialog
         open={infoOpen}
         onOpenChange={setInfoOpen}
-        title={info?.protocol.name ?? ''}
+        title={info?.title ?? ''}
         cancelText="Close"
       >
         {info && (
           <div className="flex flex-col gap-(--space-md)">
             <p className="whitespace-pre-wrap">
-              {info.protocol.protocol.description?.trim() ||
-                'This protocol has no description.'}
+              {info.description?.trim() || 'This protocol has no description.'}
             </p>
             <div className="flex flex-col overflow-hidden rounded">
               <Table
