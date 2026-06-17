@@ -71,7 +71,7 @@ catalog:
   electron: ^42.3.0
   electron-builder: ^26.15.2
   electron-vite: ^6.0.0-beta.1
-  es-toolkit: ^1.47.0
+  es-toolkit: ^1.47.1
   jsdom: ^29.1.1
   jszip: ^3.10.1
   lucide-react: ^1.17.0

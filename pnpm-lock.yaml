@@ -151,8 +151,8 @@ catalogs:
       specifier: ^6.0.0-beta.1
       version: 6.0.0-beta.1
     es-toolkit:
-      specifier: ^1.47.0
-      version: 1.47.0
+      specifier: ^1.47.1
+      version: 1.47.1
     jsdom:
       specifier: ^29.1.1
       version: 29.1.1
@@ -544,7 +544,7 @@ importers:
         version: 4.4.3
       es-toolkit:
         specifier: 'catalog:'
-        version: 1.47.0
+        version: 1.47.1
       fuse.js:
         specifier: ^7.4.0
         version: 7.4.0
@@ -1499,7 +1499,7 @@ importers:
         version: 1.0.0-beta.4(typescript@6.0.3)
       es-toolkit:
         specifier: 'catalog:'
-        version: 1.47.0
+        version: 1.47.1
       fuse.js:
         specifier: ^7.4.0
         version: 7.4.0
@@ -1720,7 +1720,7 @@ importers:
         version: 3.0.0
       es-toolkit:
         specifier: 'catalog:'
-        version: 1.47.0
+        version: 1.47.1
       immer:
         specifier: ^11.1.8
         version: 11.1.8
@@ -1874,7 +1874,7 @@ importers:
         version: 3.21.2
       es-toolkit:
         specifier: 'catalog:'
-        version: 1.47.0
+        version: 1.47.1
       fflate:
         specifier: ^0.8.3
         version: 0.8.3
@@ -1917,7 +1917,7 @@ importers:
         version: link:../shared-consts
       es-toolkit:
         specifier: 'catalog:'
-        version: 1.47.0
+        version: 1.47.1
     devDependencies:
       '@codaco/tsconfig':
         specifier: workspace:*
@@ -1951,7 +1951,7 @@ importers:
         version: 10.4.0
       es-toolkit:
         specifier: 'catalog:'
-        version: 1.47.0
+        version: 1.47.1
       uuid:
         specifier: 'catalog:'
         version: 14.0.0
@@ -8622,8 +8622,8 @@ packages:
     resolution: {integrity: sha512-w+5mJ3GuFL+NjVtJlvydShqE1eN3h3PbI7/5LAsYJP/2qtuMXjfL2LpHSRqo4b4eSF5K/DH1JXKUAHSB2UW50g==}
     engines: {node: '>= 0.4'}
 
-  es-toolkit@1.47.0:
-    resolution: {integrity: sha512-n1GuoD0WEQZMBk5tttoZSqwgyLx01oqa5XsBmCHwPyNe1S9jPBEmtR2pSgp2kJuWE3ciFZ6yRHmY4pM4C3OOkw==}
+  es-toolkit@1.47.1:
+    resolution: {integrity: sha512-5RAqEwf4P4E17p+W75KLOWw/nOvKZzSQpxM32IpI2KZLaVonjTrZ0Ai5ghMaVI9eKC2p8eoQgcBdkEDgzFk6+Q==}
 
   es6-error@4.1.1:
     resolution: {integrity: sha512-Um/+FxMr9CISWh0bi5Zv0iOD+4cFh5qLeks1qhAopKVAJw3drgKbKySikp7wGhDL0HPeaja0P5ULZrxLkniUVg==}
@@ -20795,7 +20795,7 @@ snapshots:
       is-date-object: 1.1.0
       is-symbol: 1.1.1
 
-  es-toolkit@1.47.0: {}
+  es-toolkit@1.47.1: {}
 
   es6-error@4.1.1: {}
 
