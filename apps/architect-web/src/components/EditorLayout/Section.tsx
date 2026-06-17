@@ -90,9 +90,10 @@ const Section = ({
               'flex items-center gap-4 text-right',
               layout === 'vertical' && 'text-xl font-semibold tracking-tight',
               // `lg:top-(--space-4xl)` (6rem) pins the heading just below the
-              // sticky top menu bar (~5.45rem tall) so it never overlaps it.
+              // sticky top menu bar so it never overlaps it; `z-(--z-fx)` keeps
+              // it above the section content but below the nav.
               layout === 'horizontal' &&
-                'lg:small-heading lg:bg-border max-lg:text-xl max-lg:font-semibold max-lg:tracking-tight lg:sticky lg:top-(--space-4xl) lg:z-[1] lg:flex-row-reverse lg:items-center lg:justify-between lg:rounded lg:px-6 lg:py-2',
+                'lg:small-heading lg:bg-border max-lg:text-xl max-lg:font-semibold max-lg:tracking-tight lg:sticky lg:top-(--space-4xl) lg:z-(--z-fx) lg:flex-row-reverse lg:items-center lg:justify-between lg:rounded lg:px-6 lg:py-2',
             )}
           >
             <span>
