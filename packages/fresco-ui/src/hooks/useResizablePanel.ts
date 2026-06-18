@@ -15,6 +15,14 @@ type UseResizablePanelOptions = {
   defaultBasis: number;
   min: number;
   max: number;
+  /**
+   * Hard minimum size of the first panel in pixels along the main axis. When
+   * set, the effective minimum is the larger of `min` (%) and this value
+   * converted to a percentage of the live container size, so the panel can
+   * never be dragged narrower than its content requires regardless of the
+   * container's width.
+   */
+  minSizePx?: number;
   breakpoints?: Breakpoint[];
   orientation?: 'horizontal' | 'vertical';
   keyboardStep?: number;
@@ -24,6 +32,24 @@ const basisSchema = z.number().check(z.minimum(0)).check(z.maximum(100));
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+/**
+ * Resolve the effective minimum panel size as a percentage: the larger of the
+ * `min` percentage and `minSizePx` expressed as a percentage of `containerSize`
+ * (clamped to `max`). Falls back to `min` when there is no pixel floor or the
+ * container has not been measured yet.
+ */
+export function getEffectiveMinPercent(
+  min: number,
+  max: number,
+  minSizePx: number | undefined,
+  containerSize: number,
+): number {
+  if (!minSizePx || containerSize <= 0) {
+    return min;
+  }
+  return clamp(Math.max(min, (minSizePx / containerSize) * 100), 0, max);
 }
 
 function nearestBreakpoint(value: number, breakpoints: Breakpoint[]) {
@@ -46,6 +72,7 @@ export default function useResizablePanel({
   defaultBasis,
   min,
   max,
+  minSizePx,
   breakpoints = [],
   orientation = 'horizontal',
   keyboardStep = 2,
@@ -67,12 +94,25 @@ export default function useResizablePanel({
     defaultBasis,
   );
 
+  // The effective minimum is the larger of the `min` percentage and the
+  // `minSizePx` floor expressed as a percentage of the current container size.
+  const getEffectiveMin = useCallback(() => {
+    const container = containerRef.current;
+    const rect = container?.getBoundingClientRect();
+    const size = rect
+      ? orientation === 'horizontal'
+        ? rect.width
+        : rect.height
+      : 0;
+    return getEffectiveMinPercent(min, max, minSizePx, size);
+  }, [min, max, minSizePx, orientation]);
+
   const setBasis = useCallback(
     (value: number) => {
-      const clamped = clamp(value, min, max);
+      const clamped = clamp(value, getEffectiveMin(), max);
       setPersistedBasis(clamped);
     },
-    [min, max, setPersistedBasis],
+    [getEffectiveMin, max, setPersistedBasis],
   );
 
   const getPercentFromPointer = useCallback(

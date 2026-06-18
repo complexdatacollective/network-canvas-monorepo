@@ -232,7 +232,6 @@ export type StageEntry = {
   // NameGeneratorRoster
   dataSource?: string;
   cardOptions?: {
-    displayLabel: string;
     additionalProperties?: { label: string; variable: string }[];
   };
   sortOptions?: {
@@ -358,7 +357,6 @@ export type AddStageInput = {
   // NameGeneratorRoster
   dataSource?: string;
   cardOptions?: {
-    displayLabel?: string;
     additionalProperties?: { label: string; variable: string }[];
   };
   sortOptions?: {

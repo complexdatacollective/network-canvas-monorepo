@@ -3,7 +3,6 @@ import { useCallback, useMemo } from 'react';
 
 import {
   type EntityPrimaryKey,
-  entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcEntity,
   type NcNode,
@@ -13,9 +12,9 @@ import useExternalData from '~/hooks/useExternalData';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import { getStageCardOptions } from '~/selectors/name-generator';
 import { getNetworkNodes, getNodeTypeDefinition } from '~/selectors/session';
-import { getNodeLabelAttribute } from '~/utils/getNodeLabelAttribute';
 import getParentKeyByNameValue from '~/utils/getParentKeyByNameValue';
 import { getEntityAttributes } from '~/utils/networkEntities';
+import { resolveRosterNodeLabel } from '~/utils/resolveRosterNodeLabel';
 
 import type { NameGeneratorRosterProps } from './helpers';
 
@@ -84,22 +83,16 @@ const useItems = (props: NameGeneratorRosterProps) => {
   // data, meaning we do not expect it to be encrypted.
   // TODO: this must be updated if we want rosters to support encrypted data.
   const codebookVariables = nodeTypeDefinition?.variables;
+  const subjectLabel = nodeTypeDefinition?.name ?? 'node';
   const getNodeLabel = useCallback(
-    (node: NcNode) => {
-      const attribute = getNodeLabelAttribute(
+    (node: NcNode, sequentialNumber: number) =>
+      resolveRosterNodeLabel({
         codebookVariables,
-        node[entityAttributesProperty],
-      );
-
-      if (attribute) {
-        return String(
-          node[entityAttributesProperty][attribute] as string | number,
-        );
-      }
-
-      return node[entityPrimaryKeyProperty];
-    },
-    [codebookVariables],
+        node,
+        subjectLabel,
+        sequentialNumber,
+      }),
+    [codebookVariables, subjectLabel],
   );
 
   const items = useMemo(() => {
@@ -107,11 +100,11 @@ const useItems = (props: NameGeneratorRosterProps) => {
       return [] as UseItemElement[];
     }
 
-    return externalData.map((item) => ({
+    return externalData.map((item, index) => ({
       id: item[entityPrimaryKeyProperty],
       data: item,
       props: {
-        label: getNodeLabel(item),
+        label: getNodeLabel(item, index + 1),
         data: detailsWithVariableUUIDs({
           ...props,
           nodeTypeDefinition,

@@ -70,7 +70,17 @@ const ErrorMessage = (_props: { error: Error }) => (
   </div>
 );
 
-const layout = new GridLayout<UseItemElement>({ gap: 2, minItemWidth: 400 });
+// Desired minimum width of a roster DataCard (the grid column floor).
+const CARD_MIN_WIDTH = 400;
+// Minimum width of the source panel: the card width plus the ScrollArea
+// viewport padding (px-2 = 16px) and a scrollbar allowance, so the resize
+// handle can never drag the panel narrow enough for a card to overflow.
+const SOURCE_PANEL_MIN_WIDTH = CARD_MIN_WIDTH + 32;
+
+const layout = new GridLayout<UseItemElement>({
+  gap: 2,
+  minItemWidth: CARD_MIN_WIDTH,
+});
 
 const keyExtractor = (item: UseItemElement) => item.id;
 
@@ -383,6 +393,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
       <ResizableFlexPanel
         storageKey="name-generator-roster-panels"
         defaultBasis={50}
+        minSizePx={SOURCE_PANEL_MIN_WIDTH}
         className="min-h-0 w-full flex-1 basis-full"
         aria-label="Resize panel and node list areas"
       >

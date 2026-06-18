@@ -44,7 +44,6 @@ function buildInterview(args: StoryArgs) {
     dataSource: 'externalData',
     behaviours: Object.keys(behaviours).length > 0 ? behaviours : undefined,
     cardOptions: {
-      displayLabel: nameVar.id,
       additionalProperties: [
         { label: 'Age', variable: ageVar.id },
         { label: 'Location', variable: locationVar.id },
@@ -191,6 +190,90 @@ export const MultiplePrompts: Story = {
     promptCount: 3,
     initialSelectedCount: 2,
   },
+};
+
+/**
+ * Builds a roster whose nodes are keyed by variable UUIDs that are NOT present
+ * in the running codebook, mimicking data exported from a preview interview.
+ * The "name" heuristic therefore finds nothing, exercising the fallback path.
+ */
+function buildUuidMismatchInterview() {
+  const si = new SyntheticInterview();
+
+  // addNodeType seeds a "name" text variable, so the codebook HAS a name
+  // attribute — but the roster nodes below are keyed under unrelated UUIDs, so
+  // the heuristic cannot match against it.
+  const nodeType = si.addNodeType({ name: 'Person' });
+
+  si.addStage('NameGeneratorRoster', {
+    label: 'Select People',
+    subject: { entity: 'node', type: nodeType.id },
+    dataSource: 'externalData',
+  }).addPrompt({
+    text: 'Please select the people you know from this list.',
+  });
+
+  const rosterNodes = [
+    {
+      attributes: {
+        'mismatched-uuid-name': 'Alice Smith',
+        'mismatched-uuid-age': 30,
+      },
+    },
+    {
+      attributes: {
+        'mismatched-uuid-name': 'Bob Jones',
+        'mismatched-uuid-age': 42,
+      },
+    },
+    // A value-less node: no usable attribute values, so it must fall through to
+    // the "Unnamed Person N" placeholder rather than showing its _uid hash.
+    { attributes: {} },
+  ];
+
+  const url = `data:application/json;base64,${btoa(
+    JSON.stringify({ nodes: rosterNodes }),
+  )}`;
+
+  si.addAsset({
+    key: 'asset-external-data',
+    assetId: 'externalData',
+    name: 'External Data',
+    type: 'network',
+    url,
+    size: 0,
+  });
+
+  return si;
+}
+
+const UuidMismatchStoryWrapper = () => {
+  const interview = useMemo(() => buildUuidMismatchInterview(), []);
+  const rawPayload = useMemo(
+    () =>
+      SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 0 })),
+    [interview],
+  );
+
+  return (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell rawPayload={rawPayload} />
+    </div>
+  );
+};
+
+/**
+ * Reproduces the preview-export roster bug. The asset is served inline via a
+ * `data:` URL whose nodes are keyed by variable UUIDs absent from the codebook,
+ * so `getNodeLabelAttribute` returns null.
+ *
+ * Before the fix, the cards fell back to the content-hash `_uid` and showed an
+ * opaque random ID. After the fix, each card shows the first available value
+ * ("Alice Smith", "Bob Jones"), and the value-less node shows the
+ * "Unnamed Person 3" placeholder.
+ */
+export const PreviewExportUuidMismatch: Story = {
+  render: () => <UuidMismatchStoryWrapper />,
 };
 
 /**

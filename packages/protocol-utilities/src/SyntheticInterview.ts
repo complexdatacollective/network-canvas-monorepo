@@ -478,7 +478,6 @@ export class SyntheticInterview {
       entry.dataSource = opts?.dataSource ?? 'externalData';
       if (opts?.cardOptions) {
         entry.cardOptions = {
-          displayLabel: opts.cardOptions.displayLabel ?? 'name',
           additionalProperties: opts.cardOptions.additionalProperties,
         };
       }
