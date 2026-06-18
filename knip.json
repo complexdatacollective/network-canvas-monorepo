@@ -4,8 +4,10 @@
   // The quality CI job runs `pnpm --filter @codaco/interface-images exec
   // playwright install` to generate interface screenshots; playwright is a
   // devDependency of @codaco/interface-images, not the root, so knip sees the
-  // binary as unlisted.
-  "ignoreBinaries": ["playwright"],
+  // binary as unlisted. electron-builder is likewise invoked directly in the
+  // release/legacy-app-build workflows but is a devDependency of the Electron
+  // apps, not the root.
+  "ignoreBinaries": ["playwright", "electron-builder"],
   "tags": ["-public"],
   "workspaces": {
     "packages/ui": {},
