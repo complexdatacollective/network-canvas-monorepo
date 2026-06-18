@@ -27,29 +27,6 @@ const cssCopyPlugin = (): Plugin => ({
   },
 });
 
-// With `preserveModules`, rolldown rewrites each inter-module import specifier
-// to point at the emitted `.js` file. On Windows that rewrite leaks the source
-// extension (e.g. `./Shell.tsx`, `./useTrack.ts`) into the output, so any
-// consumer bundling `dist/` fails with UNRESOLVED_IMPORT (the emitted files are
-// `.js`). Normalise relative TS/JSX specifiers back to `.js` in the rendered
-// output. A no-op on platforms where rolldown already emits `.js`.
-const normalizeOutputExtensions = (): Plugin => ({
-  name: 'interview-normalize-import-extensions',
-  renderChunk(code) {
-    const re =
-      /(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(["'])(\.{1,2}\/[^"']*?)\.(tsx|ts|jsx|mts|cts)\2/g;
-    if (!re.test(code)) return null;
-    re.lastIndex = 0;
-    return {
-      code: code.replace(
-        re,
-        (_m, lead, quote, path) => `${lead}${quote}${path}.js${quote}`,
-      ),
-      map: null,
-    };
-  },
-});
-
 // Skip dts emission for non-library consumers of this config (Storybook builds
 // the preview app; Vitest just runs tests). Storybook's CLI sets STORYBOOK=true;
 // Vitest sets VITEST=true.
@@ -73,16 +50,24 @@ export default defineConfig({
         compilerOptions: { rootDir: resolve(__dirname, 'src') },
         bundleTypes: true,
       }),
-    normalizeOutputExtensions(),
     cssCopyPlugin(),
   ],
   define: {
     __PACKAGE_VERSION__: JSON.stringify(pkg.version),
   },
   build: {
+    // Bundle to a single ESM entry rather than `preserveModules`. rolldown's
+    // preserveModules rewrites inter-module specifiers from the emitted file
+    // paths, and on Windows that leaks source extensions / mismatched paths
+    // (e.g. `./Shell.tsx`, unresolved `./Shell.js`), breaking any consumer that
+    // bundles `dist/`. A single bundle has no inter-module specifiers to rewrite
+    // and so builds identically across platforms. CSS is unaffected — no JS here
+    // imports `.css`; `src/styles.css` is copied verbatim by cssCopyPlugin and
+    // consumed via the `./styles.css` export.
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
       formats: ['es'],
+      fileName: 'index',
     },
     rollupOptions: {
       external: (id) =>
@@ -90,11 +75,6 @@ export default defineConfig({
         !id.startsWith('/') &&
         !id.startsWith('~/') &&
         !id.includes('\0'),
-      output: {
-        preserveModules: true,
-        preserveModulesRoot: 'src',
-        entryFileNames: '[name].js',
-      },
     },
     sourcemap: true,
     minify: false,

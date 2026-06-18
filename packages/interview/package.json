@@ -14,7 +14,7 @@
   "type": "module",
   "sideEffects": [
     "**/*.css",
-    "**/Shell.js"
+    "./dist/index.js"
   ],
   "exports": {
     ".": {
