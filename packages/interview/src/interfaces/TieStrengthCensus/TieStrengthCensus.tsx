@@ -51,6 +51,7 @@ import {
   matchEntry,
 } from '../DyadCensus/helpers';
 import IntroPanel from '../SlidesForm/IntroPanel';
+import { getTieStrengthHasEdge } from './helpers';
 
 const fadeVariants = {
   initial: { opacity: 0, transition: { duration: 0.5 } },
@@ -162,11 +163,15 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     ? getStageMetadataResponse(stageMetadata, promptIndex, pair)
     : { exists: false, value: undefined };
 
-  const hasEdge: boolean | null = existingEdgeId
-    ? true
-    : metadataResponse.exists
-      ? false
-      : null;
+  // Scope the answered-state to THIS prompt's edgeVariable. A shared-type edge
+  // created by a sibling prompt is not an answer for this prompt unless this
+  // prompt's edgeVariable is set on it.
+  const hasEdge: boolean | null = getTieStrengthHasEdge({
+    edgeExists: !!existingEdgeId,
+    edgeVariable,
+    edgeVariableValue,
+    metadataExists: metadataResponse.exists,
+  });
 
   // Auto-advance tracking
   const [isTouched, setIsTouched] = useState(false);

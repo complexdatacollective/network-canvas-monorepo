@@ -52,7 +52,9 @@ export const getStageMetadata = createSelector(
   getActiveSession,
   getStageIndex,
   (session, stageIndex) => {
-    if (!stageIndex) return undefined;
+    // Guard against an undefined index (not a falsy one): stage index 0 is a
+    // valid step and its metadata must be readable.
+    if (stageIndex === undefined) return undefined;
     return session?.stageMetadata?.[stageIndex] ?? undefined;
   },
 );

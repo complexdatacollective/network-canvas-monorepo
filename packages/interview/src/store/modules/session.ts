@@ -30,8 +30,8 @@ import {
 } from '~/selectors/protocol';
 import {
   getCurrentStageId,
-  getPromptAdditionalAttributes,
   getPromptId,
+  getPrompts,
   makeGetNodeById,
 } from '~/selectors/session';
 import { getDefaultAttributesForEntityType } from '~/utils/getDefaultAttributesForEntityType';
@@ -80,6 +80,37 @@ export function edgeExists(
 }
 
 type StageMetadataEntry = StageMetadata[string];
+
+/**
+ * Remove any DyadCensus/TieStrengthCensus metadata entries that reference the
+ * given node. Census metadata is stored as `[promptIndex, nodeA, nodeB, value]`
+ * tuples; non-census (e.g. FamilyPedigree) entries are objects and are left
+ * untouched. Pruning prevents a stale 'No' pre-selection from being revived
+ * when a node with the same id is re-added later.
+ */
+function pruneStageMetadataForNode(
+  stageMetadata: StageMetadata | undefined,
+  nodeId: NcNode[EntityPrimaryKey],
+): StageMetadata | undefined {
+  if (!stageMetadata) {
+    return stageMetadata;
+  }
+
+  return Object.fromEntries(
+    Object.entries(stageMetadata).map(([stageId, entry]) => {
+      if (!Array.isArray(entry)) {
+        return [stageId, entry];
+      }
+
+      return [
+        stageId,
+        entry.filter(
+          ([, nodeA, nodeB]) => nodeA !== nodeId && nodeB !== nodeId,
+        ),
+      ];
+    }),
+  );
+}
 
 export type SessionState = {
   id: string;
@@ -434,6 +465,24 @@ export const toggleNodeAttributes = createAction<{
   attributes: Record<string, VariableValue>;
 }>(actionTypes.toggleNodeAttributes);
 
+type StagePrompt = NonNullable<ReturnType<typeof getPrompts>>[number];
+
+function getPromptAdditionalAttributesMap(
+  prompt: StagePrompt,
+): Record<string, boolean> {
+  if (!('additionalAttributes' in prompt)) {
+    return {};
+  }
+
+  return (prompt.additionalAttributes ?? []).reduce<Record<string, boolean>>(
+    (acc, { variable, value }) => {
+      acc[variable] = value;
+      return acc;
+    },
+    {},
+  );
+}
+
 export const removeNodeFromPrompt = createAsyncThunk(
   actionTypes.removeNodeFromPrompt,
   (
@@ -444,12 +493,49 @@ export const removeNodeFromPrompt = createAsyncThunk(
     const state = getState() as RootState;
     const promptId = getPromptId(state, currentStep);
     invariant(promptId, 'Prompt ID is required to remove a node from a prompt');
-    const promptAttributes = getPromptAdditionalAttributes(state, currentStep);
+
+    const prompts = getPrompts(state, currentStep) ?? [];
+    const removedPrompt = prompts.find((prompt) => prompt.id === promptId);
+    const removedAttributes = removedPrompt
+      ? getPromptAdditionalAttributesMap(removedPrompt)
+      : {};
+
+    // Recompute the attributes contributed by the removed prompt from the
+    // prompts the node will still belong to. This preserves the authored value
+    // semantics (including value:false) instead of naively negating the flag.
+    const getNodeById = makeGetNodeById(state, currentStep);
+    const node = getNodeById(nodeId);
+    const remainingPromptIds = (node?.promptIDs ?? []).filter(
+      (id) => id !== promptId,
+    );
+
+    // For each variable the removed prompt contributed, find the value asserted
+    // by a remaining prompt the node still belongs to (last-wins, matching the
+    // spread order used when adding a node to a prompt). If no remaining prompt
+    // asserts it, clear the flag to its unset (null) value.
+    const resolvedAttributes = Object.keys(removedAttributes).reduce<
+      Record<string, boolean | null>
+    >((acc, variable) => {
+      let resolvedValue: boolean | null = null;
+
+      prompts.forEach((prompt) => {
+        if (!remainingPromptIds.includes(prompt.id)) {
+          return;
+        }
+        const promptAttributes = getPromptAdditionalAttributesMap(prompt);
+        if (variable in promptAttributes) {
+          resolvedValue = promptAttributes[variable]!;
+        }
+      });
+
+      acc[variable] = resolvedValue;
+      return acc;
+    }, {});
 
     return {
       nodeId,
       promptId,
-      promptAttributes,
+      resolvedAttributes,
     };
   },
 );
@@ -474,10 +560,10 @@ export const updateEdge = createAsyncThunk(
 
     // Validate that all attribute keys exist in the codebook if newAttributeData is provided
     if (newAttributeData) {
-      const getCodebookVariablesForNodeType =
-        makeGetCodebookVariablesForNodeType(state);
+      const getCodebookVariablesForEdgeType =
+        makeGetCodebookVariablesForEdgeType(state);
 
-      const variablesForType = getCodebookVariablesForNodeType(edge.type);
+      const variablesForType = getCodebookVariablesForEdgeType(edge.type);
 
       const invalidKeys = Object.keys(newAttributeData).filter(
         (key) => !(key in variablesForType),
@@ -572,17 +658,9 @@ const sessionReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(removeNodeFromPrompt.fulfilled, (state, action) => {
-    const { nodeId, promptId, promptAttributes } = action.payload;
+    const { nodeId, promptId, resolvedAttributes } = action.payload;
     const { network } = state;
     const { nodes } = network;
-
-    const toggledPromptAttributes = Object.keys(promptAttributes).reduce(
-      (attributes, attrKey) => ({
-        ...attributes,
-        [attrKey]: !promptAttributes[attrKey],
-      }),
-      {} as Record<string, boolean>,
-    );
 
     return withLastUpdated({
       ...state,
@@ -598,7 +676,7 @@ const sessionReducer = createReducer(initialState, (builder) => {
             promptIDs: node.promptIDs?.filter((id) => id !== promptId),
             [entityAttributesProperty]: {
               ...node[entityAttributesProperty],
-              ...toggledPromptAttributes,
+              ...resolvedAttributes,
             },
           };
         }),
@@ -612,6 +690,10 @@ const sessionReducer = createReducer(initialState, (builder) => {
 
     return withLastUpdated({
       ...state,
+      stageMetadata: pruneStageMetadataForNode(
+        state.stageMetadata,
+        action.payload,
+      ),
       network: {
         ...network,
         nodes: nodes.filter(
