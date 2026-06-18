@@ -68,7 +68,7 @@ export function useUpdateCheck(): UseUpdateCheck {
       toast.add({
         id: toastId,
         title: 'Update available',
-        description: `Version ${info.version} is available.`,
+        description: `Version ${info.version} is available. Click for more info.`,
         variant: 'info',
         timeout: 0,
         // Clicking the toast opens the release-notes dialog; the close (X)
