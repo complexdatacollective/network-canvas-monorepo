@@ -12,7 +12,7 @@ const DOCS_HOST = 'documentation.networkcanvas.com';
 // True when following the href would take the reader off the documentation
 // site. Internal navigation uses relative paths/anchors (never a scheme), and
 // absolute links back to the docs host stay in the same tab.
-export function isExternalUrl(href: string): boolean {
+function isExternalUrl(href: string): boolean {
   if (!href) {
     return false;
   }
