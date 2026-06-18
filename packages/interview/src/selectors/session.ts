@@ -356,8 +356,12 @@ export function resolveNodeShape(
   const variableValue = attributes[shapeDef.dynamic.variable];
 
   if (shapeDef.dynamic.type === 'discrete') {
-    const match = shapeDef.dynamic.map.find(
-      (entry) => entry.value === variableValue,
+    // Categorical (multi-select) variables store their value as an array, so
+    // match against the array members; scalar variables compare directly.
+    const match = shapeDef.dynamic.map.find((entry) =>
+      Array.isArray(variableValue)
+        ? variableValue.some((v) => v === entry.value)
+        : entry.value === variableValue,
     );
     return match?.shape ?? shapeDef.default;
   }

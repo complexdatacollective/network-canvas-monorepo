@@ -65,17 +65,14 @@ export const getNodeLabelAttribute = (
   // "name" (case insensitive), and try to retrieve this value by key in the node's
   // attributes,
   const test = /name/i;
-  const match = Object.keys(codebookVariables ?? {}).find(
-    (attribute) =>
-      test.test(attribute) &&
-      isValidLabelCandidate(
-        nodeAttributes[attribute],
-        codebookVariables?.[attribute],
-      ),
+  const match = Object.entries(codebookVariables ?? {}).find(
+    ([key, variable]) =>
+      test.test(variable.name) &&
+      isValidLabelCandidate(nodeAttributes[key], variable),
   );
 
   if (match) {
-    return match;
+    return match[0];
   }
 
   // 3. As above but for node attribute keys.

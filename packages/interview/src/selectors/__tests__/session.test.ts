@@ -1,6 +1,7 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
+import type { NodeDefinition } from '@codaco/protocol-validation';
 import type { DyadCensusMetadataItem } from '@codaco/shared-consts';
 
 import protocolReducer from '../../store/modules/protocol';
@@ -9,7 +10,7 @@ import sessionReducer, {
   updateStageMetadata,
 } from '../../store/modules/session';
 import uiReducer from '../../store/modules/ui';
-import { getStageMetadata } from '../session';
+import { getStageMetadata, resolveNodeShape } from '../session';
 
 const rootReducer = combineReducers({
   session: sessionReducer,
@@ -61,5 +62,39 @@ describe('getStageMetadata', () => {
     const store = createStore();
 
     expect(getStageMetadata(store.getState(), 0)).toBeUndefined();
+  });
+});
+
+describe('resolveNodeShape', () => {
+  it('matches an array-valued categorical attribute against a discrete map entry', () => {
+    // Categorical (multi-select) variables store their value as an array, e.g.
+    // ['asian']. The discrete mapping values are scalars, so the resolver must
+    // match array members rather than comparing the whole array by identity.
+    const shape: NodeDefinition['shape'] = {
+      default: 'circle',
+      dynamic: {
+        variable: 'ethnicity',
+        type: 'discrete',
+        map: [
+          { value: 'asian', shape: 'square' },
+          { value: 'white', shape: 'diamond' },
+        ],
+      },
+    };
+
+    expect(resolveNodeShape(shape, { ethnicity: ['asian'] })).toBe('square');
+  });
+
+  it('matches a scalar-valued attribute against a discrete map entry', () => {
+    const shape: NodeDefinition['shape'] = {
+      default: 'circle',
+      dynamic: {
+        variable: 'role',
+        type: 'discrete',
+        map: [{ value: 'lead', shape: 'diamond' }],
+      },
+    };
+
+    expect(resolveNodeShape(shape, { role: 'lead' })).toBe('diamond');
   });
 });
