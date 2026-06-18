@@ -8,8 +8,8 @@ const Protocol = () => {
   useProtocolLoader();
   return (
     <div className="mt-(--space-xl) flex flex-col items-center">
-      <ProtocolInfoCard />
       <TestingMapboxTokenAlert />
+      <ProtocolInfoCard />
       <Timeline />
     </div>
   );

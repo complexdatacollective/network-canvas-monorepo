@@ -14,13 +14,6 @@ vi.mock('~/components/Timeline', () => ({
   default: () => <div data-testid="timeline">Timeline Component</div>,
 }));
 
-// Mock the testing-token alert: it pulls in fresco-ui's Surface, whose
-// `motion.create` call is dropped by this file's `motion/react` mock. Its
-// behaviour is covered by the issues-selector unit tests.
-vi.mock('~/components/TestingMapboxTokenAlert', () => ({
-  default: () => null,
-}));
-
 // Mock the protocol loader hook - use vi.hoisted to avoid hoisting issues
 const { mockUseProtocolLoader } = vi.hoisted(() => ({
   mockUseProtocolLoader: vi.fn(),
