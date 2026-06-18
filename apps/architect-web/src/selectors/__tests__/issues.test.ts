@@ -127,7 +127,8 @@ describe('issues selectors', () => {
     });
 
     it('is false when the protocol has no apikey assets', () => {
-      expect(getUsesTestingMapboxToken(buildState())).toBe(false);
+      const state = buildState({ assetManifest: {} });
+      expect(getUsesTestingMapboxToken(state)).toBe(false);
     });
   });
 });

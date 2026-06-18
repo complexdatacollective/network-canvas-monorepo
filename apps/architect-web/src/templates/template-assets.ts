@@ -3,19 +3,28 @@ import type {
   ExtractedAsset,
 } from '@codaco/protocol-validation';
 
-// Vite emits each bundled template asset file and gives us its URL. A file's
-// name matches the `source` of the corresponding `assetManifest` entry in the
-// template's canonical protocol, so template asset filenames are kept globally
-// unique (e.g. `world-countries.geojson`).
-const assetUrlByFilename = new Map(
-  Object.entries(
-    import.meta.glob<string>('../../../../templates/*/assets/*', {
-      query: '?url',
-      import: 'default',
-      eager: true,
-    }),
-  ).map(([path, url]) => [path.slice(path.lastIndexOf('/') + 1), url]),
-);
+// Vite emits each bundled template asset file and gives us its URL. We key by
+// basename so an `assetManifest` entry's `source` resolves directly. Template
+// asset filenames are therefore kept globally unique (e.g.
+// `world-countries.geojson`); a collision is a build-time authoring error, so
+// we throw rather than let one template's asset silently shadow another's.
+const assetUrlByFilename = new Map<string, string>();
+
+for (const [path, url] of Object.entries(
+  import.meta.glob<string>('../../../../templates/*/assets/*', {
+    query: '?url',
+    import: 'default',
+    eager: true,
+  }),
+)) {
+  const filename = path.slice(path.lastIndexOf('/') + 1);
+  if (assetUrlByFilename.has(filename)) {
+    throw new Error(
+      `Duplicate bundled template asset filename: ${filename}. Template asset filenames must be globally unique.`,
+    );
+  }
+  assetUrlByFilename.set(filename, url);
+}
 
 type ManifestEntry = { id: string; name: string; source?: string };
 

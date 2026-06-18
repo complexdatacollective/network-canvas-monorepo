@@ -176,7 +176,7 @@ The validator does **not** cross-check asset references, and a malformed `assetM
     the researcher to swap in their own token in the stage's `interviewScript` and in the
     researcher-notes screen below.
   - A `type:"geojson"` boundary asset whose `source` is a file bundled under
-    `templates/<id>/assets/` (loaded into the library by `src/templates/template-assets.ts`),
+    `templates/<id>/assets/` (loaded into the library by `apps/architect-web/src/templates/template-assets.ts`),
     referenced by `dataSourceAssetId`. Each feature must expose the property named in
     `targetFeatureProperty` (e.g. `name`).
 
