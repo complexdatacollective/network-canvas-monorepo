@@ -1,12 +1,14 @@
 import NextLink from 'next/link';
 import { type ComponentProps, forwardRef, type ReactNode } from 'react';
 
-import { cn } from '~/lib/utils';
+import { cn, externalLinkProps } from '~/lib/utils';
 
 const Link = forwardRef<
   HTMLAnchorElement,
   ComponentProps<typeof NextLink> & { children: ReactNode; className?: string }
 >((props, ref) => {
+  const external =
+    typeof props.href === 'string' ? externalLinkProps(props.href) : {};
   return (
     <NextLink
       ref={ref}
@@ -15,6 +17,7 @@ const Link = forwardRef<
         props.className,
       )}
       {...props}
+      {...external}
     >
       <span className="from-link to-link bg-linear-to-r bg-size-[0%_2px] bg-left-bottom bg-no-repeat pb-0.5 transition-[background-size] duration-200 ease-out group-hover:bg-size-[100%_2px]">
         {props.children}
