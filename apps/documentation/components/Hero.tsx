@@ -13,7 +13,7 @@ export function Hero() {
   const t = useTranslations();
   return (
     <motion.div
-      className="mx-4 flex max-w-7xl flex-col items-center gap-10 pt-2 sm:mx-8 md:flex-1 md:justify-between md:pt-3 lg:gap-16"
+      className="mx-4 flex max-w-7xl flex-col items-center justify-center gap-10 pt-2 sm:mx-8 md:flex-1 md:pt-3 lg:gap-16"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
