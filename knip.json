@@ -1,11 +1,10 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "ignoreExportsUsedInFile": { "type": true },
-  // The quality CI job runs `pnpm --filter @codaco/interface-images exec
-  // playwright install` to generate interface screenshots; playwright is a
-  // devDependency of @codaco/interface-images, not the root, so knip sees the
-  // binary as unlisted.
-  "ignoreBinaries": ["playwright"],
+  // The legacy app-build workflow (.github/workflows/legacy-app-build.yml)
+  // invokes the electron-builder binary, which is a devDependency of the
+  // legacy architect app rather than the root, so knip sees it as unlisted.
+  "ignoreBinaries": ["electron-builder"],
   "tags": ["-public"],
   "workspaces": {
     "packages/ui": {},

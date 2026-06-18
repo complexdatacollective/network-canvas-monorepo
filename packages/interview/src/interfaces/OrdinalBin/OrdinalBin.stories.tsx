@@ -40,13 +40,13 @@ type StoryArgs = {
 function buildOptions(binCount: number, hasMissingValue: boolean) {
   const options: VariableOption[] = [];
 
-  if (hasMissingValue) {
-    options.push({ label: 'N/A', value: -1 });
-  }
-
   for (let i = 0; i < binCount; i++) {
     const label = ORDINAL_LABELS[i] ?? `Option ${i + 1}`;
     options.push({ label, value: i + 1 });
+  }
+
+  if (hasMissingValue) {
+    options.push({ label: 'N/A', value: -1 });
   }
 
   return options;
@@ -97,6 +97,23 @@ function buildInterview(args: StoryArgs) {
   for (let i = 0; i < clampedUnassigned; i++) {
     for (const varId of variables) {
       interview.setNodeAttribute(i, varId, null);
+    }
+  }
+
+  // When the "N/A" missing bin is present, explicitly drop the last couple of
+  // assigned nodes into the negative-value option so the missing bin is visibly
+  // populated rather than depending on the index-based value generator.
+  if (args.hasMissingValue) {
+    const missingValue = -1;
+    const missingCount = Math.min(2, args.initialNodeCount - clampedUnassigned);
+    for (
+      let i = args.initialNodeCount - missingCount;
+      i < args.initialNodeCount;
+      i++
+    ) {
+      for (const varId of variables) {
+        interview.setNodeAttribute(i, varId, missingValue);
+      }
     }
   }
 
@@ -183,5 +200,22 @@ export default meta;
 type Story = StoryObj<StoryArgs>;
 
 export const Default: Story = {
+  render: (args) => <OrdinalBinStoryWrapper {...args} />,
+};
+
+/**
+ * Demonstrates an ordinal bin that includes the special "missing" category: an
+ * option whose `value` is negative (here `{ label: 'N/A', value: -1 }`). The
+ * `OrdinalBinItem` detects the negative value and renders it with the distinct
+ * "missing" styling, separating it from the regular ordered response bins.
+ */
+export const WithMissingValue: Story = {
+  name: 'With "missing" (N/A) bin',
+  args: {
+    hasMissingValue: true,
+    binCount: 5,
+    initialNodeCount: 12,
+    unassignedCount: 2,
+  },
   render: (args) => <OrdinalBinStoryWrapper {...args} />,
 };
