@@ -1,6 +1,6 @@
 {
   "name": "Mental Health Networks",
-  "description": "Looks at how the people in someone's life both support them and add stress while they manage their mental health. It asks separately about supportive people and difficult ones, and about who knows about their mental health.",
+  "description": "An example template for studying how a personal network both supports a participant and adds stress while they manage their mental health. It uses separate name generators for supportive and difficult relationships, and records who knows about the participant's mental health (disclosure).",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "experiments": {

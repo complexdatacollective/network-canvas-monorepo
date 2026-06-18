@@ -1,6 +1,6 @@
 {
   "name": "Sexual & Injection Risk Networks",
-  "description": "Asks about someone's sexual and drug-injecting partners over recent months, including when each relationship started and ended, to help researchers understand how infections such as HIV can spread. Partner names are encrypted so that only the participant can read them.",
+  "description": "An example template for studying the sexual and injection partnerships through which HIV and other infections spread. It records partner attributes and partnership start and end dates so that overlapping partnerships can be identified, and encrypts partner labels so that only the participant can read them.",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "experiments": { "encryptedVariables": true },

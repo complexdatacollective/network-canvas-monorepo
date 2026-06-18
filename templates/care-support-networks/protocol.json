@@ -1,6 +1,6 @@
 {
   "name": "Care & Support Networks",
-  "description": "Looks at who supports someone through a period of care, and the kinds of help they give — emotional, practical, informational, and financial — from both family and friends and professional services. Set up here for pregnancy and new parenthood.",
+  "description": "An example of a study that looks at who supports a participant through a period of care, and the kinds of support they provide — emotional, practical, informational, and financial — across both informal and professional sources. Configured here for the perinatal period (pregnancy and new parenthood).",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "codebook": {

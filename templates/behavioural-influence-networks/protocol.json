@@ -1,6 +1,6 @@
 {
   "name": "Behavioural Influence Networks",
-  "description": "Looks at how someone's health habits — smoking, vaping, exercise, diet, and drinking — compare with those of the people they spend time with. It asks about the participant's own habits and about the people they share each activity with.",
+  "description": "An example template for studying social influence on health behaviours such as smoking, vaping, physical activity, diet, and alcohol use. It uses behaviour-specific name generators to elicit the people a participant shares each behaviour with, alongside the participant's own self-report.",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "codebook": {

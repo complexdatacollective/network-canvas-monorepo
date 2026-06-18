@@ -1,6 +1,6 @@
 {
   "name": "Transnational Networks",
-  "description": "For studying the social networks of people who have migrated. It asks about the important people in their life, both in the country where they live now and abroad, and places those people on a world map.",
+  "description": "An example template for studying the personal networks of people who have migrated. It pairs separate name generators for important people in the host country and abroad with a geospatial stage that places those people on a world map.",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "codebook": {

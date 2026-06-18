@@ -1,6 +1,6 @@
 {
   "name": "Social Connection & Isolation",
-  "description": "Combines a map of someone's close relationships with well-established questionnaires about loneliness, so you can see both how connected someone is and how lonely they feel. Designed with older adults in mind.",
+  "description": "An example template that pairs a personal-network map with validated loneliness scales (UCLA-3, De Jong Gierveld, and Lubben LSNS-6), so a study can capture both social isolation (network structure) and subjective loneliness. Designed with older adults in mind.",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "codebook": {
