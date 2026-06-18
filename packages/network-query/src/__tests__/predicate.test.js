@@ -26,6 +26,64 @@ describe('predicate', () => {
       );
     });
 
+    describe('numeric operators with non-numeric values', () => {
+      // A null / absent number must not be coerced to 0. Otherwise an
+      // unanswered node (value null) would wrongly satisfy LESS_THAN and be
+      // included in a filter.
+      it('null / undefined value is never matched (not coerced to 0)', () => {
+        expect(predicate(operators.LESS_THAN)({ value: null, other: 5 })).toBe(
+          false,
+        );
+        expect(
+          predicate(operators.LESS_THAN)({ value: undefined, other: 5 }),
+        ).toBe(false);
+        expect(
+          predicate(operators.GREATER_THAN)({ value: null, other: -5 }),
+        ).toBe(false);
+        expect(
+          predicate(operators.GREATER_THAN_OR_EQUAL)({ value: null, other: 0 }),
+        ).toBe(false);
+        expect(
+          predicate(operators.LESS_THAN_OR_EQUAL)({ value: null, other: 0 }),
+        ).toBe(false);
+      });
+
+      // Datetime values are stored as ISO strings. Number('2020-...') is NaN,
+      // so a naive numeric comparison silently fails. Compare them as dates.
+      it('datetime ISO strings compare chronologically, not as NaN', () => {
+        expect(
+          predicate(operators.GREATER_THAN)({
+            value: '2020-06-01',
+            other: '2020-01-01',
+          }),
+        ).toBe(true);
+        expect(
+          predicate(operators.LESS_THAN)({
+            value: '2020-01-01',
+            other: '2020-06-01',
+          }),
+        ).toBe(true);
+        expect(
+          predicate(operators.GREATER_THAN_OR_EQUAL)({
+            value: '2020-01-01T00:00:00.000Z',
+            other: '2020-01-01T00:00:00.000Z',
+          }),
+        ).toBe(true);
+      });
+
+      // A value that is neither a number nor a parseable date never matches a
+      // numeric operator (rather than producing a NaN comparison that happens
+      // to be false, or coercing to a misleading number).
+      it('unparseable value never matches', () => {
+        expect(
+          predicate(operators.GREATER_THAN)({ value: 'not a date', other: 5 }),
+        ).toBe(false);
+        expect(
+          predicate(operators.LESS_THAN)({ value: 'not a date', other: 5 }),
+        ).toBe(false);
+      });
+    });
+
     it('GREATER_THAN_OR_EQUAL', () => {
       expect(
         predicate(operators.GREATER_THAN_OR_EQUAL)({ value: 1.5, other: 1 }),
@@ -172,20 +230,50 @@ describe('predicate', () => {
       ).toBe(false);
     });
 
+    // An invalid regex pattern (e.g. an unbalanced paren) must not throw —
+    // getSkipMap evaluates every stage's skip-logic on every network change,
+    // so one bad rule would otherwise break navigation interview-wide. An
+    // invalid pattern is treated as "no match".
+    it('invalid regex pattern is treated as no-match instead of throwing', () => {
+      expect(() =>
+        predicate(operators.CONTAINS)({ value: 'word', other: '(' }),
+      ).not.toThrow();
+      expect(predicate(operators.CONTAINS)({ value: 'word', other: '(' })).toBe(
+        false,
+      );
+      expect(() =>
+        predicate(operators.DOES_NOT_CONTAIN)({ value: 'word', other: '(' }),
+      ).not.toThrow();
+      // No match -> the value does not contain the (invalid) pattern.
+      expect(
+        predicate(operators.DOES_NOT_CONTAIN)({ value: 'word', other: '(' }),
+      ).toBe(true);
+    });
+
     it('EXISTS', () => {
       expect(predicate(operators.EXISTS)({ value: null })).toBe(false);
       expect(predicate(operators.EXISTS)({ value: 1 })).toBe(true);
 
-      // Empty array and empty string both count as "exists" — only null is
-      // treated as absence. Skip-logic stage navigation depends on this.
+      // Empty array and empty string both count as "exists" — only absence
+      // (null / undefined) is treated as missing. Skip-logic stage navigation
+      // depends on this.
       expect(predicate(operators.EXISTS)({ value: [] })).toBe(true);
       expect(predicate(operators.EXISTS)({ value: '' })).toBe(true);
+
+      // An absent attribute (undefined — never seeded, e.g. ego variables and
+      // blank external-data cells) must be treated the same as null.
+      expect(predicate(operators.EXISTS)({ value: undefined })).toBe(false);
+      expect(predicate(operators.EXISTS)({})).toBe(false);
     });
 
     it('NOT_EXISTS', () => {
       expect(predicate(operators.NOT_EXISTS)({ value: 1 })).toBe(false);
       expect(predicate(operators.NOT_EXISTS)({ value: null })).toBe(true);
       expect(predicate(operators.NOT_EXISTS)({ value: [] })).toBe(false);
+
+      // Absent (undefined) is treated the same as null.
+      expect(predicate(operators.NOT_EXISTS)({ value: undefined })).toBe(true);
+      expect(predicate(operators.NOT_EXISTS)({})).toBe(true);
     });
 
     describe('INCLUDES', () => {
