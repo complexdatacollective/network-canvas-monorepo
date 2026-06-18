@@ -904,19 +904,27 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
       - name: Detect interviewer-v8 version bump
-        # changesets/action either opens a "Version Packages" PR or, when no
-        # changesets remain, runs the publish step which has already mutated
-        # apps/interviewer-v8/package.json in-place during the merged version
-        # PR. Diff the file's version against HEAD^ to decide whether to
-        # trigger an Electron build downstream. fetch-depth: 2 above makes
-        # HEAD^ available.
+        # interviewer-v8 is bump-driven: its version is edited directly in a PR
+        # rather than via a changesets "Version Packages" PR. Decide whether to
+        # release by diffing the merged commit's version against its first
+        # parent (the previous main tip).
+        #
+        # Use the immutable push SHA, NOT HEAD/HEAD^: when there are pending
+        # changesets the changesets/action step above creates a local "Version
+        # Packages" commit and checks it out, so by the time this step runs the
+        # working HEAD has advanced and HEAD^ is the merge commit (same version)
+        # instead of the previous main tip. `${{ github.sha }}` is the pushed
+        # commit and `<sha>^` resolves its first parent regardless of where the
+        # working HEAD currently points; fetch-depth: 2 makes both available.
         id: detect_interviewer_v8
         env:
           PKG_JSON: apps/interviewer-v8/package.json
+          SHA: ${{ github.sha }}
         run: |
-          current=$(node -p "require('./$PKG_JSON').version")
-          if git cat-file -e "HEAD^:$PKG_JSON" 2>/dev/null; then
-            previous=$(git show "HEAD^:$PKG_JSON" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version")
+          read_version() { git show "$1:$PKG_JSON" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version"; }
+          current=$(read_version "$SHA")
+          if git cat-file -e "$SHA^:$PKG_JSON" 2>/dev/null; then
+            previous=$(read_version "$SHA^")
           else
             previous=""
           fi
