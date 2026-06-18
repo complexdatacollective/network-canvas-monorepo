@@ -11,7 +11,6 @@ export type AppAxis = keyof typeof STORAGE_KEYS;
 
 type Store = {
   value: string | null;
-  hydrated: boolean;
   listeners: Set<() => void>;
   onStorage: (event: StorageEvent) => void;
   select: (app: string) => void;
@@ -42,7 +41,6 @@ function getStore(axis: AppAxis): Store {
   const key = STORAGE_KEYS[axis];
   const store: Store = {
     value: null,
-    hydrated: false,
     listeners: new Set(),
     onStorage: () => {},
     select: () => {},
@@ -52,8 +50,10 @@ function getStore(axis: AppAxis): Store {
     if (event.key !== key) {
       return;
     }
+    // event.newValue is null when the key is removed in another tab; treat
+    // that as a reset rather than ignoring it.
     const next = event.newValue;
-    if (next !== null && next !== store.value) {
+    if (next !== store.value) {
       store.value = next;
       emit(store);
     }
@@ -72,12 +72,10 @@ function getStore(axis: AppAxis): Store {
   return store;
 }
 
-function hydrateOnce(axis: AppAxis, store: Store) {
-  if (store.hydrated) {
-    return;
-  }
-  store.hydrated = true;
-
+// Re-read storage on every (re)subscribe so a mount after the last unsubscribe
+// — during which the `storage` listener was detached — picks up any cross-tab
+// change it missed, including removal of the key (stored === null).
+function syncFromStorage(axis: AppAxis, store: Store) {
   let stored: string | null = null;
   try {
     stored = window.localStorage.getItem(STORAGE_KEYS[axis]);
@@ -85,7 +83,7 @@ function hydrateOnce(axis: AppAxis, store: Store) {
     stored = null;
   }
 
-  if (stored !== null && stored !== store.value) {
+  if (stored !== store.value) {
     store.value = stored;
     emit(store);
   }
@@ -100,7 +98,7 @@ export function useSelectedApp(axis: AppAxis = 'architect') {
         window.addEventListener('storage', store.onStorage);
       }
       store.listeners.add(listener);
-      hydrateOnce(axis, store);
+      syncFromStorage(axis, store);
 
       return () => {
         store.listeners.delete(listener);
