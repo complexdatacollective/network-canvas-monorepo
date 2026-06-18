@@ -6,7 +6,6 @@ import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
-import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { isCapacitor, isElectron } from '~/lib/platform/platform';
 import { getStoreTarget } from '~/lib/update/storeUrls';
@@ -19,44 +18,20 @@ const MARKDOWN_TAGS = [
   'blockquote',
 ];
 
-export function UpdateToastActions({
-  info,
-  onView,
-  onSkip,
-  onDismiss,
-}: {
-  info: UpdateInfo;
-  onView: () => void;
-  onSkip: () => void;
-  onDismiss: () => void;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <span>Version {info.version} is available.</span>
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" color="primary" onClick={onView}>
-          View details
-        </Button>
-        <Button size="sm" onClick={onSkip}>
-          Skip this release
-        </Button>
-        <Button size="sm" variant="text" onClick={onDismiss}>
-          Dismiss
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export function UpdateNotes({ info }: { info: UpdateInfo }) {
   return (
-    <ScrollArea className="max-h-[50vh]">
-      <div className="pr-4">
+    <div className="flex flex-col gap-4">
+      <Paragraph>
+        Please read the release notes below thoroughly before installing this
+        update.
+      </Paragraph>
+      {/* Inset, recessed panel (own scroll container so the wheel scrolls the
+          notes rather than the dialog). A raised surface level gives contrast
+          against the dialog and feeds the inset-surface plugin's adaptive
+          shadow via its background color. */}
+      <div className="bg-surface-1 text-surface-1-contrast inset-surface max-h-[45vh] overflow-y-auto overscroll-contain rounded px-5 py-4">
         {info.releaseNotesMarkdown ? (
-          <RenderMarkdown
-            allowedElements={MARKDOWN_TAGS}
-            unwrapDisallowed={true}
-          >
+          <RenderMarkdown allowedElements={MARKDOWN_TAGS} unwrapDisallowed>
             {info.releaseNotesMarkdown}
           </RenderMarkdown>
         ) : (
@@ -65,7 +40,7 @@ export function UpdateNotes({ info }: { info: UpdateInfo }) {
           </Paragraph>
         )}
       </div>
-    </ScrollArea>
+    </div>
   );
 }
 

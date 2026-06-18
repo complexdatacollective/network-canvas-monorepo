@@ -51,7 +51,7 @@ export function HomeRoute() {
   const dialog = useDialog();
   const toast = useToast();
 
-  useUpdateCheck();
+  const { availableUpdate, openUpdateDialog } = useUpdateCheck();
 
   // If the pending hash has since been deleted (e.g. cascade-delete from
   // the Protocols route while a card was still pending), drop the pending
@@ -220,6 +220,12 @@ export function HomeRoute() {
               <StatusRow
                 protocolCount={protocols.length}
                 interviewCount={sessions.length}
+                availableUpdate={availableUpdate}
+                onOpenUpdate={
+                  availableUpdate
+                    ? () => openUpdateDialog(availableUpdate)
+                    : undefined
+                }
               />
             </div>
           </motion.div>

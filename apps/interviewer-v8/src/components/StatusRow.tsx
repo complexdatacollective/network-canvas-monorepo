@@ -1,11 +1,15 @@
+import { CircleArrowUp } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'wouter';
 
 import { APP_VERSION } from '~/lib/platform/appVersion';
+import type { UpdateInfo } from '~/lib/update/types';
 
 type StatusRowProps = {
   protocolCount: number;
   interviewCount: number;
+  availableUpdate?: UpdateInfo | null;
+  onOpenUpdate?: () => void;
 };
 
 const variants = {
@@ -25,7 +29,12 @@ const variants = {
   },
 } as const;
 
-export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
+export function StatusRow({
+  protocolCount,
+  interviewCount,
+  availableUpdate,
+  onOpenUpdate,
+}: StatusRowProps) {
   return (
     <motion.div
       variants={variants}
@@ -45,7 +54,20 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
           interviews
         </span>
       </Link>
-      <span>Interviewer {APP_VERSION}</span>
+      {availableUpdate ? (
+        <button
+          type="button"
+          onClick={onOpenUpdate}
+          // Styling cues from the DeckCard "Requires Internet" pill: pill
+          // shape, bordered, uppercase, icon + label, tinted by intent.
+          className="focusable text-info border-info bg-info/10 hover:bg-info/20 flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1 text-current uppercase transition-colors"
+        >
+          <CircleArrowUp className="size-3.5" />
+          Update available
+        </button>
+      ) : (
+        <span>Interviewer {APP_VERSION}</span>
+      )}
     </motion.div>
   );
 }

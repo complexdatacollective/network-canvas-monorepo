@@ -1,35 +1,36 @@
-import { createElement, useCallback, useEffect } from 'react';
+import { createElement, useCallback, useEffect, useState } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
-import {
-  UpdateActions,
-  UpdateNotes,
-  UpdateToastActions,
-} from '~/components/UpdateDialog';
+import { UpdateActions, UpdateNotes } from '~/components/UpdateDialog';
 import { getSettings, updateSettings } from '~/lib/db/api';
 
 import { checkForUpdate } from './checkForUpdate';
 import type { UpdateInfo } from './types';
 
 // Module-level so the check runs once per app session, not once per Home mount
-// (HomeRoute remounts when navigating back from an interview).
+// (HomeRoute remounts when navigating back from an interview). `cachedUpdate`
+// re-hydrates the badge state on remount without re-running the check.
 let hasRun = false;
+let cachedUpdate: UpdateInfo | null = null;
 
-function formatPublishedAt(publishedAt: string | null): string | undefined {
-  if (!publishedAt) return undefined;
-  const date = new Date(publishedAt);
-  if (Number.isNaN(date.getTime())) return undefined;
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'long' }).format(date);
-}
+export type UseUpdateCheck = {
+  availableUpdate: UpdateInfo | null;
+  openUpdateDialog: (info: UpdateInfo) => void;
+};
 
 // Runs the launch-time update check exactly once. On a fresh, non-skipped
-// release it raises a toast; the toast's "View details" opens a dialog with the
-// rendered release notes and a platform-specific action. Best-effort — any
-// failure in checkForUpdate resolves to null and is silently ignored.
-export function useUpdateCheck(): void {
+// release it raises a toast; clicking the toast (or the home-screen badge)
+// opens a dialog with the rendered release notes and a platform-specific
+// action. Returns the available update (independent of skip/dismiss, which only
+// govern the toast) so the home screen can show a persistent badge.
+// Best-effort — any failure in checkForUpdate resolves to null and is ignored.
+export function useUpdateCheck(): UseUpdateCheck {
   const toast = useToast();
   const dialog = useDialog();
+  const [availableUpdate, setAvailableUpdate] = useState<UpdateInfo | null>(
+    cachedUpdate,
+  );
 
   const skipRelease = useCallback(async (version: string) => {
     try {
@@ -51,7 +52,6 @@ export function useUpdateCheck(): void {
         type: 'custom',
         id: dialogId,
         title: info.releaseName,
-        description: formatPublishedAt(info.publishedAt),
         children: createElement(UpdateNotes, { info }),
         footer: createElement(UpdateActions, {
           info,
@@ -68,20 +68,20 @@ export function useUpdateCheck(): void {
       toast.add({
         id: toastId,
         title: 'Update available',
+        description: `Version ${info.version} is available.`,
         variant: 'info',
         timeout: 0,
-        description: createElement(UpdateToastActions, {
-          info,
-          onView: () => {
-            openNotesDialog(info);
-            toast.close(toastId);
-          },
-          onSkip: () => {
-            void skipRelease(info.version);
-            toast.close(toastId);
-          },
-          onDismiss: () => toast.close(toastId),
-        }),
+        // Clicking the toast opens the release-notes dialog; the close (X)
+        // dismisses; the single action button skips this release.
+        onClick: () => {
+          openNotesDialog(info);
+          toast.close(toastId);
+        },
+        cancelLabel: 'Skip this release',
+        onCancel: () => {
+          void skipRelease(info.version);
+          toast.close(toastId);
+        },
       });
     },
     [toast, openNotesDialog, skipRelease],
@@ -94,6 +94,8 @@ export function useUpdateCheck(): void {
     void (async () => {
       try {
         const info = await checkForUpdate();
+        cachedUpdate = info;
+        setAvailableUpdate(info);
         if (!info) return;
         const settings = await getSettings();
         if (settings.dismissedUpdates.includes(info.version)) return;
@@ -103,4 +105,6 @@ export function useUpdateCheck(): void {
       }
     })();
   }, [showToast]);
+
+  return { availableUpdate, openUpdateDialog: openNotesDialog };
 }
