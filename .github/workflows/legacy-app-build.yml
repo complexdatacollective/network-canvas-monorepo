@@ -67,9 +67,22 @@ jobs:
           pnpm exec electron-builder --${{ matrix.target.platform }}
           --config ${{ matrix.app == 'architect' && 'electron-builder.config.js' || 'electron-builder.config.cjs' }}
           --publish never
+      # Upload only the distributable installers + autoupdate metadata, NOT
+      # electron-builder's unpacked app directories (mac/, mac-arm64/,
+      # win-unpacked/, linux-unpacked/ …) — those are build intermediates that
+      # would bloat the artifact many-fold (and are not release assets).
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: legacy-${{ matrix.app }}-${{ matrix.target.platform }}
-          path: apps/${{ matrix.app }}/release-builds/*
+          path: |
+            apps/${{ matrix.app }}/release-builds/*.dmg
+            apps/${{ matrix.app }}/release-builds/*.zip
+            apps/${{ matrix.app }}/release-builds/*.exe
+            apps/${{ matrix.app }}/release-builds/*.AppImage
+            apps/${{ matrix.app }}/release-builds/*.deb
+            apps/${{ matrix.app }}/release-builds/*.rpm
+            apps/${{ matrix.app }}/release-builds/*.tar.gz
+            apps/${{ matrix.app }}/release-builds/*.blockmap
+            apps/${{ matrix.app }}/release-builds/*.yml
           if-no-files-found: error
           retention-days: 30
