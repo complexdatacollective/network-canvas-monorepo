@@ -107,12 +107,19 @@ function ElectronUpdateActions({ onClose }: { onClose: () => void }) {
     };
   }, [api]);
 
+  const fail = useCallback((cause: unknown) => {
+    setError(cause instanceof Error ? cause.message : String(cause));
+    setPhase('error');
+  }, []);
+
   const startDownload = useCallback(() => {
     if (!api) return;
     setError(null);
     setPhase('downloading');
-    void api.download();
-  }, [api]);
+    // Download failures normally arrive via onError; this also catches a
+    // rejection of the IPC call itself so the dialog never sticks on "downloading".
+    api.download().catch(fail);
+  }, [api, fail]);
 
   if (!api) return null;
 
@@ -129,7 +136,7 @@ function ElectronUpdateActions({ onClose }: { onClose: () => void }) {
 
   if (phase === 'downloaded') {
     return (
-      <Button color="primary" onClick={() => void api.install()}>
+      <Button color="primary" onClick={() => api.install().catch(fail)}>
         Restart & install
       </Button>
     );

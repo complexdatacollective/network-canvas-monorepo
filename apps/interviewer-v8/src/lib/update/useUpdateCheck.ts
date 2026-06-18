@@ -32,11 +32,16 @@ export function useUpdateCheck(): void {
   const dialog = useDialog();
 
   const skipRelease = useCallback(async (version: string) => {
-    const settings = await getSettings();
-    if (settings.dismissedUpdates.includes(version)) return;
-    await updateSettings({
-      dismissedUpdates: [...settings.dismissedUpdates, version],
-    });
+    try {
+      const settings = await getSettings();
+      if (settings.dismissedUpdates.includes(version)) return;
+      await updateSettings({
+        dismissedUpdates: [...settings.dismissedUpdates, version],
+      });
+    } catch {
+      // Best-effort: failing to persist a skip just means the toast may
+      // reappear next launch.
+    }
   }, []);
 
   const openNotesDialog = useCallback(
@@ -87,11 +92,15 @@ export function useUpdateCheck(): void {
     hasRun = true;
 
     void (async () => {
-      const info = await checkForUpdate();
-      if (!info) return;
-      const settings = await getSettings();
-      if (settings.dismissedUpdates.includes(info.version)) return;
-      showToast(info);
+      try {
+        const info = await checkForUpdate();
+        if (!info) return;
+        const settings = await getSettings();
+        if (settings.dismissedUpdates.includes(info.version)) return;
+        showToast(info);
+      } catch {
+        // Best-effort: a failed launch check must never disrupt the app.
+      }
     })();
   }, [showToast]);
 }

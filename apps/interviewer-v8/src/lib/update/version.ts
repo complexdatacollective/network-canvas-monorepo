@@ -15,10 +15,13 @@ function parse(version: string): ParsedVersion | null {
   const withoutBuild = version.trim().replace(/^v/, '').split('+')[0] ?? '';
   const [core, ...prereleaseParts] = withoutBuild.split('-');
   const segments = (core ?? '').split('.');
-  if (segments.length !== 3) return null;
+  // Require exactly three all-numeric segments — `Number.parseInt` is lenient
+  // ("0abc" → 0, "" → NaN), so validate the shape explicitly first.
+  if (segments.length !== 3 || !segments.every((s) => /^\d+$/.test(s))) {
+    return null;
+  }
 
   const main = segments.map((s) => Number.parseInt(s, 10));
-  if (main.some((n) => Number.isNaN(n))) return null;
 
   const prerelease =
     prereleaseParts.length > 0 ? prereleaseParts.join('-').split('.') : [];

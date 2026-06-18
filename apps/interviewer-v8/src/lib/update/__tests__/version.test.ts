@@ -33,6 +33,10 @@ describe('compareVersions', () => {
   it('treats unparseable versions as equal so no false update is claimed', () => {
     expect(compareVersions('not-a-version', '8.0.0')).toBe(0);
     expect(compareVersions('8.0', '8.0.0')).toBe(0);
+    // parseInt is lenient ("0abc" -> 0); the regex guard must reject these.
+    expect(compareVersions('8.0.0abc', '8.0.0')).toBe(0);
+    expect(compareVersions('8..0', '8.0.0')).toBe(0);
+    expect(compareVersions('8.0.0.1', '8.0.0')).toBe(0);
   });
 });
 

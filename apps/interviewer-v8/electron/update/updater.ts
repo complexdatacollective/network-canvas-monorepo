@@ -61,6 +61,12 @@ function send(channel: string, payload: unknown): void {
 export async function checkForUpdate(): Promise<UpdateInfo | null> {
   if (!app.isPackaged) return null;
 
+  const offHandlers: Array<() => void> = [];
+  const cleanup = () => {
+    for (const off of offHandlers) off();
+    offHandlers.length = 0;
+  };
+
   const availability = new Promise<string | null>((resolve) => {
     const onAvailable = (info: { version: string }) => {
       cleanup();
@@ -74,19 +80,22 @@ export async function checkForUpdate(): Promise<UpdateInfo | null> {
       cleanup();
       resolve(null);
     };
-    const cleanup = () => {
-      autoUpdater.off('update-available', onAvailable);
-      autoUpdater.off('update-not-available', onNotAvailable);
-      autoUpdater.off('error', onError);
-    };
     autoUpdater.once('update-available', onAvailable);
     autoUpdater.once('update-not-available', onNotAvailable);
     autoUpdater.once('error', onError);
+    offHandlers.push(
+      () => autoUpdater.off('update-available', onAvailable),
+      () => autoUpdater.off('update-not-available', onNotAvailable),
+      () => autoUpdater.off('error', onError),
+    );
   });
 
   try {
     await autoUpdater.checkForUpdates();
   } catch {
+    // checkForUpdates() may reject without emitting an event — remove the
+    // one-shot listeners so they don't accumulate across repeated calls.
+    cleanup();
     return null;
   }
 

@@ -7,8 +7,8 @@ import { fetchLatestRelease, parseVersionFromTag } from '../githubReleases';
 // surfaces a spurious unhandled rejection. Routing through a plain function
 // avoids that while still letting each test choose the response.
 type RequestImpl = () => Promise<{ status: number; data: unknown }>;
-const state = vi.hoisted(() => ({
-  impl: (() => Promise.resolve({ status: 200, data: [] })) as RequestImpl,
+const state = vi.hoisted((): { impl: RequestImpl } => ({
+  impl: () => Promise.resolve({ status: 200, data: [] }),
 }));
 
 vi.mock('@capacitor/core', () => ({
