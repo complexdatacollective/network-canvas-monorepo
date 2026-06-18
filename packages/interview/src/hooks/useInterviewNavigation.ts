@@ -18,7 +18,10 @@ import {
   getPromptCount,
   getStageCount,
 } from '../selectors/session';
-import { getNavigableStages } from '../selectors/skip-logic';
+import {
+  getNavigableStages,
+  resolveRecoveryStep,
+} from '../selectors/skip-logic';
 import { calculateProgress } from '../selectors/utils';
 import { getStages } from '../store/modules/protocol';
 import { transitionStage, updatePrompt } from '../store/modules/session';
@@ -272,16 +275,27 @@ export default function useInterviewNavigation() {
     setShowStage(true);
   }, [commitDisplayedStep, dispatch]);
 
-  // If the current stage should be skipped, move to the previous valid stage.
+  // If the current stage should be skipped, recover to a valid stage. Prefer
+  // the nearest earlier valid stage; if none exists (e.g. the first/lowest
+  // stage is skipped on entry) advance to the next valid stage so a skipped
+  // stage is never rendered.
   useEffect(() => {
     if (!isCurrentStepValid) {
-      // eslint-disable-next-line no-console
-      console.log(
-        '⚠️ Invalid stage! Moving you to the previous valid stage...',
+      setStep(
+        resolveRecoveryStep({
+          currentStep,
+          previousValidStageIndex,
+          nextValidStageIndex,
+        }),
       );
-      setStep(previousValidStageIndex);
     }
-  }, [setStep, isCurrentStepValid, previousValidStageIndex]);
+  }, [
+    setStep,
+    isCurrentStepValid,
+    currentStep,
+    previousValidStageIndex,
+    nextValidStageIndex,
+  ]);
 
   const { canMoveForward, canMoveBackward } =
     useStageSelector(getNavigationInfo);
