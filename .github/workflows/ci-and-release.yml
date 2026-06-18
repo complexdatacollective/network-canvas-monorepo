@@ -998,7 +998,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          # macOS 26 (Tahoe): electron-builder 26 composes the Icon Composer
+          # `.icon` asset via actool, which requires Xcode 26 / actool 26.
+          # macos-latest still ships actool 16.4, so pin the newer image.
+          - os: macos-26
             platform: mac
             artifact_name: interviewer-v8-macos
           - os: windows-latest
@@ -1399,7 +1402,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          # macOS 26 (Tahoe) for the Icon Composer `.icon` / actool 26
+          # requirement — see the interviewer-v8-build job.
+          - os: macos-26
             platform: mac
             artifact_name: interviewer-v8-macos-pr-${{ github.event.pull_request.number }}
           - os: windows-latest
