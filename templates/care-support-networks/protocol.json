@@ -1,6 +1,6 @@
 {
   "name": "Care & Support Networks",
-  "description": "A template for mapping who provides which functions of support across formal and informal sources during a care episode. The perinatal/maternal-health case is the lead exemplar (it embeds the Edinburgh Postnatal Depression Scale and pregnancy/postpartum framing), but the design generalises to caregiving, chronic-disease self-management, and recovery. Function-typed name-generator prompts let the same person recur across support functions, so unfilled functions surface as visible support gaps; a formal-vs-informal categorical sort distinguishes professional from informal sources.",
+  "description": "An example of a study that looks at who supports a participant through a period of care, and the kinds of support they provide — emotional, practical, informational, and financial — across both informal and professional sources. Configured here for the perinatal period (pregnancy and new parenthood).",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "codebook": {
@@ -262,6 +262,20 @@
   },
   "stages": [
     {
+      "id": "information-researcher-notes",
+      "type": "Information",
+      "label": "Template notes (delete before fielding)",
+      "title": "Template notes",
+      "items": [
+        {
+          "id": "researcher-notes",
+          "type": "text",
+          "size": "LARGE",
+          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\n**Clinical safety:** the EPDS is a screening tool, not a diagnostic instrument. Item 10 screens for thoughts of self-harm, so before fielding put a safety protocol in place — interviewer training, an escalation pathway, and local crisis-line and referral details — for any participant who endorses item 10 or otherwise shows distress.\n\nThe instruments this template draws on:\n\n- [Cox JL, Holden JM, Sagovsky R (1987). Detection of postnatal depression: the 10-item Edinburgh Postnatal Depression Scale (EPDS). *Br J Psychiatry* 150:782–786.](https://pubmed.ncbi.nlm.nih.gov/3651732/)\n- [Sherbourne CD, Stewart AL (1991). The MOS Social Support Survey. *Soc Sci Med* 32(6):705–714.](https://www.rand.org/pubs/reprints/RP218.html)"
+        }
+      ]
+    },
+    {
       "id": "information-intro",
       "type": "Information",
       "label": "Welcome",
@@ -270,14 +284,8 @@
         {
           "id": "intro-welcome",
           "type": "text",
-          "size": "MEDIUM",
+          "size": "LARGE",
           "content": "## Welcome\n\nThank you for taking part. In this interview we will talk about the **people who support you** during this period, and the kinds of help they provide. There are no right or wrong answers — we are interested in your own experience."
-        },
-        {
-          "id": "intro-references",
-          "type": "text",
-          "size": "SMALL",
-          "content": "## References & sources\n\n_For researchers adapting this template — the instruments it draws on. **Note:** the EPDS is a screening tool, not a diagnostic instrument, and item 10 requires a clinical safety/escalation pathway (see the template's NOTES). You can remove or edit this screen before fielding._\n\n- [Cox JL, Holden JM, Sagovsky R (1987). Detection of postnatal depression: the 10-item Edinburgh Postnatal Depression Scale (EPDS). *Br J Psychiatry* 150:782–786.](https://pubmed.ncbi.nlm.nih.gov/3651732/)\n- [Sherbourne CD, Stewart AL (1991). The MOS Social Support Survey. *Soc Sci Med* 32(6):705–714.](https://www.rand.org/pubs/reprints/RP218.html)"
         }
       ]
     },
@@ -299,7 +307,8 @@
           },
           {
             "variable": "weeks_since_birth",
-            "prompt": "If your baby has already been born, how many weeks ago was that? (Leave blank if you are still pregnant.)"
+            "prompt": "If your baby has already been born, how many weeks ago was that?",
+            "hint": "Leave blank if you are still pregnant."
           },
           {
             "variable": "living_situation",
@@ -366,7 +375,8 @@
         "fields": [
           {
             "variable": "supporter_name",
-            "prompt": "What is this person's name or initials? (Use whatever helps you remember who they are.)"
+            "prompt": "What is this person's name or initials?",
+            "hint": "Use whatever helps you remember who they are."
           }
         ]
       },
@@ -428,7 +438,8 @@
           },
           {
             "variable": "support_functions",
-            "prompt": "Which kinds of support does this person give you? (Select all that apply.)"
+            "prompt": "Which kinds of support does this person give you?",
+            "hint": "Select all that apply."
           }
         ]
       }

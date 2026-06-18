@@ -1,6 +1,6 @@
 {
   "name": "Transnational Networks",
-  "description": "A personal-network template for studying how migrants' networks span a host society and one or more origin/other countries. Paired host-country and transnational name generators plus a Geospatial world-map stage capture structural assimilation alongside transnationalism. Codebook and elicitation wording are adapted from the EgoNet / personal-network migration tradition (Vacca, Solano, Lubbers, Molina & McCarty) and the MOS Social Support Survey. See NOTES.md for sources and the Mapbox/GeoJSON assets the Geospatial stage requires.",
+  "description": "An example template for studying the personal networks of people who have migrated. It pairs separate name generators for important people in the host country and abroad with a geospatial stage that places those people on a world map.",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "codebook": {
@@ -233,31 +233,25 @@
     "edge": {
       "knows": {
         "name": "Knows",
-        "color": "edge-color-seq-1",
-        "variables": {
-          "tie_strength": {
-            "name": "tie_strength",
-            "type": "ordinal",
-            "component": "LikertScale",
-            "options": [
-              { "label": "They barely know each other", "value": 1 },
-              { "label": "They know each other a little", "value": 2 },
-              { "label": "They know each other well", "value": 3 }
-            ]
-          }
-        }
+        "color": "edge-color-seq-1"
       }
     }
   },
-  "assetManifest": {
-    "2be9b4f4-a20e-4727-b72e-e696d76b483c": {
-      "id": "2be9b4f4-a20e-4727-b72e-e696d76b483c",
-      "name": "Transnational networks welcome banner",
-      "type": "image",
-      "source": "transnational-networks-hero.svg"
-    }
-  },
   "stages": [
+    {
+      "id": "information-researcher-notes",
+      "type": "Information",
+      "label": "Template notes (delete before fielding)",
+      "title": "Template notes",
+      "items": [
+        {
+          "id": "researcher-notes",
+          "type": "text",
+          "size": "LARGE",
+          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\n**Map setup:** the Geospatial stage needs a Mapbox access token and a world-countries GeoJSON file (whose features expose a `name` property), both added as assets in Architect. The protocol validates without them, but the map will not render until you provide them — see the stage's interview script.\n\nThe instruments and studies this template draws on:\n\n- [Vacca R et al. Measuring personal networks of transnational migrants via binational link-tracing. *PLOS ONE*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC8202912/)\n- [Lubbers MJ, Molina JL et al. A Personal Network Approach to the Study of Immigrant Structural Assimilation and Transnationalism.](https://www.researchgate.net/publication/309153406_A_Personal_Network_Approach_to_the_Study_of_Immigrant_Structural_Assimilation_and_Transnationalism)\n- [McCarty, Lubbers, Vacca & Molina (2019). *Conducting Personal Network Research* (Guilford Press).](https://www.guilford.com/books/Conducting-Personal-Network-Research/McCarty-Lubbers-Vacca-Molina/9781462538386/authors)\n- [Sherbourne CD, Stewart AL (1991). The MOS Social Support Survey. *Soc Sci Med* 32(6):705–714.](https://www.rand.org/pubs/reprints/RP218.html)"
+        }
+      ]
+    },
     {
       "id": "information-intro",
       "type": "Information",
@@ -265,28 +259,10 @@
       "title": "About this study",
       "items": [
         {
-          "id": "ff73e267-693e-45fc-ab12-c0324910d232",
-          "type": "asset",
-          "content": "2be9b4f4-a20e-4727-b72e-e696d76b483c",
-          "size": "LARGE"
-        },
-        {
           "id": "intro-welcome",
           "type": "text",
-          "size": "MEDIUM",
-          "content": "## Welcome\n\nThank you for taking part. In this interview we will talk about the **important people in your life** — both those near you here, and those who live in your country of origin or elsewhere abroad.\n\nThere are no right or wrong answers. We are simply interested in your own experience and the people who matter to you."
-        },
-        {
-          "id": "intro-consent",
-          "type": "text",
-          "size": "MEDIUM",
-          "content": "### How it works\n\n- First we will ask a few questions about your own background and migration history.\n- Then you will be asked to name people you are connected to, here and abroad, and answer some questions about each of them.\n- Later you will place some of these people on a map, sort them into groups, and show how they know one another.\n\nYou may skip any question you prefer not to answer, and you can stop at any time. Your answers are confidential and will be used only for research. Please continue when you are ready to begin."
-        },
-        {
-          "id": "intro-references",
-          "type": "text",
-          "size": "SMALL",
-          "content": "## References & sources\n\n_For researchers adapting this template — the instruments and studies it draws on. You can remove or edit this screen before fielding._\n\n- [Vacca R et al. Measuring personal networks of transnational migrants via binational link-tracing. *PLOS ONE*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC8202912/)\n- [Lubbers MJ, Molina JL et al. A Personal Network Approach to the Study of Immigrant Structural Assimilation and Transnationalism.](https://www.researchgate.net/publication/309153406_A_Personal_Network_Approach_to_the_Study_of_Immigrant_Structural_Assimilation_and_Transnationalism)\n- [McCarty, Lubbers, Vacca & Molina (2019). *Conducting Personal Network Research* (Guilford Press).](https://www.guilford.com/books/Conducting-Personal-Network-Research/McCarty-Lubbers-Vacca-Molina/9781462538386/authors)\n- [Sherbourne CD, Stewart AL (1991). The MOS Social Support Survey. *Soc Sci Med* 32(6):705–714.](https://www.rand.org/pubs/reprints/RP218.html)"
+          "size": "LARGE",
+          "content": "## Welcome\n\nThank you for taking part. In this interview we will talk about the **important people in your life** — both those near you here, and those who live in your country of origin or elsewhere abroad.\n\nThere are no right or wrong answers. We are simply interested in your own experience and the people who matter to you.\n\n### How it works\n\n- First we will ask a few questions about your own background and migration history.\n- Then you will be asked to name people you are connected to, here and abroad, and answer some questions about each of them.\n- Later you will place some of these people on a map, sort them into groups, and show how they know one another.\n\nYou may skip any question you prefer not to answer, and you can stop at any time. Your answers are confidential and will be used only for research. Please continue when you are ready to begin."
         }
       ]
     },
@@ -307,7 +283,8 @@
           },
           {
             "variable": "arrival_year",
-            "prompt": "In what year did you first come to live in this country? (If you were born here, you may skip this question.)"
+            "prompt": "In what year did you first come to live in this country?",
+            "hint": "If you were born here, you may skip this question."
           },
           {
             "variable": "years_since_migration",
@@ -435,7 +412,8 @@
           },
           {
             "variable": "support_type",
-            "prompt": "What kinds of **support** does this person give you? Select all that apply."
+            "prompt": "What kinds of **support** does this person give you?",
+            "hint": "Select all that apply."
           }
         ]
       }
