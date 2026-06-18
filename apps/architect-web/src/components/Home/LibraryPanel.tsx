@@ -5,12 +5,14 @@ import {
   Info,
   Loader2,
   Trash2,
+  X,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 
 import Table from '~/components/Assets/Table';
 import Badge from '~/components/Badge';
+import ExternalLink from '~/components/ExternalLink';
 import Dialog from '~/components/NewComponents/Dialog';
 import {
   Popover,
@@ -153,7 +155,9 @@ const PanelRow = ({
       />
 
       <span className="min-w-0 flex-1">
-        <span className="block truncate font-semibold">{name}</span>
+        <span title={name} className="line-clamp-2 font-semibold wrap-anywhere">
+          {name}
+        </span>
         {meta ? (
           <span className="text-muted-foreground block truncate text-sm">
             {meta}
@@ -239,7 +243,11 @@ type LibraryPanelProps = {
 };
 
 const PANEL_CLASSES =
-  'h-[min(28rem,65dvh)] overflow-y-auto px-(--space-sm) pb-(--space-xl)';
+  'h-[min(28rem,65dvh)] overflow-x-hidden overflow-y-auto px-(--space-sm) pb-(--space-xl)';
+
+// Persist the protocol-gallery card's dismissal so it stays hidden across
+// reloads once the user closes it.
+const GALLERY_CARD_DISMISSED_KEY = 'architect:templates-gallery-dismissed';
 
 const LibraryPanel = ({
   onOpenProtocol,
@@ -253,6 +261,13 @@ const LibraryPanel = ({
   // null until the user picks a tab; the default is chosen once the library has
   // loaded (Templates when there are no recents, Recent otherwise).
   const [tab, setTab] = useState<Tab | null>(null);
+  const [galleryDismissed, setGalleryDismissed] = useState(
+    () => localStorage.getItem(GALLERY_CARD_DISMISSED_KEY) === 'true',
+  );
+  const dismissGalleryCard = () => {
+    setGalleryDismissed(true);
+    localStorage.setItem(GALLERY_CARD_DISMISSED_KEY, 'true');
+  };
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
   const [info, setInfo] = useState<{
     title: string;
@@ -541,6 +556,27 @@ const LibraryPanel = ({
               onShowInfo={() => handleShowTemplateInfo(template)}
             />
           ))}
+          {!galleryDismissed && (
+            <div className="border-border bg-surface-2 relative mt-(--space-sm) flex flex-col gap-(--space-xs) rounded-sm border p-(--space-md)">
+              <IconButton
+                variant="text"
+                size="small"
+                aria-label="Dismiss"
+                className="absolute top-(--space-xs) right-(--space-xs)"
+                onClick={dismissGalleryCard}
+                icon={<X />}
+              />
+              <p className="m-0 pr-(--space-lg) font-semibold">
+                Looking for more?
+              </p>
+              <p className="text-muted-foreground m-0 text-sm">
+                More examples of Network Canvas protocols can be found on our{' '}
+                <ExternalLink href="https://protocolgallery.networkcanvas.com/">
+                  protocol gallery
+                </ExternalLink>
+              </p>
+            </div>
+          )}
         </TabsPanel>
       </Tabs>
 
