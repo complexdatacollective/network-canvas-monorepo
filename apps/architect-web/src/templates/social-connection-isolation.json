@@ -1,6 +1,6 @@
 {
   "name": "Social Connection & Isolation",
-  "description": "An egocentric personal-network protocol that distinguishes OBJECTIVE social isolation (the structure and composition of a respondent's network) from SUBJECTIVE loneliness (validated self-report scales). Ageing/loneliness is the lead exemplar. The signature technique is a concentric OrdinalBin closeness map combined with standardised loneliness and social-network scales (UCLA-3, De Jong Gierveld 6-item, Lubben LSNS-6) embedded in an EgoForm, so network structure and subjective loneliness sit in one dataset.",
+  "description": "Pairs an egocentric network map with validated loneliness and social-network scales (UCLA-3, De Jong Gierveld 6-item, Lubben LSNS-6), so objective isolation and subjective loneliness sit in one dataset. Ageing and loneliness are the lead exemplar.",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "codebook": {
@@ -343,6 +343,20 @@
   },
   "stages": [
     {
+      "id": "information-researcher-notes",
+      "type": "Information",
+      "label": "Template notes (delete before fielding)",
+      "title": "Template notes",
+      "items": [
+        {
+          "id": "researcher-notes",
+          "type": "text",
+          "size": "LARGE",
+          "content": "## For researchers\n\n_Delete this screen before you field the study. It lists the validated scales and reports this template draws on._\n\n- [Hughes ME, Waite LJ, Hawkley LC, Cacioppo JT (2004). A Short Scale for Measuring Loneliness in Large Surveys (UCLA-3). *Research on Aging*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC2394670/)\n- [De Jong Gierveld J, Van Tilburg T (2006). A 6-Item Scale for Overall, Emotional, and Social Loneliness. *Research on Aging*.](https://journals.sagepub.com/doi/10.1177/0164027506289723)\n- [Lubben J et al. (2006). Lubben Social Network Scale (LSNS-6).](https://www.bc.edu/content/dam/bc1/schools/sw/lubben/LSNS6.pdf)\n- [US Surgeon General (2023). Our Epidemic of Loneliness and Isolation.](https://www.hhs.gov/surgeongeneral/priorities/connection/index.html)"
+        }
+      ]
+    },
+    {
       "id": "information-intro",
       "type": "Information",
       "label": "Welcome",
@@ -351,14 +365,8 @@
         {
           "id": "intro-welcome",
           "type": "text",
-          "size": "MEDIUM",
+          "size": "LARGE",
           "content": "## Welcome\n\nThank you for taking part. In this interview we will talk about the **people you are close to and in contact with**, and about how connected you feel. There are no right or wrong answers — we are simply interested in your own experience."
-        },
-        {
-          "id": "intro-references",
-          "type": "text",
-          "size": "SMALL",
-          "content": "## References & sources\n\n_For researchers adapting this template — the validated scales and reports it draws on. You can remove or edit this screen before fielding._\n\n- [Hughes ME, Waite LJ, Hawkley LC, Cacioppo JT (2004). A Short Scale for Measuring Loneliness in Large Surveys (UCLA-3). *Research on Aging*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC2394670/)\n- [De Jong Gierveld J, Van Tilburg T (2006). A 6-Item Scale for Overall, Emotional, and Social Loneliness. *Research on Aging*.](https://journals.sagepub.com/doi/10.1177/0164027506289723)\n- [Lubben J et al. (2006). Lubben Social Network Scale (LSNS-6).](https://www.bc.edu/content/dam/bc1/schools/sw/lubben/LSNS6.pdf)\n- [US Surgeon General (2023). Our Epidemic of Loneliness and Isolation.](https://www.hhs.gov/surgeongeneral/priorities/connection/index.html)"
         }
       ]
     },

@@ -155,18 +155,10 @@ Sources:
 - Office of the U.S. Surgeon General. _Our Epidemic of Loneliness and Isolation._ 2023.
   https://www.hhs.gov/surgeongeneral/priorities/connection/index.html
 
-## Assets / images (suggested, NOT embedded)
+## Assets
 
-Per the authoring guide, no `assetManifest` is included and no images are embedded. If the
-researcher wishes to add openly-licensed imagery in Architect (e.g. an Information stage intro or
-EgoForm illustration), the following are suggestions; verify the licence at download time:
-
-- Unsplash (free licence) — search "older adult community", "friends talking", "hands together":
-  https://unsplash.com/s/photos/older-adult-community
-- Pexels (free licence) — "loneliness", "social connection": https://www.pexels.com/search/social%20connection/
-- Wikimedia Commons (check per-file CC licence): https://commons.wikimedia.org/wiki/Category:Loneliness
-
-No Mapbox or GeoJSON assets are needed for this template.
+This template embeds no images and includes no `assetManifest`. No Mapbox or GeoJSON assets are
+needed.
 
 ## Implementation notes
 

@@ -143,18 +143,7 @@ influence — which free-recall egocentric data cannot. See the development prot
 `NameGeneratorRoster` stages (`packages/development-protocol/protocol.json`) for the exact shape,
 including `cardOptions`, `searchOptions`, and `sortOptions`.
 
-## Suggested imagery (do not embed)
+## Assets
 
-The template intentionally ships **without** an `assetManifest` (per the authoring guide: a
-malformed manifest fails validation, and the validator does not cross-check asset references).
-If a designer wants to add openly-licensed imagery in Architect — for the EgoForm/AlterForm
-introduction panels or an `Information` cover stage — these public-domain / permissive sources
-are suitable. Attach them as assets in Architect rather than embedding URLs in `protocol.json`.
-
-- Unsplash (free to use, no attribution required) — search "friends exercising", "sharing a
-  meal", "people socialising": https://unsplash.com/
-- Pexels (free, permissive licence): https://www.pexels.com/
-- CDC Public Health Image Library (PHIL), public domain (tobacco/health imagery):
-  https://phil.cdc.gov/
-- Wikimedia Commons (check each file's licence; many CC-BY / public domain):
-  https://commons.wikimedia.org/
+The template ships **without** an `assetManifest` and embeds no images (per the authoring guide:
+a malformed manifest fails validation, and the validator does not cross-check asset references).

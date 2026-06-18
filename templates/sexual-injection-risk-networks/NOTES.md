@@ -146,28 +146,4 @@ behavioural-surveillance instruments and egocentric sexual-network studies:
   captures both `condom_use` and `shared_injection_equipment` per partner.
 - Both name generators set `behaviours.minNodes = 0` so a respondent with no
   partners of a given kind in the reference period can proceed.
-- `assetManifest` carries a single self-authored brand banner (see below); no
-  other external assets are required for this protocol to run.
-
-## Welcome banner image (embedded)
-
-The welcome ("Confidentiality") Information stage opens with an embedded,
-self-authored brand illustration: `assets/sexual-injection-risk-networks-hero.svg`,
-referenced from `assetManifest` and shown as the first `asset` item on that stage.
-The artwork is an abstract, non-stigmatising timeline motif — a participant whose
-partnerships are drawn as overlapping bars over time, with the overlaps (concurrency)
-gently highlighted — in the Network Canvas palette. It carries no identifying or
-explicit imagery and ships license-clean. Replace it with your own asset in
-Architect if you prefer.
-
-If you would rather use other imagery, use openly-licensed sources and attach them
-in Architect rather than embedding URLs in `protocol.json`:
-
-- Network/abstract-connection graphics — Unsplash (Unsplash License, free for
-  commercial use, no attribution required): https://unsplash.com/s/photos/network
-- HIV-awareness red ribbon — Wikimedia Commons (public-domain SVG):
-  https://commons.wikimedia.org/wiki/File:Red_Ribbon.svg
-- Public-health / harm-reduction stock imagery — CDC Public Health Image Library
-  (PHIL), most images public domain: https://phil.cdc.gov/
-
-Confirm each image's licence before use.
+- No external assets are required for this protocol to run.

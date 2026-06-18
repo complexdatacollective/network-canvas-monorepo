@@ -127,16 +127,6 @@ The structure is condition-agnostic; to repurpose:
   unchanged. Add condition-specific alter attributes as needed (e.g. a `clinical_role`
   categorical for formal supporters).
 
-## 6. Suggested imagery (do NOT embed — list only, per authoring guide)
+## 6. Assets
 
-For a gallery thumbnail or optional Information-screen art, use openly-licensed images and attach
-them in Architect rather than embedding URLs in `protocol.json`:
-
-- Unsplash (Unsplash License, free commercial use, no attribution required):
-  https://unsplash.com/s/photos/postpartum-support and
-  https://unsplash.com/s/photos/new-parent-support
-- Pexels (Pexels License, free use): https://www.pexels.com/search/mother%20and%20baby%20support/
-- Wikimedia Commons (check the per-file CC licence before use):
-  https://commons.wikimedia.org/wiki/Category:Postnatal_care
-  Prefer warm, non-clinical, inclusive imagery (varied family structures and skin tones). Confirm
-  the licence of any specific file before shipping.
+This template embeds no images and includes no `assetManifest`.

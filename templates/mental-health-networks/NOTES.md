@@ -113,27 +113,6 @@ diagnostic instrument. All distress items are skippable.
   generally — `docs/protocol-template-proposals.md` (Template 2) and its references, esp. BMC
   Psychiatry 2020 (_Negotiating support…_) and the multilevel support-network study (PMC9661735).
 
-## Welcome banner image (embedded)
-
-The welcome Information stage opens with an embedded, self-authored brand illustration:
-`assets/mental-health-networks-hero.svg`, referenced from `assetManifest` and shown as the first
-`asset` item on that stage. The artwork is an abstract node-link motif — one person at the centre,
-surrounded by supportive ties (drawn solid) and a few more difficult/strained ones (drawn as a
-muted dashed line), with a soft supportive "halo" — in the Network Canvas palette on a calm light
-ground. It deliberately avoids clinical or distressing imagery and ships license-clean (no
-third-party imagery). Replace it with your own asset in Architect if you prefer.
-
-If you would rather use a photograph or third-party illustration, suitable openly-licensed
-candidates (verify licence before use; attach as an Architect asset):
-
-- Unsplash (free licence, no attribution required): https://unsplash.com — search "support group",
-  "two people talking", "hands holding"; e.g. https://unsplash.com/s/photos/support-group
-- Pexels (free licence): https://www.pexels.com/search/mental%20health/
-- Undraw open-source illustrations (MIT-style licence, recolourable to brand): https://undraw.co/illustrations
-
-Whatever you choose, favour warm, connection-themed visuals consistent with the
-supportive-but-honest tone of the template.
-
 ## Notes for researchers forking this template
 
 - **Localise the crisis-line numbers** in the closing "support services" screen before fielding.

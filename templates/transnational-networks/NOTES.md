@@ -62,20 +62,7 @@ researcher attaches two assets in Architect and points the stage's `mapOptions` 
 The map is centred on `[0, 20]` at `initialZoom: 1` so the whole world is visible for placing both
 host-country and transnational alters.
 
-## Welcome banner image (embedded)
-
-The welcome ("About this study") Information stage opens with an embedded, self-authored brand
-illustration: `assets/transnational-networks-hero.svg`. It is referenced from `assetManifest`
-and shown as the first `asset` item on that stage. The artwork is an abstract node-link motif —
-a "home" community and connections living abroad joined by ties across a stylised globe — drawn
-in the Network Canvas palette, so it ships license-clean (no third-party imagery) and scales
-crisply. Replace it with your own asset in Architect if you prefer.
-
-If you would rather use a photograph, these are openly licensed (verify the licence at time of
-use, and attach as an Architect asset rather than hot-linking):
-
-- Unsplash (free licence, https://unsplash.com/license) — search "world map", "passport",
-  "family", e.g. https://unsplash.com/s/photos/world-map
-- Wikimedia Commons world map (public domain): a blank/equirectangular world map such as
-  https://commons.wikimedia.org/wiki/File:BlankMap-World.svg
-- Pexels (free licence, https://www.pexels.com/license/): https://www.pexels.com/search/migration/
+The map needs a Mapbox access token and a world-countries GeoJSON file, both attached as assets in
+Architect; the protocol validates without them, but the map will not render until they are
+provided. The "Template notes" Information stage (the first stage) and the Geospatial stage's
+`interviewScript` both record this for whoever opens the protocol.

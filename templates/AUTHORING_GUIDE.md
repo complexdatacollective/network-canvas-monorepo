@@ -165,12 +165,40 @@ The validator does **not** cross-check asset references, and a malformed `assetM
 **will** fail. Therefore:
 
 - **Omit `assetManifest` entirely.**
-- For `Information`, use only `type:"text"` items (no asset items).
+- For `Information`, use only `type:"text"` items (no asset items). Do **not** embed images,
+  banners, or other media — keep these screens text-only.
 - For `Geospatial`, put descriptive placeholder strings in `tokenAssetId` / `dataSourceAssetId`
-  (they validate as plain strings). In `NOTES.md`, state that the researcher must attach a
-  Mapbox token asset and a GeoJSON boundary file in Architect for the stage to run.
-- If you find suitable openly-licensed images, list their URLs/licences in `NOTES.md` — do not
-  embed them.
+  (they validate as plain strings). State that the researcher must attach a Mapbox token asset
+  and a GeoJSON boundary file in Architect for the stage to run — put that note in the stage's
+  `interviewScript` and in the researcher-notes screen below (not in `NOTES.md`).
+
+## 7. Researcher-facing notes — keep them in the protocol
+
+Setup steps, instrument sources, and caveats belong **in the protocol** so they reach whoever
+opens it in Architect, not in a separate `NOTES.md`. Put them in a dedicated `Information` stage
+as the **first** stage of the protocol, with a single `type:"text"` item (`"size":"LARGE"`) and
+a label that flags it for removal, e.g.:
+
+```jsonc
+{
+  "id": "information-researcher-notes",
+  "type": "Information",
+  "label": "Template notes (delete before fielding)",
+  "title": "Template notes",
+  "items": [
+    {
+      "id": "researcher-notes",
+      "type": "text",
+      "size": "LARGE",
+      "content": "## For researchers\n\n_Delete this screen before you field the study._\n\n…sources, setup, and caveats…",
+    },
+  ],
+}
+```
+
+Participant-facing `Information` screens should also use a **single** `type:"text"` item
+(`"size":"LARGE"`) holding all the screen's content as Markdown, rather than several smaller
+items, so the screen reads as one block.
 
 ## 7. Workflow
 
