@@ -106,6 +106,10 @@ module.exports = {
     // when unset; `@codaco/interviewer-v8` sanitizes to `@codacointerviewer-v8`,
     // whose `@` is rejected for AppImage file paths. Set an explicit, safe name.
     executableName: 'network-canvas-interviewer',
+    // The default artifact filename uses the (scoped) package name, so the .deb
+    // target becomes `@codaco/interviewer-v8_<ver>_amd64.deb` and fpm treats the
+    // `/` as a directory that doesn't exist. Use an explicit slash-free name.
+    artifactName: 'network-canvas-interviewer-${version}-${arch}.${ext}',
     // AppImage supports electron-updater auto-update; .deb does not — deb users
     // update via their package manager / a manual download.
     target: ['AppImage', 'deb'],
