@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
@@ -42,6 +42,12 @@ async function generate() {
   const assetsFolder = zip.folder('assets');
   if (!assetsFolder) {
     throw new Error('Failed to create assets folder in archive.');
+  }
+
+  if (!existsSync(assetsDir)) {
+    throw new Error(
+      `Assets directory not found at ${assetsDir}. Is @codaco/sample-protocol installed and built?`,
+    );
   }
 
   for (const fileName of readdirSync(assetsDir)) {
