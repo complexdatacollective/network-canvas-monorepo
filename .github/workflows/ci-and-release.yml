@@ -207,14 +207,6 @@ jobs:
   quality:
     needs: detect
     runs-on: ubuntu-latest
-    env:
-      # Quality builds architect-web + documentation, which depend on the
-      # @codaco/interface-images `generate` task. generate runs here only on a
-      # cache miss (i.e. when the interview release version moved) and fills the
-      # shared .turbo cache the deploy jobs read back; INTERVIEW_RELEASE_VERSION
-      # is its cache key and must match the deploy jobs'.
-      INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
-      STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
     # No NEXT_PUBLIC_* / VITE_* env vars here. Quality just verifies the build
     # compiles — env.js has skipValidation:true so missing public env values
     # don't fail the build. Keeping these vars unset in quality matches what
@@ -234,15 +226,6 @@ jobs:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
-      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
-      - name: Install Playwright Chromium (for interface-image generation)
-        # playwright is a devDependency of @codaco/interface-images, not the
-        # root, so run it via --filter (root `pnpm exec playwright` can't resolve
-        # a workspace-package binary).
-        run: pnpm --filter @codaco/interface-images exec playwright install --with-deps chromium
       - name: Write protocol-validation .env (test fixture)
         env:
           PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
@@ -308,9 +291,6 @@ jobs:
           restore-keys: ${{ runner.os }}-turbo-
       - id: deploy
         name: Build and deploy docs preview
-        env:
-          INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
-          STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
         run: |
           pnpm exec turbo run build --filter=@codaco/documentation
           cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
@@ -358,9 +338,6 @@ jobs:
           restore-keys: ${{ runner.os }}-turbo-
       - id: deploy
         name: Build and deploy docs production
-        env:
-          INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
-          STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
         run: |
           pnpm exec turbo run build --filter=@codaco/documentation
           cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
@@ -407,18 +384,8 @@ jobs:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
-      # The architect-web build graph runs @codaco/interface-images#generate,
-      # which screenshots interfaces via Playwright/Chromium. That task is not a
-      # reliable cross-job turbo cache hit, so this job re-runs it and needs its
-      # own browser. `pnpm install --ignore-scripts` skips the download; run it
-      # via the package that owns playwright (the bin isn't resolvable from root).
-      - name: Install Playwright Chromium
-        run: pnpm --filter @codaco/interface-images exec playwright install --with-deps chromium
       - id: deploy
         name: Build and deploy architect-web preview
-        env:
-          INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
-          STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
         run: |
           pnpm exec turbo run build --filter=@codaco/architect-web
           json=$(npx --yes netlify-cli@22 deploy --no-build \
@@ -566,18 +533,8 @@ jobs:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
-      # The architect-web build graph runs @codaco/interface-images#generate,
-      # which screenshots interfaces via Playwright/Chromium. That task is not a
-      # reliable cross-job turbo cache hit, so this job re-runs it and needs its
-      # own browser. `pnpm install --ignore-scripts` skips the download; run it
-      # via the package that owns playwright (the bin isn't resolvable from root).
-      - name: Install Playwright Chromium
-        run: pnpm --filter @codaco/interface-images exec playwright install --with-deps chromium
       - id: deploy
         name: Build and deploy architect-web production
-        env:
-          INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
-          STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
         run: |
           pnpm exec turbo run build --filter=@codaco/architect-web
           json=$(npx --yes netlify-cli@22 deploy --no-build --prod \

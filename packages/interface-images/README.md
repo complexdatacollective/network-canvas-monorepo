@@ -38,37 +38,29 @@ storybook, screenshots each story with Playwright at one live viewport per
 aspect ratio (so each ratio is a true responsive re-layout, not a crop),
 then derives WebP width variants with sharp into `src/generated/assets/`.
 
-`src/generated/assets/` is **turbo-cached, not committed** (it is gitignored).
-Only `src/generated/manifest.ts` — a small generated file mapping each
-interface and ratio to its variant URLs and dimensions — is committed, so
-typechecking and tooling work without running a capture. `manifest.ts` only
-changes when interfaces are added/removed or the ratio config changes.
+Both `src/generated/assets/` (the WebP variants) and `src/generated/manifest.ts`
+(a small file mapping each interface and ratio to its variant URLs and
+dimensions) are **committed**. Consumers (`@codaco/architect-web`,
+`@codaco/documentation`) build directly against the committed assets — nothing
+regenerates them in CI. `manifest.ts` only changes when interfaces are
+added/removed or the ratio config changes.
 
 To change how an interface is pictured, edit its capture story. To add an
-interface, add a capture story; to remove one, delete the story.
+interface, add a capture story; to remove one, delete the story. Then
+regenerate locally and commit the result (see below).
 
 ## When images regenerate
 
-The `generate` cache is keyed on the **`@codaco/interview` release version**
-— the version in its `package.json`, or the pending version when a changeset
-bumps it — passed in as `INTERVIEW_RELEASE_VERSION`. It is **not** keyed on
-interview or fresco-ui source content. So images regenerate only when you
-deliberately version the interview package, not on every code change.
+Generation is **manual only**. Capturing each interface requires building the
+interview storybook and screenshotting it with Playwright/Chromium — far too
+slow and flaky to run on every CI build — so the committed assets are the
+source of truth and are refreshed deliberately, not automatically.
 
-This trade-off is intentional: between versions the cached images can lag the
-code. `@codaco/interview`'s Chromatic build snapshots the `capture` stories,
-so a rendering change shows up there as a visual diff — that is the prompt to
-add an interview changeset, which moves the version and regenerates the
-images. Treat Chromatic on the capture stories as the signal that a regen is
-due.
-
-`@codaco/architect-web` and `@codaco/documentation` builds depend on
-`generate`, so versioning interview flows fresh images into their next build
-and deploy. In CI the deploy jobs restore `generate`'s output from the
-`quality` job's cache rather than re-running it, so they must set the same
-`STORYBOOK_MAPBOX_TOKEN` and `INTERVIEW_RELEASE_VERSION` for the cache key to
-match — otherwise they recompute the hash, miss the cache, and try to capture
-without a browser.
+Between regenerations the committed images can lag the code. `@codaco/interview`'s
+Chromatic build snapshots the `capture` stories, so a rendering change shows up
+there as a visual diff — that is the prompt to regenerate. Treat Chromatic on
+the capture stories as the signal that a regen is due, then run the command
+below and commit the updated `assets/` + `manifest.ts`.
 
 ## Regenerating
 
@@ -76,10 +68,8 @@ without a browser.
 pnpm generate:interface-images   # from the repo root; builds storybook + captures
 ```
 
-Runs on the host — no Docker, because the output is cached rather than diffed
-against a committed reference, so cross-environment rendering differences do
-not matter. Needs a Chromium browser
+Runs on the host — no Docker. Needs a Chromium browser
 (`pnpm exec playwright install chromium`) and, for the Geospatial map,
-`STORYBOOK_MAPBOX_TOKEN` set (baked in at storybook build time). Because the
-assets are not committed, run this once to populate images for local
-development of architect-web or the documentation site.
+`STORYBOOK_MAPBOX_TOKEN` set (baked in at storybook build time) — without it
+the Geospatial capture renders no map tiles. Commit the regenerated
+`src/generated/assets/` and `src/generated/manifest.ts` together.
