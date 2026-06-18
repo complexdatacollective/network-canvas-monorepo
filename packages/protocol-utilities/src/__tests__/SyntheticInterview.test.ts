@@ -532,7 +532,9 @@ describe('SyntheticInterview', () => {
       const si = new SyntheticInterview();
       const stage = si.addStage('NameGeneratorRoster', {
         dataSource: 'externalData',
-        cardOptions: { displayLabel: 'name' },
+        cardOptions: {
+          additionalProperties: [{ label: 'Name', variable: 'name' }],
+        },
         sortOptions: {
           sortOrder: [{ property: 'name', direction: 'asc' }],
           sortableProperties: [{ variable: 'name', label: 'Name' }],

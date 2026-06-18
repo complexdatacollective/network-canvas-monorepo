@@ -14,7 +14,6 @@ export const nameGeneratorRosterStage = baseStageSchema.extend({
   dataSource: z.string().generateMock(() => getAssetId()),
   cardOptions: z
     .strictObject({
-      displayLabel: z.string().optional(),
       additionalProperties: z
         .array(z.strictObject({ label: z.string(), variable: z.string() }))
         .optional(),

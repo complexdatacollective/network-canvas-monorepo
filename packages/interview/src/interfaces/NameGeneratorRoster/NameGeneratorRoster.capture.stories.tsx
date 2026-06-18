@@ -24,7 +24,6 @@ const build = () => {
     subject: { entity: 'node', type: nodeType.id },
     dataSource: 'externalData',
     cardOptions: {
-      displayLabel: nameVar.id,
       additionalProperties: [
         { label: 'Age', variable: ageVar.id },
         { label: 'Location', variable: locationVar.id },
