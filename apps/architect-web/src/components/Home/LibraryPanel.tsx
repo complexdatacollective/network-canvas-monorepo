@@ -153,7 +153,12 @@ const PanelRow = ({
       />
 
       <span className="min-w-0 flex-1">
-        <span className="block truncate font-semibold">{name}</span>
+        <span
+          title={name}
+          className="line-clamp-2 font-semibold wrap-break-word"
+        >
+          {name}
+        </span>
         {meta ? (
           <span className="text-muted-foreground block truncate text-sm">
             {meta}
@@ -239,7 +244,7 @@ type LibraryPanelProps = {
 };
 
 const PANEL_CLASSES =
-  'h-[min(28rem,65dvh)] overflow-y-auto px-(--space-sm) pb-(--space-xl)';
+  'h-[min(28rem,65dvh)] overflow-x-hidden overflow-y-auto px-(--space-sm) pb-(--space-xl)';
 
 const LibraryPanel = ({
   onOpenProtocol,
