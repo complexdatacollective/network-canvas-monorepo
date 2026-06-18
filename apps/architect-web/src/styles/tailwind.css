@@ -397,6 +397,9 @@
 
   --font-body: var(--body-font-family);
   --font-heading: var(--heading-font-family);
+  /* Mirrors Fresco's --font-monospace so `font-monospace` resolves here too
+     (used for machine-style metadata, matching interviewer's DeckCard). */
+  --font-monospace: ui-monospace, Menlo, Monaco, 'Fira Code', monospace;
 
   --font-weight-normal: 400;
   --font-weight-medium: 500;

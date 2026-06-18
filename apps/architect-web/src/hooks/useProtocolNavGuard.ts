@@ -47,7 +47,7 @@ export const promptLeaveEditor = async (
         type: 'Confirm',
         title: 'Return to start screen?',
         message:
-          'Your work is saved automatically, so you can return to the editor at any time. If you would like to keep a copy of your changes, you can download your protocol first.',
+          "Your work is saved automatically in your browser, so you can return to the editor at any time. Don't forget to download your protocol when you are ready to collect data.",
         confirmLabel: 'Return to Start Screen',
         onConfirm: () => {
           guardState.bypass = true;

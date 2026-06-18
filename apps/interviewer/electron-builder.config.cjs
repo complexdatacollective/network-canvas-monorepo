@@ -64,10 +64,15 @@ module.exports = {
     gatekeeperAssess: false,
     entitlements: './build-resources/entitlements.mac.inherit.plist',
     entitlementsInherit: './build-resources/entitlements.mac.inherit.plist',
-    // Notarize via electron-builder's built-in notarytool when App Store Connect
-    // API credentials are present (APPLE_API_KEY/APPLE_API_KEY_ID/APPLE_API_ISSUER).
-    // Evaluates to false on local/unsigned builds, which skips notarization.
-    notarize: Boolean(process.env.APPLE_API_KEY),
+    target: [
+      { target: 'dmg', arch: ['x64', 'arm64'] },
+      { target: 'zip', arch: ['x64', 'arm64'] },
+    ],
+    // Notarize via electron-builder's built-in notarytool when credentials are
+    // present — either App Store Connect API key (APPLE_API_KEY/APPLE_API_KEY_ID/
+    // APPLE_API_ISSUER) or Apple ID (APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/
+    // APPLE_TEAM_ID). Evaluates to false on local/unsigned builds, skipping it.
+    notarize: Boolean(process.env.APPLE_API_KEY || process.env.APPLE_ID),
   },
   linux: {
     maintainer: 'Joshua Melville <joshmelville@gmail.com>',
