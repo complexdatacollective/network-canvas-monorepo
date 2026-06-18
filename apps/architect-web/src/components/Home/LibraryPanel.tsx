@@ -153,10 +153,7 @@ const PanelRow = ({
       />
 
       <span className="min-w-0 flex-1">
-        <span
-          title={name}
-          className="line-clamp-2 font-semibold wrap-break-word"
-        >
+        <span title={name} className="line-clamp-2 font-semibold wrap-anywhere">
           {name}
         </span>
         {meta ? (
