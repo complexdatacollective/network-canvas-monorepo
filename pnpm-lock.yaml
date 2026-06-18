@@ -708,6 +708,9 @@ importers:
       '@codaco/interface-images':
         specifier: workspace:*
         version: link:../../packages/interface-images
+      '@codaco/sample-protocol':
+        specifier: workspace:*
+        version: link:../../packages/sample-protocol
       '@docsearch/css':
         specifier: ^4.6.3
         version: 4.6.3
@@ -820,6 +823,9 @@ importers:
       hast-util-to-string:
         specifier: ^3.0.1
         version: 3.0.1
+      jszip:
+        specifier: 'catalog:'
+        version: 3.10.1
       mdast-util-to-string:
         specifier: ^4.0.0
         version: 4.0.0
