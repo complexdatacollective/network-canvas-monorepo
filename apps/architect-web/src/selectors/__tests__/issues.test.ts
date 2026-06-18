@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import type { RootState } from '~/ducks/modules/root';
+import { TESTING_MAPBOX_TOKEN } from '~/templates/testingMapboxToken';
 
 import {
   getHasUnusedAssets,
   getHasUnusedVariables,
   getUnusedAssets,
   getUnusedVariables,
+  getUsesTestingMapboxToken,
 } from '../issues';
 
 // Minimal protocol: asset1 + variable v1 are referenced by the single stage,
@@ -90,6 +92,42 @@ describe('issues selectors', () => {
   describe('getHasUnusedVariables()', () => {
     it('is true when there is at least one unused variable', () => {
       expect(getHasUnusedVariables(buildState())).toBe(true);
+    });
+  });
+
+  describe('getUsesTestingMapboxToken()', () => {
+    it('is true when an apikey asset holds the testing token', () => {
+      const state = buildState({
+        assetManifest: {
+          token: {
+            id: 'token',
+            type: 'apikey',
+            name: 'Mapbox token (testing only)',
+            value: TESTING_MAPBOX_TOKEN,
+          },
+        },
+      });
+
+      expect(getUsesTestingMapboxToken(state)).toBe(true);
+    });
+
+    it('is false when an apikey asset holds a different token', () => {
+      const state = buildState({
+        assetManifest: {
+          token: {
+            id: 'token',
+            type: 'apikey',
+            name: 'My token',
+            value: 'pk.some.other.token',
+          },
+        },
+      });
+
+      expect(getUsesTestingMapboxToken(state)).toBe(false);
+    });
+
+    it('is false when the protocol has no apikey assets', () => {
+      expect(getUsesTestingMapboxToken(buildState())).toBe(false);
     });
   });
 });

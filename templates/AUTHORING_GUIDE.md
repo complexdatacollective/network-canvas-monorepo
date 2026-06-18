@@ -164,13 +164,21 @@ Required keys per stage type used by these templates:
 The validator does **not** cross-check asset references, and a malformed `assetManifest`
 **will** fail. Therefore:
 
-- **Omit `assetManifest` entirely.**
+- **Omit `assetManifest` entirely** for most templates.
 - For `Information`, use only `type:"text"` items (no asset items). Do **not** embed images,
   banners, or other media — keep these screens text-only.
-- For `Geospatial`, put descriptive placeholder strings in `tokenAssetId` / `dataSourceAssetId`
-  (they validate as plain strings). State that the researcher must attach a Mapbox token asset
-  and a GeoJSON boundary file in Architect for the stage to run — put that note in the stage's
-  `interviewScript` and in the researcher-notes screen below.
+- For `Geospatial`, embed a working `assetManifest` so the map renders out of the box:
+  - A `type:"apikey"` asset holding the **shared Mapbox testing token** as its `value` (the
+    same literal as `TESTING_MAPBOX_TOKEN` in
+    `apps/architect-web/src/templates/testingMapboxToken.ts`), referenced by `tokenAssetId`.
+    The token is rate-limited and for evaluation only; its presence is detected by value and
+    surfaces a "replace before deploying" warning on the protocol timeline in Architect. Tell
+    the researcher to swap in their own token in the stage's `interviewScript` and in the
+    researcher-notes screen below.
+  - A `type:"geojson"` boundary asset whose `source` is a file bundled under
+    `templates/<id>/assets/` (loaded into the library by `src/templates/template-assets.ts`),
+    referenced by `dataSourceAssetId`. Each feature must expose the property named in
+    `targetFeatureProperty` (e.g. `name`).
 
 ## 7. Researcher-facing notes — keep them in the protocol
 

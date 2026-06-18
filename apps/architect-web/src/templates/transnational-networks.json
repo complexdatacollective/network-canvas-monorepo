@@ -3,6 +3,20 @@
   "description": "An example template for studying the personal networks of people who have migrated. It pairs separate name generators for important people in the host country and abroad with a geospatial stage that places those people on a world map.",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
+  "assetManifest": {
+    "mapbox-testing-token": {
+      "id": "mapbox-testing-token",
+      "type": "apikey",
+      "name": "Mapbox token (testing only)",
+      "value": "pk.eyJ1IjoibmV0d29ya2NhbnZhcyIsImEiOiJjbTZmaDJ0cTcwNTVpMmtvbDZhcXJneG1hIn0.wI5ooUHDWwFsH4jLXo3CVw"
+    },
+    "world-countries-geojson": {
+      "id": "world-countries-geojson",
+      "type": "geojson",
+      "name": "World countries (boundaries)",
+      "source": "world-countries.geojson"
+    }
+  },
   "codebook": {
     "ego": {
       "variables": {
@@ -438,17 +452,17 @@
       "id": "geospatial-map",
       "type": "Geospatial",
       "label": "Place people on the map",
-      "interviewScript": "Setup required before fielding: this map stage needs a Mapbox access token and a world-countries GeoJSON file. In Architect, add your OWN Mapbox access token as an asset and select it here — it replaces PLACEHOLDER_TOKEN — and attach a world-countries GeoJSON whose features expose a `name` property (replacing PLACEHOLDER_WORLD_COUNTRIES_GEOJSON). The protocol validates without these, but the map will not render until you provide them.",
+      "interviewScript": "This map stage ships ready to run: it uses Network Canvas's shared Mapbox testing token and a bundled world-countries GeoJSON whose features expose a `name` property. The testing token is rate-limited and for evaluation only — before you field this study, replace it in Architect with your OWN Mapbox access token (see the warning on the protocol timeline). You can also swap the bundled boundaries for your own GeoJSON if you need finer detail.",
       "subject": {
         "entity": "node",
         "type": "person"
       },
       "mapOptions": {
-        "tokenAssetId": "PLACEHOLDER_TOKEN",
+        "tokenAssetId": "mapbox-testing-token",
         "style": "mapbox://styles/mapbox/light-v11",
         "center": [0, 20],
         "initialZoom": 1,
-        "dataSourceAssetId": "PLACEHOLDER_WORLD_COUNTRIES_GEOJSON",
+        "dataSourceAssetId": "world-countries-geojson",
         "color": "node-color-seq-1",
         "targetFeatureProperty": "name"
       },

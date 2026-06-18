@@ -140,6 +140,7 @@ const Home = () => {
     setPendingTemplate({
       kind: 'bundled',
       protocol: template.protocol,
+      loadAssets: template.loadAssets,
       defaultName: template.name,
     });
   }, []);
