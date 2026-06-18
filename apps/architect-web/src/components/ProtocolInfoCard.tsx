@@ -53,7 +53,7 @@ const ProtocolInfoCard = () => {
         seed={name ?? 'Network Canvas Protocol'}
         className="absolute inset-0 size-full"
       />
-      <div className="from-rich-black/25 via-platinum/90 to-platinum absolute inset-0 size-full bg-linear-to-b via-20% to-45%" />
+      <div className="from-rich-black/25 via-platinum/50 to-platinum absolute inset-0 size-full bg-linear-to-b via-20% to-45%" />
 
       <div className="relative z-10 flex flex-col gap-(--space-md) p-(--space-lg)">
         {/* Top controls row — reserves space above the heading (pushing the
@@ -68,11 +68,21 @@ const ProtocolInfoCard = () => {
           )}
         </div>
 
-        <input
-          type="text"
-          className="font-heading text-navy-taupe placeholder:text-navy-taupe/50 focus-visible:ring-sea-green w-full rounded-sm border-none bg-transparent p-0 text-4xl leading-tight font-black outline-none focus-visible:ring-2 focus-visible:outline-none"
+        {/* A textarea (not an input) so long names wrap onto multiple lines —
+            the card's flexible height grows to fit. field-sizing-content
+            auto-grows it; Enter commits (blurs) rather than inserting a
+            newline, and newlines are stripped so the name stays single-line. */}
+        <textarea
+          rows={1}
+          className="font-heading text-navy-taupe placeholder:text-navy-taupe/50 focus-visible:ring-sea-green field-sizing-content w-full resize-none overflow-hidden rounded-sm border-none bg-transparent p-0 text-4xl leading-tight font-black outline-none focus-visible:ring-2 focus-visible:outline-none"
           value={localName}
-          onChange={(e) => setLocalName(e.target.value)}
+          onChange={(e) => setLocalName(e.target.value.replace(/\n/g, ' '))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.currentTarget.blur();
+            }
+          }}
           onBlur={() => {
             const trimmed = localName.trim();
             if (trimmed) {
