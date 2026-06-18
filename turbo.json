@@ -225,6 +225,16 @@
       "cache": false,
       "persistent": true
     },
+    "@codaco/architect-web#dev": {
+      "dependsOn": ["^build", "@codaco/interface-images#generate"],
+      "cache": false,
+      "persistent": true
+    },
+    "@codaco/documentation#dev": {
+      "dependsOn": ["^build", "@codaco/interface-images#generate"],
+      "cache": false,
+      "persistent": true
+    },
     "test": {
       "dependsOn": ["^build"],
       "inputs": [
