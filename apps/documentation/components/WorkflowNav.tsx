@@ -110,7 +110,7 @@ function CollapsedNav({ className }: { className?: string }) {
               {index > 0 && (
                 <ChevronRight
                   aria-hidden
-                  className="text-muted-foreground/40 h-5 w-5 shrink-0"
+                  className="text-muted-foreground/40 dark:text-foreground/30 h-5 w-5 shrink-0"
                 />
               )}
               <Tabs.Tab
@@ -119,7 +119,7 @@ function CollapsedNav({ className }: { className?: string }) {
                   'focusable relative flex shrink-0 cursor-pointer items-center gap-2 rounded-xl py-2 pr-5 pl-3 text-base font-semibold transition-colors duration-200',
                   isActive
                     ? 'text-white'
-                    : 'text-muted-foreground hover:text-foreground',
+                    : 'text-muted-foreground hover:text-foreground dark:text-foreground/60 dark:hover:text-foreground',
                 )}
               >
                 {isActive && (

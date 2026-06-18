@@ -27,7 +27,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
         // smaller screens the nav stays sticky, so it pins just below it.
         <WorkflowNav
           variant="collapsed"
-          className="sticky top-16 z-40 w-full bg-[#ffffff7d] px-4 py-2 backdrop-blur-sm lg:top-0"
+          className="dark:bg-background sticky top-16 z-40 w-full bg-[#ffffff7d] px-4 py-2 backdrop-blur-sm lg:top-0"
         />
       )}
       <motion.div

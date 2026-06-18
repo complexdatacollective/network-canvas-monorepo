@@ -17,10 +17,11 @@ export default function SharedNav({
         'border-border sticky top-0 z-50 mx-auto flex w-full flex-auto grow-0 items-center justify-between gap-4 border-b px-4 py-2 backdrop-blur-sm',
         'lg:relative lg:flex lg:px-6 lg:py-4',
         // The homepage keeps a translucent nav that floats over the hero; every
-        // other page gets a solid white bar to separate it from page content.
+        // other page gets a solid bar to separate it from page content — white in
+        // light mode, the dark background token in dark mode.
         isHomePage
           ? 'bg-background/50 lg:backdrop-blur-0 lg:border-none lg:bg-transparent'
-          : 'bg-white',
+          : 'dark:bg-background bg-white',
       )}
       initial={{ y: -100 }}
       animate={{ y: 0 }}
