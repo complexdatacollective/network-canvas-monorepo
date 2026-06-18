@@ -1,18 +1,21 @@
 import { App } from '@capacitor/app';
 
 import { isCapacitor, isElectron } from '../platform/platform';
+import { simulatedWebUpdate } from './devSimulation';
 import { fetchLatestRelease } from './githubReleases';
 import type { UpdateInfo } from './types';
 import { isNewer } from './version';
 
 // Returns details of an available newer release, or null when up to date / on a
-// platform where checks don't apply (web). Best-effort: never throws — a failed
-// check simply yields null so app launch is unaffected.
+// platform where checks don't apply. Best-effort: never throws — a failed check
+// simply yields null so app launch is unaffected. On web it has no real release
+// feed; in `vite dev` it returns a simulated update so the flow can be tested
+// (production web builds return null — see devSimulation.ts).
 export async function checkForUpdate(): Promise<UpdateInfo | null> {
   try {
     if (isElectron) return await checkElectron();
     if (isCapacitor) return await checkCapacitor();
-    return null;
+    return simulatedWebUpdate();
   } catch {
     return null;
   }

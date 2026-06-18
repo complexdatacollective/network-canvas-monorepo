@@ -4,10 +4,8 @@ import { Capacitor } from '@capacitor/core';
 // listing URL is derivable from it.
 const ANDROID_APP_ID = 'org.complexdatacollective.networkcanvas.interviewer';
 
-// TODO: fill in once the App Store listing is live. The App Store URL needs the
-// numeric app id assigned by App Store Connect, which does not exist yet. Until
-// then the iOS store button is shown disabled (see `available: false`).
-const APP_STORE_ID = '';
+// Numeric App Store app id (App Store Connect). Used to build the listing URL.
+const APP_STORE_ID = '6781689516';
 
 type StoreTarget = {
   url: string;
