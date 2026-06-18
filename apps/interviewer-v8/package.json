@@ -72,6 +72,7 @@
     "better-sqlite3-multiple-ciphers": "^12.9.0",
     "dexie": "^4.4.3",
     "effect": "catalog:",
+    "electron-updater": "^6.6.2",
     "jszip": "catalog:",
     "lucide-react": "catalog:",
     "motion": "catalog:",

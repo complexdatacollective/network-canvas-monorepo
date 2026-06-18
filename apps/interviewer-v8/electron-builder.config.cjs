@@ -22,6 +22,20 @@ module.exports = {
   appId: 'Network-Canvas-Interviewer-8',
   productName: 'Network Canvas Interviewer',
   copyright: `Copyright © ${new Date().getFullYear()} Complex Data Collective`,
+  // Auto-update feed. The monorepo publishes many products to one repo's
+  // Releases with prefixed tags, so the standard GitHub provider can't identify
+  // interviewer-v8 releases. CI instead maintains a stable `interviewer-v8-latest`
+  // release whose installers + latest*.yml are overwritten each release (see
+  // .github/workflows/ci-and-release.yml); electron-updater reads that fixed URL.
+  // Configuring `publish` also makes electron-builder emit the latest*.yml
+  // metadata and bake app-update.yml into the packaged resources.
+  publish: [
+    {
+      provider: 'generic',
+      url: 'https://github.com/complexdatacollective/network-canvas-monorepo/releases/download/interviewer-v8-latest/',
+      channel: 'latest',
+    },
+  ],
   directories: {
     buildResources: 'build-resources',
     output: 'release-builds',
@@ -83,6 +97,8 @@ module.exports = {
   },
   linux: {
     category: 'Education',
+    // AppImage supports electron-updater auto-update; .deb does not — deb users
+    // update via their package manager / a manual download.
     target: ['AppImage', 'deb'],
   },
 };
