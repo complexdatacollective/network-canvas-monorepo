@@ -1,19 +1,15 @@
 import { app, type BrowserWindow, net } from 'electron';
 import electronUpdater from 'electron-updater';
 
-const { autoUpdater } = electronUpdater;
+import {
+  isUpdateSimulated,
+  simulateDownload,
+  simulateInstall,
+  simulatedUpdate,
+} from './devSimulation';
+import type { UpdateInfo } from './types';
 
-// Mirrors the renderer's UpdateInfo (src/lib/update/types.ts). Kept structural
-// rather than imported because the main process is a separate TS build that
-// does not include renderer sources.
-type UpdateInfo = {
-  version: string;
-  currentVersion: string;
-  releaseName: string;
-  releaseNotesMarkdown: string;
-  releaseUrl: string;
-  publishedAt: string | null;
-};
+const { autoUpdater } = electronUpdater;
 
 const REPO = 'complexdatacollective/network-canvas-monorepo';
 const RELEASE_TAG_PREFIX = 'interviewer-v8@v';
@@ -59,7 +55,9 @@ function send(channel: string, payload: unknown): void {
 // to date, in dev (no app-update.yml), or on any failure — the launch check is
 // best-effort and must never block startup.
 export async function checkForUpdate(): Promise<UpdateInfo | null> {
-  if (!app.isPackaged) return null;
+  // Dev (electron:dev): return a simulated update so the desktop flow can be
+  // tested without a packaged build / real feed. See devSimulation.ts.
+  if (isUpdateSimulated()) return simulatedUpdate();
 
   const offHandlers: Array<() => void> = [];
   const cleanup = () => {
@@ -114,6 +112,13 @@ export async function checkForUpdate(): Promise<UpdateInfo | null> {
 }
 
 export async function downloadUpdate(): Promise<void> {
+  if (isUpdateSimulated()) {
+    simulateDownload(
+      (progress) => send('update:progress', progress),
+      () => send('update:downloaded', null),
+    );
+    return;
+  }
   try {
     await autoUpdater.downloadUpdate();
   } catch (error) {
@@ -125,6 +130,10 @@ export async function downloadUpdate(): Promise<void> {
 }
 
 export function quitAndInstall(): void {
+  if (isUpdateSimulated()) {
+    void simulateInstall();
+    return;
+  }
   autoUpdater.quitAndInstall();
 }
 
