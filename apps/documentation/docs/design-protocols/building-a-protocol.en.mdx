@@ -275,7 +275,7 @@ By default, the roster cards will use the "name" attribute from your external da
 
 Next, we will configure how the roster file is searchable to the participant. The functionality available for this interface includes the ability for participants to search the database for specific attributes in order to locate the alters they want to select.
 
-The search options listed will depend on the variables outlined in your datafile. Here, we have the option to select "name, "first_name", "last_name", and "first_language", and we choose to include all four.
+The search options listed will depend on the variables outlined in your datafile. Here, we have the option to select "name", "first_name", "last_name", and "first_language", and we choose to include all four.
 
 We can also narrow down the options that appear to a participant when they search on the stage by selecting "Exact" or "High Accuracy." In this case, we select "High Accuracy."
 
@@ -534,7 +534,7 @@ Now we will configure both the network filtering on the stage as well as the ski
 
 <Screenshot axis="architect" name="filter-skip"></Screenshot>
 
-To enable skip logic, we toggle the "Skip Logic" switch to "on." Then we select "Show this stage if" and click the "Add Alter Rule" button. First, we configure the skip logic rule according to the following: node type "Person", rule type "Presence", and operator "Exists." Next, we configure a second skip logic rule as follows: node type "Person", rule type "Attribute, variable query "discuss_network_research", operator "is exactly", and attribute value of "True."
+To enable skip logic, we toggle the "Skip Logic" switch to "on." Then we select "Show this stage if" and click the "Add Alter Rule" button. First, we configure the skip logic rule according to the following: node type "Person", rule type "Presence", and operator "Exists." Next, we configure a second skip logic rule as follows: node type "Person", rule type "Attribute", variable query "discuss_network_research", operator "is exactly", and attribute value of "True."
 
 <Screenshot axis="architect" name="skip"></Screenshot>
 

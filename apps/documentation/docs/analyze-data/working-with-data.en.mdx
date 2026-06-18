@@ -337,7 +337,7 @@ gplot(oneEgoNet,
                         ncol=2))
 ```
 
-<ImageFullWidth src="/assets/img/working-with-data/unnamed-chunk-1-1.png" alt=""></ImageFullWidth>
+<ImageFullWidth src="/assets/img/working-with-data/unnamed-chunk-1-1.png" alt="A single ego's network plotted with nodes labeled by name and colored by frequency of contact"></ImageFullWidth>
 
 As you can see, this only shows a single ego's network. However, the `egor` package has several functions that facilitate comparison of networks across multiple egos, though you may have to modify your data somewhat to ensure compatibility. For example, here is how we would make a visualization showing each networks with nodes' locations depending on their frequency of contact with a participant and their status as a drug partner (i.e., `TRUE`/`FALSE`):
 
@@ -364,7 +364,7 @@ plot(egorNetworkCanvas,
      type = "egogram")
 ```
 
-<ImageFullWidth src="/assets/img/working-with-data/unnamed-chunk-2-1.png" alt=""></ImageFullWidth>
+<ImageFullWidth src="/assets/img/working-with-data/unnamed-chunk-2-1.png" alt="An egogram comparing multiple ego networks, encoding drug partner status and contact frequency for each alter"></ImageFullWidth>
 
 ### Data analysis
 
@@ -422,7 +422,7 @@ ggplot(histData, aes(x=degree)) +
     theme_classic()
 ```
 
-<ImageFullWidth src="/assets/img/working-with-data/egor_hist-1.png" alt=""></ImageFullWidth>
+<ImageFullWidth src="/assets/img/working-with-data/egor_hist-1.png" alt="A histogram showing the distribution of ego network degree across participants"></ImageFullWidth>
 
 Finally, we often want to examine how an ego attribute may be associated with ego network characteristics. In this example we look at the association between a participant's reported marijuana use and the density of their ego network.
 
@@ -436,4 +436,4 @@ ego_density(egorNetworkCanvas) %>%
     ylim(0,1.05) + theme_classic()
 ```
 
-<ImageFullWidth src="/assets/img/working-with-data/ego_plot-1.png" alt=""></ImageFullWidth>
+<ImageFullWidth src="/assets/img/working-with-data/ego_plot-1.png" alt="A scatter plot of ego network density against each participant's reported marijuana use"></ImageFullWidth>

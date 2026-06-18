@@ -30,7 +30,15 @@ type ScreenshotProps = {
 
 export const Screenshot = ({ axis, name, alt = '' }: ScreenshotProps) => {
   const [selectedApp] = useSelectedApp(axis);
-  const { primary, secondary } = AXIS[axis];
+  const axisConfig = AXIS[axis];
+  if (!axisConfig) {
+    throw new Error(
+      `Screenshot: invalid axis "${axis}". Expected one of: ${Object.keys(
+        AXIS,
+      ).join(', ')}.`,
+    );
+  }
+  const { primary, secondary } = axisConfig;
   const dir = selectedApp === secondary.variant ? secondary.dir : primary.dir;
   const src = `/assets/img/${dir}/${name}.png`;
 
