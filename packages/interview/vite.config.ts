@@ -1,5 +1,5 @@
 import { copyFile, mkdir } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { dirname, isAbsolute, resolve } from 'node:path';
 
 import react from '@vitejs/plugin-react';
 import { globSync } from 'tinyglobby';
@@ -70,11 +70,20 @@ export default defineConfig({
       fileName: 'index',
     },
     rollupOptions: {
-      external: (id) =>
-        !id.startsWith('.') &&
-        !id.startsWith('/') &&
-        !id.startsWith('~/') &&
-        !id.includes('\0'),
+      // Bundle only this package's own files; externalize everything else —
+      // bare specifiers, other workspace packages, and node_modules — so the
+      // consumer provides them. rolldown hands `external` the bare specifier on
+      // POSIX but a fully-resolved absolute path on Windows; a prefix-only
+      // `.`/`/` check misclassifies a resolved Windows path
+      // (`D:\...\src\x.ts`) as external, which silently un-bundles the whole
+      // package and leaks source-extension imports into `dist/`. Keying on
+      // "resolves inside this package directory" is correct on both platforms.
+      external: (id) => {
+        if (id.includes('\0')) return false; // virtual modules: let plugins handle
+        if (id.startsWith('.') || id.startsWith('~/')) return false; // local source
+        if (isAbsolute(id) && id.startsWith(__dirname)) return false; // resolved into this package
+        return true; // bare specifier / other package / node_modules
+      },
     },
     sourcemap: true,
     minify: false,

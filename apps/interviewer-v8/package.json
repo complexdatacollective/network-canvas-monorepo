@@ -1,6 +1,6 @@
 {
   "name": "@codaco/interviewer-v8",
-  "version": "8.0.0-alpha.6",
+  "version": "8.0.0-alpha.7",
   "private": true,
   "description": "A tool for conducting Network Canvas Interviews.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
@@ -67,7 +67,6 @@
     "@codaco/shared-consts": "workspace:*",
     "@codaco/tailwind-config": "workspace:*",
     "@codaco/tsconfig": "workspace:*",
-    "@tailwindcss/vite": "catalog:",
     "@tanstack/react-table": "catalog:",
     "better-sqlite3-multiple-ciphers": "^12.9.0",
     "dexie": "^4.4.3",
@@ -91,6 +90,7 @@
     "@storybook/addon-docs": "catalog:",
     "@storybook/addon-vitest": "catalog:",
     "@storybook/react-vite": "catalog:",
+    "@tailwindcss/vite": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
     "@types/react": "catalog:",
