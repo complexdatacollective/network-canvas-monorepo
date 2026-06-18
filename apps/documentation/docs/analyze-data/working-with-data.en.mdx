@@ -31,10 +31,7 @@ If you require more resources or are curious, a complete GitHub repository for t
 
 Assuming you have either downloaded our example data or successfully exported your own data, you should now have a folder of Network Canvas CSV files somewhere on your computer. The contents of this folder should look something like the screenshot below (note that the start of each file name will likely be different if you are working with your own data):
 
-<ImageFullWidth
-  src="/assets/img/working-with-data/nc_directory_list.png"
-  alt="A directory of exported Network Canvas CSVs"
-/>
+<ImageFullWidth src="/assets/img/working-with-data/nc_directory_list.png" alt="A directory of exported Network Canvas CSVs"></ImageFullWidth>
 
 Once you have your data, the first thing you will want to do in R is to create an object that stores the path to this folder as a character value.
 
@@ -340,10 +337,7 @@ gplot(oneEgoNet,
                         ncol=2))
 ```
 
-<ImageFullWidth
-  src="/assets/img/working-with-data/unnamed-chunk-1-1.png"
-  alt=""
-/>
+<ImageFullWidth src="/assets/img/working-with-data/unnamed-chunk-1-1.png" alt=""></ImageFullWidth>
 
 As you can see, this only shows a single ego's network. However, the `egor` package has several functions that facilitate comparison of networks across multiple egos, though you may have to modify your data somewhat to ensure compatibility. For example, here is how we would make a visualization showing each networks with nodes' locations depending on their frequency of contact with a participant and their status as a drug partner (i.e., `TRUE`/`FALSE`):
 
@@ -370,10 +364,7 @@ plot(egorNetworkCanvas,
      type = "egogram")
 ```
 
-<ImageFullWidth
-  src="/assets/img/working-with-data/unnamed-chunk-2-1.png"
-  alt=""
-/>
+<ImageFullWidth src="/assets/img/working-with-data/unnamed-chunk-2-1.png" alt=""></ImageFullWidth>
 
 ### Data analysis
 
@@ -431,7 +422,7 @@ ggplot(histData, aes(x=degree)) +
     theme_classic()
 ```
 
-<ImageFullWidth src="/assets/img/working-with-data/egor_hist-1.png" alt="" />
+<ImageFullWidth src="/assets/img/working-with-data/egor_hist-1.png" alt=""></ImageFullWidth>
 
 Finally, we often want to examine how an ego attribute may be associated with ego network characteristics. In this example we look at the association between a participant's reported marijuana use and the density of their ego network.
 
@@ -445,4 +436,4 @@ ego_density(egorNetworkCanvas) %>%
     ylim(0,1.05) + theme_classic()
 ```
 
-<ImageFullWidth src="/assets/img/working-with-data/ego_plot-1.png" alt="" />
+<ImageFullWidth src="/assets/img/working-with-data/ego_plot-1.png" alt=""></ImageFullWidth>

@@ -27,7 +27,6 @@ import type {
 } from '~/app/types';
 import AppCompatibilityTable from '~/components/customComponents/AppCompatibilityTable';
 import { AppOnly } from '~/components/customComponents/AppOnly';
-import { AppScreenshot } from '~/components/customComponents/AppScreenshot';
 import { AppOption, AppSwitch } from '~/components/customComponents/AppSwitch';
 import type {
   AppKey,
@@ -42,9 +41,9 @@ import {
   InterfaceMeta,
   InterfaceSummary,
 } from '~/components/customComponents/InterfaceSummary';
-import { InterviewerScreenshot } from '~/components/customComponents/InterviewerScreenshot';
 import KeyConcept from '~/components/customComponents/KeyConcept';
 import Pre from '~/components/customComponents/Pre';
+import { Screenshot } from '~/components/customComponents/Screenshot';
 import {
   PrerequisitesSection,
   SummaryCard,
@@ -349,11 +348,8 @@ const createMarkdownComponents = (docSlug?: string) => ({
       | { axis?: 'architect'; app: AppKey; children: ReactNode }
       | { axis: 'interviewer'; app: InterviewerKey; children: ReactNode },
   ) => <AppOnly {...props} />,
-  appscreenshot: (props: { name: string; web?: string; alt?: string }) => (
-    <AppScreenshot {...props} />
-  ),
-  interviewerscreenshot: (props: { name: string; alt?: string }) => (
-    <InterviewerScreenshot {...props} />
+  screenshot: (props: { axis: AppAxis; name: string; alt?: string }) => (
+    <Screenshot {...props} />
   ),
   table: (props: { children: ReactNode }) => (
     <div className="overflow-x-auto">
