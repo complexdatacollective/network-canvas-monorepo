@@ -972,10 +972,10 @@ importers:
         specifier: 'catalog:'
         version: 8.4.0
       '@codaco/protocol-validation':
-        specifier: ^3.0.0
+        specifier: npm:@codaco/protocol-validation@^3.0.0
         version: 3.0.0
       '@codaco/shared-consts':
-        specifier: ~0.0.1-alpha.3
+        specifier: npm:@codaco/shared-consts@~0.0.1-alpha.3
         version: 0.0.2
       '@codaco/ui':
         specifier: ~5.8.6
