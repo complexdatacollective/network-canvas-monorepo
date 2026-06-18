@@ -22,6 +22,11 @@ export function initAutoUpdater(window: () => BrowserWindow | null): void {
   getWindow = window;
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
+  // The app currently ships -alpha.x prereleases. electron-updater would
+  // otherwise refuse to advertise a prerelease as an update; allow it so an
+  // alpha build can update to a newer alpha. (electron-builder's version-derived
+  // `alpha` channel already keeps prereleases out of the stable `latest` feed.)
+  autoUpdater.allowPrerelease = true;
 
   autoUpdater.on('download-progress', (progress) => {
     send('update:progress', {

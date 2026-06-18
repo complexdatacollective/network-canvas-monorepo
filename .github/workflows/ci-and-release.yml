@@ -1091,6 +1091,9 @@ jobs:
           files: artifacts/*
           fail_on_unmatched_files: true
           make_latest: 'false'
+          # A version with a prerelease tag (e.g. 8.0.0-alpha.1) is flagged as a
+          # GitHub pre-release.
+          prerelease: ${{ contains(needs.release.outputs.interviewer_v8_version, '-') }}
           generate_release_notes: true
       # Maintain the stable `interviewer-v8-latest` release that electron-updater's
       # generic feed reads (see electron-builder.config.cjs `publish`). The release
