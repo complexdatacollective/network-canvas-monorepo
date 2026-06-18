@@ -47,9 +47,15 @@ export class GridLayout<T = unknown> extends Layout<T> {
   }
 
   getContainerStyles(): React.CSSProperties {
+    // `min(${minItemWidth}px, 100%)` clamps the column's minimum to the
+    // container width when the container is narrower than minItemWidth.
+    // Without the `min()`, the bare `minmax(${minItemWidth}px, 1fr)` floor
+    // forces each column to at least minItemWidth even in a narrower
+    // container, so a single column overflows horizontally (e.g. the roster
+    // panel at its default width on an iPad), which breaks drag-and-drop.
     return {
       display: 'grid',
-      gridTemplateColumns: `repeat(auto-fill, minmax(${this.minItemWidth}px, 1fr))`,
+      gridTemplateColumns: `repeat(auto-fill, minmax(min(${this.minItemWidth}px, 100%), 1fr))`,
       gap: `calc(${this.gap_} * var(--spacing-base, 0.25rem))`,
     };
   }
