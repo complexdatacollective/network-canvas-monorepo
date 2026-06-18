@@ -1,6 +1,6 @@
 {
   "name": "Social Connection & Isolation",
-  "description": "An egocentric personal-network protocol that distinguishes OBJECTIVE social isolation (the structure and composition of a respondent's network) from SUBJECTIVE loneliness (validated self-report scales). Ageing/loneliness is the lead exemplar. The signature technique is a concentric OrdinalBin closeness map combined with standardised loneliness and social-network scales (UCLA-3, De Jong Gierveld 6-item, Lubben LSNS-6) embedded in an EgoForm, so network structure and subjective loneliness sit in one dataset.",
+  "description": "An example template that pairs a personal-network map with validated loneliness scales (UCLA-3, De Jong Gierveld, and Lubben LSNS-6), so a study can capture both social isolation (network structure) and subjective loneliness. Designed with older adults in mind.",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "codebook": {
@@ -153,7 +153,7 @@
             { "label": "One", "value": 1 },
             { "label": "Two", "value": 2 },
             { "label": "Three or four", "value": 3 },
-            { "label": "Five thru eight", "value": 4 },
+            { "label": "Five to eight", "value": 4 },
             { "label": "Nine or more", "value": 5 }
           ],
           "validation": { "required": true }
@@ -167,7 +167,7 @@
             { "label": "One", "value": 1 },
             { "label": "Two", "value": 2 },
             { "label": "Three or four", "value": 3 },
-            { "label": "Five thru eight", "value": 4 },
+            { "label": "Five to eight", "value": 4 },
             { "label": "Nine or more", "value": 5 }
           ],
           "validation": { "required": true }
@@ -181,7 +181,7 @@
             { "label": "One", "value": 1 },
             { "label": "Two", "value": 2 },
             { "label": "Three or four", "value": 3 },
-            { "label": "Five thru eight", "value": 4 },
+            { "label": "Five to eight", "value": 4 },
             { "label": "Nine or more", "value": 5 }
           ],
           "validation": { "required": true }
@@ -195,7 +195,7 @@
             { "label": "One", "value": 1 },
             { "label": "Two", "value": 2 },
             { "label": "Three or four", "value": 3 },
-            { "label": "Five thru eight", "value": 4 },
+            { "label": "Five to eight", "value": 4 },
             { "label": "Nine or more", "value": 5 }
           ],
           "validation": { "required": true }
@@ -209,7 +209,7 @@
             { "label": "One", "value": 1 },
             { "label": "Two", "value": 2 },
             { "label": "Three or four", "value": 3 },
-            { "label": "Five thru eight", "value": 4 },
+            { "label": "Five to eight", "value": 4 },
             { "label": "Nine or more", "value": 5 }
           ],
           "validation": { "required": true }
@@ -223,7 +223,7 @@
             { "label": "One", "value": 1 },
             { "label": "Two", "value": 2 },
             { "label": "Three or four", "value": 3 },
-            { "label": "Five thru eight", "value": 4 },
+            { "label": "Five to eight", "value": 4 },
             { "label": "Nine or more", "value": 5 }
           ],
           "validation": { "required": true }
@@ -343,6 +343,20 @@
   },
   "stages": [
     {
+      "id": "information-researcher-notes",
+      "type": "Information",
+      "label": "Template notes (delete before fielding)",
+      "title": "Template notes",
+      "items": [
+        {
+          "id": "researcher-notes",
+          "type": "text",
+          "size": "LARGE",
+          "content": "## For researchers\n\n_Delete this screen before you field the study. It lists the validated scales and reports this template draws on._\n\n- [Hughes ME, Waite LJ, Hawkley LC, Cacioppo JT (2004). A Short Scale for Measuring Loneliness in Large Surveys (UCLA-3). *Research on Aging*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC2394670/)\n- [De Jong Gierveld J, Van Tilburg T (2006). A 6-Item Scale for Overall, Emotional, and Social Loneliness. *Research on Aging*.](https://journals.sagepub.com/doi/10.1177/0164027506289723)\n- [Lubben J et al. (2006). Lubben Social Network Scale (LSNS-6).](https://www.bc.edu/content/dam/bc1/schools/sw/lubben/LSNS6.pdf)\n- [US Surgeon General (2023). Our Epidemic of Loneliness and Isolation.](https://www.hhs.gov/surgeongeneral/priorities/connection/index.html)"
+        }
+      ]
+    },
+    {
       "id": "information-intro",
       "type": "Information",
       "label": "Welcome",
@@ -351,14 +365,8 @@
         {
           "id": "intro-welcome",
           "type": "text",
-          "size": "MEDIUM",
+          "size": "LARGE",
           "content": "## Welcome\n\nThank you for taking part. In this interview we will talk about the **people you are close to and in contact with**, and about how connected you feel. There are no right or wrong answers — we are simply interested in your own experience."
-        },
-        {
-          "id": "intro-references",
-          "type": "text",
-          "size": "SMALL",
-          "content": "## References & sources\n\n_For researchers adapting this template — the validated scales and reports it draws on. You can remove or edit this screen before fielding._\n\n- [Hughes ME, Waite LJ, Hawkley LC, Cacioppo JT (2004). A Short Scale for Measuring Loneliness in Large Surveys (UCLA-3). *Research on Aging*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC2394670/)\n- [De Jong Gierveld J, Van Tilburg T (2006). A 6-Item Scale for Overall, Emotional, and Social Loneliness. *Research on Aging*.](https://journals.sagepub.com/doi/10.1177/0164027506289723)\n- [Lubben J et al. (2006). Lubben Social Network Scale (LSNS-6).](https://www.bc.edu/content/dam/bc1/schools/sw/lubben/LSNS6.pdf)\n- [US Surgeon General (2023). Our Epidemic of Loneliness and Isolation.](https://www.hhs.gov/surgeongeneral/priorities/connection/index.html)"
         }
       ]
     },
@@ -454,7 +462,8 @@
           },
           {
             "variable": "contact_mode",
-            "prompt": "How do you usually keep in contact with this person? (Select all that apply.)"
+            "prompt": "How do you usually keep in contact with this person?",
+            "hint": "Select all that apply."
           },
           {
             "variable": "lives_with",
@@ -462,11 +471,13 @@
           },
           {
             "variable": "support_emotional",
-            "prompt": "Could you turn to this person for **emotional** support, such as talking things over when you feel down?"
+            "prompt": "Could you turn to this person for **emotional** support?",
+            "hint": "Such as talking things over when you feel down."
           },
           {
             "variable": "support_practical",
-            "prompt": "Could you turn to this person for **practical** support, such as help with tasks, transport, or money?"
+            "prompt": "Could you turn to this person for **practical** support?",
+            "hint": "Such as help with tasks, transport, or money."
           }
         ]
       }
@@ -497,7 +508,7 @@
       "label": "Your Feelings About Connection",
       "introductionPanel": {
         "title": "Your feelings about social connection",
-        "text": "Finally, we would like to understand how you **feel** about your social connections. There are no right or wrong answers. These questions use three well-established sets of items, so the wording is fixed."
+        "text": "Finally, we would like to understand how you **feel** about your social connections. There are no right or wrong answers."
       },
       "form": {
         "title": "How you feel",
@@ -540,27 +551,27 @@
           },
           {
             "variable": "lsns_1",
-            "prompt": "Considering people you are related to: how many relatives do you see or hear from at least once a month?"
+            "prompt": "Thinking about your relatives, how many do you see or hear from at least once a month?"
           },
           {
             "variable": "lsns_2",
-            "prompt": "How many relatives do you feel at ease with that you can talk about private matters?"
+            "prompt": "How many relatives do you feel close enough to that you can talk to them about private matters?"
           },
           {
             "variable": "lsns_3",
-            "prompt": "How many relatives do you feel close to such that you could call on them for help?"
+            "prompt": "How many relatives do you feel close enough to that you could call on them for help?"
           },
           {
             "variable": "lsns_4",
-            "prompt": "Considering all of your friends: how many of your friends do you see or hear from at least once a month?"
+            "prompt": "Thinking about your friends, how many do you see or hear from at least once a month?"
           },
           {
             "variable": "lsns_5",
-            "prompt": "How many friends do you feel at ease with that you can talk about private matters?"
+            "prompt": "How many friends do you feel close enough to that you can talk to them about private matters?"
           },
           {
             "variable": "lsns_6",
-            "prompt": "How many friends do you feel close to such that you could call on them for help?"
+            "prompt": "How many friends do you feel close enough to that you could call on them for help?"
           }
         ]
       }

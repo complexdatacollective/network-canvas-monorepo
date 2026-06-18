@@ -1,6 +1,6 @@
 {
   "name": "Sexual & Injection Risk Networks",
-  "description": "An egocentric template for mapping a participant's transmission-relevant partnerships (sexual and injection) along with the partner attributes and partnership timing that drive HIV, STI, and bloodborne spread. Each partnership records start and end dates so that concurrency (overlapping partnerships) can be derived, and an Anonymisation stage encrypts sensitive partner identifiers so that only the participant can read them. Wording is adapted from CDC National HIV Behavioral Surveillance (NHBS) and the ARTnet egocentric sexual-network study.",
+  "description": "An example template for studying the sexual and injection partnerships through which HIV and other infections spread. It records partner attributes and partnership start and end dates so that overlapping partnerships can be identified, and encrypts partner labels so that only the participant can read them.",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "experiments": { "encryptedVariables": true },
@@ -185,15 +185,21 @@
       }
     }
   },
-  "assetManifest": {
-    "656a9889-18b5-44ca-9bf4-282f9568a372": {
-      "id": "656a9889-18b5-44ca-9bf4-282f9568a372",
-      "name": "Sexual and injection risk networks welcome banner",
-      "type": "image",
-      "source": "sexual-injection-risk-networks-hero.svg"
-    }
-  },
   "stages": [
+    {
+      "id": "information-researcher-notes",
+      "type": "Information",
+      "label": "Template notes (delete before fielding)",
+      "title": "Template notes",
+      "items": [
+        {
+          "id": "researcher-notes",
+          "type": "text",
+          "size": "LARGE",
+          "content": "## For researchers\n\n_Delete this screen before you field the study. It lists the surveillance instruments and studies this template draws on._\n\n- [CDC National HIV Behavioral Surveillance (NHBS) — overview.](https://pmc.ncbi.nlm.nih.gov/articles/PMC1804113/)\n- [Weiss KM et al. ARTnet: an egocentric sexual-network study of US MSM.](https://www.medrxiv.org/content/10.1101/19010579v1.full)\n- [Methods for HIV partner / transmission network studies.](https://pmc.ncbi.nlm.nih.gov/articles/PMC5985831/)"
+        }
+      ]
+    },
     {
       "id": "information-intro",
       "type": "Information",
@@ -201,28 +207,10 @@
       "title": "About this interview",
       "items": [
         {
-          "id": "f3bf7f4b-501d-4d81-aed1-3987f6ba0060",
-          "type": "asset",
-          "content": "656a9889-18b5-44ca-9bf4-282f9568a372",
-          "size": "LARGE"
-        },
-        {
           "id": "intro-confidentiality",
           "type": "text",
-          "size": "MEDIUM",
-          "content": "Thank you for taking part. In this interview we will ask about people you have had **sexual contact** with, and (if relevant) people you have **injected drugs** with. These questions help researchers understand how HIV, other sexually transmitted infections, and bloodborne infections can spread through networks of partners.\n\nYour answers are **confidential**. You will never have to give anyone's real name: you can use initials or a code that only makes sense to you. In the next step you will create a private passphrase that encrypts these labels, so that **only you** can read them - not even the research team."
-        },
-        {
-          "id": "intro-reference-period",
-          "type": "text",
-          "size": "MEDIUM",
-          "content": "## Reference period\n\nUnless we say otherwise, please think about the **past 6 months** (the last half-year up to today). When we ask you to list partners, include everyone you had sexual contact with, or injected drugs with, during that time - whether the relationship was serious, casual, one-time, or anything else.\n\nThere are no right or wrong answers, and you can skip any question you would prefer not to answer."
-        },
-        {
-          "id": "intro-references",
-          "type": "text",
-          "size": "SMALL",
-          "content": "## References & sources\n\n_For researchers adapting this template — the surveillance instruments and studies it draws on. You can remove or edit this screen before fielding._\n\n- [CDC National HIV Behavioral Surveillance (NHBS) — overview.](https://pmc.ncbi.nlm.nih.gov/articles/PMC1804113/)\n- [Weiss KM et al. ARTnet: an egocentric sexual-network study of US MSM.](https://www.medrxiv.org/content/10.1101/19010579v1.full)\n- [Methods for HIV partner / transmission network studies.](https://pmc.ncbi.nlm.nih.gov/articles/PMC5985831/)"
+          "size": "LARGE",
+          "content": "Thank you for taking part. In this interview we will ask about people you have had **sexual contact** with, and (if relevant) people you have **injected drugs** with. These questions help researchers understand how HIV, other sexually transmitted infections, and bloodborne infections can spread through networks of partners.\n\nYour answers are **confidential**. You will never have to give anyone's real name: you can use initials or a code that only makes sense to you. In the next step you will create a private passphrase that encrypts these labels, so that **only you** can read them — not even the research team.\n\n## Reference period\n\nUnless we say otherwise, please think about the **past 6 months** (the last half-year up to today). When we ask you to list partners, include everyone you had sexual contact with, or injected drugs with, during that time — whether the relationship was serious, casual, one-time, or anything else.\n\nThere are no right or wrong answers, and you can skip any question you would prefer not to answer."
         }
       ]
     },
@@ -232,7 +220,7 @@
       "label": "Create your private passphrase",
       "explanationText": {
         "title": "Protect the identities of the people you mention",
-        "body": "Because the people you will describe are sensitive, this interview lets you **encrypt** the labels you give them so that they cannot be read by anyone but you - not even the researchers running this study.\n\nTo turn this on, choose a passphrase below and enter it. You will need the same passphrase if you ever return to this interview, so pick something you will remember. Do not share it with the interviewer."
+        "body": "Because the people you will describe are sensitive, this interview lets you **encrypt** the labels you give them so that they cannot be read by anyone but you — not even the researchers running this study.\n\nTo turn this on, choose a passphrase below and enter it. You will need the same passphrase if you ever return to this interview, so pick something you will remember. Do not share it with the interviewer."
       },
       "validation": {
         "minLength": 8,
@@ -245,7 +233,7 @@
       "label": "About you",
       "introductionPanel": {
         "title": "A few questions about you",
-        "text": "Before we talk about your partners, we would like to ask a few questions about **you** - including your HIV status, whether you use prevention or treatment medication, and your testing and injection history. These help us interpret the partnerships you describe. You may skip any question."
+        "text": "Before we talk about your partners, we would like to ask a few questions about **you** — including your HIV status, whether you use prevention or treatment medication, and your testing and injection history. These help us interpret the partnerships you describe. You may skip any question."
       },
       "form": {
         "title": "About you",
@@ -256,15 +244,18 @@
           },
           {
             "variable": "on_prep",
-            "prompt": "Are you currently taking PrEP (pre-exposure prophylaxis) to prevent HIV?"
+            "prompt": "Are you currently taking PrEP to prevent HIV?",
+            "hint": "PrEP stands for pre-exposure prophylaxis."
           },
           {
             "variable": "on_art",
-            "prompt": "If you are living with HIV, are you currently taking antiretroviral treatment (ART)?"
+            "prompt": "If you are living with HIV, are you currently taking antiretroviral treatment?",
+            "hint": "Antiretroviral treatment is also known as ART."
           },
           {
             "variable": "last_hiv_test",
-            "prompt": "When did you most recently take an HIV test? (Approximate month and year is fine.)"
+            "prompt": "When did you most recently take an HIV test?",
+            "hint": "An approximate month and year is fine."
           },
           {
             "variable": "injects_drugs",
@@ -293,14 +284,15 @@
         "fields": [
           {
             "variable": "partner_label",
-            "prompt": "Enter initials or a code for this person. Use something that means something to you but would not identify them to anyone else."
+            "prompt": "Enter initials or a code for this person.",
+            "hint": "Use something that means something to you but would not identify them to anyone else."
           }
         ]
       },
       "prompts": [
         {
           "id": "p-sexual",
-          "text": "Thinking about the **past 6 months**, who are the people you have had any kind of **sexual contact** with? Add each person using initials or a private code - include main or steady partners, casual partners, and one-time partners."
+          "text": "Thinking about the **past 6 months**, who are the people you have had any kind of **sexual contact** with? Add each person using initials or a private code — include main or steady partners, casual partners, and one-time partners."
         }
       ],
       "behaviours": {
@@ -327,14 +319,15 @@
         "fields": [
           {
             "variable": "partner_label",
-            "prompt": "Enter initials or a code for this person. If you already listed them (for example as a sexual partner), use the 'Already listed' panel to add them here instead of typing the label again."
+            "prompt": "Enter initials or a code for this person.",
+            "hint": "If you already listed them (for example, as a sexual partner), add them from the 'Already listed' panel instead of typing the label again."
           }
         ]
       },
       "prompts": [
         {
           "id": "p-injection",
-          "text": "Still thinking about the **past 6 months**, who are the people you have **injected drugs with** - for example, people you injected alongside, or shared any injection equipment (needles, syringes, cookers, cotton, or water) with? Add anyone not already listed; if someone is both a sexual and an injection partner, drag them in from the 'Already listed' panel so they remain a single person in the data."
+          "text": "Still thinking about the **past 6 months**, who are the people you have **injected drugs with** — for example, people you injected alongside, or shared any injection equipment (needles, syringes, cookers, cotton, or water) with? Add anyone not already listed; if someone is both a sexual and an injection partner, drag them in from the 'Already listed' panel so they remain a single person in the data."
         }
       ],
       "behaviours": {
@@ -351,7 +344,7 @@
       },
       "introductionPanel": {
         "title": "Tell us about each partnership",
-        "text": "For each person you listed, we will ask about the **relationship** and the partner's characteristics, and about **when the partnership started and ended**. The start and end dates let researchers work out which partnerships overlapped in time (concurrency), which is important for understanding transmission risk. Approximate months are fine, and you may skip any question."
+        "text": "For each person you listed, we will ask about the **relationship** and the partner's characteristics, and about **when the partnership started and ended**. The start and end dates let researchers work out which partnerships overlapped in time, which is important for understanding how infections spread. Approximate months are fine, and you may skip any question."
       },
       "form": {
         "title": "About this partnership",
@@ -378,15 +371,18 @@
           },
           {
             "variable": "shared_injection_equipment",
-            "prompt": "Did you ever share injection equipment (needles, syringes, cookers, cotton, or water) with this person?"
+            "prompt": "Did you ever share injection equipment with this person?",
+            "hint": "Injection equipment includes needles, syringes, cookers, cotton, or water."
           },
           {
             "variable": "partnership_start",
-            "prompt": "When did your sexual or injection relationship with this person begin? (Approximate month and year.)"
+            "prompt": "When did your sexual or injection relationship with this person begin?",
+            "hint": "An approximate month and year is fine."
           },
           {
             "variable": "partnership_end",
-            "prompt": "When did it end? If it is still going on, you can leave this blank or choose this month."
+            "prompt": "When did it end?",
+            "hint": "If it is still going on, you can leave this blank or choose this month."
           }
         ]
       }

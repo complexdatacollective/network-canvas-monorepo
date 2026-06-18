@@ -537,7 +537,7 @@ const LibraryPanel = ({
         <TabsPanel value="templates" className={PANEL_CLASSES}>
           <PanelRow
             name="Sample Protocol"
-            description="First time? Explore a sample protocol"
+            description="An example introducing the key features and techniques available in Network Canvas."
             onOpen={onOpenSample}
           />
           {import.meta.env.DEV && (
