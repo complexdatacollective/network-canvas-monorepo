@@ -44,7 +44,6 @@ function buildInterview(args: StoryArgs) {
     dataSource: 'externalData',
     behaviours: Object.keys(behaviours).length > 0 ? behaviours : undefined,
     cardOptions: {
-      displayLabel: nameVar.id,
       additionalProperties: [
         { label: 'Age', variable: ageVar.id },
         { label: 'Location', variable: locationVar.id },
@@ -191,6 +190,76 @@ export const MultiplePrompts: Story = {
     promptCount: 3,
     initialSelectedCount: 2,
   },
+};
+
+/**
+ * Reproduction harness for the roster "random ID" bug — no protocol install
+ * required. The external-data asset is keyed by variable UUIDs that are NOT in
+ * this protocol's codebook, as happens when a roster is built from a preview
+ * interview export of a *different* protocol build. The name heuristic
+ * therefore resolves nothing.
+ *
+ * Before the fallback fix, each card title showed the node's content-hash
+ * `_uid` (the confusing "random ID"). Now the cards show the first available
+ * attribute value ("Alice Smith", "Bao Nguyen"), and the value-less node shows
+ * the "Unnamed Person 3" placeholder.
+ */
+function buildUuidMismatchInterview() {
+  const si = new SyntheticInterview();
+
+  const nodeType = si.addNodeType({ name: 'Person' });
+  // The codebook does have a "name" variable, but the roster's attribute keys
+  // below are foreign UUIDs, so the heuristic can never resolve against it.
+  nodeType.addVariable({ name: 'name', type: 'text' });
+  nodeType.addVariable({ name: 'age', type: 'number' });
+
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+
+  si.addStage('NameGeneratorRoster', {
+    label: 'Select People',
+    initialNodes: { count: 0 },
+    subject: { entity: 'node', type: nodeType.id },
+    dataSource: 'externalData',
+  }).addPrompt({ text: 'Please select the people you know from this list.' });
+
+  const roster = {
+    nodes: [
+      { attributes: { 'ext-uuid-name': 'Alice Smith', 'ext-uuid-age': 31 } },
+      { attributes: { 'ext-uuid-name': 'Bao Nguyen', 'ext-uuid-age': 27 } },
+      { attributes: {} },
+    ],
+  };
+
+  si.addAsset({
+    key: 'asset-external-data',
+    assetId: 'externalData',
+    name: 'External Data',
+    type: 'network',
+    url: `data:application/json;base64,${btoa(JSON.stringify(roster))}`,
+    size: 0,
+  });
+
+  return si;
+}
+
+const UuidMismatchWrapper = () => {
+  const rawPayload = useMemo(
+    () =>
+      SuperJSON.stringify(
+        buildUuidMismatchInterview().getInterviewPayload({ currentStep: 1 }),
+      ),
+    [],
+  );
+
+  return (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell rawPayload={rawPayload} />
+    </div>
+  );
+};
+
+export const PreviewExportUuidMismatch: Story = {
+  render: () => <UuidMismatchWrapper />,
 };
 
 /**

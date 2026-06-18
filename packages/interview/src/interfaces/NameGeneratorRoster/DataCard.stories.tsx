@@ -15,7 +15,8 @@ const meta = {
   argTypes: {
     label: {
       control: 'text',
-      description: 'The card title — typically the displayLabel attribute',
+      description:
+        "The card title — derived from the node's name heuristic or fallback",
     },
     details: {
       control: 'object',
