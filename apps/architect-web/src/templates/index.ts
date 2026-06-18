@@ -1,10 +1,14 @@
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import type {
+  CurrentProtocol,
+  ExtractedAsset,
+} from '@codaco/protocol-validation';
 
 import behaviouralInfluence from './behavioural-influence-networks.json';
 import careSupport from './care-support-networks.json';
 import mentalHealth from './mental-health-networks.json';
 import sexualInjectionRisk from './sexual-injection-risk-networks.json';
 import socialConnection from './social-connection-isolation.json';
+import { loadTemplateAssets } from './template-assets';
 import transnational from './transnational-networks.json';
 
 export type BundledTemplate = {
@@ -12,7 +16,15 @@ export type BundledTemplate = {
   name: string;
   description: string;
   protocol: CurrentProtocol;
+  // Templates that ship media (e.g. a bundled GeoJSON) expose a lazy loader
+  // that fetches those assets as Blobs when the template is opened; templates
+  // without assets omit it.
+  loadAssets?: () => Promise<ExtractedAsset[]>;
 };
+
+// Cast once: the transnational protocol is referenced both as the protocol and
+// by its asset loader.
+const transnationalProtocol = transnational as unknown as CurrentProtocol;
 
 // Research-grounded starting points shown in Architect's "Templates" tab. The
 // canonical, validated source for each template lives at the repo root in
@@ -26,7 +38,8 @@ export const BUNDLED_TEMPLATES: BundledTemplate[] = [
     name: 'Transnational Networks',
     description:
       "The important people in a migrant's life, here and abroad, placed on a world map",
-    protocol: transnational as unknown as CurrentProtocol,
+    protocol: transnationalProtocol,
+    loadAssets: () => loadTemplateAssets(transnationalProtocol),
   },
   {
     id: 'mental-health-networks',
