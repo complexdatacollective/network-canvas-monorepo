@@ -19,6 +19,10 @@ Fix two NameGeneratorRoster bugs and remove a dead schema field.
   even in a narrower container, so a single roster card overflowed its panel at
   the default resizable width (observed on iPad), breaking drag-and-drop. The
   column floor is now `min(Npx, 100%)` so a lone column shrinks to fit.
+- **The roster panel can't be resized narrower than a card.** `ResizableFlexPanel`
+  gains an optional `minSizePx` (a hard pixel floor for the first panel, enforced
+  by the resize hook and a CSS backstop). NameGeneratorRoster sets it to the card
+  width plus chrome, so the resize handle stops before a card would overflow.
 - **Removed the unused `cardOptions.displayLabel`.** It was introduced in the v8
   schema but was never read by any application (legacy or current) and cannot be
   set in Architect. Dropped from the schema, the `protocol-utilities` types, and

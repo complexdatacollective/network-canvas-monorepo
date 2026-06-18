@@ -16,7 +16,7 @@ const meta = {
     label: {
       control: 'text',
       description:
-        "The card title — derived from the node's name heuristic or fallback",
+        'The card title — derived from the node’s name heuristic or fallback',
     },
     details: {
       control: 'object',

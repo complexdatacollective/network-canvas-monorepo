@@ -193,62 +193,66 @@ export const MultiplePrompts: Story = {
 };
 
 /**
- * Reproduction harness for the roster "random ID" bug — no protocol install
- * required. The external-data asset is keyed by variable UUIDs that are NOT in
- * this protocol's codebook, as happens when a roster is built from a preview
- * interview export of a *different* protocol build. The name heuristic
- * therefore resolves nothing.
- *
- * Before the fallback fix, each card title showed the node's content-hash
- * `_uid` (the confusing "random ID"). Now the cards show the first available
- * attribute value ("Alice Smith", "Bao Nguyen"), and the value-less node shows
- * the "Unnamed Person 3" placeholder.
+ * Builds a roster whose nodes are keyed by variable UUIDs that are NOT present
+ * in the running codebook, mimicking data exported from a preview interview.
+ * The "name" heuristic therefore finds nothing, exercising the fallback path.
  */
 function buildUuidMismatchInterview() {
   const si = new SyntheticInterview();
 
+  // addNodeType seeds a "name" text variable, so the codebook HAS a name
+  // attribute — but the roster nodes below are keyed under unrelated UUIDs, so
+  // the heuristic cannot match against it.
   const nodeType = si.addNodeType({ name: 'Person' });
-  // The codebook does have a "name" variable, but the roster's attribute keys
-  // below are foreign UUIDs, so the heuristic can never resolve against it.
-  nodeType.addVariable({ name: 'name', type: 'text' });
-  nodeType.addVariable({ name: 'age', type: 'number' });
-
-  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
 
   si.addStage('NameGeneratorRoster', {
     label: 'Select People',
-    initialNodes: { count: 0 },
     subject: { entity: 'node', type: nodeType.id },
     dataSource: 'externalData',
-  }).addPrompt({ text: 'Please select the people you know from this list.' });
+  }).addPrompt({
+    text: 'Please select the people you know from this list.',
+  });
 
-  const roster = {
-    nodes: [
-      { attributes: { 'ext-uuid-name': 'Alice Smith', 'ext-uuid-age': 31 } },
-      { attributes: { 'ext-uuid-name': 'Bao Nguyen', 'ext-uuid-age': 27 } },
-      { attributes: {} },
-    ],
-  };
+  const rosterNodes = [
+    {
+      attributes: {
+        'mismatched-uuid-name': 'Alice Smith',
+        'mismatched-uuid-age': 30,
+      },
+    },
+    {
+      attributes: {
+        'mismatched-uuid-name': 'Bob Jones',
+        'mismatched-uuid-age': 42,
+      },
+    },
+    // A value-less node: no usable attribute values, so it must fall through to
+    // the "Unnamed Person N" placeholder rather than showing its _uid hash.
+    { attributes: {} },
+  ];
+
+  const url = `data:application/json;base64,${btoa(
+    JSON.stringify({ nodes: rosterNodes }),
+  )}`;
 
   si.addAsset({
     key: 'asset-external-data',
     assetId: 'externalData',
     name: 'External Data',
     type: 'network',
-    url: `data:application/json;base64,${btoa(JSON.stringify(roster))}`,
+    url,
     size: 0,
   });
 
   return si;
 }
 
-const UuidMismatchWrapper = () => {
+const UuidMismatchStoryWrapper = () => {
+  const interview = useMemo(() => buildUuidMismatchInterview(), []);
   const rawPayload = useMemo(
     () =>
-      SuperJSON.stringify(
-        buildUuidMismatchInterview().getInterviewPayload({ currentStep: 1 }),
-      ),
-    [],
+      SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 0 })),
+    [interview],
   );
 
   return (
@@ -258,8 +262,18 @@ const UuidMismatchWrapper = () => {
   );
 };
 
+/**
+ * Reproduces the preview-export roster bug. The asset is served inline via a
+ * `data:` URL whose nodes are keyed by variable UUIDs absent from the codebook,
+ * so `getNodeLabelAttribute` returns null.
+ *
+ * Before the fix, the cards fell back to the content-hash `_uid` and showed an
+ * opaque random ID. After the fix, each card shows the first available value
+ * ("Alice Smith", "Bob Jones"), and the value-less node shows the
+ * "Unnamed Person 3" placeholder.
+ */
 export const PreviewExportUuidMismatch: Story = {
-  render: () => <UuidMismatchWrapper />,
+  render: () => <UuidMismatchStoryWrapper />,
 };
 
 /**

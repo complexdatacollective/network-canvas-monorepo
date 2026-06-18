@@ -9,65 +9,84 @@ import {
 
 import { resolveRosterNodeLabel } from '../resolveRosterNodeLabel';
 
-const NAME_UUID = 'aaaa-1111';
-const AGE_UUID = 'bbbb-2222';
-
-const codebookVariables: NodeDefinition['variables'] = {
-  [NAME_UUID]: { name: 'name', type: 'text' },
-  [AGE_UUID]: { name: 'age', type: 'number' },
-};
-
 const makeNode = (attributes: NcNode['attributes']): NcNode => ({
-  [entityPrimaryKeyProperty]: 'hash-deadbeef',
   type: 'person',
+  [entityPrimaryKeyProperty]: 'a1b2c3d4-content-hash-uid',
   [entityAttributesProperty]: attributes,
 });
 
 describe('resolveRosterNodeLabel', () => {
-  it('returns the value of the name-heuristic attribute when one resolves', () => {
-    const label = resolveRosterNodeLabel({
+  it('returns the value found by the name heuristic when one matches', () => {
+    const codebookVariables: NodeDefinition['variables'] = {
+      'var-name': { name: 'name', type: 'text' },
+      'var-age': { name: 'age', type: 'number' },
+    };
+
+    const node = makeNode({ 'var-name': 'John Doe', 'var-age': 30 });
+
+    const result = resolveRosterNodeLabel({
       codebookVariables,
-      node: makeNode({ [NAME_UUID]: 'Alice Smith', [AGE_UUID]: 30 }),
+      node,
       subjectLabel: 'Person',
       sequentialNumber: 1,
     });
 
-    expect(label).toBe('Alice Smith');
+    expect(result).toBe('John Doe');
   });
 
-  it('falls back to the first usable value when the heuristic finds nothing (UUID mismatch)', () => {
-    // Attribute keys are UUIDs that are NOT in the codebook — as happens with a
-    // roster exported from a preview interview built against a different
-    // protocol. The heuristic returns null, so we surface the first value.
-    const label = resolveRosterNodeLabel({
-      codebookVariables,
-      node: makeNode({ 'zzzz-9999': 'Alice Smith', 'yyyy-8888': 30 }),
-      subjectLabel: 'Person',
-      sequentialNumber: 4,
+  it('falls back to the first non-empty string/number value when the heuristic returns null (UUID mismatch)', () => {
+    // Codebook defines a "name" variable, but the roster node's attributes are
+    // keyed by UUIDs that are NOT present in the codebook (e.g. a preview-export
+    // roster), so the heuristic finds nothing.
+    const codebookVariables: NodeDefinition['variables'] = {
+      'codebook-name-uuid': { name: 'name', type: 'text' },
+    };
+
+    const node = makeNode({
+      'mismatched-uuid-1': 'Alice Smith',
+      'mismatched-uuid-2': 30,
     });
 
-    expect(label).toBe('Alice Smith');
-  });
-
-  it('skips empty and non-stringable values and picks the first string or number', () => {
-    const label = resolveRosterNodeLabel({
+    const result = resolveRosterNodeLabel({
       codebookVariables,
-      node: makeNode({ a: '', b: true, c: 42 }),
+      node,
       subjectLabel: 'Person',
       sequentialNumber: 2,
     });
 
-    expect(label).toBe('42');
+    expect(result).toBe('Alice Smith');
   });
 
-  it('returns the "Unnamed {subject} {n}" placeholder for a value-less node', () => {
-    const label = resolveRosterNodeLabel({
-      codebookVariables,
-      node: makeNode({ a: '', b: '' }),
+  it('skips empty/null and non-primitive values when choosing the first value', () => {
+    const node = makeNode({
+      'empty': '',
+      'nullish': null,
+      'object-value': { x: 1, y: 2 },
+      'first-real': 42,
+    });
+
+    const result = resolveRosterNodeLabel({
+      codebookVariables: undefined,
+      node,
       subjectLabel: 'Person',
       sequentialNumber: 3,
     });
 
-    expect(label).toBe('Unnamed Person 3');
+    expect(result).toBe('42');
+  });
+
+  it('returns a placeholder with the subject label and sequential number for a value-less node', () => {
+    const node = makeNode({});
+
+    const result = resolveRosterNodeLabel({
+      codebookVariables: {
+        'codebook-name-uuid': { name: 'name', type: 'text' },
+      },
+      node,
+      subjectLabel: 'Person',
+      sequentialNumber: 3,
+    });
+
+    expect(result).toBe('Unnamed Person 3');
   });
 });

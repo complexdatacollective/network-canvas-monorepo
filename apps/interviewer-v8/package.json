@@ -1,6 +1,6 @@
 {
   "name": "@codaco/interviewer-v8",
-  "version": "8.0.0-alpha.0",
+  "version": "8.0.0-alpha.1",
   "private": true,
   "description": "A tool for conducting Network Canvas Interviews.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
@@ -72,6 +72,7 @@
     "better-sqlite3-multiple-ciphers": "^12.9.0",
     "dexie": "^4.4.3",
     "effect": "catalog:",
+    "electron-updater": "^6.6.2",
     "jszip": "catalog:",
     "lucide-react": "catalog:",
     "motion": "catalog:",

@@ -10,8 +10,8 @@ type ResolveRosterNodeLabelArgs = {
   sequentialNumber: number;
 };
 
-// Only string/number attribute values make a meaningful card title; other
-// types (booleans, locations, arrays) would stringify to noise.
+// Only string/number values produce a meaningful title; everything else
+// (objects, arrays, null) would stringify to noise like "[object Object]".
 const coerceToLabel = (value: unknown): string | null => {
   if (typeof value === 'string') {
     return value === '' ? null : value;
@@ -22,11 +22,10 @@ const coerceToLabel = (value: unknown): string | null => {
   return null;
 };
 
-// Derives the title shown on an external-roster card. Resolution order: the
-// name heuristic, then the first usable attribute value (so preview-export
-// rosters whose attribute keys are UUIDs absent from the running codebook
-// still show real data), then a stable placeholder. This deliberately never
-// returns the node's content-hash primary key, which is opaque to participants.
+// Derives a human-readable title for an external-roster card. Falls back through
+// the name heuristic, then the first usable attribute value (covers
+// preview-export rosters whose attribute keys are UUIDs absent from the running
+// codebook), then a stable placeholder so we never surface the content-hash _uid.
 export const resolveRosterNodeLabel = ({
   codebookVariables,
   node,

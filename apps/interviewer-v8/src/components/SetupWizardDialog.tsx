@@ -1,6 +1,7 @@
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { useToast } from '@codaco/fresco-ui/Toast';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
@@ -55,6 +56,7 @@ export function useSetupWizard() {
   const { openDialog } = useDialog();
   const { refresh } = useAuth();
   const analytics = useAnalytics();
+  const toast = useToast();
 
   const openSetupWizard = async (): Promise<void> => {
     const result = await openDialog({
@@ -192,29 +194,43 @@ export function useSetupWizard() {
       ],
     });
 
-    if (!result) {
-      // Dismissed.
-      await enrolWithoutSecurity();
-    } else {
-      const data = result as SetupWizardData;
-      if (data.selectedMethod === 'none') {
-        // Step3Configure is skipped for 'none', so no step enrolled a vault.
+    // Enrolment + settings persistence can fail (e.g. the platform store can't
+    // be opened). Surface it instead of leaving the user stranded on the
+    // welcome screen with no feedback — they stay on /welcome and can retry.
+    try {
+      if (!result) {
+        // Dismissed.
         await enrolWithoutSecurity();
+      } else {
+        const data = result as SetupWizardData;
+        if (data.selectedMethod === 'none') {
+          // Step3Configure is skipped for 'none', so no step enrolled a vault.
+          await enrolWithoutSecurity();
+        }
+        const behavior = data.behavior ?? DEFAULT_BEHAVIOR;
+        await updateSettings({
+          idleTimeoutMinutes: behavior.idleTimeoutMinutes,
+          requireUnlockOnEnter: behavior.requireUnlockOnEnter,
+          requireUnlockOnExit: behavior.requireUnlockOnExit,
+          requireUnlockOnExport: behavior.requireUnlockOnExport,
+        });
+        // Persist + apply the analytics choice (defaults to enabled). Routes
+        // through the provider so opt-in/out and the native preference mirror
+        // take effect immediately.
+        await analytics.setEnabled(data.analyticsEnabled ?? true);
       }
-      const behavior = data.behavior ?? DEFAULT_BEHAVIOR;
-      await updateSettings({
-        idleTimeoutMinutes: behavior.idleTimeoutMinutes,
-        requireUnlockOnEnter: behavior.requireUnlockOnEnter,
-        requireUnlockOnExit: behavior.requireUnlockOnExit,
-        requireUnlockOnExport: behavior.requireUnlockOnExport,
-      });
-      // Persist + apply the analytics choice (defaults to enabled). Routes
-      // through the provider so opt-in/out and the native preference mirror
-      // take effect immediately.
-      await analytics.setEnabled(data.analyticsEnabled ?? true);
-    }
 
-    await refresh();
+      await refresh();
+    } catch (cause) {
+      toast.add({
+        title: 'Setup could not be completed',
+        description:
+          cause instanceof Error
+            ? cause.message
+            : 'Something went wrong while setting up this device. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return { openSetupWizard };
