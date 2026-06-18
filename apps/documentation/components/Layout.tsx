@@ -20,9 +20,15 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <SharedNav />
+      <SharedNav isHomePage={isHomePage} />
       {!isHomePage && (
-        <WorkflowNav variant="collapsed" className="w-full px-4 pt-4 pb-4" />
+        // Sticky so the section switcher stays visible while scrolling. On
+        // large screens the main nav scrolls away, so it pins to the top; on
+        // smaller screens the nav stays sticky, so it pins just below it.
+        <WorkflowNav
+          variant="collapsed"
+          className="sticky top-16 z-40 w-full bg-[#ffffff7d] px-4 py-2 backdrop-blur-sm lg:top-0"
+        />
       )}
       <motion.div
         className="fixed inset-0 z-[-1]"
@@ -42,7 +48,14 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
           // compositeOperation="lighten"
         />
       </motion.div>
-      <main className={cn('mt-4 flex h-full w-full flex-auto justify-center')}>
+      <main
+        className={cn(
+          'flex h-full w-full flex-auto justify-center',
+          // Space content away from the nav on content pages; the margin scales
+          // down on smaller viewports.
+          isHomePage ? 'mt-4' : 'mt-10 sm:mt-16 lg:mt-24',
+        )}
+      >
         {!isHomePage && (
           <Sidebar className="mx-4 hidden max-w-80 lg:sticky lg:top-2 lg:flex lg:max-h-[calc(100dvh-1rem)]" />
         )}
