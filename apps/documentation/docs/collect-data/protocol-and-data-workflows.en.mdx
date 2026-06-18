@@ -176,6 +176,12 @@ Interview data is stored centrally in Fresco's database (PostgreSQL), so there i
 
 Because data is collected and exported centrally, the offline/USB and per-device cloud export concerns described in the desktop workflows do not apply. For full details on exporting and monitoring your study, see the [Using Fresco guide](/en/collect-data/fresco/using-fresco#exporting-data).
 
+#### Pulling data programmatically with the Fresco API
+
+If you would rather automate data collection than download files from the dashboard by hand, Fresco also exposes a read-only [Interview Data API](/en/analyze-data/fresco-api). It lets you list and fetch interview and protocol data directly from your deployment over HTTP — returning JSON, including each interview's full network — so you can build repeatable export and analysis pipelines (for example, in R or Python) that pull new interviews on a schedule.
+
+The API is off by default; you enable it and create an access token from **Settings → API Tokens** in the dashboard. For one-off downloads of formatted CSV or GraphML files, the dashboard export above is usually simpler. See the [Fresco API reference](/en/analyze-data/fresco-api) for the available endpoints, authentication, and complete R and Python examples.
+
 <TipBox>
 
 Fresco is a pilot project with some [known limitations](/en/collect-data/fresco/about#known-limitations) compared with the desktop applications. Review these before choosing the web-based workflow, especially if you intend to compare data collected with Fresco against data collected with Interviewer.

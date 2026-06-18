@@ -52,6 +52,7 @@ import {
 import TipBox, { type TipBoxProps } from '~/components/customComponents/TipBox';
 import type { AppAxis } from '~/components/customComponents/useSelectedApp';
 import VideoIFrame from '~/components/customComponents/VideoIFrame';
+import WorkflowsOverview from '~/components/customComponents/WorkflowsOverview';
 import Link from '~/components/Link';
 import { Button } from '~/components/ui/Button';
 import { Details, Summary } from '~/components/ui/typography/Details';
@@ -326,6 +327,7 @@ const createMarkdownComponents = (docSlug?: string) => ({
     <InterfaceSummary {...props} />
   ),
   appcompatibilitytable: () => <AppCompatibilityTable />,
+  workflowsoverview: () => <WorkflowsOverview />,
   interfacemeta: (props: {
     type: string;
     creates: string;
