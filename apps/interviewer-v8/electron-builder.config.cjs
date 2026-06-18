@@ -102,6 +102,10 @@ module.exports = {
   },
   linux: {
     category: 'Education',
+    // electron-builder derives the Linux executableName from the package `name`
+    // when unset; `@codaco/interviewer-v8` sanitizes to `@codacointerviewer-v8`,
+    // whose `@` is rejected for AppImage file paths. Set an explicit, safe name.
+    executableName: 'network-canvas-interviewer',
     // AppImage supports electron-updater auto-update; .deb does not — deb users
     // update via their package manager / a manual download.
     target: ['AppImage', 'deb'],
