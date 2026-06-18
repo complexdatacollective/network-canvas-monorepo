@@ -1,6 +1,6 @@
 {
   "name": "Care & Support Networks",
-  "description": "Maps who provides which functions of support across formal and informal sources during a care episode. The perinatal/maternal-health exemplar embeds the Edinburgh Postnatal Depression Scale, and function-typed name generators let unfilled support functions surface as visible gaps.",
+  "description": "Looks at who supports someone through a period of care, and the kinds of help they give — emotional, practical, informational, and financial — from both family and friends and professional services. Set up here for pregnancy and new parenthood.",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "codebook": {
@@ -307,7 +307,8 @@
           },
           {
             "variable": "weeks_since_birth",
-            "prompt": "If your baby has already been born, how many weeks ago was that? (Leave blank if you are still pregnant.)"
+            "prompt": "If your baby has already been born, how many weeks ago was that?",
+            "hint": "Leave blank if you are still pregnant."
           },
           {
             "variable": "living_situation",
@@ -374,7 +375,8 @@
         "fields": [
           {
             "variable": "supporter_name",
-            "prompt": "What is this person's name or initials? (Use whatever helps you remember who they are.)"
+            "prompt": "What is this person's name or initials?",
+            "hint": "Use whatever helps you remember who they are."
           }
         ]
       },
@@ -436,7 +438,8 @@
           },
           {
             "variable": "support_functions",
-            "prompt": "Which kinds of support does this person give you? (Select all that apply.)"
+            "prompt": "Which kinds of support does this person give you?",
+            "hint": "Select all that apply."
           }
         ]
       }

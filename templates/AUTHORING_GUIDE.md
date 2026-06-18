@@ -170,14 +170,14 @@ The validator does **not** cross-check asset references, and a malformed `assetM
 - For `Geospatial`, put descriptive placeholder strings in `tokenAssetId` / `dataSourceAssetId`
   (they validate as plain strings). State that the researcher must attach a Mapbox token asset
   and a GeoJSON boundary file in Architect for the stage to run — put that note in the stage's
-  `interviewScript` and in the researcher-notes screen below (not in `NOTES.md`).
+  `interviewScript` and in the researcher-notes screen below.
 
 ## 7. Researcher-facing notes — keep them in the protocol
 
 Setup steps, instrument sources, and caveats belong **in the protocol** so they reach whoever
-opens it in Architect, not in a separate `NOTES.md`. Put them in a dedicated `Information` stage
-as the **first** stage of the protocol, with a single `type:"text"` item (`"size":"LARGE"`) and
-a label that flags it for removal, e.g.:
+opens it in Architect. Put them in a dedicated `Information` stage as the **first** stage of the
+protocol, with a single `type:"text"` item (`"size":"LARGE"`) and a label that flags it for
+removal, e.g.:
 
 ```jsonc
 {

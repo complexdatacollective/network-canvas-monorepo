@@ -1,6 +1,6 @@
 {
   "name": "Transnational Networks",
-  "description": "Maps how migrants' personal networks span their host country and their origin or other countries, pairing host and transnational name generators with a Geospatial world-map stage to capture structural assimilation alongside transnationalism.",
+  "description": "For studying the social networks of people who have migrated. It asks about the important people in their life, both in the country where they live now and abroad, and places those people on a world map.",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "codebook": {
@@ -283,7 +283,8 @@
           },
           {
             "variable": "arrival_year",
-            "prompt": "In what year did you first come to live in this country? (If you were born here, you may skip this question.)"
+            "prompt": "In what year did you first come to live in this country?",
+            "hint": "If you were born here, you may skip this question."
           },
           {
             "variable": "years_since_migration",
@@ -411,7 +412,8 @@
           },
           {
             "variable": "support_type",
-            "prompt": "What kinds of **support** does this person give you? Select all that apply."
+            "prompt": "What kinds of **support** does this person give you?",
+            "hint": "Select all that apply."
           }
         ]
       }

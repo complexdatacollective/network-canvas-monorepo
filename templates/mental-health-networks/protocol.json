@@ -1,6 +1,6 @@
 {
   "name": "Mental Health Networks",
-  "description": "Explores how the people around a respondent both support and strain them, using separate name generators for supportive and difficult ties, disclosure mapping, and clinical-versus-informal help sources. Includes consent framing and a closing safety screen for a sensitive topic.",
+  "description": "Looks at how the people in someone's life both support them and add stress while they manage their mental health. It asks separately about supportive people and difficult ones, and about who knows about their mental health.",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "experiments": {
@@ -323,7 +323,8 @@
           },
           {
             "variable": "in_treatment",
-            "prompt": "Are you currently receiving any treatment or support for your mental health (for example from a doctor, therapist, counsellor, or support service)?"
+            "prompt": "Are you currently receiving any treatment or support for your mental health?",
+            "hint": "For example, from a doctor, therapist, counsellor, or support service."
           }
         ]
       }
@@ -446,23 +447,28 @@
           },
           {
             "variable": "support_emotional",
-            "prompt": "Do they give you **emotional support** — someone you can talk to about how you feel?"
+            "prompt": "Do they give you **emotional support**?",
+            "hint": "Someone you can talk to about how you feel."
           },
           {
             "variable": "support_practical",
-            "prompt": "Do they help you with **practical things** — such as tasks, money, or getting around?"
+            "prompt": "Do they help you with **practical things**?",
+            "hint": "Such as tasks, money, or getting around."
           },
           {
             "variable": "support_informational",
-            "prompt": "Do they give you **information or advice** that helps you cope or make decisions?"
+            "prompt": "Do they give you **information or advice**?",
+            "hint": "Advice that helps you cope or make decisions."
           },
           {
             "variable": "knows_about_mh",
-            "prompt": "Does this person **know about your mental health** — have you disclosed it to them?"
+            "prompt": "Does this person **know about your mental health**?",
+            "hint": "That is, have you told them about it?"
           },
           {
             "variable": "is_clinical",
-            "prompt": "Is this person a **formal or clinical source of help** — for example a doctor, therapist, counsellor, or other professional?"
+            "prompt": "Is this person a **formal or clinical source of help**?",
+            "hint": "For example, a doctor, therapist, counsellor, or other professional."
           },
           {
             "variable": "is_source_of_stress",

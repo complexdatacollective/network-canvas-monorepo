@@ -1,6 +1,6 @@
 {
   "name": "Behavioural Influence Networks",
-  "description": "A behaviour-agnostic scaffold for studying social influence on health behaviours (smoking, vaping, physical activity, diet, and alcohol), using behaviour-specific name generators and an ego self-report to assess homophily and exposure. Frame outputs as exposure and network composition, not proof of causal contagion.",
+  "description": "Looks at how someone's health habits — smoking, vaping, exercise, diet, and drinking — compare with those of the people they spend time with. It asks about the participant's own habits and about the people they share each activity with.",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "codebook": {
@@ -238,7 +238,8 @@
         "fields": [
           {
             "variable": "activity_minutes_week",
-            "prompt": "In a usual week, about how many **minutes** do you spend being physically active at a moderate or vigorous level (activities that make you breathe harder than normal), counting only activities done for at least 10 minutes at a time?"
+            "prompt": "In a usual week, about how many **minutes** do you spend being physically active at a moderate or vigorous level?",
+            "hint": "Count activities that make you breathe harder than normal, in sessions of at least 10 minutes."
           },
           {
             "variable": "smoking_status",
@@ -263,7 +264,7 @@
       "id": "ng-behaviours",
       "type": "NameGenerator",
       "label": "People you share behaviours with",
-      "interviewScript": "These prompts elicit behaviour-specific ties. The same person may be named on more than one prompt — this is expected and produces a multiplex network. Add each person once; if they belong to several prompts they will already appear in the panel of people already mentioned.",
+      "interviewScript": "Each prompt asks about a different shared activity. The same person can take part in several of these activities; when they do, add them once and then select them from the panel of people already mentioned for the other prompts, rather than typing their name again.",
       "subject": {
         "entity": "node",
         "type": "person"
@@ -320,7 +321,8 @@
         "fields": [
           {
             "variable": "shared_domains",
-            "prompt": "Which of these activities do you ever do **with this person**? Select all that apply."
+            "prompt": "Which of these activities do you ever do **with this person**?",
+            "hint": "Select all that apply."
           },
           {
             "variable": "relationship",

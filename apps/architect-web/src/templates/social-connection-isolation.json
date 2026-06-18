@@ -1,6 +1,6 @@
 {
   "name": "Social Connection & Isolation",
-  "description": "Pairs an egocentric network map with validated loneliness and social-network scales (UCLA-3, De Jong Gierveld 6-item, Lubben LSNS-6), so objective isolation and subjective loneliness sit in one dataset. Ageing and loneliness are the lead exemplar.",
+  "description": "Combines a map of someone's close relationships with well-established questionnaires about loneliness, so you can see both how connected someone is and how lonely they feel. Designed with older adults in mind.",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "codebook": {
@@ -153,7 +153,7 @@
             { "label": "One", "value": 1 },
             { "label": "Two", "value": 2 },
             { "label": "Three or four", "value": 3 },
-            { "label": "Five thru eight", "value": 4 },
+            { "label": "Five to eight", "value": 4 },
             { "label": "Nine or more", "value": 5 }
           ],
           "validation": { "required": true }
@@ -167,7 +167,7 @@
             { "label": "One", "value": 1 },
             { "label": "Two", "value": 2 },
             { "label": "Three or four", "value": 3 },
-            { "label": "Five thru eight", "value": 4 },
+            { "label": "Five to eight", "value": 4 },
             { "label": "Nine or more", "value": 5 }
           ],
           "validation": { "required": true }
@@ -181,7 +181,7 @@
             { "label": "One", "value": 1 },
             { "label": "Two", "value": 2 },
             { "label": "Three or four", "value": 3 },
-            { "label": "Five thru eight", "value": 4 },
+            { "label": "Five to eight", "value": 4 },
             { "label": "Nine or more", "value": 5 }
           ],
           "validation": { "required": true }
@@ -195,7 +195,7 @@
             { "label": "One", "value": 1 },
             { "label": "Two", "value": 2 },
             { "label": "Three or four", "value": 3 },
-            { "label": "Five thru eight", "value": 4 },
+            { "label": "Five to eight", "value": 4 },
             { "label": "Nine or more", "value": 5 }
           ],
           "validation": { "required": true }
@@ -209,7 +209,7 @@
             { "label": "One", "value": 1 },
             { "label": "Two", "value": 2 },
             { "label": "Three or four", "value": 3 },
-            { "label": "Five thru eight", "value": 4 },
+            { "label": "Five to eight", "value": 4 },
             { "label": "Nine or more", "value": 5 }
           ],
           "validation": { "required": true }
@@ -223,7 +223,7 @@
             { "label": "One", "value": 1 },
             { "label": "Two", "value": 2 },
             { "label": "Three or four", "value": 3 },
-            { "label": "Five thru eight", "value": 4 },
+            { "label": "Five to eight", "value": 4 },
             { "label": "Nine or more", "value": 5 }
           ],
           "validation": { "required": true }
@@ -462,7 +462,8 @@
           },
           {
             "variable": "contact_mode",
-            "prompt": "How do you usually keep in contact with this person? (Select all that apply.)"
+            "prompt": "How do you usually keep in contact with this person?",
+            "hint": "Select all that apply."
           },
           {
             "variable": "lives_with",
@@ -470,11 +471,13 @@
           },
           {
             "variable": "support_emotional",
-            "prompt": "Could you turn to this person for **emotional** support, such as talking things over when you feel down?"
+            "prompt": "Could you turn to this person for **emotional** support?",
+            "hint": "Such as talking things over when you feel down."
           },
           {
             "variable": "support_practical",
-            "prompt": "Could you turn to this person for **practical** support, such as help with tasks, transport, or money?"
+            "prompt": "Could you turn to this person for **practical** support?",
+            "hint": "Such as help with tasks, transport, or money."
           }
         ]
       }
@@ -505,7 +508,7 @@
       "label": "Your Feelings About Connection",
       "introductionPanel": {
         "title": "Your feelings about social connection",
-        "text": "Finally, we would like to understand how you **feel** about your social connections. There are no right or wrong answers. These questions use three well-established sets of items, so the wording is fixed."
+        "text": "Finally, we would like to understand how you **feel** about your social connections. There are no right or wrong answers."
       },
       "form": {
         "title": "How you feel",
@@ -548,27 +551,27 @@
           },
           {
             "variable": "lsns_1",
-            "prompt": "Considering people you are related to: how many relatives do you see or hear from at least once a month?"
+            "prompt": "Thinking about your relatives, how many do you see or hear from at least once a month?"
           },
           {
             "variable": "lsns_2",
-            "prompt": "How many relatives do you feel at ease with that you can talk about private matters?"
+            "prompt": "How many relatives do you feel close enough to that you can talk to them about private matters?"
           },
           {
             "variable": "lsns_3",
-            "prompt": "How many relatives do you feel close to such that you could call on them for help?"
+            "prompt": "How many relatives do you feel close enough to that you could call on them for help?"
           },
           {
             "variable": "lsns_4",
-            "prompt": "Considering all of your friends: how many of your friends do you see or hear from at least once a month?"
+            "prompt": "Thinking about your friends, how many do you see or hear from at least once a month?"
           },
           {
             "variable": "lsns_5",
-            "prompt": "How many friends do you feel at ease with that you can talk about private matters?"
+            "prompt": "How many friends do you feel close enough to that you can talk to them about private matters?"
           },
           {
             "variable": "lsns_6",
-            "prompt": "How many friends do you feel close to such that you could call on them for help?"
+            "prompt": "How many friends do you feel close enough to that you could call on them for help?"
           }
         ]
       }
