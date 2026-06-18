@@ -12,6 +12,7 @@ import type {
   StoredSessionLite,
   StoredSettings,
 } from './lib/db/types';
+import type { UpdateInfo } from './lib/update/types';
 
 declare module '*.css';
 
@@ -145,6 +146,22 @@ declare global {
     }>;
   };
 
+  type UpdateProgress = {
+    percent: number;
+    transferred: number;
+    total: number;
+    bytesPerSecond: number;
+  };
+
+  type UpdateBridge = {
+    check: () => Promise<UpdateInfo | null>;
+    download: () => Promise<void>;
+    install: () => Promise<void>;
+    onProgress: (callback: (progress: UpdateProgress) => void) => () => void;
+    onDownloaded: (callback: () => void) => () => void;
+    onError: (callback: (message: string) => void) => () => void;
+  };
+
   type ElectronAPI = {
     openFile: () => Promise<{
       canceled: boolean;
@@ -165,6 +182,7 @@ declare global {
     db: DbBridge;
     auth: AuthBridge;
     system: SystemBridge;
+    update: UpdateBridge;
   };
 
   // `interface` is required (not `type`) so this declaration MERGES with
