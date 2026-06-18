@@ -57,7 +57,9 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
         )}
       >
         {!isHomePage && (
-          <Sidebar className="mx-4 hidden max-w-80 lg:sticky lg:top-2 lg:flex lg:max-h-[calc(100dvh-1rem)]" />
+          // Sticky offset clears the sticky section switcher (68px tall) plus an
+          // 8px gap; max height subtracts that offset and the 8px bottom margin.
+          <Sidebar className="mx-4 hidden max-w-80 lg:sticky lg:top-[76px] lg:flex lg:max-h-[calc(100dvh-84px)]" />
         )}
 
         {children}
