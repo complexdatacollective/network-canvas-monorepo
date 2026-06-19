@@ -21,6 +21,8 @@ const migrationV7toV8 = createMigration({
 - Added 'shape' property with default 'circle' to all node definitions.
 - Added optional 'hint' property to form fields, allowing a markdown string to be displayed as additional guidance for participants.
 - Added optional 'showValidationHints' property to form fields, enabling automatic display of hints derived from validation rules.
+- Removed 'loop' property from Information stage items and video/audio assets. This property was never honoured by the interviewer.
+- Removed 'biologicalSexVariable' from FamilyPedigree node configuration. This property was a vestigial refactor leftover that the interviewer never read or wrote.
 `,
   migrate: (doc, deps) => {
     const transformed = traverseAndTransform(doc as Record<string, unknown>, [
@@ -117,6 +119,37 @@ const migrationV7toV8 = createMigration({
             typedEntity.shape = { default: 'circle' };
           }
           return entityDefinition;
+        },
+      },
+      {
+        // Remove unused 'loop' flag from Information stage items
+        paths: ['stages[].items[]'],
+        fn: <V>(item: V) => {
+          if (typeof item === 'object' && item !== null) {
+            delete (item as Record<string, unknown>).loop;
+          }
+          return item;
+        },
+      },
+      {
+        // Remove unused 'loop' flag from video/audio assets in the manifest
+        paths: ['assetManifest.*'],
+        fn: <V>(asset: V) => {
+          if (typeof asset === 'object' && asset !== null) {
+            delete (asset as Record<string, unknown>).loop;
+          }
+          return asset;
+        },
+      },
+      {
+        // Remove vestigial 'biologicalSexVariable' from FamilyPedigree node config
+        paths: ['stages[].nodeConfig'],
+        fn: <V>(nodeConfig: V) => {
+          if (typeof nodeConfig === 'object' && nodeConfig !== null) {
+            delete (nodeConfig as Record<string, unknown>)
+              .biologicalSexVariable;
+          }
+          return nodeConfig;
         },
       },
       {

@@ -469,6 +469,10 @@ describe('Migration V7 to V8', () => {
                   type: 'categorical',
                   options: [{ label: 'A', value: 'a' }],
                 },
+                layoutPos: {
+                  name: 'LayoutPos',
+                  type: 'layout',
+                },
               },
             },
           },
@@ -485,7 +489,7 @@ describe('Migration V7 to V8', () => {
               {
                 id: 'prompt1',
                 text: 'Test prompt',
-                layout: { layoutVariable: 'category' },
+                layout: { layoutVariable: 'layoutPos' },
               },
             ],
             filter: {
@@ -529,6 +533,10 @@ describe('Migration V7 to V8', () => {
                   type: 'categorical',
                   options: [{ label: 'A', value: 'a' }],
                 },
+                layoutPos: {
+                  name: 'LayoutPos',
+                  type: 'layout',
+                },
               },
             },
           },
@@ -569,7 +577,7 @@ describe('Migration V7 to V8', () => {
               {
                 id: 'prompt2',
                 text: 'Test prompt',
-                layout: { layoutVariable: 'category' },
+                layout: { layoutVariable: 'layoutPos' },
               },
             ],
             filter: {
@@ -642,6 +650,10 @@ describe('Migration V7 to V8', () => {
                   type: 'categorical',
                   options: [{ label: 'A', value: 'a' }],
                 },
+                layoutPos: {
+                  name: 'LayoutPos',
+                  type: 'layout',
+                },
               },
             },
           },
@@ -663,7 +675,7 @@ describe('Migration V7 to V8', () => {
               {
                 id: 'prompt1',
                 text: 'Test prompt',
-                layout: { layoutVariable: 'category' },
+                layout: { layoutVariable: 'layoutPos' },
               },
             ],
             filter: {
@@ -804,6 +816,10 @@ describe('Migration V7 to V8', () => {
                     { label: 'Family', value: 'family' },
                   ],
                 },
+                layoutPos: {
+                  name: 'LayoutPos',
+                  type: 'layout',
+                },
               },
             },
           },
@@ -905,7 +921,7 @@ describe('Migration V7 to V8', () => {
               {
                 id: 'prompt1',
                 text: 'Position nodes',
-                layout: { layoutVariable: 'category' },
+                layout: { layoutVariable: 'layoutPos' },
               },
             ],
             filter: {
@@ -1066,6 +1082,137 @@ describe('Migration V7 to V8', () => {
       expect(parsed.codebook.node?.organization?.shape).toEqual({
         default: 'circle',
       });
+    });
+  });
+
+  describe('loop removal', () => {
+    it('removes loop from Information stage items', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: {} },
+        stages: [
+          {
+            id: 'info1',
+            type: 'Information',
+            label: 'Intro',
+            items: [
+              {
+                id: 'item1',
+                type: 'asset',
+                content: 'video-asset-1',
+                loop: false,
+              },
+            ],
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      const stage = parsed.stages[0];
+      if (stage && 'items' in stage) {
+        expect(stage.items[0]).not.toHaveProperty('loop');
+        expect(stage.items[0]?.content).toBe('video-asset-1');
+      }
+    });
+
+    it('removes loop from video/audio assets in the manifest', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: {} },
+        assetManifest: {
+          'video-asset-1': {
+            id: 'video-asset-1',
+            name: 'intro.mp4',
+            type: 'video',
+            source: 'intro.mp4',
+            loop: true,
+          },
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      expect(parsed.assetManifest?.['video-asset-1']).not.toHaveProperty(
+        'loop',
+      );
+      expect(parsed.assetManifest?.['video-asset-1']?.name).toBe('intro.mp4');
+    });
+  });
+
+  describe('biologicalSexVariable removal', () => {
+    it('removes biologicalSexVariable from FamilyPedigree node config', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                label: { name: 'Label', type: 'text' },
+                isEgo: { name: 'IsEgo', type: 'boolean' },
+                relationship: { name: 'Relationship', type: 'text' },
+              },
+            },
+          },
+          edge: {
+            family: {
+              name: 'Family',
+              variables: {
+                relType: {
+                  name: 'RelType',
+                  type: 'categorical',
+                  options: [{ label: 'Parent', value: 'parent' }],
+                },
+                active: { name: 'Active', type: 'boolean' },
+                gestational: { name: 'Gestational', type: 'boolean' },
+              },
+            },
+          },
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'pedigree1',
+            type: 'FamilyPedigree',
+            label: 'Family Tree',
+            censusPrompt: 'Build your family tree',
+            nodeConfig: {
+              type: 'person',
+              nodeLabelVariable: 'label',
+              egoVariable: 'isEgo',
+              biologicalSexVariable: 'someSexVar',
+              relationshipVariable: 'relationship',
+            },
+            edgeConfig: {
+              type: 'family',
+              relationshipTypeVariable: 'relType',
+              isActiveVariable: 'active',
+              isGestationalCarrierVariable: 'gestational',
+            },
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      const stage = parsed.stages[0];
+      if (stage && 'nodeConfig' in stage) {
+        expect(stage.nodeConfig).not.toHaveProperty('biologicalSexVariable');
+        expect(stage.nodeConfig.type).toBe('person');
+        expect(stage.nodeConfig.relationshipVariable).toBe('relationship');
+      }
     });
   });
 

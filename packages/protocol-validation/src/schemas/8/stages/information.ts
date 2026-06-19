@@ -25,7 +25,6 @@ const ItemSchema = z.strictObject({
     .generateMock(() =>
       faker.helpers.arrayElement(['SMALL', 'MEDIUM', 'LARGE']),
     ),
-  loop: z.boolean().optional(),
 });
 
 export type Item = z.infer<typeof ItemSchema>;

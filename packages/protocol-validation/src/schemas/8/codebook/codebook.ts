@@ -1,5 +1,9 @@
 import { VariableNameSchema } from '@codaco/shared-consts';
-import { getEdgeTypeId, getNodeTypeId } from '~/utils/mock-seeds';
+import {
+  getEdgeTypeId,
+  getNodeTypeId,
+  getNodeVariableId,
+} from '~/utils/mock-seeds';
 import {
   findDuplicateName,
   getAllEntityNames,
@@ -37,9 +41,24 @@ export const CodebookSchema = z
     const worksWithEdge = EdgeDefinitionSchema.generateMock();
     const ego = EgoDefinitionSchema.generateMock();
 
+    // Guarantee the first node variable on Person is a layout variable so that
+    // sociogram/narrative layoutVariable mock references resolve to a
+    // layout-typed variable (required by logic validation).
+    const personVariables = {
+      ...personNode.variables,
+      [getNodeVariableId(0)]: {
+        name: 'Layout_Position',
+        type: 'layout' as const,
+      },
+    };
+
     return {
       node: {
-        [getNodeTypeId(0)]: { ...personNode, name: 'Person' },
+        [getNodeTypeId(0)]: {
+          ...personNode,
+          name: 'Person',
+          variables: personVariables,
+        },
         [getNodeTypeId(1)]: { ...orgNode, name: 'Organization' },
       },
       edge: {

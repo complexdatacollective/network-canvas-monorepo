@@ -50,6 +50,10 @@ export const createBaseProtocol = () => ({
               { label: 'Strong', value: 3 },
             ],
           },
+          layoutPosition: {
+            name: 'Layout_Position',
+            type: 'layout',
+          },
         },
       },
       colleague: {
@@ -142,7 +146,7 @@ export const createBaseProtocol = () => ({
           id: 'socPrompt1',
           text: 'Position nodes',
           layout: {
-            layoutVariable: 'category',
+            layoutVariable: 'layoutPosition',
           },
         },
       ],

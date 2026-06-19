@@ -23,7 +23,6 @@ const videoAudioAssetSchema = baseAssetSchema.extend({
     .generateMock(() =>
       faker.helpers.arrayElement([...mockVideoNames, ...mockAudioNames]),
     ),
-  loop: z.boolean().optional(),
 });
 
 const fileAssetSchema = baseAssetSchema.extend({

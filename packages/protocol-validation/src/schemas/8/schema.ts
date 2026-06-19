@@ -33,6 +33,17 @@ import { ExperimentsSchema, type FormField, type StageSubject } from './common';
 import type { FilterRule } from './filters';
 import { type Prompt, stageSchema } from './stages';
 
+// Variable types that have no renderable form `component` and therefore
+// cannot be referenced by a form field. Reserved FamilyPedigree wizard field
+// keys collide with values the pedigree wizard writes to node attributes.
+const NON_RENDERABLE_VARIABLE_TYPES = new Set(['layout', 'location']);
+const RESERVED_PEDIGREE_FORM_KEYS = new Set([
+  'is-donor',
+  'name',
+  'gestationalCarrier',
+  'role',
+]);
+
 const ProtocolSchema = z
   .strictObject({
     name: z.string().min(1),
@@ -85,22 +96,43 @@ const ProtocolSchema = z
             };
           }
 
-          if (
-            subject &&
-            !variableExists(protocol.codebook, subject, field.variable)
-          ) {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: 'Form field variable not found in codebook.',
-              path: [
-                'stages',
-                stageIndex,
-                'form',
-                'fields',
-                fieldIndex,
-                'variable',
-              ],
-            });
+          if (subject) {
+            if (!variableExists(protocol.codebook, subject, field.variable)) {
+              ctx.addIssue({
+                code: 'custom' as const,
+                message: 'Form field variable not found in codebook.',
+                path: [
+                  'stages',
+                  stageIndex,
+                  'form',
+                  'fields',
+                  fieldIndex,
+                  'variable',
+                ],
+              });
+            } else {
+              const variable = getVariablesForSubject(
+                protocol.codebook,
+                subject,
+              )[field.variable];
+              if (
+                variable &&
+                NON_RENDERABLE_VARIABLE_TYPES.has(variable.type)
+              ) {
+                ctx.addIssue({
+                  code: 'custom' as const,
+                  message: `Form field variable "${field.variable}" of type "${variable.type}" cannot be rendered as a form field.`,
+                  path: [
+                    'stages',
+                    stageIndex,
+                    'form',
+                    'fields',
+                    fieldIndex,
+                    'variable',
+                  ],
+                });
+              }
+            }
           }
         });
       }
@@ -269,8 +301,99 @@ const ProtocolSchema = z
                     'layoutVariable',
                   ],
                 });
+              } else {
+                const variable = getVariablesForSubject(
+                  protocol.codebook,
+                  stage.subject,
+                )[layoutVariable];
+                if (variable && variable.type !== 'layout') {
+                  ctx.addIssue({
+                    code: 'custom' as const,
+                    message: `Layout variable "${layoutVariable}" must be of type "layout", but is "${variable.type}".`,
+                    path: [
+                      'stages',
+                      stageIndex,
+                      'prompts',
+                      promptIndex,
+                      'layout',
+                      'layoutVariable',
+                    ],
+                  });
+                }
               }
             }
+          }
+
+          // 3d.v.b. highlight.variable must reference a boolean variable
+          if (
+            'highlight' in prompt &&
+            prompt.highlight &&
+            'variable' in prompt.highlight &&
+            prompt.highlight.variable &&
+            'subject' in stage &&
+            stage.subject
+          ) {
+            const highlightVariable = prompt.highlight.variable;
+            if (
+              !variableExists(
+                protocol.codebook,
+                stage.subject,
+                highlightVariable,
+              )
+            ) {
+              const subject = stage.subject;
+              ctx.addIssue({
+                code: 'custom' as const,
+                message: `Highlight variable "${highlightVariable}" not defined in codebook[${subject.entity}][${subject.type}].variables.`,
+                path: [
+                  'stages',
+                  stageIndex,
+                  'prompts',
+                  promptIndex,
+                  'highlight',
+                  'variable',
+                ],
+              });
+            } else {
+              const variable = getVariablesForSubject(
+                protocol.codebook,
+                stage.subject,
+              )[highlightVariable];
+              if (variable && variable.type !== 'boolean') {
+                ctx.addIssue({
+                  code: 'custom' as const,
+                  message: `Highlight variable "${highlightVariable}" must be of type "boolean", but is "${variable.type}".`,
+                  path: [
+                    'stages',
+                    stageIndex,
+                    'prompts',
+                    promptIndex,
+                    'highlight',
+                    'variable',
+                  ],
+                });
+              }
+            }
+          }
+
+          // 3d.v.c. CategoricalBin: otherOptionLabel required when otherVariable set
+          if (
+            'otherVariable' in prompt &&
+            prompt.otherVariable &&
+            !('otherOptionLabel' in prompt && prompt.otherOptionLabel)
+          ) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message:
+                'otherOptionLabel is required when otherVariable is set.',
+              path: [
+                'stages',
+                stageIndex,
+                'prompts',
+                promptIndex,
+                'otherOptionLabel',
+              ],
+            });
           }
 
           // 3d.vi. additionalAttributes validation
@@ -304,6 +427,89 @@ const ProtocolSchema = z
           }
 
           // edges.restrict.origin validation removed - feature was abandoned
+        });
+      }
+
+      // 3e. NameGeneratorQuickAdd: quickAdd must reference an existing text
+      // variable on the subject node type.
+      if (
+        stage.type === 'NameGeneratorQuickAdd' &&
+        'quickAdd' in stage &&
+        stage.quickAdd &&
+        'subject' in stage &&
+        stage.subject
+      ) {
+        if (!variableExists(protocol.codebook, stage.subject, stage.quickAdd)) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `quickAdd variable "${stage.quickAdd}" not defined in codebook[${stage.subject.entity}][${stage.subject.type}].variables.`,
+            path: ['stages', stageIndex, 'quickAdd'],
+          });
+        } else {
+          const variable = getVariablesForSubject(
+            protocol.codebook,
+            stage.subject,
+          )[stage.quickAdd];
+          if (variable && variable.type !== 'text') {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `quickAdd variable "${stage.quickAdd}" must be of type "text", but is "${variable.type}".`,
+              path: ['stages', stageIndex, 'quickAdd'],
+            });
+          }
+        }
+      }
+
+      // 3f. FamilyPedigree: nodeConfig.form variable ids must not collide with
+      // the wizard's reserved attribute keys.
+      if (
+        stage.type === 'FamilyPedigree' &&
+        'nodeConfig' in stage &&
+        stage.nodeConfig?.form
+      ) {
+        stage.nodeConfig.form.forEach((field, fieldIndex) => {
+          if (RESERVED_PEDIGREE_FORM_KEYS.has(field.variable)) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `FamilyPedigree form variable id "${field.variable}" is reserved by the pedigree wizard and cannot be used.`,
+              path: [
+                'stages',
+                stageIndex,
+                'nodeConfig',
+                'form',
+                fieldIndex,
+                'variable',
+              ],
+            });
+          }
+        });
+      }
+
+      // 3g. External-data panels: filter rules must target node attributes,
+      // not edges (the panel data source is a flat list of node rows).
+      if ('panels' in stage && stage.panels) {
+        stage.panels.forEach((panel, panelIndex) => {
+          if (panel.dataSource !== 'existing' && panel.filter?.rules) {
+            panel.filter.rules.forEach((rule, ruleIndex) => {
+              if (rule.type === 'edge') {
+                ctx.addIssue({
+                  code: 'custom' as const,
+                  message:
+                    'External-data panel filters cannot use edge rules; rules must target node attributes.',
+                  path: [
+                    'stages',
+                    stageIndex,
+                    'panels',
+                    panelIndex,
+                    'filter',
+                    'rules',
+                    ruleIndex,
+                    'type',
+                  ],
+                });
+              }
+            });
+          }
         });
       }
 

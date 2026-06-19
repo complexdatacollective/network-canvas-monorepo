@@ -108,6 +108,12 @@ const dateTimeDatePickerSchema = baseVariableSchema
     name: `date_time_${base.name}`,
   }));
 
+const isIsoDate = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const timestamp = Date.parse(value);
+  return !Number.isNaN(timestamp);
+};
+
 const dateTimeRelativeDatePickerSchema = baseVariableSchema
   .extend({
     type: z.literal(VariableTypes.datetime),
@@ -117,6 +123,41 @@ const dateTimeRelativeDatePickerSchema = baseVariableSchema
         anchor: z.string().optional(),
         before: z.number().int().optional(),
         after: z.number().int().optional(),
+      })
+      .superRefine((parameters, ctx) => {
+        if (parameters.anchor !== undefined && !isIsoDate(parameters.anchor)) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message:
+              'RelativeDatePicker anchor must be a valid ISO date (YYYY-MM-DD)',
+            path: ['anchor'],
+          });
+        }
+        if (parameters.before !== undefined && parameters.before < 0) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: 'RelativeDatePicker "before" must not be negative',
+            path: ['before'],
+          });
+        }
+        if (parameters.after !== undefined && parameters.after < 0) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: 'RelativeDatePicker "after" must not be negative',
+            path: ['after'],
+          });
+        }
+        if (
+          parameters.before !== undefined &&
+          parameters.after !== undefined &&
+          parameters.before >= parameters.after
+        ) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: 'RelativeDatePicker "before" must be less than "after"',
+            path: ['before'],
+          });
+        }
       })
       .optional(),
     validation: z
@@ -236,7 +277,7 @@ const ordinalVariableSchema = baseVariableSchema
       .enum([ComponentTypes.RadioGroup, ComponentTypes.LikertScale])
       .optional()
       .generateMock(() => ComponentTypes.RadioGroup),
-    options: categoricalOptionsSchema,
+    options: categoricalOptionsSchema.min(1),
     validation: z
       .strictObject(validations)
       .pick({

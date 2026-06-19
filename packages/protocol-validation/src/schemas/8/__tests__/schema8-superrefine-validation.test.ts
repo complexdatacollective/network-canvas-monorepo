@@ -491,6 +491,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 text: 'Sort by category',
                 variable: 'category',
                 otherVariable: 'name',
+                otherOptionLabel: 'Other',
               },
             ],
           },
@@ -769,7 +770,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 id: 'prompt1',
                 text: 'Position nodes',
                 layout: {
-                  layoutVariable: 'category',
+                  layoutVariable: 'layoutPosition',
                 },
               },
             ],

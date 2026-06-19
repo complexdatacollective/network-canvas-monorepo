@@ -19,8 +19,6 @@ export const NodeConfigSchema = z.strictObject({
   nodeLabelVariable: z.string().generateMock(() => getNodeVariableId()),
   // Boolean variable marking the ego node
   egoVariable: z.string().generateMock(() => getNodeVariableId()),
-  // Categorical variable storing the biological sex of the node (male, female, intersex, unknown)
-  biologicalSexVariable: z.string().generateMock(() => getNodeVariableId()),
   // String variable storing the relationship to ego (e.g. 'sibling', 'parent')
   relationshipVariable: z.string().generateMock(() => getNodeVariableId()),
   // Optional form fields collected when creating a node
