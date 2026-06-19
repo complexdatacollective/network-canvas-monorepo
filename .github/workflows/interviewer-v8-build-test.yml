@@ -38,8 +38,12 @@ jobs:
           - os: ubuntu-latest
             platform: linux
     runs-on: ${{ matrix.os }}
-    if: ${{ inputs.platform == 'all' || inputs.platform == matrix.platform }}
+    # The platform filter lives on the steps below, not a job-level `if`
+    # (job `if` can't read the `matrix` context). A filtered-out leg just runs
+    # checkout/setup and skips the build, so it finishes green in seconds.
     timeout-minutes: 30
+    env:
+      RUN_LEG: ${{ inputs.platform == 'all' || inputs.platform == matrix.platform }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
@@ -47,10 +51,13 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Build workspace dependencies
+      - if: env.RUN_LEG == 'true'
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - if: env.RUN_LEG == 'true'
+        name: Build workspace dependencies
         run: pnpm exec turbo run build --filter=@codaco/interviewer-v8^...
-      - name: Build Electron app (${{ matrix.platform }})
+      - if: env.RUN_LEG == 'true'
+        name: Build Electron app (${{ matrix.platform }})
         working-directory: apps/interviewer-v8
         # Signing creds resolve to empty on non-mac legs (and macOS treats empty
         # as "unsigned"). Notarization env is only populated when the dispatcher
