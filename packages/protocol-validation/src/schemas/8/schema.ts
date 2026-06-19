@@ -34,15 +34,8 @@ import type { FilterRule } from './filters';
 import { type Prompt, stageSchema } from './stages';
 
 // Variable types that have no renderable form `component` and therefore
-// cannot be referenced by a form field. Reserved FamilyPedigree wizard field
-// keys collide with values the pedigree wizard writes to node attributes.
+// cannot be referenced by a form field.
 const NON_RENDERABLE_VARIABLE_TYPES = new Set(['layout', 'location']);
-const RESERVED_PEDIGREE_FORM_KEYS = new Set([
-  'is-donor',
-  'name',
-  'gestationalCarrier',
-  'role',
-]);
 
 const ProtocolSchema = z
   .strictObject({
@@ -387,31 +380,6 @@ const ProtocolSchema = z
             });
           }
         }
-      }
-
-      // 3f. FamilyPedigree: nodeConfig.form variable ids must not collide with
-      // the wizard's reserved attribute keys.
-      if (
-        stage.type === 'FamilyPedigree' &&
-        'nodeConfig' in stage &&
-        stage.nodeConfig?.form
-      ) {
-        stage.nodeConfig.form.forEach((field, fieldIndex) => {
-          if (RESERVED_PEDIGREE_FORM_KEYS.has(field.variable)) {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `FamilyPedigree form variable id "${field.variable}" is reserved by the pedigree wizard and cannot be used.`,
-              path: [
-                'stages',
-                stageIndex,
-                'nodeConfig',
-                'form',
-                fieldIndex,
-                'variable',
-              ],
-            });
-          }
-        });
       }
 
       // Note: Panels duplicate ID validation moved to individual stage schemas

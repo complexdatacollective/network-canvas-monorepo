@@ -10,8 +10,6 @@ import ProtocolSchemaV8 from '../schema';
  *   (reject layout/location variables)
  * - quickAdd must reference an existing text variable on the subject node type
  * - CategoricalBin requires otherOptionLabel when otherVariable is set
- * - FamilyPedigree nodeConfig.form variable ids must not collide with reserved
- *   wizard keys
  */
 describe('Protocol Schema V8 - logic-validation refinements', () => {
   describe('form field renderable component', () => {
@@ -192,85 +190,6 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         ],
       };
 
-      const result = ProtocolSchemaV8.safeParse(protocol);
-      expect(result.success).toBe(true);
-    });
-  });
-
-  describe('FamilyPedigree reserved form variable ids', () => {
-    const buildPedigreeProtocol = (formVariable: string) => {
-      const base = createBaseProtocol();
-      return {
-        ...base,
-        codebook: {
-          ...base.codebook,
-          node: {
-            ...base.codebook.node,
-            person: {
-              ...base.codebook.node.person,
-              variables: {
-                ...base.codebook.node.person.variables,
-                isEgo: { name: 'IsEgo', type: 'boolean' },
-                relationship: { name: 'Relationship', type: 'text' },
-                role: { name: 'Role', type: 'text' },
-              },
-            },
-          },
-          edge: {
-            ...base.codebook.edge,
-            family: {
-              name: 'Family',
-              color: 'edge-color-seq-1',
-              variables: {
-                relType: {
-                  name: 'RelType',
-                  type: 'categorical',
-                  options: [{ label: 'Parent', value: 'parent' }],
-                },
-                active: { name: 'Active', type: 'boolean' },
-                gestational: { name: 'Gestational', type: 'boolean' },
-              },
-            },
-          },
-        },
-        stages: [
-          {
-            id: 'pedigree1',
-            type: 'FamilyPedigree',
-            label: 'Family Tree',
-            censusPrompt: 'Build your family tree',
-            nodeConfig: {
-              type: 'person',
-              nodeLabelVariable: 'name',
-              egoVariable: 'isEgo',
-              relationshipVariable: 'relationship',
-              form: [{ variable: formVariable, prompt: 'Question' }],
-            },
-            edgeConfig: {
-              type: 'family',
-              relationshipTypeVariable: 'relType',
-              isActiveVariable: 'active',
-              isGestationalCarrierVariable: 'gestational',
-            },
-          },
-        ],
-      };
-    };
-
-    it('rejects a nodeConfig.form variable id that collides with a reserved key', () => {
-      const protocol = buildPedigreeProtocol('role');
-      const result = ProtocolSchemaV8.safeParse(protocol);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        const issue = result.error.issues.find((i) =>
-          i.message.includes('reserved'),
-        );
-        expect(issue).toBeDefined();
-      }
-    });
-
-    it('accepts a nodeConfig.form variable id that does not collide', () => {
-      const protocol = buildPedigreeProtocol('relationship');
       const result = ProtocolSchemaV8.safeParse(protocol);
       expect(result.success).toBe(true);
     });
