@@ -17,8 +17,12 @@ import type { RootState } from '~/ducks/store';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { optionsMatch } from '~/utils/variables';
 
-const RELATIONSHIP_TYPE_OPTIONS: VariableOptions = [
-  { value: 'parent', label: 'Parent' },
+export const RELATIONSHIP_TYPE_OPTIONS: VariableOptions = [
+  { value: 'biological', label: 'Biological' },
+  { value: 'social', label: 'Social' },
+  { value: 'donor', label: 'Donor' },
+  { value: 'surrogate', label: 'Surrogate' },
+  { value: 'adoptive', label: 'Adoptive' },
   { value: 'partner', label: 'Partner' },
 ];
 
@@ -163,7 +167,7 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
             <VariableRow
               name="edgeConfig.relationshipTypeVariable"
               label="Relationship Type"
-              description="Stores the type of relationship between family members (parent or partner)."
+              description="Stores the type of relationship between family members (e.g. biological, social, donor, surrogate, adoptive, or partner)."
               edgeType={edgeType}
               options={relationshipTypeCompatible}
               onCreateOption={handleNewRelationshipTypeVariable}
