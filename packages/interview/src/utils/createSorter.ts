@@ -2,6 +2,7 @@ import { get } from 'es-toolkit/compat';
 
 import type {
   EntityDefinition,
+  Variable,
   VariableType,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
@@ -121,7 +122,7 @@ const bestHierarchyIndex = (
   values: (string | number | boolean)[],
   hierarchy: (string | number | boolean)[],
 ) =>
-  values.reduce((best, value) => {
+  values.reduce<number>((best, value) => {
     const index = hierarchy.indexOf(value);
     if (index === -1) {
       return best;
@@ -423,7 +424,11 @@ export const processProtocolSortRule =
       return { ...sortRule, type: sortRule.type };
     }
 
-    const variableDefinition = get(codebookVariables, sortRule.property, null);
+    const variableDefinition: Variable | null = get(
+      codebookVariables,
+      sortRule.property,
+      null,
+    );
 
     // Don't modify the rule if there is no variable definition matching the
     // property. Assume string

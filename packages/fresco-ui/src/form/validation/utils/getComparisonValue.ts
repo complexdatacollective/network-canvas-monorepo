@@ -19,7 +19,7 @@ export function getComparisonValue(
   formValues: Record<string, FieldValue>,
   attribute: string,
   context?: ValidationContext,
-): { present: boolean; value: FieldValue } {
+): { present: boolean; value: FieldValue | null } {
   if (attribute in formValues) {
     return { present: true, value: formValues[attribute] };
   }

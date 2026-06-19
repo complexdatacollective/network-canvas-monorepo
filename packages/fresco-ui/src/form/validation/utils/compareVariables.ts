@@ -7,7 +7,7 @@ import type { FieldValue } from '../../store/types';
 
 export default function compareVariables(
   value1: unknown,
-  value2: FieldValue,
+  value2: FieldValue | null,
   type: Variable['type'],
 ) {
   // check for null values

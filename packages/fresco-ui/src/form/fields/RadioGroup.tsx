@@ -154,7 +154,10 @@ type RadioOption = {
 type RadioGroupFieldProps = CreateFormFieldProps<
   string | number,
   'div',
-  Omit<RadioGroupProps, 'size' | 'onValueChange' | 'value' | 'defaultValue'> &
+  Omit<
+    RadioGroupProps,
+    'size' | 'onChange' | 'onValueChange' | 'value' | 'defaultValue'
+  > &
     VariantProps<typeof radioGroupWrapperVariants> & {
       options: RadioOption[];
       defaultValue?: string | number;
