@@ -8,5 +8,5 @@ Tighten the protocol schema and add migrations to fix conformance gaps found in 
 - Validate that a NameGeneratorQuickAdd `quickAdd` references an existing text variable on the subject node type.
 - Require `otherOptionLabel` when a CategoricalBin prompt sets `otherVariable`.
 - Reject FamilyPedigree node-form variable ids that collide with reserved wizard keys, and the reserved `scaffolding` prompt id.
-- Remove the vestigial Information `loop` flag and FamilyPedigree `biologicalSexVariable`, with migrations dropping them from existing protocols.
+- Remove the vestigial Information `loop` flag, with a migration dropping it from existing protocols.
 - A `minValue`, `minLength`, or `minSelected` validator no longer implies a field is required. A migration sets `required: true` on every existing codebook variable (node, edge, or ego) that has one of these validators without an explicit `required: true`, preserving the effective behaviour of protocols authored before the change.

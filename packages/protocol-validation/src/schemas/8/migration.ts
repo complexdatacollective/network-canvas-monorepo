@@ -73,8 +73,7 @@ const migrationV7toV8 = createMigration({
 - Added 'shape' property with default 'circle' to all node definitions.
 - Added optional 'hint' property to form fields, allowing a markdown string to be displayed as additional guidance for participants.
 - Added optional 'showValidationHints' property to form fields, enabling automatic display of hints derived from validation rules.
-- Removed 'loop' property from Information stage items and video/audio assets. This property was never honoured by the interviewer.
-- Removed 'biologicalSexVariable' from FamilyPedigree node configuration. This property was a vestigial refactor leftover that the interviewer never read or wrote.
+- Removed 'loop' property from Information stage items and video/audio assets. This property was never honoured by Interviewer.
 - A \`minValue\`, \`minLength\`, or \`minSelected\` validator no longer implies a field is required. To preserve the effective behaviour of existing protocols that relied on this coupling, any codebook variable (node, edge, or ego) with one of these validators and no explicit \`required: true\` now has \`required: true\` set.
 - Categorical attribute values are now stored as arrays of selected option values. Existing single-value categorical filter and skip-logic rule operands (\`is exactly\`, \`is not\`, \`includes\`, \`excludes\`) are wrapped in a single-element array to match.
 `,
@@ -235,17 +234,6 @@ const migrationV7toV8 = createMigration({
             delete (asset as Record<string, unknown>).loop;
           }
           return asset;
-        },
-      },
-      {
-        // Remove vestigial 'biologicalSexVariable' from FamilyPedigree node config
-        paths: ['stages[].nodeConfig'],
-        fn: <V>(nodeConfig: V) => {
-          if (typeof nodeConfig === 'object' && nodeConfig !== null) {
-            delete (nodeConfig as Record<string, unknown>)
-              .biologicalSexVariable;
-          }
-          return nodeConfig;
         },
       },
       {
