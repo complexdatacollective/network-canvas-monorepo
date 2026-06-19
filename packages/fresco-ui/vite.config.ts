@@ -69,7 +69,16 @@ export default defineConfig({
       output: {
         format: 'esm',
         preserveModules: true,
-        preserveModulesRoot: 'src',
+        // Absolute, posix-normalized root. rolldown matches module paths
+        // (which it normalizes to forward slashes, even on Windows) against
+        // this root to strip it. A bare relative `'src'` resolves with the
+        // host separator, so on Windows the back-slashed root never matches the
+        // forward-slash module paths — the strip silently fails and every file
+        // is emitted under `dist/packages/fresco-ui/src/…` instead of `dist/…`,
+        // breaking every subpath export (`@codaco/fresco-ui/ThemedRegion`, …)
+        // for consumers on Windows. An absolute forward-slash root matches on
+        // both platforms.
+        preserveModulesRoot: resolve(here, 'src').replace(/\\/g, '/'),
         entryFileNames: '[name].js',
       },
     },

@@ -1020,6 +1020,11 @@ jobs:
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           CSC_LINK: ${{ matrix.platform == 'mac' && secrets.CSC_LINK || '' }}
           CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.CSC_KEY_PASSWORD || '' }}
+          # TEMPORARY (remove once the macOS pnpm node-module-collector failure
+          # is fixed): full electron-builder debug logging on the mac leg so the
+          # `<projectDir> not a file` collector error prints a stack trace. Not
+          # locally reproducible, so the trace must come from CI.
+          DEBUG: ${{ matrix.platform == 'mac' && 'electron-builder' || '' }}
         # `--publish never`: the `publish` config makes electron-builder emit the
         # latest*.yml auto-update metadata + app-update.yml, but uploading to the
         # moving feed is done by interviewer-v8-publish via gh, not here.
