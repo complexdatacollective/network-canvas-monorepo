@@ -239,12 +239,18 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 
       return;
     }
+    // Only the 'other' bin (handled above) has a null value; a regular bin
+    // always carries a concrete option value.
+    if (bin.value === null) return;
+
     await dispatch(
       updateNode({
         nodeId,
         newAttributeData: {
           ...(otherVariable ? { [otherVariable]: null } : {}),
-          [variable]: bin.value,
+          // Categorical attributes are stored as arrays of selected option
+          // values; a single bin membership is a one-element array.
+          [variable]: [bin.value],
         },
         currentStep,
       }),

@@ -103,17 +103,11 @@ const stringFunction =
     return collator.compare(secondValue, firstValue);
   };
 
-/* Normalises a stored categorical value to an array. CheckboxGroup stores an
- * array of selected option values; CategoricalBin stores a single scalar. */
-const toCategoricalValues = (value: unknown): (string | number | boolean)[] => {
-  if (value === null || value === undefined) {
-    return [];
-  }
-  if (Array.isArray(value)) {
-    return value as (string | number | boolean)[];
-  }
-  return [value as string | number | boolean];
-};
+/* The selected option values of a stored categorical attribute, or an empty
+ * array when nothing is selected. Categorical attributes are stored as arrays
+ * of selected option values. */
+const toCategoricalValues = (value: unknown): (string | number | boolean)[] =>
+  Array.isArray(value) ? (value as (string | number | boolean)[]) : [];
 
 /* The best (lowest) hierarchy index across a node's full selection set. A value
  * not in the hierarchy contributes Infinity so it sinks below ranked values

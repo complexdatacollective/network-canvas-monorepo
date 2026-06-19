@@ -40,21 +40,6 @@ type PredicateInput = {
   other: unknown;
 };
 
-// Bridges scalar/array storage of categorical attribute values for EXACTLY/NOT
-// rules. Categorical attributes assigned via CategoricalBin are stored as
-// scalars; via CheckboxGroup as arrays. A length-1 array is treated as
-// equivalent to its single element so author-facing "is exactly X" rules in
-// Architect work consistently regardless of which interface assigned the value.
-const categoricalEqual = (a: unknown, b: unknown): boolean => {
-  if (Array.isArray(a) && !Array.isArray(b)) {
-    return a.length === 1 && a[0] === b;
-  }
-  if (!Array.isArray(a) && Array.isArray(b)) {
-    return b.length === 1 && b[0] === a;
-  }
-  return isEqual(a, b);
-};
-
 // Resolves a value to a comparable number for the numeric operators. Plain
 // numbers and numeric strings are used as-is; datetime attribute values (ISO
 // strings) are compared chronologically via their timestamp. Returns NaN for
@@ -99,15 +84,11 @@ const safeRegExp = (pattern: unknown): RegExp | null => {
   }
 };
 
-// Treat scalar attribute values as a one-element sequence so OPTIONS_* counts
-// work for categorical variables assigned via the CategoricalBin interface
-// (which writes scalars). Array attributes (CheckboxGroup-assigned) keep their
-// existing length semantics. Null / undefined count as zero.
-const optionsLength = (value: unknown): number => {
-  if (Array.isArray(value)) return value.length;
-  if (value === null || value === undefined) return 0;
-  return 1;
-};
+// Number of selected options for a categorical attribute. Categorical values
+// are stored as arrays of selected option values; an unanswered attribute
+// (null / undefined / non-array) counts as zero.
+const optionsLength = (value: unknown): number =>
+  Array.isArray(value) ? value.length : 0;
 
 /**
  * returns functions that can be used to compare `value` with `other`
@@ -137,11 +118,11 @@ const predicate =
       case countOperators.COUNT_LESS_THAN_OR_EQUAL:
         return compareNumeric(value, variableValue, (a, b) => a <= b);
       case operators.EXACTLY:
-        return categoricalEqual(value, variableValue);
+        return isEqual(value, variableValue);
       case countOperators.COUNT:
         return isEqual(value, variableValue);
       case operators.NOT:
-        return !categoricalEqual(value, variableValue);
+        return !isEqual(value, variableValue);
       case countOperators.COUNT_NOT:
         return !isEqual(value, variableValue);
       case operators.CONTAINS: {

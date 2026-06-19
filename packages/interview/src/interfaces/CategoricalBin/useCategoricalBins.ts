@@ -22,13 +22,8 @@ const matchVariableValue = (
 ) => {
   const variableValue = node[entityAttributesProperty][variable];
 
-  if (variableValue === undefined || variableValue === null) return false;
-
-  if (Array.isArray(variableValue)) {
-    return variableValue.some((v) => v === value);
-  }
-
-  return variableValue === value;
+  // Categorical attributes are stored as arrays of selected option values.
+  return Array.isArray(variableValue) && variableValue.some((v) => v === value);
 };
 
 type CategoricalBinPrompts = Extract<

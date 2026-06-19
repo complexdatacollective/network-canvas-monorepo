@@ -522,13 +522,14 @@ describe('Categorical sorting', () => {
     expect(result).toEqual(['shared-first-high', 'shared-first-low']);
   });
 
-  it('sorts scalar-stored categorical values', () => {
-    // CategoricalBin stores the selected value as a bare scalar (not an array).
+  it('sorts single-selection categorical values', () => {
+    // Categorical attributes are stored as arrays; a single selection is a
+    // one-element array (e.g. CategoricalBin membership).
     const mockItems = [
-      { category: 'cow', name: 'alice' },
-      { category: 'duck', name: 'bob' },
-      { category: 'lizard', name: 'charlie' },
-      { category: 'cow', name: 'david' },
+      { category: ['cow'], name: 'alice' },
+      { category: ['duck'], name: 'bob' },
+      { category: ['lizard'], name: 'charlie' },
+      { category: ['cow'], name: 'david' },
     ];
 
     const sorter = createSorter([
@@ -571,8 +572,8 @@ describe('Categorical sorting', () => {
 
   it('sorts categorical option value false by its hierarchy index', () => {
     const mockItems = [
-      { category: false, name: 'falseValue' },
-      { category: true, name: 'trueValue' },
+      { category: [false], name: 'falseValue' },
+      { category: [true], name: 'trueValue' },
     ];
 
     const sorter = createSorter([

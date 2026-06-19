@@ -28,7 +28,7 @@ describe('edgeListRows', () => {
           from: 1,
           to: 2,
           type: 'mock-edge-type',
-          [entityAttributesProperty]: { 'relationship-uuid': 'partner' },
+          [entityAttributesProperty]: { 'relationship-uuid': ['partner'] },
         },
       ],
     };

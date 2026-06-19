@@ -145,33 +145,29 @@ describe('predicate', () => {
         false,
       );
 
-      // Categorical attributes can be stored as scalar (CategoricalBin) or
-      // array (CheckboxGroup). EXACTLY bridges length-1 arrays and scalars
-      // so Architect's "is exactly X" works regardless of storage format.
+      // Categorical attributes are stored as arrays of selected option values,
+      // and Architect emits array operands for categorical rules, so EXACTLY is
+      // a deep array equality.
       expect(
-        predicate(operators.EXACTLY)({ value: ['family'], other: 'family' }),
+        predicate(operators.EXACTLY)({ value: ['family'], other: ['family'] }),
       ).toBe(true);
-      expect(
-        predicate(operators.EXACTLY)({ value: 'family', other: ['family'] }),
-      ).toBe(true);
-      // Multi-element arrays are not "exactly" a single scalar.
-      expect(
-        predicate(operators.EXACTLY)({
-          value: ['family', 'work'],
-          other: 'family',
-        }),
-      ).toBe(false);
-      // Empty array is not exactly a scalar.
-      expect(predicate(operators.EXACTLY)({ value: [], other: 'family' })).toBe(
-        false,
-      );
-      // Array-vs-array still uses deep equality.
       expect(
         predicate(operators.EXACTLY)({
           value: ['family', 'work'],
           other: ['family', 'work'],
         }),
       ).toBe(true);
+      // Different selection sets are not exactly equal.
+      expect(
+        predicate(operators.EXACTLY)({
+          value: ['family', 'work'],
+          other: ['family'],
+        }),
+      ).toBe(false);
+      // An unanswered categorical (null) is never exactly a selection.
+      expect(
+        predicate(operators.EXACTLY)({ value: null, other: ['family'] }),
+      ).toBe(false);
     });
 
     it('NOT', () => {
@@ -191,17 +187,14 @@ describe('predicate', () => {
         true,
       );
 
-      // Mirrors EXACTLY's scalar/array bridge — see EXACTLY note.
+      // Mirrors EXACTLY — categorical is deep array equality.
       expect(
-        predicate(operators.NOT)({ value: ['family'], other: 'family' }),
-      ).toBe(false);
-      expect(
-        predicate(operators.NOT)({ value: 'family', other: ['family'] }),
+        predicate(operators.NOT)({ value: ['family'], other: ['family'] }),
       ).toBe(false);
       expect(
         predicate(operators.NOT)({
           value: ['family', 'work'],
-          other: 'family',
+          other: ['family'],
         }),
       ).toBe(true);
     });
@@ -363,8 +356,8 @@ describe('predicate', () => {
       });
 
       it('Falsy scalar value', () => {
-        // CategoricalBin and OrdinalBin write scalar option values, so a
-        // stored `0` must still reach the equality check.
+        // OrdinalBin writes scalar option values, so a stored `0` must still
+        // reach the equality check.
         expect(predicate(operators.INCLUDES)({ value: 0, other: 0 })).toBe(
           true,
         );
@@ -499,12 +492,10 @@ describe('predicate', () => {
       ).toBe(true);
     });
 
-    it('OPTIONS_GREATER_THAN (scalar attribute)', () => {
+    it('OPTIONS_GREATER_THAN (unanswered)', () => {
+      // A categorical with no selection (null) counts as zero options.
       expect(
-        predicate(operators.OPTIONS_GREATER_THAN)({ value: 'blue', other: 0 }),
-      ).toBe(true);
-      expect(
-        predicate(operators.OPTIONS_GREATER_THAN)({ value: 'blue', other: 1 }),
+        predicate(operators.OPTIONS_GREATER_THAN)({ value: null, other: 0 }),
       ).toBe(false);
     });
 
@@ -521,12 +512,13 @@ describe('predicate', () => {
       ).toBe(false);
     });
 
-    it('OPTIONS_LESS_THAN (scalar attribute)', () => {
+    it('OPTIONS_LESS_THAN (unanswered)', () => {
+      // No selection (null) counts as zero options.
       expect(
-        predicate(operators.OPTIONS_LESS_THAN)({ value: 'blue', other: 2 }),
+        predicate(operators.OPTIONS_LESS_THAN)({ value: null, other: 2 }),
       ).toBe(true);
       expect(
-        predicate(operators.OPTIONS_LESS_THAN)({ value: 'blue', other: 1 }),
+        predicate(operators.OPTIONS_LESS_THAN)({ value: null, other: 0 }),
       ).toBe(false);
     });
 
@@ -543,16 +535,14 @@ describe('predicate', () => {
       ).toBe(false);
     });
 
-    it('OPTIONS_EQUALS (scalar attribute)', () => {
-      expect(
-        predicate(operators.OPTIONS_EQUALS)({ value: 'blue', other: 1 }),
-      ).toBe(true);
-      expect(
-        predicate(operators.OPTIONS_EQUALS)({ value: 'blue', other: 0 }),
-      ).toBe(false);
+    it('OPTIONS_EQUALS (unanswered)', () => {
+      // No selection (null) counts as zero options.
       expect(
         predicate(operators.OPTIONS_EQUALS)({ value: null, other: 0 }),
       ).toBe(true);
+      expect(
+        predicate(operators.OPTIONS_EQUALS)({ value: null, other: 1 }),
+      ).toBe(false);
     });
 
     it('OPTIONS_NOT_EQUALS', () => {
@@ -568,12 +558,13 @@ describe('predicate', () => {
       ).toBe(true);
     });
 
-    it('OPTIONS_NOT_EQUALS (scalar attribute)', () => {
+    it('OPTIONS_NOT_EQUALS (unanswered)', () => {
+      // No selection (null) counts as zero options.
       expect(
-        predicate(operators.OPTIONS_NOT_EQUALS)({ value: 'blue', other: 0 }),
+        predicate(operators.OPTIONS_NOT_EQUALS)({ value: null, other: 1 }),
       ).toBe(true);
       expect(
-        predicate(operators.OPTIONS_NOT_EQUALS)({ value: 'blue', other: 1 }),
+        predicate(operators.OPTIONS_NOT_EQUALS)({ value: null, other: 0 }),
       ).toBe(false);
     });
   });

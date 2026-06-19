@@ -8,12 +8,11 @@ export type EncryptedValue = z.infer<typeof encryptedValueSchema>;
 
 const variableValueSchema = z
   .union([
-    z.string(),
+    z.string(), // text, ordinal option value, location
     z.boolean(),
-    z.number(),
+    z.number(), // number, ordinal option value, visual analog scale
     encryptedValueSchema,
-    z.array(z.union([z.string(), z.number(), z.boolean()])), // Ordinal
-    z.record(z.string(), z.union([z.string(), z.boolean(), z.number()])), // Categorical
+    z.array(z.union([z.string(), z.number(), z.boolean()])), // categorical (selected option values)
     z.object({
       x: z.number(),
       y: z.number(),

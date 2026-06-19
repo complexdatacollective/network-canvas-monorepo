@@ -360,6 +360,141 @@ describe('Migration V7 to V8', () => {
     });
   });
 
+  describe('categorical rule operand arrays', () => {
+    const buildV7 = (ruleOptions: Record<string, unknown>) => ({
+      schemaVersion: 7 as const,
+      codebook: {
+        node: {
+          person: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            variables: {
+              cat: {
+                name: 'cat',
+                type: 'categorical',
+                component: 'CheckboxGroup',
+                options: [
+                  { label: 'Family', value: 'family' },
+                  { label: 'Work', value: 'work' },
+                ],
+              },
+              ord: {
+                name: 'ord',
+                type: 'ordinal',
+                component: 'RadioGroup',
+                options: [
+                  { label: 'Low', value: 1 },
+                  { label: 'High', value: 2 },
+                ],
+              },
+            },
+          },
+        },
+        edge: {},
+        ego: {},
+      },
+      stages: [
+        {
+          id: 'stage1',
+          type: 'NameGenerator',
+          label: 'Test Stage',
+          form: { fields: [] },
+          subject: { entity: 'node', type: 'person' },
+          prompts: [{ id: 'prompt1', text: 'Test prompt' }],
+          skipLogic: {
+            action: 'SKIP',
+            filter: {
+              rules: [{ type: 'node', id: 'rule1', options: ruleOptions }],
+            },
+          },
+        },
+      ],
+    });
+
+    const migrateRuleValue = (
+      ruleOptions: Record<string, unknown>,
+    ): unknown => {
+      const migrated = migrationV7toV8.migrate(buildV7(ruleOptions), {
+        name: 'Test Protocol',
+      }) as unknown as {
+        stages: {
+          skipLogic?: {
+            filter?: { rules?: { options?: { value?: unknown } }[] };
+          };
+        }[];
+      };
+      return migrated.stages[0]?.skipLogic?.filter?.rules?.[0]?.options?.value;
+    };
+
+    it('wraps a scalar categorical EXACTLY operand in an array', () => {
+      expect(
+        migrateRuleValue({
+          type: 'person',
+          attribute: 'cat',
+          operator: 'EXACTLY',
+          value: 'family',
+        }),
+      ).toEqual(['family']);
+    });
+
+    it('wraps a scalar categorical INCLUDES operand in an array', () => {
+      expect(
+        migrateRuleValue({
+          type: 'person',
+          attribute: 'cat',
+          operator: 'INCLUDES',
+          value: 'family',
+        }),
+      ).toEqual(['family']);
+    });
+
+    it('leaves an already-array categorical operand untouched', () => {
+      expect(
+        migrateRuleValue({
+          type: 'person',
+          attribute: 'cat',
+          operator: 'EXACTLY',
+          value: ['family', 'work'],
+        }),
+      ).toEqual(['family', 'work']);
+    });
+
+    it('does not wrap a categorical OPTIONS_* count operand', () => {
+      expect(
+        migrateRuleValue({
+          type: 'person',
+          attribute: 'cat',
+          operator: 'OPTIONS_EQUALS',
+          value: 2,
+        }),
+      ).toBe(2);
+    });
+
+    it('does not wrap an ordinal EXACTLY operand', () => {
+      expect(
+        migrateRuleValue({
+          type: 'person',
+          attribute: 'ord',
+          operator: 'EXACTLY',
+          value: 1,
+        }),
+      ).toBe(1);
+    });
+
+    it('produces a protocol that still validates against schema 8', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildV7({
+          type: 'person',
+          attribute: 'cat',
+          operator: 'EXACTLY',
+          value: 'family',
+        }),
+        { name: 'Test Protocol' },
+      );
+      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+    });
+  });
+
   describe('filter type transformation', () => {
     it("transforms 'alter' to 'node' in stage panel filter rules", () => {
       const v7Protocol = {

@@ -23,7 +23,7 @@ const AGE_VAR = 'age';
 
 const makeNode = (
   id: string,
-  attributes: Record<string, string | number | null>,
+  attributes: Record<string, string | number | null | string[]>,
 ): NcNode => ({
   [entityPrimaryKeyProperty]: id,
   type: NODE_TYPE,
@@ -32,9 +32,10 @@ const makeNode = (
 
 // Two binned nodes share bin 'a'; their bucket order (name asc) is the reverse
 // of their bin order (age desc). One uncategorised node lands in the drawer.
+// Categorical attributes are stored as arrays of selected option values.
 const nodes: NcNode[] = [
-  makeNode('alice', { [CAT_VAR]: 'a', [NAME_VAR]: 'alice', [AGE_VAR]: 30 }),
-  makeNode('bob', { [CAT_VAR]: 'a', [NAME_VAR]: 'bob', [AGE_VAR]: 50 }),
+  makeNode('alice', { [CAT_VAR]: ['a'], [NAME_VAR]: 'alice', [AGE_VAR]: 30 }),
+  makeNode('bob', { [CAT_VAR]: ['a'], [NAME_VAR]: 'bob', [AGE_VAR]: 50 }),
   makeNode('carol', { [CAT_VAR]: null, [NAME_VAR]: 'carol', [AGE_VAR]: 40 }),
   makeNode('dave', { [CAT_VAR]: null, [NAME_VAR]: 'dave', [AGE_VAR]: 20 }),
 ];

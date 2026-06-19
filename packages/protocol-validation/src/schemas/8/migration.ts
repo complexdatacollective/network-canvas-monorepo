@@ -1,6 +1,58 @@
 import { createMigration, type ProtocolDocument } from '~/migration';
 import { traverseAndTransform } from '~/utils/traverse-and-transform';
 
+// Operators whose operand is a categorical option value (as opposed to a count,
+// like OPTIONS_*, or a regex). Their legacy scalar operands are wrapped in a
+// single-element array so categorical rules use the array contract.
+const CATEGORICAL_VALUE_OPERATORS = new Set([
+  'EXACTLY',
+  'NOT',
+  'INCLUDES',
+  'EXCLUDES',
+]);
+
+// Collects the ids of every categorical variable across node, edge, and ego
+// codebook entities, so rule migration can target only categorical operands.
+const collectCategoricalVariableIds = (codebook: unknown): Set<string> => {
+  const ids = new Set<string>();
+  if (typeof codebook !== 'object' || codebook === null) return ids;
+  const typedCodebook = codebook as Record<string, unknown>;
+
+  const addFromVariables = (variables: unknown) => {
+    if (typeof variables !== 'object' || variables === null) return;
+    for (const [id, definition] of Object.entries(
+      variables as Record<string, unknown>,
+    )) {
+      if (
+        typeof definition === 'object' &&
+        definition !== null &&
+        (definition as Record<string, unknown>).type === 'categorical'
+      ) {
+        ids.add(id);
+      }
+    }
+  };
+
+  const addFromEntities = (entities: unknown) => {
+    if (typeof entities !== 'object' || entities === null) return;
+    for (const definition of Object.values(
+      entities as Record<string, unknown>,
+    )) {
+      if (typeof definition === 'object' && definition !== null) {
+        addFromVariables((definition as Record<string, unknown>).variables);
+      }
+    }
+  };
+
+  addFromEntities(typedCodebook.node);
+  addFromEntities(typedCodebook.edge);
+  if (typeof typedCodebook.ego === 'object' && typedCodebook.ego !== null) {
+    addFromVariables((typedCodebook.ego as Record<string, unknown>).variables);
+  }
+
+  return ids;
+};
+
 const migrationV7toV8 = createMigration({
   from: 7,
   to: 8,
@@ -24,8 +76,13 @@ const migrationV7toV8 = createMigration({
 - Removed 'loop' property from Information stage items and video/audio assets. This property was never honoured by the interviewer.
 - Removed 'biologicalSexVariable' from FamilyPedigree node configuration. This property was a vestigial refactor leftover that the interviewer never read or wrote.
 - A \`minValue\`, \`minLength\`, or \`minSelected\` validator no longer implies a field is required. To preserve the effective behaviour of existing protocols that relied on this coupling, any codebook variable (node, edge, or ego) with one of these validators and no explicit \`required: true\` now has \`required: true\` set.
+- Categorical attribute values are now stored as arrays of selected option values. Existing single-value categorical filter and skip-logic rule operands (\`is exactly\`, \`is not\`, \`includes\`, \`excludes\`) are wrapped in a single-element array to match.
 `,
   migrate: (doc, deps) => {
+    const categoricalVariableIds = collectCategoricalVariableIds(
+      (doc as Record<string, unknown>).codebook,
+    );
+
     const transformed = traverseAndTransform(doc as Record<string, unknown>, [
       {
         // Remove deprecated 'displayVariable' property from node and edge entity definitions
@@ -77,6 +134,44 @@ const migrationV7toV8 = createMigration({
         fn: <V>(filterType: V) => {
           if (filterType === 'alter') return 'node' as V;
           return filterType;
+        },
+      },
+      {
+        // Categorical attributes are stored as arrays of selected option values,
+        // and Architect now emits array operands for categorical rules. Wrap any
+        // legacy scalar categorical operand in a single-element array so existing
+        // EXACTLY/NOT/INCLUDES/EXCLUDES rules keep working. OPTIONS_* operands are
+        // counts, and ordinal operands stay scalar, so neither is touched.
+        paths: [
+          'stages[].panels[].filter.rules[]',
+          'stages[].skipLogic.filter.rules[]',
+          'stages[].filter.rules[]',
+        ],
+        fn: <V>(rule: V): V => {
+          if (typeof rule !== 'object' || rule === null) return rule;
+          const typedRule = rule as Record<string, unknown>;
+          const options = typedRule.options;
+          if (typeof options !== 'object' || options === null) return rule;
+
+          const typedOptions = options as Record<string, unknown>;
+          const { attribute, operator, value } = typedOptions;
+
+          if (
+            typeof attribute !== 'string' ||
+            typeof operator !== 'string' ||
+            !CATEGORICAL_VALUE_OPERATORS.has(operator) ||
+            !categoricalVariableIds.has(attribute) ||
+            value === undefined ||
+            value === null ||
+            Array.isArray(value)
+          ) {
+            return rule;
+          }
+
+          return {
+            ...typedRule,
+            options: { ...typedOptions, value: [value] },
+          } as V;
         },
       },
       {
