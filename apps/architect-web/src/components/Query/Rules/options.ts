@@ -4,13 +4,11 @@ import { omit } from 'es-toolkit/compat';
 import { VARIABLE_TYPES } from '../../../config/variables';
 
 // Variable types that can't be used in rules
-const disallowedVariableTypes = ['scalar', 'layout'];
+const disallowedVariableTypes: string[] = [];
 
 export const validTypes = new Set(
   Object.keys(omit(VARIABLE_TYPES, disallowedVariableTypes)),
 );
-
-// Todo: commented out options below to be reinstated when we switch to schema 8
 
 // List of operators (internal use only)
 const operators = {
@@ -18,8 +16,8 @@ const operators = {
   EXISTS: 'EXISTS',
   INCLUDES: 'INCLUDES',
   EXCLUDES: 'EXCLUDES',
-  // CONTAINS: 'CONTAINS',
-  // DOES_NOT_CONTAIN: 'DOES_NOT_CONTAIN',
+  CONTAINS: 'CONTAINS',
+  DOES_NOT_CONTAIN: 'DOES_NOT_CONTAIN',
   NOT_EXISTS: 'NOT_EXISTS',
   NOT: 'NOT',
   GREATER_THAN: 'GREATER_THAN',
@@ -42,8 +40,8 @@ export const operatorsAsOptions = [
   [operators.GREATER_THAN_OR_EQUAL, 'is greater than or exactly'],
   [operators.LESS_THAN, 'is less than'],
   [operators.LESS_THAN_OR_EQUAL, 'is less than or exactly'],
-  // [operators.CONTAINS, 'contains'],
-  // [operators.DOES_NOT_CONTAIN, 'does not contain'],
+  [operators.CONTAINS, 'contains'],
+  [operators.DOES_NOT_CONTAIN, 'does not contain'],
   [operators.INCLUDES, 'includes'],
   [operators.EXCLUDES, 'excludes'],
   [
@@ -67,10 +65,10 @@ export const operatorsWithValue = new Set([
   operators.EXCLUDES,
 ]);
 
-// export const operatorsWithRegExp = new Set([
-//   operators.CONTAINS,
-//   operators.DOES_NOT_CONTAIN,
-// ]);
+export const operatorsWithRegExp = new Set([
+  operators.CONTAINS,
+  operators.DOES_NOT_CONTAIN,
+]);
 
 // Operators that also require a count of options
 export const operatorsWithOptionCount = new Set([
@@ -80,22 +78,23 @@ export const operatorsWithOptionCount = new Set([
   operators.OPTIONS_NOT_EQUALS,
 ]);
 
+const numericOperators = [
+  'EXACTLY',
+  'NOT',
+  'GREATER_THAN',
+  'GREATER_THAN_OR_EQUAL',
+  'LESS_THAN',
+  'LESS_THAN_OR_EQUAL',
+];
+
 export const operatorsByType = {
-  text: new Set([
-    'EXACTLY',
-    'NOT',
-    // 'CONTAINS',
-    // 'DOES_NOT_CONTAIN',
-  ]),
-  number: new Set([
-    'EXACTLY',
-    'NOT',
-    'GREATER_THAN',
-    'GREATER_THAN_OR_EQUAL',
-    'LESS_THAN',
-    'LESS_THAN_OR_EQUAL',
-  ]),
+  text: new Set(['EXACTLY', 'NOT', 'CONTAINS', 'DOES_NOT_CONTAIN']),
+  number: new Set(numericOperators),
+  scalar: new Set(numericOperators),
+  datetime: new Set(numericOperators),
   boolean: new Set(['EXACTLY', 'NOT']),
+  location: new Set(['EXACTLY', 'NOT']),
+  layout: new Set(['EXACTLY', 'NOT']),
   ordinal: new Set(['EXACTLY', 'NOT', 'INCLUDES', 'EXCLUDES']),
   categorical: new Set([
     'EXACTLY',

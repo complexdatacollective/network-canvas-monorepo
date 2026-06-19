@@ -171,3 +171,38 @@ describe('Information size applies to video', () => {
     expect(video?.className).toContain('max-h-[60vh]');
   });
 });
+
+describe('Information fixed size for text and audio items', () => {
+  // text/audio items carry no `size` prop; they get a FIXED treatment:
+  // text -> LARGEST (max-h-[60vh]), audio -> SMALLEST (max-h-48).
+  it('renders a text item container at the LARGEST treatment', () => {
+    const stage = makeStage([
+      { id: 'i1', type: 'text', content: 'Some explanatory copy.' },
+    ]);
+
+    renderInformation(stage, []);
+
+    const container = screen.getByTestId('information-text-item');
+    expect(container.className).toContain('max-h-[60vh]');
+  });
+
+  it('renders an audio item container at the SMALLEST treatment', async () => {
+    const stage = makeStage([{ id: 'i1', type: 'asset', content: 'aud-1' }]);
+    const assets: ResolvedAsset[] = [
+      {
+        assetId: 'aud-1',
+        name: 'Intro Clip',
+        type: 'audio',
+        source: 'clip.mp3',
+      },
+    ];
+
+    renderInformation(stage, assets);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('information-audio-item')).toBeTruthy(),
+    );
+    const container = screen.getByTestId('information-audio-item');
+    expect(container.className).toContain('max-h-48');
+  });
+});

@@ -55,8 +55,10 @@ function getMediaMimeType(
   return MEDIA_MIME_TYPES[ext] ?? fallback;
 }
 
-// Size applies to image AND video items (not audio/text), matching the legacy
-// container behaviour. Maps the size magic-strings to max-height bands.
+// Size applies to image AND video items, which carry a `size` prop. Maps the
+// size magic-strings to max-height bands. Text and audio items carry no `size`
+// prop; they get a fixed treatment instead — text the LARGEST band, audio the
+// SMALLEST — reusing this same mapping (see TEXT_FIXED_SIZE / AUDIO_FIXED_SIZE).
 function getSizeClass(size: string | undefined): string {
   return cx(
     size === 'SMALL' && 'max-h-48',
@@ -64,6 +66,10 @@ function getSizeClass(size: string | undefined): string {
     size === 'LARGE' && 'max-h-[60vh]',
   );
 }
+
+// Text and audio items have no `size` prop, so they receive a fixed treatment.
+const TEXT_FIXED_SIZE = 'LARGE';
+const AUDIO_FIXED_SIZE = 'SMALL';
 
 function ItemFallback({ message }: { message: string }) {
   return (
@@ -186,20 +192,25 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
       );
     case 'audio':
       return (
-        <audio
-          controls
-          autoPlay
-          aria-label={item.description ?? assetMeta.name}
+        <div
+          data-testid="information-audio-item"
+          className={getSizeClass(AUDIO_FIXED_SIZE)}
         >
-          <source
-            src={url}
-            type={getMediaMimeType(
-              assetMeta.source ?? assetMeta.name,
-              'audio/mpeg',
-            )}
-          />
-          <track kind="captions" />
-        </audio>
+          <audio
+            controls
+            autoPlay
+            aria-label={item.description ?? assetMeta.name}
+          >
+            <source
+              src={url}
+              type={getMediaMimeType(
+                assetMeta.source ?? assetMeta.name,
+                'audio/mpeg',
+              )}
+            />
+            <track kind="captions" />
+          </audio>
+        </div>
       );
     case 'video':
       return (
@@ -222,9 +233,14 @@ const getItemComponent = (item: Item, isE2E: boolean) => {
   switch (item.type) {
     case 'text':
       return (
-        <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
-          {item.content}
-        </RenderMarkdown>
+        <div
+          data-testid="information-text-item"
+          className={getSizeClass(TEXT_FIXED_SIZE)}
+        >
+          <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+            {item.content}
+          </RenderMarkdown>
+        </div>
       );
     case 'asset':
       return <AssetItem item={item} isE2E={isE2E} />;

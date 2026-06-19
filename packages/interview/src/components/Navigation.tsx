@@ -163,6 +163,14 @@ const Navigation = ({
         data-testid="previous-button"
       />
       {orientation === 'vertical' && <PassphrasePrompter />}
+      {/*
+       * The stage `label` (and `interviewScript`) are author-facing only: they
+       * are the human-readable stage title / authoring guidance shown in
+       * Architect. They are intentionally NOT rendered here in the interview
+       * chrome; only progress/navigation affordances are surfaced. This
+       * divergence from Architect is deliberate (#663) — do not add the stage
+       * title here without a product decision.
+       */}
       <motion.div
         className={progressContainerVariants({ orientation })}
         variants={variants}
