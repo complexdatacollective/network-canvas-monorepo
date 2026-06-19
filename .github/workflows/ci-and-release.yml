@@ -1074,7 +1074,16 @@ jobs:
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release delete "$tag" --yes --cleanup-tag
           fi
-          gh release create "$tag" artifacts/* \
+          # Upload only regular files. electron-builder leaves unpacked app
+          # directories (linux-unpacked/, win-unpacked/, mac*/) beside the
+          # installers; passing those to `gh release create` fails with
+          # "is a directory". Installer names contain spaces, so collect into an
+          # array rather than word-splitting a glob.
+          assets=()
+          for f in artifacts/*; do
+            [ -f "$f" ] && assets+=("$f")
+          done
+          gh release create "$tag" "${assets[@]}" \
             --title "Interviewer v8 update feed" \
             --notes "Auto-maintained download feed for the in-app updater (currently v${VERSION}). For release notes see the interviewer-v8@v* releases." \
             --latest=false

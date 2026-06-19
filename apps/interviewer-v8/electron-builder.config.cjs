@@ -22,6 +22,15 @@ module.exports = {
   appId: 'Network-Canvas-Interviewer-8',
   productName: 'Network Canvas Interviewer',
   copyright: `Copyright © ${new Date().getFullYear()} Complex Data Collective`,
+  // Space-free artifact filenames. `productName` has spaces, and GitHub release
+  // assets replace spaces with dots on upload — so installers named from
+  // productName (e.g. "Network Canvas Interviewer-…​.zip") no longer match the
+  // names electron-builder writes into the `*.yml` update metadata, and
+  // electron-updater 404s on every macOS/Windows download. A slugified
+  // artifactName keeps the on-disk name, the `*.yml` reference, and the uploaded
+  // asset name identical. (Linux already set this for a different reason — the
+  // scoped package name; the shared value here covers all platforms.)
+  artifactName: 'network-canvas-interviewer-${version}-${arch}.${ext}',
   // Auto-update feed. The monorepo publishes many products to one repo's
   // Releases with prefixed tags, so the standard GitHub provider can't identify
   // interviewer-v8 releases. CI instead maintains a stable `interviewer-v8-latest`
