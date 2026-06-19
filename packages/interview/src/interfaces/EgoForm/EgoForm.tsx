@@ -87,6 +87,13 @@ const EgoFormInner = (props: EgoFormProps) => {
   const { updateReady: setIsReadyForNext } = useReadyForNextStage();
   const egoAttributes = useStageSelector(getEgoAttributes);
 
+  const { fieldComponents, coerceValues } = useProtocolForm({
+    fields: form.fields,
+    initialValues: Object.fromEntries(
+      Object.entries(egoAttributes).filter(([, value]) => value !== null),
+    ) as Record<string, FieldValue>,
+  });
+
   const beforeNext: BeforeNextFunction = async (direction) => {
     // If direction is backwards, and the form is invalid, check if the user
     // wants to proceed anyway (causing the form to be reset)
@@ -163,19 +170,23 @@ const EgoFormInner = (props: EgoFormProps) => {
 
   const handleSubmitForm = useCallback(
     async (formData: Record<string, FieldValue>) => {
+      // Coerce values to their declared codebook type (e.g. number fields,
+      // which emit raw strings) before persisting.
+      const coerced = coerceValues(formData);
+
       // Only include fields from this stage to avoid overwriting values
       // from previous EgoForm stages. Missing fields (unanswered questions)
       // are set to null rather than omitted.
       const stageFieldIds = form.fields.map((f) => f.variable);
       const completeData = Object.fromEntries(
-        stageFieldIds.map((id) => [id, formData[id] ?? null]),
+        stageFieldIds.map((id) => [id, coerced[id] ?? null]),
       ) as Record<string, VariableValue>;
 
       await dispatch(updateEgo(completeData));
       track('form_submitted', { form_kind: 'ego' });
       return { success: true };
     },
-    [dispatch, form.fields, track],
+    [coerceValues, dispatch, form.fields, track],
   );
 
   useEffect(() => {
@@ -188,13 +199,6 @@ const EgoFormInner = (props: EgoFormProps) => {
   }, [isFormValid, setIsReadyForNext]);
 
   const showScrollNudge = nudgeVisible && !hasScrolledToBottom;
-
-  const { fieldComponents } = useProtocolForm({
-    fields: form.fields,
-    initialValues: Object.fromEntries(
-      Object.entries(egoAttributes).filter(([, value]) => value !== null),
-    ) as Record<string, FieldValue>,
-  });
 
   const scrollToBottom = useCallback(() => {
     scrollAreaRef.current?.scrollTo({

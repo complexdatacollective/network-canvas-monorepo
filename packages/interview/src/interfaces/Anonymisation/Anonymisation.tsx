@@ -31,8 +31,10 @@ function AnonymisationInner(props: AnonymisationProps) {
   const alertRef = useRef<HTMLDivElement>(null);
   const { updateReady } = useReadyForNextStage();
   const {
-    stage: { explanationText },
+    stage: { explanationText, validation },
   } = props;
+  const minLength = validation?.minLength;
+  const maxLength = validation?.maxLength;
   const { passphrase, setPassphrase } = usePassphrase();
   const celebrate = useCelebrate(alertRef);
 
@@ -133,6 +135,8 @@ function AnonymisationInner(props: AnonymisationProps) {
                         label="Passphrase"
                         required
                         autoFocus
+                        {...(minLength !== undefined && { minLength })}
+                        {...(maxLength !== undefined && { maxLength })}
                       />
                       <Field
                         component={PasswordField}
@@ -141,6 +145,8 @@ function AnonymisationInner(props: AnonymisationProps) {
                         label="Confirm Passphrase"
                         required
                         sameAs="passphrase"
+                        {...(minLength !== undefined && { minLength })}
+                        {...(maxLength !== undefined && { maxLength })}
                       />
                       <SubmitButton
                         key="submit"

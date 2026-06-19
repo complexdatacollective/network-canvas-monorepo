@@ -6,6 +6,7 @@ import type { Variable } from '@codaco/protocol-validation';
 import type { FieldValue, ValidationContext } from '../store/types';
 import collectNetworkValues from './utils/collectNetworkValues';
 import compareVariables from './utils/compareVariables';
+import { getComparisonValue } from './utils/getComparisonValue';
 import { getVariableDefinition } from './utils/getVariableDefinition';
 import isMatchingValue from './utils/isMatchingValue';
 
@@ -83,84 +84,144 @@ export const required = (parameter?: boolean | string) => () => {
 };
 
 /**
- * Require that a string be shorter than a maximum length
+ * Require that a string be shorter than a maximum length.
+ *
+ * Short-circuits on an unanswered field (undefined/null) so this optional rule
+ * only applies once a value is present; `required` owns emptiness. An empty
+ * string is a present value and is checked (it trivially satisfies any bound,
+ * including a maxLength of 0). The bound is guarded on defined-ness rather than
+ * truthiness so a maxLength of 0 is honoured.
  */
 const maxLength: ValidationFunction<number> = (max) => () => {
-  invariant(max, 'Max length must be specified');
+  invariant(
+    typeof max === 'number' && !Number.isNaN(max),
+    'Max length must be specified',
+  );
 
   const hint = `Enter at most ${max} characters.`;
 
-  return z
-    .prefault(
-      z
-        .string()
-        .check(
-          z.maxLength(
-            max,
-            `Too long. Enter fewer than than ${max} characters.`,
-          ),
-        ),
-      '',
-    )
-    .check(z.meta({ hint }));
+  return z.unknown().check(
+    z.superRefine((value, ctx) => {
+      if (value === undefined || value === null) {
+        return;
+      }
+      if (typeof value !== 'string') return;
+      if (value.length > max) {
+        ctx.addIssue({
+          code: 'custom',
+          input: value,
+          message: `Too long. Enter fewer than than ${max} characters.`,
+          path: [],
+        });
+      }
+    }),
+    z.meta({ hint }),
+  );
 };
 
 /**
- * Require that a string be longer than a minimum length
+ * Require that a string be longer than a minimum length.
+ *
+ * Short-circuits on an empty/unanswered field (undefined/null/'') so this
+ * optional rule only applies once a value is present; `required` owns
+ * emptiness.
  */
 const minLength: ValidationFunction<number> = (min) => () => {
-  invariant(min, 'Min length must be specified');
+  invariant(
+    typeof min === 'number' && !Number.isNaN(min),
+    'Min length must be specified',
+  );
 
   const hint = `Enter at least ${min} characters.`;
 
-  return z
-    .prefault(
-      z
-        .string()
-        .check(
-          z.minLength(min, `Too short. Enter at least ${min} characters.`),
-        ),
-      '',
-    )
-    .check(z.meta({ hint }));
+  return z.unknown().check(
+    z.superRefine((value, ctx) => {
+      if (value === undefined || value === null || value === '') {
+        return;
+      }
+      if (typeof value !== 'string') return;
+      if (value.length < min) {
+        ctx.addIssue({
+          code: 'custom',
+          input: value,
+          message: `Too short. Enter at least ${min} characters.`,
+          path: [],
+        });
+      }
+    }),
+    z.meta({ hint }),
+  );
 };
 
 /**
- * Require that a number be greater than or equal to a minimum value
- * Uses coerce to handle string inputs from HTML number inputs
+ * Require that a number be greater than or equal to a minimum value.
+ *
+ * Short-circuits on an empty/unanswered field (undefined/null/'') so this
+ * optional rule only applies once a value is present; `required` owns
+ * emptiness. Coerces string inputs from HTML number inputs.
  */
 const minValue: ValidationFunction<number> = (min) => () => {
-  invariant(!Number.isNaN(Number(min)), 'Min value must be specified');
+  invariant(
+    typeof min === 'number' && !Number.isNaN(min),
+    'Min value must be specified',
+  );
 
   const hint = `Enter a value greater than or equal to ${min}.`;
 
-  return z
-    .prefault(
-      z.coerce
-        .number()
-        .check(z.gte(min, `Too small. Value must be at least ${min}.`)),
-      min - 1,
-    )
-    .check(z.meta({ hint }));
+  return z.unknown().check(
+    z.superRefine((value, ctx) => {
+      if (value === undefined || value === null || value === '') {
+        return;
+      }
+      const numValue = Number(value);
+      if (Number.isNaN(numValue)) return;
+      if (numValue < min) {
+        ctx.addIssue({
+          code: 'custom',
+          input: value,
+          message: `Too small. Value must be at least ${min}.`,
+          path: [],
+        });
+      }
+    }),
+    z.meta({ hint }),
+  );
 };
 
 /**
- * Require that a number be less than or equal to a maximum value
- * Uses coerce to handle string inputs from HTML number inputs
+ * Require that a number be less than or equal to a maximum value.
+ *
+ * Short-circuits on an empty/unanswered field (undefined/null/'') so this
+ * optional rule only applies once a value is present; `required` owns
+ * emptiness. The bound is guarded on defined-ness rather than truthiness so a
+ * maxValue of 0 is honoured. Coerces string inputs from HTML number inputs.
  */
 const maxValue: ValidationFunction<number> = (max) => () => {
-  invariant(max, 'Max value must be specified');
+  invariant(
+    typeof max === 'number' && !Number.isNaN(max),
+    'Max value must be specified',
+  );
 
   const hint = `Enter a value less than or equal to ${max}.`;
 
-  return z
-    .prefault(
-      z.coerce
-        .number()
-        .check(z.lte(max, `Too large. Value must be at most ${max}.`)),
-      max - 1,
-    )
-    .check(z.meta({ hint }));
+  return z.unknown().check(
+    z.superRefine((value, ctx) => {
+      if (value === undefined || value === null || value === '') {
+        return;
+      }
+      const numValue = Number(value);
+      if (Number.isNaN(numValue)) return;
+      if (numValue > max) {
+        ctx.addIssue({
+          code: 'custom',
+          input: value,
+          message: `Too large. Value must be at most ${max}.`,
+          path: [],
+        });
+      }
+    }),
+    z.meta({ hint }),
+  );
 };
 
 /**
@@ -388,26 +449,37 @@ const max: ValidationFunction<number | string> = (maxParam) => () => {
 };
 
 /**
- * Require that an array have a minimum number of elements
+ * Require that an array have a minimum number of elements.
+ *
+ * Short-circuits on an empty/unanswered field (undefined/null or an empty
+ * array) so this optional rule only applies once a selection has been made;
+ * `required` owns emptiness.
  */
 const minSelected: ValidationFunction<number> = (minParam) => () => {
   invariant(typeof minParam === 'number', 'Min items must be specified');
 
   const hint = `Select at least ${minParam} value${minParam === 1 ? '' : 's'}.`;
 
-  return z
-    .prefault(
-      z
-        .array(z.unknown())
-        .check(
-          z.minLength(
-            minParam,
-            `Too few selected. Select at least ${minParam} value${minParam === 1 ? '' : 's'}.`,
-          ),
-        ),
-      [],
-    )
-    .check(z.meta({ hint }));
+  return z.unknown().check(
+    z.superRefine((value, ctx) => {
+      if (value === undefined || value === null) {
+        return;
+      }
+      if (!Array.isArray(value)) return;
+      if (value.length === 0) {
+        return;
+      }
+      if (value.length < minParam) {
+        ctx.addIssue({
+          code: 'custom',
+          input: value,
+          message: `Too few selected. Select at least ${minParam} value${minParam === 1 ? '' : 's'}.`,
+          path: [],
+        });
+      }
+    }),
+    z.meta({ hint }),
+  );
 };
 
 /**
@@ -512,11 +584,14 @@ const differentFrom: ValidationFunction<string> =
 
     return z.unknown().check(
       z.superRefine((value, ctx) => {
-        // Only validate if the comparison attribute exists in formValues
-        if (!(attribute in formValues)) {
+        // Source the comparison value from the current form, falling back to
+        // the persisted entity attributes (shared graph). No-op when the
+        // variable has no value in either.
+        const comparison = getComparisonValue(formValues, attribute, context);
+        if (!comparison.present) {
           return;
         }
-        if (isMatchingValue(value, formValues[attribute])) {
+        if (isMatchingValue(value, comparison.value)) {
           ctx.addIssue({
             code: 'custom',
             message: `Your answer must be different from '${displayName}'.`,
@@ -558,11 +633,14 @@ const sameAs: ValidationFunction<string> =
 
     return z.unknown().check(
       z.superRefine((value, ctx) => {
-        // Only validate if the comparison attribute exists in formValues
-        if (!(attribute in formValues)) {
+        // Source the comparison value from the current form, falling back to
+        // the persisted entity attributes (shared graph). No-op when the
+        // variable has no value in either.
+        const comparison = getComparisonValue(formValues, attribute, context);
+        if (!comparison.present) {
           return;
         }
-        if (!isMatchingValue(value, formValues[attribute])) {
+        if (!isMatchingValue(value, comparison.value)) {
           ctx.addIssue({
             code: 'custom',
             message: `Your answer must be the same as '${displayName}'.`,
@@ -608,15 +686,18 @@ const greaterThanVariable: ValidationFunction<{
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
-      // Only validate if the comparison attribute exists in formValues
-      if (!(attribute in formValues)) {
+      // Source the comparison value from the current form, falling back to the
+      // persisted entity attributes (shared graph). No-op when the variable
+      // has no value in either.
+      const comparison = getComparisonValue(formValues, attribute, context);
+      if (!comparison.present) {
         return;
       }
       // Strict comparison: value must be greater than (not equal to) the comparison
-      if (compareVariables(value, formValues[attribute], type) <= 0) {
+      if (compareVariables(value, comparison.value, type) <= 0) {
         ctx.addIssue({
           code: 'too_small',
-          minimum: Number(formValues[attribute]),
+          minimum: Number(comparison.value),
           inclusive: false,
           origin: type === 'datetime' ? 'date' : 'number',
           message: `Your answer must be greater than the value of '${displayName}'.`,
@@ -683,16 +764,19 @@ const lessThanVariable: ValidationFunction<{
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
-      // Only validate if the comparison attribute exists in formValues
-      if (!(attribute in formValues)) {
+      // Source the comparison value from the current form, falling back to the
+      // persisted entity attributes (shared graph). No-op when the variable
+      // has no value in either.
+      const comparison = getComparisonValue(formValues, attribute, context);
+      if (!comparison.present) {
         return;
       }
 
       // Strict comparison: value must be less than (not equal to) the comparison
-      if (compareVariables(value, formValues[attribute], type) >= 0) {
+      if (compareVariables(value, comparison.value, type) >= 0) {
         ctx.addIssue({
           code: 'too_big',
-          maximum: Number(formValues[attribute]),
+          maximum: Number(comparison.value),
           inclusive: false,
           origin: type === 'datetime' ? 'date' : 'number',
           message: `Your answer must be less than the value of '${displayName}'.`,
@@ -740,14 +824,17 @@ const greaterThanOrEqualToVariable: ValidationFunction<{
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
-      // Only validate if the comparison attribute exists in formValues
-      if (!(attribute in formValues)) {
+      // Source the comparison value from the current form, falling back to the
+      // persisted entity attributes (shared graph). No-op when the variable
+      // has no value in either.
+      const comparison = getComparisonValue(formValues, attribute, context);
+      if (!comparison.present) {
         return;
       }
-      if (compareVariables(value, formValues[attribute], type) < 0) {
+      if (compareVariables(value, comparison.value, type) < 0) {
         ctx.addIssue({
           code: 'too_small',
-          minimum: Number(formValues[attribute]),
+          minimum: Number(comparison.value),
           inclusive: true,
           origin: type === 'datetime' ? 'date' : 'number',
           message: `Your answer must be greater than or equal to the value of '${displayName}'.`,
@@ -795,15 +882,18 @@ const lessThanOrEqualToVariable: ValidationFunction<{
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
-      // Only validate if the comparison attribute exists in formValues
-      if (!(attribute in formValues)) {
+      // Source the comparison value from the current form, falling back to the
+      // persisted entity attributes (shared graph). No-op when the variable
+      // has no value in either.
+      const comparison = getComparisonValue(formValues, attribute, context);
+      if (!comparison.present) {
         return;
       }
 
-      if (compareVariables(value, formValues[attribute], type) > 0) {
+      if (compareVariables(value, comparison.value, type) > 0) {
         ctx.addIssue({
           code: 'too_big',
-          maximum: Number(formValues[attribute]),
+          maximum: Number(comparison.value),
           inclusive: true,
           origin: type === 'datetime' ? 'date' : 'number',
           message: `Your answer must be less than or equal to the value of '${displayName}'.`,

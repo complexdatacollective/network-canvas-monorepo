@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod/mini';
 
 import type { StageSubject } from '@codaco/protocol-validation';
 import {
@@ -461,16 +462,18 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should use singular form for min=1', () => {
+    it('should accept an empty array (required owns emptiness)', () => {
       const validator = validations.minSelected(1, createMockContext())({});
 
-      const result = validator.safeParse([]);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues[0]?.message).toBe(
-          'Too few selected. Select at least 1 value.',
-        );
-      }
+      expect(validator.safeParse([]).success).toBe(true);
+      expect(validator.safeParse(undefined).success).toBe(true);
+    });
+
+    it('should use singular form for min=1 in its hint', () => {
+      const validator = validations.minSelected(1, createMockContext())({});
+
+      const meta = z.globalRegistry.get(validator);
+      expect(meta?.hint).toBe('Select at least 1 value.');
     });
 
     it('should throw error when min is not specified', () => {
@@ -1159,6 +1162,178 @@ describe('Validation Functions', () => {
 
       const result = validator.safeParse(10);
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe('optional min* short-circuit on empty/undefined (A4)', () => {
+    it('minValue ignores undefined/empty (required owns emptiness)', () => {
+      const validator = validations.minValue(10, createMockContext())({});
+      expect(validator.safeParse(undefined).success).toBe(true);
+      expect(validator.safeParse('').success).toBe(true);
+      expect(validator.safeParse(null).success).toBe(true);
+    });
+
+    it('minValue still rejects a present value below the bound', () => {
+      const validator = validations.minValue(10, createMockContext())({});
+      expect(validator.safeParse(5).success).toBe(false);
+      expect(validator.safeParse(10).success).toBe(true);
+    });
+
+    it('minLength ignores undefined/empty (required owns emptiness)', () => {
+      const validator = validations.minLength(3, createMockContext())({});
+      expect(validator.safeParse(undefined).success).toBe(true);
+      expect(validator.safeParse('').success).toBe(true);
+    });
+
+    it('minLength still rejects a present value below the bound', () => {
+      const validator = validations.minLength(3, createMockContext())({});
+      expect(validator.safeParse('hi').success).toBe(false);
+      expect(validator.safeParse('abc').success).toBe(true);
+    });
+
+    it('minSelected ignores undefined/empty (required owns emptiness)', () => {
+      const validator = validations.minSelected(2, createMockContext())({});
+      expect(validator.safeParse(undefined).success).toBe(true);
+      expect(validator.safeParse([]).success).toBe(true);
+    });
+
+    it('minSelected still rejects a present array below the bound', () => {
+      const validator = validations.minSelected(2, createMockContext())({});
+      expect(validator.safeParse(['a']).success).toBe(false);
+      expect(validator.safeParse(['a', 'b']).success).toBe(true);
+    });
+  });
+
+  describe('maxValue/maxLength with a zero bound (A4)', () => {
+    it('maxValue:0 treats 0 as a real bound rather than throwing', () => {
+      const validator = validations.maxValue(0, createMockContext())({});
+      expect(validator.safeParse(0).success).toBe(true);
+      expect(validator.safeParse(-5).success).toBe(true);
+      const result = validator.safeParse(1);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe(
+          'Too large. Value must be at most 0.',
+        );
+      }
+    });
+
+    it('maxValue:0 ignores empty/undefined', () => {
+      const validator = validations.maxValue(0, createMockContext())({});
+      expect(validator.safeParse(undefined).success).toBe(true);
+      expect(validator.safeParse('').success).toBe(true);
+    });
+
+    it('maxLength:0 treats 0 as a real bound rather than throwing', () => {
+      const validator = validations.maxLength(0, createMockContext())({});
+      expect(validator.safeParse('').success).toBe(true);
+      expect(validator.safeParse('a').success).toBe(false);
+    });
+  });
+
+  describe('comparison validators source from persisted attributes (A4)', () => {
+    const networkWithNode: NcNetwork = {
+      nodes: [
+        {
+          _uid: 'node1',
+          type: 'person',
+          [entityAttributesProperty]: { numberAttribute: 10 },
+        },
+      ],
+      edges: [],
+      ego: {
+        _uid: 'ego',
+        [entityAttributesProperty]: {},
+      },
+    } as NcNetwork;
+
+    it('greaterThanVariable compares against the persisted node attribute when not a form field', () => {
+      const validator = validations.greaterThanVariable(
+        { attribute: 'numberAttribute', type: 'number' },
+        createMockContext({
+          network: networkWithNode,
+          currentEntityId: 'node1',
+        }),
+      )({}); // comparison var not present as a form field
+
+      expect(validator.safeParse(15).success).toBe(true);
+      expect(validator.safeParse(5).success).toBe(false);
+    });
+
+    it('lessThanVariable compares against the persisted node attribute when not a form field', () => {
+      const validator = validations.lessThanVariable(
+        { attribute: 'numberAttribute', type: 'number' },
+        createMockContext({
+          network: networkWithNode,
+          currentEntityId: 'node1',
+        }),
+      )({});
+
+      expect(validator.safeParse(5).success).toBe(true);
+      expect(validator.safeParse(15).success).toBe(false);
+    });
+
+    it('sameAs compares against the persisted ego attribute when not a form field', () => {
+      const egoNetwork: NcNetwork = {
+        nodes: [],
+        edges: [],
+        ego: {
+          _uid: 'ego',
+          [entityAttributesProperty]: { testAttribute: 'secret' },
+        },
+      } as NcNetwork;
+
+      const validator = validations.sameAs(
+        'testAttribute',
+        createMockContext({
+          stageSubject: { entity: 'ego' } as StageSubject,
+          network: egoNetwork,
+          codebook: {
+            ego: {
+              variables: {
+                testAttribute: { name: 'Test Attribute', type: 'text' },
+              },
+            },
+          },
+        }),
+      )({});
+
+      expect(validator.safeParse('secret').success).toBe(true);
+      expect(validator.safeParse('different').success).toBe(false);
+    });
+
+    it('differentFrom compares against the persisted node attribute when not a form field', () => {
+      const stringNetwork: NcNetwork = {
+        nodes: [
+          {
+            _uid: 'node1',
+            type: 'person',
+            [entityAttributesProperty]: { testAttribute: 'taken' },
+          },
+        ],
+        edges: [],
+        ego: { _uid: 'ego', [entityAttributesProperty]: {} },
+      } as NcNetwork;
+
+      const validator = validations.differentFrom(
+        'testAttribute',
+        createMockContext({
+          network: stringNetwork,
+          currentEntityId: 'node1',
+        }),
+      )({});
+
+      expect(validator.safeParse('taken').success).toBe(false);
+      expect(validator.safeParse('fresh').success).toBe(true);
+    });
+
+    it('still no-ops when the variable is absent from both form and attributes', () => {
+      const validator = validations.greaterThanVariable(
+        { attribute: 'numberAttribute', type: 'number' },
+        createMockContext({ currentEntityId: 'missing-node' }),
+      )({});
+
+      expect(validator.safeParse(5).success).toBe(true);
     });
   });
 });
