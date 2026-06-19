@@ -99,7 +99,6 @@ const DocSearchComponent = ({
   const boostSection = getSectionColorClass(currentSection)
     ? currentSection
     : undefined;
-  const sectionFacet = env.NEXT_PUBLIC_ALGOLIA_SECTION_FACET;
 
   const sectionLabel = (slug: string) =>
     tSection.has(`${slug}.label`)
@@ -161,11 +160,10 @@ const DocSearchComponent = ({
                 filters: `lang:${locale}`,
                 // Boost (not restrict) results from the section the reader is
                 // currently in, so same-section pages rank higher while every
-                // section still appears. Gated on NEXT_PUBLIC_ALGOLIA_SECTION_FACET
-                // naming the facetable section attribute — unset until the index
-                // is configured, so search keeps working in the meantime.
-                ...(sectionFacet && boostSection
-                  ? { optionalFilters: [`${sectionFacet}:${boostSection}`] }
+                // section still appears. Relies on the crawler-populated,
+                // facetable `section` attribute on each record.
+                ...(boostSection
+                  ? { optionalFilters: [`section:${boostSection}`] }
                   : {}),
               },
             },
