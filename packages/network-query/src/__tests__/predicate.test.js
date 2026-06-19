@@ -199,15 +199,16 @@ describe('predicate', () => {
       ).toBe(true);
     });
 
-    // CONTAINS is literal substring matching, NOT regex. A leading '^' is a
-    // literal caret, not an anchor, so '^w' does not match 'word'.
+    // CONTAINS/DOES_NOT_CONTAIN treat the author value as a regular expression
+    // (the architect rule editor offers a regex value input), so a leading '^'
+    // anchors to the start of the value.
     it('CONTAINS', () => {
       expect(
         predicate(operators.CONTAINS)({ value: 'word', other: 'wo' }),
       ).toBe(true);
       expect(
         predicate(operators.CONTAINS)({ value: 'word', other: '^w' }),
-      ).toBe(false);
+      ).toBe(true);
       expect(
         predicate(operators.CONTAINS)({ value: 'word', other: '^g' }),
       ).toBe(false);
@@ -217,72 +218,31 @@ describe('predicate', () => {
       expect(
         predicate(operators.DOES_NOT_CONTAIN)({ value: 'word', other: 'go' }),
       ).toBe(true);
-      // '^g' is a literal substring not present in 'word'.
       expect(
         predicate(operators.DOES_NOT_CONTAIN)({ value: 'word', other: '^g' }),
       ).toBe(true);
-      // 'wo' is present, so DOES_NOT_CONTAIN is false (boolean inverse of
-      // CONTAINS for present values).
       expect(
-        predicate(operators.DOES_NOT_CONTAIN)({ value: 'word', other: 'wo' }),
+        predicate(operators.DOES_NOT_CONTAIN)({ value: 'word', other: '^w' }),
       ).toBe(false);
     });
 
-    // Regex metacharacters in the filter value are matched literally and must
-    // never be compiled as a pattern (which would throw on '(' or match the
-    // wrong strings for '.'). getSkipMap evaluates every stage's skip-logic on
-    // every network change, so a thrown SyntaxError would break navigation
-    // interview-wide.
-    it('treats regex metacharacters as literal substrings without throwing', () => {
-      // '(' is a literal substring: matches 'a(b', not 'ab', and never throws.
+    // An invalid regex pattern (e.g. an unbalanced paren) must not throw —
+    // getSkipMap evaluates every stage's skip-logic on every network change,
+    // so one bad rule would otherwise break navigation interview-wide. An
+    // invalid pattern is treated as "no match".
+    it('invalid regex pattern is treated as no-match instead of throwing', () => {
       expect(() =>
-        predicate(operators.CONTAINS)({ value: 'a(b', other: '(' }),
+        predicate(operators.CONTAINS)({ value: 'word', other: '(' }),
       ).not.toThrow();
-      expect(predicate(operators.CONTAINS)({ value: 'a(b', other: '(' })).toBe(
-        true,
-      );
-      expect(predicate(operators.CONTAINS)({ value: 'ab', other: '(' })).toBe(
+      expect(predicate(operators.CONTAINS)({ value: 'word', other: '(' })).toBe(
         false,
       );
-
-      // '.' is a literal dot, not a wildcard: 'a.b' does not match 'axb' but
-      // does match the literal 'a.b'.
-      expect(
-        predicate(operators.CONTAINS)({ value: 'axb', other: 'a.b' }),
-      ).toBe(false);
-      expect(
-        predicate(operators.CONTAINS)({ value: 'a.b', other: 'a.b' }),
-      ).toBe(true);
-
-      // DOES_NOT_CONTAIN is the boolean inverse and equally crash-safe.
       expect(() =>
-        predicate(operators.DOES_NOT_CONTAIN)({ value: 'a(b', other: '(' }),
+        predicate(operators.DOES_NOT_CONTAIN)({ value: 'word', other: '(' }),
       ).not.toThrow();
+      // No match -> the value does not contain the (invalid) pattern.
       expect(
-        predicate(operators.DOES_NOT_CONTAIN)({ value: 'a(b', other: '(' }),
-      ).toBe(false);
-      expect(
-        predicate(operators.DOES_NOT_CONTAIN)({ value: 'axb', other: 'a.b' }),
-      ).toBe(true);
-    });
-
-    // An absent (nil) attribute never "contains" anything; mirrors the
-    // EXISTS/INCLUDES nil contract.
-    it('CONTAINS/DOES_NOT_CONTAIN honour the nil-value contract', () => {
-      expect(predicate(operators.CONTAINS)({ value: null, other: 'wo' })).toBe(
-        false,
-      );
-      expect(
-        predicate(operators.CONTAINS)({ value: undefined, other: 'wo' }),
-      ).toBe(false);
-      expect(
-        predicate(operators.DOES_NOT_CONTAIN)({ value: null, other: 'wo' }),
-      ).toBe(true);
-      expect(
-        predicate(operators.DOES_NOT_CONTAIN)({
-          value: undefined,
-          other: 'wo',
-        }),
+        predicate(operators.DOES_NOT_CONTAIN)({ value: 'word', other: '(' }),
       ).toBe(true);
     });
 

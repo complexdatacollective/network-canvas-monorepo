@@ -161,8 +161,18 @@ const migrationV7toV8 = createMigration({
             if (typedVariable.type !== 'ordinal') continue;
             const validation = typedVariable.validation;
             if (typeof validation === 'object' && validation !== null) {
-              delete (validation as Record<string, unknown>).minSelected;
-              delete (validation as Record<string, unknown>).maxSelected;
+              const typedValidation = validation as Record<string, unknown>;
+              // `minSelected` implied the field was required in older protocols.
+              // The later min*->required step runs after this strip and so will
+              // not see minSelected once removed, so preserve that coupling here.
+              if (
+                'minSelected' in typedValidation &&
+                typedValidation.required !== true
+              ) {
+                typedValidation.required = true;
+              }
+              delete typedValidation.minSelected;
+              delete typedValidation.maxSelected;
             }
           }
           return variables;

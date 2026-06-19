@@ -1674,6 +1674,48 @@ describe('Migration V7 to V8', () => {
       expect(rating).toHaveProperty('validation.required', true);
     });
 
+    it('preserves the implied required when stripping minSelected from an ordinal without explicit required', () => {
+      // minSelected implied required in older protocols; the strip must not
+      // silently drop that coupling (the later min*->required step cannot see
+      // minSelected once it has been removed here).
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                rating: {
+                  name: 'Rating',
+                  type: 'ordinal',
+                  options: [
+                    { label: 'Low', value: 1 },
+                    { label: 'High', value: 2 },
+                  ],
+                  validation: {
+                    minSelected: 1,
+                  },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      const rating = parsed.codebook.node?.person?.variables?.rating;
+      expect(rating).not.toHaveProperty('validation.minSelected');
+      expect(rating).toHaveProperty('validation.required', true);
+    });
+
     it('keeps minSelected/maxSelected on categorical variables', () => {
       const v7Protocol = {
         schemaVersion: 7 as const,

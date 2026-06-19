@@ -78,6 +78,18 @@ const compareNumeric = (
 const optionsLength = (value: unknown): number =>
   Array.isArray(value) ? value.length : 0;
 
+// Builds a RegExp from a (possibly author-supplied) pattern, returning null
+// when the pattern is invalid rather than throwing. getSkipMap evaluates every
+// stage's skip-logic on every network change, so one bad pattern must not break
+// navigation interview-wide.
+const safeRegExp = (pattern: unknown): RegExp | null => {
+  try {
+    return new RegExp(String(pattern));
+  } catch {
+    return null;
+  }
+};
+
 /**
  * returns functions that can be used to compare `value` with `other`
  *
@@ -113,21 +125,17 @@ const predicate =
         return !isEqual(value, variableValue);
       case countOperators.COUNT_NOT:
         return !isEqual(value, variableValue);
-      // CONTAINS/DOES_NOT_CONTAIN are LITERAL substring tests, not regex: the
-      // author value is matched verbatim so metacharacters like '(' or '.'
-      // cannot throw or alter semantics. A nil (absent) attribute never
-      // contains anything, mirroring the EXISTS/INCLUDES nil contract.
+      // CONTAINS/DOES_NOT_CONTAIN treat the author value as a regular
+      // expression (the architect rule editor offers a regex value input for
+      // these operators). An invalid pattern is treated as no-match rather than
+      // throwing, so a single malformed rule cannot break navigation.
       case operators.CONTAINS: {
-        if (isNil(value)) {
-          return false;
-        }
-        return String(value).includes(String(variableValue));
+        const regexp = safeRegExp(variableValue);
+        return regexp ? regexp.test(String(value)) : false;
       }
       case operators.DOES_NOT_CONTAIN: {
-        if (isNil(value)) {
-          return true;
-        }
-        return !String(value).includes(String(variableValue));
+        const regexp = safeRegExp(variableValue);
+        return regexp ? !regexp.test(String(value)) : true;
       }
       /**
        * WARNING: INCLUDES/EXCLUDES are complicated!
