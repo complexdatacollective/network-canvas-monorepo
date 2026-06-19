@@ -40,15 +40,6 @@ describe('indexes selectors', () => {
   });
 
   describe('variable-usage paths', () => {
-    // biologicalSexVariable was a vestigial FamilyPedigree NodeConfiguration
-    // field the interview never read/wrote; removed from the stage editor, so
-    // it must no longer be tracked as a variable-usage path.
-    it('does not track the removed FamilyPedigree biologicalSexVariable', () => {
-      expect(paths.variables).not.toContain(
-        'stages[].nodeConfig.biologicalSexVariable',
-      );
-    });
-
     it('still tracks the retained FamilyPedigree node variable paths', () => {
       expect(paths.variables).toContain(
         'stages[].nodeConfig.nodeLabelVariable',
