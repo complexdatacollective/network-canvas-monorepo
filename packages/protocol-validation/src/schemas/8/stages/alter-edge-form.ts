@@ -5,8 +5,8 @@ import { z } from '~/utils/zod-mock-extension';
 
 import {
   EdgeStageSubjectSchema,
-  FormSchema,
   IntroductionPanelSchema,
+  TitlelessFormSchema,
 } from '../common';
 import { FilterSchema } from '../filters';
 import { baseStageSchema } from './base';
@@ -16,7 +16,7 @@ export const alterEdgeFormStage = baseStageSchema
     type: z.literal('AlterEdgeForm'),
     subject: EdgeStageSubjectSchema,
     filter: FilterSchema.optional(),
-    form: FormSchema,
+    form: TitlelessFormSchema,
     introductionPanel: IntroductionPanelSchema,
   })
   .generateMock((base) => ({

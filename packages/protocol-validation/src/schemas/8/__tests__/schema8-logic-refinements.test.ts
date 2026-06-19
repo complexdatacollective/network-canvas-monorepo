@@ -12,7 +12,7 @@ import ProtocolSchemaV8 from '../schema';
  * - CategoricalBin requires otherOptionLabel when otherVariable is set
  * - sociogram highlight.variable must reference a boolean variable
  * - sociogram layout.layoutVariable must reference a layout-typed variable
- * - RelativeDatePicker before/after must be non-negative with before<after;
+ * - RelativeDatePicker before/after must be non-negative (independent offsets);
  *   anchor must be a valid ISO date
  * - ordinal options must be non-empty
  * - external-data panel filter rules must target node attributes (no edge rules)
@@ -190,6 +190,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
                 variable: 'category',
                 otherVariable: 'name',
                 otherOptionLabel: 'Other',
+                otherVariablePrompt: 'Please specify',
               },
             ],
           },
@@ -391,11 +392,13 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       expect(result.success).toBe(false);
     });
 
-    it('rejects before >= after', () => {
+    it('accepts before greater than after (independent opposite-direction offsets)', () => {
+      // earliest = anchor - before, latest = anchor + after, so before > after
+      // is a valid range (e.g. the default before=180/after=0).
       const result = ProtocolSchemaV8.safeParse(
         buildProtocolWithParams({ anchor: '2020-01-01', before: 10, after: 5 }),
       );
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
     });
 
     it('rejects an invalid anchor date', () => {

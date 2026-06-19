@@ -61,7 +61,7 @@ export const createBaseProtocol = () => ({
         color: 'node-color-seq-2',
         shape: { default: 'circle' } as NodeDefinition['shape'],
         variables: {
-          name: {
+          colleagueName: {
             name: 'Name',
             type: 'text',
           },

@@ -124,6 +124,325 @@ const migrationV7toV8 = createMigration({
         },
       },
       {
+        // Ego variables cannot carry the `unique` validation (the interview's
+        // unique check throws for the ego entity). Strip it from existing ego
+        // protocols so they validate.
+        paths: ['codebook.ego.variables'],
+        fn: <V>(variables: V) => {
+          if (!variables || typeof variables !== 'object') return variables;
+          for (const variable of Object.values(
+            variables as Record<string, unknown>,
+          )) {
+            if (typeof variable !== 'object' || variable === null) continue;
+            const validation = (variable as Record<string, unknown>).validation;
+            if (typeof validation === 'object' && validation !== null) {
+              delete (validation as Record<string, unknown>).unique;
+            }
+          }
+          return variables;
+        },
+      },
+      {
+        // Ordinal is single-select, so the array-valued minSelected/maxSelected
+        // validators no longer apply. Strip them from ordinal variables on any
+        // entity (categorical keeps them).
+        paths: [
+          'codebook.node.*.variables',
+          'codebook.edge.*.variables',
+          'codebook.ego.variables',
+        ],
+        fn: <V>(variables: V) => {
+          if (!variables || typeof variables !== 'object') return variables;
+          for (const variable of Object.values(
+            variables as Record<string, unknown>,
+          )) {
+            if (typeof variable !== 'object' || variable === null) continue;
+            const typedVariable = variable as Record<string, unknown>;
+            if (typedVariable.type !== 'ordinal') continue;
+            const validation = typedVariable.validation;
+            if (typeof validation === 'object' && validation !== null) {
+              delete (validation as Record<string, unknown>).minSelected;
+              delete (validation as Record<string, unknown>).maxSelected;
+            }
+          }
+          return variables;
+        },
+      },
+      {
+        // Ordinal/categorical option values are strings or integers in v8;
+        // booleans are no longer selectable. Coerce any legacy boolean option
+        // value to its string form. Boolean-variable options legitimately use
+        // booleans and are left untouched.
+        paths: [
+          'codebook.node.*.variables',
+          'codebook.edge.*.variables',
+          'codebook.ego.variables',
+        ],
+        fn: <V>(variables: V) => {
+          if (!variables || typeof variables !== 'object') return variables;
+          for (const variable of Object.values(
+            variables as Record<string, unknown>,
+          )) {
+            if (typeof variable !== 'object' || variable === null) continue;
+            const typedVariable = variable as Record<string, unknown>;
+            if (
+              typedVariable.type !== 'ordinal' &&
+              typedVariable.type !== 'categorical'
+            ) {
+              continue;
+            }
+            const options = typedVariable.options;
+            if (!Array.isArray(options)) continue;
+            for (const option of options) {
+              if (typeof option !== 'object' || option === null) continue;
+              const typedOption = option as Record<string, unknown>;
+              if (typeof typedOption.value === 'boolean') {
+                typedOption.value = typedOption.value ? 'true' : 'false';
+              }
+            }
+          }
+          return variables;
+        },
+      },
+      {
+        // `encrypted` is only meaningful on node TEXT variables. Strip it from
+        // every non-text node variable.
+        paths: ['codebook.node.*.variables'],
+        fn: <V>(variables: V) => {
+          if (!variables || typeof variables !== 'object') return variables;
+          for (const variable of Object.values(
+            variables as Record<string, unknown>,
+          )) {
+            if (typeof variable !== 'object' || variable === null) continue;
+            const typedVariable = variable as Record<string, unknown>;
+            if (typedVariable.type !== 'text') {
+              delete typedVariable.encrypted;
+            }
+          }
+          return variables;
+        },
+      },
+      {
+        // Ego and edge variables can never be encrypted; strip `encrypted`
+        // regardless of variable type.
+        paths: ['codebook.edge.*.variables', 'codebook.ego.variables'],
+        fn: <V>(variables: V) => {
+          if (!variables || typeof variables !== 'object') return variables;
+          for (const variable of Object.values(
+            variables as Record<string, unknown>,
+          )) {
+            if (typeof variable === 'object' && variable !== null) {
+              delete (variable as Record<string, unknown>).encrypted;
+            }
+          }
+          return variables;
+        },
+      },
+      {
+        // EgoForm/AlterForm/AlterEdgeForm never render form.title, so the v8
+        // title-less form variant rejects it. Delete it from those stages.
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          if (typeof stage !== 'object' || stage === null) return stage;
+          const typedStage = stage as Record<string, unknown>;
+          const formStageTypes = new Set([
+            'EgoForm',
+            'AlterForm',
+            'AlterEdgeForm',
+          ]);
+          if (
+            typeof typedStage.type === 'string' &&
+            formStageTypes.has(typedStage.type) &&
+            typeof typedStage.form === 'object' &&
+            typedStage.form !== null
+          ) {
+            delete (typedStage.form as Record<string, unknown>).title;
+          }
+          return stage;
+        },
+      },
+      {
+        // A CategoricalBin 'other' follow-up needs otherVariablePrompt as its
+        // dialog label. Backfill it (from otherOptionLabel, else a default) when
+        // otherVariable is set but the prompt is missing.
+        paths: ['stages[].prompts[]'],
+        fn: <V>(prompt: V) => {
+          if (typeof prompt !== 'object' || prompt === null) return prompt;
+          const typedPrompt = prompt as Record<string, unknown>;
+          if (
+            typeof typedPrompt.otherVariable === 'string' &&
+            typedPrompt.otherVariable &&
+            !typedPrompt.otherVariablePrompt
+          ) {
+            typedPrompt.otherVariablePrompt =
+              typeof typedPrompt.otherOptionLabel === 'string' &&
+              typedPrompt.otherOptionLabel
+                ? typedPrompt.otherOptionLabel
+                : 'Please specify';
+          }
+          return prompt;
+        },
+      },
+      {
+        // A TieStrengthCensus prompt renders negativeLabel as its decline card;
+        // an empty/missing label shows a blank card. Scope the default to
+        // TieStrengthCensus stages so prompts of other stage types (which have
+        // no negativeLabel key) are never given a stray one.
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          if (typeof stage !== 'object' || stage === null) return stage;
+          const typedStage = stage as Record<string, unknown>;
+          if (typedStage.type !== 'TieStrengthCensus') return stage;
+          if (!Array.isArray(typedStage.prompts)) return stage;
+          for (const prompt of typedStage.prompts) {
+            if (typeof prompt !== 'object' || prompt === null) continue;
+            const typedPrompt = prompt as Record<string, unknown>;
+            if (
+              typeof typedPrompt.negativeLabel !== 'string' ||
+              typedPrompt.negativeLabel.length === 0
+            ) {
+              typedPrompt.negativeLabel = 'No relationship';
+            }
+          }
+          return stage;
+        },
+      },
+      {
+        // Normalise contradictory NameGenerator(QuickAdd) node-count windows:
+        // maxNodes must allow at least one node and not undercut minNodes, and
+        // minNodes must not be negative.
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          if (typeof stage !== 'object' || stage === null) return stage;
+          const typedStage = stage as Record<string, unknown>;
+          if (
+            typedStage.type !== 'NameGenerator' &&
+            typedStage.type !== 'NameGeneratorQuickAdd'
+          ) {
+            return stage;
+          }
+          const behaviours = typedStage.behaviours;
+          if (typeof behaviours !== 'object' || behaviours === null) {
+            return stage;
+          }
+          const typedBehaviours = behaviours as Record<string, unknown>;
+          const { minNodes, maxNodes } = typedBehaviours;
+          if (typeof maxNodes === 'number' && maxNodes < 1) {
+            delete typedBehaviours.maxNodes;
+          } else if (
+            typeof maxNodes === 'number' &&
+            typeof minNodes === 'number' &&
+            maxNodes < minNodes
+          ) {
+            delete typedBehaviours.maxNodes;
+          }
+          if (
+            typeof typedBehaviours.minNodes === 'number' &&
+            typedBehaviours.minNodes < 0
+          ) {
+            delete typedBehaviours.minNodes;
+          }
+          return stage;
+        },
+      },
+      {
+        // Edge creation and highlighting are mutually exclusive tap behaviours
+        // on a Sociogram prompt; when both are set edge creation wins, so drop
+        // the highlight block.
+        paths: ['stages[].prompts[]'],
+        fn: <V>(prompt: V) => {
+          if (typeof prompt !== 'object' || prompt === null) return prompt;
+          const typedPrompt = prompt as Record<string, unknown>;
+          const edges = typedPrompt.edges;
+          const highlight = typedPrompt.highlight;
+          const edgeCreate =
+            typeof edges === 'object' && edges !== null
+              ? (edges as Record<string, unknown>).create
+              : undefined;
+          const allowHighlighting =
+            typeof highlight === 'object' && highlight !== null
+              ? (highlight as Record<string, unknown>).allowHighlighting
+              : undefined;
+          if (edgeCreate && allowHighlighting) {
+            delete typedPrompt.highlight;
+          }
+          return prompt;
+        },
+      },
+      {
+        // Information `size` is an uppercase image/asset sizing treatment.
+        // Uppercase-fold legacy values, drop unknown ones, and remove `size`
+        // from text items (which have no sizing treatment).
+        paths: ['stages[].items[]'],
+        fn: <V>(item: V) => {
+          if (typeof item !== 'object' || item === null) return item;
+          const typedItem = item as Record<string, unknown>;
+          if (typedItem.type === 'text') {
+            delete typedItem.size;
+            return item;
+          }
+          if (typeof typedItem.size === 'string') {
+            const folded = typedItem.size.toUpperCase();
+            if (
+              folded === 'SMALL' ||
+              folded === 'MEDIUM' ||
+              folded === 'LARGE'
+            ) {
+              typedItem.size = folded;
+            } else {
+              delete typedItem.size;
+            }
+          }
+          return item;
+        },
+      },
+      {
+        // A filter whose rules array is empty empties (or inverts) the network
+        // at runtime, and v8 requires at least one rule. Drop an empty stage or
+        // panel filter; for skipLogic (whose filter is required) drop the whole
+        // skipLogic block.
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          if (typeof stage !== 'object' || stage === null) return stage;
+          const typedStage = stage as Record<string, unknown>;
+
+          const hasEmptyRules = (filter: unknown): boolean =>
+            typeof filter === 'object' &&
+            filter !== null &&
+            Array.isArray((filter as Record<string, unknown>).rules) &&
+            ((filter as Record<string, unknown>).rules as unknown[]).length ===
+              0;
+
+          if (hasEmptyRules(typedStage.filter)) {
+            delete typedStage.filter;
+          }
+
+          if (
+            typeof typedStage.skipLogic === 'object' &&
+            typedStage.skipLogic !== null &&
+            hasEmptyRules(
+              (typedStage.skipLogic as Record<string, unknown>).filter,
+            )
+          ) {
+            delete typedStage.skipLogic;
+          }
+
+          if (Array.isArray(typedStage.panels)) {
+            for (const panel of typedStage.panels) {
+              if (
+                typeof panel === 'object' &&
+                panel !== null &&
+                hasEmptyRules((panel as Record<string, unknown>).filter)
+              ) {
+                delete (panel as Record<string, unknown>).filter;
+              }
+            }
+          }
+
+          return stage;
+        },
+      },
+      {
         // Change filter.type value from "alter" to "node" to match entity naming elsewhere
         paths: [
           'stages[].panels[].filter.rules[].type',

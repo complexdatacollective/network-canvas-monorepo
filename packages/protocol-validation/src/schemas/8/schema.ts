@@ -10,6 +10,7 @@ import {
   variableExists,
 } from '~/utils/validation-helpers';
 
+import type { Codebook } from './codebook';
 import { OperatorsByVariableType } from './filters';
 
 // Re-export all the split schemas
@@ -36,6 +37,149 @@ import { type Prompt, stageSchema } from './stages';
 // Variable types that have no renderable form `component` and therefore
 // cannot be referenced by a form field.
 const NON_RENDERABLE_VARIABLE_TYPES = new Set(['layout', 'location']);
+
+// Operators that expect numeric values for comparison
+const NUMERIC_COMPARISON_OPERATORS = [
+  'GREATER_THAN',
+  'GREATER_THAN_OR_EQUAL',
+  'LESS_THAN',
+  'LESS_THAN_OR_EQUAL',
+];
+// Operators that count array length (expect numeric value)
+const OPTIONS_COUNT_OPERATORS = [
+  'OPTIONS_GREATER_THAN',
+  'OPTIONS_LESS_THAN',
+  'OPTIONS_EQUALS',
+  'OPTIONS_NOT_EQUALS',
+];
+// Operators that expect string values for text matching
+const STRING_VALUE_OPERATORS = ['CONTAINS', 'DOES_NOT_CONTAIN'];
+
+type IssueReporter = (issue: {
+  message: string;
+  path: (string | number)[];
+}) => void;
+
+/**
+ * Validate a set of filter rules: entity/attribute existence, operator validity
+ * by variable type, and value-type by operator. Shared between an inline
+ * stage.filter, skipLogic.filter and panel filters.
+ *
+ * `allowEgoRules` is false for stage NODE/EDGE filters, where an ego rule has no
+ * meaning as a node/edge filter (it is silently dropped at runtime).
+ */
+const validateFilterRules = (
+  rules: FilterRule[],
+  codebook: Codebook,
+  basePath: (string | number)[],
+  addIssue: IssueReporter,
+  allowEgoRules: boolean,
+) => {
+  rules.forEach((rule, ruleIndex) => {
+    const rulePath = [...basePath, ruleIndex];
+
+    // An ego rule inside a node/edge filter is degenerate.
+    if (rule.type === 'ego' && !allowEgoRules) {
+      addIssue({
+        message:
+          'Ego rules are not valid inside a stage node/edge filter; use a node or edge rule.',
+        path: [...rulePath, 'type'],
+      });
+      return;
+    }
+
+    const hasAttribute = 'attribute' in rule.options && rule.options.attribute;
+
+    // A type-level ego rule (no attribute) is degenerate: the ego entity always
+    // exists, so EXISTS/NOT_EXISTS against it has no meaning.
+    if (rule.type === 'ego' && !hasAttribute) {
+      addIssue({
+        message:
+          'An ego rule must reference an attribute; a type-level ego rule (no attribute) is not valid.',
+        path: [...rulePath, 'options', 'attribute'],
+      });
+      return;
+    }
+
+    // Check entity exists
+    if (!filterRuleEntityExists(rule, codebook)) {
+      addIssue({
+        message:
+          rule.type === 'ego'
+            ? 'Entity type "Ego" is not defined in codebook'
+            : `Rule option type "${rule.options.type}" is not defined in codebook`,
+        path: [...rulePath, 'options', 'type'],
+      });
+    }
+
+    // Check attribute exists
+    const attributeExists =
+      !hasAttribute || filterRuleAttributeExists(rule, codebook);
+    if (!attributeExists && hasAttribute && 'attribute' in rule.options) {
+      addIssue({
+        message: `"${rule.options.attribute}" is not a valid variable ID`,
+        path: [...rulePath, 'options', 'attribute'],
+      });
+    }
+
+    // Validate operator based on variable type (only if attribute exists and is valid)
+    if (hasAttribute && attributeExists) {
+      const variableType = getFilterRuleVariableType(rule, codebook);
+      if (variableType) {
+        const validOperators = OperatorsByVariableType[variableType];
+        const shouldAddIssue =
+          validOperators && !validOperators.includes(rule.options.operator);
+        if (shouldAddIssue) {
+          addIssue({
+            message: `Operator "${rule.options.operator}" is not valid for variable type "${variableType}". Valid operators: ${validOperators.join(', ')}`,
+            path: [...rulePath, 'options', 'operator'],
+          });
+        }
+
+        // Validate value type based on operator
+        if (rule.options.value !== undefined) {
+          const valueType = Array.isArray(rule.options.value)
+            ? 'array'
+            : typeof rule.options.value;
+
+          // Note: INCLUDES/EXCLUDES accept single values (string, number,
+          // boolean) or arrays - they handle conversion at runtime in
+          // predicate.js
+
+          if (
+            NUMERIC_COMPARISON_OPERATORS.includes(rule.options.operator) &&
+            valueType !== 'number'
+          ) {
+            addIssue({
+              message: `Operator "${rule.options.operator}" requires a numeric value, but got ${valueType}`,
+              path: [...rulePath, 'options', 'value'],
+            });
+          }
+
+          if (
+            OPTIONS_COUNT_OPERATORS.includes(rule.options.operator) &&
+            valueType !== 'number'
+          ) {
+            addIssue({
+              message: `Operator "${rule.options.operator}" requires a numeric value (count), but got ${valueType}`,
+              path: [...rulePath, 'options', 'value'],
+            });
+          }
+
+          if (
+            STRING_VALUE_OPERATORS.includes(rule.options.operator) &&
+            valueType !== 'string'
+          ) {
+            addIssue({
+              message: `Operator "${rule.options.operator}" requires a string value, but got ${valueType}`,
+              path: [...rulePath, 'options', 'value'],
+            });
+          }
+        }
+      }
+    }
+  });
+};
 
 const ProtocolSchema = z
   .strictObject({
@@ -453,6 +597,124 @@ const ProtocolSchema = z
         }
       }
 
+      // 3e.ii. NameGeneratorRoster: dataSource must reference a manifest entry
+      // of type 'network' (reject 'existing', missing ids, non-network types).
+      if (stage.type === 'NameGeneratorRoster' && 'dataSource' in stage) {
+        const asset = protocol.assetManifest?.[stage.dataSource];
+        if (!asset) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Roster dataSource "${stage.dataSource}" does not reference an asset in the manifest.`,
+            path: ['stages', stageIndex, 'dataSource'],
+          });
+        } else if (asset.type !== 'network') {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Roster dataSource "${stage.dataSource}" must reference a 'network' asset, but is of type "${asset.type}".`,
+            path: ['stages', stageIndex, 'dataSource'],
+          });
+        }
+      }
+
+      // 3e.iii. Geospatial: token/dataSource map assets must resolve to manifest
+      // entries of the correct type, and the prompt variable must be 'location'.
+      if (stage.type === 'Geospatial' && 'mapOptions' in stage) {
+        const checkMapAsset = (
+          assetId: string,
+          allowedTypes: string[],
+          field: 'tokenAssetId' | 'dataSourceAssetId',
+        ) => {
+          const asset = protocol.assetManifest?.[assetId];
+          if (!asset) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `Geospatial ${field} "${assetId}" does not reference an asset in the manifest.`,
+              path: ['stages', stageIndex, 'mapOptions', field],
+            });
+          } else if (!allowedTypes.includes(asset.type)) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `Geospatial ${field} "${assetId}" must reference an asset of type ${allowedTypes.map((t) => `'${t}'`).join(' or ')}, but is of type "${asset.type}".`,
+              path: ['stages', stageIndex, 'mapOptions', field],
+            });
+          }
+        };
+
+        checkMapAsset(
+          stage.mapOptions.tokenAssetId,
+          ['apikey'],
+          'tokenAssetId',
+        );
+        checkMapAsset(
+          stage.mapOptions.dataSourceAssetId,
+          ['geojson', 'network'],
+          'dataSourceAssetId',
+        );
+
+        if ('subject' in stage && stage.subject) {
+          stage.prompts.forEach((prompt, promptIndex) => {
+            if (
+              'variable' in prompt &&
+              prompt.variable &&
+              variableExists(protocol.codebook, stage.subject, prompt.variable)
+            ) {
+              const variable = getVariablesForSubject(
+                protocol.codebook,
+                stage.subject,
+              )[prompt.variable];
+              if (variable && variable.type !== 'location') {
+                ctx.addIssue({
+                  code: 'custom' as const,
+                  message: `Geospatial prompt variable "${prompt.variable}" must be of type "location", but is "${variable.type}".`,
+                  path: [
+                    'stages',
+                    stageIndex,
+                    'prompts',
+                    promptIndex,
+                    'variable',
+                  ],
+                });
+              }
+            }
+          });
+        }
+      }
+
+      // 3e.iv. Bin stages: the prompt variable must match the bin type.
+      if (
+        (stage.type === 'OrdinalBin' || stage.type === 'CategoricalBin') &&
+        'subject' in stage &&
+        stage.subject
+      ) {
+        const expectedType =
+          stage.type === 'OrdinalBin' ? 'ordinal' : 'categorical';
+        stage.prompts.forEach((prompt, promptIndex) => {
+          if (
+            'variable' in prompt &&
+            prompt.variable &&
+            variableExists(protocol.codebook, stage.subject, prompt.variable)
+          ) {
+            const variable = getVariablesForSubject(
+              protocol.codebook,
+              stage.subject,
+            )[prompt.variable];
+            if (variable && variable.type !== expectedType) {
+              ctx.addIssue({
+                code: 'custom' as const,
+                message: `${stage.type} prompt variable "${prompt.variable}" must be of type "${expectedType}", but is "${variable.type}".`,
+                path: [
+                  'stages',
+                  stageIndex,
+                  'prompts',
+                  promptIndex,
+                  'variable',
+                ],
+              });
+            }
+          }
+        });
+      }
+
       // External-data panels: filter rules must target node attributes,
       // not edges (the panel data source is a flat list of node rows).
       if ('panels' in stage && stage.panels) {
@@ -496,165 +758,46 @@ const ProtocolSchema = z
           });
         }
 
-        stage.filter.rules.forEach((rule: FilterRule, ruleIndex: number) => {
-          // Check entity exists
-          if (!filterRuleEntityExists(rule, protocol.codebook)) {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message:
-                rule.type === 'ego'
-                  ? 'Entity type "Ego" is not defined in codebook'
-                  : `Rule option type "${rule.options.type}" is not defined in codebook`,
-              path: [
-                'stages',
-                stageIndex,
-                'filter',
-                'rules',
-                ruleIndex,
-                'options',
-                'type',
-              ],
-            });
-          }
+        // A stage NODE/EDGE filter cannot use ego rules (degenerate at
+        // runtime); ego rules remain valid in skipLogic/panel/query filters.
+        validateFilterRules(
+          stage.filter.rules,
+          protocol.codebook,
+          ['stages', stageIndex, 'filter', 'rules'],
+          (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+          false,
+        );
+      }
 
-          // Check if this is an attribute-level rule
-          const hasAttribute =
-            'attribute' in rule.options && rule.options.attribute;
+      // 3g.ii. skipLogic.filter rules — operator/value and ego-attribute
+      // validation (ego rules allowed here, unlike a stage node/edge filter).
+      if (stage.skipLogic?.filter?.rules) {
+        validateFilterRules(
+          stage.skipLogic.filter.rules,
+          protocol.codebook,
+          ['stages', stageIndex, 'skipLogic', 'filter', 'rules'],
+          (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+          true,
+        );
+      }
 
-          // Check attribute exists
-          const attributeExists =
-            !hasAttribute || filterRuleAttributeExists(rule, protocol.codebook);
-          if (!attributeExists && hasAttribute && 'attribute' in rule.options) {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `"${rule.options.attribute}" is not a valid variable ID`,
-              path: [
-                'stages',
-                stageIndex,
-                'filter',
-                'rules',
-                ruleIndex,
-                'options',
-                'attribute',
-              ],
-            });
-          }
-
-          // Validate operator based on variable type (only if attribute exists and is valid)
-          if (hasAttribute && attributeExists) {
-            const variableType = getFilterRuleVariableType(
-              rule,
+      // 3g.iii. panels[].filter rules — same validation per panel.
+      if ('panels' in stage && stage.panels) {
+        stage.panels.forEach((panel, panelIndex) => {
+          if (panel.filter?.rules) {
+            validateFilterRules(
+              panel.filter.rules,
               protocol.codebook,
+              ['stages', stageIndex, 'panels', panelIndex, 'filter', 'rules'],
+              (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+              true,
             );
-            if (variableType) {
-              const validOperators = OperatorsByVariableType[variableType];
-              const shouldAddIssue =
-                validOperators &&
-                !validOperators.includes(rule.options.operator);
-              if (shouldAddIssue) {
-                ctx.addIssue({
-                  code: 'custom' as const,
-                  message: `Operator "${rule.options.operator}" is not valid for variable type "${variableType}". Valid operators: ${validOperators.join(', ')}`,
-                  path: [
-                    'stages',
-                    stageIndex,
-                    'filter',
-                    'rules',
-                    ruleIndex,
-                    'options',
-                    'operator',
-                  ],
-                });
-              }
-
-              // Validate value type based on operator
-              if (rule.options.value !== undefined) {
-                const valueType = Array.isArray(rule.options.value)
-                  ? 'array'
-                  : typeof rule.options.value;
-
-                // Operators that expect numeric values for comparison
-                const numericComparisonOperators = [
-                  'GREATER_THAN',
-                  'GREATER_THAN_OR_EQUAL',
-                  'LESS_THAN',
-                  'LESS_THAN_OR_EQUAL',
-                ];
-                // Operators that count array length (expect numeric value)
-                const optionsCountOperators = [
-                  'OPTIONS_GREATER_THAN',
-                  'OPTIONS_LESS_THAN',
-                  'OPTIONS_EQUALS',
-                  'OPTIONS_NOT_EQUALS',
-                ];
-                // Operators that expect string values for text matching
-                const stringValueOperators = ['CONTAINS', 'DOES_NOT_CONTAIN'];
-                // Note: INCLUDES/EXCLUDES accept single values (string, number, boolean) or arrays
-                // - they handle conversion at runtime in predicate.js
-
-                if (
-                  numericComparisonOperators.includes(rule.options.operator) &&
-                  valueType !== 'number'
-                ) {
-                  ctx.addIssue({
-                    code: 'custom' as const,
-                    message: `Operator "${rule.options.operator}" requires a numeric value, but got ${valueType}`,
-                    path: [
-                      'stages',
-                      stageIndex,
-                      'filter',
-                      'rules',
-                      ruleIndex,
-                      'options',
-                      'value',
-                    ],
-                  });
-                }
-
-                if (
-                  optionsCountOperators.includes(rule.options.operator) &&
-                  valueType !== 'number'
-                ) {
-                  ctx.addIssue({
-                    code: 'custom' as const,
-                    message: `Operator "${rule.options.operator}" requires a numeric value (count), but got ${valueType}`,
-                    path: [
-                      'stages',
-                      stageIndex,
-                      'filter',
-                      'rules',
-                      ruleIndex,
-                      'options',
-                      'value',
-                    ],
-                  });
-                }
-
-                if (
-                  stringValueOperators.includes(rule.options.operator) &&
-                  valueType !== 'string'
-                ) {
-                  ctx.addIssue({
-                    code: 'custom' as const,
-                    message: `Operator "${rule.options.operator}" requires a string value, but got ${valueType}`,
-                    path: [
-                      'stages',
-                      stageIndex,
-                      'filter',
-                      'rules',
-                      ruleIndex,
-                      'options',
-                      'value',
-                    ],
-                  });
-                }
-              }
-            }
           }
         });
       }
 
-      // 3h. Check any nested filter rules recursively (for skipLogic, etc.)
+      // 3h. Check any nested filter rules recursively for duplicate IDs (for
+      // skipLogic, panels, etc.)
       const validateNestedFilters = (
         obj: unknown,
         basePath: (string | number)[],
@@ -862,9 +1005,29 @@ const ProtocolSchema = z
         encryptedVariables: false,
       },
       codebook,
+      // Fixed asset types so stage mocks that reference these slots by index
+      // resolve to the asset type their cross-reference validation requires:
+      // index 0 -> apikey (Geospatial token), index 1 -> geojson (Geospatial
+      // dataSource), index 2 -> network (NameGeneratorRoster dataSource).
       assetManifest: {
-        [getAssetId(0)]: assetSchema.generateMock(),
-        [getAssetId(1)]: assetSchema.generateMock(),
+        [getAssetId(0)]: {
+          id: getAssetId(0),
+          type: 'apikey' as const,
+          name: 'Mapbox Token',
+          value: 'pk.mockToken',
+        },
+        [getAssetId(1)]: {
+          id: getAssetId(1),
+          type: 'geojson' as const,
+          name: 'map.geojson',
+          source: 'map.geojson',
+        },
+        [getAssetId(2)]: {
+          id: getAssetId(2),
+          type: 'network' as const,
+          name: 'roster.csv',
+          source: 'roster.csv',
+        },
       },
       stages,
     };

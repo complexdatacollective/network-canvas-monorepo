@@ -10,6 +10,7 @@ import {
   panelSchema,
 } from '../common';
 import { baseStageSchema } from './base';
+import { nameGeneratorBehavioursSchema } from './name-generator';
 
 export const nameGeneratorQuickAddStage = baseStageSchema
   .extend({
@@ -46,12 +47,7 @@ export const nameGeneratorQuickAddStage = baseStageSchema
           });
         }
       }),
-    behaviours: z
-      .strictObject({
-        minNodes: z.number().int().optional(),
-        maxNodes: z.number().int().optional(),
-      })
-      .optional(),
+    behaviours: nameGeneratorBehavioursSchema,
   })
   .generateMock((base) => ({
     ...base,

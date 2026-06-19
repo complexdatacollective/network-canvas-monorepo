@@ -4,6 +4,7 @@ import {
   getNodeTypeId,
   getNodeVariableId,
 } from '~/utils/mock-seeds';
+import { findDuplicateId } from '~/utils/validation-helpers';
 import { z } from '~/utils/zod-mock-extension';
 
 import {
@@ -11,6 +12,10 @@ import {
   familyPedigreeNominationPromptSchema,
 } from '../common';
 import { baseStageSchema } from './base';
+
+// Reserved id used by the interview for the synthetic census/scaffolding prompt;
+// an author-supplied nomination prompt may not reuse it (collides at runtime).
+const RESERVED_NOMINATION_PROMPT_ID = 'scaffolding';
 
 export const NodeConfigSchema = z.strictObject({
   // Node type for alter nodes in the codebook
@@ -46,5 +51,31 @@ export const familyPedigreeStage = baseStageSchema.extend({
   // Prompt shown during the family building phase
   censusPrompt: z.string(),
   // Optional attribute nomination steps (e.g. disease nomination)
-  nominationPrompts: z.array(familyPedigreeNominationPromptSchema).optional(),
+  nominationPrompts: z
+    .array(familyPedigreeNominationPromptSchema)
+    .optional()
+    .superRefine((prompts, ctx) => {
+      if (!prompts) {
+        return;
+      }
+
+      const duplicatePromptId = findDuplicateId(prompts);
+      if (duplicatePromptId) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Nomination prompts contain duplicate ID "${duplicatePromptId}"`,
+          path: [],
+        });
+      }
+
+      if (
+        prompts.some((prompt) => prompt.id === RESERVED_NOMINATION_PROMPT_ID)
+      ) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Nomination prompt id "${RESERVED_NOMINATION_PROMPT_ID}" is reserved`,
+          path: [],
+        });
+      }
+    }),
 });

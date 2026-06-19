@@ -5,10 +5,10 @@ import { z } from '~/utils/zod-mock-extension';
 
 import { baseStageSchema } from './base';
 
-// TODO: Should be narrowed based on type
-const ItemSchema = z.strictObject({
+const ItemSizeSchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
+
+const baseItemSchema = z.strictObject({
   id: z.string(),
-  type: z.enum(['text', 'asset']),
   content: z
     .string()
     .generateMock(() =>
@@ -19,13 +19,25 @@ const ItemSchema = z.strictObject({
       ]),
     ),
   description: z.string().optional(),
-  size: z
-    .string()
-    .optional()
-    .generateMock(() =>
-      faker.helpers.arrayElement(['SMALL', 'MEDIUM', 'LARGE']),
-    ),
 });
+
+// Text items render plain content and have no asset-sizing treatment.
+const textItemSchema = baseItemSchema.extend({
+  type: z.literal('text'),
+});
+
+// Size is an image/video sizing treatment, so it only applies to asset items.
+const assetItemSchema = baseItemSchema.extend({
+  type: z.literal('asset'),
+  size: ItemSizeSchema.optional().generateMock(() =>
+    faker.helpers.arrayElement(['SMALL', 'MEDIUM', 'LARGE']),
+  ),
+});
+
+const ItemSchema = z.discriminatedUnion('type', [
+  textItemSchema,
+  assetItemSchema,
+]);
 
 export type Item = z.infer<typeof ItemSchema>;
 

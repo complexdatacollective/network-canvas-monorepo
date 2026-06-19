@@ -34,7 +34,7 @@ export const ordinalBinStage = baseStageSchema
     prompts: [
       {
         id: crypto.randomUUID(),
-        variable: getNodeVariableId(),
+        variable: getNodeVariableId(1),
         text: faker.helpers.arrayElement([
           'When was the last time that you communicated with each of the people you named?',
           'How often do you see each person?',

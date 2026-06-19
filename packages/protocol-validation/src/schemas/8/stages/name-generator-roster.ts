@@ -11,7 +11,7 @@ import { baseStageSchema } from './base';
 export const nameGeneratorRosterStage = baseStageSchema.extend({
   type: z.literal('NameGeneratorRoster'),
   subject: NodeStageSubjectSchema,
-  dataSource: z.string().generateMock(() => getAssetId()),
+  dataSource: z.string().generateMock(() => getAssetId(2)),
   cardOptions: z
     .strictObject({
       additionalProperties: z

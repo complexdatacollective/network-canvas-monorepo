@@ -67,6 +67,7 @@ const mapOptions = z.strictObject({
     ),
   targetFeatureProperty: z
     .string()
+    .min(1, { message: 'Target feature property must not be empty' })
     .generateMock(() =>
       faker.helpers.arrayElement(['name', 'location_type', 'category']),
     ), // property of geojson to select
@@ -107,7 +108,7 @@ export const geospatialStage = baseStageSchema
           'Choose the point on the map where you usually hang out with friends.',
           'Indicate your favorite place in the city by selecting it on the map.',
         ]),
-        variable: getNodeVariableId(0),
+        variable: getNodeVariableId(3),
       },
     ],
   }));
