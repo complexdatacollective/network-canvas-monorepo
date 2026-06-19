@@ -949,9 +949,6 @@ describe('Migration V7 to V8', () => {
       // Validate against V8 schema
       const result = ProtocolSchemaV8.safeParse(migratedRaw);
 
-      if (!result.success) {
-      }
-
       expect(result.success).toBe(true);
     });
 
@@ -1213,6 +1210,252 @@ describe('Migration V7 to V8', () => {
         expect(stage.nodeConfig.type).toBe('person');
         expect(stage.nodeConfig.relationshipVariable).toBe('relationship');
       }
+    });
+  });
+
+  describe('min* validator implies required', () => {
+    it('sets required:true on a node variable with minValue', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                age: {
+                  name: 'Age',
+                  type: 'number',
+                  component: 'Number',
+                  validation: { minValue: 0, maxValue: 100 },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      const age = parsed.codebook.node?.person?.variables?.age;
+      expect(age).toHaveProperty('validation.required', true);
+      expect(age).toHaveProperty('validation.minValue', 0);
+      expect(age).toHaveProperty('validation.maxValue', 100);
+    });
+
+    it('sets required:true on a node variable with minLength', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                nickname: {
+                  name: 'Nickname',
+                  type: 'text',
+                  component: 'Text',
+                  validation: { minLength: 2 },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      expect(parsed.codebook.node?.person?.variables?.nickname).toHaveProperty(
+        'validation.required',
+        true,
+      );
+    });
+
+    it('sets required:true on an edge variable with minSelected', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {},
+          edge: {
+            knows: {
+              name: 'Knows',
+              color: 'edge-color-seq-1',
+              variables: {
+                contexts: {
+                  name: 'Contexts',
+                  type: 'categorical',
+                  component: 'CheckboxGroup',
+                  options: [
+                    { label: 'Work', value: 'work' },
+                    { label: 'Home', value: 'home' },
+                  ],
+                  validation: { minSelected: 1 },
+                },
+              },
+            },
+          },
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      expect(parsed.codebook.edge?.knows?.variables?.contexts).toHaveProperty(
+        'validation.required',
+        true,
+      );
+    });
+
+    it('sets required:true on an ego variable with minValue', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {},
+          edge: {},
+          ego: {
+            variables: {
+              householdSize: {
+                name: 'HouseholdSize',
+                type: 'number',
+                component: 'Number',
+                validation: { minValue: 1 },
+              },
+            },
+          },
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      expect(parsed.codebook.ego?.variables?.householdSize).toHaveProperty(
+        'validation.required',
+        true,
+      );
+    });
+
+    it('leaves an already-required variable unchanged', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                age: {
+                  name: 'Age',
+                  type: 'number',
+                  component: 'Number',
+                  validation: { required: true, minValue: 0 },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      expect(parsed.codebook.node?.person?.variables?.age).toHaveProperty(
+        'validation.required',
+        true,
+      );
+    });
+
+    it('does not set required for a variable with only maxValue', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                age: {
+                  name: 'Age',
+                  type: 'number',
+                  component: 'Number',
+                  validation: { maxValue: 100 },
+                },
+                bio: {
+                  name: 'Bio',
+                  type: 'text',
+                  component: 'Text',
+                  validation: { maxLength: 200 },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      const variables = parsed.codebook.node?.person?.variables;
+      expect(variables?.age).not.toHaveProperty('validation.required');
+      expect(variables?.bio).not.toHaveProperty('validation.required');
+    });
+
+    it('does not affect variables without validation', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      expect(parsed.codebook.node?.person?.variables?.name).not.toHaveProperty(
+        'validation',
+      );
     });
   });
 

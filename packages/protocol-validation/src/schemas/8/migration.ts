@@ -23,6 +23,7 @@ const migrationV7toV8 = createMigration({
 - Added optional 'showValidationHints' property to form fields, enabling automatic display of hints derived from validation rules.
 - Removed 'loop' property from Information stage items and video/audio assets. This property was never honoured by the interviewer.
 - Removed 'biologicalSexVariable' from FamilyPedigree node configuration. This property was a vestigial refactor leftover that the interviewer never read or wrote.
+- A \`minValue\`, \`minLength\`, or \`minSelected\` validator no longer implies a field is required. To preserve the effective behaviour of existing protocols that relied on this coupling, any codebook variable (node, edge, or ego) with one of these validators and no explicit \`required: true\` now has \`required: true\` set.
 `,
   migrate: (doc, deps) => {
     const transformed = traverseAndTransform(doc as Record<string, unknown>, [
@@ -150,6 +151,38 @@ const migrationV7toV8 = createMigration({
               .biologicalSexVariable;
           }
           return nodeConfig;
+        },
+      },
+      {
+        // A min* validator no longer implies the field is required, but older
+        // protocols relied on that coupling to make fields de-facto mandatory.
+        // Preserve their behaviour by marking such variables required.
+        paths: [
+          'codebook.node.*.variables',
+          'codebook.edge.*.variables',
+          'codebook.ego.variables',
+        ],
+        fn: <V>(variables: V) => {
+          if (!variables || typeof variables !== 'object') return variables;
+
+          for (const variable of Object.values(
+            variables as Record<string, unknown>,
+          )) {
+            if (typeof variable !== 'object' || variable === null) continue;
+            const validation = (variable as Record<string, unknown>).validation;
+            if (typeof validation !== 'object' || validation === null) continue;
+
+            const typedValidation = validation as Record<string, unknown>;
+            const hasMinValidator =
+              'minValue' in typedValidation ||
+              'minLength' in typedValidation ||
+              'minSelected' in typedValidation;
+
+            if (hasMinValidator && typedValidation.required !== true) {
+              typedValidation.required = true;
+            }
+          }
+          return variables;
         },
       },
       {
