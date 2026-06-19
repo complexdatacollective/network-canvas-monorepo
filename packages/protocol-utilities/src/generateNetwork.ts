@@ -25,7 +25,6 @@ type NcAttributeValue =
   | number
   | number[]
   | (string | number | boolean)[]
-  | Record<string, string | number | boolean>
   | { x: number; y: number }
   | null;
 
