@@ -11,7 +11,10 @@ import {
 } from '~/store/modules/session';
 import type { useAppDispatch } from '~/store/store';
 
-import { computeAllDisplayLabels } from './pedigree-layout/utils/getDisplayLabel';
+import {
+  computeAllDisplayLabels,
+  computeRelationshipsToEgo,
+} from './pedigree-layout/utils/getDisplayLabel';
 
 enableMapSet();
 
@@ -20,6 +23,8 @@ export type VariableConfig = {
   edgeType: string;
   nodeLabelVariable: string;
   egoVariable: string;
+  /** Text node variable storing the computed relationship to ego. */
+  relationshipVariable: string;
   relationshipTypeVariable: string;
   isActiveVariable: string;
   isGestationalCarrierVariable: string;
@@ -100,6 +105,12 @@ export const createFamilyPedigreeStore = (
   variableConfig: VariableConfig,
   dispatch?: ReturnType<typeof useAppDispatch>,
   currentStep?: number,
+  // Store ids of nodes/edges that were seeded from the existing interview
+  // network and therefore already live in Redux. finalizeNetwork must not
+  // re-commit these: the network is one shared graph, so writing them again
+  // would duplicate pre-existing same-type nodes and edges.
+  preexistingReduxNodeIds: ReadonlySet<string> = new Set(),
+  preexistingReduxEdgeIds: ReadonlySet<string> = new Set(),
 ) => {
   // Guard the network invariant that at most one edge of a given relationship
   // type connects any pair of nodes. Throwing surfaces edge-creation bugs (e.g.
@@ -319,14 +330,53 @@ export const createFamilyPedigreeStore = (
           if (!dispatch) return;
 
           const { network, syncMetadata: sync } = get();
+
+          const egoEntry = [...network.nodes.entries()].find(
+            ([, n]) => n.attributes[variableConfig.egoVariable] === true,
+          );
+          const relationships = egoEntry
+            ? computeRelationshipsToEgo(
+                egoEntry[0],
+                network.nodes,
+                network.edges,
+                variableConfig,
+              )
+            : new Map<string, string>();
+
+          // Maps every store node id to its Redux id, so edges resolve their
+          // endpoints regardless of whether each node was newly committed here
+          // or already present from seeding.
           const idMap = new Map<string, string>();
+          for (const preexistingId of preexistingReduxNodeIds) {
+            if (network.nodes.has(preexistingId)) {
+              idMap.set(preexistingId, preexistingId);
+            }
+          }
+
+          // Only the nodes this finalize created. resetNetwork deletes these;
+          // pre-existing shared-graph nodes must survive a pedigree reset.
+          const createdReduxIds = new Map<string, string>();
 
           for (const [storeId, node] of network.nodes) {
+            // Pre-existing same-type nodes already live in Redux; re-committing
+            // them would duplicate the shared graph.
+            if (preexistingReduxNodeIds.has(storeId)) {
+              continue;
+            }
+
+            const relationship = relationships.get(storeId);
+            const attributeData = {
+              ...node.attributes,
+              ...(relationship !== undefined
+                ? { [variableConfig.relationshipVariable]: relationship }
+                : {}),
+            };
+
             const reduxId = crypto.randomUUID();
             const result = await dispatch(
               addNodeToNetwork({
                 type: variableConfig.nodeType,
-                attributeData: { ...node.attributes },
+                attributeData,
                 modelData: { _uid: reduxId },
                 allowUnknownAttributes: true,
                 currentStep: currentStep ?? 0,
@@ -335,10 +385,16 @@ export const createFamilyPedigreeStore = (
 
             if (addNodeToNetwork.fulfilled.match(result)) {
               idMap.set(storeId, reduxId);
+              createdReduxIds.set(storeId, reduxId);
             }
           }
 
-          for (const [, edge] of network.edges) {
+          for (const [edgeId, edge] of network.edges) {
+            // Edges seeded from Redux already exist in the shared graph.
+            if (preexistingReduxEdgeIds.has(edgeId)) {
+              continue;
+            }
+
             const mappedFrom = idMap.get(edge.from);
             const mappedTo = idMap.get(edge.to);
             if (mappedFrom && mappedTo) {
@@ -355,7 +411,7 @@ export const createFamilyPedigreeStore = (
           }
 
           set((state) => {
-            state.storeToReduxIdMap = new Map(idMap);
+            state.storeToReduxIdMap = new Map(createdReduxIds);
             for (const key of state.nodeMetadata.keys()) {
               const meta = state.nodeMetadata.get(key);
               if (meta) {

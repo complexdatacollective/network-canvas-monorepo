@@ -21,7 +21,11 @@ import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import VisualAnalogScaleField from '@codaco/fresco-ui/form/fields/VisualAnalogScale';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import { addDays, todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
-import type { ComponentType, FormField } from '@codaco/protocol-validation';
+import type {
+  ComponentType,
+  FormField,
+  StageSubject,
+} from '@codaco/protocol-validation';
 
 import { useStageSelector } from '../hooks/useStageSelector';
 import {
@@ -47,6 +51,18 @@ const fieldTypeMap: Record<ComponentType, ValidFieldComponent> = {
   DatePicker: DatePickerField,
   RelativeDatePicker: RelativeDatePickerField,
 };
+
+/**
+ * Narrow a loosely-typed form Subject into a valid StageSubject for the
+ * validation context. Returns null when the subject is absent or a node/edge
+ * subject lacks a type (which can't identify a codebook entity).
+ */
+function subjectToStageSubject(subject?: Subject): StageSubject | null {
+  if (!subject) return null;
+  if (subject.entity === 'ego') return { entity: 'ego' };
+  if (subject.type === undefined) return null;
+  return { entity: subject.entity, type: subject.type };
+}
 
 /**
  * Hook to automatically convert protocol form definitions into the new form
@@ -82,9 +98,21 @@ export default function useProtocolForm({
 
   const validationContext = useMemo<ValidationContext | null>(() => {
     if (!baseValidationContext) return null;
-    if (currentEntityId === undefined) return baseValidationContext;
-    return { ...baseValidationContext, currentEntityId };
-  }, [baseValidationContext, currentEntityId]);
+
+    // Stages without a top-level subject (e.g. FamilyPedigree) leave
+    // stageSubject null, which the context-dependent validators
+    // (unique/sameAs/differentFrom/greaterThanVariable) dereference. When the
+    // caller supplies a concrete subject for the rendered fields, use it as the
+    // stageSubject so those validators resolve against the right entity type.
+    const resolvedSubject = subjectToStageSubject(subject);
+    const stageSubject = resolvedSubject ?? baseValidationContext.stageSubject;
+
+    return {
+      ...baseValidationContext,
+      stageSubject,
+      ...(currentEntityId !== undefined ? { currentEntityId } : {}),
+    };
+  }, [baseValidationContext, currentEntityId, subject]);
 
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   const subjectFieldsMetadata = useSelector((state) =>

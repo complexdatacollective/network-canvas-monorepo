@@ -27,6 +27,7 @@ import {
   getEgoVariable,
   getNodeLabelVariable,
   getNodeTypeKey,
+  getRelationshipVariable,
   getResolvedNodeFormFields,
 } from '~/interfaces/FamilyPedigree/utils/nodeUtils';
 
@@ -70,6 +71,7 @@ export default function PedigreeView({
   const edgeType = useStageSelector(getEdgeTypeKey);
   const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
   const egoVariable = useStageSelector(getEgoVariable);
+  const relationshipVariable = useStageSelector(getRelationshipVariable);
   const relationshipTypeVariable = useStageSelector(
     getRelationshipTypeVariable,
   );
@@ -84,6 +86,7 @@ export default function PedigreeView({
     edgeType,
     nodeLabelVariable,
     egoVariable,
+    relationshipVariable,
     relationshipTypeVariable,
     isActiveVariable,
     isGestationalCarrierVariable,

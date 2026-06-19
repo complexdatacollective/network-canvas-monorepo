@@ -3,13 +3,17 @@ import { describe, expect, it } from 'vitest';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
-import { getDisplayLabel } from '../utils/getDisplayLabel';
+import {
+  computeRelationshipsToEgo,
+  getDisplayLabel,
+} from '../utils/getDisplayLabel';
 
 const variableConfig: VariableConfig = {
   nodeType: 'person',
   edgeType: 'family',
   nodeLabelVariable: 'name',
   egoVariable: 'isEgo',
+  relationshipVariable: 'relationship',
   relationshipTypeVariable: 'rel',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGest',
@@ -429,5 +433,71 @@ describe('getDisplayLabel', () => {
         'Parent',
       );
     });
+  });
+});
+
+describe('computeRelationshipsToEgo', () => {
+  it('labels each non-ego node by its canonical relationship kind', () => {
+    // grandparent -> parent -> ego, plus a sibling of ego.
+    const nodes = makeNodes([
+      ['ego', { name: 'Me', isEgo: true }],
+      ['parent', { name: 'Mum' }],
+      ['grandparent', { name: 'Gran' }],
+      ['sibling', { name: 'Sib' }],
+    ]);
+    const edges = makeEdges([
+      ['e1', { from: 'parent', to: 'ego', relType: 'biological' }],
+      ['e2', { from: 'grandparent', to: 'parent', relType: 'biological' }],
+      ['e3', { from: 'parent', to: 'sibling', relType: 'biological' }],
+    ]);
+
+    const relationships = computeRelationshipsToEgo(
+      'ego',
+      nodes,
+      edges,
+      variableConfig,
+    );
+
+    expect(relationships.get('parent')).toBe('Parent');
+    expect(relationships.get('grandparent')).toBe('Grandparent');
+    expect(relationships.get('sibling')).toBe('Sibling');
+    // Ego has no relationship to itself.
+    expect(relationships.has('ego')).toBe(false);
+  });
+
+  it('refines a direct parent by edge type', () => {
+    const nodes = makeNodes([
+      ['ego', { name: 'Me', isEgo: true }],
+      ['donor', {}],
+    ]);
+    const edges = makeEdges([
+      ['e1', { from: 'donor', to: 'ego', relType: 'donor' }],
+    ]);
+
+    const relationships = computeRelationshipsToEgo(
+      'ego',
+      nodes,
+      edges,
+      variableConfig,
+    );
+
+    expect(relationships.get('donor')).toBe('Donor');
+  });
+
+  it('omits nodes ego cannot reach', () => {
+    const nodes = makeNodes([
+      ['ego', { name: 'Me', isEgo: true }],
+      ['stranger', { name: 'Nobody' }],
+    ]);
+    const edges = makeEdges([]);
+
+    const relationships = computeRelationshipsToEgo(
+      'ego',
+      nodes,
+      edges,
+      variableConfig,
+    );
+
+    expect(relationships.has('stranger')).toBe(false);
   });
 });

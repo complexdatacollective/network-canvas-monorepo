@@ -10,6 +10,7 @@ const variableConfig: VariableConfig = {
   edgeType: 'relationship',
   nodeLabelVariable: 'name',
   egoVariable: 'isEgo',
+  relationshipVariable: 'relationship',
   relationshipTypeVariable: 'relationshipType',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGestationalCarrier',

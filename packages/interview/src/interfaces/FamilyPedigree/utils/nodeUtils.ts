@@ -30,6 +30,10 @@ export const getEgoVariable = createSelector(
   getNodeConfig,
   (c) => c.egoVariable,
 );
+export const getRelationshipVariable = createSelector(
+  getNodeConfig,
+  (c) => c.relationshipVariable,
+);
 export const getNodeForm = createSelector(getNodeConfig, (c) => c.form);
 
 /**

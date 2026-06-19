@@ -40,6 +40,7 @@ import {
   getEgoVariable,
   getNodeLabelVariable,
   getNodeTypeKey,
+  getRelationshipVariable,
 } from './utils/nodeUtils';
 import { validatePedigreeCompleteness } from './utils/validatePedigree';
 
@@ -71,6 +72,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   const edgeType = useStageSelector(getEdgeTypeKey);
   const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
   const egoVariable = useStageSelector(getEgoVariable);
+  const relationshipVariable = useStageSelector(getRelationshipVariable);
   const relationshipTypeVariable = useStageSelector(
     getRelationshipTypeVariable,
   );
@@ -93,6 +95,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
     edgeType,
     nodeLabelVariable,
     egoVariable,
+    relationshipVariable,
     relationshipTypeVariable,
     isActiveVariable,
     isGestationalCarrierVariable,
