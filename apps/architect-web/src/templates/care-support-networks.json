@@ -270,7 +270,6 @@
         {
           "id": "researcher-notes",
           "type": "text",
-          "size": "LARGE",
           "content": "## For researchers\n\n_Delete this screen before you field the study._\n\n**Clinical safety:** the EPDS is a screening tool, not a diagnostic instrument. Item 10 screens for thoughts of self-harm, so before fielding put a safety protocol in place — interviewer training, an escalation pathway, and local crisis-line and referral details — for any participant who endorses item 10 or otherwise shows distress.\n\nThe instruments this template draws on:\n\n- [Cox JL, Holden JM, Sagovsky R (1987). Detection of postnatal depression: the 10-item Edinburgh Postnatal Depression Scale (EPDS). *Br J Psychiatry* 150:782–786.](https://pubmed.ncbi.nlm.nih.gov/3651732/)\n- [Sherbourne CD, Stewart AL (1991). The MOS Social Support Survey. *Soc Sci Med* 32(6):705–714.](https://www.rand.org/pubs/reprints/RP218.html)"
         }
       ]
@@ -284,7 +283,6 @@
         {
           "id": "intro-welcome",
           "type": "text",
-          "size": "LARGE",
           "content": "## Welcome\n\nThank you for taking part. In this interview we will talk about the **people who support you** during this period, and the kinds of help they provide. There are no right or wrong answers — we are interested in your own experience."
         }
       ]
@@ -299,7 +297,6 @@
         "text": "First, a few questions about where you are in your care journey, and how you have been feeling.\n\nThe questions about your mood come from the **Edinburgh Postnatal Depression Scale (EPDS)**. There are no right or wrong answers. Please answer based on how you have felt in the **past 7 days**, not just today."
       },
       "form": {
-        "title": "Your care episode and wellbeing",
         "fields": [
           {
             "variable": "care_stage",
@@ -371,7 +368,6 @@
       ],
       "subject": { "entity": "node", "type": "supporter" },
       "form": {
-        "title": "Add a person",
         "fields": [
           {
             "variable": "supporter_name",
@@ -422,7 +418,6 @@
         "text": "For each person you named, we'll ask a few short questions about where they are, how often you're in contact, and the kinds of support they give you."
       },
       "form": {
-        "title": "About this person",
         "fields": [
           {
             "variable": "relationship",
