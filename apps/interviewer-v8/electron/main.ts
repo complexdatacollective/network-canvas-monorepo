@@ -99,7 +99,7 @@ function createWindow() {
     height: 900,
     minWidth: 1280,
     minHeight: 800,
-    title: 'Network Canvas Interviewer 7',
+    title: 'Network Canvas Interviewer 8',
     backgroundColor: '#232053', // navy taupe
     // remove the default titlebar
     titleBarStyle: 'hidden',

@@ -20,7 +20,7 @@ const MAC_PROVISIONING_PROFILE = 'build-resources/embedded.provisionprofile';
  */
 module.exports = {
   appId: 'Network-Canvas-Interviewer-8',
-  productName: 'Network Canvas Interviewer',
+  productName: 'Network Canvas Interviewer 8',
   copyright: `Copyright © ${new Date().getFullYear()} Complex Data Collective`,
   // Space-free artifact filenames. `productName` has spaces, and GitHub release
   // assets replace spaces with dots on upload — so installers named from

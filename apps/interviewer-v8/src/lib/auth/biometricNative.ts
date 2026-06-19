@@ -40,7 +40,7 @@ export async function verifyBiometric(): Promise<
   }
   try {
     await BiometricAuth.authenticate({
-      reason: 'Unlock Network Canvas Interviewer',
+      reason: 'Unlock Network Canvas Interviewer 8',
       allowDeviceCredential: true,
     });
     return { ok: true };
