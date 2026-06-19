@@ -68,6 +68,19 @@ Start date range validation sets the earliest date that can be selected. Configu
 
 End date range validation sets the latest date that can be selected. Configure this by specifying the latest valid date. Use this for preventing future dates where inappropriate, limiting responses to a study period, or ensuring dates are realistic. For example, you might specify that "Birth date must be before today." Use "today" as the end date for events that can't be in the future. For historical events, set appropriate ranges, and consider whether precision is needed (exact date versus month/year).
 
+### Cross-Variable Comparison Validation
+
+Schema 8 adds validation rules that compare a field against the value of *another* variable in the same form, rather than against a fixed number or date. These are available for Number Input, Date Picker, Relative Date Picker, and Visual Analog Scale (scalar) controls. When you add one of these rules in the validation editor, you select the rule and then choose the comparison variable from a "Select comparison variable" dropdown.
+
+The available rules are:
+
+- **`greaterThanVariable`** - the field's value must be greater than the comparison variable's value
+- **`lessThanVariable`** - the field's value must be less than the comparison variable's value
+- **`greaterThanOrEqualToVariable`** - the field's value must be greater than or equal to the comparison variable's value
+- **`lessThanOrEqualToVariable`** - the field's value must be less than or equal to the comparison variable's value
+
+Use these to enforce relationships between fields—for example, requiring that an "end date" falls after a "start date", or that a "maximum" value is not lower than a "minimum" value collected earlier in the same form. Because the comparison is against a value entered during the interview rather than a fixed bound, the rule adapts to each participant's responses.
+
 ### Categorical Field Validation
 
 Categorical field validation is available for Radio Button Group, Toggle Button Group, and Checkbox Group controls.

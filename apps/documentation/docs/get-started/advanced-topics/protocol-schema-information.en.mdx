@@ -106,6 +106,8 @@ Schema version 8 introduces several new interfaces and authoring features:
 - **New "One-to-many dyad census" interface.** Allows the participant to link multiple alters at a time.
 - **New "Family pedigree" interface.** A pedigree-building interface designed for genetic disease monitoring, with configurable node and edge types, relationship variables, and optional disease/condition nomination prompts.
 - **New form-field validation options:** `greaterThanVariable` and `lessThanVariable`.
+- **New `location` variable type.** Stores the geospatial area a participant selects on the Geospatial interface; it has no input control of its own and is created when you configure a Geospatial stage.
+- **New per-variable `encrypted` flag.** Marks a variable's values for on-device encryption; it is set via the experimental Anonymisation interface rather than the general variable editor.
 - **New comparator options for skip logic and filters:** "contains" and "does not contain".
 - **Multi-selection support** for the "includes"/"excludes" comparators on ordinal and categorical variables.
 - **Configurable node "shape" property** (default circle); the previous `iconVariant` property was renamed to `icon`.

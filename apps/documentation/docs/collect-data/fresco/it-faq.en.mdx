@@ -1,6 +1,6 @@
 ---
 title: FAQ for IT Departments
-date: 19th May 2026
+date: 19th June 2026
 navOrder: 9
 ---
 
@@ -56,12 +56,14 @@ Fresco does not implement an additional application-layer encryption envelope on
 
 ## What authentication does Fresco use?
 
-Authentication for the researcher dashboard is session-cookie based (cookies are HTTP-only and `Secure` when served over HTTPS). Passwords are hashed before storage. The current generation of Fresco supports:
+Authentication for the researcher dashboard is session-cookie based (cookies are HTTP-only and `Secure` when served over HTTPS). Passwords are hashed before storage. Each account uses one of two **mutually exclusive** primary sign-in methods, and never both at once:
 
-- **Multiple administrator accounts.** A first user is created during setup, and additional users can be added, removed, and managed from the settings screen.
-- **TOTP-based two-factor authentication.** Users can enrol an authenticator app (Google Authenticator, 1Password, Authy, etc.).
-- **WebAuthn / passkeys.** Hardware security keys and platform passkeys can be registered as a second factor or as the primary authentication method.
-- **Recovery codes** issued at TOTP enrolment, used if the second factor is lost.
+- **Password mode** — username and password, optionally protected by **TOTP-based two-factor authentication** (an authenticator app such as Google Authenticator, 1Password, or Authy). TOTP is the only second factor Fresco supports. Enrolling 2FA issues **10 single-use recovery codes** for use if the authenticator is lost.
+- **Passkey mode** — one or more registered WebAuthn passkeys (platform authenticators such as Touch ID or Windows Hello, or hardware security keys) and **no password**. A passkey is a complete password-free sign-in method, not a second factor layered on a password; passkey-mode accounts do not use TOTP.
+
+Other relevant properties:
+
+- **Multiple administrator accounts.** A first user is created during setup, and additional users can be added, removed, and managed from the settings screen. All accounts are equal administrators — there are no roles or permission tiers.
 - **Login rate limiting.** Failed login attempts are recorded (with username and source IP) and used to apply exponential back-off — this is the one place where IP addresses are persisted, and they are scoped to the auth flow only.
 
 There is still **no email-based "forgot password" flow**. Password changes are performed from inside an authenticated session. If all credentials and recovery codes for every account are lost and the database is inaccessible, the only recovery option is to reset the database, which destroys all data. We recommend storing credentials in an institutional password manager and enrolling more than one administrator.
@@ -124,9 +126,9 @@ For a fuller treatment, see the [GDPR Compliance Guide](/en/get-started/planning
 
 ## What logging and audit information is available?
 
-Fresco includes an in-app activity feed that records significant researcher and participant events (protocol uploads, participants starting and completing interviews, deletions). This is visible from the dashboard.
+Fresco includes an in-app activity feed, visible from the dashboard, that records a broad set of researcher and participant events. Alongside protocol installs, participants starting and completing interviews, and data exports, it logs authentication events (logins), two-factor changes (enabling, disabling, recovery-code use and regeneration), passkey registration and removal, primary-method switches, administrator auth resets, API-token creation/update/deletion, user-account management (creating and deleting users, password changes), settings changes, and synthetic-data activity. Each action is recorded in the event's free-text detail — researcher actions are attributed by username (for example, "User _alice_ logged in"), and participant-driven events (such as an interview being started or completed) by the participant's label or identifier. There is no structured per-actor field — the feed is a single global stream, not a per-user filtered or partitioned record — so attribution relies on that name appearing in the detail text. The feed can be **exported to CSV** (`activity-feed.csv`) from the dashboard if you need to take the records out of the application.
 
-Failed and successful login attempts are stored with the source IP for the purpose of rate-limiting auth attempts. **Participant** IP addresses are not stored, and Fresco does not maintain a separate immutable audit log. If your institutional policy requires detailed audit logs, capture them at the hosting/reverse-proxy layer.
+Failed and successful login attempts are also stored with the source IP for the purpose of rate-limiting auth attempts. **Participant** IP addresses are not stored, and Fresco does not maintain a separate immutable audit log — the activity feed lives in the same application database and is not tamper-evident. If your institutional policy requires detailed or tamper-resistant audit logs, capture them at the hosting/reverse-proxy layer.
 
 ## How are updates and security patches handled?
 

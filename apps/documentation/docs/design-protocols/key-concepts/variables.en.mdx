@@ -54,6 +54,10 @@ Date variables collect specific dates. The available input control is Date Picke
 
 Layout variables store the x/y position of nodes on Sociogram interfaces. There are no input controls for layout variables, as they are automatically captured from Sociogram interactions. Examples include node position on Sociogram and spatial layout coordinates. In exported data, layout variables appear as X and Y coordinate values (normalized 0-1 or pixel coordinates based on export options).
 
+### Location
+
+Location variables store the geospatial area a participant selects for an alter on the [Geospatial interface](/en/design-protocols/interface-documentation/geospatial). Like layout variables, a Location variable has no input control of its own; although it appears in the variable type list, there is little reason to add one there on its own. In practice Architect creates one when you configure the "Selection Variable" of a Geospatial stage (you can pick an existing Location variable or create a new one inline). The selected area is recorded against the GeoJSON shapefile that defines the map.
+
 ## How variables work
 
 ### Variable creation
@@ -87,6 +91,10 @@ Variables persist throughout the interview:
 - You can use [skip logic](/en/design-protocols/key-concepts/skip-logic) to conditionally show stages based on variable values
 - You can use [network filtering](/en/design-protocols/key-concepts/network-filtering) to show only entities with specific variable values
 
+### Encrypted variables
+
+Schema 8 adds an `encrypted` flag to variables, which marks a variable's values for on-device encryption so that they cannot be read by the researcher. This is not a general per-variable control: it is not exposed in the variable editor. Instead, you turn it on by adding the experimental [Anonymisation interface](/en/design-protocols/interface-documentation/anonymisation) to your protocol and selecting which node attributes to encrypt. Encrypting variables requires enabling the **Encrypted Variables** experimental feature first, and encrypted values are not stored in the database or included in exports. See the [Anonymisation interface documentation](/en/design-protocols/interface-documentation/anonymisation) for details.
+
 ## Creating variables
 
 ### In forms
@@ -115,6 +123,11 @@ Some variables are created automatically:
 
 - Store x/y coordinates of node positions
 - Named by the Sociogram stage
+
+**Location variables:** Created when you configure a Geospatial interface
+
+- Store the geospatial area selected for an alter
+- Created (or selected) via the stage's "Selection Variable"
 
 **System variables:** Network Canvas creates these automatically
 

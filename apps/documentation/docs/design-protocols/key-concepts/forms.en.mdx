@@ -23,7 +23,9 @@ Forms are comprised of one or more fields, which can be reordered to appear in a
 
 Set the form heading, and then create fields for each of the variables you wish to capture on this form by clicking the **create new** button.
 
-When creating a new field, you will first either create a new variable or select an existing one from the variable chooser. Next, you will type the question [prompt](/en/design-protocols/key-concepts/prompts) to be shown next to the input control.
+When creating a new field, you will first either create a new variable or select an existing one from the variable chooser. Next, you will type the question [prompt](/en/design-protocols/key-concepts/prompts) to be shown next to the input control. The prompt supports markdown formatting.
+
+You can also provide an optional **hint** for the field. The hint is markdown-formatted guidance displayed below the question to help participants understand how to answer (for example, "Select all that apply..."). Leave it blank if no extra guidance is needed.
 
 Next, you must decide which [input control](/en/design-protocols/key-concepts/input-controls) to use. For new variables, this will determine the variable type.
 
@@ -33,7 +35,7 @@ Once you set a variable type (by choosing its input type when first used), you c
 
 </TipBox>
 
-After setting the input control, set any variable-specific options and configure the [validation options](/en/design-protocols/key-concepts/field-validation) you require. Validation helps ensure data quality by enforcing rules like required fields, format constraints, and value ranges.
+After setting the input control, set any variable-specific options and configure the [validation options](/en/design-protocols/key-concepts/field-validation) you require. Validation helps ensure data quality by enforcing rules like required fields, format constraints, and value ranges. You can also enable **Show validation hints** for the field, which automatically displays hints derived from the field's validation rules, helping participants understand the input requirements without you having to write them out by hand.
 
 ![](/assets/img/key-concepts/forms/field.png)
 

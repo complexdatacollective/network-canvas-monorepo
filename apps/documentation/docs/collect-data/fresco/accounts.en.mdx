@@ -1,6 +1,6 @@
 ---
 title: Accounts & Security
-date: 12th June 2026
+date: 19th June 2026
 navOrder: 3
 ---
 
@@ -14,19 +14,39 @@ Earlier versions supported only a single password-protected account.
 
 </TipBox>
 
+## How an account is secured
+
+Each account uses one of two **mutually exclusive** primary sign-in methods:
+
+- **Password mode** — you sign in with a username and password. You can optionally add
+  **two-factor authentication (2FA)** on top, using a time-based one-time password (TOTP)
+  from an authenticator app. This is the _only_ second factor Fresco supports.
+- **Passkey mode** — you sign in with one or more registered passkeys (device biometrics
+  such as Touch ID or Windows Hello, or a hardware security key) and have **no password**.
+  Passkey mode does not use two-factor authentication, because the passkey already proves
+  both possession of the device and the user's identity.
+
+An account is always in exactly one of these modes. A passkey is therefore never a _second_
+factor alongside a password — it is a complete, password-free sign-in method in its own
+right. You manage all of this from a single **User Management** card in **Settings**.
+
 ## Signing in
 
-Sign in from the dashboard login screen with your username and password (or passkey). If
-two-factor authentication is enabled, you will then be prompted for a 6-digit code from
-your authenticator app (or a recovery code). Repeated failed attempts are rate-limited.
+Sign in from the dashboard login screen. If your account is in password mode, enter your
+username and password; if 2FA is enabled, you are then prompted for the 6-digit code from
+your authenticator app (with the option to use a recovery code instead). If your account is
+in passkey mode, choose **Sign in with a passkey** and authenticate with your device.
+Repeated failed attempts are rate-limited.
 
 ## Changing your password
 
-To change your password, open **Settings → User Management → Change Password**, enter your
-current password, then set and confirm a new one. New passwords must be at least 8
-characters and include a lowercase letter, an uppercase letter, a number, and a symbol.
+If your account is in password mode, open **Settings → User Management**, click **Change
+Password**, enter your current password, then set and confirm a new one. New passwords must
+be at least 8 characters and include a lowercase letter, an uppercase letter, a number, and
+a symbol.
 
-If your account uses a passkey instead of a password, there is no password to change.
+If your account is in passkey mode there is no password to change. To set a password you
+must [switch to password mode](#choosing-between-passwords-and-passkeys).
 
 ## Adding team members
 
@@ -47,31 +67,53 @@ always remain.
 
 ![The User Management screen, showing the signed-in account's passkeys and the All Users table.](/assets/img/fresco-images/user-management.png)
 
-## Passkeys
-
-A passkey lets you sign in using your device's biometrics (Touch ID, Windows Hello) or a
-hardware security key instead of a password. It can be an account's primary sign-in method
-or a second factor alongside a password.
-
-From **Settings**, use **Add passkey** to register one (you can register more than one and
-name each), or **Remove** to delete one. An account can also **Switch to Passkey
-Authentication** or **Switch to Password Authentication** at any time.
-
 ## Two-factor authentication
 
-Two-factor authentication adds a one-time code on top of your password. Fresco uses standard
-TOTP, compatible with apps such as Google Authenticator, 1Password, and Authy.
+When your account is in password mode, you can add two-factor authentication for stronger
+security. Fresco uses standard TOTP, compatible with apps such as Google Authenticator,
+1Password, and Authy. (The 2FA controls only appear for accounts in password mode; passkey
+mode does not use them.)
 
-Open **Settings → Two-Factor Authentication**, scan the QR code into your authenticator app,
-and enter the current code to confirm. You will then be asked for a code each time you sign
-in. When you enable it, Fresco gives you single-use **recovery codes** to sign in if you
-lose your authenticator device.
+From the **User Management** card in **Settings**, turn on **Two-Factor Authentication**,
+scan the QR code into your authenticator app, and enter the current code to confirm. You
+will then be asked for a code each time you sign in. On enrolment Fresco issues **10
+single-use recovery codes** to sign in if you lose your authenticator device.
 
 <TipBox danger>
 
 Store your recovery codes somewhere safe and separate from your authenticator device, such
 as an institutional password manager. You can regenerate a fresh set at any time, which
-invalidates the previous codes.
+invalidates the previous ones.
+
+</TipBox>
+
+## Passkeys
+
+A passkey lets you sign in using your device's biometrics (Touch ID, Windows Hello) or a
+hardware security key, with no password at all. Passkeys are an account's _primary_ sign-in
+method — not a second factor on top of a password.
+
+From the **User Management** card in **Settings**, an account in passkey mode can use **Add
+passkey** to register additional passkeys (you can register more than one, and each is given
+a name) or **Remove** to delete one. You cannot remove your only passkey unless you first
+set a password (otherwise you would lock yourself out), so to leave passkey mode entirely
+use **Switch to Password Authentication** instead.
+
+## Choosing between passwords and passkeys
+
+An account can move between the two modes at any time from the **User Management** card, but
+**switching is destructive** — Fresco never keeps both kinds of credential side by side:
+
+- **Switch to Passkey Authentication** asks for your current password, registers a passkey,
+  then deletes your password along with any two-factor authentication and recovery codes.
+- **Switch to Password Authentication** verifies you with an existing passkey, then removes
+  **all** of your registered passkeys and replaces them with a password.
+
+<TipBox danger>
+
+Because switching deletes your previous credentials, make sure you can complete the new
+method (a working authenticator or passkey device) before you start, and keep a second
+administrator enrolled so you are never the only person who can sign in.
 
 </TipBox>
 
@@ -83,9 +125,9 @@ order of preference, are:
 
 1. **Use a recovery code** to sign in (if two-factor authentication was enabled).
 2. **Ask another administrator** to **Reset Auth** for your account from User Management.
-   This clears your existing passkeys and two-factor authentication and gives the
-   administrator a temporary password to pass to you, which you use to sign back in and set
-   up new credentials.
+   This wipes the target account's credentials — any passkeys, two-factor authentication,
+   and recovery codes — and issues a temporary password. The administrator shares that
+   temporary password with you, and you use it to sign back in and set up new credentials.
 3. As a last resort, if every account is inaccessible and no recovery codes remain,
    [reset your database](/en/collect-data/fresco/deployment-troubleshooting#instance-expired---reset-your-database).
    **This destroys all data and unexported interviews.**

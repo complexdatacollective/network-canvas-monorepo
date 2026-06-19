@@ -444,6 +444,18 @@ We will now complete the exact same steps for the second prompt, which reads, "P
 
 We have now finished configuring this sociogram stage.
 
+<AppOnly app="web">
+
+<TipBox>
+
+Interfaces that do not create nodes — such as the sociogram, ordinal bin, and categorical bin — need an existing network to display anything. In Architect Web you don't have to build one by hand: preview starts with **Start preview with example data** turned on, so an example network of nodes and edges is generated automatically and the stage you are previewing already has data to work with. The previewed stage is intentionally left partly incomplete, so you can still exercise its interaction (positioning nodes, sorting them into bins, creating edges, toggling attributes). See [Preview mode](/en/design-protocols/key-concepts/preview-mode) for more on the preview settings.
+
+</TipBox>
+
+</AppOnly>
+
+<AppOnly app="desktop">
+
 <TipBox danger>
 
 When previewing a stage using an interface type that does not create nodes, you may notice that no nodes are available to test the stage's functionality.
@@ -453,6 +465,8 @@ To address this, the preview mode allows you to create nodes from any earlier st
 Simply navigate to a stage that creates nodes from within preview mode, create some nodes suitable for your sociogram stage, and then navigate to the sociogram stage - your nodes will appear, and you will be able to test edge creation, attribute toggling, and positioning.
 
 </TipBox>
+
+</AppOnly>
 
 ## Creating an ordinal bin
 

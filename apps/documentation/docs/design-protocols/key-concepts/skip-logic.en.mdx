@@ -46,6 +46,8 @@ Constructing rules is the most fundamental part of creating skip logic. There ar
 - **"Presence" Rules**: These rules allow you to query if a given entity of a specified type exists in the network, using either the `exists` or `not exists` operator. This rule type is available for alter and edge rules.
 - **"Attribute" Rules**: These rules allow you to query the value of a variable on a given entity type. For example, you may query the value of a variable called `age` on an alter type called 'Person'. You can evaluate the result using one of several logical operators, that vary depending on the variable type. For example, number variables will let you query using operators such as 'greater than' and 'less than'. This rule type applies to alter and ego rules only.
 
+The operators available for an attribute rule depend on the variable's type, just as they do for [network filtering](/en/design-protocols/key-concepts/network-filtering). Text variables can be matched with _is exactly_, _is not_, and — from schema 8 onwards — _contains_ and _does not contain_. For ordinal and categorical variables, the _includes_ and _excludes_ operators accept **multiple** selected values, so one rule can match against any of several options.
+
 ## The join operator
 
 Rules are chained together (or 'joined') using either `AND` or `OR` logic, which is set in the skip logic configuration section using the **Must match** options **all rules** and **any rules** respectively. The joining operators govern how multiple rules are evaluated together to determine the overall boolean value that the query returns.

@@ -1,6 +1,6 @@
 ---
 title: Using Fresco
-date: 9th October 2025
+date: 19th June 2026
 navOrder: 2
 ---
 
@@ -43,6 +43,8 @@ If you have not yet designed your protocol in Architect, you should do so before
 
 In Fresco you can upload as many protocols as you would like (within the resource limits of your hosting). This allows you to have multiple protocols for different studies, or to have multiple versions of the same protocol for different groups of participants.
 
+Each individual `.netcanvas` protocol file may be up to **256 MB** in size. This limit is enforced for all storage providers, so it applies regardless of how you have configured Fresco's hosting. If your protocol exceeds this limit, it is usually because of large bundled assets (such as high-resolution images or video); consider compressing or reducing these in Architect before uploading.
+
 However, we recommend **not** hosting different studies on the same instance of Fresco, as this can lead to confusion and potential data leakage. If you are conducting multiple studies, our suggestion is that you deploy a separate instance of Fresco for each study.
 
 ### To upload a protocol
@@ -77,9 +79,9 @@ You can adjust how the synthetic interviews are generated using two options:
 - **Simulate participant drop-out**: When enabled, generated participants have an increasing chance of abandoning the interview at each stage, producing a realistic mix of complete and incomplete interviews rather than only finished ones.
 - **Respect skip logic and filtering**: When enabled, generation evaluates the skip logic and stage network filters in your protocol. Stages are skipped, or nodes filtered out, based on the network state at that point, so the resulting data reflects the paths real participants would actually take.
 
-All interviews and participants created this way are flagged as synthetic, which keeps them clearly distinguished from real study data.
+All interviews and participants created this way are flagged as synthetic in the database. This flag is what allows Fresco to remove them in bulk without touching your real data. Note that synthetic interviews and participants are **not** visually badged in the interviews or participants tables, so they appear alongside real data in those lists.
 
-To remove synthetic data, use the **Delete All** button in the same panel. The panel shows how many synthetic interviews and test participants currently exist, and deletes all of them at once, with a progress indicator shown while the deletion runs. This only affects data flagged as synthetic; your real interviews and participants are left untouched.
+To remove synthetic data, use the **Delete All** button in the same panel. The panel shows how many synthetic interviews and test participants currently exist, and deletes all of them at once. This only affects data flagged as synthetic; your real interviews and participants are left untouched.
 
 ## Participants
 
@@ -270,9 +272,51 @@ To disable the warning:
 
 Once you have sent out URLs to participants and they begin to complete interviews, you can monitor the progress of those interviews using the interviews page in the dashboard and the main dashboard activity feed.
 
-The **interviews page** provides an overview of all interviews in the study, including the participant identifier, protocol name, start date, last updated date, and interview progress. From this page you can also export data from the interviews.
+The **interviews page** provides an overview of all interviews in the study. Each row corresponds to one interview, with columns for the **Participant Identifier**, **Protocol Name**, **Started** date, **Updated** date, **Progress**, **Network** (the number of nodes and edges captured so far), and **Export Status**. From this page you can also export data from the interviews.
 
-The **dashboard activity feed** also provides a way to monitor the progress of your study and summarizes the most recent activity within Fresco. This includes installed protocols, added participants, started and completed interviews, and exported data.
+### Finding and filtering interviews
+
+For larger studies, the interviews table can be searched, sorted, and filtered so that you can find the interviews you are interested in. Importantly, all of this work happens **server-side across the whole dataset**, not just the rows currently visible on screen. This means the table count, sorting, and filtering always reflect every matching interview, even when the results span many pages.
+
+![Filtering and sorting the interviews table.](/assets/img/fresco-images/interviews-filtering.png)
+
+- **Search by participant identifier.** The **Filter by identifier...** box at the top of the table performs a case-insensitive substring search against participant identifiers.
+- **Sort by column.** Open the menu in any sortable column header to **Sort ascending**, **Sort descending**, or **Clear sort**.
+- **Filter by column.** Most column headers also offer a **Filter** option, which opens a popover with an **Apply** and **Clear** action. The available filters are:
+  - **Protocol Name** — a multi-select list of your uploaded protocols.
+  - **Started** and **Updated** — a date range with quick presets (**Today**, **Last 7 days**, **Last 30 days**, **Last 90 days**) plus explicit _from_ and _to_ date pickers.
+  - **Progress** — a 0–100% range with the presets **Not Started**, **In Progress**, and **Complete**.
+  - **Network** — a condition builder. You choose a node or edge type, an operator (**is equal to (=)**, **is greater than (>)**, **is less than (<)**, **is at least (≥)**, or **is at most (≤)**), and a number. You can stack several conditions, and an interview must satisfy _all_ of them to appear in the results.
+  - **Export Status** — **Exported** or **Not Exported**.
+- **Clear all filters.** A **Clear Filters** control resets the search and every active filter at once.
+
+Because filtering and counting run across the entire dataset, the selection and export tools also operate on whatever filters are currently active. When you have a row selected, a **Select all _N_** option appears that selects every interview matching the current filters (not just the current page). Likewise, the **Export Interview Data** options described in [Exporting data](#exporting-data) — export all interviews, all completed interviews, or all unexported interviews — apply to the interviews matching the currently active filters.
+
+### The dashboard activity feed
+
+The **dashboard activity feed** provides an audit trail of activity within Fresco. It is a single table with columns for the **Time**, **Type**, and **Details** of each event, paginated so that you can page back through the history of your study.
+
+Most entries name the researcher who performed the action — for example, _User alice installed protocol "X"_ — with the username embedded in the message text. (Participant-driven events, such as an interview being started or completed, name the participant instead.) The feed is a single, global log shown to every administrator; it is not partitioned per user, so it always shows the activity of everyone who has access to the instance.
+
+The feed covers a broad range of event types — far more than interview progress alone. In addition to installed protocols, added and removed participants, started and completed interviews, and data exports, it records authentication and account activity (such as logins, two-factor changes, passkey registration, API token management, and user-account creation or deletion), changes to settings, and synthetic data generation and deletion.
+
+You can search and filter the feed:
+
+- The **Filter by activity details...** box searches the details text of each entry.
+- The **Type** filter lets you narrow the feed to one or more event types.
+- A **Clear Filters** control resets the search and type filter.
+
+![The dashboard activity feed.](/assets/img/fresco-images/activity-feed.png)
+
+#### Exporting the activity feed
+
+You can download the complete activity log as a CSV file for your records:
+
+1. On the dashboard, locate the activity feed.
+2. Click the **Export CSV** button.
+3. Your browser will download a file named `activity-feed.csv`, with columns for `timestamp`, `type`, and `details`.
+
+The export always contains the entire log, regardless of any search or filter currently applied to the on-screen feed.
 
 ### Generate a CSV of incomplete URLs
 

@@ -31,6 +31,13 @@ In both versions of Architect you can customize an entity type's name and color.
 
 ![Editing a node type in Architect Web, where you can set its shape and icon in addition to its name and color](/assets/img/architect-web/edit-node-type-web.png)
 
+In Architect Web you can also make a node type's shape **dynamic**, so that the shape reflects the value of one of the node's variables rather than staying fixed. Enable the **Map variable to shape** option in the node type's Shape section to override the default shape based on a variable's value. The mapping works in one of two ways depending on the variable you choose:
+
+- For **categorical**, **ordinal**, or **boolean** variables, you assign a shape to each discrete value. Any value you leave unmapped falls back to the default shape.
+- For **number** or **scalar** variables, you define up to two numeric **thresholds**. Values below the first threshold use the default shape, and each threshold sets the shape used at or above its value.
+
+The shapes available are the same as for the default shape: circle, square, and diamond.
+
 ## Variables
 
 Each variable lists the name, type, [input control](/en/design-protocols/key-concepts/input-controls), and where it is used. You can navigate to any of the stages a variable is used in by clicking on one of the "used in" stage names just like the entity types.
