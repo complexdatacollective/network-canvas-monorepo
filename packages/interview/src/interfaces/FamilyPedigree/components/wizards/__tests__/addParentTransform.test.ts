@@ -29,7 +29,7 @@ describe('AddParentWizard transformToCommitBatch', () => {
       {
         source: 'uncle-1',
         target: 'child-1',
-        data: { attributes: { rel: 'social', isActive: true } },
+        data: { attributes: { rel: ['social'], isActive: true } },
       },
     ]);
   });

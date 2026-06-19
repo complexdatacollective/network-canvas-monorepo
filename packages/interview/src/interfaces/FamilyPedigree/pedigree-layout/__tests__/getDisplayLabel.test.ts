@@ -58,7 +58,7 @@ function makeEdges(
         from,
         to,
         attributes: {
-          [variableConfig.relationshipTypeVariable]: relType,
+          [variableConfig.relationshipTypeVariable]: [relType],
           [variableConfig.isActiveVariable]: isActive ?? true,
         },
         ...(gameteRole ? { gameteRole } : {}),

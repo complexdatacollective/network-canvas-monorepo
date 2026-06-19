@@ -1,9 +1,10 @@
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import type { NcEdge, NcNode, RelationshipType } from '@codaco/shared-consts';
 import type {
   FamilyEdge,
   GameteRole,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
+import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 
 export type ParentRelation = 'child' | 'sibling' | 'define-parents';
 
@@ -27,9 +28,8 @@ export function nominatedGameteRoles(
 function relTypeOf(
   edge: NcEdge,
   variableConfig: VariableConfig,
-): string | undefined {
-  const value = edge.attributes[variableConfig.relationshipTypeVariable];
-  return typeof value === 'string' ? value : undefined;
+): RelationshipType | undefined {
+  return getEdgeRelationshipType(edge, variableConfig.relationshipTypeVariable);
 }
 
 /** Children, grandchildren, … reached by following parent->child edges down. */

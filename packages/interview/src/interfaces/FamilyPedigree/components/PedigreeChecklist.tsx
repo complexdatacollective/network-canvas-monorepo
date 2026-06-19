@@ -26,7 +26,10 @@ import { useStageSelector } from '~/hooks/useStageSelector';
 
 import { buildPedigreeDialog } from '../buildPedigreeDialog';
 import { useFamilyPedigreeStore } from '../FamilyPedigreeProvider';
-import { getRelationshipTypeVariable } from '../utils/edgeUtils';
+import {
+  getEdgeRelationshipType,
+  getRelationshipTypeVariable,
+} from '../utils/edgeUtils';
 import { getEgoVariable, getNodeLabelVariable } from '../utils/nodeUtils';
 import {
   buildParentsItem,
@@ -80,9 +83,7 @@ export default function PedigreeChecklist({
     if (!egoId) return [];
     const parents: string[] = [];
     for (const edge of edges.values()) {
-      const relType = edge.attributes[relationshipTypeVariable] as
-        | string
-        | undefined;
+      const relType = getEdgeRelationshipType(edge, relationshipTypeVariable);
       if (edge.to === egoId && relType !== 'partner' && relType !== 'social') {
         parents.push(edge.from);
       }
@@ -94,7 +95,7 @@ export default function PedigreeChecklist({
     if (!egoId) return false;
     for (const edge of edges.values()) {
       if (
-        edge.attributes[relationshipTypeVariable] === 'partner' &&
+        getEdgeRelationshipType(edge, relationshipTypeVariable) === 'partner' &&
         (edge.from === egoId || edge.to === egoId)
       ) {
         return true;
@@ -106,9 +107,7 @@ export default function PedigreeChecklist({
   const hasSiblings = useMemo(() => {
     if (!egoId || egoParentIds.length === 0) return false;
     for (const edge of edges.values()) {
-      const relType = edge.attributes[relationshipTypeVariable] as
-        | string
-        | undefined;
+      const relType = getEdgeRelationshipType(edge, relationshipTypeVariable);
       if (
         relType !== 'partner' &&
         relType !== 'social' &&
@@ -126,9 +125,7 @@ export default function PedigreeChecklist({
     for (const parentId of egoParentIds) {
       const grandparentIds: string[] = [];
       for (const edge of edges.values()) {
-        const relType = edge.attributes[relationshipTypeVariable] as
-          | string
-          | undefined;
+        const relType = getEdgeRelationshipType(edge, relationshipTypeVariable);
         if (
           edge.to === parentId &&
           relType !== 'partner' &&
@@ -139,9 +136,10 @@ export default function PedigreeChecklist({
       }
       for (const gpId of grandparentIds) {
         for (const edge of edges.values()) {
-          const relType = edge.attributes[relationshipTypeVariable] as
-            | string
-            | undefined;
+          const relType = getEdgeRelationshipType(
+            edge,
+            relationshipTypeVariable,
+          );
           if (
             edge.from === gpId &&
             relType !== 'partner' &&
@@ -161,7 +159,7 @@ export default function PedigreeChecklist({
     for (const edge of edges.values()) {
       if (
         edge.from === egoId &&
-        edge.attributes[relationshipTypeVariable] !== 'partner'
+        getEdgeRelationshipType(edge, relationshipTypeVariable) !== 'partner'
       ) {
         return true;
       }
@@ -186,7 +184,9 @@ export default function PedigreeChecklist({
       const edgeToEgo = [...edges.values()].find(
         (e) => e.from === parentId && e.to === egoId,
       );
-      const relTypeToEgo = edgeToEgo?.attributes[relationshipTypeVariable];
+      const relTypeToEgo = edgeToEgo
+        ? getEdgeRelationshipType(edgeToEgo, relationshipTypeVariable)
+        : undefined;
       if (relTypeToEgo !== 'biological' && relTypeToEgo !== 'donor') {
         continue;
       }

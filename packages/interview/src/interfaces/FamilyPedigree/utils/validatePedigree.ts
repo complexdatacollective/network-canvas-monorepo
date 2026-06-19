@@ -1,6 +1,7 @@
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import type { VariableConfig } from '../store';
+import { getEdgeRelationshipType } from './edgeUtils';
 
 type ValidationIssue = {
   nodeId: string;
@@ -18,9 +19,10 @@ function getEgoParentIds(
 ): string[] {
   const parentIds: string[] = [];
   for (const edge of edges.values()) {
-    const relType = edge.attributes[variableConfig.relationshipTypeVariable] as
-      | string
-      | undefined;
+    const relType = getEdgeRelationshipType(
+      edge,
+      variableConfig.relationshipTypeVariable,
+    );
     if (edge.to === nodeId && relType !== 'partner' && relType !== 'social') {
       parentIds.push(edge.from);
     }

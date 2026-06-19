@@ -72,7 +72,7 @@ describe('store creation', () => {
           from: 'n2',
           to: 'n1',
           attributes: {
-            [testConfig.relationshipTypeVariable]: 'biological',
+            [testConfig.relationshipTypeVariable]: ['biological'],
             [testConfig.isActiveVariable]: true,
           },
         },
@@ -211,7 +211,7 @@ describe('removeNode', () => {
       from: parentId,
       to: childId,
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'biological',
+        [testConfig.relationshipTypeVariable]: ['biological'],
         [testConfig.isActiveVariable]: true,
       },
     });
@@ -219,7 +219,7 @@ describe('removeNode', () => {
       from: unrelatedId,
       to: parentId,
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'partner',
+        [testConfig.relationshipTypeVariable]: ['partner'],
         [testConfig.isActiveVariable]: true,
       },
     });
@@ -247,16 +247,16 @@ describe('addEdge', () => {
       from: 'n1',
       to: 'n2',
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'biological',
+        [testConfig.relationshipTypeVariable]: ['biological'],
         [testConfig.isActiveVariable]: true,
       },
     });
 
     const edge = store.getState().network.edges.get(id);
     expect(edge).toBeDefined();
-    expect(edge?.attributes[testConfig.relationshipTypeVariable]).toBe(
+    expect(edge?.attributes[testConfig.relationshipTypeVariable]).toEqual([
       'biological',
-    );
+    ]);
   });
 
   it('creates a partner edge with current flag', () => {
@@ -270,16 +270,16 @@ describe('addEdge', () => {
       from: 'n1',
       to: 'n2',
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'partner',
+        [testConfig.relationshipTypeVariable]: ['partner'],
         [testConfig.isActiveVariable]: true,
       },
     });
 
     const edge = store.getState().network.edges.get(id);
     expect(edge).toBeDefined();
-    expect(edge?.attributes[testConfig.relationshipTypeVariable]).toBe(
+    expect(edge?.attributes[testConfig.relationshipTypeVariable]).toEqual([
       'partner',
-    );
+    ]);
     expect(edge?.attributes[testConfig.isActiveVariable]).toBe(true);
   });
 
@@ -295,7 +295,7 @@ describe('addEdge', () => {
       from: 'n1',
       to: 'n2',
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'donor',
+        [testConfig.relationshipTypeVariable]: ['donor'],
         [testConfig.isActiveVariable]: true,
       },
     });
@@ -320,7 +320,7 @@ describe('duplicate edge guard', () => {
       from,
       to,
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'biological',
+        [testConfig.relationshipTypeVariable]: ['biological'],
         [testConfig.isActiveVariable]: true,
       },
     };
@@ -358,7 +358,7 @@ describe('duplicate edge guard', () => {
             target: 'child',
             data: {
               attributes: {
-                [testConfig.relationshipTypeVariable]: 'biological',
+                [testConfig.relationshipTypeVariable]: ['biological'],
                 [testConfig.isActiveVariable]: true,
               },
             },
@@ -381,7 +381,7 @@ describe('removeEdge', () => {
       from: 'n1',
       to: 'n2',
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'partner',
+        [testConfig.relationshipTypeVariable]: ['partner'],
         [testConfig.isActiveVariable]: false,
       },
     });
@@ -416,7 +416,7 @@ describe('clearNetwork', () => {
       from: 'x',
       to: 'y',
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'partner',
+        [testConfig.relationshipTypeVariable]: ['partner'],
         [testConfig.isActiveVariable]: true,
       },
     });
@@ -555,7 +555,7 @@ describe('finalizeNetwork', () => {
       from: parentId,
       to: egoId,
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'biological',
+        [testConfig.relationshipTypeVariable]: ['biological'],
         [testConfig.isActiveVariable]: true,
       },
     });
@@ -624,7 +624,7 @@ describe('finalizeNetwork', () => {
       from: preexistingId,
       to: newChildId,
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'biological',
+        [testConfig.relationshipTypeVariable]: ['biological'],
         [testConfig.isActiveVariable]: true,
       },
     });

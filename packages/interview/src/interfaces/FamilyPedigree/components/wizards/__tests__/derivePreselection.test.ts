@@ -29,8 +29,8 @@ function edge(
       from,
       to,
       attributes: opts.isGC
-        ? { rel, isActive: true, isGC: true }
-        : { rel, isActive: true },
+        ? { rel: [rel], isActive: true, isGC: true }
+        : { rel: [rel], isActive: true },
       ...(opts.gameteRole ? { gameteRole: opts.gameteRole } : {}),
     },
   ];

@@ -34,8 +34,8 @@ function edge(
       from,
       to,
       attributes: isGC
-        ? { rel, isActive: true, isGC: true }
-        : { rel, isActive: true },
+        ? { rel: [rel], isActive: true, isGC: true }
+        : { rel: [rel], isActive: true },
     },
   ];
 }

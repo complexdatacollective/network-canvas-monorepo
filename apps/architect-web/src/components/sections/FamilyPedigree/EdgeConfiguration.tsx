@@ -2,6 +2,7 @@ import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
 import type { VariableOptions } from '@codaco/protocol-validation';
+import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/shared-consts';
 import { Row, Section } from '~/components/EditorLayout';
 import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import ValidatedField from '~/components/Form/ValidatedField';
@@ -16,15 +17,6 @@ import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { optionsMatch } from '~/utils/variables';
-
-export const RELATIONSHIP_TYPE_OPTIONS: VariableOptions = [
-  { value: 'biological', label: 'Biological' },
-  { value: 'social', label: 'Social' },
-  { value: 'donor', label: 'Donor' },
-  { value: 'surrogate', label: 'Surrogate' },
-  { value: 'adoptive', label: 'Adoptive' },
-  { value: 'partner', label: 'Partner' },
-];
 
 const edgeEntity: Entity = 'edge';
 

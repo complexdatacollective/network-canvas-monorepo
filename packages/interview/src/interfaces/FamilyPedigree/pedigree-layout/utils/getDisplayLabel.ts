@@ -1,9 +1,10 @@
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import type { NcEdge, NcNode, RelationshipType } from '@codaco/shared-consts';
 import type {
   FamilyEdge,
   GameteRole,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
+import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 
 type PathStep = 'parent' | 'child' | 'partner';
 
@@ -32,9 +33,10 @@ function bfsFromEgo(
     const current = queue.shift()!;
 
     for (const edge of edges.values()) {
-      const relType = edge.attributes[
-        variableConfig.relationshipTypeVariable
-      ] as string | undefined;
+      const relType = getEdgeRelationshipType(
+        edge,
+        variableConfig.relationshipTypeVariable,
+      );
 
       if (relType === 'partner') {
         // Partner edges are bidirectional
@@ -158,11 +160,12 @@ function getParentEdgeType(
   egoId: string,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
-): string | null {
+): RelationshipType | null {
   for (const edge of edges.values()) {
-    const relType = edge.attributes[variableConfig.relationshipTypeVariable] as
-      | string
-      | undefined;
+    const relType = getEdgeRelationshipType(
+      edge,
+      variableConfig.relationshipTypeVariable,
+    );
     if (edge.from === nodeId && edge.to === egoId && relType !== 'partner') {
       return relType ?? null;
     }
@@ -181,9 +184,10 @@ function getDirectParentGameteRole(
   variableConfig: VariableConfig,
 ): GameteRole | undefined {
   for (const edge of edges.values()) {
-    const relType = edge.attributes[variableConfig.relationshipTypeVariable] as
-      | string
-      | undefined;
+    const relType = getEdgeRelationshipType(
+      edge,
+      variableConfig.relationshipTypeVariable,
+    );
     if (
       edge.from === nodeId &&
       edge.to === egoId &&

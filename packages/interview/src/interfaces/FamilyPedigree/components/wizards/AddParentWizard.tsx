@@ -6,12 +6,18 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
-import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
+import type {
+  NcEdge,
+  NcNode,
+  RelationshipType,
+  VariableValue,
+} from '@codaco/shared-consts';
 import { getNodeLabel } from '~/interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel';
 import type {
   CommitBatch,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
+import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 
 import type { ParentEdgeTypeOption } from '../quickStartWizard/fieldOptions';
 import PersonFields from '../quickStartWizard/PersonFields';
@@ -110,7 +116,8 @@ function getExistingParentIds(
   for (const edge of edges.values()) {
     if (
       edge.to === anchorNodeId &&
-      edge.attributes[variableConfig.relationshipTypeVariable] !== 'partner'
+      getEdgeRelationshipType(edge, variableConfig.relationshipTypeVariable) !==
+        'partner'
     ) {
       parentIds.push(edge.from);
     }
@@ -126,10 +133,11 @@ export function transformToCommitBatch(
 ): CommitBatch {
   const selection =
     (formValues['parent-selection'] as string | undefined) ?? 'new';
-  const edgeType = (formValues.edgeType as string | undefined) ?? 'biological';
+  const edgeType =
+    (formValues.edgeType as RelationshipType | undefined) ?? 'biological';
 
   const edgeAttributes: Record<string, VariableValue> = {
-    [variableConfig.relationshipTypeVariable]: edgeType,
+    [variableConfig.relationshipTypeVariable]: [edgeType],
     [variableConfig.isActiveVariable]: true,
   };
   if (edgeType === 'surrogate') {
@@ -177,7 +185,7 @@ export function transformToCommitBatch(
         target: parentId,
         data: {
           attributes: {
-            [variableConfig.relationshipTypeVariable]: 'partner',
+            [variableConfig.relationshipTypeVariable]: ['partner'],
             [variableConfig.isActiveVariable]: value === 'current',
           },
         },

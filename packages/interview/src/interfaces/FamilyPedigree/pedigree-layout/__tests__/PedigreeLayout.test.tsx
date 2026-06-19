@@ -57,7 +57,7 @@ function makeEdges(
       from: e.from,
       to: e.to,
       attributes: {
-        [variableConfig.relationshipTypeVariable]: e.relationshipType,
+        [variableConfig.relationshipTypeVariable]: [e.relationshipType],
         [variableConfig.isActiveVariable]: e.isActive,
       },
     });

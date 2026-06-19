@@ -4,6 +4,7 @@ import type {
   CommitBatch,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
+import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 
 import PersonFields from '../quickStartWizard/PersonFields';
 import { buildNodeOptions } from './buildNodeOptions';
@@ -30,7 +31,10 @@ function getPreselection(
 ): BioTriadConfig['preselection'] {
   const partnerIds: string[] = [];
   for (const edge of edges.values()) {
-    if (edge.attributes[variableConfig.relationshipTypeVariable] !== 'partner')
+    if (
+      getEdgeRelationshipType(edge, variableConfig.relationshipTypeVariable) !==
+      'partner'
+    )
       continue;
     if (edge.from === anchorNodeId) partnerIds.push(edge.to);
     else if (edge.to === anchorNodeId) partnerIds.push(edge.from);

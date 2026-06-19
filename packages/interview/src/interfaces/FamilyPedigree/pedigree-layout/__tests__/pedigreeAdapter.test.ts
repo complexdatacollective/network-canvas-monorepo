@@ -66,12 +66,12 @@ function makeEdges(
       to: e.to,
       attributes: e.isGestationalCarrier
         ? {
-            [variableConfig.relationshipTypeVariable]: e.relationshipType,
+            [variableConfig.relationshipTypeVariable]: [e.relationshipType],
             [variableConfig.isActiveVariable]: e.isActive ?? true,
             [variableConfig.isGestationalCarrierVariable]: true,
           }
         : {
-            [variableConfig.relationshipTypeVariable]: e.relationshipType,
+            [variableConfig.relationshipTypeVariable]: [e.relationshipType],
             [variableConfig.isActiveVariable]: e.isActive ?? true,
           },
     });

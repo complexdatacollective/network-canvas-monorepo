@@ -43,7 +43,7 @@ function makeEdges(entries: [string, string, string][]): Map<string, NcEdge> {
       from: source,
       to: target,
       attributes: {
-        [variableConfig.relationshipTypeVariable]: relType,
+        [variableConfig.relationshipTypeVariable]: [relType],
         [variableConfig.isActiveVariable]: true,
       },
     });

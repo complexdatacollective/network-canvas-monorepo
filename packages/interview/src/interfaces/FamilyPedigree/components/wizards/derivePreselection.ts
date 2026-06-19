@@ -1,9 +1,10 @@
-import type { VariableValue } from '@codaco/shared-consts';
+import type { RelationshipType } from '@codaco/shared-consts';
 import type {
   FamilyEdge,
   GameteRole,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
+import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 
 import type { BioTriadConfig } from './steps/BioTriadStep';
 
@@ -14,13 +15,15 @@ export function derivePreselection(
 ): BioTriadConfig['preselection'] {
   const parentEdges: {
     source: string;
-    relationshipType: VariableValue | undefined;
+    relationshipType: RelationshipType | undefined;
     gameteRole?: GameteRole;
   }[] = [];
 
   for (const edge of edges.values()) {
-    const relationshipType =
-      edge.attributes[variableConfig.relationshipTypeVariable];
+    const relationshipType = getEdgeRelationshipType(
+      edge,
+      variableConfig.relationshipTypeVariable,
+    );
     if (edge.to === anchorNodeId && relationshipType !== 'partner') {
       parentEdges.push({
         source: edge.from,

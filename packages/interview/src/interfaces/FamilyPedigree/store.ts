@@ -2,7 +2,12 @@ import { enableMapSet } from 'immer';
 import { createStore } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
-import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
+import type {
+  NcEdge,
+  NcNode,
+  RelationshipType,
+  VariableValue,
+} from '@codaco/shared-consts';
 import {
   addEdge as addEdgeToNetwork,
   addNode as addNodeToNetwork,
@@ -15,6 +20,7 @@ import {
   computeAllDisplayLabels,
   computeRelationshipsToEgo,
 } from './pedigree-layout/utils/getDisplayLabel';
+import { getEdgeRelationshipType } from './utils/edgeUtils';
 
 enableMapSet();
 
@@ -122,12 +128,18 @@ export const createFamilyPedigreeStore = (
     to: string,
     attributes: Record<string, VariableValue>,
   ) => {
-    const relationshipType =
-      attributes[variableConfig.relationshipTypeVariable];
+    const incomingValue = attributes[variableConfig.relationshipTypeVariable];
+    const relationshipType: RelationshipType | undefined = Array.isArray(
+      incomingValue,
+    )
+      ? (incomingValue[0] as RelationshipType | undefined)
+      : undefined;
     for (const edge of edges.values()) {
       if (
-        edge.attributes[variableConfig.relationshipTypeVariable] ===
-          relationshipType &&
+        getEdgeRelationshipType(
+          edge,
+          variableConfig.relationshipTypeVariable,
+        ) === relationshipType &&
         ((edge.from === from && edge.to === to) ||
           (edge.from === to && edge.to === from))
       ) {

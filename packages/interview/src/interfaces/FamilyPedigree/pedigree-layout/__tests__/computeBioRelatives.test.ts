@@ -29,7 +29,7 @@ function makeEdge(
     from,
     to,
     attributes: {
-      relationshipType,
+      relationshipType: [relationshipType],
       isActive,
     },
   };

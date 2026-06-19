@@ -1,12 +1,16 @@
-import type { NcEdge } from '@codaco/shared-consts';
+import type { NcEdge, RelationshipType } from '@codaco/shared-consts';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
+import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 
 import {
   PARENT_EDGE_TYPE_OPTIONS_ALTER,
   type ParentEdgeTypeOption,
 } from '../quickStartWizard/fieldOptions';
 
-const GENETIC_RELATIONSHIPS = new Set(['biological', 'donor']);
+const GENETIC_RELATIONSHIPS = new Set<RelationshipType>([
+  'biological',
+  'donor',
+]);
 
 export function countGeneticParents(
   nodeId: string,
@@ -16,8 +20,11 @@ export function countGeneticParents(
   let count = 0;
   for (const edge of edges.values()) {
     if (edge.to !== nodeId) continue;
-    const rel = edge.attributes[variableConfig.relationshipTypeVariable];
-    if (typeof rel === 'string' && GENETIC_RELATIONSHIPS.has(rel)) count += 1;
+    const rel = getEdgeRelationshipType(
+      edge,
+      variableConfig.relationshipTypeVariable,
+    );
+    if (rel !== undefined && GENETIC_RELATIONSHIPS.has(rel)) count += 1;
   }
   return count;
 }

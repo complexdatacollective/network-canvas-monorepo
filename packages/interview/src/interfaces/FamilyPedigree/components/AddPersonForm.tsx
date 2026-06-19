@@ -5,6 +5,7 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import { getNodeLabel } from '~/interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel';
+import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 
 import type { VariableConfig } from '../store';
 import PersonFields from './quickStartWizard/PersonFields';
@@ -31,8 +32,10 @@ export default function AddPersonFields({
   const children = [...edges.values()]
     .filter(
       (edge) =>
-        edge.attributes[variableConfig.relationshipTypeVariable] !==
-          'partner' && edge.from === anchorNodeId,
+        getEdgeRelationshipType(
+          edge,
+          variableConfig.relationshipTypeVariable,
+        ) !== 'partner' && edge.from === anchorNodeId,
     )
     .map((edge) => edge.to)
     .filter((id) => nodes.has(id));
