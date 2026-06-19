@@ -1,5 +1,5 @@
 import { copyFile, mkdir } from 'node:fs/promises';
-import { dirname, isAbsolute, resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
 import react from '@vitejs/plugin-react';
 import { globSync } from 'tinyglobby';
@@ -26,6 +26,10 @@ const cssCopyPlugin = (): Plugin => ({
     }
   },
 });
+
+// Posix-normalized absolute path of this package, used by the rollup `external`
+// predicate to recognise the package's own files regardless of OS separator.
+const pkgRoot = __dirname.replace(/\\/g, '/');
 
 // Skip dts emission for non-library consumers of this config (Storybook builds
 // the preview app; Vitest just runs tests). Storybook's CLI sets STORYBOOK=true;
@@ -73,16 +77,21 @@ export default defineConfig({
       // Bundle only this package's own files; externalize everything else —
       // bare specifiers, other workspace packages, and node_modules — so the
       // consumer provides them. rolldown hands `external` the bare specifier on
-      // POSIX but a fully-resolved absolute path on Windows; a prefix-only
-      // `.`/`/` check misclassifies a resolved Windows path
-      // (`D:\...\src\x.ts`) as external, which silently un-bundles the whole
-      // package and leaks source-extension imports into `dist/`. Keying on
-      // "resolves inside this package directory" is correct on both platforms.
+      // POSIX but a fully-resolved absolute path on Windows, and that path uses
+      // FORWARD slashes (`D:/a/.../src/x.ts`) while node's `__dirname` is
+      // back-slashed — so a raw `startsWith(__dirname)` check fails on the
+      // separator mismatch, externalizes the package's own modules, and leaks
+      // source-extension re-exports into `dist/` (a 2-module stub). Compare on
+      // posix-normalized paths so the "resolves inside this package" test holds
+      // on both platforms.
       external: (id) => {
         if (id.includes('\0')) return false; // virtual modules: let plugins handle
-        if (id.startsWith('.') || id.startsWith('~/')) return false; // local source
-        if (isAbsolute(id) && id.startsWith(__dirname)) return false; // resolved into this package
-        return true; // bare specifier / other package / node_modules
+        if (id.startsWith('.') || id.startsWith('~/')) return false; // relative / src alias
+        const p = id.replace(/\\/g, '/');
+        if (p.startsWith(`${pkgRoot}/`) && !p.includes('/node_modules/')) {
+          return false; // a resolved file inside this package → bundle
+        }
+        return true; // bare specifier / other workspace package / node_modules
       },
     },
     sourcemap: true,

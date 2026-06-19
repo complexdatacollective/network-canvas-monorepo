@@ -1174,7 +1174,7 @@ importers:
         version: link:../../packages/art
       '@codaco/biometric-keystore':
         specifier: workspace:*
-        version: link:native/biometric-keystore
+        version: link:../../packages/biometric-keystore
       '@codaco/fresco-ui':
         specifier: workspace:*
         version: link:../../packages/fresco-ui
@@ -1333,8 +1333,6 @@ importers:
         specifier: ^3.0.1
         version: 3.0.1
 
-  apps/interviewer-v8/native/biometric-keystore: {}
-
   apps/networkcanvas.com:
     dependencies:
       '@base-ui/react':
@@ -1465,6 +1463,8 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.7(@opentelemetry/api@1.9.1)(@types/node@24.12.4)(@vitest/browser-playwright@4.1.7)(@vitest/coverage-v8@4.1.7)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages/biometric-keystore: {}
 
   packages/development-protocol: {}
 
