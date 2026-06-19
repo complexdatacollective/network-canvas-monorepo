@@ -1551,6 +1551,9 @@ importers:
       remark-gemoji:
         specifier: ^8.0.0
         version: 8.0.0
+      remark-gfm:
+        specifier: ^4.0.0
+        version: 4.0.1
       tailwind-merge:
         specifier: 'catalog:'
         version: 3.6.0
