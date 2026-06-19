@@ -8,5 +8,4 @@ Tighten the protocol schema and add migrations to fix conformance gaps found in 
 - Validate that a NameGeneratorQuickAdd `quickAdd` references an existing text variable on the subject node type.
 - Require `otherOptionLabel` when a CategoricalBin prompt sets `otherVariable`.
 - Reject FamilyPedigree node-form variable ids that collide with reserved wizard keys, and the reserved `scaffolding` prompt id.
-- Add prompt/parameter validation: `highlight.variable` must be boolean, `layout.layoutVariable` must be a layout variable, RelativeDatePicker `before`/`after` bounds + ISO `anchor`, non-empty ordinal/Likert options, and external-data panel rule targets.
 - Remove the vestigial Information `loop` flag and FamilyPedigree `biologicalSexVariable`, with migrations dropping them from existing protocols.

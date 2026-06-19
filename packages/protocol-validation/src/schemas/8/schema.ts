@@ -301,77 +301,6 @@ const ProtocolSchema = z
                     'layoutVariable',
                   ],
                 });
-              } else {
-                const variable = getVariablesForSubject(
-                  protocol.codebook,
-                  stage.subject,
-                )[layoutVariable];
-                if (variable && variable.type !== 'layout') {
-                  ctx.addIssue({
-                    code: 'custom' as const,
-                    message: `Layout variable "${layoutVariable}" must be of type "layout", but is "${variable.type}".`,
-                    path: [
-                      'stages',
-                      stageIndex,
-                      'prompts',
-                      promptIndex,
-                      'layout',
-                      'layoutVariable',
-                    ],
-                  });
-                }
-              }
-            }
-          }
-
-          // 3d.v.b. highlight.variable must reference a boolean variable
-          if (
-            'highlight' in prompt &&
-            prompt.highlight &&
-            'variable' in prompt.highlight &&
-            prompt.highlight.variable &&
-            'subject' in stage &&
-            stage.subject
-          ) {
-            const highlightVariable = prompt.highlight.variable;
-            if (
-              !variableExists(
-                protocol.codebook,
-                stage.subject,
-                highlightVariable,
-              )
-            ) {
-              const subject = stage.subject;
-              ctx.addIssue({
-                code: 'custom' as const,
-                message: `Highlight variable "${highlightVariable}" not defined in codebook[${subject.entity}][${subject.type}].variables.`,
-                path: [
-                  'stages',
-                  stageIndex,
-                  'prompts',
-                  promptIndex,
-                  'highlight',
-                  'variable',
-                ],
-              });
-            } else {
-              const variable = getVariablesForSubject(
-                protocol.codebook,
-                stage.subject,
-              )[highlightVariable];
-              if (variable && variable.type !== 'boolean') {
-                ctx.addIssue({
-                  code: 'custom' as const,
-                  message: `Highlight variable "${highlightVariable}" must be of type "boolean", but is "${variable.type}".`,
-                  path: [
-                    'stages',
-                    stageIndex,
-                    'prompts',
-                    promptIndex,
-                    'highlight',
-                    'variable',
-                  ],
-                });
               }
             }
           }
@@ -480,34 +409,6 @@ const ProtocolSchema = z
                 fieldIndex,
                 'variable',
               ],
-            });
-          }
-        });
-      }
-
-      // 3g. External-data panels: filter rules must target node attributes,
-      // not edges (the panel data source is a flat list of node rows).
-      if ('panels' in stage && stage.panels) {
-        stage.panels.forEach((panel, panelIndex) => {
-          if (panel.dataSource !== 'existing' && panel.filter?.rules) {
-            panel.filter.rules.forEach((rule, ruleIndex) => {
-              if (rule.type === 'edge') {
-                ctx.addIssue({
-                  code: 'custom' as const,
-                  message:
-                    'External-data panel filters cannot use edge rules; rules must target node attributes.',
-                  path: [
-                    'stages',
-                    stageIndex,
-                    'panels',
-                    panelIndex,
-                    'filter',
-                    'rules',
-                    ruleIndex,
-                    'type',
-                  ],
-                });
-              }
             });
           }
         });
