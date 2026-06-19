@@ -639,6 +639,66 @@ describe('predicate', () => {
       ).toBe(false);
     });
 
+    // COUNT_* numeric operators share compareNumeric with their non-count
+    // counterparts, so they inherit the same guards: a nil count never matches
+    // (not coerced to 0), datetime ISO strings compare chronologically, and
+    // unparseable values never match.
+    describe('COUNT_* numeric operators with non-numeric values', () => {
+      it('null / undefined value is never matched', () => {
+        expect(
+          predicate(countOperators.COUNT_LESS_THAN)({ value: null, other: 5 }),
+        ).toBe(false);
+        expect(
+          predicate(countOperators.COUNT_GREATER_THAN)({
+            value: undefined,
+            other: 5,
+          }),
+        ).toBe(false);
+        expect(
+          predicate(countOperators.COUNT_GREATER_THAN_OR_EQUAL)({
+            value: null,
+            other: 0,
+          }),
+        ).toBe(false);
+        expect(
+          predicate(countOperators.COUNT_LESS_THAN_OR_EQUAL)({
+            value: null,
+            other: 0,
+          }),
+        ).toBe(false);
+      });
+
+      it('datetime ISO strings compare chronologically', () => {
+        expect(
+          predicate(countOperators.COUNT_GREATER_THAN)({
+            value: '2020-06-01',
+            other: '2020-01-01',
+          }),
+        ).toBe(true);
+        expect(
+          predicate(countOperators.COUNT_LESS_THAN)({
+            value: '2020-01-01',
+            other: '2020-06-01',
+          }),
+        ).toBe(true);
+      });
+
+      it('unparseable value never matches', () => {
+        expect(
+          predicate(countOperators.COUNT_LESS_THAN)({
+            value: 'not a date',
+            other: 5,
+          }),
+        ).toBe(false);
+        expect(
+          predicate(countOperators.COUNT_GREATER_THAN)({
+            value: 'not a date',
+            other: 5,
+          }),
+        ).toBe(false);
+      });
+    });
+
     it('COUNT', () => {
       expect(predicate(countOperators.COUNT)({ value: 1, other: 1 })).toBe(
         true,

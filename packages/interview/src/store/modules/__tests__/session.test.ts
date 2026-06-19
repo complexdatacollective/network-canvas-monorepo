@@ -636,8 +636,8 @@ describe('removeNodeFromPrompt', () => {
 
     const node = store.getState().session.network.nodes[0];
     // The node no longer belongs to any prompt asserting isCloseTie, so the
-    // attribute must NOT be flipped to true.
-    expect(node?.attributes.isCloseTie).not.toBe(true);
+    // attribute must be cleared to null rather than left as a stale value.
+    expect(node?.attributes.isCloseTie).toBeNull();
     expect(node?.promptIDs).toEqual([]);
   });
 

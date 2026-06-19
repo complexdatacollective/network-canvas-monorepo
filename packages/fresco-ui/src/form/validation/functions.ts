@@ -110,7 +110,7 @@ const maxLength: ValidationFunction<number> = (max) => () => {
         ctx.addIssue({
           code: 'custom',
           input: value,
-          message: `Too long. Enter fewer than than ${max} characters.`,
+          message: `Too long. Enter fewer than ${max} characters.`,
           path: [],
         });
       }

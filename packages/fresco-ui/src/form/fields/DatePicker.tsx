@@ -38,16 +38,18 @@ type Ymd = { year: number; month: number; day: number };
 // (YYYY) resolutions the architect emits for month/year DatePickers. Missing
 // month/day components default to 1 so the year/month dropdown bounds still
 // resolve from a truncated min/max.
-const ymdPattern = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?/;
+const ymdPattern = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/;
 
 function parseYmd(value: string): Ymd | null {
   const match = ymdPattern.exec(value);
   if (!match) return null;
-  return {
-    year: Number(match[1]),
-    month: match[2] ? Number(match[2]) : 1,
-    day: match[3] ? Number(match[3]) : 1,
-  };
+  const year = Number(match[1]);
+  const month = match[2] ? Number(match[2]) : 1;
+  const day = match[3] ? Number(match[3]) : 1;
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return null;
+  }
+  return { year, month, day };
 }
 
 function todayYmd(): Ymd {

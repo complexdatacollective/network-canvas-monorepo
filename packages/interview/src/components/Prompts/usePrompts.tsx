@@ -59,15 +59,17 @@ export const usePrompts = <
   const prompts = useStageSelector(getPrompts) ?? [];
 
   const promptIndex = useSelector(getPromptIndex);
-  const isFirstPrompt = prompts.length === 0;
+  const isFirstPrompt = prompts.length === 0 || promptIndex === 0;
   const isLastPrompt = promptIndex === prompts.length - 1;
 
   const promptForward = () => {
-    updatePrompt((promptIndex + 1) % prompts.length);
+    if (prompts.length === 0) return;
+    setPrompt((promptIndex + 1) % prompts.length);
   };
 
   const promptBackward = () => {
-    updatePrompt((promptIndex - 1 + prompts.length) % prompts.length);
+    if (prompts.length === 0) return;
+    setPrompt((promptIndex - 1 + prompts.length) % prompts.length);
   };
 
   const prompt = (prompts[promptIndex] ?? {

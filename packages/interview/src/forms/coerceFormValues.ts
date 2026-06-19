@@ -22,7 +22,12 @@ export function coerceFormValues(
     }
 
     if (typeof value === 'string') {
-      const asNumber = Number(value);
+      const normalized = value.trim();
+      if (normalized === '') {
+        coerced[name] = undefined;
+        continue;
+      }
+      const asNumber = Number(normalized);
       if (!Number.isNaN(asNumber)) {
         coerced[name] = asNumber;
       }
