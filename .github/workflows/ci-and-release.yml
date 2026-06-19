@@ -999,32 +999,22 @@ jobs:
         # ^... builds deps of interviewer-v8 (fresco-ui, interview, etc.)
         # but NOT interviewer-v8 itself — electron-vite handles that.
         run: pnpm exec turbo run build --filter=@codaco/interviewer-v8^...
-      - name: Decode App Store Connect API key
-        # Keyed on the platform, not the runner image, so it survives the mac
-        # leg moving to macos-26.
-        if: matrix.platform == 'mac'
-        env:
-          APPLE_API_KEY_B64: ${{ secrets.APPLE_API_KEY }}
-        run: |
-          key_path="${RUNNER_TEMP}/AuthKey.p8"
-          printf '%s' "$APPLE_API_KEY_B64" | base64 --decode > "$key_path"
-          echo "APPLE_API_KEY=${key_path}" >> "$GITHUB_ENV"
       - name: Build Electron app (${{ matrix.platform }})
         working-directory: apps/interviewer-v8
         env:
-          # macOS-only credentials. Non-mac legs see empty strings, which
-          # electron-builder treats as "not configured" (no signing, no
-          # notarization). Linux has no signing concept; Windows ships
-          # unsigned per the spec.
-          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          CSC_LINK: ${{ matrix.platform == 'mac' && secrets.CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.CSC_KEY_PASSWORD || '' }}
-          # TEMPORARY (remove once the macOS pnpm node-module-collector failure
-          # is fixed): full electron-builder debug logging on the mac leg so the
-          # `<projectDir> not a file` collector error prints a stack trace. Not
-          # locally reproducible, so the trace must come from CI.
-          DEBUG: ${{ matrix.platform == 'mac' && 'electron-builder' || '' }}
+          # macOS-only signing + notarization credentials. Non-mac legs see
+          # empty strings, which electron-builder treats as "not configured"
+          # (Linux has no signing concept; Windows ships unsigned per the spec).
+          # Signing imports the Developer ID cert from MAC_CSC_LINK; an empty
+          # value (or wrong secret name) makes electron-builder resolve the cert
+          # path to the project dir and fail with "<projectDir> not a file".
+          # Notarization uses the Apple ID method — notarytool reads APPLE_ID /
+          # APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID from the environment.
+          CSC_LINK: ${{ matrix.platform == 'mac' && secrets.MAC_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'mac' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_TEAM_ID || '' }}
         # `--publish never`: the `publish` config makes electron-builder emit the
         # latest*.yml auto-update metadata + app-update.yml, but uploading to the
         # moving feed is done by interviewer-v8-publish via gh, not here.

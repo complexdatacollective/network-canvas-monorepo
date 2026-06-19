@@ -95,7 +95,10 @@ module.exports = {
       { target: 'dmg', arch: ['x64', 'arm64'] },
       { target: 'zip', arch: ['x64', 'arm64'] },
     ],
-    notarize: Boolean(process.env.APPLE_API_KEY),
+    // Notarize via the Apple ID method (notarytool reads APPLE_ID,
+    // APPLE_APP_SPECIFIC_PASSWORD, and APPLE_TEAM_ID from the environment).
+    // Gated on APPLE_ID so unsigned/local builds skip notarization.
+    notarize: Boolean(process.env.APPLE_ID),
   },
   win: {
     target: [{ target: 'nsis', arch: ['x64'] }],
