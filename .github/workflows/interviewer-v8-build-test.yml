@@ -1,0 +1,66 @@
+# Manually-dispatchable, build-only reproduction of the interviewer-v8 release
+# build — no release, no publish, no artifact upload. Mirrors the real
+# `interviewer-v8-build` steps (frozen --ignore-scripts install → build
+# workspace deps → electron:build → electron-builder --dir) so platform-specific
+# build/signing fixes can be iterated in a few minutes against any branch
+# instead of cutting an alpha release each time.
+#
+#   gh workflow run "interviewer-v8 build test" --ref <branch> -f platform=win
+#   gh workflow run "interviewer-v8 build test" --ref <branch> -f platform=mac -f notarize=true
+name: interviewer-v8 build test
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform leg(s) to run
+        type: choice
+        options: [all, win, mac, linux]
+        default: all
+      notarize:
+        description: 'macOS only: also notarize (slow; needs Apple ID secrets)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+          - os: macos-26
+            platform: mac
+          - os: ubuntu-latest
+            platform: linux
+    runs-on: ${{ matrix.os }}
+    if: ${{ inputs.platform == 'all' || inputs.platform == matrix.platform }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Build workspace dependencies
+        run: pnpm exec turbo run build --filter=@codaco/interviewer-v8^...
+      - name: Build Electron app (${{ matrix.platform }})
+        working-directory: apps/interviewer-v8
+        # Signing creds resolve to empty on non-mac legs (and macOS treats empty
+        # as "unsigned"). Notarization env is only populated when the dispatcher
+        # opts in, so signing-only runs stay fast.
+        env:
+          CSC_LINK: ${{ matrix.platform == 'mac' && secrets.MAC_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ (matrix.platform == 'mac' && inputs.notarize) && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ (matrix.platform == 'mac' && inputs.notarize) && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ (matrix.platform == 'mac' && inputs.notarize) && secrets.APPLE_TEAM_ID || '' }}
+        run: |
+          pnpm electron:build
+          pnpm exec electron-builder --${{ matrix.platform }} --dir --config electron-builder.config.cjs --publish never
