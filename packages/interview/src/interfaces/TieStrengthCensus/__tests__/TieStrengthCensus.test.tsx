@@ -43,7 +43,14 @@ const stage = {
   ],
 };
 
-const codebook = {
+type OptionDef = { label: string; value: string | number | boolean };
+
+const makeCodebook = (
+  options: OptionDef[] = [
+    { label: 'Weak', value: 1 },
+    { label: 'Strong', value: 2 },
+  ],
+) => ({
   node: {
     [NODE_TYPE]: {
       name: 'Person',
@@ -61,16 +68,15 @@ const codebook = {
           name: EDGE_VAR,
           type: 'ordinal',
           component: 'RadioGroup',
-          options: [
-            { label: 'Weak', value: 1 },
-            { label: 'Strong', value: 2 },
-          ],
+          options,
         },
       },
     },
   },
   ego: { variables: {} },
-};
+});
+
+const codebook = makeCodebook();
 
 const makeNodes = () => [
   {
@@ -85,7 +91,10 @@ const makeNodes = () => [
   },
 ];
 
-function renderInterface(edges: NcEdge[] = []) {
+function renderInterface(
+  edges: NcEdge[] = [],
+  codebookOverride: ReturnType<typeof makeCodebook> = codebook,
+) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -102,7 +111,7 @@ function renderInterface(edges: NcEdge[] = []) {
         id: 'p',
         hash: 'h',
         schemaVersion: 8,
-        codebook,
+        codebook: codebookOverride,
         stages: [stage],
       } as never,
     },
@@ -206,5 +215,59 @@ describe('TieStrengthCensus interface', () => {
     for (const option of screen.getAllByRole('option')) {
       expect(option.getAttribute('aria-selected')).not.toBe('true');
     }
+  });
+
+  describe("when an ordinal option's value is the literal '__none__'", () => {
+    const noneCodebook = makeCodebook([
+      { label: 'Real none', value: '__none__' },
+      { label: 'Strong', value: 'strong' },
+    ]);
+
+    it('renders distinct cards for the real option and the decline option', async () => {
+      const { advancePastIntro } = renderInterface([], noneCodebook);
+      await advancePastIntro();
+
+      // Both the real '__none__' option and the decline option must render as
+      // their own cards. A collision on the React key would drop one of them.
+      expect(screen.getByRole('option', { name: 'Real none' })).toBeTruthy();
+      expect(screen.getByRole('option', { name: 'No tie' })).toBeTruthy();
+      // Real options (2) + decline card (1) = 3.
+      expect(screen.getAllByRole('option')).toHaveLength(3);
+    });
+
+    it("records the real '__none__' option as the edge value (not decline)", async () => {
+      const { store, advancePastIntro } = renderInterface([], noneCodebook);
+      await advancePastIntro();
+
+      fireEvent.click(screen.getByRole('option', { name: 'Real none' }));
+
+      await waitFor(() =>
+        expect(store.getState().session.network.edges).toHaveLength(1),
+      );
+      const edge = store.getState().session.network.edges[0];
+      expect(edge?.type).toBe(EDGE_TYPE);
+      expect(edge?.[entityAttributesProperty]?.[EDGE_VAR]).toBe('__none__');
+      // The decline path records a stage-metadata entry; choosing the real
+      // option must NOT take that path.
+      expect(store.getState().session.stageMetadata?.[0]).toBeFalsy();
+    });
+
+    it('still declines when the decline card is chosen', async () => {
+      const { store, advancePastIntro } = renderInterface([], noneCodebook);
+      await advancePastIntro();
+
+      fireEvent.click(screen.getByRole('option', { name: 'No tie' }));
+
+      await waitFor(() =>
+        expect(store.getState().session.stageMetadata?.[0]).toBeTruthy(),
+      );
+      expect(store.getState().session.network.edges).toHaveLength(0);
+      expect(store.getState().session.stageMetadata?.[0]).toContainEqual([
+        0,
+        'n1',
+        'n2',
+        false,
+      ]);
+    });
   });
 });

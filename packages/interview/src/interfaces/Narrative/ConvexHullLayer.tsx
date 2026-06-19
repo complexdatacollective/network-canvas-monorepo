@@ -29,30 +29,81 @@ type GroupData = {
  * A single node can belong to multiple groups if the value is an array,
  * or a single group if the value is a plain string/number/boolean.
  */
+/**
+ * Color index for a group value. Known codebook options keep their stable,
+ * 1-based position. Values that are not in the option set (e.g. from external
+ * import) are allocated distinct indices AFTER all known options, so they never
+ * collide with `--cat-1`. Out-of-codebook values are sorted so their indices
+ * are deterministic regardless of node iteration order.
+ */
+function buildColorIndexResolver(
+  nodes: NcNode[],
+  groupVariable: string,
+  categoricalOptions: VariableOption[],
+): (value: VariableOptionValue) => number {
+  const knownValues = new Set(categoricalOptions.map((opt) => opt.value));
+
+  const extraValues = new Set<VariableOptionValue>();
+  for (const node of nodes) {
+    const raw = node[entityAttributesProperty][groupVariable];
+    if (raw == null) continue;
+    const values: VariableOptionValue[] = (
+      Array.isArray(raw) ? raw : [raw]
+    ).filter(
+      (value): value is VariableOptionValue =>
+        typeof value === 'string' || typeof value === 'number',
+    );
+    for (const value of values) {
+      if (!knownValues.has(value)) extraValues.add(value);
+    }
+  }
+
+  const extraIndex = new Map<VariableOptionValue, number>();
+  const sortedExtras = [...extraValues].toSorted((a, b) =>
+    String(a).localeCompare(String(b)),
+  );
+  sortedExtras.forEach((value, i) => {
+    extraIndex.set(value, categoricalOptions.length + 1 + i);
+  });
+
+  return (value) => {
+    const optionIndex = categoricalOptions.findIndex(
+      (opt) => opt.value === value,
+    );
+    if (optionIndex >= 0) return optionIndex + 1;
+    return extraIndex.get(value) ?? categoricalOptions.length + 1;
+  };
+}
+
 export function groupNodesByVariable(
   nodes: NcNode[],
   groupVariable: string,
   categoricalOptions: VariableOption[],
 ): Map<VariableOptionValue, GroupData> {
   const groups = new Map<VariableOptionValue, GroupData>();
+  const resolveColorIndex = buildColorIndexResolver(
+    nodes,
+    groupVariable,
+    categoricalOptions,
+  );
 
   for (const node of nodes) {
     const raw = node[entityAttributesProperty][groupVariable];
     if (raw == null) continue;
 
-    const values: VariableOptionValue[] = Array.isArray(raw)
-      ? (raw as VariableOptionValue[])
-      : [raw as VariableOptionValue];
+    const values: VariableOptionValue[] = (
+      Array.isArray(raw) ? raw : [raw]
+    ).filter(
+      (value): value is VariableOptionValue =>
+        typeof value === 'string' || typeof value === 'number',
+    );
 
     for (const value of values) {
       let group = groups.get(value);
       if (!group) {
-        const optionIndex = categoricalOptions.findIndex(
-          (opt) => opt.value === value,
-        );
         group = {
           nodeIds: [],
-          colorIndex: optionIndex >= 0 ? optionIndex + 1 : 1,
+          colorIndex: resolveColorIndex(value),
         };
         groups.set(value, group);
       }

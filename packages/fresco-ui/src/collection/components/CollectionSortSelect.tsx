@@ -107,7 +107,12 @@ export function CollectionSortSelect({
     : null;
 
   const handleSelect = (option: SortableProperty) => {
-    sortManager.sortBy(option.property, option.type);
+    sortManager.sortBy(
+      option.property,
+      option.type,
+      undefined,
+      option.hierarchy,
+    );
   };
 
   const handleClear = () => {

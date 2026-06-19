@@ -75,9 +75,26 @@ const choiceVariants = {
   exit: { opacity: 0, translateY: '120%' },
 };
 
-const NEGATIVE_OPTION_VALUE = '__none__';
-
 type TieStrengthCensusProps = StageProps<'TieStrengthCensus'>;
+
+/**
+ * Returns a decline-card value that is provably disjoint from every real
+ * option value. A real ordinal option may legitimately be valued `'__none__'`
+ * (or any other string), so the decline action cannot rely on a fixed magic
+ * string. We seed from `useId` — already unique per component instance — and
+ * extend it until it no longer matches any actual option value, so identity of
+ * the decline card never aliases a data value.
+ */
+function getDeclineValue(
+  seed: string,
+  optionValues: ReadonlySet<string | number>,
+): string {
+  let candidate = `${seed}-decline`;
+  while (optionValues.has(candidate)) {
+    candidate = `${candidate}-x`;
+  }
+  return candidate;
+}
 
 export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   const { stage, getNavigationHelpers } = props;
@@ -121,13 +138,23 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
       : []
   ) as VariableOptions;
 
-  const richSelectOptions: RichSelectOption[] = [
-    ...edgeVariableOptions.flatMap((option) =>
+  const realOptions: RichSelectOption[] = edgeVariableOptions.flatMap(
+    (option) =>
       typeof option.value === 'boolean'
         ? []
         : [{ value: option.value, label: option.label }],
-    ),
-    { value: NEGATIVE_OPTION_VALUE, label: negativeLabel },
+  );
+
+  // Collision-free decline sentinel: must never equal a real option value, so a
+  // legitimate option valued e.g. '__none__' is treated as data, not decline.
+  const declineValue = getDeclineValue(
+    baseId,
+    new Set(realOptions.map((option) => option.value)),
+  );
+
+  const richSelectOptions: RichSelectOption[] = [
+    ...realOptions,
+    { value: declineValue, label: negativeLabel },
   ];
 
   const pair =
@@ -385,13 +412,13 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
                     autoFocus
                     value={
                       hasEdge === false
-                        ? NEGATIVE_OPTION_VALUE
+                        ? declineValue
                         : hasEdge && edgeVariableValue !== undefined
                           ? edgeVariableValue
                           : undefined
                     }
                     onChange={(next) => {
-                      if (next === NEGATIVE_OPTION_VALUE) {
+                      if (next === declineValue) {
                         handleChange(false);
                       } else if (
                         typeof next === 'string' ||

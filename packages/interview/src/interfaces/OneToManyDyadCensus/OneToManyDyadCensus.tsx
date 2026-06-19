@@ -1,5 +1,5 @@
 import { AnimatePresence } from 'motion/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import type { SortRule } from '@codaco/protocol-validation';
@@ -31,6 +31,11 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const { currentStep: stageStep } = useCurrentStep();
 
+  // Records the direction of the navigation that crosses a prompt boundary so
+  // the prompt-change effect can seed the focal node: forward entry starts at
+  // the first focal node, backward entry resumes at the last (#668).
+  const crossingDirection = useRef<'forwards' | 'backwards'>('forwards');
+
   // The ScrollArea viewport uses overflow-auto which clips nodes during
   // layoutId animations across the Surface boundary. Temporarily switch to
   // overflow-visible while the animation is in flight, then restore scrolling.
@@ -51,6 +56,11 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
   const edges = useStageSelector(getNetworkEdges);
 
   const sortedSource = useSortedNodeList(nodes, bucketSortOrder);
+
+  // Mirrors sortedSource.length for the prompt-change effect, which re-runs only
+  // on promptIndex and must read the live focal-node count.
+  const lastFocalIndexRef = useRef(0);
+  lastFocalIndexRef.current = Math.max(sortedSource.length - 1, 0);
 
   const source = sortedSource[currentStep]!;
 
@@ -90,6 +100,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
         return false;
       }
 
+      crossingDirection.current = 'forwards';
       return true;
     }
 
@@ -100,15 +111,21 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
         return false;
       }
 
+      crossingDirection.current = 'backwards';
       return true;
     }
 
     return true;
   });
 
-  // Reset the step when the prompt changes
+  // Seed the focal node when the prompt changes. Entering forwards starts on the
+  // first focal node; entering backwards resumes on the last so Back across a
+  // prompt boundary doesn't reset iteration to the first node (#668).
   useEffect(() => {
-    setCurrentStep(0);
+    setCurrentStep(
+      crossingDirection.current === 'backwards' ? lastFocalIndexRef.current : 0,
+    );
+    crossingDirection.current = 'forwards';
     setIsTransitioning(true);
   }, [promptIndex]);
 

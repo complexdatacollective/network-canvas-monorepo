@@ -8,6 +8,7 @@ import type {
   Codebook,
   NodeDefinition,
   StageSubject,
+  VariableOption,
   VariableOptions,
 } from '@codaco/protocol-validation';
 import {
@@ -430,7 +431,14 @@ export const getCategoricalOptions: (
     const variable = (codebook as Codebook).node?.[subjectType]?.variables?.[
       variableId
     ];
-    return variable && 'options' in variable ? (variable.options ?? []) : [];
+    if (!variable || !('options' in variable) || !variable.options) {
+      return [];
+    }
+    // A generic codebook lookup widens `options` to include boolean-variable
+    // options; categorical/ordinal options are string/number-valued.
+    return variable.options.filter(
+      (option): option is VariableOption => typeof option.value !== 'boolean',
+    );
   },
 );
 

@@ -31,6 +31,7 @@ import type { StageProps } from '~/types';
 
 import IntroPanel from '../SlidesForm/IntroPanel';
 import {
+  getDyadHasEdge,
   getNodePair,
   getStageMetadataResponse,
   isDyadCensusMetadata,
@@ -80,18 +81,19 @@ export default function DyadCensus(props: DyadCensusProps) {
       : null;
   const [fromNode, toNode] = getNodePair(nodes, pair);
 
-  // Compute edge state directly from Redux
+  // Compute edge state directly from Redux. The edge itself lives on the shared
+  // graph (keyed by {from,to,type}), so a sibling prompt sharing this
+  // createEdge type may have already created it.
   const existingEdgeId =
     (pair && edgeExists(edges, pair[0], pair[1], createEdge)) ?? false;
   const metadataResponse = pair
     ? getStageMetadataResponse(stageMetadata, promptIndex, pair)
     : { exists: false, value: undefined };
 
-  const hasEdge: boolean | null = existingEdgeId
-    ? true
-    : metadataResponse.exists
-      ? false
-      : null;
+  // Answered-state is scoped per prompt via the metadata tuple (mirroring
+  // TieStrengthCensus), NOT raw edge existence — otherwise answering one prompt
+  // would pre-fill a sibling prompt sharing the same createEdge type.
+  const hasEdge: boolean | null = getDyadHasEdge(metadataResponse);
 
   // Auto-advance tracking
   const [isTouched, setIsTouched] = useState(false);
@@ -201,27 +203,38 @@ export default function DyadCensus(props: DyadCensusProps) {
     setIsTouched(true);
 
     if (value) {
-      void dispatch(
-        addEdge({ from: pair[0], to: pair[1], type: createEdge, currentStep }),
-      );
-
-      if (isDyadCensusMetadata(stageMetadata)) {
-        dispatch(
-          updateStageMetadata({
+      // Idempotent on the shared graph: only create the edge when one of this
+      // type does not already exist for the pair (a re-select / double-tap, or
+      // a sibling prompt sharing createEdge, must not append a duplicate).
+      if (!existingEdgeId) {
+        void dispatch(
+          addEdge({
+            from: pair[0],
+            to: pair[1],
+            type: createEdge,
             currentStep,
-            metadata: stageMetadata.filter(
-              (item) => !matchEntry(promptIndex, pair)(item),
-            ),
-          }),
-        );
-      } else {
-        dispatch(
-          updateStageMetadata({
-            currentStep,
-            metadata: [] as DyadCensusMetadataItem[],
           }),
         );
       }
+
+      // Record a per-prompt positive answer so this prompt is independently
+      // answered, symmetric with the 'No' path below.
+      const existingMetadata = isDyadCensusMetadata(stageMetadata)
+        ? stageMetadata.filter((item) => !matchEntry(promptIndex, pair)(item))
+        : [];
+
+      const entry: DyadCensusMetadataItem = [
+        promptIndex,
+        pair[0],
+        pair[1],
+        value,
+      ];
+      dispatch(
+        updateStageMetadata({
+          currentStep,
+          metadata: [...existingMetadata, entry],
+        }),
+      );
       return;
     }
 
@@ -234,13 +247,16 @@ export default function DyadCensus(props: DyadCensusProps) {
       ? stageMetadata.filter((item) => !matchEntry(promptIndex, pair)(item))
       : [];
 
+    const entry: DyadCensusMetadataItem = [
+      promptIndex,
+      pair[0],
+      pair[1],
+      value,
+    ];
     dispatch(
       updateStageMetadata({
         currentStep,
-        metadata: [
-          ...existingMetadata,
-          [promptIndex, ...pair, value],
-        ] as DyadCensusMetadataItem[],
+        metadata: [...existingMetadata, entry],
       }),
     );
   };

@@ -44,6 +44,25 @@ import {
 } from './utils/nodeUtils';
 import { validatePedigreeCompleteness } from './utils/validatePedigree';
 
+// The interview network is a single shared graph, so getNetworkNodes/Edges
+// return entities of every type. Restrict the nomination-phase override maps to
+// the pedigree's own node/edge types, mirroring the provider seed
+// (FamilyPedigreeProvider.tsx), so foreign-typed entities are never laid out as
+// orphan pedigree members or coerced into pedigree relationships.
+export const buildOverrideNodesMap = (nodes: NcNode[], nodeType: string) =>
+  new Map<string, NcNode>(
+    nodes
+      .filter((node) => node.type === nodeType)
+      .map((node) => [node._uid, node]),
+  );
+
+export const buildOverrideEdgesMap = (edges: NcEdge[], edgeType: string) =>
+  new Map<string, NcEdge>(
+    edges
+      .filter((edge) => edge.type === edgeType)
+      .map((edge) => [edge._uid, edge]),
+  );
+
 const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   const {
     stage: { censusPrompt, nominationPrompts },
@@ -102,12 +121,12 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   };
 
   const reduxNodesMap = useMemo(
-    () => new Map<string, NcNode>(allNodes.map((n) => [n._uid, n])),
-    [allNodes],
+    () => buildOverrideNodesMap(allNodes, nodeType),
+    [allNodes, nodeType],
   );
   const reduxEdgesMap = useMemo(
-    () => new Map<string, NcEdge>(allEdges.map((e) => [e._uid, e])),
-    [allEdges],
+    () => buildOverrideEdgesMap(allEdges, edgeType),
+    [allEdges, edgeType],
   );
   const handleToggleAttribute = (nodeId: string, variable: string) => {
     const node = allNodes.find((n) => n._uid === nodeId);

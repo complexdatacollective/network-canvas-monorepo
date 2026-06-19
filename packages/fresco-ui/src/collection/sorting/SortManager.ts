@@ -1,5 +1,6 @@
 import type {
   SortDirection,
+  SortOptionValue,
   SortProperty,
   SortRule,
   SortState,
@@ -108,6 +109,7 @@ export class SortManager {
    * @param property - Property to sort by (string, array path, or '*' for array order)
    * @param type - Type of comparison to use
    * @param direction - Sort direction (defaults to 'asc', or toggles if already sorted by this property)
+   * @param hierarchy - Ordered option value list (rank) for 'hierarchy'/'categorical' sorts
    *
    * @example
    * ```ts
@@ -120,6 +122,7 @@ export class SortManager {
     property: SortProperty,
     type: SortType,
     direction?: SortDirection,
+    hierarchy?: SortOptionValue[],
   ): void {
     // If already sorting by this property and no explicit direction given, toggle
     let newDirection: SortDirection;
@@ -131,12 +134,17 @@ export class SortManager {
       newDirection = 'asc';
     }
 
+    // Clear multi-field rules when using single-field sorting
+    const rule: SortRule = { property, direction: newDirection, type };
+    if (hierarchy) {
+      rule.hierarchy = hierarchy;
+    }
+
     const updates: Partial<SortState> = {
       sortProperty: property,
       sortDirection: newDirection,
       sortType: type,
-      // Clear multi-field rules when using single-field sorting
-      sortRules: [{ property, direction: newDirection, type }],
+      sortRules: [rule],
     };
 
     this.setState(updates);

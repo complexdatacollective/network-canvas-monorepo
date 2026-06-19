@@ -2,8 +2,11 @@ import { useCallback, useEffect, useMemo } from 'react';
 
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import type { DragMetadata, DropCallback } from '@codaco/fresco-ui/dnd/types';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Panel as PanelType } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
+import Loading from '~/components/Loading';
 import NodeList from '~/components/NodeList';
 import Panel from '~/components/Panel';
 import useExternalData from '~/hooks/useExternalData';
@@ -39,10 +42,12 @@ function NodePanel(props: NodePanelProps) {
 
   const stageSubject = useStageSelector(getStageSubject);
 
-  const { externalData } = useExternalData(
+  const { externalData, status } = useExternalData(
     panelConfig.dataSource,
     stageSubject,
   );
+
+  const isExternalData = panelConfig.dataSource !== 'existing';
 
   const nodes = useStageSelector(getPanelNodes(panelConfig, externalData));
 
@@ -86,8 +91,6 @@ function NodePanel(props: NodePanelProps) {
     [panelConfig.dataSource, fullNodeIndex],
   );
 
-  const isExternalData = panelConfig.dataSource !== 'existing';
-
   const renderItem = useCallback(
     (node: NcNode, itemProps: ItemProps) => (
       <ExternalNodeItem node={node} itemProps={itemProps} size="sm" />
@@ -102,18 +105,29 @@ function NodePanel(props: NodePanelProps) {
       minimize={minimize}
       testId="node-panel"
     >
-      <NodeList
-        items={nodes}
-        id={id}
-        itemType="NEW_NODE"
-        onDrop={onDrop}
-        accepts={accepts}
-        acceptsFilter={acceptsFilter}
-        nodeSize="sm"
-        animationKey={animationKey}
-        announcedName={panelConfig.title}
-        renderItem={isExternalData ? renderItem : undefined}
-      />
+      {isExternalData && status.isLoading ? (
+        <div className="flex flex-1 items-center justify-center">
+          <Loading message="Loading..." />
+        </div>
+      ) : isExternalData && status.error ? (
+        <div className="flex flex-1 flex-col items-center justify-center">
+          <Heading level="h4">Something went wrong</Heading>
+          <Paragraph>External data could not be loaded.</Paragraph>
+        </div>
+      ) : (
+        <NodeList
+          items={nodes}
+          id={id}
+          itemType="NEW_NODE"
+          onDrop={onDrop}
+          accepts={accepts}
+          acceptsFilter={acceptsFilter}
+          nodeSize="sm"
+          animationKey={animationKey}
+          announcedName={panelConfig.title}
+          renderItem={isExternalData ? renderItem : undefined}
+        />
+      )}
     </Panel>
   );
 }

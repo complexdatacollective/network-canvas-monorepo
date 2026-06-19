@@ -11,6 +11,7 @@ import type {
 import sessionReducer, {
   addEdge,
   addNode,
+  addNodeToPrompt,
   createInitialNetwork,
   deleteNode,
   removeNodeFromPrompt,
@@ -607,7 +608,118 @@ function createTestStoreWithPrompts(options: {
   });
 }
 
+describe('addNodeToPrompt', () => {
+  it('preserves an existing form-collected value rather than overwriting it with a prompt default', async () => {
+    // Scenario (issue #672): a node was created via an AlterForm which collected
+    // a genuine value (isCloseTie:false). The node is re-nominated into a
+    // NameGenerator prompt whose additionalAttributes assert isCloseTie:true.
+    // The shared graph means the prompt must NOT clobber the form-collected
+    // value: re-nomination should not silently flip false -> true.
+    const store = createTestStoreWithPrompts({
+      prompts: [
+        {
+          id: 'prompt-1',
+          additionalAttributes: [{ variable: 'isCloseTie', value: true }],
+        },
+      ],
+      promptIndex: 0,
+      nodes: [
+        {
+          _uid: 'node-1',
+          type: 'person',
+          // value collected by an AlterForm, node not yet on this prompt
+          attributes: { isCloseTie: false },
+          promptIDs: [],
+        },
+      ],
+    });
+
+    await store.dispatch(
+      addNodeToPrompt({
+        nodeId: 'node-1',
+        promptAttributes: { isCloseTie: true },
+        currentStep: 0,
+      }),
+    );
+
+    const node = store.getState().session.network.nodes[0];
+    // The existing collected value is preserved, not overwritten by the prompt.
+    expect(node?.attributes.isCloseTie).toBe(false);
+    // The node is still recorded as belonging to the prompt.
+    expect(node?.promptIDs).toEqual(['prompt-1']);
+  });
+
+  it('applies a prompt additionalAttribute the node does not yet carry', async () => {
+    // Control: when the node has no value for the variable, the prompt's
+    // additionalAttribute is genuinely owned by the prompt and must be applied.
+    const store = createTestStoreWithPrompts({
+      prompts: [
+        {
+          id: 'prompt-1',
+          additionalAttributes: [{ variable: 'isCloseTie', value: true }],
+        },
+      ],
+      promptIndex: 0,
+      nodes: [
+        {
+          _uid: 'node-1',
+          type: 'person',
+          attributes: { isCloseTie: null },
+          promptIDs: [],
+        },
+      ],
+    });
+
+    await store.dispatch(
+      addNodeToPrompt({
+        nodeId: 'node-1',
+        promptAttributes: { isCloseTie: true },
+        currentStep: 0,
+      }),
+    );
+
+    const node = store.getState().session.network.nodes[0];
+    expect(node?.attributes.isCloseTie).toBe(true);
+    expect(node?.promptIDs).toEqual(['prompt-1']);
+  });
+});
+
 describe('removeNodeFromPrompt', () => {
+  it('does not clear a shared value that a form collected on removal', async () => {
+    // Scenario (issue #672): isCloseTie:false was collected via an AlterForm.
+    // The node was also (re-)nominated into a NameGenerator prompt whose
+    // additionalAttributes assert isCloseTie:true (but the form value won, so
+    // the node still carries false). Removing the node from the prompt must NOT
+    // clear the form-collected value to null.
+    const store = createTestStoreWithPrompts({
+      prompts: [
+        {
+          id: 'prompt-1',
+          additionalAttributes: [{ variable: 'isCloseTie', value: true }],
+        },
+      ],
+      promptIndex: 0,
+      nodes: [
+        {
+          _uid: 'node-1',
+          type: 'person',
+          // Carries the form-collected value, which differs from what the
+          // removed prompt would assert (true) -> it is not prompt-owned.
+          attributes: { isCloseTie: false },
+          promptIDs: ['prompt-1'],
+        },
+      ],
+    });
+
+    await store.dispatch(
+      removeNodeFromPrompt({ nodeId: 'node-1', currentStep: 0 }),
+    );
+
+    const node = store.getState().session.network.nodes[0];
+    expect(node?.attributes.isCloseTie).toBe(false);
+    expect(node?.promptIDs).toEqual([]);
+  });
+
   it('clears a value:false attribute on removal rather than flipping it to true', async () => {
     // Scenario: a NameGenerator prompt offers additionalAttributes value:false.
     // A node was added on this prompt (isCloseTie stored false), then removed.

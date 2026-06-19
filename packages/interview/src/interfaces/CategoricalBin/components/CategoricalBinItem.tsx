@@ -16,6 +16,13 @@ import { getCurrentStageId } from '~/selectors/session';
 import BinSummary from './BinSummary';
 
 type CategoricalBinItemProps = {
+  /**
+   * Index of this bin within the prompt's option set. Ids derive from the
+   * index rather than the label so two options sharing a label but differing in
+   * value do not collide in the dnd store or motion's layout (which would let a
+   * drop resolve to the wrong bin, or unregister a still-mounted target).
+   */
+  index: number;
   label: string;
   isExpanded: boolean;
   onToggleExpand: () => void;
@@ -48,8 +55,24 @@ type CategoricalBinPrompts = Extract<
   { type: 'CategoricalBin' }
 >['prompts'][number];
 
+export const getCatBinListId = (
+  stageId: string,
+  promptId: string,
+  index: number,
+) => `CATBIN_NODE_LIST_${stageId}_${promptId}_${index}`;
+
+export const getCatBinLayoutId = (promptId: string, index: number) =>
+  `catbin-${promptId}-${index}`;
+
+export const getCatBinDropTargetId = (
+  stageId: string,
+  promptId: string,
+  index: number,
+) => `CATBIN_ITEM_${stageId}_${promptId}_${index}`;
+
 const CategoricalBinItem = (props: CategoricalBinItemProps) => {
   const {
+    index,
     label,
     isExpanded,
     onToggleExpand,
@@ -75,15 +98,15 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
     celebrate();
   };
 
-  const listId = `CATBIN_NODE_LIST_${stageId}_${promptId}_${label}`;
-  const layoutId = `catbin-${promptId}-${label}`;
+  const listId = getCatBinListId(stageId, promptId, index);
+  const layoutId = getCatBinLayoutId(promptId, index);
 
   const {
     dropProps: { ref: dropRef, ...dropPropsRest },
     isOver,
     willAccept,
   } = useDropTarget({
-    id: `CATBIN_ITEM_${stageId}_${promptId}_${label}`,
+    id: getCatBinDropTargetId(stageId, promptId, index),
     accepts: ['NODE'],
     announcedName: `Category: ${label}`,
     onDrop: handleDrop,

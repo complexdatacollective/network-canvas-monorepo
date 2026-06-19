@@ -12,6 +12,10 @@ export type ResolvedAsset = {
   name: string;
   type: 'image' | 'video' | 'audio' | 'network' | 'geojson' | 'apikey';
   value?: string; // populated for apikey assets only
+  // Original source filename from the protocol manifest (e.g. `intro.mov`).
+  // The display `name` may lack an extension, so MIME-type and CSV/JSON
+  // decisions derive from `source` when present, falling back to `name`.
+  source?: string;
 };
 
 /**

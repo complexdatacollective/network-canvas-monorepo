@@ -72,18 +72,6 @@ const compareNumeric = (
   return comparator(a, b);
 };
 
-// Builds a RegExp from a (possibly author-supplied) pattern, returning null
-// when the pattern is invalid rather than throwing. getSkipMap evaluates every
-// stage's skip-logic on every network change, so one bad pattern must not break
-// navigation interview-wide.
-const safeRegExp = (pattern: unknown): RegExp | null => {
-  try {
-    return new RegExp(String(pattern));
-  } catch {
-    return null;
-  }
-};
-
 // Number of selected options for a categorical attribute. Categorical values
 // are stored as arrays of selected option values; an unanswered attribute
 // (null / undefined / non-array) counts as zero.
@@ -125,13 +113,21 @@ const predicate =
         return !isEqual(value, variableValue);
       case countOperators.COUNT_NOT:
         return !isEqual(value, variableValue);
+      // CONTAINS/DOES_NOT_CONTAIN are LITERAL substring tests, not regex: the
+      // author value is matched verbatim so metacharacters like '(' or '.'
+      // cannot throw or alter semantics. A nil (absent) attribute never
+      // contains anything, mirroring the EXISTS/INCLUDES nil contract.
       case operators.CONTAINS: {
-        const regexp = safeRegExp(variableValue);
-        return regexp ? regexp.test(String(value)) : false;
+        if (isNil(value)) {
+          return false;
+        }
+        return String(value).includes(String(variableValue));
       }
       case operators.DOES_NOT_CONTAIN: {
-        const regexp = safeRegExp(variableValue);
-        return regexp ? !regexp.test(String(value)) : true;
+        if (isNil(value)) {
+          return true;
+        }
+        return !String(value).includes(String(variableValue));
       }
       /**
        * WARNING: INCLUDES/EXCLUDES are complicated!

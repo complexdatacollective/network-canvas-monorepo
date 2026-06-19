@@ -7,7 +7,12 @@ import { useShallow } from 'zustand/shallow';
 import { Button, type ButtonProps } from '../../Button';
 import { cx } from '../../utils/cva';
 import { useCollectionStore, useOptionalSortManager } from '../contexts';
-import type { SortDirection, SortProperty, SortType } from '../sorting/types';
+import type {
+  SortDirection,
+  SortOptionValue,
+  SortProperty,
+  SortType,
+} from '../sorting/types';
 
 const MotionArrowIcon = motion.create(ArrowUpIcon);
 
@@ -16,6 +21,8 @@ type CollectionSortButtonProps = {
   property: SortProperty;
   /** Type of comparison to use */
   type: SortType;
+  /** Ordered option value list (rank) for 'hierarchy'/'categorical' sorts */
+  hierarchy?: SortOptionValue[];
   /** Display label for the button */
   label: string;
   /** Show sort direction indicator when active */
@@ -46,6 +53,7 @@ type CollectionSortButtonProps = {
 export function CollectionSortButton({
   property,
   type,
+  hierarchy,
   label,
   showDirectionIndicator = true,
   className,
@@ -83,7 +91,7 @@ export function CollectionSortButton({
   const direction: SortDirection | null = isActive ? sortDirection : null;
 
   const handleClick = () => {
-    sortManager.sortBy(property, type);
+    sortManager.sortBy(property, type, undefined, hierarchy);
   };
 
   return (

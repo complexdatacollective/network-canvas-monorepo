@@ -34,6 +34,40 @@ export default function isMatchingValue(
       return false;
     }
 
+    // Categorical/ordinal selections are stored as arrays of primitive option
+    // values where order carries no meaning, so compare them as multisets:
+    // order-insensitive but count-sensitive (['x','y'] === ['y','x'] but
+    // ['x','x'] !== ['x','y']). Arrays of objects (e.g. coordinates) keep the
+    // index-by-index comparison since their order is significant.
+    const isPrimitive = (val: unknown): val is string | number | boolean =>
+      typeof val === 'string' ||
+      typeof val === 'number' ||
+      typeof val === 'boolean';
+
+    if (submittedValue.every(isPrimitive) && existingValue.every(isPrimitive)) {
+      const counts = new Map<string, number>();
+      const keyFor = (val: string | number | boolean): string =>
+        `${typeof val}:${String(val)}`;
+
+      for (const val of submittedValue) {
+        counts.set(keyFor(val), (counts.get(keyFor(val)) ?? 0) + 1);
+      }
+      for (const val of existingValue) {
+        const key = keyFor(val);
+        const remaining = counts.get(key);
+        if (remaining === undefined) {
+          return false;
+        }
+        if (remaining === 1) {
+          counts.delete(key);
+        } else {
+          counts.set(key, remaining - 1);
+        }
+      }
+
+      return counts.size === 0;
+    }
+
     // Check if every element matches
     return submittedValue.every((val, index) => {
       return isMatchingValue(val, existingValue[index]);
