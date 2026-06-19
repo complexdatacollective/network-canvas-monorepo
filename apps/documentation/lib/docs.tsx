@@ -22,7 +22,7 @@ import InterfacePicture, {
 import type {
   SidebarFolder,
   SidebarPage,
-  SidebarProject,
+  SidebarSection,
   TSideBar,
 } from '~/app/types';
 import AppCompatibilityTable from '~/components/customComponents/AppCompatibilityTable';
@@ -97,7 +97,7 @@ const FrontmatterSchema = z.object({
 const processPath = (docPath: string) => {
   const processedPath = docPath
     .split(sep)
-    .slice(3) // First element is empty string, second is 'docs', third is the project name
+    .slice(3) // First element is empty string, second is 'docs', third is the section name
     // Process the last item to remove the locale and file extension
     .map((segment, index, array) => {
       if (index === array.length - 1) {
@@ -110,56 +110,56 @@ const processPath = (docPath: string) => {
   return processedPath;
 };
 
-// Given locale and project, generate all the possible docPaths.
+// Given locale and section, generate all the possible docPaths.
 // Return something in the format of:
 // {
 //   locale: 'ru',
-//   project: 'fresco',
+//   section: 'collect-data',
 //   docPath: [ 'getting-started', 'installation' ]
 // }
 type ReturnType = {
   locale: string;
-  project: string;
+  section: string;
   docPath: string[];
 };
 
 export const getDocsForRouteSegment = ({
   locale,
-  project,
+  section,
 }: {
   locale: string;
-  project: string;
+  section: string;
 }) => {
   const sidebar = getSidebar();
-  const sidebarData = get(sidebar, [locale, project], null) as SidebarProject;
+  const sidebarData = get(sidebar, [locale, section], null) as SidebarSection;
 
   if (!sidebarData) {
     // biome-ignore lint/suspicious/noConsole: Logging missing sidebar data
-    console.log(`No sidebar data found for ${locale} and ${project}`);
+    console.log(`No sidebar data found for ${locale} and ${section}`);
     return [];
   }
 
   const results: ReturnType[] = [];
 
   const getSourceFilePaths = (
-    data: SidebarProject | SidebarFolder | SidebarPage,
+    data: SidebarSection | SidebarFolder | SidebarPage,
   ) => {
     // Leaf node
     if (data.type === 'page') {
       results.push({
         locale,
-        project,
+        section,
         docPath: processPath(data.sourceFile),
       });
       return;
     }
 
-    if (data.sourceFile && data.type !== 'project') {
+    if (data.sourceFile && data.type !== 'section') {
       // Handle folders differently - if they have a sourceFile
       // docPath should generate a path pointing to the folder.
       results.push({
         locale,
-        project,
+        section,
         docPath: processPath(data.sourceFile).slice(0, -1),
       });
     }
@@ -195,18 +195,18 @@ const stripDocsPrefix = (sourceFile: string) =>
 // trace the entire project and emit an "unexpected file in NFT list" warning.
 const getSourceFile = (
   locale: string,
-  project: string,
+  section: string,
   pathSegment?: string[],
 ) => {
   const sidebar = getSidebar();
-  const projectSourceFile = get(
+  const sectionSourceFile = get(
     sidebar,
-    [locale, project, 'sourceFile'],
+    [locale, section, 'sourceFile'],
     null,
   ) as string;
 
   if (!pathSegment)
-    return join(process.cwd(), 'docs', stripDocsPrefix(projectSourceFile));
+    return join(process.cwd(), 'docs', stripDocsPrefix(sectionSourceFile));
 
   const pathSegmentWithChildren = pathSegment.flatMap((segment, index) => {
     if (index === 0) {
@@ -218,7 +218,7 @@ const getSourceFile = (
 
   const folderSourceFile = get(
     sidebar,
-    [locale, project, 'children', ...pathSegmentWithChildren, 'sourceFile'],
+    [locale, section, 'children', ...pathSegmentWithChildren, 'sourceFile'],
     null,
   ) as string | null;
 
@@ -367,14 +367,14 @@ const createMarkdownComponents = (docSlug?: string) => ({
 
 export async function getDocumentForPath({
   locale,
-  project,
+  section,
   pathSegment,
 }: {
   locale: string;
-  project: string;
+  section: string;
   pathSegment?: string[];
 }) {
-  const sourceFile = getSourceFile(locale, project, pathSegment);
+  const sourceFile = getSourceFile(locale, section, pathSegment);
 
   if (!sourceFile || (sourceFile && !existsSync(sourceFile))) {
     return null;

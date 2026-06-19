@@ -1,5 +1,5 @@
 {
-  "type": "project",
+  "type": "section",
   "slug": "collect-data",
   "localeLabels": { "en": "Collect Data" },
   "localeIndexFiles": { "en": "index.en.mdx" }

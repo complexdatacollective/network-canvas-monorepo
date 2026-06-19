@@ -8,7 +8,7 @@ import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 
 import type {
   Locale,
-  Project,
+  Section,
   SidebarPage,
   TSideBar,
   SidebarFolder as TSidebarFolder,
@@ -287,7 +287,7 @@ export function Sidebar({ className }: { className?: string }) {
   const locale = useLocale() as Locale;
   const segments = pathname.split('/');
   // biome-ignore lint/style/noNonNullAssertion: path structure is known
-  const project = segments[2]! as Project;
+  const section = segments[2]! as Section;
   const sidebarContainerRef = useRef<HTMLDivElement>(null);
   const [sidebarData, setSidebarData] = useState<TSideBar | null>(null);
 
@@ -310,8 +310,8 @@ export function Sidebar({ className }: { className?: string }) {
     );
   }
 
-  const projectData = sidebarData[locale][project];
-  const formattedSidebarData = projectData.children;
+  const sectionData = sidebarData[locale][section];
+  const formattedSidebarData = sectionData.children;
 
   const sortedSidebarItems = sortSidebarItems(
     Object.values(formattedSidebarData),

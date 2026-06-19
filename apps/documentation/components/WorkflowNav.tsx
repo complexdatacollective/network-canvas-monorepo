@@ -7,52 +7,22 @@ import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { Fragment, type ReactNode } from 'react';
 
-import type { Project } from '~/app/types';
 import Paragraph from '~/components/ui/typography/Paragraph';
+import {
+  SECTIONS,
+  type SectionConfig,
+  sectionColorClasses,
+} from '~/lib/sections';
 import { cn } from '~/lib/utils';
 import { Link, usePathname, useRouter } from '~/navigation';
 
 import FancyHeading from './FancyHeading';
 
-type SectionColor = 'slate-blue' | 'sea-green' | 'neon-coral' | 'cerulean-blue';
-
-type WorkflowSection = {
-  key: Project;
-  color: SectionColor;
-  // Image icon sources; when absent the section renders the ChartNetwork glyph.
-  images?: string[];
-};
-
-// Single source of truth for the workflow steps, shared by both the collapsed
-// section nav and the full homepage cards. Labels and descriptions live in the
-// `ProjectSwitcher` translation namespace, keyed by `key`.
-const WORKFLOW_SECTIONS: WorkflowSection[] = [
-  { key: 'get-started', color: 'slate-blue', images: ['/images/mark.svg'] },
-  {
-    key: 'design-protocols',
-    color: 'sea-green',
-    images: ['/images/architect-icon.png'],
-  },
-  {
-    key: 'collect-data',
-    color: 'neon-coral',
-    images: ['/images/interviewer.png', '/images/fresco.png'],
-  },
-  { key: 'analyze-data', color: 'cerulean-blue' },
-];
-
-const sectionColorClasses: Record<SectionColor, string> = {
-  'slate-blue': 'bg-slate-blue',
-  'sea-green': 'bg-sea-green',
-  'neon-coral': 'bg-neon-coral',
-  'cerulean-blue': 'bg-cerulean-blue',
-};
-
 function SectionIcon({
   section,
   onColor,
 }: {
-  section: WorkflowSection;
+  section: SectionConfig;
   onColor: boolean;
 }) {
   if (section.images) {
@@ -83,16 +53,16 @@ function SectionIcon({
 function CollapsedNav({ className }: { className?: string }) {
   const router = useRouter();
   const pathname = usePathname();
-  const t = useTranslations('ProjectSwitcher');
+  const t = useTranslations('SectionSwitcher');
   const tNav = useTranslations('WorkflowNav');
 
-  const activeProject = pathname.split('/')[1] ?? '';
+  const activeSection = pathname.split('/')[1] ?? '';
 
   return (
     <Tabs.Root
-      value={activeProject}
+      value={activeSection}
       onValueChange={(value) => {
-        if (typeof value === 'string' && value !== activeProject) {
+        if (typeof value === 'string' && value !== activeSection) {
           router.push(`/${value}`);
         }
       }}
@@ -102,8 +72,8 @@ function CollapsedNav({ className }: { className?: string }) {
         aria-label={tNav('workflowLabel')}
         className="flex items-center gap-2 overflow-x-auto"
       >
-        {WORKFLOW_SECTIONS.map((section, index) => {
-          const isActive = section.key === activeProject;
+        {SECTIONS.map((section, index) => {
+          const isActive = section.key === activeSection;
           const dualIcon = (section.images?.length ?? 0) > 1;
           return (
             <Fragment key={section.key}>
@@ -155,8 +125,8 @@ function CollapsedNav({ className }: { className?: string }) {
   );
 }
 
-function WorkflowCard({ section }: { section: WorkflowSection }) {
-  const t = useTranslations('ProjectSwitcher');
+function WorkflowCard({ section }: { section: SectionConfig }) {
+  const t = useTranslations('SectionSwitcher');
   return (
     <Link
       href={`/${section.key}`}
@@ -188,7 +158,7 @@ function FullCards({ className }: { className?: string }) {
         className,
       )}
     >
-      {WORKFLOW_SECTIONS.map((section, index) => (
+      {SECTIONS.map((section, index) => (
         <Fragment key={section.key}>
           {index > 0 && (
             <ChevronRight

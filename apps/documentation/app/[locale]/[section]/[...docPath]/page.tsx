@@ -6,16 +6,16 @@ import { getDocsForRouteSegment, getDocumentForPath } from '~/lib/docs';
 
 type PageParams = {
   locale: string;
-  project: string;
+  section: string;
   docPath: string[];
 };
 
 export async function generateMetadata(props: { params: Promise<PageParams> }) {
   const params = await props.params;
-  const { locale, project, docPath } = params;
+  const { locale, section, docPath } = params;
   const document = await getDocumentForPath({
     locale,
-    project,
+    section,
     pathSegment: docPath,
   });
 
@@ -23,10 +23,10 @@ export async function generateMetadata(props: { params: Promise<PageParams> }) {
 }
 
 export async function generateStaticParams({ params }: { params: PageParams }) {
-  const { locale, project } = params;
+  const { locale, section } = params;
   const docPathSegmentsForRoute = getDocsForRouteSegment({
     locale,
-    project,
+    section,
   });
 
   return docPathSegmentsForRoute;
@@ -34,13 +34,13 @@ export async function generateStaticParams({ params }: { params: PageParams }) {
 
 export default async function Page(props: { params: Promise<PageParams> }) {
   const params = await props.params;
-  const { locale, project, docPath } = params;
+  const { locale, section, docPath } = params;
   // setting setRequestLocale to support next-intl for static rendering
   setRequestLocale(locale);
 
   const document = await getDocumentForPath({
     locale,
-    project,
+    section,
     pathSegment: docPath,
   });
 

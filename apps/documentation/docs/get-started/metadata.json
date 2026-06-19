@@ -1,5 +1,5 @@
 {
-  "type": "project",
+  "type": "section",
   "slug": "get-started",
   "navOrder": 0,
   "localeLabels": { "en": "Get Started" },

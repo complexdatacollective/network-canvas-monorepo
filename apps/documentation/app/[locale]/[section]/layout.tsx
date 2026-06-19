@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { projects } from '~/app/types';
+import { sections } from '~/app/types';
 
 export function generateStaticParams({
   params,
@@ -9,10 +9,10 @@ export function generateStaticParams({
 }) {
   const { locale } = params;
 
-  return projects.map((project) => {
+  return sections.map((section) => {
     return {
       locale,
-      project,
+      section,
     };
   });
 }
