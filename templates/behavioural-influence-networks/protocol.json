@@ -1,6 +1,6 @@
 {
   "name": "Behavioural Influence Networks",
-  "description": "A reusable, behaviour-agnostic scaffold for studying social influence and diffusion (\"contagion\") of health behaviours - obesity-related behaviours, smoking/vaping, physical activity, diet, and alcohol. Behaviour-specific (multiplex) name generators elicit the people an ego shares each behaviour with, while an ego self-report captures the reference point needed to assess homophily and perceived exposure. Frame outputs as exposure and network composition, not as proof of causal contagion.",
+  "description": "An example template for studying social influence on health behaviours such as smoking, vaping, physical activity, diet, and alcohol use. It uses behaviour-specific name generators to elicit the people a participant shares each behaviour with, alongside the participant's own self-report.",
   "schemaVersion": 8,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "codebook": {
@@ -198,6 +198,20 @@
   },
   "stages": [
     {
+      "id": "information-researcher-notes",
+      "type": "Information",
+      "label": "Template notes (delete before fielding)",
+      "title": "Template notes",
+      "items": [
+        {
+          "id": "researcher-notes",
+          "type": "text",
+          "size": "LARGE",
+          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\n**Caveat:** behaviours shared among contacts reflect both social influence **and** homophily (selecting similar friends); this design cannot by itself separate the two.\n\nThe instruments and studies this template draws on:\n\n- [Christakis NA, Fowler JH (2007). The Spread of Obesity in a Large Social Network over 32 Years. *NEJM*.](https://www.albany.edu/~ravi/pdfs/christakis_fowler_2007.pdf)\n- [Christakis NA, Fowler JH (2008). The Collective Dynamics of Smoking in a Large Social Network. *NEJM*.](https://www.nejm.org/doi/full/10.1056/NEJMsa0706154)\n- [International Physical Activity Questionnaire (IPAQ) — PhenX Toolkit protocol.](https://www.phenxtoolkit.org/protocols/view/661901)\n- [Separating influence from homophily in network dynamics (SIENA / stochastic actor-based models).](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3469361/)"
+        }
+      ]
+    },
+    {
       "id": "information-intro",
       "type": "Information",
       "label": "Welcome",
@@ -206,14 +220,8 @@
         {
           "id": "intro-welcome",
           "type": "text",
-          "size": "MEDIUM",
+          "size": "LARGE",
           "content": "## Welcome\n\nThank you for taking part. In this interview we will talk about some of your everyday **health behaviours** and the **people you spend time with**. There are no right or wrong answers — we are interested in your own experience."
-        },
-        {
-          "id": "intro-references",
-          "type": "text",
-          "size": "SMALL",
-          "content": "## References & sources\n\n_For researchers adapting this template — the instruments and studies it draws on. **Caveat:** behaviours shared among contacts reflect both social influence **and** homophily (selecting similar friends); this design cannot by itself separate the two. You can remove or edit this screen before fielding._\n\n- [Christakis NA, Fowler JH (2007). The Spread of Obesity in a Large Social Network over 32 Years. *NEJM*.](https://www.albany.edu/~ravi/pdfs/christakis_fowler_2007.pdf)\n- [Christakis NA, Fowler JH (2008). The Collective Dynamics of Smoking in a Large Social Network. *NEJM*.](https://www.nejm.org/doi/full/10.1056/NEJMsa0706154)\n- [International Physical Activity Questionnaire (IPAQ) — PhenX Toolkit protocol.](https://www.phenxtoolkit.org/protocols/view/661901)\n- [Separating influence from homophily in network dynamics (SIENA / stochastic actor-based models).](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3469361/)"
         }
       ]
     },
@@ -230,7 +238,8 @@
         "fields": [
           {
             "variable": "activity_minutes_week",
-            "prompt": "In a usual week, about how many **minutes** do you spend being physically active at a moderate or vigorous level (activities that make you breathe harder than normal), counting only activities done for at least 10 minutes at a time?"
+            "prompt": "In a usual week, about how many **minutes** do you spend being physically active at a moderate or vigorous level?",
+            "hint": "Count activities that make you breathe harder than normal, in sessions of at least 10 minutes."
           },
           {
             "variable": "smoking_status",
@@ -255,7 +264,7 @@
       "id": "ng-behaviours",
       "type": "NameGenerator",
       "label": "People you share behaviours with",
-      "interviewScript": "These prompts elicit behaviour-specific ties. The same person may be named on more than one prompt - this is expected and produces a multiplex network. Add each person once; if they belong to several prompts they will already appear in the panel of people already mentioned.",
+      "interviewScript": "Each prompt asks about a different shared activity. The same person can take part in several of these activities; when they do, add them once and then select them from the panel of people already mentioned for the other prompts, rather than typing their name again.",
       "subject": {
         "entity": "node",
         "type": "person"
@@ -312,7 +321,8 @@
         "fields": [
           {
             "variable": "shared_domains",
-            "prompt": "Which of these activities do you ever do **with this person**? Select all that apply."
+            "prompt": "Which of these activities do you ever do **with this person**?",
+            "hint": "Select all that apply."
           },
           {
             "variable": "relationship",

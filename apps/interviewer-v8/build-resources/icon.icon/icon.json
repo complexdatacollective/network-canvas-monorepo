@@ -49,21 +49,21 @@
             {
               "value": {
                 "scale": 0.86,
-                "translation-in-points": [-77.46105180278391, 33.09968657073921]
+                "translation-in-points": [-50, 0]
               }
             },
             {
               "idiom": "square",
               "value": {
                 "scale": 0.86,
-                "translation-in-points": [-55.53222756314153, 18.23503739329442]
+                "translation-in-points": [-50, 0]
               }
             },
             {
               "idiom": "watchOS",
               "value": {
                 "scale": 0.86,
-                "translation-in-points": [-77.46105180278391, 33.09968657073921]
+                "translation-in-points": [-50, 0]
               }
             }
           ]

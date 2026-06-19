@@ -77,7 +77,7 @@ export function OnboardingScreen() {
       />
       <motion.div variants={textVariants}>
         <Heading level="h1" margin="none" className="font-black tracking-tight">
-          Welcome to Network Canvas Interviewer
+          Welcome to Network Canvas Interviewer 8
         </Heading>
       </motion.div>
       <motion.div variants={textVariants}>

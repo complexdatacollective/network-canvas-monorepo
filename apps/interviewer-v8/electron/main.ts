@@ -19,7 +19,9 @@ import { bootstrapNoLock } from './auth/vault';
 import { getDbPath, migrateLegacyDbFilename } from './db/service';
 import { registerAuthHandlers } from './handlers/authHandlers';
 import { registerDbHandlers } from './handlers/dbHandlers';
+import { registerUpdateHandlers } from './handlers/updateHandlers';
 import { buildMenu } from './menu';
+import { initAutoUpdater } from './update/updater';
 
 const isDev = !app.isPackaged;
 const RENDERER_DEV_URL =
@@ -97,7 +99,7 @@ function createWindow() {
     height: 900,
     minWidth: 1280,
     minHeight: 800,
-    title: 'Network Canvas Interviewer 7',
+    title: 'Network Canvas Interviewer 8',
     backgroundColor: '#232053', // navy taupe
     // remove the default titlebar
     titleBarStyle: 'hidden',
@@ -194,6 +196,8 @@ app.whenReady().then(() => {
   });
   registerDbHandlers();
   registerAuthHandlers();
+  registerUpdateHandlers();
+  initAutoUpdater(() => mainWindow);
   try {
     bootstrapNoLock();
   } catch (cause) {

@@ -69,10 +69,5 @@ packages/interview/e2e/.assets/
 # Storybook build output
 storybook-static/
 
-# Generated interface screenshots: turbo-cached, not committed (only the
-# manifest.ts beside them is tracked). Regenerate with
-# `pnpm generate:interface-images`.
-packages/interface-images/src/generated/assets/
-
 # pnpm pack output
 **/codaco-interview-*.tgz

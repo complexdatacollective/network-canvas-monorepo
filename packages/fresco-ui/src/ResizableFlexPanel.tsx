@@ -44,6 +44,13 @@ type ResizableFlexPanelProps = {
    */
   'max'?: number;
   /**
+   * Hard minimum size of the first panel in pixels along the main axis. The
+   * effective minimum becomes the larger of `min` (%) and this value relative
+   * to the container, so the panel can never be sized narrower than its content
+   * requires (e.g. a card with a fixed minimum width) regardless of viewport.
+   */
+  'minSizePx'?: number;
+  /**
    * Optional list of snap points. When provided, dragging snaps to the nearest
    * breakpoint and `PageUp`/`PageDown` (plus arrow keys) step between adjacent
    * breakpoints instead of using `keyboardStep`.
@@ -116,6 +123,7 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
       defaultBasis = 30,
       min = 10,
       max = 90,
+      minSizePx,
       breakpoints = [],
       orientation = 'horizontal',
       keyboardStep = 2,
@@ -131,6 +139,7 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
       defaultBasis,
       min,
       max,
+      minSizePx,
       breakpoints,
       orientation,
       keyboardStep,
@@ -171,6 +180,14 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
           style={{
             flexBasis: `${activeBasis}%`,
             flexGrow: 0,
+            // Backstop the drag clamp: even if a persisted/animated basis would
+            // render narrower (e.g. after the viewport shrinks), never let the
+            // panel fall below its content's required size.
+            ...(minSizePx !== undefined && !isOverridden
+              ? isHorizontal
+                ? { minWidth: minSizePx }
+                : { minHeight: minSizePx }
+              : {}),
           }}
         >
           {firstChild}

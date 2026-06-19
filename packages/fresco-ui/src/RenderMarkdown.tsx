@@ -1,10 +1,16 @@
 'use client';
 
-import { cloneElement, type ReactElement, type ReactNode } from 'react';
+import {
+  cloneElement,
+  type MouseEvent,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import ReactMarkdown, { type Components, type Options } from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGemoji from 'remark-gemoji';
+import remarkGfm from 'remark-gfm';
 
 import { NativeLink } from './NativeLink';
 import Heading from './typography/Heading';
@@ -24,17 +30,36 @@ export const ALLOWED_MARKDOWN_SECTION_TAGS = [
   'a',
 ];
 
+// Open links in the OS browser, never inside the app. `window.open` is the one
+// call that does the right thing on every target: Electron's
+// setWindowOpenHandler routes it to shell.openExternal, Capacitor sends
+// http(s) to the system browser, and the web build opens a new tab.
+// preventDefault stops the anchor's own navigation (which on Electron/Capacitor
+// would otherwise try to load the URL inside the app shell).
+const openExternal = (href: string) => (event: MouseEvent) => {
+  event.preventDefault();
+  window.open(href, '_blank', 'noopener,noreferrer');
+};
+
 const externalLinkRenderer = ({
   href,
   children,
 }: {
   href?: string;
   children?: ReactNode;
-}) => (
-  <NativeLink href={href ?? '#'} target="_blank" rel="noopener noreferrer">
-    {children}
-  </NativeLink>
-);
+}) =>
+  href ? (
+    <NativeLink
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={openExternal(href)}
+    >
+      {children}
+    </NativeLink>
+  ) : (
+    <>{children}</>
+  );
 
 const defaultMarkdownRenderers = {
   a: externalLinkRenderer,
@@ -79,7 +104,7 @@ const RenderMarkdown = ({
     <ReactMarkdown
       allowedElements={allowedElements ?? ALLOWED_MARKDOWN_LABEL_TAGS}
       components={(components ?? defaultMarkdownRenderers) as Components}
-      remarkPlugins={remarkPlugins ?? [remarkGemoji]}
+      remarkPlugins={remarkPlugins ?? [remarkGemoji, remarkGfm]}
       rehypePlugins={rehypePlugins ?? [rehypeRaw, rehypeSanitize]}
       unwrapDisallowed={unwrapDisallowed ?? true}
       {...props}

@@ -1,6 +1,5 @@
 packages:
   - apps/*
-  - apps/interviewer-v8/native/*
   - packages/*
   - tooling/*
   - workers/*

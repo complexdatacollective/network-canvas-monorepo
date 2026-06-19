@@ -5,7 +5,7 @@ const devServerUrl = process.env.CAP_DEV_SERVER_URL;
 
 const config: CapacitorConfig = {
   appId: 'org.complexdatacollective.networkcanvas.interviewer',
-  appName: 'Network Canvas Interviewer',
+  appName: 'Network Canvas Interviewer 8',
   webDir: 'dist',
   server: {
     androidScheme: 'https',

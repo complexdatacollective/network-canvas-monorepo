@@ -20,8 +20,36 @@ const MAC_PROVISIONING_PROFILE = 'build-resources/embedded.provisionprofile';
  */
 module.exports = {
   appId: 'Network-Canvas-Interviewer-8',
-  productName: 'Network Canvas Interviewer',
+  productName: 'Network Canvas Interviewer 8',
   copyright: `Copyright © ${new Date().getFullYear()} Complex Data Collective`,
+  // Space-free artifact filenames. `productName` has spaces, and GitHub release
+  // assets replace spaces with dots on upload — so installers named from
+  // productName (e.g. "Network Canvas Interviewer-…​.zip") no longer match the
+  // names electron-builder writes into the `*.yml` update metadata, and
+  // electron-updater 404s on every macOS/Windows download. A slugified
+  // artifactName keeps the on-disk name, the `*.yml` reference, and the uploaded
+  // asset name identical. (Linux already set this for a different reason — the
+  // scoped package name; the shared value here covers all platforms.)
+  artifactName: 'network-canvas-interviewer-${version}-${arch}.${ext}',
+  // Auto-update feed. The monorepo publishes many products to one repo's
+  // Releases with prefixed tags, so the standard GitHub provider can't identify
+  // interviewer-v8 releases. CI instead maintains a stable `interviewer-v8-latest`
+  // release whose installers + update metadata are overwritten each release (see
+  // .github/workflows/ci-and-release.yml); electron-updater reads that fixed URL.
+  // Configuring `publish` also makes electron-builder emit the channel metadata
+  // (`<channel>.yml`) and bake app-update.yml into the packaged resources.
+  //
+  // `channel` is intentionally NOT set: electron-builder derives it from the
+  // version's prerelease tag, so an `-alpha.x` build emits `alpha.yml` and bakes
+  // `channel: alpha` into app-update.yml — the file the updater requests and the
+  // file the build writes always agree. (A stable build emits `latest.yml`.) The
+  // CI publish step uploads whichever `*.yml` is produced.
+  publish: [
+    {
+      provider: 'generic',
+      url: 'https://github.com/complexdatacollective/network-canvas-monorepo/releases/download/interviewer-v8-latest/',
+    },
+  ],
   directories: {
     buildResources: 'build-resources',
     output: 'release-builds',
@@ -76,13 +104,26 @@ module.exports = {
       { target: 'dmg', arch: ['x64', 'arm64'] },
       { target: 'zip', arch: ['x64', 'arm64'] },
     ],
-    notarize: Boolean(process.env.APPLE_API_KEY),
+    // Notarize via the Apple ID method (notarytool reads APPLE_ID,
+    // APPLE_APP_SPECIFIC_PASSWORD, and APPLE_TEAM_ID from the environment).
+    // Gated on APPLE_ID so unsigned/local builds skip notarization.
+    notarize: Boolean(process.env.APPLE_ID),
   },
   win: {
     target: [{ target: 'nsis', arch: ['x64'] }],
   },
   linux: {
     category: 'Education',
+    // electron-builder derives the Linux executableName from the package `name`
+    // when unset; `@codaco/interviewer-v8` sanitizes to `@codacointerviewer-v8`,
+    // whose `@` is rejected for AppImage file paths. Set an explicit, safe name.
+    executableName: 'network-canvas-interviewer',
+    // The default artifact filename uses the (scoped) package name, so the .deb
+    // target becomes `@codaco/interviewer-v8_<ver>_amd64.deb` and fpm treats the
+    // `/` as a directory that doesn't exist. Use an explicit slash-free name.
+    artifactName: 'network-canvas-interviewer-${version}-${arch}.${ext}',
+    // AppImage supports electron-updater auto-update; .deb does not — deb users
+    // update via their package manager / a manual download.
     target: ['AppImage', 'deb'],
   },
 };

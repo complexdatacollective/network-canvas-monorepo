@@ -164,13 +164,49 @@ Required keys per stage type used by these templates:
 The validator does **not** cross-check asset references, and a malformed `assetManifest`
 **will** fail. Therefore:
 
-- **Omit `assetManifest` entirely.**
-- For `Information`, use only `type:"text"` items (no asset items).
-- For `Geospatial`, put descriptive placeholder strings in `tokenAssetId` / `dataSourceAssetId`
-  (they validate as plain strings). In `NOTES.md`, state that the researcher must attach a
-  Mapbox token asset and a GeoJSON boundary file in Architect for the stage to run.
-- If you find suitable openly-licensed images, list their URLs/licences in `NOTES.md` — do not
-  embed them.
+- **Omit `assetManifest` entirely** for most templates.
+- For `Information`, use only `type:"text"` items (no asset items). Do **not** embed images,
+  banners, or other media — keep these screens text-only.
+- For `Geospatial`, embed a working `assetManifest` so the map renders out of the box:
+  - A `type:"apikey"` asset holding the **shared Mapbox testing token** as its `value` (the
+    same literal as `TESTING_MAPBOX_TOKEN` in
+    `apps/architect-web/src/templates/testingMapboxToken.ts`), referenced by `tokenAssetId`.
+    The token is rate-limited and for evaluation only; its presence is detected by value and
+    surfaces a "replace before deploying" warning on the protocol timeline in Architect. Tell
+    the researcher to swap in their own token in the stage's `interviewScript` and in the
+    researcher-notes screen below.
+  - A `type:"geojson"` boundary asset whose `source` is a file bundled under
+    `templates/<id>/assets/` (loaded into the library by `apps/architect-web/src/templates/template-assets.ts`),
+    referenced by `dataSourceAssetId`. Each feature must expose the property named in
+    `targetFeatureProperty` (e.g. `name`).
+
+## 7. Researcher-facing notes — keep them in the protocol
+
+Setup steps, instrument sources, and caveats belong **in the protocol** so they reach whoever
+opens it in Architect. Put them in a dedicated `Information` stage as the **first** stage of the
+protocol, with a single `type:"text"` item (`"size":"LARGE"`) and a label that flags it for
+removal, e.g.:
+
+```jsonc
+{
+  "id": "information-researcher-notes",
+  "type": "Information",
+  "label": "Template notes (delete before fielding)",
+  "title": "Template notes",
+  "items": [
+    {
+      "id": "researcher-notes",
+      "type": "text",
+      "size": "LARGE",
+      "content": "## For researchers\n\n_Delete this screen before you field the study._\n\n…sources, setup, and caveats…",
+    },
+  ],
+}
+```
+
+Participant-facing `Information` screens should also use a **single** `type:"text"` item
+(`"size":"LARGE"`) holding all the screen's content as Markdown, rather than several smaller
+items, so the screen reads as one block.
 
 ## 7. Workflow
 

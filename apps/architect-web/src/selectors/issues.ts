@@ -1,5 +1,7 @@
 import { createSelector } from '@reduxjs/toolkit';
 
+import { TESTING_MAPBOX_TOKEN } from '~/templates/testingMapboxToken';
+
 import { getAllVariablesByUUID } from './codebook';
 import { getIsUsed } from './codebook/isUsed';
 import { getAssetIndex, utils } from './indexes';
@@ -70,4 +72,20 @@ export const getUnusedVariables = createSelector(
 export const getHasUnusedVariables = createSelector(
   [getUnusedVariables],
   (summary) => summary.count > 0,
+);
+
+/**
+ * Whether the protocol carries Network Canvas's shared Mapbox testing token —
+ * embedded in templates that use the Geospatial interface so the map works out
+ * of the box. Detected by value (asset ids are not stable across protocols) so
+ * it also fires for protocols a researcher started from such a template. Drives
+ * the timeline reminder to swap in their own token before fielding the study.
+ */
+export const getUsesTestingMapboxToken = createSelector(
+  [getAssetManifest],
+  (assetManifest): boolean =>
+    Object.values(assetManifest).some(
+      (asset) =>
+        asset.type === 'apikey' && asset.value === TESTING_MAPBOX_TOKEN,
+    ),
 );

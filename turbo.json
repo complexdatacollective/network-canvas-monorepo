@@ -61,7 +61,7 @@
       "persistent": true
     },
     "@codaco/documentation#build": {
-      "dependsOn": ["^build", "@codaco/interface-images#generate"],
+      "dependsOn": ["^build"],
       "inputs": [
         "app/**",
         "components/**",
@@ -95,7 +95,7 @@
       "outputs": ["out/**", ".next/**", "!.next/cache/**"]
     },
     "@codaco/architect-web#build": {
-      "dependsOn": ["^build", "@codaco/interface-images#generate"],
+      "dependsOn": ["^build"],
       "inputs": [
         "src/**",
         "public/**",
@@ -226,12 +226,12 @@
       "persistent": true
     },
     "@codaco/architect-web#dev": {
-      "dependsOn": ["^build", "@codaco/interface-images#generate"],
+      "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
     },
     "@codaco/documentation#dev": {
-      "dependsOn": ["^build", "@codaco/interface-images#generate"],
+      "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
     },
