@@ -55,10 +55,9 @@ function getMediaMimeType(
   return MEDIA_MIME_TYPES[ext] ?? fallback;
 }
 
-// Size applies to image AND video items, which carry a `size` prop. Maps the
-// size magic-strings to max-height bands. Text and audio items carry no `size`
-// prop; they get a fixed treatment instead — text the LARGEST band, audio the
-// SMALLEST — reusing this same mapping (see TEXT_FIXED_SIZE / AUDIO_FIXED_SIZE).
+// Size applies to image items, which carry a `size` prop. Maps the size
+// magic-strings to max-height bands. Other item types are rendered at their
+// natural size (no max-height treatment).
 function getSizeClass(size: string | undefined): string {
   return cx(
     size === 'SMALL' && 'max-h-48',
@@ -66,10 +65,6 @@ function getSizeClass(size: string | undefined): string {
     size === 'LARGE' && 'max-h-[60vh]',
   );
 }
-
-// Text and audio items have no `size` prop, so they receive a fixed treatment.
-const TEXT_FIXED_SIZE = 'LARGE';
-const AUDIO_FIXED_SIZE = 'SMALL';
 
 function ItemFallback({ message }: { message: string }) {
   return (
@@ -90,13 +85,11 @@ function VideoPlayer({
   src,
   name,
   source,
-  size,
   isE2E,
 }: {
   src: string;
   name: string;
   source: string | undefined;
-  size: string | undefined;
   isE2E: boolean;
 }) {
   const [state, setState] = useState<MediaLoadState>('loading');
@@ -128,7 +121,6 @@ function VideoPlayer({
         playsInline
         preload={isE2E ? 'none' : 'auto'}
         className={cx(
-          getSizeClass(size),
           (state === 'loading' && !isE2E) || state === 'error'
             ? 'invisible h-0'
             : '',
@@ -192,25 +184,20 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
       );
     case 'audio':
       return (
-        <div
-          data-testid="information-audio-item"
-          className={getSizeClass(AUDIO_FIXED_SIZE)}
+        <audio
+          controls
+          autoPlay
+          aria-label={item.description ?? assetMeta.name}
         >
-          <audio
-            controls
-            autoPlay
-            aria-label={item.description ?? assetMeta.name}
-          >
-            <source
-              src={url}
-              type={getMediaMimeType(
-                assetMeta.source ?? assetMeta.name,
-                'audio/mpeg',
-              )}
-            />
-            <track kind="captions" />
-          </audio>
-        </div>
+          <source
+            src={url}
+            type={getMediaMimeType(
+              assetMeta.source ?? assetMeta.name,
+              'audio/mpeg',
+            )}
+          />
+          <track kind="captions" />
+        </audio>
       );
     case 'video':
       return (
@@ -218,7 +205,6 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
           src={url}
           name={assetMeta.name}
           source={assetMeta.source}
-          size={itemSize}
           isE2E={isE2E}
         />
       );
@@ -233,14 +219,9 @@ const getItemComponent = (item: Item, isE2E: boolean) => {
   switch (item.type) {
     case 'text':
       return (
-        <div
-          data-testid="information-text-item"
-          className={getSizeClass(TEXT_FIXED_SIZE)}
-        >
-          <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
-            {item.content}
-          </RenderMarkdown>
-        </div>
+        <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+          {item.content}
+        </RenderMarkdown>
       );
     case 'asset':
       return <AssetItem item={item} isE2E={isE2E} />;
