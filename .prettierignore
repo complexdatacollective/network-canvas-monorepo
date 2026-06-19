@@ -1,0 +1,4 @@
+# oxfmt reads .prettierignore by default (see `lint` / `format` scripts).
+# GeoJSON files are geographic data assets, intentionally shipped minified to
+# keep bundle size down — they must not be reformatted.
+**/*.geojson

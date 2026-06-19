@@ -181,7 +181,7 @@ describe('GridLayout', () => {
 
       expect(styles.display).toBe('grid');
       expect(styles.gridTemplateColumns).toBe(
-        'repeat(auto-fill, minmax(200px, 1fr))',
+        'repeat(auto-fill, minmax(min(200px, 100%), 1fr))',
       );
       expect(styles.gap).toBe('calc(5 * var(--spacing-base, 0.25rem))');
     });
@@ -192,9 +192,23 @@ describe('GridLayout', () => {
 
       expect(styles.display).toBe('grid');
       expect(styles.gridTemplateColumns).toBe(
-        'repeat(auto-fill, minmax(200px, 1fr))',
+        'repeat(auto-fill, minmax(min(200px, 100%), 1fr))',
       );
       expect(styles.gap).toBe('calc(4 * var(--spacing-base, 0.25rem))');
+    });
+
+    // Regression: a container narrower than minItemWidth must not force a
+    // column wider than the container. The `min(Npx, 100%)` floor lets a
+    // single column shrink to fit; the bare `minmax(Npx, 1fr)` floor would
+    // overflow (the roster panel at its default iPad width broke
+    // drag-and-drop this way).
+    it('should clamp the column minimum to the container width', () => {
+      const layout = new GridLayout({ minItemWidth: 400 });
+      const styles = layout.getContainerStyles();
+
+      expect(styles.gridTemplateColumns).toBe(
+        'repeat(auto-fill, minmax(min(400px, 100%), 1fr))',
+      );
     });
   });
 

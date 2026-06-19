@@ -49,12 +49,21 @@ type ToastData = {
   icon?: React.ReactNode;
   timeout?: number;
   onCancel?: () => void;
+  // Label for the action button rendered when `onCancel` is set. Defaults to
+  // "Cancel".
+  cancelLabel?: string;
+  // When set, the toast's title + description become a clickable region (the
+  // close button and action button remain separate). Use for "click the toast
+  // to see more" affordances.
+  onClick?: () => void;
   onClose?: () => void;
 };
 
 type ToastCustomData = {
   variant?: ToastVariant;
   onCancel?: () => void;
+  cancelLabel?: string;
+  onClick?: () => void;
   icon?: React.ReactNode;
 };
 
@@ -108,18 +117,33 @@ function ToastItem({ toast }: ToastItemProps) {
           )
         )}
         <div className="flex-1">
-          <Toast.Title render={<Heading level="h4" />} />
-          <Toast.Description
-            render={<div className="font-body text-pretty not-last:mb-4" />}
-          />
+          {toast.data?.onClick ? (
+            <button
+              type="button"
+              onClick={toast.data.onClick}
+              className="block w-full cursor-pointer text-left"
+            >
+              <Toast.Title render={<Heading level="h4" />} />
+              <Toast.Description
+                render={<div className="font-body text-pretty" />}
+              />
+            </button>
+          ) : (
+            <>
+              <Toast.Title render={<Heading level="h4" />} />
+              <Toast.Description
+                render={<div className="font-body text-pretty not-last:mb-4" />}
+              />
+            </>
+          )}
           {toast.data?.onCancel && (
             <Button
               type="button"
               size="sm"
               onClick={toast.data.onCancel}
-              className="mb-1"
+              className="mt-3 mb-1"
             >
-              Cancel
+              {toast.data.cancelLabel ?? 'Cancel'}
             </Button>
           )}
         </div>
@@ -147,23 +171,28 @@ export function useToast(): TypedUseToastManager {
   const toastManager = Toast.useToastManager();
 
   const add = (toastData: ToastData) => {
-    const { onCancel, onClose, icon, variant, ...rest } = toastData;
+    const { onCancel, cancelLabel, onClick, onClose, icon, variant, ...rest } =
+      toastData;
     return toastManager.add({
       ...rest,
       type: variant,
       onClose,
-      data: { onCancel, icon },
+      data: { onCancel, cancelLabel, onClick, icon },
     });
   };
 
   const update = (id: string, toastData: Partial<ToastData>) => {
-    const { onCancel, onClose, icon, variant, ...rest } = toastData;
+    const { onCancel, cancelLabel, onClick, onClose, icon, variant, ...rest } =
+      toastData;
     toastManager.update(id, {
       ...rest,
       ...(variant !== undefined && { type: variant }),
       ...(onClose !== undefined && { onClose }),
-      ...((onCancel !== undefined || icon !== undefined) && {
-        data: { onCancel, icon },
+      ...((onCancel !== undefined ||
+        cancelLabel !== undefined ||
+        onClick !== undefined ||
+        icon !== undefined) && {
+        data: { onCancel, cancelLabel, onClick, icon },
       }),
     });
   };

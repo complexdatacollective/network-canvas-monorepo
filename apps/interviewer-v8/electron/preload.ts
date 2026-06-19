@@ -70,6 +70,35 @@ const systemBridge = {
   storageInfo: () => ipcRenderer.invoke('system:storageInfo'),
 };
 
+type UpdateProgress = {
+  percent: number;
+  transferred: number;
+  total: number;
+  bytesPerSecond: number;
+};
+
+const updateBridge = {
+  check: () => ipcRenderer.invoke('update:check'),
+  download: () => ipcRenderer.invoke('update:download'),
+  install: () => ipcRenderer.invoke('update:install'),
+  onProgress: (callback: (progress: UpdateProgress) => void) => {
+    const handler = (_event: unknown, progress: UpdateProgress) =>
+      callback(progress);
+    ipcRenderer.on('update:progress', handler);
+    return () => ipcRenderer.off('update:progress', handler);
+  },
+  onDownloaded: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('update:downloaded', handler);
+    return () => ipcRenderer.off('update:downloaded', handler);
+  },
+  onError: (callback: (message: string) => void) => {
+    const handler = (_event: unknown, message: string) => callback(message);
+    ipcRenderer.on('update:error', handler);
+    return () => ipcRenderer.off('update:error', handler);
+  },
+};
+
 // Electron only runs on these three platforms; narrow without an `as` cast.
 function rendererPlatform(): 'darwin' | 'win32' | 'linux' {
   const platform = process.platform;
@@ -90,6 +119,7 @@ const electronAPI = {
   db: dbBridge,
   auth: authBridge,
   system: systemBridge,
+  update: updateBridge,
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

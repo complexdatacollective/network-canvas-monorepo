@@ -22,6 +22,25 @@ module.exports = {
   appId: 'Network-Canvas-Interviewer-8',
   productName: 'Network Canvas Interviewer',
   copyright: `Copyright © ${new Date().getFullYear()} Complex Data Collective`,
+  // Auto-update feed. The monorepo publishes many products to one repo's
+  // Releases with prefixed tags, so the standard GitHub provider can't identify
+  // interviewer-v8 releases. CI instead maintains a stable `interviewer-v8-latest`
+  // release whose installers + update metadata are overwritten each release (see
+  // .github/workflows/ci-and-release.yml); electron-updater reads that fixed URL.
+  // Configuring `publish` also makes electron-builder emit the channel metadata
+  // (`<channel>.yml`) and bake app-update.yml into the packaged resources.
+  //
+  // `channel` is intentionally NOT set: electron-builder derives it from the
+  // version's prerelease tag, so an `-alpha.x` build emits `alpha.yml` and bakes
+  // `channel: alpha` into app-update.yml — the file the updater requests and the
+  // file the build writes always agree. (A stable build emits `latest.yml`.) The
+  // CI publish step uploads whichever `*.yml` is produced.
+  publish: [
+    {
+      provider: 'generic',
+      url: 'https://github.com/complexdatacollective/network-canvas-monorepo/releases/download/interviewer-v8-latest/',
+    },
+  ],
   directories: {
     buildResources: 'build-resources',
     output: 'release-builds',
@@ -83,6 +102,16 @@ module.exports = {
   },
   linux: {
     category: 'Education',
+    // electron-builder derives the Linux executableName from the package `name`
+    // when unset; `@codaco/interviewer-v8` sanitizes to `@codacointerviewer-v8`,
+    // whose `@` is rejected for AppImage file paths. Set an explicit, safe name.
+    executableName: 'network-canvas-interviewer',
+    // The default artifact filename uses the (scoped) package name, so the .deb
+    // target becomes `@codaco/interviewer-v8_<ver>_amd64.deb` and fpm treats the
+    // `/` as a directory that doesn't exist. Use an explicit slash-free name.
+    artifactName: 'network-canvas-interviewer-${version}-${arch}.${ext}',
+    // AppImage supports electron-updater auto-update; .deb does not — deb users
+    // update via their package manager / a manual download.
     target: ['AppImage', 'deb'],
   },
 };

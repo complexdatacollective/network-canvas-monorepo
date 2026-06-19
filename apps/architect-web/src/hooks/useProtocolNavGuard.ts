@@ -44,11 +44,11 @@ export const promptLeaveEditor = async (
   try {
     await dispatch(
       dialogActions.openDialog({
-        type: 'Warning',
-        title: 'Clear Editor?',
+        type: 'Confirm',
+        title: 'Return to start screen?',
         message:
-          'Leaving the editor will clear the current protocol. If you have made changes to your protocol, please ensure you have downloaded the updated version before proceeding.',
-        confirmLabel: 'Leave Editor',
+          "Your work is saved automatically in your browser, so you can return to the editor at any time. Don't forget to download your protocol when you are ready to collect data.",
+        confirmLabel: 'Return to Start Screen',
         onConfirm: () => {
           guardState.bypass = true;
           dispatch(clearActiveProtocol());

@@ -19,7 +19,9 @@ import { bootstrapNoLock } from './auth/vault';
 import { getDbPath, migrateLegacyDbFilename } from './db/service';
 import { registerAuthHandlers } from './handlers/authHandlers';
 import { registerDbHandlers } from './handlers/dbHandlers';
+import { registerUpdateHandlers } from './handlers/updateHandlers';
 import { buildMenu } from './menu';
+import { initAutoUpdater } from './update/updater';
 
 const isDev = !app.isPackaged;
 const RENDERER_DEV_URL =
@@ -194,6 +196,8 @@ app.whenReady().then(() => {
   });
   registerDbHandlers();
   registerAuthHandlers();
+  registerUpdateHandlers();
+  initAutoUpdater(() => mainWindow);
   try {
     bootstrapNoLock();
   } catch (cause) {

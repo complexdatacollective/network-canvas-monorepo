@@ -123,8 +123,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
   const panelClasses = cx(
     'row-span-2 grid min-w-0 grid-rows-subgrid overflow-hidden shadow portrait:col-span-2 portrait:row-span-1 portrait:grid-cols-subgrid portrait:grid-rows-none',
     'bg-[color-mix(in_oklch,var(--surface-1)_var(--blend-percent),var(--background)_calc(100%-var(--blend-percent)))]',
-    missingValue &&
-      'bg-[color-mix(in_oklch,var(--rich-black)_10%,var(--background)_90%)]',
+    missingValue && 'bg-surface-1',
     isFirst &&
       'rounded-tl rounded-bl portrait:rounded-tr portrait:rounded-bl-none',
     isLast &&
@@ -135,7 +134,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
     'flex min-h-14 items-center justify-center px-2 text-center',
     promptColorClass,
     missingValue
-      ? 'bg-[color-mix(in_oklab,var(--rich-black)_20%,var(--background)_80%)]'
+      ? 'bg-surface-2'
       : 'bg-[color-mix(in_oklab,var(--prompt-color)_var(--blend-percent),var(--background)_calc(100%-var(--blend-percent)))]',
   );
 

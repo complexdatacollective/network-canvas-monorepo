@@ -207,14 +207,6 @@ jobs:
   quality:
     needs: detect
     runs-on: ubuntu-latest
-    env:
-      # Quality builds architect-web + documentation, which depend on the
-      # @codaco/interface-images `generate` task. generate runs here only on a
-      # cache miss (i.e. when the interview release version moved) and fills the
-      # shared .turbo cache the deploy jobs read back; INTERVIEW_RELEASE_VERSION
-      # is its cache key and must match the deploy jobs'.
-      INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
-      STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
     # No NEXT_PUBLIC_* / VITE_* env vars here. Quality just verifies the build
     # compiles — env.js has skipValidation:true so missing public env values
     # don't fail the build. Keeping these vars unset in quality matches what
@@ -234,15 +226,6 @@ jobs:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
-      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
-      - name: Install Playwright Chromium (for interface-image generation)
-        # playwright is a devDependency of @codaco/interface-images, not the
-        # root, so run it via --filter (root `pnpm exec playwright` can't resolve
-        # a workspace-package binary).
-        run: pnpm --filter @codaco/interface-images exec playwright install --with-deps chromium
       - name: Write protocol-validation .env (test fixture)
         env:
           PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
@@ -308,9 +291,6 @@ jobs:
           restore-keys: ${{ runner.os }}-turbo-
       - id: deploy
         name: Build and deploy docs preview
-        env:
-          INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
-          STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
         run: |
           pnpm exec turbo run build --filter=@codaco/documentation
           cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
@@ -358,9 +338,6 @@ jobs:
           restore-keys: ${{ runner.os }}-turbo-
       - id: deploy
         name: Build and deploy docs production
-        env:
-          INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
-          STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
         run: |
           pnpm exec turbo run build --filter=@codaco/documentation
           cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
@@ -407,18 +384,8 @@ jobs:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
-      # The architect-web build graph runs @codaco/interface-images#generate,
-      # which screenshots interfaces via Playwright/Chromium. That task is not a
-      # reliable cross-job turbo cache hit, so this job re-runs it and needs its
-      # own browser. `pnpm install --ignore-scripts` skips the download; run it
-      # via the package that owns playwright (the bin isn't resolvable from root).
-      - name: Install Playwright Chromium
-        run: pnpm --filter @codaco/interface-images exec playwright install --with-deps chromium
       - id: deploy
         name: Build and deploy architect-web preview
-        env:
-          INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
-          STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
         run: |
           pnpm exec turbo run build --filter=@codaco/architect-web
           json=$(npx --yes netlify-cli@22 deploy --no-build \
@@ -566,18 +533,8 @@ jobs:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
-      # The architect-web build graph runs @codaco/interface-images#generate,
-      # which screenshots interfaces via Playwright/Chromium. That task is not a
-      # reliable cross-job turbo cache hit, so this job re-runs it and needs its
-      # own browser. `pnpm install --ignore-scripts` skips the download; run it
-      # via the package that owns playwright (the bin isn't resolvable from root).
-      - name: Install Playwright Chromium
-        run: pnpm --filter @codaco/interface-images exec playwright install --with-deps chromium
       - id: deploy
         name: Build and deploy architect-web production
-        env:
-          INTERVIEW_RELEASE_VERSION: ${{ needs.detect.outputs.interview_release_version }}
-          STORYBOOK_MAPBOX_TOKEN: ${{ secrets.STORYBOOK_MAPBOX_TOKEN }}
         run: |
           pnpm exec turbo run build --filter=@codaco/architect-web
           json=$(npx --yes netlify-cli@22 deploy --no-build --prod \
@@ -904,19 +861,27 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
       - name: Detect interviewer-v8 version bump
-        # changesets/action either opens a "Version Packages" PR or, when no
-        # changesets remain, runs the publish step which has already mutated
-        # apps/interviewer-v8/package.json in-place during the merged version
-        # PR. Diff the file's version against HEAD^ to decide whether to
-        # trigger an Electron build downstream. fetch-depth: 2 above makes
-        # HEAD^ available.
+        # interviewer-v8 is bump-driven: its version is edited directly in a PR
+        # rather than via a changesets "Version Packages" PR. Decide whether to
+        # release by diffing the merged commit's version against its first
+        # parent (the previous main tip).
+        #
+        # Use the immutable push SHA, NOT HEAD/HEAD^: when there are pending
+        # changesets the changesets/action step above creates a local "Version
+        # Packages" commit and checks it out, so by the time this step runs the
+        # working HEAD has advanced and HEAD^ is the merge commit (same version)
+        # instead of the previous main tip. `${{ github.sha }}` is the pushed
+        # commit and `<sha>^` resolves its first parent regardless of where the
+        # working HEAD currently points; fetch-depth: 2 makes both available.
         id: detect_interviewer_v8
         env:
           PKG_JSON: apps/interviewer-v8/package.json
+          SHA: ${{ github.sha }}
         run: |
-          current=$(node -p "require('./$PKG_JSON').version")
-          if git cat-file -e "HEAD^:$PKG_JSON" 2>/dev/null; then
-            previous=$(git show "HEAD^:$PKG_JSON" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version")
+          read_version() { git show "$1:$PKG_JSON" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version"; }
+          current=$(read_version "$SHA")
+          if git cat-file -e "$SHA^:$PKG_JSON" 2>/dev/null; then
+            previous=$(read_version "$SHA^")
           else
             previous=""
           fi
@@ -990,7 +955,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          # macOS 26 (Tahoe): electron-builder 26 composes the Icon Composer
+          # `.icon` asset via actool, which requires Xcode 26 / actool 26.
+          # macos-latest still ships actool 16.4, so pin the newer image.
+          - os: macos-26
             platform: mac
             artifact_name: interviewer-v8-macos
           - os: windows-latest
@@ -1032,7 +1000,9 @@ jobs:
         # but NOT interviewer-v8 itself — electron-vite handles that.
         run: pnpm exec turbo run build --filter=@codaco/interviewer-v8^...
       - name: Decode App Store Connect API key
-        if: matrix.os == 'macos-latest'
+        # Keyed on the platform, not the runner image, so it survives the mac
+        # leg moving to macos-26.
+        if: matrix.platform == 'mac'
         env:
           APPLE_API_KEY_B64: ${{ secrets.APPLE_API_KEY }}
         run: |
@@ -1048,11 +1018,23 @@ jobs:
           # unsigned per the spec.
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          CSC_LINK: ${{ matrix.os == 'macos-latest' && secrets.CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.CSC_KEY_PASSWORD || '' }}
-        run: pnpm electron:dist:${{ matrix.platform }}
+          CSC_LINK: ${{ matrix.platform == 'mac' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.CSC_KEY_PASSWORD || '' }}
+          # TEMPORARY (remove once the macOS pnpm node-module-collector failure
+          # is fixed): full electron-builder debug logging on the mac leg so the
+          # `<projectDir> not a file` collector error prints a stack trace. Not
+          # locally reproducible, so the trace must come from CI.
+          DEBUG: ${{ matrix.platform == 'mac' && 'electron-builder' || '' }}
+        # `--publish never`: the `publish` config makes electron-builder emit the
+        # latest*.yml auto-update metadata + app-update.yml, but uploading to the
+        # moving feed is done by interviewer-v8-publish via gh, not here.
+        run: |
+          pnpm electron:build
+          pnpm exec electron-builder --${{ matrix.platform }} --config electron-builder.config.cjs --publish never
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          # release-builds/* now also contains latest*.yml (+ .blockmap) so the
+          # publish job can push them to the update feed.
           name: ${{ matrix.artifact_name }}
           path: apps/interviewer-v8/release-builds/*
           if-no-files-found: error
@@ -1084,7 +1066,28 @@ jobs:
           files: artifacts/*
           fail_on_unmatched_files: true
           make_latest: 'false'
+          # A version with a prerelease tag (e.g. 8.0.0-alpha.1) is flagged as a
+          # GitHub pre-release.
+          prerelease: ${{ contains(needs.release.outputs.interviewer_v8_version, '-') }}
           generate_release_notes: true
+      # Maintain the stable `interviewer-v8-latest` release that electron-updater's
+      # generic feed reads (see electron-builder.config.cjs `publish`). The release
+      # is recreated each time so stale, differently-named installers from the
+      # previous version don't linger beside the current latest*.yml metadata.
+      - name: Update electron-updater feed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.release.outputs.interviewer_v8_version }}
+        run: |
+          tag=interviewer-v8-latest
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release delete "$tag" --yes --cleanup-tag
+          fi
+          gh release create "$tag" artifacts/* \
+            --title "Interviewer v8 update feed" \
+            --notes "Auto-maintained download feed for the in-app updater (currently v${VERSION}). For release notes see the interviewer-v8@v* releases." \
+            --latest=false
 
   interviewer-release-build:
     needs: legacy-release-detect
@@ -1363,7 +1366,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          # macOS 26 (Tahoe) for the Icon Composer `.icon` / actool 26
+          # requirement — see the interviewer-v8-build job.
+          - os: macos-26
             platform: mac
             artifact_name: interviewer-v8-macos-pr-${{ github.event.pull_request.number }}
           - os: windows-latest
@@ -1412,7 +1417,8 @@ jobs:
       - name: Build workspace dependencies
         run: pnpm exec turbo run build --filter=@codaco/interviewer-v8^...
       - name: Decode App Store Connect API key
-        if: matrix.os == 'macos-latest'
+        # Platform-keyed so it survives the mac leg moving to macos-26.
+        if: matrix.platform == 'mac'
         env:
           APPLE_API_KEY_B64: ${{ secrets.APPLE_API_KEY }}
         run: |
@@ -1424,8 +1430,8 @@ jobs:
         env:
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          CSC_LINK: ${{ matrix.os == 'macos-latest' && secrets.CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.CSC_KEY_PASSWORD || '' }}
+          CSC_LINK: ${{ matrix.platform == 'mac' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.CSC_KEY_PASSWORD || '' }}
         run: pnpm electron:dist:${{ matrix.platform }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

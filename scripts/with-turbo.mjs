@@ -43,7 +43,12 @@ function resolveTurbo() {
 
 function runReal(realCommand) {
   const [cmd, ...args] = realCommand;
-  const result = spawnSync(cmd, args, { stdio: 'inherit' });
+  // On Windows the real command is a node_modules/.bin shim (e.g. vite.CMD);
+  // Node won't resolve/execute the extensionless name without a shell.
+  const result = spawnSync(cmd, args, {
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+  });
   process.exit(result.status ?? 1);
 }
 

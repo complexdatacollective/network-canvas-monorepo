@@ -8,7 +8,7 @@ type DataCardProps = Omit<
   React.ComponentPropsWithRef<'article'>,
   'aria-label'
 > & {
-  /** The card title — typically the displayLabel attribute */
+  /** The card title — derived from the node's name heuristic or fallback */
   label: string;
   /** Label → value pairs to render below the title */
   details?: DataCardDetails;

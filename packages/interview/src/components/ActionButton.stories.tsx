@@ -97,6 +97,23 @@ export const DifferentIcons: Story = {
           <span className="text-sm">BedDouble</span>
         </div>
       </div>
+      <Heading level="h3" margin="none">
+        Rotate / refresh icons (asymmetric glyph geometry)
+      </Heading>
+      <div className="flex flex-wrap gap-8">
+        <div className="flex flex-col items-center gap-2">
+          <ActionButton iconName="RotateCcw" />
+          <span className="text-sm">RotateCcw</span>
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <ActionButton iconName="RotateCw" />
+          <span className="text-sm">RotateCw</span>
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <ActionButton iconName="RefreshCw" />
+          <span className="text-sm">RefreshCw</span>
+        </div>
+      </div>
     </div>
   ),
 };

@@ -1,0 +1,88 @@
+# Build the legacy desktop apps (Architect / Interviewer) for every platform and
+# upload the installers as workflow artifacts — WITHOUT mirroring source to the
+# external repos or creating any GitHub release. This is the build half of the
+# legacy release split out as a standalone, manually-dispatched tool, so a release
+# can be assembled by hand: download the artifacts here, then attach them to a
+# draft release on the external repo. To rebuild a single failed platform, use
+# "Re-run failed jobs" on the run.
+#
+# macOS builds are signed (MAC_CSC_LINK/MAC_CSC_KEY_PASSWORD) and notarized via
+# Apple ID credentials (APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID). The
+# electron-builder configs gate `notarize` on APPLE_ID being present. Windows and
+# Linux ship unsigned (no certificates configured).
+name: Legacy App Build (no release)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [architect, interviewer]
+        target:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+          - os: ubuntu-latest
+            platform: linux
+    runs-on: ${{ matrix.target.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - if: matrix.target.os == 'ubuntu-latest'
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      # Architect's build graph depends on network-canvas-interviewer (its preview
+      # window renders the Interviewer bundle), so this also produces
+      # apps/interviewer/out, which the architect electron-builder config vendors
+      # via extraResources.
+      - name: Build app + workspace deps
+        run: pnpm exec turbo run build --filter=network-canvas-${{ matrix.app }}
+      # Build only — no publishing. macOS notarization runs automatically when
+      # APPLE_ID is set (the config gates `notarize` on it).
+      - name: Package
+        working-directory: apps/${{ matrix.app }}
+        env:
+          CSC_LINK: ${{ matrix.target.os == 'macos-latest' && secrets.MAC_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.target.os == 'macos-latest' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ matrix.target.os == 'macos-latest' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.target.os == 'macos-latest' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ matrix.target.os == 'macos-latest' && secrets.APPLE_TEAM_ID || '' }}
+        run: >-
+          pnpm exec electron-builder --${{ matrix.target.platform }}
+          --config ${{ matrix.app == 'architect' && 'electron-builder.config.js' || 'electron-builder.config.cjs' }}
+          --publish never
+      # Upload only the distributable installers + autoupdate metadata, NOT
+      # electron-builder's unpacked app directories (mac/, mac-arm64/,
+      # win-unpacked/, linux-unpacked/ …) — those are build intermediates that
+      # would bloat the artifact many-fold (and are not release assets).
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: legacy-${{ matrix.app }}-${{ matrix.target.platform }}
+          path: |
+            apps/${{ matrix.app }}/release-builds/*.dmg
+            apps/${{ matrix.app }}/release-builds/*.zip
+            apps/${{ matrix.app }}/release-builds/*.exe
+            apps/${{ matrix.app }}/release-builds/*.AppImage
+            apps/${{ matrix.app }}/release-builds/*.deb
+            apps/${{ matrix.app }}/release-builds/*.rpm
+            apps/${{ matrix.app }}/release-builds/*.tar.gz
+            apps/${{ matrix.app }}/release-builds/*.blockmap
+            apps/${{ matrix.app }}/release-builds/*.yml
+          if-no-files-found: error
+          retention-days: 30
