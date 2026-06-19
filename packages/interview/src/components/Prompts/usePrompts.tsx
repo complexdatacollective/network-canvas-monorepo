@@ -1,65 +1,10 @@
 import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
-import type {
-  EntityDefinition,
-  Prompt,
-  SortOrder,
-} from '@codaco/protocol-validation';
+import type { Prompt } from '@codaco/protocol-validation';
 import { useStageSelector } from '~/hooks/useStageSelector';
-import { getAllVariableUUIDsByEntity } from '~/selectors/protocol';
 import { getPromptIndex, getPrompts } from '~/selectors/session';
 import { updatePrompt } from '~/store/modules/session';
-import {
-  type ProcessedSortRule,
-  processProtocolSortRule,
-} from '~/utils/createSorter';
-
-function isSortOrder(value: unknown): value is SortOrder {
-  return (
-    Array.isArray(value) &&
-    value.every(
-      (item: unknown) =>
-        typeof item === 'object' &&
-        item !== null &&
-        'property' in item &&
-        'direction' in item,
-    )
-  );
-}
-
-const processSortRules = (
-  prompts: Prompt[] | null,
-  codebookVariables: EntityDefinition['variables'],
-) => {
-  if (!prompts) {
-    return [];
-  }
-
-  const sortProperties = ['bucketSortOrder', 'binSortOrder'] as const;
-
-  const ruleProcessor = processProtocolSortRule(codebookVariables);
-
-  return prompts.map((prompt) => {
-    const sortOptions = {} as Record<
-      (typeof sortProperties)[number],
-      ProcessedSortRule[]
-    >;
-
-    sortProperties.forEach((property) => {
-      if (property in prompt) {
-        const sortRules = prompt[property as keyof Prompt];
-        if (isSortOrder(sortRules)) {
-          sortOptions[property] = sortRules.map(ruleProcessor);
-        }
-      }
-    });
-    return {
-      ...prompt,
-      ...sortOptions,
-    };
-  });
-};
 
 /**
  * @typedef {Object} Prompt
@@ -106,26 +51,26 @@ export const usePrompts = <
     [dispatch],
   );
 
-  const codebookVariables = useSelector(getAllVariableUUIDsByEntity);
-  const prompts = useStageSelector(getPrompts);
-
-  const processedPrompts = processSortRules(prompts, codebookVariables);
+  // Sort rules (sortOrder / bucketSortOrder / binSortOrder) are left raw here.
+  // Each leaf sorter (useSortedNodeList / getSortedNodeList) resolves them via
+  // processProtocolSortRule exactly once, against the codebook, at the point of
+  // use — matching how Sociogram consumes `sortOrder`. Pre-processing here as
+  // well caused the rules to be processed twice, clobbering non-text types.
+  const prompts = useStageSelector(getPrompts) ?? [];
 
   const promptIndex = useSelector(getPromptIndex);
-  const isFirstPrompt = processedPrompts.length === 0;
-  const isLastPrompt = promptIndex === processedPrompts.length - 1;
+  const isFirstPrompt = prompts.length === 0;
+  const isLastPrompt = promptIndex === prompts.length - 1;
 
   const promptForward = () => {
-    updatePrompt((promptIndex + 1) % processedPrompts.length);
+    updatePrompt((promptIndex + 1) % prompts.length);
   };
 
   const promptBackward = () => {
-    updatePrompt(
-      (promptIndex - 1 + processedPrompts.length) % processedPrompts.length,
-    );
+    updatePrompt((promptIndex - 1 + prompts.length) % prompts.length);
   };
 
-  const prompt = (processedPrompts[promptIndex] ?? {
+  const prompt = (prompts[promptIndex] ?? {
     id: '',
     text: '',
   }) as Prompt & T;
@@ -133,7 +78,7 @@ export const usePrompts = <
   return {
     promptIndex,
     prompt,
-    prompts: processedPrompts,
+    prompts,
     promptForward,
     promptBackward,
     setPrompt,

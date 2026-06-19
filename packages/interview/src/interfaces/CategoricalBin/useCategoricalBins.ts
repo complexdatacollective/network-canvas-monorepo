@@ -69,6 +69,7 @@ export function useCategoricalBins() {
       otherVariable,
       otherOptionLabel,
       bucketSortOrder,
+      binSortOrder,
     },
   } = usePrompts<CategoricalBinPrompts>();
 
@@ -109,9 +110,11 @@ export function useCategoricalBins() {
       return matchVariableValue(node, activePromptVariable, option.value);
     });
 
+    // Within-bin node order is governed by binSortOrder (mirroring OrdinalBin);
+    // bucketSortOrder is reserved for the drawer (uncategorised nodes).
     const sortedNodes = getSortedNodeList(
       nodes,
-      bucketSortOrder,
+      binSortOrder,
       codebookVariables,
     );
 
@@ -131,7 +134,7 @@ export function useCategoricalBins() {
 
     const sortedOtherNodes = getSortedNodeList(
       otherNodes,
-      bucketSortOrder,
+      binSortOrder,
       codebookVariables,
     );
 
