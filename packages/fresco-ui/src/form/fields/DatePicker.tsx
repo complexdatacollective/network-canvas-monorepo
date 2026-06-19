@@ -34,15 +34,19 @@ type DatePickerFieldProps = CreateFormFieldProps<
 
 type Ymd = { year: number; month: number; day: number };
 
-const ymdPattern = /^(\d{4})-(\d{2})-(\d{2})/;
+// Accept full (YYYY-MM-DD) as well as the partial month (YYYY-MM) and year
+// (YYYY) resolutions the architect emits for month/year DatePickers. Missing
+// month/day components default to 1 so the year/month dropdown bounds still
+// resolve from a truncated min/max.
+const ymdPattern = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?/;
 
 function parseYmd(value: string): Ymd | null {
   const match = ymdPattern.exec(value);
   if (!match) return null;
   return {
     year: Number(match[1]),
-    month: Number(match[2]),
-    day: Number(match[3]),
+    month: match[2] ? Number(match[2]) : 1,
+    day: match[3] ? Number(match[3]) : 1,
   };
 }
 

@@ -102,6 +102,59 @@ describe('DatePickerField month mode', () => {
   });
 });
 
+describe('DatePickerField month mode — partial YYYY-MM bounds', () => {
+  it('derives the year range from YYYY-MM min/max', () => {
+    render(
+      <DatePickerField type="month" name="date" min="2010-01" max="2020-12" />,
+    );
+    const [yearSelect] = screen.getAllByRole('combobox');
+    if (!yearSelect) throw new Error('year select not rendered');
+
+    const years = optionValues(yearSelect);
+    expect(years[0]).toBe('2020');
+    expect(years[years.length - 1]).toBe('2010');
+    expect(years).not.toContain('2009');
+    expect(years).not.toContain('2021');
+  });
+
+  it('bounds the available months by the partial min/max month', () => {
+    render(
+      <DatePickerField type="month" name="date" min="2010-03" max="2020-05" />,
+    );
+    const [yearSelect, monthSelect] = screen.getAllByRole('combobox');
+    if (!yearSelect || !monthSelect) throw new Error('selects not rendered');
+
+    fireEvent.change(yearSelect, { target: { value: '2010' } });
+    expect(optionValues(monthSelect)).toEqual([
+      '03',
+      '04',
+      '05',
+      '06',
+      '07',
+      '08',
+      '09',
+      '10',
+      '11',
+      '12',
+    ]);
+
+    fireEvent.change(yearSelect, { target: { value: '2020' } });
+    expect(optionValues(monthSelect)).toEqual(['01', '02', '03', '04', '05']);
+  });
+});
+
+describe('DatePickerField year mode — partial YYYY bounds', () => {
+  it('derives the year range from YYYY min/max', () => {
+    render(<DatePickerField type="year" name="date" min="2010" max="2020" />);
+    const yearSelect = screen.getByRole('combobox');
+    const years = optionValues(yearSelect);
+    expect(years[0]).toBe('2020');
+    expect(years[years.length - 1]).toBe('2010');
+    expect(years).not.toContain('2009');
+    expect(years).not.toContain('2021');
+  });
+});
+
 describe('DatePickerField within Field — min/max validation', () => {
   async function flushMicrotasks() {
     await Promise.resolve();
