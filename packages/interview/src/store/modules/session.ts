@@ -500,31 +500,27 @@ export const removeNodeFromPrompt = createAsyncThunk(
       ? getPromptAdditionalAttributesMap(removedPrompt)
       : {};
 
-    // Recompute the attributes contributed by the removed prompt from the
-    // prompts the node will still belong to. This preserves the authored value
-    // semantics (including value:false) instead of naively negating the flag.
+    // Derive the value for each variable the removed prompt contributed from the
+    // prompts the node will STILL belong to (last-wins, matching the spread
+    // order used when adding a node to a prompt). If a remaining prompt asserts
+    // the variable, that value wins; otherwise the attribute is cleared to its
+    // unset (null) value.
+    //
+    // The network is the single source of truth: the attribute was introduced by
+    // this prompt's `additionalAttributes`, so removing the node from the prompt
+    // undoes it. There is no per-variable provenance to preserve — a value a
+    // later form merely displayed (and the participant left unchanged) is not
+    // "owned" by the form, and must not survive removal.
     const getNodeById = makeGetNodeById(state, currentStep);
     const node = getNodeById(nodeId);
     const remainingPromptIds = (node?.promptIDs ?? []).filter(
       (id) => id !== promptId,
     );
 
-    // For each variable the removed prompt contributed, find the value asserted
-    // by a remaining prompt the node still belongs to (last-wins, matching the
-    // spread order used when adding a node to a prompt). If a remaining prompt
-    // asserts it, that value wins. Otherwise, only clear the flag to its unset
-    // (null) value when the node's current value matches what the removed prompt
-    // asserted (i.e. the value is plausibly prompt-owned). When the current
-    // value differs, it was collected elsewhere (e.g. by an AlterForm) for this
-    // shared-graph variable, so it must be preserved rather than cleared
-    // (issue #672). This is the simpler ownership rule from decision #11, not
-    // full per-variable provenance tracking.
-    const nodeAttributes = node?.[entityAttributesProperty] ?? {};
-    const resolvedAttributes = Object.entries(removedAttributes).reduce<
+    const resolvedAttributes = Object.keys(removedAttributes).reduce<
       Record<string, VariableValue>
-    >((acc, [variable, removedValue]) => {
+    >((acc, variable) => {
       let resolvedValue: VariableValue = null;
-      let assertedByRemainingPrompt = false;
 
       prompts.forEach((prompt) => {
         if (!remainingPromptIds.includes(prompt.id)) {
@@ -533,24 +529,10 @@ export const removeNodeFromPrompt = createAsyncThunk(
         const promptAttributes = getPromptAdditionalAttributesMap(prompt);
         if (variable in promptAttributes) {
           resolvedValue = promptAttributes[variable]!;
-          assertedByRemainingPrompt = true;
         }
       });
 
-      if (assertedByRemainingPrompt) {
-        acc[variable] = resolvedValue;
-        return acc;
-      }
-
-      const currentValue = nodeAttributes[variable];
-      if (currentValue != null && currentValue !== removedValue) {
-        // The node carries a value that the removed prompt did not assert, so a
-        // form (or another source) owns it. Preserve it.
-        acc[variable] = currentValue;
-        return acc;
-      }
-
-      acc[variable] = null;
+      acc[variable] = resolvedValue;
       return acc;
     }, {});
 
@@ -666,27 +648,17 @@ const sessionReducer = createReducer(initialState, (builder) => {
             return node;
           }
 
-          // Only apply a prompt's additionalAttribute for a variable the node
-          // does not already carry a genuine value for. A node re-nominated
-          // into this prompt may already hold a value collected by a form (or
-          // another prompt) for the same variable; the shared graph means
-          // clobbering it would silently destroy that data (issue #672). We
-          // apply the simpler ownership rule from decision #11 rather than
-          // tracking full per-variable provenance: an existing non-null/
-          // non-undefined value wins over the static prompt default.
-          const existingAttributes = node[entityAttributesProperty];
-          const promptOwnedAttributes = Object.fromEntries(
-            Object.entries(promptAttributes).filter(
-              ([variable]) => existingAttributes[variable] == null,
-            ),
-          );
-
+          // The prompt's additionalAttributes apply to the node, overwriting any
+          // value it already carries for the same variable. The network is the
+          // single source of truth: adding a node to this prompt asserts the
+          // prompt's values, and a value a form merely displayed is not owned by
+          // the form.
           return {
             ...node,
             promptIDs: [...(node.promptIDs ?? []), promptId],
             [entityAttributesProperty]: {
-              ...existingAttributes,
-              ...promptOwnedAttributes,
+              ...node[entityAttributesProperty],
+              ...promptAttributes,
             },
           };
         }),

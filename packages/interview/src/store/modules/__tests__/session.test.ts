@@ -609,12 +609,11 @@ function createTestStoreWithPrompts(options: {
 }
 
 describe('addNodeToPrompt', () => {
-  it('preserves an existing form-collected value rather than overwriting it with a prompt default', async () => {
-    // Scenario (issue #672): a node was created via an AlterForm which collected
-    // a genuine value (isCloseTie:false). The node is re-nominated into a
-    // NameGenerator prompt whose additionalAttributes assert isCloseTie:true.
-    // The shared graph means the prompt must NOT clobber the form-collected
-    // value: re-nomination should not silently flip false -> true.
+  it('applies the prompt additionalAttribute, overwriting a value the node already carries', async () => {
+    // The network is the single source of truth: adding a node to a prompt
+    // asserts the prompt's additionalAttributes. A value a form previously
+    // collected or merely displayed is not owned by the form, so re-nomination
+    // overwrites it (false -> true here).
     const store = createTestStoreWithPrompts({
       prompts: [
         {
@@ -627,7 +626,6 @@ describe('addNodeToPrompt', () => {
         {
           _uid: 'node-1',
           type: 'person',
-          // value collected by an AlterForm, node not yet on this prompt
           attributes: { isCloseTie: false },
           promptIDs: [],
         },
@@ -643,15 +641,13 @@ describe('addNodeToPrompt', () => {
     );
 
     const node = store.getState().session.network.nodes[0];
-    // The existing collected value is preserved, not overwritten by the prompt.
-    expect(node?.attributes.isCloseTie).toBe(false);
+    // The prompt's value wins over the value the node already carried.
+    expect(node?.attributes.isCloseTie).toBe(true);
     // The node is still recorded as belonging to the prompt.
     expect(node?.promptIDs).toEqual(['prompt-1']);
   });
 
   it('applies a prompt additionalAttribute the node does not yet carry', async () => {
-    // Control: when the node has no value for the variable, the prompt's
-    // additionalAttribute is genuinely owned by the prompt and must be applied.
     const store = createTestStoreWithPrompts({
       prompts: [
         {
@@ -685,12 +681,14 @@ describe('addNodeToPrompt', () => {
 });
 
 describe('removeNodeFromPrompt', () => {
-  it('does not clear a shared value that a form collected on removal', async () => {
-    // Scenario (issue #672): isCloseTie:false was collected via an AlterForm.
-    // The node was also (re-)nominated into a NameGenerator prompt whose
-    // additionalAttributes assert isCloseTie:true (but the form value won, so
-    // the node still carries false). Removing the node from the prompt must NOT
-    // clear the form-collected value to null.
+  it('clears a prompt-introduced attribute on removal, even one a form displayed', async () => {
+    // Scenario (issue #672, corrected): a NameGenerator prompt asserts
+    // isCloseTie:true; the node was added on that prompt and an AlterForm later
+    // displayed the value. Even if the node now carries a value that differs
+    // from what the removed prompt asserted, there is no form "ownership" to
+    // preserve — the network is the single source of truth, and removing the
+    // node from the prompt undoes the prompt's contribution. The attribute is
+    // cleared to null because no remaining prompt asserts it.
     const store = createTestStoreWithPrompts({
       prompts: [
         {
@@ -703,8 +701,6 @@ describe('removeNodeFromPrompt', () => {
         {
           _uid: 'node-1',
           type: 'person',
-          // Carries the form-collected value, which differs from what the
-          // removed prompt would assert (true) -> it is not prompt-owned.
           attributes: { isCloseTie: false },
           promptIDs: ['prompt-1'],
         },
@@ -716,7 +712,7 @@ describe('removeNodeFromPrompt', () => {
     );
 
     const node = store.getState().session.network.nodes[0];
-    expect(node?.attributes.isCloseTie).toBe(false);
+    expect(node?.attributes.isCloseTie).toBeNull();
     expect(node?.promptIDs).toEqual([]);
   });
 
