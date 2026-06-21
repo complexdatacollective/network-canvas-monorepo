@@ -109,9 +109,20 @@ const dateTimeDatePickerSchema = baseVariableSchema
   }));
 
 const isIsoDate = (value: string) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const timestamp = Date.parse(value);
-  return !Number.isNaN(timestamp);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  // Date.parse/UTC normalize impossible calendar dates (e.g. 2020-02-31 ->
+  // 2020-03-02), so round-trip the components and require an exact match to
+  // reject invalid days-of-month and out-of-range months.
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
 };
 
 const dateTimeRelativeDatePickerSchema = baseVariableSchema

@@ -408,6 +408,22 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       expect(result.success).toBe(false);
     });
 
+    it('rejects an impossible calendar anchor date (e.g. 2020-02-31)', () => {
+      // Date.parse normalizes 2020-02-31 to a real March date, so the anchor
+      // check must validate calendar bounds rather than rely on Date.parse.
+      const result = ProtocolSchemaV8.safeParse(
+        buildProtocolWithParams({ anchor: '2020-02-31', before: 1, after: 5 }),
+      );
+      expect(result.success).toBe(false);
+    });
+
+    it('accepts a valid leap-day anchor (2020-02-29)', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        buildProtocolWithParams({ anchor: '2020-02-29', before: 1, after: 5 }),
+      );
+      expect(result.success).toBe(true);
+    });
+
     it('accepts valid before/after/anchor', () => {
       const result = ProtocolSchemaV8.safeParse(
         buildProtocolWithParams({ anchor: '2020-01-01', before: 1, after: 5 }),

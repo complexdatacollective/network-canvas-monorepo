@@ -493,6 +493,79 @@ describe('Migration V7 to V8', () => {
       );
       expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
     });
+
+    it('does not wrap when a different entity shares the attribute id as categorical', () => {
+      // `shared` is categorical on `place` but text on `person`; a rule scoped
+      // to `person` must stay scalar and not be rewritten to an array just
+      // because another entity defines a categorical variable with the same id.
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: { shared: { name: 'shared', type: 'text' } },
+            },
+            place: {
+              name: 'Place',
+              color: 'node-color-seq-2',
+              variables: {
+                shared: {
+                  name: 'shared',
+                  type: 'categorical',
+                  component: 'CheckboxGroup',
+                  options: [{ label: 'A', value: 'a' }],
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'stage1',
+            type: 'NameGenerator',
+            label: 'Test Stage',
+            form: { fields: [{ variable: 'shared', prompt: 'Pick' }] },
+            subject: { entity: 'node', type: 'person' },
+            prompts: [{ id: 'prompt1', text: 'Test prompt' }],
+            skipLogic: {
+              action: 'SKIP',
+              filter: {
+                rules: [
+                  {
+                    type: 'node',
+                    id: 'rule1',
+                    options: {
+                      type: 'person',
+                      attribute: 'shared',
+                      operator: 'EXACTLY',
+                      value: 'x',
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      };
+
+      const migrated = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      }) as unknown as {
+        stages: {
+          skipLogic?: {
+            filter?: { rules?: { options?: { value?: unknown } }[] };
+          };
+        }[];
+      };
+
+      expect(
+        migrated.stages[0]?.skipLogic?.filter?.rules?.[0]?.options?.value,
+      ).toBe('x');
+    });
   });
 
   describe('filter type transformation', () => {

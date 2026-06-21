@@ -11,46 +11,39 @@ const CATEGORICAL_VALUE_OPERATORS = new Set([
   'EXCLUDES',
 ]);
 
-// Collects the ids of every categorical variable across node, edge, and ego
-// codebook entities, so rule migration can target only categorical operands.
-const collectCategoricalVariableIds = (codebook: unknown): Set<string> => {
-  const ids = new Set<string>();
-  if (typeof codebook !== 'object' || codebook === null) return ids;
-  const typedCodebook = codebook as Record<string, unknown>;
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  typeof value === 'object' && value !== null
+    ? (value as Record<string, unknown>)
+    : null;
 
-  const addFromVariables = (variables: unknown) => {
-    if (typeof variables !== 'object' || variables === null) return;
-    for (const [id, definition] of Object.entries(
-      variables as Record<string, unknown>,
-    )) {
-      if (
-        typeof definition === 'object' &&
-        definition !== null &&
-        (definition as Record<string, unknown>).type === 'categorical'
-      ) {
-        ids.add(id);
-      }
-    }
-  };
+// Resolves whether a specific rule operand targets a categorical variable, scoped
+// to the rule's own entity. A flat codebook-wide id set would mis-handle the case
+// where two entities (or node/edge types) share an attribute id but only one
+// definition is categorical, rewriting non-categorical operands to arrays. The
+// rule carries its scope: `rule.type` ('node'|'edge'|'ego') and, for node/edge,
+// `rule.options.type` (the entity type), so we look the variable up there.
+const isCategoricalRuleAttribute = (
+  codebook: unknown,
+  ruleType: unknown,
+  entityType: unknown,
+  attribute: string,
+): boolean => {
+  const typedCodebook = asRecord(codebook);
+  if (!typedCodebook) return false;
 
-  const addFromEntities = (entities: unknown) => {
-    if (typeof entities !== 'object' || entities === null) return;
-    for (const definition of Object.values(
-      entities as Record<string, unknown>,
-    )) {
-      if (typeof definition === 'object' && definition !== null) {
-        addFromVariables((definition as Record<string, unknown>).variables);
-      }
-    }
-  };
-
-  addFromEntities(typedCodebook.node);
-  addFromEntities(typedCodebook.edge);
-  if (typeof typedCodebook.ego === 'object' && typedCodebook.ego !== null) {
-    addFromVariables((typedCodebook.ego as Record<string, unknown>).variables);
+  let variables: Record<string, unknown> | null = null;
+  if (ruleType === 'ego') {
+    variables = asRecord(asRecord(typedCodebook.ego)?.variables);
+  } else if (
+    (ruleType === 'node' || ruleType === 'edge') &&
+    typeof entityType === 'string'
+  ) {
+    const entities = asRecord(typedCodebook[ruleType]);
+    variables = asRecord(asRecord(entities?.[entityType])?.variables);
   }
 
-  return ids;
+  if (!variables) return false;
+  return asRecord(variables[attribute])?.type === 'categorical';
 };
 
 const migrationV7toV8 = createMigration({
@@ -78,9 +71,7 @@ const migrationV7toV8 = createMigration({
 - Categorical attribute values are now stored as arrays of selected option values. Existing single-value categorical filter and skip-logic rule operands (\`is exactly\`, \`is not\`, \`includes\`, \`excludes\`) are wrapped in a single-element array to match.
 `,
   migrate: (doc, deps) => {
-    const categoricalVariableIds = collectCategoricalVariableIds(
-      (doc as Record<string, unknown>).codebook,
-    );
+    const codebook = (doc as Record<string, unknown>).codebook;
 
     const transformed = traverseAndTransform(doc as Record<string, unknown>, [
       {
@@ -488,7 +479,12 @@ const migrationV7toV8 = createMigration({
             typeof attribute !== 'string' ||
             typeof operator !== 'string' ||
             !CATEGORICAL_VALUE_OPERATORS.has(operator) ||
-            !categoricalVariableIds.has(attribute) ||
+            !isCategoricalRuleAttribute(
+              codebook,
+              typedRule.type,
+              typedOptions.type,
+              attribute,
+            ) ||
             value === undefined ||
             value === null ||
             Array.isArray(value)
