@@ -57,28 +57,3 @@ export const getStageMetadataResponse = (
     value: answer ? answer[3] : undefined,
   };
 };
-
-/**
- * Computes the answered-state for a single DyadCensus prompt.
- *
- * DyadCensus is a binary census: each prompt records whether an edge of its
- * `createEdge` type should exist for a pair. Several prompts can share the same
- * edge type, so answered-state must be scoped per prompt rather than derived
- * from raw edge existence on the shared graph — otherwise a 'Yes' on one prompt
- * makes a sibling prompt sharing the same edge type appear pre-answered and
- * skippable. The per-prompt answer lives in the stage-metadata response tuple
- * (`[promptIndex, a, b, value]`), mirroring the per-prompt scoping
- * TieStrengthCensus applies via `getTieStrengthHasEdge`.
- *
- * Returns `true`/`false` for an explicit per-prompt answer, or `null` when this
- * prompt is unanswered.
- */
-export const getDyadHasEdge = (response: {
-  exists: boolean;
-  value: boolean | undefined;
-}): boolean | null => {
-  if (!response.exists) {
-    return null;
-  }
-  return response.value ?? null;
-};

@@ -15,7 +15,7 @@ Fix interview-runtime schema-conformance bugs found in a release audit:
 
 Further interview-runtime fixes from the medium/low conformance audit:
 
-- DyadCensus: derive each prompt's answered-state per prompt (a sibling prompt sharing the same `createEdge` no longer pre-fills a later prompt's "Yes"), and make edge creation idempotent so re-selecting "Yes" cannot append a duplicate edge.
+- DyadCensus: scope each prompt's answered-state per prompt so a sibling prompt sharing the same `createEdge` no longer auto-skips data collection on a later prompt. The shared edge is still reflected (the later prompt pre-selects "Yes" from the network), but the participant must still answer it. Edge creation is idempotent so re-selecting "Yes" cannot append a duplicate edge.
 - TieStrengthCensus: replace the `'__none__'` decline sentinel with a collision-free key so an ordinal option whose value is literally `'__none__'` is recorded as a value rather than treated as a decline.
 - OneToManyDyadCensus: backward navigation across a prompt boundary lands on the destination prompt's last focal node instead of the first.
 - NameGeneratorRoster: honour an initial-sort property of `'*'` (data-file order), keep data-file order when no `sortOrder` is set, apply the full multi-key `sortOrder`, and rank ordinal/categorical sortable properties by codebook option order instead of lexicographically.

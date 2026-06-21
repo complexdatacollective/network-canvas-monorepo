@@ -186,7 +186,7 @@ function renderInterface(
 }
 
 describe('DyadCensus interface', () => {
-  it('does not pre-fill a later prompt that shares createEdge with an answered prompt', async () => {
+  it('reflects a shared-graph edge on a later prompt but still requires a per-prompt answer', async () => {
     const { store, advancePastIntro, runValidation, yesButton } =
       renderInterface(twoPromptStage);
     await advancePastIntro();
@@ -203,13 +203,15 @@ describe('DyadCensus interface', () => {
       store.dispatch(updatePrompt(1));
     });
 
-    // (a) prompt 1 must NOT show 'Yes' as pre-selected just because the shared
-    // edge exists.
+    // (a) the network is the single source of truth: prompt 1 reflects the
+    // shared edge by pre-selecting 'Yes'.
     await waitFor(() =>
-      expect(yesButton().getAttribute('aria-checked')).not.toBe('true'),
+      expect(yesButton().getAttribute('aria-checked')).toBe('true'),
     );
 
-    // (b) prompt 1's readiness is unanswered: forward validation is blocked.
+    // (b) but answered-state is scoped per prompt: prompt 1 has no per-prompt
+    // record, so forward validation is still blocked until the participant
+    // clicks through.
     expect(await runValidation('forwards')).toBe(false);
   });
 

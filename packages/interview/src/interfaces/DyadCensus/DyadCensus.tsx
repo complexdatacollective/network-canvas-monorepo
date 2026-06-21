@@ -31,7 +31,6 @@ import type { StageProps } from '~/types';
 
 import IntroPanel from '../SlidesForm/IntroPanel';
 import {
-  getDyadHasEdge,
   getNodePair,
   getStageMetadataResponse,
   isDyadCensusMetadata,
@@ -90,10 +89,21 @@ export default function DyadCensus(props: DyadCensusProps) {
     ? getStageMetadataResponse(stageMetadata, promptIndex, pair)
     : { exists: false, value: undefined };
 
-  // Answered-state is scoped per prompt via the metadata tuple (mirroring
-  // TieStrengthCensus), NOT raw edge existence — otherwise answering one prompt
-  // would pre-fill a sibling prompt sharing the same createEdge type.
-  const hasEdge: boolean | null = getDyadHasEdge(metadataResponse);
+  // What to DISPLAY reflects the shared graph (the single source of truth): if
+  // an edge of this type exists for the pair — even one created by a sibling
+  // prompt sharing this createEdge — the pair reads as connected and 'Yes' is
+  // pre-selected. A recorded negative answer for this prompt renders as 'No'.
+  const displayedEdge: boolean | null = existingEdgeId
+    ? true
+    : metadataResponse.exists
+      ? false
+      : null;
+
+  // Whether THIS prompt has been answered is scoped per prompt via the metadata
+  // tuple, NOT raw edge existence. A sibling prompt's shared edge pre-fills the
+  // display above but must NOT auto-skip data collection here: the participant
+  // still has to click through, which records the per-prompt answer.
+  const isAnswered = metadataResponse.exists;
 
   // Auto-advance tracking
   const [isTouched, setIsTouched] = useState(false);
@@ -117,7 +127,7 @@ export default function DyadCensus(props: DyadCensusProps) {
     constraints: [
       {
         direction: 'forwards',
-        isMet: isIntroduction || hasEdge !== null,
+        isMet: isIntroduction || isAnswered,
         kind: 'comparison_response_required',
         toast: {
           description: 'Please select a response before continuing.',
@@ -199,7 +209,7 @@ export default function DyadCensus(props: DyadCensusProps) {
   const setEdge = (value: boolean | undefined) => {
     if (!pair || value === undefined) return;
 
-    setIsChanged(hasEdge !== value);
+    setIsChanged(displayedEdge !== value);
     setIsTouched(true);
 
     if (value) {
@@ -290,7 +300,7 @@ export default function DyadCensus(props: DyadCensusProps) {
                   fromNode={fromNode}
                   toNode={toNode}
                   edgeColor={edgeColor}
-                  hasEdge={hasEdge}
+                  hasEdge={displayedEdge}
                   animateForwards={isForwards}
                   labelId={pairLabelId}
                 />
@@ -313,7 +323,7 @@ export default function DyadCensus(props: DyadCensusProps) {
                 >
                   <BooleanField
                     className="w-fit"
-                    value={hasEdge ?? undefined}
+                    value={displayedEdge ?? undefined}
                     onChange={setEdge}
                     options={[
                       { label: 'Yes', value: true },
