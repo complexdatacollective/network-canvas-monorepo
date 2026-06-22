@@ -2,16 +2,51 @@ import { describe, expect, it } from 'vitest';
 
 import { getMockState } from '~/__tests__/helpers';
 import type { RootState } from '~/ducks/modules/root';
+import { collectPaths } from '~/utils/collectPaths';
 
 import {
   getAssetIndex,
   getEdgeIndex,
   getNodeIndex,
   getVariableIndex,
+  paths,
   utils,
 } from '../indexes';
 
 const testState = getMockState() as unknown as RootState;
+
+// Every validation rule that references another variable by id. A variable
+// targeted only by one of these must still count as "in use".
+const CROSS_VARIABLE_VALIDATIONS = [
+  'sameAs',
+  'differentFrom',
+  'greaterThanVariable',
+  'lessThanVariable',
+  'greaterThanOrEqualToVariable',
+  'lessThanOrEqualToVariable',
+] as const;
+
+const buildProtocolWithValidationRef = (
+  entity: 'ego' | 'node' | 'edge',
+  validationKey: string,
+) => {
+  const referencedVariableId = 'referenced-variable-id';
+  const variables = {
+    'owner-variable-id': {
+      name: 'owner',
+      type: 'number',
+      validation: { [validationKey]: referencedVariableId },
+    },
+    [referencedVariableId]: { name: 'referenced', type: 'number' },
+  };
+
+  const codebook =
+    entity === 'ego'
+      ? { ego: { variables } }
+      : { [entity]: { 'entity-type-id': { variables } } };
+
+  return { protocol: { codebook, stages: [] }, referencedVariableId };
+};
 
 describe('indexes selectors', () => {
   describe('utils.buildSearch()', () => {
@@ -44,6 +79,23 @@ describe('indexes selectors', () => {
 
       expect(subject).toMatchSnapshot();
     });
+
+    describe.each(['ego', 'node', 'edge'] as const)(
+      'tracks cross-variable validation references on %s variables',
+      (entity) => {
+        it.each(CROSS_VARIABLE_VALIDATIONS)(
+          'counts a variable referenced via validation.%s as used',
+          (validationKey) => {
+            const { protocol, referencedVariableId } =
+              buildProtocolWithValidationRef(entity, validationKey);
+
+            const index = collectPaths(paths.variables, protocol);
+
+            expect(Object.values(index)).toContain(referencedVariableId);
+          },
+        );
+      },
+    );
   });
 
   describe('getAssetIndex()', () => {
