@@ -1,5 +1,6 @@
 import { createAsyncThunk, type Dispatch } from '@reduxjs/toolkit';
 import { navigate } from 'wouter/use-browser-location';
+import { z } from 'zod';
 
 import {
   type CurrentProtocol,
@@ -9,6 +10,7 @@ import {
   migrateProtocol,
   validateProtocol,
 } from '@codaco/protocol-validation';
+import { posthog } from '~/analytics';
 import { APP_SCHEMA_VERSION } from '~/config';
 import {
   appUpgradeRequiredDialog,
@@ -25,9 +27,43 @@ import {
   getStoredProtocol,
   putStoredProtocol,
 } from '~/utils/protocolLibrary';
+import { reportError } from '~/utils/reportError';
 
 import { clearActiveProtocol, setActiveProtocol } from '../activeProtocol';
 import { getActiveProtocolId, setActiveProtocolId } from '../app';
+
+type ImportSource = 'local' | 'remote' | 'bundled';
+
+// A protocol failed schema validation during import. This is an expected
+// outcome for an old or malformed file, so we record an analytics event
+// (mirroring the editor-time `protocol_validation_failed` event) but do not
+// report it as an exception.
+const trackImportValidationFailure = (
+  source: ImportSource,
+  error: z.ZodError,
+) => {
+  const flattenedErrors = z.flattenError(error);
+  posthog.capture('protocol_import_failed', {
+    source,
+    reason: 'validation',
+    error_count: error.issues.length,
+    error_message: z.prettifyError(error),
+    form_errors: flattenedErrors.formErrors,
+    field_errors: flattenedErrors.fieldErrors,
+  });
+};
+
+// An unexpected error was thrown while importing a protocol (fetch, unzip,
+// migration, asset IO, corrupt file). Report it as an exception so it surfaces
+// in error tracking, alongside the analytics event.
+const trackImportException = (source: ImportSource, error: unknown) => {
+  const normalizedError = reportError(error);
+  posthog.capture('protocol_import_failed', {
+    source,
+    reason: 'error',
+    error_message: normalizedError.message,
+  });
+};
 
 // Persist a protocol into the library and load it into the editing buffer.
 // Used by every "open" path so each opened protocol becomes a saved, namespaced
@@ -73,9 +109,15 @@ export const openLocalNetcanvas = createAsyncThunk(
       const fileName = file.name.toLowerCase();
 
       if (!fileName.endsWith('.netcanvas')) {
-        throw new Error(
-          'Unsupported file type. Please open a .netcanvas file.',
+        // Expected user mistake, not an error to report: surface the same
+        // dialog and return without reaching the exception-reporting catch.
+        dispatch(
+          generalErrorDialog(
+            'Failed to Open Protocol',
+            'Unsupported file type. Please open a .netcanvas file.',
+          ),
         );
+        return false;
       }
 
       const arrayBuffer = await file.arrayBuffer();
@@ -93,7 +135,16 @@ export const openLocalNetcanvas = createAsyncThunk(
       ).unwrap();
 
       if (!migratedProtocol) {
-        throw new Error('Protocol migration failed or was canceled.');
+        // Migration was canceled or app upgrade is required; the migration
+        // step has already surfaced the appropriate dialog. Treat as a benign
+        // exit rather than a reportable exception.
+        dispatch(
+          generalErrorDialog(
+            'Failed to Open Protocol',
+            'Protocol migration failed or was canceled.',
+          ),
+        );
+        return false;
       }
 
       // Validate the protocol
@@ -102,6 +153,7 @@ export const openLocalNetcanvas = createAsyncThunk(
       );
 
       if (!validationResult.success) {
+        trackImportValidationFailure('local', validationResult.error);
         const errorMessage = ensureError(validationResult.error).message;
         dispatch(validationErrorDialog(errorMessage));
         return false;
@@ -118,6 +170,7 @@ export const openLocalNetcanvas = createAsyncThunk(
         dispatch,
       );
     } catch (error) {
+      trackImportException('local', error);
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       dispatch(generalErrorDialog('Failed to Open Protocol', errorMessage));
@@ -237,6 +290,7 @@ export const openBundledTemplate = createAsyncThunk(
       const validationResult = await validateProtocol(protocol);
 
       if (!validationResult.success) {
+        trackImportValidationFailure('bundled', validationResult.error);
         const errorMessage = ensureError(validationResult.error).message;
         dispatch(validationErrorDialog(errorMessage));
         return false;
@@ -254,6 +308,7 @@ export const openBundledTemplate = createAsyncThunk(
       );
       return true;
     } catch (error) {
+      trackImportException('bundled', error);
       const errorMessage = ensureError(error).message;
       dispatch(generalErrorDialog('Protocol Import Error', errorMessage));
       return false;
@@ -318,7 +373,16 @@ export const openRemoteNetcanvas = createAsyncThunk(
       ).unwrap();
 
       if (!migratedProtocol) {
-        throw new Error('Protocol migration failed or was canceled.');
+        // Migration was canceled or app upgrade is required; the migration
+        // step has already surfaced the appropriate dialog. Treat as a benign
+        // exit rather than a reportable exception.
+        dispatch(
+          generalErrorDialog(
+            'Protocol Import Error',
+            'Protocol migration failed or was canceled.',
+          ),
+        );
+        return;
       }
 
       // Validate the protocol
@@ -327,6 +391,7 @@ export const openRemoteNetcanvas = createAsyncThunk(
       );
 
       if (!validationResult.success) {
+        trackImportValidationFailure('remote', validationResult.error);
         const errorMessage = ensureError(validationResult.error).message;
         dispatch(validationErrorDialog(errorMessage));
         return;
@@ -348,6 +413,7 @@ export const openRemoteNetcanvas = createAsyncThunk(
         dispatch,
       );
     } catch (error) {
+      trackImportException('remote', error);
       const errorMessage = ensureError(error).message;
       dispatch(generalErrorDialog('Protocol Import Error', errorMessage));
     } finally {

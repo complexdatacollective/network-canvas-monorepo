@@ -2,14 +2,18 @@ import { get } from 'es-toolkit/compat';
 import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 
+import { useAppDispatch } from '~/ducks/hooks';
+import { openDialog } from '~/ducks/modules/dialogs';
 import { getAssetManifest } from '~/selectors/protocol';
 import { getAssetById } from '~/utils/assetUtils';
+import { reportError } from '~/utils/reportError';
 
 const defaultMeta = {
   name: 'Interview network',
 };
 
 const useExternalDataDownload = () => {
+  const dispatch = useAppDispatch();
   const assetManifest = useSelector(getAssetManifest);
 
   const getAssetInfo = useCallback(
@@ -51,9 +55,19 @@ const useExternalDataDownload = () => {
 
         // Clean up blob URL
         URL.revokeObjectURL(url);
-      } catch (_error) {}
+      } catch (error) {
+        reportError(error);
+        void dispatch(
+          openDialog({
+            type: 'Error',
+            title: 'Download failed',
+            message: `"${meta.name}" could not be downloaded.`,
+            error: error instanceof Error ? error : String(error),
+          }),
+        );
+      }
     },
-    [getAssetInfo],
+    [getAssetInfo, dispatch],
   );
 
   return handleDownload;

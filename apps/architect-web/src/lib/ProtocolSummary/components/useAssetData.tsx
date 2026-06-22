@@ -4,6 +4,7 @@ import { useContext, useEffect, useState } from 'react';
 import type { RootState } from '~/ducks/modules/root';
 import { getAssetPath, makeGetNetworkAssetVariables } from '~/selectors/assets';
 import { getAssetBlobUrl, revokeBlobUrl } from '~/utils/assetUtils';
+import { reportError } from '~/utils/reportError';
 
 import SummaryContext from './SummaryContext';
 
@@ -59,7 +60,12 @@ const useAssetData = (id: string) => {
           currentUrl = blobUrl;
           setUrl(blobUrl);
         }
-      } catch (_err) {}
+      } catch (error) {
+        // The asset can't be shown; report it rather than leaving a blank
+        // image with no trace of why.
+        console.error('Failed to load asset blob URL', error);
+        reportError(error);
+      }
     };
 
     void loadAsset();

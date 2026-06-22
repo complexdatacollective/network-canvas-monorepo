@@ -35,6 +35,7 @@ import { IconButton } from '~/lib/legacy-ui/components/Button';
 import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
 import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { ensureError } from '~/utils/ensureError';
+import { reportError } from '~/utils/reportError';
 
 import {
   buildProtocolWithStage,
@@ -262,6 +263,7 @@ const StageEditor = (props: StageEditorProps) => {
         );
       }
     } catch (error) {
+      reportError(error);
       dispatch(
         dialogActions.openDialog({
           type: 'Error',

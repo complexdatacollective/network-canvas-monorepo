@@ -9,6 +9,7 @@ import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
 import { useScopedUndoRedo } from '~/hooks/useScopedUndoRedo';
 import Button, { IconButton } from '~/lib/legacy-ui/components/Button';
+import { reportError } from '~/utils/reportError';
 
 import ActionToolbar from './ActionToolbar';
 
@@ -46,11 +47,12 @@ const ProjectActions = ({
       await dispatch(exportNetcanvas()).unwrap();
       setDownloadSuccess(true);
     } catch (error) {
+      const { message } = reportError(error);
       dispatch(
         dialogActions.openDialog({
           type: 'Error',
           title: 'Failed to export protocol',
-          message: error instanceof Error ? error.message : String(error),
+          message,
         }),
       );
     } finally {

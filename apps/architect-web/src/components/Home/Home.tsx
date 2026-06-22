@@ -30,6 +30,7 @@ import Button from '~/lib/legacy-ui/components/Button';
 import { BUNDLED_TEMPLATES, type BundledTemplate } from '~/templates';
 import { loadSampleAssets, sampleProtocol } from '~/templates/sample-protocol';
 import { appVersion } from '~/utils/appVersion';
+import { reportError } from '~/utils/reportError';
 
 import LibraryPanel from './LibraryPanel';
 import ProtocolLoadingOverlay from './ProtocolLoadingOverlay';
@@ -158,8 +159,7 @@ const Home = () => {
               ? await template.loadAssets()
               : undefined;
           } catch (error) {
-            const message =
-              error instanceof Error ? error.message : String(error);
+            const { message } = reportError(error);
             dispatch(generalErrorDialog('Protocol Import Error', message));
             return;
           }
