@@ -9,6 +9,7 @@ import {
   NodeStageSubjectSchema,
   tieStrengthCensusPromptSchema,
 } from '../common';
+import { asEntityAttributeReference } from '../entity-attribute-reference';
 import { FilterSchema } from '../filters';
 import { baseStageSchema } from './base';
 
@@ -44,7 +45,7 @@ export const tieStrengthCensusStage = baseStageSchema
           'How close would you say these two people are?',
         ]),
         createEdge: getEdgeTypeId(),
-        edgeVariable: getEdgeVariableId(),
+        edgeVariable: asEntityAttributeReference(getEdgeVariableId()),
         negativeLabel: faker.helpers.arrayElement([
           'Weak',
           'Not close',

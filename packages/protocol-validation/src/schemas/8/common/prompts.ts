@@ -1,9 +1,12 @@
 import { faker } from '@faker-js/faker';
 
-import { VariableNameSchema } from '@codaco/shared-consts';
 import { getEdgeTypeId, getNodeVariableId } from '~/utils/mock-seeds';
 import { z } from '~/utils/zod-mock-extension';
 
+import {
+  asEntityAttributeReference,
+  entityAttributeReference,
+} from '../entity-attribute-reference';
 import { SortOrderSchema } from '../filters';
 
 export const promptSchema = z.strictObject({
@@ -14,7 +17,10 @@ export const promptSchema = z.strictObject({
 export type BasePrompt = z.infer<typeof promptSchema>;
 
 const AdditionalAttributesSchema = z.array(
-  z.strictObject({ variable: VariableNameSchema, value: z.boolean() }),
+  z.strictObject({
+    variable: entityAttributeReference({ subject: 'stageSubject' }),
+    value: z.boolean(),
+  }),
 );
 
 export type AdditionalAttributes = z.infer<typeof AdditionalAttributesSchema>;
@@ -26,7 +32,9 @@ export const nameGeneratorPromptSchema = promptSchema.extend({
 export const sociogramPromptSchema = promptSchema.extend({
   sortOrder: SortOrderSchema.optional(),
   layout: z.strictObject({
-    layoutVariable: z.string().generateMock(() => getNodeVariableId()),
+    layoutVariable: entityAttributeReference({
+      subject: 'stageSubject',
+    }).generateMock(() => asEntityAttributeReference(getNodeVariableId())),
   }),
   edges: z
     .strictObject({
@@ -37,7 +45,9 @@ export const sociogramPromptSchema = promptSchema.extend({
   highlight: z
     .strictObject({
       allowHighlighting: z.boolean().optional(),
-      variable: z.string().optional(),
+      variable: entityAttributeReference({
+        subject: 'stageSubject',
+      }).optional(),
     })
     .optional(),
 });
@@ -48,7 +58,10 @@ export const dyadCensusPromptSchema = promptSchema.extend({
 
 export const tieStrengthCensusPromptSchema = promptSchema.extend({
   createEdge: z.string().generateMock(() => getEdgeTypeId()),
-  edgeVariable: z.string().generateMock(() => getNodeVariableId()),
+  edgeVariable: entityAttributeReference({
+    subject: { sibling: 'createEdge', entity: 'edge' },
+    requireType: ['ordinal'],
+  }).generateMock(() => asEntityAttributeReference(getNodeVariableId())),
   negativeLabel: z
     .string()
     .generateMock(() =>
@@ -62,23 +75,26 @@ export const tieStrengthCensusPromptSchema = promptSchema.extend({
 });
 
 export const ordinalBinPromptSchema = promptSchema.extend({
-  variable: z.string().generateMock(() => getNodeVariableId()),
+  variable: entityAttributeReference({ subject: 'stageSubject' }).generateMock(
+    () => asEntityAttributeReference(getNodeVariableId()),
+  ),
   bucketSortOrder: SortOrderSchema.optional(),
   binSortOrder: SortOrderSchema.optional(),
   color: z.string().optional(),
 });
 
 export const categoricalBinPromptSchema = promptSchema.extend({
-  variable: z.string().generateMock(() => getNodeVariableId()),
+  variable: entityAttributeReference({ subject: 'stageSubject' }).generateMock(
+    () => asEntityAttributeReference(getNodeVariableId()),
+  ),
   // TODO: This should be structured this way:
   // otherOption: z.strictObject({
   // 	binLabel: z.string(),
   // 	variable: z.string(),
   // 	prompt: z.string(),
   // }).optional(),
-  otherVariable: z
-    .string()
-    .generateMock(() => getNodeVariableId())
+  otherVariable: entityAttributeReference({ subject: 'stageSubject' })
+    .generateMock(() => asEntityAttributeReference(getNodeVariableId()))
     .optional(),
   otherVariablePrompt: z.string().optional(),
   otherOptionLabel: z.string().optional(),
@@ -93,9 +109,13 @@ export const oneToManyDyadCensusPromptSchema = promptSchema.extend({
 });
 
 export const geospatialPromptSchema = promptSchema.extend({
-  variable: z.string().generateMock(() => getNodeVariableId()),
+  variable: entityAttributeReference({ subject: 'stageSubject' }).generateMock(
+    () => asEntityAttributeReference(getNodeVariableId()),
+  ),
 });
 
 export const familyPedigreeNominationPromptSchema = promptSchema.extend({
-  variable: z.string().generateMock(() => getNodeVariableId()),
+  variable: entityAttributeReference({ subject: 'stageSubject' }).generateMock(
+    () => asEntityAttributeReference(getNodeVariableId()),
+  ),
 });

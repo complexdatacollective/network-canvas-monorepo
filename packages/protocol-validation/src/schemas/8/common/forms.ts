@@ -1,8 +1,15 @@
 import { getNodeVariableId } from '~/utils/mock-seeds';
 import { z } from '~/utils/zod-mock-extension';
 
+import {
+  asEntityAttributeReference,
+  entityAttributeReference,
+} from '../entity-attribute-reference';
+
 export const FormFieldSchema = z.strictObject({
-  variable: z.string().generateMock(() => getNodeVariableId(0)),
+  variable: entityAttributeReference({ subject: 'stageSubject' }).generateMock(
+    () => asEntityAttributeReference(getNodeVariableId(0)),
+  ),
   prompt: z.string(),
   hint: z.string().optional(),
   showValidationHints: z.boolean().optional(),

@@ -8,6 +8,7 @@ import {
   IntroductionPanelSchema,
   NodeStageSubjectSchema,
 } from '../common';
+import { asEntityAttributeReference } from '../entity-attribute-reference';
 import { FilterSchema } from '../filters';
 import { baseStageSchema } from './base';
 
@@ -24,7 +25,7 @@ export const alterFormStage = baseStageSchema
     form: {
       fields: [
         {
-          variable: getNodeVariableId(0),
+          variable: asEntityAttributeReference(getNodeVariableId(0)),
           prompt: faker.helpers.arrayElement([
             'How old is this person?',
             'What is their age?',
@@ -32,7 +33,7 @@ export const alterFormStage = baseStageSchema
           ]),
         },
         {
-          variable: getNodeVariableId(1),
+          variable: asEntityAttributeReference(getNodeVariableId(1)),
           prompt: faker.helpers.arrayElement([
             'What is their occupation?',
             'What do they do for work?',
@@ -40,7 +41,7 @@ export const alterFormStage = baseStageSchema
           ]),
         },
         {
-          variable: getNodeVariableId(2),
+          variable: asEntityAttributeReference(getNodeVariableId(2)),
           prompt: faker.helpers.arrayElement([
             'How long have you known them?',
             'Length of relationship?',

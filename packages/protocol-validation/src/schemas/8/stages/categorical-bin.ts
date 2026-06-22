@@ -5,6 +5,7 @@ import { findDuplicateId } from '~/utils/validation-helpers';
 import { z } from '~/utils/zod-mock-extension';
 
 import { categoricalBinPromptSchema, NodeStageSubjectSchema } from '../common';
+import { asEntityAttributeReference } from '../entity-attribute-reference';
 import { FilterSchema } from '../filters';
 import { baseStageSchema } from './base';
 
@@ -33,7 +34,7 @@ export const categoricalBinStage = baseStageSchema
     prompts: [
       {
         id: crypto.randomUUID(),
-        variable: getNodeVariableId(),
+        variable: asEntityAttributeReference(getNodeVariableId()),
         text: faker.helpers.arrayElement([
           'Which of these options best describes how you know this person?',
           'What type of relationship do you have with each person?',
@@ -50,7 +51,7 @@ export const categoricalBinStage = baseStageSchema
           'Please specify the relationship type',
           'How would you describe this relationship?',
         ]),
-        otherVariable: getNodeVariableId(1),
+        otherVariable: asEntityAttributeReference(getNodeVariableId(1)),
       },
     ],
   }));

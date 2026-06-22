@@ -8,6 +8,7 @@ import {
   FormSchema,
   IntroductionPanelSchema,
 } from '../common';
+import { asEntityAttributeReference } from '../entity-attribute-reference';
 import { FilterSchema } from '../filters';
 import { baseStageSchema } from './base';
 
@@ -24,7 +25,7 @@ export const alterEdgeFormStage = baseStageSchema
     form: {
       fields: [
         {
-          variable: getEdgeVariableId(0),
+          variable: asEntityAttributeReference(getEdgeVariableId(0)),
           prompt: faker.helpers.arrayElement([
             'How strong is this relationship?',
             'Rate the strength of this connection',
@@ -32,7 +33,7 @@ export const alterEdgeFormStage = baseStageSchema
           ]),
         },
         {
-          variable: getEdgeVariableId(1),
+          variable: asEntityAttributeReference(getEdgeVariableId(1)),
           prompt: faker.helpers.arrayElement([
             'How often do they interact?',
             'Frequency of contact',
@@ -40,7 +41,7 @@ export const alterEdgeFormStage = baseStageSchema
           ]),
         },
         {
-          variable: getEdgeVariableId(2),
+          variable: asEntityAttributeReference(getEdgeVariableId(2)),
           prompt: faker.helpers.arrayElement([
             'What type of relationship is this?',
             'How would you describe this relationship?',

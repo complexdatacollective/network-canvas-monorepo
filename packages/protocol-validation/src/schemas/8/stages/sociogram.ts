@@ -5,6 +5,7 @@ import { findDuplicateId } from '~/utils/validation-helpers';
 import { z } from '~/utils/zod-mock-extension';
 
 import { NodeStageSubjectSchema, sociogramPromptSchema } from '../common';
+import { asEntityAttributeReference } from '../entity-attribute-reference';
 import { FilterSchema } from '../filters';
 import { baseStageSchema } from './base';
 
@@ -59,7 +60,7 @@ export const sociogramStage = baseStageSchema
       {
         id: crypto.randomUUID(),
         layout: {
-          layoutVariable: getNodeVariableId(0),
+          layoutVariable: asEntityAttributeReference(getNodeVariableId(0)),
         },
         highlight: {
           allowHighlighting: false,

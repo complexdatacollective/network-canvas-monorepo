@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import {
   ENTITY_ATTRIBUTE_REFERENCE,
+  asEntityAttributeReference,
   entityAttributeReference,
   getEntityAttributeReferenceDescriptor,
 } from '../entity-attribute-reference';
@@ -40,5 +41,9 @@ describe('entityAttributeReference', () => {
 
   it('returns undefined for an untagged schema', () => {
     expect(getEntityAttributeReferenceDescriptor(z.string())).toBeUndefined();
+  });
+
+  it('asEntityAttributeReference returns the id unchanged at runtime', () => {
+    expect(asEntityAttributeReference('var-1')).toBe('var-1');
   });
 });

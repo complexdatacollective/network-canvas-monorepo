@@ -5,6 +5,7 @@ import { findDuplicateId } from '~/utils/validation-helpers';
 import { z } from '~/utils/zod-mock-extension';
 
 import { geospatialPromptSchema, NodeStageSubjectSchema } from '../common';
+import { asEntityAttributeReference } from '../entity-attribute-reference';
 import { FilterSchema } from '../filters';
 import { baseStageSchema } from './base';
 
@@ -107,7 +108,7 @@ export const geospatialStage = baseStageSchema
           'Choose the point on the map where you usually hang out with friends.',
           'Indicate your favorite place in the city by selecting it on the map.',
         ]),
-        variable: getNodeVariableId(0),
+        variable: asEntityAttributeReference(getNodeVariableId(0)),
       },
     ],
   }));

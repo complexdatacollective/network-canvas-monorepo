@@ -28,6 +28,10 @@ export type EntityAttributeReference = z.infer<
   ReturnType<typeof entityAttributeReference>
 >;
 
+export const asEntityAttributeReference = (
+  id: string,
+): EntityAttributeReference => id as EntityAttributeReference;
+
 export const getEntityAttributeReferenceDescriptor = (
   schema: z.ZodType,
 ): EntityAttributeReferenceDescriptor | undefined => {

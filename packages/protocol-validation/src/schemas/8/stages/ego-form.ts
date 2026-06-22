@@ -2,6 +2,7 @@ import { getEgoVariableId } from '~/utils/mock-seeds';
 import { z } from '~/utils/zod-mock-extension';
 
 import { FormSchema, IntroductionPanelSchema } from '../common';
+import { asEntityAttributeReference } from '../entity-attribute-reference';
 import { baseStageSchema } from './base';
 
 export const egoFormStage = baseStageSchema
@@ -14,10 +15,16 @@ export const egoFormStage = baseStageSchema
     ...base,
     form: {
       fields: [
-        { variable: getEgoVariableId(0), prompt: 'What is your first name?' },
-        { variable: getEgoVariableId(1), prompt: 'What is your age?' },
         {
-          variable: getEgoVariableId(2),
+          variable: asEntityAttributeReference(getEgoVariableId(0)),
+          prompt: 'What is your first name?',
+        },
+        {
+          variable: asEntityAttributeReference(getEgoVariableId(1)),
+          prompt: 'What is your age?',
+        },
+        {
+          variable: asEntityAttributeReference(getEgoVariableId(2)),
           prompt: 'What is your date of birth?',
         },
       ],

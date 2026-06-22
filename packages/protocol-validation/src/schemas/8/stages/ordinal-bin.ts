@@ -5,6 +5,7 @@ import { findDuplicateId } from '~/utils/validation-helpers';
 import { z } from '~/utils/zod-mock-extension';
 
 import { NodeStageSubjectSchema, ordinalBinPromptSchema } from '../common';
+import { asEntityAttributeReference } from '../entity-attribute-reference';
 import { FilterSchema } from '../filters';
 import { baseStageSchema } from './base';
 
@@ -34,7 +35,7 @@ export const ordinalBinStage = baseStageSchema
     prompts: [
       {
         id: crypto.randomUUID(),
-        variable: getNodeVariableId(),
+        variable: asEntityAttributeReference(getNodeVariableId()),
         text: faker.helpers.arrayElement([
           'When was the last time that you communicated with each of the people you named?',
           'How often do you see each person?',
