@@ -38,3 +38,20 @@ export function externalLinkProps(href: string) {
     ? { target: '_blank', rel: 'noopener noreferrer' }
     : {};
 }
+
+// Static download files (protocol bundles, rosters, etc.) are served from
+// /public/assets and /public/protocols. No app route uses these prefixes, so
+// they reliably mark a file rather than a page — and any new file type dropped
+// in them is covered without maintaining an extension list.
+const ASSET_PREFIXES = ['/assets/', '/protocols/'];
+
+// True for a same-origin link that points at one of those static files rather
+// than an app route. Such links must use a plain <a download>: next/link would
+// client-side route to a non-existent page and bounce to the not-found
+// fallback.
+export function isInternalAsset(href: string): boolean {
+  if (!href || isExternalUrl(href)) {
+    return false;
+  }
+  return ASSET_PREFIXES.some((prefix) => href.startsWith(prefix));
+}
