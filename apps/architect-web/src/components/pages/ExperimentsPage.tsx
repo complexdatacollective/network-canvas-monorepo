@@ -45,7 +45,7 @@ const ExperimentsPage = () => {
   const isEncryptedEnabled = experiments.encryptedVariables ?? false;
 
   return (
-    <div className="relative h-dvh overflow-y-auto pb-32">
+    <div className="relative h-dvh overflow-y-auto pb-32 print:h-auto print:overflow-visible print:pb-0">
       <Layout>
         <div className="mx-auto my-(--space-xl) flex max-w-7xl flex-col gap-6 px-(--space-md) sm:px-(--space-lg) lg:px-(--space-5xl)">
           <div className="flex flex-col">
@@ -63,7 +63,7 @@ const ExperimentsPage = () => {
           <div className="flex flex-col gap-4">
             <div
               className={cx(
-                'flex items-center gap-4 rounded p-4 transition-colors',
+                'flex items-center gap-4 rounded border border-transparent p-4 transition-colors',
                 isEncryptedEnabled
                   ? 'border-sea-green/50 bg-sea-green/10'
                   : 'bg-surface-1',
