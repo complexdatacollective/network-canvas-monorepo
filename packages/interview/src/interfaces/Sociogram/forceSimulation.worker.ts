@@ -110,7 +110,7 @@ type Message =
   | UpdateLinksMessage
   | UpdateNodeMessage;
 
-self.onmessage = ({ data }: { data: Message }) => {
+export function handleMessage(data: Message) {
   switch (data.type) {
     case 'initialize': {
       const { network } = data;
@@ -195,7 +195,13 @@ self.onmessage = ({ data }: { data: Message }) => {
         forceLink(cloneLinks(links)).distance(options.linkDistance),
       );
 
-      simulation.alpha(0.3).restart();
+      // Only reheat when the simulation is actually running. When automatic
+      // layout is paused (the user toggled it off, sending `stop`), adding or
+      // removing an edge must NOT restart the layout — it stays paused until
+      // the user resumes it. Mirrors the `running` guard in `update_node`.
+      if (running) {
+        simulation.alpha(0.3).restart();
+      }
       break;
     }
     case 'update_node': {
@@ -224,4 +230,8 @@ self.onmessage = ({ data }: { data: Message }) => {
     }
     default:
   }
+}
+
+self.onmessage = ({ data }: { data: Message }) => {
+  handleMessage(data);
 };
