@@ -28,7 +28,7 @@ const store = configureStore({
       },
       // thunk is included by default in RTK
     })
-      .concat(logger)
+      .concat(import.meta.env.DEV ? [logger] : [])
       .prepend(protocolValidationListenerMiddleware.middleware)
       .prepend(protocolLibraryListenerMiddleware.middleware)
       .prepend(analyticsListenerMiddleware.middleware)
