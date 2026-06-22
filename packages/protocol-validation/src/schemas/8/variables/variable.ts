@@ -426,17 +426,16 @@ export function generateVariableMocks(
       entityAwareValidation.sameAs = idGenerator(refIndex);
     }
     if ('greaterThanVariable' in entityAwareValidation) {
-      entityAwareValidation.greaterThanVariable = idGenerator(refIndex);
+      entityAwareValidation.greaterThanVariable = undefined;
     }
     if ('lessThanVariable' in entityAwareValidation) {
-      entityAwareValidation.lessThanVariable = idGenerator(refIndex);
+      entityAwareValidation.lessThanVariable = undefined;
     }
     if ('greaterThanOrEqualToVariable' in entityAwareValidation) {
-      entityAwareValidation.greaterThanOrEqualToVariable =
-        idGenerator(refIndex);
+      entityAwareValidation.greaterThanOrEqualToVariable = undefined;
     }
     if ('lessThanOrEqualToVariable' in entityAwareValidation) {
-      entityAwareValidation.lessThanOrEqualToVariable = idGenerator(refIndex);
+      entityAwareValidation.lessThanOrEqualToVariable = undefined;
     }
 
     randomVariables[idGenerator(i)] = {

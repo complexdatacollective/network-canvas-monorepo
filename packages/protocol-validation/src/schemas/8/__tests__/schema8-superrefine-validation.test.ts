@@ -36,11 +36,14 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       const result = ProtocolSchemaV8.safeParse(invalidProtocol);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues).toHaveLength(2); // Stage subject not defined and form field variable not found
-        expect(result.error.issues[0]?.message).toBe(
-          'Stage subject is not defined in the codebook',
+        // The new validator emits errors in validator order; use find() to locate the subject error
+        const subjectError = result.error.issues.find((issue) =>
+          issue.message.includes(
+            'Stage subject is not defined in the codebook',
+          ),
         );
-        expect(result.error.issues[0]?.path).toEqual(['stages', 0, 'subject']);
+        expect(subjectError).toBeDefined();
+        expect(subjectError?.path).toEqual(['stages', 0, 'subject']);
       }
     });
 
@@ -141,7 +144,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         // The form field validation should fail because ego variables don't exist
         const formFieldError = result.error.issues.find((issue) =>
-          issue.message.includes('Form field variable not found in codebook'),
+          issue.message.includes('does not exist in the codebook'),
         );
         expect(formFieldError).toBeDefined();
       }
@@ -198,7 +201,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         expect(result.error.issues).toHaveLength(1);
         expect(result.error.issues[0]?.message).toBe(
-          'Form field variable not found in codebook.',
+          'The variable "nonexistentVariable" does not exist in the codebook',
         );
         expect(result.error.issues[0]?.path).toEqual([
           'stages',
@@ -271,7 +274,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         const formFieldError = result.error.issues.find((issue) =>
-          issue.message.includes('Form field variable not found in codebook'),
+          issue.message.includes('does not exist in the codebook'),
         );
         expect(formFieldError).toBeDefined();
         expect(formFieldError?.path).toEqual([
@@ -347,7 +350,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         const formFieldError = result.error.issues.find((issue) =>
-          issue.message.includes('Form field variable not found in codebook'),
+          issue.message.includes('does not exist in the codebook'),
         );
         expect(formFieldError).toBeDefined();
       }
@@ -459,7 +462,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const variableError = result.error.issues.find((issue) =>
           issue.message.includes(
-            '"nonexistentVariable" not defined in codebook[node][person].variables',
+            'The variable "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(variableError).toBeDefined();
@@ -530,7 +533,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const otherVariableError = result.error.issues.find((issue) =>
           issue.message.includes(
-            '"nonexistentVariable" not defined in codebook[node][person].variables',
+            'The variable "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(otherVariableError).toBeDefined();
@@ -690,7 +693,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const edgeVariableError = result.error.issues.find((issue) =>
           issue.message.includes(
-            '"nonexistentVariable" not defined in codebook[edge][knows].variables',
+            'The variable "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(edgeVariableError).toBeDefined();
@@ -737,7 +740,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         const typeError = result.error.issues.find((issue) =>
-          issue.message.includes('"duration" is not of type \'ordinal\'.'),
+          issue.message.includes(
+            'The variable "duration" must be of type ordinal',
+          ),
         );
         expect(typeError).toBeDefined();
         expect(typeError?.path).toEqual([
@@ -811,7 +816,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const layoutError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'Layout variable "nonexistentVariable" not defined',
+            'The variable "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(layoutError).toBeDefined();
@@ -907,7 +912,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const attributeError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'One or more sortable properties not defined in codebook: nonexistentVariable, anotherNonexistent',
+            'The variable "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(attributeError).toBeDefined();
@@ -917,6 +922,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           'prompts',
           0,
           'additionalAttributes',
+          0,
+          'variable',
         ]);
       }
     });
@@ -2165,12 +2172,10 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           ),
         );
         const formFieldError = result.error.issues.find((issue) =>
-          issue.message.includes('Form field variable not found in codebook'),
+          issue.message.includes('does not exist in the codebook'),
         );
         const attributeError = result.error.issues.find((issue) =>
-          issue.message.includes(
-            'One or more sortable properties not defined in codebook',
-          ),
+          issue.message.includes('does not exist in the codebook'),
         );
 
         expect(subjectError).toBeDefined();
@@ -2262,6 +2267,84 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       const protocol = createGeospatialProtocol({ allowSearch: 1 });
       const result = ProtocolSchemaV8.safeParse(protocol);
       expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Regression: greaterThanOrEqualToVariable cross-reference (PR #686)', () => {
+    it('validates clean when the referenced variable exists only via greaterThanOrEqualToVariable', () => {
+      const protocol = {
+        ...baseValidProtocol,
+        codebook: {
+          ...baseValidProtocol.codebook,
+          node: {
+            person: {
+              ...baseValidProtocol.codebook.node.person,
+              variables: {
+                ...baseValidProtocol.codebook.node.person.variables,
+                minAge: {
+                  name: 'MinimumAge',
+                  type: 'number',
+                  validation: {
+                    greaterThanOrEqualToVariable: 'age',
+                  },
+                },
+              },
+            },
+          },
+        },
+      };
+
+      const result = ProtocolSchemaV8.safeParse(protocol);
+      expect(result.success).toBe(true);
+    });
+
+    it('emits the existence error when the variable referenced by greaterThanOrEqualToVariable is removed', () => {
+      const protocol = {
+        ...baseValidProtocol,
+        codebook: {
+          ...baseValidProtocol.codebook,
+          node: {
+            person: {
+              ...baseValidProtocol.codebook.node.person,
+              variables: {
+                // 'age' removed — only 'name', 'category', 'strength' remain
+                name: baseValidProtocol.codebook.node.person.variables.name,
+                category:
+                  baseValidProtocol.codebook.node.person.variables.category,
+                strength:
+                  baseValidProtocol.codebook.node.person.variables.strength,
+                minAge: {
+                  name: 'MinimumAge',
+                  type: 'number',
+                  validation: {
+                    greaterThanOrEqualToVariable: 'age',
+                  },
+                },
+              },
+            },
+          },
+        },
+      };
+
+      const result = ProtocolSchemaV8.safeParse(protocol);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const refError = result.error.issues.find((issue) =>
+          issue.message.includes(
+            'The variable "age" does not exist in the codebook',
+          ),
+        );
+        expect(refError).toBeDefined();
+        expect(refError?.path).toEqual([
+          'codebook',
+          'node',
+          'person',
+          'variables',
+          'minAge',
+          'validation',
+          'greaterThanOrEqualToVariable',
+        ]);
+      }
     });
   });
 });
