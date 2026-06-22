@@ -36,6 +36,7 @@ import type { BundledTemplate } from '~/templates';
 import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
 import { getProtocolAssetCount } from '~/utils/assetUtils';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
+import { reportError } from '~/utils/reportError';
 
 type Tab = 'recent' | 'templates';
 
@@ -134,6 +135,7 @@ const PanelRow = ({
     setMenuOpen(false);
     void Promise.resolve(action()).catch((error: unknown) => {
       console.error('LibraryPanel action failed', error);
+      reportError(error);
     });
   };
 
@@ -298,6 +300,7 @@ const LibraryPanel = ({
         // Surface bundling/download failures instead of letting the promise
         // reject unhandled with no feedback. Not awaited so the spinner clears
         // immediately rather than waiting for the user to dismiss the dialog.
+        reportError(error);
         void dispatch(
           openDialog({
             type: 'Error',
@@ -337,6 +340,7 @@ const LibraryPanel = ({
       try {
         await dispatch(deleteLibraryProtocol(protocol.id)).unwrap();
       } catch (error) {
+        reportError(error);
         void dispatch(
           openDialog({
             type: 'Error',
@@ -442,6 +446,7 @@ const LibraryPanel = ({
     try {
       await clearAllStorage();
     } catch (error) {
+      reportError(error);
       void dispatch(
         openDialog({
           type: 'Error',

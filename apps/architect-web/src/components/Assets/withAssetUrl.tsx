@@ -2,6 +2,7 @@ import type React from 'react';
 import { useEffect, useState } from 'react';
 
 import { getAssetBlobUrl, revokeBlobUrl } from '~/utils/assetUtils';
+import { reportError } from '~/utils/reportError';
 
 type AssetUrlProps = {
   id: string;
@@ -36,7 +37,12 @@ const withAssetUrl = <P extends WithAssetUrlProps>(
             currentUrl = blobUrl;
             setUrl(blobUrl);
           }
-        } catch (_err) {}
+        } catch (error) {
+          // The asset can't be shown; report it rather than leaving a blank
+          // image with no trace of why.
+          console.error('Failed to load asset blob URL', error);
+          reportError(error);
+        }
       };
 
       loadAsset();

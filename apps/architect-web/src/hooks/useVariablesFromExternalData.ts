@@ -8,6 +8,7 @@ import {
   getGeoJsonVariables,
   getNetworkVariables,
 } from '~/utils/protocols/assetTools';
+import { reportError } from '~/utils/reportError';
 
 type VariableOption = { label: string; value: string };
 
@@ -81,6 +82,7 @@ function useVariablesFromExternalData(
         }));
       })
       .catch((e: Error) => {
+        reportError(e);
         setState((s) => ({
           ...s,
           isVariablesLoading: false,

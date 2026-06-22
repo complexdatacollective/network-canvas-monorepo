@@ -14,6 +14,7 @@ import {
 } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/store';
 import { getProtocol } from '~/selectors/protocol';
+import { reportError } from '~/utils/reportError';
 
 const formName = 'ENTITY_TYPE_DIALOG';
 
@@ -111,9 +112,20 @@ const EntityTypeDialog = ({
           await updateType(entity, type, values);
           onClose();
         }
-      } catch (_error) {}
+      } catch (error) {
+        // Keep the dialog open so the user can retry, and tell them the save
+        // failed rather than leaving the submit looking like a no-op.
+        const normalizedError = reportError(error);
+        dispatch(
+          dialogActions.openDialog({
+            type: 'Error',
+            title: isNew ? 'Could not create type' : 'Could not update type',
+            message: normalizedError.message,
+          }),
+        );
+      }
     },
-    [createType, updateType, onClose, entity, type, isNew, invalid],
+    [createType, updateType, onClose, entity, type, isNew, invalid, dispatch],
   );
 
   const handleCancel = useCallback(() => {
