@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type z } from 'zod';
+import type * as core from 'zod/v4/core';
 
 import { CurrentProtocolSchema } from '../../schemas';
 import { getEntityAttributeReferenceDescriptor } from '../../schemas/8/entity-attribute-reference';
@@ -11,26 +12,32 @@ const countTagged = (
 ): number => {
   if (seen.has(schema)) return 0;
   seen.add(schema);
-  const def = schema._zod.def as Record<string, unknown>;
+  const def = schema._zod.def;
   let count = getEntityAttributeReferenceDescriptor(schema) ? 1 : 0;
   if (
     def.type === 'optional' ||
     def.type === 'nullable' ||
     def.type === 'default'
   ) {
-    count += countTagged(def.innerType as z.ZodType, seen);
+    count += countTagged(
+      (def as core.$ZodOptionalDef).innerType as z.ZodType,
+      seen,
+    );
   } else if (def.type === 'object') {
     for (const child of Object.values(
-      (def as { shape: Record<string, z.ZodType> }).shape,
-    )) {
+      (def as core.$ZodObjectDef).shape,
+    ) as z.ZodType[]) {
       count += countTagged(child, seen);
     }
   } else if (def.type === 'array') {
-    count += countTagged(def.element as z.ZodType, seen);
+    count += countTagged((def as core.$ZodArrayDef).element as z.ZodType, seen);
   } else if (def.type === 'record') {
-    count += countTagged(def.valueType as z.ZodType, seen);
+    count += countTagged(
+      (def as core.$ZodRecordDef).valueType as z.ZodType,
+      seen,
+    );
   } else if (def.type === 'union') {
-    for (const opt of def.options as z.ZodType[])
+    for (const opt of (def as core.$ZodUnionDef).options as z.ZodType[])
       count += countTagged(opt, seen);
   }
   return count;
