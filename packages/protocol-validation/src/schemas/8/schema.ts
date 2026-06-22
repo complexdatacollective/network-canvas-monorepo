@@ -32,6 +32,7 @@ import {
 import { ExperimentsSchema, type FormField, type StageSubject } from './common';
 import type { FilterRule } from './filters';
 import { type Prompt, stageSchema } from './stages';
+import { VARIABLE_REFERENCE_VALIDATIONS } from './variables/validation';
 
 const ProtocolSchema = z
   .strictObject({
@@ -545,47 +546,11 @@ const ProtocolSchema = z
             }
           };
 
-          if (validation.sameAs && typeof validation.sameAs === 'string') {
-            checkCrossRef('sameAs', validation.sameAs);
-          }
-          if (
-            validation.differentFrom &&
-            typeof validation.differentFrom === 'string'
-          ) {
-            checkCrossRef('differentFrom', validation.differentFrom);
-          }
-          if (
-            validation.greaterThanVariable &&
-            typeof validation.greaterThanVariable === 'string'
-          ) {
-            checkCrossRef(
-              'greaterThanVariable',
-              validation.greaterThanVariable,
-            );
-          }
-          if (
-            validation.lessThanVariable &&
-            typeof validation.lessThanVariable === 'string'
-          ) {
-            checkCrossRef('lessThanVariable', validation.lessThanVariable);
-          }
-          if (
-            validation.greaterThanOrEqualToVariable &&
-            typeof validation.greaterThanOrEqualToVariable === 'string'
-          ) {
-            checkCrossRef(
-              'greaterThanOrEqualToVariable',
-              validation.greaterThanOrEqualToVariable,
-            );
-          }
-          if (
-            validation.lessThanOrEqualToVariable &&
-            typeof validation.lessThanOrEqualToVariable === 'string'
-          ) {
-            checkCrossRef(
-              'lessThanOrEqualToVariable',
-              validation.lessThanOrEqualToVariable,
-            );
+          for (const refType of VARIABLE_REFERENCE_VALIDATIONS) {
+            const refVar = validation[refType];
+            if (refVar && typeof refVar === 'string') {
+              checkCrossRef(refType, refVar);
+            }
           }
         }
       }

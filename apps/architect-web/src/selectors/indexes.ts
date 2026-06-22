@@ -1,11 +1,28 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { isArray, values } from 'es-toolkit/compat';
 
+import { VARIABLE_REFERENCE_VALIDATIONS } from '@codaco/protocol-validation';
+
 import collectPath, {
   type CollectPathsEntry,
   collectPaths,
 } from '../utils/collectPaths';
 import { getProtocol } from './protocol';
+
+/**
+ * Paths to each codebook variable's `validation` object, where the
+ * variable-reference validation rules (see VARIABLE_REFERENCE_VALIDATIONS) each
+ * hold the id of another variable.
+ */
+const variableReferenceValidationPaths = (
+  [
+    'codebook.ego.variables[].validation',
+    'codebook.node[].variables[].validation',
+    'codebook.edge[].variables[].validation',
+  ] as const
+).flatMap((basePath) =>
+  VARIABLE_REFERENCE_VALIDATIONS.map((rule) => `${basePath}.${rule}`),
+);
 
 const mapSubject =
   (entityType: string) =>
@@ -90,25 +107,7 @@ export const paths: {
     'stages[].edgeConfig.isActiveVariable',
     'stages[].edgeConfig.isGestationalCarrierVariable',
     'stages[].nominationPrompts[].variable',
-    // These validation rules each hold a reference to another variable.
-    'codebook.ego.variables[].validation.sameAs',
-    'codebook.ego.variables[].validation.differentFrom',
-    'codebook.ego.variables[].validation.greaterThanVariable',
-    'codebook.ego.variables[].validation.lessThanVariable',
-    'codebook.ego.variables[].validation.greaterThanOrEqualToVariable',
-    'codebook.ego.variables[].validation.lessThanOrEqualToVariable',
-    'codebook.node[].variables[].validation.sameAs',
-    'codebook.node[].variables[].validation.differentFrom',
-    'codebook.node[].variables[].validation.greaterThanVariable',
-    'codebook.node[].variables[].validation.lessThanVariable',
-    'codebook.node[].variables[].validation.greaterThanOrEqualToVariable',
-    'codebook.node[].variables[].validation.lessThanOrEqualToVariable',
-    'codebook.edge[].variables[].validation.sameAs',
-    'codebook.edge[].variables[].validation.differentFrom',
-    'codebook.edge[].variables[].validation.greaterThanVariable',
-    'codebook.edge[].variables[].validation.lessThanVariable',
-    'codebook.edge[].variables[].validation.greaterThanOrEqualToVariable',
-    'codebook.edge[].variables[].validation.lessThanOrEqualToVariable',
+    ...variableReferenceValidationPaths,
   ],
   assets: [
     'stages[].panels[].dataSource',
