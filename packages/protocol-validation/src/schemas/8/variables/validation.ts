@@ -62,3 +62,18 @@ export const ValidationsSchema = z.strictObject(validations);
 export type Validation = z.infer<typeof ValidationsSchema>;
 
 export type ValidationName = keyof Validation;
+
+/**
+ * The validation rules whose value is a reference to another variable's id.
+ * Consumers that need to know where a variable can be referenced (cross-reference
+ * existence checks, codebook usage detection) must derive from this list so the
+ * set stays in sync as rules are added.
+ */
+export const VARIABLE_REFERENCE_VALIDATIONS = [
+  'sameAs',
+  'differentFrom',
+  'greaterThanVariable',
+  'lessThanVariable',
+  'greaterThanOrEqualToVariable',
+  'lessThanOrEqualToVariable',
+] as const satisfies readonly (keyof typeof validations)[];

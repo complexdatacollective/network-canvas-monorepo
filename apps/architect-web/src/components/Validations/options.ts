@@ -1,5 +1,7 @@
 import { get, without } from 'es-toolkit/compat';
 
+import { VARIABLE_REFERENCE_VALIDATIONS } from '@codaco/protocol-validation';
+
 const VALIDATIONS = {
   text: [
     'required',
@@ -63,15 +65,6 @@ const VALIDATIONS_WITH_NUMBER_VALUES = [
   'maxSelected',
 ];
 
-const VALIDATIONS_WITH_LIST_VALUES = [
-  'differentFrom',
-  'sameAs',
-  'lessThanVariable',
-  'greaterThanVariable',
-  'lessThanOrEqualToVariable',
-  'greaterThanOrEqualToVariable',
-];
-
 const VALIDATIONS_WITHOUT_VALUES = ['required', 'unique'];
 
 const isValidationWithoutValue = (validation: string): boolean =>
@@ -80,7 +73,7 @@ const isValidationWithoutValue = (validation: string): boolean =>
 const isValidationWithNumberValue = (validation: string): boolean =>
   VALIDATIONS_WITH_NUMBER_VALUES.includes(validation);
 const isValidationWithListValue = (validation: string): boolean =>
-  VALIDATIONS_WITH_LIST_VALUES.includes(validation);
+  VARIABLE_REFERENCE_VALIDATIONS.some((key) => key === validation);
 
 // Internal helper - not exported
 const getValidationsForVariableType = (variableType: string): string[] =>

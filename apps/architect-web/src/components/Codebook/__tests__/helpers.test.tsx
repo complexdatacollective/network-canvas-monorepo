@@ -1,7 +1,18 @@
-import { expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { getAllVariablesByUUID } from '../../../selectors/codebook';
 import { getUsage, getUsageAsStageMeta } from '../helpers';
+
+// Every validation rule that holds a reference to another variable. A variable
+// referenced via any of these should be reported as "used as validation for X".
+const variableReferenceValidations = [
+  'sameAs',
+  'differentFrom',
+  'greaterThanVariable',
+  'lessThanVariable',
+  'greaterThanOrEqualToVariable',
+  'lessThanOrEqualToVariable',
+] as const;
 
 const state = {
   protocol: {
@@ -92,4 +103,22 @@ it('getUsageAsStageMeta()', () => {
   expect(
     getUsageAsStageMeta(mockStageMetaByIndex, mockVariableMetaByIndex, usage),
   ).toEqual(expectedResult);
+});
+
+describe('getUsageAsStageMeta() with codebook validation references', () => {
+  it.each(variableReferenceValidations)(
+    'labels a variable referenced via validation.%s',
+    (validationKey) => {
+      const mockVariableMetaByIndex = getAllVariablesByUUID(
+        state.protocol.present.codebook,
+      );
+      const usage = [
+        `codebook.node[person].variables[2].validation.${validationKey}`,
+      ];
+
+      expect(getUsageAsStageMeta([], mockVariableMetaByIndex, usage)).toEqual([
+        { label: 'Used as validation for "name"' },
+      ]);
+    },
+  );
 });
