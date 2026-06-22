@@ -2,13 +2,14 @@ import { createSelector } from '@reduxjs/toolkit';
 import { compact, get, reduce, uniq } from 'es-toolkit/compat';
 
 import type { NodeShape } from '@codaco/fresco-ui/Node';
-import type {
-  EdgeDefinition,
-  EgoDefinition,
-  NodeDefinition,
-  Stage,
-  Variable,
-  Variables,
+import {
+  type EdgeDefinition,
+  type EgoDefinition,
+  type NodeDefinition,
+  type Stage,
+  type Variable,
+  VARIABLE_REFERENCE_VALIDATIONS,
+  type Variables,
 } from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/store';
 import { getAllVariablesByUUID, getType } from '~/selectors/codebook';
@@ -50,8 +51,9 @@ const getStageIndexFromPath = (path: string): string | null => {
   return get(matches, 1, null);
 };
 
-const codebookVariableReferenceRegex =
-  /codebook\.(ego|node\[([^\]]+)\]|edge\[([^\]]+)\])\.variables\[(.*?)\].validation\.(sameAs|differentFrom)/;
+const codebookVariableReferenceRegex = new RegExp(
+  `codebook\\.(ego|node\\[([^\\]]+)\\]|edge\\[([^\\]]+)\\])\\.variables\\[(.*?)\\]\\.validation\\.(${VARIABLE_REFERENCE_VALIDATIONS.join('|')})`,
+);
 
 const getCodebookVariableIndexFromValidationPath = (
   path: string,
