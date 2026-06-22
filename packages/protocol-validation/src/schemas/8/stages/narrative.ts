@@ -5,6 +5,10 @@ import { findDuplicateId } from '~/utils/validation-helpers';
 import { z } from '~/utils/zod-mock-extension';
 
 import { NodeStageSubjectSchema } from '../common';
+import {
+  asEntityAttributeReference,
+  entityAttributeReference,
+} from '../entity-attribute-reference';
 import { FilterSchema } from '../filters';
 import { baseStageSchema } from './base';
 
@@ -26,11 +30,12 @@ export const narrativeStage = baseStageSchema.extend({
               'Relationship Display',
             ]),
           ),
-        layoutVariable: z.string().generateMock(() => getNodeVariableId(0)),
-        groupVariable: z
-          .string()
+        layoutVariable: entityAttributeReference({
+          subject: 'stageSubject',
+        }).generateMock(() => asEntityAttributeReference(getNodeVariableId(0))),
+        groupVariable: entityAttributeReference({ subject: 'stageSubject' })
           .optional()
-          .generateMock(() => getNodeVariableId(1)),
+          .generateMock(() => asEntityAttributeReference(getNodeVariableId(1))),
         edges: z
           .strictObject({
             display: z
@@ -40,9 +45,12 @@ export const narrativeStage = baseStageSchema.extend({
           })
           .optional(),
         highlight: z
-          .array(z.string())
+          .array(entityAttributeReference({ subject: 'stageSubject' }))
           .optional()
-          .generateMock(() => [getNodeVariableId(0), getNodeVariableId(1)]),
+          .generateMock(() => [
+            asEntityAttributeReference(getNodeVariableId(0)),
+            asEntityAttributeReference(getNodeVariableId(1)),
+          ]),
       }),
     )
     .min(1)

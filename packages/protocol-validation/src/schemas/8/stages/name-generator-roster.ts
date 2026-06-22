@@ -5,6 +5,10 @@ import { findDuplicateId } from '~/utils/validation-helpers';
 import { z } from '~/utils/zod-mock-extension';
 
 import { NodeStageSubjectSchema, nameGeneratorPromptSchema } from '../common';
+import {
+  asEntityAttributeReference,
+  entityAttributeReference,
+} from '../entity-attribute-reference';
 import { SortOrderSchema } from '../filters';
 import { baseStageSchema } from './base';
 
@@ -15,7 +19,12 @@ export const nameGeneratorRosterStage = baseStageSchema.extend({
   cardOptions: z
     .strictObject({
       additionalProperties: z
-        .array(z.strictObject({ label: z.string(), variable: z.string() }))
+        .array(
+          z.strictObject({
+            label: z.string(),
+            variable: entityAttributeReference({ subject: 'stageSubject' }),
+          }),
+        )
         .optional(),
     })
     .optional(),
@@ -23,7 +32,12 @@ export const nameGeneratorRosterStage = baseStageSchema.extend({
     .strictObject({
       sortOrder: SortOrderSchema.optional(),
       sortableProperties: z
-        .array(z.strictObject({ label: z.string(), variable: z.string() }))
+        .array(
+          z.strictObject({
+            label: z.string(),
+            variable: entityAttributeReference({ subject: 'stageSubject' }),
+          }),
+        )
         .optional(),
     })
     .optional(),
@@ -34,13 +48,17 @@ export const nameGeneratorRosterStage = baseStageSchema.extend({
         .generateMock(() =>
           faker.number.float({ multipleOf: 0.25, min: 0, max: 1 }),
         ),
-      matchProperties: z.array(z.string()).generateMock(() => [
-        ...faker.helpers.arrayElement([
-          ['name', 'first_name', 'last_name'],
-          ['website', 'country', 'name'],
-          ['email', 'name'],
-        ]),
-      ]),
+      matchProperties: z
+        .array(entityAttributeReference({ subject: 'stageSubject' }))
+        .generateMock(() =>
+          faker.helpers
+            .arrayElement([
+              ['name', 'first_name', 'last_name'],
+              ['website', 'country', 'name'],
+              ['email', 'name'],
+            ])
+            .map(asEntityAttributeReference),
+        ),
     })
     .optional(),
   prompts: z

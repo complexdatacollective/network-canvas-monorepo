@@ -9,12 +9,18 @@ import {
   nameGeneratorPromptSchema,
   panelSchema,
 } from '../common';
+import {
+  asEntityAttributeReference,
+  entityAttributeReference,
+} from '../entity-attribute-reference';
 import { baseStageSchema } from './base';
 
 export const nameGeneratorQuickAddStage = baseStageSchema
   .extend({
     type: z.literal('NameGeneratorQuickAdd'),
-    quickAdd: z.string().generateMock(() => getNodeVariableId(0)),
+    quickAdd: entityAttributeReference({
+      subject: 'stageSubject',
+    }).generateMock(() => asEntityAttributeReference(getNodeVariableId(0))),
     subject: NodeStageSubjectSchema,
     panels: z
       .array(panelSchema)
