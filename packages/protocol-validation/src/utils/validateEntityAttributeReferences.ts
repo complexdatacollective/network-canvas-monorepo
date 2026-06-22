@@ -1,9 +1,10 @@
 import type { Protocol } from '../schemas';
-import type { StageSubject } from '../schemas/8/common';
+import type { Codebook } from '../schemas/8/schema';
 import {
   collectEntityAttributeReferences,
   type EntityAttributeReferenceHit,
 } from './collectEntityAttributeReferences';
+import { getVariablesForSubject, variableExists } from './validation-helpers';
 
 export type ReferenceIssue = {
   code: 'custom';
@@ -11,40 +12,14 @@ export type ReferenceIssue = {
   path: (string | number)[];
 };
 
-type VariableEntry = { type: string };
-type EntityEntry = { variables?: Record<string, VariableEntry> };
-type ValidatableCodebook = {
-  node?: Record<string, EntityEntry>;
-  edge?: Record<string, EntityEntry>;
-  ego?: EntityEntry;
-};
-
-const getVariables = (
-  codebook: ValidatableCodebook,
-  subject: StageSubject,
-): Record<string, VariableEntry> => {
-  if (subject.entity === 'ego') return codebook.ego?.variables ?? {};
-  if (subject.entity === 'node') {
-    return codebook.node?.[subject.type]?.variables ?? {};
-  }
-  if (subject.entity === 'edge') {
-    return codebook.edge?.[subject.type]?.variables ?? {};
-  }
-  return {};
-};
-
 export const validateReferences = (
-  codebook: ValidatableCodebook,
+  codebook: Codebook,
   hits: EntityAttributeReferenceHit[],
 ): ReferenceIssue[] => {
   const issues: ReferenceIssue[] = [];
-
   for (const hit of hits) {
     if (!hit.subject) continue;
-
-    const variables = getVariables(codebook, hit.subject);
-
-    if (!(hit.variableId in variables)) {
+    if (!variableExists(codebook, hit.subject, hit.variableId)) {
       issues.push({
         code: 'custom',
         message: `The variable "${hit.variableId}" does not exist in the codebook`,
@@ -52,13 +27,11 @@ export const validateReferences = (
       });
       continue;
     }
-
     if (hit.requireType) {
-      const variable = variables[hit.variableId];
-      if (
-        variable &&
-        !(hit.requireType as readonly string[]).includes(variable.type)
-      ) {
+      const variable = getVariablesForSubject(codebook, hit.subject)[
+        hit.variableId
+      ];
+      if (variable && !hit.requireType.includes(variable.type)) {
         issues.push({
           code: 'custom',
           message: `The variable "${hit.variableId}" must be of type ${hit.requireType.join(' or ')}`,
@@ -67,7 +40,6 @@ export const validateReferences = (
       }
     }
   }
-
   return issues;
 };
 
