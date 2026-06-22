@@ -17,6 +17,7 @@
 - **Formatting/lint** handled by oxlint + oxfmt via the pre-commit hook; do not hand-run unless iterating.
 - **Scope:** entity-**attribute** (variable) references only. Entity-**type** references (`createEdge`, `EdgeConfig.type`, `subject.type`) and asset references are out of scope; `paths.edges`/`nodes`/`assets` stay as-is.
 - **v8 only:** the extractor targets `CurrentProtocolSchema` (ProtocolSchemaV8).
+- **Brand constructor (decided during execution):** `entityAttributeReference()` brands the field type, so the field's output type is the branded `EntityAttributeReference`, not `string`. A plain `string` (e.g. from `getNodeVariableId()`) is therefore NOT assignable to it — this breaks `.generateMock(() => getNodeVariableId())` with `TS2769`. Resolution: a brand-boundary constructor `asEntityAttributeReference(id: string): EntityAttributeReference` is added to `entity-attribute-reference.ts` (defined in Task 4 Step 1). **Mock-wrapping rule:** wherever a tagged field keeps a `.generateMock(generator)`, the generator must return branded values — wrap each produced id with `asEntityAttributeReference(...)` (for array mocks, wrap each element). Fields with no `.generateMock` (plain `z.string()` or `z.string().optional()`) need no wrapping. The single `as` inside `asEntityAttributeReference` is the sanctioned brand boundary (branded types require a cast to construct); no other `as` for branding.
 - **Unified existence message:** the new validator emits `The variable "<id>" does not exist in the codebook` for presence failures (matches the existing validation-cross-ref message); per-field wordings for the migrated checks are intentionally unified, and their test expectations are updated in Task 8.
 
 ---
@@ -665,9 +666,27 @@ git commit -m "feat(protocol-validation): entity-attribute reference validator"
 - `packages/protocol-validation/src/schemas/8/common/forms.ts`
 - `packages/protocol-validation/src/schemas/8/common/prompts.ts`
 
-**Interfaces:** Consumes `entityAttributeReference` (Task 1). Replaces `z.string()` definitions with the helper, **preserving** any `.generateMock(...)` and `.optional()` wrappers (apply `.optional()` to the helper result; keep `.generateMock` chained after).
+**Interfaces:** Consumes `entityAttributeReference` (Task 1); adds and consumes `asEntityAttributeReference` (Step 1 below). Replaces `z.string()` definitions with the helper, **preserving** any `.generateMock(...)` and `.optional()` wrappers (apply `.optional()` to the helper result; keep `.generateMock` chained after, with its generated value(s) wrapped per the Mock-wrapping rule in Global Constraints).
 
-Apply these exact substitutions (field → descriptor). Each is `z.string()...` → `entityAttributeReference({ ... })...` keeping existing `.generateMock`/`.optional`:
+- [ ] **Step 1: Add the brand-boundary constructor.** In `packages/protocol-validation/src/schemas/8/entity-attribute-reference.ts` add:
+
+```ts
+export const asEntityAttributeReference = (
+  id: string,
+): EntityAttributeReference => id as EntityAttributeReference;
+```
+
+(If `string`→branded needs it, use `id as unknown as EntityAttributeReference`; pick whichever tsc accepts — this one `as` is the sanctioned brand boundary.) Add a test to `src/schemas/8/__tests__/entity-attribute-reference.test.ts`:
+
+```ts
+it('asEntityAttributeReference returns the id unchanged at runtime', () => {
+  expect(asEntityAttributeReference('var-1')).toBe('var-1');
+});
+```
+
+Run: `cd packages/protocol-validation && pnpm exec vitest run src/schemas/8/__tests__/entity-attribute-reference.test.ts` — expect PASS.
+
+Apply these exact substitutions (field → descriptor). Each is `z.string()...` → `entityAttributeReference({ ... })...` keeping existing `.optional`; for fields that keep a `.generateMock`, wrap the generated id(s) with `asEntityAttributeReference(...)` (e.g. `.generateMock(() => getNodeVariableId())` → `.generateMock(() => asEntityAttributeReference(getNodeVariableId()))`):
 
 - `common/forms.ts` `FormFieldSchema.variable` → `entityAttributeReference({ subject: 'stageSubject' })` (keep `.generateMock(() => getNodeVariableId(0))`).
 - `common/prompts.ts`:
@@ -680,19 +699,19 @@ Apply these exact substitutions (field → descriptor). Each is `z.string()...` 
   - `geospatialPromptSchema.variable` → `{ subject: 'stageSubject' }`
   - `familyPedigreeNominationPromptSchema.variable` → `{ subject: 'stageSubject' }`
 
-- [ ] **Step 1: Confirm `AdditionalAttributesSchema.variable` semantics.** Read `common/prompts.ts` `AdditionalAttributesSchema` and `schema.ts` lines ~277–296 (the `additionalAttributes` existence check). If that check passes `attr.variable` to `variableExists` (i.e., it is treated as an id against `stage.subject`), tag it: `variable: entityAttributeReference({ subject: 'stageSubject' })`. If it is genuinely a display _name_ not existence-checked, leave it untagged and record the decision in the commit message. (Resolves the inventory's `VariableNameSchema` ambiguity.)
+- [ ] **Step 2: Confirm `AdditionalAttributesSchema.variable` semantics.** Read `common/prompts.ts` `AdditionalAttributesSchema` and `schema.ts` lines ~277–296 (the `additionalAttributes` existence check). If that check passes `attr.variable` to `variableExists` (i.e., it is treated as an id against `stage.subject`), tag it: `variable: entityAttributeReference({ subject: 'stageSubject' })`. If it is genuinely a display _name_ not existence-checked, leave it untagged and record the decision in the commit message. (Resolves the inventory's `VariableNameSchema` ambiguity.)
 
-- [ ] **Step 2: Apply the substitutions above.** Add `import { entityAttributeReference } from '../entity-attribute-reference';` to each file.
+- [ ] **Step 3: Apply the substitutions above.** Add `import { entityAttributeReference, asEntityAttributeReference } from '../entity-attribute-reference';` to each file (import only `asEntityAttributeReference` where a `.generateMock` is wrapped). Apply the Mock-wrapping rule (Global Constraints) to every retained `.generateMock`.
 
-- [ ] **Step 3: Typecheck the package**
+- [ ] **Step 4: Typecheck the package**
 
 Run: `pnpm turbo run typecheck --filter=@codaco/protocol-validation`
-Expected: PASS (brand types accepted within the schema; consumer churn handled in Task 9).
+Expected: PASS (no `TS2769` on the mocks — they now return branded values via `asEntityAttributeReference`).
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add packages/protocol-validation/src/schemas/8/common/forms.ts packages/protocol-validation/src/schemas/8/common/prompts.ts
+git add packages/protocol-validation/src/schemas/8/entity-attribute-reference.ts packages/protocol-validation/src/schemas/8/__tests__/entity-attribute-reference.test.ts packages/protocol-validation/src/schemas/8/common/forms.ts packages/protocol-validation/src/schemas/8/common/prompts.ts
 git commit -m "feat(protocol-validation): tag shared prompt/form attribute references"
 ```
 
