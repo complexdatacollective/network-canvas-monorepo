@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import ExternalLink from '~/components/ExternalLink';
 import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
 import { Button } from '~/lib/legacy-ui/components';
+import { documentationLinks } from '~/utils/documentationLinks';
 
 const basename = (filePath: string | null | undefined) => {
   if (filePath == null) return filePath;
@@ -18,7 +19,7 @@ const genericAssetMessage = (
   <>
     <p>
       Please see our{' '}
-      <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/resources/#supported-file-types">
+      <ExternalLink href={documentationLinks.supportedResourceTypes}>
         documentation page
       </ExternalLink>{' '}
       on using external data by clicking the button below.
@@ -32,7 +33,7 @@ const genericAssetMessage = (
       &nbsp; with further details.
     </p>
     <p>
-      <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/resources/#supported-file-types">
+      <ExternalLink href={documentationLinks.supportedResourceTypes}>
         <Button>View documentation</Button>
       </ExternalLink>
     </p>

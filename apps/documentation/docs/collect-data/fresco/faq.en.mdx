@@ -1,0 +1,141 @@
+---
+title: Frequently Asked Questions
+date: 9th October 2025
+navOrder: 5
+---
+
+## How much does Fresco cost?
+
+Fresco is free and open source software. You can always
+download the latest version of Fresco source-code from the [GitHub repository](https://github.com/complexdatacollective/fresco).
+
+We have done our best to make sure that you can deploy Fresco on your own server (if you have one) or to a cloud platform like Netlify
+without any additional costs. However, you may need to pay for server hosting, depending on your needs.
+
+Our [Deployment Guide](./guide) covers getting started with deploying Fresco
+using the free tier of Netlify, which is sufficient for most small-scale research projects.
+
+Netlify also offers paid plans with greater features and performance. Information about the costs of using Netlify can be found on their [pricing page](https://netlify.com/pricing).
+
+Our [advanced deployment guide](./advanced) covers deploying Fresco on your own server, which may require additional costs depending on your server provider.
+
+## How do I get support for Fresco?
+
+We do not offer direct support for Fresco, nor do we have a dedicated support team. However, we are always happy to help you with any questions or issues you may have. You can reach out to us on our [User Community](https://community.networkcanvas.com/). You can also use the feedback mechanism within Fresco to contact us.
+
+If you would like to work more closely with the project team as part of a research collaboration, please contact us at [info@networkcanvas.com](mailto:info@networkcanvas.com).
+
+## What are the requirements for deploying Fresco?
+
+Fresco is a web application that requires a server to host it. You can deploy Fresco on your own server or use a cloud platform like Netlify. The [Deployment Guide](./guide) provides detailed instructions on how to deploy Fresco on Netlify, for free.
+
+The core technology stack for Fresco is as follows:
+
+- Frontend: Next.js (React)
+- Backend:
+  - Node 24+ - for running the backend server
+  - Next.js API routes - for handling API requests
+  - tRPC - for defining and handling API routes
+  - PostgreSQL - for storing all data
+  - Prisma - for interacting with the database
+  - UploadThing or an S3-compatible bucket (AWS S3, MinIO, Cloudflare R2, Backblaze B2) - for storing protocol assets
+
+To deploy Fresco, you will need to have access to one or more servers that can run these technologies. For example you might have a server that runs the Next.js frontend and another server that runs the PostgreSQL database.
+
+Advanced users can refer to the [advanced deployment guide](./advanced) for more information on deploying Fresco on their own server.
+
+## How do I set up a custom domain for my Fresco deployment?
+
+Setting up a custom domain for your Fresco deployment will depend on how you have deployed Fresco. If you are using Netlify, you can follow the instructions in the [Netlify documentation](https://docs.netlify.com/manage/domains/get-started-with-domains/).
+
+If you are using a different deployment method, you will need to follow the instructions for that specific method.
+
+## How do I update Fresco to the latest version?
+
+You can update Fresco to the latest version by following the instructions in the [Upgrade Guide](./upgrading).
+
+## I maintain a Fresco instance on v3. Should I upgrade?
+
+Yes — we recommend upgrading to **Fresco v4**. Version 4 adds **schema 8 support**, so it can run protocols built in [Architect Web](/en/design-protocols/getting-started), along with [multiple user accounts](#can-i-create-more-than-one-user-account), passkeys, and two-factor authentication.
+
+If you are currently collecting data, finish and export any in-progress interviews first, and avoid upgrading mid-study.
+
+## How do I backup my data?
+
+The specific steps for backing up your data will depend on how you have deployed Fresco. If you are using Neon, you can follow the instructions in the [Neon backups documentation](https://neon.com/docs/manage/backups).
+
+If you are using a different database provider, you will need to follow the backup procedures for the specific technologies you are using.
+
+## Is Fresco GDPR compliant?
+
+Fresco and Interviewer are software tools that can be used in a GDPR-compliant manner, but compliance depends entirely on how you deploy and configure them. The Network Canvas development team does **not** host any participant data and does **not** act as a Data Controller or Data Processor under GDPR.
+
+**For Interviewer (Desktop/Tablet App):**
+
+- All participant data is stored only on your local device
+- No participant data is transmitted externally unless you manually export it
+- The app does not collect analytics or crash logs
+- Device-level protections (disk encryption, access controls) are your responsibility
+
+**For Fresco (Self-Hosted Web Application):**
+
+- You deploy and host Fresco on your own infrastructure
+- All participant data remains under your control at all times
+- Interview data is stored in Postgres (encrypted at rest when using providers like Neon)
+- Study assets are stored in an S3-compatible bucket — either UploadThing (server-side encryption enforced) or your own S3 storage (AWS S3, MinIO, Cloudflare R2, Backblaze B2)
+- GDPR-compliant hosting is possible by selecting an EU region — an EU-region UploadThing paid plan, or an EU-region S3 bucket
+- Optional anonymous usage/error analytics can be disabled
+
+**Your Responsibilities:**
+As the Data Controller, you are responsible for:
+
+- Establishing a lawful basis for processing participant data
+- Selecting GDPR-compliant hosting regions
+- Implementing appropriate data security measures
+- Maintaining data retention and deletion policies
+- Enabling participant rights (access, rectification, erasure)
+
+**Learn More:**
+For comprehensive guidance on GDPR compliance, including detailed information for researchers, ethics committees, and IT departments, see our [GDPR Compliance Guide](/en/get-started/planning-a-study/gdpr-compliance).
+
+## Can I create more than one user account?
+
+Yes, in **Fresco v4 and later**. Fresco supports multiple accounts: the first account is created when you set up your instance, and you can add further accounts at any time from **Settings → User Management** in the dashboard. (Earlier versions of Fresco supported only a single account.)
+
+Note that all accounts are equal administrators with no roles or permission tiers, so every account has full access to all protocols, participants, and data. Only create accounts for people you trust with the entire study. See [Accounts & security](/en/collect-data/fresco/accounts) for details.
+
+## Where will announcements about releases be posted?
+
+New versions of Fresco will be announced on our <a href="https://community.networkcanvas.com/" target="_blank">User Community</a>. More information about the upgrade process can be found in the [Upgrade Guide](./upgrading).
+
+## Which browsers are supported?
+
+Fresco is supported on latest version of Chrome, Safari, and Firefox. This applies to the backend user dashboard and the participant interview experience.
+
+We specifically do not support Internet Explorer or Edge Legacy.
+
+If you encounter an issue with a supported browser, or if you need a specific version of a browser to be supported, please use the feedback mechanism within Fresco to contact us.
+
+## Which devices and platforms are supported for participants?
+
+Participants can use any computer or tablet with a supported browser for interviews. Smartphones or small-screen devices are not compatible. Tablets should be used in landscape mode for optimal viewing during interviews.
+
+## How do I create another user account for my colleague?
+
+In **Fresco v4 and later**, open **Settings → User Management** in the dashboard and click **Add User**. Give each team member their own account rather than sharing one set of credentials. Bear in mind that all accounts are equal administrators with full access to the study. For a full walkthrough, including passkeys and two-factor authentication, see [Accounts & security](/en/collect-data/fresco/accounts).
+
+## How do I reset my password?
+
+You change your own password from inside an authenticated session via **Settings → User Management → Change Password**. Fresco has no email-based "forgot password" flow.
+
+If you are locked out of an account in **Fresco v4 or later**, you have a few options:
+
+- If you enabled two-factor authentication, sign in using one of your **recovery codes**.
+- Ask **another administrator** to **Reset Auth** for your account from User Management. This clears your existing passkeys and two-factor authentication and gives the administrator a temporary password to pass to you, which you use to sign back in. (This is why we recommend creating more than one account.)
+- As a last resort, if every account is inaccessible and no recovery codes remain, you may need to [reset your database](/en/collect-data/fresco/deployment-troubleshooting#instance-expired-message-during-the-setup-process). This will result in the loss of all data and unexported interviews.
+
+See [Accounts & security](/en/collect-data/fresco/accounts) for more on recovering access.
+
+## I have multiple studies. Should I create a new Fresco instance for each study?
+
+Fresco is designed to be used for a single study at a time. If you have multiple studies, you can create a new Fresco instance for each study. This will allow you to keep the data separate and organized. Please bear in mind that you may need to pay for additional server hosting if you create multiple instances.

@@ -42,6 +42,7 @@ import EdgeConfiguration from '~/components/sections/FamilyPedigree/EdgeConfigur
 import NodeConfiguration from '~/components/sections/FamilyPedigree/NodeConfiguration';
 import NominationPrompts from '~/components/sections/FamilyPedigree/NominationPrompts';
 import { FilteredNodeType } from '~/components/sections/NodeType';
+import { interfaceDocumentationUrl } from '~/utils/documentationLinks';
 
 /**
  * Props that are passed to all stage editor section components.
@@ -102,8 +103,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       SkipLogic,
       InterviewScript,
     ],
-    documentation:
-      'https://documentation.networkcanvas.com/interface-documentation/per-alter-edge-form/',
+    documentation: interfaceDocumentationUrl('per-alter-edge-form'),
     template: {},
   },
   AlterForm: {
@@ -114,8 +114,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       SkipLogic,
       InterviewScript,
     ],
-    documentation:
-      'https://documentation.networkcanvas.com/interface-documentation/per-alter-form/',
+    documentation: interfaceDocumentationUrl('per-alter-form'),
   },
   CategoricalBin: {
     sections: [
@@ -124,8 +123,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       SkipLogic,
       InterviewScript,
     ],
-    documentation:
-      'https://documentation.networkcanvas.com/interface-documentation/categorical-bin/',
+    documentation: interfaceDocumentationUrl('categorical-bin'),
   },
   DyadCensus: {
     sections: [
@@ -135,8 +133,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       SkipLogic,
       InterviewScript,
     ],
-    documentation:
-      'https://documentation.networkcanvas.com/interface-documentation/dyad-census/',
+    documentation: interfaceDocumentationUrl('dyad-census'),
   },
   OneToManyDyadCensus: {
     sections: [
@@ -146,8 +143,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       SkipLogic,
       InterviewScript,
     ],
-    documentation:
-      'https://documentation.networkcanvas.com/interface-documentation/one-to-many-dyad-census/',
+    documentation: interfaceDocumentationUrl('one-to-many-dyad-census'),
     template: {
       behaviours: {
         removeAfterConsideration: true,
@@ -156,14 +152,12 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
   },
   EgoForm: {
     sections: [IntroductionPanel, Form, SkipLogic, InterviewScript],
-    documentation:
-      'https://documentation.networkcanvas.com/interface-documentation/ego-form/',
+    documentation: interfaceDocumentationUrl('ego-form'),
     template: {},
   },
   Information: {
     sections: [Title, ContentGrid, SkipLogic, InterviewScript],
-    documentation:
-      'https://documentation.networkcanvas.com/interface-documentation/information/',
+    documentation: interfaceDocumentationUrl('information'),
   },
   NameGenerator: {
     sections: [
@@ -175,8 +169,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       MinMaxAlterLimits,
       InterviewScript,
     ],
-    documentation:
-      'https://documentation.networkcanvas.com/interface-documentation/name-generator-using-forms/',
+    documentation: interfaceDocumentationUrl('name-generator-using-forms'),
     name: 'Name Generator (using forms)',
   },
   NameGeneratorRoster: {
@@ -191,8 +184,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       MinMaxAlterLimits,
       InterviewScript,
     ],
-    documentation:
-      'https://documentation.networkcanvas.com/interface-documentation/name-generator-roster/',
+    documentation: interfaceDocumentationUrl('name-generator-roster'),
     name: 'Name Generator for Roster Data',
   },
   NameGeneratorQuickAdd: {
@@ -206,8 +198,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       InterviewScript,
     ],
     name: 'Name Generator (quick add)',
-    documentation:
-      'https://documentation.networkcanvas.com/interface-documentation/name-generator-using-quick-add/',
+    documentation: interfaceDocumentationUrl('name-generator-using-quick-add'),
   },
   Narrative: {
     sections: [
@@ -218,8 +209,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       SkipLogic,
       InterviewScript,
     ],
-    documentation:
-      'https://documentation.networkcanvas.com/interface-documentation/narrative/',
+    documentation: interfaceDocumentationUrl('narrative'),
     template: {
       behaviours: {
         allowRepositioning: true,
@@ -228,8 +218,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
   },
   OrdinalBin: {
     sections: [FilteredNodeType, OrdinalBinPrompts, SkipLogic, InterviewScript],
-    documentation:
-      'https://documentation.networkcanvas.com/interface-documentation/ordinal-bin/',
+    documentation: interfaceDocumentationUrl('ordinal-bin'),
   },
   Sociogram: {
     sections: [
@@ -240,8 +229,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       SkipLogic,
       InterviewScript,
     ],
-    documentation:
-      'https://documentation.networkcanvas.com/interface-documentation/sociogram/',
+    documentation: interfaceDocumentationUrl('sociogram'),
   },
   TieStrengthCensus: {
     sections: [
@@ -251,8 +239,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       SkipLogic,
       InterviewScript,
     ],
-    documentation:
-      'https://documentation.networkcanvas.com/interface-documentation/tie-strength-census/',
+    documentation: interfaceDocumentationUrl('tie-strength-census'),
   },
   Geospatial: {
     sections: [
@@ -262,8 +249,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       SkipLogic,
       InterviewScript,
     ],
-    documentation:
-      'https://documentation.networkcanvas.com/interface-documentation/geospatial/',
+    documentation: interfaceDocumentationUrl('geospatial'),
   },
   Anonymisation: {
     sections: [
@@ -272,8 +258,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       EncryptedVariables,
       InterviewScript,
     ],
-    documentation:
-      'https://documentation.networkcanvas.com/interface-documentation/anonymisation/',
+    documentation: interfaceDocumentationUrl('anonymisation'),
   },
   FamilyPedigree: {
     sections: [
@@ -284,8 +269,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       SkipLogic,
       InterviewScript,
     ],
-    documentation:
-      'https://documentation.networkcanvas.com/interface-documentation/family-pedigree/',
+    documentation: interfaceDocumentationUrl('family-tree-census'),
   },
 };
 

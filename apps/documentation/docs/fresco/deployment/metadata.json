@@ -1,9 +1,0 @@
-{
-  "type": "folder",
-  "slug": "deployment",
-  "localeLabels": {
-    "en": "Deployment"
-  },
-  "navOrder": 5,
-  "isExpanded": true
-}

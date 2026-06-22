@@ -30,6 +30,7 @@ import Button from '~/lib/legacy-ui/components/Button';
 import { BUNDLED_TEMPLATES, type BundledTemplate } from '~/templates';
 import { loadSampleAssets, sampleProtocol } from '~/templates/sample-protocol';
 import { appVersion } from '~/utils/appVersion';
+import { documentationLinks } from '~/utils/documentationLinks';
 
 import LibraryPanel from './LibraryPanel';
 import ProtocolLoadingOverlay from './ProtocolLoadingOverlay';
@@ -38,7 +39,7 @@ import TransitMap from './TransitMap';
 
 const NAV_LINKS = [
   {
-    href: 'https://documentation.networkcanvas.com',
+    href: documentationLinks.home,
     label: 'Docs',
     Icon: BookOpen,
   },

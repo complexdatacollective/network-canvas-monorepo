@@ -8,6 +8,7 @@ import type {
   ConfirmDialog,
   UserErrorDialog,
 } from '~/lib/legacy-ui/components/Dialogs';
+import { documentationLinks } from '~/utils/documentationLinks';
 
 export const generalErrorDialog = (title: string, errorMessage: string) => {
   const message: ReactNode = (
@@ -102,7 +103,7 @@ export const appUpgradeRequiredDialog = (protocolSchemaVersion: number) => {
       </p>
       <p>
         Please see our{' '}
-        <ExternalLink href="https://documentation.networkcanvas.com/reference/protocol-schema-information/">
+        <ExternalLink href={documentationLinks.protocolSchema}>
           documentation on protocol schemas
         </ExternalLink>{' '}
         to locate an appropriate version, and for further information on this
@@ -163,7 +164,7 @@ export const mayUpgradeProtocolDialog = (
         created and then opened. Your original protocol will not be changed, and
         can still be opened and modified using an older version of Architect.
         Please see our{' '}
-        <ExternalLink href="https://documentation.networkcanvas.com/advanced-topics/protocol-schema-information/">
+        <ExternalLink href={documentationLinks.protocolSchema}>
           documentation on protocol schemas
         </ExternalLink>{' '}
         for more information on this topic.

@@ -4,6 +4,7 @@ import withDisabledAPIKeyRequired from '~/components/enhancers/withDisabledAPIKe
 import withMapFormToProps from '~/components/enhancers/withMapFormToProps';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { documentationLinks } from '~/utils/documentationLinks';
 
 import useVariablesFromExternalData from '../../hooks/useVariablesFromExternalData';
 import { Row, Section } from '../EditorLayout';
@@ -66,7 +67,7 @@ const MapOptions = ({
           <p>
             This interface requires an API key from Mapbox. For more information
             about Mapbox and retreiving an API Key, read our{' '}
-            <ExternalLink href="https://documentation.networkcanvas.com/interface-documentation/geospatial/">
+            <ExternalLink href={documentationLinks.geospatialInterface}>
               documentation
             </ExternalLink>{' '}
             on the interface.

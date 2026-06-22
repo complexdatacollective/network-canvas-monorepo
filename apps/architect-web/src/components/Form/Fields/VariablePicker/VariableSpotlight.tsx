@@ -8,6 +8,7 @@ import Search from '~/components/Form/Fields/Search';
 import type { RootState } from '~/ducks/store';
 import { Icon, Modal, Scroller } from '~/lib/legacy-ui/components';
 import { cx } from '~/utils/cva';
+import { documentationLinks } from '~/utils/documentationLinks';
 import { validations } from '~/utils/validations';
 
 import { getVariablesForSubject } from '../../../../selectors/codebook';
@@ -461,7 +462,7 @@ const VariableSpotlight = ({
                 <p>
                   To create your first variable of this type, type a name above
                   and press enter. See our&nbsp;
-                  <ExternalLink href="https://documentation.networkcanvas.com/reference/variable-naming/">
+                  <ExternalLink href={documentationLinks.variableNaming}>
                     documentation on variable naming
                   </ExternalLink>
                   &nbsp;for more information.

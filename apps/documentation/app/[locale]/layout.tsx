@@ -7,7 +7,6 @@ import { notFound } from 'next/navigation';
 
 import type { Messages } from '~/app/types';
 import { locales } from '~/app/types';
-import AIAssistant from '~/components/ai-assistant';
 import { LayoutComponent } from '~/components/Layout';
 import { PostHogClientProvider } from '~/components/Providers/posthog-provider';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
@@ -86,7 +85,6 @@ export default async function MainLayout(props: MainLayoutProps) {
               messages={messages.default}
             >
               <LayoutComponent>{children}</LayoutComponent>
-              <AIAssistant />
             </NextIntlClientProvider>
           </ThemeProvider>
         </PostHogClientProvider>

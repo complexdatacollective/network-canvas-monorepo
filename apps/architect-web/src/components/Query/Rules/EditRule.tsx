@@ -1,5 +1,7 @@
 import { Component } from 'react';
 
+import { documentationLinks } from '~/utils/documentationLinks';
+
 import ExternalLink from '../../ExternalLink';
 import Dialog from '../../NewComponents/Dialog';
 import EditEgoRule from './EditEgoRule';
@@ -49,11 +51,11 @@ class EditRule extends Component<EditRuleProps> {
         <div>
           <p>
             For help with constructing rules, see our documentation articles on{' '}
-            <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/skip-logic/">
+            <ExternalLink href={documentationLinks.skipLogic}>
               skip logic
             </ExternalLink>{' '}
             and{' '}
-            <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/network-filtering/">
+            <ExternalLink href={documentationLinks.networkFiltering}>
               network filtering
             </ExternalLink>
             .
