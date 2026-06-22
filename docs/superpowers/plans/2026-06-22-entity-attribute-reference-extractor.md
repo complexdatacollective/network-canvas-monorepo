@@ -862,15 +862,24 @@ Expected: PASS. (If the extractor finds nothing, a tag from Tasks 4–6 is missi
 Run: `cd packages/protocol-validation && pnpm exec vitest run src/utils/__tests__/collectEntityAttributeReferences.test.ts src/utils/__tests__/validateEntityAttributeReferences.test.ts`
 Expected: PASS (unchanged — they use self-contained schemas).
 
-- [ ] **Step 4: Rebuild package + typecheck**
+- [ ] **Step 4: Export the extractor from the package root.** Architect (Task 9) imports `collectEntityAttributeReferences` from `@codaco/protocol-validation`, so it must be on the public surface. Add it to `packages/protocol-validation/src/index.ts` following that file's explicit import-then-export pattern (it does NOT use `export *` for `utils/`):
+
+```ts
+import { collectEntityAttributeReferences } from './utils/collectEntityAttributeReferences';
+// ...add `collectEntityAttributeReferences` (and `type EntityAttributeReferenceHit`) to the existing export block.
+```
+
+Do not export `collectEntityAttributeReferencesFromSchema` or the validator — those stay package-internal (relative imports). (It will read as unused to knip until Task 9 lands; the knip gate runs in Task 11, after architect consumes it.)
+
+- [ ] **Step 5: Rebuild package + typecheck**
 
 Run: `pnpm turbo run build typecheck --filter=@codaco/protocol-validation`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add packages/protocol-validation/src/schemas/8/variables/validation.ts packages/protocol-validation/src/schemas/8/filters/filter.ts packages/protocol-validation/src/schemas/8/filters/sort.ts packages/protocol-validation/src/utils/__tests__/entity-attribute-reference-integration.test.ts
+git add packages/protocol-validation/src/schemas/8/variables/validation.ts packages/protocol-validation/src/schemas/8/filters/filter.ts packages/protocol-validation/src/schemas/8/filters/sort.ts packages/protocol-validation/src/utils/__tests__/entity-attribute-reference-integration.test.ts packages/protocol-validation/src/index.ts
 git commit -m "feat(protocol-validation): tag validation, filter, and sort attribute references"
 ```
 
