@@ -1,5 +1,9 @@
 import { faker } from '@faker-js/faker';
 
+import {
+  asEntityAttributeReference,
+  entityAttributeReference,
+} from '~/schemas/8/entity-attribute-reference';
 import { getNodeVariableId } from '~/utils/mock-seeds';
 import { z } from '~/utils/zod-mock-extension';
 
@@ -7,11 +11,11 @@ const directions = ['asc', 'desc'] as const;
 
 export const SortRuleSchema = z
   .strictObject({
-    property: z.string(),
+    property: entityAttributeReference({ subject: 'stageSubject' }),
     direction: z.enum(['asc', 'desc']),
   })
   .generateMock(() => ({
-    property: getNodeVariableId(),
+    property: asEntityAttributeReference(getNodeVariableId()),
     direction: faker.helpers.arrayElement(directions),
   }));
 

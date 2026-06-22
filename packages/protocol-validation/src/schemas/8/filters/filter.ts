@@ -1,3 +1,7 @@
+import {
+  asEntityAttributeReference,
+  entityAttributeReference,
+} from '~/schemas/8/entity-attribute-reference';
 import { getNodeTypeId, getNodeVariableId } from '~/utils/mock-seeds';
 import { z } from '~/utils/zod-mock-extension';
 
@@ -101,13 +105,15 @@ const attributeLevelOptionsSchema = z
       .string()
       .optional()
       .generateMock(() => getNodeTypeId()),
-    attribute: z.string().generateMock(() => getNodeVariableId()),
+    attribute: entityAttributeReference({ subject: 'filterRule' }).generateMock(
+      () => asEntityAttributeReference(getNodeVariableId()),
+    ),
     operator: AllOperators,
     value: filterValueSchema,
   })
   .generateMock(() => ({
     type: getNodeTypeId(),
-    attribute: getNodeVariableId(),
+    attribute: asEntityAttributeReference(getNodeVariableId()),
     operator: 'EXACTLY' as const,
     value: 'test',
   }));

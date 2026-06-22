@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
 
+import { entityAttributeReference } from '~/schemas/8/entity-attribute-reference';
 import { z } from '~/utils/zod-mock-extension';
 
 export const validations = {
@@ -49,12 +50,26 @@ export const validations = {
       Math.random() < 0.2 ? faker.number.int({ min: 3, max: 5 }) : undefined,
     ),
   unique: z.boolean().optional(),
-  differentFrom: z.string().optional(),
-  sameAs: z.string().optional(),
-  greaterThanVariable: z.string().optional(),
-  lessThanVariable: z.string().optional(),
-  greaterThanOrEqualToVariable: z.string().optional(),
-  lessThanOrEqualToVariable: z.string().optional(),
+  differentFrom: entityAttributeReference({
+    subject: 'owningVariable',
+  }).optional(),
+  sameAs: entityAttributeReference({ subject: 'owningVariable' }).optional(),
+  greaterThanVariable: entityAttributeReference({
+    subject: 'owningVariable',
+    requireType: ['number', 'datetime', 'scalar'],
+  }).optional(),
+  lessThanVariable: entityAttributeReference({
+    subject: 'owningVariable',
+    requireType: ['number', 'datetime', 'scalar'],
+  }).optional(),
+  greaterThanOrEqualToVariable: entityAttributeReference({
+    subject: 'owningVariable',
+    requireType: ['number', 'datetime', 'scalar'],
+  }).optional(),
+  lessThanOrEqualToVariable: entityAttributeReference({
+    subject: 'owningVariable',
+    requireType: ['number', 'datetime', 'scalar'],
+  }).optional(),
 };
 
 export const ValidationsSchema = z.strictObject(validations);
