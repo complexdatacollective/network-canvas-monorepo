@@ -159,45 +159,82 @@ git commit -m "feat(protocol-validation): entityAttributeReference helper"
 - Consumes: `getEntityAttributeReferenceDescriptor`, `ENTITY_ATTRIBUTE_REFERENCE` (Task 1); `CurrentProtocolSchema` (`packages/protocol-validation/src/schemas/index.ts`); `StageSubject` (`./common`).
 - Produces:
   - `type EntityAttributeReferenceHit = { path: (string | number)[]; variableId: string; subject?: StageSubject; requireType?: readonly VariableType[] }`
-  - `collectEntityAttributeReferences(protocol: unknown): EntityAttributeReferenceHit[]`
+  - `collectEntityAttributeReferencesFromSchema(schema: z.ZodType, value: unknown): EntityAttributeReferenceHit[]` — the generic walker entry, testable against any tagged schema.
+  - `collectEntityAttributeReferences(protocol: unknown): EntityAttributeReferenceHit[]` — thin wrapper binding the generic entry to `CurrentProtocolSchema`.
 
-- [ ] **Step 1: Write the failing test**
+> **Why a `FromSchema` seam:** this task's test must be **green on its own**, but the real `CurrentProtocolSchema` has no tagged fields until Tasks 4–6. Testing the walker against a small self-contained tagged schema verifies the traversal mechanics now, with no cross-task dependency. The real-protocol-schema integration assertions live in Task 6 (after tagging). `collectEntityAttributeReferencesFromSchema` is a genuinely useful export (the generic core), so this is not test-only surface.
+
+- [ ] **Step 1: Write the failing test** (self-contained tagged schema — no dependency on the real schema being tagged)
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import { collectEntityAttributeReferences } from '../collectEntityAttributeReferences';
+import { z } from 'zod';
+import { entityAttributeReference } from '../../schemas/8/entity-attribute-reference';
+import { collectEntityAttributeReferencesFromSchema } from '../collectEntityAttributeReferences';
 
-const protocol = {
-  schemaVersion: 8,
-  stages: [
-    {
-      id: 's1',
-      type: 'OrdinalBin',
-      label: 'bin',
-      subject: { entity: 'node', type: 'person' },
-      prompts: [{ id: 'p1', variable: 'age', bucketSortOrder: [] }],
-    },
-  ],
-  codebook: {
-    node: {
-      person: {
-        name: 'Person',
-        color: 'node-color-seq-1',
-        variables: {
-          age: { name: 'age', type: 'number' },
-          dob: { name: 'dob', type: 'datetime' },
-          start: { name: 'start', type: 'datetime' },
+const stageSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('OrdinalBin'),
+    subject: z.object({ entity: z.string(), type: z.string() }),
+    prompts: z.array(
+      z.object({
+        variable: entityAttributeReference({ subject: 'stageSubject' }),
+      }),
+    ),
+  }),
+  z.object({
+    type: z.literal('TieStrengthCensus'),
+    subject: z.object({ entity: z.string(), type: z.string() }),
+    prompts: z.array(
+      z.object({
+        createEdge: z.string(),
+        edgeVariable: entityAttributeReference({
+          subject: { sibling: 'createEdge', entity: 'edge' },
+          requireType: ['ordinal'],
+        }),
+      }),
+    ),
+  }),
+]);
+
+const schema = z.object({
+  stages: z.array(stageSchema),
+  codebook: z.object({
+    node: z.record(
+      z.string(),
+      z.object({
+        variables: z.record(
+          z.string(),
+          z.object({
+            validation: z
+              .object({
+                sameAs: entityAttributeReference({
+                  subject: 'owningVariable',
+                }).optional(),
+              })
+              .optional(),
+          }),
+        ),
+      }),
+    ),
+  }),
+});
+
+describe('collectEntityAttributeReferencesFromSchema', () => {
+  it('resolves a stageSubject reference with path and subject', () => {
+    const value = {
+      stages: [
+        {
+          type: 'OrdinalBin',
+          subject: { entity: 'node', type: 'person' },
+          prompts: [{ variable: 'age' }],
         },
-      },
-    },
-  },
-};
-
-describe('collectEntityAttributeReferences', () => {
-  it('emits a stageSubject reference with resolved subject', () => {
-    const hits = collectEntityAttributeReferences(protocol);
-    const prompt = hits.find((h) => h.variableId === 'age');
-    expect(prompt).toEqual({
+      ],
+      codebook: { node: {} },
+    };
+    expect(
+      collectEntityAttributeReferencesFromSchema(schema, value),
+    ).toContainEqual({
       path: ['stages', 0, 'prompts', 0, 'variable'],
       variableId: 'age',
       subject: { entity: 'node', type: 'person' },
@@ -205,37 +242,69 @@ describe('collectEntityAttributeReferences', () => {
     });
   });
 
-  it('resolves owningVariable subject from a validation cross-reference', () => {
-    const withValidation = {
-      ...protocol,
+  it('resolves a sibling-field subject and carries requireType', () => {
+    const value = {
+      stages: [
+        {
+          type: 'TieStrengthCensus',
+          subject: { entity: 'node', type: 'person' },
+          prompts: [{ createEdge: 'friend', edgeVariable: 'weight' }],
+        },
+      ],
+      codebook: { node: {} },
+    };
+    expect(
+      collectEntityAttributeReferencesFromSchema(schema, value),
+    ).toContainEqual({
+      path: ['stages', 0, 'prompts', 0, 'edgeVariable'],
+      variableId: 'weight',
+      subject: { entity: 'edge', type: 'friend' },
+      requireType: ['ordinal'],
+    });
+  });
+
+  it('resolves owningVariable subject from the codebook path', () => {
+    const value = {
+      stages: [],
       codebook: {
         node: {
-          person: {
-            name: 'Person',
-            color: 'node-color-seq-1',
-            variables: {
-              start: { name: 'start', type: 'datetime' },
-              end: {
-                name: 'end',
-                type: 'datetime',
-                validation: { greaterThanOrEqualToVariable: 'start' },
-              },
-            },
-          },
+          person: { variables: { end: { validation: { sameAs: 'start' } } } },
         },
       },
     };
-    const hits = collectEntityAttributeReferences(withValidation);
-    const ref = hits.find((h) => h.variableId === 'start');
-    expect(ref?.subject).toEqual({ entity: 'node', type: 'person' });
-    expect(ref?.path).toEqual([
-      'codebook',
-      'node',
-      'person',
-      'variables',
-      'end',
-      'validation',
-      'greaterThanOrEqualToVariable',
+    expect(
+      collectEntityAttributeReferencesFromSchema(schema, value),
+    ).toContainEqual({
+      path: [
+        'codebook',
+        'node',
+        'person',
+        'variables',
+        'end',
+        'validation',
+        'sameAs',
+      ],
+      variableId: 'start',
+      subject: { entity: 'node', type: 'person' },
+      requireType: undefined,
+    });
+  });
+
+  it('leaves filterRule references with an undefined subject (validated elsewhere)', () => {
+    const filterSchema = z.object({
+      attribute: entityAttributeReference({ subject: 'filterRule' }),
+    });
+    expect(
+      collectEntityAttributeReferencesFromSchema(filterSchema, {
+        attribute: 'x',
+      }),
+    ).toEqual([
+      {
+        path: ['attribute'],
+        variableId: 'x',
+        subject: undefined,
+        requireType: undefined,
+      },
     ]);
   });
 });
@@ -244,7 +313,7 @@ describe('collectEntityAttributeReferences', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd packages/protocol-validation && pnpm exec vitest run src/utils/__tests__/collectEntityAttributeReferences.test.ts`
-Expected: FAIL — module not found. (These tests also depend on the fields being tagged in Tasks 4–6; until then they will fail on empty results. That is expected — this task delivers the walker; Tasks 4–6 supply the tags. Re-run this test at the end of Task 6.)
+Expected: FAIL — module `../collectEntityAttributeReferences` not found.
 
 - [ ] **Step 3: Write the walker**
 
@@ -383,21 +452,31 @@ const walk = (
   }
 };
 
+export const collectEntityAttributeReferencesFromSchema = (
+  schema: z.ZodType,
+  value: unknown,
+): EntityAttributeReferenceHit[] => walk(schema, value, [], {});
+
 export const collectEntityAttributeReferences = (
   protocol: unknown,
 ): EntityAttributeReferenceHit[] =>
-  walk(CurrentProtocolSchema as unknown as z.ZodType, protocol, [], {});
+  collectEntityAttributeReferencesFromSchema(
+    CurrentProtocolSchema as unknown as z.ZodType,
+    protocol,
+  );
 ```
 
 > Notes for the implementer:
 >
+> - Use the typed `zod/v4/core` def types for the `_zod.def` casts (`core.$ZodObjectDef`, `core.$ZodArrayDef`, `core.$ZodRecordDef`, `core.$ZodUnionDef`, `core.$ZodOptionalDef`, etc.), mirroring `src/utils/zod-mock-extension.ts`, rather than the inline `{ shape: ... }` shapes shown above. The above is illustrative; follow the existing file's casting style.
 > - Confirm `CurrentProtocolSchema`'s top-level `_zod.def.type` is `'object'` (its `.superRefine` checks attach to the object in Zod 4 and do not change the type). If it is wrapped, unwrap accordingly.
 > - `union` covers the stage discriminated-union; `safeParse` selects the branch matching the instance.
-> - The single `as unknown as z.ZodType` on the protocol schema is the one unavoidable boundary cast (the schema's inferred type is not `ZodType<unknown>`); keep it isolated here.
+> - The single `as unknown as z.ZodType` on the protocol schema is the one unavoidable boundary cast (the schema's inferred type is not `ZodType<unknown>`); keep it isolated in the wrapper.
 
-- [ ] **Step 4: Run test to verify it fails on empty (tags not yet applied)**
+- [ ] **Step 4: Run test to verify it passes**
 
-Run the same command. Expected: FAIL — hits are empty because no field is tagged yet. This confirms the walker runs without error. (It turns green after Task 6.)
+Run: `cd packages/protocol-validation && pnpm exec vitest run src/utils/__tests__/collectEntityAttributeReferences.test.ts`
+Expected: PASS (4 tests — walker mechanics verified against the self-contained tagged schema).
 
 - [ ] **Step 5: Commit**
 
@@ -417,78 +496,80 @@ git commit -m "feat(protocol-validation): entity-attribute reference extractor w
 
 **Interfaces:**
 
-- Consumes: `collectEntityAttributeReferences` (Task 2); `variableExists`, `getVariablesForSubject` (`~/utils/validation-helpers`).
-- Produces: `type ReferenceIssue = { code: 'custom'; message: string; path: (string | number)[] }`; `validateEntityAttributeReferences(protocol): ReferenceIssue[]`.
+- Consumes: `collectEntityAttributeReferences`, `EntityAttributeReferenceHit` (Task 2); `variableExists`, `getVariablesForSubject` (`~/utils/validation-helpers`); `Codebook` type (`../schemas`).
+- Produces:
+  - `type ReferenceIssue = { code: 'custom'; message: string; path: (string | number)[] }`
+  - `validateReferences(codebook: Codebook, hits: EntityAttributeReferenceHit[]): ReferenceIssue[]` — the pure presence/type logic, testable with hand-built hits.
+  - `validateEntityAttributeReferences(protocol): ReferenceIssue[]` — thin wrapper: `validateReferences(protocol.codebook, collectEntityAttributeReferences(protocol))`.
 
-- [ ] **Step 1: Write the failing test**
+> **Why split:** the same green-on-its-own requirement as Task 2 — `validateEntityAttributeReferences` can't produce hits until the real schema is tagged (Task 6). Splitting out the pure `validateReferences(codebook, hits)` lets this task test presence + type logic directly against hand-built hits. The protocol-level wrapper is exercised end-to-end in Task 6.
+
+- [ ] **Step 1: Write the failing test** (pure logic, hand-built hits)
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import { validateEntityAttributeReferences } from '../validateEntityAttributeReferences';
+import { validateReferences } from '../validateEntityAttributeReferences';
 
-const base = {
-  schemaVersion: 8,
-  stages: [
-    {
-      id: 's1',
-      type: 'OrdinalBin',
-      label: 'bin',
-      subject: { entity: 'node', type: 'person' },
-      prompts: [{ id: 'p1', variable: 'MISSING', bucketSortOrder: [] }],
-    },
-  ],
-  codebook: {
-    node: {
-      person: {
-        name: 'Person',
-        color: 'node-color-seq-1',
-        variables: { age: { name: 'age', type: 'number' } },
+const codebook = {
+  node: {
+    person: {
+      name: 'Person',
+      color: 'node-color-seq-1',
+      variables: {
+        age: { name: 'age', type: 'number' },
+        rank: { name: 'rank', type: 'ordinal' },
       },
     },
   },
 };
 
-describe('validateEntityAttributeReferences', () => {
+describe('validateReferences', () => {
   it('reports a reference to a non-existent variable', () => {
-    const issues = validateEntityAttributeReferences(base);
-    expect(issues).toContainEqual({
-      code: 'custom',
-      message: 'The variable "MISSING" does not exist in the codebook',
-      path: ['stages', 0, 'prompts', 0, 'variable'],
-    });
+    const issues = validateReferences(codebook, [
+      {
+        path: ['stages', 0, 'prompts', 0, 'variable'],
+        variableId: 'MISSING',
+        subject: { entity: 'node', type: 'person' },
+      },
+    ]);
+    expect(issues).toEqual([
+      {
+        code: 'custom',
+        message: 'The variable "MISSING" does not exist in the codebook',
+        path: ['stages', 0, 'prompts', 0, 'variable'],
+      },
+    ]);
   });
 
-  it('reports a type-invalid reference when requireType is set', () => {
-    const protocol = {
-      ...base,
-      stages: [
-        {
-          id: 's1',
-          type: 'TieStrengthCensus',
-          label: 'tie',
-          subject: { entity: 'node', type: 'person' },
-          prompts: [{ id: 'p1', createEdge: 'friend', edgeVariable: 'weight' }],
-        },
-      ],
-      codebook: {
-        ...base.codebook,
-        edge: {
-          friend: {
-            name: 'Friend',
-            color: 'edge-color-seq-1',
-            variables: { weight: { name: 'weight', type: 'number' } },
-          },
-        },
+  it('reports a type-invalid reference when requireType excludes the variable type', () => {
+    const issues = validateReferences(codebook, [
+      {
+        path: ['p'],
+        variableId: 'age',
+        subject: { entity: 'node', type: 'person' },
+        requireType: ['ordinal'],
       },
-    };
-    const issues = validateEntityAttributeReferences(protocol);
-    expect(
-      issues.some(
-        (i) =>
-          i.path.join('.').endsWith('edgeVariable') &&
-          i.message.includes('ordinal'),
-      ),
-    ).toBe(true);
+    ]);
+    expect(issues.some((i) => i.message.includes('ordinal'))).toBe(true);
+  });
+
+  it('accepts a present, type-valid reference', () => {
+    const issues = validateReferences(codebook, [
+      {
+        path: ['p'],
+        variableId: 'rank',
+        subject: { entity: 'node', type: 'person' },
+        requireType: ['ordinal'],
+      },
+    ]);
+    expect(issues).toEqual([]);
+  });
+
+  it('skips hits with no resolved subject', () => {
+    const issues = validateReferences(codebook, [
+      { path: ['f'], variableId: 'whatever', subject: undefined },
+    ]);
+    expect(issues).toEqual([]);
   });
 });
 ```
@@ -496,7 +577,7 @@ describe('validateEntityAttributeReferences', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd packages/protocol-validation && pnpm exec vitest run src/utils/__tests__/validateEntityAttributeReferences.test.ts`
-Expected: FAIL — module not found (and once present, will need the tags from Tasks 4–6 to populate hits; re-run after Task 6).
+Expected: FAIL — module `../validateEntityAttributeReferences` not found.
 
 - [ ] **Step 3: Write the validator**
 
@@ -506,8 +587,11 @@ import {
   variableExists,
 } from '~/utils/validation-helpers';
 
-import type { Protocol } from '../schemas';
-import { collectEntityAttributeReferences } from './collectEntityAttributeReferences';
+import type { Codebook, Protocol } from '../schemas';
+import {
+  collectEntityAttributeReferences,
+  type EntityAttributeReferenceHit,
+} from './collectEntityAttributeReferences';
 
 export type ReferenceIssue = {
   code: 'custom';
@@ -515,15 +599,16 @@ export type ReferenceIssue = {
   path: (string | number)[];
 };
 
-export const validateEntityAttributeReferences = (
-  protocol: Protocol<8>,
+export const validateReferences = (
+  codebook: Codebook,
+  hits: EntityAttributeReferenceHit[],
 ): ReferenceIssue[] => {
   const issues: ReferenceIssue[] = [];
 
-  for (const hit of collectEntityAttributeReferences(protocol)) {
+  for (const hit of hits) {
     if (!hit.subject) continue; // filterRule / unresolved: validated elsewhere
 
-    if (!variableExists(protocol.codebook, hit.subject, hit.variableId)) {
+    if (!variableExists(codebook, hit.subject, hit.variableId)) {
       issues.push({
         code: 'custom',
         message: `The variable "${hit.variableId}" does not exist in the codebook`,
@@ -533,7 +618,7 @@ export const validateEntityAttributeReferences = (
     }
 
     if (hit.requireType) {
-      const variables = getVariablesForSubject(protocol.codebook, hit.subject);
+      const variables = getVariablesForSubject(codebook, hit.subject);
       const variable = variables[hit.variableId];
       if (variable && !hit.requireType.includes(variable.type)) {
         issues.push({
@@ -547,11 +632,22 @@ export const validateEntityAttributeReferences = (
 
   return issues;
 };
+
+export const validateEntityAttributeReferences = (
+  protocol: Protocol<8>,
+): ReferenceIssue[] =>
+  validateReferences(
+    protocol.codebook,
+    collectEntityAttributeReferences(protocol),
+  );
 ```
 
-> Note: confirm the `Protocol<8>` import path/name from `../schemas`. Use the exported v8 protocol type; do not use `any`.
+> Note: confirm the `Codebook` and `Protocol<8>` import names from `../schemas`. Use the exported v8 types; do not use `any`. If `variableExists`/`getVariablesForSubject` expect a more specific codebook type, match their parameter type.
 
-- [ ] **Step 4: Defer green to Task 6** — these tests depend on tagged fields. Proceed; re-run at the end of Task 6.
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `cd packages/protocol-validation && pnpm exec vitest run src/utils/__tests__/validateEntityAttributeReferences.test.ts`
+Expected: PASS (4 tests).
 
 - [ ] **Step 5: Commit**
 
@@ -667,15 +763,104 @@ Substitutions:
 
 - [ ] **Step 1: Apply the substitutions.** Add the `entityAttributeReference` import to each file.
 
-- [ ] **Step 2: Green the extractor test (Task 2)**
+- [ ] **Step 2: Write the real-schema integration test** (the assertions deferred from Tasks 2 & 3 — now that the fields are tagged, exercise the protocol-bound `collectEntityAttributeReferences` and `validateEntityAttributeReferences` end-to-end).
 
-Run: `cd packages/protocol-validation && pnpm exec vitest run src/utils/__tests__/collectEntityAttributeReferences.test.ts`
-Expected: PASS (both stageSubject and owningVariable cases now resolve).
+Create `packages/protocol-validation/src/utils/__tests__/entity-attribute-reference-integration.test.ts`:
 
-- [ ] **Step 3: Green the validator test (Task 3)**
+```ts
+import { describe, expect, it } from 'vitest';
+import { collectEntityAttributeReferences } from '../collectEntityAttributeReferences';
+import { validateEntityAttributeReferences } from '../validateEntityAttributeReferences';
 
-Run: `cd packages/protocol-validation && pnpm exec vitest run src/utils/__tests__/validateEntityAttributeReferences.test.ts`
-Expected: PASS.
+const protocol = {
+  schemaVersion: 8,
+  name: 'p',
+  stages: [
+    {
+      id: 's1',
+      type: 'OrdinalBin',
+      label: 'bin',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', variable: 'age', bucketSortOrder: [] }],
+    },
+  ],
+  codebook: {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        variables: {
+          age: { name: 'age', type: 'number' },
+          end: {
+            name: 'end',
+            type: 'datetime',
+            validation: { greaterThanOrEqualToVariable: 'start' },
+          },
+          start: { name: 'start', type: 'datetime' },
+        },
+      },
+    },
+  },
+};
+
+describe('entity-attribute references against the real v8 schema', () => {
+  it('extracts a tagged prompt reference with its resolved subject', () => {
+    const hits = collectEntityAttributeReferences(protocol);
+    expect(hits).toContainEqual({
+      path: ['stages', 0, 'prompts', 0, 'variable'],
+      variableId: 'age',
+      subject: { entity: 'node', type: 'person' },
+      requireType: undefined,
+    });
+  });
+
+  it('extracts a validation cross-reference with the owning-variable subject', () => {
+    const hits = collectEntityAttributeReferences(protocol);
+    const ref = hits.find((h) => h.variableId === 'start');
+    expect(ref?.subject).toEqual({ entity: 'node', type: 'person' });
+  });
+
+  it('accepts a valid protocol and flags a removed referenced variable', () => {
+    expect(validateEntityAttributeReferences(protocol)).toEqual([]);
+    const broken = {
+      ...protocol,
+      codebook: {
+        node: {
+          person: {
+            ...protocol.codebook.node.person,
+            variables: {
+              age: protocol.codebook.node.person.variables.age,
+              end: protocol.codebook.node.person.variables.end,
+            },
+          },
+        },
+      },
+    };
+    const issues = validateEntityAttributeReferences(broken);
+    expect(issues).toContainEqual({
+      code: 'custom',
+      message: 'The variable "start" does not exist in the codebook',
+      path: [
+        'codebook',
+        'node',
+        'person',
+        'variables',
+        'end',
+        'validation',
+        'greaterThanOrEqualToVariable',
+      ],
+    });
+  });
+});
+```
+
+Run: `cd packages/protocol-validation && pnpm exec vitest run src/utils/__tests__/entity-attribute-reference-integration.test.ts`
+Expected: PASS. (If the extractor finds nothing, a tag from Tasks 4–6 is missing — fix the tag, not the test.)
+
+- [ ] **Step 3: Re-run the Task 2 and Task 3 unit suites** to confirm tagging didn't regress them.
+
+Run: `cd packages/protocol-validation && pnpm exec vitest run src/utils/__tests__/collectEntityAttributeReferences.test.ts src/utils/__tests__/validateEntityAttributeReferences.test.ts`
+Expected: PASS (unchanged — they use self-contained schemas).
 
 - [ ] **Step 4: Rebuild package + typecheck**
 
@@ -685,7 +870,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/protocol-validation/src/schemas/8/variables/validation.ts packages/protocol-validation/src/schemas/8/filters/filter.ts packages/protocol-validation/src/schemas/8/filters/sort.ts
+git add packages/protocol-validation/src/schemas/8/variables/validation.ts packages/protocol-validation/src/schemas/8/filters/filter.ts packages/protocol-validation/src/schemas/8/filters/sort.ts packages/protocol-validation/src/utils/__tests__/entity-attribute-reference-integration.test.ts
 git commit -m "feat(protocol-validation): tag validation, filter, and sort attribute references"
 ```
 
