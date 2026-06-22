@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- **No `any` types.** Use proper typing; avoid `as` assertions (prefer type guards / `satisfies`).
+- **No `any` types.** Use proper typing; avoid `as` assertions (prefer type guards / `satisfies`). **Carve-out:** `as` casts are permitted _strictly_ where traversing Zod's `_zod.def` internals, using the typed `zod/v4/core` def types (`core.$ZodObjectDef`, `core.$ZodArrayDef`, etc.) exactly as the existing `src/utils/zod-mock-extension.ts` does. Forbidden everywhere else. Reviewers must not flag internal-traversal casts that follow this pattern.
 - **No barrel files** beyond the existing package entry chain (`src/index.ts` → `schemas` → `8/schema` → `variables`/etc.).
 - **TDD:** every behavior change has a failing test first. Use targeted `vitest run <file>`.
 - **Run via turbo / rebuild deps:** after changing `@codaco/protocol-validation`, run `pnpm turbo run build --filter=@codaco/protocol-validation` before architect typecheck/tests see the new exports. Typecheck via `pnpm turbo run typecheck --filter=<pkg>` (direct `tsc` misses unbuilt workspace deps).
