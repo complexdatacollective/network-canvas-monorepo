@@ -40,6 +40,11 @@ export type StoredSession = {
   finishedAt: string | null;
   exportedAt: string | null;
   currentStep: number;
+  // Participant-facing progress (0–100) reported by @codaco/interview via
+  // onStepChange. Optional so pre-existing rows (undefined) read as 0 until the
+  // session is next advanced. The interview engine owns this value (it accounts
+  // for the appended finish stage); the host must not re-derive it.
+  progress?: number;
   network: NcNetwork;
   stageMetadata?: Record<string, unknown>;
   // Optional so pre-existing rows (undefined) read as not synthetic.

@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useMemo } from 'react';
 
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
+import { getInterviewProgress } from '@codaco/interview';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 
 import { DataViewToolbar } from './DataViewToolbar';
@@ -64,10 +65,17 @@ const bannerVariants = {
 } as const;
 
 export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
-  const protocolStageCounts = useMemo(() => {
+  // Total interview steps (including the engine's appended finish stage) by
+  // protocol hash, for the progress column's "step X of Y" label. Derived via
+  // getInterviewProgress so the host never hard-codes the +1 for the finish
+  // stage.
+  const protocolTotalSteps = useMemo(() => {
     const map = new Map<string, number>();
     for (const protocol of protocols) {
-      map.set(protocol.hash, protocol.protocol.stages?.length ?? 0);
+      map.set(
+        protocol.hash,
+        getInterviewProgress(protocol.protocol.stages ?? [], 0).totalSteps,
+      );
     }
     return map;
   }, [protocols]);
@@ -129,7 +137,7 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
     });
 
   const columns = useDataViewColumns({
-    protocolStageCounts,
+    protocolTotalSteps,
     isSelected,
     toggleRowSelected,
     togglePageSelected,

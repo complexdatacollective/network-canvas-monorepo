@@ -17,20 +17,17 @@ function deriveStatusKind(session: StoredSession): SessionStatusKind {
   return 'in-progress';
 }
 
-function deriveProgressPercent(
-  session: StoredSession,
-  stageCountByHash: Map<string, number>,
-): number {
+// The interview engine reports participant-facing progress (which accounts for
+// the appended finish stage) via onStepChange; we persist it on the session and
+// read it straight back here. A finished session is always 100% — `progress`
+// may not have been persisted for the finish step, so `finishedAt` is the
+// authoritative completion signal.
+export function deriveProgressPercent(session: StoredSession): number {
   if (session.finishedAt) return 100;
-  const totalStages = stageCountByHash.get(session.protocolHash) ?? 0;
-  if (totalStages === 0) return 0;
-  return Math.min(100, (session.currentStep / totalStages) * 100);
+  return Math.min(100, Math.max(0, session.progress ?? 0));
 }
 
-function toLite(
-  session: StoredSession,
-  stageCountByHash: Map<string, number>,
-): StoredSessionLite {
+function toLite(session: StoredSession): StoredSessionLite {
   return {
     id: session.id,
     protocolHash: session.protocolHash,
@@ -43,7 +40,7 @@ function toLite(
     currentStep: session.currentStep,
     isSynthetic: session.isSynthetic,
     statusKind: deriveStatusKind(session),
-    progressPercent: deriveProgressPercent(session, stageCountByHash),
+    progressPercent: deriveProgressPercent(session),
   };
 }
 
@@ -54,10 +51,7 @@ export async function listSessions(): Promise<StoredSessionLite[]> {
     // oxlint-disable-next-line unicorn/no-array-reverse
     .reverse()
     .toArray();
-  // listSessions callers don't render the progress column, so skip the
-  // protocol fetch and pass an empty map (progressPercent falls back to 0).
-  const emptyStageCounts = new Map<string, number>();
-  return rows.map((session) => toLite(session, emptyStageCounts));
+  return rows.map((session) => toLite(session));
 }
 
 function inDateRange(
@@ -148,29 +142,17 @@ function sortLite(
   });
 }
 
-async function loadStageCountByHash(): Promise<Map<string, number>> {
-  const protocols = await db.protocols.toArray();
-  const map = new Map<string, number>();
-  for (const protocol of protocols) {
-    map.set(protocol.hash, protocol.protocol.stages?.length ?? 0);
-  }
-  return map;
-}
-
 export async function querySessions(
   params: SessionQueryParams,
 ): Promise<SessionQueryResult> {
-  const [allSessions, stageCountByHash] = await Promise.all([
-    db.sessions.toArray(),
-    loadStageCountByHash(),
-  ]);
+  const allSessions = await db.sessions.toArray();
 
   // Status counts use all filters except `statuses` so the chip counts
   // reflect totals within the rest of the active filter set.
   const preStatusLite: StoredSessionLite[] = [];
   for (const session of allSessions) {
     if (!matchesNonStatusFilters(session, params)) continue;
-    preStatusLite.push(toLite(session, stageCountByHash));
+    preStatusLite.push(toLite(session));
   }
 
   let inProgress = 0;

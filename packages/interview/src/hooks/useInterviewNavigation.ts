@@ -22,8 +22,8 @@ import {
   getNavigableStages,
   resolveRecoveryStep,
 } from '../selectors/skip-logic';
-import { calculateProgress } from '../selectors/utils';
-import { getStages } from '../store/modules/protocol';
+import { calculateProgress, getInterviewProgress } from '../selectors/utils';
+import { getProtocol } from '../store/modules/protocol';
 import { transitionStage, updatePrompt } from '../store/modules/session';
 import type {
   BeforeNextFunction,
@@ -78,19 +78,10 @@ export default function useInterviewNavigation() {
     useStageSelector(getNavigableStages);
   const stageCount = useSelector(getStageCount);
   const promptCount = useStageSelector(getPromptCount);
-  const stages = useSelector(getStages);
-
-  // Helper to get prompt count for a specific stage index
-  const getPromptCountForStage = useCallback(
-    (stageIndex: number) => {
-      const targetStage = stages[stageIndex];
-      if (targetStage && 'prompts' in targetStage && targetStage.prompts) {
-        return targetStage.prompts.length;
-      }
-      return 1; // Default to 1 if no prompts (same as getPromptCount selector)
-    },
-    [stages],
-  );
+  // The raw protocol stages (without the appended FinishSession stage). Passed
+  // to getInterviewProgress to compute the participant-facing progress meta
+  // handed back to the host via onStepChange.
+  const protocolStages = useSelector(getProtocol).stages ?? [];
 
   // Refs to avoid stale closures in navigation callbacks
   const nextValidStageIndexRef = useRef(nextValidStageIndex);
@@ -187,19 +178,14 @@ export default function useInterviewNavigation() {
       }
 
       // From this point on we are definitely navigating stages
-      const nextPromptCount = getPromptCountForStage(
+      const meta = getInterviewProgress(
+        protocolStages,
         nextValidStageIndexRef.current,
       );
-      const fakeProgress = calculateProgress(
-        nextValidStageIndexRef.current,
-        stageCount,
-        0,
-        nextPromptCount,
-      );
-      setProgress(fakeProgress);
+      setProgress(meta.progress);
       registerBeforeNext(null);
 
-      setStep(nextValidStageIndexRef.current);
+      setStep(nextValidStageIndexRef.current, meta);
     } finally {
       setForceNavigationDisabled(false);
     }
@@ -208,8 +194,7 @@ export default function useInterviewNavigation() {
     isLastPrompt,
     promptIndex,
     registerBeforeNext,
-    stageCount,
-    getPromptCountForStage,
+    protocolStages,
     setStep,
   ]);
 
@@ -228,18 +213,13 @@ export default function useInterviewNavigation() {
         return;
       }
 
-      const prevPromptCount = getPromptCountForStage(
+      const meta = getInterviewProgress(
+        protocolStages,
         previousValidStageIndexRef.current,
       );
-      const fakeProgress = calculateProgress(
-        previousValidStageIndexRef.current,
-        stageCount,
-        0,
-        prevPromptCount,
-      );
-      setProgress(fakeProgress);
+      setProgress(meta.progress);
       registerBeforeNext(null);
-      setStep(previousValidStageIndexRef.current);
+      setStep(previousValidStageIndexRef.current, meta);
     } finally {
       setForceNavigationDisabled(false);
     }
@@ -249,8 +229,7 @@ export default function useInterviewNavigation() {
     isFirstPrompt,
     promptIndex,
     registerBeforeNext,
-    stageCount,
-    getPromptCountForStage,
+    protocolStages,
   ]);
 
   const getNavigationHelpers = useCallback(
@@ -281,13 +260,12 @@ export default function useInterviewNavigation() {
   // stage is never rendered.
   useEffect(() => {
     if (!isCurrentStepValid) {
-      setStep(
-        resolveRecoveryStep({
-          currentStep,
-          previousValidStageIndex,
-          nextValidStageIndex,
-        }),
-      );
+      const recoveryStep = resolveRecoveryStep({
+        currentStep,
+        previousValidStageIndex,
+        nextValidStageIndex,
+      });
+      setStep(recoveryStep, getInterviewProgress(protocolStages, recoveryStep));
     }
   }, [
     setStep,
@@ -295,6 +273,7 @@ export default function useInterviewNavigation() {
     currentStep,
     previousValidStageIndex,
     nextValidStageIndex,
+    protocolStages,
   ]);
 
   const { canMoveForward, canMoveBackward } =

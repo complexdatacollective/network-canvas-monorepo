@@ -10,6 +10,7 @@ import {
   type InterviewPayload,
   type SessionPayload,
   Shell,
+  type StepChangeHandler,
 } from '@codaco/interview';
 import { InterviewComplete } from '~/components/InterviewComplete';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
@@ -174,11 +175,17 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     setFinished(true);
   }, []);
 
-  const handleStepChange = useCallback(
-    (step: number) => {
+  const handleStepChange = useCallback<StepChangeHandler>(
+    (step, meta) => {
       currentStepRef.current = step;
       setCurrentStep(step);
-      void updateSession(sessionId, { currentStep: step });
+      // Persist the participant-facing progress alongside the step so the
+      // dashboard shows exactly what the participant saw, without re-deriving it
+      // (and without needing to know about the engine's appended finish stage).
+      void updateSession(sessionId, {
+        currentStep: step,
+        progress: meta.progress,
+      });
     },
     [sessionId],
   );
