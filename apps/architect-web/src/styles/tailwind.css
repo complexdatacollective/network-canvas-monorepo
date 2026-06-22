@@ -6,6 +6,11 @@
    because their classes never make it into the generated stylesheet. */
 @source '../../node_modules/@codaco/fresco-ui/dist/**/*.js';
 
+/* Height-based variant for the Home hero, which must yield vertical space to the
+   templates/resume panel when the viewport is short. Width breakpoints can't
+   express this. */
+@custom-variant short (@media (max-height: 760px));
+
 @layer base {
   :root {
     /* UI Colors */
@@ -616,7 +621,10 @@
 }
 
 @utility hero {
-  @apply font-heading text-7xl leading-tight font-bold tracking-tight;
+  @apply font-heading leading-tight font-bold tracking-tight;
+  /* Scale with viewport height so the heading yields space on short screens.
+     8vh hits 4.5rem (the former text-7xl) at ~900px tall, floored at 2.75rem. */
+  font-size: clamp(2.75rem, 8vh, 4.5rem);
 }
 
 @utility lead {
