@@ -53,6 +53,7 @@ import TipBox, { type TipBoxProps } from '~/components/customComponents/TipBox';
 import type { AppAxis } from '~/components/customComponents/useSelectedApp';
 import VideoIFrame from '~/components/customComponents/VideoIFrame';
 import WorkflowsOverview from '~/components/customComponents/WorkflowsOverview';
+import DownloadLink from '~/components/DownloadLink';
 import Link from '~/components/Link';
 import { Button } from '~/components/ui/Button';
 import { Details, Summary } from '~/components/ui/typography/Details';
@@ -255,14 +256,12 @@ const createMarkdownComponents = (docSlug?: string) => ({
   button: (props: ComponentProps<typeof Button>) => (
     <Button variant="default" {...props} />
   ),
-  link: (
-    props: ComponentProps<typeof Link> & {
-      className?: string;
-      children: ReactNode;
-    },
-  ) => {
-    return <Link {...props} />;
-  },
+  link: Link,
+  // Static download (protocol bundle, roster, etc.). Authors mark a link as a
+  // download explicitly — <DownloadLink href="/protocols/Example.netcanvas">…</DownloadLink>
+  // — rather than relying on href sniffing; these render as a plain <a download>
+  // because next/link would route to a non-existent page.
+  downloadlink: DownloadLink,
   tipbox: (props: TipBoxProps) => {
     return (
       <TipBox danger={props.danger !== undefined}>{props.children}</TipBox>

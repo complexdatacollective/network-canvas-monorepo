@@ -84,7 +84,7 @@ Once you are satisfied with your roster, you can add it to a Network Canvas prot
 
 ![Resource library button](/assets/img/roster-tutorial/resource-button.png 'The resource library button from within a protocol in Architect')
 
-You can also add it when you are creating a roster name generator. Below we walk through the steps of adding it to a name generator and we will add the roster as we go along. We will use a simple roster which includes five members of the cartoon television show, "The Simpsons", but you should be able to follow by analogy for a roster of your own making. The example CSV is available [here](/assets/simpsons-roster.csv).
+You can also add it when you are creating a roster name generator. Below we walk through the steps of adding it to a name generator and we will add the roster as we go along. We will use a simple roster which includes five members of the cartoon television show, "The Simpsons", but you should be able to follow by analogy for a roster of your own making. The example CSV is available <DownloadLink href="/assets/simpsons-roster.csv">here</DownloadLink>.
 
 ### Selecting the Name Generator Interface
 
@@ -185,4 +185,4 @@ To collect this sort of data in Network Canvas we can use a roster and only coll
 3. Because roster items become nodes only once, ego will then not be listed on subsequent roster prompts.
 4. However, ego is still in the alter pool, so any time we want to do something with the alters, such as ask for data on frequency of communication, we need to filter our ego, which we can do with stage level filtering and our `is_ego` variable.
 
-You can find a protocol [here](</protocols/Roster Example Protocol v1.netcanvas> 'Name Generator Interface with side panel for roster and nodes already mentioned') which has all of these features included. It has the small roster with Alice, Bob, Cam, and Dot but you can replace this with your own roster and modify it for your needs.
+You can find a protocol <DownloadLink href="/protocols/Roster Example Protocol v1.netcanvas" title="Name Generator Interface with side panel for roster and nodes already mentioned">here</DownloadLink> which has all of these features included. It has the small roster with Alice, Bob, Cam, and Dot but you can replace this with your own roster and modify it for your needs.
