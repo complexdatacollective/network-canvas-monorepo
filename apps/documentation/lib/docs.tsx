@@ -43,6 +43,7 @@ import {
 } from '~/components/customComponents/SummaryCard';
 import TipBox, { type TipBoxProps } from '~/components/customComponents/TipBox';
 import VideoIFrame from '~/components/customComponents/VideoIFrame';
+import DownloadLink from '~/components/DownloadLink';
 import Link from '~/components/Link';
 import { Button } from '~/components/ui/Button';
 import { Details, Summary } from '~/components/ui/typography/Details';
@@ -251,6 +252,11 @@ const markdownComponents = {
   ) => {
     return <Link {...props} />;
   },
+  // Static download (protocol bundle, roster, etc.). Authors mark a link as a
+  // download explicitly — <DownloadLink href="/protocols/Example.netcanvas">…</DownloadLink>
+  // — rather than relying on href sniffing; these render as a plain <a download>
+  // because next/link would route to a non-existent page.
+  downloadlink: DownloadLink,
   tipbox: (props: TipBoxProps) => {
     return (
       <TipBox danger={props.danger !== undefined}>{props.children}</TipBox>
