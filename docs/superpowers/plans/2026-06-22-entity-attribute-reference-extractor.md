@@ -1022,32 +1022,20 @@ git commit -m "refactor(protocol-validation): derive attribute-existence checks 
 
 > Depends on Part A being built: run `pnpm turbo run build --filter=@codaco/protocol-validation` first so `collectEntityAttributeReferences` is in the package dist.
 
-### Task 9: Replace the variable usage index with the extractor
+### Task 9: Migrate architect usage detection AND where-used to the extractor
+
+> **Merged (during execution):** the usage index and the where-used label are coupled through the index key format. The old `collectPaths` produced bracketed string keys (`stages[0].prompts[0].variable`) that the where-used regex parses; the extractor yields path arrays. That bracket format cannot be faithfully reconstructed from a flat path, so the index change and the where-used rewrite must land together. Brand churn was measured as **zero** (architect typechecks clean against the branded package), so no brand fixes are needed here.
 
 **Files (modify):**
 
 - `apps/architect-web/src/selectors/indexes.ts`
-- `apps/architect-web/src/selectors/codebook/isUsed.ts`
-- Test: `apps/architect-web/src/selectors/__tests__/indexes.test.ts`
+- `apps/architect-web/src/selectors/codebook/isUsed.ts` (likely unchanged — verify)
+- `apps/architect-web/src/components/Codebook/helpers.ts`
+- Tests: `apps/architect-web/src/selectors/__tests__/indexes.test.ts`, `apps/architect-web/src/components/Codebook/__tests__/helpers.test.tsx`
 
-**Interfaces:** Consumes `collectEntityAttributeReferences` from `@codaco/protocol-validation`. Produces a `getVariableIndex` with the same `{ pathString: variableId }` shape `makeGetIsUsed` already consumes.
+**Interfaces:** Consumes `collectEntityAttributeReferences` (and `type EntityAttributeReferenceHit`) from `@codaco/protocol-validation`.
 
-- [ ] **Step 1: Write the failing test** — assert the new index, built from the extractor, includes a variable referenced only via a comparison validation, AND at least every id the old `paths.variables` collected for the silos fixture (the `oldIds ⊆ newIds` guard).
-
-```ts
-// in indexes.test.ts — extends the existing cross-variable coverage test
-it('includes references the extractor finds (comparison validation)', () => {
-  const protocol = buildProtocolWithValidationRef(
-    'node',
-    'greaterThanOrEqualToVariable',
-  );
-  // getVariableIndex now derives from collectEntityAttributeReferences
-  const index = getVariableIndexFromProtocol(protocol.protocol);
-  expect(Object.values(index)).toContain(protocol.referencedVariableId);
-});
-```
-
-- [ ] **Step 2: Reimplement `getVariableIndex`.** Replace `collectPaths(paths.variables, protocol)` with a map built from the extractor:
+- [ ] **Step 1: Reimplement `getVariableIndex` from the extractor.** Replace `collectPaths(paths.variables, protocol)`:
 
 ```ts
 import { collectEntityAttributeReferences } from '@codaco/protocol-validation';
@@ -1056,74 +1044,55 @@ const getVariableIndex = createSelector(getProtocol, (protocol) => {
   if (!protocol) return {};
   const index: Record<string, string> = {};
   for (const hit of collectEntityAttributeReferences(protocol)) {
-    index[hit.path.join('.')] = hit.variableId;
+    index[hit.path.join('.')] = hit.variableId; // dotted-array key format
   }
   return index;
 });
 ```
 
-Remove the variable entries from `paths.variables` and the `variableReferenceValidationPaths` block added in PR #686 (keep `paths.edges`/`nodes`/`assets`; `getEdgeIndex`/`getNodeIndex`/`getAssetIndex` are unchanged). `makeGetIsUsed` in `isUsed.ts` is unchanged — it still consumes `Object.values(variableIndex)`.
+Then DELETE the `variables` array from `paths` and the `variableReferenceValidationPaths` block (PR #686). Keep `paths.edges`/`nodes`/`assets` and `getEdgeIndex`/`getNodeIndex`/`getAssetIndex`. First `grep` for other consumers of `paths.variables` — there should be none beyond `getVariableIndex`; if there are, stop and report. `makeGetIsUsed` (isUsed.ts) consumes `Object.values(variableIndex)` only — unaffected by the key format change; verify it still typechecks and leave it otherwise unchanged.
 
-- [ ] **Step 3: Rebuild dep + run tests**
+- [ ] **Step 2: Rewrite `getUsageAsStageMeta` (helpers.ts) for the new key format.** The keys are now dotted arrays, not bracketed. Delete `codebookVariableReferenceRegex` and `getStageIndexFromPath`/`getCodebookVariableIndexFromValidationPath` (the regex parsers). Derive context structurally from each usage path key (`key.split('.')`):
+  - stage usage: when `segments[0] === 'stages'`, the stage index is `segments[1]` → look up `stageMetaByIndex[Number(segments[1])]` for `{ label, id }`.
+  - codebook-validation usage: when `segments[0] === 'codebook'`, the OWNING variable id is the segment immediately after `'variables'` → look up its name in `variableMetaByIndex` and emit `{ label: \`Used as validation for "<name>"\` }` (same label the regex produced).
+  - Preserve the existing de-dup and `sortByLabel` behavior and the `UsageMeta` shape (`{ label, id? }`).
 
-Run: `pnpm turbo run build --filter=@codaco/protocol-validation && cd apps/architect-web && pnpm exec vitest run src/selectors/__tests__/indexes.test.ts src/selectors/codebook`
-Expected: PASS. Update the `getVariableIndex` snapshot if present (the path strings are equivalent; regenerate with `-u` only after eyeballing the diff).
+- [ ] **Step 3: Tests.**
+  - In `indexes.test.ts`: keep/adapt the existing cross-variable coverage tests; assert the extractor-built index contains a variable referenced only via a comparison validation; AND a **stage-ref against the real schema** — load a valid v8 protocol (a real fixture from `packages/protocol-validation/src/__tests__/` or architect's own fixtures) and assert a known stage prompt reference id appears in the index (this closes the Task 6 deferral: confirms stage refs extract from a real, schema-valid protocol). If a `getVariableIndex` snapshot exists, regenerate it only after eyeballing the diff (keys change format; values must be the same set).
+  - In `helpers.test.tsx`: the PR #686 parametrised six-rule "Used as validation for" test must stay green via the rewritten `getUsageAsStageMeta`; add/keep a stage-usage case asserting a stage link is produced.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Verify.**
+
+Run: `pnpm turbo run build --filter=@codaco/protocol-validation` then `cd apps/architect-web && pnpm exec vitest run src/selectors/__tests__/indexes.test.ts src/selectors/codebook src/components/Codebook/__tests__/helpers.test.tsx` then `pnpm turbo run typecheck --filter=@codaco/architect-web`.
+Expected: all PASS.
+
+- [ ] **Step 5: Commit**
 
 ```bash
-git add apps/architect-web/src/selectors/indexes.ts apps/architect-web/src/selectors/codebook/isUsed.ts apps/architect-web/src/selectors/__tests__/indexes.test.ts
-git commit -m "refactor(architect-web): derive variable usage index from the extractor"
+git add apps/architect-web/src/selectors/indexes.ts apps/architect-web/src/selectors/codebook/isUsed.ts apps/architect-web/src/components/Codebook/helpers.ts apps/architect-web/src/selectors/__tests__/indexes.test.ts apps/architect-web/src/components/Codebook/__tests__/helpers.test.tsx
+git commit -m "refactor(architect-web): derive variable usage and where-used from the extractor"
 ```
 
 ---
 
-### Task 10: Where-used context from records (delete the regex)
+### Task 10: Dead-const cleanup and final verification
 
-**Files (modify):**
+**Files (modify):** `apps/architect-web/src/components/Validations/options.ts` and/or `packages/protocol-validation/src/schemas/8/variables/validation.ts` as needed.
 
-- `apps/architect-web/src/components/Codebook/helpers.ts`
-- Test: `apps/architect-web/src/components/Codebook/__tests__/helpers.test.tsx`
+> Brand churn is zero (measured: architect typechecks clean against the branded package), so there is no brand-fix step.
 
-- [ ] **Step 1: Write the failing test** — assert that a variable referenced via a codebook validation still produces the `Used as validation for "<owner>"` usage label after the regex is removed (the owner now comes from the extractor record's path, not a regex).
+- [ ] **Step 1: Resolve `VARIABLE_REFERENCE_VALIDATIONS`.** `grep -rn "VARIABLE_REFERENCE_VALIDATIONS" .`. The `indexes.ts` path-generation consumer is gone (Task 9). If `options.ts` `isValidationWithListValue` is the only remaining consumer, that is a distinct UI concern (which validations render a list input) — keep the const. If nothing consumes it, remove the export from `validation.ts`.
 
-- [ ] **Step 2: Replace regex-derived context.** `getUsageAsStageMeta` currently derives codebook-validation context from `codebookVariableReferenceRegex` against the usage path string. Re-source it from the extractor: build usage from `collectEntityAttributeReferences(protocol)` filtered to the variable id, mapping each hit to either a stage link (when `hit.path[0] === 'stages'`, via the existing `stageMetaByIndex`) or a `Used as validation for "<ownerName>"` label (when `hit.path` is under `codebook` — derive the owning variable id from `hit.path` and look up its name). Delete `codebookVariableReferenceRegex` and `getCodebookVariableIndexFromValidationPath`.
+- [ ] **Step 2: Full verification.**
 
-- [ ] **Step 3: Run tests**
+Run: `pnpm turbo run build typecheck test --filter=@codaco/protocol-validation --filter=@codaco/architect-web` then `pnpm knip`.
+Expected: all PASS; knip clean (the package-root `collectEntityAttributeReferences` export is now consumed by architect, so it is no longer flagged unused).
 
-Run: `cd apps/architect-web && pnpm exec vitest run src/components/Codebook/__tests__/helpers.test.tsx`
-Expected: PASS (the parametrised six-rule test from PR #686 remains green via the new source).
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add apps/architect-web/src/components/Codebook/helpers.ts apps/architect-web/src/components/Codebook/__tests__/helpers.test.tsx
-git commit -m "refactor(architect-web): source codebook where-used context from the extractor"
-```
-
----
-
-### Task 11: Brand-migration typecheck, dead-const cleanup, final verification
-
-**Files (modify):** any architect/interview consumers surfaced by typecheck; `apps/architect-web/src/components/Validations/options.ts`.
-
-- [ ] **Step 1: Monorepo typecheck to surface brand churn.**
-
-Run: `pnpm turbo run typecheck`
-A branded string (`string & { brand }`) is assignable **to** `string`, so reads/comparisons are unaffected; errors only arise where code **assigns a plain `string`** to a field now typed as `EntityAttributeReference` (object-literal construction of protocol fragments). For each error: route the value through the schema (parse), or accept the branded type at the construction boundary. Do **not** use `as` to silence it — adjust the producing type or construct via the schema. If churn is broad and unbounded, stop and report before mass-editing.
-
-- [ ] **Step 2: Resolve `VARIABLE_REFERENCE_VALIDATIONS`.** Check remaining usages: `grep -rn "VARIABLE_REFERENCE_VALIDATIONS" .`. The validation paths in `indexes.ts` are gone (Task 9). If `options.ts` `isValidationWithListValue` is its only remaining consumer, that is a distinct UI concern (which validations render a list input) — keep the const for that. If nothing consumes it, remove it from `validation.ts` and run `pnpm knip`.
-
-- [ ] **Step 3: Full verification.**
-
-Run: `pnpm turbo run build typecheck test --filter=@codaco/protocol-validation --filter=@codaco/architect-web` then `pnpm knip`
-Expected: all PASS, knip clean.
-
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 git add -A
-git commit -m "refactor: complete entity-attribute reference migration; clean up dead validation-key const"
+git commit -m "chore: resolve VARIABLE_REFERENCE_VALIDATIONS after extractor migration"
 ```
 
 ---
