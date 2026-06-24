@@ -56,9 +56,9 @@ const getAllFormsSelector = createSelector(
 /**
  * Gets a key value object describing which variables are in use (including in redux forms).
  *
- * Uses the same path-based detection as getVariableIndex (defined in indexes.js) to ensure
+ * Uses getVariableIndex (derived from collectEntityAttributeReferences) to ensure
  * consistency between "is used" checks and "where used" display. Both systems share the
- * same source of truth: paths.variables.
+ * same source of truth: the extractor-derived variable index.
  *
  * For redux forms (unsaved changes), JSON string search is used since form paths are dynamic.
  *

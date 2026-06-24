@@ -146,8 +146,18 @@ const walk = (
         });
         return match ? walk(match, value, path, ctx) : [];
       }
+      // plain union: prefer the branch that fully parses (valid data — unchanged
+      // behavior). If none parses (structurally-invalid value), walk every branch
+      // and merge hits so references inside an invalid value are still collected.
       const match = options.find((option) => option.safeParse(value).success);
-      return match ? walk(match, value, path, ctx) : [];
+      if (match) return walk(match, value, path, ctx);
+      const merged = new Map<string, EntityAttributeReferenceHit>();
+      for (const option of options) {
+        for (const hit of walk(option, value, path, ctx)) {
+          merged.set(hit.path.join('.'), hit);
+        }
+      }
+      return [...merged.values()];
     }
     default:
       return [];

@@ -196,4 +196,61 @@ describe('collectEntityAttributeReferencesFromSchema', () => {
       requireType: undefined,
     });
   });
+
+  it('plain z.union: collects attribute refs from an invalid value that fails safeParse on all branches', () => {
+    // One branch has a tagged `attribute` reference plus a required `id` field.
+    // The other branch lacks `attribute`. A value that sets `attribute` but omits
+    // `id` will fail safeParse on both branches; the extractor must still return
+    // the attribute hit so filter-rule refs are never silently dropped.
+    const branchWithRef = z.object({
+      attribute: entityAttributeReference({ subject: 'filterRule' }),
+      id: z.string(), // required — omitting this makes safeParse fail
+    });
+    const branchWithout = z.object({
+      other: z.string(),
+    });
+    const plainUnion = z.union([branchWithRef, branchWithout]);
+
+    const invalidValue = { attribute: 'filterVar' }; // missing required `id`
+
+    const hits = collectEntityAttributeReferencesFromSchema(
+      plainUnion,
+      invalidValue,
+    );
+
+    expect(hits).toContainEqual({
+      path: ['attribute'],
+      variableId: 'filterVar',
+      subject: undefined,
+      requireType: undefined,
+    });
+  });
+
+  it('plain z.union: valid value still resolves via single matching branch (no double-counting)', () => {
+    const branchA = z.object({
+      kind: z.literal('A'),
+      ref: entityAttributeReference({ subject: 'filterRule' }),
+    });
+    const branchB = z.object({
+      kind: z.literal('B'),
+      other: z.string(),
+    });
+    const plainUnion = z.union([branchA, branchB]);
+
+    const validValue = { kind: 'A', ref: 'myVar' };
+
+    const hits = collectEntityAttributeReferencesFromSchema(
+      plainUnion,
+      validValue,
+    );
+
+    // Exactly one hit — no duplication from branch-merging
+    expect(hits).toHaveLength(1);
+    expect(hits[0]).toEqual({
+      path: ['ref'],
+      variableId: 'myVar',
+      subject: undefined,
+      requireType: undefined,
+    });
+  });
 });
