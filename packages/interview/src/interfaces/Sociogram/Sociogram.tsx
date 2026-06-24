@@ -46,7 +46,6 @@ const Sociogram = (stageProps: SociogramProps) => {
   // Behaviour Configuration
   const allowHighlighting = get(prompt, 'highlight.allowHighlighting', false);
   const createEdge = get(prompt, 'edges.create', null);
-  const allowPositioning = get(prompt, 'layout.allowPositioning', true);
 
   // Display Properties
   const layoutVariable = get(prompt, 'layout.layoutVariable');
@@ -229,7 +228,6 @@ const Sociogram = (stageProps: SociogramProps) => {
         onNodeSelect={handleNodeSelect}
         onNodeDragEnd={handleNodeDragEnd}
         onDrop={handleDrop}
-        allowRepositioning={allowPositioning}
         simulation={simulationHandlers}
       />
       {layoutMode === 'MANUAL' && (

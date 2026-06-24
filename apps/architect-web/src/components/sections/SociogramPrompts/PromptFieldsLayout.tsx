@@ -29,7 +29,6 @@ type VariableOption = VariableOptions[number];
 
 type PromptFieldsProps = {
   form: string;
-  allowPositioning?: boolean;
   entity: string;
   handleCreateVariable: (
     value: string,
@@ -44,7 +43,6 @@ type PromptFieldsProps = {
 
 const PromptFields = ({
   form,
-  allowPositioning = true,
   entity,
   handleCreateVariable,
   layoutVariablesForSubject,
@@ -102,46 +100,41 @@ const PromptFields = ({
           }}
         />
       </Row>
-      {allowPositioning && (
-        <Section
-          toggleable
-          title="Sort Unplaced Nodes"
-          summary={
-            <p>
-              Nodes are stacked in a bucket until your participant drags them
-              into position. You can control the order of this stack, which will
-              determine the order that your participant is able to position the
-              nodes.
-            </p>
-          }
-          startExpanded={!!hasSortOrder}
-          handleToggleChange={handleToggleSortOrder}
-          layout="vertical"
-        >
-          <Row>
-            <MultiSelect
-              name="sortOrder"
-              properties={[
-                { fieldName: 'property' },
-                { fieldName: 'direction' },
-              ]}
-              maxItems={5}
-              options={(
-                property: string,
-                rowValues: unknown,
-                allValues: unknown,
-              ) =>
-                getSortOrderOptionGetter(
-                  variableOptions.map((option) => ({
-                    ...option,
-                    value: String(option.value),
-                  })),
-                )(property, rowValues, allValues as Record<string, unknown>[])
-              }
-            />
-          </Row>
-        </Section>
-      )}
+      <Section
+        toggleable
+        title="Sort Unplaced Nodes"
+        summary={
+          <p>
+            Nodes are stacked in a bucket until your participant drags them into
+            position. You can control the order of this stack, which will
+            determine the order that your participant is able to position the
+            nodes.
+          </p>
+        }
+        startExpanded={!!hasSortOrder}
+        handleToggleChange={handleToggleSortOrder}
+        layout="vertical"
+      >
+        <Row>
+          <MultiSelect
+            name="sortOrder"
+            properties={[{ fieldName: 'property' }, { fieldName: 'direction' }]}
+            maxItems={5}
+            options={(
+              property: string,
+              rowValues: unknown,
+              allValues: unknown,
+            ) =>
+              getSortOrderOptionGetter(
+                variableOptions.map((option) => ({
+                  ...option,
+                  value: String(option.value),
+                })),
+              )(property, rowValues, allValues as Record<string, unknown>[])
+            }
+          />
+        </Row>
+      </Section>
     </Section>
   );
 };

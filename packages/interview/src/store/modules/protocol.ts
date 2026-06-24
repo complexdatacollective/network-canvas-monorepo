@@ -41,6 +41,7 @@ const protocolSlice = createSlice({
 
 // export selectors
 export const {
+  getProtocol,
   getShouldEncryptNames,
   getCodebook,
   getStages,

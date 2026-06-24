@@ -50,15 +50,16 @@ function SortHeader<TData>({
 // (wired to the selection hook), the sortable data columns, and the
 // per-row Resume action.
 export function useDataViewColumns({
-  protocolStageCounts,
+  protocolTotalSteps,
   isSelected,
   toggleRowSelected,
   togglePageSelected,
   allOnPageSelected,
   someOnPageSelected,
 }: {
-  // Stage totals by protocol hash, for the progress column's step label.
-  protocolStageCounts: Map<string, number>;
+  // Total interview steps (including the appended finish stage) by protocol
+  // hash, for the progress column's step label.
+  protocolTotalSteps: Map<string, number>;
   isSelected: (id: string) => boolean;
   toggleRowSelected: (id: string) => void;
   togglePageSelected: () => void;
@@ -145,8 +146,7 @@ export function useDataViewColumns({
         enableSorting: true,
         cell: ({ row }) => {
           const session = row.original;
-          const totalStages =
-            protocolStageCounts.get(session.protocolHash) ?? 0;
+          const totalSteps = protocolTotalSteps.get(session.protocolHash) ?? 0;
           const percent = session.progressPercent;
           return (
             <div className="flex items-center gap-2">
@@ -155,7 +155,7 @@ export function useDataViewColumns({
                   nudge={false}
                   orientation="horizontal"
                   percentProgress={percent}
-                  label={`step ${session.currentStep + 1} of ${totalStages || '?'}`}
+                  label={`step ${session.currentStep + 1} of ${totalSteps || '?'}`}
                 />
               </div>
               <span className="font-monospace text-text/60 text-xs tabular-nums">
@@ -214,7 +214,7 @@ export function useDataViewColumns({
       isSelected,
       toggleRowSelected,
       togglePageSelected,
-      protocolStageCounts,
+      protocolTotalSteps,
       navigate,
     ],
   );

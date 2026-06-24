@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
 import { siblingCellTransform } from '../siblingCellTransform';
@@ -10,9 +10,17 @@ const variableConfig: VariableConfig = {
   edgeType: 'family',
   nodeLabelVariable: 'name',
   egoVariable: 'isEgo',
+  relationshipVariable: 'relationship',
   relationshipTypeVariable: 'relationship',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGC',
+};
+
+const relTypeOf = (e: {
+  data: { attributes: Record<string, VariableValue> };
+}): VariableValue => {
+  const value = e.data.attributes[variableConfig.relationshipTypeVariable];
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 };
 
 function makeNodes(
@@ -122,23 +130,20 @@ describe('siblingCellTransform', () => {
     });
 
     const parentEdges = batch.edges.filter(
-      (e) =>
-        e.target === 'sibling' &&
-        e.data.attributes[variableConfig.relationshipTypeVariable] !==
-          'partner',
+      (e) => e.target === 'sibling' && relTypeOf(e) !== 'partner',
     );
     expect(parentEdges).toHaveLength(2);
 
     const eggEdge = parentEdges.find((e) => e.source === 'parent-a');
     expect(eggEdge?.data.attributes).toMatchObject({
-      [variableConfig.relationshipTypeVariable]: 'biological',
+      [variableConfig.relationshipTypeVariable]: ['biological'],
       [variableConfig.isActiveVariable]: true,
       [variableConfig.isGestationalCarrierVariable]: true,
     });
 
     const spermEdge = parentEdges.find((e) => e.source === 'parent-b');
     expect(spermEdge?.data.attributes).toMatchObject({
-      [variableConfig.relationshipTypeVariable]: 'biological',
+      [variableConfig.relationshipTypeVariable]: ['biological'],
       [variableConfig.isActiveVariable]: true,
     });
     expect(
@@ -200,10 +205,7 @@ describe('siblingCellTransform', () => {
     });
 
     const parentEdges = batch.edges.filter(
-      (e) =>
-        e.target === 'sibling' &&
-        e.data.attributes[variableConfig.relationshipTypeVariable] !==
-          'partner',
+      (e) => e.target === 'sibling' && relTypeOf(e) !== 'partner',
     );
     expect(parentEdges).toHaveLength(2);
 
@@ -211,22 +213,18 @@ describe('siblingCellTransform', () => {
       (e) => e.source === 'new-sperm-source',
     );
     expect(newSpermEdge?.data.attributes).toMatchObject({
-      [variableConfig.relationshipTypeVariable]: 'biological',
+      [variableConfig.relationshipTypeVariable]: ['biological'],
       [variableConfig.isActiveVariable]: true,
     });
 
-    const partnerships = batch.edges.filter(
-      (e) =>
-        e.data.attributes[variableConfig.relationshipTypeVariable] ===
-        'partner',
-    );
+    const partnerships = batch.edges.filter((e) => relTypeOf(e) === 'partner');
     expect(partnerships).toHaveLength(1);
     expect(partnerships[0]).toMatchObject({
       source: 'parent-a',
       target: 'new-sperm-source',
       data: {
         attributes: {
-          [variableConfig.relationshipTypeVariable]: 'partner',
+          [variableConfig.relationshipTypeVariable]: ['partner'],
           [variableConfig.isActiveVariable]: false,
         },
       },
@@ -285,10 +283,7 @@ describe('siblingCellTransform', () => {
     });
 
     const parentEdges = batch.edges.filter(
-      (e) =>
-        e.target === 'sibling' &&
-        e.data.attributes[variableConfig.relationshipTypeVariable] !==
-          'partner',
+      (e) => e.target === 'sibling' && relTypeOf(e) !== 'partner',
     );
     expect(parentEdges).toHaveLength(2);
 
@@ -296,7 +291,7 @@ describe('siblingCellTransform', () => {
       (e) => e.source === 'new-sperm-source',
     );
     expect(newParentEdge?.data.attributes).toMatchObject({
-      [variableConfig.relationshipTypeVariable]: 'biological',
+      [variableConfig.relationshipTypeVariable]: ['biological'],
       [variableConfig.isActiveVariable]: true,
     });
   });
@@ -353,14 +348,14 @@ describe('siblingCellTransform', () => {
 
     const eggEdge = allEdgesToSibling.find((e) => e.source === 'parent-a');
     expect(eggEdge?.data.attributes).toMatchObject({
-      [variableConfig.relationshipTypeVariable]: 'biological',
+      [variableConfig.relationshipTypeVariable]: ['biological'],
       [variableConfig.isActiveVariable]: true,
       [variableConfig.isGestationalCarrierVariable]: true,
     });
 
     const spermEdge = allEdgesToSibling.find((e) => e.source === 'parent-b');
     expect(spermEdge?.data.attributes).toMatchObject({
-      [variableConfig.relationshipTypeVariable]: 'biological',
+      [variableConfig.relationshipTypeVariable]: ['biological'],
       [variableConfig.isActiveVariable]: true,
     });
     expect(

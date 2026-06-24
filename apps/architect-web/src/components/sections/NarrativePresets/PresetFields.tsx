@@ -65,7 +65,7 @@ const PresetFields = ({
       return true;
     }
 
-    dispatch(change(form, 'highlight', null) as UnknownAction);
+    dispatch(change(form, 'highlight', undefined) as UnknownAction);
     return true;
   };
 
@@ -74,7 +74,7 @@ const PresetFields = ({
       return true;
     }
 
-    dispatch(change(form, 'edges', null) as UnknownAction);
+    dispatch(change(form, 'edges', undefined) as UnknownAction);
     return true;
   };
 

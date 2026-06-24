@@ -73,6 +73,18 @@ describe('indexes selectors', () => {
     });
   });
 
+  describe('variable-usage paths', () => {
+    it('still tracks the retained FamilyPedigree node variable paths', () => {
+      expect(paths.variables).toContain(
+        'stages[].nodeConfig.nodeLabelVariable',
+      );
+      expect(paths.variables).toContain('stages[].nodeConfig.egoVariable');
+      expect(paths.variables).toContain(
+        'stages[].nodeConfig.relationshipVariable',
+      );
+    });
+  });
+
   describe('getVariableIndex()', () => {
     it('extracts variables into index', () => {
       const subject = getVariableIndex(testState);

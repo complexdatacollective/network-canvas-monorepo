@@ -195,7 +195,6 @@
         {
           "id": "researcher-notes",
           "type": "text",
-          "size": "LARGE",
           "content": "## For researchers\n\n_Delete this screen before you field the study. It lists the surveillance instruments and studies this template draws on._\n\n- [CDC National HIV Behavioral Surveillance (NHBS) — overview.](https://pmc.ncbi.nlm.nih.gov/articles/PMC1804113/)\n- [Weiss KM et al. ARTnet: an egocentric sexual-network study of US MSM.](https://www.medrxiv.org/content/10.1101/19010579v1.full)\n- [Methods for HIV partner / transmission network studies.](https://pmc.ncbi.nlm.nih.gov/articles/PMC5985831/)"
         }
       ]
@@ -209,7 +208,6 @@
         {
           "id": "intro-confidentiality",
           "type": "text",
-          "size": "LARGE",
           "content": "Thank you for taking part. In this interview we will ask about people you have had **sexual contact** with, and (if relevant) people you have **injected drugs** with. These questions help researchers understand how HIV, other sexually transmitted infections, and bloodborne infections can spread through networks of partners.\n\nYour answers are **confidential**. You will never have to give anyone's real name: you can use initials or a code that only makes sense to you. In the next step you will create a private passphrase that encrypts these labels, so that **only you** can read them — not even the research team.\n\n## Reference period\n\nUnless we say otherwise, please think about the **past 6 months** (the last half-year up to today). When we ask you to list partners, include everyone you had sexual contact with, or injected drugs with, during that time — whether the relationship was serious, casual, one-time, or anything else.\n\nThere are no right or wrong answers, and you can skip any question you would prefer not to answer."
         }
       ]
@@ -236,7 +234,6 @@
         "text": "Before we talk about your partners, we would like to ask a few questions about **you** — including your HIV status, whether you use prevention or treatment medication, and your testing and injection history. These help us interpret the partnerships you describe. You may skip any question."
       },
       "form": {
-        "title": "About you",
         "fields": [
           {
             "variable": "ego_hiv_status",
@@ -280,7 +277,6 @@
         "type": "partner"
       },
       "form": {
-        "title": "Add a partner",
         "fields": [
           {
             "variable": "partner_label",
@@ -315,7 +311,6 @@
         "type": "partner"
       },
       "form": {
-        "title": "Add a partner",
         "fields": [
           {
             "variable": "partner_label",
@@ -347,7 +342,6 @@
         "text": "For each person you listed, we will ask about the **relationship** and the partner's characteristics, and about **when the partnership started and ended**. The start and end dates let researchers work out which partnerships overlapped in time, which is important for understanding how infections spread. Approximate months are fine, and you may skip any question."
       },
       "form": {
-        "title": "About this partnership",
         "fields": [
           {
             "variable": "partner_type",

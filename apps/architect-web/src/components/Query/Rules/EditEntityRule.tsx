@@ -11,8 +11,8 @@ import EntitySelectField from '../../sections/fields/EntitySelectField/EntitySel
 import { makeGetOptionsWithDefaults } from './defaultRule';
 import EditValue from './EditValue';
 import {
-  // operatorsWithRegExp,
   operatorsWithOptionCount,
+  operatorsWithRegExp,
   operatorsWithValue,
 } from './options';
 import {
@@ -75,7 +75,11 @@ const EditEntityRule = ({
     typeof optionsWithDefaults.operator === 'string'
       ? operatorsWithValue.has(optionsWithDefaults.operator)
       : false;
-  // const operatorNeedsRegExp = operatorsWithRegExp.has(optionsWithDefaults.operator);
+  const operatorNeedsRegExp =
+    optionsWithDefaults.operator &&
+    typeof optionsWithDefaults.operator === 'string'
+      ? operatorsWithRegExp.has(optionsWithDefaults.operator)
+      : false;
   const isVariableRule = entityRuleType === entityRuleTypes.VARIABLE_RULE;
   const isTypeRule = entityRuleType === entityRuleTypes.TYPE_RULE;
   const operatorNeedsOptionCount =
@@ -194,21 +198,24 @@ const EditEntityRule = ({
           />
         </Section>
       )}
-      {/* { isVariableRule && operatorNeedsRegExp
-        && (
-        <Section
-          title="Attribute Value"
-        >
+      {isVariableRule && operatorNeedsRegExp && (
+        <Section title="Attribute Value">
           <EditValue
             variableType={variableType}
             placeholder="Enter a regular expression..."
             onChange={handleRuleChange}
-            value={optionsWithDefaults.value}
+            value={
+              typeof optionsWithDefaults.value === 'string' ||
+              typeof optionsWithDefaults.value === 'number' ||
+              typeof optionsWithDefaults.value === 'boolean'
+                ? optionsWithDefaults.value
+                : ''
+            }
             options={variableOptions}
             validation={{ required: true, validRegExp: true }}
           />
         </Section>
-        )} */}
+      )}
       {isVariableRule && operatorNeedsOptionCount && (
         <Section title="Selected Option Count" layout="vertical">
           <EditValue

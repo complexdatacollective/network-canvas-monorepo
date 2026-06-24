@@ -1,7 +1,23 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
-import { addEdge, addNode, createInitialNetwork, updateEgo } from '../session';
+import type {
+  DyadCensusMetadataItem,
+  NcEdge,
+  NcNode,
+  StageMetadata,
+} from '@codaco/shared-consts';
+
+import sessionReducer, {
+  addEdge,
+  addNode,
+  addNodeToPrompt,
+  createInitialNetwork,
+  deleteNode,
+  removeNodeFromPrompt,
+  updateEdge,
+  updateEgo,
+} from '../session';
 
 /**
  * Minimal store setup for testing session thunks.
@@ -347,9 +363,10 @@ function createTestStoreWithEgo(options: {
  */
 function createTestStoreWithEdge(options: {
   edgeVariables?: Record<string, { name: string }>;
+  edges?: NcEdge[];
 }) {
   const edgeTypeId = 'test-edge-type-uuid';
-  const { edgeVariables = {} } = options;
+  const { edgeVariables = {}, edges = [] } = options;
 
   const network = createInitialNetwork();
   // Add two nodes so we can create edges between them
@@ -357,6 +374,7 @@ function createTestStoreWithEdge(options: {
     { _uid: 'node-1', type: 'person', attributes: {} },
     { _uid: 'node-2', type: 'person', attributes: {} },
   ];
+  network.edges = edges;
 
   const sessionState = createTestSessionState();
   const protocolState = createTestProtocolState(edgeTypeId, edgeVariables);
@@ -447,6 +465,380 @@ describe('addEdge', () => {
         'edge-var-3': null,
       });
     });
+  });
+});
+
+describe('updateEdge', () => {
+  describe('attribute validation', () => {
+    it('accepts edge attributes defined under the edge codebook', async () => {
+      // Setup: an edge of the given type already exists, and the edge variable
+      // is defined only under codebook.edge.<type>.variables
+      const store = createTestStoreWithEdge({
+        edgeVariables: {
+          'edge-var-closeness': { name: 'closeness' },
+        },
+        edges: [
+          {
+            _uid: 'edge-1',
+            from: 'node-1',
+            to: 'node-2',
+            type: 'test-edge-type-uuid',
+            attributes: {},
+          },
+        ],
+      });
+
+      // Execute: update the edge with a value for the edge-defined variable
+      const result = await store.dispatch(
+        updateEdge({
+          edgeId: 'edge-1',
+          newAttributeData: {
+            'edge-var-closeness': 2,
+          },
+        }),
+      );
+
+      // Verify: the thunk is fulfilled (not rejected). Previously the thunk
+      // validated against the NODE codebook, so every edge variable was
+      // considered invalid and the thunk was rejected.
+      expect(result.type).toBe('NETWORK/UPDATE_EDGE/fulfilled');
+      const payload = result.payload as {
+        newAttributeData: Record<string, unknown>;
+      };
+      expect(payload.newAttributeData).toEqual({
+        'edge-var-closeness': 2,
+      });
+    });
+
+    it('rejects edge attributes that are not in the edge codebook', async () => {
+      const store = createTestStoreWithEdge({
+        edgeVariables: {
+          'edge-var-closeness': { name: 'closeness' },
+        },
+        edges: [
+          {
+            _uid: 'edge-1',
+            from: 'node-1',
+            to: 'node-2',
+            type: 'test-edge-type-uuid',
+            attributes: {},
+          },
+        ],
+      });
+
+      const result = await store.dispatch(
+        updateEdge({
+          edgeId: 'edge-1',
+          newAttributeData: {
+            unknownEdgeVar: 5,
+          },
+        }),
+      );
+
+      expect(result.type).toBe('NETWORK/UPDATE_EDGE/rejected');
+      expect(
+        (result as { error: { message: string } }).error.message,
+      ).toContain('unknownEdgeVar');
+    });
+  });
+});
+
+/**
+ * Creates a test store for a NameGenerator stage whose prompts declare
+ * additionalAttributes. Used to exercise addNodeToPrompt/removeNodeFromPrompt.
+ */
+function createTestStoreWithPrompts(options: {
+  prompts: {
+    id: string;
+    additionalAttributes?: { variable: string; value: boolean }[];
+  }[];
+  promptIndex: number;
+  nodes: NcNode[];
+}) {
+  const { prompts, promptIndex, nodes } = options;
+
+  const network = createInitialNetwork();
+  network.nodes = nodes;
+
+  const sessionState = {
+    id: 'test-session',
+    startTime: new Date().toISOString(),
+    finishTime: null,
+    exportTime: null,
+    lastUpdated: new Date().toISOString(),
+    network,
+    promptIndex,
+  };
+
+  const protocolState = {
+    codebook: {
+      node: {
+        person: {
+          name: 'Person',
+          variables: {
+            isCloseTie: { name: 'isCloseTie', type: 'boolean' },
+            isFamily: { name: 'isFamily', type: 'boolean' },
+          },
+        },
+      },
+    },
+    stages: [
+      {
+        id: 'stage-1',
+        type: 'NameGenerator',
+        subject: { entity: 'node', type: 'person' },
+        prompts,
+      },
+    ],
+  };
+
+  type ProtocolState = typeof protocolState;
+
+  return configureStore({
+    reducer: {
+      // Use the real session reducer so .fulfilled handlers run and we can
+      // assert the resulting node state.
+      session: sessionReducer,
+      protocol: (state: ProtocolState = protocolState): ProtocolState => state,
+    },
+    preloadedState: {
+      session: sessionState,
+      protocol: protocolState,
+    },
+  });
+}
+
+describe('addNodeToPrompt', () => {
+  it('applies the prompt additionalAttribute, overwriting a value the node already carries', async () => {
+    // The network is the single source of truth: adding a node to a prompt
+    // asserts the prompt's additionalAttributes. A value a form previously
+    // collected or merely displayed is not owned by the form, so re-nomination
+    // overwrites it (false -> true here).
+    const store = createTestStoreWithPrompts({
+      prompts: [
+        {
+          id: 'prompt-1',
+          additionalAttributes: [{ variable: 'isCloseTie', value: true }],
+        },
+      ],
+      promptIndex: 0,
+      nodes: [
+        {
+          _uid: 'node-1',
+          type: 'person',
+          attributes: { isCloseTie: false },
+          promptIDs: [],
+        },
+      ],
+    });
+
+    await store.dispatch(
+      addNodeToPrompt({
+        nodeId: 'node-1',
+        promptAttributes: { isCloseTie: true },
+        currentStep: 0,
+      }),
+    );
+
+    const node = store.getState().session.network.nodes[0];
+    // The prompt's value wins over the value the node already carried.
+    expect(node?.attributes.isCloseTie).toBe(true);
+    // The node is still recorded as belonging to the prompt.
+    expect(node?.promptIDs).toEqual(['prompt-1']);
+  });
+
+  it('applies a prompt additionalAttribute the node does not yet carry', async () => {
+    const store = createTestStoreWithPrompts({
+      prompts: [
+        {
+          id: 'prompt-1',
+          additionalAttributes: [{ variable: 'isCloseTie', value: true }],
+        },
+      ],
+      promptIndex: 0,
+      nodes: [
+        {
+          _uid: 'node-1',
+          type: 'person',
+          attributes: { isCloseTie: null },
+          promptIDs: [],
+        },
+      ],
+    });
+
+    await store.dispatch(
+      addNodeToPrompt({
+        nodeId: 'node-1',
+        promptAttributes: { isCloseTie: true },
+        currentStep: 0,
+      }),
+    );
+
+    const node = store.getState().session.network.nodes[0];
+    expect(node?.attributes.isCloseTie).toBe(true);
+    expect(node?.promptIDs).toEqual(['prompt-1']);
+  });
+});
+
+describe('removeNodeFromPrompt', () => {
+  it('clears a prompt-introduced attribute on removal, even one a form displayed', async () => {
+    // Scenario (issue #672, corrected): a NameGenerator prompt asserts
+    // isCloseTie:true; the node was added on that prompt and an AlterForm later
+    // displayed the value. Even if the node now carries a value that differs
+    // from what the removed prompt asserted, there is no form "ownership" to
+    // preserve — the network is the single source of truth, and removing the
+    // node from the prompt undoes the prompt's contribution. The attribute is
+    // cleared to null because no remaining prompt asserts it.
+    const store = createTestStoreWithPrompts({
+      prompts: [
+        {
+          id: 'prompt-1',
+          additionalAttributes: [{ variable: 'isCloseTie', value: true }],
+        },
+      ],
+      promptIndex: 0,
+      nodes: [
+        {
+          _uid: 'node-1',
+          type: 'person',
+          attributes: { isCloseTie: false },
+          promptIDs: ['prompt-1'],
+        },
+      ],
+    });
+
+    await store.dispatch(
+      removeNodeFromPrompt({ nodeId: 'node-1', currentStep: 0 }),
+    );
+
+    const node = store.getState().session.network.nodes[0];
+    expect(node?.attributes.isCloseTie).toBeNull();
+    expect(node?.promptIDs).toEqual([]);
+  });
+
+  it('clears a value:false attribute on removal rather than flipping it to true', async () => {
+    // Scenario: a NameGenerator prompt offers additionalAttributes value:false.
+    // A node was added on this prompt (isCloseTie stored false), then removed.
+    // Negating the authored value would corrupt false -> true.
+    const store = createTestStoreWithPrompts({
+      prompts: [
+        {
+          id: 'prompt-1',
+          additionalAttributes: [{ variable: 'isCloseTie', value: false }],
+        },
+      ],
+      promptIndex: 0,
+      nodes: [
+        {
+          _uid: 'node-1',
+          type: 'person',
+          attributes: { isCloseTie: false },
+          promptIDs: ['prompt-1'],
+        },
+      ],
+    });
+
+    await store.dispatch(
+      removeNodeFromPrompt({ nodeId: 'node-1', currentStep: 0 }),
+    );
+
+    const node = store.getState().session.network.nodes[0];
+    // The node no longer belongs to any prompt asserting isCloseTie, so the
+    // attribute must be cleared to null rather than left as a stale value.
+    expect(node?.attributes.isCloseTie).toBeNull();
+    expect(node?.promptIDs).toEqual([]);
+  });
+
+  it('preserves a value:true attribute still asserted by another attached prompt', async () => {
+    // Scenario: two prompts both assert isCloseTie:true. The node is on both.
+    // Removing it from one prompt must NOT clear the flag, because the other
+    // prompt still asserts it.
+    const store = createTestStoreWithPrompts({
+      prompts: [
+        {
+          id: 'prompt-1',
+          additionalAttributes: [{ variable: 'isCloseTie', value: true }],
+        },
+        {
+          id: 'prompt-2',
+          additionalAttributes: [{ variable: 'isCloseTie', value: true }],
+        },
+      ],
+      promptIndex: 0, // remove from prompt-1
+      nodes: [
+        {
+          _uid: 'node-1',
+          type: 'person',
+          attributes: { isCloseTie: true },
+          promptIDs: ['prompt-1', 'prompt-2'],
+        },
+      ],
+    });
+
+    await store.dispatch(
+      removeNodeFromPrompt({ nodeId: 'node-1', currentStep: 0 }),
+    );
+
+    const node = store.getState().session.network.nodes[0];
+    expect(node?.attributes.isCloseTie).toBe(true);
+    expect(node?.promptIDs).toEqual(['prompt-2']);
+  });
+});
+
+function createTestStoreWithMetadata(stageMetadata: StageMetadata) {
+  const network = createInitialNetwork();
+  network.nodes = [
+    { _uid: 'node-1', type: 'person', attributes: {} },
+    { _uid: 'node-2', type: 'person', attributes: {} },
+  ];
+
+  const sessionState = {
+    id: 'test-session',
+    startTime: new Date().toISOString(),
+    finishTime: null,
+    exportTime: null,
+    lastUpdated: new Date().toISOString(),
+    network,
+    promptIndex: 0,
+    stageMetadata,
+  };
+
+  return configureStore({
+    reducer: { session: sessionReducer },
+    preloadedState: { session: sessionState },
+  });
+}
+
+describe('deleteNode', () => {
+  it('prunes census stageMetadata entries that reference the deleted node', () => {
+    // A census 'No' answer for (node-1, node-2) was recorded in stageMetadata.
+    // Deleting node-1 must remove that entry so a re-added node with the same
+    // id cannot revive a stale 'No' pre-selection.
+    const censusMetadata: DyadCensusMetadataItem[] = [
+      [0, 'node-1', 'node-2', false],
+      [0, 'node-2', 'node-3', false],
+    ];
+
+    const store = createTestStoreWithMetadata({ 0: censusMetadata });
+
+    store.dispatch(deleteNode('node-1'));
+
+    const result = store.getState().session.stageMetadata?.[0];
+    expect(result).toEqual([[0, 'node-2', 'node-3', false]]);
+  });
+
+  it('leaves non-census (FamilyPedigree) stage metadata untouched', () => {
+    const familyPedigreeMetadata = {
+      isNetworkCommitted: true,
+      nodes: [{ id: 'node-1', label: 'Ego', isEgo: true }],
+    };
+
+    const store = createTestStoreWithMetadata({ 1: familyPedigreeMetadata });
+
+    store.dispatch(deleteNode('node-1'));
+
+    const result = store.getState().session.stageMetadata?.[1];
+    expect(result).toEqual(familyPedigreeMetadata);
   });
 });
 

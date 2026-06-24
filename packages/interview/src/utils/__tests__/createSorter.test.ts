@@ -493,6 +493,126 @@ describe('Categorical sorting', () => {
     const result = sorter(mockItems).map((item) => item.name);
     expect(result).toEqual(['bob', 'charlie', 'alice', 'david']);
   });
+
+  it('compares the full selection set, not only the first option', () => {
+    // A and B share their first option ('a') but differ on the second.
+    // Comparing only element [0] would treat them as equal; comparing the
+    // full set must order A (whose best other option ranks higher) ahead.
+    const mockItems = [
+      {
+        category: ['a', 'duck'],
+        name: 'shared-first-low',
+      },
+      {
+        category: ['a', 'cow'],
+        name: 'shared-first-high',
+      },
+    ];
+
+    const sorter = createSorter([
+      {
+        property: 'category',
+        type: 'categorical',
+        direction: 'asc',
+        hierarchy: ['cow', 'duck', 'a'],
+      },
+    ]);
+
+    const result = sorter(mockItems).map((item) => item.name);
+    expect(result).toEqual(['shared-first-high', 'shared-first-low']);
+  });
+
+  it('sorts single-selection categorical values', () => {
+    // Categorical attributes are stored as arrays; a single selection is a
+    // one-element array (e.g. CategoricalBin membership).
+    const mockItems = [
+      { category: ['cow'], name: 'alice' },
+      { category: ['duck'], name: 'bob' },
+      { category: ['lizard'], name: 'charlie' },
+      { category: ['cow'], name: 'david' },
+    ];
+
+    const sorter = createSorter([
+      {
+        property: 'category',
+        type: 'categorical',
+        direction: 'asc',
+        hierarchy: ['duck', 'lizard', 'cow'],
+      },
+      {
+        property: 'name',
+        type: 'string',
+        direction: 'asc',
+      },
+    ]);
+
+    const result = sorter(mockItems).map((item) => item.name);
+    expect(result).toEqual(['bob', 'charlie', 'alice', 'david']);
+  });
+
+  it('sorts categorical option value 0 by its hierarchy index, not to the bottom', () => {
+    const mockItems = [
+      { category: [0], name: 'zeroValue' },
+      { category: [1], name: 'oneValue' },
+      { category: [2], name: 'twoValue' },
+    ];
+
+    const sorter = createSorter([
+      {
+        property: 'category',
+        type: 'categorical',
+        direction: 'asc',
+        hierarchy: [2, 1, 0],
+      },
+    ]);
+
+    const result = sorter(mockItems).map((item) => item.name);
+    expect(result).toEqual(['twoValue', 'oneValue', 'zeroValue']);
+  });
+
+  it('sorts categorical option value false by its hierarchy index', () => {
+    const mockItems = [
+      { category: [false], name: 'falseValue' },
+      { category: [true], name: 'trueValue' },
+    ];
+
+    const sorter = createSorter([
+      {
+        property: 'category',
+        type: 'categorical',
+        direction: 'asc',
+        hierarchy: [false, true],
+      },
+    ]);
+
+    const result = sorter(mockItems).map((item) => item.name);
+    expect(result).toEqual(['falseValue', 'trueValue']);
+  });
+});
+
+describe('Hierarchy sorting with falsy values', () => {
+  it('sorts ordinal value 0 by its hierarchy index, not to the bottom', () => {
+    const mockItems = [
+      { ordinal: 0, name: 'zeroValue' },
+      { ordinal: 1, name: 'oneValue' },
+      { ordinal: 2, name: 'twoValue' },
+    ];
+
+    const sorter = createSorter([
+      {
+        property: 'ordinal',
+        type: 'hierarchy',
+        direction: 'desc',
+        hierarchy: [2, 0, 1],
+      },
+    ]);
+
+    // value 0 sits in the middle of the hierarchy. The old `!firstValue` guard
+    // forced it to the end as "missing"; with an explicit null check it must
+    // land in its hierarchy position.
+    const result = sorter(mockItems).map((item) => item.name);
+    expect(result).toEqual(['twoValue', 'zeroValue', 'oneValue']);
+  });
 });
 
 describe('Order direction', () => {
@@ -1109,6 +1229,31 @@ describe('processProtocolSortRule', () => {
       ...rule,
       type: 'string',
     });
+  });
+
+  it('is idempotent: re-processing an already-processed rule does not clobber its type', () => {
+    const codebookVariables: EntityDefinition['variables'] = {
+      age: { type: 'number', name: 'age' },
+    };
+    const process = processProtocolSortRule(codebookVariables);
+
+    const rule = {
+      property: 'age',
+      direction: 'asc',
+    } as SortRule;
+
+    const once = process(rule);
+    expect(once).toEqual({
+      property: [entityAttributesProperty, 'age'],
+      type: 'number',
+      direction: 'asc',
+    });
+
+    // The second pass receives a rule whose property is already the resolved
+    // path (and which already carries a non-string type). It must not be
+    // looked up afresh and clobbered to 'string'.
+    const twice = process(once);
+    expect(twice).toEqual(once);
   });
 
   describe('manages property path', () => {

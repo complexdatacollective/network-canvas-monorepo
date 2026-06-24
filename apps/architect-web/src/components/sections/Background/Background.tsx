@@ -2,6 +2,7 @@ import { PureComponent } from 'react';
 import { compose } from 'react-recompose';
 import { Field } from 'redux-form';
 
+import type { StageType } from '@codaco/protocol-validation';
 import { Row, Section } from '~/components/EditorLayout';
 import {
   BooleanField,
@@ -16,6 +17,14 @@ import Image from '../../Form/Fields/Image';
 import ValidatedField from '../../Form/ValidatedField';
 import withBackgroundChangeHandler from './withBackgroundChangeHandler';
 
+/**
+ * The Narrative stage schema forbids a background image (its background is a
+ * strict object of only concentricCircles/skewedTowardCenter). The shared
+ * Background section must not offer the image option for Narrative stages.
+ */
+export const allowsBackgroundImage = (interfaceType: StageType): boolean =>
+  interfaceType !== 'Narrative';
+
 type BackgroundProps = StageEditorSectionProps & {
   handleChooseBackgroundType: (value: boolean) => void;
   useImage: boolean;
@@ -23,7 +32,9 @@ type BackgroundProps = StageEditorSectionProps & {
 
 class Background extends PureComponent<BackgroundProps> {
   render() {
-    const { handleChooseBackgroundType, useImage } = this.props;
+    const { handleChooseBackgroundType, useImage, interfaceType } = this.props;
+    const imageAllowed = allowsBackgroundImage(interfaceType);
+    const showImage = imageAllowed && useImage;
 
     return (
       <Section
@@ -31,53 +42,56 @@ class Background extends PureComponent<BackgroundProps> {
         summary={
           <p>
             This section determines the graphical background for this prompt.
-            You can choose between a conventional series of concentric circles,
-            or provide your own background image.
+            {imageAllowed
+              ? ' You can choose between a conventional series of concentric circles, or provide your own background image.'
+              : ' This stage uses the conventional series of concentric circles.'}
           </p>
         }
       >
-        <Row>
-          <DetachedField
-            component={
-              BooleanField as React.ComponentType<Record<string, unknown>>
-            }
-            value={useImage}
-            options={[
-              {
-                value: false,
-                label: () => (
-                  <div>
-                    <h4>Concentric Circles</h4>
-                    <p>
-                      Use the conventional concentric circles sociogram
-                      background.
-                    </p>
-                  </div>
-                ),
-              },
-              {
-                value: true,
-                label: () => (
-                  <div>
-                    <h4>Image</h4>
-                    <p>
-                      Use a custom image of your choosing as the background.
-                    </p>
-                  </div>
-                ),
-              },
-            ]}
-            onChange={(
-              _event: unknown,
-              nextValue: unknown,
-              _currentValue: unknown,
-              _name: string | null,
-            ) => handleChooseBackgroundType(nextValue as boolean)}
-            label="Choose a background type"
-            noReset
-          />
-        </Row>
-        {!useImage && (
+        {imageAllowed && (
+          <Row>
+            <DetachedField
+              component={
+                BooleanField as React.ComponentType<Record<string, unknown>>
+              }
+              value={useImage}
+              options={[
+                {
+                  value: false,
+                  label: () => (
+                    <div>
+                      <h4>Concentric Circles</h4>
+                      <p>
+                        Use the conventional concentric circles sociogram
+                        background.
+                      </p>
+                    </div>
+                  ),
+                },
+                {
+                  value: true,
+                  label: () => (
+                    <div>
+                      <h4>Image</h4>
+                      <p>
+                        Use a custom image of your choosing as the background.
+                      </p>
+                    </div>
+                  ),
+                },
+              ]}
+              onChange={(
+                _event: unknown,
+                nextValue: unknown,
+                _currentValue: unknown,
+                _name: string | null,
+              ) => handleChooseBackgroundType(nextValue as boolean)}
+              label="Choose a background type"
+              noReset
+            />
+          </Row>
+        )}
+        {!showImage && (
           <>
             <Row>
               <IssueAnchor
@@ -104,7 +118,7 @@ class Background extends PureComponent<BackgroundProps> {
             </Row>
           </>
         )}
-        {useImage && (
+        {showImage && (
           <Row>
             <IssueAnchor
               fieldName="background.image"

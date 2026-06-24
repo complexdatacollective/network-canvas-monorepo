@@ -1,9 +1,10 @@
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import type { NcEdge, NcNode, RelationshipType } from '@codaco/shared-consts';
 import type {
   FamilyEdge,
   GameteRole,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
+import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 
 type PathStep = 'parent' | 'child' | 'partner';
 
@@ -32,9 +33,10 @@ function bfsFromEgo(
     const current = queue.shift()!;
 
     for (const edge of edges.values()) {
-      const relType = edge.attributes[
-        variableConfig.relationshipTypeVariable
-      ] as string | undefined;
+      const relType = getEdgeRelationshipType(
+        edge,
+        variableConfig.relationshipTypeVariable,
+      );
 
       if (relType === 'partner') {
         // Partner edges are bidirectional
@@ -158,11 +160,12 @@ function getParentEdgeType(
   egoId: string,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
-): string | null {
+): RelationshipType | null {
   for (const edge of edges.values()) {
-    const relType = edge.attributes[variableConfig.relationshipTypeVariable] as
-      | string
-      | undefined;
+    const relType = getEdgeRelationshipType(
+      edge,
+      variableConfig.relationshipTypeVariable,
+    );
     if (edge.from === nodeId && edge.to === egoId && relType !== 'partner') {
       return relType ?? null;
     }
@@ -181,9 +184,10 @@ function getDirectParentGameteRole(
   variableConfig: VariableConfig,
 ): GameteRole | undefined {
   for (const edge of edges.values()) {
-    const relType = edge.attributes[variableConfig.relationshipTypeVariable] as
-      | string
-      | undefined;
+    const relType = getEdgeRelationshipType(
+      edge,
+      variableConfig.relationshipTypeVariable,
+    );
     if (
       edge.from === nodeId &&
       edge.to === egoId &&
@@ -410,6 +414,47 @@ export function computeAllDisplayLabels(
   }
 
   return labels;
+}
+
+/**
+ * Compute the canonical relationship-to-ego label for every non-ego node,
+ * keyed by node id. Unlike {@link computeAllDisplayLabels} this never
+ * substitutes a named-intermediary possessive ("Rob's Parent") — it returns
+ * the relationship kind itself ("Parent", "Sibling", "Grandparent") so the
+ * value can be written verbatim to a node's relationship variable.
+ *
+ * Nodes ego cannot reach are omitted (no relationship can be determined).
+ */
+export function computeRelationshipsToEgo(
+  egoId: string,
+  nodes: Map<string, NcNode>,
+  edges: Map<string, NcEdge>,
+  variableConfig: VariableConfig,
+): Map<string, string> {
+  const bfsResults = bfsFromEgo(egoId, nodes, edges, variableConfig);
+  const relationships = new Map<string, string>();
+
+  for (const [nodeId, node] of nodes) {
+    if (nodeId === egoId) continue;
+    if (node.attributes[variableConfig.egoVariable] === true) continue;
+
+    const entry = bfsResults.get(nodeId);
+    if (!entry) continue;
+
+    let kind = classifyPath(entry.path);
+    if (!kind) continue;
+
+    if (kind === 'parent') {
+      const edgeType = getParentEdgeType(nodeId, egoId, edges, variableConfig);
+      if (edgeType === 'social') kind = 'social-parent';
+      else if (edgeType === 'donor') kind = 'donor';
+      else if (edgeType === 'surrogate') kind = 'surrogate';
+    }
+
+    relationships.set(nodeId, RELATIONSHIP_LABELS[kind]);
+  }
+
+  return relationships;
 }
 
 /**

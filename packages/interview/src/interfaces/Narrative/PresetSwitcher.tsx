@@ -20,13 +20,54 @@ import {
   PopoverTrigger,
 } from '@codaco/fresco-ui/Popover';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
-import type { Stage, VariableOption } from '@codaco/protocol-validation';
+import type {
+  Stage,
+  VariableOption,
+  VariableOptionValue,
+} from '@codaco/protocol-validation';
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import { useStageSelector } from '~/hooks/useStageSelector';
-import { getSubjectType } from '~/selectors/session';
+import { getNetworkNodes, getSubjectType } from '~/selectors/session';
 import { getCodebook } from '~/store/modules/protocol';
 
 type NarrativeStage = Extract<Stage, { type: 'Narrative' }>;
 type Preset = NarrativeStage['presets'][number];
+
+type GroupLegendEntry = {
+  label: string;
+  colorIndex: number;
+};
+
+/**
+ * Builds the convex-hull group legend. Known codebook options keep their
+ * stable, 1-based colour index. Group values present on nodes but absent from
+ * the option set (e.g. from external import) are appended after the known
+ * options with distinct colours, so every rendered hull has a matching legend
+ * entry instead of an uncoloured/unlabelled one. Out-of-codebook values are
+ * sorted for a deterministic colour assignment that matches
+ * `groupNodesByVariable` in ConvexHullLayer.
+ */
+export function buildGroupLegend(
+  categoricalOptions: VariableOption[],
+  groupValues: VariableOptionValue[],
+): GroupLegendEntry[] {
+  const known = categoricalOptions.map((option, index) => ({
+    label: option.label,
+    colorIndex: index + 1,
+  }));
+
+  const knownValues = new Set(categoricalOptions.map((option) => option.value));
+  const extraValues = [
+    ...new Set(groupValues.filter((value) => !knownValues.has(value))),
+  ].toSorted((a, b) => String(a).localeCompare(String(b)));
+
+  const extra = extraValues.map((value, index) => ({
+    label: String(value),
+    colorIndex: categoricalOptions.length + 1 + index,
+  }));
+
+  return [...known, ...extra];
+}
 
 const SECTION_ATTRIBUTES = 'attributes';
 const SECTION_LINKS = 'links';
@@ -65,41 +106,67 @@ export default function PresetSwitcher({
 
   const selector = useMemo(
     () =>
-      createSelector(getCodebook, getSubjectType, (codebook, subjectType) => {
-        const highlightLabels = (currentPreset?.highlight ?? []).map(
-          (variableId: string) =>
-            (subjectType &&
-              codebook?.node?.[subjectType]?.variables?.[variableId]?.name) ??
-            '',
-        );
+      createSelector(
+        getCodebook,
+        getSubjectType,
+        getNetworkNodes,
+        (codebook, subjectType, nodes) => {
+          const highlightLabels = (currentPreset?.highlight ?? []).map(
+            (variableId: string) =>
+              (subjectType &&
+                codebook?.node?.[subjectType]?.variables?.[variableId]?.name) ??
+              '',
+          );
 
-        const edges = (currentPreset?.edges?.display ?? []).map(
-          (type: string) => ({
-            label: codebook?.edge?.[type]?.name ?? '',
-            color: codebook?.edge?.[type]?.color ?? 'edge-color-seq-1',
-          }),
-        );
+          const edges = (currentPreset?.edges?.display ?? []).map(
+            (type: string) => ({
+              label: codebook?.edge?.[type]?.name ?? '',
+              color: codebook?.edge?.[type]?.color ?? 'edge-color-seq-1',
+            }),
+          );
 
-        const groupVariable = currentPreset?.groupVariable;
-        let categoricalOptions: VariableOption[] | undefined;
-        if (subjectType && groupVariable) {
-          const variable =
-            codebook?.node?.[subjectType]?.variables?.[groupVariable];
-          categoricalOptions =
-            variable && 'options' in variable ? variable.options : undefined;
-        }
+          const groupVariable = currentPreset?.groupVariable;
+          let categoricalOptions: VariableOption[] | undefined;
+          const groupValues: VariableOptionValue[] = [];
+          if (subjectType && groupVariable) {
+            const variable =
+              codebook?.node?.[subjectType]?.variables?.[groupVariable];
+            categoricalOptions =
+              variable && 'options' in variable && variable.options
+                ? variable.options.filter(
+                    (option): option is VariableOption =>
+                      typeof option.value !== 'boolean',
+                  )
+                : undefined;
 
-        return { categoricalOptions, edges, highlightLabels };
-      }),
+            for (const node of nodes) {
+              const raw = node[entityAttributesProperty][groupVariable];
+              if (raw == null) continue;
+              for (const value of Array.isArray(raw) ? raw : [raw]) {
+                if (typeof value === 'string' || typeof value === 'number') {
+                  groupValues.push(value);
+                }
+              }
+            }
+          }
+
+          return { categoricalOptions, groupValues, edges, highlightLabels };
+        },
+      ),
     [currentPreset],
   );
 
-  const { categoricalOptions, edges, highlightLabels } =
+  const { categoricalOptions, groupValues, edges, highlightLabels } =
     useStageSelector(selector);
+
+  const groupLegend = useMemo(
+    () => buildGroupLegend(categoricalOptions ?? [], groupValues),
+    [categoricalOptions, groupValues],
+  );
 
   const hasHighlights = highlightLabels.length > 0;
   const hasEdges = edges.length > 0;
-  const hasGroups = categoricalOptions && categoricalOptions.length > 0;
+  const hasGroups = groupLegend.length > 0;
 
   // Controlled accordion: open sections correspond to enabled features
   const accordionValue = useMemo(() => {
@@ -260,7 +327,7 @@ export default function PresetSwitcher({
                 </AccordionHeader>
                 <AccordionPanel>
                   <div className="flex flex-col gap-2">
-                    {categoricalOptions.map((option, index) => (
+                    {groupLegend.map((entry, index) => (
                       <div
                         key={index}
                         className="flex items-center gap-4 text-base"
@@ -268,10 +335,10 @@ export default function PresetSwitcher({
                         <span
                           className="inline-block size-3 rounded-full"
                           style={{
-                            backgroundColor: `var(--cat-${index + 1})`,
+                            backgroundColor: `var(--cat-${entry.colorIndex})`,
                           }}
                         />
-                        <RenderMarkdown>{option.label}</RenderMarkdown>
+                        <RenderMarkdown>{entry.label}</RenderMarkdown>
                       </div>
                     ))}
                   </div>

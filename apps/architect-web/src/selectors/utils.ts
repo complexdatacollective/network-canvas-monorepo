@@ -11,7 +11,10 @@ type Item = {
   type?: string;
   color?: string;
   shape?: { default: NodeShape };
-  options?: VariableOptions;
+  // Any codebook variable's options: categorical/ordinal (string/number) or
+  // boolean variables (boolean value). Only categorical/ordinal options are
+  // surfaced as Option.options (see asOption), so the boolean case is filtered.
+  options?: { label: string; value: string | number | boolean }[];
   [key: string]: unknown;
 };
 
@@ -37,10 +40,16 @@ const asOption = (item: Item, id: string): Option => {
   // Node type definitions carry a shape; surface the default for previews
   const shapeField = item.shape ? { shape: item.shape.default } : {};
 
-  // Include options for categorical/ordinal variables
+  // Include options for categorical/ordinal variables (string/number-valued;
+  // filter out any boolean option so the result matches VariableOptions)
   const optionsField =
     item.type && typesWithOptions.has(item.type) && item.options
-      ? { options: item.options }
+      ? {
+          options: item.options.filter(
+            (option): option is VariableOptions[number] =>
+              typeof option.value !== 'boolean',
+          ),
+        }
       : {};
 
   return {

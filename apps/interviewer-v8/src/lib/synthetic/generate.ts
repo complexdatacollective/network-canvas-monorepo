@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 
+import { getInterviewProgress } from '@codaco/interview';
 import { generateNetwork } from '@codaco/protocol-utilities';
 import { createSession, getProtocolByHash, updateSession } from '~/lib/db/api';
 
@@ -53,6 +54,8 @@ export async function generateSyntheticSessions(
 
     await updateSession(session.id, {
       currentStep,
+      progress: getInterviewProgress(protocol.protocol.stages, currentStep)
+        .progress,
       stageMetadata: stageMetadata ?? undefined,
       finishedAt: droppedOut ? null : new Date().toISOString(),
     });
@@ -79,6 +82,8 @@ export async function generateSyntheticSessions(
         await updateSession(row.sessionId, {
           network,
           currentStep,
+          progress: getInterviewProgress(protocol.protocol.stages, currentStep)
+            .progress,
           stageMetadata: stageMetadata ?? undefined,
           finishedAt: new Date().toISOString(),
         });

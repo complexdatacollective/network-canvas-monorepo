@@ -46,6 +46,19 @@ export const sociogramStage = baseStageSchema
             path: [],
           });
         }
+
+        // Edge creation and highlighting are mutually exclusive tap behaviours;
+        // when both are set the interview silently lets edge creation win.
+        prompts.forEach((prompt, index) => {
+          if (prompt.edges?.create && prompt.highlight?.allowHighlighting) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message:
+                'A Sociogram prompt cannot set both edges.create and highlight.allowHighlighting',
+              path: [index],
+            });
+          }
+        });
       }),
   })
   .generateMock((base) => ({

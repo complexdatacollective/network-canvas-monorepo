@@ -22,7 +22,8 @@ import type { StageProps } from '~/types';
 // Content-Type (e.g. `video` instead of `video/mp4`). Safari strictly requires
 // a valid MIME type and refuses to play otherwise. We work around this by
 // providing an explicit `type` on the `<source>` element, derived from the
-// original filename extension stored in the asset record.
+// original `source` filename extension carried in the asset record (the display
+// `name` may lack an extension on hand-edited protocols).
 const MEDIA_MIME_TYPES: Record<string, string> = {
   // Video
   '.mp4': 'video/mp4',
@@ -54,22 +55,49 @@ function getMediaMimeType(
   return MEDIA_MIME_TYPES[ext] ?? fallback;
 }
 
+// Size applies to image items, which carry a `size` prop. Maps the size
+// magic-strings to max-height bands. Other item types are rendered at their
+// natural size (no max-height treatment).
+function getSizeClass(size: string | undefined): string {
+  return cx(
+    size === 'SMALL' && 'max-h-48',
+    size === 'MEDIUM' && 'max-h-96',
+    size === 'LARGE' && 'max-h-[60vh]',
+  );
+}
+
+function ItemFallback({ message }: { message: string }) {
+  return (
+    <div
+      data-testid="information-item-fallback"
+      className="border-accent flex items-center justify-center rounded border border-dashed p-4"
+    >
+      <Paragraph intent="smallText" className="text-center">
+        {message}
+      </Paragraph>
+    </div>
+  );
+}
+
 type MediaLoadState = 'loading' | 'loaded' | 'error';
 
 function VideoPlayer({
   src,
   name,
+  source,
   isE2E,
 }: {
   src: string;
   name: string;
+  source: string | undefined;
   isE2E: boolean;
 }) {
   const [state, setState] = useState<MediaLoadState>('loading');
   const captureException = useCaptureException();
 
   // Disable autoPlay and preload to prevent browser crashes in headless E2E tests.
-  const mimeType = getMediaMimeType(name, 'video/mp4');
+  // MIME type derives from the source filename, falling back to the display name.
+  const mimeType = getMediaMimeType(source ?? name, 'video/mp4');
 
   return (
     <div className={cx('relative', state === 'loading' && 'min-h-48')}>
@@ -117,16 +145,20 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
   const assetManifest = useSelector(getAssetManifest);
   const assetMeta = assetManifest[item.content];
   const { url, isLoading } = useAssetUrl(item.content);
+  // `size` exists only on asset items (text items have no size).
+  const itemSize = item.type === 'asset' ? item.size : undefined;
 
-  if (!assetMeta) return null;
+  if (!assetMeta) {
+    return <ItemFallback message="This item could not be displayed." />;
+  }
 
   if (isLoading) {
     const sizeClass =
       assetMeta.type === 'image'
         ? cx(
-            item.size === 'SMALL' && 'min-h-48',
-            item.size === 'MEDIUM' && 'min-h-96',
-            item.size === 'LARGE' && 'min-h-[60vh]',
+            itemSize === 'SMALL' && 'min-h-48',
+            itemSize === 'MEDIUM' && 'min-h-96',
+            itemSize === 'LARGE' && 'min-h-[60vh]',
           )
         : 'min-h-12';
 
@@ -137,7 +169,9 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
     );
   }
 
-  if (!url) return null;
+  if (!url) {
+    return <ItemFallback message="This item could not be displayed." />;
+  }
 
   switch (assetMeta.type) {
     case 'image':
@@ -145,12 +179,7 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
         <img
           src={url}
           alt={item.description ?? ''}
-          className={cx(
-            'size-full object-contain',
-            item.size === 'SMALL' && 'max-h-48',
-            item.size === 'MEDIUM' && 'max-h-96',
-            item.size === 'LARGE' && 'max-h-[60vh]',
-          )}
+          className={cx('size-full object-contain', getSizeClass(itemSize))}
         />
       );
     case 'audio':
@@ -162,17 +191,27 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
         >
           <source
             src={url}
-            type={getMediaMimeType(assetMeta.name, 'audio/mpeg')}
+            type={getMediaMimeType(
+              assetMeta.source ?? assetMeta.name,
+              'audio/mpeg',
+            )}
           />
           <track kind="captions" />
         </audio>
       );
     case 'video':
-      return <VideoPlayer src={url} name={assetMeta.name} isE2E={isE2E} />;
+      return (
+        <VideoPlayer
+          src={url}
+          name={assetMeta.name}
+          source={assetMeta.source}
+          isE2E={isE2E}
+        />
+      );
     case 'network':
     case 'geojson':
     case 'apikey':
-      return null;
+      return <ItemFallback message="This item could not be displayed." />;
   }
 }
 

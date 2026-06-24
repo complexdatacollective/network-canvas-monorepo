@@ -33,7 +33,7 @@ export const categoricalBinStage = baseStageSchema
     prompts: [
       {
         id: crypto.randomUUID(),
-        variable: getNodeVariableId(),
+        variable: getNodeVariableId(2),
         text: faker.helpers.arrayElement([
           'Which of these options best describes how you know this person?',
           'What type of relationship do you have with each person?',

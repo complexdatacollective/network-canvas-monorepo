@@ -13,7 +13,7 @@ function edge(from: string, to: string, rel: string): [string, NcEdge] {
   const id = `${from}->${to}:${rel}`;
   return [
     id,
-    { _uid: id, type: 'family', from, to, attributes: { [REL]: rel } },
+    { _uid: id, type: 'family', from, to, attributes: { [REL]: [rel] } },
   ];
 }
 

@@ -18,6 +18,7 @@ import {
 import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeProvider';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 import {
+  getEdgeRelationshipType,
   getEdgeTypeKey,
   getIsActiveVariable,
   getIsGestationalCarrierVariable,
@@ -27,6 +28,7 @@ import {
   getEgoVariable,
   getNodeLabelVariable,
   getNodeTypeKey,
+  getRelationshipVariable,
   getResolvedNodeFormFields,
 } from '~/interfaces/FamilyPedigree/utils/nodeUtils';
 
@@ -70,6 +72,7 @@ export default function PedigreeView({
   const edgeType = useStageSelector(getEdgeTypeKey);
   const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
   const egoVariable = useStageSelector(getEgoVariable);
+  const relationshipVariable = useStageSelector(getRelationshipVariable);
   const relationshipTypeVariable = useStageSelector(
     getRelationshipTypeVariable,
   );
@@ -84,6 +87,7 @@ export default function PedigreeView({
     edgeType,
     nodeLabelVariable,
     egoVariable,
+    relationshipVariable,
     relationshipTypeVariable,
     isActiveVariable,
     isGestationalCarrierVariable,
@@ -134,7 +138,7 @@ export default function PedigreeView({
       from: nodeId,
       to: newNodeId,
       attributes: {
-        [relationshipTypeVariable]: 'partner',
+        [relationshipTypeVariable]: ['partner'],
         [isActiveVariable]: result.current !== 'ex',
       },
     });
@@ -152,7 +156,7 @@ export default function PedigreeView({
           from: newNodeId,
           to: childId,
           attributes: {
-            [relationshipTypeVariable]: value,
+            [relationshipTypeVariable]: [value],
             [isActiveVariable]: true,
           },
         });
@@ -288,7 +292,8 @@ export default function PedigreeView({
             const isAdopted = [...edges.values()].some(
               (e) =>
                 e.to === node.id &&
-                e.attributes[relationshipTypeVariable] === 'adoptive',
+                getEdgeRelationshipType(e, relationshipTypeVariable) ===
+                  'adoptive',
             );
 
             return activeNominationVariable ? (
@@ -310,8 +315,10 @@ export default function PedigreeView({
                   [...edges.values()].some(
                     (e) =>
                       e.to === node.id &&
-                      e.attributes[relationshipTypeVariable] !== 'partner' &&
-                      e.attributes[relationshipTypeVariable] !== 'social',
+                      getEdgeRelationshipType(e, relationshipTypeVariable) !==
+                        'partner' &&
+                      getEdgeRelationshipType(e, relationshipTypeVariable) !==
+                        'social',
                   )
                 }
                 isEgo={isEgo}

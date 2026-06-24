@@ -17,6 +17,7 @@ const variableConfig: VariableConfig = {
   edgeType: 'family',
   nodeLabelVariable: 'name',
   egoVariable: 'isEgo',
+  relationshipVariable: 'relationship',
   relationshipTypeVariable: 'rel',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGC',
@@ -26,7 +27,13 @@ function edge(from: string, to: string, rel: string): [string, NcEdge] {
   const id = `${from}->${to}:${rel}`;
   return [
     id,
-    { _uid: id, type: 'family', from, to, attributes: { rel, isActive: true } },
+    {
+      _uid: id,
+      type: 'family',
+      from,
+      to,
+      attributes: { rel: [rel], isActive: true },
+    },
   ];
 }
 
@@ -192,7 +199,7 @@ describe('nominatedGameteRoles', () => {
         type: 'family',
         from,
         to,
-        attributes: { rel: 'biological', isActive: true },
+        attributes: { rel: ['biological'], isActive: true },
         gameteRole,
       },
     ];

@@ -1,4 +1,4 @@
-import type { VariableValue } from '@codaco/shared-consts';
+import type { RelationshipType, VariableValue } from '@codaco/shared-consts';
 import type {
   CommitBatch,
   GameteRole,
@@ -33,12 +33,10 @@ function extractUnknownAttributes(
 type ParentEntry = {
   tempId: string;
   attributes: Record<string, VariableValue>;
-  relationshipType:
-    | 'biological'
-    | 'donor'
-    | 'surrogate'
-    | 'social'
-    | 'adoptive';
+  relationshipType: Extract<
+    RelationshipType,
+    'biological' | 'donor' | 'surrogate' | 'social' | 'adoptive'
+  >;
   isGestationalCarrier: boolean;
   gameteRole?: GameteRole;
 };
@@ -205,7 +203,7 @@ export function egoCellTransform(
     });
 
     const edgeAttributes: Record<string, VariableValue> = {
-      [variableConfig.relationshipTypeVariable]: parent.relationshipType,
+      [variableConfig.relationshipTypeVariable]: [parent.relationshipType],
       [variableConfig.isActiveVariable]: true,
     };
     if (parent.isGestationalCarrier) {
@@ -244,7 +242,7 @@ export function egoCellTransform(
             target: entry.id,
             data: {
               attributes: {
-                [variableConfig.relationshipTypeVariable]: 'partner',
+                [variableConfig.relationshipTypeVariable]: ['partner'],
                 [variableConfig.isActiveVariable]: entry.value === 'current',
               },
             },
@@ -281,7 +279,7 @@ export function egoCellTransform(
       target: 'partner',
       data: {
         attributes: {
-          [variableConfig.relationshipTypeVariable]: 'partner',
+          [variableConfig.relationshipTypeVariable]: ['partner'],
           [variableConfig.isActiveVariable]: true,
         },
       },

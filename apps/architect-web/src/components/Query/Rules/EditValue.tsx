@@ -2,27 +2,27 @@ import { withProps } from 'react-recompose';
 
 import DetachedField from '~/components/DetachedField';
 import {
+  CheckboxGroup,
   Number as NumberField,
-  // CheckboxGroup,
   RadioGroup,
   Text,
   Toggle,
 } from '~/components/Form/Fields';
 
-// Todo: reinstate CheckboxGroup support when we switch to schema 8
+// Categorical attributes are stored as arrays of selected option values, so
+// their rule operand is also an array (CheckboxGroup). Ordinal remains a single
+// scalar value (RadioGroup).
 const INPUT_TYPES = {
   string: Text,
   number: NumberField,
   boolean: Toggle,
-  categorical: RadioGroup,
+  categorical: CheckboxGroup,
   ordinal: RadioGroup,
-  // categorical: CheckboxGroup,
-  // ordinal: CheckboxGroup,
 };
 
 const getLabel = (
   type: string,
-  value: string | number | boolean,
+  value: string | number | boolean | (string | number)[],
 ): string | null => {
   if (type !== 'boolean') {
     return null;
@@ -36,7 +36,7 @@ type OptionItem = {
 };
 
 type EditValueProps = {
-  value: string | number | boolean;
+  value: string | number | boolean | (string | number)[];
   options?: OptionItem[];
   onChange?: (
     event: unknown,

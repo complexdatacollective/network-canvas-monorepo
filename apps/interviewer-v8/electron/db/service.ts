@@ -41,6 +41,7 @@ type SessionRow = {
   finishedAt: string | null;
   exportedAt: string | null;
   currentStep: number;
+  progress: number;
   network_json: string;
   stageMetadata_json: string | null;
   isSynthetic: number;
@@ -137,6 +138,17 @@ function applyColumnMigrations(handle: DatabaseType): void {
       )
       .run();
   }
+  // Participant-facing progress (0–100) persisted from @codaco/interview.
+  // Existing rows default to 0 and pick up a real value the next time the
+  // session is advanced (finished sessions read as 100 via finishedAt).
+  const hasProgress = sessionCols.some((c) => c.name === 'progress');
+  if (!hasProgress) {
+    handle
+      .prepare(
+        'ALTER TABLE sessions ADD COLUMN progress REAL NOT NULL DEFAULT 0',
+      )
+      .run();
+  }
 }
 
 export function openDatabase(rawKeyHex: string): void {
@@ -214,6 +226,7 @@ function rowToSession(row: SessionRow) {
     finishedAt: row.finishedAt,
     exportedAt: row.exportedAt,
     currentStep: row.currentStep,
+    progress: row.progress,
     network: JSON.parse(row.network_json),
     stageMetadata: row.stageMetadata_json
       ? JSON.parse(row.stageMetadata_json)
@@ -239,8 +252,11 @@ function rowToSessionLite(row: SessionLiteRow): StoredSessionLite {
   };
 }
 
-// Columns shared by sessions.list() and sessions.query(), with the joined
-// statusKind / progressPercent computed once per row.
+// Columns shared by sessions.list() and sessions.query(), with the statusKind /
+// progressPercent computed once per row. progressPercent reads the persisted
+// participant-facing progress (which the interview engine computes, accounting
+// for the appended finish stage) rather than re-deriving it from currentStep; a
+// finished session is always 100%.
 const SESSION_LITE_COLUMNS = `
   s.id, s.protocolHash, s.protocolName, s.caseId, s.startedAt, s.lastUpdatedAt,
   s.finishedAt, s.exportedAt, s.currentStep, s.isSynthetic,
@@ -251,11 +267,7 @@ const SESSION_LITE_COLUMNS = `
   END AS statusKind,
   CASE
     WHEN s.finishedAt IS NOT NULL THEN 100.0
-    ELSE COALESCE(
-      s.currentStep * 100.0
-        / NULLIF(json_array_length(json_extract(p.protocol_json, '$.stages')), 0),
-      0
-    )
+    ELSE COALESCE(s.progress, 0)
   END AS progressPercent
 `;
 
@@ -359,11 +371,7 @@ function buildOrderClause(sort: SessionQueryParams['sort']): string {
   }
   return `ORDER BY (CASE
     WHEN s.finishedAt IS NOT NULL THEN 100.0
-    ELSE COALESCE(
-      s.currentStep * 100.0
-        / NULLIF(json_array_length(json_extract(p.protocol_json, '$.stages')), 0),
-      0
-    )
+    ELSE COALESCE(s.progress, 0)
   END) ${direction}, s.id ASC`;
 }
 
@@ -552,7 +560,6 @@ export const sessions = {
       .prepare<[], SessionLiteRow>(
         `SELECT ${SESSION_LITE_COLUMNS}
          FROM sessions s
-         LEFT JOIN protocols p ON s.protocolHash = p.hash
          ORDER BY s.lastUpdatedAt DESC, s.id ASC`,
       )
       .all();
@@ -569,7 +576,6 @@ export const sessions = {
     const rowSql = `
       SELECT ${SESSION_LITE_COLUMNS}
       FROM sessions s
-      LEFT JOIN protocols p ON s.protocolHash = p.hash
       ${where.sql}
       ${orderClause}
       LIMIT ? OFFSET ?
@@ -683,6 +689,7 @@ export const sessions = {
 				   finishedAt = @finishedAt,
 				   exportedAt = @exportedAt,
 				   currentStep = @currentStep,
+				   progress = @progress,
 				   network_json = @network_json,
 				   stageMetadata_json = @stageMetadata_json,
 				   isSynthetic = @isSynthetic
@@ -697,6 +704,7 @@ export const sessions = {
         finishedAt: merged.finishedAt ?? null,
         exportedAt: merged.exportedAt ?? null,
         currentStep: merged.currentStep,
+        progress: merged.progress ?? 0,
         network_json: JSON.stringify(merged.network),
         stageMetadata_json: merged.stageMetadata
           ? JSON.stringify(merged.stageMetadata)

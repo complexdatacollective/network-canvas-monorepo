@@ -1,13 +1,13 @@
 import { getEgoVariableId } from '~/utils/mock-seeds';
 import { z } from '~/utils/zod-mock-extension';
 
-import { FormSchema, IntroductionPanelSchema } from '../common';
+import { IntroductionPanelSchema, TitlelessFormSchema } from '../common';
 import { baseStageSchema } from './base';
 
 export const egoFormStage = baseStageSchema
   .extend({
     type: z.literal('EgoForm'),
-    form: FormSchema,
+    form: TitlelessFormSchema,
     introductionPanel: IntroductionPanelSchema,
   })
   .generateMock((base) => ({

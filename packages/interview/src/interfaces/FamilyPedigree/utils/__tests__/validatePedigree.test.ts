@@ -10,6 +10,7 @@ const variableConfig: VariableConfig = {
   edgeType: 'family',
   nodeLabelVariable: 'name',
   egoVariable: 'isEgo',
+  relationshipVariable: 'relationship',
   relationshipTypeVariable: 'rel',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGest',
@@ -42,7 +43,7 @@ function makeEdges(entries: [string, string, string][]): Map<string, NcEdge> {
       from: source,
       to: target,
       attributes: {
-        [variableConfig.relationshipTypeVariable]: relType,
+        [variableConfig.relationshipTypeVariable]: [relType],
         [variableConfig.isActiveVariable]: true,
       },
     });

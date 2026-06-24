@@ -1,4 +1,3 @@
-import { isNil } from 'es-toolkit';
 import sanitizeFilename from 'sanitize-filename';
 
 import {
@@ -63,28 +62,18 @@ export const getFilePrefix = (session: SessionWithResequencedIDs) =>
 
 /**
  * Check if an option value is selected in the categorical attribute data.
- * Uses strict equality matching to avoid substring matching bugs.
+ * Categorical attributes are stored as arrays of selected option values; an
+ * unanswered attribute (null / undefined) has nothing selected.
  *
- * @param attributeData - The categorical attribute value (array or single value)
+ * @param attributeData - The categorical attribute value (array of selections)
  * @param optionValue - The option value to check for
  * @returns true if the option is selected, false otherwise
  */
 export const isCategoricalOptionSelected = (
   attributeData: unknown,
   optionValue: string | number | boolean,
-): boolean => {
-  // isNil, not `!attributeData`: a stored `0` / `false` is a valid option
-  // value that must reach the equality / includes checks below.
-  if (isNil(attributeData)) {
-    return false;
-  }
-
-  if (Array.isArray(attributeData)) {
-    return attributeData.includes(optionValue);
-  }
-
-  return attributeData === optionValue;
-};
+): boolean =>
+  Array.isArray(attributeData) && attributeData.includes(optionValue);
 
 export const getEntityAttributes = (entity: NcEntity) =>
   entity?.[entityAttributesProperty] || {};

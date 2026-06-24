@@ -40,18 +40,10 @@ import {
   getVariableOptionsForSubject,
   makeGetVariable,
 } from '~/selectors/codebook';
-import { optionsMatch } from '~/utils/variables';
 
 import NodeFormFieldPreview from './NodeFormFieldPreview';
 
 const nodeEntity: Entity = 'node';
-
-const BIOLOGICAL_SEX_OPTIONS: VariableOptions = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
-  { value: 'intersex', label: 'Intersex' },
-  { value: 'unknown', label: 'Unknown' },
-];
 
 const PRESERVE_ON_NODE_TYPE_CHANGE = [
   'id',
@@ -158,11 +150,6 @@ const NodeConfigurationInner = ({
   const booleanNodeVariables = nodeVariableOptions.filter(
     (v) => v.type === 'boolean',
   );
-  const biologicalSexCompatible = nodeVariableOptions.filter(
-    (v) =>
-      v.type === 'categorical' &&
-      optionsMatch(v.options, BIOLOGICAL_SEX_OPTIONS),
-  );
 
   const handleCreatedVariable = (...args: unknown[]) => {
     const [id, params] = args as [string, { field: string }];
@@ -191,15 +178,6 @@ const NodeConfigurationInner = ({
     openVariableWindow(
       { initialValues: { name, type: 'boolean' }, lockedOptions: null },
       { field: 'nodeConfig.egoVariable' },
-    );
-
-  const handleNewBiologicalSexVariable = (name: string) =>
-    openVariableWindow(
-      {
-        initialValues: { name, type: 'categorical' },
-        lockedOptions: BIOLOGICAL_SEX_OPTIONS,
-      },
-      { field: 'nodeConfig.biologicalSexVariable' },
     );
 
   const handleNewRelationshipVariable = (name: string) =>
@@ -249,14 +227,6 @@ const NodeConfigurationInner = ({
                 entityType={nodeType}
                 options={booleanNodeVariables}
                 onCreateOption={handleNewEgoVariable}
-              />
-              <VariableRow
-                name="nodeConfig.biologicalSexVariable"
-                label="Biological Sex"
-                description="Stores the biological sex of each family member. Used for visual representation in the pedigree diagram."
-                entityType={nodeType}
-                options={biologicalSexCompatible}
-                onCreateOption={handleNewBiologicalSexVariable}
               />
               <VariableRow
                 name="nodeConfig.relationshipVariable"

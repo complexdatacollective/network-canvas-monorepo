@@ -11,6 +11,8 @@ import {
   useState,
 } from 'react';
 
+import type { StepChangeHandler, StepChangeMeta } from '../contract/types';
+
 type CurrentStepContextValue = {
   /**
    * The host-controlled (or internally-managed) target step. Updated
@@ -33,7 +35,13 @@ type CurrentStepContextValue = {
    * they were on the new stage.
    */
   displayedStep: number;
-  setCurrentStep: (step: number) => void;
+  /**
+   * Move to `step`. `meta` carries the participant-facing progress for that
+   * step and is forwarded verbatim to the host's `onStepChange` in controlled
+   * mode; it is ignored in uncontrolled mode. Callers compute it with
+   * `getInterviewProgress` (see `useInterviewNavigation`).
+   */
+  setCurrentStep: (step: number, meta: StepChangeMeta) => void;
   /** Called by Shell from AnimatePresence's `onExitComplete`. */
   commitDisplayedStep: () => void;
 };
@@ -44,7 +52,7 @@ type CurrentStepProviderProps = {
   /** Controlled mode: host owns the step. Pass alongside `onStepChange`. */
   currentStep?: number;
   /** Controlled mode: called whenever the package wants to change the step. */
-  onStepChange?: (step: number) => void;
+  onStepChange?: StepChangeHandler;
   children: ReactNode;
 };
 
@@ -79,9 +87,9 @@ export function CurrentStepProvider({
   onStepChangeRef.current = onStepChange;
 
   const setCurrentStep = useCallback(
-    (step: number) => {
+    (step: number, meta: StepChangeMeta) => {
       if (onStepChangeRef.current) {
-        onStepChangeRef.current(step);
+        onStepChangeRef.current(step, meta);
       } else {
         setInternalStep(step);
       }

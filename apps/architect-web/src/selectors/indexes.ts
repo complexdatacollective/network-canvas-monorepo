@@ -100,7 +100,6 @@ export const paths: {
     // FamilyPedigree variable paths
     'stages[].nodeConfig.nodeLabelVariable',
     'stages[].nodeConfig.egoVariable',
-    'stages[].nodeConfig.biologicalSexVariable',
     'stages[].nodeConfig.relationshipVariable',
     'stages[].nodeConfig.form[].variable',
     'stages[].edgeConfig.relationshipTypeVariable',
