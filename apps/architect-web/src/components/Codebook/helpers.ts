@@ -231,7 +231,7 @@ export const getEntityProperties = (
       ? entityType.shape?.default
       : undefined;
 
-  const variableIndex = getVariableIndex(state) as Record<string, string>;
+  const variableIndex = getVariableIndex(state);
   const variableMeta = getVariableMetaByIndex(state);
   const stageMetaByIndex = getStageMetaByIndex(state);
   const isUsedIndex = makeGetIsUsed({ formNames: [] })(state);
