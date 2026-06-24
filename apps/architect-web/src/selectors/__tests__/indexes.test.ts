@@ -1,15 +1,17 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { describe, expect, it } from 'vitest';
 
 import { getMockState } from '~/__tests__/helpers';
 import type { RootState } from '~/ducks/modules/root';
-import { collectPaths } from '~/utils/collectPaths';
 
 import {
   getAssetIndex,
   getEdgeIndex,
   getNodeIndex,
   getVariableIndex,
-  paths,
   utils,
 } from '../indexes';
 
@@ -26,7 +28,7 @@ const CROSS_VARIABLE_VALIDATIONS = [
   'lessThanOrEqualToVariable',
 ] as const;
 
-const buildProtocolWithValidationRef = (
+const buildStateWithValidationRef = (
   entity: 'ego' | 'node' | 'edge',
   validationKey: string,
 ) => {
@@ -45,7 +47,14 @@ const buildProtocolWithValidationRef = (
       ? { ego: { variables } }
       : { [entity]: { 'entity-type-id': { variables } } };
 
-  return { protocol: { codebook, stages: [] }, referencedVariableId };
+  const protocol = { schemaVersion: 8, name: 'test', codebook, stages: [] };
+
+  return {
+    state: getMockState({
+      activeProtocol: { present: protocol },
+    }) as unknown as RootState,
+    referencedVariableId,
+  };
 };
 
 describe('indexes selectors', () => {
@@ -86,16 +95,40 @@ describe('indexes selectors', () => {
         it.each(CROSS_VARIABLE_VALIDATIONS)(
           'counts a variable referenced via validation.%s as used',
           (validationKey) => {
-            const { protocol, referencedVariableId } =
-              buildProtocolWithValidationRef(entity, validationKey);
+            const { state, referencedVariableId } = buildStateWithValidationRef(
+              entity,
+              validationKey,
+            );
 
-            const index = collectPaths(paths.variables, protocol);
+            const index = getVariableIndex(state);
 
             expect(Object.values(index)).toContain(referencedVariableId);
           },
         );
       },
     );
+
+    it('includes stage prompt variable references from a real v8 protocol', () => {
+      const thisDir = dirname(fileURLToPath(import.meta.url));
+      const protocolPath = join(
+        thisDir,
+        '../../../../../packages/development-protocol/protocol.json',
+      );
+      const protocol = JSON.parse(
+        readFileSync(protocolPath, 'utf-8'),
+      ) as unknown;
+
+      const state = getMockState({
+        activeProtocol: { present: protocol },
+      }) as unknown as RootState;
+
+      const index = getVariableIndex(state);
+
+      // stages.10.prompts.0.variable in development-protocol/protocol.json
+      expect(Object.values(index)).toContain(
+        '1096204b-48fe-444c-b642-4ab211f7f57c',
+      );
+    });
   });
 
   describe('getAssetIndex()', () => {

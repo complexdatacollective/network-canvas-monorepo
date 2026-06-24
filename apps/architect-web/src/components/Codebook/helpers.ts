@@ -1,5 +1,5 @@
 import { createSelector } from '@reduxjs/toolkit';
-import { compact, get, reduce, uniq } from 'es-toolkit/compat';
+import { compact, get, reduce } from 'es-toolkit/compat';
 
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import {
@@ -8,7 +8,6 @@ import {
   type NodeDefinition,
   type Stage,
   type Variable,
-  VARIABLE_REFERENCE_VALIDATIONS,
   type Variables,
 } from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/store';
@@ -42,28 +41,6 @@ const getVariableMetaByIndex = createSelector([getCodebook], (codebook) => {
 });
 
 /**
- * Extract the stage name from a path string
- * @param {string} path {}
- * @returns {string | null} return a stageIndex or null if stage not found.
- */
-const getStageIndexFromPath = (path: string): string | null => {
-  const matches = /stages\[([0-9]+)\]/.exec(path);
-  return get(matches, 1, null);
-};
-
-const codebookVariableReferenceRegex = new RegExp(
-  `codebook\\.(ego|node\\[([^\\]]+)\\]|edge\\[([^\\]]+)\\])\\.variables\\[(.*?)\\]\\.validation\\.(${VARIABLE_REFERENCE_VALIDATIONS.join('|')})`,
-);
-
-const getCodebookVariableIndexFromValidationPath = (
-  path: string,
-): string | null => {
-  const match = path.match(codebookVariableReferenceRegex);
-
-  return get(match, 4, null);
-};
-
-/**
  * Takes an object in the format of `{[path]: variableID}` and a variableID to
  * search for. Returns an array of paths that match the variableID.
  *
@@ -92,8 +69,11 @@ type UsageMeta = {
 };
 
 /**
- * Get stage meta (wtf is stage meta, Steve? 🤦) that matches "usage array"
- * (with duplicates removed).
+ * Get stage meta that matches "usage array" (with duplicates removed).
+ *
+ * Parses the dotted-array key format produced by collectEntityAttributeReferences,
+ * e.g. `stages.0.form.fields.0.variable` or
+ * `codebook.node.personType.variables.varId.validation.sameAs`.
  *
  * See `getUsage()` for how the usage array is generated.
  *
@@ -110,24 +90,32 @@ export const getUsageAsStageMeta = (
   variableMetaByIndex: Variables,
   usageArray: string[],
 ): UsageMeta[] => {
-  // Filter codebook variables from usage array
-  const codebookVariablePaths = usageArray.filter(
-    getCodebookVariableIndexFromValidationPath,
-  );
-  const codebookVariablesWithMeta = codebookVariablePaths.map(
-    (path: string) => {
-      const variableId = getCodebookVariableIndexFromValidationPath(path);
+  const codebookVariablesWithMeta: UsageMeta[] = [];
+  const stageIndexSet = new Set<number>();
+
+  for (const key of usageArray) {
+    const segments = key.split('.');
+    if (segments[0] === 'stages') {
+      const stageIndex = Number(segments[1]);
+      if (!Number.isNaN(stageIndex)) {
+        stageIndexSet.add(stageIndex);
+      }
+    } else if (segments[0] === 'codebook') {
+      const variablesPos = segments.indexOf('variables');
+      const variableId =
+        variablesPos !== -1 ? segments[variablesPos + 1] : undefined;
       const variable = variableId ? variableMetaByIndex[variableId] : undefined;
       const name = variable?.name;
-      return {
+      codebookVariablesWithMeta.push({
         label: `Used as validation for "${name || 'unknown'}"`,
-      };
-    },
-  );
+      });
+    }
+  }
 
-  const stageIndexes = compact(uniq(usageArray.map(getStageIndexFromPath)));
-  const stageVariablesWithMeta = stageIndexes.map((stageIndex: string) =>
-    get(stageMetaByIndex, stageIndex),
+  const stageVariablesWithMeta = compact(
+    [...stageIndexSet].map((stageIndex) =>
+      get(stageMetaByIndex, stageIndex.toString()),
+    ),
   );
 
   return [...stageVariablesWithMeta, ...codebookVariablesWithMeta];

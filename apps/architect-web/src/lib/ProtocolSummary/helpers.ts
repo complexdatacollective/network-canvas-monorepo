@@ -1,8 +1,9 @@
 import { flatMap, get, reduce } from 'es-toolkit/compat';
 
-import type { Codebook } from '@codaco/protocol-validation';
-
-import { paths, utils } from '../../selectors/indexes';
+import {
+  type Codebook,
+  collectEntityAttributeReferences,
+} from '@codaco/protocol-validation';
 
 type VariableConfiguration = {
   name: string;
@@ -39,8 +40,12 @@ const buildVariableEntry =
 
     const stages = usage
       .map((path: string) => {
-        const [stagePath] = path.split('.');
-        return get(protocol, `${stagePath}.id`) as string | undefined;
+        // Keys are in dotted-array format: e.g. "stages.0.form.fields.0.variable"
+        const segments = path.split('.');
+        if (segments[0] !== 'stages' || segments[1] === undefined) {
+          return undefined;
+        }
+        return get(protocol, `stages.${segments[1]}.id`) as string | undefined;
       })
       .filter((id): id is string => id !== undefined);
 
@@ -84,7 +89,11 @@ export const getCodebookIndex = (protocol: Protocol | null | undefined) => {
     return [];
   }
 
-  const variablePaths = utils.collectPaths(paths.variables, protocol);
+  const hits = collectEntityAttributeReferences(protocol);
+  const variablePaths: Record<string, unknown> = {};
+  for (const hit of hits) {
+    variablePaths[hit.path.join('.')] = hit.variableId;
+  }
 
   const fields = flatMap(protocol.stages, (stage) => {
     if (!stage.form) {

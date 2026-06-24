@@ -16,25 +16,29 @@ const variable8 = '1234-1234-1234-8';
 const mockCodebookWithoutUse = {
   ego: {
     variables: {
-      [variable5]: {},
-      [variable6]: {},
+      [variable5]: { name: 'v5', type: 'text' as const },
+      [variable6]: { name: 'v6', type: 'text' as const },
     },
   },
   node: {
     person: {
+      name: 'Person',
+      color: 'node-color-seq-1' as const,
       variables: {
-        [variable1]: {},
-        [variable2]: {},
-        [variable3]: {},
-        [variable4]: {},
+        [variable1]: { name: 'v1', type: 'text' as const },
+        [variable2]: { name: 'v2', type: 'text' as const },
+        [variable3]: { name: 'v3', type: 'text' as const },
+        [variable4]: { name: 'v4', type: 'text' as const },
       },
     },
   },
   edge: {
     friendship: {
+      name: 'Friendship',
+      color: 'edge-color-seq-1' as const,
       variables: {
-        [variable7]: {},
-        [variable8]: {},
+        [variable7]: { name: 'v7', type: 'text' as const },
+        [variable8]: { name: 'v8', type: 'text' as const },
       },
     },
   },
@@ -42,12 +46,10 @@ const mockCodebookWithoutUse = {
 
 const mockProtocolWithoutUse = {
   present: {
+    schemaVersion: 8,
+    name: 'test-protocol',
     codebook: mockCodebookWithoutUse,
-    stages: [
-      {
-        id: '1',
-      },
-    ],
+    stages: [],
   },
 };
 
@@ -82,7 +84,8 @@ describe('makeGetIsUsed', () => {
   });
 
   it('returns true when a variable is present at known paths in the protocol', () => {
-    // Uses paths defined in indexes.js (e.g., stages[].form.fields[].variable)
+    // Uses AlterForm stage (form.fields[].variable) and OrdinalBin stage (prompts[].variable).
+    // Stages must be schema-valid so collectEntityAttributeReferences can extract references.
     const stateWithProtocolUse = {
       ...mockStateWithoutUse,
       activeProtocol: {
@@ -91,11 +94,24 @@ describe('makeGetIsUsed', () => {
           ...mockProtocolWithoutUse.present,
           stages: [
             {
-              id: '1',
+              id: 's1',
+              label: 'AlterForm stage',
+              type: 'AlterForm',
+              subject: { entity: 'node', type: 'person' },
+              introductionPanel: { title: 'Title', text: 'Text' },
               form: {
-                fields: [{ variable: variable1 }, { variable: variable2 }],
+                fields: [
+                  { variable: variable1, prompt: 'prompt 1' },
+                  { variable: variable2, prompt: 'prompt 2' },
+                ],
               },
-              prompts: [{ variable: variable3 }],
+            },
+            {
+              id: 's2',
+              label: 'OrdinalBin stage',
+              type: 'OrdinalBin',
+              subject: { entity: 'node', type: 'person' },
+              prompts: [{ id: 'p1', text: 'choose', variable: variable3 }],
             },
           ],
         },
@@ -174,11 +190,14 @@ describe('makeGetIsUsed', () => {
   });
 
   it('checks codebook for variable validation use', () => {
+    // variable1 has sameAs: variable2, so variable2 should be detected as used.
+    // The variable must have a type field for the schema to validate it.
     const stateWithCodebookUse = {
       ...mockStateWithoutUse,
       activeProtocol: {
         ...mockProtocolWithoutUse,
         present: {
+          ...mockProtocolWithoutUse.present,
           codebook: {
             ...mockCodebookWithoutUse,
             node: {
@@ -188,6 +207,8 @@ describe('makeGetIsUsed', () => {
                 variables: {
                   ...mockCodebookWithoutUse.node.person.variables,
                   [variable1]: {
+                    name: 'v1',
+                    type: 'number' as const,
                     validation: {
                       sameAs: variable2,
                     },
@@ -219,6 +240,8 @@ describe('makeGetIsUsed', () => {
       const state = {
         activeProtocol: {
           present: {
+            schemaVersion: 8,
+            name: 'test-protocol',
             codebook: mockCodebookWithoutUse,
             stages: [],
           },
