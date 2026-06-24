@@ -124,7 +124,28 @@ const walk = (
       );
     }
     case 'union': {
-      const options = (def as core.$ZodUnionDef).options as z.ZodType[];
+      const unionDef = def as
+        | core.$ZodDiscriminatedUnionDef
+        | core.$ZodUnionDef;
+      const options = unionDef.options as z.ZodType[];
+      const discriminator =
+        'discriminator' in unionDef ? unionDef.discriminator : undefined;
+      if (discriminator !== undefined && isRecord(value)) {
+        const discValue = value[discriminator];
+        const match = options.find((option) => {
+          const shape = (option._zod.def as core.$ZodObjectDef).shape;
+          const discField = shape[discriminator] as z.ZodType | undefined;
+          if (!discField) return false;
+          const literalValues = (
+            discField._zod.def as core.$ZodLiteralDef<core.util.Literal>
+          ).values;
+          return (
+            Array.isArray(literalValues) &&
+            literalValues.includes(discValue as core.util.Literal)
+          );
+        });
+        return match ? walk(match, value, path, ctx) : [];
+      }
       const match = options.find((option) => option.safeParse(value).success);
       return match ? walk(match, value, path, ctx) : [];
     }

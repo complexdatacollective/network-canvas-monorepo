@@ -139,4 +139,61 @@ describe('collectEntityAttributeReferencesFromSchema', () => {
       },
     ]);
   });
+
+  it('discriminated union: traverses a branch selected by discriminator even if safeParse would fail (missing required field)', () => {
+    const toleranceSchema = z.discriminatedUnion('type', [
+      z.object({
+        type: z.literal('A'),
+        subject: z.object({ entity: z.string(), type: z.string() }),
+        required: z.string(),
+        variable: entityAttributeReference({ subject: 'stageSubject' }),
+      }),
+      z.object({
+        type: z.literal('B'),
+        subject: z.object({ entity: z.string(), type: z.string() }),
+      }),
+    ]);
+
+    // 'required' is missing, so safeParse on the 'A' branch would fail.
+    // The walker must still select 'A' by discriminator and find the variable ref.
+    const value = {
+      type: 'A',
+      subject: { entity: 'node', type: 'person' },
+      variable: 'ageVar',
+      // 'required' intentionally omitted
+    };
+
+    expect(
+      collectEntityAttributeReferencesFromSchema(toleranceSchema, value),
+    ).toContainEqual({
+      path: ['variable'],
+      variableId: 'ageVar',
+      subject: { entity: 'node', type: 'person' },
+      requireType: undefined,
+    });
+  });
+
+  it('plain z.union: still uses safeParse to select a branch (non-discriminated path)', () => {
+    const plainUnion = z.union([
+      z.object({
+        kind: z.literal('X'),
+        ref: entityAttributeReference({ subject: 'filterRule' }),
+      }),
+      z.object({
+        kind: z.literal('Y'),
+        other: z.string(),
+      }),
+    ]);
+
+    const value = { kind: 'X', ref: 'varId' };
+
+    expect(
+      collectEntityAttributeReferencesFromSchema(plainUnion, value),
+    ).toContainEqual({
+      path: ['ref'],
+      variableId: 'varId',
+      subject: undefined,
+      requireType: undefined,
+    });
+  });
 });
