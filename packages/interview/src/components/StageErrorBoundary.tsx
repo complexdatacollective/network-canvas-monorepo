@@ -8,6 +8,18 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { useCaptureException } from '../analytics/useTrack';
 import CopyDebugInfoButton from './CopyDebugInfoButton';
 
+// Build the copyable debug string. The stack alone is not enough: Firefox's
+// Error.stack contains only call frames, not the error message, so copying
+// `error.stack` there silently drops the single most useful piece of
+// information (e.g. "Failed to initialize WebGL"). Always lead with the
+// name/message so reports are actionable regardless of browser.
+function formatDebugInfo(error: Error): string {
+  const heading = error.message
+    ? `${error.name}: ${error.message}`
+    : error.name;
+  return error.stack ? `${heading}\n\n${error.stack}` : heading;
+}
+
 type StageErrorBoundaryInnerProps = {
   children: ReactNode;
   captureException: (error: Error, props?: Record<string, unknown>) => void;
@@ -57,7 +69,7 @@ class StageErrorBoundaryInner extends Component<
             </div>
           </div>
           <div className="mt-4 flex justify-end">
-            <CopyDebugInfoButton debugInfo={error.stack ?? error.message} />
+            <CopyDebugInfoButton debugInfo={formatDebugInfo(error)} />
           </div>
         </Surface>
       );

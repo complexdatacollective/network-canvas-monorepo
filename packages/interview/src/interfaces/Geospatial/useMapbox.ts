@@ -11,6 +11,7 @@ import mapboxgl from 'mapbox-gl';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import { useCaptureException } from '~/analytics/useTrack';
 import { useContractFlags } from '~/contract/context';
 import { makeGetApiKeyAssetValue } from '~/selectors/protocol';
 
@@ -109,6 +110,7 @@ export const useMapbox = ({
   onSelectionChange,
 }: UseMapboxProps) => {
   const { isE2E } = useContractFlags();
+  const captureException = useCaptureException();
   const {
     center,
     initialZoom,
@@ -126,6 +128,7 @@ export const useMapbox = ({
   const [isGeoJsonLoaded, setIsGeoJsonLoaded] = useState(false);
   const [isTransitLoaded, setIsTransitLoaded] = useState(false);
   const [zoomLevel, setZoomLevel] = useState<number>(initialZoom);
+  const [mapError, setMapError] = useState<Error | null>(null);
 
   // Composite readiness flag exposed to e2e tests via `data-map-idle`.
   // Gates the stage as fully rendered: map idle + every async resource
@@ -177,15 +180,30 @@ export const useMapbox = ({
     setIsMapIdleEvent(false);
     setIsGeoJsonLoaded(false);
     setIsTransitLoaded(false);
+    setMapError(null);
 
     mapboxgl.accessToken = accessToken;
 
-    mapRef.current = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      center,
-      zoom: initialZoom,
-      style,
-    });
+    try {
+      mapRef.current = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        center,
+        zoom: initialZoom,
+        style,
+      });
+    } catch (err) {
+      // mapbox-gl's Map constructor throws synchronously when the environment
+      // can't host a map — most commonly "Failed to initialize WebGL" on
+      // devices/browsers without working WebGL (hardware acceleration off,
+      // locked-down or virtualised browsers). Without this guard the throw
+      // escapes the passive-effect flush and is caught by StageErrorBoundary,
+      // crashing the entire stage with an opaque stack. Capture the real
+      // error and surface a contained fallback instead.
+      const error = err instanceof Error ? err : new Error(String(err));
+      captureException(error, { feature: 'geospatial-map-init' });
+      setMapError(error);
+      return;
+    }
 
     // Expose the current map instance to e2e tests. The data-map-idle
     // attribute is a necessary but insufficient signal on webkit for
@@ -437,6 +455,7 @@ export const useMapbox = ({
     style,
     showTransit,
     isE2E,
+    captureException,
   ]);
 
   // handle selections
@@ -553,6 +572,7 @@ export const useMapbox = ({
     accessToken,
     isStageReady,
     zoomLevel,
+    mapError,
     handleResetMapZoom,
     handleZoomIn,
     handleZoomOut,
