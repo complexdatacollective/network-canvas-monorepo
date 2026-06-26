@@ -1,0 +1,22 @@
+import { type ComponentProps, forwardRef } from 'react';
+
+import { LinkLabel, linkRootClass } from './linkStyles';
+
+// Renders a static download (protocol bundle, roster) as a plain <a download>.
+// Authors reach for this explicitly in content
+// (<DownloadLink href="/protocols/Example.netcanvas">…</DownloadLink>) when a
+// link points at a file in /public rather than an app route — next/link would
+// client-side route to a non-existent page and bounce to the not-found
+// fallback. Forwards all anchor props (title, onClick, aria-*, data-*); only
+// `download` and the shared className are imposed.
+const DownloadLink = forwardRef<HTMLAnchorElement, ComponentProps<'a'>>(
+  ({ className, children, ...props }, ref) => (
+    <a ref={ref} className={linkRootClass(className)} {...props} download>
+      <LinkLabel>{children}</LinkLabel>
+    </a>
+  ),
+);
+
+DownloadLink.displayName = 'DownloadLink';
+
+export default DownloadLink;

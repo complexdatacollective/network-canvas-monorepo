@@ -494,6 +494,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 text: 'Sort by category',
                 variable: 'category',
                 otherVariable: 'name',
+                otherOptionLabel: 'Other',
+                otherVariablePrompt: 'Please specify',
               },
             ],
           },
@@ -774,7 +776,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 id: 'prompt1',
                 text: 'Position nodes',
                 layout: {
-                  layoutVariable: 'category',
+                  layoutVariable: 'layoutPosition',
                 },
               },
             ],
@@ -933,6 +935,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
   describe('Filter Rules Validation', () => {
     it('validates filter rules with correct entity and attribute references', () => {
+      // Node/edge rules belong in a stage filter; ego rules are only valid in
+      // skipLogic/panel/query filters, so the ego rule lives in skipLogic here.
       const protocolWithFilters = {
         ...baseValidProtocol,
         stages: [
@@ -951,16 +955,23 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                     value: 18,
                   },
                 },
-                {
-                  id: 'rule2',
-                  type: 'ego',
-                  options: {
-                    attribute: 'egoAge',
-                    operator: 'LESS_THAN',
-                    value: 65,
-                  },
-                },
               ],
+            },
+            skipLogic: {
+              action: 'SHOW',
+              filter: {
+                rules: [
+                  {
+                    id: 'rule2',
+                    type: 'ego',
+                    options: {
+                      attribute: 'egoAge',
+                      operator: 'LESS_THAN',
+                      value: 65,
+                    },
+                  },
+                ],
+              },
             },
           },
         ],
@@ -1102,23 +1113,28 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       }
     });
 
-    it('validates ego filter rules without entity type', () => {
+    it('validates ego filter rules without entity type in skipLogic', () => {
+      // Ego rules are valid in skipLogic/panel/query filters (not in a stage
+      // node/edge filter).
       const protocolWithEgoFilter = {
         ...baseValidProtocol,
         stages: [
           {
             ...baseValidProtocol.stages[1],
-            filter: {
-              rules: [
-                {
-                  id: 'egoRule',
-                  type: 'ego',
-                  options: {
-                    attribute: 'egoName',
-                    operator: 'EXISTS',
+            skipLogic: {
+              action: 'SHOW',
+              filter: {
+                rules: [
+                  {
+                    id: 'egoRule',
+                    type: 'ego',
+                    options: {
+                      attribute: 'egoName',
+                      operator: 'EXISTS',
+                    },
                   },
-                },
-              ],
+                ],
+              },
             },
           },
         ],
@@ -1138,17 +1154,20 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         stages: [
           {
             ...baseValidProtocol.stages[1],
-            filter: {
-              rules: [
-                {
-                  id: 'egoRule',
-                  type: 'ego',
-                  options: {
-                    attribute: 'egoName',
-                    operator: 'EXISTS',
+            skipLogic: {
+              action: 'SHOW',
+              filter: {
+                rules: [
+                  {
+                    id: 'egoRule',
+                    type: 'ego',
+                    options: {
+                      attribute: 'egoName',
+                      operator: 'EXISTS',
+                    },
                   },
-                },
-              ],
+                ],
+              },
             },
           },
         ],
@@ -1166,6 +1185,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         expect(egoError?.path).toEqual([
           'stages',
           0,
+          'skipLogic',
           'filter',
           'rules',
           0,
@@ -2188,6 +2208,33 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
   describe('Geospatial Stage MapOptions Validation', () => {
     const createGeospatialProtocol = (mapOptionsOverrides = {}) => ({
       ...baseValidProtocol,
+      codebook: {
+        ...baseValidProtocol.codebook,
+        node: {
+          ...baseValidProtocol.codebook.node,
+          person: {
+            ...baseValidProtocol.codebook.node.person,
+            variables: {
+              ...baseValidProtocol.codebook.node.person.variables,
+              homeLocation: { name: 'Home_Location', type: 'location' },
+            },
+          },
+        },
+      },
+      assetManifest: {
+        'asset-token-123': {
+          id: 'asset-token-123',
+          type: 'apikey',
+          name: 'Mapbox Token',
+          value: 'pk.example',
+        },
+        'asset-geojson-456': {
+          id: 'asset-geojson-456',
+          type: 'geojson',
+          name: 'map.geojson',
+          source: 'map.geojson',
+        },
+      },
       stages: [
         {
           id: 'geospatial1',
@@ -2211,7 +2258,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             {
               id: 'geoPrompt1',
               text: 'Select your location',
-              variable: 'name',
+              variable: 'homeLocation',
             },
           ],
         },

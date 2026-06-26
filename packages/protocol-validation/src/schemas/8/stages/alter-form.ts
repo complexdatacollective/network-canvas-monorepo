@@ -4,9 +4,9 @@ import z from 'zod';
 import { getNodeVariableId } from '~/utils/mock-seeds';
 
 import {
-  FormSchema,
   IntroductionPanelSchema,
   NodeStageSubjectSchema,
+  TitlelessFormSchema,
 } from '../common';
 import { asEntityAttributeReference } from '../entity-attribute-reference';
 import { FilterSchema } from '../filters';
@@ -17,7 +17,7 @@ export const alterFormStage = baseStageSchema
     type: z.literal('AlterForm'),
     filter: FilterSchema.optional(),
     subject: NodeStageSubjectSchema,
-    form: FormSchema,
+    form: TitlelessFormSchema,
     introductionPanel: IntroductionPanelSchema,
   })
   .generateMock((base) => ({

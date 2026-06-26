@@ -21,6 +21,7 @@ const ExternalDataSource = (props: ExternalDataSourceProps) => {
   const handleChangeDataSource = () => {
     props.changeForm('edit-stage', 'cardOptions', {});
     props.changeForm('edit-stage', 'sortOptions', {});
+    props.changeForm('edit-stage', 'searchOptions', {});
   };
 
   return (

@@ -34,9 +34,12 @@ export default function VisualAnalogScaleField(
     className,
     value,
     onChange,
+    // Scalar responses are recorded on a normalised 0-1 scale (the documented
+    // datum and what the architect producer emits). The fine step matches the
+    // producer's 0.001 resolution.
     min = 0,
-    max = 100,
-    step = 0.1,
+    max = 1,
+    step = 0.001,
     minLabel,
     maxLabel,
     disabled,

@@ -13,6 +13,7 @@ const variableConfig: VariableConfig = {
   edgeType: 'family',
   nodeLabelVariable: 'name',
   egoVariable: 'isEgo',
+  relationshipVariable: 'relationship',
   relationshipTypeVariable: 'rel',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGC',
@@ -33,8 +34,8 @@ function edge(
       from,
       to,
       attributes: isGC
-        ? { rel, isActive: true, isGC: true }
-        : { rel, isActive: true },
+        ? { rel: [rel], isActive: true, isGC: true }
+        : { rel: [rel], isActive: true },
     },
   ];
 }

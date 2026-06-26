@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
 import { childCellTransform } from '../childCellTransform';
@@ -10,9 +10,17 @@ const variableConfig: VariableConfig = {
   edgeType: 'family',
   nodeLabelVariable: 'name',
   egoVariable: 'isEgo',
+  relationshipVariable: 'relationship',
   relationshipTypeVariable: 'relationship',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGC',
+};
+
+const relTypeOf = (e: {
+  data: { attributes: Record<string, VariableValue> };
+}): VariableValue => {
+  const value = e.data.attributes[variableConfig.relationshipTypeVariable];
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 };
 
 const egoId = 'ego-1';
@@ -61,7 +69,7 @@ function makeEdges(extras?: [string, NcEdge][]): Map<string, NcEdge> {
         from: egoId,
         to: partnerId,
         attributes: {
-          [variableConfig.relationshipTypeVariable]: 'partner',
+          [variableConfig.relationshipTypeVariable]: ['partner'],
           [variableConfig.isActiveVariable]: true,
         },
       },
@@ -104,10 +112,7 @@ describe('childCellTransform', () => {
     });
 
     const parentEdges = batch.edges.filter(
-      (e) =>
-        e.target === 'child' &&
-        e.data.attributes[variableConfig.relationshipTypeVariable] !==
-          'partner',
+      (e) => e.target === 'child' && relTypeOf(e) !== 'partner',
     );
     // One edge per parent: the egg parent who carried is flagged on their
     // single edge rather than getting a second carrier edge.
@@ -115,21 +120,20 @@ describe('childCellTransform', () => {
 
     const eggEdge = parentEdges.find((e) => e.source === egoId);
     expect(eggEdge?.data.attributes).toMatchObject({
-      [variableConfig.relationshipTypeVariable]: 'biological',
+      [variableConfig.relationshipTypeVariable]: ['biological'],
       [variableConfig.isActiveVariable]: true,
     });
 
     const spermEdge = parentEdges.find((e) => e.source === partnerId);
     expect(spermEdge?.data.attributes).toMatchObject({
-      [variableConfig.relationshipTypeVariable]: 'biological',
+      [variableConfig.relationshipTypeVariable]: ['biological'],
       [variableConfig.isActiveVariable]: true,
     });
 
     const gcEdge = parentEdges.find(
       (e) =>
         e.source === egoId &&
-        e.data.attributes[variableConfig.relationshipTypeVariable] !==
-          'partner' &&
+        relTypeOf(e) !== 'partner' &&
         e.data.attributes[variableConfig.isGestationalCarrierVariable] === true,
     );
     expect(gcEdge).toBeDefined();
@@ -169,7 +173,7 @@ describe('childCellTransform', () => {
 
     const donorEdge = batch.edges.find((e) => e.source === 'new-sperm-source');
     expect(donorEdge?.data.attributes).toMatchObject({
-      [variableConfig.relationshipTypeVariable]: 'donor',
+      [variableConfig.relationshipTypeVariable]: ['donor'],
       [variableConfig.isActiveVariable]: true,
     });
   });
@@ -206,7 +210,7 @@ describe('childCellTransform', () => {
       (e) => e.source === 'new-sperm-source',
     );
     expect(newParentEdge?.data.attributes).toMatchObject({
-      [variableConfig.relationshipTypeVariable]: 'biological',
+      [variableConfig.relationshipTypeVariable]: ['biological'],
       [variableConfig.isActiveVariable]: true,
     });
   });
@@ -239,7 +243,7 @@ describe('childCellTransform', () => {
 
     const surrogateEdge = batch.edges.find((e) => e.source === 'new-carrier');
     expect(surrogateEdge?.data.attributes).toMatchObject({
-      [variableConfig.relationshipTypeVariable]: 'surrogate',
+      [variableConfig.relationshipTypeVariable]: ['surrogate'],
       [variableConfig.isActiveVariable]: true,
       [variableConfig.isGestationalCarrierVariable]: true,
     });
@@ -268,7 +272,7 @@ describe('childCellTransform', () => {
     const egoEdges = batch.edges.filter((e) => e.source === egoId);
     expect(egoEdges).toHaveLength(1);
     expect(egoEdges[0]?.data.attributes).toMatchObject({
-      [variableConfig.relationshipTypeVariable]: 'biological',
+      [variableConfig.relationshipTypeVariable]: ['biological'],
       [variableConfig.isActiveVariable]: true,
       [variableConfig.isGestationalCarrierVariable]: true,
     });

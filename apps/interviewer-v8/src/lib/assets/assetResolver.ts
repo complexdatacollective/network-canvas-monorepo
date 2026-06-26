@@ -1,6 +1,10 @@
 import type { ResolvedAsset } from '@codaco/interview';
 
-import { getProtocolAsset, getProtocolAssets } from '../db/api';
+import {
+  getProtocolAsset,
+  getProtocolAssets,
+  getProtocolByHash,
+} from '../db/api';
 
 const urlCache = new Map<string, string>();
 
@@ -14,14 +18,29 @@ function cacheKey(protocolHash: string, importedAt: string, assetId: string) {
 export async function buildResolvedAssets(
   protocolHash: string,
 ): Promise<ResolvedAsset[]> {
-  const records = await getProtocolAssets(protocolHash);
-  return records.map((r) => ({
-    assetId: r.assetId,
-    name: r.name,
-    type: r.type,
-    value:
-      r.type === 'apikey' && typeof r.data === 'string' ? r.data : undefined,
-  }));
+  const [records, protocol] = await Promise.all([
+    getProtocolAssets(protocolHash),
+    getProtocolByHash(protocolHash),
+  ]);
+  // The original `source` filename lives in the protocol's asset manifest
+  // (apikey assets carry no source). It drives MIME-type and CSV/JSON
+  // decisions downstream, where the display `name` may lack an extension.
+  const manifest = protocol?.protocol.assetManifest;
+  return records.map((r) => {
+    const manifestEntry = manifest?.[r.assetId];
+    const source =
+      manifestEntry && 'source' in manifestEntry
+        ? manifestEntry.source
+        : undefined;
+    return {
+      assetId: r.assetId,
+      name: r.name,
+      type: r.type,
+      source,
+      value:
+        r.type === 'apikey' && typeof r.data === 'string' ? r.data : undefined,
+    };
+  });
 }
 
 export function makeAssetResolver(

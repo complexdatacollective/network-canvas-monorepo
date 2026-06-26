@@ -239,12 +239,18 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 
       return;
     }
+    // Only the 'other' bin (handled above) has a null value; a regular bin
+    // always carries a concrete option value.
+    if (bin.value === null) return;
+
     await dispatch(
       updateNode({
         nodeId,
         newAttributeData: {
           ...(otherVariable ? { [otherVariable]: null } : {}),
-          [variable]: bin.value,
+          // Categorical attributes are stored as arrays of selected option
+          // values; a single bin membership is a one-element array.
+          [variable]: [bin.value],
         },
         currentStep,
       }),
@@ -274,10 +280,11 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
                   // Key includes the index so React unmounts + remounts when a
                   // different bin is expanded. With a constant key, props would
                   // just update — but the inner motion.div's layoutId derives
-                  // from `label`, so it would change mid-component-life and
+                  // from the index, so it would change mid-component-life and
                   // motion would lose the layoutId transition (panel never
                   // appears after switching between expanded bins).
                   key={`expanded-${expandedBinIndex}`}
+                  index={expandedBinIndex}
                   label={expandedBin.label}
                   isExpanded
                   onToggleExpand={() => setExpandedBinIndex(null)}
@@ -303,6 +310,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
                     return (
                       <CategoricalBinItem
                         key={index}
+                        index={index}
                         label={bin.label}
                         isExpanded={false}
                         onToggleExpand={() => setExpandedBinIndex(index)}

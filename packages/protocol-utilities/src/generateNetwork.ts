@@ -1,12 +1,7 @@
 import { v4 as uuid } from 'uuid';
 
 import { filter as getFilter, getQuery } from '@codaco/network-query';
-import type {
-  Filter,
-  SkipLogic,
-  Stage,
-  VariableOptions,
-} from '@codaco/protocol-validation';
+import type { Filter, SkipLogic, Stage } from '@codaco/protocol-validation';
 import {
   type DyadCensusMetadataItem,
   entityAttributesProperty,
@@ -25,14 +20,16 @@ type NcAttributeValue =
   | number
   | number[]
   | (string | number | boolean)[]
-  | Record<string, string | number | boolean>
   | { x: number; y: number }
   | null;
 
 type VariableDefinition = {
   name: string;
   type: string;
-  options?: VariableOptions;
+  // Any codebook variable's options: categorical/ordinal (string/number) or
+  // boolean variables (boolean value). Narrower codebook types (e.g.
+  // VariableOptions, which excludes boolean) are accepted structurally.
+  options?: { label: string; value: string | number | boolean }[];
   validation?: Record<string, unknown>;
   component?: string;
 };
@@ -91,7 +88,10 @@ function toVariableEntry(
     name: variable.name,
     type: variable.type as VariableEntry['type'],
     component: variable.component as VariableEntry['component'],
-    options: variable.options?.filter((o) => typeof o.value !== 'boolean'),
+    options: variable.options?.filter(
+      (o): o is { label: string; value: string | number } =>
+        typeof o.value !== 'boolean',
+    ),
     validation: variable.validation,
   };
 }

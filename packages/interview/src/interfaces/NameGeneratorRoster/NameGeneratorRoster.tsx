@@ -7,7 +7,6 @@ import { CollectionSortButton } from '@codaco/fresco-ui/collection/components/Co
 import { useDragAndDrop } from '@codaco/fresco-ui/collection/dnd/useDragAndDrop';
 import { GridLayout } from '@codaco/fresco-ui/collection/layout/GridLayout';
 import type {
-  SortType as CollectionSortType,
   SortableProperty,
   SortRule,
 } from '@codaco/fresco-ui/collection/sorting/types';
@@ -43,25 +42,14 @@ import {
 } from '~/selectors/session';
 import { addNode, deleteNode } from '~/store/modules/session';
 import { useAppDispatch } from '~/store/store';
-import { mapNCType } from '~/utils/createSorter';
 import getParentKeyByNameValue from '~/utils/getParentKeyByNameValue';
 
 import { usePassphrase } from '../Anonymisation/usePassphrase';
+import { buildRosterSortConfig } from './buildRosterSortConfig';
 import DataCard from './DataCard';
 import DropOverlay from './DropOverlay';
 import { convertNamesToUUIDs, type NameGeneratorRosterProps } from './helpers';
 import useItems, { type UseItemElement } from './useItems';
-
-/**
- * Maps Network Canvas variable types (which include 'hierarchy' and
- * 'categorical') to the subset supported by Collection's sort system.
- */
-const toCollectionSortType = (
-  ncType: ReturnType<typeof mapNCType>,
-): CollectionSortType => {
-  if (ncType === 'hierarchy' || ncType === 'categorical') return 'string';
-  return ncType;
-};
 
 const ErrorMessage = (_props: { error: Error }) => (
   <div className="flex flex-1 flex-col items-center justify-center">
@@ -169,46 +157,10 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   const { initialSortRules, sortableProperties } = useMemo<{
     initialSortRules: SortRule[] | undefined;
     sortableProperties: SortableProperty[] | undefined;
-  }>(() => {
-    if (!sortOptions)
-      return { initialSortRules: undefined, sortableProperties: undefined };
-
-    const sortOrder = sortOptions.sortOrder ?? [];
-
-    const initialPropertyName = sortOrder[0]?.property
-      ? [sortOrder[0].property]
-      : ['name'];
-    const uuid = convertNamesToUUIDs(nodeVariables, initialPropertyName)[0]!;
-    const variableDef = nodeVariables[uuid];
-    const ncType = mapNCType(variableDef?.type);
-
-    const rules: SortRule[] = [
-      {
-        property: ['data', entityAttributesProperty, uuid],
-        direction: sortOrder[0]?.direction ?? 'asc',
-        type: toCollectionSortType(ncType),
-      },
-    ];
-
-    const mappedSortableProperties = sortOptions.sortableProperties?.map(
-      ({ variable, label }) => {
-        const varUuid = convertNamesToUUIDs(nodeVariables, [variable])[0]!;
-        const varDef = nodeVariables[varUuid];
-        const varNcType = mapNCType(varDef?.type);
-
-        return {
-          property: ['data', entityAttributesProperty, varUuid],
-          label,
-          type: toCollectionSortType(varNcType),
-        };
-      },
-    );
-
-    return {
-      initialSortRules: rules,
-      sortableProperties: mappedSortableProperties,
-    };
-  }, [sortOptions, nodeVariables]);
+  }>(
+    () => buildRosterSortConfig(sortOptions, nodeVariables),
+    [sortOptions, nodeVariables],
+  );
 
   // --- Encryption detection ---
   const useEncryption = useMemo(() => {
@@ -443,6 +395,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                               }
                               property={sp.property}
                               type={sp.type}
+                              hierarchy={sp.hierarchy}
                               label={sp.label}
                             />
                           ))}

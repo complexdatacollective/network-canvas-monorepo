@@ -1,4 +1,4 @@
-import { Icon } from '~/lib/legacy-ui/components';
+import { Pattern } from '@codaco/art';
 
 type ProtocolCardProps = {
   name: string;
@@ -20,29 +20,26 @@ const ProtocolCard = ({
   lastModified,
   schemaVersion,
 }: ProtocolCardProps) => (
-  <div className="bg-platinum text-navy-taupe relative flex min-h-(--space-6xl) max-w-[12cm] zoom-120 flex-col-reverse overflow-hidden rounded">
-    <div className="bg-slate-blue-dark text-accent-foreground flex min-h-0 shrink-0 flex-row items-center justify-center px-(--space-xl) py-(--space-md)">
-      <div className="flex h-full flex-[0_0_var(--space-xl)] [&_.icon]:size-full! [&_.icon]:flex-[0_1_auto]">
-        <Icon name="protocol-card" />
+  <div className="text-navy-taupe bg-platinum border-platinum-dark relative w-full max-w-[12cm] zoom-120 overflow-hidden rounded border shadow-xl">
+    {/* The pattern fills the whole card; a top-to-bottom gradient lets it read
+        at the top, then fades to opaque platinum so the content below stays
+        legible. Mirrors the timeline's ProtocolInfoCard. */}
+    <Pattern aria-hidden seed={name} className="absolute inset-0 size-full" />
+    <div className="from-rich-black/25 via-platinum/50 to-platinum absolute inset-0 size-full bg-linear-to-b via-20% to-45%" />
+
+    <div className="relative z-10 flex min-h-(--space-6xl) flex-col gap-(--space-md) p-(--space-lg)">
+      {/* Reserve space above the heading so the dark title clears the
+          gradient's dark top, mirroring the timeline card's controls row. */}
+      <div className="min-h-(--space-2xl)" aria-hidden />
+
+      <h2 className="m-0 hyphens-auto">{name}</h2>
+
+      {description && <div className="text-sm">{description}</div>}
+
+      <div className="text-navy-taupe/70 font-monospace mt-(--space-sm) flex flex-col gap-(--space-xs) text-xs tracking-widest uppercase">
+        <span>Last Modified: {formatDate(lastModified)}</span>
+        <span>Schema Version: {schemaVersion}</span>
       </div>
-      <div className="flex flex-1 flex-col justify-center">
-        <h6 className="m-(--space-xs) flex items-center justify-end text-xs tracking-widest uppercase">
-          Last Modified:
-          {formatDate(lastModified)}
-        </h6>
-        <h6 className="m-(--space-xs) flex items-center justify-end text-xs tracking-widest uppercase">
-          Schema Version:
-          {schemaVersion}
-        </h6>
-      </div>
-    </div>
-    <div className="flex min-h-0 flex-1 flex-col justify-center px-(--space-xl) pt-(--space-lg) pb-(--space-md)">
-      <h2 className="m-0 flex-none hyphens-auto">{name}</h2>
-      {description && (
-        <div className="flex-1 overflow-y-auto scroll-smooth pt-(--space-md) text-sm [-webkit-overflow-scrolling:touch]">
-          {description}
-        </div>
-      )}
     </div>
   </div>
 );

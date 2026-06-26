@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/shallow';
 
 import { useCollectionStore, useCollectionStoreApi } from '../contexts';
 import { SortManager } from '../sorting/SortManager';
-import type { SortProps, SortState } from '../sorting/types';
+import type { SortProps, SortRule, SortState } from '../sorting/types';
 
 /**
  * Hook to manage sort state within a collection.
@@ -57,20 +57,32 @@ export function useSortState(props: SortProps = {}): SortManager {
   // Runs before the store subscription so the first read picks up defaults,
   // and before CollectionProvider's setItems effect so items are sorted correctly.
   const hasInitialized = useRef(false);
-  if (!isControlled && !hasInitialized.current && defaultSortBy) {
+  // Prefer explicit multi-field `sortRules` for the initial seed, else a single
+  // rule from `defaultSortBy`. `sortRules` supplied without a controlled
+  // `sortBy` is treated as the initial uncontrolled sort (previously a no-op).
+  const initialSortRules: SortRule[] =
+    controlledSortRules && controlledSortRules.length > 0
+      ? controlledSortRules
+      : defaultSortBy
+        ? [
+            {
+              property: defaultSortBy,
+              direction: defaultSortDirection,
+              type: defaultSortType,
+            },
+          ]
+        : [];
+  if (!isControlled && !hasInitialized.current && initialSortRules.length > 0) {
     hasInitialized.current = true;
-    storeApi.getState().updateSortState({
-      sortProperty: defaultSortBy,
-      sortDirection: defaultSortDirection,
-      sortType: defaultSortType,
-      sortRules: [
-        {
-          property: defaultSortBy,
-          direction: defaultSortDirection,
-          type: defaultSortType,
-        },
-      ],
-    });
+    const [firstRule] = initialSortRules;
+    if (firstRule) {
+      storeApi.getState().updateSortState({
+        sortProperty: firstRule.property,
+        sortDirection: firstRule.direction ?? defaultSortDirection,
+        sortType: firstRule.type,
+        sortRules: initialSortRules,
+      });
+    }
   }
 
   // Subscribe to sort state with shallow comparison. This hook drives the

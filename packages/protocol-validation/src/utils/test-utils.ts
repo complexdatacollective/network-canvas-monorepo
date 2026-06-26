@@ -50,6 +50,10 @@ export const createBaseProtocol = () => ({
               { label: 'Strong', value: 3 },
             ],
           },
+          layoutPosition: {
+            name: 'Layout_Position',
+            type: 'layout',
+          },
         },
       },
       colleague: {
@@ -57,7 +61,7 @@ export const createBaseProtocol = () => ({
         color: 'node-color-seq-2',
         shape: { default: 'circle' } as NodeDefinition['shape'],
         variables: {
-          name: {
+          colleagueName: {
             name: 'Name',
             type: 'text',
           },
@@ -142,7 +146,7 @@ export const createBaseProtocol = () => ({
           id: 'socPrompt1',
           text: 'Position nodes',
           layout: {
-            layoutVariable: 'category',
+            layoutVariable: 'layoutPosition',
           },
         },
       ],

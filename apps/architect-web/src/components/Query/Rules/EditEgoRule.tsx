@@ -7,8 +7,8 @@ import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import Section from '../../EditorLayout/Section';
 import EditValue from './EditValue';
 import {
-  // operatorsWithRegExp,
   operatorsWithOptionCount,
+  operatorsWithRegExp,
   operatorsWithValue,
 } from './options';
 import withOptions from './withOptions';
@@ -58,7 +58,10 @@ const EditEgoRule = ({
     typeof optionsWithDefaults.operator === 'string'
       ? operatorsWithValue.has(optionsWithDefaults.operator)
       : false;
-  // const operatorNeedsRegExp = operatorsWithRegExp.has(optionsWithDefaults.operator);
+  const operatorNeedsRegExp =
+    typeof optionsWithDefaults.operator === 'string'
+      ? operatorsWithRegExp.has(optionsWithDefaults.operator)
+      : false;
   const operatorNeedsOptionCount =
     typeof optionsWithDefaults.operator === 'string'
       ? operatorsWithOptionCount.has(optionsWithDefaults.operator)
@@ -110,11 +113,8 @@ const EditEgoRule = ({
           />
         </Section>
       )}
-      {/* { operatorNeedsRegExp
-        && (
-        <Section
-          title="Attribute Value"
-        >
+      {operatorNeedsRegExp && (
+        <Section title="Attribute Value" layout="vertical">
           <EditValue
             variableType={variableType}
             placeholder="Enter a regular expression..."
@@ -124,7 +124,7 @@ const EditEgoRule = ({
             validation={{ required: true, validRegExp: true }}
           />
         </Section>
-        )} */}
+      )}
       {operatorNeedsOptionCount && (
         <Section title="Selected Option Count" layout="vertical">
           <EditValue

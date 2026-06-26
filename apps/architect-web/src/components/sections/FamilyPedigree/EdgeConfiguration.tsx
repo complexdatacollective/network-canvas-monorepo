@@ -2,6 +2,7 @@ import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
 import type { VariableOptions } from '@codaco/protocol-validation';
+import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/shared-consts';
 import { Row, Section } from '~/components/EditorLayout';
 import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import ValidatedField from '~/components/Form/ValidatedField';
@@ -16,11 +17,6 @@ import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { optionsMatch } from '~/utils/variables';
-
-const RELATIONSHIP_TYPE_OPTIONS: VariableOptions = [
-  { value: 'parent', label: 'Parent' },
-  { value: 'partner', label: 'Partner' },
-];
 
 const edgeEntity: Entity = 'edge';
 
@@ -163,7 +159,7 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
             <VariableRow
               name="edgeConfig.relationshipTypeVariable"
               label="Relationship Type"
-              description="Stores the type of relationship between family members (parent or partner)."
+              description="Stores the type of relationship between family members (e.g. biological, social, donor, surrogate, adoptive, or partner)."
               edgeType={edgeType}
               options={relationshipTypeCompatible}
               onCreateOption={handleNewRelationshipTypeVariable}

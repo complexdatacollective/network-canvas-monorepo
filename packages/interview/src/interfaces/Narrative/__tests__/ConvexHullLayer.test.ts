@@ -115,12 +115,41 @@ describe('groupNodesByVariable', () => {
     expect(result.get('green')!.colorIndex).toBe(3);
   });
 
-  it('falls back to colorIndex 1 when the value is not found in categoricalOptions', () => {
-    const nodes = [makeNode('node-unknown', { color: 'purple' })];
+  it('assigns out-of-codebook values a distinct color after the known options', () => {
+    // 'purple' is not one of OPTIONS [red, blue, green] (3 options).
+    // It must NOT collide with the first option's color (index 1), and
+    // should be allocated the next index after the known options.
+    const nodes = [
+      makeNode('node-known', { color: 'red' }),
+      makeNode('node-unknown', { color: 'purple' }),
+    ];
 
     const result = groupNodesByVariable(nodes, 'color', OPTIONS);
 
-    expect(result.get('purple')!.colorIndex).toBe(1);
+    // Known option keeps its stable, 1-based position.
+    expect(result.get('red')!.colorIndex).toBe(1);
+    // Out-of-codebook value gets a distinct index after the 3 known options.
+    expect(result.get('purple')!.colorIndex).toBe(4);
+    expect(result.get('purple')!.colorIndex).not.toBe(
+      result.get('red')!.colorIndex,
+    );
+  });
+
+  it('gives multiple distinct out-of-codebook values distinct, deterministic colors', () => {
+    const nodes = [
+      makeNode('node-z', { color: 'zeta' }),
+      makeNode('node-a', { color: 'alpha' }),
+    ];
+
+    const result = groupNodesByVariable(nodes, 'color', OPTIONS);
+
+    // 3 known options -> out-of-codebook indices start at 4, assigned in a
+    // stable (sorted) order so they don't depend on node iteration order.
+    expect(result.get('alpha')!.colorIndex).toBe(4);
+    expect(result.get('zeta')!.colorIndex).toBe(5);
+    expect(result.get('alpha')!.colorIndex).not.toBe(
+      result.get('zeta')!.colorIndex,
+    );
   });
 
   it('handles array of numeric values (from CheckboxGroup forms)', () => {

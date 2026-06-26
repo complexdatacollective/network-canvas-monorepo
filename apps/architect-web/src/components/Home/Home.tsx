@@ -30,6 +30,7 @@ import Button from '~/lib/legacy-ui/components/Button';
 import { BUNDLED_TEMPLATES, type BundledTemplate } from '~/templates';
 import { loadSampleAssets, sampleProtocol } from '~/templates/sample-protocol';
 import { appVersion } from '~/utils/appVersion';
+import { reportError } from '~/utils/reportError';
 
 import LibraryPanel from './LibraryPanel';
 import ProtocolLoadingOverlay from './ProtocolLoadingOverlay';
@@ -158,8 +159,7 @@ const Home = () => {
               ? await template.loadAssets()
               : undefined;
           } catch (error) {
-            const message =
-              error instanceof Error ? error.message : String(error);
+            const { message } = reportError(error);
             dispatch(generalErrorDialog('Protocol Import Error', message));
             return;
           }
@@ -238,7 +238,7 @@ const Home = () => {
 
         {/* Hero section */}
 
-        <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-8 overflow-y-auto px-8 pb-8 xl:gap-12 xl:px-12">
+        <main className="short:gap-4 mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-8 overflow-y-auto px-8 pb-8 xl:gap-12 xl:px-12">
           <div className="flex min-h-0 w-full flex-1 flex-col items-stretch gap-8 md:flex-row">
             <div
               aria-hidden
@@ -247,13 +247,13 @@ const Home = () => {
               <TransitMap stops={TIMELINE_SCRIPT} count={visibleCount} />
             </div>
 
-            <div className="flex flex-1 flex-col items-start justify-center gap-6 text-left xl:gap-8">
-              <div className="flex flex-col items-start gap-4">
+            <div className="short:justify-start short:gap-3 flex flex-1 flex-col items-start justify-center gap-6 text-left xl:gap-8">
+              <div className="short:gap-2 flex flex-col items-start gap-4">
                 <div>
-                  <h1 className="hero mb-3 xl:text-8xl">
+                  <h1 className="hero mb-3 xl:text-[clamp(3rem,9vh,6rem)]">
                     Welcome to <span className="text-action">Architect</span>
                   </h1>
-                  <p className="lead my-0 max-w-xl">
+                  <p className="lead short:hidden my-0 max-w-xl">
                     Architect is the protocol designer for Network Canvas.
                     Compose name generators, capture ordinal and categorical
                     data, map connections, and explore narratives.

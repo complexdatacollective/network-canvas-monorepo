@@ -1,10 +1,11 @@
+import type { RelationshipType } from '@codaco/shared-consts';
+
 import type {
   AuxiliaryConnector,
   DuplicateArc,
   LineSegment,
   ParentChildConnector,
   ParentConnection,
-  ParentEdgeType,
   ParentGroupConnector,
   PedigreeConnectors,
   PedigreeLayout,
@@ -13,9 +14,9 @@ import type {
   TwinIndicator,
 } from './types';
 
-const AUXILIARY_EDGE_TYPES = new Set<ParentEdgeType>(['donor', 'surrogate']);
+const AUXILIARY_EDGE_TYPES = new Set<RelationshipType>(['donor', 'surrogate']);
 
-function isPrimaryEdge(edgeType: ParentEdgeType): boolean {
+function isPrimaryEdge(edgeType: RelationshipType): boolean {
   return !AUXILIARY_EDGE_TYPES.has(edgeType);
 }
 
@@ -170,7 +171,7 @@ export function computeConnectors(
         (p) =>
           p.parentIndex === coupleLeftId || p.parentIndex === coupleRightId,
       );
-      const primaryEdgeType: ParentEdgeType =
+      const primaryEdgeType: RelationshipType =
         coupleEdges.find((p) => p.edgeType === 'biological')?.edgeType ??
         coupleEdges.find((p) => isPrimaryEdge(p.edgeType))?.edgeType ??
         'biological';

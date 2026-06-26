@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useState } from 'react';
+import { expect, userEvent, within } from 'storybook/test';
 
+import Paragraph from '../../typography/Paragraph';
 import RadioGroupField from './RadioGroup';
 
 const meta = {
@@ -187,5 +190,56 @@ export const WithColumnsLongLabels: Story = {
       { value: 'opt6', label: 'Sixth and final option' },
     ],
     useColumns: true,
+  },
+};
+
+const numericOptions = [
+  { value: 1, label: 'Low' },
+  { value: 3, label: 'Med' },
+  { value: 5, label: 'High' },
+];
+
+function NumericRadioWithValueDisplay() {
+  const [value, setValue] = useState<string | number | undefined>(undefined);
+
+  return (
+    <div>
+      <RadioGroupField
+        name="ordinal"
+        options={numericOptions}
+        value={value}
+        onChange={setValue}
+        aria-label="Ordinal value"
+      />
+      <Paragraph className="mt-4">
+        Value:&nbsp;
+        <span data-testid="radio-value">
+          {value === undefined ? 'unset' : String(value)}
+        </span>
+        &nbsp;(
+        <span data-testid="radio-value-type">{typeof value}</span>)
+      </Paragraph>
+    </div>
+  );
+}
+
+export const PreservesNumericValueType: Story = {
+  args: {
+    name: 'ordinal',
+    options: numericOptions,
+  },
+  render: () => <NumericRadioWithValueDisplay />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const valueDisplay = canvas.getByTestId('radio-value');
+    const typeDisplay = canvas.getByTestId('radio-value-type');
+
+    await expect(valueDisplay).toHaveTextContent('unset');
+
+    await userEvent.click(canvas.getByRole('radio', { name: 'Med' }));
+
+    // The stored datum must keep the original numeric type, not '3' as a string.
+    await expect(valueDisplay).toHaveTextContent('3');
+    await expect(typeDisplay).toHaveTextContent('number');
   },
 };

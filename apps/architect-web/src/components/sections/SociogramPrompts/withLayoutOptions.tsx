@@ -15,7 +15,6 @@ type OwnProps = {
 type StateProps = {
   variableOptions: ReturnType<typeof getVariableOptionsForSubject>;
   layoutVariablesForSubject: ReturnType<typeof getLayoutVariablesForSubject>;
-  allowPositioning: unknown;
   layoutVariable: unknown;
 };
 
@@ -28,10 +27,6 @@ const withLayoutOptions = (
     entity,
     type,
   });
-  const allowPositioning = formValueSelector(form)(
-    state,
-    'layout.allowPositioning',
-  );
   const layoutVariable = formValueSelector(form)(
     state,
     'layout.layoutVariable',
@@ -40,7 +35,6 @@ const withLayoutOptions = (
   return {
     variableOptions,
     layoutVariablesForSubject,
-    allowPositioning,
     layoutVariable,
   };
 };

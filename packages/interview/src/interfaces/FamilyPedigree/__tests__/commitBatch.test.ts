@@ -7,6 +7,7 @@ const variableConfig: VariableConfig = {
   edgeType: 'family',
   nodeLabelVariable: 'name',
   egoVariable: 'isEgo',
+  relationshipVariable: 'relationship',
   relationshipTypeVariable: 'rel',
   isActiveVariable: 'active',
   isGestationalCarrierVariable: 'gc',
@@ -54,7 +55,7 @@ describe('commitBatch', () => {
           target: 'ego',
           data: {
             attributes: {
-              [variableConfig.relationshipTypeVariable]: 'biological',
+              [variableConfig.relationshipTypeVariable]: ['biological'],
               [variableConfig.isActiveVariable]: true,
               [variableConfig.isGestationalCarrierVariable]: true,
             },
@@ -65,7 +66,7 @@ describe('commitBatch', () => {
           target: 'ego',
           data: {
             attributes: {
-              [variableConfig.relationshipTypeVariable]: 'biological',
+              [variableConfig.relationshipTypeVariable]: ['biological'],
               [variableConfig.isActiveVariable]: true,
             },
           },
@@ -90,7 +91,11 @@ describe('commitBatch', () => {
 
     const parentIds: string[] = [];
     for (const edge of edges.values()) {
-      const relType = edge.attributes[variableConfig.relationshipTypeVariable];
+      const relTypeValue =
+        edge.attributes[variableConfig.relationshipTypeVariable];
+      const relType = Array.isArray(relTypeValue)
+        ? relTypeValue[0]
+        : relTypeValue;
       if (edge.to === egoId && relType !== 'partner' && relType !== 'social') {
         parentIds.push(edge.from);
       }

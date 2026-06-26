@@ -163,6 +163,9 @@ function getAuxiliaryStyle(edgeType: AuxiliaryConnector['edgeType']) {
     case 'donor':
     case 'surrogate':
     case 'biological':
+    // 'partner' is never an auxiliary connector, but the relationship-type
+    // union admits it; fall back to a solid line.
+    default:
       return { strokeWidth: EDGE_WIDTH };
   }
 }

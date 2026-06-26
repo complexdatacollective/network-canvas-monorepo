@@ -23,7 +23,6 @@ const videoAudioAssetSchema = baseAssetSchema.extend({
     .generateMock(() =>
       faker.helpers.arrayElement([...mockVideoNames, ...mockAudioNames]),
     ),
-  loop: z.boolean().optional(),
 });
 
 const fileAssetSchema = baseAssetSchema.extend({
@@ -33,7 +32,7 @@ const fileAssetSchema = baseAssetSchema.extend({
 
 const apiKeyAssetSchema = baseAssetSchema.extend({
   type: z.enum(['apikey']),
-  value: z.string(),
+  value: z.string().min(1, { message: 'API key value must not be empty' }),
 });
 
 export const assetSchema = z.discriminatedUnion('type', [

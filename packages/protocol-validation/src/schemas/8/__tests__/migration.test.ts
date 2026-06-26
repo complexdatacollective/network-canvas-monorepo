@@ -360,12 +360,166 @@ describe('Migration V7 to V8', () => {
     });
   });
 
-  describe('filter type transformation', () => {
-    it("transforms 'alter' to 'node' in stage panel filter rules", () => {
+  describe('categorical rule operand arrays', () => {
+    const buildV7 = (ruleOptions: Record<string, unknown>) => ({
+      schemaVersion: 7 as const,
+      codebook: {
+        node: {
+          person: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            variables: {
+              cat: {
+                name: 'cat',
+                type: 'categorical',
+                component: 'CheckboxGroup',
+                options: [
+                  { label: 'Family', value: 'family' },
+                  { label: 'Work', value: 'work' },
+                ],
+              },
+              ord: {
+                name: 'ord',
+                type: 'ordinal',
+                component: 'RadioGroup',
+                options: [
+                  { label: 'Low', value: 1 },
+                  { label: 'High', value: 2 },
+                ],
+              },
+            },
+          },
+        },
+        edge: {},
+        ego: {},
+      },
+      stages: [
+        {
+          id: 'stage1',
+          type: 'NameGenerator',
+          label: 'Test Stage',
+          form: { fields: [{ variable: 'cat', prompt: 'Pick' }] },
+          subject: { entity: 'node', type: 'person' },
+          prompts: [{ id: 'prompt1', text: 'Test prompt' }],
+          skipLogic: {
+            action: 'SKIP',
+            filter: {
+              rules: [{ type: 'node', id: 'rule1', options: ruleOptions }],
+            },
+          },
+        },
+      ],
+    });
+
+    const migrateRuleValue = (
+      ruleOptions: Record<string, unknown>,
+    ): unknown => {
+      const migrated = migrationV7toV8.migrate(buildV7(ruleOptions), {
+        name: 'Test Protocol',
+      }) as unknown as {
+        stages: {
+          skipLogic?: {
+            filter?: { rules?: { options?: { value?: unknown } }[] };
+          };
+        }[];
+      };
+      return migrated.stages[0]?.skipLogic?.filter?.rules?.[0]?.options?.value;
+    };
+
+    it('wraps a scalar categorical EXACTLY operand in an array', () => {
+      expect(
+        migrateRuleValue({
+          type: 'person',
+          attribute: 'cat',
+          operator: 'EXACTLY',
+          value: 'family',
+        }),
+      ).toEqual(['family']);
+    });
+
+    it('wraps a scalar categorical INCLUDES operand in an array', () => {
+      expect(
+        migrateRuleValue({
+          type: 'person',
+          attribute: 'cat',
+          operator: 'INCLUDES',
+          value: 'family',
+        }),
+      ).toEqual(['family']);
+    });
+
+    it('leaves an already-array categorical operand untouched', () => {
+      expect(
+        migrateRuleValue({
+          type: 'person',
+          attribute: 'cat',
+          operator: 'EXACTLY',
+          value: ['family', 'work'],
+        }),
+      ).toEqual(['family', 'work']);
+    });
+
+    it('does not wrap a categorical OPTIONS_* count operand', () => {
+      expect(
+        migrateRuleValue({
+          type: 'person',
+          attribute: 'cat',
+          operator: 'OPTIONS_EQUALS',
+          value: 2,
+        }),
+      ).toBe(2);
+    });
+
+    it('does not wrap an ordinal EXACTLY operand', () => {
+      expect(
+        migrateRuleValue({
+          type: 'person',
+          attribute: 'ord',
+          operator: 'EXACTLY',
+          value: 1,
+        }),
+      ).toBe(1);
+    });
+
+    it('produces a protocol that still validates against schema 8', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildV7({
+          type: 'person',
+          attribute: 'cat',
+          operator: 'EXACTLY',
+          value: 'family',
+        }),
+        { name: 'Test Protocol' },
+      );
+      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+    });
+
+    it('does not wrap when a different entity shares the attribute id as categorical', () => {
+      // `shared` is categorical on `place` but text on `person`; a rule scoped
+      // to `person` must stay scalar and not be rewritten to an array just
+      // because another entity defines a categorical variable with the same id.
       const v7Protocol = {
         schemaVersion: 7 as const,
         codebook: {
-          node: { person: { name: 'Person', color: 'node-color-seq-1' } },
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: { shared: { name: 'shared', type: 'text' } },
+            },
+            place: {
+              name: 'Place',
+              color: 'node-color-seq-2',
+              variables: {
+                shared: {
+                  name: 'shared',
+                  type: 'categorical',
+                  component: 'CheckboxGroup',
+                  options: [{ label: 'A', value: 'a' }],
+                },
+              },
+            },
+          },
           edge: {},
           ego: {},
         },
@@ -374,7 +528,67 @@ describe('Migration V7 to V8', () => {
             id: 'stage1',
             type: 'NameGenerator',
             label: 'Test Stage',
-            form: { fields: [] },
+            form: { fields: [{ variable: 'shared', prompt: 'Pick' }] },
+            subject: { entity: 'node', type: 'person' },
+            prompts: [{ id: 'prompt1', text: 'Test prompt' }],
+            skipLogic: {
+              action: 'SKIP',
+              filter: {
+                rules: [
+                  {
+                    type: 'node',
+                    id: 'rule1',
+                    options: {
+                      type: 'person',
+                      attribute: 'shared',
+                      operator: 'EXACTLY',
+                      value: 'x',
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      };
+
+      const migrated = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      }) as unknown as {
+        stages: {
+          skipLogic?: {
+            filter?: { rules?: { options?: { value?: unknown } }[] };
+          };
+        }[];
+      };
+
+      expect(
+        migrated.stages[0]?.skipLogic?.filter?.rules?.[0]?.options?.value,
+      ).toBe('x');
+    });
+  });
+
+  describe('filter type transformation', () => {
+    it("transforms 'alter' to 'node' in stage panel filter rules", () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: { name: { name: 'Name', type: 'text' } },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'stage1',
+            type: 'NameGenerator',
+            label: 'Test Stage',
+            form: { fields: [{ variable: 'name', prompt: 'Name' }] },
             subject: { entity: 'node', type: 'person' },
             prompts: [{ id: 'prompt1', text: 'Test prompt' }],
             panels: [
@@ -388,6 +602,7 @@ describe('Migration V7 to V8', () => {
                       type: 'alter', // Should become "node"
                       id: 'rule1',
                       options: {
+                        type: 'person',
                         operator: 'EXISTS',
                       },
                     },
@@ -414,7 +629,13 @@ describe('Migration V7 to V8', () => {
       const v7Protocol = {
         schemaVersion: 7 as const,
         codebook: {
-          node: { person: { name: 'Person', color: 'node-color-seq-1' } },
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: { name: { name: 'Name', type: 'text' } },
+            },
+          },
           edge: {},
           ego: {},
         },
@@ -423,7 +644,7 @@ describe('Migration V7 to V8', () => {
             id: 'stage1',
             type: 'NameGenerator',
             label: 'Test Stage',
-            form: { fields: [] },
+            form: { fields: [{ variable: 'name', prompt: 'Name' }] },
             subject: { entity: 'node', type: 'person' },
             prompts: [{ id: 'prompt1', text: 'Test prompt' }],
             skipLogic: {
@@ -434,6 +655,7 @@ describe('Migration V7 to V8', () => {
                     type: 'alter', // Should become "node"
                     id: 'rule1',
                     options: {
+                      type: 'person',
                       operator: 'EXISTS',
                     },
                   },
@@ -467,7 +689,14 @@ describe('Migration V7 to V8', () => {
                 category: {
                   name: 'Category',
                   type: 'categorical',
-                  options: [{ label: 'A', value: 'a' }],
+                  options: [
+                    { label: 'A', value: 'a' },
+                    { label: 'B', value: 'b' },
+                  ],
+                },
+                layoutPos: {
+                  name: 'LayoutPos',
+                  type: 'layout',
                 },
               },
             },
@@ -485,7 +714,7 @@ describe('Migration V7 to V8', () => {
               {
                 id: 'prompt1',
                 text: 'Test prompt',
-                layout: { layoutVariable: 'category' },
+                layout: { layoutVariable: 'layoutPos' },
               },
             ],
             filter: {
@@ -527,7 +756,14 @@ describe('Migration V7 to V8', () => {
                 category: {
                   name: 'Category',
                   type: 'categorical',
-                  options: [{ label: 'A', value: 'a' }],
+                  options: [
+                    { label: 'A', value: 'a' },
+                    { label: 'B', value: 'b' },
+                  ],
+                },
+                layoutPos: {
+                  name: 'LayoutPos',
+                  type: 'layout',
                 },
               },
             },
@@ -540,7 +776,7 @@ describe('Migration V7 to V8', () => {
             id: 'stage1',
             type: 'NameGenerator',
             label: 'Test Stage',
-            form: { fields: [] },
+            form: { fields: [{ variable: 'category', prompt: 'Pick' }] },
             subject: { entity: 'node', type: 'person' },
             prompts: [{ id: 'prompt1', text: 'Test prompt' }],
             panels: [
@@ -569,7 +805,7 @@ describe('Migration V7 to V8', () => {
               {
                 id: 'prompt2',
                 text: 'Test prompt',
-                layout: { layoutVariable: 'category' },
+                layout: { layoutVariable: 'layoutPos' },
               },
             ],
             filter: {
@@ -640,7 +876,14 @@ describe('Migration V7 to V8', () => {
                 category: {
                   name: 'Category',
                   type: 'categorical',
-                  options: [{ label: 'A', value: 'a' }],
+                  options: [
+                    { label: 'A', value: 'a' },
+                    { label: 'B', value: 'b' },
+                  ],
+                },
+                layoutPos: {
+                  name: 'LayoutPos',
+                  type: 'layout',
                 },
               },
             },
@@ -651,7 +894,7 @@ describe('Migration V7 to V8', () => {
               color: 'edge-color-seq-1',
             },
           },
-          ego: { variables: {} },
+          ego: { variables: { mood: { name: 'Mood', type: 'text' } } },
         },
         stages: [
           {
@@ -663,13 +906,15 @@ describe('Migration V7 to V8', () => {
               {
                 id: 'prompt1',
                 text: 'Test prompt',
-                layout: { layoutVariable: 'category' },
+                layout: { layoutVariable: 'layoutPos' },
               },
             ],
+            // A stage node/edge filter rejects ego rules, so edge + alter→node
+            // sit here while the ego rule (with attribute) lives in skipLogic,
+            // where ego rules are permitted.
             filter: {
               join: 'AND',
               rules: [
-                { type: 'ego', id: 'rule1', options: { operator: 'EXISTS' } },
                 {
                   type: 'edge',
                   id: 'rule2',
@@ -682,6 +927,18 @@ describe('Migration V7 to V8', () => {
                 },
               ],
             },
+            skipLogic: {
+              action: 'SKIP',
+              filter: {
+                rules: [
+                  {
+                    type: 'ego',
+                    id: 'rule1',
+                    options: { attribute: 'mood', operator: 'EXISTS' },
+                  },
+                ],
+              },
+            },
           },
         ],
       };
@@ -692,10 +949,10 @@ describe('Migration V7 to V8', () => {
       const parsed = ProtocolSchemaV8.parse(migratedRaw);
 
       const stage = parsed.stages[0];
-      if (stage && 'filter' in stage) {
-        expect(stage.filter?.rules?.[0]?.type).toBe('ego');
-        expect(stage.filter?.rules?.[1]?.type).toBe('edge');
-        expect(stage.filter?.rules?.[2]?.type).toBe('node');
+      if (stage && 'filter' in stage && 'skipLogic' in stage) {
+        expect(stage.skipLogic?.filter?.rules?.[0]?.type).toBe('ego');
+        expect(stage.filter?.rules?.[0]?.type).toBe('edge');
+        expect(stage.filter?.rules?.[1]?.type).toBe('node');
       }
     });
   });
@@ -804,6 +1061,10 @@ describe('Migration V7 to V8', () => {
                     { label: 'Family', value: 'family' },
                   ],
                 },
+                layoutPos: {
+                  name: 'LayoutPos',
+                  type: 'layout',
+                },
               },
             },
           },
@@ -866,6 +1127,7 @@ describe('Migration V7 to V8', () => {
                     type: 'alter', // Should become "node"
                     id: 'rule2',
                     options: {
+                      type: 'person',
                       operator: 'EXISTS',
                     },
                   },
@@ -885,6 +1147,7 @@ describe('Migration V7 to V8', () => {
                       type: 'alter', // Should become "node"
                       id: 'rule3',
                       options: {
+                        type: 'person',
                         operator: 'EXISTS',
                       },
                     },
@@ -905,7 +1168,7 @@ describe('Migration V7 to V8', () => {
               {
                 id: 'prompt1',
                 text: 'Position nodes',
-                layout: { layoutVariable: 'category' },
+                layout: { layoutVariable: 'layoutPos' },
               },
             ],
             filter: {
@@ -932,9 +1195,6 @@ describe('Migration V7 to V8', () => {
 
       // Validate against V8 schema
       const result = ProtocolSchemaV8.safeParse(migratedRaw);
-
-      if (!result.success) {
-      }
 
       expect(result.success).toBe(true);
     });
@@ -1066,6 +1326,1406 @@ describe('Migration V7 to V8', () => {
       expect(parsed.codebook.node?.organization?.shape).toEqual({
         default: 'circle',
       });
+    });
+  });
+
+  describe('loop removal', () => {
+    it('removes loop from Information stage items', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: {} },
+        stages: [
+          {
+            id: 'info1',
+            type: 'Information',
+            label: 'Intro',
+            items: [
+              {
+                id: 'item1',
+                type: 'asset',
+                content: 'video-asset-1',
+                loop: false,
+              },
+            ],
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      const stage = parsed.stages[0];
+      if (stage && 'items' in stage) {
+        expect(stage.items[0]).not.toHaveProperty('loop');
+        expect(stage.items[0]?.content).toBe('video-asset-1');
+      }
+    });
+
+    it('removes loop from video/audio assets in the manifest', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: {} },
+        assetManifest: {
+          'video-asset-1': {
+            id: 'video-asset-1',
+            name: 'intro.mp4',
+            type: 'video',
+            source: 'intro.mp4',
+            loop: true,
+          },
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      expect(parsed.assetManifest?.['video-asset-1']).not.toHaveProperty(
+        'loop',
+      );
+      expect(parsed.assetManifest?.['video-asset-1']?.name).toBe('intro.mp4');
+    });
+  });
+
+  describe('min* validator implies required', () => {
+    it('sets required:true on a node variable with minValue', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                age: {
+                  name: 'Age',
+                  type: 'number',
+                  component: 'Number',
+                  validation: { minValue: 0, maxValue: 100 },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      const age = parsed.codebook.node?.person?.variables?.age;
+      expect(age).toHaveProperty('validation.required', true);
+      expect(age).toHaveProperty('validation.minValue', 0);
+      expect(age).toHaveProperty('validation.maxValue', 100);
+    });
+
+    it('sets required:true on a node variable with minLength', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                nickname: {
+                  name: 'Nickname',
+                  type: 'text',
+                  component: 'Text',
+                  validation: { minLength: 2 },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      expect(parsed.codebook.node?.person?.variables?.nickname).toHaveProperty(
+        'validation.required',
+        true,
+      );
+    });
+
+    it('sets required:true on an edge variable with minSelected', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {},
+          edge: {
+            knows: {
+              name: 'Knows',
+              color: 'edge-color-seq-1',
+              variables: {
+                contexts: {
+                  name: 'Contexts',
+                  type: 'categorical',
+                  component: 'CheckboxGroup',
+                  options: [
+                    { label: 'Work', value: 'work' },
+                    { label: 'Home', value: 'home' },
+                  ],
+                  validation: { minSelected: 1 },
+                },
+              },
+            },
+          },
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      expect(parsed.codebook.edge?.knows?.variables?.contexts).toHaveProperty(
+        'validation.required',
+        true,
+      );
+    });
+
+    it('sets required:true on an ego variable with minValue', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {},
+          edge: {},
+          ego: {
+            variables: {
+              householdSize: {
+                name: 'HouseholdSize',
+                type: 'number',
+                component: 'Number',
+                validation: { minValue: 1 },
+              },
+            },
+          },
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      expect(parsed.codebook.ego?.variables?.householdSize).toHaveProperty(
+        'validation.required',
+        true,
+      );
+    });
+
+    it('leaves an already-required variable unchanged', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                age: {
+                  name: 'Age',
+                  type: 'number',
+                  component: 'Number',
+                  validation: { required: true, minValue: 0 },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      expect(parsed.codebook.node?.person?.variables?.age).toHaveProperty(
+        'validation.required',
+        true,
+      );
+    });
+
+    it('does not set required for a variable with only maxValue', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                age: {
+                  name: 'Age',
+                  type: 'number',
+                  component: 'Number',
+                  validation: { maxValue: 100 },
+                },
+                bio: {
+                  name: 'Bio',
+                  type: 'text',
+                  component: 'Text',
+                  validation: { maxLength: 200 },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      const variables = parsed.codebook.node?.person?.variables;
+      expect(variables?.age).not.toHaveProperty('validation.required');
+      expect(variables?.bio).not.toHaveProperty('validation.required');
+    });
+
+    it('does not affect variables without validation', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      expect(parsed.codebook.node?.person?.variables?.name).not.toHaveProperty(
+        'validation',
+      );
+    });
+  });
+
+  describe('ego unique validation removal', () => {
+    it('strips validation.unique from ego variables', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {},
+          edge: {},
+          ego: {
+            variables: {
+              ssn: {
+                name: 'SSN',
+                type: 'text',
+                validation: { unique: true, minLength: 9 },
+              },
+            },
+          },
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      const ssn = parsed.codebook.ego?.variables?.ssn;
+      expect(ssn).toHaveProperty('validation');
+      expect(ssn).not.toHaveProperty('validation.unique');
+      // Other validators are preserved (minLength implies required).
+      expect(ssn).toHaveProperty('validation.minLength', 9);
+    });
+
+    it('leaves unique on non-ego (node) variables untouched', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                name: {
+                  name: 'Name',
+                  type: 'text',
+                  validation: { unique: true },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      expect(parsed.codebook.node?.person?.variables?.name).toHaveProperty(
+        'validation.unique',
+        true,
+      );
+    });
+  });
+
+  describe('ordinal minSelected/maxSelected removal', () => {
+    it('strips minSelected and maxSelected from ordinal variables', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                rating: {
+                  name: 'Rating',
+                  type: 'ordinal',
+                  options: [
+                    { label: 'Low', value: 1 },
+                    { label: 'High', value: 2 },
+                  ],
+                  validation: {
+                    required: true,
+                    minSelected: 1,
+                    maxSelected: 2,
+                  },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      const rating = parsed.codebook.node?.person?.variables?.rating;
+      expect(rating).not.toHaveProperty('validation.minSelected');
+      expect(rating).not.toHaveProperty('validation.maxSelected');
+      expect(rating).toHaveProperty('validation.required', true);
+    });
+
+    it('preserves the implied required when stripping minSelected from an ordinal without explicit required', () => {
+      // minSelected implied required in older protocols; the strip must not
+      // silently drop that coupling (the later min*->required step cannot see
+      // minSelected once it has been removed here).
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                rating: {
+                  name: 'Rating',
+                  type: 'ordinal',
+                  options: [
+                    { label: 'Low', value: 1 },
+                    { label: 'High', value: 2 },
+                  ],
+                  validation: {
+                    minSelected: 1,
+                  },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      const rating = parsed.codebook.node?.person?.variables?.rating;
+      expect(rating).not.toHaveProperty('validation.minSelected');
+      expect(rating).toHaveProperty('validation.required', true);
+    });
+
+    it('keeps minSelected/maxSelected on categorical variables', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                tags: {
+                  name: 'Tags',
+                  type: 'categorical',
+                  options: [
+                    { label: 'A', value: 'a' },
+                    { label: 'B', value: 'b' },
+                  ],
+                  validation: { minSelected: 1, maxSelected: 2 },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      const tags = parsed.codebook.node?.person?.variables?.tags;
+      expect(tags).toHaveProperty('validation.minSelected', 1);
+      expect(tags).toHaveProperty('validation.maxSelected', 2);
+    });
+  });
+
+  describe('boolean option value coercion', () => {
+    it('coerces boolean option values to strings on ordinal/categorical', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                pick: {
+                  name: 'Pick',
+                  type: 'categorical',
+                  options: [
+                    { label: 'Yes', value: true },
+                    { label: 'No', value: false },
+                  ],
+                },
+                rank: {
+                  name: 'Rank',
+                  type: 'ordinal',
+                  options: [
+                    { label: 'Yes', value: true },
+                    { label: 'No', value: false },
+                  ],
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      const pick = parsed.codebook.node?.person?.variables?.pick;
+      const rank = parsed.codebook.node?.person?.variables?.rank;
+      if (pick && 'options' in pick) {
+        expect(pick.options).toEqual([
+          { label: 'Yes', value: 'true' },
+          { label: 'No', value: 'false' },
+        ]);
+      }
+      if (rank && 'options' in rank) {
+        expect(rank.options).toEqual([
+          { label: 'Yes', value: 'true' },
+          { label: 'No', value: 'false' },
+        ]);
+      }
+    });
+
+    it('does not coerce boolean-variable options', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                hasPets: {
+                  name: 'HasPets',
+                  type: 'boolean',
+                  component: 'Boolean',
+                  options: [
+                    { label: 'Yes', value: true },
+                    { label: 'No', value: false },
+                  ],
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      const hasPets = parsed.codebook.node?.person?.variables?.hasPets;
+      if (hasPets && 'options' in hasPets) {
+        expect(hasPets.options).toEqual([
+          { label: 'Yes', value: true },
+          { label: 'No', value: false },
+        ]);
+      }
+    });
+  });
+
+  describe('encrypted removal on non-text-node variables', () => {
+    it('strips encrypted from ego, edge and non-text node variables', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                secretName: {
+                  name: 'SecretName',
+                  type: 'text',
+                  encrypted: true,
+                },
+                secretAge: {
+                  name: 'SecretAge',
+                  type: 'number',
+                  encrypted: true,
+                },
+              },
+            },
+          },
+          edge: {
+            knows: {
+              name: 'Knows',
+              color: 'edge-color-seq-1',
+              variables: {
+                edgeSecret: {
+                  name: 'EdgeSecret',
+                  type: 'text',
+                  encrypted: true,
+                },
+              },
+            },
+          },
+          ego: {
+            variables: {
+              egoSecret: { name: 'EgoSecret', type: 'text', encrypted: true },
+            },
+          },
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      // Node text variable keeps encrypted.
+      expect(
+        parsed.codebook.node?.person?.variables?.secretName,
+      ).toHaveProperty('encrypted', true);
+      // Non-text node variable loses encrypted.
+      expect(
+        parsed.codebook.node?.person?.variables?.secretAge,
+      ).not.toHaveProperty('encrypted');
+      // Edge and ego variables lose encrypted regardless of type.
+      expect(
+        parsed.codebook.edge?.knows?.variables?.edgeSecret,
+      ).not.toHaveProperty('encrypted');
+      expect(parsed.codebook.ego?.variables?.egoSecret).not.toHaveProperty(
+        'encrypted',
+      );
+    });
+  });
+
+  describe('form.title removal on form stages', () => {
+    it('deletes form.title on EgoForm, AlterForm and AlterEdgeForm', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: { name: { name: 'Name', type: 'text' } },
+            },
+          },
+          edge: {
+            knows: {
+              name: 'Knows',
+              color: 'edge-color-seq-1',
+              variables: { weight: { name: 'Weight', type: 'text' } },
+            },
+          },
+          ego: { variables: { egoName: { name: 'EgoName', type: 'text' } } },
+        },
+        stages: [
+          {
+            id: 'egoForm1',
+            type: 'EgoForm',
+            label: 'Ego',
+            introductionPanel: { title: 'Intro', text: 'Hello' },
+            form: {
+              title: 'About You',
+              fields: [{ variable: 'egoName', prompt: 'Name?' }],
+            },
+          },
+          {
+            id: 'alterForm1',
+            type: 'AlterForm',
+            label: 'Alter',
+            subject: { entity: 'node', type: 'person' },
+            introductionPanel: { title: 'Intro', text: 'Hello' },
+            form: {
+              title: 'About Them',
+              fields: [{ variable: 'name', prompt: 'Name?' }],
+            },
+          },
+          {
+            id: 'alterEdgeForm1',
+            type: 'AlterEdgeForm',
+            label: 'Edge',
+            subject: { entity: 'edge', type: 'knows' },
+            introductionPanel: { title: 'Intro', text: 'Hello' },
+            form: {
+              title: 'About Edge',
+              fields: [{ variable: 'weight', prompt: 'Weight?' }],
+            },
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      const [ego, alter, alterEdge] = parsed.stages;
+      if (ego && 'form' in ego) expect(ego.form).not.toHaveProperty('title');
+      if (alter && 'form' in alter)
+        expect(alter.form).not.toHaveProperty('title');
+      if (alterEdge && 'form' in alterEdge)
+        expect(alterEdge.form).not.toHaveProperty('title');
+    });
+  });
+
+  describe('CategoricalBin otherVariablePrompt backfill', () => {
+    const buildBinProtocol = (prompt: Record<string, unknown>) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                cat: {
+                  name: 'Cat',
+                  type: 'categorical',
+                  options: [
+                    { label: 'A', value: 'a' },
+                    { label: 'B', value: 'b' },
+                  ],
+                },
+                other: { name: 'Other', type: 'text' },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'bin1',
+            type: 'CategoricalBin',
+            label: 'Bin',
+            subject: { entity: 'node', type: 'person' },
+            prompts: [{ id: 'p1', text: 'Sort', variable: 'cat', ...prompt }],
+          },
+        ],
+      }) as Protocol<7>;
+
+    it('backfills otherVariablePrompt from otherOptionLabel when present', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildBinProtocol({
+          otherVariable: 'other',
+          otherOptionLabel: 'Something else',
+        }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty(
+          'otherVariablePrompt',
+          'Something else',
+        );
+      }
+    });
+
+    it("defaults otherVariablePrompt to 'Please specify' when no label", () => {
+      // No otherOptionLabel is present, so the migrated protocol still trips a
+      // separate Stage A cross-ref (otherOptionLabel required); assert on the
+      // migrated shape directly to isolate the otherVariablePrompt backfill.
+      const migratedRaw = migrationV7toV8.migrate(
+        buildBinProtocol({ otherVariable: 'other' }),
+        { name: 'Test Protocol' },
+      ) as unknown as {
+        stages: { prompts?: { otherVariablePrompt?: unknown }[] }[];
+      };
+      expect(migratedRaw.stages[0]?.prompts?.[0]?.otherVariablePrompt).toBe(
+        'Please specify',
+      );
+    });
+
+    it('leaves an existing otherVariablePrompt untouched', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildBinProtocol({
+          otherVariable: 'other',
+          otherVariablePrompt: 'My prompt',
+          otherOptionLabel: 'Other label',
+        }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty(
+          'otherVariablePrompt',
+          'My prompt',
+        );
+      }
+    });
+
+    it('does not add otherVariablePrompt when otherVariable is absent', () => {
+      const migratedRaw = migrationV7toV8.migrate(buildBinProtocol({}), {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).not.toHaveProperty('otherVariablePrompt');
+      }
+    });
+  });
+
+  describe('TieStrengthCensus negativeLabel default', () => {
+    const buildTscProtocol = (negativeLabel?: string) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {},
+            },
+          },
+          edge: {
+            knows: {
+              name: 'Knows',
+              color: 'edge-color-seq-1',
+              variables: {
+                strength: {
+                  name: 'Strength',
+                  type: 'ordinal',
+                  options: [
+                    { label: 'Low', value: 1 },
+                    { label: 'High', value: 2 },
+                  ],
+                },
+              },
+            },
+          },
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'tsc1',
+            type: 'TieStrengthCensus',
+            label: 'TSC',
+            subject: { entity: 'node', type: 'person' },
+            introductionPanel: { title: 'Intro', text: 'Hello' },
+            prompts: [
+              {
+                id: 'p1',
+                text: 'How close?',
+                createEdge: 'knows',
+                edgeVariable: 'strength',
+                ...(negativeLabel !== undefined ? { negativeLabel } : {}),
+              },
+            ],
+          },
+        ],
+      }) as Protocol<7>;
+
+    it("defaults an empty negativeLabel to 'No relationship'", () => {
+      const migratedRaw = migrationV7toV8.migrate(buildTscProtocol(''), {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty(
+          'negativeLabel',
+          'No relationship',
+        );
+      }
+    });
+
+    it("defaults a missing negativeLabel to 'No relationship'", () => {
+      const migratedRaw = migrationV7toV8.migrate(buildTscProtocol(undefined), {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty(
+          'negativeLabel',
+          'No relationship',
+        );
+      }
+    });
+
+    it('leaves a non-empty negativeLabel untouched', () => {
+      const migratedRaw = migrationV7toV8.migrate(buildTscProtocol('Distant'), {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty('negativeLabel', 'Distant');
+      }
+    });
+  });
+
+  describe('NameGenerator behaviours normalisation', () => {
+    const buildNgProtocol = (behaviours: Record<string, unknown>) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: { name: { name: 'Name', type: 'text' } },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'ng1',
+            type: 'NameGenerator',
+            label: 'NG',
+            subject: { entity: 'node', type: 'person' },
+            form: { fields: [{ variable: 'name', prompt: 'Name?' }] },
+            prompts: [{ id: 'p1', text: 'Who?' }],
+            behaviours,
+          },
+        ],
+      }) as Protocol<7>;
+
+    const getBehaviours = (
+      raw: unknown,
+    ): Record<string, unknown> | undefined => {
+      const typed = raw as {
+        stages: { behaviours?: Record<string, unknown> }[];
+      };
+      return typed.stages[0]?.behaviours;
+    };
+
+    it('removes maxNodes when maxNodes < 1', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildNgProtocol({ minNodes: 1, maxNodes: 0 }),
+        { name: 'Test Protocol' },
+      );
+      const behaviours = getBehaviours(migratedRaw);
+      expect(behaviours).not.toHaveProperty('maxNodes');
+      expect(behaviours).toHaveProperty('minNodes', 1);
+      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+    });
+
+    it('removes maxNodes when maxNodes < minNodes', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildNgProtocol({ minNodes: 5, maxNodes: 2 }),
+        { name: 'Test Protocol' },
+      );
+      const behaviours = getBehaviours(migratedRaw);
+      expect(behaviours).not.toHaveProperty('maxNodes');
+      expect(behaviours).toHaveProperty('minNodes', 5);
+    });
+
+    it('removes minNodes when minNodes < 0', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildNgProtocol({ minNodes: -1, maxNodes: 5 }),
+        { name: 'Test Protocol' },
+      );
+      const behaviours = getBehaviours(migratedRaw);
+      expect(behaviours).not.toHaveProperty('minNodes');
+      expect(behaviours).toHaveProperty('maxNodes', 5);
+    });
+
+    it('leaves a satisfiable behaviours block untouched', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildNgProtocol({ minNodes: 1, maxNodes: 5 }),
+        { name: 'Test Protocol' },
+      );
+      const behaviours = getBehaviours(migratedRaw);
+      expect(behaviours).toEqual({ minNodes: 1, maxNodes: 5 });
+    });
+
+    it('normalises NameGeneratorQuickAdd behaviours too', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: { name: { name: 'Name', type: 'text' } },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'ngqa1',
+            type: 'NameGeneratorQuickAdd',
+            label: 'NGQA',
+            subject: { entity: 'node', type: 'person' },
+            quickAdd: 'name',
+            prompts: [{ id: 'p1', text: 'Who?' }],
+            behaviours: { minNodes: 3, maxNodes: 1 },
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const behaviours = getBehaviours(migratedRaw);
+      expect(behaviours).not.toHaveProperty('maxNodes');
+      expect(behaviours).toHaveProperty('minNodes', 3);
+    });
+  });
+
+  describe('Sociogram highlight/edges conflict resolution', () => {
+    it('drops highlight when both edges.create and highlight.allowHighlighting set', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: { layoutPos: { name: 'LayoutPos', type: 'layout' } },
+            },
+          },
+          edge: { knows: { name: 'Knows', color: 'edge-color-seq-1' } },
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'socio1',
+            type: 'Sociogram',
+            label: 'Socio',
+            subject: { entity: 'node', type: 'person' },
+            prompts: [
+              {
+                id: 'p1',
+                text: 'Position',
+                layout: { layoutVariable: 'layoutPos' },
+                edges: { create: 'knows' },
+                highlight: { allowHighlighting: true },
+              },
+            ],
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).not.toHaveProperty('highlight');
+        expect(stage.prompts[0]).toHaveProperty('edges.create', 'knows');
+      }
+    });
+
+    it('keeps highlight when edges.create is absent', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: { layoutPos: { name: 'LayoutPos', type: 'layout' } },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'socio1',
+            type: 'Sociogram',
+            label: 'Socio',
+            subject: { entity: 'node', type: 'person' },
+            prompts: [
+              {
+                id: 'p1',
+                text: 'Position',
+                layout: { layoutVariable: 'layoutPos' },
+                highlight: { allowHighlighting: true },
+              },
+            ],
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty(
+          'highlight.allowHighlighting',
+          true,
+        );
+      }
+    });
+  });
+
+  describe('Information item size normalisation', () => {
+    it('uppercase-folds size on asset items', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: {} },
+        stages: [
+          {
+            id: 'info1',
+            type: 'Information',
+            label: 'Info',
+            items: [
+              {
+                id: 'i1',
+                type: 'asset',
+                content: 'image-asset-1',
+                size: 'medium',
+              },
+            ],
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'items' in stage) {
+        expect(stage.items[0]).toHaveProperty('size', 'MEDIUM');
+      }
+    });
+
+    it('drops size values not in SMALL/MEDIUM/LARGE', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: {} },
+        stages: [
+          {
+            id: 'info1',
+            type: 'Information',
+            label: 'Info',
+            items: [
+              {
+                id: 'i1',
+                type: 'asset',
+                content: 'image-asset-1',
+                size: 'gigantic',
+              },
+            ],
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'items' in stage) {
+        expect(stage.items[0]).not.toHaveProperty('size');
+      }
+    });
+
+    it('removes size from text items', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: {} },
+        stages: [
+          {
+            id: 'info1',
+            type: 'Information',
+            label: 'Info',
+            items: [
+              {
+                id: 'i1',
+                type: 'text',
+                content: 'Some text',
+                size: 'LARGE',
+              },
+            ],
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'items' in stage) {
+        expect(stage.items[0]).not.toHaveProperty('size');
+        expect(stage.items[0]?.type).toBe('text');
+      }
+    });
+  });
+
+  describe('empty-rules filter removal', () => {
+    it('drops a stage.filter whose rules array is empty', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: { layoutPos: { name: 'LayoutPos', type: 'layout' } },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'socio1',
+            type: 'Sociogram',
+            label: 'Socio',
+            subject: { entity: 'node', type: 'person' },
+            filter: { join: 'AND', rules: [] },
+            prompts: [
+              {
+                id: 'p1',
+                text: 'Position',
+                layout: { layoutVariable: 'layoutPos' },
+              },
+            ],
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage) {
+        expect(stage).not.toHaveProperty('filter');
+      }
+    });
+
+    it('drops a panel filter whose rules array is empty', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: { name: { name: 'Name', type: 'text' } },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'ng1',
+            type: 'NameGenerator',
+            label: 'NG',
+            subject: { entity: 'node', type: 'person' },
+            form: { fields: [{ variable: 'name', prompt: 'Name?' }] },
+            prompts: [{ id: 'p1', text: 'Who?' }],
+            panels: [
+              {
+                id: 'panel1',
+                title: 'Panel 1',
+                dataSource: 'existing',
+                filter: { rules: [] },
+              },
+            ],
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'panels' in stage) {
+        expect(stage.panels?.[0]).not.toHaveProperty('filter');
+      }
+    });
+
+    it('drops skipLogic entirely when its filter rules array is empty', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: { name: { name: 'Name', type: 'text' } },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'ng1',
+            type: 'NameGenerator',
+            label: 'NG',
+            subject: { entity: 'node', type: 'person' },
+            form: { fields: [{ variable: 'name', prompt: 'Name?' }] },
+            prompts: [{ id: 'p1', text: 'Who?' }],
+            skipLogic: { action: 'SKIP', filter: { rules: [] } },
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage) {
+        expect(stage).not.toHaveProperty('skipLogic');
+      }
+    });
+
+    it('leaves a non-empty filter untouched', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: { layoutPos: { name: 'LayoutPos', type: 'layout' } },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'socio1',
+            type: 'Sociogram',
+            label: 'Socio',
+            subject: { entity: 'node', type: 'person' },
+            filter: {
+              rules: [
+                {
+                  type: 'node',
+                  id: 'r1',
+                  options: { type: 'person', operator: 'EXISTS' },
+                },
+              ],
+            },
+            prompts: [
+              {
+                id: 'p1',
+                text: 'Position',
+                layout: { layoutVariable: 'layoutPos' },
+              },
+            ],
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'filter' in stage) {
+        expect(stage.filter?.rules).toHaveLength(1);
+      }
     });
   });
 

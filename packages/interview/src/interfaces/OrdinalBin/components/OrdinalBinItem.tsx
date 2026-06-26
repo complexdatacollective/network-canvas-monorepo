@@ -38,6 +38,15 @@ const itemVariants = {
   exit: { opacity: 0, y: '20%', transition: { duration: 0.15 } },
 };
 
+// A bin represents a 'missing value' (e.g. N/A) when its option value is
+// negative. The option value may be authored as the number -1 or the numeric
+// string '-1' (both schema-valid), so coerce to a number before the check and
+// guard against NaN for non-numeric strings.
+export const isMissingValue = (value: OrdinalBinItemType['value']): boolean => {
+  const numeric = Number(value);
+  return !Number.isNaN(numeric) && numeric < 0;
+};
+
 const getPromptColorClass = (color: string | undefined) => {
   return cx(
     color === 'ord-color-seq-1' && '[--prompt-color:var(--ord-1)]',
@@ -72,7 +81,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
   const track = useTrack();
   const lastBinIndexRef = useRef<Map<string, number>>(new Map());
 
-  const missingValue = typeof bin.value === 'number' && bin.value < 0;
+  const missingValue = isMissingValue(bin.value);
   const blendPercent = Math.round((1 / totalBins) * index * 100);
   const isFirst = index === 0;
   const isLast = index === totalBins - 1;

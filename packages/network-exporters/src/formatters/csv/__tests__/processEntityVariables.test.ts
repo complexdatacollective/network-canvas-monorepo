@@ -239,54 +239,9 @@ describe('processEntityVariables', () => {
       });
     });
 
-    it('should not do substring matching when categorical data is a string (legacy/edge case)', () => {
-      // This test specifically checks for the bug where es-toolkit/compat includes()
-      // does substring matching when the first argument is a string
-      // e.g., includes('female', 'male') returns true because 'male' is in 'female'
-      const codebook = {
-        node: {
-          person: {
-            name: 'person',
-            color: 'color',
-            variables: {
-              'gender-uuid': {
-                name: 'gender',
-                type: 'categorical',
-                options: [
-                  { value: 'male', label: 'Male' },
-                  { value: 'female', label: 'Female' },
-                ],
-              },
-            },
-          },
-        },
-      } as unknown as Codebook;
-
-      // Edge case: categorical data stored as a string instead of array
-      const node = {
-        [entityPrimaryKeyProperty]: '1',
-        type: 'person',
-        [entityAttributesProperty]: {
-          'gender-uuid': 'female', // String instead of array - legacy data format
-        },
-      } as unknown as NcNode;
-
-      const result = processEntityVariables(
-        node,
-        'node',
-        codebook,
-        mockExportOptions,
-      );
-
-      // 'male' should NOT be true just because it's a substring of 'female'
-      expect(result.attributes).toEqual({
-        gender_male: false,
-        gender_female: true,
-      });
-    });
-
-    it('should handle string categorical data with numeric-like values', () => {
-      // Test case where numeric values could be compared as strings
+    it('matches numeric-like categorical option values without substring matching', () => {
+      // Categorical attributes are stored as arrays; ['10'] must match only the
+      // '10' option, not '1' or '100' via substring matching.
       const codebook = {
         node: {
           person: {
@@ -307,12 +262,11 @@ describe('processEntityVariables', () => {
         },
       } as unknown as Codebook;
 
-      // String value that could match substrings
       const node = {
         [entityPrimaryKeyProperty]: '1',
         type: 'person',
         [entityAttributesProperty]: {
-          'rating-uuid': '10', // String '10' contains '1' as substring
+          'rating-uuid': ['10'],
         },
       } as unknown as NcNode;
 
@@ -323,7 +277,6 @@ describe('processEntityVariables', () => {
         mockExportOptions,
       );
 
-      // '1' should NOT match just because '10' contains '1'
       expect(result.attributes).toEqual({
         rating_1: false,
         rating_10: true,

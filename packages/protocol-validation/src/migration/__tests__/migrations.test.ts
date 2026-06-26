@@ -358,6 +358,14 @@ describe('Protocol Migrations', () => {
           edge: {},
           ego: {},
         },
+        assetManifest: {
+          rosterData: {
+            id: 'rosterData',
+            type: 'network',
+            name: 'roster.csv',
+            source: 'roster.csv',
+          },
+        },
         stages: [
           {
             id: 'stage1',
@@ -366,7 +374,7 @@ describe('Protocol Migrations', () => {
             subject: { entity: 'node', type: 'person' },
             prompts: [{ id: 'p1', text: 'Test' }],
             panels: [],
-            dataSource: 'existing',
+            dataSource: 'rosterData',
           },
         ],
       };

@@ -154,7 +154,10 @@ type RadioOption = {
 type RadioGroupFieldProps = CreateFormFieldProps<
   string | number,
   'div',
-  Omit<RadioGroupProps, 'size' | 'onValueChange' | 'value' | 'defaultValue'> &
+  Omit<
+    RadioGroupProps,
+    'size' | 'onChange' | 'onValueChange' | 'value' | 'defaultValue'
+  > &
     VariantProps<typeof radioGroupWrapperVariants> & {
       options: RadioOption[];
       defaultValue?: string | number;
@@ -181,9 +184,15 @@ export default function RadioGroupField(props: RadioGroupFieldProps) {
     ...rest
   } = props;
 
+  // base-ui compares and emits option values in their `String()` form, so map
+  // the selection back to the original typed `option.value` to preserve number
+  // (or string) type, matching LikertScale/CheckboxGroup/ToggleButtonGroup.
   const handleValueChange = (newValue: unknown) => {
     if (readOnly) return;
-    onChange?.(newValue as string | number);
+    const selectedOption = options.find(
+      (option) => String(option.value) === String(newValue),
+    );
+    onChange?.(selectedOption ? selectedOption.value : undefined);
   };
 
   // Determine if controlled or uncontrolled mode

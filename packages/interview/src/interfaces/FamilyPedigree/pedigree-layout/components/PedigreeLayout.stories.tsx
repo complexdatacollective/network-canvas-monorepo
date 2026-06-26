@@ -88,6 +88,7 @@ function fakeName(sex?: 'male' | 'female') {
 
 const STORY_LABEL_VAR = 'label';
 const STORY_EGO_VAR = 'isEgo';
+const STORY_RELATIONSHIP_VAR = 'relationship';
 const STORY_REL_TYPE_VAR = 'relationshipType';
 const STORY_IS_ACTIVE_VAR = 'isActive';
 const STORY_IS_GC_VAR = 'isGestationalCarrier';
@@ -97,6 +98,7 @@ const storyVariableConfig: VariableConfig = {
   edgeType: 'relationship',
   nodeLabelVariable: STORY_LABEL_VAR,
   egoVariable: STORY_EGO_VAR,
+  relationshipVariable: STORY_RELATIONSHIP_VAR,
   relationshipTypeVariable: STORY_REL_TYPE_VAR,
   isActiveVariable: STORY_IS_ACTIVE_VAR,
   isGestationalCarrierVariable: STORY_IS_GC_VAR,

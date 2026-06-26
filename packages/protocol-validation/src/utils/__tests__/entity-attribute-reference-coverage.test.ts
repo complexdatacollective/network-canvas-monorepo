@@ -44,7 +44,8 @@ const countTagged = (
 };
 
 // Update this number deliberately when adding/removing a tagged field.
-const EXPECTED_TAGGED_FIELD_COUNT = 32;
+// (31 after main removed FamilyPedigree biologicalSexVariable during merge.)
+const EXPECTED_TAGGED_FIELD_COUNT = 31;
 
 describe('entity-attribute reference coverage', () => {
   it('has tagged the expected number of reference fields', () => {

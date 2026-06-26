@@ -26,6 +26,64 @@ describe('predicate', () => {
       );
     });
 
+    describe('numeric operators with non-numeric values', () => {
+      // A null / absent number must not be coerced to 0. Otherwise an
+      // unanswered node (value null) would wrongly satisfy LESS_THAN and be
+      // included in a filter.
+      it('null / undefined value is never matched (not coerced to 0)', () => {
+        expect(predicate(operators.LESS_THAN)({ value: null, other: 5 })).toBe(
+          false,
+        );
+        expect(
+          predicate(operators.LESS_THAN)({ value: undefined, other: 5 }),
+        ).toBe(false);
+        expect(
+          predicate(operators.GREATER_THAN)({ value: null, other: -5 }),
+        ).toBe(false);
+        expect(
+          predicate(operators.GREATER_THAN_OR_EQUAL)({ value: null, other: 0 }),
+        ).toBe(false);
+        expect(
+          predicate(operators.LESS_THAN_OR_EQUAL)({ value: null, other: 0 }),
+        ).toBe(false);
+      });
+
+      // Datetime values are stored as ISO strings. Number('2020-...') is NaN,
+      // so a naive numeric comparison silently fails. Compare them as dates.
+      it('datetime ISO strings compare chronologically, not as NaN', () => {
+        expect(
+          predicate(operators.GREATER_THAN)({
+            value: '2020-06-01',
+            other: '2020-01-01',
+          }),
+        ).toBe(true);
+        expect(
+          predicate(operators.LESS_THAN)({
+            value: '2020-01-01',
+            other: '2020-06-01',
+          }),
+        ).toBe(true);
+        expect(
+          predicate(operators.GREATER_THAN_OR_EQUAL)({
+            value: '2020-01-01T00:00:00.000Z',
+            other: '2020-01-01T00:00:00.000Z',
+          }),
+        ).toBe(true);
+      });
+
+      // A value that is neither a number nor a parseable date never matches a
+      // numeric operator (rather than producing a NaN comparison that happens
+      // to be false, or coercing to a misleading number).
+      it('unparseable value never matches', () => {
+        expect(
+          predicate(operators.GREATER_THAN)({ value: 'not a date', other: 5 }),
+        ).toBe(false);
+        expect(
+          predicate(operators.LESS_THAN)({ value: 'not a date', other: 5 }),
+        ).toBe(false);
+      });
+    });
+
     it('GREATER_THAN_OR_EQUAL', () => {
       expect(
         predicate(operators.GREATER_THAN_OR_EQUAL)({ value: 1.5, other: 1 }),
@@ -87,33 +145,29 @@ describe('predicate', () => {
         false,
       );
 
-      // Categorical attributes can be stored as scalar (CategoricalBin) or
-      // array (CheckboxGroup). EXACTLY bridges length-1 arrays and scalars
-      // so Architect's "is exactly X" works regardless of storage format.
+      // Categorical attributes are stored as arrays of selected option values,
+      // and Architect emits array operands for categorical rules, so EXACTLY is
+      // a deep array equality.
       expect(
-        predicate(operators.EXACTLY)({ value: ['family'], other: 'family' }),
+        predicate(operators.EXACTLY)({ value: ['family'], other: ['family'] }),
       ).toBe(true);
-      expect(
-        predicate(operators.EXACTLY)({ value: 'family', other: ['family'] }),
-      ).toBe(true);
-      // Multi-element arrays are not "exactly" a single scalar.
-      expect(
-        predicate(operators.EXACTLY)({
-          value: ['family', 'work'],
-          other: 'family',
-        }),
-      ).toBe(false);
-      // Empty array is not exactly a scalar.
-      expect(predicate(operators.EXACTLY)({ value: [], other: 'family' })).toBe(
-        false,
-      );
-      // Array-vs-array still uses deep equality.
       expect(
         predicate(operators.EXACTLY)({
           value: ['family', 'work'],
           other: ['family', 'work'],
         }),
       ).toBe(true);
+      // Different selection sets are not exactly equal.
+      expect(
+        predicate(operators.EXACTLY)({
+          value: ['family', 'work'],
+          other: ['family'],
+        }),
+      ).toBe(false);
+      // An unanswered categorical (null) is never exactly a selection.
+      expect(
+        predicate(operators.EXACTLY)({ value: null, other: ['family'] }),
+      ).toBe(false);
     });
 
     it('NOT', () => {
@@ -133,21 +187,21 @@ describe('predicate', () => {
         true,
       );
 
-      // Mirrors EXACTLY's scalar/array bridge — see EXACTLY note.
+      // Mirrors EXACTLY — categorical is deep array equality.
       expect(
-        predicate(operators.NOT)({ value: ['family'], other: 'family' }),
-      ).toBe(false);
-      expect(
-        predicate(operators.NOT)({ value: 'family', other: ['family'] }),
+        predicate(operators.NOT)({ value: ['family'], other: ['family'] }),
       ).toBe(false);
       expect(
         predicate(operators.NOT)({
           value: ['family', 'work'],
-          other: 'family',
+          other: ['family'],
         }),
       ).toBe(true);
     });
 
+    // CONTAINS/DOES_NOT_CONTAIN treat the author value as a regular expression
+    // (the architect rule editor offers a regex value input), so a leading '^'
+    // anchors to the start of the value.
     it('CONTAINS', () => {
       expect(
         predicate(operators.CONTAINS)({ value: 'word', other: 'wo' }),
@@ -172,20 +226,50 @@ describe('predicate', () => {
       ).toBe(false);
     });
 
+    // An invalid regex pattern (e.g. an unbalanced paren) must not throw —
+    // getSkipMap evaluates every stage's skip-logic on every network change,
+    // so one bad rule would otherwise break navigation interview-wide. An
+    // invalid pattern is treated as "no match".
+    it('invalid regex pattern is treated as no-match instead of throwing', () => {
+      expect(() =>
+        predicate(operators.CONTAINS)({ value: 'word', other: '(' }),
+      ).not.toThrow();
+      expect(predicate(operators.CONTAINS)({ value: 'word', other: '(' })).toBe(
+        false,
+      );
+      expect(() =>
+        predicate(operators.DOES_NOT_CONTAIN)({ value: 'word', other: '(' }),
+      ).not.toThrow();
+      // No match -> the value does not contain the (invalid) pattern.
+      expect(
+        predicate(operators.DOES_NOT_CONTAIN)({ value: 'word', other: '(' }),
+      ).toBe(true);
+    });
+
     it('EXISTS', () => {
       expect(predicate(operators.EXISTS)({ value: null })).toBe(false);
       expect(predicate(operators.EXISTS)({ value: 1 })).toBe(true);
 
-      // Empty array and empty string both count as "exists" — only null is
-      // treated as absence. Skip-logic stage navigation depends on this.
+      // Empty array and empty string both count as "exists" — only absence
+      // (null / undefined) is treated as missing. Skip-logic stage navigation
+      // depends on this.
       expect(predicate(operators.EXISTS)({ value: [] })).toBe(true);
       expect(predicate(operators.EXISTS)({ value: '' })).toBe(true);
+
+      // An absent attribute (undefined — never seeded, e.g. ego variables and
+      // blank external-data cells) must be treated the same as null.
+      expect(predicate(operators.EXISTS)({ value: undefined })).toBe(false);
+      expect(predicate(operators.EXISTS)({})).toBe(false);
     });
 
     it('NOT_EXISTS', () => {
       expect(predicate(operators.NOT_EXISTS)({ value: 1 })).toBe(false);
       expect(predicate(operators.NOT_EXISTS)({ value: null })).toBe(true);
       expect(predicate(operators.NOT_EXISTS)({ value: [] })).toBe(false);
+
+      // Absent (undefined) is treated the same as null.
+      expect(predicate(operators.NOT_EXISTS)({ value: undefined })).toBe(true);
+      expect(predicate(operators.NOT_EXISTS)({})).toBe(true);
     });
 
     describe('INCLUDES', () => {
@@ -275,8 +359,8 @@ describe('predicate', () => {
       });
 
       it('Falsy scalar value', () => {
-        // CategoricalBin and OrdinalBin write scalar option values, so a
-        // stored `0` must still reach the equality check.
+        // OrdinalBin writes scalar option values, so a stored `0` must still
+        // reach the equality check.
         expect(predicate(operators.INCLUDES)({ value: 0, other: 0 })).toBe(
           true,
         );
@@ -411,12 +495,10 @@ describe('predicate', () => {
       ).toBe(true);
     });
 
-    it('OPTIONS_GREATER_THAN (scalar attribute)', () => {
+    it('OPTIONS_GREATER_THAN (unanswered)', () => {
+      // A categorical with no selection (null) counts as zero options.
       expect(
-        predicate(operators.OPTIONS_GREATER_THAN)({ value: 'blue', other: 0 }),
-      ).toBe(true);
-      expect(
-        predicate(operators.OPTIONS_GREATER_THAN)({ value: 'blue', other: 1 }),
+        predicate(operators.OPTIONS_GREATER_THAN)({ value: null, other: 0 }),
       ).toBe(false);
     });
 
@@ -433,12 +515,13 @@ describe('predicate', () => {
       ).toBe(false);
     });
 
-    it('OPTIONS_LESS_THAN (scalar attribute)', () => {
+    it('OPTIONS_LESS_THAN (unanswered)', () => {
+      // No selection (null) counts as zero options.
       expect(
-        predicate(operators.OPTIONS_LESS_THAN)({ value: 'blue', other: 2 }),
+        predicate(operators.OPTIONS_LESS_THAN)({ value: null, other: 2 }),
       ).toBe(true);
       expect(
-        predicate(operators.OPTIONS_LESS_THAN)({ value: 'blue', other: 1 }),
+        predicate(operators.OPTIONS_LESS_THAN)({ value: null, other: 0 }),
       ).toBe(false);
     });
 
@@ -455,16 +538,14 @@ describe('predicate', () => {
       ).toBe(false);
     });
 
-    it('OPTIONS_EQUALS (scalar attribute)', () => {
-      expect(
-        predicate(operators.OPTIONS_EQUALS)({ value: 'blue', other: 1 }),
-      ).toBe(true);
-      expect(
-        predicate(operators.OPTIONS_EQUALS)({ value: 'blue', other: 0 }),
-      ).toBe(false);
+    it('OPTIONS_EQUALS (unanswered)', () => {
+      // No selection (null) counts as zero options.
       expect(
         predicate(operators.OPTIONS_EQUALS)({ value: null, other: 0 }),
       ).toBe(true);
+      expect(
+        predicate(operators.OPTIONS_EQUALS)({ value: null, other: 1 }),
+      ).toBe(false);
     });
 
     it('OPTIONS_NOT_EQUALS', () => {
@@ -480,12 +561,13 @@ describe('predicate', () => {
       ).toBe(true);
     });
 
-    it('OPTIONS_NOT_EQUALS (scalar attribute)', () => {
+    it('OPTIONS_NOT_EQUALS (unanswered)', () => {
+      // No selection (null) counts as zero options.
       expect(
-        predicate(operators.OPTIONS_NOT_EQUALS)({ value: 'blue', other: 0 }),
+        predicate(operators.OPTIONS_NOT_EQUALS)({ value: null, other: 1 }),
       ).toBe(true);
       expect(
-        predicate(operators.OPTIONS_NOT_EQUALS)({ value: 'blue', other: 1 }),
+        predicate(operators.OPTIONS_NOT_EQUALS)({ value: null, other: 0 }),
       ).toBe(false);
     });
   });
@@ -549,6 +631,66 @@ describe('predicate', () => {
           other: 2,
         }),
       ).toBe(false);
+    });
+
+    // COUNT_* numeric operators share compareNumeric with their non-count
+    // counterparts, so they inherit the same guards: a nil count never matches
+    // (not coerced to 0), datetime ISO strings compare chronologically, and
+    // unparseable values never match.
+    describe('COUNT_* numeric operators with non-numeric values', () => {
+      it('null / undefined value is never matched', () => {
+        expect(
+          predicate(countOperators.COUNT_LESS_THAN)({ value: null, other: 5 }),
+        ).toBe(false);
+        expect(
+          predicate(countOperators.COUNT_GREATER_THAN)({
+            value: undefined,
+            other: 5,
+          }),
+        ).toBe(false);
+        expect(
+          predicate(countOperators.COUNT_GREATER_THAN_OR_EQUAL)({
+            value: null,
+            other: 0,
+          }),
+        ).toBe(false);
+        expect(
+          predicate(countOperators.COUNT_LESS_THAN_OR_EQUAL)({
+            value: null,
+            other: 0,
+          }),
+        ).toBe(false);
+      });
+
+      it('datetime ISO strings compare chronologically', () => {
+        expect(
+          predicate(countOperators.COUNT_GREATER_THAN)({
+            value: '2020-06-01',
+            other: '2020-01-01',
+          }),
+        ).toBe(true);
+        expect(
+          predicate(countOperators.COUNT_LESS_THAN)({
+            value: '2020-01-01',
+            other: '2020-06-01',
+          }),
+        ).toBe(true);
+      });
+
+      it('unparseable value never matches', () => {
+        expect(
+          predicate(countOperators.COUNT_LESS_THAN)({
+            value: 'not a date',
+            other: 5,
+          }),
+        ).toBe(false);
+        expect(
+          predicate(countOperators.COUNT_GREATER_THAN)({
+            value: 'not a date',
+            other: 5,
+          }),
+        ).toBe(false);
+      });
     });
 
     it('COUNT', () => {

@@ -206,7 +206,6 @@
         {
           "id": "researcher-notes",
           "type": "text",
-          "size": "LARGE",
           "content": "## For researchers\n\n_Delete this screen before you field the study._\n\n**Caveat:** behaviours shared among contacts reflect both social influence **and** homophily (selecting similar friends); this design cannot by itself separate the two.\n\nThe instruments and studies this template draws on:\n\n- [Christakis NA, Fowler JH (2007). The Spread of Obesity in a Large Social Network over 32 Years. *NEJM*.](https://www.albany.edu/~ravi/pdfs/christakis_fowler_2007.pdf)\n- [Christakis NA, Fowler JH (2008). The Collective Dynamics of Smoking in a Large Social Network. *NEJM*.](https://www.nejm.org/doi/full/10.1056/NEJMsa0706154)\n- [International Physical Activity Questionnaire (IPAQ) — PhenX Toolkit protocol.](https://www.phenxtoolkit.org/protocols/view/661901)\n- [Separating influence from homophily in network dynamics (SIENA / stochastic actor-based models).](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3469361/)"
         }
       ]
@@ -220,7 +219,6 @@
         {
           "id": "intro-welcome",
           "type": "text",
-          "size": "LARGE",
           "content": "## Welcome\n\nThank you for taking part. In this interview we will talk about some of your everyday **health behaviours** and the **people you spend time with**. There are no right or wrong answers — we are interested in your own experience."
         }
       ]
@@ -234,7 +232,6 @@
         "text": "First, a few questions about **your own** everyday behaviours. There are no right or wrong answers. Your responses give us a reference point for understanding the people you will tell us about later."
       },
       "form": {
-        "title": "Your behaviours",
         "fields": [
           {
             "variable": "activity_minutes_week",
@@ -270,7 +267,6 @@
         "type": "person"
       },
       "form": {
-        "title": "Add a person",
         "fields": [
           {
             "variable": "alter_name",
@@ -317,7 +313,6 @@
         "text": "Now we will ask about **each person's own** behaviours, as far as you know them. If you are unsure, give your best impression or choose \"Don't know\"."
       },
       "form": {
-        "title": "Their behaviours",
         "fields": [
           {
             "variable": "shared_domains",

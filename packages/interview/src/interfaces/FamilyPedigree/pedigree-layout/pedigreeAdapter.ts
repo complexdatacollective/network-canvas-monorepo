@@ -1,6 +1,7 @@
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import type { VariableConfig } from '../store';
+import { getEdgeRelationshipType } from '../utils/edgeUtils';
 import { computeConnectors } from './connectors';
 import {
   computeLayoutMetrics,
@@ -8,7 +9,6 @@ import {
 } from './layoutDimensions';
 import type {
   ParentConnection,
-  ParentEdgeType,
   PartnerConnection,
   PedigreeConnectors,
   PedigreeInput,
@@ -30,7 +30,7 @@ type ConversionResult = {
 function readEdge(edge: NcEdge, config: VariableConfig) {
   return {
     relationshipType:
-      (edge.attributes[config.relationshipTypeVariable] as string) ??
+      getEdgeRelationshipType(edge, config.relationshipTypeVariable) ??
       'biological',
     isActive: edge.attributes[config.isActiveVariable] !== false,
     isGestationalCarrier:
@@ -82,7 +82,7 @@ export function storeToPedigreeInput(
 
       parents[childIdx]!.push({
         parentIndex: parentIdx,
-        edgeType: relationshipType as ParentEdgeType,
+        edgeType: relationshipType,
         isGestationalCarrier,
       });
     }

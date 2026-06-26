@@ -1,6 +1,13 @@
+import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
+import sessionReducer, { createInitialNetwork } from '~/store/modules/session';
 import type { useAppDispatch } from '~/store/store';
 
 import { createFamilyPedigreeStore, type VariableConfig } from '../store';
@@ -10,6 +17,7 @@ const testConfig: VariableConfig = {
   edgeType: 'family',
   nodeLabelVariable: 'label',
   egoVariable: 'isEgo',
+  relationshipVariable: 'relationship',
   relationshipTypeVariable: 'relationshipType',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGestationalCarrier',
@@ -64,7 +72,7 @@ describe('store creation', () => {
           from: 'n2',
           to: 'n1',
           attributes: {
-            [testConfig.relationshipTypeVariable]: 'biological',
+            [testConfig.relationshipTypeVariable]: ['biological'],
             [testConfig.isActiveVariable]: true,
           },
         },
@@ -203,7 +211,7 @@ describe('removeNode', () => {
       from: parentId,
       to: childId,
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'biological',
+        [testConfig.relationshipTypeVariable]: ['biological'],
         [testConfig.isActiveVariable]: true,
       },
     });
@@ -211,7 +219,7 @@ describe('removeNode', () => {
       from: unrelatedId,
       to: parentId,
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'partner',
+        [testConfig.relationshipTypeVariable]: ['partner'],
         [testConfig.isActiveVariable]: true,
       },
     });
@@ -239,16 +247,16 @@ describe('addEdge', () => {
       from: 'n1',
       to: 'n2',
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'biological',
+        [testConfig.relationshipTypeVariable]: ['biological'],
         [testConfig.isActiveVariable]: true,
       },
     });
 
     const edge = store.getState().network.edges.get(id);
     expect(edge).toBeDefined();
-    expect(edge?.attributes[testConfig.relationshipTypeVariable]).toBe(
+    expect(edge?.attributes[testConfig.relationshipTypeVariable]).toEqual([
       'biological',
-    );
+    ]);
   });
 
   it('creates a partner edge with current flag', () => {
@@ -262,16 +270,16 @@ describe('addEdge', () => {
       from: 'n1',
       to: 'n2',
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'partner',
+        [testConfig.relationshipTypeVariable]: ['partner'],
         [testConfig.isActiveVariable]: true,
       },
     });
 
     const edge = store.getState().network.edges.get(id);
     expect(edge).toBeDefined();
-    expect(edge?.attributes[testConfig.relationshipTypeVariable]).toBe(
+    expect(edge?.attributes[testConfig.relationshipTypeVariable]).toEqual([
       'partner',
-    );
+    ]);
     expect(edge?.attributes[testConfig.isActiveVariable]).toBe(true);
   });
 
@@ -287,7 +295,7 @@ describe('addEdge', () => {
       from: 'n1',
       to: 'n2',
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'donor',
+        [testConfig.relationshipTypeVariable]: ['donor'],
         [testConfig.isActiveVariable]: true,
       },
     });
@@ -312,7 +320,7 @@ describe('duplicate edge guard', () => {
       from,
       to,
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'biological',
+        [testConfig.relationshipTypeVariable]: ['biological'],
         [testConfig.isActiveVariable]: true,
       },
     };
@@ -350,7 +358,7 @@ describe('duplicate edge guard', () => {
             target: 'child',
             data: {
               attributes: {
-                [testConfig.relationshipTypeVariable]: 'biological',
+                [testConfig.relationshipTypeVariable]: ['biological'],
                 [testConfig.isActiveVariable]: true,
               },
             },
@@ -373,7 +381,7 @@ describe('removeEdge', () => {
       from: 'n1',
       to: 'n2',
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'partner',
+        [testConfig.relationshipTypeVariable]: ['partner'],
         [testConfig.isActiveVariable]: false,
       },
     });
@@ -408,7 +416,7 @@ describe('clearNetwork', () => {
       from: 'x',
       to: 'y',
       attributes: {
-        [testConfig.relationshipTypeVariable]: 'partner',
+        [testConfig.relationshipTypeVariable]: ['partner'],
         [testConfig.isActiveVariable]: true,
       },
     });
@@ -460,5 +468,184 @@ describe('syncMetadata', () => {
     });
     store.getState().syncMetadata();
     expect(dispatched.length).toBe(1);
+  });
+});
+
+describe('finalizeNetwork', () => {
+  const STAGE_ID = 'pedigree-stage';
+
+  function createReduxStore(preloadedNodes: NcNode[]) {
+    const protocolState = {
+      codebook: {
+        node: { [testConfig.nodeType]: { name: 'Person' } },
+        edge: {
+          [testConfig.edgeType]: {
+            name: 'Family',
+            variables: {
+              [testConfig.relationshipTypeVariable]: { name: 'relationship' },
+              [testConfig.isActiveVariable]: { name: 'isActive' },
+            },
+          },
+        },
+      },
+      stages: [{ id: STAGE_ID, type: 'FamilyPedigree' }],
+    };
+    const sessionState = {
+      id: 'test-session',
+      startTime: new Date().toISOString(),
+      finishTime: null,
+      exportTime: null,
+      lastUpdated: new Date().toISOString(),
+      network: { ...createInitialNetwork(), nodes: preloadedNodes },
+      currentStep: 0,
+      promptIndex: 0,
+    };
+
+    type ProtocolState = typeof protocolState;
+    type UIState = { passphrase: null };
+
+    const reduxStore = configureStore({
+      reducer: {
+        session: sessionReducer,
+        protocol: (state: ProtocolState = protocolState): ProtocolState =>
+          state,
+        ui: (state: UIState = { passphrase: null }): UIState => state,
+      },
+      preloadedState: {
+        session: sessionState,
+        protocol: protocolState,
+        ui: { passphrase: null },
+      },
+    });
+
+    // The thunk-capable dispatch of this test store is structurally compatible
+    // with the app dispatch finalizeNetwork expects; bridge the nominal type at
+    // this single boundary, matching the syncMetadata test above.
+    const dispatch = ((action: Parameters<typeof reduxStore.dispatch>[0]) =>
+      reduxStore.dispatch(action)) as ReturnType<typeof useAppDispatch>;
+
+    return { reduxStore, dispatch };
+  }
+
+  it('injects the computed relationship-to-ego into node attributes on finalize', async () => {
+    const { reduxStore, dispatch } = createReduxStore([]);
+
+    const store = createFamilyPedigreeStore(
+      new Map(),
+      new Map(),
+      new Map(),
+      testConfig,
+      dispatch,
+      0,
+    );
+
+    const egoId = store.getState().addNode({
+      attributes: {
+        [testConfig.egoVariable]: true,
+        [testConfig.nodeLabelVariable]: 'Ego',
+      },
+    });
+    const parentId = store.getState().addNode({
+      attributes: {
+        [testConfig.egoVariable]: false,
+        [testConfig.nodeLabelVariable]: 'Mum',
+      },
+    });
+    store.getState().addEdge({
+      from: parentId,
+      to: egoId,
+      attributes: {
+        [testConfig.relationshipTypeVariable]: ['biological'],
+        [testConfig.isActiveVariable]: true,
+      },
+    });
+
+    await store.getState().finalizeNetwork();
+
+    const committed = reduxStore.getState().session.network.nodes;
+    expect(committed).toHaveLength(2);
+
+    const committedParent = committed.find(
+      (n) =>
+        n[entityAttributesProperty][testConfig.nodeLabelVariable] === 'Mum',
+    );
+    expect(
+      committedParent?.[entityAttributesProperty][
+        testConfig.relationshipVariable
+      ],
+    ).toBe('Parent');
+
+    const committedEgo = committed.find(
+      (n) => n[entityAttributesProperty][testConfig.egoVariable] === true,
+    );
+    // Ego has no relationship to itself, so the variable is not written.
+    expect(
+      committedEgo?.[entityAttributesProperty][testConfig.relationshipVariable],
+    ).toBeUndefined();
+  });
+
+  it('does not duplicate pre-existing same-type nodes already in Redux', async () => {
+    const preexistingId = 'preexisting-node';
+    const preexistingNode: NcNode = {
+      [entityPrimaryKeyProperty]: preexistingId,
+      type: testConfig.nodeType,
+      [entityAttributesProperty]: {
+        [testConfig.egoVariable]: true,
+        [testConfig.nodeLabelVariable]: 'Existing Ego',
+      },
+    };
+
+    const { reduxStore, dispatch } = createReduxStore([preexistingNode]);
+
+    // Seed the pre-existing node into the pedigree store, keyed by its Redux id,
+    // and a brand-new pedigree node.
+    const initialNodes = new Map<string, NcNode>([
+      [preexistingId, preexistingNode],
+    ]);
+
+    const store = createFamilyPedigreeStore(
+      initialNodes,
+      new Map(),
+      new Map([[preexistingId, { readOnly: true }]]),
+      testConfig,
+      dispatch,
+      0,
+      new Set([preexistingId]),
+      new Set(),
+    );
+
+    const newChildId = store.getState().addNode({
+      attributes: {
+        [testConfig.egoVariable]: false,
+        [testConfig.nodeLabelVariable]: 'New Child',
+      },
+    });
+    store.getState().addEdge({
+      from: preexistingId,
+      to: newChildId,
+      attributes: {
+        [testConfig.relationshipTypeVariable]: ['biological'],
+        [testConfig.isActiveVariable]: true,
+      },
+    });
+
+    await store.getState().finalizeNetwork();
+
+    const committed = reduxStore.getState().session.network.nodes;
+    // Only the new child is committed; the pre-existing ego is not re-added.
+    expect(committed).toHaveLength(2);
+    expect(
+      committed.filter(
+        (n) =>
+          n[entityAttributesProperty][testConfig.nodeLabelVariable] ===
+          'Existing Ego',
+      ),
+    ).toHaveLength(1);
+
+    // The new child's parent edge resolves to the pre-existing node, so the
+    // edge is committed connecting the existing and new nodes.
+    const committedEdges = reduxStore.getState().session.network.edges;
+    expect(committedEdges).toHaveLength(1);
+    expect(committedEdges[0]?.from).toBe(preexistingId);
   });
 });

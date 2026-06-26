@@ -1,4 +1,4 @@
-import type { VariableValue } from '@codaco/shared-consts';
+import type { RelationshipType, VariableValue } from '@codaco/shared-consts';
 import type {
   CommitBatch,
   GameteRole,
@@ -8,7 +8,10 @@ import type {
 import { extractCustomAttributes } from './personAttributes';
 
 type RoleKey = 'egg-source' | 'sperm-source' | 'carrier-source';
-type ChildRelationshipType = 'biological' | 'donor' | 'surrogate';
+type ChildRelationshipType = Extract<
+  RelationshipType,
+  'biological' | 'donor' | 'surrogate'
+>;
 
 const NEW_PERSON_NAMESPACE: Record<RoleKey, string> = {
   'egg-source': 'new-egg-source',
@@ -134,7 +137,7 @@ export function buildChildParentage(
       data: { attributes: entry.attributes },
     });
     const edgeAttributes: Record<string, VariableValue> = {
-      [variableConfig.relationshipTypeVariable]: entry.relationshipType,
+      [variableConfig.relationshipTypeVariable]: [entry.relationshipType],
       [variableConfig.isActiveVariable]: true,
     };
     if (entry.isGestationalCarrier) {
@@ -151,7 +154,7 @@ export function buildChildParentage(
 
   for (const entry of existingParentEdges) {
     const edgeAttributes: Record<string, VariableValue> = {
-      [variableConfig.relationshipTypeVariable]: entry.relationshipType,
+      [variableConfig.relationshipTypeVariable]: [entry.relationshipType],
       [variableConfig.isActiveVariable]: true,
     };
     if (entry.isGestationalCarrier) {

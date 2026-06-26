@@ -1,4 +1,9 @@
-import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
+import type {
+  NcEdge,
+  NcNode,
+  RelationshipType,
+  VariableValue,
+} from '@codaco/shared-consts';
 import type {
   CommitBatch,
   VariableConfig,
@@ -98,7 +103,10 @@ export function siblingCellTransform(
     if (seenEdges.has(edgeKey)) continue;
     seenEdges.add(edgeKey);
 
-    let relationshipType: 'biological' | 'donor' | 'surrogate';
+    let relationshipType: Extract<
+      RelationshipType,
+      'biological' | 'donor' | 'surrogate'
+    >;
     const isCarrier = parent.roleKey === 'carrier-source';
 
     if (isCarrier) {
@@ -116,7 +124,7 @@ export function siblingCellTransform(
     const shouldMarkGC = isCarrier || parent.tempId === carrierTempId;
 
     const edgeAttributes: Record<string, VariableValue> = {
-      [variableConfig.relationshipTypeVariable]: relationshipType,
+      [variableConfig.relationshipTypeVariable]: [relationshipType],
       [variableConfig.isActiveVariable]: true,
     };
     if (shouldMarkGC) {
@@ -155,7 +163,7 @@ export function siblingCellTransform(
       target: targetId,
       data: {
         attributes: {
-          [variableConfig.relationshipTypeVariable]: 'partner',
+          [variableConfig.relationshipTypeVariable]: ['partner'],
           [variableConfig.isActiveVariable]: val === 'current',
         },
       },
@@ -189,7 +197,7 @@ export function siblingCellTransform(
         target: 'sibling',
         data: {
           attributes: {
-            [variableConfig.relationshipTypeVariable]: 'social',
+            [variableConfig.relationshipTypeVariable]: ['social'],
             [variableConfig.isActiveVariable]: true,
           },
         },

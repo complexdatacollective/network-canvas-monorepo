@@ -1,13 +1,8 @@
-export type ParentEdgeType =
-  | 'biological'
-  | 'social'
-  | 'donor'
-  | 'surrogate'
-  | 'adoptive';
+import type { RelationshipType } from '@codaco/shared-consts';
 
 export type ParentConnection = {
   parentIndex: number;
-  edgeType: ParentEdgeType;
+  edgeType: RelationshipType;
   isGestationalCarrier?: boolean;
 };
 
@@ -89,7 +84,7 @@ export type ParentGroupConnector = {
 
 export type ParentChildConnector = {
   type: 'parent-child';
-  edgeType: ParentEdgeType;
+  edgeType: RelationshipType;
   uplines: LineSegment[];
   siblingBar: LineSegment;
   parentLink: LineSegment[];
@@ -97,13 +92,8 @@ export type ParentChildConnector = {
 
 export type AuxiliaryConnector = {
   type: 'auxiliary';
-  edgeType:
-    | 'donor'
-    | 'surrogate'
-    | 'unpartnered-parent'
-    | 'social'
-    | 'adoptive'
-    | 'biological';
+  // Relationship types plus a layout-only kind for parents with no partner.
+  edgeType: RelationshipType | 'unpartnered-parent';
   segment: LineSegment;
 };
 

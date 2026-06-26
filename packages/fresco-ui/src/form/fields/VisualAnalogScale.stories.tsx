@@ -34,10 +34,10 @@ const meta = {
     'onChange': { action: 'onChange' },
   },
   args: {
-    value: 50,
+    value: 0.5,
     min: 0,
-    max: 100,
-    step: 0.1,
+    max: 1,
+    step: 0.001,
     disabled: false,
     readOnly: false,
   },
@@ -78,7 +78,7 @@ function ControlledVAS({
 
 export const Default: Story = {
   args: {
-    value: 50,
+    value: 0.5,
     minLabel: 'Minimum',
     maxLabel: 'Maximum',
   },
@@ -96,7 +96,7 @@ export const AtMinimum: Story = {
 
 export const AtMaximum: Story = {
   args: {
-    value: 100,
+    value: 1,
     minLabel: 'Not at all',
     maxLabel: 'Extremely',
   },
@@ -105,7 +105,7 @@ export const AtMaximum: Story = {
 
 export const Disabled: Story = {
   args: {
-    value: 50,
+    value: 0.5,
     minLabel: 'Low',
     maxLabel: 'High',
     disabled: true,
@@ -114,7 +114,7 @@ export const Disabled: Story = {
 
 export const ReadOnly: Story = {
   args: {
-    value: 75,
+    value: 0.75,
     minLabel: 'Low',
     maxLabel: 'High',
     readOnly: true,
@@ -123,7 +123,7 @@ export const ReadOnly: Story = {
 
 export const Invalid: Story = {
   args: {
-    'value': 50,
+    'value': 0.5,
     'minLabel': 'Low',
     'maxLabel': 'High',
     'aria-invalid': true,
@@ -133,7 +133,7 @@ export const Invalid: Story = {
 
 export const NoLabels: Story = {
   args: {
-    value: 50,
+    value: 0.5,
   },
   render: (args) => <ControlledVAS {...args} initialValue={args.value} />,
 };
@@ -152,10 +152,10 @@ export const CustomRange: Story = {
 
 export const FineGrained: Story = {
   args: {
-    value: 50,
+    value: 0.5,
     min: 0,
-    max: 100,
-    step: 0.01,
+    max: 1,
+    step: 0.0001,
     minLabel: 'None',
     maxLabel: 'Complete',
   },
@@ -164,7 +164,7 @@ export const FineGrained: Story = {
 
 export const MarkdownLabels: Story = {
   args: {
-    value: 50,
+    value: 0.5,
     minLabel: '**Not at all** _(lowest)_',
     maxLabel: '**Extremely** _(highest)_',
   },
@@ -219,7 +219,7 @@ export const Unset: Story = {
     await withPointerCaptureStubbed(async () => {
       await userEvent.click(thumb);
     });
-    await expect(valueDisplay).toHaveTextContent('50');
+    await expect(valueDisplay).toHaveTextContent('0.5');
   },
 };
 
@@ -242,7 +242,7 @@ export const UnsetKeyboardEnter: Story = {
     await userEvent.tab();
     await expect(thumb).toHaveFocus();
     await userEvent.keyboard('{Enter}');
-    await expect(valueDisplay).toHaveTextContent('50');
+    await expect(valueDisplay).toHaveTextContent('0.5');
   },
 };
 
@@ -265,7 +265,7 @@ export const UnsetKeyboardSpace: Story = {
     await userEvent.tab();
     await expect(thumb).toHaveFocus();
     await userEvent.keyboard(' ');
-    await expect(valueDisplay).toHaveTextContent('50');
+    await expect(valueDisplay).toHaveTextContent('0.5');
   },
 };
 
@@ -314,7 +314,7 @@ export const AllStates: Story = {
         >
           Normal
         </Paragraph>
-        <VisualAnalogScaleField value={50} minLabel="Low" maxLabel="High" />
+        <VisualAnalogScaleField value={0.5} minLabel="Low" maxLabel="High" />
       </div>
       <div>
         <Paragraph
@@ -324,7 +324,7 @@ export const AllStates: Story = {
           Disabled
         </Paragraph>
         <VisualAnalogScaleField
-          value={50}
+          value={0.5}
           minLabel="Low"
           maxLabel="High"
           disabled
@@ -338,7 +338,7 @@ export const AllStates: Story = {
           Read Only
         </Paragraph>
         <VisualAnalogScaleField
-          value={75}
+          value={0.75}
           minLabel="Low"
           maxLabel="High"
           readOnly
@@ -352,7 +352,7 @@ export const AllStates: Story = {
           Invalid
         </Paragraph>
         <VisualAnalogScaleField
-          value={50}
+          value={0.5}
           minLabel="Low"
           maxLabel="High"
           aria-invalid={true}

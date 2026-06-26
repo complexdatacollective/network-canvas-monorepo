@@ -64,6 +64,7 @@ export const tieStrengthCensusPromptSchema = promptSchema.extend({
   }).generateMock(() => asEntityAttributeReference(getNodeVariableId())),
   negativeLabel: z
     .string()
+    .min(1)
     .generateMock(() =>
       faker.helpers.arrayElement([
         'not_knows',
@@ -83,24 +84,36 @@ export const ordinalBinPromptSchema = promptSchema.extend({
   color: z.string().optional(),
 });
 
-export const categoricalBinPromptSchema = promptSchema.extend({
-  variable: entityAttributeReference({ subject: 'stageSubject' }).generateMock(
-    () => asEntityAttributeReference(getNodeVariableId()),
-  ),
-  // TODO: This should be structured this way:
-  // otherOption: z.strictObject({
-  // 	binLabel: z.string(),
-  // 	variable: z.string(),
-  // 	prompt: z.string(),
-  // }).optional(),
-  otherVariable: entityAttributeReference({ subject: 'stageSubject' })
-    .generateMock(() => asEntityAttributeReference(getNodeVariableId()))
-    .optional(),
-  otherVariablePrompt: z.string().optional(),
-  otherOptionLabel: z.string().optional(),
-  bucketSortOrder: SortOrderSchema.optional(),
-  binSortOrder: SortOrderSchema.optional(),
-});
+export const categoricalBinPromptSchema = promptSchema
+  .extend({
+    variable: entityAttributeReference({ subject: 'stageSubject' }).generateMock(
+      () => asEntityAttributeReference(getNodeVariableId()),
+    ),
+    // TODO: This should be structured this way:
+    // otherOption: z.strictObject({
+    // 	binLabel: z.string(),
+    // 	variable: z.string(),
+    // 	prompt: z.string(),
+    // }).optional(),
+    otherVariable: entityAttributeReference({ subject: 'stageSubject' })
+      .generateMock(() => asEntityAttributeReference(getNodeVariableId()))
+      .optional(),
+    otherVariablePrompt: z.string().optional(),
+    otherOptionLabel: z.string().optional(),
+    bucketSortOrder: SortOrderSchema.optional(),
+    binSortOrder: SortOrderSchema.optional(),
+  })
+  .superRefine((prompt, ctx) => {
+    // The 'other' follow-up dialog renders otherVariablePrompt as its label;
+    // without it the dialog shows an empty, asterisk-only label.
+    if (prompt.otherVariable && !prompt.otherVariablePrompt) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'otherVariablePrompt is required when otherVariable is set.',
+        path: ['otherVariablePrompt'],
+      });
+    }
+  });
 
 export const oneToManyDyadCensusPromptSchema = promptSchema.extend({
   createEdge: z.string().generateMock(() => getEdgeTypeId()),

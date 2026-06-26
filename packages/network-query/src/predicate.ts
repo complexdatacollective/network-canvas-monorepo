@@ -1,4 +1,4 @@
-import { isEqual, isNil, isNull } from 'es-toolkit';
+import { isEqual, isNil } from 'es-toolkit';
 
 export const operators = {
   EXACTLY: 'EXACTLY',
@@ -40,29 +40,54 @@ type PredicateInput = {
   other: unknown;
 };
 
-// Bridges scalar/array storage of categorical attribute values for EXACTLY/NOT
-// rules. Categorical attributes assigned via CategoricalBin are stored as
-// scalars; via CheckboxGroup as arrays. A length-1 array is treated as
-// equivalent to its single element so author-facing "is exactly X" rules in
-// Architect work consistently regardless of which interface assigned the value.
-const categoricalEqual = (a: unknown, b: unknown): boolean => {
-  if (Array.isArray(a) && !Array.isArray(b)) {
-    return a.length === 1 && a[0] === b;
+// Resolves a value to a comparable number for the numeric operators. Plain
+// numbers and numeric strings are used as-is; datetime attribute values (ISO
+// strings) are compared chronologically via their timestamp. Returns NaN for
+// anything that is neither, so the caller can reject the comparison rather than
+// silently coercing (e.g. a datetime string to NaN, which always compares
+// false). Nil is handled by the caller before this is reached.
+const toComparableNumber = (input: unknown): number => {
+  if (typeof input === 'number') return input;
+  if (typeof input === 'string' && input.trim() !== '') {
+    const asNumber = Number(input);
+    if (!Number.isNaN(asNumber)) return asNumber;
+    return Date.parse(input);
   }
-  if (!Array.isArray(a) && Array.isArray(b)) {
-    return b.length === 1 && b[0] === a;
-  }
-  return isEqual(a, b);
+  return NaN;
 };
 
-// Treat scalar attribute values as a one-element sequence so OPTIONS_* counts
-// work for categorical variables assigned via the CategoricalBin interface
-// (which writes scalars). Array attributes (CheckboxGroup-assigned) keep their
-// existing length semantics. Null / undefined count as zero.
-const optionsLength = (value: unknown): number => {
-  if (Array.isArray(value)) return value.length;
-  if (value === null || value === undefined) return 0;
-  return 1;
+// Numeric/datetime comparison guarded against bad input. A nil value (an
+// unanswered / absent attribute) never matches — it must NOT be coerced to 0,
+// or LESS_THAN would wrongly include unanswered nodes. If either operand cannot
+// be resolved to a number or date, the comparison is rejected (false).
+const compareNumeric = (
+  value: unknown,
+  other: unknown,
+  comparator: (a: number, b: number) => boolean,
+): boolean => {
+  if (isNil(value)) return false;
+  const a = toComparableNumber(value);
+  const b = toComparableNumber(other);
+  if (Number.isNaN(a) || Number.isNaN(b)) return false;
+  return comparator(a, b);
+};
+
+// Number of selected options for a categorical attribute. Categorical values
+// are stored as arrays of selected option values; an unanswered attribute
+// (null / undefined / non-array) counts as zero.
+const optionsLength = (value: unknown): number =>
+  Array.isArray(value) ? value.length : 0;
+
+// Builds a RegExp from a (possibly author-supplied) pattern, returning null
+// when the pattern is invalid rather than throwing. getSkipMap evaluates every
+// stage's skip-logic on every network change, so one bad pattern must not break
+// navigation interview-wide.
+const safeRegExp = (pattern: unknown): RegExp | null => {
+  try {
+    return new RegExp(String(pattern));
+  } catch {
+    return null;
+  }
 };
 
 /**
@@ -82,31 +107,35 @@ const predicate =
     switch (operator) {
       case operators.GREATER_THAN:
       case countOperators.COUNT_GREATER_THAN:
-        return (value as number) > (variableValue as number);
+        return compareNumeric(value, variableValue, (a, b) => a > b);
       case operators.LESS_THAN:
       case countOperators.COUNT_LESS_THAN:
-        return (value as number) < (variableValue as number);
+        return compareNumeric(value, variableValue, (a, b) => a < b);
       case operators.GREATER_THAN_OR_EQUAL:
       case countOperators.COUNT_GREATER_THAN_OR_EQUAL:
-        return (value as number) >= (variableValue as number);
+        return compareNumeric(value, variableValue, (a, b) => a >= b);
       case operators.LESS_THAN_OR_EQUAL:
       case countOperators.COUNT_LESS_THAN_OR_EQUAL:
-        return (value as number) <= (variableValue as number);
+        return compareNumeric(value, variableValue, (a, b) => a <= b);
       case operators.EXACTLY:
-        return categoricalEqual(value, variableValue);
+        return isEqual(value, variableValue);
       case countOperators.COUNT:
         return isEqual(value, variableValue);
       case operators.NOT:
-        return !categoricalEqual(value, variableValue);
+        return !isEqual(value, variableValue);
       case countOperators.COUNT_NOT:
         return !isEqual(value, variableValue);
+      // CONTAINS/DOES_NOT_CONTAIN treat the author value as a regular
+      // expression (the architect rule editor offers a regex value input for
+      // these operators). An invalid pattern is treated as no-match rather than
+      // throwing, so a single malformed rule cannot break navigation.
       case operators.CONTAINS: {
-        const regexp = new RegExp(variableValue as string);
-        return regexp.test(value as string);
+        const regexp = safeRegExp(variableValue);
+        return regexp ? regexp.test(String(value)) : false;
       }
       case operators.DOES_NOT_CONTAIN: {
-        const regexp = new RegExp(variableValue as string);
-        return !regexp.test(value as string);
+        const regexp = safeRegExp(variableValue);
+        return regexp ? !regexp.test(String(value)) : true;
       }
       /**
        * WARNING: INCLUDES/EXCLUDES are complicated!
@@ -160,9 +189,12 @@ const predicate =
         return value !== variableValue;
       }
       case operators.EXISTS:
-        return !isNull(value);
+        // isNil, not isNull: an absent attribute (undefined — ego variables
+        // and blank external-data cells are never seeded) must be treated the
+        // same as a seeded null so absence is consistent across entities.
+        return !isNil(value);
       case operators.NOT_EXISTS:
-        return isNull(value);
+        return isNil(value);
       case countOperators.COUNT_ANY:
         return (value as number) > 0;
       case countOperators.COUNT_NONE:

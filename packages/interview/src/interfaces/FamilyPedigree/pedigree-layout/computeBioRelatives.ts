@@ -1,6 +1,7 @@
 import type { NcEdge } from '@codaco/shared-consts';
 
 import type { VariableConfig } from '../store';
+import { getEdgeRelationshipType } from '../utils/edgeUtils';
 
 /**
  * Compute which nodes are biological relatives of ego.
@@ -33,9 +34,10 @@ export function computeBioRelatives(
   };
 
   for (const edge of edges.values()) {
-    const relType = edge.attributes[variableConfig.relationshipTypeVariable] as
-      | string
-      | undefined;
+    const relType = getEdgeRelationshipType(
+      edge,
+      variableConfig.relationshipTypeVariable,
+    );
     if (relType === 'partner') continue;
     const isGenetic = relType === 'biological' || relType === 'donor';
     if (!isGenetic) continue;

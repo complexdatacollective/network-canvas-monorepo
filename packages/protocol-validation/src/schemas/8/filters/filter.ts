@@ -155,6 +155,7 @@ const singleFilterRuleSchema = z.strictObject({
   join: z.enum(['OR', 'AND']).optional(),
   rules: z
     .array(filterRuleSchema)
+    .min(1)
     .max(1)
     .generateMock(() => [filterRuleSchema.generateMock()]),
 });
@@ -163,6 +164,7 @@ const multipleFilterRuleSchema = z.strictObject({
   join: z.enum(['OR', 'AND']).generateMock(() => 'AND' as const),
   rules: z
     .array(filterRuleSchema)
+    .min(1)
     .generateMock(() => [
       filterRuleSchema.generateMock(),
       filterRuleSchema.generateMock(),

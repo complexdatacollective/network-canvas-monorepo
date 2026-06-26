@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo } from 'react';
+import { type ReactNode, useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -21,7 +21,11 @@ import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import VisualAnalogScaleField from '@codaco/fresco-ui/form/fields/VisualAnalogScale';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import { addDays, todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
-import type { ComponentType, FormField } from '@codaco/protocol-validation';
+import type {
+  ComponentType,
+  FormField,
+  StageSubject,
+} from '@codaco/protocol-validation';
 
 import { useStageSelector } from '../hooks/useStageSelector';
 import {
@@ -31,6 +35,7 @@ import {
   selectFieldMetadataWithSubject,
 } from '../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../selectors/protocol';
+import { coerceFormValues } from './coerceFormValues';
 
 const fieldTypeMap: Record<ComponentType, ValidFieldComponent> = {
   Text: InputField,
@@ -46,6 +51,18 @@ const fieldTypeMap: Record<ComponentType, ValidFieldComponent> = {
   DatePicker: DatePickerField,
   RelativeDatePicker: RelativeDatePickerField,
 };
+
+/**
+ * Narrow a loosely-typed form Subject into a valid StageSubject for the
+ * validation context. Returns null when the subject is absent or a node/edge
+ * subject lacks a type (which can't identify a codebook entity).
+ */
+function subjectToStageSubject(subject?: Subject): StageSubject | null {
+  if (!subject) return null;
+  if (subject.entity === 'ego') return { entity: 'ego' };
+  if (subject.type === undefined) return null;
+  return { entity: subject.entity, type: subject.type };
+}
 
 /**
  * Hook to automatically convert protocol form definitions into the new form
@@ -81,9 +98,21 @@ export default function useProtocolForm({
 
   const validationContext = useMemo<ValidationContext | null>(() => {
     if (!baseValidationContext) return null;
-    if (currentEntityId === undefined) return baseValidationContext;
-    return { ...baseValidationContext, currentEntityId };
-  }, [baseValidationContext, currentEntityId]);
+
+    // Stages without a top-level subject (e.g. FamilyPedigree) leave
+    // stageSubject null, which the context-dependent validators
+    // (unique/sameAs/differentFrom/greaterThanVariable) dereference. When the
+    // caller supplies a concrete subject for the rendered fields, use it as the
+    // stageSubject so those validators resolve against the right entity type.
+    const resolvedSubject = subjectToStageSubject(subject);
+    const stageSubject = resolvedSubject ?? baseValidationContext.stageSubject;
+
+    return {
+      ...baseValidationContext,
+      stageSubject,
+      ...(currentEntityId !== undefined ? { currentEntityId } : {}),
+    };
+  }, [baseValidationContext, currentEntityId, subject]);
 
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   const subjectFieldsMetadata = useSelector((state) =>
@@ -96,6 +125,24 @@ export default function useProtocolForm({
       subjectFieldsMetadata ??
       selectFieldMetadataFromVariables(stageVariables, fields),
     [subjectFieldsMetadata, stageVariables, fields],
+  );
+
+  // Names of fields whose codebook variable is a number, so the submit
+  // boundary can coerce their raw string values back to real numbers.
+  const numberFieldNames = useMemo(
+    () =>
+      new Set(
+        fieldsMetadata
+          .filter((field) => field.type === 'number')
+          .map((field) => field.variable),
+      ),
+    [fieldsMetadata],
+  );
+
+  const coerceValues = useCallback(
+    (values: Record<string, FieldValue>): Record<string, FieldValue> =>
+      coerceFormValues(values, numberFieldNames),
+    [numberFieldNames],
   );
 
   const fieldsWithMetadata = fieldsMetadata.map((field, index) => {
@@ -112,8 +159,8 @@ export default function useProtocolForm({
       type?: string;
       minLabel?: string;
       maxLabel?: string;
-      min?: string;
-      max?: string;
+      min?: string | number;
+      max?: string | number;
       anchor?: string;
       before?: number;
       after?: number;
@@ -216,10 +263,23 @@ export default function useProtocolForm({
     }
 
     // Handle VisualAnalogScale parameters
-    if (field.component === 'VisualAnalogScale' && field.parameters) {
-      const params = field.parameters;
-      if (params.minLabel) props.minLabel = params.minLabel;
-      if (params.maxLabel) props.maxLabel = params.maxLabel;
+    if (field.component === 'VisualAnalogScale') {
+      if (field.parameters) {
+        const params = field.parameters;
+        if (params.minLabel) props.minLabel = params.minLabel;
+        if (params.maxLabel) props.maxLabel = params.maxLabel;
+      }
+
+      // Forward scalar validation.minValue/maxValue onto the slider's display
+      // min/max (dual-use keys survive prop filtering) so the track physically
+      // constrains selection, in addition to the submit-time validators.
+      if ('validation' in field && field.validation) {
+        const validation = field.validation as Record<string, unknown>;
+        if (typeof validation.minValue === 'number')
+          props.min = validation.minValue;
+        if (typeof validation.maxValue === 'number')
+          props.max = validation.maxValue;
+      }
     }
 
     // Handle DatePicker parameters
@@ -266,5 +326,5 @@ export default function useProtocolForm({
     renderedFields
   );
 
-  return { fieldComponents };
+  return { fieldComponents, coerceValues };
 }

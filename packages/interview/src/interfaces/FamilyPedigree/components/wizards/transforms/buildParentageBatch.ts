@@ -51,7 +51,7 @@ export function buildParentageBatch(
         target: targetTempId,
         data: {
           attributes: {
-            [variableConfig.relationshipTypeVariable]: 'social',
+            [variableConfig.relationshipTypeVariable]: ['social'],
             [variableConfig.isActiveVariable]: true,
           },
         },
@@ -69,7 +69,7 @@ export function buildParentageBatch(
           target: parents[j]!.ref,
           data: {
             attributes: {
-              [variableConfig.relationshipTypeVariable]: 'partner',
+              [variableConfig.relationshipTypeVariable]: ['partner'],
               [variableConfig.isActiveVariable]: val === 'current',
             },
           },

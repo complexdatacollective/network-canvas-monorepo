@@ -57,11 +57,14 @@ const useExternalData = (
     void (async () => {
       try {
         const url = await onRequestAsset(asset.assetId);
-        const { nodes } = await loadExternalData(asset.name, url);
+        // Prefer the original source filename for the CSV-vs-JSON decision; the
+        // display `name` may lack an extension on hand-edited protocols.
+        const sourceFileName = asset.source ?? asset.name;
+        const { nodes } = await loadExternalData(sourceFileName, url);
         const replacer = makeVariableUUIDReplacer(codebook, subject.type);
         const uuidData = nodes.map(replacer);
         const formatted = getVariableTypeReplacements(
-          asset.name,
+          sourceFileName,
           uuidData,
           codebook,
           subject,

@@ -17,6 +17,7 @@ import Tip from '../../Tip';
 
 type Variable = {
   name: string;
+  type?: string;
   encrypted?: boolean;
   [key: string]: unknown;
 };
@@ -26,6 +27,21 @@ type NodeType = {
   variables?: Record<string, Variable>;
   [key: string]: unknown;
 };
+
+/**
+ * Encryption only supports text variables: the interview's secure-attribute
+ * path encrypts string values only, so a non-text variable flagged encrypted
+ * would be silently stored as plaintext. Restrict the picker to text variables.
+ */
+export const getEncryptableVariableOptions = (
+  variables: Record<string, Variable>,
+) =>
+  Object.entries(variables)
+    .filter(([, variable]) => variable.type === 'text')
+    .map(([variableId, variable]) => ({
+      value: variableId,
+      label: variable.name,
+    }));
 
 const EncryptedVariables = (_props: StageEditorSectionProps) => {
   const dispatch = useDispatch<AppDispatch>();
@@ -92,15 +108,12 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
           (variable) => variable?.encrypted,
         );
 
-        const variableOptions = Object.entries(variables).map(
-          ([variableId, variable]) => ({
-            value: variableId,
-            label: variable.name,
-          }),
-        );
+        const variableOptions = getEncryptableVariableOptions(variables);
 
         const encryptedVariableIds = Object.entries(variables)
-          .filter(([, variable]) => variable?.encrypted)
+          .filter(
+            ([, variable]) => variable.type === 'text' && variable.encrypted,
+          )
           .map(([variableId]) => variableId);
 
         return {
@@ -121,8 +134,8 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
       summary={
         <>
           <p>
-            You may encrypt one or more variables. Select the variables for each
-            node type that should be encrypted.
+            You may encrypt one or more text variables. Select the text
+            variables for each node type that should be encrypted.
           </p>
           <Tip>
             <p>

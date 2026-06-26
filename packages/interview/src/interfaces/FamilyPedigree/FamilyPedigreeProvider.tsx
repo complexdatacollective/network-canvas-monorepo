@@ -24,6 +24,7 @@ import {
   getEgoVariable,
   getNodeLabelVariable,
   getNodeTypeKey,
+  getRelationshipVariable,
 } from './utils/nodeUtils';
 
 const FamilyPedigreeContext = createContext<FamilyPedigreeStoreApi | undefined>(
@@ -47,6 +48,7 @@ export const FamilyPedigreeProvider = ({
   const edgeType = useStageSelector(getEdgeTypeKey);
   const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
   const egoVariable = useStageSelector(getEgoVariable);
+  const relationshipVariable = useStageSelector(getRelationshipVariable);
   const relationshipTypeVariable = useStageSelector(
     getRelationshipTypeVariable,
   );
@@ -59,25 +61,36 @@ export const FamilyPedigreeProvider = ({
     edgeType,
     nodeLabelVariable,
     egoVariable,
+    relationshipVariable,
     relationshipTypeVariable,
     isActiveVariable,
     isGestationalCarrierVariable,
   };
 
+  // The interview network is a single shared graph. Seed only the pedigree's
+  // own node/edge types so the store works against the same entities it owns,
+  // and remember which were already in Redux so finalize doesn't duplicate
+  // them.
+  const seededNodes = nodes.filter((node) => node.type === nodeType);
+  const seededEdges = edges.filter((edge) => edge.type === edgeType);
+
   const initialNodes = new Map<string, NcNode>(
-    nodes.map((node) => [node._uid, node]),
+    seededNodes.map((node) => [node._uid, node]),
   );
 
   const initialEdges = new Map<string, NcEdge>(
-    edges.map((edge) => [edge._uid, edge]),
+    seededEdges.map((edge) => [edge._uid, edge]),
   );
 
   const initialNodeMetadata = new Map<string, NodeMetadata>(
-    nodes.map((node) => [
+    seededNodes.map((node) => [
       node._uid,
       { readOnly: node.attributes[egoVariable] === true },
     ]),
   );
+
+  const preexistingReduxNodeIds = new Set(seededNodes.map((node) => node._uid));
+  const preexistingReduxEdgeIds = new Set(seededEdges.map((edge) => edge._uid));
 
   storeRef.current ??= createFamilyPedigreeStore(
     initialNodes,
@@ -86,6 +99,8 @@ export const FamilyPedigreeProvider = ({
     variableConfig,
     dispatch,
     currentStep,
+    preexistingReduxNodeIds,
+    preexistingReduxEdgeIds,
   );
 
   return (
