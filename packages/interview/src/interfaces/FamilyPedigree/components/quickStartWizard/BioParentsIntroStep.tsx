@@ -5,39 +5,21 @@ import { useId } from 'react';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { type FramingId } from '@codaco/shared-consts';
+import { FRAMING_TERMS, type FramingId } from '@codaco/shared-consts';
 import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 
-type EggParentCardCopy = {
-  heading: string;
-  body: string;
+const EGG_PARENT_BODY: Record<FramingId, string> = {
+  gamete:
+    'The egg parent is the person who contributed the egg that you were conceived with. If you were conceived via an egg donor, the egg donor is the egg parent, even if they did not carry you during pregnancy.',
+  gendered:
+    'Your mother is the person who contributed the egg that you were conceived with. If you were conceived via an egg donor, the egg donor is considered your mother for the purposes of this pedigree, even if they did not carry you during pregnancy.',
 };
 
-type SpermParentCardCopy = {
-  heading: string;
-  body: string;
-};
-
-const EGG_PARENT_CARD: Record<FramingId, EggParentCardCopy> = {
-  gamete: {
-    heading: 'Egg Parent',
-    body: 'The egg parent is the person who contributed the egg that you were conceived with. If you were conceived via an egg donor, the egg donor is the egg parent, even if they did not carry you during pregnancy.',
-  },
-  gendered: {
-    heading: 'Mother',
-    body: 'Your mother is the person who contributed the egg that you were conceived with. If you were conceived via an egg donor, the egg donor is considered your mother for the purposes of this pedigree, even if they did not carry you during pregnancy.',
-  },
-};
-
-const SPERM_PARENT_CARD: Record<FramingId, SpermParentCardCopy> = {
-  gamete: {
-    heading: 'Sperm Parent',
-    body: 'The sperm parent is the person who contributed the sperm that you were conceived with. If you were conceived via a sperm donor, the sperm donor is the sperm parent, even if they did not raise you.',
-  },
-  gendered: {
-    heading: 'Father',
-    body: 'Your father is the person who contributed the sperm that you were conceived with. If you were conceived via a sperm donor, the sperm donor is considered your father for the purposes of this pedigree, even if they did not raise you.',
-  },
+const SPERM_PARENT_BODY: Record<FramingId, string> = {
+  gamete:
+    'The sperm parent is the person who contributed the sperm that you were conceived with. If you were conceived via a sperm donor, the sperm donor is the sperm parent, even if they did not raise you.',
+  gendered:
+    'Your father is the person who contributed the sperm that you were conceived with. If you were conceived via a sperm donor, the sperm donor is considered your father for the purposes of this pedigree, even if they did not raise you.',
 };
 
 const INTRO_PARA: Record<FramingId, string> = {
@@ -143,8 +125,7 @@ function SpermGlyph() {
 export default function BioParentsIntroStep() {
   const framing = useFamilyPedigreeStore((s) => s.framing);
   const framingKey = framing ?? 'gamete';
-  const eggCard = EGG_PARENT_CARD[framingKey];
-  const spermCard = SPERM_PARENT_CARD[framingKey];
+  const terms = FRAMING_TERMS[framingKey];
 
   return (
     <>
@@ -169,11 +150,11 @@ export default function BioParentsIntroStep() {
               <EggGlyph />
             </span>
             <Heading level="h4" margin="none">
-              {eggCard.heading}
+              {terms.eggParent}
             </Heading>
           </div>
           <Paragraph margin="none" emphasis="muted" intent="smallText">
-            {eggCard.body}
+            {EGG_PARENT_BODY[framingKey]}
           </Paragraph>
         </Surface>
         <Surface level={1} spacing="sm" shadow="sm">
@@ -182,11 +163,11 @@ export default function BioParentsIntroStep() {
               <SpermGlyph />
             </span>
             <Heading level="h4" margin="none">
-              {spermCard.heading}
+              {terms.spermParent}
             </Heading>
           </div>
           <Paragraph margin="none" emphasis="muted" intent="smallText">
-            {spermCard.body}
+            {SPERM_PARENT_BODY[framingKey]}
           </Paragraph>
         </Surface>
       </div>

@@ -9,7 +9,6 @@ import { FRAMING_TERMS, type FramingId } from '@codaco/shared-consts';
 import useProtocolForm from '~/forms/useProtocolForm';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
-import { useFramedTerms } from '~/interfaces/FamilyPedigree/hooks/useFramedTerms';
 import {
   getNodeForm,
   getNodeType,
@@ -26,7 +25,8 @@ export default function SpermParentStep() {
   const nodeType = useStageSelector(getNodeType);
   const nodeForm = useStageSelector(getNodeForm);
   const framing = useFamilyPedigreeStore((s) => s.framing);
-  const terms = useFramedTerms() ?? FRAMING_TERMS.gamete;
+  const framingKey = framing ?? 'gamete';
+  const terms = FRAMING_TERMS[framingKey];
 
   const { fieldComponents } = useProtocolForm({
     subject: {
@@ -38,7 +38,7 @@ export default function SpermParentStep() {
 
   return (
     <>
-      <Paragraph>{INTRO_COPY[framing ?? 'gamete']}</Paragraph>
+      <Paragraph>{INTRO_COPY[framingKey]}</Paragraph>
       <hr />
       <FieldNamespace prefix="sperm-parent">
         <Field
