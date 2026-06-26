@@ -32,9 +32,15 @@ const ProtocolCard = ({
           gradient's dark top, mirroring the timeline card's controls row. */}
       <div className="min-h-(--space-2xl)" aria-hidden />
 
-      <h2 className="m-0 hyphens-auto">{name}</h2>
+      {/* break-words so a long name with no spaces (or an over-long word)
+          wraps instead of overflowing the overflow-hidden card and being
+          clipped; hyphens-auto adds nicer breaks where the browser supports
+          it. The timeline card sidesteps this via a soft-wrapping textarea. */}
+      <h2 className="m-0 wrap-break-word hyphens-auto">{name}</h2>
 
-      {description && <div className="text-sm">{description}</div>}
+      {description && (
+        <div className="text-sm wrap-break-word">{description}</div>
+      )}
 
       <div className="text-navy-taupe/70 font-monospace mt-(--space-sm) flex flex-col gap-(--space-xs) text-xs tracking-widest uppercase">
         <span>Last Modified: {formatDate(lastModified)}</span>
