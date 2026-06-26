@@ -6,6 +6,7 @@ import { useField } from '../hooks/useField';
 import type { FieldValue } from '../store/types';
 import { filterValidationProps } from '../validation/helpers';
 import { BaseField } from './BaseField';
+import { FieldControllerProvider } from './FieldController';
 import type { FieldProps, ValidFieldComponent } from './types';
 
 /**
@@ -27,18 +28,27 @@ export default function Field<C extends ValidFieldComponent>({
   validationContext,
   validateOnChange,
   validateOnChangeDelay,
+  validateOnControlBlur,
   component,
   disabled,
   readOnly,
   ...componentProps
 }: FieldProps<C>) {
-  const { id, containerProps, fieldProps, meta, validationSummary } = useField({
+  const {
+    id,
+    containerProps,
+    fieldProps,
+    meta,
+    controller,
+    validationSummary,
+  } = useField({
     name,
     initialValue: initialValue as FieldValue,
     showValidationHints,
     validationContext,
     validateOnChange,
     validateOnChangeDelay,
+    validateOnControlBlur,
     disabled,
     readOnly,
     // Pass validation props
@@ -70,7 +80,9 @@ export default function Field<C extends ValidFieldComponent>({
       showErrors={meta.shouldShowError}
       containerProps={containerProps}
     >
-      {createElement(component, mergedProps)}
+      <FieldControllerProvider controller={controller}>
+        {createElement(component, mergedProps)}
+      </FieldControllerProvider>
     </BaseField>
   );
 }
