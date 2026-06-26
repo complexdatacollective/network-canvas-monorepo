@@ -71,6 +71,10 @@ const MEDIA_LABELS: Record<string, string> = {
   audio: 'Audio',
 };
 
+// Canonical order so the same set of media always yields the same name,
+// regardless of the order the Information items happen to be in.
+const MEDIA_LABEL_ORDER = ['Image', 'Video', 'Audio'];
+
 function resolvePanelQualifier(panels: Panel[] | undefined): Qualifier | null {
   if (!panels || panels.length === 0) {
     return null;
@@ -93,11 +97,16 @@ function resolveInformationQualifier(
   if (!items) {
     return null;
   }
-  const mediaLabels = items
-    .filter((item) => item.type === 'asset')
-    .map((item) => resolveAssetType(item.content))
-    .map((type) => (type ? (MEDIA_LABELS[type] ?? null) : null))
-    .filter((label): label is string => Boolean(label));
+  const presentLabels = new Set(
+    items
+      .filter((item) => item.type === 'asset')
+      .map((item) => resolveAssetType(item.content))
+      .map((type) => (type ? (MEDIA_LABELS[type] ?? null) : null))
+      .filter((label): label is string => Boolean(label)),
+  );
+  const mediaLabels = MEDIA_LABEL_ORDER.filter((label) =>
+    presentLabels.has(label),
+  );
   return buildListQualifier(mediaLabels, { summaryNoun: 'Media' });
 }
 

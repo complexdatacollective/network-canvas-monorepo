@@ -866,6 +866,14 @@ git commit -m "feat(architect): add stage auto-name ownership state machine"
 
 ### Task 4: The hook and wiring into StageHeading
 
+> **Note (superseded by code review):** the shipped hook went beyond the snippet
+> below in three ways — see the design spec for the authoritative contract:
+> (1) the **first** fill also resets the draft baseline so a new stage isn't
+> marked dirty / undoable on entry; (2) clearing the field re-engages on **blur**
+> only, not instantly; (3) "new stage" is determined by the absence of a stage
+> `id` (passed in from `StageEditor` as `isNewStage`), **not** by an empty
+> initial label. The snippet here is the starting point, not the final code.
+
 **Files:**
 
 - Create: `apps/architect-web/src/components/StageEditor/autoStageName/useAutoStageName.ts`

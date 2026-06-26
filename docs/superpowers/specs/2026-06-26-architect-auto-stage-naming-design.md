@@ -175,24 +175,32 @@ The label cap is 50. A generated name (including any dedup suffix) that exceeds
 
 ## Architecture
 
-Two small, isolated units. No schema, validation, or stage-creation-flow changes.
+Small, isolated units under
+`apps/architect-web/src/components/StageEditor/autoStageName/`. No schema,
+validation, or stage-creation-flow changes.
 
-### `generateStageName.ts` (new, pure)
+### `generateStageLabel.ts` (new, pure)
 
-Located with the stage editor (e.g.
-`apps/architect-web/src/components/StageEditor/generateStageName.ts`). No React
-or store dependencies. Exports:
+No React or store dependencies. Exports:
 
 - `STAGE_TYPE_NAMES: Record<StageType, string>` — the concise type-name map.
-- `getStageQualifiers(stage, resolvers)` — the per-type qualifier string.
 - `composeStageName({ subjectName?, typeName, qualifier? })` — assembles the base
   name.
 - `dedupeStageLabel(base, existingLabels)` — applies the ` #n` suffix.
-- `fitStageLabel(parts, existingLabels)` (or equivalent) — orchestrates
-  composition + dedup + the length-degradation steps, returning the final label.
+- `generateStageLabel({ typeName, subjectName?, qualifier?, existingLabels })` —
+  orchestrates composition + dedup + the length-degradation steps, returning the
+  final label.
 
-Resolvers (`resolveNodeOrEdgeName`, `resolveVariableName`, `resolveAssetType`)
-are passed in so the pure module never imports selectors.
+### `resolveStageNameParts.ts` (new, pure)
+
+`resolveStageSubjectName(subject, resolveEntityName)` and
+`resolveStageQualifier(stage, { resolveAssetType, resolveVariableName })`.
+Resolver callbacks are passed in so the pure module never imports selectors.
+
+### `computeAutoNameUpdate.ts` (new, pure)
+
+The ownership state machine — decides, per render, whether to apply the
+generated label, lock, or leave the field empty.
 
 ### Live wiring in `StageHeading.tsx`
 
@@ -222,10 +230,11 @@ can't loop.
   subject is selected, then it gains the prefix live.
 - **Codebook rename** while auto-naming is active → the live name follows the new
   name. Once saved (or once the researcher types), it's a fixed string.
-- **Researcher clears the field** → auto-naming re-engages (treated as
-  not-yet-owned), avoiding a `required` error and regenerating.
-- **Reopening a saved stage** → existing stage, no `id`-less creation, so no
-  auto-update; the saved label stands.
+- **Researcher clears the field** → it stays empty while they type (auto-naming
+  does not regenerate mid-keystroke); on blur, if the field is still empty, the
+  generated name fills back in, avoiding a `required` error.
+- **Reopening a saved stage** → existing stage (has an `id`), so no auto-update;
+  the saved label stands.
 
 ## Testing
 
@@ -235,5 +244,7 @@ can't loop.
   collision / one collision / gapped numbers / case-insensitive match; the
   three length-degradation steps; exhaustiveness of `STAGE_TYPE_NAMES`.
 - **Component:** a focused render test of `StageHeading` — name updates as
-  subject and panels change; stops on user keystroke; re-engages when cleared;
-  no auto-update when editing an existing stage.
+  subject and panels change; stops on user keystroke; stays empty when cleared
+  and re-fills on blur; no auto-update when editing an existing stage (including
+  one with an empty label). A draft-wired test asserts the first fill leaves the
+  stage neither dirty nor undoable.

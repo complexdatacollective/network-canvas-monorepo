@@ -76,13 +76,17 @@ const HeadingInput = ({
 type StageHeadingProps = {
   stageNumber: number;
   totalStages: number;
+  isNewStage: boolean;
 };
 
-const StageHeading = ({ stageNumber, totalStages }: StageHeadingProps) => {
-  const { values, initialValues } = useFormContext();
+const StageHeading = ({
+  stageNumber,
+  totalStages,
+  isNewStage,
+}: StageHeadingProps) => {
+  const { values } = useFormContext();
 
   const type = get(values, 'type') as string | undefined;
-  const isNewStage = !get(initialValues, 'label');
 
   const { onLabelBlur } = useAutoStageName(isNewStage);
 

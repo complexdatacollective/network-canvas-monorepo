@@ -22,7 +22,10 @@ const protocol = {
   assetManifest: {},
 };
 
-function renderHeading(initialValues: Record<string, unknown>) {
+function renderHeading(
+  initialValues: Record<string, unknown>,
+  isNewStage = true,
+) {
   const store = configureStore({
     reducer: {
       form: formReducer,
@@ -32,7 +35,7 @@ function renderHeading(initialValues: Record<string, unknown>) {
   const utils = render(
     <Provider store={store}>
       <Editor form={formName} initialValues={initialValues} onSubmit={() => {}}>
-        <StageHeading stageNumber={1} totalStages={1} />
+        <StageHeading stageNumber={1} totalStages={1} isNewStage={isNewStage} />
       </Editor>
     </Provider>,
   );
@@ -57,7 +60,7 @@ function renderHeadingWithDraft(initialValues: Record<string, unknown>) {
   const utils = render(
     <Provider store={store}>
       <Editor form={formName} initialValues={initialValues} onSubmit={() => {}}>
-        <StageHeading stageNumber={1} totalStages={1} />
+        <StageHeading stageNumber={1} totalStages={1} isNewStage />
       </Editor>
     </Provider>,
   );
@@ -92,13 +95,23 @@ describe('useAutoStageName (wired into StageHeading)', () => {
   });
 
   it('does not auto-name an existing stage', async () => {
-    const { input } = renderHeading({
-      type: 'Sociogram',
-      id: 's1',
-      label: 'Hand named',
-    });
+    const { input } = renderHeading(
+      { type: 'Sociogram', id: 's1', label: 'Hand named' },
+      false,
+    );
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(input).toHaveValue('Hand named');
+  });
+
+  it('does not auto-name an existing stage with an empty label', async () => {
+    // Newness is determined by the absence of a stage id, not an empty label —
+    // so a hand-authored/migrated stage with an empty label is left untouched.
+    const { input } = renderHeading(
+      { type: 'Sociogram', id: 's1', label: '' },
+      false,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(input).toHaveValue('');
   });
 
   it('leaves the field empty when cleared, then re-fills on blur', async () => {

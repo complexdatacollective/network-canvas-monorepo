@@ -61,6 +61,31 @@ function truncateToWord(value: string, max: number): string {
   return trimmed || slice.trimEnd();
 }
 
+// Truncate the base *before* de-duplicating so the ` #n` suffix is never chopped
+// (a post-truncation slice could cut into a wide suffix like ` #10`, reviving a
+// collision). Shrink the budget by however much the deduped candidate overflows
+// until it fits within the cap.
+function fitTruncatedUniqueLabel(
+  base: string,
+  existingLabels: string[],
+): string {
+  let max = MAX_LABEL_LENGTH;
+  while (max > 0) {
+    const candidate = dedupeStageLabel(
+      truncateToWord(base, max),
+      existingLabels,
+    );
+    if (candidate.length <= MAX_LABEL_LENGTH) {
+      return candidate;
+    }
+    max -= candidate.length - MAX_LABEL_LENGTH;
+  }
+  return dedupeStageLabel(base.slice(0, 1), existingLabels).slice(
+    0,
+    MAX_LABEL_LENGTH,
+  );
+}
+
 export function generateStageLabel(input: {
   typeName: string;
   subjectName?: string | null;
@@ -108,6 +133,5 @@ export function generateStageLabel(input: {
   }
 
   const fallbackBase = candidates[candidates.length - 1] ?? typeName;
-  const truncated = truncateToWord(fallbackBase, MAX_LABEL_LENGTH - 4);
-  return dedupeStageLabel(truncated, existingLabels).slice(0, MAX_LABEL_LENGTH);
+  return fitTruncatedUniqueLabel(fallbackBase, existingLabels);
 }

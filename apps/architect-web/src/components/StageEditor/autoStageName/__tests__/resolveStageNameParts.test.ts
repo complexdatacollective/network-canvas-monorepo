@@ -141,6 +141,8 @@ describe('resolveStageQualifier', () => {
         r,
       )?.full,
     ).toBe('with Video');
+    // Media types are emitted in a canonical order (Image, Video, Audio), so
+    // the same assets produce the same name regardless of item order.
     expect(
       resolveStageQualifier(
         {
@@ -152,7 +154,19 @@ describe('resolveStageQualifier', () => {
         },
         r,
       )?.full,
-    ).toBe('with Video & Image');
+    ).toBe('with Image & Video');
+    expect(
+      resolveStageQualifier(
+        {
+          type: 'Information',
+          items: [
+            { id: 'i2', type: 'asset', content: 'a2' },
+            { id: 'i1', type: 'asset', content: 'a1' },
+          ],
+        },
+        r,
+      )?.full,
+    ).toBe('with Image & Video');
     expect(
       resolveStageQualifier(
         {
