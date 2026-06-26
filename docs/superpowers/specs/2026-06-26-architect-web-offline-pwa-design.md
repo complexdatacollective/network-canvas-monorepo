@@ -249,5 +249,4 @@ available for an About/footer line. No other UI change required.
   `index.html`/`sw.js`. Without them, updates would silently fail to appear.
 - **First-visit offline gaps:** by design, thumbnails/fonts are cached after the
   first online session (acceptable per the chosen runtime-cache approach).
-- **Changeset:** `architect-web` is released, so a changeset is required for this
-  change.
+- **Changeset:** not required for this change (per maintainer).
