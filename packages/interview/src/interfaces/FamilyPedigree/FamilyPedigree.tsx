@@ -30,6 +30,7 @@ import PedigreeView from './pedigree-layout/components/PedigreeView';
 import type { VariableConfig } from './store';
 import {
   getEdgeTypeKey,
+  getGameteRoleVariable,
   getIsActiveVariable,
   getIsGestationalCarrierVariable,
   getRelationshipTypeVariable,
@@ -97,6 +98,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   const isGestationalCarrierVariable = useStageSelector(
     getIsGestationalCarrierVariable,
   );
+  const gameteRoleVariable = useStageSelector(getGameteRoleVariable);
 
   const allNodes = useStageSelector(getNetworkNodes);
   const allEdges = useStageSelector(getNetworkEdges);
@@ -116,6 +118,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
     relationshipTypeVariable,
     isActiveVariable,
     isGestationalCarrierVariable,
+    gameteRoleVariable,
   };
 
   const reduxNodesMap = useMemo(

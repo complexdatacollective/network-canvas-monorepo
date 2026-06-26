@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from 'motion/react';
 
+import type { SkipContext } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { FRAMING_TERMS } from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
@@ -79,7 +80,7 @@ export default function EgoCellWizard({
         {
           title: stepTerms.gestationalCarrier,
           content: GestationalCarrierStep,
-          skip: ({ getFieldValue }) =>
+          skip: ({ getFieldValue }: SkipContext) =>
             getFieldValue('egg-parent.gestationalCarrier') !== false,
         },
         {
@@ -93,7 +94,7 @@ export default function EgoCellWizard({
         {
           title: 'Additional parents',
           content: AdditionalParentsStep,
-          skip: ({ getFieldValue }) =>
+          skip: ({ getFieldValue }: SkipContext) =>
             getFieldValue('hasOtherParents') !== true,
         },
         {
@@ -107,7 +108,7 @@ export default function EgoCellWizard({
         {
           title: 'Children details',
           content: ChildrenDetailStep,
-          skip: ({ getFieldValue }) => {
+          skip: ({ getFieldValue }: SkipContext) => {
             if (getFieldValue('hasPartner') !== true) return true;
             return Number(getFieldValue('childrenWithPartnerCount') ?? 0) === 0;
           },

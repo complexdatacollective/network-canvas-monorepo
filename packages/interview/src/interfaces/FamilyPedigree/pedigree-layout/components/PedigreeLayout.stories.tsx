@@ -92,6 +92,7 @@ const STORY_RELATIONSHIP_VAR = 'relationship';
 const STORY_REL_TYPE_VAR = 'relationshipType';
 const STORY_IS_ACTIVE_VAR = 'isActive';
 const STORY_IS_GC_VAR = 'isGestationalCarrier';
+const STORY_GAMETE_ROLE_VAR = 'gameteRole';
 
 const storyVariableConfig: VariableConfig = {
   nodeType: 'person',
@@ -102,6 +103,7 @@ const storyVariableConfig: VariableConfig = {
   relationshipTypeVariable: STORY_REL_TYPE_VAR,
   isActiveVariable: STORY_IS_ACTIVE_VAR,
   isGestationalCarrierVariable: STORY_IS_GC_VAR,
+  gameteRoleVariable: STORY_GAMETE_ROLE_VAR,
 };
 
 function buildNetwork(

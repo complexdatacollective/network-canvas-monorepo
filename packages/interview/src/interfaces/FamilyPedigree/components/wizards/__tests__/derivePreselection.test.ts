@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import type { VariableValue } from '@codaco/shared-consts';
+
 import type { FamilyEdge, VariableConfig } from '../../../store';
 import { derivePreselection } from '../derivePreselection';
 
@@ -22,7 +24,7 @@ function edge(
   opts: { gameteRole?: 'egg' | 'sperm'; isGC?: boolean } = {},
 ): [string, FamilyEdge] {
   const id = `${from}->${to}:${rel}`;
-  const attrs: Record<string, unknown> = { rel: [rel], isActive: true };
+  const attrs: Record<string, VariableValue> = { rel: [rel], isActive: true };
   if (opts.isGC) attrs.isGC = true;
   if (opts.gameteRole) attrs.gameteRole = opts.gameteRole;
   return [
