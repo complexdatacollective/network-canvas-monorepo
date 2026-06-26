@@ -1,3 +1,4 @@
+import { asEntityAttributeReference } from './schemas/8/entity-attribute-reference';
 import {
   collectEntityAttributeReferences,
   type EntityAttributeReferenceHit,
@@ -30,6 +31,7 @@ export {
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from './schemas';
 export {
+  asEntityAttributeReference,
   collectEntityAttributeReferences,
   type EntityAttributeReferenceHit,
   type ExtractedAsset,

@@ -110,7 +110,7 @@ function makeFamilyPedigreeStage(overrides?: Record<string, unknown>): Stage {
     },
     censusPrompt: 'Tell us about your family',
     ...overrides,
-  } as Stage;
+  } as unknown as Stage;
 }
 
 describe('generateNetwork', () => {
@@ -512,7 +512,7 @@ describe('generateNetwork', () => {
             isGestationalCarrierVariable: 'var-gestational',
           },
           censusPrompt: 'Test',
-        } as Stage;
+        } as unknown as Stage;
 
         expect(
           () => generateNetwork(codebook, [stage], { seed: 42 }),

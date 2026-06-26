@@ -6,7 +6,10 @@ import { useState } from 'react';
 import { action } from 'storybook/actions';
 import { z } from 'zod/mini';
 
-import type { AdditionalAttributes } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  type AdditionalAttributes,
+} from '@codaco/protocol-validation';
 
 import Button, { IconButton, MotionButton } from '../Button';
 import Dialog from '../dialogs/Dialog';
@@ -241,7 +244,10 @@ function NameGeneratorPromptEditor({
             itemTemplate={() => ({ variable: undefined, value: undefined })}
             itemComponent={AdditionalAttributeItem}
             confirmDelete={false}
-            initialValue={item?.additionalAttributes}
+            initialValue={item?.additionalAttributes?.map((attr) => ({
+              variable: asEntityAttributeReference(attr.variable),
+              value: attr.value,
+            }))}
           />
         </FormWithoutProvider>
       </Dialog>
@@ -302,7 +308,9 @@ function AdditionalAttributeItem({
               hint="Select the variable to set"
               value={variable}
               placeholder="Select a variable..."
-              onChange={(val) => setVariable(String(val))}
+              onChange={(val) =>
+                setVariable(asEntityAttributeReference(String(val)))
+              }
               options={[...MOCK_VARIABLES]}
               required
             />
