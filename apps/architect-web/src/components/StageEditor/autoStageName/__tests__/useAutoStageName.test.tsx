@@ -2,6 +2,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import type { Action, Dispatch } from 'redux';
 import { change, reducer as formReducer } from 'redux-form';
 import { describe, expect, it } from 'vitest';
 
@@ -34,34 +35,30 @@ function renderHeading(initialValues: Record<string, unknown>) {
     </Provider>,
   );
   const input = utils.getByLabelText('Stage name') as HTMLInputElement;
-  return { store, input };
+  return { store, dispatch: store.dispatch as Dispatch<Action>, input };
 }
 
 describe('useAutoStageName (wired into StageHeading)', () => {
   it('auto-names a new stage and refines as the subject is set', async () => {
-    const { store, input } = renderHeading({ type: 'NameGenerator' });
+    const { dispatch, input } = renderHeading({ type: 'NameGenerator' });
 
     await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
 
-    store.dispatch(
-      change(formName, 'subject', { entity: 'node', type: 'person' }),
-    );
+    dispatch(change(formName, 'subject', { entity: 'node', type: 'person' }));
     await waitFor(() =>
       expect(input).toHaveValue('Person Form Name Generator'),
     );
   });
 
   it('stops auto-naming once the researcher types a custom name', async () => {
-    const { store, input } = renderHeading({ type: 'NameGenerator' });
+    const { dispatch, input } = renderHeading({ type: 'NameGenerator' });
     await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
 
     // Replace the value in one change (mirrors selecting all then typing).
     fireEvent.change(input, { target: { value: 'My custom stage' } });
     await waitFor(() => expect(input).toHaveValue('My custom stage'));
 
-    store.dispatch(
-      change(formName, 'subject', { entity: 'node', type: 'person' }),
-    );
+    dispatch(change(formName, 'subject', { entity: 'node', type: 'person' }));
     // Give the effect a chance to (incorrectly) overwrite, then assert it didn't.
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(input).toHaveValue('My custom stage');

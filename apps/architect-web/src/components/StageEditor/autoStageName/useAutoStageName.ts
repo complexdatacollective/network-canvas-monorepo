@@ -7,6 +7,7 @@ import type {
   Panel,
   StageSubject,
   StageType,
+  Variables,
 } from '@codaco/protocol-validation';
 import {
   getAllVariablesByUUID,
@@ -38,9 +39,9 @@ type StageFormValues = {
 
 export function useAutoStageName(isNewStage: boolean): void {
   const dispatch = useDispatch();
-  const formValues = useSelector(
-    getFormValues<StageFormValues | undefined>(formName),
-  );
+  const formValues = useSelector(getFormValues(formName)) as
+    | StageFormValues
+    | undefined;
   const nodeTypes = useSelector(getNodeTypes);
   const edgeTypes = useSelector(getEdgeTypes);
   const codebook = useSelector(getCodebook);
@@ -54,7 +55,9 @@ export function useAutoStageName(isNewStage: boolean): void {
     if (!type) {
       return '';
     }
-    const variablesByUuid = getAllVariablesByUUID(codebook);
+    const variablesByUuid: Variables = codebook
+      ? getAllVariablesByUUID(codebook)
+      : {};
     const subjectName = resolveStageSubjectName(
       formValues?.subject,
       (entity, entityType) => {
