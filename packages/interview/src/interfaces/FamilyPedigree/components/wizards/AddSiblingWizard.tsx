@@ -1,5 +1,5 @@
 import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
 import type {
   CommitBatch,
   VariableConfig,
@@ -30,6 +30,7 @@ export async function openAddSiblingWizard(
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
+  framing: FramingId,
 ): Promise<CommitBatch | null> {
   const preselection = derivePreselection(anchorNodeId, edges, variableConfig);
   const candidateIds = geneticParentCandidates(
@@ -43,6 +44,7 @@ export async function openAddSiblingWizard(
     edges,
     variableConfig,
     candidateIds,
+    framing,
   );
 
   const bioTriadConfig = {

@@ -1,4 +1,10 @@
-import type { NcEdge, NcNode, RelationshipType } from '@codaco/shared-consts';
+import {
+  FRAMING_TERMS,
+  type FramingId,
+  type NcEdge,
+  type NcNode,
+  type RelationshipType,
+} from '@codaco/shared-consts';
 import type {
   FamilyEdge,
   GameteRole,
@@ -200,14 +206,17 @@ function getDirectParentGameteRole(
   return undefined;
 }
 
-/** "Egg Parent"/"Sperm Parent" (biological) or "Egg Donor"/"Sperm Donor". */
+/** "Egg Parent"/"Sperm Parent" (or framed equivalent) or "Egg Donor"/"Sperm Donor". */
 function gameteParentLabel(
   gameteRole: GameteRole,
   kind: RelationshipKind,
+  framing: FramingId,
 ): string {
-  const gamete = gameteRole === 'egg' ? 'Egg' : 'Sperm';
-  const base = kind === 'donor' ? 'Donor' : 'Parent';
-  return `${gamete} ${base}`;
+  const terms = FRAMING_TERMS[framing];
+  if (kind === 'donor') {
+    return gameteRole === 'egg' ? terms.eggDonor : terms.spermDonor;
+  }
+  return gameteRole === 'egg' ? terms.eggParent : terms.spermParent;
 }
 
 const RELATIONSHIP_LABELS: Record<RelationshipKind, string> = {
@@ -277,6 +286,7 @@ export function getDisplayLabel(
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
+  framing: FramingId,
 ): string {
   const node = nodes.get(nodeId);
   if (!node) return 'Family Member';
@@ -313,7 +323,7 @@ export function getDisplayLabel(
       edges,
       variableConfig,
     );
-    if (gameteRole) return gameteParentLabel(gameteRole, kind);
+    if (gameteRole) return gameteParentLabel(gameteRole, kind, framing);
   }
 
   // Relationships where the direct label is more descriptive than possessive form
@@ -348,6 +358,7 @@ export function computeAllDisplayLabels(
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
+  framing: FramingId,
 ): Map<string, string> {
   const bfsResults = bfsFromEgo(egoId, nodes, edges, variableConfig);
   const labels = new Map<string, string>();
@@ -392,7 +403,7 @@ export function computeAllDisplayLabels(
         variableConfig,
       );
       if (gameteRole) {
-        labels.set(nodeId, gameteParentLabel(gameteRole, kind));
+        labels.set(nodeId, gameteParentLabel(gameteRole, kind, framing));
         continue;
       }
     }
@@ -468,6 +479,7 @@ export function getNodeLabel(
   nodes: Map<string, NcNode>,
   edges: Map<string, FamilyEdge>,
   variableConfig: VariableConfig,
+  framing: FramingId,
 ): string {
   const egoEntry = [...nodes.entries()].find(
     ([, n]) => n.attributes[variableConfig.egoVariable] === true,
@@ -486,5 +498,12 @@ export function getNodeLabel(
       nodes.get(nodeId)?.attributes[variableConfig.nodeLabelVariable];
     return typeof name === 'string' && name.length > 0 ? name : 'You';
   }
-  return getDisplayLabel(nodeId, egoEntry[0], nodes, edges, variableConfig);
+  return getDisplayLabel(
+    nodeId,
+    egoEntry[0],
+    nodes,
+    edges,
+    variableConfig,
+    framing,
+  );
 }

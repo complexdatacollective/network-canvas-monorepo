@@ -56,6 +56,7 @@ export default function PedigreeView({
   const storeActiveNominationVariable = useFamilyPedigreeStore(
     (s) => s.activeNominationVariable,
   );
+  const storeFraming = useFamilyPedigreeStore((s) => s.framing);
 
   const nodes = overrideNodes ?? storeNodes;
   const edges = overrideEdges ?? storeEdges;
@@ -210,6 +211,9 @@ export default function PedigreeView({
       nodes,
       edges,
       variableConfig,
+      // framing ?? 'gamete': safe fallback — per spec §4.1, when framing is null
+      // only the intro/chooser steps render and no gamete-parent labels exist yet.
+      storeFraming ?? 'gamete',
     );
     if (result) {
       commitBatch(result);
@@ -223,6 +227,7 @@ export default function PedigreeView({
       nodes,
       edges,
       variableConfig,
+      storeFraming ?? 'gamete',
     );
     if (result) {
       commitBatch(result);
@@ -241,6 +246,7 @@ export default function PedigreeView({
             edges,
             variableConfig,
             addableParentTypeOptions(nodeId, edges, variableConfig),
+            storeFraming ?? 'gamete',
           )
         : await openDefineParentsWizard(
             openDialog,
@@ -248,6 +254,7 @@ export default function PedigreeView({
             nodes,
             edges,
             variableConfig,
+            storeFraming ?? 'gamete',
           );
 
     if (result) {
@@ -275,7 +282,14 @@ export default function PedigreeView({
     }
   };
 
-  const displayLabels = computeNodeDisplayLabels(nodes, edges, variableConfig);
+  // framing ?? 'gamete': safe fallback — per spec §4.1, when framing is null
+  // only the intro/chooser steps render and no gamete-parent labels exist yet.
+  const displayLabels = computeNodeDisplayLabels(
+    nodes,
+    edges,
+    variableConfig,
+    storeFraming ?? 'gamete',
+  );
 
   return (
     <div className="absolute inset-0 overflow-x-auto pt-6">

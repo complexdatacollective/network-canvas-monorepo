@@ -77,9 +77,9 @@ describe('getDisplayLabel', () => {
       ['e1', { from: 'dad', to: 'ego', relType: 'biological' }],
     ]);
 
-    expect(getDisplayLabel('dad', 'ego', nodes, edges, variableConfig)).toBe(
-      'Rob',
-    );
+    expect(
+      getDisplayLabel('dad', 'ego', nodes, edges, variableConfig, 'gamete'),
+    ).toBe('Rob');
   });
 
   it('labels unnamed parent as "Parent"', () => {
@@ -91,9 +91,9 @@ describe('getDisplayLabel', () => {
       ['e1', { from: 'dad', to: 'ego', relType: 'biological' }],
     ]);
 
-    expect(getDisplayLabel('dad', 'ego', nodes, edges, variableConfig)).toBe(
-      'Parent',
-    );
+    expect(
+      getDisplayLabel('dad', 'ego', nodes, edges, variableConfig, 'gamete'),
+    ).toBe('Parent');
   });
 
   it('labels unnamed social parent as "Social Parent"', () => {
@@ -105,9 +105,9 @@ describe('getDisplayLabel', () => {
       ['e1', { from: 'step', to: 'ego', relType: 'social' }],
     ]);
 
-    expect(getDisplayLabel('step', 'ego', nodes, edges, variableConfig)).toBe(
-      'Social Parent',
-    );
+    expect(
+      getDisplayLabel('step', 'ego', nodes, edges, variableConfig, 'gamete'),
+    ).toBe('Social Parent');
   });
 
   it('labels unnamed donor', () => {
@@ -119,9 +119,9 @@ describe('getDisplayLabel', () => {
       ['e1', { from: 'donor', to: 'ego', relType: 'donor' }],
     ]);
 
-    expect(getDisplayLabel('donor', 'ego', nodes, edges, variableConfig)).toBe(
-      'Donor',
-    );
+    expect(
+      getDisplayLabel('donor', 'ego', nodes, edges, variableConfig, 'gamete'),
+    ).toBe('Donor');
   });
 
   it('labels unnamed surrogate', () => {
@@ -133,9 +133,9 @@ describe('getDisplayLabel', () => {
       ['e1', { from: 'surr', to: 'ego', relType: 'surrogate' }],
     ]);
 
-    expect(getDisplayLabel('surr', 'ego', nodes, edges, variableConfig)).toBe(
-      'Surrogate',
-    );
+    expect(
+      getDisplayLabel('surr', 'ego', nodes, edges, variableConfig, 'gamete'),
+    ).toBe('Surrogate');
   });
 
   it('labels unnamed child as "Child"', () => {
@@ -147,9 +147,9 @@ describe('getDisplayLabel', () => {
       ['e1', { from: 'ego', to: 'kid', relType: 'biological' }],
     ]);
 
-    expect(getDisplayLabel('kid', 'ego', nodes, edges, variableConfig)).toBe(
-      'Child',
-    );
+    expect(
+      getDisplayLabel('kid', 'ego', nodes, edges, variableConfig, 'gamete'),
+    ).toBe('Child');
   });
 
   it('labels unnamed partner as "Partner"', () => {
@@ -161,9 +161,9 @@ describe('getDisplayLabel', () => {
       ['e1', { from: 'ego', to: 'p', relType: 'partner' }],
     ]);
 
-    expect(getDisplayLabel('p', 'ego', nodes, edges, variableConfig)).toBe(
-      'Partner',
-    );
+    expect(
+      getDisplayLabel('p', 'ego', nodes, edges, variableConfig, 'gamete'),
+    ).toBe('Partner');
   });
 
   it('labels unnamed sibling as "Sibling"', () => {
@@ -177,9 +177,9 @@ describe('getDisplayLabel', () => {
       ['e2', { from: 'dad', to: 'sib', relType: 'biological' }],
     ]);
 
-    expect(getDisplayLabel('sib', 'ego', nodes, edges, variableConfig)).toBe(
-      'Sibling',
-    );
+    expect(
+      getDisplayLabel('sib', 'ego', nodes, edges, variableConfig, 'gamete'),
+    ).toBe('Sibling');
   });
 
   describe('multi-hop relationships', () => {
@@ -195,7 +195,14 @@ describe('getDisplayLabel', () => {
       ]);
 
       expect(
-        getDisplayLabel('grandpa', 'ego', nodes, edges, variableConfig),
+        getDisplayLabel(
+          'grandpa',
+          'ego',
+          nodes,
+          edges,
+          variableConfig,
+          'gamete',
+        ),
       ).toBe("Rob's Parent");
     });
 
@@ -211,7 +218,14 @@ describe('getDisplayLabel', () => {
       ]);
 
       expect(
-        getDisplayLabel('grandpa', 'ego', nodes, edges, variableConfig),
+        getDisplayLabel(
+          'grandpa',
+          'ego',
+          nodes,
+          edges,
+          variableConfig,
+          'gamete',
+        ),
       ).toBe('Grandparent');
     });
 
@@ -227,7 +241,14 @@ describe('getDisplayLabel', () => {
       ]);
 
       expect(
-        getDisplayLabel('stepmom', 'ego', nodes, edges, variableConfig),
+        getDisplayLabel(
+          'stepmom',
+          'ego',
+          nodes,
+          edges,
+          variableConfig,
+          'gamete',
+        ),
       ).toBe("Rob's Partner");
     });
 
@@ -245,7 +266,7 @@ describe('getDisplayLabel', () => {
       ]);
 
       expect(
-        getDisplayLabel('uncle', 'ego', nodes, edges, variableConfig),
+        getDisplayLabel('uncle', 'ego', nodes, edges, variableConfig, 'gamete'),
       ).toBe("Bill's Child");
     });
 
@@ -263,7 +284,7 @@ describe('getDisplayLabel', () => {
       ]);
 
       expect(
-        getDisplayLabel('uncle', 'ego', nodes, edges, variableConfig),
+        getDisplayLabel('uncle', 'ego', nodes, edges, variableConfig, 'gamete'),
       ).toBe('Aunt/Uncle');
     });
 
@@ -283,7 +304,14 @@ describe('getDisplayLabel', () => {
       ]);
 
       expect(
-        getDisplayLabel('cousin', 'ego', nodes, edges, variableConfig),
+        getDisplayLabel(
+          'cousin',
+          'ego',
+          nodes,
+          edges,
+          variableConfig,
+          'gamete',
+        ),
       ).toBe("Steve's Child");
     });
 
@@ -301,7 +329,7 @@ describe('getDisplayLabel', () => {
       ]);
 
       expect(
-        getDisplayLabel('niece', 'ego', nodes, edges, variableConfig),
+        getDisplayLabel('niece', 'ego', nodes, edges, variableConfig, 'gamete'),
       ).toBe("Emma's Child");
     });
 
@@ -317,7 +345,7 @@ describe('getDisplayLabel', () => {
       ]);
 
       expect(
-        getDisplayLabel('inlaw', 'ego', nodes, edges, variableConfig),
+        getDisplayLabel('inlaw', 'ego', nodes, edges, variableConfig, 'gamete'),
       ).toBe("Jake's Partner");
     });
 
@@ -333,7 +361,14 @@ describe('getDisplayLabel', () => {
       ]);
 
       expect(
-        getDisplayLabel('grandkid', 'ego', nodes, edges, variableConfig),
+        getDisplayLabel(
+          'grandkid',
+          'ego',
+          nodes,
+          edges,
+          variableConfig,
+          'gamete',
+        ),
       ).toBe("Jake's Child");
     });
 
@@ -345,7 +380,14 @@ describe('getDisplayLabel', () => {
       const edges = makeEdges([]);
 
       expect(
-        getDisplayLabel('stranger', 'ego', nodes, edges, variableConfig),
+        getDisplayLabel(
+          'stranger',
+          'ego',
+          nodes,
+          edges,
+          variableConfig,
+          'gamete',
+        ),
       ).toBe('Family Member');
     });
 
@@ -366,14 +408,14 @@ describe('getDisplayLabel', () => {
         ['e5', { from: 'd', to: 'e', relType: 'biological' }],
       ]);
 
-      expect(getDisplayLabel('e', 'ego', nodes, edges, variableConfig)).toBe(
-        'Family Member',
-      );
+      expect(
+        getDisplayLabel('e', 'ego', nodes, edges, variableConfig, 'gamete'),
+      ).toBe('Family Member');
     });
   });
 
   describe('gamete-role labels', () => {
-    it('labels two unnamed biological parents by gamete role', () => {
+    it('labels two unnamed biological parents by gamete role (gamete framing)', () => {
       const nodes = makeNodes([
         ['ego', { name: 'Me', isEgo: true }],
         ['eggp', {}],
@@ -395,12 +437,72 @@ describe('getDisplayLabel', () => {
         ],
       ]);
 
-      expect(getDisplayLabel('eggp', 'ego', nodes, edges, variableConfig)).toBe(
-        'Egg Parent',
-      );
       expect(
-        getDisplayLabel('spermp', 'ego', nodes, edges, variableConfig),
+        getDisplayLabel('eggp', 'ego', nodes, edges, variableConfig, 'gamete'),
+      ).toBe('Egg Parent');
+      expect(
+        getDisplayLabel(
+          'spermp',
+          'ego',
+          nodes,
+          edges,
+          variableConfig,
+          'gamete',
+        ),
       ).toBe('Sperm Parent');
+    });
+
+    it('labels egg biological parent as "Mother" under gendered framing', () => {
+      const nodes = makeNodes([
+        ['ego', { name: 'Me', isEgo: true }],
+        ['eggp', {}],
+      ]);
+      const edges = makeEdges([
+        [
+          'e1',
+          { from: 'eggp', to: 'ego', relType: 'biological', gameteRole: 'egg' },
+        ],
+      ]);
+
+      expect(
+        getDisplayLabel(
+          'eggp',
+          'ego',
+          nodes,
+          edges,
+          variableConfig,
+          'gendered',
+        ),
+      ).toBe('Mother');
+    });
+
+    it('labels sperm biological parent as "Father" under gendered framing', () => {
+      const nodes = makeNodes([
+        ['ego', { name: 'Me', isEgo: true }],
+        ['spermp', {}],
+      ]);
+      const edges = makeEdges([
+        [
+          'e1',
+          {
+            from: 'spermp',
+            to: 'ego',
+            relType: 'biological',
+            gameteRole: 'sperm',
+          },
+        ],
+      ]);
+
+      expect(
+        getDisplayLabel(
+          'spermp',
+          'ego',
+          nodes,
+          edges,
+          variableConfig,
+          'gendered',
+        ),
+      ).toBe('Father');
     });
 
     it('labels an unnamed donor parent by gamete role', () => {
@@ -416,8 +518,35 @@ describe('getDisplayLabel', () => {
       ]);
 
       expect(
-        getDisplayLabel('donor', 'ego', nodes, edges, variableConfig),
+        getDisplayLabel('donor', 'ego', nodes, edges, variableConfig, 'gamete'),
       ).toBe('Sperm Donor');
+    });
+
+    it('donor labels are identical across framings', () => {
+      const nodes = makeNodes([
+        ['ego', { name: 'Me', isEgo: true }],
+        ['donor', {}],
+      ]);
+      const edges = makeEdges([
+        [
+          'e1',
+          { from: 'donor', to: 'ego', relType: 'donor', gameteRole: 'egg' },
+        ],
+      ]);
+
+      expect(
+        getDisplayLabel('donor', 'ego', nodes, edges, variableConfig, 'gamete'),
+      ).toBe('Egg Donor');
+      expect(
+        getDisplayLabel(
+          'donor',
+          'ego',
+          nodes,
+          edges,
+          variableConfig,
+          'gendered',
+        ),
+      ).toBe('Egg Donor');
     });
 
     it('falls back to "Parent" when no gamete role is recorded', () => {
@@ -429,9 +558,79 @@ describe('getDisplayLabel', () => {
         ['e1', { from: 'p', to: 'ego', relType: 'biological' }],
       ]);
 
-      expect(getDisplayLabel('p', 'ego', nodes, edges, variableConfig)).toBe(
-        'Parent',
-      );
+      expect(
+        getDisplayLabel('p', 'ego', nodes, edges, variableConfig, 'gamete'),
+      ).toBe('Parent');
+    });
+
+    it('neutral label Grandparent is identical under both framings', () => {
+      const nodes = makeNodes([
+        ['ego', { name: 'Me', isEgo: true }],
+        ['dad', {}],
+        ['grandpa', {}],
+      ]);
+      const edges = makeEdges([
+        ['e1', { from: 'dad', to: 'ego', relType: 'biological' }],
+        ['e2', { from: 'grandpa', to: 'dad', relType: 'biological' }],
+      ]);
+
+      expect(
+        getDisplayLabel(
+          'grandpa',
+          'ego',
+          nodes,
+          edges,
+          variableConfig,
+          'gamete',
+        ),
+      ).toBe('Grandparent');
+      expect(
+        getDisplayLabel(
+          'grandpa',
+          'ego',
+          nodes,
+          edges,
+          variableConfig,
+          'gendered',
+        ),
+      ).toBe('Grandparent');
+    });
+
+    it('neutral label Cousin is identical under both framings', () => {
+      const nodes = makeNodes([
+        ['ego', { name: 'Me', isEgo: true }],
+        ['dad', {}],
+        ['grandpa', {}],
+        ['uncle', {}],
+        ['cousin', {}],
+      ]);
+      const edges = makeEdges([
+        ['e1', { from: 'dad', to: 'ego', relType: 'biological' }],
+        ['e2', { from: 'grandpa', to: 'dad', relType: 'biological' }],
+        ['e3', { from: 'grandpa', to: 'uncle', relType: 'biological' }],
+        ['e4', { from: 'uncle', to: 'cousin', relType: 'biological' }],
+      ]);
+
+      expect(
+        getDisplayLabel(
+          'cousin',
+          'ego',
+          nodes,
+          edges,
+          variableConfig,
+          'gamete',
+        ),
+      ).toBe('Cousin');
+      expect(
+        getDisplayLabel(
+          'cousin',
+          'ego',
+          nodes,
+          edges,
+          variableConfig,
+          'gendered',
+        ),
+      ).toBe('Cousin');
     });
   });
 });

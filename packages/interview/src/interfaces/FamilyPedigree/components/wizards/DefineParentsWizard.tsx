@@ -1,5 +1,5 @@
 import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
 import type {
   CommitBatch,
   VariableConfig,
@@ -39,6 +39,7 @@ export async function openDefineParentsWizard(
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
+  framing: FramingId,
 ): Promise<CommitBatch | null> {
   const displayName = getNodeDisplayName(focalNodeId, nodes, variableConfig);
   const title = `${displayName} Biological Parents`;
@@ -55,6 +56,7 @@ export async function openDefineParentsWizard(
     edges,
     variableConfig,
     candidateIds,
+    framing,
   );
 
   const bioTriadConfig = {

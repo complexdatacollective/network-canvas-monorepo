@@ -7,6 +7,7 @@ import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import type {
+  FramingId,
   NcEdge,
   NcNode,
   RelationshipType,
@@ -203,6 +204,7 @@ export async function openAddParentWizard(
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
   parentTypeOptions: ParentEdgeTypeOption[],
+  framing: FramingId,
 ): Promise<CommitBatch | null> {
   const existingParentIds = getExistingParentIds(
     anchorNodeId,
@@ -214,7 +216,7 @@ export async function openAddParentWizard(
       if (!nodes.has(id)) return null;
       return {
         id,
-        label: getNodeLabel(id, nodes, edges, variableConfig),
+        label: getNodeLabel(id, nodes, edges, variableConfig, framing),
       };
     })
     .filter((p) => p !== null);
@@ -225,7 +227,7 @@ export async function openAddParentWizard(
     .filter((id) => nodes.has(id))
     .map((id) => ({
       value: id,
-      label: getNodeLabel(id, nodes, edges, variableConfig),
+      label: getNodeLabel(id, nodes, edges, variableConfig, framing),
     }));
 
   const result = await openDialog({

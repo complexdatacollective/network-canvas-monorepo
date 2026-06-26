@@ -307,8 +307,16 @@ export const createFamilyPedigreeStore = (
           );
           const egoId = egoEntry?.[0];
 
+          // framing ?? 'gamete': safe fallback — per spec §4.1, when framing is
+          // null only the intro/chooser steps render and no gamete-parent labels exist.
           const computedLabels = egoId
-            ? computeAllDisplayLabels(egoId, nodes, edges, variableConfig)
+            ? computeAllDisplayLabels(
+                egoId,
+                nodes,
+                edges,
+                variableConfig,
+                get().framing ?? 'gamete',
+              )
             : new Map<string, string>();
 
           const serializedNodes = [...nodes.entries()].map(([id, node]) => {
