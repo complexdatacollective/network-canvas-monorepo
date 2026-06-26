@@ -1,28 +1,13 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { isArray, values } from 'es-toolkit/compat';
 
-import { VARIABLE_REFERENCE_VALIDATIONS } from '@codaco/protocol-validation';
+import { collectEntityAttributeReferences } from '@codaco/protocol-validation';
 
 import collectPath, {
   type CollectPathsEntry,
   collectPaths,
 } from '../utils/collectPaths';
 import { getProtocol } from './protocol';
-
-/**
- * Paths to each codebook variable's `validation` object, where the
- * variable-reference validation rules (see VARIABLE_REFERENCE_VALIDATIONS) each
- * hold the id of another variable.
- */
-const variableReferenceValidationPaths = (
-  [
-    'codebook.ego.variables[].validation',
-    'codebook.node[].variables[].validation',
-    'codebook.edge[].variables[].validation',
-  ] as const
-).flatMap((basePath) =>
-  VARIABLE_REFERENCE_VALIDATIONS.map((rule) => `${basePath}.${rule}`),
-);
 
 const mapSubject =
   (entityType: string) =>
@@ -45,19 +30,9 @@ const mapAssetItems = (
   return [content, `${path}.content`];
 };
 
-/**
- * Master list of paths where variables are used.
- *
- * ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
- * It is VITAL that this be updated when any new variable use occurs in the
- * protocol schema!
- * ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
- *
- */
-export const paths: {
+const paths: {
   edges: CollectPathsEntry[];
   nodes: CollectPathsEntry[];
-  variables: CollectPathsEntry[];
   assets: CollectPathsEntry[];
 } = {
   edges: [
@@ -72,41 +47,6 @@ export const paths: {
   nodes: [
     ['stages[].subject', mapSubject('node')],
     'stages[].nodeConfig.type', // FamilyPedigree node type
-  ],
-  variables: [
-    'stages[].quickAdd',
-    'stages[].form.fields[].variable',
-    'stages[].panels.filter.rules[].options.attribute',
-    'stages[].searchOptions.matchProperties[]',
-    'stages[].cardOptions.additionalProperties[].variable',
-    'stages[].prompts[].variable',
-    'stages[].prompts[].edgeVariable',
-    'stages[].prompts[].otherVariable',
-    'stages[].prompts[].additionalAttributes[].variable',
-    'stages[].prompts[].highlight.variable',
-    'stages[].prompts[].layout.layoutVariable',
-    'stages[].prompts[].presets[].layoutVariable',
-    'stages[].prompts[].presets[].groupVariable',
-    'stages[].prompts[].presets[].edges.display[]',
-    'stages[].prompts[].presets[].highlight[]',
-    'stages[].prompts[].bucketSortOrder[].property',
-    'stages[].prompts[].binSortOrder[].property',
-    'stages[].skipLogic.filter.rules[].options.attribute',
-    'stages[].filter.rules[].options.attribute',
-    'stages[].presets[].layoutVariable',
-    'stages[].presets[].groupVariable',
-    'stages[].presets[].edges.display[]',
-    'stages[].presets[].highlight[]',
-    // FamilyPedigree variable paths
-    'stages[].nodeConfig.nodeLabelVariable',
-    'stages[].nodeConfig.egoVariable',
-    'stages[].nodeConfig.relationshipVariable',
-    'stages[].nodeConfig.form[].variable',
-    'stages[].edgeConfig.relationshipTypeVariable',
-    'stages[].edgeConfig.isActiveVariable',
-    'stages[].edgeConfig.isGestationalCarrierVariable',
-    'stages[].nominationPrompts[].variable',
-    ...variableReferenceValidationPaths,
   ],
   assets: [
     'stages[].panels[].dataSource',
@@ -135,12 +75,19 @@ const getNodeIndex = createSelector(getProtocol, (protocol) =>
 );
 
 /**
- * Returns index of used variables
- * @returns {object} in format: { [path]: variable }
+ * Returns index of used variables.
+ * Keys use the dotted-array format produced by collectEntityAttributeReferences,
+ * e.g. `stages.0.prompts.0.variable`. Values are the variable id strings.
+ * @returns {object} in format: { [dotted-path]: variableId }
  */
-const getVariableIndex = createSelector(getProtocol, (protocol) =>
-  collectPaths(paths.variables, protocol),
-);
+const getVariableIndex = createSelector(getProtocol, (protocol) => {
+  if (!protocol) return {};
+  const index: Record<string, string> = {};
+  for (const hit of collectEntityAttributeReferences(protocol)) {
+    index[hit.path.join('.')] = hit.variableId;
+  }
+  return index;
+});
 
 /**
  * Returns index of used assets

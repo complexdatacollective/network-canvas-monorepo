@@ -1,16 +1,12 @@
-import {
-  getEdgeTypeId,
-  getEdgeVariableId,
-  getNodeTypeId,
-  getNodeVariableId,
-} from '~/utils/mock-seeds';
+import { z } from 'zod';
+
 import { findDuplicateId } from '~/utils/validation-helpers';
-import { z } from '~/utils/zod-mock-extension';
 
 import {
   FormFieldSchema,
   familyPedigreeNominationPromptSchema,
 } from '../common';
+import { entityAttributeReference } from '../entity-attribute-reference';
 import { baseStageSchema } from './base';
 
 // Reserved id used by the interview for the synthetic census/scaffolding prompt;
@@ -19,28 +15,38 @@ const RESERVED_NOMINATION_PROMPT_ID = 'scaffolding';
 
 export const NodeConfigSchema = z.strictObject({
   // Node type for alter nodes in the codebook
-  type: z.string().generateMock(() => getNodeTypeId()),
+  type: z.string(),
   // Text variable used to store the node's display label
-  nodeLabelVariable: z.string().generateMock(() => getNodeVariableId()),
+  nodeLabelVariable: entityAttributeReference({
+    subject: { sibling: 'type', entity: 'node' },
+  }),
   // Boolean variable marking the ego node
-  egoVariable: z.string().generateMock(() => getNodeVariableId()),
+  egoVariable: entityAttributeReference({
+    subject: 'ego',
+  }),
   // String variable storing the relationship to ego (e.g. 'sibling', 'parent')
-  relationshipVariable: z.string().generateMock(() => getNodeVariableId()),
+  relationshipVariable: entityAttributeReference({
+    subject: { sibling: 'type', entity: 'node' },
+  }),
   // Optional form fields collected when creating a node
   form: z.array(FormFieldSchema).optional(),
 });
 
 export const EdgeConfigSchema = z.strictObject({
   // Edge type in the codebook (single type for both parent and partner edges)
-  type: z.string().generateMock(() => getEdgeTypeId()),
+  type: z.string(),
   // Variable storing the relationship type value (discriminant for the Edge union)
-  relationshipTypeVariable: z.string().generateMock(() => getEdgeVariableId()),
+  relationshipTypeVariable: entityAttributeReference({
+    subject: { sibling: 'type', entity: 'edge' },
+  }),
   // Variable storing whether the relationship is currently active
-  isActiveVariable: z.string().generateMock(() => getEdgeVariableId()),
+  isActiveVariable: entityAttributeReference({
+    subject: { sibling: 'type', entity: 'edge' },
+  }),
   // Variable storing gestational carrier status (parent edges only)
-  isGestationalCarrierVariable: z
-    .string()
-    .generateMock(() => getEdgeVariableId()),
+  isGestationalCarrierVariable: entityAttributeReference({
+    subject: { sibling: 'type', entity: 'edge' },
+  }),
 });
 
 export const familyPedigreeStage = baseStageSchema.extend({

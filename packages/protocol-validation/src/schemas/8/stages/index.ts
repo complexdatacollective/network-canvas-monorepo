@@ -1,11 +1,9 @@
-import { z } from '~/utils/zod-mock-extension';
+import { z } from 'zod';
 
 // Export base stage schema
 export * from './base';
 
 // Import all stage types
-import { faker } from '@faker-js/faker';
-
 import { alterEdgeFormStage } from './alter-edge-form';
 import { alterFormStage } from './alter-form';
 import { anonymisationStage } from './anonymisation';
@@ -65,13 +63,7 @@ const stageSchemas = [
 ] as const;
 
 // Combine all stage types
-export const stageSchema = z
-  .discriminatedUnion('type', stageSchemas)
-  .generateMock(() => {
-    // pick a random schema
-    const schema = faker.helpers.arrayElement(stageSchemas);
-    return schema.generateMock();
-  });
+export const stageSchema = z.discriminatedUnion('type', stageSchemas);
 
 // Extract all the 'type' values from stageSchema
 export type StageType = z.infer<typeof stageSchema>['type'];

@@ -1,6 +1,4 @@
-import { faker } from '@faker-js/faker';
-
-import { z } from '~/utils/zod-mock-extension';
+import { z } from 'zod';
 
 import {
   EdgeVariablesSchema,
@@ -81,18 +79,10 @@ const ShapeSchema = z.strictObject({
 
 const NodeDefinitionSchema = z.strictObject({
   name: z.string(),
-  icon: z
-    .string()
-    .optional()
-    .generateMock(() => 'add-a-person'),
-  // Always generate variables in mocks
-  variables: VariablesSchema.optional().generateMock(() =>
-    VariablesSchema.generateMock(),
-  ),
-  color: z
-    .union(NodeColorSequence.map((color) => z.literal(color)))
-    .generateMock(() => faker.helpers.arrayElement(NodeColorSequence)),
-  shape: ShapeSchema.generateMock(() => ({ default: 'circle' as const })),
+  icon: z.string().optional(),
+  variables: VariablesSchema.optional(),
+  color: z.union(NodeColorSequence.map((color) => z.literal(color))),
+  shape: ShapeSchema,
 });
 
 export { NodeDefinitionSchema };
@@ -113,10 +103,7 @@ export type EdgeColor = (typeof EdgeColorSequence)[number];
 
 const EdgeDefinitionSchema = z.strictObject({
   name: z.string(),
-  color: z
-    .union(EdgeColorSequence.map((color) => z.literal(color)))
-    .optional()
-    .generateMock(() => faker.helpers.arrayElement(EdgeColorSequence)),
+  color: z.union(EdgeColorSequence.map((color) => z.literal(color))).optional(),
   variables: EdgeVariablesSchema.optional(),
 });
 

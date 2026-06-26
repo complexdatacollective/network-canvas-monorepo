@@ -1995,9 +1995,6 @@ importers:
       '@codaco/shared-consts':
         specifier: workspace:*
         version: link:../shared-consts
-      '@faker-js/faker':
-        specifier: 'catalog:'
-        version: 10.4.0
       ohash:
         specifier: ^2.0.11
         version: 2.0.11

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { collectEntityAttributeReferencesFromSchema } from '~/utils/collectEntityAttributeReferences';
+import { validateReferences } from '~/utils/validateEntityAttributeReferences';
 import {
   entityExists,
   filterRuleAttributeExists,
@@ -10,7 +12,6 @@ import {
   variableExists,
 } from '~/utils/validation-helpers';
 
-import type { Codebook } from './codebook';
 import { OperatorsByVariableType } from './filters';
 
 // Re-export all the split schemas
@@ -22,18 +23,11 @@ export * from './stages';
 export * from './variables';
 
 // Import what we need for the ProtocolSchema
-import { getAssetId } from '~/utils/mock-seeds';
-
 import { assetSchema } from './assets';
-import {
-  CodebookSchema,
-  type EdgeDefinition,
-  type NodeDefinition,
-} from './codebook';
+import { type Codebook, CodebookSchema, type NodeDefinition } from './codebook';
 import { ExperimentsSchema, type FormField, type StageSubject } from './common';
 import type { FilterRule } from './filters';
 import { type Prompt, stageSchema } from './stages';
-import { VARIABLE_REFERENCE_VALIDATIONS } from './variables/validation';
 
 // Variable types that have no renderable form `component` and therefore
 // cannot be referenced by a form field.
@@ -187,11 +181,7 @@ const ProtocolSchema = z
     name: z.string().min(1),
     description: z.string().optional(),
     experiments: ExperimentsSchema.optional(),
-    lastModified: z
-      .string()
-      .datetime()
-      .optional()
-      .generateMock(() => new Date().toISOString()),
+    lastModified: z.string().datetime().optional(),
     schemaVersion: z.literal(8),
     codebook: CodebookSchema,
     assetManifest: z.record(z.string(), assetSchema).optional(),
@@ -208,9 +198,21 @@ const ProtocolSchema = z
     }),
   })
   .superRefine((protocol, ctx) => {
-    // 1. Sstage validation
+    // Use ProtocolSchema (captured by closure) to walk the schema tree and
+    // validate all entity-attribute references. ProtocolSchema is guaranteed
+    // to be assigned by the time this callback runs (safeParse is called after
+    // module initialization completes).
+    const hits = collectEntityAttributeReferencesFromSchema(
+      ProtocolSchema,
+      protocol,
+    );
+    for (const issue of validateReferences(protocol.codebook, hits)) {
+      ctx.addIssue(issue);
+    }
+
+    // 1. Stage validation
     protocol.stages.forEach((stage, stageIndex) => {
-      // 3a. Check stage subject exists in codebook
+      // Check stage subject exists in codebook
       if ('subject' in stage && stage.subject) {
         if (!entityExists(protocol.codebook, stage.subject)) {
           ctx.addIssue({
@@ -221,24 +223,26 @@ const ProtocolSchema = z
         }
       }
 
-      // 2. Form field validation - check variables exist in appropriate codebook entity
+      // Form field type validation: existence is covered by the
+      // entity-attribute reference validator above; here we additionally reject
+      // variables whose type cannot be rendered as a form field (layout/location).
       if ('form' in stage && stage.form?.fields) {
         stage.form.fields.forEach((field: FormField, fieldIndex: number) => {
           let subject: StageSubject | undefined;
           if (stage.type === 'EgoForm') {
             subject = { entity: 'ego' as const };
           } else if ('subject' in stage && stage.subject) {
-            subject = stage.subject as {
-              entity: 'node' | 'edge';
-              type: string;
-            };
+            subject = stage.subject;
           }
 
           if (subject) {
-            if (!variableExists(protocol.codebook, subject, field.variable)) {
+            const variable = getVariablesForSubject(protocol.codebook, subject)[
+              field.variable
+            ];
+            if (variable && NON_RENDERABLE_VARIABLE_TYPES.has(variable.type)) {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: 'Form field variable not found in codebook.',
+                message: `Form field variable "${field.variable}" of type "${variable.type}" cannot be rendered as a form field.`,
                 path: [
                   'stages',
                   stageIndex,
@@ -248,28 +252,6 @@ const ProtocolSchema = z
                   'variable',
                 ],
               });
-            } else {
-              const variable = getVariablesForSubject(
-                protocol.codebook,
-                subject,
-              )[field.variable];
-              if (
-                variable &&
-                NON_RENDERABLE_VARIABLE_TYPES.has(variable.type)
-              ) {
-                ctx.addIssue({
-                  code: 'custom' as const,
-                  message: `Form field variable "${field.variable}" of type "${variable.type}" cannot be rendered as a form field.`,
-                  path: [
-                    'stages',
-                    stageIndex,
-                    'form',
-                    'fields',
-                    fieldIndex,
-                    'variable',
-                  ],
-                });
-              }
             }
           }
         });
@@ -278,61 +260,7 @@ const ProtocolSchema = z
       // 3c. Comprehensive prompt validation (duplicate ID validation moved to individual stage schemas)
       if ('prompts' in stage && stage.prompts) {
         stage.prompts.forEach((prompt: Prompt, promptIndex: number) => {
-          // 3d.i. Variable references in prompts (for bin stages)
-          if (
-            'variable' in prompt &&
-            prompt.variable &&
-            'subject' in stage &&
-            stage.subject
-          ) {
-            if (
-              !variableExists(protocol.codebook, stage.subject, prompt.variable)
-            ) {
-              const subject = stage.subject;
-              ctx.addIssue({
-                code: 'custom' as const,
-                message: `"${prompt.variable}" not defined in codebook[${subject.entity}][${subject.type}].variables`,
-                path: [
-                  'stages',
-                  stageIndex,
-                  'prompts',
-                  promptIndex,
-                  'variable',
-                ],
-              });
-            }
-          }
-
-          // 3d.ii. otherVariable validation (for categorical bin)
-          if (
-            'otherVariable' in prompt &&
-            prompt.otherVariable &&
-            'subject' in stage &&
-            stage.subject
-          ) {
-            if (
-              !variableExists(
-                protocol.codebook,
-                stage.subject,
-                prompt.otherVariable,
-              )
-            ) {
-              const subject = stage.subject;
-              ctx.addIssue({
-                code: 'custom' as const,
-                message: `"${prompt.otherVariable}" not defined in codebook[${subject.entity}][${subject.type}].variables`,
-                path: [
-                  'stages',
-                  stageIndex,
-                  'prompts',
-                  promptIndex,
-                  'otherVariable',
-                ],
-              });
-            }
-          }
-
-          // 3d.iii. createEdge references validation
+          // createEdge references validation (entity-type reference, not attribute)
           if ('createEdge' in prompt && prompt.createEdge) {
             if (
               !(
@@ -354,115 +282,41 @@ const ProtocolSchema = z
             }
           }
 
-          // 3d.iv. edgeVariable validation for TieStrengthCensus
+          // layoutVariable type check (existence is covered by the
+          // entity-attribute reference validator). A sociogram layout variable
+          // must be of type "layout".
           if (
-            'edgeVariable' in prompt &&
-            prompt.edgeVariable &&
-            'createEdge' in prompt &&
-            prompt.createEdge
+            'layout' in prompt &&
+            prompt.layout &&
+            'layoutVariable' in prompt.layout &&
+            prompt.layout.layoutVariable &&
+            typeof prompt.layout.layoutVariable === 'string' &&
+            'subject' in stage &&
+            stage.subject
           ) {
-            const edgeSubject = {
-              entity: 'edge' as const,
-              type: prompt.createEdge,
-            };
-            if (
-              !variableExists(
-                protocol.codebook,
-                edgeSubject,
-                prompt.edgeVariable,
-              )
-            ) {
+            const layoutVariable = prompt.layout.layoutVariable;
+            const variable = getVariablesForSubject(
+              protocol.codebook,
+              stage.subject,
+            )[layoutVariable];
+            if (variable && variable.type !== 'layout') {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `"${prompt.edgeVariable}" not defined in codebook[edge][${prompt.createEdge}].variables`,
+                message: `Layout variable "${layoutVariable}" must be of type "layout", but is "${variable.type}".`,
                 path: [
                   'stages',
                   stageIndex,
                   'prompts',
                   promptIndex,
-                  'edgeVariable',
+                  'layout',
+                  'layoutVariable',
                 ],
               });
-            } else {
-              // Check that it's an ordinal variable
-              const variables = getVariablesForSubject(
-                protocol.codebook,
-                edgeSubject,
-              );
-              const variable = variables[prompt.edgeVariable];
-              if (variable && variable.type !== 'ordinal') {
-                ctx.addIssue({
-                  code: 'custom' as const,
-                  message: `"${prompt.edgeVariable}" is not of type 'ordinal'.`,
-                  path: [
-                    'stages',
-                    stageIndex,
-                    'prompts',
-                    promptIndex,
-                    'edgeVariable',
-                  ],
-                });
-              }
             }
           }
 
-          // 3d.v. layoutVariable validation (string only)
-          if (
-            'layout' in prompt &&
-            prompt.layout &&
-            'layoutVariable' in prompt.layout &&
-            prompt.layout.layoutVariable
-          ) {
-            const layoutVariable = prompt.layout.layoutVariable;
-            if (
-              typeof layoutVariable === 'string' &&
-              'subject' in stage &&
-              stage.subject
-            ) {
-              if (
-                !variableExists(
-                  protocol.codebook,
-                  stage.subject,
-                  layoutVariable,
-                )
-              ) {
-                const subject = stage.subject;
-                ctx.addIssue({
-                  code: 'custom' as const,
-                  message: `Layout variable "${layoutVariable}" not defined in codebook[${subject.entity}][${subject.type}].variables.`,
-                  path: [
-                    'stages',
-                    stageIndex,
-                    'prompts',
-                    promptIndex,
-                    'layout',
-                    'layoutVariable',
-                  ],
-                });
-              } else {
-                const variable = getVariablesForSubject(
-                  protocol.codebook,
-                  stage.subject,
-                )[layoutVariable];
-                if (variable && variable.type !== 'layout') {
-                  ctx.addIssue({
-                    code: 'custom' as const,
-                    message: `Layout variable "${layoutVariable}" must be of type "layout", but is "${variable.type}".`,
-                    path: [
-                      'stages',
-                      stageIndex,
-                      'prompts',
-                      promptIndex,
-                      'layout',
-                      'layoutVariable',
-                    ],
-                  });
-                }
-              }
-            }
-          }
-
-          // 3d.v.b. highlight.variable must reference a boolean variable
+          // highlight.variable type check (existence covered by the
+          // entity-attribute reference validator): must reference a boolean.
           if (
             'highlight' in prompt &&
             prompt.highlight &&
@@ -472,17 +326,14 @@ const ProtocolSchema = z
             stage.subject
           ) {
             const highlightVariable = prompt.highlight.variable;
-            if (
-              !variableExists(
-                protocol.codebook,
-                stage.subject,
-                highlightVariable,
-              )
-            ) {
-              const subject = stage.subject;
+            const variable = getVariablesForSubject(
+              protocol.codebook,
+              stage.subject,
+            )[highlightVariable];
+            if (variable && variable.type !== 'boolean') {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `Highlight variable "${highlightVariable}" not defined in codebook[${subject.entity}][${subject.type}].variables.`,
+                message: `Highlight variable "${highlightVariable}" must be of type "boolean", but is "${variable.type}".`,
                 path: [
                   'stages',
                   stageIndex,
@@ -492,29 +343,10 @@ const ProtocolSchema = z
                   'variable',
                 ],
               });
-            } else {
-              const variable = getVariablesForSubject(
-                protocol.codebook,
-                stage.subject,
-              )[highlightVariable];
-              if (variable && variable.type !== 'boolean') {
-                ctx.addIssue({
-                  code: 'custom' as const,
-                  message: `Highlight variable "${highlightVariable}" must be of type "boolean", but is "${variable.type}".`,
-                  path: [
-                    'stages',
-                    stageIndex,
-                    'prompts',
-                    promptIndex,
-                    'highlight',
-                    'variable',
-                  ],
-                });
-              }
             }
           }
 
-          // 3d.v.c. CategoricalBin: otherOptionLabel required when otherVariable set
+          // CategoricalBin: otherOptionLabel required when otherVariable set
           if (
             'otherVariable' in prompt &&
             prompt.otherVariable &&
@@ -533,38 +365,6 @@ const ProtocolSchema = z
               ],
             });
           }
-
-          // 3d.vi. additionalAttributes validation
-          if (
-            'additionalAttributes' in prompt &&
-            prompt.additionalAttributes &&
-            'subject' in stage &&
-            stage.subject
-          ) {
-            const missingVariables: string[] = [];
-            for (const attr of prompt.additionalAttributes) {
-              if (
-                !variableExists(protocol.codebook, stage.subject, attr.variable)
-              ) {
-                missingVariables.push(attr.variable);
-              }
-            }
-            if (missingVariables.length > 0) {
-              ctx.addIssue({
-                code: 'custom' as const,
-                message: `One or more sortable properties not defined in codebook: ${missingVariables.join(', ')}`,
-                path: [
-                  'stages',
-                  stageIndex,
-                  'prompts',
-                  promptIndex,
-                  'additionalAttributes',
-                ],
-              });
-            }
-          }
-
-          // edges.restrict.origin validation removed - feature was abandoned
         });
       }
 
@@ -577,24 +377,16 @@ const ProtocolSchema = z
         'subject' in stage &&
         stage.subject
       ) {
-        if (!variableExists(protocol.codebook, stage.subject, stage.quickAdd)) {
+        const variable = getVariablesForSubject(
+          protocol.codebook,
+          stage.subject,
+        )[stage.quickAdd];
+        if (variable && variable.type !== 'text') {
           ctx.addIssue({
             code: 'custom' as const,
-            message: `quickAdd variable "${stage.quickAdd}" not defined in codebook[${stage.subject.entity}][${stage.subject.type}].variables.`,
+            message: `quickAdd variable "${stage.quickAdd}" must be of type "text", but is "${variable.type}".`,
             path: ['stages', stageIndex, 'quickAdd'],
           });
-        } else {
-          const variable = getVariablesForSubject(
-            protocol.codebook,
-            stage.subject,
-          )[stage.quickAdd];
-          if (variable && variable.type !== 'text') {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `quickAdd variable "${stage.quickAdd}" must be of type "text", but is "${variable.type}".`,
-              path: ['stages', stageIndex, 'quickAdd'],
-            });
-          }
         }
       }
 
@@ -748,7 +540,7 @@ const ProtocolSchema = z
 
       // Note: Items duplicate ID validation moved to individual stage schemas
 
-      // 3g. Filter rules validation (comprehensive)
+      // Filter rules validation (comprehensive)
       if ('filter' in stage && stage.filter?.rules) {
         const duplicateRuleId = findDuplicateId(stage.filter.rules);
         if (duplicateRuleId) {
@@ -826,65 +618,7 @@ const ProtocolSchema = z
       validateNestedFilters(stage, ['stages', stageIndex]);
     });
 
-    // 4. Codebook variable validation
-    const validateVariableReferences = (
-      variables: Record<string, unknown> | undefined,
-      entityPath: string[],
-      entityType: 'ego' | 'node' | 'edge',
-      entityName?: string,
-    ) => {
-      if (!variables) return;
-
-      for (const [varId, variable] of Object.entries(variables)) {
-        if (
-          variable &&
-          typeof variable === 'object' &&
-          'validation' in variable &&
-          variable.validation &&
-          typeof variable.validation === 'object'
-        ) {
-          const validation = variable.validation as Record<string, unknown>;
-
-          // Note: Ego-specific validation moved to EgoDefinitionSchema
-
-          // 4b. Cross-reference validations
-          const checkCrossRef = (refType: string, refVar: string) => {
-            const subject =
-              entityType === 'ego'
-                ? { entity: 'ego' as const }
-                : { entity: entityType, type: entityName || '' };
-
-            if (!variableExists(protocol.codebook, subject, refVar)) {
-              ctx.addIssue({
-                code: 'custom' as const,
-                message: `The variable "${refVar}" does not exist in the codebook`,
-                path: [...entityPath, varId, 'validation', refType],
-              });
-            }
-          };
-
-          for (const refType of VARIABLE_REFERENCE_VALIDATIONS) {
-            const refVar = validation[refType];
-            if (refVar && typeof refVar === 'string') {
-              checkCrossRef(refType, refVar);
-            }
-          }
-        }
-      }
-    };
-
-    // 5. Apply variable validation to all codebook entities
-
-    // 5a. Validate ego variables
-    if (protocol.codebook.ego?.variables) {
-      validateVariableReferences(
-        protocol.codebook.ego.variables,
-        ['codebook', 'ego', 'variables'],
-        'ego',
-      );
-    }
-
-    // 5b. Validate node variables and shape mappings
+    // Validate node shape mappings
     if (protocol.codebook.node) {
       const discreteEligibleTypes = new Set([
         'categorical',
@@ -896,14 +630,6 @@ const ProtocolSchema = z
       for (const [nodeType, nodeDef] of Object.entries(
         protocol.codebook.node,
       ) as [string, NodeDefinition][]) {
-        validateVariableReferences(
-          nodeDef.variables,
-          ['codebook', 'node', nodeType, 'variables'],
-          'node',
-          nodeType,
-        );
-
-        // Validate shape mapping variable references
         if (nodeDef.shape?.dynamic) {
           const { dynamic } = nodeDef.shape;
           const basePath = ['codebook', 'node', nodeType, 'shape', 'dynamic'];
@@ -942,60 +668,6 @@ const ProtocolSchema = z
         }
       }
     }
-
-    // 5c. Validate edge variables
-    if (protocol.codebook.edge) {
-      for (const [edgeType, edgeDef] of Object.entries(
-        protocol.codebook.edge,
-      ) as [string, EdgeDefinition][]) {
-        validateVariableReferences(
-          edgeDef.variables,
-          ['codebook', 'edge', edgeType, 'variables'],
-          'edge',
-          edgeType,
-        );
-      }
-    }
-  })
-  .generateMock(() => {
-    const codebook = CodebookSchema.generateMock();
-    const stages = Array.from({ length: 5 }, () => stageSchema.generateMock());
-
-    return {
-      name: 'Mock Protocol',
-      description: 'Generated Mock Protocol for Testing',
-      schemaVersion: 8 as const,
-      lastModified: new Date().toISOString(),
-      experiments: {
-        encryptedVariables: false,
-      },
-      codebook,
-      // Fixed asset types so stage mocks that reference these slots by index
-      // resolve to the asset type their cross-reference validation requires:
-      // index 0 -> apikey (Geospatial token), index 1 -> geojson (Geospatial
-      // dataSource), index 2 -> network (NameGeneratorRoster dataSource).
-      assetManifest: {
-        [getAssetId(0)]: {
-          id: getAssetId(0),
-          type: 'apikey' as const,
-          name: 'Mapbox Token',
-          value: 'pk.mockToken',
-        },
-        [getAssetId(1)]: {
-          id: getAssetId(1),
-          type: 'geojson' as const,
-          name: 'map.geojson',
-          source: 'map.geojson',
-        },
-        [getAssetId(2)]: {
-          id: getAssetId(2),
-          type: 'network' as const,
-          name: 'roster.csv',
-          source: 'roster.csv',
-        },
-      },
-      stages,
-    };
   });
 
 export type ProtocolSchemaV8 = z.infer<typeof ProtocolSchema>;

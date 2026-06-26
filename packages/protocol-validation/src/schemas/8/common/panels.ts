@@ -1,4 +1,4 @@
-import { z } from '~/utils/zod-mock-extension';
+import { z } from 'zod';
 
 import { FilterSchema } from '../filters';
 

@@ -90,5 +90,7 @@ describe.skipIf(!hasGitHubToken)('Test protocols', () => {
         expect(migrationResult.success).toBe(true);
       }
     }
-  });
+    // Migrates + validates the whole test-protocol corpus (~90 protocols), so it
+    // needs far longer than the 5s default; the beforeAll download uses 300s.
+  }, 60_000);
 });

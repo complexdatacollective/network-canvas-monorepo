@@ -4,7 +4,10 @@ import { isValidElement, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
-import type { FormField } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  type FormField,
+} from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import { CurrentStepProvider } from '~/contexts/CurrentStepContext';
 import protocol from '~/store/modules/protocol';
@@ -67,7 +70,9 @@ function makeWrapper() {
   };
 }
 
-const fields: FormField[] = [{ variable: NAME_VAR, prompt: 'Name' }];
+const fields: FormField[] = [
+  { variable: asEntityAttributeReference(NAME_VAR), prompt: 'Name' },
+];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;

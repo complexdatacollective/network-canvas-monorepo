@@ -13,15 +13,18 @@ import {
 
 // Minimal protocol: asset1 + variable v1 are referenced by the single stage,
 // while asset2 + variable v2 are defined but never used.
+// Uses OrdinalBin because its prompts have a `variable` field that the
+// entity-attribute-reference extractor recognises; NameGenerator prompts do not.
 const protocol = {
   name: 'Test protocol',
   stages: [
     {
       id: 's1',
-      type: 'NameGenerator',
-      label: 'Name generator',
+      type: 'OrdinalBin',
+      label: 'Ordinal bin',
       dataSource: 'asset1',
-      prompts: [{ id: 'p1', variable: 'v1' }],
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', text: 'Rate it', variable: 'v1' }],
     },
   ],
   codebook: {

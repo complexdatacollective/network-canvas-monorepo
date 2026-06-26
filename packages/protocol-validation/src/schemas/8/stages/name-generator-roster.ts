@@ -1,8 +1,6 @@
-import { faker } from '@faker-js/faker';
+import { z } from 'zod';
 
-import { getAssetId } from '~/utils/mock-seeds';
 import { findDuplicateId } from '~/utils/validation-helpers';
-import { z } from '~/utils/zod-mock-extension';
 
 import { NodeStageSubjectSchema, nameGeneratorPromptSchema } from '../common';
 import { SortOrderSchema } from '../filters';
@@ -11,11 +9,17 @@ import { baseStageSchema } from './base';
 export const nameGeneratorRosterStage = baseStageSchema.extend({
   type: z.literal('NameGeneratorRoster'),
   subject: NodeStageSubjectSchema,
-  dataSource: z.string().generateMock(() => getAssetId(2)),
+  dataSource: z.string(),
   cardOptions: z
     .strictObject({
       additionalProperties: z
-        .array(z.strictObject({ label: z.string(), variable: z.string() }))
+        .array(
+          z.strictObject({
+            label: z.string(),
+            // External data-source (roster CSV) column, not a codebook variable.
+            variable: z.string(),
+          }),
+        )
         .optional(),
     })
     .optional(),
@@ -23,24 +27,21 @@ export const nameGeneratorRosterStage = baseStageSchema.extend({
     .strictObject({
       sortOrder: SortOrderSchema.optional(),
       sortableProperties: z
-        .array(z.strictObject({ label: z.string(), variable: z.string() }))
+        .array(
+          z.strictObject({
+            label: z.string(),
+            // External data-source (roster CSV) column, not a codebook variable.
+            variable: z.string(),
+          }),
+        )
         .optional(),
     })
     .optional(),
   searchOptions: z
     .strictObject({
-      fuzziness: z
-        .number()
-        .generateMock(() =>
-          faker.number.float({ multipleOf: 0.25, min: 0, max: 1 }),
-        ),
-      matchProperties: z.array(z.string()).generateMock(() => [
-        ...faker.helpers.arrayElement([
-          ['name', 'first_name', 'last_name'],
-          ['website', 'country', 'name'],
-          ['email', 'name'],
-        ]),
-      ]),
+      fuzziness: z.number(),
+      // External data-source (roster CSV) column names, not codebook variables.
+      matchProperties: z.array(z.string()),
     })
     .optional(),
   prompts: z

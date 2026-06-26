@@ -62,28 +62,28 @@ const state = {
 };
 
 const index = {
-  'stages[0].foo.bar': 'fizz',
-  'stages[0].foo.bar.bazz': 'fizz',
-  'stages[1].foo.bar.bazz': 'fizz',
-  'stages[1].foo.bar': 'pop',
-  'stages[2].foo.bar': 'pop',
+  'stages.0.foo.bar': 'fizz',
+  'stages.0.foo.bar.bazz': 'fizz',
+  'stages.1.foo.bar.bazz': 'fizz',
+  'stages.1.foo.bar': 'pop',
+  'stages.2.foo.bar': 'pop',
 };
 
 it('getUsage() ', () => {
   const value = 'fizz';
   const expectedResult = [
-    'stages[0].foo.bar',
-    'stages[0].foo.bar.bazz',
-    'stages[1].foo.bar.bazz',
+    'stages.0.foo.bar',
+    'stages.0.foo.bar.bazz',
+    'stages.1.foo.bar.bazz',
   ];
   expect(getUsage(index, value)).toEqual(expectedResult);
 });
 
-it('getUsageAsStageMeta()', () => {
+it('getUsageAsStageMeta() produces stage links for stage-scoped paths', () => {
   const usage = [
-    'stages[0].foo.bar',
-    'stages[0].foo.bar.bazz',
-    'stages[1].foo.bar.bazz',
+    'stages.0.foo.bar',
+    'stages.0.foo.bar.bazz',
+    'stages.1.foo.bar.bazz',
   ];
 
   const mockStageMetaByIndex = [
@@ -113,7 +113,7 @@ describe('getUsageAsStageMeta() with codebook validation references', () => {
         state.protocol.present.codebook,
       );
       const usage = [
-        `codebook.node[person].variables[2].validation.${validationKey}`,
+        `codebook.node.person.variables.2.validation.${validationKey}`,
       ];
 
       expect(getUsageAsStageMeta([], mockVariableMetaByIndex, usage)).toEqual([

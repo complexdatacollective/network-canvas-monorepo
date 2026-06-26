@@ -1,3 +1,8 @@
+import { asEntityAttributeReference } from './schemas/8/entity-attribute-reference';
+import {
+  collectEntityAttributeReferences,
+  type EntityAttributeReferenceHit,
+} from './utils/collectEntityAttributeReferences';
 import { type ExtractedAsset, extractProtocol } from './utils/extractProtocol';
 import { hashProtocol } from './utils/hashProtocol';
 import {
@@ -26,6 +31,9 @@ export {
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from './schemas';
 export {
+  asEntityAttributeReference,
+  collectEntityAttributeReferences,
+  type EntityAttributeReferenceHit,
   type ExtractedAsset,
   extractProtocol,
   getVariableNamesFromNetwork,
