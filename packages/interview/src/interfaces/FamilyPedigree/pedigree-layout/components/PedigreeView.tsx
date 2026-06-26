@@ -26,6 +26,7 @@ import {
   getRelationshipTypeVariable,
 } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 import {
+  getBiologicalSexVariable,
   getEgoVariable,
   getNodeLabelVariable,
   getNodeTypeKey,
@@ -83,6 +84,7 @@ export default function PedigreeView({
     getIsGestationalCarrierVariable,
   );
   const gameteRoleVariable = useStageSelector(getGameteRoleVariable);
+  const biologicalSexVariable = useStageSelector(getBiologicalSexVariable);
   const resolvedFormFields = useStageSelector(getResolvedNodeFormFields);
 
   const variableConfig: VariableConfig = {
@@ -95,6 +97,7 @@ export default function PedigreeView({
     isActiveVariable,
     isGestationalCarrierVariable,
     gameteRoleVariable,
+    biologicalSexVariable,
   };
 
   const { openDialog } = useDialog();

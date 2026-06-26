@@ -22,6 +22,7 @@ const variableConfig: VariableConfig = {
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGC',
   gameteRoleVariable: 'gameteRole',
+  biologicalSexVariable: 'biologicalSex',
 };
 
 function edge(from: string, to: string, rel: string): [string, NcEdge] {

@@ -518,11 +518,13 @@ export class SyntheticInterview {
         const nodeLabelVar = this.nextId('label-var');
         const egoVar = this.nextId('ego-var');
         const relToEgoVar = this.nextId('rel-to-ego-var');
+        const bioSexVar = this.nextId('biological-sex-var');
         entry.nodeConfig = {
           type: subject.type,
           nodeLabelVariable: nodeLabelVar,
           egoVariable: egoVar,
           relationshipVariable: relToEgoVar,
+          biologicalSexVariable: bioSexVar,
           form: [],
         };
       }

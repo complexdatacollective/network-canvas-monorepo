@@ -36,6 +36,7 @@ import {
   getRelationshipTypeVariable,
 } from './utils/edgeUtils';
 import {
+  getBiologicalSexVariable,
   getEgoVariable,
   getNodeLabelVariable,
   getNodeTypeKey,
@@ -99,6 +100,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
     getIsGestationalCarrierVariable,
   );
   const gameteRoleVariable = useStageSelector(getGameteRoleVariable);
+  const biologicalSexVariable = useStageSelector(getBiologicalSexVariable);
 
   const allNodes = useStageSelector(getNetworkNodes);
   const allEdges = useStageSelector(getNetworkEdges);
@@ -119,6 +121,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
     isActiveVariable,
     isGestationalCarrierVariable,
     gameteRoleVariable,
+    biologicalSexVariable,
   };
 
   const reduxNodesMap = useMemo(

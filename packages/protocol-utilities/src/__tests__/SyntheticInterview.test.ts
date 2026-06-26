@@ -744,6 +744,10 @@ describe('SyntheticInterview', () => {
         type: 'text',
         name: 'Rel to Ego',
       });
+      const bioSexVar = nt.addVariable({
+        type: 'text',
+        name: 'Biological Sex',
+      });
       const isActiveVar = et.addVariable({
         type: 'boolean',
         name: 'Is Active',
@@ -761,6 +765,7 @@ describe('SyntheticInterview', () => {
           nodeLabelVariable: nameVar.id,
           egoVariable: egoVar.id,
           relationshipVariable: relToEgoVar.id,
+          biologicalSexVariable: bioSexVar.id,
           form: [{ variable: nameVar.id, prompt: 'Name' }],
         },
         edgeConfig: {

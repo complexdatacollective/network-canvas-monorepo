@@ -27,6 +27,7 @@ const testConfig: VariableConfig = {
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGestationalCarrier',
   gameteRoleVariable: 'gameteRole',
+  biologicalSexVariable: 'biologicalSex',
 };
 
 function framingWrapper(framing: FramingId) {

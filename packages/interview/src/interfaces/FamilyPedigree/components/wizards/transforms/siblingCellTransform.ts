@@ -10,20 +10,30 @@ import type {
 } from '~/interfaces/FamilyPedigree/store';
 
 import { gameteRoleForRole } from './buildChildParentage';
-import { extractCustomAttributes } from './personAttributes';
+import { extractCustomAttributes, readBiologicalSex } from './personAttributes';
 
 function buildPersonAttributes(
   person: Record<string, unknown>,
   variableConfig: VariableConfig,
+  includeBiologicalSex: boolean,
 ): Record<string, VariableValue> {
   const name = (person.name as string | undefined) ?? '';
   const extraAttrs = extractCustomAttributes(person);
 
-  return {
+  const attrs: Record<string, VariableValue> = {
     [variableConfig.nodeLabelVariable]: name,
     [variableConfig.egoVariable]: false,
     ...extraAttrs,
   };
+
+  if (includeBiologicalSex) {
+    const sex = readBiologicalSex(person.biologicalSex);
+    if (sex !== undefined) {
+      attrs[variableConfig.biologicalSexVariable] = sex;
+    }
+  }
+
+  return attrs;
 }
 
 type RoleKey = 'egg-source' | 'sperm-source' | 'carrier-source';
@@ -49,7 +59,7 @@ export function siblingCellTransform(
   batch.nodes.push({
     tempId: 'sibling',
     data: {
-      attributes: buildPersonAttributes(siblingData, variableConfig),
+      attributes: buildPersonAttributes(siblingData, variableConfig, true),
     },
   });
 
@@ -71,10 +81,18 @@ export function siblingCellTransform(
     } else if (selection === 'new') {
       const newPersonData = values[`new-${roleKey}`] as Record<string, unknown>;
       const tempId = `new-${roleKey}`;
+      // Egg and sperm gamete parents derive sex from gameteRole; carrier-source
+      // (and the separate new-carrier namespace below) is not a gamete parent.
+      const isGameteParen =
+        roleKey === 'egg-source' || roleKey === 'sperm-source';
       batch.nodes.push({
         tempId,
         data: {
-          attributes: buildPersonAttributes(newPersonData, variableConfig),
+          attributes: buildPersonAttributes(
+            newPersonData,
+            variableConfig,
+            !isGameteParen,
+          ),
         },
       });
       resolvedParents.push({ roleKey, tempId, isExisting: false });
@@ -179,18 +197,12 @@ export function siblingCellTransform(
     for (let i = 0; i < additionalParents.length; i++) {
       const ap = additionalParents[i];
       if (!ap) continue;
-      const apName = (ap.name as string | undefined) ?? '';
-      const apExtraAttrs = extractCustomAttributes(ap);
       const tempId = `additional-parent-${String(i)}`;
 
       batch.nodes.push({
         tempId,
         data: {
-          attributes: {
-            [variableConfig.nodeLabelVariable]: apName,
-            [variableConfig.egoVariable]: false,
-            ...apExtraAttrs,
-          },
+          attributes: buildPersonAttributes(ap, variableConfig, true),
         },
       });
 

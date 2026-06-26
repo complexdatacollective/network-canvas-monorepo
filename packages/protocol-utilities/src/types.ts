@@ -256,6 +256,7 @@ export type StageEntry = {
     nodeLabelVariable: string;
     egoVariable: string;
     relationshipVariable: string;
+    biologicalSexVariable: string;
     form: { variable: string; prompt: string }[];
   };
   edgeConfig?: {
@@ -385,6 +386,7 @@ export type AddStageInput = {
     nodeLabelVariable: string;
     egoVariable: string;
     relationshipVariable: string;
+    biologicalSexVariable: string;
     form?: { variable: string; prompt: string }[];
   };
   edgeConfig?: {

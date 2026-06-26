@@ -12,6 +12,7 @@ const variableConfig: VariableConfig = {
   isActiveVariable: 'active',
   isGestationalCarrierVariable: 'gc',
   gameteRoleVariable: 'gameteRole',
+  biologicalSexVariable: 'biologicalSex',
 };
 
 describe('commitBatch', () => {

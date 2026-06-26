@@ -37,6 +37,8 @@ export type VariableConfig = {
   isGestationalCarrierVariable: string;
   /** Edge variable storing the gamete role ('egg'|'sperm') of a biological/donor parent. */
   gameteRoleVariable: string;
+  /** Node variable storing the biological sex of non-gamete-parent people. */
+  biologicalSexVariable: string;
 };
 
 export type NodeMetadata = {

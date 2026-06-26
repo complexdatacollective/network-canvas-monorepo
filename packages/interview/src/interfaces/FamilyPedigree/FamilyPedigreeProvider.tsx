@@ -20,6 +20,7 @@ import {
   getRelationshipTypeVariable,
 } from './utils/edgeUtils';
 import {
+  getBiologicalSexVariable,
   getEgoVariable,
   getNodeLabelVariable,
   getNodeTypeKey,
@@ -53,6 +54,7 @@ export const FamilyPedigreeProvider = ({
     getIsGestationalCarrierVariable,
   );
   const gameteRoleVariable = useStageSelector(getGameteRoleVariable);
+  const biologicalSexVariable = useStageSelector(getBiologicalSexVariable);
   const framingConfig = useStageSelector(getFramingConfig);
   const initialFraming: FramingId | null =
     framingConfig.mode === 'fixed' ? framingConfig.value : null;
@@ -67,6 +69,7 @@ export const FamilyPedigreeProvider = ({
     isActiveVariable,
     isGestationalCarrierVariable,
     gameteRoleVariable,
+    biologicalSexVariable,
   };
 
   // The interview network is a single shared graph. Seed only the pedigree's

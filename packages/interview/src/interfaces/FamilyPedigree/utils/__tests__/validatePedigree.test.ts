@@ -15,6 +15,7 @@ const variableConfig: VariableConfig = {
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGest',
   gameteRoleVariable: 'gameteRole',
+  biologicalSexVariable: 'biologicalSex',
 };
 
 function makeNodes(

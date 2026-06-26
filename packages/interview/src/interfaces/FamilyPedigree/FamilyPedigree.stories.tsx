@@ -70,6 +70,10 @@ function createFamilyPedigreeInterview(seed: number) {
     name: 'Relationship to Ego',
     type: 'text',
   });
+  const biologicalSexVar = nodeType.addVariable({
+    name: 'Biological Sex',
+    type: 'text',
+  });
 
   const edgeType = si.addEdgeType({ name: 'Family' });
 
@@ -102,6 +106,7 @@ function createFamilyPedigreeInterview(seed: number) {
     diabetesVar,
     isEgoVar,
     relationshipToEgoVar,
+    biologicalSexVar,
     edgeType,
     relationshipVar,
     isActiveVar,
@@ -172,6 +177,7 @@ export const Default: Story = {
         isGestCarrierVar,
         isEgoVar,
         relationshipToEgoVar,
+        biologicalSexVar,
       } = createFamilyPedigreeInterview(1);
 
       si.addInformationStage({
@@ -186,8 +192,8 @@ export const Default: Story = {
           type: nodeType.id,
           nodeLabelVariable: nameVar.id,
           egoVariable: isEgoVar.id,
-
           relationshipVariable: relationshipToEgoVar.id,
+          biologicalSexVariable: biologicalSexVar.id,
           form: [
             {
               variable: genderVar.id,
@@ -244,6 +250,7 @@ export function buildScenarioInterview({ withNomination = false } = {}) {
     isGestCarrierVar,
     isEgoVar,
     relationshipToEgoVar,
+    biologicalSexVar,
   } = createFamilyPedigreeInterview(1);
 
   si.addInformationStage({
@@ -259,6 +266,7 @@ export function buildScenarioInterview({ withNomination = false } = {}) {
       nodeLabelVariable: nameVar.id,
       egoVariable: isEgoVar.id,
       relationshipVariable: relationshipToEgoVar.id,
+      biologicalSexVariable: biologicalSexVar.id,
       form: [
         {
           variable: genderVar.id,

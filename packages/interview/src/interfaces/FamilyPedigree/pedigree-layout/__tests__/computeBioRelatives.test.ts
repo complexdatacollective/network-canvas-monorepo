@@ -15,6 +15,7 @@ const variableConfig: VariableConfig = {
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGestationalCarrier',
   gameteRoleVariable: 'gameteRole',
+  biologicalSexVariable: 'biologicalSex',
 };
 
 function makeEdge(

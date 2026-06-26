@@ -27,6 +27,10 @@ function buildFramingInterview({
     name: 'Relationship to Ego',
     type: 'text',
   });
+  const biologicalSexVar = nodeType.addVariable({
+    name: 'Biological Sex',
+    type: 'text',
+  });
   const edgeType = si.addEdgeType({ name: 'Family' });
   const relationshipVar = edgeType.addVariable({
     name: 'Relationship',
@@ -55,6 +59,7 @@ function buildFramingInterview({
       nodeLabelVariable: nameVar.id,
       egoVariable: isEgoVar.id,
       relationshipVariable: relationshipToEgoVar.id,
+      biologicalSexVariable: biologicalSexVar.id,
       form: [],
     },
     edgeConfig: {

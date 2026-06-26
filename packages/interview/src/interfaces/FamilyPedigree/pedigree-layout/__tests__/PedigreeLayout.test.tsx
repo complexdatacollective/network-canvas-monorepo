@@ -16,6 +16,7 @@ const variableConfig: VariableConfig = {
   isActiveVariable: 'active',
   isGestationalCarrierVariable: 'gc',
   gameteRoleVariable: 'gameteRole',
+  biologicalSexVariable: 'biologicalSex',
 };
 
 const DIMS = {

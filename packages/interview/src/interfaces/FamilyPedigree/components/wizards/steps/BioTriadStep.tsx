@@ -83,6 +83,11 @@ type ParentSectionProps = {
   carriedLabel?: string;
   carriedHint?: string;
   carriedInitialValue?: boolean;
+  /**
+   * Whether to ask for biological sex when creating a new person in this role.
+   * False for egg/sperm sources — their sex derives from gameteRole.
+   */
+  askBiologicalSex?: boolean;
 };
 
 function ParentSection({
@@ -99,6 +104,7 @@ function ParentSection({
   carriedLabel,
   carriedHint,
   carriedInitialValue = true,
+  askBiologicalSex = false,
 }: ParentSectionProps) {
   const ownValue = useFormValue([roleKey])[roleKey];
   const otherValue = useFormValue([excludeSelectionFrom])[excludeSelectionFrom];
@@ -155,7 +161,10 @@ function ParentSection({
         watch={[roleKey]}
         condition={(values) => values[roleKey] === 'new'}
       >
-        <PersonFields namespace={`new-${roleKey}`} />
+        <PersonFields
+          namespace={`new-${roleKey}`}
+          askBiologicalSex={askBiologicalSex}
+        />
       </FieldGroup>
       {/* The donor and carrier questions stay visible regardless of the
           current selection, so resetting a colliding parent never hides them. */}
@@ -227,6 +236,7 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
         carriedFieldName="egg-parent-carried"
         carriedLabel="Did this person carry the pregnancy?"
         carriedHint="If someone else carried the pregnancy (e.g. a gestational carrier or surrogate), select 'No'."
+        askBiologicalSex={false}
       />
 
       <FieldGroup
@@ -275,6 +285,7 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
         options={spermOptions}
         excludeSelectionFrom="egg-source"
         initialValue={preselection?.spermSource}
+        askBiologicalSex={false}
       />
     </div>
   );
