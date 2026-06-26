@@ -7,7 +7,8 @@ import {
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
-import sessionReducer, { createInitialNetwork } from '~/store/modules/session';
+import { createInitialNetwork } from '~/contract/network';
+import sessionReducer from '~/store/modules/session';
 import type { useAppDispatch } from '~/store/store';
 
 import { createFamilyPedigreeStore, type VariableConfig } from '../store';

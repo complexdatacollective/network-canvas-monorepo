@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vitest';
 import type { NodeDefinition } from '@codaco/protocol-validation';
 import type { DyadCensusMetadataItem } from '@codaco/shared-consts';
 
+import { createInitialNetwork } from '../../contract/network';
 import protocolReducer from '../../store/modules/protocol';
 import sessionReducer, {
-  createInitialNetwork,
   updateStageMetadata,
 } from '../../store/modules/session';
 import uiReducer from '../../store/modules/ui';
