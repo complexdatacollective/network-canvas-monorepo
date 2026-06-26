@@ -8,6 +8,9 @@ export type SubjectResolution =
   | 'stageSubject'
   | 'ego'
   | 'owningVariable'
+  // Extracted for usage detection but existence-checked by the dedicated
+  // filter-rule validation (rule-scoped subject), not the entity-attribute
+  // validator.
   | 'filterRule'
   | { sibling: string; entity: 'node' | 'edge' };
 
