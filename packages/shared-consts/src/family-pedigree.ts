@@ -37,3 +37,19 @@ export const RELATIONSHIP_TYPE_OPTIONS: {
   value,
   label: RELATIONSHIP_TYPE_LABELS[value],
 }));
+
+/**
+ * Canonical biological-sex values for pedigree participants.
+ *
+ * Stored on the `biologicalSex` node variable. Shared so Architect (which
+ * locks the categorical variable to this set) and the interview interface
+ * cannot drift apart.
+ */
+export const BIOLOGICAL_SEX_VALUES = [
+  'female',
+  'male',
+  'intersex',
+  'unknown',
+] as const;
+
+export type BiologicalSex = (typeof BIOLOGICAL_SEX_VALUES)[number];
