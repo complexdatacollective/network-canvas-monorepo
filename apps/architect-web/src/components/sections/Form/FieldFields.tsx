@@ -232,7 +232,10 @@ const PromptFields = ({
         </Subsection>
       )}
       {isBooleanWithOptions(component) && (
-        <Subsection id={getFieldId('parameters')} title="BooleanChoice Options">
+        // BooleanChoice writes to the `options` field, so anchor it there (it is
+        // mutually exclusive with the Categorical/Ordinal options subsection
+        // above, so the shared id never collides at runtime).
+        <Subsection id={getFieldId('options')} title="BooleanChoice Options">
           <BooleanChoice form={form} />
         </Subsection>
       )}

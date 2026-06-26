@@ -1,5 +1,5 @@
 import { isBoolean } from 'es-toolkit/compat';
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 
 import Switch from '~/components/NewComponents/Switch';
 import Icon from '~/lib/legacy-ui/components/Icon';
@@ -47,13 +47,18 @@ const Toggle = ({
   const hasError = !!(invalid && touched && error);
 
   const { name, value, onChange } = input;
+  const labelId = useId();
 
   return (
     <div className="m-0 [&>h4]:m-0">
       {fieldLabel && <MarkdownLabel label={fieldLabel} />}
-      <div
+      {/* Native <label> wrap: clicking the label toggles base-ui's hidden
+          input (its span onClick preventDefaults, so there is no double toggle),
+          and aria-labelledby gives the switch its accessible name. */}
+      <label
         className={cx(
           'flex flex-row items-center justify-start gap-(--space-md)',
+          !disabled && 'cursor-pointer',
           className,
         )}
         title={title}
@@ -63,19 +68,21 @@ const Toggle = ({
           checked={!!value}
           onCheckedChange={(checked) => onChange(checked)}
           disabled={disabled}
+          aria-labelledby={label ? labelId : undefined}
           className={cx(
             'shrink-0',
             disabled && 'cursor-not-allowed opacity-50',
           )}
         />
         {label && (
-          <MarkdownLabel
-            inline
-            label={label}
+          <span
+            id={labelId}
             className="[&>:first-child]:mt-0 [&>:last-child]:mb-0"
-          />
+          >
+            <MarkdownLabel inline label={label} />
+          </span>
         )}
-      </div>
+      </label>
       {hasError && (
         <div className="bg-error text-error-foreground flex items-center rounded-b-sm px-(--space-xs) py-(--space-sm) [&_svg]:max-h-(--space-md)">
           <Icon name="warning" />

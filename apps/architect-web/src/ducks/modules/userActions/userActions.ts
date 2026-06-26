@@ -144,6 +144,10 @@ const instantiateProtocol = async (
     return;
   }
 
+  // The protocol persisted successfully, so clear any earlier storage-unavailable
+  // flag (it is persisted to localStorage) to re-enable autosave for this and
+  // subsequent opens.
+  dispatch(setStorageUnavailable(false));
   dispatch(setActiveProtocolId(protocolId));
   dispatch(setActiveProtocol(protocol));
 
