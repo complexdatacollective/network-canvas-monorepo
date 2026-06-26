@@ -144,7 +144,7 @@ const EntitySelectField = ({
         Create new {entityType} type
       </Button>
       {invalid && touched && (
-        <div className="bg-error text-error-foreground mb-(--space-lg) flex items-center p-(--space-xs) [&_svg]:max-h-(--space-md)">
+        <div className="bg-error text-error-foreground flex items-center p-(--space-xs) [&_svg]:max-h-(--space-md)">
           <Icon name="warning" />
           {error}
         </div>

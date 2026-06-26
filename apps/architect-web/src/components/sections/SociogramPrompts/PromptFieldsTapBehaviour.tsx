@@ -211,54 +211,56 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
           noReset
         />
       </Row>
-      <Row>
-        {tapBehaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES && (
-          <ValidatedField
-            name="highlight.variable"
-            component={VariablePicker}
-            validation={{ required: true }}
-            componentProps={{
-              entity,
-              type,
-              label: 'Boolean Attribute to Toggle',
-              placeholder: 'Select or create a boolean variable',
-              onCreateOption: (value: string) =>
-                handleCreateVariable(value, 'boolean', 'highlight.variable'),
-              options: highlightVariablesForSubject,
-              variable: highlightVariable,
-            }}
-          />
-        )}
-        {tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES && (
-          <>
-            {showNetworkFilterWarning && (
-              <Tip type="warning">
-                <p>
-                  Stage level network filtering is enabled, but the edge type
-                  you want to create on this prompt is not currently included in
-                  the filter. This means that these edges may not be displayed.
-                  Either remove the stage-level network filtering, or add these
-                  edge types to the filter to resolve this issue.
-                </p>
-              </Tip>
-            )}
-
+      {tapBehaviour && (
+        <Row>
+          {tapBehaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES && (
             <ValidatedField
-              name="edges.create"
-              component={
-                EntitySelectField as React.ComponentType<
-                  Record<string, unknown>
-                >
-              }
+              name="highlight.variable"
+              component={VariablePicker}
               validation={{ required: true }}
               componentProps={{
-                entityType: 'edge',
-                label: 'Create edges of the following type',
+                entity,
+                type,
+                label: 'Boolean Attribute to Toggle',
+                placeholder: 'Select or create a boolean variable',
+                onCreateOption: (value: string) =>
+                  handleCreateVariable(value, 'boolean', 'highlight.variable'),
+                options: highlightVariablesForSubject,
+                variable: highlightVariable,
               }}
             />
-          </>
-        )}
-      </Row>
+          )}
+          {tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES && (
+            <>
+              {showNetworkFilterWarning && (
+                <Tip type="warning">
+                  <p>
+                    Stage level network filtering is enabled, but the edge type
+                    you want to create on this prompt is not currently included
+                    in the filter. This means that these edges may not be
+                    displayed. Either remove the stage-level network filtering,
+                    or add these edge types to the filter to resolve this issue.
+                  </p>
+                </Tip>
+              )}
+
+              <ValidatedField
+                name="edges.create"
+                component={
+                  EntitySelectField as React.ComponentType<
+                    Record<string, unknown>
+                  >
+                }
+                validation={{ required: true }}
+                componentProps={{
+                  entityType: 'edge',
+                  label: 'Create edges of the following type',
+                }}
+              />
+            </>
+          )}
+        </Row>
+      )}
     </Section>
   );
 };

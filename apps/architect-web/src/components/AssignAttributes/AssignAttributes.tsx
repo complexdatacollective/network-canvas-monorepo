@@ -1,6 +1,7 @@
 import type { FieldArrayFieldsProps } from 'redux-form';
 
 import Button from '~/lib/legacy-ui/components/Button';
+import { cx } from '~/utils/cva';
 
 import Attribute from './Attribute';
 import withAssignAttributesHandlers from './withAssignAttributesHandlers';
@@ -65,7 +66,9 @@ const AssignAttributes = ({
         })}
       </div>
     )}
-    <div className="mt-(--space-md) [&_button]:m-0">
+    <div
+      className={cx(fields.length > 0 && 'mt-(--space-md)', '[&_button]:m-0')}
+    >
       <Button color="sea-green" icon="add" onClick={handleAddNew}>
         Add new variable to assign
       </Button>
