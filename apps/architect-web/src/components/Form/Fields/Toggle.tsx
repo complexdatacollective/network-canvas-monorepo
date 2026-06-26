@@ -1,9 +1,7 @@
-/* eslint-disable react/jsx-props-no-spreading */
-
 import { isBoolean } from 'es-toolkit/compat';
-import { useEffect, useRef } from 'react';
-import { v4 as uuid } from 'uuid';
+import { useEffect, useId } from 'react';
 
+import Switch from '~/components/NewComponents/Switch';
 import Icon from '~/lib/legacy-ui/components/Icon';
 import { cx } from '~/utils/cva';
 
@@ -37,13 +35,8 @@ const Toggle = ({
   disabled = false,
   input,
   meta = {},
-  ...rest
 }: ToggleProps) => {
-  const id = useRef(uuid());
-
-  // Because redux forms will just not pass on this
-  // field if it was never touched and we need it to
-  // return `false`.
+  // redux-form omits an untouched field's value, so default it to `false`.
   useEffect(() => {
     if (!isBoolean(input.value)) {
       input.onChange(false);
@@ -53,57 +46,41 @@ const Toggle = ({
   const { error, invalid, touched } = meta;
   const hasError = !!(invalid && touched && error);
 
-  const { name, value, onChange, ...inputRest } = input;
+  const { name, value, onChange } = input;
+  const labelId = useId();
 
   return (
     <div className="m-0 [&>h4]:m-0">
       {fieldLabel && <MarkdownLabel label={fieldLabel} />}
+      {/* Native <label> wrap: clicking the label toggles base-ui's hidden
+          input (its span onClick preventDefaults, so there is no double toggle),
+          and aria-labelledby gives the switch its accessible name. */}
       <label
         className={cx(
-          'form-field flex cursor-pointer flex-row items-center justify-start',
-          hasError && 'border-error mb-0 rounded-b-none border-2',
+          'flex flex-row items-center justify-start gap-(--space-md)',
+          !disabled && 'cursor-pointer',
           className,
         )}
-        htmlFor={id.current}
         title={title}
       >
-        <input
-          className="hidden"
-          id={id.current}
+        <Switch
           name={name}
           checked={!!value}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            onChange(e.target.checked)
-          }
+          onCheckedChange={(checked) => onChange(checked)}
           disabled={disabled}
-          type="checkbox"
-          value="true"
-          {...(inputRest as Record<string, unknown>)}
-          {...(rest as Record<string, unknown>)}
+          aria-labelledby={label ? labelId : undefined}
+          className={cx(
+            'shrink-0',
+            disabled && 'cursor-not-allowed opacity-50',
+          )}
         />
-        <div className="relative mr-(--space-md) inline-block h-(--space-xl) w-(--space-3xl)">
-          <span
-            data-state={value ? 'checked' : 'unchecked'}
-            className={cx(
-              'absolute inset-0 overflow-hidden',
-              'bg-primary rounded-(--space-xl)',
-              'transition-colors duration-(--animation-duration-fast) ease-(--animation-easing)',
-              'data-[state=checked]:bg-active',
-              'before:absolute before:top-0 before:left-0',
-              "before:rounded-full before:content-['']",
-              'before:bg-border before:size-(--space-xl)',
-              'before:transition-[left] before:duration-(--animation-duration-fast) before:ease-(--animation-easing)',
-              'data-[state=checked]:before:left-[calc(100%-var(--space-xl))]',
-              disabled && 'opacity-50',
-            )}
-          />
-        </div>
         {label && (
-          <MarkdownLabel
-            inline
-            label={label}
+          <span
+            id={labelId}
             className="[&>:first-child]:mt-0 [&>:last-child]:mb-0"
-          />
+          >
+            <MarkdownLabel inline label={label} />
+          </span>
         )}
       </label>
       {hasError && (

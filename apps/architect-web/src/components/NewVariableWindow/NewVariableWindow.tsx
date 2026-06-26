@@ -4,7 +4,7 @@ import { useCallback, useMemo } from 'react';
 import { Field, formValueSelector } from 'redux-form';
 
 import type { Variable, VariableOptions } from '@codaco/protocol-validation';
-import { Section } from '~/components/EditorLayout';
+import { Section, Subsection } from '~/components/EditorLayout';
 import { Text } from '~/components/Form/Fields';
 import Select from '~/components/Form/Fields/Select';
 import ValidatedField from '~/components/Form/ValidatedField';
@@ -118,83 +118,84 @@ export default function NewVariableWindow({
       initialValues={mergedInitialValues ?? undefined}
       title="Create New Variable"
     >
-      <Section
-        title="Variable Name"
-        summary={
-          <p>
-            Enter a name for this variable. The variable name is how you will
-            reference the variable elsewhere, including in exported data.
-          </p>
-        }
-        layout="vertical"
-      >
-        <div id={getFieldId('name')} />
-        <Field
-          name="name"
-          component={Text}
-          placeholder="e.g. Nickname"
-          validate={[isRequired, validateName, isAllowedVariableName]}
-          normalize={safeName}
-        />
-      </Section>
-      <Section
-        title="Variable Type"
-        summary={<p>Choose a variable type</p>}
-        layout="vertical"
-      >
-        <div id={getFieldId('type')} />
-        <ValidatedField
-          name="type"
-          component={Select}
-          validation={{ required: true }}
-          componentProps={{
-            placeholder: 'Select variable type',
-            options: filteredVariableOptions,
-            isDisabled: !!initialValues?.type,
-          }}
-        />
-      </Section>
-      {isOrdinalOrCategoricalType(variableType) && (
-        <Section
-          title="Options"
+      <Section layout="vertical">
+        <Subsection
+          id={getFieldId('name')}
+          title="Variable Name"
           summary={
-            lockedOptions ? (
-              <p>
-                These options are automatically configured by the interface and
-                cannot be modified.
-              </p>
-            ) : (
-              <p>Create some options for this input control</p>
-            )
+            <p>
+              Enter a name for this variable. The variable name is how you will
+              reference the variable elsewhere, including in exported data.
+            </p>
           }
-          layout="vertical"
         >
-          <div id={getFieldId('options')} />
-          {lockedOptions ? (
-            <div className="bg-platinum relative rounded p-4 opacity-50">
-              <Lock className="text-charcoal absolute top-4 right-4 h-4 w-4" />
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left">
-                    <th className="pb-2 font-bold">Label</th>
-                    <th className="pb-2 font-bold">Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lockedOptions.map((option) => (
-                    <tr key={String(option.value)}>
-                      <td className="py-1">{option.label}</td>
-                      <td className="py-1 font-mono">{String(option.value)}</td>
+          <Field
+            name="name"
+            component={Text}
+            placeholder="e.g. Nickname"
+            validate={[isRequired, validateName, isAllowedVariableName]}
+            normalize={safeName}
+          />
+        </Subsection>
+        <Subsection
+          id={getFieldId('type')}
+          title="Variable Type"
+          summary={<p>Choose a variable type</p>}
+        >
+          <ValidatedField
+            name="type"
+            component={Select}
+            validation={{ required: true }}
+            componentProps={{
+              placeholder: 'Select variable type',
+              options: filteredVariableOptions,
+              isDisabled: !!initialValues?.type,
+            }}
+          />
+        </Subsection>
+        {isOrdinalOrCategoricalType(variableType) && (
+          <Subsection
+            id={getFieldId('options')}
+            title="Options"
+            summary={
+              lockedOptions ? (
+                <p>
+                  These options are automatically configured by the interface
+                  and cannot be modified.
+                </p>
+              ) : (
+                <p>Create some options for this input control</p>
+              )
+            }
+          >
+            {lockedOptions ? (
+              <div className="bg-platinum relative rounded p-4 opacity-50">
+                <Lock className="text-charcoal absolute top-4 right-4 h-4 w-4" />
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left">
+                      <th className="pb-2 font-bold">Label</th>
+                      <th className="pb-2 font-bold">Value</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <Options name="options" label="Options" />
-          )}
-        </Section>
-      )}
+                  </thead>
+                  <tbody>
+                    {lockedOptions.map((option) => (
+                      <tr key={String(option.value)}>
+                        <td className="py-1">{option.label}</td>
+                        <td className="py-1 font-mono">
+                          {String(option.value)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <Options name="options" label="Options" />
+            )}
+          </Subsection>
+        )}
+      </Section>
     </InlineEditScreen>
   );
 }

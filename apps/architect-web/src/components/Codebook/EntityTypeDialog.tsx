@@ -129,7 +129,10 @@ const EntityTypeDialog = ({
   );
 
   const handleCancel = useCallback(() => {
-    if (!hasUnsavedChanges) {
+    // Abandoning a not-yet-created type loses nothing, so close immediately for
+    // new node and edge types. Editing an existing type still confirms, since
+    // discarding real edits is more consequential.
+    if (isNew || !hasUnsavedChanges) {
       onClose();
       return;
     }
@@ -147,7 +150,7 @@ const EntityTypeDialog = ({
         },
       }),
     ).unwrap();
-  }, [hasUnsavedChanges, onClose, dispatch]);
+  }, [isNew, hasUnsavedChanges, onClose, dispatch]);
 
   if (!entity) {
     return null;

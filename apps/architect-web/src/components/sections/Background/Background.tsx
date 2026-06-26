@@ -50,6 +50,9 @@ class Background extends PureComponent<BackgroundProps> {
       >
         {imageAllowed && (
           <Row>
+            <h4 className="small-heading text-muted-foreground m-0">
+              Choose a background type
+            </h4>
             <DetachedField
               component={
                 BooleanField as React.ComponentType<Record<string, unknown>>
@@ -86,7 +89,6 @@ class Background extends PureComponent<BackgroundProps> {
                 _currentValue: unknown,
                 _name: string | null,
               ) => handleChooseBackgroundType(nextValue as boolean)}
-              label="Choose a background type"
               noReset
             />
           </Row>

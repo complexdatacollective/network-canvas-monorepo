@@ -67,10 +67,12 @@ describe('VariableSpotlight', () => {
       '[data-testid="spotlight-list-item"]',
     );
 
-    expect(items[0]).toHaveTextContent('Existing Variables');
-    expect(items[1]).toHaveTextContent('Just a number');
+    // The "Existing Variables" divider is a section header, not a selectable row.
+    expect(baseElement).toHaveTextContent('Existing Variables');
+    // Rows are sorted by label: "Just a number" before "Name".
+    expect(items[0]).toHaveTextContent('Just a number');
+    expect(items[0]?.querySelector('.icon')).toBeInTheDocument();
+    expect(items[1]).toHaveTextContent('Name');
     expect(items[1]?.querySelector('.icon')).toBeInTheDocument();
-    expect(items[2]).toHaveTextContent('Name');
-    expect(items[2]?.querySelector('.icon')).toBeInTheDocument();
   });
 });

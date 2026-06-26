@@ -28,7 +28,7 @@ type ListItemProps = {
 };
 
 const LIST_ITEM_BASE =
-  'flex w-full items-center justify-between px-(--space-lg) py-(--space-xs)';
+  'flex w-full items-center justify-between rounded-md px-(--space-md) py-(--space-sm)';
 
 // When `data-selected`, the row sets the foreground to white (so descendant
 // text reads on the primary background) and overrides the cascade variable
@@ -113,13 +113,9 @@ type DividerProps = {
 };
 
 const Divider = ({ legend }: DividerProps) => (
-  <ListItem>
-    <fieldset className="border-surface-3 w-full border-t-2">
-      <legend className="px-(--space-md) py-(--space-xs) text-center">
-        {legend}
-      </legend>
-    </fieldset>
-  </ListItem>
+  <li className="px-(--space-md) pt-(--space-md) pb-(--space-xs) first:pt-(--space-xs)">
+    <span className="small-heading text-muted-foreground">{legend}</span>
+  </li>
 );
 
 const CREATE_NEW_CLASSES =
@@ -227,7 +223,7 @@ const VariableSpotlight = ({
 
   const renderResults = () => (
     <Scroller>
-      <ol className="m-0 list-none p-0">
+      <ol className="m-0 flex list-none flex-col gap-(--space-xs) p-(--space-xs)">
         {filterTerm &&
           options.filter((item) => item.label === filterTerm).length !== 1 && (
             <>
@@ -408,9 +404,11 @@ const VariableSpotlight = ({
   const containerVariants = {
     visible: {
       y: 0,
+      opacity: 1,
     },
     hidden: {
       y: -50,
+      opacity: 0,
     },
   };
 

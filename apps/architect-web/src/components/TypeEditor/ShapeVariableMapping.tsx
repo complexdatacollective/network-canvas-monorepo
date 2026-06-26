@@ -204,7 +204,7 @@ const ShapeVariableMapping = ({
           </button>
         </label>
         <p className="text-muted-foreground mt-(--space-xs) text-sm">
-          Override the default shape based on a variable's value.
+          Override the default shape based on the value of a node's attribute.
         </p>
       </div>
 

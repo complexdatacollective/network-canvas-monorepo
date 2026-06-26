@@ -125,15 +125,16 @@ const EntitySelectField = ({
     <div className="flex flex-col items-start gap-(--space-md)">
       {label && <h4>{label}</h4>}
 
-      <div
-        className={cx(
-          'flex flex-row flex-wrap justify-start gap-(--space-sm) p-(--space-sm)',
-          hasError && 'border-error border-solid border-(--space-xs)',
-        )}
-      >
-        {renderOptions()}
-      </div>
-      {options.length === 0 && (
+      {options.length > 0 ? (
+        <div
+          className={cx(
+            'flex flex-row flex-wrap justify-start gap-(--space-sm) p-(--space-sm)',
+            hasError && 'border-error border-solid border-(--space-xs)',
+          )}
+        >
+          {renderOptions()}
+        </div>
+      ) : (
         <p>
           No {entityType} types currently defined. Use the button below to
           create one.
@@ -143,7 +144,7 @@ const EntitySelectField = ({
         Create new {entityType} type
       </Button>
       {invalid && touched && (
-        <div className="bg-error text-error-foreground mb-(--space-lg) flex items-center p-(--space-xs) [&_svg]:max-h-(--space-md)">
+        <div className="bg-error text-error-foreground flex items-center p-(--space-xs) [&_svg]:max-h-(--space-md)">
           <Icon name="warning" />
           {error}
         </div>

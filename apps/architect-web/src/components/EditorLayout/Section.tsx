@@ -1,12 +1,21 @@
 import type React from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 
 import { cx } from '~/utils/cva';
 
 import Switch from '../NewComponents/Switch';
+import SectionDepthContext from './SectionDepthContext';
 
 const containerClasses =
   'p-6 shadow-md rounded bg-(--current-surface) text-(--current-surface-foreground) relative';
+
+// Surface tokens by nesting level (capped at surface-3). Class strings are
+// written out in full so Tailwind's scanner picks up the arbitrary properties.
+const surfaceClassesByLevel: Record<number, string> = {
+  1: '[--current-surface-foreground:var(--color-surface-1-foreground)] [--current-surface:var(--color-surface-1)]',
+  2: '[--current-surface-foreground:var(--color-surface-2-foreground)] [--current-surface:var(--color-surface-2)]',
+  3: '[--current-surface-foreground:var(--color-surface-3-foreground)] [--current-surface:var(--color-surface-3)]',
+};
 
 type SectionProps = {
   id?: string | null;
@@ -39,6 +48,9 @@ const Section = ({
   layout = 'horizontal',
   required = true,
 }: SectionProps) => {
+  const depth = useContext(SectionDepthContext);
+  const surfaceLevel = Math.min(depth + 1, 3);
+
   const [isOpen, setIsOpen] = useState(startExpanded);
 
   // If the startExpanded prop changes, update the state.
@@ -69,78 +81,81 @@ const Section = ({
   );
 
   return (
-    <div
-      id={id ?? undefined}
-      data-name={typeof title === 'string' ? title : undefined}
-      className={cx(
-        '[--input-background:var(--color-surface-1)] [--slider-color:hsl(var(--charcoal))]',
-        'relative [--current-surface-foreground:var(--color-surface-1-foreground)] [--current-surface:var(--color-surface-1)]',
-        'w-full max-w-7xl',
-        layout === 'horizontal' &&
-          'max-lg:mb-4 max-lg:flex max-lg:flex-col max-lg:gap-(--space-md) max-lg:rounded max-lg:bg-(--current-surface) max-lg:p-6 max-lg:text-(--current-surface-foreground) max-lg:shadow-md lg:grid lg:grid-cols-[20rem_auto] lg:gap-8',
-        layout === 'vertical' && 'mb-4 flex flex-col gap-(--space-md)',
-        layout === 'vertical' && containerClasses,
-        className,
-      )}
-    >
-      {title != null && (
-        <div>
-          <div
-            className={cx(
-              'flex items-center gap-4 text-right',
-              layout === 'vertical' && 'text-xl font-semibold tracking-tight',
-              // `lg:top-(--space-4xl)` (6rem) pins the heading just below the
-              // sticky top menu bar so it never overlaps it; `z-(--z-fx)` keeps
-              // it above the section content but below the nav.
-              layout === 'horizontal' &&
-                'lg:small-heading lg:bg-border max-lg:text-xl max-lg:font-semibold max-lg:tracking-tight lg:sticky lg:top-(--space-4xl) lg:z-(--z-fx) lg:flex-row-reverse lg:items-center lg:justify-between lg:rounded lg:px-6 lg:py-2',
-            )}
-          >
-            <span>
-              {title}
-              {!toggleable && required && (
-                <span className="text-error ms-1">*</span>
-              )}
-            </span>
-            {toggleable && (
-              <Switch
-                title="Turn this feature on or off"
-                checked={isOpen}
-                onCheckedChange={changeToggleState}
-                disabled={disabled}
-                className={cx(
-                  'shrink-0 grow-0',
-                  disabled && 'cursor-not-allowed opacity-50',
-                )}
-              />
-            )}
-          </div>
-          <div className="text-current/70">{summary}</div>
-        </div>
-      )}
-      <fieldset className={classes}>
-        {disabled ? (
-          layout === 'horizontal' ? (
-            <div className="bg-border/75 text-foreground/70 flex items-center justify-center font-semibold italic max-lg:rounded max-lg:p-8 max-lg:text-center lg:absolute lg:inset-0 lg:h-full lg:w-full">
-              {disabledMessage}
-            </div>
-          ) : (
-            <div className="bg-border/75 text-foreground/70 flex items-center justify-center rounded p-8 text-center font-semibold italic">
-              {disabledMessage}
-            </div>
-          )
-        ) : (
-          <>
-            {isOpen && children}
-            {toggleable && !isOpen && layout !== 'vertical' && (
-              <div className="bg-border/75 text-foreground/70 absolute inset-0 flex h-full w-full items-center justify-center font-semibold italic max-lg:hidden">
-                Click the toggle to enable this feature...
-              </div>
-            )}
-          </>
+    <SectionDepthContext.Provider value={depth + 1}>
+      <div
+        id={id ?? undefined}
+        data-name={typeof title === 'string' ? title : undefined}
+        className={cx(
+          '[--input-background:var(--color-surface-1)] [--slider-color:hsl(var(--charcoal))]',
+          'relative',
+          surfaceClassesByLevel[surfaceLevel],
+          'w-full max-w-7xl',
+          layout === 'horizontal' &&
+            'max-lg:mb-4 max-lg:flex max-lg:flex-col max-lg:gap-(--space-md) max-lg:rounded max-lg:bg-(--current-surface) max-lg:p-6 max-lg:text-(--current-surface-foreground) max-lg:shadow-md lg:grid lg:grid-cols-[20rem_auto] lg:gap-8',
+          layout === 'vertical' && 'mb-4 flex flex-col gap-(--space-md)',
+          layout === 'vertical' && containerClasses,
+          className,
         )}
-      </fieldset>
-    </div>
+      >
+        {title != null && (
+          <div>
+            <div
+              className={cx(
+                'flex items-center gap-4 text-right',
+                layout === 'vertical' && 'text-xl font-semibold tracking-tight',
+                // `lg:top-(--space-4xl)` (6rem) pins the heading just below the
+                // sticky top menu bar so it never overlaps it; `z-(--z-fx)` keeps
+                // it above the section content but below the nav.
+                layout === 'horizontal' &&
+                  'lg:small-heading lg:bg-border max-lg:text-xl max-lg:font-semibold max-lg:tracking-tight lg:sticky lg:top-(--space-4xl) lg:z-(--z-fx) lg:flex-row-reverse lg:items-center lg:justify-between lg:rounded lg:px-6 lg:py-2',
+              )}
+            >
+              <span>
+                {title}
+                {!toggleable && required && (
+                  <span className="text-error ms-1">*</span>
+                )}
+              </span>
+              {toggleable && (
+                <Switch
+                  title="Turn this feature on or off"
+                  checked={isOpen}
+                  onCheckedChange={changeToggleState}
+                  disabled={disabled}
+                  className={cx(
+                    'shrink-0 grow-0',
+                    disabled && 'cursor-not-allowed opacity-50',
+                  )}
+                />
+              )}
+            </div>
+            <div className="text-current/70">{summary}</div>
+          </div>
+        )}
+        <fieldset className={classes}>
+          {disabled ? (
+            layout === 'horizontal' ? (
+              <div className="bg-border/75 text-foreground/70 flex items-center justify-center font-semibold italic max-lg:rounded max-lg:p-8 max-lg:text-center lg:absolute lg:inset-0 lg:h-full lg:w-full">
+                {disabledMessage}
+              </div>
+            ) : (
+              <div className="bg-border/75 text-foreground/70 flex items-center justify-center rounded p-8 text-center font-semibold italic">
+                {disabledMessage}
+              </div>
+            )
+          ) : (
+            <>
+              {isOpen && children}
+              {toggleable && !isOpen && layout !== 'vertical' && (
+                <div className="bg-border/75 text-foreground/70 absolute inset-0 flex h-full w-full items-center justify-center font-semibold italic max-lg:hidden">
+                  Click the toggle to enable this feature...
+                </div>
+              )}
+            </>
+          )}
+        </fieldset>
+      </div>
+    </SectionDepthContext.Provider>
   );
 };
 

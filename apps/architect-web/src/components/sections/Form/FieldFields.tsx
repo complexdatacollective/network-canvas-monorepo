@@ -1,11 +1,14 @@
+import type { UnknownAction } from '@reduxjs/toolkit';
 import { omit } from 'es-toolkit/compat';
 import type { ComponentType } from 'react';
-import { Field } from 'redux-form';
+import { useSelector } from 'react-redux';
+import { change, Field, formValueSelector } from 'redux-form';
 
-import { Row, Section } from '~/components/EditorLayout';
+import { Section, Subsection } from '~/components/EditorLayout';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import { Field as RichText } from '~/components/Form/Fields/RichText';
 import ValidatedField from '~/components/Form/ValidatedField';
+import Switch from '~/components/NewComponents/Switch';
 import Options from '~/components/Options';
 import Parameters from '~/components/Parameters';
 import {
@@ -13,6 +16,8 @@ import {
   isOrdinalOrCategoricalType,
   isVariableTypeWithParameters,
 } from '~/config/variables';
+import { useAppDispatch } from '~/ducks/hooks';
+import type { RootState } from '~/ducks/modules/root';
 import { getFieldId } from '~/utils/issues';
 
 import BooleanChoice from '../../BooleanChoice';
@@ -34,6 +39,8 @@ const PromptFields = ({
   entity = null,
   type = null,
 }: PromptFieldsProps) => {
+  const dispatch = useAppDispatch();
+
   const {
     variable,
     variableType,
@@ -52,45 +59,50 @@ const PromptFields = ({
     type: type ?? '',
   });
 
+  const showValidationHints = useSelector(
+    (state: RootState) =>
+      formValueSelector(form)(state, 'showValidationHints') as
+        | boolean
+        | undefined,
+  );
+
   return (
-    <>
-      <Section id={getFieldId('variable')} title="Variable" layout="vertical">
-        <Row>
-          {variable && !isNewVariable && (
-            <Tip>
-              <p>
-                When selecting an existing variable, changes you make to the
-                input control or validation options will also change other uses
-                of this variable.
-              </p>
-            </Tip>
-          )}
-          <ValidatedField
-            name="variable"
-            component={VariablePicker as ComponentType<Record<string, unknown>>}
-            validation={{ required: true }}
-            componentProps={{
-              entity: entity ?? undefined,
-              type: type ?? undefined,
-              options: variableOptions,
-              onCreateOption: handleNewVariable,
-              onChange: handleChangeVariable,
-            }}
-          />
-        </Row>
-      </Section>
-      <Section
-        title="Question"
+    <Section layout="vertical">
+      <Subsection id={getFieldId('variable')} title="Variable">
+        {variable && !isNewVariable && (
+          <Tip>
+            <p>
+              When selecting an existing variable, changes you make to the input
+              control or validation options will also change other uses of this
+              variable.
+            </p>
+          </Tip>
+        )}
+        <ValidatedField
+          name="variable"
+          component={VariablePicker as ComponentType<Record<string, unknown>>}
+          validation={{ required: true }}
+          componentProps={{
+            entity: entity ?? undefined,
+            type: type ?? undefined,
+            options: variableOptions,
+            onCreateOption: handleNewVariable,
+            onChange: handleChangeVariable,
+          }}
+        />
+      </Subsection>
+
+      <Subsection
         id={getFieldId('prompt')}
+        title="Question"
         summary={
           <p>
             Configure the question prompt and optional hints for the
             participant.
           </p>
         }
-        layout="vertical"
       >
-        <Row>
+        <div>
           <h4>Prompt Text</h4>
           <p className="mb-(--space-sm) text-sm text-current/70">
             Enter the question to display to the participant. Supports markdown
@@ -105,8 +117,8 @@ const PromptFields = ({
               placeholder: "What is this person's name?",
             }}
           />
-        </Row>
-        <Row>
+        </div>
+        <div>
           <h4>Hint Text</h4>
           <p className="mb-(--space-sm) text-sm text-current/70">
             Optionally display a markdown-formatted hint below the question to
@@ -118,12 +130,32 @@ const PromptFields = ({
             inline
             placeholder="e.g. Select all that apply..."
           />
-        </Row>
-      </Section>
-      <Section
-        disabled={!variable}
-        title="Input Control"
+        </div>
+        <div className="flex items-center justify-between gap-(--space-md)">
+          <div>
+            <h4 className="text-base font-semibold">Show validation hints?</h4>
+            <p className="text-sm text-current/70">
+              Automatically display hints derived from this field&apos;s
+              validation rules, helping participants understand input
+              requirements.
+            </p>
+          </div>
+          <Switch
+            checked={!!showValidationHints}
+            onCheckedChange={(checked) =>
+              dispatch(
+                change(form, 'showValidationHints', checked) as UnknownAction,
+              )
+            }
+            className="shrink-0"
+          />
+        </div>
+      </Subsection>
+
+      <Subsection
         id={getFieldId('component')}
+        title="Input Control"
+        disabled={!variable}
         summary={
           <p>
             Choose an input control that should be used to collect the answer.
@@ -134,60 +166,58 @@ const PromptFields = ({
             .
           </p>
         }
-        layout="vertical"
       >
-        <Row>
-          <ValidatedField
-            name="component"
-            component={NativeSelect as ComponentType<Record<string, unknown>>}
-            validation={{ required: true }}
-            componentProps={{
-              placeholder: 'Select an input control',
-              options: componentOptions,
-              sortOptionsByLabel: !isNewVariable,
-              onChange: handleChangeComponent,
-            }}
-          />
-          {isNewVariable && variableType && (
-            <Tip>
+        <ValidatedField
+          name="component"
+          component={NativeSelect as ComponentType<Record<string, unknown>>}
+          validation={{ required: true }}
+          componentProps={{
+            placeholder: 'Select an input control',
+            options: componentOptions,
+            sortOptionsByLabel: !isNewVariable,
+            onChange: handleChangeComponent,
+          }}
+        />
+        {isNewVariable && variableType && (
+          <Tip>
+            <p>
+              The selected input control will cause this variable to be defined
+              as type <strong>{String(variableType)}</strong>. Once set, this
+              cannot be changed (although you may change the input control
+              within this type).
+            </p>
+          </Tip>
+        )}
+        {!isNewVariable && variableType && (
+          <Tip type="warning">
+            <div>
               <p>
-                The selected input control will cause this variable to be
-                defined as type <strong>{String(variableType)}</strong>. Once
-                set, this cannot be changed (although you may change the input
-                control within this type).
+                A pre-existing variable is currently selected. You cannot change
+                a variable type after it has been created, so only{' '}
+                <strong>{String(variableType)}</strong> compatible input
+                controls can be selected above. If you would like to use a
+                different input control type, you will need to create a new
+                variable.
               </p>
-            </Tip>
-          )}
-          {!isNewVariable && variableType && (
-            <Tip type="warning">
-              <div>
-                <p>
-                  A pre-existing variable is currently selected. You cannot
-                  change a variable type after it has been created, so only{' '}
-                  <strong>{String(variableType)}</strong> compatible input
-                  controls can be selected above. If you would like to use a
-                  different input control type, you will need to create a new
-                  variable.
-                </p>
-              </div>
-            </Tip>
-          )}
-        </Row>
+            </div>
+          </Tip>
+        )}
         {variableType &&
           metaForType &&
           typeof metaForType.label === 'string' && (
-            <Row>
+            <div>
               <h4>Preview</h4>
               <InputPreview
                 label={metaForType.label}
                 description={metaForType.description}
                 image={metaForType.image}
               />
-            </Row>
+            </div>
           )}
-      </Section>
+      </Subsection>
+
       {isOrdinalOrCategoricalType(variableType) && (
-        <Section
+        <Subsection
           id={getFieldId('options')}
           title="Categorical/Ordinal options"
           summary={
@@ -197,40 +227,29 @@ const PromptFields = ({
               values for the participant to choose between.
             </p>
           }
-          layout="vertical"
         >
-          <Row>
-            <Options name="options" label="Options" />
-          </Row>
-        </Section>
+          <Options name="options" label="Options" />
+        </Subsection>
       )}
       {isBooleanWithOptions(component) && (
-        <Section
-          layout="vertical"
-          id={getFieldId('parameters')}
-          title="BooleanChoice Options"
-        >
-          <Row>
-            <BooleanChoice form={form} />
-          </Row>
-        </Section>
+        // BooleanChoice writes to the `options` field, so anchor it there (it is
+        // mutually exclusive with the Categorical/Ordinal options subsection
+        // above, so the shared id never collides at runtime).
+        <Subsection id={getFieldId('options')} title="BooleanChoice Options">
+          <BooleanChoice form={form} />
+        </Subsection>
       )}
       {isVariableTypeWithParameters(variableType) && (
-        <Section
-          layout="vertical"
-          title="Input Options"
-          id={getFieldId('parameters')}
-        >
-          <Row>
-            <Parameters
-              type={String(variableType)}
-              component={component ?? ''}
-              name="parameters"
-              form={form}
-            />
-          </Row>
-        </Section>
+        <Subsection id={getFieldId('parameters')} title="Input Options">
+          <Parameters
+            type={String(variableType)}
+            component={component ?? ''}
+            name="parameters"
+            form={form}
+          />
+        </Subsection>
       )}
+
       <ValidationSection
         form={form}
         disabled={!variableType}
@@ -240,7 +259,7 @@ const PromptFields = ({
         }
         existingVariables={omit(existingVariables, variable)}
       />
-    </>
+    </Section>
   );
 };
 

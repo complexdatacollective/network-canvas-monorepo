@@ -19,7 +19,10 @@ import {
   validationErrorDialog,
 } from '~/ducks/modules/userActions/dialogs';
 import type { RootState } from '~/ducks/store';
-import { saveProtocolAssets } from '~/utils/assetUtils';
+import {
+  saveProtocolAssets,
+  saveProtocolAssetsToMemory,
+} from '~/utils/assetUtils';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
 import { ensureError } from '~/utils/ensureError';
 import {
@@ -30,9 +33,36 @@ import {
 import { reportError } from '~/utils/reportError';
 
 import { clearActiveProtocol, setActiveProtocol } from '../activeProtocol';
-import { getActiveProtocolId, setActiveProtocolId } from '../app';
+import {
+  getActiveProtocolId,
+  setActiveProtocolId,
+  setStorageUnavailable,
+} from '../app';
 
 type ImportSource = 'local' | 'remote' | 'bundled';
+
+// Error names thrown when IndexedDB is unavailable or over quota — the common
+// case being Safari private browsing, whose per-origin quota is too small for
+// the bundled sample media. Used to decide when to fall back to an in-memory
+// copy rather than failing the open outright.
+const STORAGE_ERROR_NAMES = new Set([
+  'QuotaExceededError',
+  'InvalidStateError',
+  'UnknownError',
+  'SecurityError',
+  'AbortError',
+  'DatabaseClosedError',
+  'OpenFailedError',
+  'VersionError',
+]);
+
+const isStorageUnavailableError = (error: unknown): boolean => {
+  if (error instanceof Error && STORAGE_ERROR_NAMES.has(error.name)) {
+    return true;
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return /quota|indexeddb|idbdatabase|object ?store|storage/i.test(message);
+};
 
 // A protocol failed schema validation during import. This is an expected
 // outcome for an old or malformed file, so we record an analytics event
@@ -86,16 +116,38 @@ const instantiateProtocol = async (
 ): Promise<void> => {
   const protocolId = crypto.randomUUID();
 
-  await putStoredProtocol({ id: protocolId, protocol, name, description });
   try {
-    await saveProtocolAssets(assets, protocolId);
+    await putStoredProtocol({ id: protocolId, protocol, name, description });
+    try {
+      await saveProtocolAssets(assets, protocolId);
+    } catch (error) {
+      // Don't leave a library row whose assetManifest points at assets that
+      // were never persisted; remove the orphaned row before surfacing.
+      await deleteStoredProtocol(protocolId);
+      throw error;
+    }
   } catch (error) {
-    // Don't leave a library row whose assetManifest points at assets that were
-    // never persisted; remove the orphaned row before surfacing the failure.
-    await deleteStoredProtocol(protocolId);
-    throw error;
+    // Persistent storage is unavailable (e.g. Safari private browsing, whose
+    // quota is too small for the bundled media). Open the protocol from an
+    // in-memory copy so it stays usable this session, and flag it so the UI can
+    // warn that it won't be saved on this device. Other errors are real bugs and
+    // are rethrown for the caller's import-error handling.
+    if (!isStorageUnavailableError(error)) {
+      throw error;
+    }
+
+    saveProtocolAssetsToMemory(assets, protocolId);
+    dispatch(setStorageUnavailable(true));
+    dispatch(setActiveProtocolId(protocolId));
+    dispatch(setActiveProtocol(protocol));
+    navigate('/protocol');
+    return;
   }
 
+  // The protocol persisted successfully, so clear any earlier storage-unavailable
+  // flag (it is persisted to localStorage) to re-enable autosave for this and
+  // subsequent opens.
+  dispatch(setStorageUnavailable(false));
   dispatch(setActiveProtocolId(protocolId));
   dispatch(setActiveProtocol(protocol));
 

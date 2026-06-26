@@ -37,7 +37,7 @@ const PreviewEdge = ({
       : 'bg-surface-1 text-surface-1-foreground';
 
   const baseClasses =
-    'relative m-(--space-sm) flex flex-row items-center rounded-full border-4 border-transparent px-(--space-md) py-(--space-sm) transition-[border-color] duration-(--animation-duration-standard) ease-(--animation-easing) [&_.icon]:mr-(--space-sm)';
+    'relative flex flex-row items-center rounded-full border-4 border-transparent px-(--space-md) py-(--space-sm) transition-[border-color] duration-(--animation-duration-standard) ease-(--animation-easing) [&_.icon]:mr-(--space-sm)';
 
   if (onClick && !selected) {
     return (

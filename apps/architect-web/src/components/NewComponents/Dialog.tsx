@@ -4,6 +4,7 @@ import { Dialog as BaseDialog } from '@base-ui/react/dialog';
 import { motion } from 'motion/react';
 import type { ComponentProps, ReactNode } from 'react';
 
+import SectionDepthContext from '~/components/EditorLayout/SectionDepthContext';
 import Button from '~/lib/legacy-ui/components/Button';
 import Modal from '~/lib/legacy-ui/components/Modal';
 import { cx } from '~/utils/cva';
@@ -63,7 +64,9 @@ function DialogPopup({
             </div>
           )}
           <div className="flex-1 overflow-y-auto px-(--space-lg) py-(--space-md)">
-            {children}
+            <SectionDepthContext.Provider value={0}>
+              {children}
+            </SectionDepthContext.Provider>
           </div>
           {footer && (
             <div className="bg-accent text-accent-foreground sticky bottom-0 flex justify-end gap-(--space-sm) px-(--space-lg) py-(--space-md) [&>*:first-child:not(:only-child)]:mr-auto">

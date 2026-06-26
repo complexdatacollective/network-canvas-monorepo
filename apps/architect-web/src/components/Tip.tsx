@@ -24,7 +24,7 @@ const Tip = ({ type = 'info', icon = true, children = null }: TipProps) => {
   return (
     <div
       className={cx(
-        'bg-surface-2 my-(--space-lg) flex w-full items-center gap-(--space-md) rounded px-(--space-xl) py-(--space-xs) text-sm',
+        'bg-surface-2 my-(--space-lg) flex w-full items-center gap-(--space-md) rounded px-(--space-xl) py-(--space-xs) text-sm first:mt-0 last:mb-0',
         typeClasses[type],
       )}
     >
