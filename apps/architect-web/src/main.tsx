@@ -7,7 +7,7 @@ import AppView from './components/ViewManager/views/App';
 import { store } from './ducks/store';
 import { preloadTimelineImages } from './images/timeline';
 import { warmBundledTemplateAssets } from './templates/warmBundledAssets';
-import { isRunningAsInstalledPwa } from './utils/pwa';
+import { isRunningAsInstalledPwa, requestPersistentStorage } from './utils/pwa';
 
 const root = document.getElementById('root') as Element;
 
@@ -27,6 +27,7 @@ createRoot(root).render(
 const warmCaches = () => {
   preloadTimelineImages();
   if (isRunningAsInstalledPwa()) {
+    void requestPersistentStorage();
     void warmBundledTemplateAssets();
   }
 };

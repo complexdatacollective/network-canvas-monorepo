@@ -20,3 +20,15 @@ export const isRunningAsInstalledPwa = (): boolean => {
     (mode) => window.matchMedia(`(display-mode: ${mode})`).matches,
   );
 };
+
+// Best-effort request for persistent storage so the browser is less likely to
+// evict the offline caches (precache + warmed template/Sample media) and the
+// IndexedDB protocol library under storage pressure. Installed PWAs are usually
+// granted this without a prompt. Returns whether storage is persisted; never
+// throws and is a no-op where the Storage API is unavailable (e.g. iOS Safari,
+// which already gives installed home-screen apps durable storage).
+export const requestPersistentStorage = async (): Promise<boolean> => {
+  if (typeof navigator.storage?.persist !== 'function') return false;
+  if (await navigator.storage.persisted()) return true;
+  return navigator.storage.persist();
+};

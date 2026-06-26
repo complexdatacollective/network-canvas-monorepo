@@ -295,4 +295,15 @@ available for an About/footer line. No other UI change required.
   `index.html`/`sw.js`. Without them, updates would silently fail to appear.
 - **First-visit offline gaps:** by design, thumbnails/fonts are cached after the
   first online session (acceptable per the chosen runtime-cache approach).
+- **Storage eviction:** when installed, `requestPersistentStorage()`
+  (`src/utils/pwa.ts`, called from `main.tsx`) requests persistent storage so the
+  browser is less likely to evict the offline caches and the IndexedDB protocol
+  library under pressure (notably relevant on iOS). Best-effort and a no-op where
+  the Storage API is absent; failures to fetch a bundled asset still surface a
+  visible error dialog rather than corrupting state.
+- **Non-hashed icons:** the generated PWA icons (`pwa-*.png`,
+  `apple-touch-icon-*.png`, `maskable-icon-512x512.png`, `favicon.ico`) keep
+  stable names, so `public/_headers` marks them `max-age=0, must-revalidate` to
+  avoid serving a stale icon after a renamed-in-place change; only the
+  content-hashed `/assets/*` are `immutable`.
 - **Changeset:** not required for this change (per maintainer).

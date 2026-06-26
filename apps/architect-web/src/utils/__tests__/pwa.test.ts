@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { isRunningAsInstalledPwa } from '../pwa';
+import { isRunningAsInstalledPwa, requestPersistentStorage } from '../pwa';
 
 const stubMatchMedia = (matchingModes: string[]) => {
   vi.stubGlobal('matchMedia', (query: string) => ({
@@ -15,9 +15,14 @@ const setNavigatorStandalone = (value: boolean | undefined) => {
   });
 };
 
+const setStorageManager = (value: unknown) => {
+  Object.defineProperty(navigator, 'storage', { configurable: true, value });
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
   Reflect.deleteProperty(window.navigator, 'standalone');
+  Reflect.deleteProperty(navigator, 'storage');
 });
 
 describe('isRunningAsInstalledPwa', () => {
@@ -52,5 +57,29 @@ describe('isRunningAsInstalledPwa', () => {
   it('is false when matchMedia is unavailable and not an iOS app', () => {
     vi.stubGlobal('matchMedia', undefined);
     expect(isRunningAsInstalledPwa()).toBe(false);
+  });
+});
+
+describe('requestPersistentStorage', () => {
+  it('returns false when the Storage API is unavailable', async () => {
+    setStorageManager(undefined);
+    await expect(requestPersistentStorage()).resolves.toBe(false);
+  });
+
+  it('does not re-request when storage is already persisted', async () => {
+    const persist = vi.fn();
+    setStorageManager({ persisted: vi.fn().mockResolvedValue(true), persist });
+    await expect(requestPersistentStorage()).resolves.toBe(true);
+    expect(persist).not.toHaveBeenCalled();
+  });
+
+  it('requests persistence when not yet persisted', async () => {
+    const persist = vi.fn().mockResolvedValue(true);
+    setStorageManager({
+      persisted: vi.fn().mockResolvedValue(false),
+      persist,
+    });
+    await expect(requestPersistentStorage()).resolves.toBe(true);
+    expect(persist).toHaveBeenCalledTimes(1);
   });
 });
