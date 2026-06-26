@@ -12,7 +12,6 @@ import {
   variableExists,
 } from '~/utils/validation-helpers';
 
-import type { Codebook } from './codebook';
 import { OperatorsByVariableType } from './filters';
 
 // Re-export all the split schemas
@@ -27,7 +26,7 @@ export * from './variables';
 import { getAssetId } from '~/utils/mock-seeds';
 
 import { assetSchema } from './assets';
-import { CodebookSchema, type NodeDefinition } from './codebook';
+import { type Codebook, CodebookSchema, type NodeDefinition } from './codebook';
 import { ExperimentsSchema, type FormField, type StageSubject } from './common';
 import type { FilterRule } from './filters';
 import { type Prompt, stageSchema } from './stages';
