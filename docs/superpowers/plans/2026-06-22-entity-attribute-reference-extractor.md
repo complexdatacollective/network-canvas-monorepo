@@ -445,8 +445,20 @@ const walk = (
     }
     case 'union': {
       const options = (def as { options: z.ZodType[] }).options;
+      // Discriminated unions select the branch by discriminator value. Plain
+      // unions prefer the branch that fully parses; if none does (a
+      // structurally-invalid, in-progress value) hits are merged across the
+      // branches so references inside the invalid value still surface. (The
+      // implemented walker additionally prunes reference-free subtrees and
+      // narrows the plain-union search with a virtual discriminator for
+      // performance — see collectEntityAttributeReferences.ts.)
       const match = options.find((option) => option.safeParse(value).success);
-      return match ? walk(match, value, path, ctx) : [];
+      if (match) return walk(match, value, path, ctx);
+      const merged = new Map<string, EntityAttributeReferenceHit>();
+      for (const option of options)
+        for (const hit of walk(option, value, path, ctx))
+          merged.set(JSON.stringify(hit), hit);
+      return [...merged.values()];
     }
     default:
       return [];
@@ -1000,7 +1012,7 @@ for (const issue of validateEntityAttributeReferences(protocol)) {
 - [ ] **Step 2: Update the superrefine test expectations.** Run the suite, then update assertions whose messages changed to the unified `The variable "<id>" does not exist in the codebook` (and the `must be of type ...` message for the ordinal/edgeVariable case). Do not change the issue _paths_ — those are preserved by the extractor.
 
 Run: `cd packages/protocol-validation && pnpm exec vitest run src/schemas/8/__tests__/schema8-superrefine-validation.test.ts`
-Expected after updates: PASS (was 69 tests; count unchanged unless a duplicate check is dropped).
+Expected after updates: PASS (71 tests; count unchanged unless a duplicate check is dropped).
 
 - [ ] **Step 3: Validate against the real silos protocol.** Add a focused regression test that loads a protocol where a variable is referenced only by `greaterThanOrEqualToVariable` and asserts the schema accepts it (no false positive) and rejects it when the referenced variable is removed. (Reuses the PR #686 scenario at the schema level.)
 

@@ -86,6 +86,7 @@ type SubjectResolution =
   | 'stageSubject' // enclosing stage's subject (ego when stage is EgoForm)
   | 'ego' // always { entity: 'ego' }
   | 'owningVariable' // the codebook entity/type the owning variable lives under
+  | 'filterRule' // usage-only; existence-checked by the dedicated filter-rule validation
   | { sibling: string; entity: 'node' | 'edge' }; // type read from a sibling field
 
 type EntityAttributeReferenceMeta = {
@@ -128,17 +129,24 @@ edgeVariable: entityAttributeReference({
   subject: { sibling: 'createEdge', entity: 'edge' },
   requireType: ['ordinal'],
 });
+
+// Mock generation wraps the produced value so it satisfies the brand:
+field: entityAttributeReference({ subject: 'stageSubject' }).generateMock(() =>
+  asEntityAttributeReference(getNodeVariableId()),
+);
 ```
 
 ### 2. Subject resolution
 
-The four strategies, derived from the 8 existing checks:
+The four subject-resolving strategies, derived from the 8 existing checks (a
+fifth, `filterRule`, is usage-only — it resolves to no subject because those
+references are existence-checked by the dedicated filter-rule validation):
 
 | Strategy              | Resolves to                                               | Fields                                                                                 |
 | --------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | `stageSubject`        | enclosing stage's `subject` (or ego for `EgoForm`)        | most prompt/stage references                                                           |
 | `ego`                 | `{ entity: 'ego' }`                                       | EgoForm fields, FamilyPedigree `egoVariable`                                           |
-| `owningVariable`      | entity/type the owning codebook variable is defined under | validation cross-refs (`sameAs`, comparisons, …)                                       |
+| `owningVariable`      | entity/type derived from the `codebook.{entity}.{type}` path segment (positions codebook+1/+2) | validation cross-refs (`sameAs`, comparisons, …)                                       |
 | `{ sibling, entity }` | `{ entity, type: <value of sibling field> }`              | `edgeVariable`→`createEdge`; FamilyPedigree config refs→`nodeConfig`/`edgeConfig.type` |
 
 The extractor's walker threads **ambient context** as it descends (current
