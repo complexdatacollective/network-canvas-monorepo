@@ -24,8 +24,9 @@ function IntroVideo({ assetId }: { assetId: string }) {
   if (!url) return null;
 
   return (
-    <video controls title="Intro video" className="w-full rounded">
+    <video controls aria-label="Intro video" className="w-full rounded">
       <source src={url} />
+      <track kind="captions" />
     </video>
   );
 }

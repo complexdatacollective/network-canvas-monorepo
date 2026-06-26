@@ -85,8 +85,9 @@ describe('IntroStep', () => {
 
     render(<IntroStep />);
 
-    const video = screen.getByTitle('Intro video');
+    const video = document.querySelector('video');
     expect(video).toBeTruthy();
+    expect(video?.getAttribute('aria-label')).toBe('Intro video');
   });
 
   it('does not render a video element when videoAssetId is absent', () => {
