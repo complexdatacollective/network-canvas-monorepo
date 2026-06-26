@@ -39,7 +39,7 @@ import {
   setStorageUnavailable,
 } from '../app';
 
-type ImportSource = 'local' | 'remote' | 'bundled';
+type ImportSource = 'local' | 'bundled';
 
 // Error names thrown when IndexedDB is unavailable or over quota — the common
 // case being Safari private browsing, whose per-origin quota is too small for
@@ -385,92 +385,6 @@ export const exportNetcanvas = createAsyncThunk(
     );
 
     return true;
-  },
-);
-
-export const openRemoteNetcanvas = createAsyncThunk(
-  'webUserActions/openRemoteNetcanvas',
-  async ({ url, name }: { url: string; name?: string }, { dispatch }) => {
-    const controller = new AbortController();
-
-    try {
-      // Fetch the zipped .netcanvas file from the remote URL
-      const response = await fetch(url, {
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const buffer = await response.arrayBuffer();
-
-      // TODO: Remove duplicated code by reusing openLocalNetcanvas logic
-      const { protocol, assets } = await extractProtocol(
-        new Uint8Array(buffer),
-      );
-
-      // Get filename from URL
-      const fileName = decodeURIComponent(
-        url.split('/').pop() || 'remote_protocol.netcanvas',
-      );
-      const protocolName = fileName.replace(/\.netcanvas$/, '');
-
-      // Handle migration if needed
-      const migratedProtocol = await dispatch(
-        handleProtocolMigration({
-          protocol: protocol as CurrentProtocol,
-          name: protocolName,
-        }),
-      ).unwrap();
-
-      if (!migratedProtocol) {
-        // Migration was canceled or app upgrade is required; the migration
-        // step has already surfaced the appropriate dialog. Treat as a benign
-        // exit rather than a reportable exception.
-        dispatch(
-          generalErrorDialog(
-            'Protocol Import Error',
-            'Protocol migration failed or was canceled.',
-          ),
-        );
-        return;
-      }
-
-      // Validate the protocol
-      const validationResult = await validateProtocol(
-        migratedProtocol as CurrentProtocol,
-      );
-
-      if (!validationResult.success) {
-        trackImportValidationFailure('remote', validationResult.error);
-        const errorMessage = ensureError(validationResult.error).message;
-        dispatch(validationErrorDialog(errorMessage));
-        return;
-      }
-
-      // Opening a remote/template protocol instantiates a fresh library entry
-      // (new id), so templates can be opened repeatedly without overwriting. A
-      // caller-supplied `name` (the template-naming flow) overrides the
-      // protocol's own name so the library row and the editor agree.
-      const finalProtocol = migratedProtocol as CurrentProtocol;
-      const finalName = name ?? finalProtocol.name ?? protocolName;
-      await instantiateProtocol(
-        {
-          protocol: name ? { ...finalProtocol, name } : finalProtocol,
-          assets,
-          name: finalName,
-          description: finalProtocol.description,
-        },
-        dispatch,
-      );
-    } catch (error) {
-      trackImportException('remote', error);
-      const errorMessage = ensureError(error).message;
-      dispatch(generalErrorDialog('Protocol Import Error', errorMessage));
-    } finally {
-      controller.abort();
-    }
   },
 );
 

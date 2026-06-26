@@ -21,7 +21,8 @@
   "type": "module",
   "main": "./protocol.json",
   "exports": {
-    ".": "./protocol.json"
+    ".": "./protocol.json",
+    "./assets/*": "./assets/*"
   },
   "engines": {
     "node": ">=20.0.0"
