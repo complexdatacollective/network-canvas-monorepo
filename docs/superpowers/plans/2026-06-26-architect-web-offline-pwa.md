@@ -59,10 +59,12 @@
 Run from the repo root:
 
 ```bash
-pnpm --filter @codaco/architect-web add -D vite-plugin-pwa@^1.3.0 @vite-pwa/assets-generator@^1.0.2
+pnpm --filter @codaco/architect-web add -D vite-plugin-pwa@^1.3.0 @vite-pwa/assets-generator@^1.0.2 workbox-window@^7.4.1
 ```
 
-Expected: both appear under `devDependencies` in `apps/architect-web/package.json`; lockfile updates.
+Expected: all three appear under `devDependencies` in `apps/architect-web/package.json`; lockfile updates.
+
+`workbox-window` is a _peer_ dependency of `vite-plugin-pwa` that pnpm does **not** auto-install. It is the client-side runtime that `virtual:pwa-register/react` dynamically imports to register the service worker. Without it installed, Vite leaves a bare `import('workbox-window')` in the bundle that the browser cannot resolve, the error is swallowed, and **the service worker never registers** (the app still builds and emits `sw.js`, so this fails silently). It must be installed explicitly.
 
 - [ ] **Step 2: Copy the icon source into `public/`**
 
