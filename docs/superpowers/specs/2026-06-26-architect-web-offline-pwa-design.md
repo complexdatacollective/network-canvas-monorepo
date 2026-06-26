@@ -43,6 +43,32 @@ lifecycle into a small in-app prompt.
 | Thumbnails       | **Runtime-cache** on demand (relying on existing idle-preload), not precached                                           |
 | Template install | **Offline** — bundled template + Sample assets warmed into the SW cache at idle; dev-only Development protocol excluded |
 
+## Offline gated to installed-PWA sessions
+
+Offline support (service-worker registration, precaching, runtime caching, the
+template-asset warm, and the update prompt) is enabled **only when the app runs
+as an installed PWA**. In a normal browser tab the app stays online-only with
+plain HTTP caching and registers **no service worker**.
+
+`isRunningAsInstalledPwa()` (`src/utils/pwa.ts`) detects this via the
+`display-mode` media query (`standalone` / `minimal-ui` / `fullscreen` /
+`window-controls-overlay`) plus iOS Safari's `navigator.standalone`. It gates:
+
+- **SW registration** — `PwaUpdateBanner` (which registers the worker via
+  `useRegisterSW`) is mounted only when installed (`ViewManager/views/App.tsx`).
+- **The template-asset warm** — skipped in a tab (`main.tsx`).
+
+Notes / caveats:
+
+- A service worker is **origin-scoped**, so once a user installs and the worker
+  registers, it also controls that user's browser tabs (offline "leaks" into the
+  tab for that user). This is unavoidable and accepted.
+- Install does not require a service worker — modern Chrome (93+) offers the
+  install prompt from a valid manifest alone — so gating the SW to installed
+  sessions does not block installation.
+- Stage-thumbnail idle-preloading still runs in tabs (it only warms the HTTP
+  cache for speed; it is not service-worker-specific).
+
 ## Offline template installation
 
 Bundled templates (the "Templates" tab) and the Sample protocol instantiate by

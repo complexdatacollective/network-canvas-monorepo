@@ -615,6 +615,35 @@ library with all 10 assets present in IndexedDB.
 
 ---
 
+## Task 6: Gate offline behaviour to installed-PWA sessions (added after review)
+
+Offline support should be enabled only when the app runs as an installed PWA; a
+normal browser tab must register no service worker and behave online-only.
+
+**Files:**
+
+- Create: `apps/architect-web/src/utils/pwa.ts` (`isRunningAsInstalledPwa`).
+- Test: `apps/architect-web/src/utils/__tests__/pwa.test.ts`.
+- Modify: `apps/architect-web/src/global.d.ts` (augment `Navigator` with the
+  iOS-only `standalone?: boolean`).
+- Modify: `apps/architect-web/src/components/ViewManager/views/App.tsx` (mount
+  `<PwaUpdateBanner />` only when `isRunningAsInstalledPwa()`).
+- Modify: `apps/architect-web/src/main.tsx` (call `warmBundledTemplateAssets`
+  only when `isRunningAsInstalledPwa()`).
+
+**Mechanism:** `isRunningAsInstalledPwa()` returns true for the installed
+display modes (`display-mode: standalone` etc.) or iOS `navigator.standalone`.
+Because the only thing that registers the service worker is `PwaUpdateBanner`'s
+`useRegisterSW` (the plugin uses `injectRegister: false`), not mounting that
+component in a tab means no worker, no precache, no offline. Stage-thumbnail
+idle-preloading stays unconditional (HTTP-cache speed only).
+
+**Verification:** unit tests for `isRunningAsInstalledPwa`; and a browser check —
+a normal tab registers 0 service workers and creates 0 caches, while a session
+reporting `display-mode: standalone` registers the worker and precaches.
+
+---
+
 ## Self-review
 
 - **Spec coverage:** §1 build integration → Task 1; §2 manifest+icons → Task 1 (steps 2–7); §3 caching strategy → Task 1 (step 4 `workbox`); §4 update flow → Task 2; §5 Netlify headers → Task 3; §6 version surfacing (`__APP_VERSION__`) → Task 1 (define) + Task 2 (offline-ready copy); §7 testing → Task 2 (unit) + Task 4 (build/manual). All spec sections mapped.

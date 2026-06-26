@@ -9,9 +9,16 @@ import PwaUpdateBanner from '~/components/PwaUpdateBanner';
 import Routes from '~/components/Routes';
 import ScrollToTop from '~/components/ScrollToTop';
 import { resetRunOnce } from '~/hooks/useRunOnce';
+import { isRunningAsInstalledPwa } from '~/utils/pwa';
 
 const AppContents = () => {
   const [location] = useLocation();
+
+  // Offline support (service-worker registration, caching, and the update
+  // prompt) is enabled only when running as an installed PWA. In a normal
+  // browser tab the app stays online-only, so the banner — which registers the
+  // service worker via useRegisterSW — is not mounted.
+  const offlineEnabled = isRunningAsInstalledPwa();
 
   // Returning to the start screen ends the current protocol session, so the
   // next /protocol visit gets a fresh entrance animation.
@@ -32,7 +39,7 @@ const AppContents = () => {
       <ScrollToTop />
       <Routes />
       <DialogManager />
-      <PwaUpdateBanner />
+      {offlineEnabled && <PwaUpdateBanner />}
       <JsonPreviewOverlay />
     </>
   );

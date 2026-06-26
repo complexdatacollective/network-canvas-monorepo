@@ -3,6 +3,12 @@
 // Remove Buffer from global scope to ensure it causes TypeScript errors in browser context
 declare const Buffer: undefined;
 
+// iOS Safari exposes installed-PWA (home-screen) state via this non-standard,
+// read-only flag, which predates the `display-mode` media query.
+interface Navigator {
+  readonly standalone?: boolean;
+}
+
 // Remove other Node.js globals that shouldn't be available in browser
 declare const process: undefined;
 declare const global: undefined;
