@@ -5,16 +5,28 @@ import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { FRAMING_TERMS, type FramingId } from '@codaco/shared-consts';
 import useProtocolForm from '~/forms/useProtocolForm';
 import { useStageSelector } from '~/hooks/useStageSelector';
+import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
+import { useFramedTerms } from '~/interfaces/FamilyPedigree/hooks/useFramedTerms';
 import {
   getNodeForm,
   getNodeType,
 } from '~/interfaces/FamilyPedigree/utils/nodeUtils';
 
+const INTRO_COPY: Record<FramingId, string> = {
+  gamete:
+    'Please answer the following questions about your egg parent. This is the person who contributed the egg that you were conceived with, which may be different from the person who carried you during pregnancy.',
+  gendered:
+    'Please answer the following questions about your mother. This is the person who contributed the egg that you were conceived with, which may be different from the person who carried you during pregnancy.',
+};
+
 export default function EggParentStep() {
   const nodeType = useStageSelector(getNodeType);
   const nodeForm = useStageSelector(getNodeForm);
+  const framing = useFamilyPedigreeStore((s) => s.framing);
+  const terms = useFramedTerms() ?? FRAMING_TERMS.gamete;
 
   const { fieldComponents } = useProtocolForm({
     subject: {
@@ -26,11 +38,7 @@ export default function EggParentStep() {
 
   return (
     <>
-      <Paragraph>
-        Please answer the following questions about your egg parent. This is the
-        person who contributed the egg that you were conceived with, which may
-        be different from the person who carried you during pregnancy.
-      </Paragraph>
+      <Paragraph>{INTRO_COPY[framing ?? 'gamete']}</Paragraph>
       <hr />
       <FieldNamespace prefix="egg-parent">
         <Field
@@ -42,7 +50,7 @@ export default function EggParentStep() {
         />
         <Field
           name="is-donor"
-          label="Was this person an egg donor?"
+          label={`Was this person an ${terms.eggDonor.toLowerCase()}?`}
           component={BooleanField}
           initialValue={false}
           required

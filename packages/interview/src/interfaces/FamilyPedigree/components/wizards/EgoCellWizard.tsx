@@ -3,8 +3,10 @@
 import { AnimatePresence, motion } from 'motion/react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { FRAMING_TERMS } from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
 import ActionButton from '~/components/ActionButton';
+import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
 import AdditionalParentsStep from '../quickStartWizard/AdditionalParentsStep';
@@ -34,6 +36,8 @@ export default function EgoCellWizard({
 }: EgoCellWizardProps) {
   const { openDialog } = useDialog();
   const track = useTrack();
+  const framing = useFamilyPedigreeStore((s) => s.framing);
+  const stepTerms = FRAMING_TERMS[framing ?? 'gamete'];
 
   const handleClick = async () => {
     const result = await openDialog({
@@ -47,17 +51,17 @@ export default function EgoCellWizard({
           content: BioParentsIntroStep,
         },
         {
-          title: 'Egg Parent',
+          title: stepTerms.eggParent,
           content: EggParentStep,
         },
         {
-          title: 'Gestational Carrier',
+          title: stepTerms.gestationalCarrier,
           content: GestationalCarrierStep,
           skip: ({ getFieldValue }) =>
             getFieldValue('egg-parent.gestationalCarrier') !== false,
         },
         {
-          title: 'Sperm Parent',
+          title: stepTerms.spermParent,
           content: SpermParentStep,
         },
         {
