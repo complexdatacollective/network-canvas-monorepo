@@ -4,7 +4,10 @@ import { icons } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { Provider } from 'react-redux';
 
-import type { Form as TForm } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  type Form as TForm,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -164,39 +167,39 @@ const buildMockProtocol = (icon: string) => ({
         title: 'Add Person Details',
         fields: [
           {
-            variable: 'name',
+            variable: asEntityAttributeReference('name'),
             prompt: "What is this person's name?",
           },
           {
-            variable: 'age',
+            variable: asEntityAttributeReference('age'),
             prompt: 'How old is this person?',
           },
           {
-            variable: 'gender',
+            variable: asEntityAttributeReference('gender'),
             prompt: 'What is their gender?',
           },
           {
-            variable: 'occupation',
+            variable: asEntityAttributeReference('occupation'),
             prompt: 'What is their occupation?',
           },
           {
-            variable: 'favoriteColors',
+            variable: asEntityAttributeReference('favoriteColors'),
             prompt: 'What are their favorite colors?',
           },
           {
-            variable: 'birthDate',
+            variable: asEntityAttributeReference('birthDate'),
             prompt: 'When were they born?',
           },
           {
-            variable: 'happiness',
+            variable: asEntityAttributeReference('happiness'),
             prompt: 'How happy are they generally?',
           },
           {
-            variable: 'isEmployed',
+            variable: asEntityAttributeReference('isEmployed'),
             prompt: 'Are they currently employed?',
           },
           {
-            variable: 'bio',
+            variable: asEntityAttributeReference('bio'),
             prompt: 'Tell us a bit about them',
           },
         ],
@@ -351,19 +354,19 @@ const basicForm: TForm = {
   title: 'Add Person to Your Network',
   fields: [
     {
-      variable: 'name',
+      variable: asEntityAttributeReference('name'),
       prompt: 'What is their name?',
     },
     {
-      variable: 'age',
+      variable: asEntityAttributeReference('age'),
       prompt: 'How old are they?',
     },
     {
-      variable: 'gender',
+      variable: asEntityAttributeReference('gender'),
       prompt: 'What is their gender?',
     },
     {
-      variable: 'occupation',
+      variable: asEntityAttributeReference('occupation'),
       prompt: 'What do they do for work?',
     },
   ],
@@ -374,15 +377,15 @@ const validatedForm: TForm = {
   title: 'Add Person (with validation)',
   fields: [
     {
-      variable: 'name',
+      variable: asEntityAttributeReference('name'),
       prompt: 'Name (required)',
     },
     {
-      variable: 'age',
+      variable: asEntityAttributeReference('age'),
       prompt: 'Age (18-100)',
     },
     {
-      variable: 'favoriteColors',
+      variable: asEntityAttributeReference('favoriteColors'),
       prompt: 'Select at least 2 favorite colors',
     },
   ],
@@ -458,7 +461,7 @@ export const SingleFieldForm: Story = {
       title: 'Add Name Only',
       fields: [
         {
-          variable: 'name',
+          variable: asEntityAttributeReference('name'),
           prompt: "Enter the person's name",
         },
       ],
@@ -472,31 +475,31 @@ const comprehensiveForm: TForm = {
   title: 'Complete Profile',
   fields: [
     {
-      variable: 'name',
+      variable: asEntityAttributeReference('name'),
       prompt: 'What is their name?',
     },
     {
-      variable: 'age',
+      variable: asEntityAttributeReference('age'),
       prompt: 'How old are they?',
     },
     {
-      variable: 'gender',
+      variable: asEntityAttributeReference('gender'),
       prompt: 'What is their gender?',
     },
     {
-      variable: 'occupation',
+      variable: asEntityAttributeReference('occupation'),
       prompt: 'What do they do for work?',
     },
     {
-      variable: 'favoriteColors',
+      variable: asEntityAttributeReference('favoriteColors'),
       prompt: 'What are their favorite colors?',
     },
     {
-      variable: 'isEmployed',
+      variable: asEntityAttributeReference('isEmployed'),
       prompt: 'Are they currently employed?',
     },
     {
-      variable: 'bio',
+      variable: asEntityAttributeReference('bio'),
       prompt: 'Tell us a bit about them',
     },
   ],
@@ -538,7 +541,7 @@ export const WithUniqueValidation: Story = {
       title: 'Add Unique Person',
       fields: [
         {
-          variable: 'name',
+          variable: asEntityAttributeReference('name'),
           prompt:
             'Enter a unique name (Alice Smith and Bob Johnson already exist)',
         },
@@ -561,11 +564,11 @@ const checkboxGroupForm: TForm = {
   title: 'Select Your Skills',
   fields: [
     {
-      variable: 'name',
+      variable: asEntityAttributeReference('name'),
       prompt: 'Your name',
     },
     {
-      variable: 'skills',
+      variable: asEntityAttributeReference('skills'),
       prompt: 'Select your programming skills (1-4 required)',
     },
   ],
@@ -615,11 +618,11 @@ const toggleButtonGroupForm: TForm = {
   title: 'Communication Preferences',
   fields: [
     {
-      variable: 'name',
+      variable: asEntityAttributeReference('name'),
       prompt: 'Your name',
     },
     {
-      variable: 'communicationPreference',
+      variable: asEntityAttributeReference('communicationPreference'),
       prompt: 'How would you prefer to be contacted?',
     },
   ],

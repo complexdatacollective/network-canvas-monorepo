@@ -81,7 +81,10 @@ import { action } from 'storybook/actions';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import Form from '@codaco/fresco-ui/form/Form';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-import type { Form as TForm } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  type Form as TForm,
+} from '@codaco/protocol-validation';
 
 import useProtocolForm from './useProtocolForm';
 
@@ -430,15 +433,15 @@ export const BasicFields: Story = {
   args: {
     fields: [
       {
-        variable: 'name',
+        variable: asEntityAttributeReference('name'),
         prompt: 'What is your name?',
       },
       {
-        variable: 'email',
+        variable: asEntityAttributeReference('email'),
         prompt: 'What is your email?',
       },
       {
-        variable: 'age',
+        variable: asEntityAttributeReference('age'),
         prompt: 'How old are you?',
       },
     ],
@@ -458,11 +461,11 @@ export const WithAutoFocus: Story = {
   args: {
     fields: [
       {
-        variable: 'name',
+        variable: asEntityAttributeReference('name'),
         prompt: 'What is your name?',
       },
       {
-        variable: 'occupation',
+        variable: asEntityAttributeReference('occupation'),
         prompt: 'What is your occupation?',
       },
     ],
@@ -482,11 +485,11 @@ export const SelectionFields: Story = {
   args: {
     fields: [
       {
-        variable: 'gender',
+        variable: asEntityAttributeReference('gender'),
         prompt: 'What is your gender?',
       },
       {
-        variable: 'favoriteColors',
+        variable: asEntityAttributeReference('favoriteColors'),
         prompt: 'Select your favorite colors (1-3)',
       },
     ],
@@ -505,15 +508,15 @@ export const ToggleFields: Story = {
   args: {
     fields: [
       {
-        variable: 'isEmployed',
+        variable: asEntityAttributeReference('isEmployed'),
         prompt: 'Are you currently employed?',
       },
       {
-        variable: 'acceptTerms',
+        variable: asEntityAttributeReference('acceptTerms'),
         prompt: 'I accept the terms and conditions',
       },
       {
-        variable: 'preferredContact',
+        variable: asEntityAttributeReference('preferredContact'),
         prompt: 'Preferred contact method',
       },
     ],
@@ -532,11 +535,11 @@ export const DateFields: Story = {
   args: {
     fields: [
       {
-        variable: 'birthDate',
+        variable: asEntityAttributeReference('birthDate'),
         prompt: 'When were you born?',
       },
       {
-        variable: 'startDate',
+        variable: asEntityAttributeReference('startDate'),
         prompt: 'When did you start your current job?',
       },
     ],
@@ -555,11 +558,11 @@ export const ScaleFields: Story = {
   args: {
     fields: [
       {
-        variable: 'happiness',
+        variable: asEntityAttributeReference('happiness'),
         prompt: 'How happy are you overall?',
       },
       {
-        variable: 'satisfaction',
+        variable: asEntityAttributeReference('satisfaction'),
         prompt: 'How satisfied are you with your job?',
       },
     ],
@@ -578,11 +581,11 @@ export const TextAreaField: Story = {
   args: {
     fields: [
       {
-        variable: 'name',
+        variable: asEntityAttributeReference('name'),
         prompt: 'What is your name?',
       },
       {
-        variable: 'bio',
+        variable: asEntityAttributeReference('bio'),
         prompt: 'Tell us about yourself (max 500 characters)',
       },
     ],
@@ -600,27 +603,27 @@ export const WithInitialValues: Story = {
   args: {
     fields: [
       {
-        variable: 'name',
+        variable: asEntityAttributeReference('name'),
         prompt: 'What is your name?',
       },
       {
-        variable: 'age',
+        variable: asEntityAttributeReference('age'),
         prompt: 'How old are you?',
       },
       {
-        variable: 'gender',
+        variable: asEntityAttributeReference('gender'),
         prompt: 'What is your gender?',
       },
       {
-        variable: 'favoriteColors',
+        variable: asEntityAttributeReference('favoriteColors'),
         prompt: 'Select your favorite colors',
       },
       {
-        variable: 'isEmployed',
+        variable: asEntityAttributeReference('isEmployed'),
         prompt: 'Are you currently employed?',
       },
       {
-        variable: 'bio',
+        variable: asEntityAttributeReference('bio'),
         prompt: 'Tell us about yourself',
       },
     ],
@@ -647,43 +650,43 @@ export const ComprehensiveForm: Story = {
   args: {
     fields: [
       {
-        variable: 'name',
+        variable: asEntityAttributeReference('name'),
         prompt: 'What is your name?',
       },
       {
-        variable: 'email',
+        variable: asEntityAttributeReference('email'),
         prompt: 'What is your email?',
       },
       {
-        variable: 'age',
+        variable: asEntityAttributeReference('age'),
         prompt: 'How old are you?',
       },
       {
-        variable: 'gender',
+        variable: asEntityAttributeReference('gender'),
         prompt: 'What is your gender?',
       },
       {
-        variable: 'occupation',
+        variable: asEntityAttributeReference('occupation'),
         prompt: 'What is your occupation?',
       },
       {
-        variable: 'isEmployed',
+        variable: asEntityAttributeReference('isEmployed'),
         prompt: 'Are you currently employed?',
       },
       {
-        variable: 'satisfaction',
+        variable: asEntityAttributeReference('satisfaction'),
         prompt: 'How satisfied are you with your job?',
       },
       {
-        variable: 'favoriteColors',
+        variable: asEntityAttributeReference('favoriteColors'),
         prompt: 'What are your favorite colors? (Select 1-3)',
       },
       {
-        variable: 'preferredContact',
+        variable: asEntityAttributeReference('preferredContact'),
         prompt: 'How should we contact you?',
       },
       {
-        variable: 'bio',
+        variable: asEntityAttributeReference('bio'),
         prompt: 'Tell us about yourself',
       },
     ],
@@ -703,7 +706,7 @@ export const MinimalForm: Story = {
   args: {
     fields: [
       {
-        variable: 'name',
+        variable: asEntityAttributeReference('name'),
         prompt: 'What is your name?',
       },
     ],
@@ -721,7 +724,7 @@ export const UniqueValidation: Story = {
   args: {
     fields: [
       {
-        variable: 'nickname',
+        variable: asEntityAttributeReference('nickname'),
         prompt:
           'Enter a unique nickname (try "Johnny" or "JaneD" to see validation error)',
       },
@@ -741,11 +744,11 @@ export const SameAsValidation: Story = {
   args: {
     fields: [
       {
-        variable: 'password',
+        variable: asEntityAttributeReference('password'),
         prompt: 'Enter your password',
       },
       {
-        variable: 'confirmPassword',
+        variable: asEntityAttributeReference('confirmPassword'),
         prompt: 'Confirm your password',
       },
     ],
@@ -764,11 +767,11 @@ export const DifferentFromValidation: Story = {
   args: {
     fields: [
       {
-        variable: 'email',
+        variable: asEntityAttributeReference('email'),
         prompt: 'Enter your primary email',
       },
       {
-        variable: 'alternateEmail',
+        variable: asEntityAttributeReference('alternateEmail'),
         prompt: 'Enter an alternate email (must be different from primary)',
       },
     ],
@@ -787,11 +790,11 @@ export const GreaterThanVariableValidation: Story = {
   args: {
     fields: [
       {
-        variable: 'startAge',
+        variable: asEntityAttributeReference('startAge'),
         prompt: 'Enter start age',
       },
       {
-        variable: 'endAge',
+        variable: asEntityAttributeReference('endAge'),
         prompt: 'Enter end age (must be greater than start age)',
       },
     ],
@@ -810,32 +813,32 @@ export const ContextDependentValidations: Story = {
   args: {
     fields: [
       {
-        variable: 'nickname',
+        variable: asEntityAttributeReference('nickname'),
         prompt:
           'Enter a unique nickname (try "Johnny" or "JaneD" to see validation error)',
       },
       {
-        variable: 'password',
+        variable: asEntityAttributeReference('password'),
         prompt: 'Enter your password',
       },
       {
-        variable: 'confirmPassword',
+        variable: asEntityAttributeReference('confirmPassword'),
         prompt: 'Confirm your password (must match password)',
       },
       {
-        variable: 'email',
+        variable: asEntityAttributeReference('email'),
         prompt: 'Enter your primary email',
       },
       {
-        variable: 'alternateEmail',
+        variable: asEntityAttributeReference('alternateEmail'),
         prompt: 'Enter an alternate email (must be different from primary)',
       },
       {
-        variable: 'startAge',
+        variable: asEntityAttributeReference('startAge'),
         prompt: 'Enter start age',
       },
       {
-        variable: 'endAge',
+        variable: asEntityAttributeReference('endAge'),
         prompt: 'Enter end age (must be greater than start age)',
       },
     ],
@@ -854,17 +857,17 @@ export const HintText: Story = {
   args: {
     fields: [
       {
-        variable: 'name',
+        variable: asEntityAttributeReference('name'),
         prompt: 'What is your name?',
         hint: 'Enter your full legal name as it appears on official documents.',
       },
       {
-        variable: 'email',
+        variable: asEntityAttributeReference('email'),
         prompt: 'What is your email?',
         hint: 'We will use this to send you a confirmation.',
       },
       {
-        variable: 'age',
+        variable: asEntityAttributeReference('age'),
         prompt: 'How old are you?',
       },
     ],
@@ -883,23 +886,23 @@ export const ValidationHints: Story = {
   args: {
     fields: [
       {
-        variable: 'name',
+        variable: asEntityAttributeReference('name'),
         prompt: 'What is your name?',
         hint: 'Enter your full legal name.',
         showValidationHints: true,
       },
       {
-        variable: 'email',
+        variable: asEntityAttributeReference('email'),
         prompt: 'What is your email?',
         showValidationHints: true,
       },
       {
-        variable: 'age',
+        variable: asEntityAttributeReference('age'),
         prompt: 'How old are you?',
         showValidationHints: true,
       },
       {
-        variable: 'favoriteColors',
+        variable: asEntityAttributeReference('favoriteColors'),
         prompt: 'Select your favorite colors',
         hint: 'Pick the colors you like most.',
         showValidationHints: true,

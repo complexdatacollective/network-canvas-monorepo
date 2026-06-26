@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import type { EntityDefinition, SortRule } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  type EntityDefinition,
+  type SortRule,
+} from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import createSorter, {
@@ -1213,7 +1217,7 @@ describe('Special cases', () => {
 describe('processProtocolSortRule', () => {
   it('ignores rules that already have a type', () => {
     const rule = {
-      property: 'name',
+      property: asEntityAttributeReference('name'),
       type: 'string',
       direction: 'asc',
     } as SortRule;
