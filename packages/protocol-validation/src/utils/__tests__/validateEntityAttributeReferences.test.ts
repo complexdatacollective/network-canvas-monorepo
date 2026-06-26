@@ -47,7 +47,13 @@ describe('validateReferences', () => {
         requireType: ['ordinal'],
       },
     ]);
-    expect(issues.some((i) => i.message.includes('ordinal'))).toBe(true);
+    expect(issues).toEqual([
+      {
+        code: 'custom',
+        message: 'The variable "age" must be of type ordinal',
+        path: ['p'],
+      },
+    ]);
   });
 
   it('accepts a present, type-valid reference', () => {

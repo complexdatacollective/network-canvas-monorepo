@@ -151,10 +151,13 @@ const walk = (
       // and merge hits so references inside an invalid value are still collected.
       const match = options.find((option) => option.safeParse(value).success);
       if (match) return walk(match, value, path, ctx);
+      // De-dupe on the full hit (path AND resolved subject/requireType): two
+      // branches can expose the same path with different validation metadata,
+      // and those are distinct references that must both survive.
       const merged = new Map<string, EntityAttributeReferenceHit>();
       for (const option of options) {
         for (const hit of walk(option, value, path, ctx)) {
-          merged.set(hit.path.join('.'), hit);
+          merged.set(JSON.stringify(hit), hit);
         }
       }
       return [...merged.values()];

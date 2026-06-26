@@ -1,6 +1,10 @@
 import { faker } from '@faker-js/faker';
 
-import { getEdgeTypeId, getNodeVariableId } from '~/utils/mock-seeds';
+import {
+  getEdgeTypeId,
+  getEdgeVariableId,
+  getNodeVariableId,
+} from '~/utils/mock-seeds';
 import { z } from '~/utils/zod-mock-extension';
 
 import {
@@ -61,7 +65,7 @@ export const tieStrengthCensusPromptSchema = promptSchema.extend({
   edgeVariable: entityAttributeReference({
     subject: { sibling: 'createEdge', entity: 'edge' },
     requireType: ['ordinal'],
-  }).generateMock(() => asEntityAttributeReference(getNodeVariableId())),
+  }).generateMock(() => asEntityAttributeReference(getEdgeVariableId())),
   negativeLabel: z
     .string()
     .min(1)
@@ -86,9 +90,9 @@ export const ordinalBinPromptSchema = promptSchema.extend({
 
 export const categoricalBinPromptSchema = promptSchema
   .extend({
-    variable: entityAttributeReference({ subject: 'stageSubject' }).generateMock(
-      () => asEntityAttributeReference(getNodeVariableId()),
-    ),
+    variable: entityAttributeReference({
+      subject: 'stageSubject',
+    }).generateMock(() => asEntityAttributeReference(getNodeVariableId())),
     // TODO: This should be structured this way:
     // otherOption: z.strictObject({
     // 	binLabel: z.string(),

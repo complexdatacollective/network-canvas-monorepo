@@ -90,7 +90,7 @@ export const getUsageAsStageMeta = (
   variableMetaByIndex: Variables,
   usageArray: string[],
 ): UsageMeta[] => {
-  const codebookVariablesWithMeta: UsageMeta[] = [];
+  const codebookVariableNames = new Set<string>();
   const stageIndexSet = new Set<number>();
 
   for (const key of usageArray) {
@@ -105,12 +105,13 @@ export const getUsageAsStageMeta = (
       const variableId =
         variablesPos !== -1 ? segments[variablesPos + 1] : undefined;
       const variable = variableId ? variableMetaByIndex[variableId] : undefined;
-      const name = variable?.name;
-      codebookVariablesWithMeta.push({
-        label: `Used as validation for "${name || 'unknown'}"`,
-      });
+      codebookVariableNames.add(variable?.name || 'unknown');
     }
   }
+
+  const codebookVariablesWithMeta: UsageMeta[] = [...codebookVariableNames].map(
+    (name) => ({ label: `Used as validation for "${name}"` }),
+  );
 
   const stageVariablesWithMeta = compact(
     [...stageIndexSet].map((stageIndex) =>

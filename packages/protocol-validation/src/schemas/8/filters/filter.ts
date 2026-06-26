@@ -105,9 +105,7 @@ const attributeLevelOptionsSchema = z
       .string()
       .optional()
       .generateMock(() => getNodeTypeId()),
-    attribute: entityAttributeReference({ subject: 'filterRule' }).generateMock(
-      () => asEntityAttributeReference(getNodeVariableId()),
-    ),
+    attribute: entityAttributeReference({ subject: 'filterRule' }),
     operator: AllOperators,
     value: filterValueSchema,
   })
