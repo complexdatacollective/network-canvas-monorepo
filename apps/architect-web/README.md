@@ -128,4 +128,5 @@ This app depends on other packages in the monorepo:
 
 - `@codaco/protocol-validation` - Protocol schema validation and migration
 - `@codaco/shared-consts` - Shared constants and type definitions
-- `@codaco/development-protocol` - Sample protocol for testing (dev dependency)
+- `@codaco/sample-protocol` - Sample protocol bundled as the "Sample Protocol" template
+- `@codaco/development-protocol` - Development protocol bundled as the dev-only "Development Protocol" template

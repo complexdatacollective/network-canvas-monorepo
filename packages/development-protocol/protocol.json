@@ -23,7 +23,6 @@
       "type": "EgoForm",
       "label": "Ego Form",
       "form": {
-        "title": "An example ego form",
         "fields": [
           {
             "variable": "3377af3f-3c79-41da-9b0b-6570fb519b93",
@@ -138,7 +137,6 @@
       "title": "Ego name contains Josh",
       "items": [
         {
-          "size": "SMALL",
           "id": "08964cf2-4c7b-4ecd-a6ef-9d68c2b13bf4",
           "content": "Hello fellow Josh!\n",
           "type": "text"
@@ -297,7 +295,7 @@
       "id": "namegen2",
       "type": "NameGeneratorQuickAdd",
       "label": "NG Quick add",
-      "quickAdd": "name_variable",
+      "quickAdd": "venue_name_variable",
       "subject": {
         "entity": "node",
         "type": "venue_node_type"
@@ -669,10 +667,6 @@
           "edges": {
             "display": ["friend_edge_type", "professional_edge_type"],
             "create": "friend_edge_type"
-          },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "03b03617-46ae-41cb-9462-9acd8a17edd6"
           }
         }
       ],
@@ -904,7 +898,6 @@
         "type": "person_node_type"
       },
       "form": {
-        "title": "Modify a Person",
         "fields": [
           {
             "variable": "246c4d84-ebd7-41a6-8c1a-ef83938227ba",
@@ -964,7 +957,6 @@
         "type": "friend_edge_type"
       },
       "form": {
-        "title": "Modify an Edge",
         "fields": [
           {
             "variable": "e343a91f-628d-4175-870c-957beffa0002",
@@ -1017,7 +1009,6 @@
         "type": "professional_edge_type"
       },
       "form": {
-        "title": "Modify a Professional Edge",
         "fields": [
           {
             "variable": "d343a91f-628d-4175-870c-957beffa0002",
@@ -1107,8 +1098,7 @@
         {
           "id": "65192318-0ef0-454d-91b7-bbaf51380069",
           "type": "text",
-          "content": "The video below has sound and is set to loop. Some arbitrary text content that can _contain_ **formatting**.",
-          "size": "SMALL"
+          "content": "The video below has sound and is set to loop. Some arbitrary text content that can _contain_ **formatting**."
         },
         {
           "id": "27eee84a-52c0-440d-951c-5ac35bc75168",
@@ -1127,7 +1117,6 @@
         {
           "id": "d3e52e4b-0d22-42e3-a82f-7a150daf7b6b",
           "type": "text",
-          "size": "LARGE",
           "content": "# h1 Heading 8-)\n## h2 Heading\n### h3 Heading\n#### h4 Heading\n##### h5 Heading\n###### h6 Heading\n\n## Emphasis\n\n**This is bold text**\n\n__This is bold text__\n\n*This is italic text* \n\n_This is italic text_ \n# Emoji \n:blush: :heartpulse: :wave:"
         }
       ]
@@ -1141,8 +1130,7 @@
         {
           "id": "ffaf2249-00e7-4fdb-99fc-5757a24f5605",
           "type": "text",
-          "content": "...that is the question.",
-          "size": "LARGE"
+          "content": "...that is the question."
         }
       ],
       "skipLogic": {
@@ -1670,7 +1658,7 @@
         "icon": "add-a-place",
         "shape": { "default": "circle" },
         "variables": {
-          "name_variable": {
+          "venue_name_variable": {
             "name": "name",
             "type": "text"
           },
@@ -2134,8 +2122,7 @@
     "withSound": {
       "type": "video",
       "name": "withSound.mp4",
-      "source": "withSound.mp4",
-      "loop": true
+      "source": "withSound.mp4"
     },
     "quadrant-1": {
       "type": "image",

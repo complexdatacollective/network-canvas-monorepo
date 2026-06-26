@@ -16,7 +16,6 @@ import type {
 import Badge from '~/components/Badge';
 import NewProtocolDialog from '~/components/NewProtocolDialog';
 import NavShell from '~/components/ProjectNav/NavShell';
-import { DEVELOPMENT_PROTOCOL_URL } from '~/config';
 import { useAppDispatch } from '~/ducks/hooks';
 import { generalErrorDialog } from '~/ducks/modules/userActions/dialogs';
 import {
@@ -24,10 +23,13 @@ import {
   openBundledTemplate,
   openLibraryProtocol,
   openLocalNetcanvas,
-  openRemoteNetcanvas,
 } from '~/ducks/modules/userActions/userActions';
 import Button from '~/lib/legacy-ui/components/Button';
 import { BUNDLED_TEMPLATES, type BundledTemplate } from '~/templates';
+import {
+  developmentProtocol,
+  loadDevelopmentAssets,
+} from '~/templates/development-protocol';
 import { loadSampleAssets, sampleProtocol } from '~/templates/sample-protocol';
 import { appVersion } from '~/utils/appVersion';
 import { reportError } from '~/utils/reportError';
@@ -59,16 +61,11 @@ const Home = () => {
   const dispatch = useAppDispatch();
   const [isLoading, setIsLoading] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
-  const [pendingTemplate, setPendingTemplate] = useState<
-    | { kind: 'remote'; url: string; defaultName: string }
-    | {
-        kind: 'bundled';
-        protocol: CurrentProtocol;
-        defaultName: string;
-        loadAssets?: () => Promise<ExtractedAsset[]>;
-      }
-    | null
-  >(null);
+  const [pendingTemplate, setPendingTemplate] = useState<{
+    protocol: CurrentProtocol;
+    defaultName: string;
+    loadAssets?: () => Promise<ExtractedAsset[]>;
+  } | null>(null);
   const [visibleCount, setVisibleCount] = useState(3);
 
   useEffect(() => {
@@ -122,7 +119,6 @@ const Home = () => {
   // dialog; confirming it fetches and instantiates the protocol.
   const handleOpenSample = useCallback(() => {
     setPendingTemplate({
-      kind: 'bundled',
       protocol: sampleProtocol,
       loadAssets: loadSampleAssets,
       defaultName: 'Sample Protocol',
@@ -131,15 +127,14 @@ const Home = () => {
 
   const handleOpenDevProtocol = useCallback(() => {
     setPendingTemplate({
-      kind: 'remote',
-      url: DEVELOPMENT_PROTOCOL_URL,
+      protocol: developmentProtocol,
+      loadAssets: loadDevelopmentAssets,
       defaultName: 'Development Protocol',
     });
   }, []);
 
   const handleOpenTemplate = useCallback((template: BundledTemplate) => {
     setPendingTemplate({
-      kind: 'bundled',
       protocol: template.protocol,
       loadAssets: template.loadAssets,
       defaultName: template.name,
@@ -152,23 +147,19 @@ const Home = () => {
       setPendingTemplate(null);
       if (!template) return;
       void runAction(async () => {
-        if (template.kind === 'bundled') {
-          let assets: ExtractedAsset[] | undefined;
-          try {
-            assets = template.loadAssets
-              ? await template.loadAssets()
-              : undefined;
-          } catch (error) {
-            const { message } = reportError(error);
-            dispatch(generalErrorDialog('Protocol Import Error', message));
-            return;
-          }
-          await dispatch(
-            openBundledTemplate({ protocol: template.protocol, name, assets }),
-          );
-        } else {
-          await dispatch(openRemoteNetcanvas({ url: template.url, name }));
+        let assets: ExtractedAsset[] | undefined;
+        try {
+          assets = template.loadAssets
+            ? await template.loadAssets()
+            : undefined;
+        } catch (error) {
+          const { message } = reportError(error);
+          dispatch(generalErrorDialog('Protocol Import Error', message));
+          return;
         }
+        await dispatch(
+          openBundledTemplate({ protocol: template.protocol, name, assets }),
+        );
       });
     },
     [dispatch, pendingTemplate, runAction],
