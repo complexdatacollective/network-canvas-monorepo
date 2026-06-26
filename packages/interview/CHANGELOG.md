@@ -1,5 +1,109 @@
 # @codaco/interview
 
+## 1.1.0
+
+### Minor Changes
+
+- 8be592d: Store categorical attribute values consistently as arrays of selected option values.
+
+  Previously the CategoricalBin interface wrote a bare scalar while CheckboxGroup / ToggleButtonGroup wrote arrays, and consumers carried bridging helpers to tolerate both shapes. Categorical attributes are now always arrays (a single selection is a one-element array), and the bridges have been removed:
+  - `interview`: `CategoricalBin` writes a single-element array; the node-shape resolver, categorical sorter, and bin matcher read the array contract directly.
+  - `network-query`: `EXACTLY` / `NOT` use deep equality and `OPTIONS_*` use array length — the scalar-categorical fallbacks (`categoricalEqual`, scalar `optionsLength`) are gone.
+  - `network-exporters`: `isCategoricalOptionSelected` checks array membership only.
+  - `shared-consts`: `VariableValue` types categorical as an array of option values.
+  - `protocol-validation`: the v7→v8 migration wraps existing scalar categorical filter / skip-logic rule operands (`EXACTLY` / `NOT` / `INCLUDES` / `EXCLUDES`) in a single-element array.
+  - `interview` (FamilyPedigree): the `relationshipType` edge variable (a categorical) is now written and read as a single-element array, conforming to the contract so its values export and query correctly.
+  - `shared-consts`: adds the canonical `RelationshipType` type and `RELATIONSHIP_TYPE_OPTIONS`, shared between Architect (which locks the categorical edge variable's options) and the FamilyPedigree interface so they cannot drift.
+
+  Collected interview networks holding scalar categorical values must be migrated by the host application (tracked for Fresco).
+
+- 096ad2a: Add a `hideNavigation` prop to `Shell` that renders the interview without the navigation rail/bar, used by screenshot-capture stories.
+- e692e79: Stop the interview navigation from flipping orientation when a portrait tablet's
+  software keyboard resizes the viewport. The automatic aspect-ratio threshold for
+  switching the nav between a side rail (`vertical`) and a bottom bar
+  (`horizontal`) is now more generous (`5/4` instead of `3/4`), so a keyboard
+  opening on an iPad in portrait no longer pushes the aspect ratio past the
+  breakpoint and snaps the nav to the side mid-interview.
+
+  Hosts that know their device context can also bypass the automatic detection
+  entirely with the new optional `navigationOrientation` prop on `Shell`
+  (`'horizontal' | 'vertical'`, exported as the `NavigationOrientation` type).
+
+- 495eff7: Expose participant-facing interview progress through the step-change contract.
+
+  `@codaco/interview` appends a synthetic `FinishSession` stage to every interview, so the host-controlled `currentStep` indexes a list of length `P + 1`. Hosts that wanted to show progress had to re-derive it and independently account for that appended stage, which drifted from what the participant actually saw (complexdatacollective/Fresco#801).
+  - `onStepChange` now receives a second argument, `StepChangeMeta` (`{ progress, totalSteps }`), carrying the 0–100 participant-facing progress and the true total step count (including the finish stage). Existing single-argument handlers remain compatible.
+  - A new pure helper `getInterviewProgress(stages, currentStep)` computes the same `{ progress, totalSteps }` from a protocol's stages, for hosts that need progress offline (e.g. synthetic data) without knowing about the appended finish stage.
+
+### Patch Changes
+
+- dd13556: Fix interview-runtime schema-conformance bugs found in a release audit:
+  - Look up edge attributes against the edge codebook (not the node codebook) in `updateEdge`, so AlterEdgeForm / TieStrengthCensus answers are no longer silently dropped.
+  - Stop negating boolean `additionalAttributes` when a node is removed from a NameGenerator prompt; recompute from the prompts the node still belongs to.
+  - Scope a TieStrengthCensus prompt's answered-state to its own `edgeVariable` so a shared edge from a sibling prompt doesn't skip data collection.
+  - Read census decline metadata at stage index 0, and prune it when a node is deleted.
+  - Auto-advance past a skipped entry stage instead of rendering it.
+  - Process bucket/bin sort rules exactly once (fixing numeric/date/ordinal ordering), honour CategoricalBin `binSortOrder`, and fix categorical/zero/false sorting.
+  - Coerce number answers to their native type at the form boundary; enforce Anonymisation passphrase length.
+  - Inject the computed relationship-to-ego on FamilyPedigree finalize, supply a concrete stage subject for pedigree form validators, and stop duplicating pre-existing nodes/edges on finalize.
+
+  Further interview-runtime fixes from the medium/low conformance audit:
+  - DyadCensus: scope each prompt's answered-state per prompt so a sibling prompt sharing the same `createEdge` no longer auto-skips data collection on a later prompt. The shared edge is still reflected (the later prompt pre-selects "Yes" from the network), but the participant must still answer it. Edge creation is idempotent so re-selecting "Yes" cannot append a duplicate edge.
+  - TieStrengthCensus: replace the `'__none__'` decline sentinel with a collision-free key so an ordinal option whose value is literally `'__none__'` is recorded as a value rather than treated as a decline.
+  - OneToManyDyadCensus: backward navigation across a prompt boundary lands on the destination prompt's last focal node instead of the first.
+  - NameGeneratorRoster: honour an initial-sort property of `'*'` (data-file order), keep data-file order when no `sortOrder` is set, apply the full multi-key `sortOrder`, and rank ordinal/categorical sortable properties by codebook option order instead of lexicographically.
+  - External data: salt each roster row's primary key with its row index so byte-identical rows stay distinct; carry the asset `source` filename through so media MIME types and the CSV-vs-JSON decision use the real extension rather than the display name; render a visible placeholder for an Information item whose asset is missing or unsupported.
+  - OrdinalBin: a node whose stored value matches no option is shown as unplaced instead of silently disappearing, and missing-value styling triggers for a string `'-1'`. CategoricalBin: derive drop-target and motion ids from the option index so duplicate option labels no longer collide.
+  - FamilyPedigree: filter the override-path seed by the configured node/edge type so foreign-typed nodes/edges no longer leak into the nomination render.
+  - Narrative: out-of-codebook convex-hull group values get distinct colours and legend entries instead of colliding with the first option.
+  - NameGenerator NodePanel: render loading/error UI for an external-data panel whose asset fails to resolve, instead of a silently blank panel.
+
+- 382b290: Contain Geospatial map initialisation failures instead of crashing the whole
+  stage. `mapbox-gl`'s `Map` constructor throws synchronously when the
+  environment can't host a map (most commonly "Failed to initialize WebGL" on
+  devices or browsers without working WebGL). That throw previously escaped the
+  effect and was caught by `StageErrorBoundary`, taking down the entire stage
+  with an opaque reconciler stack. The map creation is now wrapped in a
+  `try/catch` that captures the real error and renders a contained fallback
+  message, so participants can continue. `StageErrorBoundary`'s copyable debug
+  info also now leads with the error name and message — Firefox's `Error.stack`
+  omits the message, which was silently dropping the most useful detail from
+  bug reports.
+- 5af36c5: Fix the navigation bar disappearing off-screen when the browser is resized
+  smaller while a Geospatial stage is open. The Mapbox canvas participates in
+  layout flow (the package doesn't ship Mapbox's stylesheet), so a stale,
+  oversized canvas was forcing the stage wider than the viewport. The map now
+  resizes with its container via a `ResizeObserver`, the map container clips its
+  overflow, and the stage flex item can shrink horizontally (`min-w-0`).
+- 818bbe1: Respect the codebook node shape everywhere nodes are rendered: per-alter and per-alter-edge form headers no longer force a circle, the categorical bin "specify other" dialog, the roster drag preview, and the roster drop overlay now resolve the node shape, and the quick-add toggle previews the shape of the node being created.
+- cdc8a2f: Fix `ActionButton` icons rendering off-centre (e.g. the rotate/refresh icons): Lucide SVGs carry intrinsic `width`/`height` attributes, so the old `w-auto` sizing left the browser to back-derive the width inconsistently and could produce a non-square icon box. Lucide icons are now given an explicit square size so any icon centres reliably. Improve the visibility of the "missing" bin on the Ordinal Bin interface, which previously blended into the background; it now uses visible neutral surface tokens.
+- d0ca1be: Fix two NameGeneratorRoster bugs and remove a dead schema field.
+  - **Roster cards no longer show a raw UID.** When the name heuristic could not
+    resolve a label for an external-roster node (e.g. the asset came from a
+    preview interview export whose attribute keys are variable UUIDs absent from
+    the running codebook, or the subject has no populated text variable), the
+    card title fell back to the node's content-hash `_uid` — an opaque "random
+    ID". The new `resolveRosterNodeLabel` falls back to the first usable
+    attribute value, then to a stable `Unnamed {subject} {n}` placeholder.
+  - **DataCards shrink to fit narrow panels.** `GridLayout`'s
+    `repeat(auto-fill, minmax(Npx, 1fr))` forced columns to at least `minItemWidth`
+    even in a narrower container, so a single roster card overflowed its panel at
+    the default resizable width (observed on iPad), breaking drag-and-drop. The
+    column floor is now `min(Npx, 100%)` so a lone column shrinks to fit.
+  - **The roster panel can't be resized narrower than a card.** `ResizableFlexPanel`
+    gains an optional `minSizePx` (a hard pixel floor for the first panel, enforced
+    by the resize hook and a CSS backstop). NameGeneratorRoster sets it to the card
+    width plus chrome, so the resize handle stops before a card would overflow.
+  - **Removed the unused `cardOptions.displayLabel`.** It was introduced in the v8
+    schema but was never read by any application (legacy or current) and cannot be
+    set in Architect. Dropped from the schema, the `protocol-utilities` types, and
+    the `SyntheticInterview` builder.
+
+- 264431c: Sociogram: when automatic layout is paused, adding or removing an edge no longer restarts the layout. It now stays paused until the user resumes it with the toggle.
+- Updated dependencies [dd13556]
+- Updated dependencies [8be592d]
+  - @codaco/network-query@1.1.0
+
 ## 1.0.1
 
 ### Patch Changes

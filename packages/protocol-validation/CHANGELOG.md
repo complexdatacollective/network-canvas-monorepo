@@ -1,5 +1,70 @@
 # @codaco/protocol-validation
 
+## 11.7.0
+
+### Minor Changes
+
+- dd13556: Tighten the protocol schema and add migrations to fix conformance gaps found in a release audit of the interview module:
+  - Reject form fields that reference a variable with no renderable `component` (or a `layout`/`location` variable).
+  - Validate that a NameGeneratorQuickAdd `quickAdd` references an existing text variable on the subject node type.
+  - Require `otherOptionLabel` when a CategoricalBin prompt sets `otherVariable`.
+  - Add prompt/parameter validation: `highlight.variable` must be boolean, `layout.layoutVariable` must be a layout variable, RelativeDatePicker `before`/`after` must be non-negative with an ISO `anchor` (they are independent opposite-direction offsets — earliest = anchor − before, latest = anchor + after — so there is no `before < after` constraint), non-empty ordinal/Likert options, and external-data panel rule targets.
+  - Remove the vestigial Information `loop` flag, with a migration dropping it from existing protocols.
+  - A `minValue`, `minLength`, or `minSelected` validator no longer implies a field is required. A migration sets `required: true` on every existing codebook variable (node, edge, or ego) that has one of these validators without an explicit `required: true`, preserving the effective behaviour of protocols authored before the change.
+
+  Further schema tightening and migrations from the medium/low conformance audit:
+  - Variables: ordinal/categorical option lists require at least two options and may no longer use boolean values (a migration coerces legacy boolean values to strings); ordinal variables no longer accept `minSelected`/`maxSelected`; `encrypted` is permitted only on node text variables (rejected on other node types and on all ego/edge variables); ego variables may not declare `unique` validation. Migrations strip the now-invalid properties from existing protocols.
+  - Forms: Alter/AlterEdge/NameGenerator forms require at least one field; the unused `form.title` on EgoForm/AlterForm/AlterEdgeForm is dropped by migration.
+  - Filters & skip-logic: empty `rules` arrays are rejected (and dropped by migration); operator-by-type / value-type validation now also runs on `skipLogic.filter` and `panels[].filter`; ego rules are rejected inside a stage node/edge filter; attribute-less ego type-level rules are rejected.
+  - Stages: OrdinalBin/CategoricalBin prompt variables must be of the matching type; NameGeneratorRoster `dataSource` must reference a `network` asset; Geospatial `tokenAssetId`/`dataSourceAssetId` must resolve to correctly-typed assets, its prompt variable must be `location`, and `targetFeatureProperty` / apikey value must be non-empty; CategoricalBin requires `otherVariablePrompt` when `otherVariable` is set (backfilled by migration); a contradictory NameGenerator min/max-nodes `behaviours` block is normalised by migration; a Sociogram prompt may not set both `edges.create` and `highlight` (migration drops highlight); Information `size` is restricted to an uppercase enum applied to image/video items only (migrated); FamilyPedigree nomination prompts may not reuse the reserved `scaffolding` id or duplicate prompt ids.
+  - Codebook: variable record-keys must be unique across entity types.
+
+- 8be592d: Store categorical attribute values consistently as arrays of selected option values.
+
+  Previously the CategoricalBin interface wrote a bare scalar while CheckboxGroup / ToggleButtonGroup wrote arrays, and consumers carried bridging helpers to tolerate both shapes. Categorical attributes are now always arrays (a single selection is a one-element array), and the bridges have been removed:
+  - `interview`: `CategoricalBin` writes a single-element array; the node-shape resolver, categorical sorter, and bin matcher read the array contract directly.
+  - `network-query`: `EXACTLY` / `NOT` use deep equality and `OPTIONS_*` use array length — the scalar-categorical fallbacks (`categoricalEqual`, scalar `optionsLength`) are gone.
+  - `network-exporters`: `isCategoricalOptionSelected` checks array membership only.
+  - `shared-consts`: `VariableValue` types categorical as an array of option values.
+  - `protocol-validation`: the v7→v8 migration wraps existing scalar categorical filter / skip-logic rule operands (`EXACTLY` / `NOT` / `INCLUDES` / `EXCLUDES`) in a single-element array.
+  - `interview` (FamilyPedigree): the `relationshipType` edge variable (a categorical) is now written and read as a single-element array, conforming to the contract so its values export and query correctly.
+  - `shared-consts`: adds the canonical `RelationshipType` type and `RELATIONSHIP_TYPE_OPTIONS`, shared between Architect (which locks the categorical edge variable's options) and the FamilyPedigree interface so they cannot drift.
+
+  Collected interview networks holding scalar categorical values must be migrated by the host application (tracked for Fresco).
+
+- 545edda: Make the v8 schema the single source of truth for entity-attribute (codebook variable) references.
+
+  Fields that hold the id of a codebook variable are now tagged at their schema definition with `entityAttributeReference({ subject, requireType? })`, which brands the field type and records how to resolve the variable's subject. A new `collectEntityAttributeReferences(protocol)` walker derives every reference — with its resolved subject and any required type — directly from the tagged schema, and `validateProtocol` uses it to check that each referenced variable exists on its subject and is of an allowed type. This replaces the hand-placed existence checks that were duplicated across `superRefine`, removing the drift that previously let a variable referenced only by certain validation rules be reported as unused (and invalid references slip through). The walker tolerates structurally-invalid stages/filter rules so references inside in-progress protocols are still detected.
+
+  New public exports: `collectEntityAttributeReferences`, `asEntityAttributeReference` (the brand-boundary constructor for building branded reference values), and the `EntityAttributeReferenceHit` type.
+
+### Patch Changes
+
+- d0ca1be: Fix two NameGeneratorRoster bugs and remove a dead schema field.
+  - **Roster cards no longer show a raw UID.** When the name heuristic could not
+    resolve a label for an external-roster node (e.g. the asset came from a
+    preview interview export whose attribute keys are variable UUIDs absent from
+    the running codebook, or the subject has no populated text variable), the
+    card title fell back to the node's content-hash `_uid` — an opaque "random
+    ID". The new `resolveRosterNodeLabel` falls back to the first usable
+    attribute value, then to a stable `Unnamed {subject} {n}` placeholder.
+  - **DataCards shrink to fit narrow panels.** `GridLayout`'s
+    `repeat(auto-fill, minmax(Npx, 1fr))` forced columns to at least `minItemWidth`
+    even in a narrower container, so a single roster card overflowed its panel at
+    the default resizable width (observed on iPad), breaking drag-and-drop. The
+    column floor is now `min(Npx, 100%)` so a lone column shrinks to fit.
+  - **The roster panel can't be resized narrower than a card.** `ResizableFlexPanel`
+    gains an optional `minSizePx` (a hard pixel floor for the first panel, enforced
+    by the resize hook and a CSS backstop). NameGeneratorRoster sets it to the card
+    width plus chrome, so the resize handle stops before a card would overflow.
+  - **Removed the unused `cardOptions.displayLabel`.** It was introduced in the v8
+    schema but was never read by any application (legacy or current) and cannot be
+    set in Architect. Dropped from the schema, the `protocol-utilities` types, and
+    the `SyntheticInterview` builder.
+
+- Updated dependencies [8be592d]
+  - @codaco/shared-consts@5.3.0
+
 ## 11.6.1
 
 ### Patch Changes

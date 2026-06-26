@@ -1,5 +1,54 @@
 # @codaco/fresco-ui
 
+## 2.14.0
+
+### Minor Changes
+
+- 4821edc: Make a form field a single unit of focus.
+  - **Container-scoped validation**: validate-on-blur now fires when focus leaves the whole field, not the inner `<input>`. Moving focus to an in-field control (a prefix/suffix button, a number stepper, a sibling radio…) no longer counts as leaving the field, so it no longer leaves a stale validation error (e.g. a "Generate identifier" button populating a field that still showed "cannot be empty"). Single-control fields behave identically; multi-control fields (RadioGroup, Combobox, DatePicker…) get strictly better behaviour.
+  - **Focus indication**: slot controls stay real tab stops and render their own design-system focus ring (`Button`/`IconButton` already do); the field shows one ring per focused element rather than double-ringing the wrapper around an already-focused control. The `InputField` wrapper also un-clips (`overflow-visible`) while a slot control is focus-visible, so the control's offset focus ring isn't clipped by the rounded container.
+  - **Slot field controller**: `InputField`'s `prefixComponent`/`suffixComponent` now also accept a render function `(field) => ReactNode` that receives a `FieldSlotController` (`{ name, value, setValue, validate, focusInput }`), so a slot control can set and validate the value without importing the form store. Delivered via the new `useFieldController` hook / `FieldController` context. The plain `ReactNode` form is unchanged.
+  - **Escape hatch**: `validateOnControlBlur` on `Field` restores validation when focus moves to an in-field control.
+
+  Slot controls remain real tab stops with native button semantics.
+
+### Patch Changes
+
+- dd13556: Fix form-field schema-conformance bugs found in a release audit:
+  - Render VisualAnalogScale on the normalized 0–1 scale (matching the contract) instead of 0–100.
+  - Preserve typed (number/boolean) RadioGroup option values instead of stringifying them.
+  - Respect configured month/year `min`/`max` bounds in DatePicker (accept partial `YYYY` / `YYYY-MM` resolutions).
+  - Short-circuit optional `minValue`/`minLength`/`minSelected` validators on empty fields (so `required` owns emptiness) and treat a `0` max bound as a real bound.
+  - Source cross-variable comparison validators (`greaterThanVariable`/`sameAs`/etc.) from persisted entity attributes when the referenced variable is not a field on the current form.
+
+  Further fixes from the medium/low conformance audit:
+  - `unique` validation compares categorical/ordinal selections as order-insensitive multisets, so the same options chosen in a different order are correctly treated as duplicates.
+  - The Collection sorter gains `hierarchy` (ordinal) and `categorical` sort modes that order by codebook option index; the `sortRules` prop now seeds the initial sort in uncontrolled mode, and `CollectionSortButton` / `CollectionSortSelect` carry the ranked option order so button-driven sorts rank correctly too.
+
+- d3481c5: Fix diamond-shaped nodes rendering with an offset visual center. The diamond's `rotate`/`scale` was applied to the Node's root element, where it composed with inline `transform` positioning (sociogram centering) and motion layout projection — shifting edge endpoints away from the node center, making dragged nodes jump under the cursor, and breaking layout animations (OneToManyDyadCensus, NodeDrawer). The shape transform now lives on an inner background layer, keeping the root element transform-free.
+- 164c2dc: Fix `RichSelectGroup` option cards not filling the container width when a `horizontal` group wraps onto multiple lines. Wrapped cards now `grow` to the full width of their line, so every option reaches the container edge regardless of how long its description is. Cards that share a line in a content-sized group are unaffected.
+- d0ca1be: Fix two NameGeneratorRoster bugs and remove a dead schema field.
+  - **Roster cards no longer show a raw UID.** When the name heuristic could not
+    resolve a label for an external-roster node (e.g. the asset came from a
+    preview interview export whose attribute keys are variable UUIDs absent from
+    the running codebook, or the subject has no populated text variable), the
+    card title fell back to the node's content-hash `_uid` — an opaque "random
+    ID". The new `resolveRosterNodeLabel` falls back to the first usable
+    attribute value, then to a stable `Unnamed {subject} {n}` placeholder.
+  - **DataCards shrink to fit narrow panels.** `GridLayout`'s
+    `repeat(auto-fill, minmax(Npx, 1fr))` forced columns to at least `minItemWidth`
+    even in a narrower container, so a single roster card overflowed its panel at
+    the default resizable width (observed on iPad), breaking drag-and-drop. The
+    column floor is now `min(Npx, 100%)` so a lone column shrinks to fit.
+  - **The roster panel can't be resized narrower than a card.** `ResizableFlexPanel`
+    gains an optional `minSizePx` (a hard pixel floor for the first panel, enforced
+    by the resize hook and a CSS backstop). NameGeneratorRoster sets it to the card
+    width plus chrome, so the resize handle stops before a card would overflow.
+  - **Removed the unused `cardOptions.displayLabel`.** It was introduced in the v8
+    schema but was never read by any application (legacy or current) and cannot be
+    set in Architect. Dropped from the schema, the `protocol-utilities` types, and
+    the `SyntheticInterview` builder.
+
 ## 2.13.0
 
 ### Minor Changes
