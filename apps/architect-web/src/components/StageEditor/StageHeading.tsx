@@ -10,6 +10,7 @@ import { cx } from '~/utils/cva';
 import { useFormContext } from '../Editor';
 import ValidatedField from '../Form/ValidatedField';
 import IssueAnchor from '../IssueAnchor';
+import { useAutoStageName } from './autoStageName/useAutoStageName';
 import { getInterface } from './Interfaces';
 
 type HeadingInputProps = {
@@ -75,6 +76,8 @@ const StageHeading = ({ stageNumber, totalStages }: StageHeadingProps) => {
 
   const type = get(values, 'type') as string | undefined;
   const isNewStage = !get(initialValues, 'label');
+
+  useAutoStageName(isNewStage);
 
   if (!type) {
     return null;
