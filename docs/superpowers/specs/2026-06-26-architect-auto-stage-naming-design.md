@@ -45,10 +45,12 @@ Form Name Generator with Roster Panels`).
 - The existing `required` validation is unchanged; auto-naming simply keeps it
   satisfied (the field is non-empty whenever auto-naming is active).
 
-User vs programmatic edits are distinguished cleanly: programmatic updates go
-through redux-form's `change()` action, which does **not** fire the input's DOM
-`onChange`. So an `onChange` on the heading input fires only for real keystrokes
-and is the signal that the researcher has taken ownership.
+Ownership is inferred by comparing the current label against the last value the
+hook itself generated (`lastGenerated`): a non-empty live label that differs from
+`lastGenerated` means the researcher typed it, so auto-naming locks; an empty
+label re-engages. This avoids depending on redux-form's `change()` action
+suppressing the input's DOM `onChange`, and keeps the ownership decision in one
+pure, unit-tested function (`computeAutoNameUpdate`).
 
 ## Name composition
 
@@ -193,11 +195,14 @@ are passed in so the pure module never imports selectors.
   manifest, and the sibling stage labels;
 - while auto-naming is active (new stage, researcher hasn't taken ownership),
   computes the name and dispatches redux-form `change(formName, 'label', name)`;
-- marks ownership via the heading input's `onChange` — a non-empty user value
-  disengages auto-naming; clearing to empty re-engages it.
+- infers ownership by comparing the live label to the last generated value
+  (held in a ref) — a non-empty label that differs from it disengages
+  auto-naming; clearing to empty re-engages it.
 
-The effect depends on the resolved inputs (subject name, qualifier inputs,
-sibling labels, ownership flag), not on `label`, so it can't loop.
+The effect tracks the last generated value and the ownership flag in refs and
+re-runs on the resolved inputs (generated name, live label); after each
+programmatic `change`, the next run sees the label it just set and no-ops, so it
+can't loop.
 
 ## Edge cases
 

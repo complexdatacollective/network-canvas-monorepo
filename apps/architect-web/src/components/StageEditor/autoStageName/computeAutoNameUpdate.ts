@@ -24,7 +24,10 @@ export function computeAutoNameUpdate(args: {
     return { nextIsCustom: true };
   }
 
-  // A non-empty value we did not generate means the researcher took ownership.
+  // A non-empty value that differs from what we last generated means the
+  // researcher took ownership. (Accepted limitation: typing exactly the current
+  // generated name reads as not-yet-owned, so a later config change will still
+  // overwrite it — harmless, since the value being replaced is identical.)
   if (liveLabel !== lastGenerated) {
     return { nextIsCustom: true };
   }
