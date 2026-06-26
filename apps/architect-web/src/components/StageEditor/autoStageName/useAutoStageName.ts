@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import type { Action, Dispatch } from 'redux';
 import { change, getFormValues } from 'redux-form';
 
 import type {
@@ -38,7 +39,7 @@ type StageFormValues = {
 };
 
 export function useAutoStageName(isNewStage: boolean): void {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<Dispatch<Action>>();
   const formValues = useSelector(getFormValues(formName)) as
     | StageFormValues
     | undefined;
