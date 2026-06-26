@@ -559,6 +559,14 @@ export class SyntheticInterview {
         this.valueGen.generatePromptText('FamilyPedigree');
 
       entry.nominationPrompts = opts?.nominationPrompts ?? [];
+
+      if (opts?.framing) {
+        entry.framing = opts.framing;
+      }
+
+      if (opts?.introScreen) {
+        entry.introScreen = opts.introScreen;
+      }
     }
 
     // Geospatial
@@ -1530,6 +1538,8 @@ export class SyntheticInterview {
       if (stage.censusPrompt) config.censusPrompt = stage.censusPrompt;
       if (stage.nominationPrompts?.length)
         config.nominationPrompts = stage.nominationPrompts;
+      if (stage.framing) config.framing = stage.framing;
+      if (stage.introScreen) config.introScreen = stage.introScreen;
     }
 
     // Geospatial

@@ -6,14 +6,24 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { FRAMING_TERMS } from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
 import ActionButton from '~/components/ActionButton';
+import { useStageSelector } from '~/hooks/useStageSelector';
 import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
+import {
+  getFramingConfig,
+  getIntroScreen,
+} from '~/interfaces/FamilyPedigree/utils/stageConfig';
 
 import AdditionalParentsStep from '../quickStartWizard/AdditionalParentsStep';
 import BioParentsIntroStep from '../quickStartWizard/BioParentsIntroStep';
 import ChildrenDetailStep from '../quickStartWizard/ChildrenDetailStep';
 import EggParentStep from '../quickStartWizard/EggParentStep';
+import {
+  FramingSelectionStep,
+  shouldSkipFramingSelectionStep,
+} from '../quickStartWizard/FramingSelectionStep';
 import GestationalCarrierStep from '../quickStartWizard/GestationalCarrierStep';
+import IntroStep, { shouldSkipIntroStep } from '../quickStartWizard/IntroStep';
 import OtherParentsStep from '../quickStartWizard/OtherParentsStep';
 import ParentPartnershipsStep from '../quickStartWizard/ParentPartnershipsStep';
 import PartnerAndChildrenStep from '../quickStartWizard/PartnerAndChildrenStep';
@@ -38,6 +48,8 @@ export default function EgoCellWizard({
   const track = useTrack();
   const framing = useFamilyPedigreeStore((s) => s.framing);
   const stepTerms = FRAMING_TERMS[framing ?? 'gamete'];
+  const introScreen = useStageSelector(getIntroScreen);
+  const framingConfig = useStageSelector(getFramingConfig);
 
   const handleClick = async () => {
     const result = await openDialog({
@@ -46,6 +58,16 @@ export default function EgoCellWizard({
       className: 'tablet-portrait:min-w-[70ch]',
       progress: null,
       steps: [
+        {
+          title: 'Introduction',
+          content: IntroStep,
+          skip: () => shouldSkipIntroStep(introScreen),
+        },
+        {
+          title: 'Choose your language',
+          content: FramingSelectionStep,
+          skip: () => shouldSkipFramingSelectionStep(framingConfig),
+        },
         {
           title: 'Your biological parents',
           content: BioParentsIntroStep,

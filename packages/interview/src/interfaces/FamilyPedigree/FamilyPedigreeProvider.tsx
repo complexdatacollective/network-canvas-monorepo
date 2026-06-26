@@ -1,11 +1,8 @@
-import { createSelector } from '@reduxjs/toolkit';
-import { invariant } from 'es-toolkit';
 import { useRef } from 'react';
 
 import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
 import { useCurrentStep } from '~/contexts/CurrentStepContext';
 import { useStageSelector } from '~/hooks/useStageSelector';
-import { getCurrentStage } from '~/selectors/session';
 import { useAppDispatch } from '~/store/store';
 
 import { FamilyPedigreeContext } from './FamilyPedigreeContext';
@@ -27,11 +24,7 @@ import {
   getNodeTypeKey,
   getRelationshipVariable,
 } from './utils/nodeUtils';
-
-const getFramingConfig = createSelector(getCurrentStage, (stage) => {
-  invariant(stage.type === 'FamilyPedigree', 'Stage must be FamilyPedigree');
-  return stage.framing;
-});
+import { getFramingConfig } from './utils/stageConfig';
 
 export const FamilyPedigreeProvider = ({
   nodes,

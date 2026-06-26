@@ -3,6 +3,7 @@ import type {
   VariableOption,
   VariableType,
 } from '@codaco/protocol-validation';
+import type { FramingId } from '@codaco/shared-consts';
 
 export type VariableEntry = {
   id: string;
@@ -263,6 +264,12 @@ export type StageEntry = {
     isActiveVariable: string;
     isGestationalCarrierVariable: string;
   };
+  framing?: { mode: 'fixed'; value: FramingId } | { mode: 'participantChoice' };
+  introScreen?: {
+    title?: string;
+    text: string;
+    videoAssetId?: string;
+  };
   censusPrompt?: string;
   nominationPrompts?: { id: string; text: string; variable: string }[];
   // Geospatial
@@ -385,6 +392,12 @@ export type AddStageInput = {
     relationshipTypeVariable: string;
     isActiveVariable?: string;
     isGestationalCarrierVariable?: string;
+  };
+  framing?: { mode: 'fixed'; value: FramingId } | { mode: 'participantChoice' };
+  introScreen?: {
+    title?: string;
+    text: string;
+    videoAssetId?: string;
   };
   censusPrompt?: string;
   nominationPrompts?: { id: string; text: string; variable: string }[];
