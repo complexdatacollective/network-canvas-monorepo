@@ -264,6 +264,10 @@
       "types": "./dist/form/Field/Field.d.ts",
       "default": "./dist/form/Field/Field.js"
     },
+    "./form/Field/FieldController": {
+      "types": "./dist/form/Field/FieldController.d.ts",
+      "default": "./dist/form/Field/FieldController.js"
+    },
     "./form/Field/types": {
       "types": "./dist/form/Field/types.d.ts",
       "default": "./dist/form/Field/types.js"

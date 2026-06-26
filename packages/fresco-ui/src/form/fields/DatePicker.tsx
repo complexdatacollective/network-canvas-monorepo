@@ -149,8 +149,6 @@ export default function DatePickerField(props: DatePickerFieldProps) {
     }
   };
 
-  const onBlur = rest.onBlur;
-
   if (resolutionType === 'month') {
     return (
       <div className="flex gap-2">
@@ -163,7 +161,6 @@ export default function DatePickerField(props: DatePickerFieldProps) {
           onChange={(selectValue) =>
             handleChange(String(selectValue), undefined)
           }
-          onBlur={onBlur}
           disabled={disabled ?? readOnly}
           aria-invalid={rest['aria-invalid']}
           className="w-fit"
@@ -177,7 +174,6 @@ export default function DatePickerField(props: DatePickerFieldProps) {
           onChange={(selectValue) =>
             handleChange(undefined, String(selectValue))
           }
-          onBlur={onBlur}
           disabled={disabled ?? readOnly ?? !selectedYear}
           aria-invalid={rest['aria-invalid']}
           className="w-fit"
@@ -194,7 +190,6 @@ export default function DatePickerField(props: DatePickerFieldProps) {
         placeholder="Year"
         value={value}
         onChange={(v) => onChange?.(String(v))}
-        onBlur={onBlur}
         name={name ?? 'year'}
         disabled={disabled ?? readOnly}
         aria-invalid={rest['aria-invalid']}
@@ -211,7 +206,6 @@ export default function DatePickerField(props: DatePickerFieldProps) {
       max={max}
       value={value}
       onChange={(v) => onChange?.(String(v))}
-      onBlur={onBlur}
       name={name ?? ''}
       placeholder={placeholder}
       className={cx(

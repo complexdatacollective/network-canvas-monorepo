@@ -182,8 +182,9 @@ export type CreateFormFieldProps<
  * two usage patterns:
  *
  * 1. **Within Field** (primary pattern): Field always provides these props
- *    via useField hook. Components receive id, name, onBlur, aria-describedby,
- *    etc. automatically.
+ *    via useField hook. Components receive id, name, aria-describedby, etc.
+ *    automatically. (Validation-on-blur is handled at the field container,
+ *    so onBlur is not injected.)
  *
  * 2. **Standalone** (secondary pattern): Components like InputField, SelectField,
  *    and ToggleField are sometimes used outside of Field for simple controlled
@@ -198,6 +199,12 @@ export type CreateFormFieldProps<
 export type InjectedFieldProps = {
   'id'?: string;
   'name'?: string;
+  /**
+   * Validate-on-blur is now container-scoped: Field listens for focusout on
+   * the field container, so components no longer need to forward a blur to
+   * their focusable element to drive validation. This remains available for
+   * standalone use (a native blur passed by a consumer outside Field).
+   */
   'onBlur'?: (e: React.FocusEvent) => void;
   'aria-required'?: boolean;
   'aria-invalid'?: boolean;
@@ -215,6 +222,28 @@ export type InjectedFieldProps = {
 export type FieldValueProps<V extends FieldValue> = {
   value?: V | undefined;
   onChange?: (value: V | undefined) => void;
+};
+
+/**
+ * Handle a control rendered inside a field's slot (e.g. a prefix/suffix
+ * "Generate" button) can use to read and set the field's value without
+ * importing the form store or knowing the field name. Delivered to function
+ * slots via FieldController context.
+ */
+export type FieldSlotController = {
+  /** Fully-resolved field name (including any namespace prefix). */
+  name: string;
+  /** Current field value. */
+  value: FieldValue;
+  /**
+   * Set the field value. Routes through the field's change handler, so a
+   * pre-existing error clears immediately once the field has been blurred.
+   */
+  setValue: (value: FieldValue) => void;
+  /** Validate the field now. */
+  validate: () => void;
+  /** Move DOM focus to the field's primary input. */
+  focusInput: () => void;
 };
 
 /**
@@ -262,6 +291,12 @@ type FieldOwnProps<C extends ValidFieldComponent> = {
    * @default 300
    */
   validateOnChangeDelay?: number;
+  /**
+   * Escape hatch: validate when focus moves to an in-field control instead of
+   * only when focus leaves the whole field.
+   * @default false
+   */
+  validateOnControlBlur?: boolean;
 };
 
 /**

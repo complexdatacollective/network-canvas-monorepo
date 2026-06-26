@@ -237,7 +237,6 @@ export default function RichTextEditorField({
   name,
   value,
   onChange,
-  onBlur,
   disabled,
   readOnly,
   toolbarOptions,
@@ -358,11 +357,7 @@ export default function RichTextEditorField({
         state: getInputState({ disabled, readOnly, ...props }),
       })}
     >
-      <EditorContent
-        editor={editor}
-        className={editorContentStyles}
-        onBlur={onBlur}
-      />
+      <EditorContent editor={editor} className={editorContentStyles} />
       {hasToolbar && (
         <Toolbar.Root className={toolbarStyles}>
           {showTextFormatting && (

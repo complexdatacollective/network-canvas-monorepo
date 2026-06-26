@@ -110,7 +110,6 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
     disabled,
     readOnly,
     className,
-    onBlur,
     id,
     autoFocus,
     name: _name,
@@ -121,7 +120,6 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
   void _name;
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const groupRef = useRef<HTMLFieldSetElement>(null);
   const { pattern, inputMode } = CHARACTER_SETS[characterSet];
 
   const chars = value.split('').slice(0, segments);
@@ -262,7 +260,6 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
 
   return (
     <fieldset
-      ref={groupRef}
       className={cx(segmentGroupVariants({ size }), className)}
       aria-label={rest['aria-describedby'] ? undefined : 'Code input'}
     >
@@ -301,16 +298,6 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
             onKeyDown={(e) => handleKeyDown(i, e)}
             onPaste={(e) => handlePaste(i, e)}
             onFocus={handleFocus}
-            onBlur={(e) => {
-              // Only report blur to the form (which validates) when focus
-              // leaves the whole group — not on the automatic focus moves
-              // between segments, which would validate the half-typed code.
-              const next = e.relatedTarget;
-              if (next instanceof Node && groupRef.current?.contains(next)) {
-                return;
-              }
-              onBlur?.(e);
-            }}
           />
           {separatorSet.has(i) && (
             <span className={separatorVariants({ size })} aria-hidden="true">

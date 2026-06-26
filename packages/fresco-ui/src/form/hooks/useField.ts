@@ -2,7 +2,11 @@ import { debounce } from 'es-toolkit';
 import { type ReactNode, useCallback, useEffect, useId, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
-import type { FieldValue, ValidationPropsCatalogue } from '../Field/types';
+import type {
+  FieldSlotController,
+  FieldValue,
+  ValidationPropsCatalogue,
+} from '../Field/types';
 import { useFieldNamespace } from '../FieldNamespace';
 import type { FieldState, ValidationContext } from '../store/types';
 import { validationPropKeys } from '../validation/functions';
@@ -60,11 +64,14 @@ type UseFieldResult = {
   };
   containerProps: {
     'data-field-name': string; // Used for scrolling to field errors
+    // Validate-on-blur is scoped to the whole field: this fires on focusout
+    // bubbling from any descendant, so moving focus to an in-field control
+    // (a slot button, a sibling radio…) does not validate prematurely.
+    'onBlur': (e: React.FocusEvent<HTMLElement>) => void;
   };
   fieldProps: {
     'value': FieldValue;
     'onChange': (value: FieldValue) => void;
-    'onBlur': (e: React.FocusEvent) => void;
     'disabled': boolean;
     'readOnly': boolean;
     'aria-required': boolean; // Indicates if the field is required
@@ -73,6 +80,11 @@ type UseFieldResult = {
     'aria-disabled': boolean; // Indicates if the field is disabled
     'aria-readonly': boolean; // Indicates if the field is read-only
   };
+  /**
+   * Handle for controls rendered inside the field (slot buttons, etc.) to read
+   * and set the value. Field delivers this to function slots via context.
+   */
+  controller: FieldSlotController;
   validationSummary?: ReactNode;
 };
 
@@ -101,6 +113,12 @@ type UseFieldConfig = {
    * @default 300
    */
   validateOnChangeDelay?: number;
+  /**
+   * Escape hatch: validate when focus moves to an in-field control (a slot
+   * button, a sibling control…) instead of only when focus leaves the whole
+   * field. Off by default — the field is the unit of focus.
+   */
+  validateOnControlBlur?: boolean;
 } & Partial<ValidationPropsCatalogue>;
 
 export function useField(config: UseFieldConfig): UseFieldResult {
@@ -224,18 +242,26 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     ],
   );
 
-  const handleBlur = useCallback(
-    (e: React.FocusEvent) => {
-      // Skip validation if clicking on a dialog close element
-      const relatedTarget = e.relatedTarget;
-      if (relatedTarget?.hasAttribute('data-dialog-close')) {
+  const handleContainerBlur = useCallback(
+    (e: React.FocusEvent<HTMLElement>) => {
+      // Focus moved to another control inside this field (a slot button, a
+      // stepper, a sibling radio…) → the field is still active; don't validate
+      // yet. The escape hatch validates on in-field focus moves anyway.
+      if (
+        !config.validateOnControlBlur &&
+        e.currentTarget.contains(e.relatedTarget)
+      ) {
         return;
       }
 
-      // Skip validation if this field is inside a dialog that's closing
-      const target = e.target as HTMLElement;
-      const parentDialog = target.closest('dialog');
-      if (parentDialog && !parentDialog.open) {
+      // Skip validation if focus is going to a dialog close affordance.
+      if (e.relatedTarget?.hasAttribute('data-dialog-close')) {
+        return;
+      }
+
+      // Skip validation if this field is inside a dialog that's closing.
+      const dialog = e.currentTarget.closest('dialog');
+      if (dialog && !dialog.open) {
         return;
       }
 
@@ -248,11 +274,37 @@ export function useField(config: UseFieldConfig): UseFieldResult {
         void validateField(resolvedName);
       }
     },
-    [resolvedName, config.validateOnChange, setFieldBlurred, validateField],
+    [
+      resolvedName,
+      config.validateOnChange,
+      config.validateOnControlBlur,
+      setFieldBlurred,
+      validateField,
+    ],
   );
 
   // Show invalid styling when showing error text - keep them in sync
   const showInvalid = shouldShowError;
+
+  // Fall back to initialValue only before the field is registered. Once
+  // registered, honour the stored value verbatim — including an explicit
+  // `undefined` from clearing the field.
+  const currentValue = fieldState ? fieldState.value : initialValue;
+
+  const controller = useMemo<FieldSlotController>(
+    () => ({
+      name: resolvedName,
+      value: currentValue,
+      setValue: handleChange,
+      validate: () => {
+        void validateField(resolvedName);
+      },
+      focusInput: () => {
+        document.getElementById(id)?.focus();
+      },
+    }),
+    [resolvedName, currentValue, handleChange, validateField, id],
+  );
 
   const result: UseFieldResult = {
     id,
@@ -267,16 +319,15 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     },
     containerProps: {
       'data-field-name': resolvedName, // Used for scrolling to field errors
+      'onBlur': handleContainerBlur,
     },
     fieldProps: {
-      // Fall back to initialValue only before the field is registered. Once
-      // registered, honour the stored value verbatim — including an explicit
-      // `undefined` from clearing the field. Using `?? initialValue` here
-      // re-applied the initial value on every clear, so a field with an
+      // Honour the stored value verbatim once registered — including an
+      // explicit `undefined` from clearing the field. Using `?? initialValue`
+      // here re-applied the initial value on every clear, so a field with an
       // initialValue could never be cleared.
-      'value': fieldState ? fieldState.value : initialValue,
+      'value': currentValue,
       'onChange': handleChange,
-      'onBlur': handleBlur,
       'disabled': isDisabled ?? false,
       'readOnly': isReadOnly ?? false,
       'aria-required': !!validationProps.required,
@@ -293,6 +344,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
        */
       'aria-describedby': `${id}-hint ${id}-error`.trim(),
     },
+    controller,
     validationSummary,
   };
 
