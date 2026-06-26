@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 const FamilyPedigreeStageMetadataSchema = z.object({
   isNetworkCommitted: z.boolean(),
+  selectedFraming: z.optional(z.enum(['gamete', 'gendered'])),
+  noChildrenAffirmed: z.optional(z.boolean()),
   nodes: z.optional(
     z.array(
       z.object({

@@ -26,11 +26,14 @@ import { useStageSelector } from '~/hooks/useStageSelector';
 
 import { buildPedigreeDialog } from '../buildPedigreeDialog';
 import { useFamilyPedigreeStore } from '../FamilyPedigreeContext';
+import type { VariableConfig } from '../store';
 import {
   getEdgeRelationshipType,
   getRelationshipTypeVariable,
 } from '../utils/edgeUtils';
 import { getEgoVariable, getNodeLabelVariable } from '../utils/nodeUtils';
+import type { Boundaries } from '../utils/validatePedigree';
+import { evaluateBoundaries } from '../utils/validatePedigree';
 import {
   buildParentsItem,
   type ChecklistItem,
@@ -41,10 +44,14 @@ export default function PedigreeChecklist({
   dragConstraints,
   onFinalize,
   onAllDoneChange,
+  variableConfig,
+  boundaries,
 }: {
   dragConstraints: RefObject<HTMLElement | null>;
   onFinalize: () => void;
   onAllDoneChange?: (allDone: boolean) => void;
+  variableConfig: VariableConfig;
+  boundaries: Boundaries;
 }) {
   const nodes = useFamilyPedigreeStore((s) => s.network.nodes);
   const edges = useFamilyPedigreeStore((s) => s.network.edges);
@@ -54,23 +61,17 @@ export default function PedigreeChecklist({
     getRelationshipTypeVariable,
   );
   const { openDialog } = useDialog();
+  const noChildrenAffirmed = useFamilyPedigreeStore(
+    (s) => s.noChildrenAffirmed,
+  );
+  const setNoChildrenAffirmed = useFamilyPedigreeStore(
+    (s) => s.setNoChildrenAffirmed,
+  );
 
   const [dismissed, setDismissed] = useState(false);
   const [manuallyChecked, setManuallyChecked] = useState<Set<string>>(
     new Set(),
   );
-
-  const toggleManualCheck = useCallback((id: string) => {
-    setManuallyChecked((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
 
   const egoId = useMemo(() => {
     for (const [id, node] of nodes) {
@@ -167,6 +168,58 @@ export default function PedigreeChecklist({
     return false;
   }, [egoId, edges, relationshipTypeVariable]);
 
+  const toggleManualCheck = useCallback(
+    (id: string) => {
+      // The children item doubles as the "no children" affirmation. When there
+      // are no actual children and the user clicks this item, persist the toggle
+      // to the store so validation can read it from stage metadata.
+      if (id === 'children' && !hasChildren) {
+        setNoChildrenAffirmed(!noChildrenAffirmed);
+        return;
+      }
+      setManuallyChecked((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    },
+    [hasChildren, noChildrenAffirmed, setNoChildrenAffirmed],
+  );
+
+  // Evaluate recommended boundary issues to surface as nudges in the checklist.
+  const boundaryNudges = useMemo(() => {
+    if (!egoId) return [];
+    return evaluateBoundaries(
+      egoId,
+      nodes,
+      edges,
+      variableConfig,
+      boundaries,
+      hasChildren || noChildrenAffirmed,
+    );
+  }, [
+    egoId,
+    nodes,
+    edges,
+    variableConfig,
+    boundaries,
+    hasChildren,
+    noChildrenAffirmed,
+  ]);
+
+  const hasGrandparentsNudge = boundaryNudges.some(
+    (i) => i.severity === 'recommended' || i.severity === 'required',
+  );
+  const hasChildrenContributorsNudge = boundaryNudges.some(
+    (n) =>
+      n.message.includes("children's other parents") &&
+      (n.severity === 'recommended' || n.severity === 'required'),
+  );
+
   const items = useMemo<ChecklistItem[]>(() => {
     if (!egoId) return [];
 
@@ -247,12 +300,51 @@ export default function PedigreeChecklist({
       required: false,
     });
 
+    // The children item is required when the boundary config demands it (not
+    // 'off'). It counts as done when there are real children, the "no children"
+    // affirmation is active, or the user has manually checked it.
+    const childrenRequired = boundaries.requireChildrenContributors !== 'off';
     list.push({
       id: 'children',
-      label: 'Add children',
-      done: hasChildren || manuallyChecked.has('children'),
-      required: false,
+      label: hasChildren
+        ? 'Add children'
+        : noChildrenAffirmed
+          ? 'No children (confirmed)'
+          : 'Add children (or confirm none)',
+      done:
+        hasChildren ||
+        noChildrenAffirmed ||
+        (!childrenRequired && manuallyChecked.has('children')),
+      required: childrenRequired,
     });
+
+    // Surface a grandparents nudge item when the boundary config requests it
+    // and the requirement is not yet met. This is separate from the per-parent
+    // items above, which show for named genetic parents.
+    if (hasGrandparentsNudge && boundaries.requireGrandparents !== 'off') {
+      const gpRequired = boundaries.requireGrandparents === 'required';
+      list.push({
+        id: 'boundary-grandparents',
+        label: "Record each parent's two parents",
+        done:
+          !hasGrandparentsNudge || manuallyChecked.has('boundary-grandparents'),
+        required: gpRequired,
+      });
+    }
+
+    // Surface a children-contributors nudge when the boundary config requests
+    // it and the requirement is not yet met (applies when ego has children).
+    if (hasChildrenContributorsNudge && hasChildren) {
+      const ccRequired = boundaries.requireChildrenContributors === 'required';
+      list.push({
+        id: 'boundary-children-contributors',
+        label: "Record children's co-parents and their parents",
+        done:
+          !hasChildrenContributorsNudge ||
+          manuallyChecked.has('boundary-children-contributors'),
+        required: ccRequired,
+      });
+    }
 
     return list;
   }, [
@@ -265,8 +357,12 @@ export default function PedigreeChecklist({
     hasSiblings,
     hasPartner,
     hasChildren,
+    noChildrenAffirmed,
     manuallyChecked,
     relationshipTypeVariable,
+    boundaries,
+    hasGrandparentsNudge,
+    hasChildrenContributorsNudge,
   ]);
 
   const sortedItems = useMemo(

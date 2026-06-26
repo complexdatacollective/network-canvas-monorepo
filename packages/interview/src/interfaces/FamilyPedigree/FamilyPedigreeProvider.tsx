@@ -107,6 +107,7 @@ export const FamilyPedigreeProvider = ({
     preexistingReduxNodeIds,
     preexistingReduxEdgeIds,
     initialFraming,
+    framingConfig.mode,
   );
 
   return (

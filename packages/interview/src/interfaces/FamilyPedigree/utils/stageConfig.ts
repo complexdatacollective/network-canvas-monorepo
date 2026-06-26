@@ -12,3 +12,8 @@ export const getIntroScreen = createSelector(getCurrentStage, (stage) => {
   invariant(stage.type === 'FamilyPedigree', 'Stage must be FamilyPedigree');
   return stage.introScreen ?? null;
 });
+
+export const getBoundaries = createSelector(getCurrentStage, (stage) => {
+  invariant(stage.type === 'FamilyPedigree', 'Stage must be FamilyPedigree');
+  return stage.boundaries;
+});

@@ -74,6 +74,7 @@ type FamilyPedigreeState = {
   step: 'scaffolding' | 'diseaseNomination';
   activeNominationVariable: string | null;
   framing: FramingId | null;
+  noChildrenAffirmed: boolean;
   network: {
     nodes: Map<string, NcNode>;
     edges: Map<string, FamilyEdge>;
@@ -100,6 +101,7 @@ type NetworkActions = {
   setStep: (step: FamilyPedigreeState['step']) => void;
   setActiveNominationVariable: (variable: string | null) => void;
   setFraming: (framing: FramingId) => void;
+  setNoChildrenAffirmed: (value: boolean) => void;
   commitBatch: (batch: CommitBatch) => void;
   syncMetadata: () => void;
   finalizeNetwork: () => Promise<void>;
@@ -122,6 +124,7 @@ export const createFamilyPedigreeStore = (
   preexistingReduxNodeIds: ReadonlySet<string> = new Set(),
   preexistingReduxEdgeIds: ReadonlySet<string> = new Set(),
   initialFraming: FramingId | null = null,
+  framingMode: 'fixed' | 'participantChoice' = 'fixed',
 ) => {
   // Guard the network invariant that at most one edge of a given relationship
   // type connects any pair of nodes. Throwing surfaces edge-creation bugs (e.g.
@@ -161,6 +164,7 @@ export const createFamilyPedigreeStore = (
         step: 'scaffolding',
         activeNominationVariable: null,
         framing: initialFraming,
+        noChildrenAffirmed: false,
         network: {
           nodes: initialNodes,
           edges: initialEdges,
@@ -182,6 +186,13 @@ export const createFamilyPedigreeStore = (
           set((state) => {
             state.framing = framing;
           }),
+
+        setNoChildrenAffirmed: (value) => {
+          set((state) => {
+            state.noChildrenAffirmed = value;
+          });
+          get().syncMetadata();
+        },
 
         addNode: (node) => {
           const { id, attributes } = node;
@@ -349,6 +360,11 @@ export const createFamilyPedigreeStore = (
                 isNetworkCommitted: true,
                 nodes: serializedNodes,
                 edges: serializedEdges,
+                noChildrenAffirmed: get().noChildrenAffirmed,
+                ...(framingMode === 'participantChoice' &&
+                get().framing !== null
+                  ? { selectedFraming: get().framing ?? undefined }
+                  : {}),
               },
             }),
           );

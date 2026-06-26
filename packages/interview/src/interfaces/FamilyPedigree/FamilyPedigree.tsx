@@ -42,6 +42,7 @@ import {
   getNodeTypeKey,
   getRelationshipVariable,
 } from './utils/nodeUtils';
+import { getBoundaries } from './utils/stageConfig';
 import { validatePedigreeCompleteness } from './utils/validatePedigree';
 
 // The interview network is a single shared graph, so getNetworkNodes/Edges
@@ -106,8 +107,9 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   const allEdges = useStageSelector(getNetworkEdges);
 
   const stageMetadata = useStageSelector(getStageMetadata) as
-    | { isNetworkCommitted?: boolean }
+    | { isNetworkCommitted?: boolean; noChildrenAffirmed?: boolean }
     | undefined;
+  const boundaries = useStageSelector(getBoundaries);
 
   const isNetworkCommitted = stageMetadata?.isNetworkCommitted === true;
 
@@ -254,6 +256,8 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
       nodesMap,
       edgesMap,
       variableConfig,
+      boundaries,
+      stageMetadata?.noChildrenAffirmed === true,
     );
 
     if (issues.length > 0) {
@@ -457,6 +461,8 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
                   dragConstraints={containerRef}
                   onFinalize={() => void handleConfirmAndAdvance()}
                   onAllDoneChange={setChecklistComplete}
+                  variableConfig={variableConfig}
+                  boundaries={boundaries}
                 />
               )}
               {showResetOption && (
