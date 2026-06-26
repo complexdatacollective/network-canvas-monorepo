@@ -660,7 +660,7 @@
         },
         {
           "id": "closeness3",
-          "text": "This prompt shows 3 concentric circles and has create edge and allow highlight specified (against the rules!)",
+          "text": "This prompt shows 3 concentric circles and creates friend edges.",
           "layout": {
             "layoutVariable": "layout_variable"
           },
@@ -1098,7 +1098,7 @@
         {
           "id": "65192318-0ef0-454d-91b7-bbaf51380069",
           "type": "text",
-          "content": "The video below has sound and is set to loop. Some arbitrary text content that can _contain_ **formatting**."
+          "content": "The video below has sound. Some arbitrary text content that can _contain_ **formatting**."
         },
         {
           "id": "27eee84a-52c0-440d-951c-5ac35bc75168",

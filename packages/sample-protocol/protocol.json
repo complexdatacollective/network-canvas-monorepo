@@ -1145,11 +1145,6 @@
           "content": "On the next screen, we have implemented both skip logic and network filtering for the stage. \n\nSkip logic is a feature that allows you to conditionally skip or show a stage within an interview, based on information previously provided by a participant. By implementing skip logic, a participant will bypass information not relevant to them, thus making for a more streamlined interview process. Skip logic rules can be based on _ego, alter,_ or _edges_ and resolve to either **true** or **false** which determines whether the stage is shown.\n\n"
         },
         {
-          "id": "828ce70c-c5d4-4e32-ab61-8e8cfca46fd4",
-          "type": "text",
-          "content": "Skip logic is a feature that allows you to conditionally skip or show a stage within an interview, based on information previously provided by a participant. By implementing skip logic, a participant will bypass information not relevant to them, thus making for a more streamlined interview process. Skip logic rules can be based on _ego, alter,_ or _edges_ and resolve to either **true** or **false** which determines whether the stage is shown.\n"
-        },
-        {
           "id": "7e33fc24-0899-4779-b523-01d5254671bd",
           "type": "text",
           "content": "Network filtering refers to a feature that allows you to define rules that determine which nodes or edges should be shown on a given stage. It can be used to only show a subset of a network, based on node type, node attributes, and edge types. \n\nIn summary, _skip logic_ determines if a stage should be shown at all and _network filtering_ determines which nodes should be shown on a given stage. \n"
