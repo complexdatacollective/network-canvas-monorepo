@@ -581,6 +581,40 @@ Then in a browser (service workers require `localhost` or HTTPS):
 
 ---
 
+## Task 5: Offline template / Sample installation (added after review)
+
+Bundled templates and the Sample protocol instantiate by `fetch()`-ing bundled
+asset files into IndexedDB. To make that work with no network, those assets are
+warmed into the service-worker cache at idle.
+
+**Files:**
+
+- Modify: `apps/architect-web/vite.config.ts` (add `clientsClaim: true` + a
+  `CacheFirst` runtime rule for same-origin `/assets/*`).
+- Modify: `apps/architect-web/src/templates/sample-protocol.ts` (export
+  `sampleAssetUrls`).
+- Modify: `apps/architect-web/src/templates/template-assets.ts` (export
+  `templateAssetUrls`).
+- Create: `apps/architect-web/src/templates/warmBundledAssets.ts`
+  (`bundledTemplateAssetUrls`, `warmBundledTemplateAssets`).
+- Test: `apps/architect-web/src/templates/__tests__/warmBundledAssets.test.ts`.
+- Modify: `apps/architect-web/src/main.tsx` (call `warmBundledTemplateAssets` in
+  the idle callback).
+
+**Key correctness point:** `warmBundledTemplateAssets` must wait for the worker
+to **control** the page before fetching. On first load the worker is `ready`
+(active) before it claims the page; fetching in that gap bypasses the cache.
+`clientsClaim: true` makes the worker claim the page, and the warm awaits the
+`controllerchange` event (falling back to a timeout) so the fetches are
+intercepted and cached. The Development protocol is excluded (dev-only, ~24 MB
+video).
+
+**Verification:** unit tests for the warm function; and an end-to-end browser
+check — with the preview server killed, the Sample protocol installs into the
+library with all 10 assets present in IndexedDB.
+
+---
+
 ## Self-review
 
 - **Spec coverage:** §1 build integration → Task 1; §2 manifest+icons → Task 1 (steps 2–7); §3 caching strategy → Task 1 (step 4 `workbox`); §4 update flow → Task 2; §5 Netlify headers → Task 3; §6 version surfacing (`__APP_VERSION__`) → Task 1 (define) + Task 2 (offline-ready copy); §7 testing → Task 2 (unit) + Task 4 (build/manual). All spec sections mapped.

@@ -42,6 +42,7 @@ export default defineConfig({
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/preview\//],
         cleanupOutdatedCaches: true,
+        clientsClaim: true,
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         runtimeCaching: [
           {
@@ -50,6 +51,20 @@ export default defineConfig({
             options: {
               cacheName: 'architect-images',
               expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // Bundled non-image assets (template / Sample protocol media: video,
+            // GeoJSON, CSV, etc.). Content-hashed and same-origin; the JS/CSS in
+            // /assets are already precached and served from there first, and
+            // Architect has no backend, so caching all of /assets is safe.
+            urlPattern: ({ url, sameOrigin }) =>
+              sameOrigin && url.pathname.startsWith('/assets/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'architect-bundled-assets',
+              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },

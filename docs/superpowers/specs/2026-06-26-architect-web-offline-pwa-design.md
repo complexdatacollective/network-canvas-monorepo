@@ -34,13 +34,28 @@ lifecycle into a small in-app prompt.
 
 ## Decisions (from brainstorming)
 
-| Decision         | Choice                                                                        |
-| ---------------- | ----------------------------------------------------------------------------- |
-| Update behaviour | **Prompt to reload** (`registerType: 'prompt'`)                               |
-| Offline scope    | **Full editor offline** (app shell precached + images/fonts runtime-cached)   |
-| Icon source      | **Derive** from existing brand assets (`architect-icon.png` / `NC-Mark.svg`)  |
-| Fonts            | **Runtime-cache** Google Fonts (not self-hosted)                              |
-| Thumbnails       | **Runtime-cache** on demand (relying on existing idle-preload), not precached |
+| Decision         | Choice                                                                                                                  |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Update behaviour | **Prompt to reload** (`registerType: 'prompt'`)                                                                         |
+| Offline scope    | **Full editor offline** (app shell precached + images/fonts runtime-cached)                                             |
+| Icon source      | **Derive** from existing brand assets (`architect-icon.png` / `NC-Mark.svg`)                                            |
+| Fonts            | **Runtime-cache** Google Fonts (not self-hosted)                                                                        |
+| Thumbnails       | **Runtime-cache** on demand (relying on existing idle-preload), not precached                                           |
+| Template install | **Offline** — bundled template + Sample assets warmed into the SW cache at idle; dev-only Development protocol excluded |
+
+## Offline template installation
+
+Bundled templates (the "Templates" tab) and the Sample protocol instantiate by
+`fetch()`-ing their bundled asset files and writing the resulting Blobs into
+IndexedDB (`src/templates/*`). For that to work offline on first use, those
+asset files must already be in the service-worker cache. They are warmed at idle
+after load by `warmBundledTemplateAssets` (`src/templates/warmBundledAssets.ts`),
+which waits for the worker to **control** the page (`controllerchange`, enabled
+by `clientsClaim`) before fetching, and a `CacheFirst` rule for same-origin
+`/assets/*` stores them. The Development protocol is excluded — it is a dev-only
+entry (`import.meta.env.DEV` in `LibraryPanel`) shipping a ~24 MB video. Once a
+protocol is in the library its assets live in IndexedDB and are offline
+regardless of the service worker.
 
 ## Approach
 
