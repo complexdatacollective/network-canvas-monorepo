@@ -10,6 +10,7 @@ import { cx } from '~/utils/cva';
 import { useFormContext } from '../Editor';
 import ValidatedField from '../Form/ValidatedField';
 import IssueAnchor from '../IssueAnchor';
+import { useAutoStageName } from './autoStageName/useAutoStageName';
 import { getInterface } from './Interfaces';
 
 type HeadingInputProps = {
@@ -28,6 +29,7 @@ type HeadingInputProps = {
   placeholder?: string;
   maxLength?: number;
   autoFocus?: boolean;
+  onFieldBlur?: () => void;
 };
 
 const HeadingInput = ({
@@ -36,13 +38,19 @@ const HeadingInput = ({
   placeholder,
   maxLength,
   autoFocus,
+  onFieldBlur,
 }: HeadingInputProps) => {
   const errorId = useId();
   const hasError = !!(meta.invalid && meta.touched && meta.error);
+  const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
+    input.onBlur?.(event);
+    onFieldBlur?.();
+  };
   return (
     <>
       <input
         {...input}
+        onBlur={handleBlur}
         type="text"
         placeholder={placeholder}
         maxLength={maxLength}
@@ -68,13 +76,19 @@ const HeadingInput = ({
 type StageHeadingProps = {
   stageNumber: number;
   totalStages: number;
+  isNewStage: boolean;
 };
 
-const StageHeading = ({ stageNumber, totalStages }: StageHeadingProps) => {
-  const { values, initialValues } = useFormContext();
+const StageHeading = ({
+  stageNumber,
+  totalStages,
+  isNewStage,
+}: StageHeadingProps) => {
+  const { values } = useFormContext();
 
   const type = get(values, 'type') as string | undefined;
-  const isNewStage = !get(initialValues, 'label');
+
+  const { onLabelBlur } = useAutoStageName(isNewStage);
 
   if (!type) {
     return null;
@@ -108,9 +122,10 @@ const StageHeading = ({ stageNumber, totalStages }: StageHeadingProps) => {
           Stage {stageNumber} of {totalStages}
         </p>
         <IssueAnchor fieldName="label" description="Stage name" />
-        <ValidatedField
+        <ValidatedField<{ onFieldBlur?: () => void }>
           name="label"
           component={HeadingInput}
+          componentProps={{ onFieldBlur: onLabelBlur }}
           placeholder="Enter stage name..."
           maxLength={50}
           validation={{ required: true }}
