@@ -5,6 +5,7 @@ import BackgroundLights from '~/components/BackgroundLights';
 import DialogManager from '~/components/DialogManager';
 import { JsonPreviewOverlay } from '~/components/JsonPreviewOverlay';
 import ProtocolGuardedRouter from '~/components/ProtocolGuardedRouter';
+import PwaUpdateBanner from '~/components/PwaUpdateBanner';
 import Routes from '~/components/Routes';
 import ScrollToTop from '~/components/ScrollToTop';
 import { resetRunOnce } from '~/hooks/useRunOnce';
@@ -31,6 +32,7 @@ const AppContents = () => {
       <ScrollToTop />
       <Routes />
       <DialogManager />
+      <PwaUpdateBanner />
       <JsonPreviewOverlay />
     </>
   );
