@@ -18,7 +18,7 @@ const SectionFrame = ({
   <div className={cx('mb-(--space-xl) last:mb-0', wrapperClassName)}>
     <div
       className={cx(
-        'border-platinum relative rounded border-2 px-(--space-md) pt-(--space-xl) pb-(--space-sm)',
+        'border-platinum relative overflow-hidden rounded border-2 px-(--space-md) pt-(--space-xl) pb-(--space-sm)',
         contentClassName,
       )}
     >

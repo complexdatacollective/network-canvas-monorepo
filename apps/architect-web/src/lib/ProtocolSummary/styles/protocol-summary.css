@@ -20,7 +20,14 @@
 }
 
 @media print {
+  /* Scale the printed document to the summary's intended 12px base. The
+     surface's `--base-font-size` only re-bases inherited text; the summary's
+     headings/labels use rem-based Tailwind utilities tied to the root font
+     size, so overriding it here on the <html> element (which already reads
+     `font-size: var(--base-font-size)`) shrinks the whole document uniformly.
+     The app chrome is `print:hidden`, so this only affects the printed page. */
   .summary-view {
+    --base-font-size: 12px;
     overflow: visible;
     height: auto;
     width: auto;
