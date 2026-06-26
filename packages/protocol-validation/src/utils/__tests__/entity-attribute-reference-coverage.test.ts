@@ -44,8 +44,8 @@ const countTagged = (
 };
 
 // Update this number deliberately when adding/removing a tagged field.
-// (31 after main removed FamilyPedigree biologicalSexVariable during merge.)
-const EXPECTED_TAGGED_FIELD_COUNT = 27;
+// (+2 for biologicalSexVariable on NodeConfigSchema and gameteRoleVariable on EdgeConfigSchema)
+const EXPECTED_TAGGED_FIELD_COUNT = 29;
 
 describe('entity-attribute reference coverage', () => {
   it('has tagged the expected number of reference fields', () => {

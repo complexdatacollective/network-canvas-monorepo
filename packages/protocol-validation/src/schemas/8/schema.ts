@@ -473,6 +473,30 @@ const ProtocolSchema = z
         }
       }
 
+      // 3e.iii.b. FamilyPedigree: introScreen.videoAssetId must resolve to a
+      // manifest entry of type 'video'.
+      if (
+        stage.type === 'FamilyPedigree' &&
+        'introScreen' in stage &&
+        stage.introScreen?.videoAssetId
+      ) {
+        const videoAssetId = stage.introScreen.videoAssetId;
+        const asset = protocol.assetManifest?.[videoAssetId];
+        if (!asset) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `FamilyPedigree introScreen videoAssetId "${videoAssetId}" does not reference an asset in the manifest.`,
+            path: ['stages', stageIndex, 'introScreen', 'videoAssetId'],
+          });
+        } else if (asset.type !== 'video') {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `FamilyPedigree introScreen videoAssetId "${videoAssetId}" must reference a 'video' asset, but is of type "${asset.type}".`,
+            path: ['stages', stageIndex, 'introScreen', 'videoAssetId'],
+          });
+        }
+      }
+
       // 3e.iv. Bin stages: the prompt variable must match the bin type.
       if (
         (stage.type === 'OrdinalBin' || stage.type === 'CategoricalBin') &&
