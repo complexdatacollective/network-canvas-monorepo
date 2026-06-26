@@ -40,16 +40,24 @@ remaining fully overridable.
 Form Name Generator with Roster Panels`).
 - **Override.** The moment the researcher types a non-empty value into the name
   field, auto-naming disengages and the field is theirs.
-- **Re-engage on clear.** If the researcher clears the field back to empty,
-  auto-naming re-engages and resumes generating.
-- The existing `required` validation is unchanged; auto-naming simply keeps it
-  satisfied (the field is non-empty whenever auto-naming is active).
+- **Re-engage on blur, not mid-edit.** Clearing the field leaves it empty while
+  the researcher types — auto-naming does not refill instantly and fight the
+  keystrokes. If they leave the field (blur) while it is still empty, the
+  generated name fills back in then.
+- **Draft-neutral on entry.** Filling the initial name on a brand-new stage must
+  not mark the stage dirty or create undo history — otherwise the editor would
+  flash its "Finished Editing" button and enable Undo before the researcher has
+  done anything. The first fill folds the generated name into the draft baseline
+  (via the same reset the stage editor uses on INITIALIZE), so a fresh stage
+  stays pristine until the researcher actually changes something.
+- The existing `required` validation is unchanged; the initial fill keeps it
+  satisfied from the start.
 
 Ownership is inferred by comparing the current label against the last value the
 hook itself generated (`lastGenerated`): a non-empty live label that differs from
-`lastGenerated` means the researcher typed it, so auto-naming locks; an empty
-label re-engages. This avoids depending on redux-form's `change()` action
-suppressing the input's DOM `onChange`, and keeps the ownership decision in one
+`lastGenerated` means the researcher typed it, so auto-naming locks. This avoids
+depending on redux-form's `change()` action suppressing the input's DOM
+`onChange`, and keeps the ownership decision in one
 pure, unit-tested function (`computeAutoNameUpdate`).
 
 ## Name composition
@@ -195,9 +203,13 @@ are passed in so the pure module never imports selectors.
   manifest, and the sibling stage labels;
 - while auto-naming is active (new stage, researcher hasn't taken ownership),
   computes the name and dispatches redux-form `change(formName, 'label', name)`;
+  on the **first** fill it also folds the value into the draft baseline (a draft
+  timeline reset) so the stage stays pristine — no spurious dirty flag, no undo
+  step — until the researcher actually edits something;
 - infers ownership by comparing the live label to the last generated value
   (held in a ref) — a non-empty label that differs from it disengages
-  auto-naming; clearing to empty re-engages it.
+  auto-naming; clearing leaves the field empty and a blur handler (wired through
+  the heading input) re-fills it if the researcher tabs away while it is empty.
 
 The effect tracks the last generated value and the ownership flag in refs and
 re-runs on the resolved inputs (generated name, live label); after each

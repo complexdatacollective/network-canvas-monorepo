@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useDispatch, useSelector, useStore } from 'react-redux';
 import type { Action, Dispatch } from 'redux';
 import { change, getFormValues } from 'redux-form';
 
 import type {
   Item,
   Panel,
+  Stage,
   StageSubject,
   StageType,
-  Variables,
 } from '@codaco/protocol-validation';
+import { draftTimelineActions } from '~/ducks/modules/stageEditorDraft';
+import type { RootState } from '~/ducks/store';
 import {
   getAllVariablesByUUID,
   getEdgeTypes,
@@ -38,8 +40,11 @@ type StageFormValues = {
   nominationPrompts?: { variable: string }[];
 };
 
-export function useAutoStageName(isNewStage: boolean): void {
+export function useAutoStageName(isNewStage: boolean): {
+  onLabelBlur: () => void;
+} {
   const dispatch = useDispatch<Dispatch<Action>>();
+  const store = useStore<RootState>();
   const formValues = useSelector(getFormValues(formName)) as
     | StageFormValues
     | undefined;
@@ -56,9 +61,7 @@ export function useAutoStageName(isNewStage: boolean): void {
     if (!type) {
       return '';
     }
-    const variablesByUuid: Variables = codebook
-      ? getAllVariablesByUUID(codebook)
-      : {};
+    const variablesByUuid = codebook ? getAllVariablesByUUID(codebook) : {};
     const subjectName = resolveStageSubjectName(
       formValues?.subject,
       (entity, entityType) => {
@@ -92,6 +95,35 @@ export function useAutoStageName(isNewStage: boolean): void {
 
   const isCustomRef = useRef(false);
   const lastGeneratedRef = useRef<string | undefined>(undefined);
+  const hasFilledRef = useRef(false);
+
+  // Kept current each render so the stable blur handler reads the latest values.
+  const liveLabelRef = useRef(liveLabel);
+  liveLabelRef.current = liveLabel;
+  const generatedLabelRef = useRef(generatedLabel);
+  generatedLabelRef.current = generatedLabel;
+
+  const applyLabel = useCallback(
+    (label: string) => {
+      const isInitialFill = !hasFilledRef.current;
+      hasFilledRef.current = true;
+      lastGeneratedRef.current = label;
+      dispatch(change(formName, 'label', label));
+      // Fold the very first auto-name into the draft baseline so a brand-new
+      // stage isn't reported dirty (no "Finished Editing" flash) and gains no
+      // undo step before the researcher has done anything. The reset also clears
+      // the listener's pending snapshot for this change.
+      if (isInitialFill) {
+        const fresh = getFormValues(formName)(store.getState()) as
+          | Stage
+          | undefined;
+        if (fresh) {
+          dispatch(draftTimelineActions.reset(fresh));
+        }
+      }
+    },
+    [dispatch, store],
+  );
 
   useEffect(() => {
     const update = computeAutoNameUpdate({
@@ -103,8 +135,22 @@ export function useAutoStageName(isNewStage: boolean): void {
     });
     isCustomRef.current = update.nextIsCustom;
     if (update.label !== undefined) {
-      lastGeneratedRef.current = update.label;
-      dispatch(change(formName, 'label', update.label));
+      applyLabel(update.label);
     }
-  }, [generatedLabel, liveLabel, isNewStage, dispatch]);
+  }, [generatedLabel, liveLabel, isNewStage, applyLabel]);
+
+  // Re-engage on blur: if the researcher cleared the name and tabs away while it
+  // is still empty, fill the generated name back in (rather than fighting their
+  // keystrokes the instant the field goes empty).
+  const onLabelBlur = useCallback(() => {
+    if (!isNewStage) {
+      return;
+    }
+    if (liveLabelRef.current.trim() === '' && generatedLabelRef.current) {
+      isCustomRef.current = false;
+      applyLabel(generatedLabelRef.current);
+    }
+  }, [isNewStage, applyLabel]);
+
+  return { onLabelBlur };
 }

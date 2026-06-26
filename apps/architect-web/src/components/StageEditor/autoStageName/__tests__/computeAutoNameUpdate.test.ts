@@ -66,7 +66,7 @@ describe('computeAutoNameUpdate', () => {
     ).toStrictEqual({ nextIsCustom: true });
   });
 
-  it('re-engages when the field is cleared', () => {
+  it('does not refill when the field is cleared mid-session (blur handles re-engage)', () => {
     expect(
       computeAutoNameUpdate({
         isNewStage: true,
@@ -75,7 +75,7 @@ describe('computeAutoNameUpdate', () => {
         lastGenerated: 'My stage',
         generatedLabel: 'Person Sociogram',
       }),
-    ).toStrictEqual({ nextIsCustom: false, label: 'Person Sociogram' });
+    ).toStrictEqual({ nextIsCustom: false });
   });
 
   it('does nothing when already in sync', () => {

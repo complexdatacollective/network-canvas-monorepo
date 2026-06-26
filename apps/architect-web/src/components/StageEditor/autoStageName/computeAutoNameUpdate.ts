@@ -12,9 +12,12 @@ export function computeAutoNameUpdate(args: {
     return { nextIsCustom: true };
   }
 
-  // Empty field (initial or cleared) re-engages auto-naming.
+  // An empty field that we have never auto-filled is the initial mount: fill it.
+  // Once we have generated at least once, an empty field means the researcher
+  // cleared it — leave it empty so clearing-to-rename isn't fought mid-keystroke;
+  // the hook's blur handler re-fills it if they leave it empty.
   if (liveLabel.trim() === '') {
-    if (generatedLabel && generatedLabel !== liveLabel) {
+    if (lastGenerated === undefined && generatedLabel) {
       return { nextIsCustom: false, label: generatedLabel };
     }
     return { nextIsCustom: false };
