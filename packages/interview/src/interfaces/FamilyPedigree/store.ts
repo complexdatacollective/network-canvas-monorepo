@@ -3,6 +3,7 @@ import { createStore } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
 import type {
+  FramingId,
   NcEdge,
   NcNode,
   RelationshipType,
@@ -70,6 +71,7 @@ export type CommitBatch = {
 type FamilyPedigreeState = {
   step: 'scaffolding' | 'diseaseNomination';
   activeNominationVariable: string | null;
+  framing: FramingId | null;
   network: {
     nodes: Map<string, NcNode>;
     edges: Map<string, FamilyEdge>;
@@ -96,6 +98,7 @@ type NetworkActions = {
   clearNetwork: () => void;
   setStep: (step: FamilyPedigreeState['step']) => void;
   setActiveNominationVariable: (variable: string | null) => void;
+  setFraming: (framing: FramingId) => void;
   commitBatch: (batch: CommitBatch) => void;
   syncMetadata: () => void;
   finalizeNetwork: () => Promise<void>;
@@ -117,6 +120,7 @@ export const createFamilyPedigreeStore = (
   // would duplicate pre-existing same-type nodes and edges.
   preexistingReduxNodeIds: ReadonlySet<string> = new Set(),
   preexistingReduxEdgeIds: ReadonlySet<string> = new Set(),
+  initialFraming: FramingId | null = null,
 ) => {
   // Guard the network invariant that at most one edge of a given relationship
   // type connects any pair of nodes. Throwing surfaces edge-creation bugs (e.g.
@@ -155,6 +159,7 @@ export const createFamilyPedigreeStore = (
       return {
         step: 'scaffolding',
         activeNominationVariable: null,
+        framing: initialFraming,
         network: {
           nodes: initialNodes,
           edges: initialEdges,
@@ -170,6 +175,11 @@ export const createFamilyPedigreeStore = (
         setActiveNominationVariable: (variable) =>
           set((state) => {
             state.activeNominationVariable = variable;
+          }),
+
+        setFraming: (framing) =>
+          set((state) => {
+            state.framing = framing;
           }),
 
         addNode: (node) => {

@@ -25,7 +25,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { useStageSelector } from '~/hooks/useStageSelector';
 
 import { buildPedigreeDialog } from '../buildPedigreeDialog';
-import { useFamilyPedigreeStore } from '../FamilyPedigreeProvider';
+import { useFamilyPedigreeStore } from '../FamilyPedigreeContext';
 import {
   getEdgeRelationshipType,
   getRelationshipTypeVariable,

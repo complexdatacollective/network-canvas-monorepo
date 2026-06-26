@@ -23,10 +23,8 @@ import type { StageProps } from '~/types';
 import { buildPedigreeDialog } from './buildPedigreeDialog';
 import PedigreeChecklist from './components/PedigreeChecklist';
 import EgoCellWizard from './components/wizards/EgoCellWizard';
-import {
-  FamilyPedigreeProvider,
-  useFamilyPedigreeStore,
-} from './FamilyPedigreeProvider';
+import { useFamilyPedigreeStore } from './FamilyPedigreeContext';
+import { FamilyPedigreeProvider } from './FamilyPedigreeProvider';
 import FamilyPedigreePlaceholder from './pedigree-layout/components/FamilyPedigreePlaceholder';
 import PedigreeView from './pedigree-layout/components/PedigreeView';
 import type { VariableConfig } from './store';

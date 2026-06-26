@@ -15,7 +15,7 @@ import {
   addableParentTypeOptions,
   countGeneticParents,
 } from '~/interfaces/FamilyPedigree/components/wizards/parentTypeOptions';
-import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeProvider';
+import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 import {
   getEdgeRelationshipType,

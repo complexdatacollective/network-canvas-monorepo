@@ -1,15 +1,16 @@
+import { createSelector } from '@reduxjs/toolkit';
 import { invariant } from 'es-toolkit';
-import { createContext, useContext, useRef } from 'react';
-import { useStore } from 'zustand';
+import { useRef } from 'react';
 
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
 import { useCurrentStep } from '~/contexts/CurrentStepContext';
 import { useStageSelector } from '~/hooks/useStageSelector';
+import { getCurrentStage } from '~/selectors/session';
 import { useAppDispatch } from '~/store/store';
 
+import { FamilyPedigreeContext } from './FamilyPedigreeContext';
 import {
   createFamilyPedigreeStore,
-  type FamilyPedigreeStore,
   type FamilyPedigreeStoreApi,
   type NodeMetadata,
   type VariableConfig,
@@ -27,9 +28,10 @@ import {
   getRelationshipVariable,
 } from './utils/nodeUtils';
 
-const FamilyPedigreeContext = createContext<FamilyPedigreeStoreApi | undefined>(
-  undefined,
-);
+const getFramingConfig = createSelector(getCurrentStage, (stage) => {
+  invariant(stage.type === 'FamilyPedigree', 'Stage must be FamilyPedigree');
+  return stage.framing;
+});
 
 export const FamilyPedigreeProvider = ({
   nodes,
@@ -56,6 +58,10 @@ export const FamilyPedigreeProvider = ({
   const isGestationalCarrierVariable = useStageSelector(
     getIsGestationalCarrierVariable,
   );
+  const framingConfig = useStageSelector(getFramingConfig);
+  const initialFraming: FramingId | null =
+    framingConfig.mode === 'fixed' ? framingConfig.value : null;
+
   const variableConfig: VariableConfig = {
     nodeType,
     edgeType,
@@ -101,6 +107,7 @@ export const FamilyPedigreeProvider = ({
     currentStep,
     preexistingReduxNodeIds,
     preexistingReduxEdgeIds,
+    initialFraming,
   );
 
   return (
@@ -108,16 +115,4 @@ export const FamilyPedigreeProvider = ({
       {children}
     </FamilyPedigreeContext.Provider>
   );
-};
-
-export const useFamilyPedigreeStore = <T,>(
-  selector: (state: FamilyPedigreeStore) => T,
-) => {
-  const store = useContext(FamilyPedigreeContext);
-  invariant(
-    store,
-    'useFamilyPedigreeStore must be used within a FamilyPedigreeProvider',
-  );
-
-  return useStore(store, selector);
 };
