@@ -11,14 +11,13 @@ import ScrollToTop from '~/components/ScrollToTop';
 import { resetRunOnce } from '~/hooks/useRunOnce';
 import { isRunningAsInstalledPwa } from '~/utils/pwa';
 
+// Evaluated once at startup: a window's display mode is fixed for its lifetime,
+// and recomputing per render would let a transient mode change (e.g. entering
+// fullscreen) flip this true and register the service worker in a browser tab.
+const OFFLINE_ENABLED = isRunningAsInstalledPwa();
+
 const AppContents = () => {
   const [location] = useLocation();
-
-  // Offline support (service-worker registration, caching, and the update
-  // prompt) is enabled only when running as an installed PWA. In a normal
-  // browser tab the app stays online-only, so the banner — which registers the
-  // service worker via useRegisterSW — is not mounted.
-  const offlineEnabled = isRunningAsInstalledPwa();
 
   // Returning to the start screen ends the current protocol session, so the
   // next /protocol visit gets a fresh entrance animation.
@@ -39,7 +38,7 @@ const AppContents = () => {
       <ScrollToTop />
       <Routes />
       <DialogManager />
-      {offlineEnabled && <PwaUpdateBanner />}
+      {OFFLINE_ENABLED && <PwaUpdateBanner />}
       <JsonPreviewOverlay />
     </>
   );

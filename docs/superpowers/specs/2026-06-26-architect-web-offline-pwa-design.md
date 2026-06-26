@@ -51,8 +51,13 @@ as an installed PWA**. In a normal browser tab the app stays online-only with
 plain HTTP caching and registers **no service worker**.
 
 `isRunningAsInstalledPwa()` (`src/utils/pwa.ts`) detects this via the
-`display-mode` media query (`standalone` / `minimal-ui` / `fullscreen` /
-`window-controls-overlay`) plus iOS Safari's `navigator.standalone`. It gates:
+`display-mode` media query (`standalone` / `window-controls-overlay`) plus iOS
+Safari's `navigator.standalone`. It deliberately does **not** treat `fullscreen`
+or `minimal-ui` as installed: `(display-mode: fullscreen)` also matches when a
+normal tab enters Fullscreen-API fullscreen (e.g. fullscreening a `<video>`), so
+including it would register the service worker in a plain tab. The result is
+evaluated **once at startup** (`OFFLINE_ENABLED` in `ViewManager/views/App.tsx`),
+not per render, so a transient display-mode change cannot flip it. It gates:
 
 - **SW registration** — `PwaUpdateBanner` (which registers the worker via
   `useRegisterSW`) is mounted only when installed (`ViewManager/views/App.tsx`).

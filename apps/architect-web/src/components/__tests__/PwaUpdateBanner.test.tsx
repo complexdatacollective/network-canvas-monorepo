@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const { mockUseRegisterSW } = vi.hoisted(() => ({
@@ -55,5 +55,31 @@ describe('PwaUpdateBanner', () => {
     setSwState({ offlineReady: true });
     render(<PwaUpdateBanner />);
     expect(screen.getByText(/ready to work offline/i)).toBeInTheDocument();
+  });
+
+  it('starts an update-check interval on registration and clears it on unmount', () => {
+    const setIntervalSpy = vi.spyOn(window, 'setInterval');
+    const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
+
+    // Invoke the registration callback (called asynchronously by the real hook)
+    // so the component stores the registration and starts polling.
+    let notifyRegistered: (() => void) | undefined;
+    mockUseRegisterSW.mockImplementation((options) => {
+      notifyRegistered = () => options?.onRegisteredSW?.('/sw.js', {});
+      return {
+        offlineReady: [false, vi.fn()],
+        needRefresh: [false, vi.fn()],
+        updateServiceWorker: vi.fn(),
+      };
+    });
+
+    const { unmount } = render(<PwaUpdateBanner />);
+    act(() => notifyRegistered?.());
+
+    expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+    const intervalId = setIntervalSpy.mock.results[0]?.value;
+
+    unmount();
+    expect(clearIntervalSpy).toHaveBeenCalledWith(intervalId);
   });
 });

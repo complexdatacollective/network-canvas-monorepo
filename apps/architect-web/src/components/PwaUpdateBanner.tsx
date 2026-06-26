@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 import { cx } from '~/utils/cva';
@@ -7,21 +7,32 @@ const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000; // hourly
 const OFFLINE_READY_TIMEOUT_MS = 6000;
 
 const PwaUpdateBanner = () => {
+  const [registration, setRegistration] = useState<
+    ServiceWorkerRegistration | undefined
+  >();
+
   const {
     offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegisteredSW: (_swScriptUrl, registration) => {
-      if (!registration) return;
-      window.setInterval(() => {
-        void registration.update();
-      }, UPDATE_CHECK_INTERVAL_MS);
+    onRegisteredSW: (_swScriptUrl, swRegistration) => {
+      setRegistration(swRegistration);
     },
   });
 
+  // Poll for a new version during long editing sessions; clear the timer on
+  // unmount so it does not leak or keep firing against a stale registration.
   useEffect(() => {
-    if (!offlineReady) return;
+    if (!registration) return undefined;
+    const intervalId = window.setInterval(() => {
+      void registration.update();
+    }, UPDATE_CHECK_INTERVAL_MS);
+    return () => window.clearInterval(intervalId);
+  }, [registration]);
+
+  useEffect(() => {
+    if (!offlineReady) return undefined;
     const timer = window.setTimeout(
       () => setOfflineReady(false),
       OFFLINE_READY_TIMEOUT_MS,

@@ -59,6 +59,7 @@ describe('warmBundledTemplateAssets', () => {
       addEventListener: (type: string, handler: () => void) => {
         if (type === 'controllerchange') controllerChange = handler;
       },
+      removeEventListener: () => {},
     });
     const fetchMock = vi.fn().mockResolvedValue(new Response('x'));
     globalThis.fetch = fetchMock;
@@ -71,6 +72,25 @@ describe('warmBundledTemplateAssets', () => {
     controllerChange?.();
     await warming;
     expect(fetchMock).toHaveBeenCalledTimes(bundledTemplateAssetUrls.length);
+  });
+
+  it('gives up without fetching if the worker never takes control', async () => {
+    vi.useFakeTimers();
+    setServiceWorker({
+      ready: Promise.resolve({}),
+      controller: null,
+      addEventListener: () => {}, // controllerchange never fires
+      removeEventListener: () => {},
+    });
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock;
+
+    const warming = warmBundledTemplateAssets();
+    await vi.advanceTimersByTimeAsync(8000);
+    await warming;
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    vi.useRealTimers();
   });
 
   it('does nothing when service workers are unsupported', async () => {

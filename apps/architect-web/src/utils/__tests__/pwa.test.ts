@@ -36,6 +36,13 @@ describe('isRunningAsInstalledPwa', () => {
     expect(isRunningAsInstalledPwa()).toBe(true);
   });
 
+  it('is false in browser fullscreen and minimal-ui (not installed modes)', () => {
+    // A normal tab matches `(display-mode: fullscreen)` via the Fullscreen API
+    // (e.g. fullscreening a <video>); it must not be treated as installed.
+    stubMatchMedia(['fullscreen', 'minimal-ui']);
+    expect(isRunningAsInstalledPwa()).toBe(false);
+  });
+
   it('is true for an iOS home-screen app (navigator.standalone)', () => {
     stubMatchMedia([]);
     setNavigatorStandalone(true);

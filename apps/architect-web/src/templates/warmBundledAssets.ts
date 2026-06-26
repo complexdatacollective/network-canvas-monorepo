@@ -21,18 +21,16 @@ const waitForController = async (): Promise<boolean> => {
   await navigator.serviceWorker.ready;
   if (navigator.serviceWorker.controller) return true;
 
-  return Promise.race([
-    new Promise<boolean>((resolve) => {
-      navigator.serviceWorker.addEventListener(
-        'controllerchange',
-        () => resolve(true),
-        { once: true },
-      );
-    }),
-    new Promise<boolean>((resolve) => {
-      window.setTimeout(() => resolve(false), SW_CONTROL_TIMEOUT_MS);
-    }),
-  ]);
+  return new Promise<boolean>((resolve) => {
+    function settle(controlled: boolean) {
+      window.clearTimeout(timer);
+      navigator.serviceWorker.removeEventListener('controllerchange', onChange);
+      resolve(controlled);
+    }
+    const onChange = () => settle(true);
+    const timer = window.setTimeout(() => settle(false), SW_CONTROL_TIMEOUT_MS);
+    navigator.serviceWorker.addEventListener('controllerchange', onChange);
+  });
 };
 
 // Warms the service-worker runtime cache with the bundled template/Sample assets
