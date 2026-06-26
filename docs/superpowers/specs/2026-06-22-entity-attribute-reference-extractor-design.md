@@ -142,12 +142,12 @@ The four subject-resolving strategies, derived from the 8 existing checks (a
 fifth, `filterRule`, is usage-only — it resolves to no subject because those
 references are existence-checked by the dedicated filter-rule validation):
 
-| Strategy              | Resolves to                                               | Fields                                                                                 |
-| --------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `stageSubject`        | enclosing stage's `subject` (or ego for `EgoForm`)        | most prompt/stage references                                                           |
-| `ego`                 | `{ entity: 'ego' }`                                       | EgoForm fields, FamilyPedigree `egoVariable`                                           |
+| Strategy              | Resolves to                                                                                    | Fields                                                                                 |
+| --------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `stageSubject`        | enclosing stage's `subject` (or ego for `EgoForm`)                                             | most prompt/stage references                                                           |
+| `ego`                 | `{ entity: 'ego' }`                                                                            | EgoForm fields, FamilyPedigree `egoVariable`                                           |
 | `owningVariable`      | entity/type derived from the `codebook.{entity}.{type}` path segment (positions codebook+1/+2) | validation cross-refs (`sameAs`, comparisons, …)                                       |
-| `{ sibling, entity }` | `{ entity, type: <value of sibling field> }`              | `edgeVariable`→`createEdge`; FamilyPedigree config refs→`nodeConfig`/`edgeConfig.type` |
+| `{ sibling, entity }` | `{ entity, type: <value of sibling field> }`                                                   | `edgeVariable`→`createEdge`; FamilyPedigree config refs→`nodeConfig`/`edgeConfig.type` |
 
 The extractor's walker threads **ambient context** as it descends (current
 stage subject; current owning-variable entity/type), so `stageSubject` and
