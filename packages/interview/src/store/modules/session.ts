@@ -141,15 +141,6 @@ const actionTypes = {
   updateEgo: 'NETWORK/UPDATE_EGO' as const,
 };
 
-export const createInitialNetwork = (): NcNetwork => ({
-  ego: {
-    [entityPrimaryKeyProperty]: uuid(),
-    [entityAttributesProperty]: {},
-  },
-  nodes: [],
-  edges: [],
-});
-
 const initialState = {} as SessionState;
 
 type AddNodeArgs = {

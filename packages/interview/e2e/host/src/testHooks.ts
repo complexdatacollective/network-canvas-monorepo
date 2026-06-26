@@ -1,10 +1,10 @@
 import { v4 as uuid } from 'uuid';
 
+import { createInitialNetwork } from '../../../src/contract/network';
 import type {
   ProtocolPayload,
   SessionPayload,
 } from '../../../src/contract/types';
-import { createInitialNetwork } from '../../../src/store/modules/session';
 
 const STORAGE_KEY = '__e2e_test_state';
 

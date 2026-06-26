@@ -13,6 +13,7 @@
     },
     "packages/interview": {
       "entry": [
+        "src/contract/index.ts",
         "src/**/*.stories.tsx",
         "e2e/specs/**/*.ts",
         "e2e/host/src/main.tsx",
