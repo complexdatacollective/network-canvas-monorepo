@@ -2,6 +2,7 @@ import type { ExtractedAsset } from '@codaco/protocol-validation';
 
 import { getActiveProtocolScope } from './activeProtocolScope';
 import { assetDb, assetKey, type StoredAsset } from './assetDB';
+import { getMemoryAsset, putMemoryAsset } from './inMemoryAssetStore';
 
 // Resolve the protocol to operate on: an explicit id wins, otherwise fall back
 // to the active editing scope. Reads tolerate a missing scope (return empty);
@@ -53,6 +54,21 @@ export const saveProtocolAssets = async (
   await Promise.all(assetPromises);
 };
 
+// Fallback used when IndexedDB writes fail (e.g. Safari private browsing). Keeps
+// the protocol's assets in memory so they still render and can be exported this
+// session. apikey assets are plain strings, not files, so they're skipped.
+export const saveProtocolAssetsToMemory = (
+  assets: ExtractedAsset[],
+  protocolId: string,
+): void => {
+  for (const asset of assets) {
+    if (typeof asset.data === 'string') {
+      continue;
+    }
+    putMemoryAsset(asset, protocolId);
+  }
+};
+
 export const getAssetById = async (
   assetId: string,
   protocolId?: string,
@@ -61,8 +77,16 @@ export const getAssetById = async (
   if (!scope) {
     return undefined;
   }
-  const row = await assetDb.assets.get(assetKey(scope, assetId));
-  return row ? toExtractedAsset(row) : undefined;
+  try {
+    const row = await assetDb.assets.get(assetKey(scope, assetId));
+    if (row) {
+      return toExtractedAsset(row);
+    }
+  } catch {
+    // IndexedDB unavailable (e.g. private browsing) — fall back to memory below.
+  }
+  const memoryRow = getMemoryAsset(scope, assetId);
+  return memoryRow ? toExtractedAsset(memoryRow) : undefined;
 };
 
 export const deleteProtocolAssets = async (

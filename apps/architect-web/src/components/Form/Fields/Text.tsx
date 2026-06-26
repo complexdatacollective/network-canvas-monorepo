@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
-import { memo, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import Icon from '~/lib/legacy-ui/components/Icon';
@@ -43,13 +43,23 @@ const TextInput = ({
   className = '',
   variant = 'default',
   type = 'text',
-  autoFocus: _autoFocus = false,
+  autoFocus = false,
   hidden = false,
   adornmentLeft = null,
   adornmentRight = null,
 }: TextInputProps) => {
   const { error, invalid, touched } = meta;
   const id = useRef(uuid());
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Focus on mount when requested (e.g. the variable spotlight search) so the
+  // user can type immediately. A ref/effect is used instead of the native
+  // `autoFocus` attribute to focus reliably after a dialog's focus trap settles.
+  useEffect(() => {
+    if (autoFocus) {
+      inputRef.current?.focus();
+    }
+  }, [autoFocus]);
 
   const hasLeftAdornment = !!adornmentLeft;
   const hasRightAdornment = !!adornmentRight;
@@ -66,6 +76,7 @@ const TextInput = ({
       )}
       <div className={cx('group relative', className)}>
         <input
+          ref={inputRef}
           id={id.current}
           name={input.name}
           className={cx(

@@ -125,15 +125,16 @@ const EntitySelectField = ({
     <div className="flex flex-col items-start gap-(--space-md)">
       {label && <h4>{label}</h4>}
 
-      <div
-        className={cx(
-          'flex flex-row flex-wrap justify-start gap-(--space-sm) p-(--space-sm)',
-          hasError && 'border-error border-solid border-(--space-xs)',
-        )}
-      >
-        {renderOptions()}
-      </div>
-      {options.length === 0 && (
+      {options.length > 0 ? (
+        <div
+          className={cx(
+            'flex flex-row flex-wrap justify-start gap-(--space-sm) p-(--space-sm)',
+            hasError && 'border-error border-solid border-(--space-xs)',
+          )}
+        >
+          {renderOptions()}
+        </div>
+      ) : (
         <p>
           No {entityType} types currently defined. Use the button below to
           create one.

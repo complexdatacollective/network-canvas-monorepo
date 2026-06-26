@@ -54,6 +54,19 @@ export function getActiveProtocolId(
   return typeof raw === 'string' ? raw : null;
 }
 
+const STORAGE_UNAVAILABLE_KEY = 'storageUnavailable';
+
+// Set when a protocol had to be opened from an in-memory copy because persistent
+// storage (IndexedDB) was unavailable — e.g. Safari private browsing. Drives the
+// "won't be saved" banner and disables autosave for the session.
+export function setStorageUnavailable(value: boolean) {
+  return setProperty({ key: STORAGE_UNAVAILABLE_KEY, value });
+}
+
+export function getStorageUnavailable(state: Pick<RootState, 'app'>): boolean {
+  return Boolean(get(state, ['app', STORAGE_UNAVAILABLE_KEY]));
+}
+
 const PREVIEW_IGNORE_SKIP_LOGIC_KEY = 'previewIgnoreSkipLogic';
 
 export function setPreviewIgnoreSkipLogic(value: boolean) {

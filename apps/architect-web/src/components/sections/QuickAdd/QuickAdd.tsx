@@ -12,6 +12,12 @@ import Tip from '../../Tip';
 import withOptions from './withOptions';
 import withQuickAddVariable from './withQuickAddVariable';
 
+type VariableOption = {
+  label: string;
+  value: string;
+  type?: string;
+};
+
 type QuickAddProps = StageEditorSectionProps & {
   disabled?: boolean;
   entity: string;
@@ -20,7 +26,7 @@ type QuickAddProps = StageEditorSectionProps & {
     variableType: string,
     fieldName: string,
   ) => void;
-  options?: Array<Record<string, unknown>>;
+  options?: VariableOption[];
   type?: string | null;
   quickAdd?: string | null;
 };
@@ -32,8 +38,19 @@ const QuickAdd = ({
   options = [],
   type = null,
   quickAdd = null,
-}: QuickAddProps) =>
-  type && (
+}: QuickAddProps) => {
+  if (!type) {
+    return null;
+  }
+
+  // The Tip nudges the user to store the quick-add value in a variable named
+  // "name". Once they've done so, the recommendation is satisfied — hide it.
+  const selectedOption = options.find(
+    (option) => option.value === quickAdd || option.label === quickAdd,
+  );
+  const hasNameVariable = selectedOption?.label.toLowerCase() === 'name';
+
+  return (
     <Section
       disabled={disabled}
       group
@@ -45,13 +62,15 @@ const QuickAdd = ({
         </p>
       }
     >
-      <Tip type="info">
-        <p>
-          Use a variable called &quot;name&quot; here, unless you have a good
-          reason not to. Interviewer will then automatically use this variable
-          as the label for the node in the interview.
-        </p>
-      </Tip>
+      {!hasNameVariable && (
+        <Tip type="info">
+          <p>
+            Use a variable called &quot;name&quot; here, unless you have a good
+            reason not to. Interviewer will then automatically use this variable
+            as the label for the node in the interview.
+          </p>
+        </Tip>
+      )}
       <ValidatedField
         name="quickAdd"
         component={VariablePicker}
@@ -67,6 +86,7 @@ const QuickAdd = ({
       />
     </Section>
   );
+};
 
 export default compose<QuickAddProps, StageEditorSectionProps>(
   withSubject,

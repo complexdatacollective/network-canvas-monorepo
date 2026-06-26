@@ -1,16 +1,17 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
 import { createSelector } from '@reduxjs/toolkit';
 import { get, pickBy } from 'es-toolkit/compat';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
 import type { Variable } from '@codaco/protocol-validation';
-import { Row, Section } from '~/components/EditorLayout';
+import { Subsection } from '~/components/EditorLayout';
 import Switch from '~/components/NewComponents/Switch';
 import Validations from '~/components/Validations';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
+import { cx } from '~/utils/cva';
 
 import { getFieldId } from '../../utils/issues';
 
@@ -42,19 +43,21 @@ const ValidationSection = ({
 
   const hasValidation = useSelector(hasValidationSelector);
 
-  const showValidationHints = useSelector(
-    (state: RootState) =>
-      formValueSelector(form)(state, 'showValidationHints') as
-        | boolean
-        | undefined,
-  );
+  const [isEnabled, setIsEnabled] = useState(!!hasValidation);
 
-  const handleToggleValidation = (nextState: boolean) => {
+  // Keep the toggle in sync when the underlying validation is set/cleared
+  // elsewhere (e.g. a form reset). Adding a rule sets hasValidation, removing
+  // the last rule clears it; enabling the toggle before adding a rule keeps
+  // hasValidation false, so this only fires on an actual change.
+  useEffect(() => {
+    setIsEnabled(!!hasValidation);
+  }, [hasValidation]);
+
+  const handleToggle = (nextState: boolean) => {
+    setIsEnabled(nextState);
     if (!nextState) {
       dispatch(change(form, 'validation', null) as UnknownAction);
     }
-
-    return true;
   };
 
   const existingVariablesForType = useMemo(
@@ -65,18 +68,27 @@ const ValidationSection = ({
       ),
     [existingVariables, variableType],
   );
+
   return (
-    <Section
-      disabled={disabled}
+    <Subsection
       id={getFieldId('validation')}
-      toggleable
       title="Validation"
       summary={<p>Add one or more validation rules to this form field.</p>}
-      startExpanded={!!hasValidation}
-      handleToggleChange={handleToggleValidation}
-      layout="vertical"
+      disabled={disabled}
+      action={
+        <Switch
+          title="Turn validation on or off"
+          checked={isEnabled}
+          onCheckedChange={handleToggle}
+          disabled={disabled}
+          className={cx(
+            'shrink-0',
+            disabled && 'cursor-not-allowed opacity-50',
+          )}
+        />
+      }
     >
-      <Row>
+      {isEnabled && (
         <Validations
           form={form}
           name="validation"
@@ -84,27 +96,8 @@ const ValidationSection = ({
           entity={entity}
           existingVariables={existingVariablesForType}
         />
-      </Row>
-      <div className="mt-(--space-sm) flex items-center justify-between gap-(--space-md)">
-        <div>
-          <h4 className="text-base font-semibold">Show validation hints?</h4>
-          <p className="text-sm text-current/70">
-            Automatically display hints derived from this field&apos;s
-            validation rules, helping participants understand input
-            requirements.
-          </p>
-        </div>
-        <Switch
-          checked={!!showValidationHints}
-          onCheckedChange={(checked) =>
-            dispatch(
-              change(form, 'showValidationHints', checked) as UnknownAction,
-            )
-          }
-          className="shrink-0"
-        />
-      </div>
-    </Section>
+      )}
+    </Subsection>
   );
 };
 

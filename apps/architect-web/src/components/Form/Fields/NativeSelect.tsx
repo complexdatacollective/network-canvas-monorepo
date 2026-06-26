@@ -287,13 +287,13 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
             <select
               className={cx(
                 'm-0 block min-h-(--space-md) w-full max-w-full px-(--space-md) py-(--space-sm)',
-                'appearance-none rounded-sm border-0 shadow-none',
+                'border-border appearance-none rounded-sm border shadow-none',
                 'text-input-foreground bg-surface-1 text-base font-normal',
-                'focus:shadow-none focus:outline-none',
+                'focus:border-primary focus:shadow-none focus:outline-none',
                 'disabled:cursor-not-allowed',
                 '[&_option:disabled]:text-surface-2-foreground [&_option:disabled]:italic',
                 hasError &&
-                  'border-error mb-0 rounded-b-none border-(length:--space-xs) border-solid',
+                  'border-error mb-0 rounded-b-none border-2 border-solid',
               )}
               style={{
                 backgroundImage: CHEVRON_BACKGROUND_IMAGE,

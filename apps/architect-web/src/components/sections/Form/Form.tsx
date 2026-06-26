@@ -57,7 +57,7 @@ const Form = ({
       />
     )}
     <EditableList
-      label="Form Fields"
+      label={disableFormTitle ? undefined : 'Form Fields'}
       editComponent={FieldFields}
       editProps={{
         type,

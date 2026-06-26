@@ -10,7 +10,7 @@ import {
   setActiveProtocol,
   updateLastModified,
 } from '../modules/activeProtocol';
-import { getActiveProtocolId } from '../modules/app';
+import { getActiveProtocolId, getStorageUnavailable } from '../modules/app';
 import type { RootState } from '../modules/root';
 import { generalErrorDialog } from '../modules/userActions/dialogs';
 import type { AppDispatch } from '../store';
@@ -101,6 +101,12 @@ startAppListening({
     }
     // The initial library row is written by the opening thunk.
     if (setActiveProtocol.match(action)) {
+      return false;
+    }
+
+    // Nothing was persisted for an in-memory (storage-unavailable) protocol, so
+    // skip autosave entirely rather than failing on every edit.
+    if (getStorageUnavailable(currentState)) {
       return false;
     }
 
