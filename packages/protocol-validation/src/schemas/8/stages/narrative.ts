@@ -1,14 +1,9 @@
-import { faker } from '@faker-js/faker';
+import { z } from 'zod';
 
-import { getEdgeTypeId, getNodeVariableId } from '~/utils/mock-seeds';
 import { findDuplicateId } from '~/utils/validation-helpers';
-import { z } from '~/utils/zod-mock-extension';
 
 import { NodeStageSubjectSchema } from '../common';
-import {
-  asEntityAttributeReference,
-  entityAttributeReference,
-} from '../entity-attribute-reference';
+import { entityAttributeReference } from '../entity-attribute-reference';
 import { FilterSchema } from '../filters';
 import { baseStageSchema } from './base';
 
@@ -20,37 +15,21 @@ export const narrativeStage = baseStageSchema.extend({
     .array(
       z.strictObject({
         id: z.string(),
-        label: z
-          .string()
-          .generateMock(() =>
-            faker.helpers.arrayElement([
-              'Sample Preset',
-              'Network Overview',
-              'Group Visualization',
-              'Relationship Display',
-            ]),
-          ),
+        label: z.string(),
         layoutVariable: entityAttributeReference({
           subject: 'stageSubject',
-        }).generateMock(() => asEntityAttributeReference(getNodeVariableId(0))),
-        groupVariable: entityAttributeReference({ subject: 'stageSubject' })
-          .optional()
-          .generateMock(() => asEntityAttributeReference(getNodeVariableId(1))),
+        }),
+        groupVariable: entityAttributeReference({
+          subject: 'stageSubject',
+        }).optional(),
         edges: z
           .strictObject({
-            display: z
-              .array(z.string())
-              .optional()
-              .generateMock(() => [getEdgeTypeId(0), getEdgeTypeId(1)]),
+            display: z.array(z.string()).optional(),
           })
           .optional(),
         highlight: z
           .array(entityAttributeReference({ subject: 'stageSubject' }))
-          .optional()
-          .generateMock(() => [
-            asEntityAttributeReference(getNodeVariableId(0)),
-            asEntityAttributeReference(getNodeVariableId(1)),
-          ]),
+          .optional(),
       }),
     )
     .min(1)
@@ -67,11 +46,7 @@ export const narrativeStage = baseStageSchema.extend({
     }),
   background: z
     .strictObject({
-      concentricCircles: z
-        .number()
-        .int()
-        .optional()
-        .generateMock(() => faker.number.int({ min: 1, max: 5 })),
+      concentricCircles: z.number().int().optional(),
       skewedTowardCenter: z.boolean().optional(),
     })
     .optional(),

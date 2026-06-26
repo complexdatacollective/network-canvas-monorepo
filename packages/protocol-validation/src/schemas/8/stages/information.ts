@@ -1,7 +1,6 @@
-import { faker } from '@faker-js/faker';
+import { z } from 'zod';
 
 import { findDuplicateId } from '~/utils/validation-helpers';
-import { z } from '~/utils/zod-mock-extension';
 
 import { baseStageSchema } from './base';
 
@@ -9,15 +8,7 @@ const ItemSizeSchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
 
 const baseItemSchema = z.strictObject({
   id: z.string(),
-  content: z
-    .string()
-    .generateMock(() =>
-      faker.helpers.arrayElement([
-        'Welcome to our research study.',
-        'On the next screen, you will be asked to provide some information.',
-        'Please read through this information.',
-      ]),
-    ),
+  content: z.string(),
   description: z.string().optional(),
 });
 
@@ -29,9 +20,7 @@ const textItemSchema = baseItemSchema.extend({
 // Size is an image/video sizing treatment, so it only applies to asset items.
 const assetItemSchema = baseItemSchema.extend({
   type: z.literal('asset'),
-  size: ItemSizeSchema.optional().generateMock(() =>
-    faker.helpers.arrayElement(['SMALL', 'MEDIUM', 'LARGE']),
-  ),
+  size: ItemSizeSchema.optional(),
 });
 
 const ItemSchema = z.discriminatedUnion('type', [
@@ -43,18 +32,7 @@ export type Item = z.infer<typeof ItemSchema>;
 
 export const informationStage = baseStageSchema.extend({
   type: z.literal('Information'),
-  title: z
-    .string()
-    .optional()
-    .generateMock(() =>
-      faker.helpers.arrayElement([
-        'Welcome to the Study',
-        'Information Interface',
-        'Using the Sociogram',
-        'Name Generation Techniques',
-        'Skip Logic and Network Filtering',
-      ]),
-    ),
+  title: z.string().optional(),
   items: z.array(ItemSchema).superRefine((items, ctx) => {
     // Check for duplicate item IDs
     const duplicateItemId = findDuplicateId(items);

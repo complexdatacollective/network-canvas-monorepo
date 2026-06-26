@@ -1,16 +1,6 @@
-import { faker } from '@faker-js/faker';
+import { z } from 'zod';
 
-import {
-  getEdgeTypeId,
-  getEdgeVariableId,
-  getNodeVariableId,
-} from '~/utils/mock-seeds';
-import { z } from '~/utils/zod-mock-extension';
-
-import {
-  asEntityAttributeReference,
-  entityAttributeReference,
-} from '../entity-attribute-reference';
+import { entityAttributeReference } from '../entity-attribute-reference';
 import { SortOrderSchema } from '../filters';
 
 export const promptSchema = z.strictObject({
@@ -38,7 +28,7 @@ export const sociogramPromptSchema = promptSchema.extend({
   layout: z.strictObject({
     layoutVariable: entityAttributeReference({
       subject: 'stageSubject',
-    }).generateMock(() => asEntityAttributeReference(getNodeVariableId())),
+    }),
   }),
   edges: z
     .strictObject({
@@ -57,32 +47,20 @@ export const sociogramPromptSchema = promptSchema.extend({
 });
 
 export const dyadCensusPromptSchema = promptSchema.extend({
-  createEdge: z.string().generateMock(() => getEdgeTypeId()),
+  createEdge: z.string(),
 });
 
 export const tieStrengthCensusPromptSchema = promptSchema.extend({
-  createEdge: z.string().generateMock(() => getEdgeTypeId()),
+  createEdge: z.string(),
   edgeVariable: entityAttributeReference({
     subject: { sibling: 'createEdge', entity: 'edge' },
     requireType: ['ordinal'],
-  }).generateMock(() => asEntityAttributeReference(getEdgeVariableId())),
-  negativeLabel: z
-    .string()
-    .min(1)
-    .generateMock(() =>
-      faker.helpers.arrayElement([
-        'not_knows',
-        'not_works_with',
-        'not_friends_with',
-        'not_related_to',
-      ]),
-    ),
+  }),
+  negativeLabel: z.string().min(1),
 });
 
 export const ordinalBinPromptSchema = promptSchema.extend({
-  variable: entityAttributeReference({ subject: 'stageSubject' }).generateMock(
-    () => asEntityAttributeReference(getNodeVariableId()),
-  ),
+  variable: entityAttributeReference({ subject: 'stageSubject' }),
   bucketSortOrder: SortOrderSchema.optional(),
   binSortOrder: SortOrderSchema.optional(),
   color: z.string().optional(),
@@ -92,16 +70,16 @@ export const categoricalBinPromptSchema = promptSchema
   .extend({
     variable: entityAttributeReference({
       subject: 'stageSubject',
-    }).generateMock(() => asEntityAttributeReference(getNodeVariableId())),
+    }),
     // TODO: This should be structured this way:
     // otherOption: z.strictObject({
     // 	binLabel: z.string(),
     // 	variable: z.string(),
     // 	prompt: z.string(),
     // }).optional(),
-    otherVariable: entityAttributeReference({ subject: 'stageSubject' })
-      .generateMock(() => asEntityAttributeReference(getNodeVariableId()))
-      .optional(),
+    otherVariable: entityAttributeReference({
+      subject: 'stageSubject',
+    }).optional(),
     otherVariablePrompt: z.string().optional(),
     otherOptionLabel: z.string().optional(),
     bucketSortOrder: SortOrderSchema.optional(),
@@ -120,19 +98,15 @@ export const categoricalBinPromptSchema = promptSchema
   });
 
 export const oneToManyDyadCensusPromptSchema = promptSchema.extend({
-  createEdge: z.string().generateMock(() => getEdgeTypeId()),
+  createEdge: z.string(),
   bucketSortOrder: SortOrderSchema.optional(),
   binSortOrder: SortOrderSchema.optional(),
 });
 
 export const geospatialPromptSchema = promptSchema.extend({
-  variable: entityAttributeReference({ subject: 'stageSubject' }).generateMock(
-    () => asEntityAttributeReference(getNodeVariableId()),
-  ),
+  variable: entityAttributeReference({ subject: 'stageSubject' }),
 });
 
 export const familyPedigreeNominationPromptSchema = promptSchema.extend({
-  variable: entityAttributeReference({ subject: 'stageSubject' }).generateMock(
-    () => asEntityAttributeReference(getNodeVariableId()),
-  ),
+  variable: entityAttributeReference({ subject: 'stageSubject' }),
 });

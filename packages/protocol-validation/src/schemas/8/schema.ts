@@ -23,8 +23,6 @@ export * from './stages';
 export * from './variables';
 
 // Import what we need for the ProtocolSchema
-import { getAssetId } from '~/utils/mock-seeds';
-
 import { assetSchema } from './assets';
 import { type Codebook, CodebookSchema, type NodeDefinition } from './codebook';
 import { ExperimentsSchema, type FormField, type StageSubject } from './common';
@@ -183,11 +181,7 @@ const ProtocolSchema = z
     name: z.string().min(1),
     description: z.string().optional(),
     experiments: ExperimentsSchema.optional(),
-    lastModified: z
-      .string()
-      .datetime()
-      .optional()
-      .generateMock(() => new Date().toISOString()),
+    lastModified: z.string().datetime().optional(),
     schemaVersion: z.literal(8),
     codebook: CodebookSchema,
     assetManifest: z.record(z.string(), assetSchema).optional(),
@@ -674,46 +668,6 @@ const ProtocolSchema = z
         }
       }
     }
-  })
-  .generateMock(() => {
-    const codebook = CodebookSchema.generateMock();
-    const stages = Array.from({ length: 5 }, () => stageSchema.generateMock());
-
-    return {
-      name: 'Mock Protocol',
-      description: 'Generated Mock Protocol for Testing',
-      schemaVersion: 8 as const,
-      lastModified: new Date().toISOString(),
-      experiments: {
-        encryptedVariables: false,
-      },
-      codebook,
-      // Fixed asset types so stage mocks that reference these slots by index
-      // resolve to the asset type their cross-reference validation requires:
-      // index 0 -> apikey (Geospatial token), index 1 -> geojson (Geospatial
-      // dataSource), index 2 -> network (NameGeneratorRoster dataSource).
-      assetManifest: {
-        [getAssetId(0)]: {
-          id: getAssetId(0),
-          type: 'apikey' as const,
-          name: 'Mapbox Token',
-          value: 'pk.mockToken',
-        },
-        [getAssetId(1)]: {
-          id: getAssetId(1),
-          type: 'geojson' as const,
-          name: 'map.geojson',
-          source: 'map.geojson',
-        },
-        [getAssetId(2)]: {
-          id: getAssetId(2),
-          type: 'network' as const,
-          name: 'roster.csv',
-          source: 'roster.csv',
-        },
-      },
-      stages,
-    };
   });
 
 export type ProtocolSchemaV8 = z.infer<typeof ProtocolSchema>;

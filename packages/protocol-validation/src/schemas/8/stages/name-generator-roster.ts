@@ -1,8 +1,6 @@
-import { faker } from '@faker-js/faker';
+import { z } from 'zod';
 
-import { getAssetId } from '~/utils/mock-seeds';
 import { findDuplicateId } from '~/utils/validation-helpers';
-import { z } from '~/utils/zod-mock-extension';
 
 import { NodeStageSubjectSchema, nameGeneratorPromptSchema } from '../common';
 import { SortOrderSchema } from '../filters';
@@ -11,7 +9,7 @@ import { baseStageSchema } from './base';
 export const nameGeneratorRosterStage = baseStageSchema.extend({
   type: z.literal('NameGeneratorRoster'),
   subject: NodeStageSubjectSchema,
-  dataSource: z.string().generateMock(() => getAssetId(2)),
+  dataSource: z.string(),
   cardOptions: z
     .strictObject({
       additionalProperties: z
@@ -41,19 +39,9 @@ export const nameGeneratorRosterStage = baseStageSchema.extend({
     .optional(),
   searchOptions: z
     .strictObject({
-      fuzziness: z
-        .number()
-        .generateMock(() =>
-          faker.number.float({ multipleOf: 0.25, min: 0, max: 1 }),
-        ),
+      fuzziness: z.number(),
       // External data-source (roster CSV) column names, not codebook variables.
-      matchProperties: z.array(z.string()).generateMock(() =>
-        faker.helpers.arrayElement([
-          ['name', 'first_name', 'last_name'],
-          ['website', 'country', 'name'],
-          ['email', 'name'],
-        ]),
-      ),
+      matchProperties: z.array(z.string()),
     })
     .optional(),
   prompts: z

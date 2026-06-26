@@ -1,9 +1,6 @@
-import {
-  asEntityAttributeReference,
-  entityAttributeReference,
-} from '~/schemas/8/entity-attribute-reference';
-import { getNodeTypeId, getNodeVariableId } from '~/utils/mock-seeds';
-import { z } from '~/utils/zod-mock-extension';
+import { z } from 'zod';
+
+import { entityAttributeReference } from '~/schemas/8/entity-attribute-reference';
 
 // Operators valid when checking entity type existence (no attribute specified)
 export const TypeLevelOperators = z.enum(['EXISTS', 'NOT_EXISTS']);
@@ -77,100 +74,60 @@ export const OperatorsByVariableType: Record<string, readonly string[]> = {
   location: BaseOperators,
 };
 
-// Value schema with custom mock generator to avoid z.any() traversal
 const filterValueSchema = z
   .union([z.number().int(), z.string(), z.boolean(), z.array(z.any())])
-  .optional()
-  .generateMock(() => 'test-value');
+  .optional();
 
 // Options schema for type-level rules (no attribute - checking entity existence)
-const typeLevelOptionsSchema = z
-  .strictObject({
-    type: z
-      .string()
-      .optional()
-      .generateMock(() => getNodeTypeId()),
-    operator: TypeLevelOperators,
-    value: filterValueSchema,
-  })
-  .generateMock(() => ({
-    type: getNodeTypeId(),
-    operator: 'EXISTS' as const,
-  }));
+const typeLevelOptionsSchema = z.strictObject({
+  type: z.string().optional(),
+  operator: TypeLevelOperators,
+  value: filterValueSchema,
+});
 
 // Options schema for attribute-level rules (attribute specified - checking variable value)
-const attributeLevelOptionsSchema = z
-  .strictObject({
-    type: z
-      .string()
-      .optional()
-      .generateMock(() => getNodeTypeId()),
-    attribute: entityAttributeReference({ subject: 'filterRule' }),
-    operator: AllOperators,
-    value: filterValueSchema,
-  })
-  .generateMock(() => ({
-    type: getNodeTypeId(),
-    attribute: asEntityAttributeReference(getNodeVariableId()),
-    operator: 'EXACTLY' as const,
-    value: 'test',
-  }));
+const attributeLevelOptionsSchema = z.strictObject({
+  type: z.string().optional(),
+  attribute: entityAttributeReference({ subject: 'filterRule' }),
+  operator: AllOperators,
+  value: filterValueSchema,
+});
 
 // Type-level filter rule (no attribute - EXISTS/NOT_EXISTS only)
-const typeLevelFilterRuleSchema = z
-  .strictObject({
-    type: z.enum(['node', 'ego', 'edge']).generateMock(() => 'node' as const),
-    id: z.string(),
-    options: typeLevelOptionsSchema,
-  })
-  .generateMock(() => ({
-    type: 'node' as const,
-    id: crypto.randomUUID(),
-    options: typeLevelOptionsSchema.generateMock(),
-  }));
+const typeLevelFilterRuleSchema = z.strictObject({
+  type: z.enum(['node', 'ego', 'edge']),
+  id: z.string(),
+  options: typeLevelOptionsSchema,
+});
 
 // Attribute-level filter rule (attribute specified - all operators valid at schema level)
-const attributeLevelFilterRuleSchema = z
-  .strictObject({
-    type: z.enum(['node', 'ego', 'edge']).generateMock(() => 'node' as const),
-    id: z.string(),
-    options: attributeLevelOptionsSchema,
-  })
-  .generateMock(() => ({
-    type: 'node' as const,
-    id: crypto.randomUUID(),
-    options: attributeLevelOptionsSchema.generateMock(),
-  }));
+const attributeLevelFilterRuleSchema = z.strictObject({
+  type: z.enum(['node', 'ego', 'edge']),
+  id: z.string(),
+  options: attributeLevelOptionsSchema,
+});
 
 // Combined filter rule schema using discriminated union
-export const filterRuleSchema = z
-  .union([attributeLevelFilterRuleSchema, typeLevelFilterRuleSchema])
-  .generateMock(() => attributeLevelFilterRuleSchema.generateMock());
+export const filterRuleSchema = z.union([
+  attributeLevelFilterRuleSchema,
+  typeLevelFilterRuleSchema,
+]);
 
 export type FilterRule = z.infer<typeof filterRuleSchema>;
 
 const singleFilterRuleSchema = z.strictObject({
   join: z.enum(['OR', 'AND']).optional(),
-  rules: z
-    .array(filterRuleSchema)
-    .min(1)
-    .max(1)
-    .generateMock(() => [filterRuleSchema.generateMock()]),
+  rules: z.array(filterRuleSchema).min(1).max(1),
 });
 
 const multipleFilterRuleSchema = z.strictObject({
-  join: z.enum(['OR', 'AND']).generateMock(() => 'AND' as const),
-  rules: z
-    .array(filterRuleSchema)
-    .min(1)
-    .generateMock(() => [
-      filterRuleSchema.generateMock(),
-      filterRuleSchema.generateMock(),
-    ]),
+  join: z.enum(['OR', 'AND']),
+  rules: z.array(filterRuleSchema).min(1),
 });
 
-export const FilterSchema = z
-  .union([singleFilterRuleSchema, multipleFilterRuleSchema])
-  .generateMock(() => singleFilterRuleSchema.generateMock());
+export const FilterSchema = z.union([
+  singleFilterRuleSchema,
+  multipleFilterRuleSchema,
+]);
 
 export type Filter = z.infer<typeof FilterSchema>;
