@@ -1,4 +1,4 @@
-# Family Pedigree — configurable terminology framing, intro screen, and boundary rules
+# Family Pedigree — configurable framing, intro screen, boundary rules, and genetics-data capture
 
 **Date:** 2026-06-26
 **Packages:** `@codaco/protocol-validation`, `@codaco/shared-consts`, `@codaco/architect-web`, `@codaco/interview`
@@ -7,6 +7,9 @@
 This is **Feature #1 of three** in the family-pedigree redesign. The other two —
 (#2) interface fixes (add-sibling discoverability, first-cousin demonstration)
 and (#3) the new read-only Narrative Pedigree interface — have their own specs.
+This spec also owns two **FamilyPedigree data-model & capture changes** (persist
+`gameteRole` on the network; capture biological sex for non-parent people) that
+Feature #3's genetics engine depends on — see §5.
 
 ## Problem
 
@@ -268,16 +271,47 @@ driven by these predicates and their severities.
 Persist the chosen framing in the stage's metadata
 (`FamilyPedigreeStageMetadata` in `@codaco/shared-consts/stage-metadata.ts` gains
 `selectedFraming?: FramingId`), set on `finalizeNetwork()` / at selection time.
-Stage metadata is the established home for stage-scoped pedigree facts
-(`gameteRole` already lives there, not as a codebook variable), keeping the
-codebook unchanged. If a study later needs the choice as analyzable network data,
-it can additionally be bound to an ego variable — out of scope here.
+Stage metadata is the established home for stage-scoped pedigree facts (it already
+persists the per-stage node/edge snapshot), keeping the codebook unchanged. If a
+study later needs the choice as analyzable network data, it can additionally be
+bound to an ego variable — out of scope here.
+
+### 5. FamilyPedigree data-model & capture changes (genetics prerequisites)
+
+Feature #3 (Narrative Pedigree) needs each person's biological sex and needs
+`gameteRole` readable from the shared network. Those changes live here, in the
+FamilyPedigree stage, and are **always-on** (no config flag).
+
+**Persist `gameteRole` on the network.** Add `gameteRoleVariable` to
+`EdgeConfigSchema` (`schemas/8/stages/family-pedigree.ts`) — a codebook edge
+variable storing `'egg'`/`'sperm'`, written during capture/finalization exactly
+like `isGestationalCarrierVariable`. The pedigree transforms and `finalizeNetwork`
+write the role into this edge attribute; `getDisplayLabel`/`nominatedGameteRoles`
+read it from the network variable rather than the in-store `FamilyEdge.gameteRole`
+or stage metadata. The now-redundant `gameteRole` field on
+`FamilyPedigreeStageMetadata` (`shared-consts/stage-metadata.ts`) is removed.
+
+**Capture biological sex for non-parent people.** Add `biologicalSexVariable` to
+`NodeConfigSchema` — a node categorical whose values come from a new
+`BIOLOGICAL_SEX_VALUES` constant in `shared-consts/src/family-pedigree.ts`
+(`['female', 'male', 'intersex', 'unknown']`). `PersonFields` (and the wizards
+that create people) ask a biological-sex question for any person **not** created
+as an egg/sperm parent (ego, children, siblings, social parents); egg/sperm
+parents derive sex from `gameteRole`. A leaf who later becomes a parent keeps
+their captured sex (the later gamete assignment should agree: female→egg,
+male→sperm). Sex resolves downstream as: explicit `biologicalSexVariable` if
+`female`/`male`; else gameteRole-derived for genetic parents; else `unknown`.
+
+**Architect:** bind `gameteRoleVariable` and `biologicalSexVariable` in the
+existing `sections/FamilyPedigree/EdgeConfiguration.tsx` /
+`NodeConfiguration.tsx` variable bindings.
 
 ## Edge cases
 
 - **Participant choice, then back-navigation.** If the participant changes their
   framing selection, `setFraming` updates the store and all rendered labels
-  follow reactively; no captured data changes (only `gameteRole` is stored).
+  follow reactively; no captured data changes (only the neutral `gameteRole` is
+  stored, now as a network edge variable — see §5).
 - **"No children" declaration.** `requireChildrenContributors` part (1) needs a
   positive signal that ego has no children, distinct from "not yet recorded." The
   quick-start children step already asks about children; entering zero / a "no
@@ -311,6 +345,10 @@ it can additionally be bound to an ego variable — out of scope here.
   the participant-choice flow (intro → chooser → bio parents relabel live); a
   stage with each boundary set to `required` showing the completion block and the
   checklist blocker, and `recommended` showing a non-blocking nudge.
+- **Data-model & capture (§5):** capture writes `gameteRole` to the network edge
+  variable and `getDisplayLabel`/`nominatedGameteRoles` read it from there; the
+  biological-sex question appears for non-gamete-parent people and is omitted for
+  egg/sperm parents; sex resolution (explicit / gameteRole-derived / `unknown`).
 
 ## Out of scope (this feature)
 
@@ -323,22 +361,24 @@ it can additionally be bound to an ego variable — out of scope here.
 
 ## File-level change map
 
-| Area          | File(s)                                                                                                                 | Change                                                    |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| Schema        | `schemas/8/stages/family-pedigree.ts`                                                                                   | add `framing`, `boundaries`, `introScreen`                |
-| Schema        | `schemas/8/schema.ts`                                                                                                   | `videoAssetId` → `video` asset cross-ref in `superRefine` |
-| shared-consts | `family-pedigree-framing.ts` (new), `index.ts`                                                                          | `FRAMING_IDS`, author labels, `FRAMING_TERMS`             |
-| shared-consts | `stage-metadata.ts`                                                                                                     | `FamilyPedigreeStageMetadata.selectedFraming?`            |
-| Architect     | `StageEditor/Interfaces.tsx`                                                                                            | register 3 new sections                                   |
-| Architect     | `sections/FamilyPedigree/IntroScreen.tsx`, `FramingConfig.tsx`, `BoundaryOptions.tsx` (new)                             | authoring UI                                              |
-| Interview     | `FamilyPedigree/store.ts`                                                                                               | `framing`/`setFraming`                                    |
-| Interview     | `FamilyPedigree/FamilyPedigreeProvider.tsx`                                                                             | init framing from config                                  |
-| Interview     | `FamilyPedigree/hooks/useFramedTerms.ts` (new)                                                                          | term lookup                                               |
-| Interview     | `quickStartWizard/IntroStep.tsx`, `FramingSelectionStep.tsx` (new)                                                      | steps 0–1                                                 |
-| Interview     | `wizards/EgoCellWizard.tsx`                                                                                             | prepend steps; framed titles                              |
-| Interview     | `quickStartWizard/{BioParentsIntro,EggParent,SpermParent,GestationalCarrier}Step.tsx`, `wizards/steps/BioTriadStep.tsx` | read `useFramedTerms()`                                   |
-| Interview     | `pedigree-layout/utils/getDisplayLabel.ts`, `pedigree-layout/components/PedigreeView.tsx`                               | thread `framing` param                                    |
-| Interview     | `utils/validatePedigree.ts`, `components/PedigreeChecklist.tsx`                                                         | `geneticParentIds`, two boundary predicates, severities   |
+| Area          | File(s)                                                                                                                 | Change                                                                                                          |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Schema        | `schemas/8/stages/family-pedigree.ts`                                                                                   | add `framing`, `boundaries`, `introScreen`, `edgeConfig.gameteRoleVariable`, `nodeConfig.biologicalSexVariable` |
+| Schema        | `schemas/8/schema.ts`                                                                                                   | `videoAssetId` → `video` asset cross-ref in `superRefine`                                                       |
+| shared-consts | `family-pedigree-framing.ts` (new), `index.ts`                                                                          | `FRAMING_IDS`, author labels, `FRAMING_TERMS`                                                                   |
+| shared-consts | `stage-metadata.ts`                                                                                                     | add `selectedFraming?`; remove redundant `gameteRole` (now on network)                                          |
+| Architect     | `StageEditor/Interfaces.tsx`                                                                                            | register 3 new sections                                                                                         |
+| Architect     | `sections/FamilyPedigree/IntroScreen.tsx`, `FramingConfig.tsx`, `BoundaryOptions.tsx` (new)                             | authoring UI                                                                                                    |
+| Interview     | `FamilyPedigree/store.ts`, `transforms/*`                                                                               | `framing`/`setFraming`; write `gameteRole` to network edge var                                                  |
+| Interview     | `quickStartWizard/PersonFields.tsx` + person-creating wizards                                                           | biological-sex question for non-gamete-parent people                                                            |
+| Architect     | `sections/FamilyPedigree/{NodeConfiguration,EdgeConfiguration}.tsx`                                                     | bind `gameteRoleVariable` / `biologicalSexVariable`                                                             |
+| Interview     | `FamilyPedigree/FamilyPedigreeProvider.tsx`                                                                             | init framing from config                                                                                        |
+| Interview     | `FamilyPedigree/hooks/useFramedTerms.ts` (new)                                                                          | term lookup                                                                                                     |
+| Interview     | `quickStartWizard/IntroStep.tsx`, `FramingSelectionStep.tsx` (new)                                                      | steps 0–1                                                                                                       |
+| Interview     | `wizards/EgoCellWizard.tsx`                                                                                             | prepend steps; framed titles                                                                                    |
+| Interview     | `quickStartWizard/{BioParentsIntro,EggParent,SpermParent,GestationalCarrier}Step.tsx`, `wizards/steps/BioTriadStep.tsx` | read `useFramedTerms()`                                                                                         |
+| Interview     | `pedigree-layout/utils/getDisplayLabel.ts`, `pedigree-layout/components/PedigreeView.tsx`                               | thread `framing` param                                                                                          |
+| Interview     | `utils/validatePedigree.ts`, `components/PedigreeChecklist.tsx`                                                         | `geneticParentIds`, two boundary predicates, severities                                                         |
 
 ```
 
