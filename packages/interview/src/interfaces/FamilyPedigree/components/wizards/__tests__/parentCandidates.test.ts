@@ -21,6 +21,7 @@ const variableConfig: VariableConfig = {
   relationshipTypeVariable: 'rel',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGC',
+  gameteRoleVariable: 'gameteRole',
 };
 
 function edge(from: string, to: string, rel: string): [string, NcEdge] {
@@ -199,31 +200,35 @@ describe('nominatedGameteRoles', () => {
         type: 'family',
         from,
         to,
-        attributes: { rel: ['biological'], isActive: true },
-        gameteRole,
+        // gameteRole now lives as a network edge attribute, not a separate field
+        attributes: {
+          rel: ['biological'],
+          isActive: true,
+          gameteRole,
+        },
       },
     ];
   }
 
-  it('maps each node to the gamete role it was nominated for', () => {
+  it('maps each node to the gamete role it was nominated for (reads from attributes)', () => {
     // Linda is the egg parent of ego; Robert the sperm parent.
     const edges = new Map<string, FamilyEdge>([
       gameteEdge('linda', 'ego', 'egg'),
       gameteEdge('robert', 'ego', 'sperm'),
       gameteEdge('linda', 'robert', 'egg'),
     ]);
-    const roles = nominatedGameteRoles(edges);
+    const roles = nominatedGameteRoles(edges, variableConfig);
     expect(roles.get('linda')).toBe('egg');
     expect(roles.get('robert')).toBe('sperm');
     expect(roles.has('ego')).toBe(false);
   });
 
-  it('ignores edges without a gamete role', () => {
+  it('ignores edges without a gamete role attribute', () => {
     const edges = new Map<string, FamilyEdge>([
       edge('mum', 'ego', 'biological'),
       edge('dad', 'ego', 'biological'),
     ]);
-    const roles = nominatedGameteRoles(edges);
+    const roles = nominatedGameteRoles(edges, variableConfig);
     expect(roles.size).toBe(0);
   });
 });

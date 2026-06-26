@@ -17,6 +17,7 @@ const variableConfig: VariableConfig = {
   relationshipTypeVariable: 'rel',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGC',
+  gameteRoleVariable: 'gameteRole',
 };
 
 function edge(

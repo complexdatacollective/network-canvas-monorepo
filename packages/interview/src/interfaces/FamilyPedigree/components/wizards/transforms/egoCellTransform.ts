@@ -209,11 +209,13 @@ export function egoCellTransform(
     if (parent.isGestationalCarrier) {
       edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
     }
+    if (parent.gameteRole) {
+      edgeAttributes[variableConfig.gameteRoleVariable] = parent.gameteRole;
+    }
 
     batch.edges.push({
       source: parent.tempId,
       target: egoRef,
-      ...(parent.gameteRole ? { gameteRole: parent.gameteRole } : {}),
       data: { attributes: edgeAttributes },
     });
   }

@@ -14,6 +14,7 @@ const variableConfig: VariableConfig = {
   relationshipTypeVariable: 'rel',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGest',
+  gameteRoleVariable: 'gameteRole',
 };
 
 function makeNodes(

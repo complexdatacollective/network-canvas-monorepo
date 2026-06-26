@@ -62,7 +62,7 @@ export async function openDefineParentsWizard(
   const bioTriadConfig = {
     existingNodes,
     preselection,
-    gameteRoles: nominatedGameteRoles(edges),
+    gameteRoles: nominatedGameteRoles(edges, variableConfig),
   };
 
   function WrappedBioTriadStep() {

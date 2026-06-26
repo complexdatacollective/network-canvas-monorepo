@@ -12,6 +12,7 @@ const config: VariableConfig = {
   relationshipTypeVariable: 'rel',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGC',
+  gameteRoleVariable: 'gameteRole',
 };
 
 function edge(
@@ -21,6 +22,9 @@ function edge(
   opts: { gameteRole?: 'egg' | 'sperm'; isGC?: boolean } = {},
 ): [string, FamilyEdge] {
   const id = `${from}->${to}:${rel}`;
+  const attrs: Record<string, unknown> = { rel: [rel], isActive: true };
+  if (opts.isGC) attrs.isGC = true;
+  if (opts.gameteRole) attrs.gameteRole = opts.gameteRole;
   return [
     id,
     {
@@ -28,10 +32,7 @@ function edge(
       type: 'family',
       from,
       to,
-      attributes: opts.isGC
-        ? { rel: [rel], isActive: true, isGC: true }
-        : { rel: [rel], isActive: true },
-      ...(opts.gameteRole ? { gameteRole: opts.gameteRole } : {}),
+      attributes: attrs,
     },
   ];
 }

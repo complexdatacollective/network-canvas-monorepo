@@ -17,6 +17,7 @@ const variableConfig: VariableConfig = {
   relationshipTypeVariable: 'rel',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGest',
+  gameteRoleVariable: 'gameteRole',
 };
 
 function makeNodes(
@@ -60,8 +61,10 @@ function makeEdges(
         attributes: {
           [variableConfig.relationshipTypeVariable]: [relType],
           [variableConfig.isActiveVariable]: isActive ?? true,
+          ...(gameteRole
+            ? { [variableConfig.gameteRoleVariable]: gameteRole }
+            : {}),
         },
-        ...(gameteRole ? { gameteRole } : {}),
       },
     ]),
   );

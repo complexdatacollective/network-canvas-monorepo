@@ -10,6 +10,10 @@ import type {
   GameteRole,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
+
+function readGameteRole(value: unknown): GameteRole | undefined {
+  return value === 'egg' || value === 'sperm' ? value : undefined;
+}
 import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 
 type PathStep = 'parent' | 'child' | 'partner';
@@ -182,6 +186,7 @@ function getParentEdgeType(
 /**
  * The gamete role recorded on a direct parent->ego edge, if any. Lets an
  * unnamed biological/donor parent be labelled as the egg or sperm parent.
+ * Reads the role from the edge attribute stored under `gameteRoleVariable`.
  */
 function getDirectParentGameteRole(
   nodeId: string,
@@ -194,13 +199,11 @@ function getDirectParentGameteRole(
       edge,
       variableConfig.relationshipTypeVariable,
     );
-    if (
-      edge.from === nodeId &&
-      edge.to === egoId &&
-      relType !== 'partner' &&
-      edge.gameteRole
-    ) {
-      return edge.gameteRole;
+    if (edge.from === nodeId && edge.to === egoId && relType !== 'partner') {
+      const role = readGameteRole(
+        edge.attributes[variableConfig.gameteRoleVariable],
+      );
+      if (role) return role;
     }
   }
   return undefined;

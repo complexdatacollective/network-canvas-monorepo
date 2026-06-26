@@ -17,9 +17,6 @@ const FamilyPedigreeStageMetadataSchema = z.object({
         id: z.string(),
         from: z.string(),
         to: z.string(),
-        // Internal-only: which gamete a biological/donor parent contributed.
-        // Persisted in stage metadata for labelling; never part of the network.
-        gameteRole: z.optional(z.enum(['egg', 'sperm'])),
         attributes: z.record(
           z.string(),
           z.union([

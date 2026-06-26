@@ -86,7 +86,7 @@ export async function openAddChildWizard(
   const bioTriadConfig = {
     existingNodes,
     preselection,
-    gameteRoles: nominatedGameteRoles(edges),
+    gameteRoles: nominatedGameteRoles(edges, variableConfig),
   };
 
   const result = await openDialog({

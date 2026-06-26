@@ -35,6 +35,8 @@ export type VariableConfig = {
   relationshipTypeVariable: string;
   isActiveVariable: string;
   isGestationalCarrierVariable: string;
+  /** Edge variable storing the gamete role ('egg'|'sperm') of a biological/donor parent. */
+  gameteRoleVariable: string;
 };
 
 export type NodeMetadata = {
@@ -42,14 +44,13 @@ export type NodeMetadata = {
 };
 
 /**
- * Which gamete a biological/donor parent contributed. Internal pedigree state:
- * persisted to stage metadata for relationship labelling, never written to the
- * interview network as an attribute.
+ * Which gamete a biological/donor parent contributed. Written to the network
+ * as an edge attribute under `variableConfig.gameteRoleVariable`.
  */
 export type GameteRole = 'egg' | 'sperm';
 
-/** A pedigree edge plus its internal, non-network gamete-role marker. */
-export type FamilyEdge = NcEdge & { gameteRole?: GameteRole };
+/** A pedigree edge. gameteRole is stored in `attributes[gameteRoleVariable]`. */
+export type FamilyEdge = NcEdge;
 
 export type CommitBatch = {
   nodes: {
@@ -61,7 +62,6 @@ export type CommitBatch = {
   edges: {
     source: string;
     target: string;
-    gameteRole?: GameteRole;
     data: {
       attributes: Record<string, VariableValue>;
     };
@@ -91,7 +91,6 @@ type NetworkActions = {
     from: string;
     to: string;
     attributes: Record<string, VariableValue>;
-    gameteRole?: GameteRole;
     id?: string;
   }) => string;
   removeEdge: (id: string) => void;
@@ -226,7 +225,7 @@ export const createFamilyPedigreeStore = (
         },
 
         addEdge: (edge) => {
-          const { id, from, to, attributes, gameteRole } = edge;
+          const { id, from, to, attributes } = edge;
           const edgeId = id ?? crypto.randomUUID();
 
           set((state) => {
@@ -237,7 +236,6 @@ export const createFamilyPedigreeStore = (
               from,
               to,
               attributes,
-              ...(gameteRole ? { gameteRole } : {}),
             });
           });
 
@@ -293,7 +291,6 @@ export const createFamilyPedigreeStore = (
                 from: resolvedSource,
                 to: resolvedTarget,
                 attributes: edge.data.attributes,
-                ...(edge.gameteRole ? { gameteRole: edge.gameteRole } : {}),
               });
             }
           });
@@ -341,7 +338,6 @@ export const createFamilyPedigreeStore = (
             from: edge.from,
             to: edge.to,
             attributes: edge.attributes,
-            ...(edge.gameteRole ? { gameteRole: edge.gameteRole } : {}),
           }));
 
           dispatch?.(

@@ -132,10 +132,12 @@ export function siblingCellTransform(
     }
 
     const gameteRole = gameteRoleForRole(parent.roleKey);
+    if (gameteRole) {
+      edgeAttributes[variableConfig.gameteRoleVariable] = gameteRole;
+    }
     batch.edges.push({
       source: parent.tempId,
       target: 'sibling',
-      ...(gameteRole ? { gameteRole } : {}),
       data: { attributes: edgeAttributes },
     });
   }

@@ -144,10 +144,12 @@ export function buildChildParentage(
       edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
     }
     const gameteRole = gameteRoleForRole(entry.roleKey);
+    if (gameteRole) {
+      edgeAttributes[variableConfig.gameteRoleVariable] = gameteRole;
+    }
     edges.push({
       source: entry.tempId,
       target: childTempId,
-      ...(gameteRole ? { gameteRole } : {}),
       data: { attributes: edgeAttributes },
     });
   }
@@ -161,10 +163,12 @@ export function buildChildParentage(
       edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
     }
     const gameteRole = gameteRoleForRole(entry.roleKey);
+    if (gameteRole) {
+      edgeAttributes[variableConfig.gameteRoleVariable] = gameteRole;
+    }
     edges.push({
       source: entry.sourceId,
       target: childTempId,
-      ...(gameteRole ? { gameteRole } : {}),
       data: { attributes: edgeAttributes },
     });
   }

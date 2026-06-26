@@ -21,6 +21,7 @@ const testConfig: VariableConfig = {
   relationshipTypeVariable: 'relationshipType',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGestationalCarrier',
+  gameteRoleVariable: 'gameteRole',
 };
 
 describe('store creation', () => {

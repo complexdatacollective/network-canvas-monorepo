@@ -14,6 +14,7 @@ const variableConfig: VariableConfig = {
   relationshipTypeVariable: 'relationship',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGC',
+  gameteRoleVariable: 'gameteRole',
 };
 
 const relTypeOf = (e: {

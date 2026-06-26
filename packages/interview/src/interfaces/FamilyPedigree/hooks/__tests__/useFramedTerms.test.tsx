@@ -16,6 +16,7 @@ const testConfig: VariableConfig = {
   relationshipTypeVariable: 'relationshipType',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGestationalCarrier',
+  gameteRoleVariable: 'gameteRole',
 };
 
 function framingWrapper(framing: FramingId | null) {

@@ -50,7 +50,7 @@ export async function openAddSiblingWizard(
   const bioTriadConfig = {
     existingNodes,
     preselection,
-    gameteRoles: nominatedGameteRoles(edges),
+    gameteRoles: nominatedGameteRoles(edges, variableConfig),
   };
 
   function WrappedBioTriadStep() {
