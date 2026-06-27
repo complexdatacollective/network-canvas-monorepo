@@ -70,6 +70,11 @@ function buildFramingInterview({
     },
     censusPrompt: 'Please create your family pedigree.',
     framing: { mode: 'participantChoice' },
+    // boundaries is a mandatory schema field read by the checklist.
+    boundaries: {
+      requireGrandparents: 'off',
+      requireChildrenContributors: 'off',
+    },
     ...(withIntroScreen && {
       introScreen: {
         title: 'Before we begin',
@@ -143,6 +148,11 @@ function buildFixedFramingInterview(value: FixedFramingMode) {
     },
     censusPrompt: 'Please create your family pedigree.',
     framing: { mode: 'fixed', value },
+    // boundaries is a mandatory schema field read by the checklist.
+    boundaries: {
+      requireGrandparents: 'off',
+      requireChildrenContributors: 'off',
+    },
   });
 
   return si;

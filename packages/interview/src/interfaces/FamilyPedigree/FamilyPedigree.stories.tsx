@@ -188,6 +188,14 @@ export const Default: Story = {
       si.addStage('FamilyPedigree', {
         label: 'Family Pedigree',
         subject: { entity: 'node', type: nodeType.id },
+        // framing and boundaries are mandatory FamilyPedigree schema fields
+        // (the provider reads framing.mode; the checklist reads
+        // boundaries.requireGrandparents).
+        framing: { mode: 'fixed', value: 'gamete' },
+        boundaries: {
+          requireGrandparents: 'off',
+          requireChildrenContributors: 'off',
+        },
         nodeConfig: {
           type: nodeType.id,
           nodeLabelVariable: nameVar.id,
@@ -261,6 +269,14 @@ export function buildScenarioInterview({ withNomination = false } = {}) {
   si.addStage('FamilyPedigree', {
     label: 'Family Pedigree',
     subject: { entity: 'node', type: nodeType.id },
+    // framing and boundaries are mandatory FamilyPedigree schema fields
+    // (the provider reads framing.mode; the checklist reads
+    // boundaries.requireGrandparents).
+    framing: { mode: 'fixed', value: 'gamete' },
+    boundaries: {
+      requireGrandparents: 'off',
+      requireChildrenContributors: 'off',
+    },
     nodeConfig: {
       type: nodeType.id,
       nodeLabelVariable: nameVar.id,

@@ -101,6 +101,12 @@ function buildPedigreeInterview(seed: number) {
   // --- FamilyPedigree source stage ----------------------------------------
   const fpStage = si.addStage('FamilyPedigree', {
     label: 'Family Pedigree',
+    // framing and boundaries are mandatory FamilyPedigree schema fields.
+    framing: { mode: 'fixed', value: 'gamete' },
+    boundaries: {
+      requireGrandparents: 'off',
+      requireChildrenContributors: 'off',
+    },
     nodeConfig: {
       type: nodeType.id,
       nodeLabelVariable: NAME_VAR,
