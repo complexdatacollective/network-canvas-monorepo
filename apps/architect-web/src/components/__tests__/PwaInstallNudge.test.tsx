@@ -37,9 +37,19 @@ describe('PwaInstallNudge', () => {
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
     render(<PwaInstallNudge />);
 
-    expect(screen.getByText(/install architect/i)).toBeInTheDocument();
+    expect(screen.getByText(/use it like an app/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^install$/i }));
     expect(mockPromptInstall).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers a "Learn more" link that opens the docs in a new tab', () => {
+    mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
+    render(<PwaInstallNudge />);
+
+    const link = screen.getByRole('link', { name: /learn more/i });
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+    expect(link.getAttribute('href')).toMatch(/^https:\/\//);
   });
 
   it('renders nothing when previously dismissed', () => {
@@ -56,6 +66,6 @@ describe('PwaInstallNudge', () => {
     fireEvent.click(screen.getByRole('button', { name: /dismiss/i }));
 
     expect(localStorage.getItem(DISMISSED_KEY)).toBe('true');
-    expect(screen.queryByText(/install architect/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/use it like an app/i)).not.toBeInTheDocument();
   });
 });
