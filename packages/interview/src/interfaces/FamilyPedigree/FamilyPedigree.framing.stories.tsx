@@ -81,6 +81,144 @@ function buildFramingInterview({
   return si;
 }
 
+type FixedFramingMode = 'gamete' | 'gendered';
+
+function buildFixedFramingInterview(value: FixedFramingMode) {
+  const si = new SyntheticInterview(42);
+
+  const nodeType = si.addNodeType({
+    name: 'Person',
+    shape: { default: 'diamond' },
+  });
+  const nameVar = nodeType.addVariable({
+    name: 'Name',
+    type: 'text',
+    component: 'Text',
+  });
+  const isEgoVar = nodeType.addVariable({ name: 'Is Ego', type: 'boolean' });
+  const relationshipToEgoVar = nodeType.addVariable({
+    name: 'Relationship to Ego',
+    type: 'text',
+  });
+  const biologicalSexVar = nodeType.addVariable({
+    name: 'Biological Sex',
+    type: 'text',
+  });
+  const edgeType = si.addEdgeType({ name: 'Family' });
+  const relationshipVar = edgeType.addVariable({
+    name: 'Relationship',
+    type: 'categorical',
+    options: [
+      { label: 'Parent', value: 'parent' },
+      { label: 'Child', value: 'child' },
+      { label: 'Sibling', value: 'sibling' },
+      { label: 'Partner', value: 'partner' },
+    ],
+  });
+  const isActiveVar = edgeType.addVariable({
+    name: 'Is Active',
+    type: 'boolean',
+  });
+  const isGestCarrierVar = edgeType.addVariable({
+    name: 'Is Gestational Carrier',
+    type: 'boolean',
+  });
+
+  si.addStage('FamilyPedigree', {
+    label: 'Family Pedigree',
+    subject: { entity: 'node', type: nodeType.id },
+    nodeConfig: {
+      type: nodeType.id,
+      nodeLabelVariable: nameVar.id,
+      egoVariable: isEgoVar.id,
+      relationshipVariable: relationshipToEgoVar.id,
+      biologicalSexVariable: biologicalSexVar.id,
+      form: [],
+    },
+    edgeConfig: {
+      type: edgeType.id,
+      relationshipTypeVariable: relationshipVar.id,
+      isActiveVariable: isActiveVar.id,
+      isGestationalCarrierVariable: isGestCarrierVar.id,
+    },
+    censusPrompt: 'Please create your family pedigree.',
+    framing: { mode: 'fixed', value },
+  });
+
+  return si;
+}
+
+function buildBoundaryInterview(
+  requireGrandparents: 'required' | 'recommended',
+) {
+  const si = new SyntheticInterview(42);
+
+  const nodeType = si.addNodeType({
+    name: 'Person',
+    shape: { default: 'diamond' },
+  });
+  const nameVar = nodeType.addVariable({
+    name: 'Name',
+    type: 'text',
+    component: 'Text',
+  });
+  const isEgoVar = nodeType.addVariable({ name: 'Is Ego', type: 'boolean' });
+  const relationshipToEgoVar = nodeType.addVariable({
+    name: 'Relationship to Ego',
+    type: 'text',
+  });
+  const biologicalSexVar = nodeType.addVariable({
+    name: 'Biological Sex',
+    type: 'text',
+  });
+  const edgeType = si.addEdgeType({ name: 'Family' });
+  const relationshipVar = edgeType.addVariable({
+    name: 'Relationship',
+    type: 'categorical',
+    options: [
+      { label: 'Parent', value: 'parent' },
+      { label: 'Child', value: 'child' },
+      { label: 'Sibling', value: 'sibling' },
+      { label: 'Partner', value: 'partner' },
+    ],
+  });
+  const isActiveVar = edgeType.addVariable({
+    name: 'Is Active',
+    type: 'boolean',
+  });
+  const isGestCarrierVar = edgeType.addVariable({
+    name: 'Is Gestational Carrier',
+    type: 'boolean',
+  });
+
+  si.addStage('FamilyPedigree', {
+    label: 'Family Pedigree',
+    subject: { entity: 'node', type: nodeType.id },
+    nodeConfig: {
+      type: nodeType.id,
+      nodeLabelVariable: nameVar.id,
+      egoVariable: isEgoVar.id,
+      relationshipVariable: relationshipToEgoVar.id,
+      biologicalSexVariable: biologicalSexVar.id,
+      form: [],
+    },
+    edgeConfig: {
+      type: edgeType.id,
+      relationshipTypeVariable: relationshipVar.id,
+      isActiveVariable: isActiveVar.id,
+      isGestationalCarrierVariable: isGestCarrierVar.id,
+    },
+    censusPrompt: 'Please create your family pedigree.',
+    framing: { mode: 'fixed', value: 'gamete' },
+    boundaries: {
+      requireGrandparents,
+      requireChildrenContributors: 'off',
+    },
+  });
+
+  return si;
+}
+
 function FramingStoryWrapper({
   buildFn,
 }: {
@@ -128,6 +266,59 @@ async function clickContinue() {
   );
   if (!continueBtn) throw new Error('No Finish or Continue button found');
   await userEvent.click(continueBtn);
+}
+
+/**
+ * Complete the minimal quick-start wizard: skip bio-parents intro, fill in egg
+ * and sperm parents (minimal required fields), skip other parents, skip
+ * partnerships (no partner), and finish.
+ */
+async function completeMinimalQuickStart() {
+  await clickGetStarted();
+
+  // BioParentsIntroStep — click through
+  await clickContinue();
+
+  // EggParentStep — is-donor required (BooleanField: first radio = true, second = false)
+  const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
+  const eggRadios = within(eggDialog).getAllByRole('radio');
+  // "is-donor" false: select second radio in the field
+  const isDonorFalse = eggRadios[1];
+  if (isDonorFalse) await userEvent.click(isDonorFalse);
+  // gestationalCarrier true: select first radio
+  // Find the gestational carrier radios after setting is-donor
+  const eggDialog2 = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
+  const allEggRadios = within(eggDialog2).getAllByRole('radio');
+  // There are two BooleanFields: is-donor (2 radios) + gestationalCarrier (2 radios)
+  // gestationalCarrier first radio = true
+  const gestCarrierTrue = allEggRadios[2];
+  if (gestCarrierTrue) await userEvent.click(gestCarrierTrue);
+  await clickContinue();
+
+  // SpermParentStep — is-donor required (BooleanField: first = true, second = false)
+  const spermDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
+  const spermRadios = within(spermDialog).getAllByRole('radio');
+  const spermIsDonorFalse = spermRadios[1];
+  if (spermIsDonorFalse) await userEvent.click(spermIsDonorFalse);
+  await clickContinue();
+
+  // OtherParentsStep — hasOtherParents: false (second radio)
+  const otherDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
+  const otherRadios = within(otherDialog).getAllByRole('radio');
+  const noOtherParents = otherRadios[1];
+  if (noOtherParents) await userEvent.click(noOtherParents);
+  await clickContinue();
+
+  // ParentPartnershipsStep — no changes needed, continue
+  await clickContinue();
+
+  // PartnerAndChildrenStep — hasPartner: false (second radio)
+  const partnerDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
+  const partnerRadios = within(partnerDialog).getAllByRole('radio');
+  const noPartner = partnerRadios[1];
+  if (noPartner) await userEvent.click(noPartner);
+  // Finish the wizard
+  await clickContinue();
 }
 
 /**
@@ -186,5 +377,142 @@ export const WithIntroScreenThenFramingSelection: Story = {
 
     // BioParentsIntroStep: gamete terms
     await screen.findByText(/egg parent/i, {}, STEP_TIMEOUT);
+  },
+};
+
+/**
+ * Fixed gamete framing: the framing-selection step is SKIPPED because the
+ * mode is 'fixed'. The bio-parent wizard step titles use gamete terminology
+ * ("Egg Parent" / "Sperm Parent").
+ */
+export const FixedGameteQuickStart: Story = {
+  render: () => (
+    <FramingStoryWrapper buildFn={() => buildFixedFramingInterview('gamete')} />
+  ),
+  play: async () => {
+    await clickGetStarted();
+
+    // The framing-selection step must NOT appear: we go straight to the
+    // BioParentsIntroStep. Assert gamete heading text is present.
+    await screen.findByText(/egg parent/i, {}, STEP_TIMEOUT);
+
+    // Assert "Gendered" radio does NOT exist — the framing-selection step is skipped
+    expect(screen.queryByRole('radio', { name: /gendered/i })).toBeNull();
+
+    await clickContinue();
+
+    // EggParentStep wizard step title should say "Egg Parent"
+    const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
+    expect(within(eggDialog).getByText(/egg parent/i)).toBeTruthy();
+  },
+};
+
+/**
+ * Fixed gendered framing: the framing-selection step is SKIPPED because the
+ * mode is 'fixed'. The bio-parent wizard step titles use gendered terminology
+ * ("Mother" / "Father").
+ */
+export const FixedGenderedQuickStart: Story = {
+  render: () => (
+    <FramingStoryWrapper
+      buildFn={() => buildFixedFramingInterview('gendered')}
+    />
+  ),
+  play: async () => {
+    await clickGetStarted();
+
+    // The framing-selection step must NOT appear: we go straight to
+    // BioParentsIntroStep. Assert gendered heading text is present.
+    await screen.findByText(/mother/i, {}, STEP_TIMEOUT);
+
+    // Assert "Gamete-based" radio does NOT exist — selection step is skipped
+    expect(screen.queryByRole('radio', { name: /gamete.based/i })).toBeNull();
+
+    await clickContinue();
+
+    // EggParentStep wizard step title should say "Mother"
+    const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
+    expect(within(eggDialog).getByText(/mother/i)).toBeTruthy();
+  },
+};
+
+/**
+ * Required grandparents boundary: ego is given two biological parents by the
+ * quick-start wizard but those parents have no parents of their own. With
+ * `requireGrandparents: 'required'`, the checklist shows a blocking item
+ * (marked required with *) and the "Finalize family pedigree" button is absent.
+ */
+export const RequiredBoundaryGrandparentsBlocked: Story = {
+  render: () => (
+    <FramingStoryWrapper buildFn={() => buildBoundaryInterview('required')} />
+  ),
+  play: async () => {
+    await completeMinimalQuickStart();
+
+    // After the wizard finishes, the pedigree canvas is shown. The checklist
+    // widget should appear once the network has nodes (ego + two parents).
+    const checklist = await screen.findByText(
+      'Pedigree Checklist',
+      {},
+      { timeout: 8000 },
+    );
+    expect(checklist).toBeTruthy();
+
+    // The boundary-grandparents blocker item should be present and required (*)
+    const blocker = await screen.findByText(
+      /record each parent.s two parents/i,
+      {},
+      STEP_TIMEOUT,
+    );
+    expect(blocker).toBeTruthy();
+
+    // The required marker (*) must be visible
+    const checklist$El = blocker.closest('[class]')?.parentElement;
+    expect(checklist$El?.querySelector('.text-destructive')).not.toBeNull();
+
+    // The finalize button must NOT be shown (allDone is false)
+    expect(
+      screen.queryByRole('button', { name: /finalize family pedigree/i }),
+    ).toBeNull();
+  },
+};
+
+/**
+ * Recommended grandparents boundary: same pedigree shape as
+ * RequiredBoundaryGrandparentsBlocked but the boundary is 'recommended'. The
+ * checklist shows the nudge item without the required (*) marker, and the
+ * "Finalize family pedigree" button appears because nothing is blocking.
+ */
+export const RecommendedBoundaryGrandparentsNudge: Story = {
+  render: () => (
+    <FramingStoryWrapper
+      buildFn={() => buildBoundaryInterview('recommended')}
+    />
+  ),
+  play: async () => {
+    await completeMinimalQuickStart();
+
+    // Wait for checklist
+    await screen.findByText('Pedigree Checklist', {}, { timeout: 8000 });
+
+    // The grandparents nudge item should be present
+    const nudge = await screen.findByText(
+      /record each parent.s two parents/i,
+      {},
+      STEP_TIMEOUT,
+    );
+    expect(nudge).toBeTruthy();
+
+    // The nudge item must NOT carry a required (*) marker
+    const nudgeParent = nudge.closest('[class]')?.parentElement;
+    expect(nudgeParent?.querySelector('.text-destructive')).toBeNull();
+
+    // All required items are satisfied, so the finalize button is present
+    const finalizeBtn = await screen.findByRole(
+      'button',
+      { name: /finalize family pedigree/i },
+      STEP_TIMEOUT,
+    );
+    expect(finalizeBtn).toBeTruthy();
   },
 };

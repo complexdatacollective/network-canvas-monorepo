@@ -566,6 +566,10 @@ export class SyntheticInterview {
         entry.framing = opts.framing;
       }
 
+      if (opts?.boundaries) {
+        entry.boundaries = opts.boundaries;
+      }
+
       if (opts?.introScreen) {
         entry.introScreen = opts.introScreen;
       }
@@ -1541,6 +1545,7 @@ export class SyntheticInterview {
       if (stage.nominationPrompts?.length)
         config.nominationPrompts = stage.nominationPrompts;
       if (stage.framing) config.framing = stage.framing;
+      if (stage.boundaries) config.boundaries = stage.boundaries;
       if (stage.introScreen) config.introScreen = stage.introScreen;
     }
 

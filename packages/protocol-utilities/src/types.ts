@@ -266,6 +266,10 @@ export type StageEntry = {
     isGestationalCarrierVariable: string;
   };
   framing?: { mode: 'fixed'; value: FramingId } | { mode: 'participantChoice' };
+  boundaries?: {
+    requireGrandparents: 'required' | 'recommended' | 'off';
+    requireChildrenContributors: 'required' | 'recommended' | 'off';
+  };
   introScreen?: {
     title?: string;
     text: string;
@@ -396,6 +400,10 @@ export type AddStageInput = {
     isGestationalCarrierVariable?: string;
   };
   framing?: { mode: 'fixed'; value: FramingId } | { mode: 'participantChoice' };
+  boundaries?: {
+    requireGrandparents: 'required' | 'recommended' | 'off';
+    requireChildrenContributors: 'required' | 'recommended' | 'off';
+  };
   introScreen?: {
     title?: string;
     text: string;
