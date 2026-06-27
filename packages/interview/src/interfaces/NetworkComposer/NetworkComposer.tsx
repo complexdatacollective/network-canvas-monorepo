@@ -2,16 +2,16 @@
 
 import { get } from 'es-toolkit/compat';
 import { useCallback, useEffect, useRef, useState } from 'react';
-
 import { useSelector } from 'react-redux';
 
+import { entityPrimaryKeyProperty, type NcEdge } from '@codaco/shared-consts';
 import { createCanvasStore } from '~/canvas/useCanvasStore';
 import ConcentricCircles from '~/components/ConcentricCircles';
 import { useCurrentStep } from '~/contexts/CurrentStepContext';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import { getNetworkEdges, getNetworkNodesForType } from '~/selectors/session';
-import { updateNode } from '~/store/modules/session';
 import { getCodebook } from '~/store/modules/protocol';
+import { updateNode } from '~/store/modules/session';
 import { useAppDispatch } from '~/store/store';
 import type { StageProps } from '~/types';
 
@@ -105,9 +105,59 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     [composerStore, actions],
   );
 
-  const handleNodeTap = useCallback((_nodeId: string) => {
-    // No-op: selection/inspector arrives in a later task
-  }, []);
+  const handleNodeTap = useCallback(
+    async (tappedId: string) => {
+      const { activeTool, pendingEdgeSource, setPendingEdgeSource } =
+        composerStore.getState();
+
+      if (activeTool.kind !== 'edge') {
+        // Select-mode handling arrives in a later task.
+        return;
+      }
+
+      const { edgeType } = activeTool;
+
+      if (pendingEdgeSource === null) {
+        // Arm: first tap sets the source node.
+        setPendingEdgeSource(tappedId);
+        return;
+      }
+
+      if (pendingEdgeSource === tappedId) {
+        // Cancel: tapping the same node clears the pending source.
+        setPendingEdgeSource(null);
+        return;
+      }
+
+      // Complete: tap on a different node — toggle the edge undo-aware.
+      const source = pendingEdgeSource;
+      setPendingEdgeSource(null);
+
+      // Read live edges at call time to avoid stale-closure bugs (same pattern
+      // as connectAll in useComposerActions.ts).
+      let currentEdges: NcEdge[] = [];
+      dispatch((_, getState) => {
+        const { session: sessionState } = getState() as {
+          session: { network: { edges: NcEdge[] } };
+        };
+        currentEdges = sessionState.network.edges;
+      });
+
+      const existing = currentEdges.find(
+        (e) =>
+          e.type === edgeType &&
+          ((e.from === source && e.to === tappedId) ||
+            (e.from === tappedId && e.to === source)),
+      );
+
+      if (existing) {
+        actions.deleteEdgeById(existing[entityPrimaryKeyProperty]);
+      } else {
+        await actions.connect(source, tappedId, edgeType);
+      }
+    },
+    [composerStore, dispatch, actions],
+  );
 
   const handleCommitRename = useCallback(
     async (nodeId: string, value: string) => {
@@ -166,7 +216,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         onBackgroundTap={(position) => {
           void handleBackgroundTap(position);
         }}
-        onNodeTap={handleNodeTap}
+        onNodeTap={(nodeId) => {
+          void handleNodeTap(nodeId);
+        }}
         onNodeDragEnd={handleNodeDragEnd}
         renamingNodeId={renamingNodeId}
         onCommitRename={(nodeId, value) => {
