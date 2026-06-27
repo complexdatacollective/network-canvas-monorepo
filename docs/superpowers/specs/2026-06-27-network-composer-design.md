@@ -185,11 +185,11 @@ subject:     NodeStageSubjectSchema                          // the single node 
 behaviours?: { automaticLayout?: { enabled: boolean } }      // live force-sim toggle, defaults OFF
 background?: { image?, concentricCircles?, skewedTowardCenter? }   // reuse Sociogram Background
 
-quickAdd:        EntityAttributeReference(subject: stageSubject, requireType: ['text'])    // inline-name var
-layoutVariable:  EntityAttributeReference(subject: stageSubject, requireType: ['layout'])  // x/y store
-nodeForm?:       FormSchema                                   // configured inspector form for nodes
+quickAdd:        EntityAttributeReference(subject: stageSubject)    // inline-name (text) var
+layoutVariable:  EntityAttributeReference(subject: stageSubject)    // x/y store (layout var)
+nodeForm?:       TitlelessFormSchema                          // configured inspector form for nodes
 
-edges:           Array<{ type: <edge type id>, form?: FormSchema }>   // min 1; each type = a draw tool
+edges:           Array<{ subject: EdgeStageSubjectSchema, form?: TitlelessFormSchema }>   // min 1; each entry = a drawable edge type
 ```
 
 Registration: import and add to the `stageSchemas` array and re-export in
@@ -201,17 +201,22 @@ new prompt schema is needed (the interface is promptless).
 
 Handled by the existing `EntityAttributeReference` + filter machinery once wired:
 
-- `quickAdd` → must be a `text` variable on the subject node type.
-- `layoutVariable` → must be a `layout` variable on the subject node type.
-- `nodeForm` fields → node variables of the subject type; `edges[].form` fields →
-  that edge type's variables.
-- `edges[].type` → must exist as an edge type in the codebook.
+- `quickAdd` and `layoutVariable` → must reference variables that exist on the
+  subject node type (existence-checked; variable type not constrained, matching
+  Narrative's `layoutVariable` and QuickAdd's `quickAdd`).
+- `nodeForm` fields → node variables of the subject type. `edges[].form` fields →
+  variables of that edge type: each edge entry's `subject` carrier makes the
+  reference extractor (`stageSubjectOf`) resolve the form's references against the
+  edge, not the node — correct with no extractor changes.
+- Edge-type existence is not schema-enforced (consistent with the Sociogram, whose
+  edge types are plain strings); an edge form still fails if that edge type lacks
+  the referenced variable.
 
 ### `superRefine` checks
 
 - `edges` has at least one entry (a Composer with no edge types would be a name
   generator).
-- No duplicate edge `type` in `edges[]`.
+- No duplicate edge subject type across `edges[]`.
 
 ### Shared-graph note
 
