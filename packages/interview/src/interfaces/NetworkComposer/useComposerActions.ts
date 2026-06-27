@@ -1,5 +1,3 @@
-'use client';
-
 import { v4 as uuid } from 'uuid';
 
 import {
@@ -13,6 +11,7 @@ import {
   addNode,
   deleteEdge,
   deleteNode,
+  edgeExists,
   updateEdge,
   updateNode,
 } from '~/store/modules/session';
@@ -110,15 +109,18 @@ export function useComposerActions({
       addEdge({ from, to, type: edgeType, currentStep }),
     ).unwrap();
 
+    let liveEdgeId = edgeId;
+
     undoStore.getState().push({
       label: `Connect nodes`,
       undo: () => {
-        dispatch(deleteEdge(edgeId));
+        dispatch(deleteEdge(liveEdgeId));
       },
       redo: async () => {
-        await dispatch(
+        const { edgeId: newId } = await dispatch(
           addEdge({ from, to, type: edgeType, currentStep }),
         ).unwrap();
+        liveEdgeId = newId;
       },
     });
   }
@@ -130,10 +132,22 @@ export function useComposerActions({
     const addedEdgeIds: string[] = [];
     const addedEdgePairs: { from: string; to: string }[] = [];
 
+    let currentEdges: NcEdge[] = [];
+    dispatch((_, getState) => {
+      const { session: sessionState } = getState() as {
+        session: { network: { edges: NcEdge[] } };
+      };
+      currentEdges = sessionState.network.edges;
+    });
+
     for (let i = 0; i < nodeIds.length; i++) {
       for (let j = i + 1; j < nodeIds.length; j++) {
         const from = nodeIds[i]!;
         const to = nodeIds[j]!;
+
+        if (edgeExists(currentEdges, from, to, edgeType)) {
+          continue;
+        }
 
         const { edgeId } = await dispatch(
           addEdge({ from, to, type: edgeType, currentStep }),
@@ -246,11 +260,12 @@ export function useComposerActions({
     if (!capturedEdge) return;
 
     const edgeSnapshot = capturedEdge;
+    let liveEdgeId = edgeSnapshot[entityPrimaryKeyProperty];
 
     undoStore.getState().push({
       label: `Delete edge`,
       undo: async () => {
-        await dispatch(
+        const { edgeId: newId } = await dispatch(
           addEdge({
             from: edgeSnapshot.from,
             to: edgeSnapshot.to,
@@ -258,9 +273,10 @@ export function useComposerActions({
             currentStep,
           }),
         ).unwrap();
+        liveEdgeId = newId;
       },
       redo: () => {
-        dispatch(deleteEdge(edgeSnapshot[entityPrimaryKeyProperty]));
+        dispatch(deleteEdge(liveEdgeId));
       },
     });
   }
