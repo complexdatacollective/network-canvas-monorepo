@@ -8,6 +8,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { buildGeneticGraph } from '../geneticGraph';
+import { computeAutosomalRecessive } from '../patterns/autosomal';
 
 const RELATIONSHIP_TYPE_VAR = 'relationshipType';
 
@@ -233,5 +234,91 @@ describe('buildGeneticGraph — donor edges', () => {
     const parents = g.parentsOf('child');
     expect(parents).toHaveLength(1);
     expect(parents[0]).toEqual({ id: 'donor', sex: 'male' });
+  });
+});
+
+describe('buildGeneticGraph — duplicate edge de-duplication', () => {
+  const parentId = 'parent-A';
+  const childId = 'child-X';
+  const dupNodes: NcNode[] = [makeNode(parentId), makeNode(childId)];
+
+  const dupEdge1: NcEdge = {
+    [entityPrimaryKeyProperty]: 'edge-1',
+    type: 'family',
+    from: parentId,
+    to: childId,
+    [entityAttributesProperty]: { [RELATIONSHIP_TYPE_VAR]: ['biological'] },
+  };
+
+  const dupEdge2: NcEdge = {
+    [entityPrimaryKeyProperty]: 'edge-2',
+    type: 'family',
+    from: parentId,
+    to: childId,
+    [entityAttributesProperty]: { [RELATIONSHIP_TYPE_VAR]: ['biological'] },
+  };
+
+  it('two identical parent→child edges produce exactly one parent entry', () => {
+    const g = buildGeneticGraph(
+      dupNodes,
+      [dupEdge1, dupEdge2],
+      config,
+      stubResolveSex({}),
+    );
+    const parents = g.parentsOf(childId);
+    expect(parents).toHaveLength(1);
+    expect(parents[0]).toMatchObject({ id: parentId });
+  });
+
+  it('two identical parent→child edges produce exactly one child entry', () => {
+    const g = buildGeneticGraph(
+      dupNodes,
+      [dupEdge1, dupEdge2],
+      config,
+      stubResolveSex({}),
+    );
+    expect(g.childrenOf(parentId)).toHaveLength(1);
+  });
+});
+
+describe('buildGeneticGraph — duplicate edge correctness guard (AR pseudodominance)', () => {
+  /**
+   * A single affected parent A with a DUPLICATED edge to child.
+   * After de-dup, parentsOf(child) = [A] (length 1), so bothParentsAffected
+   * is false — child must be obligateCarrier, NOT obligateAffected.
+   */
+  const parentAId = 'parent-A-ar';
+  const childId = 'child-ar';
+
+  const dupNodes: NcNode[] = [makeNode(parentAId), makeNode(childId)];
+
+  const dupEdge1: NcEdge = {
+    [entityPrimaryKeyProperty]: 'ar-dup-1',
+    type: 'family',
+    from: parentAId,
+    to: childId,
+    [entityAttributesProperty]: { [RELATIONSHIP_TYPE_VAR]: ['biological'] },
+  };
+
+  const dupEdge2: NcEdge = {
+    [entityPrimaryKeyProperty]: 'ar-dup-2',
+    type: 'family',
+    from: parentAId,
+    to: childId,
+    [entityAttributesProperty]: { [RELATIONSHIP_TYPE_VAR]: ['biological'] },
+  };
+
+  it('single affected parent via duplicated edge → child is obligateCarrier, NOT obligateAffected', () => {
+    const g = buildGeneticGraph(
+      dupNodes,
+      [dupEdge1, dupEdge2],
+      config,
+      stubResolveSex({}),
+    );
+    const affected = new Set([parentAId]);
+    const result = computeAutosomalRecessive(g, affected);
+    const childStatus = result.get(childId) ?? 'unknown';
+    expect(childStatus).toBe('obligateCarrier');
+    expect(childStatus).not.toBe('obligateAffected');
   });
 });

@@ -107,6 +107,8 @@ export function buildGeneticGraph(
     childMap.set(node._uid, []);
   }
 
+  const seenGeneticEdges = new Set<string>();
+
   for (const edge of edges) {
     const relType = readRelationshipType(edge, config.relationshipTypeVariable);
     if (!isGeneticRelationshipType(relType)) {
@@ -115,6 +117,12 @@ export function buildGeneticGraph(
 
     const parentId = edge.from;
     const childId = edge.to;
+
+    const edgeKey = `${parentId}>${childId}`;
+    if (seenGeneticEdges.has(edgeKey)) {
+      continue;
+    }
+    seenGeneticEdges.add(edgeKey);
 
     const parentList = parentMap.get(childId) ?? [];
     parentList.push(parentId);
