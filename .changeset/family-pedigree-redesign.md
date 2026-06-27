@@ -1,8 +1,8 @@
 ---
-"@codaco/shared-consts": minor
-"@codaco/protocol-validation": minor
-"@codaco/interview": minor
-"@codaco/protocol-utilities": minor
+'@codaco/shared-consts': minor
+'@codaco/protocol-validation': minor
+'@codaco/interview': minor
+'@codaco/protocol-utilities': minor
 ---
 
 Family Pedigree redesign (three features):
