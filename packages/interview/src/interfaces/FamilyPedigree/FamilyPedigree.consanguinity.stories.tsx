@@ -409,7 +409,7 @@ export const ConsanguineousUnionCreationViaWizard: Story = {
 
       si.addInformationStage({ title: 'Complete', text: 'After the stage.' });
 
-      si.setNodeAttribute(0, nameVar.id, 'Sam');
+      si.setNodeAttribute(0, nameVar.id, 'You');
       si.setNodeAttribute(0, isEgoVar.id, true);
       si.setNodeAttribute(1, nameVar.id, 'Maria');
       si.setNodeAttribute(1, isEgoVar.id, false);
@@ -468,7 +468,9 @@ export const ConsanguineousUnionCreationViaWizard: Story = {
     // -----------------------------------------------------------------------
     // Step 1: Open "Add partner" on ego and choose the existing cousin Maria.
     // -----------------------------------------------------------------------
-    await openNodeContextMenu('Sam');
+    // Ego renders as the generic "Node" label: computeAllDisplayLabels skips
+    // ego intentionally, so its stored name never appears on the canvas.
+    await openNodeContextMenu('Node');
     await userEvent.click(
       await screen.findByText('Add partner', {}, WIZARD_TIMEOUT),
     );
@@ -485,7 +487,7 @@ export const ConsanguineousUnionCreationViaWizard: Story = {
     // -----------------------------------------------------------------------
     // Step 2: Add a child shared by ego and Maria.
     // -----------------------------------------------------------------------
-    await openNodeContextMenu('Sam');
+    await openNodeContextMenu('Node');
     await userEvent.click(
       await screen.findByText('Add child', {}, WIZARD_TIMEOUT),
     );
