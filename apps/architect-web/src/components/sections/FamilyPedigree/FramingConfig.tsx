@@ -1,7 +1,11 @@
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
-import { FRAMING_AUTHOR_LABELS, type FramingId } from '@codaco/shared-consts';
+import {
+  FRAMING_AUTHOR_LABELS,
+  FRAMING_IDS,
+  type FramingId,
+} from '@codaco/shared-consts';
 import { Section } from '~/components/EditorLayout';
 import RadioGroup from '~/components/Form/Fields/RadioGroup';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -17,9 +21,10 @@ const FRAMING_MODE_OPTIONS = [
   { value: 'participantChoice', label: 'Let the participant choose' },
 ];
 
-const FRAMING_VALUE_OPTIONS = (
-  Object.entries(FRAMING_AUTHOR_LABELS) as [FramingId, string][]
-).map(([value, label]) => ({ value, label }));
+const FRAMING_VALUE_OPTIONS = FRAMING_IDS.map((value) => ({
+  value,
+  label: FRAMING_AUTHOR_LABELS[value],
+}));
 
 const FramingConfig = ({ form }: StageEditorSectionProps) => {
   const dispatch = useAppDispatch();
@@ -31,8 +36,8 @@ const FramingConfig = ({ form }: StageEditorSectionProps) => {
   );
 
   const mode = framing?.mode ?? 'fixed';
-  const fixedValue =
-    framing?.mode === 'fixed' ? framing.value : ('gamete' as FramingId);
+  const fixedValue: FramingId =
+    framing?.mode === 'fixed' ? framing.value : 'gamete';
 
   const handleModeChange = (newMode: unknown) => {
     if (newMode === 'participantChoice') {
