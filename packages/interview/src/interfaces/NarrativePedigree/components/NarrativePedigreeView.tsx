@@ -251,10 +251,11 @@ export default function NarrativePedigreeView({
     const label = labelFor(node);
     const dimmed = !highlight.nodes.has(node.id);
 
-    const inner =
-      shownDiseases.length === 1
-        ? renderClassic(node, shape, label, shownDiseases[0]!)
-        : renderSticker(node, shape, label);
+    const singleDisease =
+      shownDiseases.length === 1 ? shownDiseases[0] : undefined;
+    const inner = singleDisease
+      ? renderClassic(node, shape, label, singleDisease)
+      : renderSticker(node, shape, label);
 
     const handleClick = () => {
       if (allowReselect) {
