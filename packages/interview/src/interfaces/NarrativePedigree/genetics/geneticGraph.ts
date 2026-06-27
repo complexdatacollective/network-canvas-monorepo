@@ -60,8 +60,10 @@ export type GeneticGraph = {
   fullSiblingsOf: (id: string) => string[];
 
   /**
-   * Individuals who share EXACTLY ONE of `id`'s genetic parents. Excludes
-   * `id` itself and full siblings.
+   * Individuals who share AT LEAST ONE genetic parent with `id` but are NOT
+   * full siblings. Full siblings are excluded first, then any remaining
+   * candidate who shares at least one parent is classified as a half-sibling.
+   * Excludes `id` itself.
    */
   halfSiblingsOf: (id: string) => string[];
 
@@ -144,15 +146,13 @@ export function buildGeneticGraph(
     const parentId = edge.from;
     const childId = edge.to;
 
-    if (!parentMap.has(childId)) {
-      parentMap.set(childId, []);
-    }
-    parentMap.get(childId)!.push(parentId);
+    const parentList = parentMap.get(childId) ?? [];
+    parentList.push(parentId);
+    parentMap.set(childId, parentList);
 
-    if (!childMap.has(parentId)) {
-      childMap.set(parentId, []);
-    }
-    childMap.get(parentId)!.push(childId);
+    const childList = childMap.get(parentId) ?? [];
+    childList.push(childId);
+    childMap.set(parentId, childList);
   }
 
   function parentsOf(id: string): AnnotatedParent[] {
@@ -179,7 +179,10 @@ export function buildGeneticGraph(
     }
 
     while (queue.length > 0) {
-      const current = queue.shift()!;
+      const current = queue.shift();
+      if (current === undefined) {
+        break;
+      }
       const nexts = step(current);
       for (const next of nexts) {
         if (!visited.has(next)) {
