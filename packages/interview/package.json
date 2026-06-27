@@ -52,6 +52,7 @@
     "csvtojson": "catalog:",
     "d3-force": "^3.0.0",
     "es-toolkit": "catalog:",
+    "html-to-image": "^1.11.13",
     "immer": "^11.1.8",
     "lucide-react": "catalog:",
     "mapbox-gl": "^3.24.0",
