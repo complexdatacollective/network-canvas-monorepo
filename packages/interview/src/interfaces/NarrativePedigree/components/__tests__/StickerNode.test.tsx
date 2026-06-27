@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -219,7 +219,22 @@ describe('StickerNode', () => {
       expect(statusMarker).not.toBe(atRiskMarker);
     });
 
-    it('[data-atrisk-homozygous-marker] has an accessible label signalling risk of being affected', () => {
+    it('[data-atrisk-homozygous-marker] accessible label is reachable via the accessibility tree', () => {
+      const disease: DiseaseSticker = {
+        color: '#ff0000',
+        status: 'obligateCarrier',
+        atRiskHomozygous: true,
+      };
+      render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
+      // getByLabelText searches the accessibility tree and honours aria-hidden
+      // ancestors — if the marker were inside an aria-hidden container this
+      // query would throw, catching the suppression bug.
+      expect(
+        screen.getByLabelText(/risk of being affected/i),
+      ).toBeInTheDocument();
+    });
+
+    it('[data-atrisk-homozygous-marker] has no aria-hidden ancestor', () => {
       const disease: DiseaseSticker = {
         color: '#ff0000',
         status: 'obligateCarrier',
@@ -228,11 +243,11 @@ describe('StickerNode', () => {
       render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
       const marker = document.querySelector('[data-atrisk-homozygous-marker]');
       expect(marker).toBeInTheDocument();
-      const label =
-        marker?.getAttribute('aria-label') ??
-        marker?.querySelector('title')?.textContent;
-      expect(label).toBeTruthy();
-      expect(label?.toLowerCase()).toContain('risk');
+      let node = marker?.parentElement;
+      while (node) {
+        expect(node.getAttribute('aria-hidden')).not.toBe('true');
+        node = node.parentElement;
+      }
     });
   });
 

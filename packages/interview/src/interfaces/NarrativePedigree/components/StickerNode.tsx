@@ -173,17 +173,34 @@ function UnknownMarker({ color }: { color: string }) {
 const AT_RISK_LABEL = 'At risk of being affected (homozygous)';
 
 /**
- * Small upward-pointing triangle overlaid in the bottom-right corner of a
- * sticker. Signals that a person may be homozygous-affected for this disease —
- * distinct from the primary-status marker shape.
+ * Small upward-pointing triangle placed at the bottom-right corner of its
+ * parent sticker. Signals that a person may be homozygous-affected for this
+ * disease — distinct from the primary-status marker shape.
+ *
+ * Rendered as a sibling to the sticker overlay (not inside it) so that:
+ * - its aria-label is not suppressed by the overlay's aria-hidden ancestor, and
+ * - the overflow-hidden / rounded-full clip on the sticker span does not trim it.
  */
-function AtRiskHomozygousMarker({ color }: { color: string }) {
+function AtRiskHomozygousMarker({
+  color,
+  x,
+  y,
+}: {
+  color: string;
+  x: number;
+  y: number;
+}) {
   return (
     <span
       aria-label={AT_RISK_LABEL}
       data-atrisk-homozygous-marker
-      className="pointer-events-none absolute right-0 bottom-0 flex items-center justify-center"
-      style={{ width: 8, height: 8 }}
+      className="pointer-events-none absolute flex items-center justify-center"
+      style={{
+        width: 8,
+        height: 8,
+        left: x - STICKER_HALF + STICKER_SIZE_PX - 8,
+        top: y - STICKER_HALF + STICKER_SIZE_PX - 8,
+      }}
     >
       <svg viewBox="0 0 8 8" aria-hidden width={8} height={8}>
         <polygon points="4,1 7,7 1,7" fill={color} />
@@ -235,9 +252,6 @@ function StickerMarker({ sticker, x, y }: StickerMarkerProps) {
       }}
     >
       {marker}
-      {sticker.atRiskHomozygous === true && (
-        <AtRiskHomozygousMarker color={sticker.color} />
-      )}
     </span>
   );
 }
@@ -328,7 +342,7 @@ export function StickerNode({
         highlighted={highlighted}
       />
 
-      {/* Sticker overlay */}
+      {/* Sticker overlay — aria-hidden because each StickerMarker carries its own aria-label */}
       <span aria-hidden className="pointer-events-none absolute inset-0">
         {visibleStickers.map((sticker, i) => {
           const pos = positions[i];
@@ -337,6 +351,25 @@ export function StickerNode({
             <StickerMarker
               key={i}
               sticker={sticker}
+              x={pos.x * NODE_SIZE_PX}
+              y={pos.y * NODE_SIZE_PX}
+            />
+          );
+        })}
+      </span>
+
+      {/* At-risk-homozygous markers — rendered outside the aria-hidden overlay so
+          their labels are reachable by assistive technology, and outside the
+          overflow-hidden sticker span so the triangle is not clipped. */}
+      <span className="pointer-events-none absolute inset-0">
+        {visibleStickers.map((sticker, i) => {
+          if (sticker.atRiskHomozygous !== true) return null;
+          const pos = positions[i];
+          if (!pos) return null;
+          return (
+            <AtRiskHomozygousMarker
+              key={i}
+              color={sticker.color}
               x={pos.x * NODE_SIZE_PX}
               y={pos.y * NODE_SIZE_PX}
             />
