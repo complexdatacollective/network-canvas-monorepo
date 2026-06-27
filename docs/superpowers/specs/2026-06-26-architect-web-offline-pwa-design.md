@@ -156,9 +156,11 @@ VitePWA({
 Inject the app version for the update UI and any About/footer use:
 
 ```ts
-define: {
-  __APP_VERSION__: JSON.stringify(pkg.version);
-}
+export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
+});
 ```
 
 with a matching `declare const __APP_VERSION__: string;` ambient type and

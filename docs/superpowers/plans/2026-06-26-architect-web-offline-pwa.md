@@ -244,14 +244,14 @@ Expected: the `grep` prints `1` (preview entry is precached); the node line prin
 - [ ] **Step 8: Commit**
 
 ```bash
-git add apps/architect-web/package.json apps/architect-web/pnpm-lock.yaml pnpm-lock.yaml \
+git add apps/architect-web/package.json pnpm-lock.yaml \
         apps/architect-web/vite.config.ts apps/architect-web/pwa-assets.config.ts \
         apps/architect-web/public/architect-icon.png apps/architect-web/index.html \
         apps/architect-web/src/vite-env.d.ts
 git commit -m "feat(architect-web): add PWA build integration (service worker, manifest, icons)"
 ```
 
-(`pnpm-lock.yaml` lives at the repo root; `git add` ignores the non-existent app-level path silently — keep both for safety.)
+(The lockfile is the single root `pnpm-lock.yaml`; there is no app-level lockfile. `git add` errors on a non-existent pathspec, so list only the root one.)
 
 ---
 
@@ -347,7 +347,7 @@ Expected: FAIL — `Failed to resolve import "../PwaUpdateBanner"` (the componen
 Create `apps/architect-web/src/components/PwaUpdateBanner.tsx`:
 
 ```tsx
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 import { cx } from '~/utils/cva';
@@ -356,21 +356,32 @@ const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000; // hourly
 const OFFLINE_READY_TIMEOUT_MS = 6000;
 
 const PwaUpdateBanner = () => {
+  const [registration, setRegistration] = useState<
+    ServiceWorkerRegistration | undefined
+  >();
+
   const {
     offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegisteredSW: (_swScriptUrl, registration) => {
-      if (!registration) return;
-      window.setInterval(() => {
-        void registration.update();
-      }, UPDATE_CHECK_INTERVAL_MS);
+    onRegisteredSW: (_swScriptUrl, swRegistration) => {
+      setRegistration(swRegistration);
     },
   });
 
+  // Poll for a new version during long editing sessions; clear the timer on
+  // unmount so it does not leak or keep firing against a stale registration.
   useEffect(() => {
-    if (!offlineReady) return;
+    if (!registration) return undefined;
+    const intervalId = window.setInterval(() => {
+      void registration.update();
+    }, UPDATE_CHECK_INTERVAL_MS);
+    return () => window.clearInterval(intervalId);
+  }, [registration]);
+
+  useEffect(() => {
+    if (!offlineReady) return undefined;
     const timer = window.setTimeout(
       () => setOfflineReady(false),
       OFFLINE_READY_TIMEOUT_MS,
