@@ -20,6 +20,7 @@ import {
 } from '~/interfaces/FamilyPedigree/components/wizards/parentTypeOptions';
 import {
   FamilyPedigreeContext,
+  FamilyPedigreeStoreBridge,
   useFamilyPedigreeStore,
 } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
@@ -125,12 +126,14 @@ export default function PedigreeView({
       submitLabel: 'Add',
       cancelLabel: 'Cancel',
       children: (
-        <AddPersonFields
-          anchorNodeId={nodeId}
-          nodes={nodes}
-          edges={edges}
-          variableConfig={variableConfig}
-        />
+        <FamilyPedigreeStoreBridge store={familyPedigreeStore}>
+          <AddPersonFields
+            anchorNodeId={nodeId}
+            nodes={nodes}
+            edges={edges}
+            variableConfig={variableConfig}
+          />
+        </FamilyPedigreeStoreBridge>
       ),
     });
 
