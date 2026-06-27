@@ -149,6 +149,40 @@ describe('computeAutosomalDominant', () => {
     });
   });
 
+  describe('married-in affected spouse (no false obligate-carrier over-call)', () => {
+    /**
+     *   G (affected)
+     *      |
+     *    U (unaffected)  ---  S (affected, married-in)
+     *               \        /
+     *              K (affected)
+     *
+     *   K's affection is fully explained by the married-in affected spouse S,
+     *   so U need NOT carry the allele: U is at risk (descendant of affected G)
+     *   but is NOT an obligate carrier.
+     */
+    const nodes = [makeNode('G'), makeNode('U'), makeNode('S'), makeNode('K')];
+    const edges = [
+      makeGeneticEdge('G', 'U'),
+      makeGeneticEdge('U', 'K'),
+      makeGeneticEdge('S', 'K'),
+    ];
+    const graph = buildGraph(nodes, edges);
+    const affected = new Set(['G', 'S', 'K']);
+    const result = computeAutosomalDominant(graph, affected);
+
+    it('keeps the affected ancestor, spouse, and child affected', () => {
+      expect(status(result, 'G')).toBe('affected');
+      expect(status(result, 'S')).toBe('affected');
+      expect(status(result, 'K')).toBe('affected');
+    });
+
+    it('marks U as atRiskAffected, NOT obligateCarrier', () => {
+      expect(status(result, 'U')).toBe('atRiskAffected');
+      expect(status(result, 'U')).not.toBe('obligateCarrier');
+    });
+  });
+
   describe('recursive descendant propagation', () => {
     /**
      *   affected
@@ -294,6 +328,45 @@ describe('computeAutosomalRecessive', () => {
 
     it('marks the non-nominated child of two affected parents as obligateAffected', () => {
       expect(status(result, 'child')).toBe('obligateAffected');
+    });
+  });
+
+  describe('pseudodominance: grandchild of two affected grandparents', () => {
+    /**
+     *   p1 (affected)   p2 (affected)
+     *            \        /
+     *           child (not nominated -> obligateAffected, inferred aa)
+     *              |        \
+     *              |       spouse (not nominated)
+     *               \      /
+     *              gchild (not nominated)
+     *
+     *   A child of a homozygous-affected (aa) parent MUST inherit one allele,
+     *   so gchild is an obligate CARRIER, not merely at-risk.
+     */
+    const nodes = [
+      makeNode('p1'),
+      makeNode('p2'),
+      makeNode('child'),
+      makeNode('spouse'),
+      makeNode('gchild'),
+    ];
+    const edges = [
+      makeGeneticEdge('p1', 'child'),
+      makeGeneticEdge('p2', 'child'),
+      makeGeneticEdge('child', 'gchild'),
+      makeGeneticEdge('spouse', 'gchild'),
+    ];
+    const graph = buildGraph(nodes, edges);
+    const affected = new Set(['p1', 'p2']);
+    const result = computeAutosomalRecessive(graph, affected);
+
+    it('infers the non-nominated child as obligateAffected', () => {
+      expect(status(result, 'child')).toBe('obligateAffected');
+    });
+
+    it('marks the grandchild of an obligateAffected parent as obligateCarrier', () => {
+      expect(status(result, 'gchild')).toBe('obligateCarrier');
     });
   });
 

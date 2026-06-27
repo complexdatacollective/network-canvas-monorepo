@@ -21,14 +21,18 @@ function assign(result: Map<string, Status>, id: string, value: Status): void {
  * - Affected nodes → `affected`.
  * - Descendants of an affected/obligate individual → `atRiskAffected`,
  *   propagated recursively over the lineage with a visited-set.
- * - An unaffected person who has at least one AFFECTED ANCESTOR AND at least one
- *   AFFECTED DESCENDANT → `obligateCarrier` (unaffected-but-transmitting; the
- *   allele must pass through them from the affected ancestor to the affected
- *   descendant). This is exact for skipped generations of arbitrary length: the
- *   single-intermediate case (parent between two affected) and the
- *   multi-intermediate case (A→B→C→D, affected A,D) both resolve correctly,
- *   without the single-step fixed-point that deadlocks on ≥2 consecutive
- *   unaffected intermediates.
+ * - An unaffected person `U` who has at least one AFFECTED ANCESTOR AND at least
+ *   one ATTRIBUTABLE AFFECTED DESCENDANT → `obligateCarrier`
+ *   (unaffected-but-transmitting; the allele must pass through them from the
+ *   affected ancestor to the affected descendant). A descendant `D` is
+ *   ATTRIBUTABLE to U's lineage only when no affected parent of `D` lies OUTSIDE
+ *   `{U} ∪ descendants(U)` — otherwise `D`'s affection is explained by a
+ *   married-in affected (or other off-lineage affected) parent and obligate
+ *   carriage of U cannot be inferred with certainty. This is exact for skipped
+ *   generations of arbitrary length: the single-intermediate case (parent
+ *   between two affected) and the multi-intermediate case (A→B→C→D, affected
+ *   A,D) both resolve to `obligateCarrier`, while the married-in case
+ *   (G→U, U+S(affected)→K) correctly leaves U at `atRiskAffected` only.
  * - Parents of an affected person with NO affected ancestor are NEVER
  *   `obligateCarrier` (de novo vs non-penetrant) — they have no affected
  *   ancestor, so the rule above correctly excludes them. They receive only the
@@ -59,8 +63,9 @@ export function computeAutosomalDominant(
   }
 
   // Obligate carriers: an unaffected person with an affected ancestor AND an
-  // affected descendant must carry the transmitting allele. `ancestors`/
-  // `descendants` are visited-set BFS, so consanguinity loops terminate.
+  // ATTRIBUTABLE affected descendant must carry the transmitting allele.
+  // `ancestors`/`descendants` are visited-set BFS, so consanguinity loops
+  // terminate.
   for (const id of atRisk) {
     if (affected.has(id)) {
       continue;
@@ -71,10 +76,25 @@ export function computeAutosomalDominant(
     if (!hasAffectedAncestor) {
       continue;
     }
-    const hasAffectedDescendant = [...graph.descendants(id)].some((d) =>
-      affected.has(d),
+    // An affected descendant `D` only proves U's carriage when D's affection is
+    // attributable to U's lineage — i.e. NO affected parent of D lies outside
+    // `{id} ∪ descendants(id)`. A married-in affected parent of D explains D
+    // independently of U, so such a D does not qualify.
+    const lineage = graph.descendants(id);
+    lineage.add(id);
+    const hasAttributableAffectedDescendant = [...lineage].some(
+      (descendantId) => {
+        if (descendantId === id || !affected.has(descendantId)) {
+          return false;
+        }
+        return graph
+          .parentsOf(descendantId)
+          .every(
+            (parent) => !affected.has(parent.id) || lineage.has(parent.id),
+          );
+      },
     );
-    if (!hasAffectedDescendant) {
+    if (!hasAttributableAffectedDescendant) {
       continue;
     }
     assign(result, id, 'obligateCarrier');
@@ -90,9 +110,12 @@ export function computeAutosomalDominant(
  * - A non-nominated person BOTH of whose genetic parents are nominated
  *   `affected` → `obligateAffected` (pseudodominance: a child of two homozygous-
  *   affected parents is deterministically affected, 100%). `obligateAffected`
- *   outranks `obligateCarrier`, so it upgrades the parent-of-affected rule.
- * - Both biological parents AND every child of an affected person →
- *   `obligateCarrier`.
+ *   outranks `obligateCarrier`, so it upgrades the parent-of-affected rule. This
+ *   set is computed FIRST because an `obligateAffected` (inferred homozygous aa)
+ *   individual is a CERTAIN transmitter just like a nominated affected.
+ * - Both biological parents of an affected person, AND every child of an
+ *   affected OR `obligateAffected` person → `obligateCarrier` (a child of a
+ *   homozygous-affected parent must inherit one disease allele).
  * - A relative gets `atRiskAffected` (25%, full sibling) ONLY when the full-
  *   sibling relationship is ESTABLISHED, expressed as: ≥2 of the person's
  *   genetic parents are obligate carriers (the affected's carrier parents).
@@ -112,31 +135,11 @@ export function computeAutosomalRecessive(
     assign(result, id, 'affected');
   }
 
-  // Both parents and every child of an affected person are obligate carriers.
-  for (const affectedId of affected) {
-    for (const parent of graph.parentsOf(affectedId)) {
-      if (!affected.has(parent.id)) {
-        assign(result, parent.id, 'obligateCarrier');
-      }
-    }
-    for (const childId of graph.childrenOf(affectedId)) {
-      if (!affected.has(childId)) {
-        assign(result, childId, 'obligateCarrier');
-      }
-    }
-  }
-
-  // Snapshot the obligate carriers (the affected's parents and children) before
-  // any downstream assignment, so the carrier-parent count and collateral spread
-  // below both key off this stable set rather than later at-risk marks.
-  const obligateCarriers = new Set(
-    [...result.entries()]
-      .filter(([, s]) => s === 'obligateCarrier')
-      .map(([id]) => id),
-  );
-
-  // Pseudodominance: a non-nominated person both of whose genetic parents are
-  // nominated affected is obligately affected (100%).
+  // Pseudodominance (computed FIRST): a non-nominated person both of whose
+  // genetic parents are nominated affected is obligately affected (100%, inferred
+  // homozygous aa). Such a node is a CERTAIN transmitter, so it must be known
+  // before the obligate-carrier pass below.
+  const obligateAffected = new Set<string>();
   for (const affectedId of affected) {
     for (const childId of graph.childrenOf(affectedId)) {
       if (affected.has(childId)) {
@@ -147,9 +150,39 @@ export function computeAutosomalRecessive(
         parents.length >= 2 && parents.every((p) => affected.has(p.id));
       if (bothParentsAffected) {
         assign(result, childId, 'obligateAffected');
+        obligateAffected.add(childId);
       }
     }
   }
+
+  // Obligate carriers: both biological parents of an affected person, and every
+  // child of an affected OR obligateAffected person (a child of a homozygous-
+  // affected parent must inherit one disease allele).
+  for (const affectedId of affected) {
+    for (const parent of graph.parentsOf(affectedId)) {
+      if (!affected.has(parent.id)) {
+        assign(result, parent.id, 'obligateCarrier');
+      }
+    }
+  }
+  const certainTransmitters = new Set([...affected, ...obligateAffected]);
+  for (const transmitterId of certainTransmitters) {
+    for (const childId of graph.childrenOf(transmitterId)) {
+      if (!affected.has(childId) && !obligateAffected.has(childId)) {
+        assign(result, childId, 'obligateCarrier');
+      }
+    }
+  }
+
+  // Snapshot the obligate carriers (the affected's parents and certain
+  // transmitters' children) before any downstream assignment, so the carrier-
+  // parent count and collateral spread below both key off this stable set rather
+  // than later at-risk marks.
+  const obligateCarriers = new Set(
+    [...result.entries()]
+      .filter(([, s]) => s === 'obligateCarrier')
+      .map(([id]) => id),
+  );
 
   // Sibling / relative risk tier, by how many of the person's genetic parents
   // are obligate carriers (the affected's carrier parents). Full siblings have
