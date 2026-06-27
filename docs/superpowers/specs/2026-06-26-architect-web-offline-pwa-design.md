@@ -34,45 +34,48 @@ lifecycle into a small in-app prompt.
 
 ## Decisions (from brainstorming)
 
-| Decision         | Choice                                                                                                                  |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Update behaviour | **Prompt to reload** (`registerType: 'prompt'`)                                                                         |
-| Offline scope    | **Full editor offline** (app shell precached + images/fonts runtime-cached)                                             |
-| Icon source      | **Derive** from existing brand assets (`architect-icon.png` / `NC-Mark.svg`)                                            |
-| Fonts            | **Runtime-cache** Google Fonts (not self-hosted)                                                                        |
-| Thumbnails       | **Runtime-cache** on demand (relying on existing idle-preload), not precached                                           |
-| Template install | **Offline** — bundled template + Sample assets warmed into the SW cache at idle; dev-only Development protocol excluded |
+| Decision         | Choice                                                                                                                        |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Update behaviour | **Prompt to reload** (`registerType: 'prompt'`)                                                                               |
+| Offline scope    | **Full editor offline** (app shell precached + images/fonts runtime-cached)                                                   |
+| Icon source      | **Derive** from existing brand assets (`architect-icon.png` / `NC-Mark.svg`)                                                  |
+| Fonts            | **Runtime-cache** Google Fonts (not self-hosted)                                                                              |
+| Thumbnails       | **Runtime-cache** on demand (relying on existing idle-preload), not precached                                                 |
+| Template install | **Offline** — bundled template + Sample assets warmed into the SW cache at idle; dev-only Development protocol excluded       |
+| SW registration  | **All sessions** — required for installability (Chrome needs a registered SW); only the heavy template warm is installed-only |
 
-## Offline gated to installed-PWA sessions
+## Service worker registers in all sessions; heavy warming is installed-only
 
-Offline support (service-worker registration, precaching, runtime caching, the
-template-asset warm, and the update prompt) is enabled **only when the app runs
-as an installed PWA**. In a normal browser tab the app stays online-only with
-plain HTTP caching and registers **no service worker**.
+The service worker registers and precaches the app shell in **every** session.
+This is required: Chrome treats the app as installable — and only fires
+`beforeinstallprompt` / shows the address-bar install icon — when a service
+worker with a fetch handler is registered. An earlier draft gated registration
+on `isRunningAsInstalledPwa()` so that a plain tab registered no worker; that was
+**reverted** because it made the app un-installable (the deploy showed zero
+service workers and no install affordance), which defeated both the install
+nudge and installation itself.
 
-`isRunningAsInstalledPwa()` (`src/utils/pwa.ts`) detects this via the
-`display-mode` media query (`standalone` / `window-controls-overlay`) plus iOS
-Safari's `navigator.standalone`. It deliberately does **not** treat `fullscreen`
-or `minimal-ui` as installed: `(display-mode: fullscreen)` also matches when a
-normal tab enters Fullscreen-API fullscreen (e.g. fullscreening a `<video>`), so
-including it would register the service worker in a plain tab. The result is
-evaluated **once at startup** (`OFFLINE_ENABLED` in `ViewManager/views/App.tsx`),
-not per render, so a transient display-mode change cannot flip it. It gates:
+Everyone gets:
 
-- **SW registration** — `PwaUpdateBanner` (which registers the worker via
-  `useRegisterSW`) is mounted only when installed (`ViewManager/views/App.tsx`).
-- **The template-asset warm** — skipped in a tab (`main.tsx`).
+- **SW registration + app-shell precache** — via `PwaUpdateBanner`'s
+  `useRegisterSW` (mounted unconditionally in `ViewManager/views/App.tsx`). Makes
+  the app installable and speeds up tab loads.
+- **The update prompt** (`PwaUpdateBanner`) and, when not yet installed, the
+  **install nudge** (`PwaInstallNudge`). Each self-hides when not applicable.
 
-Notes / caveats:
+Still gated to installed sessions, via `isRunningAsInstalledPwa()`
+(`src/utils/pwa.ts`; `display-mode: standalone` / `window-controls-overlay` +
+iOS `navigator.standalone`, in `main.tsx`):
 
-- A service worker is **origin-scoped**, so once a user installs and the worker
-  registers, it also controls that user's browser tabs (offline "leaks" into the
-  tab for that user). This is unavoidable and accepted.
-- Install does not require a service worker — modern Chrome (93+) offers the
-  install prompt from a valid manifest alone — so gating the SW to installed
-  sessions does not block installation.
-- Stage-thumbnail idle-preloading still runs in tabs (it only warms the HTTP
-  cache for speed; it is not service-worker-specific).
+- **The bundled template/Sample asset warm** and the persistent-storage request,
+  so a casual tab does not download the (~2 MB) template media.
+
+Notes:
+
+- `isRunningAsInstalledPwa()` deliberately excludes `fullscreen`/`minimal-ui` (a
+  normal tab entering Fullscreen-API fullscreen matches `display-mode:
+fullscreen`); it now only gates the warm, not registration.
+- Stage-thumbnail idle-preloading runs in all sessions (HTTP-cache speed).
 
 ## Offline template installation
 
@@ -110,10 +113,10 @@ offline use), shown only when the browser actually offers installation.
   (`architect:pwa-install-nudge-dismissed`), mirroring the gallery card
   (`architect:templates-gallery-dismissed`). Also auto-suppressed on
   `appinstalled` and whenever running installed.
-- **Mounting** — `App.tsx` renders it as the inverse of the update banner:
-  `{!OFFLINE_ENABLED && <PwaInstallNudge />}`. Safari/Firefox never fire
-  `beforeinstallprompt`, so the nudge never appears there — the "skip Safari"
-  behaviour needs no platform detection.
+- **Mounting** — `App.tsx` mounts it unconditionally (alongside the update
+  banner). It self-hides whenever no deferred prompt exists: when already
+  installed (no `beforeinstallprompt`), and in Safari/Firefox (which never fire
+  it) — so the "skip Safari" behaviour needs no platform detection.
 
 ## Approach
 
