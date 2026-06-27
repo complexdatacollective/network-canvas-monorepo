@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
+import type { MouseEventHandler, ReactNode } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
@@ -13,10 +13,16 @@ import {
 // -----------------------------------------------------------------------
 // ResizeObserver stub — jsdom lacks it; useNodeMeasurement needs it.
 // -----------------------------------------------------------------------
+type StubEntry = Pick<ResizeObserverEntry, 'target' | 'contentRect'>;
+type StubCallback = (
+  entries: StubEntry[],
+  observer: StubResizeObserver,
+) => void;
+
 const MEASURED_SIZE = 96;
 class StubResizeObserver {
-  callback: ResizeObserverCallback;
-  constructor(callback: ResizeObserverCallback) {
+  callback: StubCallback;
+  constructor(callback: StubCallback) {
     this.callback = callback;
   }
   observe(target: Element) {
@@ -24,8 +30,18 @@ class StubResizeObserver {
       [
         {
           target,
-          contentRect: { width: MEASURED_SIZE, height: MEASURED_SIZE },
-        } as unknown as ResizeObserverEntry,
+          contentRect: {
+            width: MEASURED_SIZE,
+            height: MEASURED_SIZE,
+            top: 0,
+            left: 0,
+            bottom: MEASURED_SIZE,
+            right: MEASURED_SIZE,
+            x: 0,
+            y: 0,
+            toJSON: () => ({}),
+          },
+        },
       ],
       this,
     );
@@ -102,7 +118,7 @@ vi.mock('@codaco/fresco-ui/Node', () => ({
   default: function NodeStub(props: {
     label?: string;
     ariaLabel?: string;
-    onClick?: (event: MouseEvent) => void;
+    onClick?: MouseEventHandler<HTMLButtonElement>;
     children?: ReactNode;
   }) {
     return (
@@ -313,7 +329,9 @@ describe('PedigreeView — handleAddPerson routing', () => {
     expect(addNodeSpy).not.toHaveBeenCalled();
     expect(addEdgeSpy).toHaveBeenCalledTimes(1);
 
-    const [callArg] = addEdgeSpy.mock.calls[0]!;
+    const call = addEdgeSpy.mock.calls[0];
+    if (!call) throw new Error('expected addEdge to have been called');
+    const [callArg] = call;
     expect(callArg.from).toBe('ego');
     expect(callArg.to).toBe('cousin');
     expect(callArg.attributes[VAR_CONFIG.relationshipTypeVariable]).toEqual([
