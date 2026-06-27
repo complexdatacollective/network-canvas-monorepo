@@ -1,5 +1,8 @@
 'use client';
 
+import { invariant } from 'es-toolkit';
+import { useContext } from 'react';
+
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Node from '@codaco/fresco-ui/Node';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
@@ -15,7 +18,10 @@ import {
   addableParentTypeOptions,
   countGeneticParents,
 } from '~/interfaces/FamilyPedigree/components/wizards/parentTypeOptions';
-import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
+import {
+  FamilyPedigreeContext,
+  useFamilyPedigreeStore,
+} from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 import {
   getEdgeRelationshipType,
@@ -53,6 +59,12 @@ export default function PedigreeView({
   onToggleAttribute,
   isFinalized = false,
 }: PedigreeViewProps = {}) {
+  const familyPedigreeStore = useContext(FamilyPedigreeContext);
+  invariant(
+    familyPedigreeStore,
+    'PedigreeView must be used within a FamilyPedigreeProvider',
+  );
+
   const storeNodes = useFamilyPedigreeStore((s) => s.network.nodes);
   const storeEdges = useFamilyPedigreeStore((s) => s.network.edges);
   const storeActiveNominationVariable = useFamilyPedigreeStore(
@@ -213,6 +225,7 @@ export default function PedigreeView({
   const handleAddChild = async (nodeId: string) => {
     const result = await openAddChildWizard(
       openDialog,
+      familyPedigreeStore,
       nodeId,
       nodes,
       edges,
@@ -229,6 +242,7 @@ export default function PedigreeView({
   const handleAddSibling = async (nodeId: string) => {
     const result = await openAddSiblingWizard(
       openDialog,
+      familyPedigreeStore,
       nodeId,
       nodes,
       edges,
@@ -247,6 +261,7 @@ export default function PedigreeView({
       geneticCount >= 2
         ? await openAddParentWizard(
             openDialog,
+            familyPedigreeStore,
             nodeId,
             nodes,
             edges,
@@ -256,6 +271,7 @@ export default function PedigreeView({
           )
         : await openDefineParentsWizard(
             openDialog,
+            familyPedigreeStore,
             nodeId,
             nodes,
             edges,

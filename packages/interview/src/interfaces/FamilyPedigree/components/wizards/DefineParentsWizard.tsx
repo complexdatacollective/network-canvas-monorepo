@@ -1,7 +1,9 @@
 import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
+import { FamilyPedigreeStoreBridge } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import type {
   CommitBatch,
+  FamilyPedigreeStoreApi,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 
@@ -35,6 +37,7 @@ function getNodeDisplayName(
 
 export async function openDefineParentsWizard(
   openDialog: ReturnType<typeof useDialog>['openDialog'],
+  store: FamilyPedigreeStoreApi,
   focalNodeId: string,
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
@@ -67,17 +70,37 @@ export async function openDefineParentsWizard(
 
   function WrappedBioTriadStep() {
     return (
-      <BioTriadConfigProvider value={bioTriadConfig}>
-        <BioTriadStep />
-      </BioTriadConfigProvider>
+      <FamilyPedigreeStoreBridge store={store}>
+        <BioTriadConfigProvider value={bioTriadConfig}>
+          <BioTriadStep />
+        </BioTriadConfigProvider>
+      </FamilyPedigreeStoreBridge>
     );
   }
 
   function WrappedPartnershipsStep() {
     return (
-      <BioTriadConfigProvider value={bioTriadConfig}>
-        <NewParentPartnershipsStep />
-      </BioTriadConfigProvider>
+      <FamilyPedigreeStoreBridge store={store}>
+        <BioTriadConfigProvider value={bioTriadConfig}>
+          <NewParentPartnershipsStep />
+        </BioTriadConfigProvider>
+      </FamilyPedigreeStoreBridge>
+    );
+  }
+
+  function WrappedGenericOtherParentsStep() {
+    return (
+      <FamilyPedigreeStoreBridge store={store}>
+        <GenericOtherParentsStep />
+      </FamilyPedigreeStoreBridge>
+    );
+  }
+
+  function WrappedGenericAdditionalParentsStep() {
+    return (
+      <FamilyPedigreeStoreBridge store={store}>
+        <GenericAdditionalParentsStep />
+      </FamilyPedigreeStoreBridge>
     );
   }
 
@@ -92,11 +115,11 @@ export async function openDefineParentsWizard(
       },
       {
         title: 'Other parents',
-        content: GenericOtherParentsStep,
+        content: WrappedGenericOtherParentsStep,
       },
       {
         title: 'Additional parents',
-        content: GenericAdditionalParentsStep,
+        content: WrappedGenericAdditionalParentsStep,
         skip: ({ getFieldValue }) => getFieldValue('hasOtherParents') !== true,
       },
       {

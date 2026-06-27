@@ -1,7 +1,9 @@
 import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
+import { FamilyPedigreeStoreBridge } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import type {
   CommitBatch,
+  FamilyPedigreeStoreApi,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
@@ -58,6 +60,7 @@ function getPreselection(
 
 export async function openAddChildWizard(
   openDialog: ReturnType<typeof useDialog>['openDialog'],
+  store: FamilyPedigreeStoreApi,
   anchorNodeId: string,
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
@@ -96,31 +99,47 @@ export async function openAddChildWizard(
     steps: [
       {
         title: 'Child details',
-        content: () => <PersonFields namespace="child" />,
+        content: () => (
+          <FamilyPedigreeStoreBridge store={store}>
+            <PersonFields namespace="child" />
+          </FamilyPedigreeStoreBridge>
+        ),
       },
       {
         title: 'Biological parents',
         content: () => (
-          <BioTriadConfigProvider value={bioTriadConfig}>
-            <BioTriadStep />
-          </BioTriadConfigProvider>
+          <FamilyPedigreeStoreBridge store={store}>
+            <BioTriadConfigProvider value={bioTriadConfig}>
+              <BioTriadStep />
+            </BioTriadConfigProvider>
+          </FamilyPedigreeStoreBridge>
         ),
       },
       {
         title: 'Other parents',
-        content: GenericOtherParentsStep,
+        content: () => (
+          <FamilyPedigreeStoreBridge store={store}>
+            <GenericOtherParentsStep />
+          </FamilyPedigreeStoreBridge>
+        ),
       },
       {
         title: 'Additional parents',
-        content: GenericAdditionalParentsStep,
+        content: () => (
+          <FamilyPedigreeStoreBridge store={store}>
+            <GenericAdditionalParentsStep />
+          </FamilyPedigreeStoreBridge>
+        ),
         skip: ({ getFieldValue }) => getFieldValue('hasOtherParents') !== true,
       },
       {
         title: 'Parent partnerships',
         content: () => (
-          <BioTriadConfigProvider value={bioTriadConfig}>
-            <NewParentPartnershipsStep />
-          </BioTriadConfigProvider>
+          <FamilyPedigreeStoreBridge store={store}>
+            <BioTriadConfigProvider value={bioTriadConfig}>
+              <NewParentPartnershipsStep />
+            </BioTriadConfigProvider>
+          </FamilyPedigreeStoreBridge>
         ),
         skip: shouldSkipNewParentPartnerships,
       },

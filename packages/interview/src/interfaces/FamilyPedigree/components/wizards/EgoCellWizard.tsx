@@ -1,6 +1,8 @@
 'use client';
 
+import { invariant } from 'es-toolkit';
 import { AnimatePresence, motion } from 'motion/react';
+import { type ComponentType, useContext } from 'react';
 
 import type { SkipContext } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -8,7 +10,11 @@ import { FRAMING_TERMS } from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
 import ActionButton from '~/components/ActionButton';
 import { useStageSelector } from '~/hooks/useStageSelector';
-import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
+import {
+  FamilyPedigreeContext,
+  FamilyPedigreeStoreBridge,
+  useFamilyPedigreeStore,
+} from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 import {
   getFramingConfig,
@@ -52,6 +58,21 @@ export default function EgoCellWizard({
   const introScreen = useStageSelector(getIntroScreen);
   const framingConfig = useStageSelector(getFramingConfig);
 
+  const store = useContext(FamilyPedigreeContext);
+  invariant(
+    store,
+    'EgoCellWizard must be used within a FamilyPedigreeProvider',
+  );
+
+  const wrap = (Step: ComponentType) =>
+    function BridgedStep() {
+      return (
+        <FamilyPedigreeStoreBridge store={store}>
+          <Step />
+        </FamilyPedigreeStoreBridge>
+      );
+    };
+
   const handleClick = async () => {
     const result = await openDialog({
       type: 'wizard',
@@ -61,53 +82,53 @@ export default function EgoCellWizard({
       steps: [
         {
           title: 'Introduction',
-          content: IntroStep,
+          content: wrap(IntroStep),
           skip: () => shouldSkipIntroStep(introScreen),
         },
         {
           title: 'Choose your language',
-          content: FramingSelectionStep,
+          content: wrap(FramingSelectionStep),
           skip: () => shouldSkipFramingSelectionStep(framingConfig),
         },
         {
           title: 'Your biological parents',
-          content: BioParentsIntroStep,
+          content: wrap(BioParentsIntroStep),
         },
         {
           title: stepTerms.eggParent,
-          content: EggParentStep,
+          content: wrap(EggParentStep),
         },
         {
           title: stepTerms.gestationalCarrier,
-          content: GestationalCarrierStep,
+          content: wrap(GestationalCarrierStep),
           skip: ({ getFieldValue }: SkipContext) =>
             getFieldValue('egg-parent.gestationalCarrier') !== false,
         },
         {
           title: stepTerms.spermParent,
-          content: SpermParentStep,
+          content: wrap(SpermParentStep),
         },
         {
           title: 'Other parents',
-          content: OtherParentsStep,
+          content: wrap(OtherParentsStep),
         },
         {
           title: 'Additional parents',
-          content: AdditionalParentsStep,
+          content: wrap(AdditionalParentsStep),
           skip: ({ getFieldValue }: SkipContext) =>
             getFieldValue('hasOtherParents') !== true,
         },
         {
           title: 'Parent partnerships',
-          content: ParentPartnershipsStep,
+          content: wrap(ParentPartnershipsStep),
         },
         {
           title: 'Partner and children',
-          content: PartnerAndChildrenStep,
+          content: wrap(PartnerAndChildrenStep),
         },
         {
           title: 'Children details',
-          content: ChildrenDetailStep,
+          content: wrap(ChildrenDetailStep),
           skip: ({ getFieldValue }: SkipContext) => {
             if (getFieldValue('hasPartner') !== true) return true;
             return Number(getFieldValue('childrenWithPartnerCount') ?? 0) === 0;

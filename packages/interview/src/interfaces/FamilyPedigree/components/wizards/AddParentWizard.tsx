@@ -13,9 +13,11 @@ import type {
   RelationshipType,
   VariableValue,
 } from '@codaco/shared-consts';
+import { FamilyPedigreeStoreBridge } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import { getNodeLabel } from '~/interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel';
 import type {
   CommitBatch,
+  FamilyPedigreeStoreApi,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
@@ -199,6 +201,7 @@ export function transformToCommitBatch(
 
 export async function openAddParentWizard(
   openDialog: ReturnType<typeof useDialog>['openDialog'],
+  store: FamilyPedigreeStoreApi,
   anchorNodeId: string,
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
@@ -238,16 +241,20 @@ export async function openAddParentWizard(
       {
         title: 'Parent details',
         content: () => (
-          <ParentDetailsStep
-            parentTypeOptions={parentTypeOptions}
-            candidateOptions={candidateOptions}
-          />
+          <FamilyPedigreeStoreBridge store={store}>
+            <ParentDetailsStep
+              parentTypeOptions={parentTypeOptions}
+              candidateOptions={candidateOptions}
+            />
+          </FamilyPedigreeStoreBridge>
         ),
       },
       {
         title: 'Partnerships',
         content: () => (
-          <ExistingParentPartnershipsStep existingParents={existingParents} />
+          <FamilyPedigreeStoreBridge store={store}>
+            <ExistingParentPartnershipsStep existingParents={existingParents} />
+          </FamilyPedigreeStoreBridge>
         ),
         skip: (_ctx: SkipContext) => existingParentIds.length === 0,
       },
