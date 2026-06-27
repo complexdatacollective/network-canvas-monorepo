@@ -88,6 +88,33 @@ entry (`import.meta.env.DEV` in `LibraryPanel`) shipping a ~24 MB video. Once a
 protocol is in the library its assets live in IndexedDB and are offline
 regardless of the service worker.
 
+## Install nudge
+
+An unobtrusive prompt encouraging not-yet-installed users to install the app (for
+offline use), shown only when the browser actually offers installation.
+
+- **Capture (`src/utils/installPrompt.ts`)** — a module that registers
+  `beforeinstallprompt` + `appinstalled` listeners at startup (the event fires
+  early and is one-shot, so it must be captured before React mounts). It
+  `preventDefault()`s and stashes the event, and is a tiny external store:
+  `getDeferredPrompt()`, `subscribe(cb)`, `promptInstall()` (fires the real native
+  dialog, then clears the stash). `BeforeInstallPromptEvent` / the
+  `beforeinstallprompt` `WindowEventMap` entry are declared in `global.d.ts`
+  (not in TS's DOM lib).
+- **`PwaInstallNudge.tsx`** — a `fixed top-4 right-4` callout (near Chrome's
+  address-bar install icon) subscribed to the store via `useSyncExternalStore`.
+  Renders only when a deferred prompt exists **and** it hasn't been dismissed
+  **and** the app isn't already installed. Contents: copy + an **Install** button
+  (`promptInstall()`) + a dismiss **✕**.
+- **Dismissal** — permanent, via a `localStorage` flag
+  (`architect:pwa-install-nudge-dismissed`), mirroring the gallery card
+  (`architect:templates-gallery-dismissed`). Also auto-suppressed on
+  `appinstalled` and whenever running installed.
+- **Mounting** — `App.tsx` renders it as the inverse of the update banner:
+  `{!OFFLINE_ENABLED && <PwaInstallNudge />}`. Safari/Firefox never fire
+  `beforeinstallprompt`, so the nudge never appears there — the "skip Safari"
+  behaviour needs no platform detection.
+
 ## Approach
 
 Use **`vite-plugin-pwa@^1.3.0`** with Workbox's **`generateSW`** strategy.

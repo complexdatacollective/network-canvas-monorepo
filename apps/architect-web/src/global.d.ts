@@ -9,6 +9,20 @@ interface Navigator {
   readonly standalone?: boolean;
 }
 
+// The PWA install prompt event is not in TypeScript's DOM lib.
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: readonly string[];
+  readonly userChoice: Promise<{
+    readonly outcome: 'accepted' | 'dismissed';
+    readonly platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
+
+interface WindowEventMap {
+  beforeinstallprompt: BeforeInstallPromptEvent;
+}
+
 // Remove other Node.js globals that shouldn't be available in browser
 declare const process: undefined;
 declare const global: undefined;

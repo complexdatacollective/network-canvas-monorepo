@@ -5,6 +5,7 @@ import BackgroundLights from '~/components/BackgroundLights';
 import DialogManager from '~/components/DialogManager';
 import { JsonPreviewOverlay } from '~/components/JsonPreviewOverlay';
 import ProtocolGuardedRouter from '~/components/ProtocolGuardedRouter';
+import PwaInstallNudge from '~/components/PwaInstallNudge';
 import PwaUpdateBanner from '~/components/PwaUpdateBanner';
 import Routes from '~/components/Routes';
 import ScrollToTop from '~/components/ScrollToTop';
@@ -38,7 +39,7 @@ const AppContents = () => {
       <ScrollToTop />
       <Routes />
       <DialogManager />
-      {OFFLINE_ENABLED && <PwaUpdateBanner />}
+      {OFFLINE_ENABLED ? <PwaUpdateBanner /> : <PwaInstallNudge />}
       <JsonPreviewOverlay />
     </>
   );

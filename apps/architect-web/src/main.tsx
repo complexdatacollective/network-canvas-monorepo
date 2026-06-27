@@ -7,7 +7,12 @@ import AppView from './components/ViewManager/views/App';
 import { store } from './ducks/store';
 import { preloadTimelineImages } from './images/timeline';
 import { warmBundledTemplateAssets } from './templates/warmBundledAssets';
+import { initInstallPromptCapture } from './utils/installPrompt';
 import { isRunningAsInstalledPwa, requestPersistentStorage } from './utils/pwa';
+
+// Capture the PWA install prompt before React mounts — the event fires early and
+// is one-shot.
+initInstallPromptCapture();
 
 const root = document.getElementById('root') as Element;
 
