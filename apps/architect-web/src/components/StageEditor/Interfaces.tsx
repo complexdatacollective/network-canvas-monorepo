@@ -243,6 +243,23 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
     documentation:
       'https://documentation.networkcanvas.com/interface-documentation/sociogram/',
   },
+  NetworkComposer: {
+    sections: [
+      NodeType,
+      QuickAdd,
+      Background,
+      AutomaticLayout,
+      SkipLogic,
+      InterviewScript,
+    ],
+    documentation:
+      'https://documentation.networkcanvas.com/interface-documentation/network-composer/',
+    template: {
+      behaviours: {
+        automaticLayout: { enabled: false },
+      },
+    },
+  },
   TieStrengthCensus: {
     sections: [
       FilteredNodeType,
