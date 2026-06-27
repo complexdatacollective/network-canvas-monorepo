@@ -1,4 +1,4 @@
-import type { GeneticGraph } from '../geneticGraph';
+import type { AnnotatedParent, GeneticGraph } from '../geneticGraph';
 import { mergeStatus, type Status } from '../status';
 
 type Sex = 'female' | 'male' | 'unknown';
@@ -18,27 +18,11 @@ function assign(result: Map<string, Status>, id: string, value: Status): void {
 }
 
 /**
- * Female ancestors of `id` reached by walking strictly up through female
- * parents (the maternal line), including `id` only if requested. This is the
- * X-bearing maternal lineage: a female inherits one X from her mother, so an
- * affected male anywhere on this lineage shares the carrier X with `id`.
+ * The female (maternal) parents of `id`. Relies on the graph's pre-annotated
+ * `parent.sex`, so no `resolveSex` is needed here.
  */
-function maternalLineFemales(
-  graph: GeneticGraph,
-  resolveSex: (id: string) => Sex,
-  id: string,
-): Set<string> {
-  const femaleParents = (nodeId: string): string[] =>
-    graph
-      .parentsOf(nodeId)
-      .filter((parent) => parent.sex === 'female')
-      .map((parent) => parent.id);
-
-  // BFS strictly up the female (maternal) line. `propagate` carries a
-  // visited-set so consanguinity loops terminate.
-  const line = graph.propagate([id], femaleParents, new Set<string>());
-  line.delete(id);
-  return line;
+function mothersOf(graph: GeneticGraph, id: string): AnnotatedParent[] {
+  return graph.parentsOf(id).filter((parent) => parent.sex === 'female');
 }
 
 /**
@@ -54,10 +38,11 @@ function maternalLineFemales(
  * - Affected nodes → `affected`.
  * - Every DAUGHTER (female child) of an affected male → `obligateCarrier` (he
  *   passes his single X to all daughters). His SONS get the Y → nothing.
- * - A female with ≥2 affected sons, OR an affected son AND another affected
- *   maternal-line male (her father / brother / maternal uncle on the X lineage)
- *   → `obligateCarrier`.
- * - The mother of a SINGLE affected male with no other affected male relative →
+ * - A female with ≥2 affected sons, OR an affected son AND an affected MATERNAL
+ *   SIBLING (a male sharing her own mother) → `obligateCarrier`. An affected
+ *   male who is merely an ANCESTOR of the mother (father, maternal grandfather,
+ *   …) does NOT make her obligate: he transmits to her with probability ≤50%.
+ * - The mother of a SINGLE affected male with no affected maternal sibling →
  *   `atRiskCarrier` (de novo is not excluded — NOT obligate).
  * - The maternal grandmother and maternal aunts of an affected male →
  *   `atRiskCarrier`; the maternal uncles → `atRiskAffected`.
@@ -122,10 +107,7 @@ export function computeXLinkedRecessive(
       continue;
     }
 
-    const mothers = graph
-      .parentsOf(affectedId)
-      .filter((parent) => parent.sex === 'female')
-      .map((parent) => parent.id);
+    const mothers = mothersOf(graph, affectedId).map((parent) => parent.id);
 
     for (const motherId of mothers) {
       // Affected sons of THIS mother (the affected male is one of them).
@@ -135,38 +117,36 @@ export function computeXLinkedRecessive(
           (childId) => resolveSex(childId) === 'male' && affected.has(childId),
         );
 
-      // Another affected maternal-line male shared with the mother: an affected
-      // male (≠ her affected sons) who lies on her X lineage — a male ancestor
-      // of the mother, or a son of one of her maternal-line female ancestors
-      // (her brother, maternal uncle, maternal grandfather, …).
-      const motherLineFemales = maternalLineFemales(
-        graph,
-        resolveSex,
-        motherId,
+      // A corroborating affected male whose affected status makes THIS mother's
+      // carriership deterministic. The only such collateral is an affected
+      // MATERNAL SIBLING of the mother — a male who shares the mother's own
+      // mother. The mother and her maternal brother both draw an X from that
+      // shared carrier mother, so an affected brother proves the shared X
+      // carries the allele, which the mother then necessarily inherited.
+      //
+      // We do NOT count affected males who are ANCESTORS of the mother (her
+      // father, maternal grandfather, maternal great-uncle, …): each transmits
+      // to the mother with probability ≤50%, never deterministically. Counting
+      // them would over-state `obligateCarrier` (the §3 refutation).
+      const motherOwnMothers = new Set(
+        mothersOf(graph, motherId).map((parent) => parent.id),
       );
       const sonSet = new Set(affectedSons);
-      const hasOtherMaternalLineMale = [...affected].some((maleId) => {
+      const hasAffectedMaternalSibling = [...affected].some((maleId) => {
         if (resolveSex(maleId) !== 'male' || sonSet.has(maleId)) {
           return false;
         }
-        // A male ancestor of the mother shares her X lineage.
-        if (graph.ancestors(motherId).has(maleId)) {
-          return true;
-        }
-        // A male whose mother is on the mother's maternal-line shares the X.
-        return graph
-          .parentsOf(maleId)
-          .some(
-            (parent) =>
-              parent.sex === 'female' && motherLineFemales.has(parent.id),
-          );
+        // Shares the mother's own mother ⇒ maternal sibling on her X lineage.
+        return mothersOf(graph, maleId).some((parent) =>
+          motherOwnMothers.has(parent.id),
+        );
       });
 
-      if (affectedSons.length >= 2 || hasOtherMaternalLineMale) {
+      if (affectedSons.length >= 2 || hasAffectedMaternalSibling) {
         markObligateFemale(motherId);
       } else {
-        // Single affected son, no other affected maternal-line male: de novo is
-        // not excluded → at-risk carrier, NOT obligate.
+        // Single affected son, no affected maternal sibling: de novo is not
+        // excluded → at-risk carrier, NOT obligate.
         markAtRiskFemale(motherId);
       }
     }

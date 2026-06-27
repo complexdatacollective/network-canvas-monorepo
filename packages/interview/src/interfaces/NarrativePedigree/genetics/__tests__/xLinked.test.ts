@@ -205,6 +205,155 @@ describe('computeXLinkedRecessive', () => {
     });
   });
 
+  describe("refutation B: affected PATERNAL-line male up the mother's male line does NOT make her obligate", () => {
+    /**
+     *   affPGF (affected MALE)
+     *      |
+     *   mGrandfather (unaffected MALE)   <- the mother's FATHER
+     *      |
+     *   mother (female)
+     *      |
+     *    son (affected)
+     *
+     *   affPGF reaches the mother only through an unbroken MALE line, so he
+     *   shares NO X with her. With a single affected son and no affected
+     *   maternal sibling, the mother is `atRiskCarrier`, NOT obligate.
+     */
+    const nodes = [
+      makeNode('affPGF'),
+      makeNode('mGrandfather'),
+      makeNode('mother'),
+      makeNode('son'),
+    ];
+    const edges = [
+      makeGeneticEdge('affPGF', 'mGrandfather'),
+      makeGeneticEdge('mGrandfather', 'mother'),
+      makeGeneticEdge('mother', 'son'),
+    ];
+    const resolveSex = sexResolver({
+      affPGF: 'male',
+      mGrandfather: 'male',
+      mother: 'female',
+      son: 'male',
+    });
+    const graph = buildGraph(nodes, edges, resolveSex);
+    const affected = new Set(['affPGF', 'son']);
+    const result = computeXLinkedRecessive(graph, affected, resolveSex);
+
+    it('marks the mother as atRiskCarrier (NOT obligateCarrier)', () => {
+      expect(status(result, 'mother')).toBe('atRiskCarrier');
+      expect(status(result, 'mother')).not.toBe('obligateCarrier');
+    });
+  });
+
+  describe('refutation C: an affected male-line GREAT-grandfather does NOT make the mother obligate', () => {
+    /**
+     *   affMGGF (affected MALE, great-grandfather)
+     *      |
+     *   mGrandfather (unaffected MALE)
+     *      |
+     *   mother (female)
+     *      |
+     *    son (affected)
+     *
+     *   Same shape as B, one generation deeper: the affected male is reached
+     *   through an unbroken male line, shares no X with the mother → she stays
+     *   `atRiskCarrier`.
+     */
+    const nodes = [
+      makeNode('affMGGF'),
+      makeNode('mGrandfather'),
+      makeNode('mother'),
+      makeNode('son'),
+    ];
+    const edges = [
+      makeGeneticEdge('affMGGF', 'mGrandfather'),
+      makeGeneticEdge('mGrandfather', 'mother'),
+      makeGeneticEdge('mother', 'son'),
+    ];
+    const resolveSex = sexResolver({
+      affMGGF: 'male',
+      mGrandfather: 'male',
+      mother: 'female',
+      son: 'male',
+    });
+    const graph = buildGraph(nodes, edges, resolveSex);
+    const affected = new Set(['affMGGF', 'son']);
+    const result = computeXLinkedRecessive(graph, affected, resolveSex);
+
+    it('marks the mother as atRiskCarrier (NOT obligateCarrier)', () => {
+      expect(status(result, 'mother')).toBe('atRiskCarrier');
+      expect(status(result, 'mother')).not.toBe('obligateCarrier');
+    });
+  });
+
+  describe('refutation H: an affected MATERNAL GRANDFATHER (50%-transmitting X-ancestor) does NOT make the mother obligate', () => {
+    /**
+     *   affMGF (affected MALE, maternal grandfather)
+     *      |
+     *   grandmother (female)   <- daughter of affMGF -> obligateCarrier
+     *      |
+     *   mother (female)
+     *      |
+     *    son (affected)
+     *
+     *   affMGF's X went OBLIGATELY to the grandmother, but to the MOTHER only
+     *   with 50%. A single affected son therefore leaves the mother
+     *   `atRiskCarrier`, NOT obligate. The grandmother stays `obligateCarrier`
+     *   (daughter of an affected male — unchanged by this fix).
+     */
+    const nodes = [
+      makeNode('affMGF'),
+      makeNode('grandmother'),
+      makeNode('mother'),
+      makeNode('son'),
+    ];
+    const edges = [
+      makeGeneticEdge('affMGF', 'grandmother'),
+      makeGeneticEdge('grandmother', 'mother'),
+      makeGeneticEdge('mother', 'son'),
+    ];
+    const resolveSex = sexResolver({
+      affMGF: 'male',
+      grandmother: 'female',
+      mother: 'female',
+      son: 'male',
+    });
+    const graph = buildGraph(nodes, edges, resolveSex);
+    const affected = new Set(['affMGF', 'son']);
+    const result = computeXLinkedRecessive(graph, affected, resolveSex);
+
+    it('marks the mother as atRiskCarrier (NOT obligateCarrier)', () => {
+      expect(status(result, 'mother')).toBe('atRiskCarrier');
+      expect(status(result, 'mother')).not.toBe('obligateCarrier');
+    });
+
+    it('keeps the grandmother (daughter of the affected male) as obligateCarrier', () => {
+      expect(status(result, 'grandmother')).toBe('obligateCarrier');
+    });
+  });
+
+  describe('daughter of an affected male stays obligateCarrier (regression guard)', () => {
+    /**
+     *   affectedFather (affected MALE)
+     *      |
+     *   daughter (female)   <- his X reaches ALL daughters -> obligateCarrier
+     */
+    const nodes = [makeNode('affectedFather'), makeNode('daughter')];
+    const edges = [makeGeneticEdge('affectedFather', 'daughter')];
+    const resolveSex = sexResolver({
+      affectedFather: 'male',
+      daughter: 'female',
+    });
+    const graph = buildGraph(nodes, edges, resolveSex);
+    const affected = new Set(['affectedFather']);
+    const result = computeXLinkedRecessive(graph, affected, resolveSex);
+
+    it('marks the daughter of an affected male as obligateCarrier', () => {
+      expect(status(result, 'daughter')).toBe('obligateCarrier');
+    });
+  });
+
   describe('maternal line of an affected male', () => {
     /**
      *   grandmother (female) --- grandfather (male)
