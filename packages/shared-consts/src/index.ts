@@ -1,6 +1,7 @@
 export * from './export-process';
 export * from './family-pedigree';
 export * from './family-pedigree-framing';
+export * from './narrative-pedigree';
 export * from './network';
 export * from './session';
 export * from './stage-metadata';
