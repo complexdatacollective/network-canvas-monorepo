@@ -80,3 +80,45 @@ export function computeHighlight(
 
   return { nodes, edges };
 }
+
+/**
+ * Computes the contributor highlight set for the narrative pedigree.
+ *
+ * When focalId is null, the whole pedigree is lit (nothing dimmed).
+ * Otherwise, highlights the focal plus every ancestor reachable through
+ * a chain of transmitting nodes — walking parents only, and continuing
+ * to a parent only when that parent has a non-`unknown` status for at
+ * least one disease in statusesByDisease.
+ *
+ * @param focalId           The focal node id, or null for no dimming.
+ * @param graph             The annotated genetic graph.
+ * @param statusesByDisease Disease id → (node id → status).
+ */
+export function computeContributors(
+  focalId: string | null,
+  graph: GeneticGraph,
+  statusesByDisease: Map<string, Map<string, Status>>,
+): { nodes: Set<string>; edges: Set<string> } {
+  if (focalId === null) {
+    const nodes = new Set(graph.nodeIds());
+    const edges = new Set<string>();
+    for (const id of nodes)
+      for (const c of graph.childrenOf(id))
+        if (nodes.has(c)) edges.add(edgeKey(id, c));
+    return { nodes, edges };
+  }
+
+  const nodes = graph.propagate([focalId], (id) =>
+    graph
+      .parentsOf(id)
+      .map((p) => p.id)
+      .filter((pid) => hasNonUnknownStatus(pid, statusesByDisease)),
+  );
+
+  const edges = new Set<string>();
+  for (const id of nodes)
+    for (const c of graph.childrenOf(id))
+      if (nodes.has(c)) edges.add(edgeKey(id, c));
+
+  return { nodes, edges };
+}
