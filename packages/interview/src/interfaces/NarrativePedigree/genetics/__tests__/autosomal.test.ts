@@ -11,6 +11,7 @@ import { buildGeneticGraph, type GeneticGraph } from '../geneticGraph';
 import {
   computeAutosomalDominant,
   computeAutosomalRecessive,
+  computeAutosomalRecessiveHomozygous,
 } from '../patterns/autosomal';
 import type { Status } from '../status';
 
@@ -587,6 +588,202 @@ describe('computeAutosomalRecessive', () => {
 
     it('terminates without throwing on a cyclic pedigree', () => {
       expect(() => computeAutosomalRecessive(graph, affected)).not.toThrow();
+    });
+  });
+});
+
+describe('computeAutosomalRecessiveHomozygous', () => {
+  describe('autozygous first-cousin union', () => {
+    /**
+     *                ggp (affected)
+     *               /            \
+     *           childA        childB        (both obligateCarrier)
+     *             |              |
+     *          cousinL        cousinR        (both atRiskCarrier collaterals)
+     *               \          /
+     *                child
+     *
+     *   Both cousins are atRiskCarrier (50%-prior collaterals descending from the
+     *   affected great-grandparent's carrier children). Their shared child is at
+     *   risk of being homozygous-affected by autozygosity → flagged true.
+     */
+    const nodes = [
+      makeNode('ggp'),
+      makeNode('childA'),
+      makeNode('childB'),
+      makeNode('cousinL'),
+      makeNode('cousinR'),
+      makeNode('child'),
+    ];
+    const edges = [
+      makeGeneticEdge('ggp', 'childA'),
+      makeGeneticEdge('ggp', 'childB'),
+      makeGeneticEdge('childA', 'cousinL'),
+      makeGeneticEdge('childB', 'cousinR'),
+      makeGeneticEdge('cousinL', 'child'),
+      makeGeneticEdge('cousinR', 'child'),
+    ];
+    const graph = buildGraph(nodes, edges);
+    const affected = new Set(['ggp']);
+    const statuses = computeAutosomalRecessive(graph, affected);
+    const flags = computeAutosomalRecessiveHomozygous(graph, statuses);
+
+    it('confirms both cousins are at-risk carriers (rule precondition)', () => {
+      expect(status(statuses, 'cousinL')).toBe('atRiskCarrier');
+      expect(status(statuses, 'cousinR')).toBe('atRiskCarrier');
+    });
+
+    it('flags the cousin-union child as at-risk homozygous', () => {
+      expect(flags.get('child')).toBe(true);
+    });
+
+    it('does not flag the at-risk-carrier cousins themselves', () => {
+      expect(flags.get('cousinL') ?? false).toBe(false);
+      expect(flags.get('cousinR') ?? false).toBe(false);
+    });
+  });
+
+  describe('unrelated compound-het (two disjoint carrier lines)', () => {
+    /**
+     *   affectedL (affected)        affectedR (affected)
+     *        |                            |
+     *     parentL (obligateCarrier)    parentR (obligateCarrier)
+     *           \                      /
+     *                    child
+     *
+     *   The two carrier lines share NO ancestor, so this proves the rule does NOT
+     *   gate on ancestor-set intersection: two carrier parents (whatever their
+     *   provenance) → the child is flagged at-risk homozygous (compound-het).
+     */
+    const nodes = [
+      makeNode('affectedL'),
+      makeNode('affectedR'),
+      makeNode('parentL'),
+      makeNode('parentR'),
+      makeNode('child'),
+    ];
+    const edges = [
+      makeGeneticEdge('affectedL', 'parentL'),
+      makeGeneticEdge('affectedR', 'parentR'),
+      makeGeneticEdge('parentL', 'child'),
+      makeGeneticEdge('parentR', 'child'),
+    ];
+    const graph = buildGraph(nodes, edges);
+    const affected = new Set(['affectedL', 'affectedR']);
+    const statuses = computeAutosomalRecessive(graph, affected);
+    const flags = computeAutosomalRecessiveHomozygous(graph, statuses);
+
+    it('confirms both parents are obligate carriers (rule precondition)', () => {
+      expect(status(statuses, 'parentL')).toBe('obligateCarrier');
+      expect(status(statuses, 'parentR')).toBe('obligateCarrier');
+    });
+
+    it('flags the compound-het child even with no shared ancestor', () => {
+      expect(flags.get('child')).toBe(true);
+    });
+  });
+
+  describe('one-sided guard (single carrier parent)', () => {
+    /**
+     *   affected (affected)
+     *        |
+     *     carrierParent (obligateCarrier)   married (unknown)
+     *                \                      /
+     *                   oneSidedChild
+     *
+     *   Only one parent has a non-unknown status, so the child is NOT flagged.
+     */
+    const nodes = [
+      makeNode('affected'),
+      makeNode('carrierParent'),
+      makeNode('married'),
+      makeNode('oneSidedChild'),
+    ];
+    const edges = [
+      makeGeneticEdge('affected', 'carrierParent'),
+      makeGeneticEdge('carrierParent', 'oneSidedChild'),
+      makeGeneticEdge('married', 'oneSidedChild'),
+    ];
+    const graph = buildGraph(nodes, edges);
+    const affected = new Set(['affected']);
+    const statuses = computeAutosomalRecessive(graph, affected);
+    const flags = computeAutosomalRecessiveHomozygous(graph, statuses);
+
+    it('confirms exactly one parent has a non-unknown status (rule precondition)', () => {
+      expect(status(statuses, 'carrierParent')).toBe('obligateCarrier');
+      expect(status(statuses, 'married')).toBe('unknown');
+    });
+
+    it('does NOT flag a child with only one at-risk-carrier-or-higher parent', () => {
+      expect(flags.get('oneSidedChild') ?? false).toBe(false);
+    });
+  });
+
+  describe('no segregating allele', () => {
+    /**
+     *   p1 --- p2
+     *       |
+     *     child
+     *
+     *   Nobody is nominated affected, so the primary status map is empty and no
+     *   node can be flagged: the result is an empty map.
+     */
+    const nodes = [makeNode('p1'), makeNode('p2'), makeNode('child')];
+    const edges = [
+      makeGeneticEdge('p1', 'child'),
+      makeGeneticEdge('p2', 'child'),
+    ];
+    const graph = buildGraph(nodes, edges);
+    const affected = new Set<string>();
+    const statuses = computeAutosomalRecessive(graph, affected);
+    const flags = computeAutosomalRecessiveHomozygous(graph, statuses);
+
+    it('produces an empty primary status map (rule precondition)', () => {
+      expect(statuses.size).toBe(0);
+    });
+
+    it('produces an empty flag map (no flags)', () => {
+      expect(flags.size).toBe(0);
+    });
+  });
+
+  describe('idempotence (shared ancestors do not escalate the flag)', () => {
+    /**
+     *                ggp (affected)
+     *               /            \
+     *           childA        childB
+     *             |              |
+     *          cousinL        cousinR
+     *               \          /
+     *                child
+     *
+     *   `child` is reached through two carrier parents AND descends from a single
+     *   shared affected ancestor by two distinct paths. The flag is a plain
+     *   boolean: it is set once to `true`, never accumulated or escalated.
+     */
+    const nodes = [
+      makeNode('ggp'),
+      makeNode('childA'),
+      makeNode('childB'),
+      makeNode('cousinL'),
+      makeNode('cousinR'),
+      makeNode('child'),
+    ];
+    const edges = [
+      makeGeneticEdge('ggp', 'childA'),
+      makeGeneticEdge('ggp', 'childB'),
+      makeGeneticEdge('childA', 'cousinL'),
+      makeGeneticEdge('childB', 'cousinR'),
+      makeGeneticEdge('cousinL', 'child'),
+      makeGeneticEdge('cousinR', 'child'),
+    ];
+    const graph = buildGraph(nodes, edges);
+    const affected = new Set(['ggp']);
+    const statuses = computeAutosomalRecessive(graph, affected);
+    const flags = computeAutosomalRecessiveHomozygous(graph, statuses);
+
+    it('flags the child exactly once with the boolean true', () => {
+      expect(flags.get('child')).toBe(true);
     });
   });
 });

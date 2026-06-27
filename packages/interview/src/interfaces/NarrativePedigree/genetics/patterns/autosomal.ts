@@ -276,3 +276,39 @@ export function computeAutosomalRecessive(
 
   return result;
 }
+
+/**
+ * Autosomal-recessive at-risk-homozygous flag (spec §3, non-lattice).
+ *
+ * A separate boolean signal from the primary `Status`: a child whose BOTH
+ * parents segregate a recessive allele is at risk of being homozygous-affected
+ * — via consanguineous autozygosity (a cousin union descending from one carrier
+ * line) OR via compound heterozygosity (two unrelated carrier lines converging).
+ * `computeAutosomalRecessive` cannot express this because a 25%-risk child is
+ * not itself a certain carrier/affected.
+ *
+ * For each node, count its DISTINCT parents whose primary status is
+ * `atRiskCarrier`-or-higher (present and not `unknown`:
+ * `{affected, obligateAffected, obligateCarrier, atRiskAffected, atRiskCarrier}`).
+ * Two-or-more such parents ⇒ flag `true`; omission ⇒ `false`. The count is NOT
+ * gated on shared ancestry, so the unrelated compound-het case is retained.
+ * `statuses` is read-only here; it is never mutated.
+ */
+export function computeAutosomalRecessiveHomozygous(
+  graph: GeneticGraph,
+  statuses: Map<string, Status>,
+): Map<string, boolean> {
+  const result = new Map<string, boolean>();
+
+  for (const id of graph.nodeIds()) {
+    const segregatingParentCount = graph.parentsOf(id).filter((parent) => {
+      const parentStatus = statuses.get(parent.id);
+      return parentStatus !== undefined && parentStatus !== 'unknown';
+    }).length;
+    if (segregatingParentCount >= 2) {
+      result.set(id, true);
+    }
+  }
+
+  return result;
+}

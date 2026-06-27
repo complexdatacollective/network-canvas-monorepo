@@ -8,7 +8,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { computeStatuses } from '../computeStatuses';
+import { computeAtRiskHomozygous, computeStatuses } from '../computeStatuses';
 import { buildGeneticGraph, type GeneticGraph } from '../geneticGraph';
 import type { Status } from '../status';
 
@@ -266,5 +266,85 @@ describe('computeStatuses', () => {
         expect(status(result, 'affectedMale')).toBe('affected');
       });
     }
+  });
+});
+
+describe('computeAtRiskHomozygous', () => {
+  // A two-carrier-parent child: under AR this child is flagged; under any other
+  // pattern the orchestrator returns an empty map (no flag).
+  /**
+   *   affectedL (affected)        affectedR (affected)
+   *        |                            |
+   *     parentL                      parentR
+   *           \                      /
+   *                    child
+   */
+  const nodes = [
+    makeNode('affectedL'),
+    makeNode('affectedR'),
+    makeNode('parentL'),
+    makeNode('parentR'),
+    makeNode('child'),
+  ];
+  const edges = [
+    makeGeneticEdge('affectedL', 'parentL'),
+    makeGeneticEdge('affectedR', 'parentR'),
+    makeGeneticEdge('parentL', 'child'),
+    makeGeneticEdge('parentR', 'child'),
+  ];
+  const resolveSex = sexResolver({});
+  const graph = buildGraph(nodes, edges, resolveSex);
+  const affected = new Set(['affectedL', 'affectedR']);
+
+  it('flags the two-carrier-parent child under autosomalRecessive', () => {
+    const statuses = computeStatuses(
+      graph,
+      affected,
+      'autosomalRecessive',
+      resolveSex,
+    );
+    const flags = computeAtRiskHomozygous(
+      graph,
+      statuses,
+      'autosomalRecessive',
+      resolveSex,
+    );
+    expect(flags.get('child')).toBe(true);
+  });
+
+  for (const pattern of [
+    'autosomalDominant',
+    'xLinkedDominant',
+    'yLinked',
+    'mitochondrial',
+    'multifactorial',
+    'unknown',
+  ] as const) {
+    it(`returns an empty map for ${pattern} (no homozygous flag)`, () => {
+      const statuses = computeStatuses(graph, affected, pattern, resolveSex);
+      const flags = computeAtRiskHomozygous(
+        graph,
+        statuses,
+        pattern,
+        resolveSex,
+      );
+      expect(flags.size).toBe(0);
+    });
+  }
+
+  it('returns an empty map for xLinkedRecessive (deferred to a later task)', () => {
+    const statuses = computeStatuses(
+      graph,
+      affected,
+      'xLinkedRecessive',
+      resolveSex,
+    );
+    const flags = computeAtRiskHomozygous(
+      graph,
+      statuses,
+      'xLinkedRecessive',
+      resolveSex,
+    );
+    expect(flags.size).toBe(0);
   });
 });
