@@ -141,6 +141,13 @@ export const FirstCousinRepresentation: Story = {
       si.addStage('FamilyPedigree', {
         label: 'Family Pedigree',
         subject: { entity: 'node', type: nodeType.id },
+        // framing and boundaries are mandatory schema fields: the provider reads
+        // framingConfig.mode and the checklist reads boundaries.requireGrandparents.
+        framing: { mode: 'fixed', value: 'gamete' },
+        boundaries: {
+          requireGrandparents: 'off',
+          requireChildrenContributors: 'off',
+        },
         initialNodes: { count: 7 },
         nodeConfig: {
           type: nodeType.id,
@@ -162,7 +169,10 @@ export const FirstCousinRepresentation: Story = {
       si.addInformationStage({ title: 'Complete', text: 'After the stage.' });
 
       // Set node names and ego flag.
-      // Node 6 (cousin) has no name so getDisplayLabel falls back to "Cousin".
+      // Node 6 (the first cousin) has no name. Because its parent Carol IS
+      // named, getDisplayLabel uses the named-intermediary possessive
+      // ("Carol's Child") rather than the generic "Cousin" relationship label
+      // (which only applies when no intermediary on the path is named).
       si.setNodeAttribute(0, nameVar.id, 'You');
       si.setNodeAttribute(0, isEgoVar.id, true);
       si.setNodeAttribute(1, nameVar.id, 'Linda');
@@ -231,9 +241,12 @@ export const FirstCousinRepresentation: Story = {
 
   play: async () => {
     // The pedigree renders without the quick-start wizard because the
-    // network is pre-seeded. Verify the unnamed cousin node is labelled
-    // "Cousin" — the path parent,parent,child,child resolves via Robert.
-    const cousinNode = await screen.findByRole('button', { name: 'Cousin' });
+    // network is pre-seeded. The unnamed first cousin (path
+    // parent,parent,child,child) is labelled relative to its named parent
+    // Carol, so it renders as "Carol's Child".
+    const cousinNode = await screen.findByRole('button', {
+      name: "Carol's Child",
+    });
     expect(cousinNode).toBeInTheDocument();
 
     // Sanity-check that named intermediaries are also on the canvas.
@@ -392,6 +405,11 @@ export const FirstCousinCreationViaWizard: Story = {
         // Fixed gamete framing: no FramingSelectionStep or IntroStep in the
         // wizard, so the quick-start opens directly on BioParentsIntroStep.
         framing: { mode: 'fixed', value: 'gamete' },
+        // boundaries is a mandatory schema field read by the checklist.
+        boundaries: {
+          requireGrandparents: 'off',
+          requireChildrenContributors: 'off',
+        },
         nodeConfig: {
           type: nodeType.id,
           nodeLabelVariable: nameVar.id,
@@ -492,19 +510,26 @@ export const FirstCousinCreationViaWizard: Story = {
       await screen.findByText('Add parent', {}, WIZARD_TIMEOUT),
     );
 
-    await setFieldInput('egg-parent.is-donor', false);
-    await setFieldInput('egg-parent.name', 'Helen');
-    await setFieldInput('egg-parent.gestationalCarrier', true);
-    await setFieldInput('egg-parent.gender_identity', 'Woman/girl');
-    await setFieldInput('sperm-parent.is-donor', false);
-    await setFieldInput('sperm-parent.name', 'George');
-    await setFieldInput('sperm-parent.gender_identity', 'Man/boy');
-    await clickContinue(); // BioTriadStep → OtherParentsStep
+    // DefineParentsWizard opens on BioTriadStep. Robert has no existing parents,
+    // so the egg-/sperm-source selectors auto-resolve to "new" (rendered hidden)
+    // and we fill the new-person fields. is-donor defaults false and
+    // egg-parent-carried defaults true, so those are left at their defaults.
+    await setFieldInput('new-egg-source.name', 'Helen');
+    await setFieldInput('new-egg-source.gender_identity', 'Woman/girl');
+    await setFieldInput('new-sperm-source.name', 'George');
+    await setFieldInput('new-sperm-source.gender_identity', 'Man/boy');
+    await clickContinue(); // BioTriadStep → Other parents
 
     await setFieldInput('hasOtherParents', false);
-    await clickContinue(); // OtherParentsStep → partnerships
+    await clickContinue(); // Other parents → Parent partnerships
 
-    await setPartnership('egg-parent', 'George', 'Current partner');
+    // Helen and George are both newly created, so one partnership question
+    // appears ("Are Helen and George partners?"). The radio options are matched
+    // by their visible label. Mark them current partners.
+    await setFieldInput(
+      'partnership-egg-source-sperm-source',
+      'Current partners',
+    );
     await clickContinue(); // partnerships → done
 
     await screen.findByRole('button', { name: 'George' }, WIZARD_TIMEOUT);
@@ -543,16 +568,16 @@ export const FirstCousinCreationViaWizard: Story = {
 
     await setFieldInput('sibling.name', 'Carol');
     await setFieldInput('sibling.gender_identity', 'Woman/girl');
-    await clickContinue(); // PersonDetailsStep → BioTriadStep
+    await clickContinue(); // Sibling details → BioTriadStep
 
-    // George and Helen are pre-offered; accept the defaults.
-    await clickContinue(); // BioTriadStep → OtherParentsStep
+    // George and Helen are pre-offered as Carol's parents; accept the defaults.
+    await clickContinue(); // BioTriadStep → Other parents
 
     await setFieldInput('hasOtherParents', false);
-    await clickContinue(); // → partnerships
-
-    // Helen and George are already partners; the partnership step uses defaults.
-    await clickContinue(); // done
+    // Both of Carol's parents already exist (neither is new), so the partnership
+    // step is skipped (shouldSkipNewParentPartnerships) — this continue finalises
+    // the wizard.
+    await clickContinue(); // Other parents → done
 
     await screen.findByRole('button', { name: 'Carol' }, WIZARD_TIMEOUT);
 
@@ -566,12 +591,22 @@ export const FirstCousinCreationViaWizard: Story = {
 
     await setFieldInput('child.name', 'Emma');
     await setFieldInput('child.gender_identity', 'Woman/girl');
-    await clickContinue(); // PersonDetailsStep → BioTriadStep
+    await clickContinue(); // Child details → BioTriadStep
 
-    // Carol is the anchor; no partner, so BioTriadStep just needs a continue.
-    await clickContinue(); // BioTriadStep → OtherParentsStep
+    // Carol is preselected as the egg source. She has no recorded partner, so
+    // the sperm source is unset and required — create a new (unknown) person for
+    // Emma's other parent so the step can advance.
+    await setFieldInput('sperm-source', 'Create a new person');
+    await clickContinue(); // BioTriadStep → Other parents
 
     await setFieldInput('hasOtherParents', false);
+    await clickContinue(); // Other parents → Parent partnerships
+
+    // Carol and the new (unknown) sperm parent form a partnership pair.
+    await setFieldInput(
+      'partnership-egg-source-sperm-source',
+      'Never partners',
+    );
     await clickContinue(); // done
 
     // -----------------------------------------------------------------------

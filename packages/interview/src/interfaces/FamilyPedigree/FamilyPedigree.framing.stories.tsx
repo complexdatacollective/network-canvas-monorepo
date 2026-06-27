@@ -512,8 +512,17 @@ export const RequiredBoundaryGrandparentsBlocked: Story = {
 /**
  * Recommended grandparents boundary: same pedigree shape as
  * RequiredBoundaryGrandparentsBlocked but the boundary is 'recommended'. The
- * checklist shows the nudge item without the required (*) marker, and the
- * "Finalize family pedigree" button appears because nothing is blocking.
+ * checklist shows the grandparents item as a nudge WITHOUT the required (*)
+ * marker — the observable, checklist-level difference from the required case.
+ *
+ * The spec's "recommended never blocks" guarantee is enforced in
+ * `validatePedigreeCompleteness` (recommended boundaries contribute no blocking
+ * issues, so stage-advance is allowed) and is covered by its unit tests in
+ * `utils/__tests__/validatePedigree.test.ts`. It is NOT reflected by the
+ * finalize button's visibility: that button is gated on `allDone` (every
+ * checklist task done), which a minimal quick-start never reaches because the
+ * optional siblings/partner/children/grandparent items remain unchecked. So
+ * this story asserts the marker difference, not the button.
  */
 export const RecommendedBoundaryGrandparentsNudge: Story = {
   render: () => (
@@ -535,16 +544,15 @@ export const RecommendedBoundaryGrandparentsNudge: Story = {
     );
     expect(nudge).toBeTruthy();
 
-    // The nudge item must NOT carry a required (*) marker
+    // The nudge item must NOT carry a required (*) marker — this is what
+    // distinguishes 'recommended' from 'required' in the checklist.
     const nudgeParent = nudge.closest('[class]')?.parentElement;
     expect(nudgeParent?.querySelector('.text-destructive')).toBeNull();
 
-    // All required items are satisfied, so the finalize button is present
-    const finalizeBtn = await screen.findByRole(
-      'button',
-      { name: /finalize family pedigree/i },
-      STEP_TIMEOUT,
-    );
-    expect(finalizeBtn).toBeTruthy();
+    // The finalize button is gated on allDone (all tasks checked), not on
+    // boundary severity, so it is absent here — same as the required case.
+    expect(
+      screen.queryByRole('button', { name: /finalize family pedigree/i }),
+    ).toBeNull();
   },
 };

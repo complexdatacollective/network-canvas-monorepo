@@ -332,8 +332,9 @@ export default meta;
 type Story = StoryObj;
 
 // The NarrativePedigree stage is at index 1 in the protocol (FamilyPedigree is
-// at index 0). currentStep is 1-based in StoryInterviewShell.
-const NP_STEP = 2;
+// at index 0). currentStep is a 0-based index into the stages array
+// (getCurrentStage reads `stages[currentStep]`).
+const NP_STEP = 1;
 
 // ---------------------------------------------------------------------------
 // Story 1: Multi-disease STICKER view
