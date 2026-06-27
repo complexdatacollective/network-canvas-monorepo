@@ -57,7 +57,7 @@ export function FramingSelectionStep() {
                 className="sr-only"
               />
               <span className="font-semibold">{FRAMING_AUTHOR_LABELS[id]}</span>
-              <span className="text-muted text-sm">{FRAMING_EXAMPLE[id]}</span>
+              <span className="text-sm opacity-70">{FRAMING_EXAMPLE[id]}</span>
             </label>
           );
         })}

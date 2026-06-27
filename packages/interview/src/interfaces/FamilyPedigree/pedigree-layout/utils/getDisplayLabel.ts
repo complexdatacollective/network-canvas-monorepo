@@ -10,11 +10,11 @@ import type {
   GameteRole,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
+import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 
 function readGameteRole(value: unknown): GameteRole | undefined {
   return value === 'egg' || value === 'sperm' ? value : undefined;
 }
-import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 
 type PathStep = 'parent' | 'child' | 'partner';
 
