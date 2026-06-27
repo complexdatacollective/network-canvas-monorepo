@@ -1,5 +1,12 @@
 # @codaco/network-exporters
 
+## 1.1.1
+
+### Patch Changes
+
+- Updated dependencies [c56b75a]
+  - @codaco/protocol-validation@11.8.0
+
 ## 1.1.0
 
 ### Minor Changes
