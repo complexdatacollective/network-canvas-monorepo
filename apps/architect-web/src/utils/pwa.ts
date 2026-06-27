@@ -29,6 +29,14 @@ export const isRunningAsInstalledPwa = (): boolean => {
 // which already gives installed home-screen apps durable storage).
 export const requestPersistentStorage = async (): Promise<boolean> => {
   if (typeof navigator.storage?.persist !== 'function') return false;
-  if (await navigator.storage.persisted()) return true;
-  return navigator.storage.persist();
+  // persisted()/persist() usually resolve to a boolean, but the Storage spec
+  // allows them to reject (e.g. opaque origin, storage disabled); catch so a
+  // fire-and-forget `void requestPersistentStorage()` can't become an unhandled
+  // startup rejection.
+  try {
+    if (await navigator.storage.persisted()) return true;
+    return await navigator.storage.persist();
+  } catch {
+    return false;
+  }
 };

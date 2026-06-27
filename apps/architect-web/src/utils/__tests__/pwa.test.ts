@@ -82,4 +82,12 @@ describe('requestPersistentStorage', () => {
     await expect(requestPersistentStorage()).resolves.toBe(true);
     expect(persist).toHaveBeenCalledTimes(1);
   });
+
+  it('resolves to false (never rejects) when the Storage API throws', async () => {
+    setStorageManager({
+      persisted: vi.fn().mockRejectedValue(new TypeError('opaque origin')),
+      persist: vi.fn(),
+    });
+    await expect(requestPersistentStorage()).resolves.toBe(false);
+  });
 });
