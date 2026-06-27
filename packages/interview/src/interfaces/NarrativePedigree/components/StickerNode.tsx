@@ -23,6 +23,15 @@ const STICKER_SIZE_PX = 16;
 /** Half-sticker offset so the marker is centred on the perimeter point. */
 const STICKER_HALF = STICKER_SIZE_PX / 2;
 
+/** SVG viewBox size used for all sticker markers. */
+const VB = 20;
+
+/** Radius of the outer circle used in most markers. */
+const R = 8;
+
+/** Centre coordinate in the viewBox. */
+const C = VB / 2;
+
 type StatusStyleInfo = {
   className: string;
   label: string;
@@ -40,6 +49,126 @@ const STATUS_STYLE: Record<Status, StatusStyleInfo> = {
   unknown: { className: 'sticker-question', label: 'Status unknown' },
 };
 
+/** Solid filled circle: disease colour, no stroke. */
+function SolidMarker({ color }: { color: string }) {
+  return (
+    <svg viewBox={`0 0 ${VB} ${VB}`} aria-hidden>
+      <circle cx={C} cy={C} r={R} fill={color} />
+    </svg>
+  );
+}
+
+/**
+ * Double-ring: two concentric stroked rings, hollow centre.
+ * Outer ring at R, inner ring at R*0.6.
+ */
+function DoubleRingMarker({ color }: { color: string }) {
+  return (
+    <svg viewBox={`0 0 ${VB} ${VB}`} aria-hidden>
+      <circle
+        cx={C}
+        cy={C}
+        r={R}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+      />
+      <circle
+        cx={C}
+        cy={C}
+        r={R * 0.58}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+      />
+    </svg>
+  );
+}
+
+/** Ring + centre dot: stroked outer ring plus a small filled dot in the centre. */
+function RingDotMarker({ color }: { color: string }) {
+  return (
+    <svg viewBox={`0 0 ${VB} ${VB}`} aria-hidden>
+      <circle
+        cx={C}
+        cy={C}
+        r={R}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+      />
+      <circle cx={C} cy={C} r={R * 0.28} fill={color} data-centre-dot />
+    </svg>
+  );
+}
+
+/**
+ * Half-filled circle: left half filled, right half empty (stroked).
+ * Implemented via a filled semicircle path (left side) + a full stroked ring.
+ */
+function HalfMarker({ color }: { color: string }) {
+  // Left semicircle path: start at top-centre (C, C-R), arc left to bottom-centre (C, C+R).
+  const path = `M ${C} ${C - R} A ${R} ${R} 0 0 0 ${C} ${C + R} Z`;
+  return (
+    <svg viewBox={`0 0 ${VB} ${VB}`} aria-hidden>
+      <circle
+        cx={C}
+        cy={C}
+        r={R}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+      />
+      <path d={path} fill={color} data-half-fill />
+    </svg>
+  );
+}
+
+/** Centre dot only: small filled dot inside a lightly stroked ring. */
+function DotMarker({ color }: { color: string }) {
+  return (
+    <svg viewBox={`0 0 ${VB} ${VB}`} aria-hidden>
+      <circle
+        cx={C}
+        cy={C}
+        r={R}
+        fill="none"
+        stroke={color}
+        strokeWidth={1}
+        strokeOpacity={0.4}
+      />
+      <circle cx={C} cy={C} r={R * 0.28} fill={color} data-centre-dot />
+    </svg>
+  );
+}
+
+/** Unknown: outlined circle with a ? glyph centred inside. */
+function UnknownMarker({ color }: { color: string }) {
+  return (
+    <svg viewBox={`0 0 ${VB} ${VB}`} aria-hidden>
+      <circle
+        cx={C}
+        cy={C}
+        r={R}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+      />
+      <text
+        x={C}
+        y={C + 3.5}
+        textAnchor="middle"
+        fontSize={10}
+        fontWeight="bold"
+        fill={color}
+        data-question-mark
+      >
+        ?
+      </text>
+    </svg>
+  );
+}
+
 type StickerMarkerProps = {
   sticker: DiseaseSticker;
   x: number;
@@ -48,7 +177,23 @@ type StickerMarkerProps = {
 
 function StickerMarker({ sticker, x, y }: StickerMarkerProps) {
   const { className, label } = STATUS_STYLE[sticker.status];
-  const isUnknown = sticker.status === 'unknown';
+
+  const marker = (() => {
+    switch (sticker.status) {
+      case 'affected':
+        return <SolidMarker color={sticker.color} />;
+      case 'obligateAffected':
+        return <DoubleRingMarker color={sticker.color} />;
+      case 'obligateCarrier':
+        return <RingDotMarker color={sticker.color} />;
+      case 'atRiskAffected':
+        return <HalfMarker color={sticker.color} />;
+      case 'atRiskCarrier':
+        return <DotMarker color={sticker.color} />;
+      case 'unknown':
+        return <UnknownMarker color={sticker.color} />;
+    }
+  })();
 
   return (
     <span
@@ -56,7 +201,7 @@ function StickerMarker({ sticker, x, y }: StickerMarkerProps) {
       title={`${label} (${sticker.color})`}
       data-sticker-status={sticker.status}
       className={[
-        'pointer-events-none absolute flex items-center justify-center rounded-full border-2 border-white text-[9px] font-bold leading-none text-white',
+        'pointer-events-none absolute rounded-full border-2 border-white overflow-hidden',
         className,
       ].join(' ')}
       style={{
@@ -64,10 +209,9 @@ function StickerMarker({ sticker, x, y }: StickerMarkerProps) {
         height: STICKER_SIZE_PX,
         left: x - STICKER_HALF,
         top: y - STICKER_HALF,
-        backgroundColor: sticker.color,
       }}
     >
-      {isUnknown && '?'}
+      {marker}
     </span>
   );
 }
@@ -120,9 +264,9 @@ type StickerNodeProps = {
 
 /**
  * Renders a Node with coloured disease-status stickers around its perimeter.
- * Each sticker's colour is the disease colour; its visual style encodes the
- * genetic status. When more diseases than STICKER_CAP are supplied, the first
- * STICKER_CAP are shown and a +N marker reveals the rest.
+ * Each sticker's colour is the disease colour; its inline SVG encodes the
+ * genetic status visually. When more diseases than STICKER_CAP are supplied,
+ * the first STICKER_CAP are shown and a +N marker reveals the rest.
  */
 export function StickerNode({
   label,

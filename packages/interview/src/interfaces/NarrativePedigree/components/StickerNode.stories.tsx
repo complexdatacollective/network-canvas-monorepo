@@ -113,3 +113,100 @@ export const ThreeDiseases: Story = {
     ],
   },
 };
+
+// Per-status stories — each status rendered across square, circle, and diamond
+export const StatusAffected: Story = {
+  name: 'Status: affected (solid fill) × all shapes',
+  render: () => (
+    <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+      {(['square', 'circle', 'diamond'] as const).map((shape) => (
+        <StickerNode
+          key={shape}
+          label={shape}
+          shape={shape}
+          diseases={[{ color: '#e53e3e', status: 'affected' }]}
+        />
+      ))}
+    </div>
+  ),
+};
+
+export const StatusObligateAffected: Story = {
+  name: 'Status: obligateAffected (double ring) × all shapes',
+  render: () => (
+    <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+      {(['square', 'circle', 'diamond'] as const).map((shape) => (
+        <StickerNode
+          key={shape}
+          label={shape}
+          shape={shape}
+          diseases={[{ color: '#dd6b20', status: 'obligateAffected' }]}
+        />
+      ))}
+    </div>
+  ),
+};
+
+export const StatusObligateCarrier: Story = {
+  name: 'Status: obligateCarrier (ring + dot) × all shapes',
+  render: () => (
+    <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+      {(['square', 'circle', 'diamond'] as const).map((shape) => (
+        <StickerNode
+          key={shape}
+          label={shape}
+          shape={shape}
+          diseases={[{ color: '#d69e2e', status: 'obligateCarrier' }]}
+        />
+      ))}
+    </div>
+  ),
+};
+
+export const StatusAtRiskAffected: Story = {
+  name: 'Status: atRiskAffected (half-filled) × all shapes',
+  render: () => (
+    <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+      {(['square', 'circle', 'diamond'] as const).map((shape) => (
+        <StickerNode
+          key={shape}
+          label={shape}
+          shape={shape}
+          diseases={[{ color: '#38a169', status: 'atRiskAffected' }]}
+        />
+      ))}
+    </div>
+  ),
+};
+
+export const StatusAtRiskCarrier: Story = {
+  name: 'Status: atRiskCarrier (centre dot) × all shapes',
+  render: () => (
+    <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+      {(['square', 'circle', 'diamond'] as const).map((shape) => (
+        <StickerNode
+          key={shape}
+          label={shape}
+          shape={shape}
+          diseases={[{ color: '#3182ce', status: 'atRiskCarrier' }]}
+        />
+      ))}
+    </div>
+  ),
+};
+
+export const StatusUnknown: Story = {
+  name: 'Status: unknown (? glyph) × all shapes',
+  render: () => (
+    <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+      {(['square', 'circle', 'diamond'] as const).map((shape) => (
+        <StickerNode
+          key={shape}
+          label={shape}
+          shape={shape}
+          diseases={[{ color: '#805ad5', status: 'unknown' }]}
+        />
+      ))}
+    </div>
+  ),
+};

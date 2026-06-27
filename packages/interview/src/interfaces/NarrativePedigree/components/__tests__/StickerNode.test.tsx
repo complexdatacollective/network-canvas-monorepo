@@ -167,4 +167,106 @@ describe('StickerNode', () => {
       }
     });
   });
+
+  describe('SVG visual structure per status', () => {
+    it('affected marker renders a filled <circle> (no stroke)', () => {
+      render(
+        <StickerNode
+          label="Test"
+          shape="square"
+          diseases={[{ color: '#e53e3e', status: 'affected' }]}
+        />,
+      );
+      const sticker = document.querySelector(
+        '[data-sticker-status="affected"]',
+      );
+      expect(sticker).toBeInTheDocument();
+      // The solid marker uses a filled circle as its only <circle> element
+      const circles = sticker?.querySelectorAll('circle');
+      expect(circles?.length).toBeGreaterThanOrEqual(1);
+      const filledCircle = Array.from(circles ?? []).find(
+        (c) => c.getAttribute('fill') === '#e53e3e',
+      );
+      expect(filledCircle).toBeTruthy();
+    });
+
+    it('unknown marker renders a ? text glyph via [data-question-mark]', () => {
+      render(
+        <StickerNode
+          label="Test"
+          shape="square"
+          diseases={[{ color: '#805ad5', status: 'unknown' }]}
+        />,
+      );
+      const sticker = document.querySelector('[data-sticker-status="unknown"]');
+      expect(sticker).toBeInTheDocument();
+      const qMark = sticker?.querySelector('[data-question-mark]');
+      expect(qMark).toBeTruthy();
+      expect(qMark?.textContent).toBe('?');
+    });
+
+    it('atRiskCarrier marker renders a [data-centre-dot] instead of a filled ring', () => {
+      render(
+        <StickerNode
+          label="Test"
+          shape="square"
+          diseases={[{ color: '#3182ce', status: 'atRiskCarrier' }]}
+        />,
+      );
+      const sticker = document.querySelector(
+        '[data-sticker-status="atRiskCarrier"]',
+      );
+      expect(sticker).toBeInTheDocument();
+      const dot = sticker?.querySelector('[data-centre-dot]');
+      expect(dot).toBeTruthy();
+    });
+
+    it('obligateCarrier marker renders a [data-centre-dot] within a stroked ring', () => {
+      render(
+        <StickerNode
+          label="Test"
+          shape="square"
+          diseases={[{ color: '#d69e2e', status: 'obligateCarrier' }]}
+        />,
+      );
+      const sticker = document.querySelector(
+        '[data-sticker-status="obligateCarrier"]',
+      );
+      expect(sticker).toBeInTheDocument();
+      const dot = sticker?.querySelector('[data-centre-dot]');
+      expect(dot).toBeTruthy();
+    });
+
+    it('atRiskAffected marker renders a [data-half-fill] path', () => {
+      render(
+        <StickerNode
+          label="Test"
+          shape="square"
+          diseases={[{ color: '#38a169', status: 'atRiskAffected' }]}
+        />,
+      );
+      const sticker = document.querySelector(
+        '[data-sticker-status="atRiskAffected"]',
+      );
+      expect(sticker).toBeInTheDocument();
+      const halfPath = sticker?.querySelector('[data-half-fill]');
+      expect(halfPath).toBeTruthy();
+    });
+
+    it('obligateAffected marker renders two concentric <circle> elements (double ring)', () => {
+      render(
+        <StickerNode
+          label="Test"
+          shape="square"
+          diseases={[{ color: '#dd6b20', status: 'obligateAffected' }]}
+        />,
+      );
+      const sticker = document.querySelector(
+        '[data-sticker-status="obligateAffected"]',
+      );
+      expect(sticker).toBeInTheDocument();
+      const circles = sticker?.querySelectorAll('circle');
+      expect(circles?.length).toBe(2);
+    });
+  });
 });
