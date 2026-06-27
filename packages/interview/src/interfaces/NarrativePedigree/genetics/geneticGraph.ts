@@ -14,10 +14,7 @@ type GeneticRelationshipType = (typeof GENETIC_RELATIONSHIP_TYPES)[number];
 function isGeneticRelationshipType(
   value: unknown,
 ): value is GeneticRelationshipType {
-  return (
-    typeof value === 'string' &&
-    (GENETIC_RELATIONSHIP_TYPES as readonly string[]).includes(value)
-  );
+  return value === 'biological' || value === 'donor';
 }
 
 /**
