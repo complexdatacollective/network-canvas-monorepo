@@ -98,7 +98,7 @@ function EdgeInspector({
           items={[selectedEdge]}
           form={edgeForm}
           subject={edgeSubject}
-          updateItem={(id, data) => onUpdateEdge(id, data)}
+          updateItem={onUpdateEdge}
           renderHeader={renderNullHeader}
           form_kind="alter_edge"
         />

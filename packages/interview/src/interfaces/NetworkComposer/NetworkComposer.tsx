@@ -239,10 +239,6 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         null)
       : null;
 
-  const showInspector =
-    (selectedNode !== null && stage.nodeForm !== undefined) ||
-    (selectedEdge !== null && selectedEdgeFormEntry?.form !== undefined);
-
   return (
     <div
       className="interface relative h-dvh overflow-hidden"
@@ -277,43 +273,39 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
           void handleCommitRename(nodeId, value);
         }}
       />
-      {showInspector &&
-        selectedNode !== null &&
-        stage.nodeForm !== undefined && (
-          <div className="bg-background absolute top-0 right-0 bottom-0 flex w-80 flex-col overflow-hidden shadow-lg">
-            <Inspector
-              kind="node"
-              selectedNode={selectedNode}
-              nodeForm={stage.nodeForm}
-              subject={stage.subject}
-              onUpdateNode={(id, data) => {
-                void actions.updateNodeAttributes(id, data);
-              }}
-              onDeleteNode={(id) => {
-                actions.deleteNodeById(id);
-                composerStore.getState().clearSelection();
-              }}
-            />
-          </div>
-        )}
-      {showInspector &&
-        selectedEdge !== null &&
-        selectedEdgeFormEntry?.form !== undefined && (
-          <div className="bg-background absolute top-0 right-0 bottom-0 flex w-80 flex-col overflow-hidden shadow-lg">
-            <Inspector
-              kind="edge"
-              selectedEdge={selectedEdge}
-              edgeForm={selectedEdgeFormEntry.form}
-              onUpdateEdge={(id, data) => {
-                void actions.updateEdgeAttributes(id, data);
-              }}
-              onDeleteEdge={(id) => {
-                actions.deleteEdgeById(id);
-                composerStore.getState().clearSelection();
-              }}
-            />
-          </div>
-        )}
+      {selectedNode !== null && stage.nodeForm !== undefined && (
+        <div className="bg-background absolute top-0 right-0 bottom-0 flex w-80 flex-col overflow-hidden shadow-lg">
+          <Inspector
+            kind="node"
+            selectedNode={selectedNode}
+            nodeForm={stage.nodeForm}
+            subject={stage.subject}
+            onUpdateNode={(id, data) => {
+              void actions.updateNodeAttributes(id, data);
+            }}
+            onDeleteNode={(id) => {
+              actions.deleteNodeById(id);
+              composerStore.getState().clearSelection();
+            }}
+          />
+        </div>
+      )}
+      {selectedEdge !== null && selectedEdgeFormEntry?.form !== undefined && (
+        <div className="bg-background absolute top-0 right-0 bottom-0 flex w-80 flex-col overflow-hidden shadow-lg">
+          <Inspector
+            kind="edge"
+            selectedEdge={selectedEdge}
+            edgeForm={selectedEdgeFormEntry.form}
+            onUpdateEdge={(id, data) => {
+              void actions.updateEdgeAttributes(id, data);
+            }}
+            onDeleteEdge={(id) => {
+              actions.deleteEdgeById(id);
+              composerStore.getState().clearSelection();
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };
