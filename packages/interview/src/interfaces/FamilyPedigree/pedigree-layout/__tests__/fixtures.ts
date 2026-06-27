@@ -141,6 +141,60 @@ export const blendedFamily: PedigreeInput = {
 };
 
 /**
+ * Consanguineous union: two first cousins who are partners.
+ *
+ *   gp1(0) ⚭ gp2(1)
+ *      |        |
+ *   parentA(2)  parentB(3)        (siblings; both children of gp1+gp2)
+ *      |            |
+ *   ego(4) ⚭ cousin(5)            (first cousins, partnered)
+ *            |
+ *        child(6)
+ *
+ * ego and cousin share the grandparent couple {0,1}, so the partner line
+ * between them is consanguineous (group === 2). parentA and parentB are
+ * partnered to outside spouses in other fixtures; here ego/cousin each have a
+ * single recorded parent for minimality, which is enough to share ancestor 0.
+ */
+export const consanguineousUnion: PedigreeInput = {
+  id: ['gp1', 'gp2', 'parentA', 'parentB', 'ego', 'cousin', 'child'],
+  parents: [
+    [],
+    [],
+    [sp(0), sp(1)],
+    [sp(0), sp(1)],
+    [sp(2)],
+    [sp(3)],
+    [sp(4), sp(5)],
+  ],
+  relation: [
+    { id1: 0, id2: 1, code: 4 },
+    { id1: 4, id2: 5, code: 4 },
+  ],
+  partners: [
+    { partnerIndex1: 0, partnerIndex2: 1, isActive: true },
+    { partnerIndex1: 4, partnerIndex2: 5, isActive: true },
+  ],
+};
+
+/**
+ * Non-consanguineous couple: two unrelated partners with a child.
+ *
+ *   personA(0) ⚭ personB(1)
+ *            |
+ *        child(2)
+ *
+ * personA and personB share no ancestors, so their partner line is a single
+ * line (group === 1).
+ */
+export const unrelatedCouple: PedigreeInput = {
+  id: ['personA', 'personB', 'child'],
+  parents: [[], [], [sp(0), sp(1)]],
+  relation: [{ id1: 0, id2: 1, code: 4 }],
+  partners: [{ partnerIndex1: 0, partnerIndex2: 1, isActive: true }],
+};
+
+/**
  * Cross-family pedigree: two grandparent couples whose children marry.
  *
  *   gpA1(0) + gpA2(1)      gpB1(2) + gpB2(3)

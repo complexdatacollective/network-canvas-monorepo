@@ -94,6 +94,7 @@ describe('computeConnectors', () => {
   it('group connector double flag reflects consanguinity', () => {
     const connectors = computeConnectors(layout, scaling, parents);
     expect(connectors.groupLines[0]!.double).toBe(false);
+    expect(connectors.groupLines[0]!.doubleSegment).toBeUndefined();
   });
 
   it('produces double line for consanguineous pairs', () => {

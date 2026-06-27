@@ -7,12 +7,14 @@ import {
   sugiyamaLayout,
 } from '../sugiyamaLayout';
 import {
+  consanguineousUnion,
   multipleMarriages,
   nuclearFamily,
   singleParent,
   surrogacyFamily,
   threeGeneration,
   twinFamily,
+  unrelatedCouple,
 } from './fixtures';
 
 describe('buildPedigreeGraph', () => {
@@ -252,6 +254,49 @@ describe('sugiyamaLayout (output encoding)', () => {
     expect(hasMZ).toBe(true);
   });
 });
+
+describe('consanguinity detection (group encoding)', () => {
+  it('marks a partner pair that shares an ancestor with group 2', () => {
+    const result = sugiyamaLayout(consanguineousUnion);
+
+    // ego(4) and cousin(5) are partners who share grandparents {0,1}.
+    const group = partnerPairGroup(result, 4, 5);
+    expect(group).toBe(2);
+  });
+
+  it('marks an unrelated partner pair with group 1', () => {
+    const result = sugiyamaLayout(unrelatedCouple);
+
+    // personA(0) and personB(1) share no ancestors.
+    const group = partnerPairGroup(result, 0, 1);
+    expect(group).toBe(1);
+  });
+});
+
+/**
+ * Reads the group marker for the partner pair (nodeA, nodeB) from a layout.
+ * The marker is stored at group[layer][col] of the left member of an adjacent
+ * partner pair, so the two nodes must be neighbours on the same layer.
+ */
+function partnerPairGroup(
+  layout: { n: number[]; nid: number[][]; group: number[][] },
+  nodeA: number,
+  nodeB: number,
+): number | null {
+  for (let layer = 0; layer < layout.n.length; layer++) {
+    for (let col = 0; col < layout.n[layer]! - 1; col++) {
+      const left = layout.nid[layer]![col]!;
+      const right = layout.nid[layer]![col + 1]!;
+      const isPair =
+        (left === nodeA && right === nodeB) ||
+        (left === nodeB && right === nodeA);
+      if (isPair) {
+        return layout.group[layer]![col]!;
+      }
+    }
+  }
+  return null;
+}
 
 function findNodeLocation(
   layout: { n: number[]; nid: number[][] },
