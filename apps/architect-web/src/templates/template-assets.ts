@@ -26,6 +26,10 @@ for (const [path, url] of Object.entries(
   assetUrlByFilename.set(filename, url);
 }
 
+// URLs of every bundled template asset, for warming the offline cache so a
+// template can be installed into the library with no network.
+export const templateAssetUrls: string[] = [...assetUrlByFilename.values()];
+
 type ManifestEntry = { id: string; name: string; source?: string };
 
 // Fetches a template's bundled assets into Blobs keyed by their `assetManifest`

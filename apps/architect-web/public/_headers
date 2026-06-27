@@ -1,0 +1,24 @@
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/preview/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/manifest.webmanifest
+  Cache-Control: public, max-age=0, must-revalidate
+# PWA icons are not content-hashed, so revalidate them rather than letting a
+# renamed-in-place icon serve stale after a release.
+/favicon.ico
+  Cache-Control: public, max-age=0, must-revalidate
+/apple-touch-icon-180x180.png
+  Cache-Control: public, max-age=0, must-revalidate
+/pwa-64x64.png
+  Cache-Control: public, max-age=0, must-revalidate
+/pwa-192x192.png
+  Cache-Control: public, max-age=0, must-revalidate
+/pwa-512x512.png
+  Cache-Control: public, max-age=0, must-revalidate
+/maskable-icon-512x512.png
+  Cache-Control: public, max-age=0, must-revalidate
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
