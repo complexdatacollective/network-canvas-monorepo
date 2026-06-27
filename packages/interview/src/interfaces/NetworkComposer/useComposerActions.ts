@@ -35,6 +35,7 @@ type ComposerActions = {
   connect: (from: string, to: string, edgeType: string) => Promise<void>;
   connectAll: (nodeIds: string[], edgeType: string) => Promise<void>;
   deleteNodeById: (id: string) => void;
+  deleteNodesById: (ids: string[]) => void;
   deleteEdgeById: (id: string) => void;
   updateNodeAttributes: (
     id: string,
@@ -243,6 +244,77 @@ export function useComposerActions({
     });
   }
 
+  function deleteNodesById(ids: string[]): void {
+    if (ids.length === 0) return;
+
+    // Capture ALL nodes and their incident edges BEFORE any deletion.
+    const capturedNodes: NcNode[] = [];
+    const capturedEdges: NcEdge[] = [];
+
+    dispatch((_, getState) => {
+      const { session: sessionState } = getState() as {
+        session: { network: { nodes: NcNode[]; edges: NcEdge[] } };
+      };
+      const idSet = new Set(ids);
+
+      for (const node of sessionState.network.nodes) {
+        if (idSet.has(node[entityPrimaryKeyProperty])) {
+          capturedNodes.push(node);
+        }
+      }
+
+      // Collect incident edges, deduplicating edges that connect two deleted nodes.
+      const seenEdgeIds = new Set<string>();
+      for (const edge of sessionState.network.edges) {
+        if (
+          (idSet.has(edge.from) || idSet.has(edge.to)) &&
+          !seenEdgeIds.has(edge[entityPrimaryKeyProperty])
+        ) {
+          seenEdgeIds.add(edge[entityPrimaryKeyProperty]);
+          capturedEdges.push(edge);
+        }
+      }
+    });
+
+    // Delete all nodes (the reducer cascades incident edge removal).
+    for (const id of ids) {
+      dispatch(deleteNode(id));
+    }
+
+    undoStore.getState().push({
+      label: `Delete ${ids.length} nodes`,
+      undo: async () => {
+        for (const node of capturedNodes) {
+          await dispatch(
+            addNode({
+              type: node.type,
+              attributeData: node[entityAttributesProperty],
+              modelData: {
+                [entityPrimaryKeyProperty]: node[entityPrimaryKeyProperty],
+              },
+              currentStep,
+            }),
+          ).unwrap();
+        }
+        for (const edge of capturedEdges) {
+          await dispatch(
+            addEdge({
+              from: edge.from,
+              to: edge.to,
+              type: edge.type,
+              currentStep,
+            }),
+          ).unwrap();
+        }
+      },
+      redo: () => {
+        for (const node of capturedNodes) {
+          dispatch(deleteNode(node[entityPrimaryKeyProperty]));
+        }
+      },
+    });
+  }
+
   function deleteEdgeById(id: string): void {
     let capturedEdge: NcEdge | undefined;
 
@@ -402,6 +474,7 @@ export function useComposerActions({
     connect,
     connectAll,
     deleteNodeById,
+    deleteNodesById,
     deleteEdgeById,
     updateNodeAttributes,
     updateEdgeAttributes,

@@ -16,7 +16,7 @@ import { useAppDispatch } from '~/store/store';
 import type { StageProps } from '~/types';
 
 import { useForceSimulation } from '../Sociogram/useForceSimulation';
-import ComposerCanvas from './ComposerCanvas';
+import ComposerCanvas, { type NodeTapModifiers } from './ComposerCanvas';
 import Inspector from './Inspector';
 import ToolPalette from './ToolPalette';
 import { useComposerActions } from './useComposerActions';
@@ -116,16 +116,21 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   );
 
   const handleNodeTap = useCallback(
-    async (tappedId: string) => {
+    async (tappedId: string, modifiers: NodeTapModifiers) => {
       const {
         activeTool,
         pendingEdgeSource,
         setPendingEdgeSource,
         selectOnlyNode,
+        toggleNodeInSelection,
       } = composerStore.getState();
 
       if (activeTool.kind === 'select') {
-        selectOnlyNode(tappedId);
+        if (modifiers.shift || modifiers.meta) {
+          toggleNodeInSelection(tappedId);
+        } else {
+          selectOnlyNode(tappedId);
+        }
         return;
       }
 
@@ -194,6 +199,25 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     [actions, stage.quickAdd],
   );
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT'
+      ) {
+        return;
+      }
+      const ids = [...composerStore.getState().selectedNodeIds];
+      if (ids.length === 0) return;
+      actions.deleteNodesById(ids);
+      composerStore.getState().clearSelection();
+    },
+    [composerStore, actions],
+  );
+
   const edgeEntries = stage.edges.map((edgeDef) => {
     const edgeType = edgeDef.subject.type;
     const edgeCbEntry = codebook?.edge?.[edgeType];
@@ -240,10 +264,13 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       : null;
 
   return (
+    // tabIndex makes the div focusable so keydown events reach it.
     <div
       className="interface relative h-dvh overflow-hidden"
       data-testid="network-composer"
       data-layout-mode={layoutMode}
+      tabIndex={-1}
+      onKeyDown={handleKeyDown}
     >
       <ToolPalette
         composerStore={composerStore}
@@ -253,6 +280,22 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         simulationEnabled={simulation.simulationEnabled}
         onToggleSimulation={simulation.toggleSimulation}
       />
+      {selectedNodeIds.size >= 2 && (
+        <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2">
+          {edgeEntries.map(({ edgeType, label }) => (
+            <button
+              key={edgeType}
+              type="button"
+              className="bg-background border-primary rounded border px-3 py-1.5 text-sm font-medium shadow"
+              onClick={() => {
+                void actions.connectAll([...selectedNodeIds], edgeType);
+              }}
+            >
+              {`Connect all with ${label}`}
+            </button>
+          ))}
+        </div>
+      )}
       <ComposerCanvas
         canvasStore={canvasStore}
         composerStore={composerStore}
@@ -263,8 +306,8 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         onBackgroundTap={(position) => {
           void handleBackgroundTap(position);
         }}
-        onNodeTap={(nodeId) => {
-          void handleNodeTap(nodeId);
+        onNodeTap={(nodeId, modifiers) => {
+          void handleNodeTap(nodeId, modifiers);
         }}
         onEdgeTap={handleEdgeTap}
         onNodeDragEnd={handleNodeDragEnd}
