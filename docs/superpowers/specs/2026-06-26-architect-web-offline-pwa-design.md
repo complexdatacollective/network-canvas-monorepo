@@ -34,15 +34,15 @@ lifecycle into a small in-app prompt.
 
 ## Decisions (from brainstorming)
 
-| Decision         | Choice                                                                                                                        |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Update behaviour | **Prompt to reload** (`registerType: 'prompt'`)                                                                               |
-| Offline scope    | **Full editor offline** (app shell precached + images/fonts runtime-cached)                                                   |
-| Icon source      | **Derive** from existing brand assets (`architect-icon.png` / `NC-Mark.svg`)                                                  |
-| Fonts            | **Runtime-cache** Google Fonts (not self-hosted)                                                                              |
-| Thumbnails       | **Runtime-cache** on demand (relying on existing idle-preload), not precached                                                 |
-| Template install | **Offline** — bundled template + Sample assets warmed into the SW cache at idle; dev-only Development protocol excluded       |
-| SW registration  | **All sessions** — required for installability (Chrome needs a registered SW); only the heavy template warm is installed-only |
+| Decision         | Choice                                                                                                                                                                                                          |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Update behaviour | **Silent on fresh load, prompt in an open session** — a pending update within ~20s of load auto-applies (so a fresh load is always the latest); an update that arrives later prompts (`registerType: 'prompt'`) |
+| Offline scope    | **Full editor offline** (app shell precached + images/fonts runtime-cached)                                                                                                                                     |
+| Icon source      | **Derive** from existing brand assets (`architect-icon.png` / `NC-Mark.svg`)                                                                                                                                    |
+| Fonts            | **Runtime-cache** Google Fonts (not self-hosted)                                                                                                                                                                |
+| Thumbnails       | **Runtime-cache** on demand (relying on existing idle-preload), not precached                                                                                                                                   |
+| Template install | **Offline** — bundled template + Sample assets warmed into the SW cache at idle; dev-only Development protocol excluded                                                                                         |
+| SW registration  | **All sessions** — required for installability (Chrome needs a registered SW); only the heavy template warm is installed-only                                                                                   |
 
 ## Service worker registers in all sessions; heavy warming is installed-only
 

@@ -1,19 +1,26 @@
 import { X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 import Button from '~/lib/legacy-ui/components/Button';
 import { cx } from '~/utils/cva';
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000; // hourly
+// A pending update that surfaces within this window of loading the page is
+// treated as "the latest version was already available when you opened the app",
+// and is applied silently. Anything later is an update that arrived during an
+// open session, which we surface as a prompt.
+const FRESH_LOAD_WINDOW_MS = 20 * 1000;
 
 const PwaUpdateBanner = () => {
   const [registration, setRegistration] = useState<
     ServiceWorkerRegistration | undefined
   >();
+  const [promptVisible, setPromptVisible] = useState(false);
+  const loadedAt = useRef(Date.now());
 
   const {
-    needRefresh: [needRefresh, setNeedRefresh],
+    needRefresh: [needRefresh],
     updateServiceWorker,
   } = useRegisterSW({
     onRegisteredSW: (_swScriptUrl, swRegistration) => {
@@ -31,7 +38,19 @@ const PwaUpdateBanner = () => {
     return () => window.clearInterval(intervalId);
   }, [registration]);
 
-  if (!needRefresh) return null;
+  // Fresh loads always end up on the latest version: a pending update is applied
+  // silently (which reloads the page). An update that appears later, in an
+  // already-open tab, gets the prompt instead.
+  useEffect(() => {
+    if (!needRefresh) return;
+    if (Date.now() - loadedAt.current < FRESH_LOAD_WINDOW_MS) {
+      void updateServiceWorker(true);
+    } else {
+      setPromptVisible(true);
+    }
+  }, [needRefresh, updateServiceWorker]);
+
+  if (!promptVisible) return null;
 
   return (
     <aside
@@ -57,7 +76,7 @@ const PwaUpdateBanner = () => {
       <button
         type="button"
         aria-label="Dismiss"
-        onClick={() => setNeedRefresh(false)}
+        onClick={() => setPromptVisible(false)}
         className="text-muted-foreground hover:text-surface-1-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-current/10"
       >
         <X className="size-4" />

@@ -11,6 +11,9 @@ vi.mock('virtual:pwa-register/react', () => ({
 
 import PwaUpdateBanner from '../PwaUpdateBanner';
 
+// Matches FRESH_LOAD_WINDOW_MS in the component.
+const PAST_FRESH_LOAD = 25_000;
+
 const setSwState = ({
   needRefresh = false,
   updateServiceWorker = vi.fn(),
@@ -26,6 +29,7 @@ const setSwState = ({
 };
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.clearAllMocks();
 });
 
@@ -36,14 +40,34 @@ describe('PwaUpdateBanner', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('shows the update prompt and triggers a reloading update on click', () => {
+  it('silently applies a pending update on a fresh load (no prompt)', () => {
+    vi.useFakeTimers();
     const updateServiceWorker = vi.fn();
     setSwState({ needRefresh: true, updateServiceWorker });
-    render(<PwaUpdateBanner />);
+
+    const { container } = render(<PwaUpdateBanner />);
+
+    expect(updateServiceWorker).toHaveBeenCalledWith(true);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('prompts for an update that appears during an open session', () => {
+    vi.useFakeTimers();
+    const updateServiceWorker = vi.fn();
+    setSwState({ needRefresh: false, updateServiceWorker });
+    const { rerender } = render(<PwaUpdateBanner />);
+
+    // Settle past the fresh-load window, then an update appears.
+    act(() => {
+      vi.advanceTimersByTime(PAST_FRESH_LOAD);
+    });
+    setSwState({ needRefresh: true, updateServiceWorker });
+    act(() => rerender(<PwaUpdateBanner />));
 
     expect(
       screen.getByText(/new version of Architect is available/i),
     ).toBeInTheDocument();
+    expect(updateServiceWorker).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: /reload/i }));
     expect(updateServiceWorker).toHaveBeenCalledWith(true);
@@ -53,8 +77,6 @@ describe('PwaUpdateBanner', () => {
     const setIntervalSpy = vi.spyOn(window, 'setInterval');
     const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
 
-    // Invoke the registration callback (called asynchronously by the real hook)
-    // so the component stores the registration and starts polling.
     let notifyRegistered: (() => void) | undefined;
     mockUseRegisterSW.mockImplementation((options) => {
       notifyRegistered = () => options?.onRegisteredSW?.('/sw.js', {});
