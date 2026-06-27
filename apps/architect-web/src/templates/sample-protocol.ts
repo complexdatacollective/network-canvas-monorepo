@@ -23,6 +23,10 @@ const urlBySource = new Map(
   ]),
 );
 
+// URLs of every bundled Sample asset, for warming the offline cache so the
+// Sample protocol can be installed into the library with no network.
+export const sampleAssetUrls: string[] = [...urlBySource.values()];
+
 type ManifestEntry = { id: string; name: string; source?: string };
 
 // Fetches each bundled asset into a Blob keyed by its `assetManifest` id, so the
