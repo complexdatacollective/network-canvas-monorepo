@@ -201,6 +201,8 @@ Network Canvas uses a protocol-based system where:
 
 ## Development Guidelines
 
+**Before writing code for any feature, fix, or change, invoke the `developing-in-network-canvas` skill.** It covers reusing existing packages/components before building new, and the project's accessibility, internationalisation, participant-tone, and visual/motion priorities (with depth for UI work).
+
 ### Code Standards
 
 - **NO `any` types** - explicitly forbidden, always use proper TypeScript typing
