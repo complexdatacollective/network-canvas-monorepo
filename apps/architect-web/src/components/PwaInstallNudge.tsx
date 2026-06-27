@@ -66,7 +66,7 @@ const PwaInstallNudge = () => {
         type="button"
         aria-label="Dismiss"
         onClick={dismiss}
-        className="text-muted-foreground hover:text-surface-1-foreground absolute top-2 right-2 inline-flex size-6 items-center justify-center rounded-full transition-colors hover:bg-current/10"
+        className="text-muted-foreground hover:text-surface-1-foreground absolute top-3 right-3 inline-flex size-6 items-center justify-center rounded-full transition-colors hover:bg-current/10"
       >
         <X className="size-4" />
       </button>
