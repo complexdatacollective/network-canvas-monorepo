@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 import type { TitlelessForm } from '@codaco/protocol-validation';
 import {
-  entityAttributesProperty,
+  type entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcEdge,
   type NcNode,
@@ -70,7 +70,7 @@ function NodeInspector({
         <button
           type="button"
           onClick={() => onDeleteNode(nodeId)}
-          className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+          className="bg-destructive text-destructive-contrast rounded px-4 py-2 hover:opacity-90"
         >
           Delete
         </button>
@@ -107,7 +107,7 @@ function EdgeInspector({
         <button
           type="button"
           onClick={() => onDeleteEdge(edgeId)}
-          className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+          className="bg-destructive text-destructive-contrast rounded px-4 py-2 hover:opacity-90"
         >
           Delete
         </button>

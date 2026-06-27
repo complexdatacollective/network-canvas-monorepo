@@ -4,11 +4,7 @@ import { get } from 'es-toolkit/compat';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
-import {
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-  type NcEdge,
-} from '@codaco/shared-consts';
+import { entityPrimaryKeyProperty, type NcEdge } from '@codaco/shared-consts';
 import { createCanvasStore } from '~/canvas/useCanvasStore';
 import ConcentricCircles from '~/components/ConcentricCircles';
 import { useCurrentStep } from '~/contexts/CurrentStepContext';

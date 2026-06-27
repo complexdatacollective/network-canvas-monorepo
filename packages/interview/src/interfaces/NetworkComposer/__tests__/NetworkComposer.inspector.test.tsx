@@ -314,10 +314,10 @@ describe('NetworkComposer inspector — node', () => {
 
     await waitFor(() => {
       const nodes = store.getState().session.network.nodes;
-      const nodeA_ = nodes.find(
+      const updatedNode = nodes.find(
         (n) => n[entityPrimaryKeyProperty] === NODE_A_ID,
       );
-      expect(nodeA_?.[entityAttributesProperty]?.[NODE_NAME_VAR]).toBe(
+      expect(updatedNode?.[entityAttributesProperty]?.[NODE_NAME_VAR]).toBe(
         'Alice Updated',
       );
     });
