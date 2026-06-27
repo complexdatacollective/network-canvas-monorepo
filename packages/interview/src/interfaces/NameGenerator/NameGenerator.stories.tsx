@@ -17,7 +17,7 @@ type StoryArgs = {
   minNodes: number;
   maxNodes: number;
   /**
-   * Panel 1 content. `0` keeps it an existing-network panel; any value `> N`
+   * Panel 1 content. `0` keeps it an existing-network panel; any value `> 0`
    * makes it an external-data panel pre-loaded with that many nodes. Set this
    * unequal to {@link panel2NodeCount} to reproduce the lopsided split where one
    * open panel takes nearly all the space and its sibling collapses to a sliver.
@@ -271,18 +271,31 @@ export const TwoPanels: Story = {
     panelTitles: ['in progress interview', 'previous interview'],
   },
   render: (args) => <NameGeneratorStoryWrapper {...args} />,
-  play: async ({ canvasElement }) => {
+  play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
+    const [title0 = '', title1 = ''] = args.panelTitles ?? [];
 
     // Wait until both panels have rendered and their external data has loaded,
-    // so measured heights reflect real content (12 vs 2 nodes).
+    // so measured heights reflect real content. Match each panel by its title
+    // (via its header button) rather than DOM order, so the test is independent
+    // of render order; assert the configured per-panel node counts.
     const panels = await waitFor(
       async () => {
         const found = canvas.getAllByTestId('node-panel');
         await expect(found.length).toBe(2);
-        await expect(within(found[0]!).getAllByRole('option').length).toBe(12);
-        await expect(within(found[1]!).getAllByRole('option').length).toBe(2);
-        return found;
+        const byTitle = (title: string) =>
+          found.find((p) => within(p).queryByRole('button', { name: title }));
+        const fuller = byTitle(title0);
+        const sparser = byTitle(title1);
+        await expect(fuller).toBeDefined();
+        await expect(sparser).toBeDefined();
+        await expect(within(fuller!).getAllByRole('option').length).toBe(
+          args.panel1NodeCount,
+        );
+        await expect(within(sparser!).getAllByRole('option').length).toBe(
+          args.panel2NodeCount,
+        );
+        return [fuller!, sparser!];
       },
       { timeout: 10000 },
     );
