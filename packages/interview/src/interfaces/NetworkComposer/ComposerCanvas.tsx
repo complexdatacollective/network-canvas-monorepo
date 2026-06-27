@@ -1,7 +1,13 @@
 'use client';
 
 import { clamp } from 'es-toolkit';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import {
   entityPrimaryKeyProperty,
@@ -58,6 +64,7 @@ function RenameInput({ nodeId, canvasStore, onCommit }: RenameInputProps) {
   return (
     <input
       data-testid="composer-node-rename"
+      aria-label="Node name"
       type="text"
       autoFocus
       value={value}
@@ -66,7 +73,7 @@ function RenameInput({ nodeId, canvasStore, onCommit }: RenameInputProps) {
         if (e.key === 'Enter') commit();
       }}
       onBlur={commit}
-      className="absolute z-20 w-32 -translate-x-1/2 -translate-y-1/2 rounded border border-primary bg-background px-2 py-1 text-center text-sm outline-none"
+      className="border-primary bg-background absolute z-20 w-32 -translate-x-1/2 -translate-y-1/2 rounded border px-2 py-1 text-center text-sm outline-none"
       style={{
         left: `${position.x * 100}%`,
         top: `${position.y * 100}%`,

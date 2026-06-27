@@ -10,10 +10,7 @@ import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import {
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-} from '@codaco/shared-consts';
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import { CurrentStepProvider } from '~/contexts/CurrentStepContext';
 import { StageMetadataContext } from '~/contexts/StageMetadataContext';
 import { ContractProvider } from '~/contract/context';
@@ -173,7 +170,9 @@ describe('NetworkComposer tool palette', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('button', { name: /add node/i }).getAttribute('aria-pressed'),
+        screen
+          .getByRole('button', { name: /add node/i })
+          .getAttribute('aria-pressed'),
       ).toBe('true');
     });
   });
@@ -188,7 +187,9 @@ describe('NetworkComposer tool palette', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('button', { name: /select/i }).getAttribute('aria-pressed'),
+        screen
+          .getByRole('button', { name: /select/i })
+          .getAttribute('aria-pressed'),
       ).toBe('false');
     });
   });
