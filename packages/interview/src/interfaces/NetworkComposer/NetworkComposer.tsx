@@ -4,7 +4,12 @@ import { get } from 'es-toolkit/compat';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
-import { entityPrimaryKeyProperty, type NcEdge } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 import { createCanvasStore } from '~/canvas/useCanvasStore';
 import ConcentricCircles from '~/components/ConcentricCircles';
 import { useCurrentStep } from '~/contexts/CurrentStepContext';
@@ -193,29 +198,85 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   const handleCommitRename = useCallback(
     async (nodeId: string, value: string) => {
-      await actions.updateNodeAttributes(nodeId, { [stage.quickAdd]: value });
+      // Skip the update (and the undo entry) when the value hasn't changed.
+      // This matters for the create-then-immediately-blur flow: a freshly-created
+      // node has quickAdd === ''; blurring without typing must not push a
+      // spurious "update attributes" entry on top of the "Add node" entry —
+      // otherwise a single ⌘Z would only blank the name instead of removing
+      // the node.
+      let currentValue: string | undefined;
+      if (stage.quickAdd !== null) {
+        const quickAddKey = stage.quickAdd;
+        dispatch((_, getState) => {
+          const { session: sessionState } = getState() as {
+            session: { network: { nodes: NcNode[] } };
+          };
+          const node = sessionState.network.nodes.find(
+            (n) => n[entityPrimaryKeyProperty] === nodeId,
+          );
+          if (node) {
+            const raw = node[entityAttributesProperty][quickAddKey];
+            currentValue = typeof raw === 'string' ? raw : undefined;
+          }
+        });
+      }
+
+      if (stage.quickAdd !== null && value !== (currentValue ?? '')) {
+        await actions.updateNodeAttributes(nodeId, { [stage.quickAdd]: value });
+      }
       setRenamingNodeId(null);
     },
-    [actions, stage.quickAdd],
+    [actions, stage.quickAdd, dispatch],
   );
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
       const target = e.target as HTMLElement;
-      if (
+      const inFormField =
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT'
-      ) {
+        target.tagName === 'SELECT';
+
+      const isUndo =
+        (e.metaKey || e.ctrlKey) &&
+        !e.shiftKey &&
+        (e.key === 'z' || e.key === 'Z');
+      const isRedo =
+        (e.metaKey || e.ctrlKey) &&
+        e.shiftKey &&
+        (e.key === 'z' || e.key === 'Z');
+      const isDelete = e.key === 'Delete' || e.key === 'Backspace';
+
+      if (inFormField) return;
+
+      if (isUndo) {
+        e.preventDefault();
+        undoStore.getState().undo();
         return;
       }
-      const ids = [...composerStore.getState().selectedNodeIds];
-      if (ids.length === 0) return;
-      actions.deleteNodesById(ids);
-      composerStore.getState().clearSelection();
+
+      if (isRedo) {
+        e.preventDefault();
+        undoStore.getState().redo();
+        return;
+      }
+
+      if (isDelete) {
+        const {
+          selectedNodeIds: nodeIds,
+          selectedEdgeId: edgeId,
+          clearSelection,
+        } = composerStore.getState();
+        if (nodeIds.size > 0) {
+          actions.deleteNodesById([...nodeIds]);
+          clearSelection();
+        } else if (edgeId !== null) {
+          actions.deleteEdgeById(edgeId);
+          clearSelection();
+        }
+      }
     },
-    [composerStore, actions],
+    [composerStore, undoStore, actions],
   );
 
   const edgeEntries = stage.edges.map((edgeDef) => {

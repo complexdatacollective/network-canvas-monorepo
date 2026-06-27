@@ -48,7 +48,7 @@ export default function ToolPalette({
   const isAddNodeActive = activeTool.kind === 'addNode';
 
   return (
-    <div className="absolute left-4 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-2">
+    <div className="absolute top-1/2 left-4 z-10 flex -translate-y-1/2 flex-col gap-2">
       <Button
         color="default"
         icon={<SelectIcon />}
