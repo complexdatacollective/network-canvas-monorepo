@@ -7,6 +7,7 @@ import type { Status } from '../genetics/status';
 export type ClassicDisease = {
   color: string;
   status: Status;
+  atRiskHomozygous?: boolean;
 };
 
 type ClassicNotationNodeProps = {
@@ -225,6 +226,31 @@ function UnknownOverlay({ color }: { color: string }) {
   );
 }
 
+const AT_RISK_LABEL = 'At risk of being affected (homozygous)';
+
+/**
+ * Small upward-pointing triangle positioned at the bottom-right corner of the
+ * node symbol. Signals that the person may be homozygous-affected for this
+ * disease — a second signal distinct from all primary-status markers.
+ *
+ * Rendered as a sibling to the notation-status span (not inside it) so its
+ * aria-label is not suppressed by the overlay's aria-hidden ancestor.
+ */
+function AtRiskHomozygousNotation({ color }: { color: string }) {
+  return (
+    <span
+      aria-label={AT_RISK_LABEL}
+      data-atrisk-homozygous-notation
+      className="pointer-events-none absolute right-0 bottom-0 flex items-center justify-center"
+      style={{ width: 10, height: 10 }}
+    >
+      <svg viewBox="0 0 10 10" aria-hidden width={10} height={10}>
+        <polygon points="5,1 9,9 1,9" fill={color} />
+      </svg>
+    </span>
+  );
+}
+
 /**
  * Selects and renders the correct inline SVG overlay for the given status.
  * The overlay is positioned absolutely over the Node symbol and carries
@@ -275,18 +301,23 @@ export function ClassicNotationNode({
   shape,
   label,
 }: ClassicNotationNodeProps) {
-  const { color, status } = disease;
+  const { color, status, atRiskHomozygous } = disease;
 
   return (
     <div className="inline-flex flex-col items-center gap-1">
-      <span
-        data-notation-status={status}
-        className="relative inline-block"
-        aria-label={label}
-      >
-        <Node label="" shape={shape} color="node-color-seq-1" size="sm" />
-        <NotationOverlay status={status} color={color} shape={shape} />
-      </span>
+      <div className="relative inline-block">
+        <span
+          data-notation-status={status}
+          className="relative inline-block"
+          aria-label={label}
+        >
+          <Node label="" shape={shape} color="node-color-seq-1" size="sm" />
+          <NotationOverlay status={status} color={color} shape={shape} />
+        </span>
+        {atRiskHomozygous === true && (
+          <AtRiskHomozygousNotation color={color} />
+        )}
+      </div>
       <span
         data-node-label
         className="max-w-[6rem] overflow-hidden text-center text-xs leading-tight hyphens-auto text-white"

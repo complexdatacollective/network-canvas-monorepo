@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { ClassicNotationNode } from '../ClassicNotationNode';
@@ -245,6 +245,126 @@ describe('ClassicNotationNode', () => {
             />,
           ),
         ).not.toThrow();
+      },
+    );
+  });
+
+  describe('atRiskHomozygous flag notation', () => {
+    it('renders [data-atrisk-homozygous-notation] when atRiskHomozygous is true', () => {
+      render(
+        <ClassicNotationNode
+          node={mockNode}
+          disease={{
+            color: '#e53e3e',
+            status: 'obligateCarrier',
+            atRiskHomozygous: true,
+          }}
+          shape="square"
+          label="Alice"
+        />,
+      );
+      const marker = document.querySelector(
+        '[data-atrisk-homozygous-notation]',
+      );
+      expect(marker).toBeInTheDocument();
+    });
+
+    it('does NOT render [data-atrisk-homozygous-notation] when atRiskHomozygous is false', () => {
+      render(
+        <ClassicNotationNode
+          node={mockNode}
+          disease={{
+            color: '#e53e3e',
+            status: 'obligateCarrier',
+            atRiskHomozygous: false,
+          }}
+          shape="square"
+          label="Alice"
+        />,
+      );
+      const marker = document.querySelector(
+        '[data-atrisk-homozygous-notation]',
+      );
+      expect(marker).not.toBeInTheDocument();
+    });
+
+    it('does NOT render [data-atrisk-homozygous-notation] when atRiskHomozygous is omitted', () => {
+      render(
+        <ClassicNotationNode
+          node={mockNode}
+          disease={{ color: '#e53e3e', status: 'obligateCarrier' }}
+          shape="square"
+          label="Alice"
+        />,
+      );
+      const marker = document.querySelector(
+        '[data-atrisk-homozygous-notation]',
+      );
+      expect(marker).not.toBeInTheDocument();
+    });
+
+    it('renders BOTH the primary status notation and the at-risk flag for obligateCarrier + atRiskHomozygous', () => {
+      render(
+        <ClassicNotationNode
+          node={mockNode}
+          disease={{
+            color: '#d69e2e',
+            status: 'obligateCarrier',
+            atRiskHomozygous: true,
+          }}
+          shape="circle"
+          label="Carol"
+        />,
+      );
+      const statusEl = document.querySelector(
+        '[data-notation-status="obligateCarrier"]',
+      );
+      expect(statusEl?.querySelector('[data-centre-dot]')).toBeTruthy();
+      const marker = document.querySelector(
+        '[data-atrisk-homozygous-notation]',
+      );
+      expect(marker).toBeInTheDocument();
+    });
+
+    it('[data-atrisk-homozygous-notation] accessible label is reachable via the accessibility tree', () => {
+      render(
+        <ClassicNotationNode
+          node={mockNode}
+          disease={{
+            color: '#e53e3e',
+            status: 'affected',
+            atRiskHomozygous: true,
+          }}
+          shape="square"
+          label="Alice"
+        />,
+      );
+      // getByLabelText searches the accessibility tree and honours aria-hidden —
+      // it throws if the element is inside an aria-hidden subtree.
+      expect(
+        screen.getByLabelText(/risk of being affected/i),
+      ).toBeInTheDocument();
+    });
+
+    it.each(['square', 'circle', 'diamond'] as const)(
+      'renders [data-atrisk-homozygous-notation] for shape=%s',
+      (shape) => {
+        render(
+          <ClassicNotationNode
+            node={mockNode}
+            disease={{
+              color: '#f00',
+              status: 'affected',
+              atRiskHomozygous: true,
+            }}
+            shape={shape}
+            label="Test"
+          />,
+        );
+        const marker = document.querySelector(
+          '[data-atrisk-homozygous-notation]',
+        );
+        expect(marker).toBeInTheDocument();
       },
     );
   });
