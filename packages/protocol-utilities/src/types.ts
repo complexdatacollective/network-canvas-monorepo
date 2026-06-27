@@ -514,14 +514,6 @@ export type NarrativePresetEntry = {
   focal: string;
 };
 
-export type AddNarrativePedigreeStageInput = {
-  label?: string;
-  sourceStageId: string;
-  diseases: NarrativeDiseaseEntry[];
-  presets: NarrativePresetEntry[];
-  behaviours?: { allowFocalReselection?: boolean };
-};
-
 export type GetSessionInput = {
   currentStep?: number;
   promptIndex?: number;
