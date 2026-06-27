@@ -2,8 +2,6 @@ import type { NodeShape } from '@codaco/fresco-ui/Node';
 
 import type { Status } from '../genetics/status';
 
-export type { Status };
-
 type StatusMarkerProps = {
   status: Status;
   color: string;
