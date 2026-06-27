@@ -25,14 +25,18 @@ function assign(result: Map<string, Status>, id: string, value: Status): void {
  *   one ATTRIBUTABLE AFFECTED DESCENDANT → `obligateCarrier`
  *   (unaffected-but-transmitting; the allele must pass through them from the
  *   affected ancestor to the affected descendant). A descendant `D` is
- *   ATTRIBUTABLE to U's lineage only when no affected parent of `D` lies OUTSIDE
- *   `{U} ∪ descendants(U)` — otherwise `D`'s affection is explained by a
- *   married-in affected (or other off-lineage affected) parent and obligate
- *   carriage of U cannot be inferred with certainty. This is exact for skipped
- *   generations of arbitrary length: the single-intermediate case (parent
+ *   ATTRIBUTABLE to U's lineage only when EVERY other parent `P` of `D` (those
+ *   outside `{U} ∪ descendants(U)`) is NOT an equally-plausible transmitter:
+ *   `P` must be unaffected AND have no affected ancestor outside U's lineage.
+ *   Otherwise `D`'s affection could be explained by `P`'s side — a married-in
+ *   affected spouse, or a second affected lineage converging on `D` — and
+ *   obligate carriage of U cannot be inferred with certainty. This is exact for
+ *   skipped generations of arbitrary length: the single-intermediate case (parent
  *   between two affected) and the multi-intermediate case (A→B→C→D, affected
  *   A,D) both resolve to `obligateCarrier`, while the married-in case
- *   (G→U, U+S(affected)→K) correctly leaves U at `atRiskAffected` only.
+ *   (G→U, U+S(affected)→K) and the converging-lineage case
+ *   (G1(aff)→U, G2(aff)→V, U+V→K(aff)) correctly leave U (and V) at
+ *   `atRiskAffected` only.
  * - Parents of an affected person with NO affected ancestor are NEVER
  *   `obligateCarrier` (de novo vs non-penetrant) — they have no affected
  *   ancestor, so the rule above correctly excludes them. They receive only the
@@ -77,9 +81,15 @@ export function computeAutosomalDominant(
       continue;
     }
     // An affected descendant `D` only proves U's carriage when D's affection is
-    // attributable to U's lineage — i.e. NO affected parent of D lies outside
-    // `{id} ∪ descendants(id)`. A married-in affected parent of D explains D
-    // independently of U, so such a D does not qualify.
+    // attributable to U's lineage. Any OTHER parent P of D outside
+    // `lineage = {id} ∪ descendants(id)` is disqualifying when P is itself an
+    // equally-plausible transmitter — i.e. P is affected, OR P independently has
+    // an affected ancestor that is NOT within U's lineage. In either case D's
+    // affection could be explained by P's side, so obligate carriage of U cannot
+    // be inferred. This rejects both the married-in affected spouse (P affected)
+    // and the converging-lineage case (P unaffected but with its own affected
+    // ancestor), while still admitting the genuine multi-gen skip A→B→C→D where
+    // D's only affected-source parent lies on U's lineage.
     const lineage = graph.descendants(id);
     lineage.add(id);
     const hasAttributableAffectedDescendant = [...lineage].some(
@@ -87,11 +97,17 @@ export function computeAutosomalDominant(
         if (descendantId === id || !affected.has(descendantId)) {
           return false;
         }
-        return graph
-          .parentsOf(descendantId)
-          .every(
-            (parent) => !affected.has(parent.id) || lineage.has(parent.id),
+        return graph.parentsOf(descendantId).every((parent) => {
+          if (lineage.has(parent.id)) {
+            return true;
+          }
+          if (affected.has(parent.id)) {
+            return false;
+          }
+          return ![...graph.ancestors(parent.id)].some((ancestorId) =>
+            affected.has(ancestorId),
           );
+        });
       },
     );
     if (!hasAttributableAffectedDescendant) {
@@ -122,8 +138,12 @@ export function computeAutosomalDominant(
  *   Exactly 1 carrier parent → `atRiskCarrier`. This automatically downgrades
  *   the incomplete-data case (only one recorded parent → at most 1 carrier
  *   parent) and preserves true full-sibs (both carrier parents recorded).
- * - The parents/siblings of an obligate carrier (the affected's grandparents/
- *   aunts/uncles, each a 50%-prior carrier) → `atRiskCarrier`.
+ * - The parents/siblings of an obligate carrier who is a PARENT OF AN AFFECTED
+ *   (the affected's grandparents/aunts/uncles, each a 50%-prior carrier) →
+ *   `atRiskCarrier`. This collateral prior is NOT spread from an obligate carrier
+ *   who is a CHILD of a certain transmitter: that carrier's certain allele source
+ *   is its on-lineage parent, so its married-in co-parent has only population
+ *   risk and stays `unknown` (omitted).
  */
 export function computeAutosomalRecessive(
   graph: GeneticGraph,
@@ -208,11 +228,28 @@ export function computeAutosomalRecessive(
     }
   }
 
-  // 50%-prior collaterals: the parents and siblings of every obligate carrier
-  // (the affected's grandparents and aunts/uncles) each carry a 50% prior.
-  // Reuse the obligate-carrier snapshot so newly-assigned at-risk carriers
-  // don't recursively seed further collaterals (the prior would decay).
-  for (const carrierId of obligateCarriers) {
+  // The collateral 50%-prior spread is valid ONLY for obligate carriers who are
+  // PARENTS OF AN AFFECTED person — their own parents are the affected's
+  // grandparents and their siblings the affected's aunts/uncles, each a genuine
+  // 50%-prior carrier. An obligate carrier who is instead a CHILD of a certain
+  // transmitter (affected/obligateAffected) gets its certain disease allele from
+  // its on-lineage parent; its OTHER, married-in co-parent has only population
+  // risk and must stay `unknown`. Spreading the prior from such a carrier would
+  // wrongly mark that married-in co-parent (and their relatives) as carriers.
+  const parentOfAffectedCarriers = new Set<string>();
+  for (const affectedId of affected) {
+    for (const parent of graph.parentsOf(affectedId)) {
+      if (obligateCarriers.has(parent.id)) {
+        parentOfAffectedCarriers.add(parent.id);
+      }
+    }
+  }
+
+  // 50%-prior collaterals: the parents and siblings of every parent-of-affected
+  // obligate carrier (the affected's grandparents and aunts/uncles) each carry a
+  // 50% prior. Reuse the obligate-carrier snapshot so newly-assigned at-risk
+  // carriers don't recursively seed further collaterals (the prior would decay).
+  for (const carrierId of parentOfAffectedCarriers) {
     for (const parent of graph.parentsOf(carrierId)) {
       if (!affected.has(parent.id)) {
         assign(result, parent.id, 'atRiskCarrier');

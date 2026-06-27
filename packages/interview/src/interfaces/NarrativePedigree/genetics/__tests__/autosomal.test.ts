@@ -183,6 +183,49 @@ describe('computeAutosomalDominant', () => {
     });
   });
 
+  describe('converging affected lineages (no double obligate-carrier over-call)', () => {
+    /**
+     *   G1 (affected)        G2 (affected)
+     *        |                    |
+     *      U (unaffected)       V (unaffected)
+     *               \          /
+     *                K (affected)
+     *
+     *   K is heterozygous (dominant) and carries ONE allele — from U OR from V,
+     *   not both. Neither U nor V is an obligate carrier: each is an
+     *   equally-plausible transmitter, so each is only `atRiskAffected`.
+     */
+    const nodes = [
+      makeNode('G1'),
+      makeNode('G2'),
+      makeNode('U'),
+      makeNode('V'),
+      makeNode('K'),
+    ];
+    const edges = [
+      makeGeneticEdge('G1', 'U'),
+      makeGeneticEdge('G2', 'V'),
+      makeGeneticEdge('U', 'K'),
+      makeGeneticEdge('V', 'K'),
+    ];
+    const graph = buildGraph(nodes, edges);
+    const affected = new Set(['G1', 'G2', 'K']);
+    const result = computeAutosomalDominant(graph, affected);
+
+    it('keeps the affected grandparents and child affected', () => {
+      expect(status(result, 'G1')).toBe('affected');
+      expect(status(result, 'G2')).toBe('affected');
+      expect(status(result, 'K')).toBe('affected');
+    });
+
+    it('marks BOTH converging parents as atRiskAffected, NOT obligateCarrier', () => {
+      expect(status(result, 'U')).toBe('atRiskAffected');
+      expect(status(result, 'U')).not.toBe('obligateCarrier');
+      expect(status(result, 'V')).toBe('atRiskAffected');
+      expect(status(result, 'V')).not.toBe('obligateCarrier');
+    });
+  });
+
   describe('recursive descendant propagation', () => {
     /**
      *   affected
@@ -425,6 +468,53 @@ describe('computeAutosomalRecessive', () => {
 
     it('marks a true full sibling (both carrier parents) as atRiskAffected', () => {
       expect(status(result, 'sib')).toBe('atRiskAffected');
+    });
+  });
+
+  describe('married-in co-parent of an obligate carrier (child of affected)', () => {
+    /**
+     *   mother (unaffected) --- father (unaffected)
+     *               \          /
+     *              affected
+     *                |     \
+     *                |    spouse (married-in)
+     *                 \    /
+     *                child
+     *
+     *   `child` is an obligate carrier (child of an affected parent), but its
+     *   certain disease allele comes from `affected` (its on-lineage parent).
+     *   `spouse` married in — only population risk — so it must stay `unknown`,
+     *   NOT `atRiskCarrier`. mother & father remain obligate carriers.
+     */
+    const nodes = [
+      makeNode('mother'),
+      makeNode('father'),
+      makeNode('affected'),
+      makeNode('spouse'),
+      makeNode('child'),
+    ];
+    const edges = [
+      makeGeneticEdge('mother', 'affected'),
+      makeGeneticEdge('father', 'affected'),
+      makeGeneticEdge('affected', 'child'),
+      makeGeneticEdge('spouse', 'child'),
+    ];
+    const graph = buildGraph(nodes, edges);
+    const affected = new Set(['affected']);
+    const result = computeAutosomalRecessive(graph, affected);
+
+    it('keeps both parents of the affected as obligateCarrier', () => {
+      expect(status(result, 'mother')).toBe('obligateCarrier');
+      expect(status(result, 'father')).toBe('obligateCarrier');
+    });
+
+    it('marks the child of the affected as obligateCarrier', () => {
+      expect(status(result, 'child')).toBe('obligateCarrier');
+    });
+
+    it('leaves the married-in spouse unknown, NOT atRiskCarrier', () => {
+      expect(status(result, 'spouse')).toBe('unknown');
+      expect(status(result, 'spouse')).not.toBe('atRiskCarrier');
     });
   });
 
