@@ -27,11 +27,15 @@ function assign(result: Map<string, Status>, id: string, value: Status): void {
  * Rules:
  * - Affected nodes → `affected` (boolean nomination is preserved even for a
  *   female, who cannot present a Y-linked trait under this model).
- * - For every affected MALE: every male in unbroken male-line DESCENT (his sons,
- *   sons' sons, …) AND every male-line ANCESTOR (his father, father's father, …)
- *   → `obligateAffected`. Both walks pass only through males.
- * - Females confer and receive nothing: the Y line never passes through a female,
- *   so an affected male's daughters (and anyone reached via a female) get nothing.
+ * - For every affected MALE: every male in his MALE-LINE-CONNECTED COMPONENT →
+ *   `obligateAffected`. A single BFS over the male line — from a male M the
+ *   neighbours are (M's MALE children) ∪ (M's MALE parent) — reaches ancestors,
+ *   descendants AND collaterals (brothers via the shared father, paternal uncles
+ *   via the grandfather, nephews/cousins via re-descent), all sharing the same Y.
+ * - Females confer and receive nothing: every BFS step lands on a male (a male
+ *   child or the male parent), so the walk never bridges a female — an affected
+ *   male's daughters, anyone beyond them, and married-in (non-male-line) males
+ *   get nothing.
  * - Recursion uses a visited-set so consanguinity loops terminate.
  */
 export function computeYLinked(
@@ -47,31 +51,23 @@ export function computeYLinked(
 
   const affectedMales = [...affected].filter((id) => resolveSex(id) === 'male');
 
-  // Descent: only sons continue the Y line; daughters terminate it. The
-  // visited-set is shared across all seeds so a cycle cannot loop forever.
-  const descendantVisited = new Set<string>(affectedMales);
-  const maleLineDescendants = graph.propagate(
-    affectedMales,
-    (maleId) =>
-      graph
-        .childrenOf(maleId)
-        .filter((childId) => resolveSex(childId) === 'male'),
-    descendantVisited,
-  );
+  // Single male-line connected-component traversal. From a male M, step to his
+  // MALE children and his MALE parent; never to a female, so the walk stays
+  // inside one Y haplotype. Seeds are affected males, every step yields a male,
+  // so every reached node is a male-line relative. The visited-set is shared so
+  // consanguinity loops terminate.
+  const maleLineComponent = graph.propagate(affectedMales, (maleId) => {
+    const maleChildren = graph
+      .childrenOf(maleId)
+      .filter((childId) => resolveSex(childId) === 'male');
+    const maleParents = graph
+      .parentsOf(maleId)
+      .filter((parent) => parent.sex === 'male')
+      .map((parent) => parent.id);
+    return [...maleChildren, ...maleParents];
+  });
 
-  // Ascent: only the male (paternal) parent continues the Y line upward.
-  const ancestorVisited = new Set<string>(affectedMales);
-  const maleLineAncestors = graph.propagate(
-    affectedMales,
-    (maleId) =>
-      graph
-        .parentsOf(maleId)
-        .filter((parent) => parent.sex === 'male')
-        .map((parent) => parent.id),
-    ancestorVisited,
-  );
-
-  for (const id of [...maleLineDescendants, ...maleLineAncestors]) {
+  for (const id of maleLineComponent) {
     if (!affected.has(id)) {
       assign(result, id, 'obligateAffected');
     }

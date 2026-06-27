@@ -121,6 +121,142 @@ describe('computeYLinked', () => {
     });
   });
 
+  describe("an affected male's brother and nephew (collateral male line)", () => {
+    /**
+     *      father (male)
+     *        |          |
+     *  affectedMale   brother (male)   <- shares the father's Y -> obligateAffected
+     *   (affected)        |
+     *                  nephew (male)   <- brother's son, same Y -> obligateAffected
+     *
+     *   The brother carries the SAME Y as the affected male (both inherited it
+     *   from their shared father). The fix re-descends from the shared father, so
+     *   the brother AND his son (the nephew) are reached.
+     */
+    const nodes = [
+      makeNode('father'),
+      makeNode('affectedMale'),
+      makeNode('brother'),
+      makeNode('nephew'),
+    ];
+    const edges = [
+      makeGeneticEdge('father', 'affectedMale'),
+      makeGeneticEdge('father', 'brother'),
+      makeGeneticEdge('brother', 'nephew'),
+    ];
+    const resolveSex = sexResolver({
+      father: 'male',
+      affectedMale: 'male',
+      brother: 'male',
+      nephew: 'male',
+    });
+    const graph = buildGraph(nodes, edges, resolveSex);
+    const affected = new Set(['affectedMale']);
+    const result = computeYLinked(graph, affected, resolveSex);
+
+    it("marks the affected male's brother as obligateAffected (shared paternal Y)", () => {
+      expect(status(result, 'brother')).toBe('obligateAffected');
+    });
+
+    it("marks the brother's son (nephew) as obligateAffected (re-descent of the Y)", () => {
+      expect(status(result, 'nephew')).toBe('obligateAffected');
+    });
+  });
+
+  describe("an affected male's paternal uncle and cousin (collateral male line)", () => {
+    /**
+     *   grandfather (male)
+     *        |            |
+     *     father       uncle (male)   <- grandfather's other son, same Y ->
+     *    (male)            |             obligateAffected
+     *        |          cousin (male)  <- uncle's son, same Y -> obligateAffected
+     *  affectedMale
+     *   (affected)
+     *
+     *   The paternal uncle carries the grandfather's Y (the same Y the affected
+     *   male inherited via his father). The fix re-descends from the grandfather,
+     *   so the uncle AND his son (the cousin) are reached.
+     */
+    const nodes = [
+      makeNode('grandfather'),
+      makeNode('father'),
+      makeNode('affectedMale'),
+      makeNode('uncle'),
+      makeNode('cousin'),
+    ];
+    const edges = [
+      makeGeneticEdge('grandfather', 'father'),
+      makeGeneticEdge('grandfather', 'uncle'),
+      makeGeneticEdge('father', 'affectedMale'),
+      makeGeneticEdge('uncle', 'cousin'),
+    ];
+    const resolveSex = sexResolver({
+      grandfather: 'male',
+      father: 'male',
+      affectedMale: 'male',
+      uncle: 'male',
+      cousin: 'male',
+    });
+    const graph = buildGraph(nodes, edges, resolveSex);
+    const affected = new Set(['affectedMale']);
+    const result = computeYLinked(graph, affected, resolveSex);
+
+    it("marks the paternal uncle (grandfather's other son) as obligateAffected", () => {
+      expect(status(result, 'uncle')).toBe('obligateAffected');
+    });
+
+    it("marks the uncle's son (male-line cousin) as obligateAffected", () => {
+      expect(status(result, 'cousin')).toBe('obligateAffected');
+    });
+  });
+
+  describe('a married-in male (not male-line connected) gets nothing', () => {
+    /**
+     *   affectedMale (affected)    spouseOfDaughter (male, married in)
+     *        |                            |
+     *    daughter (female) ---------------+
+     *        |
+     *  grandchild (male)
+     *
+     *   The daughter's husband married into the pedigree; he is reachable only
+     *   through the daughter (a female bridge), never through a male child or male
+     *   parent of the affected male. He is NOT in the male-line component, so he
+     *   gets nothing.
+     */
+    const nodes = [
+      makeNode('affectedMale'),
+      makeNode('daughter'),
+      makeNode('spouseOfDaughter'),
+      makeNode('grandchild'),
+    ];
+    const edges = [
+      makeGeneticEdge('affectedMale', 'daughter'),
+      makeGeneticEdge('daughter', 'grandchild'),
+      makeGeneticEdge('spouseOfDaughter', 'grandchild'),
+    ];
+    const resolveSex = sexResolver({
+      affectedMale: 'male',
+      daughter: 'female',
+      spouseOfDaughter: 'male',
+      grandchild: 'male',
+    });
+    const graph = buildGraph(nodes, edges, resolveSex);
+    const affected = new Set(['affectedMale']);
+    const result = computeYLinked(graph, affected, resolveSex);
+
+    it('confers nothing on the married-in male (no male-line connection)', () => {
+      expect(status(result, 'spouseOfDaughter')).toBe('unknown');
+    });
+
+    it("confers nothing on the daughter's son (reached only via a female)", () => {
+      expect(status(result, 'grandchild')).toBe('unknown');
+    });
+
+    it('confers nothing on the daughter', () => {
+      expect(status(result, 'daughter')).toBe('unknown');
+    });
+  });
+
   describe('no transmission through a female', () => {
     /**
      *   affectedMale (affected)
