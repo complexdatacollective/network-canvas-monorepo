@@ -1,7 +1,7 @@
 'use client';
 
 import { clamp } from 'es-toolkit';
-import { type ReactNode, useCallback, useEffect, useRef } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   entityPrimaryKeyProperty,
@@ -10,7 +10,7 @@ import {
 } from '@codaco/shared-consts';
 import CanvasNode from '~/canvas/CanvasNode';
 import EdgeLayer from '~/canvas/EdgeLayer';
-import type { CanvasStoreApi } from '~/canvas/useCanvasStore';
+import { useCanvasStore, type CanvasStoreApi } from '~/canvas/useCanvasStore';
 
 import { type ComposerStoreApi, useComposerStore } from './useComposerStore';
 
@@ -30,9 +30,50 @@ type ComposerCanvasProps = {
   onBackgroundTap: (position: Position) => void;
   onNodeTap: (nodeId: string) => void;
   onNodeDragEnd: (nodeId: string, position: Position) => void;
+  renamingNodeId?: string | null;
+  onCommitRename?: (nodeId: string, value: string) => void;
 };
 
 const DRAG_THRESHOLD = 5;
+
+type RenameInputProps = {
+  nodeId: string;
+  canvasStore: CanvasStoreApi;
+  onCommit: (value: string) => void;
+};
+
+function RenameInput({ nodeId, canvasStore, onCommit }: RenameInputProps) {
+  const [value, setValue] = useState('');
+  const committed = useRef(false);
+  const position = useCanvasStore(canvasStore, (s) => s.positions.get(nodeId));
+
+  const commit = useCallback(() => {
+    if (committed.current) return;
+    committed.current = true;
+    onCommit(value);
+  }, [onCommit, value]);
+
+  if (!position) return null;
+
+  return (
+    <input
+      data-testid="composer-node-rename"
+      type="text"
+      autoFocus
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') commit();
+      }}
+      onBlur={commit}
+      className="absolute z-20 w-32 -translate-x-1/2 -translate-y-1/2 rounded border border-primary bg-background px-2 py-1 text-center text-sm outline-none"
+      style={{
+        left: `${position.x * 100}%`,
+        top: `${position.y * 100}%`,
+      }}
+    />
+  );
+}
 
 export default function ComposerCanvas({
   canvasStore,
@@ -45,6 +86,8 @@ export default function ComposerCanvas({
   onBackgroundTap,
   onNodeTap,
   onNodeDragEnd,
+  renamingNodeId = null,
+  onCommitRename,
 }: ComposerCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const downRef = useRef<{ x: number; y: number } | null>(null);
@@ -116,6 +159,14 @@ export default function ComposerCanvas({
           />
         );
       })}
+      {renamingNodeId && onCommitRename && (
+        <RenameInput
+          key={renamingNodeId}
+          nodeId={renamingNodeId}
+          canvasStore={canvasStore}
+          onCommit={(value) => onCommitRename(renamingNodeId, value)}
+        />
+      )}
     </div>
   );
 }
