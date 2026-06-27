@@ -269,12 +269,18 @@ export const ConsanguineousUnionRepresentation: Story = {
 // Creation-via-wizard story
 //
 // Starts from a network where ego, ego's parents/grandparents and the cousin's
-// branch already exist (but ego and the cousin are NOT yet partnered). The play
-// function:
-//   1. Opens "Add partner" on ego.
-//   2. Chooses the existing cousin (Maria) from the existing-or-new picker.
-//   3. Opens "Add child" on ego and records a child shared with Maria.
-//   4. Asserts the union (Maria still present) and the shared child appear.
+// branch already exist (but ego and the cousin are NOT yet partnered). A partner
+// edge is undirected, so the union is built by opening "Add partner" on the
+// NAMED cousin Maria (an accessible, name-targetable node) and picking her
+// eligible first cousin — ego, who appears in the picker as "You". (Ego's own
+// node button renders inside an aria-hidden subtree, so it can never be located
+// by findByRole; targeting Maria sidesteps that pre-existing ego-rendering
+// behaviour while producing exactly the same consanguineous union.)
+//
+// The play function:
+//   1. Opens "Add partner" on Maria and selects her existing cousin ego ("You").
+//   2. Opens "Add child" on Maria and records a child shared with ego.
+//   3. Asserts the union (Maria still present) and the shared child appear.
 // ---------------------------------------------------------------------------
 
 const WIZARD_TIMEOUT = { timeout: 8000 };
@@ -290,6 +296,17 @@ async function findContinueButton() {
 
 async function clickContinue() {
   await userEvent.click(await findContinueButton());
+}
+
+// The "Add partner" form dialog submits via a button labelled "Add" (its
+// submitLabel) rather than the wizard's "Continue"/"Finish", so it needs its
+// own submitter.
+async function clickAdd() {
+  const dialog = await screen.findByRole('dialog', {}, WIZARD_TIMEOUT);
+  const buttons = await within(dialog).findAllByRole('button', {});
+  const btn = buttons.find((b) => b.textContent === 'Add');
+  if (!btn) throw new Error('No Add button found in the Add-partner dialog');
+  await userEvent.click(btn);
 }
 
 async function getDialog() {
@@ -466,28 +483,34 @@ export const ConsanguineousUnionCreationViaWizard: Story = {
 
   play: async () => {
     // -----------------------------------------------------------------------
-    // Step 1: Open "Add partner" on ego and choose the existing cousin Maria.
+    // Step 1: Open "Add partner" on the named cousin Maria and choose ego.
     // -----------------------------------------------------------------------
-    // Ego renders as the generic "Node" label: computeAllDisplayLabels skips
-    // ego intentionally, so its stored name never appears on the canvas.
-    await openNodeContextMenu('Node');
+    // Maria is an accessible, name-targetable node. partnerCandidates(Maria)
+    // excludes only Maria, her parents and her full siblings — so her first
+    // cousin ego is eligible and the existing-person picker lists ego as "You"
+    // (buildNodeOptions labels ego specially). Selecting it forms the
+    // undirected partner edge: the same consanguineous union as ego ⚭ Maria.
+    await openNodeContextMenu('Maria');
     await userEvent.click(
       await screen.findByText('Add partner', {}, WIZARD_TIMEOUT),
     );
 
-    // The existing-or-new picker (added in the partner-creation tasks) offers
-    // Maria as an existing person; select her rather than creating a new node.
-    await setFieldInput('partner-source', 'Maria');
-    await setFieldInput('partnership', 'Current partner');
-    await clickContinue();
+    // AddPersonFields: pick the existing-person branch, then ego ("You") from
+    // the candidate picker. The current/ex question defaults to "current".
+    await setFieldInput('partnerType', 'Yes — already in the family tree');
+    await setFieldInput('existingPartnerId', 'You');
+    await clickAdd();
 
     // The consanguineous union now exists; Maria remains on the canvas.
     await screen.findByRole('button', { name: 'Maria' }, WIZARD_TIMEOUT);
 
     // -----------------------------------------------------------------------
-    // Step 2: Add a child shared by ego and Maria.
+    // Step 2: Add a child shared by Maria and ego via the Add-child wizard.
     // -----------------------------------------------------------------------
-    await openNodeContextMenu('Node');
+    // getPreselection(Maria) seeds Maria as the egg source and her partner ego
+    // as the sperm source, so the child descends from both members of the
+    // consanguineous union. ego is re-selected explicitly for robustness.
+    await openNodeContextMenu('Maria');
     await userEvent.click(
       await screen.findByText('Add child', {}, WIZARD_TIMEOUT),
     );
@@ -496,11 +519,11 @@ export const ConsanguineousUnionCreationViaWizard: Story = {
     await setFieldInput('child.gender_identity', 'Woman/girl');
     await clickContinue(); // Child details → BioTriadStep
 
-    // Ego is the preselected egg/sperm source; pick Maria as the co-parent so
-    // the child descends from both members of the consanguineous union.
-    await setFieldInput('sperm-source', 'Maria');
+    await setFieldInput('sperm-source', 'You');
     await clickContinue(); // BioTriadStep → Other parents
 
+    // Both genetic parents (Maria, ego) already exist, so the new-parent
+    // partnership step is skipped and this continue finalises the wizard.
     await setFieldInput('hasOtherParents', false);
     await clickContinue(); // Other parents → done
 
