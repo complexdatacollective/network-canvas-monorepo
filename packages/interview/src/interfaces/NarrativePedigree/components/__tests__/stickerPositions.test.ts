@@ -74,6 +74,18 @@ describe('stickerPositions', () => {
         expect(pos.y).toBeLessThanOrEqual(1);
       }
     });
+
+    it('all points lie on the box edges (x or y is 0 or 1)', () => {
+      const positions = stickerPositions('square', 8);
+      for (const pos of positions) {
+        const onEdge =
+          Math.abs(pos.x) < 1e-10 ||
+          Math.abs(pos.x - 1) < 1e-10 ||
+          Math.abs(pos.y) < 1e-10 ||
+          Math.abs(pos.y - 1) < 1e-10;
+        expect(onEdge).toBe(true);
+      }
+    });
   });
 
   describe('circle shape', () => {
@@ -109,6 +121,15 @@ describe('stickerPositions', () => {
       const b = stickerPositions('circle', 5);
       expect(a).toEqual(b);
     });
+
+    it('all points lie on the inscribed circle: (x-0.5)²+(y-0.5)²≈0.25', () => {
+      const positions = stickerPositions('circle', 8);
+      for (const pos of positions) {
+        const dx = pos.x - 0.5;
+        const dy = pos.y - 0.5;
+        expect(dx * dx + dy * dy).toBeCloseTo(0.25, 10);
+      }
+    });
   });
 
   describe('diamond shape', () => {
@@ -133,6 +154,16 @@ describe('stickerPositions', () => {
         expect(pos.x).toBeLessThanOrEqual(1);
         expect(pos.y).toBeGreaterThanOrEqual(0);
         expect(pos.y).toBeLessThanOrEqual(1);
+      }
+    });
+
+    it('all points lie on the rhombus edges: |x-0.5|+|y-0.5|≈0.5', () => {
+      const positions = stickerPositions('diamond', 8);
+      for (const pos of positions) {
+        expect(Math.abs(pos.x - 0.5) + Math.abs(pos.y - 0.5)).toBeCloseTo(
+          0.5,
+          10,
+        );
       }
     });
   });
