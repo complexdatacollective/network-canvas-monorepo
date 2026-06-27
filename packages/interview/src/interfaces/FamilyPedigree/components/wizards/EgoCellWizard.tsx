@@ -80,16 +80,22 @@ export default function EgoCellWizard({
       className: 'tablet-portrait:min-w-[70ch]',
       progress: null,
       steps: [
-        {
-          title: 'Introduction',
-          content: wrap(IntroStep),
-          skip: () => shouldSkipIntroStep(introScreen),
-        },
-        {
-          title: 'Choose your language',
-          content: wrap(FramingSelectionStep),
-          skip: () => shouldSkipFramingSelectionStep(framingConfig),
-        },
+        // IntroStep and FramingSelectionStep depend only on stage config
+        // (known now), so include them conditionally rather than relying on a
+        // `skip` predicate: the wizard always renders its FIRST step regardless
+        // of `skip`, which would otherwise surface an empty IntroStep for a
+        // fixed-framing protocol with no intro screen.
+        ...(shouldSkipIntroStep(introScreen)
+          ? []
+          : [{ title: 'Introduction', content: wrap(IntroStep) }]),
+        ...(shouldSkipFramingSelectionStep(framingConfig)
+          ? []
+          : [
+              {
+                title: 'Choose your language',
+                content: wrap(FramingSelectionStep),
+              },
+            ]),
         {
           title: 'Your biological parents',
           content: wrap(BioParentsIntroStep),

@@ -1,7 +1,13 @@
 'use client';
 
 import { createSelector } from '@reduxjs/toolkit';
-import { type ReactNode, useMemo, useRef, useState } from 'react';
+import {
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { Button } from '@codaco/fresco-ui/Button';
 import Node from '@codaco/fresco-ui/Node';
@@ -263,26 +269,35 @@ export default function NarrativePedigreeView({
       }
     };
 
+    // The refocus affordance lives on the container, not a wrapping <button>:
+    // the fresco-ui Node is itself a <button>, and a <button> inside a <button>
+    // is invalid HTML. role="button" + key handling keeps it accessible while
+    // the inner Node button stays tabIndex=-1.
+    const reselectProps: ComponentPropsWithoutRef<'div'> = allowReselect
+      ? {
+          'role': 'button',
+          'tabIndex': 0,
+          'aria-label': `Focus on ${label || node.id}`,
+          'onClick': handleClick,
+          'onKeyDown': (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              handleClick();
+            }
+          },
+        }
+      : {};
+
     return (
       <div
         data-pedigree-member="true"
         data-node-id={node.id}
         data-dimmed={dimmed ? 'true' : 'false'}
-        className="transition-opacity"
+        className={`transition-opacity${allowReselect ? ' cursor-pointer' : ''}`}
         style={{ opacity: dimmed ? 0.3 : 1 }}
+        {...reselectProps}
       >
-        {allowReselect ? (
-          <button
-            type="button"
-            onClick={handleClick}
-            aria-label={`Focus on ${label || node.id}`}
-            className="cursor-pointer bg-transparent p-0"
-          >
-            {inner}
-          </button>
-        ) : (
-          inner
-        )}
+        {inner}
       </div>
     );
   };

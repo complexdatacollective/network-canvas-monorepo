@@ -96,6 +96,21 @@ export default function useProtocolForm({
     getValidationContext,
   ) as ValidationContext | null;
 
+  // Callers commonly pass `subject` as a fresh object literal each render
+  // (e.g. `{ entity: 'node', type: nodeType }`). Re-derive a reference-stable
+  // subject from its primitive fields so the memos and selectors below don't
+  // see a new object every render — an unstable validationContext re-runs every
+  // Field's register/unregister effect and loops ("Maximum update depth").
+  const subjectEntity = subject?.entity;
+  const subjectType = subject?.type;
+  const stableSubject = useMemo<Subject | undefined>(
+    () =>
+      subjectEntity === undefined
+        ? undefined
+        : { entity: subjectEntity, type: subjectType },
+    [subjectEntity, subjectType],
+  );
+
   const validationContext = useMemo<ValidationContext | null>(() => {
     if (!baseValidationContext) return null;
 
@@ -104,7 +119,7 @@ export default function useProtocolForm({
     // (unique/sameAs/differentFrom/greaterThanVariable) dereference. When the
     // caller supplies a concrete subject for the rendered fields, use it as the
     // stageSubject so those validators resolve against the right entity type.
-    const resolvedSubject = subjectToStageSubject(subject);
+    const resolvedSubject = subjectToStageSubject(stableSubject);
     const stageSubject = resolvedSubject ?? baseValidationContext.stageSubject;
 
     return {
@@ -112,12 +127,12 @@ export default function useProtocolForm({
       stageSubject,
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),
     };
-  }, [baseValidationContext, currentEntityId, subject]);
+  }, [baseValidationContext, currentEntityId, stableSubject]);
 
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   const subjectFieldsMetadata = useSelector((state) =>
-    subject !== undefined
-      ? selectFieldMetadataWithSubject(state, subject, fields)
+    stableSubject !== undefined
+      ? selectFieldMetadataWithSubject(state, stableSubject, fields)
       : null,
   );
   const fieldsMetadata = useMemo(
