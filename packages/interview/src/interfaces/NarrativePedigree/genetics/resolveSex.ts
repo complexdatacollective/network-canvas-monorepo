@@ -4,6 +4,8 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { isGeneticRelationshipType, readRelationshipType } from './geneticEdge';
+
 /**
  * Minimal config required by the sex resolver.
  * Kept narrow so this module stays independent of FamilyPedigree's VariableConfig.
@@ -13,32 +15,6 @@ export type ResolveSexConfig = {
   gameteRoleVariable: string;
   relationshipTypeVariable: string;
 };
-
-const GENETIC_RELATIONSHIP_TYPES = ['biological', 'donor'] as const;
-type GeneticRelationshipType = (typeof GENETIC_RELATIONSHIP_TYPES)[number];
-
-function isGeneticRelationshipType(
-  value: unknown,
-): value is GeneticRelationshipType {
-  return value === 'biological' || value === 'donor';
-}
-
-/**
- * Reads the relationship type from the categorical edge attribute.
- * The value is stored as a single-element array; this handles both array form
- * and (defensively) a plain string.
- */
-function readRelationshipType(
-  edge: NcEdge,
-  relationshipTypeVariable: string,
-): string | undefined {
-  const raw = edge[entityAttributesProperty][relationshipTypeVariable];
-  if (Array.isArray(raw)) {
-    const first = raw[0];
-    return typeof first === 'string' ? first : undefined;
-  }
-  return typeof raw === 'string' ? raw : undefined;
-}
 
 /**
  * Resolves a person's biological sex for use by the genetics engine.

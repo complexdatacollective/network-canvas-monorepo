@@ -1,21 +1,6 @@
-import {
-  entityAttributesProperty,
-  type NcEdge,
-  type NcNode,
-} from '@codaco/shared-consts';
+import { type NcEdge, type NcNode } from '@codaco/shared-consts';
 
-/**
- * The two relationship types treated as genetic parent→child edges.
- * Consistent with FamilyPedigree's `computeBioRelatives`.
- */
-const GENETIC_RELATIONSHIP_TYPES = ['biological', 'donor'] as const;
-type GeneticRelationshipType = (typeof GENETIC_RELATIONSHIP_TYPES)[number];
-
-function isGeneticRelationshipType(
-  value: unknown,
-): value is GeneticRelationshipType {
-  return value === 'biological' || value === 'donor';
-}
+import { isGeneticRelationshipType, readRelationshipType } from './geneticEdge';
 
 /**
  * Minimal config needed by the genetics engine.
@@ -89,23 +74,6 @@ export type GeneticGraph = {
     visited?: Set<string>,
   ) => Set<string>;
 };
-
-/**
- * Reads the relationship type from an edge attribute.
- * The categorical variable is stored as a single-element array; this handles
- * both the array form and (defensively) a plain string.
- */
-function readRelationshipType(
-  edge: NcEdge,
-  relationshipTypeVariable: string,
-): string | undefined {
-  const raw = edge[entityAttributesProperty][relationshipTypeVariable];
-  if (Array.isArray(raw)) {
-    const first = raw[0];
-    return typeof first === 'string' ? first : undefined;
-  }
-  return typeof raw === 'string' ? raw : undefined;
-}
 
 /**
  * Builds an annotated genetic graph from the shared interview network.
