@@ -328,6 +328,31 @@ const manifest = {
       ],
     },
   },
+  NarrativePedigree: {
+    '16:9': {
+      variants: [
+        { w: 480, h: 270, url: new URL('./assets/NarrativePedigree.16x9.480.webp', import.meta.url).href },
+        { w: 960, h: 540, url: new URL('./assets/NarrativePedigree.16x9.960.webp', import.meta.url).href },
+        { w: 1440, h: 810, url: new URL('./assets/NarrativePedigree.16x9.1440.webp', import.meta.url).href },
+        { w: 1920, h: 1080, url: new URL('./assets/NarrativePedigree.16x9.1920.webp', import.meta.url).href },
+      ],
+    },
+    '4:3': {
+      variants: [
+        { w: 320, h: 240, url: new URL('./assets/NarrativePedigree.4x3.320.webp', import.meta.url).href },
+        { w: 640, h: 480, url: new URL('./assets/NarrativePedigree.4x3.640.webp', import.meta.url).href },
+        { w: 960, h: 720, url: new URL('./assets/NarrativePedigree.4x3.960.webp', import.meta.url).href },
+        { w: 1280, h: 960, url: new URL('./assets/NarrativePedigree.4x3.1280.webp', import.meta.url).href },
+      ],
+    },
+    '1:1': {
+      variants: [
+        { w: 320, h: 320, url: new URL('./assets/NarrativePedigree.1x1.320.webp', import.meta.url).href },
+        { w: 640, h: 640, url: new URL('./assets/NarrativePedigree.1x1.640.webp', import.meta.url).href },
+        { w: 960, h: 960, url: new URL('./assets/NarrativePedigree.1x1.960.webp', import.meta.url).href },
+      ],
+    },
+  },
   OneToManyDyadCensus: {
     '16:9': {
       variants: [
