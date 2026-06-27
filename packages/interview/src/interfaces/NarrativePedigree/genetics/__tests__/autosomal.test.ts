@@ -118,6 +118,37 @@ describe('computeAutosomalDominant', () => {
     });
   });
 
+  describe('multi-generation skip (two consecutive unaffected intermediates)', () => {
+    /**
+     *   A (affected)
+     *      |
+     *    B (unaffected)   <- affected ancestor A AND affected descendant D
+     *      |
+     *    C (unaffected)   <- affected ancestor A AND affected descendant D
+     *      |
+     *    D (affected)
+     */
+    const nodes = [makeNode('A'), makeNode('B'), makeNode('C'), makeNode('D')];
+    const edges = [
+      makeGeneticEdge('A', 'B'),
+      makeGeneticEdge('B', 'C'),
+      makeGeneticEdge('C', 'D'),
+    ];
+    const graph = buildGraph(nodes, edges);
+    const affected = new Set(['A', 'D']);
+    const result = computeAutosomalDominant(graph, affected);
+
+    it('marks BOTH unaffected intermediates as obligateCarrier', () => {
+      expect(status(result, 'B')).toBe('obligateCarrier');
+      expect(status(result, 'C')).toBe('obligateCarrier');
+    });
+
+    it('keeps the affected endpoints affected', () => {
+      expect(status(result, 'A')).toBe('affected');
+      expect(status(result, 'D')).toBe('affected');
+    });
+  });
+
   describe('recursive descendant propagation', () => {
     /**
      *   affected
@@ -243,6 +274,84 @@ describe('computeAutosomalRecessive', () => {
 
     it('marks an unaffected HALF sibling (one carrier parent) as atRiskCarrier', () => {
       expect(status(result, 'halfSib')).toBe('atRiskCarrier');
+    });
+  });
+
+  describe('pseudodominance: child of two affected parents', () => {
+    /**
+     *   p1 (affected)   p2 (affected)
+     *            \        /
+     *           child (not nominated)   <- both parents homozygous affected -> 100%
+     */
+    const nodes = [makeNode('p1'), makeNode('p2'), makeNode('child')];
+    const edges = [
+      makeGeneticEdge('p1', 'child'),
+      makeGeneticEdge('p2', 'child'),
+    ];
+    const graph = buildGraph(nodes, edges);
+    const affected = new Set(['p1', 'p2']);
+    const result = computeAutosomalRecessive(graph, affected);
+
+    it('marks the non-nominated child of two affected parents as obligateAffected', () => {
+      expect(status(result, 'child')).toBe('obligateAffected');
+    });
+  });
+
+  describe('full-vs-half unestablishable: sibling sharing only the recorded mother', () => {
+    /**
+     *   mother (the only recorded parent of either child)
+     *      |        |
+     *  affected    sib (unaffected)   <- no father recorded for either
+     *
+     *  Full-vs-half is NOT established: sib has at most ONE carrier parent
+     *  (mother) -> downgrade to atRiskCarrier, NOT atRiskAffected.
+     */
+    const nodes = [makeNode('mother'), makeNode('affected'), makeNode('sib')];
+    const edges = [
+      makeGeneticEdge('mother', 'affected'),
+      makeGeneticEdge('mother', 'sib'),
+    ];
+    const graph = buildGraph(nodes, edges);
+    const affected = new Set(['affected']);
+    const result = computeAutosomalRecessive(graph, affected);
+
+    it('marks the affected person as affected', () => {
+      expect(status(result, 'affected')).toBe('affected');
+    });
+
+    it('downgrades the same-recorded-parent sibling to atRiskCarrier', () => {
+      expect(status(result, 'sib')).toBe('atRiskCarrier');
+    });
+
+    it('does NOT over-claim the sibling as atRiskAffected', () => {
+      expect(status(result, 'sib')).not.toBe('atRiskAffected');
+    });
+  });
+
+  describe('true full sibling with both parents recorded', () => {
+    /**
+     *   mother --- father (both recorded, shared by both children)
+     *      |          |
+     *   affected    sib (unaffected)   <- two carrier parents -> atRiskAffected (25%)
+     */
+    const nodes = [
+      makeNode('mother'),
+      makeNode('father'),
+      makeNode('affected'),
+      makeNode('sib'),
+    ];
+    const edges = [
+      makeGeneticEdge('mother', 'affected'),
+      makeGeneticEdge('father', 'affected'),
+      makeGeneticEdge('mother', 'sib'),
+      makeGeneticEdge('father', 'sib'),
+    ];
+    const graph = buildGraph(nodes, edges);
+    const affected = new Set(['affected']);
+    const result = computeAutosomalRecessive(graph, affected);
+
+    it('marks a true full sibling (both carrier parents) as atRiskAffected', () => {
+      expect(status(result, 'sib')).toBe('atRiskAffected');
     });
   });
 
