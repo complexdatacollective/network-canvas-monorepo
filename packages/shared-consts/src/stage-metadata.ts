@@ -1,8 +1,10 @@
 import { z } from 'zod';
 
+import { FRAMING_IDS } from './family-pedigree-framing';
+
 const FamilyPedigreeStageMetadataSchema = z.object({
   isNetworkCommitted: z.boolean(),
-  selectedFraming: z.optional(z.enum(['gamete', 'gendered'])),
+  selectedFraming: z.optional(z.enum([...FRAMING_IDS])),
   noChildrenAffirmed: z.optional(z.boolean()),
   nodes: z.optional(
     z.array(

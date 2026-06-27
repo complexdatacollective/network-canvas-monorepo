@@ -697,4 +697,40 @@ describe('evaluateBoundaries', () => {
       expect(issues).toHaveLength(0);
     });
   });
+
+  describe('cross-boundary discriminant', () => {
+    it('does not emit a requireGrandparents issue when only requireChildrenContributors is unmet', () => {
+      // requireGrandparents: 'off', requireChildrenContributors: 'recommended'
+      // Ego has no children and no affirmation — children-contributors unmet.
+      // No requireGrandparents issue should appear (the old severity-only check
+      // would have fired for any boundary issue regardless of which rule it was).
+      const nodes = makeNodes([
+        ['ego', { isEgo: true }],
+        ['mum', { name: 'Mum' }],
+        ['dad', { name: 'Dad' }],
+      ]);
+      const edges = makeEdges([
+        ['mum', 'ego', 'biological'],
+        ['dad', 'ego', 'biological'],
+      ]);
+
+      const issues = evaluateBoundaries(
+        'ego',
+        nodes,
+        edges,
+        variableConfig,
+        {
+          requireGrandparents: 'off',
+          requireChildrenContributors: 'recommended',
+        },
+        false,
+      );
+
+      expect(issues).toHaveLength(1);
+      expect(issues[0]?.boundary).toBe('requireChildrenContributors');
+      expect(issues.some((i) => i.boundary === 'requireGrandparents')).toBe(
+        false,
+      );
+    });
+  });
 });

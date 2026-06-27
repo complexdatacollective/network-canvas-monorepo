@@ -3,11 +3,14 @@ import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import type { VariableConfig } from '../store';
 import { getEdgeRelationshipType } from './edgeUtils';
 
+export type BoundaryKey = 'requireGrandparents' | 'requireChildrenContributors';
+
 export type ValidationIssue = {
   nodeId: string;
   nodeName: string;
   message: string;
   severity: 'required' | 'recommended';
+  boundary?: BoundaryKey;
 };
 
 export type Boundaries = {
@@ -87,6 +90,7 @@ export function evaluateBoundaries(
         nodeName: 'You',
         message: 'Each of your parents needs at least two parents recorded.',
         severity: boundaries.requireGrandparents,
+        boundary: 'requireGrandparents',
       });
     }
   }
@@ -140,6 +144,7 @@ export function evaluateBoundaries(
         message:
           "Each of your children's other parents needs their own parents and grandparents recorded.",
         severity: boundaries.requireChildrenContributors,
+        boundary: 'requireChildrenContributors',
       });
     }
   }

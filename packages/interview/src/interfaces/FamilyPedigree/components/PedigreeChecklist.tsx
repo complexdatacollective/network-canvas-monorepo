@@ -212,12 +212,10 @@ export default function PedigreeChecklist({
   ]);
 
   const hasGrandparentsNudge = boundaryNudges.some(
-    (i) => i.severity === 'recommended' || i.severity === 'required',
+    (i) => i.boundary === 'requireGrandparents',
   );
   const hasChildrenContributorsNudge = boundaryNudges.some(
-    (n) =>
-      n.message.includes("children's other parents") &&
-      (n.severity === 'recommended' || n.severity === 'required'),
+    (i) => i.boundary === 'requireChildrenContributors',
   );
 
   const items = useMemo<ChecklistItem[]>(() => {
