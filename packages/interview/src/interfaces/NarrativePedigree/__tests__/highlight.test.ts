@@ -344,8 +344,8 @@ describe('computeContributors — (b) dominant grandparent→parent→focal: anc
    * non-unknown status are lit; descendants and unrelated are dimmed.
    *
    * Graph:
-   *   GP_DOM (affected) → PAR_DOM (obligateCarrier) → FOCAL_DOM → FOCAL_CHILD
-   *                                                 ↘ SIBLING (unknown)
+   *   GP_DOM (affected) → PAR_DOM (affected) → FOCAL_DOM → FOCAL_CHILD
+   *                                          ↘ SIBLING (unknown)
    */
   const GP_DOM = 'gp-dom';
   const PAR_DOM = 'par-dom';
@@ -368,7 +368,7 @@ describe('computeContributors — (b) dominant grandparent→parent→focal: anc
       DISEASE_A,
       new Map<string, Status>([
         [GP_DOM, 'affected'],
-        [PAR_DOM, 'obligateCarrier'],
+        [PAR_DOM, 'affected'],
         // FOCAL_DOM, FOCAL_CHILD, SIBLING have unknown status
       ]),
     ],
@@ -380,7 +380,7 @@ describe('computeContributors — (b) dominant grandparent→parent→focal: anc
     expect(result.nodes.has(FOCAL_DOM)).toBe(true);
   });
 
-  it('includes the transmitting parent (obligateCarrier)', () => {
+  it('includes the transmitting parent (affected)', () => {
     expect(result.nodes.has(PAR_DOM)).toBe(true);
   });
 
@@ -550,41 +550,40 @@ describe('computeContributors — (d) recessive: both carrier parent lineages hi
 
 describe('computeContributors — (e) partner-side: disease via father-in-law → partner → focal', () => {
   /**
-   * The disease enters from the partner side. The focal's partner (PARTNER)
-   * inherited an allele from their father (FATHER_IN_LAW, affected). The
-   * focal is the "child" in this relationship — the ego of the focal generation.
-   * The focal's own maternal side (FOCAL_MOTHER) is unknown and must NOT light up.
+   * The disease enters from the partner side. The focal child (CHILD_PS) has
+   * TWO biological parents: PARTNER — who inherited the allele from their own
+   * father (FATHER_IN_LAW, affected) — and EGO (the focal's other parent), whose
+   * whole maternal/paternal side is unaffected. Selecting CHILD_PS as focal must
+   * light up the partner-side transmission line and DIM ego's entire side,
+   * because ego (and ego's parents) do not contribute to CHILD_PS's inheritance.
    *
-   * In pedigree terms, the focal is the proband. The partner is the one who
-   * carries the disease from their lineage. The focal's own parents are unaffected.
+   * This genuinely exercises the transmitting-ancestor gate at the focal's OWN
+   * parent: EGO is a direct parent of CHILD_PS but has `unknown` status, so the
+   * walk must stop there and never reach ego's parents.
    *
    * Graph:
-   *   FOCAL_MOTHER (unknown) ──┐
-   *                          FOCAL_PS (proband, unknown status for disease)
-   *   FOCAL_FATHER (unknown) ──┘
-   *
-   *   FATHER_IN_LAW (affected) → PARTNER (obligateCarrier) → CHILD_PS (focal)
-   *
-   * CHILD_PS is the focal person who has inherited the allele from PARTNER.
-   * FOCAL_PS is the focal's sibling-generation ego who does NOT have the disease.
+   *   FATHER_IN_LAW (affected) → PARTNER (obligateCarrier) ──┐
+   *                                                          CHILD_PS (focal)
+   *   FOCAL_GM (unknown) → EGO (unknown) ────────────────────┘
+   *   FOCAL_GF (unknown) → EGO
    */
   const FATHER_IN_LAW = 'fil';
   const PARTNER = 'partner';
   const CHILD_PS = 'child-ps';
-  const FOCAL_MOTHER = 'focal-mother';
-  const FOCAL_FATHER = 'focal-father';
-  const FOCAL_PS = 'focal-ps';
+  const EGO = 'ego-ps';
+  const FOCAL_GM = 'focal-gm';
+  const FOCAL_GF = 'focal-gf';
 
-  // child-ps (focal) has partner as parent (disease side) and also has
-  // own unaffected parents (FOCAL_MOTHER, FOCAL_FATHER). The partner's
-  // disease came from the father-in-law lineage.
+  // CHILD_PS (focal) has two parents: PARTNER (disease side) and EGO (own side).
+  // EGO is unknown-status, so the gate must dim EGO and EGO's parents.
   const graphPS = buildStubGraph(
-    [FATHER_IN_LAW, PARTNER, CHILD_PS, FOCAL_MOTHER, FOCAL_FATHER, FOCAL_PS],
+    [FATHER_IN_LAW, PARTNER, CHILD_PS, EGO, FOCAL_GM, FOCAL_GF],
     [
       [FATHER_IN_LAW, PARTNER],
       [PARTNER, CHILD_PS],
-      [FOCAL_MOTHER, FOCAL_PS],
-      [FOCAL_FATHER, FOCAL_PS],
+      [EGO, CHILD_PS],
+      [FOCAL_GM, EGO],
+      [FOCAL_GF, EGO],
     ],
   );
 
@@ -594,7 +593,7 @@ describe('computeContributors — (e) partner-side: disease via father-in-law �
       new Map<string, Status>([
         [FATHER_IN_LAW, 'affected'],
         [PARTNER, 'obligateCarrier'],
-        // CHILD_PS, FOCAL_MOTHER, FOCAL_FATHER, FOCAL_PS all unknown
+        // CHILD_PS, EGO, FOCAL_GM, FOCAL_GF all unknown
       ]),
     ],
   ]);
@@ -613,16 +612,13 @@ describe('computeContributors — (e) partner-side: disease via father-in-law �
     expect(result.nodes.has(FATHER_IN_LAW)).toBe(true);
   });
 
-  it('does NOT include focal-ps (unrelated to disease path)', () => {
-    expect(result.nodes.has(FOCAL_PS)).toBe(false);
+  it("does NOT include ego — the focal's own parent — because ego is unknown-status (gate stops here)", () => {
+    expect(result.nodes.has(EGO)).toBe(false);
   });
 
-  it('does NOT include focal-mother (unknown, non-transmitting)', () => {
-    expect(result.nodes.has(FOCAL_MOTHER)).toBe(false);
-  });
-
-  it('does NOT include focal-father (unknown, non-transmitting)', () => {
-    expect(result.nodes.has(FOCAL_FATHER)).toBe(false);
+  it("does NOT include ego's parents (unreachable past the gated ego)", () => {
+    expect(result.nodes.has(FOCAL_GM)).toBe(false);
+    expect(result.nodes.has(FOCAL_GF)).toBe(false);
   });
 
   it('includes the FATHER_IN_LAW→PARTNER edge', () => {
@@ -631,6 +627,10 @@ describe('computeContributors — (e) partner-side: disease via father-in-law �
 
   it('includes the PARTNER→CHILD_PS edge', () => {
     expect(result.edges.has(edgeKey(PARTNER, CHILD_PS))).toBe(true);
+  });
+
+  it('does NOT include the EGO→CHILD_PS edge (ego is dimmed)', () => {
+    expect(result.edges.has(edgeKey(EGO, CHILD_PS))).toBe(false);
   });
 });
 
