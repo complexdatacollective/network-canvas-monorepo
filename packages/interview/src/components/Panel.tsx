@@ -39,10 +39,13 @@ const Panel = ({
 
   const panelClasses = cx(
     'elevation-high shadow-none',
-    'flex min-h-0 grow flex-col overflow-hidden rounded border-b-10',
+    'flex min-h-0 grow basis-0 flex-col overflow-hidden rounded border-b-10',
     'transition-all duration-500 ease-in-out',
     minimize && 'mb-0 grow-0 basis-0 border-b-0 opacity-0',
-    collapsed && !minimize && 'grow-0',
+    // Restore an auto basis while collapsed so the panel sizes to its title bar
+    // instead of shrinking to the base `basis-0`; `shrink-0` keeps the title from
+    // being compressed (and clipped by `overflow-hidden`) when the rail is short.
+    collapsed && !minimize && 'shrink-0 grow-0 basis-auto',
     panelNumber === 0 && 'border-b-cat-1',
     panelNumber === 1 && 'border-b-cat-2',
     panelNumber === 2 && 'border-b-cat-3',
