@@ -168,6 +168,74 @@ describe('StickerNode', () => {
     });
   });
 
+  describe('atRiskHomozygous flag indicator', () => {
+    it('renders [data-atrisk-homozygous-marker] when atRiskHomozygous is true', () => {
+      const disease: DiseaseSticker = {
+        color: '#ff0000',
+        status: 'obligateCarrier',
+        atRiskHomozygous: true,
+      };
+      render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
+      const marker = document.querySelector('[data-atrisk-homozygous-marker]');
+      expect(marker).toBeInTheDocument();
+    });
+
+    it('does NOT render [data-atrisk-homozygous-marker] when atRiskHomozygous is false', () => {
+      const disease: DiseaseSticker = {
+        color: '#ff0000',
+        status: 'obligateCarrier',
+        atRiskHomozygous: false,
+      };
+      render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
+      const marker = document.querySelector('[data-atrisk-homozygous-marker]');
+      expect(marker).not.toBeInTheDocument();
+    });
+
+    it('does NOT render [data-atrisk-homozygous-marker] when atRiskHomozygous is omitted', () => {
+      const disease: DiseaseSticker = {
+        color: '#ff0000',
+        status: 'obligateCarrier',
+      };
+      render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
+      const marker = document.querySelector('[data-atrisk-homozygous-marker]');
+      expect(marker).not.toBeInTheDocument();
+    });
+
+    it('renders BOTH the primary status marker and the at-risk flag for obligateCarrier + atRiskHomozygous', () => {
+      const disease: DiseaseSticker = {
+        color: '#d69e2e',
+        status: 'obligateCarrier',
+        atRiskHomozygous: true,
+      };
+      render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
+      const statusMarker = document.querySelector(
+        '[data-sticker-status="obligateCarrier"]',
+      );
+      const atRiskMarker = document.querySelector(
+        '[data-atrisk-homozygous-marker]',
+      );
+      expect(statusMarker).toBeInTheDocument();
+      expect(atRiskMarker).toBeInTheDocument();
+      expect(statusMarker).not.toBe(atRiskMarker);
+    });
+
+    it('[data-atrisk-homozygous-marker] has an accessible label signalling risk of being affected', () => {
+      const disease: DiseaseSticker = {
+        color: '#ff0000',
+        status: 'obligateCarrier',
+        atRiskHomozygous: true,
+      };
+      render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
+      const marker = document.querySelector('[data-atrisk-homozygous-marker]');
+      expect(marker).toBeInTheDocument();
+      const label =
+        marker?.getAttribute('aria-label') ??
+        marker?.querySelector('title')?.textContent;
+      expect(label).toBeTruthy();
+      expect(label?.toLowerCase()).toContain('risk');
+    });
+  });
+
   describe('SVG visual structure per status', () => {
     it('affected marker renders a filled <circle> (no stroke)', () => {
       render(

@@ -9,6 +9,7 @@ import { stickerPositions } from './stickerPositions';
 export type DiseaseSticker = {
   color: string;
   status: Status;
+  atRiskHomozygous?: boolean;
 };
 
 /** Maximum number of stickers rendered before showing +N overflow. */
@@ -169,6 +170,28 @@ function UnknownMarker({ color }: { color: string }) {
   );
 }
 
+const AT_RISK_LABEL = 'At risk of being affected (homozygous)';
+
+/**
+ * Small upward-pointing triangle overlaid in the bottom-right corner of a
+ * sticker. Signals that a person may be homozygous-affected for this disease —
+ * distinct from the primary-status marker shape.
+ */
+function AtRiskHomozygousMarker({ color }: { color: string }) {
+  return (
+    <span
+      aria-label={AT_RISK_LABEL}
+      data-atrisk-homozygous-marker
+      className="pointer-events-none absolute right-0 bottom-0 flex items-center justify-center"
+      style={{ width: 8, height: 8 }}
+    >
+      <svg viewBox="0 0 8 8" aria-hidden width={8} height={8}>
+        <polygon points="4,1 7,7 1,7" fill={color} />
+      </svg>
+    </span>
+  );
+}
+
 type StickerMarkerProps = {
   sticker: DiseaseSticker;
   x: number;
@@ -212,6 +235,9 @@ function StickerMarker({ sticker, x, y }: StickerMarkerProps) {
       }}
     >
       {marker}
+      {sticker.atRiskHomozygous === true && (
+        <AtRiskHomozygousMarker color={sticker.color} />
+      )}
     </span>
   );
 }
