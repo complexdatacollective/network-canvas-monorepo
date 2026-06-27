@@ -269,14 +269,18 @@ async function clickContinue() {
 }
 
 /**
- * Complete the minimal quick-start wizard: skip bio-parents intro, fill in egg
- * and sperm parents (minimal required fields), skip other parents, skip
- * partnerships (no partner), and finish.
+ * Complete the minimal quick-start wizard: click through the bio-parents intro,
+ * fill in egg and sperm parents (minimal required fields), skip other parents,
+ * skip partnerships (no partner), and finish.
+ *
+ * buildBoundaryInterview uses fixed gamete framing with no introScreen, so the
+ * wizard opens directly on BioParentsIntroStep (no leading IntroStep or
+ * FramingSelectionStep).
  */
 async function completeMinimalQuickStart() {
   await clickGetStarted();
 
-  // BioParentsIntroStep — click through
+  // BioParentsIntroStep — click through (first step for fixed framing, no introScreen)
   await clickContinue();
 
   // EggParentStep — is-donor required (BooleanField: first radio = true, second = false)
@@ -339,13 +343,20 @@ export const ParticipantChoiceSelectsGendered: Story = {
     await userEvent.click(genderedOption);
     await clickContinue();
 
-    // BioParentsIntroStep: now uses gendered terms
-    await screen.findByText(/mother/i, {}, STEP_TIMEOUT);
+    // BioParentsIntroStep: now uses gendered terms. "Mother" appears in the
+    // intro paragraph, the card heading (<h4>), and the card body — use the
+    // heading role to avoid a "multiple elements" error.
+    await screen.findByRole(
+      'heading',
+      { level: 4, name: /mother/i },
+      STEP_TIMEOUT,
+    );
     await clickContinue();
 
-    // EggParentStep title should read "Mother"
+    // EggParentStep dialog title should read "Mother"; multiple elements may
+    // match the text so assert there is at least one.
     const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
-    expect(within(eggDialog).getByText(/mother/i)).toBeTruthy();
+    expect(within(eggDialog).getAllByText(/mother/i).length).toBeGreaterThan(0);
   },
 };
 
@@ -375,8 +386,14 @@ export const WithIntroScreenThenFramingSelection: Story = {
     await userEvent.click(gameteOption);
     await clickContinue();
 
-    // BioParentsIntroStep: gamete terms
-    await screen.findByText(/egg parent/i, {}, STEP_TIMEOUT);
+    // BioParentsIntroStep: gamete terms. "Egg Parent" appears in the card
+    // heading (<h4>) and the card body — use the heading role to avoid a
+    // "multiple elements" error.
+    await screen.findByRole(
+      'heading',
+      { level: 4, name: /egg parent/i },
+      STEP_TIMEOUT,
+    );
   },
 };
 
@@ -393,17 +410,25 @@ export const FixedGameteQuickStart: Story = {
     await clickGetStarted();
 
     // The framing-selection step must NOT appear: we go straight to the
-    // BioParentsIntroStep. Assert gamete heading text is present.
-    await screen.findByText(/egg parent/i, {}, STEP_TIMEOUT);
+    // BioParentsIntroStep. "Egg Parent" appears in the card heading (<h4>)
+    // and in the card body — use the heading role to avoid "multiple elements".
+    await screen.findByRole(
+      'heading',
+      { level: 4, name: /egg parent/i },
+      STEP_TIMEOUT,
+    );
 
     // Assert "Gendered" radio does NOT exist — the framing-selection step is skipped
     expect(screen.queryByRole('radio', { name: /gendered/i })).toBeNull();
 
     await clickContinue();
 
-    // EggParentStep wizard step title should say "Egg Parent"
+    // EggParentStep dialog is now open; multiple elements may contain "Egg
+    // Parent" (title + labels) — assert at least one is present.
     const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
-    expect(within(eggDialog).getByText(/egg parent/i)).toBeTruthy();
+    expect(
+      within(eggDialog).getAllByText(/egg parent/i).length,
+    ).toBeGreaterThan(0);
   },
 };
 
@@ -422,17 +447,24 @@ export const FixedGenderedQuickStart: Story = {
     await clickGetStarted();
 
     // The framing-selection step must NOT appear: we go straight to
-    // BioParentsIntroStep. Assert gendered heading text is present.
-    await screen.findByText(/mother/i, {}, STEP_TIMEOUT);
+    // BioParentsIntroStep. "Mother" appears in the intro paragraph, the card
+    // heading (<h4>), and the card body — use the heading role to avoid a
+    // "multiple elements" error.
+    await screen.findByRole(
+      'heading',
+      { level: 4, name: /mother/i },
+      STEP_TIMEOUT,
+    );
 
     // Assert "Gamete-based" radio does NOT exist — selection step is skipped
     expect(screen.queryByRole('radio', { name: /gamete.based/i })).toBeNull();
 
     await clickContinue();
 
-    // EggParentStep wizard step title should say "Mother"
+    // EggParentStep dialog is now open; multiple elements may contain "Mother"
+    // (dialog title + labels) — assert at least one is present.
     const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
-    expect(within(eggDialog).getByText(/mother/i)).toBeTruthy();
+    expect(within(eggDialog).getAllByText(/mother/i).length).toBeGreaterThan(0);
   },
 };
 
