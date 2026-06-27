@@ -47,7 +47,7 @@ const MITO_VAR = 'hasMitochondrialMyopathy'; // mitochondrial
  *   father is ego's biological father (and haemophilia carrier for XLR).
  *   grandfather-paternal has Huntington's → father → ego at-risk.
  */
-function buildPedigreeInterview(seed: number) {
+export function buildPedigreeInterview(seed: number) {
   const si = new SyntheticInterview(seed);
 
   // --- Node type ----------------------------------------------------------
