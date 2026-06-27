@@ -230,8 +230,8 @@ that is a separate future addition.
 
 Register `NetworkComposer` in `Screens/NewStageScreen/interfaceOptions.ts`
 (picker metadata: title "Network Composer", description, keywords such as
-network/build/construct/free-form/notepad/sociogram, category **Generators**,
-tags for create-nodes + create-edges) and in `StageEditor/Interfaces.tsx`
+network/build/construct/free-form/notepad/sociogram, category **Sociograms**,
+tags for create-nodes + create-edges + node/edge attributes) and in `StageEditor/Interfaces.tsx`
 (sections + documentation URL + template defaults).
 
 Sections — mostly reuse, one genuinely new:
