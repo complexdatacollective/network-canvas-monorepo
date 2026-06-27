@@ -381,13 +381,34 @@ describe('NetworkComposer — lasso selection', () => {
       });
     });
 
+    // "Connect all" control appears only when ≥2 nodes are selected.
+    const connectBtn = await screen.findByRole('button', {
+      name: /connect all with knows/i,
+    });
+    expect(connectBtn).not.toBeNull();
+
+    // Click connect-all to produce edges for exactly the selected set.
+    await act(async () => {
+      fireEvent.click(connectBtn);
+    });
+
+    // If exactly {A, B} were selected, connect-all produces exactly 1 knows edge
+    // (A–B). If C were also selected, there would be 3 edges (A–B, A–C, B–C).
     await waitFor(() => {
-      // We check the store through the rendered interface — the "Connect all"
-      // button should appear only when ≥2 nodes are selected (A and B inside).
-      const connectBtn = screen.queryByRole('button', {
-        name: /connect all with knows/i,
-      });
-      expect(connectBtn).not.toBeNull();
+      const edges = store.getState().session.network.edges;
+      const knowsEdges = edges.filter((e) => e.type === EDGE_TYPE);
+
+      expect(knowsEdges).toHaveLength(1);
+
+      const [edge] = knowsEdges;
+      const endpoints = new Set([edge!.from, edge!.to]);
+      expect(endpoints).toContain(NODE_A_ID);
+      expect(endpoints).toContain(NODE_B_ID);
+
+      const cIncident = knowsEdges.some(
+        (e) => e.from === NODE_C_ID || e.to === NODE_C_ID,
+      );
+      expect(cIncident).toBe(false);
     });
   });
 });
