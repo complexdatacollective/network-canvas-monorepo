@@ -26,10 +26,6 @@ import {
 } from '~/ducks/modules/userActions/userActions';
 import Button from '~/lib/legacy-ui/components/Button';
 import { BUNDLED_TEMPLATES, type BundledTemplate } from '~/templates';
-import {
-  developmentProtocol,
-  loadDevelopmentAssets,
-} from '~/templates/development-protocol';
 import { loadSampleAssets, sampleProtocol } from '~/templates/sample-protocol';
 import { appVersion } from '~/utils/appVersion';
 import { reportError } from '~/utils/reportError';
@@ -125,12 +121,21 @@ const Home = () => {
     });
   }, []);
 
+  // Dev-only. The dynamic import sits behind `import.meta.env.DEV` so the
+  // Development protocol and its bundled assets (a ~24 MB video) are tree-shaken
+  // out of the production build entirely.
   const handleOpenDevProtocol = useCallback(() => {
-    setPendingTemplate({
-      protocol: developmentProtocol,
-      loadAssets: loadDevelopmentAssets,
-      defaultName: 'Development Protocol',
-    });
+    if (import.meta.env.DEV) {
+      void (async () => {
+        const { developmentProtocol, loadDevelopmentAssets } =
+          await import('~/templates/development-protocol');
+        setPendingTemplate({
+          protocol: developmentProtocol,
+          loadAssets: loadDevelopmentAssets,
+          defaultName: 'Development Protocol',
+        });
+      })();
+    }
   }, []);
 
   const handleOpenTemplate = useCallback((template: BundledTemplate) => {
