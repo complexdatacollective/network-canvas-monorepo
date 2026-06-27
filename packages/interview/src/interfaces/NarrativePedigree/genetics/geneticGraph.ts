@@ -73,6 +73,11 @@ export type GeneticGraph = {
     step: (id: string) => string[],
     visited?: Set<string>,
   ) => Set<string>;
+
+  /**
+   * All node ids known to this graph (every node passed to `buildGeneticGraph`).
+   */
+  nodeIds: () => string[];
 };
 
 /**
@@ -244,6 +249,10 @@ export function buildGeneticGraph(
     return result;
   }
 
+  function nodeIds(): string[] {
+    return nodes.map((n) => n._uid);
+  }
+
   return {
     parentsOf,
     childrenOf,
@@ -252,5 +261,6 @@ export function buildGeneticGraph(
     descendants,
     ancestors,
     propagate,
+    nodeIds,
   };
 }
