@@ -7,6 +7,8 @@ import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import RadioMatrixField from '@codaco/fresco-ui/form/fields/RadioMatrixField';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { FRAMING_TERMS } from '@codaco/shared-consts';
+import { useFramedTerms } from '~/interfaces/FamilyPedigree/hooks/useFramedTerms';
 
 const partnershipOptions = [
   { value: 'current', label: 'Current partner' },
@@ -48,18 +50,19 @@ function getParentLabel(parent: ParentEntry): string {
 
 export default function ParentPartnershipsStep() {
   const values = useFormValue(BIO_PARENT_FIELDS);
+  const terms = useFramedTerms() ?? FRAMING_TERMS.gamete;
 
   const parents = useMemo<ParentEntry[]>(() => {
     const list: ParentEntry[] = [
       {
         id: 'egg-parent',
         name: values['egg-parent.name'] as string | undefined,
-        roleLabel: `${possessive} egg parent`,
+        roleLabel: `${possessive} ${terms.eggParent.toLowerCase()}`,
       },
       {
         id: 'sperm-parent',
         name: values['sperm-parent.name'] as string | undefined,
-        roleLabel: `${possessive} sperm parent`,
+        roleLabel: `${possessive} ${terms.spermParent.toLowerCase()}`,
       },
     ];
 
@@ -87,7 +90,7 @@ export default function ParentPartnershipsStep() {
     }
 
     return list;
-  }, [values]);
+  }, [values, terms]);
 
   if (parents.length < 2) return null;
 

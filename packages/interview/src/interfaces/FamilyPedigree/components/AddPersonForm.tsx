@@ -4,6 +4,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import { getNodeLabel } from '~/interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel';
 import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 
@@ -29,6 +30,7 @@ export default function AddPersonFields({
   edges,
   variableConfig,
 }: AddPersonFieldsProps) {
+  const framing = useFamilyPedigreeStore((s) => s.framing);
   const children = [...edges.values()]
     .filter(
       (edge) =>
@@ -56,7 +58,7 @@ export default function AddPersonFields({
         <Field
           key={`parentType-${childId}`}
           name={`parentType-${childId}`}
-          label={`Is this person also a parent of **${getNodeLabel(childId, nodes, edges, variableConfig)}**?`}
+          label={`Is this person also a parent of **${getNodeLabel(childId, nodes, edges, variableConfig, framing ?? 'gamete')}**?`}
           component={RichSelectGroupField}
           options={[
             {

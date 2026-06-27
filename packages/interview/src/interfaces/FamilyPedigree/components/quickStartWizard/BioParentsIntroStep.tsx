@@ -5,6 +5,27 @@ import { useId } from 'react';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { FRAMING_TERMS, type FramingId } from '@codaco/shared-consts';
+import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
+
+const EGG_PARENT_BODY: Record<FramingId, string> = {
+  gamete:
+    'The egg parent is the person who contributed the egg that you were conceived with. If you were conceived via an egg donor, the egg donor is the egg parent, even if they did not carry you during pregnancy.',
+  gendered:
+    'Your mother is the person who contributed the egg that you were conceived with. If you were conceived via an egg donor, the egg donor is considered your mother for the purposes of this pedigree, even if they did not carry you during pregnancy.',
+};
+
+const SPERM_PARENT_BODY: Record<FramingId, string> = {
+  gamete:
+    'The sperm parent is the person who contributed the sperm that you were conceived with. If you were conceived via a sperm donor, the sperm donor is the sperm parent, even if they did not raise you.',
+  gendered:
+    'Your father is the person who contributed the sperm that you were conceived with. If you were conceived via a sperm donor, the sperm donor is considered your father for the purposes of this pedigree, even if they did not raise you.',
+};
+
+const INTRO_PARA: Record<FramingId, string> = {
+  gamete: 'the egg parent and the sperm parent.',
+  gendered: 'the mother and the father.',
+};
 
 /**
  * Small "roughen" filter giving otherwise crisp vector strokes a gentle
@@ -102,6 +123,10 @@ function SpermGlyph() {
 }
 
 export default function BioParentsIntroStep() {
+  const framing = useFamilyPedigreeStore((s) => s.framing);
+  const framingKey = framing ?? 'gamete';
+  const terms = FRAMING_TERMS[framingKey];
+
   return (
     <>
       <Paragraph>
@@ -116,7 +141,7 @@ export default function BioParentsIntroStep() {
       </Paragraph>
       <Paragraph>
         There are two important concepts to understand when we talk about
-        biological parents: the egg parent and the sperm parent.
+        biological parents: {INTRO_PARA[framingKey]}
       </Paragraph>
       <div className="tablet-portrait:grid-cols-2 mt-6 grid gap-4">
         <Surface level={1} spacing="sm" shadow="sm">
@@ -125,14 +150,11 @@ export default function BioParentsIntroStep() {
               <EggGlyph />
             </span>
             <Heading level="h4" margin="none">
-              Egg Parent
+              {terms.eggParent}
             </Heading>
           </div>
           <Paragraph margin="none" emphasis="muted" intent="smallText">
-            The egg parent is the person who contributed the egg that you were
-            conceived with. If you were conceived via an egg donor, the egg
-            donor is the egg parent, even if they did not carry you during
-            pregnancy.
+            {EGG_PARENT_BODY[framingKey]}
           </Paragraph>
         </Surface>
         <Surface level={1} spacing="sm" shadow="sm">
@@ -141,13 +163,11 @@ export default function BioParentsIntroStep() {
               <SpermGlyph />
             </span>
             <Heading level="h4" margin="none">
-              Sperm Parent
+              {terms.spermParent}
             </Heading>
           </div>
           <Paragraph margin="none" emphasis="muted" intent="smallText">
-            The sperm parent is the person who contributed the sperm that you
-            were conceived with. If you were conceived via a sperm donor, the
-            sperm donor is the sperm parent, even if they did not raise you.
+            {SPERM_PARENT_BODY[framingKey]}
           </Paragraph>
         </Surface>
       </div>

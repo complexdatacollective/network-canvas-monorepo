@@ -13,6 +13,8 @@ const variableConfig: VariableConfig = {
   relationshipTypeVariable: 'rel',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGC',
+  gameteRoleVariable: 'gameteRole',
+  biologicalSexVariable: 'biologicalSex',
 };
 
 describe('defineParentsTransform', () => {
@@ -35,7 +37,7 @@ describe('defineParentsTransform', () => {
         (e) =>
           e.source === 'donor-1' &&
           e.target === 'focal-1' &&
-          e.gameteRole === 'sperm',
+          e.data.attributes[variableConfig.gameteRoleVariable] === 'sperm',
       ),
     ).toBe(true);
     const mum = batch.nodes.find((n) => n.tempId === 'new-egg-source');

@@ -1,7 +1,9 @@
 import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
+import { FamilyPedigreeStoreBridge } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import type {
   CommitBatch,
+  FamilyPedigreeStoreApi,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 
@@ -26,10 +28,12 @@ function PersonDetailsStep() {
 
 export async function openAddSiblingWizard(
   openDialog: ReturnType<typeof useDialog>['openDialog'],
+  store: FamilyPedigreeStoreApi,
   anchorNodeId: string,
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
+  framing: FramingId,
 ): Promise<CommitBatch | null> {
   const preselection = derivePreselection(anchorNodeId, edges, variableConfig);
   const candidateIds = geneticParentCandidates(
@@ -43,27 +47,56 @@ export async function openAddSiblingWizard(
     edges,
     variableConfig,
     candidateIds,
+    framing,
   );
 
   const bioTriadConfig = {
     existingNodes,
     preselection,
-    gameteRoles: nominatedGameteRoles(edges),
+    gameteRoles: nominatedGameteRoles(edges, variableConfig),
   };
 
   function WrappedBioTriadStep() {
     return (
-      <BioTriadConfigProvider value={bioTriadConfig}>
-        <BioTriadStep />
-      </BioTriadConfigProvider>
+      <FamilyPedigreeStoreBridge store={store}>
+        <BioTriadConfigProvider value={bioTriadConfig}>
+          <BioTriadStep />
+        </BioTriadConfigProvider>
+      </FamilyPedigreeStoreBridge>
     );
   }
 
   function WrappedPartnershipsStep() {
     return (
-      <BioTriadConfigProvider value={bioTriadConfig}>
-        <NewParentPartnershipsStep />
-      </BioTriadConfigProvider>
+      <FamilyPedigreeStoreBridge store={store}>
+        <BioTriadConfigProvider value={bioTriadConfig}>
+          <NewParentPartnershipsStep />
+        </BioTriadConfigProvider>
+      </FamilyPedigreeStoreBridge>
+    );
+  }
+
+  function WrappedPersonDetailsStep() {
+    return (
+      <FamilyPedigreeStoreBridge store={store}>
+        <PersonDetailsStep />
+      </FamilyPedigreeStoreBridge>
+    );
+  }
+
+  function WrappedGenericOtherParentsStep() {
+    return (
+      <FamilyPedigreeStoreBridge store={store}>
+        <GenericOtherParentsStep />
+      </FamilyPedigreeStoreBridge>
+    );
+  }
+
+  function WrappedGenericAdditionalParentsStep() {
+    return (
+      <FamilyPedigreeStoreBridge store={store}>
+        <GenericAdditionalParentsStep />
+      </FamilyPedigreeStoreBridge>
     );
   }
 
@@ -74,7 +107,7 @@ export async function openAddSiblingWizard(
     steps: [
       {
         title: 'Sibling details',
-        content: PersonDetailsStep,
+        content: WrappedPersonDetailsStep,
       },
       {
         title: 'Biological parents',
@@ -82,11 +115,11 @@ export async function openAddSiblingWizard(
       },
       {
         title: 'Other parents',
-        content: GenericOtherParentsStep,
+        content: WrappedGenericOtherParentsStep,
       },
       {
         title: 'Additional parents',
-        content: GenericAdditionalParentsStep,
+        content: WrappedGenericAdditionalParentsStep,
         skip: ({ getFieldValue }) => getFieldValue('hasOtherParents') !== true,
       },
       {

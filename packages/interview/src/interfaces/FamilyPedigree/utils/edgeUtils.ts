@@ -42,3 +42,7 @@ export const getIsGestationalCarrierVariable = createSelector(
   getEdgeConfig,
   (c) => c.isGestationalCarrierVariable,
 );
+export const getGameteRoleVariable = createSelector(
+  getEdgeConfig,
+  (c) => c.gameteRoleVariable,
+);

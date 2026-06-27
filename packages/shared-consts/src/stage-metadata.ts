@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
+import { FRAMING_IDS } from './family-pedigree-framing';
+
 const FamilyPedigreeStageMetadataSchema = z.object({
   isNetworkCommitted: z.boolean(),
+  selectedFraming: z.optional(z.enum([...FRAMING_IDS])),
+  noChildrenAffirmed: z.optional(z.boolean()),
   nodes: z.optional(
     z.array(
       z.object({
@@ -17,9 +21,6 @@ const FamilyPedigreeStageMetadataSchema = z.object({
         id: z.string(),
         from: z.string(),
         to: z.string(),
-        // Internal-only: which gamete a biological/donor parent contributed.
-        // Persisted in stage metadata for labelling; never part of the network.
-        gameteRole: z.optional(z.enum(['egg', 'sperm'])),
         attributes: z.record(
           z.string(),
           z.union([

@@ -6,20 +6,28 @@ import type {
 } from '~/interfaces/FamilyPedigree/store';
 import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 
+function readGameteRole(value: unknown): GameteRole | undefined {
+  return value === 'egg' || value === 'sperm' ? value : undefined;
+}
+
 export type ParentRelation = 'child' | 'sibling' | 'define-parents';
 
 /**
  * The gamete role each node has already been nominated for elsewhere in the
- * pedigree (the `from` of a parent edge carrying a `gameteRole`). Used to stop a
- * known egg parent being offered as a sperm parent, and vice versa.
+ * pedigree, read from the edge attribute stored under `gameteRoleVariable`.
+ * Used to stop a known egg parent being offered as a sperm parent, and vice versa.
  */
 export function nominatedGameteRoles(
   edges: Map<string, FamilyEdge>,
+  variableConfig: VariableConfig,
 ): Map<string, GameteRole> {
   const roles = new Map<string, GameteRole>();
   for (const edge of edges.values()) {
-    if (edge.gameteRole === 'egg' || edge.gameteRole === 'sperm') {
-      roles.set(edge.from, edge.gameteRole);
+    const role = readGameteRole(
+      edge.attributes[variableConfig.gameteRoleVariable],
+    );
+    if (role) {
+      roles.set(edge.from, role);
     }
   }
   return roles;

@@ -1,35 +1,32 @@
-import { invariant } from 'es-toolkit';
-import { createContext, useContext, useRef } from 'react';
-import { useStore } from 'zustand';
+import { useRef } from 'react';
 
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
 import { useCurrentStep } from '~/contexts/CurrentStepContext';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import { useAppDispatch } from '~/store/store';
 
+import { FamilyPedigreeContext } from './FamilyPedigreeContext';
 import {
   createFamilyPedigreeStore,
-  type FamilyPedigreeStore,
   type FamilyPedigreeStoreApi,
   type NodeMetadata,
   type VariableConfig,
 } from './store';
 import {
   getEdgeTypeKey,
+  getGameteRoleVariable,
   getIsActiveVariable,
   getIsGestationalCarrierVariable,
   getRelationshipTypeVariable,
 } from './utils/edgeUtils';
 import {
+  getBiologicalSexVariable,
   getEgoVariable,
   getNodeLabelVariable,
   getNodeTypeKey,
   getRelationshipVariable,
 } from './utils/nodeUtils';
-
-const FamilyPedigreeContext = createContext<FamilyPedigreeStoreApi | undefined>(
-  undefined,
-);
+import { getFramingConfig } from './utils/stageConfig';
 
 export const FamilyPedigreeProvider = ({
   nodes,
@@ -56,6 +53,12 @@ export const FamilyPedigreeProvider = ({
   const isGestationalCarrierVariable = useStageSelector(
     getIsGestationalCarrierVariable,
   );
+  const gameteRoleVariable = useStageSelector(getGameteRoleVariable);
+  const biologicalSexVariable = useStageSelector(getBiologicalSexVariable);
+  const framingConfig = useStageSelector(getFramingConfig);
+  const initialFraming: FramingId | null =
+    framingConfig.mode === 'fixed' ? framingConfig.value : null;
+
   const variableConfig: VariableConfig = {
     nodeType,
     edgeType,
@@ -65,6 +68,8 @@ export const FamilyPedigreeProvider = ({
     relationshipTypeVariable,
     isActiveVariable,
     isGestationalCarrierVariable,
+    gameteRoleVariable,
+    biologicalSexVariable,
   };
 
   // The interview network is a single shared graph. Seed only the pedigree's
@@ -101,6 +106,8 @@ export const FamilyPedigreeProvider = ({
     currentStep,
     preexistingReduxNodeIds,
     preexistingReduxEdgeIds,
+    initialFraming,
+    framingConfig.mode,
   );
 
   return (
@@ -108,16 +115,4 @@ export const FamilyPedigreeProvider = ({
       {children}
     </FamilyPedigreeContext.Provider>
   );
-};
-
-export const useFamilyPedigreeStore = <T,>(
-  selector: (state: FamilyPedigreeStore) => T,
-) => {
-  const store = useContext(FamilyPedigreeContext);
-  invariant(
-    store,
-    'useFamilyPedigreeStore must be used within a FamilyPedigreeProvider',
-  );
-
-  return useStore(store, selector);
 };

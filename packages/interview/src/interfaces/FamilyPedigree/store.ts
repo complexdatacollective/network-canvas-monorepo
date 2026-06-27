@@ -3,6 +3,7 @@ import { createStore } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
 import type {
+  FramingId,
   NcEdge,
   NcNode,
   RelationshipType,
@@ -34,6 +35,10 @@ export type VariableConfig = {
   relationshipTypeVariable: string;
   isActiveVariable: string;
   isGestationalCarrierVariable: string;
+  /** Edge variable storing the gamete role ('egg'|'sperm') of a biological/donor parent. */
+  gameteRoleVariable: string;
+  /** Node variable storing the biological sex of non-gamete-parent people. */
+  biologicalSexVariable: string;
 };
 
 export type NodeMetadata = {
@@ -41,14 +46,13 @@ export type NodeMetadata = {
 };
 
 /**
- * Which gamete a biological/donor parent contributed. Internal pedigree state:
- * persisted to stage metadata for relationship labelling, never written to the
- * interview network as an attribute.
+ * Which gamete a biological/donor parent contributed. Written to the network
+ * as an edge attribute under `variableConfig.gameteRoleVariable`.
  */
 export type GameteRole = 'egg' | 'sperm';
 
-/** A pedigree edge plus its internal, non-network gamete-role marker. */
-export type FamilyEdge = NcEdge & { gameteRole?: GameteRole };
+/** A pedigree edge. gameteRole is stored in `attributes[gameteRoleVariable]`. */
+export type FamilyEdge = NcEdge;
 
 export type CommitBatch = {
   nodes: {
@@ -60,7 +64,6 @@ export type CommitBatch = {
   edges: {
     source: string;
     target: string;
-    gameteRole?: GameteRole;
     data: {
       attributes: Record<string, VariableValue>;
     };
@@ -70,6 +73,8 @@ export type CommitBatch = {
 type FamilyPedigreeState = {
   step: 'scaffolding' | 'diseaseNomination';
   activeNominationVariable: string | null;
+  framing: FramingId | null;
+  noChildrenAffirmed: boolean;
   network: {
     nodes: Map<string, NcNode>;
     edges: Map<string, FamilyEdge>;
@@ -89,13 +94,14 @@ type NetworkActions = {
     from: string;
     to: string;
     attributes: Record<string, VariableValue>;
-    gameteRole?: GameteRole;
     id?: string;
   }) => string;
   removeEdge: (id: string) => void;
   clearNetwork: () => void;
   setStep: (step: FamilyPedigreeState['step']) => void;
   setActiveNominationVariable: (variable: string | null) => void;
+  setFraming: (framing: FramingId) => void;
+  setNoChildrenAffirmed: (value: boolean) => void;
   commitBatch: (batch: CommitBatch) => void;
   syncMetadata: () => void;
   finalizeNetwork: () => Promise<void>;
@@ -117,6 +123,8 @@ export const createFamilyPedigreeStore = (
   // would duplicate pre-existing same-type nodes and edges.
   preexistingReduxNodeIds: ReadonlySet<string> = new Set(),
   preexistingReduxEdgeIds: ReadonlySet<string> = new Set(),
+  initialFraming: FramingId | null = null,
+  framingMode: 'fixed' | 'participantChoice' = 'fixed',
 ) => {
   // Guard the network invariant that at most one edge of a given relationship
   // type connects any pair of nodes. Throwing surfaces edge-creation bugs (e.g.
@@ -155,6 +163,8 @@ export const createFamilyPedigreeStore = (
       return {
         step: 'scaffolding',
         activeNominationVariable: null,
+        framing: initialFraming,
+        noChildrenAffirmed: false,
         network: {
           nodes: initialNodes,
           edges: initialEdges,
@@ -171,6 +181,18 @@ export const createFamilyPedigreeStore = (
           set((state) => {
             state.activeNominationVariable = variable;
           }),
+
+        setFraming: (framing) =>
+          set((state) => {
+            state.framing = framing;
+          }),
+
+        setNoChildrenAffirmed: (value) => {
+          set((state) => {
+            state.noChildrenAffirmed = value;
+          });
+          get().syncMetadata();
+        },
 
         addNode: (node) => {
           const { id, attributes } = node;
@@ -216,7 +238,7 @@ export const createFamilyPedigreeStore = (
         },
 
         addEdge: (edge) => {
-          const { id, from, to, attributes, gameteRole } = edge;
+          const { id, from, to, attributes } = edge;
           const edgeId = id ?? crypto.randomUUID();
 
           set((state) => {
@@ -227,7 +249,6 @@ export const createFamilyPedigreeStore = (
               from,
               to,
               attributes,
-              ...(gameteRole ? { gameteRole } : {}),
             });
           });
 
@@ -283,7 +304,6 @@ export const createFamilyPedigreeStore = (
                 from: resolvedSource,
                 to: resolvedTarget,
                 attributes: edge.data.attributes,
-                ...(edge.gameteRole ? { gameteRole: edge.gameteRole } : {}),
               });
             }
           });
@@ -297,8 +317,16 @@ export const createFamilyPedigreeStore = (
           );
           const egoId = egoEntry?.[0];
 
+          // framing ?? 'gamete': safe fallback — per spec §4.1, when framing is
+          // null only the intro/chooser steps render and no gamete-parent labels exist.
           const computedLabels = egoId
-            ? computeAllDisplayLabels(egoId, nodes, edges, variableConfig)
+            ? computeAllDisplayLabels(
+                egoId,
+                nodes,
+                edges,
+                variableConfig,
+                get().framing ?? 'gamete',
+              )
             : new Map<string, string>();
 
           const serializedNodes = [...nodes.entries()].map(([id, node]) => {
@@ -323,7 +351,6 @@ export const createFamilyPedigreeStore = (
             from: edge.from,
             to: edge.to,
             attributes: edge.attributes,
-            ...(edge.gameteRole ? { gameteRole: edge.gameteRole } : {}),
           }));
 
           dispatch?.(
@@ -333,6 +360,11 @@ export const createFamilyPedigreeStore = (
                 isNetworkCommitted: true,
                 nodes: serializedNodes,
                 edges: serializedEdges,
+                noChildrenAffirmed: get().noChildrenAffirmed,
+                ...(framingMode === 'participantChoice' &&
+                get().framing !== null
+                  ? { selectedFraming: get().framing ?? undefined }
+                  : {}),
               },
             }),
           );

@@ -473,6 +473,101 @@ const ProtocolSchema = z
         }
       }
 
+      // 3e.iii.b. FamilyPedigree: introScreen.videoAssetId must resolve to a
+      // manifest entry of type 'video'.
+      if (
+        stage.type === 'FamilyPedigree' &&
+        'introScreen' in stage &&
+        stage.introScreen?.videoAssetId
+      ) {
+        const videoAssetId = stage.introScreen.videoAssetId;
+        const asset = protocol.assetManifest?.[videoAssetId];
+        if (!asset) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `FamilyPedigree introScreen videoAssetId "${videoAssetId}" does not reference an asset in the manifest.`,
+            path: ['stages', stageIndex, 'introScreen', 'videoAssetId'],
+          });
+        } else if (asset.type !== 'video') {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `FamilyPedigree introScreen videoAssetId "${videoAssetId}" must reference a 'video' asset, but is of type "${asset.type}".`,
+            path: ['stages', stageIndex, 'introScreen', 'videoAssetId'],
+          });
+        }
+      }
+
+      // 3e.iii.c. NarrativePedigree: sourceStageId must reference a FamilyPedigree
+      // stage; disease variables must resolve on the source node type; preset
+      // disease ids must reference declared diseases.
+      if (stage.type === 'NarrativePedigree') {
+        const sourceStage = protocol.stages.find(
+          (s) => s.id === stage.sourceStageId,
+        );
+
+        if (!sourceStage) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `NarrativePedigree sourceStageId "${stage.sourceStageId}" does not reference an existing stage.`,
+            path: ['stages', stageIndex, 'sourceStageId'],
+          });
+        } else if (sourceStage.type !== 'FamilyPedigree') {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `NarrativePedigree sourceStageId "${stage.sourceStageId}" must reference a FamilyPedigree stage, but references a "${sourceStage.type}" stage.`,
+            path: ['stages', stageIndex, 'sourceStageId'],
+          });
+        } else {
+          // sourceStage is confirmed FamilyPedigree — resolve variables on its node type.
+          const sourceNodeType = sourceStage.nodeConfig.type;
+          const sourceSubject = {
+            entity: 'node' as const,
+            type: sourceNodeType,
+          };
+          const sourceVariables = getVariablesForSubject(
+            protocol.codebook,
+            sourceSubject,
+          );
+
+          stage.diseases.forEach((disease, diseaseIndex) => {
+            if (!(disease.variable in sourceVariables)) {
+              ctx.addIssue({
+                code: 'custom' as const,
+                message: `NarrativePedigree disease variable "${disease.variable}" does not exist on source node type "${sourceNodeType}".`,
+                path: [
+                  'stages',
+                  stageIndex,
+                  'diseases',
+                  diseaseIndex,
+                  'variable',
+                ],
+              });
+            }
+          });
+        }
+
+        // Validate preset disease ids reference declared disease ids.
+        const declaredDiseaseIds = new Set(stage.diseases.map((d) => d.id));
+        stage.presets.forEach((preset, presetIndex) => {
+          preset.diseases.forEach((diseaseId, diseaseIdIndex) => {
+            if (!declaredDiseaseIds.has(diseaseId)) {
+              ctx.addIssue({
+                code: 'custom' as const,
+                message: `NarrativePedigree preset disease id "${diseaseId}" does not reference a declared disease.`,
+                path: [
+                  'stages',
+                  stageIndex,
+                  'presets',
+                  presetIndex,
+                  'diseases',
+                  diseaseIdIndex,
+                ],
+              });
+            }
+          });
+        });
+      }
+
       // 3e.iv. Bin stages: the prompt variable must match the bin type.
       if (
         (stage.type === 'OrdinalBin' || stage.type === 'CategoricalBin') &&

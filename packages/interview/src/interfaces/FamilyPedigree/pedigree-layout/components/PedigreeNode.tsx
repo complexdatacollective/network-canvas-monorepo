@@ -2,7 +2,7 @@ import { type MouseEventHandler, type Ref, useMemo } from 'react';
 
 import { useDragSource } from '@codaco/fresco-ui/dnd/dnd';
 import Node from '@codaco/fresco-ui/Node';
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 import { getNodeShapeDefinition } from '~/interfaces/FamilyPedigree/utils/nodeUtils';
@@ -78,6 +78,7 @@ export function computeNodeDisplayLabels(
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
+  framing: FramingId,
 ): Map<string, string> {
   const egoEntry = [...nodes.entries()].find(
     ([, n]) => n.attributes[variableConfig.egoVariable] === true,
@@ -90,6 +91,7 @@ export function computeNodeDisplayLabels(
     nodes,
     edges,
     variableConfig,
+    framing,
   );
 
   const labels = new Map<string, string>();

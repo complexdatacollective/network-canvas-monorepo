@@ -70,6 +70,10 @@ function createFamilyPedigreeInterview(seed: number) {
     name: 'Relationship to Ego',
     type: 'text',
   });
+  const biologicalSexVar = nodeType.addVariable({
+    name: 'Biological Sex',
+    type: 'text',
+  });
 
   const edgeType = si.addEdgeType({ name: 'Family' });
 
@@ -102,6 +106,7 @@ function createFamilyPedigreeInterview(seed: number) {
     diabetesVar,
     isEgoVar,
     relationshipToEgoVar,
+    biologicalSexVar,
     edgeType,
     relationshipVar,
     isActiveVar,
@@ -172,6 +177,7 @@ export const Default: Story = {
         isGestCarrierVar,
         isEgoVar,
         relationshipToEgoVar,
+        biologicalSexVar,
       } = createFamilyPedigreeInterview(1);
 
       si.addInformationStage({
@@ -182,12 +188,20 @@ export const Default: Story = {
       si.addStage('FamilyPedigree', {
         label: 'Family Pedigree',
         subject: { entity: 'node', type: nodeType.id },
+        // framing and boundaries are mandatory FamilyPedigree schema fields
+        // (the provider reads framing.mode; the checklist reads
+        // boundaries.requireGrandparents).
+        framing: { mode: 'fixed', value: 'gamete' },
+        boundaries: {
+          requireGrandparents: 'off',
+          requireChildrenContributors: 'off',
+        },
         nodeConfig: {
           type: nodeType.id,
           nodeLabelVariable: nameVar.id,
           egoVariable: isEgoVar.id,
-
           relationshipVariable: relationshipToEgoVar.id,
+          biologicalSexVariable: biologicalSexVar.id,
           form: [
             {
               variable: genderVar.id,
@@ -244,6 +258,7 @@ export function buildScenarioInterview({ withNomination = false } = {}) {
     isGestCarrierVar,
     isEgoVar,
     relationshipToEgoVar,
+    biologicalSexVar,
   } = createFamilyPedigreeInterview(1);
 
   si.addInformationStage({
@@ -254,11 +269,20 @@ export function buildScenarioInterview({ withNomination = false } = {}) {
   si.addStage('FamilyPedigree', {
     label: 'Family Pedigree',
     subject: { entity: 'node', type: nodeType.id },
+    // framing and boundaries are mandatory FamilyPedigree schema fields
+    // (the provider reads framing.mode; the checklist reads
+    // boundaries.requireGrandparents).
+    framing: { mode: 'fixed', value: 'gamete' },
+    boundaries: {
+      requireGrandparents: 'off',
+      requireChildrenContributors: 'off',
+    },
     nodeConfig: {
       type: nodeType.id,
       nodeLabelVariable: nameVar.id,
       egoVariable: isEgoVar.id,
       relationshipVariable: relationshipToEgoVar.id,
+      biologicalSexVariable: biologicalSexVar.id,
       form: [
         {
           variable: genderVar.id,

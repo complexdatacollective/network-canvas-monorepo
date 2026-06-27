@@ -13,6 +13,8 @@ const variableConfig: VariableConfig = {
   relationshipTypeVariable: 'relationship',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGC',
+  gameteRoleVariable: 'gameteRole',
+  biologicalSexVariable: 'biologicalSex',
 };
 
 describe('buildChildParentage', () => {
@@ -36,7 +38,9 @@ describe('buildChildParentage', () => {
     expect(egoEdges).toHaveLength(1);
     expect(egoEdges[0]?.data.attributes.relationship).toEqual(['biological']);
     expect(egoEdges[0]?.data.attributes.isGC).toBe(true);
-    expect(egoEdges[0]?.gameteRole).toBe('egg');
+    expect(
+      egoEdges[0]?.data.attributes[variableConfig.gameteRoleVariable],
+    ).toBe('egg');
 
     const spermEdge = edges.find((e) => e.source === 'partner-1');
     expect(spermEdge?.data.attributes.relationship).toEqual(['biological']);
@@ -98,7 +102,9 @@ describe('buildChildParentage', () => {
       relationship: ['surrogate'],
       isGC: true,
     });
-    expect(surrogateEdge?.gameteRole).toBeUndefined();
+    expect(
+      surrogateEdge?.data.attributes[variableConfig.gameteRoleVariable],
+    ).toBeUndefined();
   });
 
   it('tags the egg and sperm parent edges with the gamete role', () => {
@@ -113,9 +119,13 @@ describe('buildChildParentage', () => {
     );
 
     const eggEdge = edges.find((e) => e.source === 'ego-1');
-    expect(eggEdge?.gameteRole).toBe('egg');
+    expect(eggEdge?.data.attributes[variableConfig.gameteRoleVariable]).toBe(
+      'egg',
+    );
 
     const spermEdge = edges.find((e) => e.source === 'partner-1');
-    expect(spermEdge?.gameteRole).toBe('sperm');
+    expect(spermEdge?.data.attributes[variableConfig.gameteRoleVariable]).toBe(
+      'sperm',
+    );
   });
 });

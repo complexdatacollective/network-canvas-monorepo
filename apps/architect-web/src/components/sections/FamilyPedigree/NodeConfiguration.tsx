@@ -150,6 +150,9 @@ const NodeConfigurationInner = ({
   const booleanNodeVariables = nodeVariableOptions.filter(
     (v) => v.type === 'boolean',
   );
+  const categoricalNodeVariables = nodeVariableOptions.filter(
+    (v) => v.type === 'categorical',
+  );
 
   const handleCreatedVariable = (...args: unknown[]) => {
     const [id, params] = args as [string, { field: string }];
@@ -184,6 +187,12 @@ const NodeConfigurationInner = ({
     openVariableWindow(
       { initialValues: { name, type: 'text' }, lockedOptions: null },
       { field: 'nodeConfig.relationshipVariable' },
+    );
+
+  const handleNewBiologicalSexVariable = (name: string) =>
+    openVariableWindow(
+      { initialValues: { name, type: 'categorical' }, lockedOptions: null },
+      { field: 'nodeConfig.biologicalSexVariable' },
     );
 
   return (
@@ -235,6 +244,14 @@ const NodeConfigurationInner = ({
                 entityType={nodeType}
                 options={textNodeVariables}
                 onCreateOption={handleNewRelationshipVariable}
+              />
+              <VariableRow
+                name="nodeConfig.biologicalSexVariable"
+                label="Biological Sex Variable"
+                description="Stores the biological sex of each family member (female/male/intersex/unknown)."
+                entityType={nodeType}
+                options={categoricalNodeVariables}
+                onCreateOption={handleNewBiologicalSexVariable}
               />
             </div>
 

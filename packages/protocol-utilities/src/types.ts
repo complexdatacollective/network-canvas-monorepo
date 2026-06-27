@@ -3,6 +3,7 @@ import type {
   VariableOption,
   VariableType,
 } from '@codaco/protocol-validation';
+import type { FramingId } from '@codaco/shared-consts';
 
 export type VariableEntry = {
   id: string;
@@ -58,7 +59,8 @@ export type StageType =
   | 'AlterEdgeForm'
   | 'Anonymisation'
   | 'FamilyPedigree'
-  | 'Geospatial';
+  | 'Geospatial'
+  | 'NarrativePedigree';
 
 export type NameGeneratorPromptEntry = {
   id: string;
@@ -255,6 +257,7 @@ export type StageEntry = {
     nodeLabelVariable: string;
     egoVariable: string;
     relationshipVariable: string;
+    biologicalSexVariable: string;
     form: { variable: string; prompt: string }[];
   };
   edgeConfig?: {
@@ -262,6 +265,22 @@ export type StageEntry = {
     relationshipTypeVariable: string;
     isActiveVariable: string;
     isGestationalCarrierVariable: string;
+    gameteRoleVariable?: string;
+  };
+  framing?: { mode: 'fixed'; value: FramingId } | { mode: 'participantChoice' };
+  // NarrativePedigree-specific fields
+  narrativePedigreeSourceStageId?: string;
+  narrativePedigreeDiseases?: NarrativeDiseaseEntry[];
+  narrativePedigreePresets?: NarrativePresetEntry[];
+  narrativePedigreeBehaviours?: { allowFocalReselection: boolean };
+  boundaries?: {
+    requireGrandparents: 'required' | 'recommended' | 'off';
+    requireChildrenContributors: 'required' | 'recommended' | 'off';
+  };
+  introScreen?: {
+    title?: string;
+    text: string;
+    videoAssetId?: string;
   };
   censusPrompt?: string;
   nominationPrompts?: { id: string; text: string; variable: string }[];
@@ -378,6 +397,7 @@ export type AddStageInput = {
     nodeLabelVariable: string;
     egoVariable: string;
     relationshipVariable: string;
+    biologicalSexVariable: string;
     form?: { variable: string; prompt: string }[];
   };
   edgeConfig?: {
@@ -385,11 +405,27 @@ export type AddStageInput = {
     relationshipTypeVariable: string;
     isActiveVariable?: string;
     isGestationalCarrierVariable?: string;
+    gameteRoleVariable?: string;
+  };
+  framing?: { mode: 'fixed'; value: FramingId } | { mode: 'participantChoice' };
+  boundaries?: {
+    requireGrandparents: 'required' | 'recommended' | 'off';
+    requireChildrenContributors: 'required' | 'recommended' | 'off';
+  };
+  introScreen?: {
+    title?: string;
+    text: string;
+    videoAssetId?: string;
   };
   censusPrompt?: string;
   nominationPrompts?: { id: string; text: string; variable: string }[];
   // Geospatial
   mapOptions?: MapOptionsEntry;
+  // NarrativePedigree
+  sourceStageId?: string;
+  diseases?: NarrativeDiseaseEntry[];
+  presets?: NarrativePresetEntry[];
+  allowFocalReselection?: boolean;
 };
 
 export type AddPromptInput = {
@@ -461,6 +497,21 @@ export type AddPresetInput = {
   };
   groupVariable?: string | boolean;
   highlight?: string[] | boolean;
+};
+
+export type NarrativeDiseaseEntry = {
+  id: string;
+  label: string;
+  color: string;
+  variable: string;
+  inheritancePattern: string;
+};
+
+export type NarrativePresetEntry = {
+  id: string;
+  label: string;
+  diseases: string[];
+  focal: string;
 };
 
 export type GetSessionInput = {

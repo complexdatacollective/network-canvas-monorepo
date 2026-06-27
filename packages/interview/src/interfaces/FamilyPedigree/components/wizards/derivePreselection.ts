@@ -8,6 +8,10 @@ import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeU
 
 import type { BioTriadConfig } from './steps/BioTriadStep';
 
+function readGameteRole(value: unknown): GameteRole | undefined {
+  return value === 'egg' || value === 'sperm' ? value : undefined;
+}
+
 export function derivePreselection(
   anchorNodeId: string,
   edges: Map<string, FamilyEdge>,
@@ -28,7 +32,9 @@ export function derivePreselection(
       parentEdges.push({
         source: edge.from,
         relationshipType,
-        gameteRole: edge.gameteRole,
+        gameteRole: readGameteRole(
+          edge.attributes[variableConfig.gameteRoleVariable],
+        ),
       });
     }
   }

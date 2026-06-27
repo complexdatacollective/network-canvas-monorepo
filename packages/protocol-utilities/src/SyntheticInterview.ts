@@ -150,6 +150,8 @@ type GeospatialHandle = StageHandleBase & {
   addPrompt: (opts?: AddGeospatialPromptInput) => void;
 };
 
+type NarrativePedigreeHandle = StageHandleBase;
+
 type StageHandleMap = {
   NameGenerator: NameGeneratorHandle;
   NameGeneratorQuickAdd: NameGeneratorQuickAddHandle;
@@ -168,6 +170,7 @@ type StageHandleMap = {
   Anonymisation: AnonymisationHandle;
   FamilyPedigree: FamilyPedigreeHandle;
   Geospatial: GeospatialHandle;
+  NarrativePedigree: NarrativePedigreeHandle;
 };
 
 // Stage types that have no subject (node/edge)
@@ -175,6 +178,7 @@ const SUBJECTLESS_STAGES = new Set<StageType>([
   'EgoForm',
   'Information',
   'Anonymisation',
+  'NarrativePedigree',
 ]);
 
 // Stage types where the subject is an edge, not a node
@@ -518,11 +522,13 @@ export class SyntheticInterview {
         const nodeLabelVar = this.nextId('label-var');
         const egoVar = this.nextId('ego-var');
         const relToEgoVar = this.nextId('rel-to-ego-var');
+        const bioSexVar = this.nextId('biological-sex-var');
         entry.nodeConfig = {
           type: subject.type,
           nodeLabelVariable: nodeLabelVar,
           egoVariable: egoVar,
           relationshipVariable: relToEgoVar,
+          biologicalSexVariable: bioSexVar,
           form: [],
         };
       }
@@ -538,6 +544,9 @@ export class SyntheticInterview {
           relationshipTypeVariable: opts.edgeConfig.relationshipTypeVariable,
           isActiveVariable: isActiveVar,
           isGestationalCarrierVariable: isGestCarrierVar,
+          ...(opts.edgeConfig.gameteRoleVariable !== undefined && {
+            gameteRoleVariable: opts.edgeConfig.gameteRoleVariable,
+          }),
         };
       } else {
         let edgeTypeId: string;
@@ -559,6 +568,18 @@ export class SyntheticInterview {
         this.valueGen.generatePromptText('FamilyPedigree');
 
       entry.nominationPrompts = opts?.nominationPrompts ?? [];
+
+      if (opts?.framing) {
+        entry.framing = opts.framing;
+      }
+
+      if (opts?.boundaries) {
+        entry.boundaries = opts.boundaries;
+      }
+
+      if (opts?.introScreen) {
+        entry.introScreen = opts.introScreen;
+      }
     }
 
     // Geospatial
@@ -578,6 +599,22 @@ export class SyntheticInterview {
           targetFeatureProperty: 'name',
         };
       }
+    }
+
+    // NarrativePedigree
+    if (type === 'NarrativePedigree') {
+      if (opts?.sourceStageId) {
+        entry.narrativePedigreeSourceStageId = opts.sourceStageId;
+      }
+      if (opts?.diseases) {
+        entry.narrativePedigreeDiseases = opts.diseases;
+      }
+      if (opts?.presets) {
+        entry.narrativePedigreePresets = opts.presets;
+      }
+      entry.narrativePedigreeBehaviours = {
+        allowFocalReselection: opts?.allowFocalReselection ?? false,
+      };
     }
 
     // Generate initial nodes (only for node-based stages)
@@ -852,6 +889,9 @@ export class SyntheticInterview {
             entry.prompts.push(prompt);
           },
         } as StageHandleMap[T];
+
+      case 'NarrativePedigree':
+        return base as StageHandleMap[T];
     }
   }
 
@@ -1530,11 +1570,33 @@ export class SyntheticInterview {
       if (stage.censusPrompt) config.censusPrompt = stage.censusPrompt;
       if (stage.nominationPrompts?.length)
         config.nominationPrompts = stage.nominationPrompts;
+      if (stage.framing) config.framing = stage.framing;
+      if (stage.boundaries) config.boundaries = stage.boundaries;
+      if (stage.introScreen) config.introScreen = stage.introScreen;
     }
 
     // Geospatial
     if (stage.mapOptions) {
       config.mapOptions = stage.mapOptions;
+    }
+
+    // NarrativePedigree
+    if (stage.type === 'NarrativePedigree') {
+      if (stage.narrativePedigreeSourceStageId) {
+        config.sourceStageId = stage.narrativePedigreeSourceStageId;
+      }
+      if (stage.narrativePedigreeDiseases) {
+        config.diseases = stage.narrativePedigreeDiseases.map((d) => ({
+          ...d,
+          variable: d.variable,
+        }));
+      }
+      if (stage.narrativePedigreePresets) {
+        config.presets = stage.narrativePedigreePresets;
+      }
+      if (stage.narrativePedigreeBehaviours) {
+        config.behaviours = stage.narrativePedigreeBehaviours;
+      }
     }
 
     return config;
@@ -1575,6 +1637,40 @@ export class SyntheticInterview {
       );
     }
     edge.attributes[variableId] = value;
+  }
+
+  /**
+   * Insert a pre-defined node directly into the network. Use this when the
+   * caller needs full control over node uid and attributes (e.g. seeding a
+   * pedigree for NarrativePedigree stories where node identity matters).
+   */
+  addManualNode(
+    stageId: string,
+    nodeTypeId: string,
+    uid: string,
+    attributes: Record<string, unknown>,
+  ): void {
+    this.nodes.push({
+      uid,
+      type: nodeTypeId,
+      stageId,
+      promptIDs: [],
+      explicitAttributes: attributes,
+    });
+  }
+
+  /**
+   * Insert a pre-defined edge directly into the network. Use this when the
+   * caller needs full control over edge uid, endpoints, and attributes.
+   */
+  addManualEdge(
+    edgeTypeId: string,
+    uid: string,
+    from: string,
+    to: string,
+    attributes: Record<string, unknown>,
+  ): void {
+    this.edges.push({ uid, type: edgeTypeId, from, to, attributes });
   }
 
   /**

@@ -23,25 +23,26 @@ import type { StageProps } from '~/types';
 import { buildPedigreeDialog } from './buildPedigreeDialog';
 import PedigreeChecklist from './components/PedigreeChecklist';
 import EgoCellWizard from './components/wizards/EgoCellWizard';
-import {
-  FamilyPedigreeProvider,
-  useFamilyPedigreeStore,
-} from './FamilyPedigreeProvider';
+import { useFamilyPedigreeStore } from './FamilyPedigreeContext';
+import { FamilyPedigreeProvider } from './FamilyPedigreeProvider';
 import FamilyPedigreePlaceholder from './pedigree-layout/components/FamilyPedigreePlaceholder';
 import PedigreeView from './pedigree-layout/components/PedigreeView';
 import type { VariableConfig } from './store';
 import {
   getEdgeTypeKey,
+  getGameteRoleVariable,
   getIsActiveVariable,
   getIsGestationalCarrierVariable,
   getRelationshipTypeVariable,
 } from './utils/edgeUtils';
 import {
+  getBiologicalSexVariable,
   getEgoVariable,
   getNodeLabelVariable,
   getNodeTypeKey,
   getRelationshipVariable,
 } from './utils/nodeUtils';
+import { getBoundaries } from './utils/stageConfig';
 import { validatePedigreeCompleteness } from './utils/validatePedigree';
 
 // The interview network is a single shared graph, so getNetworkNodes/Edges
@@ -99,13 +100,16 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   const isGestationalCarrierVariable = useStageSelector(
     getIsGestationalCarrierVariable,
   );
+  const gameteRoleVariable = useStageSelector(getGameteRoleVariable);
+  const biologicalSexVariable = useStageSelector(getBiologicalSexVariable);
 
   const allNodes = useStageSelector(getNetworkNodes);
   const allEdges = useStageSelector(getNetworkEdges);
 
   const stageMetadata = useStageSelector(getStageMetadata) as
-    | { isNetworkCommitted?: boolean }
+    | { isNetworkCommitted?: boolean; noChildrenAffirmed?: boolean }
     | undefined;
+  const boundaries = useStageSelector(getBoundaries);
 
   const isNetworkCommitted = stageMetadata?.isNetworkCommitted === true;
 
@@ -118,6 +122,8 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
     relationshipTypeVariable,
     isActiveVariable,
     isGestationalCarrierVariable,
+    gameteRoleVariable,
+    biologicalSexVariable,
   };
 
   const reduxNodesMap = useMemo(
@@ -250,6 +256,8 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
       nodesMap,
       edgesMap,
       variableConfig,
+      boundaries,
+      stageMetadata?.noChildrenAffirmed === true,
     );
 
     if (issues.length > 0) {
@@ -453,6 +461,8 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
                   dragConstraints={containerRef}
                   onFinalize={() => void handleConfirmAndAdvance()}
                   onAllDoneChange={setChecklistComplete}
+                  variableConfig={variableConfig}
+                  boundaries={boundaries}
                 />
               )}
               {showResetOption && (

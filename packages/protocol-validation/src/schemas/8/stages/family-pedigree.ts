@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { FRAMING_IDS } from '@codaco/shared-consts';
 import { findDuplicateId } from '~/utils/validation-helpers';
 
 import {
@@ -28,6 +29,10 @@ export const NodeConfigSchema = z.strictObject({
   relationshipVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'node' },
   }),
+  // Variable storing the biological sex of this node (female/male/intersex/unknown)
+  biologicalSexVariable: entityAttributeReference({
+    subject: { sibling: 'type', entity: 'node' },
+  }),
   // Optional form fields collected when creating a node
   form: z.array(FormFieldSchema).optional(),
 });
@@ -47,6 +52,10 @@ export const EdgeConfigSchema = z.strictObject({
   isGestationalCarrierVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'edge' },
   }),
+  // Variable storing the gamete role for this edge (which gamete each participant contributed)
+  gameteRoleVariable: entityAttributeReference({
+    subject: { sibling: 'type', entity: 'edge' },
+  }),
 });
 
 export const familyPedigreeStage = baseStageSchema.extend({
@@ -54,6 +63,26 @@ export const familyPedigreeStage = baseStageSchema.extend({
   nodeConfig: NodeConfigSchema,
   edgeConfig: EdgeConfigSchema,
 
+  // Framing determines the language used for parent roles (fixed to a specific
+  // framing, or presented as a participant choice at interview time).
+  framing: z.discriminatedUnion('mode', [
+    z.object({ mode: z.literal('fixed'), value: z.enum([...FRAMING_IDS]) }),
+    z.object({ mode: z.literal('participantChoice') }),
+  ]),
+  // Boundary enforcement settings controlling whether grandparents and
+  // children contributors are required or recommended (or off).
+  boundaries: z.object({
+    requireGrandparents: z.enum(['required', 'recommended', 'off']),
+    requireChildrenContributors: z.enum(['required', 'recommended', 'off']),
+  }),
+  // Optional introductory screen shown before the main pedigree-building step.
+  introScreen: z
+    .object({
+      title: z.string().optional(),
+      text: z.string(),
+      videoAssetId: z.string().optional(),
+    })
+    .optional(),
   // Prompt shown during the family building phase
   censusPrompt: z.string(),
   // Optional attribute nomination steps (e.g. disease nomination)

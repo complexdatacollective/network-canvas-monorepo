@@ -25,14 +25,21 @@ describe('FamilyPedigree nomination prompts (#664)', () => {
       nodeLabelVariable: 'label',
       egoVariable: 'isEgo',
       relationshipVariable: 'rel',
+      biologicalSexVariable: 'bioSex',
     },
     edgeConfig: {
       type: 'family',
       relationshipTypeVariable: 'relType',
       isActiveVariable: 'isActive',
       isGestationalCarrierVariable: 'isGc',
+      gameteRoleVariable: 'gameteRole',
     },
     censusPrompt: 'Build your family',
+    framing: { mode: 'fixed' as const, value: 'gamete' as const },
+    boundaries: {
+      requireGrandparents: 'off' as const,
+      requireChildrenContributors: 'off' as const,
+    },
   };
 
   it('accepts nomination prompts with distinct, non-reserved ids', () => {

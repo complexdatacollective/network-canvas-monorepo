@@ -1,5 +1,8 @@
 'use client';
 
+import { invariant } from 'es-toolkit';
+import { useContext } from 'react';
+
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Node from '@codaco/fresco-ui/Node';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
@@ -15,16 +18,21 @@ import {
   addableParentTypeOptions,
   countGeneticParents,
 } from '~/interfaces/FamilyPedigree/components/wizards/parentTypeOptions';
-import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeProvider';
+import {
+  FamilyPedigreeContext,
+  useFamilyPedigreeStore,
+} from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 import {
   getEdgeRelationshipType,
   getEdgeTypeKey,
+  getGameteRoleVariable,
   getIsActiveVariable,
   getIsGestationalCarrierVariable,
   getRelationshipTypeVariable,
 } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 import {
+  getBiologicalSexVariable,
   getEgoVariable,
   getNodeLabelVariable,
   getNodeTypeKey,
@@ -51,11 +59,18 @@ export default function PedigreeView({
   onToggleAttribute,
   isFinalized = false,
 }: PedigreeViewProps = {}) {
+  const familyPedigreeStore = useContext(FamilyPedigreeContext);
+  invariant(
+    familyPedigreeStore,
+    'PedigreeView must be used within a FamilyPedigreeProvider',
+  );
+
   const storeNodes = useFamilyPedigreeStore((s) => s.network.nodes);
   const storeEdges = useFamilyPedigreeStore((s) => s.network.edges);
   const storeActiveNominationVariable = useFamilyPedigreeStore(
     (s) => s.activeNominationVariable,
   );
+  const storeFraming = useFamilyPedigreeStore((s) => s.framing);
 
   const nodes = overrideNodes ?? storeNodes;
   const edges = overrideEdges ?? storeEdges;
@@ -80,6 +95,8 @@ export default function PedigreeView({
   const isGestationalCarrierVariable = useStageSelector(
     getIsGestationalCarrierVariable,
   );
+  const gameteRoleVariable = useStageSelector(getGameteRoleVariable);
+  const biologicalSexVariable = useStageSelector(getBiologicalSexVariable);
   const resolvedFormFields = useStageSelector(getResolvedNodeFormFields);
 
   const variableConfig: VariableConfig = {
@@ -91,6 +108,8 @@ export default function PedigreeView({
     relationshipTypeVariable,
     isActiveVariable,
     isGestationalCarrierVariable,
+    gameteRoleVariable,
+    biologicalSexVariable,
   };
 
   const { openDialog } = useDialog();
@@ -206,10 +225,14 @@ export default function PedigreeView({
   const handleAddChild = async (nodeId: string) => {
     const result = await openAddChildWizard(
       openDialog,
+      familyPedigreeStore,
       nodeId,
       nodes,
       edges,
       variableConfig,
+      // framing ?? 'gamete': safe fallback — per spec §4.1, when framing is null
+      // only the intro/chooser steps render and no gamete-parent labels exist yet.
+      storeFraming ?? 'gamete',
     );
     if (result) {
       commitBatch(result);
@@ -219,10 +242,12 @@ export default function PedigreeView({
   const handleAddSibling = async (nodeId: string) => {
     const result = await openAddSiblingWizard(
       openDialog,
+      familyPedigreeStore,
       nodeId,
       nodes,
       edges,
       variableConfig,
+      storeFraming ?? 'gamete',
     );
     if (result) {
       commitBatch(result);
@@ -236,18 +261,22 @@ export default function PedigreeView({
       geneticCount >= 2
         ? await openAddParentWizard(
             openDialog,
+            familyPedigreeStore,
             nodeId,
             nodes,
             edges,
             variableConfig,
             addableParentTypeOptions(nodeId, edges, variableConfig),
+            storeFraming ?? 'gamete',
           )
         : await openDefineParentsWizard(
             openDialog,
+            familyPedigreeStore,
             nodeId,
             nodes,
             edges,
             variableConfig,
+            storeFraming ?? 'gamete',
           );
 
     if (result) {
@@ -275,7 +304,14 @@ export default function PedigreeView({
     }
   };
 
-  const displayLabels = computeNodeDisplayLabels(nodes, edges, variableConfig);
+  // framing ?? 'gamete': safe fallback — per spec §4.1, when framing is null
+  // only the intro/chooser steps render and no gamete-parent labels exist yet.
+  const displayLabels = computeNodeDisplayLabels(
+    nodes,
+    edges,
+    variableConfig,
+    storeFraming ?? 'gamete',
+  );
 
   return (
     <div className="absolute inset-0 overflow-x-auto pt-6">

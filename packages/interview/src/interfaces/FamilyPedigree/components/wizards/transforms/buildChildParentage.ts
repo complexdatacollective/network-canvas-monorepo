@@ -5,7 +5,7 @@ import type {
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 
-import { extractCustomAttributes } from './personAttributes';
+import { extractCustomAttributes, readBiologicalSex } from './personAttributes';
 
 type RoleKey = 'egg-source' | 'sperm-source' | 'carrier-source';
 type ChildRelationshipType = Extract<
@@ -91,14 +91,23 @@ export function buildChildParentage(
       if (!personValues) continue;
       const name = (personValues.name as string | undefined) ?? '';
       const extraAttrs = extractCustomAttributes(personValues);
+      const isGameteParen =
+        roleKey === 'egg-source' || roleKey === 'sperm-source';
+      const nodeAttrs: Record<string, VariableValue> = {
+        [variableConfig.nodeLabelVariable]: name,
+        [variableConfig.egoVariable]: false,
+        ...extraAttrs,
+      };
+      if (!isGameteParen) {
+        const sex = readBiologicalSex(personValues.biologicalSex);
+        if (sex !== undefined) {
+          nodeAttrs[variableConfig.biologicalSexVariable] = sex;
+        }
+      }
       parentEntries.push({
         tempId: namespace,
         roleKey,
-        attributes: {
-          [variableConfig.nodeLabelVariable]: name,
-          [variableConfig.egoVariable]: false,
-          ...extraAttrs,
-        },
+        attributes: nodeAttrs,
         relationshipType,
         isGestationalCarrier: roleKey === 'carrier-source',
       });
@@ -144,10 +153,12 @@ export function buildChildParentage(
       edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
     }
     const gameteRole = gameteRoleForRole(entry.roleKey);
+    if (gameteRole) {
+      edgeAttributes[variableConfig.gameteRoleVariable] = gameteRole;
+    }
     edges.push({
       source: entry.tempId,
       target: childTempId,
-      ...(gameteRole ? { gameteRole } : {}),
       data: { attributes: edgeAttributes },
     });
   }
@@ -161,10 +172,12 @@ export function buildChildParentage(
       edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
     }
     const gameteRole = gameteRoleForRole(entry.roleKey);
+    if (gameteRole) {
+      edgeAttributes[variableConfig.gameteRoleVariable] = gameteRole;
+    }
     edges.push({
       source: entry.sourceId,
       target: childTempId,
-      ...(gameteRole ? { gameteRole } : {}),
       data: { attributes: edgeAttributes },
     });
   }
