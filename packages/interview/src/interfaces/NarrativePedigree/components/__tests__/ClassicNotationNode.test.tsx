@@ -326,7 +326,7 @@ describe('ClassicNotationNode', () => {
       expect(marker).toBeInTheDocument();
     });
 
-    it('[data-atrisk-homozygous-notation] accessible label is reachable via the accessibility tree', () => {
+    it('[data-atrisk-homozygous-notation] is not nested inside any aria-hidden subtree', () => {
       render(
         <ClassicNotationNode
           node={mockNode}
@@ -339,11 +339,19 @@ describe('ClassicNotationNode', () => {
           label="Alice"
         />,
       );
-      // getByLabelText searches the accessibility tree and honours aria-hidden —
-      // it throws if the element is inside an aria-hidden subtree.
-      expect(
-        screen.getByLabelText(/risk of being affected/i),
-      ).toBeInTheDocument();
+      // Verify the marker exists and carries an accessible name.
+      const marker = document.querySelector('[data-atrisk-homozygous-notation]');
+      expect(marker).not.toBeNull();
+      expect(marker).toHaveAttribute('aria-label');
+
+      // Walk every ancestor to confirm none carries aria-hidden="true".
+      // getByLabelText does NOT filter by aria-hidden, so this explicit walk is
+      // the only reliable guard that the marker is outside any aria-hidden subtree.
+      let el: Element | null = marker;
+      while (el) {
+        expect(el.getAttribute('aria-hidden')).not.toBe('true');
+        el = el.parentElement;
+      }
     });
 
     it.each(['square', 'circle', 'diamond'] as const)(
