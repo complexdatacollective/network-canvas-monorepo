@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { NcEdge } from '@codaco/shared-consts';
+import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import type {
   FamilyEdge,
   VariableConfig,
@@ -9,6 +9,7 @@ import type {
 import {
   geneticParentCandidates,
   nominatedGameteRoles,
+  partnerCandidates,
   socialParentCandidates,
 } from '../parentCandidates';
 
@@ -184,6 +185,49 @@ describe('socialParentCandidates', () => {
     expect(result.has('spouse')).toBe(false);
     // A grandparent is still a valid social/adoptive parent.
     expect(result.has('grandma')).toBe(true);
+  });
+});
+
+describe('partnerCandidates', () => {
+  // Tree: mum + dad -> ego; ego -> kid; mum + dad -> sib (full sibling);
+  // dad -> uncle (half-sib of mum, but not of ego — uncle is dad's other child);
+  // uncle -> cousin; grandma -> mum
+  function makeNodes(): Map<string, NcNode> {
+    return new Map(
+      ['ego', 'mum', 'dad', 'sib', 'kid', 'uncle', 'cousin', 'grandma'].map(
+        (id) => [id, { _uid: id, type: 'person', attributes: {} }],
+      ),
+    );
+  }
+
+  function makePartnerEdges(): Map<string, NcEdge> {
+    return new Map<string, NcEdge>([
+      edge('mum', 'ego', 'biological'),
+      edge('dad', 'ego', 'biological'),
+      edge('ego', 'kid', 'biological'),
+      edge('mum', 'sib', 'biological'),
+      edge('dad', 'sib', 'biological'),
+      edge('dad', 'uncle', 'biological'),
+      edge('uncle', 'cousin', 'biological'),
+      edge('grandma', 'mum', 'biological'),
+    ]);
+  }
+
+  it('excludes self, parents, children, and full siblings; includes half-degree+ relatives', () => {
+    const c = partnerCandidates(
+      'ego',
+      makeNodes(),
+      makePartnerEdges(),
+      variableConfig,
+    );
+    expect([...c].toSorted()).toEqual(
+      ['cousin', 'grandma', 'uncle'].toSorted(),
+    );
+    expect(c.has('ego')).toBe(false); // self
+    expect(c.has('mum')).toBe(false); // parent
+    expect(c.has('dad')).toBe(false); // parent
+    expect(c.has('kid')).toBe(false); // child
+    expect(c.has('sib')).toBe(false); // full sibling
   });
 });
 

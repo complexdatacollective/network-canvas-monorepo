@@ -109,6 +109,41 @@ function siblingIds(
   return result;
 }
 
+/** Direct children of nodeId (non-partner edges where nodeId is the source). */
+function childIdsOf(
+  nodeId: string,
+  edges: Map<string, NcEdge>,
+  variableConfig: VariableConfig,
+): Set<string> {
+  const result = new Set<string>();
+  for (const edge of edges.values()) {
+    if (edge.from === nodeId && relTypeOf(edge, variableConfig) !== 'partner') {
+      result.add(edge.to);
+    }
+  }
+  return result;
+}
+
+/** Siblings sharing BOTH parents with nodeId (excludes half-siblings). */
+function fullSiblingIds(
+  nodeId: string,
+  edges: Map<string, NcEdge>,
+  variableConfig: VariableConfig,
+): Set<string> {
+  const parents = parentIdsOf(nodeId, edges, variableConfig);
+  if (parents.size === 0) return new Set();
+  const parentArray = [...parents];
+  const childSets = parentArray.map((p) =>
+    childIdsOf(p, edges, variableConfig),
+  );
+  const result = new Set<string>();
+  for (const candidate of childSets[0] ?? new Set<string>()) {
+    if (candidate === nodeId) continue;
+    if (childSets.every((s) => s.has(candidate))) result.add(candidate);
+  }
+  return result;
+}
+
 function donorIds(
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
@@ -202,5 +237,27 @@ export function socialParentCandidates(
   for (const id of nodes.keys()) {
     if (!excluded.has(id)) result.add(id);
   }
+  return result;
+}
+
+/**
+ * People eligible to be partnered with `anchorId`: everyone except the node
+ * itself and its first-degree relatives (parents, children, full siblings).
+ * Second-degree+ relatives (cousins, half-sibs, uncle/niece, grandparents) are
+ * eligible — this is what makes consanguineous unions capturable.
+ */
+export function partnerCandidates(
+  anchorId: string,
+  nodes: Map<string, NcNode>,
+  edges: Map<string, NcEdge>,
+  variableConfig: VariableConfig,
+): Set<string> {
+  const excluded = new Set<string>([anchorId]);
+  for (const p of parentIdsOf(anchorId, edges, variableConfig)) excluded.add(p);
+  for (const c of childIdsOf(anchorId, edges, variableConfig)) excluded.add(c);
+  for (const s of fullSiblingIds(anchorId, edges, variableConfig))
+    excluded.add(s);
+  const result = new Set<string>();
+  for (const id of nodes.keys()) if (!excluded.has(id)) result.add(id);
   return result;
 }
