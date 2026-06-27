@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { ClassicNotationNode } from '../ClassicNotationNode';
@@ -340,7 +340,9 @@ describe('ClassicNotationNode', () => {
         />,
       );
       // Verify the marker exists and carries an accessible name.
-      const marker = document.querySelector('[data-atrisk-homozygous-notation]');
+      const marker = document.querySelector(
+        '[data-atrisk-homozygous-notation]',
+      );
       expect(marker).not.toBeNull();
       expect(marker).toHaveAttribute('aria-label');
 
