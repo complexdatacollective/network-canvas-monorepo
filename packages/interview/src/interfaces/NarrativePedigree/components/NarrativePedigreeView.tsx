@@ -29,7 +29,10 @@ import type { StageProps } from '~/types';
 
 import { exportSnapshot } from '../export/snapshot';
 import { resolveFocal } from '../focalResolver';
-import { computeStatuses } from '../genetics/computeStatuses';
+import {
+  computeAtRiskHomozygous,
+  computeStatuses,
+} from '../genetics/computeStatuses';
 import { buildGeneticGraph } from '../genetics/geneticGraph';
 import { resolveSex } from '../genetics/resolveSex';
 import { affectedSet, type Status } from '../genetics/status';
@@ -195,6 +198,24 @@ export default function NarrativePedigreeView({
     return map;
   }, [graph, shownDiseases, pedigreeNodes, resolveSexFn]);
 
+  // diseaseId → (nodeId → atRiskHomozygous) for every shown disease.
+  const statusesByDiseaseHomozygous = useMemo(() => {
+    const map = new Map<string, Map<string, boolean>>();
+    if (!graph) return map;
+    for (const disease of shownDiseases) {
+      map.set(
+        disease.id,
+        computeAtRiskHomozygous(
+          graph,
+          statusesByDisease.get(disease.id) ?? new Map<string, Status>(),
+          disease.inheritancePattern,
+          resolveSexFn,
+        ),
+      );
+    }
+    return map;
+  }, [graph, shownDiseases, resolveSexFn, statusesByDisease]);
+
   const focalIds = useMemo(() => {
     if (!graph || !activePreset) return new Set<string>();
     if (focalOverride !== null) {
@@ -309,7 +330,13 @@ export default function NarrativePedigreeView({
     disease: Disease,
   ): ReactNode => {
     const status = statusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown';
-    const classicDisease: ClassicDisease = { color: disease.color, status };
+    const atRiskHomozygous =
+      statusesByDiseaseHomozygous.get(disease.id)?.get(node.id) ?? false;
+    const classicDisease: ClassicDisease = {
+      color: disease.color,
+      status,
+      atRiskHomozygous,
+    };
     return (
       <ClassicNotationNode
         node={node}
@@ -328,6 +355,8 @@ export default function NarrativePedigreeView({
     const stickers: DiseaseSticker[] = shownDiseases.map((disease) => ({
       color: disease.color,
       status: statusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown',
+      atRiskHomozygous:
+        statusesByDiseaseHomozygous.get(disease.id)?.get(node.id) ?? false,
     }));
     return <StickerNode label={label} shape={shape} diseases={stickers} />;
   };

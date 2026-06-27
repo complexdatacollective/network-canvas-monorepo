@@ -422,3 +422,209 @@ describe('NarrativePedigreeView — within Provider smoke', () => {
     );
   });
 });
+
+// --- Cousin-union pedigree fixture for at-risk-homozygous threading ---
+//
+// Topology (AR disease seeded on GGP):
+//   ggp (affected) + ggpPartner → childA, childB
+//   childA + partnerA → cousin1
+//   childB + partnerB → cousin2
+//   cousin1 + cousin2 → sharedChild   ← the at-risk-homozygous node
+//
+// AR engine marks childA/childB as obligateCarrier, cousin1/cousin2 as
+// atRiskCarrier (1 carrier parent each). sharedChild has 2 atRiskCarrier
+// parents → computeAtRiskHomozygous flags it true.
+const AR_DISEASE_VAR = 'arDisease';
+const AR_DISEASE_ID = 'ar';
+
+const SOURCE_STAGE_ID_COUSIN = 'source-fp-cousin';
+
+function makeCNode(id: string, attributes: Attrs): NcNode {
+  return {
+    [entityPrimaryKeyProperty]: id,
+    type: NODE_TYPE,
+    [entityAttributesProperty]: attributes,
+  };
+}
+
+function makeCEdge(
+  from: string,
+  to: string,
+  relType: string[] = ['biological'],
+): NcEdge {
+  return {
+    [entityPrimaryKeyProperty]: `${from}->${to}-${relType[0] ?? 'bio'}`,
+    type: EDGE_TYPE,
+    from,
+    to,
+    [entityAttributesProperty]: {
+      [REL_TYPE_VAR]: relType,
+      [IS_ACTIVE_VAR]: true,
+    },
+  };
+}
+
+const cousinNodes: NcNode[] = [
+  makeCNode('ggp', { [BIO_SEX_VAR]: 'male', [AR_DISEASE_VAR]: true }),
+  makeCNode('ggpPartner', { [BIO_SEX_VAR]: 'female' }),
+  makeCNode('childA', { [BIO_SEX_VAR]: 'male' }),
+  makeCNode('partnerA', { [BIO_SEX_VAR]: 'female' }),
+  makeCNode('childB', { [BIO_SEX_VAR]: 'female' }),
+  makeCNode('partnerB', { [BIO_SEX_VAR]: 'male' }),
+  makeCNode('cousin1', { [BIO_SEX_VAR]: 'male', [EGO_VAR]: true }),
+  makeCNode('cousin2', { [BIO_SEX_VAR]: 'female' }),
+  makeCNode('sharedChild', { [BIO_SEX_VAR]: 'male' }),
+  makeCNode('unrelated', { [BIO_SEX_VAR]: 'female' }),
+];
+
+const cousinEdges: NcEdge[] = [
+  // GGP + ggpPartner → childA, childB
+  makeCEdge('ggp', 'childA'),
+  makeCEdge('ggpPartner', 'childA'),
+  makeCEdge('ggp', 'childB'),
+  makeCEdge('ggpPartner', 'childB'),
+  makeCEdge('ggp', 'ggpPartner', ['partner']),
+  // childA + partnerA → cousin1
+  makeCEdge('childA', 'cousin1'),
+  makeCEdge('partnerA', 'cousin1'),
+  makeCEdge('childA', 'partnerA', ['partner']),
+  // childB + partnerB → cousin2
+  makeCEdge('childB', 'cousin2'),
+  makeCEdge('partnerB', 'cousin2'),
+  makeCEdge('childB', 'partnerB', ['partner']),
+  // cousin1 + cousin2 → sharedChild
+  makeCEdge('cousin1', 'sharedChild'),
+  makeCEdge('cousin2', 'sharedChild'),
+  makeCEdge('cousin1', 'cousin2', ['partner']),
+];
+
+const cousinSourceStage = {
+  ...sourceStage,
+  id: SOURCE_STAGE_ID_COUSIN,
+};
+
+function makeCousinNarrativeStage(mode: 'classic' | 'sticker'): NarrativeStage {
+  return {
+    id: 'np-cousin',
+    type: 'NarrativePedigree',
+    label: 'Cousin Union Disease Pedigree',
+    sourceStageId: SOURCE_STAGE_ID_COUSIN,
+    diseases: [
+      {
+        id: AR_DISEASE_ID,
+        label: 'AR Disease',
+        color: '#ff0000',
+        variable: asEntityAttributeReference(AR_DISEASE_VAR),
+        inheritancePattern: 'autosomalRecessive',
+      },
+      ...(mode === 'sticker'
+        ? [
+            {
+              id: 'db2',
+              label: 'Disease B2',
+              color: '#00ff00',
+              variable: asEntityAttributeReference(DISEASE_B_VAR),
+              inheritancePattern: 'autosomalDominant' as const,
+            },
+          ]
+        : []),
+    ],
+    presets: [
+      {
+        id: 'all',
+        label: 'All',
+        diseases: mode === 'sticker' ? [AR_DISEASE_ID, 'db2'] : [AR_DISEASE_ID],
+        focal: 'ego',
+      },
+    ],
+    behaviours: { allowFocalReselection: false },
+  };
+}
+
+function renderCousinView(mode: 'classic' | 'sticker') {
+  const stage = makeCousinNarrativeStage(mode);
+  const store = configureStore({
+    reducer: { protocol, session },
+    preloadedState: {
+      protocol: {
+        codebook,
+        stages: [cousinSourceStage, stage],
+        assets: [],
+      } as never,
+      session: {
+        id: 'cousin-session',
+        network: {
+          nodes: cousinNodes,
+          edges: cousinEdges,
+          ego: { [entityAttributesProperty]: {} },
+        },
+        stageMetadata: {},
+      } as never,
+    },
+    middleware: (g) => g({ serializableCheck: false }),
+  });
+
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <Provider store={store}>
+        <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
+          {children}
+        </CurrentStepProvider>
+      </Provider>
+    );
+  }
+
+  return render(<NarrativePedigreeView stage={stage} />, { wrapper: Wrapper });
+}
+
+describe('NarrativePedigreeView — at-risk-homozygous threading (classic mode)', () => {
+  it('shows the at-risk-homozygous notation on the flagged shared child and not on an unflagged node', async () => {
+    renderCousinView('classic');
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-notation-status]')).toBeTruthy(),
+    );
+
+    const sharedChildMember = document.querySelector(
+      '[data-node-id="sharedChild"]',
+    );
+    expect(sharedChildMember).toBeTruthy();
+    expect(
+      sharedChildMember?.querySelector('[data-atrisk-homozygous-notation]'),
+    ).toBeTruthy();
+
+    const unrelatedMember = document.querySelector(
+      '[data-node-id="unrelated"]',
+    );
+    expect(unrelatedMember).toBeTruthy();
+    expect(
+      unrelatedMember?.querySelector('[data-atrisk-homozygous-notation]'),
+    ).toBeNull();
+  });
+});
+
+describe('NarrativePedigreeView — at-risk-homozygous threading (sticker mode)', () => {
+  it('shows the at-risk-homozygous marker on the flagged shared child and not on an unflagged node', async () => {
+    renderCousinView('sticker');
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-sticker-status]')).toBeTruthy(),
+    );
+
+    const sharedChildMember = document.querySelector(
+      '[data-node-id="sharedChild"]',
+    );
+    expect(sharedChildMember).toBeTruthy();
+    expect(
+      sharedChildMember?.querySelector('[data-atrisk-homozygous-marker]'),
+    ).toBeTruthy();
+
+    const unrelatedMember = document.querySelector(
+      '[data-node-id="unrelated"]',
+    );
+    expect(unrelatedMember).toBeTruthy();
+    expect(
+      unrelatedMember?.querySelector('[data-atrisk-homozygous-marker]'),
+    ).toBeNull();
+  });
+});
