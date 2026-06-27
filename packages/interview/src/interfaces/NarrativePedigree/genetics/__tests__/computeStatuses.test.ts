@@ -332,19 +332,47 @@ describe('computeAtRiskHomozygous', () => {
     });
   }
 
-  it('returns an empty map for xLinkedRecessive (deferred to a later task)', () => {
+  it('flags the daughter of an affected father + carrier mother under xLinkedRecessive', () => {
+    /**
+     *   affectedFather (affected MALE) --- carrierMother (female, obligateCarrier
+     *               \                     /        via her own affected father)
+     *            daughter (female)
+     *
+     *   The father's only X reaches the daughter (obligateCarrier) and the
+     *   carrier mother adds ~50% homozygous risk -> the orchestrator dispatches
+     *   the XLR daughter rule and flags her.
+     */
+    const xlrNodes = [
+      makeNode('maternalGrandfather'),
+      makeNode('affectedFather'),
+      makeNode('carrierMother'),
+      makeNode('daughter'),
+    ];
+    const xlrEdges = [
+      makeGeneticEdge('maternalGrandfather', 'carrierMother'),
+      makeGeneticEdge('affectedFather', 'daughter'),
+      makeGeneticEdge('carrierMother', 'daughter'),
+    ];
+    const xlrResolveSex = sexResolver({
+      maternalGrandfather: 'male',
+      affectedFather: 'male',
+      carrierMother: 'female',
+      daughter: 'female',
+    });
+    const xlrGraph = buildGraph(xlrNodes, xlrEdges, xlrResolveSex);
+    const xlrAffected = new Set(['maternalGrandfather', 'affectedFather']);
     const statuses = computeStatuses(
-      graph,
-      affected,
+      xlrGraph,
+      xlrAffected,
       'xLinkedRecessive',
-      resolveSex,
+      xlrResolveSex,
     );
     const flags = computeAtRiskHomozygous(
-      graph,
+      xlrGraph,
       statuses,
       'xLinkedRecessive',
-      resolveSex,
+      xlrResolveSex,
     );
-    expect(flags.size).toBe(0);
+    expect(flags.get('daughter')).toBe(true);
   });
 });

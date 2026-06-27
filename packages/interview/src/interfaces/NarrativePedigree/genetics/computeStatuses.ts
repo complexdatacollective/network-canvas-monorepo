@@ -10,6 +10,7 @@ import { computeMitochondrial, computeYLinked } from './patterns/uniparental';
 import {
   computeXLinkedDominant,
   computeXLinkedRecessive,
+  computeXLinkedRecessiveHomozygous,
 } from './patterns/xLinked';
 import type { Status } from './status';
 
@@ -79,7 +80,7 @@ export function computeStatuses(
  * disease/pattern — it is reused here and never recomputed or mutated.
  *
  * - `autosomalRecessive` → two-sided carrier rule (autozygosity / compound-het).
- * - `xLinkedRecessive` → empty for now (a later task adds the XLR daughter rule).
+ * - `xLinkedRecessive` → the XLR daughter rule (affected father + carrier mother).
  * - All other patterns → empty: only a recessive trait can make a child
  *   homozygous-affected through two carrier parents.
  *
@@ -90,13 +91,14 @@ export function computeAtRiskHomozygous(
   graph: GeneticGraph,
   statuses: Map<string, Status>,
   pattern: InheritancePattern,
-  _resolveSex: (id: string) => Sex,
+  resolveSex: (id: string) => Sex,
 ): Map<string, boolean> {
   switch (pattern) {
     case 'autosomalRecessive':
       return computeAutosomalRecessiveHomozygous(graph, statuses);
-    case 'autosomalDominant':
     case 'xLinkedRecessive':
+      return computeXLinkedRecessiveHomozygous(graph, statuses, resolveSex);
+    case 'autosomalDominant':
     case 'xLinkedDominant':
     case 'yLinked':
     case 'mitochondrial':

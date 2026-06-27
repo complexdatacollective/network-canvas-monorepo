@@ -11,6 +11,7 @@ import { buildGeneticGraph, type GeneticGraph } from '../geneticGraph';
 import {
   computeXLinkedDominant,
   computeXLinkedRecessive,
+  computeXLinkedRecessiveHomozygous,
 } from '../patterns/xLinked';
 import type { Status } from '../status';
 
@@ -554,6 +555,191 @@ describe('computeXLinkedRecessive', () => {
       expect(() =>
         computeXLinkedRecessive(graph, affected, resolveSex),
       ).not.toThrow();
+    });
+  });
+});
+
+describe('computeXLinkedRecessiveHomozygous', () => {
+  function flag(map: Map<string, boolean>, id: string): boolean {
+    return map.get(id) ?? false;
+  }
+
+  describe('affected father + carrier mother -> daughter at-risk homozygous', () => {
+    /**
+     *   affectedFather (affected MALE) --- carrierMother (female, obligateCarrier)
+     *               \                     /
+     *            daughter (female)        son (male)
+     *
+     *   The father gives his disease X to ALL daughters (obligateCarrier via the
+     *   primary rule); a carrier mother passes the disease X with ~50% — so the
+     *   daughter is ~50% homozygous-affected -> flag true. Her PRIMARY status is
+     *   unchanged: it remains obligateCarrier. The son receives the father's Y,
+     *   not the X, so he is never flagged (daughters only).
+     */
+    const nodes = [
+      makeNode('affectedFather'),
+      makeNode('carrierMother'),
+      makeNode('daughter'),
+      makeNode('son'),
+    ];
+    const edges = [
+      makeGeneticEdge('affectedFather', 'daughter'),
+      makeGeneticEdge('carrierMother', 'daughter'),
+      makeGeneticEdge('affectedFather', 'son'),
+      makeGeneticEdge('carrierMother', 'son'),
+    ];
+    const resolveSex = sexResolver({
+      affectedFather: 'male',
+      carrierMother: 'female',
+      daughter: 'female',
+      son: 'male',
+    });
+    const graph = buildGraph(nodes, edges, resolveSex);
+    // `carrierMother` reaches obligateCarrier via her own affected father in a
+    // separate branch; here we exercise the flag, so seed her status directly
+    // through the primary computation by giving her an affected father too.
+    const statuses: Map<string, Status> = new Map([
+      ['affectedFather', 'affected'],
+      ['carrierMother', 'obligateCarrier'],
+      ['daughter', 'obligateCarrier'],
+    ]);
+    const result = computeXLinkedRecessiveHomozygous(
+      graph,
+      statuses,
+      resolveSex,
+    );
+
+    it('flags the daughter of an affected father + carrier mother as true', () => {
+      expect(flag(result, 'daughter')).toBe(true);
+    });
+
+    it('does NOT flag the son (daughters only)', () => {
+      expect(flag(result, 'son')).toBe(false);
+    });
+
+    it("keeps the daughter's primary status as obligateCarrier (unchanged)", () => {
+      const affected = new Set(['affectedFather']);
+      const primary = computeXLinkedRecessive(graph, affected, resolveSex);
+      expect(status(primary, 'daughter')).toBe('obligateCarrier');
+    });
+  });
+
+  describe('control: affected father + non-carrier (unknown) mother -> daughter not flagged', () => {
+    /**
+     *   affectedFather (affected MALE) --- mother (female, status unknown)
+     *               \                     /
+     *               daughter (female)
+     *
+     *   The mother carries no disease allele (status unknown), so the daughter
+     *   cannot be homozygous-affected -> not flagged.
+     */
+    const nodes = [
+      makeNode('affectedFather'),
+      makeNode('mother'),
+      makeNode('daughter'),
+    ];
+    const edges = [
+      makeGeneticEdge('affectedFather', 'daughter'),
+      makeGeneticEdge('mother', 'daughter'),
+    ];
+    const resolveSex = sexResolver({
+      affectedFather: 'male',
+      mother: 'female',
+      daughter: 'female',
+    });
+    const graph = buildGraph(nodes, edges, resolveSex);
+    const statuses: Map<string, Status> = new Map([
+      ['affectedFather', 'affected'],
+      ['daughter', 'obligateCarrier'],
+      // mother intentionally absent -> unknown
+    ]);
+    const result = computeXLinkedRecessiveHomozygous(
+      graph,
+      statuses,
+      resolveSex,
+    );
+
+    it('does NOT flag the daughter when the mother is a non-carrier', () => {
+      expect(flag(result, 'daughter')).toBe(false);
+    });
+  });
+
+  describe('sex-unknown guard: a parent of unknown sex -> daughter not flagged', () => {
+    /**
+     *   parentA (UNKNOWN sex, status affected) --- carrierMother (female carrier)
+     *               \                             /
+     *               daughter (female)
+     *
+     *   The would-be affected FATHER has unknown sex, so the affected-father side
+     *   of the rule cannot be applied -> not flagged.
+     */
+    const nodes = [
+      makeNode('parentA'),
+      makeNode('carrierMother'),
+      makeNode('daughter'),
+    ];
+    const edges = [
+      makeGeneticEdge('parentA', 'daughter'),
+      makeGeneticEdge('carrierMother', 'daughter'),
+    ];
+    const resolveSex = sexResolver({
+      carrierMother: 'female',
+      daughter: 'female',
+      // parentA intentionally omitted -> 'unknown'
+    });
+    const graph = buildGraph(nodes, edges, resolveSex);
+    const statuses: Map<string, Status> = new Map([
+      ['parentA', 'affected'],
+      ['carrierMother', 'obligateCarrier'],
+      ['daughter', 'obligateCarrier'],
+    ]);
+    const result = computeXLinkedRecessiveHomozygous(
+      graph,
+      statuses,
+      resolveSex,
+    );
+
+    it('does NOT flag the daughter when a parent has unknown sex', () => {
+      expect(flag(result, 'daughter')).toBe(false);
+    });
+  });
+
+  describe('sex-unknown guard: the CHILD has unknown sex -> not flagged', () => {
+    /**
+     *   affectedFather (affected MALE) --- carrierMother (female carrier)
+     *               \                     /
+     *               child (UNKNOWN sex)
+     *
+     *   The rule is daughters-only; a child whose own sex is unknown is not a
+     *   daughter -> not flagged.
+     */
+    const nodes = [
+      makeNode('affectedFather'),
+      makeNode('carrierMother'),
+      makeNode('child'),
+    ];
+    const edges = [
+      makeGeneticEdge('affectedFather', 'child'),
+      makeGeneticEdge('carrierMother', 'child'),
+    ];
+    const resolveSex = sexResolver({
+      affectedFather: 'male',
+      carrierMother: 'female',
+      // child intentionally omitted -> 'unknown'
+    });
+    const graph = buildGraph(nodes, edges, resolveSex);
+    const statuses: Map<string, Status> = new Map([
+      ['affectedFather', 'affected'],
+      ['carrierMother', 'obligateCarrier'],
+    ]);
+    const result = computeXLinkedRecessiveHomozygous(
+      graph,
+      statuses,
+      resolveSex,
+    );
+
+    it('does NOT flag a child whose own sex is unknown', () => {
+      expect(flag(result, 'child')).toBe(false);
     });
   });
 });
