@@ -136,6 +136,21 @@ export default function PedigreeView({
 
     if (!result) return;
 
+    if (
+      result.partnerType === 'existing' &&
+      typeof result.existingPartnerId === 'string'
+    ) {
+      addEdge({
+        from: nodeId,
+        to: result.existingPartnerId,
+        attributes: {
+          [relationshipTypeVariable]: ['partner'],
+          [isActiveVariable]: result.current !== 'ex',
+        },
+      });
+      return;
+    }
+
     const name = typeof result.name === 'string' ? result.name : '';
 
     const formAttrs: Record<string, VariableValue> = {};
