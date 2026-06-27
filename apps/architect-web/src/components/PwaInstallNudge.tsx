@@ -1,5 +1,5 @@
 import { Download, X } from 'lucide-react';
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 
 import Button from '~/lib/legacy-ui/components/Button';
 import { cx } from '~/utils/cva';
@@ -10,7 +10,7 @@ import {
 } from '~/utils/installPrompt';
 
 const DISMISSED_KEY = 'architect:pwa-install-nudge-dismissed';
-const LEARN_MORE_URL = 'https://documentation.networkcanvas.com';
+const SHOW_DELAY_MS = 5000;
 
 const readDismissed = () => {
   try {
@@ -26,8 +26,17 @@ const PwaInstallNudge = () => {
     getDeferredPrompt,
   );
   const [dismissed, setDismissed] = useState(readDismissed);
+  const [ready, setReady] = useState(false);
 
-  if (!deferredPrompt || dismissed) return null;
+  // Hold the nudge back for a few seconds so it doesn't interrupt the moment the
+  // page loads.
+  useEffect(() => {
+    if (!deferredPrompt) return undefined;
+    const timer = window.setTimeout(() => setReady(true), SHOW_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [deferredPrompt]);
+
+  if (!deferredPrompt || dismissed || !ready) return null;
 
   const dismiss = () => {
     try {
@@ -66,7 +75,7 @@ const PwaInstallNudge = () => {
         Did you know that you can install Architect Web and use it like an app
         (even offline)?
       </p>
-      <div className="flex items-center gap-(--space-md)">
+      <div className="flex justify-end">
         <Button
           color="sea-green"
           size="small"
@@ -76,14 +85,6 @@ const PwaInstallNudge = () => {
           <Download />
           Install
         </Button>
-        <a
-          href={LEARN_MORE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-action font-medium underline underline-offset-2"
-        >
-          Learn more
-        </a>
       </div>
     </aside>
   );

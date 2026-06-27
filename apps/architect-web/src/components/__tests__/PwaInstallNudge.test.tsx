@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockGetDeferredPrompt, mockSubscribe, mockPromptInstall } = vi.hoisted(
   () => ({
@@ -18,10 +18,19 @@ vi.mock('~/utils/installPrompt', () => ({
 import PwaInstallNudge from '../PwaInstallNudge';
 
 const DISMISSED_KEY = 'architect:pwa-install-nudge-dismissed';
+const SHOW_DELAY_MS = 5000;
 // A stable object so useSyncExternalStore's snapshot doesn't change identity.
 const FAKE_PROMPT = {};
 
+const passDelay = () => act(() => vi.advanceTimersByTime(SHOW_DELAY_MS));
+
+beforeEach(() => {
+  vi.useFakeTimers();
+});
+
 afterEach(() => {
+  vi.runOnlyPendingTimers();
+  vi.useRealTimers();
   vi.clearAllMocks();
   localStorage.clear();
 });
@@ -30,38 +39,40 @@ describe('PwaInstallNudge', () => {
   it('renders nothing when no install prompt is available', () => {
     mockGetDeferredPrompt.mockReturnValue(null);
     const { container } = render(<PwaInstallNudge />);
+    passDelay();
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('shows the nudge and installs on click when a prompt is available', () => {
+  it('waits for the delay before showing', () => {
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
     render(<PwaInstallNudge />);
 
+    expect(screen.queryByText(/use it like an app/i)).not.toBeInTheDocument();
+    passDelay();
     expect(screen.getByText(/use it like an app/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /^install$/i }));
-    expect(mockPromptInstall).toHaveBeenCalledTimes(1);
   });
 
-  it('offers a "Learn more" link that opens the docs in a new tab', () => {
+  it('installs on click once shown', () => {
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
     render(<PwaInstallNudge />);
+    passDelay();
 
-    const link = screen.getByRole('link', { name: /learn more/i });
-    expect(link).toHaveAttribute('target', '_blank');
-    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
-    expect(link.getAttribute('href')).toMatch(/^https:\/\//);
+    fireEvent.click(screen.getByRole('button', { name: /^install$/i }));
+    expect(mockPromptInstall).toHaveBeenCalledTimes(1);
   });
 
   it('renders nothing when previously dismissed', () => {
     localStorage.setItem(DISMISSED_KEY, 'true');
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
     const { container } = render(<PwaInstallNudge />);
+    passDelay();
     expect(container).toBeEmptyDOMElement();
   });
 
   it('persists dismissal and hides when dismissed', () => {
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
     render(<PwaInstallNudge />);
+    passDelay();
 
     fireEvent.click(screen.getByRole('button', { name: /dismiss/i }));
 
