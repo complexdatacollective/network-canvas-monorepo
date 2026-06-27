@@ -83,6 +83,20 @@ describe('geneticParentCandidates', () => {
     expect(result.has('mum')).toBe(false);
   });
 
+  it('child: an existing partner (consanguineous or otherwise) is offered as a co-parent', () => {
+    const edges = new Map<string, NcEdge>([
+      ...makeEdges(),
+      edge('ego', 'cousin', 'partner'),
+    ]);
+    const coParents = geneticParentCandidates(
+      'ego',
+      'child',
+      edges,
+      variableConfig,
+    );
+    expect(coParents.has('cousin')).toBe(true); // partner is a valid co-parent
+  });
+
   it("offers the anchor's siblings as child donors, but never as the anchor's own or a new sibling's parent", () => {
     const edges = new Map<string, NcEdge>([
       ...makeEdges(),
