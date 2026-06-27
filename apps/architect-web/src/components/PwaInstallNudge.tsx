@@ -1,8 +1,7 @@
 import { Download, X } from 'lucide-react';
 import { useState, useSyncExternalStore } from 'react';
 
-import ExternalLink from '~/components/ExternalLink';
-import Button, { IconButton } from '~/lib/legacy-ui/components/Button';
+import Button from '~/lib/legacy-ui/components/Button';
 import { cx } from '~/utils/cva';
 import {
   getDeferredPrompt,
@@ -43,20 +42,27 @@ const PwaInstallNudge = () => {
     <aside
       aria-label="Install Architect"
       className={cx(
-        'fixed right-(--space-md) bottom-(--space-md) z-(--z-global-ui)',
+        'fixed top-(--space-md) right-(--space-md) z-(--z-tooltip)',
         'flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-(--space-sm)',
-        'border-border bg-surface-1 text-surface-1-foreground rounded border p-(--space-md) shadow-lg',
+        'border-border bg-surface-1 text-surface-1-foreground rounded border p-(--space-md) text-sm shadow-lg',
       )}
     >
-      <IconButton
-        variant="text"
-        size="small"
-        aria-label="Dismiss"
-        className="absolute top-(--space-xs) right-(--space-xs)"
-        onClick={dismiss}
-        icon={<X />}
+      {/* Arrow pointing up toward the browser's address-bar install icon. */}
+      <span
+        aria-hidden
+        className="border-border bg-surface-1 absolute top-[-7px] right-7 size-3 rotate-45 border-t border-l"
       />
-      <p className="m-0 pr-(--space-lg) text-sm">
+
+      <button
+        type="button"
+        aria-label="Dismiss"
+        onClick={dismiss}
+        className="text-muted-foreground hover:text-surface-1-foreground absolute top-2 right-2 inline-flex size-6 items-center justify-center rounded-full transition-colors hover:bg-current/10"
+      >
+        <X className="size-4" />
+      </button>
+
+      <p className="m-0 pr-(--space-lg)">
         Did you know that you can install Architect Web and use it like an app
         (even offline)?
       </p>
@@ -64,12 +70,20 @@ const PwaInstallNudge = () => {
         <Button
           color="sea-green"
           size="small"
+          className="text-sm"
           onClick={() => void promptInstall()}
         >
           <Download />
           Install
         </Button>
-        <ExternalLink href={LEARN_MORE_URL}>Learn more</ExternalLink>
+        <a
+          href={LEARN_MORE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-action font-medium underline underline-offset-2"
+        >
+          Learn more
+        </a>
       </div>
     </aside>
   );

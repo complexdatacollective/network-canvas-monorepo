@@ -44,16 +44,12 @@ describe('PwaInstallNudge', () => {
 
   it('offers a "Learn more" link that opens the docs in a new tab', () => {
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
-    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
     render(<PwaInstallNudge />);
 
-    fireEvent.click(screen.getByRole('link', { name: /learn more/i }));
-
-    expect(openSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/^https:\/\//),
-      '_blank',
-      expect.stringContaining('noopener'),
-    );
+    const link = screen.getByRole('link', { name: /learn more/i });
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+    expect(link.getAttribute('href')).toMatch(/^https:\/\//);
   });
 
   it('renders nothing when previously dismissed', () => {
