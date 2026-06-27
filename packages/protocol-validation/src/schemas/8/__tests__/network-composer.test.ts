@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { stageSchema } from '../stages';
 import { networkComposerStage } from '../stages/network-composer';
 
 const validStage = {
@@ -78,5 +79,15 @@ describe('networkComposerStage schema', () => {
       behaviours: { automaticLayout: { enabled: false } },
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe('stage discriminated union', () => {
+  it('discriminates a NetworkComposer stage', () => {
+    const result = stageSchema.safeParse(validStage);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.type).toBe('NetworkComposer');
+    }
   });
 });
