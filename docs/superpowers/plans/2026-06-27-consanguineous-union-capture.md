@@ -4,7 +4,7 @@
 
 **Goal:** Let a participant partner with an existing relative (consanguineous unions) and attribute children to that union, and make the NarrativePedigree genetics engine consanguinity-correct for the resulting recessive-homozygosity risk.
 
-**Architecture:** Two largely-independent tracks. **Track A (capture & rendering, FamilyPedigree):** add a `partnerCandidates()` selector, extend the Add-partner form with an existing-or-new picker + screening prompt, route an existing-partner choice to an **edge-only** add (never `addNode`), and exercise/harden the already-built-but-dormant consanguinity rendering (NSGC double-line + duplicate-arc loops). **Track B (genetics & UI, NarrativePedigree):** de-duplicate genetic edges at ingestion, then add a **non-lattice `atRiskHomozygous` flag** as a *parallel map* (the existing `computeStatuses` and lattice are untouched; a new `computeAtRiskHomozygous` computes the flag separately), set by a two-sided AR rule and an XLR daughter rule, and surface it in `StickerNode`/`ClassicNotationNode`.
+**Architecture:** Two largely-independent tracks. **Track A (capture & rendering, FamilyPedigree):** add a `partnerCandidates()` selector, extend the Add-partner form with an existing-or-new picker + screening prompt, route an existing-partner choice to an **edge-only** add (never `addNode`), and exercise/harden the already-built-but-dormant consanguinity rendering (NSGC double-line + duplicate-arc loops). **Track B (genetics & UI, NarrativePedigree):** de-duplicate genetic edges at ingestion, then add a **non-lattice `atRiskHomozygous` flag** as a _parallel map_ (the existing `computeStatuses` and lattice are untouched; a new `computeAtRiskHomozygous` computes the flag separately), set by a two-sided AR rule and an XLR daughter rule, and surface it in `StickerNode`/`ClassicNotationNode`.
 
 **Tech Stack:** TypeScript (strict, no `any`/`as`/barrel files), React, Vitest, Storybook (interaction tests), `@codaco/protocol-utilities` `SyntheticInterview` for story fixtures.
 
@@ -22,7 +22,7 @@ Every task implicitly includes these. Copied from the spec and project conventio
 - **XLR daughter rule:** a daughter of an **affected father + carrier-or-affected mother** (same disease) keeps her primary `obligateCarrier` status **and** gets the flag. Sex required: if either parent's sex is `unknown`, omit the flag. (spec §4.3)
 - **No consanguinity logic for AD / XLD / Y / mitochondrial / multifactorial** — these never change under consanguinity; do not add code for them. (spec §4.3, §7)
 - **Never invent an `unaffected` status.** Absence from a result map = `unknown`. A loop never manufactures `obligate*` from topology; the autozygosity case is `atRiskHomozygous` (a flag), never `obligateAffected`. (spec §4.5)
-- **UI copy must NOT read as reassurance.** The flag indicator must clearly signal *risk of being affected*, visually distinct from primary-status symbols. (spec §4.2)
+- **UI copy must NOT read as reassurance.** The flag indicator must clearly signal _risk of being affected_, visually distinct from primary-status symbols. (spec §4.2)
 - **Research-team sign-off gate (BLOCKING for merge), folds into the existing PR #713 genetics gate.** The §4 genetics changes (taxonomy/flag approach; the two-sided threshold of two merely-`atRiskCarrier` parents flagging the same as two obligate; known-carrier seeding; degree-scaling; multifactorial) need research-team sign-off before merge. Build it; do not merge without sign-off. (spec §6)
 - **Project conventions:** TypeScript strict — **no `any`, no `as`-to-bypass, no `!` non-null assertions, no barrel files**; migrate call sites (no compat shims); run the formatter + `oxlint --fix` (pre-commit hook does this); add a **changeset** for `@codaco/interview` (released); run **targeted Vitest** per task; **never run e2e/Playwright locally** (CI owns e2e); defer `pnpm typecheck`/`pnpm knip` to ONE pass at the end (per project memory). Interview vitest uses `--project=units` locally.
 
@@ -31,6 +31,7 @@ Every task implicitly includes these. Copied from the spec and project conventio
 ## File structure
 
 **Track A (capture & rendering) — `packages/interview/src/interfaces/FamilyPedigree/`:**
+
 - `components/wizards/parentCandidates.ts` — add `partnerCandidates()` (Task A1).
 - `components/wizards/__tests__/parentCandidates.test.ts` — tests (A1, A2).
 - `components/AddPersonForm.tsx` — existing-or-new screening + picker (A3).
@@ -39,6 +40,7 @@ Every task implicitly includes these. Copied from the spec and project conventio
 - `FamilyPedigree.consanguinity.stories.tsx` — representation + creation-via-wizard (A5).
 
 **Track B (genetics & UI) — `packages/interview/src/interfaces/NarrativePedigree/`:**
+
 - `genetics/geneticGraph.ts` + `genetics/__tests__/geneticGraph.test.ts` — edge de-dup (B1).
 - `genetics/computeStatuses.ts` — new `computeAtRiskHomozygous` orchestrator (B2).
 - `genetics/patterns/autosomal.ts` — `computeAutosomalRecessiveHomozygous` (B2).
@@ -57,10 +59,12 @@ The two tracks are independent (different interfaces, different concerns) and ma
 ### Task A1: `partnerCandidates()` selector
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/FamilyPedigree/components/wizards/parentCandidates.ts` (add export after `siblingIds`, ~line 110)
 - Test: `packages/interview/src/interfaces/FamilyPedigree/components/wizards/__tests__/parentCandidates.test.ts`
 
 **Interfaces:**
+
 - Produces: `export function partnerCandidates(anchorId: string, nodes: Map<string, NcNode>, edges: Map<string, NcEdge>, variableConfig: VariableConfig): Set<string>` — every node except `anchorId`, its parents, its children, and its full siblings.
 - Consumes: existing private helpers in the same file — `parentIdsOf`, `siblingIds`, `descendantIds`.
 
@@ -69,11 +73,11 @@ The two tracks are independent (different interfaces, different concerns) and ma
 ```ts
 const c = partnerCandidates('ego', nodes, edges, variableConfig);
 expect([...c].sort()).toEqual(['cousin', 'grandma', 'uncle'].sort());
-expect(c.has('ego')).toBe(false);   // self
-expect(c.has('mum')).toBe(false);   // parent
-expect(c.has('dad')).toBe(false);   // parent
-expect(c.has('kid')).toBe(false);   // child
-expect(c.has('sib')).toBe(false);   // full sibling
+expect(c.has('ego')).toBe(false); // self
+expect(c.has('mum')).toBe(false); // parent
+expect(c.has('dad')).toBe(false); // parent
+expect(c.has('kid')).toBe(false); // child
+expect(c.has('sib')).toBe(false); // full sibling
 ```
 
 - [ ] **Step 2: Run it; verify it fails** with "partnerCandidates is not a function". Run: `pnpm --filter @codaco/interview exec vitest run --project units parentCandidates`
@@ -96,7 +100,8 @@ export function partnerCandidates(
   const excluded = new Set<string>([anchorId]);
   for (const p of parentIdsOf(anchorId, edges, variableConfig)) excluded.add(p);
   for (const c of childIdsOf(anchorId, edges, variableConfig)) excluded.add(c);
-  for (const s of fullSiblingIds(anchorId, edges, variableConfig)) excluded.add(s);
+  for (const s of fullSiblingIds(anchorId, edges, variableConfig))
+    excluded.add(s);
   const result = new Set<string>();
   for (const id of nodes.keys()) if (!excluded.has(id)) result.add(id);
   return result;
@@ -114,15 +119,22 @@ Note: `siblingIds` returns full+half siblings; first-degree excludes **full** si
 ### Task A2: Verify partners are already valid co-parents (children of the union)
 
 **Files:**
+
 - Test only: `packages/interview/src/interfaces/FamilyPedigree/components/wizards/__tests__/parentCandidates.test.ts`
 
 **Interfaces:**
+
 - Consumes: existing `geneticParentCandidates(anchorId, 'child', edges, variableConfig)` (no code change — this verifies the spec §2 "children fall out" claim).
 
 - [ ] **Step 1: Write the test.** Add a `partner` edge `ego`⟷`cousin`. Assert the partner is offered as a co-parent of ego's child:
 
 ```ts
-const coParents = geneticParentCandidates('ego', 'child', edges, variableConfig);
+const coParents = geneticParentCandidates(
+  'ego',
+  'child',
+  edges,
+  variableConfig,
+);
 expect(coParents.has('cousin')).toBe(true); // partner is a valid co-parent
 ```
 
@@ -135,9 +147,11 @@ expect(coParents.has('cousin')).toBe(true); // partner is a valid co-parent
 ### Task A3: Add-partner form — existing-or-new screening + picker
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/FamilyPedigree/components/AddPersonForm.tsx`
 
 **Interfaces:**
+
 - Produces: the form result now carries `partnerType: 'existing' | 'new'` and (when `existing`) `existingPartnerId: string`. The `new` branch keeps today's fields (`name`, `current`, the per-child `parentType-{id}`).
 - Consumes: `partnerCandidates` (A1); `buildNodeOptions` (existing, `components/wizards/buildNodeOptions.ts`) to turn the candidate `Set<string>` into labelled radio options.
 
@@ -160,10 +174,12 @@ expect(coParents.has('cousin')).toBe(true); // partner is a valid co-parent
 ### Task A4: Route an existing-partner choice to an edge-only add
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/FamilyPedigree/pedigree-layout/components/PedigreeView.tsx` (`handleAddPerson`, ~lines 137-164)
 - Test: `packages/interview/src/interfaces/FamilyPedigree/pedigree-layout/__tests__/PedigreeView.test.tsx` (or the nearest existing harness)
 
 **Interfaces:**
+
 - Consumes: the A3 form result (`partnerType`, `existingPartnerId`).
 
 - [ ] **Step 1: Write the failing test.** Drive the partner flow choosing an existing `cousin`; assert **exactly one** new edge is created (a `partner` edge `from: ego, to: cousin`) and **no** new node (`addNode` not called). Then a control: choosing **new** still creates a node + edge as today.
@@ -173,7 +189,10 @@ expect(coParents.has('cousin')).toBe(true); // partner is a valid co-parent
 - [ ] **Step 3: Implement.** In `handleAddPerson`, after `const result = await openDialog(...)` and the early `if (!result) return;`, branch on `result.partnerType`:
 
 ```ts
-if (result.partnerType === 'existing' && typeof result.existingPartnerId === 'string') {
+if (
+  result.partnerType === 'existing' &&
+  typeof result.existingPartnerId === 'string'
+) {
   addEdge({
     from: nodeId,
     to: result.existingPartnerId,
@@ -198,11 +217,13 @@ Place the branch so the existing `new`-person path runs unchanged when `partnerT
 ### Task A5: Exercise & harden the consanguinity rendering (stories + connector test)
 
 **Files:**
+
 - Create: `packages/interview/src/interfaces/FamilyPedigree/FamilyPedigree.consanguinity.stories.tsx`
 - Test: `packages/interview/src/interfaces/FamilyPedigree/pedigree-layout/__tests__/connectors.test.ts` (check whether it exists; if not, create it)
 - Likely modify (bug-fix only, as driven out): `pedigree-layout/sugiyamaLayout.ts`, `pedigree-layout/connectors.ts`
 
 **Interfaces:**
+
 - Consumes: the consanguinity detection (`sugiyamaLayout.ts` ancestor-intersection → `group===2`) and the double-line/duplicate-arc connectors (`connectors.ts`), both currently **dormant**.
 
 > ⚠️ These paths have never executed — expect latent bugs (ancestor traversal on the loop, `group` off-by-one, `doubleSegment` y-offset, duplicate-arc geometry). Fix what the story/tests drive out; keep fixes minimal and covered by a test.
@@ -226,10 +247,12 @@ Place the branch so the existing `new`-person path runs unchanged when `partnerT
 ### Task B1: Edge de-duplication in `buildGeneticGraph`
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/NarrativePedigree/genetics/geneticGraph.ts` (edge-ingestion loop, ~lines 110-126)
 - Test: `packages/interview/src/interfaces/NarrativePedigree/genetics/__tests__/geneticGraph.test.ts`
 
 **Interfaces:**
+
 - Produces: `parentsOf`/`childrenOf`/`fullSiblingsOf`/`halfSiblingsOf` now count **distinct** individuals — a duplicated `parent→child` edge is ingested once.
 
 - [ ] **Step 1: Write the failing test.** Using the file's edge fixture idiom (`makeGeneticEdge` or equivalent), ingest **two identical** `A→child` parent edges (no second parent). Assert `graph.parentsOf('child')` returns exactly **one** entry for `A`. Run; verify it returns two (fails).
@@ -247,11 +270,13 @@ Place the branch so the existing `new`-person path runs unchanged when `partnerT
 ### Task B2: `computeAtRiskHomozygous` orchestrator + AR two-sided rule
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/NarrativePedigree/genetics/computeStatuses.ts` (add `computeAtRiskHomozygous`)
 - Modify: `packages/interview/src/interfaces/NarrativePedigree/genetics/patterns/autosomal.ts` (add `computeAutosomalRecessiveHomozygous`)
 - Test: `genetics/__tests__/autosomal.test.ts`, `genetics/__tests__/computeStatuses.test.ts`
 
 **Interfaces:**
+
 - Produces:
   - `export function computeAtRiskHomozygous(graph: GeneticGraph, statuses: Map<string, Status>, pattern: InheritancePattern, resolveSex: (id: string) => Sex): Map<string, boolean>` — dispatches `autosomalRecessive → computeAutosomalRecessiveHomozygous(graph, statuses)`, `xLinkedRecessive → computeXLinkedRecessiveHomozygous(graph, statuses, resolveSex)` (Task B3), **all other patterns → empty `Map`**. `statuses` is the already-computed primary status map for the same disease/pattern (so the flag computation reuses it, no recompute).
   - `export function computeAutosomalRecessiveHomozygous(graph: GeneticGraph, statuses: Map<string, Status>): Map<string, boolean>`.
@@ -266,9 +291,9 @@ Place the branch so the existing `new`-person path runs unchanged when `partnerT
   - **No segregating allele:** `affected` empty → empty map (no flags).
 
 ```ts
-const statuses = computeAutosomalRecessive(graph, affected);     // primary, unchanged
+const statuses = computeAutosomalRecessive(graph, affected); // primary, unchanged
 const flags = computeAutosomalRecessiveHomozygous(graph, statuses);
-expect(flags.get('child')).toBe(true);          // two-sided carriers
+expect(flags.get('child')).toBe(true); // two-sided carriers
 expect(flags.get('oneSidedChild') ?? false).toBe(false);
 ```
 
@@ -287,10 +312,12 @@ expect(flags.get('oneSidedChild') ?? false).toBe(false);
 ### Task B3: XLR daughter rule
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/NarrativePedigree/genetics/patterns/xLinked.ts` (add `computeXLinkedRecessiveHomozygous`)
 - Test: `genetics/__tests__/xLinked.test.ts`
 
 **Interfaces:**
+
 - Produces: `export function computeXLinkedRecessiveHomozygous(graph: GeneticGraph, statuses: Map<string, Status>, resolveSex: (id: string) => Sex): Map<string, boolean>`. Wired into `computeAtRiskHomozygous` (B2 dispatch).
 
 - [ ] **Step 1: Write the failing tests** in `xLinked.test.ts`:
@@ -311,10 +338,12 @@ expect(flags.get('oneSidedChild') ?? false).toBe(false);
 ### Task B4: Surface the flag in `StickerNode`
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/NarrativePedigree/components/StickerNode.tsx` (`DiseaseSticker` type ~line 9; `StickerMarker` ~178-217)
 - Test: `packages/interview/src/interfaces/NarrativePedigree/components/__tests__/StickerNode.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `DiseaseSticker` gains `atRiskHomozygous?: boolean`.
 - Produces: a distinct marker with a stable test hook `data-atrisk-homozygous-marker` and a **non-reassuring** accessible label.
 
@@ -333,10 +362,12 @@ expect(flags.get('oneSidedChild') ?? false).toBe(false);
 ### Task B5: Surface the flag in `ClassicNotationNode`
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/NarrativePedigree/components/ClassicNotationNode.tsx` (`ClassicDisease` type ~line 7; `NotationOverlay` ~233-256; `ClassicNotationNode` ~273-298)
 - Test: `packages/interview/src/interfaces/NarrativePedigree/components/__tests__/ClassicNotationNode.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `ClassicDisease` gains `atRiskHomozygous?: boolean`.
 - Produces: a distinct overlay with test hook `data-atrisk-homozygous-notation` and a non-reassuring label.
 
@@ -355,9 +386,11 @@ expect(flags.get('oneSidedChild') ?? false).toBe(false);
 ### Task B6: Thread the flag from the engine to the view
 
 **Files:**
+
 - Modify: `packages/interview/src/interfaces/NarrativePedigree/NarrativePedigreeView.tsx` (`statusesByDisease` useMemo ~181-196; `renderClassic` ~305-321; `renderSticker` ~323-333)
 
 **Interfaces:**
+
 - Consumes: `computeAtRiskHomozygous` (B2); `DiseaseSticker.atRiskHomozygous` (B4); `ClassicDisease.atRiskHomozygous` (B5).
 
 - [ ] **Step 1: Failing test** (component or Storybook play): with a pre-seeded cousin-union pedigree where the AR rule flags the child, `NarrativePedigreeView` renders the child's sticker/classic node with the at-risk-homozygous marker; a non-flagged node does not. (Mirror the existing NarrativePedigree story fixtures; the stage needs `framing`+`boundaries`.)
@@ -375,6 +408,7 @@ expect(flags.get('oneSidedChild') ?? false).toBe(false);
 ## Task C1: Changeset, gate note, and final verification
 
 **Files:**
+
 - Create: `.changeset/<name>.md`
 - Verify across the branch.
 

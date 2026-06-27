@@ -22,7 +22,7 @@ therefore uncapturable.
 A standards/literature review (clinical-genetics nomenclature; pedigree interchange
 formats; participant-facing tools — see §8) is unambiguous: the foundational
 capability a pedigree instrument needs is to **connect two existing individuals as
-partners**, forming a closed *mating loop*. "Mint a fresh person per partner" — our
+partners**, forming a closed _mating loop_. "Mint a fresh person per partner" — our
 current behaviour — is named as the single most-cited UX failure in family-history
 tools (Welch et al. 2013) and the antipattern that destroys the loop and makes the
 inbreeding coefficient uncomputable. Clinical pedigree editors (PhenoTips,
@@ -35,7 +35,7 @@ format (LINKAGE/`.ped`, PLINK `.fam`, GEDCOM, BOADICEA/CanRisk) stores a
 "consanguinity" field — the mating loop is implicit in shared-ancestor identity, and
 the inbreeding coefficient is computed from it. Our interview network is already a
 single shared graph with edges keyed by `{from, to, type}`, so a partner edge between
-ego and a cousin is *just another edge*. Consequently:
+ego and a cousin is _just another edge_. Consequently:
 
 - **No data-model change.** No new "consanguinity" or "degree" field. The fix is
   (a) letting the partner be an existing node, (b) **never** duplicating that node,
@@ -45,7 +45,7 @@ ego and a cousin is *just another edge*. Consequently:
   be created today (see §3, §4). The work is concentrated in **capture** plus a
   **bounded, adversarially-verified genetics correction**.
 
-A deliberate scope boundary: this feature changes a *categorical* genetic call **only
+A deliberate scope boundary: this feature changes a _categorical_ genetic call **only
 at the recessive-homozygosity boundary**. Autosomal dominant, X-linked dominant,
 Y-linked, mitochondrial, and multifactorial inheritance do **not** change under
 consanguinity and are explicitly left alone (§4, §7).
@@ -61,8 +61,8 @@ currently handled in `PedigreeView.handlePartner`) with a first selector that mi
 the **existing BioTriad "existing-or-new" pattern** (egg-source/sperm-source already
 offer "pick an existing person OR create a new person"):
 
-- A **non-judgmental screening prompt** — *"Is this person already in your family
-  tree / related to you?"* — with two branches:
+- A **non-judgmental screening prompt** — _"Is this person already in your family
+  tree / related to you?"_ — with two branches:
   - **Pick existing** → choose from a candidate list (§1.2).
   - **Add new** → today's create-a-new-person flow, unchanged.
 - The screening prompt is the **elicitation aid** the literature treats as
@@ -93,9 +93,9 @@ is idempotent.
 
 - **Existing person chosen:** create **only** the partner edge
   `{from: anchorId, to: existingId, [relationshipTypeVariable]: ['partner'],
-  [isActiveVariable]: current/ex}`. **Never call `addNode`.** Duplicating the partner
+[isActiveVariable]: current/ex}`. **Never call `addNode`.** Duplicating the partner
   is the antipattern that severs the loop and makes the inbreeding coefficient
-  uncomputable — the whole point is that the *same* node is reachable as both a
+  uncomputable — the whole point is that the _same_ node is reachable as both a
   relative and a partner.
 - **New person:** unchanged (`addNode` + partner edge, as today).
 - **No data-model change.**
@@ -133,6 +133,7 @@ Because these paths have **never executed**, treat them as likely to harbour lat
 bugs (this session already hit several crashes in equivalently-dormant pedigree paths).
 
 **Work:**
+
 - Add a **representation story** (pre-seeded: ego ⚭ first cousin with a shared child)
   and a **creation-via-wizard story**; drive both and fix whatever breaks in the
   consanguinity detection, double-line rendering, duplicate-arc/loop layout.
@@ -143,7 +144,7 @@ bugs (this session already hit several crashes in equivalently-dormant pedigree 
 
 ---
 
-## §4 — Genetics: make the engine consanguinity-*correct*
+## §4 — Genetics: make the engine consanguinity-_correct_
 
 The NarrativePedigree Mendelian engine is currently consanguinity-**safe** (a
 visited-set terminates loops) but not consanguinity-**correct**. This section is the
@@ -160,7 +161,7 @@ The **child of two carrier cousins can be homozygous-affected by autozygosity**
 **even though neither parent is affected**. That child warrants an
 **at-risk-of-being-affected** signal (`atRiskAffected`-level risk — possible, not
 certain; **never** `obligateAffected`, which is reserved for a child both of whose
-parents are *nominated* affected). How that signal is carried without being masked is
+parents are _nominated_ affected). How that signal is carried without being masked is
 §4.2. Today the engine leaves that child **`unknown`** — a genuine under-call.
 
 The same shape arises for **X-linked recessive**: a daughter of an affected father +
@@ -170,8 +171,8 @@ AR case.
 
 **The elevating predicate is two-sided and allele-conditioned, NOT
 consanguinity-detection-conditioned.** It must fire when a child has **≥2 distinct
-parents each `atRiskCarrier`-or-higher for the same disease** — which *also* correctly
-covers **compound heterozygosity** from two *unrelated* carrier lines (also
+parents each `atRiskCarrier`-or-higher for the same disease** — which _also_ correctly
+covers **compound heterozygosity** from two _unrelated_ carrier lines (also
 potentially homozygous-affected). **Hard constraint:** the predicate must **not** gate
 on graph ancestor-intersection / loop detection — doing so would wrongly drop the
 unrelated-carrier-lines case. With **no segregating allele**, consanguinity alone
@@ -182,9 +183,9 @@ allele from both sides).
 ### 4.2 Taxonomy change — a non-lattice "at-risk homozygous/affected" flag
 
 The fix cannot simply assign `atRiskAffected`, because the status precedence lattice
-ranks **`obligateCarrier` (index 2) *above* `atRiskAffected` (index 3)** — the order
+ranks **`obligateCarrier` (index 2) _above_ `atRiskAffected` (index 3)** — the order
 is **certainty**, not severity. So writing `atRiskAffected` onto a child who is
-*also* independently an `obligateCarrier` (reachable once arbitrary partnerships
+_also_ independently an `obligateCarrier` (reachable once arbitrary partnerships
 exist) is **silently masked** by `mergeStatus`, losing the affected-axis risk. This
 is the single soundness issue blocking **both** the AR and the XLR fixes — they are
 **one decision**.
@@ -201,21 +202,21 @@ masking and no loss of certainty/monotonicity.
   continues to merge by the existing lattice.
 - **UI:** `StickerNode` / `ClassicNotationNode` surface the flag as an additional
   indicator (distinct from the primary status), so a person shown as a certain carrier
-  who is *also* at risk of being affected reads correctly. **The UI copy must not
+  who is _also_ at risk of being affected reads correctly. **The UI copy must not
   present this as reassurance** (consistent with the existing mito/at-risk gate note).
 
 ### 4.3 Rules (verified)
 
-| Pattern | Scenario | Correct call |
-|---|---|---|
-| AR | Child with **≥2 distinct parents each `atRiskCarrier`+** for the same disease (autozygous cousin-union child **or** unrelated compound-het) | set **`atRiskHomozygous`** flag on the child (primary status unchanged) |
-| AR | Consanguineous union, **no** segregating allele anywhere | **nothing** — all nodes `unknown` |
-| AR | Only **one** parent at-risk/carrier | child **not** flagged (existing one-sided behaviour) |
-| XLR | Daughter of **affected father + carrier mother** (same disease) | keep **`obligateCarrier`** **+** set **`atRiskHomozygous`** flag |
-| XLR | Affected father + **unrelated non-carrier** mother | `obligateCarrier` only (unchanged) |
-| AD / XLD / Y / mito / multifactorial | any consanguineous union | **unchanged** — no consanguinity logic (no second independent allele path; over-engineering otherwise) |
+| Pattern                              | Scenario                                                                                                                                    | Correct call                                                                                           |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| AR                                   | Child with **≥2 distinct parents each `atRiskCarrier`+** for the same disease (autozygous cousin-union child **or** unrelated compound-het) | set **`atRiskHomozygous`** flag on the child (primary status unchanged)                                |
+| AR                                   | Consanguineous union, **no** segregating allele anywhere                                                                                    | **nothing** — all nodes `unknown`                                                                      |
+| AR                                   | Only **one** parent at-risk/carrier                                                                                                         | child **not** flagged (existing one-sided behaviour)                                                   |
+| XLR                                  | Daughter of **affected father + carrier mother** (same disease)                                                                             | keep **`obligateCarrier`** **+** set **`atRiskHomozygous`** flag                                       |
+| XLR                                  | Affected father + **unrelated non-carrier** mother                                                                                          | `obligateCarrier` only (unchanged)                                                                     |
+| AD / XLD / Y / mito / multifactorial | any consanguineous union                                                                                                                    | **unchanged** — no consanguinity logic (no second independent allele path; over-engineering otherwise) |
 
-Cousin-union *ancestors* are unchanged: an `affected` shared great-grandparent →
+Cousin-union _ancestors_ are unchanged: an `affected` shared great-grandparent →
 its children `obligateCarrier` → the cousins `atRiskCarrier` (a carrier ancestor
 forces nothing downstream → never `obligateCarrier`). Only the **child of the loop**
 gains the new flag.
@@ -280,7 +281,7 @@ This is correct and necessary on its own.
   screening prompt + link-existing edge wiring (no `addNode`).
 - `genetics/geneticGraph.ts` (`buildGeneticGraph`) — edge de-dup (§4.4).
 - `genetics/status.ts` + `genetics/computeStatuses.ts` + `genetics/patterns/
-  {autosomal,xLinked}.ts` — the `atRiskHomozygous` flag dimension + the two-sided AR
+{autosomal,xLinked}.ts` — the `atRiskHomozygous` flag dimension + the two-sided AR
   rule + the XLR daughter rule (§4.2–4.3).
 - `interfaces/NarrativePedigree/components/{StickerNode,ClassicNotationNode}.tsx` —
   surface the flag (non-reassuring copy).
@@ -300,10 +301,10 @@ They must not merge without research-team sign-off on:
    (explicit lattice override; a new compound status).
 2. **The two-sided threshold:** whether **two merely-`atRiskCarrier`** parents (two
    low priors, neither obligate) should set the **same** flag as two obligate-carrier
-   parents — there is no magnitude tier. Builder recommends *yes*; needs explicit
+   parents — there is no magnitude tier. Builder recommends _yes_; needs explicit
    sign-off.
 3. **Known-carrier seeding:** today the only seed is `affected`; a bare nominated
-   *known carrier* (unaffected Aa) is never seeded. If the product lets users nominate
+   _known carrier_ (unaffected Aa) is never seeded. If the product lets users nominate
    a known carrier, it needs its own seed set and interacts with the threshold above.
 4. **Degree scaling:** F differs by relationship (first cousins 1/16, double-first
    1/8, second cousins 1/64); the categorical taxonomy collapses all to one flag.
@@ -330,14 +331,14 @@ They must not merge without research-team sign-off on:
 ## §8 — References
 
 Standards & literature (from the research workflow): Bennett et al.,
-*Standardized Human Pedigree Nomenclature* (1995 *AJHG*; 2008 *J Genet Couns*;
+_Standardized Human Pedigree Nomenclature_ (1995 _AJHG_; 2008 _J Genet Couns_;
 2022 update) — double-line consanguinity, degree labelling, donor/surrogate/adoption/
-twin conventions. Woods et al. 2006 (*AJHG*, PMC1474039) and the kinship2 package
+twin conventions. Woods et al. 2006 (_AJHG_, PMC1474039) and the kinship2 package
 (Sinnwell et al. 2014) — autozygosity, F = 1/16 (first cousins), F = kinship of
 parents. GA4GH Pedigree (connects multiple individuals / loops) vs FHIR
 FamilyMemberHistory (cannot represent consanguinity). PhenoTips / open-pedigree
 (link-existing-node + consanguinity detection patterns). Welch et al. 2013
 (PMC3540532) — partner-linking as the dominant UX gap. Bishop/Saxby et al. 2008
-(*Genet Med*) — consanguinity missed without direct elicitation. Darr et al. 2019
+(_Genet Med_) — consanguinity missed without direct elicitation. Darr et al. 2019
 (PMC6615806) and Hamamy et al. 2011 — non-stigmatising framing; consanguineous
 marriage normative for ~1 billion people.
