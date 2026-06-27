@@ -35,6 +35,7 @@ type ComposerCanvasProps = {
   } | null;
   onBackgroundTap: (position: Position) => void;
   onNodeTap: (nodeId: string) => void;
+  onEdgeTap: (edgeId: string) => void;
   onNodeDragEnd: (nodeId: string, position: Position) => void;
   renamingNodeId?: string | null;
   onCommitRename?: (nodeId: string, value: string) => void;
@@ -92,6 +93,7 @@ export default function ComposerCanvas({
   simulation = null,
   onBackgroundTap,
   onNodeTap,
+  onEdgeTap,
   onNodeDragEnd,
   renamingNodeId = null,
   onCommitRename,
@@ -149,7 +151,7 @@ export default function ComposerCanvas({
       <div className="absolute inset-0 flex items-center justify-center">
         {background}
       </div>
-      <EdgeLayer edges={edges} store={canvasStore} />
+      <EdgeLayer edges={edges} store={canvasStore} onEdgeSelect={onEdgeTap} />
       {nodes.map((node) => {
         const nodeId = node[entityPrimaryKeyProperty];
         return (

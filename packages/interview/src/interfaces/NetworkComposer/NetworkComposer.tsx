@@ -4,7 +4,11 @@ import { get } from 'es-toolkit/compat';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
-import { entityPrimaryKeyProperty, type NcEdge } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcEdge,
+} from '@codaco/shared-consts';
 import { createCanvasStore } from '~/canvas/useCanvasStore';
 import ConcentricCircles from '~/components/ConcentricCircles';
 import { useCurrentStep } from '~/contexts/CurrentStepContext';
@@ -17,9 +21,10 @@ import type { StageProps } from '~/types';
 
 import { useForceSimulation } from '../Sociogram/useForceSimulation';
 import ComposerCanvas from './ComposerCanvas';
+import Inspector from './Inspector';
 import ToolPalette from './ToolPalette';
 import { useComposerActions } from './useComposerActions';
-import { createComposerStore } from './useComposerStore';
+import { useComposerStore, createComposerStore } from './useComposerStore';
 import { createUndoStore } from './useUndoStore';
 
 type NetworkComposerProps = StageProps<'NetworkComposer'>;
@@ -59,6 +64,15 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   });
 
   const [renamingNodeId, setRenamingNodeId] = useState<string | null>(null);
+
+  const selectedNodeIds = useComposerStore(
+    composerStore,
+    (s) => s.selectedNodeIds,
+  );
+  const selectedEdgeId = useComposerStore(
+    composerStore,
+    (s) => s.selectedEdgeId,
+  );
 
   // Sync node positions from Redux into the canvas store.
   // In automatic mode, only initialise new nodes — the simulation owns positions.
@@ -107,11 +121,19 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   const handleNodeTap = useCallback(
     async (tappedId: string) => {
-      const { activeTool, pendingEdgeSource, setPendingEdgeSource } =
-        composerStore.getState();
+      const {
+        activeTool,
+        pendingEdgeSource,
+        setPendingEdgeSource,
+        selectOnlyNode,
+      } = composerStore.getState();
+
+      if (activeTool.kind === 'select') {
+        selectOnlyNode(tappedId);
+        return;
+      }
 
       if (activeTool.kind !== 'edge') {
-        // Select-mode handling arrives in a later task.
         return;
       }
 
@@ -159,6 +181,15 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     [composerStore, dispatch, actions],
   );
 
+  const handleEdgeTap = useCallback(
+    (edgeId: string) => {
+      const { activeTool, selectEdge } = composerStore.getState();
+      if (activeTool.kind !== 'select') return;
+      selectEdge(edgeId);
+    },
+    [composerStore],
+  );
+
   const handleCommitRename = useCallback(
     async (nodeId: string, value: string) => {
       await actions.updateNodeAttributes(nodeId, { [stage.quickAdd]: value });
@@ -192,6 +223,30 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         }
       : null;
 
+  // Resolve what the Inspector should show (if anything).
+  const selectedNode =
+    selectedNodeIds.size === 1
+      ? (nodes.find(
+          (n) => n[entityPrimaryKeyProperty] === [...selectedNodeIds][0],
+        ) ?? null)
+      : null;
+
+  const selectedEdge =
+    selectedEdgeId !== null
+      ? (edges.find((e) => e[entityPrimaryKeyProperty] === selectedEdgeId) ??
+        null)
+      : null;
+
+  const selectedEdgeFormEntry =
+    selectedEdge !== null
+      ? (stage.edges.find((ed) => ed.subject.type === selectedEdge.type) ??
+        null)
+      : null;
+
+  const showInspector =
+    (selectedNode !== null && stage.nodeForm !== undefined) ||
+    (selectedEdge !== null && selectedEdgeFormEntry?.form !== undefined);
+
   return (
     <div
       className="interface relative h-dvh overflow-hidden"
@@ -219,12 +274,50 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         onNodeTap={(nodeId) => {
           void handleNodeTap(nodeId);
         }}
+        onEdgeTap={handleEdgeTap}
         onNodeDragEnd={handleNodeDragEnd}
         renamingNodeId={renamingNodeId}
         onCommitRename={(nodeId, value) => {
           void handleCommitRename(nodeId, value);
         }}
       />
+      {showInspector &&
+        selectedNode !== null &&
+        stage.nodeForm !== undefined && (
+          <div className="bg-background absolute top-0 right-0 bottom-0 flex w-80 flex-col overflow-hidden shadow-lg">
+            <Inspector
+              kind="node"
+              selectedNode={selectedNode}
+              nodeForm={stage.nodeForm}
+              subject={stage.subject}
+              onUpdateNode={(id, data) => {
+                void actions.updateNodeAttributes(id, data);
+              }}
+              onDeleteNode={(id) => {
+                actions.deleteNodeById(id);
+                composerStore.getState().clearSelection();
+              }}
+            />
+          </div>
+        )}
+      {showInspector &&
+        selectedEdge !== null &&
+        selectedEdgeFormEntry?.form !== undefined && (
+          <div className="bg-background absolute top-0 right-0 bottom-0 flex w-80 flex-col overflow-hidden shadow-lg">
+            <Inspector
+              kind="edge"
+              selectedEdge={selectedEdge}
+              edgeForm={selectedEdgeFormEntry.form}
+              onUpdateEdge={(id, data) => {
+                void actions.updateEdgeAttributes(id, data);
+              }}
+              onDeleteEdge={(id) => {
+                actions.deleteEdgeById(id);
+                composerStore.getState().clearSelection();
+              }}
+            />
+          </div>
+        )}
     </div>
   );
 };
