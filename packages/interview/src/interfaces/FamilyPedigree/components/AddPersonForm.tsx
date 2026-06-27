@@ -1,5 +1,3 @@
-'use client';
-
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
@@ -20,10 +18,11 @@ const CURRENT_EX_OPTIONS = [
   { value: 'ex', label: 'Ex' },
 ];
 
-const PARTNER_TYPE_OPTIONS = [
-  { value: 'existing', label: 'Yes — already in the family tree' },
-  { value: 'new', label: 'No — add a new person' },
-];
+const EXISTING_OPTION = {
+  value: 'existing',
+  label: 'Yes — already in the family tree',
+};
+const NEW_OPTION = { value: 'new', label: 'No — add a new person' };
 
 type AddPersonFieldsProps = {
   anchorNodeId: string;
@@ -65,13 +64,18 @@ export default function AddPersonFields({
     framing ?? 'gamete',
   );
 
+  const hasCandidates = existingPartnerOptions.length > 0;
+  const partnerTypeOptions = hasCandidates
+    ? [EXISTING_OPTION, NEW_OPTION]
+    : [NEW_OPTION];
+
   return (
     <>
       <Field
         name="partnerType"
         label="Is this person already in your family tree / related to you?"
         component={RadioGroupField}
-        options={PARTNER_TYPE_OPTIONS}
+        options={partnerTypeOptions}
         initialValue="new"
       />
 
@@ -79,15 +83,13 @@ export default function AddPersonFields({
         watch={['partnerType'] as const}
         condition={(v) => v.partnerType === 'existing'}
       >
-        {existingPartnerOptions.length > 0 && (
-          <Field
-            name="existingPartnerId"
-            label="Select the person"
-            component={RadioGroupField}
-            options={existingPartnerOptions}
-            required
-          />
-        )}
+        <Field
+          name="existingPartnerId"
+          label="Select the person"
+          component={RadioGroupField}
+          options={existingPartnerOptions}
+          required
+        />
 
         <Field
           name="current"

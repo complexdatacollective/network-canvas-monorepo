@@ -1,5 +1,3 @@
-'use client';
-
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -180,7 +178,7 @@ describe('AddPersonFields partner screening', () => {
     expect(screen.queryByRole('radio', { name: 'Cousin' })).toBeNull();
   });
 
-  it('does not list ego itself as a partner candidate', async () => {
+  it('does not offer "existing" when there are no eligible candidates', () => {
     const nodes = new Map([['ego', makeNode('ego', 'Ego')]]);
     const edges = new Map<string, NcEdge>();
 
@@ -199,16 +197,16 @@ describe('AddPersonFields partner screening', () => {
       </Wrapper>,
     );
 
-    fireEvent.click(
-      screen.getByRole('radio', { name: /Yes — already in the family tree/i }),
-    );
-
-    // Only the screening radio itself and the current/ex radio should show —
-    // no candidate option labelled "Ego" or "You"
-    await waitFor(() => {
-      // Give the FieldGroup a chance to render or stay empty
-      expect(screen.queryByRole('radio', { name: 'You' })).toBeNull();
-    });
+    // With no candidates the "existing" option must not appear in the screening prompt
+    expect(
+      screen.queryByRole('radio', {
+        name: /Yes — already in the family tree/i,
+      }),
+    ).toBeNull();
+    // Only "new" is offered
+    expect(
+      screen.getByRole('radio', { name: /No — add a new person/i }),
+    ).toBeTruthy();
   });
 
   it('keeps the current/ex field visible in the existing branch', async () => {
