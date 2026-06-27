@@ -2729,6 +2729,32 @@ describe('Migration V7 to V8', () => {
     });
   });
 
+  describe('stage label backfill', () => {
+    it('fills missing or empty stage labels with a one-based positional default', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: {} },
+        stages: [
+          { id: 's1', type: 'Information', label: 'Welcome' },
+          { id: 's2', type: 'Information', label: '' },
+          { id: 's3', type: 'Information', label: '   ' },
+          { id: 's4', type: 'Information' },
+        ],
+      } as Protocol<7>;
+
+      const migrated = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      }) as unknown as { stages: { label?: unknown }[] };
+
+      // Existing labels are preserved; missing/empty/whitespace are replaced
+      // with "Stage <one-based index>".
+      expect(migrated.stages[0]?.label).toBe('Welcome');
+      expect(migrated.stages[1]?.label).toBe('Stage 2');
+      expect(migrated.stages[2]?.label).toBe('Stage 3');
+      expect(migrated.stages[3]?.label).toBe('Stage 4');
+    });
+  });
+
   describe('migration metadata', () => {
     it('has correct from and to versions', () => {
       expect(migrationV7toV8.from).toBe(7);

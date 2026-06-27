@@ -371,7 +371,11 @@ const StageEditor = (props: StageEditorProps) => {
         />
         <div className="px-4 sm:px-6">
           <div className="mx-auto w-full max-w-7xl">
-            <StageHeading stageNumber={stageNumber} totalStages={totalStages} />
+            <StageHeading
+              stageNumber={stageNumber}
+              totalStages={totalStages}
+              isNewStage={!isExistingStage}
+            />
             <div className="flex flex-col gap-10 pt-(--space-2xl)">
               {renderSections(sections)}
             </div>

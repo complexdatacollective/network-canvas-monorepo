@@ -8,11 +8,11 @@ import type {
   StageMetadata,
 } from '@codaco/shared-consts';
 
+import { createInitialNetwork } from '../../../contract/network';
 import sessionReducer, {
   addEdge,
   addNode,
   addNodeToPrompt,
-  createInitialNetwork,
   deleteNode,
   removeNodeFromPrompt,
   updateEdge,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { createInitialNetwork } from '../../../src/contract/network';
 import type { SessionPayload } from '../../../src/contract/types';
-import { createInitialNetwork } from '../../../src/store/modules/session';
 import { makeMockAssetRequest, mockFinish, mockSync } from './mockCallbacks';
 
 function makeSession(): SessionPayload {

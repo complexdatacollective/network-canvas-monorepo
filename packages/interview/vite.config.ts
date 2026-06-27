@@ -60,18 +60,25 @@ export default defineConfig({
     __PACKAGE_VERSION__: JSON.stringify(pkg.version),
   },
   build: {
-    // Bundle to a single ESM entry rather than `preserveModules`. rolldown's
+    // Bundle to ESM entries rather than `preserveModules`. rolldown's
     // preserveModules rewrites inter-module specifiers from the emitted file
     // paths, and on Windows that leaks source extensions / mismatched paths
     // (e.g. `./Shell.tsx`, unresolved `./Shell.js`), breaking any consumer that
-    // bundles `dist/`. A single bundle has no inter-module specifiers to rewrite
-    // and so builds identically across platforms. CSS is unaffected — no JS here
-    // imports `.css`; `src/styles.css` is copied verbatim by cssCopyPlugin and
-    // consumed via the `./styles.css` export.
+    // bundles `dist/`. Bundled entries build identically across platforms. CSS
+    // is unaffected — no JS here imports `.css`; `src/styles.css` is copied
+    // verbatim by cssCopyPlugin and consumed via the `./styles.css` export.
     lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
+      // Two entries: the main (React) public API, and a server-safe `contract`
+      // bundle re-exporting only React-free utilities/types. The React code
+      // (`Shell`, contexts) is reachable only from `index`, so it never lands
+      // in the `contract` bundle — letting server (RSC) code import the
+      // contract without evaluating any module-level `createContext`.
+      entry: {
+        index: resolve(__dirname, 'src/index.ts'),
+        contract: resolve(__dirname, 'src/contract/index.ts'),
+      },
       formats: ['es'],
-      fileName: 'index',
+      fileName: (_format, entryName) => `${entryName}.js`,
     },
     rollupOptions: {
       // Bundle only this package's own files; externalize everything else —
