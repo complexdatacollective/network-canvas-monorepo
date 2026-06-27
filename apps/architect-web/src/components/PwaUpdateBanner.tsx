@@ -1,10 +1,11 @@
+import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
+import Button, { IconButton } from '~/lib/legacy-ui/components/Button';
 import { cx } from '~/utils/cva';
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000; // hourly
-const OFFLINE_READY_TIMEOUT_MS = 6000;
 
 const PwaUpdateBanner = () => {
   const [registration, setRegistration] = useState<
@@ -12,7 +13,6 @@ const PwaUpdateBanner = () => {
   >();
 
   const {
-    offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
@@ -31,53 +31,36 @@ const PwaUpdateBanner = () => {
     return () => window.clearInterval(intervalId);
   }, [registration]);
 
-  useEffect(() => {
-    if (!offlineReady) return undefined;
-    const timer = window.setTimeout(
-      () => setOfflineReady(false),
-      OFFLINE_READY_TIMEOUT_MS,
-    );
-    return () => window.clearTimeout(timer);
-  }, [offlineReady, setOfflineReady]);
-
-  if (!offlineReady && !needRefresh) return null;
-
-  const dismiss = () => {
-    setOfflineReady(false);
-    setNeedRefresh(false);
-  };
+  if (!needRefresh) return null;
 
   return (
-    <div
-      role="status"
+    <aside
+      aria-label="Update available"
       aria-live="polite"
       className={cx(
-        'fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4',
-        'bg-rich-black text-platinum rounded-full border border-white/10 px-5 py-3 shadow-lg',
+        'fixed bottom-(--space-md) left-1/2 z-(--z-global-ui) -translate-x-1/2',
+        'flex max-w-[calc(100vw-2rem)] items-center gap-(--space-md)',
+        'border-border bg-surface-1 text-surface-1-foreground rounded border p-(--space-md) shadow-lg',
       )}
     >
-      {needRefresh ? (
-        <>
-          <span>
-            A new version of Architect is available. Your work is saved.
-          </span>
-          <button
-            type="button"
-            className={cx(
-              'bg-sea-green rounded-full px-4 py-1 font-semibold text-white',
-            )}
-            onClick={() => void updateServiceWorker(true)}
-          >
-            Reload
-          </button>
-          <button type="button" aria-label="Dismiss" onClick={dismiss}>
-            ✕
-          </button>
-        </>
-      ) : (
-        <span>{`Architect v${__APP_VERSION__} is ready to work offline.`}</span>
-      )}
-    </div>
+      <p className="m-0 text-sm">
+        A new version of Architect is available. Your work is saved.
+      </p>
+      <Button
+        color="sea-green"
+        size="small"
+        onClick={() => void updateServiceWorker(true)}
+      >
+        Reload
+      </Button>
+      <IconButton
+        variant="text"
+        size="small"
+        aria-label="Dismiss"
+        onClick={() => setNeedRefresh(false)}
+        icon={<X />}
+      />
+    </aside>
   );
 };
 

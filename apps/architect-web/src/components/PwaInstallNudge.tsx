@@ -1,6 +1,8 @@
 import { Download, X } from 'lucide-react';
 import { useState, useSyncExternalStore } from 'react';
 
+import ExternalLink from '~/components/ExternalLink';
+import Button, { IconButton } from '~/lib/legacy-ui/components/Button';
 import { cx } from '~/utils/cva';
 import {
   getDeferredPrompt,
@@ -41,53 +43,33 @@ const PwaInstallNudge = () => {
     <aside
       aria-label="Install Architect"
       className={cx(
-        'fixed top-4 right-4 z-50 flex max-w-xs flex-col gap-3',
-        'bg-rich-black text-platinum rounded-2xl border border-white/10 py-3 pr-9 pl-4 shadow-lg',
+        'fixed right-(--space-md) bottom-(--space-md) z-(--z-global-ui)',
+        'flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-(--space-sm)',
+        'border-border bg-surface-1 text-surface-1-foreground rounded border p-(--space-md) shadow-lg',
       )}
     >
-      {/* Caret hinting up towards the browser's address-bar install icon. */}
-      <span
-        aria-hidden
-        className="bg-rich-black absolute -top-1 right-6 size-2 rotate-45 border-t border-l border-white/10"
-      />
-      <button
-        type="button"
+      <IconButton
+        variant="text"
+        size="small"
         aria-label="Dismiss"
-        className="text-platinum/60 hover:text-platinum absolute top-2 right-2"
+        className="absolute top-(--space-xs) right-(--space-xs)"
         onClick={dismiss}
-      >
-        <X aria-hidden className="size-4" />
-      </button>
-
-      <div className="flex items-start gap-3">
-        <Download
-          aria-hidden
-          className="text-sea-green mt-0.5 size-5 shrink-0"
-        />
-        <p className="text-sm">
-          Did you know that you can install Architect Web and use it like an app
-          (even offline)?
-        </p>
-      </div>
-
-      <div className="flex items-center gap-4 self-end">
-        <button
-          type="button"
-          className={cx(
-            'bg-sea-green rounded-full px-3 py-1 text-sm font-semibold text-white',
-          )}
+        icon={<X />}
+      />
+      <p className="m-0 pr-(--space-lg) text-sm">
+        Did you know that you can install Architect Web and use it like an app
+        (even offline)?
+      </p>
+      <div className="flex items-center gap-(--space-md)">
+        <Button
+          color="sea-green"
+          size="small"
           onClick={() => void promptInstall()}
         >
+          <Download />
           Install
-        </button>
-        <a
-          href={LEARN_MORE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-platinum/70 hover:text-platinum text-sm underline"
-        >
-          Learn more
-        </a>
+        </Button>
+        <ExternalLink href={LEARN_MORE_URL}>Learn more</ExternalLink>
       </div>
     </aside>
   );

@@ -12,16 +12,14 @@ vi.mock('virtual:pwa-register/react', () => ({
 import PwaUpdateBanner from '../PwaUpdateBanner';
 
 const setSwState = ({
-  offlineReady = false,
   needRefresh = false,
   updateServiceWorker = vi.fn(),
 }: {
-  offlineReady?: boolean;
   needRefresh?: boolean;
   updateServiceWorker?: ReturnType<typeof vi.fn>;
 }) => {
   mockUseRegisterSW.mockReturnValue({
-    offlineReady: [offlineReady, vi.fn()],
+    offlineReady: [false, vi.fn()],
     needRefresh: [needRefresh, vi.fn()],
     updateServiceWorker,
   });
@@ -32,7 +30,7 @@ afterEach(() => {
 });
 
 describe('PwaUpdateBanner', () => {
-  it('renders nothing when there is no update and the app is not offline-ready', () => {
+  it('renders nothing when there is no update', () => {
     setSwState({});
     const { container } = render(<PwaUpdateBanner />);
     expect(container).toBeEmptyDOMElement();
@@ -49,12 +47,6 @@ describe('PwaUpdateBanner', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /reload/i }));
     expect(updateServiceWorker).toHaveBeenCalledWith(true);
-  });
-
-  it('shows the offline-ready confirmation', () => {
-    setSwState({ offlineReady: true });
-    render(<PwaUpdateBanner />);
-    expect(screen.getByText(/ready to work offline/i)).toBeInTheDocument();
   });
 
   it('starts an update-check interval on registration and clears it on unmount', () => {
