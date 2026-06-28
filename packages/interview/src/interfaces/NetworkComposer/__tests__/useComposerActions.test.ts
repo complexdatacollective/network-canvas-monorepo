@@ -74,7 +74,7 @@ function makeStore(initialNodes: NcNode[] = [], initialEdges: NcEdge[] = []) {
 
 function makeWrapper(store: ReturnType<typeof makeStore>) {
   return function Wrapper({ children }: { children: ReactNode }) {
-    return createElement(Provider, { store }, children);
+    return createElement(Provider, { store, children });
   };
 }
 
@@ -108,6 +108,7 @@ describe('useComposerActions', () => {
     expect(nodes).toHaveLength(1);
 
     const node = nodes[0];
+    if (!node) throw new Error('expected a created node');
     expect(node[entityPrimaryKeyProperty]).toBe(nodeId!);
     expect(node[entityAttributesProperty][QUICK_ADD_VAR]).toBe('Alex');
     expect(node[entityAttributesProperty][LAYOUT_VAR]).toEqual({

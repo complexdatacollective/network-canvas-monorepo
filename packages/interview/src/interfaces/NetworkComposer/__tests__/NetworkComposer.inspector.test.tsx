@@ -43,31 +43,31 @@ beforeAll(() => {
 
   // SlidesForm uses IntersectionObserver via useScrolledToBottom; stub it so
   // the sentinel is immediately "visible" (intersection fires on observe).
-  if (typeof window.IntersectionObserver === 'undefined') {
-    window.IntersectionObserver = class MockIntersectionObserver {
-      private callback: IntersectionObserverCallback;
+  class MockIntersectionObserver {
+    private callback: IntersectionObserverCallback;
 
-      constructor(cb: IntersectionObserverCallback) {
-        this.callback = cb;
-      }
+    constructor(cb: IntersectionObserverCallback) {
+      this.callback = cb;
+    }
 
-      observe(target: Element) {
-        this.callback(
-          [{ isIntersecting: true, target } as IntersectionObserverEntry],
-          this,
-        );
-      }
+    observe(target: Element) {
+      this.callback(
+        [{ isIntersecting: true, target } as IntersectionObserverEntry],
+        this as unknown as IntersectionObserver,
+      );
+    }
 
-      unobserve() {}
-      disconnect() {}
-      readonly root = null;
-      readonly rootMargin = '';
-      readonly thresholds = [];
-      takeRecords() {
-        return [];
-      }
-    };
+    unobserve() {}
+    disconnect() {}
+    readonly root = null;
+    readonly rootMargin = '';
+    readonly thresholds = [];
+    takeRecords() {
+      return [];
+    }
   }
+
+  vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
 });
 
 const NODE_TYPE = 'person';

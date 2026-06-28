@@ -32,6 +32,7 @@ beforeAll(() => {
 const NODE_TYPE = 'person';
 const EDGE_TYPE = 'knows';
 const LAYOUT_VAR = 'xy_position';
+const QUICK_ADD_VAR = 'var-quick-add';
 
 const stage = {
   id: 'nc1',
@@ -39,7 +40,7 @@ const stage = {
   label: 'Network Composer',
   subject: { entity: 'node' as const, type: NODE_TYPE },
   layoutVariable: LAYOUT_VAR,
-  quickAdd: null,
+  quickAdd: QUICK_ADD_VAR,
   edges: [{ subject: { entity: 'edge' as const, type: EDGE_TYPE } }],
   background: {
     concentricCircles: 4,
@@ -53,7 +54,10 @@ const codebook = {
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' as const },
-      variables: {},
+      variables: {
+        [QUICK_ADD_VAR]: { name: 'name', type: 'text' as const },
+        [LAYOUT_VAR]: { name: 'position', type: 'layout' as const },
+      },
     },
   },
   edge: {
