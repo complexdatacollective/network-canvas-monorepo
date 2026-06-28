@@ -1,4 +1,3 @@
-import type { ComponentProps } from 'react';
 import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
 import { formValueSelector } from 'redux-form';
@@ -8,6 +7,7 @@ import withCreateVariableHandlers from '~/components/enhancers/withCreateVariabl
 import withSubject from '~/components/enhancers/withSubject';
 import { ValidatedField } from '~/components/Form';
 import IssueAnchor from '~/components/IssueAnchor';
+import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import type { RootState } from '~/ducks/modules/root';
 
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
@@ -31,7 +31,7 @@ type ComposerLayoutVariableProps = {
   layoutVariablesForSubject: LayoutVariableOption[];
 };
 
-const ComposerLayoutVariable = ({
+export const ComposerLayoutVariableComponent = ({
   entity,
   type,
   handleCreateVariable,
@@ -70,6 +70,8 @@ const ComposerLayoutVariable = ({
   );
 };
 
+const ComposerLayoutVariable = ComposerLayoutVariableComponent;
+
 type OwnProps = {
   entity: 'node' | 'edge' | 'ego';
   type: string;
@@ -86,10 +88,7 @@ const withLayoutOptions = connect(
   }),
 );
 
-export default compose<
-  ComponentProps<typeof ComposerLayoutVariable>,
-  typeof ComposerLayoutVariable
->(
+export default compose<ComposerLayoutVariableProps, StageEditorSectionProps>(
   withSubject,
   withLayoutOptions,
   withCreateVariableHandlers,

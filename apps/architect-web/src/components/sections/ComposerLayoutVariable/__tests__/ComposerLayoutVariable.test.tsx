@@ -1,33 +1,5 @@
-import { configureStore } from '@reduxjs/toolkit';
 import { render, screen } from '@testing-library/react';
-import type * as ReactRedux from 'react-redux';
-import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
-
-// Strip all connect-based HOCs — pass props straight through
-vi.mock('react-redux', async () => {
-  const actual = await vi.importActual<typeof ReactRedux>('react-redux');
-  return {
-    ...actual,
-    connect:
-      () =>
-      (Component: React.ComponentType<Record<string, unknown>>) =>
-      (props: Record<string, unknown>) => <Component {...props} />,
-  };
-});
-
-// withCreateVariableHandlers is a compose of connect + withHandlers — stub it
-vi.mock('~/components/enhancers/withCreateVariableHandler', () => ({
-  default:
-    (Component: React.ComponentType<Record<string, unknown>>) =>
-    (props: Record<string, unknown>) => (
-      <Component
-        {...props}
-        handleCreateVariable={vi.fn()}
-        handleDeleteVariable={vi.fn()}
-      />
-    ),
-}));
 
 // Lightweight Section/Row stubs that render their children
 vi.mock('~/components/EditorLayout', () => ({
@@ -78,7 +50,7 @@ vi.mock('~/components/IssueAnchor', () => ({
   default: () => null,
 }));
 
-import ComposerLayoutVariable from '../ComposerLayoutVariable';
+import { ComposerLayoutVariableComponent } from '../ComposerLayoutVariable';
 
 const LAYOUT_VAR_OPTIONS = [
   { value: 'var-1', label: 'Position', type: 'layout' },
@@ -90,19 +62,13 @@ const renderSection = (
   entity = 'node',
   type = 'Person',
 ) => {
-  const store = configureStore({ reducer: { noop: () => ({}) } });
-
   return render(
-    <Provider store={store}>
-      <ComposerLayoutVariable
-        form="edit-stage"
-        stagePath="stages[0]"
-        interfaceType="NetworkComposer"
-        entity={entity}
-        type={type}
-        layoutVariablesForSubject={layoutVariablesForSubject}
-      />
-    </Provider>,
+    <ComposerLayoutVariableComponent
+      entity={entity}
+      type={type}
+      layoutVariablesForSubject={layoutVariablesForSubject}
+      handleCreateVariable={vi.fn()}
+    />,
   );
 };
 
