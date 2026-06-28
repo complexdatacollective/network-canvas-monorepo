@@ -44,9 +44,7 @@ import FramingConfig from '~/components/sections/FamilyPedigree/FramingConfig';
 import IntroScreen from '~/components/sections/FamilyPedigree/IntroScreen';
 import NodeConfiguration from '~/components/sections/FamilyPedigree/NodeConfiguration';
 import NominationPrompts from '~/components/sections/FamilyPedigree/NominationPrompts';
-import Behaviours from '~/components/sections/NarrativePedigree/Behaviours';
 import Diseases from '~/components/sections/NarrativePedigree/Diseases';
-import Presets from '~/components/sections/NarrativePedigree/Presets';
 import SourceStage from '~/components/sections/NarrativePedigree/SourceStage';
 import { FilteredNodeType } from '~/components/sections/NodeType';
 
@@ -305,23 +303,12 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
     },
   },
   NarrativePedigree: {
-    sections: [
-      SourceStage,
-      Diseases,
-      Presets,
-      Behaviours,
-      SkipLogic,
-      InterviewScript,
-    ],
+    sections: [SourceStage, Diseases, SkipLogic, InterviewScript],
     documentation:
       'https://documentation.networkcanvas.com/interface-documentation/narrative-pedigree/',
     template: {
       sourceStageId: '',
       diseases: [],
-      presets: [],
-      behaviours: {
-        allowFocalReselection: false,
-      },
     },
   },
 };

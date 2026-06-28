@@ -17,21 +17,3 @@ export const INHERITANCE_PATTERNS = [
 ] as const;
 
 export type InheritancePattern = (typeof INHERITANCE_PATTERNS)[number];
-
-/**
- * Canonical focal-position values for narrative pedigree focus.
- *
- * These values describe which family members are the primary focus of attention
- * in the pedigree. They are shared so that Architect (which locks them onto the
- * focal-position variable) and the interview interface (which uses them for display
- * and filtering) cannot drift apart.
- */
-export const FOCAL_POSITIONS = [
-  'ego',
-  'egoChildren',
-  'egoParents',
-  'egoSiblings',
-  'everyone',
-] as const;
-
-export type FocalPosition = (typeof FOCAL_POSITIONS)[number];

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { INHERITANCE_PATTERNS, FOCAL_POSITIONS } from '../narrative-pedigree';
+import { INHERITANCE_PATTERNS } from '../narrative-pedigree';
 
 describe('narrative-pedigree', () => {
   it('has the canonical inheritance patterns', () => {
@@ -13,16 +13,6 @@ describe('narrative-pedigree', () => {
       'mitochondrial',
       'multifactorial',
       'unknown',
-    ]);
-  });
-
-  it('has the canonical focal positions', () => {
-    expect(FOCAL_POSITIONS).toEqual([
-      'ego',
-      'egoChildren',
-      'egoParents',
-      'egoSiblings',
-      'everyone',
     ]);
   });
 });
