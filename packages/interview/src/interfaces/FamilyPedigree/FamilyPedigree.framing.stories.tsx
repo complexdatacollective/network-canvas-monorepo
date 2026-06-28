@@ -279,19 +279,16 @@ async function clickContinue() {
 }
 
 /**
- * Complete the minimal quick-start wizard: click through the bio-parents intro,
- * fill in egg and sperm parents (minimal required fields), skip other parents,
- * skip partnerships (no partner), and finish.
+ * Complete the minimal quick-start wizard: fill in egg and sperm parents
+ * (minimal required fields), skip other parents, skip partnerships (no
+ * partner), and finish.
  *
  * buildBoundaryInterview uses fixed gamete framing with no introScreen, so the
- * wizard opens directly on BioParentsIntroStep (no leading IntroStep or
- * FramingSelectionStep).
+ * wizard opens directly on EggParentStep (no leading IntroStep,
+ * FramingSelectionStep, or BioParentsIntroStep).
  */
 async function completeMinimalQuickStart() {
   await clickGetStarted();
-
-  // BioParentsIntroStep — click through (first step for fixed framing, no introScreen)
-  await clickContinue();
 
   // EggParentStep — is-donor required (BooleanField: first radio = true, second = false)
   const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
@@ -336,9 +333,9 @@ async function completeMinimalQuickStart() {
 }
 
 /**
- * participantChoice framing: the framing-selection step appears before the bio
- * parents intro. Choosing "gendered" means the next bio-parent step uses
- * "Mother" / "Father" terminology.
+ * participantChoice framing: the framing-selection step appears before
+ * EggParentStep. Choosing "gendered" means the parent steps use "Mother" /
+ * "Father" terminology.
  */
 export const ParticipantChoiceSelectsGendered: Story = {
   render: () => <FramingStoryWrapper buildFn={() => buildFramingInterview()} />,
@@ -353,17 +350,7 @@ export const ParticipantChoiceSelectsGendered: Story = {
     await userEvent.click(genderedOption);
     await clickContinue();
 
-    // BioParentsIntroStep: now uses gendered terms. "Mother" appears in the
-    // intro paragraph, the card heading (<h4>), and the card body — use the
-    // heading role to avoid a "multiple elements" error.
-    await screen.findByRole(
-      'heading',
-      { level: 4, name: /mother/i },
-      STEP_TIMEOUT,
-    );
-    await clickContinue();
-
-    // EggParentStep dialog title should read "Mother"; multiple elements may
+    // EggParentStep is now open and titled "Mother"; multiple elements may
     // match the text so assert there is at least one.
     const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
     expect(within(eggDialog).getAllByText(/mother/i).length).toBeGreaterThan(0);
@@ -396,21 +383,18 @@ export const WithIntroScreenThenFramingSelection: Story = {
     await userEvent.click(gameteOption);
     await clickContinue();
 
-    // BioParentsIntroStep: gamete terms. "Egg Parent" appears in the card
-    // heading (<h4>) and the card body — use the heading role to avoid a
-    // "multiple elements" error.
-    await screen.findByRole(
-      'heading',
-      { level: 4, name: /egg parent/i },
-      STEP_TIMEOUT,
-    );
+    // EggParentStep is now open; "egg parent" appears in its body copy.
+    const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
+    expect(
+      within(eggDialog).getAllByText(/egg parent/i).length,
+    ).toBeGreaterThan(0);
   },
 };
 
 /**
  * Fixed gamete framing: the framing-selection step is SKIPPED because the
- * mode is 'fixed'. The bio-parent wizard step titles use gamete terminology
- * ("Egg Parent" / "Sperm Parent").
+ * mode is 'fixed'. The wizard opens directly on EggParentStep using gamete
+ * terminology ("Egg Parent" / "Sperm Parent").
  */
 export const FixedGameteQuickStart: Story = {
   render: () => (
@@ -419,21 +403,10 @@ export const FixedGameteQuickStart: Story = {
   play: async () => {
     await clickGetStarted();
 
-    // The framing-selection step must NOT appear: we go straight to the
-    // BioParentsIntroStep. "Egg Parent" appears in the card heading (<h4>)
-    // and in the card body — use the heading role to avoid "multiple elements".
-    await screen.findByRole(
-      'heading',
-      { level: 4, name: /egg parent/i },
-      STEP_TIMEOUT,
-    );
-
     // Assert "Gendered" radio does NOT exist — the framing-selection step is skipped
     expect(screen.queryByRole('radio', { name: /gendered/i })).toBeNull();
 
-    await clickContinue();
-
-    // EggParentStep dialog is now open; multiple elements may contain "Egg
+    // EggParentStep is the first step; multiple elements may contain "Egg
     // Parent" (title + labels) — assert at least one is present.
     const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
     expect(
@@ -444,8 +417,8 @@ export const FixedGameteQuickStart: Story = {
 
 /**
  * Fixed gendered framing: the framing-selection step is SKIPPED because the
- * mode is 'fixed'. The bio-parent wizard step titles use gendered terminology
- * ("Mother" / "Father").
+ * mode is 'fixed'. The wizard opens directly on EggParentStep using gendered
+ * terminology ("Mother" / "Father").
  */
 export const FixedGenderedQuickStart: Story = {
   render: () => (
@@ -456,23 +429,11 @@ export const FixedGenderedQuickStart: Story = {
   play: async () => {
     await clickGetStarted();
 
-    // The framing-selection step must NOT appear: we go straight to
-    // BioParentsIntroStep. "Mother" appears in the intro paragraph, the card
-    // heading (<h4>), and the card body — use the heading role to avoid a
-    // "multiple elements" error.
-    await screen.findByRole(
-      'heading',
-      { level: 4, name: /mother/i },
-      STEP_TIMEOUT,
-    );
-
     // Assert "Gamete-based" radio does NOT exist — selection step is skipped
     expect(screen.queryByRole('radio', { name: /gamete.based/i })).toBeNull();
 
-    await clickContinue();
-
-    // EggParentStep dialog is now open; multiple elements may contain "Mother"
-    // (dialog title + labels) — assert at least one is present.
+    // EggParentStep is the first step and titled "Mother"; multiple elements
+    // may contain that text (dialog title + labels) — assert at least one.
     const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
     expect(within(eggDialog).getAllByText(/mother/i).length).toBeGreaterThan(0);
   },

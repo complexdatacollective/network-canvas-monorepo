@@ -403,7 +403,7 @@ export const FirstCousinCreationViaWizard: Story = {
         label: 'Family Pedigree',
         subject: { entity: 'node', type: nodeType.id },
         // Fixed gamete framing: no FramingSelectionStep or IntroStep in the
-        // wizard, so the quick-start opens directly on BioParentsIntroStep.
+        // wizard, so the quick-start opens directly on EggParentStep.
         framing: { mode: 'fixed', value: 'gamete' },
         // boundaries is a mandatory schema field read by the checklist.
         boundaries: {
@@ -438,11 +438,10 @@ export const FirstCousinCreationViaWizard: Story = {
   play: async () => {
     // -----------------------------------------------------------------------
     // Step 1: Quick-start wizard — ego with parents Linda (egg) and Robert.
-    // Fixed gamete framing means the wizard opens directly on BioParentsIntroStep
-    // (no leading IntroStep or FramingSelectionStep).
+    // Fixed gamete framing means the wizard opens directly on EggParentStep
+    // (no leading IntroStep, FramingSelectionStep, or BioParentsIntroStep).
     // -----------------------------------------------------------------------
     await clickGetStarted();
-    await clickContinue(); // BioParentsIntroStep — click through
 
     await setFieldInput('egg-parent.is-donor', false);
     await setFieldInput('egg-parent.name', 'Linda');
