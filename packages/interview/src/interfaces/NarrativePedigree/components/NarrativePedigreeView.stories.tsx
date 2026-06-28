@@ -175,21 +175,6 @@ const narrativeStage: NarrativeStage = {
       inheritancePattern: 'xLinkedRecessive',
     },
   ],
-  presets: [
-    {
-      id: 'single-bc',
-      label: 'Breast Cancer (classic notation)',
-      diseases: ['breast-cancer'],
-      focal: 'everyone',
-    },
-    {
-      id: 'both',
-      label: 'Both diseases (stickers)',
-      diseases: ['breast-cancer', 'haemophilia'],
-      focal: 'ego',
-    },
-  ],
-  behaviours: { allowFocalReselection: true },
 };
 
 const codebook = {
