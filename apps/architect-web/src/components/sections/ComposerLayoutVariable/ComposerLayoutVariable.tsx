@@ -1,6 +1,5 @@
 import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
-import { formValueSelector } from 'redux-form';
 
 import { Row, Section } from '~/components/EditorLayout';
 import withCreateVariableHandlers from '~/components/enhancers/withCreateVariableHandler';
@@ -70,8 +69,6 @@ export const ComposerLayoutVariableComponent = ({
   );
 };
 
-const ComposerLayoutVariable = ComposerLayoutVariableComponent;
-
 type OwnProps = {
   entity: 'node' | 'edge' | 'ego';
   type: string;
@@ -84,7 +81,6 @@ const withLayoutOptions = connect(
       entity,
       type,
     }),
-    layoutVariable: formValueSelector('edit-stage')(state, 'layoutVariable'),
   }),
 );
 
@@ -92,4 +88,4 @@ export default compose<ComposerLayoutVariableProps, StageEditorSectionProps>(
   withSubject,
   withLayoutOptions,
   withCreateVariableHandlers,
-)(ComposerLayoutVariable);
+)(ComposerLayoutVariableComponent);
