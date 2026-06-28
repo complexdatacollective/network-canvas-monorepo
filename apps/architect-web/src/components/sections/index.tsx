@@ -4,6 +4,7 @@ export { default as EncryptedVariables } from './Anonymisation/EncryptedVariable
 export { default as AutomaticLayout } from './AutomaticLayout';
 export { default as Background } from './Background';
 export { default as CardDisplayOptions } from './CardDisplayOptions';
+export { default as ComposerEdges } from './ComposerEdges/ComposerEdges';
 export { default as ComposerLayoutVariable } from './ComposerLayoutVariable/ComposerLayoutVariable';
 export { default as ComposerNodeForm } from './ComposerNodeForm/ComposerNodeForm';
 export { default as CategoricalBinPrompts } from './CategoricalBinPrompts';
