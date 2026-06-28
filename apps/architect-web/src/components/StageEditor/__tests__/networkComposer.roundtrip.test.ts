@@ -28,4 +28,16 @@ describe('NetworkComposer editor output validates', () => {
       networkComposerStage.safeParse({ ...stage, edges: [] }).success,
     ).toBe(false);
   });
+
+  it('rejects a stage with duplicate edge subject types', () => {
+    expect(
+      networkComposerStage.safeParse({
+        ...stage,
+        edges: [
+          { subject: { entity: 'edge', type: 'knows' } },
+          { subject: { entity: 'edge', type: 'knows' } },
+        ],
+      }).success,
+    ).toBe(false);
+  });
 });
