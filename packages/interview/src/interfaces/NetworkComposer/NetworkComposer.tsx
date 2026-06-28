@@ -97,17 +97,32 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   const handleNodeDragEnd = useCallback(
     (nodeId: string, position: { x: number; y: number }) => {
-      void dispatch(
-        updateNode({
-          nodeId,
-          newAttributeData: {
-            [layoutVariable]: { x: position.x, y: position.y },
-          },
-          currentStep,
-        }),
-      );
+      const node = nodes.find((n) => n[entityPrimaryKeyProperty] === nodeId);
+      const rawPrev = node?.[entityAttributesProperty]?.[layoutVariable];
+      const previous =
+        rawPrev !== null &&
+        typeof rawPrev === 'object' &&
+        'x' in rawPrev &&
+        'y' in rawPrev
+          ? (rawPrev as { x: number; y: number })
+          : null;
+
+      if (previous !== null) {
+        void actions.repositionNode(nodeId, position, previous);
+      } else {
+        // Node has no persisted layout position yet (e.g. auto-positioned by
+        // the simulation). No meaningful prior position to restore, so fall
+        // back to a direct update without an undo entry.
+        void dispatch(
+          updateNode({
+            nodeId,
+            newAttributeData: { [layoutVariable]: position },
+            currentStep,
+          }),
+        );
+      }
     },
-    [dispatch, layoutVariable, currentStep],
+    [actions, nodes, dispatch, layoutVariable, currentStep],
   );
 
   const handleBackgroundTap = useCallback(

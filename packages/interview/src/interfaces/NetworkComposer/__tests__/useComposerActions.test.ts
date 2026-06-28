@@ -416,7 +416,69 @@ describe('useComposerActions', () => {
     expect(store.getState().session.network.edges).toHaveLength(0);
   });
 
-  // 8. deleteEdgeById cycle: redo after undo deletes the re-added edge
+  // 8. repositionNode: undo restores previous position; redo re-applies new position
+  it('repositionNode sets new position; undo restores previous; redo re-applies new', async () => {
+    const nodeA: NcNode = {
+      [entityPrimaryKeyProperty]: 'a',
+      type: NODE_TYPE,
+      [entityAttributesProperty]: {
+        [LAYOUT_VAR]: { x: 0.1, y: 0.1 },
+      },
+    };
+    const store = makeStore([nodeA]);
+    const undoStore = createUndoStore();
+
+    const { result } = renderHook(
+      () =>
+        useComposerActions({
+          subjectType: NODE_TYPE,
+          quickAdd: QUICK_ADD_VAR,
+          layoutVariable: LAYOUT_VAR,
+          currentStep: 0,
+          undoStore,
+          dispatch: store.dispatch as Parameters<
+            typeof useComposerActions
+          >[0]['dispatch'],
+        }),
+      { wrapper: makeWrapper(store) },
+    );
+
+    const prevPos = { x: 0.1, y: 0.1 };
+    const newPos = { x: 0.8, y: 0.8 };
+
+    await act(async () => {
+      await result.current.repositionNode('a', newPos, prevPos);
+    });
+
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+        LAYOUT_VAR
+      ],
+    ).toEqual(newPos);
+
+    await act(async () => {
+      undoStore.getState().undo();
+    });
+
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+        LAYOUT_VAR
+      ],
+    ).toEqual(prevPos);
+
+    await act(async () => {
+      undoStore.getState().redo();
+    });
+
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+        LAYOUT_VAR
+      ],
+    ).toEqual(newPos);
+  });
+
+  // 9. deleteEdgeById cycle: redo after undo deletes the re-added edge
+  // (formerly test #8)
   it('deleteEdgeById undo→redo cycle keeps edge count correct', async () => {
     const nodeA: NcNode = {
       [entityPrimaryKeyProperty]: 'a',
