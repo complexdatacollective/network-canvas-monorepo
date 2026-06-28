@@ -505,11 +505,13 @@ export const Labels: Story = {
     // Wait for nodes to render.
     await screen.findByTestId('next-button');
 
-    // The ego should be labelled "You".
-    const youLabels = document.querySelectorAll(
-      '[data-pedigree-member="true"] button[aria-label]',
+    // Each node's focal control is the `role="button"` container with an
+    // `aria-label` of `Focus on <label>` — target it directly (not the inner
+    // fresco-ui Node <button>, whose label is generic).
+    const focusControls = document.querySelectorAll(
+      '[data-pedigree-member="true"][role="button"]',
     );
-    const focusLabels = Array.from(youLabels).map((el) =>
+    const focusLabels = Array.from(focusControls).map((el) =>
       el.getAttribute('aria-label'),
     );
     const youFocusCount = focusLabels.filter((l) =>

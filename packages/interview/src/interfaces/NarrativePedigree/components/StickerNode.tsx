@@ -90,12 +90,11 @@ type StickerMarkerProps = {
 function StickerMarker({ sticker, x, y, onSelectDisease }: StickerMarkerProps) {
   const { className, label } = STATUS_STYLE[sticker.status];
 
-  const { id: stickerId } = sticker;
   const handlePointerClick =
-    onSelectDisease !== undefined && stickerId !== undefined
+    onSelectDisease !== undefined
       ? (e: React.MouseEvent) => {
           e.stopPropagation();
-          onSelectDisease(stickerId);
+          onSelectDisease(sticker.id);
         }
       : undefined;
 
