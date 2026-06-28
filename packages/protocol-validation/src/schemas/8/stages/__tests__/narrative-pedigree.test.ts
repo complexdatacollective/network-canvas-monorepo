@@ -48,17 +48,6 @@ const validNarrativePedigreeStageShape = {
       inheritancePattern: 'autosomalDominant' as const,
     },
   ],
-  presets: [
-    {
-      id: 'preset1',
-      label: 'Breast Cancer Focus',
-      diseases: ['disease1'],
-      focal: 'ego' as const,
-    },
-  ],
-  behaviours: {
-    allowFocalReselection: true,
-  },
 };
 
 // Minimal protocol with a FamilyPedigree source stage and NarrativePedigree
@@ -122,14 +111,6 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects when presets is empty', () => {
-    const result = narrativePedigreeStage.safeParse({
-      ...validNarrativePedigreeStageShape,
-      presets: [],
-    });
-    expect(result.success).toBe(false);
-  });
-
   it('rejects an invalid inheritancePattern', () => {
     const result = narrativePedigreeStage.safeParse({
       ...validNarrativePedigreeStageShape,
@@ -137,32 +118,6 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
         {
           ...validNarrativePedigreeStageShape.diseases[0],
           inheritancePattern: 'notAPattern',
-        },
-      ],
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects an invalid focal position', () => {
-    const result = narrativePedigreeStage.safeParse({
-      ...validNarrativePedigreeStageShape,
-      presets: [
-        {
-          ...validNarrativePedigreeStageShape.presets[0],
-          focal: 'notAPosition',
-        },
-      ],
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects a preset with empty diseases array', () => {
-    const result = narrativePedigreeStage.safeParse({
-      ...validNarrativePedigreeStageShape,
-      presets: [
-        {
-          ...validNarrativePedigreeStageShape.presets[0],
-          diseases: [],
         },
       ],
     });
@@ -192,21 +147,15 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects duplicate preset ids (stage-level)', () => {
+  it('rejects unknown keys (presets and behaviours are no longer part of the schema)', () => {
     const result = narrativePedigreeStage.safeParse({
       ...validNarrativePedigreeStageShape,
       presets: [
         {
-          id: 'dup',
-          label: 'A',
+          id: 'preset1',
+          label: 'Breast Cancer Focus',
           diseases: ['disease1'],
-          focal: 'ego' as const,
-        },
-        {
-          id: 'dup',
-          label: 'B',
-          diseases: ['disease1'],
-          focal: 'egoChildren' as const,
+          focal: 'ego',
         },
       ],
     });
@@ -288,34 +237,6 @@ describe('NarrativePedigree protocol-level cross-references', () => {
     if (!result.success) {
       const issue = result.error.issues.find((i) =>
         i.message.includes('nonexistentVariable'),
-      );
-      expect(issue).toBeDefined();
-    }
-  });
-
-  it('rejects when a preset references a disease id not in diseases', () => {
-    const result = ProtocolSchemaV8.safeParse(
-      makeProtocol({
-        stages: [
-          validFamilyPedigreeStage,
-          {
-            ...validNarrativePedigreeStageShape,
-            presets: [
-              {
-                id: 'preset1',
-                label: 'Bad Preset',
-                diseases: ['undeclaredDiseaseId'],
-                focal: 'ego',
-              },
-            ],
-          },
-        ],
-      }),
-    );
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const issue = result.error.issues.find((i) =>
-        i.message.includes('undeclaredDiseaseId'),
       );
       expect(issue).toBeDefined();
     }

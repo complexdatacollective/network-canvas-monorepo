@@ -498,8 +498,7 @@ const ProtocolSchema = z
       }
 
       // 3e.iii.c. NarrativePedigree: sourceStageId must reference a FamilyPedigree
-      // stage; disease variables must resolve on the source node type; preset
-      // disease ids must reference declared diseases.
+      // stage; disease variables must resolve on the source node type.
       if (stage.type === 'NarrativePedigree') {
         const sourceStage = protocol.stages.find(
           (s) => s.id === stage.sourceStageId,
@@ -545,27 +544,6 @@ const ProtocolSchema = z
             }
           });
         }
-
-        // Validate preset disease ids reference declared disease ids.
-        const declaredDiseaseIds = new Set(stage.diseases.map((d) => d.id));
-        stage.presets.forEach((preset, presetIndex) => {
-          preset.diseases.forEach((diseaseId, diseaseIdIndex) => {
-            if (!declaredDiseaseIds.has(diseaseId)) {
-              ctx.addIssue({
-                code: 'custom' as const,
-                message: `NarrativePedigree preset disease id "${diseaseId}" does not reference a declared disease.`,
-                path: [
-                  'stages',
-                  stageIndex,
-                  'presets',
-                  presetIndex,
-                  'diseases',
-                  diseaseIdIndex,
-                ],
-              });
-            }
-          });
-        });
       }
 
       // 3e.iv. Bin stages: the prompt variable must match the bin type.

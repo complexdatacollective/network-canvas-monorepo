@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { FOCAL_POSITIONS, INHERITANCE_PATTERNS } from '@codaco/shared-consts';
+import { INHERITANCE_PATTERNS } from '@codaco/shared-consts';
 import { findDuplicateId } from '~/utils/validation-helpers';
 
 import { entityAttributeReference } from '../entity-attribute-reference';
@@ -32,29 +32,4 @@ export const narrativePedigreeStage = baseStageSchema.extend({
         });
       }
     }),
-
-  presets: z
-    .array(
-      z.strictObject({
-        id: z.string(),
-        label: z.string(),
-        diseases: z.array(z.string()).min(1),
-        focal: z.enum([...FOCAL_POSITIONS]),
-      }),
-    )
-    .min(1)
-    .superRefine((presets, ctx) => {
-      const duplicateId = findDuplicateId(presets);
-      if (duplicateId) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `Presets contain duplicate ID "${duplicateId}"`,
-          path: [],
-        });
-      }
-    }),
-
-  behaviours: z.strictObject({
-    allowFocalReselection: z.boolean(),
-  }),
 });
