@@ -107,8 +107,11 @@ function StickerMarker({ sticker, x, y, onSelectDisease }: StickerMarkerProps) {
         'absolute rounded-full border-2 border-white overflow-hidden',
         'bg-[var(--surface-1)]',
         className,
+        // The overlay parent is pointer-events-none (so clicks fall through to
+        // the focal container); an interactive sticker must re-enable pointer
+        // events on itself, or its onClick never fires.
         onSelectDisease !== undefined
-          ? 'cursor-pointer'
+          ? 'pointer-events-auto cursor-pointer'
           : 'pointer-events-none',
       ].join(' ')}
       style={{

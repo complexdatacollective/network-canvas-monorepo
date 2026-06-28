@@ -402,6 +402,37 @@ export const SelectSingleDisease: Story = {
 };
 
 // ---------------------------------------------------------------------------
+// Story 2b: Selecting a disease by clicking a person's STICKER (pointer path).
+// userEvent.click respects pointer-events in a real browser, so this also
+// guards the regression where an interactive sticker inherits pointer-events:
+// none from its overlay parent (the click would then never reach it).
+// ---------------------------------------------------------------------------
+export const SelectDiseaseBySticker: Story = {
+  render: () => (
+    <NarrativePedigreeStoryWrapper
+      buildFn={() => buildPedigreeInterview(2)}
+      startStep={NP_STEP}
+    />
+  ),
+  play: async () => {
+    await screen.findByTestId('next-button');
+
+    // Click a person's sticker directly. A pointer-events:none sticker would
+    // make userEvent throw here rather than select the disease.
+    const sticker = document.querySelector('[data-sticker-status]');
+    if (!(sticker instanceof HTMLElement)) {
+      throw new Error('expected at least one sticker to be rendered');
+    }
+    await userEvent.click(sticker);
+
+    // The view switches to single-disease (classic) mode for that disease.
+    const notationNodes = document.querySelectorAll('[data-notation-status]');
+    expect(notationNodes.length).toBeGreaterThan(0);
+    expect(document.querySelectorAll('[data-sticker-status]').length).toBe(0);
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Story 3: Focal contributors — partner-side disease scenario
 // Select Huntington's Disease via the legend (single-disease mode), then click
 // Leo (the partner-side child). The partner-side contributors (Chris = partner,
