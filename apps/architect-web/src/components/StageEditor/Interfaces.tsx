@@ -9,6 +9,7 @@ import {
   Background,
   CardDisplayOptions,
   CategoricalBinPrompts,
+  ComposerLayoutVariable,
   ContentGrid,
   DyadCensusPrompts,
   EncryptedVariables,
@@ -247,6 +248,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
     sections: [
       NodeType,
       QuickAdd,
+      ComposerLayoutVariable,
       Background,
       AutomaticLayout,
       SkipLogic,

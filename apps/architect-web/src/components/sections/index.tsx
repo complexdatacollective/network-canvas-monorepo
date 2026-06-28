@@ -4,6 +4,7 @@ export { default as EncryptedVariables } from './Anonymisation/EncryptedVariable
 export { default as AutomaticLayout } from './AutomaticLayout';
 export { default as Background } from './Background';
 export { default as CardDisplayOptions } from './CardDisplayOptions';
+export { default as ComposerLayoutVariable } from './ComposerLayoutVariable/ComposerLayoutVariable';
 export { default as CategoricalBinPrompts } from './CategoricalBinPrompts';
 export { default as ContentGrid } from './ContentGrid';
 export { default as DyadCensusPrompts } from './DyadCensusPrompts';
