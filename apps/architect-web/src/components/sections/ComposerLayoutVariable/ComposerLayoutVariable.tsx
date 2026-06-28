@@ -21,7 +21,6 @@ type LayoutVariableOption = {
 };
 
 type ComposerLayoutVariableProps = {
-  form: string;
   entity: string;
   type: string;
   handleCreateVariable: (
@@ -33,7 +32,6 @@ type ComposerLayoutVariableProps = {
 };
 
 const ComposerLayoutVariable = ({
-  form,
   entity,
   type,
   handleCreateVariable,
@@ -53,10 +51,7 @@ const ComposerLayoutVariable = ({
       layout="vertical"
     >
       <Row>
-        <IssueAnchor
-          fieldName="layoutVariable"
-          description="Layout Variable"
-        />
+        <IssueAnchor fieldName="layoutVariable" description="Layout Variable" />
         <ValidatedField
           name="layoutVariable"
           component={VariablePicker}

@@ -1,25 +1,25 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { render, screen } from '@testing-library/react';
+import type * as ReactRedux from 'react-redux';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 // Strip all connect-based HOCs — pass props straight through
 vi.mock('react-redux', async () => {
-  const actual =
-    await vi.importActual<typeof import('react-redux')>('react-redux');
+  const actual = await vi.importActual<typeof ReactRedux>('react-redux');
   return {
     ...actual,
     connect:
       () =>
       (Component: React.ComponentType<Record<string, unknown>>) =>
-      (props: Record<string, unknown>) =>
-        <Component {...props} />,
+      (props: Record<string, unknown>) => <Component {...props} />,
   };
 });
 
 // withCreateVariableHandlers is a compose of connect + withHandlers — stub it
 vi.mock('~/components/enhancers/withCreateVariableHandler', () => ({
-  default: (Component: React.ComponentType<Record<string, unknown>>) =>
+  default:
+    (Component: React.ComponentType<Record<string, unknown>>) =>
     (props: Record<string, unknown>) => (
       <Component
         {...props}
@@ -47,24 +47,21 @@ vi.mock('~/components/EditorLayout', () => ({
 }));
 
 // VariablePicker stub that lists options as data-testid items
-vi.mock(
-  '~/components/Form/Fields/VariablePicker/VariablePicker',
-  () => ({
-    default: ({
-      options = [],
-    }: {
-      options?: Array<{ value: string; label: string }>;
-    }) => (
-      <ul data-testid="variable-picker">
-        {options.map(({ value, label }) => (
-          <li key={value} data-testid={`option-${value}`}>
-            {label}
-          </li>
-        ))}
-      </ul>
-    ),
-  }),
-);
+vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
+  default: ({
+    options = [],
+  }: {
+    options?: Array<{ value: string; label: string }>;
+  }) => (
+    <ul data-testid="variable-picker">
+      {options.map(({ value, label }) => (
+        <li key={value} data-testid={`option-${value}`}>
+          {label}
+        </li>
+      ))}
+    </ul>
+  ),
+}));
 
 vi.mock('~/components/Form/ValidatedField', () => ({
   default: ({
