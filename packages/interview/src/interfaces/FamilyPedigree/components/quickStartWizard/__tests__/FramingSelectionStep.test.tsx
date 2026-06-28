@@ -1,6 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import { vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { FramingId } from '@codaco/shared-consts';
 import { FamilyPedigreeContext } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
