@@ -22,12 +22,12 @@ export default meta;
 type Story = StoryObj<typeof StickerNode>;
 
 const allStatusDiseases: DiseaseSticker[] = [
-  { color: '#e53e3e', status: 'affected' },
-  { color: '#dd6b20', status: 'obligateAffected' },
-  { color: '#d69e2e', status: 'obligateCarrier' },
-  { color: '#38a169', status: 'atRiskAffected' },
-  { color: '#3182ce', status: 'atRiskCarrier' },
-  { color: '#805ad5', status: 'unknown' },
+  { id: 'affected', color: '#e53e3e', status: 'affected' },
+  { id: 'obligateAffected', color: '#dd6b20', status: 'obligateAffected' },
+  { id: 'obligateCarrier', color: '#d69e2e', status: 'obligateCarrier' },
+  { id: 'atRiskAffected', color: '#38a169', status: 'atRiskAffected' },
+  { id: 'atRiskCarrier', color: '#3182ce', status: 'atRiskCarrier' },
+  { id: 'unknown', color: '#805ad5', status: 'unknown' },
 ];
 
 export const AllStatusesSquare: Story = {
@@ -62,7 +62,7 @@ export const SingleAffected: Story = {
   args: {
     label: 'David',
     shape: 'square',
-    diseases: [{ color: '#e53e3e', status: 'affected' }],
+    diseases: [{ id: 'da', color: '#e53e3e', status: 'affected' }],
   },
 };
 
@@ -71,7 +71,7 @@ export const UnknownStatus: Story = {
   args: {
     label: 'Eve',
     shape: 'circle',
-    diseases: [{ color: '#805ad5', status: 'unknown' }],
+    diseases: [{ id: 'du', color: '#805ad5', status: 'unknown' }],
   },
 };
 
@@ -81,13 +81,13 @@ export const OverflowWithPlusN: Story = {
     label: 'Frank',
     shape: 'square',
     diseases: [
-      { color: '#e53e3e', status: 'affected' },
-      { color: '#dd6b20', status: 'obligateAffected' },
-      { color: '#d69e2e', status: 'obligateCarrier' },
-      { color: '#38a169', status: 'atRiskAffected' },
-      { color: '#3182ce', status: 'atRiskCarrier' },
-      { color: '#805ad5', status: 'unknown' },
-      { color: '#e53e3e', status: 'affected' },
+      { id: 'd1', color: '#e53e3e', status: 'affected' },
+      { id: 'd2', color: '#dd6b20', status: 'obligateAffected' },
+      { id: 'd3', color: '#d69e2e', status: 'obligateCarrier' },
+      { id: 'd4', color: '#38a169', status: 'atRiskAffected' },
+      { id: 'd5', color: '#3182ce', status: 'atRiskCarrier' },
+      { id: 'd6', color: '#805ad5', status: 'unknown' },
+      { id: 'd7', color: '#e53e3e', status: 'affected' },
     ],
   },
 };
@@ -107,9 +107,9 @@ export const ThreeDiseases: Story = {
     label: 'Henry',
     shape: 'diamond',
     diseases: [
-      { color: '#e53e3e', status: 'affected' },
-      { color: '#3182ce', status: 'atRiskCarrier' },
-      { color: '#805ad5', status: 'unknown' },
+      { id: 'dt1', color: '#e53e3e', status: 'affected' },
+      { id: 'dt2', color: '#3182ce', status: 'atRiskCarrier' },
+      { id: 'dt3', color: '#805ad5', status: 'unknown' },
     ],
   },
 };
@@ -124,7 +124,7 @@ export const StatusAffected: Story = {
           key={shape}
           label={shape}
           shape={shape}
-          diseases={[{ color: '#e53e3e', status: 'affected' }]}
+          diseases={[{ id: 'da', color: '#e53e3e', status: 'affected' }]}
         />
       ))}
     </div>
@@ -140,7 +140,9 @@ export const StatusObligateAffected: Story = {
           key={shape}
           label={shape}
           shape={shape}
-          diseases={[{ color: '#dd6b20', status: 'obligateAffected' }]}
+          diseases={[
+            { id: 'doa', color: '#dd6b20', status: 'obligateAffected' },
+          ]}
         />
       ))}
     </div>
@@ -156,7 +158,9 @@ export const StatusObligateCarrier: Story = {
           key={shape}
           label={shape}
           shape={shape}
-          diseases={[{ color: '#d69e2e', status: 'obligateCarrier' }]}
+          diseases={[
+            { id: 'doc', color: '#d69e2e', status: 'obligateCarrier' },
+          ]}
         />
       ))}
     </div>
@@ -172,7 +176,9 @@ export const StatusAtRiskAffected: Story = {
           key={shape}
           label={shape}
           shape={shape}
-          diseases={[{ color: '#38a169', status: 'atRiskAffected' }]}
+          diseases={[
+            { id: 'dara', color: '#38a169', status: 'atRiskAffected' },
+          ]}
         />
       ))}
     </div>
@@ -188,7 +194,7 @@ export const StatusAtRiskCarrier: Story = {
           key={shape}
           label={shape}
           shape={shape}
-          diseases={[{ color: '#3182ce', status: 'atRiskCarrier' }]}
+          diseases={[{ id: 'darc', color: '#3182ce', status: 'atRiskCarrier' }]}
         />
       ))}
     </div>
@@ -204,7 +210,7 @@ export const StatusUnknown: Story = {
           key={shape}
           label={shape}
           shape={shape}
-          diseases={[{ color: '#805ad5', status: 'unknown' }]}
+          diseases={[{ id: 'du', color: '#805ad5', status: 'unknown' }]}
         />
       ))}
     </div>

@@ -33,7 +33,8 @@ describe('buildPedigreeInterview — deterministic synthetic data', () => {
     });
 
     it(`seed ${seed}: each disease is set only on its seeded individuals`, () => {
-      expect(idsWith(HUNTINGTONS_VAR)).toEqual(['gf-pat', 'uncle']);
+      // 'cf' is Chris's father (partner-side) who also has Huntington's Disease.
+      expect(idsWith(HUNTINGTONS_VAR)).toEqual(['cf', 'gf-pat', 'uncle']);
       expect(idsWith(HAEMOPHILIA_VAR)).toEqual(['father']);
       expect(idsWith(MITO_VAR)).toEqual(['gm']);
     });

@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { StickerNode, STICKER_CAP } from '../StickerNode';
@@ -8,9 +7,9 @@ import type { DiseaseSticker } from '../StickerNode';
 describe('StickerNode', () => {
   describe('three diseases with distinct statuses', () => {
     const diseases: DiseaseSticker[] = [
-      { color: '#ff0000', status: 'affected' },
-      { color: '#00ff00', status: 'obligateCarrier' },
-      { color: '#0000ff', status: 'unknown' },
+      { id: 'd1', color: '#ff0000', status: 'affected' },
+      { id: 'd2', color: '#00ff00', status: 'obligateCarrier' },
+      { id: 'd3', color: '#0000ff', status: 'unknown' },
     ];
 
     it('renders three sticker markers', () => {
@@ -57,7 +56,7 @@ describe('StickerNode', () => {
       ['atRiskCarrier', 'sticker-dot'],
       ['unknown', 'sticker-question'],
     ] as const)('status=%s has class %s', (status, expectedClass) => {
-      const disease: DiseaseSticker = { color: '#red', status };
+      const disease: DiseaseSticker = { id: 'dx', color: '#red', status };
       render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
       const sticker = document.querySelector(
         `[data-sticker-status="${status}"]`,
@@ -69,7 +68,9 @@ describe('StickerNode', () => {
 
   describe('unknown status is shown as ? marker (not absent)', () => {
     it('renders a question-mark text in the unknown sticker', () => {
-      const diseases: DiseaseSticker[] = [{ color: '#aaa', status: 'unknown' }];
+      const diseases: DiseaseSticker[] = [
+        { id: 'dx', color: '#aaa', status: 'unknown' },
+      ];
       render(<StickerNode label="Test" shape="square" diseases={diseases} />);
       const sticker = document.querySelector('[data-sticker-status="unknown"]');
       expect(sticker).toBeInTheDocument();
@@ -81,6 +82,7 @@ describe('StickerNode', () => {
     const sevenDiseases: DiseaseSticker[] = Array.from(
       { length: 7 },
       (_, i) => ({
+        id: `d${i}`,
         color: `#${i}00000`,
         status: 'affected' as const,
       }),
@@ -111,21 +113,12 @@ describe('StickerNode', () => {
       expect(overflow?.textContent).toContain(expected);
     });
 
-    it('reveals the full list when the +N marker is activated', async () => {
-      const user = userEvent.setup();
+    it('+N overflow marker is a non-interactive span (not a button)', () => {
       render(
         <StickerNode label="Test" shape="square" diseases={sevenDiseases} />,
       );
       const overflow = document.querySelector('[data-overflow-marker]');
-      expect(overflow).toBeInTheDocument();
-
-      if (!(overflow instanceof HTMLElement)) {
-        throw new Error('Expected overflow marker to be an HTMLElement');
-      }
-      await user.click(overflow);
-
-      const fullList = document.querySelector('[data-overflow-list]');
-      expect(fullList).toBeInTheDocument();
+      expect(overflow?.tagName.toLowerCase()).toBe('span');
     });
   });
 
@@ -142,7 +135,7 @@ describe('StickerNode', () => {
       'renders without error for shape=%s',
       (shape) => {
         const diseases: DiseaseSticker[] = [
-          { color: '#f00', status: 'affected' },
+          { id: 'dx', color: '#f00', status: 'affected' },
         ];
         expect(() =>
           render(
@@ -156,7 +149,7 @@ describe('StickerNode', () => {
   describe('accessibility', () => {
     it('each sticker has an accessible label', () => {
       const diseases: DiseaseSticker[] = [
-        { color: '#f00', status: 'affected' },
+        { id: 'dx', color: '#f00', status: 'affected' },
       ];
       render(<StickerNode label="Test" shape="square" diseases={diseases} />);
       const stickers = document.querySelectorAll('[data-sticker-status]');
@@ -171,6 +164,7 @@ describe('StickerNode', () => {
   describe('atRiskHomozygous flag indicator', () => {
     it('renders [data-atrisk-homozygous-marker] when atRiskHomozygous is true', () => {
       const disease: DiseaseSticker = {
+        id: 'dx',
         color: '#ff0000',
         status: 'obligateCarrier',
         atRiskHomozygous: true,
@@ -182,6 +176,7 @@ describe('StickerNode', () => {
 
     it('does NOT render [data-atrisk-homozygous-marker] when atRiskHomozygous is false', () => {
       const disease: DiseaseSticker = {
+        id: 'dx',
         color: '#ff0000',
         status: 'obligateCarrier',
         atRiskHomozygous: false,
@@ -193,6 +188,7 @@ describe('StickerNode', () => {
 
     it('does NOT render [data-atrisk-homozygous-marker] when atRiskHomozygous is omitted', () => {
       const disease: DiseaseSticker = {
+        id: 'dx',
         color: '#ff0000',
         status: 'obligateCarrier',
       };
@@ -203,6 +199,7 @@ describe('StickerNode', () => {
 
     it('renders BOTH the primary status marker and the at-risk flag for obligateCarrier + atRiskHomozygous', () => {
       const disease: DiseaseSticker = {
+        id: 'dx',
         color: '#d69e2e',
         status: 'obligateCarrier',
         atRiskHomozygous: true,
@@ -221,6 +218,7 @@ describe('StickerNode', () => {
 
     it('[data-atrisk-homozygous-marker] accessible label is reachable via the accessibility tree', () => {
       const disease: DiseaseSticker = {
+        id: 'dx',
         color: '#ff0000',
         status: 'obligateCarrier',
         atRiskHomozygous: true,
@@ -236,6 +234,7 @@ describe('StickerNode', () => {
 
     it('[data-atrisk-homozygous-marker] has no aria-hidden ancestor', () => {
       const disease: DiseaseSticker = {
+        id: 'dx',
         color: '#ff0000',
         status: 'obligateCarrier',
         atRiskHomozygous: true,
@@ -257,7 +256,7 @@ describe('StickerNode', () => {
         <StickerNode
           label="Test"
           shape="square"
-          diseases={[{ color: '#e53e3e', status: 'affected' }]}
+          diseases={[{ id: 'dx', color: '#e53e3e', status: 'affected' }]}
         />,
       );
       const sticker = document.querySelector(
@@ -278,7 +277,7 @@ describe('StickerNode', () => {
         <StickerNode
           label="Test"
           shape="square"
-          diseases={[{ color: '#805ad5', status: 'unknown' }]}
+          diseases={[{ id: 'dx', color: '#805ad5', status: 'unknown' }]}
         />,
       );
       const sticker = document.querySelector('[data-sticker-status="unknown"]');
@@ -293,7 +292,7 @@ describe('StickerNode', () => {
         <StickerNode
           label="Test"
           shape="square"
-          diseases={[{ color: '#3182ce', status: 'atRiskCarrier' }]}
+          diseases={[{ id: 'dx', color: '#3182ce', status: 'atRiskCarrier' }]}
         />,
       );
       const sticker = document.querySelector(
@@ -309,7 +308,7 @@ describe('StickerNode', () => {
         <StickerNode
           label="Test"
           shape="square"
-          diseases={[{ color: '#d69e2e', status: 'obligateCarrier' }]}
+          diseases={[{ id: 'dx', color: '#d69e2e', status: 'obligateCarrier' }]}
         />,
       );
       const sticker = document.querySelector(
@@ -325,7 +324,7 @@ describe('StickerNode', () => {
         <StickerNode
           label="Test"
           shape="square"
-          diseases={[{ color: '#38a169', status: 'atRiskAffected' }]}
+          diseases={[{ id: 'dx', color: '#38a169', status: 'atRiskAffected' }]}
         />,
       );
       const sticker = document.querySelector(
@@ -341,7 +340,9 @@ describe('StickerNode', () => {
         <StickerNode
           label="Test"
           shape="square"
-          diseases={[{ color: '#dd6b20', status: 'obligateAffected' }]}
+          diseases={[
+            { id: 'dx', color: '#dd6b20', status: 'obligateAffected' },
+          ]}
         />,
       );
       const sticker = document.querySelector(

@@ -46,6 +46,12 @@ const MITO_VAR = 'hasMitochondrialMyopathy'; // mitochondrial
  * ego also has a paternal lineage: grandfather-paternal (HD+) ── gm-paternal
  *   father is ego's biological father (and haemophilia carrier for XLR).
  *   grandfather-paternal has Huntington's → father → ego at-risk.
+ *
+ * Partner-side disease scenario:
+ *   Chris's father (cf) has Huntington's Disease. cf + Chris's mother (cm) →
+ *   Chris. Chris + ego → Leo (son) and Mia (daughter). Selecting a child as
+ *   focal in Huntington's-only mode lights the partner-side (Chris, cf) and
+ *   dims ego's maternal side (Eleanor, Arthur, Rose) which do not carry HD.
  */
 export function buildPedigreeInterview(seed: number) {
   const si = new SyntheticInterview(seed);
@@ -101,7 +107,6 @@ export function buildPedigreeInterview(seed: number) {
   // --- FamilyPedigree source stage ----------------------------------------
   const fpStage = si.addStage('FamilyPedigree', {
     label: 'Family Pedigree',
-    // framing and boundaries are mandatory FamilyPedigree schema fields.
     framing: { mode: 'fixed', value: 'gamete' },
     boundaries: {
       requireGrandparents: 'off',
@@ -168,27 +173,6 @@ export function buildPedigreeInterview(seed: number) {
         inheritancePattern: 'mitochondrial',
       },
     ],
-    presets: [
-      {
-        id: 'multi-disease',
-        label: 'All diseases (stickers)',
-        diseases: ['huntingtons', 'haemophilia', 'mitochondrial'],
-        focal: 'ego',
-      },
-      {
-        id: 'single-hd',
-        label: "Huntington's only (classic)",
-        diseases: ['huntingtons'],
-        focal: 'everyone',
-      },
-      {
-        id: 'focal-reselect',
-        label: 'Explore by member',
-        diseases: ['huntingtons', 'mitochondrial'],
-        focal: 'ego',
-      },
-    ],
-    allowFocalReselection: true,
   });
 
   // --- Seed network nodes -------------------------------------------------
@@ -243,10 +227,22 @@ export function buildPedigreeInterview(seed: number) {
     [BIO_SEX_VAR]: 'female',
   });
 
-  // Ego's partner
+  // Ego's partner: Chris
   person('partner', { [NAME_VAR]: 'Chris', [BIO_SEX_VAR]: 'male' });
 
-  // Ego's son (at risk for HD from paternal line; haemophilia carrier via XLR)
+  // Partner-side disease: Chris's father (cf) has Huntington's Disease.
+  // This introduces a second HD lineage entering the children via Chris's side,
+  // so that selecting a child as focal (in HD-only mode) lights the partner-side
+  // contributors (cf, Chris) while dimming ego's maternal side (Eleanor, Arthur,
+  // Rose) which carry no HD allele.
+  person('cf', {
+    [NAME_VAR]: 'George',
+    [BIO_SEX_VAR]: 'male',
+    [HUNTINGTONS_VAR]: true,
+  });
+  person('cm', { [NAME_VAR]: 'Helen', [BIO_SEX_VAR]: 'female' });
+
+  // Ego's son (at risk for HD from both paternal lineage and partner's side)
   person('son', { [NAME_VAR]: 'Leo', [BIO_SEX_VAR]: 'male' });
 
   // Ego's daughter
@@ -290,6 +286,11 @@ export function buildPedigreeInterview(seed: number) {
   bioEdge('mother-ego', 'mother', 'ego');
   bioEdge('father-ego', 'father', 'ego');
   partnerEdge('mother-father', 'mother', 'father');
+
+  // Partner-side grandparents → partner (Chris)
+  bioEdge('cf-partner', 'cf', 'partner');
+  bioEdge('cm-partner', 'cm', 'partner');
+  partnerEdge('cf-cm', 'cf', 'cm');
 
   // Ego + partner → children
   bioEdge('ego-son', 'ego', 'son');
@@ -342,11 +343,10 @@ type Story = StoryObj;
 const NP_STEP = 1;
 
 // ---------------------------------------------------------------------------
-// Story 1: Multi-disease STICKER view
-// Preset 0 shows all three diseases (≥ 2) → StickerNode rendered.
-// Play function asserts that [data-sticker-status] elements are present.
+// Story 1: All-diseases sticker view (default render)
+// ≥2 diseases active → StickerNode rendered → [data-sticker-status] in DOM.
 // ---------------------------------------------------------------------------
-export const MultiDiseaseStickerView: Story = {
+export const AllDiseasesStickerView: Story = {
   render: () => (
     <NarrativePedigreeStoryWrapper
       buildFn={() => buildPedigreeInterview(1)}
@@ -354,27 +354,21 @@ export const MultiDiseaseStickerView: Story = {
     />
   ),
   play: async () => {
-    // The interface renders immediately (no wizard interaction needed).
-    // The first preset ("All diseases (stickers)") is active by default —
-    // ≥2 diseases → StickerNode → sticker markers present in the DOM.
-    //
     // Wait for the pedigree view to mount before querying.
     await screen.findByTestId('next-button');
 
-    // data-sticker-status is the attribute on each StickerMarker <span>.
     const stickers = document.querySelectorAll('[data-sticker-status]');
-
-    // At least some nodes should have stickers rendered.
     expect(stickers.length).toBeGreaterThan(0);
   },
 };
 
 // ---------------------------------------------------------------------------
-// Story 2: Single-disease CLASSIC view
-// Preset 1 shows only Huntington's → ClassicNotationNode rendered.
-// Play function clicks the second preset button and asserts notation symbol.
+// Story 2: Select single disease via legend
+// Click a disease button in the DiseaseLegend → single-disease mode →
+// ClassicNotationNode ([data-notation-status]) present, stickers absent.
+// Click "All diseases" → stickers return.
 // ---------------------------------------------------------------------------
-export const SingleDiseaseClassicView: Story = {
+export const SelectSingleDisease: Story = {
   render: () => (
     <NarrativePedigreeStoryWrapper
       buildFn={() => buildPedigreeInterview(2)}
@@ -382,31 +376,41 @@ export const SingleDiseaseClassicView: Story = {
     />
   ),
   play: async () => {
-    // Wait for the interface to mount, then advance to the second preset
-    // ("Huntington's only (classic)", index 1) using the PresetSwitcher's
-    // "Next preset" button.
-    const nextPresetBtn = await screen.findByRole('button', {
-      name: 'Next preset',
-    });
-    await userEvent.click(nextPresetBtn);
+    // Wait for the pedigree to mount.
+    await screen.findByTestId('next-button');
 
-    // After switching to single-disease mode, ClassicNotationNode renders
-    // with a data-notation-status attribute.
+    // Click the Huntington's Disease button in the legend.
+    const hdBtn = await screen.findByRole('button', {
+      name: "Huntington's Disease",
+    });
+    await userEvent.click(hdBtn);
+
+    // Single-disease mode: classic notation present, no stickers.
     const notationNodes = document.querySelectorAll('[data-notation-status]');
     expect(notationNodes.length).toBeGreaterThan(0);
 
-    // No sticker markers should be present in classic (single-disease) mode.
     const stickerNodes = document.querySelectorAll('[data-sticker-status]');
     expect(stickerNodes.length).toBe(0);
+
+    // Clicking "All diseases" restores sticker mode.
+    const allBtn = await screen.findByRole('button', { name: 'All diseases' });
+    await userEvent.click(allBtn);
+
+    const stickersAfter = document.querySelectorAll('[data-sticker-status]');
+    expect(stickersAfter.length).toBeGreaterThan(0);
   },
 };
 
 // ---------------------------------------------------------------------------
-// Story 3: Focal reselection
-// Preset 2 has allowFocalReselection: true — clicking a member changes the
-// focal (the clicked node becomes un-dimmed while others dim).
+// Story 3: Focal contributors — partner-side disease scenario
+// Select Huntington's Disease via the legend (single-disease mode), then click
+// Leo (the partner-side child). The partner-side contributors (Chris = partner,
+// and Chris's father George = cf who has HD) must be un-dimmed
+// (data-dimmed="false"), while ego's maternal side (Eleanor = gm, Arthur = gf,
+// Rose = mother) which carry no HD must be dimmed (data-dimmed="true").
+// Clicking "Clear focus" un-dims all nodes.
 // ---------------------------------------------------------------------------
-export const FocalReselection: Story = {
+export const FocalContributors: Story = {
   render: () => (
     <NarrativePedigreeStoryWrapper
       buildFn={() => buildPedigreeInterview(3)}
@@ -414,43 +418,58 @@ export const FocalReselection: Story = {
     />
   ),
   play: async () => {
-    // Advance to the third preset "Explore by member" (index 2) by clicking
-    // "Next preset" twice.
-    const nextBtn = await screen.findByRole('button', { name: 'Next preset' });
-    await userEvent.click(nextBtn);
-    await userEvent.click(nextBtn);
+    // Wait for the pedigree to mount.
+    await screen.findByTestId('next-button');
 
-    // allowFocalReselection is true on this preset — node members are
-    // rendered as clickable buttons.
-    const memberButtons = await screen.findAllByRole('button', {
-      name: /focus on/i,
+    // Switch to Huntington's-only mode so computeContributors walks only HD
+    // ancestors, excluding ego's maternal side.
+    const hdBtn = await screen.findByRole('button', {
+      name: "Huntington's Disease",
     });
+    await userEvent.click(hdBtn);
 
-    expect(memberButtons.length).toBeGreaterThan(0);
+    // Click the son node (Leo) to set the focal. The focal container has
+    // aria-label "Focus on Leo".
+    const leoBtn = await screen.findByRole('button', {
+      name: /focus on Leo/i,
+    });
+    await userEvent.click(leoBtn);
 
-    const firstButton = memberButtons[0];
-    if (!firstButton) return;
+    // Partner-side contributors must be un-dimmed.
+    const partnerNode = document.querySelector('[data-node-id="partner"]');
+    expect(partnerNode?.getAttribute('data-dimmed')).toBe('false');
 
-    await userEvent.click(firstButton);
+    const cfNode = document.querySelector('[data-node-id="cf"]');
+    expect(cfNode?.getAttribute('data-dimmed')).toBe('false');
 
-    // After clicking, the data-dimmed attribute should differ between nodes —
-    // the clicked node should be un-dimmed (data-dimmed="false").
-    const members = document.querySelectorAll('[data-pedigree-member="true"]');
-    const unDimmed = Array.from(members).filter(
-      (el) => el.getAttribute('data-dimmed') === 'false',
+    // Ego's maternal side carries no HD → must be dimmed.
+    const gmNode = document.querySelector('[data-node-id="gm"]');
+    expect(gmNode?.getAttribute('data-dimmed')).toBe('true');
+
+    const gfNode = document.querySelector('[data-node-id="gf"]');
+    expect(gfNode?.getAttribute('data-dimmed')).toBe('true');
+
+    const motherNode = document.querySelector('[data-node-id="mother"]');
+    expect(motherNode?.getAttribute('data-dimmed')).toBe('true');
+
+    // Clicking "Clear focus" resets — all nodes un-dimmed.
+    const clearBtn = await screen.findByRole('button', { name: 'Clear focus' });
+    await userEvent.click(clearBtn);
+
+    const allMembers = document.querySelectorAll(
+      '[data-pedigree-member="true"]',
     );
-    expect(unDimmed.length).toBeGreaterThan(0);
+    for (const member of allMembers) {
+      expect(member.getAttribute('data-dimmed')).toBe('false');
+    }
   },
 };
 
 // ---------------------------------------------------------------------------
-// Story 4: PNG export smoke test
-// Asserts the "Save snapshot" button is present and wired (clicking it does
-// not throw). html-to-image's toPng is not mocked here; the button click is
-// exercised to ensure the handler is reachable. The download side-effect is
-// browser-only and not asserted.
+// Story 4: Save snapshot ActionButton
+// The "Save snapshot" ActionButton is present and clickable.
 // ---------------------------------------------------------------------------
-export const ExportSnapshotSmoke: Story = {
+export const SaveSnapshot: Story = {
   render: () => (
     <NarrativePedigreeStoryWrapper
       buildFn={() => buildPedigreeInterview(4)}
@@ -458,16 +477,62 @@ export const ExportSnapshotSmoke: Story = {
     />
   ),
   play: async () => {
-    // The "Save snapshot" button is rendered in the NarrativePedigreeView
-    // footer regardless of preset.
+    // The ActionButton is rendered regardless of disease selection.
     const saveBtn = await screen.findByRole('button', {
       name: /save snapshot/i,
     });
     expect(saveBtn).toBeDefined();
 
-    // Clicking it must not throw synchronously. The async toPng call may
-    // fail in the test environment (no DOM-to-image support) but the handler
-    // is fire-and-forget (void), so no error propagates to the test.
+    // Clicking must not throw. The async toPng call may fail in the test
+    // environment (no DOM-to-image support) but the handler is fire-and-forget.
     await userEvent.click(saveBtn);
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Story 5: Labels
+// Assert that each seeded named node shows its deterministic name and exactly
+// one node is labelled "You" (the ego).
+// ---------------------------------------------------------------------------
+export const Labels: Story = {
+  render: () => (
+    <NarrativePedigreeStoryWrapper
+      buildFn={() => buildPedigreeInterview(5)}
+      startStep={NP_STEP}
+    />
+  ),
+  play: async () => {
+    // Wait for nodes to render.
+    await screen.findByTestId('next-button');
+
+    // The ego should be labelled "You".
+    const youLabels = document.querySelectorAll(
+      '[data-pedigree-member="true"] button[aria-label]',
+    );
+    const focusLabels = Array.from(youLabels).map((el) =>
+      el.getAttribute('aria-label'),
+    );
+    const youFocusCount = focusLabels.filter((l) =>
+      l?.includes('Focus on You'),
+    ).length;
+    expect(youFocusCount).toBe(1);
+
+    // Each seeded name must appear somewhere in a node focus-button label.
+    for (const name of [
+      'Eleanor',
+      'Arthur',
+      'Harold',
+      'Rose',
+      'David',
+      'Chris',
+      'Leo',
+      'Mia',
+      'Frank',
+      'George',
+      'Helen',
+    ]) {
+      const found = focusLabels.some((l) => l?.includes(name));
+      expect(found, `Expected to find node labelled "${name}"`).toBe(true);
+    }
   },
 };

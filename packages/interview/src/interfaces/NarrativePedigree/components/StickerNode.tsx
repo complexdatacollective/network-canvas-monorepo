@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 import Node from '@codaco/fresco-ui/Node';
 import type { NodeColorSequence, NodeShape } from '@codaco/fresco-ui/Node';
 
@@ -8,7 +6,7 @@ import { StatusMarker } from './StatusMarker';
 import { stickerPositions } from './stickerPositions';
 
 export type DiseaseSticker = {
-  id?: string;
+  id: string;
   color: string;
   status: Status;
   atRiskHomozygous?: boolean;
@@ -131,43 +129,6 @@ function StickerMarker({ sticker, x, y, onSelectDisease }: StickerMarkerProps) {
   );
 }
 
-type OverflowListProps = {
-  hidden: DiseaseSticker[];
-  onClose: () => void;
-};
-
-function OverflowList({ hidden, onClose }: OverflowListProps) {
-  return (
-    <dialog
-      open
-      data-overflow-list
-      aria-label="All diseases"
-      className="absolute -top-2 left-full z-10 ml-2 min-w-max rounded border border-white/20 bg-slate-800 p-2 text-xs text-white shadow-lg"
-    >
-      <ul>
-        {hidden.map((d, i) => (
-          <li key={i} className="flex items-center gap-1 py-0.5">
-            <span
-              className="inline-block size-3 rounded-full border border-white"
-              style={{ backgroundColor: d.color }}
-              aria-hidden
-            />
-            <span>{STATUS_STYLE[d.status].label}</span>
-          </li>
-        ))}
-      </ul>
-      <button
-        type="button"
-        onClick={onClose}
-        className="mt-1 text-white/60 hover:text-white"
-        aria-label="Close disease list"
-      >
-        Close
-      </button>
-    </dialog>
-  );
-}
-
 type StickerNodeProps = {
   label: string;
   shape: NodeShape;
@@ -199,16 +160,14 @@ export function StickerNode({
   highlighted,
   onSelectDisease,
 }: StickerNodeProps) {
-  const [overflowOpen, setOverflowOpen] = useState(false);
-
   const visibleStickers = diseases.slice(0, STICKER_CAP);
-  const hiddenDiseases = diseases.slice(STICKER_CAP);
-  const hiddenCount = hiddenDiseases.length;
+  const hiddenCount = diseases.length - visibleStickers.length;
   const stickerCount = visibleStickers.length;
 
   const positions = stickerPositions(shape, stickerCount);
 
-  // +N marker sits at the next perimeter position after the visible stickers
+  // +N count indicator sits at the next perimeter position after the visible stickers.
+  // Non-interactive: the DiseaseLegend is the accessible source of truth for all diseases.
   const overflowPositions =
     hiddenCount > 0 ? stickerPositions(shape, stickerCount + 1) : [];
   const overflowPos =
@@ -263,14 +222,15 @@ export function StickerNode({
         })}
       </span>
 
-      {/* +N overflow marker */}
+      {/* +N overflow count — non-interactive span (not a button). The legend is
+          the accessible surface for selecting a specific disease; nesting a
+          button here would create an invalid nested-interactive element inside
+          the parent focal container's role="button". */}
       {hiddenCount > 0 && overflowPos && (
-        <button
-          type="button"
+        <span
+          aria-hidden
           data-overflow-marker
-          aria-label={`Show ${hiddenCount} more diseases`}
-          onClick={() => setOverflowOpen((prev) => !prev)}
-          className="absolute flex items-center justify-center rounded-full border-2 border-white bg-slate-600 text-[9px] leading-none font-bold text-white"
+          className="pointer-events-none absolute flex items-center justify-center rounded-full border-2 border-white bg-slate-600 text-[9px] leading-none font-bold text-white"
           style={{
             width: STICKER_SIZE_PX,
             height: STICKER_SIZE_PX,
@@ -279,15 +239,7 @@ export function StickerNode({
           }}
         >
           +{hiddenCount}
-        </button>
-      )}
-
-      {/* Overflow disclosure */}
-      {overflowOpen && hiddenCount > 0 && (
-        <OverflowList
-          hidden={hiddenDiseases}
-          onClose={() => setOverflowOpen(false)}
-        />
+        </span>
       )}
     </div>
   );

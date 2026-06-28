@@ -142,7 +142,6 @@ const edges: NcEdge[] = [
   makeEdge('father', 'ego'),
   makeEdge('ego', 'child'),
   makeEdge('partner', 'child'),
-  // Partner-of edge (non-genetic) — exercised by the layout, ignored by genetics.
   {
     [entityPrimaryKeyProperty]: 'partner-ego',
     type: EDGE_TYPE,
@@ -201,21 +200,6 @@ function makeNarrativeStage(): NarrativeStage {
         inheritancePattern: 'autosomalRecessive',
       },
     ],
-    presets: [
-      {
-        id: 'single',
-        label: 'Single Disease',
-        diseases: ['da'],
-        focal: 'ego',
-      },
-      {
-        id: 'multi',
-        label: 'Multiple Diseases',
-        diseases: ['da', 'db'],
-        focal: 'egoParents',
-      },
-    ],
-    behaviours: { allowFocalReselection: true },
   };
 }
 
@@ -254,15 +238,11 @@ function makeStore() {
   });
 }
 
-function renderView(behavioursOverride?: { allowFocalReselection: boolean }) {
+function renderView() {
   const store = makeStore();
   const stage = makeNarrativeStage();
-  if (behavioursOverride) {
-    stage.behaviours = behavioursOverride;
-  }
 
   function Wrapper({ children }: { children: ReactNode }) {
-    // currentStep 1 = the NarrativePedigree stage (index 1 in the stages array).
     return (
       <Provider store={store}>
         <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
@@ -278,25 +258,44 @@ function renderView(behavioursOverride?: { allowFocalReselection: boolean }) {
 }
 
 describe('NarrativePedigreeView — node mode selection', () => {
-  it('renders classic-notation nodes when the active preset shows exactly one disease', async () => {
+  it('renders sticker nodes by default (multiple diseases)', async () => {
     renderView();
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-sticker-status]')).toBeTruthy(),
+    );
+    expect(document.querySelector('[data-notation-status]')).toBeNull();
+  });
+
+  it('renders classic-notation nodes when a single disease is selected via the legend', async () => {
+    renderView();
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-sticker-status]')).toBeTruthy(),
+    );
+
+    // Select Disease A via the legend button.
+    await userEvent.click(screen.getByRole('button', { name: 'Disease A' }));
 
     await waitFor(() =>
       expect(document.querySelector('[data-notation-status]')).toBeTruthy(),
     );
-    // No sticker nodes in single-disease mode.
     expect(document.querySelector('[data-sticker-status]')).toBeNull();
   });
 
-  it('renders sticker nodes when the active preset shows two or more diseases', async () => {
+  it('returns to sticker mode when "All diseases" is clicked after selecting a disease', async () => {
     renderView();
 
-    // Switch to the multi-disease preset.
+    await waitFor(() =>
+      expect(document.querySelector('[data-sticker-status]')).toBeTruthy(),
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Disease A' }));
     await waitFor(() =>
       expect(document.querySelector('[data-notation-status]')).toBeTruthy(),
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Next preset' }));
 
+    await userEvent.click(screen.getByRole('button', { name: 'All diseases' }));
     await waitFor(() =>
       expect(document.querySelector('[data-sticker-status]')).toBeTruthy(),
     );
@@ -304,49 +303,9 @@ describe('NarrativePedigreeView — node mode selection', () => {
   });
 });
 
-describe('NarrativePedigreeView — preset switching recomputes', () => {
-  it('changes the active preset label and the shown diseases', async () => {
+describe('NarrativePedigreeView — focal selection', () => {
+  it('sets focus when a member node is clicked', async () => {
     renderView();
-
-    await waitFor(() =>
-      expect(screen.getByText('Single Disease')).toBeTruthy(),
-    );
-
-    await userEvent.click(screen.getByRole('button', { name: 'Next preset' }));
-
-    await waitFor(() =>
-      expect(screen.getByText('Multiple Diseases')).toBeTruthy(),
-    );
-  });
-
-  it('recomputes the highlight set when the preset changes (different dimmed nodes)', async () => {
-    renderView();
-
-    await waitFor(() =>
-      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
-    );
-
-    const dimmedFor = () =>
-      Array.from(document.querySelectorAll('[data-pedigree-member]'))
-        .filter((el) => el.getAttribute('data-dimmed') === 'true')
-        .map((el) => el.getAttribute('data-node-id') ?? '')
-        .sort((a, b) => a.localeCompare(b));
-
-    const dimmedSingle = dimmedFor();
-
-    await userEvent.click(screen.getByRole('button', { name: 'Next preset' }));
-    await waitFor(() =>
-      expect(screen.getByText('Multiple Diseases')).toBeTruthy(),
-    );
-
-    const dimmedMulti = dimmedFor();
-    expect(dimmedMulti).not.toEqual(dimmedSingle);
-  });
-});
-
-describe('NarrativePedigreeView — focal reselection', () => {
-  it('re-runs focal/highlight when a member is clicked (highlight set changes)', async () => {
-    renderView({ allowFocalReselection: true });
 
     await waitFor(() =>
       expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
@@ -360,36 +319,51 @@ describe('NarrativePedigreeView — focal reselection', () => {
 
     const before = dimmedIds();
 
-    // Click the father — a node that is NOT the ego focal, so the highlight
-    // recomputes around a different focal. The clickable target is the button
-    // wrapping the node (rendered only when allowFocalReselection is true).
-    const fatherButton = document.querySelector(
-      '[data-node-id="father"] button',
-    );
-    expect(fatherButton).toBeTruthy();
-    if (fatherButton) await userEvent.click(fatherButton);
+    // The focal container is the [data-pedigree-member] div itself — it carries
+    // role="button" directly (no wrapping button inside it).
+    const motherContainer = document.querySelector('[data-node-id="mother"]');
+    if (motherContainer instanceof HTMLElement) {
+      await userEvent.click(motherContainer);
+    }
 
     await waitFor(() => expect(dimmedIds()).not.toEqual(before));
   });
 
-  it('does NOT refocus on click when allowFocalReselection is false', async () => {
-    renderView({ allowFocalReselection: false });
+  it('shows "Clear focus" button after a member is clicked', async () => {
+    renderView();
 
     await waitFor(() =>
       expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
     );
 
-    const dimmedIds = () =>
-      Array.from(document.querySelectorAll('[data-pedigree-member]'))
-        .filter((el) => el.getAttribute('data-dimmed') === 'true')
-        .map((el) => el.getAttribute('data-node-id') ?? '')
-        .sort((a, b) => a.localeCompare(b));
+    // Click any member to set focus.
+    const memberContainer = document.querySelector('[data-pedigree-member]');
+    if (memberContainer instanceof HTMLElement) {
+      await userEvent.click(memberContainer);
+    }
 
-    const before = dimmedIds();
-    const father = document.querySelector('[data-node-id="father"] button');
-    if (father) await userEvent.click(father);
+    await screen.findByRole('button', { name: 'Clear focus' });
+  });
 
-    expect(dimmedIds()).toEqual(before);
+  it('clears dimming when "Clear focus" is clicked', async () => {
+    renderView();
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
+    );
+
+    const memberContainer = document.querySelector('[data-pedigree-member]');
+    if (memberContainer instanceof HTMLElement) {
+      await userEvent.click(memberContainer);
+    }
+
+    const clearBtn = await screen.findByRole('button', { name: 'Clear focus' });
+    await userEvent.click(clearBtn);
+
+    const allMembers = document.querySelectorAll('[data-pedigree-member]');
+    for (const member of allMembers) {
+      expect(member.getAttribute('data-dimmed')).toBe('false');
+    }
   });
 });
 
@@ -529,15 +503,6 @@ function makeCousinNarrativeStage(mode: 'classic' | 'sticker'): NarrativeStage {
           ]
         : []),
     ],
-    presets: [
-      {
-        id: 'all',
-        label: 'All',
-        diseases: mode === 'sticker' ? [AR_DISEASE_ID, 'db2'] : [AR_DISEASE_ID],
-        focal: 'ego',
-      },
-    ],
-    behaviours: { allowFocalReselection: false },
   };
 }
 
