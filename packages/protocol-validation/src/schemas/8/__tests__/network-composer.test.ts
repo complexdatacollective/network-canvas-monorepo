@@ -10,7 +10,7 @@ const validStage = {
   subject: { entity: 'node', type: 'person' },
   quickAdd: 'name',
   layoutVariable: 'layoutPosition',
-  edges: [{ subject: { entity: 'edge', type: 'knows' } }],
+  edges: [{ id: 'edge-1', subject: { entity: 'edge', type: 'knows' } }],
 };
 
 describe('networkComposerStage schema', () => {
@@ -51,8 +51,8 @@ describe('networkComposerStage schema', () => {
     const result = networkComposerStage.safeParse({
       ...validStage,
       edges: [
-        { subject: { entity: 'edge', type: 'knows' } },
-        { subject: { entity: 'edge', type: 'knows' } },
+        { id: 'edge-1', subject: { entity: 'edge', type: 'knows' } },
+        { id: 'edge-2', subject: { entity: 'edge', type: 'knows' } },
       ],
     });
     expect(result.success).toBe(false);
@@ -71,6 +71,7 @@ describe('networkComposerStage schema', () => {
       nodeForm: { fields: [{ variable: 'age', prompt: 'Age?' }] },
       edges: [
         {
+          id: 'edge-1',
           subject: { entity: 'edge', type: 'knows' },
           form: { fields: [{ variable: 'closeness', prompt: 'How close?' }] },
         },

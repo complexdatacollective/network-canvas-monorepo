@@ -38,6 +38,7 @@ export const networkComposerStage = baseStageSchema.extend({
   edges: z
     .array(
       z.strictObject({
+        id: z.string(),
         subject: EdgeStageSubjectSchema,
         form: TitlelessFormSchema.optional(),
       }),

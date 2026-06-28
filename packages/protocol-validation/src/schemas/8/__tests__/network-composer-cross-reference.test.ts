@@ -14,6 +14,7 @@ const baseStage = {
   nodeForm: { fields: [{ variable: 'age', prompt: 'Age?' }] },
   edges: [
     {
+      id: 'edge-1',
       subject: { entity: 'edge', type: 'knows' },
       form: { fields: [{ variable: 'closeness', prompt: 'How close?' }] },
     },
@@ -63,6 +64,7 @@ describe('NetworkComposer cross-reference validation', () => {
         ...baseStage,
         edges: [
           {
+            id: 'edge-1',
             subject: { entity: 'edge', type: 'knows' },
             form: { fields: [{ variable: 'age', prompt: 'x' }] },
           },

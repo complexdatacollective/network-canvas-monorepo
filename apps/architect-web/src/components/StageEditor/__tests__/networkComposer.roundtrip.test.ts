@@ -12,6 +12,7 @@ const stage = {
   nodeForm: { fields: [{ variable: 'age', prompt: 'Age?' }] },
   edges: [
     {
+      id: 'edge-1',
       subject: { entity: 'edge', type: 'knows' },
       form: { fields: [{ variable: 'closeness', prompt: 'How close?' }] },
     },
@@ -34,8 +35,8 @@ describe('NetworkComposer editor output validates', () => {
       networkComposerStage.safeParse({
         ...stage,
         edges: [
-          { subject: { entity: 'edge', type: 'knows' } },
-          { subject: { entity: 'edge', type: 'knows' } },
+          { id: 'edge-1', subject: { entity: 'edge', type: 'knows' } },
+          { id: 'edge-2', subject: { entity: 'edge', type: 'knows' } },
         ],
       }).success,
     ).toBe(false);
