@@ -195,74 +195,73 @@ export function buildPedigreeInterview(seed: number) {
   // Using stable UIDs that match the edge wiring below.
   const fpId = fpStage.id;
 
+  // SyntheticInterview.getNetwork() fills any attribute NOT explicitly set on a
+  // manual node with a random faker value. For boolean variables that would
+  // randomise ego identity and disease status across the pedigree, so every
+  // person seeds the full flag set to a deterministic default and overrides only
+  // what is intentionally true.
+  const PERSON_DEFAULTS: Record<string, unknown> = {
+    [EGO_VAR]: false,
+    [HUNTINGTONS_VAR]: false,
+    [HAEMOPHILIA_VAR]: false,
+    [MITO_VAR]: false,
+    [REL_TO_EGO_VAR]: '',
+  };
+  const person = (uid: string, attrs: Record<string, unknown>) =>
+    si.addManualNode(fpId, nodeType.id, uid, { ...PERSON_DEFAULTS, ...attrs });
+
   // Maternal grandparents: grandmother has mitochondrial myopathy
-  si.addManualNode(fpId, nodeType.id, 'gm', {
+  person('gm', {
     [NAME_VAR]: 'Eleanor',
     [BIO_SEX_VAR]: 'female',
     [MITO_VAR]: true,
   });
-  si.addManualNode(fpId, nodeType.id, 'gf', {
-    [NAME_VAR]: 'Arthur',
-    [BIO_SEX_VAR]: 'male',
-  });
+  person('gf', { [NAME_VAR]: 'Arthur', [BIO_SEX_VAR]: 'male' });
 
   // Paternal grandparents: paternal grandfather has Huntington's
-  si.addManualNode(fpId, nodeType.id, 'gf-pat', {
+  person('gf-pat', {
     [NAME_VAR]: 'Harold',
     [BIO_SEX_VAR]: 'male',
     [HUNTINGTONS_VAR]: true,
   });
-  si.addManualNode(fpId, nodeType.id, 'gm-pat', {
-    [NAME_VAR]: 'Irene',
-    [BIO_SEX_VAR]: 'female',
-  });
+  person('gm-pat', { [NAME_VAR]: 'Irene', [BIO_SEX_VAR]: 'female' });
 
   // Mother (daughter of Eleanor + Arthur): in the mitochondrial carrier line
-  si.addManualNode(fpId, nodeType.id, 'mother', {
-    [NAME_VAR]: 'Rose',
-    [BIO_SEX_VAR]: 'female',
-  });
+  person('mother', { [NAME_VAR]: 'Rose', [BIO_SEX_VAR]: 'female' });
 
   // Father (son of Harold + Irene): haemophilia affected; also at-risk for HD
-  si.addManualNode(fpId, nodeType.id, 'father', {
+  person('father', {
     [NAME_VAR]: 'David',
     [BIO_SEX_VAR]: 'male',
     [HAEMOPHILIA_VAR]: true,
   });
 
   // Ego (daughter of mother + father): female, no confirmed disease
-  si.addManualNode(fpId, nodeType.id, 'ego', {
+  person('ego', {
     [NAME_VAR]: 'You',
     [EGO_VAR]: true,
     [BIO_SEX_VAR]: 'female',
   });
 
   // Ego's partner
-  si.addManualNode(fpId, nodeType.id, 'partner', {
-    [NAME_VAR]: 'Chris',
-    [BIO_SEX_VAR]: 'male',
-  });
+  person('partner', { [NAME_VAR]: 'Chris', [BIO_SEX_VAR]: 'male' });
 
-  // Ego's son (at risk for HD from paternal line; at risk for haemophilia affected from father via XLR)
-  si.addManualNode(fpId, nodeType.id, 'son', {
-    [NAME_VAR]: 'Leo',
-    [BIO_SEX_VAR]: 'male',
-  });
+  // Ego's son (at risk for HD from paternal line; haemophilia carrier via XLR)
+  person('son', { [NAME_VAR]: 'Leo', [BIO_SEX_VAR]: 'male' });
 
   // Ego's daughter
-  si.addManualNode(fpId, nodeType.id, 'daughter', {
-    [NAME_VAR]: 'Mia',
-    [BIO_SEX_VAR]: 'female',
-  });
+  person('daughter', { [NAME_VAR]: 'Mia', [BIO_SEX_VAR]: 'female' });
 
   // Uncle (brother of mother): has Huntington's — shows AD in maternal line
-  si.addManualNode(fpId, nodeType.id, 'uncle', {
+  person('uncle', {
     [NAME_VAR]: 'Frank',
     [BIO_SEX_VAR]: 'male',
     [HUNTINGTONS_VAR]: true,
   });
 
   // --- Seed network edges -------------------------------------------------
+  // getNetwork() passes edge attributes through verbatim (only NODE attributes
+  // are randomised when unset), so edges only need their meaningful flags.
   const bioEdge = (uid: string, from: string, to: string) =>
     si.addManualEdge(edgeType.id, uid, from, to, {
       [REL_TYPE_VAR]: ['biological'],
