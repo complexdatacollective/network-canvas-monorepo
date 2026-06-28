@@ -249,6 +249,37 @@ describe('ClassicNotationNode', () => {
     );
   });
 
+  describe('disease-coloured shape outline for non-filled statuses', () => {
+    it('obligateCarrier: renders [data-shape-outline] with the disease color', () => {
+      render(
+        <ClassicNotationNode
+          node={mockNode}
+          disease={{ color: '#d69e2e', status: 'obligateCarrier' }}
+          shape="circle"
+          label="Carol"
+        />,
+      );
+      const el = document.querySelector(
+        '[data-notation-status="obligateCarrier"]',
+      );
+      const outline = el?.querySelector('[data-shape-outline]');
+      expect(outline).toBeTruthy();
+      expect(outline?.getAttribute('stroke')).toBe('#d69e2e');
+    });
+
+    it('no [data-sticker-status] is rendered', () => {
+      render(
+        <ClassicNotationNode
+          node={mockNode}
+          disease={{ color: '#e53e3e', status: 'affected' }}
+          shape="square"
+          label="Alice"
+        />,
+      );
+      expect(document.querySelector('[data-sticker-status]')).toBeNull();
+    });
+  });
+
   describe('atRiskHomozygous flag notation', () => {
     it('renders [data-atrisk-homozygous-notation] when atRiskHomozygous is true', () => {
       render(

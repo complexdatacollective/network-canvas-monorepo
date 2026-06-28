@@ -140,6 +140,59 @@ function StickerUnknown({ color }: { color: string }) {
 
 // ─── Classic inner overlay components ────────────────────────────────────────
 
+/**
+ * Disease-coloured shape outline drawn for every classic status.
+ * Ensures non-filled statuses (carrier, at-risk) still sit inside a
+ * disease-coloured perimeter that matches the disease's all-diseases sticker.
+ */
+function ClassicOutline({ color, shape }: { color: string; shape: NodeShape }) {
+  const strokeWidth = 3;
+  if (shape === 'circle') {
+    return (
+      <circle
+        cx={CLASSIC_C}
+        cy={CLASSIC_C}
+        r={CLASSIC_R - strokeWidth / 2}
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        data-shape-outline
+      />
+    );
+  }
+  if (shape === 'diamond') {
+    const inset = strokeWidth / 2;
+    return (
+      <rect
+        x={CLASSIC_C - CLASSIC_R + inset}
+        y={CLASSIC_C - CLASSIC_R + inset}
+        width={(CLASSIC_R - inset) * 2}
+        height={(CLASSIC_R - inset) * 2}
+        rx={CLASSIC_R * 0.2}
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        transform={`rotate(45, ${CLASSIC_C}, ${CLASSIC_C})`}
+        data-shape-outline
+      />
+    );
+  }
+  const inset = strokeWidth / 2;
+  return (
+    <rect
+      x={CLASSIC_C - CLASSIC_R + inset}
+      y={CLASSIC_C - CLASSIC_R + inset}
+      width={(CLASSIC_R - inset) * 2}
+      height={(CLASSIC_R - inset) * 2}
+      rx={CLASSIC_R * 0.2}
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      data-shape-outline
+    />
+  );
+}
+
 function ClassicFilledShape({
   color,
   shape,
@@ -373,7 +426,7 @@ export function StatusMarker({
     );
   }
 
-  const inner = (() => {
+  const statusSymbol = (() => {
     switch (status) {
       case 'affected':
         return <ClassicFilledShape color={color} shape={shape} />;
@@ -397,7 +450,8 @@ export function StatusMarker({
       className="pointer-events-none absolute inset-0 h-full w-full"
       data-status={status}
     >
-      {inner}
+      <ClassicOutline color={color} shape={shape} />
+      {statusSymbol}
     </svg>
   );
 }

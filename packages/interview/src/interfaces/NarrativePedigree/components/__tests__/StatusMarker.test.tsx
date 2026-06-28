@@ -289,6 +289,50 @@ describe('StatusMarker', () => {
     });
   });
 
+  describe('classic variant — disease-coloured shape outline', () => {
+    it('obligateCarrier: renders [data-shape-outline] with the disease color', () => {
+      const { container } = render(
+        <StatusMarker
+          status="obligateCarrier"
+          color="#d69e2e"
+          variant="classic"
+          shape="circle"
+        />,
+      );
+      const outline = container.querySelector('[data-shape-outline]');
+      expect(outline).toBeTruthy();
+      expect(outline?.getAttribute('stroke')).toBe('#d69e2e');
+    });
+
+    it('affected: renders [data-shape-outline] with the disease color alongside the fill', () => {
+      const { container } = render(
+        <StatusMarker
+          status="affected"
+          color="#e53e3e"
+          variant="classic"
+          shape="square"
+        />,
+      );
+      expect(container.querySelector('[data-shape-outline]')).toBeTruthy();
+      expect(container.querySelector('[data-filled-shape]')).toBeTruthy();
+    });
+
+    it.each(['square', 'circle', 'diamond'] as const)(
+      'renders [data-shape-outline] for all shapes (obligateCarrier, shape=%s)',
+      (shape) => {
+        const { container } = render(
+          <StatusMarker
+            status="obligateCarrier"
+            color="#f00"
+            variant="classic"
+            shape={shape}
+          />,
+        );
+        expect(container.querySelector('[data-shape-outline]')).toBeTruthy();
+      },
+    );
+  });
+
   describe('aria-hidden on root SVG', () => {
     it('sticker variant SVG is aria-hidden', () => {
       const { container } = render(
