@@ -14,6 +14,7 @@ import Node from '@codaco/fresco-ui/Node';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import type { Codebook } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import ActionButton from '~/components/ActionButton';
 import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import PedigreeLayout from '~/interfaces/FamilyPedigree/pedigree-layout/components/PedigreeLayout';
@@ -28,7 +29,6 @@ import { getCodebook, getStages } from '~/store/modules/protocol';
 import type { StageProps } from '~/types';
 
 import { exportSnapshot } from '../export/snapshot';
-import { resolveFocal } from '../focalResolver';
 import {
   computeAtRiskHomozygous,
   computeStatuses,
@@ -36,12 +36,12 @@ import {
 import { buildGeneticGraph } from '../genetics/geneticGraph';
 import { resolveSex } from '../genetics/resolveSex';
 import { affectedSet, type Status } from '../genetics/status';
-import { computeHighlight } from '../highlight';
+import { computeContributors } from '../highlight';
 import {
   ClassicNotationNode,
   type ClassicDisease,
 } from './ClassicNotationNode';
-import PresetSwitcher from './PresetSwitcher';
+import DiseaseLegend from './DiseaseLegend';
 import { type DiseaseSticker, StickerNode } from './StickerNode';
 
 type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
@@ -105,7 +105,7 @@ type NarrativePedigreeViewProps = {
 export default function NarrativePedigreeView({
   stage,
 }: NarrativePedigreeViewProps) {
-  const { diseases, presets, behaviours } = stage;
+  const { diseases } = stage;
 
   const sourceConfigSelector = useMemo(
     () => makeSourceConfigSelector(stage.sourceStageId),
@@ -116,8 +116,10 @@ export default function NarrativePedigreeView({
   const allNodes = useStageSelector(getNetworkNodes);
   const allEdges = useStageSelector(getNetworkEdges);
 
-  const [activePresetIndex, setActivePresetIndex] = useState(0);
-  const [focalOverride, setFocalOverride] = useState<string | null>(null);
+  const [selectedDiseaseId, setSelectedDiseaseId] = useState<string | null>(
+    null,
+  );
+  const [focalId, setFocalId] = useState<string | null>(null);
 
   const viewRef = useRef<HTMLDivElement>(null);
   const { nodeWidth, nodeHeight, measurementContainer } = useNodeMeasurement({
@@ -170,15 +172,12 @@ export default function NarrativePedigreeView({
     return pedigreeNodes.find((n) => n.attributes[egoVariable] === true)?._uid;
   }, [pedigreeNodes, sourceConfig]);
 
-  const activePreset = presets[activePresetIndex];
-
-  // The diseases shown by the active preset, in declaration order.
+  // When a disease is selected, show only that disease; otherwise show all.
   const shownDiseases = useMemo<Disease[]>(() => {
-    if (!activePreset) return [];
-    return activePreset.diseases
-      .map((id) => diseases.find((d) => d.id === id))
-      .filter((d): d is Disease => d !== undefined);
-  }, [activePreset, diseases]);
+    if (selectedDiseaseId === null) return diseases;
+    const found = diseases.find((d) => d.id === selectedDiseaseId);
+    return found !== undefined ? [found] : diseases;
+  }, [selectedDiseaseId, diseases]);
 
   // diseaseId → (nodeId → status) for every shown disease.
   const statusesByDisease = useMemo(() => {
@@ -216,18 +215,10 @@ export default function NarrativePedigreeView({
     return map;
   }, [graph, shownDiseases, resolveSexFn, statusesByDisease]);
 
-  const focalIds = useMemo(() => {
-    if (!graph || !activePreset) return new Set<string>();
-    if (focalOverride !== null) {
-      return new Set([focalOverride]);
-    }
-    return resolveFocal(activePreset.focal, graph, egoId);
-  }, [graph, activePreset, focalOverride, egoId]);
-
   const highlight = useMemo(() => {
     if (!graph) return { nodes: new Set<string>(), edges: new Set<string>() };
-    return computeHighlight(focalIds, graph, statusesByDisease);
-  }, [graph, focalIds, statusesByDisease]);
+    return computeContributors(focalId, graph, statusesByDisease);
+  }, [graph, focalId, statusesByDisease]);
 
   const nodesMap = useMemo(
     () => new Map(pedigreeNodes.map((n) => [n._uid, n])),
@@ -264,8 +255,6 @@ export default function NarrativePedigreeView({
     return displayLabels.get(node.id) ?? '';
   };
 
-  const allowReselect = behaviours.allowFocalReselection;
-
   const handleSnapshot = () => {
     if (!viewRef.current) return;
     void exportSnapshot(viewRef.current, `${stage.label || 'pedigree'}.png`);
@@ -275,46 +264,43 @@ export default function NarrativePedigreeView({
     const shape = resolveShape(node);
     const label = labelFor(node);
     const dimmed = !highlight.nodes.has(node.id);
+    const isSelected = node.id === focalId;
 
     const singleDisease =
       shownDiseases.length === 1 ? shownDiseases[0] : undefined;
     const inner = singleDisease
-      ? renderClassic(node, shape, label, singleDisease)
-      : renderSticker(node, shape, label);
+      ? renderClassic(node, shape, label, singleDisease, isSelected)
+      : renderSticker(node, shape, label, isSelected);
 
     const handleClick = () => {
-      if (allowReselect) {
-        setFocalOverride(node.id);
-      }
+      setFocalId(node.id);
     };
 
-    // The refocus affordance lives on the container, not a wrapping <button>:
+    // The focal affordance lives on the container, not a wrapping <button>:
     // the fresco-ui Node is itself a <button>, and a <button> inside a <button>
     // is invalid HTML. role="button" + key handling keeps it accessible while
     // the inner Node button stays tabIndex=-1.
-    const reselectProps: ComponentPropsWithoutRef<'div'> = allowReselect
-      ? {
-          'role': 'button',
-          'tabIndex': 0,
-          'aria-label': `Focus on ${label || node.id}`,
-          'onClick': handleClick,
-          'onKeyDown': (event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              handleClick();
-            }
-          },
+    const focalProps: ComponentPropsWithoutRef<'div'> = {
+      'role': 'button',
+      'tabIndex': 0,
+      'aria-label': `Focus on ${label || node.id}`,
+      'onClick': handleClick,
+      'onKeyDown': (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          handleClick();
         }
-      : {};
+      },
+    };
 
     return (
       <div
         data-pedigree-member="true"
         data-node-id={node.id}
         data-dimmed={dimmed ? 'true' : 'false'}
-        className={`transition-opacity${allowReselect ? ' cursor-pointer' : ''}`}
+        className="cursor-pointer transition-opacity"
         style={{ opacity: dimmed ? 0.3 : 1 }}
-        {...reselectProps}
+        {...focalProps}
       >
         {inner}
       </div>
@@ -326,6 +312,7 @@ export default function NarrativePedigreeView({
     shape: NodeShape,
     label: string,
     disease: Disease,
+    selected: boolean,
   ): ReactNode => {
     const status = statusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown';
     const atRiskHomozygous =
@@ -341,6 +328,7 @@ export default function NarrativePedigreeView({
         disease={classicDisease}
         shape={shape}
         label={label}
+        selected={selected}
       />
     );
   };
@@ -349,15 +337,38 @@ export default function NarrativePedigreeView({
     node: RenderableNode,
     shape: NodeShape,
     label: string,
+    selected: boolean,
   ): ReactNode => {
     const stickers: DiseaseSticker[] = shownDiseases.map((disease) => ({
+      id: disease.id,
       color: disease.color,
       status: statusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown',
       atRiskHomozygous:
         statusesByDiseaseHomozygous.get(disease.id)?.get(node.id) ?? false,
     }));
-    return <StickerNode label={label} shape={shape} diseases={stickers} />;
+    return (
+      <StickerNode
+        label={label}
+        shape={shape}
+        diseases={stickers}
+        selected={selected}
+        onSelectDisease={setSelectedDiseaseId}
+      />
+    );
   };
+
+  const selectedDiseaseLabel = useMemo(() => {
+    if (selectedDiseaseId === null) return null;
+    return diseases.find((d) => d.id === selectedDiseaseId)?.label ?? null;
+  }, [selectedDiseaseId, diseases]);
+
+  const focalLabel = useMemo(() => {
+    if (focalId === null) return null;
+    const node = pedigreeNodes.find((n) => n._uid === focalId);
+    if (!node) return focalId;
+    if (node._uid === egoId) return 'You';
+    return displayLabels.get(node._uid) || focalId;
+  }, [focalId, pedigreeNodes, displayLabels, egoId]);
 
   if (!sourceConfig || !variableConfig) {
     return (
@@ -370,6 +381,17 @@ export default function NarrativePedigreeView({
   return (
     <div className="interface relative flex h-full w-full flex-col p-0">
       {measurementContainer}
+
+      {/* Visually-hidden aria-live region for announcing state changes */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {selectedDiseaseId === null
+          ? 'Showing all diseases'
+          : `Showing ${selectedDiseaseLabel ?? selectedDiseaseId}`}
+        {focalId !== null
+          ? `. Focused on ${focalLabel ?? focalId}. Showing who contributes to their inheritance.`
+          : ''}
+      </div>
+
       <div
         ref={viewRef}
         data-narrative-pedigree-view
@@ -386,23 +408,28 @@ export default function NarrativePedigreeView({
       </div>
       <div className="pointer-events-none absolute inset-x-0 bottom-4 flex items-center justify-center gap-4">
         <div className="pointer-events-auto">
-          <PresetSwitcher
-            presets={presets.map((p) => ({ id: p.id, label: p.label }))}
-            activeIndex={activePresetIndex}
-            onChange={(index) => {
-              setActivePresetIndex(index);
-              setFocalOverride(null);
-            }}
+          <DiseaseLegend
+            diseases={diseases}
+            selectedDiseaseId={selectedDiseaseId}
+            onSelect={setSelectedDiseaseId}
           />
         </div>
-        <Button
-          size="sm"
-          variant="text"
-          className="pointer-events-auto"
+        {focalId !== null && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="pointer-events-auto"
+            onClick={() => setFocalId(null)}
+          >
+            Clear focus
+          </Button>
+        )}
+        <ActionButton
+          iconName="camera"
+          aria-label="Save snapshot"
           onClick={handleSnapshot}
-        >
-          Save snapshot
-        </Button>
+          className="pointer-events-auto"
+        />
       </div>
     </div>
   );

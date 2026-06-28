@@ -8,6 +8,7 @@ import { StatusMarker } from './StatusMarker';
 import { stickerPositions } from './stickerPositions';
 
 export type DiseaseSticker = {
+  id?: string;
   color: string;
   status: Status;
   atRiskHomozygous?: boolean;
@@ -85,20 +86,33 @@ type StickerMarkerProps = {
   sticker: DiseaseSticker;
   x: number;
   y: number;
+  onSelectDisease?: (diseaseId: string) => void;
 };
 
-function StickerMarker({ sticker, x, y }: StickerMarkerProps) {
+function StickerMarker({ sticker, x, y, onSelectDisease }: StickerMarkerProps) {
   const { className, label } = STATUS_STYLE[sticker.status];
+
+  const { id: stickerId } = sticker;
+  const handlePointerClick =
+    onSelectDisease !== undefined && stickerId !== undefined
+      ? (e: React.MouseEvent) => {
+          e.stopPropagation();
+          onSelectDisease(stickerId);
+        }
+      : undefined;
 
   return (
     <span
-      aria-label={`${label} (${sticker.color})`}
+      aria-hidden
       title={`${label} (${sticker.color})`}
       data-sticker-status={sticker.status}
       className={[
-        'pointer-events-none absolute rounded-full border-2 border-white overflow-hidden',
+        'absolute rounded-full border-2 border-white overflow-hidden',
         'bg-[var(--surface-1)]',
         className,
+        onSelectDisease !== undefined
+          ? 'cursor-pointer'
+          : 'pointer-events-none',
       ].join(' ')}
       style={{
         width: STICKER_SIZE_PX,
@@ -106,6 +120,7 @@ function StickerMarker({ sticker, x, y }: StickerMarkerProps) {
         left: x - STICKER_HALF,
         top: y - STICKER_HALF,
       }}
+      onClick={handlePointerClick}
     >
       <StatusMarker
         variant="sticker"
@@ -160,6 +175,7 @@ type StickerNodeProps = {
   color?: NodeColorSequence;
   selected?: boolean;
   highlighted?: boolean;
+  onSelectDisease?: (diseaseId: string) => void;
 };
 
 /**
@@ -167,6 +183,12 @@ type StickerNodeProps = {
  * Each sticker's colour is the disease colour; its inline SVG encodes the
  * genetic status visually. When more diseases than STICKER_CAP are supplied,
  * the first STICKER_CAP are shown and a +N marker reveals the rest.
+ *
+ * `onSelectDisease` wires a pointer-only convenience: clicking a sticker
+ * selects that disease without disturbing the node-container's focal action.
+ * Sticker spans call stopPropagation so the click is not also interpreted as
+ * a focal selection. The stickers are aria-hidden; keyboard access for disease
+ * selection is through the DiseaseLegend.
  */
 export function StickerNode({
   label,
@@ -175,6 +197,7 @@ export function StickerNode({
   color = 'node-color-seq-1',
   selected,
   highlighted,
+  onSelectDisease,
 }: StickerNodeProps) {
   const [overflowOpen, setOverflowOpen] = useState(false);
 
@@ -202,7 +225,9 @@ export function StickerNode({
         highlighted={highlighted}
       />
 
-      {/* Sticker overlay — aria-hidden because each StickerMarker carries its own aria-label */}
+      {/* Sticker overlay — aria-hidden; individual StickerMarker spans are
+          also aria-hidden. Disease selection via sticker click is a pointer
+          convenience only; keyboard path is through DiseaseLegend. */}
       <span aria-hidden className="pointer-events-none absolute inset-0">
         {visibleStickers.map((sticker, i) => {
           const pos = positions[i];
@@ -213,6 +238,7 @@ export function StickerNode({
               sticker={sticker}
               x={pos.x * NODE_SIZE_PX}
               y={pos.y * NODE_SIZE_PX}
+              onSelectDisease={onSelectDisease}
             />
           );
         })}

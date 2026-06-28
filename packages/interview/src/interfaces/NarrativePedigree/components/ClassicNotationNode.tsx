@@ -18,6 +18,7 @@ type ClassicNotationNodeProps = {
   disease: ClassicDisease;
   shape: NodeShape;
   label: string;
+  selected?: boolean;
 };
 
 const AT_RISK_LABEL = 'At risk of being affected (homozygous)';
@@ -67,6 +68,7 @@ export function ClassicNotationNode({
   disease,
   shape,
   label,
+  selected,
 }: ClassicNotationNodeProps) {
   const { color, status, atRiskHomozygous } = disease;
 
@@ -83,6 +85,7 @@ export function ClassicNotationNode({
             shape={shape}
             color="custom"
             size="xs"
+            selected={selected}
             style={
               {
                 '--base': 'transparent',
