@@ -30,6 +30,14 @@ import { createUndoStore } from './useUndoStore';
 
 type NetworkComposerProps = StageProps<'NetworkComposer'>;
 
+const isPosition = (value: unknown): value is { x: number; y: number } =>
+  typeof value === 'object' &&
+  value !== null &&
+  'x' in value &&
+  'y' in value &&
+  typeof value.x === 'number' &&
+  typeof value.y === 'number';
+
 const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const { stage } = stageProps;
   const dispatch = useAppDispatch();
@@ -99,13 +107,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     (nodeId: string, position: { x: number; y: number }) => {
       const node = nodes.find((n) => n[entityPrimaryKeyProperty] === nodeId);
       const rawPrev = node?.[entityAttributesProperty]?.[layoutVariable];
-      const previous =
-        rawPrev !== null &&
-        typeof rawPrev === 'object' &&
-        'x' in rawPrev &&
-        'y' in rawPrev
-          ? (rawPrev as { x: number; y: number })
-          : null;
+      const previous = isPosition(rawPrev) ? rawPrev : null;
 
       if (previous !== null) {
         void actions.repositionNode(nodeId, position, previous);
