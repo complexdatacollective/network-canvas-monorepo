@@ -250,8 +250,9 @@ export default function NarrativePedigreeView({
       edgesMap,
       variableConfig,
       'gamete',
+      egoId,
     );
-  }, [nodesMap, edgesMap, variableConfig]);
+  }, [nodesMap, edgesMap, variableConfig, egoId]);
 
   const resolveShape = (node: NcNode): NodeShape => {
     if (!sourceConfig?.shapeDefinition) return 'square';
@@ -259,10 +260,7 @@ export default function NarrativePedigreeView({
   };
 
   const labelFor = (node: RenderableNode): string => {
-    if (!variableConfig) return '';
-    if (node.attributes[variableConfig.egoVariable] === true) {
-      return displayLabels.get(node.id) ?? 'You';
-    }
+    if (node.id === egoId) return 'You';
     return displayLabels.get(node.id) ?? '';
   };
 
