@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { renderHook, act } from '@testing-library/react';
-import { type ReactNode, createElement } from 'react';
+import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
@@ -74,7 +74,7 @@ function makeStore(initialNodes: NcNode[] = [], initialEdges: NcEdge[] = []) {
 
 function makeWrapper(store: ReturnType<typeof makeStore>) {
   return function Wrapper({ children }: { children: ReactNode }) {
-    return createElement(Provider, { store, children });
+    return Provider({ store, children });
   };
 }
 
