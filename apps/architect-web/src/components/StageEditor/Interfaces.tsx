@@ -300,6 +300,9 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
         requireGrandparents: 'off',
         requireChildrenContributors: 'off',
       },
+      introScreen: {
+        text: "Building a pedigree means asking about the people you're biologically related to — the people whose egg and sperm you came from — not necessarily the people who raised you. A pedigree maps genetic relationships, so we focus on biological parents. Don't worry — you'll be able to include non-biological parents later.",
+      },
     },
   },
   NarrativePedigree: {

@@ -22,7 +22,6 @@ import {
 } from '~/interfaces/FamilyPedigree/utils/stageConfig';
 
 import AdditionalParentsStep from '../quickStartWizard/AdditionalParentsStep';
-import BioParentsIntroStep from '../quickStartWizard/BioParentsIntroStep';
 import ChildrenDetailStep from '../quickStartWizard/ChildrenDetailStep';
 import EggParentStep from '../quickStartWizard/EggParentStep';
 import {
@@ -96,10 +95,6 @@ export default function EgoCellWizard({
                 content: wrap(FramingSelectionStep),
               },
             ]),
-        {
-          title: 'Your biological parents',
-          content: wrap(BioParentsIntroStep),
-        },
         {
           title: stepTerms.eggParent,
           content: wrap(EggParentStep),

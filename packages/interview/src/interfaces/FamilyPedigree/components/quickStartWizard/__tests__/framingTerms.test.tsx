@@ -52,7 +52,6 @@ function framingWrapper(framing: FramingId) {
 }
 
 // Imports are deferred below the mocks so that vi.mock hoisting takes effect.
-import BioParentsIntroStep from '../BioParentsIntroStep';
 import EggParentStep from '../EggParentStep';
 import GestationalCarrierStep from '../GestationalCarrierStep';
 import SpermParentStep from '../SpermParentStep';
@@ -138,31 +137,5 @@ describe('GestationalCarrierStep framing invariance', () => {
     );
 
     expect(screen.getByText(/gestational carrier/i)).toBeTruthy();
-  });
-});
-
-describe('BioParentsIntroStep framed headings', () => {
-  it('shows "Egg Parent" and "Sperm Parent" headings under gamete framing', () => {
-    const Wrapper = framingWrapper('gamete');
-    render(
-      <Wrapper>
-        <BioParentsIntroStep />
-      </Wrapper>,
-    );
-
-    expect(screen.getByText('Egg Parent')).toBeTruthy();
-    expect(screen.getByText('Sperm Parent')).toBeTruthy();
-  });
-
-  it('shows "Mother" and "Father" headings under gendered framing', () => {
-    const Wrapper = framingWrapper('gendered');
-    render(
-      <Wrapper>
-        <BioParentsIntroStep />
-      </Wrapper>,
-    );
-
-    expect(screen.getByText('Mother')).toBeTruthy();
-    expect(screen.getByText('Father')).toBeTruthy();
   });
 });
