@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { vi } from 'vitest';
 
-import Form from '@codaco/fresco-ui/form/Form';
 import type { FramingId } from '@codaco/shared-consts';
 import { FamilyPedigreeContext } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import {
@@ -53,50 +53,48 @@ function framingWrapper(framing: FramingId | null) {
 import { FramingSelectionStep } from '../FramingSelectionStep';
 
 describe('FramingSelectionStep', () => {
-  it('renders both framing options', () => {
+  it('renders both framing options with participant-friendly copy', () => {
     const { Wrapper } = framingWrapper(null);
     render(
       <Wrapper>
-        <Form onSubmit={() => ({ success: true })}>
-          <FramingSelectionStep />
-        </Form>
+        <FramingSelectionStep />
       </Wrapper>,
     );
 
-    expect(screen.getByText(/gamete.based/i)).toBeTruthy();
-    expect(screen.getByText(/gendered/i)).toBeTruthy();
+    expect(screen.getByText('Egg parent & sperm parent')).toBeTruthy();
+    expect(screen.getByText('Mother & father')).toBeTruthy();
   });
 
-  it('calls setFraming with "gendered" when the gendered option is selected', () => {
+  it('calls setFraming with "gendered" when the mother & father option is selected', () => {
     const { Wrapper, store } = framingWrapper(null);
 
     render(
       <Wrapper>
-        <Form onSubmit={() => ({ success: true })}>
-          <FramingSelectionStep />
-        </Form>
+        <FramingSelectionStep />
       </Wrapper>,
     );
 
-    const genderedInput = screen.getByRole('radio', { name: /gendered/i });
-    fireEvent.click(genderedInput);
+    const genderedOption = screen.getByRole('option', {
+      name: /mother & father/i,
+    });
+    fireEvent.click(genderedOption);
 
     expect(store.getState().framing).toBe('gendered');
   });
 
-  it('calls setFraming with "gamete" when the gamete option is selected', () => {
+  it('calls setFraming with "gamete" when the egg parent & sperm parent option is selected', () => {
     const { Wrapper, store } = framingWrapper(null);
 
     render(
       <Wrapper>
-        <Form onSubmit={() => ({ success: true })}>
-          <FramingSelectionStep />
-        </Form>
+        <FramingSelectionStep />
       </Wrapper>,
     );
 
-    const gameteInput = screen.getByRole('radio', { name: /gamete.based/i });
-    fireEvent.click(gameteInput);
+    const gameteOption = screen.getByRole('option', {
+      name: /egg parent & sperm parent/i,
+    });
+    fireEvent.click(gameteOption);
 
     expect(store.getState().framing).toBe('gamete');
   });

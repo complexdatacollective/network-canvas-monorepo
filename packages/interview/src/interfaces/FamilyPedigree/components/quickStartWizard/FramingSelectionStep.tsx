@@ -1,11 +1,8 @@
 'use client';
 
+import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import {
-  FRAMING_AUTHOR_LABELS,
-  FRAMING_IDS,
-  type FramingId,
-} from '@codaco/shared-consts';
+import type { FramingId } from '@codaco/shared-consts';
 import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 
 type FramingConfig =
@@ -18,11 +15,20 @@ export function shouldSkipFramingSelectionStep(
   return framingConfig.mode !== 'participantChoice';
 }
 
-const FRAMING_EXAMPLE: Record<FramingId, string> = {
-  gamete:
-    "We'll refer to your biological parents as your egg parent and sperm parent.",
-  gendered: "We'll refer to your biological parents as your mother and father.",
-};
+const FRAMING_OPTIONS = [
+  {
+    value: 'gamete' as const,
+    label: 'Egg parent & sperm parent',
+    description:
+      "We'll talk about the person whose egg you came from and the person whose sperm you came from.",
+  },
+  {
+    value: 'gendered' as const,
+    label: 'Mother & father',
+    description:
+      "We'll talk about your biological mother and biological father.",
+  },
+];
 
 export function FramingSelectionStep() {
   const framing = useFamilyPedigreeStore((s) => s.framing);
@@ -31,37 +37,18 @@ export function FramingSelectionStep() {
   return (
     <>
       <Paragraph>
-        Choose the language you'd prefer to use when we ask about your
-        biological parents.
+        How would you like us to refer to the people you&apos;re biologically
+        related to?
       </Paragraph>
-      <div className="mt-4 flex flex-col gap-3">
-        {FRAMING_IDS.map((id) => {
-          const isSelected = framing === id;
-          return (
-            <label
-              key={id}
-              className={[
-                'flex cursor-pointer flex-col gap-1 rounded-lg border p-4 transition-colors',
-                isSelected
-                  ? 'border-primary bg-primary/10'
-                  : 'border-border hover:bg-muted/50',
-              ].join(' ')}
-            >
-              <input
-                type="radio"
-                name="framing"
-                value={id}
-                checked={isSelected}
-                aria-label={FRAMING_AUTHOR_LABELS[id]}
-                onChange={() => setFraming(id)}
-                className="sr-only"
-              />
-              <span className="font-semibold">{FRAMING_AUTHOR_LABELS[id]}</span>
-              <span className="text-sm opacity-70">{FRAMING_EXAMPLE[id]}</span>
-            </label>
-          );
-        })}
-      </div>
+      <RichSelectGroupField
+        options={FRAMING_OPTIONS}
+        value={framing ?? undefined}
+        onChange={(value) => {
+          if (value === 'gamete' || value === 'gendered') {
+            setFraming(value);
+          }
+        }}
+      />
     </>
   );
 }
