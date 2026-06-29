@@ -967,5 +967,15 @@ describe('SyntheticInterview', () => {
       const stageConfig = si.getProtocol().stages[0] as Record<string, unknown>;
       expect(stageConfig.nodeForm).toBeUndefined();
     });
+
+    it('rejects a non-node (edge) subject', () => {
+      const si = new SyntheticInterview();
+      const friendship = si.addEdgeType({ name: 'Friendship' });
+      expect(() =>
+        si.addStage('NetworkComposer', {
+          subject: { entity: 'edge', type: friendship.id },
+        }),
+      ).toThrow(/node subject/);
+    });
   });
 });

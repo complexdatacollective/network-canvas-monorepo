@@ -591,7 +591,11 @@ export class SyntheticInterview {
     }
 
     // NetworkComposer
-    if (type === 'NetworkComposer' && subject?.entity === 'node') {
+    if (type === 'NetworkComposer') {
+      if (subject?.entity !== 'node') {
+        throw new Error('NetworkComposer stages require a node subject');
+      }
+
       const nodeTypeId = subject.type;
 
       // quickAdd is a text variable populated by the inline add field. Mirror
