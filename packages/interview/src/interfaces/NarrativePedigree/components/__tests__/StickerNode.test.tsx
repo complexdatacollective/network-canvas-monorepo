@@ -401,9 +401,9 @@ describe('StickerNode', () => {
     });
   });
 
-  describe('shape conformance', () => {
+  describe('perimeter markers are always circular', () => {
     it.each(['square', 'circle', 'diamond'] as const)(
-      'passes the node shape to the sticker glyph (shape=%s)',
+      'renders a circular sticker glyph regardless of node shape (shape=%s)',
       (shape) => {
         render(
           <StickerNode
@@ -415,8 +415,9 @@ describe('StickerNode', () => {
         const filled = document
           .querySelector('[data-sticker-status="affected"]')
           ?.querySelector('[data-filled-shape]');
-        const expectedTag = shape === 'circle' ? 'circle' : 'rect';
-        expect(filled?.tagName.toLowerCase()).toBe(expectedTag);
+        // Perimeter markers are circles regardless of the node shape; only the
+        // single-condition node-Sticker conforms to the node shape.
+        expect(filled?.tagName.toLowerCase()).toBe('circle');
       },
     );
   });

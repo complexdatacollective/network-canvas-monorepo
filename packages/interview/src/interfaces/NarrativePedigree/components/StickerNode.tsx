@@ -136,7 +136,11 @@ export function StickerNode({
               <Sticker
                 status={sticker.status}
                 color={sticker.color}
-                shape={shape}
+                // Perimeter markers are always circular regardless of the
+                // node shape; only the single-condition node-Sticker conforms
+                // to the node shape. The node shape still drives sticker
+                // POSITIONS via stickerPositions(shape, count) above.
+                shape="circle"
                 size="100%"
                 atRiskHomozygous={sticker.atRiskHomozygous}
                 surfaceColor={dimmed ? dimColor('white') : undefined}
