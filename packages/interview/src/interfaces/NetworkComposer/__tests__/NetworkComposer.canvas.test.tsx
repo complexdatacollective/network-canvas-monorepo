@@ -164,4 +164,23 @@ describe('NetworkComposer canvas', () => {
     const svgs = document.querySelectorAll('svg[aria-hidden="true"]');
     expect(svgs.length).toBeGreaterThan(0);
   });
+
+  it('keeps the decorative background non-interactive so background taps reach the canvas', () => {
+    // Regression guard: the background wrapper sits above the canvas (absolute
+    // inset-0). If it captures pointer events, it — not the canvas — becomes the
+    // pointerdown target, and the `e.target === e.currentTarget` gate in
+    // ComposerCanvas silently swallows every background tap, breaking add-node,
+    // tap-to-deselect and lasso. jsdom can't reproduce the hit-test (it dispatches
+    // straight at the canvas), so assert the layer is pointer-events-none instead.
+    renderInterface();
+    const canvas = screen.getByRole('application');
+    const backgroundWrapper = Array.from(canvas.children).find(
+      (el) =>
+        el.tagName === 'DIV' &&
+        el.className.includes('inset-0') &&
+        el.className.includes('items-center'),
+    );
+    expect(backgroundWrapper).toBeTruthy();
+    expect(backgroundWrapper?.className).toContain('pointer-events-none');
+  });
 });

@@ -265,7 +265,11 @@ export default function ComposerCanvas({
       onPointerMove={handleContainerPointerMove}
       onPointerUp={handleContainerPointerUp}
     >
-      <div className="absolute inset-0 flex items-center justify-center">
+      {/* Decorative background must not capture pointer events, otherwise its
+          full-canvas layer becomes the pointerdown target and the background-tap
+          handler (which requires e.target === the canvas) never fires — breaking
+          add-node, tap-to-deselect, and lasso selection. */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
         {background}
       </div>
       <EdgeLayer edges={edges} store={canvasStore} onEdgeSelect={onEdgeTap} />
