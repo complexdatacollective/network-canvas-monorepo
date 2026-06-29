@@ -3,7 +3,13 @@
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import { Toolbar } from '@base-ui/react/toolbar';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { GripHorizontal, GripVertical } from 'lucide-react';
+import {
+  AnimatePresence,
+  motion,
+  useDragControls,
+  useReducedMotion,
+} from 'motion/react';
 import * as React from 'react';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
@@ -81,6 +87,19 @@ export type SegmentedToolbarProps = {
   /** @default 'md' */
   size?: 'sm' | 'md' | 'lg';
   className?: string;
+  /** @default false */
+  draggable?: boolean;
+  /** Uncontrolled starting position (only when draggable). */
+  defaultPosition?: Position;
+  /** Controlled position (only when draggable). */
+  position?: Position;
+  onPositionChange?: (pos: Position) => void;
+  /** Optional drag bounds. */
+  dragConstraints?:
+    | React.RefObject<Element>
+    | { top: number; left: number; right: number; bottom: number };
+  /** Accessible name for the drag handle. @default 'Move toolbar' */
+  dragHandleLabel?: string;
 };
 
 const rootVariants = cva({
@@ -257,6 +276,8 @@ function ToolbarGroupSegment({
 
 const segmentSpring = { type: 'spring' as const, duration: 0.4, bounce: 0.2 };
 
+const NUDGE_STEP = 8;
+
 function SegmentMotion({
   reduce,
   children,
@@ -282,6 +303,54 @@ function SegmentMotion({
     >
       {children}
     </motion.div>
+  );
+}
+
+/**
+ * DragHandle is intentionally outside role="toolbar" so its arrow keys move
+ * the toolbar rather than competing with the toolbar's roving-focus navigation.
+ */
+function DragHandle({
+  label,
+  orientation,
+  size,
+  onPointerDown,
+  onNudge,
+}: {
+  label: string;
+  orientation: 'horizontal' | 'vertical';
+  size: SegmentSize;
+  onPointerDown: (event: React.PointerEvent) => void;
+  onNudge: (delta: Position) => void;
+}) {
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    const deltas: Record<string, Position> = {
+      ArrowLeft: { x: -NUDGE_STEP, y: 0 },
+      ArrowRight: { x: NUDGE_STEP, y: 0 },
+      ArrowUp: { x: 0, y: -NUDGE_STEP },
+      ArrowDown: { x: 0, y: NUDGE_STEP },
+    };
+    const delta = deltas[event.key];
+    if (!delta) return;
+    event.preventDefault();
+    onNudge(delta);
+  };
+
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onPointerDown={onPointerDown}
+      onKeyDown={handleKeyDown}
+      className={cx(
+        segmentVariants({ size, iconOnly: true }),
+        'cursor-grab touch-none active:cursor-grabbing',
+      )}
+    >
+      <span aria-hidden className="contents">
+        {orientation === 'horizontal' ? <GripVertical /> : <GripHorizontal />}
+      </span>
+    </button>
   );
 }
 
@@ -326,15 +395,46 @@ export function SegmentedToolbar({
   items,
   orientation = 'horizontal',
   size = 'md',
+  draggable = false,
+  defaultPosition,
+  position,
+  onPositionChange,
+  dragConstraints,
+  dragHandleLabel = 'Move toolbar',
   className,
 }: SegmentedToolbarProps) {
   const reduce = useReducedMotion() ?? false;
-  return (
+  const dragControls = useDragControls();
+  const isControlled = position !== undefined;
+  const [internalPos, setInternalPos] = React.useState<Position>(
+    defaultPosition ?? { x: 0, y: 0 },
+  );
+  const [announcement, setAnnouncement] = React.useState('');
+  const pos = isControlled ? position : internalPos;
+
+  const commitPosition = (next: Position) => {
+    if (!isControlled) setInternalPos(next);
+    onPositionChange?.(next);
+  };
+
+  const handleNudge = (delta: Position) => {
+    const next = { x: pos.x + delta.x, y: pos.y + delta.y };
+    commitPosition(next);
+    setAnnouncement(
+      `Toolbar moved to ${Math.round(next.x)}, ${Math.round(next.y)}`,
+    );
+  };
+
+  const toolbar = (
     <Toolbar.Root
       orientation={orientation}
       aria-label={label}
-      render={<motion.div layout />}
-      className={cx(rootVariants({ orientation }), className)}
+      render={draggable ? <div /> : <motion.div layout />}
+      className={cx(
+        draggable ? 'flex items-center gap-1' : rootVariants({ orientation }),
+        draggable && orientation === 'vertical' && 'flex-col',
+        className,
+      )}
     >
       <AnimatePresence initial={false} mode="popLayout">
         {items.map((segment) =>
@@ -342,6 +442,39 @@ export function SegmentedToolbar({
         )}
       </AnimatePresence>
     </Toolbar.Root>
+  );
+
+  if (!draggable) {
+    return toolbar;
+  }
+
+  return (
+    <motion.div
+      layout
+      drag
+      dragListener={false}
+      dragControls={dragControls}
+      dragMomentum={false}
+      dragConstraints={dragConstraints}
+      onDragEnd={(_event, info) =>
+        commitPosition({ x: pos.x + info.offset.x, y: pos.y + info.offset.y })
+      }
+      animate={{ x: pos.x, y: pos.y }}
+      transition={reduce ? { duration: 0 } : segmentSpring}
+      className={cx(rootVariants({ orientation }), className)}
+    >
+      <DragHandle
+        label={dragHandleLabel}
+        orientation={orientation}
+        size={size}
+        onPointerDown={(event) => dragControls.start(event)}
+        onNudge={handleNudge}
+      />
+      {toolbar}
+      <span role="status" aria-live="polite" className="sr-only">
+        {announcement}
+      </span>
+    </motion.div>
   );
 }
 

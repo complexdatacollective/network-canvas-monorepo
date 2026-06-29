@@ -177,3 +177,63 @@ describe('SegmentedToolbar — add/remove', () => {
     expect(screen.queryByRole('button', { name: 'B' })).not.toBeInTheDocument();
   });
 });
+
+describe('SegmentedToolbar — draggable', () => {
+  const items: ToolbarSegment[] = [
+    { type: 'button', id: 'a', label: 'A', onClick: vi.fn() },
+  ];
+
+  it('renders no drag handle by default', () => {
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    expect(
+      screen.queryByRole('button', { name: 'Move toolbar' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders a labelled drag handle when draggable', () => {
+    render(<SegmentedToolbar label="Tools" items={items} draggable />);
+    expect(
+      screen.getByRole('button', { name: 'Move toolbar' }),
+    ).toBeInTheDocument();
+  });
+
+  it('uses a custom drag handle label', () => {
+    render(
+      <SegmentedToolbar
+        label="Tools"
+        items={items}
+        draggable
+        dragHandleLabel="Reposition"
+      />,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Reposition' }),
+    ).toBeInTheDocument();
+  });
+
+  it('nudges position with the arrow keys from the focused handle', async () => {
+    const onPositionChange = vi.fn();
+    render(
+      <SegmentedToolbar
+        label="Tools"
+        items={items}
+        draggable
+        defaultPosition={{ x: 0, y: 0 }}
+        onPositionChange={onPositionChange}
+      />,
+    );
+    const handle = screen.getByRole('button', { name: 'Move toolbar' });
+    handle.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(onPositionChange).toHaveBeenLastCalledWith({ x: 8, y: 0 });
+    await userEvent.keyboard('{ArrowDown}');
+    expect(onPositionChange).toHaveBeenLastCalledWith({ x: 8, y: 8 });
+  });
+
+  it('announces movement via an aria-live region', async () => {
+    render(<SegmentedToolbar label="Tools" items={items} draggable />);
+    screen.getByRole('button', { name: 'Move toolbar' }).focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(screen.getByRole('status')).toHaveTextContent(/moved/i);
+  });
+});
