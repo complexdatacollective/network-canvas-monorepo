@@ -401,6 +401,61 @@ describe('SyntheticInterview', () => {
     });
   });
 
+  describe('manual nodes', () => {
+    it('defaults unset attributes on manual nodes to neutral values instead of randomising', () => {
+      const si = new SyntheticInterview();
+      const nt = si.addNodeType();
+      const isEgo = nt.addVariable({ type: 'boolean', name: 'isEgo' });
+      const affected = nt.addVariable({ type: 'boolean', name: 'affected' });
+      const relationship = nt.addVariable({
+        type: 'text',
+        name: 'relationship',
+      });
+      const tags = nt.addVariable({
+        type: 'categorical',
+        name: 'tags',
+        options: [
+          { label: 'A', value: 'a' },
+          { label: 'B', value: 'b' },
+        ],
+      });
+
+      const stage = si.addStage('Narrative', {
+        subject: { entity: 'node', type: nt.id },
+      });
+      si.addManualNode(stage.id, nt.id, 'person-1', { [isEgo.id]: true });
+
+      const network = si.getNetwork();
+      const node = network.nodes.find(
+        (n) => n[entityPrimaryKeyProperty] === 'person-1',
+      )!;
+      const attrs = node[entityAttributesProperty];
+
+      // Explicitly-seeded attribute is preserved.
+      expect(attrs[isEgo.id]).toBe(true);
+      // Unset attributes get type-appropriate neutrals, never random values.
+      expect(attrs[affected.id]).toBe(false);
+      expect(attrs[relationship.id]).toBe('');
+      expect(attrs[tags.id]).toEqual([]);
+    });
+
+    it('still randomises unset attributes on procedurally-generated nodes', () => {
+      const si = new SyntheticInterview();
+      const nt = si.addNodeType();
+      const label = nt.addVariable({ type: 'text', name: 'label' });
+
+      si.addStage('Narrative', {
+        initialNodes: { count: 1 },
+        subject: { entity: 'node', type: nt.id },
+      });
+
+      const node = si.getNetwork().nodes[0]!;
+      const value = node[entityAttributesProperty][label.id];
+      expect(typeof value).toBe('string');
+      expect(value).not.toBe('');
+    });
+  });
+
   describe('edge generation', () => {
     it('creates edges between initial nodes', () => {
       const si = new SyntheticInterview();
