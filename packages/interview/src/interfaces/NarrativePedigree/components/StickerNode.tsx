@@ -148,8 +148,8 @@ export function StickerNode({
           aria-hidden
           data-overflow-marker
           className={[
-            'pointer-events-none absolute flex items-center justify-center rounded-full border-2 border-white text-[9px] leading-none font-bold text-white',
-            dimmed ? '' : 'bg-slate-600',
+            'pointer-events-none absolute flex items-center justify-center rounded-full border-2 text-[9px] leading-none font-bold',
+            dimmed ? '' : 'border-white bg-slate-600 text-white',
           ].join(' ')}
           style={{
             width: STICKER_SIZE_PX,
@@ -157,7 +157,11 @@ export function StickerNode({
             left: overflowPos.x * NODE_SIZE_PX - STICKER_HALF,
             top: overflowPos.y * NODE_SIZE_PX - STICKER_HALF,
             ...(dimmed
-              ? { backgroundColor: dimColor('var(--color-slate-600)') }
+              ? {
+                  backgroundColor: dimColor('var(--color-slate-600)'),
+                  borderColor: dimColor('white'),
+                  color: dimColor('white'),
+                }
               : {}),
           }}
         >
