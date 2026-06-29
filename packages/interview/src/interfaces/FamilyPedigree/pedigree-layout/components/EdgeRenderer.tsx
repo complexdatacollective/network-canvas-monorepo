@@ -1,5 +1,6 @@
 import { type JSX, useMemo } from 'react';
 
+import { dimColor } from '../dimColor';
 import type { ConnectorRenderData } from '../pedigreeAdapter';
 import type {
   AuxiliaryConnector,
@@ -266,11 +267,11 @@ function renderParentChild(
   if (isDashed) {
     const allSegments = [...conn.parentLink, conn.siblingBar, ...conn.uplines];
     const points = segmentsToPolylinePoints(allSegments);
+    const strokeColor = sharedDimmed ? dimColor(color) : color;
 
     return (
       <g
         key={`pc-${idx}`}
-        opacity={sharedDimmed ? 0.3 : 1}
         {...(sharedDimmed ? { 'data-edge-dimmed': 'true' } : {})}
       >
         {points.map((pts, i) => (
@@ -278,7 +279,7 @@ function renderParentChild(
             key={`pc-${idx}-path-${i}`}
             points={pts}
             fill="none"
-            stroke={color}
+            stroke={strokeColor}
             strokeWidth={EDGE_WIDTH}
             strokeDasharray={DASHED_PATTERN}
             strokeLinecap="round"
@@ -288,6 +289,8 @@ function renderParentChild(
       </g>
     );
   }
+
+  const sharedColor = sharedDimmed ? dimColor(color) : color;
 
   return (
     <g key={`pc-${idx}`}>
@@ -299,27 +302,24 @@ function renderParentChild(
           highlightedNodeIds,
           highlightedEdgeKeys,
         );
+        const uplineColor = uplineDimmed ? dimColor(color) : color;
         return (
           <g
             key={`pc-${idx}-up-wrap-${i}`}
-            opacity={uplineDimmed ? 0.3 : 1}
             {...(uplineDimmed ? { 'data-edge-dimmed': 'true' } : {})}
           >
-            {renderLine(ul, color, `pc-${idx}-up-${i}`, {
+            {renderLine(ul, uplineColor, `pc-${idx}-up-${i}`, {
               strokeLinecap: 'round',
             })}
           </g>
         );
       })}
-      <g
-        opacity={sharedDimmed ? 0.3 : 1}
-        {...(sharedDimmed ? { 'data-edge-dimmed': 'true' } : {})}
-      >
-        {renderLine(conn.siblingBar, color, `pc-${idx}-bar`, {
+      <g {...(sharedDimmed ? { 'data-edge-dimmed': 'true' } : {})}>
+        {renderLine(conn.siblingBar, sharedColor, `pc-${idx}-bar`, {
           strokeLinecap: 'round',
         })}
         {conn.parentLink.map((pl, i) =>
-          renderLine(pl, color, `pc-${idx}-pl-${i}`, {
+          renderLine(pl, sharedColor, `pc-${idx}-pl-${i}`, {
             strokeLinecap: 'round',
           }),
         )}
@@ -408,10 +408,9 @@ export function PedigreeEdgeSvg({
       elements.push(
         <g
           key={`gl-dim-${i}`}
-          opacity={dimmed ? 0.3 : 1}
           {...(dimmed ? { 'data-edge-dimmed': 'true' } : {})}
         >
-          {renderGroupLine(gl, i, color)}
+          {renderGroupLine(gl, i, dimmed ? dimColor(color) : color)}
         </g>,
       );
     }
@@ -434,10 +433,9 @@ export function PedigreeEdgeSvg({
       elements.push(
         <g
           key={`aux-dim-${i}`}
-          opacity={dimmed ? 0.3 : 1}
           {...(dimmed ? { 'data-edge-dimmed': 'true' } : {})}
         >
-          {renderAuxiliary(aux, i, color)}
+          {renderAuxiliary(aux, i, dimmed ? dimColor(color) : color)}
         </g>,
       );
     }

@@ -1,5 +1,8 @@
+import type { CSSProperties } from 'react';
+
 import Node from '@codaco/fresco-ui/Node';
 import type { NodeColorSequence, NodeShape } from '@codaco/fresco-ui/Node';
+import { dimColor } from '~/interfaces/FamilyPedigree/pedigree-layout/dimColor';
 
 import type { Status } from '../genetics/status';
 import { Sticker, STICKER_SIZE_PX } from './Sticker';
@@ -28,6 +31,7 @@ type StickerNodeProps = {
   color?: NodeColorSequence;
   selected?: boolean;
   highlighted?: boolean;
+  dimmed?: boolean;
   onSelectDisease?: (diseaseId: string) => void;
 };
 
@@ -50,6 +54,7 @@ export function StickerNode({
   color = 'node-color-seq-1',
   selected,
   highlighted,
+  dimmed = false,
   onSelectDisease,
 }: StickerNodeProps) {
   const cappedStickers = diseases.slice(0, STICKER_CAP);
@@ -80,15 +85,24 @@ export function StickerNode({
   const overflowPos =
     hiddenCount > 0 ? overflowPositions[stickerCount] : undefined;
 
+  // When dimmed, the node body is blended toward the background via a custom
+  // --base (--dark auto-derives from it in Node). NodeColorSequence is a closed
+  // enum with no slot for a computed colour, so the dimmed path must go through
+  // color="custom". The bright path keeps the caller's sequence colour.
+  const dimmedStyle = {
+    '--base': dimColor('var(--node-1)'),
+  } as CSSProperties;
+
   return (
     <div className="relative inline-block">
       <Node
         label={label}
         shape={shape}
-        color={color}
+        color={dimmed ? 'custom' : color}
         size="sm"
         selected={selected}
         highlighted={highlighted}
+        style={dimmed ? dimmedStyle : undefined}
       />
 
       {/* Sticker overlay — aria-hidden; individual Sticker spans are also
@@ -113,6 +127,7 @@ export function StickerNode({
                 status={sticker.status}
                 color={sticker.color}
                 atRiskHomozygous={sticker.atRiskHomozygous}
+                surfaceColor={dimmed ? dimColor('white') : undefined}
                 onClick={
                   onSelectDisease !== undefined
                     ? () => onSelectDisease(sticker.id)
@@ -132,12 +147,18 @@ export function StickerNode({
         <span
           aria-hidden
           data-overflow-marker
-          className="pointer-events-none absolute flex items-center justify-center rounded-full border-2 border-white bg-slate-600 text-[9px] leading-none font-bold text-white"
+          className={[
+            'pointer-events-none absolute flex items-center justify-center rounded-full border-2 border-white text-[9px] leading-none font-bold text-white',
+            dimmed ? '' : 'bg-slate-600',
+          ].join(' ')}
           style={{
             width: STICKER_SIZE_PX,
             height: STICKER_SIZE_PX,
             left: overflowPos.x * NODE_SIZE_PX - STICKER_HALF,
             top: overflowPos.y * NODE_SIZE_PX - STICKER_HALF,
+            ...(dimmed
+              ? { backgroundColor: dimColor('var(--color-slate-600)') }
+              : {}),
           }}
         >
           +{hiddenCount}

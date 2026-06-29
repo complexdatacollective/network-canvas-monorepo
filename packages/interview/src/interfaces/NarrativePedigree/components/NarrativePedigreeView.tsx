@@ -19,6 +19,7 @@ import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import PedigreeLayout from '~/interfaces/FamilyPedigree/pedigree-layout/components/PedigreeLayout';
 import { computeNodeDisplayLabels } from '~/interfaces/FamilyPedigree/pedigree-layout/components/PedigreeNode';
+import { dimColor } from '~/interfaces/FamilyPedigree/pedigree-layout/dimColor';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 import {
   getNetworkEdges,
@@ -306,8 +307,8 @@ export default function NarrativePedigreeView({
         ? shownDiseases.find((d) => d.id === selectedDiseaseId)
         : undefined;
     const inner = selectedDisease
-      ? renderClassic(node, shape, label, selectedDisease, isSelected)
-      : renderSticker(node, shape, label, isSelected);
+      ? renderClassic(node, shape, label, selectedDisease, isSelected, dimmed)
+      : renderSticker(node, shape, label, isSelected, dimmed);
 
     const statusSummary = statusSummaryFor(node);
     const statusSummaryId = statusSummary ? `np-status-${node.id}` : undefined;
@@ -343,8 +344,7 @@ export default function NarrativePedigreeView({
         data-pedigree-member="true"
         data-node-id={node.id}
         data-dimmed={dimmed ? 'true' : 'false'}
-        className="cursor-pointer transition-opacity"
-        style={{ opacity: dimmed ? 0.3 : 1 }}
+        className="cursor-pointer"
         {...focalProps}
       >
         {statusSummary && (
@@ -363,12 +363,13 @@ export default function NarrativePedigreeView({
     label: string,
     disease: Disease,
     selected: boolean,
+    dimmed: boolean,
   ): ReactNode => {
     const status = statusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown';
     const atRiskHomozygous =
       statusesByDiseaseHomozygous.get(disease.id)?.get(node.id) ?? false;
     const classicDisease: ClassicDisease = {
-      color: disease.color,
+      color: dimmed ? dimColor(disease.color) : disease.color,
       status,
       atRiskHomozygous,
     };
@@ -388,10 +389,11 @@ export default function NarrativePedigreeView({
     shape: NodeShape,
     label: string,
     selected: boolean,
+    dimmed: boolean,
   ): ReactNode => {
     const stickers: DiseaseSticker[] = shownDiseases.map((disease) => ({
       id: disease.id,
-      color: disease.color,
+      color: dimmed ? dimColor(disease.color) : disease.color,
       status: statusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown',
       atRiskHomozygous:
         statusesByDiseaseHomozygous.get(disease.id)?.get(node.id) ?? false,
@@ -402,6 +404,7 @@ export default function NarrativePedigreeView({
         shape={shape}
         diseases={stickers}
         selected={selected}
+        dimmed={dimmed}
         onSelectDisease={setSelectedDiseaseId}
       />
     );

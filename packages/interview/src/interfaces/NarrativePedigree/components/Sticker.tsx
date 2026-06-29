@@ -6,6 +6,12 @@ export type StickerProps = {
   color: string;
   atRiskHomozygous?: boolean;
   sizePx?: number;
+  /**
+   * Fill of the circular chip disc behind the status glyph. Defaults to white.
+   * Callers pass a background-blended colour for the dimmed state so the chip
+   * recedes with its glyph instead of staying bright white against the theme.
+   */
+  surfaceColor?: string;
   onClick?: () => void;
 };
 
@@ -81,6 +87,7 @@ export function Sticker({
   color,
   atRiskHomozygous = false,
   sizePx = STICKER_SIZE_PX,
+  surfaceColor,
   onClick,
 }: StickerProps) {
   const statusClass = STATUS_CLASS[status];
@@ -105,12 +112,18 @@ export function Sticker({
         title={`${label} (${color})`}
         data-sticker-status={status}
         className={[
-          'absolute inset-0 rounded-full overflow-hidden bg-white',
+          'absolute inset-0 rounded-full overflow-hidden',
+          surfaceColor === undefined ? 'bg-white' : '',
           statusClass,
           isInteractive
             ? 'pointer-events-auto cursor-pointer'
             : 'pointer-events-none',
         ].join(' ')}
+        style={
+          surfaceColor !== undefined
+            ? { backgroundColor: surfaceColor }
+            : undefined
+        }
         onClick={handleClick}
       >
         <StatusMarker variant="sticker" status={status} color={color} />
