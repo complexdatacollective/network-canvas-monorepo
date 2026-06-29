@@ -23,9 +23,10 @@ type DiseaseSelectPanelProps = {
   onSelect: (id: string | null) => void;
 };
 
-// Sentinel value for the "show every condition" option. Maps to a null
-// selection so the view shows all conditions at once (sticker mode).
-const ALL_CONDITIONS = '';
+// Non-empty sentinel for the "show every condition" option. Base-UI Select
+// treats an empty-string value as "no value" and renders the placeholder
+// instead of the option label; using 'all' avoids that blank-trigger bug.
+const ALL_CONDITIONS = 'all';
 
 export default function DiseaseSelectPanel({
   diseases,
@@ -43,8 +44,6 @@ export default function DiseaseSelectPanel({
   ];
 
   const handleChange = (value: string | number | undefined) => {
-    // Disease ids and the "all conditions" sentinel are always strings; a
-    // missing or sentinel value clears the selection (shows all conditions).
     onSelect(
       typeof value === 'string' && value !== ALL_CONDITIONS ? value : null,
     );
