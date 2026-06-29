@@ -124,6 +124,9 @@ export function useAutoLayout({
 }: UseAutoLayoutOptions): UseAutoLayoutResult {
   const { isE2E } = useContractFlags();
   const workerRef = useRef<Worker | null>(null);
+  // The seeded node→index map, captured so continuous-mode link updates resolve
+  // edge endpoints against the same indices the worker was initialized with.
+  const nodeIndexByIdRef = useRef<Map<string, number>>(new Map());
   const [isRunning, setIsRunning] = useState(false);
   const [simulationEnabled, setSimulationEnabled] = useState(true);
 
@@ -152,6 +155,23 @@ export function useAutoLayout({
         .toSorted((a, b) => String(a).localeCompare(String(b)))
         .join(','),
     [nodes],
+  );
+
+  // Stable key that changes when any node's group membership changes, so a
+  // membership edit re-seeds the cohesion buckets even when the node set is
+  // unchanged.
+  const groupMembershipKey = useMemo(
+    () =>
+      nodes
+        .map((node) =>
+          JSON.stringify([
+            node[entityPrimaryKeyProperty],
+            getGroupKeys(node, groupVariable),
+          ]),
+        )
+        .toSorted((a, b) => a.localeCompare(b))
+        .join(','),
+    [nodes, groupVariable],
   );
 
   // Stable key that only changes when the edge set changes.
@@ -278,6 +298,7 @@ export function useAutoLayout({
     const indexById = new Map(
       simNodes.map((simNode, index) => [simNode.nodeId, index]),
     );
+    nodeIndexByIdRef.current = indexById;
     const simLinks: SimLink[] = [];
     for (const edge of edgesRef.current) {
       const source = indexById.get(edge[edgeSourceProperty]);
@@ -328,7 +349,7 @@ export function useAutoLayout({
     isE2E,
     nodeIdsKey,
     seedEdgesKey,
-    groupVariable,
+    groupMembershipKey,
     layoutVariable,
     nodeRadius,
     runMode,
@@ -346,14 +367,14 @@ export function useAutoLayout({
     const worker = workerRef.current;
     if (!worker || !enabled) return;
 
-    const currentNodes = nodesRef.current;
-    const nodeIds = currentNodes.map((n) => n[entityPrimaryKeyProperty]);
-    const simLinks = edgesRef.current
-      .map((edge) => ({
-        source: nodeIds.indexOf(edge[edgeSourceProperty]),
-        target: nodeIds.indexOf(edge[edgeTargetProperty]),
-      }))
-      .filter((link) => link.source >= 0 && link.target >= 0);
+    const indexById = nodeIndexByIdRef.current;
+    const simLinks: SimLink[] = [];
+    for (const edge of edgesRef.current) {
+      const source = indexById.get(edge[edgeSourceProperty]);
+      const target = indexById.get(edge[edgeTargetProperty]);
+      if (source === undefined || target === undefined) continue;
+      simLinks.push({ source, target });
+    }
 
     worker.postMessage({ type: 'update_links', links: simLinks });
   }, [runMode, enabled, edgesKey]);

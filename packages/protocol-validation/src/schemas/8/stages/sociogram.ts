@@ -2,11 +2,8 @@ import { z } from 'zod';
 
 import { findDuplicateId } from '~/utils/validation-helpers';
 
-import {
-  canvasBehavioursSchema,
-  NodeStageSubjectSchema,
-  sociogramPromptSchema,
-} from '../common';
+import { NodeStageSubjectSchema, sociogramPromptSchema } from '../common';
+import { canvasBehavioursSchema } from '../common/behaviours';
 import { FilterSchema } from '../filters';
 import { baseStageSchema } from './base';
 

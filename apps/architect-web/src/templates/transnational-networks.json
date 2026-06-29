@@ -551,10 +551,6 @@
       "background": {
         "concentricCircles": 4,
         "skewedTowardCenter": true
-      },
-      "behaviours": {
-        "freeDraw": true,
-        "allowRepositioning": true
       }
     }
   ]

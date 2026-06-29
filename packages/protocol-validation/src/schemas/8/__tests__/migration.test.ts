@@ -1373,53 +1373,54 @@ describe('Migration V7 to V8', () => {
         ],
       }) as unknown as Protocol<7>;
 
-    const migratedStage = (p: Protocol<7>) => {
+    const migratedStage = (
+      p: Protocol<7>,
+      expectedType: 'Sociogram' | 'Narrative',
+    ) => {
       const parsed = ProtocolSchemaV8.parse(
         migrationV7toV8.migrate(p, { name: 'Test Protocol' }),
       );
-      return parsed.stages[0];
+      const stage = parsed.stages[0];
+      expect(stage?.type).toBe(expectedType);
+      if (!stage || stage.type !== expectedType) {
+        throw new Error(`Expected ${expectedType} stage`);
+      }
+      return stage;
     };
 
     it('flattens a Sociogram automaticLayout object to its enabled boolean', () => {
       const stage = migratedStage(
         buildV7('Sociogram', { automaticLayout: { enabled: true } }),
+        'Sociogram',
       );
-      if (stage && stage.type === 'Sociogram') {
-        expect(stage.behaviours?.automaticLayout).toBe(true);
-      }
+      expect(stage.behaviours?.automaticLayout).toBe(true);
     });
 
     it('flattens enabled:false to false', () => {
       const stage = migratedStage(
         buildV7('Sociogram', { automaticLayout: { enabled: false } }),
+        'Sociogram',
       );
-      if (stage && stage.type === 'Sociogram') {
-        expect(stage.behaviours?.automaticLayout).toBe(false);
-      }
+      expect(stage.behaviours?.automaticLayout).toBe(false);
     });
 
     it('leaves a Sociogram without automaticLayout untouched (no behaviours added)', () => {
-      const stage = migratedStage(buildV7('Sociogram'));
-      if (stage && stage.type === 'Sociogram') {
-        expect(stage.behaviours?.automaticLayout).toBeUndefined();
-      }
+      const stage = migratedStage(buildV7('Sociogram'), 'Sociogram');
+      expect(stage.behaviours?.automaticLayout).toBeUndefined();
     });
 
     it('leaves a Narrative without automaticLayout unset (absent = off)', () => {
-      const stage = migratedStage(buildV7('Narrative'));
-      if (stage && stage.type === 'Narrative') {
-        expect(stage.behaviours?.automaticLayout).toBeUndefined();
-      }
+      const stage = migratedStage(buildV7('Narrative'), 'Narrative');
+      expect(stage.behaviours?.automaticLayout).toBeUndefined();
     });
 
     it('does not add automaticLayout to a Narrative, preserving other behaviours', () => {
       const stage = migratedStage(
         buildV7('Narrative', { allowRepositioning: true }),
+        'Narrative',
       );
-      if (stage && stage.type === 'Narrative') {
-        expect(stage.behaviours?.automaticLayout).toBeUndefined();
-        expect(stage.behaviours?.allowRepositioning).toBe(true);
-      }
+      expect(stage.behaviours?.automaticLayout).toBeUndefined();
+      expect(stage.behaviours?.allowRepositioning).toBe(true);
     });
   });
 

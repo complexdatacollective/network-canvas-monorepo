@@ -4,7 +4,10 @@ import { get } from 'es-toolkit/compat';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import Node from '@codaco/fresco-ui/Node';
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+} from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
 import Canvas from '~/canvas/Canvas';
 import { useAutoLayout } from '~/canvas/useAutoLayout';
@@ -186,11 +189,27 @@ const Narrative = ({ stage }: NarrativeProps) => {
     [edges, showEdges, displayEdgeTypes],
   );
 
-  // Sync positions from nodes when layout variable or nodes change. This runs
-  // before useAutoLayout reads store.positions to seed the simulation.
+  // Replay authored positions only when the SET of laid-out nodes or the layout
+  // variable changes — not on unrelated node-attribute updates, which would
+  // otherwise snap the live interactive layout back to its authored coords
+  // mid-session.
+  const nodeIdsKey = useMemo(
+    () =>
+      nodesWithLayout
+        .map((node) => node[entityPrimaryKeyProperty])
+        .toSorted((a, b) => String(a).localeCompare(String(b)))
+        .join(','),
+    [nodesWithLayout],
+  );
+  const nodesWithLayoutRef = useRef(nodesWithLayout);
+  nodesWithLayoutRef.current = nodesWithLayout;
+
+  // Sync positions from nodes when layout variable or the node set changes. This
+  // runs before useAutoLayout reads store.positions to seed the simulation.
   useEffect(() => {
-    store.getState().syncFromNodes(nodesWithLayout, layoutVariable);
-  }, [nodesWithLayout, layoutVariable, store]);
+    store.getState().syncFromNodes(nodesWithLayoutRef.current, layoutVariable);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodeIdsKey, layoutVariable, store]);
 
   // Narrative shares Sociogram's full automatic-layout anneal (hot start + slow
   // cool so nodes escape local minima) and charge-driven spread; it additionally

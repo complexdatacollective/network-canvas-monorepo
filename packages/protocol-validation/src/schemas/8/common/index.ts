@@ -1,4 +1,3 @@
-export * from './behaviours';
 export * from './experiments';
 export * from './forms';
 export * from './introductionPanel';
