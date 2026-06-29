@@ -3,6 +3,7 @@
 import { createSelector } from '@reduxjs/toolkit';
 import {
   type ComponentPropsWithoutRef,
+  type MouseEvent,
   type ReactNode,
   useMemo,
   useRef,
@@ -10,6 +11,7 @@ import {
 } from 'react';
 
 import { Button } from '@codaco/fresco-ui/Button';
+import Icon from '@codaco/fresco-ui/Icon';
 import Node from '@codaco/fresco-ui/Node';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import type { Codebook } from '@codaco/protocol-validation';
@@ -313,7 +315,8 @@ export default function NarrativePedigreeView({
     const statusSummary = statusSummaryFor(node);
     const statusSummaryId = statusSummary ? `np-status-${node.id}` : undefined;
 
-    const handleClick = () => {
+    const handleClick = (event: MouseEvent) => {
+      event.stopPropagation();
       setFocalId(node.id);
     };
 
@@ -325,6 +328,9 @@ export default function NarrativePedigreeView({
     // aria-describedby points at the visually-hidden status summary so the
     // person's disease status is announced after their name. The container's
     // aria-label provides the name, so the summary need not repeat it.
+    //
+    // stopPropagation in onClick prevents the background scroll-container
+    // handler from also firing and immediately clearing the focal selection.
     const focalProps: ComponentPropsWithoutRef<'div'> = {
       'role': 'button',
       'tabIndex': 0,
@@ -334,7 +340,7 @@ export default function NarrativePedigreeView({
       'onKeyDown': (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          handleClick();
+          setFocalId(node.id);
         }
       },
     };
@@ -450,7 +456,14 @@ export default function NarrativePedigreeView({
       <div
         ref={viewRef}
         data-narrative-pedigree-view
+        role="presentation"
         className="relative flex min-h-0 w-full grow items-start justify-center overflow-auto pt-6"
+        onClick={() => setFocalId(null)}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            setFocalId(null);
+          }
+        }}
       >
         <PedigreeLayout
           nodes={nodesMap}
@@ -478,7 +491,10 @@ export default function NarrativePedigreeView({
           <div className="absolute inset-x-0 bottom-4 flex justify-center">
             <Button
               size="sm"
-              variant="outline"
+              variant="default"
+              icon={
+                <Icon name="reset" aria-hidden="true" className="size-[1em]" />
+              }
               className="pointer-events-auto"
               onClick={() => setFocalId(null)}
             >
@@ -490,7 +506,7 @@ export default function NarrativePedigreeView({
 
       <div className="absolute right-12 bottom-4 z-20">
         <ActionButton
-          iconName="camera"
+          iconName="Camera"
           aria-label="Save snapshot"
           onClick={handleSnapshot}
         />

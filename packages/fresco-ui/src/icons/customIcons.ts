@@ -4,7 +4,6 @@ import AddAPlaceSingle from './add-a-place-single.svg.react';
 import addAProtocolSingle from './add-a-protocol-single.svg.react';
 import addARelationshipSingle from './add-a-relationship-single.svg.react';
 import addAScreen from './add-a-screen.svg.react';
-import camera from './camera.svg.react';
 import contexts from './contexts.svg.react';
 import remove from './delete.svg.react';
 import edit from './edit.svg.react';
@@ -43,7 +42,6 @@ export default {
 
   'add-a-relationship': addARelationshipSingle,
   'add-a-screen': addAScreen,
-  camera,
 
   'close': remove,
 
