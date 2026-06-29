@@ -190,6 +190,17 @@ export function useForceSimulation({
     worker.postMessage({ type: 'update_links', links: simLinks });
   }, [enabled, edgesKey]);
 
+  // Keep the live running state in sync when `enabled` is toggled at runtime
+  // (e.g. NetworkComposer's automatic-layout switch turns the simulation on or
+  // off). `simulationEnabled` is seeded from `enabled` once via useState, so it
+  // would otherwise not follow a later change and the sim wouldn't start. For
+  // consumers whose `enabled` is a static stage config (Sociogram), the boolean
+  // never changes after mount, so this is a one-time no-op and the pause/resume
+  // control keeps working.
+  useEffect(() => {
+    setSimulationEnabled(enabled);
+  }, [enabled]);
+
   // Start/stop when simulationEnabled changes
   useEffect(() => {
     if (!workerRef.current || !enabled) return;

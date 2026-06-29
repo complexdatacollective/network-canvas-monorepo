@@ -14,9 +14,13 @@ import { createCanvasStore } from '~/canvas/useCanvasStore';
 import ConcentricCircles from '~/components/ConcentricCircles';
 import { useCurrentStep } from '~/contexts/CurrentStepContext';
 import { useStageSelector } from '~/hooks/useStageSelector';
-import { getNetworkEdges, getNetworkNodesForType } from '~/selectors/session';
+import {
+  getNetworkEdges,
+  getNetworkNodesForType,
+  getStageMetadata,
+} from '~/selectors/session';
 import { getCodebook } from '~/store/modules/protocol';
-import { updateNode } from '~/store/modules/session';
+import { updateNode, updateStageMetadata } from '~/store/modules/session';
 import { useAppDispatch } from '~/store/store';
 import type { StageProps } from '~/types';
 
@@ -44,8 +48,21 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const { currentStep } = useCurrentStep();
 
   const layoutVariable = stage.layoutVariable;
-  const layoutMode: 'AUTOMATIC' | 'MANUAL' = stage.behaviours?.automaticLayout
-    ?.enabled
+
+  // Automatic layout is an interview-time choice, not a fixed stage config. The
+  // schema's defaultEnabled only seeds the initial value; the participant's live
+  // toggle is persisted in stage metadata so it sticks across navigation.
+  const stageMetadata = useStageSelector(getStageMetadata);
+  const automaticLayoutDefault =
+    stage.behaviours?.automaticLayout?.defaultEnabled ?? false;
+  const persistedAutomaticLayout =
+    stageMetadata !== undefined &&
+    !Array.isArray(stageMetadata) &&
+    'automaticLayout' in stageMetadata
+      ? stageMetadata.automaticLayout
+      : undefined;
+  const automaticLayout = persistedAutomaticLayout ?? automaticLayoutDefault;
+  const layoutMode: 'AUTOMATIC' | 'MANUAL' = automaticLayout
     ? 'AUTOMATIC'
     : 'MANUAL';
 
@@ -96,7 +113,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   }, [nodes, layoutVariable, canvasStore, layoutMode]);
 
   const simulation = useForceSimulation({
-    enabled: layoutMode === 'AUTOMATIC',
+    enabled: automaticLayout,
     nodes,
     edges,
     layoutVariable,
@@ -306,6 +323,18 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     [composerStore, undoStore, actions],
   );
 
+  const handleToggleAutomaticLayout = useCallback(
+    (next: boolean) => {
+      dispatch(
+        updateStageMetadata({
+          currentStep,
+          metadata: { automaticLayout: next },
+        }),
+      );
+    },
+    [dispatch, currentStep],
+  );
+
   const edgeEntries = stage.edges.map((edgeDef) => {
     const edgeType = edgeDef.subject.type;
     const edgeCbEntry = codebook?.edge?.[edgeType];
@@ -365,9 +394,8 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         composerStore={composerStore}
         undoStore={undoStore}
         edges={edgeEntries}
-        automaticLayout={layoutMode === 'AUTOMATIC'}
-        simulationEnabled={simulation.simulationEnabled}
-        onToggleSimulation={simulation.toggleSimulation}
+        automaticLayout={automaticLayout}
+        onToggleAutomaticLayout={handleToggleAutomaticLayout}
       />
       {selectedNodeIds.size >= 2 && (
         <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2">

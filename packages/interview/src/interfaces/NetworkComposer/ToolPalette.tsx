@@ -3,14 +3,13 @@
 import {
   Link as EdgeIcon,
   MousePointer2 as SelectIcon,
-  Play as PlayIcon,
-  Pause as PauseIcon,
   Plus as AddNodeIcon,
   Redo2 as RedoIcon,
   Undo2 as UndoIcon,
 } from 'lucide-react';
 
 import Button from '@codaco/fresco-ui/Button';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 
 import { type ComposerStoreApi, useComposerStore } from './useComposerStore';
 import { type UndoStoreApi, useUndoStore } from './useUndoStore';
@@ -25,18 +24,16 @@ type ToolPaletteProps = {
   composerStore: ComposerStoreApi;
   undoStore: UndoStoreApi;
   edges: EdgeEntry[];
-  automaticLayout?: boolean;
-  simulationEnabled?: boolean;
-  onToggleSimulation?: () => void;
+  automaticLayout: boolean;
+  onToggleAutomaticLayout: (next: boolean) => void;
 };
 
 export default function ToolPalette({
   composerStore,
   undoStore,
   edges,
-  automaticLayout = false,
-  simulationEnabled = false,
-  onToggleSimulation,
+  automaticLayout,
+  onToggleAutomaticLayout,
 }: ToolPaletteProps) {
   const activeTool = useComposerStore(composerStore, (s) => s.activeTool);
   const canUndo = useUndoStore(undoStore, (s) => s.past.length > 0);
@@ -86,19 +83,14 @@ export default function ToolPalette({
         );
       })}
 
-      {automaticLayout && onToggleSimulation && (
-        <Button
-          color="dynamic"
-          icon={simulationEnabled ? <PauseIcon /> : <PlayIcon />}
-          onClick={onToggleSimulation}
-          aria-pressed={simulationEnabled}
-          aria-label={
-            simulationEnabled ? 'Pause Auto Layout' : 'Resume Auto Layout'
-          }
-        >
-          {simulationEnabled ? 'Pause Auto Layout' : 'Resume Auto Layout'}
-        </Button>
-      )}
+      <div className="bg-background flex items-center justify-between gap-3 rounded px-4 py-2 shadow">
+        <span className="text-sm font-bold">Auto layout</span>
+        <ToggleField
+          value={automaticLayout}
+          onChange={(value) => onToggleAutomaticLayout(value ?? false)}
+          aria-label="Automatic layout"
+        />
+      </div>
 
       <Button
         color="default"

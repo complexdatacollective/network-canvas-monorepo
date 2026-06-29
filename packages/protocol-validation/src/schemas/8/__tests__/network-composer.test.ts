@@ -77,7 +77,7 @@ describe('networkComposerStage schema', () => {
         },
       ],
       background: { concentricCircles: 4, skewedTowardCenter: true },
-      behaviours: { automaticLayout: { enabled: false } },
+      behaviours: { automaticLayout: { defaultEnabled: false } },
     });
     expect(result.success).toBe(true);
   });

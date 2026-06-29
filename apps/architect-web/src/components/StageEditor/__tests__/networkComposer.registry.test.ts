@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  AutomaticLayout,
   Background,
+  ComposerAutomaticLayout,
   ComposerEdges,
   ComposerLayoutVariable,
   ComposerNodeForm,
@@ -25,19 +25,19 @@ describe('NetworkComposer registry', () => {
       ComposerNodeForm,
       ComposerEdges,
       Background,
-      AutomaticLayout,
+      ComposerAutomaticLayout,
       SkipLogic,
       InterviewScript,
     ]);
     expect(config.documentation).toContain('http');
   });
 
-  it('has automaticLayout.enabled === false in the template', () => {
+  it('defaults automaticLayout.defaultEnabled to false in the template', () => {
     const config = getInterface('NetworkComposer');
     const template = config.template as {
-      behaviours: { automaticLayout: { enabled: boolean } };
+      behaviours: { automaticLayout: { defaultEnabled: boolean } };
     };
-    expect(template.behaviours.automaticLayout.enabled).toBe(false);
+    expect(template.behaviours.automaticLayout.defaultEnabled).toBe(false);
   });
 
   it('appears in the stage-type picker as a Sociograms entry', () => {

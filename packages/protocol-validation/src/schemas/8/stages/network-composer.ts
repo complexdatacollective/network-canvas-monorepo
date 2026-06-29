@@ -29,7 +29,13 @@ export const networkComposerStage = baseStageSchema.extend({
     .optional(),
   behaviours: z
     .strictObject({
-      automaticLayout: z.strictObject({ enabled: z.boolean() }).optional(),
+      // Whether automatic (force-directed) layout is ON when the stage first
+      // opens. Unlike the Sociogram, this is NOT a fixed mode: participants turn
+      // automatic layout on and off during the interview via a toggle, and that
+      // live choice is persisted in stage metadata. This only sets the default.
+      automaticLayout: z
+        .strictObject({ defaultEnabled: z.boolean() })
+        .optional(),
     })
     .optional(),
   // Each entry is a drawable edge type. `subject` carries the edge type so an

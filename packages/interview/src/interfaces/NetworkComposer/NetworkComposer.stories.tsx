@@ -137,3 +137,31 @@ export const MultipleEdgeTypes: Story = {
     <NetworkComposerStoryWrapper buildFn={buildMultipleEdgeTypes} />
   ),
 };
+
+const buildAutomaticLayout = () => {
+  const { si, quickAddVar, layoutVar, friendship } = createComposerInterview(4);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  const stage = si.addStage('NetworkComposer', {
+    quickAdd: quickAddVar.id,
+    layoutVariable: layoutVar.id,
+    initialNodes: { count: 6 },
+    behaviours: { automaticLayout: { defaultEnabled: true } },
+  });
+  stage.addEdgeType({ type: friendship.id });
+  si.addEdges(
+    [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 4],
+      [4, 5],
+    ],
+    friendship.id,
+  );
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+export const AutomaticLayout: Story = {
+  render: () => <NetworkComposerStoryWrapper buildFn={buildAutomaticLayout} />,
+};

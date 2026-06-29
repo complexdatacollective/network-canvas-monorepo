@@ -9,6 +9,7 @@ import {
   Background,
   CardDisplayOptions,
   CategoricalBinPrompts,
+  ComposerAutomaticLayout,
   ComposerEdges,
   ComposerLayoutVariable,
   ComposerNodeForm,
@@ -254,7 +255,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       ComposerNodeForm,
       ComposerEdges,
       Background,
-      AutomaticLayout,
+      ComposerAutomaticLayout,
       SkipLogic,
       InterviewScript,
     ],
@@ -262,7 +263,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       'https://documentation.networkcanvas.com/interface-documentation/network-composer/',
     template: {
       behaviours: {
-        automaticLayout: { enabled: false },
+        automaticLayout: { defaultEnabled: false },
       },
     },
   },
