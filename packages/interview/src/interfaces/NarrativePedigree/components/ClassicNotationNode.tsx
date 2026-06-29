@@ -71,43 +71,29 @@ export function ClassicNotationNode({
   const { color, status, atRiskHomozygous } = disease;
 
   return (
-    <div className="inline-flex flex-col items-center gap-1">
-      <div className="relative inline-block">
-        <span
-          data-notation-status={status}
-          className="relative inline-block"
-          aria-label={label}
-        >
-          <Node
-            label=""
-            shape={shape}
-            color="custom"
-            size="xs"
-            selected={selected}
-            style={
-              {
-                '--base': 'transparent',
-                '--dark': 'transparent',
-              } as CSSProperties
-            }
-          />
-          <StatusMarker
-            variant="classic"
-            status={status}
-            color={color}
-            shape={shape}
-          />
-        </span>
-        {atRiskHomozygous === true && (
-          <AtRiskHomozygousNotation color={color} />
-        )}
-      </div>
-      <span
-        data-node-label
-        className="max-w-[6rem] overflow-hidden text-center text-xs leading-tight hyphens-auto text-white"
-      >
-        {label}
+    <div className="relative inline-block">
+      <span data-notation-status={status} className="relative inline-block">
+        <Node
+          label={label}
+          shape={shape}
+          color="custom"
+          size="sm"
+          selected={selected}
+          style={
+            {
+              '--base': 'transparent',
+              '--dark': 'transparent',
+            } as CSSProperties
+          }
+        />
+        <StatusMarker
+          variant="classic"
+          status={status}
+          color={color}
+          shape={shape}
+        />
       </span>
+      {atRiskHomozygous === true && <AtRiskHomozygousNotation color={color} />}
     </div>
   );
 }

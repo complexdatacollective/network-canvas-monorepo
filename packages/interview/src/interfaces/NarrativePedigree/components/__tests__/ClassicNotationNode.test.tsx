@@ -200,7 +200,7 @@ describe('ClassicNotationNode', () => {
     });
   });
 
-  describe('label rendered beneath the symbol', () => {
+  describe('label rendered inside the node symbol', () => {
     it('renders the label text', () => {
       const { getByText } = render(
         <ClassicNotationNode
@@ -213,8 +213,8 @@ describe('ClassicNotationNode', () => {
       expect(getByText('Alice')).toBeInTheDocument();
     });
 
-    it('label element appears after the symbol in DOM order', () => {
-      const { container } = render(
+    it('label is accessible via aria-label on the node button', () => {
+      const { getByRole } = render(
         <ClassicNotationNode
           node={mockNode}
           disease={{ color: '#e53e3e', status: 'affected' }}
@@ -222,12 +222,8 @@ describe('ClassicNotationNode', () => {
           label="Alice"
         />,
       );
-      const all = container.querySelectorAll(
-        '[data-notation-status], [data-node-label]',
-      );
-      expect(all.length).toBe(2);
-      expect(all[0]).toHaveAttribute('data-notation-status');
-      expect(all[1]).toHaveAttribute('data-node-label');
+      const button = getByRole('button', { name: 'Alice' });
+      expect(button).toBeInTheDocument();
     });
   });
 
