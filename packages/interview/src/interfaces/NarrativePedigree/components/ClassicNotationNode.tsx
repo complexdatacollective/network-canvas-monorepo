@@ -52,9 +52,14 @@ function AtRiskHomozygousNotation({ color }: { color: string }) {
  * The disease colour is applied entirely through the SVG overlay; the
  * underlying Node body is rendered transparent so the disease-coloured
  * shape outline and status symbol read clearly against the dark interview theme.
- * The label is rendered inside the node symbol (via the Node `label` prop) so
- * the symbol fills and centres within the 96px layout cell, matching StickerNode
- * and keeping connectors aligned to the node centre. No stickers are used.
+ *
+ * The Node receives no visible label so the symbol alone fills and centres
+ * within the 96×96px layout cell — keeping the symbol centre at (48,48) where
+ * connectors attach. The participant label is rendered as an absolutely-
+ * positioned element below the symbol (top-full), out of normal flow, so it
+ * overflows into the row gap without shifting the symbol. The accessible name
+ * is supplied via `ariaLabel` on the Node button; the visible label span is
+ * aria-hidden to avoid a double-announcement.
  *
  * Status → symbol mapping:
  * - affected         → filled symbol (solid fill, disease colour)
@@ -76,7 +81,7 @@ export function ClassicNotationNode({
     <div className="relative inline-block">
       <span data-notation-status={status} className="relative inline-block">
         <Node
-          label={label}
+          ariaLabel={label}
           shape={shape}
           color="custom"
           size="sm"
@@ -96,6 +101,12 @@ export function ClassicNotationNode({
         />
       </span>
       {atRiskHomozygous === true && <AtRiskHomozygousNotation color={color} />}
+      <span
+        aria-hidden
+        className="absolute top-full left-1/2 mt-1 w-24 -translate-x-1/2 truncate text-center text-xs text-white"
+      >
+        {label}
+      </span>
     </div>
   );
 }

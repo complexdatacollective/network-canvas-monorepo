@@ -200,8 +200,8 @@ describe('ClassicNotationNode', () => {
     });
   });
 
-  describe('label rendered inside the node symbol', () => {
-    it('renders the label text', () => {
+  describe('label rendered below the node symbol', () => {
+    it('renders the label text below the symbol', () => {
       const { getByText } = render(
         <ClassicNotationNode
           node={mockNode}
@@ -213,7 +213,20 @@ describe('ClassicNotationNode', () => {
       expect(getByText('Alice')).toBeInTheDocument();
     });
 
-    it('label is accessible via aria-label on the node button', () => {
+    it('visible label span is aria-hidden (accessible name lives on the button)', () => {
+      const { getByText } = render(
+        <ClassicNotationNode
+          node={mockNode}
+          disease={{ color: '#e53e3e', status: 'affected' }}
+          shape="square"
+          label="Alice"
+        />,
+      );
+      const labelSpan = getByText('Alice');
+      expect(labelSpan.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('node button carries the accessible name via aria-label', () => {
       const { getByRole } = render(
         <ClassicNotationNode
           node={mockNode}
