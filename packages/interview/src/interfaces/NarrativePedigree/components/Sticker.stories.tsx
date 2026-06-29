@@ -28,7 +28,6 @@ const meta = {
     color: { control: { type: 'color' } },
     atRiskHomozygous: { control: { type: 'boolean' } },
     sizePx: { control: { type: 'range', min: 16, max: 64, step: 2 } },
-    interactive: { control: { type: 'boolean' } },
   },
 } satisfies Meta<typeof Sticker>;
 
@@ -52,7 +51,9 @@ export const AllStatuses: Story = {
           }}
         >
           <Sticker status={status} color={SAMPLE_COLOR} />
-          <span style={{ fontSize: 10, color: '#666' }}>{status}</span>
+          <span className="text-muted" style={{ fontSize: 10 }}>
+            {status}
+          </span>
         </div>
       ))}
     </div>
@@ -67,7 +68,6 @@ export const Interactive: Story = {
     color: SAMPLE_COLOR,
     atRiskHomozygous: false,
     sizePx: STICKER_SIZE_PX,
-    interactive: false,
   },
 };
 
@@ -87,7 +87,9 @@ export const AtRiskHomozygousAll: Story = {
           }}
         >
           <Sticker status={status} color={SAMPLE_COLOR} atRiskHomozygous />
-          <span style={{ fontSize: 10, color: '#666' }}>{status}</span>
+          <span className="text-muted" style={{ fontSize: 10 }}>
+            {status}
+          </span>
         </div>
       ))}
     </div>

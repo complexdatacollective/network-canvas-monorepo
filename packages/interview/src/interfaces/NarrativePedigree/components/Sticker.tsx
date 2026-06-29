@@ -7,7 +7,6 @@ export type StickerProps = {
   atRiskHomozygous?: boolean;
   sizePx?: number;
   onClick?: () => void;
-  interactive?: boolean;
 };
 
 /** Default pixel diameter of a sticker chip. Change this to rescale everything. */
@@ -83,21 +82,21 @@ export function Sticker({
   atRiskHomozygous = false,
   sizePx = STICKER_SIZE_PX,
   onClick,
-  interactive = false,
 }: StickerProps) {
   const statusClass = STATUS_CLASS[status];
   const label = STATUS_LABELS[status];
+  const isInteractive = onClick !== undefined;
 
-  const handleClick =
-    onClick !== undefined
-      ? (e: React.MouseEvent) => {
-          e.stopPropagation();
-          onClick();
-        }
-      : undefined;
+  const handleClick = isInteractive
+    ? (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onClick();
+      }
+    : undefined;
 
   return (
     <span
+      aria-hidden
       className="relative inline-block"
       style={{ width: sizePx, height: sizePx }}
     >
@@ -108,7 +107,7 @@ export function Sticker({
         className={[
           'absolute inset-0 rounded-full overflow-hidden bg-white',
           statusClass,
-          interactive
+          isInteractive
             ? 'pointer-events-auto cursor-pointer'
             : 'pointer-events-none',
         ].join(' ')}

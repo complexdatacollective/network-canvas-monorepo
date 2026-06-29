@@ -113,7 +113,6 @@ export function StickerNode({
                 status={sticker.status}
                 color={sticker.color}
                 atRiskHomozygous={sticker.atRiskHomozygous}
-                interactive={onSelectDisease !== undefined}
                 onClick={
                   onSelectDisease !== undefined
                     ? () => onSelectDisease(sticker.id)
