@@ -252,6 +252,7 @@ export type StageEntry = {
   // NarrativePedigree-specific fields
   narrativePedigreeSourceStageId?: string;
   narrativePedigreeDiseases?: NarrativeDiseaseEntry[];
+  narrativePedigreeShowAtRiskStatuses?: boolean;
   narrativePedigreePresets?: NarrativePresetEntry[];
   narrativePedigreeBehaviours?: { allowFocalReselection: boolean };
   boundaries?: {
@@ -408,6 +409,7 @@ export type AddStageInput = {
   // NarrativePedigree
   sourceStageId?: string;
   diseases?: NarrativeDiseaseEntry[];
+  showAtRiskStatuses?: boolean;
   presets?: NarrativePresetEntry[];
   allowFocalReselection?: boolean;
 };

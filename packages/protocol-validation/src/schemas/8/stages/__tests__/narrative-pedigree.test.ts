@@ -103,6 +103,27 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
     expect(result.success).toBe(true);
   });
 
+  it('defaults showAtRiskStatuses to false when omitted', () => {
+    const result = narrativePedigreeStage.safeParse(
+      validNarrativePedigreeStageShape,
+    );
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.showAtRiskStatuses).toBe(false);
+    }
+  });
+
+  it('accepts showAtRiskStatuses set to true', () => {
+    const result = narrativePedigreeStage.safeParse({
+      ...validNarrativePedigreeStageShape,
+      showAtRiskStatuses: true,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.showAtRiskStatuses).toBe(true);
+    }
+  });
+
   it('rejects when diseases is empty', () => {
     const result = narrativePedigreeStage.safeParse({
       ...validNarrativePedigreeStageShape,

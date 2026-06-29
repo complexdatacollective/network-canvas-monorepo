@@ -11,6 +11,8 @@ export const narrativePedigreeStage = baseStageSchema.extend({
 
   sourceStageId: z.string(),
 
+  showAtRiskStatuses: z.boolean().default(false),
+
   diseases: z
     .array(
       z.strictObject({

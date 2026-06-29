@@ -220,6 +220,43 @@ export default function NarrativePedigreeView({
     return map;
   }, [graph, shownDiseases, resolveSexFn, statusesByDisease]);
 
+  // Display gate for the at-risk (probabilistic) notation. The genetics engine
+  // always emits the at-risk statuses + homozygous flag; this transform decides
+  // whether they are shown. When the researcher leaves the option off (default),
+  // the two at-risk statuses collapse to `unknown` and the homozygous flag is
+  // forced false, so no "?" glyphs are drawn anywhere — and because every
+  // downstream consumer (stickers, single-condition node, screen-reader summary,
+  // aria-live) reads from these displayed maps, the spoken summary never
+  // announces a status the participant cannot see. The engine output is left
+  // untouched (it still feeds the inheritance-aware focal highlighting below).
+  const showAtRiskStatuses = stage.showAtRiskStatuses ?? false;
+
+  const displayedStatusesByDisease = useMemo(() => {
+    if (showAtRiskStatuses) return statusesByDisease;
+    const map = new Map<string, Map<string, Status>>();
+    for (const [diseaseId, statuses] of statusesByDisease) {
+      const displayed = new Map<string, Status>();
+      for (const [nodeId, status] of statuses) {
+        displayed.set(
+          nodeId,
+          status === 'atRiskAffected' || status === 'atRiskCarrier'
+            ? 'unknown'
+            : status,
+        );
+      }
+      map.set(diseaseId, displayed);
+    }
+    return map;
+  }, [showAtRiskStatuses, statusesByDisease]);
+
+  const displayedHomozygousByDisease = useMemo(() => {
+    if (showAtRiskStatuses) return statusesByDiseaseHomozygous;
+    return new Map<string, Map<string, boolean>>();
+  }, [showAtRiskStatuses, statusesByDiseaseHomozygous]);
+
+  // Focal highlighting (which relatives contribute to a person's inheritance)
+  // is an analytical relationship, not a displayed status — keep it driven by
+  // the full engine output so it is unaffected by the display gate.
   const highlight = useMemo(() => {
     if (!graph) return { nodes: new Set<string>(), edges: new Set<string>() };
     return computeContributors(focalId, graph, statusesByDisease);
@@ -270,9 +307,9 @@ export default function NarrativePedigreeView({
     if (shownDiseases.length === 0) return null;
     const parts = shownDiseases.map((disease) => {
       const status =
-        statusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown';
+        displayedStatusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown';
       const atRiskHomozygous =
-        statusesByDiseaseHomozygous.get(disease.id)?.get(node.id) ?? false;
+        displayedHomozygousByDisease.get(disease.id)?.get(node.id) ?? false;
       const statusText = STATUS_LABELS[status];
       // An affected recessive individual trivially has two carrier parents, so
       // the homozygous flag is set for them too — but announcing "Affected, at
@@ -372,9 +409,10 @@ export default function NarrativePedigreeView({
     disease: Disease,
     dimmed: boolean,
   ): ReactNode => {
-    const status = statusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown';
+    const status =
+      displayedStatusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown';
     const atRiskHomozygous =
-      statusesByDiseaseHomozygous.get(disease.id)?.get(node.id) ?? false;
+      displayedHomozygousByDisease.get(disease.id)?.get(node.id) ?? false;
     const color = dimmed ? dimColor(disease.color) : disease.color;
     return (
       <div className="relative inline-block size-24">
@@ -406,9 +444,10 @@ export default function NarrativePedigreeView({
     const stickers: DiseaseSticker[] = shownDiseases.map((disease) => ({
       id: disease.id,
       color: dimmed ? dimColor(disease.color) : disease.color,
-      status: statusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown',
+      status:
+        displayedStatusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown',
       atRiskHomozygous:
-        statusesByDiseaseHomozygous.get(disease.id)?.get(node.id) ?? false,
+        displayedHomozygousByDisease.get(disease.id)?.get(node.id) ?? false,
     }));
     return (
       <StickerNode
@@ -488,6 +527,7 @@ export default function NarrativePedigreeView({
             diseases={diseases}
             selectedDiseaseId={selectedDiseaseId}
             onSelect={setSelectedDiseaseId}
+            showAtRiskStatuses={showAtRiskStatuses}
           />
         </div>
         {focalId !== null && (

@@ -184,6 +184,7 @@ function makeNarrativeStage(): NarrativeStage {
     type: 'NarrativePedigree',
     label: 'Disease Pedigree',
     sourceStageId: SOURCE_STAGE_ID,
+    showAtRiskStatuses: false,
     diseases: [
       {
         id: 'da',
@@ -498,12 +499,16 @@ const cousinSourceStage = {
   id: SOURCE_STAGE_ID_COUSIN,
 };
 
-function makeCousinNarrativeStage(mode: 'classic' | 'sticker'): NarrativeStage {
+function makeCousinNarrativeStage(
+  mode: 'classic' | 'sticker',
+  showAtRiskStatuses = true,
+): NarrativeStage {
   return {
     id: 'np-cousin',
     type: 'NarrativePedigree',
     label: 'Cousin Union Disease Pedigree',
     sourceStageId: SOURCE_STAGE_ID_COUSIN,
+    showAtRiskStatuses,
     diseases: [
       {
         id: AR_DISEASE_ID,
@@ -527,8 +532,11 @@ function makeCousinNarrativeStage(mode: 'classic' | 'sticker'): NarrativeStage {
   };
 }
 
-function renderCousinView(mode: 'classic' | 'sticker') {
-  const stage = makeCousinNarrativeStage(mode);
+function renderCousinView(
+  mode: 'classic' | 'sticker',
+  showAtRiskStatuses = true,
+) {
+  const stage = makeCousinNarrativeStage(mode, showAtRiskStatuses);
   const store = configureStore({
     reducer: { protocol, session },
     preloadedState: {
@@ -616,6 +624,93 @@ describe('NarrativePedigreeView — at-risk-homozygous threading (sticker mode)'
     expect(
       unrelatedMember?.querySelector('[data-status="atRiskHomozygous"]'),
     ).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// At-risk display gate (stage.showAtRiskStatuses).
+//
+// The genetics engine always emits the at-risk statuses + homozygous flag; the
+// stage option decides whether they are drawn. When off (the default), no "?"
+// glyphs appear (the homozygous override included) and the key panel drops the
+// at-risk rows; when on, both reappear.
+// ---------------------------------------------------------------------------
+describe('NarrativePedigreeView — at-risk display gate', () => {
+  it('hides the at-risk-homozygous glyph when showAtRiskStatuses is off', async () => {
+    renderCousinView('sticker', false);
+
+    await waitFor(() =>
+      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
+    );
+
+    const sharedChildMember = document.querySelector(
+      '[data-node-id="sharedChild"]',
+    );
+    expect(sharedChildMember).toBeTruthy();
+    // Engine flags sharedChild atRiskHomozygous, but with the option off the
+    // override glyph must not be drawn.
+    expect(
+      sharedChildMember?.querySelector('[data-status="atRiskHomozygous"]'),
+    ).toBeNull();
+  });
+
+  it('shows the at-risk-homozygous glyph when showAtRiskStatuses is on', async () => {
+    renderCousinView('sticker', true);
+
+    await waitFor(() =>
+      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
+    );
+
+    const sharedChildMember = document.querySelector(
+      '[data-node-id="sharedChild"]',
+    );
+    expect(
+      sharedChildMember?.querySelector('[data-status="atRiskHomozygous"]'),
+    ).toBeTruthy();
+  });
+
+  it('drops the at-risk rows from the key panel when showAtRiskStatuses is off', async () => {
+    renderCousinView('sticker', false);
+
+    await waitFor(() =>
+      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
+    );
+
+    expect(screen.queryByText('May have this condition')).toBeNull();
+    expect(screen.queryByText('May carry this condition')).toBeNull();
+    expect(
+      screen.queryByText(/More seriously affected|two copies/i),
+    ).toBeNull();
+  });
+
+  it('lists the at-risk rows in the key panel when showAtRiskStatuses is on', async () => {
+    renderCousinView('sticker', true);
+
+    await waitFor(() =>
+      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
+    );
+
+    expect(screen.getByText('May have this condition')).toBeTruthy();
+    expect(screen.getByText('May carry this condition')).toBeTruthy();
+    expect(screen.getByText(/two copies/i)).toBeTruthy();
+  });
+
+  it('omits the at-risk status from the accessible description when off', async () => {
+    renderCousinView('classic', false);
+
+    await selectCondition('AR Disease');
+    await waitFor(() =>
+      expect(viewMarker('[data-notation-status]')).toBeTruthy(),
+    );
+
+    // cousin1 is atRiskCarrier per the engine; with the option off it must be
+    // announced as status-unknown, never "At risk", and never homozygous.
+    const cousin1 = focalMember('cousin1');
+    expect(cousin1).toHaveAccessibleDescription(/Status unknown/);
+    expect(cousin1).not.toHaveAccessibleDescription(/At risk/i);
+
+    const sharedChild = focalMember('sharedChild');
+    expect(sharedChild).not.toHaveAccessibleDescription(/homozygous/i);
   });
 });
 
@@ -765,6 +860,9 @@ describe('NarrativePedigreeView — affected nodes omit the contradictory homozy
       type: 'NarrativePedigree',
       label: 'Recessive Trio Pedigree',
       sourceStageId: SRC_TRIO,
+      // The override glyph is only drawn when at-risk display is on; this test
+      // exercises the a11y guard against the glyph + a contradictory spoken note.
+      showAtRiskStatuses: true,
       diseases: [
         {
           id: 'ar2',

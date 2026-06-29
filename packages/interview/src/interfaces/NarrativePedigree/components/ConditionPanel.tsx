@@ -24,6 +24,11 @@ type ConditionPanelProps = {
   diseases: Disease[];
   selectedDiseaseId: string | null;
   onSelect: (id: string | null) => void;
+  // Whether the at-risk (probabilistic) notation is shown. Mirrors the
+  // NarrativePedigree stage option; the key panel must list only the markers
+  // actually drawn on the pedigree, so the two at-risk rows and the homozygous
+  // row are omitted when this is false.
+  showAtRiskStatuses: boolean;
 };
 
 // Non-empty sentinel for the "show every condition" option. Base-UI Select
@@ -34,6 +39,8 @@ const ALL_CONDITIONS = 'all';
 type KeyEntry = {
   status: Status;
   label: string;
+  // At-risk (probabilistic) markers are only listed when the stage option is on.
+  atRisk?: boolean;
 };
 
 // Participant-facing wording for each glyph. Kept as whole strings (never
@@ -48,8 +55,8 @@ type KeyEntry = {
 const KEY_ENTRIES: KeyEntry[] = [
   { status: 'affected', label: 'Has this condition' },
   { status: 'obligateCarrier', label: 'Carries this condition' },
-  { status: 'atRiskAffected', label: 'May have this condition' },
-  { status: 'atRiskCarrier', label: 'May carry this condition' },
+  { status: 'atRiskAffected', label: 'May have this condition', atRisk: true },
+  { status: 'atRiskCarrier', label: 'May carry this condition', atRisk: true },
   { status: 'unknown', label: 'Not known' },
 ];
 
@@ -67,8 +74,13 @@ export default function ConditionPanel({
   diseases,
   selectedDiseaseId,
   onSelect,
+  showAtRiskStatuses,
 }: ConditionPanelProps) {
   const selectId = useId();
+
+  const keyEntries = showAtRiskStatuses
+    ? KEY_ENTRIES
+    : KEY_ENTRIES.filter((entry) => !entry.atRisk);
 
   const options: DiseaseOption[] = [
     { value: ALL_CONDITIONS, label: 'All conditions' },
@@ -100,7 +112,7 @@ export default function ConditionPanel({
         onChange={handleChange}
       />
       <hr className="my-1 border-t border-(--outline)" />
-      {KEY_ENTRIES.map((entry) => (
+      {keyEntries.map((entry) => (
         <div key={entry.status} className="flex items-center gap-4 text-base">
           <span aria-hidden className="shrink-0">
             <Sticker
@@ -112,17 +124,19 @@ export default function ConditionPanel({
           {entry.label}
         </div>
       ))}
-      <div className="flex items-center gap-4 text-base">
-        <span aria-hidden className="shrink-0">
-          <Sticker
-            status="atRiskCarrier"
-            color={KEY_GLYPH_COLOUR}
-            shape={KEY_GLYPH_SHAPE}
-            atRiskHomozygous
-          />
-        </span>
-        {AT_RISK_HOMOZYGOUS_KEY_LABEL}
-      </div>
+      {showAtRiskStatuses && (
+        <div className="flex items-center gap-4 text-base">
+          <span aria-hidden className="shrink-0">
+            <Sticker
+              status="atRiskCarrier"
+              color={KEY_GLYPH_COLOUR}
+              shape={KEY_GLYPH_SHAPE}
+              atRiskHomozygous
+            />
+          </span>
+          {AT_RISK_HOMOZYGOUS_KEY_LABEL}
+        </div>
+      )}
     </MotionSurface>
   );
 }

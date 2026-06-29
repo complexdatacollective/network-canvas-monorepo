@@ -53,7 +53,7 @@ const MITO_VAR = 'hasMitochondrialMyopathy'; // mitochondrial
  *   focal in Huntington's-only mode lights the partner-side (Chris, cf) and
  *   dims ego's maternal side (Eleanor, Arthur, Rose) which do not carry HD.
  */
-export function buildPedigreeInterview(seed: number) {
+export function buildPedigreeInterview(seed: number, showAtRisk = false) {
   const si = new SyntheticInterview(seed);
 
   // --- Node type ----------------------------------------------------------
@@ -150,6 +150,7 @@ export function buildPedigreeInterview(seed: number) {
   si.addStage('NarrativePedigree', {
     label: 'Disease Pedigree Explorer',
     sourceStageId: fpStage.id,
+    showAtRiskStatuses: showAtRisk,
     diseases: [
       {
         id: 'huntingtons',
@@ -586,5 +587,49 @@ export const Labels: Story = {
       const found = focusLabels.some((l) => l?.includes(name));
       expect(found, `Expected to find node labelled "${name}"`).toBe(true);
     }
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Story 6: At-risk statuses OFF (the stage default)
+// The key panel lists only the certain markers — the "may have / may carry"
+// rows and the more-seriously-affected (homozygous) row are absent.
+// ---------------------------------------------------------------------------
+export const AtRiskStatusesOff: Story = {
+  render: () => (
+    <NarrativePedigreeStoryWrapper
+      buildFn={() => buildPedigreeInterview(6, false)}
+      startStep={NP_STEP}
+    />
+  ),
+  play: async () => {
+    await screen.findByTestId('next-button');
+
+    expect(screen.queryByText('May have this condition')).toBeNull();
+    expect(screen.queryByText('May carry this condition')).toBeNull();
+    expect(
+      screen.queryByText(/More seriously affected|two copies/i),
+    ).toBeNull();
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Story 7: At-risk statuses ON
+// The key panel reflects the larger displayed set — the at-risk rows and the
+// more-seriously-affected (homozygous) row are present.
+// ---------------------------------------------------------------------------
+export const AtRiskStatusesOn: Story = {
+  render: () => (
+    <NarrativePedigreeStoryWrapper
+      buildFn={() => buildPedigreeInterview(7, true)}
+      startStep={NP_STEP}
+    />
+  ),
+  play: async () => {
+    await screen.findByTestId('next-button');
+
+    expect(await screen.findByText('May have this condition')).toBeDefined();
+    expect(await screen.findByText('May carry this condition')).toBeDefined();
+    expect(await screen.findByText(/two copies/i)).toBeDefined();
   },
 };

@@ -159,6 +159,7 @@ const narrativeStage: NarrativeStage = {
   type: 'NarrativePedigree',
   label: 'Disease Pedigree',
   sourceStageId: SOURCE_STAGE_ID,
+  showAtRiskStatuses: false,
   diseases: [
     {
       id: 'breast-cancer',

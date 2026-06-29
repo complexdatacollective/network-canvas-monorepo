@@ -609,6 +609,9 @@ export class SyntheticInterview {
       if (opts?.diseases) {
         entry.narrativePedigreeDiseases = opts.diseases;
       }
+      if (opts?.showAtRiskStatuses !== undefined) {
+        entry.narrativePedigreeShowAtRiskStatuses = opts.showAtRiskStatuses;
+      }
       if (opts?.presets) {
         entry.narrativePedigreePresets = opts.presets;
       }
@@ -1595,6 +1598,8 @@ export class SyntheticInterview {
           variable: d.variable,
         }));
       }
+      config.showAtRiskStatuses =
+        stage.narrativePedigreeShowAtRiskStatuses ?? false;
       if (stage.narrativePedigreePresets) {
         config.presets = stage.narrativePedigreePresets;
       }
