@@ -58,7 +58,9 @@ apps/documentation/public/sidebar.json
 .superpowers/
 
 # Claude Code local state (worktrees, projects, settings)
-.claude/
+# Ignore everything under .claude/ except shared, version-controlled skills.
+.claude/*
+!.claude/skills/
 
 # Playwright e2e artifacts
 **/test-results/

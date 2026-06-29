@@ -3,6 +3,7 @@ import { invariant } from 'es-toolkit';
 import type {
   ComponentType,
   Stage,
+  StageType,
   VariableType,
 } from '@codaco/protocol-validation';
 import {
@@ -52,7 +53,6 @@ import type {
   PresetEntry,
   SociogramPromptEntry,
   StageEntry,
-  StageType,
   TieStrengthCensusPromptEntry,
   VariableEntry,
 } from './types';
