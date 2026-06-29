@@ -5,11 +5,8 @@ import type {
   VariableOption,
   VariableOptionValue,
 } from '@codaco/protocol-validation';
-import {
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-  type NcNode,
-} from '@codaco/shared-consts';
+import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
+import { getGroupKeys } from '~/canvas/groupMembership';
 import type { CanvasStoreApi } from '~/canvas/useCanvasStore';
 
 type ConvexHullLayerProps = {
@@ -45,15 +42,7 @@ function buildColorIndexResolver(
 
   const extraValues = new Set<VariableOptionValue>();
   for (const node of nodes) {
-    const raw = node[entityAttributesProperty][groupVariable];
-    if (raw == null) continue;
-    const values: VariableOptionValue[] = (
-      Array.isArray(raw) ? raw : [raw]
-    ).filter(
-      (value): value is VariableOptionValue =>
-        typeof value === 'string' || typeof value === 'number',
-    );
-    for (const value of values) {
+    for (const value of getGroupKeys(node, groupVariable)) {
       if (!knownValues.has(value)) extraValues.add(value);
     }
   }
@@ -88,17 +77,7 @@ export function groupNodesByVariable(
   );
 
   for (const node of nodes) {
-    const raw = node[entityAttributesProperty][groupVariable];
-    if (raw == null) continue;
-
-    const values: VariableOptionValue[] = (
-      Array.isArray(raw) ? raw : [raw]
-    ).filter(
-      (value): value is VariableOptionValue =>
-        typeof value === 'string' || typeof value === 'number',
-    );
-
-    for (const value of values) {
+    for (const value of getGroupKeys(node, groupVariable)) {
       let group = groups.get(value);
       if (!group) {
         group = {
@@ -250,7 +229,7 @@ export default function ConvexHullLayer({
       viewBox="0 0 1 1"
       xmlns="http://www.w3.org/2000/svg"
       preserveAspectRatio="none"
-      className="pointer-events-none absolute inset-0 size-full"
+      className="pointer-events-none absolute inset-0 size-full overflow-visible"
     />
   );
 }

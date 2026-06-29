@@ -576,6 +576,346 @@ const buildTwoNodeGroup = () => {
   return si;
 };
 
+// --- SNA topology demos ---
+//
+// Each topology authors explicit, well-spread seed positions on the layout
+// variable (normalized 0-1) so the read-only cohesion + collision layout has a
+// realistic Sociogram-style arrangement to refine, rather than a pre-clustered
+// blob. Positions are set via setNodeAttribute on the layout variable; nodes
+// without a layout value are not rendered by the Narrative interface.
+
+type Point = { x: number; y: number };
+
+const setLayout = (
+  si: SyntheticInterview,
+  layoutVariableId: string,
+  positions: Point[],
+) => {
+  positions.forEach((position, i) => {
+    si.setNodeAttribute(i, layoutVariableId, position);
+  });
+};
+
+const buildDyad = () => {
+  const { si, layoutVar1, friendshipEt } = createNarrativeInterview(200);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  si.addStage('Narrative', { initialNodes: { count: 2 } }).addPreset({
+    label: 'Dyad',
+    layoutVariable: layoutVar1.id,
+    edges: { display: [friendshipEt.id] },
+  });
+  setLayout(si, layoutVar1.id, [
+    { x: 0.32, y: 0.5 },
+    { x: 0.68, y: 0.5 },
+  ]);
+  si.addEdges([[0, 1]], friendshipEt.id);
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+const buildTriad = () => {
+  const { si, layoutVar1, friendshipEt } = createNarrativeInterview(201);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  si.addStage('Narrative', { initialNodes: { count: 3 } }).addPreset({
+    label: 'Triad',
+    layoutVariable: layoutVar1.id,
+    edges: { display: [friendshipEt.id] },
+  });
+  setLayout(si, layoutVar1.id, [
+    { x: 0.5, y: 0.28 },
+    { x: 0.3, y: 0.66 },
+    { x: 0.7, y: 0.66 },
+  ]);
+  si.addEdges(
+    [
+      [0, 1],
+      [1, 2],
+      [2, 0],
+    ],
+    friendshipEt.id,
+  );
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+const buildStar = () => {
+  const { si, layoutVar1, friendshipEt } = createNarrativeInterview(202);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  si.addStage('Narrative', { initialNodes: { count: 7 } }).addPreset({
+    label: 'Hub and Spoke',
+    layoutVariable: layoutVar1.id,
+    edges: { display: [friendshipEt.id] },
+  });
+  // Node 0 is the central hub; nodes 1-6 are leaves arranged around it.
+  setLayout(si, layoutVar1.id, [
+    { x: 0.5, y: 0.5 },
+    { x: 0.5, y: 0.18 },
+    { x: 0.78, y: 0.32 },
+    { x: 0.8, y: 0.68 },
+    { x: 0.5, y: 0.82 },
+    { x: 0.2, y: 0.68 },
+    { x: 0.22, y: 0.32 },
+  ]);
+  si.addEdges(
+    [
+      [0, 1],
+      [0, 2],
+      [0, 3],
+      [0, 4],
+      [0, 5],
+      [0, 6],
+    ],
+    friendshipEt.id,
+  );
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+const buildClique = () => {
+  const { si, layoutVar1, communityVar, friendshipEt } =
+    createNarrativeInterview(203);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  si.addStage('Narrative', { initialNodes: { count: 5 } }).addPreset({
+    label: 'Clique',
+    layoutVariable: layoutVar1.id,
+    groupVariable: communityVar.id,
+    edges: { display: [friendshipEt.id] },
+  });
+  setLayout(si, layoutVar1.id, [
+    { x: 0.5, y: 0.22 },
+    { x: 0.78, y: 0.42 },
+    { x: 0.68, y: 0.76 },
+    { x: 0.32, y: 0.76 },
+    { x: 0.22, y: 0.42 },
+  ]);
+  // All five nodes belong to a single group.
+  for (let i = 0; i < 5; i++) {
+    si.setNodeAttribute(i, communityVar.id, 'family');
+  }
+  si.addEdges(
+    [
+      [0, 1],
+      [0, 2],
+      [0, 3],
+      [0, 4],
+      [1, 2],
+      [1, 3],
+      [1, 4],
+      [2, 3],
+      [2, 4],
+      [3, 4],
+    ],
+    friendshipEt.id,
+  );
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+const buildPathChain = () => {
+  const { si, layoutVar1, friendshipEt } = createNarrativeInterview(204);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  si.addStage('Narrative', { initialNodes: { count: 6 } }).addPreset({
+    label: 'Path',
+    layoutVariable: layoutVar1.id,
+    edges: { display: [friendshipEt.id] },
+  });
+  // Six nodes spread along a gentle line so the chain stays legible.
+  setLayout(si, layoutVar1.id, [
+    { x: 0.12, y: 0.4 },
+    { x: 0.27, y: 0.56 },
+    { x: 0.42, y: 0.42 },
+    { x: 0.57, y: 0.58 },
+    { x: 0.72, y: 0.44 },
+    { x: 0.87, y: 0.6 },
+  ]);
+  si.addEdges(
+    [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 4],
+      [4, 5],
+    ],
+    friendshipEt.id,
+  );
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+const buildTwoCommunitiesBroker = () => {
+  const { si, layoutVar1, communityVar, friendshipEt } =
+    createNarrativeInterview(205);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  si.addStage('Narrative', { initialNodes: { count: 10 } }).addPreset({
+    label: 'Two Communities + Broker',
+    layoutVariable: layoutVar1.id,
+    groupVariable: communityVar.id,
+    edges: { display: [friendshipEt.id] },
+  });
+  // Nodes 0-4 are the left community (broker = node 4); nodes 5-9 are the right
+  // community (broker = node 5). Seeded on opposite sides of the canvas.
+  setLayout(si, layoutVar1.id, [
+    { x: 0.16, y: 0.22 },
+    { x: 0.1, y: 0.55 },
+    { x: 0.22, y: 0.78 },
+    { x: 0.3, y: 0.4 },
+    { x: 0.38, y: 0.55 },
+    { x: 0.62, y: 0.45 },
+    { x: 0.7, y: 0.6 },
+    { x: 0.78, y: 0.22 },
+    { x: 0.9, y: 0.45 },
+    { x: 0.84, y: 0.78 },
+  ]);
+  const groupValues: string[] = [
+    'family',
+    'family',
+    'family',
+    'family',
+    'family',
+    'work',
+    'work',
+    'work',
+    'work',
+    'work',
+  ];
+  groupValues.forEach((v, i) => {
+    si.setNodeAttribute(i, communityVar.id, v);
+  });
+  si.addEdges(
+    [
+      // Left community internal ties.
+      [0, 1],
+      [0, 3],
+      [1, 2],
+      [1, 3],
+      [2, 4],
+      [3, 4],
+      // Right community internal ties.
+      [5, 6],
+      [5, 8],
+      [6, 9],
+      [7, 8],
+      [8, 9],
+      [5, 7],
+      // Single bridge edge between the two brokers (node 4 and node 5).
+      [4, 5],
+    ],
+    friendshipEt.id,
+  );
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+const buildCorePeriphery = () => {
+  const { si, layoutVar1, communityVar, friendshipEt } =
+    createNarrativeInterview(206);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  si.addStage('Narrative', { initialNodes: { count: 10 } }).addPreset({
+    label: 'Core-Periphery',
+    layoutVariable: layoutVar1.id,
+    groupVariable: communityVar.id,
+    edges: { display: [friendshipEt.id] },
+  });
+  // Nodes 0-3 are a dense central core (one group); nodes 4-9 are peripheral,
+  // each tied to a single core node.
+  setLayout(si, layoutVar1.id, [
+    { x: 0.42, y: 0.4 },
+    { x: 0.58, y: 0.4 },
+    { x: 0.58, y: 0.6 },
+    { x: 0.42, y: 0.6 },
+    { x: 0.5, y: 0.14 },
+    { x: 0.86, y: 0.26 },
+    { x: 0.88, y: 0.74 },
+    { x: 0.5, y: 0.88 },
+    { x: 0.14, y: 0.74 },
+    { x: 0.12, y: 0.26 },
+  ]);
+  // Only the core shares a group so a single hull surrounds it.
+  for (let i = 0; i < 4; i++) {
+    si.setNodeAttribute(i, communityVar.id, 'family');
+  }
+  si.addEdges(
+    [
+      // Dense core: every pair connected.
+      [0, 1],
+      [0, 2],
+      [0, 3],
+      [1, 2],
+      [1, 3],
+      [2, 3],
+      // Periphery: each leaf tied to one core node.
+      [0, 4],
+      [1, 5],
+      [2, 6],
+      [3, 7],
+      [0, 8],
+      [1, 9],
+    ],
+    friendshipEt.id,
+  );
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+const buildEgoNetwork = () => {
+  const { si, layoutVar1, communityVar, friendshipEt } =
+    createNarrativeInterview(207);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  si.addStage('Narrative', { initialNodes: { count: 8 } }).addPreset({
+    label: 'Ego Network',
+    layoutVariable: layoutVar1.id,
+    groupVariable: communityVar.id,
+    edges: { display: [friendshipEt.id] },
+  });
+  // Node 0 is the ego, centrally placed; nodes 1-7 are alters grouped by type
+  // and arranged around the ego.
+  setLayout(si, layoutVar1.id, [
+    { x: 0.5, y: 0.5 },
+    { x: 0.28, y: 0.2 },
+    { x: 0.5, y: 0.14 },
+    { x: 0.74, y: 0.22 },
+    { x: 0.84, y: 0.55 },
+    { x: 0.68, y: 0.84 },
+    { x: 0.3, y: 0.84 },
+    { x: 0.16, y: 0.52 },
+  ]);
+  // Ego unassigned; alters split across family / work / school so multiple
+  // hulls render. Node 4 belongs to TWO groups (work + school) to exercise
+  // between-hulls placement for a multi-membership alter.
+  const groupValues: (string | string[] | null)[] = [
+    null,
+    'family',
+    'family',
+    'work',
+    ['work', 'school'],
+    'school',
+    'school',
+    'family',
+  ];
+  groupValues.forEach((v, i) => {
+    si.setNodeAttribute(i, communityVar.id, v);
+  });
+  si.addEdges(
+    [
+      // Ego tied to every alter.
+      [0, 1],
+      [0, 2],
+      [0, 3],
+      [0, 4],
+      [0, 5],
+      [0, 6],
+      [0, 7],
+      // A few alter-alter ties within shared groups.
+      [1, 2],
+      [5, 6],
+      [3, 4],
+    ],
+    friendshipEt.id,
+  );
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
 // --- Stories ---
 
 export const Default: Story = {
@@ -634,4 +974,100 @@ export const SingleNodeGroups: Story = {
 
 export const TwoNodeGroup: Story = {
   render: () => <NarrativeStoryWrapper buildFn={buildTwoNodeGroup} />,
+};
+
+// --- SNA topology demo stories ---
+
+export const Dyad: Story = {
+  render: () => <NarrativeStoryWrapper buildFn={buildDyad} />,
+  parameters: {
+    docs: {
+      description: {
+        story: 'Dyad: two connected nodes joined by a single edge.',
+      },
+    },
+  },
+};
+
+export const Triad: Story = {
+  render: () => <NarrativeStoryWrapper buildFn={buildTriad} />,
+  parameters: {
+    docs: {
+      description: {
+        story: 'Triad: three nodes forming a closed triangle (three edges).',
+      },
+    },
+  },
+};
+
+export const Star: Story = {
+  render: () => <NarrativeStoryWrapper buildFn={buildStar} />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Star / hub-and-spoke: one central hub connected to six surrounding leaves.',
+      },
+    },
+  },
+};
+
+export const Clique: Story = {
+  render: () => <NarrativeStoryWrapper buildFn={buildClique} />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Clique: five fully connected nodes, all belonging to a single group.',
+      },
+    },
+  },
+};
+
+export const PathChain: Story = {
+  render: () => <NarrativeStoryWrapper buildFn={buildPathChain} />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Path / chain: six nodes connected in a line, testing that collision keeps the chain legibly spaced.',
+      },
+    },
+  },
+};
+
+export const TwoCommunitiesBroker: Story = {
+  render: () => <NarrativeStoryWrapper buildFn={buildTwoCommunitiesBroker} />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Two communities + broker: two internally well-connected groups joined by a single bridge edge between one broker node in each.',
+      },
+    },
+  },
+};
+
+export const CorePeriphery: Story = {
+  render: () => <NarrativeStoryWrapper buildFn={buildCorePeriphery} />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Core-periphery: a dense interconnected core (one group) surrounded by peripheral nodes each tied to a core node.',
+      },
+    },
+  },
+};
+
+export const EgoNetwork: Story = {
+  render: () => <NarrativeStoryWrapper buildFn={buildEgoNetwork} />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Ego network: an ego connected to seven alters grouped by type (family, work, school), with one alter in two groups and a few alter-alter ties.',
+      },
+    },
+  },
 };

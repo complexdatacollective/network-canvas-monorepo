@@ -218,7 +218,7 @@ export default function PresetSwitcher({
           dragConstraints={dragConstraints}
           spacing="xs"
           shadow="xs"
-          className="flex items-center gap-2 rounded-full"
+          className="absolute right-10 bottom-10 z-10 flex items-center gap-2 rounded-full"
           dragControls={dragControls}
           dragListener={false}
           ref={switcherRef}
@@ -262,7 +262,7 @@ export default function PresetSwitcher({
           />
         </MotionSurface>
         <PopoverContent
-          align="center"
+          align="end"
           sideOffset={14}
           anchor={switcherRef}
           className="min-w-2xs"

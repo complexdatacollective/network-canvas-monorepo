@@ -3,20 +3,20 @@
 import { get } from 'es-toolkit/compat';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import Node from '@codaco/fresco-ui/Node';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
 import Canvas from '~/canvas/Canvas';
+import { useAutoLayout } from '~/canvas/useAutoLayout';
 import { createCanvasStore } from '~/canvas/useCanvasStore';
 import ConcentricCircles from '~/components/ConcentricCircles';
-import { useCurrentStep } from '~/contexts/CurrentStepContext';
+import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import {
   getCategoricalOptions,
   getNetworkEdges,
   getNetworkNodes,
 } from '~/selectors/session';
-import { updateNode } from '~/store/modules/session';
-import { useAppDispatch } from '~/store/store';
 import type { StageProps } from '~/types';
 
 import Annotations, { type AnnotationsHandle } from './Annotations';
@@ -27,8 +27,6 @@ import PresetSwitcher from './PresetSwitcher';
 type NarrativeProps = StageProps<'Narrative'>;
 
 const Narrative = ({ stage }: NarrativeProps) => {
-  const dispatch = useAppDispatch();
-  const { currentStep } = useCurrentStep();
   const nodes = useStageSelector(getNetworkNodes);
   const edges = useStageSelector(getNetworkEdges);
   const interfaceRef = useRef<HTMLDivElement>(null);
@@ -46,6 +44,16 @@ const Narrative = ({ stage }: NarrativeProps) => {
   // Zustand store for real-time positions
   const storeRef = useRef(createCanvasStore());
   const store = storeRef.current;
+
+  // Measure the rendered node size off-screen so the layout's collision radius
+  // tracks the live `--theme-root-size` scaling. A size="sm" Node matches the
+  // on-canvas nodes (CanvasNode renders the same UINode at size="sm"); the
+  // measured box depends only on size + the inherited cascade. The returned
+  // measurementContainer is rendered INSIDE the interface div below so it
+  // inherits --theme-root-size from the Shell.
+  const { nodeWidth, measurementContainer } = useNodeMeasurement({
+    component: <Node size="sm" />,
+  });
 
   const handleToggleDrawing = useCallback(() => {
     setIsDrawingEnabled((prev) => !prev);
@@ -170,26 +178,66 @@ const Narrative = ({ stage }: NarrativeProps) => {
     [edges, showEdges, displayEdgeTypes],
   );
 
-  // Sync positions from nodes when layout variable or nodes change
+  // Edges that drive edge-attraction in the layout. Keyed on the preset's
+  // edges.display config, NOT the showEdges display toggle, so toggling edge
+  // visibility does not re-run the settled layout — mirroring how cohesion keys
+  // on the stable groupVariable rather than the display-gated convexHullVariable.
+  const layoutEdges = useMemo(
+    () =>
+      displayEdgeTypes
+        ? edges.filter((edge) => displayEdgeTypes.includes(edge.type))
+        : [],
+    [edges, displayEdgeTypes],
+  );
+
+  // Sync positions from nodes when layout variable or nodes change. This runs
+  // before useAutoLayout reads store.positions to seed the simulation.
   useEffect(() => {
     store.getState().syncFromNodes(nodesWithLayout, layoutVariable);
   }, [nodesWithLayout, layoutVariable, store]);
 
-  // Handle drag end: sync single position to Redux
-  const handleNodeDragEnd = useCallback(
-    (nodeId: string, position: { x: number; y: number }) => {
-      void dispatch(
-        updateNode({
-          nodeId,
-          newAttributeData: {
-            [layoutVariable]: { x: position.x, y: position.y },
-          },
-          currentStep,
-        }),
-      );
-    },
-    [dispatch, layoutVariable, currentStep],
+  // Narrative shares Sociogram's full automatic-layout anneal (hot start + slow
+  // cool so nodes escape local minima) and charge-driven spread; it additionally
+  // applies group cohesion so same-group nodes cluster into their convex hulls.
+  // The upward bias lifts the composition clear of the bottom-center preset
+  // panel. Memoized so the layout does not re-seed on every render.
+  const layoutOptions = useMemo(
+    () => ({
+      cohesion: 0.1,
+      charge: -3000,
+      startAlpha: 1,
+      alphaMin: 0.001,
+      alphaDecay: 1 - 0.001 ** (1 / 500),
+      biasXStrength: 0.12,
+      biasXFraction: 0.5,
+      biasYStrength: 0.12,
+      biasYFraction: 0.5,
+    }),
+    [],
   );
+
+  // Ephemeral, read-only layout (persist:false makes syncToRedux unreachable).
+  // Runs whenever there are positioned nodes so collision spacing applies to ALL
+  // presets (ungrouped presets de-overlap with minimal movement from the
+  // authored layout). Group cohesion is additionally active only when a
+  // groupVariable is set: getGroupKeys returns [] for every node otherwise, so
+  // the cohesion force is inert and can always be registered. Keyed on the
+  // stable preset groupVariable, NOT the display-gated convexHullVariable:
+  // toggling hulls off must not re-run the settled layout, and cohesion runs on
+  // preset entry where showConvexHulls is reset to true.
+  const layout = useAutoLayout({
+    enabled: nodesWithLayout.length > 0,
+    nodes: nodesWithLayout,
+    edges: layoutEdges,
+    store,
+    nodeRadius: nodeWidth / 2,
+    layoutVariable,
+    groupVariable: currentPreset?.groupVariable ?? '',
+    persist: false,
+    runMode: 'once',
+    mockLayout: 'identity',
+    layoutOptions,
+  });
 
   // Get categorical options for convex hulls. Use useStageSelector (which
   // reads displayedStep, not currentStep) so a stale render during a stage
@@ -228,7 +276,10 @@ const Narrative = ({ stage }: NarrativeProps) => {
     <div
       className="interface relative h-dvh overflow-hidden"
       ref={interfaceRef}
+      data-testid="narrative"
+      data-simulation-running={layout.isRunning}
     >
+      {measurementContainer}
       <Canvas
         background={background}
         underlays={underlays}
@@ -238,7 +289,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
         store={store}
         selectedNodeId={null}
         highlightAttribute={highlightAttribute}
-        onNodeDragEnd={handleNodeDragEnd}
+        onNodeDragEnd={undefined}
         allowRepositioning={allowRepositioning}
         simulation={null}
       />

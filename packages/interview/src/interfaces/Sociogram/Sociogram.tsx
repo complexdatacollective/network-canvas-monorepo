@@ -1,20 +1,23 @@
 'use client';
 
 import { get } from 'es-toolkit/compat';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
+import Node from '@codaco/fresco-ui/Node';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
 import Canvas from '~/canvas/Canvas';
+import { useAutoLayout } from '~/canvas/useAutoLayout';
 import { createCanvasStore, useCanvasStore } from '~/canvas/useCanvasStore';
 import ConcentricCircles from '~/components/ConcentricCircles';
 import NodeDrawer from '~/components/NodeDrawer';
 import { usePrompts } from '~/components/Prompts/usePrompts';
 import { useCurrentStep } from '~/contexts/CurrentStepContext';
 import { useAssetUrl } from '~/hooks/useAssetUrl';
+import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import useSortedNodeList from '~/hooks/useSortedNodeList';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import { getEdges, getPlacedNodes, getUnplacedNodes } from '~/selectors/canvas';
@@ -32,7 +35,6 @@ import type { StageProps } from '~/types';
 
 import CollapsablePrompts from './CollapsablePrompts';
 import SimulationPanel from './SimulationPanel';
-import { useForceSimulation } from './useForceSimulation';
 
 type SociogramProps = StageProps<'Sociogram'>;
 
@@ -76,6 +78,14 @@ const Sociogram = (stageProps: SociogramProps) => {
   const storeRef = useRef(createCanvasStore());
   const store = storeRef.current;
 
+  // Measure the rendered node size off-screen so the layout's collision radius
+  // tracks the live `--theme-root-size` scaling. A size="sm" Node matches the
+  // on-canvas nodes; the returned measurementContainer is rendered INSIDE the
+  // interface div below so it inherits --theme-root-size from the Shell.
+  const { nodeWidth, measurementContainer } = useNodeMeasurement({
+    component: <Node size="sm" />,
+  });
+
   // Sync positions from Redux when nodes or layout variable change.
   // In automatic mode, only initialize new nodes — the simulation owns positions.
   useEffect(() => {
@@ -86,16 +96,75 @@ const Sociogram = (stageProps: SociogramProps) => {
     }
   }, [canvasNodes, layoutVariable, store, layoutMode]);
 
-  // Force simulation (only active in AUTOMATIC mode)
-  const simulation = useForceSimulation({
+  // Sociogram force tuning (px space). No group cohesion (no convex hulls), so
+  // spread relies on charge. The legacy worker used charge -150 / linkDistance 60
+  // in ±250 sim space; the shared engine is px (larger distances), so charge needs
+  // a substantially larger magnitude. A weak symmetric forceX/forceY keeps the
+  // layout centred and slightly up to clear the bottom prompt panel.
+  //
+  // Unlike Narrative (which gently REFINES already-meaningful authored positions),
+  // Sociogram lays out FROM SCRATCH, so it needs a full anneal to escape local
+  // minima: a hot start (startAlpha 1) gives nodes enough energy to break free of
+  // inefficient positions, and a low alphaMin + slow alphaDecay let it cool over
+  // ~500 ticks rather than freezing early into a tangled local optimum.
+  const layoutOptions = useMemo(
+    () => ({
+      cohesion: 0,
+      charge: -3000,
+      startAlpha: 1,
+      alphaMin: 0.001,
+      alphaDecay: 1 - 0.001 ** (1 / 500),
+      biasXStrength: 0.12,
+      biasXFraction: 0.5,
+      biasYStrength: 0.12,
+      biasYFraction: 0.5,
+    }),
+    [],
+  );
+
+  // Force simulation (only active in AUTOMATIC mode). Continuous, user-toggleable,
+  // and persists settled positions back to Redux.
+  const simulation = useAutoLayout({
     enabled: layoutMode === 'AUTOMATIC',
     nodes: canvasNodes,
     edges,
-    layoutVariable,
     store,
+    nodeRadius: nodeWidth / 2,
+    layoutVariable,
+    groupVariable: '',
+    persist: true,
     dispatch,
     currentStep,
+    runMode: 'continuous',
+    mockLayout: 'grid',
+    layoutOptions,
   });
+
+  // Re-emit the legacy useForceSimulation analytics by observing isRunning
+  // transitions: false->true is a run start, true->false is a settle.
+  const wasRunningRef = useRef(false);
+  const simStartedAtRef = useRef<number | null>(null);
+  useEffect(() => {
+    const wasRunning = wasRunningRef.current;
+    if (simulation.isRunning && !wasRunning) {
+      simStartedAtRef.current = Date.now();
+      track('simulation_started', {
+        node_count: canvasNodes.length,
+        edge_count: edges.length,
+      });
+    } else if (!simulation.isRunning && wasRunning) {
+      track('simulation_finished', {
+        duration_ms:
+          simStartedAtRef.current !== null
+            ? Date.now() - simStartedAtRef.current
+            : 0,
+        node_count: canvasNodes.length,
+        edge_count: edges.length,
+      });
+      simStartedAtRef.current = null;
+    }
+    wasRunningRef.current = simulation.isRunning;
+  }, [simulation.isRunning, canvasNodes.length, edges.length, track]);
 
   const selectedNodeId = useCanvasStore(store, (state) => state.selectedNodeId);
 
@@ -218,6 +287,7 @@ const Sociogram = (stageProps: SociogramProps) => {
       data-layout-mode={layoutMode}
       data-simulation-running={simulation.isRunning}
     >
+      {measurementContainer}
       <Canvas
         background={background}
         nodes={canvasNodes}
