@@ -4,73 +4,87 @@ export type StickerPosition = { x: number; y: number };
 
 /**
  * Returns `count` positions around the perimeter of a unit bounding box [0,1]²,
- * starting at the top-left corner and proceeding clockwise.
+ * ordered so that each position index is stable as count grows (prefix property).
  *
  * The coordinate space is normalised: (0,0) = top-left, (1,1) = bottom-right.
- * Callers scale these to the actual rendered node size.
+ * Callers multiply by the actual rendered node size to get pixel coordinates.
  *
  * Distribution strategy per shape:
- * - square:   evenly spaced along the four sides (top → right → bottom ← left ↑)
- * - circle:   evenly spaced angles on the unit circle, first angle at 225° (top-left)
- * - diamond:  evenly spaced along the four edges of a rotated square, first at top-left
+ * - square:   corners first (CW from top-left), then edge-midpoints. Sticker
+ *             centres sit exactly on the bounding-box boundary (50% overlap at
+ *             corners; edge-midpoints achieve true 50% overlap).
+ * - diamond:  face-midpoints first, then vertices, all on the rendered perimeter
+ *             ring at R = 0.5 × DIAMOND_RENDER_SCALE = 0.425 (50% overlap).
+ * - circle:   evenly spaced angles on the radius-0.5 ring (50% overlap).
  */
 export function stickerPositions(
   shape: NodeShape,
   count: number,
 ): StickerPosition[] {
   if (count === 0) return [];
-  if (shape === 'square') return squarePerimeter(count);
+  if (shape === 'square') return SQUARE_ANCHORS.slice(0, count);
   if (shape === 'circle') return circlePerimeter(count);
-  return diamondPerimeter(count);
+  return DIAMOND_ANCHORS.slice(0, count);
 }
 
 /**
- * Distributes `count` points evenly along the perimeter of the unit square.
- * The perimeter has total length 4. We start at the top-left corner (0, 0)
- * and travel clockwise: top edge → right edge → bottom edge → left edge.
+ * Square anchor ordering: corners first (CW from top-left), then edge-midpoints.
+ * Sticker centres on corners sit exactly on the bounding-box boundary.
  */
-function squarePerimeter(count: number): StickerPosition[] {
-  const positions: StickerPosition[] = [];
-  const perimeter = 4;
-  const step = perimeter / count;
-
-  for (let i = 0; i < count; i++) {
-    const t = i * step;
-    positions.push(squareTToXY(t));
-  }
-
-  return positions;
-}
+const SQUARE_ANCHORS: StickerPosition[] = [
+  { x: 0, y: 0 },
+  { x: 1, y: 0 },
+  { x: 1, y: 1 },
+  { x: 0, y: 1 }, // corners CW from top-left
+  { x: 0.5, y: 0 },
+  { x: 1, y: 0.5 },
+  { x: 0.5, y: 1 },
+  { x: 0, y: 0.5 }, // edge-midpoints
+];
 
 /**
- * Converts a perimeter parameter t ∈ [0, 4) to (x, y) on the unit square.
- * t=0 is the top-left corner; travel is clockwise.
- * Segment mapping:
- *   0–1: top edge     (x increases from 0→1, y=0)
- *   1–2: right edge   (x=1, y increases from 0→1)
- *   2–3: bottom edge  (x decreases from 1→0, y=1)
- *   3–4: left edge    (x=0, y decreases from 1→0)
+ * The rendered diamond is the square layer with `scale-[0.85] rotate-45` in
+ * fresco-ui Node.tsx shapeLayerVariants. DIAMOND_RENDER_SCALE MUST track that
+ * value: if Node.tsx changes the scale, this constant must change too.
  */
-function squareTToXY(t: number): StickerPosition {
-  if (t < 1) return { x: t, y: 0 };
-  if (t < 2) return { x: 1, y: t - 1 };
-  if (t < 3) return { x: 1 - (t - 2), y: 1 };
-  return { x: 0, y: 1 - (t - 3) };
-}
+const DIAMOND_RENDER_SCALE = 0.85;
+
+/** Half-perimeter radius of the rendered diamond in normalised [0,1]² space. */
+const R = 0.5 * DIAMOND_RENDER_SCALE; // 0.425
+
+/**
+ * Distance from the centre to a face-midpoint along each axis.
+ * A point on |dx|+|dy|=R at the face midpoint satisfies |dx|=|dy|=R/2.
+ */
+const half = R / 2; // 0.2125
+
+/**
+ * Diamond anchor ordering: face-midpoints first (best 50% overlap), then
+ * vertices. All points lie on the rendered perimeter ring |x-0.5|+|y-0.5|=R.
+ */
+const DIAMOND_ANCHORS: StickerPosition[] = [
+  { x: 0.5 - half, y: 0.5 - half },
+  { x: 0.5 + half, y: 0.5 - half }, // top-left, top-right face midpoints
+  { x: 0.5 + half, y: 0.5 + half },
+  { x: 0.5 - half, y: 0.5 + half }, // bottom-right, bottom-left face midpoints
+  { x: 0.5, y: 0.5 - R },
+  { x: 0.5 + R, y: 0.5 }, // top, right vertices
+  { x: 0.5, y: 0.5 + R },
+  { x: 0.5 - R, y: 0.5 }, // bottom, left vertices
+];
 
 /**
  * Distributes `count` points evenly on the unit circle, then maps them into
- * [0,1]². Starting angle is 225° (top-left quadrant, between top and left),
- * proceeding clockwise (increasing angle in screen coordinates where y-down).
+ * [0,1]². Starting angle is 225° (top-left quadrant), proceeding clockwise
+ * (increasing angle in screen coordinates where y-axis points down).
+ * Supports up to any count — the circle has no discrete anchor limit.
  */
 function circlePerimeter(count: number): StickerPosition[] {
   const positions: StickerPosition[] = [];
-  const startAngleDeg = 225;
-  const startAngleRad = (startAngleDeg * Math.PI) / 180;
+  const startAngleRad = (225 * Math.PI) / 180;
   const twoPi = 2 * Math.PI;
 
   for (let i = 0; i < count; i++) {
-    // Clockwise in screen space = increasing angle (y-axis points down)
     const angle = startAngleRad + (twoPi * i) / count;
     // Map from [-1,1] to [0,1]
     const x = (Math.cos(angle) + 1) / 2;
@@ -79,65 +93,4 @@ function circlePerimeter(count: number): StickerPosition[] {
   }
 
   return positions;
-}
-
-/**
- * Distributes `count` points along the perimeter of a diamond (rhombus) that
- * fits in the unit square. The diamond has four vertices:
- *   top:    (0.5, 0)
- *   right:  (1,   0.5)
- *   bottom: (0.5, 1)
- *   left:   (0,   0.5)
- *
- * We start at the top-left edge midpoint — the point on the top-left side
- * closest to the top-left corner, which is halfway along the first edge
- * (from top to right), adjusted so the first point is in the top-left region.
- * Specifically: start at t=0 which is the top vertex, but offset by a small
- * fraction so we begin in the top-left quadrant.
- *
- * Perimeter of the diamond = 4 × (distance between adjacent vertices) = 4 × √0.5 ≈ 2.83.
- * For distribution purposes we normalise to perimeter = 4 (treating each edge as length 1).
- *
- * Starting at the midpoint of the top-left edge (between top vertex and left vertex)
- * then going clockwise:  left → top → right → bottom → left.
- */
-function diamondPerimeter(count: number): StickerPosition[] {
-  const positions: StickerPosition[] = [];
-  const perimeter = 4;
-  // Start at t=3.5 (midpoint of the left→top edge, i.e. upper-left region)
-  const startT = 3.5;
-  const step = perimeter / count;
-
-  for (let i = 0; i < count; i++) {
-    const t = (((startT + i * step) % perimeter) + perimeter) % perimeter;
-    positions.push(diamondTToXY(t));
-  }
-
-  return positions;
-}
-
-/**
- * Converts a perimeter parameter t ∈ [0, 4) to (x, y) on the unit-diamond.
- * Vertices:  top=(0.5,0), right=(1,0.5), bottom=(0.5,1), left=(0,0.5).
- * Segment mapping (clockwise):
- *   0–1: top → right    (x: 0.5→1, y: 0→0.5)
- *   1–2: right → bottom (x: 1→0.5, y: 0.5→1)
- *   2–3: bottom → left  (x: 0.5→0, y: 1→0.5)
- *   3–4: left → top     (x: 0→0.5, y: 0.5→0)
- */
-function diamondTToXY(t: number): StickerPosition {
-  if (t < 1) {
-    const s = t;
-    return { x: 0.5 + 0.5 * s, y: 0.5 * s };
-  }
-  if (t < 2) {
-    const s = t - 1;
-    return { x: 1 - 0.5 * s, y: 0.5 + 0.5 * s };
-  }
-  if (t < 3) {
-    const s = t - 2;
-    return { x: 0.5 - 0.5 * s, y: 1 - 0.5 * s };
-  }
-  const s = t - 3;
-  return { x: 0.5 * s, y: 0.5 - 0.5 * s };
 }

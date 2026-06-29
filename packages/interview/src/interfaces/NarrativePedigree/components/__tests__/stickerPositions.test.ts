@@ -28,11 +28,40 @@ describe('stickerPositions', () => {
   });
 
   describe('square shape', () => {
+    it('count=4 → exactly the 4 corners in CW order from top-left', () => {
+      const positions = stickerPositions('square', 4);
+      expect(positions[0]).toEqual({ x: 0, y: 0 }); // top-left
+      expect(positions[1]).toEqual({ x: 1, y: 0 }); // top-right
+      expect(positions[2]).toEqual({ x: 1, y: 1 }); // bottom-right
+      expect(positions[3]).toEqual({ x: 0, y: 1 }); // bottom-left
+    });
+
+    it('count=8 → corners first, then edge-midpoints', () => {
+      const positions = stickerPositions('square', 8);
+      // Corners
+      expect(positions[0]).toEqual({ x: 0, y: 0 });
+      expect(positions[1]).toEqual({ x: 1, y: 0 });
+      expect(positions[2]).toEqual({ x: 1, y: 1 });
+      expect(positions[3]).toEqual({ x: 0, y: 1 });
+      // Edge midpoints
+      expect(positions[4]).toEqual({ x: 0.5, y: 0 });
+      expect(positions[5]).toEqual({ x: 1, y: 0.5 });
+      expect(positions[6]).toEqual({ x: 0.5, y: 1 });
+      expect(positions[7]).toEqual({ x: 0, y: 0.5 });
+    });
+
+    it('prefix property: positions(n) is a prefix of positions(8)', () => {
+      const full = stickerPositions('square', 8);
+      for (let n = 1; n <= 8; n++) {
+        const sub = stickerPositions('square', n);
+        expect(sub).toEqual(full.slice(0, n));
+      }
+    });
+
     it('starts top-left (first position has minimum x+y values)', () => {
       const positions = stickerPositions('square', 4);
       const first = positions[0];
       expect(first).toBeDefined();
-      // Top-left corner: x < 0.5 and y < 0.5 (in unit space)
       expect(first!.x).toBeLessThan(0.5);
       expect(first!.y).toBeLessThan(0.5);
     });
@@ -89,6 +118,16 @@ describe('stickerPositions', () => {
   });
 
   describe('circle shape', () => {
+    it('count=8 → all 8 points lie on the radius-0.5 ring', () => {
+      const positions = stickerPositions('circle', 8);
+      expect(positions).toHaveLength(8);
+      for (const pos of positions) {
+        const dx = pos.x - 0.5;
+        const dy = pos.y - 0.5;
+        expect(dx * dx + dy * dy).toBeCloseTo(0.25, 10);
+      }
+    });
+
     it('starts top-left (first position has x < 0.5 and y < 0.5)', () => {
       const positions = stickerPositions('circle', 4);
       const first = positions[0];
@@ -102,7 +141,6 @@ describe('stickerPositions', () => {
       const [first, second] = positions;
       expect(first).toBeDefined();
       expect(second).toBeDefined();
-      // Going clockwise from top-left, next position should be further right
       expect(second!.x).toBeGreaterThan(first!.x);
     });
 
@@ -133,6 +171,58 @@ describe('stickerPositions', () => {
   });
 
   describe('diamond shape', () => {
+    it('count=4 → the 4 face-midpoints on the 0.425 rendered ring', () => {
+      const positions = stickerPositions('diamond', 4);
+      const R = 0.5 * 0.85; // 0.425
+      const half = R / 2; // 0.2125
+      expect(positions[0]).toEqual({ x: 0.5 - half, y: 0.5 - half }); // top-left
+      expect(positions[1]).toEqual({ x: 0.5 + half, y: 0.5 - half }); // top-right
+      expect(positions[2]).toEqual({ x: 0.5 + half, y: 0.5 + half }); // bottom-right
+      expect(positions[3]).toEqual({ x: 0.5 - half, y: 0.5 + half }); // bottom-left
+      // All on the |x-0.5|+|y-0.5|=R ring
+      for (const pos of positions) {
+        expect(Math.abs(pos.x - 0.5) + Math.abs(pos.y - 0.5)).toBeCloseTo(
+          R,
+          10,
+        );
+      }
+    });
+
+    it('count=8 → face-midpoints first, then vertices', () => {
+      const positions = stickerPositions('diamond', 8);
+      const R = 0.5 * 0.85;
+      const half = R / 2;
+      // Face midpoints
+      expect(positions[0]).toEqual({ x: 0.5 - half, y: 0.5 - half });
+      expect(positions[1]).toEqual({ x: 0.5 + half, y: 0.5 - half });
+      expect(positions[2]).toEqual({ x: 0.5 + half, y: 0.5 + half });
+      expect(positions[3]).toEqual({ x: 0.5 - half, y: 0.5 + half });
+      // Vertices
+      expect(positions[4]).toEqual({ x: 0.5, y: 0.5 - R });
+      expect(positions[5]).toEqual({ x: 0.5 + R, y: 0.5 });
+      expect(positions[6]).toEqual({ x: 0.5, y: 0.5 + R });
+      expect(positions[7]).toEqual({ x: 0.5 - R, y: 0.5 });
+    });
+
+    it('prefix property: positions(n) is a prefix of positions(8)', () => {
+      const full = stickerPositions('diamond', 8);
+      for (let n = 1; n <= 8; n++) {
+        const sub = stickerPositions('diamond', n);
+        expect(sub).toEqual(full.slice(0, n));
+      }
+    });
+
+    it('all count=4 points lie on the |x-0.5|+|y-0.5|≈0.425 ring', () => {
+      const R = 0.5 * 0.85;
+      const positions = stickerPositions('diamond', 4);
+      for (const pos of positions) {
+        expect(Math.abs(pos.x - 0.5) + Math.abs(pos.y - 0.5)).toBeCloseTo(
+          R,
+          10,
+        );
+      }
+    });
+
     it('starts top-left (first position has x < 0.5 and y < 0.5)', () => {
       const positions = stickerPositions('diamond', 4);
       const first = positions[0];
@@ -148,7 +238,7 @@ describe('stickerPositions', () => {
     });
 
     it('all positions are within unit bounds [0,1]', () => {
-      const positions = stickerPositions('diamond', 6);
+      const positions = stickerPositions('diamond', 8);
       for (const pos of positions) {
         expect(pos.x).toBeGreaterThanOrEqual(0);
         expect(pos.x).toBeLessThanOrEqual(1);
@@ -157,11 +247,12 @@ describe('stickerPositions', () => {
       }
     });
 
-    it('all points lie on the rhombus edges: |x-0.5|+|y-0.5|≈0.5', () => {
+    it('all count=8 points lie on the |x-0.5|+|y-0.5|≈0.425 ring', () => {
+      const R = 0.5 * 0.85;
       const positions = stickerPositions('diamond', 8);
       for (const pos of positions) {
         expect(Math.abs(pos.x - 0.5) + Math.abs(pos.y - 0.5)).toBeCloseTo(
-          0.5,
+          R,
           10,
         );
       }
@@ -172,7 +263,6 @@ describe('stickerPositions', () => {
     it('produces distinct distributions for square vs circle', () => {
       const square = stickerPositions('square', 4);
       const circle = stickerPositions('circle', 4);
-      // They should differ since they follow different perimeter geometries
       expect(square).not.toEqual(circle);
     });
   });

@@ -78,9 +78,10 @@ describe('StickerNode', () => {
     });
   });
 
-  describe('overflow: 7 diseases caps at STICKER_CAP with +N marker', () => {
-    const sevenDiseases: DiseaseSticker[] = Array.from(
-      { length: 7 },
+  describe('overflow: 9 diseases caps at STICKER_CAP with +N marker', () => {
+    const totalDiseases = STICKER_CAP + 1;
+    const manyDiseases: DiseaseSticker[] = Array.from(
+      { length: totalDiseases },
       (_, i) => ({
         id: `d${i}`,
         color: `#${i}00000`,
@@ -90,7 +91,7 @@ describe('StickerNode', () => {
 
     it('renders at most STICKER_CAP stickers', () => {
       render(
-        <StickerNode label="Test" shape="square" diseases={sevenDiseases} />,
+        <StickerNode label="Test" shape="circle" diseases={manyDiseases} />,
       );
       const stickers = document.querySelectorAll('[data-sticker-status]');
       expect(stickers.length).toBeLessThanOrEqual(STICKER_CAP);
@@ -98,7 +99,7 @@ describe('StickerNode', () => {
 
     it('shows a +N overflow marker when diseases exceed STICKER_CAP', () => {
       render(
-        <StickerNode label="Test" shape="square" diseases={sevenDiseases} />,
+        <StickerNode label="Test" shape="circle" diseases={manyDiseases} />,
       );
       const overflow = document.querySelector('[data-overflow-marker]');
       expect(overflow).toBeInTheDocument();
@@ -106,16 +107,16 @@ describe('StickerNode', () => {
 
     it('+N overflow marker shows the correct remainder count', () => {
       render(
-        <StickerNode label="Test" shape="square" diseases={sevenDiseases} />,
+        <StickerNode label="Test" shape="circle" diseases={manyDiseases} />,
       );
       const overflow = document.querySelector('[data-overflow-marker]');
-      const expected = `+${7 - STICKER_CAP}`;
+      const expected = `+${totalDiseases - STICKER_CAP}`;
       expect(overflow?.textContent).toContain(expected);
     });
 
     it('+N overflow marker is a non-interactive span (not a button)', () => {
       render(
-        <StickerNode label="Test" shape="square" diseases={sevenDiseases} />,
+        <StickerNode label="Test" shape="circle" diseases={manyDiseases} />,
       );
       const overflow = document.querySelector('[data-overflow-marker]');
       expect(overflow?.tagName.toLowerCase()).toBe('span');

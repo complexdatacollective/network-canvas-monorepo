@@ -13,7 +13,7 @@ export type DiseaseSticker = {
 };
 
 /** Maximum number of stickers rendered before showing +N overflow. */
-export const STICKER_CAP = 6;
+export const STICKER_CAP = 8;
 
 /** Pixel size of the node rendered by <Node size="sm"> (96px = size-24). */
 const NODE_SIZE_PX = 96;
@@ -154,7 +154,22 @@ export function StickerNode({
   highlighted,
   onSelectDisease,
 }: StickerNodeProps) {
-  const visibleStickers = diseases.slice(0, STICKER_CAP);
+  const cappedStickers = diseases.slice(0, STICKER_CAP);
+  const rawHiddenCount = diseases.length - cappedStickers.length;
+
+  // For square/diamond, anchor arrays are finite (8 slots). When all 8 are used
+  // and there are hidden diseases, stickerPositions(shape, count+1)[count] is
+  // undefined because there is no 9th anchor. In that case we reserve the last
+  // visible slot for the +N badge so the count is never silently lost.
+  const overflowNeedsLastSlot =
+    rawHiddenCount > 0 &&
+    stickerPositions(shape, cappedStickers.length + 1)[
+      cappedStickers.length
+    ] === undefined;
+
+  const visibleStickers = overflowNeedsLastSlot
+    ? cappedStickers.slice(0, STICKER_CAP - 1)
+    : cappedStickers;
   const hiddenCount = diseases.length - visibleStickers.length;
   const stickerCount = visibleStickers.length;
 
