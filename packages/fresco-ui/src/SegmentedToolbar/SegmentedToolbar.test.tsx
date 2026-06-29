@@ -6,6 +6,7 @@ import {
   Map as MapIcon,
   Pencil,
   Snowflake,
+  Spline,
   Trash2,
   Undo2,
 } from 'lucide-react';
@@ -67,23 +68,32 @@ describe('SegmentedToolbar — buttons & separators', () => {
     expect(screen.getByText('Done')).toBeVisible();
   });
 
-  it('renders a section label as visible, non-interactive text', () => {
+  it('renders a menu segment whose trigger opens single-select options', async () => {
+    const onSelect = vi.fn();
     const items: ToolbarSegment[] = [
-      { type: 'label', id: 'tools-label', text: 'Tools' },
       {
-        type: 'button',
-        id: 'edit',
-        label: 'Edit',
-        icon: <Pencil />,
-        onClick: vi.fn(),
+        type: 'menu',
+        id: 'edge',
+        label: 'Draw edge',
+        icon: <Spline />,
+        value: 'friendship',
+        options: [
+          { value: 'friendship', label: 'Friendship' },
+          { value: 'advice', label: 'Advice' },
+        ],
+        onSelect,
       },
     ];
-    render(<SegmentedToolbar label="Drawing tools" items={items} />);
-    expect(screen.getByText('Tools')).toBeVisible();
-    // A label is not a focusable toolbar item.
-    expect(
-      screen.queryByRole('button', { name: 'Tools' }),
-    ).not.toBeInTheDocument();
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    const trigger = screen.getByRole('button', { name: 'Draw edge' });
+    // The trigger must advertise that it opens a menu, even though it renders a
+    // custom Button component rather than a native <button>.
+    expect(trigger).toHaveAttribute('aria-haspopup');
+    await userEvent.click(trigger);
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Advice' }),
+    );
+    expect(onSelect).toHaveBeenCalledWith('advice');
   });
 
   it('moves focus between segments with the arrow keys (roving focus)', async () => {

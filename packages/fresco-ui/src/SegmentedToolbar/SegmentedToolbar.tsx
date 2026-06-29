@@ -15,6 +15,13 @@ import {
 import * as React from 'react';
 
 import { Button } from '../Button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '../DropdownMenu';
 import { MotionSurface } from '../layout/Surface';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
 import { cva, cx } from '../utils/cva';
@@ -68,22 +75,26 @@ export type SeparatorSegment = {
 };
 
 /**
- * A non-interactive section label. Renders as a small heading in the toolbar
- * flow to group adjacent segments (e.g. "Tools", "History"). It is skipped by
- * the toolbar's roving focus since it is not focusable.
+ * A button that opens a single-select menu — for choosing among options that
+ * would otherwise need one segment each (e.g. picking an edge type to draw).
+ * The trigger shows `pressed` styling when a selection is active.
  */
-export type LabelSegment = {
-  type: 'label';
+export type MenuSegment = {
+  type: 'menu';
   id: string;
-  text: string;
-};
+  disabled?: boolean;
+  pressed?: boolean;
+  value?: string;
+  options: Array<SegmentContent & { value: string; disabled?: boolean }>;
+  onSelect: (value: string) => void;
+} & SegmentContent;
 
 export type ToolbarSegment =
   | ButtonSegment
   | ToggleSegment
   | GroupSegment
   | SeparatorSegment
-  | LabelSegment;
+  | MenuSegment;
 
 export type Position = { x: number; y: number };
 
@@ -258,6 +269,51 @@ function ToolbarGroupSegment({
   );
 }
 
+// Active styling for a menu trigger. Unlike a Toggle it has no data-pressed
+// state, so the selected highlight is applied directly when `pressed`.
+const menuActiveClasses = 'bg-selected! text-selected-contrast!';
+
+function ToolbarMenuSegment({
+  segment,
+  size,
+}: {
+  segment: MenuSegment;
+  size: SegmentSize;
+}) {
+  const trigger = (
+    <Toolbar.Button
+      render={
+        <DropdownMenuTrigger
+          disabled={segment.disabled}
+          render={segmentButton(
+            segment,
+            size,
+            segment.pressed ? menuActiveClasses : undefined,
+          )}
+        />
+      }
+    />
+  );
+  return (
+    <DropdownMenu>
+      {withTooltip(trigger, segment.label, isLabelVisible(segment))}
+      <DropdownMenuContent>
+        <DropdownMenuRadioGroup
+          value={segment.value}
+          onValueChange={(value) => segment.onSelect(String(value))}
+        >
+          {segment.options.map((option) => (
+            <DropdownMenuRadioItem key={option.value} value={option.value}>
+              {option.icon}
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 const segmentSpring = { type: 'spring' as const, duration: 0.4, bounce: 0.2 };
 
 const NUDGE_STEP = 8;
@@ -356,17 +412,8 @@ function renderSegment(
 ) {
   const inner = (() => {
     switch (segment.type) {
-      case 'label':
-        return (
-          <span
-            className={cx(
-              'shrink-0 px-2 text-xs font-semibold tracking-wide text-current/60 uppercase',
-              orientation === 'vertical' && 'w-full text-center',
-            )}
-          >
-            {segment.text}
-          </span>
-        );
+      case 'menu':
+        return <ToolbarMenuSegment segment={segment} size={size} />;
       case 'separator':
         return (
           <Toolbar.Separator

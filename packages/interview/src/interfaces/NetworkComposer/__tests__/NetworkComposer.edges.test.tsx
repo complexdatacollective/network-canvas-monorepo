@@ -189,15 +189,18 @@ function tapNode(nodeEl: HTMLElement) {
   });
 }
 
+// Edge types live behind a single "Draw edge" menu; open it and pick "Knows".
+async function activateKnowsEdgeTool() {
+  fireEvent.click(screen.getByRole('button', { name: /draw edge/i }));
+  fireEvent.click(await screen.findByRole('menuitemradio', { name: /knows/i }));
+}
+
 describe('NetworkComposer edge-type tool', () => {
   it('tapping node A then node B creates a knows edge between them', async () => {
     const { store } = renderInterface();
 
     // Activate the Knows edge tool
-    const knowsBtn = await screen.findByRole('button', { name: /knows/i });
-    act(() => {
-      fireEvent.click(knowsBtn);
-    });
+    await activateKnowsEdgeTool();
 
     // Wait for nodes to be rendered with their labels
     const nodeA = await screen.findByRole('button', { name: /alice/i });
@@ -228,10 +231,7 @@ describe('NetworkComposer edge-type tool', () => {
   it('tapping A then B again removes the knows edge (toggle off)', async () => {
     const { store } = renderInterface();
 
-    const knowsBtn = await screen.findByRole('button', { name: /knows/i });
-    act(() => {
-      fireEvent.click(knowsBtn);
-    });
+    await activateKnowsEdgeTool();
 
     const nodeA = await screen.findByRole('button', { name: /alice/i });
     const nodeB = await screen.findByRole('button', { name: /bob/i });
@@ -266,10 +266,7 @@ describe('NetworkComposer edge-type tool', () => {
   it('tapping the same node twice cancels the pending source (no edge created)', async () => {
     const { store } = renderInterface();
 
-    const knowsBtn = await screen.findByRole('button', { name: /knows/i });
-    act(() => {
-      fireEvent.click(knowsBtn);
-    });
+    await activateKnowsEdgeTool();
 
     const nodeA = await screen.findByRole('button', { name: /alice/i });
 

@@ -142,21 +142,21 @@ function renderInterface({
 
 const layoutMode = () =>
   screen.getByTestId('network-composer').getAttribute('data-layout-mode');
-// Automatic layout is a switch (a ToggleField), not a tool button.
-const layoutSwitch = () =>
-  screen.getByRole('switch', { name: 'Automatic layout' });
+// Automatic layout is a toggle button (aria-pressed) in the tool palette.
+const layoutToggle = () =>
+  screen.getByRole('button', { name: 'Automatic layout' });
 
 describe('NetworkComposer automatic layout', () => {
   it('defaults to manual when defaultEnabled is false and there is no metadata', () => {
     renderInterface({ defaultEnabled: false });
     expect(layoutMode()).toBe('MANUAL');
-    expect(layoutSwitch().getAttribute('aria-checked')).toBe('false');
+    expect(layoutToggle().getAttribute('aria-pressed')).toBe('false');
   });
 
   it('starts in automatic mode when defaultEnabled is true', () => {
     renderInterface({ defaultEnabled: true });
     expect(layoutMode()).toBe('AUTOMATIC');
-    expect(layoutSwitch().getAttribute('aria-checked')).toBe('true');
+    expect(layoutToggle().getAttribute('aria-pressed')).toBe('true');
   });
 
   it('lets stage metadata override the schema default', () => {
@@ -166,7 +166,7 @@ describe('NetworkComposer automatic layout', () => {
       stageMetadata: { 0: { automaticLayout: false } },
     });
     expect(layoutMode()).toBe('MANUAL');
-    expect(layoutSwitch().getAttribute('aria-checked')).toBe('false');
+    expect(layoutToggle().getAttribute('aria-pressed')).toBe('false');
   });
 
   it('falls back to the default when persisted metadata is malformed', () => {
@@ -177,12 +177,12 @@ describe('NetworkComposer automatic layout', () => {
       stageMetadata: { 0: { automaticLayout: 'yes' } as unknown },
     });
     expect(layoutMode()).toBe('MANUAL');
-    expect(layoutSwitch().getAttribute('aria-checked')).toBe('false');
+    expect(layoutToggle().getAttribute('aria-pressed')).toBe('false');
   });
 
   it('persists the participant toggle to stage metadata', () => {
     const { store } = renderInterface({ defaultEnabled: false });
-    fireEvent.click(layoutSwitch());
+    fireEvent.click(layoutToggle());
     const metadata = store.getState().session.stageMetadata as
       | Record<number, unknown>
       | undefined;

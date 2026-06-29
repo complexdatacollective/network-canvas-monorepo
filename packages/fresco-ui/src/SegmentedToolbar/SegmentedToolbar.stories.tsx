@@ -11,6 +11,8 @@ import {
   Plus,
   Redo2,
   Snowflake,
+  Sparkles,
+  Spline,
   Star,
   Trash2,
   Underline,
@@ -158,54 +160,43 @@ export const Labels: Story = {
 };
 
 /**
- * Section labels group related segments under a small heading — useful for a
- * vertical tool palette (e.g. the Network Composer).
+ * A `menu` segment is a button that opens a single-select menu. This mirrors the
+ * Network Composer palette: an exclusive tool group, an edge tool that opens a
+ * menu of edge types, and a toggle button for automatic layout.
  */
-export const SectionLabels: Story = {
+export const MenuSelection: Story = {
   args: {
     label: 'Network tools',
     orientation: 'vertical',
     items: [
-      { type: 'label', id: 'tools-label', text: 'Tools' },
       {
         type: 'group',
         id: 'tools',
         mode: 'single',
         defaultValue: ['select'],
         options: [
-          {
-            value: 'select',
-            label: 'Select',
-            icon: <MousePointer2 />,
-            showLabel: true,
-          },
-          { value: 'add', label: 'Add node', icon: <Plus />, showLabel: true },
+          { value: 'select', label: 'Select', icon: <MousePointer2 /> },
+          { value: 'add', label: 'Add node', icon: <Plus /> },
         ],
       },
-      { type: 'label', id: 'history-label', text: 'History' },
       {
-        type: 'button',
-        id: 'undo',
-        label: 'Undo',
-        icon: <Undo2 />,
-        showLabel: true,
-        onClick: noop,
+        type: 'menu',
+        id: 'edge',
+        label: 'Draw edge',
+        icon: <Spline />,
+        value: 'friendship',
+        options: [
+          { value: 'friendship', label: 'Friendship' },
+          { value: 'advice', label: 'Advice' },
+        ],
+        onSelect: noop,
       },
-      {
-        type: 'button',
-        id: 'redo',
-        label: 'Redo',
-        icon: <Redo2 />,
-        showLabel: true,
-        onClick: noop,
-      },
-      { type: 'label', id: 'layout-label', text: 'Layout' },
+      { type: 'separator', id: 'sep' },
       {
         type: 'toggle',
         id: 'auto',
-        label: 'Auto layout',
-        icon: <Snowflake />,
-        showLabel: true,
+        label: 'Automatic layout',
+        icon: <Sparkles />,
         defaultPressed: false,
       },
     ],

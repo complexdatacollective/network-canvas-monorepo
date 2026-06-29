@@ -5,10 +5,10 @@ import {
   MousePointer2 as SelectIcon,
   Plus as AddNodeIcon,
   Redo2 as RedoIcon,
+  Sparkles as AutoLayoutIcon,
   Undo2 as UndoIcon,
 } from 'lucide-react';
 
-import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import {
   SegmentedToolbar,
   type ToolbarSegment,
@@ -31,11 +31,9 @@ type ToolPaletteProps = {
   onToggleAutomaticLayout: (next: boolean) => void;
 };
 
-// Stable option values for the exclusive tool group. Edge types are namespaced
-// so a codebook edge id can never collide with the built-in tools.
+// Stable option values for the exclusive Select/Add-node group.
 const TOOL_SELECT = 'tool:select';
 const TOOL_ADD_NODE = 'tool:addNode';
-const EDGE_PREFIX = 'edge:';
 
 export default function ToolPalette({
   composerStore,
@@ -50,69 +48,54 @@ export default function ToolPalette({
 
   const { setActiveTool } = composerStore.getState();
 
-  const activeToolValue =
+  const toolGroupValue =
     activeTool.kind === 'select'
-      ? TOOL_SELECT
+      ? [TOOL_SELECT]
       : activeTool.kind === 'addNode'
-        ? TOOL_ADD_NODE
-        : activeTool.kind === 'edge'
-          ? `${EDGE_PREFIX}${activeTool.edgeType}`
-          : null;
+        ? [TOOL_ADD_NODE]
+        : [];
+  const activeEdgeType =
+    activeTool.kind === 'edge' ? activeTool.edgeType : undefined;
 
-  // The interaction buttons — an exclusive tool group (Select / Add node / one
-  // per edge type) and the undo/redo history actions.
   const items: ToolbarSegment[] = [
-    { type: 'label', id: 'tools-label', text: 'Tools' },
     {
       type: 'group',
       id: 'tools',
       mode: 'single',
-      value: activeToolValue ? [activeToolValue] : [],
-      // Single-select groups can emit an empty value when the active item is
-      // re-clicked; ignore that so a tool is always active (the value is
-      // controlled, so it snaps back to the current tool).
+      value: toolGroupValue,
+      // Selecting an edge type (via the edge menu) clears this group; ignore the
+      // empty value a re-click would emit so the controlled value stays stable.
       onValueChange: (value) => {
         const next = value[0];
-        if (!next) return;
         if (next === TOOL_SELECT) {
           setActiveTool({ kind: 'select' });
         } else if (next === TOOL_ADD_NODE) {
           setActiveTool({ kind: 'addNode' });
-        } else {
-          setActiveTool({
-            kind: 'edge',
-            edgeType: next.slice(EDGE_PREFIX.length),
-          });
         }
       },
       options: [
-        {
-          value: TOOL_SELECT,
-          label: 'Select',
-          icon: <SelectIcon />,
-          showLabel: true,
-        },
-        {
-          value: TOOL_ADD_NODE,
-          label: 'Add node',
-          icon: <AddNodeIcon />,
-          showLabel: true,
-        },
-        ...edges.map(({ edgeType, label }) => ({
-          value: `${EDGE_PREFIX}${edgeType}`,
-          label,
-          icon: <EdgeIcon />,
-          showLabel: true,
-        })),
+        { value: TOOL_SELECT, label: 'Select', icon: <SelectIcon /> },
+        { value: TOOL_ADD_NODE, label: 'Add node', icon: <AddNodeIcon /> },
       ],
     },
-    { type: 'label', id: 'history-label', text: 'History' },
+    // Every edge type shares the link icon, so a single edge button opens a menu
+    // to pick the type rather than crowding the toolbar with identical buttons.
+    {
+      type: 'menu',
+      id: 'edge',
+      label: 'Draw edge',
+      icon: <EdgeIcon />,
+      pressed: activeTool.kind === 'edge',
+      value: activeEdgeType,
+      options: edges.map(({ edgeType, label }) => ({ value: edgeType, label })),
+      onSelect: (edgeType) => setActiveTool({ kind: 'edge', edgeType }),
+    },
+    { type: 'separator', id: 'sep-history' },
     {
       type: 'button',
       id: 'undo',
       label: 'Undo',
       icon: <UndoIcon />,
-      showLabel: true,
       disabled: !canUndo,
       onClick: () => void undoStore.getState().undo(),
     },
@@ -121,31 +104,26 @@ export default function ToolPalette({
       id: 'redo',
       label: 'Redo',
       icon: <RedoIcon />,
-      showLabel: true,
       disabled: !canRedo,
       onClick: () => void undoStore.getState().redo(),
+    },
+    { type: 'separator', id: 'sep-layout' },
+    {
+      type: 'toggle',
+      id: 'auto-layout',
+      label: 'Automatic layout',
+      icon: <AutoLayoutIcon />,
+      pressed: automaticLayout,
+      onPressedChange: onToggleAutomaticLayout,
     },
   ];
 
   return (
-    <div className="absolute top-1/2 left-4 z-10 flex -translate-y-1/2 flex-col items-start gap-2">
-      <SegmentedToolbar
-        label="Network composer tools"
-        items={items}
-        orientation="vertical"
-      />
-      {/* Automatic layout is an on/off setting, not a tool — a switch, not a
-          toolbar button. */}
-      <div className="bg-surface-1 elevation-low flex items-center gap-3 rounded-full px-4 py-2">
-        <span className="text-xs font-semibold tracking-wide text-current/60 uppercase">
-          Auto layout
-        </span>
-        <ToggleField
-          value={automaticLayout}
-          onChange={(value) => onToggleAutomaticLayout(value ?? false)}
-          aria-label="Automatic layout"
-        />
-      </div>
-    </div>
+    <SegmentedToolbar
+      label="Network composer tools"
+      items={items}
+      orientation="vertical"
+      className="absolute top-1/2 left-4 z-10 -translate-y-1/2"
+    />
   );
 }

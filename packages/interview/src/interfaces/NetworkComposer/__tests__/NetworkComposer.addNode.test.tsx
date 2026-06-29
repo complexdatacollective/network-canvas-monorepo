@@ -149,9 +149,13 @@ describe('NetworkComposer tool palette', () => {
     expect(screen.getByRole('button', { name: /add node/i })).toBeTruthy();
   });
 
-  it('renders one edge-tool button per configured edge type (knows)', () => {
+  it('offers the configured edge types via the edge menu', async () => {
     renderInterface();
-    expect(screen.getByRole('button', { name: /knows/i })).toBeTruthy();
+    // Edge types live behind a single "Draw edge" menu button.
+    fireEvent.click(screen.getByRole('button', { name: /draw edge/i }));
+    expect(
+      await screen.findByRole('menuitemradio', { name: /knows/i }),
+    ).toBeTruthy();
   });
 
   it('Select tool is aria-pressed by default', () => {

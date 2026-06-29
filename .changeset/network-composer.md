@@ -24,8 +24,8 @@ with undo/redo and lasso/clique gestures).
   participant's choice sticks across navigation; Architect only sets its default.
 - `@codaco/shared-consts`: a `NetworkComposer` stage-metadata shape storing the
   participant's automatic-layout choice.
-- `@codaco/fresco-ui`: the `SegmentedToolbar` gains an optional `label` segment
-  for grouping segments under a small section heading.
+- `@codaco/fresco-ui`: the `SegmentedToolbar` gains a `menu` segment (a button
+  that opens a single-select menu).
 - `@codaco/interview`: the NetworkComposer tool palette is built from the shared
-  `SegmentedToolbar` (an exclusive tool group, history buttons, and the
-  auto-layout toggle), with section labels.
+  `SegmentedToolbar` — an exclusive Select/Add-node group, an edge tool that opens
+  a menu of edge types, undo/redo, and an automatic-layout toggle button.
