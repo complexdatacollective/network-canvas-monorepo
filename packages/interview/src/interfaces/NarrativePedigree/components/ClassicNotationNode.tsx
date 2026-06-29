@@ -52,7 +52,9 @@ function AtRiskHomozygousNotation({ color }: { color: string }) {
  * The disease colour is applied entirely through the SVG overlay; the
  * underlying Node body is rendered transparent so the disease-coloured
  * shape outline and status symbol read clearly against the dark interview theme.
- * The label is rendered beneath the symbol. No stickers are used.
+ * The label is rendered inside the node symbol (via the Node `label` prop) so
+ * the symbol fills and centres within the 96px layout cell, matching StickerNode
+ * and keeping connectors aligned to the node centre. No stickers are used.
  *
  * Status → symbol mapping:
  * - affected         → filled symbol (solid fill, disease colour)
