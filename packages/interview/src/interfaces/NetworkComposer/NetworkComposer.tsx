@@ -83,7 +83,8 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const edges = useStageSelector(getNetworkEdges);
 
   const codebook = useSelector(getCodebook);
-  const nodeLabel = codebook?.node?.[stage.subject.type]?.name ?? '';
+  const nodeLabel =
+    codebook?.node?.[stage.subject.type]?.name ?? stage.subject.type;
 
   const canvasStoreRef = useRef(createCanvasStore());
   const canvasStore = canvasStoreRef.current;
@@ -428,7 +429,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   // Retain the last editor so its contents stay rendered through the drawer's
   // slide-out animation after the selection clears.
   const lastEditorRef = useRef(currentEditor);
-  if (currentEditor !== null) lastEditorRef.current = currentEditor;
+  useEffect(() => {
+    if (currentEditor !== null) lastEditorRef.current = currentEditor;
+  }, [currentEditor]);
   const editor = currentEditor ?? lastEditorRef.current;
 
   return (

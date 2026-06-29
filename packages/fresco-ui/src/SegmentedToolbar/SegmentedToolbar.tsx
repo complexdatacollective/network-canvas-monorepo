@@ -368,6 +368,7 @@ function ToolbarMenuSegment({
             <DropdownMenuRadioItem
               key={option.value}
               value={option.value}
+              disabled={option.disabled}
               closeOnClick
             >
               {option.icon}
@@ -618,6 +619,19 @@ export function SegmentedToolbar({
 
   const handleNudge = (delta: Position) => {
     const next = { x: x.get() + delta.x, y: y.get() + delta.y };
+    // Pointer drags are clamped by motion, but keyboard nudges bypass it, so
+    // honour the object-form bounds here. The RefObject form is left to motion's
+    // drag clamping (we don't measure the ref element).
+    if (dragConstraints && !('current' in dragConstraints)) {
+      next.x = Math.min(
+        Math.max(next.x, dragConstraints.left),
+        dragConstraints.right,
+      );
+      next.y = Math.min(
+        Math.max(next.y, dragConstraints.top),
+        dragConstraints.bottom,
+      );
+    }
     x.set(next.x);
     y.set(next.y);
     onPositionChange?.(next);

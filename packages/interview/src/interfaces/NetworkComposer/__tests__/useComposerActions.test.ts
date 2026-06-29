@@ -11,7 +11,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 import protocol from '~/store/modules/protocol';
-import session from '~/store/modules/session';
+import session, { updateNode } from '~/store/modules/session';
 import ui from '~/store/modules/ui';
 
 import { useComposerActions } from '../useComposerActions';
@@ -534,5 +534,70 @@ describe('useComposerActions', () => {
       await undoStore.getState().redo();
     });
     expect(store.getState().session.network.edges).toHaveLength(0);
+  });
+
+  // A drawer autosave undo must restore only the edited keys, not unrelated
+  // attributes (e.g. a layout move made while the drawer was open).
+  it('updateNodeAttributes undo restores only edited keys, not unrelated attributes', async () => {
+    const nodeId = 'node-scope';
+    const store = makeStore([
+      {
+        [entityPrimaryKeyProperty]: nodeId,
+        type: NODE_TYPE,
+        [entityAttributesProperty]: {
+          [QUICK_ADD_VAR]: 'Old',
+          [LAYOUT_VAR]: { x: 0.2, y: 0.2 },
+        },
+      } as NcNode,
+    ]);
+    const undoStore = createUndoStore();
+
+    const { result } = renderHook(
+      () =>
+        useComposerActions({
+          subjectType: NODE_TYPE,
+          quickAdd: QUICK_ADD_VAR,
+          layoutVariable: LAYOUT_VAR,
+          currentStep: 0,
+          undoStore,
+          dispatch: store.dispatch as Parameters<
+            typeof useComposerActions
+          >[0]['dispatch'],
+        }),
+      { wrapper: makeWrapper(store) },
+    );
+
+    // Drawer edits the name attribute only.
+    await act(async () => {
+      await result.current.updateNodeAttributes(
+        nodeId,
+        { [QUICK_ADD_VAR]: 'New' },
+        `node-attr:${nodeId}`,
+      );
+    });
+
+    // The node is moved while the drawer is still open (an unrelated change).
+    await act(async () => {
+      await store.dispatch(
+        updateNode({
+          nodeId,
+          newAttributeData: { [LAYOUT_VAR]: { x: 0.8, y: 0.8 } },
+          currentStep: 0,
+        }),
+      );
+    });
+
+    // Undoing the attribute edit reverts the name but keeps the moved position.
+    await act(async () => {
+      await undoStore.getState().undo();
+    });
+
+    const node = store.getState().session.network.nodes[0];
+    if (!node) throw new Error('expected the node to still exist');
+    expect(node[entityAttributesProperty][QUICK_ADD_VAR]).toBe('Old');
+    expect(node[entityAttributesProperty][LAYOUT_VAR]).toEqual({
+      x: 0.8,
+      y: 0.8,
+    });
   });
 });

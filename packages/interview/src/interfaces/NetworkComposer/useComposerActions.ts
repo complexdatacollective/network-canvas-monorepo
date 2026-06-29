@@ -387,7 +387,13 @@ export function useComposerActions({
       updateNode({ nodeId: id, newAttributeData: data, currentStep }),
     ).unwrap();
 
-    const capturedPrior = priorAttributes;
+    // Scope undo to edited keys so a coalesced autosave undo can't clobber
+    // unrelated attributes changed while the drawer was open.
+    const editedKeys = new Set(Object.keys(data));
+    const capturedPrior: NcNode[typeof entityAttributesProperty] =
+      Object.fromEntries(
+        Object.entries(priorAttributes).filter(([key]) => editedKeys.has(key)),
+      );
 
     void undoStore.getState().push({
       label: `Update node attributes`,
@@ -430,7 +436,13 @@ export function useComposerActions({
 
     await dispatch(updateEdge({ edgeId: id, newAttributeData: data })).unwrap();
 
-    const capturedPrior = priorAttributes;
+    // Scope undo to edited keys so a coalesced autosave undo can't clobber
+    // unrelated attributes changed while the drawer was open.
+    const editedKeys = new Set(Object.keys(data));
+    const capturedPrior: NcEdge[typeof entityAttributesProperty] =
+      Object.fromEntries(
+        Object.entries(priorAttributes).filter(([key]) => editedKeys.has(key)),
+      );
 
     void undoStore.getState().push({
       label: `Update edge attributes`,

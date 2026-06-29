@@ -24,7 +24,7 @@ export default function AddNodeInput({
   const [value, setValue] = useState('');
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== 'Enter') return;
+    if (event.nativeEvent.isComposing || event.key !== 'Enter') return;
     event.preventDefault();
     const name = value.trim();
     if (name === '') return;

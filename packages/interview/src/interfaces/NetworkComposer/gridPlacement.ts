@@ -9,6 +9,7 @@ const GRID = {
   stepX: 0.1,
   stepY: 0.12,
   endX: 0.8,
+  endY: 0.85,
 } as const;
 
 const COLUMNS = Math.max(
@@ -16,14 +17,22 @@ const COLUMNS = Math.max(
   Math.floor((GRID.endX - GRID.startX) / GRID.stepX) + 1,
 );
 
+const ROWS = Math.max(
+  1,
+  Math.floor((GRID.endY - GRID.startY) / GRID.stepY) + 1,
+);
+
+const CELLS = COLUMNS * ROWS;
+
 // A cell counts as occupied when a node already sits within half a step of it,
 // so deleting nodes frees their cells for reuse rather than stacking new ones.
 const OCCUPIED_RADIUS = GRID.stepX * 0.5;
 
 /**
- * The next free grid cell for a new node, scanning the grid in reading order
- * and skipping cells already occupied by an existing node. Falls back to the
- * computed cell once the grid is densely packed.
+ * The next free grid cell for a new node, scanning the visible grid in reading
+ * order and skipping cells already occupied by an existing node. When every
+ * visible cell is occupied, wraps back into the grid so the returned position
+ * always stays on-screen.
  */
 export function nextGridPosition(occupied: Position[]): Position {
   const isFree = (candidate: Position) =>
@@ -33,12 +42,16 @@ export function nextGridPosition(occupied: Position[]): Position {
         OCCUPIED_RADIUS,
     );
 
-  for (let index = 0; ; index++) {
-    const cell = {
-      x: GRID.startX + (index % COLUMNS) * GRID.stepX,
-      y: GRID.startY + Math.floor(index / COLUMNS) * GRID.stepY,
-    };
-    // Stop scanning once the grid is saturated to avoid an unbounded loop.
-    if (isFree(cell) || index >= COLUMNS * 50) return cell;
+  const cellAt = (index: number) => ({
+    x: GRID.startX + (index % COLUMNS) * GRID.stepX,
+    y: GRID.startY + Math.floor(index / COLUMNS) * GRID.stepY,
+  });
+
+  for (let index = 0; index < CELLS; index++) {
+    const cell = cellAt(index);
+    if (isFree(cell)) return cell;
   }
+
+  // Visible grid is full: wrap into it so the position stays on-screen.
+  return cellAt(occupied.length % CELLS);
 }
