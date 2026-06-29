@@ -593,3 +593,206 @@ describe('NarrativePedigreeView — at-risk-homozygous threading (sticker mode)'
     ).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Per-node disease-status summary exposed to assistive technology.
+//
+// The visual status markers (stickers / classic notation) are aria-hidden, so
+// the only way a screen-reader user can learn who is affected/carrier/at-risk
+// is the visually-hidden summary referenced by the focal container's
+// aria-describedby. These tests assert that accessibility outcome directly via
+// the computed accessible name/description rather than DOM attributes.
+// ---------------------------------------------------------------------------
+
+function focalMember(nodeId: string): HTMLElement {
+  const el = document.querySelector(`[data-node-id="${nodeId}"]`);
+  if (!(el instanceof HTMLElement)) {
+    throw new Error(`No focal member for node "${nodeId}"`);
+  }
+  return el;
+}
+
+describe('NarrativePedigreeView — per-node status summary (a11y)', () => {
+  it("exposes each member's disease status via the focal container's accessible description", async () => {
+    renderView();
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-node-id="mother"]')).toBeTruthy(),
+    );
+
+    const mother = focalMember('mother');
+    // The name conveys the focal action + person; the description conveys the
+    // disease status. Mother has Disease A (autosomal dominant) → affected.
+    expect(mother).toHaveAccessibleName(/^Focus on /);
+    expect(mother).toHaveAccessibleDescription(/Disease A: Affected/);
+  });
+
+  it('summarises every shown disease in sticker (all-diseases) mode', async () => {
+    renderView();
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-sticker-status]')).toBeTruthy(),
+    );
+
+    const mother = focalMember('mother');
+    expect(mother).toHaveAccessibleDescription(/Disease A:/);
+    expect(mother).toHaveAccessibleDescription(/Disease B:/);
+  });
+
+  it('narrows the summary to the selected disease in classic mode', async () => {
+    renderView();
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-sticker-status]')).toBeTruthy(),
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Disease A' }));
+    await waitFor(() =>
+      expect(document.querySelector('[data-notation-status]')).toBeTruthy(),
+    );
+
+    const mother = focalMember('mother');
+    expect(mother).toHaveAccessibleDescription('Disease A: Affected');
+  });
+
+  it('references the summary via a non-aria-hidden, reachable element', async () => {
+    renderView();
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-node-id="mother"]')).toBeTruthy(),
+    );
+
+    const mother = focalMember('mother');
+    const summaryId = mother.getAttribute('aria-describedby');
+    expect(summaryId).toBeTruthy();
+
+    const summary = summaryId ? document.getElementById(summaryId) : null;
+    expect(summary).toBeInTheDocument();
+
+    // Walk every ancestor to confirm the summary is not suppressed by an
+    // aria-hidden subtree (the regression these tests guard against).
+    let el: Element | null = summary;
+    while (el) {
+      expect(el.getAttribute('aria-hidden')).not.toBe('true');
+      el = el.parentElement;
+    }
+  });
+});
+
+describe('NarrativePedigreeView — at-risk-homozygous reaches the description (a11y)', () => {
+  it("includes the at-risk-homozygous note in the flagged member's accessible description", async () => {
+    renderCousinView('classic');
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-notation-status]')).toBeTruthy(),
+    );
+
+    const sharedChild = focalMember('sharedChild');
+    expect(sharedChild).toHaveAccessibleDescription(
+      /At risk of being affected \(homozygous\)/,
+    );
+
+    const unrelated = focalMember('unrelated');
+    expect(unrelated).not.toHaveAccessibleDescription(
+      /At risk of being affected \(homozygous\)/,
+    );
+  });
+});
+
+// An affected recessive individual trivially has two carrier parents, so
+// computeAtRiskHomozygous flags them too. The visual still draws the triangle,
+// but the spoken summary must not say "Affected, at risk of being affected".
+describe('NarrativePedigreeView — affected nodes omit the contradictory homozygous note (a11y)', () => {
+  const AR2_VAR = 'ar2';
+  const SRC_TRIO = 'source-fp-trio';
+
+  function renderAffectedTrioView() {
+    const trioSource = { ...sourceStage, id: SRC_TRIO };
+    const trioNodes: NcNode[] = [
+      makeNode('p1', { [NAME_VAR]: 'Pat', [BIO_SEX_VAR]: 'female' }),
+      makeNode('p2', { [NAME_VAR]: 'Sam', [BIO_SEX_VAR]: 'male' }),
+      makeNode('kid', {
+        [NAME_VAR]: 'Kit',
+        [BIO_SEX_VAR]: 'male',
+        [AR2_VAR]: true,
+      }),
+    ];
+    const trioEdges: NcEdge[] = [
+      makeEdge('p1', 'kid'),
+      makeEdge('p2', 'kid'),
+      {
+        [entityPrimaryKeyProperty]: 'p1-p2',
+        type: EDGE_TYPE,
+        from: 'p1',
+        to: 'p2',
+        [entityAttributesProperty]: {
+          [REL_TYPE_VAR]: ['partner'],
+          [IS_ACTIVE_VAR]: true,
+        },
+      },
+    ];
+    const stage: NarrativeStage = {
+      id: 'np-trio',
+      type: 'NarrativePedigree',
+      label: 'Recessive Trio Pedigree',
+      sourceStageId: SRC_TRIO,
+      diseases: [
+        {
+          id: 'ar2',
+          label: 'Recessive Disease',
+          color: '#ff0000',
+          variable: asEntityAttributeReference(AR2_VAR),
+          inheritancePattern: 'autosomalRecessive',
+        },
+      ],
+    };
+    const store = configureStore({
+      reducer: { protocol, session },
+      preloadedState: {
+        protocol: {
+          codebook,
+          stages: [trioSource, stage],
+          assets: [],
+        } as never,
+        session: {
+          id: 'trio-session',
+          network: {
+            nodes: trioNodes,
+            edges: trioEdges,
+            ego: { [entityAttributesProperty]: {} },
+          },
+          stageMetadata: {},
+        } as never,
+      },
+      middleware: (g) => g({ serializableCheck: false }),
+    });
+    function Wrapper({ children }: { children: ReactNode }) {
+      return (
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
+            {children}
+          </CurrentStepProvider>
+        </Provider>
+      );
+    }
+    return render(<NarrativePedigreeView stage={stage} />, {
+      wrapper: Wrapper,
+    });
+  }
+
+  it('does not append the homozygous note to an already-affected member', async () => {
+    renderAffectedTrioView();
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-node-id="kid"]')).toBeTruthy(),
+    );
+
+    const kid = focalMember('kid');
+    // The homozygous flag IS set (the triangle renders) — without it this test
+    // would not exercise the guard.
+    expect(kid.querySelector('[data-atrisk-homozygous-notation]')).toBeTruthy();
+    // ...but the spoken summary must stay coherent: affected, full stop.
+    expect(kid).toHaveAccessibleDescription('Recessive Disease: Affected');
+    expect(kid).not.toHaveAccessibleDescription(/homozygous/i);
+  });
+});

@@ -64,6 +64,23 @@ describe('FramingSelectionStep', () => {
     expect(screen.getByText('Mother & father')).toBeTruthy();
   });
 
+  it('gives the selection group an accessible name from the prompt', () => {
+    const { Wrapper } = framingWrapper(null);
+    render(
+      <Wrapper>
+        <FramingSelectionStep />
+      </Wrapper>,
+    );
+
+    // The prompt is a sibling Paragraph, wired to the group via aria-labelledby
+    // so the group is not an anonymous control for screen-reader users.
+    expect(
+      screen.getByRole('listbox', {
+        name: /how would you like us to refer to the people/i,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it('calls setFraming with "gendered" when the mother & father option is selected', () => {
     const { Wrapper, store } = framingWrapper(null);
 
