@@ -41,7 +41,7 @@ type StickerNodeProps = {
  * selects that disease without disturbing the node-container's focal action.
  * Sticker spans call stopPropagation so the click is not also interpreted as
  * a focal selection. The stickers are aria-hidden; keyboard access for disease
- * selection is through the DiseaseLegend.
+ * selection is through the disease Select panel.
  */
 export function StickerNode({
   label,
@@ -74,7 +74,7 @@ export function StickerNode({
   const positions = stickerPositions(shape, stickerCount);
 
   // +N count indicator sits at the next perimeter position after the visible stickers.
-  // Non-interactive: the DiseaseLegend is the accessible source of truth for all diseases.
+  // Non-interactive: the disease Select panel is the accessible source of truth for all diseases.
   const overflowPositions =
     hiddenCount > 0 ? stickerPositions(shape, stickerCount + 1) : [];
   const overflowPos =
@@ -93,7 +93,7 @@ export function StickerNode({
 
       {/* Sticker overlay — aria-hidden; individual Sticker spans are also
           aria-hidden. Disease selection via sticker click is a pointer
-          convenience only; keyboard path is through DiseaseLegend.
+          convenience only; keyboard path is through the disease Select panel.
           The overlay is pointer-events-none; interactive Sticker chips
           re-enable pointer events on themselves. */}
       <span aria-hidden className="pointer-events-none absolute inset-0">

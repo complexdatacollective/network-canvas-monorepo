@@ -257,49 +257,70 @@ function renderView() {
   });
 }
 
+// Drives the Base-UI condition Select: open the combobox, then pick the option
+// whose accessible name matches. Used by the node-mode-selection tests since the
+// disease filter is now a Select rather than a row of buttons.
+async function selectCondition(optionName: string) {
+  await userEvent.click(screen.getByRole('combobox'));
+  const option = await screen.findByRole('option', { name: optionName });
+  await userEvent.click(option);
+}
+
+// Node-mode markers must be queried inside the pedigree view, not the whole
+// document: the always-present StickerKeyPanel legend also renders Sticker
+// glyphs (with [data-sticker-status]) as a sibling overlay, so a document-wide
+// query would always match those and never report the node-rendering mode.
+function viewMarker(selector: string): Element | null {
+  return (
+    document
+      .querySelector('[data-narrative-pedigree-view]')
+      ?.querySelector(selector) ?? null
+  );
+}
+
 describe('NarrativePedigreeView — node mode selection', () => {
   it('renders sticker nodes by default (multiple diseases)', async () => {
     renderView();
 
     await waitFor(() =>
-      expect(document.querySelector('[data-sticker-status]')).toBeTruthy(),
+      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
     );
-    expect(document.querySelector('[data-notation-status]')).toBeNull();
+    expect(viewMarker('[data-notation-status]')).toBeNull();
   });
 
-  it('renders classic-notation nodes when a single disease is selected via the legend', async () => {
+  it('renders classic-notation nodes when a single disease is selected via the condition Select', async () => {
     renderView();
 
     await waitFor(() =>
-      expect(document.querySelector('[data-sticker-status]')).toBeTruthy(),
+      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
     );
 
-    // Select Disease A via the legend button.
-    await userEvent.click(screen.getByRole('button', { name: 'Disease A' }));
+    // Select Disease A via the condition Select.
+    await selectCondition('Disease A');
 
     await waitFor(() =>
-      expect(document.querySelector('[data-notation-status]')).toBeTruthy(),
+      expect(viewMarker('[data-notation-status]')).toBeTruthy(),
     );
-    expect(document.querySelector('[data-sticker-status]')).toBeNull();
+    expect(viewMarker('[data-sticker-status]')).toBeNull();
   });
 
-  it('returns to sticker mode when "All diseases" is clicked after selecting a disease', async () => {
+  it('returns to sticker mode when "All conditions" is selected after selecting a disease', async () => {
     renderView();
 
     await waitFor(() =>
-      expect(document.querySelector('[data-sticker-status]')).toBeTruthy(),
+      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
     );
 
-    await userEvent.click(screen.getByRole('button', { name: 'Disease A' }));
+    await selectCondition('Disease A');
     await waitFor(() =>
-      expect(document.querySelector('[data-notation-status]')).toBeTruthy(),
+      expect(viewMarker('[data-notation-status]')).toBeTruthy(),
     );
 
-    await userEvent.click(screen.getByRole('button', { name: 'All diseases' }));
+    await selectCondition('All conditions');
     await waitFor(() =>
-      expect(document.querySelector('[data-sticker-status]')).toBeTruthy(),
+      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
     );
-    expect(document.querySelector('[data-notation-status]')).toBeNull();
+    expect(viewMarker('[data-notation-status]')).toBeNull();
   });
 });
 
@@ -546,8 +567,12 @@ describe('NarrativePedigreeView — at-risk-homozygous threading (classic mode)'
   it('shows the at-risk-homozygous notation on the flagged shared child and not on an unflagged node', async () => {
     renderCousinView('classic');
 
+    // Classic notation only appears once a condition is explicitly selected;
+    // the default view is stickers (all conditions).
+    await selectCondition('AR Disease');
+
     await waitFor(() =>
-      expect(document.querySelector('[data-notation-status]')).toBeTruthy(),
+      expect(viewMarker('[data-notation-status]')).toBeTruthy(),
     );
 
     const sharedChildMember = document.querySelector(
@@ -573,7 +598,7 @@ describe('NarrativePedigreeView — at-risk-homozygous threading (sticker mode)'
     renderCousinView('sticker');
 
     await waitFor(() =>
-      expect(document.querySelector('[data-sticker-status]')).toBeTruthy(),
+      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
     );
 
     const sharedChildMember = document.querySelector(
@@ -631,7 +656,7 @@ describe('NarrativePedigreeView — per-node status summary (a11y)', () => {
     renderView();
 
     await waitFor(() =>
-      expect(document.querySelector('[data-sticker-status]')).toBeTruthy(),
+      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
     );
 
     const mother = focalMember('mother');
@@ -643,12 +668,12 @@ describe('NarrativePedigreeView — per-node status summary (a11y)', () => {
     renderView();
 
     await waitFor(() =>
-      expect(document.querySelector('[data-sticker-status]')).toBeTruthy(),
+      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
     );
 
-    await userEvent.click(screen.getByRole('button', { name: 'Disease A' }));
+    await selectCondition('Disease A');
     await waitFor(() =>
-      expect(document.querySelector('[data-notation-status]')).toBeTruthy(),
+      expect(viewMarker('[data-notation-status]')).toBeTruthy(),
     );
 
     const mother = focalMember('mother');
@@ -683,8 +708,11 @@ describe('NarrativePedigreeView — at-risk-homozygous reaches the description (
   it("includes the at-risk-homozygous note in the flagged member's accessible description", async () => {
     renderCousinView('classic');
 
+    // Select the condition to enter classic single-disease mode.
+    await selectCondition('AR Disease');
+
     await waitFor(() =>
-      expect(document.querySelector('[data-notation-status]')).toBeTruthy(),
+      expect(viewMarker('[data-notation-status]')).toBeTruthy(),
     );
 
     const sharedChild = focalMember('sharedChild');
@@ -785,6 +813,12 @@ describe('NarrativePedigreeView — affected nodes omit the contradictory homozy
 
     await waitFor(() =>
       expect(document.querySelector('[data-node-id="kid"]')).toBeTruthy(),
+    );
+
+    // The classic-mode triangle only renders once a condition is selected.
+    await selectCondition('Recessive Disease');
+    await waitFor(() =>
+      expect(viewMarker('[data-notation-status]')).toBeTruthy(),
     );
 
     const kid = focalMember('kid');

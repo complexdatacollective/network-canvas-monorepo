@@ -333,6 +333,19 @@ type Story = StoryObj;
 // (getCurrentStage reads `stages[currentStep]`).
 const NP_STEP = 1;
 
+// Node-render-mode markers ([data-sticker-status] / [data-notation-status])
+// must be queried inside the pedigree view, not the whole document: the
+// always-present StickerKeyPanel legend also renders Sticker glyphs carrying
+// [data-sticker-status] as an overlay sibling. A document-wide query would
+// always match those and never reflect the node-rendering mode.
+function viewScope(): Element {
+  const view = document.querySelector('[data-narrative-pedigree-view]');
+  if (!view) {
+    throw new Error('expected the pedigree view to be mounted');
+  }
+  return view;
+}
+
 // ---------------------------------------------------------------------------
 // Story 1: All-diseases sticker view (default render)
 // ≥2 diseases active → StickerNode rendered → [data-sticker-status] in DOM.
@@ -348,16 +361,16 @@ export const AllDiseasesStickerView: Story = {
     // Wait for the pedigree view to mount before querying.
     await screen.findByTestId('next-button');
 
-    const stickers = document.querySelectorAll('[data-sticker-status]');
+    const stickers = viewScope().querySelectorAll('[data-sticker-status]');
     expect(stickers.length).toBeGreaterThan(0);
   },
 };
 
 // ---------------------------------------------------------------------------
-// Story 2: Select single disease via legend
-// Click a disease button in the DiseaseLegend → single-disease mode →
+// Story 2: Select single disease via the condition Select
+// Pick a disease in the condition Select → single-disease mode →
 // ClassicNotationNode ([data-notation-status]) present, stickers absent.
-// Click "All diseases" → stickers return.
+// Pick "All conditions" → stickers return.
 // ---------------------------------------------------------------------------
 export const SelectSingleDisease: Story = {
   render: () => (
@@ -370,24 +383,28 @@ export const SelectSingleDisease: Story = {
     // Wait for the pedigree to mount.
     await screen.findByTestId('next-button');
 
-    // Click the Huntington's Disease button in the legend.
-    const hdBtn = await screen.findByRole('button', {
-      name: "Huntington's Disease",
-    });
-    await userEvent.click(hdBtn);
+    // Open the condition Select and pick Huntington's Disease.
+    await userEvent.click(await screen.findByRole('combobox'));
+    await userEvent.click(
+      await screen.findByRole('option', { name: "Huntington's Disease" }),
+    );
 
     // Single-disease mode: classic notation present, no stickers.
-    const notationNodes = document.querySelectorAll('[data-notation-status]');
+    const notationNodes = viewScope().querySelectorAll(
+      '[data-notation-status]',
+    );
     expect(notationNodes.length).toBeGreaterThan(0);
 
-    const stickerNodes = document.querySelectorAll('[data-sticker-status]');
+    const stickerNodes = viewScope().querySelectorAll('[data-sticker-status]');
     expect(stickerNodes.length).toBe(0);
 
-    // Clicking "All diseases" restores sticker mode.
-    const allBtn = await screen.findByRole('button', { name: 'All diseases' });
-    await userEvent.click(allBtn);
+    // Picking "All conditions" restores sticker mode.
+    await userEvent.click(await screen.findByRole('combobox'));
+    await userEvent.click(
+      await screen.findByRole('option', { name: 'All conditions' }),
+    );
 
-    const stickersAfter = document.querySelectorAll('[data-sticker-status]');
+    const stickersAfter = viewScope().querySelectorAll('[data-sticker-status]');
     expect(stickersAfter.length).toBeGreaterThan(0);
   },
 };
@@ -410,22 +427,26 @@ export const SelectDiseaseBySticker: Story = {
 
     // Click a person's sticker directly. A pointer-events:none sticker would
     // make userEvent throw here rather than select the disease.
-    const sticker = document.querySelector('[data-sticker-status]');
+    const sticker = viewScope().querySelector('[data-sticker-status]');
     if (!(sticker instanceof HTMLElement)) {
       throw new Error('expected at least one sticker to be rendered');
     }
     await userEvent.click(sticker);
 
     // The view switches to single-disease (classic) mode for that disease.
-    const notationNodes = document.querySelectorAll('[data-notation-status]');
+    const notationNodes = viewScope().querySelectorAll(
+      '[data-notation-status]',
+    );
     expect(notationNodes.length).toBeGreaterThan(0);
-    expect(document.querySelectorAll('[data-sticker-status]').length).toBe(0);
+    expect(viewScope().querySelectorAll('[data-sticker-status]').length).toBe(
+      0,
+    );
   },
 };
 
 // ---------------------------------------------------------------------------
 // Story 3: Focal contributors — partner-side disease scenario
-// Select Huntington's Disease via the legend (single-disease mode), then click
+// Select Huntington's Disease via the condition Select (single-disease mode), then click
 // Leo (the partner-side child). The partner-side contributors (Chris = partner,
 // and Chris's father George = cf who has HD) must be un-dimmed
 // (data-dimmed="false"), while ego's maternal side (Eleanor = gm, Arthur = gf,
@@ -445,10 +466,10 @@ export const FocalContributors: Story = {
 
     // Switch to Huntington's-only mode so computeContributors walks only HD
     // ancestors, excluding ego's maternal side.
-    const hdBtn = await screen.findByRole('button', {
-      name: "Huntington's Disease",
-    });
-    await userEvent.click(hdBtn);
+    await userEvent.click(await screen.findByRole('combobox'));
+    await userEvent.click(
+      await screen.findByRole('option', { name: "Huntington's Disease" }),
+    );
 
     // Click the son node (Leo) to set the focal. The focal container has
     // aria-label "Focus on Leo".

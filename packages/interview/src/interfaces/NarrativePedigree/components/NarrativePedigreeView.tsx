@@ -46,7 +46,8 @@ import {
   ClassicNotationNode,
   type ClassicDisease,
 } from './ClassicNotationNode';
-import DiseaseLegend from './DiseaseLegend';
+import DiseaseSelectPanel from './DiseaseSelectPanel';
+import StickerKeyPanel from './StickerKeyPanel';
 import { type DiseaseSticker, StickerNode } from './StickerNode';
 
 type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
@@ -298,10 +299,14 @@ export default function NarrativePedigreeView({
     const dimmed = !highlight.nodes.has(node.id);
     const isSelected = node.id === focalId;
 
-    const singleDisease =
-      shownDiseases.length === 1 ? shownDiseases[0] : undefined;
-    const inner = singleDisease
-      ? renderClassic(node, shape, label, singleDisease, isSelected)
+    // Stickers are the default (all conditions at once). Classic single-disease
+    // notation appears only once the participant explicitly selects a condition.
+    const selectedDisease =
+      selectedDiseaseId !== null
+        ? shownDiseases.find((d) => d.id === selectedDiseaseId)
+        : undefined;
+    const inner = selectedDisease
+      ? renderClassic(node, shape, label, selectedDisease, isSelected)
       : renderSticker(node, shape, label, isSelected);
 
     const statusSummary = statusSummaryFor(node);
@@ -452,29 +457,36 @@ export default function NarrativePedigreeView({
           highlightedNodeIds={highlight.nodes}
         />
       </div>
-      <div className="pointer-events-none absolute inset-x-0 bottom-4 flex items-center justify-center gap-4">
-        <div className="pointer-events-auto">
-          <DiseaseLegend
+      <div className="pointer-events-none absolute inset-0">
+        <div className="pointer-events-auto absolute top-4 left-4 w-56">
+          <DiseaseSelectPanel
             diseases={diseases}
             selectedDiseaseId={selectedDiseaseId}
             onSelect={setSelectedDiseaseId}
           />
         </div>
+        <div className="pointer-events-auto absolute top-4 right-4">
+          <StickerKeyPanel />
+        </div>
         {focalId !== null && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="pointer-events-auto"
-            onClick={() => setFocalId(null)}
-          >
-            Clear focus
-          </Button>
+          <div className="absolute inset-x-0 bottom-4 flex justify-center">
+            <Button
+              size="sm"
+              variant="outline"
+              className="pointer-events-auto"
+              onClick={() => setFocalId(null)}
+            >
+              Clear focus
+            </Button>
+          </div>
         )}
+      </div>
+
+      <div className="absolute right-12 bottom-4 z-20">
         <ActionButton
           iconName="camera"
           aria-label="Save snapshot"
           onClick={handleSnapshot}
-          className="pointer-events-auto"
         />
       </div>
     </div>
