@@ -9,93 +9,86 @@ type StatusMarkerProps = {
   status: Status;
   color: string;
   shape?: NodeShape;
+  /**
+   * Fill behind the notation (defaults white). Dimmed callers pass a
+   * background-blended colour so the symbol field recedes with its glyph.
+   */
+  surfaceColor?: string;
 };
 
 const VB = 100;
-const R = 40;
 const C = VB / 2;
-const STROKE = 3;
 
-// The diamond conforms to the node by rotating the square 45° and scaling it
-// down so its points stay inside the marker box — mirrors fresco-ui Node's
-// `scale-[0.85] rotate-45` diamond treatment so the glyph sits inside the
-// rendered diamond.
-const DIAMOND_SCALE = 0.85;
+// Heavy strokes so the standard pedigree notation stays legible when a
+// perimeter sticker is rendered at only ~28px wide.
+const OUTLINE_STROKE = 7;
+const LINE_STROKE = 9;
+const HATCH_STROKE = 6;
+const HATCH_STEP = 15;
 
-// SVG applies transforms right-to-left, so `scale` runs first and shrinks toward
-// the (0,0) origin; the `translate` re-centres the scaled square before the
-// `rotate` turns it into a diamond. Non-diamond shapes need no transform.
-function squareTransform(shape: NodeShape): string | undefined {
-  if (shape !== 'diamond') return undefined;
-  const shift = (C * (1 - DIAMOND_SCALE)) / DIAMOND_SCALE;
-  return `rotate(45, ${C}, ${C}) translate(${shift}, ${shift}) scale(${DIAMOND_SCALE})`;
-}
+// Largest radius that keeps the stroked outline inside the 100×100 box.
+const R = C - (OUTLINE_STROKE / 2 + 1);
+// The diamond is the square rotated 45°: shrink its half-side by √2 so the
+// rotated points (the diamond's tips) stay inside the box instead of clipping
+// into an octagon.
+const DIAMOND_HALF = R / Math.SQRT2;
+const CORNER_RADIUS_FRACTION = 0.18;
 
-/** The square/diamond body, inset by `inset` on every edge. */
-function squareRect(
-  inset: number,
-  fill: string,
-  shape: NodeShape,
-  extra?: Record<string, string | number | undefined>,
-) {
-  return (
-    <rect
-      x={C - R + inset}
-      y={C - R + inset}
-      width={(R - inset) * 2}
-      height={(R - inset) * 2}
-      rx={R * 0.2}
-      fill={fill}
-      transform={squareTransform(shape)}
-      {...extra}
-    />
-  );
-}
+const WHITE = 'white';
 
 /**
- * Disease-coloured shape outline drawn for every status, so each glyph sits
- * inside a disease-coloured perimeter matching the node's own shape.
+ * One shape primitive for all three node shapes, used for the surface fill, the
+ * outline, and the clip path so they share a single geometry (no white border
+ * ring from a background drawn larger than the outline).
  */
-function ShapeOutline({ color, shape }: { color: string; shape: NodeShape }) {
+function Shape({
+  shape,
+  fill = 'none',
+  stroke,
+  strokeWidth,
+  dataAttr,
+}: {
+  shape: NodeShape;
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
+  dataAttr?: Record<string, string>;
+}) {
   if (shape === 'circle') {
     return (
       <circle
         cx={C}
         cy={C}
-        r={R - STROKE / 2}
-        fill="none"
-        stroke={color}
-        strokeWidth={STROKE}
-        data-shape-outline
+        r={R}
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+        {...dataAttr}
       />
     );
   }
-  return squareRect(STROKE / 2, 'none', shape, {
-    'stroke': color,
-    'strokeWidth': STROKE,
-    'data-shape-outline': '',
-  });
+  const half = shape === 'diamond' ? DIAMOND_HALF : R;
+  return (
+    <rect
+      x={C - half}
+      y={C - half}
+      width={half * 2}
+      height={half * 2}
+      rx={half * CORNER_RADIUS_FRACTION}
+      fill={fill}
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+      transform={shape === 'diamond' ? `rotate(45 ${C} ${C})` : undefined}
+      {...dataAttr}
+    />
+  );
 }
 
-function FilledShape({ color, shape }: { color: string; shape: NodeShape }) {
-  if (shape === 'circle') {
-    return <circle cx={C} cy={C} r={R} fill={color} data-filled-shape />;
-  }
-  return squareRect(0, color, shape, { 'data-filled-shape': '' });
-}
-
-/**
- * The shape's interior as a `<clipPath>` so line/hatch fills are confined to the
- * person's shape. Returns the clip element plus the id to reference it.
- */
+/** The shape interior as a `<clipPath>` so line/hatch fills stay inside it. */
 function ShapeClip({ id, shape }: { id: string; shape: NodeShape }) {
   return (
     <clipPath id={id}>
-      {shape === 'circle' ? (
-        <circle cx={C} cy={C} r={R - STROKE / 2} />
-      ) : (
-        squareRect(STROKE / 2, 'black', shape)
-      )}
+      <Shape shape={shape} fill="black" />
     </clipPath>
   );
 }
@@ -114,7 +107,7 @@ function VerticalLine({
   clipId: string;
   broken?: boolean;
 }) {
-  const gap = R * 0.32;
+  const gap = R * 0.34;
   if (broken) {
     return (
       <g clipPath={`url(#${clipId})`} data-vertical-line>
@@ -124,7 +117,7 @@ function VerticalLine({
           x2={C}
           y2={C - gap}
           stroke={color}
-          strokeWidth={STROKE}
+          strokeWidth={LINE_STROKE}
         />
         <line
           x1={C}
@@ -132,7 +125,7 @@ function VerticalLine({
           x2={C}
           y2={C + R}
           stroke={color}
-          strokeWidth={STROKE}
+          strokeWidth={LINE_STROKE}
         />
       </g>
     );
@@ -144,7 +137,7 @@ function VerticalLine({
       x2={C}
       y2={C + R}
       stroke={color}
-      strokeWidth={STROKE}
+      strokeWidth={LINE_STROKE}
       clipPath={`url(#${clipId})`}
       data-vertical-line
     />
@@ -165,22 +158,21 @@ function HatchFill({
   clipId: string;
   patternId: string;
 }) {
-  const step = 9;
   return (
     <>
       <pattern
         id={patternId}
         width={VB}
-        height={step}
+        height={HATCH_STEP}
         patternUnits="userSpaceOnUse"
       >
         <line
           x1={0}
-          y1={step / 2}
+          y1={HATCH_STEP / 2}
           x2={VB}
-          y2={step / 2}
+          y2={HATCH_STEP / 2}
           stroke={color}
-          strokeWidth={2}
+          strokeWidth={HATCH_STROKE}
         />
       </pattern>
       <rect
@@ -204,12 +196,13 @@ function HatchFill({
 function AtRiskQuery({ color }: { color: string }) {
   return (
     <>
-      <circle cx={C} cy={C} r={R * 0.34} fill="white" data-query-break />
+      <circle cx={C} cy={C} r={R * 0.38} fill={WHITE} data-query-break />
       <text
         x={C}
-        y={C + 12}
+        y={C}
         textAnchor="middle"
-        fontSize={38}
+        dominantBaseline="central"
+        fontSize={48}
         fontWeight="bold"
         fill={color}
         data-question-mark
@@ -220,16 +213,16 @@ function AtRiskQuery({ color }: { color: string }) {
   );
 }
 
+/** The notation drawn over the surface fill (null for affected and unknown). */
 function statusGlyph(
   status: Status,
   color: string,
-  shape: NodeShape,
   clipId: string,
   patternId: string,
 ): ReactNode {
   switch (status) {
     case 'affected':
-      return <FilledShape color={color} shape={shape} />;
+      return null; // drawn as the solid surface fill below
     case 'obligateAffected':
       return <VerticalLine color={color} clipId={clipId} />;
     case 'obligateCarrier':
@@ -260,22 +253,25 @@ function statusGlyph(
 /**
  * Renders the shape-aware standard pedigree-notation status symbol (Bennett
  * 2022) for a single disease status, on a viewBox-100 canvas filling its
- * positioned parent. The shape outline and notation are drawn in the condition's
- * colour; the symbol field is white (the consumer paints the white background)
- * except `affected`, which is a solid fill.
+ * positioned parent. The surface fill, outline, and notation share one geometry:
+ * the outline is the outermost edge, so there is no white border ring. The
+ * symbol field is `surfaceColor` (white by default); `affected` is a solid fill
+ * of the condition colour.
  *
- * The SVG is `aria-hidden`; consumers own the labelled wrapper, the white
- * background, and positioning. A `data-status` attribute on the root SVG lets
- * consumers and tests locate the rendered marker by status value.
+ * The SVG is `aria-hidden`; consumers own the labelled wrapper and positioning.
+ * A `data-status` attribute on the root SVG lets consumers and tests locate the
+ * rendered marker by status value.
  */
 export function StatusMarker({
   status,
   color,
   shape = 'square',
+  surfaceColor = WHITE,
 }: StatusMarkerProps) {
   const baseId = useId();
   const clipId = `${baseId}-clip`;
   const patternId = `${baseId}-hatch`;
+  const isAffected = status === 'affected';
   return (
     <svg
       viewBox={`0 0 ${VB} ${VB}`}
@@ -286,8 +282,23 @@ export function StatusMarker({
       <defs>
         <ShapeClip id={clipId} shape={shape} />
       </defs>
-      <ShapeOutline color={color} shape={shape} />
-      {statusGlyph(status, color, shape, clipId, patternId)}
+      {isAffected ? (
+        <Shape
+          shape={shape}
+          fill={color}
+          dataAttr={{ 'data-filled-shape': '' }}
+        />
+      ) : (
+        <Shape shape={shape} fill={surfaceColor} />
+      )}
+      {statusGlyph(status, color, clipId, patternId)}
+      <Shape
+        shape={shape}
+        fill="none"
+        stroke={color}
+        strokeWidth={OUTLINE_STROKE}
+        dataAttr={{ 'data-shape-outline': '' }}
+      />
     </svg>
   );
 }
@@ -312,13 +323,24 @@ export function HomozygousMarker({
       className="pointer-events-none absolute inset-0 h-full w-full"
       data-status="atRiskHomozygous"
     >
-      <ShapeOutline color={color} shape={shape} />
-      <FilledShape color={color} shape={shape} />
+      <Shape
+        shape={shape}
+        fill={color}
+        dataAttr={{ 'data-filled-shape': '' }}
+      />
+      <Shape
+        shape={shape}
+        fill="none"
+        stroke={color}
+        strokeWidth={OUTLINE_STROKE}
+        dataAttr={{ 'data-shape-outline': '' }}
+      />
       <text
         x={C}
-        y={C + 12}
+        y={C}
         textAnchor="middle"
-        fontSize={38}
+        dominantBaseline="central"
+        fontSize={48}
         fontWeight="bold"
         fill="white"
         data-question-mark

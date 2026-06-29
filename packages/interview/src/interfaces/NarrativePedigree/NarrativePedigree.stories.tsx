@@ -57,9 +57,23 @@ export function buildPedigreeInterview(seed: number, showAtRisk = false) {
   const si = new SyntheticInterview(seed);
 
   // --- Node type ----------------------------------------------------------
+  // Standard pedigree shapes: square = male, circle = female, diamond =
+  // other/unknown (Bennett 2022). Driven by the biological-sex variable so the
+  // pedigree renders the conventional mix of shapes.
   const nodeType = si.addNodeType({
     name: 'Person',
-    shape: { default: 'circle' },
+    shape: {
+      default: 'circle',
+      dynamic: {
+        type: 'discrete',
+        variable: BIO_SEX_VAR,
+        map: [
+          { value: 'male', shape: 'square' },
+          { value: 'female', shape: 'circle' },
+          { value: 'other', shape: 'diamond' },
+        ],
+      },
+    },
   });
   nodeType.addVariable({ id: NAME_VAR, name: NAME_VAR, type: 'text' });
   nodeType.addVariable({ id: EGO_VAR, name: EGO_VAR, type: 'boolean' });
@@ -219,6 +233,12 @@ export function buildPedigreeInterview(seed: number, showAtRisk = false) {
     [BIO_SEX_VAR]: 'female',
   });
 
+  // Ego's non-binary sibling (child of mother + father): renders as a diamond,
+  // so the pedigree shows all three standard pedigree shapes (square/circle/
+  // diamond). 'other' resolves to unknown sex in the genetics engine; as a leaf
+  // it does not alter anyone else's inheritance.
+  person('sibling', { [NAME_VAR]: 'Alex', [BIO_SEX_VAR]: 'other' });
+
   // Ego's partner: Chris
   person('partner', { [NAME_VAR]: 'Chris', [BIO_SEX_VAR]: 'male' });
 
@@ -274,9 +294,11 @@ export function buildPedigreeInterview(seed: number, showAtRisk = false) {
   bioEdge('gmp-father', 'gm-pat', 'father');
   partnerEdge('gfp-gmp', 'gf-pat', 'gm-pat');
 
-  // Parents → ego
+  // Parents → ego (and ego's non-binary sibling Alex)
   bioEdge('mother-ego', 'mother', 'ego');
   bioEdge('father-ego', 'father', 'ego');
+  bioEdge('mother-sibling', 'mother', 'sibling');
+  bioEdge('father-sibling', 'father', 'sibling');
   partnerEdge('mother-father', 'mother', 'father');
 
   // Partner-side grandparents → partner (Chris)

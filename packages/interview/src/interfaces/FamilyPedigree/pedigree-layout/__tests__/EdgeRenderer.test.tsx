@@ -472,6 +472,84 @@ describe('PedigreeEdgeSvg — couple bar per-segment dimming', () => {
 });
 
 // ---------------------------------------------------------------------------
+// PedigreeEdgeSvg — couple bar uses edge-key TRANSMISSION, not node membership
+//
+// Regression (#9): a couple bar must light a partner's half only when that
+// partner transmits to a contributing child (an outgoing edge in
+// highlightedEdgeKeys), NOT merely because the partner node is highlighted. The
+// focal person — highlighted, but walked upward only, so it has no outgoing
+// highlighted edge — must therefore leave its OWN partner line dimmed.
+// ---------------------------------------------------------------------------
+
+describe('PedigreeEdgeSvg — couple bar transmission (edge-key path, #9)', () => {
+  test('a highlighted partner that does not transmit (e.g. the focal) leaves its couple bar dim', () => {
+    const bar = makeCoupleBar({
+      partnerIds: ['focal', 'theirPartner'],
+      descentXPositions: [100],
+    });
+    // The focal is highlighted, but it has NO outgoing highlighted edge (we walk
+    // up from it, never down to its children). Its partner is not highlighted.
+    const highlightedNodeIds = new Set(['focal']);
+    const highlightedEdgeKeys = new Set<string>();
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeGroupConnectorData([bar])}
+        color="black"
+        width={300}
+        height={300}
+        highlightedNodeIds={highlightedNodeIds}
+        highlightedEdgeKeys={highlightedEdgeKeys}
+      />,
+    );
+
+    const barLines = siblingBarLines(container, 50);
+    expect(barLines.length).toBe(2);
+    // Both halves dim — the focal does not light its own partner line.
+    expect(barLines.every(isLineDimmed)).toBe(true);
+  });
+
+  test('a transmitting parent lights its half; the non-transmitting co-parent half stays dim', () => {
+    const bar = makeCoupleBar({
+      partnerIds: ['transmitter', 'coParent'],
+      descentXPositions: [100],
+    });
+    // transmitter → child is on the focal lineage; coParent transmits nothing.
+    const highlightedNodeIds = new Set(['transmitter', 'child']);
+    const highlightedEdgeKeys = new Set([edgeKey('transmitter', 'child')]);
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeGroupConnectorData([bar])}
+        color="black"
+        width={300}
+        height={300}
+        highlightedNodeIds={highlightedNodeIds}
+        highlightedEdgeKeys={highlightedEdgeKeys}
+      />,
+    );
+
+    const barLines = siblingBarLines(container, 50);
+    const leftHalf = barLines.find(
+      (line) =>
+        Number(line.getAttribute('x1')) === 0 &&
+        Number(line.getAttribute('x2')) === 100,
+    );
+    const rightHalf = barLines.find(
+      (line) =>
+        Number(line.getAttribute('x1')) === 100 &&
+        Number(line.getAttribute('x2')) === 200,
+    );
+    expect(leftHalf).toBeDefined();
+    expect(rightHalf).toBeDefined();
+    // transmitter (left) has an outgoing highlighted edge → bright.
+    expect(isLineDimmed(leftHalf!)).toBe(false);
+    // coParent (right) transmits nothing on the lineage → dim.
+    expect(isLineDimmed(rightHalf!)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // PedigreeEdgeSvg — twin-indicator and duplicate-arc dimming (node-membership)
 //
 // Twin bars and duplicate arcs are decorative-genetic connectors, NOT

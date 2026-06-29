@@ -166,7 +166,10 @@ describe('StickerNode', () => {
         <StickerNode label="Test" shape="circle" diseases={manyDiseases} />,
       );
       const overflow = document.querySelector('[data-overflow-marker]');
-      const expected = `+${totalDiseases - STICKER_CAP}`;
+      // On overflow the last of the STICKER_CAP perimeter slots becomes the
+      // badge, so STICKER_CAP - 1 stickers are drawn and the badge covers the
+      // rest (here diseases 8 and 9 → "+2").
+      const expected = `+${totalDiseases - (STICKER_CAP - 1)}`;
       expect(overflow?.textContent).toContain(expected);
     });
 

@@ -342,7 +342,14 @@ export default function NarrativePedigreeView({
         ? shownDiseases.find((d) => d.id === selectedDiseaseId)
         : undefined;
     const inner = selectedDisease
-      ? renderSingleCondition(node, shape, label, selectedDisease, dimmed)
+      ? renderSingleCondition(
+          node,
+          shape,
+          label,
+          selectedDisease,
+          dimmed,
+          isSelected,
+        )
       : renderSticker(node, shape, label, isSelected, dimmed);
 
     const statusSummary = statusSummaryFor(node);
@@ -408,6 +415,7 @@ export default function NarrativePedigreeView({
     label: string,
     disease: Disease,
     dimmed: boolean,
+    selected: boolean,
   ): ReactNode => {
     const status =
       displayedStatusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown';
@@ -416,14 +424,32 @@ export default function NarrativePedigreeView({
     const color = dimmed ? dimColor(disease.color) : disease.color;
     return (
       <div className="relative inline-block size-24">
-        <Sticker
-          status={status}
-          color={color}
-          shape={shape}
-          size="100%"
-          atRiskHomozygous={atRiskHomozygous}
-          nodeMode="single"
-        />
+        {/* Focal indicator: the single-condition node is a bare notation symbol
+            (no fresco-ui Node), so it has no built-in selected ring. A
+            selection-coloured glow follows the symbol's silhouette for any
+            shape, mirroring the Node's selected ring in the all-conditions
+            view. */}
+        <span
+          className="block size-full"
+          style={
+            selected
+              ? {
+                  filter:
+                    'drop-shadow(0 0 0.5rem var(--selected)) drop-shadow(0 0 0.25rem var(--selected)) drop-shadow(0 0 0.15rem var(--selected))',
+                }
+              : undefined
+          }
+        >
+          <Sticker
+            status={status}
+            color={color}
+            shape={shape}
+            size="100%"
+            atRiskHomozygous={atRiskHomozygous}
+            surfaceColor={dimmed ? dimColor('white') : undefined}
+            nodeMode="single"
+          />
+        </span>
         <span
           aria-hidden
           className="absolute top-full left-1/2 mt-1 w-24 -translate-x-1/2 truncate text-center text-xs text-white"

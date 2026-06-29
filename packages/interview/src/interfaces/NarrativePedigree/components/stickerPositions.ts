@@ -3,94 +3,105 @@ import type { NodeShape } from '@codaco/fresco-ui/Node';
 export type StickerPosition = { x: number; y: number };
 
 /**
- * Returns `count` positions around the perimeter of a unit bounding box [0,1]²,
- * ordered so that each position index is stable as count grows (prefix property).
- *
- * The coordinate space is normalised: (0,0) = top-left, (1,1) = bottom-right.
- * Callers multiply by the actual rendered node size to get pixel coordinates.
- *
- * Distribution strategy per shape:
- * - square:   corners first (CW from top-left), then edge-midpoints. Sticker
- *             centres sit exactly on the bounding-box boundary (50% overlap at
- *             corners; edge-midpoints achieve true 50% overlap).
- * - diamond:  face-midpoints first, then vertices, all on the rendered perimeter
- *             ring at R = 0.5 × DIAMOND_RENDER_SCALE = 0.425 (50% overlap).
- * - circle:   evenly spaced angles on the radius-0.5 ring (50% overlap).
- */
-export function stickerPositions(
-  shape: NodeShape,
-  count: number,
-): StickerPosition[] {
-  if (count === 0) return [];
-  if (shape === 'square') return SQUARE_ANCHORS.slice(0, count);
-  if (shape === 'circle') return circlePerimeter(count);
-  return DIAMOND_ANCHORS.slice(0, count);
-}
-
-/**
- * Square anchor ordering: corners first (CW from top-left), then edge-midpoints.
- * Sticker centres on corners sit exactly on the bounding-box boundary.
- */
-const SQUARE_ANCHORS: StickerPosition[] = [
-  { x: 0, y: 0 },
-  { x: 1, y: 0 },
-  { x: 1, y: 1 },
-  { x: 0, y: 1 }, // corners CW from top-left
-  { x: 0.5, y: 0 },
-  { x: 1, y: 0.5 },
-  { x: 0.5, y: 1 },
-  { x: 0, y: 0.5 }, // edge-midpoints
-];
-
-/**
  * The rendered diamond is the square layer with `scale-[0.85] rotate-45` in
  * fresco-ui Node.tsx shapeLayerVariants. DIAMOND_RENDER_SCALE MUST track that
  * value: if Node.tsx changes the scale, this constant must change too.
  */
 const DIAMOND_RENDER_SCALE = 0.85;
 
-/** Half-perimeter radius of the rendered diamond in normalised [0,1]² space. */
-const R = 0.5 * DIAMOND_RENDER_SCALE; // 0.425
+// Superellipse exponent approximating the node's rounded corners (≈24px radius
+// on a 96px node, i.e. ~0.25 of the width). A higher value is squarer; ~4 keeps
+// the corners as rounded as the real node so a corner-direction marker sits
+// against the rounded corner instead of floating off the sharp mathematical
+// corner. At every multiple of 45° (where all markers sit) the silhouette normal
+// is radial, so a fixed radial push gives the SAME gap on every side.
+const ROUND_EXP = 4;
 
 /**
- * Distance from the centre to a face-midpoint along each axis.
- * A point on |dx|+|dy|=R at the face midpoint satisfies |dx|=|dy|=R/2.
+ * Distance from centre to a superellipse of "radius" `a` in direction `angle`.
+ * `a` is the half-width along the axes; the rounded corners reach a little
+ * further out along the diagonals (but far less than a sharp corner would).
  */
-const half = R / 2; // 0.2125
+function superellipseRadius(a: number, angle: number): number {
+  const c = Math.abs(Math.cos(angle));
+  const s = Math.abs(Math.sin(angle));
+  return a / (c ** ROUND_EXP + s ** ROUND_EXP) ** (1 / ROUND_EXP);
+}
 
 /**
- * Diamond anchor ordering: face-midpoints first (best 50% overlap), then
- * vertices. All points lie on the rendered perimeter ring |x-0.5|+|y-0.5|=R.
+ * Direction templates per marker count, in degrees of screen-space angle
+ * (0° = right, 90° = bottom, growing clockwise). Each row is mirror-symmetric
+ * about the vertical axis and biased to the corner directions (45/135/225/315),
+ * because:
+ *  - corners read distinctly per shape once projected onto the silhouette — a
+ *    square lands its markers ON its corners, a diamond ON its faces, a circle
+ *    evenly — so the placement visibly reflects the node shape; and
+ *  - the connectors attach at the cardinal points (top = parent line,
+ *    left/right = partner line, bottom = child descent), so corner directions
+ *    keep the markers clear of them. The few cardinals used (for odd counts and
+ *    counts > 4) start with the bottom, the least-contended.
  */
-const DIAMOND_ANCHORS: StickerPosition[] = [
-  { x: 0.5 - half, y: 0.5 - half },
-  { x: 0.5 + half, y: 0.5 - half }, // top-left, top-right face midpoints
-  { x: 0.5 + half, y: 0.5 + half },
-  { x: 0.5 - half, y: 0.5 + half }, // bottom-right, bottom-left face midpoints
-  { x: 0.5, y: 0.5 - R },
-  { x: 0.5 + R, y: 0.5 }, // top, right vertices
-  { x: 0.5, y: 0.5 + R },
-  { x: 0.5 - R, y: 0.5 }, // bottom, left vertices
-];
+const ANGLE_TEMPLATES: Record<number, number[]> = {
+  1: [90],
+  2: [225, 315],
+  3: [225, 315, 90],
+  4: [225, 315, 135, 45],
+  5: [225, 315, 135, 45, 90],
+  6: [225, 315, 135, 45, 180, 0],
+  7: [225, 315, 135, 45, 180, 0, 90],
+  8: [225, 315, 135, 45, 180, 0, 90, 270],
+};
+
+/** Angles (radians) for `count` markers, symmetric about the vertical axis. */
+function anglesForCount(count: number): number[] {
+  const template = ANGLE_TEMPLATES[count];
+  if (template) return template.map((deg) => (deg * Math.PI) / 180);
+  // > 8 markers (rare): fall back to an even angular spread, half a step off
+  // the bottom so it stays mirror-symmetric about the vertical axis.
+  const step = (2 * Math.PI) / count;
+  const start = Math.PI / 2 + step / 2;
+  return Array.from({ length: count }, (_, i) => start + step * i);
+}
 
 /**
- * Distributes `count` points evenly on the unit circle, then maps them into
- * [0,1]². Starting angle is 225° (top-left quadrant), proceeding clockwise
- * (increasing angle in screen coordinates where y-axis points down).
- * Supports up to any count — the circle has no discrete anchor limit.
+ * Returns the node's rendered-silhouette radius (distance from centre to the
+ * rounded edge) at `angle`. Circle = constant; square = a rounded superellipse
+ * (corner directions reach toward — but not all the way to — the corner);
+ * diamond = the same rounded square scaled and rotated 45°, so its tips fall on
+ * the cardinal axes and its faces on the diagonals.
  */
-function circlePerimeter(count: number): StickerPosition[] {
-  const positions: StickerPosition[] = [];
-  const startAngleRad = (225 * Math.PI) / 180;
-  const twoPi = 2 * Math.PI;
+function silhouetteRadius(shape: NodeShape, angle: number): number {
+  if (shape === 'circle') return 0.5;
+  if (shape === 'square') return superellipseRadius(0.5, angle);
+  // The diamond is the square rotated 45°: evaluate the superellipse in the
+  // node's un-rotated frame (rotation preserves distance from centre).
+  return superellipseRadius(0.5 * DIAMOND_RENDER_SCALE, angle - Math.PI / 4);
+}
 
-  for (let i = 0; i < count; i++) {
-    const angle = startAngleRad + (twoPi * i) / count;
-    // Map from [-1,1] to [0,1]
-    const x = (Math.cos(angle) + 1) / 2;
-    const y = (Math.sin(angle) + 1) / 2;
-    positions.push({ x, y });
-  }
-
-  return positions;
+/**
+ * Returns `count` points on the perimeter of a node centred in the unit box
+ * [0,1]², placed at shape-defining anchor directions (corners first) and
+ * projected onto the node's rounded silhouette, so the placement visibly
+ * reflects the node shape: a square's markers reach toward its corners, a
+ * diamond's toward its faces/tips, a circle's spread evenly. Because all anchors
+ * sit at multiples of 45° (where the silhouette normal is radial), a fixed
+ * radial push by the caller yields the SAME gap on every side. The layout is
+ * symmetric about the vertical axis. The coordinate space is normalised:
+ * (0,0) = top-left, (1,1) = bottom-right; callers multiply by the rendered node
+ * size.
+ *
+ * Diamond tip points can fall slightly outside [0,1] because the rendered
+ * diamond's tips extend past the bounding box — intentional, so the markers
+ * track the visible shape. The caller pushes each point a little further out (by
+ * a fraction of the marker size) to set the final overlap.
+ */
+export function stickerPositions(
+  shape: NodeShape,
+  count: number,
+): StickerPosition[] {
+  if (count <= 0) return [];
+  return anglesForCount(count).map((angle) => {
+    const r = silhouetteRadius(shape, angle);
+    return { x: 0.5 + r * Math.cos(angle), y: 0.5 + r * Math.sin(angle) };
+  });
 }

@@ -312,12 +312,34 @@ function descentJunctionX(
 }
 
 /**
+ * True when `parentId` transmits an allele to a child that is on the focal
+ * lineage — i.e. there is a highlighted parent→child edge out of this parent.
+ * `highlightedEdgeKeys` only ever contains on-lineage transmissions, so the
+ * focal person itself (walked upward only, never to its own children) has no
+ * outgoing highlighted edge and therefore does NOT light its own couple bar.
+ */
+function transmitsToContributor(
+  parentId: string | undefined,
+  highlightedEdgeKeys: Set<string> | undefined,
+): boolean {
+  if (parentId === undefined || highlightedEdgeKeys === undefined) return false;
+  const prefix = `${parentId}->`;
+  for (const key of highlightedEdgeKeys) {
+    if (key.startsWith(prefix)) return true;
+  }
+  return false;
+}
+
+/**
  * Renders a couple/parent group bar. When a focal highlight is active and the
  * bar is a plain active partner line with a known descent point, the bar is
- * split at the descent x: each side is bright only when its partner is on the
- * focal lineage (partner id ∈ highlightedNodeIds). Otherwise (no highlight,
- * inactive break bar, or consanguineous double bar) it falls back to whole-bar
- * rendering dimmed by node membership, exactly as before.
+ * split at the descent x: each side is bright only when that partner actually
+ * transmits to a contributing child (via highlightedEdgeKeys) — so a couple bar
+ * is NOT lit merely because one partner is the focal person or is otherwise
+ * highlighted. Without edge keys (the FamilyPedigree path) it falls back to
+ * partner-node membership. Otherwise (no highlight, inactive break bar, or
+ * consanguineous double bar) it falls back to whole-bar rendering dimmed by node
+ * membership, exactly as before.
  */
 function renderCoupleGroupLine(
   gl: ParentGroupConnector,
@@ -350,8 +372,18 @@ function renderCoupleGroupLine(
   }
 
   const [leftId, rightId] = gl.partnerIds;
-  const leftContributes = highlightedNodeIds?.has(leftId) ?? false;
-  const rightContributes = highlightedNodeIds?.has(rightId) ?? false;
+  // A couple bar half lights only when that partner transmits to a contributing
+  // child (edge-key path). The focal person and non-transmitting partners do not
+  // light their couple bar. Fall back to node membership when there are no edge
+  // keys (the FamilyPedigree path, which has no focal-contributor feature).
+  const leftContributes =
+    highlightedEdgeKeys !== undefined
+      ? transmitsToContributor(leftId, highlightedEdgeKeys)
+      : (highlightedNodeIds?.has(leftId) ?? false);
+  const rightContributes =
+    highlightedEdgeKeys !== undefined
+      ? transmitsToContributor(rightId, highlightedEdgeKeys)
+      : (highlightedNodeIds?.has(rightId) ?? false);
   const barCenter = (gl.segment.x1 + gl.segment.x2) / 2;
 
   // A sub-segment belongs to whichever partner's half it sits in (relative to

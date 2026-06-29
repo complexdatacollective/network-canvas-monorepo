@@ -63,11 +63,11 @@ const KEY_ENTRIES: KeyEntry[] = [
   { status: 'unknown', label: 'Not known' },
 ];
 
-// Key glyphs illustrate the notation, not a specific disease. They need a
-// dark foreground colour so the standard pedigree symbols (filled shapes, lines,
-// dots) read on the white Sticker background. `--neutral-contrast` resolves to
-// the charcoal token in the interview theme — a near-black that works on white.
-const KEY_GLYPH_COLOUR = 'var(--neutral-contrast)';
+// The notation key illustrates the symbols, not a specific disease. When a
+// single condition is shown, the glyphs take that condition's colour so the key
+// matches the pedigree; when all conditions are shown they fall back to a vivid
+// node colour (not charcoal, which is invisible on the dark key panel).
+const KEY_GLYPH_FALLBACK_COLOUR = 'var(--node-1)';
 const KEY_GLYPH_SHAPE = 'circle' as const;
 
 const AT_RISK_HOMOZYGOUS_KEY_LABEL =
@@ -84,6 +84,14 @@ export default function ConditionPanel({
   const keyEntries = showAtRiskStatuses
     ? KEY_ENTRIES
     : KEY_ENTRIES.filter((entry) => !entry.atRisk);
+
+  // When a single condition is shown, draw the notation key in its colour so the
+  // key matches the pedigree; otherwise use a neutral vivid node colour.
+  const selectedDisease =
+    selectedDiseaseId !== null
+      ? diseases.find((disease) => disease.id === selectedDiseaseId)
+      : undefined;
+  const glyphColour = selectedDisease?.color ?? KEY_GLYPH_FALLBACK_COLOUR;
 
   const options: DiseaseOption[] = [
     { value: ALL_CONDITIONS, label: 'All conditions' },
@@ -114,13 +122,34 @@ export default function ConditionPanel({
         value={selectedDiseaseId ?? ALL_CONDITIONS}
         onChange={handleChange}
       />
+
+      {diseases.length > 0 && (
+        <>
+          <hr className="my-1 border-t border-(--outline)" />
+          <span className="text-sm font-semibold opacity-80">Conditions</span>
+          {diseases.map((disease) => (
+            <div key={disease.id} className="flex items-center gap-4 text-base">
+              <span
+                aria-hidden
+                className="size-4 shrink-0 rounded-full"
+                style={{ backgroundColor: disease.color }}
+              />
+              {disease.label}
+            </div>
+          ))}
+        </>
+      )}
+
       <hr className="my-1 border-t border-(--outline)" />
+      <span className="text-sm font-semibold opacity-80">
+        What the symbols mean
+      </span>
       {keyEntries.map((entry) => (
         <div key={entry.status} className="flex items-center gap-4 text-base">
           <span aria-hidden className="shrink-0">
             <Sticker
               status={entry.status}
-              color={KEY_GLYPH_COLOUR}
+              color={glyphColour}
               shape={KEY_GLYPH_SHAPE}
             />
           </span>
@@ -132,7 +161,7 @@ export default function ConditionPanel({
           <span aria-hidden className="shrink-0">
             <Sticker
               status="atRiskCarrier"
-              color={KEY_GLYPH_COLOUR}
+              color={glyphColour}
               shape={KEY_GLYPH_SHAPE}
               atRiskHomozygous
             />

@@ -35,32 +35,6 @@ export type StickerProps = {
 /** Default pixel size of a perimeter sticker. Change this to rescale everything. */
 export const STICKER_SIZE_PX = 28;
 
-const WHITE_BG = 'white';
-const VB = 100;
-const R = 48;
-const C = VB / 2;
-
-/**
- * White shape matching the node's geometry, drawn behind the status glyph so
- * the disease-coloured notation reads against the dark interview theme.
- */
-function ShapeBackground({ fill, shape }: { fill: string; shape: NodeShape }) {
-  if (shape === 'circle') {
-    return <circle cx={C} cy={C} r={R} fill={fill} />;
-  }
-  return (
-    <rect
-      x={C - R}
-      y={C - R}
-      width={R * 2}
-      height={R * 2}
-      rx={R * 0.2}
-      fill={fill}
-      transform={shape === 'diamond' ? `rotate(45, ${C}, ${C})` : undefined}
-    />
-  );
-}
-
 /**
  * The universal disease-status symbol: a white-filled shape (circle/square/
  * diamond) carrying the standard pedigree-notation `StatusMarker` glyph drawn in
@@ -121,17 +95,15 @@ export function Sticker({
         ].join(' ')}
         onClick={handleClick}
       >
-        <svg
-          viewBox={`0 0 ${VB} ${VB}`}
-          aria-hidden
-          className="absolute inset-0 h-full w-full"
-        >
-          <ShapeBackground fill={surfaceColor ?? WHITE_BG} shape={shape} />
-        </svg>
         {atRiskHomozygous ? (
           <HomozygousMarker color={color} shape={shape} />
         ) : (
-          <StatusMarker status={status} color={color} shape={shape} />
+          <StatusMarker
+            status={status}
+            color={color}
+            shape={shape}
+            surfaceColor={surfaceColor}
+          />
         )}
       </span>
     </span>
