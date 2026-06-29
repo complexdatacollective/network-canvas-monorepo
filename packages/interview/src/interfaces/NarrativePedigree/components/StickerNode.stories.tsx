@@ -1,8 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ComponentProps } from 'react';
 
 import type { Status } from '../genetics/status';
 import { StickerNode } from './StickerNode';
 import type { DiseaseSticker } from './StickerNode';
+
+/**
+ * Story args: the real StickerNode props plus a synthetic `diseaseCount` control
+ * from which the `diseases` array is generated in `render`.
+ */
+type StoryArgs = ComponentProps<typeof StickerNode> & { diseaseCount: number };
 
 const ALL_STATUSES: Status[] = [
   'affected',
@@ -65,11 +72,11 @@ const meta = {
     highlighted: { table: { disable: true } },
     onSelectDisease: { table: { disable: true } },
   },
-} satisfies Meta<typeof StickerNode & { diseaseCount: number }>;
+} satisfies Meta<StoryArgs>;
 
 export default meta;
 
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<StoryArgs>;
 
 /**
  * Playground story — adjust shape, diseaseCount, selected, and label to verify
