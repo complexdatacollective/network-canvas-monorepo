@@ -676,7 +676,7 @@ describe('NarrativePedigreeView — at-risk display gate', () => {
       expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
     );
 
-    expect(screen.queryByText('May have this condition')).toBeNull();
+    expect(screen.queryByText('May develop this condition')).toBeNull();
     expect(screen.queryByText('May carry this condition')).toBeNull();
     expect(
       screen.queryByText(/More seriously affected|two copies/i),
@@ -690,7 +690,7 @@ describe('NarrativePedigreeView — at-risk display gate', () => {
       expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
     );
 
-    expect(screen.getByText('May have this condition')).toBeTruthy();
+    expect(screen.getByText('May develop this condition')).toBeTruthy();
     expect(screen.getByText('May carry this condition')).toBeTruthy();
     expect(screen.getByText(/two copies/i)).toBeTruthy();
   });

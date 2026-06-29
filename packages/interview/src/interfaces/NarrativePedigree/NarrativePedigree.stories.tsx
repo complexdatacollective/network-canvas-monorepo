@@ -605,7 +605,7 @@ export const AtRiskStatusesOff: Story = {
   play: async () => {
     await screen.findByTestId('next-button');
 
-    expect(screen.queryByText('May have this condition')).toBeNull();
+    expect(screen.queryByText('May develop this condition')).toBeNull();
     expect(screen.queryByText('May carry this condition')).toBeNull();
     expect(
       screen.queryByText(/More seriously affected|two copies/i),
@@ -628,7 +628,7 @@ export const AtRiskStatusesOn: Story = {
   play: async () => {
     await screen.findByTestId('next-button');
 
-    expect(await screen.findByText('May have this condition')).toBeDefined();
+    expect(await screen.findByText('May develop this condition')).toBeDefined();
     expect(await screen.findByText('May carry this condition')).toBeDefined();
     expect(await screen.findByText(/two copies/i)).toBeDefined();
   },

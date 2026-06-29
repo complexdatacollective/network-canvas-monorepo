@@ -47,15 +47,18 @@ type KeyEntry = {
 // concatenated) so they read naturally and stay translatable. These describe
 // what each marker means in plain language rather than reusing the clinical
 // STATUS_LABELS verbatim.
-//
-// Display merge: `affected` and `obligateAffected` share the "Has this
-// condition" glyph, so the key shows ONE entry for them (illustrated by
-// `affected`). The genetics engine still computes both — only the displayed
-// marker and this key are unified.
+// Each maps to a distinct Bennett-2022 glyph drawn by the Sticker: affected =
+// filled, will-develop (obligate/presymptomatic) = vertical line, carrier =
+// horizontal line-fill; the at-risk variants reuse the certain glyph plus a "?".
 const KEY_ENTRIES: KeyEntry[] = [
   { status: 'affected', label: 'Has this condition' },
+  { status: 'obligateAffected', label: 'Will develop this condition' },
   { status: 'obligateCarrier', label: 'Carries this condition' },
-  { status: 'atRiskAffected', label: 'May have this condition', atRisk: true },
+  {
+    status: 'atRiskAffected',
+    label: 'May develop this condition',
+    atRisk: true,
+  },
   { status: 'atRiskCarrier', label: 'May carry this condition', atRisk: true },
   { status: 'unknown', label: 'Not known' },
 ];
