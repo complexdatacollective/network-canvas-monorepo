@@ -67,11 +67,23 @@ export type SeparatorSegment = {
   id: string;
 };
 
+/**
+ * A non-interactive section label. Renders as a small heading in the toolbar
+ * flow to group adjacent segments (e.g. "Tools", "History"). It is skipped by
+ * the toolbar's roving focus since it is not focusable.
+ */
+export type LabelSegment = {
+  type: 'label';
+  id: string;
+  text: string;
+};
+
 export type ToolbarSegment =
   | ButtonSegment
   | ToggleSegment
   | GroupSegment
-  | SeparatorSegment;
+  | SeparatorSegment
+  | LabelSegment;
 
 export type Position = { x: number; y: number };
 
@@ -344,6 +356,17 @@ function renderSegment(
 ) {
   const inner = (() => {
     switch (segment.type) {
+      case 'label':
+        return (
+          <span
+            className={cx(
+              'shrink-0 px-2 text-xs font-semibold tracking-wide text-current/60 uppercase',
+              orientation === 'vertical' && 'w-full text-center',
+            )}
+          >
+            {segment.text}
+          </span>
+        );
       case 'separator':
         return (
           <Toolbar.Separator

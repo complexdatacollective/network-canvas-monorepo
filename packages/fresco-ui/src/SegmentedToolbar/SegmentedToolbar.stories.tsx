@@ -6,6 +6,7 @@ import {
   List,
   Map as MapIcon,
   Minus,
+  MousePointer2,
   Pencil,
   Plus,
   Redo2,
@@ -152,6 +153,61 @@ export const Labels: Story = {
       { type: 'separator', id: 'sep' },
       // Text only — no icon.
       { type: 'button', id: 'clear', label: 'Clear formatting', onClick: noop },
+    ],
+  },
+};
+
+/**
+ * Section labels group related segments under a small heading — useful for a
+ * vertical tool palette (e.g. the Network Composer).
+ */
+export const SectionLabels: Story = {
+  args: {
+    label: 'Network tools',
+    orientation: 'vertical',
+    items: [
+      { type: 'label', id: 'tools-label', text: 'Tools' },
+      {
+        type: 'group',
+        id: 'tools',
+        mode: 'single',
+        defaultValue: ['select'],
+        options: [
+          {
+            value: 'select',
+            label: 'Select',
+            icon: <MousePointer2 />,
+            showLabel: true,
+          },
+          { value: 'add', label: 'Add node', icon: <Plus />, showLabel: true },
+        ],
+      },
+      { type: 'label', id: 'history-label', text: 'History' },
+      {
+        type: 'button',
+        id: 'undo',
+        label: 'Undo',
+        icon: <Undo2 />,
+        showLabel: true,
+        onClick: noop,
+      },
+      {
+        type: 'button',
+        id: 'redo',
+        label: 'Redo',
+        icon: <Redo2 />,
+        showLabel: true,
+        onClick: noop,
+      },
+      { type: 'label', id: 'layout-label', text: 'Layout' },
+      {
+        type: 'toggle',
+        id: 'auto',
+        label: 'Auto layout',
+        icon: <Snowflake />,
+        showLabel: true,
+        defaultPressed: false,
+      },
     ],
   },
 };

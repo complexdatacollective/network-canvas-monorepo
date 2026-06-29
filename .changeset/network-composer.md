@@ -3,6 +3,7 @@
 '@codaco/interview': minor
 '@codaco/protocol-utilities': patch
 '@codaco/shared-consts': patch
+'@codaco/fresco-ui': minor
 ---
 
 Add the **Network Composer** stage type — a free-form, single-screen, promptless
@@ -23,3 +24,8 @@ with undo/redo and lasso/clique gestures).
   participant's choice sticks across navigation; Architect only sets its default.
 - `@codaco/shared-consts`: a `NetworkComposer` stage-metadata shape storing the
   participant's automatic-layout choice.
+- `@codaco/fresco-ui`: the `SegmentedToolbar` gains an optional `label` segment
+  for grouping segments under a small section heading.
+- `@codaco/interview`: the NetworkComposer tool palette is built from the shared
+  `SegmentedToolbar` (an exclusive tool group, history buttons, and the
+  auto-layout toggle), with section labels.

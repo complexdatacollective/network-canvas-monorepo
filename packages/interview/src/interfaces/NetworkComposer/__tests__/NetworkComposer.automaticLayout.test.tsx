@@ -142,6 +142,7 @@ function renderInterface({
 
 const layoutMode = () =>
   screen.getByTestId('network-composer').getAttribute('data-layout-mode');
+// Automatic layout is a switch (a ToggleField), not a tool button.
 const layoutSwitch = () =>
   screen.getByRole('switch', { name: 'Automatic layout' });
 

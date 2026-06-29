@@ -67,6 +67,25 @@ describe('SegmentedToolbar — buttons & separators', () => {
     expect(screen.getByText('Done')).toBeVisible();
   });
 
+  it('renders a section label as visible, non-interactive text', () => {
+    const items: ToolbarSegment[] = [
+      { type: 'label', id: 'tools-label', text: 'Tools' },
+      {
+        type: 'button',
+        id: 'edit',
+        label: 'Edit',
+        icon: <Pencil />,
+        onClick: vi.fn(),
+      },
+    ];
+    render(<SegmentedToolbar label="Drawing tools" items={items} />);
+    expect(screen.getByText('Tools')).toBeVisible();
+    // A label is not a focusable toolbar item.
+    expect(
+      screen.queryByRole('button', { name: 'Tools' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('moves focus between segments with the arrow keys (roving focus)', async () => {
     const items: ToolbarSegment[] = [
       { type: 'button', id: 'a', label: 'A', onClick: vi.fn() },
