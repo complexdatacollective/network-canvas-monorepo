@@ -128,6 +128,9 @@ export type StoredSettings = {
   // error telemetry is sent. Never carries participant data or a user
   // identifier — only the per-device installation id (see installationId.ts).
   analyticsEnabled: boolean;
+  // When true, participants can jump between interview steps by tapping the
+  // progress bar (opens a steps menu). Defaults to false.
+  allowStageNavigation: boolean;
 };
 
 export type ProtocolWithCounts = StoredProtocol & {
@@ -148,4 +151,5 @@ export const DEFAULT_SETTINGS: StoredSettings = {
   requireUnlockOnExport: false,
   sampleProtocolDismissed: false,
   analyticsEnabled: true,
+  allowStageNavigation: false,
 };

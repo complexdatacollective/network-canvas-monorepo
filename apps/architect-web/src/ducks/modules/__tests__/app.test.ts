@@ -2,7 +2,9 @@ import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
 import appReducer, {
+  getPreviewAllowStageNavigation,
   getPreviewUseSyntheticData,
+  setPreviewAllowStageNavigation,
   setPreviewUseSyntheticData,
 } from '../app';
 
@@ -27,5 +29,16 @@ describe('app slice — preview preferences', () => {
     store.dispatch(setPreviewUseSyntheticData(false));
     store.dispatch(setPreviewUseSyntheticData(true));
     expect(getPreviewUseSyntheticData(store.getState())).toBe(true);
+  });
+
+  it('getPreviewAllowStageNavigation defaults to false when unset', () => {
+    const store = createStore();
+    expect(getPreviewAllowStageNavigation(store.getState())).toBe(false);
+  });
+
+  it('setPreviewAllowStageNavigation(true) flips the preference', () => {
+    const store = createStore();
+    store.dispatch(setPreviewAllowStageNavigation(true));
+    expect(getPreviewAllowStageNavigation(store.getState())).toBe(true);
   });
 });

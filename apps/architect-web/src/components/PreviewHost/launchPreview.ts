@@ -12,6 +12,7 @@ type LaunchOptions = {
   startStage: number;
   useSyntheticData: boolean;
   skipLogicBypassed: boolean;
+  allowStageNavigation: boolean;
 };
 
 type LaunchPreviewResult = { kind: 'delivered' } | { kind: 'popup-blocked' };
@@ -21,6 +22,7 @@ export function launchPreview({
   startStage,
   useSyntheticData,
   skipLogicBypassed,
+  allowStageNavigation,
 }: LaunchOptions): Promise<LaunchPreviewResult> {
   const protocolId = getActiveProtocolScope();
   if (!protocolId) {
@@ -54,6 +56,7 @@ export function launchPreview({
     startStage,
     useSyntheticData,
     skipLogicBypassed,
+    allowStageNavigation,
   };
 
   return new Promise<LaunchPreviewResult>((resolve, reject) => {

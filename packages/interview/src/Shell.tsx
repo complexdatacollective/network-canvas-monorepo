@@ -4,7 +4,7 @@
 import { Toast } from '@base-ui/react/toast';
 import { AnimatePresence, motion } from 'motion/react';
 import type { PostHog } from 'posthog-js';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Provider } from 'react-redux';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -55,10 +55,14 @@ function Interview({
   onExit,
   hideNavigation = false,
   navigationOrientation: orientationProp,
+  allowStageNavigation,
+  renderStagePreview,
 }: {
   onExit?: () => void;
   hideNavigation?: boolean;
   navigationOrientation?: NavigationOrientation;
+  allowStageNavigation?: boolean;
+  renderStagePreview?: (stageType: string) => ReactNode;
 }) {
   const {
     stage,
@@ -70,6 +74,7 @@ function Interview({
     handleExitComplete,
     moveForward,
     moveBackward,
+    goToStage,
     disableMoveForward,
     disableMoveBackward,
     pulseNext,
@@ -159,6 +164,8 @@ function Interview({
             <Navigation
               moveBackward={moveBackward}
               moveForward={moveForward}
+              goToStage={goToStage}
+              allowStageNavigation={allowStageNavigation}
               disableMoveForward={disableMoveForward}
               disableMoveBackward={disableMoveBackward}
               pulseNext={pulseNext}
@@ -167,6 +174,7 @@ function Interview({
               forwardButtonRef={forwardButtonRef}
               backButtonRef={backButtonRef}
               onExit={onExit}
+              renderStagePreview={renderStagePreview}
             />
           )}
           {/*
@@ -219,6 +227,25 @@ type ShellProps = {
    * omitted, the orientation responds to the aspect ratio automatically.
    */
   navigationOrientation?: NavigationOrientation;
+  /**
+   * Allow participants to jump between steps by clicking the progress bar,
+   * which opens a searchable stages menu (mirrors the legacy app). Jumps run
+   * the same `beforeNext` validation as the next/back buttons and confirm
+   * before showing a step that skip logic would otherwise hide. Off by default.
+   * Has no effect in read-only controlled mode (`currentStep` without
+   * `onStepChange`), where navigation is a no-op.
+   */
+  allowStageNavigation?: boolean;
+  /**
+   * Optional renderer for a stage's preview thumbnail in the stages menu,
+   * keyed by stage `type`. The interview package ships no screenshots itself
+   * (they live in the private `@codaco/interface-images`), so hosts that want
+   * thumbnails provide them here — e.g.
+   * `renderStagePreview={(type) => <InterfacePicture type={type} … />}`. When
+   * omitted, the menu shows a placeholder icon. Only used when
+   * `allowStageNavigation` is on.
+   */
+  renderStagePreview?: (stageType: string) => ReactNode;
 };
 
 const Shell = ({
@@ -235,6 +262,8 @@ const Shell = ({
   onExit,
   hideNavigation,
   navigationOrientation,
+  allowStageNavigation,
+  renderStagePreview,
 }: ShellProps) => {
   // Anchor onSync in a ref so the store factory receives a stable callback
   // (the sync middleware closes over it once at store creation). Hosts
@@ -311,6 +340,8 @@ const Shell = ({
               onExit={onExit}
               hideNavigation={hideNavigation}
               navigationOrientation={navigationOrientation}
+              allowStageNavigation={allowStageNavigation}
+              renderStagePreview={renderStagePreview}
             />
           </CurrentStepProvider>
         </ContractProvider>

@@ -13,6 +13,7 @@ import {
   type StepChangeHandler,
 } from '@codaco/interview';
 import { InterviewComplete } from '~/components/InterviewComplete';
+import StagePreviewImage from '~/components/StagePreviewImage';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import {
   buildResolvedAssets,
@@ -52,6 +53,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   } = useStepUpAuth();
   const [finished, setFinished] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  // Interview-level setting (off by default); read from device settings in the
+  // load effect below and handed to the Shell.
+  const [allowStageNavigation, setAllowStageNavigation] = useState(false);
   // SessionPayload from @codaco/interview's onSync does not carry the current
   // step. Mirror it into a ref so handleSync sees the latest value rather
   // than the stale closure value.
@@ -121,6 +125,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       const initialStep = session.currentStep ?? 0;
       setCurrentStep(initialStep);
       currentStepRef.current = initialStep;
+      setAllowStageNavigation(settings.allowStageNavigation);
       setState({
         kind: 'ready',
         payload,
@@ -257,6 +262,8 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         disableAnalytics={!analyticsEnabled}
         onExit={() => void handleExit()}
         navigationOrientation={navigationOrientation}
+        allowStageNavigation={allowStageNavigation}
+        renderStagePreview={(type) => <StagePreviewImage type={type} />}
       />
     </div>
   );

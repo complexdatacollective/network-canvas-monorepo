@@ -103,6 +103,23 @@ describe('PreviewHost', () => {
     expect(typeof call.onStepChange).toBe('function');
   });
 
+  it('forwards allowStageNavigation from the payload to Shell', () => {
+    render(<PreviewHost />);
+    const protocol = makeProtocol();
+    postPayload(openerStub, {
+      type: 'preview:payload',
+      protocol,
+      startStage: 0,
+      useSyntheticData: false,
+      allowStageNavigation: true,
+    });
+
+    const call = shellMock.mock.calls.at(-1)?.[0] as {
+      allowStageNavigation: boolean;
+    };
+    expect(call.allowStageNavigation).toBe(true);
+  });
+
   it('initialises currentStep from payload.startStage', () => {
     render(<PreviewHost />);
     const protocol = makeProtocol();
