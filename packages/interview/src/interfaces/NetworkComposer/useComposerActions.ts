@@ -78,7 +78,7 @@ export function useComposerActions({
       }),
     ).unwrap();
 
-    undoStore.getState().push({
+    void undoStore.getState().push({
       label: `Add node ${name}`,
       undo: () => {
         dispatch(deleteNode(id));
@@ -112,7 +112,7 @@ export function useComposerActions({
 
     let liveEdgeId = edgeId;
 
-    undoStore.getState().push({
+    void undoStore.getState().push({
       label: `Connect nodes`,
       undo: () => {
         dispatch(deleteEdge(liveEdgeId));
@@ -159,7 +159,13 @@ export function useComposerActions({
       }
     }
 
-    undoStore.getState().push({
+    // Every selected pair was already connected — nothing was created, so don't
+    // push a no-op entry that would make the next undo revert nothing.
+    if (addedEdgePairs.length === 0) {
+      return;
+    }
+
+    void undoStore.getState().push({
       label: `Connect all nodes`,
       undo: () => {
         for (const edgeId of addedEdgeIds) {
@@ -212,7 +218,7 @@ export function useComposerActions({
     const nodeSnapshot = capturedNode;
     const edgeSnapshots = capturedEdges;
 
-    undoStore.getState().push({
+    void undoStore.getState().push({
       label: `Delete node`,
       undo: async () => {
         await dispatch(
@@ -282,7 +288,7 @@ export function useComposerActions({
       dispatch(deleteNode(id));
     }
 
-    undoStore.getState().push({
+    void undoStore.getState().push({
       label: `Delete ${ids.length} nodes`,
       undo: async () => {
         for (const node of capturedNodes) {
@@ -336,7 +342,7 @@ export function useComposerActions({
     const edgeSnapshot = capturedEdge;
     let liveEdgeId = edgeSnapshot[entityPrimaryKeyProperty];
 
-    undoStore.getState().push({
+    void undoStore.getState().push({
       label: `Delete edge`,
       undo: async () => {
         const { edgeId: newId } = await dispatch(
@@ -380,7 +386,7 @@ export function useComposerActions({
 
     const capturedPrior = priorAttributes;
 
-    undoStore.getState().push({
+    void undoStore.getState().push({
       label: `Update node attributes`,
       undo: async () => {
         await dispatch(
@@ -421,7 +427,7 @@ export function useComposerActions({
 
     const capturedPrior = priorAttributes;
 
-    undoStore.getState().push({
+    void undoStore.getState().push({
       label: `Update edge attributes`,
       undo: async () => {
         await dispatch(
@@ -449,7 +455,7 @@ export function useComposerActions({
       }),
     ).unwrap();
 
-    undoStore.getState().push({
+    void undoStore.getState().push({
       label: `Move node`,
       undo: async () => {
         await dispatch(

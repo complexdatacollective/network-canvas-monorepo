@@ -12,7 +12,7 @@ type UndoState = {
 };
 
 type UndoActions = {
-  push: (command: UndoCommand) => void;
+  push: (command: UndoCommand) => Promise<void>;
   undo: () => Promise<void>;
   redo: () => Promise<void>;
 };
@@ -20,38 +20,55 @@ type UndoActions = {
 export type UndoStore = UndoState & UndoActions;
 
 export const createUndoStore = (limit = 50) =>
-  createStore<UndoStore>()((set, get) => ({
-    past: [],
-    future: [],
+  createStore<UndoStore>()((set, get) => {
+    // Serialize every history mutation through a single promise chain. undo/redo
+    // are fired-and-forgotten (`void undoStore.getState().undo()`) from a keydown
+    // handler, so rapid key-repeat can otherwise overlap: a second undo would read
+    // the same stack head before the first awaited command settles (replaying it),
+    // or a concurrent push's set() could be clobbered by a stale post-await set().
+    let chain: Promise<void> = Promise.resolve();
+    const enqueue = (op: () => void | Promise<void>): Promise<void> => {
+      chain = chain.then(op, op);
+      return chain;
+    };
 
-    push: (command) =>
-      set((state) => ({
-        past: [...state.past, command].slice(-limit),
-        future: [],
-      })),
+    return {
+      past: [],
+      future: [],
 
-    undo: async () => {
-      const { past } = get();
-      const command = past[past.length - 1];
-      if (!command) return;
-      await command.undo();
-      set((state) => ({
-        past: state.past.slice(0, -1),
-        future: [command, ...state.future],
-      }));
-    },
+      push: (command) =>
+        enqueue(() => {
+          set((state) => ({
+            past: [...state.past, command].slice(-limit),
+            future: [],
+          }));
+        }),
 
-    redo: async () => {
-      const { future } = get();
-      const command = future[0];
-      if (!command) return;
-      await command.redo();
-      set((state) => ({
-        past: [...state.past, command],
-        future: state.future.slice(1),
-      }));
-    },
-  }));
+      undo: () =>
+        enqueue(async () => {
+          const { past } = get();
+          const command = past[past.length - 1];
+          if (!command) return;
+          await command.undo();
+          set((state) => ({
+            past: state.past.slice(0, -1),
+            future: [command, ...state.future],
+          }));
+        }),
+
+      redo: () =>
+        enqueue(async () => {
+          const { future } = get();
+          const command = future[0];
+          if (!command) return;
+          await command.redo();
+          set((state) => ({
+            past: [...state.past, command],
+            future: state.future.slice(1),
+          }));
+        }),
+    };
+  });
 
 export type UndoStoreApi = ReturnType<typeof createUndoStore>;
 
