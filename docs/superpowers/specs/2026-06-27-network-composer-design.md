@@ -189,7 +189,7 @@ quickAdd:        EntityAttributeReference(subject: stageSubject)    // inline-na
 layoutVariable:  EntityAttributeReference(subject: stageSubject)    // x/y store (layout var)
 nodeForm?:       TitlelessFormSchema                          // configured inspector form for nodes
 
-edges:           Array<{ subject: EdgeStageSubjectSchema, form?: TitlelessFormSchema }>   // min 1; each entry = a drawable edge type
+edges:           Array<{ id: string, subject: EdgeStageSubjectSchema, form?: TitlelessFormSchema }>   // min 1; each entry = a drawable edge type
 ```
 
 Registration: import and add to the `stageSchemas` array and re-export in
@@ -276,9 +276,9 @@ New `packages/interview/src/interfaces/NetworkComposer/`:
 - `ToolPalette.tsx` — sticky-mode tool palette (select/move, add-node, per-edge
   tools, auto-layout switch, undo/redo).
 - `Inspector.tsx` — docked panel rendering the node/edge form on selection.
-- `useComposerTools.ts` — the mode state machine (active tool, pending edge
+- `useComposerStore.ts` — the mode state machine (active tool, pending edge
   source, selection set, lasso state).
-- `useUndoHistory.ts` — the stage-local command/inverse stack.
+- `useUndoStore.ts` — the stage-local command/inverse stack.
 - Reuse `canvas/Canvas.tsx`, `canvas/useCanvasStore.ts`, `canvas/EdgeLayer.tsx`,
   and the force-simulation worker; reuse the Sociogram's background rendering.
 
