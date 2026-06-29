@@ -22,7 +22,7 @@ describe('nextGridPosition', () => {
       x: 0.12 + i * 0.1,
       y: 0.12,
     }));
-    expect(nextGridPosition(firstRow)).toEqual({ x: 0.12, y: 0.24 });
+    expect(nextGridPosition(firstRow)).toEqual({ x: 0.12, y: 0.3 });
   });
 
   it('reuses a freed cell rather than stacking past occupied ones', () => {

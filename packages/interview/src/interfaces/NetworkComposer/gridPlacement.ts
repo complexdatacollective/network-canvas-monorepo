@@ -7,7 +7,7 @@ const GRID = {
   startX: 0.12,
   startY: 0.12,
   stepX: 0.1,
-  stepY: 0.12,
+  stepY: 0.18,
   endX: 0.8,
   endY: 0.85,
 } as const;

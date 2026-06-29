@@ -95,7 +95,9 @@ export default function ComposerDrawer({
             // canvas. The panel is non-modal and reachable by tabbing into it.
             initialFocus={false}
             className={[
-              'bg-surface-1 text-text elevation-high absolute inset-0 flex flex-col',
+              // `publish-colors` sets the background context so descendants
+              // (e.g. the scroll area's fade gradient) resolve against surface-1.
+              'bg-surface-1 publish-colors text-text elevation-high absolute inset-0 flex flex-col',
               'transition-transform duration-300 ease-out',
               '[transform:translateX(var(--drawer-swipe-movement-x,0px))]',
               'data-[starting-style]:[transform:translateX(100%)]',
