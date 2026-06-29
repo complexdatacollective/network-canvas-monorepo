@@ -179,20 +179,11 @@ export function buildPedigreeInterview(seed: number) {
   // Using stable UIDs that match the edge wiring below.
   const fpId = fpStage.id;
 
-  // SyntheticInterview.getNetwork() fills any attribute NOT explicitly set on a
-  // manual node with a random faker value. For boolean variables that would
-  // randomise ego identity and disease status across the pedigree, so every
-  // person seeds the full flag set to a deterministic default and overrides only
-  // what is intentionally true.
-  const PERSON_DEFAULTS: Record<string, unknown> = {
-    [EGO_VAR]: false,
-    [HUNTINGTONS_VAR]: false,
-    [HAEMOPHILIA_VAR]: false,
-    [MITO_VAR]: false,
-    [REL_TO_EGO_VAR]: '',
-  };
+  // addManualNode leaves unset attributes neutral (boolean -> false, text ->
+  // ''), so each person only needs to declare the flags that are intentionally
+  // true; ego identity and disease status stay deterministic.
   const person = (uid: string, attrs: Record<string, unknown>) =>
-    si.addManualNode(fpId, nodeType.id, uid, { ...PERSON_DEFAULTS, ...attrs });
+    si.addManualNode(fpId, nodeType.id, uid, attrs);
 
   // Maternal grandparents: grandmother has mitochondrial myopathy
   person('gm', {

@@ -56,6 +56,25 @@ export class ValueGenerator {
     }
   }
 
+  /**
+   * Type-appropriate "unanswered" value for a variable. Used for manually
+   * seeded nodes, where unset attributes must stay neutral rather than being
+   * filled with random data that would corrupt a deliberately-constructed
+   * scenario (e.g. a random ego or random disease flags in a pedigree).
+   */
+  neutralForVariable(variable: VariableEntry): unknown {
+    switch (variable.type) {
+      case 'boolean':
+        return false;
+      case 'text':
+        return '';
+      case 'categorical':
+        return [];
+      default:
+        return null;
+    }
+  }
+
   generateName(): string {
     return this.faker.person.firstName();
   }

@@ -297,6 +297,9 @@ export type NodeEntry = {
   // getNetwork() time, since prompts are added after the stage is created.
   promptIndices?: number[];
   explicitAttributes: Record<string, unknown>;
+  // Manually seeded nodes (addManualNode) take full control of their
+  // attributes: unset attributes are left neutral rather than randomised.
+  manual?: boolean;
 };
 
 export type EdgeEntry = {

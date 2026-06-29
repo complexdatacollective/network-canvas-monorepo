@@ -1347,9 +1347,13 @@ export class SyntheticInterview {
               varId
             ] as VariableValue;
           } else {
-            attributes[varId] = valueGen.generateForVariable(
-              variable,
-              index,
+            // Procedurally-generated nodes get random synthetic values;
+            // manually-seeded nodes keep unset attributes neutral so the
+            // caller's scenario isn't corrupted by random data.
+            attributes[varId] = (
+              nodeEntry.manual
+                ? valueGen.neutralForVariable(variable)
+                : valueGen.generateForVariable(variable, index)
             ) as VariableValue;
           }
         }
@@ -1656,6 +1660,7 @@ export class SyntheticInterview {
       stageId,
       promptIDs: [],
       explicitAttributes: attributes,
+      manual: true,
     });
   }
 
