@@ -1,8 +1,8 @@
 import Node from '@codaco/fresco-ui/Node';
 import type { NodeColorSequence, NodeShape } from '@codaco/fresco-ui/Node';
 
-import { STATUS_LABELS, type Status } from '../genetics/status';
-import { StatusMarker } from './StatusMarker';
+import type { Status } from '../genetics/status';
+import { Sticker, STICKER_SIZE_PX } from './Sticker';
 import { stickerPositions } from './stickerPositions';
 
 export type DiseaseSticker = {
@@ -18,110 +18,8 @@ export const STICKER_CAP = 8;
 /** Pixel size of the node rendered by <Node size="sm"> (96px = size-24). */
 const NODE_SIZE_PX = 96;
 
-/** Pixel size of each sticker marker. */
-const STICKER_SIZE_PX = 22;
-
 /** Half-sticker offset so the marker is centred on the perimeter point. */
 const STICKER_HALF = STICKER_SIZE_PX / 2;
-
-const STATUS_CLASS: Record<Status, string> = {
-  affected: 'sticker-solid',
-  obligateAffected: 'sticker-double-ring',
-  obligateCarrier: 'sticker-ring-dot',
-  atRiskAffected: 'sticker-half',
-  atRiskCarrier: 'sticker-dot',
-  unknown: 'sticker-question',
-};
-
-/**
- * Small upward-pointing triangle placed at the bottom-right corner of its
- * parent sticker. Visually signals that a person may be homozygous-affected for
- * this disease — distinct from the primary-status marker shape.
- *
- * Decorative: the status it conveys is announced as text by the per-node
- * summary in NarrativePedigreeView, so the triangle is hidden from assistive
- * technology (its aria-hidden overlay). It is still rendered as a sibling to
- * the sticker overlay so the overflow-hidden / rounded-full clip on the sticker
- * span does not trim the triangle.
- */
-function AtRiskHomozygousMarker({
-  color,
-  x,
-  y,
-}: {
-  color: string;
-  x: number;
-  y: number;
-}) {
-  return (
-    <span
-      data-atrisk-homozygous-marker
-      className="pointer-events-none absolute flex items-center justify-center"
-      style={{
-        width: 8,
-        height: 8,
-        left: x - STICKER_HALF + STICKER_SIZE_PX - 8,
-        top: y - STICKER_HALF + STICKER_SIZE_PX - 8,
-      }}
-    >
-      <svg viewBox="0 0 8 8" aria-hidden width={8} height={8}>
-        <polygon points="4,1 7,7 1,7" fill={color} />
-      </svg>
-    </span>
-  );
-}
-
-type StickerMarkerProps = {
-  sticker: DiseaseSticker;
-  x: number;
-  y: number;
-  onSelectDisease?: (diseaseId: string) => void;
-};
-
-function StickerMarker({ sticker, x, y, onSelectDisease }: StickerMarkerProps) {
-  const className = STATUS_CLASS[sticker.status];
-  const label = STATUS_LABELS[sticker.status];
-
-  const handlePointerClick =
-    onSelectDisease !== undefined
-      ? (e: React.MouseEvent) => {
-          e.stopPropagation();
-          onSelectDisease(sticker.id);
-        }
-      : undefined;
-
-  return (
-    <span
-      aria-hidden
-      title={`${label} (${sticker.color})`}
-      data-sticker-status={sticker.status}
-      className={[
-        'absolute rounded-full border-2 border-white overflow-hidden',
-        'bg-[var(--surface-1)]',
-        className,
-        // The overlay parent is pointer-events-none (so clicks fall through to
-        // the focal container); an interactive sticker must re-enable pointer
-        // events on itself, or its onClick never fires.
-        onSelectDisease !== undefined
-          ? 'pointer-events-auto cursor-pointer'
-          : 'pointer-events-none',
-      ].join(' ')}
-      style={{
-        width: STICKER_SIZE_PX,
-        height: STICKER_SIZE_PX,
-        left: x - STICKER_HALF,
-        top: y - STICKER_HALF,
-      }}
-      onClick={handlePointerClick}
-    >
-      <StatusMarker
-        variant="sticker"
-        status={sticker.status}
-        color={sticker.color}
-      />
-    </span>
-  );
-}
 
 type StickerNodeProps = {
   label: string;
@@ -193,41 +91,36 @@ export function StickerNode({
         highlighted={highlighted}
       />
 
-      {/* Sticker overlay — aria-hidden; individual StickerMarker spans are
-          also aria-hidden. Disease selection via sticker click is a pointer
-          convenience only; keyboard path is through DiseaseLegend. */}
+      {/* Sticker overlay — aria-hidden; individual Sticker spans are also
+          aria-hidden. Disease selection via sticker click is a pointer
+          convenience only; keyboard path is through DiseaseLegend.
+          The overlay is pointer-events-none; interactive Sticker chips
+          re-enable pointer events on themselves. */}
       <span aria-hidden className="pointer-events-none absolute inset-0">
         {visibleStickers.map((sticker, i) => {
           const pos = positions[i];
           if (!pos) return null;
           return (
-            <StickerMarker
+            <span
               key={i}
-              sticker={sticker}
-              x={pos.x * NODE_SIZE_PX}
-              y={pos.y * NODE_SIZE_PX}
-              onSelectDisease={onSelectDisease}
-            />
-          );
-        })}
-      </span>
-
-      {/* At-risk-homozygous markers — decorative (aria-hidden); the status is
-          announced as text by the per-node summary in NarrativePedigreeView.
-          Kept in their own overlay (not the sticker overlay) so the
-          overflow-hidden sticker span does not clip the triangle. */}
-      <span aria-hidden className="pointer-events-none absolute inset-0">
-        {visibleStickers.map((sticker, i) => {
-          if (sticker.atRiskHomozygous !== true) return null;
-          const pos = positions[i];
-          if (!pos) return null;
-          return (
-            <AtRiskHomozygousMarker
-              key={i}
-              color={sticker.color}
-              x={pos.x * NODE_SIZE_PX}
-              y={pos.y * NODE_SIZE_PX}
-            />
+              className="absolute"
+              style={{
+                left: pos.x * NODE_SIZE_PX - STICKER_HALF,
+                top: pos.y * NODE_SIZE_PX - STICKER_HALF,
+              }}
+            >
+              <Sticker
+                status={sticker.status}
+                color={sticker.color}
+                atRiskHomozygous={sticker.atRiskHomozygous}
+                interactive={onSelectDisease !== undefined}
+                onClick={
+                  onSelectDisease !== undefined
+                    ? () => onSelectDisease(sticker.id)
+                    : undefined
+                }
+              />
+            </span>
           );
         })}
       </span>
