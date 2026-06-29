@@ -19,19 +19,17 @@ const ComposerAutomaticLayout = (_props: StageEditorSectionProps) => (
     }
   >
     <FormSection name="behaviours">
-      <FormSection name="automaticLayout">
-        <Row>
-          <IssueAnchor
-            fieldName="behaviours.automaticLayout.defaultEnabled"
-            description="Default automatic layout"
-          />
-          <Field
-            name="defaultEnabled"
-            label="Start with automatic layout switched on"
-            component={Toggle}
-          />
-        </Row>
-      </FormSection>
+      <Row>
+        <IssueAnchor
+          fieldName="behaviours.automaticLayout"
+          description="Default automatic layout"
+        />
+        <Field
+          name="automaticLayout"
+          label="Start with automatic layout switched on"
+          component={Toggle}
+        />
+      </Row>
     </FormSection>
   </Section>
 );

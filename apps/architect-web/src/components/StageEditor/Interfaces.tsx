@@ -227,6 +227,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
     template: {
       behaviours: {
         allowRepositioning: true,
+        automaticLayout: true,
       },
     },
   },
@@ -263,7 +264,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       'https://documentation.networkcanvas.com/interface-documentation/network-composer/',
     template: {
       behaviours: {
-        automaticLayout: { defaultEnabled: false },
+        automaticLayout: false,
       },
     },
   },

@@ -14,12 +14,12 @@ with undo/redo and lasso/clique gestures).
   (no version bump, no migration) with cross-reference validation of its
   `quickAdd` / `layoutVariable` / `nodeForm` / per-edge-type form references, and
   `superRefine` checks (at least one edge type; no duplicate edge subject types).
-  Automatic layout is configured as `behaviours.automaticLayout.defaultEnabled`:
-  unlike the Sociogram's fixed `enabled` mode, this is only the starting default.
-- `@codaco/interview`: the `NetworkComposer` runtime interface, reusing the
-  Sociogram canvas, edge layer, and force simulation. Automatic layout is an
-  interview-time toggle (a switch in the tool palette) whose live value is
-  persisted in stage metadata, so the participant's choice sticks across
-  navigation; Architect only sets its default.
+  Automatic layout uses the shared flat `behaviours.automaticLayout` boolean (as
+  the Sociogram and Narrative do); for NetworkComposer it is only the starting
+  default.
+- `@codaco/interview`: the `NetworkComposer` runtime interface, reusing the shared
+  canvas, edge layer, and force-directed auto-layout engine. Automatic layout is
+  an interview-time toggle whose live value is persisted in stage metadata, so the
+  participant's choice sticks across navigation; Architect only sets its default.
 - `@codaco/shared-consts`: a `NetworkComposer` stage-metadata shape storing the
   participant's automatic-layout choice.

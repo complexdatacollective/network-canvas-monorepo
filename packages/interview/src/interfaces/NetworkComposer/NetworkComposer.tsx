@@ -1,9 +1,10 @@
 'use client';
 
 import { get } from 'es-toolkit/compat';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import Node from '@codaco/fresco-ui/Node';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -11,9 +12,11 @@ import {
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
+import { useAutoLayout } from '~/canvas/useAutoLayout';
 import { createCanvasStore } from '~/canvas/useCanvasStore';
 import ConcentricCircles from '~/components/ConcentricCircles';
 import { useCurrentStep } from '~/contexts/CurrentStepContext';
+import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import {
   getNetworkEdges,
@@ -25,7 +28,6 @@ import { updateNode, updateStageMetadata } from '~/store/modules/session';
 import { useAppDispatch } from '~/store/store';
 import type { StageProps } from '~/types';
 
-import { useForceSimulation } from '../Sociogram/useForceSimulation';
 import ComposerCanvas, { type NodeTapModifiers } from './ComposerCanvas';
 import Inspector from './Inspector';
 import ToolPalette from './ToolPalette';
@@ -51,11 +53,11 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const layoutVariable = stage.layoutVariable;
 
   // Automatic layout is an interview-time choice, not a fixed stage config. The
-  // schema's defaultEnabled only seeds the initial value; the participant's live
-  // toggle is persisted in stage metadata so it sticks across navigation.
+  // schema's automaticLayout boolean only seeds the initial value; the
+  // participant's live toggle is persisted in stage metadata so it sticks across
+  // navigation.
   const stageMetadata = useStageSelector(getStageMetadata);
-  const automaticLayoutDefault =
-    stage.behaviours?.automaticLayout?.defaultEnabled ?? false;
+  const automaticLayoutDefault = stage.behaviours?.automaticLayout ?? false;
   const persistedAutomaticLayout = isNetworkComposerStageMetadata(stageMetadata)
     ? stageMetadata.automaticLayout
     : undefined;
@@ -110,14 +112,46 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     }
   }, [nodes, layoutVariable, canvasStore, layoutMode]);
 
-  const simulation = useForceSimulation({
+  // Measure the rendered node size off-screen so the auto-layout collision radius
+  // tracks the live --theme-root-size scaling (mirrors the Sociogram).
+  const { nodeWidth, measurementContainer } = useNodeMeasurement({
+    component: <Node size="sm" />,
+  });
+
+  // Force tuning mirrors the Sociogram: lay out from scratch with a hot start and
+  // slow cooldown, and no group cohesion (NetworkComposer is free-form).
+  const layoutOptions = useMemo(
+    () => ({
+      cohesion: 0,
+      charge: -0.006,
+      startAlpha: 1,
+      alphaMin: 0.025,
+      alphaDecay: 1 - 0.001 ** (1 / 500),
+      biasXStrength: 0.13,
+      biasXFraction: 0.5,
+      biasYStrength: 0.13,
+      biasYFraction: 0.5,
+    }),
+    [],
+  );
+
+  // Shared force-directed engine — continuous and user-toggleable, persisting
+  // settled positions back to Redux (same as the Sociogram). Active only when
+  // automatic layout is on.
+  const simulation = useAutoLayout({
     enabled: automaticLayout,
     nodes,
     edges,
-    layoutVariable,
     store: canvasStore,
+    nodeRadius: nodeWidth / 2,
+    layoutVariable,
+    groupVariable: '',
+    persist: true,
     dispatch,
     currentStep,
+    runMode: 'continuous',
+    mockLayout: 'grid',
+    layoutOptions,
   });
 
   const handleNodeDragEnd = useCallback(
@@ -388,6 +422,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       tabIndex={-1}
       onKeyDown={handleKeyDown}
     >
+      {measurementContainer}
       <ToolPalette
         composerStore={composerStore}
         undoStore={undoStore}

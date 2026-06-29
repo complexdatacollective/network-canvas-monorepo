@@ -15,11 +15,11 @@ import type { RegisterBeforeNext, StageProps } from '~/types';
 
 import NetworkComposer from '../NetworkComposer';
 
-// jsdom has no Worker, and automatic mode would otherwise construct the force
-// simulation worker. These tests cover the metadata-driven layout toggle, not
-// the simulation, so stub the hook out.
-vi.mock('../../Sociogram/useForceSimulation', () => ({
-  useForceSimulation: () => ({
+// jsdom has no Worker, and automatic mode would otherwise construct the shared
+// auto-layout worker. These tests cover the metadata-driven layout toggle, not
+// the simulation, so stub the engine out.
+vi.mock('~/canvas/useAutoLayout', () => ({
+  useAutoLayout: () => ({
     isRunning: false,
     start: vi.fn(),
     stop: vi.fn(),
@@ -54,7 +54,7 @@ const makeStage = (defaultEnabled: boolean) => ({
   layoutVariable: LAYOUT_VAR,
   quickAdd: QUICK_ADD_VAR,
   edges: [{ subject: { entity: 'edge' as const, type: EDGE_TYPE } }],
-  behaviours: { automaticLayout: { defaultEnabled } },
+  behaviours: { automaticLayout: defaultEnabled },
 });
 
 const codebook = {

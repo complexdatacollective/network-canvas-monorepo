@@ -145,7 +145,7 @@ const buildAutomaticLayout = () => {
     quickAdd: quickAddVar.id,
     layoutVariable: layoutVar.id,
     initialNodes: { count: 6 },
-    behaviours: { automaticLayout: { defaultEnabled: true } },
+    behaviours: { automaticLayout: true },
   });
   stage.addEdgeType({ type: friendship.id });
   si.addEdges(

@@ -54,8 +54,8 @@ export type DyadCensusMetadataItem = z.infer<
 const DyadCensusStageMetadataSchema = z.array(DyadCensusMetadataItemSchema);
 
 // NetworkComposer persists the participant's live automatic-layout choice here
-// (the schema's behaviours.automaticLayout.defaultEnabled only sets the initial
-// value). Storing it in metadata keeps the toggle sticky across navigation.
+// (the schema's behaviours.automaticLayout boolean only sets the initial value).
+// Storing it in metadata keeps the toggle sticky across navigation.
 const NetworkComposerStageMetadataSchema = z.object({
   automaticLayout: z.boolean(),
 });

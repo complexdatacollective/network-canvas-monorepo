@@ -8,18 +8,8 @@ const behaviorLabel = (behaviourValue: unknown, behaviourKey: string) => {
   switch (behaviourKey) {
     case 'allowRepositioning':
       return { label: 'Repositioning enabled', value: behaviourValue };
-    case 'automaticLayout': {
-      // Sociogram fixes the mode via `enabled`; NetworkComposer only sets a
-      // participant-toggleable default via `defaultEnabled`.
-      const layout = behaviourValue as {
-        enabled?: boolean;
-        defaultEnabled?: boolean;
-      };
-      return {
-        label: 'Automatic layout enabled',
-        value: layout?.enabled ?? layout?.defaultEnabled,
-      };
-    }
+    case 'automaticLayout':
+      return { label: 'Automatic layout enabled', value: behaviourValue };
     case 'minNodes':
       return { label: 'Minimum nodes on stage', value: behaviourValue };
     case 'maxNodes':

@@ -292,14 +292,13 @@ describe('SyntheticInterview', () => {
     it('creates Sociogram with automatic layout', () => {
       const si = new SyntheticInterview();
       si.addStage('Sociogram', {
-        behaviours: { automaticLayout: { enabled: true } },
+        behaviours: { automaticLayout: true },
       });
 
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
       const behaviours = stageConfig.behaviours as Record<string, unknown>;
-      const autoLayout = behaviours.automaticLayout as Record<string, unknown>;
-      expect(autoLayout.enabled).toBe(true);
+      expect(behaviours.automaticLayout).toBe(true);
     });
   });
 

@@ -129,14 +129,14 @@ export default function Canvas({
   return (
     <div
       ref={mergedRef}
-      className="relative size-full overflow-hidden"
+      className="relative size-full"
       role="application"
       aria-label={dropProps['aria-label']}
       data-zone-id={dropProps['data-zone-id']}
       tabIndex={dropProps.tabIndex}
     >
       {/* Background layer */}
-      <div className="absolute inset-0 flex items-center justify-center">
+      <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
         {background}
       </div>
 

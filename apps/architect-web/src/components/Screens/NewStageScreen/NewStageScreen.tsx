@@ -296,7 +296,7 @@ const NewStageScreen = ({
           render={<Button color="platinum">Cancel</Button>}
         />
       }
-      className="h-[80%]"
+      className="h-[calc(100vh-4rem)] max-h-[64rem] w-[calc(100vw-4rem)] max-w-[100rem]"
     >
       <InterfaceList
         items={filteredInterfaces}

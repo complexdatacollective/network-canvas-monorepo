@@ -30,12 +30,12 @@ export const networkComposerStage = baseStageSchema.extend({
   behaviours: z
     .strictObject({
       // Whether automatic (force-directed) layout is ON when the stage first
-      // opens. Unlike the Sociogram, this is NOT a fixed mode: participants turn
-      // automatic layout on and off during the interview via a toggle, and that
-      // live choice is persisted in stage metadata. This only sets the default.
-      automaticLayout: z
-        .strictObject({ defaultEnabled: z.boolean() })
-        .optional(),
+      // opens. A flat boolean, matching the shared canvas behaviours used by the
+      // Sociogram and Narrative. Unlike those, NetworkComposer treats this only
+      // as the DEFAULT: participants turn automatic layout on and off during the
+      // interview via a toggle, and that live choice is persisted in stage
+      // metadata (see NetworkComposerStageMetadataSchema).
+      automaticLayout: z.boolean().optional(),
     })
     .optional(),
   // Each entry is a drawable edge type. `subject` carries the edge type so an
