@@ -74,7 +74,7 @@ function makeStore(initialNodes: NcNode[] = [], initialEdges: NcEdge[] = []) {
 
 function makeWrapper(store: ReturnType<typeof makeStore>) {
   return function Wrapper({ children }: { children: ReactNode }) {
-    return createElement(Provider, { store }, children);
+    return createElement(Provider, { store, children });
   };
 }
 

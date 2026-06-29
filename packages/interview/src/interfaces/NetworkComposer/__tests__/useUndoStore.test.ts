@@ -4,8 +4,12 @@ import { createUndoStore } from '../useUndoStore';
 
 const cmd = (log: string[], name: string) => ({
   label: name,
-  undo: () => log.push(`undo:${name}`),
-  redo: () => log.push(`redo:${name}`),
+  undo: () => {
+    log.push(`undo:${name}`);
+  },
+  redo: () => {
+    log.push(`redo:${name}`);
+  },
 });
 
 describe('createUndoStore', () => {
