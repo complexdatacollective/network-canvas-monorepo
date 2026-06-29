@@ -52,6 +52,16 @@ type ComposerActions = {
     position: Position,
     previous: Position,
   ) => Promise<void>;
+  toggleGroupMembership: (
+    id: string,
+    variable: string,
+    value: string,
+  ) => Promise<void>;
+  addGroupMembership: (
+    ids: string[],
+    variable: string,
+    value: string,
+  ) => Promise<void>;
 };
 
 export function useComposerActions({
@@ -496,6 +506,143 @@ export function useComposerActions({
     });
   }
 
+  // Categorical group membership is stored as an array of string values (a node
+  // can belong to several groups of the same variable). Normalise any prior
+  // value (array / scalar / null) into that shape.
+  function normalizeGroupValues(raw: unknown): string[] {
+    if (raw == null) return [];
+    return (Array.isArray(raw) ? raw : [raw])
+      .filter(
+        (value): value is string | number =>
+          typeof value === 'string' || typeof value === 'number',
+      )
+      .map(String);
+  }
+
+  function readGroupValues(id: string, variable: string): string[] {
+    let values: string[] = [];
+    dispatch((_, getState) => {
+      const { session: sessionState } = getState() as {
+        session: { network: { nodes: NcNode[] } };
+      };
+      const node = sessionState.network.nodes.find(
+        (n) => n[entityPrimaryKeyProperty] === id,
+      );
+      if (node) {
+        values = normalizeGroupValues(node[entityAttributesProperty][variable]);
+      }
+    });
+    return values;
+  }
+
+  async function writeGroupValues(
+    id: string,
+    variable: string,
+    prior: string[],
+    next: string[],
+    label: string,
+  ): Promise<void> {
+    await dispatch(
+      updateNode({
+        nodeId: id,
+        newAttributeData: { [variable]: next },
+        currentStep,
+      }),
+    ).unwrap();
+
+    void undoStore.getState().push({
+      label,
+      undo: async () => {
+        await dispatch(
+          updateNode({
+            nodeId: id,
+            newAttributeData: { [variable]: prior },
+            currentStep,
+          }),
+        ).unwrap();
+      },
+      redo: async () => {
+        await dispatch(
+          updateNode({
+            nodeId: id,
+            newAttributeData: { [variable]: next },
+            currentStep,
+          }),
+        ).unwrap();
+      },
+    });
+  }
+
+  async function toggleGroupMembership(
+    id: string,
+    variable: string,
+    value: string,
+  ): Promise<void> {
+    const prior = readGroupValues(id, variable);
+    const next = prior.includes(value)
+      ? prior.filter((v) => v !== value)
+      : [...prior, value];
+    await writeGroupValues(
+      id,
+      variable,
+      prior,
+      next,
+      `Toggle group membership`,
+    );
+  }
+
+  async function addGroupMembership(
+    ids: string[],
+    variable: string,
+    value: string,
+  ): Promise<void> {
+    // Add the value to every node that doesn't already have it, as one undo step.
+    const changes: { id: string; prior: string[]; next: string[] }[] = [];
+    for (const id of ids) {
+      const prior = readGroupValues(id, variable);
+      if (prior.includes(value)) continue;
+      changes.push({ id, prior, next: [...prior, value] });
+    }
+
+    if (changes.length === 0) return;
+
+    for (const { id, next } of changes) {
+      await dispatch(
+        updateNode({
+          nodeId: id,
+          newAttributeData: { [variable]: next },
+          currentStep,
+        }),
+      ).unwrap();
+    }
+
+    void undoStore.getState().push({
+      label: `Add ${changes.length} to group`,
+      undo: async () => {
+        for (const { id, prior } of changes) {
+          await dispatch(
+            updateNode({
+              nodeId: id,
+              newAttributeData: { [variable]: prior },
+              currentStep,
+            }),
+          ).unwrap();
+        }
+      },
+      redo: async () => {
+        for (const { id, next } of changes) {
+          await dispatch(
+            updateNode({
+              nodeId: id,
+              newAttributeData: { [variable]: next },
+              currentStep,
+            }),
+          ).unwrap();
+        }
+      },
+    });
+  }
+
   return {
     createNodeAt,
     connect,
@@ -506,5 +653,7 @@ export function useComposerActions({
     updateNodeAttributes,
     updateEdgeAttributes,
     repositionNode,
+    toggleGroupMembership,
+    addGroupMembership,
   };
 }

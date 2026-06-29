@@ -207,3 +207,39 @@ const buildManyAttributes = () => {
 export const ManyAttributes: Story = {
   render: () => <NetworkComposerStoryWrapper buildFn={buildManyAttributes} />,
 };
+
+const buildConvexHulls = () => {
+  const si = new SyntheticInterview(8);
+  const nt = si.addNodeType({ name: 'Person' });
+  const quickAddVar = nt.addVariable({ type: 'text', name: 'name' });
+  const layoutVar = nt.addVariable({ type: 'layout', name: 'Composer Layout' });
+  const community = nt.addVariable({
+    type: 'categorical',
+    name: 'Community',
+    options: [
+      { value: 'school', label: 'School' },
+      { value: 'work', label: 'Work' },
+      { value: 'family', label: 'Family' },
+    ],
+  });
+  const friendship = si.addEdgeType({ name: 'Friendship' });
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  const stage = si.addStage('NetworkComposer', {
+    quickAdd: quickAddVar.id,
+    layoutVariable: layoutVar.id,
+    initialNodes: { count: 8 },
+    convexHulls: [community.id],
+  });
+  stage.addEdgeType({ type: friendship.id });
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+/**
+ * Configures `convexHulls` with a categorical "Community" variable. Use the
+ * Groups tool to pick a value, then tap nodes to toggle their membership; the
+ * active variable's hulls are drawn behind the network.
+ */
+export const ConvexHulls: Story = {
+  render: () => <NetworkComposerStoryWrapper buildFn={buildConvexHulls} />,
+};

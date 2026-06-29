@@ -20,6 +20,12 @@ export const networkComposerStage = baseStageSchema.extend({
   layoutVariable: entityAttributeReference({ subject: 'stageSubject' }),
   // Attribute form shown in the inspector when a node is selected.
   nodeForm: TitlelessFormSchema.optional(),
+  // Categorical variables whose values are drawn as convex hulls. Participants
+  // pick one variable at a time via the Groups tool and toggle a node's
+  // membership in a group (a value of that variable).
+  convexHulls: z
+    .array(entityAttributeReference({ subject: 'stageSubject' }))
+    .optional(),
   background: z
     .strictObject({
       image: z.string().optional(),

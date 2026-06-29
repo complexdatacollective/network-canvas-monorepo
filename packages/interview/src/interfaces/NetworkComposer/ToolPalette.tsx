@@ -5,9 +5,11 @@ import {
   MousePointer2 as SelectIcon,
   Plus as AddNodeIcon,
   Redo2 as RedoIcon,
+  Shapes as GroupsIcon,
   Sparkles as AutoLayoutIcon,
   Undo2 as UndoIcon,
 } from 'lucide-react';
+import { useState } from 'react';
 
 import {
   SegmentedToolbar,
@@ -15,6 +17,10 @@ import {
 } from '@codaco/fresco-ui/SegmentedToolbar';
 
 import AddNodeInput from './AddNodeInput';
+import GroupPicker, {
+  type ActiveGroup,
+  type GroupVariable,
+} from './GroupPicker';
 import { type ComposerStoreApi, useComposerStore } from './useComposerStore';
 import { type UndoStoreApi, useUndoStore } from './useUndoStore';
 
@@ -31,6 +37,10 @@ type ToolPaletteProps = {
   /** Protocol label for the node entity, shown in the add-node field. */
   nodeLabel: string;
   onAddNode: (name: string) => void;
+  /** Categorical variables configured for convex-hull groups (empty = no tool). */
+  groupVariables: GroupVariable[];
+  activeGroup: ActiveGroup | null;
+  onSelectGroup: (variable: string, value: string) => void;
   automaticLayout: boolean;
   onToggleAutomaticLayout: (next: boolean) => void;
 };
@@ -57,12 +67,18 @@ export default function ToolPalette({
   edges,
   nodeLabel,
   onAddNode,
+  groupVariables,
+  activeGroup,
+  onSelectGroup,
   automaticLayout,
   onToggleAutomaticLayout,
 }: ToolPaletteProps) {
   const activeTool = useComposerStore(composerStore, (s) => s.activeTool);
   const canUndo = useUndoStore(undoStore, (s) => s.past.length > 0);
   const canRedo = useUndoStore(undoStore, (s) => s.future.length > 0);
+  // The Groups popover opens on click and closes once a group is picked, so its
+  // open state is independent of whether the group tool is active.
+  const [groupsOpen, setGroupsOpen] = useState(false);
 
   const { setActiveTool } = composerStore.getState();
 
@@ -112,6 +128,31 @@ export default function ToolPalette({
       options: edges.map(({ edgeType, label }) => ({ value: edgeType, label })),
       onSelect: (edgeType) => setActiveTool({ kind: 'edge', edgeType }),
     },
+    // A single Groups button opens a popover to pick the active categorical
+    // variable + value; tapping nodes then toggles their convex-hull membership.
+    ...(groupVariables.length > 0
+      ? [
+          {
+            type: 'popover' as const,
+            id: 'groups',
+            label: 'Groups',
+            icon: <GroupsIcon />,
+            pressed: activeTool.kind === 'group',
+            open: groupsOpen,
+            onOpenChange: setGroupsOpen,
+            children: (
+              <GroupPicker
+                variables={groupVariables}
+                active={activeGroup}
+                onSelect={(variable, value) => {
+                  onSelectGroup(variable, value);
+                  setGroupsOpen(false);
+                }}
+              />
+            ),
+          },
+        ]
+      : []),
     { type: 'separator', id: 'sep-layout' },
     {
       type: 'toggle',

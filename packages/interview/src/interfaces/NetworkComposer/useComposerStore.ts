@@ -4,7 +4,10 @@ import { subscribeWithSelector } from 'zustand/middleware';
 export type ComposerTool =
   | { kind: 'select' }
   | { kind: 'addNode' }
-  | { kind: 'edge'; edgeType: string };
+  | { kind: 'edge'; edgeType: string }
+  // Convex-hull group membership: one categorical `variable` is active, and
+  // tapping a node toggles its membership in `value` (a value of that variable).
+  | { kind: 'group'; variable: string; value: string };
 
 type Point = { x: number; y: number };
 

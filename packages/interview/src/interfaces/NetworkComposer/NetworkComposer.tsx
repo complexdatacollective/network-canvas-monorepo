@@ -13,6 +13,7 @@ import {
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
+import ConvexHullLayer from '~/canvas/ConvexHullLayer';
 import { useAutoLayout } from '~/canvas/useAutoLayout';
 import { createCanvasStore } from '~/canvas/useCanvasStore';
 import ConcentricCircles from '~/components/ConcentricCircles';
@@ -33,6 +34,7 @@ import type { StageProps } from '~/types';
 import ComposerCanvas, { type NodeTapModifiers } from './ComposerCanvas';
 import ComposerDrawer from './ComposerDrawer';
 import { nextGridPosition } from './gridPlacement';
+import type { ActiveGroup, GroupVariable } from './GroupPicker';
 import Inspector from './Inspector';
 import ToolPalette from './ToolPalette';
 import { useComposerActions } from './useComposerActions';
@@ -114,6 +116,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     composerStore,
     (s) => s.selectedEdgeId,
   );
+  const currentTool = useComposerStore(composerStore, (s) => s.activeTool);
 
   // Sync node positions from Redux into the canvas store.
   // In automatic mode, only initialise new nodes — the simulation owns positions.
@@ -227,6 +230,16 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         } else {
           selectOnlyNode(tappedId);
         }
+        return;
+      }
+
+      if (activeTool.kind === 'group') {
+        // Toggle this node's membership in the active group (a categorical value).
+        void actions.toggleGroupMembership(
+          tappedId,
+          activeTool.variable,
+          activeTool.value,
+        );
         return;
       }
 
@@ -360,6 +373,58 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     };
   });
 
+  const handleSelectGroup = useCallback(
+    (variable: string, value: string) => {
+      composerStore
+        .getState()
+        .setActiveTool({ kind: 'group', variable, value });
+    },
+    [composerStore],
+  );
+
+  // Categorical variables configured as convex-hull groups, with their options.
+  const nodeVariables = codebook?.node?.[stage.subject.type]?.variables ?? {};
+  const groupVariables: GroupVariable[] = [];
+  for (const variableId of stage.convexHulls ?? []) {
+    const variable = nodeVariables[variableId];
+    const options =
+      variable && 'options' in variable ? variable.options : undefined;
+    if (!variable || !options) continue;
+    groupVariables.push({
+      id: variableId,
+      label: variable.name ?? variableId,
+      options: options.map((option) => ({
+        value: String(option.value),
+        label: option.label ?? String(option.value),
+      })),
+    });
+  }
+
+  const activeGroup: ActiveGroup | null =
+    currentTool.kind === 'group'
+      ? { variable: currentTool.variable, value: currentTool.value }
+      : null;
+  const activeGroupVariable =
+    activeGroup !== null
+      ? groupVariables.find((variable) => variable.id === activeGroup.variable)
+      : undefined;
+  const activeGroupLabel =
+    activeGroup !== null
+      ? (activeGroupVariable?.options.find(
+          (option) => option.value === activeGroup.value,
+        )?.label ?? activeGroup.value)
+      : '';
+
+  const hulls =
+    activeGroup !== null && activeGroupVariable !== undefined ? (
+      <ConvexHullLayer
+        store={canvasStore}
+        nodes={nodes}
+        groupVariable={activeGroup.variable}
+        categoricalOptions={activeGroupVariable.options}
+      />
+    ) : null;
+
   const concentricCircles = get(stage, 'background.concentricCircles');
   const skewedTowardCenter = get(stage, 'background.skewedTowardCenter');
 
@@ -451,23 +516,42 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         edges={edgeEntries}
         nodeLabel={nodeLabel}
         onAddNode={handleAddNode}
+        groupVariables={groupVariables}
+        activeGroup={activeGroup}
+        onSelectGroup={handleSelectGroup}
         automaticLayout={automaticLayout}
         onToggleAutomaticLayout={handleToggleAutomaticLayout}
       />
       {selectedNodeIds.size >= 2 && (
         <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2">
-          {edgeEntries.map(({ edgeType, label }) => (
+          {activeGroup !== null ? (
             <button
-              key={edgeType}
               type="button"
               className="bg-background border-primary rounded border px-3 py-1.5 text-sm font-medium shadow"
               onClick={() => {
-                void actions.connectAll([...selectedNodeIds], edgeType);
+                void actions.addGroupMembership(
+                  [...selectedNodeIds],
+                  activeGroup.variable,
+                  activeGroup.value,
+                );
               }}
             >
-              {`Connect all with ${label}`}
+              {`Add all to ${activeGroupLabel}`}
             </button>
-          ))}
+          ) : (
+            edgeEntries.map(({ edgeType, label }) => (
+              <button
+                key={edgeType}
+                type="button"
+                className="bg-background border-primary rounded border px-3 py-1.5 text-sm font-medium shadow"
+                onClick={() => {
+                  void actions.connectAll([...selectedNodeIds], edgeType);
+                }}
+              >
+                {`Connect all with ${label}`}
+              </button>
+            ))
+          )}
         </div>
       )}
       <ComposerCanvas
@@ -476,6 +560,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         nodes={nodes}
         edges={edges}
         background={background}
+        hulls={hulls}
         simulation={simulationHandlers}
         onBackgroundTap={handleBackgroundTap}
         onNodeTap={(nodeId, modifiers) => {

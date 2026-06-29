@@ -268,6 +268,7 @@ export type StageEntry = {
   layoutVariable?: string;
   nodeForm?: { fields: NetworkComposerFormFieldEntry[] };
   networkComposerEdges?: NetworkComposerEdgeEntry[];
+  convexHulls?: string[];
 };
 
 export type NodeEntry = {
@@ -394,6 +395,7 @@ export type AddStageInput = {
   // NetworkComposer (quickAdd above is shared with NameGeneratorQuickAdd)
   layoutVariable?: string;
   nodeForm?: { fields: FormFieldInput[] };
+  convexHulls?: string[];
 };
 
 export type AddNetworkComposerEdgeInput = {

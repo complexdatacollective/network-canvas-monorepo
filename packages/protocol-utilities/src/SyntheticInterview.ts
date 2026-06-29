@@ -630,6 +630,10 @@ export class SyntheticInterview {
         };
       }
 
+      if (opts?.convexHulls) {
+        entry.convexHulls = opts.convexHulls;
+      }
+
       entry.networkComposerEdges = [];
     }
 
@@ -1674,6 +1678,7 @@ export class SyntheticInterview {
     if (stage.type === 'NetworkComposer') {
       if (stage.layoutVariable) config.layoutVariable = stage.layoutVariable;
       if (stage.nodeForm) config.nodeForm = stage.nodeForm;
+      if (stage.convexHulls) config.convexHulls = stage.convexHulls;
       if (stage.networkComposerEdges) {
         config.edges = stage.networkComposerEdges;
       }

@@ -17,7 +17,8 @@ with undo/redo and lasso/clique gestures).
   `superRefine` checks (at least one edge type; no duplicate edge subject types).
   Automatic layout uses the shared flat `behaviours.automaticLayout` boolean (as
   the Sociogram and Narrative do); for NetworkComposer it is only the starting
-  default.
+  default. An optional `convexHulls` array names categorical node variables whose
+  values are drawn as convex-hull groups.
 - `@codaco/interview`: the `NetworkComposer` runtime interface, reusing the shared
   canvas, edge layer, and force-directed auto-layout engine. Nodes are added by
   name from a field in the tool palette and laid out on a grid; in edge mode the
@@ -25,7 +26,10 @@ with undo/redo and lasso/clique gestures).
   type's colour. Selecting a node or edge opens a resizable, backdrop-less
   right-hand drawer that leaves the canvas interactive; it edits the entity's
   attribute form (saving valid edits automatically, with no Save button) or shows
-  an empty state when there is nothing to edit. Automatic layout is an interview-time
+  an empty state when there is nothing to edit. A Groups tool draws convex hulls
+  for a configured categorical variable (reusing the Narrative hull layer): pick a
+  variable/value in its popover and tap nodes to toggle membership, or "add all"
+  to a group from a lasso selection. Automatic layout is an interview-time
   toggle whose live value is persisted in stage metadata, so the participant's
   choice sticks across navigation; Architect only sets its default.
 - `@codaco/shared-consts`: a `NetworkComposer` stage-metadata shape storing the

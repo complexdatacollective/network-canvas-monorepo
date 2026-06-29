@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Background,
   ComposerAutomaticLayout,
+  ComposerConvexHulls,
   ComposerEdges,
   ComposerLayoutVariable,
   ComposerNodeForm,
@@ -23,6 +24,7 @@ describe('NetworkComposer registry', () => {
       QuickAdd,
       ComposerLayoutVariable,
       ComposerNodeForm,
+      ComposerConvexHulls,
       ComposerEdges,
       Background,
       ComposerAutomaticLayout,

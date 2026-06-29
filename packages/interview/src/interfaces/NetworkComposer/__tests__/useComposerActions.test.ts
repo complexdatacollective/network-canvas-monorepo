@@ -20,6 +20,7 @@ import { createUndoStore } from '../useUndoStore';
 // Variable IDs used in the codebook
 const QUICK_ADD_VAR = 'var-quick-add';
 const LAYOUT_VAR = 'var-layout';
+const GROUP_VAR = 'var-group';
 const NODE_TYPE = 'person';
 const EDGE_TYPE = 'knows';
 
@@ -32,6 +33,14 @@ const codebook = {
       variables: {
         [QUICK_ADD_VAR]: { name: 'name', type: 'text' },
         [LAYOUT_VAR]: { name: 'position', type: 'layout' },
+        [GROUP_VAR]: {
+          name: 'Group',
+          type: 'categorical',
+          options: [
+            { value: 'a', label: 'A' },
+            { value: 'b', label: 'B' },
+          ],
+        },
       },
     },
   },
@@ -599,5 +608,123 @@ describe('useComposerActions', () => {
       x: 0.8,
       y: 0.8,
     });
+  });
+
+  // toggleGroupMembership adds the value when absent and removes it when
+  // present; undo after the first toggle restores the prior membership.
+  it('toggleGroupMembership adds then removes the value; undo restores prior membership', async () => {
+    const nodeId = 'node-toggle';
+    const store = makeStore([
+      {
+        [entityPrimaryKeyProperty]: nodeId,
+        type: NODE_TYPE,
+        [entityAttributesProperty]: {},
+      } as NcNode,
+    ]);
+    const undoStore = createUndoStore();
+
+    const { result } = renderHook(
+      () =>
+        useComposerActions({
+          subjectType: NODE_TYPE,
+          quickAdd: QUICK_ADD_VAR,
+          layoutVariable: LAYOUT_VAR,
+          currentStep: 0,
+          undoStore,
+          dispatch: store.dispatch as Parameters<
+            typeof useComposerActions
+          >[0]['dispatch'],
+        }),
+      { wrapper: makeWrapper(store) },
+    );
+
+    // First toggle: no prior value, so 'a' is added.
+    await act(async () => {
+      await result.current.toggleGroupMembership(nodeId, GROUP_VAR, 'a');
+    });
+
+    const afterAdd = store.getState().session.network.nodes[0];
+    if (!afterAdd) throw new Error('expected the node to still exist');
+    expect(afterAdd[entityAttributesProperty][GROUP_VAR]).toEqual(['a']);
+
+    // Second toggle: 'a' present, so it is removed.
+    await act(async () => {
+      await result.current.toggleGroupMembership(nodeId, GROUP_VAR, 'a');
+    });
+
+    const afterRemove = store.getState().session.network.nodes[0];
+    if (!afterRemove) throw new Error('expected the node to still exist');
+    expect(afterRemove[entityAttributesProperty][GROUP_VAR]).toEqual([]);
+
+    // Undo reverts the removal, restoring the prior ['a'] membership.
+    await act(async () => {
+      await undoStore.getState().undo();
+    });
+
+    const afterUndo = store.getState().session.network.nodes[0];
+    if (!afterUndo) throw new Error('expected the node to still exist');
+    expect(afterUndo[entityAttributesProperty][GROUP_VAR]).toEqual(['a']);
+  });
+
+  // addGroupMembership applies a value to many nodes as one undo step, skipping
+  // any node that already has it; a single undo reverts all the additions.
+  it('addGroupMembership adds the value to nodes lacking it, skips one that has it; single undo reverts', async () => {
+    const store = makeStore([
+      {
+        [entityPrimaryKeyProperty]: 'a',
+        type: NODE_TYPE,
+        [entityAttributesProperty]: {},
+      } as NcNode,
+      {
+        [entityPrimaryKeyProperty]: 'b',
+        type: NODE_TYPE,
+        [entityAttributesProperty]: { [GROUP_VAR]: ['a'] },
+      } as NcNode,
+      {
+        [entityPrimaryKeyProperty]: 'c',
+        type: NODE_TYPE,
+        [entityAttributesProperty]: {},
+      } as NcNode,
+    ]);
+    const undoStore = createUndoStore();
+
+    const { result } = renderHook(
+      () =>
+        useComposerActions({
+          subjectType: NODE_TYPE,
+          quickAdd: QUICK_ADD_VAR,
+          layoutVariable: LAYOUT_VAR,
+          currentStep: 0,
+          undoStore,
+          dispatch: store.dispatch as Parameters<
+            typeof useComposerActions
+          >[0]['dispatch'],
+        }),
+      { wrapper: makeWrapper(store) },
+    );
+
+    await act(async () => {
+      await result.current.addGroupMembership(['a', 'b', 'c'], GROUP_VAR, 'a');
+    });
+
+    const byId = (id: string) =>
+      store
+        .getState()
+        .session.network.nodes.find((n) => n[entityPrimaryKeyProperty] === id);
+
+    // Nodes a and c lacked the value, so it is added; b already had it.
+    expect(byId('a')![entityAttributesProperty][GROUP_VAR]).toEqual(['a']);
+    expect(byId('b')![entityAttributesProperty][GROUP_VAR]).toEqual(['a']);
+    expect(byId('c')![entityAttributesProperty][GROUP_VAR]).toEqual(['a']);
+
+    // A single undo reverts the additions on a and c back to no membership,
+    // while b (which was skipped) is untouched.
+    await act(async () => {
+      await undoStore.getState().undo();
+    });
+
+    expect(byId('a')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
+    expect(byId('b')![entityAttributesProperty][GROUP_VAR]).toEqual(['a']);
+    expect(byId('c')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
   });
 });

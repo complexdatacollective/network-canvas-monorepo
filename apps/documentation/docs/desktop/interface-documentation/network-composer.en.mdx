@@ -22,11 +22,12 @@ The Interface presents a single canvas with a floating tool palette. Each tool s
 - **Add Node** drops a new alter wherever you tap. A label field appears immediately so you can name it, and the tool stays active so you can add several in a row.
 - **One tool per edge type** draws relationships. Activate an edge type, then tap one alter and then another to connect them; tapping the same pair again removes that tie.
 - **Auto-layout** is a switch that turns a force-directed arrangement of the network on or off at any point during the interview. Its starting state is a default you set in Architect — unlike the Sociogram, the mode is not fixed at design time — and whichever way it is switched, that choice is remembered for the stage.
+- **Groups** shades the alters that share a value of a categorical variable as a coloured convex hull behind them, making clusters such as "household" or "friendship group" easy to see. You pick one variable at a time, then tap an alter to toggle its membership in a group (a value of that variable); when several alters are lasso-selected, an "add all" action assigns the whole selection at once. Which variables are offered here is set in Architect.
 - **Undo / Redo** reverse and replay any change — adding or removing alters and ties, editing attributes, and repositioning — and are also available with the usual keyboard shortcuts.
 
 To capture groups quickly, you can select several alters at once — by shift-clicking them, or by drawing a freehand lasso around them — and then connect every pair among them with a single action. The same multi-selection can also be moved or deleted together.
 
-The forms shown in the inspector are configured in Architect: one form for the alters, and an optional form for each edge type. The alter label, the variable that stores each alter's position, and the available edge types are all set up there as well.
+The forms shown in the inspector are configured in Architect: one form for the alters, and an optional form for each edge type. The alter label, the variable that stores each alter's position, the available edge types, and the categorical node variables shown as convex hulls in the Groups tool are all set up there as well.
 
 ### Best Practices
 

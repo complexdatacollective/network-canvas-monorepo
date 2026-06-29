@@ -24,6 +24,8 @@ type ComposerCanvasProps = {
   nodes: NcNode[];
   edges: NcEdge[];
   background: ReactNode;
+  /** Convex-hull layer, drawn behind edges and nodes. */
+  hulls?: ReactNode;
   allowRepositioning?: boolean;
   simulation?: {
     moveNode: (nodeId: string, position: Position) => void;
@@ -60,6 +62,7 @@ export default function ComposerCanvas({
   nodes,
   edges,
   background,
+  hulls,
   allowRepositioning = true,
   simulation = null,
   onBackgroundTap,
@@ -133,7 +136,10 @@ export default function ComposerCanvas({
 
       const { activeTool, startLasso, addLassoPoint } =
         composerStore.getState();
-      if (activeTool.kind !== 'select') return;
+      // Lasso selection is available in select mode and in group mode (where a
+      // dragged lasso selects nodes to "add all" to the active group, while a
+      // tap toggles a single node's membership).
+      if (activeTool.kind !== 'select' && activeTool.kind !== 'group') return;
 
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -220,6 +226,7 @@ export default function ComposerCanvas({
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
         {background}
       </div>
+      {hulls}
       <EdgeLayer edges={edges} store={canvasStore} onEdgeSelect={onEdgeTap} />
       {nodes.map((node) => {
         const nodeId = node[entityPrimaryKeyProperty];

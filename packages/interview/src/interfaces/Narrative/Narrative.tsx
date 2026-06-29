@@ -10,6 +10,7 @@ import {
 } from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
 import Canvas from '~/canvas/Canvas';
+import ConvexHullLayer from '~/canvas/ConvexHullLayer';
 import { useAutoLayout } from '~/canvas/useAutoLayout';
 import { createCanvasStore } from '~/canvas/useCanvasStore';
 import ConcentricCircles from '~/components/ConcentricCircles';
@@ -24,7 +25,6 @@ import type { StageProps } from '~/types';
 
 import Annotations, { type AnnotationsHandle } from './Annotations';
 import BehavioursPanel from './BehavioursPanel';
-import ConvexHullLayer from './ConvexHullLayer';
 import PresetSwitcher from './PresetSwitcher';
 
 type NarrativeProps = StageProps<'Narrative'>;
