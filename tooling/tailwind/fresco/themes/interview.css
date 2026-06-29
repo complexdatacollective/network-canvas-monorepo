@@ -85,6 +85,9 @@
     --info-contrast: oklch(var(--white));
 
     --selected: oklch(var(--white));
+    /* Readable foreground on the white selected fill. Without this the default
+       theme's value is inherited (--accent-contrast, white here) — invisible. */
+    --selected-contrast: oklch(var(--charcoal));
 
     --drag-valid: oklch(var(--slate-blue) / 0.3);
     --drag-over: oklch(var(--slate-blue) / 0.8);

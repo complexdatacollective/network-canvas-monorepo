@@ -118,9 +118,10 @@ function isLabelVisible(content: SegmentContent): boolean {
   return content.showLabel ?? !content.icon;
 }
 
-// Pressed-state highlight applied to toggle segments via Base UI's data attribute.
+// Pressed-state highlight for toggle segments, via Base UI's data attribute.
+// `!important` so the selected colours win over Button's text-variant hover.
 const pressedClasses =
-  'data-pressed:bg-selected data-pressed:text-selected-contrast';
+  'data-pressed:bg-selected! data-pressed:text-selected-contrast!';
 
 /** A toolbar segment built on the shared Button component, styled flat + round. */
 function segmentButton(
