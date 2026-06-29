@@ -1,7 +1,11 @@
 import Node from '@codaco/fresco-ui/Node';
 import type { NodeColorSequence, NodeShape } from '@codaco/fresco-ui/Node';
 
-import type { Status } from '../genetics/status';
+import {
+  AT_RISK_HOMOZYGOUS_LABEL,
+  STATUS_LABELS,
+  type Status,
+} from '../genetics/status';
 import { StatusMarker } from './StatusMarker';
 import { stickerPositions } from './stickerPositions';
 
@@ -24,24 +28,14 @@ const STICKER_SIZE_PX = 22;
 /** Half-sticker offset so the marker is centred on the perimeter point. */
 const STICKER_HALF = STICKER_SIZE_PX / 2;
 
-type StatusStyleInfo = {
-  className: string;
-  label: string;
+const STATUS_CLASS: Record<Status, string> = {
+  affected: 'sticker-solid',
+  obligateAffected: 'sticker-double-ring',
+  obligateCarrier: 'sticker-ring-dot',
+  atRiskAffected: 'sticker-half',
+  atRiskCarrier: 'sticker-dot',
+  unknown: 'sticker-question',
 };
-
-const STATUS_STYLE: Record<Status, StatusStyleInfo> = {
-  affected: { className: 'sticker-solid', label: 'Affected' },
-  obligateAffected: {
-    className: 'sticker-double-ring',
-    label: 'Obligate affected',
-  },
-  obligateCarrier: { className: 'sticker-ring-dot', label: 'Obligate carrier' },
-  atRiskAffected: { className: 'sticker-half', label: 'At risk (affected)' },
-  atRiskCarrier: { className: 'sticker-dot', label: 'At risk (carrier)' },
-  unknown: { className: 'sticker-question', label: 'Status unknown' },
-};
-
-const AT_RISK_LABEL = 'At risk of being affected (homozygous)';
 
 /**
  * Small upward-pointing triangle placed at the bottom-right corner of its
@@ -63,7 +57,7 @@ function AtRiskHomozygousMarker({
 }) {
   return (
     <span
-      aria-label={AT_RISK_LABEL}
+      aria-label={AT_RISK_HOMOZYGOUS_LABEL}
       data-atrisk-homozygous-marker
       className="pointer-events-none absolute flex items-center justify-center"
       style={{
@@ -88,7 +82,8 @@ type StickerMarkerProps = {
 };
 
 function StickerMarker({ sticker, x, y, onSelectDisease }: StickerMarkerProps) {
-  const { className, label } = STATUS_STYLE[sticker.status];
+  const className = STATUS_CLASS[sticker.status];
+  const label = STATUS_LABELS[sticker.status];
 
   const handlePointerClick =
     onSelectDisease !== undefined

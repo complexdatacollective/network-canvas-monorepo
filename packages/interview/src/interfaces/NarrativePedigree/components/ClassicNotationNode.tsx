@@ -4,7 +4,7 @@ import Node from '@codaco/fresco-ui/Node';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import type { NcNode } from '@codaco/shared-consts';
 
-import type { Status } from '../genetics/status';
+import { AT_RISK_HOMOZYGOUS_LABEL, type Status } from '../genetics/status';
 import { StatusMarker } from './StatusMarker';
 
 export type ClassicDisease = {
@@ -21,8 +21,6 @@ type ClassicNotationNodeProps = {
   selected?: boolean;
 };
 
-const AT_RISK_LABEL = 'At risk of being affected (homozygous)';
-
 /**
  * Small upward-pointing triangle positioned at the bottom-right corner of the
  * node symbol. Signals that the person may be homozygous-affected for this
@@ -34,7 +32,7 @@ const AT_RISK_LABEL = 'At risk of being affected (homozygous)';
 function AtRiskHomozygousNotation({ color }: { color: string }) {
   return (
     <span
-      aria-label={AT_RISK_LABEL}
+      aria-label={AT_RISK_HOMOZYGOUS_LABEL}
       data-atrisk-homozygous-notation
       className="pointer-events-none absolute right-0 bottom-0 flex items-center justify-center"
       style={{ width: 10, height: 10 }}

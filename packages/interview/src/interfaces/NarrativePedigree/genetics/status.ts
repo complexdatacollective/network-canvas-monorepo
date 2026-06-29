@@ -9,6 +9,23 @@ export type Status =
   | 'atRiskCarrier'
   | 'unknown';
 
+// Human-readable labels for each genetic status. Single source of truth for the
+// text describing a status, shared by the (decorative) node markers and the
+// screen-reader status summary so they never drift apart.
+export const STATUS_LABELS: Record<Status, string> = {
+  affected: 'Affected',
+  obligateAffected: 'Obligate affected',
+  obligateCarrier: 'Obligate carrier',
+  atRiskAffected: 'At risk (affected)',
+  atRiskCarrier: 'At risk (carrier)',
+  unknown: 'Status unknown',
+};
+
+// Label for the secondary at-risk-homozygous marker (a person who may be
+// homozygous-affected), shown alongside their primary status.
+export const AT_RISK_HOMOZYGOUS_LABEL =
+  'At risk of being affected (homozygous)';
+
 // Lower index = higher precedence (affected is highest, unknown is lowest).
 const STATUS_PRECEDENCE: readonly Status[] = [
   'affected',

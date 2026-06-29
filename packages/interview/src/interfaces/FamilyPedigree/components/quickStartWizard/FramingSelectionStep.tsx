@@ -1,5 +1,7 @@
 'use client';
 
+import { useId } from 'react';
+
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { FramingId } from '@codaco/shared-consts';
@@ -33,14 +35,16 @@ const FRAMING_OPTIONS = [
 export function FramingSelectionStep() {
   const framing = useFamilyPedigreeStore((s) => s.framing);
   const setFraming = useFamilyPedigreeStore((s) => s.setFraming);
+  const promptId = useId();
 
   return (
     <>
-      <Paragraph>
+      <Paragraph id={promptId}>
         How would you like us to refer to the people you&apos;re biologically
         related to?
       </Paragraph>
       <RichSelectGroupField
+        aria-labelledby={promptId}
         options={FRAMING_OPTIONS}
         value={framing ?? undefined}
         onChange={(value) => {
