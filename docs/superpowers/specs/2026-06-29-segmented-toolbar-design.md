@@ -59,15 +59,31 @@ toggle/separator semantics for free.
 Config-driven. Consumers pass an `items` array of discriminated-union segments.
 
 ```ts
-type SegmentColor =
-  | 'default'
-  | 'primary'
-  | 'secondary'
-  | 'warning'
-  | 'info'
-  | 'destructive'
-  | 'success'
-  | 'accent';
+// Named theme palette colours (not semantic) — used for a button's fill/text.
+type SegmentColorName =
+  | 'barbie-pink'
+  | 'cerulean-blue'
+  | 'charcoal'
+  | 'cyber-grape'
+  | 'kiwi'
+  | 'mustard'
+  | 'navy-taupe'
+  | 'neon-carrot'
+  | 'neon-coral'
+  | 'paradise-pink'
+  | 'platinum'
+  | 'purple-pizazz'
+  | 'sea-green'
+  | 'sea-serpent'
+  | 'slate-blue'
+  | 'tomato'
+  | 'white'
+  | 'black';
+
+type SegmentColor = {
+  background: SegmentColorName;
+  foreground: SegmentColorName;
+};
 
 type SegmentContent = {
   /** Accessible name. Always used as the aria-label; rendered as visible text when showLabel. */
@@ -79,14 +95,14 @@ type SegmentContent = {
    * Default: false when an icon is present (icon-only + tooltip), true when there is no icon.
    */
   showLabel?: boolean;
-  /** Optional semantic colour applied to the segment's icon/text via a `text-*` token. @default 'default' */
-  color?: SegmentColor;
 };
 
 type ButtonSegment = {
   type: 'button';
   id: string; // stable animation key
   disabled?: boolean;
+  /** Optional named background/foreground colours from the theme palette (applied via inline `var(--color-*)`). */
+  color?: SegmentColor;
   onClick: () => void;
 } & SegmentContent;
 
@@ -161,23 +177,25 @@ type SegmentedToolbarProps = {
 
 Tokens only — no hardcoded colours, shadows, or font sizes.
 
-- **Container** is `Toolbar.Root` rendered (via its `render` prop) as a `motion.div`:
-  - `role="toolbar"`, `aria-label={label}`, `aria-orientation` and roving arrow-key focus
-    come from Base UI; `loopFocus` left at its default (`true`).
-  - Pill shape (`rounded-full`), a `Surface`-level background, `elevation-*`, token
-    padding and `gap`. Flex direction follows `orientation`.
-  - `layout` prop so the container resizes smoothly as segments are added/removed and when
-    orientation flips.
+- **Container** is a `MotionSurface` pill (its `level`/`shadow` supply the background,
+  contrast, and elevation) carrying `layout` so it resizes smoothly on add/remove and
+  orientation flips. A plain Base UI `Toolbar.Root` sits inside it (never wrapped by
+  motion/Surface, so roving focus is unaffected) and provides `role="toolbar"`,
+  `aria-label`, `aria-orientation`, and roving arrow-key focus. Pill shape (`rounded-full`)
+  and padding are layout-only classes; flex direction follows `orientation`.
 - **Button / toggle segments** render through Base UI's `render` prop so they retain the
   toolbar's roving focus, styled by a small local cva that reuses size / `focusable` /
-  spring tokens. Icon-only when `showLabel` is false; icon **and** text otherwise. The
-  toggle "on" state uses the `--selected` token with an animated fill (same idiom as
-  `ToggleButtonGroup`), and drives `aria-pressed`.
+  spring tokens, with icons scaled to the size (`[&_svg]:size-[1.25em]`). Icon-only when
+  `showLabel` is false; icon **and** text otherwise. The toggle "on" state uses the
+  `--selected` token via Base UI's `data-pressed`, and drives `aria-pressed`. A `button`
+  segment's optional `color` sets an inline `var(--color-*)` background + foreground.
 - **Group segment** is `Toggle.Group` wrapping its option toggles; `mode` selects
-  single (radio-like) vs multiple selection.
+  single (radio-like) vs multiple selection, and the group renders along the toolbar's
+  orientation (vertical groups stack).
 - **Separator** is `Toolbar.Separator` (orientation-aware).
-- **Drag handle** (only when `draggable`) is a focusable grip segment
-  (`GripVertical` / `GripHorizontal` to match orientation) at the leading edge.
+- **Drag handle** (only when `draggable`) is a focusable grip
+  (`GripVertical` / `GripHorizontal` to match orientation) at the leading edge,
+  deliberately **not** styled as a button (no fill, no hover state) — just a muted grip.
 
 ## Animation
 

@@ -13,18 +13,36 @@ import {
 } from 'motion/react';
 import * as React from 'react';
 
+import { MotionSurface } from '../layout/Surface';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
 import { cva, cx, type VariantProps } from '../utils/cva';
 
-export type SegmentColor =
-  | 'default'
-  | 'primary'
-  | 'secondary'
-  | 'warning'
-  | 'info'
-  | 'destructive'
-  | 'success'
-  | 'accent';
+/** Named theme colours (not semantic) usable for a button segment's fill/text. */
+export type SegmentColorName =
+  | 'barbie-pink'
+  | 'cerulean-blue'
+  | 'charcoal'
+  | 'cyber-grape'
+  | 'kiwi'
+  | 'mustard'
+  | 'navy-taupe'
+  | 'neon-carrot'
+  | 'neon-coral'
+  | 'paradise-pink'
+  | 'platinum'
+  | 'purple-pizazz'
+  | 'sea-green'
+  | 'sea-serpent'
+  | 'slate-blue'
+  | 'tomato'
+  | 'white'
+  | 'black';
+
+/** A named background + foreground colour pair for a button segment. */
+export type SegmentColor = {
+  background: SegmentColorName;
+  foreground: SegmentColorName;
+};
 
 export type SegmentContent = {
   /** Accessible name. Always the aria-label; rendered as visible text when showLabel. */
@@ -36,8 +54,6 @@ export type SegmentContent = {
    * Default: false when an icon is present (icon-only + tooltip), true when no icon.
    */
   showLabel?: boolean;
-  /** Optional semantic colour for the segment's icon/text. @default 'default' */
-  color?: SegmentColor;
 };
 
 export type ButtonSegment = {
@@ -45,6 +61,8 @@ export type ButtonSegment = {
   id: string;
   disabled?: boolean;
   onClick: () => void;
+  /** Optional named background/foreground colours from the theme palette. */
+  color?: SegmentColor;
 } & SegmentContent;
 
 export type ToggleSegment = {
@@ -103,11 +121,9 @@ export type SegmentedToolbarProps = {
   dragHandleLabel?: string;
 };
 
-const rootVariants = cva({
-  base: cx(
-    'flex w-fit items-center gap-1 rounded-full p-1.5',
-    'bg-surface-1 text-surface-1-contrast elevation-medium publish-colors',
-  ),
+// Layout only — the pill's surface colour, contrast, and shadow come from `Surface`.
+const rootLayoutVariants = cva({
+  base: 'flex w-fit items-center gap-1 rounded-full p-1.5',
   variants: {
     orientation: {
       horizontal: 'flex-row',
@@ -122,6 +138,7 @@ const segmentVariants = cva({
     'relative inline-flex shrink-0 cursor-pointer items-center justify-center select-none',
     'font-heading font-bold tracking-wide whitespace-nowrap text-current',
     'rounded-full border-0 bg-transparent',
+    '[&_svg]:size-[1.25em]', // icons scale with the size variant's text size
     'focusable',
     'spring-medium transition-colors',
     'hover:enabled:bg-current/10',
@@ -138,21 +155,20 @@ const segmentVariants = cva({
       true: 'aspect-square p-0',
       false: 'px-4',
     },
-    color: {
-      default: '',
-      primary: 'text-primary',
-      secondary: 'text-secondary',
-      warning: 'text-warning',
-      info: 'text-info',
-      destructive: 'text-destructive',
-      success: 'text-success',
-      accent: 'text-accent',
-    },
   },
-  defaultVariants: { size: 'md', iconOnly: false, color: 'default' },
+  defaultVariants: { size: 'md', iconOnly: false },
 });
 
 type SegmentSize = NonNullable<VariantProps<typeof segmentVariants>['size']>;
+
+/** Inline named-colour fill for a button segment, referencing theme tokens. */
+function colorStyle(color?: SegmentColor): React.CSSProperties | undefined {
+  if (!color) return undefined;
+  return {
+    backgroundColor: `var(--color-${color.background})`,
+    color: `var(--color-${color.foreground})`,
+  };
+}
 
 /** Whether a segment's text should be visible (vs icon-only). */
 function isLabelVisible(content: SegmentContent): boolean {
@@ -186,11 +202,8 @@ function ToolbarButtonSegment({
       disabled={segment.disabled}
       onClick={segment.onClick}
       aria-label={labelVisible ? undefined : segment.label}
-      className={segmentVariants({
-        size,
-        iconOnly: !labelVisible,
-        color: segment.color,
-      })}
+      style={colorStyle(segment.color)}
+      className={segmentVariants({ size, iconOnly: !labelVisible })}
     >
       <SegmentContentInner {...segment} />
     </Toolbar.Button>
@@ -225,11 +238,7 @@ function ToolbarToggleSegment({
           onPressedChange={(pressed) => segment.onPressedChange?.(pressed)}
           disabled={segment.disabled}
           aria-label={labelVisible ? undefined : segment.label}
-          className={segmentVariants({
-            size,
-            iconOnly: !labelVisible,
-            color: segment.color,
-          })}
+          className={segmentVariants({ size, iconOnly: !labelVisible })}
         />
       }
     >
@@ -251,9 +260,11 @@ function ToolbarToggleSegment({
 function ToolbarGroupSegment({
   segment,
   size,
+  orientation,
 }: {
   segment: GroupSegment;
   size: SegmentSize;
+  orientation: 'horizontal' | 'vertical';
 }) {
   return (
     <ToggleGroup
@@ -261,7 +272,11 @@ function ToolbarGroupSegment({
       value={segment.value}
       defaultValue={segment.defaultValue}
       onValueChange={(value) => segment.onValueChange?.(value)}
-      className="flex items-center gap-1"
+      orientation={orientation}
+      className={cx(
+        'flex items-center gap-1',
+        orientation === 'vertical' && 'flex-col',
+      )}
     >
       {segment.options.map((option) => {
         const labelVisible = isLabelVisible(option);
@@ -272,11 +287,7 @@ function ToolbarGroupSegment({
                 value={option.value}
                 disabled={option.disabled}
                 aria-label={labelVisible ? undefined : option.label}
-                className={segmentVariants({
-                  size,
-                  iconOnly: !labelVisible,
-                  color: option.color,
-                })}
+                className={segmentVariants({ size, iconOnly: !labelVisible })}
               />
             }
           >
@@ -329,9 +340,18 @@ function SegmentMotion({
   );
 }
 
+// Grip sizing per toolbar size (kept as literal classes for Tailwind extraction).
+const dragHandleSizes: Record<SegmentSize, string> = {
+  sm: 'p-1 [&_svg]:size-4',
+  md: 'p-1.5 [&_svg]:size-5',
+  lg: 'p-2 [&_svg]:size-6',
+};
+
 /**
  * DragHandle is intentionally outside role="toolbar" so its arrow keys move
  * the toolbar rather than competing with the toolbar's roving-focus navigation.
+ * It is deliberately not styled as a button (no fill, no hover state) — just a
+ * muted grip affordance.
  */
 function DragHandle({
   label,
@@ -366,8 +386,9 @@ function DragHandle({
       onPointerDown={onPointerDown}
       onKeyDown={handleKeyDown}
       className={cx(
-        segmentVariants({ size, iconOnly: true }),
-        'cursor-grab touch-none active:cursor-grabbing',
+        'inline-flex shrink-0 cursor-grab touch-none items-center justify-center self-center',
+        'focusable rounded-full text-current/40 active:cursor-grabbing',
+        dragHandleSizes[size],
       )}
     >
       <span aria-hidden className="contents">
@@ -398,7 +419,13 @@ function renderSegment(
           />
         );
       case 'group':
-        return <ToolbarGroupSegment segment={segment} size={size} />;
+        return (
+          <ToolbarGroupSegment
+            segment={segment}
+            size={size}
+            orientation={orientation}
+          />
+        );
       case 'toggle':
         return <ToolbarToggleSegment segment={segment} size={size} />;
       case 'button':
@@ -455,31 +482,52 @@ export function SegmentedToolbar({
     );
   };
 
-  const toolbar = (
+  const segments = (
+    <AnimatePresence initial={false} mode="popLayout">
+      {items.map((segment) =>
+        renderSegment(segment, size, orientation, reduce),
+      )}
+    </AnimatePresence>
+  );
+
+  const innerToolbar = (
     <Toolbar.Root
       orientation={orientation}
       aria-label={label}
-      render={draggable ? <div /> : <motion.div layout />}
       className={cx(
-        draggable ? 'flex items-center gap-1' : rootVariants({ orientation }),
-        draggable && orientation === 'vertical' && 'flex-col',
-        !draggable && className,
+        'flex items-center gap-1',
+        orientation === 'vertical' && 'flex-col',
       )}
     >
-      <AnimatePresence initial={false} mode="popLayout">
-        {items.map((segment) =>
-          renderSegment(segment, size, orientation, reduce),
-        )}
-      </AnimatePresence>
+      {segments}
     </Toolbar.Root>
   );
 
+  // The Surface is the "pill" container; the Toolbar.Root sits inside it so Base
+  // UI's roving focus is never wrapped by motion/Surface.
   if (!draggable) {
-    return toolbar;
+    return (
+      <MotionSurface
+        level={1}
+        shadow="md"
+        spacing="none"
+        noContainer
+        layout
+        className={cx(rootLayoutVariants({ orientation }), className)}
+      >
+        {innerToolbar}
+      </MotionSurface>
+    );
   }
 
+  // When draggable, the Surface pill is also the drag container; the toolbar
+  // sits inside it next to the drag handle.
   return (
-    <motion.div
+    <MotionSurface
+      level={1}
+      shadow="md"
+      spacing="none"
+      noContainer
       layout
       drag
       dragListener={false}
@@ -489,7 +537,7 @@ export function SegmentedToolbar({
       onDragEnd={() => onPositionChange?.({ x: x.get(), y: y.get() })}
       style={{ x, y }}
       transition={reduce ? { duration: 0 } : segmentSpring}
-      className={cx(rootVariants({ orientation }), className)}
+      className={cx(rootLayoutVariants({ orientation }), className)}
     >
       <DragHandle
         label={dragHandleLabel}
@@ -498,10 +546,10 @@ export function SegmentedToolbar({
         onPointerDown={(event) => dragControls.start(event)}
         onNudge={handleNudge}
       />
-      {toolbar}
+      {innerToolbar}
       <output aria-live="polite" className="sr-only">
         {announcement}
       </output>
-    </motion.div>
+    </MotionSurface>
   );
 }
