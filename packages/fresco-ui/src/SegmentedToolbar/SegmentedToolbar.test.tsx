@@ -72,3 +72,39 @@ describe('SegmentedToolbar — buttons & separators', () => {
     expect(screen.getByRole('button', { name: 'B' })).toHaveFocus();
   });
 });
+
+describe('SegmentedToolbar — toggles', () => {
+  it('reflects controlled pressed state via aria-pressed', () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'toggle',
+        id: 'freeze',
+        label: 'Freeze',
+        icon: <Snowflake />,
+        pressed: true,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    expect(screen.getByRole('button', { name: 'Freeze' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('calls onPressedChange when toggled', async () => {
+    const onPressedChange = vi.fn();
+    const items: ToolbarSegment[] = [
+      {
+        type: 'toggle',
+        id: 'freeze',
+        label: 'Freeze',
+        icon: <Snowflake />,
+        defaultPressed: false,
+        onPressedChange,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Freeze' }));
+    expect(onPressedChange).toHaveBeenCalledWith(true);
+  });
+});

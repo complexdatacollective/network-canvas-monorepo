@@ -1,5 +1,6 @@
 'use client';
 
+import { Toggle } from '@base-ui/react/toggle';
 import { Toolbar } from '@base-ui/react/toolbar';
 import * as React from 'react';
 
@@ -37,12 +38,21 @@ export type ButtonSegment = {
   onClick: () => void;
 } & SegmentContent;
 
+export type ToggleSegment = {
+  type: 'toggle';
+  id: string;
+  disabled?: boolean;
+  pressed?: boolean;
+  defaultPressed?: boolean;
+  onPressedChange?: (pressed: boolean) => void;
+} & SegmentContent;
+
 export type SeparatorSegment = {
   type: 'separator';
   id: string;
 };
 
-export type ToolbarSegment = ButtonSegment | SeparatorSegment;
+export type ToolbarSegment = ButtonSegment | ToggleSegment | SeparatorSegment;
 
 export type Position = { x: number; y: number };
 
@@ -148,6 +158,42 @@ function ToolbarButtonSegment({
   return button;
 }
 
+function ToolbarToggleSegment({
+  segment,
+  size,
+}: {
+  segment: ToggleSegment;
+  size: SegmentSize;
+}) {
+  const labelVisible = isLabelVisible(segment);
+  const toggle = (
+    <Toolbar.Button
+      render={
+        <Toggle
+          pressed={segment.pressed}
+          defaultPressed={segment.defaultPressed}
+          onPressedChange={(pressed) => segment.onPressedChange?.(pressed)}
+          disabled={segment.disabled}
+          aria-label={labelVisible ? undefined : segment.label}
+          className={segmentVariants({ size, iconOnly: !labelVisible })}
+        />
+      }
+    >
+      <SegmentContentInner {...segment} />
+    </Toolbar.Button>
+  );
+
+  if (!labelVisible) {
+    return (
+      <Tooltip>
+        <TooltipTrigger render={toggle} />
+        <TooltipContent>{segment.label}</TooltipContent>
+      </Tooltip>
+    );
+  }
+  return toggle;
+}
+
 function renderSegment(
   segment: ToolbarSegment,
   size: SegmentSize,
@@ -164,6 +210,10 @@ function renderSegment(
             orientation === 'horizontal' ? 'mx-1 h-6 w-px' : 'my-1 h-px w-6',
           )}
         />
+      );
+    case 'toggle':
+      return (
+        <ToolbarToggleSegment key={segment.id} segment={segment} size={size} />
       );
     case 'button':
       return (
