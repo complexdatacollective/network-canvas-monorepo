@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '../DropdownMenu';
 import { MotionSurface } from '../layout/Surface';
+import { Popover, PopoverContent, PopoverTrigger } from '../Popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
 import { cva, cx } from '../utils/cva';
 
@@ -89,12 +90,31 @@ export type MenuSegment = {
   onSelect: (value: string) => void;
 } & SegmentContent;
 
+/**
+ * A pressed-able button that anchors a popover next to itself, rendering
+ * arbitrary content (e.g. a text input). Open state is controlled by the
+ * consumer so it can be tied to external state — for instance keeping the
+ * button "pressed" for as long as the popover is open.
+ */
+export type PopoverSegment = {
+  type: 'popover';
+  id: string;
+  disabled?: boolean;
+  pressed?: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Which side of the trigger the popover opens on. @default 'right' */
+  side?: 'top' | 'right' | 'bottom' | 'left';
+  children: React.ReactNode;
+} & SegmentContent;
+
 export type ToolbarSegment =
   | ButtonSegment
   | ToggleSegment
   | GroupSegment
   | SeparatorSegment
-  | MenuSegment;
+  | MenuSegment
+  | PopoverSegment;
 
 export type Position = { x: number; y: number };
 
@@ -171,17 +191,27 @@ function segmentButton(
   );
 }
 
+// On a vertical toolbar, tooltips/menus/popovers open to the right (into the
+// canvas) rather than overlapping the stacked buttons. Horizontal toolbars keep
+// each overlay's own default side (tooltip top, menu/popover bottom).
+function overlaySide(
+  orientation: 'horizontal' | 'vertical',
+): 'right' | undefined {
+  return orientation === 'vertical' ? 'right' : undefined;
+}
+
 /** Wraps an icon-only control in a tooltip carrying its label. */
 function withTooltip(
   control: React.ReactElement,
   label: string,
   labelVisible: boolean,
+  side?: 'top' | 'right' | 'bottom' | 'left',
 ) {
   if (labelVisible) return control;
   return (
     <Tooltip>
       <TooltipTrigger render={control} />
-      <TooltipContent>{label}</TooltipContent>
+      <TooltipContent side={side}>{label}</TooltipContent>
     </Tooltip>
   );
 }
@@ -189,9 +219,11 @@ function withTooltip(
 function ToolbarButtonSegment({
   segment,
   size,
+  orientation,
 }: {
   segment: ButtonSegment;
   size: SegmentSize;
+  orientation: 'horizontal' | 'vertical';
 }) {
   const button = (
     <Toolbar.Button
@@ -200,15 +232,22 @@ function ToolbarButtonSegment({
       render={segmentButton(segment, size)}
     />
   );
-  return withTooltip(button, segment.label, isLabelVisible(segment));
+  return withTooltip(
+    button,
+    segment.label,
+    isLabelVisible(segment),
+    overlaySide(orientation),
+  );
 }
 
 function ToolbarToggleSegment({
   segment,
   size,
+  orientation,
 }: {
   segment: ToggleSegment;
   size: SegmentSize;
+  orientation: 'horizontal' | 'vertical';
 }) {
   const toggle = (
     <Toolbar.Button
@@ -223,7 +262,12 @@ function ToolbarToggleSegment({
       }
     />
   );
-  return withTooltip(toggle, segment.label, isLabelVisible(segment));
+  return withTooltip(
+    toggle,
+    segment.label,
+    isLabelVisible(segment),
+    overlaySide(orientation),
+  );
 }
 
 function ToolbarGroupSegment({
@@ -261,7 +305,12 @@ function ToolbarGroupSegment({
         );
         return (
           <React.Fragment key={option.value}>
-            {withTooltip(toggle, option.label, isLabelVisible(option))}
+            {withTooltip(
+              toggle,
+              option.label,
+              isLabelVisible(option),
+              overlaySide(orientation),
+            )}
           </React.Fragment>
         );
       })}
@@ -276,14 +325,74 @@ const menuActiveClasses = 'bg-selected! text-selected-contrast!';
 function ToolbarMenuSegment({
   segment,
   size,
+  orientation,
 }: {
   segment: MenuSegment;
   size: SegmentSize;
+  orientation: 'horizontal' | 'vertical';
 }) {
+  // A consumer-supplied className (e.g. a named theme colour) takes precedence
+  // over the default pressed highlight, so an active selection can be coloured
+  // by its own meaning (e.g. an edge type's colour) rather than `bg-selected`.
+  const activeClasses = segment.className
+    ? undefined
+    : segment.pressed
+      ? menuActiveClasses
+      : undefined;
   const trigger = (
     <Toolbar.Button
       render={
         <DropdownMenuTrigger
+          disabled={segment.disabled}
+          render={segmentButton(segment, size, activeClasses)}
+        />
+      }
+    />
+  );
+  return (
+    <DropdownMenu>
+      {withTooltip(
+        trigger,
+        segment.label,
+        isLabelVisible(segment),
+        overlaySide(orientation),
+      )}
+      <DropdownMenuContent side={overlaySide(orientation)}>
+        <DropdownMenuRadioGroup
+          value={segment.value}
+          onValueChange={(value) => segment.onSelect(String(value))}
+        >
+          {segment.options.map((option) => (
+            // Base UI radio items keep the menu open by default; close on pick
+            // so a single selection commits and returns focus to the page.
+            <DropdownMenuRadioItem
+              key={option.value}
+              value={option.value}
+              closeOnClick
+            >
+              {option.icon}
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function ToolbarPopoverSegment({
+  segment,
+  size,
+  orientation,
+}: {
+  segment: PopoverSegment;
+  size: SegmentSize;
+  orientation: 'horizontal' | 'vertical';
+}) {
+  const trigger = (
+    <Toolbar.Button
+      render={
+        <PopoverTrigger
           disabled={segment.disabled}
           render={segmentButton(
             segment,
@@ -295,22 +404,23 @@ function ToolbarMenuSegment({
     />
   );
   return (
-    <DropdownMenu>
-      {withTooltip(trigger, segment.label, isLabelVisible(segment))}
-      <DropdownMenuContent>
-        <DropdownMenuRadioGroup
-          value={segment.value}
-          onValueChange={(value) => segment.onSelect(String(value))}
-        >
-          {segment.options.map((option) => (
-            <DropdownMenuRadioItem key={option.value} value={option.value}>
-              {option.icon}
-              {option.label}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Popover
+      open={segment.open}
+      onOpenChange={(open) => segment.onOpenChange(open)}
+    >
+      {withTooltip(
+        trigger,
+        segment.label,
+        isLabelVisible(segment),
+        overlaySide(orientation),
+      )}
+      <PopoverContent
+        side={segment.side ?? overlaySide(orientation)}
+        showArrow={false}
+      >
+        {segment.children}
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -413,7 +523,21 @@ function renderSegment(
   const inner = (() => {
     switch (segment.type) {
       case 'menu':
-        return <ToolbarMenuSegment segment={segment} size={size} />;
+        return (
+          <ToolbarMenuSegment
+            segment={segment}
+            size={size}
+            orientation={orientation}
+          />
+        );
+      case 'popover':
+        return (
+          <ToolbarPopoverSegment
+            segment={segment}
+            size={size}
+            orientation={orientation}
+          />
+        );
       case 'separator':
         return (
           <Toolbar.Separator
@@ -435,9 +559,21 @@ function renderSegment(
           />
         );
       case 'toggle':
-        return <ToolbarToggleSegment segment={segment} size={size} />;
+        return (
+          <ToolbarToggleSegment
+            segment={segment}
+            size={size}
+            orientation={orientation}
+          />
+        );
       case 'button':
-        return <ToolbarButtonSegment segment={segment} size={size} />;
+        return (
+          <ToolbarButtonSegment
+            segment={segment}
+            size={size}
+            orientation={orientation}
+          />
+        );
       default:
         return null;
     }

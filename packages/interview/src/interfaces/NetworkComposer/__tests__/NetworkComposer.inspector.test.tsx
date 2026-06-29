@@ -193,7 +193,7 @@ function makePreloadedEdges() {
   ];
 }
 
-function makeStore(includeEdges = false) {
+function makeStore(includeEdges = false, stageForStore: object = stage) {
   return configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -211,18 +211,21 @@ function makeStore(includeEdges = false) {
         hash: 'h',
         schemaVersion: 8,
         codebook,
-        stages: [stage],
+        stages: [stageForStore],
       } as never,
     },
     middleware: (g) => g({ serializableCheck: false }),
   });
 }
 
-function renderInterface(store: ReturnType<typeof makeStore>) {
+function renderInterface(
+  store: ReturnType<typeof makeStore>,
+  stageForProps: object = stage,
+) {
   const registerBeforeNext: RegisterBeforeNext = vi.fn();
 
   const props: StageProps<'NetworkComposer'> = {
-    stage: stage as StageProps<'NetworkComposer'>['stage'],
+    stage: stageForProps as StageProps<'NetworkComposer'>['stage'],
     getNavigationHelpers: () => ({
       moveForward: vi.fn(),
       moveBackward: vi.fn(),
@@ -288,7 +291,7 @@ describe('NetworkComposer inspector — node', () => {
     });
   });
 
-  it('submitting the node form in the inspector updates the node attributes', async () => {
+  it('editing a node field in the inspector auto-saves the value', async () => {
     const store = makeStore();
     renderInterface(store);
 
@@ -301,26 +304,22 @@ describe('NetworkComposer inspector — node', () => {
       expect(screen.getByTestId('inspector-panel')).toBeTruthy();
     });
 
-    // Find the text input for the node name variable and change its value.
+    // Change the field; the drawer persists valid edits automatically (no Save).
     const nameInput = await screen.findByLabelText(/full name/i);
     fireEvent.change(nameInput, { target: { value: 'Alice Updated' } });
 
-    // Submit the form — triggers SlidesForm's handleSubmit → updateItem.
-    const form = nameInput.closest('form');
-    expect(form).not.toBeNull();
-    await act(async () => {
-      fireEvent.submit(form!);
-    });
-
-    await waitFor(() => {
-      const nodes = store.getState().session.network.nodes;
-      const updatedNode = nodes.find(
-        (n) => n[entityPrimaryKeyProperty] === NODE_A_ID,
-      );
-      expect(updatedNode?.[entityAttributesProperty]?.[NODE_NAME_VAR]).toBe(
-        'Alice Updated',
-      );
-    });
+    await waitFor(
+      () => {
+        const nodes = store.getState().session.network.nodes;
+        const updatedNode = nodes.find(
+          (n) => n[entityPrimaryKeyProperty] === NODE_A_ID,
+        );
+        expect(updatedNode?.[entityAttributesProperty]?.[NODE_NAME_VAR]).toBe(
+          'Alice Updated',
+        );
+      },
+      { timeout: 2000 },
+    );
   });
 
   it('clicking Delete in the inspector removes the node', async () => {
@@ -373,7 +372,7 @@ describe('NetworkComposer inspector — edge', () => {
     });
   });
 
-  it('submitting the edge form in the inspector updates the edge attributes', async () => {
+  it('editing an edge field in the inspector auto-saves the value', async () => {
     const store = makeStore(true);
     renderInterface(store);
 
@@ -386,19 +385,16 @@ describe('NetworkComposer inspector — edge', () => {
     const strengthInput = await screen.findByLabelText(/strength/i);
     fireEvent.change(strengthInput, { target: { value: 'weak' } });
 
-    const form = strengthInput.closest('form');
-    expect(form).not.toBeNull();
-    await act(async () => {
-      fireEvent.submit(form!);
-    });
-
-    await waitFor(() => {
-      const edges = store.getState().session.network.edges;
-      const edge = edges.find((e) => e[entityPrimaryKeyProperty] === EDGE_ID);
-      expect(edge?.[entityAttributesProperty]?.[EDGE_STRENGTH_VAR]).toBe(
-        'weak',
-      );
-    });
+    await waitFor(
+      () => {
+        const edges = store.getState().session.network.edges;
+        const edge = edges.find((e) => e[entityPrimaryKeyProperty] === EDGE_ID);
+        expect(edge?.[entityAttributesProperty]?.[EDGE_STRENGTH_VAR]).toBe(
+          'weak',
+        );
+      },
+      { timeout: 2000 },
+    );
   });
 
   it('clicking Delete in the inspector removes the edge', async () => {
@@ -422,5 +418,22 @@ describe('NetworkComposer inspector — edge', () => {
         edges.find((e) => e[entityPrimaryKeyProperty] === EDGE_ID),
       ).toBeUndefined();
     });
+  });
+});
+
+describe('NetworkComposer inspector — no attributes', () => {
+  it('opens the drawer with an empty state when the node has no form', async () => {
+    const stageNoForm = { ...stage, nodeForm: undefined };
+    const store = makeStore(false, stageNoForm);
+    renderInterface(store, stageNoForm);
+
+    const nodeA = await screen.findByRole('button', { name: /alice/i });
+    act(() => {
+      tapNode(nodeA);
+    });
+
+    expect(await screen.findByText(/no attributes to edit/i)).toBeTruthy();
+    // A node with a form would render its field; here there is none.
+    expect(screen.queryByLabelText(/full name/i)).toBeNull();
   });
 });

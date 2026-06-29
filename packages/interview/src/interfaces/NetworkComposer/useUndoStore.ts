@@ -4,6 +4,12 @@ export type UndoCommand = {
   label: string;
   undo: () => void | Promise<void>;
   redo: () => void | Promise<void>;
+  /**
+   * When set, a pushed command replaces the previous one if it is on top of the
+   * stack and shares the same key. Used to collapse a run of live edits to the
+   * same entity (e.g. drawer auto-saves) into a single undo step.
+   */
+  coalesceKey?: string;
 };
 
 type UndoState = {
@@ -38,10 +44,28 @@ export const createUndoStore = (limit = 50) =>
 
       push: (command) =>
         enqueue(() => {
-          set((state) => ({
-            past: [...state.past, command].slice(-limit),
-            future: [],
-          }));
+          set((state) => {
+            const previous = state.past[state.past.length - 1];
+            // Collapse consecutive same-key commands so a run of live edits is a
+            // single undo step (the first command's `undo` already restores the
+            // pre-edit state; only its `redo` needs to advance).
+            if (
+              command.coalesceKey !== undefined &&
+              previous?.coalesceKey === command.coalesceKey
+            ) {
+              return {
+                past: [
+                  ...state.past.slice(0, -1),
+                  { ...command, undo: previous.undo },
+                ],
+                future: [],
+              };
+            }
+            return {
+              past: [...state.past, command].slice(-limit),
+              future: [],
+            };
+          });
         }),
 
       undo: () =>

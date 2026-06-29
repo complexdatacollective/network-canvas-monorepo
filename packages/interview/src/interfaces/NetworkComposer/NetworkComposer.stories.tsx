@@ -165,3 +165,45 @@ const buildAutomaticLayout = () => {
 export const AutomaticLayout: Story = {
   render: () => <NetworkComposerStoryWrapper buildFn={buildAutomaticLayout} />,
 };
+
+const buildManyAttributes = () => {
+  const { si, quickAddVar, layoutVar, friendship } = createComposerInterview(7);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  // A long, varied node form so selecting a node overflows the drawer and the
+  // attribute list scrolls.
+  const stage = si.addStage('NetworkComposer', {
+    quickAdd: quickAddVar.id,
+    layoutVariable: layoutVar.id,
+    initialNodes: { count: 3 },
+    nodeForm: {
+      fields: [
+        { component: 'Text', prompt: 'Full name' },
+        { component: 'Text', prompt: 'Nickname' },
+        { component: 'Number', prompt: 'Age' },
+        { component: 'Text', prompt: 'Occupation' },
+        { component: 'Text', prompt: 'Where they live' },
+        { component: 'RadioGroup', prompt: 'How close are you?' },
+        { component: 'Boolean', prompt: 'Do you live together?' },
+        { component: 'Toggle', prompt: 'Seen in the last month?' },
+        { component: 'LikertScale', prompt: 'How often do you talk?' },
+        { component: 'CheckboxGroup', prompt: 'How do you keep in touch?' },
+        { component: 'Number', prompt: 'Years known' },
+        { component: 'TextArea', prompt: 'How did you meet?' },
+        { component: 'Text', prompt: 'Phone number' },
+        { component: 'TextArea', prompt: 'Anything else to note?' },
+      ],
+    },
+  });
+  stage.addEdgeType({ type: friendship.id });
+  si.addEdges([[0, 1]], friendship.id);
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+/**
+ * A node form with many fields. Selecting a node opens the attribute drawer with
+ * more fields than fit, so the list scrolls within the drawer.
+ */
+export const ManyAttributes: Story = {
+  render: () => <NetworkComposerStoryWrapper buildFn={buildManyAttributes} />,
+};

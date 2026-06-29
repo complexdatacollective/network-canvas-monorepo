@@ -14,6 +14,7 @@ import {
   type ToolbarSegment,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 
+import AddNodeInput from './AddNodeInput';
 import { type ComposerStoreApi, useComposerStore } from './useComposerStore';
 import { type UndoStoreApi, useUndoStore } from './useUndoStore';
 
@@ -27,18 +28,35 @@ type ToolPaletteProps = {
   composerStore: ComposerStoreApi;
   undoStore: UndoStoreApi;
   edges: EdgeEntry[];
+  /** Protocol label for the node entity, shown in the add-node field. */
+  nodeLabel: string;
+  onAddNode: (name: string) => void;
   automaticLayout: boolean;
   onToggleAutomaticLayout: (next: boolean) => void;
 };
 
-// Stable option values for the exclusive Select/Add-node group.
-const TOOL_SELECT = 'tool:select';
-const TOOL_ADD_NODE = 'tool:addNode';
+// Codebook edge colour token → Tailwind background/foreground classes. Literal
+// strings so Tailwind extracts them; the edge tool button adopts its type's
+// colour while active.
+const EDGE_BG_CLASS: Record<string, string> = {
+  'edge-color-seq-1': 'bg-edge-1 text-white',
+  'edge-color-seq-2': 'bg-edge-2 text-white',
+  'edge-color-seq-3': 'bg-edge-3 text-white',
+  'edge-color-seq-4': 'bg-edge-4 text-white',
+  'edge-color-seq-5': 'bg-edge-5 text-white',
+  'edge-color-seq-6': 'bg-edge-6 text-white',
+  'edge-color-seq-7': 'bg-edge-7 text-white',
+  'edge-color-seq-8': 'bg-edge-8 text-white',
+  'edge-color-seq-9': 'bg-edge-9 text-white',
+  'edge-color-seq-10': 'bg-edge-10 text-white',
+};
 
 export default function ToolPalette({
   composerStore,
   undoStore,
   edges,
+  nodeLabel,
+  onAddNode,
   automaticLayout,
   onToggleAutomaticLayout,
 }: ToolPaletteProps) {
@@ -48,35 +66,38 @@ export default function ToolPalette({
 
   const { setActiveTool } = composerStore.getState();
 
-  const toolGroupValue =
-    activeTool.kind === 'select'
-      ? [TOOL_SELECT]
-      : activeTool.kind === 'addNode'
-        ? [TOOL_ADD_NODE]
-        : [];
   const activeEdgeType =
     activeTool.kind === 'edge' ? activeTool.edgeType : undefined;
+  const activeEdgeColor =
+    activeEdgeType !== undefined
+      ? edges.find((edge) => edge.edgeType === activeEdgeType)?.color
+      : undefined;
+  const edgeButtonClass =
+    activeEdgeType !== undefined
+      ? (EDGE_BG_CLASS[activeEdgeColor ?? ''] ?? 'bg-edge-1 text-white')
+      : undefined;
 
   const items: ToolbarSegment[] = [
     {
-      type: 'group',
-      id: 'tools',
-      mode: 'single',
-      value: toolGroupValue,
-      // Selecting an edge type (via the edge menu) clears this group; ignore the
-      // empty value a re-click would emit so the controlled value stays stable.
-      onValueChange: (value) => {
-        const next = value[0];
-        if (next === TOOL_SELECT) {
-          setActiveTool({ kind: 'select' });
-        } else if (next === TOOL_ADD_NODE) {
-          setActiveTool({ kind: 'addNode' });
-        }
-      },
-      options: [
-        { value: TOOL_SELECT, label: 'Select', icon: <SelectIcon /> },
-        { value: TOOL_ADD_NODE, label: 'Add node', icon: <AddNodeIcon /> },
-      ],
+      type: 'toggle',
+      id: 'select',
+      label: 'Select',
+      icon: <SelectIcon />,
+      pressed: activeTool.kind === 'select',
+      onPressedChange: () => setActiveTool({ kind: 'select' }),
+    },
+    // Adding a node opens a name field in a popover next to this button; the
+    // button stays pressed while it is open. Closing it returns to select mode.
+    {
+      type: 'popover',
+      id: 'add-node',
+      label: 'Add node',
+      icon: <AddNodeIcon />,
+      pressed: activeTool.kind === 'addNode',
+      open: activeTool.kind === 'addNode',
+      onOpenChange: (open) =>
+        setActiveTool(open ? { kind: 'addNode' } : { kind: 'select' }),
+      children: <AddNodeInput entityLabel={nodeLabel} onCreate={onAddNode} />,
     },
     // Every edge type shares the link icon, so a single edge button opens a menu
     // to pick the type rather than crowding the toolbar with identical buttons.
@@ -87,8 +108,18 @@ export default function ToolPalette({
       icon: <EdgeIcon />,
       pressed: activeTool.kind === 'edge',
       value: activeEdgeType,
+      className: edgeButtonClass,
       options: edges.map(({ edgeType, label }) => ({ value: edgeType, label })),
       onSelect: (edgeType) => setActiveTool({ kind: 'edge', edgeType }),
+    },
+    { type: 'separator', id: 'sep-layout' },
+    {
+      type: 'toggle',
+      id: 'auto-layout',
+      label: 'Automatic layout',
+      icon: <AutoLayoutIcon />,
+      pressed: automaticLayout,
+      onPressedChange: onToggleAutomaticLayout,
     },
     { type: 'separator', id: 'sep-history' },
     {
@@ -107,15 +138,6 @@ export default function ToolPalette({
       disabled: !canRedo,
       onClick: () => void undoStore.getState().redo(),
     },
-    { type: 'separator', id: 'sep-layout' },
-    {
-      type: 'toggle',
-      id: 'auto-layout',
-      label: 'Automatic layout',
-      icon: <AutoLayoutIcon />,
-      pressed: automaticLayout,
-      onPressedChange: onToggleAutomaticLayout,
-    },
   ];
 
   return (
@@ -123,6 +145,7 @@ export default function ToolPalette({
       label="Network composer tools"
       items={items}
       orientation="vertical"
+      size="lg"
       className="absolute top-1/2 left-4 z-10 -translate-y-1/2"
     />
   );

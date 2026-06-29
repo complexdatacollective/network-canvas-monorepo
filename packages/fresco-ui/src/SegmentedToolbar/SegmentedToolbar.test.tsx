@@ -96,6 +96,43 @@ describe('SegmentedToolbar — buttons & separators', () => {
     expect(onSelect).toHaveBeenCalledWith('advice');
   });
 
+  it('renders a popover segment that advertises a popup and shows its content when open', () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'popover',
+        id: 'add',
+        label: 'Add node',
+        icon: <Pencil />,
+        pressed: true,
+        open: true,
+        onOpenChange: vi.fn(),
+        children: <input aria-label="Name" />,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    const trigger = screen.getByRole('button', { name: 'Add node' });
+    expect(trigger).toHaveAttribute('aria-haspopup');
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
+  });
+
+  it('calls onOpenChange when the popover trigger is clicked', async () => {
+    const onOpenChange = vi.fn();
+    const items: ToolbarSegment[] = [
+      {
+        type: 'popover',
+        id: 'add',
+        label: 'Add node',
+        icon: <Pencil />,
+        open: false,
+        onOpenChange,
+        children: <input aria-label="Name" />,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Add node' }));
+    expect(onOpenChange).toHaveBeenCalledWith(true);
+  });
+
   it('moves focus between segments with the arrow keys (roving focus)', async () => {
     const items: ToolbarSegment[] = [
       { type: 'button', id: 'a', label: 'A', onClick: vi.fn() },

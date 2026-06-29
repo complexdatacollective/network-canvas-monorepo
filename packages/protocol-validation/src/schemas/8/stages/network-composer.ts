@@ -13,8 +13,8 @@ import { baseStageSchema } from './base';
 export const networkComposerStage = baseStageSchema.extend({
   type: z.literal('NetworkComposer'),
   subject: NodeStageSubjectSchema,
-  // The text variable populated by the inline quick-add field when a node is
-  // dropped on the canvas.
+  // The text variable populated by the inline quick-add name field when a node
+  // is added from the tool palette.
   quickAdd: entityAttributeReference({ subject: 'stageSubject' }),
   // The layout variable that stores each node's { x, y } position.
   layoutVariable: entityAttributeReference({ subject: 'stageSubject' }),

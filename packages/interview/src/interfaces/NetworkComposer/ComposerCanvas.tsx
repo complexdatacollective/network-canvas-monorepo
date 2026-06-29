@@ -1,13 +1,7 @@
 'use client';
 
 import { clamp } from 'es-toolkit';
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, useCallback, useEffect, useRef } from 'react';
 
 import {
   entityPrimaryKeyProperty,
@@ -16,7 +10,7 @@ import {
 } from '@codaco/shared-consts';
 import CanvasNode from '~/canvas/CanvasNode';
 import EdgeLayer from '~/canvas/EdgeLayer';
-import { useCanvasStore, type CanvasStoreApi } from '~/canvas/useCanvasStore';
+import { type CanvasStoreApi } from '~/canvas/useCanvasStore';
 
 import { type ComposerStoreApi, useComposerStore } from './useComposerStore';
 
@@ -35,55 +29,13 @@ type ComposerCanvasProps = {
     moveNode: (nodeId: string, position: Position) => void;
     releaseNode: (nodeId: string) => void;
   } | null;
-  onBackgroundTap: (position: Position) => void;
+  onBackgroundTap: () => void;
   onNodeTap: (nodeId: string, modifiers: NodeTapModifiers) => void;
   onEdgeTap: (edgeId: string) => void;
   onNodeDragEnd: (nodeId: string, position: Position) => void;
-  renamingNodeId?: string | null;
-  onCommitRename?: (nodeId: string, value: string) => void;
 };
 
 const DRAG_THRESHOLD = 5;
-
-type RenameInputProps = {
-  nodeId: string;
-  canvasStore: CanvasStoreApi;
-  onCommit: (value: string) => void;
-};
-
-function RenameInput({ nodeId, canvasStore, onCommit }: RenameInputProps) {
-  const [value, setValue] = useState('');
-  const committed = useRef(false);
-  const position = useCanvasStore(canvasStore, (s) => s.positions.get(nodeId));
-
-  const commit = useCallback(() => {
-    if (committed.current) return;
-    committed.current = true;
-    onCommit(value);
-  }, [onCommit, value]);
-
-  if (!position) return null;
-
-  return (
-    <input
-      data-testid="composer-node-rename"
-      aria-label="Node name"
-      type="text"
-      autoFocus
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') commit();
-      }}
-      onBlur={commit}
-      className="border-primary bg-background absolute z-20 w-32 -translate-x-1/2 -translate-y-1/2 rounded border px-2 py-1 text-center text-sm outline-none"
-      style={{
-        left: `${position.x * 100}%`,
-        top: `${position.y * 100}%`,
-      }}
-    />
-  );
-}
 
 /** Ray-casting point-in-polygon test (normalized coordinates). */
 function isPointInPolygon(point: Position, polygon: Position[]): boolean {
@@ -114,8 +66,6 @@ export default function ComposerCanvas({
   onNodeTap,
   onEdgeTap,
   onNodeDragEnd,
-  renamingNodeId = null,
-  onCommitRename,
 }: ComposerCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   // Records the starting point of a background gesture (null when no gesture).
@@ -130,6 +80,10 @@ export default function ComposerCanvas({
   const selectedNodeIds = useComposerStore(
     composerStore,
     (s) => s.selectedNodeIds,
+  );
+  const pendingEdgeSource = useComposerStore(
+    composerStore,
+    (s) => s.pendingEdgeSource,
   );
   const lassoPoints = useComposerStore(composerStore, (s) => s.lassoPoints);
 
@@ -236,16 +190,10 @@ export default function ComposerCanvas({
         return;
       }
 
-      // Pure tap (distance < DRAG_THRESHOLD): call onBackgroundTap.
+      // Pure tap (distance < DRAG_THRESHOLD): deselect.
       const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
       if (moved >= DRAG_THRESHOLD) return;
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      onBackgroundTap({
-        x: clamp((e.clientX - rect.left) / rect.width, 0, 1),
-        y: clamp((e.clientY - rect.top) / rect.height, 0, 1),
-      });
+      onBackgroundTap();
     },
     [composerStore, canvasStore, nodes, onBackgroundTap],
   );
@@ -284,19 +232,12 @@ export default function ComposerCanvas({
             onDragEnd={onNodeDragEnd}
             onSelect={(id) => onNodeTap(id, modifierRef.current)}
             selected={selectedNodeIds.has(nodeId)}
+            linking={pendingEdgeSource === nodeId}
             allowRepositioning={allowRepositioning}
             simulation={simulation}
           />
         );
       })}
-      {renamingNodeId && onCommitRename && (
-        <RenameInput
-          key={renamingNodeId}
-          nodeId={renamingNodeId}
-          canvasStore={canvasStore}
-          onCommit={(value) => onCommitRename(renamingNodeId, value)}
-        />
-      )}
       {lassoPolygonPoints !== null && (
         <svg
           viewBox="0 0 1 1"

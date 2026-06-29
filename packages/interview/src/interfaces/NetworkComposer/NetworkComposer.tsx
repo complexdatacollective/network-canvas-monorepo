@@ -1,10 +1,11 @@
 'use client';
 
 import { get } from 'es-toolkit/compat';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
 import Node from '@codaco/fresco-ui/Node';
+import type { TitlelessForm } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -18,6 +19,7 @@ import ConcentricCircles from '~/components/ConcentricCircles';
 import { useCurrentStep } from '~/contexts/CurrentStepContext';
 import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import { useStageSelector } from '~/hooks/useStageSelector';
+import type { Subject } from '~/selectors/forms';
 import {
   getNetworkEdges,
   getNetworkNodesForType,
@@ -29,6 +31,8 @@ import { useAppDispatch } from '~/store/store';
 import type { StageProps } from '~/types';
 
 import ComposerCanvas, { type NodeTapModifiers } from './ComposerCanvas';
+import ComposerDrawer from './ComposerDrawer';
+import { nextGridPosition } from './gridPlacement';
 import Inspector from './Inspector';
 import ToolPalette from './ToolPalette';
 import { useComposerActions } from './useComposerActions';
@@ -44,6 +48,15 @@ const isPosition = (value: unknown): value is { x: number; y: number } =>
   'y' in value &&
   typeof value.x === 'number' &&
   typeof value.y === 'number';
+
+type DrawerEditor = {
+  kind: 'node' | 'edge';
+  entityId: string;
+  title: string;
+  form: TitlelessForm | undefined;
+  subject: Subject;
+  attributes: NcNode[typeof entityAttributesProperty];
+};
 
 const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const { stage } = stageProps;
@@ -70,6 +83,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const edges = useStageSelector(getNetworkEdges);
 
   const codebook = useSelector(getCodebook);
+  const nodeLabel = codebook?.node?.[stage.subject.type]?.name ?? '';
 
   const canvasStoreRef = useRef(createCanvasStore());
   const canvasStore = canvasStoreRef.current;
@@ -90,8 +104,6 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   });
 
   const rootRef = useRef<HTMLDivElement>(null);
-
-  const [renamingNodeId, setRenamingNodeId] = useState<string | null>(null);
 
   const selectedNodeIds = useComposerStore(
     composerStore,
@@ -178,21 +190,24 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     [actions, nodes, dispatch, layoutVariable, currentStep],
   );
 
-  const handleBackgroundTap = useCallback(
-    async (position: { x: number; y: number }) => {
-      rootRef.current?.focus();
-      const { activeTool, clearSelection, setPendingEdgeSource } =
-        composerStore.getState();
-      if (activeTool.kind === 'addNode') {
-        const id = await actions.createNodeAt('', position);
-        setRenamingNodeId(id);
-      } else {
-        clearSelection();
-        setPendingEdgeSource(null);
-      }
+  // Nodes are added by name from the tool palette (not by tapping the canvas),
+  // each landing on the next free grid cell from the top-left.
+  const handleAddNode = useCallback(
+    (name: string) => {
+      const occupied = nodes
+        .map((n) => n[entityAttributesProperty]?.[layoutVariable])
+        .filter(isPosition);
+      void actions.createNodeAt(name, nextGridPosition(occupied));
     },
-    [composerStore, actions],
+    [nodes, layoutVariable, actions],
   );
+
+  const handleBackgroundTap = useCallback(() => {
+    rootRef.current?.focus();
+    const { clearSelection, setPendingEdgeSource } = composerStore.getState();
+    clearSelection();
+    setPendingEdgeSource(null);
+  }, [composerStore]);
 
   const handleNodeTap = useCallback(
     async (tappedId: string, modifiers: NodeTapModifiers) => {
@@ -221,7 +236,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       const { edgeType } = activeTool;
 
       if (pendingEdgeSource === null) {
-        // Arm: first tap sets the source node.
+        // Arm: the first node tapped enters the linking state.
         setPendingEdgeSource(tappedId);
         return;
       }
@@ -270,39 +285,6 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       selectEdge(edgeId);
     },
     [composerStore],
-  );
-
-  const handleCommitRename = useCallback(
-    async (nodeId: string, value: string) => {
-      // Skip the update (and the undo entry) when the value hasn't changed.
-      // This matters for the create-then-immediately-blur flow: a freshly-created
-      // node has quickAdd === ''; blurring without typing must not push a
-      // spurious "update attributes" entry on top of the "Add node" entry —
-      // otherwise a single ⌘Z would only blank the name instead of removing
-      // the node.
-      let currentValue: string | undefined;
-      if (stage.quickAdd !== null) {
-        const quickAddKey = stage.quickAdd;
-        dispatch((_, getState) => {
-          const { session: sessionState } = getState() as {
-            session: { network: { nodes: NcNode[] } };
-          };
-          const node = sessionState.network.nodes.find(
-            (n) => n[entityPrimaryKeyProperty] === nodeId,
-          );
-          if (node) {
-            const raw = node[entityAttributesProperty][quickAddKey];
-            currentValue = typeof raw === 'string' ? raw : undefined;
-          }
-        });
-      }
-
-      if (stage.quickAdd !== null && value !== (currentValue ?? '')) {
-        await actions.updateNodeAttributes(nodeId, { [stage.quickAdd]: value });
-      }
-      setRenamingNodeId(null);
-    },
-    [actions, stage.quickAdd, dispatch],
   );
 
   const handleKeyDown = useCallback(
@@ -392,7 +374,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         }
       : null;
 
-  // Resolve what the Inspector should show (if anything).
+  // Resolve what the drawer should show (if anything).
   const selectedNode =
     selectedNodeIds.size === 1
       ? (nodes.find(
@@ -412,6 +394,43 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         null)
       : null;
 
+  // The drawer opens for any single node or edge selection — even when there is
+  // no form to edit (it then shows an empty state).
+  const currentEditor: DrawerEditor | null = (() => {
+    if (selectedNode !== null) {
+      const rawName = selectedNode[entityAttributesProperty]?.[stage.quickAdd];
+      const title =
+        typeof rawName === 'string' && rawName.trim() !== ''
+          ? rawName
+          : nodeLabel;
+      return {
+        kind: 'node',
+        entityId: selectedNode[entityPrimaryKeyProperty],
+        title,
+        form: stage.nodeForm,
+        subject: stage.subject,
+        attributes: selectedNode[entityAttributesProperty],
+      };
+    }
+    if (selectedEdge !== null) {
+      return {
+        kind: 'edge',
+        entityId: selectedEdge[entityPrimaryKeyProperty],
+        title: codebook?.edge?.[selectedEdge.type]?.name ?? selectedEdge.type,
+        form: selectedEdgeFormEntry?.form,
+        subject: { entity: 'edge', type: selectedEdge.type },
+        attributes: selectedEdge[entityAttributesProperty],
+      };
+    }
+    return null;
+  })();
+
+  // Retain the last editor so its contents stay rendered through the drawer's
+  // slide-out animation after the selection clears.
+  const lastEditorRef = useRef(currentEditor);
+  if (currentEditor !== null) lastEditorRef.current = currentEditor;
+  const editor = currentEditor ?? lastEditorRef.current;
+
   return (
     // tabIndex makes the div focusable so keydown events reach it.
     <div
@@ -427,6 +446,8 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         composerStore={composerStore}
         undoStore={undoStore}
         edges={edgeEntries}
+        nodeLabel={nodeLabel}
+        onAddNode={handleAddNode}
         automaticLayout={automaticLayout}
         onToggleAutomaticLayout={handleToggleAutomaticLayout}
       />
@@ -453,52 +474,43 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         edges={edges}
         background={background}
         simulation={simulationHandlers}
-        onBackgroundTap={(position) => {
-          void handleBackgroundTap(position);
-        }}
+        onBackgroundTap={handleBackgroundTap}
         onNodeTap={(nodeId, modifiers) => {
           void handleNodeTap(nodeId, modifiers);
         }}
         onEdgeTap={handleEdgeTap}
         onNodeDragEnd={handleNodeDragEnd}
-        renamingNodeId={renamingNodeId}
-        onCommitRename={(nodeId, value) => {
-          void handleCommitRename(nodeId, value);
-        }}
       />
-      {selectedNode !== null && stage.nodeForm !== undefined && (
-        <div className="bg-background absolute top-0 right-0 bottom-0 flex w-80 flex-col overflow-hidden shadow-lg">
+      <ComposerDrawer
+        open={currentEditor !== null}
+        onClose={() => composerStore.getState().clearSelection()}
+        title={editor?.title ?? ''}
+      >
+        {editor !== null && (
           <Inspector
-            kind="node"
-            selectedNode={selectedNode}
-            nodeForm={stage.nodeForm}
-            subject={stage.subject}
-            onUpdateNode={(id, data) => {
-              void actions.updateNodeAttributes(id, data);
+            key={editor.entityId}
+            entityId={editor.entityId}
+            form={editor.form}
+            subject={editor.subject}
+            attributes={editor.attributes}
+            onSave={(id, data) => {
+              if (editor.kind === 'node') {
+                void actions.updateNodeAttributes(id, data, `node-attr:${id}`);
+              } else {
+                void actions.updateEdgeAttributes(id, data, `edge-attr:${id}`);
+              }
             }}
-            onDeleteNode={(id) => {
-              actions.deleteNodeById(id);
+            onDelete={(id) => {
+              if (editor.kind === 'node') {
+                actions.deleteNodeById(id);
+              } else {
+                actions.deleteEdgeById(id);
+              }
               composerStore.getState().clearSelection();
             }}
           />
-        </div>
-      )}
-      {selectedEdge !== null && selectedEdgeFormEntry?.form !== undefined && (
-        <div className="bg-background absolute top-0 right-0 bottom-0 flex w-80 flex-col overflow-hidden shadow-lg">
-          <Inspector
-            kind="edge"
-            selectedEdge={selectedEdge}
-            edgeForm={selectedEdgeFormEntry.form}
-            onUpdateEdge={(id, data) => {
-              void actions.updateEdgeAttributes(id, data);
-            }}
-            onDeleteEdge={(id) => {
-              actions.deleteEdgeById(id);
-              composerStore.getState().clearSelection();
-            }}
-          />
-        </div>
-      )}
+        )}
+      </ComposerDrawer>
     </div>
   );
 };

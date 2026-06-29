@@ -203,6 +203,45 @@ export const MenuSelection: Story = {
   },
 };
 
+/**
+ * A `popover` segment is a pressed-able button that anchors arbitrary content
+ * beside it — here a text input. The Network Composer uses this for its
+ * Add-node name field: the button stays pressed while the popover is open.
+ */
+export const PopoverInput: Story = {
+  args: { label: 'Network tools', orientation: 'vertical', items: [] },
+  render: function PopoverRender(args) {
+    const [open, setOpen] = useState(false);
+    const items: ToolbarSegment[] = [
+      {
+        type: 'toggle',
+        id: 'select',
+        label: 'Select',
+        icon: <MousePointer2 />,
+        pressed: !open,
+        onPressedChange: () => setOpen(false),
+      },
+      {
+        type: 'popover',
+        id: 'add',
+        label: 'Add node',
+        icon: <Plus />,
+        pressed: open,
+        open,
+        onOpenChange: setOpen,
+        children: (
+          <input
+            aria-label="Name"
+            placeholder="Type a name, then press Enter"
+            className="w-64 rounded-full border-2 border-current/20 bg-transparent px-4 py-2"
+          />
+        ),
+      },
+    ];
+    return <SegmentedToolbar {...args} items={items} />;
+  },
+};
+
 /** Per-button colours use named theme palette colours for background and foreground. */
 export const Colours: Story = {
   args: {

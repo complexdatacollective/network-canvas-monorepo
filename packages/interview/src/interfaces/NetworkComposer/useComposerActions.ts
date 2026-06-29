@@ -40,10 +40,12 @@ type ComposerActions = {
   updateNodeAttributes: (
     id: string,
     data: NcNode[typeof entityAttributesProperty],
+    coalesceKey?: string,
   ) => Promise<void>;
   updateEdgeAttributes: (
     id: string,
     data: NcEdge[typeof entityAttributesProperty],
+    coalesceKey?: string,
   ) => Promise<void>;
   repositionNode: (
     id: string,
@@ -365,6 +367,7 @@ export function useComposerActions({
   async function updateNodeAttributes(
     id: string,
     data: NcNode[typeof entityAttributesProperty],
+    coalesceKey?: string,
   ): Promise<void> {
     let priorAttributes: NcNode[typeof entityAttributesProperty] = {};
 
@@ -388,6 +391,7 @@ export function useComposerActions({
 
     void undoStore.getState().push({
       label: `Update node attributes`,
+      coalesceKey,
       undo: async () => {
         await dispatch(
           updateNode({
@@ -408,6 +412,7 @@ export function useComposerActions({
   async function updateEdgeAttributes(
     id: string,
     data: NcEdge[typeof entityAttributesProperty],
+    coalesceKey?: string,
   ): Promise<void> {
     let priorAttributes: NcEdge[typeof entityAttributesProperty] = {};
 
@@ -429,6 +434,7 @@ export function useComposerActions({
 
     void undoStore.getState().push({
       label: `Update edge attributes`,
+      coalesceKey,
       undo: async () => {
         await dispatch(
           updateEdge({ edgeId: id, newAttributeData: capturedPrior }),

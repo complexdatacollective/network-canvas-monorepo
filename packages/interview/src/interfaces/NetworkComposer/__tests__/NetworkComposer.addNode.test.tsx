@@ -132,10 +132,11 @@ function renderInterface() {
   return { store };
 }
 
-function tapCanvas() {
-  const canvas = screen.getByRole('application');
-  fireEvent.pointerDown(canvas, { button: 0, clientX: 200, clientY: 200 });
-  fireEvent.pointerUp(canvas, { button: 0, clientX: 200, clientY: 200 });
+async function openAddInput() {
+  act(() => {
+    fireEvent.click(screen.getByRole('button', { name: /add node/i }));
+  });
+  return screen.findByRole('textbox', { name: /name/i });
 }
 
 describe('NetworkComposer tool palette', () => {
@@ -164,21 +165,11 @@ describe('NetworkComposer tool palette', () => {
     expect(selectBtn.getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('clicking Add Node sets aria-pressed on Add Node button', async () => {
+  it('clicking Add Node opens the inline name input', async () => {
     renderInterface();
 
-    const addNodeBtn = screen.getByRole('button', { name: /add node/i });
-    act(() => {
-      fireEvent.click(addNodeBtn);
-    });
-
-    await waitFor(() => {
-      expect(
-        screen
-          .getByRole('button', { name: /add node/i })
-          .getAttribute('aria-pressed'),
-      ).toBe('true');
-    });
+    const input = await openAddInput();
+    expect(input).toBeTruthy();
   });
 
   it('Select button is no longer aria-pressed after Add Node is activated', async () => {
@@ -200,42 +191,14 @@ describe('NetworkComposer tool palette', () => {
 });
 
 describe('NetworkComposer add-node flow', () => {
-  it('tapping the background in Add Node mode opens the inline rename input', async () => {
-    renderInterface();
-
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /add node/i }));
-    });
-
-    act(() => {
-      tapCanvas();
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('composer-node-rename')).toBeTruthy();
-    });
-  });
-
-  it('typing a name and pressing Enter commits it to the node quickAdd variable', async () => {
+  it('typing a name and pressing Enter creates a node with that quickAdd value', async () => {
     const { store } = renderInterface();
 
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /add node/i }));
-    });
-
-    act(() => {
-      tapCanvas();
-    });
-
-    const input = await screen.findByTestId('composer-node-rename');
+    const input = await openAddInput();
 
     await act(async () => {
       fireEvent.change(input, { target: { value: 'Alice' } });
       fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('composer-node-rename')).toBeNull();
     });
 
     await waitFor(() => {
@@ -246,44 +209,10 @@ describe('NetworkComposer add-node flow', () => {
     });
   });
 
-  it('blurring the rename input commits the value', async () => {
-    const { store } = renderInterface();
-
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /add node/i }));
-    });
-
-    act(() => {
-      tapCanvas();
-    });
-
-    const input = await screen.findByTestId('composer-node-rename');
-
-    await act(async () => {
-      fireEvent.change(input, { target: { value: 'Bob' } });
-      fireEvent.blur(input);
-    });
-
-    await waitFor(() => {
-      const nodes = store.getState().session.network.nodes;
-      expect(nodes).toHaveLength(1);
-      const node = nodes[0];
-      expect(node?.[entityAttributesProperty]?.[QUICK_ADD_VAR]).toBe('Bob');
-    });
-  });
-
   it('the new node has a layoutVariable position set', async () => {
     const { store } = renderInterface();
 
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /add node/i }));
-    });
-
-    act(() => {
-      tapCanvas();
-    });
-
-    const input = await screen.findByTestId('composer-node-rename');
+    const input = await openAddInput();
 
     await act(async () => {
       fireEvent.change(input, { target: { value: 'Carlos' } });
@@ -300,6 +229,38 @@ describe('NetworkComposer add-node flow', () => {
       expect(pos).toBeDefined();
       expect(typeof pos?.x).toBe('number');
       expect(typeof pos?.y).toBe('number');
+    });
+  });
+
+  it('keeps the field open and cleared after each add, so several can be added in a row', async () => {
+    const { store } = renderInterface();
+
+    const input = await openAddInput();
+
+    await act(async () => {
+      fireEvent.change(input, { target: { value: 'Alice' } });
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+    });
+
+    await waitFor(() => {
+      expect(store.getState().session.network.nodes).toHaveLength(1);
+    });
+
+    // The same field stays open and is cleared, ready for the next name.
+    expect((input as HTMLInputElement).value).toBe('');
+
+    await act(async () => {
+      fireEvent.change(input, { target: { value: 'Bob' } });
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+    });
+
+    await waitFor(() => {
+      const names = store
+        .getState()
+        .session.network.nodes.map(
+          (n) => n[entityAttributesProperty]?.[QUICK_ADD_VAR],
+        );
+      expect(names).toEqual(['Alice', 'Bob']);
     });
   });
 });

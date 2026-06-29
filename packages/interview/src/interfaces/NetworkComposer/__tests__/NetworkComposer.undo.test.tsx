@@ -142,10 +142,15 @@ function renderInterface(preloadedNodes: unknown[] = []) {
   return { store };
 }
 
-function tapCanvas() {
-  const canvas = screen.getByRole('application');
-  fireEvent.pointerDown(canvas, { button: 0, clientX: 200, clientY: 200 });
-  fireEvent.pointerUp(canvas, { button: 0, clientX: 200, clientY: 200 });
+async function createNodeNamed(name: string) {
+  act(() => {
+    fireEvent.click(screen.getByRole('button', { name: /add node/i }));
+  });
+  const input = await screen.findByRole('textbox', { name: /name/i });
+  await act(async () => {
+    fireEvent.change(input, { target: { value: name } });
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+  });
 }
 
 function tapNode(nodeEl: HTMLElement) {
@@ -164,33 +169,11 @@ function tapNode(nodeEl: HTMLElement) {
 }
 
 describe('NetworkComposer keyboard undo/redo', () => {
-  it('⌘Z after creating a node (with no-op rename) removes the node', async () => {
+  it('⌘Z after creating a node removes the node', async () => {
     const { store } = renderInterface();
 
-    // Activate Add Node tool
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /add node/i }));
-    });
+    await createNodeNamed('Alice');
 
-    // Tap canvas to create a node
-    act(() => {
-      tapCanvas();
-    });
-
-    // Wait for inline rename input to appear
-    const input = await screen.findByTestId('composer-node-rename');
-
-    // Blur the input WITHOUT typing anything (value stays empty — no-op rename)
-    await act(async () => {
-      fireEvent.blur(input);
-    });
-
-    // Wait for the rename input to disappear
-    await waitFor(() => {
-      expect(screen.queryByTestId('composer-node-rename')).toBeNull();
-    });
-
-    // Confirm the node exists
     await waitFor(() => {
       expect(store.getState().session.network.nodes).toHaveLength(1);
     });
@@ -210,20 +193,7 @@ describe('NetworkComposer keyboard undo/redo', () => {
   it('⇧⌘Z after undo restores the node', async () => {
     const { store } = renderInterface();
 
-    // Activate Add Node tool, tap canvas to create a node
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /add node/i }));
-    });
-    act(() => {
-      tapCanvas();
-    });
-
-    const input = await screen.findByTestId('composer-node-rename');
-
-    // Blur without typing — no-op rename commit
-    await act(async () => {
-      fireEvent.blur(input);
-    });
+    await createNodeNamed('Alice');
 
     await waitFor(() => {
       expect(store.getState().session.network.nodes).toHaveLength(1);

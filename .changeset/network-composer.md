@@ -19,13 +19,23 @@ with undo/redo and lasso/clique gestures).
   the Sociogram and Narrative do); for NetworkComposer it is only the starting
   default.
 - `@codaco/interview`: the `NetworkComposer` runtime interface, reusing the shared
-  canvas, edge layer, and force-directed auto-layout engine. Automatic layout is
-  an interview-time toggle whose live value is persisted in stage metadata, so the
-  participant's choice sticks across navigation; Architect only sets its default.
+  canvas, edge layer, and force-directed auto-layout engine. Nodes are added by
+  name from a field in the tool palette and laid out on a grid; in edge mode the
+  first node tapped enters a linking state and the edge tool adopts that edge
+  type's colour. Selecting a node or edge opens a resizable, backdrop-less
+  right-hand drawer that leaves the canvas interactive; it edits the entity's
+  attribute form (saving valid edits automatically, with no Save button) or shows
+  an empty state when there is nothing to edit. Automatic layout is an interview-time
+  toggle whose live value is persisted in stage metadata, so the participant's
+  choice sticks across navigation; Architect only sets its default.
 - `@codaco/shared-consts`: a `NetworkComposer` stage-metadata shape storing the
   participant's automatic-layout choice.
 - `@codaco/fresco-ui`: the `SegmentedToolbar` gains a `menu` segment (a button
-  that opens a single-select menu).
+  that opens a single-select menu) and a `popover` segment (a pressed-able button
+  that anchors arbitrary popover content), and a vertical toolbar now opens its
+  tooltips, menus, and popovers to the right (into the canvas); `Popover` accepts
+  a `side` prop.
 - `@codaco/interview`: the NetworkComposer tool palette is built from the shared
-  `SegmentedToolbar` — an exclusive Select/Add-node group, an edge tool that opens
-  a menu of edge types, undo/redo, and an automatic-layout toggle button.
+  `SegmentedToolbar` — a Select tool, an Add-node button whose popover holds the
+  name field, an edge tool that opens a menu of edge types, an automatic-layout
+  toggle, and undo/redo.
