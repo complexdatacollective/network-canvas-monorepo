@@ -1,16 +1,11 @@
 import { render, screen } from '@testing-library/react';
+import { type ComponentType, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 // Lightweight Section/Row stubs that render their children
 vi.mock('~/components/EditorLayout', () => ({
-  Row: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  Section: ({
-    children,
-    title,
-  }: {
-    children: React.ReactNode;
-    title?: string;
-  }) => (
+  Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  Section: ({ children, title }: { children: ReactNode; title?: string }) => (
     <div>
       {title && <h2>{title}</h2>}
       {children}
@@ -42,7 +37,7 @@ vi.mock('~/components/Form/ValidatedField', () => ({
   }: {
     name: string;
     componentProps: Record<string, unknown>;
-    component: React.ComponentType<Record<string, unknown>>;
+    component: ComponentType<Record<string, unknown>>;
   }) => <Component {...componentProps} />,
 }));
 
