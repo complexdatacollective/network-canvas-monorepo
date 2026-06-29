@@ -477,5 +477,3 @@ export function SegmentedToolbar({
     </motion.div>
   );
 }
-
-export default SegmentedToolbar;
