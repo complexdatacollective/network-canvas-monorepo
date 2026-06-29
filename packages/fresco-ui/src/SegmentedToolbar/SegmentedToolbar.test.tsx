@@ -1,6 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Pencil, Snowflake, Undo2 } from 'lucide-react';
+import {
+  Grid3x3,
+  List,
+  Map as MapIcon,
+  Pencil,
+  Snowflake,
+  Undo2,
+} from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SegmentedToolbar, type ToolbarSegment } from './SegmentedToolbar';
@@ -106,5 +113,41 @@ describe('SegmentedToolbar — toggles', () => {
     render(<SegmentedToolbar label="Tools" items={items} />);
     await userEvent.click(screen.getByRole('button', { name: 'Freeze' }));
     expect(onPressedChange).toHaveBeenCalledWith(true);
+  });
+});
+
+describe('SegmentedToolbar — groups', () => {
+  const groupItems = (onValueChange = vi.fn()): ToolbarSegment[] => [
+    {
+      type: 'group',
+      id: 'view',
+      mode: 'single',
+      defaultValue: ['list'],
+      onValueChange,
+      options: [
+        { value: 'list', label: 'List', icon: <List /> },
+        { value: 'grid', label: 'Grid', icon: <Grid3x3 /> },
+        { value: 'map', label: 'Map', icon: <MapIcon /> },
+      ],
+    },
+  ];
+
+  it('renders one button per option with the default pressed', () => {
+    render(<SegmentedToolbar label="View" items={groupItems()} />);
+    expect(screen.getByRole('button', { name: 'List' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Grid' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
+  it('single mode replaces selection on change', async () => {
+    const onValueChange = vi.fn();
+    render(<SegmentedToolbar label="View" items={groupItems(onValueChange)} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Grid' }));
+    expect(onValueChange).toHaveBeenCalledWith(['grid']);
   });
 });

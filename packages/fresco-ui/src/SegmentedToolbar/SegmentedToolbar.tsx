@@ -1,6 +1,7 @@
 'use client';
 
 import { Toggle } from '@base-ui/react/toggle';
+import { ToggleGroup } from '@base-ui/react/toggle-group';
 import { Toolbar } from '@base-ui/react/toolbar';
 import * as React from 'react';
 
@@ -47,12 +48,26 @@ export type ToggleSegment = {
   onPressedChange?: (pressed: boolean) => void;
 } & SegmentContent;
 
+export type GroupSegment = {
+  type: 'group';
+  id: string;
+  mode: 'single' | 'multiple';
+  value?: string[];
+  defaultValue?: string[];
+  onValueChange?: (value: string[]) => void;
+  options: Array<SegmentContent & { value: string; disabled?: boolean }>;
+};
+
 export type SeparatorSegment = {
   type: 'separator';
   id: string;
 };
 
-export type ToolbarSegment = ButtonSegment | ToggleSegment | SeparatorSegment;
+export type ToolbarSegment =
+  | ButtonSegment
+  | ToggleSegment
+  | GroupSegment
+  | SeparatorSegment;
 
 export type Position = { x: number; y: number };
 
@@ -194,12 +209,61 @@ function ToolbarToggleSegment({
   return toggle;
 }
 
+function ToolbarGroupSegment({
+  segment,
+  size,
+}: {
+  segment: GroupSegment;
+  size: SegmentSize;
+}) {
+  return (
+    <ToggleGroup
+      multiple={segment.mode === 'multiple'}
+      value={segment.value}
+      defaultValue={segment.defaultValue}
+      onValueChange={(value) => segment.onValueChange?.(value)}
+      className="flex items-center gap-1"
+    >
+      {segment.options.map((option) => {
+        const labelVisible = option.showLabel ?? !option.icon;
+        const toggle = (
+          <Toolbar.Button
+            render={
+              <Toggle
+                value={option.value}
+                disabled={option.disabled}
+                aria-label={labelVisible ? undefined : option.label}
+                className={segmentVariants({ size, iconOnly: !labelVisible })}
+              />
+            }
+          >
+            <SegmentContentInner {...option} />
+          </Toolbar.Button>
+        );
+        if (!labelVisible) {
+          return (
+            <Tooltip key={option.value}>
+              <TooltipTrigger render={toggle} />
+              <TooltipContent>{option.label}</TooltipContent>
+            </Tooltip>
+          );
+        }
+        return <React.Fragment key={option.value}>{toggle}</React.Fragment>;
+      })}
+    </ToggleGroup>
+  );
+}
+
 function renderSegment(
   segment: ToolbarSegment,
   size: SegmentSize,
   orientation: 'horizontal' | 'vertical',
 ) {
   switch (segment.type) {
+    case 'group':
+      return (
+        <ToolbarGroupSegment key={segment.id} segment={segment} size={size} />
+      );
     case 'separator':
       return (
         <Toolbar.Separator
