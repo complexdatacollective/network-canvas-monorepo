@@ -47,22 +47,24 @@ describe('StickerNode', () => {
     });
   });
 
-  describe('status → style mapping', () => {
+  describe('status → notation glyph mapping', () => {
+    // Each status maps to a standard-notation glyph hook drawn by StatusMarker.
+    // Display merge: affected and obligateAffected both draw [data-filled-shape].
     it.each([
-      ['affected', 'sticker-solid'],
-      ['obligateAffected', 'sticker-double-ring'],
-      ['obligateCarrier', 'sticker-ring-dot'],
-      ['atRiskAffected', 'sticker-half'],
-      ['atRiskCarrier', 'sticker-dot'],
-      ['unknown', 'sticker-question'],
-    ] as const)('status=%s has class %s', (status, expectedClass) => {
+      ['affected', '[data-filled-shape]'],
+      ['obligateAffected', '[data-filled-shape]'],
+      ['obligateCarrier', '[data-centre-dot]'],
+      ['atRiskAffected', '[data-half-fill]'],
+      ['atRiskCarrier', '[data-centre-dot]'],
+      ['unknown', '[data-question-mark]'],
+    ] as const)('status=%s renders %s', (status, glyphSelector) => {
       const disease: DiseaseSticker = { id: 'dx', color: '#red', status };
       render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
       const sticker = document.querySelector(
         `[data-sticker-status="${status}"]`,
       );
       expect(sticker).toBeInTheDocument();
-      expect(sticker).toHaveClass(expectedClass);
+      expect(sticker?.querySelector(glyphSelector)).toBeTruthy();
     });
   });
 
@@ -285,8 +287,8 @@ describe('StickerNode', () => {
     });
   });
 
-  describe('SVG visual structure per status', () => {
-    it('affected marker renders a filled <circle> (no stroke)', () => {
+  describe('SVG visual structure per status (standard notation)', () => {
+    it('affected marker renders a [data-filled-shape] in the disease colour', () => {
       render(
         <StickerNode
           label="Test"
@@ -298,13 +300,24 @@ describe('StickerNode', () => {
         '[data-sticker-status="affected"]',
       );
       expect(sticker).toBeInTheDocument();
-      // The solid marker uses a filled circle as its only <circle> element
-      const circles = sticker?.querySelectorAll('circle');
-      expect(circles?.length).toBeGreaterThanOrEqual(1);
-      const filledCircle = Array.from(circles ?? []).find(
-        (c) => c.getAttribute('fill') === '#e53e3e',
+      const filled = sticker?.querySelector('[data-filled-shape]');
+      expect(filled).toBeTruthy();
+      expect(filled?.getAttribute('fill')).toBe('#e53e3e');
+    });
+
+    it('affected/circle renders the filled shape as a <circle>', () => {
+      render(
+        <StickerNode
+          label="Test"
+          shape="circle"
+          diseases={[{ id: 'dx', color: '#e53e3e', status: 'affected' }]}
+        />,
       );
-      expect(filledCircle).toBeTruthy();
+      const sticker = document.querySelector(
+        '[data-sticker-status="affected"]',
+      );
+      const filled = sticker?.querySelector('[data-filled-shape]');
+      expect(filled?.tagName.toLowerCase()).toBe('circle');
     });
 
     it('unknown marker renders a ? text glyph via [data-question-mark]', () => {
@@ -322,7 +335,7 @@ describe('StickerNode', () => {
       expect(qMark?.textContent).toBe('?');
     });
 
-    it('atRiskCarrier marker renders a [data-centre-dot] instead of a filled ring', () => {
+    it('atRiskCarrier marker renders a [data-centre-dot]', () => {
       render(
         <StickerNode
           label="Test"
@@ -334,11 +347,10 @@ describe('StickerNode', () => {
         '[data-sticker-status="atRiskCarrier"]',
       );
       expect(sticker).toBeInTheDocument();
-      const dot = sticker?.querySelector('[data-centre-dot]');
-      expect(dot).toBeTruthy();
+      expect(sticker?.querySelector('[data-centre-dot]')).toBeTruthy();
     });
 
-    it('obligateCarrier marker renders a [data-centre-dot] within a stroked ring', () => {
+    it('obligateCarrier marker renders a [data-centre-dot]', () => {
       render(
         <StickerNode
           label="Test"
@@ -350,8 +362,7 @@ describe('StickerNode', () => {
         '[data-sticker-status="obligateCarrier"]',
       );
       expect(sticker).toBeInTheDocument();
-      const dot = sticker?.querySelector('[data-centre-dot]');
-      expect(dot).toBeTruthy();
+      expect(sticker?.querySelector('[data-centre-dot]')).toBeTruthy();
     });
 
     it('atRiskAffected marker renders a [data-half-fill] path', () => {
@@ -366,11 +377,12 @@ describe('StickerNode', () => {
         '[data-sticker-status="atRiskAffected"]',
       );
       expect(sticker).toBeInTheDocument();
-      const halfPath = sticker?.querySelector('[data-half-fill]');
-      expect(halfPath).toBeTruthy();
+      expect(sticker?.querySelector('[data-half-fill]')).toBeTruthy();
     });
 
-    it('obligateAffected marker renders two concentric <circle> elements (double ring)', () => {
+    // Display merge: obligateAffected draws the same filled glyph as affected,
+    // with no double-outline distinguisher.
+    it('obligateAffected marker renders the same filled glyph as affected', () => {
       render(
         <StickerNode
           label="Test"
@@ -384,8 +396,28 @@ describe('StickerNode', () => {
         '[data-sticker-status="obligateAffected"]',
       );
       expect(sticker).toBeInTheDocument();
-      const circles = sticker?.querySelectorAll('circle');
-      expect(circles?.length).toBe(2);
+      expect(sticker?.querySelector('[data-filled-shape]')).toBeTruthy();
+      expect(sticker?.querySelector('[data-double-outline]')).toBeNull();
     });
+  });
+
+  describe('shape conformance', () => {
+    it.each(['square', 'circle', 'diamond'] as const)(
+      'passes the node shape to the sticker glyph (shape=%s)',
+      (shape) => {
+        render(
+          <StickerNode
+            label="Test"
+            shape={shape}
+            diseases={[{ id: 'dx', color: '#e53e3e', status: 'affected' }]}
+          />,
+        );
+        const filled = document
+          .querySelector('[data-sticker-status="affected"]')
+          ?.querySelector('[data-filled-shape]');
+        const expectedTag = shape === 'circle' ? 'circle' : 'rect';
+        expect(filled?.tagName.toLowerCase()).toBe(expectedTag);
+      },
+    );
   });
 });

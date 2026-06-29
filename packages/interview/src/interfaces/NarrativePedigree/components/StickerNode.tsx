@@ -5,7 +5,7 @@ import type { NodeColorSequence, NodeShape } from '@codaco/fresco-ui/Node';
 import { dimColor } from '~/interfaces/FamilyPedigree/pedigree-layout/dimColor';
 
 import type { Status } from '../genetics/status';
-import { Sticker, STICKER_SIZE_PX } from './Sticker';
+import { Sticker } from './Sticker';
 import { stickerPositions } from './stickerPositions';
 
 export type DiseaseSticker = {
@@ -18,11 +18,13 @@ export type DiseaseSticker = {
 /** Maximum number of stickers rendered before showing +N overflow. */
 export const STICKER_CAP = 8;
 
-/** Pixel size of the node rendered by <Node size="sm"> (96px = size-24). */
-const NODE_SIZE_PX = 96;
-
-/** Half-sticker offset so the marker is centred on the perimeter point. */
-const STICKER_HALF = STICKER_SIZE_PX / 2;
+/**
+ * Sticker size as a fraction of the rendered node, applied as a percentage so it
+ * scales with the node element rather than a fixed pixel size. The Shell ramps
+ * the real node size with the viewport, so percentage sizing keeps stickers
+ * proportional at every breakpoint.
+ */
+const STICKER_FRACTION = 0.3;
 
 type StickerNodeProps = {
   label: string;
@@ -40,6 +42,10 @@ type StickerNodeProps = {
  * Each sticker's colour is the disease colour; its inline SVG encodes the
  * genetic status visually. When more diseases than STICKER_CAP are supplied,
  * the first STICKER_CAP are shown and a +N marker reveals the rest.
+ *
+ * Stickers are positioned as percentages of the node element (an `absolute
+ * inset-0` overlay), so each marker's centre sits on its perimeter point at 50%
+ * overlap regardless of the node's rendered size.
  *
  * `onSelectDisease` wires a pointer-only convenience: clicking a sticker
  * selects that disease without disturbing the node-container's focal action.
@@ -93,6 +99,17 @@ export function StickerNode({
     '--base': dimColor('var(--node-1)'),
   } as CSSProperties;
 
+  // Percentage-based size and centring: each sticker is sized as a fraction of
+  // the overlay (= node) and offset by -50%,-50% so its centre lands on the
+  // perimeter point regardless of the node's rendered pixel size.
+  const stickerSpanStyle = (pos: { x: number; y: number }): CSSProperties => ({
+    width: `${STICKER_FRACTION * 100}%`,
+    aspectRatio: '1',
+    left: `${pos.x * 100}%`,
+    top: `${pos.y * 100}%`,
+    transform: 'translate(-50%, -50%)',
+  });
+
   return (
     <div className="relative inline-block">
       <Node
@@ -115,17 +132,12 @@ export function StickerNode({
           const pos = positions[i];
           if (!pos) return null;
           return (
-            <span
-              key={i}
-              className="absolute"
-              style={{
-                left: pos.x * NODE_SIZE_PX - STICKER_HALF,
-                top: pos.y * NODE_SIZE_PX - STICKER_HALF,
-              }}
-            >
+            <span key={i} className="absolute" style={stickerSpanStyle(pos)}>
               <Sticker
                 status={sticker.status}
                 color={sticker.color}
+                shape={shape}
+                size="100%"
                 atRiskHomozygous={sticker.atRiskHomozygous}
                 surfaceColor={dimmed ? dimColor('white') : undefined}
                 onClick={
@@ -152,10 +164,11 @@ export function StickerNode({
             dimmed ? '' : 'border-white bg-slate-600 text-white',
           ].join(' ')}
           style={{
-            width: STICKER_SIZE_PX,
-            height: STICKER_SIZE_PX,
-            left: overflowPos.x * NODE_SIZE_PX - STICKER_HALF,
-            top: overflowPos.y * NODE_SIZE_PX - STICKER_HALF,
+            width: `${STICKER_FRACTION * 100}%`,
+            aspectRatio: '1',
+            left: `${overflowPos.x * 100}%`,
+            top: `${overflowPos.y * 100}%`,
+            transform: 'translate(-50%, -50%)',
             ...(dimmed
               ? {
                   backgroundColor: dimColor('var(--color-slate-600)'),

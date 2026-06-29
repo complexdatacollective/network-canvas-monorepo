@@ -375,8 +375,8 @@ export const AllDiseasesStickerView: Story = {
 
 // ---------------------------------------------------------------------------
 // Story 2: Select single disease via the condition Select
-// Pick a disease in the condition Select → single-disease mode →
-// ClassicNotationNode ([data-notation-status]) present, stickers absent.
+// Pick a disease in the condition Select → single-condition mode →
+// single-condition node ([data-notation-status]) present, stickers absent.
 // Pick "All conditions" → stickers return.
 // ---------------------------------------------------------------------------
 export const SelectSingleDisease: Story = {

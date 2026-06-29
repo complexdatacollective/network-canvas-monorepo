@@ -45,11 +45,8 @@ import {
   type Status,
 } from '../genetics/status';
 import { computeContributors } from '../highlight';
-import {
-  ClassicNotationNode,
-  type ClassicDisease,
-} from './ClassicNotationNode';
 import DiseaseSelectPanel from './DiseaseSelectPanel';
+import { Sticker } from './Sticker';
 import StickerKeyPanel from './StickerKeyPanel';
 import { type DiseaseSticker, StickerNode } from './StickerNode';
 
@@ -302,14 +299,14 @@ export default function NarrativePedigreeView({
     const dimmed = !highlight.nodes.has(node.id);
     const isSelected = node.id === focalId;
 
-    // Stickers are the default (all conditions at once). Classic single-disease
-    // notation appears only once the participant explicitly selects a condition.
+    // Stickers are the default (all conditions at once). The single-condition
+    // node appears only once the participant explicitly selects a condition.
     const selectedDisease =
       selectedDiseaseId !== null
         ? shownDiseases.find((d) => d.id === selectedDiseaseId)
         : undefined;
     const inner = selectedDisease
-      ? renderClassic(node, shape, label, selectedDisease, isSelected, dimmed)
+      ? renderSingleCondition(node, shape, label, selectedDisease, dimmed)
       : renderSticker(node, shape, label, isSelected, dimmed);
 
     const statusSummary = statusSummaryFor(node);
@@ -363,30 +360,40 @@ export default function NarrativePedigreeView({
     );
   };
 
-  const renderClassic = (
+  // Single-condition node: a large white-backed Sticker drawing the selected
+  // disease's status in standard pedigree notation, with the participant label
+  // absolutely positioned below so it overflows into the row gap without
+  // shifting the symbol's centre within the layout cell (where connectors
+  // attach). The symbol is aria-hidden; the focal container carries the name and
+  // the per-node status summary.
+  const renderSingleCondition = (
     node: RenderableNode,
     shape: NodeShape,
     label: string,
     disease: Disease,
-    selected: boolean,
     dimmed: boolean,
   ): ReactNode => {
     const status = statusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown';
     const atRiskHomozygous =
       statusesByDiseaseHomozygous.get(disease.id)?.get(node.id) ?? false;
-    const classicDisease: ClassicDisease = {
-      color: dimmed ? dimColor(disease.color) : disease.color,
-      status,
-      atRiskHomozygous,
-    };
+    const color = dimmed ? dimColor(disease.color) : disease.color;
     return (
-      <ClassicNotationNode
-        node={node}
-        disease={classicDisease}
-        shape={shape}
-        label={label}
-        selected={selected}
-      />
+      <div className="relative inline-block size-24">
+        <Sticker
+          status={status}
+          color={color}
+          shape={shape}
+          size="100%"
+          atRiskHomozygous={atRiskHomozygous}
+          nodeMode="single"
+        />
+        <span
+          aria-hidden
+          className="absolute top-full left-1/2 mt-1 w-24 -translate-x-1/2 truncate text-center text-xs text-white"
+        >
+          {label}
+        </span>
+      </div>
     );
   };
 

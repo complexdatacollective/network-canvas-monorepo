@@ -563,12 +563,12 @@ function renderCousinView(mode: 'classic' | 'sticker') {
   return render(<NarrativePedigreeView stage={stage} />, { wrapper: Wrapper });
 }
 
-describe('NarrativePedigreeView — at-risk-homozygous threading (classic mode)', () => {
-  it('shows the at-risk-homozygous notation on the flagged shared child and not on an unflagged node', async () => {
+describe('NarrativePedigreeView — at-risk-homozygous threading (single-condition mode)', () => {
+  it('shows the at-risk-homozygous marker on the flagged shared child and not on an unflagged node', async () => {
     renderCousinView('classic');
 
-    // Classic notation only appears once a condition is explicitly selected;
-    // the default view is stickers (all conditions).
+    // The single-condition node only appears once a condition is explicitly
+    // selected; the default view is stickers (all conditions).
     await selectCondition('AR Disease');
 
     await waitFor(() =>
@@ -580,7 +580,7 @@ describe('NarrativePedigreeView — at-risk-homozygous threading (classic mode)'
     );
     expect(sharedChildMember).toBeTruthy();
     expect(
-      sharedChildMember?.querySelector('[data-atrisk-homozygous-notation]'),
+      sharedChildMember?.querySelector('[data-atrisk-homozygous-marker]'),
     ).toBeTruthy();
 
     const unrelatedMember = document.querySelector(
@@ -588,7 +588,7 @@ describe('NarrativePedigreeView — at-risk-homozygous threading (classic mode)'
     );
     expect(unrelatedMember).toBeTruthy();
     expect(
-      unrelatedMember?.querySelector('[data-atrisk-homozygous-notation]'),
+      unrelatedMember?.querySelector('[data-atrisk-homozygous-marker]'),
     ).toBeNull();
   });
 });
@@ -815,7 +815,7 @@ describe('NarrativePedigreeView — affected nodes omit the contradictory homozy
       expect(document.querySelector('[data-node-id="kid"]')).toBeTruthy(),
     );
 
-    // The classic-mode triangle only renders once a condition is selected.
+    // The single-condition triangle only renders once a condition is selected.
     await selectCondition('Recessive Disease');
     await waitFor(() =>
       expect(viewMarker('[data-notation-status]')).toBeTruthy(),
@@ -824,7 +824,7 @@ describe('NarrativePedigreeView — affected nodes omit the contradictory homozy
     const kid = focalMember('kid');
     // The homozygous flag IS set (the triangle renders) — without it this test
     // would not exercise the guard.
-    expect(kid.querySelector('[data-atrisk-homozygous-notation]')).toBeTruthy();
+    expect(kid.querySelector('[data-atrisk-homozygous-marker]')).toBeTruthy();
     // ...but the spoken summary must stay coherent: affected, full stop.
     expect(kid).toHaveAccessibleDescription('Recessive Disease: Affected');
     expect(kid).not.toHaveAccessibleDescription(/homozygous/i);
