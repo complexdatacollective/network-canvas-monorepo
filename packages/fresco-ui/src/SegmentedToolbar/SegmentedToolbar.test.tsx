@@ -6,6 +6,7 @@ import {
   Map as MapIcon,
   Pencil,
   Snowflake,
+  Trash2,
   Undo2,
 } from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
@@ -116,22 +117,41 @@ describe('SegmentedToolbar — toggles', () => {
   });
 });
 
-describe('SegmentedToolbar — groups', () => {
-  const groupItems = (onValueChange = vi.fn()): ToolbarSegment[] => [
-    {
-      type: 'group',
-      id: 'view',
-      mode: 'single',
-      defaultValue: ['list'],
-      onValueChange,
-      options: [
-        { value: 'list', label: 'List', icon: <List /> },
-        { value: 'grid', label: 'Grid', icon: <Grid3x3 /> },
-        { value: 'map', label: 'Map', icon: <MapIcon /> },
-      ],
-    },
-  ];
+describe('SegmentedToolbar — colour', () => {
+  it('applies a semantic colour to a segment', () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'button',
+        id: 'delete',
+        label: 'Delete',
+        icon: <Trash2 />,
+        color: 'destructive',
+        onClick: vi.fn(),
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    expect(screen.getByRole('button', { name: 'Delete' })).toHaveClass(
+      'text-destructive',
+    );
+  });
+});
 
+const groupItems = (onValueChange = vi.fn()): ToolbarSegment[] => [
+  {
+    type: 'group',
+    id: 'view',
+    mode: 'single',
+    defaultValue: ['list'],
+    onValueChange,
+    options: [
+      { value: 'list', label: 'List', icon: <List /> },
+      { value: 'grid', label: 'Grid', icon: <Grid3x3 /> },
+      { value: 'map', label: 'Map', icon: <MapIcon /> },
+    ],
+  },
+];
+
+describe('SegmentedToolbar — groups', () => {
   it('renders one button per option with the default pressed', () => {
     render(<SegmentedToolbar label="View" items={groupItems()} />);
     expect(screen.getByRole('button', { name: 'List' })).toHaveAttribute(
@@ -211,7 +231,7 @@ describe('SegmentedToolbar — draggable', () => {
     ).toBeInTheDocument();
   });
 
-  it('nudges position with the arrow keys from the focused handle', async () => {
+  it('reports a position change for each arrow-key nudge from the focused handle', async () => {
     const onPositionChange = vi.fn();
     render(
       <SegmentedToolbar
@@ -224,10 +244,13 @@ describe('SegmentedToolbar — draggable', () => {
     );
     const handle = screen.getByRole('button', { name: 'Move toolbar' });
     handle.focus();
+    // Motion owns the live position and is mocked in unit tests, so each nudge
+    // reports its delta from the origin; cumulative motion is exercised visually
+    // in Storybook.
     await userEvent.keyboard('{ArrowRight}');
     expect(onPositionChange).toHaveBeenLastCalledWith({ x: 8, y: 0 });
     await userEvent.keyboard('{ArrowDown}');
-    expect(onPositionChange).toHaveBeenLastCalledWith({ x: 8, y: 8 });
+    expect(onPositionChange).toHaveBeenLastCalledWith({ x: 0, y: 8 });
   });
 
   it('announces movement via an aria-live region', async () => {

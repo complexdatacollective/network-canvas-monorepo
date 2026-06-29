@@ -6,6 +6,7 @@ import {
   Pencil,
   Redo2,
   Snowflake,
+  Trash2,
   Undo2,
 } from 'lucide-react';
 
@@ -61,6 +62,14 @@ const sampleItems: ToolbarSegment[] = [
   { type: 'separator', id: 'sep-2' },
   { type: 'button', id: 'undo', label: 'Undo', icon: <Undo2 />, onClick: noop },
   { type: 'button', id: 'redo', label: 'Redo', icon: <Redo2 />, onClick: noop },
+  {
+    type: 'button',
+    id: 'delete',
+    label: 'Delete',
+    icon: <Trash2 />,
+    color: 'destructive',
+    onClick: noop,
+  },
 ];
 
 export const Interactive: Story = {

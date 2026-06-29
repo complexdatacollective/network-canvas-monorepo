@@ -8,6 +8,7 @@ import {
   AnimatePresence,
   motion,
   useDragControls,
+  useMotionValue,
   useReducedMotion,
 } from 'motion/react';
 import * as React from 'react';
@@ -15,15 +16,15 @@ import * as React from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
 import { cva, cx, type VariantProps } from '../utils/cva';
 
-export type ButtonColor =
+export type SegmentColor =
   | 'default'
-  | 'dynamic'
   | 'primary'
   | 'secondary'
   | 'warning'
   | 'info'
   | 'destructive'
-  | 'success';
+  | 'success'
+  | 'accent';
 
 export type SegmentContent = {
   /** Accessible name. Always the aria-label; rendered as visible text when showLabel. */
@@ -35,8 +36,8 @@ export type SegmentContent = {
    * Default: false when an icon is present (icon-only + tooltip), true when no icon.
    */
   showLabel?: boolean;
-  /** Optional colour token passthrough. */
-  color?: ButtonColor;
+  /** Optional semantic colour for the segment's icon/text. @default 'default' */
+  color?: SegmentColor;
 };
 
 export type ButtonSegment = {
@@ -105,7 +106,7 @@ export type SegmentedToolbarProps = {
 const rootVariants = cva({
   base: cx(
     'flex w-fit items-center gap-1 rounded-full p-1.5',
-    'bg-surface-1 text-surface-1-contrast elevation-medium',
+    'bg-surface-1 text-surface-1-contrast elevation-medium publish-colors',
   ),
   variants: {
     orientation: {
@@ -137,8 +138,18 @@ const segmentVariants = cva({
       true: 'aspect-square p-0',
       false: 'px-4',
     },
+    color: {
+      default: '',
+      primary: 'text-primary',
+      secondary: 'text-secondary',
+      warning: 'text-warning',
+      info: 'text-info',
+      destructive: 'text-destructive',
+      success: 'text-success',
+      accent: 'text-accent',
+    },
   },
-  defaultVariants: { size: 'md', iconOnly: false },
+  defaultVariants: { size: 'md', iconOnly: false, color: 'default' },
 });
 
 type SegmentSize = NonNullable<VariantProps<typeof segmentVariants>['size']>;
@@ -175,7 +186,11 @@ function ToolbarButtonSegment({
       disabled={segment.disabled}
       onClick={segment.onClick}
       aria-label={labelVisible ? undefined : segment.label}
-      className={segmentVariants({ size, iconOnly: !labelVisible })}
+      className={segmentVariants({
+        size,
+        iconOnly: !labelVisible,
+        color: segment.color,
+      })}
     >
       <SegmentContentInner {...segment} />
     </Toolbar.Button>
@@ -210,7 +225,11 @@ function ToolbarToggleSegment({
           onPressedChange={(pressed) => segment.onPressedChange?.(pressed)}
           disabled={segment.disabled}
           aria-label={labelVisible ? undefined : segment.label}
-          className={segmentVariants({ size, iconOnly: !labelVisible })}
+          className={segmentVariants({
+            size,
+            iconOnly: !labelVisible,
+            color: segment.color,
+          })}
         />
       }
     >
@@ -245,7 +264,7 @@ function ToolbarGroupSegment({
       className="flex items-center gap-1"
     >
       {segment.options.map((option) => {
-        const labelVisible = option.showLabel ?? !option.icon;
+        const labelVisible = isLabelVisible(option);
         const toggle = (
           <Toolbar.Button
             render={
@@ -253,7 +272,11 @@ function ToolbarGroupSegment({
                 value={option.value}
                 disabled={option.disabled}
                 aria-label={labelVisible ? undefined : option.label}
-                className={segmentVariants({ size, iconOnly: !labelVisible })}
+                className={segmentVariants({
+                  size,
+                  iconOnly: !labelVisible,
+                  color: option.color,
+                })}
               />
             }
           >
@@ -380,6 +403,8 @@ function renderSegment(
         return <ToolbarToggleSegment segment={segment} size={size} />;
       case 'button':
         return <ToolbarButtonSegment segment={segment} size={size} />;
+      default:
+        return null;
     }
   })();
 
@@ -405,21 +430,26 @@ export function SegmentedToolbar({
 }: SegmentedToolbarProps) {
   const reduce = useReducedMotion() ?? false;
   const dragControls = useDragControls();
-  const isControlled = position !== undefined;
-  const [internalPos, setInternalPos] = React.useState<Position>(
-    defaultPosition ?? { x: 0, y: 0 },
-  );
   const [announcement, setAnnouncement] = React.useState('');
-  const pos = isControlled ? position : internalPos;
 
-  const commitPosition = (next: Position) => {
-    if (!isControlled) setInternalPos(next);
-    onPositionChange?.(next);
-  };
+  // Motion's `drag` owns the position via these motion values (the single
+  // source of truth), so pointer drags and keyboard nudges stay in sync and
+  // `dragConstraints` clamps both.
+  const x = useMotionValue(position?.x ?? defaultPosition?.x ?? 0);
+  const y = useMotionValue(position?.y ?? defaultPosition?.y ?? 0);
+
+  React.useEffect(() => {
+    if (position) {
+      x.set(position.x);
+      y.set(position.y);
+    }
+  }, [position, x, y]);
 
   const handleNudge = (delta: Position) => {
-    const next = { x: pos.x + delta.x, y: pos.y + delta.y };
-    commitPosition(next);
+    const next = { x: x.get() + delta.x, y: y.get() + delta.y };
+    x.set(next.x);
+    y.set(next.y);
+    onPositionChange?.(next);
     setAnnouncement(
       `Toolbar moved to ${Math.round(next.x)}, ${Math.round(next.y)}`,
     );
@@ -456,10 +486,8 @@ export function SegmentedToolbar({
       dragControls={dragControls}
       dragMomentum={false}
       dragConstraints={dragConstraints}
-      onDragEnd={(_event, info) =>
-        commitPosition({ x: pos.x + info.offset.x, y: pos.y + info.offset.y })
-      }
-      animate={{ x: pos.x, y: pos.y }}
+      onDragEnd={() => onPositionChange?.({ x: x.get(), y: y.get() })}
+      style={{ x, y }}
       transition={reduce ? { duration: 0 } : segmentSpring}
       className={cx(rootVariants({ orientation }), className)}
     >
