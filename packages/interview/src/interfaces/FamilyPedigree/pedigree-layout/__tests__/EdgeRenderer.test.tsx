@@ -5,7 +5,11 @@ import { edgeKey } from '~/interfaces/NarrativePedigree/highlight';
 
 import { PedigreeEdgeSvg } from '../components/EdgeRenderer';
 import type { ConnectorRenderData } from '../pedigreeAdapter';
-import type { ParentChildConnector } from '../types';
+import type {
+  DuplicateArc,
+  ParentChildConnector,
+  TwinIndicator,
+} from '../types';
 
 // ---------------------------------------------------------------------------
 // Minimal segment helpers
@@ -186,6 +190,209 @@ describe('PedigreeEdgeSvg — sibling branch off contributing lineage is dimmed'
     expect(
       container.querySelectorAll('[data-edge-dimmed="true"]').length,
     ).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PedigreeEdgeSvg — twin-indicator and duplicate-arc dimming (node-membership)
+//
+// Twin bars and duplicate arcs are decorative-genetic connectors, NOT
+// parent-child lineage, so they dim by node membership (isDimmedByIds), exactly
+// like partner bars: a twin bar dims unless BOTH twins are highlighted; a
+// duplicate arc dims unless its person is highlighted. FamilyPedigree passes no
+// highlight set, so the undefined short-circuit keeps them bright there.
+// ---------------------------------------------------------------------------
+
+function makeTwinConnectorData(
+  twinIndicators: TwinIndicator[],
+): ConnectorRenderData {
+  return {
+    connectors: {
+      groupLines: [],
+      parentChildLines: [],
+      auxiliaryLines: [],
+      twinIndicators,
+      duplicateArcs: [],
+    },
+  };
+}
+
+function makeDuplicateArcConnectorData(
+  duplicateArcs: DuplicateArc[],
+): ConnectorRenderData {
+  return {
+    connectors: {
+      groupLines: [],
+      parentChildLines: [],
+      auxiliaryLines: [],
+      twinIndicators: [],
+      duplicateArcs,
+    },
+  };
+}
+
+function makeTwinIndicator(
+  overrides: Partial<TwinIndicator> = {},
+): TwinIndicator {
+  return {
+    type: 'twin',
+    code: 1,
+    segment: seg(40, 80, 60, 80),
+    twinIds: ['twinA', 'twinB'],
+    ...overrides,
+  };
+}
+
+function makeDuplicateArc(overrides: Partial<DuplicateArc> = {}): DuplicateArc {
+  return {
+    type: 'duplicate-arc',
+    path: {
+      type: 'arc',
+      points: [
+        { x: 10, y: 10 },
+        { x: 20, y: 12 },
+        { x: 30, y: 10 },
+      ],
+      dashed: true,
+    },
+    personIndex: 0,
+    personId: 'dupPerson',
+    ...overrides,
+  };
+}
+
+describe('PedigreeEdgeSvg — twin and duplicate-arc dimming', () => {
+  const DIM_BLEND = 'color-mix(in oklab, var(--edge-1) 30%, var(--background))';
+
+  test('twin bar with neither twin highlighted is dimmed (blended stroke + data-edge-dimmed)', () => {
+    const highlightedNodeIds = new Set(['someoneElse']);
+    const connector = makeTwinIndicator({ twinIds: ['twinA', 'twinB'] });
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeTwinConnectorData([connector])}
+        color="var(--edge-1)"
+        width={200}
+        height={200}
+        highlightedNodeIds={highlightedNodeIds}
+      />,
+    );
+
+    const dimmed = container.querySelectorAll('[data-edge-dimmed="true"]');
+    expect(dimmed.length).toBeGreaterThan(0);
+    const line = container.querySelector('line');
+    expect(line?.getAttribute('stroke')).toBe(DIM_BLEND);
+  });
+
+  test('twin bar with BOTH twins highlighted is bright', () => {
+    const highlightedNodeIds = new Set(['twinA', 'twinB']);
+    const connector = makeTwinIndicator({ twinIds: ['twinA', 'twinB'] });
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeTwinConnectorData([connector])}
+        color="var(--edge-1)"
+        width={200}
+        height={200}
+        highlightedNodeIds={highlightedNodeIds}
+      />,
+    );
+
+    expect(container.querySelectorAll('[data-edge-dimmed="true"]').length).toBe(
+      0,
+    );
+    const line = container.querySelector('line');
+    expect(line?.getAttribute('stroke')).toBe('var(--edge-1)');
+  });
+
+  test('duplicate arc whose person is NOT highlighted is dimmed', () => {
+    const highlightedNodeIds = new Set(['someoneElse']);
+    const arc = makeDuplicateArc({ personId: 'dupPerson' });
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeDuplicateArcConnectorData([arc])}
+        color="var(--edge-1)"
+        width={200}
+        height={200}
+        highlightedNodeIds={highlightedNodeIds}
+      />,
+    );
+
+    const dimmed = container.querySelectorAll('[data-edge-dimmed="true"]');
+    expect(dimmed.length).toBeGreaterThan(0);
+    const polyline = container.querySelector('polyline');
+    expect(polyline?.getAttribute('stroke')).toBe(DIM_BLEND);
+  });
+
+  test('duplicate arc whose person IS highlighted is bright', () => {
+    const highlightedNodeIds = new Set(['dupPerson']);
+    const arc = makeDuplicateArc({ personId: 'dupPerson' });
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeDuplicateArcConnectorData([arc])}
+        color="var(--edge-1)"
+        width={200}
+        height={200}
+        highlightedNodeIds={highlightedNodeIds}
+      />,
+    );
+
+    expect(container.querySelectorAll('[data-edge-dimmed="true"]').length).toBe(
+      0,
+    );
+  });
+
+  test('with highlightedNodeIds undefined, neither twin nor duplicate arc is dimmed (FamilyPedigree path)', () => {
+    const twin = makeTwinIndicator({ twinIds: ['twinA', 'twinB'] });
+    const arc = makeDuplicateArc({ personId: 'dupPerson' });
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={{
+          connectors: {
+            groupLines: [],
+            parentChildLines: [],
+            auxiliaryLines: [],
+            twinIndicators: [twin],
+            duplicateArcs: [arc],
+          },
+        }}
+        color="var(--edge-1)"
+        width={200}
+        height={200}
+      />,
+    );
+
+    expect(container.querySelectorAll('[data-edge-dimmed="true"]').length).toBe(
+      0,
+    );
+    expect(container.querySelector('line')?.getAttribute('stroke')).toBe(
+      'var(--edge-1)',
+    );
+    expect(container.querySelector('polyline')?.getAttribute('stroke')).toBe(
+      'var(--edge-1)',
+    );
+  });
+
+  test('twin bar with no twinIds (id-less connector) stays bright even with a highlight set', () => {
+    const highlightedNodeIds = new Set(['someoneElse']);
+    const connector = makeTwinIndicator({ twinIds: undefined });
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeTwinConnectorData([connector])}
+        color="var(--edge-1)"
+        width={200}
+        height={200}
+        highlightedNodeIds={highlightedNodeIds}
+      />,
+    );
+
+    expect(container.querySelectorAll('[data-edge-dimmed="true"]').length).toBe(
+      0,
+    );
   });
 });
 

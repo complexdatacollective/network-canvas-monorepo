@@ -278,6 +278,19 @@ export function computeConnectors(
       // Twin indicators
       if (layout.twins) {
         for (let k = 0; k < whoIdx.length; k++) {
+          // The twin bar/label joins siblings k and k+1, who share a twin
+          // group target. Resolve their node ids so the connector can be
+          // dimmed by node membership in the focal view.
+          const twinColumns = [whoIdx[k], whoIdx[k + 1]];
+          const twinIds = id
+            ? twinColumns
+                .map((col) =>
+                  col !== undefined ? layout.nid[i]?.[col] : undefined,
+                )
+                .filter((idx) => idx !== undefined)
+                .map((idx) => id[idx] ?? '')
+            : undefined;
+
           if (layout.twins[i]?.[whoIdx[k]!] === 1) {
             const temp1 = (layout.pos[i]![whoIdx[k]!]! + target[k]!) / 2;
             const temp2 = (layout.pos[i]![whoIdx[k + 1]!]! + target[k]!) / 2;
@@ -291,6 +304,7 @@ export function computeConnectors(
                 x2: temp2,
                 y2: i - legh / 2,
               },
+              ...(twinIds ? { twinIds } : {}),
             });
           }
 
@@ -301,6 +315,7 @@ export function computeConnectors(
               type: 'twin',
               code: 3,
               label: { x: (temp1 + temp2) / 2, y: i - legh / 2 },
+              ...(twinIds ? { twinIds } : {}),
             });
           }
 
@@ -308,6 +323,7 @@ export function computeConnectors(
             twinIndicators.push({
               type: 'twin',
               code: 2,
+              ...(twinIds ? { twinIds } : {}),
             });
           }
         }
@@ -780,10 +796,12 @@ export function computeConnectors(
           points.push({ x: xx, y: yy });
         }
 
+        const personId = id ? id[personIdx] : undefined;
         duplicateArcs.push({
           type: 'duplicate-arc',
           path: { type: 'arc', points, dashed: true },
           personIndex: personIdx,
+          ...(personId !== undefined ? { personId } : {}),
         });
       }
     }

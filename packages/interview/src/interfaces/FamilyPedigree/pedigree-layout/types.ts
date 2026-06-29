@@ -106,12 +106,14 @@ export type TwinIndicator = {
   code: 1 | 2 | 3;
   segment?: LineSegment; // MZ: horizontal line between twin uplines
   label?: Point; // unknown: position for "?" label
+  twinIds?: string[];
 };
 
 export type DuplicateArc = {
   type: 'duplicate-arc';
   path: ArcPath;
   personIndex: number;
+  personId?: string;
 };
 
 export type PedigreeConnectors = {

@@ -442,11 +442,20 @@ export function PedigreeEdgeSvg({
 
     for (let i = 0; i < connectors.twinIndicators.length; i++) {
       const ti = connectors.twinIndicators[i]!;
+      // Twin bars are decorative-genetic, not lineage, so they dim by node
+      // membership: bright unless BOTH joined twins are highlighted.
+      const dimmed = isDimmedByIds(highlightedNodeIds, ti.twinIds);
+      const twinColor = dimmed ? dimColor(color) : color;
       if (ti.segment) {
         elements.push(
-          renderLine(ti.segment, color, `twin-${i}`, {
-            strokeWidth: EDGE_WIDTH / 2,
-          }),
+          <g
+            key={`twin-dim-${i}`}
+            {...(dimmed ? { 'data-edge-dimmed': 'true' } : {})}
+          >
+            {renderLine(ti.segment, twinColor, `twin-${i}`, {
+              strokeWidth: EDGE_WIDTH / 2,
+            })}
+          </g>,
         );
       }
       if (ti.label) {
@@ -457,8 +466,9 @@ export function PedigreeEdgeSvg({
             y={ti.label.y}
             textAnchor="middle"
             dominantBaseline="central"
-            fill={color}
+            fill={twinColor}
             fontSize={14}
+            {...(dimmed ? { 'data-edge-dimmed': 'true' } : {})}
           >
             ?
           </text>,
@@ -469,14 +479,21 @@ export function PedigreeEdgeSvg({
     for (let i = 0; i < connectors.duplicateArcs.length; i++) {
       const da = connectors.duplicateArcs[i]!;
       const points = da.path.points.map((p) => `${p.x},${p.y}`).join(' ');
+      // A duplicate arc joins two rendered positions of the same person, so it
+      // dims by node membership: bright unless that person is highlighted.
+      const dimmed = isDimmedByIds(
+        highlightedNodeIds,
+        da.personId !== undefined ? [da.personId] : undefined,
+      );
       elements.push(
         <polyline
           key={`dup-arc-${i}`}
           points={points}
           fill="none"
-          stroke={color}
+          stroke={dimmed ? dimColor(color) : color}
           strokeWidth={EDGE_WIDTH / 2}
           strokeDasharray={da.path.dashed ? '6 4' : undefined}
+          {...(dimmed ? { 'data-edge-dimmed': 'true' } : {})}
         />,
       );
     }
