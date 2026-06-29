@@ -3,6 +3,7 @@
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import { Toolbar } from '@base-ui/react/toolbar';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import * as React from 'react';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
@@ -254,36 +255,70 @@ function ToolbarGroupSegment({
   );
 }
 
+const segmentSpring = { type: 'spring' as const, duration: 0.4, bounce: 0.2 };
+
+function SegmentMotion({
+  reduce,
+  children,
+}: {
+  reduce: boolean;
+  children: React.ReactNode;
+}) {
+  const variants = reduce
+    ? undefined
+    : {
+        initial: { opacity: 0, scale: 0.6 },
+        animate: { opacity: 1, scale: 1 },
+        exit: { opacity: 0, scale: 0.6 },
+      };
+  return (
+    <motion.div
+      layout
+      className="flex items-center justify-center"
+      initial={variants?.initial}
+      animate={variants?.animate}
+      exit={variants?.exit}
+      transition={reduce ? { duration: 0 } : segmentSpring}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 function renderSegment(
   segment: ToolbarSegment,
   size: SegmentSize,
   orientation: 'horizontal' | 'vertical',
+  reduce: boolean,
 ) {
-  switch (segment.type) {
-    case 'group':
-      return (
-        <ToolbarGroupSegment key={segment.id} segment={segment} size={size} />
-      );
-    case 'separator':
-      return (
-        <Toolbar.Separator
-          key={segment.id}
-          orientation={orientation === 'horizontal' ? 'vertical' : 'horizontal'}
-          className={cx(
-            'shrink-0 rounded-full bg-current/20',
-            orientation === 'horizontal' ? 'mx-1 h-6 w-px' : 'my-1 h-px w-6',
-          )}
-        />
-      );
-    case 'toggle':
-      return (
-        <ToolbarToggleSegment key={segment.id} segment={segment} size={size} />
-      );
-    case 'button':
-      return (
-        <ToolbarButtonSegment key={segment.id} segment={segment} size={size} />
-      );
-  }
+  const inner = (() => {
+    switch (segment.type) {
+      case 'separator':
+        return (
+          <Toolbar.Separator
+            orientation={
+              orientation === 'horizontal' ? 'vertical' : 'horizontal'
+            }
+            className={cx(
+              'shrink-0 rounded-full bg-current/20',
+              orientation === 'horizontal' ? 'mx-1 h-6 w-px' : 'my-1 h-px w-6',
+            )}
+          />
+        );
+      case 'group':
+        return <ToolbarGroupSegment segment={segment} size={size} />;
+      case 'toggle':
+        return <ToolbarToggleSegment segment={segment} size={size} />;
+      case 'button':
+        return <ToolbarButtonSegment segment={segment} size={size} />;
+    }
+  })();
+
+  return (
+    <SegmentMotion key={segment.id} reduce={reduce}>
+      {inner}
+    </SegmentMotion>
+  );
 }
 
 export function SegmentedToolbar({
@@ -293,13 +328,19 @@ export function SegmentedToolbar({
   size = 'md',
   className,
 }: SegmentedToolbarProps) {
+  const reduce = useReducedMotion() ?? false;
   return (
     <Toolbar.Root
       orientation={orientation}
       aria-label={label}
+      render={<motion.div layout />}
       className={cx(rootVariants({ orientation }), className)}
     >
-      {items.map((segment) => renderSegment(segment, size, orientation))}
+      <AnimatePresence initial={false} mode="popLayout">
+        {items.map((segment) =>
+          renderSegment(segment, size, orientation, reduce),
+        )}
+      </AnimatePresence>
     </Toolbar.Root>
   );
 }

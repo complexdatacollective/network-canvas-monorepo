@@ -151,3 +151,29 @@ describe('SegmentedToolbar — groups', () => {
     expect(onValueChange).toHaveBeenCalledWith(['grid']);
   });
 });
+
+describe('SegmentedToolbar — add/remove', () => {
+  it('adds and removes segments when items change', () => {
+    const base: ToolbarSegment[] = [
+      { type: 'button', id: 'a', label: 'A', onClick: vi.fn() },
+    ];
+    const { rerender } = render(
+      <SegmentedToolbar label="Tools" items={base} />,
+    );
+    expect(screen.queryByRole('button', { name: 'B' })).not.toBeInTheDocument();
+
+    rerender(
+      <SegmentedToolbar
+        label="Tools"
+        items={[
+          ...base,
+          { type: 'button', id: 'b', label: 'B', onClick: vi.fn() },
+        ]}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'B' })).toBeInTheDocument();
+
+    rerender(<SegmentedToolbar label="Tools" items={base} />);
+    expect(screen.queryByRole('button', { name: 'B' })).not.toBeInTheDocument();
+  });
+});
