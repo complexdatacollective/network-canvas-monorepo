@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { renderHook, act } from '@testing-library/react';
-import { type ReactNode } from 'react';
+import { createElement, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
@@ -74,7 +74,7 @@ function makeStore(initialNodes: NcNode[] = [], initialEdges: NcEdge[] = []) {
 
 function makeWrapper(store: ReturnType<typeof makeStore>) {
   return function Wrapper({ children }: { children: ReactNode }) {
-    return Provider({ store, children });
+    return createElement(Provider, { store }, children);
   };
 }
 
@@ -143,14 +143,14 @@ describe('useComposerActions', () => {
 
     expect(store.getState().session.network.nodes).toHaveLength(1);
 
-    act(() => {
-      undoStore.getState().undo();
+    await act(async () => {
+      await undoStore.getState().undo();
     });
 
     expect(store.getState().session.network.nodes).toHaveLength(0);
 
     await act(async () => {
-      undoStore.getState().redo();
+      await undoStore.getState().redo();
     });
 
     expect(store.getState().session.network.nodes).toHaveLength(1);
@@ -192,8 +192,8 @@ describe('useComposerActions', () => {
 
     expect(store.getState().session.network.edges).toHaveLength(1);
 
-    act(() => {
-      undoStore.getState().undo();
+    await act(async () => {
+      await undoStore.getState().undo();
     });
 
     expect(store.getState().session.network.edges).toHaveLength(0);
@@ -240,8 +240,8 @@ describe('useComposerActions', () => {
 
     expect(store.getState().session.network.edges).toHaveLength(3);
 
-    act(() => {
-      undoStore.getState().undo();
+    await act(async () => {
+      await undoStore.getState().undo();
     });
 
     expect(store.getState().session.network.edges).toHaveLength(0);
@@ -358,8 +358,8 @@ describe('useComposerActions', () => {
 
     expect(store.getState().session.network.edges).toHaveLength(3);
 
-    act(() => {
-      undoStore.getState().undo();
+    await act(async () => {
+      await undoStore.getState().undo();
     });
 
     expect(store.getState().session.network.edges).toHaveLength(1);
@@ -400,18 +400,18 @@ describe('useComposerActions', () => {
     });
     expect(store.getState().session.network.edges).toHaveLength(1);
 
-    act(() => {
-      undoStore.getState().undo();
+    await act(async () => {
+      await undoStore.getState().undo();
     });
     expect(store.getState().session.network.edges).toHaveLength(0);
 
     await act(async () => {
-      undoStore.getState().redo();
+      await undoStore.getState().redo();
     });
     expect(store.getState().session.network.edges).toHaveLength(1);
 
-    act(() => {
-      undoStore.getState().undo();
+    await act(async () => {
+      await undoStore.getState().undo();
     });
     expect(store.getState().session.network.edges).toHaveLength(0);
   });
@@ -521,12 +521,12 @@ describe('useComposerActions', () => {
     expect(store.getState().session.network.edges).toHaveLength(0);
 
     await act(async () => {
-      undoStore.getState().undo();
+      await undoStore.getState().undo();
     });
     expect(store.getState().session.network.edges).toHaveLength(1);
 
-    act(() => {
-      undoStore.getState().redo();
+    await act(async () => {
+      await undoStore.getState().redo();
     });
     expect(store.getState().session.network.edges).toHaveLength(0);
   });

@@ -13,6 +13,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  type NcEdge,
 } from '@codaco/shared-consts';
 import { CurrentStepProvider } from '~/contexts/CurrentStepContext';
 import { StageMetadataContext } from '~/contexts/StageMetadataContext';
@@ -120,7 +121,7 @@ function makePreloadedNodes() {
   ];
 }
 
-function makeStore(extraEdges: ReturnType<typeof makePreloadedNodes> = []) {
+function makeStore(extraEdges: NcEdge[] = []) {
   return configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -424,7 +425,7 @@ describe('NetworkComposer — batch delete', () => {
         to: NODE_B_ID,
         [entityAttributesProperty]: {},
       },
-    ] as never);
+    ]);
     renderInterface(store);
 
     const nodeA = await screen.findByRole('button', { name: /alice/i });

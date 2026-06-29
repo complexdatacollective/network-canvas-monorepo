@@ -15,28 +15,28 @@ describe('createUndoStore', () => {
     expect(s.future).toHaveLength(0);
   });
 
-  it('push records a command and clears redo future', () => {
+  it('push records a command and clears redo future', async () => {
     const store = createUndoStore();
     const log: string[] = [];
     store.getState().push(cmd(log, 'a'));
-    store.getState().undo();
+    await store.getState().undo();
     store.getState().push(cmd(log, 'b'));
     expect(store.getState().future).toHaveLength(0);
   });
 
-  it('undo then redo calls the command hooks in order', () => {
+  it('undo then redo calls the command hooks in order', async () => {
     const store = createUndoStore();
     const log: string[] = [];
     store.getState().push(cmd(log, 'a'));
-    store.getState().undo();
-    store.getState().redo();
+    await store.getState().undo();
+    await store.getState().redo();
     expect(log).toEqual(['undo:a', 'redo:a']);
   });
 
-  it('is a no-op when there is nothing to undo/redo', () => {
+  it('is a no-op when there is nothing to undo/redo', async () => {
     const store = createUndoStore();
-    expect(() => store.getState().undo()).not.toThrow();
-    expect(() => store.getState().redo()).not.toThrow();
+    await expect(store.getState().undo()).resolves.toBeUndefined();
+    await expect(store.getState().redo()).resolves.toBeUndefined();
   });
 
   it('trims the past to the limit (oldest dropped)', () => {
