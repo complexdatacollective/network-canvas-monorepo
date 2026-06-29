@@ -1,13 +1,13 @@
 ---
 name: creating-a-network-canvas-interface
-description: Use when adding a NEW Network Canvas interface — a participant-facing interview stage type that does not exist yet (a new sociogram-like, sorter, generator, census, roster, or canvas stage). NOT for changing an existing interface. Keywords: new interface, new stage type, add interface, add a stage type, interview screen, interview stage, NetworkComposer, FamilyPedigree, stage schema, interfaces/index, getInterface, INTERFACE_TYPES, INTERFACE_CONFIGS, capture story, interface documentation, schema version.
+description: Use when adding a NEW Network Canvas interface — a participant-facing interview stage type that does not exist yet (a new sociogram-like, name/edge generator, census, narrative, or informational screen). NOT for changing an existing interface. Keywords: new interface, new stage type, add interface, add a stage type, interview screen, interview stage, stage schema, interfaces/index, getInterface, INTERFACE_TYPES, INTERFACE_CONFIGS, capture story, interface documentation, schema version.
 ---
 
 # Creating a Network Canvas interface
 
 ## Overview
 
-A Network Canvas "interface" is a stage type. It is **one contract — a single stage-type string — realised across four surfaces that must ship together**: the protocol schema (contract), Architect (configuration builder), the interview runtime (instrument), and the documentation site. A new interface wired into only some of them is a broken protocol, not a smaller deliverable.
+A Network Canvas "interface" is the fundamental data-collection unit in a Network Canvas interview. It is participant facing when administered via an interview client, and researcher facing when configured via a protocol builder. It is **one contract — a single stage-type string — realised across four surfaces that must ship together**: the protocol schema (contract), Architect (configuration builder), the interview runtime (instrument), and the documentation site. A new interface wired into only some of them is broken, not a smaller deliverable.
 
 **Core principle:** confirm the schema target _before_ writing anything, build the same stage-type across all four surfaces in sync, reuse existing interface patterns, and prefer researcher configuration for participant-visible text — hardcode only where essential or generic boilerplate.
 
@@ -20,7 +20,7 @@ A Network Canvas "interface" is a stage type. It is **one contract — a single 
 
 1. **Invoke `developing-in-network-canvas` (REQUIRED).** Reuse-first, accessibility, internationalisation, and participant tone are not optional add-ons here — they are the body of the work. This skill assumes you are already following it.
 2. **Brainstorm the interface first** (`superpowers:brainstorming`). A new stage type is a new feature; agree the interaction, the data it writes, and the configuration surface before touching files.
-3. **Confirm the schema version with the user. Do not assume.** Ask explicitly: does this target the **current** schema version as a purely additive stage type (no migration), or does it require a **new** schema version (and therefore a migration)? Adding an optional stage type is usually additive, but anything that needs new variable types, codebook capabilities, or changes to shared structures forces a version bump. "It's obviously additive" is exactly the assumption to surface to the user, not to make silently. **Determine the current version by reading `CURRENT_SCHEMA_VERSION`** (exported from `packages/protocol-validation/src/schemas/index.ts`) — never hardcode a version number. New stage files live under `src/schemas/<current>/stages/`, where `<current>` is that value. A version bump additionally means a new `schemas/<n>/` directory, a `migration.ts`, and an entry in `SchemaVersionSchema`.
+3. **Confirm the schema version with the user. Do not assume.** Ask explicitly: does this target the **current** schema version as a purely additive stage type (no migration), or does it require a **new** schema version (and therefore a migration)? "It's obviously additive" is exactly the assumption to surface to the user, not to make silently. **Determine the current version by reading `CURRENT_SCHEMA_VERSION`** (exported from `packages/protocol-validation/src/schemas/index.ts`) — never hardcode a version number. New stage files live under `src/schemas/<current>/stages/`, where `<current>` is that value. A version bump additionally means a new `schemas/<n>/` directory, a `migration.ts`, and an entry in `SchemaVersionSchema`.
 
 ## The four surfaces — all must ship together
 
@@ -44,7 +44,7 @@ The stage-type string (e.g. `'TimelineSorter'`) is the single contract. It is wi
 **Reuse existing interface patterns before inventing new ones.** Most new interfaces are recombinations of patterns that already exist — walk the reuse ladder from `developing-in-network-canvas` at the _interface_ level, not just the component level.
 
 - **Multiple tasks within one stage → the `prompts` concept.** Do not invent a per-stage list of tasks/questions. Use prompts end to end: a `prompts` array in the schema, the shared prompt-list editor in Architect (reuse `EditableList` + `PromptText`, mirror `NameGeneratorPrompts`), and the runtime `Prompts` component (`packages/interview/src/components/Prompts/Prompts.tsx`) which already handles rotation, animation, and screen-reader announcement.
-- **Placement / drag / roster / selection** are solved — build on the existing canvas, node, and collection primitives rather than net-new interaction code.
+- **Placement / drag / roster / selection/ and forms** are solved — build on the existing canvas, node, form, field, and collection primitives rather than net-new interaction code.
 
 **Minimise hardcoded participant text; prefer researcher configuration.** Hardcoded participant copy is sometimes unavoidable, but it is **strongly discouraged** unless the text is essential or generic boilerplate. The test before typing a string literal: _would a researcher plausibly want to change this wording for their study?_ If yes — prompt text, instructions, study-specific labels, meaningful empty states — it is a **researcher-authored configuration field**: define it in the stage schema, expose it in the Architect editor, store it in the protocol, and render it from props. Hardcoding is acceptable for **generic UI chrome and boilerplate** (button labels like "Continue", structural/navigational text with no study-specific meaning) and where externalising it genuinely adds no value — and even then prefer the existing shared components, which already carry the right copy and tone.
 
