@@ -274,7 +274,13 @@ export default function NarrativePedigreeView({
       const atRiskHomozygous =
         statusesByDiseaseHomozygous.get(disease.id)?.get(node.id) ?? false;
       const statusText = STATUS_LABELS[status];
-      return atRiskHomozygous
+      // An affected recessive individual trivially has two carrier parents, so
+      // the homozygous flag is set for them too — but announcing "Affected, at
+      // risk of being affected" is contradictory. Drop the note once the person
+      // is already affected so the spoken summary stays coherent.
+      const alreadyAffected =
+        status === 'affected' || status === 'obligateAffected';
+      return atRiskHomozygous && !alreadyAffected
         ? `${disease.label}: ${statusText}, ${AT_RISK_HOMOZYGOUS_LABEL}`
         : `${disease.label}: ${statusText}`;
     });

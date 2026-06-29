@@ -698,3 +698,101 @@ describe('NarrativePedigreeView — at-risk-homozygous reaches the description (
     );
   });
 });
+
+// An affected recessive individual trivially has two carrier parents, so
+// computeAtRiskHomozygous flags them too. The visual still draws the triangle,
+// but the spoken summary must not say "Affected, at risk of being affected".
+describe('NarrativePedigreeView — affected nodes omit the contradictory homozygous note (a11y)', () => {
+  const AR2_VAR = 'ar2';
+  const SRC_TRIO = 'source-fp-trio';
+
+  function renderAffectedTrioView() {
+    const trioSource = { ...sourceStage, id: SRC_TRIO };
+    const trioNodes: NcNode[] = [
+      makeNode('p1', { [NAME_VAR]: 'Pat', [BIO_SEX_VAR]: 'female' }),
+      makeNode('p2', { [NAME_VAR]: 'Sam', [BIO_SEX_VAR]: 'male' }),
+      makeNode('kid', {
+        [NAME_VAR]: 'Kit',
+        [BIO_SEX_VAR]: 'male',
+        [AR2_VAR]: true,
+      }),
+    ];
+    const trioEdges: NcEdge[] = [
+      makeEdge('p1', 'kid'),
+      makeEdge('p2', 'kid'),
+      {
+        [entityPrimaryKeyProperty]: 'p1-p2',
+        type: EDGE_TYPE,
+        from: 'p1',
+        to: 'p2',
+        [entityAttributesProperty]: {
+          [REL_TYPE_VAR]: ['partner'],
+          [IS_ACTIVE_VAR]: true,
+        },
+      },
+    ];
+    const stage: NarrativeStage = {
+      id: 'np-trio',
+      type: 'NarrativePedigree',
+      label: 'Recessive Trio Pedigree',
+      sourceStageId: SRC_TRIO,
+      diseases: [
+        {
+          id: 'ar2',
+          label: 'Recessive Disease',
+          color: '#ff0000',
+          variable: asEntityAttributeReference(AR2_VAR),
+          inheritancePattern: 'autosomalRecessive',
+        },
+      ],
+    };
+    const store = configureStore({
+      reducer: { protocol, session },
+      preloadedState: {
+        protocol: {
+          codebook,
+          stages: [trioSource, stage],
+          assets: [],
+        } as never,
+        session: {
+          id: 'trio-session',
+          network: {
+            nodes: trioNodes,
+            edges: trioEdges,
+            ego: { [entityAttributesProperty]: {} },
+          },
+          stageMetadata: {},
+        } as never,
+      },
+      middleware: (g) => g({ serializableCheck: false }),
+    });
+    function Wrapper({ children }: { children: ReactNode }) {
+      return (
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
+            {children}
+          </CurrentStepProvider>
+        </Provider>
+      );
+    }
+    return render(<NarrativePedigreeView stage={stage} />, {
+      wrapper: Wrapper,
+    });
+  }
+
+  it('does not append the homozygous note to an already-affected member', async () => {
+    renderAffectedTrioView();
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-node-id="kid"]')).toBeTruthy(),
+    );
+
+    const kid = focalMember('kid');
+    // The homozygous flag IS set (the triangle renders) — without it this test
+    // would not exercise the guard.
+    expect(kid.querySelector('[data-atrisk-homozygous-notation]')).toBeTruthy();
+    // ...but the spoken summary must stay coherent: affected, full stop.
+    expect(kid).toHaveAccessibleDescription('Recessive Disease: Affected');
+    expect(kid).not.toHaveAccessibleDescription(/homozygous/i);
+  });
+});
