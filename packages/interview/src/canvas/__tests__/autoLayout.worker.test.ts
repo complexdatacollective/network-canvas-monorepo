@@ -11,6 +11,11 @@ import { collideRadiusForNode } from '../layoutGeometry';
 // then stop its internal timer and drive `simulation.tick()` manually so
 // convergence is deterministic and synchronous. The worker only communicates via
 // `postMessage`, which we stub to capture emitted payloads.
+//
+// The simulation runs in ISOTROPIC, SCREEN-NORMALISED space (px / canvas height):
+// the x-axis spans [0, aspect], the y-axis [0, 1]. Seeds and distances below are
+// therefore sim-space quantities (a px length / a reference canvas height), not
+// pixels. The reference height for the derived collide radius is HEIGHT below.
 
 type CapturedSim = Simulation<SimNode, undefined>;
 type SimNode = {
@@ -86,16 +91,22 @@ const minPairwiseDistance = (nodes: SimNode[]): number => {
   return min;
 };
 
-// Group members start spread well beyond the collision floor (~154px
-// center-to-center for a 48px-radius node) so cohesion has room to demonstrably
-// tighten each group without fighting collision. Groups A and B sit far apart.
+// Reference canvas height for converting px geometry to sim distances.
+const HEIGHT = 900;
+// Sim-space collide radius for a base 48px node on a HEIGHT-tall canvas.
+const SIM_COLLIDE_RADIUS = collideRadiusForNode(48) / HEIGHT;
+
+// Group members start spread well beyond the collision floor (~0.149 sim
+// center-to-center for a 48px-radius node on a 900px canvas) so cohesion has room
+// to demonstrably tighten each group without fighting collision. Groups A and B
+// sit far apart (~±1 sim units, the full canvas width).
 const TWO_GROUPS: SimNode[] = [
-  { nodeId: 'a1', x: -900, y: 0, groupKeys: ['A'] },
-  { nodeId: 'a2', x: -700, y: 400, groupKeys: ['A'] },
-  { nodeId: 'a3', x: -500, y: -400, groupKeys: ['A'] },
-  { nodeId: 'b1', x: 900, y: 0, groupKeys: ['B'] },
-  { nodeId: 'b2', x: 700, y: 400, groupKeys: ['B'] },
-  { nodeId: 'b3', x: 500, y: -400, groupKeys: ['B'] },
+  { nodeId: 'a1', x: -1.0, y: 0, groupKeys: ['A'] },
+  { nodeId: 'a2', x: -0.8, y: 0.44, groupKeys: ['A'] },
+  { nodeId: 'a3', x: -0.6, y: -0.44, groupKeys: ['A'] },
+  { nodeId: 'b1', x: 1.0, y: 0, groupKeys: ['B'] },
+  { nodeId: 'b2', x: 0.8, y: 0.44, groupKeys: ['B'] },
+  { nodeId: 'b3', x: 0.6, y: -0.44, groupKeys: ['B'] },
 ];
 
 const cloneNodes = (nodes: SimNode[]): SimNode[] =>
@@ -131,7 +142,11 @@ describe('autoLayout worker', () => {
 
   it('pulls same-group nodes closer together after start', () => {
     const nodes = cloneNodes(TWO_GROUPS);
-    handleMessage({ type: 'initialize', nodes });
+    handleMessage({
+      type: 'initialize',
+      nodes,
+      options: { collideRadius: SIM_COLLIDE_RADIUS },
+    });
 
     const groupABefore = meanPairwiseDistance(
       nodes.filter((n) => n.groupKeys?.includes('A')),
@@ -171,12 +186,12 @@ describe('autoLayout worker', () => {
     handleMessage({
       type: 'update_node',
       nodeId: 'a1',
-      node: { fx: 5, fy: 7 },
+      node: { fx: 0.5, fy: 0.7 },
     });
 
     const pinned = capturedSim!.nodes().find((n) => n.nodeId === 'a1');
-    expect(pinned?.fx).toBe(5);
-    expect(pinned?.fy).toBe(7);
+    expect(pinned?.fx).toBe(0.5);
+    expect(pinned?.fy).toBe(0.7);
 
     handleMessage({
       type: 'update_node',
@@ -188,8 +203,8 @@ describe('autoLayout worker', () => {
     expect(released?.fx).toBeNull();
     expect(released?.fy).toBeNull();
     // Snap-on-clear: x/y inherit the previously fixed coordinates.
-    expect(released?.x).toBe(5);
-    expect(released?.y).toBe(7);
+    expect(released?.x).toBe(0.5);
+    expect(released?.y).toBe(0.7);
   });
 
   it('emits an end message on stop', () => {
@@ -200,22 +215,27 @@ describe('autoLayout worker', () => {
     expect(posted.some((m) => m.type === 'end')).toBe(true);
   });
 
-  it('update_links re-sets the link force and reheats only while running', () => {
+  it('update_links re-sets the link force and reheats unless the layout is paused', () => {
     handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
 
-    // Paused (no start yet): adding links must NOT reheat the simulation.
+    // Paused (the user stopped the layout): adding links re-sets the link force
+    // but must NOT reheat the simulation.
+    handleMessage({ type: 'start' });
+    handleMessage({ type: 'stop' });
+    const alphaWhilePaused = capturedSim!.alpha();
     handleMessage({
       type: 'update_links',
       links: [{ source: 0, target: 3 }],
     });
-    const linkForcePaused = capturedSim!.force('link');
-    expect(linkForcePaused).toBeTruthy();
-    // alpha stays at the seeded 0 because the worker is not running.
-    expect(capturedSim!.alpha()).toBe(0);
+    expect(capturedSim!.force('link')).toBeTruthy();
+    expect(capturedSim!.alpha()).toBe(alphaWhilePaused);
 
-    // Running: re-setting links must reheat (alpha rises above the alphaMin floor).
+    // Settled but not paused: adding links must reheat (alpha rises back above
+    // the alphaMin floor) so the new edge re-runs the layout.
     handleMessage({ type: 'start' });
-    capturedSim!.stop(); // halt the d3 timer so alpha doesn't decay before we read it
+    capturedSim!.stop(); // halt the d3 timer; advance alpha by manual ticks only
+    tickManually(600);
+    const alphaSettled = capturedSim!.alpha();
     handleMessage({
       type: 'update_links',
       links: [
@@ -224,6 +244,7 @@ describe('autoLayout worker', () => {
       ],
     });
     expect(capturedSim!.force('link')).toBeTruthy();
+    expect(capturedSim!.alpha()).toBeGreaterThan(alphaSettled);
     expect(capturedSim!.alpha()).toBeGreaterThan(capturedSim!.alphaMin());
   });
 
@@ -246,16 +267,14 @@ describe('autoLayout worker', () => {
   it('pulls two connected nodes closer (forceLink) but not past the collision floor', () => {
     // Two nodes, NO shared group, seeded far apart and linked by one edge. The
     // link force must pull them together; collision must still floor the gap so
-    // they never overlap. Collision floor for a 48px-radius node is
-    // 2 * collideRadiusForNode(48) = 168px.
-    const NODE_RADIUS = 48;
-    const COLLIDE_RADIUS = collideRadiusForNode(NODE_RADIUS);
-    const MIN_CENTER_TO_CENTER = 2 * COLLIDE_RADIUS;
+    // they never overlap. Collision floor (sim units) for a 48px-radius node on a
+    // 900px canvas is 2 * SIM_COLLIDE_RADIUS.
+    const MIN_CENTER_TO_CENTER = 2 * SIM_COLLIDE_RADIUS;
     const TOLERANCE = 0.04;
 
     const nodes: SimNode[] = [
-      { nodeId: 'p', x: -900, y: 0 },
-      { nodeId: 'q', x: 900, y: 0 },
+      { nodeId: 'p', x: -1.0, y: 0 },
+      { nodeId: 'q', x: 1.0, y: 0 },
     ];
     const seedDistance = minPairwiseDistance(nodes);
 
@@ -263,7 +282,7 @@ describe('autoLayout worker', () => {
       type: 'initialize',
       nodes,
       links: [{ source: 0, target: 1 }],
-      options: { collideRadius: COLLIDE_RADIUS },
+      options: { collideRadius: SIM_COLLIDE_RADIUS },
     });
     handleMessage({ type: 'start' });
     tickManually(300);
@@ -280,20 +299,16 @@ describe('autoLayout worker', () => {
   });
 
   it('biases the composition upward (forceY) so it clears the bottom panel', () => {
-    // Nodes seeded centered and low on a 900px-tall canvas. The weak upward
-    // forceY (target 0.4 * height = 360px) must lift their mean y above (smaller
-    // than) the seed mean, while staying within canvas bounds. biasYStrength is
-    // 0 by default (Sociogram needs no upward bias), so the Narrative tuning that
+    // Nodes seeded centered and low in a unit-tall sim space. The weak upward
+    // forceY (target 0.4 * simHeight = 0.4) must lift their mean y above (smaller
+    // than) the seed mean, while staying within sim bounds. biasYStrength is 0 by
+    // default (Sociogram needs no upward bias), so the Narrative tuning that
     // enables it is supplied explicitly here.
-    const HEIGHT = 900;
-    const NODE_RADIUS = 48;
-    const COLLIDE_RADIUS = collideRadiusForNode(NODE_RADIUS);
-
     const nodes: SimNode[] = [
-      { nodeId: 'n0', x: 760, y: 600 },
-      { nodeId: 'n1', x: 800, y: 640 },
-      { nodeId: 'n2', x: 840, y: 680 },
-      { nodeId: 'n3', x: 720, y: 660 },
+      { nodeId: 'n0', x: 0.85, y: 0.66 },
+      { nodeId: 'n1', x: 0.9, y: 0.71 },
+      { nodeId: 'n2', x: 0.95, y: 0.76 },
+      { nodeId: 'n3', x: 0.8, y: 0.73 },
     ];
     const seedMeanY =
       nodes.reduce((sum, n) => sum + (n.y ?? 0), 0) / nodes.length;
@@ -302,8 +317,8 @@ describe('autoLayout worker', () => {
       type: 'initialize',
       nodes,
       options: {
-        collideRadius: COLLIDE_RADIUS,
-        canvasHeight: HEIGHT,
+        collideRadius: SIM_COLLIDE_RADIUS,
+        simHeight: 1,
         biasYStrength: 0.04,
         biasYFraction: 0.4,
       },
@@ -317,11 +332,11 @@ describe('autoLayout worker', () => {
 
     // Biased upward: mean y dropped toward the above-center target.
     expect(settledMeanY).toBeLessThan(seedMeanY);
-    // Still within the canvas height (not flung off the top).
+    // Still finite and on-canvas (not flung off the top).
     for (const node of settled) {
       expect(Number.isFinite(node.y)).toBe(true);
       expect(node.y).toBeGreaterThanOrEqual(0);
-      expect(node.y).toBeLessThanOrEqual(HEIGHT);
+      expect(node.y).toBeLessThanOrEqual(1);
     }
   });
 
@@ -333,8 +348,8 @@ describe('autoLayout worker', () => {
     const seed = (): SimNode[] =>
       Array.from({ length: 5 }, (_, i) => ({
         nodeId: `n${i}`,
-        x: (i % 3) * 4,
-        y: Math.floor(i / 3) * 4,
+        x: (i % 3) * 0.005,
+        y: Math.floor(i / 3) * 0.005,
       }));
 
     const settle = (charge: number) => {
@@ -343,7 +358,7 @@ describe('autoLayout worker', () => {
       handleMessage({
         type: 'initialize',
         nodes: seed(),
-        options: { charge },
+        options: { charge, collideRadius: SIM_COLLIDE_RADIUS },
       });
       handleMessage({ type: 'start' });
       tickManually(300);
@@ -356,7 +371,7 @@ describe('autoLayout worker', () => {
     const spreadNoCharge = meanPairwiseDistance(noCharge.nodes());
 
     // charge:negative — forceManyBody is registered and spreads nodes farther.
-    const repelled = settle(-2000);
+    const repelled = settle(-0.1);
     expect(repelled.force('charge')).toBeTruthy();
     const spreadRepelled = meanPairwiseDistance(repelled.nodes());
 
@@ -364,20 +379,18 @@ describe('autoLayout worker', () => {
   });
 
   it('biases the composition horizontally (forceX) toward the target', () => {
-    // Mirror of the biasY test: nodes seeded off-center to the left on a 1600px-
-    // wide canvas. The weak horizontal forceX (target 0.5 * width = 800px) must
-    // pull their mean x toward center (larger than the seed mean), staying within
-    // canvas bounds. biasXStrength is 0 by default (Narrative preserves authored
-    // x), so the Sociogram tuning that enables it is supplied explicitly here.
-    const WIDTH = 1600;
-    const NODE_RADIUS = 48;
-    const COLLIDE_RADIUS = collideRadiusForNode(NODE_RADIUS);
-
+    // Mirror of the biasY test: nodes seeded off-center to the left on a wide
+    // canvas (aspect 16:9 -> simWidth ~1.78). The weak horizontal forceX (target
+    // 0.5 * simWidth) must pull their mean x toward center (larger than the seed
+    // mean), staying within sim bounds. biasXStrength is 0 by default (Narrative
+    // preserves authored x), so the Sociogram tuning that enables it is supplied
+    // explicitly here.
+    const SIM_WIDTH = 1600 / 900;
     const nodes: SimNode[] = [
-      { nodeId: 'n0', x: 200, y: 400 },
-      { nodeId: 'n1', x: 240, y: 440 },
-      { nodeId: 'n2', x: 280, y: 480 },
-      { nodeId: 'n3', x: 160, y: 460 },
+      { nodeId: 'n0', x: 0.22, y: 0.44 },
+      { nodeId: 'n1', x: 0.27, y: 0.49 },
+      { nodeId: 'n2', x: 0.31, y: 0.53 },
+      { nodeId: 'n3', x: 0.18, y: 0.51 },
     ];
     const seedMeanX =
       nodes.reduce((sum, n) => sum + (n.x ?? 0), 0) / nodes.length;
@@ -386,8 +399,8 @@ describe('autoLayout worker', () => {
       type: 'initialize',
       nodes,
       options: {
-        collideRadius: COLLIDE_RADIUS,
-        canvasWidth: WIDTH,
+        collideRadius: SIM_COLLIDE_RADIUS,
+        simWidth: SIM_WIDTH,
         biasXStrength: 0.05,
         biasXFraction: 0.5,
       },
@@ -399,14 +412,53 @@ describe('autoLayout worker', () => {
     const settledMeanX =
       settled.reduce((sum, n) => sum + (n.x ?? 0), 0) / settled.length;
 
-    // Biased toward center: mean x rose toward the 800px target.
+    // Biased toward center: mean x rose toward the simWidth/2 target.
     expect(settledMeanX).toBeGreaterThan(seedMeanX);
-    // Still within the canvas width (not flung off the right).
+    // Still within the sim width (not flung off the right).
     for (const node of settled) {
       expect(Number.isFinite(node.x)).toBe(true);
       expect(node.x).toBeGreaterThanOrEqual(0);
-      expect(node.x).toBeLessThanOrEqual(WIDTH);
+      expect(node.x).toBeLessThanOrEqual(SIM_WIDTH);
     }
+  });
+
+  it('stops early once every node speed falls below the threshold', () => {
+    // The velocity-based early stop posts 'end' once the layout has cooled past
+    // the alpha ceiling AND the max per-node speed drops below the threshold,
+    // cutting the long low-alpha tail. Drive the worker's REAL tick handler (not
+    // the manual replay) so the early-stop branch runs: stop the d3 timer, then
+    // dispatch tick events ourselves until 'end' is posted.
+    handleMessage({
+      type: 'initialize',
+      nodes: cloneNodes(TWO_GROUPS),
+      options: { collideRadius: SIM_COLLIDE_RADIUS, charge: 0, cohesion: 0.1 },
+    });
+    handleMessage({ type: 'start' });
+
+    const sim = capturedSim!;
+    sim.stop(); // halt the d3 timer; we drive ticks manually below
+
+    // Retrieve the worker's registered tick listener (the early-stop logic lives
+    // there) so we can invoke it after each manual tick, exactly as the d3 timer
+    // would, without the timer's async scheduling.
+    const onTick = sim.on('tick');
+    expect(onTick).toBeTypeOf('function');
+
+    let endPosted = false;
+    // Tick until the worker's tick handler posts 'end' via the early stop, or we
+    // exhaust a generous budget (the layout settles well within this).
+    for (let i = 0; i < 600 && !endPosted; i += 1) {
+      sim.tick();
+      onTick!.call(sim);
+      endPosted = posted.some((m) => m.type === 'end');
+    }
+
+    expect(endPosted).toBe(true);
+    // The simulation actually settled: max per-node speed is tiny at the stop.
+    const maxSpeed = Math.max(
+      ...sim.nodes().map((n) => Math.hypot(n.vx ?? 0, n.vy ?? 0)),
+    );
+    expect(maxSpeed).toBeLessThan(0.01);
   });
 
   it('only ever posts {type, nodes} payloads with no persistence-shaped fields', () => {
@@ -428,49 +480,48 @@ describe('autoLayout worker', () => {
   });
 });
 
-describe('autoLayout worker — pixel-space spacing guarantee', () => {
-  // The hook seeds in PIXEL coordinates on a non-square canvas. Collision must
-  // enforce the minimum gap isotropically (the same px on both axes), so the
-  // settled minimum center-to-center distance is >= 2 * collideRadius
-  // regardless of aspect ratio.
-  const NODE_RADIUS = 48;
-  const COLLIDE_RADIUS = collideRadiusForNode(NODE_RADIUS);
+describe('autoLayout worker — sim-space spacing guarantee', () => {
+  // The hook seeds in ISOTROPIC, SCREEN-NORMALISED space (px / canvas height) on
+  // a non-square canvas. Collision must enforce the minimum gap isotropically
+  // (the same scale on both axes), so the settled minimum center-to-center
+  // distance is >= 2 * collideRadius regardless of aspect ratio.
+  const COLLIDE_RADIUS = SIM_COLLIDE_RADIUS;
   const MIN_CENTER_TO_CENTER = 2 * COLLIDE_RADIUS;
   // d3-force's forceCollide leaves a small residual overlap even at strength(1);
   // allow a modest tolerance below the theoretical minimum.
   const TOLERANCE = 0.04; // 4%
 
   // A wide 16:9 canvas — the case where normalized-space collision would
-  // collapse the vertical gap into a flattened ellipse.
-  const WIDTH = 1600;
-  const HEIGHT = 900;
+  // collapse the vertical gap into a flattened ellipse. In sim space the x-axis
+  // spans [0, aspect], the y-axis [0, 1].
+  const ASPECT = 1600 / 900;
 
-  const px = (xNorm: number, yNorm: number) => ({
-    x: xNorm * WIDTH,
-    y: yNorm * HEIGHT,
+  // Map a normalized 0-1 position into sim space (x scaled by aspect).
+  const sim = (xNorm: number, yNorm: number) => ({
+    x: xNorm * ASPECT,
+    y: yNorm,
   });
 
-  // The worker itself applies no bounding force (the store clamps to the canvas
-  // in the real pipeline). Here we assert the layout stays finite and bounded
-  // near the seeded region rather than flying off — collision spreads nodes by
-  // at most a few node-widths from the cluster centre.
+  // With no bounds force the layout is unconfined; assert it stays finite and
+  // near the seeded region rather than flying off — collision spreads nodes by at
+  // most a few node-widths from the cluster centre.
   const assertBounded = (nodes: SimNode[]) => {
     for (const node of nodes) {
       expect(Number.isFinite(node.x)).toBe(true);
       expect(Number.isFinite(node.y)).toBe(true);
-      expect(Math.abs(node.x ?? 0)).toBeLessThan(WIDTH * 2);
-      expect(Math.abs(node.y ?? 0)).toBeLessThan(HEIGHT * 2 + WIDTH);
+      expect(Math.abs(node.x ?? 0)).toBeLessThan(ASPECT * 2 + 1);
+      expect(Math.abs(node.y ?? 0)).toBeLessThan(ASPECT * 2 + 1);
     }
   };
 
   it('separates overlapping ungrouped nodes to the enforced minimum (no clustering)', () => {
     // Six nodes seeded almost on top of each other near the canvas centre, with
     // NO group keys: collision alone must push them apart to the minimum gap.
-    const center = px(0.5, 0.5);
+    const center = sim(0.5, 0.5);
     const nodes: SimNode[] = Array.from({ length: 6 }, (_, i) => ({
       nodeId: `n${i}`,
-      x: center.x + (i % 3),
-      y: center.y + Math.floor(i / 3),
+      x: center.x + (i % 3) * 0.001,
+      y: center.y + Math.floor(i / 3) * 0.001,
     }));
 
     handleMessage({
@@ -491,11 +542,11 @@ describe('autoLayout worker — pixel-space spacing guarantee', () => {
   it('enforces the minimum gap within a tightly clustered grouped seed', () => {
     // A single group of nodes seeded clustered tightly together (the worst case
     // for cohesion + collision fighting). Collision must still hold the gap.
-    const center = px(0.5, 0.5);
+    const center = sim(0.5, 0.5);
     const nodes: SimNode[] = Array.from({ length: 8 }, (_, i) => ({
       nodeId: `g${i}`,
-      x: center.x + (i % 4) * 2,
-      y: center.y + Math.floor(i / 4) * 2,
+      x: center.x + (i % 4) * 0.002,
+      y: center.y + Math.floor(i / 4) * 0.002,
       groupKeys: ['A'],
     }));
 
@@ -514,15 +565,15 @@ describe('autoLayout worker — pixel-space spacing guarantee', () => {
     assertBounded(settled);
   });
 
-  it('holds the gap on both axes on a non-square canvas (isotropic in px)', () => {
-    // Nodes seeded in a vertical stack a few px apart. In normalized space this
-    // gap would survive on the short (height) axis but collapse visually; in px
+  it('holds the gap on both axes on a non-square canvas (isotropic in sim space)', () => {
+    // Nodes seeded in a vertical stack a tiny gap apart. In normalized space this
+    // gap would survive on the short (height) axis but collapse visually; in sim
     // space collision enforces the same minimum regardless of axis.
-    const x = px(0.5, 0).x;
+    const x = sim(0.5, 0).x;
     const nodes: SimNode[] = Array.from({ length: 5 }, (_, i) => ({
       nodeId: `v${i}`,
       x,
-      y: HEIGHT * 0.5 + i * 3,
+      y: 0.5 + i * 0.003,
     }));
 
     handleMessage({
@@ -541,25 +592,28 @@ describe('autoLayout worker — pixel-space spacing guarantee', () => {
   });
 
   it('confines nodes within the bounds inset while still preventing overlap', () => {
-    // The store clamps each node independently AFTER collision, so an upward
-    // bias that drives a group to the top edge would project several separated
-    // nodes onto the same boundary line and re-introduce overlap. The worker's
+    // The store clamps each node independently AFTER collision, so an upward bias
+    // that drives a group to the top edge would project several separated nodes
+    // onto the same boundary line and re-introduce overlap. The worker's
     // post-collision bounds force solves this by confining strays to the wall in
-    // the same pass collision separates them, so the settled layout is both
-    // inside the inset box AND overlap-free against the wall.
-    const INSET = 64;
-    const maxX = WIDTH - INSET;
-    const maxY = HEIGHT - INSET;
+    // the same pass collision separates them, so the settled layout is both inside
+    // the inset box AND overlap-free against the wall. The bounds box is expressed
+    // in sim units: [inset, simWidth - inset] x [inset, simHeight - inset].
+    const INSET = 64 / 900; // sim-space inset (px inset / reference height)
+    const SIM_WIDTH = ASPECT;
+    const SIM_HEIGHT = 1;
+    const maxX = SIM_WIDTH - INSET;
+    const maxY = SIM_HEIGHT - INSET;
 
     // Seed nodes OUTSIDE the inset box (some past every edge) and overlapping, so
     // the bounds force must both pull them in and collision must keep them apart.
     const nodes: SimNode[] = [
-      { nodeId: 'o0', x: -200, y: -150 },
-      { nodeId: 'o1', x: -190, y: -140 },
-      { nodeId: 'o2', x: WIDTH + 300, y: HEIGHT + 200 },
-      { nodeId: 'o3', x: WIDTH + 290, y: HEIGHT + 210 },
-      { nodeId: 'o4', x: WIDTH + 280, y: -120 },
-      { nodeId: 'o5', x: -180, y: HEIGHT + 180 },
+      { nodeId: 'o0', x: -0.25, y: -0.2 },
+      { nodeId: 'o1', x: -0.24, y: -0.19 },
+      { nodeId: 'o2', x: SIM_WIDTH + 0.35, y: SIM_HEIGHT + 0.25 },
+      { nodeId: 'o3', x: SIM_WIDTH + 0.34, y: SIM_HEIGHT + 0.26 },
+      { nodeId: 'o4', x: SIM_WIDTH + 0.33, y: -0.18 },
+      { nodeId: 'o5', x: -0.22, y: SIM_HEIGHT + 0.22 },
     ];
 
     handleMessage({
@@ -568,8 +622,8 @@ describe('autoLayout worker — pixel-space spacing guarantee', () => {
       options: {
         collideRadius: COLLIDE_RADIUS,
         boundsInset: INSET,
-        canvasWidth: WIDTH,
-        canvasHeight: HEIGHT,
+        simWidth: SIM_WIDTH,
+        simHeight: SIM_HEIGHT,
       },
     });
     handleMessage({ type: 'start' });

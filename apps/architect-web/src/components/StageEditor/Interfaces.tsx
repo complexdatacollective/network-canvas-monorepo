@@ -223,6 +223,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
     template: {
       behaviours: {
         allowRepositioning: true,
+        automaticLayout: true,
       },
     },
   },

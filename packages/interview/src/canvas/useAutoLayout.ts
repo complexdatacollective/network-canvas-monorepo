@@ -10,12 +10,17 @@
 // AND a supplied `dispatch`. When `persist` is false the syncToRedux call is not
 // even constructed, so no Narrative gesture or tick can ever write attributes.
 //
-// The simulation runs in PIXEL coordinates derived from the canvas dimensions
-// (tracked in the store via a ResizeObserver). Running collision in px makes it
-// visually isotropic: a circular collision zone renders as a circle on any
-// aspect ratio. Positions are converted back to normalized 0-1 before they reach
-// the store. The collision radius derives from `nodeRadius`, which the caller
-// measures off-screen with `useNodeMeasurement` so it tracks the live node size.
+// The simulation runs in an ISOTROPIC, SCREEN-NORMALISED space (px / canvas
+// height; see layoutGeometry's toSim): the x-axis spans [0, aspect], the y-axis
+// [0, 1], with the same scale on both axes, so collision stays circular while
+// charge/centering — fixed in sim space — keep the layout SHAPE identical across
+// canvas sizes. This hook owns the canvas dimensions (tracked in the store via a
+// ResizeObserver), so it derives the sim-space distances (collide radius, link
+// distance, bounds inset = the px values / height) and the sim extents and passes
+// them to the worker. Positions are converted back to normalized 0-1 (fromSim)
+// before they reach the store. The collision radius derives from `nodeRadius`,
+// which the caller measures off-screen with `useNodeMeasurement` so it tracks the
+// live node size.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -42,9 +47,9 @@ import {
   collideRadiusForNode,
   edgeInsetForNode,
   FALLBACK_NODE_RADIUS,
+  fromSim,
   hasUsableDimensions,
-  toNormalized,
-  toPixels,
+  toSim,
 } from './layoutGeometry';
 import type { CanvasStoreApi } from './useCanvasStore';
 
@@ -203,7 +208,21 @@ export function useAutoLayout({
     // base radius so the first pass still spaces nodes, then re-seed when the
     // real measurement arrives (nodeRadius is in this effect's deps).
     const resolvedRadius = nodeRadius > 0 ? nodeRadius : FALLBACK_NODE_RADIUS;
-    const collideRadius = collideRadiusForNode(resolvedRadius);
+    // px-derived distances become SIM-space distances by dividing by the canvas
+    // height (the sim space is px / H). The sim x-axis spans [0, aspect = W/H],
+    // the y-axis [0, 1]. These shrink in sim units as the canvas grows, giving
+    // larger screens proportionally more breathing room (FIX 1).
+    const aspect = dims.width / dims.height;
+    const collideRadius = collideRadiusForNode(resolvedRadius) / dims.height;
+    // linkDistance recomputed from the live collide radius (see worker default):
+    // set just below the collision floor (2*collideRadius) so links pull
+    // connected nodes onto the floor — the closest spacing in the layout — while
+    // charge spreads unconnected nodes beyond it. Tune visually.
+    const linkDistance = 1.9 * collideRadius;
+    // Bounds inset is keyed to FALLBACK_NODE_RADIUS (px) so it EXACTLY matches the
+    // store clamp's fixed inset, then divided by height into sim units — that
+    // equality is what makes the store clamp a no-op on settled positions.
+    const boundsInset = edgeInsetForNode(FALLBACK_NODE_RADIUS) / dims.height;
 
     // In e2e tests, swap in a deterministic worker so visual snapshots aren't
     // sensitive to simulation randomness.
@@ -220,7 +239,7 @@ export function useAutoLayout({
 
       const entries: [string, { x: number; y: number }][] = simNodes
         .filter((n) => n.nodeId)
-        .map((n) => [n.nodeId, toNormalized(n, dims)]);
+        .map((n) => [n.nodeId, fromSim(n, dims)]);
       store.getState().setBatchPositions(entries);
       setIsRunning(msgType === 'tick');
 
@@ -238,18 +257,18 @@ export function useAutoLayout({
     };
 
     // Seed from the positions the store already holds, converting each
-    // normalized position to px and attaching group membership so the worker's
-    // cohesion force can bucket nodes.
+    // normalized position to sim space and attaching group membership so the
+    // worker's cohesion force can bucket nodes.
     const currentNodes = nodesRef.current;
     const { positions } = store.getState();
     const simNodes: SimNode[] = currentNodes.map((node) => {
       const nodeId = node[entityPrimaryKeyProperty];
       const pos = positions.get(nodeId) ?? { x: 0.5, y: 0.5 };
-      const px = toPixels(pos, dims);
+      const sim = toSim(pos, dims);
       return {
         nodeId,
-        x: px.x,
-        y: px.y,
+        x: sim.x,
+        y: sim.y,
         groupKeys: getGroupKeys(node, groupVariable),
       };
     });
@@ -274,16 +293,13 @@ export function useAutoLayout({
       options: {
         ...layoutOptionsRef.current,
         collideRadius,
-        // The bounds inset is keyed to FALLBACK_NODE_RADIUS, NOT the live radius,
-        // so it EXACTLY matches the store clamp's fixed inset — that equality is
-        // what makes the store clamp a no-op on settled positions, preventing the
-        // independent per-node clamp from projecting separated nodes back onto a
-        // shared wall and re-introducing overlap.
-        boundsInset: edgeInsetForNode(FALLBACK_NODE_RADIUS),
-        // canvasHeight lets the worker resolve the upward-bias forceY target;
-        // canvasWidth lets the mock grid layout span the canvas.
-        canvasHeight: dims.height,
-        canvasWidth: dims.width,
+        linkDistance,
+        boundsInset,
+        // Sim extents: the worker resolves the forceX/forceY targets and the
+        // bounds box from these (sim x spans [0, simWidth = aspect], y spans
+        // [0, simHeight = 1]); the mock grid also spans them.
+        simWidth: aspect,
+        simHeight: 1,
         mockLayout,
       },
     });
@@ -371,11 +387,11 @@ export function useAutoLayout({
       if (!workerRef.current) return;
       const dims = store.getState().canvasDimensions;
       if (!hasUsableDimensions(dims)) return;
-      const px = toPixels(normalizedPos, dims);
+      const sim = toSim(normalizedPos, dims);
       workerRef.current.postMessage({
         type: 'update_node',
         nodeId,
-        node: { fx: px.x, fy: px.y },
+        node: { fx: sim.x, fy: sim.y },
       });
     },
     [store],

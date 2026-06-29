@@ -498,9 +498,7 @@
         "type": "person"
       },
       "behaviours": {
-        "automaticLayout": {
-          "enabled": true
-        }
+        "automaticLayout": true
       },
       "prompts": [
         {
@@ -523,6 +521,11 @@
       "subject": {
         "entity": "node",
         "type": "person"
+      },
+      "behaviours": {
+        "automaticLayout": true,
+        "allowRepositioning": true,
+        "freeDraw": true
       },
       "presets": [
         {

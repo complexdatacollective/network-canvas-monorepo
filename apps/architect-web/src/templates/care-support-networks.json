@@ -457,6 +457,11 @@
       "type": "Narrative",
       "label": "Your support map",
       "subject": { "entity": "node", "type": "supporter" },
+      "behaviours": {
+        "automaticLayout": true,
+        "allowRepositioning": true,
+        "freeDraw": true
+      },
       "presets": [
         {
           "id": "preset-by-source",

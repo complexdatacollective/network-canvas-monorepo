@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { findDuplicateId } from '~/utils/validation-helpers';
 
-import { NodeStageSubjectSchema } from '../common';
+import { canvasBehavioursSchema, NodeStageSubjectSchema } from '../common';
 import { entityAttributeReference } from '../entity-attribute-reference';
 import { FilterSchema } from '../filters';
 import { baseStageSchema } from './base';
@@ -50,10 +50,5 @@ export const narrativeStage = baseStageSchema.extend({
       skewedTowardCenter: z.boolean().optional(),
     })
     .optional(),
-  behaviours: z
-    .strictObject({
-      freeDraw: z.boolean().optional(),
-      allowRepositioning: z.boolean().optional(),
-    })
-    .optional(),
+  behaviours: canvasBehavioursSchema,
 });

@@ -70,6 +70,7 @@ const migrationV7toV8 = createMigration({
 - A \`minValue\`, \`minLength\`, or \`minSelected\` validator no longer implies a field is required. To preserve the effective behaviour of existing protocols that relied on this coupling, any codebook variable (node, edge, or ego) with one of these validators and no explicit \`required: true\` now has \`required: true\` set.
 - Categorical attribute values are now stored as arrays of selected option values. Existing single-value categorical filter and skip-logic rule operands (\`is exactly\`, \`is not\`, \`includes\`, \`excludes\`) are wrapped in a single-element array to match.
 - Stage labels are now required to be non-empty. Any stage with a missing or empty label is given a default name based on its position (e.g. "Stage 3").
+- The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
 `,
   migrate: (doc, deps) => {
     const codebook = (doc as Record<string, unknown>).codebook;
@@ -592,6 +593,34 @@ const migrationV7toV8 = createMigration({
             }
           }
           return variables;
+        },
+      },
+      {
+        // The Sociogram/Narrative `automaticLayout` behaviour is now a flat
+        // boolean (it was `{ enabled: boolean }`). Flatten any existing object
+        // form to its `enabled` value. (The Narrative interface gains this
+        // behaviour for the first time; it has no legacy value to flatten, and
+        // the runtime treats an unset value as OFF, so existing Narrative stages
+        // keep their hand-authored static positions without any backfill.)
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          if (typeof stage !== 'object' || stage === null) return stage;
+          const typedStage = stage as Record<string, unknown>;
+          if (
+            typedStage.type !== 'Sociogram' &&
+            typedStage.type !== 'Narrative'
+          ) {
+            return stage;
+          }
+          const behaviours = asRecord(typedStage.behaviours);
+          const auto = behaviours?.automaticLayout;
+          const autoRecord = asRecord(auto);
+          if (autoRecord && 'enabled' in autoRecord) {
+            const next = behaviours ?? {};
+            next.automaticLayout = Boolean(autoRecord.enabled);
+            typedStage.behaviours = next;
+          }
+          return stage;
         },
       },
       {

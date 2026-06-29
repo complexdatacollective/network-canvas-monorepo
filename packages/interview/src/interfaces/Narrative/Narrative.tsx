@@ -20,8 +20,8 @@ import {
 import type { StageProps } from '~/types';
 
 import Annotations, { type AnnotationsHandle } from './Annotations';
+import BehavioursPanel from './BehavioursPanel';
 import ConvexHullLayer from './ConvexHullLayer';
-import DrawingControls from './DrawingControls';
 import PresetSwitcher from './PresetSwitcher';
 
 type NarrativeProps = StageProps<'Narrative'>;
@@ -147,6 +147,14 @@ const Narrative = ({ stage }: NarrativeProps) => {
   // Behaviour Configuration
   const allowRepositioning = get(stage, 'behaviours.allowRepositioning', false);
   const freeDraw = get(stage, 'behaviours.freeDraw', false);
+  // Default OFF: the automatic layout only runs when a protocol explicitly
+  // enables it (Architect sets it on for new Narrative stages). A stage that
+  // leaves it unset keeps its hand-authored static node positions.
+  const automaticLayoutEnabled = get(
+    stage,
+    'behaviours.automaticLayout',
+    false,
+  );
 
   // Display Properties
   const layoutVariable = currentPreset?.layoutVariable ?? '';
@@ -178,18 +186,6 @@ const Narrative = ({ stage }: NarrativeProps) => {
     [edges, showEdges, displayEdgeTypes],
   );
 
-  // Edges that drive edge-attraction in the layout. Keyed on the preset's
-  // edges.display config, NOT the showEdges display toggle, so toggling edge
-  // visibility does not re-run the settled layout — mirroring how cohesion keys
-  // on the stable groupVariable rather than the display-gated convexHullVariable.
-  const layoutEdges = useMemo(
-    () =>
-      displayEdgeTypes
-        ? edges.filter((edge) => displayEdgeTypes.includes(edge.type))
-        : [],
-    [edges, displayEdgeTypes],
-  );
-
   // Sync positions from nodes when layout variable or nodes change. This runs
   // before useAutoLayout reads store.positions to seed the simulation.
   useEffect(() => {
@@ -201,40 +197,48 @@ const Narrative = ({ stage }: NarrativeProps) => {
   // applies group cohesion so same-group nodes cluster into their convex hulls.
   // The upward bias lifts the composition clear of the bottom-center preset
   // panel. Memoized so the layout does not re-seed on every render.
+  //
+  // charge/bias are now FIXED SIM-SPACE constants (the sim runs in px / canvas
+  // height, coordinates ~0..aspect), so the layout SHAPE is screen-independent.
+  // These are reasoned STARTING values for the new ~0..1.x coordinate scale and
+  // need a visual tuning pass: the old px charge was -3000 at ~800px tall, which
+  // does not translate linearly. cohesion is displacement-proportional, so it is
+  // scale-invariant (kept at 0.1). Tune visually.
   const layoutOptions = useMemo(
     () => ({
       cohesion: 0.1,
-      charge: -3000,
+      charge: -0.006,
       startAlpha: 1,
-      alphaMin: 0.001,
+      alphaMin: 0.025,
       alphaDecay: 1 - 0.001 ** (1 / 500),
-      biasXStrength: 0.12,
+      biasXStrength: 0.13,
       biasXFraction: 0.5,
-      biasYStrength: 0.12,
+      biasYStrength: 0.13,
       biasYFraction: 0.5,
     }),
     [],
   );
 
-  // Ephemeral, read-only layout (persist:false makes syncToRedux unreachable).
-  // Runs whenever there are positioned nodes so collision spacing applies to ALL
-  // presets (ungrouped presets de-overlap with minimal movement from the
-  // authored layout). Group cohesion is additionally active only when a
-  // groupVariable is set: getGroupKeys returns [] for every node otherwise, so
-  // the cohesion force is inert and can always be registered. Keyed on the
-  // stable preset groupVariable, NOT the display-gated convexHullVariable:
-  // toggling hulls off must not re-run the settled layout, and cohesion runs on
-  // preset entry where showConvexHulls is reset to true.
+  // Read-only but fully interactive layout. persist:false makes syncToRedux
+  // unreachable, so a node's layoutVariable is never written — but the layout is
+  // otherwise as interactive as the Sociogram's: it runs continuously (settling
+  // then idling), dragging a node reheats it (via the simulation handlers wired
+  // into the Canvas below), and the participant can pause/resume it from the
+  // behaviours panel. It is driven by the SAME display-gated inputs the canvas
+  // renders — convexHullVariable (groups) and filteredEdges (links) — so toggling
+  // groups or links re-runs it to match: toggling groups re-seeds (cohesion
+  // on/off), toggling links updates the edge force in place. Group cohesion is
+  // inert when no groupVariable is set (getGroupKeys returns [] for every node).
   const layout = useAutoLayout({
-    enabled: nodesWithLayout.length > 0,
+    enabled: automaticLayoutEnabled && nodesWithLayout.length > 0,
     nodes: nodesWithLayout,
-    edges: layoutEdges,
+    edges: filteredEdges,
     store,
     nodeRadius: nodeWidth / 2,
     layoutVariable,
-    groupVariable: currentPreset?.groupVariable ?? '',
+    groupVariable: convexHullVariable,
     persist: false,
-    runMode: 'once',
+    runMode: 'continuous',
     mockLayout: 'identity',
     layoutOptions,
   });
@@ -291,7 +295,11 @@ const Narrative = ({ stage }: NarrativeProps) => {
         highlightAttribute={highlightAttribute}
         onNodeDragEnd={undefined}
         allowRepositioning={allowRepositioning}
-        simulation={null}
+        simulation={
+          automaticLayoutEnabled
+            ? { moveNode: layout.moveNode, releaseNode: layout.releaseNode }
+            : null
+        }
       />
       <PresetSwitcher
         presets={presets}
@@ -307,15 +315,17 @@ const Narrative = ({ stage }: NarrativeProps) => {
         onToggleHighlighting={handleToggleHighlighting}
         dragConstraints={interfaceRef}
       />
-      {freeDraw && (
-        <DrawingControls
-          isDrawingEnabled={isDrawingEnabled}
-          isFrozen={isFrozen}
-          onToggleDrawing={handleToggleDrawing}
-          onToggleFreeze={handleToggleFreeze}
-          onReset={handleResetInteractions}
-        />
-      )}
+      <BehavioursPanel
+        showLayoutToggle={automaticLayoutEnabled && nodesWithLayout.length > 0}
+        simulationEnabled={layout.simulationEnabled}
+        onToggleSimulation={layout.toggleSimulation}
+        showDrawingControls={freeDraw}
+        isDrawingEnabled={isDrawingEnabled}
+        isFrozen={isFrozen}
+        onToggleDrawing={handleToggleDrawing}
+        onToggleFreeze={handleToggleFreeze}
+        onReset={handleResetInteractions}
+      />
     </div>
   );
 };

@@ -366,6 +366,11 @@
         "entity": "node",
         "type": "person"
       },
+      "behaviours": {
+        "automaticLayout": true,
+        "allowRepositioning": true,
+        "freeDraw": true
+      },
       "presets": [
         {
           "id": "preset-smoking",

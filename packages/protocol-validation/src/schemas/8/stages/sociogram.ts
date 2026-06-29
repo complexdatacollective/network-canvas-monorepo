@@ -2,7 +2,11 @@ import { z } from 'zod';
 
 import { findDuplicateId } from '~/utils/validation-helpers';
 
-import { NodeStageSubjectSchema, sociogramPromptSchema } from '../common';
+import {
+  canvasBehavioursSchema,
+  NodeStageSubjectSchema,
+  sociogramPromptSchema,
+} from '../common';
 import { FilterSchema } from '../filters';
 import { baseStageSchema } from './base';
 
@@ -17,12 +21,7 @@ export const sociogramStage = baseStageSchema.extend({
       skewedTowardCenter: z.boolean().optional(),
     })
     .optional(),
-  behaviours: z
-    .strictObject({
-      automaticLayout: z.strictObject({ enabled: z.boolean() }).optional(),
-    })
-    .catchall(z.any())
-    .optional(),
+  behaviours: canvasBehavioursSchema,
   prompts: z
     .array(sociogramPromptSchema)
     .min(1)
