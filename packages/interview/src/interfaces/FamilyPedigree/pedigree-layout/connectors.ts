@@ -84,19 +84,15 @@ export function computeConnectors(
 
         const leftPersonIndex = layout.nid[i]![j]!;
         const rightPersonIndex = layout.nid[i]![j + 1]!;
+        const partnerIds: [string, string] | undefined = id
+          ? [id[leftPersonIndex] ?? '', id[rightPersonIndex] ?? '']
+          : undefined;
         const connector: ParentGroupConnector = {
           type: 'parent-group',
           segment,
           double: isDouble,
           isActive,
-          ...(id
-            ? {
-                partnerIds: [
-                  id[leftPersonIndex] ?? '',
-                  id[rightPersonIndex] ?? '',
-                ] as [string, string],
-              }
-            : {}),
+          ...(partnerIds ? { partnerIds } : {}),
         };
 
         // For inactive lines, determine which side to place the slash:
@@ -529,6 +525,8 @@ export function computeConnectors(
       const barMaxX = Math.max(bar.x1, bar.x2);
       const connectX = Math.max(barMinX, Math.min(parentX, barMaxX));
 
+      const endpointIds: [string | undefined, string | undefined] | undefined =
+        id ? [donorParentNodeId, undefined] : undefined;
       auxiliaryLines.push({
         type: 'auxiliary',
         edgeType: conn.edgeType,
@@ -539,14 +537,7 @@ export function computeConnectors(
           x2: connectX,
           y2: bar.y1,
         },
-        ...(id
-          ? {
-              endpointIds: [donorParentNodeId, undefined] as [
-                string | undefined,
-                string | undefined,
-              ],
-            }
-          : {}),
+        ...(endpointIds ? { endpointIds } : {}),
       });
     } else {
       // Parent of only some children (or no sibling bar) — connect
@@ -557,6 +548,9 @@ export function computeConnectors(
           id && childPersonIndex !== undefined
             ? id[childPersonIndex]
             : undefined;
+        const endpointIds:
+          | [string | undefined, string | undefined]
+          | undefined = id ? [donorParentNodeId, childNodeId] : undefined;
         auxiliaryLines.push({
           type: 'auxiliary',
           edgeType: conn.edgeType,
@@ -567,14 +561,7 @@ export function computeConnectors(
             x2: layout.pos[conn.childLevel]![col]!,
             y2: conn.childLevel + boxh / 2,
           },
-          ...(id
-            ? {
-                endpointIds: [donorParentNodeId, childNodeId] as [
-                  string | undefined,
-                  string | undefined,
-                ],
-              }
-            : {}),
+          ...(endpointIds ? { endpointIds } : {}),
         });
       }
     }
@@ -717,6 +704,8 @@ export function computeConnectors(
       const barMinX = Math.min(bar.x1, bar.x2);
       const barMaxX = Math.max(bar.x1, bar.x2);
       const connectX = Math.max(barMinX, Math.min(parentPos.x, barMaxX));
+      const endpointIds: [string | undefined, string | undefined] | undefined =
+        id ? [socialParentNodeId, undefined] : undefined;
 
       auxiliaryLines.push({
         type: 'auxiliary',
@@ -728,14 +717,7 @@ export function computeConnectors(
           x2: connectX,
           y2: bar.y1,
         },
-        ...(id
-          ? {
-              endpointIds: [socialParentNodeId, undefined] as [
-                string | undefined,
-                string | undefined,
-              ],
-            }
-          : {}),
+        ...(endpointIds ? { endpointIds } : {}),
       });
     } else {
       for (const col of conn.childColumns) {
@@ -744,6 +726,9 @@ export function computeConnectors(
           id && childPersonIndex !== undefined
             ? id[childPersonIndex]
             : undefined;
+        const endpointIds:
+          | [string | undefined, string | undefined]
+          | undefined = id ? [socialParentNodeId, childNodeId] : undefined;
         auxiliaryLines.push({
           type: 'auxiliary',
           edgeType: conn.edgeType,
@@ -754,14 +739,7 @@ export function computeConnectors(
             x2: layout.pos[conn.childLevel]![col]!,
             y2: conn.childLevel + boxh / 2,
           },
-          ...(id
-            ? {
-                endpointIds: [socialParentNodeId, childNodeId] as [
-                  string | undefined,
-                  string | undefined,
-                ],
-              }
-            : {}),
+          ...(endpointIds ? { endpointIds } : {}),
         });
       }
     }
