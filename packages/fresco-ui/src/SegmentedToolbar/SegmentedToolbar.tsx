@@ -40,7 +40,15 @@ export type ButtonSegment = {
   type: 'button';
   id: string;
   disabled?: boolean;
-  onClick: () => void;
+  onClick?: () => void;
+  /**
+   * Host the segment inside a caller-supplied element — e.g. a Popover or Menu
+   * trigger. The element receives the styled toolbar button as its `render`, so
+   * the overlay's trigger wiring (focus return, `aria-expanded`) composes with
+   * the toolbar button and its roving focus. When set, the open/close behaviour
+   * comes from the wrapper rather than `onClick`.
+   */
+  render?: React.ReactElement<{ render?: unknown }>;
 } & SegmentContent;
 
 export type ToggleSegment = {
@@ -93,7 +101,7 @@ export type SegmentedToolbarProps = {
   onPositionChange?: (pos: Position) => void;
   /** Optional drag bounds. */
   dragConstraints?:
-    | React.RefObject<Element>
+    | React.RefObject<Element | null>
     | { top: number; left: number; right: number; bottom: number };
   /** Accessible name for the drag handle. @default 'Move toolbar' */
   dragHandleLabel?: string;
@@ -170,11 +178,19 @@ function ToolbarButtonSegment({
   segment: ButtonSegment;
   size: SegmentSize;
 }) {
+  const styledButton = segmentButton(segment, size);
+  // When a caller hosts the segment in their own element (e.g. a Popover
+  // trigger), the styled button becomes that element's render target so the
+  // overlay wiring composes with the toolbar button — mirroring the
+  // Toolbar.Button → Toggle → Button nesting used for toggle segments.
+  const control = segment.render
+    ? React.cloneElement(segment.render, { render: styledButton })
+    : styledButton;
   const button = (
     <Toolbar.Button
       disabled={segment.disabled}
       onClick={segment.onClick}
-      render={segmentButton(segment, size)}
+      render={control}
     />
   );
   return withTooltip(button, segment.label, isLabelVisible(segment));

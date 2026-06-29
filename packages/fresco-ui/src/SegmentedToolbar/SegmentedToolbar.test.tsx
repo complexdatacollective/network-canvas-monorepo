@@ -9,6 +9,7 @@ import {
   Trash2,
   Undo2,
 } from 'lucide-react';
+import { cloneElement, type ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SegmentedToolbar, type ToolbarSegment } from './SegmentedToolbar';
@@ -114,6 +115,40 @@ describe('SegmentedToolbar — toggles', () => {
     render(<SegmentedToolbar label="Tools" items={items} />);
     await userEvent.click(screen.getByRole('button', { name: 'Freeze' }));
     expect(onPressedChange).toHaveBeenCalledWith(true);
+  });
+});
+
+describe('SegmentedToolbar — hosted (render) button', () => {
+  it('hosts a button segment inside a caller-supplied element', async () => {
+    // Mirrors the Narrative preset switcher, whose label button lives inside a
+    // Popover trigger. The wrapper receives the styled toolbar button as its
+    // `render`, and its behaviour (here, an onClick) composes with the segment.
+    const onTriggerClick = vi.fn();
+    // A wrapper that *becomes* the styled toolbar button (as Base UI triggers
+    // do), attaching its own behaviour — here a click handler.
+    function TriggerWrapper({
+      render: target,
+    }: {
+      render?: ReactElement<{ onClick?: () => void }>;
+    }) {
+      return target ? cloneElement(target, { onClick: onTriggerClick }) : null;
+    }
+
+    const items: ToolbarSegment[] = [
+      {
+        type: 'button',
+        id: 'label',
+        label: 'Social Network',
+        showLabel: true,
+        render: <TriggerWrapper />,
+      },
+    ];
+    render(<SegmentedToolbar label="Presets" items={items} />);
+
+    const button = screen.getByRole('button', { name: 'Social Network' });
+    expect(button).toBeInTheDocument();
+    await userEvent.click(button);
+    expect(onTriggerClick).toHaveBeenCalledOnce();
   });
 });
 
