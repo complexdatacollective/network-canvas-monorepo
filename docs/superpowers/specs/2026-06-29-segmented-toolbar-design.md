@@ -59,15 +59,15 @@ toggle/separator semantics for free.
 Config-driven. Consumers pass an `items` array of discriminated-union segments.
 
 ```ts
-type ButtonColor =
+type SegmentColor =
   | 'default'
-  | 'dynamic'
   | 'primary'
   | 'secondary'
   | 'warning'
   | 'info'
   | 'destructive'
-  | 'success';
+  | 'success'
+  | 'accent';
 
 type SegmentContent = {
   /** Accessible name. Always used as the aria-label; rendered as visible text when showLabel. */
@@ -79,8 +79,8 @@ type SegmentContent = {
    * Default: false when an icon is present (icon-only + tooltip), true when there is no icon.
    */
   showLabel?: boolean;
-  /** Optional passthrough to the existing Button colour tokens. */
-  color?: ButtonColor;
+  /** Optional semantic colour applied to the segment's icon/text via a `text-*` token. @default 'default' */
+  color?: SegmentColor;
 };
 
 type ButtonSegment = {
@@ -191,14 +191,18 @@ Tokens only — no hardcoded colours, shadows, or font sizes.
 
 ## Drag (self-positioning)
 
-- The container is a `motion` element with `drag` and `useDragControls`;
-  `dragListener={false}` so only the handle initiates a drag
-  (`onPointerDown` on the handle → `controls.start(event)`).
-- Position is uncontrolled by default (`defaultPosition`), persisting where the user drops
-  the toolbar; consumers may control it via `position` + `onPositionChange`. `dragConstraints`
-  clamps movement.
+- Dragging is delegated to motion's native `drag` prop — the component does not
+  hand-roll position tracking. The container is a `motion` element with `drag` +
+  `useDragControls` and `dragListener={false}`, so only the handle initiates a drag
+  (`onPointerDown` on the handle → `controls.start(event)`). `dragConstraints` (object or
+  ref) is passed straight to motion, which clamps the drag natively.
+- Position lives in two `motion` values (`x`/`y`) bound via `style={{ x, y }}` — the single
+  source of truth. They seed from `defaultPosition` (uncontrolled), sync from `position`
+  (controlled) via an effect, and are read back on `onDragEnd`/nudge to report the
+  clamped position through `onPositionChange`.
 - **Keyboard equivalent:** when the handle is focused, arrow keys nudge the toolbar by a
-  fixed step. Movement is reported via a throttled `aria-live` announcement.
+  fixed step (by `.set()`-ing the same `x`/`y` motion values motion's drag uses). Movement
+  is reported via an `aria-live` announcement.
 - Dragging itself runs regardless of reduced-motion (it is a direct user manipulation);
   only the decorative enter/exit/layout flourishes are gated.
 
