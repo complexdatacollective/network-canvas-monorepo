@@ -56,6 +56,10 @@
       "types": "./dist/ScrollArea.d.ts",
       "default": "./dist/ScrollArea.js"
     },
+    "./SegmentedToolbar": {
+      "types": "./dist/SegmentedToolbar/SegmentedToolbar.d.ts",
+      "default": "./dist/SegmentedToolbar/SegmentedToolbar.js"
+    },
     "./Skeleton": {
       "types": "./dist/Skeleton.d.ts",
       "default": "./dist/Skeleton.js"
