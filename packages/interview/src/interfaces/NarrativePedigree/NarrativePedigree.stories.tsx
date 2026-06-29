@@ -342,7 +342,7 @@ const NP_STEP = 1;
 
 // Node-render-mode markers ([data-sticker-status] / [data-notation-status])
 // must be queried inside the pedigree view, not the whole document: the
-// always-present StickerKeyPanel legend also renders Sticker glyphs carrying
+// always-present ConditionPanel legend also renders Sticker glyphs carrying
 // [data-sticker-status] as an overlay sibling. A document-wide query would
 // always match those and never reflect the node-rendering mode.
 function viewScope(): Element {

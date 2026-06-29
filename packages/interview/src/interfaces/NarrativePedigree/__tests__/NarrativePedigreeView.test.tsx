@@ -267,7 +267,7 @@ async function selectCondition(optionName: string) {
 }
 
 // Node-mode markers must be queried inside the pedigree view, not the whole
-// document: the always-present StickerKeyPanel legend also renders Sticker
+// document: the always-present ConditionPanel legend also renders Sticker
 // glyphs (with [data-sticker-status]) as a sibling overlay, so a document-wide
 // query would always match those and never report the node-rendering mode.
 function viewMarker(selector: string): Element | null {

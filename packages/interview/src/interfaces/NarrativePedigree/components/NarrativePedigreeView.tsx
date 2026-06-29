@@ -45,9 +45,8 @@ import {
   type Status,
 } from '../genetics/status';
 import { computeContributors } from '../highlight';
-import DiseaseSelectPanel from './DiseaseSelectPanel';
+import ConditionPanel from './ConditionPanel';
 import { Sticker } from './Sticker';
-import StickerKeyPanel from './StickerKeyPanel';
 import { type DiseaseSticker, StickerNode } from './StickerNode';
 
 type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
@@ -485,14 +484,11 @@ export default function NarrativePedigreeView({
       </div>
       <div className="pointer-events-none absolute inset-0">
         <div className="pointer-events-auto absolute top-4 left-4 w-56">
-          <DiseaseSelectPanel
+          <ConditionPanel
             diseases={diseases}
             selectedDiseaseId={selectedDiseaseId}
             onSelect={setSelectedDiseaseId}
           />
-        </div>
-        <div className="pointer-events-auto absolute top-4 right-4">
-          <StickerKeyPanel />
         </div>
         {focalId !== null && (
           <div className="absolute inset-x-0 bottom-4 flex justify-center">
@@ -500,7 +496,11 @@ export default function NarrativePedigreeView({
               size="sm"
               variant="default"
               icon={
-                <Icon name="reset" aria-hidden="true" className="size-[1em]" />
+                <Icon
+                  name="RotateCcw"
+                  aria-hidden="true"
+                  className="size-[1em]"
+                />
               }
               className="pointer-events-auto"
               onClick={() => setFocalId(null)}
