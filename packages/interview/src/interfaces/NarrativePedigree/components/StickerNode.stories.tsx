@@ -40,8 +40,9 @@ const DISEASE_COLOR_TOKENS = [
 function buildDiseases(count: number): DiseaseSticker[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `disease-${i}`,
-    color: DISEASE_COLOR_TOKENS[i % DISEASE_COLOR_TOKENS.length],
-    status: ALL_STATUSES[i % ALL_STATUSES.length],
+    color:
+      DISEASE_COLOR_TOKENS[i % DISEASE_COLOR_TOKENS.length] ?? 'var(--node-1)',
+    status: ALL_STATUSES[i % ALL_STATUSES.length] ?? 'affected',
     atRiskHomozygous: i === 1,
   }));
 }
