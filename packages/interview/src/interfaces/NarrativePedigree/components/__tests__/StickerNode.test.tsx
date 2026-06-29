@@ -216,23 +216,7 @@ describe('StickerNode', () => {
       expect(statusMarker).not.toBe(atRiskMarker);
     });
 
-    it('[data-atrisk-homozygous-marker] accessible label is reachable via the accessibility tree', () => {
-      const disease: DiseaseSticker = {
-        id: 'dx',
-        color: '#ff0000',
-        status: 'obligateCarrier',
-        atRiskHomozygous: true,
-      };
-      render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
-      // getByLabelText searches the accessibility tree and honours aria-hidden
-      // ancestors — if the marker were inside an aria-hidden container this
-      // query would throw, catching the suppression bug.
-      expect(
-        screen.getByLabelText(/risk of being affected/i),
-      ).toBeInTheDocument();
-    });
-
-    it('[data-atrisk-homozygous-marker] has no aria-hidden ancestor', () => {
+    it('[data-atrisk-homozygous-marker] is decorative — aria-hidden with no accessible label', () => {
       const disease: DiseaseSticker = {
         id: 'dx',
         color: '#ff0000',
@@ -242,11 +226,27 @@ describe('StickerNode', () => {
       render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
       const marker = document.querySelector('[data-atrisk-homozygous-marker]');
       expect(marker).toBeInTheDocument();
-      let node = marker?.parentElement;
+
+      // The status is announced as text by the per-node summary in
+      // NarrativePedigreeView; the triangle itself carries no accessible label
+      // and is hidden from the accessibility tree (so getByLabelText can't find
+      // it).
+      expect(marker).not.toHaveAttribute('aria-label');
+      expect(
+        screen.queryByLabelText(/risk of being affected/i),
+      ).not.toBeInTheDocument();
+
+      // Confirm an aria-hidden ancestor (or the marker itself) hides it from AT.
+      let node: Element | null = marker;
+      let hidden = false;
       while (node) {
-        expect(node.getAttribute('aria-hidden')).not.toBe('true');
+        if (node.getAttribute('aria-hidden') === 'true') {
+          hidden = true;
+          break;
+        }
         node = node.parentElement;
       }
+      expect(hidden).toBe(true);
     });
   });
 

@@ -357,7 +357,7 @@ describe('ClassicNotationNode', () => {
       expect(marker).toBeInTheDocument();
     });
 
-    it('[data-atrisk-homozygous-notation] is not nested inside any aria-hidden subtree', () => {
+    it('[data-atrisk-homozygous-notation] is decorative — aria-hidden with no accessible label', () => {
       render(
         <ClassicNotationNode
           node={mockNode}
@@ -370,21 +370,27 @@ describe('ClassicNotationNode', () => {
           label="Alice"
         />,
       );
-      // Verify the marker exists and carries an accessible name.
       const marker = document.querySelector(
         '[data-atrisk-homozygous-notation]',
       );
       expect(marker).not.toBeNull();
-      expect(marker).toHaveAttribute('aria-label');
 
-      // Walk every ancestor to confirm none carries aria-hidden="true".
-      // getByLabelText does NOT filter by aria-hidden, so this explicit walk is
-      // the only reliable guard that the marker is outside any aria-hidden subtree.
+      // The status is announced as text by the per-node summary in
+      // NarrativePedigreeView; the triangle carries no accessible label and is
+      // hidden from the accessibility tree.
+      expect(marker).not.toHaveAttribute('aria-label');
+
+      // Confirm an aria-hidden ancestor (or the marker itself) hides it from AT.
       let el: Element | null = marker;
+      let hidden = false;
       while (el) {
-        expect(el.getAttribute('aria-hidden')).not.toBe('true');
+        if (el.getAttribute('aria-hidden') === 'true') {
+          hidden = true;
+          break;
+        }
         el = el.parentElement;
       }
+      expect(hidden).toBe(true);
     });
 
     it.each(['square', 'circle', 'diamond'] as const)(

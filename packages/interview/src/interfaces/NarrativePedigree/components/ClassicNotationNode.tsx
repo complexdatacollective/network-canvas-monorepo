@@ -4,7 +4,7 @@ import Node from '@codaco/fresco-ui/Node';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import type { NcNode } from '@codaco/shared-consts';
 
-import { AT_RISK_HOMOZYGOUS_LABEL, type Status } from '../genetics/status';
+import type { Status } from '../genetics/status';
 import { StatusMarker } from './StatusMarker';
 
 export type ClassicDisease = {
@@ -23,16 +23,16 @@ type ClassicNotationNodeProps = {
 
 /**
  * Small upward-pointing triangle positioned at the bottom-right corner of the
- * node symbol. Signals that the person may be homozygous-affected for this
- * disease — a second signal distinct from all primary-status markers.
+ * node symbol. Visually signals that the person may be homozygous-affected for
+ * this disease — a second signal distinct from all primary-status markers.
  *
- * Rendered as a sibling to the notation-status span (not inside it) so its
- * aria-label is not suppressed by the overlay's aria-hidden ancestor.
+ * Decorative (aria-hidden): the status it conveys is announced as text by the
+ * per-node summary in NarrativePedigreeView.
  */
 function AtRiskHomozygousNotation({ color }: { color: string }) {
   return (
     <span
-      aria-label={AT_RISK_HOMOZYGOUS_LABEL}
+      aria-hidden
       data-atrisk-homozygous-notation
       className="pointer-events-none absolute right-0 bottom-0 flex items-center justify-center"
       style={{ width: 10, height: 10 }}
