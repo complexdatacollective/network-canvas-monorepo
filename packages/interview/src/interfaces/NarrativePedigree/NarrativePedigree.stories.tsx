@@ -323,6 +323,13 @@ function NarrativePedigreeStoryWrapper({
 const meta: Meta = {
   title: 'Interfaces/NarrativePedigree',
   parameters: { layout: 'fullscreen' },
+  // `buildPedigreeInterview` is a fixture helper (also imported by the unit
+  // tests), not a story. Without this, CSF auto-registers it as a story;
+  // opening it calls the helper with Storybook's (args, context) instead of a
+  // numeric seed and then tries to render/serialize the returned
+  // SyntheticInterview graph, which hangs the browser. Keep it out of the
+  // story set.
+  excludeStories: ['buildPedigreeInterview'],
 };
 
 export default meta;
