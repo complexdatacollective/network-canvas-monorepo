@@ -47,7 +47,8 @@ const countTagged = (
 // (31 after main removed FamilyPedigree biologicalSexVariable during merge.)
 // (29 after adding NetworkComposer quickAdd + layoutVariable references; its
 //  node/edge forms reuse the shared TitlelessFormSchema, which is already counted.)
-const EXPECTED_TAGGED_FIELD_COUNT = 29;
+// (30 after adding the NetworkComposer convexHulls array of categorical refs.)
+const EXPECTED_TAGGED_FIELD_COUNT = 30;
 
 describe('entity-attribute reference coverage', () => {
   it('has tagged the expected number of reference fields', () => {
