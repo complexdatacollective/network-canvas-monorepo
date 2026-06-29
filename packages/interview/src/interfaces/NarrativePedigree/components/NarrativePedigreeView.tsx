@@ -35,7 +35,12 @@ import {
 } from '../genetics/computeStatuses';
 import { buildGeneticGraph } from '../genetics/geneticGraph';
 import { resolveSex } from '../genetics/resolveSex';
-import { affectedSet, type Status } from '../genetics/status';
+import {
+  affectedSet,
+  AT_RISK_HOMOZYGOUS_LABEL,
+  STATUS_LABELS,
+  type Status,
+} from '../genetics/status';
 import { computeContributors } from '../highlight';
 import {
   ClassicNotationNode,
@@ -255,6 +260,33 @@ export default function NarrativePedigreeView({
     return displayLabels.get(node.id) ?? '';
   };
 
+  // Plain-text per-node disease-status summary for screen readers. The visual
+  // status markers (stickers / classic notation) are aria-hidden, so this is the
+  // only way a screen-reader user learns who is affected/carrier/at-risk. It
+  // mirrors whatever is currently shown (all diseases, or a single selected one)
+  // and is announced via aria-describedby on the focal container. Returns null
+  // when there are no diseases to describe.
+  const statusSummaryFor = (node: RenderableNode): string | null => {
+    if (shownDiseases.length === 0) return null;
+    const parts = shownDiseases.map((disease) => {
+      const status =
+        statusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown';
+      const atRiskHomozygous =
+        statusesByDiseaseHomozygous.get(disease.id)?.get(node.id) ?? false;
+      const statusText = STATUS_LABELS[status];
+      // An affected recessive individual trivially has two carrier parents, so
+      // the homozygous flag is set for them too — but announcing "Affected, at
+      // risk of being affected" is contradictory. Drop the note once the person
+      // is already affected so the spoken summary stays coherent.
+      const alreadyAffected =
+        status === 'affected' || status === 'obligateAffected';
+      return atRiskHomozygous && !alreadyAffected
+        ? `${disease.label}: ${statusText}, ${AT_RISK_HOMOZYGOUS_LABEL}`
+        : `${disease.label}: ${statusText}`;
+    });
+    return parts.join('. ');
+  };
+
   const handleSnapshot = () => {
     if (!viewRef.current) return;
     void exportSnapshot(viewRef.current, `${stage.label || 'pedigree'}.png`);
@@ -272,6 +304,9 @@ export default function NarrativePedigreeView({
       ? renderClassic(node, shape, label, singleDisease, isSelected)
       : renderSticker(node, shape, label, isSelected);
 
+    const statusSummary = statusSummaryFor(node);
+    const statusSummaryId = statusSummary ? `np-status-${node.id}` : undefined;
+
     const handleClick = () => {
       setFocalId(node.id);
     };
@@ -280,10 +315,15 @@ export default function NarrativePedigreeView({
     // the fresco-ui Node is itself a <button>, and a <button> inside a <button>
     // is invalid HTML. role="button" + key handling keeps it accessible while
     // the inner Node button stays tabIndex=-1.
+    //
+    // aria-describedby points at the visually-hidden status summary so the
+    // person's disease status is announced after their name. The container's
+    // aria-label provides the name, so the summary need not repeat it.
     const focalProps: ComponentPropsWithoutRef<'div'> = {
       'role': 'button',
       'tabIndex': 0,
       'aria-label': `Focus on ${label || node.id}`,
+      'aria-describedby': statusSummaryId,
       'onClick': handleClick,
       'onKeyDown': (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -302,6 +342,11 @@ export default function NarrativePedigreeView({
         style={{ opacity: dimmed ? 0.3 : 1 }}
         {...focalProps}
       >
+        {statusSummary && (
+          <span id={statusSummaryId} className="sr-only">
+            {statusSummary}
+          </span>
+        )}
         {inner}
       </div>
     );
