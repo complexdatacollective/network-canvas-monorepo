@@ -233,6 +233,7 @@ export function useComposerActions({
               from: edge.from,
               to: edge.to,
               type: edge.type,
+              attributeData: edge[entityAttributesProperty],
               currentStep,
             }),
           ).unwrap();
@@ -302,6 +303,7 @@ export function useComposerActions({
               from: edge.from,
               to: edge.to,
               type: edge.type,
+              attributeData: edge[entityAttributesProperty],
               currentStep,
             }),
           ).unwrap();
@@ -342,6 +344,7 @@ export function useComposerActions({
             from: edgeSnapshot.from,
             to: edgeSnapshot.to,
             type: edgeSnapshot.type,
+            attributeData: edgeSnapshot[entityAttributesProperty],
             currentStep,
           }),
         ).unwrap();

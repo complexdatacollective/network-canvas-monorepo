@@ -72,6 +72,8 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     dispatch,
   });
 
+  const rootRef = useRef<HTMLDivElement>(null);
+
   const [renamingNodeId, setRenamingNodeId] = useState<string | null>(null);
 
   const selectedNodeIds = useComposerStore(
@@ -129,16 +131,23 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   const handleBackgroundTap = useCallback(
     async (position: { x: number; y: number }) => {
-      const { activeTool } = composerStore.getState();
-      if (activeTool.kind !== 'addNode') return;
-      const id = await actions.createNodeAt('', position);
-      setRenamingNodeId(id);
+      rootRef.current?.focus();
+      const { activeTool, clearSelection, setPendingEdgeSource } =
+        composerStore.getState();
+      if (activeTool.kind === 'addNode') {
+        const id = await actions.createNodeAt('', position);
+        setRenamingNodeId(id);
+      } else {
+        clearSelection();
+        setPendingEdgeSource(null);
+      }
     },
     [composerStore, actions],
   );
 
   const handleNodeTap = useCallback(
     async (tappedId: string, modifiers: NodeTapModifiers) => {
+      rootRef.current?.focus();
       const {
         activeTool,
         pendingEdgeSource,
@@ -206,6 +215,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   const handleEdgeTap = useCallback(
     (edgeId: string) => {
+      rootRef.current?.focus();
       const { activeTool, selectEdge } = composerStore.getState();
       if (activeTool.kind !== 'select') return;
       selectEdge(edgeId);
@@ -268,13 +278,13 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
       if (isUndo) {
         e.preventDefault();
-        undoStore.getState().undo();
+        void undoStore.getState().undo();
         return;
       }
 
       if (isRedo) {
         e.preventDefault();
-        undoStore.getState().redo();
+        void undoStore.getState().redo();
         return;
       }
 
@@ -344,6 +354,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   return (
     // tabIndex makes the div focusable so keydown events reach it.
     <div
+      ref={rootRef}
       className="interface relative h-dvh overflow-hidden"
       data-testid="network-composer"
       data-layout-mode={layoutMode}

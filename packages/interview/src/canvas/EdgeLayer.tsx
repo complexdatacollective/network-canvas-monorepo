@@ -142,11 +142,7 @@ export default function EdgeLayer({
       viewBox="0 0 1 1"
       xmlns="http://www.w3.org/2000/svg"
       preserveAspectRatio="none"
-      className={
-        onEdgeSelect
-          ? 'absolute inset-0 size-full'
-          : 'pointer-events-none absolute inset-0 size-full'
-      }
+      className="pointer-events-none absolute inset-0 size-full"
     />
   );
 }

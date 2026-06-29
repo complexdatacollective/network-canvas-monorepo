@@ -2,8 +2,8 @@ import { createStore, useStore } from 'zustand';
 
 export type UndoCommand = {
   label: string;
-  undo: () => void;
-  redo: () => void;
+  undo: () => void | Promise<void>;
+  redo: () => void | Promise<void>;
 };
 
 type UndoState = {
@@ -13,8 +13,8 @@ type UndoState = {
 
 type UndoActions = {
   push: (command: UndoCommand) => void;
-  undo: () => void;
-  redo: () => void;
+  undo: () => Promise<void>;
+  redo: () => Promise<void>;
 };
 
 export type UndoStore = UndoState & UndoActions;
@@ -30,22 +30,22 @@ export const createUndoStore = (limit = 50) =>
         future: [],
       })),
 
-    undo: () => {
+    undo: async () => {
       const { past } = get();
       const command = past[past.length - 1];
       if (!command) return;
-      command.undo();
+      await command.undo();
       set((state) => ({
         past: state.past.slice(0, -1),
         future: [command, ...state.future],
       }));
     },
 
-    redo: () => {
+    redo: async () => {
       const { future } = get();
       const command = future[0];
       if (!command) return;
-      command.redo();
+      await command.redo();
       set((state) => ({
         past: [...state.past, command],
         future: state.future.slice(1),

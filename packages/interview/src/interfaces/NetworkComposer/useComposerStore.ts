@@ -31,13 +31,11 @@ type ComposerActions = {
 
 export type ComposerStore = ComposerState & ComposerActions;
 
-const EMPTY_SELECTION: ReadonlySet<string> = new Set();
-
 export const createComposerStore = () =>
   createStore<ComposerStore>()(
     subscribeWithSelector((set) => ({
       activeTool: { kind: 'select' },
-      selectedNodeIds: EMPTY_SELECTION,
+      selectedNodeIds: new Set<string>(),
       selectedEdgeId: null,
       pendingEdgeSource: null,
       lassoPoints: null,
@@ -45,7 +43,7 @@ export const createComposerStore = () =>
       setActiveTool: (tool) =>
         set({
           activeTool: tool,
-          selectedNodeIds: EMPTY_SELECTION,
+          selectedNodeIds: new Set<string>(),
           selectedEdgeId: null,
           pendingEdgeSource: null,
         }),
@@ -68,10 +66,10 @@ export const createComposerStore = () =>
         set({ selectedNodeIds: new Set(ids), selectedEdgeId: null }),
 
       clearSelection: () =>
-        set({ selectedNodeIds: EMPTY_SELECTION, selectedEdgeId: null }),
+        set({ selectedNodeIds: new Set<string>(), selectedEdgeId: null }),
 
       selectEdge: (id) =>
-        set({ selectedEdgeId: id, selectedNodeIds: EMPTY_SELECTION }),
+        set({ selectedEdgeId: id, selectedNodeIds: new Set<string>() }),
 
       setPendingEdgeSource: (id) => set({ pendingEdgeSource: id }),
 

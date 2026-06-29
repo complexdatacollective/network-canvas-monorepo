@@ -105,7 +105,7 @@ export default function ToolPalette({
         variant="outline"
         icon={<UndoIcon />}
         disabled={!canUndo}
-        onClick={() => undoStore.getState().undo()}
+        onClick={() => void undoStore.getState().undo()}
         aria-label="Undo"
       >
         Undo
@@ -116,7 +116,7 @@ export default function ToolPalette({
         variant="outline"
         icon={<RedoIcon />}
         disabled={!canRedo}
-        onClick={() => undoStore.getState().redo()}
+        onClick={() => void undoStore.getState().redo()}
         aria-label="Redo"
       >
         Redo
