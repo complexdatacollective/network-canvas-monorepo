@@ -1,5 +1,6 @@
 import type {
   ComponentType,
+  StageType,
   VariableOption,
   VariableType,
 } from '@codaco/protocol-validation';
@@ -41,26 +42,6 @@ export type EdgeTypeEntry = {
   color: string;
   variables: Map<string, VariableEntry>;
 };
-
-export type StageType =
-  | 'NameGenerator'
-  | 'NameGeneratorQuickAdd'
-  | 'NameGeneratorRoster'
-  | 'Sociogram'
-  | 'Narrative'
-  | 'DyadCensus'
-  | 'OneToManyDyadCensus'
-  | 'OrdinalBin'
-  | 'CategoricalBin'
-  | 'EgoForm'
-  | 'Information'
-  | 'TieStrengthCensus'
-  | 'AlterForm'
-  | 'AlterEdgeForm'
-  | 'Anonymisation'
-  | 'FamilyPedigree'
-  | 'Geospatial'
-  | 'NarrativePedigree';
 
 export type NameGeneratorPromptEntry = {
   id: string;
