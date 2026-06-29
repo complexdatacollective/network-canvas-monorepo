@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { renderHook, act } from '@testing-library/react';
-import { createElement, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
@@ -74,7 +74,12 @@ function makeStore(initialNodes: NcNode[] = [], initialEdges: NcEdge[] = []) {
 
 function makeWrapper(store: ReturnType<typeof makeStore>) {
   return function Wrapper({ children }: { children: ReactNode }) {
-    return createElement(Provider, { store, children });
+    // Call form (not createElement/JSX): this is a .ts file, so JSX is
+    // unavailable, and `createElement(Provider, { store, children })` trips the
+    // react(no-children-prop) lint rule while `createElement(Provider, { store },
+    // children)` fails ProviderProps typing (children required). The call form
+    // satisfies both.
+    return Provider({ store, children });
   };
 }
 
