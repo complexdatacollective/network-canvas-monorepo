@@ -433,7 +433,7 @@ export function SegmentedToolbar({
       className={cx(
         draggable ? 'flex items-center gap-1' : rootVariants({ orientation }),
         draggable && orientation === 'vertical' && 'flex-col',
-        className,
+        !draggable && className,
       )}
     >
       <AnimatePresence initial={false} mode="popLayout">
@@ -471,9 +471,9 @@ export function SegmentedToolbar({
         onNudge={handleNudge}
       />
       {toolbar}
-      <span role="status" aria-live="polite" className="sr-only">
+      <output aria-live="polite" className="sr-only">
         {announcement}
-      </span>
+      </output>
     </motion.div>
   );
 }
