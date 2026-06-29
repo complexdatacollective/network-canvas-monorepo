@@ -50,10 +50,12 @@ function StickerCell({
   status,
   shape,
   atRiskHomozygous,
+  caption,
 }: {
   status: Status;
   shape: NodeShape;
   atRiskHomozygous?: boolean;
+  caption: string;
 }) {
   return (
     <div
@@ -62,6 +64,7 @@ function StickerCell({
         flexDirection: 'column',
         alignItems: 'center',
         gap: 4,
+        width: 96,
       }}
     >
       <Sticker
@@ -71,51 +74,23 @@ function StickerCell({
         size={GRID_SIZE}
         atRiskHomozygous={atRiskHomozygous}
       />
-      <span className="text-muted" style={{ fontSize: 9 }}>
-        {status}
+      <span className="text-muted" style={{ fontSize: 9, textAlign: 'center' }}>
+        {caption}
       </span>
     </div>
   );
 }
 
 /**
- * Every shape × every status. Verifies shape conformance (circle/square/
- * diamond), white-on-dark backgrounds, and all fill states at a glance.
+ * Every status × every shape, plus the at-risk-homozygous override glyph, so the
+ * Bennett-2022 notation can be checked at a glance: solid fill (affected),
+ * vertical line (obligate-affected), horizontal hatch (obligate-carrier), the
+ * "?"-on-break at-risk variants, the plain outline (unknown), and the solid +
+ * white-"?" homozygous override. Verifies shape conformance (circle/square/
+ * diamond) and white-on-dark legibility.
  */
 export const ShapesAndStatuses: Story = {
   name: 'All shapes × all statuses',
-  render: () => (
-    <div
-      style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: 16 }}
-    >
-      {ALL_SHAPES.map((shape) => (
-        <div
-          key={shape}
-          style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
-        >
-          <span
-            className="text-muted"
-            style={{ fontSize: 12, fontWeight: 600 }}
-          >
-            {shape}
-          </span>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            {ALL_STATUSES.map((status) => (
-              <StickerCell key={status} status={status} shape={shape} />
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  ),
-};
-
-/**
- * The at-risk-homozygous corner triangle on every shape × status, so the
- * triangle's visibility and corner anchoring can be checked against each glyph.
- */
-export const AtRiskHomozygousAll: Story = {
-  name: 'At-risk-homozygous triangle — all shapes × statuses',
   render: () => (
     <div
       style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: 16 }}
@@ -137,9 +112,15 @@ export const AtRiskHomozygousAll: Story = {
                 key={status}
                 status={status}
                 shape={shape}
-                atRiskHomozygous
+                caption={status}
               />
             ))}
+            <StickerCell
+              status="affected"
+              shape={shape}
+              atRiskHomozygous
+              caption="atRiskHomozygous"
+            />
           </div>
         </div>
       ))}

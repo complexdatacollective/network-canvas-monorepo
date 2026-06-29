@@ -47,16 +47,14 @@ describe('StickerNode', () => {
     });
   });
 
-  describe('status → notation glyph mapping', () => {
+  describe('status → notation glyph mapping (Bennett 2022)', () => {
     // Each status maps to a standard-notation glyph hook drawn by StatusMarker.
-    // Display merge: affected and obligateAffected both draw [data-filled-shape].
     it.each([
       ['affected', '[data-filled-shape]'],
-      ['obligateAffected', '[data-filled-shape]'],
-      ['obligateCarrier', '[data-centre-dot]'],
-      ['atRiskAffected', '[data-half-fill]'],
-      ['atRiskCarrier', '[data-centre-dot]'],
-      ['unknown', '[data-question-mark]'],
+      ['obligateAffected', '[data-vertical-line]'],
+      ['obligateCarrier', '[data-hatch-fill]'],
+      ['atRiskAffected', '[data-vertical-line]'],
+      ['atRiskCarrier', '[data-hatch-fill]'],
     ] as const)('status=%s renders %s', (status, glyphSelector) => {
       const disease: DiseaseSticker = { id: 'dx', color: '#red', status };
       render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
@@ -66,17 +64,39 @@ describe('StickerNode', () => {
       expect(sticker).toBeInTheDocument();
       expect(sticker?.querySelector(glyphSelector)).toBeTruthy();
     });
-  });
 
-  describe('unknown status is shown as ? marker (not absent)', () => {
-    it('renders a question-mark text in the unknown sticker', () => {
-      const diseases: DiseaseSticker[] = [
-        { id: 'dx', color: '#aaa', status: 'unknown' },
-      ];
-      render(<StickerNode label="Test" shape="square" diseases={diseases} />);
+    it('unknown renders a plain outline (no fill/line/hatch/?)', () => {
+      const disease: DiseaseSticker = {
+        id: 'dx',
+        color: '#red',
+        status: 'unknown',
+      };
+      render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
       const sticker = document.querySelector('[data-sticker-status="unknown"]');
       expect(sticker).toBeInTheDocument();
-      expect(sticker?.textContent).toContain('?');
+      expect(sticker?.querySelector('[data-filled-shape]')).toBeNull();
+      expect(sticker?.querySelector('[data-vertical-line]')).toBeNull();
+      expect(sticker?.querySelector('[data-hatch-fill]')).toBeNull();
+      expect(sticker?.querySelector('[data-question-mark]')).toBeNull();
+      expect(sticker?.querySelector('[data-shape-outline]')).toBeTruthy();
+    });
+
+    it('the at-risk glyphs carry a "?" on a white break', () => {
+      for (const status of ['atRiskAffected', 'atRiskCarrier'] as const) {
+        const { unmount } = render(
+          <StickerNode
+            label="Test"
+            shape="square"
+            diseases={[{ id: 'dx', color: '#red', status }]}
+          />,
+        );
+        const sticker = document.querySelector(
+          `[data-sticker-status="${status}"]`,
+        );
+        expect(sticker?.querySelector('[data-query-break]')).toBeTruthy();
+        expect(sticker?.textContent).toContain('?');
+        unmount();
+      }
     });
   });
 
@@ -198,8 +218,11 @@ describe('StickerNode', () => {
     });
   });
 
-  describe('atRiskHomozygous flag indicator', () => {
-    it('renders [data-atrisk-homozygous-marker] when atRiskHomozygous is true', () => {
+  describe('atRiskHomozygous override glyph', () => {
+    // When atRiskHomozygous is set, the homozygous glyph (solid fill + white "?")
+    // REPLACES the status glyph — it conveys the higher-severity "may be
+    // affected". The marker carries data-status="atRiskHomozygous".
+    it('renders the atRiskHomozygous override glyph in place of the status glyph', () => {
       const disease: DiseaseSticker = {
         id: 'dx',
         color: '#ff0000',
@@ -207,11 +230,20 @@ describe('StickerNode', () => {
         atRiskHomozygous: true,
       };
       render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
-      const marker = document.querySelector('[data-atrisk-homozygous-marker]');
-      expect(marker).toBeInTheDocument();
+      const sticker = document.querySelector(
+        '[data-sticker-status="obligateCarrier"]',
+      );
+      expect(sticker).toBeInTheDocument();
+      const override = sticker?.querySelector(
+        '[data-status="atRiskHomozygous"]',
+      );
+      expect(override).toBeTruthy();
+      // The carrier hatch is replaced by the solid homozygous fill.
+      expect(sticker?.querySelector('[data-hatch-fill]')).toBeNull();
+      expect(sticker?.querySelector('[data-filled-shape]')).toBeTruthy();
     });
 
-    it('does NOT render [data-atrisk-homozygous-marker] when atRiskHomozygous is false', () => {
+    it('does NOT render the override when atRiskHomozygous is false', () => {
       const disease: DiseaseSticker = {
         id: 'dx',
         color: '#ff0000',
@@ -219,41 +251,24 @@ describe('StickerNode', () => {
         atRiskHomozygous: false,
       };
       render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
-      const marker = document.querySelector('[data-atrisk-homozygous-marker]');
-      expect(marker).not.toBeInTheDocument();
+      expect(
+        document.querySelector('[data-status="atRiskHomozygous"]'),
+      ).not.toBeInTheDocument();
     });
 
-    it('does NOT render [data-atrisk-homozygous-marker] when atRiskHomozygous is omitted', () => {
+    it('does NOT render the override when atRiskHomozygous is omitted', () => {
       const disease: DiseaseSticker = {
         id: 'dx',
         color: '#ff0000',
         status: 'obligateCarrier',
       };
       render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
-      const marker = document.querySelector('[data-atrisk-homozygous-marker]');
-      expect(marker).not.toBeInTheDocument();
+      expect(
+        document.querySelector('[data-status="atRiskHomozygous"]'),
+      ).not.toBeInTheDocument();
     });
 
-    it('renders BOTH the primary status marker and the at-risk flag for obligateCarrier + atRiskHomozygous', () => {
-      const disease: DiseaseSticker = {
-        id: 'dx',
-        color: '#d69e2e',
-        status: 'obligateCarrier',
-        atRiskHomozygous: true,
-      };
-      render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
-      const statusMarker = document.querySelector(
-        '[data-sticker-status="obligateCarrier"]',
-      );
-      const atRiskMarker = document.querySelector(
-        '[data-atrisk-homozygous-marker]',
-      );
-      expect(statusMarker).toBeInTheDocument();
-      expect(atRiskMarker).toBeInTheDocument();
-      expect(statusMarker).not.toBe(atRiskMarker);
-    });
-
-    it('[data-atrisk-homozygous-marker] is decorative — aria-hidden with no accessible label', () => {
+    it('override glyph is decorative — aria-hidden, no accessible label', () => {
       const disease: DiseaseSticker = {
         id: 'dx',
         color: '#ff0000',
@@ -261,23 +276,23 @@ describe('StickerNode', () => {
         atRiskHomozygous: true,
       };
       render(<StickerNode label="Test" shape="square" diseases={[disease]} />);
-      const marker = document.querySelector('[data-atrisk-homozygous-marker]');
-      expect(marker).toBeInTheDocument();
+      const override = document.querySelector(
+        '[data-status="atRiskHomozygous"]',
+      );
+      expect(override).toBeInTheDocument();
 
       // The status is announced as text by the per-node summary in
-      // NarrativePedigreeView; the triangle itself carries no accessible label
-      // and is hidden from the accessibility tree (so getByLabelText can't find
-      // it).
-      expect(marker).not.toHaveAttribute('aria-label');
+      // NarrativePedigreeView; the glyph carries no accessible label and is
+      // hidden from the accessibility tree.
+      expect(override).not.toHaveAttribute('aria-label');
       expect(
         screen.queryByLabelText(/risk of being affected/i),
       ).not.toBeInTheDocument();
 
-      // Confirm an aria-hidden ancestor (or the marker itself) hides it from AT.
-      let node: Element | null = marker;
+      let node: Element | null = override;
       let hidden = false;
       while (node) {
-        if (node.getAttribute('aria-hidden') === 'true') {
+        if (node.getAttribute('aria-hidden') !== null) {
           hidden = true;
           break;
         }
@@ -320,7 +335,7 @@ describe('StickerNode', () => {
       expect(filled?.tagName.toLowerCase()).toBe('circle');
     });
 
-    it('unknown marker renders a ? text glyph via [data-question-mark]', () => {
+    it('unknown marker renders a plain outline (no glyph)', () => {
       render(
         <StickerNode
           label="Test"
@@ -330,12 +345,12 @@ describe('StickerNode', () => {
       );
       const sticker = document.querySelector('[data-sticker-status="unknown"]');
       expect(sticker).toBeInTheDocument();
-      const qMark = sticker?.querySelector('[data-question-mark]');
-      expect(qMark).toBeTruthy();
-      expect(qMark?.textContent).toBe('?');
+      expect(sticker?.querySelector('[data-shape-outline]')).toBeTruthy();
+      expect(sticker?.querySelector('[data-question-mark]')).toBeNull();
+      expect(sticker?.querySelector('[data-filled-shape]')).toBeNull();
     });
 
-    it('atRiskCarrier marker renders a [data-centre-dot]', () => {
+    it('atRiskCarrier marker renders a [data-hatch-fill] + "?" break', () => {
       render(
         <StickerNode
           label="Test"
@@ -347,10 +362,11 @@ describe('StickerNode', () => {
         '[data-sticker-status="atRiskCarrier"]',
       );
       expect(sticker).toBeInTheDocument();
-      expect(sticker?.querySelector('[data-centre-dot]')).toBeTruthy();
+      expect(sticker?.querySelector('[data-hatch-fill]')).toBeTruthy();
+      expect(sticker?.querySelector('[data-query-break]')).toBeTruthy();
     });
 
-    it('obligateCarrier marker renders a [data-centre-dot]', () => {
+    it('obligateCarrier marker renders a [data-hatch-fill]', () => {
       render(
         <StickerNode
           label="Test"
@@ -362,10 +378,10 @@ describe('StickerNode', () => {
         '[data-sticker-status="obligateCarrier"]',
       );
       expect(sticker).toBeInTheDocument();
-      expect(sticker?.querySelector('[data-centre-dot]')).toBeTruthy();
+      expect(sticker?.querySelector('[data-hatch-fill]')).toBeTruthy();
     });
 
-    it('atRiskAffected marker renders a [data-half-fill] path', () => {
+    it('atRiskAffected marker renders a [data-vertical-line] + "?" break', () => {
       render(
         <StickerNode
           label="Test"
@@ -377,12 +393,11 @@ describe('StickerNode', () => {
         '[data-sticker-status="atRiskAffected"]',
       );
       expect(sticker).toBeInTheDocument();
-      expect(sticker?.querySelector('[data-half-fill]')).toBeTruthy();
+      expect(sticker?.querySelector('[data-vertical-line]')).toBeTruthy();
+      expect(sticker?.querySelector('[data-query-break]')).toBeTruthy();
     });
 
-    // Display merge: obligateAffected draws the same filled glyph as affected,
-    // with no double-outline distinguisher.
-    it('obligateAffected marker renders the same filled glyph as affected', () => {
+    it('obligateAffected marker renders a [data-vertical-line], not a fill', () => {
       render(
         <StickerNode
           label="Test"
@@ -396,8 +411,8 @@ describe('StickerNode', () => {
         '[data-sticker-status="obligateAffected"]',
       );
       expect(sticker).toBeInTheDocument();
-      expect(sticker?.querySelector('[data-filled-shape]')).toBeTruthy();
-      expect(sticker?.querySelector('[data-double-outline]')).toBeNull();
+      expect(sticker?.querySelector('[data-vertical-line]')).toBeTruthy();
+      expect(sticker?.querySelector('[data-filled-shape]')).toBeNull();
     });
   });
 

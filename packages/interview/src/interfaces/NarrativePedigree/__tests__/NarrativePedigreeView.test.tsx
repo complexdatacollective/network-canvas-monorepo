@@ -580,7 +580,7 @@ describe('NarrativePedigreeView — at-risk-homozygous threading (single-conditi
     );
     expect(sharedChildMember).toBeTruthy();
     expect(
-      sharedChildMember?.querySelector('[data-atrisk-homozygous-marker]'),
+      sharedChildMember?.querySelector('[data-status="atRiskHomozygous"]'),
     ).toBeTruthy();
 
     const unrelatedMember = document.querySelector(
@@ -588,7 +588,7 @@ describe('NarrativePedigreeView — at-risk-homozygous threading (single-conditi
     );
     expect(unrelatedMember).toBeTruthy();
     expect(
-      unrelatedMember?.querySelector('[data-atrisk-homozygous-marker]'),
+      unrelatedMember?.querySelector('[data-status="atRiskHomozygous"]'),
     ).toBeNull();
   });
 });
@@ -606,7 +606,7 @@ describe('NarrativePedigreeView — at-risk-homozygous threading (sticker mode)'
     );
     expect(sharedChildMember).toBeTruthy();
     expect(
-      sharedChildMember?.querySelector('[data-atrisk-homozygous-marker]'),
+      sharedChildMember?.querySelector('[data-status="atRiskHomozygous"]'),
     ).toBeTruthy();
 
     const unrelatedMember = document.querySelector(
@@ -614,7 +614,7 @@ describe('NarrativePedigreeView — at-risk-homozygous threading (sticker mode)'
     );
     expect(unrelatedMember).toBeTruthy();
     expect(
-      unrelatedMember?.querySelector('[data-atrisk-homozygous-marker]'),
+      unrelatedMember?.querySelector('[data-status="atRiskHomozygous"]'),
     ).toBeNull();
   });
 });
@@ -728,8 +728,9 @@ describe('NarrativePedigreeView — at-risk-homozygous reaches the description (
 });
 
 // An affected recessive individual trivially has two carrier parents, so
-// computeAtRiskHomozygous flags them too. The visual still draws the triangle,
-// but the spoken summary must not say "Affected, at risk of being affected".
+// computeAtRiskHomozygous flags them too. The visual still draws the homozygous
+// override glyph, but the spoken summary must not say "Affected, at risk of
+// being affected".
 describe('NarrativePedigreeView — affected nodes omit the contradictory homozygous note (a11y)', () => {
   const AR2_VAR = 'ar2';
   const SRC_TRIO = 'source-fp-trio';
@@ -815,16 +816,16 @@ describe('NarrativePedigreeView — affected nodes omit the contradictory homozy
       expect(document.querySelector('[data-node-id="kid"]')).toBeTruthy(),
     );
 
-    // The single-condition triangle only renders once a condition is selected.
+    // The single-condition node only renders once a condition is selected.
     await selectCondition('Recessive Disease');
     await waitFor(() =>
       expect(viewMarker('[data-notation-status]')).toBeTruthy(),
     );
 
     const kid = focalMember('kid');
-    // The homozygous flag IS set (the triangle renders) — without it this test
-    // would not exercise the guard.
-    expect(kid.querySelector('[data-atrisk-homozygous-marker]')).toBeTruthy();
+    // The homozygous flag IS set (the override glyph renders) — without it this
+    // test would not exercise the guard.
+    expect(kid.querySelector('[data-status="atRiskHomozygous"]')).toBeTruthy();
     // ...but the spoken summary must stay coherent: affected, full stop.
     expect(kid).toHaveAccessibleDescription('Recessive Disease: Affected');
     expect(kid).not.toHaveAccessibleDescription(/homozygous/i);

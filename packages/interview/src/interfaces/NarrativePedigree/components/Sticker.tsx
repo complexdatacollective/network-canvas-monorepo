@@ -1,7 +1,7 @@
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 
 import { STATUS_LABELS, type Status } from '../genetics/status';
-import { StatusMarker } from './StatusMarker';
+import { HomozygousMarker, StatusMarker } from './StatusMarker';
 
 export type StickerProps = {
   status: Status;
@@ -62,39 +62,13 @@ function ShapeBackground({ fill, shape }: { fill: string; shape: NodeShape }) {
 }
 
 /**
- * Upward-pointing triangle anchored to the bottom-right corner, sized at half
- * the sticker so it stays clearly visible. Signals a person may be homozygous-
- * affected. Decorative (aria-hidden): the status is announced as text by the
- * per-node summary in NarrativePedigreeView.
- *
- * `size` is a CSS length: a px number when the sticker has a fixed size, or a
- * percentage string when the sticker fills a percentage-sized parent.
- */
-function AtRiskHomozygousTriangle({
-  color,
-  size,
-}: {
-  color: string;
-  size: number | string;
-}) {
-  return (
-    <span
-      data-atrisk-homozygous-marker
-      aria-hidden
-      className="pointer-events-none absolute right-0 bottom-0 flex items-center justify-center"
-      style={{ width: size, height: size }}
-    >
-      <svg viewBox="0 0 8 8" aria-hidden className="h-full w-full">
-        <polygon points="4,1 7,7 1,7" fill={color} />
-      </svg>
-    </span>
-  );
-}
-
-/**
  * The universal disease-status symbol: a white-filled shape (circle/square/
  * diamond) carrying the standard pedigree-notation `StatusMarker` glyph drawn in
- * the disease colour, plus an optional at-risk-homozygous corner triangle.
+ * the disease colour.
+ *
+ * When `atRiskHomozygous` is set the marker shows the higher-severity homozygous
+ * glyph (a solid shape with a centred white "?") in place of the status glyph,
+ * conveying "may be affected".
  *
  * Used both as the small perimeter markers on a `StickerNode` (`nodeMode`
  * `'perimeter'`, the default) and as the large single-condition node
@@ -121,11 +95,6 @@ export function Sticker({
     nodeMode === 'single'
       ? { 'data-notation-status': status }
       : { 'data-sticker-status': status };
-
-  // The triangle is half the chip. A px size yields px; any non-number length
-  // (e.g. '100%') yields '50%' so the triangle scales with the parent.
-  const triangleSize =
-    typeof size === 'number' ? Math.round(size * 0.5) : '50%';
 
   const handleClick = isInteractive
     ? (e: React.MouseEvent) => {
@@ -159,11 +128,12 @@ export function Sticker({
         >
           <ShapeBackground fill={surfaceColor ?? WHITE_BG} shape={shape} />
         </svg>
-        <StatusMarker status={status} color={color} shape={shape} />
+        {atRiskHomozygous ? (
+          <HomozygousMarker color={color} shape={shape} />
+        ) : (
+          <StatusMarker status={status} color={color} shape={shape} />
+        )}
       </span>
-      {atRiskHomozygous && (
-        <AtRiskHomozygousTriangle color={color} size={triangleSize} />
-      )}
     </span>
   );
 }

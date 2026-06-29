@@ -2,7 +2,7 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { Status } from '../../genetics/status';
-import { StatusMarker } from '../StatusMarker';
+import { HomozygousMarker, StatusMarker } from '../StatusMarker';
 
 describe('StatusMarker', () => {
   describe('data-status attribute', () => {
@@ -22,18 +22,17 @@ describe('StatusMarker', () => {
     });
   });
 
-  describe('distinguishing SVG elements per status', () => {
-    it('affected: renders [data-filled-shape]', () => {
+  describe('distinguishing SVG elements per status (Bennett 2022)', () => {
+    it('affected: renders a solid [data-filled-shape]', () => {
       const { container } = render(
         <StatusMarker status="affected" color="#e53e3e" shape="square" />,
       );
       expect(container.querySelector('[data-filled-shape]')).toBeTruthy();
     });
 
-    // Display merge: obligateAffected draws the same filled glyph as affected
-    // (no double-outline distinguisher) — the engine still computes it, but the
-    // participant view collapses both into "Has this condition".
-    it('obligateAffected: renders the same filled glyph as affected', () => {
+    // obligateAffected ("will develop it") is a single vertical line through the
+    // centre — NOT a solid fill (that distinction is now drawn, per Bennett).
+    it('obligateAffected: renders a [data-vertical-line], not a fill', () => {
       const { container } = render(
         <StatusMarker
           status="obligateAffected"
@@ -41,11 +40,11 @@ describe('StatusMarker', () => {
           shape="circle"
         />,
       );
-      expect(container.querySelector('[data-filled-shape]')).toBeTruthy();
-      expect(container.querySelector('[data-double-outline]')).toBeNull();
+      expect(container.querySelector('[data-vertical-line]')).toBeTruthy();
+      expect(container.querySelector('[data-filled-shape]')).toBeNull();
     });
 
-    it('obligateCarrier: renders [data-centre-dot]', () => {
+    it('obligateCarrier: renders a [data-hatch-fill] horizontal line-fill', () => {
       const { container } = render(
         <StatusMarker
           status="obligateCarrier"
@@ -53,30 +52,40 @@ describe('StatusMarker', () => {
           shape="circle"
         />,
       );
-      expect(container.querySelector('[data-centre-dot]')).toBeTruthy();
+      expect(container.querySelector('[data-hatch-fill]')).toBeTruthy();
+      // The 2022 revision drops the central dot.
+      expect(container.querySelector('[data-centre-dot]')).toBeNull();
     });
 
-    it('atRiskCarrier: renders [data-centre-dot]', () => {
+    it('atRiskCarrier: hatch + a broken-out "?" on a white break', () => {
       const { container } = render(
         <StatusMarker status="atRiskCarrier" color="#3182ce" shape="circle" />,
       );
-      expect(container.querySelector('[data-centre-dot]')).toBeTruthy();
+      expect(container.querySelector('[data-hatch-fill]')).toBeTruthy();
+      expect(container.querySelector('[data-query-break]')).toBeTruthy();
+      const qMark = container.querySelector('[data-question-mark]');
+      expect(qMark?.textContent).toBe('?');
     });
 
-    it('atRiskAffected: renders [data-half-fill]', () => {
+    it('atRiskAffected: broken vertical line + "?" on a white break', () => {
       const { container } = render(
         <StatusMarker status="atRiskAffected" color="#38a169" shape="square" />,
       );
-      expect(container.querySelector('[data-half-fill]')).toBeTruthy();
+      expect(container.querySelector('[data-vertical-line]')).toBeTruthy();
+      expect(container.querySelector('[data-query-break]')).toBeTruthy();
+      const qMark = container.querySelector('[data-question-mark]');
+      expect(qMark?.textContent).toBe('?');
     });
 
-    it('unknown: renders [data-question-mark] with ? text', () => {
+    it('unknown: plain outline only — no fill, line, hatch, or "?"', () => {
       const { container } = render(
         <StatusMarker status="unknown" color="#805ad5" shape="diamond" />,
       );
-      const qMark = container.querySelector('[data-question-mark]');
-      expect(qMark).toBeTruthy();
-      expect(qMark?.textContent).toBe('?');
+      expect(container.querySelector('[data-filled-shape]')).toBeNull();
+      expect(container.querySelector('[data-vertical-line]')).toBeNull();
+      expect(container.querySelector('[data-hatch-fill]')).toBeNull();
+      expect(container.querySelector('[data-question-mark]')).toBeNull();
+      expect(container.querySelector('[data-shape-outline]')).toBeTruthy();
     });
   });
 
@@ -89,12 +98,17 @@ describe('StatusMarker', () => {
       expect(shape?.getAttribute('fill')).toBe('#fedcba');
     });
 
-    it('unknown: fill attribute on [data-question-mark] matches color prop', () => {
+    it('obligateAffected: stroke on the vertical line uses the color prop', () => {
       const { container } = render(
-        <StatusMarker status="unknown" color="#abcdef" shape="circle" />,
+        <StatusMarker
+          status="obligateAffected"
+          color="#abcdef"
+          shape="circle"
+        />,
       );
-      const qMark = container.querySelector('[data-question-mark]');
-      expect(qMark?.getAttribute('fill')).toBe('#abcdef');
+      // The unbroken line carries data-vertical-line on the <line> itself.
+      const line = container.querySelector('line[data-vertical-line]');
+      expect(line?.getAttribute('stroke')).toBe('#abcdef');
     });
   });
 
@@ -126,7 +140,7 @@ describe('StatusMarker', () => {
       ).toBe('rect');
     });
 
-    it('affected/diamond renders a <rect> with transform=rotate(45)', () => {
+    it('affected/diamond renders a <rect> with a rotate(45) transform', () => {
       const { container } = render(
         <StatusMarker status="affected" color="#f00" shape="diamond" />,
       );
@@ -176,6 +190,28 @@ describe('StatusMarker', () => {
       );
       const svg = container.querySelector('svg');
       expect(svg?.getAttribute('aria-hidden')).toBeTruthy();
+    });
+  });
+
+  describe('HomozygousMarker override glyph', () => {
+    it('renders data-status="atRiskHomozygous"', () => {
+      render(<HomozygousMarker color="#e53e3e" shape="square" />);
+      expect(
+        document.querySelector('[data-status="atRiskHomozygous"]'),
+      ).toBeInTheDocument();
+    });
+
+    it('is a solid fill (condition colour) with a centred WHITE "?"', () => {
+      const { container } = render(
+        <HomozygousMarker color="#e53e3e" shape="circle" />,
+      );
+      const filled = container.querySelector('[data-filled-shape]');
+      expect(filled?.getAttribute('fill')).toBe('#e53e3e');
+      const qMark = container.querySelector('[data-question-mark]');
+      expect(qMark?.textContent).toBe('?');
+      expect(qMark?.getAttribute('fill')).toBe('white');
+      // No white circular break behind the "?" — it reads on the solid fill.
+      expect(container.querySelector('[data-query-break]')).toBeNull();
     });
   });
 });
