@@ -168,6 +168,17 @@ describe('NetworkComposer automatic layout', () => {
     expect(layoutSwitch().getAttribute('aria-checked')).toBe('false');
   });
 
+  it('falls back to the default when persisted metadata is malformed', () => {
+    // A non-boolean (or otherwise malformed) value must not be treated as
+    // enabled, and must not throw on the `in` operator.
+    renderInterface({
+      defaultEnabled: false,
+      stageMetadata: { 0: { automaticLayout: 'yes' } as unknown },
+    });
+    expect(layoutMode()).toBe('MANUAL');
+    expect(layoutSwitch().getAttribute('aria-checked')).toBe('false');
+  });
+
   it('persists the participant toggle to stage metadata', () => {
     const { store } = renderInterface({ defaultEnabled: false });
     fireEvent.click(layoutSwitch());

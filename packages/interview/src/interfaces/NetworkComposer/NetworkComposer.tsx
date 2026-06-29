@@ -7,6 +7,7 @@ import { useSelector } from 'react-redux';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  isNetworkComposerStageMetadata,
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
@@ -55,12 +56,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const stageMetadata = useStageSelector(getStageMetadata);
   const automaticLayoutDefault =
     stage.behaviours?.automaticLayout?.defaultEnabled ?? false;
-  const persistedAutomaticLayout =
-    stageMetadata !== undefined &&
-    !Array.isArray(stageMetadata) &&
-    'automaticLayout' in stageMetadata
-      ? stageMetadata.automaticLayout
-      : undefined;
+  const persistedAutomaticLayout = isNetworkComposerStageMetadata(stageMetadata)
+    ? stageMetadata.automaticLayout
+    : undefined;
   const automaticLayout = persistedAutomaticLayout ?? automaticLayoutDefault;
   const layoutMode: 'AUTOMATIC' | 'MANUAL' = automaticLayout
     ? 'AUTOMATIC'
