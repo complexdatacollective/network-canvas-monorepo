@@ -243,6 +243,131 @@ function isSharedBarDimmed(
   return isDimmedByIds(highlightedNodeIds, parentIds);
 }
 
+/**
+ * Splits a horizontal bar into sub-segments at the given x-coordinates and
+ * renders each one independently dimmed by `isDimmed`. Sub-segments are wrapped
+ * so the existing `data-edge-dimmed` / `dimColor` conventions carry through.
+ *
+ * `splitXs` need not be sorted or deduped; the bar's own endpoints are always
+ * included. A bar with no interior splits renders as a single line, identical
+ * to the un-split rendering.
+ */
+function renderSplitBar(
+  bar: LineSegment,
+  splitXs: number[],
+  isDimmed: (segStart: number, segEnd: number) => boolean,
+  color: string,
+  keyPrefix: string,
+): JSX.Element[] {
+  const y = bar.y1;
+  const barMin = Math.min(bar.x1, bar.x2);
+  const barMax = Math.max(bar.x1, bar.x2);
+
+  const boundaries = [
+    barMin,
+    barMax,
+    ...splitXs.filter((x) => x > barMin && x < barMax),
+  ].toSorted((a, b) => a - b);
+  const unique = boundaries.filter(
+    (x, i) => i === 0 || x !== boundaries[i - 1],
+  );
+
+  const pieces: JSX.Element[] = [];
+  for (let i = 0; i < unique.length - 1; i++) {
+    const a = unique[i]!;
+    const b = unique[i + 1]!;
+    const dimmed = isDimmed(a, b);
+    const segColor = dimmed ? dimColor(color) : color;
+    pieces.push(
+      <g
+        key={`${keyPrefix}-${i}`}
+        {...(dimmed ? { 'data-edge-dimmed': 'true' } : {})}
+      >
+        {renderLine(
+          { type: 'line', x1: a, y1: y, x2: b, y2: y },
+          segColor,
+          `${keyPrefix}-line-${i}`,
+          { strokeLinecap: 'round' },
+        )}
+      </g>,
+    );
+  }
+  return pieces;
+}
+
+/**
+ * The x where the parents' descent (parentLink) meets a horizontal bar — the
+ * endpoint of the descent whose y coincides with the bar. Returns undefined
+ * when no descent point sits on the bar's line.
+ */
+function descentJunctionX(
+  parentLink: LineSegment[],
+  barY: number,
+): number | undefined {
+  for (const seg of parentLink) {
+    if (seg.y2 === barY) return seg.x2;
+    if (seg.y1 === barY) return seg.x1;
+  }
+  return undefined;
+}
+
+/**
+ * Renders a couple/parent group bar. When a focal highlight is active and the
+ * bar is a plain active partner line with a known descent point, the bar is
+ * split at the descent x: each side is bright only when its partner is on the
+ * focal lineage (partner id ∈ highlightedNodeIds). Otherwise (no highlight,
+ * inactive break bar, or consanguineous double bar) it falls back to whole-bar
+ * rendering dimmed by node membership, exactly as before.
+ */
+function renderCoupleGroupLine(
+  gl: ParentGroupConnector,
+  idx: number,
+  color: string,
+  highlightedNodeIds: Set<string> | undefined,
+  highlightedEdgeKeys: Set<string> | undefined,
+): JSX.Element {
+  const highlightActive =
+    highlightedNodeIds !== undefined || highlightedEdgeKeys !== undefined;
+
+  const descentXs = gl.descentXPositions ?? [];
+  const splittable =
+    highlightActive &&
+    gl.isActive &&
+    !gl.double &&
+    gl.partnerIds !== undefined &&
+    descentXs.length > 0;
+
+  if (!splittable || gl.partnerIds === undefined) {
+    const dimmed = isDimmedByIds(highlightedNodeIds, gl.partnerIds);
+    return (
+      <g
+        key={`gl-dim-${idx}`}
+        {...(dimmed ? { 'data-edge-dimmed': 'true' } : {})}
+      >
+        {renderGroupLine(gl, idx, dimmed ? dimColor(color) : color)}
+      </g>
+    );
+  }
+
+  const [leftId, rightId] = gl.partnerIds;
+  const leftContributes = highlightedNodeIds?.has(leftId) ?? false;
+  const rightContributes = highlightedNodeIds?.has(rightId) ?? false;
+  const barCenter = (gl.segment.x1 + gl.segment.x2) / 2;
+
+  // A sub-segment belongs to whichever partner's half it sits in (relative to
+  // the bar centre) and is bright when that partner contributes.
+  const isHalfDimmed = (segStart: number, segEnd: number): boolean => {
+    const mid = (segStart + segEnd) / 2;
+    return mid <= barCenter ? !leftContributes : !rightContributes;
+  };
+
+  return (
+    <g key={`gl-dim-${idx}`}>
+      {renderSplitBar(gl.segment, descentXs, isHalfDimmed, color, `gl-${idx}`)}
+    </g>
+  );
+}
+
 function renderParentChild(
   conn: ParentChildConnector,
   idx: number,
@@ -292,6 +417,74 @@ function renderParentChild(
 
   const sharedColor = sharedDimmed ? dimColor(color) : color;
 
+  const highlightActive =
+    highlightedNodeIds !== undefined || highlightedEdgeKeys !== undefined;
+
+  // Sibling-bar split points: the descent junction plus each child's upline
+  // junction. Each upline carries its child id, so the bar is lit only along
+  // the descent → contributing-child path and dimmed toward non-contributors.
+  const barY = conn.siblingBar.y1;
+  const descentX = descentJunctionX(conn.parentLink, barY);
+  const uplineJunctions = conn.uplines.map((ul, i) => ({
+    x: ul.y2 === barY ? ul.x2 : ul.x1,
+    childId: conn.uplineChildIds?.[i],
+  }));
+
+  // A child contributes when its id is on the focal lineage (highlightedNodeIds).
+  const childContributes = (childId: string | undefined): boolean =>
+    childId !== undefined && (highlightedNodeIds?.has(childId) ?? false);
+
+  // The descent splits the bar into two sides. On each side the bar is bright
+  // from the descent out to the FARTHEST contributing child's upline; beyond
+  // that it is dimmed only when a non-contributing sibling pulls the bar
+  // further out in that direction. A stub leading to no sibling stays bright.
+  const sideReach = (
+    onSide: (x: number) => boolean,
+    pickFar: 'min' | 'max',
+  ) => {
+    let contributingReach: number | undefined;
+    let hasNonContributing = false;
+    for (const { x, childId } of uplineJunctions) {
+      if (descentX === undefined || !onSide(x)) continue;
+      if (childContributes(childId)) {
+        contributingReach =
+          contributingReach === undefined
+            ? x
+            : pickFar === 'min'
+              ? Math.min(contributingReach, x)
+              : Math.max(contributingReach, x);
+      } else {
+        hasNonContributing = true;
+      }
+    }
+    return { contributingReach, hasNonContributing };
+  };
+
+  const isBarSubSegmentDimmed = (segStart: number, segEnd: number): boolean => {
+    // No derivable descent → fall back to the family-level shared dim.
+    if (descentX === undefined) return sharedDimmed;
+    const mid = (segStart + segEnd) / 2;
+    if (mid < descentX) {
+      const { contributingReach, hasNonContributing } = sideReach(
+        (x) => x < descentX,
+        'min',
+      );
+      const reach = contributingReach ?? descentX;
+      if (segStart >= reach) return false; // within contributing reach
+      return hasNonContributing; // beyond reach: dim only toward a sibling
+    }
+    const { contributingReach, hasNonContributing } = sideReach(
+      (x) => x > descentX,
+      'max',
+    );
+    const reach = contributingReach ?? descentX;
+    if (segEnd <= reach) return false;
+    return hasNonContributing;
+  };
+
+  const splitXs = descentX !== undefined ? [descentX] : [];
+  for (const { x } of uplineJunctions) splitXs.push(x);
+
   return (
     <g key={`pc-${idx}`}>
       {conn.uplines.map((ul, i) => {
@@ -314,10 +507,22 @@ function renderParentChild(
           </g>
         );
       })}
+      {highlightActive ? (
+        renderSplitBar(
+          conn.siblingBar,
+          splitXs,
+          isBarSubSegmentDimmed,
+          color,
+          `pc-${idx}-bar`,
+        )
+      ) : (
+        <g>
+          {renderLine(conn.siblingBar, sharedColor, `pc-${idx}-bar`, {
+            strokeLinecap: 'round',
+          })}
+        </g>
+      )}
       <g {...(sharedDimmed ? { 'data-edge-dimmed': 'true' } : {})}>
-        {renderLine(conn.siblingBar, sharedColor, `pc-${idx}-bar`, {
-          strokeLinecap: 'round',
-        })}
         {conn.parentLink.map((pl, i) =>
           renderLine(pl, sharedColor, `pc-${idx}-pl-${i}`, {
             strokeLinecap: 'round',
@@ -404,14 +609,14 @@ export function PedigreeEdgeSvg({
 
     for (let i = 0; i < connectors.groupLines.length; i++) {
       const gl = connectors.groupLines[i]!;
-      const dimmed = isDimmedByIds(highlightedNodeIds, gl.partnerIds);
       elements.push(
-        <g
-          key={`gl-dim-${i}`}
-          {...(dimmed ? { 'data-edge-dimmed': 'true' } : {})}
-        >
-          {renderGroupLine(gl, i, dimmed ? dimColor(color) : color)}
-        </g>,
+        renderCoupleGroupLine(
+          gl,
+          i,
+          color,
+          highlightedNodeIds,
+          highlightedEdgeKeys,
+        ),
       );
     }
 

@@ -8,6 +8,7 @@ import type { ConnectorRenderData } from '../pedigreeAdapter';
 import type {
   DuplicateArc,
   ParentChildConnector,
+  ParentGroupConnector,
   TwinIndicator,
 } from '../types';
 
@@ -190,6 +191,283 @@ describe('PedigreeEdgeSvg — sibling branch off contributing lineage is dimmed'
     expect(
       container.querySelectorAll('[data-edge-dimmed="true"]').length,
     ).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PedigreeEdgeSvg — per-segment SIBLING BAR dimming (focal view)
+//
+// The sibling bar joins a set of siblings (each child's upline drops from it;
+// the parents' descent drops onto it via parentLink). When a focal node is
+// selected it must be BRIGHT only along the path from the descent junction to a
+// contributing child's upline; sub-segments toward non-contributing siblings
+// must be DIMMED.
+//
+// Geometry used by these tests:
+//   siblingBar: x from 0 to 200 at y=100
+//   uplines:   child1 at x=20  (contributing)
+//              child2 at x=180 (non-contributing sibling)
+//   parentLink descent junction at x=100 (last parentLink point on the bar y)
+//
+// Expected: the [100, 20] stretch (descent junction → contributing child) is
+// bright; the [100, 180] stretch (toward the non-contributing sibling) is dim.
+// ---------------------------------------------------------------------------
+
+const DIM_BLEND_BLACK = 'color-mix(in oklab, black 30%, var(--background))';
+
+/** Find the rendered sibling-bar sub-segment <line>s by their shared y. */
+function siblingBarLines(container: HTMLElement, y: number): SVGLineElement[] {
+  return Array.from(container.querySelectorAll('line')).filter(
+    (line) =>
+      Number(line.getAttribute('y1')) === y &&
+      Number(line.getAttribute('y2')) === y,
+  );
+}
+
+/** True when the <line> (or an ancestor) carries data-edge-dimmed="true". */
+function isLineDimmed(line: SVGLineElement): boolean {
+  return line.closest('[data-edge-dimmed="true"]') !== null;
+}
+
+describe('PedigreeEdgeSvg — sibling bar per-segment dimming', () => {
+  const FOCAL_CHILD = 'child1';
+  const SIBLING = 'child2';
+  const PARENT = 'parent1';
+
+  function makeSplitConnector(): ParentChildConnector {
+    return makeParentChildConnector({
+      // Two uplines: contributing child at x=20, non-contributing at x=180.
+      uplines: [seg(20, 150, 20, 100), seg(180, 150, 180, 100)],
+      uplineChildIds: [FOCAL_CHILD, SIBLING],
+      // Sibling bar spans both uplines.
+      siblingBar: seg(0, 100, 200, 100),
+      // Descent drops onto the bar at x=100.
+      parentLink: [seg(100, 60, 100, 100)],
+      parentIds: [PARENT],
+    });
+  }
+
+  test('sub-segment from descent junction to the contributing child is bright; toward the non-contributing sibling is dimmed', () => {
+    const highlightedNodeIds = new Set([FOCAL_CHILD, PARENT]);
+    const highlightedEdgeKeys = new Set([edgeKey(PARENT, FOCAL_CHILD)]);
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeConnectorData([makeSplitConnector()])}
+        color="black"
+        width={300}
+        height={300}
+        highlightedNodeIds={highlightedNodeIds}
+        highlightedEdgeKeys={highlightedEdgeKeys}
+      />,
+    );
+
+    const barLines = siblingBarLines(container, 100);
+    // The bar is split at x=20 (child1 upline), x=100 (descent), x=180 (child2
+    // upline) → three sub-segments: [0,20], [20,100], [100,180], [180,200].
+    expect(barLines.length).toBeGreaterThanOrEqual(3);
+
+    // Sub-segment covering the path between descent (100) and contributing
+    // child upline (20): bright.
+    const brightStretch = barLines.find(
+      (line) =>
+        Number(line.getAttribute('x1')) === 20 &&
+        Number(line.getAttribute('x2')) === 100,
+    );
+    expect(brightStretch).toBeDefined();
+    expect(isLineDimmed(brightStretch!)).toBe(false);
+
+    // Sub-segment toward the non-contributing sibling (between 100 and 180): dim.
+    const dimStretch = barLines.find(
+      (line) =>
+        Number(line.getAttribute('x1')) === 100 &&
+        Number(line.getAttribute('x2')) === 180,
+    );
+    expect(dimStretch).toBeDefined();
+    expect(isLineDimmed(dimStretch!)).toBe(true);
+    expect(dimStretch!.getAttribute('stroke')).toBe(DIM_BLEND_BLACK);
+  });
+
+  test('the outer stub beyond the non-contributing sibling is also dimmed', () => {
+    const highlightedNodeIds = new Set([FOCAL_CHILD, PARENT]);
+    const highlightedEdgeKeys = new Set([edgeKey(PARENT, FOCAL_CHILD)]);
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeConnectorData([makeSplitConnector()])}
+        color="black"
+        width={300}
+        height={300}
+        highlightedNodeIds={highlightedNodeIds}
+        highlightedEdgeKeys={highlightedEdgeKeys}
+      />,
+    );
+
+    const barLines = siblingBarLines(container, 100);
+    const outerStub = barLines.find(
+      (line) =>
+        Number(line.getAttribute('x1')) === 180 &&
+        Number(line.getAttribute('x2')) === 200,
+    );
+    expect(outerStub).toBeDefined();
+    expect(isLineDimmed(outerStub!)).toBe(true);
+  });
+
+  test('with highlight props undefined (FamilyPedigree path), the sibling bar is a single bright segment', () => {
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeConnectorData([makeSplitConnector()])}
+        color="black"
+        width={300}
+        height={300}
+      />,
+    );
+
+    expect(container.querySelectorAll('[data-edge-dimmed="true"]').length).toBe(
+      0,
+    );
+    // The whole bar [0, 200] renders as one segment.
+    const wholeBar = siblingBarLines(container, 100).find(
+      (line) =>
+        Number(line.getAttribute('x1')) === 0 &&
+        Number(line.getAttribute('x2')) === 200,
+    );
+    expect(wholeBar).toBeDefined();
+    expect(wholeBar!.getAttribute('stroke')).toBe('black');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PedigreeEdgeSvg — per-segment COUPLE / PARENT BAR (groupLines) dimming
+//
+// The couple bar joins the two parents; the descent parentLink drops from a
+// point on it. The half toward a CONTRIBUTING parent must be BRIGHT; the half
+// toward the non-contributing parent must be DIMMED.
+// ---------------------------------------------------------------------------
+
+function makeGroupConnectorData(
+  groupLines: ParentGroupConnector[],
+): ConnectorRenderData {
+  return {
+    connectors: {
+      groupLines,
+      parentChildLines: [],
+      auxiliaryLines: [],
+      twinIndicators: [],
+      duplicateArcs: [],
+    },
+  };
+}
+
+function makeCoupleBar(
+  overrides: Partial<ParentGroupConnector> = {},
+): ParentGroupConnector {
+  return {
+    type: 'parent-group',
+    segment: seg(0, 50, 200, 50),
+    double: false,
+    isActive: true,
+    descentXPositions: [100],
+    partnerIds: ['leftParent', 'rightParent'],
+    ...overrides,
+  };
+}
+
+describe('PedigreeEdgeSvg — couple bar per-segment dimming', () => {
+  test('the contributing-parent half is bright; the other half is dimmed', () => {
+    // Only the left parent contributes.
+    const highlightedNodeIds = new Set(['leftParent']);
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeGroupConnectorData([makeCoupleBar()])}
+        color="black"
+        width={300}
+        height={300}
+        highlightedNodeIds={highlightedNodeIds}
+      />,
+    );
+
+    const barLines = siblingBarLines(container, 50);
+    // Split at the descent x=100 → two sub-segments [0,100] and [100,200].
+    expect(barLines.length).toBe(2);
+
+    const leftHalf = barLines.find(
+      (line) =>
+        Number(line.getAttribute('x1')) === 0 &&
+        Number(line.getAttribute('x2')) === 100,
+    );
+    const rightHalf = barLines.find(
+      (line) =>
+        Number(line.getAttribute('x1')) === 100 &&
+        Number(line.getAttribute('x2')) === 200,
+    );
+    expect(leftHalf).toBeDefined();
+    expect(rightHalf).toBeDefined();
+
+    // Left parent contributes → left half bright.
+    expect(isLineDimmed(leftHalf!)).toBe(false);
+    // Right parent does not → right half dim.
+    expect(isLineDimmed(rightHalf!)).toBe(true);
+    expect(rightHalf!.getAttribute('stroke')).toBe(DIM_BLEND_BLACK);
+  });
+
+  test('both parents contributing → both halves bright', () => {
+    const highlightedNodeIds = new Set(['leftParent', 'rightParent']);
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeGroupConnectorData([makeCoupleBar()])}
+        color="black"
+        width={300}
+        height={300}
+        highlightedNodeIds={highlightedNodeIds}
+      />,
+    );
+
+    expect(container.querySelectorAll('[data-edge-dimmed="true"]').length).toBe(
+      0,
+    );
+  });
+
+  test('neither parent contributing → both halves dim', () => {
+    const highlightedNodeIds = new Set(['someoneElse']);
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeGroupConnectorData([makeCoupleBar()])}
+        color="black"
+        width={300}
+        height={300}
+        highlightedNodeIds={highlightedNodeIds}
+      />,
+    );
+
+    const barLines = siblingBarLines(container, 50);
+    expect(barLines.length).toBe(2);
+    expect(barLines.every(isLineDimmed)).toBe(true);
+  });
+
+  test('with highlightedNodeIds undefined (FamilyPedigree path), the couple bar is a single bright segment', () => {
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeGroupConnectorData([makeCoupleBar()])}
+        color="black"
+        width={300}
+        height={300}
+      />,
+    );
+
+    expect(container.querySelectorAll('[data-edge-dimmed="true"]').length).toBe(
+      0,
+    );
+    const wholeBar = siblingBarLines(container, 50).find(
+      (line) =>
+        Number(line.getAttribute('x1')) === 0 &&
+        Number(line.getAttribute('x2')) === 200,
+    );
+    expect(wholeBar).toBeDefined();
+    expect(wholeBar!.getAttribute('stroke')).toBe('black');
   });
 });
 
