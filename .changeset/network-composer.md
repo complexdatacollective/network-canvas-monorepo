@@ -1,6 +1,7 @@
 ---
 '@codaco/protocol-validation': minor
 '@codaco/interview': minor
+'@codaco/protocol-utilities': patch
 ---
 
 Add the **Network Composer** stage type — a free-form, single-screen, promptless
