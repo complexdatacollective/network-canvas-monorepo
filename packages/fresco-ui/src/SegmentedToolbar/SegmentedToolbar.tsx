@@ -48,7 +48,7 @@ export type ButtonSegment = {
    * the toolbar button and its roving focus. When set, the open/close behaviour
    * comes from the wrapper rather than `onClick`.
    */
-  render?: React.ReactElement<{ render?: unknown }>;
+  render?: React.ReactElement<{ render?: React.ReactElement }>;
 } & SegmentContent;
 
 export type ToggleSegment = {
