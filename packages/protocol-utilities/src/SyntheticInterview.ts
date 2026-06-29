@@ -26,6 +26,7 @@ import type {
   AddDyadCensusPromptInput,
   AddEdgeTypeInput,
   AddGeospatialPromptInput,
+  AddNetworkComposerEdgeInput,
   AddNodeTypeInput,
   AddOneToManyDyadCensusPromptInput,
   AddOrdinalBinPromptInput,
@@ -43,6 +44,7 @@ import type {
   GeospatialPromptEntry,
   GetSessionInput,
   NameGeneratorPromptEntry,
+  NetworkComposerEdgeEntry,
   NodeEntry,
   NodeTypeEntry,
   OneToManyDyadCensusPromptEntry,
@@ -150,6 +152,13 @@ type GeospatialHandle = StageHandleBase & {
   addPrompt: (opts?: AddGeospatialPromptInput) => void;
 };
 
+type NetworkComposerHandle = StageHandleBase & {
+  // Each call appends an entry to the stage's `edges[]`, returning the edge
+  // type id so callers can seed edges of that type via `addEdges`.
+  addEdgeType: (opts?: AddNetworkComposerEdgeInput) => { id: string };
+  addNodeFormField: (opts: AddFormFieldOpts) => void;
+};
+
 type StageHandleMap = {
   NameGenerator: NameGeneratorHandle;
   NameGeneratorQuickAdd: NameGeneratorQuickAddHandle;
@@ -168,6 +177,7 @@ type StageHandleMap = {
   Anonymisation: AnonymisationHandle;
   FamilyPedigree: FamilyPedigreeHandle;
   Geospatial: GeospatialHandle;
+  NetworkComposer: NetworkComposerHandle;
 };
 
 // Stage types that have no subject (node/edge)
@@ -580,6 +590,45 @@ export class SyntheticInterview {
       }
     }
 
+    // NetworkComposer
+    if (type === 'NetworkComposer' && subject?.entity === 'node') {
+      const nodeTypeId = subject.type;
+
+      // quickAdd is a text variable populated by the inline add field. Mirror
+      // NameGeneratorQuickAdd's default of 'name' (the variable addNodeType
+      // seeds), but accept an explicit ref.
+      if (opts?.quickAdd) {
+        entry.quickAdd = opts.quickAdd;
+      } else {
+        const ref = this.addVariableToNodeType(nodeTypeId, {
+          type: 'text',
+          name: 'name',
+        });
+        entry.quickAdd = ref.id;
+      }
+
+      // layoutVariable stores each node's { x, y } position.
+      if (opts?.layoutVariable) {
+        entry.layoutVariable = opts.layoutVariable;
+      } else {
+        const ref = this.addVariableToNodeType(nodeTypeId, {
+          type: 'layout',
+          name: 'Composer Layout',
+        });
+        entry.layoutVariable = ref.id;
+      }
+
+      if (opts?.nodeForm) {
+        entry.nodeForm = {
+          fields: opts.nodeForm.fields.map((f) =>
+            this.resolveNetworkComposerFormField(f, nodeTypeId),
+          ),
+        };
+      }
+
+      entry.networkComposerEdges = [];
+    }
+
     // Generate initial nodes (only for node-based stages)
     const initialNodeCount = opts?.initialNodes?.count ?? 0;
     const initialNodePromptIndex = opts?.initialNodes?.promptIndex;
@@ -852,6 +901,41 @@ export class SyntheticInterview {
             entry.prompts.push(prompt);
           },
         } as StageHandleMap[T];
+
+      case 'NetworkComposer':
+        return {
+          ...base,
+          addEdgeType: (opts?: AddNetworkComposerEdgeInput) => {
+            const edgeTypeId = opts?.type ?? this.addEdgeType().id;
+            const edgeEntry: NetworkComposerEdgeEntry = {
+              id: this.nextId('composer-edge'),
+              subject: { entity: 'edge', type: edgeTypeId },
+            };
+            if (opts?.form) {
+              edgeEntry.form = {
+                fields: opts.form.fields.map((f) =>
+                  this.resolveNetworkComposerEdgeFormField(f, edgeTypeId),
+                ),
+              };
+            }
+            entry.networkComposerEdges ??= [];
+            entry.networkComposerEdges.push(edgeEntry);
+            return { id: edgeTypeId };
+          },
+          addNodeFormField: (opts: AddFormFieldOpts) => {
+            const field = this.resolveNetworkComposerFormField(
+              {
+                component: opts.component,
+                variable: opts.variable,
+                prompt: opts.prompt,
+                validation: opts.validation,
+              },
+              entry.subject!.type,
+            );
+            entry.nodeForm ??= { fields: [] };
+            entry.nodeForm.fields.push(field);
+          },
+        } as StageHandleMap[T];
     }
   }
 
@@ -930,6 +1014,51 @@ export class SyntheticInterview {
       variable: variableId,
       component: input.component,
       prompt,
+    };
+  }
+
+  // NetworkComposer node/edge forms validate against TitlelessFormSchema, whose
+  // FormFieldSchema is strict and only permits { variable, prompt }. Unlike
+  // resolveFormField we therefore omit `component` from the emitted field.
+  private resolveNetworkComposerFormField(
+    input: FormFieldInput,
+    nodeTypeId: string,
+  ): { variable: string; prompt: string } {
+    let variableId = input.variable;
+    if (!variableId) {
+      const ref = this.addVariableToNodeType(nodeTypeId, {
+        component: input.component,
+        name: input.prompt,
+        validation: input.validation,
+      });
+      variableId = ref.id;
+    }
+    const nodeType = this.nodeTypes.get(nodeTypeId);
+    const variable = nodeType?.variables.get(variableId);
+    return {
+      variable: variableId,
+      prompt: input.prompt ?? variable?.name ?? 'Field',
+    };
+  }
+
+  private resolveNetworkComposerEdgeFormField(
+    input: FormFieldInput,
+    edgeTypeId: string,
+  ): { variable: string; prompt: string } {
+    let variableId = input.variable;
+    if (!variableId) {
+      const ref = this.addVariableToEdgeType(edgeTypeId, {
+        component: input.component,
+        name: input.prompt,
+        validation: input.validation,
+      });
+      variableId = ref.id;
+    }
+    const edgeType = this.edgeTypes.get(edgeTypeId);
+    const variable = edgeType?.variables.get(variableId);
+    return {
+      variable: variableId,
+      prompt: input.prompt ?? variable?.name ?? 'Field',
     };
   }
 
@@ -1535,6 +1664,15 @@ export class SyntheticInterview {
     // Geospatial
     if (stage.mapOptions) {
       config.mapOptions = stage.mapOptions;
+    }
+
+    // NetworkComposer (quickAdd is serialized by the shared block above)
+    if (stage.type === 'NetworkComposer') {
+      if (stage.layoutVariable) config.layoutVariable = stage.layoutVariable;
+      if (stage.nodeForm) config.nodeForm = stage.nodeForm;
+      if (stage.networkComposerEdges) {
+        config.edges = stage.networkComposerEdges;
+      }
     }
 
     return config;

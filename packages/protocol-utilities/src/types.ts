@@ -58,7 +58,8 @@ export type StageType =
   | 'AlterEdgeForm'
   | 'Anonymisation'
   | 'FamilyPedigree'
-  | 'Geospatial';
+  | 'Geospatial'
+  | 'NetworkComposer';
 
 export type NameGeneratorPromptEntry = {
   id: string;
@@ -181,6 +182,21 @@ type FormFieldEntry = {
   prompt?: string;
 };
 
+// NetworkComposer form fields are validated against TitlelessFormSchema, whose
+// strict FormFieldSchema only permits `variable` and `prompt` (no `component`).
+export type NetworkComposerFormFieldEntry = {
+  variable: string;
+  prompt: string;
+};
+
+// A drawable edge type within a NetworkComposer stage. Mirrors the schema's
+// `edges[]` entries: an id, an edge subject, and an optional attribute form.
+export type NetworkComposerEdgeEntry = {
+  id: string;
+  subject: { entity: 'edge'; type: string };
+  form?: { fields: NetworkComposerFormFieldEntry[] };
+};
+
 type FormEntry = {
   title: string;
   fields: FormFieldEntry[];
@@ -267,6 +283,10 @@ export type StageEntry = {
   nominationPrompts?: { id: string; text: string; variable: string }[];
   // Geospatial
   mapOptions?: MapOptionsEntry;
+  // NetworkComposer
+  layoutVariable?: string;
+  nodeForm?: { fields: NetworkComposerFormFieldEntry[] };
+  networkComposerEdges?: NetworkComposerEdgeEntry[];
 };
 
 export type NodeEntry = {
@@ -390,6 +410,15 @@ export type AddStageInput = {
   nominationPrompts?: { id: string; text: string; variable: string }[];
   // Geospatial
   mapOptions?: MapOptionsEntry;
+  // NetworkComposer (quickAdd above is shared with NameGeneratorQuickAdd)
+  layoutVariable?: string;
+  nodeForm?: { fields: FormFieldInput[] };
+};
+
+export type AddNetworkComposerEdgeInput = {
+  // Accept an existing edge type id, or omit to auto-create one.
+  type?: string;
+  form?: { fields: FormFieldInput[] };
 };
 
 export type AddPromptInput = {
