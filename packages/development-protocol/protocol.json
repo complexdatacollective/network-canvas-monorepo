@@ -593,9 +593,7 @@
         "skewedTowardCenter": true
       },
       "behaviours": {
-        "automaticLayout": {
-          "enabled": true
-        }
+        "automaticLayout": true
       },
       "prompts": [
         {

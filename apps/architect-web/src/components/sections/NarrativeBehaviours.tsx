@@ -10,6 +10,18 @@ const NarrativeBehaviours = (_props: StageEditorSectionProps) => (
   <Section title="Narrative Behaviours">
     <FormSection name="behaviours">
       <Row>
+        <IssueAnchor
+          fieldName="automaticLayout"
+          description="Automatic layout"
+        />
+        <h4>Automatic layout</h4>
+        <Field
+          name="automaticLayout"
+          label="Position nodes automatically using a force-directed layout"
+          component={Toggle}
+        />
+      </Row>
+      <Row>
         <IssueAnchor fieldName="freeDraw" description="Free draw" />
         <h4>Free-draw</h4>
         <Field

@@ -390,9 +390,7 @@
         "type": "partner"
       },
       "behaviours": {
-        "automaticLayout": {
-          "enabled": true
-        }
+        "automaticLayout": true
       },
       "prompts": [
         {
