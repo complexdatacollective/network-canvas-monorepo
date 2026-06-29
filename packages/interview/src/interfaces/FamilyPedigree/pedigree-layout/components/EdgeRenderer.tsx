@@ -181,14 +181,84 @@ function renderAuxiliary(conn: AuxiliaryConnector, idx: number, color: string) {
   });
 }
 
+/**
+ * Returns true when the descent segment for the given child should be dimmed.
+ *
+ * When highlightedEdgeKeys is provided, uses edge-key membership so that a
+ * contributing descent line is BRIGHT even when the co-parent is excluded from
+ * the contributor set (the non-transmitting co-parent case). Falls back to
+ * node-membership when highlightedEdgeKeys is absent (non-NarrativePedigree
+ * path where neither prop is set).
+ */
+function isDescentSegmentDimmed(
+  parentIds: string[] | undefined,
+  childId: string | undefined,
+  highlightedNodeIds: Set<string> | undefined,
+  highlightedEdgeKeys: Set<string> | undefined,
+): boolean {
+  if (highlightedNodeIds === undefined && highlightedEdgeKeys === undefined) {
+    return false;
+  }
+  if (highlightedEdgeKeys !== undefined) {
+    if (childId === undefined) return false;
+    if (parentIds === undefined || parentIds.length === 0) return false;
+    return !parentIds.some((pid) =>
+      highlightedEdgeKeys.has(`${pid}->${childId}`),
+    );
+  }
+  return isDimmedByIds(
+    highlightedNodeIds,
+    childId !== undefined ? [childId] : undefined,
+  );
+}
+
+/**
+ * Returns true when the shared sibling-bar / parentLink should be dimmed.
+ *
+ * With edge keys: bright if ANY family parent→child is in highlightedEdgeKeys.
+ * Without edge keys (FamilyPedigree path): falls back to node membership on parentIds.
+ */
+function isSharedBarDimmed(
+  parentIds: string[] | undefined,
+  uplineChildIds: (string | undefined)[] | undefined,
+  highlightedNodeIds: Set<string> | undefined,
+  highlightedEdgeKeys: Set<string> | undefined,
+): boolean {
+  if (highlightedNodeIds === undefined && highlightedEdgeKeys === undefined) {
+    return false;
+  }
+  if (highlightedEdgeKeys !== undefined) {
+    if (parentIds === undefined || parentIds.length === 0) return false;
+    if (uplineChildIds === undefined || uplineChildIds.length === 0)
+      return false;
+    for (const childId of uplineChildIds) {
+      if (childId === undefined) continue;
+      for (const pid of parentIds) {
+        if (highlightedEdgeKeys.has(`${pid}->${childId}`)) return false;
+      }
+    }
+    return true;
+  }
+  return isDimmedByIds(highlightedNodeIds, parentIds);
+}
+
 function renderParentChild(
   conn: ParentChildConnector,
   idx: number,
   color: string,
   highlightedNodeIds?: Set<string>,
+  highlightedEdgeKeys?: Set<string>,
 ) {
   const isDashed = conn.edgeType === 'social' || conn.edgeType === 'adoptive';
-  const sharedDimmed = isDimmedByIds(highlightedNodeIds, conn.parentIds);
+
+  const sharedDimmed = isDashed
+    ? isDimmedByIds(highlightedNodeIds, conn.parentIds)
+    : isSharedBarDimmed(
+        conn.parentIds,
+        conn.uplineChildIds,
+        highlightedNodeIds,
+        highlightedEdgeKeys,
+      );
 
   // For dashed (social/adoptive) edges, combine all segments into a single
   // polyline so the dash pattern flows continuously instead of restarting
@@ -223,9 +293,11 @@ function renderParentChild(
     <g key={`pc-${idx}`}>
       {conn.uplines.map((ul, i) => {
         const uplineChildId = conn.uplineChildIds?.[i];
-        const uplineDimmed = isDimmedByIds(
+        const uplineDimmed = isDescentSegmentDimmed(
+          conn.parentIds,
+          uplineChildId,
           highlightedNodeIds,
-          uplineChildId !== undefined ? [uplineChildId] : undefined,
+          highlightedEdgeKeys,
         );
         return (
           <g
@@ -300,6 +372,7 @@ type PedigreeEdgeSvgProps = {
   offsetX?: number;
   offsetY?: number;
   highlightedNodeIds?: Set<string>;
+  highlightedEdgeKeys?: Set<string>;
 };
 
 function isDimmedByIds(
@@ -321,6 +394,7 @@ export function PedigreeEdgeSvg({
   offsetX = 0,
   offsetY = 0,
   highlightedNodeIds,
+  highlightedEdgeKeys,
 }: PedigreeEdgeSvgProps) {
   const svgElements = useMemo(() => {
     if (!connectorData) return [];
@@ -349,6 +423,7 @@ export function PedigreeEdgeSvg({
           i,
           color,
           highlightedNodeIds,
+          highlightedEdgeKeys,
         ),
       );
     }
@@ -409,7 +484,7 @@ export function PedigreeEdgeSvg({
     }
 
     return elements;
-  }, [connectorData, color, highlightedNodeIds]);
+  }, [connectorData, color, highlightedNodeIds, highlightedEdgeKeys]);
 
   return (
     <svg

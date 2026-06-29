@@ -28,6 +28,7 @@ type PedigreeLayoutProps = {
   nodeHeight: number;
   renderNode: (node: PedigreeLayoutNode) => ReactNode;
   highlightedNodeIds?: Set<string>;
+  highlightedEdgeKeys?: Set<string>;
 };
 
 export default function PedigreeLayout({
@@ -38,6 +39,7 @@ export default function PedigreeLayout({
   nodeHeight,
   renderNode,
   highlightedNodeIds,
+  highlightedEdgeKeys,
 }: PedigreeLayoutProps) {
   const dimensions: LayoutDimensions = useMemo(
     () => ({
@@ -128,6 +130,7 @@ export default function PedigreeLayout({
         offsetX={diamondInset}
         offsetY={diamondInset}
         highlightedNodeIds={highlightedNodeIds}
+        highlightedEdgeKeys={highlightedEdgeKeys}
       />
       {Array.from(nodes.entries()).map(([id, node]) => {
         const pos = positions.get(id);

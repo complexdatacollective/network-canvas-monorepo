@@ -455,6 +455,7 @@ export default function NarrativePedigreeView({
           nodeHeight={nodeHeight}
           renderNode={renderNode}
           highlightedNodeIds={highlight.nodes}
+          highlightedEdgeKeys={highlight.edges}
         />
       </div>
       <div className="pointer-events-none absolute inset-0">
