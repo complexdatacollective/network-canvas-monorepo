@@ -31,7 +31,6 @@ function makeConnectorData(
       twinIndicators: [],
       duplicateArcs: [],
     },
-    meta: { totalWidth: 200, totalHeight: 200 },
   };
 }
 
