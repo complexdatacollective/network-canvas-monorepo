@@ -1,0 +1,63 @@
+---
+title: Network Composer
+---
+
+<InterfaceSummary type="NetworkComposer">
+
+<InterfaceMeta type="Free-form network builder" creates="Nodes of a single type, edges of multiple types, and node and edge attribute data" usesprompts="false">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+The Network Composer is a free-form, single-screen interface for building a whole personal network in one place. Where most Network Canvas Interfaces lead through one task at a time — naming alters, interpreting them, then drawing ties — the Network Composer brings these together onto a single canvas, so you can create alters, record their attributes, draw relationships of several types, and reposition everything as the picture develops.
+
+It is best thought of as a network "notepad". Because it is dense and fast — with a tool palette, an inspector, keyboard shortcuts, and undo/redo — it is designed to be driven by a researcher or interviewer, either alongside a participant or working alone to sketch, pilot, or model a network, rather than handed to an unassisted participant.
+
+## How it works
+
+The Interface presents a single canvas with a floating tool palette. Each tool stays active until you switch to another, so you can repeat an action without selecting it again:
+
+- **Select / Move** selects and repositions alters and edges. Selecting one opens the inspector, where you can fill in its attributes; clicking an empty part of the canvas clears the selection.
+- **Add Node** drops a new alter wherever you tap. A label field appears immediately so you can name it, and the tool stays active so you can add several in a row.
+- **One tool per edge type** draws relationships. Activate an edge type, then tap one alter and then another to connect them; tapping the same pair again removes that tie.
+- **Auto-layout** toggles an automatic arrangement of the network. It is off by default, keeping placement in your hands.
+- **Undo / Redo** reverse and replay any change — adding or removing alters and ties, editing attributes, and repositioning — and are also available with the usual keyboard shortcuts.
+
+To capture groups quickly, you can select several alters at once — by shift-clicking them, or by drawing a freehand lasso around them — and then connect every pair among them with a single action. The same multi-selection can also be moved or deleted together.
+
+The forms shown in the inspector are configured in Architect: one form for the alters, and an optional form for each edge type. The alter label, the variable that stores each alter's position, and the available edge types are all set up there as well.
+
+### Best Practices
+
+<GoodPractice>
+
+Use the Network Composer when you want to build and edit a whole network from a single screen — for example, an interviewer working through a participant's network in conversation, or a researcher sketching a network while piloting a study.
+
+</GoodPractice>
+
+<GoodPractice>
+
+A clustering, on-screen picture can shape what people report, and tends to draw attention away from unconnected alters. Prompt explicitly for alters who have no ties, so that isolated members of the network are not overlooked.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Customize the background — concentric circles or an image — to orient placement, for example using rings to suggest closeness. Position is stored as raw coordinates, so treat any spatial meaning as a cue for discussion rather than a measurement.
+
+</GoodPractice>
+
+### Try to Avoid
+
+<BadPractice>
+
+Avoid handing the Network Composer to an unassisted participant. It is a dense power tool intended for researcher- or interviewer-led use, not a guided, step-by-step participant task.
+
+</BadPractice>
+
+<BadPractice>
+
+Avoid treating where alters sit as if it were measured data. On-screen position is soft and is interpreted differently by different people. If ring or zone membership matters to your analysis, capture it as an explicit attribute instead of inferring it from coordinates.
+
+</BadPractice>
