@@ -78,6 +78,40 @@ describe('StickerNode', () => {
     });
   });
 
+  describe('overflow: square/diamond reserve-last-slot branch (9 diseases)', () => {
+    const nineDiseases: DiseaseSticker[] = Array.from(
+      { length: 9 },
+      (_, i) => ({
+        id: `d${i}`,
+        color: `#${i}00000`,
+        status: 'affected' as const,
+      }),
+    );
+
+    it.each(['square', 'diamond'] as const)(
+      'shape=%s: renders exactly 7 sticker markers (not 8) when 9 diseases supplied',
+      (shape) => {
+        render(
+          <StickerNode label="Test" shape={shape} diseases={nineDiseases} />,
+        );
+        const stickers = document.querySelectorAll('[data-sticker-status]');
+        expect(stickers).toHaveLength(7);
+      },
+    );
+
+    it.each(['square', 'diamond'] as const)(
+      'shape=%s: overflow badge shows +2 (not +1) when last slot is reserved',
+      (shape) => {
+        render(
+          <StickerNode label="Test" shape={shape} diseases={nineDiseases} />,
+        );
+        const overflow = document.querySelector('[data-overflow-marker]');
+        expect(overflow).toBeInTheDocument();
+        expect(overflow?.textContent).toContain('+2');
+      },
+    );
+  });
+
   describe('overflow: 9 diseases caps at STICKER_CAP with +N marker', () => {
     const totalDiseases = STICKER_CAP + 1;
     const manyDiseases: DiseaseSticker[] = Array.from(
