@@ -74,7 +74,7 @@ const sampleItems: ToolbarSegment[] = [
     id: 'delete',
     label: 'Delete',
     icon: <Trash2 />,
-    color: { background: 'tomato', foreground: 'white' },
+    className: 'bg-tomato text-white',
     onClick: noop,
   },
 ];
@@ -166,7 +166,7 @@ export const Colours: Story = {
         id: 'urgent',
         label: 'Urgent',
         showLabel: true,
-        color: { background: 'tomato', foreground: 'white' },
+        className: 'bg-tomato text-white',
         onClick: noop,
       },
       {
@@ -174,7 +174,7 @@ export const Colours: Story = {
         id: 'review',
         label: 'Review',
         showLabel: true,
-        color: { background: 'mustard', foreground: 'charcoal' },
+        className: 'bg-mustard text-charcoal',
         onClick: noop,
       },
       {
@@ -182,7 +182,7 @@ export const Colours: Story = {
         id: 'done',
         label: 'Done',
         showLabel: true,
-        color: { background: 'sea-green', foreground: 'white' },
+        className: 'bg-sea-green text-white',
         onClick: noop,
       },
       {
@@ -190,7 +190,7 @@ export const Colours: Story = {
         id: 'idea',
         label: 'Idea',
         showLabel: true,
-        color: { background: 'cerulean-blue', foreground: 'white' },
+        className: 'bg-cerulean-blue text-white',
         onClick: noop,
       },
     ],

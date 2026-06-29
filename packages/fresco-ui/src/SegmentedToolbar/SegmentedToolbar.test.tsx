@@ -118,23 +118,21 @@ describe('SegmentedToolbar — toggles', () => {
 });
 
 describe('SegmentedToolbar — colour', () => {
-  it('applies named background/foreground theme colours to a button', () => {
+  it('forwards a segment className (e.g. named theme colours) to the control', () => {
     const items: ToolbarSegment[] = [
       {
         type: 'button',
         id: 'delete',
         label: 'Delete',
         icon: <Trash2 />,
-        color: { background: 'tomato', foreground: 'white' },
+        className: 'bg-tomato text-white',
         onClick: vi.fn(),
       },
     ];
     render(<SegmentedToolbar label="Tools" items={items} />);
-    const style = screen
-      .getByRole('button', { name: 'Delete' })
-      .getAttribute('style');
-    expect(style).toContain('var(--color-tomato)');
-    expect(style).toContain('var(--color-white)');
+    const button = screen.getByRole('button', { name: 'Delete' });
+    expect(button).toHaveClass('bg-tomato');
+    expect(button).toHaveClass('text-white');
   });
 });
 

@@ -59,50 +59,24 @@ toggle/separator semantics for free.
 Config-driven. Consumers pass an `items` array of discriminated-union segments.
 
 ```ts
-// Named theme palette colours (not semantic) — used for a button's fill/text.
-type SegmentColorName =
-  | 'barbie-pink'
-  | 'cerulean-blue'
-  | 'charcoal'
-  | 'cyber-grape'
-  | 'kiwi'
-  | 'mustard'
-  | 'navy-taupe'
-  | 'neon-carrot'
-  | 'neon-coral'
-  | 'paradise-pink'
-  | 'platinum'
-  | 'purple-pizazz'
-  | 'sea-green'
-  | 'sea-serpent'
-  | 'slate-blue'
-  | 'tomato'
-  | 'white'
-  | 'black';
-
-type SegmentColor = {
-  background: SegmentColorName;
-  foreground: SegmentColorName;
-};
-
 type SegmentContent = {
   /** Accessible name. Always used as the aria-label; rendered as visible text when showLabel. */
   label: string;
-  /** Optional Lucide icon (or any node). Rendered aria-hidden. */
+  /** Optional Lucide icon (or any node). */
   icon?: React.ReactNode;
   /**
    * Whether to render the label as visible text.
    * Default: false when an icon is present (icon-only + tooltip), true when there is no icon.
    */
   showLabel?: boolean;
+  /** Tailwind classes forwarded to the underlying Button — e.g. named theme colours `bg-tomato text-white`. */
+  className?: string;
 };
 
 type ButtonSegment = {
   type: 'button';
   id: string; // stable animation key
   disabled?: boolean;
-  /** Optional named background/foreground colours from the theme palette (applied via inline `var(--color-*)`). */
-  color?: SegmentColor;
   onClick: () => void;
 } & SegmentContent;
 
@@ -183,12 +157,14 @@ Tokens only — no hardcoded colours, shadows, or font sizes.
   motion/Surface, so roving focus is unaffected) and provides `role="toolbar"`,
   `aria-label`, `aria-orientation`, and roving arrow-key focus. Pill shape (`rounded-full`)
   and padding are layout-only classes; flex direction follows `orientation`.
-- **Button / toggle segments** render through Base UI's `render` prop so they retain the
-  toolbar's roving focus, styled by a small local cva that reuses size / `focusable` /
-  spring tokens, with icons scaled to the size (`[&_svg]:size-[1.25em]`). Icon-only when
-  `showLabel` is false; icon **and** text otherwise. The toggle "on" state uses the
-  `--selected` token via Base UI's `data-pressed`, and drives `aria-pressed`. A `button`
-  segment's optional `color` sets an inline `var(--color-*)` background + foreground.
+- **Button / toggle segments** are the shared `Button` component (`variant="text"`,
+  the segment `size`, and its `icon` prop — so icon sizing/colour handling is reused),
+  composed via Base UI `render`: `Toolbar.Button render={<Button/>}` for buttons and
+  `Toolbar.Button render={<Toggle render={<Button/>}/>}` for toggles, preserving roving
+  focus and `aria-pressed`. Icon-only when `showLabel` is false; icon **and** text
+  otherwise. The toggle "on" state uses the `--selected` token via Base UI's `data-pressed`.
+  A segment's optional `className` is forwarded to its `Button` — the way to colour a
+  segment (e.g. `bg-tomato text-white`).
 - **Group segment** is `Toggle.Group` wrapping its option toggles; `mode` selects
   single (radio-like) vs multiple selection, and the group renders along the toolbar's
   orientation (vertical groups stack).
@@ -203,7 +179,9 @@ Tokens only — no hardcoded colours, shadows, or font sizes.
   `AnimatePresence mode="popLayout"`, keyed by `id`.
 - Enter/exit is a scale + opacity spring using the `spring-*` presets.
 - The container's `layout` animates size/shape changes from add/remove and from
-  orientation flips.
+  orientation flips. The whole component is wrapped in a `LayoutGroup` so the container's
+  resize stays in step with a segment's exit (otherwise the item finishes animating out
+  before the pill snaps to its new size).
 - All animation flourishes gate on `useReducedMotion()`. When motion is reduced,
   `AnimatePresence` still mounts/unmounts segments cleanly with no transition.
 
