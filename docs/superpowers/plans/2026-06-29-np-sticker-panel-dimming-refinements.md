@@ -290,3 +290,93 @@
 - [ ] Remove any now-dead exports/stories (knip).
 - [ ] Dispatch the final whole-branch review (Opus) over the full PR-#713 diff; fix Critical/Important findings in one batched fix.
 - [ ] Push to PR #713. (Do **not** merge — research-team genetics sign-off is still required for the focal-inheritance work.)
+
+---
+
+## Round-2 follow-ups (user decisions after first review)
+
+These were chosen by the user after the round-2 final review. Same constraints as above apply.
+
+---
+
+### Task 24: Participant copy → "condition" + key-panel at-risk row + tooltip cleanup
+
+**Files:**
+
+- Modify: `packages/interview/src/interfaces/NarrativePedigree/components/NarrativePedigreeView.tsx` (aria-live announcer copy)
+- Modify: `packages/interview/src/interfaces/NarrativePedigree/components/StickerKeyPanel.tsx` (add at-risk row)
+- Modify: `packages/interview/src/interfaces/NarrativePedigree/components/Sticker.tsx` (tooltip)
+- Tests: any NarrativePedigreeView/StickerKeyPanel test asserting the old announcer text / key rows.
+
+**Decisions:**
+
+- **Participant term is "condition".** The new panels already say "condition"; the `aria-live` announcer still says "Showing all diseases" / "Showing {label}". Change ALL participant-facing text to "condition(s)" so sighted and screen-reader participants get the same word. (Internal identifiers like `DiseaseSticker`, `selectedDiseaseId`, `disease.color` and the dev-facing changeset stay as-is — this is participant copy only.) Update any test that asserts the old announcer string.
+- **Key panel: add the at-risk-homozygous triangle row.** `StickerKeyPanel` currently has one row per status. Add ONE more row whose glyph is a sticker carrying the at-risk-homozygous triangle (render a representative `Sticker` with `atRiskHomozygous` true, or just the triangle marker) and a plain-language participant label explaining it (whole, externalisable string; no internal vocabulary). Keep the glyph decorative (`aria-hidden`); the text label is the accessible content.
+- **Sticker tooltip:** the chip's `title={`${label} (${color})`}` leaks the raw colour (e.g. "Carrier (currentColor)" / "Affected (var(--node-1))"). Change it to `title={label}` (drop the colour). Keep it on the same element.
+
+**Steps:**
+
+- [ ] Replace "disease(s)" → "condition(s)" in the aria-live announcer (and any other participant-facing string in NarrativePedigreeView); update the asserting test(s).
+- [ ] Add the at-risk-homozygous key row to StickerKeyPanel with participant copy.
+- [ ] Change Sticker `title` to the label only.
+- [ ] Targeted Vitest on NarrativePedigreeView + StickerKeyPanel tests; format + lint --fix. Commit.
+
+---
+
+### Task 25: ClassicNotationNode label below the symbol (keep alignment)
+
+**Files:**
+
+- Modify: `packages/interview/src/interfaces/NarrativePedigree/components/ClassicNotationNode.tsx`
+- Tests/stories: `ClassicNotationNode.test.tsx` / `.stories.tsx`
+
+**Decision:** restore the classic pedigree convention — the participant label sits **below** the symbol — WITHOUT reintroducing the misalignment Task 19 fixed. Task 19 moved the label inside the Node and used `Node size="sm"` (96px) in a `relative inline-block` so the symbol centre lands at the 96px cell centre (48,48) where connectors attach. To keep that alignment while putting the label below:
+
+- Keep `Node size="sm"` (96px) rendered with NO internal label (empty label / pass the accessible name another way), in the `relative inline-block` wrapper so the symbol fills and centres in the cell (centre stays at 48,48).
+- Render the label as an **absolutely-positioned** element below the symbol (e.g. `absolute top-full left-1/2 -translate-x-1/2`), so it is OUT of normal flow and does NOT shift the symbol's centre. The label overflows below the 96px cell into the row gap.
+- Preserve the accessible name: the symbol's Node must still expose the participant label to assistive tech (e.g. via `aria-label`), since the visible label is now a separate absolutely-positioned node; or associate it. Don't lose the `getByRole('button', { name })` accessibility.
+- Verify the label does not overlap the next generation's nodes/connectors (check `rowGap`/`rowHeight` in `layoutDimensions.ts`); if tight, constrain the label width/lines. StickerNode keeps its label inside the Node — the two modes will differ in label placement, which is intended (classic convention).
+
+**Steps:**
+
+- [ ] Rework ClassicNotationNode: 96px centred symbol + absolutely-positioned label below; preserve accessible name.
+- [ ] Verify symbol centre stays at (48,48) so connectors still align (the Task 19 win must not regress).
+- [ ] Update ClassicNotationNode test/story for the new label position; keep a meaningful accessible-name assertion.
+- [ ] Targeted Vitest; format + lint --fix. Commit.
+
+---
+
+### Task 26: Dim twin-indicator and duplicate-arc connectors in focal view
+
+**Files:**
+
+- Modify: `packages/interview/src/interfaces/FamilyPedigree/pedigree-layout/types.ts` (add node ids to TwinIndicator / DuplicateArc)
+- Modify: `packages/interview/src/interfaces/FamilyPedigree/pedigree-layout/connectors.ts` (populate the ids)
+- Modify: `packages/interview/src/interfaces/FamilyPedigree/pedigree-layout/pedigreeAdapter.ts` if id threading needs it
+- Modify: `packages/interview/src/interfaces/FamilyPedigree/pedigree-layout/components/EdgeRenderer.tsx` (dim them)
+- Test: the EdgeRenderer / pedigree-layout `__tests__`
+
+**Problem:** when a focal node is selected, twin-indicator bars and duplicate-arcs render at full strength because they carry no node identity, so they can't be dimmed. The user wants them dimmed like the other connectors.
+
+**Approach:**
+
+- Attach node identity to the connector types: `TwinIndicator` gains the ids of the twin pair it joins; `DuplicateArc` gains the id of the duplicated person it connects. Populate these in `connectors.ts` from the same `indexToId` mapping the other connectors already use (the `id?: string[]` arg threaded via `pedigreeAdapter.ts`).
+- In `EdgeRenderer.tsx`, dim a twin indicator / duplicate arc using **node-membership** (reuse the existing `isDimmedByIds(highlightedNodeIds, ids)` — these are NOT parent-child lineage, so node-membership is correct, same as partner bars): a twin bar dims unless both twins are highlighted; a duplicate arc dims unless its person is highlighted. Render the dimmed state with the **blended stroke** (`dimColor('var(--edge-1)')`), consistent with Task 22 — NOT opacity. Emit `data-edge-dimmed`.
+- **Preserve the `undefined` short-circuit** so FamilyPedigree (passes no highlight set) is unaffected and these connectors stay bright there. "No id" → bright by default.
+
+**Steps:**
+
+- [ ] Add the id fields to `TwinIndicator` / `DuplicateArc` in `types.ts`; populate in `connectors.ts` (only when the `id` mapping is supplied).
+- [ ] Write failing EdgeRenderer tests: with a focal highlight set, a twin bar between two non-contributors is DIMMED (blended stroke + `data-edge-dimmed`); with `highlightedNodeIds` undefined, nothing dims (FamilyPedigree path).
+- [ ] Dim twin/duplicate-arc via `isDimmedByIds` + blended stroke in EdgeRenderer.
+- [ ] Run tests green. Targeted Vitest on pedigree-layout + NarrativePedigree; format + lint --fix. Commit.
+
+**Risk:** shared with FamilyPedigree — the undefined short-circuit MUST keep FamilyPedigree fully bright. Twin/duplicate connectors are decorative-genetic; node-membership (not edge-key) is the right rule.
+
+---
+
+### Task 27: Follow-up verification + push
+
+- [ ] Run `pnpm knip`, `pnpm typecheck` (incl. `tsc -p tsconfig.node.json` for interview), `pnpm lint`, targeted `pnpm test` for interview + pedigree-layout.
+- [ ] Update the `pedigree-refinements` changeset if any participant-visible behaviour changed wording (condition copy).
+- [ ] Push to PR #713. (Still do **not** merge — research-team genetics sign-off pending.)

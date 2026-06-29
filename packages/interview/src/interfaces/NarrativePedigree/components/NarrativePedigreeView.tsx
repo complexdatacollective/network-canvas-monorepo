@@ -438,10 +438,12 @@ export default function NarrativePedigreeView({
       {/* Visually-hidden aria-live region for announcing state changes */}
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         {selectedDiseaseId === null
-          ? 'Showing all diseases'
+          ? 'Showing all conditions'
           : `Showing ${selectedDiseaseLabel ?? selectedDiseaseId}`}
         {focalId !== null
-          ? `. Focused on ${focalLabel ?? focalId}. Showing who contributes to their inheritance.`
+          ? `. Focused on ${
+              focalLabel ?? focalId
+            }. Showing who contributes to their inheritance.`
           : ''}
       </div>
 

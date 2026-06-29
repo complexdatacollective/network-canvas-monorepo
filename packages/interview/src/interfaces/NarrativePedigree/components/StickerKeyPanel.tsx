@@ -27,6 +27,9 @@ const KEY_ENTRIES: KeyEntry[] = [
 // they inherit the surface text colour rather than a disease colour.
 const KEY_GLYPH_COLOUR = 'currentColor';
 
+const AT_RISK_HOMOZYGOUS_KEY_LABEL =
+  'May be more seriously affected (two copies of this condition)';
+
 export default function StickerKeyPanel() {
   return (
     <MotionSurface
@@ -43,6 +46,16 @@ export default function StickerKeyPanel() {
           {entry.label}
         </div>
       ))}
+      <div className="flex items-center gap-4 text-base">
+        <span aria-hidden className="shrink-0">
+          <Sticker
+            status="atRiskCarrier"
+            color={KEY_GLYPH_COLOUR}
+            atRiskHomozygous
+          />
+        </span>
+        {AT_RISK_HOMOZYGOUS_KEY_LABEL}
+      </div>
     </MotionSurface>
   );
 }

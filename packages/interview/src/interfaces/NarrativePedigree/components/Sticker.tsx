@@ -109,7 +109,7 @@ export function Sticker({
     >
       <span
         aria-hidden
-        title={`${label} (${color})`}
+        title={label}
         data-sticker-status={status}
         className={[
           'absolute inset-0 rounded-full overflow-hidden',
