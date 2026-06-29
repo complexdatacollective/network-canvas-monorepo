@@ -185,8 +185,10 @@ function renderParentChild(
   conn: ParentChildConnector,
   idx: number,
   color: string,
+  highlightedNodeIds?: Set<string>,
 ) {
   const isDashed = conn.edgeType === 'social' || conn.edgeType === 'adoptive';
+  const sharedDimmed = isDimmedByIds(highlightedNodeIds, conn.parentIds);
 
   // For dashed (social/adoptive) edges, combine all segments into a single
   // polyline so the dash pattern flows continuously instead of restarting
@@ -196,7 +198,11 @@ function renderParentChild(
     const points = segmentsToPolylinePoints(allSegments);
 
     return (
-      <g key={`pc-${idx}`}>
+      <g
+        key={`pc-${idx}`}
+        opacity={sharedDimmed ? 0.3 : 1}
+        {...(sharedDimmed ? { 'data-edge-dimmed': 'true' } : {})}
+      >
         {points.map((pts, i) => (
           <polyline
             key={`pc-${idx}-path-${i}`}
@@ -215,19 +221,37 @@ function renderParentChild(
 
   return (
     <g key={`pc-${idx}`}>
-      {conn.uplines.map((ul, i) =>
-        renderLine(ul, color, `pc-${idx}-up-${i}`, {
-          strokeLinecap: 'round',
-        }),
-      )}
-      {renderLine(conn.siblingBar, color, `pc-${idx}-bar`, {
-        strokeLinecap: 'round',
+      {conn.uplines.map((ul, i) => {
+        const uplineChildId = conn.uplineChildIds?.[i];
+        const uplineDimmed = isDimmedByIds(
+          highlightedNodeIds,
+          uplineChildId !== undefined ? [uplineChildId] : undefined,
+        );
+        return (
+          <g
+            key={`pc-${idx}-up-wrap-${i}`}
+            opacity={uplineDimmed ? 0.3 : 1}
+            {...(uplineDimmed ? { 'data-edge-dimmed': 'true' } : {})}
+          >
+            {renderLine(ul, color, `pc-${idx}-up-${i}`, {
+              strokeLinecap: 'round',
+            })}
+          </g>
+        );
       })}
-      {conn.parentLink.map((pl, i) =>
-        renderLine(pl, color, `pc-${idx}-pl-${i}`, {
+      <g
+        opacity={sharedDimmed ? 0.3 : 1}
+        {...(sharedDimmed ? { 'data-edge-dimmed': 'true' } : {})}
+      >
+        {renderLine(conn.siblingBar, color, `pc-${idx}-bar`, {
           strokeLinecap: 'round',
-        }),
-      )}
+        })}
+        {conn.parentLink.map((pl, i) =>
+          renderLine(pl, color, `pc-${idx}-pl-${i}`, {
+            strokeLinecap: 'round',
+          }),
+        )}
+      </g>
     </g>
   );
 }
@@ -275,7 +299,19 @@ type PedigreeEdgeSvgProps = {
   height: number;
   offsetX?: number;
   offsetY?: number;
+  highlightedNodeIds?: Set<string>;
 };
+
+function isDimmedByIds(
+  highlightedNodeIds: Set<string> | undefined,
+  ids: (string | undefined)[] | undefined,
+): boolean {
+  if (highlightedNodeIds === undefined) return false;
+  if (ids === undefined) return false;
+  const defined = ids.filter((id): id is string => id !== undefined);
+  if (defined.length === 0) return false;
+  return !defined.every((id) => highlightedNodeIds.has(id));
+}
 
 export function PedigreeEdgeSvg({
   connectorData,
@@ -284,6 +320,7 @@ export function PedigreeEdgeSvg({
   height,
   offsetX = 0,
   offsetY = 0,
+  highlightedNodeIds,
 }: PedigreeEdgeSvgProps) {
   const svgElements = useMemo(() => {
     if (!connectorData) return [];
@@ -293,17 +330,41 @@ export function PedigreeEdgeSvg({
 
     for (let i = 0; i < connectors.groupLines.length; i++) {
       const gl = connectors.groupLines[i]!;
-      elements.push(renderGroupLine(gl, i, color));
+      const dimmed = isDimmedByIds(highlightedNodeIds, gl.partnerIds);
+      elements.push(
+        <g
+          key={`gl-dim-${i}`}
+          opacity={dimmed ? 0.3 : 1}
+          {...(dimmed ? { 'data-edge-dimmed': 'true' } : {})}
+        >
+          {renderGroupLine(gl, i, color)}
+        </g>,
+      );
     }
 
     for (let i = 0; i < connectors.parentChildLines.length; i++) {
       elements.push(
-        renderParentChild(connectors.parentChildLines[i]!, i, color),
+        renderParentChild(
+          connectors.parentChildLines[i]!,
+          i,
+          color,
+          highlightedNodeIds,
+        ),
       );
     }
 
     for (let i = 0; i < connectors.auxiliaryLines.length; i++) {
-      elements.push(renderAuxiliary(connectors.auxiliaryLines[i]!, i, color));
+      const aux = connectors.auxiliaryLines[i]!;
+      const dimmed = isDimmedByIds(highlightedNodeIds, aux.endpointIds);
+      elements.push(
+        <g
+          key={`aux-dim-${i}`}
+          opacity={dimmed ? 0.3 : 1}
+          {...(dimmed ? { 'data-edge-dimmed': 'true' } : {})}
+        >
+          {renderAuxiliary(aux, i, color)}
+        </g>,
+      );
     }
 
     for (let i = 0; i < connectors.twinIndicators.length; i++) {
@@ -348,7 +409,7 @@ export function PedigreeEdgeSvg({
     }
 
     return elements;
-  }, [connectorData, color]);
+  }, [connectorData, color, highlightedNodeIds]);
 
   return (
     <svg

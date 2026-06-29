@@ -404,6 +404,7 @@ export default function NarrativePedigreeView({
           nodeWidth={nodeWidth}
           nodeHeight={nodeHeight}
           renderNode={renderNode}
+          highlightedNodeIds={highlight.nodes}
         />
       </div>
       <div className="pointer-events-none absolute inset-x-0 bottom-4 flex items-center justify-center gap-4">

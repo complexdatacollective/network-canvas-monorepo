@@ -754,4 +754,131 @@ describe('computeConnectors', () => {
     // Parent link should descend from couple midpoint (both biological)
     expect(pc.parentLink[0]!.x1).toBeCloseTo(1, 1);
   });
+
+  describe('node id attachment (id parameter)', () => {
+    // 3-generation: grandparents(0,1) → parent(2) + partner(3) → children(4,5)
+    // Level 0: nid=[0,1], group=[1] → couple (0,1) forms family 1
+    // Level 1: nid=[2,3], group=[1] → couple (2,3) forms family 1
+    // Level 2: nid=[4,5], fam=[1,1] → children of couple at level-1 coupleLeft=0
+    const threeGenLayout: PedigreeLayout = {
+      n: [2, 2, 2],
+      nid: [
+        [0, 1],
+        [2, 3],
+        [4, 5],
+      ],
+      pos: [
+        [0, 2],
+        [0, 2],
+        [0, 2],
+      ],
+      fam: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+      ],
+      group: [
+        [1, 0],
+        [1, 0],
+        [0, 0],
+      ],
+      twins: null,
+      groupMember: [
+        [false, false],
+        [false, false],
+        [false, false],
+      ],
+    };
+    const threeGenParents: ParentConnection[][] = [
+      [],
+      [],
+      [
+        { parentIndex: 0, edgeType: 'biological' },
+        { parentIndex: 1, edgeType: 'biological' },
+      ],
+      [],
+      [
+        { parentIndex: 2, edgeType: 'biological' },
+        { parentIndex: 3, edgeType: 'biological' },
+      ],
+      [
+        { parentIndex: 2, edgeType: 'biological' },
+        { parentIndex: 3, edgeType: 'biological' },
+      ],
+    ];
+    const threeGenIds = [
+      'gp-left',
+      'gp-right',
+      'parent',
+      'partner',
+      'child-a',
+      'child-b',
+    ];
+
+    it('attaches partnerIds to group line connectors when id is provided', () => {
+      const connectors = computeConnectors(
+        threeGenLayout,
+        scaling,
+        threeGenParents,
+        undefined,
+        0.6,
+        0.5,
+        undefined,
+        threeGenIds,
+      );
+      expect(connectors.groupLines.length).toBeGreaterThan(0);
+      const gpGroupLine = connectors.groupLines[0]!;
+      expect(gpGroupLine.partnerIds).toEqual(['gp-left', 'gp-right']);
+    });
+
+    it('omits partnerIds from group line connectors when id is not provided', () => {
+      const connectors = computeConnectors(
+        threeGenLayout,
+        scaling,
+        threeGenParents,
+      );
+      expect(connectors.groupLines[0]!.partnerIds).toBeUndefined();
+    });
+
+    it('attaches parentIds and uplineChildIds to parent-child connectors when id is provided', () => {
+      const connectors = computeConnectors(
+        threeGenLayout,
+        scaling,
+        threeGenParents,
+        undefined,
+        0.6,
+        0.5,
+        undefined,
+        threeGenIds,
+      );
+
+      // First parentChildLine: grandparents → parent
+      const gpPc = connectors.parentChildLines[0]!;
+      expect(gpPc.parentIds).toBeDefined();
+      expect(gpPc.parentIds).toContain('gp-left');
+      expect(gpPc.parentIds).toContain('gp-right');
+
+      // uplineChildIds[0] is the child node id for the first upline
+      expect(gpPc.uplineChildIds).toBeDefined();
+      expect(gpPc.uplineChildIds![0]).toBe('parent');
+
+      // Second parentChildLine: parent+partner → children
+      const childPc = connectors.parentChildLines[1]!;
+      expect(childPc.parentIds).toContain('parent');
+      expect(childPc.parentIds).toContain('partner');
+      expect(childPc.uplineChildIds).toHaveLength(2);
+      expect(childPc.uplineChildIds).toContain('child-a');
+      expect(childPc.uplineChildIds).toContain('child-b');
+    });
+
+    it('omits parentIds and uplineChildIds from parent-child connectors when id is not provided', () => {
+      const connectors = computeConnectors(
+        threeGenLayout,
+        scaling,
+        threeGenParents,
+      );
+      expect(connectors.parentChildLines[0]!.parentIds).toBeUndefined();
+      expect(connectors.parentChildLines[0]!.uplineChildIds).toBeUndefined();
+    });
+  });
 });

@@ -360,4 +360,103 @@ describe('PedigreeLayout', () => {
 
     expect(fatherY).toBeLessThan(egoY);
   });
+
+  describe('connector dimming via highlightedNodeIds', () => {
+    const familyNodes = () =>
+      makeNodes([
+        { id: 'father' },
+        { id: 'mother' },
+        { id: 'ego', isEgo: true },
+      ]);
+
+    const familyEdges = () =>
+      makeEdges([
+        {
+          from: 'father',
+          to: 'mother',
+          relationshipType: 'partner',
+          isActive: true,
+        },
+        {
+          from: 'father',
+          to: 'ego',
+          relationshipType: 'biological',
+          isActive: true,
+        },
+        {
+          from: 'mother',
+          to: 'ego',
+          relationshipType: 'biological',
+          isActive: true,
+        },
+      ]);
+
+    test('no data-edge-dimmed attributes when highlightedNodeIds is undefined', () => {
+      const { container } = render(
+        <PedigreeLayout
+          nodes={familyNodes()}
+          edges={familyEdges()}
+          variableConfig={variableConfig}
+          {...DIMS}
+          renderNode={renderNode}
+        />,
+      );
+      expect(
+        container.querySelectorAll('[data-edge-dimmed="true"]').length,
+      ).toBe(0);
+    });
+
+    test('no data-edge-dimmed when all nodes are highlighted', () => {
+      const highlightedNodeIds = new Set(['father', 'mother', 'ego']);
+      const { container } = render(
+        <PedigreeLayout
+          nodes={familyNodes()}
+          edges={familyEdges()}
+          variableConfig={variableConfig}
+          {...DIMS}
+          renderNode={renderNode}
+          highlightedNodeIds={highlightedNodeIds}
+        />,
+      );
+      expect(
+        container.querySelectorAll('[data-edge-dimmed="true"]').length,
+      ).toBe(0);
+    });
+
+    test('partner line gets data-edge-dimmed when one partner is not highlighted', () => {
+      // Only ego and mother are highlighted — father is not
+      const highlightedNodeIds = new Set(['mother', 'ego']);
+      const { container } = render(
+        <PedigreeLayout
+          nodes={familyNodes()}
+          edges={familyEdges()}
+          variableConfig={variableConfig}
+          {...DIMS}
+          renderNode={renderNode}
+          highlightedNodeIds={highlightedNodeIds}
+        />,
+      );
+      expect(
+        container.querySelectorAll('[data-edge-dimmed="true"]').length,
+      ).toBeGreaterThan(0);
+    });
+
+    test('upline to highlighted child is not dimmed even when partner line is dimmed', () => {
+      // Only ego is highlighted
+      const highlightedNodeIds = new Set(['ego']);
+      const { container } = render(
+        <PedigreeLayout
+          nodes={familyNodes()}
+          edges={familyEdges()}
+          variableConfig={variableConfig}
+          {...DIMS}
+          renderNode={renderNode}
+          highlightedNodeIds={highlightedNodeIds}
+        />,
+      );
+      // The group line (partner bar) should be dimmed — father not highlighted
+      const dimmedEls = container.querySelectorAll('[data-edge-dimmed="true"]');
+      expect(dimmedEls.length).toBeGreaterThan(0);
+    });
+  });
 });

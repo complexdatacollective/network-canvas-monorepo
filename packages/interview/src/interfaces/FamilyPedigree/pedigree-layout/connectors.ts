@@ -42,6 +42,7 @@ export function computeConnectors(
   branch = 0.6,
   pconnect = 0.5,
   nodeNames?: string[],
+  id?: string[],
 ): PedigreeConnectors {
   const { boxHeight: boxh, legHeight: legh } = scaling;
   const maxlev = layout.nid.length;
@@ -81,11 +82,21 @@ export function computeConnectors(
 
         const isDouble = layout.group[i]![j] === 2;
 
+        const leftPersonIndex = layout.nid[i]![j]!;
+        const rightPersonIndex = layout.nid[i]![j + 1]!;
         const connector: ParentGroupConnector = {
           type: 'parent-group',
           segment,
           double: isDouble,
           isActive,
+          ...(id
+            ? {
+                partnerIds: [
+                  id[leftPersonIndex] ?? '',
+                  id[rightPersonIndex] ?? '',
+                ] as [string, string],
+              }
+            : {}),
         };
 
         // For inactive lines, determine which side to place the slash:
@@ -176,9 +187,20 @@ export function computeConnectors(
         coupleEdges.find((p) => isPrimaryEdge(p.edgeType))?.edgeType ??
         'biological';
 
+      const parentIdsForFamily = id
+        ? [
+            ...new Set(
+              [coupleLeftId, coupleRightId]
+                .filter((idx) => idx !== undefined)
+                .map((idx) => id[idx] ?? ''),
+            ),
+          ]
+        : undefined;
+
       if (whoIdx.length === 0) {
         for (const j of marriedInIdx) {
           const childX = layout.pos[i]![j]!;
+          const marriedInPersonIndex = layout.nid[i]![j]!;
           const upline: LineSegment = {
             type: 'line',
             x1: childX,
@@ -200,6 +222,12 @@ export function computeConnectors(
             uplines: [upline],
             siblingBar: bar,
             parentLink: link,
+            ...(id
+              ? {
+                  parentIds: parentIdsForFamily,
+                  uplineChildIds: [id[marriedInPersonIndex]],
+                }
+              : {}),
           });
         }
         continue;
@@ -368,17 +396,31 @@ export function computeConnectors(
         );
       }
 
+      const uplineChildIdsForFamily = id
+        ? whoIdx.map((j) => {
+            const personIndex = layout.nid[i]![j];
+            return personIndex !== undefined ? id[personIndex] : undefined;
+          })
+        : undefined;
+
       parentChildLines.push({
         type: 'parent-child',
         edgeType: primaryEdgeType,
         uplines,
         siblingBar,
         parentLink,
+        ...(id
+          ? {
+              parentIds: parentIdsForFamily,
+              uplineChildIds: uplineChildIdsForFamily,
+            }
+          : {}),
       });
 
       // Render individual connectors for married-in group members
       for (const j of marriedInIdx) {
         const childX = layout.pos[i]![j]!;
+        const miPersonIndex = layout.nid[i]![j]!;
         const miUpline: LineSegment = {
           type: 'line',
           x1: childX,
@@ -400,6 +442,12 @@ export function computeConnectors(
           uplines: [miUpline],
           siblingBar: miBar,
           parentLink: miLink,
+          ...(id
+            ? {
+                parentIds: parentIdsForFamily,
+                uplineChildIds: [id[miPersonIndex]],
+              }
+            : {}),
         });
       }
     }
@@ -473,6 +521,8 @@ export function computeConnectors(
     const totalChildren = familyChildCount.get(famKey) ?? 0;
     const isParentOfAllSiblings = conn.childColumns.length >= totalChildren;
 
+    const donorParentNodeId = id ? id[conn.parentIndex] : undefined;
+
     if (bar && isParentOfAllSiblings && totalChildren > 1) {
       // Parent of all siblings — connect to the sibling bar
       const barMinX = Math.min(bar.x1, bar.x2);
@@ -489,11 +539,24 @@ export function computeConnectors(
           x2: connectX,
           y2: bar.y1,
         },
+        ...(id
+          ? {
+              endpointIds: [donorParentNodeId, undefined] as [
+                string | undefined,
+                string | undefined,
+              ],
+            }
+          : {}),
       });
     } else {
       // Parent of only some children (or no sibling bar) — connect
       // directly to each child node
       for (const col of conn.childColumns) {
+        const childPersonIndex = layout.nid[conn.childLevel]![col];
+        const childNodeId =
+          id && childPersonIndex !== undefined
+            ? id[childPersonIndex]
+            : undefined;
         auxiliaryLines.push({
           type: 'auxiliary',
           edgeType: conn.edgeType,
@@ -504,6 +567,14 @@ export function computeConnectors(
             x2: layout.pos[conn.childLevel]![col]!,
             y2: conn.childLevel + boxh / 2,
           },
+          ...(id
+            ? {
+                endpointIds: [donorParentNodeId, childNodeId] as [
+                  string | undefined,
+                  string | undefined,
+                ],
+              }
+            : {}),
         });
       }
     }
@@ -635,6 +706,8 @@ export function computeConnectors(
     const parentPos = nodePosition.get(conn.parentIndex);
     if (!parentPos) continue;
 
+    const socialParentNodeId = id ? id[conn.parentIndex] : undefined;
+
     const bar = familySiblingBar.get(`${conn.childLevel},${conn.famId}`);
     const famKey = `${conn.childLevel},${conn.famId}`;
     const totalChildren = familyChildCount.get(famKey) ?? 0;
@@ -655,9 +728,22 @@ export function computeConnectors(
           x2: connectX,
           y2: bar.y1,
         },
+        ...(id
+          ? {
+              endpointIds: [socialParentNodeId, undefined] as [
+                string | undefined,
+                string | undefined,
+              ],
+            }
+          : {}),
       });
     } else {
       for (const col of conn.childColumns) {
+        const childPersonIndex = layout.nid[conn.childLevel]![col];
+        const childNodeId =
+          id && childPersonIndex !== undefined
+            ? id[childPersonIndex]
+            : undefined;
         auxiliaryLines.push({
           type: 'auxiliary',
           edgeType: conn.edgeType,
@@ -668,6 +754,14 @@ export function computeConnectors(
             x2: layout.pos[conn.childLevel]![col]!,
             y2: conn.childLevel + boxh / 2,
           },
+          ...(id
+            ? {
+                endpointIds: [socialParentNodeId, childNodeId] as [
+                  string | undefined,
+                  string | undefined,
+                ],
+              }
+            : {}),
         });
       }
     }
@@ -682,11 +776,11 @@ export function computeConnectors(
     }
   }
 
-  for (const id of allIds) {
+  for (const personIdx of allIds) {
     const positions: { x: number; y: number }[] = [];
     for (let i = 0; i < maxlev; i++) {
       for (let j = 0; j < (layout.n[i] ?? 0); j++) {
-        if (layout.nid[i]![j] === id) {
+        if (layout.nid[i]![j] === personIdx) {
           positions.push({ x: layout.pos[i]![j]!, y: i });
         }
       }
@@ -711,7 +805,7 @@ export function computeConnectors(
         duplicateArcs.push({
           type: 'duplicate-arc',
           path: { type: 'arc', points, dashed: true },
-          personIndex: id,
+          personIndex: personIdx,
         });
       }
     }
