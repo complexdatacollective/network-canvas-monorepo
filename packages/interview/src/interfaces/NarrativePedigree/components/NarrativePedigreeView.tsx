@@ -535,24 +535,48 @@ export default function NarrativePedigreeView({
       </div>
 
       <ResizableFlexPanel
-        storageKey="np-condition-key"
-        defaultBasis={72}
-        min={55}
-        max={84}
+        reverse
+        storageKey="np-key-panel"
+        defaultBasis={26}
+        min={16}
+        max={45}
+        minSizePx={300}
         className="min-h-0 w-full grow"
         aria-label="Resize the condition key panel"
       >
-        {/* Pedigree pane (resizable). min-w-0 lets the pane honour its resize
-            basis instead of being forced to the wide pedigree's content width;
-            the inner scroll container handles the overflow. Background click /
-            Escape clears the focal person; the Clear-focus control floats over it
-            when one is set. */}
+        {/* Key panel — the resized (first) pane. In `reverse` mode it renders on
+            the right edge and holds a fixed pixel minimum (minSizePx), so it
+            never collapses; when the viewport narrows the pedigree pane gives up
+            space and scrolls instead. */}
+        <ConditionPanel
+          diseases={diseases}
+          selectedDiseaseId={selectedDiseaseId}
+          onSelect={(id) => {
+            setSelectedDiseaseId(id);
+            // Focusing requires a single shown condition; clear it on return to
+            // "all conditions" so a stale focal highlight never lingers.
+            if (id === null) {
+              setFocalId(null);
+            }
+          }}
+          showAtRiskStatuses={showAtRiskStatuses}
+          onSnapshot={handleSnapshot}
+        />
+
+        {/* Pedigree pane — the flex (second) pane, rendered on the left. When the
+            viewport is too narrow to fit the pedigree alongside the key's minimum
+            width, the inner scroll container overflows horizontally and
+            vertically instead of squashing the layout. `justify-center-safe`
+            centres the pedigree while it fits but falls back to start alignment
+            once it overflows, so the left/top edge stays scrollable. Background
+            click / Escape clears the focal person; the Clear-focus control floats
+            over it when one is set. */}
         <div className="relative flex min-h-0 min-w-0 grow flex-col overflow-hidden">
           <div
             ref={viewRef}
             data-narrative-pedigree-view
             role="presentation"
-            className="relative flex min-h-0 w-full min-w-0 grow items-start justify-center overflow-auto pt-6"
+            className="relative flex min-h-0 w-full min-w-0 grow items-start justify-center-safe overflow-auto pt-6"
             onClick={() => setFocalId(null)}
             onKeyDown={(event) => {
               if (event.key === 'Escape') {
@@ -591,22 +615,6 @@ export default function NarrativePedigreeView({
             </div>
           )}
         </div>
-
-        {/* Always-open key panel on the right edge. */}
-        <ConditionPanel
-          diseases={diseases}
-          selectedDiseaseId={selectedDiseaseId}
-          onSelect={(id) => {
-            setSelectedDiseaseId(id);
-            // Focusing requires a single shown condition; clear it on return to
-            // "all conditions" so a stale focal highlight never lingers.
-            if (id === null) {
-              setFocalId(null);
-            }
-          }}
-          showAtRiskStatuses={showAtRiskStatuses}
-          onSnapshot={handleSnapshot}
-        />
       </ResizableFlexPanel>
     </div>
   );

@@ -84,6 +84,15 @@ type ResizableFlexPanelProps = {
    * Exactly two children, rendered as the first and second panels respectively.
    */
   'children': [ReactNode, ReactNode];
+  /**
+   * Render the resized (first) pane at the END of the axis (right for
+   * horizontal, bottom for vertical) instead of the start, with the drag
+   * direction adjusted to match. Use this for a size-constrained panel pinned to
+   * the right/bottom edge while the second pane fills (and scrolls) the rest.
+   *
+   * @default false
+   */
+  'reverse'?: boolean;
   /** Additional class names applied to the outer flex container. */
   'className'?: string;
   /**
@@ -128,6 +137,7 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
       orientation = 'horizontal',
       keyboardStep = 2,
       overrideBasis,
+      reverse = false,
       children,
       className,
       'aria-label': ariaLabel,
@@ -143,6 +153,7 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
       breakpoints,
       orientation,
       keyboardStep,
+      reverse,
     });
 
     const mergedRef = useMergeRefs({ containerRef, forwardedRef });
@@ -162,7 +173,13 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
         ref={mergedRef}
         className={cx(
           'flex',
-          isHorizontal ? 'flex-row' : 'flex-col',
+          isHorizontal
+            ? reverse
+              ? 'flex-row-reverse'
+              : 'flex-row'
+            : reverse
+              ? 'flex-col-reverse'
+              : 'flex-col',
           isDragging && 'cursor-col-resize select-none',
           !isHorizontal && isDragging && 'cursor-row-resize',
           className,
