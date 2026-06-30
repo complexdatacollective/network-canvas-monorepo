@@ -15,13 +15,10 @@ import InterfacePicture from '@codaco/interface-images/InterfacePicture';
 import manifest, {
   type InterfaceType,
 } from '@codaco/interface-images/manifest';
-import type { Stage } from '@codaco/protocol-validation';
 
 import { useCurrentStep } from '../contexts/CurrentStepContext';
 import { getSkipMap } from '../selectors/skip-logic';
 import { getProtocolStages } from '../store/modules/protocol';
-
-export type StageSummary = Pick<Stage, 'id' | 'type' | 'label'>;
 
 type StagesMenuProps = {
   /** Called with the chosen stage index when an item is activated. */
