@@ -256,11 +256,22 @@ export default function NarrativePedigreeView({
 
   // Focal highlighting (which relatives contribute to a person's inheritance)
   // is an analytical relationship, not a displayed status — keep it driven by
-  // the full engine output so it is unaffected by the display gate.
+  // the full engine output so it is unaffected by the display gate. The walk is
+  // inheritance-pattern-aware, so it follows each shown disease's true source
+  // line (e.g. a son's X-linked allele up the maternal line only).
   const highlight = useMemo(() => {
     if (!graph) return { nodes: new Set<string>(), edges: new Set<string>() };
-    return computeContributors(focalId, graph, statusesByDisease);
-  }, [graph, focalId, statusesByDisease]);
+    const diseaseContributors = shownDiseases.map((disease) => ({
+      pattern: disease.inheritancePattern,
+      statuses: statusesByDisease.get(disease.id) ?? new Map<string, Status>(),
+    }));
+    return computeContributors(
+      focalId,
+      graph,
+      diseaseContributors,
+      resolveSexFn,
+    );
+  }, [graph, focalId, shownDiseases, statusesByDisease, resolveSexFn]);
 
   const nodesMap = useMemo(
     () => new Map(pedigreeNodes.map((n) => [n._uid, n])),

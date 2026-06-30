@@ -1,17 +1,51 @@
 import { describe, expect, it } from 'vitest';
 
+import type { InheritancePattern } from '@codaco/shared-consts';
+
 import type { GeneticGraph } from '../genetics/geneticGraph';
 import type { Status } from '../genetics/status';
-import { computeContributors, edgeKey } from '../highlight';
+import {
+  computeContributors,
+  type DiseaseContributors,
+  edgeKey,
+} from '../highlight';
+
+type Sex = 'female' | 'male' | 'unknown';
+
+/** Resolver backed by a sex map; unmapped nodes resolve to `unknown`. */
+function resolveSexFrom(sexMap?: Map<string, Sex>): (id: string) => Sex {
+  return (id) => sexMap?.get(id) ?? 'unknown';
+}
+
+/**
+ * Wraps one or more per-disease status maps as the `DiseaseContributors[]` the
+ * pattern-aware walk consumes. Defaults to an autosomal-dominant pattern, under
+ * which (and with `unknown` sex) the walk follows every on-lineage parent — the
+ * behaviour the original sex-agnostic tests were written against.
+ */
+function asDiseases(
+  statusesByDisease: Map<string, Map<string, Status>>,
+  pattern: InheritancePattern = 'autosomalDominant',
+): DiseaseContributors[] {
+  return [...statusesByDisease.values()].map((statuses) => ({
+    pattern,
+    statuses,
+  }));
+}
+
+const RESOLVE_UNKNOWN = resolveSexFrom();
 
 /**
  * Builds a minimal GeneticGraph stub from a parent→child adjacency list.
  *
- * Edges are directed parent→child (same convention as the real graph).
+ * Edges are directed parent→child (same convention as the real graph). An
+ * optional `sexMap` annotates parents with a resolved biological sex for the
+ * sex-linked transmission rules; unmapped nodes are `unknown`.
  */
 function buildStubGraph(
   nodeIdList: string[],
   edges: [parentId: string, childId: string][],
+  sexMap?: Map<string, Sex>,
 ): GeneticGraph {
   const parentMap = new Map<string, string[]>();
   const childMap = new Map<string, string[]>();
@@ -29,7 +63,7 @@ function buildStubGraph(
   function parentsOf(id: string) {
     return (parentMap.get(id) ?? []).map((pid) => ({
       id: pid,
-      sex: 'unknown' as const,
+      sex: sexMap?.get(pid) ?? ('unknown' as const),
     }));
   }
 
@@ -123,7 +157,12 @@ describe('computeContributors — (a) focal=null highlights everything', () => {
     [DISEASE_A, new Map<string, Status>([[GP_ALL, 'affected']])],
   ]);
 
-  const result = computeContributors(null, graphAll, statusAll);
+  const result = computeContributors(
+    null,
+    graphAll,
+    asDiseases(statusAll),
+    RESOLVE_UNKNOWN,
+  );
 
   it('includes every node in the graph', () => {
     expect(result.nodes.has(GP_ALL)).toBe(true);
@@ -185,7 +224,12 @@ describe('computeContributors — (b) dominant grandparent→parent→focal: anc
     ],
   ]);
 
-  const result = computeContributors(FOCAL_DOM, graphDom, statusDom);
+  const result = computeContributors(
+    FOCAL_DOM,
+    graphDom,
+    asDiseases(statusDom),
+    RESOLVE_UNKNOWN,
+  );
 
   it('includes the focal node', () => {
     expect(result.nodes.has(FOCAL_DOM)).toBe(true);
@@ -258,7 +302,12 @@ describe('computeContributors — (c) non-transmitting (unknown-status) parent b
     ],
   ]);
 
-  const result = computeContributors(FOCAL_C, graphC, statusC);
+  const result = computeContributors(
+    FOCAL_C,
+    graphC,
+    asDiseases(statusC),
+    RESOLVE_UNKNOWN,
+  );
 
   it('includes the focal node', () => {
     expect(result.nodes.has(FOCAL_C)).toBe(true);
@@ -325,7 +374,12 @@ describe('computeContributors — (d) recessive: both carrier parent lineages hi
     ],
   ]);
 
-  const result = computeContributors(FOCAL_AR, graphAR, statusAR);
+  const result = computeContributors(
+    FOCAL_AR,
+    graphAR,
+    asDiseases(statusAR, 'autosomalRecessive'),
+    RESOLVE_UNKNOWN,
+  );
 
   it('includes the focal node', () => {
     expect(result.nodes.has(FOCAL_AR)).toBe(true);
@@ -409,7 +463,12 @@ describe('computeContributors — (e) partner-side: disease via father-in-law �
     ],
   ]);
 
-  const result = computeContributors(CHILD_PS, graphPS, statusPS);
+  const result = computeContributors(
+    CHILD_PS,
+    graphPS,
+    asDiseases(statusPS),
+    RESOLVE_UNKNOWN,
+  );
 
   it('includes the focal node (child-ps)', () => {
     expect(result.nodes.has(CHILD_PS)).toBe(true);
@@ -492,7 +551,12 @@ describe('computeContributors — (f) union across two diseases', () => {
     ],
   ]);
 
-  const result = computeContributors(FOCAL_F, graphF, statusF);
+  const result = computeContributors(
+    FOCAL_F,
+    graphF,
+    asDiseases(statusF),
+    RESOLVE_UNKNOWN,
+  );
 
   it('includes focal node', () => {
     expect(result.nodes.has(FOCAL_F)).toBe(true);
@@ -523,5 +587,588 @@ describe('computeContributors — (f) union across two diseases', () => {
     expect(result.edges.has(edgeKey(PAR_A, FOCAL_F))).toBe(true);
     expect(result.edges.has(edgeKey(GP_B2, PAR_B))).toBe(true);
     expect(result.edges.has(edgeKey(PAR_B, FOCAL_F))).toBe(true);
+  });
+});
+
+describe('computeContributors — (g) X-linked recessive: a son inherits via his mother only', () => {
+  /**
+   * An affected son's single X came from his mother; his father gave him the Y.
+   * Even though the father is AFFECTED (non-`unknown`), the father→son edge
+   * cannot carry the X, so the father's line must dim.
+   *
+   *   FATHER (affected male) ─┐
+   *                           SON (focal, male, affected)
+   *   MOTHER (carrier female)─┘
+   */
+  const FATHER = 'father-g';
+  const MOTHER = 'mother-g';
+  const SON = 'son-g';
+
+  const graph = buildStubGraph(
+    [FATHER, MOTHER, SON],
+    [
+      [FATHER, SON],
+      [MOTHER, SON],
+    ],
+    new Map<string, Sex>([
+      [FATHER, 'male'],
+      [MOTHER, 'female'],
+      [SON, 'male'],
+    ]),
+  );
+
+  const statuses = new Map([
+    [
+      DISEASE_A,
+      new Map<string, Status>([
+        [SON, 'affected'],
+        [FATHER, 'affected'],
+        [MOTHER, 'obligateCarrier'],
+      ]),
+    ],
+  ]);
+
+  const result = computeContributors(
+    SON,
+    graph,
+    asDiseases(statuses, 'xLinkedRecessive'),
+    resolveSexFrom(
+      new Map<string, Sex>([
+        [FATHER, 'male'],
+        [MOTHER, 'female'],
+        [SON, 'male'],
+      ]),
+    ),
+  );
+
+  it('includes the carrier mother (maternal X source)', () => {
+    expect(result.nodes.has(MOTHER)).toBe(true);
+  });
+
+  it('does NOT include the affected father (a son gets the Y, not the X)', () => {
+    expect(result.nodes.has(FATHER)).toBe(false);
+  });
+});
+
+describe('computeContributors — (h) X-linked recessive: affected father is the source, the at-risk maternal grandmother dims', () => {
+  /**
+   * The "Rose" case. A son's haemophilia traces up his maternal line: he got his
+   * X from his carrier mother (ego), and ego is an OBLIGATE carrier specifically
+   * because HER father is affected — so ego's disease X came from that affected
+   * grandfather, NOT from ego's own mother. The maternal grandmother carries only
+   * an inferred at-risk prior and is NOT on the transmission path, so she dims.
+   *
+   *   GREAT_GM (obligate-carrier female) → GF (affected male) ─┐
+   *                                                            EGO (obligate-carrier female) ─┐
+   *                                        GM (at-risk-carrier female) ────────────────────────┘   SON (focal, male, affected)
+   *                                                            PARTNER (male, unknown) ───────────┘
+   */
+  const GREAT_GM = 'great-gm-h'; // affected grandfather's carrier mother
+  const GF = 'gf-h'; // affected maternal grandfather (the true source)
+  const GM = 'gm-h'; // at-risk-carrier maternal grandmother (incidental — must dim)
+  const EGO = 'ego-h'; // obligate-carrier mother
+  const PARTNER = 'partner-h';
+  const SON = 'son-h';
+
+  const sex = new Map<string, Sex>([
+    [GREAT_GM, 'female'],
+    [GF, 'male'],
+    [GM, 'female'],
+    [EGO, 'female'],
+    [PARTNER, 'male'],
+    [SON, 'male'],
+  ]);
+
+  const graph = buildStubGraph(
+    [GREAT_GM, GF, GM, EGO, PARTNER, SON],
+    [
+      [GREAT_GM, GF],
+      [GF, EGO],
+      [GM, EGO],
+      [EGO, SON],
+      [PARTNER, SON],
+    ],
+    sex,
+  );
+
+  const statuses = new Map([
+    [
+      DISEASE_A,
+      new Map<string, Status>([
+        [SON, 'affected'],
+        [EGO, 'obligateCarrier'],
+        [GF, 'affected'],
+        [GREAT_GM, 'obligateCarrier'],
+        [GM, 'atRiskCarrier'],
+        // PARTNER is unknown
+      ]),
+    ],
+  ]);
+
+  const result = computeContributors(
+    SON,
+    graph,
+    asDiseases(statuses, 'xLinkedRecessive'),
+    resolveSexFrom(sex),
+  );
+
+  it('includes the carrier mother (the son’s maternal X source)', () => {
+    expect(result.nodes.has(EGO)).toBe(true);
+  });
+
+  it('includes the affected maternal grandfather (ego’s certain X source)', () => {
+    expect(result.nodes.has(GF)).toBe(true);
+  });
+
+  it('includes the grandfather’s own carrier mother (continuing his maternal line)', () => {
+    expect(result.nodes.has(GREAT_GM)).toBe(true);
+  });
+
+  it('does NOT include the at-risk maternal grandmother (incidental prior, not the source)', () => {
+    expect(result.nodes.has(GM)).toBe(false);
+  });
+
+  it('does NOT include the unaffected partner (father of the son)', () => {
+    expect(result.nodes.has(PARTNER)).toBe(false);
+  });
+
+  it('does NOT light the grandmother→ego edge', () => {
+    expect(result.edges.has(edgeKey(GM, EGO))).toBe(false);
+  });
+});
+
+describe('computeContributors — (i) X-linked recessive: a homozygous-affected daughter has BOTH parents as sources', () => {
+  /**
+   * A homozygous-affected daughter (status `affected`) took a disease X from each
+   * parent — an affected father AND a carrier mother — so both lineages light.
+   *
+   *   FATHER (affected male) ──┐
+   *                            DAUGHTER (focal, female, affected)
+   *   MOTHER (carrier female) ─┘
+   */
+  const FATHER = 'father-i';
+  const MOTHER = 'mother-i';
+  const DAUGHTER = 'daughter-i';
+
+  const sex = new Map<string, Sex>([
+    [FATHER, 'male'],
+    [MOTHER, 'female'],
+    [DAUGHTER, 'female'],
+  ]);
+
+  const graph = buildStubGraph(
+    [FATHER, MOTHER, DAUGHTER],
+    [
+      [FATHER, DAUGHTER],
+      [MOTHER, DAUGHTER],
+    ],
+    sex,
+  );
+
+  const statuses = new Map([
+    [
+      DISEASE_A,
+      new Map<string, Status>([
+        [DAUGHTER, 'affected'],
+        [FATHER, 'affected'],
+        [MOTHER, 'obligateCarrier'],
+      ]),
+    ],
+  ]);
+
+  const result = computeContributors(
+    DAUGHTER,
+    graph,
+    asDiseases(statuses, 'xLinkedRecessive'),
+    resolveSexFrom(sex),
+  );
+
+  it('includes the affected father', () => {
+    expect(result.nodes.has(FATHER)).toBe(true);
+  });
+
+  it('includes the carrier mother', () => {
+    expect(result.nodes.has(MOTHER)).toBe(true);
+  });
+});
+
+describe('computeContributors — (j) mitochondrial: inheritance follows the maternal line only', () => {
+  /**
+   * mtDNA passes mother→all children; a father transmits nothing. The affected
+   * father therefore dims even though he is nominated affected.
+   *
+   *   GM (at-risk female) → MOTHER (affected female) ─┐
+   *                                                   CHILD (focal)
+   *               FATHER (affected male) ─────────────┘
+   */
+  const GM = 'gm-j';
+  const MOTHER = 'mother-j';
+  const FATHER = 'father-j';
+  const CHILD = 'child-j';
+
+  const sex = new Map<string, Sex>([
+    [GM, 'female'],
+    [MOTHER, 'female'],
+    [FATHER, 'male'],
+    [CHILD, 'male'],
+  ]);
+
+  const graph = buildStubGraph(
+    [GM, MOTHER, FATHER, CHILD],
+    [
+      [GM, MOTHER],
+      [MOTHER, CHILD],
+      [FATHER, CHILD],
+    ],
+    sex,
+  );
+
+  const statuses = new Map([
+    [
+      DISEASE_A,
+      new Map<string, Status>([
+        [CHILD, 'atRiskAffected'],
+        [MOTHER, 'affected'],
+        [GM, 'atRiskAffected'],
+        [FATHER, 'affected'],
+      ]),
+    ],
+  ]);
+
+  const result = computeContributors(
+    CHILD,
+    graph,
+    asDiseases(statuses, 'mitochondrial'),
+    resolveSexFrom(sex),
+  );
+
+  it('includes the affected mother (maternal mt source)', () => {
+    expect(result.nodes.has(MOTHER)).toBe(true);
+  });
+
+  it('includes the maternal grandmother (continuing the maternal line)', () => {
+    expect(result.nodes.has(GM)).toBe(true);
+  });
+
+  it('does NOT include the affected father (fathers do not transmit mtDNA)', () => {
+    expect(result.nodes.has(FATHER)).toBe(false);
+  });
+});
+
+describe('computeContributors — (k) Y-linked: inheritance follows the paternal male line only', () => {
+  /**
+   * The Y passes father→son in an unbroken male line; a mother transmits nothing.
+   *
+   *   GF (obligate-affected male) → FATHER (affected male) ─┐
+   *                                                         SON (focal, male)
+   *                              MOTHER (female, unknown) ──┘
+   */
+  const GF = 'gf-k';
+  const FATHER = 'father-k';
+  const MOTHER = 'mother-k';
+  const SON = 'son-k';
+
+  const sex = new Map<string, Sex>([
+    [GF, 'male'],
+    [FATHER, 'male'],
+    [MOTHER, 'female'],
+    [SON, 'male'],
+  ]);
+
+  const graph = buildStubGraph(
+    [GF, FATHER, MOTHER, SON],
+    [
+      [GF, FATHER],
+      [FATHER, SON],
+      [MOTHER, SON],
+    ],
+    sex,
+  );
+
+  const statuses = new Map([
+    [
+      DISEASE_A,
+      new Map<string, Status>([
+        [SON, 'affected'],
+        [FATHER, 'affected'],
+        [GF, 'obligateAffected'],
+        // MOTHER is unknown
+      ]),
+    ],
+  ]);
+
+  const result = computeContributors(
+    SON,
+    graph,
+    asDiseases(statuses, 'yLinked'),
+    resolveSexFrom(sex),
+  );
+
+  it('includes the affected father (paternal Y source)', () => {
+    expect(result.nodes.has(FATHER)).toBe(true);
+  });
+
+  it('includes the grandfather (continuing the male line)', () => {
+    expect(result.nodes.has(GF)).toBe(true);
+  });
+
+  it('does NOT include the mother (mothers do not transmit the Y)', () => {
+    expect(result.nodes.has(MOTHER)).toBe(false);
+  });
+});
+
+describe('computeContributors — (l) X-linked recessive: an AFFECTED (homozygous) mother is kept as a co-source', () => {
+  /**
+   * A daughter of an affected father AND an AFFECTED (homozygous) mother is
+   * herself homozygous-affected — even when participant under-nomination leaves
+   * her labelled only `obligateCarrier`. The affected mother transmits a disease
+   * X with certainty, so she (and her maternal line) must NOT be dropped in
+   * favour of the affected father alone.
+   *
+   *   FATHER (affected male) ──┐
+   *                            DAUGHTER (focal, female, obligateCarrier by under-nomination)
+   *   MOTHER (affected female)─┘
+   */
+  const FATHER = 'father-l';
+  const MOTHER = 'mother-l';
+  const DAUGHTER = 'daughter-l';
+
+  const sex = new Map<string, Sex>([
+    [FATHER, 'male'],
+    [MOTHER, 'female'],
+    [DAUGHTER, 'female'],
+  ]);
+
+  const graph = buildStubGraph(
+    [FATHER, MOTHER, DAUGHTER],
+    [
+      [FATHER, DAUGHTER],
+      [MOTHER, DAUGHTER],
+    ],
+    sex,
+  );
+
+  const statuses = new Map([
+    [
+      DISEASE_A,
+      new Map<string, Status>([
+        // Engine labels a daughter of an affected male obligateCarrier unless she
+        // was independently nominated affected.
+        [DAUGHTER, 'obligateCarrier'],
+        [FATHER, 'affected'],
+        [MOTHER, 'affected'],
+      ]),
+    ],
+  ]);
+
+  const result = computeContributors(
+    DAUGHTER,
+    graph,
+    asDiseases(statuses, 'xLinkedRecessive'),
+    resolveSexFrom(sex),
+  );
+
+  it('includes the affected father', () => {
+    expect(result.nodes.has(FATHER)).toBe(true);
+  });
+
+  it('includes the affected mother (a certain disease-X transmitter, not dropped)', () => {
+    expect(result.nodes.has(MOTHER)).toBe(true);
+  });
+});
+
+describe('computeContributors — (m) X-linked DOMINANT: an affected father never excludes an affected mother', () => {
+  /**
+   * Under X-linked dominant one affected X suffices, so an affected heterozygous
+   * daughter’s disease X could come from EITHER affected parent. The paternal
+   * collapse (valid only for recessive) must not apply — both lines light.
+   *
+   *   FATHER (affected male) ──┐
+   *                            DAUGHTER (focal, female, obligateAffected)
+   *   MOTHER (affected female)─┘
+   */
+  const FATHER = 'father-m';
+  const MOTHER = 'mother-m';
+  const DAUGHTER = 'daughter-m';
+
+  const sex = new Map<string, Sex>([
+    [FATHER, 'male'],
+    [MOTHER, 'female'],
+    [DAUGHTER, 'female'],
+  ]);
+
+  const graph = buildStubGraph(
+    [FATHER, MOTHER, DAUGHTER],
+    [
+      [FATHER, DAUGHTER],
+      [MOTHER, DAUGHTER],
+    ],
+    sex,
+  );
+
+  const statuses = new Map([
+    [
+      DISEASE_A,
+      new Map<string, Status>([
+        [DAUGHTER, 'obligateAffected'],
+        [FATHER, 'affected'],
+        [MOTHER, 'affected'],
+      ]),
+    ],
+  ]);
+
+  const result = computeContributors(
+    DAUGHTER,
+    graph,
+    asDiseases(statuses, 'xLinkedDominant'),
+    resolveSexFrom(sex),
+  );
+
+  it('includes the affected father', () => {
+    expect(result.nodes.has(FATHER)).toBe(true);
+  });
+
+  it('includes the affected mother (dominant: an affected father is not the sole source)', () => {
+    expect(result.nodes.has(MOTHER)).toBe(true);
+  });
+});
+
+describe('computeContributors — (n) Y-linked: a FEMALE focal climbs nothing (she received no Y)', () => {
+  /**
+   * A Y-linked trait reaches only males, father→son. Even if a female is
+   * (degenerately) nominated affected, she received no Y from her father, so the
+   * walk must not climb her paternal male line.
+   *
+   *   GF (obligate-affected male) → DAD (affected male) → FOCAL (female, nominated affected)
+   */
+  const GF = 'gf-n';
+  const DAD = 'dad-n';
+  const FOCAL = 'focal-n';
+
+  const sex = new Map<string, Sex>([
+    [GF, 'male'],
+    [DAD, 'male'],
+    [FOCAL, 'female'],
+  ]);
+
+  const graph = buildStubGraph(
+    [GF, DAD, FOCAL],
+    [
+      [GF, DAD],
+      [DAD, FOCAL],
+    ],
+    sex,
+  );
+
+  const statuses = new Map([
+    [
+      DISEASE_A,
+      new Map<string, Status>([
+        [FOCAL, 'affected'],
+        [DAD, 'affected'],
+        [GF, 'obligateAffected'],
+      ]),
+    ],
+  ]);
+
+  const result = computeContributors(
+    FOCAL,
+    graph,
+    asDiseases(statuses, 'yLinked'),
+    resolveSexFrom(sex),
+  );
+
+  it('includes only the focal herself', () => {
+    expect(result.nodes.has(FOCAL)).toBe(true);
+    expect(result.nodes.size).toBe(1);
+  });
+
+  it('does NOT climb the paternal male line of a female focal', () => {
+    expect(result.nodes.has(DAD)).toBe(false);
+    expect(result.nodes.has(GF)).toBe(false);
+  });
+});
+
+describe('computeContributors — (o) edges follow transmission, not just both-endpoints (consanguineous X-linked)', () => {
+  /**
+   * A homozygous-affected daughter descends from a consanguineous union: her
+   * father and her mother are both children of the same affected grandfather GF.
+   * GF is a contributor via the maternal path (father→daughter X to the mother),
+   * and the father is a contributor via the paternal path — so BOTH GF and the
+   * father are highlighted nodes and GF is the father's genetic parent. But GF
+   * gave his SON (the father) the Y, not an X, so the GF→FATHER edge must NOT
+   * light, even though both endpoints are contributors.
+   *
+   *   GF (affected male) ─┬─→ FATHER (affected male) ──┐   FGM (carrier female) → FATHER
+   *                       └─→ MOTHER (affected female) ┐│
+   *                                                    ││ DAUGHTER (focal, female, affected)
+   *                    MGM (female, unknown) → MOTHER  ┘┘
+   */
+  const GF = 'gf-o';
+  const FGM = 'fgm-o';
+  const MGM = 'mgm-o';
+  const FATHER = 'father-o';
+  const MOTHER = 'mother-o';
+  const DAUGHTER = 'daughter-o';
+
+  const sex = new Map<string, Sex>([
+    [GF, 'male'],
+    [FGM, 'female'],
+    [MGM, 'female'],
+    [FATHER, 'male'],
+    [MOTHER, 'female'],
+    [DAUGHTER, 'female'],
+  ]);
+
+  const graph = buildStubGraph(
+    [GF, FGM, MGM, FATHER, MOTHER, DAUGHTER],
+    [
+      [GF, FATHER],
+      [FGM, FATHER],
+      [GF, MOTHER],
+      [MGM, MOTHER],
+      [FATHER, DAUGHTER],
+      [MOTHER, DAUGHTER],
+    ],
+    sex,
+  );
+
+  const statuses = new Map([
+    [
+      DISEASE_A,
+      new Map<string, Status>([
+        [DAUGHTER, 'affected'],
+        [FATHER, 'affected'],
+        [MOTHER, 'affected'],
+        [GF, 'affected'],
+        [FGM, 'obligateCarrier'],
+        // MGM is unknown
+      ]),
+    ],
+  ]);
+
+  const result = computeContributors(
+    DAUGHTER,
+    graph,
+    asDiseases(statuses, 'xLinkedRecessive'),
+    resolveSexFrom(sex),
+  );
+
+  it('includes the father and the grandfather as contributor nodes', () => {
+    expect(result.nodes.has(FATHER)).toBe(true);
+    expect(result.nodes.has(GF)).toBe(true);
+  });
+
+  it('does NOT light the GF→FATHER edge (a son gets his father’s Y, not an X)', () => {
+    expect(result.edges.has(edgeKey(GF, FATHER))).toBe(false);
+  });
+
+  it('DOES light the GF→MOTHER edge (father→daughter transmits the X)', () => {
+    expect(result.edges.has(edgeKey(GF, MOTHER))).toBe(true);
+  });
+
+  it('reaches the father’s disease-X source through his carrier mother (FGM)', () => {
+    expect(result.nodes.has(FGM)).toBe(true);
+    expect(result.edges.has(edgeKey(FGM, FATHER))).toBe(true);
   });
 });
