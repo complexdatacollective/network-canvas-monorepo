@@ -82,20 +82,27 @@ type ConnectedProps = {
   edgeTypes: EdgeTypeOption[];
 };
 
+type EdgeTypeMultiSelectControlProps = {
+  input: { value: EdgeEntry[]; onChange: (edges: EdgeEntry[]) => void };
+  edgeTypes: EdgeTypeOption[];
+};
+
+const EdgeTypeMultiSelectControl = ({
+  input,
+  edgeTypes,
+}: EdgeTypeMultiSelectControlProps) => (
+  <EdgeTypeMultiSelectInner
+    edgeTypes={edgeTypes}
+    value={input.value ?? []}
+    onChange={input.onChange}
+  />
+);
+
 const EdgeTypeMultiSelectField = ({ edgeTypes }: ConnectedProps & OwnProps) => (
   <Field
     name="edges"
-    component={({
-      input,
-    }: {
-      input: { value: EdgeEntry[]; onChange: (edges: EdgeEntry[]) => void };
-    }) => (
-      <EdgeTypeMultiSelectInner
-        edgeTypes={edgeTypes}
-        value={input.value ?? []}
-        onChange={input.onChange}
-      />
-    )}
+    component={EdgeTypeMultiSelectControl}
+    edgeTypes={edgeTypes}
   />
 );
 

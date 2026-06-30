@@ -116,58 +116,53 @@ const baseStageWithComponent = {
   edges: [],
 };
 
-it('accepts a nodeForm field that carries a component and omits prompt', () => {
-  const result = networkComposerStage.safeParse({
-    ...baseStageWithComponent,
-    nodeForm: {
-      fields: [{ variable: 'age', component: ComponentTypes.Number }],
-    },
-  });
-  expect(result.success).toBe(true);
-});
-
-it('accepts an empty edges array (no minimum-edge requirement)', () => {
-  expect(
-    networkComposerStage.safeParse({ ...baseStageWithComponent, edges: [] })
-      .success,
-  ).toBe(true);
-});
-
-it('accepts an empty nodeForm.fields array', () => {
-  const result = networkComposerStage.safeParse({
-    ...baseStageWithComponent,
-    nodeForm: { fields: [] },
-  });
-  expect(result.success).toBe(true);
-});
-
-it('rejects a nodeForm field with an unknown component', () => {
-  const result = networkComposerStage.safeParse({
-    ...baseStageWithComponent,
-    nodeForm: { fields: [{ variable: 'age', component: 'NotAControl' }] },
-  });
-  expect(result.success).toBe(false);
-});
-
-it('carries component + parameters + prompt on an edge form field', () => {
-  const result = networkComposerStage.safeParse({
-    ...baseStageWithComponent,
-    edges: [
-      {
-        id: 'e1',
-        subject: { entity: 'edge', type: 'knows' },
-        form: {
-          fields: [
-            {
-              variable: 'closeness',
-              component: ComponentTypes.VisualAnalogScale,
-              parameters: { minLabel: 'Distant', maxLabel: 'Close' },
-              prompt: 'How close?',
-            },
-          ],
-        },
+describe('ComposerFormFieldSchema', () => {
+  it('accepts a nodeForm field that carries a component and omits prompt', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [{ variable: 'age', component: ComponentTypes.Number }],
       },
-    ],
+    });
+    expect(result.success).toBe(true);
   });
-  expect(result.success).toBe(true);
+
+  it('accepts an empty nodeForm.fields array', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: { fields: [] },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a nodeForm field with an unknown component', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: { fields: [{ variable: 'age', component: 'NotAControl' }] },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('carries component + parameters + prompt on an edge form field', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      edges: [
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [
+              {
+                variable: 'closeness',
+                component: ComponentTypes.VisualAnalogScale,
+                parameters: { minLabel: 'Distant', maxLabel: 'Close' },
+                prompt: 'How close?',
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
 });
