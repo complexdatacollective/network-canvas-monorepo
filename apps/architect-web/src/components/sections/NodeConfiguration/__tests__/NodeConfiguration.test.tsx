@@ -85,6 +85,7 @@ const defaultProps = {
   handleChangeFields: vi.fn(),
   layoutVariablesForSubject: [],
   categoricalVariablesForSubject: [],
+  quickAddOptionsForSubject: [],
 };
 
 const renderSection = (overrides: Partial<typeof defaultProps> = {}) =>
@@ -118,7 +119,7 @@ describe('NodeConfiguration', () => {
   });
 
   it('is disabled until a node type is selected', () => {
-    renderSection({ type: null, entity: 'node', disabled: true });
+    renderSection({ type: undefined, entity: 'node', disabled: true });
     expect(screen.getByTestId('section')).toHaveAttribute(
       'data-disabled',
       'true',

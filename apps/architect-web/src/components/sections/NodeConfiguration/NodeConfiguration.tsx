@@ -33,6 +33,13 @@ type CategoricalVariableOption = {
   value: string;
 };
 
+type TextVariableOption = {
+  isUsed?: boolean;
+  label: string;
+  type?: string;
+  value: string;
+};
+
 export type NodeConfigurationProps = {
   entity: 'node' | 'edge' | 'ego';
   type: string | null;
@@ -47,6 +54,7 @@ export type NodeConfigurationProps = {
   handleChangeFields: (fields: Array<Record<string, unknown>>) => void;
   layoutVariablesForSubject: LayoutVariableOption[];
   categoricalVariablesForSubject: CategoricalVariableOption[];
+  quickAddOptionsForSubject: TextVariableOption[];
 };
 
 export const NodeConfigurationComponent = ({
@@ -59,6 +67,7 @@ export const NodeConfigurationComponent = ({
   handleChangeFields,
   layoutVariablesForSubject,
   categoricalVariablesForSubject,
+  quickAddOptionsForSubject,
 }: NodeConfigurationProps) => (
   <Section
     title="Node Configuration"
@@ -82,7 +91,7 @@ export const NodeConfigurationComponent = ({
           label: 'Create or select a variable for the quick-add form',
           type,
           entity,
-          options: [],
+          options: quickAddOptionsForSubject,
           onCreateOption: (value: string) =>
             handleCreateVariable(value, 'text', 'quickAdd'),
         }}
@@ -166,6 +175,16 @@ const withCategoricalOptions = connect(
   }),
 );
 
+const withQuickAddOptions = connect(
+  (state: RootState, { entity, type }: OwnProps) => ({
+    quickAddOptionsForSubject: type
+      ? getVariableOptionsForSubject(state, { entity, type }).filter(
+          ({ type: variableType }) => variableType === 'text',
+        )
+      : [],
+  }),
+);
+
 export default compose<NodeConfigurationProps, StageEditorSectionProps>(
   withSubject,
   withCreateVariableHandlers,
@@ -173,4 +192,5 @@ export default compose<NodeConfigurationProps, StageEditorSectionProps>(
   withDisabledSubjectRequired,
   withLayoutOptions,
   withCategoricalOptions,
+  withQuickAddOptions,
 )(NodeConfigurationComponent);
