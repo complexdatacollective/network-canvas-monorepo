@@ -120,11 +120,15 @@ export default function ConditionPanel({
       noContainer
       spacing="none"
       shadow="md"
-      className="flex h-full min-h-0 flex-col"
+      className="flex h-full min-h-0 flex-col rounded-none"
       aria-label="Condition key"
     >
-      {/* Header — the condition selector, fixed above the scrolling key. */}
+      {/* Header — panel title + the condition selector, fixed above the
+          scrolling key. */}
       <div className="flex shrink-0 flex-col gap-2 border-b border-(--outline) p-4">
+        <Heading level="h4" margin="none">
+          Key
+        </Heading>
         <Label htmlFor={selectId}>Show a condition</Label>
         <SelectField
           id={selectId}
@@ -200,6 +204,7 @@ export default function ConditionPanel({
       {/* Footer — snapshot action, fixed below the scrolling key. */}
       <div className="shrink-0 border-t border-(--outline) p-4">
         <Button
+          color="primary"
           className="w-full"
           icon={
             <Icon name="Camera" aria-hidden="true" className="size-[1em]" />

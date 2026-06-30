@@ -72,11 +72,13 @@ describe('example pedigree is genetically coherent', () => {
       'xLinkedRecessive',
     );
     expect(status('father')).toBe('affected'); // David
+    expect(status('uncle-pat')).toBe('affected'); // Martin (David's brother)
     expect(status('son')).toBe('affected'); // Leo
     // David's affected X makes his daughter ego an OBLIGATE carrier...
     expect(status('ego')).toBe('obligateCarrier');
-    // ...whose carrier source traces up to David's mother Irene.
-    expect(status('gm-pat')).toBe('atRiskCarrier'); // Irene
+    // ...and two affected sons make their mother Irene an OBLIGATE carrier,
+    // so the X-linked source is shown explicitly (not a hidden possible carrier).
+    expect(status('gm-pat')).toBe('obligateCarrier'); // Irene
     // ego's daughter inherits the carrier risk.
     expect(status('daughter')).toBe('atRiskCarrier'); // Mia
     // ego is a known het carrier; the homozygous prior still flags via the

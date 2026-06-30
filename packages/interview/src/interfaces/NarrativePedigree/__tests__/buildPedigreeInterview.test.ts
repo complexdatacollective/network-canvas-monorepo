@@ -36,8 +36,8 @@ describe('buildPedigreeInterview — deterministic synthetic data', () => {
     it(`seed ${seed}: each disease is set only on its seeded individuals`, () => {
       // Huntington's (autosomal dominant): the maternal grandfather and mother.
       expect(idsWith(HUNTINGTONS_VAR)).toEqual(['gf', 'mother']);
-      // Haemophilia (X-linked recessive): father and ego's son.
-      expect(idsWith(HAEMOPHILIA_VAR)).toEqual(['father', 'son']);
+      // Haemophilia (X-linked recessive): father, his brother, and ego's son.
+      expect(idsWith(HAEMOPHILIA_VAR)).toEqual(['father', 'son', 'uncle-pat']);
       // Cystic fibrosis (autosomal recessive): ego's daughter only.
       expect(idsWith(CF_VAR)).toEqual(['daughter']);
       // Mitochondrial: the maternal grandmother.

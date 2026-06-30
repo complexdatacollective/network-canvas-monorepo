@@ -462,9 +462,23 @@ function renderParentChild(
     childId: conn.uplineChildIds?.[i],
   }));
 
-  // A child contributes when its id is on the focal lineage (highlightedNodeIds).
-  const childContributes = (childId: string | undefined): boolean =>
-    childId !== undefined && (highlightedNodeIds?.has(childId) ?? false);
+  // The sibling bar lights toward a child only when one of THESE parents
+  // actually transmits to it — i.e. there is a highlighted parent→child edge,
+  // the same predicate the descent and uplines use. Keying off node membership
+  // instead would light the bar toward any highlighted child even when its
+  // highlight came from elsewhere (e.g. a relative flagged by a downward-derived
+  // status whose own parents do not contribute), leaving the bar lit while the
+  // links above it stay dim. Falls back to node membership when there are no
+  // edge keys (the FamilyPedigree path).
+  const childContributes = (childId: string | undefined): boolean => {
+    if (childId === undefined) return false;
+    if (highlightedEdgeKeys !== undefined) {
+      return (conn.parentIds ?? []).some((parentId) =>
+        highlightedEdgeKeys.has(`${parentId}->${childId}`),
+      );
+    }
+    return highlightedNodeIds?.has(childId) ?? false;
+  };
 
   // The descent splits the bar into two sides. On each side the bar is bright
   // from the descent out to the FARTHEST contributing child's upline; beyond

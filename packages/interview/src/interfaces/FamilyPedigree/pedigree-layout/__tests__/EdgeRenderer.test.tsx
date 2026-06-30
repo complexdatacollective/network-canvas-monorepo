@@ -335,6 +335,39 @@ describe('PedigreeEdgeSvg — sibling bar per-segment dimming', () => {
     expect(wholeBar).toBeDefined();
     expect(wholeBar!.getAttribute('stroke')).toBe('black');
   });
+
+  // Regression: a child can be in highlightedNodeIds for a reason unrelated to
+  // THESE parents (e.g. flagged by a downward-derived status). The sibling bar
+  // must NOT light toward it unless one of these parents actually transmits to
+  // it (a highlighted parent→child edge), otherwise the bar lights while the
+  // links above it stay dim.
+  test('a highlighted child with no contributing parent edge does NOT light the bar toward it', () => {
+    // Both children are in the highlight set, but only FOCAL_CHILD has a
+    // contributing edge from PARENT; SIBLING's highlight is incidental.
+    const highlightedNodeIds = new Set([FOCAL_CHILD, SIBLING, PARENT]);
+    const highlightedEdgeKeys = new Set([edgeKey(PARENT, FOCAL_CHILD)]);
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeConnectorData([makeSplitConnector()])}
+        color="black"
+        width={300}
+        height={300}
+        highlightedNodeIds={highlightedNodeIds}
+        highlightedEdgeKeys={highlightedEdgeKeys}
+      />,
+    );
+
+    const barLines = siblingBarLines(container, 100);
+    // The stretch toward the incidentally-highlighted sibling (100 → 180) is dim.
+    const towardSibling = barLines.find(
+      (line) =>
+        Number(line.getAttribute('x1')) === 100 &&
+        Number(line.getAttribute('x2')) === 180,
+    );
+    expect(towardSibling).toBeDefined();
+    expect(isLineDimmed(towardSibling!)).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------

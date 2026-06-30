@@ -49,10 +49,11 @@ const MITO_VAR = 'hasMitochondrialMyopathy'; // mitochondrial
  *  - Huntington's (autosomal dominant): Arthur + Rose affected → the allele
  *    descends Arthur → Rose → ego → Leo & Mia, so ego's CHILDREN are at risk of
  *    a long-running dominant family condition.
- *  - Haemophilia A (X-linked recessive): David + Leo affected. David's X came
- *    from his carrier mother Irene; his daughter ego is therefore an OBLIGATE
- *    CARRIER, and her son Leo is affected — the classic carrier-mother →
- *    affected-son alternation reaching ego's son.
+ *  - Haemophilia A (X-linked recessive): David, his brother Martin, and ego's
+ *    son Leo affected. Two affected sons make their mother Irene an OBLIGATE
+ *    (unaffected) carrier; David's daughter ego is likewise an obligate carrier,
+ *    and her son Leo is affected — the classic carrier-female / affected-male
+ *    alternation, with the carrier source (Irene) shown explicitly.
  *  - Cystic fibrosis (autosomal recessive): only Mia is affected. Her two copies
  *    must come from BOTH parents, so ego AND Chris are unaffected OBLIGATE
  *    CARRIERS and her brother Leo is at risk — two non-affected carrier parents
@@ -257,6 +258,16 @@ export function buildPedigreeInterview(seed: number, showAtRisk = false) {
     [HAEMOPHILIA_VAR]: true,
   });
 
+  // David's brother (also a son of Harold + Irene), likewise affected with
+  // haemophilia. With TWO affected sons, their mother Irene is now an OBLIGATE
+  // carrier — so she renders as an (unaffected) carrier rather than a hidden
+  // possible carrier, making the X-linked source explicit.
+  person('uncle-pat', {
+    [NAME_VAR]: 'Martin',
+    [BIO_SEX_VAR]: 'male',
+    [HAEMOPHILIA_VAR]: true,
+  });
+
   // Ego (daughter of mother + father): female, no confirmed disease
   person('ego', {
     [NAME_VAR]: 'You',
@@ -319,9 +330,11 @@ export function buildPedigreeInterview(seed: number, showAtRisk = false) {
   bioEdge('gf-uncle', 'gf', 'uncle');
   partnerEdge('gm-gf', 'gm', 'gf');
 
-  // Paternal grandparents → father
+  // Paternal grandparents → father and his brother Martin
   bioEdge('gfp-father', 'gf-pat', 'father');
   bioEdge('gmp-father', 'gm-pat', 'father');
+  bioEdge('gfp-unclepat', 'gf-pat', 'uncle-pat');
+  bioEdge('gmp-unclepat', 'gm-pat', 'uncle-pat');
   partnerEdge('gfp-gmp', 'gf-pat', 'gm-pat');
 
   // Parents → ego (and ego's non-binary sibling Alex)

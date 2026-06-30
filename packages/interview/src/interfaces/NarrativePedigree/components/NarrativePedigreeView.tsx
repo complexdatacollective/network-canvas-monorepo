@@ -536,20 +536,23 @@ export default function NarrativePedigreeView({
 
       <ResizableFlexPanel
         storageKey="np-condition-key"
-        defaultBasis={68}
-        min={50}
-        max={80}
+        defaultBasis={72}
+        min={55}
+        max={84}
         className="min-h-0 w-full grow"
         aria-label="Resize the condition key panel"
       >
-        {/* Pedigree pane (resizable). Background click / Escape clears the focal
-            person; the Clear-focus control floats over it when one is set. */}
-        <div className="relative flex min-h-0 grow flex-col">
+        {/* Pedigree pane (resizable). min-w-0 lets the pane honour its resize
+            basis instead of being forced to the wide pedigree's content width;
+            the inner scroll container handles the overflow. Background click /
+            Escape clears the focal person; the Clear-focus control floats over it
+            when one is set. */}
+        <div className="relative flex min-h-0 min-w-0 grow flex-col overflow-hidden">
           <div
             ref={viewRef}
             data-narrative-pedigree-view
             role="presentation"
-            className="relative flex min-h-0 w-full grow items-start justify-center overflow-auto pt-6"
+            className="relative flex min-h-0 w-full min-w-0 grow items-start justify-center overflow-auto pt-6"
             onClick={() => setFocalId(null)}
             onKeyDown={(event) => {
               if (event.key === 'Escape') {

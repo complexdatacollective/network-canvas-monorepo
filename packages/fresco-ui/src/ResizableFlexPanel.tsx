@@ -173,6 +173,11 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
           id={firstPanelId}
           className={cx(
             'flex shrink-0 flex-col',
+            // Allow the pane to honour its flex-basis even when its content has a
+            // larger intrinsic size: without a 0 main-axis minimum, wide/tall
+            // content sets `min-width/height: auto` and overrides the basis,
+            // which also caps how far the handle can resize the OTHER pane.
+            isHorizontal ? 'min-w-0' : 'min-h-0',
             isOverridden &&
               'transition-[flex-basis] duration-(--animation-duration-standard) ease-(--animation-easing)',
             overrideBasis === 0 && 'overflow-hidden', // prevents content from preventing collapse when overridden to 0
