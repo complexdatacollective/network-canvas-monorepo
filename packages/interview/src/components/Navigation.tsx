@@ -1,4 +1,4 @@
-import { Dialog } from '@base-ui/react/dialog';
+import { Drawer } from '@base-ui/react/drawer';
 import {
   ChevronDown,
   ChevronLeft,
@@ -13,7 +13,7 @@ import { useSelector } from 'react-redux';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
-import Modal from '@codaco/fresco-ui/Modal';
+import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
@@ -121,10 +121,6 @@ type NavigationProps = {
   forwardButtonRef?: Ref<HTMLButtonElement>;
   backButtonRef?: Ref<HTMLButtonElement>;
   onExit?: () => void;
-  /**
-   * When true (and `goToStage` is provided), the progress bar becomes a button
-   * that opens a stages menu for jumping directly to any stage.
-   */
   allowStageNavigation?: boolean;
   goToStage?: (
     targetIndex: number,
@@ -154,14 +150,12 @@ const Navigation = ({
   const stageNavigationEnabled = !!allowStageNavigation && !!goToStage;
 
   const { confirm } = useDialog();
+  const portalContainer = usePortalContainer();
   const [menuOpen, setMenuOpen] = useState(false);
   const stages = useSelector(getProtocol).stages ?? [];
   const skipMap = useSelector(getSkipMap);
   const { displayedStep } = useCurrentStep();
 
-  // Mirrors the legacy "Show this stage anyway?" warning. Lives here (inside
-  // DialogProvider) and is injected into `goToStage`, which cannot open dialogs
-  // itself. Resolves true only when the participant confirms.
   const confirmSkip = useCallback(
     () =>
       confirm({
@@ -178,22 +172,11 @@ const Navigation = ({
 
   const handleSelectStage = useCallback(
     async (index: number) => {
-      // Close first so focus returns to the trigger before any confirm dialog
-      // traps it.
       setMenuOpen(false);
       await goToStage?.(index, confirmSkip);
     },
     [goToStage, confirmSkip],
   );
-
-  // The expanding stages menu slides in from the nav's edge: from the left for
-  // the vertical rail, from the bottom for the horizontal bar. Reduced motion
-  // collapses this to a plain fade.
-  const panelHidden = shouldReduceMotion
-    ? { opacity: 0 }
-    : orientation === 'vertical'
-      ? { opacity: 0, x: '-110%' }
-      : { opacity: 0, y: '110%' };
 
   return (
     <>
@@ -227,14 +210,6 @@ const Navigation = ({
           data-testid="previous-button"
         />
         {orientation === 'vertical' && <PassphrasePrompter />}
-        {/*
-         * The stage `label` (and `interviewScript`) are author-facing only: they
-         * are the human-readable stage title / authoring guidance shown in
-         * Architect. They are intentionally NOT rendered here in the interview
-         * chrome; only progress/navigation affordances are surfaced. This
-         * divergence from Architect is deliberate (#663) — do not add the stage
-         * title here without a product decision.
-         */}
         {stageNavigationEnabled ? (
           <button
             type="button"
@@ -276,39 +251,41 @@ const Navigation = ({
         />
       </MotionSurface>
       {stageNavigationEnabled && (
-        <Modal open={menuOpen} onOpenChange={setMenuOpen}>
-          <Dialog.Popup
-            render={
-              <motion.div
+        <Drawer.Root
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
+          swipeDirection={orientation === 'vertical' ? 'left' : 'down'}
+        >
+          <Drawer.Portal container={portalContainer ?? undefined}>
+            <Drawer.Backdrop className="bg-overlay publish-colors fixed inset-0 backdrop-blur-xs transition-opacity duration-300 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none" />
+            <Drawer.Viewport
+              className={cx(
+                'fixed',
+                orientation === 'vertical'
+                  ? 'inset-y-0 left-0'
+                  : 'inset-x-0 bottom-0',
+              )}
+            >
+              <Drawer.Popup
                 aria-label="Go to a stage"
-                // No border radius and flush to the nav's edge so the panel
-                // reads as the navigation surface extending out, not a separate
-                // floating card.
                 className={cx(
-                  'bg-surface elevation-medium flex flex-col overflow-hidden',
+                  'bg-surface elevation-medium flex flex-col overflow-hidden transition-transform duration-300 ease-out',
+                  'data-swiping:duration-0 motion-reduce:transition-none',
                   orientation === 'vertical'
-                    ? 'fixed inset-y-0 left-0 w-[min(34rem,92vw)]'
-                    : 'fixed inset-x-0 bottom-0 h-[min(85vh,40rem)]',
+                    ? 'h-full w-[min(34rem,92vw)] transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-ending-style:transform-[translateX(-100%)] data-starting-style:transform-[translateX(-100%)]'
+                    : 'h-[min(85vh,40rem)] w-full transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-ending-style:transform-[translateY(100%)] data-starting-style:transform-[translateY(100%)]',
                 )}
-                initial={panelHidden}
-                animate={{ opacity: 1, x: 0, y: 0 }}
-                exit={panelHidden}
-                transition={
-                  shouldReduceMotion
-                    ? { duration: 0 }
-                    : { type: 'spring', stiffness: 220, damping: 30 }
-                }
-              />
-            }
-          >
-            <StagesMenu
-              stages={stages}
-              currentStageIndex={displayedStep}
-              skipMap={skipMap}
-              onSelect={handleSelectStage}
-            />
-          </Dialog.Popup>
-        </Modal>
+              >
+                <StagesMenu
+                  stages={stages}
+                  currentStageIndex={displayedStep}
+                  skipMap={skipMap}
+                  onSelect={handleSelectStage}
+                />
+              </Drawer.Popup>
+            </Drawer.Viewport>
+          </Drawer.Portal>
+        </Drawer.Root>
       )}
     </>
   );

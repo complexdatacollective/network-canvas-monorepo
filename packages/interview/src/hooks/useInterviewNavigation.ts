@@ -96,18 +96,12 @@ export default function useInterviewNavigation() {
     previousValidStageIndexRef.current = previousValidStageIndex;
   }, [previousValidStageIndex]);
 
-  // Skip map for direct (progress-bar) navigation. Held in a ref so the async
-  // `goToStage` closure reads the live value, mirroring the index refs above.
   const skipMap = useSelector(getSkipMap);
   const skipMapRef = useRef(skipMap);
   useEffect(() => {
     skipMapRef.current = skipMap;
   }, [skipMap]);
 
-  // When a participant deliberately jumps to a stage that skip logic would
-  // normally hide (and confirms the warning), we record the target here so the
-  // recovery effect below does not immediately bounce them away from it. Any
-  // normal forward/backward navigation clears it.
   const [forcedStep, setForcedStep] = useState<number | null>(null);
 
   const [progress, setProgress] = useState(
@@ -249,26 +243,11 @@ export default function useInterviewNavigation() {
     protocolStages,
   ]);
 
-  /**
-   * Jump directly to an arbitrary stage (used by progress-bar navigation),
-   * mirroring the legacy app:
-   *   1. Run any registered `beforeNext` validation first; a handler returning
-   *      `false` blocks the jump.
-   *   2. If the target is hidden by skip logic, ask the caller to confirm
-   *      ("show this step anyway?") before navigating. The confirm UI lives in
-   *      the Navigation layer (inside DialogProvider), so it is injected here as
-   *      `confirmSkip` rather than opened from this hook.
-   *
-   * Unlike `moveForward`/`moveBackward`, a jump never advances prompts — the
-   * target always enters at its first prompt.
-   */
   const goToStage = useCallback(
     async (
       targetIndex: number,
       confirmSkip?: () => Promise<boolean>,
     ): Promise<void> => {
-      // Ignore no-op and mid-transition jumps. Jumping while the displayed
-      // stage is still catching up to `currentStep` would race AnimatePresence.
       if (targetIndex === currentStep || currentStep !== displayedStep) {
         return;
       }
@@ -289,7 +268,6 @@ export default function useInterviewNavigation() {
           if (!confirmed) {
             return;
           }
-          // Suppress the recovery effect for this deliberate landing.
           setForcedStep(targetIndex);
         } else {
           setForcedStep(null);
@@ -333,9 +311,6 @@ export default function useInterviewNavigation() {
   // stage is skipped on entry) advance to the next valid stage so a skipped
   // stage is never rendered.
   useEffect(() => {
-    // `forcedStep` exempts a deliberately-confirmed jump onto a skipped stage
-    // from recovery (see `goToStage`); otherwise it would be bounced away
-    // immediately.
     if (!isCurrentStepValid && currentStep !== forcedStep) {
       const recoveryStep = resolveRecoveryStep({
         currentStep,

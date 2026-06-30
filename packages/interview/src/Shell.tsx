@@ -224,14 +224,6 @@ type ShellProps = {
    * omitted, the orientation responds to the aspect ratio automatically.
    */
   navigationOrientation?: NavigationOrientation;
-  /**
-   * Allow participants to jump between steps by clicking the progress bar,
-   * which opens a searchable stages menu (mirrors the legacy app). Jumps run
-   * the same `beforeNext` validation as the next/back buttons and confirm
-   * before showing a step that skip logic would otherwise hide. Off by default.
-   * Has no effect in read-only controlled mode (`currentStep` without
-   * `onStepChange`), where navigation is a no-op.
-   */
   allowStageNavigation?: boolean;
 };
 

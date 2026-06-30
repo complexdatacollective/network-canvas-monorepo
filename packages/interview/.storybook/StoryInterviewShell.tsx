@@ -117,6 +117,7 @@ function buildPayload(raw: RawSyntheticPayload): {
 const StoryInterviewShell = (props: {
   rawPayload: string;
   hideNavigation?: boolean;
+  allowStageNavigation?: boolean;
   /** Set for capture stories so dev-only UI (e.g. FamilyPedigree's
    * Dump/Load buttons) never appears in screenshots. */
   isDevelopment?: boolean;
@@ -162,6 +163,7 @@ const StoryInterviewShell = (props: {
       analytics={{ installationId: 'storybook', hostApp: 'storybook' }}
       disableAnalytics={true}
       hideNavigation={props.hideNavigation}
+      allowStageNavigation={props.allowStageNavigation}
     />
   );
 };
