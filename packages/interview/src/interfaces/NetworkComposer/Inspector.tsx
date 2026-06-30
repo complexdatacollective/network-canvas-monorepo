@@ -12,7 +12,7 @@ import FormStoreProvider, {
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
-import type { TitlelessForm } from '@codaco/protocol-validation';
+import type { ComposerForm } from '@codaco/protocol-validation';
 import type { entityAttributesProperty, NcNode } from '@codaco/shared-consts';
 import useProtocolForm from '~/forms/useProtocolForm';
 import type { Subject } from '~/selectors/forms';
@@ -21,7 +21,7 @@ type Attributes = NcNode[typeof entityAttributesProperty];
 
 export type InspectorProps = {
   entityId: string;
-  form: TitlelessForm | undefined;
+  form: ComposerForm | undefined;
   subject: Subject;
   attributes: Attributes;
   onSave: (id: string, data: Attributes) => void;
@@ -83,7 +83,7 @@ function AttributeFormInner({
   subject,
   attributes,
   onSave,
-}: Omit<InspectorProps, 'form' | 'onDelete'> & { form: TitlelessForm }) {
+}: Omit<InspectorProps, 'form' | 'onDelete'> & { form: ComposerForm }) {
   const initialValues = useMemo(
     () =>
       Object.fromEntries(

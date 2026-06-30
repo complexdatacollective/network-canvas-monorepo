@@ -22,6 +22,7 @@ import VisualAnalogScaleField from '@codaco/fresco-ui/form/fields/VisualAnalogSc
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import { addDays, todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
 import type {
+  ComposerFormField,
   ComponentType,
   FormField,
   StageSubject,
@@ -85,7 +86,7 @@ export default function useProtocolForm({
   namespace,
   currentEntityId,
 }: {
-  fields: FormField[];
+  fields: Array<FormField | ComposerFormField>;
   autoFocus?: boolean;
   initialValues?: Record<string, FieldValue>;
   subject?: Subject;

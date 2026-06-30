@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
 import Node from '@codaco/fresco-ui/Node';
-import type { TitlelessForm } from '@codaco/protocol-validation';
+import type { ComposerForm } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -55,7 +55,7 @@ type DrawerEditor = {
   kind: 'node' | 'edge';
   entityId: string;
   title: string;
-  form: TitlelessForm | undefined;
+  form: ComposerForm | undefined;
   subject: Subject;
   attributes: NcNode[typeof entityAttributesProperty];
 };
