@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { InterviewPayload } from '@codaco/interview';
 
+import type { PreviewPayload } from '../messages';
+
 const { shellMock } = vi.hoisted(() => ({ shellMock: vi.fn() }));
 vi.mock('@codaco/interview', async () => {
   const actual =
@@ -35,9 +37,13 @@ function makeProtocol() {
   };
 }
 
+type TestPreviewPayload = Omit<PreviewPayload, 'protocol'> & {
+  protocol: unknown;
+};
+
 function makePayload(
-  overrides: Record<string, unknown> = {},
-): Record<string, unknown> {
+  overrides: Partial<TestPreviewPayload> = {},
+): TestPreviewPayload {
   return {
     type: 'preview:payload',
     protocol: makeProtocol(),
