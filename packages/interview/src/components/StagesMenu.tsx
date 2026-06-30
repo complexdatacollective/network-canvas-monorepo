@@ -3,7 +3,6 @@
 import { LayoutTemplate, Search } from 'lucide-react';
 import {
   type KeyboardEvent,
-  type ReactNode,
   useEffect,
   useMemo,
   useRef,
@@ -15,6 +14,10 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import InterfacePicture from '@codaco/interface-images/InterfacePicture';
+import manifest, {
+  type InterfaceType,
+} from '@codaco/interface-images/manifest';
 
 /**
  * The minimal stage shape the menu needs. Note we surface the author-supplied
@@ -37,14 +40,10 @@ type StagesMenuProps = {
   skipMap: Record<number, boolean>;
   /** Called with the chosen stage index when an item is activated. */
   onSelect: (index: number) => void;
-  /**
-   * Host-injected renderer for a stage's preview thumbnail, keyed by stage
-   * `type`. The interview package ships no screenshots itself (they live in the
-   * private `@codaco/interface-images`), so hosts supply them. When omitted (or
-   * it returns nothing), a placeholder icon is shown instead.
-   */
-  renderStagePreview?: (stageType: string) => ReactNode;
 };
+
+const isInterfaceType = (type: string): type is InterfaceType =>
+  Object.hasOwn(manifest, type);
 
 /**
  * The body of the expanding stages menu: a vertical timeline of every authored
@@ -58,7 +57,6 @@ export default function StagesMenu({
   currentStageIndex,
   skipMap,
   onSelect,
-  renderStagePreview,
 }: StagesMenuProps) {
   const [query, setQuery] = useState('');
 
@@ -195,7 +193,15 @@ export default function StagesMenu({
                     )}
                   >
                     <span className="flex aspect-video w-32 shrink-0 items-center justify-center overflow-hidden rounded-xs bg-black/20">
-                      {renderStagePreview?.(stage.type) ?? (
+                      {isInterfaceType(stage.type) ? (
+                        <InterfacePicture
+                          type={stage.type}
+                          ratio="16:9"
+                          sizes="8rem"
+                          alt=""
+                          className="size-full object-cover"
+                        />
+                      ) : (
                         <LayoutTemplate className="size-6 opacity-40" />
                       )}
                     </span>

@@ -1,11 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 
-import InterfacePicture from '@codaco/interface-images/InterfacePicture';
-import manifest, {
-  type InterfaceType,
-} from '@codaco/interface-images/manifest';
-
 import StagesMenu, { type StageSummary } from './StagesMenu';
 
 /**
@@ -15,9 +10,8 @@ import StagesMenu, { type StageSummary } from './StagesMenu';
  * + keyboard listbox nav.
  *
  * The menu is pure (no Redux/dialog access); in the interview it is mounted in
- * the expanding panel the Navigation rail opens. Preview thumbnails are
- * injected by the host via `renderStagePreview`; this story supplies real
- * screenshots from `@codaco/interface-images` (a dev-only dependency).
+ * the expanding panel the Navigation rail opens. Per-stage thumbnails are
+ * rendered by the menu itself from `@codaco/interface-images`.
  */
 const stages: StageSummary[] = [
   { id: 's0', type: 'Information', label: 'Welcome' },
@@ -26,20 +20,6 @@ const stages: StageSummary[] = [
   { id: 's3', type: 'OrdinalBin', label: 'Your community' },
   { id: 's4', type: 'Information', label: 'Wrapping up' },
 ];
-
-const isInterfaceType = (type: string): type is InterfaceType =>
-  Object.hasOwn(manifest, type);
-
-const renderStagePreview = (type: string) =>
-  isInterfaceType(type) ? (
-    <InterfacePicture
-      type={type}
-      ratio="16:9"
-      sizes="8rem"
-      alt=""
-      className="size-full object-cover"
-    />
-  ) : null;
 
 const meta: Meta<typeof StagesMenu> = {
   title: 'Components/StagesMenu',
@@ -53,7 +33,6 @@ const meta: Meta<typeof StagesMenu> = {
     // The third stage is hidden by skip logic.
     skipMap: { 0: false, 1: false, 2: true, 3: false, 4: false },
     onSelect: fn(),
-    renderStagePreview,
   },
   decorators: [
     (Story) => (

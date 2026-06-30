@@ -7,13 +7,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
-import {
-  type ComponentProps,
-  type ReactNode,
-  type Ref,
-  useCallback,
-  useState,
-} from 'react';
+import { type ComponentProps, type Ref, useCallback, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
@@ -136,8 +130,6 @@ type NavigationProps = {
     targetIndex: number,
     confirmSkip?: () => Promise<boolean>,
   ) => Promise<void>;
-  /** Host-injected per-stage-type preview thumbnail for the stages menu. */
-  renderStagePreview?: (stageType: string) => ReactNode;
 };
 
 const Navigation = ({
@@ -153,7 +145,6 @@ const Navigation = ({
   onExit,
   allowStageNavigation,
   goToStage,
-  renderStagePreview,
 }: NavigationProps) => {
   const BackIcon = orientation === 'vertical' ? ChevronUp : ChevronLeft;
   const ForwardIcon = orientation === 'vertical' ? ChevronDown : ChevronRight;
@@ -315,7 +306,6 @@ const Navigation = ({
               currentStageIndex={displayedStep}
               skipMap={skipMap}
               onSelect={handleSelectStage}
-              renderStagePreview={renderStagePreview}
             />
           </Dialog.Popup>
         </Modal>

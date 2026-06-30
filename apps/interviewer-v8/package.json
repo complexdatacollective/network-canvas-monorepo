@@ -60,7 +60,6 @@
     "@codaco/art": "workspace:*",
     "@codaco/biometric-keystore": "workspace:*",
     "@codaco/fresco-ui": "workspace:*",
-    "@codaco/interface-images": "workspace:*",
     "@codaco/interview": "workspace:*",
     "@codaco/network-exporters": "workspace:*",
     "@codaco/protocol-utilities": "workspace:*",

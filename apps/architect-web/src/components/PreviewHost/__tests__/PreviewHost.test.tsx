@@ -103,7 +103,7 @@ describe('PreviewHost', () => {
     expect(typeof call.onStepChange).toBe('function');
   });
 
-  it('forwards allowStageNavigation from the payload to Shell', () => {
+  it('always enables stage navigation in Architect preview', () => {
     render(<PreviewHost />);
     const protocol = makeProtocol();
     postPayload(openerStub, {
@@ -111,7 +111,6 @@ describe('PreviewHost', () => {
       protocol,
       startStage: 0,
       useSyntheticData: false,
-      allowStageNavigation: true,
     });
 
     const call = shellMock.mock.calls.at(-1)?.[0] as {

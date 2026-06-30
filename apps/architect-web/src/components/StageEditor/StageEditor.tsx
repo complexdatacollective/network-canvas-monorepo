@@ -21,10 +21,8 @@ import { launchPreview } from '~/components/PreviewHost/launchPreview';
 import StageEditorNav from '~/components/ProjectNav/StageEditorNav';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
-  getPreviewAllowStageNavigation,
   getPreviewIgnoreSkipLogic,
   getPreviewUseSyntheticData,
-  setPreviewAllowStageNavigation,
   setPreviewIgnoreSkipLogic,
   setPreviewUseSyntheticData,
 } from '~/ducks/modules/app';
@@ -85,7 +83,6 @@ const StageEditor = (props: StageEditorProps) => {
   const [isOpeningPreview, setIsOpeningPreview] = useState(false);
   const useSyntheticData = useSelector(getPreviewUseSyntheticData);
   const ignoreSkipLogic = useSelector(getPreviewIgnoreSkipLogic);
-  const allowStageNavigation = useSelector(getPreviewAllowStageNavigation);
 
   // Whether the wip protocol (committed protocol + current stage edits) passes
   // full schema validation. We disable preview whenever it does not, so the
@@ -254,7 +251,6 @@ const StageEditor = (props: StageEditorProps) => {
         startStage,
         useSyntheticData,
         skipLogicBypassed,
-        allowStageNavigation,
       });
       if (result.kind === 'popup-blocked') {
         dispatch(
@@ -288,7 +284,6 @@ const StageEditor = (props: StageEditorProps) => {
     insertAtIndex,
     useSyntheticData,
     ignoreSkipLogic,
-    allowStageNavigation,
   ]);
   const sections = useMemo(
     () => getInterface(interfaceType).sections,
@@ -354,17 +349,6 @@ const StageEditor = (props: StageEditorProps) => {
             />
             <span className="text-sm">
               Always show this stage in preview when skip logic would hide it
-            </span>
-          </label>
-          <label className="flex items-center gap-3">
-            <Switch
-              checked={allowStageNavigation}
-              onCheckedChange={(checked) =>
-                dispatch(setPreviewAllowStageNavigation(checked))
-              }
-            />
-            <span className="text-sm">
-              Allow jumping between stages via the progress bar
             </span>
           </label>
         </div>

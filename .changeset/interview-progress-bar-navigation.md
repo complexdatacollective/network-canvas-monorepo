@@ -9,7 +9,5 @@ Jumps run the same `beforeNext` validation as the next/back buttons and ask for
 confirmation before showing a stage that skip logic would otherwise hide. Off by
 default; no change to existing behaviour.
 
-Also adds an optional `renderStagePreview?: (stageType) => ReactNode` prop so
-hosts can supply per-stage-type preview thumbnails for the menu (e.g. from
-`@codaco/interface-images`); when omitted, a placeholder icon is shown. The
-interview package ships no image assets itself.
+Per-stage preview thumbnails in the menu are rendered by the package itself from
+`@codaco/interface-images`, so hosts don't supply them.

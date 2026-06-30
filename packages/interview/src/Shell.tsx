@@ -4,7 +4,7 @@
 import { Toast } from '@base-ui/react/toast';
 import { AnimatePresence, motion } from 'motion/react';
 import type { PostHog } from 'posthog-js';
-import { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Provider } from 'react-redux';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -56,13 +56,11 @@ function Interview({
   hideNavigation = false,
   navigationOrientation: orientationProp,
   allowStageNavigation,
-  renderStagePreview,
 }: {
   onExit?: () => void;
   hideNavigation?: boolean;
   navigationOrientation?: NavigationOrientation;
   allowStageNavigation?: boolean;
-  renderStagePreview?: (stageType: string) => ReactNode;
 }) {
   const {
     stage,
@@ -174,7 +172,6 @@ function Interview({
               forwardButtonRef={forwardButtonRef}
               backButtonRef={backButtonRef}
               onExit={onExit}
-              renderStagePreview={renderStagePreview}
             />
           )}
           {/*
@@ -236,16 +233,6 @@ type ShellProps = {
    * `onStepChange`), where navigation is a no-op.
    */
   allowStageNavigation?: boolean;
-  /**
-   * Optional renderer for a stage's preview thumbnail in the stages menu,
-   * keyed by stage `type`. The interview package ships no screenshots itself
-   * (they live in the private `@codaco/interface-images`), so hosts that want
-   * thumbnails provide them here — e.g.
-   * `renderStagePreview={(type) => <InterfacePicture type={type} … />}`. When
-   * omitted, the menu shows a placeholder icon. Only used when
-   * `allowStageNavigation` is on.
-   */
-  renderStagePreview?: (stageType: string) => ReactNode;
 };
 
 const Shell = ({
@@ -263,7 +250,6 @@ const Shell = ({
   hideNavigation,
   navigationOrientation,
   allowStageNavigation,
-  renderStagePreview,
 }: ShellProps) => {
   // Anchor onSync in a ref so the store factory receives a stable callback
   // (the sync middleware closes over it once at store creation). Hosts
@@ -341,7 +327,6 @@ const Shell = ({
               hideNavigation={hideNavigation}
               navigationOrientation={navigationOrientation}
               allowStageNavigation={allowStageNavigation}
-              renderStagePreview={renderStagePreview}
             />
           </CurrentStepProvider>
         </ContractProvider>

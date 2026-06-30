@@ -65,7 +65,6 @@ describe('launchPreview', () => {
       startStage: 2,
       useSyntheticData: true,
       skipLogicBypassed: false,
-      allowStageNavigation: false,
     });
 
     expect(openSpy).toHaveBeenCalledWith('/preview/', '_blank');
@@ -81,7 +80,6 @@ describe('launchPreview', () => {
         startStage: 2,
         useSyntheticData: true,
         skipLogicBypassed: false,
-        allowStageNavigation: false,
       },
       window.location.origin,
     );
@@ -94,7 +92,6 @@ describe('launchPreview', () => {
       startStage: 1,
       useSyntheticData: false,
       skipLogicBypassed: false,
-      allowStageNavigation: false,
     });
     postReadyFromSource(popup);
     await promise;
@@ -115,7 +112,6 @@ describe('launchPreview', () => {
         startStage: 0,
         useSyntheticData: true,
         skipLogicBypassed: false,
-        allowStageNavigation: false,
       }),
     ).resolves.toEqual({
       kind: 'popup-blocked',
@@ -130,7 +126,6 @@ describe('launchPreview', () => {
         startStage: 0,
         useSyntheticData: true,
         skipLogicBypassed: false,
-        allowStageNavigation: false,
       }),
     ).rejects.toThrow(/no active protocol/i);
     expect(openSpy).not.toHaveBeenCalled();
@@ -142,7 +137,6 @@ describe('launchPreview', () => {
       startStage: 0,
       useSyntheticData: true,
       skipLogicBypassed: false,
-      allowStageNavigation: false,
     });
 
     // Forged message from a different window
@@ -162,7 +156,6 @@ describe('launchPreview', () => {
       startStage: 0,
       useSyntheticData: true,
       skipLogicBypassed: false,
-      allowStageNavigation: false,
     });
 
     postReadyFromSource(popup, 'https://attacker.example');
@@ -178,7 +171,6 @@ describe('launchPreview', () => {
       startStage: 0,
       useSyntheticData: true,
       skipLogicBypassed: false,
-      allowStageNavigation: false,
     });
     const expectation = expect(promise).rejects.toThrow(/didn't load/i);
     await vi.advanceTimersByTimeAsync(10_000);
@@ -191,7 +183,6 @@ describe('launchPreview', () => {
       startStage: 0,
       useSyntheticData: true,
       skipLogicBypassed: false,
-      allowStageNavigation: false,
     });
 
     postReadyFromSource(popup);

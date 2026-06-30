@@ -10,7 +10,6 @@ import {
   Shell,
 } from '@codaco/interview';
 import { generateNetwork } from '@codaco/protocol-utilities';
-import StageTypeImage from '~/components/StageTypeImage';
 import Button from '~/lib/legacy-ui/components/Button';
 
 import { currentProtocolToPayload } from './currentProtocolToPayload';
@@ -56,7 +55,6 @@ export function PreviewHost() {
   );
   const [skipLogicNoticeDismissed, setSkipLogicNoticeDismissed] =
     useState(false);
-  const [allowStageNavigation, setAllowStageNavigation] = useState(false);
   const onRequestAsset = useAssetResolver(protocolId);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: retryNonce is the deliberate retrigger key
@@ -83,7 +81,6 @@ export function PreviewHost() {
       setBypassedStageIndex(
         previewPayload.skipLogicBypassed ? previewPayload.startStage : null,
       );
-      setAllowStageNavigation(previewPayload.allowStageNavigation);
       setSkipLogicNoticeDismissed(false);
       setTimedOut(false);
     };
@@ -173,16 +170,9 @@ export function PreviewHost() {
         onRequestAsset={onRequestAsset}
         currentStep={currentStep}
         onStepChange={setCurrentStep}
-        allowStageNavigation={allowStageNavigation}
-        renderStagePreview={(type) => (
-          <StageTypeImage
-            type={type}
-            ratio="16:9"
-            sizes="8rem"
-            alt=""
-            className="size-full object-cover"
-          />
-        )}
+        // Stage navigation is always available in Architect preview so authors
+        // can jump between stages while reviewing a protocol.
+        allowStageNavigation
         disableAnalytics
         analytics={{
           installationId: 'architect-preview',

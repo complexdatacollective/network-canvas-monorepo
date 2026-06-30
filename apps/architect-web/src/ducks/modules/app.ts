@@ -80,18 +80,4 @@ export function getPreviewIgnoreSkipLogic(
   return raw === undefined ? true : Boolean(raw);
 }
 
-const PREVIEW_ALLOW_STAGE_NAVIGATION_KEY = 'previewAllowStageNavigation';
-
-export function setPreviewAllowStageNavigation(value: boolean) {
-  return setProperty({ key: PREVIEW_ALLOW_STAGE_NAVIGATION_KEY, value });
-}
-
-// Defaults to false (unset → off): progress-bar step navigation is an opt-in
-// preview aid, off unless the user turns it on.
-export function getPreviewAllowStageNavigation(
-  state: Pick<RootState, 'app'>,
-): boolean {
-  return Boolean(get(state, ['app', PREVIEW_ALLOW_STAGE_NAVIGATION_KEY]));
-}
-
 export default appSlice.reducer;

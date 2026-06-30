@@ -13,7 +13,6 @@ import {
   type StepChangeHandler,
 } from '@codaco/interview';
 import { InterviewComplete } from '~/components/InterviewComplete';
-import StagePreviewImage from '~/components/StagePreviewImage';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import {
   buildResolvedAssets,
@@ -263,7 +262,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         onExit={() => void handleExit()}
         navigationOrientation={navigationOrientation}
         allowStageNavigation={allowStageNavigation}
-        renderStagePreview={(type) => <StagePreviewImage type={type} />}
       />
     </div>
   );

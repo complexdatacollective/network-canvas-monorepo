@@ -11,9 +11,6 @@ export type PreviewPayload = {
   // True when skip logic was stripped from the previewed stage so it always
   // shows. The preview surfaces a notice on that stage when this is set.
   skipLogicBypassed: boolean;
-  // When true, the previewed interview lets you jump between steps via the
-  // progress bar. Off by default.
-  allowStageNavigation: boolean;
 };
 
 type PreviewMessage = PreviewReady | PreviewPayload;
