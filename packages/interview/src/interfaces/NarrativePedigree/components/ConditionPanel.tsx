@@ -5,6 +5,7 @@ import { useId } from 'react';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import { Label } from '@codaco/fresco-ui/Label';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import type { Status } from '../genetics/status';
 import { Sticker } from './Sticker';
@@ -126,7 +127,9 @@ export default function ConditionPanel({
       {diseases.length > 0 && (
         <>
           <hr className="my-1 border-t border-(--outline)" />
-          <span className="text-sm font-semibold opacity-80">Conditions</span>
+          <Heading level="label" margin="none">
+            Conditions
+          </Heading>
           {diseases.map((disease) => (
             <div key={disease.id} className="flex items-center gap-4 text-base">
               <span
@@ -141,9 +144,9 @@ export default function ConditionPanel({
       )}
 
       <hr className="my-1 border-t border-(--outline)" />
-      <span className="text-sm font-semibold opacity-80">
+      <Heading level="label" margin="none">
         What the symbols mean
-      </span>
+      </Heading>
       {keyEntries.map((entry) => (
         <div key={entry.status} className="flex items-center gap-4 text-base">
           <span aria-hidden className="shrink-0">

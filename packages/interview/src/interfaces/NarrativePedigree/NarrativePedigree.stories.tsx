@@ -24,34 +24,44 @@ const GAMETE_ROLE_VAR = 'gameteRole';
 // Disease variables (boolean node attributes)
 const HUNTINGTONS_VAR = 'hasHuntingtons'; // autosomalDominant
 const HAEMOPHILIA_VAR = 'hasHaemophilia'; // xLinkedRecessive
+const CF_VAR = 'hasCysticFibrosis'; // autosomalRecessive
 const MITO_VAR = 'hasMitochondrialMyopathy'; // mitochondrial
 
 /**
- * Build a SyntheticInterview seeded with a three-generation pedigree plus a
- * FamilyPedigree source stage and a NarrativePedigree stage. The pedigree
- * nodes carry disease booleans and biological-sex / gameteRole so the genetics
- * engine can resolve statuses for autosomalDominant, xLinkedRecessive, and
- * mitochondrial patterns.
+ * Build a SyntheticInterview seeded with a four-generation pedigree plus a
+ * FamilyPedigree source stage and a NarrativePedigree stage. The nominations are
+ * chosen so each condition is GENETICALLY COHERENT for its inheritance pattern —
+ * every affected person has the two-copy source (recessive) or an affected/
+ * carrier ancestor (dominant / X-linked) in their own shown ancestry — and so
+ * that several conditions reach ego's children down long family lines.
  *
- * Pedigree shape:
- *   grandmother (mito+) ── grandfather
- *          │
- *   mother (mito carrier line) ── father (haemophilia+)
- *                │
- *          ┌─────┴─────┐
- *         ego (female)  uncle (HD+)
- *        / \
- *     son  daughter
+ * Pedigree:
+ *   Eleanor (F, mito) ── Arthur (M, HD)          Harold (M) ── Irene (F)
+ *            └──────┬──────┘                              └────┬────┘
+ *         Rose (F, HD)  Frank (M)                       David (M, haemophilia)
+ *            └──────────────────────┬───────────────────────┘
+ *                          ego "You" (F) ── Chris (M)        Alex (NB, ego's sib)
+ *                                 └───────┬───────┘
+ *                                  Leo (M)   Mia (F, CF)
+ *   (Chris's parents: George (M) ── Helen (F).)
  *
- * ego also has a paternal lineage: grandfather-paternal (HD+) ── gm-paternal
- *   father is ego's biological father (and haemophilia carrier for XLR).
- *   grandfather-paternal has Huntington's → father → ego at-risk.
+ * Conditions and the scenario each demonstrates:
+ *  - Huntington's (autosomal dominant): Arthur + Rose affected → the allele
+ *    descends Arthur → Rose → ego → Leo & Mia, so ego's CHILDREN are at risk of
+ *    a long-running dominant family condition.
+ *  - Haemophilia A (X-linked recessive): David + Leo affected. David's X came
+ *    from his carrier mother Irene; his daughter ego is therefore an OBLIGATE
+ *    CARRIER, and her son Leo is affected — the classic carrier-mother →
+ *    affected-son alternation reaching ego's son.
+ *  - Cystic fibrosis (autosomal recessive): only Mia is affected. Her two copies
+ *    must come from BOTH parents, so ego AND Chris are unaffected OBLIGATE
+ *    CARRIERS and her brother Leo is at risk — two non-affected carrier parents
+ *    passing a recessive condition to a child.
+ *  - Mitochondrial myopathy (mitochondrial): Eleanor affected → the maternal line
+ *    Eleanor → Rose → ego → Leo & Mia is at risk.
  *
- * Partner-side disease scenario:
- *   Chris's father (cf) has Huntington's Disease. cf + Chris's mother (cm) →
- *   Chris. Chris + ego → Leo (son) and Mia (daughter). Selecting a child as
- *   focal in Huntington's-only mode lights the partner-side (Chris, cf) and
- *   dims ego's maternal side (Eleanor, Arthur, Rose) which do not carry HD.
+ * Focal highlighting (Huntington's, focus Leo) lights the maternal dominant line
+ * (ego, Rose, Arthur) and dims the paternal/partner sides, which carry no HD.
  */
 export function buildPedigreeInterview(seed: number, showAtRisk = false) {
   const si = new SyntheticInterview(seed);
@@ -93,6 +103,7 @@ export function buildPedigreeInterview(seed: number, showAtRisk = false) {
     name: HAEMOPHILIA_VAR,
     type: 'boolean',
   });
+  nodeType.addVariable({ id: CF_VAR, name: CF_VAR, type: 'boolean' });
   nodeType.addVariable({ id: MITO_VAR, name: MITO_VAR, type: 'boolean' });
 
   // --- Edge type ----------------------------------------------------------
@@ -153,6 +164,11 @@ export function buildPedigreeInterview(seed: number, showAtRisk = false) {
         variable: HAEMOPHILIA_VAR,
       },
       {
+        id: 'nom-cf',
+        text: 'Who has been diagnosed with cystic fibrosis?',
+        variable: CF_VAR,
+      },
+      {
         id: 'nom-mt',
         text: 'Who has been diagnosed with mitochondrial myopathy?',
         variable: MITO_VAR,
@@ -181,6 +197,13 @@ export function buildPedigreeInterview(seed: number, showAtRisk = false) {
         inheritancePattern: 'xLinkedRecessive',
       },
       {
+        id: 'cysticFibrosis',
+        label: 'Cystic Fibrosis',
+        color: '#805ad5',
+        variable: CF_VAR,
+        inheritancePattern: 'autosomalRecessive',
+      },
+      {
         id: 'mitochondrial',
         label: 'Mitochondrial Myopathy',
         color: '#38a169',
@@ -200,26 +223,34 @@ export function buildPedigreeInterview(seed: number, showAtRisk = false) {
   const person = (uid: string, attrs: Record<string, unknown>) =>
     si.addManualNode(fpId, nodeType.id, uid, attrs);
 
-  // Maternal grandparents: grandmother has mitochondrial myopathy
+  // Maternal grandparents. Eleanor founds the mitochondrial line; Arthur founds
+  // the autosomal-dominant Huntington's line.
   person('gm', {
     [NAME_VAR]: 'Eleanor',
     [BIO_SEX_VAR]: 'female',
     [MITO_VAR]: true,
   });
-  person('gf', { [NAME_VAR]: 'Arthur', [BIO_SEX_VAR]: 'male' });
-
-  // Paternal grandparents: paternal grandfather has Huntington's
-  person('gf-pat', {
-    [NAME_VAR]: 'Harold',
+  person('gf', {
+    [NAME_VAR]: 'Arthur',
     [BIO_SEX_VAR]: 'male',
     [HUNTINGTONS_VAR]: true,
   });
+
+  // Paternal grandparents. Irene is the (carrier) source of David's X-linked
+  // haemophilia; neither is nominated affected.
+  person('gf-pat', { [NAME_VAR]: 'Harold', [BIO_SEX_VAR]: 'male' });
   person('gm-pat', { [NAME_VAR]: 'Irene', [BIO_SEX_VAR]: 'female' });
 
-  // Mother (daughter of Eleanor + Arthur): in the mitochondrial carrier line
-  person('mother', { [NAME_VAR]: 'Rose', [BIO_SEX_VAR]: 'female' });
+  // Mother (daughter of Eleanor + Arthur): Huntington's has manifested in this
+  // second generation; she is also on Eleanor's maternal mitochondrial line.
+  person('mother', {
+    [NAME_VAR]: 'Rose',
+    [BIO_SEX_VAR]: 'female',
+    [HUNTINGTONS_VAR]: true,
+  });
 
-  // Father (son of Harold + Irene): haemophilia affected; also at-risk for HD
+  // Father (son of Harold + Irene): affected with X-linked haemophilia (his X
+  // from carrier mother Irene), so all his daughters are obligate carriers.
   person('father', {
     [NAME_VAR]: 'David',
     [BIO_SEX_VAR]: 'male',
@@ -239,33 +270,32 @@ export function buildPedigreeInterview(seed: number, showAtRisk = false) {
   // it does not alter anyone else's inheritance.
   person('sibling', { [NAME_VAR]: 'Alex', [BIO_SEX_VAR]: 'other' });
 
-  // Ego's partner: Chris
+  // Ego's partner Chris, and his parents George + Helen. Chris carries a cystic-
+  // fibrosis allele (inferred from his affected daughter Mia), but is not himself
+  // nominated affected.
   person('partner', { [NAME_VAR]: 'Chris', [BIO_SEX_VAR]: 'male' });
-
-  // Partner-side disease: Chris's father (cf) has Huntington's Disease.
-  // This introduces a second HD lineage entering the children via Chris's side,
-  // so that selecting a child as focal (in HD-only mode) lights the partner-side
-  // contributors (cf, Chris) while dimming ego's maternal side (Eleanor, Arthur,
-  // Rose) which carry no HD allele.
-  person('cf', {
-    [NAME_VAR]: 'George',
-    [BIO_SEX_VAR]: 'male',
-    [HUNTINGTONS_VAR]: true,
-  });
+  person('cf', { [NAME_VAR]: 'George', [BIO_SEX_VAR]: 'male' });
   person('cm', { [NAME_VAR]: 'Helen', [BIO_SEX_VAR]: 'female' });
 
-  // Ego's son (at risk for HD from both paternal lineage and partner's side)
-  person('son', { [NAME_VAR]: 'Leo', [BIO_SEX_VAR]: 'male' });
-
-  // Ego's daughter
-  person('daughter', { [NAME_VAR]: 'Mia', [BIO_SEX_VAR]: 'female' });
-
-  // Uncle (brother of mother): has Huntington's — shows AD in maternal line
-  person('uncle', {
-    [NAME_VAR]: 'Frank',
+  // Ego's son: affected with haemophilia — his single X came from carrier ego,
+  // so this X-linked condition reaches ego's own child.
+  person('son', {
+    [NAME_VAR]: 'Leo',
     [BIO_SEX_VAR]: 'male',
-    [HUNTINGTONS_VAR]: true,
+    [HAEMOPHILIA_VAR]: true,
   });
+
+  // Ego's daughter: affected with cystic fibrosis — two recessive copies, one
+  // from each unaffected carrier parent (ego and Chris).
+  person('daughter', {
+    [NAME_VAR]: 'Mia',
+    [BIO_SEX_VAR]: 'female',
+    [CF_VAR]: true,
+  });
+
+  // Uncle (brother of Rose): not nominated affected — inferred at risk for the
+  // Huntington's and mitochondrial lines he descends from.
+  person('uncle', { [NAME_VAR]: 'Frank', [BIO_SEX_VAR]: 'male' });
 
   // --- Seed network edges -------------------------------------------------
   // getNetwork() passes edge attributes through verbatim (only NODE attributes
@@ -475,13 +505,12 @@ export const SelectDiseaseBySticker: Story = {
 };
 
 // ---------------------------------------------------------------------------
-// Story 3: Focal contributors — partner-side disease scenario
-// Select Huntington's Disease via the condition Select (single-disease mode), then click
-// Leo (the partner-side child). The partner-side contributors (Chris = partner,
-// and Chris's father George = cf who has HD) must be un-dimmed
-// (data-dimmed="false"), while ego's maternal side (Eleanor = gm, Arthur = gf,
-// Rose = mother) which carry no HD must be dimmed (data-dimmed="true").
-// Clicking "Clear focus" un-dims all nodes.
+// Story 3: Focal contributors — inheritance-aware highlighting
+// Select Huntington's Disease (single-disease mode), then focus Leo (ego's son).
+// Huntington's descends the maternal line Arthur (gf) → Rose (mother) → ego →
+// Leo, so those ancestors must be un-dimmed (data-dimmed="false"), while the
+// paternal/partner sides — which carry no HD allele — must be dimmed
+// (data-dimmed="true"). Clicking "Clear focus" un-dims all nodes.
 // ---------------------------------------------------------------------------
 export const FocalContributors: Story = {
   render: () => (
@@ -495,35 +524,35 @@ export const FocalContributors: Story = {
     await screen.findByTestId('next-button');
 
     // Switch to Huntington's-only mode so computeContributors walks only HD
-    // ancestors, excluding ego's maternal side.
+    // ancestors.
     await userEvent.click(await screen.findByRole('combobox'));
     await userEvent.click(
       await screen.findByRole('option', { name: "Huntington's Disease" }),
     );
 
-    // Click the son node (Leo) to set the focal. The focal container has
-    // aria-label "Focus on Leo".
-    const leoBtn = await screen.findByRole('button', {
-      name: /focus on Leo/i,
-    });
-    await userEvent.click(leoBtn);
+    // Focus Leo (ego's son). Target by data-node-id rather than label, since the
+    // displayed labels are relationship descriptions, not seeded names.
+    const leoFocal = viewScope().querySelector('[data-node-id="son"]');
+    if (!(leoFocal instanceof HTMLElement)) {
+      throw new Error('expected the son focal control to be rendered');
+    }
+    await userEvent.click(leoFocal);
 
-    // Partner-side contributors must be un-dimmed.
-    const partnerNode = document.querySelector('[data-node-id="partner"]');
-    expect(partnerNode?.getAttribute('data-dimmed')).toBe('false');
+    const dimmedFor = (id: string) =>
+      document
+        .querySelector(`[data-node-id="${id}"]`)
+        ?.getAttribute('data-dimmed');
 
-    const cfNode = document.querySelector('[data-node-id="cf"]');
-    expect(cfNode?.getAttribute('data-dimmed')).toBe('false');
+    // The maternal Huntington's line that transmits to Leo must be un-dimmed.
+    expect(dimmedFor('ego')).toBe('false');
+    expect(dimmedFor('mother')).toBe('false'); // Rose
+    expect(dimmedFor('gf')).toBe('false'); // Arthur
 
-    // Ego's maternal side carries no HD → must be dimmed.
-    const gmNode = document.querySelector('[data-node-id="gm"]');
-    expect(gmNode?.getAttribute('data-dimmed')).toBe('true');
-
-    const gfNode = document.querySelector('[data-node-id="gf"]');
-    expect(gfNode?.getAttribute('data-dimmed')).toBe('true');
-
-    const motherNode = document.querySelector('[data-node-id="mother"]');
-    expect(motherNode?.getAttribute('data-dimmed')).toBe('true');
+    // Sides carrying no HD allele must be dimmed.
+    expect(dimmedFor('partner')).toBe('true'); // Chris
+    expect(dimmedFor('cf')).toBe('true'); // George
+    expect(dimmedFor('father')).toBe('true'); // David (paternal, haemophilia)
+    expect(dimmedFor('gm')).toBe('true'); // Eleanor (mitochondrial, not HD)
 
     // Clicking "Clear focus" resets — all nodes un-dimmed.
     const clearBtn = await screen.findByRole('button', { name: 'Clear focus' });

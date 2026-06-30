@@ -14,6 +14,7 @@ import { buildPedigreeInterview } from '../NarrativePedigree.stories';
 const EGO_VAR = 'isEgo';
 const HUNTINGTONS_VAR = 'hasHuntingtons';
 const HAEMOPHILIA_VAR = 'hasHaemophilia';
+const CF_VAR = 'hasCysticFibrosis';
 const MITO_VAR = 'hasMitochondrialMyopathy';
 
 const SEEDS = [1, 2, 3, 4];
@@ -33,9 +34,13 @@ describe('buildPedigreeInterview — deterministic synthetic data', () => {
     });
 
     it(`seed ${seed}: each disease is set only on its seeded individuals`, () => {
-      // 'cf' is Chris's father (partner-side) who also has Huntington's Disease.
-      expect(idsWith(HUNTINGTONS_VAR)).toEqual(['cf', 'gf-pat', 'uncle']);
-      expect(idsWith(HAEMOPHILIA_VAR)).toEqual(['father']);
+      // Huntington's (autosomal dominant): the maternal grandfather and mother.
+      expect(idsWith(HUNTINGTONS_VAR)).toEqual(['gf', 'mother']);
+      // Haemophilia (X-linked recessive): father and ego's son.
+      expect(idsWith(HAEMOPHILIA_VAR)).toEqual(['father', 'son']);
+      // Cystic fibrosis (autosomal recessive): ego's daughter only.
+      expect(idsWith(CF_VAR)).toEqual(['daughter']);
+      // Mitochondrial: the maternal grandmother.
       expect(idsWith(MITO_VAR)).toEqual(['gm']);
     });
   }
