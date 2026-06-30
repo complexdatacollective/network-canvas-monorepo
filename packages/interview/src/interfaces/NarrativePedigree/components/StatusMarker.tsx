@@ -196,7 +196,7 @@ function HatchFill({
 function AtRiskQuery({ color }: { color: string }) {
   return (
     <>
-      <circle cx={C} cy={C} r={R * 0.38} fill={WHITE} data-query-break />
+      <circle cx={C} cy={C} r={R * 0.52} fill={WHITE} data-query-break />
       <text
         x={C}
         y={C}

@@ -14,9 +14,9 @@ import { Button } from '@codaco/fresco-ui/Button';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node from '@codaco/fresco-ui/Node';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
+import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import type { Codebook } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
-import ActionButton from '~/components/ActionButton';
 import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import PedigreeLayout from '~/interfaces/FamilyPedigree/pedigree-layout/components/PedigreeLayout';
@@ -355,7 +355,14 @@ export default function NarrativePedigreeView({
     const statusSummary = statusSummaryFor(node);
     const statusSummaryId = statusSummary ? `np-status-${node.id}` : undefined;
 
+    // Focusing a person highlights who contributes to THEIR inheritance of the
+    // SHOWN condition — which is only meaningful once a single condition is
+    // chosen. While all conditions are shown the focal affordance is disabled;
+    // clicking a person's sticker (which selects that condition) is the way in.
+    const focalEnabled = selectedDiseaseId !== null;
+
     const handleClick = (event: MouseEvent) => {
+      if (!focalEnabled) return;
       event.stopPropagation();
       setFocalId(node.id);
     };
@@ -376,9 +383,12 @@ export default function NarrativePedigreeView({
       'tabIndex': 0,
       'aria-label': `Focus on ${label || node.id}`,
       'aria-describedby': statusSummaryId,
+      // Disabled (but still announced, with its status) until a condition is
+      // chosen — focusing only makes sense for a single shown condition.
+      'aria-disabled': focalEnabled ? undefined : true,
       'onClick': handleClick,
       'onKeyDown': (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
+        if (focalEnabled && (event.key === 'Enter' || event.key === ' ')) {
           event.preventDefault();
           setFocalId(node.id);
         }
@@ -390,7 +400,7 @@ export default function NarrativePedigreeView({
         data-pedigree-member="true"
         data-node-id={node.id}
         data-dimmed={dimmed ? 'true' : 'false'}
-        className="cursor-pointer"
+        className={focalEnabled ? 'cursor-pointer' : undefined}
         {...focalProps}
       >
         {statusSummary && (
@@ -524,66 +534,77 @@ export default function NarrativePedigreeView({
           : ''}
       </div>
 
-      <div
-        ref={viewRef}
-        data-narrative-pedigree-view
-        role="presentation"
-        className="relative flex min-h-0 w-full grow items-start justify-center overflow-auto pt-6"
-        onClick={() => setFocalId(null)}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') {
-            setFocalId(null);
-          }
-        }}
+      <ResizableFlexPanel
+        storageKey="np-condition-key"
+        defaultBasis={68}
+        min={50}
+        max={80}
+        className="min-h-0 w-full grow"
+        aria-label="Resize the condition key panel"
       >
-        <PedigreeLayout
-          nodes={nodesMap}
-          edges={edgesMap}
-          variableConfig={variableConfig}
-          nodeWidth={nodeWidth}
-          nodeHeight={nodeHeight}
-          renderNode={renderNode}
-          highlightedNodeIds={highlight.nodes}
-          highlightedEdgeKeys={highlight.edges}
-        />
-      </div>
-      <div className="pointer-events-none absolute inset-0">
-        <div className="pointer-events-auto absolute top-4 left-4 w-56">
-          <ConditionPanel
-            diseases={diseases}
-            selectedDiseaseId={selectedDiseaseId}
-            onSelect={setSelectedDiseaseId}
-            showAtRiskStatuses={showAtRiskStatuses}
-          />
-        </div>
-        {focalId !== null && (
-          <div className="absolute inset-x-0 bottom-4 flex justify-center">
-            <Button
-              size="sm"
-              variant="default"
-              icon={
-                <Icon
-                  name="RotateCcw"
-                  aria-hidden="true"
-                  className="size-[1em]"
-                />
+        {/* Pedigree pane (resizable). Background click / Escape clears the focal
+            person; the Clear-focus control floats over it when one is set. */}
+        <div className="relative flex min-h-0 grow flex-col">
+          <div
+            ref={viewRef}
+            data-narrative-pedigree-view
+            role="presentation"
+            className="relative flex min-h-0 w-full grow items-start justify-center overflow-auto pt-6"
+            onClick={() => setFocalId(null)}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                setFocalId(null);
               }
-              className="pointer-events-auto"
-              onClick={() => setFocalId(null)}
-            >
-              Clear focus
-            </Button>
+            }}
+          >
+            <PedigreeLayout
+              nodes={nodesMap}
+              edges={edgesMap}
+              variableConfig={variableConfig}
+              nodeWidth={nodeWidth}
+              nodeHeight={nodeHeight}
+              renderNode={renderNode}
+              highlightedNodeIds={highlight.nodes}
+              highlightedEdgeKeys={highlight.edges}
+            />
           </div>
-        )}
-      </div>
+          {focalId !== null && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+              <Button
+                size="sm"
+                variant="default"
+                icon={
+                  <Icon
+                    name="RotateCcw"
+                    aria-hidden="true"
+                    className="size-[1em]"
+                  />
+                }
+                className="pointer-events-auto"
+                onClick={() => setFocalId(null)}
+              >
+                Clear focus
+              </Button>
+            </div>
+          )}
+        </div>
 
-      <div className="absolute right-12 bottom-4 z-20">
-        <ActionButton
-          iconName="Camera"
-          aria-label="Save snapshot"
-          onClick={handleSnapshot}
+        {/* Always-open key panel on the right edge. */}
+        <ConditionPanel
+          diseases={diseases}
+          selectedDiseaseId={selectedDiseaseId}
+          onSelect={(id) => {
+            setSelectedDiseaseId(id);
+            // Focusing requires a single shown condition; clear it on return to
+            // "all conditions" so a stale focal highlight never lingers.
+            if (id === null) {
+              setFocalId(null);
+            }
+          }}
+          showAtRiskStatuses={showAtRiskStatuses}
+          onSnapshot={handleSnapshot}
         />
-      </div>
+      </ResizableFlexPanel>
     </div>
   );
 }

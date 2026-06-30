@@ -2,9 +2,12 @@
 
 import { useId } from 'react';
 
+import { Button } from '@codaco/fresco-ui/Button';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
+import Icon from '@codaco/fresco-ui/Icon';
 import { Label } from '@codaco/fresco-ui/Label';
-import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import Surface from '@codaco/fresco-ui/layout/Surface';
+import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import type { Status } from '../genetics/status';
@@ -30,6 +33,8 @@ type ConditionPanelProps = {
   // actually drawn on the pedigree, so the two at-risk rows and the homozygous
   // row are omitted when this is false.
   showAtRiskStatuses: boolean;
+  // Captures the current pedigree as an image (the footer action).
+  onSnapshot: () => void;
 };
 
 // Non-empty sentinel for the "show every condition" option. Base-UI Select
@@ -79,6 +84,7 @@ export default function ConditionPanel({
   selectedDiseaseId,
   onSelect,
   showAtRiskStatuses,
+  onSnapshot,
 }: ConditionPanelProps) {
   const selectId = useId();
 
@@ -109,69 +115,100 @@ export default function ConditionPanel({
   };
 
   return (
-    <MotionSurface
+    <Surface
+      as="aside"
       noContainer
-      spacing="xs"
-      shadow="xs"
-      className="flex flex-col gap-2 rounded"
+      spacing="none"
+      shadow="md"
+      className="flex h-full min-h-0 flex-col"
+      aria-label="Condition key"
     >
-      <Label htmlFor={selectId}>Show a condition</Label>
-      <SelectField
-        id={selectId}
-        name="np-condition"
-        options={options}
-        value={selectedDiseaseId ?? ALL_CONDITIONS}
-        onChange={handleChange}
-      />
+      {/* Header — the condition selector, fixed above the scrolling key. */}
+      <div className="flex shrink-0 flex-col gap-2 border-b border-(--outline) p-4">
+        <Label htmlFor={selectId}>Show a condition</Label>
+        <SelectField
+          id={selectId}
+          name="np-condition"
+          // Override the control's default min-w-fit so the trigger shrinks to
+          // the panel and a long condition name truncates instead of overflowing.
+          className="min-w-0"
+          options={options}
+          value={selectedDiseaseId ?? ALL_CONDITIONS}
+          onChange={handleChange}
+        />
+      </div>
 
-      {diseases.length > 0 && (
-        <>
-          <hr className="my-1 border-t border-(--outline)" />
+      {/* Body — disease-colour legend + status-notation key, scrolls. */}
+      <ScrollArea className="min-h-0 flex-1" viewportClassName="px-4">
+        <div className="flex flex-col gap-2">
+          {diseases.length > 0 && (
+            <>
+              <Heading level="label" margin="none">
+                Conditions
+              </Heading>
+              {diseases.map((disease) => (
+                <div
+                  key={disease.id}
+                  className="flex items-center gap-4 text-base"
+                >
+                  <span
+                    aria-hidden
+                    className="size-4 shrink-0 rounded-full"
+                    style={{ backgroundColor: disease.color }}
+                  />
+                  {disease.label}
+                </div>
+              ))}
+              <hr className="my-1 border-t border-(--outline)" />
+            </>
+          )}
+
           <Heading level="label" margin="none">
-            Conditions
+            What the symbols mean
           </Heading>
-          {diseases.map((disease) => (
-            <div key={disease.id} className="flex items-center gap-4 text-base">
-              <span
-                aria-hidden
-                className="size-4 shrink-0 rounded-full"
-                style={{ backgroundColor: disease.color }}
-              />
-              {disease.label}
+          {keyEntries.map((entry) => (
+            <div
+              key={entry.status}
+              className="flex items-center gap-4 text-base"
+            >
+              <span aria-hidden className="shrink-0">
+                <Sticker
+                  status={entry.status}
+                  color={glyphColour}
+                  shape={KEY_GLYPH_SHAPE}
+                />
+              </span>
+              {entry.label}
             </div>
           ))}
-        </>
-      )}
+          {showAtRiskStatuses && (
+            <div className="flex items-center gap-4 text-base">
+              <span aria-hidden className="shrink-0">
+                <Sticker
+                  status="atRiskCarrier"
+                  color={glyphColour}
+                  shape={KEY_GLYPH_SHAPE}
+                  atRiskHomozygous
+                />
+              </span>
+              {AT_RISK_HOMOZYGOUS_KEY_LABEL}
+            </div>
+          )}
+        </div>
+      </ScrollArea>
 
-      <hr className="my-1 border-t border-(--outline)" />
-      <Heading level="label" margin="none">
-        What the symbols mean
-      </Heading>
-      {keyEntries.map((entry) => (
-        <div key={entry.status} className="flex items-center gap-4 text-base">
-          <span aria-hidden className="shrink-0">
-            <Sticker
-              status={entry.status}
-              color={glyphColour}
-              shape={KEY_GLYPH_SHAPE}
-            />
-          </span>
-          {entry.label}
-        </div>
-      ))}
-      {showAtRiskStatuses && (
-        <div className="flex items-center gap-4 text-base">
-          <span aria-hidden className="shrink-0">
-            <Sticker
-              status="atRiskCarrier"
-              color={glyphColour}
-              shape={KEY_GLYPH_SHAPE}
-              atRiskHomozygous
-            />
-          </span>
-          {AT_RISK_HOMOZYGOUS_KEY_LABEL}
-        </div>
-      )}
-    </MotionSurface>
+      {/* Footer — snapshot action, fixed below the scrolling key. */}
+      <div className="shrink-0 border-t border-(--outline) p-4">
+        <Button
+          className="w-full"
+          icon={
+            <Icon name="Camera" aria-hidden="true" className="size-[1em]" />
+          }
+          onClick={onSnapshot}
+        >
+          Save snapshot
+        </Button>
+      </div>
+    </Surface>
   );
 }

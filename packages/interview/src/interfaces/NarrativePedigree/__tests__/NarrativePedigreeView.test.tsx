@@ -333,6 +333,9 @@ describe('NarrativePedigreeView — focal selection', () => {
       expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
     );
 
+    // Focusing is only enabled once a single condition is shown.
+    await selectCondition('Disease A');
+
     const dimmedIds = () =>
       Array.from(document.querySelectorAll('[data-pedigree-member]'))
         .filter((el) => el.getAttribute('data-dimmed') === 'true')
@@ -358,6 +361,9 @@ describe('NarrativePedigreeView — focal selection', () => {
       expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
     );
 
+    // Focusing is only enabled once a single condition is shown.
+    await selectCondition('Disease A');
+
     // Click any member to set focus.
     const memberContainer = document.querySelector('[data-pedigree-member]');
     if (memberContainer instanceof HTMLElement) {
@@ -373,6 +379,9 @@ describe('NarrativePedigreeView — focal selection', () => {
     await waitFor(() =>
       expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
     );
+
+    // Focusing is only enabled once a single condition is shown.
+    await selectCondition('Disease A');
 
     const memberContainer = document.querySelector('[data-pedigree-member]');
     if (memberContainer instanceof HTMLElement) {
