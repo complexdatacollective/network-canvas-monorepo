@@ -46,6 +46,7 @@ import type {
   GetSessionInput,
   NameGeneratorPromptEntry,
   NetworkComposerEdgeEntry,
+  NetworkComposerFormFieldEntry,
   NodeEntry,
   NodeTypeEntry,
   OneToManyDyadCensusPromptEntry,
@@ -1025,13 +1026,10 @@ export class SyntheticInterview {
     };
   }
 
-  // NetworkComposer node/edge forms validate against TitlelessFormSchema, whose
-  // FormFieldSchema is strict and only permits { variable, prompt }. Unlike
-  // resolveFormField we therefore omit `component` from the emitted field.
   private resolveNetworkComposerFormField(
     input: FormFieldInput,
     nodeTypeId: string,
-  ): { variable: string; prompt: string } {
+  ): NetworkComposerFormFieldEntry {
     let variableId = input.variable;
     if (!variableId) {
       const ref = this.addVariableToNodeType(nodeTypeId, {
@@ -1045,6 +1043,8 @@ export class SyntheticInterview {
     const variable = nodeType?.variables.get(variableId);
     return {
       variable: variableId,
+      ...(input.component ? { component: input.component } : {}),
+      ...(input.parameters ? { parameters: input.parameters } : {}),
       prompt: input.prompt ?? variable?.name ?? 'Field',
     };
   }
@@ -1052,7 +1052,7 @@ export class SyntheticInterview {
   private resolveNetworkComposerEdgeFormField(
     input: FormFieldInput,
     edgeTypeId: string,
-  ): { variable: string; prompt: string } {
+  ): NetworkComposerFormFieldEntry {
     let variableId = input.variable;
     if (!variableId) {
       const ref = this.addVariableToEdgeType(edgeTypeId, {
@@ -1066,6 +1066,8 @@ export class SyntheticInterview {
     const variable = edgeType?.variables.get(variableId);
     return {
       variable: variableId,
+      ...(input.component ? { component: input.component } : {}),
+      ...(input.parameters ? { parameters: input.parameters } : {}),
       prompt: input.prompt ?? variable?.name ?? 'Field',
     };
   }

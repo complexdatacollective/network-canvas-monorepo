@@ -163,11 +163,11 @@ type FormFieldEntry = {
   prompt?: string;
 };
 
-// NetworkComposer form fields are validated against TitlelessFormSchema, whose
-// strict FormFieldSchema only permits `variable` and `prompt` (no `component`).
 export type NetworkComposerFormFieldEntry = {
   variable: string;
-  prompt: string;
+  component?: ComponentType;
+  parameters?: Record<string, unknown>;
+  prompt?: string;
 };
 
 // A drawable edge type within a NetworkComposer stage. Mirrors the schema's
@@ -325,6 +325,7 @@ export type FormFieldInput = {
   variable?: string;
   prompt?: string;
   component: ComponentType;
+  parameters?: Record<string, unknown>;
   validation?: Record<string, unknown>;
 };
 

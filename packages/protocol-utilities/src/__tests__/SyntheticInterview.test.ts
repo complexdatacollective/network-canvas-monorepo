@@ -967,6 +967,27 @@ describe('SyntheticInterview', () => {
       expect(stageConfig.nodeForm).toBeUndefined();
     });
 
+    it('emits the component on a NetworkComposer node attribute field', () => {
+      const si = new SyntheticInterview();
+      const node = si.addNodeType({ name: 'person' });
+      const stage = si.addStage('NetworkComposer', {
+        subject: { entity: 'node', type: node.id },
+      });
+      stage.addNodeFormField({ component: 'Number', prompt: 'Age' });
+      const payload = si.getInterviewPayload();
+      const composer = payload.protocol.stages.find(
+        (s) => s.type === 'NetworkComposer',
+      );
+      expect((composer as Record<string, unknown>).nodeForm).toBeDefined();
+      expect(
+        (
+          (composer as Record<string, unknown>).nodeForm as {
+            fields: { component: string }[];
+          }
+        ).fields[0]?.component,
+      ).toBe('Number');
+    });
+
     it('rejects a non-node (edge) subject', () => {
       const si = new SyntheticInterview();
       const friendship = si.addEdgeType({ name: 'Friendship' });
