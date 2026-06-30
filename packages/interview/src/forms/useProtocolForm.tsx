@@ -243,15 +243,17 @@ export default function useProtocolForm({
     }
 
     // Process ordinal and categorical options
-    if ('options' in field) props.options = field.options;
+    if ('options' in field) {
+      props.options = field.options;
 
-    // Turn on columns if there are more than 6 options. Maybe a bad idea?
-    if (
-      (field.component === 'CheckboxGroup' ||
-        field.component === 'RadioGroup') &&
-      field.options.length > 6
-    ) {
-      props.useColumns ??= true;
+      // Turn on columns if there are more than 6 options. Maybe a bad idea?
+      if (
+        (field.component === 'CheckboxGroup' ||
+          field.component === 'RadioGroup') &&
+        (field.options?.length ?? 0) > 6
+      ) {
+        props.useColumns ??= true;
+      }
     }
 
     // Handle number inputs
@@ -267,8 +269,10 @@ export default function useProtocolForm({
     if (field.component === 'VisualAnalogScale') {
       if (field.parameters) {
         const params = field.parameters;
-        if (params.minLabel) props.minLabel = params.minLabel;
-        if (params.maxLabel) props.maxLabel = params.maxLabel;
+        if (typeof params.minLabel === 'string')
+          props.minLabel = params.minLabel;
+        if (typeof params.maxLabel === 'string')
+          props.maxLabel = params.maxLabel;
       }
 
       // Forward scalar validation.minValue/maxValue onto the slider's display
@@ -286,9 +290,9 @@ export default function useProtocolForm({
     // Handle DatePicker parameters
     if (field.component === 'DatePicker' && field.parameters) {
       const params = field.parameters;
-      if (params.min) props.min = params.min;
-      if (params.max) props.max = params.max;
-      if (params.type) props.type = params.type;
+      if (typeof params.min === 'string') props.min = params.min;
+      if (typeof params.max === 'string') props.max = params.max;
+      if (typeof params.type === 'string') props.type = params.type;
     }
 
     // Handle RelativeDatePicker parameters. We forward anchor/before/after
@@ -299,13 +303,20 @@ export default function useProtocolForm({
     // out-of-range values would pass through validation.
     if (field.component === 'RelativeDatePicker' && field.parameters) {
       const params = field.parameters;
-      if (params.anchor !== undefined) props.anchor = params.anchor;
-      if (params.before !== undefined) props.before = params.before;
-      if (params.after !== undefined) props.after = params.after;
+      const paramAnchor =
+        typeof params.anchor === 'string' ? params.anchor : undefined;
+      const paramBefore =
+        typeof params.before === 'number' ? params.before : undefined;
+      const paramAfter =
+        typeof params.after === 'number' ? params.after : undefined;
 
-      const anchor = params.anchor ?? todayYmd();
-      const before = params.before ?? 180;
-      const after = params.after ?? 0;
+      if (paramAnchor !== undefined) props.anchor = paramAnchor;
+      if (paramBefore !== undefined) props.before = paramBefore;
+      if (paramAfter !== undefined) props.after = paramAfter;
+
+      const anchor = paramAnchor ?? todayYmd();
+      const before = paramBefore ?? 180;
+      const after = paramAfter ?? 0;
       props.min = addDays(anchor, -before);
       props.max = addDays(anchor, after);
     }

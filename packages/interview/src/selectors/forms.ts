@@ -2,6 +2,7 @@ import { createSelector } from '@reduxjs/toolkit';
 import { invariant } from 'es-toolkit';
 
 import type {
+  ComponentType,
   ComposerFormField,
   FormField,
   Variable,
@@ -41,6 +42,28 @@ const getCodebookVariablesForProvidedSubject = createSelector(
 );
 
 /**
+ * Field metadata distributes over the `Variable` union so each variant keeps
+ * its own discriminant (`type`) and variant-specific keys (`options`, the
+ * variable's strict `parameters`), letting `useProtocolForm` narrow on
+ * `'options' in field` / `field.type`. `component` and `parameters` are widened
+ * because, for NetworkComposer, they come from the stage field instead of the
+ * codebook variable — `parameters` there is a loose record, so reads are guarded
+ * with `typeof` checks downstream rather than narrowed by component.
+ */
+type FieldMetadata = Variable extends infer V
+  ? V extends Variable
+    ? Omit<V, 'component' | 'parameters'> & {
+        component: ComponentType;
+        parameters?: Record<string, unknown>;
+        variable: string;
+        label: string;
+        hint?: string;
+        showValidationHints?: boolean;
+      }
+    : never
+  : never;
+
+/**
  * Creates field metadata from form fields and codebook variables.
  * Used by useProtocolForm to convert protocol form definitions to Field components.
  *
@@ -52,7 +75,7 @@ const getCodebookVariablesForProvidedSubject = createSelector(
 const createFieldMetadata = (
   variables: Record<string, Variable>,
   fields: Array<FormField | ComposerFormField>,
-) => {
+): FieldMetadata[] => {
   // Return empty array if no variables (allows graceful handling during mount)
   if (!variables || Object.keys(variables).length === 0) {
     return [];
@@ -90,7 +113,7 @@ const createFieldMetadata = (
       ...(parameters !== undefined ? { parameters } : {}),
       component,
       variable,
-      label: prompt,
+      label: prompt ?? variable,
       hint,
       showValidationHints,
     };

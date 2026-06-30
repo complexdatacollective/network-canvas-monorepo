@@ -18,8 +18,8 @@ describe('selectFieldMetadataFromVariables', () => {
       variables as never,
       fields as never,
     );
-    expect(meta.component).toBe('VisualAnalogScale');
-    expect(meta.label).toBe('How close?');
+    expect(meta?.component).toBe('VisualAnalogScale');
+    expect(meta?.label).toBe('How close?');
   });
 
   it('falls back to the codebook component when the field has none (other stages)', () => {
@@ -31,6 +31,6 @@ describe('selectFieldMetadataFromVariables', () => {
       variables as never,
       fields as never,
     );
-    expect(meta.component).toBe('Number');
+    expect(meta?.component).toBe('Number');
   });
 });
