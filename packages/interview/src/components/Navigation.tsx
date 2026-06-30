@@ -20,9 +20,12 @@ import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 import { useCurrentStep } from '../contexts/CurrentStepContext';
 import { getSkipMap } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
-import { getProtocol } from '../store/modules/protocol';
+import { getProtocolStages } from '../store/modules/protocol';
 import PassphrasePrompter from './PassphrasePrompter';
 import StagesMenu from './StagesMenu';
+
+const EMPTY_SKIP_MAP: Record<number, boolean> = {};
+const selectEmptySkipMap = () => EMPTY_SKIP_MAP;
 
 const variants = {
   initial: {
@@ -152,13 +155,15 @@ const Navigation = ({
   const { confirm } = useDialog();
   const portalContainer = usePortalContainer();
   const [menuOpen, setMenuOpen] = useState(false);
-  const stages = useSelector(getProtocol).stages ?? [];
-  const skipMap = useSelector(getSkipMap);
+  const stages = useSelector(getProtocolStages);
+  const skipMap = useSelector(
+    stageNavigationEnabled ? getSkipMap : selectEmptySkipMap,
+  );
   const { displayedStep } = useCurrentStep();
 
   const confirmSkip = useCallback(
-    () =>
-      confirm({
+    async () =>
+      (await confirm({
         title: 'Show this stage?',
         description:
           'This stage is normally skipped based on the answers given so far. Do you want to show it anyway?',
@@ -166,7 +171,7 @@ const Navigation = ({
         cancelLabel: 'Cancel',
         intent: 'warning',
         onConfirm: () => {},
-      }).then((result) => result === true),
+      })) === true,
     [confirm],
   );
 

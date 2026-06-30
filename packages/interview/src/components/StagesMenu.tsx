@@ -14,12 +14,9 @@ import InterfacePicture from '@codaco/interface-images/InterfacePicture';
 import manifest, {
   type InterfaceType,
 } from '@codaco/interface-images/manifest';
+import type { Stage } from '@codaco/protocol-validation';
 
-export type StageSummary = {
-  id: string;
-  type: string;
-  label?: string;
-};
+export type StageSummary = Pick<Stage, 'id' | 'type' | 'label'>;
 
 type StagesMenuProps = {
   /** Authored stages only (the appended FinishSession sentinel is excluded). */
@@ -62,7 +59,7 @@ export default function StagesMenu({
         id: stage.id,
         index,
         type: stage.type,
-        label: stage.label?.trim() ? stage.label : 'Untitled stage',
+        label: stage.label.trim() ? stage.label : 'Untitled stage',
         position: String(index + 1),
         isCurrent: index === currentStageIndex,
         isSkipped: skipMap[index] === true,

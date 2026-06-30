@@ -24,7 +24,7 @@ import {
   resolveRecoveryStep,
 } from '../selectors/skip-logic';
 import { calculateProgress, getInterviewProgress } from '../selectors/utils';
-import { getProtocol } from '../store/modules/protocol';
+import { getProtocolStages } from '../store/modules/protocol';
 import { transitionStage, updatePrompt } from '../store/modules/session';
 import type {
   BeforeNextFunction,
@@ -82,7 +82,7 @@ export default function useInterviewNavigation() {
   // The raw protocol stages (without the appended FinishSession stage). Passed
   // to getInterviewProgress to compute the participant-facing progress meta
   // handed back to the host via onStepChange.
-  const protocolStages = useSelector(getProtocol).stages ?? [];
+  const protocolStages = useSelector(getProtocolStages);
 
   // Refs to avoid stale closures in navigation callbacks
   const nextValidStageIndexRef = useRef(nextValidStageIndex);

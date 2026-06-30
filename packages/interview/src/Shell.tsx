@@ -318,7 +318,10 @@ const Shell = ({
               onExit={onExit}
               hideNavigation={hideNavigation}
               navigationOrientation={navigationOrientation}
-              allowStageNavigation={allowStageNavigation}
+              allowStageNavigation={
+                allowStageNavigation &&
+                (currentStep === undefined || onStepChange !== undefined)
+              }
             />
           </CurrentStepProvider>
         </ContractProvider>
