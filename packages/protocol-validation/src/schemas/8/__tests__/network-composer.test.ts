@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { stageSchema } from '../stages';
 import { networkComposerStage } from '../stages/network-composer';
+import { ComponentTypes } from '../variables/types';
 
 const validStage = {
   id: 'nc1',
@@ -42,9 +43,9 @@ describe('networkComposerStage schema', () => {
     }
   });
 
-  it('requires at least one edge type', () => {
+  it('accepts an empty edges array (no minimum-edge requirement)', () => {
     const result = networkComposerStage.safeParse({ ...validStage, edges: [] });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it('rejects duplicate edge types', () => {
@@ -68,12 +69,24 @@ describe('networkComposerStage schema', () => {
   it('accepts optional forms, background and behaviours', () => {
     const result = networkComposerStage.safeParse({
       ...validStage,
-      nodeForm: { fields: [{ variable: 'age', prompt: 'Age?' }] },
+      nodeForm: {
+        fields: [
+          { variable: 'age', component: ComponentTypes.Number, prompt: 'Age?' },
+        ],
+      },
       edges: [
         {
           id: 'edge-1',
           subject: { entity: 'edge', type: 'knows' },
-          form: { fields: [{ variable: 'closeness', prompt: 'How close?' }] },
+          form: {
+            fields: [
+              {
+                variable: 'closeness',
+                component: ComponentTypes.VisualAnalogScale,
+                prompt: 'How close?',
+              },
+            ],
+          },
         },
       ],
       background: { concentricCircles: 4, skewedTowardCenter: true },
@@ -91,4 +104,70 @@ describe('stage discriminated union', () => {
       expect(result.data.type).toBe('NetworkComposer');
     }
   });
+});
+
+const baseStageWithComponent = {
+  id: 's1',
+  type: 'NetworkComposer' as const,
+  label: 'Compose',
+  subject: { entity: 'node' as const, type: 'person' },
+  quickAdd: 'name',
+  layoutVariable: 'layout',
+  edges: [],
+};
+
+it('accepts a nodeForm field that carries a component and omits prompt', () => {
+  const result = networkComposerStage.safeParse({
+    ...baseStageWithComponent,
+    nodeForm: {
+      fields: [{ variable: 'age', component: ComponentTypes.Number }],
+    },
+  });
+  expect(result.success).toBe(true);
+});
+
+it('accepts an empty edges array (no minimum-edge requirement)', () => {
+  expect(
+    networkComposerStage.safeParse({ ...baseStageWithComponent, edges: [] })
+      .success,
+  ).toBe(true);
+});
+
+it('accepts an empty nodeForm.fields array', () => {
+  const result = networkComposerStage.safeParse({
+    ...baseStageWithComponent,
+    nodeForm: { fields: [] },
+  });
+  expect(result.success).toBe(true);
+});
+
+it('rejects a nodeForm field with an unknown component', () => {
+  const result = networkComposerStage.safeParse({
+    ...baseStageWithComponent,
+    nodeForm: { fields: [{ variable: 'age', component: 'NotAControl' }] },
+  });
+  expect(result.success).toBe(false);
+});
+
+it('carries component + parameters + prompt on an edge form field', () => {
+  const result = networkComposerStage.safeParse({
+    ...baseStageWithComponent,
+    edges: [
+      {
+        id: 'e1',
+        subject: { entity: 'edge', type: 'knows' },
+        form: {
+          fields: [
+            {
+              variable: 'closeness',
+              component: ComponentTypes.VisualAnalogScale,
+              parameters: { minLabel: 'Distant', maxLabel: 'Close' },
+              prompt: 'How close?',
+            },
+          ],
+        },
+      },
+    ],
+  });
+  expect(result.success).toBe(true);
 });

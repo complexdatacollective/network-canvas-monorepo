@@ -48,7 +48,9 @@ const countTagged = (
 // (29 after adding NetworkComposer quickAdd + layoutVariable references; its
 //  node/edge forms reuse the shared TitlelessFormSchema, which is already counted.)
 // (30 after adding the NetworkComposer convexHulls array of categorical refs.)
-const EXPECTED_TAGGED_FIELD_COUNT = 30;
+// (31 after NetworkComposer forms switched to ComposerFormFieldSchema — a new
+//  schema object distinct from FormFieldSchema, adding one more tagged variable ref.)
+const EXPECTED_TAGGED_FIELD_COUNT = 31;
 
 describe('entity-attribute reference coverage', () => {
   it('has tagged the expected number of reference fields', () => {

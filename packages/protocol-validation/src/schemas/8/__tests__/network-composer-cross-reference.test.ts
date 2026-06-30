@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createBaseProtocol } from '~/utils/test-utils';
 
 import ProtocolSchemaV8 from '../schema';
+import { ComponentTypes } from '../variables/types';
 
 const baseStage = {
   id: 'nc1',
@@ -11,12 +12,24 @@ const baseStage = {
   subject: { entity: 'node', type: 'person' },
   quickAdd: 'name',
   layoutVariable: 'layoutPosition',
-  nodeForm: { fields: [{ variable: 'age', prompt: 'Age?' }] },
+  nodeForm: {
+    fields: [
+      { variable: 'age', component: ComponentTypes.Number, prompt: 'Age?' },
+    ],
+  },
   edges: [
     {
       id: 'edge-1',
       subject: { entity: 'edge', type: 'knows' },
-      form: { fields: [{ variable: 'closeness', prompt: 'How close?' }] },
+      form: {
+        fields: [
+          {
+            variable: 'closeness',
+            component: ComponentTypes.VisualAnalogScale,
+            prompt: 'How close?',
+          },
+        ],
+      },
     },
   ],
 };
@@ -50,7 +63,15 @@ describe('NetworkComposer cross-reference validation', () => {
     const result = ProtocolSchemaV8.safeParse(
       composerProtocol({
         ...baseStage,
-        nodeForm: { fields: [{ variable: 'missing', prompt: 'x' }] },
+        nodeForm: {
+          fields: [
+            {
+              variable: 'missing',
+              component: ComponentTypes.Number,
+              prompt: 'x',
+            },
+          ],
+        },
       }),
     );
     expect(result.success).toBe(false);
@@ -66,7 +87,15 @@ describe('NetworkComposer cross-reference validation', () => {
           {
             id: 'edge-1',
             subject: { entity: 'edge', type: 'knows' },
-            form: { fields: [{ variable: 'age', prompt: 'x' }] },
+            form: {
+              fields: [
+                {
+                  variable: 'age',
+                  component: ComponentTypes.Number,
+                  prompt: 'x',
+                },
+              ],
+            },
           },
         ],
       }),
