@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { type ComponentProps, type Ref, useCallback, useState } from 'react';
-import { useSelector } from 'react-redux';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -17,15 +16,9 @@ import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
-import { useCurrentStep } from '../contexts/CurrentStepContext';
-import { getSkipMap } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
-import { getProtocolStages } from '../store/modules/protocol';
 import PassphrasePrompter from './PassphrasePrompter';
 import StagesMenu from './StagesMenu';
-
-const EMPTY_SKIP_MAP: Record<number, boolean> = {};
-const selectEmptySkipMap = () => EMPTY_SKIP_MAP;
 
 const variants = {
   initial: {
@@ -155,11 +148,6 @@ const Navigation = ({
   const { confirm } = useDialog();
   const portalContainer = usePortalContainer();
   const [menuOpen, setMenuOpen] = useState(false);
-  const stages = useSelector(getProtocolStages);
-  const skipMap = useSelector(
-    stageNavigationEnabled ? getSkipMap : selectEmptySkipMap,
-  );
-  const { displayedStep } = useCurrentStep();
 
   const confirmSkip = useCallback(
     async () =>
@@ -281,12 +269,7 @@ const Navigation = ({
                     : 'h-[min(85vh,40rem)] w-full transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-ending-style:transform-[translateY(100%)] data-starting-style:transform-[translateY(100%)]',
                 )}
               >
-                <StagesMenu
-                  stages={stages}
-                  currentStageIndex={displayedStep}
-                  skipMap={skipMap}
-                  onSelect={handleSelectStage}
-                />
+                <StagesMenu onSelect={handleSelectStage} />
               </Drawer.Popup>
             </Drawer.Viewport>
           </Drawer.Portal>

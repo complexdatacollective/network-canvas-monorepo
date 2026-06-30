@@ -2,6 +2,7 @@
 
 import { LayoutTemplate } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useSelector } from 'react-redux';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
@@ -16,15 +17,13 @@ import manifest, {
 } from '@codaco/interface-images/manifest';
 import type { Stage } from '@codaco/protocol-validation';
 
+import { useCurrentStep } from '../contexts/CurrentStepContext';
+import { getSkipMap } from '../selectors/skip-logic';
+import { getProtocolStages } from '../store/modules/protocol';
+
 export type StageSummary = Pick<Stage, 'id' | 'type' | 'label'>;
 
 type StagesMenuProps = {
-  /** Authored stages only (the appended FinishSession sentinel is excluded). */
-  stages: StageSummary[];
-  /** Index of the stage currently displayed, for the active marker. */
-  currentStageIndex: number;
-  /** Skipped state keyed by stage index (from `getSkipMap`). */
-  skipMap: Record<number, boolean>;
   /** Called with the chosen stage index when an item is activated. */
   onSelect: (index: number) => void;
 };
@@ -45,12 +44,11 @@ const isInterfaceType = (type: string): type is InterfaceType =>
 const keyExtractor = (item: StageItem) => item.id;
 const textValueExtractor = (item: StageItem) => item.label;
 
-export default function StagesMenu({
-  stages,
-  currentStageIndex,
-  skipMap,
-  onSelect,
-}: StagesMenuProps) {
+export default function StagesMenu({ onSelect }: StagesMenuProps) {
+  const stages = useSelector(getProtocolStages);
+  const { displayedStep: currentStageIndex } = useCurrentStep();
+  const skipMap = useSelector(getSkipMap);
+
   const layout = useMemo(() => new ListLayout<StageItem>({ gap: 0 }), []);
 
   const items = useMemo<StageItem[]>(
