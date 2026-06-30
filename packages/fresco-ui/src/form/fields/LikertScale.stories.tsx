@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
-import { expect, fireEvent, userEvent, within } from 'storybook/test';
+import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 
 import Surface from '../../layout/Surface';
 import Paragraph from '../../typography/Paragraph';
@@ -27,6 +27,7 @@ const meta = {
     'disabled': { control: 'boolean' },
     'options': { control: false },
     'value': { control: false },
+    'maxLabelHeight': { control: false },
     'onChange': { action: 'onChange' },
   },
   args: {
@@ -179,6 +180,69 @@ export const MarkdownLabels: Story = {
     value: 3,
   },
   render: (args) => <ControlledLikert {...args} initialValue={args.value} />,
+};
+
+// In a narrow column the labels' longest words exceed their cells, so the
+// layout escalates to clockwise-rotated labels centred on each tick.
+export const RotatedLabels: Story = {
+  args: {
+    options: agreementOptions,
+    value: 3,
+    maxLabelHeight: 220,
+  },
+  decorators: [
+    (Story) => (
+      <div style={{ width: 320 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  render: (args) => <ControlledLikert {...args} initialValue={args.value} />,
+};
+
+// With almost no vertical budget the rotated band can't fit, so only the two end
+// anchors remain — the value still reads out in the drag popover.
+export const AnchorsOnly: Story = {
+  args: {
+    options: agreementOptions,
+    value: 3,
+    maxLabelHeight: 60,
+  },
+  decorators: [
+    (Story) => (
+      <div style={{ width: 320 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  render: (args) => <ControlledLikert {...args} initialValue={args.value} />,
+};
+
+export const ValuePopoverOnInteraction: Story = {
+  args: {
+    options: agreementOptions,
+    value: 3,
+  },
+  render: (args) => <ControlledLikert {...args} initialValue={args.value} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const slider = canvas.getByRole('slider');
+
+    // Hidden at rest.
+    await expect(canvas.queryByTestId('scale-value-popover')).toBeNull();
+
+    // Appears while the slider is focused (keyboard interaction) and shows the
+    // current option's label.
+    slider.focus();
+    const popover = await canvas.findByTestId('scale-value-popover');
+    await expect(popover).toHaveTextContent('Neutral');
+
+    // Hidden again once focus leaves.
+    slider.blur();
+    await waitFor(() =>
+      expect(canvas.queryByTestId('scale-value-popover')).toBeNull(),
+    );
+  },
 };
 
 function UnsetLikertWithValueDisplay({

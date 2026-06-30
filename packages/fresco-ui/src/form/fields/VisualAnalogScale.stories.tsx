@@ -291,6 +291,28 @@ export const UnsetKeyboardArrow: Story = {
   },
 };
 
+export const ValuePopoverWhileDragging: Story = {
+  args: {
+    value: 0.5,
+    minLabel: 'Not at all',
+    maxLabel: 'Extremely',
+  },
+  render: (args) => <ControlledVAS {...args} initialValue={args.value} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const slider = canvas.getByRole('slider');
+
+    // Hidden at rest.
+    await expect(canvas.queryByTestId('scale-value-popover')).toBeNull();
+
+    // While focused, the popover shows the value as a percentage on the default
+    // normalised 0–1 scale.
+    slider.focus();
+    const popover = await canvas.findByTestId('scale-value-popover');
+    await expect(popover).toHaveTextContent('50%');
+  },
+};
+
 export const AllStates: Story = {
   render: () => (
     <div className="flex flex-col gap-8">

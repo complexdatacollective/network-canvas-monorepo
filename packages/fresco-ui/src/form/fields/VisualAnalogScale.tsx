@@ -14,6 +14,8 @@ import {
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
+import ScaleValuePopover from './scale/ScaleValuePopover';
+import { useSliderActive } from './scale/useSliderActive';
 
 type VisualAnalogScaleFieldProps = CreateFormFieldProps<
   number,
@@ -26,6 +28,16 @@ type VisualAnalogScaleFieldProps = CreateFormFieldProps<
     maxLabel?: string;
   }
 >;
+
+// Formats the transient drag value. The default normalised 0–1 scale is shown as
+// a percentage; custom ranges show the value in their own units. The bubble is
+// only visible mid-drag, so no persistent number anchors the participant.
+function formatVasValue(value: number, min: number, max: number) {
+  if (min === 0 && max === 1) return `${Math.round(value * 100)}%`;
+  const range = max - min;
+  const decimals = range >= 10 ? 0 : range >= 1 ? 1 : 2;
+  return value.toFixed(decimals);
+}
 
 export default function VisualAnalogScaleField(
   props: VisualAnalogScaleFieldProps,
@@ -53,6 +65,8 @@ export default function VisualAnalogScaleField(
   const sliderValue = hasValue ? value : midpoint;
   const thumbState = !hasValue && state === 'normal' ? 'pristine' : state;
 
+  const active = useSliderActive();
+
   const handleValueChange = (newValue: number | number[]) => {
     if (readOnly) return;
     const val = Array.isArray(newValue) ? newValue[0] : newValue;
@@ -79,8 +93,13 @@ export default function VisualAnalogScaleField(
         <Slider.Root
           value={sliderValue}
           onValueChange={handleValueChange}
-          onPointerDown={commitPristineValue}
+          onPointerDown={() => {
+            commitPristineValue();
+            active.onPointerDown();
+          }}
           onKeyDown={handleKeyDown}
+          onFocus={active.onFocus}
+          onBlur={active.onBlur}
           disabled={disabled}
           min={min}
           max={max}
@@ -109,6 +128,14 @@ export default function VisualAnalogScaleField(
                 className={sliderThumbVariants({ state: thumbState })}
                 aria-label="Visual analog scale value"
               />
+              <ScaleValuePopover
+                visible={active.active}
+                position={
+                  max > min ? ((sliderValue - min) / (max - min)) * 100 : 50
+                }
+              >
+                {formatVasValue(sliderValue, min, max)}
+              </ScaleValuePopover>
             </Slider.Track>
           </Slider.Control>
         </Slider.Root>
@@ -119,7 +146,7 @@ export default function VisualAnalogScaleField(
               <div
                 className={cx(
                   controlLabelVariants({ size: 'sm' }),
-                  'max-w-24 text-left',
+                  'max-w-24 text-left wrap-break-word',
                 )}
               >
                 <RenderMarkdown>{minLabel}</RenderMarkdown>
@@ -129,7 +156,7 @@ export default function VisualAnalogScaleField(
               <div
                 className={cx(
                   controlLabelVariants({ size: 'sm' }),
-                  'max-w-24 text-right',
+                  'max-w-24 text-right wrap-break-word',
                 )}
               >
                 <RenderMarkdown>{maxLabel}</RenderMarkdown>

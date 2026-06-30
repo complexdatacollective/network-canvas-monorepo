@@ -2,6 +2,7 @@
 
 import { Slider } from '@base-ui/react/slider';
 import { motion } from 'motion/react';
+import { useRef } from 'react';
 
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
@@ -16,6 +17,9 @@ import {
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
+import ScaleValuePopover from './scale/ScaleValuePopover';
+import { useScaleLabelLayout } from './scale/useScaleLabelLayout';
+import { useSliderActive } from './scale/useSliderActive';
 
 type Option = {
   label: string;
@@ -27,8 +31,18 @@ type LikertScaleFieldProps = CreateFormFieldProps<
   'div',
   {
     options?: Option[];
+    /**
+     * Overrides the viewport-derived vertical budget for the label band. Mainly
+     * for stories/tests that need to force a layout tier.
+     */
+    maxLabelHeight?: number;
   }
 >;
+
+function gridTemplateColumns(count: number) {
+  if (count <= 2) return `repeat(${count}, minmax(0, 1fr))`;
+  return `minmax(0, 0.5fr) repeat(${count - 2}, minmax(0, 1fr)) minmax(0, 0.5fr)`;
+}
 
 export default function LikertScaleField(props: LikertScaleFieldProps) {
   const {
@@ -38,6 +52,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
     options = [],
     disabled,
     readOnly,
+    maxLabelHeight,
     ...rest
   } = props;
 
@@ -49,6 +64,16 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
   const sliderValue = hasValue ? currentIndex : midpoint;
   const currentOption = hasValue ? options[currentIndex] : undefined;
   const thumbState = !hasValue && state === 'normal' ? 'pristine' : state;
+
+  const rootRef = useRef<HTMLDivElement>(null);
+  const active = useSliderActive();
+  const { layout, measurementNode } = useScaleLabelLayout({
+    rootRef,
+    labels: options.map((option) => option.label),
+    maxLabelHeight,
+  });
+
+  const popoverOption = options[sliderValue];
 
   const handleValueChange = (newValue: number | number[]) => {
     if (readOnly) return;
@@ -85,13 +110,23 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
   };
 
   return (
-    <div className={cx('w-full', className)} {...rest}>
-      <div className="relative">
+    <div ref={rootRef} className={cx('w-full', className)} {...rest}>
+      <div
+        className="relative"
+        style={
+          layout.tier === 'rotated'
+            ? { paddingInline: layout.overhang }
+            : undefined
+        }
+      >
         <Slider.Root
           value={sliderValue}
           onValueChange={handleValueChange}
           onValueCommitted={handleValueCommitted}
           onKeyDown={handleKeyDown}
+          onPointerDown={active.onPointerDown}
+          onFocus={active.onFocus}
+          onBlur={active.onBlur}
           disabled={disabled}
           min={0}
           max={Math.max(0, options.length - 1)}
@@ -142,42 +177,104 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                 className={sliderThumbVariants({ state: thumbState })}
                 aria-label={`Select value on scale: ${currentOption?.label ?? 'No selection'}`}
               />
+              <ScaleValuePopover
+                visible={active.active && options.length > 0}
+                position={
+                  options.length > 1
+                    ? (sliderValue / (options.length - 1)) * 100
+                    : 50
+                }
+              >
+                {popoverOption ? (
+                  <RenderMarkdown>{popoverOption.label}</RenderMarkdown>
+                ) : null}
+              </ScaleValuePopover>
             </Slider.Track>
           </Slider.Control>
         </Slider.Root>
 
-        <div
-          className="mt-2 grid gap-2 px-3"
-          style={{
-            gridTemplateColumns:
-              options.length <= 2
-                ? `repeat(${options.length}, 1fr)`
-                : `0.5fr repeat(${options.length - 2}, 1fr) 0.5fr`,
-          }}
-        >
-          {options.map((option, index) => {
-            const isFirst = index === 0;
-            const isLast = index === options.length - 1;
+        {options.length > 0 && layout.tier === 'full' && (
+          <div
+            className="mt-2 grid gap-2 px-3"
+            style={{ gridTemplateColumns: gridTemplateColumns(options.length) }}
+          >
+            {options.map((option, index) => {
+              const isFirst = index === 0;
+              const isLast = index === options.length - 1;
+              return (
+                <div
+                  key={index}
+                  className={cx(
+                    controlLabelVariants({ size: 'sm' }),
+                    'wrap-break-word',
+                    options.length === 1
+                      ? 'text-center'
+                      : isFirst
+                        ? 'text-left'
+                        : isLast
+                          ? 'text-right'
+                          : 'text-center',
+                  )}
+                >
+                  <RenderMarkdown>{option.label}</RenderMarkdown>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
-            return (
-              <div
-                key={index}
-                className={cx(
-                  controlLabelVariants({ size: 'sm' }),
-                  options.length === 1
-                    ? 'text-center'
-                    : isFirst
-                      ? 'text-left'
-                      : isLast
-                        ? 'text-right'
-                        : 'text-center',
-                )}
-              >
-                <RenderMarkdown>{option.label}</RenderMarkdown>
-              </div>
-            );
-          })}
-        </div>
+        {options.length > 1 && layout.tier === 'rotated' && (
+          <div className="relative mt-1" style={{ height: layout.bandHeight }}>
+            {options.map((option, index) => {
+              const percentage =
+                options.length > 1 ? (index / (options.length - 1)) * 100 : 50;
+              return (
+                <div
+                  key={index}
+                  className={cx(
+                    controlLabelVariants({ size: 'sm' }),
+                    'absolute whitespace-nowrap',
+                  )}
+                  style={{
+                    left: `${percentage}%`,
+                    top: '50%',
+                    transform: `translate(-50%, -50%) rotate(${layout.rotateDeg}deg)`,
+                  }}
+                >
+                  <RenderMarkdown>{option.label}</RenderMarkdown>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {options.length > 1 && layout.tier === 'anchors' && (
+          <div className="relative mt-2 flex justify-between px-3">
+            <div
+              className={cx(
+                controlLabelVariants({ size: 'sm' }),
+                'max-w-24 text-left wrap-break-word',
+              )}
+            >
+              <RenderMarkdown>{options[0]!.label}</RenderMarkdown>
+            </div>
+            <div
+              className={cx(
+                controlLabelVariants({ size: 'sm' }),
+                'max-w-24 text-right wrap-break-word',
+              )}
+            >
+              <RenderMarkdown>
+                {options[options.length - 1]!.label}
+              </RenderMarkdown>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {measurementNode}
+      <div aria-live="polite" className="sr-only">
+        {currentOption?.label ?? ''}
       </div>
     </div>
   );
