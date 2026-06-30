@@ -83,7 +83,7 @@ type EdgeAttributeBlockOwnProps = {
 // entity="edge" and type=<edge type> — yields a correctly edge-scoped
 // handleChangeFields per block, so an attribute edit writes into the right edge
 // codebook entity rather than a shared (and wrong) one.
-export const EdgeAttributeBlock = compose<
+const EdgeAttributeBlock = compose<
   EdgeAttributeBlockInnerProps,
   EdgeAttributeBlockOwnProps
 >(withComposerFormHandlers)(EdgeAttributeBlockInner);
@@ -95,7 +95,7 @@ const resolveEdgeLabel = (
   type: string,
 ) => codebook?.edge?.[type]?.name ?? type;
 
-export const EdgeConfigurationInner = ({ form }: EdgeConfigurationProps) => {
+const EdgeConfigurationInner = ({ form }: EdgeConfigurationProps) => {
   const codebook = useSelector(getCodebook);
   const edges = useSelector((state: RootState) =>
     toEdgeEntries(formValueSelector(form)(state, 'edges')),
