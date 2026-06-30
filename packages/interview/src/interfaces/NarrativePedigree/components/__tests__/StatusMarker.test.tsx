@@ -183,6 +183,48 @@ describe('StatusMarker', () => {
     );
   });
 
+  describe('surfaceColor on the at-risk "?" disc', () => {
+    // The "?" disc is the symbol field behind the at-risk glyph. Dimmed callers
+    // pass a background-blended surfaceColor so the disc recedes with the rest of
+    // the symbol instead of staying a bright white island on a dimmed node.
+    it('atRiskAffected: disc adopts the surfaceColor prop', () => {
+      const { container } = render(
+        <StatusMarker
+          status="atRiskAffected"
+          color="#38a169"
+          shape="square"
+          surfaceColor="#102030"
+        />,
+      );
+      expect(
+        container.querySelector('[data-query-break]')?.getAttribute('fill'),
+      ).toBe('#102030');
+    });
+
+    it('atRiskCarrier: disc adopts the surfaceColor prop', () => {
+      const { container } = render(
+        <StatusMarker
+          status="atRiskCarrier"
+          color="#3182ce"
+          shape="circle"
+          surfaceColor="#102030"
+        />,
+      );
+      expect(
+        container.querySelector('[data-query-break]')?.getAttribute('fill'),
+      ).toBe('#102030');
+    });
+
+    it('defaults the disc to white when no surfaceColor is given', () => {
+      const { container } = render(
+        <StatusMarker status="atRiskAffected" color="#38a169" shape="square" />,
+      );
+      expect(
+        container.querySelector('[data-query-break]')?.getAttribute('fill'),
+      ).toBe('white');
+    });
+  });
+
   describe('aria-hidden on root SVG', () => {
     it('SVG is aria-hidden', () => {
       const { container } = render(

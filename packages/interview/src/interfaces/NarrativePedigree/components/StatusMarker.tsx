@@ -193,10 +193,16 @@ function HatchFill({
  * line / hatch of the at-risk glyphs. The white disc gives the "?" its own
  * legible field and visually breaks the line around it.
  */
-function AtRiskQuery({ color }: { color: string }) {
+function AtRiskQuery({
+  color,
+  surfaceColor = WHITE,
+}: {
+  color: string;
+  surfaceColor?: string;
+}) {
   return (
     <>
-      <circle cx={C} cy={C} r={R * 0.52} fill={WHITE} data-query-break />
+      <circle cx={C} cy={C} r={R * 0.52} fill={surfaceColor} data-query-break />
       <text
         x={C}
         y={C}
@@ -219,6 +225,7 @@ function statusGlyph(
   color: string,
   clipId: string,
   patternId: string,
+  surfaceColor: string,
 ): ReactNode {
   switch (status) {
     case 'affected':
@@ -231,14 +238,14 @@ function statusGlyph(
       return (
         <>
           <VerticalLine color={color} clipId={clipId} broken />
-          <AtRiskQuery color={color} />
+          <AtRiskQuery color={color} surfaceColor={surfaceColor} />
         </>
       );
     case 'atRiskCarrier':
       return (
         <>
           <HatchFill color={color} clipId={clipId} patternId={patternId} />
-          <AtRiskQuery color={color} />
+          <AtRiskQuery color={color} surfaceColor={surfaceColor} />
         </>
       );
     case 'unknown':
@@ -291,7 +298,7 @@ export function StatusMarker({
       ) : (
         <Shape shape={shape} fill={surfaceColor} />
       )}
-      {statusGlyph(status, color, clipId, patternId)}
+      {statusGlyph(status, color, clipId, patternId, surfaceColor)}
       <Shape
         shape={shape}
         fill="none"
