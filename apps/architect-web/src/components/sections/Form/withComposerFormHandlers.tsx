@@ -59,9 +59,9 @@ const composerFormHandlers = withHandlers({
           type: props.type,
           variable: variable ?? '',
           configuration: {
+            ...codebookConfiguration,
             type: currentVar.type,
             name: currentVar.name,
-            ...codebookConfiguration,
           } as Record<string, unknown>,
           merge: false,
         });
