@@ -2,16 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   Background,
-  ComposerAutomaticLayout,
-  ComposerConvexHulls,
-  ComposerEdges,
-  ComposerLayoutVariable,
-  ComposerNodeForm,
   InterviewScript,
   NodeType,
-  QuickAdd,
   SkipLogic,
 } from '~/components/sections';
+import EdgeConfiguration from '~/components/sections/EdgeConfiguration/EdgeConfiguration';
+import NodeConfiguration from '~/components/sections/NodeConfiguration/NodeConfiguration';
 
 import { INTERFACE_TYPES } from '../../Screens/NewStageScreen/interfaceOptions';
 import { getInterface } from '../Interfaces';
@@ -21,13 +17,9 @@ describe('NetworkComposer registry', () => {
     const config = getInterface('NetworkComposer');
     expect(config.sections).toEqual([
       NodeType,
-      QuickAdd,
-      ComposerLayoutVariable,
-      ComposerNodeForm,
-      ComposerConvexHulls,
-      ComposerEdges,
+      NodeConfiguration,
+      EdgeConfiguration,
       Background,
-      ComposerAutomaticLayout,
       SkipLogic,
       InterviewScript,
     ]);

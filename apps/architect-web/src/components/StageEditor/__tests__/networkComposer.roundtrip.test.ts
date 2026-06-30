@@ -9,12 +9,22 @@ const stage = {
   subject: { entity: 'node', type: 'person' },
   quickAdd: 'name',
   layoutVariable: 'layoutPosition',
-  nodeForm: { fields: [{ variable: 'age', prompt: 'Age?' }] },
+  nodeForm: {
+    fields: [{ variable: 'age', component: 'Number', prompt: 'Age?' }],
+  },
   edges: [
     {
       id: 'edge-1',
       subject: { entity: 'edge', type: 'knows' },
-      form: { fields: [{ variable: 'closeness', prompt: 'How close?' }] },
+      form: {
+        fields: [
+          {
+            variable: 'closeness',
+            component: 'VisualAnalogScale',
+            prompt: 'How close?',
+          },
+        ],
+      },
     },
   ],
 };
@@ -24,10 +34,10 @@ describe('NetworkComposer editor output validates', () => {
     expect(networkComposerStage.safeParse(stage).success).toBe(true);
   });
 
-  it('rejects a stage with no edges', () => {
+  it('accepts a stage with no edges (empty array is valid)', () => {
     expect(
       networkComposerStage.safeParse({ ...stage, edges: [] }).success,
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('rejects a stage with duplicate edge subject types', () => {

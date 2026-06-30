@@ -4,11 +4,6 @@ export { default as EncryptedVariables } from './Anonymisation/EncryptedVariable
 export { default as AutomaticLayout } from './AutomaticLayout';
 export { default as Background } from './Background';
 export { default as CardDisplayOptions } from './CardDisplayOptions';
-export { default as ComposerConvexHulls } from './ComposerConvexHulls/ComposerConvexHulls';
-export { default as ComposerEdges } from './ComposerEdges/ComposerEdges';
-export { default as ComposerLayoutVariable } from './ComposerLayoutVariable/ComposerLayoutVariable';
-export { default as ComposerNodeForm } from './ComposerNodeForm/ComposerNodeForm';
-export { default as ComposerAutomaticLayout } from './ComposerAutomaticLayout';
 export { default as CategoricalBinPrompts } from './CategoricalBinPrompts';
 export { default as ContentGrid } from './ContentGrid';
 export { default as DyadCensusPrompts } from './DyadCensusPrompts';
