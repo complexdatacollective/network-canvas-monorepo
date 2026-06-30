@@ -21,7 +21,6 @@ import { getSkipMap } from '../selectors/skip-logic';
 import { getProtocolStages } from '../store/modules/protocol';
 
 type StagesMenuProps = {
-  /** Called with the chosen stage index when an item is activated. */
   onSelect: (index: number) => void;
 };
 

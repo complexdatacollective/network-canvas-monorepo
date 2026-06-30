@@ -52,8 +52,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   } = useStepUpAuth();
   const [finished, setFinished] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  // Interview-level setting (off by default); read from device settings in the
-  // load effect below and handed to the Shell.
   const [allowStageNavigation, setAllowStageNavigation] = useState(false);
   // SessionPayload from @codaco/interview's onSync does not carry the current
   // step. Mirror it into a ref so handleSync sees the latest value rather

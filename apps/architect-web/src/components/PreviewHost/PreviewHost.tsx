@@ -170,8 +170,6 @@ export function PreviewHost() {
         onRequestAsset={onRequestAsset}
         currentStep={currentStep}
         onStepChange={setCurrentStep}
-        // Stage navigation is always available in Architect preview so authors
-        // can jump between stages while reviewing a protocol.
         allowStageNavigation
         disableAnalytics
         analytics={{

@@ -28,8 +28,6 @@ const makeStages = (count: number): TestStage[] =>
     items: [],
   }));
 
-// An always-true skip query: an empty AND filter (`every` over no rules) with a
-// SKIP action ⇒ the stage is always skipped, independent of the network.
 const ALWAYS_SKIPPED = {
   action: 'SKIP' as const,
   filter: { join: 'AND' as const, rules: [] as never[] },
@@ -60,11 +58,6 @@ function makeStore(stages: TestStage[]) {
   });
 }
 
-/**
- * Renders the hook in controlled mode with a *stateful* `currentStep`, so that
- * `onStepChange` actually advances the rendered step (and the recovery effect
- * sees realistic interplay) — unlike `renderNavigation`, which pins the step.
- */
 function renderStatefulNavigation(stages: TestStage[], initialStep = 0) {
   const store = makeStore(stages);
   const onStepChange = vi.fn();
@@ -271,14 +264,10 @@ describe('useInterviewNavigation goToStage (progress-bar jump)', () => {
       await result.current.goToStage(2, confirmSkip);
     });
 
-    // Commit the displayed step (Shell does this from AnimatePresence) so the
-    // recovery effect now evaluates the skipped target stage.
     await act(async () => {
       result.current.handleExitComplete();
     });
 
-    // Only the deliberate jump fired; the forcedStep override stops recovery
-    // from navigating away from the skipped stage.
     expect(onStepChange).toHaveBeenCalledTimes(1);
     expect(onStepChange).toHaveBeenCalledWith(2, expect.anything());
   });

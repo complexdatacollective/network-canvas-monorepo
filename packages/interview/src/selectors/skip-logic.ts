@@ -6,9 +6,7 @@ import { getStages } from '../store/modules/protocol';
 import { getNetwork, getStageIndex } from './session';
 
 // Hacked together version of isStageSkipped that returns a map of all stages.
-// This is more convenient to use with useSelector. Keyed by stage index over
-// the finish-inclusive stage list (`getStages`); the appended FinishSession
-// sentinel has no skip logic and is always `false`.
+// This is more convenient to use with useSelector.
 export const getSkipMap = createSelector(
   getStages,
   getNetwork,
