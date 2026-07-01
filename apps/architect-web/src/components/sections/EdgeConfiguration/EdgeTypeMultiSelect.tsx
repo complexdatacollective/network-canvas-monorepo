@@ -83,17 +83,24 @@ type ConnectedProps = {
 };
 
 type EdgeTypeMultiSelectControlProps = {
-  input: { value: EdgeEntry[]; onChange: (edges: EdgeEntry[]) => void };
+  // redux-form types a field value loosely and initialises an unset field to ''
+  // (not an array), so value can arrive as a string — the render guards for it.
+  input: {
+    value: EdgeEntry[] | string;
+    onChange: (edges: EdgeEntry[]) => void;
+  };
   edgeTypes: EdgeTypeOption[];
 };
 
-const EdgeTypeMultiSelectControl = ({
+export const EdgeTypeMultiSelectControl = ({
   input,
   edgeTypes,
 }: EdgeTypeMultiSelectControlProps) => (
   <EdgeTypeMultiSelectInner
     edgeTypes={edgeTypes}
-    value={input.value ?? []}
+    // redux-form initialises an unset field's value to '' (not undefined), so a
+    // nullish guard isn't enough — coerce any non-array to an empty selection.
+    value={Array.isArray(input.value) ? input.value : []}
     onChange={input.onChange}
   />
 );

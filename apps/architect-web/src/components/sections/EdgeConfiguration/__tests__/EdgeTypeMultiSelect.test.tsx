@@ -2,7 +2,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { EdgeEntry } from '../EdgeTypeMultiSelect';
-import { EdgeTypeMultiSelectInner } from '../EdgeTypeMultiSelect';
+import {
+  EdgeTypeMultiSelectControl,
+  EdgeTypeMultiSelectInner,
+} from '../EdgeTypeMultiSelect';
 
 type RenderPickerOptions = {
   edgeTypes: { value: string; label: string }[];
@@ -113,5 +116,22 @@ describe('EdgeTypeMultiSelectInner', () => {
     expect(knowsEntry?.form).toEqual({
       fields: [{ variable: 'strength', component: 'NumberInput' }],
     });
+  });
+});
+
+describe('EdgeTypeMultiSelectControl', () => {
+  it('renders without crashing when redux-form supplies an unset value ("")', () => {
+    // redux-form initialises an unset field to '' (not undefined/array). The
+    // control must coerce that to an empty selection instead of calling ''.map.
+    expect(() =>
+      render(
+        <EdgeTypeMultiSelectControl
+          edgeTypes={[{ value: 'knows', label: 'Knows' }]}
+          input={{ value: '', onChange: vi.fn() }}
+        />,
+      ),
+    ).not.toThrow();
+
+    expect(screen.getByLabelText('Knows')).not.toBeChecked();
   });
 });
