@@ -18,6 +18,18 @@ vi.mock('~/components/EditorLayout', () => ({
       {children}
     </div>
   ),
+  Subsection: ({
+    children,
+    title,
+  }: {
+    children: ReactNode;
+    title?: ReactNode;
+  }) => (
+    <section data-testid="subsection">
+      {title && <h3>{title}</h3>}
+      {children}
+    </section>
+  ),
   Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
@@ -133,6 +145,16 @@ describe('EdgeConfiguration', () => {
     const multiSelect = screen.getByTestId('edge-type-multiselect');
     expect(multiSelect).toBeInTheDocument();
     expect(multiSelect.getAttribute('data-parentform')).toBe('edit-stage');
+  });
+
+  it('renders the multi-select under the "Edge types" subsection heading', () => {
+    renderSection({ edges: [] });
+    expect(
+      screen.getByRole('heading', { name: /edge types/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('subsection')).toContainElement(
+      screen.getByTestId('edge-type-multiselect'),
+    );
   });
 
   it('renders only the multi-select when no edge types are selected', () => {

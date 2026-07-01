@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -17,6 +17,18 @@ vi.mock('~/components/EditorLayout', () => ({
       {title && <h2>{title}</h2>}
       {children}
     </div>
+  ),
+  Subsection: ({
+    children,
+    title,
+  }: {
+    children: ReactNode;
+    title?: ReactNode;
+  }) => (
+    <section data-testid="subsection">
+      {title && <h3>{title}</h3>}
+      {children}
+    </section>
   ),
 }));
 
@@ -43,6 +55,37 @@ vi.mock('~/components/Form/Fields/CheckboxGroup', () => ({
   default: () => <div data-testid="checkbox-group" />,
 }));
 
+// Record the props passed to the window so the test can assert the create
+// button opens it with a categorical initial variable type.
+const newVariableWindowSpy = vi.fn();
+vi.mock('~/components/NewVariableWindow', () => ({
+  default: (props: Record<string, unknown>) => {
+    newVariableWindowSpy(props);
+    return <div data-testid="new-variable-window" />;
+  },
+  useNewVariableWindowState: (
+    initialProps: Record<string, unknown>,
+    onComplete: (...args: unknown[]) => void,
+  ) => {
+    const openWindow = (
+      newProps: Record<string, unknown>,
+      newMeta: Record<string, unknown>,
+    ) => {
+      openWindowSpy({ initialProps, newProps, newMeta });
+      // Simulate a created variable so the append path is exercised.
+      onComplete('created-var-id', newMeta);
+    };
+    return [{ ...initialProps }, openWindow] as const;
+  },
+}));
+
+type OpenWindowCall = {
+  initialProps: Record<string, unknown>;
+  newProps: { initialValues: { name: string; type: string } };
+  newMeta: { field: string };
+};
+const openWindowSpy = vi.fn<(call: OpenWindowCall) => void>();
+
 vi.mock('redux-form', () => ({
   Field: ({
     name,
@@ -53,9 +96,40 @@ vi.mock('redux-form', () => ({
   }) => <div data-testid={`field-${name}`} />,
   FormSection: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   reduxForm: () => (Component: unknown) => Component,
-  formValueSelector: () => () => null,
-  change: vi.fn(),
+  formValueSelector: () => () => ['existing-hull-var'],
+  change: (form: string, field: string, value: unknown) => ({
+    type: 'CHANGE',
+    form,
+    field,
+    value,
+  }),
   SubmissionError: class SubmissionError extends Error {},
+}));
+
+type ChangeAction = {
+  type: string;
+  form: string;
+  field: string;
+  value: unknown;
+};
+const dispatchSpy = vi.fn<(action: ChangeAction) => void>();
+vi.mock('~/ducks/hooks', () => ({
+  useAppDispatch: () => dispatchSpy,
+  useAppSelector: (selector: (state: unknown) => unknown) => selector({}),
+}));
+
+vi.mock('~/lib/legacy-ui/components/Button', () => ({
+  default: ({
+    children,
+    onClick,
+  }: {
+    children?: ReactNode;
+    onClick?: () => void;
+  }) => (
+    <button type="button" onClick={onClick}>
+      {children}
+    </button>
+  ),
 }));
 
 vi.mock('~/components/EditableAttributesList/EditableAttributesList', () => ({
@@ -99,6 +173,27 @@ describe('NodeConfiguration', () => {
     ).toBeDefined();
   });
 
+  it('renders each field area under its own subsection heading', () => {
+    renderSection();
+    expect(
+      screen.getByRole('heading', { name: /quick add variable/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /node positions/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /automatic layout/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /group hulls/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /editable attributes/i }),
+    ).toBeInTheDocument();
+    // Five field areas -> five subsections.
+    expect(screen.getAllByTestId('subsection')).toHaveLength(5);
+  });
+
   it('renders node config fields and the editable attributes list', () => {
     renderSection({ type: 'person', entity: 'node' });
     expect(screen.getByTestId('field-quickAdd')).toBeInTheDocument();
@@ -116,6 +211,39 @@ describe('NodeConfiguration', () => {
   it('renders the convexHulls field', () => {
     renderSection();
     expect(screen.getByTestId('field-convexHulls')).toBeInTheDocument();
+  });
+
+  it('renders the NewVariableWindow within the section', () => {
+    renderSection();
+    expect(screen.getByTestId('new-variable-window')).toBeInTheDocument();
+  });
+
+  it('opens the categorical variable editor from the group-hulls create button', () => {
+    openWindowSpy.mockClear();
+    renderSection();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /create categorical variable/i }),
+    );
+
+    expect(openWindowSpy).toHaveBeenCalledTimes(1);
+    const call = openWindowSpy.mock.calls[0]![0];
+    expect(call.newProps.initialValues.type).toBe('categorical');
+    expect(call.newMeta.field).toBe('convexHulls');
+  });
+
+  it('appends the created group variable id to the convexHulls array', () => {
+    dispatchSpy.mockClear();
+    renderSection();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /create categorical variable/i }),
+    );
+
+    expect(dispatchSpy).toHaveBeenCalledTimes(1);
+    const action = dispatchSpy.mock.calls[0]![0];
+    expect(action.field).toBe('convexHulls');
+    expect(action.value).toEqual(['existing-hull-var', 'created-var-id']);
   });
 
   it('is disabled until a node type is selected', () => {

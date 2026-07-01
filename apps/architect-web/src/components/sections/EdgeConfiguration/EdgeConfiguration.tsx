@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { formValueSelector } from 'redux-form';
 
 import EditableAttributesList from '~/components/EditableAttributesList/EditableAttributesList';
-import { Section } from '~/components/EditorLayout';
+import { Section, Subsection } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import type { RootState } from '~/ducks/modules/root';
 import { getCodebook } from '~/selectors/protocol';
@@ -103,8 +103,22 @@ const EdgeConfigurationInner = ({ form }: EdgeConfigurationProps) => {
 
   return (
     <>
-      <Section title="Edge Configuration" layout="horizontal">
-        <EdgeTypeMultiSelect form={form} />
+      <Section
+        title="Edge Configuration"
+        summary={
+          <p>
+            Define the types of connection participants can draw between nodes,
+            and the attributes collected for each connection type.
+          </p>
+        }
+        layout="horizontal"
+      >
+        <Subsection
+          title="Edge types"
+          summary="Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below."
+        >
+          <EdgeTypeMultiSelect form={form} />
+        </Subsection>
       </Section>
       {edges.map((edge, index) => (
         <EdgeAttributeBlock

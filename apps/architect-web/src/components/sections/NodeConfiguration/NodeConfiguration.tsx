@@ -1,9 +1,9 @@
 import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
-import { Field, FormSection } from 'redux-form';
+import { change, Field, formValueSelector, FormSection } from 'redux-form';
 
 import EditableAttributesList from '~/components/EditableAttributesList/EditableAttributesList';
-import { Row, Section } from '~/components/EditorLayout';
+import { Row, Section, Subsection } from '~/components/EditorLayout';
 import withCreateVariableHandlers from '~/components/enhancers/withCreateVariableHandler';
 import withDisabledSubjectRequired from '~/components/enhancers/withDisabledSubjectRequired';
 import withSubject from '~/components/enhancers/withSubject';
@@ -11,8 +11,14 @@ import { ValidatedField } from '~/components/Form';
 import { Toggle } from '~/components/Form/Fields';
 import CheckboxGroup from '~/components/Form/Fields/CheckboxGroup';
 import IssueAnchor from '~/components/IssueAnchor';
+import NewVariableWindow, {
+  type Entity,
+  useNewVariableWindowState,
+} from '~/components/NewVariableWindow';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
+import Button from '~/lib/legacy-ui/components/Button';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
@@ -57,6 +63,11 @@ export type NodeConfigurationProps = {
   quickAddOptionsForSubject: TextVariableOption[];
 };
 
+const toStringArray = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.filter((v): v is string => typeof v === 'string')
+    : [];
+
 export const NodeConfigurationComponent = ({
   entity,
   type,
@@ -68,88 +79,165 @@ export const NodeConfigurationComponent = ({
   layoutVariablesForSubject,
   categoricalVariablesForSubject,
   quickAddOptionsForSubject,
-}: NodeConfigurationProps) => (
-  <Section
-    title="Node Configuration"
-    summary={
-      <p>
-        Configure the node type, variable mappings, layout behaviour, group
-        hulls, and the attributes collected for each node.
-      </p>
+}: NodeConfigurationProps) => {
+  const dispatch = useAppDispatch();
+
+  const convexHulls = useAppSelector((state) =>
+    toStringArray(formValueSelector(form)(state, 'convexHulls')),
+  );
+
+  const newVariableWindowInitialProps = {
+    entity: (entity === 'ego' ? 'node' : entity) as Entity,
+    type: type ?? '',
+    initialValues: { name: '', type: 'categorical' },
+  };
+
+  const handleCreatedGroupVariable = (...args: unknown[]) => {
+    const [id] = args;
+    if (typeof id !== 'string') {
+      return;
     }
-    disabled={disabled}
-    disabledMessage={disabledMessage}
-    layout="horizontal"
-  >
-    <Row>
-      <IssueAnchor fieldName="quickAdd" description="Quick Add Variable" />
-      <ValidatedField
-        name="quickAdd"
-        component={VariablePicker}
-        validation={{ required: true }}
-        componentProps={{
-          label: 'Create or select a variable for the quick-add form',
-          type,
-          entity,
-          options: quickAddOptionsForSubject,
-          onCreateOption: (value: string) =>
-            handleCreateVariable(value, 'text', 'quickAdd'),
-        }}
-      />
-    </Row>
+    dispatch(change(form, 'convexHulls', [...convexHulls, id]));
+  };
 
-    <Row>
-      <IssueAnchor fieldName="layoutVariable" description="Layout Variable" />
-      <ValidatedField
-        name="layoutVariable"
-        component={VariablePicker}
-        validation={{ required: true }}
-        componentProps={{
-          label: 'Create or select a variable to store node coordinates',
-          type,
-          entity,
-          options: layoutVariablesForSubject,
-          onCreateOption: (value: string) =>
-            handleCreateVariable(value, 'layout', 'layoutVariable'),
-        }}
-      />
-    </Row>
+  const [newVariableWindowProps, openNewVariableWindow] =
+    useNewVariableWindowState(
+      newVariableWindowInitialProps,
+      handleCreatedGroupVariable,
+    );
 
-    <FormSection name="behaviours">
-      <Row>
-        <IssueAnchor
-          fieldName="behaviours.automaticLayout"
-          description="Default automatic layout"
+  const handleCreateGroupVariable = () =>
+    openNewVariableWindow(
+      { initialValues: { name: '', type: 'categorical' } },
+      { field: 'convexHulls' },
+    );
+
+  return (
+    <Section
+      title="Node Configuration"
+      summary={
+        <p>
+          Configure the variable mappings, layout behaviour, group hulls, and
+          the attributes collected for each node.
+        </p>
+      }
+      disabled={disabled}
+      disabledMessage={disabledMessage}
+      layout="horizontal"
+    >
+      <Subsection
+        title="Quick add variable"
+        summary="The variable populated by the inline quick-add field when a node is added from the toolbar — typically a name or label."
+      >
+        <Row>
+          <IssueAnchor fieldName="quickAdd" description="Quick Add Variable" />
+          <ValidatedField
+            name="quickAdd"
+            component={VariablePicker}
+            validation={{ required: true }}
+            componentProps={{
+              label: 'Create or select a variable for the quick-add form',
+              type,
+              entity,
+              options: quickAddOptionsForSubject,
+              onCreateOption: (value: string) =>
+                handleCreateVariable(value, 'text', 'quickAdd'),
+            }}
+          />
+        </Row>
+      </Subsection>
+
+      <Subsection
+        title="Node positions"
+        summary="Stores each node's position on the canvas. Reusing the same variable across stages preserves positions as the participant moves between tasks."
+      >
+        <Row>
+          <IssueAnchor
+            fieldName="layoutVariable"
+            description="Layout Variable"
+          />
+          <ValidatedField
+            name="layoutVariable"
+            component={VariablePicker}
+            validation={{ required: true }}
+            componentProps={{
+              label: 'Create or select a variable to store node coordinates',
+              type,
+              entity,
+              options: layoutVariablesForSubject,
+              onCreateOption: (value: string) =>
+                handleCreateVariable(value, 'layout', 'layoutVariable'),
+            }}
+          />
+        </Row>
+      </Subsection>
+
+      <Subsection
+        title="Automatic layout"
+        summary="When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state."
+      >
+        <FormSection name="behaviours">
+          <Row>
+            <IssueAnchor
+              fieldName="behaviours.automaticLayout"
+              description="Default automatic layout"
+            />
+            <Field
+              name="automaticLayout"
+              label="Start with automatic layout switched on"
+              component={Toggle}
+            />
+          </Row>
+        </FormSection>
+      </Subsection>
+
+      <Subsection
+        title="Group hulls"
+        summary="Draw shaded outlines around groups of nodes that share a value of a categorical variable. During the interview, participants pick one grouping variable at a time and tap nodes to add or remove them from a group. Choose which categorical variables can be used for grouping here, or create a new one."
+      >
+        <Row>
+          <Field
+            name="convexHulls"
+            component={CheckboxGroup}
+            label="Select one or more categorical variables"
+            placeholder="&mdash; Toggle a variable to draw a hull &mdash;"
+            options={categoricalVariablesForSubject}
+          />
+        </Row>
+        <Row>
+          <Button
+            type="button"
+            color="sea-green"
+            icon="add"
+            onClick={handleCreateGroupVariable}
+          >
+            Create categorical variable
+          </Button>
+        </Row>
+      </Subsection>
+
+      <Subsection
+        title="Editable attributes"
+        summary="The attributes shown in the side panel when a node is selected, so they can be edited during the interview. Each attribute pairs a variable with the input control used to collect it."
+      >
+        <EditableAttributesList
+          fieldName="nodeForm.fields"
+          entity={entity === 'ego' ? 'node' : entity}
+          type={type}
+          form={form}
+          editFormName="node-attr-edit"
+          title="Edit attribute"
+          handleChangeFields={handleChangeFields}
         />
-        <Field
-          name="automaticLayout"
-          label="Start with automatic layout switched on"
-          component={Toggle}
-        />
-      </Row>
-    </FormSection>
+      </Subsection>
 
-    <Row>
-      <Field
-        name="convexHulls"
-        component={CheckboxGroup}
-        label="Select one or more categorical variables"
-        placeholder="&mdash; Toggle a variable to draw a hull &mdash;"
-        options={categoricalVariablesForSubject}
+      <NewVariableWindow
+        // eslint-disable-next-line react/jsx-props-no-spreading
+        {...newVariableWindowProps}
       />
-    </Row>
-
-    <EditableAttributesList
-      fieldName="nodeForm.fields"
-      entity={entity === 'ego' ? 'node' : entity}
-      type={type}
-      form={form}
-      editFormName="node-attr-edit"
-      title="Edit attribute"
-      handleChangeFields={handleChangeFields}
-    />
-  </Section>
-);
+    </Section>
+  );
+};
 
 type OwnProps = {
   entity: 'node' | 'edge' | 'ego';
