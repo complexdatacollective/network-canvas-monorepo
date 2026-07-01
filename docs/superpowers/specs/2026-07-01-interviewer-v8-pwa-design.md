@@ -342,29 +342,42 @@ _between_ Dexie operations, never inside a live transaction).
   session DEK → persist `{ ...plaintextIndexFields, _enc, _v }`.
 - **Reads** (`get`/`bulkGet`) — fetch → decrypt `_enc` after the transaction
   closes → merge fields back.
-- **Pagination** (`queryPage`) —
-  `.orderBy(index).offset().limit().primaryKeys()` reads **keys only** (cursor
-  never carries ciphertext), then `bulkGet` + batch-decrypt the page. This keeps
-  async crypto out of cursor traversal — the crux constraint.
+- **Query/list paths need no decryption.** Because every filtered, sorted, and
+  displayed field is plaintext (see the boundary below), `querySessions` /
+  `listSessions` / counts keep their existing indexed Dexie queries untouched. The
+  wrapper only wraps **row get/save**, so async crypto never runs inside a cursor
+  or transaction — it sits between Dexie ops in the repo functions. (Key-first
+  pagination is therefore unnecessary; no queried field is ever ciphertext.)
 - **`none` mode** (no DEK) — passthrough (plaintext, no `_enc`).
 - The repos in `src/lib/db/db.ts`, `protocols.ts`, `sessions.ts` are refactored
   to construct their tables **only** through the wrapper, so an encrypted table
   cannot be written in the clear ("can't forget to encrypt").
 
-**Plaintext index boundary** (everything else encrypted):
+**Encrypted-field boundary** — only genuinely sensitive payloads are encrypted;
+every display / index / query field stays plaintext, so the query backend is
+unchanged and listing never decrypts:
 
-- **sessions** — `{ id, protocolId, status, createdAt, updatedAt }` plaintext;
-  `caseId`, the network graph (nodes/edges/ego attributes), stage/step state, and
-  notes encrypted.
-- **protocols** — `{ id, hash }` plaintext; name, description, protocol JSON, and
-  asset Blobs encrypted. (The deck/DataView render post-unlock, so encrypting
-  metadata costs nothing.)
-- **settings** — non-sensitive; unencrypted (mirrors the vault record table).
+- **sessions** — encrypt `network` (the participant graph: nodes/edges/ego
+  attributes) and `stageMetadata`. Plaintext: `id`, `protocolHash`,
+  `protocolName`, `caseId`, `startedAt`, `lastUpdatedAt`, `finishedAt`,
+  `exportedAt`, `currentStep`, `progress`, `isSynthetic` — the full
+  `StoredSessionLite` set + Dexie indexes. `querySessions` / `listSessions` /
+  counts read only these, so they need **no decryption** and keep their current
+  indexed implementation; only `getSession` / `getSessionsByIds` (which include
+  `network`) decrypt.
+- **protocols** — encrypt `protocol` (the `CurrentProtocol` JSON) and `codebook`.
+  Plaintext: `id`, `hash`, `name`, `description`, `schemaVersion`, `importedAt`,
+  `lastModified` (deck display + lookup). `getProtocolByHash` /
+  `getProtocolsByHashes` decrypt on read; `saveProtocol` encrypts on write.
+- **assets** — encrypt `data` (the Blob/string). Plaintext: `id`, `protocolHash`,
+  `assetId`, `name`, `type`. `assetResolver` decrypts when minting the blob URL.
+- **settings** and the **vault record** — non-sensitive (settings flags / wrapped
+  key material); unencrypted.
 
-Rationale: metadata visible at rest is limited to _how many_ sessions exist, for
-_which_ protocol, their status, and _when_ — never participant identity or
-collected data. DataView's filter/sort/paginate run on the plaintext indices;
-its text search decrypts the current page client-side.
+Rationale: caseIds are de-identified by NC methodology and must be displayed and
+sorted in the dashboard; the crown jewels — the collected network data — plus the
+protocol definition and assets are encrypted. At-rest metadata visible is limited
+to which case codes exist for which protocol, their status, and when.
 
 ## Workstream C — PWA shell + updates
 
