@@ -1,6 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
-import { expect, screen, userEvent, within } from 'storybook/test';
+import {
+  expect,
+  fireEvent,
+  screen,
+  userEvent,
+  waitFor,
+  within,
+} from 'storybook/test';
 
 import Surface from '../../layout/Surface';
 import Paragraph from '../../typography/Paragraph';
@@ -306,11 +313,28 @@ export const ValuePopoverWhileDragging: Story = {
     // Hidden at rest.
     await expect(screen.queryByTestId('scale-value-popover')).toBeNull();
 
-    // While focused, the popover shows the value as a percentage on the default
+    // While dragging, the popover shows the value as a percentage on the default
     // normalised 0–1 scale.
-    slider.focus();
+    await withPointerCaptureStubbed(async () => {
+      await fireEvent.pointerDown(slider, {
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+        buttons: 1,
+      });
+    });
     const popover = await screen.findByTestId('scale-value-popover');
     await expect(popover).toHaveTextContent('50%');
+
+    // Hidden again once the pointer is released.
+    await fireEvent.pointerUp(slider, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 0,
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId('scale-value-popover')).toBeNull(),
+    );
   },
 };
 

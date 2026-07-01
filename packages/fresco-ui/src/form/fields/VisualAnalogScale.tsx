@@ -99,8 +99,10 @@ export default function VisualAnalogScaleField(
             commitPristineValue();
             active.onPointerDown();
           }}
-          onKeyDown={handleKeyDown}
-          onFocus={active.onFocus}
+          onKeyDown={(event) => {
+            handleKeyDown(event);
+            active.onKeyDown();
+          }}
           onBlur={active.onBlur}
           disabled={disabled}
           min={min}
@@ -135,7 +137,7 @@ export default function VisualAnalogScaleField(
           </Slider.Control>
         </Slider.Root>
 
-        <ScaleValuePopover visible={active.active} anchor={thumbEl}>
+        <ScaleValuePopover visible={active.active && hasValue} anchor={thumbEl}>
           {formatVasValue(sliderValue, min, max)}
         </ScaleValuePopover>
 

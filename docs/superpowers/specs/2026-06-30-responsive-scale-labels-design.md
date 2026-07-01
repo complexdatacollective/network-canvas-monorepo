@@ -81,15 +81,18 @@ screens (pushing to anchors) and relaxes on tall ones. An explicit
 
 ### Drag popover (both fields)
 
-A lightweight value label, shown **only during active adjustment** (pointer drag,
-or while the slider input is focused and its value is changing) and hidden at
-rest:
+A lightweight value label, shown **only during active adjustment** (pointer drag
+or keyboard input) and hidden at rest — focus alone doesn't reveal it, so tabbing
+onto the control never implies a value the participant hasn't chosen:
 
-- Pinned to base-ui's `--slider-thumb-position` (the same mechanism the thumb
-  uses), offset **above** the thumb so a finger does not cover it on touch.
-- Appears with a spring, gated on `useReducedMotion()`.
-- Not a focus-trapping `Popover`/`Tooltip` — it is a positioned, non-interactive
-  element, so it adds no tab stop and no portal.
+- Reuses the shared popover surface variant + arrow so it matches
+  Tooltip/Popover, and portals into the shared `PortalContainer` to escape the
+  field's `overflow-clip` Surface. It tracks the thumb's live
+  `getBoundingClientRect()` every frame — base-ui's `Popover` won't reposition to
+  a moving anchor once open, so it can't be used directly.
+- Offset **above** the thumb so a finger does not cover it on touch. Appears with
+  a spring, gated on `useReducedMotion()`. Decorative for assistive tech (never
+  pulls focus off the slider).
 - **Likert** shows the current option's label.
 - **VAS** shows the current value: a rounded percentage for the default
   normalised `0–1` scale, otherwise the value in the field's own units (e.g.

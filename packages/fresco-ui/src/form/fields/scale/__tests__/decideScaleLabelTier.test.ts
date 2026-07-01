@@ -64,6 +64,19 @@ describe('decideScaleLabelTier', () => {
     ).toBe('rotated');
   });
 
+  it('escalates when a single label overflows its (narrower) cell', () => {
+    // Only the middle label's word (80) exceeds its cell (60); the rest fit.
+    // Extent (80+18)*0.707 ≈ 69 ≤ 120 tick spacing → rotate.
+    const labels = [
+      metric(30, 60),
+      metric(30, 60),
+      metric(80, 60),
+      metric(30, 60),
+      metric(30, 60),
+    ];
+    expect(decideScaleLabelTier({ labels, tickSpacing: 120 })).toBe('rotated');
+  });
+
   it('keeps full for a binary scale whose words fit', () => {
     expect(
       decideScaleLabelTier({

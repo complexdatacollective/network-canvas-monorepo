@@ -2,7 +2,7 @@
 
 import { Slider } from '@base-ui/react/slider';
 import { motion } from 'motion/react';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
@@ -53,7 +53,9 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
 
   const currentIndex = options.findIndex((option) => option.value === value);
   const hasValue = currentIndex >= 0;
-  const midpoint = Math.floor((options.length - 1) / 2);
+  // Clamp to 0 so an empty option set doesn't produce an out-of-range -1 that
+  // the Slider (min=0, max=0) would reject.
+  const midpoint = Math.max(0, Math.floor((options.length - 1) / 2));
   const sliderValue = hasValue ? currentIndex : midpoint;
   const currentOption = hasValue ? options[currentIndex] : undefined;
   const thumbState = !hasValue && state === 'normal' ? 'pristine' : state;
@@ -61,9 +63,16 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [thumbEl, setThumbEl] = useState<HTMLElement | null>(null);
   const active = useSliderActive();
+  // Memoise so the measurement hook doesn't re-run its DOM reads on every
+  // value/focus render (e.g. each drag tick) just because `map` yields a new
+  // array reference.
+  const optionLabels = useMemo(
+    () => options.map((option) => option.label),
+    [options],
+  );
   const { layout, measurementNode } = useScaleLabelLayout({
     rootRef,
-    labels: options.map((option) => option.label),
+    labels: optionLabels,
   });
 
   const popoverOption = options[sliderValue];
@@ -116,9 +125,11 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
           value={sliderValue}
           onValueChange={handleValueChange}
           onValueCommitted={handleValueCommitted}
-          onKeyDown={handleKeyDown}
+          onKeyDown={(event) => {
+            handleKeyDown(event);
+            active.onKeyDown();
+          }}
           onPointerDown={active.onPointerDown}
-          onFocus={active.onFocus}
           onBlur={active.onBlur}
           disabled={disabled}
           min={0}
@@ -276,7 +287,9 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
 
       {measurementNode}
       <div aria-live="polite" className="sr-only">
-        {currentOption?.label ?? ''}
+        {currentOption ? (
+          <RenderMarkdown>{currentOption.label}</RenderMarkdown>
+        ) : null}
       </div>
     </div>
   );

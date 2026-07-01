@@ -284,14 +284,24 @@ export const ValuePopoverOnInteraction: Story = {
     // Hidden at rest.
     await expect(screen.queryByTestId('scale-value-popover')).toBeNull();
 
-    // Appears while the slider is focused (keyboard interaction) and shows the
-    // current option's label.
-    slider.focus();
+    // Appears during a pointer drag, showing the current option's label.
+    await withPointerCaptureStubbed(async () => {
+      await fireEvent.pointerDown(slider, {
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+        buttons: 1,
+      });
+    });
     const popover = await screen.findByTestId('scale-value-popover');
     await expect(popover).toHaveTextContent('Neutral');
 
-    // Hidden again once focus leaves.
-    slider.blur();
+    // Hidden again once the pointer is released.
+    await fireEvent.pointerUp(slider, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 0,
+    });
     await waitFor(() =>
       expect(screen.queryByTestId('scale-value-popover')).toBeNull(),
     );

@@ -116,7 +116,10 @@ export function useScaleLabelLayout({
     measure();
     const observer = new ResizeObserver(() => measure());
     observer.observe(root);
+    // The sentinel catches root font-size (rem) changes; a probe span catches
+    // late web-font loads that resize the actual label text.
     if (sentinelRef.current) observer.observe(sentinelRef.current);
+    if (minRefs.current[0]) observer.observe(minRefs.current[0]);
     return () => observer.disconnect();
   }, [measure, rootRef]);
 
