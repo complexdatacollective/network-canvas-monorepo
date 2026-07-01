@@ -57,15 +57,20 @@ const EdgeAttributeBlockInner = ({
   title,
   handleChangeFields,
 }: EdgeAttributeBlockInnerProps) => (
-  <Section title={title} layout="horizontal">
-    <EditableAttributesList
-      fieldName={fieldName}
-      entity={entity}
-      type={type}
-      form={form}
-      editFormName={editFormName}
-      handleChangeFields={handleChangeFields}
-    />
+  <Section title={title} layout="horizontal" required={false}>
+    <Subsection
+      title="Editable attributes"
+      summary="The attributes shown in the side panel when an edge is selected, so they can be edited during the interview. Each attribute pairs a variable with the input control used to collect it."
+    >
+      <EditableAttributesList
+        fieldName={fieldName}
+        entity={entity}
+        type={type}
+        form={form}
+        editFormName={editFormName}
+        handleChangeFields={handleChangeFields}
+      />
+    </Subsection>
   </Section>
 );
 
@@ -112,6 +117,7 @@ const EdgeConfigurationInner = ({ form }: EdgeConfigurationProps) => {
           </p>
         }
         layout="horizontal"
+        required={false}
       >
         <Subsection
           title="Edge types"

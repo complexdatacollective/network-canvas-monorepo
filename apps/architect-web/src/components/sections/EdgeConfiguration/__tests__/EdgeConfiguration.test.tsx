@@ -217,4 +217,17 @@ describe('EdgeConfiguration', () => {
       screen.getByRole('heading', { name: /Edge Attributes — unknownType/ }),
     ).toBeInTheDocument();
   });
+
+  it('wraps each edge attributes list in an "Editable attributes" subsection', () => {
+    renderSection({
+      edges: [
+        { id: 'a', subject: { entity: 'edge', type: 'knows' } },
+        { id: 'b', subject: { entity: 'edge', type: 'likes' } },
+      ],
+    });
+    const editableHeadings = screen.getAllByRole('heading', {
+      name: /^editable attributes$/i,
+    });
+    expect(editableHeadings).toHaveLength(2);
+  });
 });
