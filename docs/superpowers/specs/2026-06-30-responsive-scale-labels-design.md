@@ -50,34 +50,42 @@ participant's current selection.
    symmetric horizontal padding equal to the rotated overhang so the centred end
    labels do not clip; the label band and the track share that padding so tick
    alignment is preserved.
-3. **Anchors only** — used when the predicted rotated band height exceeds the
-   vertical budget. Shows just the two end anchors (like VAS). The drag popover
-   still carries the chosen value.
+3. **Anchors only** — used when even rotated labels would collide: the measured
+   rotated bounding-box extent is wider than the (rotated-tier) tick spacing, so
+   neighbouring labels would overlap. Shows just the two end anchors (like VAS).
+   The drag popover still carries the chosen value.
 
 ### Switch trigger — measure actual fit
 
-A single measurement pass, re-run on resize and on label/rem change:
+A single measurement pass, re-run on resize and on label/rem change. Every
+input is derived from a measured element size — there are **no magic pixel
+thresholds** to tune:
 
-- A hidden, `aria-hidden` measurement layer renders two probes per label: a
-  `white-space: nowrap` span (→ single-line `fullWidth`) and a
-  `width: min-content` span (→ `longestWordWidth`). Probes inherit the label
-  font.
-- A 1rem sentinel observed by `ResizeObserver` invalidates the measurement when
-  the root font-size changes (late-loading theme CSS), mirroring
-  `useMeasureItems`.
-- A `ResizeObserver` on the control reports `availableWidth`.
-- A **pure** `decideScaleLabelTier({ availableWidth, optionCount, labels,
-maxLabelHeight, viewportHeight })` returns `'full' | 'rotated' | 'anchors'`.
-  Width (per-label cell width, with the half-width end cells as the binding
-  constraint) drives full→rotated; a vertical budget drives rotated→anchors.
-- The `ResizeObserver` callback is **stable** (refs, not deps) and only calls
-  `setState` when the tier actually changes — avoiding the known interview
-  effect-dep render loops.
-
-**Vertical budget.** `maxLabelHeight` defaults to a viewport-derived value
-(`clamp(64px, 20vh, 140px)` evaluated in JS) so the band budget shrinks on short
-screens (pushing to anchors) and relaxes on tall ones. An explicit
-`maxLabelHeight` prop overrides it (used by stories to force a tier).
+- A hidden, `aria-hidden` measurement layer renders a **replica of the real
+  label grid** (same `minmax(0, …)` columns, `gap`, and `px` inset) plus one
+  `width: min-content` probe span per label. Probes inherit the label font.
+- The replica yields, per label, the real `cellWidth`; and from the first/last
+  cell edges, the `tickSpacing`. Each probe span yields that label's
+  `longestWordWidth` and its wrapped `wrappedHeight` (both at min-content, i.e.
+  broken to the longest word).
+- A `ResizeObserver` watches the stable root, a 1rem sentinel (root font-size /
+  late theme CSS), and the first probe span (late web-font reflow). Its callback
+  is **stable** (refs, not deps) and only calls `setState` when the tier
+  actually changes — avoiding the known interview effect-dep render loops.
+- A **pure** `decideScaleLabelTier({ labels, tickSpacing })` returns
+  `'full' | 'rotated' | 'anchors'` from those measurements:
+  - **full** when every label's `longestWordWidth ≤ cellWidth` (it wraps within
+    its cell without breaking a word);
+  - else **rotated** when the rotated bounding-box extent
+    (`rotatedBboxExtent` = `max((longestWordWidth + wrappedHeight) · √½)`, shared
+    with the layout hook so the two never disagree) `≤ tickSpacing`;
+  - else **anchors**.
+- The `tickSpacing` passed to the decision is the **rotated-tier** spacing
+  (`(trackWidth − 2·overhang) / (n−1)`), because the rotated tier pads the track
+  by the overhang on both sides. `trackWidth` comes from the tier-invariant
+  full-width replica and `overhang` derives from the label metrics, so the
+  decision never feeds back into the measurement (no loop), and stories force a
+  tier purely by resizing the container — not via any injected height value.
 
 ### Drag popover (both fields)
 
@@ -130,8 +138,8 @@ gain `overflow-wrap`) and the drag-only popover.
   active tier and the hidden measurement node.
 - `form/fields/scale/ScaleValuePopover.tsx` — the drag-time value bubble.
 - `form/fields/LikertScale.tsx` — consume the ladder + popover + live region.
-- `form/fields/VisualAnalogScale.tsx` — never-clip hardening + popover + live
-  region.
+- `form/fields/VisualAnalogScale.tsx` — never-clip hardening + popover. It keeps
+  the native slider input's announcement, so it adds no separate live region.
 - Stories updated to force each tier (narrow width, long labels) and exercise
   the drag popover; new interaction/`aria-live` assertions; existing
   keyboard/commit tests preserved.
@@ -141,13 +149,13 @@ fields unchanged.
 
 ## Testing
 
-- **Unit (Vitest):** `decideScaleLabelTier` truth table — fits-single-line,
-  wraps-cleanly, long-word→rotated, tall-band→anchors, n≤2 edge cases,
+- **Unit (Vitest):** `decideScaleLabelTier` truth table — words-fit-cells→full,
+  long-word→rotated, rotated-bbox-exceeds-tick-spacing→anchors, n≤2 edge cases,
   unmeasured (width 0) → full.
-- **Storybook:** stories per tier (forced via container width + `maxLabelHeight`
-  - long-label sets); drag-popover visibility (appears on drag, hidden at rest);
-    `aria-live` content updates; existing keyboard/commit interaction tests
-    retained.
+- **Storybook:** a single interactive story whose resizable container + label-set
+  choice forces each tier by width alone (no injected height); drag-popover
+  visibility (appears on drag, hidden at rest); Likert `aria-live` content
+  updates; existing keyboard/commit interaction tests retained.
 - **Visual:** confirm each tier against the rendered stories (not just jsdom),
   per project practice.
 

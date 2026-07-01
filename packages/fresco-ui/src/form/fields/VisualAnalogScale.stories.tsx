@@ -314,7 +314,9 @@ export const ValuePopoverWhileDragging: Story = {
     await expect(screen.queryByTestId('scale-value-popover')).toBeNull();
 
     // While dragging, the popover shows the value as a percentage on the default
-    // normalised 0–1 scale.
+    // normalised 0–1 scale, then hides again once released. The release stays
+    // inside the stubbed block so the slider's releasePointerCapture is stubbed
+    // too (jsdom otherwise throws on the uncaptured pointer).
     await withPointerCaptureStubbed(async () => {
       await fireEvent.pointerDown(slider, {
         pointerId: 1,
@@ -322,15 +324,14 @@ export const ValuePopoverWhileDragging: Story = {
         button: 0,
         buttons: 1,
       });
-    });
-    const popover = await screen.findByTestId('scale-value-popover');
-    await expect(popover).toHaveTextContent('50%');
+      const popover = await screen.findByTestId('scale-value-popover');
+      await expect(popover).toHaveTextContent('50%');
 
-    // Hidden again once the pointer is released.
-    await fireEvent.pointerUp(slider, {
-      pointerId: 1,
-      pointerType: 'mouse',
-      button: 0,
+      await fireEvent.pointerUp(slider, {
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+      });
     });
     await waitFor(() =>
       expect(screen.queryByTestId('scale-value-popover')).toBeNull(),

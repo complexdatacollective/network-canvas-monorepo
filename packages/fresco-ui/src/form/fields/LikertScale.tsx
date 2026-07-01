@@ -126,10 +126,11 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
           onValueChange={handleValueChange}
           onValueCommitted={handleValueCommitted}
           onKeyDown={(event) => {
+            if (readOnly) return;
             handleKeyDown(event);
-            active.onKeyDown();
+            active.onKeyDown(event);
           }}
-          onPointerDown={active.onPointerDown}
+          onPointerDown={readOnly ? undefined : active.onPointerDown}
           onBlur={active.onBlur}
           disabled={disabled}
           min={0}

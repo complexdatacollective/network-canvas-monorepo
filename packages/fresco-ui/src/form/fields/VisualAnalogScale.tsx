@@ -95,13 +95,18 @@ export default function VisualAnalogScaleField(
         <Slider.Root
           value={sliderValue}
           onValueChange={handleValueChange}
-          onPointerDown={() => {
-            commitPristineValue();
-            active.onPointerDown();
-          }}
+          onPointerDown={
+            readOnly
+              ? undefined
+              : () => {
+                  commitPristineValue();
+                  active.onPointerDown();
+                }
+          }
           onKeyDown={(event) => {
+            if (readOnly) return;
             handleKeyDown(event);
-            active.onKeyDown();
+            active.onKeyDown(event);
           }}
           onBlur={active.onBlur}
           disabled={disabled}

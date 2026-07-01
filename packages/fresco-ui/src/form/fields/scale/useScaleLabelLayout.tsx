@@ -82,7 +82,6 @@ export function useScaleLabelLayout({
     const first = cells[0];
     const last = cells[n - 1];
     const trackWidth = first && last ? last.right - first.left : 0;
-    const tickSpacing = n > 1 ? trackWidth / (n - 1) : trackWidth;
 
     const metrics = labelsRef.current.map((_, i) => {
       const min = minRefs.current[i]?.getBoundingClientRect();
@@ -93,10 +92,23 @@ export function useScaleLabelLayout({
       };
     });
 
-    const tier = decideScaleLabelTier({ labels: metrics, tickSpacing });
     const extent = rotatedBboxExtent(metrics);
     const overhang = Math.ceil(extent / 2);
     const bandHeight = Math.ceil(extent);
+
+    // The rotated tier pads the track by `overhang` on both sides, so its
+    // rendered tick spacing is narrower than the full-width measurement. Decide
+    // the rotated→anchors fallback against that padded spacing, so a set that
+    // would collide once rotated falls through to anchors instead. This stays
+    // loop-free: `trackWidth` is measured from the tier-invariant full-width
+    // replica, and `overhang` derives from label metrics, not the current tier.
+    const rotatedTickSpacing =
+      n > 1 ? (trackWidth - 2 * overhang) / (n - 1) : trackWidth;
+
+    const tier = decideScaleLabelTier({
+      labels: metrics,
+      tickSpacing: rotatedTickSpacing,
+    });
     const rotateDeg =
       getComputedStyle(rootRef.current).direction === 'rtl' ? -45 : 45;
 

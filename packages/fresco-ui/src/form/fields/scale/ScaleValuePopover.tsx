@@ -53,6 +53,7 @@ export default function ScaleValuePopover({
       {visible && (
         <div
           ref={positionerRef}
+          aria-hidden="true"
           className="pointer-events-none! fixed top-0 left-0 z-60"
         >
           {/* Centred on the thumb, floated above it; the outer wrapper owns the
