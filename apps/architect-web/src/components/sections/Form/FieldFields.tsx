@@ -133,7 +133,7 @@ const PromptFields = ({
         </div>
         <div className="flex items-center justify-between gap-(--space-md)">
           <div>
-            <h4 className="text-base font-semibold">Show validation hints?</h4>
+            <h4>Show validation hints?</h4>
             <p className="text-sm text-current/70">
               Automatically display hints derived from this field&apos;s
               validation rules, helping participants understand input
