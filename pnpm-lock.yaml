@@ -208,8 +208,8 @@ catalogs:
       specifier: ^6.0.3
       version: 6.0.3
     uuid:
-      specifier: ^14.0.0
-      version: 14.0.0
+      specifier: ^14.0.1
+      version: 14.0.1
     vite:
       specifier: ^8.0.16
       version: 8.0.16
@@ -481,7 +481,7 @@ importers:
         version: 6.3.7
       uuid:
         specifier: 'catalog:'
-        version: 14.0.0
+        version: 14.0.1
       vite:
         specifier: 'catalog:'
         version: 8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
@@ -646,7 +646,7 @@ importers:
         version: 11.0.5
       uuid:
         specifier: 'catalog:'
-        version: 14.0.0
+        version: 14.0.1
       wouter:
         specifier: ^3.10.0
         version: 3.10.0(react@19.2.6)
@@ -1141,7 +1141,7 @@ importers:
         version: 1.100.0
       uuid:
         specifier: 'catalog:'
-        version: 14.0.0
+        version: 14.0.1
       vite:
         specifier: 'catalog:'
         version: 8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
@@ -1246,7 +1246,7 @@ importers:
         version: 19.2.6(react@19.2.6)
       uuid:
         specifier: 'catalog:'
-        version: 14.0.0
+        version: 14.0.1
       wouter:
         specifier: ^3.10.0
         version: 3.10.0(react@19.2.6)
@@ -1786,7 +1786,7 @@ importers:
         version: 4.3.0
       uuid:
         specifier: 'catalog:'
-        version: 14.0.0
+        version: 14.0.1
       zustand:
         specifier: 'catalog:'
         version: 5.0.14(@types/react@19.2.15)(immer@11.1.8)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
@@ -1981,7 +1981,7 @@ importers:
         version: 1.47.0
       uuid:
         specifier: 'catalog:'
-        version: 14.0.0
+        version: 14.0.1
     devDependencies:
       '@codaco/tsconfig':
         specifier: workspace:*
@@ -8303,10 +8303,12 @@ packages:
   conventional-changelog-atom@2.0.8:
     resolution: {integrity: sha512-xo6v46icsFTK3bb7dY/8m2qvc8sZemRgdqLb/bjpBsH2UyOS8rKNTgcb5025Hri6IpANPApbXMg15QLb1LJpBw==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-codemirror@2.0.8:
     resolution: {integrity: sha512-z5DAsn3uj1Vfp7po3gpt2Boc+Bdwmw2++ZHa5Ak9k0UKsYAO5mH1UBTN0qSCuJZREIhX6WU4E1p3IW2oRCNzQw==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-conventionalcommits@4.6.3:
     resolution: {integrity: sha512-LTTQV4fwOM4oLPad317V/QNQ1FY4Hju5qeBIM1uTHbrnCE+Eg4CdRZ3gO2pUeR+tzWdp80M2j3qFFEDWVqOV4g==}
@@ -8320,22 +8322,27 @@ packages:
   conventional-changelog-ember@2.0.9:
     resolution: {integrity: sha512-ulzIReoZEvZCBDhcNYfDIsLTHzYHc7awh+eI44ZtV5cx6LVxLlVtEmcO+2/kGIHGtw+qVabJYjdI5cJOQgXh1A==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-eslint@3.0.9:
     resolution: {integrity: sha512-6NpUCMgU8qmWmyAMSZO5NrRd7rTgErjrm4VASam2u5jrZS0n38V7Y9CzTtLT2qwz5xEChDR4BduoWIr8TfwvXA==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-express@2.0.6:
     resolution: {integrity: sha512-SDez2f3iVJw6V563O3pRtNwXtQaSmEfTCaTBPCqn0oG0mfkq0rX4hHBq5P7De2MncoRixrALj3u3oQsNK+Q0pQ==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-jquery@3.0.11:
     resolution: {integrity: sha512-x8AWz5/Td55F7+o/9LQ6cQIPwrCjfJQ5Zmfqi8thwUEKHstEn4kTIofXub7plf1xvFA2TqhZlq7fy5OmV6BOMw==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-jshint@2.0.9:
     resolution: {integrity: sha512-wMLdaIzq6TNnMHMy31hql02OEQ8nCQfExw1SE0hYL5KvU+JCTuPaDO+7JiogGT2gJAxiUGATdtYYfh+nT+6riA==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-preset-loader@2.3.4:
     resolution: {integrity: sha512-GEKRWkrSAZeTq5+YjUZOYxdHq+ci4dNwHvpaBC3+ENalzFWuCWa9EZXSuZBpkr72sMdKB+1fyDV4takK1Lf58g==}
@@ -14102,8 +14109,8 @@ packages:
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
-  uuid@14.0.0:
-    resolution: {integrity: sha512-Qo+uWgilfSmAhXCMav1uYFynlQO7fMFiMVZsQqZRMIXp0O7rR7qjkj+cPvBHLgBqi960QCoo/PH2/6ZtVqKvrg==}
+  uuid@14.0.1:
+    resolution: {integrity: sha512-6ZxzVpzDXDa3bJWaHilVayA+BH/1zmxCJoVgvmqJnid/gPoKHxUrS/aC/T6LGQtNHT+XHG9fXPJB4d+IrU30Ew==}
     hasBin: true
 
   uuid@3.4.0:
@@ -28038,7 +28045,7 @@ snapshots:
 
   util-deprecate@1.0.2: {}
 
-  uuid@14.0.0: {}
+  uuid@14.0.1: {}
 
   uuid@3.4.0: {}
 
