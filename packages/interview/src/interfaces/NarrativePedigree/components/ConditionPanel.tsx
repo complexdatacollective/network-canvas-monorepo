@@ -175,7 +175,7 @@ export default function ConditionPanel({
               key={entry.status}
               className="flex items-center gap-4 text-base"
             >
-              <span aria-hidden className="shrink-0">
+              <span aria-hidden className="flex shrink-0">
                 <Sticker
                   status={entry.status}
                   color={glyphColour}
@@ -187,7 +187,7 @@ export default function ConditionPanel({
           ))}
           {showAtRiskStatuses && (
             <div className="flex items-center gap-4 text-base">
-              <span aria-hidden className="shrink-0">
+              <span aria-hidden className="flex shrink-0">
                 <Sticker
                   status="atRiskCarrier"
                   color={glyphColour}
