@@ -68,8 +68,8 @@ vi.mock('~/components/NewVariableWindow', () => ({
     onComplete: (...args: unknown[]) => void,
   ) => {
     const openWindow = (
-      newProps: Record<string, unknown>,
-      newMeta: Record<string, unknown>,
+      newProps: { initialValues: { name: string; type: string } },
+      newMeta: { field: string },
     ) => {
       openWindowSpy({ initialProps, newProps, newMeta });
       // Simulate a created variable so the append path is exercised.
