@@ -10,23 +10,23 @@ const LAYER_OPACITY: Record<Intensity, number> = {
   dim: 0.1,
 };
 
-// A static set of softly blurred "lights" tinted with the app's brand colors:
-// the sea green brand colour, the deep nav-bar purple, and the lighter slate
-// blue. They sit far enough off-screen that only their blurred edges bleed in,
-// giving a subtle tinted glow over the platinum page background. Each light is
-// a plain blurred div, so unlike the previous canvas-based BackgroundBlobs this
-// renders once and costs nothing to keep on screen.
 const LIGHTS = [
-  // Sea green brand glow, top-left.
-  'bg-sea-green/20 -top-[20vmax] -left-[15vmax] h-[55vmax] w-[55vmax]',
-  // Deep nav-bar purple, lower-right, gently anchoring the composition. Kept at
-  // a low opacity since this colour is very dark and would otherwise read as a
-  // hard shadow rather than a soft light.
-  'bg-fresco-purple/10 -bottom-[25vmax] -right-[10vmax] h-[60vmax] w-[60vmax]',
-  // Lighter slate blue accent, upper-right.
-  'bg-slate-blue/15 -top-[10vmax] right-[5vmax] h-[40vmax] w-[40vmax]',
-  // A faint second sea green pool, lower-left, for balance.
-  'bg-sea-green/12 bottom-[5vmax] -left-[10vmax] h-[35vmax] w-[35vmax]',
+  {
+    position: '-top-[20vmax] -left-[15vmax] h-[55vmax] w-[55vmax]',
+    color: 'hsl(var(--sea-green) / 0.45)',
+  },
+  {
+    position: '-bottom-[25vmax] -right-[10vmax] h-[60vmax] w-[60vmax]',
+    color: 'color-mix(in oklch, var(--color-fresco-purple), transparent 78%)',
+  },
+  {
+    position: '-top-[10vmax] right-[5vmax] h-[40vmax] w-[40vmax]',
+    color: 'hsl(var(--slate-blue) / 0.4)',
+  },
+  {
+    position: 'bottom-[5vmax] -left-[10vmax] h-[35vmax] w-[35vmax]',
+    color: 'hsl(var(--sea-green) / 0.3)',
+  },
 ];
 
 const BackgroundLights = ({ intensity }: { intensity: Intensity }) => (
@@ -37,10 +37,13 @@ const BackgroundLights = ({ intensity }: { intensity: Intensity }) => (
     animate={{ opacity: LAYER_OPACITY[intensity] }}
     transition={{ duration: 1 }}
   >
-    {LIGHTS.map((light) => (
+    {LIGHTS.map(({ position, color }) => (
       <div
-        key={light}
-        className={`absolute rounded-full blur-[8rem] ${light}`}
+        key={position}
+        className={`absolute ${position}`}
+        style={{
+          background: `radial-gradient(circle, ${color}, transparent 75%)`,
+        }}
       />
     ))}
   </motion.div>
