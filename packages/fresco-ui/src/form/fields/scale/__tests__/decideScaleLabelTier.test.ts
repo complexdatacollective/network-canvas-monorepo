@@ -6,118 +6,69 @@ import {
 } from '../decideScaleLabelTier';
 
 const metric = (
-  fullWidth: number,
-  longestWordWidth = fullWidth,
-  wrappedWidth = Math.min(fullWidth, 120),
+  longestWordWidth: number,
+  cellWidth: number,
   wrappedHeight = 18,
-): ScaleLabelMetric => ({
-  fullWidth,
-  longestWordWidth,
-  wrappedWidth,
-  wrappedHeight,
-});
+): ScaleLabelMetric => ({ longestWordWidth, cellWidth, wrappedHeight });
 
-// availableWidth 300, 5 options → unit = 75, end cells = 37.5, interior = 75.
 const five = (m: ScaleLabelMetric) => [m, m, m, m, m];
 
 describe('decideScaleLabelTier', () => {
-  it('returns full before measurement (zero width)', () => {
+  it('returns full before measurement (no tick spacing)', () => {
     expect(
-      decideScaleLabelTier({
-        availableWidth: 0,
-        labels: five(metric(120)),
-        maxLabelHeight: 140,
-      }),
+      decideScaleLabelTier({ labels: five(metric(80, 40)), tickSpacing: 0 }),
     ).toBe('full');
   });
 
-  it('returns full for a single option regardless of width', () => {
+  it('returns full before measurement (cells not measured)', () => {
     expect(
-      decideScaleLabelTier({
-        availableWidth: 10,
-        labels: [metric(500)],
-        maxLabelHeight: 140,
-      }),
+      decideScaleLabelTier({ labels: five(metric(80, 0)), tickSpacing: 90 }),
     ).toBe('full');
   });
 
-  it('keeps full when every label fits on one line', () => {
-    // Even the 37.5px end cells comfortably hold a 30px word.
+  it('returns full for a single option', () => {
     expect(
-      decideScaleLabelTier({
-        availableWidth: 300,
-        labels: five(metric(30)),
-        maxLabelHeight: 140,
-      }),
+      decideScaleLabelTier({ labels: [metric(200, 40)], tickSpacing: 90 }),
     ).toBe('full');
   });
 
-  it('keeps full when labels wrap cleanly within two lines', () => {
-    // End label: longest word 35 ≤ 37.5 cell, fullWidth 60 → ceil(60/37.5)=2 lines.
+  it('keeps full while every longest word fits its cell', () => {
     expect(
-      decideScaleLabelTier({
-        availableWidth: 300,
-        labels: five(metric(60, 35)),
-        maxLabelHeight: 140,
-      }),
+      decideScaleLabelTier({ labels: five(metric(40, 60)), tickSpacing: 90 }),
     ).toBe('full');
   });
 
-  it('rotates single-line labels when a word overflows its cell but there is room', () => {
-    // Width 400: end cell 50, longest word 50 → wraps, but 120px needs 3 lines →
-    // not full. Wrapped block 110×18 → extent 90 ≤ 140. Track 286 → tick spacing
-    // 71.5, perpendicular gap 50 ≥ 18 wrapped height → rotate.
+  it('rotates when a word overflows its cell but the rotated box fits the spacing', () => {
+    // Word 80 > cell 60 → not full. Rotated box (80+18)*0.707 ≈ 69 ≤ 90 → rotate.
     expect(
-      decideScaleLabelTier({
-        availableWidth: 400,
-        labels: five(metric(120, 50, 110, 18)),
-        maxLabelHeight: 140,
-      }),
+      decideScaleLabelTier({ labels: five(metric(80, 60)), tickSpacing: 90 }),
     ).toBe('rotated');
   });
 
-  it('collapses to anchors when the rotated band exceeds the vertical budget', () => {
-    // Wrapped block 120×120 → extent (120+120)*0.707 ≈ 170 > 140 → anchors.
+  it('collapses to anchors when the rotated box is wider than the tick spacing', () => {
+    // Rotated box (120+60)*0.707 ≈ 127 > 90 spacing → labels would collide → anchors.
     expect(
       decideScaleLabelTier({
-        availableWidth: 500,
-        labels: five(metric(300, 60, 120, 120)),
-        maxLabelHeight: 140,
+        labels: five(metric(120, 60, 60)),
+        tickSpacing: 90,
       }),
     ).toBe('anchors');
   });
 
-  it('collapses to anchors when tall wrapped labels would overlap their neighbours', () => {
-    // Extent (120+72)*0.707 ≈ 136 ≤ 140 budget, but track 140 → tick spacing 35,
-    // perpendicular gap ≈ 25 < 72 wrapped height → labels collide → anchors.
+  it('rotates those same labels once the ticks are far enough apart', () => {
     expect(
       decideScaleLabelTier({
-        availableWidth: 300,
-        labels: five(metric(300, 60, 120, 72)),
-        maxLabelHeight: 140,
-      }),
-    ).toBe('anchors');
-  });
-
-  it('rotates those same tall labels once there is enough width to space them', () => {
-    // Same labels at width 900: track 763 → tick spacing 191, perpendicular gap
-    // 135 ≥ 72 wrapped height → rotate.
-    expect(
-      decideScaleLabelTier({
-        availableWidth: 900,
-        labels: five(metric(300, 200, 120, 72)),
-        maxLabelHeight: 140,
+        labels: five(metric(120, 60, 60)),
+        tickSpacing: 150,
       }),
     ).toBe('rotated');
   });
 
-  it('keeps full for a binary scale that fits its two cells', () => {
-    // 2 options, width 200 → 100px cells. 40px labels fit on one line.
+  it('keeps full for a binary scale whose words fit', () => {
     expect(
       decideScaleLabelTier({
-        availableWidth: 200,
-        labels: [metric(40), metric(40)],
-        maxLabelHeight: 140,
+        labels: [metric(30, 100), metric(30, 100)],
+        tickSpacing: 200,
       }),
     ).toBe('full');
   });

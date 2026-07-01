@@ -27,7 +27,6 @@ const meta = {
     'disabled': { control: 'boolean' },
     'options': { control: false },
     'value': { control: false },
-    'maxLabelHeight': { control: false },
     'onChange': { action: 'onChange' },
   },
   args: {
@@ -191,11 +190,10 @@ const labelSets: Record<string, { label: string; value: string | number }[]> = {
 };
 
 // Single interactive demo of the responsive label ladder. Resize the container
-// to step full -> rotated as it narrows; lower the max label height to step
-// rotated -> anchors; switch the label set to try different content.
+// to step full -> rotated -> anchors as it narrows; switch the label set to try
+// different content.
 function ResizableLikertDemo() {
   const [setName, setSetName] = useState('Agreement (5)');
-  const [maxLabelHeight, setMaxLabelHeight] = useState(160);
   const [width, setWidth] = useState<number>();
   const boxRef = useRef<HTMLDivElement>(null);
 
@@ -217,41 +215,26 @@ function ResizableLikertDemo() {
 
   return (
     <div className="flex flex-col gap-4" style={{ width: 660 }}>
-      <div className="flex flex-wrap items-center gap-6 text-sm">
-        <label className="flex items-center gap-2">
-          Labels
-          <select
-            aria-label="Label set"
-            value={setName}
-            onChange={(e) => setSetName(e.target.value)}
-            className="rounded border border-current/30 bg-transparent px-2 py-1"
-          >
-            {Object.keys(labelSets).map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex items-center gap-2">
-          Max label height: {maxLabelHeight}px
-          <input
-            aria-label="Max label height"
-            type="range"
-            min={40}
-            max={320}
-            step={10}
-            value={maxLabelHeight}
-            onChange={(e) => setMaxLabelHeight(Number(e.target.value))}
-          />
-        </label>
-      </div>
+      <label className="flex items-center gap-2 text-sm">
+        Labels
+        <select
+          aria-label="Label set"
+          value={setName}
+          onChange={(e) => setSetName(e.target.value)}
+          className="rounded border border-current/30 bg-transparent px-2 py-1"
+        >
+          {Object.keys(labelSets).map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <Paragraph margin="none" className="text-sm text-current/60">
         Drag the bottom-right corner to resize the container
         {width !== undefined ? ` (${Math.round(width)}px)` : ''}. It steps full
-        → rotated as it narrows, and rotated → anchors as you lower the max
-        label height.
+        → rotated → anchors as it narrows.
       </Paragraph>
 
       <div
@@ -269,7 +252,6 @@ function ResizableLikertDemo() {
           options={options}
           value={value}
           onChange={(next) => next !== undefined && setValue(next)}
-          maxLabelHeight={maxLabelHeight}
         />
       </div>
     </div>

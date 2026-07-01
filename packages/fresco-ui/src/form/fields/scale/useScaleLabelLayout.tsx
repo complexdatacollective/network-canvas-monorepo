@@ -14,19 +14,21 @@ import { controlLabelVariants } from '../../../styles/controlVariants';
 import { cx } from '../../../utils/cva';
 import {
   decideScaleLabelTier,
-  rotatedBandExtent,
+  rotatedBboxExtent,
   type ScaleLabelTier,
 } from './decideScaleLabelTier';
 
-// Vertical budget for the label band, derived from the viewport so it shrinks
-// on short screens (pushing rotated → anchors) and relaxes on tall ones.
-const MIN_VERTICAL_BUDGET = 64;
-const MAX_VERTICAL_BUDGET = 140;
-const VERTICAL_BUDGET_FRACTION = 0.2;
+// The Likert label grid: half-width end cells so the first/last labels align to
+// the track edges and the interior cells centre on their ticks. Shared by the
+// rendered grid and the hidden measurement replica so cell widths match.
+export function scaleGridTemplateColumns(count: number) {
+  if (count <= 2) return `repeat(${count}, minmax(0, 1fr))`;
+  return `minmax(0, 0.5fr) repeat(${count - 2}, minmax(0, 1fr)) minmax(0, 0.5fr)`;
+}
 
-// Max width a rotated label wraps within. Applied identically to the hidden
-// measurement probe and the rendered label so their wrapping matches exactly.
-export const ROTATED_LABEL_WRAP_CLASS = 'max-w-32 wrap-break-word';
+// A rotated label wraps to its longest word (min-content), so it never breaks
+// mid-word. Shared by the rendered label and the measurement probe.
+export const ROTATED_LABEL_WRAP_CLASS = 'w-min';
 
 export type ScaleLabelLayout = {
   tier: ScaleLabelTier;
@@ -45,71 +47,58 @@ const INITIAL: ScaleLabelLayout = {
   bandHeight: 0,
 };
 
-function defaultVerticalBudget() {
-  const viewportHeight =
-    typeof window === 'undefined' ? 768 : window.innerHeight;
-  return Math.max(
-    MIN_VERTICAL_BUDGET,
-    Math.min(MAX_VERTICAL_BUDGET, viewportHeight * VERTICAL_BUDGET_FRACTION),
-  );
-}
-
-// Measures the rendered labels against the available width and returns the
-// layout tier to use, plus a hidden node that must be rendered for measurement.
+// Measures the labels against the real layout and returns the tier to use, plus
+// a hidden node that must be rendered for measurement. Everything is derived
+// from measured element sizes: a replica of the full grid yields the real cell
+// widths and tick spacing, and a min-content probe yields each label's
+// longest-word width and wrapped height.
 //
-// The observer is wired to the stable outer element (whose width never changes
-// with the tier), and `setLayout` only fires on an actual change, so adopting a
-// taller tier can't feed back into the measurement and loop.
+// The observer watches the stable outer element (whose width never changes with
+// the tier) and `setLayout` only fires on an actual change, so adopting a taller
+// tier can't feed back into the measurement and loop.
 export function useScaleLabelLayout({
   rootRef,
   labels,
-  maxLabelHeight,
 }: {
   rootRef: React.RefObject<HTMLElement | null>;
   labels: string[];
-  maxLabelHeight?: number;
 }): { layout: ScaleLabelLayout; measurementNode: ReactNode } {
   const [layout, setLayout] = useState<ScaleLabelLayout>(INITIAL);
 
-  const nowrapRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const cellRefs = useRef<(HTMLDivElement | null)[]>([]);
   const minRefs = useRef<(HTMLSpanElement | null)[]>([]);
-  const wrappedRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Latest inputs held in refs so the observer callback stays referentially
-  // stable and never re-subscribes the ResizeObserver.
   const labelsRef = useRef(labels);
   labelsRef.current = labels;
-  const maxLabelHeightRef = useRef(maxLabelHeight);
-  maxLabelHeightRef.current = maxLabelHeight;
 
   const measure = useCallback(() => {
-    const root = rootRef.current;
-    if (!root) return;
+    if (!rootRef.current) return;
 
-    const availableWidth = root.clientWidth;
+    const n = labelsRef.current.length;
+    const cells = cellRefs.current
+      .slice(0, n)
+      .map((el) => el?.getBoundingClientRect());
+    const first = cells[0];
+    const last = cells[n - 1];
+    const trackWidth = first && last ? last.right - first.left : 0;
+    const tickSpacing = n > 1 ? trackWidth / (n - 1) : trackWidth;
+
     const metrics = labelsRef.current.map((_, i) => {
-      const wrapped = wrappedRefs.current[i]?.getBoundingClientRect();
+      const min = minRefs.current[i]?.getBoundingClientRect();
       return {
-        fullWidth: nowrapRefs.current[i]?.getBoundingClientRect().width ?? 0,
-        longestWordWidth:
-          minRefs.current[i]?.getBoundingClientRect().width ?? 0,
-        wrappedWidth: wrapped?.width ?? 0,
-        wrappedHeight: wrapped?.height ?? 0,
+        longestWordWidth: min?.width ?? 0,
+        wrappedHeight: min?.height ?? 0,
+        cellWidth: cells[i]?.width ?? 0,
       };
     });
-    const budget = maxLabelHeightRef.current ?? defaultVerticalBudget();
 
-    const tier = decideScaleLabelTier({
-      availableWidth,
-      labels: metrics,
-      maxLabelHeight: budget,
-    });
-
-    const extent = rotatedBandExtent(metrics);
+    const tier = decideScaleLabelTier({ labels: metrics, tickSpacing });
+    const extent = rotatedBboxExtent(metrics);
     const overhang = Math.ceil(extent / 2);
-    const bandHeight = Math.ceil(extent + 8);
-    const rotateDeg = getComputedStyle(root).direction === 'rtl' ? -45 : 45;
+    const bandHeight = Math.ceil(extent);
+    const rotateDeg =
+      getComputedStyle(rootRef.current).direction === 'rtl' ? -45 : 45;
 
     setLayout((prev) =>
       prev.tier === tier &&
@@ -131,46 +120,36 @@ export function useScaleLabelLayout({
     return () => observer.disconnect();
   }, [measure, rootRef]);
 
-  // Re-measure when the label set or budget changes (not just on resize).
+  // Re-measure when the label set changes (not just on resize).
   useLayoutEffect(() => {
     measure();
-  }, [labels, maxLabelHeight, measure]);
+  }, [labels, measure]);
 
   const probeClass = cx(controlLabelVariants({ size: 'sm' }), 'inline-block');
 
   const measurementNode = (
     <div
       aria-hidden="true"
-      style={{
-        position: 'absolute',
-        left: -99999,
-        top: 0,
-        visibility: 'hidden',
-        pointerEvents: 'none',
-      }}
+      className="pointer-events-none invisible absolute inset-x-0 top-0"
     >
+      <div
+        className="grid gap-2 px-3"
+        style={{ gridTemplateColumns: scaleGridTemplateColumns(labels.length) }}
+      >
+        {labels.map((_, i) => (
+          <div
+            key={i}
+            ref={(el) => {
+              cellRefs.current[i] = el;
+            }}
+          />
+        ))}
+      </div>
       {labels.map((label, i) => (
         <Fragment key={`${i}-${label}`}>
           <span
             ref={(el) => {
-              nowrapRefs.current[i] = el;
-            }}
-            className={cx(probeClass, 'whitespace-nowrap')}
-          >
-            <RenderMarkdown>{label}</RenderMarkdown>
-          </span>
-          <span
-            ref={(el) => {
               minRefs.current[i] = el;
-            }}
-            className={probeClass}
-            style={{ width: 'min-content' }}
-          >
-            <RenderMarkdown>{label}</RenderMarkdown>
-          </span>
-          <span
-            ref={(el) => {
-              wrappedRefs.current[i] = el;
             }}
             className={cx(probeClass, ROTATED_LABEL_WRAP_CLASS)}
           >
@@ -178,7 +157,7 @@ export function useScaleLabelLayout({
           </span>
         </Fragment>
       ))}
-      <div ref={sentinelRef} style={{ width: '1rem', height: '1rem' }} />
+      <div ref={sentinelRef} className="h-4 w-4" />
     </div>
   );
 

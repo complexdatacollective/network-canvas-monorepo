@@ -95,18 +95,14 @@ export const sliderTickStyles = cx(
   'h-full w-1 bg-[color-mix(in_oklab,var(--input)_70%,var(--input-contrast))]',
 );
 
-// Transient value bubble shown while a scale slider is being adjusted. Its
-// horizontal position (left) is set inline from the current value, and it floats
-// above the track so a finger doesn't cover it on touch. base-ui's
+// Positioning for the transient value bubble shown while a scale slider is being
+// adjusted. Its horizontal position (left) is set inline from the current value,
+// and it floats above the track so a finger doesn't cover it on touch. base-ui's
 // `--slider-thumb-position` is set inline on the thumb element itself, so a
 // sibling popover can't read it — we compute the percentage ourselves instead.
+// The bubble itself is styled with the shared popover surface variant.
 export const sliderValuePopoverStyles = cx(
-  'pointer-events-none absolute bottom-[calc(100%+0.5rem)] -translate-x-1/2',
-  'bg-primary text-primary-contrast z-10 rounded px-2 py-0.5 text-sm font-medium whitespace-nowrap',
-);
-
-export const sliderValuePopoverCaretStyles = cx(
-  'bg-primary absolute top-full left-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rotate-45',
+  'pointer-events-none absolute bottom-[calc(100%+0.5rem)] z-10 -translate-x-1/2',
 );
 
 // Base variants for all 'control' like components (inputs, buttons, etc)

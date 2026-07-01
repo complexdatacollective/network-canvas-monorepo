@@ -146,7 +146,7 @@ export default function VisualAnalogScaleField(
               <div
                 className={cx(
                   controlLabelVariants({ size: 'sm' }),
-                  'max-w-24 text-left wrap-break-word',
+                  'max-w-24 text-left',
                 )}
               >
                 <RenderMarkdown>{minLabel}</RenderMarkdown>
@@ -156,7 +156,7 @@ export default function VisualAnalogScaleField(
               <div
                 className={cx(
                   controlLabelVariants({ size: 'sm' }),
-                  'max-w-24 text-right wrap-break-word',
+                  'max-w-24 text-right',
                 )}
               >
                 <RenderMarkdown>{maxLabel}</RenderMarkdown>

@@ -20,6 +20,7 @@ import { getInputState } from '../utils/getInputState';
 import ScaleValuePopover from './scale/ScaleValuePopover';
 import {
   ROTATED_LABEL_WRAP_CLASS,
+  scaleGridTemplateColumns,
   useScaleLabelLayout,
 } from './scale/useScaleLabelLayout';
 import { useSliderActive } from './scale/useSliderActive';
@@ -34,18 +35,8 @@ type LikertScaleFieldProps = CreateFormFieldProps<
   'div',
   {
     options?: Option[];
-    /**
-     * Overrides the viewport-derived vertical budget for the label band. Mainly
-     * for stories/tests that need to force a layout tier.
-     */
-    maxLabelHeight?: number;
   }
 >;
-
-function gridTemplateColumns(count: number) {
-  if (count <= 2) return `repeat(${count}, minmax(0, 1fr))`;
-  return `minmax(0, 0.5fr) repeat(${count - 2}, minmax(0, 1fr)) minmax(0, 0.5fr)`;
-}
 
 export default function LikertScaleField(props: LikertScaleFieldProps) {
   const {
@@ -55,7 +46,6 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
     options = [],
     disabled,
     readOnly,
-    maxLabelHeight,
     ...rest
   } = props;
 
@@ -73,7 +63,6 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
   const { layout, measurementNode } = useScaleLabelLayout({
     rootRef,
     labels: options.map((option) => option.label),
-    maxLabelHeight,
   });
 
   const popoverOption = options[sliderValue];
@@ -113,7 +102,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
   };
 
   return (
-    <div ref={rootRef} className={cx('w-full', className)} {...rest}>
+    <div ref={rootRef} className={cx('relative w-full', className)} {...rest}>
       <div
         className="relative"
         style={
@@ -199,7 +188,9 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
         {options.length > 0 && layout.tier === 'full' && (
           <div
             className="mt-2 grid gap-2 px-3"
-            style={{ gridTemplateColumns: gridTemplateColumns(options.length) }}
+            style={{
+              gridTemplateColumns: scaleGridTemplateColumns(options.length),
+            }}
           >
             {options.map((option, index) => {
               const isFirst = index === 0;
@@ -209,7 +200,6 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                   key={index}
                   className={cx(
                     controlLabelVariants({ size: 'sm' }),
-                    'wrap-break-word',
                     options.length === 1
                       ? 'text-center'
                       : isFirst
@@ -266,7 +256,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
             <div
               className={cx(
                 controlLabelVariants({ size: 'sm' }),
-                'max-w-24 text-left wrap-break-word',
+                'max-w-24 text-left',
               )}
             >
               <RenderMarkdown>{options[0]!.label}</RenderMarkdown>
@@ -274,7 +264,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
             <div
               className={cx(
                 controlLabelVariants({ size: 'sm' }),
-                'max-w-24 text-right wrap-break-word',
+                'max-w-24 text-right',
               )}
             >
               <RenderMarkdown>
