@@ -26,12 +26,12 @@ describe('NetworkComposer registry', () => {
     expect(config.documentation).toContain('http');
   });
 
-  it('defaults automaticLayout to false in the template', () => {
+  it('defaults automaticLayout to true in the template', () => {
     const config = getInterface('NetworkComposer');
     const template = config.template as {
       behaviours: { automaticLayout: boolean };
     };
-    expect(template.behaviours.automaticLayout).toBe(false);
+    expect(template.behaviours.automaticLayout).toBe(true);
   });
 
   it('appears in the stage-type picker as a Sociograms entry', () => {

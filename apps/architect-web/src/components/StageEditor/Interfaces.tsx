@@ -259,7 +259,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       'https://documentation.networkcanvas.com/interface-documentation/network-composer/',
     template: {
       behaviours: {
-        automaticLayout: false,
+        automaticLayout: true,
       },
     },
   },
