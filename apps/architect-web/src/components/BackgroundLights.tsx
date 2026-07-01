@@ -37,9 +37,9 @@ const BackgroundLights = ({ intensity }: { intensity: Intensity }) => (
     animate={{ opacity: LAYER_OPACITY[intensity] }}
     transition={{ duration: 1 }}
   >
-    {LIGHTS.map(({ position, color }) => (
+    {LIGHTS.map(({ position, color }, index) => (
       <div
-        key={position}
+        key={index}
         className={`absolute ${position}`}
         style={{
           background: `radial-gradient(circle, ${color}, transparent 75%)`,
