@@ -123,7 +123,7 @@ const PromptFields = ({
         </Row>
         {variable && (
           <Row>
-            <h3 id={getFieldId('options')}>Variable Options</h3>
+            <h4 id={getFieldId('options')}>Variable Options</h4>
             <p>
               Create <strong>up to 8</strong> options for this variable.
             </p>
