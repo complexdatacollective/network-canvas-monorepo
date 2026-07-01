@@ -54,6 +54,8 @@ backwards-compatibility, and no changeset** (interviewer-v8 is unreleased).
 - **Server sync / multi-user.** The app stays single-user and offline-first with
   manual export; no user identifier is introduced.
 - **Data migration.** No released users exist.
+- **Import-from-URL.** Removed (CORS-bound after native removal); protocols come
+  from file import or the bundled sample/development protocols.
 - **Retaining any native target.** This is a one-way migration to web-only.
 
 ## Decisions (from brainstorming)
@@ -104,7 +106,9 @@ backwards-compatibility, and no changeset** (interviewer-v8 is unreleased).
   `useGeospatialSearch.ts`) is the **only** internet-dependent stage (Mapbox
   tiles + optional search). External-data rosters (`loadExternalData.ts`) are
   offline when the URL is a bundled asset. PostHog analytics is off-by-default,
-  fire-and-forget. **No online/offline detection or connectivity banner exists.**
+  fire-and-forget. Import-from-URL (`fetchFromUrl.ts`) is the other network call;
+  it is **removed** in Workstream A.1, leaving Geospatial as the sole runtime
+  internet dependency. **No online/offline detection or connectivity banner exists.**
 - **Updates:** `src/lib/update/*` branches Electron (`electron-updater`),
   Capacitor (GitHub releases → store URL), and web (a "simulated" update that
   just links to a release page). `UpdateDialog.tsx`/`StatusRow.tsx`/`useUpdateCheck.ts`
@@ -150,9 +154,15 @@ branching the vault/storage rewrite would otherwise have to thread through.
   only path.
 - `src/lib/auth/api.ts` — delete `electron.ts` (IPC) and the native-biometric
   dispatch; auth is rebuilt in Workstream B.
-- `src/lib/files/pickFile.ts` + `download.ts` — keep only the browser
-  (`<input type=file>` / Blob + saveAs) paths; drop Electron dialog IPC and
-  `@capacitor/filesystem`.
+- `src/lib/files/pickFile.ts` + `download.ts` — drop the Electron dialog IPC and
+  `@capacitor/filesystem`/`@capacitor/share` branches; the web paths become the
+  only paths, reworked in **Workstream A.1** (`download.ts` gains the Web Share
+  sheet; `pickFile.ts` relaxes its `accept`).
+- `src/lib/files/fetchFromUrl.ts`, `importProtocolFromUrl`/`deriveNameFromUrl` +
+  the streamed-fetch branch in `src/lib/protocol/importProtocol.ts`, the
+  `source: 'url'` request in `useProtocolImport.ts`, and the **"Import from URL"**
+  section of `ImportDialog.tsx` — **removed** (see Workstream A.1). URL import is
+  dropped; the sample/development protocols are bundled instead.
 - `src/lib/update/*`, `UpdateDialog.tsx`, `StatusRow.tsx` update affordance,
   `useUpdateCheck.ts`, `storeUrls.ts`, `checkForUpdate.ts` — removed; replaced by
   the SW-driven update in Workstream C.
@@ -166,7 +176,61 @@ apply), `turbo.json` (drop any electron/capacitor tasks), and catalogs if a dep
 becomes unused elsewhere.
 
 **Result:** a plain Vite web SPA on Dexie — plaintext, PIN/passphrase
-verifier-only, online-only. This is the baseline for B–D.
+verifier-only. This is the baseline for B–D.
+
+## Workstream A.1 — File I/O & protocol sources on the web platform
+
+Native removal takes away three escape hatches — Electron/Capacitor URL fetch
+(CORS-free), `@capacitor/share`, and native file dialogs. Their web-platform
+replacements, and the one feature deliberately dropped:
+
+### Protocol sources — file import + bundled protocols (URL import removed)
+
+- **Import from URL is removed.** After native removal the only fetch path is
+  CORS-bound `fetch()`, which cannot read an arbitrary cross-origin `.netcanvas`.
+  Rather than run a proxy, the feature is dropped: delete `fetchFromUrl.ts`,
+  `importProtocolFromUrl`/`deriveNameFromUrl`, the `source: 'url'` request, and the
+  ImportDialog URL field + its tests. This also removes one of the app's last
+  network dependencies.
+- **Sample + development protocols are bundled** and install **locally, with no
+  network fetch**. The sample protocol currently installs by fetching
+  `documentation.networkcanvas.com/...` (`sampleProtocol.ts`); instead, bundle the
+  `@codaco/sample-protocol` (and, dev-only, `@codaco/development-protocol`) bytes
+  as a build asset and install them through the existing JSZip → migrate →
+  validate → save pipeline from local bytes. The development protocol stays gated
+  behind `import.meta.env.DEV` (matching the existing dev-only Library entry).
+- **File import is the primary source**, mechanism unchanged — `<input
+type="file">` in `pickFile.ts`, which already works on iPadOS/Android (opens the
+  Files picker). See the `accept` fix below.
+
+### File import on tablets — `accept` fix
+
+`accept=".netcanvas,application/zip"` can grey out `.netcanvas` files in the iOS
+Files picker: iOS matches by UTI, and a `.netcanvas` extension resolves to the
+generic `public.data`, not `public.zip-archive`. **Fix:** relax `accept` (drop it
+or add `application/octet-stream`) so `.netcanvas` files are selectable, and rely
+on the existing post-selection validation (JSZip extract + schema validate) to
+reject wrong files gracefully.
+
+### Export → Web Share sheet, with download fallback
+
+`download.ts` collapses to a single web path replacing both the Electron save
+dialog and the Capacitor share:
+
+- If `navigator.canShare?.({ files: [file] })` → `navigator.share({ files:
+[file], title })` — raises the **native share sheet on iPadOS Safari and Android
+  Chrome** (parity with the retired `@capacitor/share`).
+- Else → `URL.createObjectURL` + `<a download>` (desktop / Firefox).
+
+**User-gesture constraint:** unlike `@capacitor/share`, Web Share must be invoked
+**synchronously within a user activation** — you cannot `await` a long archive
+build and then call `share()` (iOS Safari throws `NotAllowedError`). So the export
+flow (`src/lib/export/exportSessions.ts` + the DataView `useSessionMutations.ts`
+trigger) becomes two-step: **build the archive with progress → present a "Share /
+Save" affordance → `navigator.share()` fires on that tap.** `navigator.canShare`
+with `files` is feature-detected at runtime (`navigator.share`/`canShare` are in
+the TS DOM lib; no custom typing needed — unlike `beforeinstallprompt`, declared
+for the install nudge in Workstream C).
 
 ## Workstream B — Web-native encrypted vault (`src/lib/vault/`)
 
@@ -381,6 +445,11 @@ Mirror `apps/architect-web`, adapted for a client interview app.
     recovery unlock; step-up verify re-prompts without toggling the gate.
   - `useOnlineStatus`; the session-aware update guard (no reload while a session
     is active).
+  - **File I/O (A.1)** — `download.ts` selects Web Share when `canShare({files})`
+    is true and falls back to `<a download>` (mock `navigator.share`/`canShare`);
+    `pickFile.ts` accepts a `.netcanvas` under the relaxed `accept`; the bundled
+    sample/development protocols install through the import pipeline **with no
+    network fetch**, and the removed URL-import path is gone from the dialog.
 - **WebAuthn** is mocked in jsdom (PRF cannot run there); unlock forms and the
   offline warning are covered in Storybook interaction tests.
 - **Build assertion** — production build emits `sw.js`, `manifest.webmanifest`,
