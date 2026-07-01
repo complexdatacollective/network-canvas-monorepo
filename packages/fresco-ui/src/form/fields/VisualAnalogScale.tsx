@@ -2,6 +2,7 @@
 
 import { Slider } from '@base-ui/react/slider';
 import { motion } from 'motion/react';
+import { useState } from 'react';
 
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
@@ -65,6 +66,7 @@ export default function VisualAnalogScaleField(
   const sliderValue = hasValue ? value : midpoint;
   const thumbState = !hasValue && state === 'normal' ? 'pristine' : state;
 
+  const [thumbEl, setThumbEl] = useState<HTMLElement | null>(null);
   const active = useSliderActive();
 
   const handleValueChange = (newValue: number | number[]) => {
@@ -110,6 +112,7 @@ export default function VisualAnalogScaleField(
           <Slider.Control className={sliderControlVariants()}>
             <Slider.Track className={sliderTrackVariants({ state })}>
               <Slider.Thumb
+                ref={setThumbEl}
                 render={
                   <motion.div
                     // base-ui's nested <input type="range"> is the focusable
@@ -128,17 +131,13 @@ export default function VisualAnalogScaleField(
                 className={sliderThumbVariants({ state: thumbState })}
                 aria-label="Visual analog scale value"
               />
-              <ScaleValuePopover
-                visible={active.active}
-                position={
-                  max > min ? ((sliderValue - min) / (max - min)) * 100 : 50
-                }
-              >
-                {formatVasValue(sliderValue, min, max)}
-              </ScaleValuePopover>
             </Slider.Track>
           </Slider.Control>
         </Slider.Root>
+
+        <ScaleValuePopover visible={active.active} anchor={thumbEl}>
+          {formatVasValue(sliderValue, min, max)}
+        </ScaleValuePopover>
 
         {(minLabel ?? maxLabel) && (
           <div className="relative mt-2 flex justify-between px-3">

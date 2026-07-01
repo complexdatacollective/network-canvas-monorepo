@@ -1,69 +1,100 @@
 'use client';
 
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useLayoutEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 import { surfaceVariants } from '../../../layout/Surface';
 import { ArrowSvg } from '../../../Popover';
-import { sliderValuePopoverStyles } from '../../../styles/controlVariants';
+import { usePortalContainer } from '../../../PortalContainer';
 import { cx } from '../../../utils/cva';
 
 // A transient value bubble that rides the slider thumb while the control is
-// being adjusted. Styled with the shared popover surface variant (and the shared
-// arrow) so it matches Tooltip/Popover. Positioned via a computed percentage
-// (base-ui's `--slider-thumb-position` is inline on the thumb, unreadable by
-// siblings). Decorative for assistive tech — the value is announced via the
-// field's aria-live region / native slider input.
+// being adjusted. It reuses the shared popover surface variant and arrow so it
+// matches Tooltip/Popover, and portals into the shared PortalContainer to escape
+// the (overflow-clipped) field container. Unlike base-ui's Popover it tracks the
+// thumb's live position every frame — base-ui doesn't reposition to a moving
+// anchor once open.
 export default function ScaleValuePopover({
   visible,
-  position,
+  anchor,
   children,
 }: {
   visible: boolean;
-  /** Horizontal position of the thumb as a 0–100 percentage of the track. */
-  position: number;
+  /** The thumb element the bubble is anchored to. */
+  anchor: Element | null;
   children: ReactNode;
 }) {
+  const container = usePortalContainer();
   const reduceMotion = useReducedMotion();
+  const positionerRef = useRef<HTMLDivElement>(null);
 
-  return (
+  useLayoutEffect(() => {
+    if (!visible || !anchor) return undefined;
+    let frame = 0;
+    const track = () => {
+      const positioner = positionerRef.current;
+      if (positioner) {
+        const rect = anchor.getBoundingClientRect();
+        positioner.style.left = `${rect.left + rect.width / 2}px`;
+        positioner.style.top = `${rect.top}px`;
+      }
+      frame = requestAnimationFrame(track);
+    };
+    track();
+    return () => cancelAnimationFrame(frame);
+  }, [visible, anchor]);
+
+  const target =
+    container ?? (typeof document === 'undefined' ? null : document.body);
+  if (!target) return null;
+
+  return createPortal(
     <AnimatePresence>
       {visible && (
-        <motion.div
-          aria-hidden="true"
-          data-testid="scale-value-popover"
-          className={sliderValuePopoverStyles}
-          style={{ left: `${position}%` }}
-          initial={
-            reduceMotion ? { opacity: 0 } : { opacity: 0, y: 4, scale: 0.92 }
-          }
-          animate={
-            reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }
-          }
-          exit={
-            reduceMotion ? { opacity: 0 } : { opacity: 0, y: 4, scale: 0.92 }
-          }
-          transition={
-            reduceMotion
-              ? { duration: 0 }
-              : { type: 'spring', duration: 0.25, bounce: 0.3 }
-          }
+        <div
+          ref={positionerRef}
+          className="pointer-events-none! fixed top-0 left-0 z-60"
         >
-          <div
-            className={cx(
-              surfaceVariants({
-                level: 'popover',
-                shadow: 'sm',
-                spacing: 'none',
-              }),
-              'px-2 py-0.5 text-sm font-medium whitespace-nowrap',
-            )}
-          >
-            {children}
+          {/* Centred on the thumb, floated above it; the wrapper owns the
+              positioning transform so motion is free to animate the bubble. */}
+          <div className="absolute bottom-2 left-0 -translate-x-1/2">
+            <motion.div
+              data-testid="scale-value-popover"
+              className={cx(
+                surfaceVariants({
+                  level: 'popover',
+                  shadow: 'sm',
+                  spacing: 'none',
+                }),
+                'relative overflow-visible px-3 py-1.5 text-sm font-medium whitespace-nowrap',
+              )}
+              initial={
+                reduceMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, y: 4, scale: 0.92 }
+              }
+              animate={
+                reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }
+              }
+              exit={
+                reduceMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, y: 4, scale: 0.92 }
+              }
+              transition={
+                reduceMotion
+                  ? { duration: 0 }
+                  : { type: 'spring', duration: 0.25, bounce: 0.3 }
+              }
+            >
+              {children}
+              <ArrowSvg className="absolute top-full left-1/2 -translate-x-1/2 translate-y-[-9px] rotate-180" />
+            </motion.div>
           </div>
-          <ArrowSvg className="absolute top-full left-1/2 -translate-x-1/2 translate-y-[-9px] rotate-180" />
-        </motion.div>
+        </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    target,
   );
 }

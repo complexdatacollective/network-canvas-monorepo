@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, screen, userEvent, within } from 'storybook/test';
 
 import Surface from '../../layout/Surface';
 import Paragraph from '../../typography/Paragraph';
@@ -302,13 +302,14 @@ export const ValuePopoverWhileDragging: Story = {
     const canvas = within(canvasElement);
     const slider = canvas.getByRole('slider');
 
+    // The bubble portals out of the field, so query the whole document.
     // Hidden at rest.
-    await expect(canvas.queryByTestId('scale-value-popover')).toBeNull();
+    await expect(screen.queryByTestId('scale-value-popover')).toBeNull();
 
     // While focused, the popover shows the value as a percentage on the default
     // normalised 0–1 scale.
     slider.focus();
-    const popover = await canvas.findByTestId('scale-value-popover');
+    const popover = await screen.findByTestId('scale-value-popover');
     await expect(popover).toHaveTextContent('50%');
   },
 };

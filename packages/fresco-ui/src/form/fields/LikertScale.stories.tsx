@@ -1,6 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useRef, useState } from 'react';
-import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
+import {
+  expect,
+  fireEvent,
+  screen,
+  userEvent,
+  waitFor,
+  within,
+} from 'storybook/test';
 
 import Surface from '../../layout/Surface';
 import Paragraph from '../../typography/Paragraph';
@@ -273,19 +280,20 @@ export const ValuePopoverOnInteraction: Story = {
     const canvas = within(canvasElement);
     const slider = canvas.getByRole('slider');
 
+    // The bubble portals out of the field, so query the whole document.
     // Hidden at rest.
-    await expect(canvas.queryByTestId('scale-value-popover')).toBeNull();
+    await expect(screen.queryByTestId('scale-value-popover')).toBeNull();
 
     // Appears while the slider is focused (keyboard interaction) and shows the
     // current option's label.
     slider.focus();
-    const popover = await canvas.findByTestId('scale-value-popover');
+    const popover = await screen.findByTestId('scale-value-popover');
     await expect(popover).toHaveTextContent('Neutral');
 
     // Hidden again once focus leaves.
     slider.blur();
     await waitFor(() =>
-      expect(canvas.queryByTestId('scale-value-popover')).toBeNull(),
+      expect(screen.queryByTestId('scale-value-popover')).toBeNull(),
     );
   },
 };

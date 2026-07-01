@@ -2,7 +2,7 @@
 
 import { Slider } from '@base-ui/react/slider';
 import { motion } from 'motion/react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
@@ -59,6 +59,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
   const thumbState = !hasValue && state === 'normal' ? 'pristine' : state;
 
   const rootRef = useRef<HTMLDivElement>(null);
+  const [thumbEl, setThumbEl] = useState<HTMLElement | null>(null);
   const active = useSliderActive();
   const { layout, measurementNode } = useScaleLabelLayout({
     rootRef,
@@ -151,6 +152,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                 </div>
               )}
               <Slider.Thumb
+                ref={setThumbEl}
                 render={
                   <motion.div
                     // base-ui's nested <input type="range"> is the focusable
@@ -169,21 +171,18 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                 className={sliderThumbVariants({ state: thumbState })}
                 aria-label={`Select value on scale: ${currentOption?.label ?? 'No selection'}`}
               />
-              <ScaleValuePopover
-                visible={active.active && options.length > 0}
-                position={
-                  options.length > 1
-                    ? (sliderValue / (options.length - 1)) * 100
-                    : 50
-                }
-              >
-                {popoverOption ? (
-                  <RenderMarkdown>{popoverOption.label}</RenderMarkdown>
-                ) : null}
-              </ScaleValuePopover>
             </Slider.Track>
           </Slider.Control>
         </Slider.Root>
+
+        <ScaleValuePopover
+          visible={active.active && options.length > 0}
+          anchor={thumbEl}
+        >
+          {popoverOption ? (
+            <RenderMarkdown>{popoverOption.label}</RenderMarkdown>
+          ) : null}
+        </ScaleValuePopover>
 
         {options.length > 0 && layout.tier === 'full' && (
           <div
