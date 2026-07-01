@@ -5,7 +5,7 @@ import {
   composerItemSelector,
   composerNormalizeField,
 } from '../sections/Form/composerHelpers';
-import FieldFields from '../sections/Form/FieldFields';
+import ComposerAttributeFields from './ComposerAttributeFields';
 
 type EditableAttributesListProps = {
   fieldName: string;
@@ -27,7 +27,7 @@ const EditableAttributesList = ({
   handleChangeFields,
 }: EditableAttributesListProps) => (
   <EditableList
-    editComponent={FieldFields}
+    editComponent={ComposerAttributeFields}
     editProps={{ type, entity }}
     previewComponent={ComposerFieldPreview}
     fieldName={fieldName}
