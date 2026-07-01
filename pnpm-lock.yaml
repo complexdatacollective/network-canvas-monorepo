@@ -172,8 +172,8 @@ catalogs:
       specifier: ^1.60.0
       version: 1.60.0
     posthog-js:
-      specifier: ^1.376.5
-      version: 1.376.5
+      specifier: ^1.396.3
+      version: 1.396.3
     react:
       specifier: ^19.2.6
       version: 19.2.6
@@ -577,7 +577,7 @@ importers:
         version: 2.0.11
       posthog-js:
         specifier: 'catalog:'
-        version: 1.376.5
+        version: 1.396.3
       react:
         specifier: 'catalog:'
         version: 19.2.6
@@ -737,7 +737,7 @@ importers:
         version: 16.2.6(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(react@19.2.6)
       '@posthog/react':
         specifier: 'catalog:'
-        version: 1.9.1(@types/react@19.2.15)(posthog-js@1.376.5)(react@19.2.6)
+        version: 1.9.1(@types/react@19.2.15)(posthog-js@1.396.3)(react@19.2.6)
       '@radix-ui/react-collapsible':
         specifier: ^1.1.12
         version: 1.1.12(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -791,7 +791,7 @@ importers:
         version: 8.5.15
       posthog-js:
         specifier: 'catalog:'
-        version: 1.376.5
+        version: 1.396.3
       react:
         specifier: 'catalog:'
         version: 19.2.6
@@ -1237,7 +1237,7 @@ importers:
         version: 12.40.0(@emotion/is-prop-valid@0.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       posthog-js:
         specifier: 'catalog:'
-        version: 1.376.5
+        version: 1.396.3
       react:
         specifier: 'catalog:'
         version: 19.2.6
@@ -1765,7 +1765,7 @@ importers:
         version: 2.0.11
       posthog-js:
         specifier: 'catalog:'
-        version: 1.376.5
+        version: 1.396.3
       react:
         specifier: 'catalog:'
         version: 19.2.6
@@ -5593,6 +5593,9 @@ packages:
   '@posthog/core@1.29.14':
     resolution: {integrity: sha512-IqfiD5rxdgPHsZMz45uQu824a5CEnpXRIU6QSoQT4NWjLbzKPMxg5zpHSCz+DMbDJ+Ii53T/tO76jGztpTd7uQ==}
 
+  '@posthog/core@1.39.1':
+    resolution: {integrity: sha512-EaeRd1VoZM84yQSqu4cIDHNR93nCV3ojlW+vQLpOyP9UM7CK0rHWgueiYxxymNDDvn6nxCft5k/Vn+onSBgfug==}
+
   '@posthog/react@1.9.1':
     resolution: {integrity: sha512-tIGjs8WzKPrHQmSyM/2a3GoedQkttkxgmCsdn0kgy+6mIiSNk36FAFGKbWFJ7/Kln5bHwcM/MQhiGYbwQG8bQQ==}
     peerDependencies:
@@ -5605,6 +5608,9 @@ packages:
 
   '@posthog/types@1.376.5':
     resolution: {integrity: sha512-NhpEto2LtaGtdN+xqvh48wiFtAkdA+4onNaUrETnilrvJOqk95jAiPd2n/AXE/TT9zRyivQHhXwFowBInGldiQ==}
+
+  '@posthog/types@1.392.0':
+    resolution: {integrity: sha512-nctNujXL3FC1v99FktaTMSugSD9ZOZekEpahUSafkU2TSvW+XGKNkQZbokuJtiWvPBK208dwMJva8UfBkChqpw==}
 
   '@prettier/plugin-xml@2.2.0':
     resolution: {integrity: sha512-UWRmygBsyj4bVXvDiqSccwT1kmsorcwQwaIy30yVh8T+Gspx4OlC0shX1y+ZuwXZvgnafmpRYKks0bAu9urJew==}
@@ -8303,10 +8309,12 @@ packages:
   conventional-changelog-atom@2.0.8:
     resolution: {integrity: sha512-xo6v46icsFTK3bb7dY/8m2qvc8sZemRgdqLb/bjpBsH2UyOS8rKNTgcb5025Hri6IpANPApbXMg15QLb1LJpBw==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-codemirror@2.0.8:
     resolution: {integrity: sha512-z5DAsn3uj1Vfp7po3gpt2Boc+Bdwmw2++ZHa5Ak9k0UKsYAO5mH1UBTN0qSCuJZREIhX6WU4E1p3IW2oRCNzQw==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-conventionalcommits@4.6.3:
     resolution: {integrity: sha512-LTTQV4fwOM4oLPad317V/QNQ1FY4Hju5qeBIM1uTHbrnCE+Eg4CdRZ3gO2pUeR+tzWdp80M2j3qFFEDWVqOV4g==}
@@ -8320,22 +8328,27 @@ packages:
   conventional-changelog-ember@2.0.9:
     resolution: {integrity: sha512-ulzIReoZEvZCBDhcNYfDIsLTHzYHc7awh+eI44ZtV5cx6LVxLlVtEmcO+2/kGIHGtw+qVabJYjdI5cJOQgXh1A==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-eslint@3.0.9:
     resolution: {integrity: sha512-6NpUCMgU8qmWmyAMSZO5NrRd7rTgErjrm4VASam2u5jrZS0n38V7Y9CzTtLT2qwz5xEChDR4BduoWIr8TfwvXA==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-express@2.0.6:
     resolution: {integrity: sha512-SDez2f3iVJw6V563O3pRtNwXtQaSmEfTCaTBPCqn0oG0mfkq0rX4hHBq5P7De2MncoRixrALj3u3oQsNK+Q0pQ==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-jquery@3.0.11:
     resolution: {integrity: sha512-x8AWz5/Td55F7+o/9LQ6cQIPwrCjfJQ5Zmfqi8thwUEKHstEn4kTIofXub7plf1xvFA2TqhZlq7fy5OmV6BOMw==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-jshint@2.0.9:
     resolution: {integrity: sha512-wMLdaIzq6TNnMHMy31hql02OEQ8nCQfExw1SE0hYL5KvU+JCTuPaDO+7JiogGT2gJAxiUGATdtYYfh+nT+6riA==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-preset-loader@2.3.4:
     resolution: {integrity: sha512-GEKRWkrSAZeTq5+YjUZOYxdHq+ci4dNwHvpaBC3+ENalzFWuCWa9EZXSuZBpkr72sMdKB+1fyDV4takK1Lf58g==}
@@ -12001,6 +12014,9 @@ packages:
 
   posthog-js@1.376.5:
     resolution: {integrity: sha512-Fa3QluqdwhprwQ+A38Hhirbw4s6f06KYeN/k4Cnp/xmSASbKDRHdphdh2/AYwXgnK1oS+LK5yAt43whc0z9I5w==}
+
+  posthog-js@1.396.3:
+    resolution: {integrity: sha512-CL4mH3F2azsONko/zC2931RLdt6RxTsEr7x7Lyk0SDmj5hZuvBCTbg9MKViXwSRhBr3/SaGcaHS1n95WxTrsCw==}
 
   postject@1.0.0-alpha.6:
     resolution: {integrity: sha512-b9Eb8h2eVqNE8edvKdwqkrY6O7kAwmI8kcnBv1NScolYJbo59XUF0noFq+lxbC1yN20bmC0WBEbDC5H/7ASb0A==}
@@ -17894,14 +17910,20 @@ snapshots:
     dependencies:
       '@posthog/types': 1.376.5
 
-  '@posthog/react@1.9.1(@types/react@19.2.15)(posthog-js@1.376.5)(react@19.2.6)':
+  '@posthog/core@1.39.1':
     dependencies:
-      posthog-js: 1.376.5
+      '@posthog/types': 1.392.0
+
+  '@posthog/react@1.9.1(@types/react@19.2.15)(posthog-js@1.396.3)(react@19.2.6)':
+    dependencies:
+      posthog-js: 1.396.3
       react: 19.2.6
     optionalDependencies:
       '@types/react': 19.2.15
 
   '@posthog/types@1.376.5': {}
+
+  '@posthog/types@1.392.0': {}
 
   '@prettier/plugin-xml@2.2.0':
     dependencies:
@@ -25416,6 +25438,17 @@ snapshots:
       '@opentelemetry/sdk-logs': 0.208.0(@opentelemetry/api@1.9.1)
       '@posthog/core': 1.29.14
       '@posthog/types': 1.376.5
+      core-js: 3.49.0
+      dompurify: 3.4.7
+      fflate: 0.4.8
+      preact: 10.29.2
+      query-selector-shadow-dom: 1.0.1
+      web-vitals: 5.3.0
+
+  posthog-js@1.396.3:
+    dependencies:
+      '@posthog/core': 1.39.1
+      '@posthog/types': 1.392.0
       core-js: 3.49.0
       dompurify: 3.4.7
       fflate: 0.4.8
