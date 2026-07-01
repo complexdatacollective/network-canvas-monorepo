@@ -14,6 +14,7 @@ import { controlLabelVariants } from '../../../styles/controlVariants';
 import { cx } from '../../../utils/cva';
 import {
   decideScaleLabelTier,
+  rotatedBandExtent,
   type ScaleLabelTier,
 } from './decideScaleLabelTier';
 
@@ -22,7 +23,10 @@ import {
 const MIN_VERTICAL_BUDGET = 64;
 const MAX_VERTICAL_BUDGET = 140;
 const VERTICAL_BUDGET_FRACTION = 0.2;
-const COS_45 = Math.SQRT1_2;
+
+// Max width a rotated label wraps within. Applied identically to the hidden
+// measurement probe and the rendered label so their wrapping matches exactly.
+export const ROTATED_LABEL_WRAP_CLASS = 'max-w-32 wrap-break-word';
 
 export type ScaleLabelLayout = {
   tier: ScaleLabelTier;
@@ -69,7 +73,7 @@ export function useScaleLabelLayout({
 
   const nowrapRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const minRefs = useRef<(HTMLSpanElement | null)[]>([]);
-  const lineRef = useRef<HTMLSpanElement>(null);
+  const wrappedRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Latest inputs held in refs so the observer callback stays referentially
@@ -84,27 +88,27 @@ export function useScaleLabelLayout({
     if (!root) return;
 
     const availableWidth = root.clientWidth;
-    const metrics = labelsRef.current.map((_, i) => ({
-      fullWidth: nowrapRefs.current[i]?.getBoundingClientRect().width ?? 0,
-      longestWordWidth: minRefs.current[i]?.getBoundingClientRect().width ?? 0,
-    }));
-    const labelLineHeight =
-      lineRef.current?.getBoundingClientRect().height ?? 16;
+    const metrics = labelsRef.current.map((_, i) => {
+      const wrapped = wrappedRefs.current[i]?.getBoundingClientRect();
+      return {
+        fullWidth: nowrapRefs.current[i]?.getBoundingClientRect().width ?? 0,
+        longestWordWidth:
+          minRefs.current[i]?.getBoundingClientRect().width ?? 0,
+        wrappedWidth: wrapped?.width ?? 0,
+        wrappedHeight: wrapped?.height ?? 0,
+      };
+    });
     const budget = maxLabelHeightRef.current ?? defaultVerticalBudget();
 
     const tier = decideScaleLabelTier({
       availableWidth,
       labels: metrics,
       maxLabelHeight: budget,
-      labelLineHeight,
     });
 
-    const maxFullWidth = metrics.reduce(
-      (max, l) => Math.max(max, l.fullWidth),
-      0,
-    );
-    const overhang = Math.round((maxFullWidth / 2) * COS_45 + 8);
-    const bandHeight = Math.ceil((maxFullWidth + labelLineHeight) * COS_45 + 8);
+    const extent = rotatedBandExtent(metrics);
+    const overhang = Math.ceil(extent / 2);
+    const bandHeight = Math.ceil(extent + 8);
     const rotateDeg = getComputedStyle(root).direction === 'rtl' ? -45 : 45;
 
     setLayout((prev) =>
@@ -145,9 +149,6 @@ export function useScaleLabelLayout({
         pointerEvents: 'none',
       }}
     >
-      <span ref={lineRef} className={probeClass}>
-        X
-      </span>
       {labels.map((label, i) => (
         <Fragment key={`${i}-${label}`}>
           <span
@@ -164,6 +165,14 @@ export function useScaleLabelLayout({
             }}
             className={probeClass}
             style={{ width: 'min-content' }}
+          >
+            <RenderMarkdown>{label}</RenderMarkdown>
+          </span>
+          <span
+            ref={(el) => {
+              wrappedRefs.current[i] = el;
+            }}
+            className={cx(probeClass, ROTATED_LABEL_WRAP_CLASS)}
           >
             <RenderMarkdown>{label}</RenderMarkdown>
           </span>

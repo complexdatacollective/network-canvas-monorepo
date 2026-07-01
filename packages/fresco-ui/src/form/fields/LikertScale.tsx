@@ -18,7 +18,10 @@ import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 import ScaleValuePopover from './scale/ScaleValuePopover';
-import { useScaleLabelLayout } from './scale/useScaleLabelLayout';
+import {
+  ROTATED_LABEL_WRAP_CLASS,
+  useScaleLabelLayout,
+} from './scale/useScaleLabelLayout';
 import { useSliderActive } from './scale/useSliderActive';
 
 type Option = {
@@ -223,30 +226,40 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
           </div>
         )}
 
-        {options.length > 1 && layout.tier === 'rotated' && (
-          <div className="relative mt-1" style={{ height: layout.bandHeight }}>
-            {options.map((option, index) => {
-              const percentage =
-                options.length > 1 ? (index / (options.length - 1)) * 100 : 50;
-              return (
-                <div
-                  key={index}
-                  className={cx(
-                    controlLabelVariants({ size: 'sm' }),
-                    'absolute whitespace-nowrap',
-                  )}
-                  style={{
-                    left: `${percentage}%`,
-                    top: '50%',
-                    transform: `translate(-50%, -50%) rotate(${layout.rotateDeg}deg)`,
-                  }}
-                >
-                  <RenderMarkdown>{option.label}</RenderMarkdown>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        {options.length > 1 &&
+          layout.tier === 'rotated' && (
+            // `mx-3` insets the band to match the track (which sits inside the
+            // control's `px-3`), so `left: %` maps onto the same axis as the ticks
+            // and each rotated label centres on its mark.
+            <div
+              className="relative mx-3 mt-1"
+              style={{ height: layout.bandHeight }}
+            >
+              {options.map((option, index) => {
+                const percentage =
+                  options.length > 1
+                    ? (index / (options.length - 1)) * 100
+                    : 50;
+                return (
+                  <div
+                    key={index}
+                    className={cx(
+                      controlLabelVariants({ size: 'sm' }),
+                      'absolute text-center',
+                      ROTATED_LABEL_WRAP_CLASS,
+                    )}
+                    style={{
+                      left: `${percentage}%`,
+                      top: '50%',
+                      transform: `translate(-50%, -50%) rotate(${layout.rotateDeg}deg)`,
+                    }}
+                  >
+                    <RenderMarkdown>{option.label}</RenderMarkdown>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
         {options.length > 1 && layout.tier === 'anchors' && (
           <div className="relative mt-2 flex justify-between px-3">

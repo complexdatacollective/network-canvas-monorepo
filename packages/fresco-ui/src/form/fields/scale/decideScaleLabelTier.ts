@@ -3,6 +3,10 @@ export type ScaleLabelMetric = {
   fullWidth: number;
   /** Width of the label's widest unbreakable run (its longest word). */
   longestWordWidth: number;
+  /** Width of the label wrapped within the rotated-label max-width cap. */
+  wrappedWidth: number;
+  /** Height of the label wrapped within the rotated-label max-width cap. */
+  wrappedHeight: number;
 };
 
 export type ScaleLabelTier = 'full' | 'rotated' | 'anchors';
@@ -14,12 +18,24 @@ export type DecideScaleLabelTierArgs = {
   labels: ScaleLabelMetric[];
   /** Vertical budget the label band may occupy before collapsing to anchors. */
   maxLabelHeight: number;
-  /** Height of a single line of label text. */
-  labelLineHeight: number;
 };
 
 // A label that needs more than two lines to fit its cell reads as crowded.
 const MAX_FULL_LINES = 2;
+
+// Horizontal chrome between the field edge and the track on each side combined
+// (the control's `px-3`). Used to estimate the track width from the field width.
+const TRACK_HORIZONTAL_CHROME = 24;
+
+// The rotated band's height is the vertical extent of the tallest label block
+// rotated 45°. A w×h block rotated 45° has bounding-box height (w + h) · sin45.
+export function rotatedBandExtent(labels: ScaleLabelMetric[]): number {
+  const maxSpan = labels.reduce(
+    (max, l) => Math.max(max, l.wrappedWidth + l.wrappedHeight),
+    0,
+  );
+  return maxSpan * Math.SQRT1_2;
+}
 
 // Decide which label layout a scale should use for the measured space.
 //
@@ -29,14 +45,14 @@ const MAX_FULL_LINES = 2;
 //
 //  - full     — labels wrap within their cells without breaking mid-word.
 //  - rotated  — wrapping can't help (a word is wider than its cell, or a label
-//               needs >2 lines) but the rotated band still fits the vertical
-//               budget.
-//  - anchors  — even the rotated band is too tall; show only the end anchors.
+//               needs >2 lines) but the rotated band fits the vertical budget
+//               and the labels don't overlap their neighbours.
+//  - anchors  — the rotated band is too tall, or the labels are so tall they'd
+//               collide; show only the end anchors.
 export function decideScaleLabelTier({
   availableWidth,
   labels,
   maxLabelHeight,
-  labelLineHeight,
 }: DecideScaleLabelTierArgs): ScaleLabelTier {
   const n = labels.length;
   if (availableWidth <= 0 || n <= 1) return 'full';
@@ -61,8 +77,19 @@ export function decideScaleLabelTier({
   }
   if (fitsAsFull) return 'full';
 
-  const maxFullWidth = labels.reduce((max, l) => Math.max(max, l.fullWidth), 0);
-  // Vertical extent of a line of text width w rotated 45°.
-  const rotatedBandHeight = (maxFullWidth + labelLineHeight) * Math.SQRT1_2;
-  return rotatedBandHeight <= maxLabelHeight ? 'rotated' : 'anchors';
+  // Too tall for the vertical budget.
+  const extent = rotatedBandExtent(labels);
+  if (extent > maxLabelHeight) return 'anchors';
+
+  // Rotated labels share a vertical centre line, so neighbours overlap unless
+  // the tick spacing leaves enough perpendicular gap (spacing · sin45) for a
+  // block's wrapped height. The track is the field width minus the control's
+  // horizontal padding and the rotated overhang (≈ the band extent).
+  const trackWidth = availableWidth - TRACK_HORIZONTAL_CHROME - extent;
+  const tickSpacing = trackWidth / (n - 1);
+  const maxWrappedHeight = labels.reduce(
+    (max, l) => Math.max(max, l.wrappedHeight),
+    0,
+  );
+  return tickSpacing * Math.SQRT1_2 >= maxWrappedHeight ? 'rotated' : 'anchors';
 }

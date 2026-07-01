@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 
 import Surface from '../../layout/Surface';
@@ -182,40 +182,103 @@ export const MarkdownLabels: Story = {
   render: (args) => <ControlledLikert {...args} initialValue={args.value} />,
 };
 
-// In a narrow column the labels' longest words exceed their cells, so the
-// layout escalates to clockwise-rotated labels centred on each tick.
-export const RotatedLabels: Story = {
-  args: {
-    options: agreementOptions,
-    value: 3,
-    maxLabelHeight: 220,
-  },
-  decorators: [
-    (Story) => (
-      <div style={{ width: 320 }}>
-        <Story />
-      </div>
-    ),
-  ],
-  render: (args) => <ControlledLikert {...args} initialValue={args.value} />,
+const labelSets: Record<string, { label: string; value: string | number }[]> = {
+  'Agreement (5)': agreementOptions,
+  'Long labels (5)': longLabelOptions,
+  'Three point (3)': threePointOptions,
+  'Binary (2)': binaryOptions,
+  'Markdown (5)': markdownLabelOptions,
 };
 
-// With almost no vertical budget the rotated band can't fit, so only the two end
-// anchors remain — the value still reads out in the drag popover.
-export const AnchorsOnly: Story = {
-  args: {
-    options: agreementOptions,
-    value: 3,
-    maxLabelHeight: 60,
-  },
-  decorators: [
-    (Story) => (
-      <div style={{ width: 320 }}>
-        <Story />
+// Single interactive demo of the responsive label ladder. Resize the container
+// to step full -> rotated as it narrows; lower the max label height to step
+// rotated -> anchors; switch the label set to try different content.
+function ResizableLikertDemo() {
+  const [setName, setSetName] = useState('Agreement (5)');
+  const [maxLabelHeight, setMaxLabelHeight] = useState(160);
+  const [width, setWidth] = useState<number>();
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  const options = labelSets[setName] ?? agreementOptions;
+  const [value, setValue] = useState<string | number | undefined>();
+
+  // Reset the selection to the midpoint whenever the label set changes.
+  useEffect(() => {
+    setValue(options[Math.floor(options.length / 2)]?.value);
+  }, [options]);
+
+  useEffect(() => {
+    const box = boxRef.current;
+    if (!box) return undefined;
+    const observer = new ResizeObserver(() => setWidth(box.clientWidth));
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-4" style={{ width: 660 }}>
+      <div className="flex flex-wrap items-center gap-6 text-sm">
+        <label className="flex items-center gap-2">
+          Labels
+          <select
+            aria-label="Label set"
+            value={setName}
+            onChange={(e) => setSetName(e.target.value)}
+            className="rounded border border-current/30 bg-transparent px-2 py-1"
+          >
+            {Object.keys(labelSets).map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-2">
+          Max label height: {maxLabelHeight}px
+          <input
+            aria-label="Max label height"
+            type="range"
+            min={40}
+            max={320}
+            step={10}
+            value={maxLabelHeight}
+            onChange={(e) => setMaxLabelHeight(Number(e.target.value))}
+          />
+        </label>
       </div>
-    ),
-  ],
-  render: (args) => <ControlledLikert {...args} initialValue={args.value} />,
+
+      <Paragraph margin="none" className="text-sm text-current/60">
+        Drag the bottom-right corner to resize the container
+        {width !== undefined ? ` (${Math.round(width)}px)` : ''}. It steps full
+        → rotated as it narrows, and rotated → anchors as you lower the max
+        label height.
+      </Paragraph>
+
+      <div
+        ref={boxRef}
+        className="rounded-lg border-2 border-dashed border-current/25 p-4"
+        style={{
+          resize: 'horizontal',
+          overflow: 'auto',
+          width: 460,
+          minWidth: 180,
+          maxWidth: 660,
+        }}
+      >
+        <LikertScaleField
+          options={options}
+          value={value}
+          onChange={(next) => next !== undefined && setValue(next)}
+          maxLabelHeight={maxLabelHeight}
+        />
+      </div>
+    </div>
+  );
+}
+
+export const Responsive: Story = {
+  parameters: { controls: { disable: true } },
+  render: () => <ResizableLikertDemo />,
 };
 
 export const ValuePopoverOnInteraction: Story = {
