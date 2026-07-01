@@ -96,7 +96,8 @@ vi.mock('redux-form', () => ({
   }) => <div data-testid={`field-${name}`} />,
   FormSection: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   reduxForm: () => (Component: unknown) => Component,
-  formValueSelector: () => () => ['existing-hull-var'],
+  formValueSelector: () => (_state: unknown, field: string) =>
+    field === 'convexHulls' ? ['existing-hull-var'] : undefined,
   change: (form: string, field: string, value: unknown) => ({
     type: 'CHANGE',
     form,
@@ -203,9 +204,18 @@ describe('NodeConfiguration', () => {
     );
   });
 
-  it('renders the automatic layout toggle inside behaviours FormSection', () => {
+  it('renders the automatic layout toggle and seeds the on-by-default value', () => {
+    dispatchSpy.mockClear();
     renderSection();
-    expect(screen.getByTestId('field-automaticLayout')).toBeInTheDocument();
+    expect(
+      screen.getByText(/start with automatic layout switched on/i),
+    ).toBeInTheDocument();
+    // With behaviours.automaticLayout unset in form state, the section seeds the
+    // template default (on) so a gated remount can't leave it off.
+    const seeded = dispatchSpy.mock.calls
+      .map(([action]) => action)
+      .find((action) => action.field === 'behaviours.automaticLayout');
+    expect(seeded?.value).toBe(true);
   });
 
   it('renders the convexHulls field', () => {
@@ -233,8 +243,9 @@ describe('NodeConfiguration', () => {
   });
 
   it('appends the created group variable id to the convexHulls array', () => {
-    dispatchSpy.mockClear();
     renderSection();
+    // Ignore the mount-time automatic-layout default seed; isolate the click.
+    dispatchSpy.mockClear();
 
     fireEvent.click(
       screen.getByRole('button', { name: /create categorical variable/i }),

@@ -1,6 +1,7 @@
+import { useEffect } from 'react';
 import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
-import { change, Field, formValueSelector, FormSection } from 'redux-form';
+import { change, Field, formValueSelector } from 'redux-form';
 
 import EditableAttributesList from '~/components/EditableAttributesList/EditableAttributesList';
 import { Row, Section, Subsection } from '~/components/EditorLayout';
@@ -8,9 +9,9 @@ import withCreateVariableHandlers from '~/components/enhancers/withCreateVariabl
 import withDisabledSubjectRequired from '~/components/enhancers/withDisabledSubjectRequired';
 import withSubject from '~/components/enhancers/withSubject';
 import { ValidatedField } from '~/components/Form';
-import { Toggle } from '~/components/Form/Fields';
 import CheckboxGroup from '~/components/Form/Fields/CheckboxGroup';
 import IssueAnchor from '~/components/IssueAnchor';
+import Switch from '~/components/NewComponents/Switch';
 import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
@@ -85,6 +86,22 @@ export const NodeConfigurationComponent = ({
   const convexHulls = useAppSelector((state) =>
     toStringArray(formValueSelector(form)(state, 'convexHulls')),
   );
+
+  const rawAutomaticLayout = useAppSelector((state) =>
+    formValueSelector(form)(state, 'behaviours.automaticLayout'),
+  );
+  const automaticLayout =
+    rawAutomaticLayout === undefined ? true : !!rawAutomaticLayout;
+
+  // This section is gated behind node-type selection, so it can mount after the
+  // form has initialised. Seed the template default (on) into form state when it
+  // is unset — a plain redux-form Toggle would instead default an unsynced field
+  // to false on mount, clobbering the template's `true`.
+  useEffect(() => {
+    if (rawAutomaticLayout === undefined) {
+      dispatch(change(form, 'behaviours.automaticLayout', true));
+    }
+  }, [rawAutomaticLayout, dispatch, form]);
 
   const newVariableWindowInitialProps = {
     entity: (entity === 'ego' ? 'node' : entity) as Entity,
@@ -176,19 +193,21 @@ export const NodeConfigurationComponent = ({
         title="Automatic layout"
         summary="When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state."
       >
-        <FormSection name="behaviours">
-          <Row>
-            <IssueAnchor
-              fieldName="behaviours.automaticLayout"
-              description="Default automatic layout"
+        <Row>
+          <IssueAnchor
+            fieldName="behaviours.automaticLayout"
+            description="Default automatic layout"
+          />
+          <label className="flex cursor-pointer flex-row items-center gap-(--space-md)">
+            <Switch
+              checked={automaticLayout}
+              onCheckedChange={(checked) =>
+                dispatch(change(form, 'behaviours.automaticLayout', checked))
+              }
             />
-            <Field
-              name="automaticLayout"
-              label="Start with automatic layout switched on"
-              component={Toggle}
-            />
-          </Row>
-        </FormSection>
+            <span>Start with automatic layout switched on</span>
+          </label>
+        </Row>
       </Subsection>
 
       <Subsection
