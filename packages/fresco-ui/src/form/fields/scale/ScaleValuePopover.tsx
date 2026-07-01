@@ -5,14 +5,13 @@ import { type ReactNode, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 import { surfaceVariants } from '../../../layout/Surface';
-import { ArrowSvg } from '../../../Popover';
 import { usePortalContainer } from '../../../PortalContainer';
 import { cx } from '../../../utils/cva';
 
 // A transient value bubble that rides the slider thumb while the control is
-// being adjusted. It reuses the shared popover surface variant and arrow so it
-// matches Tooltip/Popover, and portals into the shared PortalContainer to escape
-// the (overflow-clipped) field container. Unlike base-ui's Popover it tracks the
+// being adjusted. It reuses the shared popover surface variant so it matches
+// Tooltip/Popover, and portals into the shared PortalContainer to escape the
+// (overflow-clipped) field container. Unlike base-ui's Popover it tracks the
 // thumb's live position every frame — base-ui doesn't reposition to a moving
 // anchor once open.
 export default function ScaleValuePopover({
@@ -56,19 +55,12 @@ export default function ScaleValuePopover({
           ref={positionerRef}
           className="pointer-events-none! fixed top-0 left-0 z-60"
         >
-          {/* Centred on the thumb, floated above it; the wrapper owns the
+          {/* Centred on the thumb, floated above it; the outer wrapper owns the
               positioning transform so motion is free to animate the bubble. */}
           <div className="absolute bottom-2 left-0 -translate-x-1/2">
             <motion.div
               data-testid="scale-value-popover"
-              className={cx(
-                surfaceVariants({
-                  level: 'popover',
-                  shadow: 'sm',
-                  spacing: 'none',
-                }),
-                'relative overflow-visible px-3 py-1.5 text-sm font-medium whitespace-nowrap',
-              )}
+              className="relative"
               initial={
                 reduceMotion
                   ? { opacity: 0 }
@@ -88,8 +80,25 @@ export default function ScaleValuePopover({
                   : { type: 'spring', duration: 0.25, bounce: 0.3 }
               }
             >
-              {children}
-              <ArrowSvg className="absolute top-full left-1/2 -translate-x-1/2 translate-y-[-9px] rotate-180" />
+              <div
+                className={cx(
+                  surfaceVariants({
+                    level: 'popover',
+                    shadow: 'sm',
+                    spacing: 'none',
+                  }),
+                  'px-3 py-1.5 text-sm font-medium whitespace-nowrap',
+                )}
+              >
+                {children}
+              </div>
+              {/* Caret: a rotated square painted over the bubble's bottom border,
+                  so the outline flows into the point. Rendered after the bubble
+                  so it sits in front. */}
+              <span
+                aria-hidden="true"
+                className="border-outline bg-surface-popover absolute top-full left-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border-r-2 border-b-2"
+              />
             </motion.div>
           </div>
         </div>
