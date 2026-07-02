@@ -22,7 +22,10 @@ const emptyDateInputClass = cx(
   'text-input-contrast/50 italic',
   '[&::-webkit-datetime-edit]:text-input-contrast/50',
   '[&::-webkit-datetime-edit]:italic',
-  '[&::-webkit-datetime-edit]:[-webkit-text-fill-color:color-mix(in_oklab,var(--color-input-contrast)_50%,transparent)]',
+  // NOTE: must reference --input-contrast (the runtime theme variable), not
+  // --color-input-contrast — the Tailwind theme is `inline`, so --color-*
+  // tokens are compiled away and never exist at runtime.
+  '[&::-webkit-datetime-edit]:[-webkit-text-fill-color:color-mix(in_oklab,var(--input-contrast)_50%,transparent)]',
 );
 
 type DatePickerFieldProps = CreateFormFieldProps<
