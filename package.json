@@ -24,7 +24,7 @@
     "@typescript/native-preview": "7.0.0-dev.20260527.2",
     "husky": "^9.1.7",
     "knip": "^6.15.0",
-    "lint-staged": "^17.0.7",
+    "lint-staged": "^17.0.8",
     "oxfmt": "^0.52.0",
     "oxlint": "^1.67.0",
     "oxlint-tailwindcss": "^1.2.0",
