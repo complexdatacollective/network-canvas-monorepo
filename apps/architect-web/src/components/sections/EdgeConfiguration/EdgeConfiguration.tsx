@@ -31,6 +31,7 @@ const isEdgeEntry = (value: unknown): value is EdgeEntry => {
   return (
     typeof subject === 'object' &&
     subject !== null &&
+    Reflect.get(subject, 'entity') === 'edge' &&
     hasStringProp(subject, 'type')
   );
 };

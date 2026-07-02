@@ -216,7 +216,8 @@
     /* Must mirror the interview theme's --edge-N palette
        (tooling/tailwind/fresco/themes/interview.css): the value stored in the
        codebook is the POSITION, so a different order here would make the
-       colour an author picks render as a different colour for participants. */
+       colour an author picks render as a different colour for participants.
+       Only seq-1..8 exist — the schema's EdgeColorSequence is the gate. */
     --edge-color-seq-1: var(--mustard);
     --edge-color-seq-1-dark: var(--mustard-dark);
     --edge-color-seq-2: var(--purple-pizazz);
@@ -233,10 +234,6 @@
     --edge-color-seq-7-dark: var(--sea-serpent-dark);
     --edge-color-seq-8: var(--slate-blue);
     --edge-color-seq-8-dark: var(--slate-blue-dark);
-    --edge-color-seq-9: var(--sea-green);
-    --edge-color-seq-9-dark: var(--sea-green-dark);
-    --edge-color-seq-10: var(--cerulean-blue);
-    --edge-color-seq-10-dark: var(--cerulean-blue-dark);
 
     --ord-color-seq-1: var(--sea-green);
     --ord-color-seq-1-dark: var(--sea-green-dark);

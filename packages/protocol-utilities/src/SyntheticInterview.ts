@@ -1039,7 +1039,7 @@ export class SyntheticInterview {
     const variable = nodeType?.variables.get(variableId);
     return {
       variable: variableId,
-      ...(input.component ? { component: input.component } : {}),
+      component: input.component,
       ...(input.parameters ? { parameters: input.parameters } : {}),
       label: input.label ?? variable?.name ?? 'Field',
     };
@@ -1062,7 +1062,7 @@ export class SyntheticInterview {
     const variable = edgeType?.variables.get(variableId);
     return {
       variable: variableId,
-      ...(input.component ? { component: input.component } : {}),
+      component: input.component,
       ...(input.parameters ? { parameters: input.parameters } : {}),
       label: input.label ?? variable?.name ?? 'Field',
     };

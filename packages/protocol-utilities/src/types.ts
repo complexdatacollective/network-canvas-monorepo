@@ -165,11 +165,14 @@ type FormFieldEntry = {
 
 // Unlike the shared form fields' `prompt`, composer attribute fields caption
 // with an optional `label` (the runtime falls back to the variable's name).
+// Mirrors the schema's ComposerFormFieldSchema: `component` is required.
 export type NetworkComposerFormFieldEntry = {
   variable: string;
-  component?: ComponentType;
+  component: ComponentType;
   parameters?: Record<string, unknown>;
   label?: string;
+  hint?: string;
+  showValidationHints?: boolean;
 };
 
 // A drawable edge type within a NetworkComposer stage. Mirrors the schema's

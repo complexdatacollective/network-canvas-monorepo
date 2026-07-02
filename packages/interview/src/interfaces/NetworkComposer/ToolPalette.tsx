@@ -47,7 +47,8 @@ type ToolPaletteProps = {
 
 // Codebook edge colour token → Tailwind background/foreground classes. Literal
 // strings so Tailwind extracts them; the edge tool button adopts its type's
-// colour while active.
+// colour while active. Covers the schema's EdgeColorSequence (seq-1..8);
+// anything else falls back to seq-1 below.
 const EDGE_BG_CLASS: Record<string, string> = {
   'edge-color-seq-1': 'bg-edge-1 text-white',
   'edge-color-seq-2': 'bg-edge-2 text-white',
@@ -57,8 +58,6 @@ const EDGE_BG_CLASS: Record<string, string> = {
   'edge-color-seq-6': 'bg-edge-6 text-white',
   'edge-color-seq-7': 'bg-edge-7 text-white',
   'edge-color-seq-8': 'bg-edge-8 text-white',
-  'edge-color-seq-9': 'bg-edge-9 text-white',
-  'edge-color-seq-10': 'bg-edge-10 text-white',
 };
 
 // 1-based option position → categorical palette classes. Literal strings so
