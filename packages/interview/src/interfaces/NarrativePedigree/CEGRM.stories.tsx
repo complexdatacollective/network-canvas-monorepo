@@ -9,20 +9,25 @@ import StoryInterviewShell from '~/.storybook/StoryInterviewShell';
 // The Colored Eco-Genetic Relationship Map (CEGRM; Kenen & Peters, J Genet
 // Couns 2001) implemented in Network Canvas. The CEGRM overlays, on a cancer
 // pedigree extended with non-blood ("fictive") and in-law ("affinal") kin, three
-// ego↔member resource exchanges — information, material/services and emotion —
-// each reciprocal or one-way, plus a disseminator/barrier role and cancer status.
+// ego↔member resource exchanges — information, practical support and feelings —
+// plus a disseminator/barrier role and cancer status.
+//
+// Ego is never a node on the map, so each exchange is captured as a pair of
+// booleans nominated on the Sociogram: "which of these people provides you with
+// X" and "which do you provide with X". Their reciprocity is inferred from the
+// two answers, rather than asked as a categorical. Disseminator and barrier are
+// likewise two independent booleans, not one either/or role.
 //
 // The mapping to Network Canvas interfaces:
 //   • FamilyPedigree + NarrativePedigree  → the genetic layer (a hereditary
 //     breast/ovarian cancer family; the pedigree is SEEDED to reduce burden).
 //   • NameGenerator (QuickAdd)            → add fictive/affinal kin to the network.
-//   • CategoricalBin ×3                   → the three resource exchanges captured
-//     as a per-member attribute (reciprocal / one-way), since the exchange sits
-//     between ego and each member (ego is never a node on the map).
-//   • CategoricalBin (roles)              → disseminator (green star) / barrier.
-//   • Sociogram                           → the member-to-member social network.
-// Every network member is one "Person" node type so a single pass of each
-// interpreter covers kin and non-kin alike.
+//   • Sociogram (member-to-member edges)  → who knows whom.
+//   • Sociogram (attribute nomination)    → the three reciprocal exchanges (two
+//     booleans each) and the disseminator/barrier roles.
+// Every network member is one "Person" node type. Only the people placed on the
+// pedigree appear on the pedigree interfaces (via the pedigree's private
+// membership); the sociograms show everyone.
 // ---------------------------------------------------------------------------
 
 const EGO_VAR = 'isEgo';
@@ -30,22 +35,29 @@ const BIO_SEX_VAR = 'biologicalSex';
 const REL_TO_EGO_VAR = 'relationshipToEgo';
 const CANCER_VAR = 'hasCancer';
 const KIN_TYPE_VAR = 'kinType';
-const INFO_VAR = 'informationExchange';
-const MATERIAL_VAR = 'materialExchange';
-const EMOTION_VAR = 'emotionExchange';
-const ROLE_VAR = 'cegrmRole';
 const LAYOUT_VAR = 'socialLayout';
+
+// Each reciprocal exchange is two booleans: the person provides it to ego (…In)
+// and ego provides it to the person (…Out). Reciprocity is inferred from both.
+const INFO_IN_VAR = 'infoProvidesYou';
+const INFO_OUT_VAR = 'infoYouProvide';
+const SUPPORT_IN_VAR = 'supportProvidesYou';
+const SUPPORT_OUT_VAR = 'supportYouProvide';
+const FEELINGS_IN_VAR = 'feelingsProvidesYou';
+const FEELINGS_OUT_VAR = 'feelingsYouProvide';
+
+// Disseminator and barrier are independent boolean roles.
+const DISSEMINATOR_VAR = 'isDisseminator';
+const BARRIER_VAR = 'isBarrier';
 
 const REL_TYPE_VAR = 'relType';
 const IS_ACTIVE_VAR = 'isActive';
 const IS_GEST_VAR = 'isGestationalCarrier';
 const GAMETE_ROLE_VAR = 'gameteRole';
 
-// Exchange levels (CEGRM: large circle = reciprocal, small = one-way).
-const EXCHANGE_OPTIONS = [
-  { label: 'Reciprocal', value: 'reciprocal' },
-  { label: 'One-way', value: 'oneWay' },
-];
+// The pedigree lives at stage index 1 (the introduction is index 0); the
+// Narrative Pedigree reads this stage's committed membership to exclude non-kin.
+const FAMILY_PEDIGREE_STAGE_INDEX = 1;
 
 /**
  * Build the CEGRM demonstration interview. The pedigree is a hereditary
@@ -53,6 +65,10 @@ const EXCHANGE_OPTIONS = [
  * (autosomal dominant); the ego "Jane" is at risk. Resource exchanges,
  * disseminator/barrier roles and non-blood kin are seeded to mirror the paper's
  * worked example so every stage opens already populated.
+ *
+ * Returns the interview plus the seeded FamilyPedigree stage metadata: the
+ * private membership (kin only) that scopes the pedigree interfaces so the
+ * later-added friends do not appear on the family tree.
  */
 export function buildCegrmInterview(seed: number) {
   const si = new SyntheticInterview(seed);
@@ -75,8 +91,8 @@ export function buildCegrmInterview(seed: number) {
   });
   // `addNodeType` already seeds a text variable named "name"; re-declaring it
   // dedupes to that one and returns its real id. Use that id so the generic node
-  // label (CategoricalBin, Sociogram, NameGenerator cards) resolves to the name
-  // rather than falling through to another text variable (e.g. biological sex).
+  // label (Sociogram, NameGenerator cards) resolves to the name rather than
+  // falling through to another text variable (e.g. biological sex).
   const NAME_VAR = person.addVariable({ name: 'name', type: 'text' }).id;
   person.addVariable({ id: EGO_VAR, name: EGO_VAR, type: 'boolean' });
   person.addVariable({ id: BIO_SEX_VAR, name: BIO_SEX_VAR, type: 'text' });
@@ -96,23 +112,18 @@ export function buildCegrmInterview(seed: number) {
       { label: 'Friend (fictive kin)', value: 'fictive' },
     ],
   });
-  for (const id of [INFO_VAR, MATERIAL_VAR, EMOTION_VAR]) {
-    person.addVariable({
-      id,
-      name: id,
-      type: 'categorical',
-      options: EXCHANGE_OPTIONS,
-    });
+  for (const id of [
+    INFO_IN_VAR,
+    INFO_OUT_VAR,
+    SUPPORT_IN_VAR,
+    SUPPORT_OUT_VAR,
+    FEELINGS_IN_VAR,
+    FEELINGS_OUT_VAR,
+    DISSEMINATOR_VAR,
+    BARRIER_VAR,
+  ]) {
+    person.addVariable({ id, name: id, type: 'boolean' });
   }
-  person.addVariable({
-    id: ROLE_VAR,
-    name: ROLE_VAR,
-    type: 'categorical',
-    options: [
-      { label: 'Disseminator', value: 'disseminator' },
-      { label: 'Barrier', value: 'barrier' },
-    ],
-  });
   person.addVariable({ id: LAYOUT_VAR, name: LAYOUT_VAR, type: 'layout' });
 
   // --- Edge types: family (pedigree) and social (member-to-member) ------------
@@ -209,42 +220,70 @@ export function buildCegrmInterview(seed: number) {
     text: 'Add the friends, colleagues and others who are important to you.',
   });
 
-  // --- Stages 4–6: the three resource exchanges -------------------------------
-  const infoBin = si.addStage('CategoricalBin', {
+  // --- Stages 4–6: the three resource exchanges, on the sociogram -------------
+  // Each is one Sociogram stage with two attribute-nomination prompts: who
+  // provides the resource to ego, and who ego provides it to. Edge creation and
+  // attribute highlighting cannot share a prompt, so these are separate from the
+  // member-to-member stage below.
+  const infoSociogram = si.addStage('Sociogram', {
     label: 'Sharing information',
     subject: { entity: 'node', type: person.id },
   });
-  infoBin.addPrompt({
-    text: 'Who do you share genetic and health information with — and is it two-way (reciprocal) or one-way?',
-    variable: INFO_VAR,
+  infoSociogram.addPrompt({
+    text: 'Which of these people provides you with genetic or health information?',
+    layout: { layoutVariable: LAYOUT_VAR },
+    highlight: { variable: INFO_IN_VAR },
+  });
+  infoSociogram.addPrompt({
+    text: 'Which of these people do you provide with genetic or health information?',
+    layout: { layoutVariable: LAYOUT_VAR },
+    highlight: { variable: INFO_OUT_VAR },
   });
 
-  const materialBin = si.addStage('CategoricalBin', {
+  const supportSociogram = si.addStage('Sociogram', {
     label: 'Practical support',
     subject: { entity: 'node', type: person.id },
   });
-  materialBin.addPrompt({
-    text: 'Who exchanges practical help with you — for example, coming to an appointment or minding your children?',
-    variable: MATERIAL_VAR,
+  supportSociogram.addPrompt({
+    text: 'Which of these people provides you with practical help — like coming to an appointment or minding your children?',
+    layout: { layoutVariable: LAYOUT_VAR },
+    highlight: { variable: SUPPORT_IN_VAR },
+  });
+  supportSociogram.addPrompt({
+    text: 'Which of these people do you provide with practical help?',
+    layout: { layoutVariable: LAYOUT_VAR },
+    highlight: { variable: SUPPORT_OUT_VAR },
   });
 
-  const emotionBin = si.addStage('CategoricalBin', {
+  const feelingsSociogram = si.addStage('Sociogram', {
     label: 'Sharing feelings',
     subject: { entity: 'node', type: person.id },
   });
-  emotionBin.addPrompt({
-    text: 'Who do you share your feelings about cancer in the family with?',
-    variable: EMOTION_VAR,
+  feelingsSociogram.addPrompt({
+    text: "Which of these people shares their feelings about the family's cancer with you?",
+    layout: { layoutVariable: LAYOUT_VAR },
+    highlight: { variable: FEELINGS_IN_VAR },
+  });
+  feelingsSociogram.addPrompt({
+    text: "Which of these people do you share your feelings about the family's cancer with?",
+    layout: { layoutVariable: LAYOUT_VAR },
+    highlight: { variable: FEELINGS_OUT_VAR },
   });
 
-  // --- Stage 7: disseminator / barrier roles ----------------------------------
-  const roleBin = si.addStage('CategoricalBin', {
+  // --- Stage 7: disseminator / barrier roles, on the sociogram ----------------
+  const roleSociogram = si.addStage('Sociogram', {
     label: 'Talking about risk',
     subject: { entity: 'node', type: person.id },
   });
-  roleBin.addPrompt({
-    text: 'Who helps the family talk about its cancer risk (a disseminator), and who discourages it (a barrier)?',
-    variable: ROLE_VAR,
+  roleSociogram.addPrompt({
+    text: 'Which of these people helps the family talk about its cancer risk?',
+    layout: { layoutVariable: LAYOUT_VAR },
+    highlight: { variable: DISSEMINATOR_VAR },
+  });
+  roleSociogram.addPrompt({
+    text: 'Which of these people makes it harder for the family to talk about its cancer risk?',
+    layout: { layoutVariable: LAYOUT_VAR },
+    highlight: { variable: BARRIER_VAR },
   });
 
   // --- Stage 8: member-to-member social network -------------------------------
@@ -283,11 +322,22 @@ export function buildCegrmInterview(seed: number) {
   };
 
   type Attrs = Record<string, unknown>;
-  const kin = (uid: string, attrs: Attrs) =>
-    si.addManualNode(fpId, person.id, uid, {
+
+  // The pedigree's private membership: everyone placed on the family tree (kin
+  // and the married-in husband), used to scope the pedigree interfaces.
+  const pedigreeMembers: { id: string; label: string; isEgo: boolean }[] = [];
+  const kin = (uid: string, attrs: Attrs) => {
+    pedigreeMembers.push({
+      id: uid,
+      label:
+        typeof attrs[NAME_VAR] === 'string' ? (attrs[NAME_VAR] as string) : uid,
+      isEgo: attrs[EGO_VAR] === true,
+    });
+    return si.addManualNode(fpId, person.id, uid, {
       ...(POS[uid] ? { [LAYOUT_VAR]: POS[uid] } : {}),
       ...attrs,
     });
+  };
   const nonKin = (uid: string, attrs: Attrs) =>
     si.addManualNode(ngId, person.id, uid, {
       [KIN_TYPE_VAR]: ['fictive'],
@@ -296,7 +346,7 @@ export function buildCegrmInterview(seed: number) {
     });
 
   // Generation 1 — grandparents. The maternal grandmother founds the HBOC line;
-  // the paternal grandmother is a key information disseminator (green star).
+  // the paternal grandmother is a key information disseminator.
   kin('mgm', {
     [NAME_VAR]: 'Rosa',
     [BIO_SEX_VAR]: 'female',
@@ -312,10 +362,13 @@ export function buildCegrmInterview(seed: number) {
     [NAME_VAR]: 'Mary',
     [BIO_SEX_VAR]: 'female',
     [KIN_TYPE_VAR]: ['biological'],
-    [ROLE_VAR]: ['disseminator'],
-    [INFO_VAR]: ['reciprocal'],
-    [MATERIAL_VAR]: ['reciprocal'],
-    [EMOTION_VAR]: ['reciprocal'],
+    [DISSEMINATOR_VAR]: true,
+    [INFO_IN_VAR]: true,
+    [INFO_OUT_VAR]: true,
+    [SUPPORT_IN_VAR]: true,
+    [SUPPORT_OUT_VAR]: true,
+    [FEELINGS_IN_VAR]: true,
+    [FEELINGS_OUT_VAR]: true,
   });
   kin('pgf', {
     [NAME_VAR]: 'Simon',
@@ -329,22 +382,26 @@ export function buildCegrmInterview(seed: number) {
     [BIO_SEX_VAR]: 'female',
     [KIN_TYPE_VAR]: ['biological'],
     [CANCER_VAR]: true,
-    [ROLE_VAR]: ['barrier'],
+    [BARRIER_VAR]: true,
   });
   kin('father', {
     [NAME_VAR]: 'David',
     [BIO_SEX_VAR]: 'male',
     [KIN_TYPE_VAR]: ['biological'],
-    [INFO_VAR]: ['reciprocal'],
-    [MATERIAL_VAR]: ['reciprocal'],
-    [EMOTION_VAR]: ['reciprocal'],
+    [INFO_IN_VAR]: true,
+    [INFO_OUT_VAR]: true,
+    [SUPPORT_IN_VAR]: true,
+    [SUPPORT_OUT_VAR]: true,
+    [FEELINGS_IN_VAR]: true,
+    [FEELINGS_OUT_VAR]: true,
   });
   kin('aunt', {
     [NAME_VAR]: 'Carol',
     [BIO_SEX_VAR]: 'female',
     [KIN_TYPE_VAR]: ['biological'],
     [CANCER_VAR]: true,
-    [EMOTION_VAR]: ['reciprocal'],
+    [FEELINGS_IN_VAR]: true,
+    [FEELINGS_OUT_VAR]: true,
   });
 
   // Generation 3 — ego, her sister, and her (affinal, married-in) husband.
@@ -353,31 +410,36 @@ export function buildCegrmInterview(seed: number) {
     [EGO_VAR]: true,
     [BIO_SEX_VAR]: 'female',
     [KIN_TYPE_VAR]: ['biological'],
-    [ROLE_VAR]: ['disseminator'],
   });
   kin('sister', {
     [NAME_VAR]: 'Cynthia',
     [BIO_SEX_VAR]: 'female',
     [KIN_TYPE_VAR]: ['biological'],
     [CANCER_VAR]: true,
-    [INFO_VAR]: ['reciprocal'],
-    [EMOTION_VAR]: ['reciprocal'],
+    [INFO_IN_VAR]: true,
+    [INFO_OUT_VAR]: true,
+    [FEELINGS_IN_VAR]: true,
+    [FEELINGS_OUT_VAR]: true,
   });
   kin('husband', {
     [NAME_VAR]: 'Mark',
     [BIO_SEX_VAR]: 'male',
     [KIN_TYPE_VAR]: ['affinal'],
-    [INFO_VAR]: ['reciprocal'],
-    [MATERIAL_VAR]: ['reciprocal'],
-    [EMOTION_VAR]: ['reciprocal'],
+    [INFO_IN_VAR]: true,
+    [INFO_OUT_VAR]: true,
+    [SUPPORT_IN_VAR]: true,
+    [SUPPORT_OUT_VAR]: true,
+    [FEELINGS_IN_VAR]: true,
+    [FEELINGS_OUT_VAR]: true,
   });
 
-  // Generation 4 — ego's children (at risk).
+  // Generation 4 — ego's children (at risk). Jane provides practical support to
+  // her daughter but does not receive it — a one-way exchange (…Out only).
   kin('daughter', {
     [NAME_VAR]: 'Ada',
     [BIO_SEX_VAR]: 'female',
     [KIN_TYPE_VAR]: ['biological'],
-    [MATERIAL_VAR]: ['oneWay'],
+    [SUPPORT_OUT_VAR]: true,
   });
   kin('son', {
     [NAME_VAR]: 'Sam',
@@ -387,23 +449,27 @@ export function buildCegrmInterview(seed: number) {
 
   // Non-blood ("fictive") kin — the friends and colleagues CEGRM adds alongside
   // the family. Jane confides fully in her best friend, shares feelings with a
-  // childhood friend, and gets one-way information from a colleague.
+  // childhood friend, and receives one-way information from a colleague.
   nonKin('bestfriend', {
     [NAME_VAR]: 'Priya',
     [BIO_SEX_VAR]: 'female',
-    [INFO_VAR]: ['reciprocal'],
-    [MATERIAL_VAR]: ['reciprocal'],
-    [EMOTION_VAR]: ['reciprocal'],
+    [INFO_IN_VAR]: true,
+    [INFO_OUT_VAR]: true,
+    [SUPPORT_IN_VAR]: true,
+    [SUPPORT_OUT_VAR]: true,
+    [FEELINGS_IN_VAR]: true,
+    [FEELINGS_OUT_VAR]: true,
   });
   nonKin('colleague', {
     [NAME_VAR]: 'Tom',
     [BIO_SEX_VAR]: 'male',
-    [INFO_VAR]: ['oneWay'],
+    [INFO_IN_VAR]: true,
   });
   nonKin('childhoodfriend', {
     [NAME_VAR]: 'Beth',
     [BIO_SEX_VAR]: 'female',
-    [EMOTION_VAR]: ['reciprocal'],
+    [FEELINGS_IN_VAR]: true,
+    [FEELINGS_OUT_VAR]: true,
   });
 
   // --- Pedigree edges ---------------------------------------------------------
@@ -447,17 +513,23 @@ export function buildCegrmInterview(seed: number) {
   knows('k-aunt-mother', 'aunt', 'mother');
   knows('k-bf-cf', 'bestfriend', 'childhoodfriend');
 
-  return si;
+  const stageMetadata = {
+    [FAMILY_PEDIGREE_STAGE_INDEX]: {
+      isNetworkCommitted: true,
+      nodes: pedigreeMembers,
+    },
+  };
+
+  return { si, stageMetadata };
 }
 
 function CegrmWrapper({ seed, step }: { seed: number; step: number }) {
-  const rawPayload = useMemo(
-    () =>
-      SuperJSON.stringify(
-        buildCegrmInterview(seed).getInterviewPayload({ currentStep: step }),
-      ),
-    [seed, step],
-  );
+  const rawPayload = useMemo(() => {
+    const { si, stageMetadata } = buildCegrmInterview(seed);
+    return SuperJSON.stringify(
+      si.getInterviewPayload({ currentStep: step, stageMetadata }),
+    );
+  }, [seed, step]);
   return (
     <div className="h-screen">
       <StoryInterviewShell rawPayload={rawPayload} isDevelopment={false} />
@@ -478,7 +550,7 @@ type Story = StoryObj;
 /**
  * The whole CEGRM walk-through, starting at the introduction. Use Next to move
  * through the pedigree, the cancer-risk view, adding non-family members, the
- * three resource-exchange interpreters, the disseminator/barrier roles and the
+ * three resource-exchange sociograms, the disseminator/barrier roles and the
  * member-to-member social network.
  */
 export const FullWalkthrough: Story = {
@@ -486,10 +558,11 @@ export const FullWalkthrough: Story = {
 };
 
 /**
- * Jumps straight to the first resource-exchange interpreter (information
- * sharing). Use Back/Next to move between the information, practical-support,
- * feelings and disseminator/barrier interpreters — each pre-sorted from the
- * seeded data. Shortcut into the middle of {@link FullWalkthrough}.
+ * Jumps straight to the first resource-exchange sociogram (sharing information).
+ * Each exchange asks two questions — who provides it to you, and who you provide
+ * it to — so reciprocity is inferred. Use Back/Next to move between the
+ * information, practical-support, feelings and disseminator/barrier sociograms,
+ * each pre-nominated from the seeded data. Shortcut into {@link FullWalkthrough}.
  */
 export const ResourceExchanges: Story = {
   render: () => <CegrmWrapper seed={11} step={4} />,
