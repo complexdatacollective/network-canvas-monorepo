@@ -2,11 +2,11 @@
 
 import { invariant } from 'es-toolkit';
 import { AnimatePresence, motion } from 'motion/react';
-import { type ComponentType, useContext } from 'react';
+import { type ComponentType, type ReactNode, useContext } from 'react';
 
 import type { SkipContext } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import { FRAMING_TERMS } from '@codaco/shared-consts';
+import { FRAMING_TERMS, type FramingTerms } from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
 import ActionButton from '~/components/ActionButton';
 import { useStageSelector } from '~/hooks/useStageSelector';
@@ -45,6 +45,23 @@ type EgoCellWizardProps = {
   variableConfig: VariableConfig;
 };
 
+// A wizard step title that reflects the currently-selected framing. The framing
+// can be chosen inside the wizard (the FramingSelectionStep), so parent-step
+// titles must read it live rather than capture it when the steps are built.
+// Rendered inside a FamilyPedigreeStoreBridge (see `bridgedTitle`), which
+// re-provides the store to the portalled dialog chrome.
+function FramingStepTitle({
+  termKey,
+}: {
+  termKey: keyof Pick<
+    FramingTerms,
+    'eggParent' | 'spermParent' | 'gestationalCarrier'
+  >;
+}) {
+  const framing = useFamilyPedigreeStore((s) => s.framing);
+  return <>{FRAMING_TERMS[framing ?? 'gamete'][termKey]}</>;
+}
+
 export default function EgoCellWizard({
   egoId,
   onSubmit,
@@ -52,8 +69,6 @@ export default function EgoCellWizard({
 }: EgoCellWizardProps) {
   const { openDialog } = useDialog();
   const track = useTrack();
-  const framing = useFamilyPedigreeStore((s) => s.framing);
-  const stepTerms = FRAMING_TERMS[framing ?? 'gamete'];
   const introScreen = useStageSelector(getIntroScreen);
   const framingConfig = useStageSelector(getFramingConfig);
 
@@ -71,6 +86,12 @@ export default function EgoCellWizard({
         </FamilyPedigreeStoreBridge>
       );
     };
+
+  // Wrap a title node in the store bridge so a live title (FramingStepTitle) can
+  // read the FamilyPedigree store from inside the portalled dialog chrome.
+  const bridgedTitle = (node: ReactNode) => (
+    <FamilyPedigreeStoreBridge store={store}>{node}</FamilyPedigreeStoreBridge>
+  );
 
   const handleClick = async () => {
     const result = await openDialog({
@@ -96,17 +117,19 @@ export default function EgoCellWizard({
               },
             ]),
         {
-          title: stepTerms.eggParent,
+          title: bridgedTitle(<FramingStepTitle termKey="eggParent" />),
           content: wrap(EggParentStep),
         },
         {
-          title: stepTerms.gestationalCarrier,
+          title: bridgedTitle(
+            <FramingStepTitle termKey="gestationalCarrier" />,
+          ),
           content: wrap(GestationalCarrierStep),
           skip: ({ getFieldValue }: SkipContext) =>
             getFieldValue('egg-parent.gestationalCarrier') !== false,
         },
         {
-          title: stepTerms.spermParent,
+          title: bridgedTitle(<FramingStepTitle termKey="spermParent" />),
           content: wrap(SpermParentStep),
         },
         {

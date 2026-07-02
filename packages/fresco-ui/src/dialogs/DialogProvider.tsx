@@ -76,8 +76,12 @@ export type SkipContext = {
 };
 
 export type WizardStep = {
-  title: string;
-  description?: string;
+  // A node (not just a string) so a step title can render live state — e.g. a
+  // pedigree parent step whose heading reflects a framing chosen in an earlier
+  // step. Rendered inside the dialog chrome, outside any step-content provider,
+  // so a stateful title must carry its own context.
+  title: React.ReactNode;
+  description?: React.ReactNode;
   content: React.ComponentType;
   nextLabel?: string;
   backLabel?: string;

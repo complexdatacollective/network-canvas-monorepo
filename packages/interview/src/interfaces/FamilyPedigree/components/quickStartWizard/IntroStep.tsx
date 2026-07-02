@@ -1,10 +1,27 @@
 'use client';
 
+import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { useAssetUrl } from '~/hooks/useAssetUrl';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import { getIntroScreen } from '~/interfaces/FamilyPedigree/utils/stageConfig';
+
+// The wizard chrome heading is an h2, so the intro screen's own headings must
+// sit beneath it. Allowing only h3/h4 (plus prose/lists/links) means an author's
+// intro text can never introduce a heading at or above the dialog's level.
+const INTRO_ALLOWED_TAGS = [
+  'p',
+  'br',
+  'hr',
+  'a',
+  'em',
+  'strong',
+  'ul',
+  'ol',
+  'li',
+  'h3',
+  'h4',
+];
 
 type IntroScreen = {
   title?: string;
@@ -38,8 +55,10 @@ export default function IntroStep() {
 
   return (
     <>
-      {introScreen.title && <Heading level="h2">{introScreen.title}</Heading>}
-      <Paragraph>{introScreen.text}</Paragraph>
+      {introScreen.title && <Heading level="h3">{introScreen.title}</Heading>}
+      <RenderMarkdown allowedElements={INTRO_ALLOWED_TAGS}>
+        {introScreen.text}
+      </RenderMarkdown>
       {introScreen.videoAssetId && (
         <IntroVideo assetId={introScreen.videoAssetId} />
       )}
