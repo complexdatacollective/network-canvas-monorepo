@@ -28,9 +28,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function isKdfWrappedShape(
-  value: Record<string, unknown>,
-): value is {
+function isKdfWrappedShape(value: Record<string, unknown>): value is {
   kdfSaltB64: string;
   kdfIterations: number;
   wrappedDekB64: string;
