@@ -1,18 +1,3 @@
-type Platform = 'web' | 'electron' | 'capacitor';
-
-function detectPlatform(): Platform {
-  if (typeof window === 'undefined') return 'web';
-  if (window.electronAPI) return 'electron';
-  const capacitor = (
-    window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }
-  ).Capacitor;
-  if (capacitor?.isNativePlatform?.()) return 'capacitor';
-  return 'web';
-}
-
-const platform = detectPlatform();
-
-export const isElectron = platform === 'electron';
-export const isCapacitor = platform === 'capacitor';
-
+// Interviewer-v8 is a web-only PWA. There is no longer an Electron or Capacitor
+// host, so `hostAppName` is a fixed constant and no platform detection remains.
 export const hostAppName = 'interviewer-v8';
