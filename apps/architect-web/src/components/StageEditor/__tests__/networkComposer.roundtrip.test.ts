@@ -10,7 +10,7 @@ const stage = {
   quickAdd: 'name',
   layoutVariable: 'layoutPosition',
   nodeForm: {
-    fields: [{ variable: 'age', component: 'Number', prompt: 'Age?' }],
+    fields: [{ variable: 'age', component: 'Number', label: 'Age?' }],
   },
   edges: [
     {
@@ -21,7 +21,7 @@ const stage = {
           {
             variable: 'closeness',
             component: 'VisualAnalogScale',
-            prompt: 'How close?',
+            label: 'How close?',
           },
         ],
       },

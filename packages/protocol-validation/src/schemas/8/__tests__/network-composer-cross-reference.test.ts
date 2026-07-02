@@ -14,7 +14,7 @@ const baseStage = {
   layoutVariable: 'layoutPosition',
   nodeForm: {
     fields: [
-      { variable: 'age', component: ComponentTypes.Number, prompt: 'Age?' },
+      { variable: 'age', component: ComponentTypes.Number, label: 'Age?' },
     ],
   },
   edges: [
@@ -26,7 +26,7 @@ const baseStage = {
           {
             variable: 'closeness',
             component: ComponentTypes.VisualAnalogScale,
-            prompt: 'How close?',
+            label: 'How close?',
           },
         ],
       },
@@ -68,7 +68,7 @@ describe('NetworkComposer cross-reference validation', () => {
             {
               variable: 'missing',
               component: ComponentTypes.Number,
-              prompt: 'x',
+              label: 'x',
             },
           ],
         },
@@ -92,7 +92,7 @@ describe('NetworkComposer cross-reference validation', () => {
                 {
                   variable: 'age',
                   component: ComponentTypes.Number,
-                  prompt: 'x',
+                  label: 'x',
                 },
               ],
             },
