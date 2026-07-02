@@ -406,16 +406,20 @@ function ToolbarPopoverSegment({
   size: SegmentSize;
   orientation: 'horizontal' | 'vertical';
 }) {
+  // As with menu segments, a consumer-supplied className takes precedence over
+  // the default pressed highlight, so an active state can be coloured by its
+  // own meaning (e.g. a group tool adopting the active group's colour).
+  const activeClasses = segment.className
+    ? undefined
+    : segment.pressed
+      ? menuActiveClasses
+      : undefined;
   const trigger = (
     <Toolbar.Button
       render={
         <PopoverTrigger
           disabled={segment.disabled}
-          render={segmentButton(
-            segment,
-            size,
-            segment.pressed ? menuActiveClasses : undefined,
-          )}
+          render={segmentButton(segment, size, activeClasses)}
         />
       }
     />

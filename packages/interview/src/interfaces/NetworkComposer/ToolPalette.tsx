@@ -61,6 +61,22 @@ const EDGE_BG_CLASS: Record<string, string> = {
   'edge-color-seq-10': 'bg-edge-10 text-white',
 };
 
+// 1-based option position → categorical palette classes. Literal strings so
+// Tailwind extracts them; the Groups tool button adopts the active group's
+// hull colour (the same --cat-N the ConvexHullLayer paints with).
+const GROUP_BG_CLASS: Record<number, string> = {
+  1: 'bg-(--cat-1) text-white',
+  2: 'bg-(--cat-2) text-white',
+  3: 'bg-(--cat-3) text-white',
+  4: 'bg-(--cat-4) text-white',
+  5: 'bg-(--cat-5) text-white',
+  6: 'bg-(--cat-6) text-white',
+  7: 'bg-(--cat-7) text-white',
+  8: 'bg-(--cat-8) text-white',
+  9: 'bg-(--cat-9) text-white',
+  10: 'bg-(--cat-10) text-white',
+};
+
 export default function ToolPalette({
   composerStore,
   undoStore,
@@ -92,6 +108,17 @@ export default function ToolPalette({
     activeEdgeType !== undefined
       ? (EDGE_BG_CLASS[activeEdgeColor ?? ''] ?? 'bg-edge-1 text-white')
       : undefined;
+
+  // While the group tool is active, the Groups button adopts the active
+  // group's hull colour (mirroring the edge tool above).
+  const activeGroupIndex =
+    activeGroup !== null && groupVariable !== null
+      ? groupVariable.options.findIndex(
+          (option) => option.value === activeGroup.value,
+        )
+      : -1;
+  const groupButtonClass =
+    activeGroupIndex >= 0 ? GROUP_BG_CLASS[activeGroupIndex + 1] : undefined;
 
   const items: ToolbarSegment[] = [
     {
@@ -147,6 +174,7 @@ export default function ToolPalette({
             label: 'Groups',
             icon: <GroupsIcon />,
             pressed: activeTool.kind === 'group',
+            className: groupButtonClass,
             open: groupsOpen,
             onOpenChange: setGroupsOpen,
             children: (

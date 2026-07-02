@@ -431,8 +431,16 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   // Bulk group assignment for a multi-node selection: in group mode a single
   // button targets the active group; in select mode (where lasso selection is
-  // enabled by the hull variable) one button per group option. The selection is
-  // deliberately kept afterwards so a multi-membership assignment can follow.
+  // enabled by the hull variable) one button per group option. Each button is
+  // painted with its group's hull colour (1-based option position → --cat-N,
+  // matching ConvexHullLayer). The selection is deliberately kept afterwards
+  // so a multi-membership assignment can follow.
+  const groupColorIndex = (value: string) => {
+    const index =
+      groupVariable?.options.findIndex((option) => option.value === value) ??
+      -1;
+    return index >= 0 ? index + 1 : undefined;
+  };
   const selectionBarButtons = (() => {
     if (selectedNodeIds.size < 2) return [];
     if (activeGroup !== null) {
@@ -440,6 +448,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         {
           value: activeGroup.value,
           label: `Add all to ${activeGroupLabel}`,
+          colorIndex: groupColorIndex(activeGroup.value),
           onClick: () => {
             void actions.addGroupMembership(
               [...selectedNodeIds],
@@ -451,9 +460,10 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       ];
     }
     if (currentTool.kind === 'select' && groupVariable !== null) {
-      return groupVariable.options.map((option) => ({
+      return groupVariable.options.map((option, index) => ({
         value: option.value,
         label: `Add all to ${option.label}`,
+        colorIndex: index + 1,
         onClick: () => {
           void actions.addGroupMembership(
             [...selectedNodeIds],
@@ -570,7 +580,16 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
             <button
               key={button.value}
               type="button"
-              className="bg-background border-primary rounded border px-3 py-1.5 text-sm font-medium shadow"
+              className={
+                button.colorIndex !== undefined
+                  ? 'rounded border border-transparent px-3 py-1.5 text-sm font-medium text-white shadow'
+                  : 'bg-background border-primary rounded border px-3 py-1.5 text-sm font-medium shadow'
+              }
+              style={
+                button.colorIndex !== undefined
+                  ? { backgroundColor: `var(--cat-${button.colorIndex})` }
+                  : undefined
+              }
               onClick={button.onClick}
             >
               {button.label}
