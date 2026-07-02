@@ -363,7 +363,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     [dispatch, currentStep],
   );
 
-  const edgeEntries = stage.edges.map((edgeDef) => {
+  const edgeEntries = (stage.edges ?? []).map((edgeDef) => {
     const edgeType = edgeDef.subject.type;
     const edgeCbEntry = codebook?.edge?.[edgeType];
     return {
@@ -456,8 +456,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   const selectedEdgeFormEntry =
     selectedEdge !== null
-      ? (stage.edges.find((ed) => ed.subject.type === selectedEdge.type) ??
-        null)
+      ? ((stage.edges ?? []).find(
+          (ed) => ed.subject.type === selectedEdge.type,
+        ) ?? null)
       : null;
 
   // The drawer opens for any single node or edge selection — even when there is

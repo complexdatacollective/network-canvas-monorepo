@@ -96,7 +96,7 @@ function AttributeFormInner({
   );
 
   const { fieldComponents, coerceValues } = useProtocolForm({
-    fields: form.fields,
+    fields: form.fields ?? [],
     initialValues,
     subject,
     currentEntityId: entityId,
@@ -131,7 +131,7 @@ export default function Inspector({
   onSave,
   onDelete,
 }: InspectorProps) {
-  const hasFields = form !== undefined && form.fields.length > 0;
+  const hasFields = form !== undefined && (form.fields?.length ?? 0) > 0;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
