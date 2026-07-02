@@ -15,8 +15,9 @@ updates:
     # the PR's CI is green on arrival instead of failing the frozen install.
     # NOTE: cooldown applies to VERSION updates only — it does NOT delay
     # security (CVE) updates, which still open immediately against a freshly
-    # published fix. Those are handled by the dependabot-age-exempt workflow,
-    # which adds a narrow, version-pinned minimumReleaseAgeExclude entry.
+    # published fix. Those are handled by the dependabot age-gate exempt
+    # workflows, which add a narrow, version-pinned minimumReleaseAgeExclude
+    # entry.
     cooldown:
       default-days: 1
     # The legacy apps (apps/architect, apps/interviewer) pin strict dependency

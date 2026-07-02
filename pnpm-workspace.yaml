@@ -117,7 +117,7 @@ minimumReleaseAge: 1440
 # `--no-frozen-lockfile` step.) CI's frozen-lockfile verification pass still
 # enforces the 24h gate exactly as the implicit default does today.
 minimumReleaseAgeStrict: false
-# Security fast-track: the dependabot-age-exempt workflow appends the exact
+# Security fast-track: the dependabot age-gate exempt workflows append the exact
 # name@version of a Dependabot security bump here when the gate would otherwise
 # block the PR's CI. Each entry pins a single version, so it is inert once that
 # version ages past minimumReleaseAge. Keep this list short; prune aged-out

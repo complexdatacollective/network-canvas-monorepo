@@ -1,38 +1,48 @@
-// Age-gate exemption for Dependabot security updates.
+// Stage 1 (UNPRIVILEGED) of the Dependabot age-gate fast-track.
 //
-// Context: pnpm's `minimumReleaseAge` gate (see pnpm-workspace.yaml) refuses
-// dependency versions younger than 24h, and pnpm re-verifies this on
+// pnpm's minimumReleaseAge gate (see pnpm-workspace.yaml) refuses dependency
+// versions younger than 24h and re-verifies this on every
 // `pnpm install --frozen-lockfile`. Dependabot *security* updates bypass the
-// Dependabot `cooldown`, so they open against a freshly published fix — which
-// the gate then rejects, turning the whole PR red.
+// Dependabot `cooldown`, so they open against a freshly published fix that the
+// gate then rejects — turning the PR red.
 //
-// This script runs on Dependabot PRs (see dependabot-age-exempt.yml). It:
+// This script runs in the `pull_request` context (read-only token, no secrets),
+// so it is safe to execute against the PR-authored lockfile. It:
 //   1. attempts a frozen install; if it already passes, does nothing;
 //   2. if it fails *specifically* on the age gate, finds the exact
-//      name@version entries this PR introduced into pnpm-lock.yaml and adds
-//      them to `minimumReleaseAgeExclude`;
-//   3. re-verifies that the install now passes.
-// The workflow then commits the (narrow, version-pinned) exemption. Because
-// each entry pins one version, it becomes inert once that version ages past
-// the gate.
+//      name@version entries this PR introduced into pnpm-lock.yaml, applies
+//      them to a LOCAL copy of pnpm-workspace.yaml, and re-runs the install to
+//      PROVE they resolve the failure;
+//   3. writes the proven entries + PR metadata to age-exempt/ for the
+//      privileged apply stage to push. It never writes to the repo itself.
 
-import { execSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
+// pnpm output and lockfile diffs can be large; give the captured commands plenty
+// of headroom so a noisy run can't throw past our detection logic.
+const MAX_BUFFER = 64 * 1024 * 1024;
 const WORKSPACE = 'pnpm-workspace.yaml';
 
 const baseSha = process.env.BASE_SHA;
-if (!baseSha) {
-  console.error('BASE_SHA is not set — cannot diff the lockfile.');
+const prNumber = process.env.PR_NUMBER;
+const headRef = process.env.HEAD_REF;
+if (!baseSha || !prNumber || !headRef) {
+  console.error('BASE_SHA, PR_NUMBER and HEAD_REF must be set.');
+  process.exit(1);
+}
+if (!/^[0-9a-f]{7,40}$/.test(baseSha)) {
+  console.error(`BASE_SHA is not a commit SHA: ${baseSha}`);
   process.exit(1);
 }
 
-/** Attempt a frozen, script-free install and capture its output. */
+/** Attempt a frozen, script-free install and capture its combined output. */
 const install = () => {
   try {
-    execSync('pnpm install --frozen-lockfile --ignore-scripts', {
+    execFileSync('pnpm', ['install', '--frozen-lockfile', '--ignore-scripts'], {
       stdio: 'pipe',
       encoding: 'utf8',
+      maxBuffer: MAX_BUFFER,
     });
     return { ok: true, output: '' };
   } catch (error) {
@@ -58,11 +68,15 @@ if (!/MINIMUM_RELEASE_AGE/.test(first.output)) {
 
 // The exact package versions this PR introduced into the lockfile. Matches
 // pnpm-lock v9 `packages:` / `snapshots:` keys (optional quote, optional
-// @scope/, name, @<version>, optional (peer…) suffix, trailing colon) and
-// captures the bare name@version.
-const diff = execSync(`git diff ${baseSha} HEAD -- pnpm-lock.yaml`, {
-  encoding: 'utf8',
-});
+// @scope/, name, @<version>, optional (peer…) suffix, trailing colon).
+const diff = execFileSync(
+  'git',
+  ['diff', baseSha, 'HEAD', '--', 'pnpm-lock.yaml'],
+  {
+    encoding: 'utf8',
+    maxBuffer: MAX_BUFFER,
+  },
+);
 const introduced = [];
 const seen = new Set();
 for (const line of diff.split('\n')) {
@@ -82,7 +96,8 @@ if (introduced.length === 0) {
   process.exit(1);
 }
 
-// Merge into minimumReleaseAgeExclude, preserving existing order and layout.
+// Apply to a LOCAL copy and re-verify, so we only hand the apply stage
+// exemptions we have proven resolve the failure.
 const lines = readFileSync(WORKSPACE, 'utf8').split('\n');
 const keyIdx = lines.findIndex((l) => /^minimumReleaseAgeExclude\s*:/.test(l));
 if (keyIdx === -1) {
@@ -135,4 +150,12 @@ if (!second.ok) {
   process.exit(1);
 }
 
-console.log(`Exempted from the age gate: ${additions.join(', ')}`);
+mkdirSync('age-exempt', { recursive: true });
+writeFileSync('age-exempt/additions.txt', `${additions.join('\n')}\n`);
+writeFileSync(
+  'age-exempt/pr.json',
+  `${JSON.stringify({ number: Number(prNumber), headRef })}\n`,
+);
+console.log(
+  `Prepared age-gate exemption for PR #${prNumber}: ${additions.join(', ')}`,
+);
