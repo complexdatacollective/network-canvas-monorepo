@@ -6,7 +6,13 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import type { Plugin, UserConfig } from 'vite';
 
+import { POSTHOG_HOST } from './src/lib/analytics/config';
+
 const here = dirname(fileURLToPath(import.meta.url));
+
+// The PostHog relay the analytics client connects to at runtime. Derived from
+// the same constant the client uses so the CSP can never drift from it.
+const POSTHOG_RELAY_ORIGIN = new URL(POSTHOG_HOST).origin;
 
 const ARRAYBUFFER_QUERY_RE = /(\?|&)arraybuffer(?:&|$)/;
 
@@ -44,18 +50,20 @@ const appVersion = JSON.parse(
   readFileSync(resolve(here, 'package.json'), 'utf8'),
 ).version as string;
 
-// Production CSP injected into index.html as a meta tag for the web build and
-// the Capacitor build (which copies the same dist/). Electron's response-header
-// CSP (in electron/main.ts) must mirror this — the browser intersects header
-// and meta, so divergence silently breaks the renderer. Vite HMR needs
+// Production CSP injected into index.html as a meta tag. Vite HMR needs
 // 'unsafe-eval' / inline scripts in dev, so this is build-only.
+//
+// connect-src must permit the runtime network egress the app actually makes:
+// mapbox-gl fetches styles/tiles/glyphs from api.mapbox.com and posts telemetry
+// to events.mapbox.com (Geospatial stages), and analytics posts to the PostHog
+// relay. Everything else stays 'self'.
 const CSP_DIRECTIVES = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self'",
+  `connect-src 'self' https://api.mapbox.com https://events.mapbox.com ${POSTHOG_RELAY_ORIGIN}`,
   "worker-src 'self' blob:",
   "base-uri 'none'",
   "object-src 'none'",
