@@ -7,7 +7,13 @@ import {
   LogOut,
 } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
-import { type ComponentProps, type Ref, useCallback, useState } from 'react';
+import {
+  type ComponentProps,
+  type Ref,
+  useCallback,
+  useRef,
+  useState,
+} from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -147,7 +153,15 @@ const Navigation = ({
 
   const { confirm } = useDialog();
   const portalContainer = usePortalContainer();
+
+  // `menuOpen` drives the drawer panel; `menuSettled` drives the staggered
+  // enter/exit of the cards inside it. On open we flip `menuSettled` only once
+  // the panel has finished sliding in; on close we flip it first and let the
+  // StagesMenu report back (`handleCardsClosed`) once the cards have animated
+  // out, so the panel slides away only after — never over — the stagger.
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuSettled, setMenuSettled] = useState(false);
+  const pendingStageRef = useRef<number | null>(null);
 
   const confirmSkip = useCallback(
     async () =>
@@ -163,12 +177,26 @@ const Navigation = ({
     [confirm],
   );
 
-  const handleSelectStage = useCallback(
-    async (index: number) => {
-      setMenuOpen(false);
-      await goToStage?.(index, confirmSkip);
+  const closeMenu = useCallback(
+    (immediate: boolean) => {
+      setMenuSettled(false);
+      // Defer the panel slide to `handleCardsClosed` when cards are on screen;
+      // otherwise (still opening, or a swipe already carried it off) close now.
+      if (immediate || !menuSettled) {
+        setMenuOpen(false);
+      }
     },
-    [goToStage, confirmSkip],
+    [menuSettled],
+  );
+
+  const handleCardsClosed = useCallback(() => setMenuOpen(false), []);
+
+  const handleSelectStage = useCallback(
+    (index: number) => {
+      pendingStageRef.current = index;
+      closeMenu(false);
+    },
+    [closeMenu],
   );
 
   return (
@@ -204,24 +232,22 @@ const Navigation = ({
         />
         {orientation === 'vertical' && <PassphrasePrompter />}
         {stageNavigationEnabled ? (
-          <button
+          <motion.button
             type="button"
             aria-haspopup="dialog"
             aria-expanded={menuOpen}
             aria-label="Go to a stage"
             onClick={() => setMenuOpen(true)}
+            variants={variants}
             className={cx(
               progressContainerVariants({ orientation }),
-              'focusable cursor-pointer appearance-none border-0 bg-transparent p-0',
+              // Wrap the bar directly so the focus ring hugs its pill shape
+              // rather than a rectangular wrapper.
+              'focusable cursor-pointer appearance-none rounded-full border-0 bg-transparent p-0',
             )}
           >
-            <motion.span className="flex grow" variants={variants}>
-              <ProgressBar
-                percentProgress={progress}
-                orientation={orientation}
-              />
-            </motion.span>
-          </button>
+            <ProgressBar percentProgress={progress} orientation={orientation} />
+          </motion.button>
         ) : (
           <motion.div
             className={progressContainerVariants({ orientation })}
@@ -246,7 +272,26 @@ const Navigation = ({
       {stageNavigationEnabled && (
         <Drawer.Root
           open={menuOpen}
-          onOpenChange={setMenuOpen}
+          onOpenChange={(next, details) => {
+            if (next) {
+              setMenuOpen(true);
+              return;
+            }
+            // A swipe has already carried the panel off, so close immediately;
+            // dismissals via the backdrop/Escape defer to the card exit.
+            closeMenu(details.reason === 'swipe');
+          }}
+          onOpenChangeComplete={(next) => {
+            if (next) {
+              setMenuSettled(true);
+              return;
+            }
+            const target = pendingStageRef.current;
+            pendingStageRef.current = null;
+            if (target !== null) {
+              void goToStage?.(target, confirmSkip);
+            }
+          }}
           swipeDirection={orientation === 'vertical' ? 'left' : 'down'}
         >
           <Drawer.Portal container={portalContainer ?? undefined}>
@@ -266,10 +311,15 @@ const Navigation = ({
                   'data-swiping:duration-0 motion-reduce:transition-none',
                   orientation === 'vertical'
                     ? 'h-full w-[min(34rem,92vw)] transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-ending-style:transform-[translateX(-100%)] data-starting-style:transform-[translateX(-100%)]'
-                    : 'h-[min(85vh,40rem)] w-full transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-ending-style:transform-[translateY(100%)] data-starting-style:transform-[translateY(100%)]',
+                    : 'h-[min(70vh,30rem)] w-full transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-ending-style:transform-[translateY(100%)] data-starting-style:transform-[translateY(100%)]',
                 )}
               >
-                <StagesMenu onSelect={handleSelectStage} />
+                <StagesMenu
+                  onSelect={handleSelectStage}
+                  orientation={orientation}
+                  open={menuSettled}
+                  onClosed={handleCardsClosed}
+                />
               </Drawer.Popup>
             </Drawer.Viewport>
           </Drawer.Portal>

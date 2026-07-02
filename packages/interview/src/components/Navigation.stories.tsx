@@ -60,39 +60,62 @@ const meta: Meta = {
 export default meta;
 type Story = StoryObj;
 
+const openAndAssertMenu = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+
+  const trigger = await canvas.findByRole('button', {
+    name: /go to a stage/i,
+  });
+  await userEvent.click(trigger);
+
+  const menu = await canvas.findByRole('listbox', { name: /stages/i });
+  const scoped = within(menu);
+
+  await expect(scoped.getAllByRole('option')).toHaveLength(5);
+  await expect(scoped.getByText('Skipped')).toBeInTheDocument();
+  await expect(
+    scoped.getByRole('option', { current: 'step' }),
+  ).toHaveTextContent(/welcome/i);
+
+  const filter = canvas.getByRole('searchbox', { name: /filter/i });
+  await userEvent.type(filter, 'complete');
+  await waitFor(() => expect(scoped.getAllByRole('option')).toHaveLength(1));
+
+  await userEvent.click(scoped.getByRole('option', { name: /complete/i }));
+
+  await waitFor(() =>
+    expect(canvas.getByText(/thank you for taking part/i)).toBeInTheDocument(),
+  );
+};
+
 export const StageNavigation: Story = {
+  name: 'Stage navigation (vertical rail)',
   render: () => (
     <div className="flex h-dvh w-full">
-      <StoryInterviewShell rawPayload={rawPayload} allowStageNavigation />
+      <StoryInterviewShell
+        rawPayload={rawPayload}
+        navigationOrientation="vertical"
+        allowStageNavigation
+      />
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+    await openAndAssertMenu(canvasElement);
+  },
+};
 
-    const trigger = await canvas.findByRole('button', {
-      name: /go to a stage/i,
-    });
-    await userEvent.click(trigger);
-
-    const menu = await canvas.findByRole('listbox', { name: /stages/i });
-    const scoped = within(menu);
-
-    await expect(scoped.getAllByRole('option')).toHaveLength(5);
-    await expect(scoped.getByText('Skipped')).toBeInTheDocument();
-    await expect(
-      scoped.getByRole('option', { current: 'step' }),
-    ).toHaveTextContent(/welcome/i);
-
-    const filter = canvas.getByRole('searchbox', { name: /filter/i });
-    await userEvent.type(filter, 'complete');
-    await waitFor(() => expect(scoped.getAllByRole('option')).toHaveLength(1));
-
-    await userEvent.click(scoped.getByRole('option', { name: /complete/i }));
-
-    await waitFor(() =>
-      expect(
-        canvas.getByText(/thank you for taking part/i),
-      ).toBeInTheDocument(),
-    );
+export const HorizontalStageNavigation: Story = {
+  name: 'Stage navigation (horizontal bar)',
+  render: () => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={rawPayload}
+        navigationOrientation="horizontal"
+        allowStageNavigation
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await openAndAssertMenu(canvasElement);
   },
 };

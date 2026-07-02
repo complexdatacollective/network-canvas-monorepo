@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { ListKeyboardDelegate } from '../keyboard/ListKeyboardDelegate';
+import {
+  ListKeyboardDelegate,
+  RowKeyboardDelegate,
+} from '../keyboard/ListKeyboardDelegate';
 import { ListLayout } from '../layout/ListLayout';
 import type { Collection, Key, Node } from '../types';
 
@@ -117,6 +120,47 @@ describe('ListLayout', () => {
 
       expect(delegate1.getKeyBelow('1')).toBe('2');
       expect(delegate2.getKeyBelow('1')).toBe('2');
+    });
+  });
+
+  describe('horizontal orientation', () => {
+    it('should lay items out in a row', () => {
+      const layout = new ListLayout({ gap: 2, orientation: 'horizontal' });
+      const styles = layout.getContainerStyles();
+
+      expect(styles.display).toBe('flex');
+      expect(styles.flexDirection).toBe('row');
+    });
+
+    it('should default to a column', () => {
+      const layout = new ListLayout();
+
+      expect(layout.getContainerStyles().flexDirection).toBe('column');
+    });
+
+    it('should navigate with left/right and ignore up/down', () => {
+      const layout = new ListLayout({ orientation: 'horizontal' });
+      const collection = createMockCollection(5);
+
+      const delegate = layout.getKeyboardDelegate(collection, new Set());
+
+      expect(delegate).toBeInstanceOf(RowKeyboardDelegate);
+      expect(delegate.getKeyRightOf?.('1')).toBe('2');
+      expect(delegate.getKeyLeftOf?.('3')).toBe('2');
+      expect(delegate.getKeyBelow('1')).toBeNull();
+      expect(delegate.getKeyAbove('3')).toBeNull();
+    });
+
+    it('should skip disabled keys when navigating a row', () => {
+      const layout = new ListLayout({ orientation: 'horizontal' });
+      const collection = createMockCollection(5);
+      const delegate = layout.getKeyboardDelegate(
+        collection,
+        new Set<Key>(['2', '3']),
+      );
+
+      expect(delegate.getKeyRightOf?.('1')).toBe('4');
+      expect(delegate.getKeyLeftOf?.('4')).toBe('1');
     });
   });
 

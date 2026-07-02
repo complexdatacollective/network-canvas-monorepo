@@ -9,6 +9,7 @@ import {
   type AssetRequestHandler,
   type InterviewPayload,
   isValidAssetType,
+  type NavigationOrientation,
   type ResolvedAsset,
   Shell,
   type StepChangeHandler,
@@ -118,6 +119,9 @@ const StoryInterviewShell = (props: {
   rawPayload: string;
   hideNavigation?: boolean;
   allowStageNavigation?: boolean;
+  /** Force the Navigation orientation instead of deriving it from the
+   * viewport aspect ratio, so stories can demonstrate both layouts. */
+  navigationOrientation?: NavigationOrientation;
   /** Set for capture stories so dev-only UI (e.g. FamilyPedigree's
    * Dump/Load buttons) never appears in screenshots. */
   isDevelopment?: boolean;
@@ -163,6 +167,7 @@ const StoryInterviewShell = (props: {
       analytics={{ installationId: 'storybook', hostApp: 'storybook' }}
       disableAnalytics={true}
       hideNavigation={props.hideNavigation}
+      navigationOrientation={props.navigationOrientation}
       allowStageNavigation={props.allowStageNavigation}
     />
   );

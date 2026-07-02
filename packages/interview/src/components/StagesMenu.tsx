@@ -1,7 +1,8 @@
 'use client';
 
 import { LayoutTemplate } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { motion, useReducedMotion, type Variants } from 'motion/react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
@@ -18,10 +19,23 @@ import manifest, {
 
 import { useCurrentStep } from '../contexts/CurrentStepContext';
 import { getSkipMap } from '../selectors/skip-logic';
+import type { NavigationOrientation } from '../Shell';
 import { getProtocolStages } from '../store/modules/protocol';
 
 type StagesMenuProps = {
   onSelect: (index: number) => void;
+  orientation?: NavigationOrientation;
+  /**
+   * Whether the menu content should be shown. Toggling this drives the
+   * staggered enter/exit of the timeline and stage cards; the host sets it
+   * `true` once the drawer has finished opening and `false` to begin closing.
+   */
+  open: boolean;
+  /**
+   * Called once the exit animation has finished, so the host can dismiss the
+   * drawer only after the cards have animated out.
+   */
+  onClosed: () => void;
 };
 
 type StageItem = {
@@ -40,12 +54,112 @@ const isInterfaceType = (type: string): type is InterfaceType =>
 const keyExtractor = (item: StageItem) => item.id;
 const textValueExtractor = (item: StageItem) => item.label;
 
-export default function StagesMenu({ onSelect }: StagesMenuProps) {
+// Timeline (line + numbered nodes) reveals as a directional "wipe"; the stage
+// cards rise in on a heavier spring. Keep the whole sequence bounded so a long
+// protocol doesn't turn into a slideshow.
+const WIPE_DURATION = 0.24;
+const NODE_LEAD = 0.08;
+const CONTENT_LEAD = 0.04;
+const EXIT_DURATION = 0.16;
+const EXIT_BUFFER = 0.06;
+
+const clampStep = (base: number, count: number, maxWindow: number) =>
+  count > 1 ? Math.min(base, maxWindow / (count - 1)) : 0;
+
+type Steps = { wipe: number; content: number; exit: number };
+
+type MenuVariants = { line: Variants; node: Variants; content: Variants };
+
+const makeVariants = (
+  orientation: NavigationOrientation,
+  steps: Steps,
+  reduce: boolean,
+): MenuVariants => {
+  const instant = { duration: 0 };
+  const hidden = orientation === 'vertical' ? { scaleY: 0 } : { scaleX: 0 };
+  const shown = orientation === 'vertical' ? { scaleY: 1 } : { scaleX: 1 };
+
+  return {
+    line: {
+      open: (i: number) => ({
+        ...shown,
+        transition: reduce
+          ? instant
+          : {
+              delay: i * steps.wipe,
+              duration: WIPE_DURATION,
+              ease: 'easeInOut',
+            },
+      }),
+      closed: (i: number) => ({
+        ...hidden,
+        transition: reduce
+          ? instant
+          : { delay: i * steps.exit, duration: EXIT_DURATION, ease: 'easeIn' },
+      }),
+    },
+    node: {
+      open: (i: number) => ({
+        scale: 1,
+        opacity: 1,
+        transition: reduce
+          ? instant
+          : {
+              delay: i * steps.wipe + NODE_LEAD,
+              duration: 0.26,
+              ease: 'easeOut',
+            },
+      }),
+      closed: (i: number) => ({
+        scale: 0,
+        opacity: 0,
+        transition: reduce
+          ? instant
+          : { delay: i * steps.exit, duration: EXIT_DURATION, ease: 'easeIn' },
+      }),
+    },
+    content: {
+      open: (i: number) => ({
+        opacity: 1,
+        y: 0,
+        transition: reduce
+          ? instant
+          : {
+              delay: i * steps.content + CONTENT_LEAD,
+              type: 'spring',
+              stiffness: 150,
+              damping: 17,
+              mass: 1.5,
+            },
+      }),
+      closed: (i: number) => ({
+        opacity: 0,
+        y: reduce ? 0 : 16,
+        transition: reduce
+          ? instant
+          : { delay: i * steps.exit, duration: EXIT_DURATION, ease: 'easeIn' },
+      }),
+    },
+  };
+};
+
+export default function StagesMenu({
+  onSelect,
+  orientation = 'vertical',
+  open,
+  onClosed,
+}: StagesMenuProps) {
   const stages = useSelector(getProtocolStages);
   const { displayedStep: currentStageIndex } = useCurrentStep();
   const skipMap = useSelector(getSkipMap);
+  const reduceMotion = useReducedMotion() ?? false;
 
-  const layout = useMemo(() => new ListLayout<StageItem>({ gap: 0 }), []);
+  const isHorizontal = orientation === 'horizontal';
+
+  const layout = useMemo(
+    () => new ListLayout<StageItem>({ gap: 0, orientation }),
+    [orientation],
+  );
 
   const items = useMemo<StageItem[]>(
     () =>
@@ -64,12 +178,57 @@ export default function StagesMenu({ onSelect }: StagesMenuProps) {
   const currentId = items[currentStageIndex]?.id;
 
   const [matchingKeys, setMatchingKeys] = useState<Set<Key> | null>(null);
-  const visible = useMemo(() => {
-    const shown = matchingKeys
-      ? items.filter((item) => matchingKeys.has(item.id))
-      : items;
-    return { firstId: shown.at(0)?.id, lastId: shown.at(-1)?.id };
-  }, [items, matchingKeys]);
+  const visibleItems = useMemo(
+    () =>
+      matchingKeys ? items.filter((item) => matchingKeys.has(item.id)) : items,
+    [items, matchingKeys],
+  );
+  const positionById = useMemo(() => {
+    const map = new Map<string, number>();
+    visibleItems.forEach((item, index) => map.set(item.id, index));
+    return map;
+  }, [visibleItems]);
+
+  const firstId = visibleItems.at(0)?.id;
+  const lastId = visibleItems.at(-1)?.id;
+  const count = visibleItems.length;
+
+  const steps = useMemo<Steps>(
+    () => ({
+      wipe: clampStep(0.07, count, 0.55),
+      content: clampStep(0.09, count, 0.7),
+      exit: clampStep(0.03, count, 0.3),
+    }),
+    [count],
+  );
+
+  const variants = useMemo(
+    () => makeVariants(orientation, steps, reduceMotion),
+    [orientation, steps, reduceMotion],
+  );
+
+  // Signal the host once the staggered exit has played out, so the drawer only
+  // slides away after the cards are gone. Timings are deterministic tweens on
+  // exit, so a single timeout is enough. Keep dependencies to `open` alone: the
+  // count/steps are read from refs so a mid-close filter change can't cancel
+  // (and never re-arm) the pending timeout.
+  const onClosedRef = useRef(onClosed);
+  onClosedRef.current = onClosed;
+  const exitMsRef = useRef(0);
+  exitMsRef.current = reduceMotion
+    ? 0
+    : (Math.max(0, count - 1) * steps.exit + EXIT_DURATION + EXIT_BUFFER) *
+      1000;
+  const prevOpen = useRef(open);
+  useEffect(() => {
+    const wasOpen = prevOpen.current;
+    prevOpen.current = open;
+    if (wasOpen && !open) {
+      const id = setTimeout(() => onClosedRef.current(), exitMsRef.current);
+      return () => clearTimeout(id);
+    }
+    return undefined;
+  }, [open]);
 
   const handleSelectionChange = (keys: Set<Key>) => {
     const [key] = keys;
@@ -82,9 +241,119 @@ export default function StagesMenu({ onSelect }: StagesMenuProps) {
     }
   };
 
+  const animate = open ? 'open' : 'closed';
+
   const renderItem = (item: StageItem, itemProps: ItemProps) => {
-    const isFirst = item.id === visible.firstId;
-    const isLast = item.id === visible.lastId;
+    const isFirst = item.id === firstId;
+    const isLast = item.id === lastId;
+    const isOnly = isFirst && isLast;
+    const custom = positionById.get(item.id) ?? item.index;
+
+    const picture = isInterfaceType(item.type) ? (
+      <InterfacePicture
+        type={item.type}
+        ratio="4:3"
+        sizes={isHorizontal ? '11rem' : '8rem'}
+        alt=""
+        className="size-full object-cover"
+      />
+    ) : (
+      <span className="flex size-full items-center justify-center bg-black/20">
+        <LayoutTemplate className="size-6 opacity-40" />
+      </span>
+    );
+
+    const node = (
+      <motion.span
+        aria-hidden
+        variants={variants.node}
+        custom={custom}
+        initial="closed"
+        animate={animate}
+        className={cx(
+          'bg-neon-coral relative z-10 flex items-center justify-center rounded-full text-xs font-bold text-white tabular-nums',
+          item.isCurrent
+            ? 'ring-neon-coral/30 size-9 ring-4'
+            : 'size-8 opacity-90',
+        )}
+      >
+        {item.position}
+      </motion.span>
+    );
+
+    const label = (
+      <motion.span
+        variants={variants.content}
+        custom={custom}
+        initial="closed"
+        animate={animate}
+        className={cx(
+          'text-sm font-bold wrap-break-word',
+          isHorizontal ? 'line-clamp-2 text-center' : 'min-w-0 flex-1',
+        )}
+      >
+        {item.label}
+      </motion.span>
+    );
+
+    const image = (
+      <motion.span
+        variants={variants.content}
+        custom={custom}
+        initial="closed"
+        animate={animate}
+        className={cx(
+          'block shrink-0 overflow-hidden rounded-xs [&>picture]:block [&>picture]:size-full',
+          isHorizontal ? 'aspect-4/3 w-full' : 'aspect-4/3 w-32',
+        )}
+      >
+        {picture}
+      </motion.span>
+    );
+
+    if (isHorizontal) {
+      return (
+        <button
+          {...itemProps}
+          type="button"
+          aria-current={item.isCurrent ? 'step' : undefined}
+          className={cx(
+            'focusable relative flex w-44 flex-col items-center gap-3 rounded-sm px-3 py-4 text-center transition-colors',
+            'data-selected:bg-primary data-selected:text-primary-contrast',
+            'hover:bg-accent data-focused:bg-accent',
+          )}
+        >
+          <span className="relative flex h-9 w-full items-center justify-center">
+            <motion.span
+              aria-hidden
+              variants={variants.line}
+              custom={custom}
+              initial="closed"
+              animate={animate}
+              className={cx(
+                'bg-neon-coral pointer-events-none absolute top-1/2 h-1 origin-left -translate-y-1/2',
+                isOnly
+                  ? 'hidden'
+                  : isFirst
+                    ? 'right-0 left-1/2'
+                    : isLast
+                      ? 'right-1/2 left-0'
+                      : 'inset-x-0',
+              )}
+            />
+            {node}
+          </span>
+          {image}
+          {label}
+          {item.isSkipped && (
+            <Badge variant="secondary" className="shrink-0">
+              Skipped
+            </Badge>
+          )}
+        </button>
+      );
+    }
+
     return (
       <button
         {...itemProps}
@@ -96,11 +365,15 @@ export default function StagesMenu({ onSelect }: StagesMenuProps) {
           'hover:bg-accent data-focused:bg-accent',
         )}
       >
-        <span
+        <motion.span
           aria-hidden
+          variants={variants.line}
+          custom={custom}
+          initial="closed"
+          animate={animate}
           className={cx(
-            'bg-neon-coral pointer-events-none absolute left-7 w-1 -translate-x-1/2',
-            isFirst && isLast
+            'bg-neon-coral pointer-events-none absolute left-8 w-1 origin-top -translate-x-1/2',
+            isOnly
               ? 'hidden'
               : isFirst
                 ? 'top-1/2 bottom-0'
@@ -109,38 +382,9 @@ export default function StagesMenu({ onSelect }: StagesMenuProps) {
                   : 'inset-y-0',
           )}
         />
-        <span
-          aria-hidden
-          className="relative z-10 flex w-6 shrink-0 items-center justify-center"
-        >
-          <span
-            className={cx(
-              'bg-neon-coral rounded-full transition-all',
-              item.isCurrent ? 'ring-neon-coral/30 size-4 ring-4' : 'size-3',
-            )}
-          />
-        </span>
-        <span className="aspect-video w-32 shrink-0 overflow-hidden rounded-xs [&>picture]:block [&>picture]:size-full">
-          {isInterfaceType(item.type) ? (
-            <InterfacePicture
-              type={item.type}
-              ratio="16:9"
-              sizes="8rem"
-              alt=""
-              className="size-full object-cover"
-            />
-          ) : (
-            <span className="flex size-full items-center justify-center bg-black/20">
-              <LayoutTemplate className="size-6 opacity-40" />
-            </span>
-          )}
-        </span>
-        <span className="text-sm font-bold tabular-nums opacity-70">
-          {item.position}.
-        </span>
-        <span className="min-w-0 flex-1 text-sm font-bold tracking-wider wrap-break-word uppercase">
-          {item.label}
-        </span>
+        {node}
+        {image}
+        {label}
         {item.isSkipped && (
           <Badge variant="secondary" className="shrink-0">
             Skipped
@@ -157,6 +401,8 @@ export default function StagesMenu({ onSelect }: StagesMenuProps) {
       textValueExtractor={textValueExtractor}
       layout={layout}
       renderItem={renderItem}
+      animate={false}
+      orientation={orientation}
       selectionMode="single"
       defaultSelectedKeys={currentId !== undefined ? [currentId] : []}
       onSelectionChange={handleSelectionChange}
@@ -170,7 +416,7 @@ export default function StagesMenu({ onSelect }: StagesMenuProps) {
       onFilterResultsChange={(keys) => setMatchingKeys(keys)}
       aria-label="Stages"
       className="min-h-0 flex-1"
-      viewportClassName="py-4"
+      viewportClassName={isHorizontal ? 'items-center px-6 py-6' : 'py-4'}
       emptyState={
         <Paragraph margin="none" className="text-text/70 p-8 text-sm">
           Nothing matched your search term.
