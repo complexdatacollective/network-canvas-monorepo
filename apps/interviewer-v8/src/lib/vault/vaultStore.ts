@@ -92,6 +92,13 @@ export function readVault(): VaultRecord | null {
 
 export function writeVault(record: VaultRecord): void {
   if (typeof window === 'undefined') return;
+  // The record holds only WRAPPED key material (the DEK encrypted under a
+  // KEK derived from the user's PIN/passphrase, or under a WebAuthn-PRF key)
+  // plus non-secret KDF params (salt, iterations) and public WebAuthn ids.
+  // The raw DEK never appears here, so persisting this to localStorage is the
+  // intended at-rest form — the wrapped DEK is useless without the unlock
+  // secret. (Flagged by CodeQL js/clear-text-storage-of-sensitive-data, which
+  // taints the wrap output as sensitive without seeing it is already ciphertext.)
   window.localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(record));
 }
 
