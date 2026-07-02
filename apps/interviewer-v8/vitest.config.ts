@@ -29,12 +29,7 @@ export default defineConfig({
           name: 'unit',
           environment: 'jsdom',
           setupFiles: ['./src/test-setup.ts'],
-          include: [
-            'src/**/*.test.{ts,tsx}',
-            'src/**/__tests__/**/*.{ts,tsx}',
-            'electron/**/*.test.{ts,tsx}',
-            'electron/**/__tests__/**/*.{ts,tsx}',
-          ],
+          include: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**/*.{ts,tsx}'],
           exclude: [
             '**/node_modules/**',
             '**/dist/**',

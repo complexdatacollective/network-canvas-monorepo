@@ -237,9 +237,6 @@ overrides:
   slate>immer: ^5.3.0
   slate-history>immer: ^5.3.0
 
-patchedDependencies:
-  better-sqlite3-multiple-ciphers@12.9.0: f8eee29adc51371f90731790796adaacd29655f815301beae9923efcd7e0c8b5
-
 importers:
 
   .:
@@ -1151,42 +1148,12 @@ importers:
 
   apps/interviewer-v8:
     dependencies:
-      '@aparajita/capacitor-biometric-auth':
-        specifier: ^10.0.0
-        version: 10.0.0
       '@base-ui/react':
         specifier: 'catalog:'
         version: 1.5.0(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      '@capacitor/android':
-        specifier: ^8.4.1
-        version: 8.4.1(@capacitor/core@8.4.0)
-      '@capacitor/app':
-        specifier: ^8.1.0
-        version: 8.1.0(@capacitor/core@8.4.0)
-      '@capacitor/core':
-        specifier: ^8.4.0
-        version: 8.4.0
-      '@capacitor/filesystem':
-        specifier: ^8.1.2
-        version: 8.1.2(@capacitor/core@8.4.0)
-      '@capacitor/ios':
-        specifier: ^8.3.4
-        version: 8.4.0(@capacitor/core@8.4.0)
-      '@capacitor/keyboard':
-        specifier: ^8.0.3
-        version: 8.0.3(@capacitor/core@8.4.0)
-      '@capacitor/preferences':
-        specifier: ^8.0.1
-        version: 8.0.1(@capacitor/core@8.4.0)
-      '@capacitor/share':
-        specifier: ^8.0.1
-        version: 8.0.1(@capacitor/core@8.4.0)
       '@codaco/art':
         specifier: workspace:*
         version: link:../../packages/art
-      '@codaco/biometric-keystore':
-        specifier: workspace:*
-        version: link:../../packages/biometric-keystore
       '@codaco/fresco-ui':
         specifier: workspace:*
         version: link:../../packages/fresco-ui
@@ -1214,18 +1181,12 @@ importers:
       '@tanstack/react-table':
         specifier: 'catalog:'
         version: 8.21.3(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      better-sqlite3-multiple-ciphers:
-        specifier: ^12.9.0
-        version: 12.9.0(patch_hash=f8eee29adc51371f90731790796adaacd29655f815301beae9923efcd7e0c8b5)
       dexie:
         specifier: ^4.4.3
         version: 4.4.3
       effect:
         specifier: 'catalog:'
         version: 3.21.2
-      electron-updater:
-        specifier: ^6.6.2
-        version: 6.8.9
       jszip:
         specifier: 'catalog:'
         version: 3.10.1
@@ -1254,12 +1215,6 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
     devDependencies:
-      '@capacitor/assets':
-        specifier: ^3.0.5
-        version: 3.0.5(@swc/core@1.15.40(@swc/helpers@0.5.23))(@types/node@24.12.4)(encoding@0.1.13)(typescript@6.0.3)
-      '@capacitor/cli':
-        specifier: ^8.3.4
-        version: 8.4.0
       '@chromatic-com/storybook':
         specifier: 'catalog:'
         version: 5.2.1(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
@@ -1268,13 +1223,13 @@ importers:
         version: 10.4.1(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
       '@storybook/addon-docs':
         specifier: 'catalog:'
-        version: 10.4.1(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(esbuild@0.28.0)(rollup@4.62.2)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(webpack@5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.0))
+        version: 10.4.1(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(esbuild@0.28.0)(rollup@4.62.2)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(webpack@5.105.2(esbuild@0.28.0))
       '@storybook/addon-vitest':
         specifier: 'catalog:'
         version: 10.4.1(@vitest/browser-playwright@4.1.7)(@vitest/browser@4.1.9)(@vitest/runner@4.1.7)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(vitest@4.1.7)
       '@storybook/react-vite':
         specifier: 'catalog:'
-        version: 10.4.1(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(esbuild@0.28.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(rollup@4.62.2)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(typescript@6.0.3)(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(webpack@5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.0))
+        version: 10.4.1(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(esbuild@0.28.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(rollup@4.62.2)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(typescript@6.0.3)(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(webpack@5.105.2(esbuild@0.28.0))
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.3.0(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -1302,15 +1257,6 @@ importers:
       chromatic:
         specifier: 'catalog:'
         version: 17.3.0
-      electron:
-        specifier: 'catalog:'
-        version: 42.3.0
-      electron-builder:
-        specifier: 'catalog:'
-        version: 26.15.2(electron-builder-squirrel-windows@26.15.2)
-      electron-vite:
-        specifier: 'catalog:'
-        version: 6.0.0-beta.1(@swc/core@1.15.40(@swc/helpers@0.5.23))(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
       fake-indexeddb:
         specifier: ^6.2.5
         version: 6.2.5
@@ -1320,12 +1266,6 @@ importers:
       playwright:
         specifier: 'catalog:'
         version: 1.60.0
-      png-to-ico:
-        specifier: ^3.0.1
-        version: 3.0.1
-      sharp:
-        specifier: ^0.34.2
-        version: 0.34.5
       storybook:
         specifier: 'catalog:'
         version: 10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -1341,9 +1281,6 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.7(@opentelemetry/api@1.9.1)(@types/node@24.12.4)(@vitest/browser-playwright@4.1.7)(@vitest/coverage-v8@4.1.7)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
-      xcode:
-        specifier: ^3.0.1
-        version: 3.0.1
 
   apps/networkcanvas.com:
     dependencies:
@@ -2206,10 +2143,6 @@ packages:
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
 
-  '@aparajita/capacitor-biometric-auth@10.0.0':
-    resolution: {integrity: sha512-azjWaRucB8x1/gSzSTp/NxelaOZyg+m765gSzjwUkSQgg30RrZPmPq6pyLeeXVSZNDY3Rxf5Hj8obgZaXirCFQ==}
-    engines: {node: '>=20.0.0'}
-
   '@apideck/better-ajv-errors@0.3.7':
     resolution: {integrity: sha512-TajUJwGWbDwkCx/CZi7tRE8PVB7simCvKJfHUsSdvps+aTM/PDPP4gkLmKnc+x3CE//y9i/nj74GqdL/hwk7Iw==}
     engines: {node: '>=10'}
@@ -2850,11 +2783,6 @@ packages:
     peerDependencies:
       '@capacitor/core': ^8.4.0
 
-  '@capacitor/android@8.4.1':
-    resolution: {integrity: sha512-igtDCJ7QQn0P2qHFD9p4KXaa6V1b2PRNt+MxjVwtjTm/BJvqmiazOJq6rPjwFSZnfHm6iFoZk8TfzHd44pyBGw==}
-    peerDependencies:
-      '@capacitor/core': ^8.4.0
-
   '@capacitor/app@8.1.0':
     resolution: {integrity: sha512-MlmttTOWHDedr/G4SrhNRxsXMqY+R75S4MM4eIgzsgCzOYhb/MpCkA5Q3nuOCfL1oHm26xjUzqZ5aupbOwdfYg==}
     peerDependencies:
@@ -2897,16 +2825,6 @@ packages:
     resolution: {integrity: sha512-tnwstEdbTJ2nHAfoAwnurXgYRscWeLY+IIGdz69o24gN2Crfj9Xc0TWo8L5uFLF1LmpbUywH1IT0U1oHV8c+CA==}
     peerDependencies:
       '@capacitor/core': ^8.4.0
-
-  '@capacitor/keyboard@8.0.3':
-    resolution: {integrity: sha512-27Bv5/2w1Ss2njguBgTS98O0Bb8DRJhAARyzXYib0JlT/n6BrJw/EZ0CokM4C8GFUjFDjJnEKF1Ie01buTMEXQ==}
-    peerDependencies:
-      '@capacitor/core': '>=8.0.0'
-
-  '@capacitor/preferences@8.0.1':
-    resolution: {integrity: sha512-T6no3ebi79XJCk91U3Jp/liJUwgBdvHR+s6vhvPkPxSuch7z3zx5Rv1bdWM6sWruNx+pViuEGqZvbfCdyBvcHQ==}
-    peerDependencies:
-      '@capacitor/core': '>=8.0.0'
 
   '@capacitor/share@8.0.1':
     resolution: {integrity: sha512-3cSBKBCJVon54rKDROP2rqGyeGks4pBh9TbaEk9S375Kbek/ZHe72N50zIa0Vn9Eac/SuhwgehO/mmA4CsUOiw==}
@@ -7790,10 +7708,6 @@ packages:
     resolution: {integrity: sha512-pbnl5XzGBdrFU/wT4jqmJVPn2B6UHPBOhzMQkY/SPUPB6QtUXtmBHBIwCbXJol93mOpGMnQyP/+BB19q04xj7g==}
     engines: {node: '>=4'}
 
-  better-sqlite3-multiple-ciphers@12.9.0:
-    resolution: {integrity: sha512-471izuwJKCgvCGJ0VP10Z0IN7NWFW+pk/A8KXItZXVJ0V2AEAB5HZfmc9U3VLMmJ46bRaPbdgaBbgWpBJ/biUg==}
-    engines: {node: 20.x || 22.x || 23.x || 24.x}
-
   bidi-js@1.0.3:
     resolution: {integrity: sha512-RKshQI1R3YQ+n9YJz2QQ147P66ELpa1FQEg20Dk8oW9t2KgLbpDLLp9aGZ7y8WHSshDknG0bknqGw5/tyCs5tw==}
 
@@ -7803,9 +7717,6 @@ packages:
 
   big.js@5.2.2:
     resolution: {integrity: sha512-vyL2OymJxmarO8gxMr0mhChsO9QGwhynfuu4+MHTAW6czfq9humCB7rKpUjDd9YUiDPU4mzpyupFSvOClAwbmQ==}
-
-  bindings@1.5.0:
-    resolution: {integrity: sha512-p2q/t/mhvuOj/UeLlV6566GD/guowlr0hHxClI0W9m7MWYkL1F0hLo+0Aexs9HSPCtR1SXQ0TD3MMKrXZajbiQ==}
 
   bl@1.2.3:
     resolution: {integrity: sha512-pvcNpa0UU69UT341rO6AYy4FVAIkUHuZXRIWbq+zHnsVcRzDDjIAhGuuYoi0d//cwIwtt4pkpKycWEfjdV+vww==}
@@ -8303,10 +8214,12 @@ packages:
   conventional-changelog-atom@2.0.8:
     resolution: {integrity: sha512-xo6v46icsFTK3bb7dY/8m2qvc8sZemRgdqLb/bjpBsH2UyOS8rKNTgcb5025Hri6IpANPApbXMg15QLb1LJpBw==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-codemirror@2.0.8:
     resolution: {integrity: sha512-z5DAsn3uj1Vfp7po3gpt2Boc+Bdwmw2++ZHa5Ak9k0UKsYAO5mH1UBTN0qSCuJZREIhX6WU4E1p3IW2oRCNzQw==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-conventionalcommits@4.6.3:
     resolution: {integrity: sha512-LTTQV4fwOM4oLPad317V/QNQ1FY4Hju5qeBIM1uTHbrnCE+Eg4CdRZ3gO2pUeR+tzWdp80M2j3qFFEDWVqOV4g==}
@@ -8320,22 +8233,27 @@ packages:
   conventional-changelog-ember@2.0.9:
     resolution: {integrity: sha512-ulzIReoZEvZCBDhcNYfDIsLTHzYHc7awh+eI44ZtV5cx6LVxLlVtEmcO+2/kGIHGtw+qVabJYjdI5cJOQgXh1A==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-eslint@3.0.9:
     resolution: {integrity: sha512-6NpUCMgU8qmWmyAMSZO5NrRd7rTgErjrm4VASam2u5jrZS0n38V7Y9CzTtLT2qwz5xEChDR4BduoWIr8TfwvXA==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-express@2.0.6:
     resolution: {integrity: sha512-SDez2f3iVJw6V563O3pRtNwXtQaSmEfTCaTBPCqn0oG0mfkq0rX4hHBq5P7De2MncoRixrALj3u3oQsNK+Q0pQ==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-jquery@3.0.11:
     resolution: {integrity: sha512-x8AWz5/Td55F7+o/9LQ6cQIPwrCjfJQ5Zmfqi8thwUEKHstEn4kTIofXub7plf1xvFA2TqhZlq7fy5OmV6BOMw==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-jshint@2.0.9:
     resolution: {integrity: sha512-wMLdaIzq6TNnMHMy31hql02OEQ8nCQfExw1SE0hYL5KvU+JCTuPaDO+7JiogGT2gJAxiUGATdtYYfh+nT+6riA==}
     engines: {node: '>=10'}
+    deprecated: This preset is deprecated. Please use conventional-changelog-conventionalcommits or conventional-changelog-angular instead.
 
   conventional-changelog-preset-loader@2.3.4:
     resolution: {integrity: sha512-GEKRWkrSAZeTq5+YjUZOYxdHq+ci4dNwHvpaBC3+ENalzFWuCWa9EZXSuZBpkr72sMdKB+1fyDV4takK1Lf58g==}
@@ -8866,9 +8784,6 @@ packages:
   electron-to-chromium@1.5.344:
     resolution: {integrity: sha512-4MxfbmNDm+KPh066EZy+eUnkcDPcZ35wNmOWzFuh/ijvHsve6kbLTLURy88uCNK5FbpN+yk2nQY6BYh1GEt+wg==}
 
-  electron-updater@6.8.9:
-    resolution: {integrity: sha512-ZhVxM9iGONUpZGI1FxdMRgJjUFXi7AYGVa5PwKlO1tV1/4zDxQmfKpXOHVztKrd6L9rLcFjERvi1Mf2vxyTkig==}
-
   electron-vite@6.0.0-beta.1:
     resolution: {integrity: sha512-jltST77AwNxIeTTDtYhnIEA8ZM0RW9jmSJcqS8x/dQcgeeLlxlcJoYNNJ1tv7/Swor0AbXMYteBGdezoAOt+Nw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -9379,9 +9294,6 @@ packages:
   file-type@6.2.0:
     resolution: {integrity: sha512-YPcTBDV+2Tm0VqjybVd32MHdlEGAtuxS3VAYsumFokDSMG+ROT5wawGlnHDoz7bfMcMDt9hxuXvXwoKUx2fkOg==}
     engines: {node: '>=4'}
-
-  file-uri-to-path@1.0.0:
-    resolution: {integrity: sha512-0Zt+s3L7Vf1biwWZ29aARiVYLx7iMGnEUl9x33fbB/j3jR81u/O2LbqK+Bm1CDSNDKVtJ/YjwY7TUd5SkeLQLw==}
 
   file-url@2.0.2:
     resolution: {integrity: sha512-x3989K8a1jM6vulMigE8VngH7C5nci0Ks5d9kVjUXmNF28gmiZUNujk5HjwaS8dAzN2QmUfX56riJKgN00dNRw==}
@@ -10749,9 +10661,6 @@ packages:
   lodash.escape@4.0.1:
     resolution: {integrity: sha512-nXEOnb/jK9g0DYMr1/Xvq6l5xMD7GDG55+GSYIYmS0G4tBk/hURD4JR9WCavs04t33WmJx9kCyp9vJ+mr4BOUw==}
 
-  lodash.escaperegexp@4.1.2:
-    resolution: {integrity: sha512-TM9YBvyC84ZxE3rgfefxUWiQKLilstD6k7PTGt6wfbtXF8ixIJLOL3VYyV/z+ZiPLsVxAsKAFVwWlWeb2Y8Yyw==}
-
   lodash.flattendeep@4.4.0:
     resolution: {integrity: sha512-uHaJFihxmJcEX3kT4I23ABqKKalJ/zDrDg0lsFtc1h+3uw49SIJ5beyhx5ExVRti3AvKoOJngIj7xz3oylPdWQ==}
 
@@ -11781,11 +11690,6 @@ packages:
 
   pn@1.1.0:
     resolution: {integrity: sha512-2qHaIQr2VLRFoxe2nASzsV6ef4yOOH+Fi9FBOVH6cqeSgUnoyySPZkxzLuzd+RYOQTRpROA0ztTMqxROKSb/nA==}
-
-  png-to-ico@3.0.1:
-    resolution: {integrity: sha512-S8BOAoaGd9gT5uaemQ62arIY3Jzco7Uc7LwUTqRyqJDTsKqOAiyfyN4dSdT0D+Zf8XvgztgpRbM5wnQd7EgYwg==}
-    engines: {node: '>=20'}
-    hasBin: true
 
   pngjs-nozlib@1.0.0:
     resolution: {integrity: sha512-N1PggqLp9xDqwAoKvGohmZ3m4/N9xpY0nDZivFqQLcpLHmliHnCp9BuNCsOeqHWMuEEgFjpEaq9dZq6RZyy0fA==}
@@ -13657,9 +13561,6 @@ packages:
   tiny-invariant@1.3.3:
     resolution: {integrity: sha512-+FbBPE1o9QAYvviau/qC5SE3caw21q3xkvWKBtja5vgqOWIHHJ3ioaq1VPfn/Szqctz2bU/oYeKd9/z5BL+PVg==}
 
-  tiny-typed-emitter@2.1.0:
-    resolution: {integrity: sha512-qVtvMxeXbVej0cQWKqVSSAHmKZEHAvxdF8HEUBFWts8h+xEo5m/lEiPakuyZ3BnCBjOD8i24kzNOiOLLgsSxhA==}
-
   tiny-warning@1.0.3:
     resolution: {integrity: sha512-lBN9zLN/oAf68o3zNXYrdCt1kP8WsiGW8Oo2ka41b2IM5JL/S1CTyX1rW0mb/zSuJun0ZUrDxx4sqvYS2FWzPA==}
 
@@ -14799,13 +14700,6 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
-  '@aparajita/capacitor-biometric-auth@10.0.0':
-    dependencies:
-      '@capacitor/android': 8.4.0(@capacitor/core@8.4.0)
-      '@capacitor/app': 8.1.0(@capacitor/core@8.4.0)
-      '@capacitor/core': 8.4.0
-      '@capacitor/ios': 8.4.0(@capacitor/core@8.4.0)
-
   '@apideck/better-ajv-errors@0.3.7(ajv@8.20.0)':
     dependencies:
       ajv: 8.20.0
@@ -15613,10 +15507,6 @@ snapshots:
     dependencies:
       '@capacitor/core': 8.4.0
 
-  '@capacitor/android@8.4.1(@capacitor/core@8.4.0)':
-    dependencies:
-      '@capacitor/core': 8.4.0
-
   '@capacitor/app@8.1.0(@capacitor/core@8.4.0)':
     dependencies:
       '@capacitor/core': 8.4.0
@@ -15708,14 +15598,6 @@ snapshots:
       '@capacitor/synapse': 1.0.4
 
   '@capacitor/ios@8.4.0(@capacitor/core@8.4.0)':
-    dependencies:
-      '@capacitor/core': 8.4.0
-
-  '@capacitor/keyboard@8.0.3(@capacitor/core@8.4.0)':
-    dependencies:
-      '@capacitor/core': 8.4.0
-
-  '@capacitor/preferences@8.0.1(@capacitor/core@8.4.0)':
     dependencies:
       '@capacitor/core': 8.4.0
 
@@ -18486,25 +18368,6 @@ snapshots:
       axe-core: 4.11.4
       storybook: 10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
 
-  '@storybook/addon-docs@10.4.1(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(esbuild@0.28.0)(rollup@4.62.2)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(webpack@5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.0))':
-    dependencies:
-      '@mdx-js/react': 3.1.1(@types/react@19.2.15)(react@16.14.0)
-      '@storybook/csf-plugin': 10.4.1(esbuild@0.28.0)(rollup@4.62.2)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(webpack@5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.0))
-      '@storybook/icons': 2.0.2(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
-      '@storybook/react-dom-shim': 10.4.1(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
-      react: 16.14.0
-      react-dom: 16.14.0(react@16.14.0)
-      storybook: 10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      ts-dedent: 2.2.0
-    optionalDependencies:
-      '@types/react': 19.2.15
-    transitivePeerDependencies:
-      - '@types/react-dom'
-      - esbuild
-      - rollup
-      - vite
-      - webpack
-
   '@storybook/addon-docs@10.4.1(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(esbuild@0.28.0)(rollup@4.62.2)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(webpack@5.105.2(esbuild@0.28.0))':
     dependencies:
       '@mdx-js/react': 3.1.1(@types/react@19.2.15)(react@16.14.0)
@@ -18538,17 +18401,6 @@ snapshots:
       - react
       - react-dom
 
-  '@storybook/builder-vite@10.4.1(esbuild@0.28.0)(rollup@4.62.2)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(webpack@5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.0))':
-    dependencies:
-      '@storybook/csf-plugin': 10.4.1(esbuild@0.28.0)(rollup@4.62.2)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(webpack@5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.0))
-      storybook: 10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      ts-dedent: 2.2.0
-      vite: 8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
-    transitivePeerDependencies:
-      - esbuild
-      - rollup
-      - webpack
-
   '@storybook/builder-vite@10.4.1(esbuild@0.28.0)(rollup@4.62.2)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(webpack@5.105.2(esbuild@0.28.0))':
     dependencies:
       '@storybook/csf-plugin': 10.4.1(esbuild@0.28.0)(rollup@4.62.2)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(webpack@5.105.2(esbuild@0.28.0))
@@ -18564,16 +18416,6 @@ snapshots:
     dependencies:
       core-js: 3.49.0
       global: 4.4.0
-
-  '@storybook/csf-plugin@10.4.1(esbuild@0.28.0)(rollup@4.62.2)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(webpack@5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.0))':
-    dependencies:
-      storybook: 10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      unplugin: 2.3.11
-    optionalDependencies:
-      esbuild: 0.28.0
-      rollup: 4.62.2
-      vite: 8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
-      webpack: 5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.0)
 
   '@storybook/csf-plugin@10.4.1(esbuild@0.28.0)(rollup@4.62.2)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(webpack@5.105.2(esbuild@0.28.0))':
     dependencies:
@@ -18614,30 +18456,6 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.15
       '@types/react-dom': 19.2.3(@types/react@19.2.15)
-
-  '@storybook/react-vite@10.4.1(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(esbuild@0.28.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(rollup@4.62.2)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(typescript@6.0.3)(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(webpack@5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.0))':
-    dependencies:
-      '@joshwooding/vite-plugin-react-docgen-typescript': 0.7.0(typescript@6.0.3)(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
-      '@rollup/pluginutils': 5.4.0(rollup@4.62.2)
-      '@storybook/builder-vite': 10.4.1(esbuild@0.28.0)(rollup@4.62.2)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(webpack@5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.0))
-      '@storybook/react': 10.4.1(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(typescript@6.0.3)
-      empathic: 2.0.1
-      magic-string: 0.30.21
-      react: 19.2.6
-      react-docgen: 8.0.3
-      react-dom: 19.2.6(react@19.2.6)
-      resolve: 1.22.12
-      storybook: 10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      tsconfig-paths: 4.2.0
-      vite: 8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
-    transitivePeerDependencies:
-      - '@types/react'
-      - '@types/react-dom'
-      - esbuild
-      - rollup
-      - supports-color
-      - typescript
-      - webpack
 
   '@storybook/react-vite@10.4.1(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(esbuild@0.28.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(rollup@4.62.2)(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(typescript@6.0.3)(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(webpack@5.105.2(esbuild@0.28.0))':
     dependencies:
@@ -20233,11 +20051,6 @@ snapshots:
     dependencies:
       is-windows: 1.0.2
 
-  better-sqlite3-multiple-ciphers@12.9.0(patch_hash=f8eee29adc51371f90731790796adaacd29655f815301beae9923efcd7e0c8b5):
-    dependencies:
-      bindings: 1.5.0
-      prebuild-install: 7.1.3
-
   bidi-js@1.0.3:
     dependencies:
       require-from-string: 2.0.2
@@ -20245,10 +20058,6 @@ snapshots:
   big-integer@1.6.52: {}
 
   big.js@5.2.2: {}
-
-  bindings@1.5.0:
-    dependencies:
-      file-uri-to-path: 1.0.0
 
   bl@1.2.3:
     dependencies:
@@ -21359,19 +21168,6 @@ snapshots:
 
   electron-to-chromium@1.5.344: {}
 
-  electron-updater@6.8.9:
-    dependencies:
-      builder-util-runtime: 9.7.0
-      fs-extra: 10.1.0
-      js-yaml: 4.1.1
-      lazy-val: 1.0.5
-      lodash.escaperegexp: 4.1.2
-      lodash.isequal: 4.5.0
-      semver: 7.7.4
-      tiny-typed-emitter: 2.1.0
-    transitivePeerDependencies:
-      - supports-color
-
   electron-vite@6.0.0-beta.1(@swc/core@1.15.40(@swc/helpers@0.5.23))(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)):
     dependencies:
       '@babel/core': 7.29.7
@@ -22167,8 +21963,6 @@ snapshots:
   file-type@5.2.0: {}
 
   file-type@6.2.0: {}
-
-  file-uri-to-path@1.0.0: {}
 
   file-url@2.0.2: {}
 
@@ -23681,8 +23475,6 @@ snapshots:
 
   lodash.escape@4.0.1: {}
 
-  lodash.escaperegexp@4.1.2: {}
-
   lodash.flattendeep@4.4.0: {}
 
   lodash.isequal@4.5.0: {}
@@ -25070,12 +24862,6 @@ snapshots:
   pluralize@7.0.0: {}
 
   pn@1.1.0: {}
-
-  png-to-ico@3.0.1:
-    dependencies:
-      '@types/node': 24.12.4
-      minimist: 1.2.8
-      pngjs: 7.0.0
 
   pngjs-nozlib@1.0.0: {}
 
@@ -27535,18 +27321,6 @@ snapshots:
 
   term-size@2.2.1: {}
 
-  terser-webpack-plugin@5.6.1(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.0)(webpack@5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.0)):
-    dependencies:
-      '@jridgewell/trace-mapping': 0.3.31
-      jest-worker: 27.5.1
-      schema-utils: 4.3.3
-      terser: 5.48.0
-      webpack: 5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.0)
-    optionalDependencies:
-      '@swc/core': 1.15.40(@swc/helpers@0.5.23)
-      esbuild: 0.28.0
-    optional: true
-
   terser-webpack-plugin@5.6.1(esbuild@0.28.0)(webpack@5.105.2(esbuild@0.28.0)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
@@ -27595,8 +27369,6 @@ snapshots:
       semver: 5.7.2
 
   tiny-invariant@1.3.3: {}
-
-  tiny-typed-emitter@2.1.0: {}
 
   tiny-warning@1.0.3: {}
 
@@ -28232,48 +28004,6 @@ snapshots:
     optional: true
 
   webpack-virtual-modules@0.6.2: {}
-
-  webpack@5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.0):
-    dependencies:
-      '@types/eslint-scope': 3.7.7
-      '@types/estree': 1.0.9
-      '@types/json-schema': 7.0.15
-      '@webassemblyjs/ast': 1.14.1
-      '@webassemblyjs/wasm-edit': 1.14.1
-      '@webassemblyjs/wasm-parser': 1.14.1
-      acorn: 8.16.0
-      acorn-import-phases: 1.0.4(acorn@8.16.0)
-      browserslist: 4.28.2
-      chrome-trace-event: 1.0.4
-      enhanced-resolve: 5.22.1
-      es-module-lexer: 2.1.0
-      eslint-scope: 5.1.1
-      events: 3.3.0
-      glob-to-regexp: 0.4.1
-      graceful-fs: 4.2.11
-      json-parse-even-better-errors: 2.3.1
-      loader-runner: 4.3.2
-      mime-types: 2.1.35
-      neo-async: 2.6.2
-      schema-utils: 4.3.3
-      tapable: 2.3.3
-      terser-webpack-plugin: 5.6.1(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.0)(webpack@5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.0))
-      watchpack: 2.5.1
-      webpack-sources: 3.5.0
-    transitivePeerDependencies:
-      - '@minify-html/node'
-      - '@swc/core'
-      - '@swc/css'
-      - '@swc/html'
-      - clean-css
-      - cssnano
-      - csso
-      - esbuild
-      - html-minifier-terser
-      - lightningcss
-      - postcss
-      - uglify-js
-    optional: true
 
   webpack@5.105.2(esbuild@0.28.0):
     dependencies:
