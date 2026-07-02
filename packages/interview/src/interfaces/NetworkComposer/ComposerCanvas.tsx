@@ -136,10 +136,11 @@ export default function ComposerCanvas({
 
       const { activeTool, startLasso, addLassoPoint } =
         composerStore.getState();
-      // Lasso selection is available in select mode and in group mode (where a
-      // dragged lasso selects nodes to "add all" to the active group, while a
-      // tap toggles a single node's membership).
-      if (activeTool.kind !== 'select' && activeTool.kind !== 'group') return;
+      // Lasso selection is available only in group mode: a dragged lasso selects
+      // nodes to "add all" to the active group, while a tap toggles a single
+      // node's membership. Edge creation is sequential-tap only, so there is no
+      // lasso in select or edge mode.
+      if (activeTool.kind !== 'group') return;
 
       const canvas = canvasRef.current;
       if (!canvas) return;

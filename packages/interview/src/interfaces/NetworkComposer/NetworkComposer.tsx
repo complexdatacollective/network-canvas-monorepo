@@ -265,8 +265,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       const source = pendingEdgeSource;
       setPendingEdgeSource(null);
 
-      // Read live edges at call time to avoid stale-closure bugs (same pattern
-      // as connectAll in useComposerActions.ts).
+      // Read live edges at call time to avoid stale-closure bugs.
       let currentEdges: NcEdge[] = [];
       dispatch((_, getState) => {
         const { session: sessionState } = getState() as {
@@ -523,36 +522,21 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         automaticLayout={automaticLayout}
         onToggleAutomaticLayout={handleToggleAutomaticLayout}
       />
-      {selectedNodeIds.size >= 2 && (
+      {activeGroup !== null && selectedNodeIds.size >= 2 && (
         <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2">
-          {activeGroup !== null ? (
-            <button
-              type="button"
-              className="bg-background border-primary rounded border px-3 py-1.5 text-sm font-medium shadow"
-              onClick={() => {
-                void actions.addGroupMembership(
-                  [...selectedNodeIds],
-                  activeGroup.variable,
-                  activeGroup.value,
-                );
-              }}
-            >
-              {`Add all to ${activeGroupLabel}`}
-            </button>
-          ) : (
-            edgeEntries.map(({ edgeType, label }) => (
-              <button
-                key={edgeType}
-                type="button"
-                className="bg-background border-primary rounded border px-3 py-1.5 text-sm font-medium shadow"
-                onClick={() => {
-                  void actions.connectAll([...selectedNodeIds], edgeType);
-                }}
-              >
-                {`Connect all with ${label}`}
-              </button>
-            ))
-          )}
+          <button
+            type="button"
+            className="bg-background border-primary rounded border px-3 py-1.5 text-sm font-medium shadow"
+            onClick={() => {
+              void actions.addGroupMembership(
+                [...selectedNodeIds],
+                activeGroup.variable,
+                activeGroup.value,
+              );
+            }}
+          >
+            {`Add all to ${activeGroupLabel}`}
+          </button>
         </div>
       )}
       <ComposerCanvas

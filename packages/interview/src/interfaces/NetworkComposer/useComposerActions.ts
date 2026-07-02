@@ -11,7 +11,6 @@ import {
   addNode,
   deleteEdge,
   deleteNode,
-  edgeExists,
   updateEdge,
   updateNode,
 } from '~/store/modules/session';
@@ -33,7 +32,6 @@ type UseComposerActionsArgs = {
 type ComposerActions = {
   createNodeAt: (name: string, position: Position) => Promise<string>;
   connect: (from: string, to: string, edgeType: string) => Promise<void>;
-  connectAll: (nodeIds: string[], edgeType: string) => Promise<void>;
   deleteNodeById: (id: string) => void;
   deleteNodesById: (ids: string[]) => void;
   deleteEdgeById: (id: string) => void;
@@ -134,64 +132,6 @@ export function useComposerActions({
           addEdge({ from, to, type: edgeType, currentStep }),
         ).unwrap();
         liveEdgeId = newId;
-      },
-    });
-  }
-
-  async function connectAll(
-    nodeIds: string[],
-    edgeType: string,
-  ): Promise<void> {
-    const addedEdgeIds: string[] = [];
-    const addedEdgePairs: { from: string; to: string }[] = [];
-
-    let currentEdges: NcEdge[] = [];
-    dispatch((_, getState) => {
-      const { session: sessionState } = getState() as {
-        session: { network: { edges: NcEdge[] } };
-      };
-      currentEdges = sessionState.network.edges;
-    });
-
-    for (let i = 0; i < nodeIds.length; i++) {
-      for (let j = i + 1; j < nodeIds.length; j++) {
-        const from = nodeIds[i]!;
-        const to = nodeIds[j]!;
-
-        if (edgeExists(currentEdges, from, to, edgeType)) {
-          continue;
-        }
-
-        const { edgeId } = await dispatch(
-          addEdge({ from, to, type: edgeType, currentStep }),
-        ).unwrap();
-
-        addedEdgeIds.push(edgeId);
-        addedEdgePairs.push({ from, to });
-      }
-    }
-
-    // Every selected pair was already connected — nothing was created, so don't
-    // push a no-op entry that would make the next undo revert nothing.
-    if (addedEdgePairs.length === 0) {
-      return;
-    }
-
-    void undoStore.getState().push({
-      label: `Connect all nodes`,
-      undo: () => {
-        for (const edgeId of addedEdgeIds) {
-          dispatch(deleteEdge(edgeId));
-        }
-      },
-      redo: async () => {
-        addedEdgeIds.length = 0;
-        for (const { from, to } of addedEdgePairs) {
-          const { edgeId } = await dispatch(
-            addEdge({ from, to, type: edgeType, currentStep }),
-          ).unwrap();
-          addedEdgeIds.push(edgeId);
-        }
       },
     });
   }
@@ -646,7 +586,6 @@ export function useComposerActions({
   return {
     createNodeAt,
     connect,
-    connectAll,
     deleteNodeById,
     deleteNodesById,
     deleteEdgeById,

@@ -213,54 +213,6 @@ describe('useComposerActions', () => {
     expect(store.getState().session.network.edges).toHaveLength(0);
   });
 
-  // 4. connectAll([a,b,c], edgeType) adds 3 edges; undo removes all 3
-  it('connectAll adds 3 pairwise edges for 3 nodes; undo removes all 3', async () => {
-    const nodeA = {
-      [entityPrimaryKeyProperty]: 'a',
-      type: NODE_TYPE,
-      [entityAttributesProperty]: {},
-    };
-    const nodeB = {
-      [entityPrimaryKeyProperty]: 'b',
-      type: NODE_TYPE,
-      [entityAttributesProperty]: {},
-    };
-    const nodeC = {
-      [entityPrimaryKeyProperty]: 'c',
-      type: NODE_TYPE,
-      [entityAttributesProperty]: {},
-    };
-    const store = makeStore([nodeA, nodeB, nodeC]);
-    const undoStore = createUndoStore();
-
-    const { result } = renderHook(
-      () =>
-        useComposerActions({
-          subjectType: NODE_TYPE,
-          quickAdd: QUICK_ADD_VAR,
-          layoutVariable: LAYOUT_VAR,
-          currentStep: 0,
-          undoStore,
-          dispatch: store.dispatch as Parameters<
-            typeof useComposerActions
-          >[0]['dispatch'],
-        }),
-      { wrapper: makeWrapper(store) },
-    );
-
-    await act(async () => {
-      await result.current.connectAll(['a', 'b', 'c'], EDGE_TYPE);
-    });
-
-    expect(store.getState().session.network.edges).toHaveLength(3);
-
-    await act(async () => {
-      await undoStore.getState().undo();
-    });
-
-    expect(store.getState().session.network.edges).toHaveLength(0);
-  });
-
   // 5. deleteNodeById removes node and incident edges; undo restores both
   it('deleteNodeById removes node and incident edges; undo restores both', async () => {
     const nodeA = {
@@ -322,61 +274,6 @@ describe('useComposerActions', () => {
     expect(restoredNode![entityAttributesProperty][QUICK_ADD_VAR]).toBe(
       'Alice',
     );
-  });
-
-  // 6. connectAll dedup: existing A-B edge is skipped; only A-C and B-C are added
-  it('connectAll skips already-connected pairs; undo removes only the newly added edges', async () => {
-    const nodeA: NcNode = {
-      [entityPrimaryKeyProperty]: 'a',
-      type: NODE_TYPE,
-      [entityAttributesProperty]: {},
-    };
-    const nodeB: NcNode = {
-      [entityPrimaryKeyProperty]: 'b',
-      type: NODE_TYPE,
-      [entityAttributesProperty]: {},
-    };
-    const nodeC: NcNode = {
-      [entityPrimaryKeyProperty]: 'c',
-      type: NODE_TYPE,
-      [entityAttributesProperty]: {},
-    };
-    const existingEdge: NcEdge = {
-      [entityPrimaryKeyProperty]: 'e-ab',
-      type: EDGE_TYPE,
-      from: 'a',
-      to: 'b',
-      [entityAttributesProperty]: {},
-    };
-    const store = makeStore([nodeA, nodeB, nodeC], [existingEdge]);
-    const undoStore = createUndoStore();
-
-    const { result } = renderHook(
-      () =>
-        useComposerActions({
-          subjectType: NODE_TYPE,
-          quickAdd: QUICK_ADD_VAR,
-          layoutVariable: LAYOUT_VAR,
-          currentStep: 0,
-          undoStore,
-          dispatch: store.dispatch as Parameters<
-            typeof useComposerActions
-          >[0]['dispatch'],
-        }),
-      { wrapper: makeWrapper(store) },
-    );
-
-    await act(async () => {
-      await result.current.connectAll(['a', 'b', 'c'], EDGE_TYPE);
-    });
-
-    expect(store.getState().session.network.edges).toHaveLength(3);
-
-    await act(async () => {
-      await undoStore.getState().undo();
-    });
-
-    expect(store.getState().session.network.edges).toHaveLength(1);
   });
 
   // 7. connect cycle: undo→redo→undo tracks the live edge id correctly

@@ -46,6 +46,7 @@ const NODE_TYPE = 'person';
 const EDGE_TYPE = 'knows';
 const QUICK_ADD_VAR = 'var-quick-add';
 const LAYOUT_VAR = 'var-layout';
+const GROUP_VAR = 'var-group';
 
 const stage = {
   id: 'nc1',
@@ -55,6 +56,7 @@ const stage = {
   layoutVariable: LAYOUT_VAR,
   quickAdd: QUICK_ADD_VAR,
   edges: [{ subject: { entity: 'edge' as const, type: EDGE_TYPE } }],
+  convexHulls: [GROUP_VAR],
   background: {
     concentricCircles: 4,
     skewedTowardCenter: true,
@@ -70,6 +72,14 @@ const codebook = {
       variables: {
         [QUICK_ADD_VAR]: { name: 'name', type: 'text' },
         [LAYOUT_VAR]: { name: 'position', type: 'layout' },
+        [GROUP_VAR]: {
+          name: 'Team',
+          type: 'categorical',
+          options: [
+            { value: 'red', label: 'Team Red' },
+            { value: 'blue', label: 'Team Blue' },
+          ],
+        },
       },
     },
   },
@@ -217,199 +227,100 @@ function shiftTapNode(nodeEl: HTMLElement) {
   });
 }
 
-describe('NetworkComposer — shift-select + connect-all clique', () => {
-  it('shift-clicking three nodes then "Connect all with Knows" creates 3 pairwise edges', async () => {
-    const store = makeStore();
-    renderInterface(store);
+// The Groups tool lives behind a popover; open it and pick "Team Red" so the
+// group tool is active and its lasso/"Add all" flow is available.
+async function activateTeamRedGroup() {
+  fireEvent.click(screen.getByRole('button', { name: /groups/i }));
+  fireEvent.click(await screen.findByRole('button', { name: /team red/i }));
+}
 
-    const nodeA = await screen.findByRole('button', { name: /alice/i });
-    const nodeB = await screen.findByRole('button', { name: /bob/i });
-    const nodeC = await screen.findByRole('button', { name: /carol/i });
+// Drags a rectangular lasso over the canvas enclosing nodes A and B but not C.
+// jsdom does not lay out elements, so getBoundingClientRect() returns a zero
+// rect; mock it to a 1000×1000 canvas so normalized positions map correctly:
+//   normalized = (clientX - rect.left) / rect.width
+// Node positions (from Redux) in normalized space:
+//   A = (0.2, 0.2) → clientX=200, clientY=200
+//   B = (0.5, 0.2) → clientX=500, clientY=200
+//   C = (0.8, 0.8) → clientX=800, clientY=800
+// Lasso polygon covers (0,0)→(650,0)→(650,450)→(0,450) — A and B inside, C out.
+function lassoAB(canvas: HTMLElement) {
+  vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
+    left: 0,
+    top: 0,
+    width: 1000,
+    height: 1000,
+    right: 1000,
+    bottom: 1000,
+    x: 0,
+    y: 0,
+    toJSON: () => undefined,
+  });
 
-    // First tap selects A normally; subsequent shift-taps add B and C.
-    act(() => {
-      tapNode(nodeA);
-    });
-    act(() => {
-      shiftTapNode(nodeB);
-    });
-    act(() => {
-      shiftTapNode(nodeC);
-    });
-
-    // "Connect all with Knows" button should now be visible (≥2 selected).
-    const connectBtn = await screen.findByRole('button', {
-      name: /connect all with knows/i,
-    });
-
-    await act(async () => {
-      fireEvent.click(connectBtn);
-    });
-
-    await waitFor(() => {
-      const edges = store.getState().session.network.edges;
-      const knowsEdges = edges.filter((e) => e.type === EDGE_TYPE);
-      expect(knowsEdges).toHaveLength(3);
+  act(() => {
+    fireEvent.pointerDown(canvas, {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
     });
   });
 
-  it('undo after connect-all removes all 3 pairwise edges in one step', async () => {
-    const store = makeStore();
-    renderInterface(store);
-
-    const nodeA = await screen.findByRole('button', { name: /alice/i });
-    const nodeB = await screen.findByRole('button', { name: /bob/i });
-    const nodeC = await screen.findByRole('button', { name: /carol/i });
-
+  // Move past DRAG_THRESHOLD (5px) — first move arms the lasso, then trace rect.
+  for (const [clientX, clientY] of [
+    [10, 0],
+    [650, 0],
+    [650, 450],
+    [0, 450],
+  ]) {
     act(() => {
-      tapNode(nodeA);
+      fireEvent.pointerMove(canvas, { clientX, clientY, pointerId: 1 });
     });
-    act(() => {
-      shiftTapNode(nodeB);
-    });
-    act(() => {
-      shiftTapNode(nodeC);
-    });
+  }
 
-    const connectBtn = await screen.findByRole('button', {
-      name: /connect all with knows/i,
-    });
-    await act(async () => {
-      fireEvent.click(connectBtn);
-    });
-
-    await waitFor(() => {
-      const edges = store.getState().session.network.edges;
-      expect(edges.filter((e) => e.type === EDGE_TYPE)).toHaveLength(3);
-    });
-
-    // Click undo
-    const undoBtn = await screen.findByRole('button', { name: /undo/i });
-    act(() => {
-      fireEvent.click(undoBtn);
-    });
-
-    await waitFor(() => {
-      const edges = store.getState().session.network.edges;
-      expect(edges.filter((e) => e.type === EDGE_TYPE)).toHaveLength(0);
-    });
+  act(() => {
+    fireEvent.pointerUp(canvas, { clientX: 0, clientY: 450, pointerId: 1 });
   });
-});
+}
 
-describe('NetworkComposer — lasso selection', () => {
-  it('background drag encloses A and B but not C, selecting only A and B', async () => {
+describe('NetworkComposer — group lasso', () => {
+  it('lasso in group mode selects the enclosed nodes; "Add all" adds them to the group', async () => {
     const store = makeStore();
     renderInterface(store);
 
-    // Wait for nodes to render
     await screen.findByRole('button', { name: /alice/i });
 
-    // The canvas element (role="application") is our drag target.
+    // Enter group mode with Team Red active — lasso is group-only.
+    await activateTeamRedGroup();
+
     const canvas = screen.getByRole('application');
+    lassoAB(canvas);
 
-    // jsdom doesn't layout elements, so getBoundingClientRect() returns a zero
-    // rect. We mock it to return a 1000×1000 canvas so normalized positions
-    // computed in ComposerCanvas map correctly:
-    //   normalized = (clientX - rect.left) / rect.width
-    // Node positions (from Redux) in normalized space:
-    //   A = (0.2, 0.2) → clientX=200, clientY=200
-    //   B = (0.5, 0.2) → clientX=500, clientY=200
-    //   C = (0.8, 0.8) → clientX=800, clientY=800
-    //
-    // Lasso polygon (in normalized space) covers (0.0,0.0)→(0.65,0.0)→(0.65,0.45)→(0.0,0.45)
-    // corresponding to clientX/Y: (0,0), (650,0), (650,450), (0,450)
-    // A(0.2,0.2) and B(0.5,0.2) are inside; C(0.8,0.8) is outside.
-    vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
-      left: 0,
-      top: 0,
-      width: 1000,
-      height: 1000,
-      right: 1000,
-      bottom: 1000,
-      x: 0,
-      y: 0,
-      toJSON: () => undefined,
+    // "Add all to Team Red" appears only when ≥2 nodes are selected (A and B).
+    const addAllBtn = await screen.findByRole('button', {
+      name: /add all to team red/i,
     });
 
-    // Simulate background drag (pointer events directly on the canvas element).
-    // We pass `currentTarget` === `target` so the background gate passes.
-    act(() => {
-      fireEvent.pointerDown(canvas, {
-        button: 0,
-        clientX: 0,
-        clientY: 0,
-        pointerId: 1,
-        // These events hit the canvas directly (background), not a child node.
-      });
-    });
-
-    // Move past DRAG_THRESHOLD (5px) — first move to arm lasso, then trace rect.
-    act(() => {
-      fireEvent.pointerMove(canvas, {
-        clientX: 10,
-        clientY: 0,
-        pointerId: 1,
-      });
-    });
-    act(() => {
-      fireEvent.pointerMove(canvas, {
-        clientX: 650,
-        clientY: 0,
-        pointerId: 1,
-      });
-    });
-    act(() => {
-      fireEvent.pointerMove(canvas, {
-        clientX: 650,
-        clientY: 450,
-        pointerId: 1,
-      });
-    });
-    act(() => {
-      fireEvent.pointerMove(canvas, {
-        clientX: 0,
-        clientY: 450,
-        pointerId: 1,
-      });
-    });
-
-    // Release pointer
-    act(() => {
-      fireEvent.pointerUp(canvas, {
-        clientX: 0,
-        clientY: 450,
-        pointerId: 1,
-      });
-    });
-
-    // "Connect all" control appears only when ≥2 nodes are selected.
-    const connectBtn = await screen.findByRole('button', {
-      name: /connect all with knows/i,
-    });
-    expect(connectBtn).not.toBeNull();
-
-    // Click connect-all to produce edges for exactly the selected set.
     await act(async () => {
-      fireEvent.click(connectBtn);
+      fireEvent.click(addAllBtn);
     });
 
-    // If exactly {A, B} were selected, connect-all produces exactly 1 knows edge
-    // (A–B). If C were also selected, there would be 3 edges (A–B, A–C, B–C).
+    // A and B gain the 'red' membership; C (outside the lasso) does not.
     await waitFor(() => {
-      const edges = store.getState().session.network.edges;
-      const knowsEdges = edges.filter((e) => e.type === EDGE_TYPE);
-
-      expect(knowsEdges).toHaveLength(1);
-
-      const [edge] = knowsEdges;
-      const endpoints = new Set([edge!.from, edge!.to]);
-      expect(endpoints).toContain(NODE_A_ID);
-      expect(endpoints).toContain(NODE_B_ID);
-
-      const cIncident = knowsEdges.some(
-        (e) => e.from === NODE_C_ID || e.to === NODE_C_ID,
-      );
-      expect(cIncident).toBe(false);
+      const byId = (id: string) =>
+        store
+          .getState()
+          .session.network.nodes.find(
+            (n) => n[entityPrimaryKeyProperty] === id,
+          );
+      expect(byId(NODE_A_ID)![entityAttributesProperty][GROUP_VAR]).toEqual([
+        'red',
+      ]);
+      expect(byId(NODE_B_ID)![entityAttributesProperty][GROUP_VAR]).toEqual([
+        'red',
+      ]);
+      expect(
+        byId(NODE_C_ID)![entityAttributesProperty][GROUP_VAR],
+      ).toBeUndefined();
     });
   });
 });
