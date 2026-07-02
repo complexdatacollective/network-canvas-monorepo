@@ -97,6 +97,25 @@ export default function useProtocolForm({
     getValidationContext,
   ) as ValidationContext | null;
 
+  // Callers routinely pass `subject` as an inline literal, so key on its
+  // VALUES rather than its identity. A per-render subject identity would give
+  // validationContext a new identity every render, which re-registers every
+  // field (see useField's register effect) — and when an ancestor is
+  // subscribed to the form store (e.g. the FamilyPedigree wizard steps), each
+  // re-registration re-renders that ancestor, looping infinitely.
+  const subjectEntity = subject?.entity;
+  const subjectType = subject?.type;
+  const stableSubject = useMemo<Subject | undefined>(
+    () =>
+      subjectEntity !== undefined
+        ? {
+            entity: subjectEntity,
+            ...(subjectType !== undefined ? { type: subjectType } : {}),
+          }
+        : undefined,
+    [subjectEntity, subjectType],
+  );
+
   const validationContext = useMemo<ValidationContext | null>(() => {
     if (!baseValidationContext) return null;
 
@@ -105,7 +124,7 @@ export default function useProtocolForm({
     // (unique/sameAs/differentFrom/greaterThanVariable) dereference. When the
     // caller supplies a concrete subject for the rendered fields, use it as the
     // stageSubject so those validators resolve against the right entity type.
-    const resolvedSubject = subjectToStageSubject(subject);
+    const resolvedSubject = subjectToStageSubject(stableSubject);
     const stageSubject = resolvedSubject ?? baseValidationContext.stageSubject;
 
     return {
@@ -113,12 +132,12 @@ export default function useProtocolForm({
       stageSubject,
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),
     };
-  }, [baseValidationContext, currentEntityId, subject]);
+  }, [baseValidationContext, currentEntityId, stableSubject]);
 
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   const subjectFieldsMetadata = useSelector((state) =>
-    subject !== undefined
-      ? selectFieldMetadataWithSubject(state, subject, fields)
+    stableSubject !== undefined
+      ? selectFieldMetadataWithSubject(state, stableSubject, fields)
       : null,
   );
   const fieldsMetadata = useMemo(
