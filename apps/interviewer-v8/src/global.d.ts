@@ -43,8 +43,23 @@ declare global {
     readonly standalone?: boolean;
   }
 
+  // The File Handling API (Chromium desktop; manifest file_handlers) is not
+  // in TypeScript's DOM lib. Captured pre-React in fileLaunchQueue.ts.
+  interface LaunchParams {
+    readonly files: readonly FileSystemFileHandle[];
+    readonly targetURL?: string;
+  }
+
+  interface LaunchQueue {
+    setConsumer(consumer: (params: LaunchParams) => void): void;
+  }
+
+  interface Window {
+    readonly launchQueue?: LaunchQueue;
+  }
+
   // The PWA install prompt event is not in TypeScript's DOM lib. Captured
-  // pre-React in installPrompt.ts and offered by PwaInstallNudge.
+  // pre-React in installPrompt.ts and offered by InstallBanner.
   interface BeforeInstallPromptEvent extends Event {
     readonly platforms: readonly string[];
     readonly userChoice: Promise<{

@@ -7,12 +7,24 @@ import AppView from './components/ViewManager/views/App';
 import { store } from './ducks/store';
 import { preloadTimelineImages } from './images/timeline';
 import { warmBundledTemplateAssets } from './templates/warmBundledAssets';
+import { openLocalNetcanvas } from './ducks/modules/userActions/userActions';
+import { initFileLaunchCapture, subscribeLaunchFiles, takeLaunchFiles } from './utils/fileLaunchQueue';
 import { initInstallPromptCapture } from './utils/installPrompt';
 import { isRunningAsInstalledPwa, requestPersistentStorage } from './utils/pwa';
 
 // Capture the PWA install prompt before React mounts — the event fires early and
 // is one-shot.
 initInstallPromptCapture();
+
+// OS-launched .netcanvas files (installed-PWA file handler, Chromium desktop):
+// Architect opens the file for editing through the same thunk as Home's
+// drag-and-drop. Only the first file of a launch batch opens — the editor
+// holds a single active protocol.
+initFileLaunchCapture();
+subscribeLaunchFiles(() => {
+  const [first] = takeLaunchFiles();
+  if (first) void store.dispatch(openLocalNetcanvas(first));
+});
 
 const root = document.getElementById('root') as Element;
 

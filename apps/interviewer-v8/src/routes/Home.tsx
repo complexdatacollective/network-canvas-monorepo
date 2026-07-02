@@ -26,6 +26,8 @@ import {
   containerVariants,
   protocolsContainerVariants,
 } from './homeAnimations';
+import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
+
 import { useHomeData } from './useHomeData';
 
 type OpenDialog = 'import' | 'settings' | null;
@@ -40,6 +42,9 @@ export function HomeRoute() {
   const { pendingImports, startImport } = useProtocolImport({
     onInstalled: reload,
   });
+  // OS-launched .netcanvas files (installed-PWA file handler) import through
+  // the same pipeline as the import dialog.
+  useLaunchedProtocolImport(startImport);
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null);
   const [pendingProtocolHash, setPendingProtocolHash] = useState<string | null>(
     null,

@@ -38,6 +38,19 @@ export default defineConfig(() =>
           display: 'standalone',
           start_url: '/',
           scope: '/',
+          // Register the installed app as a .netcanvas opener (Chromium
+          // desktop File Handling API; Safari has no equivalent). Launched
+          // files arrive via window.launchQueue — see
+          // src/lib/pwa/fileLaunchQueue.ts. focus-existing keeps a single
+          // window: an already-open app receives the file instead of a new
+          // window spawning.
+          launch_handler: { client_mode: 'focus-existing' },
+          file_handlers: [
+            {
+              action: '/',
+              accept: { 'application/octet-stream': ['.netcanvas'] },
+            },
+          ],
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html}'],

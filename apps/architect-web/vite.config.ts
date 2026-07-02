@@ -36,6 +36,18 @@ export default defineConfig({
         display: 'standalone',
         start_url: '/',
         scope: '/',
+        // Register the installed app as a .netcanvas opener/editor (Chromium
+        // desktop File Handling API; Safari has no equivalent, and the web
+        // manifest has no viewer/editor role field — the role is functional:
+        // Architect opens the file for editing). Launched files arrive via
+        // window.launchQueue — see src/utils/fileLaunchQueue.ts.
+        launch_handler: { client_mode: 'focus-existing' },
+        file_handlers: [
+          {
+            action: '/',
+            accept: { 'application/octet-stream': ['.netcanvas'] },
+          },
+        ],
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html}'],
