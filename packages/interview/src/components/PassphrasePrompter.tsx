@@ -7,12 +7,13 @@ import {
   type Transition,
   useWillChange,
 } from 'motion/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 
-import Button from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import Form from '@codaco/fresco-ui/form/Form';
+import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 
 import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
@@ -132,6 +133,7 @@ const PassphraseOverlay = ({
   onClose: () => void;
 }) => {
   const { passphraseInvalid } = usePassphrase();
+  const formId = useId();
 
   const onSubmitForm = (values: unknown) => {
     const fields = values as { passphrase: string };
@@ -140,21 +142,30 @@ const PassphraseOverlay = ({
   };
 
   return (
-    <Overlay show={show} title="Enter your Passphrase" onClose={onClose}>
-      <div className="flex flex-col">
-        {passphraseInvalid && (
-          <p className="bg-accent/50 rounded p-6 text-white">
-            There was an error decrypting the data with the passphrase entered.
-            Please try again.
+    <FormStoreProvider>
+      <Overlay
+        show={show}
+        title="Enter your Passphrase"
+        onClose={onClose}
+        footer={<SubmitButton form={formId}>Submit passphrase</SubmitButton>}
+      >
+        <div className="flex flex-col">
+          {passphraseInvalid && (
+            <p className="bg-accent/50 rounded p-6 text-white">
+              There was an error decrypting the data with the passphrase
+              entered. Please try again.
+            </p>
+          )}
+          <p>
+            Enter your passphrase in order to unlock the data on this screen. If
+            you cannot remember your passphrase, please contact the person who
+            recruited you to this study.
           </p>
-        )}
-        <p>
-          Enter your passphrase in order to unlock the data on this screen. If
-          you cannot remember your passphrase, please contact the person who
-          recruited you to this study.
-        </p>
-        <Form className="mt-6" onSubmit={onSubmitForm}>
-          <div className="mb-4 flex items-center justify-end">
+          <FormWithoutProvider
+            id={formId}
+            className="mt-6"
+            onSubmit={onSubmitForm}
+          >
             <Field
               component={InputField}
               name="passphrase"
@@ -163,12 +174,9 @@ const PassphraseOverlay = ({
               required
               autoFocus
             />
-            <Button aria-label="Submit" type="submit">
-              Submit passphrase
-            </Button>
-          </div>
-        </Form>
-      </div>
-    </Overlay>
+          </FormWithoutProvider>
+        </div>
+      </Overlay>
+    </FormStoreProvider>
   );
 };
