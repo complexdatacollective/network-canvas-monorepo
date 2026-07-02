@@ -62,6 +62,9 @@ const CSP_DIRECTIVES = [
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
+  // Protocol audio/video assets are decrypted to Blobs and played via object
+  // URLs, so media needs blob: (default-src 'self' would otherwise block it).
+  "media-src 'self' blob:",
   "font-src 'self' data:",
   `connect-src 'self' https://api.mapbox.com https://events.mapbox.com ${POSTHOG_RELAY_ORIGIN}`,
   "worker-src 'self' blob:",
