@@ -234,8 +234,8 @@ export default function StagesMenu({
 
   const steps = useMemo<Steps>(
     () => ({
-      wipe: clampStep(0.045, count, 0.33),
-      content: clampStep(0.055, count, 0.4),
+      wipe: clampStep(0.07, count, 0.5),
+      content: clampStep(0.09, count, 0.65),
       exit: clampStep(0.02, count, 0.18),
     }),
     [count],
@@ -309,7 +309,7 @@ export default function StagesMenu({
         custom={custom}
         initial="closed"
         animate={animate}
-        className="bg-neon-coral relative z-10 flex size-8 items-center justify-center rounded-full text-xs font-bold text-white tabular-nums"
+        className="bg-neon-coral relative flex size-8 items-center justify-center rounded-full text-xs font-bold text-white tabular-nums"
       >
         {item.position}
       </motion.span>
@@ -322,7 +322,7 @@ export default function StagesMenu({
         initial="closed"
         animate={animate}
         className={cx(
-          'text-sm font-bold wrap-break-word',
+          'text-sm leading-tight font-bold wrap-break-word',
           isHorizontal ? 'line-clamp-2 text-center' : 'min-w-0 flex-1',
         )}
       >
