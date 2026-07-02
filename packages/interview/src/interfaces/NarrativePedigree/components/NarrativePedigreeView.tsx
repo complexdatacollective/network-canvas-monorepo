@@ -47,7 +47,6 @@ import {
 import { computeContributors } from '../highlight';
 import ConditionPanel from './ConditionPanel';
 import { Sticker } from './Sticker';
-import { type DiseaseSticker, StickerNode } from './StickerNode';
 
 type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
 type Disease = NarrativeStage['diseases'][number];
@@ -305,6 +304,8 @@ export default function NarrativePedigreeView({
 
   const labelFor = (node: RenderableNode): string => {
     if (node.id === egoId) return 'You';
+    // displayLabels already prefers the person's name (collected by the
+    // FamilyPedigree) and falls back to a derived relationship label.
     return displayLabels.get(node.id) ?? '';
   };
 
@@ -346,30 +347,31 @@ export default function NarrativePedigreeView({
     const dimmed = !highlight.nodes.has(node.id);
     const isSelected = node.id === focalId;
 
-    // Stickers are the default (all conditions at once). The single-condition
-    // node appears only once the participant explicitly selects a condition.
+    // With no condition selected the pedigree shows plain nodes. Selecting a
+    // condition (from the key) switches to that condition's notation view.
     const selectedDisease =
       selectedDiseaseId !== null
         ? shownDiseases.find((d) => d.id === selectedDiseaseId)
         : undefined;
-    const inner = selectedDisease
-      ? renderSingleCondition(
-          node,
-          shape,
-          label,
-          selectedDisease,
-          dimmed,
-          isSelected,
-        )
-      : renderSticker(node, shape, label, isSelected, dimmed);
+    const inner = selectedDisease ? (
+      renderSingleCondition(
+        node,
+        shape,
+        label,
+        selectedDisease,
+        dimmed,
+        isSelected,
+      )
+    ) : (
+      <Node label={label} shape={shape} size="sm" selected={isSelected} />
+    );
 
     const statusSummary = statusSummaryFor(node);
     const statusSummaryId = statusSummary ? `np-status-${node.id}` : undefined;
 
     // Focusing a person highlights who contributes to THEIR inheritance of the
-    // SHOWN condition — which is only meaningful once a single condition is
-    // chosen. While all conditions are shown the focal affordance is disabled;
-    // clicking a person's sticker (which selects that condition) is the way in.
+    // SELECTED condition, so it is only meaningful once a condition is chosen
+    // from the key. Until then the focal affordance is disabled.
     const focalEnabled = selectedDiseaseId !== null;
 
     const handleClick = (event: MouseEvent) => {
@@ -443,15 +445,16 @@ export default function NarrativePedigreeView({
     const atRiskHomozygous =
       displayedHomozygousByDisease.get(disease.id)?.get(node.id) ?? false;
     const color = dimmed ? dimColor(disease.color) : disease.color;
+    // The symbol is drawn smaller than the layout cell (which is sized for a
+    // plain node) so it reads in proportion with the plain-node view. It centres
+    // in the cell, so connectors still meet the cell centre.
     return (
-      <div className="relative inline-block size-24">
-        {/* Focal indicator: the single-condition node is a bare notation symbol
-            (no fresco-ui Node), so it has no built-in selected ring. A
-            selection-coloured glow follows the symbol's silhouette for any
-            shape, mirroring the Node's selected ring in the all-conditions
-            view. */}
+      <div className="relative inline-flex size-24 items-center justify-center">
+        {/* The single-condition node is a bare notation symbol (no fresco-ui
+            Node), so it has no built-in selected ring — a selection-coloured glow
+            follows the symbol's silhouette for any shape when it is the focal. */}
         <span
-          className="block size-full"
+          className="relative block size-16"
           style={
             selected
               ? {
@@ -470,41 +473,14 @@ export default function NarrativePedigreeView({
             surfaceColor={dimmed ? dimColor('white') : undefined}
             nodeMode="single"
           />
-        </span>
-        <span
-          aria-hidden
-          className="absolute top-full left-1/2 mt-1 w-24 -translate-x-1/2 truncate text-center text-xs text-white"
-        >
-          {label}
+          <span
+            aria-hidden
+            className="absolute top-full left-1/2 mt-1 w-24 -translate-x-1/2 truncate text-center text-xs text-white"
+          >
+            {label}
+          </span>
         </span>
       </div>
-    );
-  };
-
-  const renderSticker = (
-    node: RenderableNode,
-    shape: NodeShape,
-    label: string,
-    selected: boolean,
-    dimmed: boolean,
-  ): ReactNode => {
-    const stickers: DiseaseSticker[] = shownDiseases.map((disease) => ({
-      id: disease.id,
-      color: dimmed ? dimColor(disease.color) : disease.color,
-      status:
-        displayedStatusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown',
-      atRiskHomozygous:
-        displayedHomozygousByDisease.get(disease.id)?.get(node.id) ?? false,
-    }));
-    return (
-      <StickerNode
-        label={label}
-        shape={shape}
-        diseases={stickers}
-        selected={selected}
-        dimmed={dimmed}
-        onSelectDisease={setSelectedDiseaseId}
-      />
     );
   };
 

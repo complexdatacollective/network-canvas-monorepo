@@ -258,19 +258,15 @@ function renderView() {
   });
 }
 
-// Drives the Base-UI condition Select: open the combobox, then pick the option
-// whose accessible name matches. Used by the node-mode-selection tests since the
-// disease filter is now a Select rather than a row of buttons.
-async function selectCondition(optionName: string) {
-  await userEvent.click(screen.getByRole('combobox'));
-  const option = await screen.findByRole('option', { name: optionName });
-  await userEvent.click(option);
+// Selects (or, when already selected, clears) a condition by clicking its row in
+// the key's "Conditions" list.
+async function selectCondition(name: string) {
+  await userEvent.click(await screen.findByRole('button', { name }));
 }
 
-// Node-mode markers must be queried inside the pedigree view, not the whole
-// document: the always-present ConditionPanel legend also renders Sticker
-// glyphs (with [data-sticker-status]) as a sibling overlay, so a document-wide
-// query would always match those and never report the node-rendering mode.
+// The single-condition status symbol ([data-notation-status]) is queried inside
+// the pedigree view; the ConditionPanel key also renders illustrative Sticker
+// glyphs that a document-wide query would pick up.
 function viewMarker(selector: string): Element | null {
   return (
     document
@@ -280,36 +276,35 @@ function viewMarker(selector: string): Element | null {
 }
 
 describe('NarrativePedigreeView — node mode selection', () => {
-  it('renders sticker nodes by default (multiple diseases)', async () => {
+  it('renders plain nodes with no status symbol by default', async () => {
     renderView();
 
     await waitFor(() =>
-      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
+      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
     );
     expect(viewMarker('[data-notation-status]')).toBeNull();
   });
 
-  it('renders classic-notation nodes when a single disease is selected via the condition Select', async () => {
+  it('renders classic-notation nodes when a condition is selected from the key', async () => {
     renderView();
 
     await waitFor(() =>
-      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
+      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
     );
+    expect(viewMarker('[data-notation-status]')).toBeNull();
 
-    // Select Disease A via the condition Select.
     await selectCondition('Disease A');
 
     await waitFor(() =>
       expect(viewMarker('[data-notation-status]')).toBeTruthy(),
     );
-    expect(viewMarker('[data-sticker-status]')).toBeNull();
   });
 
-  it('returns to sticker mode when "All conditions" is selected after selecting a disease', async () => {
+  it('returns to plain nodes when the selected condition is clicked again', async () => {
     renderView();
 
     await waitFor(() =>
-      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
+      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
     );
 
     await selectCondition('Disease A');
@@ -317,11 +312,10 @@ describe('NarrativePedigreeView — node mode selection', () => {
       expect(viewMarker('[data-notation-status]')).toBeTruthy(),
     );
 
-    await selectCondition('All conditions');
+    await selectCondition('Disease A');
     await waitFor(() =>
-      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
+      expect(viewMarker('[data-notation-status]')).toBeNull(),
     );
-    expect(viewMarker('[data-notation-status]')).toBeNull();
   });
 });
 
@@ -508,10 +502,7 @@ const cousinSourceStage = {
   id: SOURCE_STAGE_ID_COUSIN,
 };
 
-function makeCousinNarrativeStage(
-  mode: 'classic' | 'sticker',
-  showAtRiskStatuses = true,
-): NarrativeStage {
+function makeCousinNarrativeStage(showAtRiskStatuses = true): NarrativeStage {
   return {
     id: 'np-cousin',
     type: 'NarrativePedigree',
@@ -526,26 +517,12 @@ function makeCousinNarrativeStage(
         variable: asEntityAttributeReference(AR_DISEASE_VAR),
         inheritancePattern: 'autosomalRecessive',
       },
-      ...(mode === 'sticker'
-        ? [
-            {
-              id: 'db2',
-              label: 'Disease B2',
-              color: '#00ff00',
-              variable: asEntityAttributeReference(DISEASE_B_VAR),
-              inheritancePattern: 'autosomalDominant' as const,
-            },
-          ]
-        : []),
     ],
   };
 }
 
-function renderCousinView(
-  mode: 'classic' | 'sticker',
-  showAtRiskStatuses = true,
-) {
-  const stage = makeCousinNarrativeStage(mode, showAtRiskStatuses);
+function renderCousinView(showAtRiskStatuses = true) {
+  const stage = makeCousinNarrativeStage(showAtRiskStatuses);
   const store = configureStore({
     reducer: { protocol, session },
     preloadedState: {
@@ -582,7 +559,7 @@ function renderCousinView(
 
 describe('NarrativePedigreeView — at-risk-homozygous threading (single-condition mode)', () => {
   it('shows the at-risk-homozygous marker on the flagged shared child and not on an unflagged node', async () => {
-    renderCousinView('classic');
+    renderCousinView();
 
     // The single-condition node only appears once a condition is explicitly
     // selected; the default view is stickers (all conditions).
@@ -610,46 +587,20 @@ describe('NarrativePedigreeView — at-risk-homozygous threading (single-conditi
   });
 });
 
-describe('NarrativePedigreeView — at-risk-homozygous threading (sticker mode)', () => {
-  it('shows the at-risk-homozygous marker on the flagged shared child and not on an unflagged node', async () => {
-    renderCousinView('sticker');
-
-    await waitFor(() =>
-      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
-    );
-
-    const sharedChildMember = document.querySelector(
-      '[data-node-id="sharedChild"]',
-    );
-    expect(sharedChildMember).toBeTruthy();
-    expect(
-      sharedChildMember?.querySelector('[data-status="atRiskHomozygous"]'),
-    ).toBeTruthy();
-
-    const unrelatedMember = document.querySelector(
-      '[data-node-id="unrelated"]',
-    );
-    expect(unrelatedMember).toBeTruthy();
-    expect(
-      unrelatedMember?.querySelector('[data-status="atRiskHomozygous"]'),
-    ).toBeNull();
-  });
-});
-
 // ---------------------------------------------------------------------------
 // At-risk display gate (stage.showAtRiskStatuses).
 //
 // The genetics engine always emits the at-risk statuses + homozygous flag; the
-// stage option decides whether they are drawn. When off (the default), no "?"
-// glyphs appear (the homozygous override included) and the key panel drops the
-// at-risk rows; when on, both reappear.
+// stage option decides whether they are drawn on the selected condition. When
+// off (the default), no "?" glyphs appear (the homozygous override included) and
+// the key panel drops the at-risk rows; when on, both reappear.
 // ---------------------------------------------------------------------------
 describe('NarrativePedigreeView — at-risk display gate', () => {
   it('hides the at-risk-homozygous glyph when showAtRiskStatuses is off', async () => {
-    renderCousinView('sticker', false);
-
+    renderCousinView(false);
+    await selectCondition('AR Disease');
     await waitFor(() =>
-      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
+      expect(viewMarker('[data-notation-status]')).toBeTruthy(),
     );
 
     const sharedChildMember = document.querySelector(
@@ -664,10 +615,10 @@ describe('NarrativePedigreeView — at-risk display gate', () => {
   });
 
   it('shows the at-risk-homozygous glyph when showAtRiskStatuses is on', async () => {
-    renderCousinView('sticker', true);
-
+    renderCousinView(true);
+    await selectCondition('AR Disease');
     await waitFor(() =>
-      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
+      expect(viewMarker('[data-notation-status]')).toBeTruthy(),
     );
 
     const sharedChildMember = document.querySelector(
@@ -679,10 +630,10 @@ describe('NarrativePedigreeView — at-risk display gate', () => {
   });
 
   it('drops the at-risk rows from the key panel when showAtRiskStatuses is off', async () => {
-    renderCousinView('sticker', false);
+    renderCousinView(false);
 
     await waitFor(() =>
-      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
+      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
     );
 
     expect(screen.queryByText('May develop this condition')).toBeNull();
@@ -693,10 +644,10 @@ describe('NarrativePedigreeView — at-risk display gate', () => {
   });
 
   it('lists the at-risk rows in the key panel when showAtRiskStatuses is on', async () => {
-    renderCousinView('sticker', true);
+    renderCousinView(true);
 
     await waitFor(() =>
-      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
+      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
     );
 
     expect(screen.getByText('May develop this condition')).toBeTruthy();
@@ -705,7 +656,7 @@ describe('NarrativePedigreeView — at-risk display gate', () => {
   });
 
   it('omits the at-risk status from the accessible description when off', async () => {
-    renderCousinView('classic', false);
+    renderCousinView(false);
 
     await selectCondition('AR Disease');
     await waitFor(() =>
@@ -756,11 +707,11 @@ describe('NarrativePedigreeView — per-node status summary (a11y)', () => {
     expect(mother).toHaveAccessibleDescription(/Disease A: Affected/);
   });
 
-  it('summarises every shown disease in sticker (all-diseases) mode', async () => {
+  it('summarises every condition in the default view (before one is selected)', async () => {
     renderView();
 
     await waitFor(() =>
-      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
+      expect(document.querySelector('[data-node-id="mother"]')).toBeTruthy(),
     );
 
     const mother = focalMember('mother');
@@ -768,11 +719,11 @@ describe('NarrativePedigreeView — per-node status summary (a11y)', () => {
     expect(mother).toHaveAccessibleDescription(/Disease B:/);
   });
 
-  it('narrows the summary to the selected disease in classic mode', async () => {
+  it('narrows the summary to the selected condition', async () => {
     renderView();
 
     await waitFor(() =>
-      expect(viewMarker('[data-sticker-status]')).toBeTruthy(),
+      expect(document.querySelector('[data-node-id="mother"]')).toBeTruthy(),
     );
 
     await selectCondition('Disease A');
@@ -810,7 +761,7 @@ describe('NarrativePedigreeView — per-node status summary (a11y)', () => {
 
 describe('NarrativePedigreeView — at-risk-homozygous reaches the description (a11y)', () => {
   it("includes the at-risk-homozygous note in the flagged member's accessible description", async () => {
-    renderCousinView('classic');
+    renderCousinView();
 
     // Select the condition to enter classic single-disease mode.
     await selectCondition('AR Disease');

@@ -86,7 +86,10 @@ export function buildPedigreeInterview(seed: number, showAtRisk = false) {
       },
     },
   });
-  nodeType.addVariable({ id: NAME_VAR, name: NAME_VAR, type: 'text' });
+  // addNodeType auto-seeds a "name" text variable keyed by a generated UID.
+  // Re-declaring it dedupes to that variable, so capture the returned id and use
+  // it for both the label config and the seeded attributes.
+  const nameVarId = nodeType.addVariable({ name: NAME_VAR, type: 'text' }).id;
   nodeType.addVariable({ id: EGO_VAR, name: EGO_VAR, type: 'boolean' });
   nodeType.addVariable({ id: BIO_SEX_VAR, name: BIO_SEX_VAR, type: 'text' });
   nodeType.addVariable({
@@ -140,7 +143,7 @@ export function buildPedigreeInterview(seed: number, showAtRisk = false) {
     },
     nodeConfig: {
       type: nodeType.id,
-      nodeLabelVariable: NAME_VAR,
+      nodeLabelVariable: nameVarId,
       egoVariable: EGO_VAR,
       relationshipVariable: REL_TO_EGO_VAR,
       biologicalSexVariable: BIO_SEX_VAR,
@@ -227,25 +230,25 @@ export function buildPedigreeInterview(seed: number, showAtRisk = false) {
   // Maternal grandparents. Eleanor founds the mitochondrial line; Arthur founds
   // the autosomal-dominant Huntington's line.
   person('gm', {
-    [NAME_VAR]: 'Eleanor',
+    [nameVarId]: 'Eleanor',
     [BIO_SEX_VAR]: 'female',
     [MITO_VAR]: true,
   });
   person('gf', {
-    [NAME_VAR]: 'Arthur',
+    [nameVarId]: 'Arthur',
     [BIO_SEX_VAR]: 'male',
     [HUNTINGTONS_VAR]: true,
   });
 
   // Paternal grandparents. Irene is the (carrier) source of David's X-linked
   // haemophilia; neither is nominated affected.
-  person('gf-pat', { [NAME_VAR]: 'Harold', [BIO_SEX_VAR]: 'male' });
-  person('gm-pat', { [NAME_VAR]: 'Irene', [BIO_SEX_VAR]: 'female' });
+  person('gf-pat', { [nameVarId]: 'Harold', [BIO_SEX_VAR]: 'male' });
+  person('gm-pat', { [nameVarId]: 'Irene', [BIO_SEX_VAR]: 'female' });
 
   // Mother (daughter of Eleanor + Arthur): Huntington's has manifested in this
   // second generation; she is also on Eleanor's maternal mitochondrial line.
   person('mother', {
-    [NAME_VAR]: 'Rose',
+    [nameVarId]: 'Rose',
     [BIO_SEX_VAR]: 'female',
     [HUNTINGTONS_VAR]: true,
   });
@@ -253,7 +256,7 @@ export function buildPedigreeInterview(seed: number, showAtRisk = false) {
   // Father (son of Harold + Irene): affected with X-linked haemophilia (his X
   // from carrier mother Irene), so all his daughters are obligate carriers.
   person('father', {
-    [NAME_VAR]: 'David',
+    [nameVarId]: 'David',
     [BIO_SEX_VAR]: 'male',
     [HAEMOPHILIA_VAR]: true,
   });
@@ -263,14 +266,14 @@ export function buildPedigreeInterview(seed: number, showAtRisk = false) {
   // carrier — so she renders as an (unaffected) carrier rather than a hidden
   // possible carrier, making the X-linked source explicit.
   person('uncle-pat', {
-    [NAME_VAR]: 'Martin',
+    [nameVarId]: 'Martin',
     [BIO_SEX_VAR]: 'male',
     [HAEMOPHILIA_VAR]: true,
   });
 
   // Ego (daughter of mother + father): female, no confirmed disease
   person('ego', {
-    [NAME_VAR]: 'You',
+    [nameVarId]: 'You',
     [EGO_VAR]: true,
     [BIO_SEX_VAR]: 'female',
   });
@@ -279,19 +282,19 @@ export function buildPedigreeInterview(seed: number, showAtRisk = false) {
   // so the pedigree shows all three standard pedigree shapes (square/circle/
   // diamond). 'other' resolves to unknown sex in the genetics engine; as a leaf
   // it does not alter anyone else's inheritance.
-  person('sibling', { [NAME_VAR]: 'Alex', [BIO_SEX_VAR]: 'other' });
+  person('sibling', { [nameVarId]: 'Alex', [BIO_SEX_VAR]: 'other' });
 
   // Ego's partner Chris, and his parents George + Helen. Chris carries a cystic-
   // fibrosis allele (inferred from his affected daughter Mia), but is not himself
   // nominated affected.
-  person('partner', { [NAME_VAR]: 'Chris', [BIO_SEX_VAR]: 'male' });
-  person('cf', { [NAME_VAR]: 'George', [BIO_SEX_VAR]: 'male' });
-  person('cm', { [NAME_VAR]: 'Helen', [BIO_SEX_VAR]: 'female' });
+  person('partner', { [nameVarId]: 'Chris', [BIO_SEX_VAR]: 'male' });
+  person('cf', { [nameVarId]: 'George', [BIO_SEX_VAR]: 'male' });
+  person('cm', { [nameVarId]: 'Helen', [BIO_SEX_VAR]: 'female' });
 
   // Ego's son: affected with haemophilia — his single X came from carrier ego,
   // so this X-linked condition reaches ego's own child.
   person('son', {
-    [NAME_VAR]: 'Leo',
+    [nameVarId]: 'Leo',
     [BIO_SEX_VAR]: 'male',
     [HAEMOPHILIA_VAR]: true,
   });
@@ -299,14 +302,14 @@ export function buildPedigreeInterview(seed: number, showAtRisk = false) {
   // Ego's daughter: affected with cystic fibrosis — two recessive copies, one
   // from each unaffected carrier parent (ego and Chris).
   person('daughter', {
-    [NAME_VAR]: 'Mia',
+    [nameVarId]: 'Mia',
     [BIO_SEX_VAR]: 'female',
     [CF_VAR]: true,
   });
 
   // Uncle (brother of Rose): not nominated affected — inferred at risk for the
   // Huntington's and mitochondrial lines he descends from.
-  person('uncle', { [NAME_VAR]: 'Frank', [BIO_SEX_VAR]: 'male' });
+  person('uncle', { [nameVarId]: 'Frank', [BIO_SEX_VAR]: 'male' });
 
   // --- Seed network edges -------------------------------------------------
   // getNetwork() passes edge attributes through verbatim (only NODE attributes
@@ -406,11 +409,9 @@ type Story = StoryObj;
 // (getCurrentStage reads `stages[currentStep]`).
 const NP_STEP = 1;
 
-// Node-render-mode markers ([data-sticker-status] / [data-notation-status])
-// must be queried inside the pedigree view, not the whole document: the
-// always-present ConditionPanel legend also renders Sticker glyphs carrying
-// [data-sticker-status] as an overlay sibling. A document-wide query would
-// always match those and never reflect the node-rendering mode.
+// The single-condition status symbol ([data-notation-status]) is queried inside
+// the pedigree view, not the whole document: the ConditionPanel key also renders
+// illustrative Sticker glyphs, which a document-wide query would pick up.
 function viewScope(): Element {
   const view = document.querySelector('[data-narrative-pedigree-view]');
   if (!view) {
@@ -419,11 +420,18 @@ function viewScope(): Element {
   return view;
 }
 
+// Select (or, when already selected, clear) a condition by clicking its row in
+// the key's "Conditions" list.
+async function selectCondition(name: string) {
+  await userEvent.click(await screen.findByRole('button', { name }));
+}
+
 // ---------------------------------------------------------------------------
-// Story 1: All-diseases sticker view (default render)
-// ≥2 diseases active → StickerNode rendered → [data-sticker-status] in DOM.
+// Story 1: Default view — a plain pedigree with no condition selected.
+// No node draws a status symbol ([data-notation-status]) until a condition is
+// chosen from the key.
 // ---------------------------------------------------------------------------
-export const AllDiseasesStickerView: Story = {
+export const PlainPedigree: Story = {
   render: () => (
     <NarrativePedigreeStoryWrapper
       buildFn={() => buildPedigreeInterview(1)}
@@ -431,19 +439,21 @@ export const AllDiseasesStickerView: Story = {
     />
   ),
   play: async () => {
-    // Wait for the pedigree view to mount before querying.
     await screen.findByTestId('next-button');
 
-    const stickers = viewScope().querySelectorAll('[data-sticker-status]');
-    expect(stickers.length).toBeGreaterThan(0);
+    expect(
+      viewScope().querySelectorAll('[data-pedigree-member]').length,
+    ).toBeGreaterThan(0);
+    expect(viewScope().querySelectorAll('[data-notation-status]').length).toBe(
+      0,
+    );
   },
 };
 
 // ---------------------------------------------------------------------------
-// Story 2: Select single disease via the condition Select
-// Pick a disease in the condition Select → single-condition mode →
-// single-condition node ([data-notation-status]) present, stickers absent.
-// Pick "All conditions" → stickers return.
+// Story 2: Select a single condition from the key.
+// Clicking a condition switches the pedigree to that condition's notation
+// ([data-notation-status]); clicking it again returns to the plain view.
 // ---------------------------------------------------------------------------
 export const SelectSingleDisease: Story = {
   render: () => (
@@ -453,65 +463,22 @@ export const SelectSingleDisease: Story = {
     />
   ),
   play: async () => {
-    // Wait for the pedigree to mount.
     await screen.findByTestId('next-button');
 
-    // Open the condition Select and pick Huntington's Disease.
-    await userEvent.click(await screen.findByRole('combobox'));
-    await userEvent.click(
-      await screen.findByRole('option', { name: "Huntington's Disease" }),
+    // Default: plain nodes, no notation symbols.
+    expect(viewScope().querySelectorAll('[data-notation-status]').length).toBe(
+      0,
     );
 
-    // Single-disease mode: classic notation present, no stickers.
-    const notationNodes = viewScope().querySelectorAll(
-      '[data-notation-status]',
-    );
-    expect(notationNodes.length).toBeGreaterThan(0);
+    // Pick Huntington's Disease from the key → single-condition notation.
+    await selectCondition("Huntington's Disease");
+    expect(
+      viewScope().querySelectorAll('[data-notation-status]').length,
+    ).toBeGreaterThan(0);
 
-    const stickerNodes = viewScope().querySelectorAll('[data-sticker-status]');
-    expect(stickerNodes.length).toBe(0);
-
-    // Picking "All conditions" restores sticker mode.
-    await userEvent.click(await screen.findByRole('combobox'));
-    await userEvent.click(
-      await screen.findByRole('option', { name: 'All conditions' }),
-    );
-
-    const stickersAfter = viewScope().querySelectorAll('[data-sticker-status]');
-    expect(stickersAfter.length).toBeGreaterThan(0);
-  },
-};
-
-// ---------------------------------------------------------------------------
-// Story 2b: Selecting a disease by clicking a person's STICKER (pointer path).
-// userEvent.click respects pointer-events in a real browser, so this also
-// guards the regression where an interactive sticker inherits pointer-events:
-// none from its overlay parent (the click would then never reach it).
-// ---------------------------------------------------------------------------
-export const SelectDiseaseBySticker: Story = {
-  render: () => (
-    <NarrativePedigreeStoryWrapper
-      buildFn={() => buildPedigreeInterview(2)}
-      startStep={NP_STEP}
-    />
-  ),
-  play: async () => {
-    await screen.findByTestId('next-button');
-
-    // Click a person's sticker directly. A pointer-events:none sticker would
-    // make userEvent throw here rather than select the disease.
-    const sticker = viewScope().querySelector('[data-sticker-status]');
-    if (!(sticker instanceof HTMLElement)) {
-      throw new Error('expected at least one sticker to be rendered');
-    }
-    await userEvent.click(sticker);
-
-    // The view switches to single-disease (classic) mode for that disease.
-    const notationNodes = viewScope().querySelectorAll(
-      '[data-notation-status]',
-    );
-    expect(notationNodes.length).toBeGreaterThan(0);
-    expect(viewScope().querySelectorAll('[data-sticker-status]').length).toBe(
+    // Clicking it again clears the selection, back to plain nodes.
+    await selectCondition("Huntington's Disease");
+    expect(viewScope().querySelectorAll('[data-notation-status]').length).toBe(
       0,
     );
   },
@@ -538,13 +505,9 @@ export const FocalContributors: Story = {
 
     // Switch to Huntington's-only mode so computeContributors walks only HD
     // ancestors.
-    await userEvent.click(await screen.findByRole('combobox'));
-    await userEvent.click(
-      await screen.findByRole('option', { name: "Huntington's Disease" }),
-    );
+    await selectCondition("Huntington's Disease");
 
-    // Focus Leo (ego's son). Target by data-node-id rather than label, since the
-    // displayed labels are relationship descriptions, not seeded names.
+    // Focus Leo (ego's son). Target by data-node-id rather than label.
     const leoFocal = viewScope().querySelector('[data-node-id="son"]');
     if (!(leoFocal instanceof HTMLElement)) {
       throw new Error('expected the son focal control to be rendered');

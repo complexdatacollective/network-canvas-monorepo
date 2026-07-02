@@ -1,11 +1,7 @@
 'use client';
 
-import { useId } from 'react';
-
 import { Button } from '@codaco/fresco-ui/Button';
-import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import Icon from '@codaco/fresco-ui/Icon';
-import { Label } from '@codaco/fresco-ui/Label';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -17,11 +13,6 @@ type Disease = {
   id: string;
   label: string;
   color: string;
-};
-
-type DiseaseOption = {
-  value: string;
-  label: string;
 };
 
 type ConditionPanelProps = {
@@ -36,11 +27,6 @@ type ConditionPanelProps = {
   // Captures the current pedigree as an image (the footer action).
   onSnapshot: () => void;
 };
-
-// Non-empty sentinel for the "show every condition" option. Base-UI Select
-// treats an empty-string value as "no value" and renders the placeholder
-// instead of the option label; using 'all' avoids that blank-trigger bug.
-const ALL_CONDITIONS = 'all';
 
 type KeyEntry = {
   status: Status;
@@ -86,8 +72,6 @@ export default function ConditionPanel({
   showAtRiskStatuses,
   onSnapshot,
 }: ConditionPanelProps) {
-  const selectId = useId();
-
   const keyEntries = showAtRiskStatuses
     ? KEY_ENTRIES
     : KEY_ENTRIES.filter((entry) => !entry.atRisk);
@@ -100,20 +84,6 @@ export default function ConditionPanel({
       : undefined;
   const glyphColour = selectedDisease?.color ?? KEY_GLYPH_FALLBACK_COLOUR;
 
-  const options: DiseaseOption[] = [
-    { value: ALL_CONDITIONS, label: 'All conditions' },
-    ...diseases.map((disease) => ({
-      value: disease.id,
-      label: disease.label,
-    })),
-  ];
-
-  const handleChange = (value: string | number | undefined) => {
-    onSelect(
-      typeof value === 'string' && value !== ALL_CONDITIONS ? value : null,
-    );
-  };
-
   return (
     <Surface
       as="aside"
@@ -123,46 +93,45 @@ export default function ConditionPanel({
       className="flex h-full min-h-0 flex-col rounded-none"
       aria-label="Condition key"
     >
-      {/* Header — panel title + the condition selector, fixed above the
-          scrolling key. */}
-      <div className="flex shrink-0 flex-col gap-2 border-b border-(--outline) p-4">
+      {/* Header — panel title, fixed above the scrolling key. */}
+      <div className="flex shrink-0 flex-col gap-1 border-b border-(--outline) p-4">
         <Heading level="h4" margin="none">
           Key
         </Heading>
-        <Label htmlFor={selectId}>Show a condition</Label>
-        <SelectField
-          id={selectId}
-          name="np-condition"
-          // Override the control's default min-w-fit so the trigger shrinks to
-          // the panel and a long condition name truncates instead of overflowing.
-          className="min-w-0"
-          options={options}
-          value={selectedDiseaseId ?? ALL_CONDITIONS}
-          onChange={handleChange}
-        />
       </div>
 
-      {/* Body — disease-colour legend + status-notation key, scrolls. */}
+      {/* Body — clickable disease list + status-notation key, scrolls. */}
       <ScrollArea className="min-h-0 flex-1" viewportClassName="px-4">
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 py-2">
           {diseases.length > 0 && (
             <>
               <Heading level="label" margin="none">
                 Conditions
               </Heading>
-              {diseases.map((disease) => (
-                <div
-                  key={disease.id}
-                  className="flex items-center gap-4 text-base"
-                >
-                  <span
-                    aria-hidden
-                    className="size-4 shrink-0 rounded-full"
-                    style={{ backgroundColor: disease.color }}
-                  />
-                  {disease.label}
-                </div>
-              ))}
+              <p className="text-sm opacity-80">
+                Select a condition to see who it affects.
+              </p>
+              {diseases.map((disease) => {
+                const isSelected = disease.id === selectedDiseaseId;
+                return (
+                  <button
+                    key={disease.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => onSelect(isSelected ? null : disease.id)}
+                    className={`focusable flex items-center gap-4 rounded px-2 py-1 text-left text-base ${
+                      isSelected ? 'bg-white/15 font-bold' : 'hover:bg-white/5'
+                    }`}
+                  >
+                    <span
+                      aria-hidden
+                      className="size-4 shrink-0 rounded-full"
+                      style={{ backgroundColor: disease.color }}
+                    />
+                    {disease.label}
+                  </button>
+                );
+              })}
               <hr className="my-1 border-t border-(--outline)" />
             </>
           )}

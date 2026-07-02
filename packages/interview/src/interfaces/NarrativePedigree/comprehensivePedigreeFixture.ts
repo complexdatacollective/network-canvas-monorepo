@@ -80,7 +80,11 @@ export function addComprehensivePedigree(
       },
     },
   });
-  nodeType.addVariable({ id: NAME_VAR, name: NAME_VAR, type: 'text' });
+  // addNodeType auto-seeds a "name" text variable keyed by a generated UID.
+  // Re-declaring it dedupes to that variable, so capture the returned id and use
+  // it for both the label config and the seeded attributes — otherwise the label
+  // would be stored under the literal key "name" that no codebook variable owns.
+  const nameVarId = nodeType.addVariable({ name: NAME_VAR, type: 'text' }).id;
   nodeType.addVariable({ id: EGO_VAR, name: EGO_VAR, type: 'boolean' });
   nodeType.addVariable({ id: BIO_SEX_VAR, name: BIO_SEX_VAR, type: 'text' });
   nodeType.addVariable({
@@ -123,7 +127,7 @@ export function addComprehensivePedigree(
     },
     nodeConfig: {
       type: nodeType.id,
-      nodeLabelVariable: NAME_VAR,
+      nodeLabelVariable: nameVarId,
       egoVariable: EGO_VAR,
       relationshipVariable: REL_TO_EGO_VAR,
       biologicalSexVariable: BIO_SEX_VAR,
@@ -214,27 +218,31 @@ export function addComprehensivePedigree(
 
   // Generation 1 — maternal grandparents (Huntington's + mitochondrial founders).
   person('gm', {
-    [NAME_VAR]: 'Eleanor',
+    [nameVarId]: 'Eleanor',
     [BIO_SEX_VAR]: 'female',
     [MITO_VAR]: true,
   });
-  person('gf', { [NAME_VAR]: 'Arthur', [BIO_SEX_VAR]: 'male', [HD_VAR]: true });
+  person('gf', {
+    [nameVarId]: 'Arthur',
+    [BIO_SEX_VAR]: 'male',
+    [HD_VAR]: true,
+  });
 
   // Generation 1 — paternal grandparents (haemophilia carrier + Y-linked founder).
   person('gf-pat', {
-    [NAME_VAR]: 'Harold',
+    [nameVarId]: 'Harold',
     [BIO_SEX_VAR]: 'male',
     [YHL_VAR]: true,
   });
-  person('gm-pat', { [NAME_VAR]: 'Irene', [BIO_SEX_VAR]: 'female' });
+  person('gm-pat', { [nameVarId]: 'Irene', [BIO_SEX_VAR]: 'female' });
 
   // Generation 2 — maternal.
   person('mother', {
-    [NAME_VAR]: 'Rose',
+    [nameVarId]: 'Rose',
     [BIO_SEX_VAR]: 'female',
     [HD_VAR]: true,
   });
-  person('uncle', { [NAME_VAR]: 'Frank', [BIO_SEX_VAR]: 'male' });
+  person('uncle', { [nameVarId]: 'Frank', [BIO_SEX_VAR]: 'male' });
 
   // Generation 2 — paternal. David is affected with two X-linked conditions
   // (recessive haemophilia AND dominant hypophosphataemia) and, as Harold's son,
@@ -242,32 +250,32 @@ export function addComprehensivePedigree(
   // haemophilia son — making their mother Irene an obligate carrier — and is
   // Chris's father, forming the cousin union.
   person('father', {
-    [NAME_VAR]: 'David',
+    [nameVarId]: 'David',
     [BIO_SEX_VAR]: 'male',
     [HAEM_VAR]: true,
     [XLH_VAR]: true,
   });
   person('uncle-pat', {
-    [NAME_VAR]: 'Martin',
+    [nameVarId]: 'Martin',
     [BIO_SEX_VAR]: 'male',
     [HAEM_VAR]: true,
   });
-  person('cm', { [NAME_VAR]: 'Grace', [BIO_SEX_VAR]: 'female' });
+  person('cm', { [nameVarId]: 'Grace', [BIO_SEX_VAR]: 'female' });
 
   // Generation 3.
   person('ego', {
-    [NAME_VAR]: 'You',
+    [nameVarId]: 'You',
     [EGO_VAR]: true,
     [BIO_SEX_VAR]: 'female',
   });
-  person('sibling', { [NAME_VAR]: 'Alex', [BIO_SEX_VAR]: 'other' });
+  person('sibling', { [nameVarId]: 'Alex', [BIO_SEX_VAR]: 'other' });
   // Chris — ego's partner AND her paternal first cousin (Martin's son).
-  person('partner', { [NAME_VAR]: 'Chris', [BIO_SEX_VAR]: 'male' });
+  person('partner', { [nameVarId]: 'Chris', [BIO_SEX_VAR]: 'male' });
 
   // Generation 4 — ego's children.
-  person('son', { [NAME_VAR]: 'Leo', [BIO_SEX_VAR]: 'male' });
+  person('son', { [nameVarId]: 'Leo', [BIO_SEX_VAR]: 'male' });
   person('daughter', {
-    [NAME_VAR]: 'Mia',
+    [nameVarId]: 'Mia',
     [BIO_SEX_VAR]: 'female',
     [CF_VAR]: true,
   });

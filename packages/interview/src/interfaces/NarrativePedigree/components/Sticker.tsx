@@ -44,8 +44,8 @@ export const STICKER_SIZE_PX = 28;
  * glyph (a solid shape with a centred white "?") in place of the status glyph,
  * conveying "may be affected".
  *
- * Used both as the small perimeter markers on a `StickerNode` (`nodeMode`
- * `'perimeter'`, the default) and as the large single-condition node
+ * Used both as the small illustrative glyphs in the condition key (`nodeMode`
+ * `'perimeter'`, the default) and as the large single-condition pedigree node
  * (`nodeMode='single'`). `Sticker` is position-agnostic — the caller owns
  * absolute positioning and any participant label.
  *
