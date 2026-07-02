@@ -11,8 +11,8 @@ vi.mock('~/lib/analytics/AnalyticsProvider', () => ({
   useAnalytics: () => ({ captureException }),
 }));
 
-// The real Dialog (motion animations) and BackgroundBlobs (canvas loop) hang
-// under jsdom — fresco-ui tests them in its own suite. Stub them here and
+// The real Dialog (motion animations) and BackgroundLights (animation loop)
+// hang under jsdom — fresco-ui tests them in its own suite. Stub them here and
 // assert the props the boundary passes; the full dialog render is covered by
 // AppErrorBoundary.stories.tsx in the browser-based storybook test project.
 vi.mock('@codaco/fresco-ui/dialogs/Dialog', () => ({
@@ -28,7 +28,7 @@ vi.mock('@codaco/fresco-ui/dialogs/Dialog', () => ({
 }));
 
 vi.mock('@codaco/art', () => ({
-  BackgroundBlobs: () => null,
+  BackgroundLights: () => null,
 }));
 
 function Thrower(): never {

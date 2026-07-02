@@ -5,7 +5,7 @@ import { memo, useMemo } from 'react';
 import Canvas from './Canvas';
 import { NCBlob } from './NCBlob';
 
-const defaultGradients: ReadonlyArray<readonly [string, string]> = [
+export const defaultGradients: ReadonlyArray<readonly [string, string]> = [
   ['rgb(237,0,140)', 'rgb(226,33,91)'],
   ['#00c9ff', '#92fe9d'],
   ['#fc466b', '#3f5efb'],
