@@ -40,10 +40,12 @@ export const ComposerFormFieldSchema = z.strictObject({
 });
 export type ComposerFormField = z.infer<typeof ComposerFormFieldSchema>;
 
-// Title-less, and (unlike TitlelessFormSchema) the fields array may be empty —
-// the runtime renders "No attributes to edit" for an empty/absent form.
+// Title-less, and (unlike TitlelessFormSchema) `fields` is optional / may be
+// empty — a stage can have no editable attributes, and the editor's `prune`
+// strips an empty fields array on save. The runtime renders "No attributes to
+// edit" for an empty/absent form.
 export const ComposerFormSchema = z.strictObject({
-  fields: z.array(ComposerFormFieldSchema),
+  fields: z.array(ComposerFormFieldSchema).optional(),
 });
 export type ComposerForm = z.infer<typeof ComposerFormSchema>;
 
@@ -84,6 +86,8 @@ export const networkComposerStage = baseStageSchema.extend({
   // Each entry is a drawable edge type. `subject` carries the edge type so an
   // edge form's fields resolve their variable references against that edge type
   // (via collectEntityAttributeReferences' stageSubjectOf), not the node subject.
+  // Optional: a stage may define no edge types, and the editor's `prune` strips
+  // an empty edges array on save (so it arrives undefined, not []).
   edges: z
     .array(
       z.strictObject({
@@ -103,5 +107,6 @@ export const networkComposerStage = baseStageSchema.extend({
           path: [],
         });
       }
-    }),
+    })
+    .optional(),
 });

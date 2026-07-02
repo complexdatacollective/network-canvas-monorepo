@@ -48,6 +48,12 @@ describe('networkComposerStage schema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('accepts a stage with no edges field (edges optional after prune)', () => {
+    const { edges: _edges, ...noEdges } = validStage;
+    const result = networkComposerStage.safeParse(noEdges);
+    expect(result.success).toBe(true);
+  });
+
   it('rejects duplicate edge types', () => {
     const result = networkComposerStage.safeParse({
       ...validStage,
@@ -131,6 +137,14 @@ describe('ComposerFormFieldSchema', () => {
     const result = networkComposerStage.safeParse({
       ...baseStageWithComponent,
       nodeForm: { fields: [] },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a nodeForm with no fields (fields optional)', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {},
     });
     expect(result.success).toBe(true);
   });
