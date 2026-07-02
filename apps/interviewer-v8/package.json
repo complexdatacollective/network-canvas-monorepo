@@ -45,6 +45,7 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "uuid": "catalog:",
+    "workbox-window": "^7.4.1",
     "wouter": "^3.10.0",
     "zod": "catalog:"
   },
@@ -60,6 +61,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@vite-pwa/assets-generator": "^1.0.2",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
@@ -71,6 +73,7 @@
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
+    "vite-plugin-pwa": "^1.3.0",
     "vitest": "catalog:"
   }
 }
