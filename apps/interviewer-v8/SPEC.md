@@ -8,13 +8,7 @@ The app is **single-user on all platforms** — one researcher per installation,
 
 ## Supported platforms
 
-The app runs on three target platforms from a single codebase:
-
-- **Desktop** (Windows, macOS, Linux) — the primary target for researchers running interviews on a laptop.
-- **Tablet** (iPadOS, Android) — for in-field, touch-driven data collection.
-- **Web** — positioned for development. Storage durability is best-effort here; native installs are recommended for fieldwork.
-
-Feature parity is intended across platforms except where the OS requires a different security posture (see Security).
+The app is a single web-only, offline-first Progressive Web App (PWA), installable from any modern browser on desktop or tablet. There is no separate desktop or tablet build — one deployment serves both, and feature parity is complete across devices. The app requests durable (non-evictable) storage from the operating system; installing it (rather than using it as a plain browser tab) gives the most reliable offline behaviour and storage persistence for fieldwork.
 
 ## Dashboard and management
 
@@ -72,34 +66,36 @@ Central place for user-configurable behaviour and diagnostics (see Settings belo
 
 ## Storage
 
-- All protocols, assets, sessions, and settings are stored **on-device only**. There is no cloud sync and no server component.
-- Storage is persistent across app launches. On desktop, storage is durable by design; on tablet and web, the app requests durable (non-evictable) storage from the operating system.
-- **On desktop, the storage layer is encrypted at rest.** The encryption key is held by a Web Authentication API credential enrolled during setup; the app obtains the key only after a successful authentication. Without that credential the on-disk data is unreadable.
-- On tablet and web, storage relies on the platform's own at-rest protections; Web Authentication is used to gate access to the running app rather than to derive a storage key.
+- All protocols, assets, sessions, and settings are stored **on-device only**, in the browser's IndexedDB. There is no cloud sync and no server component.
+- Storage is persistent across app launches. The app requests durable (non-evictable) storage from the operating system.
+- **The sensitive parts of the storage layer are encrypted at rest** whenever a secured auth mode is enrolled (see Security). A per-device data-encryption key, generated at setup, is unlocked by the researcher's credential and held in memory only for the current session — it never touches disk unencrypted and is dropped on lock, idle timeout, or reload. Without a successful unlock, that data is unreadable. Index fields used for search/sort/filter (case ID, protocol name, timestamps, status) are kept in plaintext so the dashboard can query them without decrypting every row.
+- Under "no security" (see Security), storage relies entirely on the browser's own sandboxing; nothing app-level is encrypted.
 - Settings displays a **storage-usage indicator** (used / available, percentage) and warns when usage is high, suggesting the researcher export and delete old interviews.
 
 ## Security
 
-The app uses the **Web Authentication API** (WebAuthn) as its sole authentication mechanism. A platform authenticator credential is enrolled during initial setup and is bound to the device.
+During first-run setup, the researcher enrols exactly one of four mutually exclusive auth modes, each gating both app access and (except "No security") the data-encryption key:
 
-WebAuthn serves two purposes:
+1. **PIN** — an 8-digit code.
+2. **Passphrase** — a free-form phrase of at least 12 characters mixing at least 3 character classes.
+3. **Biometric** — a WebAuthn platform authenticator (Touch ID, Windows Hello, or equivalent), using the PRF extension to derive the encryption key from the authenticator itself, with no separate secret for the researcher to remember day to day. Enrolling biometric **requires** setting a recovery passphrase in the same step, kept as an independent way to unlock if the authenticator is ever unavailable.
+4. **No security** — the researcher explicitly declines protection; the app is unlocked at all times and nothing is encrypted at the app layer.
 
-1. **Unlock the app** on all platforms — the researcher must satisfy the authenticator before the dashboard or any stored data becomes accessible.
-2. **Decrypt the storage layer on desktop** — the same authentication releases the key used to decrypt on-device storage. On desktop this is mandatory; the encrypted database cannot be opened without it.
-
-How the authenticator verifies the researcher (PIN, platform biometric, security key, etc.) is determined by the operating system and the credential type. The app does not implement, configure, or expose biometric behaviour directly — that is a property of the underlying WebAuthn credential.
+For PIN, passphrase, and biometric, unlocking derives (or, for biometric, releases) the key that decrypts the sensitive parts of on-device storage — the app does not implement a separate "app gate" distinct from the storage key. Losing that credential means the data it protects cannot be decrypted; there is no backdoor.
 
 The lock screen reveals **nothing** about stored data — no protocol names, no session counts, no researcher identity.
 
 ### Auto-lock
 
-- **Idle auto-lock** with a user-configurable timeout: 1, 5, 15, 30, or 60 minutes (default 15).
-- **Re-lock on app close** and on extended focus loss.
+- **Idle auto-lock** with a user-configurable timeout: 1, 5, 15, 30, or 60 minutes (default 15). Not applied under "No security", since there is nothing to lock.
+- **Re-lock on extended focus loss** (losing focus for roughly 30 seconds) and whenever the tab reloads.
 - A "Lock now" action is always available in Settings.
 
 ### Recovery
 
-- There is **no credential recovery flow**. Losing the enrolled WebAuthn credential (e.g. wiped device, removed platform authenticator) means losing access to the data on that device — the deliberate trade-off for strong on-device confidentiality. Setup requires explicit acknowledgement of this, and Settings reminds the researcher to export regularly.
+- **PIN and passphrase have no recovery.** Forgetting either means the data they protect is permanently inaccessible on that device — there is no reset, bypass, or backdoor. Setup requires explicit acknowledgement of this before enrolling either mode.
+- **Biometric has one recovery path**: the passphrase set alongside it at enrolment. Losing both the authenticator and the recovery passphrase means the same permanent loss as PIN/passphrase.
+- Settings reminds the researcher to export regularly regardless of mode, since none of them offer a way to recover lost credentials.
 
 ## Settings
 
@@ -107,11 +103,11 @@ User-configurable options:
 
 - **Data export** — toggle GraphML, toggle CSV, toggle screen-coordinate output, set screen layout width and height.
 - **Idle timeout** — choose re-lock interval.
-- **Manage authenticator** — view the enrolled WebAuthn credential, re-enrol a replacement (requires a successful authentication with the current credential), or revoke it. Revoking on desktop destroys the encrypted store.
+- **Manage authenticator** — view the enrolled mode; re-enrol a replacement PIN or passphrase (requires proving the current one, and preserves access to existing data); or revoke, which destroys the encrypted store and returns to first-run setup. Biometric has no re-enrol path — changing it requires revoking first.
 - **Lock now** — immediate manual lock.
 - **Reset to defaults** for export settings.
 
-Settings also reports the current platform, storage usage, and storage persistence state for support and diagnostics.
+Settings also reports storage usage and storage persistence state for support and diagnostics.
 
 ## Empty-state behaviour
 
@@ -125,5 +121,6 @@ Explicit non-goals:
 - **No cloud sync** and no remote backup.
 - **No cross-device migration** of interviews or protocols.
 - **No protocol authoring** — protocols are authored in the Architect app and imported here.
-- **No credential recovery** — losing the enrolled WebAuthn credential means data loss by design.
-- **No multi-user support** — the app is single-user on every platform; no account system, no shared workspaces.
+- **No credential recovery for PIN or passphrase** — losing either means data loss by design; biometric's only recovery path is the passphrase set at enrolment.
+- **No multi-user support** — the app is single-user; no account system, no shared workspaces.
+- **No native desktop or tablet build** — the app is web-only.
