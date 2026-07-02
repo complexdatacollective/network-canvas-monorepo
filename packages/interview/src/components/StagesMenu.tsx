@@ -321,7 +321,10 @@ export default function StagesMenu({
           type="button"
           aria-current={item.isCurrent ? 'step' : undefined}
           className={cx(
-            'focusable relative flex w-36 flex-col items-center gap-3 rounded-sm px-3 py-4 text-center transition-colors',
+            // No horizontal padding on the button itself: the timeline band is
+            // full width so adjacent cards' segments meet with no gap. The
+            // image/label get their own padding via the inner wrapper.
+            'focusable relative flex w-36 flex-col items-center gap-3 rounded-sm py-4 text-center transition-colors',
             'data-selected:bg-primary data-selected:text-primary-contrast',
             'hover:bg-accent data-focused:bg-accent',
           )}
@@ -346,8 +349,10 @@ export default function StagesMenu({
             />
             {node}
           </span>
-          {image}
-          {label}
+          <span className="flex w-full flex-col items-center gap-3 px-3">
+            {image}
+            {label}
+          </span>
         </button>
       );
     }
