@@ -117,17 +117,26 @@ export default function ToolPalette({
     },
     // Every edge type shares the link icon, so a single edge button opens a menu
     // to pick the type rather than crowding the toolbar with identical buttons.
-    {
-      type: 'menu',
-      id: 'edge',
-      label: 'Draw edge',
-      icon: <EdgeIcon />,
-      pressed: activeTool.kind === 'edge',
-      value: activeEdgeType,
-      className: edgeButtonClass,
-      options: edges.map(({ edgeType, label }) => ({ value: edgeType, label })),
-      onSelect: (edgeType) => setActiveTool({ kind: 'edge', edgeType }),
-    },
+    // Hidden entirely when the stage defines no edge types.
+    ...(edges.length > 0
+      ? [
+          {
+            type: 'menu' as const,
+            id: 'edge',
+            label: 'Draw edge',
+            icon: <EdgeIcon />,
+            pressed: activeTool.kind === 'edge',
+            value: activeEdgeType,
+            className: edgeButtonClass,
+            options: edges.map(({ edgeType, label }) => ({
+              value: edgeType,
+              label,
+            })),
+            onSelect: (edgeType: string) =>
+              setActiveTool({ kind: 'edge', edgeType }),
+          },
+        ]
+      : []),
     // A single Groups button opens a popover to pick the active categorical
     // variable + value; tapping nodes then toggles their convex-hull membership.
     ...(groupVariables.length > 0

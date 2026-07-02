@@ -108,7 +108,7 @@ function makePreloadedNodes() {
   ];
 }
 
-function makeStore() {
+function makeStore(stageToRender: typeof stage = stage) {
   return configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -126,19 +126,19 @@ function makeStore() {
         hash: 'h',
         schemaVersion: 8,
         codebook,
-        stages: [stage],
+        stages: [stageToRender],
       } as never,
     },
     middleware: (g) => g({ serializableCheck: false }),
   });
 }
 
-function renderInterface() {
-  const store = makeStore();
+function renderInterface(stageToRender: typeof stage = stage) {
+  const store = makeStore(stageToRender);
   const registerBeforeNext: RegisterBeforeNext = vi.fn();
 
   const props: StageProps<'NetworkComposer'> = {
-    stage: stage as StageProps<'NetworkComposer'>['stage'],
+    stage: stageToRender as StageProps<'NetworkComposer'>['stage'],
     getNavigationHelpers: () => ({
       moveForward: vi.fn(),
       moveBackward: vi.fn(),
@@ -196,6 +196,11 @@ async function activateKnowsEdgeTool() {
 }
 
 describe('NetworkComposer edge-type tool', () => {
+  it('hides the "Draw edge" tool when the stage defines no edge types', () => {
+    renderInterface({ ...stage, edges: [] });
+    expect(screen.queryByRole('button', { name: /draw edge/i })).toBeNull();
+  });
+
   it('tapping node A then node B creates a knows edge between them', async () => {
     const { store } = renderInterface();
 
