@@ -105,6 +105,29 @@ it('getUsageAsStageMeta() produces stage links for stage-scoped paths', () => {
   ).toEqual(expectedResult);
 });
 
+it('getUsageAsStageMeta() parses type-index paths (e.g. a composer edge type)', () => {
+  // Node/edge type usage comes from collectEntityTypeReferences, which keys
+  // with the same dotted-array notation as the variable index.
+  const usage = ['stages.1.edges.0.subject.type', 'stages.2.subject.type'];
+
+  const mockStageMetaByIndex = [
+    { label: 'foo', id: 'abcd' },
+    { label: 'bar', id: 'efgh' },
+    { label: 'bazz', id: 'ijkl' },
+  ];
+
+  const mockVariableMetaByIndex = getAllVariablesByUUID(
+    state.protocol.present.codebook,
+  );
+
+  expect(
+    getUsageAsStageMeta(mockStageMetaByIndex, mockVariableMetaByIndex, usage),
+  ).toEqual([
+    { label: 'bar', id: 'efgh' },
+    { label: 'bazz', id: 'ijkl' },
+  ]);
+});
+
 describe('getUsageAsStageMeta() with codebook validation references', () => {
   it.each(variableReferenceValidations)(
     'labels a variable referenced via validation.%s',

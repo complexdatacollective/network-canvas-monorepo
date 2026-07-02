@@ -45,7 +45,14 @@ const countTagged = (
 
 // Update this number deliberately when adding/removing a tagged field.
 // (31 after main removed FamilyPedigree biologicalSexVariable during merge.)
-const EXPECTED_TAGGED_FIELD_COUNT = 27;
+// (29 after adding NetworkComposer quickAdd + layoutVariable references; its
+//  node/edge forms reuse the shared TitlelessFormSchema, which is already counted.)
+// (30 after adding the NetworkComposer convexHulls array of categorical refs.)
+// (31 after NetworkComposer forms switched to ComposerFormFieldSchema — a new
+//  schema object distinct from FormFieldSchema, adding one more tagged variable ref.)
+// (still 31 after the NetworkComposer convexHulls array became the single
+//  optional convexHullVariable ref — one tagged node either way.)
+const EXPECTED_TAGGED_FIELD_COUNT = 31;
 
 describe('entity-attribute reference coverage', () => {
   it('has tagged the expected number of reference fields', () => {

@@ -170,7 +170,11 @@ export function useCanvasDrag({
 
       e.preventDefault();
       store.getState().setPosition(nodeId, newPos);
+      // Move then release so the node settles at the nudged position without
+      // staying pinned — otherwise an automatic-layout simulation would freeze it
+      // (mirrors the pointer-drag path, which releases before onDragEnd).
       simulation?.moveNode(nodeId, newPos);
+      simulation?.releaseNode(nodeId);
       onDragEnd?.(nodeId, newPos);
     },
     [disabled, nodeId, store, simulation, onDragEnd, onClick],

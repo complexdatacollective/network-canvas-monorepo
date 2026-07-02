@@ -41,8 +41,10 @@ const ColorPicker = ({
   label,
   meta: { error, invalid, touched },
 }: ColorPickerProps) => {
+  // range() is end-exclusive, so run to paletteRange + 1 — otherwise the
+  // palette's last colour can never be picked.
   const colors = palette
-    ? range(1, paletteRange).map((index) =>
+    ? range(1, paletteRange + 1).map((index) =>
         asColorOption(`${palette}-${index}`),
       )
     : options;

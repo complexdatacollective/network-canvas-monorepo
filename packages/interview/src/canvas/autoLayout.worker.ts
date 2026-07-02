@@ -38,7 +38,6 @@ export type AutoLayoutForceOptions = {
   alphaDecay: number;
   velocityDecay: number;
   charge: number;
-  cohesion: number;
   collideRadius: number;
   linkDistance: number;
   linkStrength: number;
@@ -72,7 +71,6 @@ const DEFAULT_OPTIONS: AutoLayoutForceOptions = {
   // cohesion clusters. forceManyBody is only registered when charge !== 0
   // (Sociogram supplies a negative charge for repulsion).
   charge: 0,
-  cohesion: 0.1,
   // collideRadius is a SIM-SPACE center-to-center half-distance (px collide
   // radius / canvas height): two nodes cannot settle closer than 2 *
   // collideRadius. The hook always overrides this with the live measured value;
@@ -130,6 +128,13 @@ const DEFAULT_OPTIONS: AutoLayoutForceOptions = {
 // long low-alpha anneal tail (FIX 2). Sim coordinates span ~[0, 1.x], so this is
 // a tiny fraction of the canvas per tick. Tune visually.
 const EARLY_STOP_MAX_SPEED = 0.0008;
+
+// Group-cohesion strength. Deliberately INTERNAL (not an initialize option) so
+// grouped nodes cluster identically in every interface that uses the shared
+// auto-layout; whether cohesion acts at all is decided solely by whether the
+// caller supplies a groupVariable (no groupKeys → the force is inert).
+// Displacement-proportional, so scale-invariant across canvas sizes.
+const GROUP_COHESION_STRENGTH = 0.1;
 
 type SimNode = SimulationNodeDatum & {
   nodeId?: string;
@@ -291,10 +296,13 @@ const registerForces = (sim: Simulation<SimNode, undefined>) => {
   } else {
     sim.force('bounds', null);
   }
-  // Group cohesion is always registered; it is inert when no node carries
-  // groupKeys (Sociogram passes no groupVariable, so every node's groupKeys is
-  // empty and no bucket survives the singleton drop).
-  sim.force('group', forceGroupCohesion<SimNode>().strength(options.cohesion));
+  // Group cohesion is always registered at the fixed internal strength; it is
+  // inert when no node carries groupKeys (Sociogram passes no groupVariable, so
+  // every node's groupKeys is empty and no bucket survives the singleton drop).
+  sim.force(
+    'group',
+    forceGroupCohesion<SimNode>().strength(GROUP_COHESION_STRENGTH),
+  );
   // Edge attraction. The sim-space linkDistance is derived from collideRadius so
   // the target spacing stays consistent with the collision guarantee. Registered
   // even with no links (an empty forceLink is inert).

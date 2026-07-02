@@ -213,24 +213,27 @@
     --node-color-seq-8: var(--mustard);
     --node-color-seq-8-dark: var(--mustard-dark);
 
+    /* Must mirror the interview theme's --edge-N palette
+       (tooling/tailwind/fresco/themes/interview.css): the value stored in the
+       codebook is the POSITION, so a different order here would make the
+       colour an author picks render as a different colour for participants.
+       Only seq-1..8 exist — the schema's EdgeColorSequence is the gate. */
     --edge-color-seq-1: var(--mustard);
     --edge-color-seq-1-dark: var(--mustard-dark);
-    --edge-color-seq-2: var(--neon-coral);
-    --edge-color-seq-2-dark: var(--neon-coral-dark);
-    --edge-color-seq-3: var(--kiwi);
-    --edge-color-seq-3-dark: var(--kiwi-dark);
-    --edge-color-seq-4: var(--paradise-pink);
-    --edge-color-seq-4-dark: var(--paradise-pink-dark);
-    --edge-color-seq-5: var(--tomato);
-    --edge-color-seq-5-dark: var(--tomato-dark);
-    --edge-color-seq-6: var(--sea-serpent);
-    --edge-color-seq-6-dark: var(--sea-serpent-dark);
-    --edge-color-seq-7: var(--slate-blue);
-    --edge-color-seq-7-dark: var(--slate-blue-dark);
-    --edge-color-seq-8: var(--sea-green);
-    --edge-color-seq-8-dark: var(--sea-green-dark);
-    --edge-color-seq-9: var(--cerulean-blue);
-    --edge-color-seq-9-dark: var(--cerulean-blue-dark);
+    --edge-color-seq-2: var(--purple-pizazz);
+    --edge-color-seq-2-dark: var(--purple-pizazz-dark);
+    --edge-color-seq-3: var(--neon-coral);
+    --edge-color-seq-3-dark: var(--neon-coral-dark);
+    --edge-color-seq-4: var(--kiwi);
+    --edge-color-seq-4-dark: var(--kiwi-dark);
+    --edge-color-seq-5: var(--paradise-pink);
+    --edge-color-seq-5-dark: var(--paradise-pink-dark);
+    --edge-color-seq-6: var(--tomato);
+    --edge-color-seq-6-dark: var(--tomato-dark);
+    --edge-color-seq-7: var(--sea-serpent);
+    --edge-color-seq-7-dark: var(--sea-serpent-dark);
+    --edge-color-seq-8: var(--slate-blue);
+    --edge-color-seq-8-dark: var(--slate-blue-dark);
 
     --ord-color-seq-1: var(--sea-green);
     --ord-color-seq-1-dark: var(--sea-green-dark);

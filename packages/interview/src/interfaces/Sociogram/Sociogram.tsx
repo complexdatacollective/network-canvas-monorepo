@@ -96,9 +96,10 @@ const Sociogram = (stageProps: SociogramProps) => {
   }, [canvasNodes, layoutVariable, store, layoutMode]);
 
   // Sociogram force tuning (SIM space: px / canvas height, coordinates ~0..aspect,
-  // so charge/bias are screen-independent). No group cohesion (no convex hulls),
-  // so spread relies on charge. A weak symmetric forceX/forceY keeps the layout
-  // centred and slightly up to clear the bottom prompt panel.
+  // so charge/bias are screen-independent). No group cohesion acts (no convex
+  // hulls, so no groupVariable is supplied and the engine's cohesion force is
+  // inert); spread relies on charge. A weak symmetric forceX/forceY keeps the
+  // layout centred and slightly up to clear the bottom prompt panel.
   //
   // Unlike Narrative (which gently REFINES already-meaningful authored positions),
   // Sociogram lays out FROM SCRATCH, so it needs a full anneal to escape local
@@ -111,7 +112,6 @@ const Sociogram = (stageProps: SociogramProps) => {
   // linearly to sim space. Tune visually.
   const layoutOptions = useMemo(
     () => ({
-      cohesion: 0,
       charge: -0.006,
       startAlpha: 1,
       alphaMin: 0.025,
