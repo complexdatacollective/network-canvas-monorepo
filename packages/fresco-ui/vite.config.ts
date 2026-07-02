@@ -1,6 +1,6 @@
 import { copyFile, mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { dirname, relative, resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { globSync } from 'tinyglobby';
@@ -8,7 +8,6 @@ import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const srcRoot = resolve(here, 'src');
 
 // Build a regex array of every dep + peerDep so rolldown leaves them external.
 // Inline (vs. vite-plugin-externalize-deps) because the plugin returns a
@@ -55,35 +54,22 @@ export default defineConfig({
       formats: ['es'],
     },
     rolldownOptions: {
-      // Map each source file to an explicit output name (its path under src/,
-      // posix-normalized, sans extension) instead of relying on
-      // `preserveModules` + `preserveModulesRoot`. rolldown@1.0.3's
-      // preserveModulesRoot stripping is separator-sensitive and silently fails
-      // on Windows — it emits every file under `dist/packages/fresco-ui/src/…`
-      // instead of `dist/…`, so every subpath export
-      // (`@codaco/fresco-ui/ThemedRegion`, …) 404s for Windows consumers. With
-      // an explicit input MAP, each entry's output path is the key we compute
-      // here, so output is byte-for-byte identical on every OS. Each src file is
-      // still its own entry, so the 1:1 `dist/<path>.js` layout the package
-      // exports map points at is preserved.
-      input: Object.fromEntries(
-        globSync(
-          [
-            'src/**/*.{ts,tsx}',
-            '!src/**/*.{stories,test,spec}.{ts,tsx}',
-            '!src/**/__tests__/**',
-          ],
-          { cwd: here, absolute: true },
-        ).map((abs) => [
-          relative(srcRoot, abs)
-            .replace(/\\/g, '/')
-            .replace(/\.[jt]sx?$/, ''),
-          abs,
-        ]),
+      input: globSync(
+        [
+          'src/**/*.{ts,tsx}',
+          '!src/**/*.{stories,test,spec}.{ts,tsx}',
+          '!src/**/__tests__/**',
+        ],
+        {
+          cwd: here,
+          absolute: true,
+        },
       ),
       external: [externalRegex, /^node:/],
       output: {
         format: 'esm',
+        preserveModules: true,
+        preserveModulesRoot: 'src',
         entryFileNames: '[name].js',
       },
     },
