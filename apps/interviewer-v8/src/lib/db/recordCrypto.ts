@@ -9,8 +9,21 @@ import {
   type EncryptedAssetData,
   type EncryptedField,
 } from '../vault/crypto';
+import { readVault } from '../vault/vaultStore';
 import { getSessionDek } from './sessionKey';
 import type { StoredAsset, StoredProtocol, StoredSession } from './types';
+
+// A null session DEK is ambiguous: it means either mode 'none' (no key ever
+// exists — legitimate plaintext) or a secured vault that is currently locked.
+// Passing through plaintext for a locked secured vault would silently persist
+// research data unencrypted at rest, so the write side must fail closed exactly
+// as the decrypt side does. Consult the vault mode to disambiguate.
+function assertNotLockedSecuredVault(kind: 'session' | 'protocol' | 'asset') {
+  const mode = readVault()?.mode;
+  if (mode === 'pin' || mode === 'passphrase' || mode === 'biometric') {
+    throw new Error(`Cannot encrypt ${kind}: vault is locked (no key)`);
+  }
+}
 
 export type StoredSessionRow = Omit<
   StoredSession,
@@ -55,6 +68,7 @@ export async function encryptSession(
   const dek = getSessionDek();
   const { network, stageMetadata, ...rest } = s;
   if (!dek) {
+    assertNotLockedSecuredVault('session');
     return { ...rest, network, stageMetadata };
   }
   const aad = sessionAad(s.id);
@@ -100,6 +114,7 @@ export async function encryptProtocol(
   const dek = getSessionDek();
   const { protocol, codebook, ...rest } = p;
   if (!dek) {
+    assertNotLockedSecuredVault('protocol');
     return { ...rest, protocol, codebook };
   }
   const aad = protocolAad(p.hash);
@@ -141,6 +156,7 @@ export async function encryptAsset(a: StoredAsset): Promise<StoredAssetRow> {
   const dek = getSessionDek();
   const { data, ...rest } = a;
   if (!dek) {
+    assertNotLockedSecuredVault('asset');
     return { ...rest, data };
   }
   const enc = await encryptAssetData(data, dek, assetAad(a.id));

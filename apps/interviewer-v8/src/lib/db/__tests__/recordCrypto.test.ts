@@ -6,6 +6,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { clearVault, writeVault } from '../../vault/vaultStore';
 import {
   decryptAsset,
   decryptProtocol,
@@ -167,9 +168,23 @@ describe('recordCrypto — encrypted mode', () => {
 });
 
 describe('recordCrypto — none mode (passthrough)', () => {
-  afterEach(() => setSessionDek(null));
+  afterEach(() => {
+    setSessionDek(null);
+    clearVault();
+  });
 
-  it('stores plaintext session with no _enc', async () => {
+  it('stores plaintext session with no _enc when no vault record exists', async () => {
+    setSessionDek(null);
+    const row = await encryptSession(session);
+    expect(row._enc).toBeUndefined();
+    expect(row.network).toEqual(network);
+    expect(row.stageMetadata).toEqual(session.stageMetadata);
+    const back = await decryptSession(row);
+    expect(back).toEqual(session);
+  });
+
+  it('stores plaintext session with no _enc under an explicit mode:none vault', async () => {
+    writeVault({ version: 4, mode: 'none' });
     setSessionDek(null);
     const row = await encryptSession(session);
     expect(row._enc).toBeUndefined();
@@ -180,6 +195,7 @@ describe('recordCrypto — none mode (passthrough)', () => {
   });
 
   it('stores plaintext protocol with no _enc', async () => {
+    writeVault({ version: 4, mode: 'none' });
     setSessionDek(null);
     const row = await encryptProtocol(protocol);
     expect(row._enc).toBeUndefined();
@@ -189,11 +205,55 @@ describe('recordCrypto — none mode (passthrough)', () => {
   });
 
   it('stores plaintext asset data with no _enc', async () => {
+    writeVault({ version: 4, mode: 'none' });
     setSessionDek(null);
     const row = await encryptAsset(blobAsset);
     expect(row._enc).toBeUndefined();
     expect(row.data).toBe(blobAsset.data);
     const back = await decryptAsset(row);
     expect(back.data).toBe(blobAsset.data);
+  });
+});
+
+describe('recordCrypto — locked secured vault (fail closed)', () => {
+  afterEach(() => {
+    setSessionDek(null);
+    clearVault();
+  });
+
+  it('rejects encryptSession when a pin vault is locked (no DEK)', async () => {
+    writeVault({
+      version: 4,
+      mode: 'pin',
+      kdfSaltB64: 'c2FsdA==',
+      kdfIterations: 600_000,
+      wrappedDekB64: 'd3JhcHBlZA==',
+    });
+    setSessionDek(null);
+    await expect(encryptSession(session)).rejects.toThrow(/locked|key/i);
+  });
+
+  it('rejects encryptProtocol when a pin vault is locked (no DEK)', async () => {
+    writeVault({
+      version: 4,
+      mode: 'pin',
+      kdfSaltB64: 'c2FsdA==',
+      kdfIterations: 600_000,
+      wrappedDekB64: 'd3JhcHBlZA==',
+    });
+    setSessionDek(null);
+    await expect(encryptProtocol(protocol)).rejects.toThrow(/locked|key/i);
+  });
+
+  it('rejects encryptAsset when a pin vault is locked (no DEK)', async () => {
+    writeVault({
+      version: 4,
+      mode: 'pin',
+      kdfSaltB64: 'c2FsdA==',
+      kdfIterations: 600_000,
+      wrappedDekB64: 'd3JhcHBlZA==',
+    });
+    setSessionDek(null);
+    await expect(encryptAsset(blobAsset)).rejects.toThrow(/locked|key/i);
   });
 });
