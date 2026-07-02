@@ -18,7 +18,6 @@ import {
   type ImportRequest,
   useProtocolImport,
 } from '~/lib/protocol/useProtocolImport';
-import { useUpdateCheck } from '~/lib/update/useUpdateCheck';
 
 import { buildDeleteProtocolMessage } from './deleteProtocolMessage';
 import {
@@ -50,8 +49,6 @@ export function HomeRoute() {
   const view = viewFromLocation(location);
   const dialog = useDialog();
   const toast = useToast();
-
-  const { availableUpdate, openUpdateDialog } = useUpdateCheck();
 
   // If the pending hash has since been deleted (e.g. cascade-delete from
   // the Protocols route while a card was still pending), drop the pending
@@ -220,12 +217,6 @@ export function HomeRoute() {
               <StatusRow
                 protocolCount={protocols.length}
                 interviewCount={sessions.length}
-                availableUpdate={availableUpdate}
-                onOpenUpdate={
-                  availableUpdate
-                    ? () => openUpdateDialog(availableUpdate)
-                    : undefined
-                }
               />
             </div>
           </motion.div>
