@@ -10,6 +10,7 @@ import {
 
 import { getSettings, updateSettings } from '../db/api';
 import { DEFAULT_SETTINGS } from '../db/types';
+import { VAULT_STORAGE_KEY } from '../vault/vaultStore';
 import * as authApi from './api';
 import type { AuthMode } from './api';
 import { useIdleTimer } from './idle';
@@ -83,6 +84,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authApi.lock();
     await refresh();
   }, [refresh]);
+
+  // The session DEK is per-tab module memory while the vault record is shared
+  // localStorage. If another tab revokes and re-enrols, this tab's stale DEK
+  // would encrypt rows the new vault can never decrypt (permanent data loss).
+  // Force-lock this tab whenever the vault record changes in another tab so
+  // AuthGate re-gates and the next unlock derives a fresh DEK.
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== VAULT_STORAGE_KEY) return;
+      void lock();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [lock]);
 
   const idleTimeoutMs = state.idleTimeoutMinutes * 60_000;
   useIdleTimer({

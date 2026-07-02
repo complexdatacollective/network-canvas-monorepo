@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getSessionDek, setSessionDek } from '../../db/sessionKey';
-import { clearVault } from '../../vault/vaultStore';
+import { clearVault, VAULT_STORAGE_KEY } from '../../vault/vaultStore';
 import * as authApi from '../api';
 import { AuthProvider, useAuth } from '../AuthContext';
 
@@ -88,5 +88,55 @@ describe('AuthProvider transitions', () => {
       expect(screen.getByTestId('kind')).toHaveTextContent('locked'),
     );
     expect(screen.getByTestId('mode')).toHaveTextContent('pin');
+  });
+
+  it('force-locks this tab when another tab changes the vault record (storage event)', async () => {
+    await authApi.enrolWithPin('12345678');
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('unlocked'),
+    );
+    expect(getSessionDek()).not.toBeNull();
+
+    // Another tab re-enrolled: the shared vault record changed. jsdom does not
+    // fire `storage` across contexts, so dispatch the event this tab would see.
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', { key: VAULT_STORAGE_KEY }),
+      );
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('locked'),
+    );
+    expect(getSessionDek()).toBeNull();
+  });
+
+  it('ignores storage events for unrelated keys', async () => {
+    await authApi.enrolWithPin('12345678');
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('unlocked'),
+    );
+
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', { key: 'some-other-key' }),
+      );
+    });
+
+    // No force-lock: the DEK and gate are untouched.
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('unlocked'),
+    );
+    expect(getSessionDek()).not.toBeNull();
   });
 });

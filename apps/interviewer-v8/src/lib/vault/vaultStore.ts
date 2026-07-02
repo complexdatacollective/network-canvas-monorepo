@@ -21,7 +21,10 @@ export type VaultRecord =
       };
     };
 
-const STORAGE_KEY = 'interviewer-v8:vault';
+// The localStorage key holding the vault record. Exported so cross-tab
+// `storage`-event listeners can key off the same literal this module reads and
+// writes, rather than a divergent hardcoded copy.
+export const VAULT_STORAGE_KEY = 'interviewer-v8:vault';
 const CURRENT_VERSION = 4;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -74,7 +77,7 @@ function isVaultRecord(value: unknown): value is VaultRecord {
 
 export function readVault(): VaultRecord | null {
   if (typeof window === 'undefined') return null;
-  const raw = window.localStorage.getItem(STORAGE_KEY);
+  const raw = window.localStorage.getItem(VAULT_STORAGE_KEY);
   if (raw === null) return null;
 
   let parsed: unknown;
@@ -89,10 +92,10 @@ export function readVault(): VaultRecord | null {
 
 export function writeVault(record: VaultRecord): void {
   if (typeof window === 'undefined') return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
+  window.localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(record));
 }
 
 export function clearVault(): void {
   if (typeof window === 'undefined') return;
-  window.localStorage.removeItem(STORAGE_KEY);
+  window.localStorage.removeItem(VAULT_STORAGE_KEY);
 }
