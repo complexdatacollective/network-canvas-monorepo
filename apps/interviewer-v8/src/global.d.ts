@@ -36,4 +36,25 @@ declare global {
     locked: boolean;
     mode?: 'pin' | 'passphrase' | 'biometric' | 'none';
   };
+
+  // iOS Safari exposes installed-PWA (home-screen) state via this non-standard,
+  // read-only flag, which predates the `display-mode` media query.
+  interface Navigator {
+    readonly standalone?: boolean;
+  }
+
+  // The PWA install prompt event is not in TypeScript's DOM lib. Captured
+  // pre-React in installPrompt.ts and offered by PwaInstallNudge.
+  interface BeforeInstallPromptEvent extends Event {
+    readonly platforms: readonly string[];
+    readonly userChoice: Promise<{
+      readonly outcome: 'accepted' | 'dismissed';
+      readonly platform: string;
+    }>;
+    prompt(): Promise<void>;
+  }
+
+  interface WindowEventMap {
+    beforeinstallprompt: BeforeInstallPromptEvent;
+  }
 }
