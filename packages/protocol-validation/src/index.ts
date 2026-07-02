@@ -1,7 +1,9 @@
 import { asEntityAttributeReference } from './schemas/8/entity-attribute-reference';
 import {
   collectEntityAttributeReferences,
+  collectEntityTypeReferences,
   type EntityAttributeReferenceHit,
+  type EntityTypeReferenceHit,
 } from './utils/collectEntityAttributeReferences';
 import { type ExtractedAsset, extractProtocol } from './utils/extractProtocol';
 import { hashProtocol } from './utils/hashProtocol';
@@ -33,7 +35,9 @@ export * from './schemas';
 export {
   asEntityAttributeReference,
   collectEntityAttributeReferences,
+  collectEntityTypeReferences,
   type EntityAttributeReferenceHit,
+  type EntityTypeReferenceHit,
   type ExtractedAsset,
   extractProtocol,
   getVariableNamesFromNetwork,

@@ -7,6 +7,7 @@ import {
   getEntityAttributeReferenceDescriptor,
   type SubjectResolution,
 } from '../schemas/8/entity-attribute-reference';
+import { getEntityTypeReferenceDescriptor } from '../schemas/8/entity-type-reference';
 import type { VariableType } from '../schemas/8/variables/types';
 
 export type EntityAttributeReferenceHit = {
@@ -16,9 +17,23 @@ export type EntityAttributeReferenceHit = {
   requireType?: readonly VariableType[];
 };
 
+export type EntityTypeReferenceHit = {
+  path: (string | number)[];
+  typeId: string;
+  entity: 'node' | 'edge';
+};
+
+// One walk collects both reference kinds; the public collectors filter.
+type ReferenceHit =
+  | ({ kind: 'attribute' } & EntityAttributeReferenceHit)
+  | ({ kind: 'type' } & EntityTypeReferenceHit);
+
 type WalkContext = {
   stageSubject?: StageSubject;
   parent?: Record<string, unknown>;
+  // The `type` of the nearest enclosing filter rule, for resolving the rule's
+  // options.type entity ('ego' rules reference no codebook type).
+  filterRuleEntity?: 'node' | 'edge';
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -38,10 +53,11 @@ const unwrap = (schema: z.ZodType): z.ZodType => {
   }
 };
 
-// Memoised: does this schema's subtree contain any entity-attribute reference?
-// The protocol schema is static, so each node is analysed once and the walker
-// can skip the large reference-free regions (UI config, text, assets, network
-// data) without descending into them or running safeParse on union branches.
+// Memoised: does this schema's subtree contain any entity-attribute or
+// entity-type reference? The protocol schema is static, so each node is
+// analysed once and the walker can skip the large reference-free regions (UI
+// config, text, assets, network data) without descending into them or running
+// safeParse on union branches.
 const subtreeHasReference = new WeakMap<z.ZodType, boolean>();
 const hasReference = (schema: z.ZodType): boolean => {
   const node = unwrap(schema);
@@ -50,7 +66,9 @@ const hasReference = (schema: z.ZodType): boolean => {
   // Provisional false guards against schema cycles while computing.
   subtreeHasReference.set(node, false);
   const def = node._zod.def;
-  let result = getEntityAttributeReferenceDescriptor(node) !== undefined;
+  let result =
+    getEntityAttributeReferenceDescriptor(node) !== undefined ||
+    getEntityTypeReferenceDescriptor(node) !== undefined;
   if (!result) {
     switch (def.type) {
       case 'object':
@@ -150,6 +168,16 @@ const stageSubjectOf = (
   return undefined;
 };
 
+// A filter rule is { type: 'node' | 'edge' | 'ego', id, options }; its type
+// field names the codebook the rule's options.type id lives in.
+const filterRuleEntityOf = (
+  value: Record<string, unknown>,
+): 'node' | 'edge' | undefined => {
+  if (!isRecord(value.options)) return undefined;
+  if (value.type === 'node' || value.type === 'edge') return value.type;
+  return undefined;
+};
+
 const resolveSubject = (
   resolution: SubjectResolution,
   path: (string | number)[],
@@ -181,7 +209,7 @@ const walk = (
   value: unknown,
   path: (string | number)[],
   ctx: WalkContext,
-): EntityAttributeReferenceHit[] => {
+): ReferenceHit[] => {
   if (value === undefined || value === null) return [];
   const node = unwrap(schema);
   // Prune reference-free subtrees: nothing below can produce a hit.
@@ -190,16 +218,30 @@ const walk = (
 
   switch (def.type) {
     case 'string': {
-      const descriptor = getEntityAttributeReferenceDescriptor(node);
-      if (!descriptor || typeof value !== 'string') return [];
-      return [
-        {
-          path,
-          variableId: value,
-          subject: resolveSubject(descriptor.subject, path, ctx),
-          requireType: descriptor.requireType,
-        },
-      ];
+      if (typeof value !== 'string') return [];
+      const attributeDescriptor = getEntityAttributeReferenceDescriptor(node);
+      if (attributeDescriptor) {
+        return [
+          {
+            kind: 'attribute',
+            path,
+            variableId: value,
+            subject: resolveSubject(attributeDescriptor.subject, path, ctx),
+            requireType: attributeDescriptor.requireType,
+          },
+        ];
+      }
+      const typeDescriptor = getEntityTypeReferenceDescriptor(node);
+      if (typeDescriptor) {
+        const entity =
+          typeDescriptor.entity === 'filterRule'
+            ? ctx.filterRuleEntity
+            : typeDescriptor.entity;
+        // Unresolvable (e.g. an ego filter rule) references no codebook type.
+        if (entity === undefined) return [];
+        return [{ kind: 'type', path, typeId: value, entity }];
+      }
+      return [];
     }
     case 'object': {
       if (!isRecord(value)) return [];
@@ -207,6 +249,7 @@ const walk = (
       const childCtx: WalkContext = {
         stageSubject: stageSubjectOf(value) ?? ctx.stageSubject,
         parent: value,
+        filterRuleEntity: filterRuleEntityOf(value) ?? ctx.filterRuleEntity,
       };
       return Object.keys(shape).flatMap((key) => {
         const child = shape[key] as z.ZodType;
@@ -283,7 +326,7 @@ const walk = (
       // De-dupe on the full hit (path AND resolved subject/requireType): two
       // branches can expose the same path with different validation metadata,
       // and those are distinct references that must both survive.
-      const merged = new Map<string, EntityAttributeReferenceHit>();
+      const merged = new Map<string, ReferenceHit>();
       for (const option of refOptions) {
         for (const hit of walk(option, value, path, ctx)) {
           merged.set(JSON.stringify(hit), hit);
@@ -296,10 +339,22 @@ const walk = (
   }
 };
 
+const isAttributeHit = (
+  hit: ReferenceHit,
+): hit is { kind: 'attribute' } & EntityAttributeReferenceHit =>
+  hit.kind === 'attribute';
+
+const isTypeHit = (
+  hit: ReferenceHit,
+): hit is { kind: 'type' } & EntityTypeReferenceHit => hit.kind === 'type';
+
 export const collectEntityAttributeReferencesFromSchema = (
   schema: z.ZodType,
   value: unknown,
-): EntityAttributeReferenceHit[] => walk(schema, value, [], {});
+): EntityAttributeReferenceHit[] =>
+  walk(schema, value, [], {})
+    .filter(isAttributeHit)
+    .map(({ kind: _kind, ...hit }) => hit);
 
 export const collectEntityAttributeReferences = (
   protocol: unknown,
@@ -308,3 +363,17 @@ export const collectEntityAttributeReferences = (
     CurrentProtocolSchema as unknown as z.ZodType,
     protocol,
   );
+
+/**
+ * Every codebook node/edge TYPE referenced by a protocol, discovered from the
+ * schema's `entityTypeReference` tags — the entity-type counterpart of
+ * `collectEntityAttributeReferences`. Covers stage subjects (including the
+ * NetworkComposer's per-edge-type entries), edge creation/display prompt
+ * settings, the FamilyPedigree node/edge configs, and filter rules.
+ */
+export const collectEntityTypeReferences = (
+  protocol: unknown,
+): EntityTypeReferenceHit[] =>
+  walk(CurrentProtocolSchema as unknown as z.ZodType, protocol, [], {})
+    .filter(isTypeHit)
+    .map(({ kind: _kind, ...hit }) => hit);

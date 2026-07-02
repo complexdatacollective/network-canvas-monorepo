@@ -26,6 +26,7 @@ import NameGeneratorQuickAdd from './NameGenerator/NameGeneratorQuickAdd';
 import NameGeneratorRoster from './NameGeneratorRoster';
 import Narrative from './Narrative/Narrative';
 import NarrativePedigree from './NarrativePedigree/NarrativePedigree';
+import NetworkComposer from './NetworkComposer/NetworkComposer';
 import OneToManyDyadCensus from './OneToManyDyadCensus/OneToManyDyadCensus';
 import OrdinalBin from './OrdinalBin/OrdinalBin';
 import Sociogram from './Sociogram/Sociogram';
@@ -54,6 +55,8 @@ const getInterface = (interfaceType: InterfaceType) => {
       return NameGeneratorRoster;
     case 'Sociogram':
       return Sociogram;
+    case 'NetworkComposer':
+      return NetworkComposer;
     case 'Information':
       return Information;
     case 'OrdinalBin':

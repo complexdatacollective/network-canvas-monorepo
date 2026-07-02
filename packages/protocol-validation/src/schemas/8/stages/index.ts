@@ -18,6 +18,7 @@ import { nameGeneratorQuickAddStage } from './name-generator-quick-add';
 import { nameGeneratorRosterStage } from './name-generator-roster';
 import { narrativeStage } from './narrative';
 import { narrativePedigreeStage } from './narrative-pedigree';
+import { networkComposerStage } from './network-composer';
 import { oneToManyDyadCensusStage } from './one-to-many-dyad-census';
 import { ordinalBinStage } from './ordinal-bin';
 import { sociogramStage } from './sociogram';
@@ -38,6 +39,7 @@ export * from './name-generator-quick-add';
 export * from './name-generator-roster';
 export * from './narrative-pedigree';
 export * from './narrative';
+export * from './network-composer';
 export * from './one-to-many-dyad-census';
 export * from './ordinal-bin';
 export * from './sociogram';
@@ -52,6 +54,7 @@ const stageSchemas = [
   nameGeneratorQuickAddStage,
   nameGeneratorRosterStage,
   sociogramStage,
+  networkComposerStage,
   dyadCensusStage,
   tieStrengthCensusStage,
   ordinalBinStage,

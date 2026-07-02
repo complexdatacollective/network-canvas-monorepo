@@ -27,7 +27,8 @@ const notEmpty = (value: unknown) =>
 
 type EditableListProps = {
   label?: string;
-  form: string;
+  form?: string;
+  editFormName?: string;
   sortMode?: 'manual';
   title: string;
   fieldName?: string;
@@ -63,8 +64,11 @@ const EditableList = ({
   template = () => ({ id: v4() }), // Function to provide a template for new items
   sortable = true,
   itemSelector,
+  form: formProp,
+  editFormName = 'editable-list-form',
 }: EditableListProps) => {
-  const { form } = useFormContext();
+  const { form: contextForm } = useFormContext();
+  const form = formProp ?? contextForm;
   const {
     editIndex,
     handleTriggerEdit,
@@ -73,6 +77,7 @@ const EditableList = ({
     handleAddNew,
   } = useEditHandlers({
     fieldName,
+    form,
     onChange,
     normalize,
     template,
@@ -150,7 +155,7 @@ const EditableList = ({
               nativeButton={false}
               render={<Button color="platinum">Cancel</Button>}
             />
-            <Button type="submit" form="editable-list-form" color="sea-green">
+            <Button type="submit" form={editFormName} color="sea-green">
               Save
             </Button>
           </>
@@ -158,8 +163,8 @@ const EditableList = ({
         className="bg-surface-2"
       >
         <Form
-          form="editable-list-form"
-          id="editable-list-form"
+          form={editFormName}
+          id={editFormName}
           onSubmit={handleSaveEdit}
           initialValues={initialValuesForEdit}
         >
@@ -167,7 +172,7 @@ const EditableList = ({
             <EditComponent
               {...(initialValuesForEdit as Record<string, unknown>)}
               {...editProps}
-              form="editable-list-form"
+              form={editFormName}
             />
           </Layout>
         </Form>

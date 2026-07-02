@@ -27,6 +27,7 @@ import type {
   AddDyadCensusPromptInput,
   AddEdgeTypeInput,
   AddGeospatialPromptInput,
+  AddNetworkComposerEdgeInput,
   AddNodeTypeInput,
   AddOneToManyDyadCensusPromptInput,
   AddOrdinalBinPromptInput,
@@ -44,6 +45,9 @@ import type {
   GeospatialPromptEntry,
   GetSessionInput,
   NameGeneratorPromptEntry,
+  NetworkComposerEdgeEntry,
+  NetworkComposerFormFieldEntry,
+  NetworkComposerFormFieldInput,
   NodeEntry,
   NodeTypeEntry,
   OneToManyDyadCensusPromptEntry,
@@ -151,6 +155,12 @@ type GeospatialHandle = StageHandleBase & {
 };
 
 type NarrativePedigreeHandle = StageHandleBase;
+type NetworkComposerHandle = StageHandleBase & {
+  // Each call appends an entry to the stage's `edges[]`, returning the edge
+  // type id so callers can seed edges of that type via `addEdges`.
+  addEdgeType: (opts?: AddNetworkComposerEdgeInput) => { id: string };
+  addNodeFormField: (opts: NetworkComposerFormFieldInput) => void;
+};
 
 type StageHandleMap = {
   NameGenerator: NameGeneratorHandle;
@@ -171,6 +181,7 @@ type StageHandleMap = {
   FamilyPedigree: FamilyPedigreeHandle;
   Geospatial: GeospatialHandle;
   NarrativePedigree: NarrativePedigreeHandle;
+  NetworkComposer: NetworkComposerHandle;
 };
 
 // Stage types that have no subject (node/edge)
@@ -615,6 +626,53 @@ export class SyntheticInterview {
       }
     }
 
+    // NetworkComposer
+    if (type === 'NetworkComposer') {
+      if (subject?.entity !== 'node') {
+        throw new Error('NetworkComposer stages require a node subject');
+      }
+
+      const nodeTypeId = subject.type;
+
+      // quickAdd is a text variable populated by the inline add field. Mirror
+      // NameGeneratorQuickAdd's default of 'name' (the variable addNodeType
+      // seeds), but accept an explicit ref.
+      if (opts?.quickAdd) {
+        entry.quickAdd = opts.quickAdd;
+      } else {
+        const ref = this.addVariableToNodeType(nodeTypeId, {
+          type: 'text',
+          name: 'name',
+        });
+        entry.quickAdd = ref.id;
+      }
+
+      // layoutVariable stores each node's { x, y } position.
+      if (opts?.layoutVariable) {
+        entry.layoutVariable = opts.layoutVariable;
+      } else {
+        const ref = this.addVariableToNodeType(nodeTypeId, {
+          type: 'layout',
+          name: 'Composer Layout',
+        });
+        entry.layoutVariable = ref.id;
+      }
+
+      if (opts?.nodeForm) {
+        entry.nodeForm = {
+          fields: opts.nodeForm.fields.map((f) =>
+            this.resolveNetworkComposerFormField(f, nodeTypeId),
+          ),
+        };
+      }
+
+      if (opts?.convexHullVariable) {
+        entry.convexHullVariable = opts.convexHullVariable;
+      }
+
+      entry.networkComposerEdges = [];
+    }
+
     // Generate initial nodes (only for node-based stages)
     const initialNodeCount = opts?.initialNodes?.count ?? 0;
     const initialNodePromptIndex = opts?.initialNodes?.promptIndex;
@@ -890,6 +948,35 @@ export class SyntheticInterview {
 
       case 'NarrativePedigree':
         return base as StageHandleMap[T];
+      case 'NetworkComposer':
+        return {
+          ...base,
+          addEdgeType: (opts?: AddNetworkComposerEdgeInput) => {
+            const edgeTypeId = opts?.type ?? this.addEdgeType().id;
+            const edgeEntry: NetworkComposerEdgeEntry = {
+              id: this.nextId('composer-edge'),
+              subject: { entity: 'edge', type: edgeTypeId },
+            };
+            if (opts?.form) {
+              edgeEntry.form = {
+                fields: opts.form.fields.map((f) =>
+                  this.resolveNetworkComposerEdgeFormField(f, edgeTypeId),
+                ),
+              };
+            }
+            entry.networkComposerEdges ??= [];
+            entry.networkComposerEdges.push(edgeEntry);
+            return { id: edgeTypeId };
+          },
+          addNodeFormField: (opts: NetworkComposerFormFieldInput) => {
+            const field = this.resolveNetworkComposerFormField(
+              opts,
+              entry.subject!.type,
+            );
+            entry.nodeForm ??= { fields: [] };
+            entry.nodeForm.fields.push(field);
+          },
+        } as StageHandleMap[T];
     }
   }
 
@@ -968,6 +1055,52 @@ export class SyntheticInterview {
       variable: variableId,
       component: input.component,
       prompt,
+    };
+  }
+
+  private resolveNetworkComposerFormField(
+    input: NetworkComposerFormFieldInput,
+    nodeTypeId: string,
+  ): NetworkComposerFormFieldEntry {
+    let variableId = input.variable;
+    if (!variableId) {
+      const ref = this.addVariableToNodeType(nodeTypeId, {
+        component: input.component,
+        name: input.label,
+        validation: input.validation,
+      });
+      variableId = ref.id;
+    }
+    const nodeType = this.nodeTypes.get(nodeTypeId);
+    const variable = nodeType?.variables.get(variableId);
+    return {
+      variable: variableId,
+      component: input.component,
+      ...(input.parameters ? { parameters: input.parameters } : {}),
+      label: input.label ?? variable?.name ?? 'Field',
+    };
+  }
+
+  private resolveNetworkComposerEdgeFormField(
+    input: NetworkComposerFormFieldInput,
+    edgeTypeId: string,
+  ): NetworkComposerFormFieldEntry {
+    let variableId = input.variable;
+    if (!variableId) {
+      const ref = this.addVariableToEdgeType(edgeTypeId, {
+        component: input.component,
+        name: input.label,
+        validation: input.validation,
+      });
+      variableId = ref.id;
+    }
+    const edgeType = this.edgeTypes.get(edgeTypeId);
+    const variable = edgeType?.variables.get(variableId);
+    return {
+      variable: variableId,
+      component: input.component,
+      ...(input.parameters ? { parameters: input.parameters } : {}),
+      label: input.label ?? variable?.name ?? 'Field',
     };
   }
 
@@ -1595,6 +1728,17 @@ export class SyntheticInterview {
       }
       config.showAtRiskStatuses =
         stage.narrativePedigreeShowAtRiskStatuses ?? false;
+    }
+
+    // NetworkComposer (quickAdd is serialized by the shared block above)
+    if (stage.type === 'NetworkComposer') {
+      if (stage.layoutVariable) config.layoutVariable = stage.layoutVariable;
+      if (stage.nodeForm) config.nodeForm = stage.nodeForm;
+      if (stage.convexHullVariable)
+        config.convexHullVariable = stage.convexHullVariable;
+      if (stage.networkComposerEdges) {
+        config.edges = stage.networkComposerEdges;
+      }
     }
 
     return config;

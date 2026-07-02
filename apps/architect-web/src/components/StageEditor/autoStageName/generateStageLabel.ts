@@ -14,6 +14,7 @@ export const STAGE_TYPE_NAMES: Record<StageType, string> = {
   OneToManyDyadCensus: 'One to Many Dyad Census',
   TieStrengthCensus: 'Tie-Strength Census',
   Sociogram: 'Sociogram',
+  NetworkComposer: 'Network Composer',
   Narrative: 'Narrative',
   OrdinalBin: 'Ordinal Bin',
   CategoricalBin: 'Categorical Bin',

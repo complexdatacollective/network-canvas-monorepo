@@ -98,6 +98,7 @@ describe('STAGE_TYPE_NAMES', () => {
       OneToManyDyadCensus: 'One to Many Dyad Census',
       TieStrengthCensus: 'Tie-Strength Census',
       Sociogram: 'Sociogram',
+      NetworkComposer: 'Network Composer',
       Narrative: 'Narrative',
       OrdinalBin: 'Ordinal Bin',
       CategoricalBin: 'Categorical Bin',

@@ -38,6 +38,7 @@ const INTERFACE_TYPE_NAMES = [
   'OneToManyDyadCensus',
   'TieStrengthCensus',
   'Sociogram',
+  'NetworkComposer',
   'Narrative',
   'OrdinalBin',
   'CategoricalBin',
@@ -148,6 +149,21 @@ export const INTERFACE_TYPES: InterfaceType[] = [
     title: 'Sociogram',
     description:
       'Designed for spatially arranging alters (either manually or automatically), creating edges between them, and highlighting the presence of alter attributes.',
+  },
+  {
+    category: CATEGORIES.SOCIOGRAMS,
+    tags: [
+      TAGS.CREATE_NODES,
+      TAGS.CREATE_EDGES,
+      TAGS.NODE_ATTRIBUTES,
+      TAGS.EDGE_ATTRIBUTES,
+    ],
+    keywords:
+      'network composer sociogram free form notepad build construct nodes edges attributes single screen',
+    type: 'NetworkComposer',
+    title: 'Network Composer',
+    description:
+      'A free-form, single-screen canvas for building a whole network — create nodes, draw multiple edge types, and capture node and edge attributes in one place.',
   },
   {
     category: CATEGORIES.SOCIOGRAMS,

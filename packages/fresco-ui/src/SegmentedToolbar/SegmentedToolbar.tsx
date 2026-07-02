@@ -15,7 +15,15 @@ import {
 import * as React from 'react';
 
 import { Button } from '../Button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '../DropdownMenu';
 import { MotionSurface } from '../layout/Surface';
+import { Popover, PopoverContent, PopoverTrigger } from '../Popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
 import { cva, cx } from '../utils/cva';
 
@@ -75,11 +83,46 @@ export type SeparatorSegment = {
   id: string;
 };
 
+/**
+ * A button that opens a single-select menu — for choosing among options that
+ * would otherwise need one segment each (e.g. picking an edge type to draw).
+ * The trigger shows `pressed` styling when a selection is active.
+ */
+export type MenuSegment = {
+  type: 'menu';
+  id: string;
+  disabled?: boolean;
+  pressed?: boolean;
+  value?: string;
+  options: Array<SegmentContent & { value: string; disabled?: boolean }>;
+  onSelect: (value: string) => void;
+} & SegmentContent;
+
+/**
+ * A pressed-able button that anchors a popover next to itself, rendering
+ * arbitrary content (e.g. a text input). Open state is controlled by the
+ * consumer so it can be tied to external state — for instance keeping the
+ * button "pressed" for as long as the popover is open.
+ */
+export type PopoverSegment = {
+  type: 'popover';
+  id: string;
+  disabled?: boolean;
+  pressed?: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Which side of the trigger the popover opens on. @default 'right' */
+  side?: 'top' | 'right' | 'bottom' | 'left';
+  children: React.ReactNode;
+} & SegmentContent;
+
 export type ToolbarSegment =
   | ButtonSegment
   | ToggleSegment
   | GroupSegment
-  | SeparatorSegment;
+  | SeparatorSegment
+  | MenuSegment
+  | PopoverSegment;
 
 export type Position = { x: number; y: number };
 
@@ -156,17 +199,27 @@ function segmentButton(
   );
 }
 
+// On a vertical toolbar, tooltips/menus/popovers open to the right (into the
+// canvas) rather than overlapping the stacked buttons. Horizontal toolbars keep
+// each overlay's own default side (tooltip top, menu/popover bottom).
+function overlaySide(
+  orientation: 'horizontal' | 'vertical',
+): 'right' | undefined {
+  return orientation === 'vertical' ? 'right' : undefined;
+}
+
 /** Wraps an icon-only control in a tooltip carrying its label. */
 function withTooltip(
   control: React.ReactElement,
   label: string,
   labelVisible: boolean,
+  side?: 'top' | 'right' | 'bottom' | 'left',
 ) {
   if (labelVisible) return control;
   return (
     <Tooltip>
       <TooltipTrigger render={control} />
-      <TooltipContent>{label}</TooltipContent>
+      <TooltipContent side={side}>{label}</TooltipContent>
     </Tooltip>
   );
 }
@@ -174,9 +227,11 @@ function withTooltip(
 function ToolbarButtonSegment({
   segment,
   size,
+  orientation,
 }: {
   segment: ButtonSegment;
   size: SegmentSize;
+  orientation: 'horizontal' | 'vertical';
 }) {
   const styledButton = segmentButton(segment, size);
   // When a caller hosts the segment in their own element (e.g. a Popover
@@ -193,15 +248,22 @@ function ToolbarButtonSegment({
       render={control}
     />
   );
-  return withTooltip(button, segment.label, isLabelVisible(segment));
+  return withTooltip(
+    button,
+    segment.label,
+    isLabelVisible(segment),
+    overlaySide(orientation),
+  );
 }
 
 function ToolbarToggleSegment({
   segment,
   size,
+  orientation,
 }: {
   segment: ToggleSegment;
   size: SegmentSize;
+  orientation: 'horizontal' | 'vertical';
 }) {
   const toggle = (
     <Toolbar.Button
@@ -216,7 +278,12 @@ function ToolbarToggleSegment({
       }
     />
   );
-  return withTooltip(toggle, segment.label, isLabelVisible(segment));
+  return withTooltip(
+    toggle,
+    segment.label,
+    isLabelVisible(segment),
+    overlaySide(orientation),
+  );
 }
 
 function ToolbarGroupSegment({
@@ -254,11 +321,127 @@ function ToolbarGroupSegment({
         );
         return (
           <React.Fragment key={option.value}>
-            {withTooltip(toggle, option.label, isLabelVisible(option))}
+            {withTooltip(
+              toggle,
+              option.label,
+              isLabelVisible(option),
+              overlaySide(orientation),
+            )}
           </React.Fragment>
         );
       })}
     </ToggleGroup>
+  );
+}
+
+// Active styling for a menu trigger. Unlike a Toggle it has no data-pressed
+// state, so the selected highlight is applied directly when `pressed`.
+const menuActiveClasses = 'bg-selected! text-selected-contrast!';
+
+function ToolbarMenuSegment({
+  segment,
+  size,
+  orientation,
+}: {
+  segment: MenuSegment;
+  size: SegmentSize;
+  orientation: 'horizontal' | 'vertical';
+}) {
+  // A consumer-supplied className (e.g. a named theme colour) takes precedence
+  // over the default pressed highlight, so an active selection can be coloured
+  // by its own meaning (e.g. an edge type's colour) rather than `bg-selected`.
+  const activeClasses = segment.className
+    ? undefined
+    : segment.pressed
+      ? menuActiveClasses
+      : undefined;
+  const trigger = (
+    <Toolbar.Button
+      render={
+        <DropdownMenuTrigger
+          disabled={segment.disabled}
+          render={segmentButton(segment, size, activeClasses)}
+        />
+      }
+    />
+  );
+  return (
+    <DropdownMenu>
+      {withTooltip(
+        trigger,
+        segment.label,
+        isLabelVisible(segment),
+        overlaySide(orientation),
+      )}
+      <DropdownMenuContent side={overlaySide(orientation)}>
+        <DropdownMenuRadioGroup
+          value={segment.value}
+          onValueChange={(value) => segment.onSelect(String(value))}
+        >
+          {segment.options.map((option) => (
+            // Base UI radio items keep the menu open by default; close on pick
+            // so a single selection commits and returns focus to the page.
+            <DropdownMenuRadioItem
+              key={option.value}
+              value={option.value}
+              disabled={option.disabled}
+              closeOnClick
+            >
+              {option.icon}
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function ToolbarPopoverSegment({
+  segment,
+  size,
+  orientation,
+}: {
+  segment: PopoverSegment;
+  size: SegmentSize;
+  orientation: 'horizontal' | 'vertical';
+}) {
+  // As with menu segments, a consumer-supplied className takes precedence over
+  // the default pressed highlight, so an active state can be coloured by its
+  // own meaning (e.g. a group tool adopting the active group's colour).
+  const activeClasses = segment.className
+    ? undefined
+    : segment.pressed
+      ? menuActiveClasses
+      : undefined;
+  const trigger = (
+    <Toolbar.Button
+      render={
+        <PopoverTrigger
+          disabled={segment.disabled}
+          render={segmentButton(segment, size, activeClasses)}
+        />
+      }
+    />
+  );
+  return (
+    <Popover
+      open={segment.open}
+      onOpenChange={(open) => segment.onOpenChange(open)}
+    >
+      {withTooltip(
+        trigger,
+        segment.label,
+        isLabelVisible(segment),
+        overlaySide(orientation),
+      )}
+      <PopoverContent
+        side={segment.side ?? overlaySide(orientation)}
+        showArrow={false}
+      >
+        {segment.children}
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -360,6 +543,22 @@ function renderSegment(
 ) {
   const inner = (() => {
     switch (segment.type) {
+      case 'menu':
+        return (
+          <ToolbarMenuSegment
+            segment={segment}
+            size={size}
+            orientation={orientation}
+          />
+        );
+      case 'popover':
+        return (
+          <ToolbarPopoverSegment
+            segment={segment}
+            size={size}
+            orientation={orientation}
+          />
+        );
       case 'separator':
         return (
           <Toolbar.Separator
@@ -381,9 +580,21 @@ function renderSegment(
           />
         );
       case 'toggle':
-        return <ToolbarToggleSegment segment={segment} size={size} />;
+        return (
+          <ToolbarToggleSegment
+            segment={segment}
+            size={size}
+            orientation={orientation}
+          />
+        );
       case 'button':
-        return <ToolbarButtonSegment segment={segment} size={size} />;
+        return (
+          <ToolbarButtonSegment
+            segment={segment}
+            size={size}
+            orientation={orientation}
+          />
+        );
       default:
         return null;
     }
@@ -428,6 +639,19 @@ export function SegmentedToolbar({
 
   const handleNudge = (delta: Position) => {
     const next = { x: x.get() + delta.x, y: y.get() + delta.y };
+    // Pointer drags are clamped by motion, but keyboard nudges bypass it, so
+    // honour the object-form bounds here. The RefObject form is left to motion's
+    // drag clamping (we don't measure the ref element).
+    if (dragConstraints && !('current' in dragConstraints)) {
+      next.x = Math.min(
+        Math.max(next.x, dragConstraints.left),
+        dragConstraints.right,
+      );
+      next.y = Math.min(
+        Math.max(next.y, dragConstraints.top),
+        dragConstraints.bottom,
+      );
+    }
     x.set(next.x);
     y.set(next.y);
     onPositionChange?.(next);

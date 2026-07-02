@@ -431,7 +431,7 @@ describe('autoLayout worker', () => {
     handleMessage({
       type: 'initialize',
       nodes: cloneNodes(TWO_GROUPS),
-      options: { collideRadius: SIM_COLLIDE_RADIUS, charge: 0, cohesion: 0.1 },
+      options: { collideRadius: SIM_COLLIDE_RADIUS, charge: 0 },
     });
     handleMessage({ type: 'start' });
 

@@ -5,6 +5,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
+import { isFamilyPedigreeStageMetadata } from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
 import Prompts from '~/components/Prompts/Prompts';
 import { useContractFlags } from '~/contract/context';
@@ -121,7 +122,8 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   const boundaries = useStageSelector(getBoundaries);
 
   const isNetworkCommitted =
-    !Array.isArray(stageMetadata) && stageMetadata?.isNetworkCommitted === true;
+    isFamilyPedigreeStageMetadata(stageMetadata) &&
+    stageMetadata.isNetworkCommitted;
   // The alters this pedigree committed to its private network, or null while it
   // is still being built. Used to drop same-typed alters added by later stages.
   const memberIds = useMemo(
@@ -306,8 +308,8 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
       edgesMap,
       variableConfig,
       boundaries,
-      !Array.isArray(stageMetadata) &&
-        stageMetadata?.noChildrenAffirmed === true,
+      isFamilyPedigreeStageMetadata(stageMetadata) &&
+        stageMetadata.noChildrenAffirmed === true,
     );
 
     if (issues.length > 0) {

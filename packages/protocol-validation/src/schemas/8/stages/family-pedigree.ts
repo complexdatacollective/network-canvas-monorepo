@@ -8,6 +8,7 @@ import {
   familyPedigreeNominationPromptSchema,
 } from '../common';
 import { entityAttributeReference } from '../entity-attribute-reference';
+import { entityTypeReference } from '../entity-type-reference';
 import { baseStageSchema } from './base';
 
 // Reserved id used by the interview for the synthetic census/scaffolding prompt;
@@ -16,7 +17,7 @@ const RESERVED_NOMINATION_PROMPT_ID = 'scaffolding';
 
 export const NodeConfigSchema = z.strictObject({
   // Node type for alter nodes in the codebook
-  type: z.string(),
+  type: entityTypeReference({ entity: 'node' }),
   // Text variable used to store the node's display label
   nodeLabelVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'node' },
@@ -39,7 +40,7 @@ export const NodeConfigSchema = z.strictObject({
 
 export const EdgeConfigSchema = z.strictObject({
   // Edge type in the codebook (single type for both parent and partner edges)
-  type: z.string(),
+  type: entityTypeReference({ entity: 'edge' }),
   // Variable storing the relationship type value (discriminant for the Edge union)
   relationshipTypeVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'edge' },

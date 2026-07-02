@@ -5,6 +5,7 @@ import { findDuplicateId } from '~/utils/validation-helpers';
 import { NodeStageSubjectSchema } from '../common';
 import { canvasBehavioursSchema } from '../common/behaviours';
 import { entityAttributeReference } from '../entity-attribute-reference';
+import { entityTypeReference } from '../entity-type-reference';
 import { FilterSchema } from '../filters';
 import { baseStageSchema } from './base';
 
@@ -25,7 +26,9 @@ export const narrativeStage = baseStageSchema.extend({
         }).optional(),
         edges: z
           .strictObject({
-            display: z.array(z.string()).optional(),
+            display: z
+              .array(entityTypeReference({ entity: 'edge' }))
+              .optional(),
           })
           .optional(),
         highlight: z

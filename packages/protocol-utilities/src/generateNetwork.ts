@@ -914,6 +914,45 @@ export function generateNetwork(
         break;
       }
 
+      case 'NetworkComposer': {
+        const subject = getStageSubject(stage);
+        if (subject?.entity !== 'node') break;
+
+        // Network Composer builds the network from scratch: create nodes of the
+        // subject type (populating their codebook attributes — quickAdd, layout,
+        // and node-form variables) and draw edges of each configured edge type
+        // among them. It is promptless, so a synthetic prompt id seeds creation.
+        const newNodes = createNodesForStage(
+          codebook,
+          stage,
+          { id: stageId },
+          valueGen,
+          nodes.length,
+          0,
+        );
+        nodes.push(...newNodes);
+
+        const composerEdges = (stage as Record<string, unknown>).edges as
+          | { subject?: { type?: string } }[]
+          | undefined;
+        for (const edgeDef of composerEdges ?? []) {
+          const edgeType = edgeDef.subject?.type;
+          if (!edgeType) continue;
+          const { edges: newEdges } = createEdgesForPairs(
+            newNodes,
+            edgeType,
+            // Network Composer is a from-scratch builder rendered across several
+            // edge types at once; a per-pair 30-50% probability produced a
+            // near-complete graph in the preview. Keep it sparse and readable.
+            valueGen.randomFloat(0.05, 0.1),
+            valueGen,
+            codebook.edge?.[edgeType]?.variables,
+          );
+          edges.push(...newEdges);
+        }
+        break;
+      }
+
       case 'Information':
       case 'Anonymisation':
       case 'Narrative':

@@ -18,7 +18,9 @@ vi.mock('~/lib/analytics/AnalyticsProvider', () => ({
 vi.mock('@codaco/fresco-ui/dialogs/Dialog', () => ({
   default: ({ open, dismissible, title, description, footer }: DialogProps) =>
     open ? (
-      <dialog open aria-label={title}>
+      // aria-label must be a string; DialogProps.title is a ReactNode (a string
+      // at runtime here). Guard rather than cast to keep the accessible name.
+      <dialog open aria-label={typeof title === 'string' ? title : undefined}>
         <h2>{title}</h2>
         <p>{description}</p>
         {dismissible !== false && <button type="button">Close</button>}

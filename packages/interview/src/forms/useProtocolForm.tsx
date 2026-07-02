@@ -22,6 +22,7 @@ import VisualAnalogScaleField from '@codaco/fresco-ui/form/fields/VisualAnalogSc
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import { addDays, todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
 import type {
+  ComposerFormField,
   ComponentType,
   FormField,
   StageSubject,
@@ -85,7 +86,7 @@ export default function useProtocolForm({
   namespace,
   currentEntityId,
 }: {
-  fields: FormField[];
+  fields: Array<FormField | ComposerFormField>;
   autoFocus?: boolean;
   initialValues?: Record<string, FieldValue>;
   subject?: Subject;
@@ -96,18 +97,22 @@ export default function useProtocolForm({
     getValidationContext,
   ) as ValidationContext | null;
 
-  // Callers commonly pass `subject` as a fresh object literal each render
-  // (e.g. `{ entity: 'node', type: nodeType }`). Re-derive a reference-stable
-  // subject from its primitive fields so the memos and selectors below don't
-  // see a new object every render — an unstable validationContext re-runs every
-  // Field's register/unregister effect and loops ("Maximum update depth").
+  // Callers routinely pass `subject` as an inline literal, so key on its
+  // VALUES rather than its identity. A per-render subject identity would give
+  // validationContext a new identity every render, which re-registers every
+  // field (see useField's register effect) — and when an ancestor is
+  // subscribed to the form store (e.g. the FamilyPedigree wizard steps), each
+  // re-registration re-renders that ancestor, looping infinitely.
   const subjectEntity = subject?.entity;
   const subjectType = subject?.type;
   const stableSubject = useMemo<Subject | undefined>(
     () =>
-      subjectEntity === undefined
-        ? undefined
-        : { entity: subjectEntity, type: subjectType },
+      subjectEntity !== undefined
+        ? {
+            entity: subjectEntity,
+            ...(subjectType !== undefined ? { type: subjectType } : {}),
+          }
+        : undefined,
     [subjectEntity, subjectType],
   );
 
@@ -257,15 +262,17 @@ export default function useProtocolForm({
     }
 
     // Process ordinal and categorical options
-    if ('options' in field) props.options = field.options;
+    if ('options' in field) {
+      props.options = field.options;
 
-    // Turn on columns if there are more than 6 options. Maybe a bad idea?
-    if (
-      (field.component === 'CheckboxGroup' ||
-        field.component === 'RadioGroup') &&
-      field.options.length > 6
-    ) {
-      props.useColumns ??= true;
+      // Turn on columns if there are more than 6 options. Maybe a bad idea?
+      if (
+        (field.component === 'CheckboxGroup' ||
+          field.component === 'RadioGroup') &&
+        (field.options?.length ?? 0) > 6
+      ) {
+        props.useColumns ??= true;
+      }
     }
 
     // Handle number inputs
@@ -281,8 +288,10 @@ export default function useProtocolForm({
     if (field.component === 'VisualAnalogScale') {
       if (field.parameters) {
         const params = field.parameters;
-        if (params.minLabel) props.minLabel = params.minLabel;
-        if (params.maxLabel) props.maxLabel = params.maxLabel;
+        if (typeof params.minLabel === 'string')
+          props.minLabel = params.minLabel;
+        if (typeof params.maxLabel === 'string')
+          props.maxLabel = params.maxLabel;
       }
 
       // Forward scalar validation.minValue/maxValue onto the slider's display
@@ -300,9 +309,9 @@ export default function useProtocolForm({
     // Handle DatePicker parameters
     if (field.component === 'DatePicker' && field.parameters) {
       const params = field.parameters;
-      if (params.min) props.min = params.min;
-      if (params.max) props.max = params.max;
-      if (params.type) props.type = params.type;
+      if (typeof params.min === 'string') props.min = params.min;
+      if (typeof params.max === 'string') props.max = params.max;
+      if (typeof params.type === 'string') props.type = params.type;
     }
 
     // Handle RelativeDatePicker parameters. We forward anchor/before/after
@@ -313,13 +322,20 @@ export default function useProtocolForm({
     // out-of-range values would pass through validation.
     if (field.component === 'RelativeDatePicker' && field.parameters) {
       const params = field.parameters;
-      if (params.anchor !== undefined) props.anchor = params.anchor;
-      if (params.before !== undefined) props.before = params.before;
-      if (params.after !== undefined) props.after = params.after;
+      const paramAnchor =
+        typeof params.anchor === 'string' ? params.anchor : undefined;
+      const paramBefore =
+        typeof params.before === 'number' ? params.before : undefined;
+      const paramAfter =
+        typeof params.after === 'number' ? params.after : undefined;
 
-      const anchor = params.anchor ?? todayYmd();
-      const before = params.before ?? 180;
-      const after = params.after ?? 0;
+      if (paramAnchor !== undefined) props.anchor = paramAnchor;
+      if (paramBefore !== undefined) props.before = paramBefore;
+      if (paramAfter !== undefined) props.after = paramAfter;
+
+      const anchor = paramAnchor ?? todayYmd();
+      const before = paramBefore ?? 180;
+      const after = paramAfter ?? 0;
       props.min = addDays(anchor, -before);
       props.max = addDays(anchor, after);
     }

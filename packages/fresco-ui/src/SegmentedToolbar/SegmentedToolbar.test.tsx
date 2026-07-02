@@ -6,6 +6,7 @@ import {
   Map as MapIcon,
   Pencil,
   Snowflake,
+  Spline,
   Trash2,
   Undo2,
 } from 'lucide-react';
@@ -66,6 +67,71 @@ describe('SegmentedToolbar — buttons & separators', () => {
     render(<SegmentedToolbar label="Tools" items={items} />);
     // Label is visible text, not only an accessible name.
     expect(screen.getByText('Done')).toBeVisible();
+  });
+
+  it('renders a menu segment whose trigger opens single-select options', async () => {
+    const onSelect = vi.fn();
+    const items: ToolbarSegment[] = [
+      {
+        type: 'menu',
+        id: 'edge',
+        label: 'Draw edge',
+        icon: <Spline />,
+        value: 'friendship',
+        options: [
+          { value: 'friendship', label: 'Friendship' },
+          { value: 'advice', label: 'Advice' },
+        ],
+        onSelect,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    const trigger = screen.getByRole('button', { name: 'Draw edge' });
+    // The trigger must advertise that it opens a menu, even though it renders a
+    // custom Button component rather than a native <button>.
+    expect(trigger).toHaveAttribute('aria-haspopup');
+    await userEvent.click(trigger);
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Advice' }),
+    );
+    expect(onSelect).toHaveBeenCalledWith('advice');
+  });
+
+  it('renders a popover segment that advertises a popup and shows its content when open', () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'popover',
+        id: 'add',
+        label: 'Add node',
+        icon: <Pencil />,
+        pressed: true,
+        open: true,
+        onOpenChange: vi.fn(),
+        children: <input aria-label="Name" />,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    const trigger = screen.getByRole('button', { name: 'Add node' });
+    expect(trigger).toHaveAttribute('aria-haspopup');
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
+  });
+
+  it('calls onOpenChange when the popover trigger is clicked', async () => {
+    const onOpenChange = vi.fn();
+    const items: ToolbarSegment[] = [
+      {
+        type: 'popover',
+        id: 'add',
+        label: 'Add node',
+        icon: <Pencil />,
+        open: false,
+        onOpenChange,
+        children: <input aria-label="Name" />,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Add node' }));
+    expect(onOpenChange).toHaveBeenCalledWith(true);
   });
 
   it('moves focus between segments with the arrow keys (roving focus)', async () => {

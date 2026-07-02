@@ -1,4 +1,7 @@
-import type { StageMetadata } from '@codaco/shared-consts';
+import {
+  isFamilyPedigreeStageMetadata,
+  type StageMetadata,
+} from '@codaco/shared-consts';
 
 /**
  * The set of node ids that belong to a pedigree, taken from a FamilyPedigree
@@ -13,9 +16,9 @@ import type { StageMetadata } from '@codaco/shared-consts';
 export function pedigreeMemberIds(
   metadata: StageMetadata[string] | undefined,
 ): Set<string> | null {
-  // DyadCensus/TieStrengthCensus metadata is stored as an array; only the
-  // FamilyPedigree object form carries a pedigree node list.
-  if (!metadata || Array.isArray(metadata)) return null;
+  // The metadata union also covers DyadCensus (tuple array) and NetworkComposer
+  // ({ automaticLayout }); only the FamilyPedigree object form carries a node list.
+  if (!isFamilyPedigreeStageMetadata(metadata)) return null;
   const { nodes } = metadata;
   if (!nodes) return null;
   return new Set(nodes.map((node) => node.id));

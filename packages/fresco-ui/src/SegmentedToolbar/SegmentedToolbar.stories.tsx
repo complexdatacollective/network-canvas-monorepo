@@ -6,10 +6,13 @@ import {
   List,
   Map as MapIcon,
   Minus,
+  MousePointer2,
   Pencil,
   Plus,
   Redo2,
   Snowflake,
+  Sparkles,
+  Spline,
   Star,
   Trash2,
   Underline,
@@ -153,6 +156,89 @@ export const Labels: Story = {
       // Text only — no icon.
       { type: 'button', id: 'clear', label: 'Clear formatting', onClick: noop },
     ],
+  },
+};
+
+/**
+ * A `menu` segment is a button that opens a single-select menu. This mirrors the
+ * Network Composer palette: an exclusive tool group, an edge tool that opens a
+ * menu of edge types, and a toggle button for automatic layout.
+ */
+export const MenuSelection: Story = {
+  args: {
+    label: 'Network tools',
+    orientation: 'vertical',
+    items: [
+      {
+        type: 'group',
+        id: 'tools',
+        mode: 'single',
+        defaultValue: ['select'],
+        options: [
+          { value: 'select', label: 'Select', icon: <MousePointer2 /> },
+          { value: 'add', label: 'Add node', icon: <Plus /> },
+        ],
+      },
+      {
+        type: 'menu',
+        id: 'edge',
+        label: 'Draw edge',
+        icon: <Spline />,
+        value: 'friendship',
+        options: [
+          { value: 'friendship', label: 'Friendship' },
+          { value: 'advice', label: 'Advice' },
+        ],
+        onSelect: noop,
+      },
+      { type: 'separator', id: 'sep' },
+      {
+        type: 'toggle',
+        id: 'auto',
+        label: 'Automatic layout',
+        icon: <Sparkles />,
+        defaultPressed: false,
+      },
+    ],
+  },
+};
+
+/**
+ * A `popover` segment is a pressed-able button that anchors arbitrary content
+ * beside it — here a text input. The Network Composer uses this for its
+ * Add-node name field: the button stays pressed while the popover is open.
+ */
+export const PopoverInput: Story = {
+  args: { label: 'Network tools', orientation: 'vertical', items: [] },
+  render: function PopoverRender(args) {
+    const [open, setOpen] = useState(false);
+    const items: ToolbarSegment[] = [
+      {
+        type: 'toggle',
+        id: 'select',
+        label: 'Select',
+        icon: <MousePointer2 />,
+        pressed: !open,
+        onPressedChange: () => setOpen(false),
+      },
+      {
+        type: 'popover',
+        id: 'add',
+        label: 'Add node',
+        icon: <Plus />,
+        pressed: open,
+        open,
+        onOpenChange: setOpen,
+        children: (
+          <input
+            aria-label="Name"
+            placeholder="Type a name, then press Enter"
+            className="w-64 rounded-full border-2 border-current/20 bg-transparent px-4 py-2"
+          />
+        ),
+      },
+    ];
+    return <SegmentedToolbar {...args} items={items} />;
   },
 };
 

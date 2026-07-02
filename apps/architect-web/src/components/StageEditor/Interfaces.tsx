@@ -37,16 +37,18 @@ import {
   TieStrengthCensusPrompts,
   Title,
 } from '~/components/sections';
+import EdgeConfiguration from '~/components/sections/EdgeConfiguration/EdgeConfiguration';
 import BoundaryOptions from '~/components/sections/FamilyPedigree/BoundaryOptions';
 import CensusPrompt from '~/components/sections/FamilyPedigree/CensusPrompt';
-import EdgeConfiguration from '~/components/sections/FamilyPedigree/EdgeConfiguration';
+import FamilyPedigreeEdgeConfiguration from '~/components/sections/FamilyPedigree/EdgeConfiguration';
 import FramingConfig from '~/components/sections/FamilyPedigree/FramingConfig';
 import IntroScreen from '~/components/sections/FamilyPedigree/IntroScreen';
-import NodeConfiguration from '~/components/sections/FamilyPedigree/NodeConfiguration';
+import FamilyPedigreeNodeConfiguration from '~/components/sections/FamilyPedigree/NodeConfiguration';
 import NominationPrompts from '~/components/sections/FamilyPedigree/NominationPrompts';
 import AtRiskStatuses from '~/components/sections/NarrativePedigree/AtRiskStatuses';
 import Diseases from '~/components/sections/NarrativePedigree/Diseases';
 import SourceStage from '~/components/sections/NarrativePedigree/SourceStage';
+import NodeConfiguration from '~/components/sections/NodeConfiguration/NodeConfiguration';
 import { FilteredNodeType } from '~/components/sections/NodeType';
 
 /**
@@ -250,6 +252,23 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
     documentation:
       'https://documentation.networkcanvas.com/interface-documentation/sociogram/',
   },
+  NetworkComposer: {
+    sections: [
+      NodeType,
+      NodeConfiguration,
+      EdgeConfiguration,
+      Background,
+      SkipLogic,
+      InterviewScript,
+    ],
+    documentation:
+      'https://documentation.networkcanvas.com/interface-documentation/network-composer/',
+    template: {
+      behaviours: {
+        automaticLayout: true,
+      },
+    },
+  },
   TieStrengthCensus: {
     sections: [
       FilteredNodeType,
@@ -287,8 +306,8 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       FramingConfig,
       BoundaryOptions,
       IntroScreen,
-      NodeConfiguration,
-      EdgeConfiguration,
+      FamilyPedigreeNodeConfiguration,
+      FamilyPedigreeEdgeConfiguration,
       CensusPrompt,
       NominationPrompts,
       SkipLogic,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { stageSchema } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -942,6 +943,119 @@ describe('SyntheticInterview', () => {
       });
 
       expect(payload.stageMetadata).toEqual(metadata);
+    });
+  });
+
+  describe('NetworkComposer', () => {
+    it('auto-creates quickAdd, layout, and a default edge type', () => {
+      const si = new SyntheticInterview();
+      const stage = si.addStage('NetworkComposer', {
+        initialNodes: { count: 3 },
+      });
+      stage.addEdgeType();
+
+      const protocol = si.getProtocol();
+      const stageConfig = protocol.stages[0] as Record<string, unknown>;
+
+      expect(stageConfig.type).toBe('NetworkComposer');
+      expect(stageConfig.quickAdd).toBeTruthy();
+      expect(stageConfig.layoutVariable).toBeTruthy();
+
+      const subject = stageConfig.subject as { entity: string; type: string };
+      expect(subject.entity).toBe('node');
+
+      const edges = stageConfig.edges as {
+        id: string;
+        subject: { entity: string; type: string };
+      }[];
+      expect(edges).toHaveLength(1);
+      expect(edges[0]!.id).toBeTruthy();
+      expect(edges[0]!.subject.entity).toBe('edge');
+      expect(Object.keys(protocol.codebook.edge)).toContain(
+        edges[0]!.subject.type,
+      );
+    });
+
+    it('produces a stage that passes the NetworkComposer schema', () => {
+      const si = new SyntheticInterview(1);
+      const nt = si.addNodeType({ name: 'Person' });
+      const quickAddVar = nt.addVariable({ type: 'text', name: 'name' });
+      const layoutVar = nt.addVariable({
+        type: 'layout',
+        name: 'Composer Layout',
+      });
+      const friendship = si.addEdgeType({ name: 'Friendship' });
+
+      const stage = si.addStage('NetworkComposer', {
+        subject: { entity: 'node', type: nt.id },
+        quickAdd: quickAddVar.id,
+        layoutVariable: layoutVar.id,
+        initialNodes: { count: 6 },
+      });
+      stage.addNodeFormField({ component: 'Number', label: 'Age' });
+      stage.addEdgeType({
+        type: friendship.id,
+        form: { fields: [{ component: 'Toggle', label: 'Close friend?' }] },
+      });
+      stage.addEdgeType();
+
+      const protocol = si.getProtocol();
+      const builtStage = protocol.stages[0];
+
+      const result = stageSchema.safeParse(builtStage);
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects duplicate edge subject types via the schema refinement', () => {
+      const si = new SyntheticInterview(2);
+      const friendship = si.addEdgeType({ name: 'Friendship' });
+      const stage = si.addStage('NetworkComposer');
+      stage.addEdgeType({ type: friendship.id });
+      stage.addEdgeType({ type: friendship.id });
+
+      const builtStage = si.getProtocol().stages[0];
+      const result = stageSchema.safeParse(builtStage);
+      expect(result.success).toBe(false);
+    });
+
+    it('omits nodeForm when no node form fields are added', () => {
+      const si = new SyntheticInterview();
+      const stage = si.addStage('NetworkComposer');
+      stage.addEdgeType();
+
+      const stageConfig = si.getProtocol().stages[0] as Record<string, unknown>;
+      expect(stageConfig.nodeForm).toBeUndefined();
+    });
+
+    it('emits the component on a NetworkComposer node attribute field', () => {
+      const si = new SyntheticInterview();
+      const node = si.addNodeType({ name: 'person' });
+      const stage = si.addStage('NetworkComposer', {
+        subject: { entity: 'node', type: node.id },
+      });
+      stage.addNodeFormField({ component: 'Number', label: 'Age' });
+      const payload = si.getInterviewPayload();
+      const composer = payload.protocol.stages.find(
+        (s) => s.type === 'NetworkComposer',
+      );
+      expect((composer as Record<string, unknown>).nodeForm).toBeDefined();
+      expect(
+        (
+          (composer as Record<string, unknown>).nodeForm as {
+            fields: { component: string }[];
+          }
+        ).fields[0]?.component,
+      ).toBe('Number');
+    });
+
+    it('rejects a non-node (edge) subject', () => {
+      const si = new SyntheticInterview();
+      const friendship = si.addEdgeType({ name: 'Friendship' });
+      expect(() =>
+        si.addStage('NetworkComposer', {
+          subject: { entity: 'edge', type: friendship.id },
+        }),
+      ).toThrow(/node subject/);
     });
   });
 });

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { entityAttributeReference } from '~/schemas/8/entity-attribute-reference';
+import { entityTypeReference } from '~/schemas/8/entity-type-reference';
 
 // Operators valid when checking entity type existence (no attribute specified)
 export const TypeLevelOperators = z.enum(['EXISTS', 'NOT_EXISTS']);
@@ -80,14 +81,16 @@ const filterValueSchema = z
 
 // Options schema for type-level rules (no attribute - checking entity existence)
 const typeLevelOptionsSchema = z.strictObject({
-  type: z.string().optional(),
+  // The codebook type being tested; which codebook comes from the owning
+  // rule's `type` field ('node' | 'edge'), resolved at collection time.
+  type: entityTypeReference({ entity: 'filterRule' }).optional(),
   operator: TypeLevelOperators,
   value: filterValueSchema,
 });
 
 // Options schema for attribute-level rules (attribute specified - checking variable value)
 const attributeLevelOptionsSchema = z.strictObject({
-  type: z.string().optional(),
+  type: entityTypeReference({ entity: 'filterRule' }).optional(),
   attribute: entityAttributeReference({ subject: 'filterRule' }),
   operator: AllOperators,
   value: filterValueSchema,
