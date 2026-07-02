@@ -6,8 +6,7 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
-import type { Status } from '../genetics/status';
-import { Sticker } from './Sticker';
+import { NotationKey } from './NotationKey';
 
 type Disease = {
   id: string;
@@ -28,42 +27,12 @@ type ConditionPanelProps = {
   onSnapshot: () => void;
 };
 
-type KeyEntry = {
-  status: Status;
-  label: string;
-  // At-risk (probabilistic) markers are only listed when the stage option is on.
-  atRisk?: boolean;
-};
-
-// Participant-facing wording for each glyph. Kept as whole strings (never
-// concatenated) so they read naturally and stay translatable. These describe
-// what each marker means in plain language rather than reusing the clinical
-// STATUS_LABELS verbatim.
-// Each maps to a distinct Bennett-2022 glyph drawn by the Sticker: affected =
-// filled, will-develop (obligate/presymptomatic) = vertical line, carrier =
-// horizontal line-fill; the at-risk variants reuse the certain glyph plus a "?".
-const KEY_ENTRIES: KeyEntry[] = [
-  { status: 'affected', label: 'Has this condition' },
-  { status: 'obligateAffected', label: 'Will develop this condition' },
-  { status: 'obligateCarrier', label: 'Carries this condition' },
-  {
-    status: 'atRiskAffected',
-    label: 'May develop this condition',
-    atRisk: true,
-  },
-  { status: 'atRiskCarrier', label: 'May carry this condition', atRisk: true },
-  { status: 'unknown', label: 'Not known' },
-];
-
 // The notation key illustrates the symbols, not a specific disease. When a
 // single condition is shown, the glyphs take that condition's colour so the key
 // matches the pedigree; when all conditions are shown they fall back to a vivid
 // node colour (not charcoal, which is invisible on the dark key panel).
 const KEY_GLYPH_FALLBACK_COLOUR = 'var(--node-1)';
 const KEY_GLYPH_SHAPE = 'circle' as const;
-
-const AT_RISK_HOMOZYGOUS_KEY_LABEL =
-  'May be more seriously affected (two copies of this condition)';
 
 export default function ConditionPanel({
   diseases,
@@ -72,10 +41,6 @@ export default function ConditionPanel({
   showAtRiskStatuses,
   onSnapshot,
 }: ConditionPanelProps) {
-  const keyEntries = showAtRiskStatuses
-    ? KEY_ENTRIES
-    : KEY_ENTRIES.filter((entry) => !entry.atRisk);
-
   // When a single condition is shown, draw the notation key in its colour so the
   // key matches the pedigree; otherwise use a neutral vivid node colour.
   const selectedDisease =
@@ -139,34 +104,11 @@ export default function ConditionPanel({
           <Heading level="label" margin="none">
             What the symbols mean
           </Heading>
-          {keyEntries.map((entry) => (
-            <div
-              key={entry.status}
-              className="flex items-center gap-4 text-base"
-            >
-              <span aria-hidden className="flex shrink-0">
-                <Sticker
-                  status={entry.status}
-                  color={glyphColour}
-                  shape={KEY_GLYPH_SHAPE}
-                />
-              </span>
-              {entry.label}
-            </div>
-          ))}
-          {showAtRiskStatuses && (
-            <div className="flex items-center gap-4 text-base">
-              <span aria-hidden className="flex shrink-0">
-                <Sticker
-                  status="atRiskCarrier"
-                  color={glyphColour}
-                  shape={KEY_GLYPH_SHAPE}
-                  atRiskHomozygous
-                />
-              </span>
-              {AT_RISK_HOMOZYGOUS_KEY_LABEL}
-            </div>
-          )}
+          <NotationKey
+            glyphColour={glyphColour}
+            shape={KEY_GLYPH_SHAPE}
+            showAtRiskStatuses={showAtRiskStatuses}
+          />
         </div>
       </ScrollArea>
 

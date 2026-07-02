@@ -5,6 +5,7 @@ import {
   type ComponentPropsWithoutRef,
   type MouseEvent,
   type ReactNode,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -31,6 +32,7 @@ import {
 import { getCodebook, getStages } from '~/store/modules/protocol';
 import type { StageProps } from '~/types';
 
+import { PedigreeSnapshotDocument } from '../export/PedigreeSnapshotDocument';
 import { exportSnapshot } from '../export/snapshot';
 import {
   computeAtRiskHomozygous,
@@ -124,8 +126,12 @@ export default function NarrativePedigreeView({
     null,
   );
   const [focalId, setFocalId] = useState<string | null>(null);
+  // While true, the off-screen printable snapshot document is mounted so it can
+  // be captured to a PNG (see the capture effect below).
+  const [isCapturing, setIsCapturing] = useState(false);
 
   const viewRef = useRef<HTMLDivElement>(null);
+  const snapshotRef = useRef<HTMLDivElement>(null);
   const { nodeWidth, nodeHeight, measurementContainer } = useNodeMeasurement({
     component: <Node size="sm" />,
   });
@@ -336,10 +342,9 @@ export default function NarrativePedigreeView({
     return parts.join('. ');
   };
 
-  const handleSnapshot = () => {
-    if (!viewRef.current) return;
-    void exportSnapshot(viewRef.current, `${stage.label || 'pedigree'}.png`);
-  };
+  // Trigger a capture by mounting the off-screen snapshot document; the capture
+  // effect below reads it once it has laid out.
+  const handleSnapshot = () => setIsCapturing(true);
 
   const renderNode = (node: RenderableNode): ReactNode => {
     const shape = resolveShape(node);
@@ -475,7 +480,10 @@ export default function NarrativePedigreeView({
           />
           <span
             aria-hidden
-            className="absolute top-full left-1/2 mt-1 w-24 -translate-x-1/2 truncate text-center text-xs text-white"
+            // Colour via a CSS variable so the printable snapshot document can
+            // override it to a dark ink; on screen it falls back to white.
+            className="absolute top-full left-1/2 mt-1 w-24 -translate-x-1/2 truncate text-center text-xs"
+            style={{ color: 'var(--np-label-color, #fff)' }}
           >
             {label}
           </span>
@@ -497,6 +505,57 @@ export default function NarrativePedigreeView({
     return displayLabels.get(node._uid) || focalId;
   }, [focalId, pedigreeNodes, displayLabels, egoId]);
 
+  // Snapshot heading: the stage label, then the shown condition, then the focal
+  // person when one is set — e.g. "Inheritance Pathways: Huntington's Disease —
+  // inheritance for Leo".
+  const snapshotTitle = useMemo(() => {
+    const base = stage.label || 'Family pedigree';
+    if (!selectedDiseaseLabel) return base;
+    const withDisease = `${base}: ${selectedDiseaseLabel}`;
+    return focalLabel
+      ? `${withDisease} — inheritance for ${focalLabel}`
+      : withDisease;
+  }, [stage.label, selectedDiseaseLabel, focalLabel]);
+
+  const snapshotFilename = useMemo(() => {
+    const slug = snapshotTitle
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase();
+    return `${slug || 'pedigree'}.png`;
+  }, [snapshotTitle]);
+
+  // Colour the snapshot's notation key in the shown condition's colour (matching
+  // the pedigree), falling back to a vivid node colour for the plain view.
+  const snapshotGlyphColour = useMemo(() => {
+    if (selectedDiseaseId === null) return 'var(--node-1)';
+    return (
+      diseases.find((d) => d.id === selectedDiseaseId)?.color ?? 'var(--node-1)'
+    );
+  }, [selectedDiseaseId, diseases]);
+
+  // Capture the off-screen snapshot document once it has mounted and laid out.
+  // PedigreeLayout lays out synchronously from measured dimensions, so a single
+  // animation frame after the commit is enough for html-to-image to read it.
+  useEffect(() => {
+    if (!isCapturing) return;
+    let cancelled = false;
+    const frame = requestAnimationFrame(() => {
+      const element = snapshotRef.current;
+      if (cancelled || !element) {
+        setIsCapturing(false);
+        return;
+      }
+      void exportSnapshot(element, snapshotFilename).finally(() => {
+        if (!cancelled) setIsCapturing(false);
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
+  }, [isCapturing, snapshotFilename]);
+
   if (!sourceConfig || !variableConfig) {
     return (
       <div className="interface flex items-center justify-center p-8 text-center">
@@ -508,6 +567,27 @@ export default function NarrativePedigreeView({
   return (
     <div className="interface relative flex h-full w-full flex-col p-0">
       {measurementContainer}
+
+      {/* Off-screen printable document, mounted only while a snapshot is being
+          captured (light theme, whole pedigree at natural size, title + key). */}
+      {isCapturing && (
+        <PedigreeSnapshotDocument
+          ref={snapshotRef}
+          title={snapshotTitle}
+          nodes={nodesMap}
+          edges={edgesMap}
+          variableConfig={variableConfig}
+          nodeWidth={nodeWidth}
+          nodeHeight={nodeHeight}
+          renderNode={renderNode}
+          highlightedNodeIds={highlight.nodes}
+          highlightedEdgeKeys={highlight.edges}
+          glyphColour={snapshotGlyphColour}
+          keyShape="circle"
+          showAtRiskStatuses={showAtRiskStatuses}
+          showKey={selectedDiseaseId !== null}
+        />
+      )}
 
       {/* Visually-hidden aria-live region for announcing state changes */}
       <div aria-live="polite" aria-atomic="true" className="sr-only">

@@ -35,9 +35,12 @@ describe('exportSnapshot', () => {
     vi.restoreAllMocks();
   });
 
-  it('calls toPng with the provided element', async () => {
+  it('calls toPng with the element and a white printable background', async () => {
     await exportSnapshot(element, 'test.png');
-    expect(htmlToImage.toPng).toHaveBeenCalledWith(element);
+    expect(htmlToImage.toPng).toHaveBeenCalledWith(
+      element,
+      expect.objectContaining({ backgroundColor: '#ffffff' }),
+    );
   });
 
   it('appends an anchor with the correct href and filename, then clicks and removes it', async () => {
