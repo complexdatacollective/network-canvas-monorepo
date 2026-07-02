@@ -308,6 +308,10 @@ export default function StagesMenu({
     const isLast = item.id === lastId;
     const isOnly = isFirst && isLast;
     const custom = positionById.get(item.id) ?? item.index;
+    // Only animate layout while filtering (so surviving results slide to their
+    // new spots). Off during normal browsing, or the scroll that keyboard
+    // navigation triggers gets mistaken for a layout change and glitches.
+    const layoutId = matchingKeys ? `stage-menu-${item.id}` : undefined;
 
     const picture = isInterfaceType(item.type) ? (
       <InterfacePicture
@@ -383,7 +387,7 @@ export default function StagesMenu({
           {...itemProps}
           type="button"
           aria-current={item.isCurrent ? 'step' : undefined}
-          layoutId={`stage-menu-${item.id}`}
+          layoutId={layoutId}
           variants={variants.card}
           custom={custom}
           initial="closed"
@@ -436,7 +440,7 @@ export default function StagesMenu({
         {...itemProps}
         type="button"
         aria-current={item.isCurrent ? 'step' : undefined}
-        layoutId={`stage-menu-${item.id}`}
+        layoutId={layoutId}
         variants={variants.card}
         custom={custom}
         initial="closed"
