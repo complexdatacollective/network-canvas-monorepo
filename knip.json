@@ -105,16 +105,9 @@
       }
     },
     "apps/interviewer-v8": {
-      "entry": [
-        "index.html!",
-        "electron.vite.config.ts",
-        "vite.renderer.config.ts",
-        "electron-builder.config.cjs",
-        "electron/main.ts",
-        "electron/preload.ts"
-      ],
+      "entry": ["index.html!", "vite.renderer.config.ts"],
       "vite": true,
-      "project": ["src/**/*.{ts,tsx}", "electron/**/*.ts"],
+      "project": ["src/**/*.{ts,tsx}"],
       "paths": {
         "~/*": ["./src/*"]
       },
