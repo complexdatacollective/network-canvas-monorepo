@@ -5,7 +5,6 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import * as authApi from '~/lib/auth/api';
-import { isCapacitor } from '~/lib/platform/platform';
 
 import NoRecoveryNotice from './NoRecoveryNotice';
 
@@ -27,13 +26,10 @@ export default function Step3BiometricConfigure() {
         await authApi.revoke();
       }
 
-      // Use authApi directly — context actions trigger refresh() which would
-      // flip AuthGate to `unlocked` and reveal the home screen behind the
-      // still-open wizard. SetupWizardDialog runs a single refresh after the
-      // wizard closes so the Home transition happens at the right moment.
-      const result = isCapacitor
-        ? await authApi.enrolWithBiometricNative()
-        : await authApi.enrol();
+      // Web target: biometric enrolment is not available yet (Phase E adds
+      // WebAuthn-PRF). Step2MethodPicker already disables this option; if this
+      // step is reached, surface the unavailable message rather than branching.
+      const result = await authApi.enrol();
 
       if (!result.ok) {
         setError(result.message ?? 'Biometric enrolment failed.');
