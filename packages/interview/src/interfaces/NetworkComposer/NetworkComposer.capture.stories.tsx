@@ -26,6 +26,8 @@ const build = () => {
     layoutVariable: layoutVar.id,
     initialNodes: { count: 6 },
     nodeForm: { fields: [{ component: 'Number', prompt: 'Age' }] },
+    // Capture the interface with the force-directed layout running.
+    behaviours: { automaticLayout: true },
   });
   stage.addEdgeType({ type: friendship.id });
   si.addEdges([
