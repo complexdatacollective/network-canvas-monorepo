@@ -75,7 +75,7 @@ function DeckHarness() {
       label: SAMPLE_PROTOCOL.name,
       source: 'sample' as const,
     };
-    setPending([{ ...base, phase: 'fetching', progress: 0 }]);
+    setPending([{ ...base, phase: 'extracting', progress: 0 }]);
     let progress = 0;
     const interval = window.setInterval(() => {
       progress += 0.18;
@@ -83,7 +83,7 @@ function DeckHarness() {
         setPending([
           {
             ...base,
-            phase: progress < 0.6 ? 'fetching' : 'extracting',
+            phase: 'extracting',
             progress,
           },
         ]);

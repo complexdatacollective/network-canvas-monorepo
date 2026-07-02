@@ -16,7 +16,6 @@ import type { DeckEntry } from './deckEntries';
 
 // Status line shown on the loading card for each import phase.
 const PHASE_LABEL: Record<ImportPhase, string> = {
-  fetching: 'Fetching…',
   extracting: 'Extracting…',
   saving: 'Saving…',
 };

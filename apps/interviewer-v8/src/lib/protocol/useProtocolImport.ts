@@ -9,14 +9,11 @@ import {
   type ImportProgressEvent,
   type ImportProtocolResult,
   importProtocolFromFile,
-  importProtocolFromUrl,
   peekProtocolName,
 } from './importProtocol';
 import { SAMPLE_PROTOCOL } from './sampleProtocol';
 
-export type ImportRequest =
-  | { source: 'file'; file: File; label: string }
-  | { source: 'url'; url: string; label: string };
+export type ImportRequest = { source: 'file'; file: File; label: string };
 
 // An in-flight protocol import, tracked by this hook and rendered by
 // ProtocolDeck as a loading-state DeckCard that fills in as the import
@@ -24,7 +21,7 @@ export type ImportRequest =
 export type PendingImport = {
   id: string;
   label: string;
-  source: 'file' | 'url' | 'sample';
+  source: 'file' | 'sample';
   phase: ImportPhase;
   progress?: number;
 };
@@ -47,19 +44,11 @@ function createPendingImport(
   if (request.source === 'file') {
     return { id, label: fileLabel, source: 'file', phase: 'extracting' };
   }
-  if (request.source === 'url') {
-    return {
-      id,
-      label: request.label.replace(/\.netcanvas$/i, ''),
-      source: 'url',
-      phase: 'fetching',
-    };
-  }
   return {
     id,
     label: SAMPLE_PROTOCOL.name,
     source: 'sample',
-    phase: 'fetching',
+    phase: 'extracting',
   };
 }
 
@@ -112,13 +101,14 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
             onProgress,
             peekedName ?? undefined,
           );
-        } else if (request.source === 'url') {
-          result = await importProtocolFromUrl(request.url, onProgress);
         } else {
-          result = await importProtocolFromUrl(
-            SAMPLE_PROTOCOL.url,
-            onProgress,
-            SAMPLE_PROTOCOL.name,
+          // Sample install is rewired onto the bundled-protocol path in
+          // Task B2; until then this branch is unreachable in practice
+          // (Home only calls startImport with a file request) and rejects
+          // rather than throwing so `request` isn't narrowed away from
+          // `'sample'` for the checks below.
+          result = await Promise.reject(
+            new Error('sample install rewired in B2'),
           );
         }
 

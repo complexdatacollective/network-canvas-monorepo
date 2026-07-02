@@ -13,14 +13,11 @@ vi.mock('~/lib/db/api', () => ({
   updateSettings: vi.fn(),
 }));
 vi.mock('../importProtocol', () => ({
-  importProtocolFromFile: vi.fn(),
-  importProtocolFromUrl: vi.fn(
-    () => new Promise(() => {}), // never resolves; only the start matters here
-  ),
-  peekProtocolName: vi.fn(),
+  importProtocolFromFile: vi.fn(() => new Promise(() => {})),
+  peekProtocolName: vi.fn(async () => null),
 }));
 
-import { importProtocolFromUrl } from '../importProtocol';
+import { importProtocolFromFile } from '../importProtocol';
 
 describe('useProtocolImport', () => {
   beforeEach(() => {
@@ -31,27 +28,25 @@ describe('useProtocolImport', () => {
     vi.clearAllMocks();
   });
 
-  it('shows the pending card immediately but delays the import work so the deck can travel first', async () => {
+  it('shows the pending card immediately but delays the import work', async () => {
     const { result } = renderHook(() =>
       useProtocolImport({ onInstalled: () => {} }),
     );
 
     await act(async () => {
       await result.current.startImport({
-        source: 'url',
-        url: 'https://example.com/study.netcanvas',
+        source: 'file',
+        file: new File([new Uint8Array()], 'study.netcanvas'),
         label: 'study.netcanvas',
       });
     });
 
-    // The pending entry (and with it the card) exists right away…
     expect(result.current.pendingImports).toHaveLength(1);
-    // …but the heavy import work has not started yet.
-    expect(importProtocolFromUrl).not.toHaveBeenCalled();
+    expect(importProtocolFromFile).not.toHaveBeenCalled();
 
     await act(async () => {
       vi.advanceTimersByTime(1000);
     });
-    expect(importProtocolFromUrl).toHaveBeenCalledTimes(1);
+    expect(importProtocolFromFile).toHaveBeenCalledTimes(1);
   });
 });
