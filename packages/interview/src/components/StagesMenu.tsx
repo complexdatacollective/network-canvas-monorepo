@@ -296,6 +296,9 @@ export default function StagesMenu({
     }
   };
 
+  // `initial` matches `animate`, so the staggered reveal only plays on the
+  // open→"open" transition — cards that mount later (as filter results change)
+  // appear instantly rather than replaying the entrance.
   const animate = open ? 'open' : 'closed';
 
   const renderItem = (item: StageItem, itemProps: ItemProps) => {
@@ -323,7 +326,7 @@ export default function StagesMenu({
         aria-hidden
         variants={variants.node}
         custom={custom}
-        initial="closed"
+        initial={animate}
         animate={animate}
         className="bg-neon-coral relative flex size-8 items-center justify-center rounded-full text-xs font-bold text-white tabular-nums"
       >
@@ -335,7 +338,7 @@ export default function StagesMenu({
       <motion.span
         variants={variants.content}
         custom={custom}
-        initial="closed"
+        initial={animate}
         animate={animate}
         className={cx(
           'text-sm leading-tight font-bold wrap-break-word',
@@ -350,7 +353,7 @@ export default function StagesMenu({
       <motion.span
         variants={variants.content}
         custom={custom}
-        initial="closed"
+        initial={animate}
         animate={animate}
         className={cx(
           // Hover/selected lift the preview via brightness + a soft inset ring
@@ -383,7 +386,7 @@ export default function StagesMenu({
           aria-current={item.isCurrent ? 'step' : undefined}
           variants={variants.card}
           custom={custom}
-          initial="closed"
+          initial={animate}
           animate={animate}
           className={cx(
             // No horizontal padding on the button itself: the timeline band is
@@ -405,7 +408,7 @@ export default function StagesMenu({
               aria-hidden
               variants={variants.line}
               custom={custom}
-              initial="closed"
+              initial={animate}
               animate={animate}
               className={cx(
                 'bg-neon-coral pointer-events-none absolute top-1/2 h-1 origin-left -translate-y-1/2',
@@ -435,7 +438,7 @@ export default function StagesMenu({
         aria-current={item.isCurrent ? 'step' : undefined}
         variants={variants.card}
         custom={custom}
-        initial="closed"
+        initial={animate}
         animate={animate}
         className={cx(
           'group focusable hover:elevation-medium relative flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-[color,background-color,box-shadow] duration-200',
@@ -447,7 +450,7 @@ export default function StagesMenu({
           aria-hidden
           variants={variants.line}
           custom={custom}
-          initial="closed"
+          initial={animate}
           animate={animate}
           className={cx(
             'bg-neon-coral pointer-events-none absolute left-8 w-1 origin-top -translate-x-1/2',
@@ -474,13 +477,10 @@ export default function StagesMenu({
       textValueExtractor={textValueExtractor}
       layout={layout}
       renderItem={renderItem}
-      // Animated mode gives us AnimatePresence enter/exit for filter changes,
-      // but we drive the entrance ourselves (staggerOnMount off) and let items
-      // snap rather than layout-animate (animateItemLayout off) so scrolling
-      // during keyboard navigation can't be mistaken for a layout change.
-      animate
-      staggerOnMount={false}
-      animateItemLayout={false}
+      // Plain (unanimated) collection path: filter changes apply instantly with
+      // no enter/exit/reposition animation. The open/close reveal is driven
+      // separately by the per-item variants above.
+      animate={false}
       orientation={orientation}
       selectionMode="single"
       defaultSelectedKeys={currentId !== undefined ? [currentId] : []}
