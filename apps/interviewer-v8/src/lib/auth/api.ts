@@ -1,4 +1,5 @@
 import { db } from '../db/db';
+import { fromBase64, toBase64 } from '../vault/crypto';
 import * as vaultMetadata from './vaultMetadata';
 
 const PBKDF2_ITERATIONS = 600_000;
@@ -10,21 +11,6 @@ const BIOMETRIC_UNAVAILABLE = {
   ok: false,
   message: 'Biometric authentication is not available',
 } as const;
-
-function fromBase64(b64: string): Uint8Array<ArrayBuffer> {
-  const binary = atob(b64);
-  const buffer = new ArrayBuffer(binary.length);
-  const out = new Uint8Array(buffer);
-  for (let i = 0; i < binary.length; i += 1) out[i] = binary.charCodeAt(i);
-  return out;
-}
-
-function toBase64(bytes: Uint8Array): string {
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += 1)
-    binary += String.fromCharCode(bytes[i]!);
-  return btoa(binary);
-}
 
 // The unlock flag lives in sessionStorage, not a module variable: a page reload
 // (F5, Vite HMR) wipes module state and would otherwise re-show the LockScreen
