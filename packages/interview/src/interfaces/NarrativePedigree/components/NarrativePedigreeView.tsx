@@ -479,20 +479,21 @@ export default function NarrativePedigreeView({
     // in the cell, so connectors still meet the cell centre.
     return (
       <div className="relative inline-flex size-24 items-center justify-center">
-        {/* The single-condition node is a bare notation symbol (no fresco-ui
-            Node), so it has no built-in selected ring — a selection-coloured glow
-            follows the symbol's silhouette for any shape when it is the focal. */}
-        <span
-          className="relative block size-16"
-          style={
-            selected
-              ? {
-                  filter:
-                    'drop-shadow(0 0 0.5rem var(--selected)) drop-shadow(0 0 0.25rem var(--selected)) drop-shadow(0 0 0.15rem var(--selected))',
-                }
-              : undefined
-          }
-        >
+        {/* The focal person is marked with a downward arrow above the symbol,
+            rather than a glow: the glow washed out the label and, being white,
+            did not print. The arrow reads its colour from --np-label-color, so
+            it is white on the dark interface and dark ink in the printed
+            snapshot (which sets that variable), and it never obscures the label. */}
+        {selected && (
+          <svg
+            aria-hidden
+            viewBox="0 0 24 16"
+            className="absolute top-0 left-1/2 h-4 w-6 -translate-x-1/2"
+          >
+            <path d="M12 15 L3 3 L21 3 Z" fill="var(--np-label-color, #fff)" />
+          </svg>
+        )}
+        <span className="relative block size-16">
           <Sticker
             status={status}
             color={color}
