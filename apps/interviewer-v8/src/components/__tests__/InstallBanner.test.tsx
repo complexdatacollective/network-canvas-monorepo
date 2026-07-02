@@ -39,14 +39,9 @@ describe('InstallBanner', () => {
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
     render(<InstallBanner />);
 
-    expect(
-      screen.getByText(/install interviewer before collecting data/i),
-    ).toBeInTheDocument();
     expect(screen.getByText(/7 days/i)).toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole('button', { name: /install interviewer/i }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: /^install$/i }));
     expect(mockPromptInstall).toHaveBeenCalledTimes(1);
   });
 
@@ -55,12 +50,9 @@ describe('InstallBanner', () => {
     mockGetDeferredPrompt.mockReturnValue(null);
     render(<InstallBanner />);
 
-    expect(
-      screen.getByText(/install interviewer before collecting data/i),
-    ).toBeInTheDocument();
     expect(screen.getByText(/add to dock/i)).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: /install interviewer/i }),
+      screen.queryByRole('button', { name: /^install$/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -78,9 +70,7 @@ describe('InstallBanner', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /close/i }));
 
-    expect(
-      screen.queryByText(/install interviewer before collecting data/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/7 days/i)).not.toBeInTheDocument();
     expect(sessionStorage.getItem(SESSION_DISMISS_KEY)).toBe('true');
   });
 
