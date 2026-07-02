@@ -124,18 +124,16 @@ export function useSetupWizard() {
                   </div>
                   <Paragraph margin="none" emphasis="muted" intent="smallText">
                     Secure data storage protects your interview data by
-                    preventing unauthorized access, via encryption or app
-                    sandboxing. This means that even if someone gains access to
-                    your device or its files, they won't be able to read your
-                    data.
+                    encrypting it, so that even if someone gains access to your
+                    device or its files, they won't be able to read your data.
                   </Paragraph>
                   <Alert variant="info">
                     <AlertTitle>Good news!</AlertTitle>
                     <AlertDescription>
-                      Your data is encrypted in this browser with a key derived
-                      from the PIN, passphrase, or biometric authenticator you
-                      set up next. The key never leaves your device, so your
-                      data stays unreadable without it.
+                      If you set up a PIN, passphrase, or biometric lock next,
+                      your data is encrypted in this browser with a key derived
+                      from it. The key never leaves your device, so your data
+                      stays unreadable without it.
                     </AlertDescription>
                   </Alert>
                 </Surface>
