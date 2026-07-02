@@ -1,0 +1,53 @@
+name: Dependabot age-gate exempt (compute)
+
+# Stage 1 of 2 (UNPRIVILEGED). Runs in the `pull_request` context — read-only
+# token, no secrets — so it is safe to execute against the PR-authored lockfile.
+# It decides whether pnpm's minimumReleaseAge gate (24h — see pnpm-workspace.yaml)
+# blocks a frozen install for this Dependabot PR and, if so, computes and
+# verifies the exact name@version entries to exempt, publishing them as an
+# artifact for the privileged apply stage (dependabot-age-exempt-apply.yml).
+#
+# This split is deliberate: the untrusted code runs here without write access,
+# and only a validated, data-only artifact crosses into the privileged stage.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'pnpm-lock.yaml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependabot-age-compute-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  compute:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          fetch-depth: 0 # full history so we can diff against the PR base
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - name: Compute age-gate exemption
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: node .github/scripts/dependabot-age-compute.mjs
+      - name: Upload exemption request
+        if: ${{ hashFiles('age-exempt/additions.txt') != '' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: age-exempt-request
+          path: age-exempt/
+          retention-days: 1
+          if-no-files-found: ignore
