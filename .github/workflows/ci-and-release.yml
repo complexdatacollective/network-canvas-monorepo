@@ -387,7 +387,7 @@ jobs:
   # service-worker precache manifest fails the deploy instead of shipping.
   #
   # NOTE(human-setup-required): needs its own Netlify site, created manually,
-  # with its site ID stored in the NETLIFY_SITE_ID_INTERVIEWER_V8 secret —
+  # with its site ID stored in the NETLIFY_SITE_ID_INTERVIEWER secret —
   # see apps/interviewer-v8/RELEASING.md.
   deploy-interviewer-v8-preview:
     # Same shape as deploy-architect-preview: wait for quality (cache +
@@ -427,7 +427,7 @@ jobs:
           json=$(npx --yes netlify-cli@22 deploy --no-build \
                    --filter=@codaco/interviewer-v8 \
                    --dir=apps/interviewer-v8/dist \
-                   --site="${{ secrets.NETLIFY_SITE_ID_INTERVIEWER_V8 }}" \
+                   --site="${{ secrets.NETLIFY_SITE_ID_INTERVIEWER }}" \
                    --alias="pr-${{ github.event.number }}" --json)
           echo "$json" | jq .
           url=$(echo "$json" | jq -r '.deploy_url')
@@ -589,7 +589,7 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
   # NOTE(human-setup-required): needs its own Netlify site + the
-  # NETLIFY_SITE_ID_INTERVIEWER_V8 secret — see deploy-interviewer-v8-preview
+  # NETLIFY_SITE_ID_INTERVIEWER secret — see deploy-interviewer-v8-preview
   # above and apps/interviewer-v8/RELEASING.md.
   deploy-interviewer-v8-prod:
     needs:
@@ -637,7 +637,7 @@ jobs:
           json=$(npx --yes netlify-cli@22 deploy --no-build --prod \
                    --filter=@codaco/interviewer-v8 \
                    --dir=apps/interviewer-v8/dist \
-                   --site="${{ secrets.NETLIFY_SITE_ID_INTERVIEWER_V8 }}" --json)
+                   --site="${{ secrets.NETLIFY_SITE_ID_INTERVIEWER }}" --json)
           echo "$json" | jq .
           url=$(echo "$json" | jq -r '.deploy_url')
           echo "url=$url" >> "$GITHUB_OUTPUT"

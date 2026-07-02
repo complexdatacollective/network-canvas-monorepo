@@ -52,7 +52,7 @@ create one. Before the deploy jobs above will work:
    `netlify sites:create`). Don't point it at a repo for auto-build; CI
    supplies the build.
 2. Note its Site ID (Site settings → General → Site details).
-3. Add it as the repo secret `NETLIFY_SITE_ID_INTERVIEWER_V8`. The
+3. Add it as the repo secret `NETLIFY_SITE_ID_INTERVIEWER`. The
    `NETLIFY_AUTH_TOKEN` secret is already shared across all Netlify deploys in
    this repo (docs, architect-web, networkcanvas.com) — no new token needed.
 4. If interviewer-v8 needs its own custom domain, configure it in the
