@@ -63,7 +63,7 @@ function ChangePinForm({ onDone }: { onDone: () => void }) {
         component={PasswordField}
         value={currentPin}
         onChange={(next) => setCurrentPin(next ?? '')}
-        autoComplete="current-password"
+        suppressPasswordManager
         showStrengthMeter={false}
         disabled={busy}
       />
@@ -76,7 +76,7 @@ function ChangePinForm({ onDone }: { onDone: () => void }) {
         sensitive
         minLength={8}
         maxLength={8}
-        autoComplete="new-password"
+        autoComplete="one-time-code"
         value={nextPin}
         onChange={(next) => setNextPin(next ?? '')}
         disabled={busy}
@@ -90,7 +90,7 @@ function ChangePinForm({ onDone }: { onDone: () => void }) {
         sensitive
         minLength={8}
         maxLength={8}
-        autoComplete="new-password"
+        autoComplete="one-time-code"
         value={nextPinConfirm}
         onChange={(next) => setNextPinConfirm(next ?? '')}
         disabled={busy}
@@ -164,7 +164,7 @@ function ChangePassphraseForm({ onDone }: { onDone: () => void }) {
         component={PasswordField}
         value={currentPhrase}
         onChange={(next) => setCurrentPhrase(next ?? '')}
-        autoComplete="current-password"
+        suppressPasswordManager
         showStrengthMeter={false}
         disabled={busy}
       />
@@ -175,7 +175,7 @@ function ChangePassphraseForm({ onDone }: { onDone: () => void }) {
         component={PasswordField}
         value={nextPhrase}
         onChange={(next) => setNextPhrase(next ?? '')}
-        autoComplete="new-password"
+        suppressPasswordManager
         showStrengthMeter={true}
         disabled={busy}
       />
@@ -185,7 +185,7 @@ function ChangePassphraseForm({ onDone }: { onDone: () => void }) {
         component={PasswordField}
         value={nextPhraseConfirm}
         onChange={(next) => setNextPhraseConfirm(next ?? '')}
-        autoComplete="new-password"
+        suppressPasswordManager
         showStrengthMeter={false}
         disabled={busy}
       />

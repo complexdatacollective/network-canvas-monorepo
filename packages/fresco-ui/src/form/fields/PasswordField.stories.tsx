@@ -26,6 +26,21 @@ export const Default: Story = {
   },
 };
 
+export const SuppressPasswordManager: Story = {
+  render: () => {
+    const [value, setValue] = useState<string | undefined>('Vault-Secret-1!');
+    return (
+      <div className="w-80">
+        <PasswordField
+          value={value}
+          onChange={setValue}
+          suppressPasswordManager
+        />
+      </div>
+    );
+  },
+};
+
 export const WithStrengthMeter: Story = {
   render: () => {
     const [value, setValue] = useState<string | undefined>('');

@@ -30,6 +30,7 @@ import {
 } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
+import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
 
 type LoadState =
   | { kind: 'loading' }
@@ -55,6 +56,12 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // step. Mirror it into a ref so handleSync sees the latest value rather
   // than the stale closure value.
   const currentStepRef = useRef(0);
+
+  // A history-back (browser button or a swipe gesture the CSS/wheel guards
+  // can't intercept, e.g. iPadOS edge swipe) would leave the interview WITHOUT
+  // the requireUnlockOnExit gate. Pin the history for the life of the route;
+  // handleExit still navigates forward normally.
+  useHistoryBackGuard(true);
 
   // Gated exit shared by the Shell exit button and the completion screen.
   const handleExit = useCallback(async () => {

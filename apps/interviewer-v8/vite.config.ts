@@ -7,8 +7,11 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { createRendererConfig } from './vite.renderer.config';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const themeColor = '#1c1c1c'; // interview-mode background; matches index.html theme-color
-const backgroundColor = '#1c1c1c';
+// The app background (theme-base scheme-dark --background, oklch(0.28 0.09 281)
+// as sRGB). Drives the installed-PWA titlebar (with index.html's theme-color
+// meta, which must match) and the splash background.
+const themeColor = '#232053';
+const backgroundColor = '#232053';
 
 // The @codaco/interview engine chunk is well past workbox's 2 MB default.
 // Raise the precache ceiling so no critical JS is silently dropped from

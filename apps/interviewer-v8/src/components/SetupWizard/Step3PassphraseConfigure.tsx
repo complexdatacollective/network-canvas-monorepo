@@ -62,7 +62,7 @@ export default function Step3PassphraseConfigure() {
         component={PasswordField}
         value={phrase}
         onChange={(v) => setPhrase(v ?? '')}
-        autoComplete="off"
+        suppressPasswordManager
         showStrengthMeter={true}
         placeholder="Enter passphrase"
       />
@@ -72,7 +72,7 @@ export default function Step3PassphraseConfigure() {
         component={PasswordField}
         value={confirm}
         onChange={(v) => setConfirm(v ?? '')}
-        autoComplete="off"
+        suppressPasswordManager
         showStrengthMeter={false}
         placeholder="Confirm passphrase"
       />

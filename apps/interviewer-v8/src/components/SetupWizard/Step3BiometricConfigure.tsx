@@ -66,7 +66,7 @@ export default function Step3BiometricConfigure() {
         component={PasswordField}
         value={phrase}
         onChange={(v) => setPhrase(v ?? '')}
-        autoComplete="off"
+        suppressPasswordManager
         showStrengthMeter={true}
         placeholder="Enter recovery passphrase"
       />
@@ -76,7 +76,7 @@ export default function Step3BiometricConfigure() {
         component={PasswordField}
         value={confirm}
         onChange={(v) => setConfirm(v ?? '')}
-        autoComplete="off"
+        suppressPasswordManager
         showStrengthMeter={false}
         placeholder="Confirm recovery passphrase"
       />

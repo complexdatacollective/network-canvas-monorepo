@@ -24,6 +24,15 @@ body,
   height: 100%;
 }
 
+/* Disable the two-finger swipe-back/forward navigation gesture. Chromium
+   reads this from the ROOT element (the body declaration below does not
+   propagate to the viewport). Safari ignores it for the history swipe
+   entirely (WebKit bug 240183) — that path is handled by the wheel guard in
+   src/lib/pwa/swipeNavigationGuard.ts. */
+html {
+  overscroll-behavior: none;
+}
+
 body {
   overscroll-behavior: none;
   -webkit-user-select: none;
