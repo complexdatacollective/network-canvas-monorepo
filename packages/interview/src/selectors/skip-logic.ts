@@ -7,7 +7,7 @@ import { getNetwork, getStageIndex } from './session';
 
 // Hacked together version of isStageSkipped that returns a map of all stages.
 // This is more convenient to use with useSelector.
-const getSkipMap = createSelector(
+export const getSkipMap = createSelector(
   getStages,
   getNetwork,
   (stages, network): Record<number, boolean> =>

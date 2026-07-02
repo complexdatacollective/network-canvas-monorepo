@@ -1715,6 +1715,9 @@ importers:
       '@codaco/fresco-ui':
         specifier: workspace:^
         version: link:../fresco-ui
+      '@codaco/interface-images':
+        specifier: workspace:*
+        version: link:../interface-images
       '@codaco/network-query':
         specifier: workspace:^
         version: link:../network-query
