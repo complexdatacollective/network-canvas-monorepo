@@ -50,6 +50,9 @@ const EditableAttributesList = ({
       editComponent={ComposerAttributeFields}
       editProps={{ type, entity }}
       previewComponent={previewComponent}
+      // Editable attributes are optional (no node/edge attributes is valid), so
+      // override EditableList's default "at least one item" validator.
+      validation={{}}
       fieldName={fieldName}
       title={title}
       editFormName={editFormName}
