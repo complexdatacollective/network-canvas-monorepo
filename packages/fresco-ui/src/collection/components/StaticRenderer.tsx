@@ -15,6 +15,17 @@ type StaticRendererProps<T> = {
   animationKey?: string | number;
   collectionId: string;
   layoutGroupId?: string | null;
+  /**
+   * Run the imperative entrance stagger on mount. Default `true`. Set `false`
+   * when the caller drives its own entrance animation on the rendered items.
+   */
+  staggerOnMount?: boolean;
+  /**
+   * Animate item repositioning via `layout`. Default `true`. Set `false` to
+   * keep `AnimatePresence` enter/exit while letting items snap to new
+   * positions (e.g. to avoid layout animation fighting a scroll container).
+   */
+  animateItemLayout?: boolean;
 };
 
 /**
@@ -36,12 +47,14 @@ function StaticRendererComponent<T>({
   animationKey,
   collectionId,
   layoutGroupId,
+  staggerOnMount = true,
+  animateItemLayout = true,
 }: StaticRendererProps<T>) {
   // Get CSS styles from layout (flexbox for list, CSS grid for grid)
   const containerStyle = layout.getContainerStyles();
 
   const scope = useStaggerAnimation(
-    shouldAnimate ?? false,
+    (shouldAnimate ?? false) && staggerOnMount,
     collection.size,
     animationKey,
   );
@@ -83,7 +96,7 @@ function StaticRendererComponent<T>({
           {Array.from(collection).map((node) => (
             <motion.div
               key={node.key}
-              layout="position"
+              layout={animateItemLayout ? 'position' : false}
               initial={{ scale: 0.6, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.6, opacity: 0 }}

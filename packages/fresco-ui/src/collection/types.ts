@@ -208,6 +208,19 @@ export type CollectionProps<T> = SortProps &
      * Used by NodeList to trigger re-animation on prompt transitions.
      */
     'animationKey'?: string | number;
+    /**
+     * Run the imperative entrance stagger on mount (default `true`). Set
+     * `false` when the caller animates the items' entrance itself but still
+     * wants `AnimatePresence` enter/exit for add/remove.
+     */
+    'staggerOnMount'?: boolean;
+    /**
+     * Animate item repositioning via `layout` (default `true`). Set `false`
+     * to keep enter/exit animations while items snap to new positions —
+     * useful inside a scroll container where layout animation would otherwise
+     * be triggered by scrolling.
+     */
+    'animateItemLayout'?: boolean;
 
     // Rendering props
     /**

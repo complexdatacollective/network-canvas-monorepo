@@ -1,12 +1,7 @@
 'use client';
 
 import { EyeOff, LayoutTemplate } from 'lucide-react';
-import {
-  LayoutGroup,
-  motion,
-  useReducedMotion,
-  type Variants,
-} from 'motion/react';
+import { motion, useReducedMotion, type Variants } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
@@ -308,10 +303,6 @@ export default function StagesMenu({
     const isLast = item.id === lastId;
     const isOnly = isFirst && isLast;
     const custom = positionById.get(item.id) ?? item.index;
-    // Only animate layout while filtering (so surviving results slide to their
-    // new spots). Off during normal browsing, or the scroll that keyboard
-    // navigation triggers gets mistaken for a layout change and glitches.
-    const layoutId = matchingKeys ? `stage-menu-${item.id}` : undefined;
 
     const picture = isInterfaceType(item.type) ? (
       <InterfacePicture
@@ -390,7 +381,6 @@ export default function StagesMenu({
           {...itemProps}
           type="button"
           aria-current={item.isCurrent ? 'step' : undefined}
-          layoutId={layoutId}
           variants={variants.card}
           custom={custom}
           initial="closed"
@@ -443,7 +433,6 @@ export default function StagesMenu({
         {...itemProps}
         type="button"
         aria-current={item.isCurrent ? 'step' : undefined}
-        layoutId={layoutId}
         variants={variants.card}
         custom={custom}
         initial="closed"
@@ -479,53 +468,57 @@ export default function StagesMenu({
   };
 
   return (
-    <LayoutGroup>
-      <Collection
-        items={items}
-        keyExtractor={keyExtractor}
-        textValueExtractor={textValueExtractor}
-        layout={layout}
-        renderItem={renderItem}
-        animate={false}
-        orientation={orientation}
-        selectionMode="single"
-        defaultSelectedKeys={currentId !== undefined ? [currentId] : []}
-        onSelectionChange={handleSelectionChange}
-        filterKeys={['label', 'position']}
-        filterDebounceMs={0}
-        filterMinQueryLength={FILTER_MIN_QUERY_LENGTH}
-        filterFuseOptions={FILTER_FUSE_OPTIONS}
-        onFilterChange={(query) => {
-          if (query.length < FILTER_MIN_QUERY_LENGTH) {
-            setMatchingKeys(null);
-          }
-        }}
-        onFilterResultsChange={(keys) => setMatchingKeys(keys)}
-        id={STAGES_MENU_LIST_ID}
-        aria-label="Stages"
-        className="min-h-0 flex-1"
-        viewportClassName={isHorizontal ? 'py-6' : 'py-4'}
-        emptyState={
-          <Paragraph margin="none" className="text-text/70 p-8 text-sm">
-            Nothing matched your search term.
-          </Paragraph>
+    <Collection
+      items={items}
+      keyExtractor={keyExtractor}
+      textValueExtractor={textValueExtractor}
+      layout={layout}
+      renderItem={renderItem}
+      // Animated mode gives us AnimatePresence enter/exit for filter changes,
+      // but we drive the entrance ourselves (staggerOnMount off) and let items
+      // snap rather than layout-animate (animateItemLayout off) so scrolling
+      // during keyboard navigation can't be mistaken for a layout change.
+      animate
+      staggerOnMount={false}
+      animateItemLayout={false}
+      orientation={orientation}
+      selectionMode="single"
+      defaultSelectedKeys={currentId !== undefined ? [currentId] : []}
+      onSelectionChange={handleSelectionChange}
+      filterKeys={['label', 'position']}
+      filterDebounceMs={0}
+      filterMinQueryLength={FILTER_MIN_QUERY_LENGTH}
+      filterFuseOptions={FILTER_FUSE_OPTIONS}
+      onFilterChange={(query) => {
+        if (query.length < FILTER_MIN_QUERY_LENGTH) {
+          setMatchingKeys(null);
         }
-      >
-        {(CollectionElements) => (
-          <div
-            className={cx('flex flex-col', isHorizontal ? 'min-h-0' : 'h-full')}
-          >
-            {CollectionElements}
-            <div className="border-text/10 shrink-0 border-t p-4">
-              <CollectionFilterInput
-                placeholder="Filter..."
-                size="sm"
-                showResultCount={false}
-              />
-            </div>
+      }}
+      onFilterResultsChange={(keys) => setMatchingKeys(keys)}
+      id={STAGES_MENU_LIST_ID}
+      aria-label="Stages"
+      className="min-h-0 flex-1"
+      viewportClassName={isHorizontal ? 'py-6' : 'py-4'}
+      emptyState={
+        <Paragraph margin="none" className="text-text/70 p-8 text-sm">
+          Nothing matched your search term.
+        </Paragraph>
+      }
+    >
+      {(CollectionElements) => (
+        <div
+          className={cx('flex flex-col', isHorizontal ? 'min-h-0' : 'h-full')}
+        >
+          {CollectionElements}
+          <div className="border-text/10 shrink-0 border-t p-4">
+            <CollectionFilterInput
+              placeholder="Filter..."
+              size="sm"
+              showResultCount={false}
+            />
           </div>
-        )}
-      </Collection>
-    </LayoutGroup>
+        </div>
+      )}
+    </Collection>
   );
 }

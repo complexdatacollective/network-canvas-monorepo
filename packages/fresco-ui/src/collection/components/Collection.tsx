@@ -48,6 +48,8 @@ function CollectionContent<T extends Record<string, unknown>>({
   disallowEmptySelection,
   animate,
   animationKey,
+  staggerOnMount,
+  animateItemLayout,
   dragAndDropHooks,
   virtualized,
   overscan,
@@ -211,6 +213,8 @@ function CollectionContent<T extends Record<string, unknown>>({
             renderItem={renderItem}
             animate={animate}
             animationKey={animationKey}
+            staggerOnMount={staggerOnMount}
+            animateItemLayout={animateItemLayout}
             collectionId={collectionId}
             dragAndDropHooks={dragAndDropHooks}
             layoutGroupId={layoutGroupId}
@@ -287,6 +291,8 @@ export function Collection<T extends Record<string, unknown>>({
   disallowEmptySelection,
   animate = true,
   animationKey,
+  staggerOnMount,
+  animateItemLayout,
   dragAndDropHooks,
   virtualized,
   overscan,
@@ -338,6 +344,8 @@ export function Collection<T extends Record<string, unknown>>({
         disallowEmptySelection={disallowEmptySelection}
         animate={animate}
         animationKey={animationKey}
+        staggerOnMount={staggerOnMount}
+        animateItemLayout={animateItemLayout}
         dragAndDropHooks={dragAndDropHooks}
         virtualized={virtualized}
         overscan={overscan}
