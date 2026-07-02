@@ -55,6 +55,26 @@ export function unwrapDek(
   );
 }
 
+// As unwrapDek, but the recovered DEK is extractable so it can be re-wrapped
+// under a new KEK. Used ONLY by non-destructive re-enrolment: the extractable
+// copy is transient (rewrap-then-discard) and never becomes the session DEK —
+// the in-memory session key stays the non-extractable one from unwrapDek.
+export function unwrapDekExtractable(
+  wrappedB64: string,
+  kek: CryptoKey,
+): Promise<CryptoKey> {
+  const wrapped = fromBase64(wrappedB64);
+  return crypto.subtle.unwrapKey(
+    'raw',
+    wrapped,
+    kek,
+    'AES-KW',
+    { name: 'AES-GCM', length: 256 },
+    true,
+    ['encrypt', 'decrypt'],
+  );
+}
+
 // KEKs are AES-KW-256, non-extractable, usages ['wrapKey','unwrapKey'].
 export async function deriveKekFromPassword(
   secret: string,

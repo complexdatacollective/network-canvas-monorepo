@@ -25,6 +25,8 @@ import {
   enrolNone,
   enrolPassphrase,
   enrolPin,
+  reEnrolPassphrase,
+  reEnrolPin,
   revoke,
   unlockBiometric,
   unlockPassphrase,
@@ -217,6 +219,102 @@ describe('biometric mode (dual-wrapped)', () => {
       ct,
     );
     expect(new TextDecoder().decode(pt)).toBe('same-key');
+  });
+});
+
+describe('reEnrol (non-destructive PIN / passphrase change)', () => {
+  it('pin: the new PIN unlocks and the old PIN fails after re-enrol', async () => {
+    await enrolPin('12345678');
+    const result = await reEnrolPin('12345678', '87654321');
+    expect(result.ok).toBe(true);
+
+    expect((await unlockPin('87654321')).ok).toBe(true);
+    expect((await unlockPin('12345678')).ok).toBe(false);
+  });
+
+  it('passphrase: the new passphrase unlocks and the old fails after re-enrol', async () => {
+    await enrolPassphrase(GOOD_PASSPHRASE);
+    const next = 'Brand-New-Phrase-2!';
+    const result = await reEnrolPassphrase(GOOD_PASSPHRASE, next);
+    expect(result.ok).toBe(true);
+
+    expect((await unlockPassphrase(next)).ok).toBe(true);
+    expect((await unlockPassphrase(GOOD_PASSPHRASE)).ok).toBe(false);
+  });
+
+  // Load-bearing: re-enrol only rewraps the SAME DEK material, so data
+  // encrypted before the change must still decrypt after it.
+  it('data encrypted BEFORE re-enrol still decrypts AFTER (DEK material unchanged)', async () => {
+    await enrolPin('12345678');
+    const before = await unlockPin('12345678');
+    if (!before.ok) throw new Error('expected unlock');
+
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      before.dek,
+      new TextEncoder().encode('sensitive-row'),
+    );
+
+    const result = await reEnrolPin('12345678', '87654321');
+    expect(result.ok).toBe(true);
+
+    const after = await unlockPin('87654321');
+    if (!after.ok) throw new Error('expected unlock with new PIN');
+    const pt = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      after.dek,
+      ct,
+    );
+    expect(new TextDecoder().decode(pt)).toBe('sensitive-row');
+  });
+
+  it('wrong current PIN returns { ok: false } and leaves the record unchanged', async () => {
+    await enrolPin('12345678');
+    const before = readVault();
+    const result = await reEnrolPin('00000000', '87654321');
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected failure');
+    expect(result.message).toMatch(/current pin/i);
+    // The old PIN still unlocks; the record was not rewritten.
+    expect(readVault()).toEqual(before);
+    expect((await unlockPin('12345678')).ok).toBe(true);
+  });
+
+  it('wrong current passphrase returns { ok: false } and leaves the record unchanged', async () => {
+    await enrolPassphrase(GOOD_PASSPHRASE);
+    const before = readVault();
+    const result = await reEnrolPassphrase(
+      'Wrong-Current-1!',
+      'Brand-New-Phrase-2!',
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected failure');
+    expect(readVault()).toEqual(before);
+    expect((await unlockPassphrase(GOOD_PASSPHRASE)).ok).toBe(true);
+  });
+
+  it('rejects a weak new PIN before touching the record', async () => {
+    await enrolPin('12345678');
+    const before = readVault();
+    const result = await reEnrolPin('12345678', '123');
+    expect(result.ok).toBe(false);
+    expect(readVault()).toEqual(before);
+  });
+
+  it('rejects a weak new passphrase before touching the record', async () => {
+    await enrolPassphrase(GOOD_PASSPHRASE);
+    const before = readVault();
+    const result = await reEnrolPassphrase(GOOD_PASSPHRASE, 'short');
+    expect(result.ok).toBe(false);
+    expect(readVault()).toEqual(before);
+  });
+
+  it('fails when no matching vault is configured', async () => {
+    expect((await reEnrolPin('12345678', '87654321')).ok).toBe(false);
+    await enrolPassphrase(GOOD_PASSPHRASE);
+    // A passphrase vault is not a pin vault.
+    expect((await reEnrolPin('12345678', '87654321')).ok).toBe(false);
   });
 });
 

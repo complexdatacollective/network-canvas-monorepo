@@ -7,6 +7,7 @@ import {
   PBKDF2_SALT_BYTES,
   toBase64,
   unwrapDek,
+  unwrapDekExtractable,
   wrapDek,
 } from './crypto';
 import {
@@ -101,6 +102,95 @@ async function unlockWithPassword(
   } catch {
     return { ok: false, message: wrongMessage };
   }
+}
+
+// Non-destructive PIN/passphrase change: rewrap the SAME DEK under a KEK
+// derived from the new secret. Because the DEK material is unchanged, every
+// existing encrypted row still decrypts and the caller's held session DEK stays
+// valid — no re-lock, no re-encryption.
+//
+// The current secret is verified for free: deriving the OLD KEK and unwrapping
+// the stored DEK throws on a wrong secret (AES-KW integrity), so a successful
+// unwrap is proof-of-possession. The unwrap is EXTRACTABLE so the recovered DEK
+// can be re-wrapped, but that extractable copy lives only inside this function
+// (rewrap-then-discard) and is never returned to a caller or the session holder.
+//
+// Atomicity: writeVault runs only after the new wrap succeeds, so a failure
+// (wrong secret, weak new secret) leaves the previous credential fully usable.
+async function reEnrolPassword(
+  mode: 'pin' | 'passphrase',
+  current: string,
+  next: string,
+  wrongCurrentMessage: string,
+): Promise<EnrolResult> {
+  const validation =
+    mode === 'pin' ? validatePin(next) : validatePassphrase(next);
+  if (!validation.ok) return validation;
+
+  const record = readVault();
+  if (!record || record.mode !== mode) {
+    return {
+      ok: false,
+      message:
+        mode === 'pin'
+          ? 'PIN is not configured on this device'
+          : 'Passphrase is not configured on this device',
+    };
+  }
+
+  const oldKek = await deriveKekFromPassword(
+    current,
+    record.kdfSaltB64,
+    record.kdfIterations,
+  );
+
+  let dek: CryptoKey;
+  try {
+    dek = await unwrapDekExtractable(record.wrappedDekB64, oldKek);
+  } catch {
+    return { ok: false, message: wrongCurrentMessage };
+  }
+
+  const kdfSaltB64 = randomSaltB64();
+  const newKek = await deriveKekFromPassword(
+    next,
+    kdfSaltB64,
+    PBKDF2_ITERATIONS,
+  );
+  const wrappedDekB64 = await wrapDek(dek, newKek);
+
+  writeVault({
+    version: 4,
+    mode,
+    kdfSaltB64,
+    kdfIterations: PBKDF2_ITERATIONS,
+    wrappedDekB64,
+  });
+  return { ok: true };
+}
+
+export function reEnrolPin(
+  currentPin: string,
+  nextPin: string,
+): Promise<EnrolResult> {
+  return reEnrolPassword(
+    'pin',
+    currentPin,
+    nextPin,
+    'Current PIN is incorrect',
+  );
+}
+
+export function reEnrolPassphrase(
+  currentPhrase: string,
+  nextPhrase: string,
+): Promise<EnrolResult> {
+  return reEnrolPassword(
+    'passphrase',
+    currentPhrase,
+    nextPhrase,
+    'Current passphrase is incorrect',
+  );
 }
 
 export async function enrolNone(): Promise<EnrolResult> {
