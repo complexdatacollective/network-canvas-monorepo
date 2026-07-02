@@ -10,10 +10,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 const themeColor = '#1c1c1c'; // interview-mode background; matches index.html theme-color
 const backgroundColor = '#1c1c1c';
 
-// mapbox-gl (Geospatial) and the @codaco/interview engine both produce chunks
-// well past workbox's 2 MB default. Raise the precache ceiling so no critical
-// JS is silently dropped from precache (which would break the offline boot).
-// assert-pwa-build.mjs re-checks that nothing critical was excluded.
+// The @codaco/interview engine chunk is well past workbox's 2 MB default.
+// Raise the precache ceiling so no critical JS is silently dropped from
+// precache (which would break the offline boot). assert-pwa-build.mjs
+// re-checks that nothing critical was excluded.
 const MAX_PRECACHE_BYTES = 12 * 1024 * 1024;
 
 export default defineConfig(() =>
@@ -88,19 +88,17 @@ export default defineConfig(() =>
         },
       }),
     ],
-    // mapbox-gl + the interview engine are large; splitting them into named
-    // chunks keeps any single precached entry well under MAX_PRECACHE_BYTES.
-    // `@codaco/interview` is a pnpm workspace package symlinked into
-    // node_modules; Vite/rolldown resolve module ids to the symlink's real
-    // path (`packages/interview/dist/...`), not the package-name path, so
-    // the id never contains the string "@codaco/interview" — match the
-    // workspace path segment instead.
+    // The interview engine is large; splitting it into its own named chunk
+    // keeps the precached entry well under MAX_PRECACHE_BYTES. `@codaco/interview`
+    // is a pnpm workspace package symlinked into node_modules; Vite/rolldown
+    // resolve module ids to the symlink's real path (`packages/interview/dist/...`),
+    // not the package-name path, so the id never contains the string
+    // "@codaco/interview" — match the workspace path segment instead.
     build: {
       rollupOptions: {
         input: { main: resolve(here, 'index.html') },
         output: {
           manualChunks(id: string) {
-            if (id.includes('mapbox-gl')) return 'mapbox-gl';
             if (id.includes('/packages/interview/')) return 'interview-engine';
             return undefined;
           },

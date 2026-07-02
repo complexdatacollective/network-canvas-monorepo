@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Post-build assertion: a production PWA build must emit the SW + manifest +
-// icons, and every critical chunk (mapbox-gl, the interview engine, the entry)
-// must be precached — a chunk over the precache limit silently drops from the
-// SW manifest and breaks the offline boot.
+// icons, and every critical chunk (the interview engine, the entry) must be
+// precached — a chunk over the precache limit silently drops from the SW
+// manifest and breaks the offline boot.
 import { readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -58,13 +58,12 @@ try {
 
 const critical = jsAssets.filter(
   (f) =>
-    f.startsWith('mapbox-gl') ||
     f.startsWith('interview-engine') ||
     f.startsWith('main') ||
     f.startsWith('index'),
 );
 if (critical.length === 0) {
-  fail('no critical chunks (mapbox-gl / interview-engine / entry) found');
+  fail('no critical chunks (interview-engine / entry) found');
 }
 
 const excluded = critical.filter((f) => !precached.has(`assets/${f}`));

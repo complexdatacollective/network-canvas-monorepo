@@ -64,7 +64,6 @@ describe('SettingsDialog storage durability', () => {
     mockEstimateStorage.mockResolvedValue({
       usage: 1024 * 1024,
       quota: 100 * 1024 * 1024,
-      free: 99 * 1024 * 1024,
       percent: 1,
     });
     mockIsPersisted.mockResolvedValue(true);
@@ -81,7 +80,6 @@ describe('SettingsDialog storage durability', () => {
     mockEstimateStorage.mockResolvedValue({
       usage: 0,
       quota: 0,
-      free: 0,
       percent: 0,
     });
     mockIsPersisted.mockResolvedValue(false);

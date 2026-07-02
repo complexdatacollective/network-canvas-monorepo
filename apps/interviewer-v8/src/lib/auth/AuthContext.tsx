@@ -20,7 +20,6 @@ export type IdleTimeoutMinutes = 1 | 5 | 15 | 30 | 60;
 
 export type AuthState = {
   kind: AuthStateKind;
-  biometricSupported: boolean;
   mode?: AuthMode;
   idleTimeoutMinutes: IdleTimeoutMinutes;
 };
@@ -60,12 +59,10 @@ const BLUR_LOCK_DELAY_MS = import.meta.env.DEV ? null : 30_000;
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     kind: 'loading',
-    biometricSupported: false,
     idleTimeoutMinutes: DEFAULT_SETTINGS.idleTimeoutMinutes,
   });
 
   const refresh = useCallback(async () => {
-    const biometricSupported = await authApi.isBiometricSupported();
     const s = await authApi.status();
     const kind: AuthStateKind = !s.configured
       ? 'unconfigured'
@@ -81,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         settings?.idleTimeoutMinutes ?? DEFAULT_SETTINGS.idleTimeoutMinutes;
     }
 
-    setState({ kind, biometricSupported, mode: s.mode, idleTimeoutMinutes });
+    setState({ kind, mode: s.mode, idleTimeoutMinutes });
   }, []);
 
   useEffect(() => {

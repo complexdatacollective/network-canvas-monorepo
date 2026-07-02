@@ -88,15 +88,13 @@ type RendererOptions = {
   port?: number;
   emptyOutDir?: boolean;
   // Override the rollup entry. Defaults to Vite's index.html in the project
-  // root; the electron renderer uses this to explicitly point at index.html
-  // from inside the electron-vite renderer slice.
+  // root.
   rollupInput?: string;
 };
 
-// Shared renderer-side Vite config used by both the web build (vite.config.ts)
-// and the Electron renderer slice (electron.vite.config.ts). Keeping it in one
-// place prevents drift — e.g. updating Swiper / Tailwind plugin / resolve.dedupe
-// in only one config and ending up with two divergent dev pipelines.
+// Shared renderer-side Vite config, currently consumed by the web build
+// (vite.config.ts). Kept as a single function so config additions — e.g.
+// updating Swiper / Tailwind plugin / resolve.dedupe — have one place to land.
 export function createRendererConfig({
   outDir,
   port,

@@ -24,7 +24,7 @@ export type AnalyticsContextValue = {
   // The shared posthog-js client, or null if it failed to load. Passed to the
   // `@codaco/interview` Shell so interview-engine events use the same instance.
   client: PostHog | null;
-  // Persist a new preference and apply it immediately (opt in/out + native).
+  // Persist a new preference and apply it immediately (opt in/out).
   setEnabled: (enabled: boolean) => Promise<void>;
   // App-level event tracking. No-ops when disabled or the client is missing.
   track: (event: string, properties?: Record<string, unknown>) => void;
@@ -80,10 +80,10 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   const preferenceRevisionRef = useRef(0);
 
   // Load the stored preference once the app is unlocked, then initialise the
-  // client and apply. Reading settings is DB-backed; on Electron the SQLCipher
-  // database is only open after unlock, so we must wait for that. Analytics
-  // stays opted out (the safe default) until then. Re-runs on a lock/unlock
-  // cycle are idempotent.
+  // client and apply. Reading settings is DB-backed; the Dexie vault is only
+  // readable after unlock, so we must wait for that. Analytics stays opted
+  // out (the safe default) until then. Re-runs on a lock/unlock cycle are
+  // idempotent.
   useEffect(() => {
     if (kind !== 'unlocked') return;
     let active = true;

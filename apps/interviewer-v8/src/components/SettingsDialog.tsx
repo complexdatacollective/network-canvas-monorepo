@@ -98,7 +98,6 @@ export function SettingsDialog({
   const [storage, setStorage] = useState<StorageEstimate>({
     usage: null,
     quota: null,
-    free: null,
     percent: null,
   });
   const [installationId, setInstallationId] = useState('');

@@ -14,7 +14,6 @@ import {
   clearVault,
   readVault,
   type VaultMode,
-  type VaultRecord,
   writeVault,
 } from './vaultStore';
 import { enrollBiometric, readPrf } from './webauthn';
@@ -392,6 +391,3 @@ export async function revoke(): Promise<void> {
   }
   clearVault();
 }
-
-// Referenced by the vault record variant type surfaced to callers.
-export type { VaultMode, VaultRecord };

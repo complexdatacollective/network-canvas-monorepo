@@ -1,8 +1,6 @@
 export type StorageEstimate = {
   usage: number | null;
   quota: number | null;
-  // Derived quota - usage.
-  free: number | null;
   percent: number | null;
 };
 
@@ -32,21 +30,19 @@ export async function isStoragePersisted(): Promise<boolean> {
 
 export async function estimateStorage(): Promise<StorageEstimate> {
   if (typeof navigator === 'undefined' || !navigator.storage?.estimate) {
-    return { usage: null, quota: null, free: null, percent: null };
+    return { usage: null, quota: null, percent: null };
   }
   try {
     const e = await navigator.storage.estimate();
     const usage = e.usage ?? null;
     const quota = e.quota ?? null;
-    const free =
-      usage !== null && quota !== null ? Math.max(0, quota - usage) : null;
     const percent =
       usage !== null && quota !== null && quota > 0
         ? (usage / quota) * 100
         : null;
-    return { usage, quota, free, percent };
+    return { usage, quota, percent };
   } catch {
-    return { usage: null, quota: null, free: null, percent: null };
+    return { usage: null, quota: null, percent: null };
   }
 }
 
