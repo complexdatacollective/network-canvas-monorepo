@@ -1,5 +1,6 @@
 import BackgroundBlobs from './BackgroundBlobs/BackgroundBlobs';
 import useCanvas from './BackgroundBlobs/useCanvas';
+import BackgroundLights from './BackgroundLights/BackgroundLights';
 import { seedToPatternPalette } from './Pattern/palette';
 import type { PatternPalette } from './Pattern/palette';
 import { Pattern } from './Pattern/Pattern';
@@ -15,6 +16,7 @@ import { TruchetPattern } from './Pattern/variants/Truchet';
 export type { PatternPalette, PatternProps, PatternVariant };
 export {
   BackgroundBlobs,
+  BackgroundLights,
   CrossesPattern,
   DotsPattern,
   FlowPattern,

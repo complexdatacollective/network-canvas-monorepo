@@ -90,3 +90,26 @@ export class ListKeyboardDelegate implements KeyboardDelegate {
     return null;
   }
 }
+
+/**
+ * Keyboard delegate for a horizontal (single-row) list layout. Left/Right move
+ * between items; Up/Down are inert so a row of items reads the arrow keys the
+ * way a vertical list reads Up/Down.
+ */
+export class RowKeyboardDelegate extends ListKeyboardDelegate {
+  override getKeyBelow(): Key | null {
+    return null;
+  }
+
+  override getKeyAbove(): Key | null {
+    return null;
+  }
+
+  getKeyLeftOf(key: Key): Key | null {
+    return super.getKeyAbove(key);
+  }
+
+  getKeyRightOf(key: Key): Key | null {
+    return super.getKeyBelow(key);
+  }
+}

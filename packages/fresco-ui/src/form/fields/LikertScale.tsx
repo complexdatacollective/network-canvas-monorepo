@@ -2,6 +2,7 @@
 
 import { Slider } from '@base-ui/react/slider';
 import { motion } from 'motion/react';
+import { useMemo, useRef, useState } from 'react';
 
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
@@ -16,6 +17,13 @@ import {
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
+import ScaleValuePopover from './scale/ScaleValuePopover';
+import {
+  ROTATED_LABEL_WRAP_CLASS,
+  scaleGridTemplateColumns,
+  useScaleLabelLayout,
+} from './scale/useScaleLabelLayout';
+import { useSliderActive } from './scale/useSliderActive';
 
 type Option = {
   label: string;
@@ -45,10 +53,29 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
 
   const currentIndex = options.findIndex((option) => option.value === value);
   const hasValue = currentIndex >= 0;
-  const midpoint = Math.floor((options.length - 1) / 2);
+  // Clamp to 0 so an empty option set doesn't produce an out-of-range -1 that
+  // the Slider (min=0, max=0) would reject.
+  const midpoint = Math.max(0, Math.floor((options.length - 1) / 2));
   const sliderValue = hasValue ? currentIndex : midpoint;
   const currentOption = hasValue ? options[currentIndex] : undefined;
   const thumbState = !hasValue && state === 'normal' ? 'pristine' : state;
+
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [thumbEl, setThumbEl] = useState<HTMLElement | null>(null);
+  const active = useSliderActive();
+  // Memoise so the measurement hook doesn't re-run its DOM reads on every
+  // value/focus render (e.g. each drag tick) just because `map` yields a new
+  // array reference.
+  const optionLabels = useMemo(
+    () => options.map((option) => option.label),
+    [options],
+  );
+  const { layout, measurementNode } = useScaleLabelLayout({
+    rootRef,
+    labels: optionLabels,
+  });
+
+  const popoverOption = options[sliderValue];
 
   const handleValueChange = (newValue: number | number[]) => {
     if (readOnly) return;
@@ -85,13 +112,26 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
   };
 
   return (
-    <div className={cx('w-full', className)} {...rest}>
-      <div className="relative">
+    <div ref={rootRef} className={cx('relative w-full', className)} {...rest}>
+      <div
+        className="relative"
+        style={
+          layout.tier === 'rotated'
+            ? { paddingInline: layout.overhang }
+            : undefined
+        }
+      >
         <Slider.Root
           value={sliderValue}
           onValueChange={handleValueChange}
           onValueCommitted={handleValueCommitted}
-          onKeyDown={handleKeyDown}
+          onKeyDown={(event) => {
+            if (readOnly) return;
+            handleKeyDown(event);
+            active.onKeyDown(event);
+          }}
+          onPointerDown={readOnly ? undefined : active.onPointerDown}
+          onBlur={active.onBlur}
           disabled={disabled}
           min={0}
           max={Math.max(0, options.length - 1)}
@@ -124,6 +164,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                 </div>
               )}
               <Slider.Thumb
+                ref={setThumbEl}
                 render={
                   <motion.div
                     // base-ui's nested <input type="range"> is the focusable
@@ -146,38 +187,110 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
           </Slider.Control>
         </Slider.Root>
 
-        <div
-          className="mt-2 grid gap-2 px-3"
-          style={{
-            gridTemplateColumns:
-              options.length <= 2
-                ? `repeat(${options.length}, 1fr)`
-                : `0.5fr repeat(${options.length - 2}, 1fr) 0.5fr`,
-          }}
+        <ScaleValuePopover
+          visible={active.active && options.length > 0}
+          anchor={thumbEl}
         >
-          {options.map((option, index) => {
-            const isFirst = index === 0;
-            const isLast = index === options.length - 1;
+          {popoverOption ? (
+            <RenderMarkdown>{popoverOption.label}</RenderMarkdown>
+          ) : null}
+        </ScaleValuePopover>
 
-            return (
-              <div
-                key={index}
-                className={cx(
-                  controlLabelVariants({ size: 'sm' }),
-                  options.length === 1
-                    ? 'text-center'
-                    : isFirst
-                      ? 'text-left'
-                      : isLast
-                        ? 'text-right'
-                        : 'text-center',
-                )}
-              >
-                <RenderMarkdown>{option.label}</RenderMarkdown>
-              </div>
-            );
-          })}
-        </div>
+        {options.length > 0 && layout.tier === 'full' && (
+          <div
+            className="mt-2 grid gap-2 px-3"
+            style={{
+              gridTemplateColumns: scaleGridTemplateColumns(options.length),
+            }}
+          >
+            {options.map((option, index) => {
+              const isFirst = index === 0;
+              const isLast = index === options.length - 1;
+              return (
+                <div
+                  key={index}
+                  className={cx(
+                    controlLabelVariants({ size: 'sm' }),
+                    options.length === 1
+                      ? 'text-center'
+                      : isFirst
+                        ? 'text-left'
+                        : isLast
+                          ? 'text-right'
+                          : 'text-center',
+                  )}
+                >
+                  <RenderMarkdown>{option.label}</RenderMarkdown>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {options.length > 1 &&
+          layout.tier === 'rotated' && (
+            // `mx-3` insets the band to match the track (which sits inside the
+            // control's `px-3`), so `left: %` maps onto the same axis as the ticks
+            // and each rotated label centres on its mark.
+            <div
+              className="relative mx-3 mt-1"
+              style={{ height: layout.bandHeight }}
+            >
+              {options.map((option, index) => {
+                const percentage =
+                  options.length > 1
+                    ? (index / (options.length - 1)) * 100
+                    : 50;
+                return (
+                  <div
+                    key={index}
+                    className={cx(
+                      controlLabelVariants({ size: 'sm' }),
+                      'absolute text-center',
+                      ROTATED_LABEL_WRAP_CLASS,
+                    )}
+                    style={{
+                      left: `${percentage}%`,
+                      top: '50%',
+                      transform: `translate(-50%, -50%) rotate(${layout.rotateDeg}deg)`,
+                    }}
+                  >
+                    <RenderMarkdown>{option.label}</RenderMarkdown>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+        {options.length > 1 && layout.tier === 'anchors' && (
+          <div className="relative mt-2 flex justify-between px-3">
+            <div
+              className={cx(
+                controlLabelVariants({ size: 'sm' }),
+                'max-w-24 text-left',
+              )}
+            >
+              <RenderMarkdown>{options[0]!.label}</RenderMarkdown>
+            </div>
+            <div
+              className={cx(
+                controlLabelVariants({ size: 'sm' }),
+                'max-w-24 text-right',
+              )}
+            >
+              <RenderMarkdown>
+                {options[options.length - 1]!.label}
+              </RenderMarkdown>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {measurementNode}
+      <div aria-live="polite" className="sr-only">
+        {currentOption ? (
+          <RenderMarkdown>{currentOption.label}</RenderMarkdown>
+        ) : null}
       </div>
     </div>
   );

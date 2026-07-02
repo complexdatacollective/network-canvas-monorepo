@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
-import { BackgroundBlobs } from '@codaco/art';
+import { BackgroundLights } from '@codaco/art';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
@@ -35,16 +35,17 @@ class ErrorBoundary extends Component<Props, State> {
     return (
       <>
         <motion.div
-          className="fixed inset-0 -z-10 blur-[10rem]"
+          className="fixed inset-0 -z-10"
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.8 }}
           transition={{ duration: 2 }}
         >
-          <BackgroundBlobs
+          <BackgroundLights
             large={0}
             medium={4}
             small={0}
-            compositeOperation="color-dodge"
+            blendMode="color-dodge"
+            speedFactor={30}
           />
         </motion.div>
         <Dialog

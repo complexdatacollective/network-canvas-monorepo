@@ -55,10 +55,12 @@ function Interview({
   onExit,
   hideNavigation = false,
   navigationOrientation: orientationProp,
+  allowStageNavigation,
 }: {
   onExit?: () => void;
   hideNavigation?: boolean;
   navigationOrientation?: NavigationOrientation;
+  allowStageNavigation?: boolean;
 }) {
   const {
     stage,
@@ -70,6 +72,7 @@ function Interview({
     handleExitComplete,
     moveForward,
     moveBackward,
+    goToStage,
     disableMoveForward,
     disableMoveBackward,
     pulseNext,
@@ -159,6 +162,8 @@ function Interview({
             <Navigation
               moveBackward={moveBackward}
               moveForward={moveForward}
+              goToStage={goToStage}
+              allowStageNavigation={allowStageNavigation}
               disableMoveForward={disableMoveForward}
               disableMoveBackward={disableMoveBackward}
               pulseNext={pulseNext}
@@ -219,6 +224,7 @@ type ShellProps = {
    * omitted, the orientation responds to the aspect ratio automatically.
    */
   navigationOrientation?: NavigationOrientation;
+  allowStageNavigation?: boolean;
 };
 
 const Shell = ({
@@ -235,6 +241,7 @@ const Shell = ({
   onExit,
   hideNavigation,
   navigationOrientation,
+  allowStageNavigation,
 }: ShellProps) => {
   // Anchor onSync in a ref so the store factory receives a stable callback
   // (the sync middleware closes over it once at store creation). Hosts
@@ -311,6 +318,10 @@ const Shell = ({
               onExit={onExit}
               hideNavigation={hideNavigation}
               navigationOrientation={navigationOrientation}
+              allowStageNavigation={
+                allowStageNavigation &&
+                (currentStep === undefined || onStepChange !== undefined)
+              }
             />
           </CurrentStepProvider>
         </ContractProvider>

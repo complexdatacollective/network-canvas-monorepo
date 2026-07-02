@@ -2,6 +2,7 @@ import {
   FlaskConical,
   Info,
   LineChart,
+  Route,
   Shield,
   Trash2,
   Upload as UploadIcon,
@@ -57,7 +58,13 @@ type SettingsDialogProps = {
   onDataChange?: () => void;
 };
 
-type Section = 'about' | 'data' | 'privacy' | 'security' | 'synthetic';
+type Section =
+  | 'about'
+  | 'interview'
+  | 'data'
+  | 'privacy'
+  | 'security'
+  | 'synthetic';
 
 const NAV_BUTTON_BASE =
   'flex w-full items-center gap-3 px-4 py-3 border-0 rounded-[var(--radius-pill)] font-heading font-extrabold text-sm text-left cursor-pointer';
@@ -76,6 +83,7 @@ function StorageProgress({ value }: { value: number }) {
 
 const NAV_ITEMS: { id: Section; label: string; icon: typeof Info }[] = [
   { id: 'about', label: 'About', icon: Info },
+  { id: 'interview', label: 'Interview', icon: Route },
   { id: 'data', label: 'Data export', icon: UploadIcon },
   { id: 'privacy', label: 'Privacy', icon: LineChart },
   { id: 'security', label: 'Security', icon: Shield },
@@ -338,6 +346,28 @@ export function SettingsDialog({
                   void persist({ sampleProtocolDismissed: next !== true })
                 }
               />
+            </>
+          ) : null}
+
+          {section === 'interview' && settings ? (
+            <>
+              <UnconnectedField
+                name="allowStageNavigation"
+                label="Allow stage navigation"
+                hint="Let participants move between stages by tapping the progress bar during an interview, which opens a stages menu."
+                inline
+                component={ToggleField}
+                value={settings.allowStageNavigation}
+                onChange={(next: boolean | undefined) =>
+                  void persist({ allowStageNavigation: next === true })
+                }
+              />
+              <Paragraph intent="smallText" emphasis="muted">
+                When off, participants can only move forwards and backwards one
+                stage at a time. Turning this on lets them jump directly to any
+                stage, which is useful for piloting a protocol but is usually
+                left off for real interviews.
+              </Paragraph>
             </>
           ) : null}
 

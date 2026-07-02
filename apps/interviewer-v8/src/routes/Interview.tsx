@@ -52,6 +52,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   } = useStepUpAuth();
   const [finished, setFinished] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [allowStageNavigation, setAllowStageNavigation] = useState(false);
   // SessionPayload from @codaco/interview's onSync does not carry the current
   // step. Mirror it into a ref so handleSync sees the latest value rather
   // than the stale closure value.
@@ -121,6 +122,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       const initialStep = session.currentStep ?? 0;
       setCurrentStep(initialStep);
       currentStepRef.current = initialStep;
+      setAllowStageNavigation(settings.allowStageNavigation);
       setState({
         kind: 'ready',
         payload,
@@ -257,6 +259,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         disableAnalytics={!analyticsEnabled}
         onExit={() => void handleExit()}
         navigationOrientation={navigationOrientation}
+        allowStageNavigation={allowStageNavigation}
       />
     </div>
   );

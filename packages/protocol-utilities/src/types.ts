@@ -196,7 +196,7 @@ export type StageEntry = {
     image?: string;
   };
   behaviours?: {
-    automaticLayout?: { enabled: boolean };
+    automaticLayout?: boolean;
     freeDraw?: boolean;
     allowRepositioning?: boolean;
     removeAfterConsideration?: boolean;
@@ -340,7 +340,7 @@ export type AddStageInput = {
     image?: string;
   };
   behaviours?: {
-    automaticLayout?: { enabled: boolean };
+    automaticLayout?: boolean;
     freeDraw?: boolean;
     allowRepositioning?: boolean;
     removeAfterConsideration?: boolean;

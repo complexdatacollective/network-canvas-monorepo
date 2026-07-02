@@ -187,7 +187,7 @@ const PromptFields = ({
             </Row>
             {edgeVariable && (
               <Row>
-                <h3 id={getFieldId('variableOptions')}>Variable Options</h3>
+                <h4 id={getFieldId('variableOptions')}>Variable Options</h4>
                 <p>
                   The following choices or &apos;options&apos; are configured
                   for this variable. We suggest no more than four options should

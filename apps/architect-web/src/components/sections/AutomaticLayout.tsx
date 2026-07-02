@@ -13,7 +13,7 @@ import type { RootState } from '~/ducks/modules/root';
 import DetachedField from '../DetachedField';
 import IssueAnchor from '../IssueAnchor';
 
-const FORM_PROPERTY = 'behaviours.automaticLayout.enabled';
+const FORM_PROPERTY = 'behaviours.automaticLayout';
 
 const AutomaticLayout = ({ form }: StageEditorSectionProps) => {
   const dispatch = useAppDispatch();
@@ -47,7 +47,7 @@ const AutomaticLayout = ({ form }: StageEditorSectionProps) => {
     >
       <Row>
         <IssueAnchor
-          fieldName="behaviours.automaticLayout.enabled"
+          fieldName="behaviours.automaticLayout"
           description="Layout mode"
         />
         <p>

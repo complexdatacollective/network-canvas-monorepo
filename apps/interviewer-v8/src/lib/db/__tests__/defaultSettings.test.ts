@@ -9,4 +9,8 @@ describe('DEFAULT_SETTINGS security gates', () => {
     expect(DEFAULT_SETTINGS.requireUnlockOnExport).toBe(false);
     expect('requireUnlockOnResume' in DEFAULT_SETTINGS).toBe(false);
   });
+
+  it('defaults stage navigation off', () => {
+    expect(DEFAULT_SETTINGS.allowStageNavigation).toBe(false);
+  });
 });

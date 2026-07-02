@@ -10,14 +10,10 @@ import {
 
 import { updateNode } from '../store/modules/session';
 import type { AppDispatch } from '../store/store';
+import { edgeInsetForNode, FALLBACK_NODE_RADIUS } from './layoutGeometry';
 
 type Position = { x: number; y: number };
 type CanvasDimensions = { width: number; height: number };
-
-// Minimum gap (px) between a node's visible edge and the canvas boundary.
-const EDGE_PADDING = 16;
-// Node radius: size-24 = 6rem = 96px → 48px
-const NODE_RADIUS = 48;
 
 type CanvasState = {
   positions: Map<string, Position>;
@@ -49,7 +45,7 @@ const clampPosition = (
     return { x: clamp(pos.x, 0, 1), y: clamp(pos.y, 0, 1) };
   }
 
-  const inset = NODE_RADIUS + EDGE_PADDING;
+  const inset = edgeInsetForNode(FALLBACK_NODE_RADIUS);
   const marginX = Math.min(inset / dimensions.width, 0.5);
   const marginY = Math.min(inset / dimensions.height, 0.5);
 

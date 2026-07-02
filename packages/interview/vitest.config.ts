@@ -15,7 +15,20 @@ const dirname =
 
 export default defineConfig({
   resolve: {
-    tsconfigPaths: true,
+    // `~/*` and `~/.storybook/*` mirror this package's tsconfig `paths`. Vite's
+    // native resolve.tsconfigPaths honours tsconfig `exclude`, and tsconfig.json
+    // excludes the test/story files — so `~/` imports (and `vi.mock('~/…')`)
+    // resolve for source files but not for those. Alias them explicitly so `~/`
+    // resolves for every file. `.storybook` is listed first because
+    // `~/.storybook/…` also matches the bare `~/` pattern and Vite uses the
+    // first matching alias.
+    alias: [
+      {
+        find: /^~\/\.storybook\//,
+        replacement: `${path.join(dirname, '.storybook')}/`,
+      },
+      { find: /^~\//, replacement: `${path.join(dirname, 'src')}/` },
+    ],
   },
   plugins: [react()],
   define: {

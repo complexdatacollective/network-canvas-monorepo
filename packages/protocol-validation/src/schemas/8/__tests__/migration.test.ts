@@ -1329,6 +1329,101 @@ describe('Migration V7 to V8', () => {
     });
   });
 
+  describe('automaticLayout flatten', () => {
+    const buildV7 = (
+      stageType: 'Sociogram' | 'Narrative',
+      behaviours?: Record<string, unknown>,
+    ) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: { pos: { name: 'Pos', type: 'layout' } },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'stage1',
+            type: stageType,
+            label: 'Stage',
+            subject: { entity: 'node', type: 'person' },
+            ...(behaviours ? { behaviours } : {}),
+            ...(stageType === 'Sociogram'
+              ? {
+                  prompts: [
+                    {
+                      id: 'p1',
+                      text: 'Position',
+                      layout: { layoutVariable: 'pos' },
+                    },
+                  ],
+                }
+              : {
+                  presets: [
+                    { id: 'preset1', label: 'View', layoutVariable: 'pos' },
+                  ],
+                }),
+          },
+        ],
+      }) as unknown as Protocol<7>;
+
+    const migratedStage = (
+      p: Protocol<7>,
+      expectedType: 'Sociogram' | 'Narrative',
+    ) => {
+      const parsed = ProtocolSchemaV8.parse(
+        migrationV7toV8.migrate(p, { name: 'Test Protocol' }),
+      );
+      const stage = parsed.stages[0];
+      expect(stage?.type).toBe(expectedType);
+      if (!stage || stage.type !== expectedType) {
+        throw new Error(`Expected ${expectedType} stage`);
+      }
+      return stage;
+    };
+
+    it('flattens a Sociogram automaticLayout object to its enabled boolean', () => {
+      const stage = migratedStage(
+        buildV7('Sociogram', { automaticLayout: { enabled: true } }),
+        'Sociogram',
+      );
+      expect(stage.behaviours?.automaticLayout).toBe(true);
+    });
+
+    it('flattens enabled:false to false', () => {
+      const stage = migratedStage(
+        buildV7('Sociogram', { automaticLayout: { enabled: false } }),
+        'Sociogram',
+      );
+      expect(stage.behaviours?.automaticLayout).toBe(false);
+    });
+
+    it('leaves a Sociogram without automaticLayout untouched (no behaviours added)', () => {
+      const stage = migratedStage(buildV7('Sociogram'), 'Sociogram');
+      expect(stage.behaviours?.automaticLayout).toBeUndefined();
+    });
+
+    it('leaves a Narrative without automaticLayout unset (absent = off)', () => {
+      const stage = migratedStage(buildV7('Narrative'), 'Narrative');
+      expect(stage.behaviours?.automaticLayout).toBeUndefined();
+    });
+
+    it('does not add automaticLayout to a Narrative, preserving other behaviours', () => {
+      const stage = migratedStage(
+        buildV7('Narrative', { allowRepositioning: true }),
+        'Narrative',
+      );
+      expect(stage.behaviours?.automaticLayout).toBeUndefined();
+      expect(stage.behaviours?.allowRepositioning).toBe(true);
+    });
+  });
+
   describe('loop removal', () => {
     it('removes loop from Information stage items', () => {
       const v7Protocol = {

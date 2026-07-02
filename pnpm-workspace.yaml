@@ -37,7 +37,7 @@ catalog:
   '@faker-js/faker': ^10.4.0
   '@fontsource-variable/inclusive-sans': ^5.2.8
   '@fontsource-variable/nunito': ^5.2.7
-  '@next/bundle-analyzer': ^16.2.6
+  '@next/bundle-analyzer': ^16.2.9
   '@next/third-parties': ^16.2.6
   '@playwright/test': ^1.60.0
   '@posthog/react': ^1.9.1
@@ -89,8 +89,8 @@ catalog:
   tailwindcss: ^4.3.0
   tsx: ^4.22.4
   typescript: ^6.0.3
-  uuid: ^14.0.0
-  vite: ^8.0.16
+  uuid: ^14.0.1
+  vite: ^8.1.2
   vite-plugin-dts: ^5.0.1
   vitest: ^4.1.7
   wrangler: ^4.95.0
@@ -99,11 +99,52 @@ catalog:
 overrides:
   react-resize-aware: 3.1.3
   cheerio: 1.0.0-rc.12
+  # vite 8.1.2 pins rolldown ~1.1.3; 1.1.3 has a code-splitting regression that
+  # drops reselect's exports from base-ui's createSelectorMemoized chunk
+  # (Storybook builds crash with "createSelectorCreator is not defined"). 1.1.4
+  # is within range and fixes it.
+  rolldown: 1.1.4
   immer: ^11.1.8
   '@types/node': 'catalog:'
   'slate>immer': '^5.3.0'
   'slate-history>immer': '^5.3.0'
 autoInstallPeers: true
 linkWorkspacePackages: false
+# Supply-chain cooldown: refuse dependency versions younger than this many
+# minutes. 1440 = 24h. This is pnpm 11's built-in default, pinned explicitly so
+# the policy is visible and consistent across machines and CI rather than
+# riding on a framework default that could change between pnpm versions.
+minimumReleaseAge: 1440
+# Preserve pnpm's default *non-strict* resolution — fall back to an older
+# in-range version rather than failing resolution. (Setting minimumReleaseAge
+# explicitly would otherwise flip strict mode on by default, which would change
+# `pnpm install` behaviour for local dev and the release job's
+# `--no-frozen-lockfile` step.) CI's frozen-lockfile verification pass still
+# enforces the 24h gate exactly as the implicit default does today.
+minimumReleaseAgeStrict: false
+# Security fast-track: the dependabot age-gate exempt workflows append the exact
+# name@version of a Dependabot security bump here when the gate would otherwise
+# block the PR's CI. Each entry pins a single version, so it is inert once that
+# version ages past minimumReleaseAge. Keep this list short; prune aged-out
+# entries periodically.
+minimumReleaseAgeExclude:
+  [
+    '@rolldown/binding-android-arm64@1.1.4',
+    '@rolldown/binding-darwin-arm64@1.1.4',
+    '@rolldown/binding-darwin-x64@1.1.4',
+    '@rolldown/binding-freebsd-x64@1.1.4',
+    '@rolldown/binding-linux-arm-gnueabihf@1.1.4',
+    '@rolldown/binding-linux-arm64-gnu@1.1.4',
+    '@rolldown/binding-linux-arm64-musl@1.1.4',
+    '@rolldown/binding-linux-ppc64-gnu@1.1.4',
+    '@rolldown/binding-linux-s390x-gnu@1.1.4',
+    '@rolldown/binding-linux-x64-gnu@1.1.4',
+    '@rolldown/binding-linux-x64-musl@1.1.4',
+    '@rolldown/binding-openharmony-arm64@1.1.4',
+    '@rolldown/binding-wasm32-wasi@1.1.4',
+    '@rolldown/binding-win32-arm64-msvc@1.1.4',
+    '@rolldown/binding-win32-x64-msvc@1.1.4',
+    rolldown@1.1.4,
+  ]
 patchedDependencies:
   better-sqlite3-multiple-ciphers@12.9.0: patches/better-sqlite3-multiple-ciphers@12.9.0.patch
