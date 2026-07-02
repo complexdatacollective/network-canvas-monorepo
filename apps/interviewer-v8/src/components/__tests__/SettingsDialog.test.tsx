@@ -8,10 +8,9 @@ const { mockEstimateStorage, mockIsPersisted } = vi.hoisted(() => ({
   mockIsPersisted: vi.fn(),
 }));
 
-vi.mock('~/lib/platform/storage', async () => {
-  const actual = await vi.importActual<typeof import('~/lib/platform/storage')>(
-    '~/lib/platform/storage',
-  );
+vi.mock('~/lib/storage', async () => {
+  const actual =
+    await vi.importActual<typeof import('~/lib/storage')>('~/lib/storage');
   return {
     ...actual,
     estimateStorage: mockEstimateStorage,

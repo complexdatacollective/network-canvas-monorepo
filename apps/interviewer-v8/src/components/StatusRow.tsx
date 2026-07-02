@@ -3,12 +3,12 @@ import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 
-import { APP_VERSION } from '~/lib/platform/appVersion';
+import { APP_VERSION } from '~/lib/appVersion';
 import {
   estimateStorage,
   formatBytes,
   isStoragePersisted,
-} from '~/lib/platform/storage';
+} from '~/lib/storage';
 
 type StatusRowProps = {
   protocolCount: number;

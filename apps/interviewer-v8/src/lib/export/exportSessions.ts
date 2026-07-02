@@ -16,8 +16,8 @@ import { exportPipeline } from '@codaco/network-exporters/pipeline';
 import { InterviewRepository } from '@codaco/network-exporters/services/InterviewRepository';
 import { ProtocolRepository } from '@codaco/network-exporters/services/ProtocolRepository';
 
+import { APP_VERSION } from '../appVersion';
 import { getProtocolsByHashes, getSessionsByIds } from '../db/api';
-import { APP_VERSION } from '../platform/appVersion';
 
 export type ExportProgress = ExportEvent;
 

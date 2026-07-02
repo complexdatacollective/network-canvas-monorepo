@@ -1,4 +1,4 @@
-import { getInstallationId } from '../platform/installationId';
+import { getInstallationId } from '../installationId';
 import {
   deriveKekFromPassword,
   deriveKekFromPrf,

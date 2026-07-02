@@ -33,6 +33,7 @@ import SecurityBehaviorControls, {
 } from '~/components/SecurityBehaviorControls';
 import { SettingsRow } from '~/components/SettingsRow';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
+import { APP_VERSION } from '~/lib/appVersion';
 import { useAuth } from '~/lib/auth/AuthContext';
 import {
   countSyntheticSessions,
@@ -42,14 +43,13 @@ import {
   updateSettings,
 } from '~/lib/db/api';
 import type { ProtocolWithCounts, StoredSettings } from '~/lib/db/types';
-import { APP_VERSION } from '~/lib/platform/appVersion';
-import { getInstallationId } from '~/lib/platform/installationId';
+import { getInstallationId } from '~/lib/installationId';
 import {
   estimateStorage,
   formatBytes,
   isStoragePersisted,
   type StorageEstimate,
-} from '~/lib/platform/storage';
+} from '~/lib/storage';
 import { generateSyntheticSessions } from '~/lib/synthetic/generate';
 
 type SettingsDialogProps = {

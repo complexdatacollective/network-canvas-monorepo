@@ -14,6 +14,7 @@ import {
 } from '@codaco/interview';
 import { InterviewComplete } from '~/components/InterviewComplete';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
+import { APP_VERSION } from '~/lib/appVersion';
 import {
   buildResolvedAssets,
   makeAssetResolver,
@@ -28,9 +29,7 @@ import {
   updateSettings,
 } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
-import { APP_VERSION } from '~/lib/platform/appVersion';
-import { getInstallationId } from '~/lib/platform/installationId';
-import { hostAppName } from '~/lib/platform/platform';
+import { getInstallationId } from '~/lib/installationId';
 
 type LoadState =
   | { kind: 'loading' }
@@ -149,7 +148,8 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const analytics = useMemo(
     () => ({
       installationId: getInstallationId(),
-      hostApp: hostAppName,
+      // No Electron/Capacitor host remains; this app is the only host.
+      hostApp: 'interviewer-v8',
       hostVersion: APP_VERSION,
     }),
     [],

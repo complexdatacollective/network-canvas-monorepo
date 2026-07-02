@@ -10,11 +10,10 @@ import {
   type ReactNode,
 } from 'react';
 
+import { APP_VERSION } from '~/lib/appVersion';
 import { useAuth } from '~/lib/auth/AuthContext';
 import { getSettings, updateSettings } from '~/lib/db/api';
-import { APP_VERSION } from '~/lib/platform/appVersion';
-import { getInstallationId } from '~/lib/platform/installationId';
-import { hostAppName } from '~/lib/platform/platform';
+import { getInstallationId } from '~/lib/installationId';
 
 import { getAnalyticsClient } from './client';
 
@@ -51,7 +50,8 @@ const AnalyticsContext = createContext<AnalyticsContextValue>(NOOP_CONTEXT);
 // `installation_id` identifies the installation, never a user or participant.
 function registerSuperProperties(client: PostHog) {
   client.register({
-    app: hostAppName,
+    // No Electron/Capacitor host remains; this app is the only host.
+    app: 'interviewer-v8',
     installation_id: getInstallationId(),
     host_version: APP_VERSION,
   });
