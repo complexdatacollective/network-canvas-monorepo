@@ -13,9 +13,3 @@ export const POSTHOG_HOST = 'https://ph-relay.networkcanvas.com';
 // the one the `@codaco/interview` Shell may lazily create for itself. We pass
 // our client into the Shell explicitly, so in practice only this instance runs.
 export const POSTHOG_INSTANCE_NAME = 'interviewer-v8';
-
-// Key under which the analytics-enabled flag is mirrored into Capacitor
-// Preferences (UserDefaults on iOS, SharedPreferences on Android) so the native
-// crash/error SDKs can read the user's preference at launch. See
-// docs/analytics.md and the native AppDelegate / Application classes.
-export const NATIVE_ANALYTICS_PREF_KEY = 'analytics_enabled';

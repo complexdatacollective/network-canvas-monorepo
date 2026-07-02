@@ -31,7 +31,6 @@ import type { StoredSession } from '~/lib/db/types';
 import { APP_VERSION } from '~/lib/platform/appVersion';
 import { getInstallationId } from '~/lib/platform/installationId';
 import { hostAppName } from '~/lib/platform/platform';
-import { useNavigationOrientation } from '~/lib/platform/useNavigationOrientation';
 
 type LoadState =
   | { kind: 'loading' }
@@ -142,8 +141,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     getAuthorizedInterviewId,
     setAuthorizedInterviewId,
   ]);
-
-  const navigationOrientation = useNavigationOrientation();
 
   const { client: posthogClient, enabled: analyticsEnabled } = useAnalytics();
 
@@ -256,7 +253,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         posthogClient={posthogClient ?? undefined}
         disableAnalytics={!analyticsEnabled}
         onExit={() => void handleExit()}
-        navigationOrientation={navigationOrientation}
       />
     </div>
   );

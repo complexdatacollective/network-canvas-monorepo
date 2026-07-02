@@ -17,7 +17,6 @@ import { getInstallationId } from '~/lib/platform/installationId';
 import { hostAppName } from '~/lib/platform/platform';
 
 import { getAnalyticsClient } from './client';
-import { writeNativeAnalyticsPreference } from './nativePreference';
 
 export type AnalyticsContextValue = {
   // Current opt-in state, sourced from StoredSettings.analyticsEnabled.
@@ -103,7 +102,6 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
         setClient(resolved);
         setEnabledState(settings.analyticsEnabled);
         if (resolved) applyPreference(resolved, settings.analyticsEnabled);
-        void writeNativeAnalyticsPreference(settings.analyticsEnabled);
       } catch {
         // Never let telemetry setup break the app.
       }
@@ -124,7 +122,6 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     try {
       await updateSettings({ analyticsEnabled: next });
       if (clientRef.current) applyPreference(clientRef.current, next);
-      await writeNativeAnalyticsPreference(next);
     } catch {
       // Swallow — the in-memory preference still took effect above.
     }
