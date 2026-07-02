@@ -1,6 +1,6 @@
 import { get } from 'es-toolkit/compat';
-import type { Map as MapboxMap } from 'mapbox-gl';
-import mapboxgl from 'mapbox-gl';
+import type { Map as MapboxMap } from 'mapbox-gl/esm';
+import * as mapboxgl from 'mapbox-gl/esm';
 
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef, useState } from 'react';
@@ -76,13 +76,12 @@ const MapView = ({
       return;
     }
 
-    mapboxgl.accessToken = mapboxAPIKey;
-
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: style || 'mapbox://styles/mapbox/streets-v12',
       center: (mapOptions.center as [number, number]) || [0, 0],
       zoom: mapOptions.initialZoom || 0,
+      accessToken: mapboxAPIKey,
     });
 
     mapRef.current = map;
