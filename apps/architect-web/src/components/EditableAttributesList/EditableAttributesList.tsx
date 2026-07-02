@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import EditableList from '~/components/EditableList';
 
 import ComposerFieldPreview from '../sections/Form/ComposerFieldPreview';
@@ -25,28 +27,47 @@ const EditableAttributesList = ({
   editFormName = 'editable-list-form',
   title = 'Edit attribute',
   handleChangeFields,
-}: EditableAttributesListProps) => (
-  <EditableList
-    editComponent={ComposerAttributeFields}
-    editProps={{ type, entity }}
-    previewComponent={ComposerFieldPreview}
-    fieldName={fieldName}
-    title={title}
-    editFormName={editFormName}
-    onChange={(value: unknown) =>
-      handleChangeFields(value as Array<Record<string, unknown>>)
-    }
-    normalize={(value: unknown) =>
-      composerNormalizeField(value as Record<string, unknown>)
-    }
-    itemSelector={
-      composerItemSelector(entity, type) as (
-        state: Record<string, unknown>,
-        params: { form: string; editField: string },
-      ) => unknown
-    }
-    form={form}
-  />
-);
+}: EditableAttributesListProps) => {
+  // OrderedList spreads only the field item onto the preview, so bind the
+  // subject (entity/type) here — a node type for node attributes, the edge type
+  // for edge attributes — so the preview resolves the variable in the right
+  // codebook. Memoised so the preview component reference stays stable.
+  const previewComponent = useMemo(
+    () =>
+      function BoundComposerFieldPreview(itemProps: {
+        variable: string;
+        component?: string;
+      }) {
+        return (
+          <ComposerFieldPreview {...itemProps} entity={entity} type={type} />
+        );
+      },
+    [entity, type],
+  );
+
+  return (
+    <EditableList
+      editComponent={ComposerAttributeFields}
+      editProps={{ type, entity }}
+      previewComponent={previewComponent}
+      fieldName={fieldName}
+      title={title}
+      editFormName={editFormName}
+      onChange={(value: unknown) =>
+        handleChangeFields(value as Array<Record<string, unknown>>)
+      }
+      normalize={(value: unknown) =>
+        composerNormalizeField(value as Record<string, unknown>)
+      }
+      itemSelector={
+        composerItemSelector(entity, type) as (
+          state: Record<string, unknown>,
+          params: { form: string; editField: string },
+        ) => unknown
+      }
+      form={form}
+    />
+  );
+};
 
 export default EditableAttributesList;

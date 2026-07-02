@@ -941,7 +941,10 @@ export function generateNetwork(
           const { edges: newEdges } = createEdgesForPairs(
             newNodes,
             edgeType,
-            valueGen.randomFloat(0.3, 0.5),
+            // Network Composer is a from-scratch builder rendered across several
+            // edge types at once; a per-pair 30-50% probability produced a
+            // near-complete graph in the preview. Keep it sparse and readable.
+            valueGen.randomFloat(0.05, 0.1),
             valueGen,
             codebook.edge?.[edgeType]?.variables,
           );
