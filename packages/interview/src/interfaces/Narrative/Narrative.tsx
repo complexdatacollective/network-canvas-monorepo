@@ -221,11 +221,11 @@ const Narrative = ({ stage }: NarrativeProps) => {
   // height, coordinates ~0..aspect), so the layout SHAPE is screen-independent.
   // These are reasoned STARTING values for the new ~0..1.x coordinate scale and
   // need a visual tuning pass: the old px charge was -3000 at ~800px tall, which
-  // does not translate linearly. cohesion is displacement-proportional, so it is
-  // scale-invariant (kept at 0.1). Tune visually.
+  // does not translate linearly. Group-cohesion strength is internal to the
+  // engine (shared across interfaces); supplying convexHullVariable below is
+  // what switches it on. Tune visually.
   const layoutOptions = useMemo(
     () => ({
-      cohesion: 0.1,
       charge: -0.006,
       startAlpha: 1,
       alphaMin: 0.025,

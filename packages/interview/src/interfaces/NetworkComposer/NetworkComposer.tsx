@@ -157,13 +157,12 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       : null;
 
   // Force tuning mirrors the Sociogram: lay out from scratch with a hot start
-  // and slow cooldown. Group cohesion clusters same-group (convex-hull) nodes,
-  // mirroring the Narrative — displacement-proportional and scale-invariant,
-  // and inert when no hull variable is configured because getGroupKeys returns
-  // [] for every node.
+  // and slow cooldown. The engine's internal group cohesion clusters same-group
+  // (convex-hull) nodes — switched on by supplying groupVariable below, and
+  // inert when no hull variable is configured because getGroupKeys returns []
+  // for every node.
   const layoutOptions = useMemo(
     () => ({
-      cohesion: 0.1,
       charge: -0.006,
       startAlpha: 1,
       alphaMin: 0.025,
