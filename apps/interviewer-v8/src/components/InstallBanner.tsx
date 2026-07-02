@@ -33,12 +33,35 @@ const readSessionDismissed = () => {
   }
 };
 
+// Browser-specific message: each engine sees only its own eviction reality
+// and its own install path. Whole strings per branch so each can localise.
+const bannerMessage = (canPromptInstall: boolean): string => {
+  const isChromium = 'userAgentData' in navigator;
+  if (isChromium) {
+    return canPromptInstall
+      ? 'Interviews stored in a browser tab can be deleted by the browser. Install Interviewer to keep data safe on this device.'
+      : "Interviews stored in a browser tab can be deleted by the browser. To keep data safe, install Interviewer using the install icon in the browser's address bar.";
+  }
+  const isFirefox = navigator.userAgent.includes('Firefox');
+  if (isFirefox) {
+    return "Interviews stored in a browser tab can be deleted by the browser, and Firefox can't install web apps. To keep data safe, install Interviewer from Chrome, Edge, or Safari on this device.";
+  }
+  // Safari: the 7-day eviction is its documented behaviour, and the install
+  // path depends on the device. iPadOS reports 'MacIntel' in desktop mode;
+  // real Macs have no touchscreen.
+  const isMac =
+    navigator.platform.startsWith('Mac') && navigator.maxTouchPoints === 0;
+  return isMac
+    ? 'Safari deletes data stored by a browser tab after about 7 days without use. To keep interview data safe, install Interviewer: choose Share → Add to Dock.'
+    : 'Safari deletes data stored by a browser tab after about 7 days without use. To keep interview data safe, install Interviewer: choose Share → Add to Home Screen.';
+};
+
 // A quiet full-width strip at the top of the dashboard whenever the app is
 // running in a browser tab rather than as an installed app. It exists for
-// data safety, not convenience: browsers can evict a website's stored data
-// (Safari deletes it after about 7 days without use), while installed apps
-// are exempt — so researchers should install before collecting interviews.
-// Dismissal lasts one session; the risk persists, so it returns next launch.
+// data safety, not convenience: browsers can evict a website's stored data,
+// while installed apps are exempt — so researchers should install before
+// collecting interviews. Dismissal lasts one session; the risk persists, so
+// it returns next launch.
 export function InstallBanner() {
   const deferredPrompt = useSyncExternalStore(
     subscribeInstallPrompt,
@@ -66,14 +89,8 @@ export function InstallBanner() {
       className="bg-surface-1 text-surface-1-contrast border-outline/40 flex w-full items-center gap-3 border-b px-6 py-2 text-sm"
     >
       <MonitorDown className="text-warning size-4 shrink-0" aria-hidden />
-      <p className="m-0 flex-1">
-        Interviews stored in a browser tab can be deleted by the browser —
-        Safari does so after about 7 days without use.{' '}
-        {deferredPrompt
-          ? 'Install Interviewer to keep data safe on this device.'
-          : 'To keep data safe, install Interviewer: in Safari, choose Share → Add to Dock (Mac) or Add to Home Screen (iPad).'}
-      </p>
-      {deferredPrompt && (
+      <p className="m-0 flex-1">{bannerMessage(deferredPrompt !== null)}</p>
+      {deferredPrompt !== null && (
         <Button color="primary" size="sm" onClick={() => void promptInstall()}>
           Install
         </Button>

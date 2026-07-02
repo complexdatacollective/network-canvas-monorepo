@@ -21,10 +21,31 @@ const SESSION_DISMISS_KEY = 'interviewer-v8:install-banner-dismissed';
 // A stable object so useSyncExternalStore's snapshot doesn't change identity.
 const FAKE_PROMPT = {};
 
-const stubDisplayMode = (standalone: boolean) => {
+const stubEnvironment = ({
+  standalone = false,
+  chromium = false,
+  firefox = false,
+  platform = '',
+  touchPoints = 0,
+}: {
+  standalone?: boolean;
+  chromium?: boolean;
+  firefox?: boolean;
+  platform?: string;
+  touchPoints?: number;
+}) => {
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: standalone && query === '(display-mode: standalone)',
   }));
+  vi.stubGlobal('navigator', {
+    ...navigator,
+    platform,
+    maxTouchPoints: touchPoints,
+    userAgent: firefox
+      ? 'Mozilla/5.0 (X11; Linux) Gecko/20100101 Firefox/141.0'
+      : 'Mozilla/5.0 AppleWebKit/605.1.15 Safari/605.1.15',
+    ...(chromium ? { userAgentData: {} } : {}),
+  });
 };
 
 afterEach(() => {
@@ -34,37 +55,66 @@ afterEach(() => {
 });
 
 describe('InstallBanner', () => {
-  it('urges installation with a one-tap button when the browser offers a prompt', () => {
-    stubDisplayMode(false);
+  it('Chromium with a prompt: generic eviction copy and a one-tap Install', () => {
+    stubEnvironment({ chromium: true });
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
     render(<InstallBanner />);
 
-    expect(screen.getByText(/7 days/i)).toBeInTheDocument();
+    expect(screen.getByText(/deleted by the browser/i)).toBeInTheDocument();
+    expect(screen.queryByText(/7 days/i)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /^install$/i }));
     expect(mockPromptInstall).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back to Safari/Chrome instructions when no prompt is available', () => {
-    stubDisplayMode(false);
+  it('Chromium without a prompt: points at the address-bar install icon', () => {
+    stubEnvironment({ chromium: true });
     mockGetDeferredPrompt.mockReturnValue(null);
     render(<InstallBanner />);
 
+    expect(screen.getByText(/address bar/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /^install$/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('Safari on a Mac: 7-day eviction and Add to Dock', () => {
+    stubEnvironment({ platform: 'MacIntel', touchPoints: 0 });
+    mockGetDeferredPrompt.mockReturnValue(null);
+    render(<InstallBanner />);
+
+    expect(screen.getByText(/7 days/i)).toBeInTheDocument();
     expect(screen.getByText(/add to dock/i)).toBeInTheDocument();
+  });
+
+  it('Safari on an iPad: Add to Home Screen', () => {
+    stubEnvironment({ platform: 'MacIntel', touchPoints: 5 });
+    mockGetDeferredPrompt.mockReturnValue(null);
+    render(<InstallBanner />);
+
+    expect(screen.getByText(/add to home screen/i)).toBeInTheDocument();
+  });
+
+  it('Firefox: recommends an installable browser', () => {
+    stubEnvironment({ firefox: true });
+    mockGetDeferredPrompt.mockReturnValue(null);
+    render(<InstallBanner />);
+
+    expect(screen.getByText(/chrome, edge, or safari/i)).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /^install$/i }),
     ).not.toBeInTheDocument();
   });
 
   it('renders nothing when running as an installed app', () => {
-    stubDisplayMode(true);
+    stubEnvironment({ standalone: true, chromium: true });
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
     const { container } = render(<InstallBanner />);
     expect(container).toBeEmptyDOMElement();
   });
 
   it('dismissal hides it and persists for the session only', () => {
-    stubDisplayMode(false);
+    stubEnvironment({ platform: 'MacIntel' });
     mockGetDeferredPrompt.mockReturnValue(null);
     render(<InstallBanner />);
 
@@ -75,7 +125,7 @@ describe('InstallBanner', () => {
   });
 
   it('stays hidden when already dismissed this session', () => {
-    stubDisplayMode(false);
+    stubEnvironment({ platform: 'MacIntel' });
     sessionStorage.setItem(SESSION_DISMISS_KEY, 'true');
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
     const { container } = render(<InstallBanner />);
