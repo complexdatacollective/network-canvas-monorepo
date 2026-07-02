@@ -26,6 +26,8 @@ type ComposerCanvasProps = {
   background: ReactNode;
   /** Convex-hull layer, drawn behind edges and nodes. */
   hulls?: ReactNode;
+  /** Enables lasso selection while the select tool is active. */
+  lassoInSelectMode?: boolean;
   allowRepositioning?: boolean;
   simulation?: {
     moveNode: (nodeId: string, position: Position) => void;
@@ -63,6 +65,7 @@ export default function ComposerCanvas({
   edges,
   background,
   hulls,
+  lassoInSelectMode = false,
   allowRepositioning = true,
   simulation = null,
   onBackgroundTap,
@@ -136,11 +139,14 @@ export default function ComposerCanvas({
 
       const { activeTool, startLasso, addLassoPoint } =
         composerStore.getState();
-      // Lasso selection is available only in group mode: a dragged lasso selects
-      // nodes to "add all" to the active group, while a tap toggles a single
-      // node's membership. Edge creation is sequential-tap only, so there is no
-      // lasso in select or edge mode.
-      if (activeTool.kind !== 'group') return;
+      // A dragged lasso selects nodes to add to a group: always available in
+      // group mode, and in select mode when the stage configures a hull
+      // variable (the selection bar then offers each group). Edge creation is
+      // sequential-tap only, so there is no lasso in edge mode.
+      const lassoAllowed =
+        activeTool.kind === 'group' ||
+        (activeTool.kind === 'select' && lassoInSelectMode);
+      if (!lassoAllowed) return;
 
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -161,7 +167,7 @@ export default function ComposerCanvas({
         y: clamp((e.clientY - rect.top) / rect.height, 0, 1),
       });
     },
-    [composerStore],
+    [composerStore, lassoInSelectMode],
   );
 
   const handleContainerPointerUp = useCallback(

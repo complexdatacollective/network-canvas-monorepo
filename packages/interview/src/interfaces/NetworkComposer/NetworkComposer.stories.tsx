@@ -228,7 +228,7 @@ const buildConvexHulls = () => {
     quickAdd: quickAddVar.id,
     layoutVariable: layoutVar.id,
     initialNodes: { count: 8 },
-    convexHulls: [community.id],
+    convexHullVariable: community.id,
   });
   stage.addEdgeType({ type: friendship.id });
   si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
@@ -236,9 +236,11 @@ const buildConvexHulls = () => {
 };
 
 /**
- * Configures `convexHulls` with a categorical "Community" variable. Use the
- * Groups tool to pick a value, then tap nodes to toggle their membership; the
- * active variable's hulls are drawn behind the network.
+ * Configures `convexHullVariable` with a categorical "Community" variable, so
+ * its hulls are always drawn behind the network. Assign groups via the Groups
+ * tool (tap nodes to toggle membership) or by lasso-selecting in select mode
+ * and choosing a group; membership pulls same-group nodes together under
+ * automatic layout.
  */
 export const ConvexHulls: Story = {
   render: () => <NetworkComposerStoryWrapper buildFn={buildConvexHulls} />,

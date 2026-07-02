@@ -72,6 +72,14 @@ describe('networkComposerStage schema', () => {
     }
   });
 
+  it('accepts an optional convexHullVariable', () => {
+    const result = networkComposerStage.safeParse({
+      ...validStage,
+      convexHullVariable: 'friendshipGroup',
+    });
+    expect(result.success).toBe(true);
+  });
+
   it('accepts optional forms, background and behaviours', () => {
     const result = networkComposerStage.safeParse({
       ...validStage,

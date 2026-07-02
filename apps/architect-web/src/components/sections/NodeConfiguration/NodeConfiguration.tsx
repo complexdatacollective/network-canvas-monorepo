@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
-import { change, Field, formValueSelector } from 'redux-form';
+import { change, formValueSelector } from 'redux-form';
 
 import EditableAttributesList from '~/components/EditableAttributesList/EditableAttributesList';
 import { Row, Section, Subsection } from '~/components/EditorLayout';
@@ -9,7 +9,6 @@ import withCreateVariableHandlers from '~/components/enhancers/withCreateVariabl
 import withDisabledSubjectRequired from '~/components/enhancers/withDisabledSubjectRequired';
 import withSubject from '~/components/enhancers/withSubject';
 import { ValidatedField } from '~/components/Form';
-import CheckboxGroup from '~/components/Form/Fields/CheckboxGroup';
 import IssueAnchor from '~/components/IssueAnchor';
 import Switch from '~/components/NewComponents/Switch';
 import NewVariableWindow, {
@@ -19,7 +18,6 @@ import NewVariableWindow, {
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
-import Button from '~/lib/legacy-ui/components/Button';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
@@ -64,11 +62,6 @@ export type NodeConfigurationProps = {
   quickAddOptionsForSubject: TextVariableOption[];
 };
 
-const toStringArray = (value: unknown): string[] =>
-  Array.isArray(value)
-    ? value.filter((v): v is string => typeof v === 'string')
-    : [];
-
 export const NodeConfigurationComponent = ({
   entity,
   type,
@@ -82,10 +75,6 @@ export const NodeConfigurationComponent = ({
   quickAddOptionsForSubject,
 }: NodeConfigurationProps) => {
   const dispatch = useAppDispatch();
-
-  const convexHulls = useAppSelector((state) =>
-    toStringArray(formValueSelector(form)(state, 'convexHulls')),
-  );
 
   const rawAutomaticLayout = useAppSelector((state) =>
     formValueSelector(form)(state, 'behaviours.automaticLayout'),
@@ -115,19 +104,13 @@ export const NodeConfigurationComponent = ({
     if (typeof id !== 'string') {
       return;
     }
-    dispatch(change(form, 'convexHulls', [...convexHulls, id]));
+    dispatch(change(form, 'convexHullVariable', id));
   };
 
   const [newVariableWindowProps, openNewVariableWindow] =
     useNewVariableWindowState(
       newVariableWindowInitialProps,
       handleCreatedGroupVariable,
-    );
-
-  const handleCreateGroupVariable = () =>
-    openNewVariableWindow(
-      { initialValues: { name: '', type: 'categorical' } },
-      { field: 'convexHulls' },
     );
 
   return (
@@ -213,26 +196,29 @@ export const NodeConfigurationComponent = ({
 
       <Subsection
         title="Group hulls"
-        summary="Draw shaded outlines around groups of nodes that share a value of a categorical variable. During the interview, participants pick one grouping variable at a time and tap nodes to add or remove them from a group. Choose which categorical variables can be used for grouping here, or create a new one."
+        summary="Draw shaded outlines around groups of nodes that share a value of a categorical variable. Choose (or create) the variable whose values participants can group nodes into — by tapping nodes with the Groups tool, or by lasso-selecting several at once."
       >
         <Row>
-          <Field
-            name="convexHulls"
-            component={CheckboxGroup}
-            label="Select one or more categorical variables"
-            placeholder="&mdash; Toggle a variable to draw a hull &mdash;"
-            options={categoricalVariablesForSubject}
+          <IssueAnchor
+            fieldName="convexHullVariable"
+            description="Group hull variable"
           />
-        </Row>
-        <Row>
-          <Button
-            type="button"
-            color="sea-green"
-            icon="add"
-            onClick={handleCreateGroupVariable}
-          >
-            Create categorical variable
-          </Button>
+          <ValidatedField
+            name="convexHullVariable"
+            component={VariablePicker}
+            validation={{}}
+            componentProps={{
+              label: 'Create or select a categorical variable for grouping',
+              type,
+              entity,
+              options: categoricalVariablesForSubject,
+              onCreateOption: (name: string) =>
+                openNewVariableWindow(
+                  { initialValues: { name, type: 'categorical' } },
+                  { field: 'convexHullVariable' },
+                ),
+            }}
+          />
         </Row>
       </Subsection>
 

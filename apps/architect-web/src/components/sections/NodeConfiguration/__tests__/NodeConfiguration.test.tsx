@@ -36,27 +36,37 @@ vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
   default: () => <div data-testid="variable-picker" />,
 }));
 
+// Expose each field's onCreateOption (when present) as a button so tests can
+// trigger variable creation the way the picker would.
 vi.mock('~/components/Form/ValidatedField', () => ({
   default: ({
     name,
+    componentProps,
   }: {
     name: string;
     component: unknown;
-    componentProps: unknown;
+    componentProps?: { onCreateOption?: (value: string) => void };
     validation?: unknown;
-  }) => <div data-testid={`field-${name}`} />,
+  }) => (
+    <div data-testid={`field-${name}`}>
+      {componentProps?.onCreateOption && (
+        <button
+          type="button"
+          onClick={() => componentProps.onCreateOption?.(`new-${name}`)}
+        >
+          create option for {name}
+        </button>
+      )}
+    </div>
+  ),
 }));
 
 vi.mock('~/components/IssueAnchor', () => ({
   default: () => null,
 }));
 
-vi.mock('~/components/Form/Fields/CheckboxGroup', () => ({
-  default: () => <div data-testid="checkbox-group" />,
-}));
-
-// Record the props passed to the window so the test can assert the create
-// button opens it with a categorical initial variable type.
+// Record the props passed to the window so the test can assert the picker's
+// create option opens it with a categorical initial variable type.
 const newVariableWindowSpy = vi.fn();
 vi.mock('~/components/NewVariableWindow', () => ({
   default: (props: Record<string, unknown>) => {
@@ -72,7 +82,7 @@ vi.mock('~/components/NewVariableWindow', () => ({
       newMeta: { field: string },
     ) => {
       openWindowSpy({ initialProps, newProps, newMeta });
-      // Simulate a created variable so the append path is exercised.
+      // Simulate a created variable so the set path is exercised.
       onComplete('created-var-id', newMeta);
     };
     return [{ ...initialProps }, openWindow] as const;
@@ -97,7 +107,6 @@ vi.mock('redux-form', () => ({
   FormSection: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   reduxForm: () => (Component: unknown) => Component,
   formValueSelector: () => (_state: unknown, field: string) => {
-    if (field === 'convexHulls') return ['existing-hull-var'];
     // Mirrors redux-form: selecting a node type resets `behaviours` to null, and
     // a path under a null parent resolves to null (NOT undefined).
     if (field === 'behaviours.automaticLayout') return null;
@@ -122,20 +131,6 @@ const dispatchSpy = vi.fn<(action: ChangeAction) => void>();
 vi.mock('~/ducks/hooks', () => ({
   useAppDispatch: () => dispatchSpy,
   useAppSelector: (selector: (state: unknown) => unknown) => selector({}),
-}));
-
-vi.mock('~/lib/legacy-ui/components/Button', () => ({
-  default: ({
-    children,
-    onClick,
-  }: {
-    children?: ReactNode;
-    onClick?: () => void;
-  }) => (
-    <button type="button" onClick={onClick}>
-      {children}
-    </button>
-  ),
 }));
 
 vi.mock('~/components/EditableAttributesList/EditableAttributesList', () => ({
@@ -223,9 +218,9 @@ describe('NodeConfiguration', () => {
     expect(seeded?.value).toBe(true);
   });
 
-  it('renders the convexHulls field', () => {
+  it('renders the convexHullVariable field', () => {
     renderSection();
-    expect(screen.getByTestId('field-convexHulls')).toBeInTheDocument();
+    expect(screen.getByTestId('field-convexHullVariable')).toBeInTheDocument();
   });
 
   it('renders the NewVariableWindow within the section', () => {
@@ -233,33 +228,38 @@ describe('NodeConfiguration', () => {
     expect(screen.getByTestId('new-variable-window')).toBeInTheDocument();
   });
 
-  it('opens the categorical variable editor from the group-hulls create button', () => {
+  it('opens the categorical variable editor from the group-hulls picker', () => {
     openWindowSpy.mockClear();
     renderSection();
 
     fireEvent.click(
-      screen.getByRole('button', { name: /create categorical variable/i }),
+      screen.getByRole('button', {
+        name: /create option for convexHullVariable/i,
+      }),
     );
 
     expect(openWindowSpy).toHaveBeenCalledTimes(1);
     const call = openWindowSpy.mock.calls[0]![0];
     expect(call.newProps.initialValues.type).toBe('categorical');
-    expect(call.newMeta.field).toBe('convexHulls');
+    expect(call.newProps.initialValues.name).toBe('new-convexHullVariable');
+    expect(call.newMeta.field).toBe('convexHullVariable');
   });
 
-  it('appends the created group variable id to the convexHulls array', () => {
+  it('sets the created group variable id as convexHullVariable', () => {
     renderSection();
     // Ignore the mount-time automatic-layout default seed; isolate the click.
     dispatchSpy.mockClear();
 
     fireEvent.click(
-      screen.getByRole('button', { name: /create categorical variable/i }),
+      screen.getByRole('button', {
+        name: /create option for convexHullVariable/i,
+      }),
     );
 
     expect(dispatchSpy).toHaveBeenCalledTimes(1);
     const action = dispatchSpy.mock.calls[0]![0];
-    expect(action.field).toBe('convexHulls');
-    expect(action.value).toEqual(['existing-hull-var', 'created-var-id']);
+    expect(action.field).toBe('convexHullVariable');
+    expect(action.value).toBe('created-var-id');
   });
 
   it('is disabled until a node type is selected', () => {

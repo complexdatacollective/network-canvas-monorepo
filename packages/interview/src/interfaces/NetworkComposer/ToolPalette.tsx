@@ -37,8 +37,8 @@ type ToolPaletteProps = {
   /** Protocol label for the node entity, shown in the add-node field. */
   nodeLabel: string;
   onAddNode: (name: string) => void;
-  /** Categorical variables configured for convex-hull groups (empty = no tool). */
-  groupVariables: GroupVariable[];
+  /** Categorical variable configured for convex-hull groups (null = no tool). */
+  groupVariable: GroupVariable | null;
   activeGroup: ActiveGroup | null;
   onSelectGroup: (variable: string, value: string) => void;
   automaticLayout: boolean;
@@ -67,7 +67,7 @@ export default function ToolPalette({
   edges,
   nodeLabel,
   onAddNode,
-  groupVariables,
+  groupVariable,
   activeGroup,
   onSelectGroup,
   automaticLayout,
@@ -137,9 +137,9 @@ export default function ToolPalette({
           },
         ]
       : []),
-    // A single Groups button opens a popover to pick the active categorical
-    // variable + value; tapping nodes then toggles their convex-hull membership.
-    ...(groupVariables.length > 0
+    // A single Groups button opens a popover to pick the active group value;
+    // tapping nodes then toggles their convex-hull membership.
+    ...(groupVariable !== null
       ? [
           {
             type: 'popover' as const,
@@ -151,7 +151,7 @@ export default function ToolPalette({
             onOpenChange: setGroupsOpen,
             children: (
               <GroupPicker
-                variables={groupVariables}
+                variable={groupVariable}
                 active={activeGroup}
                 onSelect={(variable, value) => {
                   onSelectGroup(variable, value);

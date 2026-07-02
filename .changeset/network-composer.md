@@ -8,17 +8,18 @@
 
 Add the **Network Composer** stage type — a free-form, single-screen, promptless
 canvas for building a whole personal network in one place (create nodes, draw
-multiple edge types, capture node and edge attributes, reposition, and delete,
-with undo/redo and lasso/clique gestures).
+multiple edge types, capture node and edge attributes, group nodes into convex
+hulls, reposition, and delete, with undo/redo and lasso selection).
 
 - `@codaco/protocol-validation`: a new additive schema-8 `NetworkComposer` stage
   (no version bump, no migration) with cross-reference validation of its
   `quickAdd` / `layoutVariable` / `nodeForm` / per-edge-type form references, and
-  `superRefine` checks (at least one edge type; no duplicate edge subject types).
-  Automatic layout uses the shared flat `behaviours.automaticLayout` boolean (as
-  the Sociogram and Narrative do); for NetworkComposer it is only the starting
-  default. An optional `convexHulls` array names categorical node variables whose
-  values are drawn as convex-hull groups.
+  a `superRefine` check rejecting duplicate edge subject types (edge types and
+  node attributes are both optional). Automatic layout uses the shared flat
+  `behaviours.automaticLayout` boolean (as the Sociogram and Narrative do); for
+  NetworkComposer it is only the starting default. An optional
+  `convexHullVariable` names a single categorical node variable whose values are
+  drawn as convex-hull groups.
 - `@codaco/interview`: the `NetworkComposer` runtime interface, reusing the shared
   canvas, edge layer, and force-directed auto-layout engine. Nodes are added by
   name from a field in the tool palette and laid out on a grid; in edge mode the
@@ -26,12 +27,15 @@ with undo/redo and lasso/clique gestures).
   type's colour. Selecting a node or edge opens a resizable, backdrop-less
   right-hand drawer that leaves the canvas interactive; it edits the entity's
   attribute form (saving valid edits automatically, with no Save button) or shows
-  an empty state when there is nothing to edit. A Groups tool draws convex hulls
-  for a configured categorical variable (reusing the Narrative hull layer): pick a
-  variable/value in its popover and tap nodes to toggle membership, or "add all"
-  to a group from a lasso selection. Automatic layout is an interview-time
-  toggle whose live value is persisted in stage metadata, so the participant's
-  choice sticks across navigation; Architect only sets its default.
+  an empty state when there is nothing to edit. When a `convexHullVariable` is
+  configured its hulls are always drawn (reusing the Narrative hull layer), and
+  group membership feeds the layout's group-cohesion force so same-group nodes
+  cluster under automatic layout. Nodes are grouped with the Groups tool (pick a
+  group in its popover, tap nodes to toggle membership) or by lasso-selecting in
+  select mode and choosing which group to add the selection to. Automatic layout
+  is an interview-time toggle whose live value is persisted in stage metadata, so
+  the participant's choice sticks across navigation; Architect only sets its
+  default.
 - `@codaco/shared-consts`: a `NetworkComposer` stage-metadata shape storing the
   participant's automatic-layout choice.
 - `@codaco/fresco-ui`: the `SegmentedToolbar` gains a `menu` segment (a button

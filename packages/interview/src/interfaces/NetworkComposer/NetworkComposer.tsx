@@ -134,11 +134,36 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     component: <Node size="sm" />,
   });
 
-  // Force tuning mirrors the Sociogram: lay out from scratch with a hot start and
-  // slow cooldown, and no group cohesion (NetworkComposer is free-form).
+  // The categorical variable configured for convex-hull groups, with its
+  // options; null when unset, missing from the codebook, or not categorical.
+  const nodeVariables = codebook?.node?.[stage.subject.type]?.variables ?? {};
+  const hullVariableId = stage.convexHullVariable;
+  const hullVariable =
+    hullVariableId !== undefined ? nodeVariables[hullVariableId] : undefined;
+  const hullOptions =
+    hullVariable && 'options' in hullVariable
+      ? hullVariable.options
+      : undefined;
+  const groupVariable: GroupVariable | null =
+    hullVariableId !== undefined && hullVariable && hullOptions
+      ? {
+          id: hullVariableId,
+          label: hullVariable.name ?? hullVariableId,
+          options: hullOptions.map((option) => ({
+            value: String(option.value),
+            label: option.label ?? String(option.value),
+          })),
+        }
+      : null;
+
+  // Force tuning mirrors the Sociogram: lay out from scratch with a hot start
+  // and slow cooldown. Group cohesion clusters same-group (convex-hull) nodes,
+  // mirroring the Narrative — displacement-proportional and scale-invariant,
+  // and inert when no hull variable is configured because getGroupKeys returns
+  // [] for every node.
   const layoutOptions = useMemo(
     () => ({
-      cohesion: 0,
+      cohesion: 0.1,
       charge: -0.006,
       startAlpha: 1,
       alphaMin: 0.025,
@@ -161,7 +186,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     store: canvasStore,
     nodeRadius: nodeWidth / 2,
     layoutVariable,
-    groupVariable: '',
+    groupVariable: groupVariable?.id ?? '',
     persist: true,
     dispatch,
     currentStep,
@@ -381,48 +406,66 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     [composerStore],
   );
 
-  // Categorical variables configured as convex-hull groups, with their options.
-  const nodeVariables = codebook?.node?.[stage.subject.type]?.variables ?? {};
-  const groupVariables: GroupVariable[] = [];
-  for (const variableId of stage.convexHulls ?? []) {
-    const variable = nodeVariables[variableId];
-    const options =
-      variable && 'options' in variable ? variable.options : undefined;
-    if (!variable || !options) continue;
-    groupVariables.push({
-      id: variableId,
-      label: variable.name ?? variableId,
-      options: options.map((option) => ({
-        value: String(option.value),
-        label: option.label ?? String(option.value),
-      })),
-    });
-  }
-
   const activeGroup: ActiveGroup | null =
     currentTool.kind === 'group'
       ? { variable: currentTool.variable, value: currentTool.value }
       : null;
-  const activeGroupVariable =
-    activeGroup !== null
-      ? groupVariables.find((variable) => variable.id === activeGroup.variable)
-      : undefined;
+  // The active group's variable can only be the stage's single hull variable.
   const activeGroupLabel =
     activeGroup !== null
-      ? (activeGroupVariable?.options.find(
+      ? (groupVariable?.options.find(
           (option) => option.value === activeGroup.value,
         )?.label ?? activeGroup.value)
       : '';
 
+  // Hulls are always drawn when a hull variable is configured, so participants
+  // can see groups while adding to them from select mode.
   const hulls =
-    activeGroup !== null && activeGroupVariable !== undefined ? (
+    groupVariable !== null ? (
       <ConvexHullLayer
         store={canvasStore}
         nodes={nodes}
-        groupVariable={activeGroup.variable}
-        categoricalOptions={activeGroupVariable.options}
+        groupVariable={groupVariable.id}
+        categoricalOptions={groupVariable.options}
       />
     ) : null;
+
+  // Bulk group assignment for a multi-node selection: in group mode a single
+  // button targets the active group; in select mode (where lasso selection is
+  // enabled by the hull variable) one button per group option. The selection is
+  // deliberately kept afterwards so a multi-membership assignment can follow.
+  const selectionBarButtons = (() => {
+    if (selectedNodeIds.size < 2) return [];
+    if (activeGroup !== null) {
+      return [
+        {
+          value: activeGroup.value,
+          label: `Add all to ${activeGroupLabel}`,
+          onClick: () => {
+            void actions.addGroupMembership(
+              [...selectedNodeIds],
+              activeGroup.variable,
+              activeGroup.value,
+            );
+          },
+        },
+      ];
+    }
+    if (currentTool.kind === 'select' && groupVariable !== null) {
+      return groupVariable.options.map((option) => ({
+        value: option.value,
+        label: `Add all to ${option.label}`,
+        onClick: () => {
+          void actions.addGroupMembership(
+            [...selectedNodeIds],
+            groupVariable.id,
+            option.value,
+          );
+        },
+      }));
+    }
+    return [];
+  })();
 
   const concentricCircles = get(stage, 'background.concentricCircles');
   const skewedTowardCenter = get(stage, 'background.skewedTowardCenter');
@@ -516,27 +559,24 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         edges={edgeEntries}
         nodeLabel={nodeLabel}
         onAddNode={handleAddNode}
-        groupVariables={groupVariables}
+        groupVariable={groupVariable}
         activeGroup={activeGroup}
         onSelectGroup={handleSelectGroup}
         automaticLayout={automaticLayout}
         onToggleAutomaticLayout={handleToggleAutomaticLayout}
       />
-      {activeGroup !== null && selectedNodeIds.size >= 2 && (
+      {selectionBarButtons.length > 0 && (
         <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2">
-          <button
-            type="button"
-            className="bg-background border-primary rounded border px-3 py-1.5 text-sm font-medium shadow"
-            onClick={() => {
-              void actions.addGroupMembership(
-                [...selectedNodeIds],
-                activeGroup.variable,
-                activeGroup.value,
-              );
-            }}
-          >
-            {`Add all to ${activeGroupLabel}`}
-          </button>
+          {selectionBarButtons.map((button) => (
+            <button
+              key={button.value}
+              type="button"
+              className="bg-background border-primary rounded border px-3 py-1.5 text-sm font-medium shadow"
+              onClick={button.onClick}
+            >
+              {button.label}
+            </button>
+          ))}
         </div>
       )}
       <ComposerCanvas
@@ -546,6 +586,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         edges={edges}
         background={background}
         hulls={hulls}
+        lassoInSelectMode={groupVariable !== null}
         simulation={simulationHandlers}
         onBackgroundTap={handleBackgroundTap}
         onNodeTap={(nodeId, modifiers) => {

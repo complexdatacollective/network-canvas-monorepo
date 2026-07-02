@@ -59,12 +59,13 @@ export const networkComposerStage = baseStageSchema.extend({
   layoutVariable: entityAttributeReference({ subject: 'stageSubject' }),
   // Attribute form shown in the inspector when a node is selected.
   nodeForm: ComposerFormSchema.optional(),
-  // Categorical variables whose values are drawn as convex hulls. Participants
-  // pick one variable at a time via the Groups tool and toggle a node's
-  // membership in a group (a value of that variable).
-  convexHulls: z
-    .array(entityAttributeReference({ subject: 'stageSubject' }))
-    .optional(),
+  // The categorical variable whose values are drawn as convex hulls.
+  // Participants toggle a node's group membership (a value of this variable)
+  // via the Groups tool or by lasso-selecting nodes; membership also drives
+  // the automatic layout's group-cohesion force.
+  convexHullVariable: entityAttributeReference({
+    subject: 'stageSubject',
+  }).optional(),
   background: z
     .strictObject({
       image: z.string().optional(),

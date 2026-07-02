@@ -56,11 +56,16 @@ const stage = {
   layoutVariable: LAYOUT_VAR,
   quickAdd: QUICK_ADD_VAR,
   edges: [{ subject: { entity: 'edge' as const, type: EDGE_TYPE } }],
-  convexHulls: [GROUP_VAR],
+  convexHullVariable: GROUP_VAR,
   background: {
     concentricCircles: 4,
     skewedTowardCenter: true,
   },
+};
+
+// Widened so a variant without the hull variable can share the fixture helpers.
+type StageFixture = Omit<typeof stage, 'convexHullVariable'> & {
+  convexHullVariable?: string;
 };
 
 const codebook = {
@@ -131,7 +136,7 @@ function makePreloadedNodes() {
   ];
 }
 
-function makeStore(extraEdges: NcEdge[] = []) {
+function makeStore(extraEdges: NcEdge[] = [], stageDef: StageFixture = stage) {
   return configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -149,18 +154,21 @@ function makeStore(extraEdges: NcEdge[] = []) {
         hash: 'h',
         schemaVersion: 8,
         codebook,
-        stages: [stage],
+        stages: [stageDef],
       } as never,
     },
     middleware: (g) => g({ serializableCheck: false }),
   });
 }
 
-function renderInterface(store: ReturnType<typeof makeStore>) {
+function renderInterface(
+  store: ReturnType<typeof makeStore>,
+  stageDef: StageFixture = stage,
+) {
   const registerBeforeNext: RegisterBeforeNext = vi.fn();
 
   const props: StageProps<'NetworkComposer'> = {
-    stage: stage as StageProps<'NetworkComposer'>['stage'],
+    stage: stageDef as StageProps<'NetworkComposer'>['stage'],
     getNavigationHelpers: () => ({
       moveForward: vi.fn(),
       moveBackward: vi.fn(),
@@ -322,6 +330,78 @@ describe('NetworkComposer — group lasso', () => {
         byId(NODE_C_ID)![entityAttributesProperty][GROUP_VAR],
       ).toBeUndefined();
     });
+  });
+});
+
+describe('NetworkComposer — select-mode lasso', () => {
+  it('lasso in select mode selects nodes and offers an "Add all" button per group', async () => {
+    const store = makeStore();
+    renderInterface(store);
+
+    await screen.findByRole('button', { name: /alice/i });
+
+    // Select is the default tool — lasso directly, no tool activation needed.
+    const canvas = screen.getByRole('application');
+    lassoAB(canvas);
+
+    // One button per option of the configured hull variable.
+    await screen.findByRole('button', { name: /add all to team red/i });
+    const addAllButtons = screen.getAllByRole('button', {
+      name: /add all to/i,
+    });
+    expect(addAllButtons).toHaveLength(2);
+  });
+
+  it('clicking an "Add all" button writes the group value to every selected node', async () => {
+    const store = makeStore();
+    renderInterface(store);
+
+    await screen.findByRole('button', { name: /alice/i });
+
+    const canvas = screen.getByRole('application');
+    lassoAB(canvas);
+
+    const addAllBlue = await screen.findByRole('button', {
+      name: /add all to team blue/i,
+    });
+    await act(async () => {
+      fireEvent.click(addAllBlue);
+    });
+
+    // A and B gain the 'blue' membership; C (outside the lasso) does not.
+    await waitFor(() => {
+      const byId = (id: string) =>
+        store
+          .getState()
+          .session.network.nodes.find(
+            (n) => n[entityPrimaryKeyProperty] === id,
+          );
+      expect(byId(NODE_A_ID)![entityAttributesProperty][GROUP_VAR]).toEqual([
+        'blue',
+      ]);
+      expect(byId(NODE_B_ID)![entityAttributesProperty][GROUP_VAR]).toEqual([
+        'blue',
+      ]);
+      expect(
+        byId(NODE_C_ID)![entityAttributesProperty][GROUP_VAR],
+      ).toBeUndefined();
+    });
+  });
+
+  it('lasso in select mode selects nothing when no hull variable is configured', async () => {
+    const stageWithoutHullVariable: StageFixture = {
+      ...stage,
+      convexHullVariable: undefined,
+    };
+    const store = makeStore([], stageWithoutHullVariable);
+    renderInterface(store, stageWithoutHullVariable);
+
+    await screen.findByRole('button', { name: /alice/i });
+
+    const canvas = screen.getByRole('application');
+    lassoAB(canvas);
+
+    expect(screen.queryByRole('button', { name: /add all to/i })).toBeNull();
   });
 });
 
