@@ -17,12 +17,18 @@ export function extractCustomAttributes(
 }
 
 /**
- * Validates that `v` is one of the four canonical biological-sex values.
- * Returns the typed value, or `undefined` when absent or invalid. Using
- * explicit equality checks avoids `as` casts while satisfying TypeScript.
+ * Validates that `v` is one of the canonical biological-sex values. Returns the
+ * typed value, or `undefined` when absent or invalid. Using explicit equality
+ * checks avoids `as` casts while satisfying TypeScript.
  */
 export function readBiologicalSex(v: unknown): BiologicalSex | undefined {
-  if (v === 'female' || v === 'male' || v === 'intersex' || v === 'unknown') {
+  if (
+    v === 'female' ||
+    v === 'male' ||
+    v === 'intersex' ||
+    v === 'unknown' ||
+    v === 'preferNotToSay'
+  ) {
     return v;
   }
   return undefined;

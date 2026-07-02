@@ -24,18 +24,27 @@ describe('PersonFields', () => {
     expect(screen.getByRole('textbox', { name: /name/i })).toBeTruthy();
   });
 
-  it('renders a biological sex radio with all four values when askBiologicalSex is true (default)', () => {
+  it('renders the biological sex question with all values when askBiologicalSex is true (default)', () => {
     render(
       <Form onSubmit={() => ({ success: true })}>
         <PersonFields namespace="child" />
       </Form>,
     );
 
-    expect(screen.getByText('Biological sex')).toBeTruthy();
+    expect(
+      screen.getByText('What sex was this person recorded as at birth?'),
+    ).toBeTruthy();
     expect(screen.getByRole('radio', { name: 'Female' })).toBeTruthy();
     expect(screen.getByRole('radio', { name: 'Male' })).toBeTruthy();
-    expect(screen.getByRole('radio', { name: 'Intersex' })).toBeTruthy();
-    expect(screen.getByRole('radio', { name: 'Unknown' })).toBeTruthy();
+    expect(
+      screen.getByRole('radio', {
+        name: 'Intersex or a variation in sex characteristics',
+      }),
+    ).toBeTruthy();
+    expect(screen.getByRole('radio', { name: 'Don’t know' })).toBeTruthy();
+    expect(
+      screen.getByRole('radio', { name: 'Prefer not to say' }),
+    ).toBeTruthy();
   });
 
   it('does not render the biological sex field when askBiologicalSex is false', () => {
@@ -45,7 +54,9 @@ describe('PersonFields', () => {
       </Form>,
     );
 
-    expect(screen.queryByText('Biological sex')).toBeNull();
+    expect(
+      screen.queryByText('What sex was this person recorded as at birth?'),
+    ).toBeNull();
     expect(screen.queryByRole('radio', { name: 'Female' })).toBeNull();
   });
 });

@@ -26,6 +26,25 @@ const relTypeOf = (e: {
 };
 
 describe('egoCellTransform', () => {
+  it("records ego's own biological sex on the ego node", () => {
+    const values = {
+      'biologicalSex': 'female',
+      'egg-parent': { name: 'Linda' },
+      'sperm-parent': { name: 'Robert' },
+      'hasOtherParents': false,
+    };
+
+    const { batch } = egoCellTransform(
+      values as Record<string, unknown>,
+      variableConfig,
+    );
+
+    expect(batch.nodes[0]).toMatchObject({
+      tempId: 'ego',
+      data: { attributes: { isEgo: true, biologicalSex: 'female' } },
+    });
+  });
+
   it('transforms nuclear family (2 bio parents, current partners)', () => {
     const values = {
       'egg-parent': {

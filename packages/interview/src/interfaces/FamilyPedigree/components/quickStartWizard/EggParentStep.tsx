@@ -18,7 +18,7 @@ const INTRO_COPY: Record<FramingId, string> = {
   gamete:
     'Please answer the following questions about your egg parent. This is the person who contributed the egg that you were conceived with, which may be different from the person who carried you during pregnancy.',
   gendered:
-    'Please answer the following questions about your mother. This is the person who contributed the egg that you were conceived with, which may be different from the person who carried you during pregnancy.',
+    'Please answer the following questions about your mother. This is your biological mother, who may be different from the person who carried you during pregnancy.',
 };
 
 export default function EggParentStep() {

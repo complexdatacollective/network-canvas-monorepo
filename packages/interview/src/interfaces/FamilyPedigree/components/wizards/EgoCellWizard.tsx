@@ -24,6 +24,7 @@ import {
 import AdditionalParentsStep from '../quickStartWizard/AdditionalParentsStep';
 import ChildrenDetailStep from '../quickStartWizard/ChildrenDetailStep';
 import EggParentStep from '../quickStartWizard/EggParentStep';
+import EgoSexStep from '../quickStartWizard/EgoSexStep';
 import {
   FramingSelectionStep,
   shouldSkipFramingSelectionStep,
@@ -116,6 +117,10 @@ export default function EgoCellWizard({
                 content: wrap(FramingSelectionStep),
               },
             ]),
+        {
+          title: 'About you',
+          content: wrap(EgoSexStep),
+        },
         {
           title: bridgedTitle(<FramingStepTitle termKey="eggParent" />),
           content: wrap(EggParentStep),

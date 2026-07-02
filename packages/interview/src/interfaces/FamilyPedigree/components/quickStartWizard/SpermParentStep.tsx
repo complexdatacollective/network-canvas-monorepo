@@ -18,7 +18,7 @@ const INTRO_COPY: Record<FramingId, string> = {
   gamete:
     'Please answer the following questions about your sperm parent. This is the person who contributed the sperm that you were conceived with.',
   gendered:
-    'Please answer the following questions about your father. This is the person who contributed the sperm that you were conceived with.',
+    'Please answer the following questions about your father. This is your biological father.',
 };
 
 export default function SpermParentStep() {

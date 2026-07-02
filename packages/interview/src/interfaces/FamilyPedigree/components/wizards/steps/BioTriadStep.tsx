@@ -225,8 +225,8 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
       <ParentSection
         roleKey="egg-source"
         roleLabel={terms.eggParent}
-        selectLabel="Who provided the egg?"
-        selectHint="Select the person who contributed the egg. If this was an egg donor, you can indicate that below."
+        selectLabel={terms.eggProviderQuestion}
+        selectHint={terms.eggProviderHint}
         donorFieldName="egg-source-is-donor"
         donorLabel={`Was this person an ${terms.eggDonor.toLowerCase()}?`}
         options={eggOptions}
@@ -278,8 +278,8 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
       <ParentSection
         roleKey="sperm-source"
         roleLabel={terms.spermParent}
-        selectLabel="Who provided the sperm?"
-        selectHint="Select the person who contributed the sperm. If this was a sperm donor, you can indicate that below."
+        selectLabel={terms.spermProviderQuestion}
+        selectHint={terms.spermProviderHint}
         donorFieldName="sperm-source-is-donor"
         donorLabel={`Was this person a ${terms.spermDonor.toLowerCase()}?`}
         options={spermOptions}

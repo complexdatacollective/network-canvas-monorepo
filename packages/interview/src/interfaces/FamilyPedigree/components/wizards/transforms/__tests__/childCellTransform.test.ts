@@ -86,6 +86,28 @@ function makeEdges(extras?: [string, NcEdge][]): Map<string, NcEdge> {
 }
 
 describe('childCellTransform', () => {
+  it("records the child's own biological sex on the child node", () => {
+    const values: Record<string, unknown> = {
+      'child': { name: 'Baby', biologicalSex: 'male' },
+      'egg-source': egoId,
+      'sperm-source': partnerId,
+      'egg-parent-carried': true,
+    };
+
+    const batch = childCellTransform(
+      values,
+      egoId,
+      makeNodes(),
+      makeEdges(),
+      variableConfig,
+    );
+
+    expect(batch.nodes[0]).toMatchObject({
+      tempId: 'child',
+      data: { attributes: { name: 'Baby', biologicalSex: 'male' } },
+    });
+  });
+
   it('creates child with both existing bio parents', () => {
     const values: Record<string, unknown> = {
       'child': { name: 'Baby' },

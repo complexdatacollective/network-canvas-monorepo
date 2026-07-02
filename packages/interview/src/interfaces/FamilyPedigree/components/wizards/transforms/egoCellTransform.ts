@@ -184,6 +184,7 @@ export function egoCellTransform(
   const batch: CommitBatch = { nodes: [], edges: [] };
 
   const egoKnownKeys = new Set([
+    'biologicalSex',
     'egg-parent',
     'sperm-parent',
     'gestational-carrier',
@@ -208,6 +209,13 @@ export function egoCellTransform(
     [variableConfig.egoVariable]: true,
     ...egoCustomAttrs,
   };
+  // Ego is a leaf/proband with no parent edges, so its sex cannot be inferred
+  // from a gameteRole — it must be captured and stored, or ego drops out of its
+  // own sex-linked risk calculation.
+  const egoSex = readBiologicalSex(values.biologicalSex);
+  if (egoSex !== undefined) {
+    egoAttributes[variableConfig.biologicalSexVariable] = egoSex;
+  }
 
   if (!existingEgoId) {
     batch.nodes.push({

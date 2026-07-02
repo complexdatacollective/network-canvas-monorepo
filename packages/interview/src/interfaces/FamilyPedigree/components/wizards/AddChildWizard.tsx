@@ -1,5 +1,10 @@
 import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  type FramingId,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 import { FamilyPedigreeStoreBridge } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import type {
   CommitBatch,
@@ -7,6 +12,7 @@ import type {
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
+import { inferGameteProviders } from '~/interfaces/FamilyPedigree/utils/inferGameteProviders';
 
 import PersonFields from '../quickStartWizard/PersonFields';
 import { buildNodeOptions } from './buildNodeOptions';
@@ -24,6 +30,7 @@ import NewParentPartnershipsStep, {
   shouldSkipNewParentPartnerships,
 } from './steps/NewParentPartnershipsStep';
 import { childCellTransform } from './transforms/childCellTransform';
+import { readBiologicalSex } from './transforms/personAttributes';
 
 function getPreselection(
   anchorNodeId: string,
@@ -42,20 +49,37 @@ function getPreselection(
     else if (edge.to === anchorNodeId) partnerIds.push(edge.from);
   }
 
-  const preselection: BioTriadConfig['preselection'] = {};
   const candidates = [anchorNodeId, ...partnerIds];
+  const [a, b] = candidates;
 
-  // Assign the first two candidates as egg source and sperm source.
-  // Default the egg source as the carrier.
-  if (candidates[0]) {
-    preselection.eggSource = candidates[0];
-    preselection.carrier = 'egg-source';
+  // Positional default (today's behaviour): first candidate → egg, second →
+  // sperm, egg parent carries.
+  const fallback: BioTriadConfig['preselection'] = {};
+  if (a) {
+    fallback.eggSource = a;
+    fallback.carrier = 'egg-source';
   }
-  if (candidates[1]) {
-    preselection.spermSource = candidates[1];
+  if (b) {
+    fallback.spermSource = b;
   }
 
-  return preselection;
+  // With two candidates, refine the assignment from their biological sex; the
+  // helper defers to the positional default when it cannot infer.
+  if (a && b) {
+    const sexOf = (id: string) =>
+      readBiologicalSex(
+        nodes.get(id)?.[entityAttributesProperty][
+          variableConfig.biologicalSexVariable
+        ],
+      );
+    return inferGameteProviders(
+      { value: a, sex: sexOf(a) },
+      { value: b, sex: sexOf(b) },
+      fallback,
+    );
+  }
+
+  return fallback;
 }
 
 export async function openAddChildWizard(
