@@ -58,7 +58,7 @@
     "es-toolkit": "catalog:",
     "immer": "^11.1.8",
     "lucide-react": "catalog:",
-    "mapbox-gl": "^3.24.0",
+    "mapbox-gl": "^3.25.0",
     "ohash": "^2.0.11",
     "posthog-js": "catalog:",
     "react-redux": "catalog:",
