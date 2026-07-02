@@ -30,7 +30,12 @@ export const initFileLaunchCapture = (): void => {
       if (netcanvas.length === 0) return;
       pendingFiles = [...pendingFiles, ...netcanvas];
       emit();
-    })();
+    })().catch((error: unknown) => {
+      // A handle.getFile() can reject (file moved/deleted, volume unmounted
+      // between the OS launch and consumption). Nothing user-facing exists
+      // this early, but don't let it vanish as an unhandled rejection.
+      console.error('Failed to read launched file', error);
+    });
   });
 };
 

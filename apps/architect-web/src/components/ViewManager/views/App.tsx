@@ -3,9 +3,9 @@ import { useLocation } from 'wouter';
 
 import BackgroundLights from '~/components/BackgroundLights';
 import DialogManager from '~/components/DialogManager';
+import InstallBanner from '~/components/InstallBanner';
 import { JsonPreviewOverlay } from '~/components/JsonPreviewOverlay';
 import ProtocolGuardedRouter from '~/components/ProtocolGuardedRouter';
-import PwaInstallNudge from '~/components/PwaInstallNudge';
 import PwaUpdateBanner from '~/components/PwaUpdateBanner';
 import Routes from '~/components/Routes';
 import ScrollToTop from '~/components/ScrollToTop';
@@ -33,11 +33,12 @@ const AppContents = () => {
       <ScrollToTop />
       <Routes />
       <DialogManager />
-      {/* The banner registers the service worker (so the app is installable)
-          and prompts on updates; the nudge offers installation when not yet
-          installed. Each self-hides when not applicable. */}
+      {/* The update banner registers the service worker (so the app is
+          installable) and prompts on updates; the install banner urges
+          installation when running in a browser tab. Each self-hides when
+          not applicable. */}
       <PwaUpdateBanner />
-      <PwaInstallNudge />
+      <InstallBanner />
       <JsonPreviewOverlay />
     </>
   );
