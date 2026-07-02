@@ -37,6 +37,7 @@ const EditableAttributesList = ({
       function BoundComposerFieldPreview(itemProps: {
         variable: string;
         component?: string;
+        label?: string;
       }) {
         return (
           <ComposerFieldPreview {...itemProps} entity={entity} type={type} />

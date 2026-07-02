@@ -85,7 +85,7 @@ describe('networkComposerStage schema', () => {
       ...validStage,
       nodeForm: {
         fields: [
-          { variable: 'age', component: ComponentTypes.Number, prompt: 'Age?' },
+          { variable: 'age', component: ComponentTypes.Number, label: 'Age?' },
         ],
       },
       edges: [
@@ -97,7 +97,7 @@ describe('networkComposerStage schema', () => {
               {
                 variable: 'closeness',
                 component: ComponentTypes.VisualAnalogScale,
-                prompt: 'How close?',
+                label: 'How close?',
               },
             ],
           },
@@ -131,7 +131,7 @@ const baseStageWithComponent = {
 };
 
 describe('ComposerFormFieldSchema', () => {
-  it('accepts a nodeForm field that carries a component and omits prompt', () => {
+  it('accepts a nodeForm field that carries a component and omits label', () => {
     const result = networkComposerStage.safeParse({
       ...baseStageWithComponent,
       nodeForm: {
@@ -165,7 +165,19 @@ describe('ComposerFormFieldSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('carries component + parameters + prompt on an edge form field', () => {
+  it('rejects a nodeForm field that still uses prompt (renamed to label)', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          { variable: 'age', component: ComponentTypes.Number, prompt: 'Age?' },
+        ],
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('carries component + parameters + label on an edge form field', () => {
     const result = networkComposerStage.safeParse({
       ...baseStageWithComponent,
       edges: [
@@ -178,7 +190,7 @@ describe('ComposerFormFieldSchema', () => {
                 variable: 'closeness',
                 component: ComponentTypes.VisualAnalogScale,
                 parameters: { minLabel: 'Distant', maxLabel: 'Close' },
-                prompt: 'How close?',
+                label: 'How close?',
               },
             ],
           },

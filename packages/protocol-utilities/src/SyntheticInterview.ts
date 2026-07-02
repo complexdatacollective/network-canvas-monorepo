@@ -47,6 +47,7 @@ import type {
   NameGeneratorPromptEntry,
   NetworkComposerEdgeEntry,
   NetworkComposerFormFieldEntry,
+  NetworkComposerFormFieldInput,
   NodeEntry,
   NodeTypeEntry,
   OneToManyDyadCensusPromptEntry,
@@ -157,7 +158,7 @@ type NetworkComposerHandle = StageHandleBase & {
   // Each call appends an entry to the stage's `edges[]`, returning the edge
   // type id so callers can seed edges of that type via `addEdges`.
   addEdgeType: (opts?: AddNetworkComposerEdgeInput) => { id: string };
-  addNodeFormField: (opts: AddFormFieldOpts) => void;
+  addNodeFormField: (opts: NetworkComposerFormFieldInput) => void;
 };
 
 type StageHandleMap = {
@@ -931,14 +932,9 @@ export class SyntheticInterview {
             entry.networkComposerEdges.push(edgeEntry);
             return { id: edgeTypeId };
           },
-          addNodeFormField: (opts: AddFormFieldOpts) => {
+          addNodeFormField: (opts: NetworkComposerFormFieldInput) => {
             const field = this.resolveNetworkComposerFormField(
-              {
-                component: opts.component,
-                variable: opts.variable,
-                prompt: opts.prompt,
-                validation: opts.validation,
-              },
+              opts,
               entry.subject!.type,
             );
             entry.nodeForm ??= { fields: [] };
@@ -1027,14 +1023,14 @@ export class SyntheticInterview {
   }
 
   private resolveNetworkComposerFormField(
-    input: FormFieldInput,
+    input: NetworkComposerFormFieldInput,
     nodeTypeId: string,
   ): NetworkComposerFormFieldEntry {
     let variableId = input.variable;
     if (!variableId) {
       const ref = this.addVariableToNodeType(nodeTypeId, {
         component: input.component,
-        name: input.prompt,
+        name: input.label,
         validation: input.validation,
       });
       variableId = ref.id;
@@ -1045,19 +1041,19 @@ export class SyntheticInterview {
       variable: variableId,
       ...(input.component ? { component: input.component } : {}),
       ...(input.parameters ? { parameters: input.parameters } : {}),
-      prompt: input.prompt ?? variable?.name ?? 'Field',
+      label: input.label ?? variable?.name ?? 'Field',
     };
   }
 
   private resolveNetworkComposerEdgeFormField(
-    input: FormFieldInput,
+    input: NetworkComposerFormFieldInput,
     edgeTypeId: string,
   ): NetworkComposerFormFieldEntry {
     let variableId = input.variable;
     if (!variableId) {
       const ref = this.addVariableToEdgeType(edgeTypeId, {
         component: input.component,
-        name: input.prompt,
+        name: input.label,
         validation: input.validation,
       });
       variableId = ref.id;
@@ -1068,7 +1064,7 @@ export class SyntheticInterview {
       variable: variableId,
       ...(input.component ? { component: input.component } : {}),
       ...(input.parameters ? { parameters: input.parameters } : {}),
-      prompt: input.prompt ?? variable?.name ?? 'Field',
+      label: input.label ?? variable?.name ?? 'Field',
     };
   }
 

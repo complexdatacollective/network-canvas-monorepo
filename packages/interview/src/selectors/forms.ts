@@ -87,12 +87,18 @@ const createFieldMetadata = (
   }
 
   return fields.map((field) => {
-    const { variable, prompt, hint, showValidationHints } = field;
+    const { variable, hint, showValidationHints } = field;
     if (!variables[variable]) {
       throw new Error(`Missing codebook entry for variable: ${variable}`);
     }
 
     const codebookEntry = variables[variable];
+
+    // Shared form fields caption with a required `prompt`; NetworkComposer
+    // fields carry an optional `label` instead, falling back to the codebook
+    // variable's name so an unlabelled attribute still reads naturally.
+    const fieldLabel = 'label' in field ? field.label : undefined;
+    const fieldPrompt = 'prompt' in field ? field.prompt : undefined;
 
     // The control (component) and its parameters may live on the stage field
     // (NetworkComposer) or, for every other stage, on the codebook variable.
@@ -113,7 +119,7 @@ const createFieldMetadata = (
       ...(parameters !== undefined ? { parameters } : {}),
       component,
       variable,
-      label: prompt ?? variable,
+      label: fieldLabel ?? fieldPrompt ?? codebookEntry.name ?? variable,
       hint,
       showValidationHints,
     };

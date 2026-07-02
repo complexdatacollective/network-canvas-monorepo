@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 
 import { Section, Subsection } from '~/components/EditorLayout';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
+import Text from '~/components/Form/Fields/Text';
 import ValidatedField from '~/components/Form/ValidatedField';
 import Options from '~/components/Options';
 import Parameters from '~/components/Parameters';
@@ -69,6 +70,27 @@ const ComposerAttributeFields = ({
             options: variableOptions,
             onCreateOption: handleNewVariable,
             onChange: handleChangeVariable,
+          }}
+        />
+      </Subsection>
+
+      <Subsection
+        id={getFieldId('label')}
+        title="Label"
+        disabled={!variable}
+        summary={
+          <p>
+            Optionally caption this attribute in the side panel. When left
+            empty, the variable&apos;s name is shown instead.
+          </p>
+        }
+      >
+        <ValidatedField
+          name="label"
+          component={Text as ComponentType<Record<string, unknown>>}
+          validation={{}}
+          componentProps={{
+            placeholder: 'Defaults to the variable name',
           }}
         />
       </Subsection>

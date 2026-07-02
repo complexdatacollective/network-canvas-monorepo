@@ -9,6 +9,7 @@ import { getVariablesForSubject } from '~/selectors/codebook';
 type ComposerFieldPreviewProps = {
   variable: string;
   component?: string;
+  label?: string;
   // The entity/type of the subject the attribute belongs to — a node type for
   // node attributes, an edge type for edge attributes. Passed explicitly by
   // EditableAttributesList (NOT via withSubject, which only knows the stage's
@@ -20,6 +21,7 @@ type ComposerFieldPreviewProps = {
 const ComposerFieldPreview = ({
   variable,
   component,
+  label,
   entity,
   type = null,
 }: ComposerFieldPreviewProps) => {
@@ -33,7 +35,8 @@ const ComposerFieldPreview = ({
 
   return (
     <div className="m-(--space-md) flex flex-col gap-(--space-sm)">
-      <strong>{codebookVariable.name ?? variable}</strong>
+      {/* Mirror the drawer's caption: the field label, else the variable name. */}
+      <strong>{label ?? codebookVariable.name ?? variable}</strong>
       <div>
         <Badge color={getColorForType(codebookVariable.type)}>
           <strong>{codebookVariable.type}</strong>

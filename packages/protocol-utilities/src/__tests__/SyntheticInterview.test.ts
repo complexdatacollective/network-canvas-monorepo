@@ -932,10 +932,10 @@ describe('SyntheticInterview', () => {
         layoutVariable: layoutVar.id,
         initialNodes: { count: 6 },
       });
-      stage.addNodeFormField({ component: 'Number', prompt: 'Age' });
+      stage.addNodeFormField({ component: 'Number', label: 'Age' });
       stage.addEdgeType({
         type: friendship.id,
-        form: { fields: [{ component: 'Toggle', prompt: 'Close friend?' }] },
+        form: { fields: [{ component: 'Toggle', label: 'Close friend?' }] },
       });
       stage.addEdgeType();
 
@@ -973,7 +973,7 @@ describe('SyntheticInterview', () => {
       const stage = si.addStage('NetworkComposer', {
         subject: { entity: 'node', type: node.id },
       });
-      stage.addNodeFormField({ component: 'Number', prompt: 'Age' });
+      stage.addNodeFormField({ component: 'Number', label: 'Age' });
       const payload = si.getInterviewPayload();
       const composer = payload.protocol.stages.find(
         (s) => s.type === 'NetworkComposer',

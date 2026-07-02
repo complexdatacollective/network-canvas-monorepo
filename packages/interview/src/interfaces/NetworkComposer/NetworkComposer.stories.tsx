@@ -56,7 +56,7 @@ const buildDefault = () => {
     quickAdd: quickAddVar.id,
     layoutVariable: layoutVar.id,
     initialNodes: { count: 6 },
-    nodeForm: { fields: [{ component: 'Number', prompt: 'Age' }] },
+    nodeForm: { fields: [{ component: 'Number', label: 'Age' }] },
   });
   stage.addEdgeType({ type: friendship.id });
   si.addEdges([
@@ -111,7 +111,7 @@ const buildMultipleEdgeTypes = () => {
   stage.addEdgeType({ type: friendship.id });
   stage.addEdgeType({
     type: advice.id,
-    form: { fields: [{ component: 'Toggle', prompt: 'Reciprocated?' }] },
+    form: { fields: [{ component: 'Toggle', label: 'Reciprocated?' }] },
   });
   si.addEdges(
     [
@@ -177,20 +177,20 @@ const buildManyAttributes = () => {
     initialNodes: { count: 3 },
     nodeForm: {
       fields: [
-        { component: 'Text', prompt: 'Full name' },
-        { component: 'Text', prompt: 'Nickname' },
-        { component: 'Number', prompt: 'Age' },
-        { component: 'Text', prompt: 'Occupation' },
-        { component: 'Text', prompt: 'Where they live' },
-        { component: 'RadioGroup', prompt: 'How close are you?' },
-        { component: 'Boolean', prompt: 'Do you live together?' },
-        { component: 'Toggle', prompt: 'Seen in the last month?' },
-        { component: 'LikertScale', prompt: 'How often do you talk?' },
-        { component: 'CheckboxGroup', prompt: 'How do you keep in touch?' },
-        { component: 'Number', prompt: 'Years known' },
-        { component: 'TextArea', prompt: 'How did you meet?' },
-        { component: 'Text', prompt: 'Phone number' },
-        { component: 'TextArea', prompt: 'Anything else to note?' },
+        { component: 'Text', label: 'Full name' },
+        { component: 'Text', label: 'Nickname' },
+        { component: 'Number', label: 'Age' },
+        { component: 'Text', label: 'Occupation' },
+        { component: 'Text', label: 'Where they live' },
+        { component: 'RadioGroup', label: 'How close are you?' },
+        { component: 'Boolean', label: 'Do you live together?' },
+        { component: 'Toggle', label: 'Seen in the last month?' },
+        { component: 'LikertScale', label: 'How often do you talk?' },
+        { component: 'CheckboxGroup', label: 'How do you keep in touch?' },
+        { component: 'Number', label: 'Years known' },
+        { component: 'TextArea', label: 'How did you meet?' },
+        { component: 'Text', label: 'Phone number' },
+        { component: 'TextArea', label: 'Anything else to note?' },
       ],
     },
   });

@@ -10,7 +10,7 @@ describe('composerNormalizeField', () => {
       variable: 'age',
       component: 'Number',
       parameters: { min: 0 },
-      prompt: 'Age',
+      label: 'Age',
       options: [{ label: 'a', value: 'a' }],
       validation: { required: true },
     });
@@ -18,7 +18,7 @@ describe('composerNormalizeField', () => {
       variable: 'age',
       component: 'Number',
       parameters: { min: 0 },
-      prompt: 'Age',
+      label: 'Age',
     });
   });
 });

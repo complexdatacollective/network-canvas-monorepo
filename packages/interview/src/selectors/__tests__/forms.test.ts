@@ -11,7 +11,7 @@ describe('selectFieldMetadataFromVariables', () => {
       {
         variable: 'closeness',
         component: 'VisualAnalogScale',
-        prompt: 'How close?',
+        label: 'How close?',
       },
     ];
     const [meta] = selectFieldMetadataFromVariables(
@@ -32,5 +32,18 @@ describe('selectFieldMetadataFromVariables', () => {
       fields as never,
     );
     expect(meta?.component).toBe('Number');
+    expect(meta?.label).toBe('Age');
+  });
+
+  it('captions an unlabelled composer field with the variable name, not its id', () => {
+    const variables = {
+      'var-uuid-1': { name: 'Age', type: 'number' as const },
+    };
+    const fields = [{ variable: 'var-uuid-1', component: 'Number' }];
+    const [meta] = selectFieldMetadataFromVariables(
+      variables as never,
+      fields as never,
+    );
+    expect(meta?.label).toBe('Age');
   });
 });

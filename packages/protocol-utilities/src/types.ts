@@ -163,11 +163,13 @@ type FormFieldEntry = {
   prompt?: string;
 };
 
+// Unlike the shared form fields' `prompt`, composer attribute fields caption
+// with an optional `label` (the runtime falls back to the variable's name).
 export type NetworkComposerFormFieldEntry = {
   variable: string;
   component?: ComponentType;
   parameters?: Record<string, unknown>;
-  prompt?: string;
+  label?: string;
 };
 
 // A drawable edge type within a NetworkComposer stage. Mirrors the schema's
@@ -329,6 +331,17 @@ export type FormFieldInput = {
   validation?: Record<string, unknown>;
 };
 
+// Input for NetworkComposer attribute fields, which caption with `label`
+// (optional; the runtime falls back to the variable's name) instead of the
+// shared fields' `prompt`.
+export type NetworkComposerFormFieldInput = {
+  variable?: string;
+  label?: string;
+  component: ComponentType;
+  parameters?: Record<string, unknown>;
+  validation?: Record<string, unknown>;
+};
+
 export type AddStageInput = {
   label?: string;
   subject?: { entity: 'node'; type: string } | { entity: 'edge'; type: string };
@@ -395,14 +408,14 @@ export type AddStageInput = {
   mapOptions?: MapOptionsEntry;
   // NetworkComposer (quickAdd above is shared with NameGeneratorQuickAdd)
   layoutVariable?: string;
-  nodeForm?: { fields: FormFieldInput[] };
+  nodeForm?: { fields: NetworkComposerFormFieldInput[] };
   convexHullVariable?: string;
 };
 
 export type AddNetworkComposerEdgeInput = {
   // Accept an existing edge type id, or omit to auto-create one.
   type?: string;
-  form?: { fields: FormFieldInput[] };
+  form?: { fields: NetworkComposerFormFieldInput[] };
 };
 
 export type AddPromptInput = {

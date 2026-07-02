@@ -28,13 +28,14 @@ const ComposerComponentSchema = z.enum([
 // the input control (`component`) and its parameters live on the STAGE here,
 // not on the codebook variable, so the same variable can render with different
 // controls in different stages. The runtime side panel reads the control from
-// this field (see interview/src/selectors/forms.ts). `prompt` is optional —
-// an attribute can render with just its variable label.
+// this field (see interview/src/selectors/forms.ts). `label` captions the
+// field in the drawer; it is optional — the drawer falls back to the codebook
+// variable's name.
 export const ComposerFormFieldSchema = z.strictObject({
   variable: entityAttributeReference({ subject: 'stageSubject' }),
   component: ComposerComponentSchema,
   parameters: z.record(z.string(), z.unknown()).optional(),
-  prompt: z.string().optional(),
+  label: z.string().optional(),
   hint: z.string().optional(),
   showValidationHints: z.boolean().optional(),
 });

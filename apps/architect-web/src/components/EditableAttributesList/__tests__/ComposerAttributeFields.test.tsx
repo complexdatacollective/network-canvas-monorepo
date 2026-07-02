@@ -72,11 +72,12 @@ vi.mock('~/components/sections/Form/withFieldsHandlers', () => ({
 import ComposerAttributeFields from '../ComposerAttributeFields';
 
 describe('ComposerAttributeFields', () => {
-  it('renders the variable and input-control fields', () => {
+  it('renders the variable, label, and input-control fields', () => {
     render(
       <ComposerAttributeFields form="attr-edit" entity="node" type="person" />,
     );
     expect(screen.getByTestId('field-variable')).toBeInTheDocument();
+    expect(screen.getByTestId('field-label')).toBeInTheDocument();
     expect(screen.getByTestId('field-component')).toBeInTheDocument();
   });
 
