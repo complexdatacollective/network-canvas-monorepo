@@ -91,14 +91,15 @@ export const NodeConfigurationComponent = ({
     formValueSelector(form)(state, 'behaviours.automaticLayout'),
   );
   const automaticLayout =
-    rawAutomaticLayout === undefined ? true : !!rawAutomaticLayout;
+    typeof rawAutomaticLayout === 'boolean' ? rawAutomaticLayout : true;
 
-  // This section is gated behind node-type selection, so it can mount after the
-  // form has initialised. Seed the template default (on) into form state when it
-  // is unset — a plain redux-form Toggle would instead default an unsynced field
-  // to false on mount, clobbering the template's `true`.
+  // Selecting a node type resets subject-dependent fields, setting `behaviours`
+  // to null (NodeType.handleResetStage) — and redux-form's formValueSelector
+  // returns `null` (not undefined) for a path under a null parent. Re-seed the
+  // template default (on) whenever the value is not a real boolean, so the
+  // default survives the reset and an unset field never renders as off.
   useEffect(() => {
-    if (rawAutomaticLayout === undefined) {
+    if (typeof rawAutomaticLayout !== 'boolean') {
       dispatch(change(form, 'behaviours.automaticLayout', true));
     }
   }, [rawAutomaticLayout, dispatch, form]);

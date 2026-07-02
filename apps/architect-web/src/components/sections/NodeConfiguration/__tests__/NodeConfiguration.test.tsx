@@ -96,8 +96,13 @@ vi.mock('redux-form', () => ({
   }) => <div data-testid={`field-${name}`} />,
   FormSection: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   reduxForm: () => (Component: unknown) => Component,
-  formValueSelector: () => (_state: unknown, field: string) =>
-    field === 'convexHulls' ? ['existing-hull-var'] : undefined,
+  formValueSelector: () => (_state: unknown, field: string) => {
+    if (field === 'convexHulls') return ['existing-hull-var'];
+    // Mirrors redux-form: selecting a node type resets `behaviours` to null, and
+    // a path under a null parent resolves to null (NOT undefined).
+    if (field === 'behaviours.automaticLayout') return null;
+    return undefined;
+  },
   change: (form: string, field: string, value: unknown) => ({
     type: 'CHANGE',
     form,
