@@ -1,10 +1,13 @@
 import { createSelector } from '@reduxjs/toolkit';
+import { useState } from 'react';
 import { connect } from 'react-redux';
 import { Field } from 'redux-form';
 import { v4 as uuid } from 'uuid';
 
+import NewTypeDialog from '~/components/Dialog/NewTypeDialog';
 import CheckboxGroup from '~/components/Form/Fields/CheckboxGroup';
 import type { RootState } from '~/ducks/store';
+import Button from '~/lib/legacy-ui/components/Button';
 import { getEdgeTypes } from '~/selectors/codebook/index';
 import { asOptions } from '~/selectors/utils';
 
@@ -35,6 +38,7 @@ export const EdgeTypeMultiSelectInner = ({
   value,
   onChange,
 }: EdgeTypeMultiSelectInnerProps) => {
+  const [showNewTypeDialog, setShowNewTypeDialog] = useState(false);
   const checkedTypes = value.map((entry) => entry.subject.type);
 
   const handleChange = (newCheckedTypes: unknown[]) => {
@@ -54,15 +58,48 @@ export const EdgeTypeMultiSelectInner = ({
     onChange(nextEntries);
   };
 
+  // A type created from here is meant for THIS stage, so select it immediately
+  // rather than making the user find and tick the new checkbox.
+  const handleNewTypeComplete = (newTypeId?: string) => {
+    setShowNewTypeDialog(false);
+    if (newTypeId && !checkedTypes.includes(newTypeId)) {
+      onChange([
+        ...value,
+        { id: uuid(), subject: { entity: 'edge' as const, type: newTypeId } },
+      ]);
+    }
+  };
+
   return (
-    <CheckboxGroup
-      options={edgeTypes}
-      input={{
-        name: 'edges',
-        value: checkedTypes,
-        onChange: handleChange,
-      }}
-    />
+    <div className="flex flex-col items-start gap-(--space-md)">
+      {edgeTypes.length > 0 ? (
+        <CheckboxGroup
+          options={edgeTypes}
+          input={{
+            name: 'edges',
+            value: checkedTypes,
+            onChange: handleChange,
+          }}
+        />
+      ) : (
+        <p>
+          No edge types currently defined. Use the button below to create one.
+        </p>
+      )}
+      <Button
+        icon="add"
+        color="sea-green"
+        onClick={() => setShowNewTypeDialog(true)}
+      >
+        Create new edge type
+      </Button>
+      <NewTypeDialog
+        show={showNewTypeDialog}
+        entityType="edge"
+        onComplete={handleNewTypeComplete}
+        onCancel={() => setShowNewTypeDialog(false)}
+      />
+    </div>
   );
 };
 
