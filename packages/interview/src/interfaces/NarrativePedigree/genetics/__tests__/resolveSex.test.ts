@@ -64,6 +64,11 @@ describe('resolveSex — explicit biologicalSexVariable', () => {
     expect(resolveSex('p1', [node], [], config)).toBe('unknown');
   });
 
+  it('falls through when biologicalSexVariable === "preferNotToSay"', () => {
+    const node = makeNode('p1', { [BIO_SEX_VAR]: 'preferNotToSay' });
+    expect(resolveSex('p1', [node], [], config)).toBe('unknown');
+  });
+
   it('falls through when biologicalSexVariable is absent', () => {
     const node = makeNode('p1');
     expect(resolveSex('p1', [node], [], config)).toBe('unknown');

@@ -21,7 +21,9 @@ export type ResolveSexConfig = {
  *
  * Resolution order (spec §3):
  * 1. Read the node's `biologicalSexVariable` attribute. If exactly `'female'`
- *    or `'male'`, return it. (`'intersex'`, `'unknown'`, or absent fall through.)
+ *    or `'male'`, return it. Every other stored value — `'intersex'`,
+ *    `'unknown'`, `'preferNotToSay'`, or absent — falls through, so sex-linked
+ *    inheritance treats it as uncertainty rather than guessing.
  * 2. Scan outgoing genetic parent edges (edges where `edge.from === nodeId` AND
  *    relType ∈ {biological, donor}) for a `gameteRoleVariable` value:
  *    `'egg'` → `'female'`; `'sperm'` → `'male'`.

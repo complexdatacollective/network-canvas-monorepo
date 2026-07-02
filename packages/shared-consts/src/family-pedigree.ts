@@ -39,17 +39,62 @@ export const RELATIONSHIP_TYPE_OPTIONS: {
 }));
 
 /**
- * Canonical biological-sex values for pedigree participants.
+ * Canonical biological-sex values for pedigree participants — the sex recorded
+ * at birth, needed for sex-linked genetic transmission (X-linked, Y-linked,
+ * mitochondrial). This is distinct from gender identity.
  *
- * Stored on the `biologicalSex` node variable. Shared so Architect (which
- * locks the categorical variable to this set) and the interview interface
- * cannot drift apart.
+ * Stored on the `biologicalSex` node variable. Shared so Architect and the
+ * interview interface cannot drift apart. Only `female`/`male` drive
+ * transmission; `intersex`, `unknown`, and `preferNotToSay` are stored
+ * distinctly but all propagate as uncertainty in the genetics engine.
  */
 export const BIOLOGICAL_SEX_VALUES = [
   'female',
   'male',
   'intersex',
   'unknown',
+  'preferNotToSay',
 ] as const;
 
 export type BiologicalSex = (typeof BIOLOGICAL_SEX_VALUES)[number];
+
+const BIOLOGICAL_SEX_LABELS: Record<BiologicalSex, string> = {
+  female: 'Female',
+  male: 'Male',
+  intersex: 'Intersex or a variation in sex characteristics',
+  unknown: 'Don’t know',
+  preferNotToSay: 'Prefer not to say',
+};
+
+/**
+ * The biological-sex options as `{ value, label }` pairs, in canonical order,
+ * with participant-facing labels. The single source of truth for the choices
+ * shown to a participant and described to a protocol author.
+ */
+export const BIOLOGICAL_SEX_OPTIONS: {
+  value: BiologicalSex;
+  label: string;
+}[] = BIOLOGICAL_SEX_VALUES.map((value) => ({
+  value,
+  label: BIOLOGICAL_SEX_LABELS[value],
+}));
+
+/**
+ * Participant-facing copy for the biological-sex question. Framing-invariant
+ * (the mother/father vs egg/sperm framing never changes *this* question); only
+ * the grammatical subject differs — the participant themselves, or a relative.
+ */
+export const BIOLOGICAL_SEX_QUESTION = {
+  self: 'What sex were you recorded as at birth?',
+  other: 'What sex was this person recorded as at birth?',
+} as const;
+
+export const BIOLOGICAL_SEX_HINT =
+  'If you’re not sure, choose “Don’t know” — please don’t guess.';
+
+/**
+ * One-time explanation shown before the sex question is first asked, so the
+ * participant understands it is about inheritance, not gender identity.
+ */
+export const BIOLOGICAL_SEX_LEAD_IN =
+  'To understand how conditions can be passed down a family, we need the sex each person was recorded as at birth — not how they describe their gender.';

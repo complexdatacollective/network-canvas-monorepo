@@ -32,6 +32,25 @@ describe('family-pedigree-framing', () => {
       'male',
       'intersex',
       'unknown',
+      'preferNotToSay',
     ]);
+  });
+  it('frames the gamete-provider question, hiding egg/sperm under gendered', () => {
+    expect(FRAMING_TERMS.gamete.eggProviderQuestion).toBe(
+      'Who provided the egg?',
+    );
+    expect(FRAMING_TERMS.gamete.spermProviderQuestion).toBe(
+      'Who provided the sperm?',
+    );
+    expect(FRAMING_TERMS.gendered.eggProviderQuestion).toBe(
+      'Who is the biological mother?',
+    );
+    expect(FRAMING_TERMS.gendered.spermProviderQuestion).toBe(
+      'Who is the biological father?',
+    );
+    for (const id of FRAMING_IDS) {
+      expect(FRAMING_TERMS[id].eggProviderHint).toContain('egg donor');
+      expect(FRAMING_TERMS[id].spermProviderHint).toContain('sperm donor');
+    }
   });
 });

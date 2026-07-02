@@ -248,7 +248,7 @@ const NodeConfigurationInner = ({
               <VariableRow
                 name="nodeConfig.biologicalSexVariable"
                 label="Biological Sex Variable"
-                description="Stores the biological sex of each family member (female/male/intersex/unknown)."
+                description="Stores each family member’s sex recorded at birth (female/male/intersex/don’t know/prefer not to say), used for sex-linked inheritance."
                 entityType={nodeType}
                 options={categoricalNodeVariables}
                 onCreateOption={handleNewBiologicalSexVariable}
