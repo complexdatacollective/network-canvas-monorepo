@@ -1,7 +1,10 @@
 // Color palette sizes, they follow the pattern: ord-color-seq-1...ord-color-seq-n
+// Node/edge sizes must not exceed the schema's Node/EdgeColorSequence (8 each):
+// the picker offers `<palette>-1..N`, and anything past the sequence would fail
+// protocol validation.
 export const COLOR_PALETTES = {
   'ord-color-seq': 8,
-  'node-color-seq': 10,
+  'node-color-seq': 8,
   'edge-color-seq': 8,
 };
 
