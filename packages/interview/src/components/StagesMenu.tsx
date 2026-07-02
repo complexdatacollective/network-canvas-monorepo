@@ -1,7 +1,12 @@
 'use client';
 
 import { EyeOff, LayoutTemplate } from 'lucide-react';
-import { motion, useReducedMotion, type Variants } from 'motion/react';
+import {
+  LayoutGroup,
+  motion,
+  useReducedMotion,
+  type Variants,
+} from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
@@ -53,12 +58,22 @@ const isInterfaceType = (type: string): type is InterfaceType =>
 const keyExtractor = (item: StageItem) => item.id;
 const textValueExtractor = (item: StageItem) => item.label;
 
+// Only begin filtering once more than one character has been typed.
+const FILTER_MIN_QUERY_LENGTH = 2;
+// Disable Fuse relevance scores so filtered results stay in stage order rather
+// than being re-sorted by match quality.
+const FILTER_FUSE_OPTIONS = { includeScore: false };
+// Horizontal cards sit in a spaced row; the timeline segments bridge the gap
+// (half of `gap-6` = `-left-3` / `-right-3`) so the line stays continuous.
+const HORIZONTAL_GAP = 6;
+
 // Timeline (line + numbered nodes) reveals as a directional "wipe"; the stage
-// cards rise in on a heavier spring. Keep the whole sequence bounded so a long
-// protocol doesn't turn into a slideshow.
+// cards rise + fade in on a heavier spring. Keep the whole sequence bounded so a
+// long protocol doesn't turn into a slideshow.
 const WIPE_DURATION = 0.16;
 const NODE_LEAD = 0.05;
 const CONTENT_LEAD = 0.02;
+const CARD_DURATION = 0.2;
 const EXIT_DURATION = 0.1;
 const EXIT_BUFFER = 0.04;
 
@@ -67,7 +82,12 @@ const clampStep = (base: number, count: number, maxWindow: number) =>
 
 type Steps = { wipe: number; content: number; exit: number };
 
-type MenuVariants = { line: Variants; node: Variants; content: Variants };
+type MenuVariants = {
+  card: Variants;
+  line: Variants;
+  node: Variants;
+  content: Variants;
+};
 
 const makeVariants = (
   orientation: NavigationOrientation,
@@ -79,6 +99,26 @@ const makeVariants = (
   const shown = orientation === 'vertical' ? { scaleY: 1 } : { scaleX: 1 };
 
   return {
+    // The whole card fades as one unit, so the selected/hover background is
+    // never visible ahead of the staggered reveal.
+    card: {
+      open: (i: number) => ({
+        opacity: 1,
+        transition: reduce
+          ? instant
+          : {
+              delay: i * steps.content + CONTENT_LEAD,
+              duration: CARD_DURATION,
+              ease: 'easeOut',
+            },
+      }),
+      closed: (i: number) => ({
+        opacity: 0,
+        transition: reduce
+          ? instant
+          : { delay: i * steps.exit, duration: EXIT_DURATION, ease: 'easeIn' },
+      }),
+    },
     line: {
       open: (i: number) => ({
         ...shown,
@@ -100,7 +140,6 @@ const makeVariants = (
     node: {
       open: (i: number) => ({
         scale: 1,
-        opacity: 1,
         transition: reduce
           ? instant
           : {
@@ -111,7 +150,6 @@ const makeVariants = (
       }),
       closed: (i: number) => ({
         scale: 0,
-        opacity: 0,
         transition: reduce
           ? instant
           : { delay: i * steps.exit, duration: EXIT_DURATION, ease: 'easeIn' },
@@ -119,7 +157,6 @@ const makeVariants = (
     },
     content: {
       open: (i: number) => ({
-        opacity: 1,
         y: 0,
         transition: reduce
           ? instant
@@ -132,7 +169,6 @@ const makeVariants = (
             },
       }),
       closed: (i: number) => ({
-        opacity: 0,
         y: reduce ? 0 : 16,
         transition: reduce
           ? instant
@@ -156,8 +192,12 @@ export default function StagesMenu({
   const isHorizontal = orientation === 'horizontal';
 
   const layout = useMemo(
-    () => new ListLayout<StageItem>({ gap: 0, orientation }),
-    [orientation],
+    () =>
+      new ListLayout<StageItem>({
+        gap: isHorizontal ? HORIZONTAL_GAP : 0,
+        orientation,
+      }),
+    [orientation, isHorizontal],
   );
 
   const items = useMemo<StageItem[]>(
@@ -252,7 +292,7 @@ export default function StagesMenu({
       <InterfacePicture
         type={item.type}
         ratio="4:3"
-        sizes={isHorizontal ? '11rem' : '8rem'}
+        sizes={isHorizontal ? '8rem' : '6rem'}
         alt=""
         className="size-full object-cover"
       />
@@ -316,10 +356,15 @@ export default function StagesMenu({
 
     if (isHorizontal) {
       return (
-        <button
+        <motion.button
           {...itemProps}
           type="button"
           aria-current={item.isCurrent ? 'step' : undefined}
+          layoutId={`stage-menu-${item.id}`}
+          variants={variants.card}
+          custom={custom}
+          initial="closed"
+          animate={animate}
           className={cx(
             // No horizontal padding on the button itself: the timeline band is
             // full width so adjacent cards' segments meet with no gap. The
@@ -341,10 +386,10 @@ export default function StagesMenu({
                 isOnly
                   ? 'hidden'
                   : isFirst
-                    ? 'right-0 left-1/2'
+                    ? '-right-3 left-1/2'
                     : isLast
-                      ? 'right-1/2 left-0'
-                      : 'inset-x-0',
+                      ? 'right-1/2 -left-3'
+                      : '-inset-x-3',
               )}
             />
             {node}
@@ -353,15 +398,20 @@ export default function StagesMenu({
             {image}
             {label}
           </span>
-        </button>
+        </motion.button>
       );
     }
 
     return (
-      <button
+      <motion.button
         {...itemProps}
         type="button"
         aria-current={item.isCurrent ? 'step' : undefined}
+        layoutId={`stage-menu-${item.id}`}
+        variants={variants.card}
+        custom={custom}
+        initial="closed"
+        animate={animate}
         className={cx(
           'focusable relative flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
           'data-selected:bg-primary data-selected:text-primary-contrast',
@@ -388,51 +438,57 @@ export default function StagesMenu({
         {node}
         {image}
         {label}
-      </button>
+      </motion.button>
     );
   };
 
   return (
-    <Collection
-      items={items}
-      keyExtractor={keyExtractor}
-      textValueExtractor={textValueExtractor}
-      layout={layout}
-      renderItem={renderItem}
-      animate={false}
-      orientation={orientation}
-      selectionMode="single"
-      defaultSelectedKeys={currentId !== undefined ? [currentId] : []}
-      onSelectionChange={handleSelectionChange}
-      filterKeys={['label', 'position']}
-      filterDebounceMs={0}
-      onFilterChange={(query) => {
-        if (!query) {
-          setMatchingKeys(null);
+    <LayoutGroup>
+      <Collection
+        items={items}
+        keyExtractor={keyExtractor}
+        textValueExtractor={textValueExtractor}
+        layout={layout}
+        renderItem={renderItem}
+        animate={false}
+        orientation={orientation}
+        selectionMode="single"
+        defaultSelectedKeys={currentId !== undefined ? [currentId] : []}
+        onSelectionChange={handleSelectionChange}
+        filterKeys={['label', 'position']}
+        filterDebounceMs={0}
+        filterMinQueryLength={FILTER_MIN_QUERY_LENGTH}
+        filterFuseOptions={FILTER_FUSE_OPTIONS}
+        onFilterChange={(query) => {
+          if (query.length < FILTER_MIN_QUERY_LENGTH) {
+            setMatchingKeys(null);
+          }
+        }}
+        onFilterResultsChange={(keys) => setMatchingKeys(keys)}
+        aria-label="Stages"
+        className="min-h-0 flex-1"
+        viewportClassName={isHorizontal ? 'px-6 py-6' : 'py-4'}
+        emptyState={
+          <Paragraph margin="none" className="text-text/70 p-8 text-sm">
+            Nothing matched your search term.
+          </Paragraph>
         }
-      }}
-      onFilterResultsChange={(keys) => setMatchingKeys(keys)}
-      aria-label="Stages"
-      className="min-h-0 flex-1"
-      viewportClassName={isHorizontal ? 'items-center px-6 py-6' : 'py-4'}
-      emptyState={
-        <Paragraph margin="none" className="text-text/70 p-8 text-sm">
-          Nothing matched your search term.
-        </Paragraph>
-      }
-    >
-      {(CollectionElements) => (
-        <div className="flex h-full flex-col">
-          {CollectionElements}
-          <div className="border-text/10 shrink-0 border-t p-4">
-            <CollectionFilterInput
-              placeholder="Filter..."
-              size="sm"
-              showResultCount={false}
-            />
+      >
+        {(CollectionElements) => (
+          <div
+            className={cx('flex flex-col', isHorizontal ? 'min-h-0' : 'h-full')}
+          >
+            {CollectionElements}
+            <div className="border-text/10 shrink-0 border-t p-4">
+              <CollectionFilterInput
+                placeholder="Filter..."
+                size="sm"
+                showResultCount={false}
+              />
+            </div>
           </div>
-        </div>
-      )}
-    </Collection>
+        )}
+      </Collection>
+    </LayoutGroup>
   );
 }

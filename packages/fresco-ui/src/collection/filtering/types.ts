@@ -28,6 +28,13 @@ export type FuseOptions = {
   useExtendedSearch?: boolean;
   /** Find all matches (not just best). Default: true */
   findAllMatches?: boolean;
+  /**
+   * Compute relevance scores. Default: true. Set to `false` to keep filtered
+   * results in their original collection order instead of re-sorting them by
+   * match quality (the store only applies relevance ordering when scores are
+   * present).
+   */
+  includeScore?: boolean;
 };
 
 /**
