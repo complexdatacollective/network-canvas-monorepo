@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { useLocation } from 'wouter';
@@ -9,6 +10,22 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000; // hourly
+
+// Mirrors StatusRow's bottom-of-screen entrance: rise + fade on a spring,
+// quick fade-drop on exit.
+const variants = {
+  hidden: { opacity: 0, y: '150%' },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: 'spring', stiffness: 280, damping: 26 },
+  },
+  exit: {
+    opacity: 0,
+    y: '150%',
+    transition: { duration: 0.25, ease: 'easeIn' },
+  },
+} as const;
 
 // The one route where a reload would interrupt data collection. While the
 // location is inside it, the prompt is withheld — the update surfaces when
@@ -48,37 +65,46 @@ const PwaUpdateBanner = () => {
     return () => window.clearInterval(intervalId);
   }, [registration]);
 
-  if (!needRefresh || dismissed || interviewActive) return null;
+  const visible = needRefresh && !dismissed && !interviewActive;
 
   return (
-    <aside
-      aria-label="Update available"
-      aria-live="polite"
-      className={cx(
-        // The chip treatment ToastItem uses: surfaceVariants for padding/
-        // radius/shadow (the Surface COMPONENT is a page-width container and
-        // collapses a shrink-to-fit fixed element), plus the surface tokens.
-        surfaceVariants({ spacing: 'sm' }),
-        'bg-surface text-surface-contrast border-outline border bg-clip-padding',
-        'flex items-center gap-4',
-        // Positioning LAST: surfaceVariants carries `relative`, and cx
-        // (tailwind-merge) resolves position conflicts in favour of the
-        // later class — `fixed` must win.
-        'fixed bottom-6 left-1/2 z-50 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2',
+    <AnimatePresence>
+      {visible && (
+        <motion.aside
+          key="update-available"
+          variants={variants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          aria-label="Update available"
+          aria-live="polite"
+          className={cx(
+            // The chip treatment ToastItem uses: surfaceVariants for padding/
+            // radius/shadow (the Surface COMPONENT is a page-width container and
+            // collapses a shrink-to-fit fixed element), plus the surface tokens.
+            surfaceVariants({ spacing: 'sm' }),
+            'bg-surface text-surface-contrast border-outline border bg-clip-padding',
+            'flex items-center gap-4',
+            // Positioning LAST: surfaceVariants carries `relative`, and cx
+            // (tailwind-merge) resolves position conflicts in favour of the
+            // later class — `fixed` must win.
+            'fixed bottom-6 left-1/2 z-50 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2',
+          )}
+        >
+          <Paragraph margin="none" className="text-sm">
+            A new version of Interviewer is available. Your work is saved.
+          </Paragraph>
+          <Button
+            color="primary"
+            size="sm"
+            onClick={() => void updateServiceWorker(true)}
+          >
+            Reload
+          </Button>
+          <CloseButton size="sm" onClick={() => setDismissed(true)} />
+        </motion.aside>
       )}
-    >
-      <Paragraph margin="none" className="text-sm">
-        A new version of Interviewer is available. Your work is saved.
-      </Paragraph>
-      <Button
-        color="primary"
-        size="sm"
-        onClick={() => void updateServiceWorker(true)}
-      >
-        Reload
-      </Button>
-      <CloseButton size="sm" onClick={() => setDismissed(true)} />
-    </aside>
+    </AnimatePresence>
   );
 };
 

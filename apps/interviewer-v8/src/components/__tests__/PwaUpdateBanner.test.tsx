@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const { mockUseRegisterSW, mockUseLocation } = vi.hoisted(() => ({
@@ -66,16 +72,19 @@ describe('PwaUpdateBanner', () => {
     expect(updateServiceWorker).toHaveBeenCalledWith(true);
   });
 
-  it('can be dismissed for the session', () => {
+  it('can be dismissed for the session', async () => {
     const updateServiceWorker = vi.fn();
     setSwState({ needRefresh: true, updateServiceWorker });
 
     render(<PwaUpdateBanner />);
 
     fireEvent.click(screen.getByRole('button', { name: /close/i }));
-    expect(
-      screen.queryByText(/new version of Interviewer is available/i),
-    ).not.toBeInTheDocument();
+    // The exit animation holds the element in the DOM for a beat.
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/new version of Interviewer is available/i),
+      ).not.toBeInTheDocument(),
+    );
     expect(updateServiceWorker).not.toHaveBeenCalled();
   });
 
