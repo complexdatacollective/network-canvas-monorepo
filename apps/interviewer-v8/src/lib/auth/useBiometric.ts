@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 
 import { isBiometricSupported } from './api';
 
-type BiometricState =
+export type BiometricState =
   | { status: 'checking' }
   | { status: 'available' }
   | { status: 'unavailable'; reason: string };
 
-const NO_HARDWARE_REASON = 'No biometric sensor available on this device';
+const UNSUPPORTED_REASON =
+  'This browser or device does not support biometric unlock. Use a PIN or passphrase instead.';
 
 export function useBiometric(): BiometricState {
   const [biometric, setBiometric] = useState<BiometricState>({
@@ -16,20 +17,21 @@ export function useBiometric(): BiometricState {
 
   useEffect(() => {
     let active = true;
-    void (async () => {
+    async function check() {
       try {
         const supported = await isBiometricSupported();
         if (!active) return;
         setBiometric(
           supported
             ? { status: 'available' }
-            : { status: 'unavailable', reason: NO_HARDWARE_REASON },
+            : { status: 'unavailable', reason: UNSUPPORTED_REASON },
         );
       } catch {
         if (!active) return;
-        setBiometric({ status: 'unavailable', reason: NO_HARDWARE_REASON });
+        setBiometric({ status: 'unavailable', reason: UNSUPPORTED_REASON });
       }
-    })();
+    }
+    void check();
     return () => {
       active = false;
     };
