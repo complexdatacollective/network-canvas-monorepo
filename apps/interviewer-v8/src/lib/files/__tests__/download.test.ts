@@ -1,50 +1,83 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { downloadBlob } from '../download';
+import { shareOrDownloadBlob } from '../download';
 
 function makeBlob() {
   return new Blob(['export-bytes'], { type: 'application/zip' });
 }
 
-describe('downloadBlob (web)', () => {
-  let createObjectURL: ReturnType<typeof vi.fn>;
-  let revokeObjectURL: ReturnType<typeof vi.fn>;
-
-  beforeEach(() => {
-    vi.useFakeTimers();
-    createObjectURL = vi.fn(() => 'blob:mock-url');
-    revokeObjectURL = vi.fn();
-    vi.stubGlobal('URL', {
-      ...URL,
-      createObjectURL,
-      revokeObjectURL,
-    });
-  });
-
+describe('shareOrDownloadBlob (web)', () => {
   afterEach(() => {
-    vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
-  it('triggers an anchor download and reports saved', async () => {
-    const clickSpy = vi
-      .spyOn(HTMLAnchorElement.prototype, 'click')
-      .mockImplementation(() => {});
+  it('shares via navigator.share when files can be shared', async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    const canShare = vi.fn().mockReturnValue(true);
+    vi.stubGlobal('navigator', { share, canShare });
 
-    const result = await downloadBlob(makeBlob(), 'network-canvas-export.zip');
+    const result = await shareOrDownloadBlob(makeBlob(), 'export.zip');
 
+    expect(canShare).toHaveBeenCalledWith(
+      expect.objectContaining({ files: expect.any(Array) }),
+    );
+    expect(share).toHaveBeenCalledWith(
+      expect.objectContaining({
+        files: expect.any(Array),
+        title: 'export.zip',
+      }),
+    );
     expect(result).toEqual({ saved: true });
-    expect(createObjectURL).toHaveBeenCalledTimes(1);
-    expect(clickSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('revokes the object URL after the anchor is clicked', async () => {
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  it('returns saved:false when the user cancels the share sheet', async () => {
+    const abort = Object.assign(new Error('cancelled'), { name: 'AbortError' });
+    const share = vi.fn().mockRejectedValue(abort);
+    const canShare = vi.fn().mockReturnValue(true);
+    vi.stubGlobal('navigator', { share, canShare });
 
-    await downloadBlob(makeBlob(), 'export.zip');
-    vi.runAllTimers();
+    const result = await shareOrDownloadBlob(makeBlob(), 'export.zip');
 
-    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    expect(result).toEqual({ saved: false });
+  });
+
+  it('falls back to an object-URL <a download> when canShare is false', async () => {
+    vi.stubGlobal('navigator', { canShare: vi.fn().mockReturnValue(false) });
+    const createObjectURL = vi.fn().mockReturnValue('blob:mock');
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
+    const click = vi.fn();
+    const anchor = { href: '', download: '', click, remove: vi.fn() };
+    vi.spyOn(document, 'createElement').mockReturnValue(
+      anchor as unknown as HTMLAnchorElement,
+    );
+    vi.spyOn(document.body, 'appendChild').mockImplementation(
+      (node) => node as never,
+    );
+
+    const result = await shareOrDownloadBlob(makeBlob(), 'export.zip');
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(anchor.download).toBe('export.zip');
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ saved: true });
+  });
+
+  it('falls back when navigator has no canShare (older browsers)', async () => {
+    vi.stubGlobal('navigator', {});
+    const createObjectURL = vi.fn().mockReturnValue('blob:mock');
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
+    const anchor = { href: '', download: '', click: vi.fn(), remove: vi.fn() };
+    vi.spyOn(document, 'createElement').mockReturnValue(
+      anchor as unknown as HTMLAnchorElement,
+    );
+    vi.spyOn(document.body, 'appendChild').mockImplementation(
+      (node) => node as never,
+    );
+
+    const result = await shareOrDownloadBlob(makeBlob(), 'export.zip');
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ saved: true });
   });
 });

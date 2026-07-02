@@ -127,14 +127,20 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
     showBanner,
   } = useSessionSelection({ filtersKey, pageIds, totalCount, queryParams });
 
-  const { exporting, deleting, handleExport, handleDelete } =
-    useSessionMutations({
-      selectedCount,
-      resolveSelectedIds,
-      clearSelection,
-      onReload,
-      reloadData,
-    });
+  const {
+    exporting,
+    deleting,
+    handleExport,
+    handleDelete,
+    handleShareReady,
+    pendingShare,
+  } = useSessionMutations({
+    selectedCount,
+    resolveSelectedIds,
+    clearSelection,
+    onReload,
+    reloadData,
+  });
 
   const columns = useDataViewColumns({
     protocolTotalSteps,
@@ -180,8 +186,10 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
         selectedCount={selectedCount}
         exporting={exporting}
         deleting={deleting}
+        pendingShare={pendingShare !== null}
         onExport={() => void handleExport()}
         onDelete={() => void handleDelete()}
+        onShareReady={() => void handleShareReady()}
       />
 
       <AnimatePresence initial={false}>

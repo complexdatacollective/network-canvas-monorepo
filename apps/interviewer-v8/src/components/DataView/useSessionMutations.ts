@@ -14,7 +14,7 @@ import {
   type ExportProgress,
   runExport,
 } from '~/lib/export/exportSessions';
-import { downloadBlob } from '~/lib/files/download';
+import { shareOrDownloadBlob } from '~/lib/files/download';
 
 const noopExportEvent = (_event: ExportProgress) => {};
 
@@ -39,6 +39,12 @@ export function useSessionMutations({
   const { requireFreshUnlock } = useStepUpAuth();
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Archive built by handleExport, awaiting a fresh user gesture to
+  // share/download it — see handleShareReady.
+  const [pendingShare, setPendingShare] = useState<{
+    blob: Blob;
+    fileName: string;
+  } | null>(null);
 
   const handleExport = useCallback(async () => {
     if (selectedCount === 0 || exporting) return;
@@ -72,14 +78,6 @@ export function useSessionMutations({
       if (!blob || !fileName) {
         throw new Error('Export produced no file');
       }
-      const download = await downloadBlob(blob, fileName);
-      if (!download.saved) {
-        toast.add({
-          title: 'Export canceled',
-          description: 'The archive was not saved.',
-        });
-        return;
-      }
       await markSessionsExported(
         result.successfulExports.map((s) => s.sessionId),
       );
@@ -96,13 +94,12 @@ export function useSessionMutations({
           description: `${result.failedExports.length} session(s) failed.`,
           variant: 'destructive',
         });
-      } else {
-        toast.add({
-          title: 'Export complete',
-          description: fileName,
-          variant: 'success',
-        });
       }
+      setPendingShare({ blob, fileName });
+      toast.add({
+        title: 'Archive ready',
+        description: 'Tap Save export to share or download the archive.',
+      });
       clearSelection();
       await Promise.all([onReload(), reloadData()]);
     } catch (cause) {
@@ -126,6 +123,28 @@ export function useSessionMutations({
     selectedCount,
     toast,
   ]);
+
+  // Runs in the "Save export" button's own click — a gesture the long-running
+  // archive build in handleExport would otherwise have consumed — so
+  // navigator.share stays gesture-fresh on iOS Safari.
+  const handleShareReady = useCallback(async () => {
+    if (!pendingShare) return;
+    const { blob, fileName } = pendingShare;
+    const outcome = await shareOrDownloadBlob(blob, fileName);
+    setPendingShare(null);
+    if (!outcome.saved) {
+      toast.add({
+        title: 'Export canceled',
+        description: 'The archive was not saved.',
+      });
+      return;
+    }
+    toast.add({
+      title: 'Export complete',
+      description: fileName,
+      variant: 'success',
+    });
+  }, [pendingShare, toast]);
 
   const handleDelete = useCallback(async () => {
     if (selectedCount === 0 || deleting) return;
@@ -172,5 +191,12 @@ export function useSessionMutations({
     toast,
   ]);
 
-  return { exporting, deleting, handleExport, handleDelete };
+  return {
+    exporting,
+    deleting,
+    handleExport,
+    handleDelete,
+    handleShareReady,
+    pendingShare,
+  };
 }
