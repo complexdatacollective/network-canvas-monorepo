@@ -17,6 +17,7 @@ import {
 } from '~/store/modules/session';
 import type { useAppDispatch } from '~/store/store';
 
+import { withInferredBiologicalSex } from './deriveBiologicalSex';
 import {
   computeAllDisplayLabels,
   computeRelationshipsToEgo,
@@ -269,7 +270,10 @@ export const createFamilyPedigreeStore = (
           });
         },
 
-        commitBatch: (batch) => {
+        commitBatch: (rawBatch) => {
+          // Every pedigree node must carry a biological-sex value: keep what was
+          // asked, otherwise infer it from the person's reproductive role.
+          const batch = withInferredBiologicalSex(rawBatch, variableConfig);
           set((state) => {
             const tempIdToRealId = new Map<string, string>();
 

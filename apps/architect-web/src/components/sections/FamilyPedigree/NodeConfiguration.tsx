@@ -12,6 +12,7 @@ import {
 } from 'redux-form';
 
 import type { VariableOptions } from '@codaco/protocol-validation';
+import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/shared-consts';
 import EditableList from '~/components/EditableList';
 import { Row, Section } from '~/components/EditorLayout';
 import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
@@ -191,7 +192,13 @@ const NodeConfigurationInner = ({
 
   const handleNewBiologicalSexVariable = (name: string) =>
     openVariableWindow(
-      { initialValues: { name, type: 'categorical' }, lockedOptions: null },
+      {
+        initialValues: { name, type: 'categorical' },
+        // Seed and lock the canonical value set — the interview and genetics
+        // engine depend on these exact values, so the researcher may not edit
+        // them (mirrors the relationship-type variable).
+        lockedOptions: BIOLOGICAL_SEX_OPTIONS,
+      },
       { field: 'nodeConfig.biologicalSexVariable' },
     );
 

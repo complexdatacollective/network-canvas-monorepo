@@ -5,6 +5,7 @@ import { resolveSex } from '~/interfaces/NarrativePedigree/genetics/resolveSex';
 
 import { childCellTransform } from '../components/wizards/transforms/childCellTransform';
 import { egoCellTransform } from '../components/wizards/transforms/egoCellTransform';
+import { withInferredBiologicalSex } from '../deriveBiologicalSex';
 import type { CommitBatch, VariableConfig } from '../store';
 
 // A seam test: the FamilyPedigree wizard transforms feed the NarrativePedigree
@@ -34,7 +35,12 @@ const sexConfig = {
 
 // Convert a commit batch into the NcNode[]/NcEdge[] the genetics engine reads,
 // keyed by the transform's temp ids.
-function toNetwork(batch: CommitBatch): { nodes: NcNode[]; edges: NcEdge[] } {
+function toNetwork(rawBatch: CommitBatch): {
+  nodes: NcNode[];
+  edges: NcEdge[];
+} {
+  // Mirror the store's commit path, which fills biological sex on every node.
+  const batch = withInferredBiologicalSex(rawBatch, variableConfig);
   const nodes = batch.nodes.map((n) => ({
     _uid: n.tempId,
     type: variableConfig.nodeType,
@@ -84,5 +90,28 @@ describe('biological sex captured in the wizard reaches the genetics engine', ()
 
     const { nodes, edges } = toNetwork(batch);
     expect(resolveSex('child', nodes, edges, sexConfig)).toBe('male');
+  });
+
+  it('populates and resolves gamete parents from their role, and leaves no node without a sex', () => {
+    const { batch } = egoCellTransform(
+      {
+        'biologicalSex': 'female',
+        'egg-parent': { name: 'Mum' },
+        'sperm-parent': { name: 'Dad' },
+        'hasOtherParents': false,
+      },
+      variableConfig,
+    );
+
+    const { nodes, edges } = toNetwork(batch);
+    // Gamete parents are never asked their sex; it is inferred from their role.
+    expect(resolveSex('egg-parent', nodes, edges, sexConfig)).toBe('female');
+    expect(resolveSex('sperm-parent', nodes, edges, sexConfig)).toBe('male');
+    // Every node carries a stored biological-sex value.
+    for (const node of nodes) {
+      expect(
+        node.attributes[variableConfig.biologicalSexVariable],
+      ).toBeDefined();
+    }
   });
 });
