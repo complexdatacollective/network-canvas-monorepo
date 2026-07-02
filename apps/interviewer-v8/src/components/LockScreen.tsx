@@ -1,4 +1,4 @@
-import { Fingerprint, KeyRound, RectangleEllipsis } from 'lucide-react';
+import { KeyRound, RectangleEllipsis } from 'lucide-react';
 import { useId } from 'react';
 
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
@@ -9,7 +9,7 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { useAuth } from '~/lib/auth/AuthContext';
 
-import BiometricUnlockForm from './UnlockForms/BiometricUnlockForm';
+import { BiometricLockBody } from './UnlockForms/BiometricLockBody';
 import PasswordUnlockField from './UnlockForms/PasswordUnlockField';
 import { PinUnlockForm } from './UnlockForms/PinUnlockForm';
 import { UnlockEmblem } from './UnlockForms/UnlockEmblem';
@@ -87,34 +87,14 @@ function PassphraseLockBody({
   );
 }
 
-function BiometricLockDialog({
-  onSubmit,
-}: {
-  onSubmit: (
-    signal?: AbortSignal,
-  ) => Promise<{ ok: boolean; message?: string }>;
-}) {
-  return (
-    <Dialog open dismissible={false} title={LOCK_TITLE}>
-      <div className="mb-6 flex flex-col items-center gap-4 text-center">
-        <UnlockEmblem icon={Fingerprint} seed="biometric-unlock" />
-        <Paragraph margin="none" emphasis="muted">
-          Authenticate to unlock and pick up where you left off.
-        </Paragraph>
-      </div>
-      <BiometricUnlockForm onSubmit={onSubmit} />
-    </Dialog>
-  );
-}
-
 export function LockScreen() {
   const {
     kind,
     mode,
-    unlockWithAuthenticator,
     unlockWithPin,
-    unlockWithBiometricNative,
     unlockWithPassphrase,
+    unlockWithBiometric,
+    unlockWithRecovery,
   } = useAuth();
 
   if (kind !== 'locked') {
@@ -122,15 +102,12 @@ export function LockScreen() {
   }
 
   switch (mode) {
-    case 'biometric-keystore':
+    case 'biometric':
       return (
-        <BiometricLockDialog
-          onSubmit={(signal) => unlockWithAuthenticator(signal)}
+        <BiometricLockBody
+          unlockWithBiometric={unlockWithBiometric}
+          unlockWithRecovery={unlockWithRecovery}
         />
-      );
-    case 'biometric-native':
-      return (
-        <BiometricLockDialog onSubmit={() => unlockWithBiometricNative()} />
       );
     case 'pin':
       return (
@@ -159,7 +136,6 @@ export function LockScreen() {
       );
     case 'none':
     case undefined:
-      return null;
     default:
       return null;
   }
