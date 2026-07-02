@@ -583,6 +583,66 @@ describe('PedigreeEdgeSvg — couple bar transmission (edge-key path, #9)', () =
 });
 
 // ---------------------------------------------------------------------------
+// PedigreeEdgeSvg — consanguineous DOUBLE couple bar tracks the focal highlight
+//
+// A consanguineous couple's bar is drawn as two parallel lines. It must dim /
+// brighten by the same transmission rule as a single couple bar — per half, via
+// highlightedEdgeKeys — on BOTH parallel lines. (Previously the double bar was
+// excluded from the split path and fell back to whole-bar node-membership, so it
+// did not track the focal lineage.)
+// ---------------------------------------------------------------------------
+
+describe('PedigreeEdgeSvg — consanguineous double couple bar', () => {
+  test('both parallel lines split by transmission, like a single couple bar', () => {
+    const bar = makeCoupleBar({
+      partnerIds: ['transmitter', 'coParent'],
+      descentXPositions: [100],
+      double: true,
+      doubleSegment: seg(0, 60, 200, 60),
+    });
+    const highlightedNodeIds = new Set(['transmitter', 'child']);
+    const highlightedEdgeKeys = new Set([edgeKey('transmitter', 'child')]);
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeGroupConnectorData([bar])}
+        color="black"
+        width={300}
+        height={300}
+        highlightedNodeIds={highlightedNodeIds}
+        highlightedEdgeKeys={highlightedEdgeKeys}
+      />,
+    );
+
+    // Each of the two parallel lines (y=50, y=60) must split at the descent
+    // x=100: the transmitter's (left) half bright, the co-parent's (right) dim.
+    for (const y of [50, 60]) {
+      const lines = siblingBarLines(container, y);
+      const leftHalf = lines.find(
+        (l) =>
+          Number(l.getAttribute('x1')) === 0 &&
+          Number(l.getAttribute('x2')) === 100,
+      );
+      const rightHalf = lines.find(
+        (l) =>
+          Number(l.getAttribute('x1')) === 100 &&
+          Number(l.getAttribute('x2')) === 200,
+      );
+      expect(
+        leftHalf,
+        `line at y=${String(y)} should split at the descent`,
+      ).toBeDefined();
+      expect(
+        rightHalf,
+        `line at y=${String(y)} should split at the descent`,
+      ).toBeDefined();
+      expect(isLineDimmed(leftHalf!)).toBe(false);
+      expect(isLineDimmed(rightHalf!)).toBe(true);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // PedigreeEdgeSvg — twin-indicator and duplicate-arc dimming (node-membership)
 //
 // Twin bars and duplicate arcs are decorative-genetic connectors, NOT

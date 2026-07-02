@@ -337,9 +337,10 @@ function transmitsToContributor(
  * transmits to a contributing child (via highlightedEdgeKeys) — so a couple bar
  * is NOT lit merely because one partner is the focal person or is otherwise
  * highlighted. Without edge keys (the FamilyPedigree path) it falls back to
- * partner-node membership. Otherwise (no highlight, inactive break bar, or
- * consanguineous double bar) it falls back to whole-bar rendering dimmed by node
- * membership, exactly as before.
+ * partner-node membership. A consanguineous double bar is split the same way,
+ * across both of its parallel lines. Otherwise (no highlight, inactive break
+ * bar, or a childless couple with no descent) it falls back to whole-bar
+ * rendering dimmed by node membership, exactly as before.
  */
 function renderCoupleGroupLine(
   gl: ParentGroupConnector,
@@ -355,7 +356,6 @@ function renderCoupleGroupLine(
   const splittable =
     highlightActive &&
     gl.isActive &&
-    !gl.double &&
     gl.partnerIds !== undefined &&
     descentXs.length > 0;
 
@@ -396,6 +396,17 @@ function renderCoupleGroupLine(
   return (
     <g key={`gl-dim-${idx}`}>
       {renderSplitBar(gl.segment, descentXs, isHalfDimmed, color, `gl-${idx}`)}
+      {/* A consanguineous couple bar is two parallel lines; split the second one
+          the same way so both track the focal lineage. */}
+      {gl.double && gl.doubleSegment
+        ? renderSplitBar(
+            gl.doubleSegment,
+            descentXs,
+            isHalfDimmed,
+            color,
+            `gl-double-${idx}`,
+          )
+        : null}
     </g>
   );
 }
