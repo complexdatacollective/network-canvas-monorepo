@@ -20,10 +20,16 @@ vi.mock('wouter', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
 }));
 
+const useAuthMock = vi.fn(() => ({ kind: 'unlocked', mode: 'pin' }));
+vi.mock('~/lib/auth/AuthContext', () => ({
+  useAuth: () => useAuthMock(),
+}));
+
 import { StatusRow } from '../StatusRow';
 
 afterEach(() => {
   vi.clearAllMocks();
+  useAuthMock.mockReturnValue({ kind: 'unlocked', mode: 'pin' });
 });
 
 describe('StatusRow', () => {
@@ -48,7 +54,7 @@ describe('StatusRow', () => {
     mockIsPersisted.mockResolvedValue(true);
     render(<StatusRow protocolCount={0} interviewCount={0} />);
     await waitFor(() =>
-      expect(screen.getByText(/storage protected/i)).toBeInTheDocument(),
+      expect(screen.getByText(/storage persistent/i)).toBeInTheDocument(),
     );
   });
 
@@ -61,8 +67,33 @@ describe('StatusRow', () => {
     mockIsPersisted.mockResolvedValue(false);
     render(<StatusRow protocolCount={0} interviewCount={0} />);
     await waitFor(() =>
-      expect(screen.getByText(/storage not protected/i)).toBeInTheDocument(),
+      expect(screen.getByText(/storage not persistent/i)).toBeInTheDocument(),
     );
+  });
+
+  it('reports encrypted storage for a secured vault mode', async () => {
+    mockEstimateStorage.mockResolvedValue({ usage: 0, quota: 0, percent: 0 });
+    mockIsPersisted.mockResolvedValue(true);
+    useAuthMock.mockReturnValue({ kind: 'unlocked', mode: 'biometric' });
+    render(<StatusRow protocolCount={0} interviewCount={0} />);
+    expect(screen.getByText('Encrypted')).toBeInTheDocument();
+    expect(screen.queryByText(/not encrypted/i)).not.toBeInTheDocument();
+  });
+
+  // Regression: with no security enrolled, the footer previously showed a
+  // shield reading "Storage protected" (which only meant eviction
+  // durability) — a false encryption claim. It must state the truth.
+  it('warns "Not encrypted" for mode none and never claims protection', async () => {
+    mockEstimateStorage.mockResolvedValue({ usage: 0, quota: 0, percent: 0 });
+    mockIsPersisted.mockResolvedValue(true);
+    useAuthMock.mockReturnValue({ kind: 'unlocked', mode: 'none' });
+    render(<StatusRow protocolCount={0} interviewCount={0} />);
+    expect(screen.getByText('Not encrypted')).toBeInTheDocument();
+    expect(screen.queryByText('Encrypted')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText(/storage persistent/i)).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/protected/i)).not.toBeInTheDocument();
   });
 
   it('re-checks persistence when the tab regains focus', async () => {
@@ -74,7 +105,7 @@ describe('StatusRow', () => {
     mockIsPersisted.mockResolvedValue(false);
     render(<StatusRow protocolCount={0} interviewCount={0} />);
     await waitFor(() =>
-      expect(screen.getByText(/storage not protected/i)).toBeInTheDocument(),
+      expect(screen.getByText(/storage not persistent/i)).toBeInTheDocument(),
     );
 
     // A late-landing requestPersistentStorage() grant is reflected once the
@@ -83,7 +114,7 @@ describe('StatusRow', () => {
     window.dispatchEvent(new Event('focus'));
 
     await waitFor(() =>
-      expect(screen.getByText(/storage protected/i)).toBeInTheDocument(),
+      expect(screen.getByText(/storage persistent/i)).toBeInTheDocument(),
     );
   });
 });
