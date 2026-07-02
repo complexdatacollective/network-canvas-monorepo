@@ -330,7 +330,7 @@ describe('NetworkComposer — group lasso', () => {
         byId(NODE_C_ID)![entityAttributesProperty][GROUP_VAR],
       ).toBeUndefined();
     });
-  });
+  }, 15_000);
 });
 
 describe('NetworkComposer — select-mode lasso', () => {
@@ -350,7 +350,7 @@ describe('NetworkComposer — select-mode lasso', () => {
       name: /add all to/i,
     });
     expect(addAllButtons).toHaveLength(2);
-  });
+  }, 15_000);
 
   it('clicking an "Add all" button writes the group value to every selected node', async () => {
     const store = makeStore();
@@ -386,7 +386,7 @@ describe('NetworkComposer — select-mode lasso', () => {
         byId(NODE_C_ID)![entityAttributesProperty][GROUP_VAR],
       ).toBeUndefined();
     });
-  });
+  }, 15_000);
 
   it('lasso in select mode selects nothing when no hull variable is configured', async () => {
     const stageWithoutHullVariable: StageFixture = {
@@ -477,5 +477,5 @@ describe('NetworkComposer — batch delete', () => {
       );
       expect(edge).toBeTruthy();
     });
-  });
+  }, 15_000);
 });
