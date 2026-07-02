@@ -43,6 +43,19 @@ describe('exportSnapshot', () => {
     );
   });
 
+  it('resets the clone to in-flow positioning so the off-screen document is not captured blank', async () => {
+    // The snapshot document is mounted position: fixed; left: -100000px. Without
+    // a position reset html-to-image clones that and renders the whole subtree
+    // outside the capture area, producing an empty PNG.
+    await exportSnapshot(element, 'test.png');
+    expect(htmlToImage.toPng).toHaveBeenCalledWith(
+      element,
+      expect.objectContaining({
+        style: expect.objectContaining({ position: 'static' }),
+      }),
+    );
+  });
+
   it('appends an anchor with the correct href and filename, then clicks and removes it', async () => {
     await exportSnapshot(element, 'pedigree-2026.png');
 

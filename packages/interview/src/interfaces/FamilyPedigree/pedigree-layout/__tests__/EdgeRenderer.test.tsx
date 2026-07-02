@@ -4,6 +4,7 @@ import { describe, expect, test } from 'vitest';
 import { edgeKey } from '~/interfaces/NarrativePedigree/highlight';
 
 import { PedigreeEdgeSvg } from '../components/EdgeRenderer';
+import { dimColor } from '../dimColor';
 import type { ConnectorRenderData } from '../pedigreeAdapter';
 import type {
   DuplicateArc,
@@ -213,7 +214,11 @@ describe('PedigreeEdgeSvg — sibling branch off contributing lineage is dimmed'
 // bright; the [100, 180] stretch (toward the non-contributing sibling) is dim.
 // ---------------------------------------------------------------------------
 
-const DIM_BLEND_BLACK = 'color-mix(in oklab, black 30%, var(--background))';
+// Derive the dimmed stroke from dimColor itself, so these assertions verify the
+// renderer dims *via* dimColor rather than duplicating its exact output string
+// (which would go stale whenever the blend target changes, e.g. the snapshot
+// re-theme to --dim-blend).
+const DIM_BLEND_BLACK = dimColor('black');
 
 /** Find the rendered sibling-bar sub-segment <line>s by their shared y. */
 function siblingBarLines(container: HTMLElement, y: number): SVGLineElement[] {
@@ -583,6 +588,66 @@ describe('PedigreeEdgeSvg — couple bar transmission (edge-key path, #9)', () =
 });
 
 // ---------------------------------------------------------------------------
+// PedigreeEdgeSvg — consanguineous DOUBLE couple bar tracks the focal highlight
+//
+// A consanguineous couple's bar is drawn as two parallel lines. It must dim /
+// brighten by the same transmission rule as a single couple bar — per half, via
+// highlightedEdgeKeys — on BOTH parallel lines. (Previously the double bar was
+// excluded from the split path and fell back to whole-bar node-membership, so it
+// did not track the focal lineage.)
+// ---------------------------------------------------------------------------
+
+describe('PedigreeEdgeSvg — consanguineous double couple bar', () => {
+  test('both parallel lines split by transmission, like a single couple bar', () => {
+    const bar = makeCoupleBar({
+      partnerIds: ['transmitter', 'coParent'],
+      descentXPositions: [100],
+      double: true,
+      doubleSegment: seg(0, 60, 200, 60),
+    });
+    const highlightedNodeIds = new Set(['transmitter', 'child']);
+    const highlightedEdgeKeys = new Set([edgeKey('transmitter', 'child')]);
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeGroupConnectorData([bar])}
+        color="black"
+        width={300}
+        height={300}
+        highlightedNodeIds={highlightedNodeIds}
+        highlightedEdgeKeys={highlightedEdgeKeys}
+      />,
+    );
+
+    // Each of the two parallel lines (y=50, y=60) must split at the descent
+    // x=100: the transmitter's (left) half bright, the co-parent's (right) dim.
+    for (const y of [50, 60]) {
+      const lines = siblingBarLines(container, y);
+      const leftHalf = lines.find(
+        (l) =>
+          Number(l.getAttribute('x1')) === 0 &&
+          Number(l.getAttribute('x2')) === 100,
+      );
+      const rightHalf = lines.find(
+        (l) =>
+          Number(l.getAttribute('x1')) === 100 &&
+          Number(l.getAttribute('x2')) === 200,
+      );
+      expect(
+        leftHalf,
+        `line at y=${String(y)} should split at the descent`,
+      ).toBeDefined();
+      expect(
+        rightHalf,
+        `line at y=${String(y)} should split at the descent`,
+      ).toBeDefined();
+      expect(isLineDimmed(leftHalf!)).toBe(false);
+      expect(isLineDimmed(rightHalf!)).toBe(true);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // PedigreeEdgeSvg — twin-indicator and duplicate-arc dimming (node-membership)
 //
 // Twin bars and duplicate arcs are decorative-genetic connectors, NOT
@@ -651,7 +716,7 @@ function makeDuplicateArc(overrides: Partial<DuplicateArc> = {}): DuplicateArc {
 }
 
 describe('PedigreeEdgeSvg — twin and duplicate-arc dimming', () => {
-  const DIM_BLEND = 'color-mix(in oklab, var(--edge-1) 30%, var(--background))';
+  const DIM_BLEND = dimColor('var(--edge-1)');
 
   test('twin bar with neither twin highlighted is dimmed (blended stroke + data-edge-dimmed)', () => {
     const highlightedNodeIds = new Set(['someoneElse']);

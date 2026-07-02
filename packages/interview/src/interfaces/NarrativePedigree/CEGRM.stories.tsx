@@ -22,12 +22,12 @@ import StoryInterviewShell from '~/.storybook/StoryInterviewShell';
 //   • FamilyPedigree + NarrativePedigree  → the genetic layer (a hereditary
 //     breast/ovarian cancer family; the pedigree is SEEDED to reduce burden).
 //   • NameGenerator (QuickAdd)            → add fictive/affinal kin to the network.
-//   • Sociogram (member-to-member edges)  → who knows whom.
-//   • Sociogram (attribute nomination)    → the three reciprocal exchanges (two
-//     booleans each) and the disseminator/barrier roles.
+//   • Sociogram (one stage, auto layout)  → who knows whom (edge creation on the
+//     first prompt), then the three reciprocal exchanges (two booleans each) and
+//     the disseminator/barrier roles, each an attribute-nomination prompt.
 // Every network member is one "Person" node type. Only the people placed on the
 // pedigree appear on the pedigree interfaces (via the pedigree's private
-// membership); the sociograms show everyone.
+// membership); the sociogram shows everyone.
 // ---------------------------------------------------------------------------
 
 const EGO_VAR = 'isEgo';
@@ -194,7 +194,82 @@ export function buildCegrmInterview(seed: number) {
     ],
   });
 
-  // --- Stage 2: narrative pedigree (the cancer pathway) -----------------------
+  // --- Stage 2: add non-blood kin --------------------------------------------
+  const ng = si.addStage('NameGeneratorQuickAdd', {
+    label: 'People in your life',
+    subject: { entity: 'node', type: person.id },
+    quickAdd: NAME_VAR,
+  });
+  ng.addPrompt({
+    text: 'Add the friends, colleagues and others who are important to you.',
+  });
+
+  // --- Stage 3: the whole CEGRM sociogram, on one auto-laid-out canvas --------
+  // A single Sociogram stage with force-directed automatic layout, so the
+  // participant reads the network rather than placing every person. The first
+  // prompt draws the member-to-member ties; the rest nominate the three
+  // reciprocal resource exchanges (two booleans each) and the two role booleans.
+  // Edge creation and attribute highlighting cannot share a prompt, so each is a
+  // prompt of its own within this one stage.
+  const sociogram = si.addStage('Sociogram', {
+    label: 'Your support network',
+    subject: { entity: 'node', type: person.id },
+    behaviours: { automaticLayout: true },
+  });
+  // Edge creation first: who knows whom.
+  sociogram.addPrompt({
+    text: 'Connect people who **know one another** by tapping them to create a line',
+    layout: { layoutVariable: LAYOUT_VAR },
+    edges: { create: socialEdge.id, display: [socialEdge.id] },
+  });
+  // Information exchange.
+  sociogram.addPrompt({
+    text: 'Which of these people provides you with genetic or health information?',
+    layout: { layoutVariable: LAYOUT_VAR },
+    highlight: { variable: INFO_IN_VAR },
+  });
+  sociogram.addPrompt({
+    text: 'Which of these people do you provide with genetic or health information?',
+    layout: { layoutVariable: LAYOUT_VAR },
+    highlight: { variable: INFO_OUT_VAR },
+  });
+  // Practical support.
+  sociogram.addPrompt({
+    text: 'Which of these people provides you with practical help — like coming to an appointment or minding your children?',
+    layout: { layoutVariable: LAYOUT_VAR },
+    highlight: { variable: SUPPORT_IN_VAR },
+  });
+  sociogram.addPrompt({
+    text: 'Which of these people do you provide with practical help?',
+    layout: { layoutVariable: LAYOUT_VAR },
+    highlight: { variable: SUPPORT_OUT_VAR },
+  });
+  // Sharing feelings.
+  sociogram.addPrompt({
+    text: "Which of these people shares their feelings about the family's cancer with you?",
+    layout: { layoutVariable: LAYOUT_VAR },
+    highlight: { variable: FEELINGS_IN_VAR },
+  });
+  sociogram.addPrompt({
+    text: "Which of these people do you share your feelings about the family's cancer with?",
+    layout: { layoutVariable: LAYOUT_VAR },
+    highlight: { variable: FEELINGS_OUT_VAR },
+  });
+  // Disseminator / barrier roles.
+  sociogram.addPrompt({
+    text: 'Which of these people helps the family talk about its cancer risk?',
+    layout: { layoutVariable: LAYOUT_VAR },
+    highlight: { variable: DISSEMINATOR_VAR },
+  });
+  sociogram.addPrompt({
+    text: 'Which of these people makes it harder for the family to talk about its cancer risk?',
+    layout: { layoutVariable: LAYOUT_VAR },
+    highlight: { variable: BARRIER_VAR },
+  });
+
+  // --- Stage 4: narrative pedigree (the cancer pathway), shown last -----------
+  // Reads the committed FamilyPedigree membership (kin only), so the friends and
+  // colleagues added since do not appear on the family tree.
   si.addStage('NarrativePedigree', {
     label: 'Hereditary cancer risk',
     sourceStageId: fpStage.id,
@@ -210,99 +285,12 @@ export function buildCegrmInterview(seed: number) {
     ],
   });
 
-  // --- Stage 3: add non-blood kin --------------------------------------------
-  const ng = si.addStage('NameGeneratorQuickAdd', {
-    label: 'People in your life',
-    subject: { entity: 'node', type: person.id },
-    quickAdd: NAME_VAR,
-  });
-  ng.addPrompt({
-    text: 'Add the friends, colleagues and others who are important to you.',
-  });
-
-  // --- Stages 4–6: the three resource exchanges, on the sociogram -------------
-  // Each is one Sociogram stage with two attribute-nomination prompts: who
-  // provides the resource to ego, and who ego provides it to. Edge creation and
-  // attribute highlighting cannot share a prompt, so these are separate from the
-  // member-to-member stage below.
-  const infoSociogram = si.addStage('Sociogram', {
-    label: 'Sharing information',
-    subject: { entity: 'node', type: person.id },
-  });
-  infoSociogram.addPrompt({
-    text: 'Which of these people provides you with genetic or health information?',
-    layout: { layoutVariable: LAYOUT_VAR },
-    highlight: { variable: INFO_IN_VAR },
-  });
-  infoSociogram.addPrompt({
-    text: 'Which of these people do you provide with genetic or health information?',
-    layout: { layoutVariable: LAYOUT_VAR },
-    highlight: { variable: INFO_OUT_VAR },
-  });
-
-  const supportSociogram = si.addStage('Sociogram', {
-    label: 'Practical support',
-    subject: { entity: 'node', type: person.id },
-  });
-  supportSociogram.addPrompt({
-    text: 'Which of these people provides you with practical help — like coming to an appointment or minding your children?',
-    layout: { layoutVariable: LAYOUT_VAR },
-    highlight: { variable: SUPPORT_IN_VAR },
-  });
-  supportSociogram.addPrompt({
-    text: 'Which of these people do you provide with practical help?',
-    layout: { layoutVariable: LAYOUT_VAR },
-    highlight: { variable: SUPPORT_OUT_VAR },
-  });
-
-  const feelingsSociogram = si.addStage('Sociogram', {
-    label: 'Sharing feelings',
-    subject: { entity: 'node', type: person.id },
-  });
-  feelingsSociogram.addPrompt({
-    text: "Which of these people shares their feelings about the family's cancer with you?",
-    layout: { layoutVariable: LAYOUT_VAR },
-    highlight: { variable: FEELINGS_IN_VAR },
-  });
-  feelingsSociogram.addPrompt({
-    text: "Which of these people do you share your feelings about the family's cancer with?",
-    layout: { layoutVariable: LAYOUT_VAR },
-    highlight: { variable: FEELINGS_OUT_VAR },
-  });
-
-  // --- Stage 7: disseminator / barrier roles, on the sociogram ----------------
-  const roleSociogram = si.addStage('Sociogram', {
-    label: 'Talking about risk',
-    subject: { entity: 'node', type: person.id },
-  });
-  roleSociogram.addPrompt({
-    text: 'Which of these people helps the family talk about its cancer risk?',
-    layout: { layoutVariable: LAYOUT_VAR },
-    highlight: { variable: DISSEMINATOR_VAR },
-  });
-  roleSociogram.addPrompt({
-    text: 'Which of these people makes it harder for the family to talk about its cancer risk?',
-    layout: { layoutVariable: LAYOUT_VAR },
-    highlight: { variable: BARRIER_VAR },
-  });
-
-  // --- Stage 8: member-to-member social network -------------------------------
-  const sociogram = si.addStage('Sociogram', {
-    label: 'How they know each other',
-    subject: { entity: 'node', type: person.id },
-  });
-  sociogram.addPrompt({
-    text: 'Draw a line between any two people who know one another.',
-    layout: { layoutVariable: LAYOUT_VAR },
-    edges: { create: socialEdge.id, display: [socialEdge.id] },
-  });
-
   // --- Seed the network -------------------------------------------------------
   const fpId = fpStage.id;
   const ngId = ng.id;
 
-  // Sociogram positions (normalised 0–1) so the member-to-member network opens
-  // already laid out with its ties drawn, rather than as an empty placement task.
+  // Sociogram positions (normalised 0–1) seed the starting arrangement; the
+  // stage's automatic layout then relaxes the network into a readable shape.
   const POS: Record<string, { x: number; y: number }> = {
     ego: { x: 0.5, y: 0.52 },
     husband: { x: 0.66, y: 0.5 },
@@ -549,30 +537,31 @@ type Story = StoryObj;
 
 /**
  * The whole CEGRM walk-through, starting at the introduction. Use Next to move
- * through the pedigree, the cancer-risk view, adding non-family members, the
- * three resource-exchange sociograms, the disseminator/barrier roles and the
- * member-to-member social network.
+ * through the pedigree, add the non-family members, work through the single
+ * support-network sociogram (drawing ties, then nominating the resource
+ * exchanges and roles) and finish on the hereditary-cancer-risk view.
  */
 export const FullWalkthrough: Story = {
   render: () => <CegrmWrapper seed={11} step={0} />,
 };
 
 /**
- * Jumps straight to the first resource-exchange sociogram (sharing information).
- * Each exchange asks two questions — who provides it to you, and who you provide
- * it to — so reciprocity is inferred. Use Back/Next to move between the
- * information, practical-support, feelings and disseminator/barrier sociograms,
- * each pre-nominated from the seeded data. Shortcut into {@link FullWalkthrough}.
+ * Jumps straight to the one support-network sociogram. Its first prompt draws
+ * the member-to-member ties; the rest nominate the three reciprocal resource
+ * exchanges (each two questions — who provides it to you, and who you provide it
+ * to — so reciprocity is inferred) and the disseminator/barrier roles. The whole
+ * network is auto-laid-out and pre-nominated from the seeded data. Use Back/Next
+ * to move between prompts. Shortcut into {@link FullWalkthrough}.
  */
-export const ResourceExchanges: Story = {
-  render: () => <CegrmWrapper seed={11} step={4} />,
+export const SupportNetwork: Story = {
+  render: () => <CegrmWrapper seed={11} step={3} />,
 };
 
 /**
- * Jumps straight to the member-to-member social network — the family and the
- * non-kin laid out together with their social ties drawn. Shortcut into the end
- * of {@link FullWalkthrough}.
+ * Jumps straight to the hereditary-cancer-risk view shown at the end of the
+ * interview — the seeded family's cancer pathway, with the later-added friends
+ * and colleagues excluded. Shortcut into the end of {@link FullWalkthrough}.
  */
-export const SocialNetwork: Story = {
-  render: () => <CegrmWrapper seed={11} step={8} />,
+export const HereditaryCancerRisk: Story = {
+  render: () => <CegrmWrapper seed={11} step={4} />,
 };
