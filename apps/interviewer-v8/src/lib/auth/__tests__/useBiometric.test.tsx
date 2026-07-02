@@ -6,6 +6,11 @@ vi.mock('../api', () => ({
   isBiometricSupported: () => isBiometricSupportedMock(),
 }));
 
+const hasPasskeyWindowLimitationMock = vi.fn(() => false);
+vi.mock('../../pwa/passkeyWindowLimitation', () => ({
+  hasPasskeyWindowLimitation: () => hasPasskeyWindowLimitationMock(),
+}));
+
 import { useBiometric } from '../useBiometric';
 
 function Probe() {
@@ -18,7 +23,10 @@ function Probe() {
   );
 }
 
-afterEach(() => isBiometricSupportedMock.mockReset());
+afterEach(() => {
+  isBiometricSupportedMock.mockReset();
+  hasPasskeyWindowLimitationMock.mockClear().mockReturnValue(false);
+});
 
 describe('useBiometric (web / WebAuthn PRF)', () => {
   it('reports available when PRF is supported', async () => {
@@ -42,6 +50,15 @@ describe('useBiometric (web / WebAuthn PRF)', () => {
     render(<Probe />);
     await waitFor(() =>
       expect(screen.getByTestId('s')).toHaveTextContent(/unavailable:/),
+    );
+  });
+
+  it('reports unavailable in a limited PWA window even when PRF is supported', async () => {
+    hasPasskeyWindowLimitationMock.mockReturnValue(true);
+    isBiometricSupportedMock.mockResolvedValue(true);
+    render(<Probe />);
+    await waitFor(() =>
+      expect(screen.getByTestId('s')).toHaveTextContent(/installed app/),
     );
   });
 });

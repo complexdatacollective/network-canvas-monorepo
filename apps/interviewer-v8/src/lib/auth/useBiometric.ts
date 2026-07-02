@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { hasPasskeyWindowLimitation } from '../pwa/passkeyWindowLimitation';
 import { isBiometricSupported } from './api';
 
 export type BiometricState =
@@ -10,6 +11,9 @@ export type BiometricState =
 const UNSUPPORTED_REASON =
   'This browser or device does not support biometric unlock. Use a PIN or passphrase instead.';
 
+const LIMITED_WINDOW_REASON =
+  "Biometric unlock isn't available in the installed app on macOS, because Chrome can't reach your Mac's saved passkeys from an app window. Use a PIN or passphrase instead.";
+
 export function useBiometric(): BiometricState {
   const [biometric, setBiometric] = useState<BiometricState>({
     status: 'checking',
@@ -18,6 +22,10 @@ export function useBiometric(): BiometricState {
   useEffect(() => {
     let active = true;
     async function check() {
+      if (hasPasskeyWindowLimitation()) {
+        setBiometric({ status: 'unavailable', reason: LIMITED_WINDOW_REASON });
+        return;
+      }
       try {
         const supported = await isBiometricSupported();
         if (!active) return;

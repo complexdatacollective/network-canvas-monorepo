@@ -116,6 +116,10 @@ export async function verifyBiometric(): Promise<AuthResult> {
   return toAuthResult(await vault.verifyBiometric());
 }
 
+export async function verifyWithRecovery(phrase: string): Promise<AuthResult> {
+  return toAuthResult(await vault.verifyRecovery(phrase));
+}
+
 export async function lock(): Promise<void> {
   setSessionDek(null);
 }

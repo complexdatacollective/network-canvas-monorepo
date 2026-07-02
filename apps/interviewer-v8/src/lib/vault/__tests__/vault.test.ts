@@ -14,10 +14,15 @@ const enrollBiometricMock = vi.fn(() =>
   }),
 );
 const readPrfMock = vi.fn(() => Promise.resolve(FIXED_PRF));
+const signalCredentialUnknownMock = vi.fn<
+  (credentialId: string) => Promise<void>
+>(() => Promise.resolve());
 vi.mock('../webauthn', () => ({
   isPrfSupported: () => Promise.resolve(true),
   enrollBiometric: () => enrollBiometricMock(),
   readPrf: () => readPrfMock(),
+  signalCredentialUnknown: (credentialId: string) =>
+    signalCredentialUnknownMock(credentialId),
 }));
 
 import {
@@ -36,6 +41,7 @@ import {
   verifyBiometric,
   verifyPassphrase,
   verifyPin,
+  verifyRecovery,
 } from '../vault';
 
 const GOOD_PASSPHRASE = 'Correct-Horse-9!';
@@ -48,6 +54,7 @@ beforeEach(() => {
     prfOutput: FIXED_PRF,
   });
   readPrfMock.mockReset().mockResolvedValue(FIXED_PRF);
+  signalCredentialUnknownMock.mockClear();
 });
 
 afterEach(() => {
@@ -179,6 +186,12 @@ describe('biometric mode (dual-wrapped)', () => {
   it('verifyBiometric succeeds after enrol', async () => {
     await enrolBiometric(GOOD_RECOVERY);
     expect((await verifyBiometric()).ok).toBe(true);
+  });
+
+  it('verifyRecovery re-checks the recovery passphrase', async () => {
+    await enrolBiometric(GOOD_RECOVERY);
+    expect((await verifyRecovery(GOOD_RECOVERY)).ok).toBe(true);
+    expect((await verifyRecovery('Wrong-Recovery-1!')).ok).toBe(false);
   });
 
   it('recovery passphrase unlocks a biometric vault', async () => {
@@ -323,6 +336,13 @@ describe('revoke', () => {
     await enrolPin('12345678');
     await revoke();
     expect(vaultStatus()).toEqual({ configured: false });
+    expect(readVault()).toBeNull();
+  });
+
+  it('signals the enrolled passkey as unknown when revoking a biometric vault', async () => {
+    await enrolBiometric(GOOD_RECOVERY);
+    await revoke();
+    expect(signalCredentialUnknownMock).toHaveBeenCalledWith('CRED123');
     expect(readVault()).toBeNull();
   });
 });

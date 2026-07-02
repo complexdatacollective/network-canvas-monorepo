@@ -8,6 +8,7 @@ import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { hasPasskeyWindowLimitation } from '~/lib/pwa/passkeyWindowLimitation';
 
 import BiometricUnlockForm from './BiometricUnlockForm';
 import PasswordUnlockField from './PasswordUnlockField';
@@ -26,7 +27,11 @@ export function BiometricLockBody({
   unlockWithBiometric,
   unlockWithRecovery,
 }: BiometricLockBodyProps) {
-  const [useRecovery, setUseRecovery] = useState(false);
+  // Installed-PWA windows on macOS Chromium can't reach the passkey that
+  // biometric enrolment stored (crbug.com/364926914) — a biometric attempt
+  // there only offers a dead-end QR prompt, so land on recovery instead.
+  const limited = hasPasskeyWindowLimitation();
+  const [useRecovery, setUseRecovery] = useState(limited);
   const formId = useId();
 
   if (useRecovery) {
@@ -45,7 +50,9 @@ export function BiometricLockBody({
           <div className="mb-6 flex flex-col items-center gap-4 text-center">
             <UnlockEmblem icon={RectangleEllipsis} seed="recovery-unlock" />
             <Paragraph margin="none" emphasis="muted">
-              Enter your recovery passphrase to unlock.
+              {limited
+                ? "Biometric unlock isn't available in the installed app on macOS. Enter your recovery passphrase to unlock."
+                : 'Enter your recovery passphrase to unlock.'}
             </Paragraph>
           </div>
           <FormWithoutProvider
@@ -70,7 +77,7 @@ export function BiometricLockBody({
             className="mt-4"
             onClick={() => setUseRecovery(false)}
           >
-            Back to biometrics
+            {limited ? 'Try biometrics anyway' : 'Back to biometrics'}
           </Button>
         </Dialog>
       </FormStoreProvider>

@@ -16,7 +16,7 @@ import {
   type VaultMode,
   writeVault,
 } from './vaultStore';
-import { enrollBiometric, readPrf } from './webauthn';
+import { enrollBiometric, readPrf, signalCredentialUnknown } from './webauthn';
 
 export type UnlockResult =
   | { ok: true; dek: CryptoKey }
@@ -344,50 +344,21 @@ export async function verifyBiometric(): Promise<EnrolResult> {
   return result.ok ? { ok: true } : { ok: false, message: result.message };
 }
 
+export async function verifyRecovery(phrase: string): Promise<EnrolResult> {
+  const result = await unlockRecovery(phrase);
+  return result.ok ? { ok: true } : { ok: false, message: result.message };
+}
+
 export function vaultStatus(): { configured: boolean; mode?: VaultMode } {
   const record = readVault();
   if (!record) return { configured: false };
   return { configured: true, mode: record.mode };
 }
 
-// Structural guard for the optional, newer signalUnknownCredential static.
-// jsdom (and older browsers) have no PublicKeyCredential global at all, so
-// `typeof PublicKeyCredential === 'undefined'` must be checked first.
-type PublicKeyCredentialWithSignal = {
-  signalUnknownCredential: (options: {
-    rpId: string;
-    credentialId: string;
-  }) => Promise<void>;
-};
-
-function supportsSignalUnknownCredential(
-  value: object,
-): value is PublicKeyCredentialWithSignal {
-  return (
-    'signalUnknownCredential' in value &&
-    typeof value.signalUnknownCredential === 'function'
-  );
-}
-
 export async function revoke(): Promise<void> {
   const record = readVault();
   if (record?.mode === 'biometric') {
-    // Best-effort passkey deletion: PublicKeyCredential.signalUnknownCredential
-    // is not universally available, so guard and swallow — the record clear
-    // below is the authoritative revocation.
-    if (
-      typeof PublicKeyCredential !== 'undefined' &&
-      supportsSignalUnknownCredential(PublicKeyCredential)
-    ) {
-      try {
-        await PublicKeyCredential.signalUnknownCredential({
-          rpId: window.location.hostname,
-          credentialId: record.webauthn.credentialId,
-        });
-      } catch {
-        // Passkey deletion is best-effort; ignore failures.
-      }
-    }
+    await signalCredentialUnknown(record.webauthn.credentialId);
   }
   clearVault();
 }

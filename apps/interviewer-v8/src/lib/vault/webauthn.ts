@@ -57,6 +57,44 @@ function readPrfFirst(credential: Credential): ArrayBuffer | null {
   return bufferSourceToArrayBuffer(first);
 }
 
+// Structural guard for the optional, newer signalUnknownCredential static.
+// jsdom (and older browsers) have no PublicKeyCredential global at all, so
+// `typeof PublicKeyCredential === 'undefined'` must be checked first.
+type PublicKeyCredentialWithSignal = {
+  signalUnknownCredential: (options: {
+    rpId: string;
+    credentialId: string;
+  }) => Promise<void>;
+};
+
+function supportsSignalUnknownCredential(
+  value: object,
+): value is PublicKeyCredentialWithSignal {
+  return (
+    'signalUnknownCredential' in value &&
+    typeof value.signalUnknownCredential === 'function'
+  );
+}
+
+// Best-effort "this credential is no longer usable" hint so the authenticator
+// or password manager can drop the passkey. Not universally available, and
+// failures are swallowed — callers treat their own vault record as the
+// authoritative revocation.
+export async function signalCredentialUnknown(
+  credentialId: string,
+): Promise<void> {
+  if (typeof PublicKeyCredential === 'undefined') return;
+  if (!supportsSignalUnknownCredential(PublicKeyCredential)) return;
+  try {
+    await PublicKeyCredential.signalUnknownCredential({
+      rpId: window.location.hostname,
+      credentialId,
+    });
+  } catch {
+    // Passkey deletion is best-effort; ignore failures.
+  }
+}
+
 export async function isPrfSupported(): Promise<boolean> {
   if (typeof PublicKeyCredential === 'undefined') return false;
   if (
@@ -107,6 +145,20 @@ export async function enrollBiometric(
   }
   const rawId = new Uint8Array(created.rawId);
   const credentialId = toBase64Url(rawId);
+
+  // `prf.enabled` at creation is the authoritative capability signal: PRF-
+  // capable authenticators (iCloud Keychain, Google Password Manager, Android)
+  // report `enabled: true` here, while one that omits it (e.g. Chrome's macOS
+  // profile authenticator — the installed-PWA fallback, crbug.com/364926914)
+  // will never return a PRF secret. Fail before prompting a second time, and
+  // drop the passkey this ceremony just orphaned.
+  if (created.getClientExtensionResults().prf?.enabled !== true) {
+    await signalCredentialUnknown(credentialId);
+    throw new Error(
+      "This device's authenticator can't create the biometric secret (PRF) needed to encrypt your data. Choose a PIN or passphrase instead.",
+    );
+  }
+
   const prfSaltB64 = toBase64(prfSalt);
 
   // A follow-up get() reads the PRF output; some platforms do not return it

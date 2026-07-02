@@ -14,13 +14,22 @@ function installNavigator(create: CreateFn, get: GetFn): void {
   });
 }
 
-// A fake PublicKeyCredential carrying a raw id and a PRF assertion result.
+// A fake PublicKeyCredential carrying a raw id and PRF extension outputs:
+// `enabled` mirrors what an authenticator reports at create() time, `first`
+// what a get() assertion evaluates.
 function fakeCredential(
   rawId: ArrayBuffer,
-  prfFirst?: ArrayBuffer,
+  prf?: { enabled?: boolean; first?: ArrayBuffer },
 ): Credential {
   const results =
-    prfFirst == null ? {} : { prf: { results: { first: prfFirst } } };
+    prf == null
+      ? {}
+      : {
+          prf: {
+            ...(prf.enabled == null ? {} : { enabled: prf.enabled }),
+            ...(prf.first == null ? {} : { results: { first: prf.first } }),
+          },
+        };
   return {
     type: 'public-key',
     id: 'ignored',
@@ -66,11 +75,11 @@ describe('enrollBiometric', () => {
 
     const create: CreateFn = (opts) => {
       createOpts = opts;
-      return Promise.resolve(fakeCredential(rawId));
+      return Promise.resolve(fakeCredential(rawId, { enabled: true }));
     };
     const get: GetFn = (opts) => {
       getOpts = opts;
-      return Promise.resolve(fakeCredential(rawId, prf));
+      return Promise.resolve(fakeCredential(rawId, { first: prf }));
     };
     installNavigator(create, get);
 
@@ -109,11 +118,30 @@ describe('enrollBiometric', () => {
     expect(typeof enrollment.prfSaltB64).toBe('string');
   });
 
-  it('throws when the authenticator returns no PRF result', async () => {
+  it('fails fast when create() does not report prf.enabled, dropping the orphan passkey without a second prompt', async () => {
+    const rawId = new Uint8Array([1]).buffer;
+    const get = vi.fn<GetFn>();
+    const signalUnknownCredential = vi.fn(() => Promise.resolve());
+    // e.g. Chrome's macOS profile authenticator — the installed-PWA fallback
+    // (crbug.com/364926914) — which has no PRF support at all.
+    installNavigator(() => Promise.resolve(fakeCredential(rawId)), get);
+    vi.stubGlobal('PublicKeyCredential', { signalUnknownCredential });
+
+    await expect(enrollBiometric(new Uint8Array([1]))).rejects.toThrow(
+      /PIN or passphrase/,
+    );
+    expect(get).not.toHaveBeenCalled();
+    expect(signalUnknownCredential).toHaveBeenCalledWith({
+      rpId: window.location.hostname,
+      credentialId: 'AQ',
+    });
+  });
+
+  it('throws when the follow-up get() returns no PRF result', async () => {
     const rawId = new Uint8Array([1]).buffer;
     installNavigator(
-      () => Promise.resolve(fakeCredential(rawId)),
-      () => Promise.resolve(fakeCredential(rawId)), // no prf
+      () => Promise.resolve(fakeCredential(rawId, { enabled: true })),
+      () => Promise.resolve(fakeCredential(rawId)), // no prf output
     );
     await expect(enrollBiometric(new Uint8Array([1]))).rejects.toThrow();
   });
@@ -128,7 +156,7 @@ describe('readPrf', () => {
       () => Promise.resolve(null),
       (opts) => {
         getOpts = opts;
-        return Promise.resolve(fakeCredential(rawId, prf));
+        return Promise.resolve(fakeCredential(rawId, { first: prf }));
       },
     );
 
