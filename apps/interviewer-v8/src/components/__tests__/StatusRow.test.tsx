@@ -68,4 +68,27 @@ describe('StatusRow', () => {
       expect(screen.getByText(/storage not protected/i)).toBeInTheDocument(),
     );
   });
+
+  it('re-checks persistence when the tab regains focus', async () => {
+    mockEstimateStorage.mockResolvedValue({
+      usage: 0,
+      quota: 0,
+      free: 0,
+      percent: 0,
+    });
+    mockIsPersisted.mockResolvedValue(false);
+    render(<StatusRow protocolCount={0} interviewCount={0} />);
+    await waitFor(() =>
+      expect(screen.getByText(/storage not protected/i)).toBeInTheDocument(),
+    );
+
+    // A late-landing requestPersistentStorage() grant is reflected once the
+    // tab regains focus, without remounting the component.
+    mockIsPersisted.mockResolvedValue(true);
+    window.dispatchEvent(new Event('focus'));
+
+    await waitFor(() =>
+      expect(screen.getByText(/storage protected/i)).toBeInTheDocument(),
+    );
+  });
 });

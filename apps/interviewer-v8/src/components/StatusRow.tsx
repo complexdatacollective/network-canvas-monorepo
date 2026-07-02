@@ -36,13 +36,26 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
 
   useEffect(() => {
     let active = true;
-    void Promise.all([isStoragePersisted(), estimateStorage()]).then(
-      ([persisted, estimate]) => {
-        if (active) setDurability({ persisted, usage: estimate.usage });
-      },
-    );
+    const refresh = () => {
+      void Promise.all([isStoragePersisted(), estimateStorage()]).then(
+        ([persisted, estimate]) => {
+          if (active) setDurability({ persisted, usage: estimate.usage });
+        },
+      );
+    };
+
+    refresh();
+
+    // requestPersistentStorage() in main.tsx is fire-and-forget and can
+    // resolve after this component has already mounted and read a stale
+    // (unpersisted) result. Re-check whenever the tab regains focus/visibility
+    // so a grant that lands late clears the "Storage not protected" warning.
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
     return () => {
       active = false;
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
     };
   }, []);
 

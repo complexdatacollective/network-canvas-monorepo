@@ -132,9 +132,10 @@ export function useSetupWizard() {
                   <Alert variant="info">
                     <AlertTitle>Good news!</AlertTitle>
                     <AlertDescription>
-                      On this platform, your data is sandboxed by the operating
-                      system automatically, and is not accessible to other apps
-                      or users. Data does not need to be encrypted.
+                      Your data is encrypted in this browser with a key derived
+                      from the PIN, passphrase, or biometric authenticator you
+                      set up next. The key never leaves your device, so your
+                      data stays unreadable without it.
                     </AlertDescription>
                   </Alert>
                 </Surface>
