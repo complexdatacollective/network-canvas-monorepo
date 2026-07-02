@@ -59,10 +59,17 @@ export const PedigreeSnapshotDocument = forwardRef<
   },
   ref,
 ) {
-  // The single-condition node labels read their colour from this custom property
-  // (@types/react does not type custom properties, hence the scoped assertion —
-  // the established pattern across fresco-ui/interview).
-  const labelInk = { '--np-label-color': '#111827' } as CSSProperties;
+  // Snapshot-only CSS custom properties (@types/react does not type custom
+  // properties, hence the scoped assertion — the established pattern across
+  // fresco-ui/interview):
+  //  • --np-label-color: dark ink for the single-condition node labels.
+  //  • --dim-blend: the surface dimmed nodes/edges recede into. On screen this
+  //    is the dark interview background; here it is the white paper, so dimmed
+  //    pieces fade toward white instead of muddying toward navy.
+  const snapshotVars = {
+    '--np-label-color': '#111827',
+    '--dim-blend': '#ffffff',
+  } as CSSProperties;
 
   return (
     <div
@@ -82,7 +89,7 @@ export const PedigreeSnapshotDocument = forwardRef<
         flexDirection: 'column',
         gap: '1.5rem',
         padding: '2.5rem',
-        ...labelInk,
+        ...snapshotVars,
       }}
     >
       <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>

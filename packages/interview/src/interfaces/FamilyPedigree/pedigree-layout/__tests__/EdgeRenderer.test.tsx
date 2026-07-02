@@ -4,6 +4,7 @@ import { describe, expect, test } from 'vitest';
 import { edgeKey } from '~/interfaces/NarrativePedigree/highlight';
 
 import { PedigreeEdgeSvg } from '../components/EdgeRenderer';
+import { dimColor } from '../dimColor';
 import type { ConnectorRenderData } from '../pedigreeAdapter';
 import type {
   DuplicateArc,
@@ -213,7 +214,11 @@ describe('PedigreeEdgeSvg — sibling branch off contributing lineage is dimmed'
 // bright; the [100, 180] stretch (toward the non-contributing sibling) is dim.
 // ---------------------------------------------------------------------------
 
-const DIM_BLEND_BLACK = 'color-mix(in oklab, black 30%, var(--background))';
+// Derive the dimmed stroke from dimColor itself, so these assertions verify the
+// renderer dims *via* dimColor rather than duplicating its exact output string
+// (which would go stale whenever the blend target changes, e.g. the snapshot
+// re-theme to --dim-blend).
+const DIM_BLEND_BLACK = dimColor('black');
 
 /** Find the rendered sibling-bar sub-segment <line>s by their shared y. */
 function siblingBarLines(container: HTMLElement, y: number): SVGLineElement[] {
@@ -711,7 +716,7 @@ function makeDuplicateArc(overrides: Partial<DuplicateArc> = {}): DuplicateArc {
 }
 
 describe('PedigreeEdgeSvg — twin and duplicate-arc dimming', () => {
-  const DIM_BLEND = 'color-mix(in oklab, var(--edge-1) 30%, var(--background))';
+  const DIM_BLEND = dimColor('var(--edge-1)');
 
   test('twin bar with neither twin highlighted is dimmed (blended stroke + data-edge-dimmed)', () => {
     const highlightedNodeIds = new Set(['someoneElse']);
