@@ -5,12 +5,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const { mockSubscribe, mockGet, mockTake, EMPTY } = vi.hoisted(() => {
   // Stable empty snapshot: useSyncExternalStore requires getSnapshot to
   // return a cached value, like the real store does.
-  const EMPTY: File[] = [];
+  const stableEmpty: File[] = [];
   return {
-    EMPTY,
+    EMPTY: stableEmpty,
     mockSubscribe: vi.fn<(listener: () => void) => () => void>(() => () => {}),
-    mockGet: vi.fn<() => File[]>(() => EMPTY),
-    mockTake: vi.fn<() => File[]>(() => EMPTY),
+    mockGet: vi.fn<() => File[]>(() => stableEmpty),
+    mockTake: vi.fn<() => File[]>(() => stableEmpty),
   };
 });
 
