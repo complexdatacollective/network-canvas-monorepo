@@ -1,6 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import {
+  expect,
+  fireEvent,
+  screen,
+  userEvent,
+  waitFor,
+  within,
+} from 'storybook/test';
 
 import Surface from '../../layout/Surface';
 import Paragraph from '../../typography/Paragraph';
@@ -288,6 +295,47 @@ export const UnsetKeyboardArrow: Story = {
     await userEvent.keyboard('{ArrowRight}');
     // Value should no longer be unset (exact value depends on step size)
     await expect(valueDisplay).not.toHaveTextContent('unset');
+  },
+};
+
+export const ValuePopoverWhileDragging: Story = {
+  args: {
+    value: 0.5,
+    minLabel: 'Not at all',
+    maxLabel: 'Extremely',
+  },
+  render: (args) => <ControlledVAS {...args} initialValue={args.value} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const slider = canvas.getByRole('slider');
+
+    // The bubble portals out of the field, so query the whole document.
+    // Hidden at rest.
+    await expect(screen.queryByTestId('scale-value-popover')).toBeNull();
+
+    // While dragging, the popover shows the value as a percentage on the default
+    // normalised 0–1 scale, then hides again once released. The release stays
+    // inside the stubbed block so the slider's releasePointerCapture is stubbed
+    // too (jsdom otherwise throws on the uncaptured pointer).
+    await withPointerCaptureStubbed(async () => {
+      await fireEvent.pointerDown(slider, {
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+        buttons: 1,
+      });
+      const popover = await screen.findByTestId('scale-value-popover');
+      await expect(popover).toHaveTextContent('50%');
+
+      await fireEvent.pointerUp(slider, {
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+      });
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId('scale-value-popover')).toBeNull(),
+    );
   },
 };
 

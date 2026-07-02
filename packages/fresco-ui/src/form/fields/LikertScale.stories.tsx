@@ -1,6 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useEffect, useState } from 'react';
-import { expect, fireEvent, userEvent, within } from 'storybook/test';
+import { useEffect, useRef, useState } from 'react';
+import {
+  expect,
+  fireEvent,
+  screen,
+  userEvent,
+  waitFor,
+  within,
+} from 'storybook/test';
 
 import Surface from '../../layout/Surface';
 import Paragraph from '../../typography/Paragraph';
@@ -179,6 +186,128 @@ export const MarkdownLabels: Story = {
     value: 3,
   },
   render: (args) => <ControlledLikert {...args} initialValue={args.value} />,
+};
+
+const labelSets: Record<string, { label: string; value: string | number }[]> = {
+  'Agreement (5)': agreementOptions,
+  'Long labels (5)': longLabelOptions,
+  'Three point (3)': threePointOptions,
+  'Binary (2)': binaryOptions,
+  'Markdown (5)': markdownLabelOptions,
+};
+
+// Single interactive demo of the responsive label ladder. Resize the container
+// to step full -> rotated -> anchors as it narrows; switch the label set to try
+// different content.
+function ResizableLikertDemo() {
+  const [setName, setSetName] = useState('Agreement (5)');
+  const [width, setWidth] = useState<number>();
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  const options = labelSets[setName] ?? agreementOptions;
+  const [value, setValue] = useState<string | number | undefined>();
+
+  // Reset the selection to the midpoint whenever the label set changes.
+  useEffect(() => {
+    setValue(options[Math.floor(options.length / 2)]?.value);
+  }, [options]);
+
+  useEffect(() => {
+    const box = boxRef.current;
+    if (!box) return undefined;
+    const observer = new ResizeObserver(() => setWidth(box.clientWidth));
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-4" style={{ width: 660 }}>
+      <label className="flex items-center gap-2 text-sm">
+        Labels
+        <select
+          aria-label="Label set"
+          value={setName}
+          onChange={(e) => setSetName(e.target.value)}
+          className="rounded border border-current/30 bg-transparent px-2 py-1"
+        >
+          {Object.keys(labelSets).map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <Paragraph margin="none" className="text-sm text-current/60">
+        Drag the bottom-right corner to resize the container
+        {width !== undefined ? ` (${Math.round(width)}px)` : ''}. It steps full
+        → rotated → anchors as it narrows.
+      </Paragraph>
+
+      <div
+        ref={boxRef}
+        className="rounded-lg border-2 border-dashed border-current/25 p-4"
+        style={{
+          resize: 'horizontal',
+          overflow: 'auto',
+          width: 460,
+          minWidth: 180,
+          maxWidth: 660,
+        }}
+      >
+        <LikertScaleField
+          options={options}
+          value={value}
+          onChange={(next) => next !== undefined && setValue(next)}
+        />
+      </div>
+    </div>
+  );
+}
+
+export const Responsive: Story = {
+  parameters: { controls: { disable: true } },
+  render: () => <ResizableLikertDemo />,
+};
+
+export const ValuePopoverOnInteraction: Story = {
+  args: {
+    options: agreementOptions,
+    value: 3,
+  },
+  render: (args) => <ControlledLikert {...args} initialValue={args.value} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const slider = canvas.getByRole('slider');
+
+    // The bubble portals out of the field, so query the whole document.
+    // Hidden at rest.
+    await expect(screen.queryByTestId('scale-value-popover')).toBeNull();
+
+    // Appears during a pointer drag, showing the current option's label, then
+    // hides again once released. The release stays inside the stubbed block so
+    // the slider's releasePointerCapture is stubbed too (jsdom otherwise throws
+    // on the uncaptured pointer).
+    await withPointerCaptureStubbed(async () => {
+      await fireEvent.pointerDown(slider, {
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+        buttons: 1,
+      });
+      const popover = await screen.findByTestId('scale-value-popover');
+      await expect(popover).toHaveTextContent('Neutral');
+
+      await fireEvent.pointerUp(slider, {
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+      });
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId('scale-value-popover')).toBeNull(),
+    );
+  },
 };
 
 function UnsetLikertWithValueDisplay({
