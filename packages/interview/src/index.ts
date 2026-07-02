@@ -4,6 +4,7 @@
 
 export { useTrack } from './analytics/useTrack';
 export { isValidAssetType } from './contract/assets';
+export { default as useOnline } from './hooks/useOnline';
 // Public types
 export type {
   AssetRequestHandler,
