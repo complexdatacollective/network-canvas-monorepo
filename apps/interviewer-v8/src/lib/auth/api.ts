@@ -1,408 +1,112 @@
 import { db } from '../db/db';
-import { fromBase64, toBase64 } from '../vault/crypto';
-import * as vaultMetadata from './vaultMetadata';
+import { getSessionDek, setSessionDek } from '../db/sessionKey';
+import * as vault from '../vault/vault';
+import { isPrfSupported } from '../vault/webauthn';
 
-const PBKDF2_ITERATIONS = 600_000;
-const PBKDF2_SALT_BYTES = 32;
-const PBKDF2_KEY_BYTES = 32;
-const PIN_LENGTH = 8;
+export type AuthMode = 'pin' | 'passphrase' | 'biometric' | 'none';
+export type AuthResult = { ok: boolean; message?: string };
 
-const BIOMETRIC_UNAVAILABLE = {
-  ok: false,
-  message: 'Biometric authentication is not available',
-} as const;
-
-// The unlock flag lives in sessionStorage, not a module variable: a page reload
-// (F5, Vite HMR) wipes module state and would otherwise re-show the LockScreen
-// on every dev save. sessionStorage clears when the tab is killed, matching the
-// "re-lock on app close" requirement.
-const WEB_UNLOCK_KEY = 'interviewer-v8:web-unlocked';
-
-function readWebUnlocked(): boolean {
-  if (typeof window === 'undefined') return false;
-  return window.sessionStorage.getItem(WEB_UNLOCK_KEY) === '1';
+function toAuthResult(result: vault.EnrolResult): AuthResult {
+  return result.message === undefined
+    ? { ok: result.ok }
+    : { ok: result.ok, message: result.message };
 }
 
-function writeWebUnlocked(value: boolean): void {
-  if (typeof window === 'undefined') return;
-  if (value) {
-    window.sessionStorage.setItem(WEB_UNLOCK_KEY, '1');
-  } else {
-    window.sessionStorage.removeItem(WEB_UNLOCK_KEY);
-  }
-}
-
-function validatePin(
-  pin: string,
-): { ok: true } | { ok: false; message: string } {
-  if (pin.length !== PIN_LENGTH || !/^\d+$/.test(pin)) {
-    return { ok: false, message: `PIN must be exactly ${PIN_LENGTH} digits` };
-  }
+// Unlock/enrol take custody of the freshly derived session DEK. A reload drops
+// this module + the holder, which re-locks the app (spec: reload re-locks).
+async function applyUnlock(result: vault.UnlockResult): Promise<AuthResult> {
+  if (!result.ok) return { ok: false, message: result.message };
+  setSessionDek(result.dek);
   return { ok: true };
 }
 
-async function derivePinVerifier(
-  pin: string,
-  saltB64: string,
-  iterations: number,
-): Promise<string> {
-  const salt = fromBase64(saltB64);
-  const material = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(pin),
-    { name: 'PBKDF2' },
-    false,
-    ['deriveBits'],
-  );
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
-    material,
-    PBKDF2_KEY_BYTES * 8,
-  );
-  return toBase64(new Uint8Array(bits));
-}
-
-const PASSPHRASE_MIN_LENGTH = 12;
-const PASSPHRASE_MIN_CLASSES = 3;
-
-function countCharacterClasses(s: string): number {
-  let n = 0;
-  if (/[a-z]/.test(s)) n += 1;
-  if (/[A-Z]/.test(s)) n += 1;
-  if (/[0-9]/.test(s)) n += 1;
-  if (/[^a-zA-Z0-9]/.test(s)) n += 1;
-  return n;
-}
-
-function validatePassphrase(
-  phrase: string,
-): { ok: true } | { ok: false; message: string } {
-  if (phrase.length < PASSPHRASE_MIN_LENGTH) {
-    return {
-      ok: false,
-      message: `Passphrase must be at least ${PASSPHRASE_MIN_LENGTH} characters`,
-    };
-  }
-  if (countCharacterClasses(phrase) < PASSPHRASE_MIN_CLASSES) {
-    return {
-      ok: false,
-      message:
-        'Passphrase must be stronger — combine uppercase, lowercase, numbers, and symbols',
-    };
-  }
-  return { ok: true };
-}
-
-async function derivePassphraseVerifier(
-  phrase: string,
-  saltB64: string,
-  iterations: number,
-): Promise<string> {
-  const salt = fromBase64(saltB64);
-  const material = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(phrase),
-    { name: 'PBKDF2' },
-    false,
-    ['deriveBits'],
-  );
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
-    material,
-    PBKDF2_KEY_BYTES * 8,
-  );
-  return toBase64(new Uint8Array(bits));
-}
-
-function constantTimeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i += 1) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return diff === 0;
-}
-
-// Biometric is not available on the web target. Phase E replaces this with
-// WebAuthn-PRF enrolment/unlock.
-export async function isBiometricSupported(): Promise<boolean> {
-  return false;
+// PRF availability gates biometric enrolment in the setup wizard.
+export function isBiometricSupported(): Promise<boolean> {
+  return isPrfSupported();
 }
 
 export async function status(): Promise<AuthStatus> {
-  const metadata = await vaultMetadata.read();
-  if (!metadata) {
+  const s = vault.vaultStatus();
+  if (!s.configured || !s.mode) {
     return { configured: false, locked: false };
   }
-  if (metadata.mode === 'pin') {
-    return { configured: true, locked: !readWebUnlocked(), mode: 'pin' };
+  if (s.mode === 'none') {
+    return { configured: true, locked: false, mode: 'none' };
   }
-  if (metadata.mode === 'passphrase') {
-    return { configured: true, locked: !readWebUnlocked(), mode: 'passphrase' };
-  }
-  return { configured: true, locked: false, mode: 'none' };
+  // Secured modes are locked whenever no session DEK is held (fresh load,
+  // after lock/idle/blur). No persisted unlock flag exists any more.
+  return { configured: true, locked: getSessionDek() === null, mode: s.mode };
 }
 
-export async function enrol(
-  _signal?: AbortSignal,
-): Promise<{ ok: boolean; message?: string }> {
-  return BIOMETRIC_UNAVAILABLE;
+export async function enrolWithoutLock(): Promise<AuthResult> {
+  const result = await vault.enrolNone();
+  if (result.ok) setSessionDek(null);
+  return toAuthResult(result);
 }
 
-export async function enrolWithoutLock(): Promise<{
-  ok: boolean;
-  message?: string;
-}> {
-  await vaultMetadata.writeNone();
-  writeWebUnlocked(true);
-  return { ok: true };
+export async function enrolWithPin(pin: string): Promise<AuthResult> {
+  const enrolled = await vault.enrolPin(pin);
+  if (!enrolled.ok) return toAuthResult(enrolled);
+  return applyUnlock(await vault.unlockPin(pin));
 }
 
-export async function enrolWithPin(
-  pin: string,
-): Promise<{ ok: boolean; message?: string }> {
-  const validation = validatePin(pin);
-  if (!validation.ok) return validation;
-  const salt = new Uint8Array(PBKDF2_SALT_BYTES);
-  crypto.getRandomValues(salt);
-  const saltB64 = toBase64(salt);
-  const verifierB64 = await derivePinVerifier(pin, saltB64, PBKDF2_ITERATIONS);
-  await vaultMetadata.writePin({
-    kdfSaltB64: saltB64,
-    kdfIterations: PBKDF2_ITERATIONS,
-    verifierB64,
-  });
-  writeWebUnlocked(true);
-  return { ok: true };
+export async function enrolWithPassphrase(phrase: string): Promise<AuthResult> {
+  const enrolled = await vault.enrolPassphrase(phrase);
+  if (!enrolled.ok) return toAuthResult(enrolled);
+  return applyUnlock(await vault.unlockPassphrase(phrase));
 }
 
-export async function enrolWithBiometricNative(): Promise<{
-  ok: boolean;
-  message?: string;
-}> {
-  return BIOMETRIC_UNAVAILABLE;
+export async function enrolWithBiometric(
+  recoveryPhrase: string,
+): Promise<AuthResult> {
+  const enrolled = await vault.enrolBiometric(recoveryPhrase);
+  if (!enrolled.ok) return toAuthResult(enrolled);
+  return applyUnlock(await vault.unlockBiometric());
 }
 
-export async function unlockWithBiometricNative(): Promise<{
-  ok: boolean;
-  message?: string;
-}> {
-  return BIOMETRIC_UNAVAILABLE;
-}
-
-export async function unlock(
-  _signal?: AbortSignal,
-): Promise<{ ok: boolean; message?: string }> {
-  return BIOMETRIC_UNAVAILABLE;
-}
-
-export async function unlockWithPin(
-  pin: string,
-): Promise<{ ok: boolean; message?: string }> {
-  const validation = validatePin(pin);
-  if (!validation.ok) return validation;
-  const metadata = await vaultMetadata.read();
-  if (!metadata || metadata.mode !== 'pin') {
-    return { ok: false, message: 'PIN is not configured on this device' };
-  }
-  const verifier = await derivePinVerifier(
-    pin,
-    metadata.kdfSaltB64,
-    metadata.kdfIterations,
-  );
-  if (!constantTimeEqual(verifier, metadata.verifierB64)) {
-    return { ok: false, message: 'Incorrect PIN' };
-  }
-  writeWebUnlocked(true);
-  return { ok: true };
-}
-
-export async function lock(): Promise<void> {
-  writeWebUnlocked(false);
-}
-
-export async function reEnrol(
-  _signal?: AbortSignal,
-): Promise<{ ok: boolean; message?: string }> {
-  return BIOMETRIC_UNAVAILABLE;
-}
-
-export async function reEnrolWithPin(args: {
-  currentPin: string;
-  nextPin: string;
-}): Promise<{ ok: boolean; message?: string }> {
-  const nextValidation = validatePin(args.nextPin);
-  if (!nextValidation.ok) return nextValidation;
-  const currentValidation = validatePin(args.currentPin);
-  if (!currentValidation.ok)
-    return { ok: false, message: 'Current PIN is incorrect' };
-  const metadata = await vaultMetadata.read();
-  if (!metadata || metadata.mode !== 'pin') {
-    return { ok: false, message: 'PIN is not configured on this device' };
-  }
-  const currentVerifier = await derivePinVerifier(
-    args.currentPin,
-    metadata.kdfSaltB64,
-    metadata.kdfIterations,
-  );
-  if (!constantTimeEqual(currentVerifier, metadata.verifierB64)) {
-    return { ok: false, message: 'Current PIN is incorrect' };
-  }
-  const nextSalt = new Uint8Array(PBKDF2_SALT_BYTES);
-  crypto.getRandomValues(nextSalt);
-  const nextSaltB64 = toBase64(nextSalt);
-  const nextVerifierB64 = await derivePinVerifier(
-    args.nextPin,
-    nextSaltB64,
-    PBKDF2_ITERATIONS,
-  );
-  await vaultMetadata.writePin({
-    kdfSaltB64: nextSaltB64,
-    kdfIterations: PBKDF2_ITERATIONS,
-    verifierB64: nextVerifierB64,
-  });
-  writeWebUnlocked(true);
-  return { ok: true };
-}
-
-export async function enrolWithPassphrase(
-  phrase: string,
-): Promise<{ ok: boolean; message?: string }> {
-  const validation = validatePassphrase(phrase);
-  if (!validation.ok) return validation;
-  const salt = new Uint8Array(PBKDF2_SALT_BYTES);
-  crypto.getRandomValues(salt);
-  const saltB64 = toBase64(salt);
-  const verifierB64 = await derivePassphraseVerifier(
-    phrase,
-    saltB64,
-    PBKDF2_ITERATIONS,
-  );
-  await vaultMetadata.writePassphrase({
-    kdfSaltB64: saltB64,
-    kdfIterations: PBKDF2_ITERATIONS,
-    verifierB64,
-  });
-  writeWebUnlocked(true);
-  return { ok: true };
+export async function unlockWithPin(pin: string): Promise<AuthResult> {
+  return applyUnlock(await vault.unlockPin(pin));
 }
 
 export async function unlockWithPassphrase(
   phrase: string,
-): Promise<{ ok: boolean; message?: string }> {
-  const validation = validatePassphrase(phrase);
-  if (!validation.ok) return { ok: false, message: 'Incorrect passphrase' };
-  const metadata = await vaultMetadata.read();
-  if (!metadata || metadata.mode !== 'passphrase') {
-    return {
-      ok: false,
-      message: 'Passphrase is not configured on this device',
-    };
-  }
-  const verifier = await derivePassphraseVerifier(
-    phrase,
-    metadata.kdfSaltB64,
-    metadata.kdfIterations,
-  );
-  if (!constantTimeEqual(verifier, metadata.verifierB64)) {
-    return { ok: false, message: 'Incorrect passphrase' };
-  }
-  writeWebUnlocked(true);
-  return { ok: true };
+): Promise<AuthResult> {
+  return applyUnlock(await vault.unlockPassphrase(phrase));
 }
 
-export async function reEnrolWithPassphrase(args: {
-  currentPhrase: string;
-  nextPhrase: string;
-}): Promise<{ ok: boolean; message?: string }> {
-  const nextValidation = validatePassphrase(args.nextPhrase);
-  if (!nextValidation.ok) return nextValidation;
-  const metadata = await vaultMetadata.read();
-  if (!metadata || metadata.mode !== 'passphrase') {
-    return {
-      ok: false,
-      message: 'Passphrase is not configured on this device',
-    };
-  }
-  const currentVerifier = await derivePassphraseVerifier(
-    args.currentPhrase,
-    metadata.kdfSaltB64,
-    metadata.kdfIterations,
-  );
-  if (!constantTimeEqual(currentVerifier, metadata.verifierB64)) {
-    return { ok: false, message: 'Current passphrase is incorrect' };
-  }
-  const nextSalt = new Uint8Array(PBKDF2_SALT_BYTES);
-  crypto.getRandomValues(nextSalt);
-  const nextSaltB64 = toBase64(nextSalt);
-  const nextVerifierB64 = await derivePassphraseVerifier(
-    args.nextPhrase,
-    nextSaltB64,
-    PBKDF2_ITERATIONS,
-  );
-  await vaultMetadata.writePassphrase({
-    kdfSaltB64: nextSaltB64,
-    kdfIterations: PBKDF2_ITERATIONS,
-    verifierB64: nextVerifierB64,
-  });
-  writeWebUnlocked(true);
-  return { ok: true };
+export async function unlockWithBiometric(): Promise<AuthResult> {
+  return applyUnlock(await vault.unlockBiometric());
 }
 
-export async function verifyBiometric(
-  _signal?: AbortSignal,
-): Promise<{ ok: boolean; message?: string }> {
-  return BIOMETRIC_UNAVAILABLE;
+export async function unlockWithRecovery(phrase: string): Promise<AuthResult> {
+  return applyUnlock(await vault.unlockRecovery(phrase));
 }
 
-export async function verifyWithPin(
-  pin: string,
-): Promise<{ ok: boolean; message?: string }> {
-  const validation = validatePin(pin);
-  if (!validation.ok) return { ok: false, message: 'Incorrect PIN' };
-  const metadata = await vaultMetadata.read();
-  if (!metadata || metadata.mode !== 'pin') {
-    return { ok: false, message: 'PIN is not configured on this device' };
-  }
-  const verifier = await derivePinVerifier(
-    pin,
-    metadata.kdfSaltB64,
-    metadata.kdfIterations,
-  );
-  if (!constantTimeEqual(verifier, metadata.verifierB64)) {
-    return { ok: false, message: 'Incorrect PIN' };
-  }
-  return { ok: true };
+// Step-up verification: re-checks the secret / re-prompts biometrics WITHOUT
+// changing the gate. Never calls setSessionDek — the session stays as it was.
+export async function verifyWithPin(pin: string): Promise<AuthResult> {
+  return toAuthResult(await vault.verifyPin(pin));
 }
 
 export async function verifyWithPassphrase(
   phrase: string,
-): Promise<{ ok: boolean; message?: string }> {
-  const validation = validatePassphrase(phrase);
-  if (!validation.ok) return { ok: false, message: 'Incorrect passphrase' };
-  const metadata = await vaultMetadata.read();
-  if (!metadata || metadata.mode !== 'passphrase') {
-    return {
-      ok: false,
-      message: 'Passphrase is not configured on this device',
-    };
-  }
-  const verifier = await derivePassphraseVerifier(
-    phrase,
-    metadata.kdfSaltB64,
-    metadata.kdfIterations,
-  );
-  if (!constantTimeEqual(verifier, metadata.verifierB64)) {
-    return { ok: false, message: 'Incorrect passphrase' };
-  }
-  return { ok: true };
+): Promise<AuthResult> {
+  return toAuthResult(await vault.verifyPassphrase(phrase));
+}
+
+export async function verifyBiometric(): Promise<AuthResult> {
+  return toAuthResult(await vault.verifyBiometric());
+}
+
+export async function lock(): Promise<void> {
+  setSessionDek(null);
 }
 
 export async function revoke(): Promise<void> {
-  // Order matters: drop the Dexie DB first, then clear metadata. If we fail
-  // mid-revoke, leaving metadata behind keeps the install in a recoverable
-  // "configured but locked" state instead of an orphaned DB without a vault.
+  // Drop the encrypted data DB first, then clear the vault record. If we fail
+  // mid-revoke, leaving the vault record keeps a recoverable "configured but
+  // locked" state instead of an orphaned DB without a vault.
   await db.delete({ disableAutoOpen: false });
-  await vaultMetadata.clear();
-  writeWebUnlocked(false);
+  await vault.revoke(); // clears the localStorage vault record + best-effort passkey delete
+  setSessionDek(null);
 }

@@ -34,6 +34,6 @@ declare global {
   type AuthStatus = {
     configured: boolean;
     locked: boolean;
-    mode?: 'pin' | 'passphrase' | 'none';
+    mode?: 'pin' | 'passphrase' | 'biometric' | 'none';
   };
 }
