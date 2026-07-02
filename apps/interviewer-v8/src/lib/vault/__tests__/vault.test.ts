@@ -4,15 +4,20 @@ import { readVault } from '../vaultStore';
 
 // The WebAuthn layer is mocked so enrol/unlock biometric are deterministic:
 // a fixed PRF secret per (credentialId, prfSalt). userHandle is ignored.
+// vi.fn wrappers let individual tests override behaviour (e.g. simulate a
+// cancelled OS biometric sheet by rejecting).
 const FIXED_PRF = new Uint8Array(32).fill(11).buffer;
+const enrollBiometricMock = vi.fn(() =>
+  Promise.resolve({
+    enrollment: { credentialId: 'CRED123', prfSaltB64: btoa('prf-salt-xx') },
+    prfOutput: FIXED_PRF,
+  }),
+);
+const readPrfMock = vi.fn(() => Promise.resolve(FIXED_PRF));
 vi.mock('../webauthn', () => ({
   isPrfSupported: () => Promise.resolve(true),
-  enrollBiometric: () =>
-    Promise.resolve({
-      enrollment: { credentialId: 'CRED123', prfSaltB64: btoa('prf-salt-xx') },
-      prfOutput: FIXED_PRF,
-    }),
-  readPrf: () => Promise.resolve(FIXED_PRF),
+  enrollBiometric: () => enrollBiometricMock(),
+  readPrf: () => readPrfMock(),
 }));
 
 import {
@@ -36,6 +41,11 @@ const GOOD_RECOVERY = 'Recovery-Phrase-7!';
 
 beforeEach(() => {
   window.localStorage.clear();
+  enrollBiometricMock.mockReset().mockResolvedValue({
+    enrollment: { credentialId: 'CRED123', prfSaltB64: btoa('prf-salt-xx') },
+    prfOutput: FIXED_PRF,
+  });
+  readPrfMock.mockReset().mockResolvedValue(FIXED_PRF);
 });
 
 afterEach(() => {
@@ -127,6 +137,32 @@ describe('passphrase mode', () => {
 });
 
 describe('biometric mode (dual-wrapped)', () => {
+  it('enrol returns the freshly-unwrapped DEK (no extra unlock prompt needed)', async () => {
+    const enrol = await enrolBiometric(GOOD_RECOVERY);
+    expect(enrol.ok).toBe(true);
+    if (!enrol.ok) throw new Error('expected enrol');
+    expect(enrol.dek.algorithm.name).toBe('AES-GCM');
+    expect(enrol.dek.extractable).toBe(false);
+    expect(vaultStatus()).toEqual({ configured: true, mode: 'biometric' });
+    // Enrol prompts twice (create + readPrf); it must NOT prompt a third time.
+    expect(readPrfMock).toHaveBeenCalledTimes(0);
+    expect(enrollBiometricMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('a cancelled biometric sheet resolves to { ok: false } instead of throwing', async () => {
+    enrollBiometricMock.mockRejectedValueOnce(
+      Object.assign(new Error('The operation was cancelled'), {
+        name: 'NotAllowedError',
+      }),
+    );
+    const enrol = await enrolBiometric(GOOD_RECOVERY);
+    expect(enrol.ok).toBe(false);
+    if (enrol.ok) throw new Error('expected failure');
+    expect(enrol.message).toMatch(/cancel/i);
+    // A failed enrol must not leave a half-written vault record.
+    expect(vaultStatus()).toEqual({ configured: false });
+  });
+
   it('enrol → biometric unlock round-trips', async () => {
     const enrol = await enrolBiometric(GOOD_RECOVERY);
     expect(enrol.ok).toBe(true);

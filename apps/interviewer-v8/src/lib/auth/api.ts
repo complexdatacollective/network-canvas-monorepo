@@ -59,9 +59,10 @@ export async function enrolWithPassphrase(phrase: string): Promise<AuthResult> {
 export async function enrolWithBiometric(
   recoveryPhrase: string,
 ): Promise<AuthResult> {
-  const enrolled = await vault.enrolBiometric(recoveryPhrase);
-  if (!enrolled.ok) return toAuthResult(enrolled);
-  return applyUnlock(await vault.unlockBiometric());
+  // enrolBiometric already holds the freshly-unwrapped DEK, so route it straight
+  // through applyUnlock rather than calling unlockBiometric (which would prompt
+  // for biometrics a third time). applyUnlock stays the single DEK choke point.
+  return applyUnlock(await vault.enrolBiometric(recoveryPhrase));
 }
 
 export async function unlockWithPin(pin: string): Promise<AuthResult> {

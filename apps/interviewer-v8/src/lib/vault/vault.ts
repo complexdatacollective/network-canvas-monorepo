@@ -124,41 +124,59 @@ export async function enrolPassphrase(phrase: string): Promise<EnrolResult> {
   return { ok: true };
 }
 
+// Enrol generates the DEK inline and returns it so the caller can take custody
+// without a third biometric prompt (create() + readPrf() already cost two). The
+// WebAuthn calls are wrapped so a cancelled OS sheet resolves to a failure
+// result rather than throwing NotAllowedError up through the wizard, mirroring
+// unlockBiometric.
 export async function enrolBiometric(
   recoveryPhrase: string,
-): Promise<EnrolResult> {
+): Promise<UnlockResult> {
   const validation = validatePassphrase(recoveryPhrase);
-  if (!validation.ok) return validation;
+  if (!validation.ok) {
+    return { ok: false, message: validation.message ?? 'Invalid passphrase' };
+  }
 
-  const userHandle = new TextEncoder().encode(getInstallationId());
-  const { enrollment, prfOutput } = await enrollBiometric(userHandle);
+  try {
+    const userHandle = new TextEncoder().encode(getInstallationId());
+    const { enrollment, prfOutput } = await enrollBiometric(userHandle);
 
-  // One DEK, dual-wrapped: PRF-derived KEK and a recovery-passphrase KEK.
-  const dek = await generateDek();
+    // One DEK, dual-wrapped: PRF-derived KEK and a recovery-passphrase KEK.
+    const dek = await generateDek();
 
-  const bioKek = await deriveKekFromPrf(prfOutput, enrollment.prfSaltB64);
-  const wrappedDekB64 = await wrapDek(dek, bioKek);
+    const bioKek = await deriveKekFromPrf(prfOutput, enrollment.prfSaltB64);
+    const wrappedDekB64 = await wrapDek(dek, bioKek);
 
-  const recoverySaltB64 = randomSaltB64();
-  const recoveryKek = await deriveKekFromPassword(
-    recoveryPhrase,
-    recoverySaltB64,
-    PBKDF2_ITERATIONS,
-  );
-  const recoveryWrappedDekB64 = await wrapDek(dek, recoveryKek);
+    const recoverySaltB64 = randomSaltB64();
+    const recoveryKek = await deriveKekFromPassword(
+      recoveryPhrase,
+      recoverySaltB64,
+      PBKDF2_ITERATIONS,
+    );
+    const recoveryWrappedDekB64 = await wrapDek(dek, recoveryKek);
 
-  writeVault({
-    version: 4,
-    mode: 'biometric',
-    webauthn: enrollment,
-    wrappedDekB64,
-    recovery: {
-      kdfSaltB64: recoverySaltB64,
-      kdfIterations: PBKDF2_ITERATIONS,
-      wrappedDekB64: recoveryWrappedDekB64,
-    },
-  });
-  return { ok: true };
+    writeVault({
+      version: 4,
+      mode: 'biometric',
+      webauthn: enrollment,
+      wrappedDekB64,
+      recovery: {
+        kdfSaltB64: recoverySaltB64,
+        kdfIterations: PBKDF2_ITERATIONS,
+        wrappedDekB64: recoveryWrappedDekB64,
+      },
+    });
+
+    // Hand back the DEK as a non-extractable session key — reconstructed from
+    // the wrap we just wrote using key material already in memory, so no third
+    // biometric prompt. `dek` above is extractable only so it can be wrapped.
+    const sessionDek = await unwrapDek(wrappedDekB64, bioKek);
+    return { ok: true, dek: sessionDek };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Biometric enrolment failed';
+    return { ok: false, message };
+  }
 }
 
 export async function unlockPin(pin: string): Promise<UnlockResult> {
