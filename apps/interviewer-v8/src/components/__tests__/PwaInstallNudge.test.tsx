@@ -1,5 +1,8 @@
+import { Toast } from '@base-ui/react/toast';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { Toaster } from '@codaco/fresco-ui/Toast';
 
 const { mockGetDeferredPrompt, mockSubscribe, mockPromptInstall } = vi.hoisted(
   () => ({
@@ -22,6 +25,16 @@ const SHOW_DELAY_MS = 5000;
 // A stable object so useSyncExternalStore's snapshot doesn't change identity.
 const FAKE_PROMPT = {};
 
+// The nudge dispatches into the app's toast system, so tests render it inside
+// a real provider + viewport and assert against the toast output.
+const renderNudge = () =>
+  render(
+    <Toast.Provider>
+      <PwaInstallNudge />
+      <Toaster />
+    </Toast.Provider>,
+  );
+
 const passDelay = () => act(() => vi.advanceTimersByTime(SHOW_DELAY_MS));
 
 beforeEach(() => {
@@ -36,47 +49,52 @@ afterEach(() => {
 });
 
 describe('PwaInstallNudge', () => {
-  it('renders nothing when no install prompt is available', () => {
+  it('shows no toast when no install prompt is available', () => {
     mockGetDeferredPrompt.mockReturnValue(null);
-    const { container } = render(<PwaInstallNudge />);
+    renderNudge();
     passDelay();
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByText(/install interviewer/i)).not.toBeInTheDocument();
   });
 
   it('waits for the delay before showing', () => {
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
-    render(<PwaInstallNudge />);
+    renderNudge();
 
-    expect(screen.queryByText(/use it like an app/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/install interviewer/i)).not.toBeInTheDocument();
     passDelay();
-    expect(screen.getByText(/use it like an app/i)).toBeInTheDocument();
+    expect(screen.getByText(/install interviewer/i)).toBeInTheDocument();
   });
 
   it('installs on click once shown', () => {
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
-    render(<PwaInstallNudge />);
+    renderNudge();
     passDelay();
 
     fireEvent.click(screen.getByRole('button', { name: /^install$/i }));
     expect(mockPromptInstall).toHaveBeenCalledTimes(1);
   });
 
-  it('renders nothing when previously dismissed', () => {
+  it('shows no toast when previously dismissed', () => {
     localStorage.setItem(DISMISSED_KEY, 'true');
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
-    const { container } = render(<PwaInstallNudge />);
+    renderNudge();
     passDelay();
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByText(/install interviewer/i)).not.toBeInTheDocument();
   });
 
-  it('persists dismissal and hides when dismissed', () => {
+  // The toast's ✕ (and swipe) route through the same onClose as the Install
+  // action; base-ui hides the close button in jsdom (no hover capability), so
+  // the Install path is the closure we can exercise here.
+  it('persists dismissal when the toast closes', () => {
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
-    render(<PwaInstallNudge />);
+    renderNudge();
     passDelay();
 
-    fireEvent.click(screen.getByRole('button', { name: /dismiss/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^install$/i }));
 
     expect(localStorage.getItem(DISMISSED_KEY)).toBe('true');
-    expect(screen.queryByText(/use it like an app/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /^install$/i }),
+    ).not.toBeInTheDocument();
   });
 });

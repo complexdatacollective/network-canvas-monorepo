@@ -1,8 +1,7 @@
-import { Download, X } from 'lucide-react';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { Download } from 'lucide-react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
-import Button from '@codaco/fresco-ui/Button';
-import { cx } from '@codaco/fresco-ui/utils/cva';
+import { useToast } from '@codaco/fresco-ui/Toast';
 import {
   getDeferredPrompt,
   promptInstall,
@@ -20,73 +19,57 @@ const readDismissed = () => {
   }
 };
 
+const persistDismissed = () => {
+  try {
+    localStorage.setItem(DISMISSED_KEY, 'true');
+  } catch {
+    // Private mode etc.: the in-memory state still hides it for this session.
+  }
+};
+
+// Headless: offers the one-tap install through the app's toast system rather
+// than bespoke floating chrome. Closing the toast in any way counts as
+// acting on the nudge (installed, declined the browser dialog, or dismissed),
+// so it never shows again on this device.
 const PwaInstallNudge = () => {
   const deferredPrompt = useSyncExternalStore(
     subscribeInstallPrompt,
     getDeferredPrompt,
   );
   const [dismissed, setDismissed] = useState(readDismissed);
-  const [ready, setReady] = useState(false);
 
-  // Hold the nudge back for a few seconds so it doesn't interrupt the moment the
-  // page loads.
+  const { add, close } = useToast();
+  const toastIdRef = useRef<string | null>(null);
+
+  // Hold the nudge back for a few seconds so it doesn't interrupt the moment
+  // the page loads. The id ref makes re-runs idempotent, so the unstable
+  // toast-manager identities in the deps are harmless.
   useEffect(() => {
-    if (!deferredPrompt) return undefined;
-    const timer = window.setTimeout(() => setReady(true), SHOW_DELAY_MS);
+    if (!deferredPrompt || dismissed) return undefined;
+    const timer = window.setTimeout(() => {
+      if (toastIdRef.current) return;
+      toastIdRef.current = add({
+        title: 'Install Interviewer',
+        description:
+          'Add Interviewer to this device to use it like an app — it works fully offline.',
+        icon: <Download className="size-5" aria-hidden="true" />,
+        timeout: 0,
+        cancelLabel: 'Install',
+        onCancel: () => {
+          void promptInstall();
+          if (toastIdRef.current) close(toastIdRef.current);
+        },
+        onClose: () => {
+          toastIdRef.current = null;
+          persistDismissed();
+          setDismissed(true);
+        },
+      });
+    }, SHOW_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [deferredPrompt]);
+  }, [deferredPrompt, dismissed, add, close]);
 
-  if (!deferredPrompt || dismissed || !ready) return null;
-
-  const dismiss = () => {
-    try {
-      localStorage.setItem(DISMISSED_KEY, 'true');
-    } catch {
-      // Private mode etc.: still hide for this session.
-    }
-    setDismissed(true);
-  };
-
-  return (
-    <aside
-      aria-label="Install Interviewer"
-      className={cx(
-        'fixed top-(--space-md) right-(--space-md) z-(--z-tooltip)',
-        'flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-(--space-sm)',
-        'border-border bg-surface-1 text-surface-1-foreground rounded border p-(--space-md) text-sm shadow-lg',
-      )}
-    >
-      {/* Arrow pointing up toward the browser's address-bar install icon. */}
-      <span
-        aria-hidden
-        className="border-border bg-surface-1 absolute top-[-7px] right-7 size-3 rotate-45 border-t border-l"
-      />
-
-      <button
-        type="button"
-        aria-label="Dismiss"
-        onClick={dismiss}
-        className="text-muted-foreground hover:text-surface-1-foreground absolute top-3 right-3 inline-flex size-6 items-center justify-center rounded-full transition-colors hover:bg-current/10"
-      >
-        <X className="size-4" />
-      </button>
-
-      <p className="m-0 pr-(--space-lg)">
-        Did you know you can install Interviewer and use it like an app, even
-        offline?
-      </p>
-      <div className="flex justify-end">
-        <Button
-          color="primary"
-          size="sm"
-          onClick={() => void promptInstall()}
-          icon={<Download />}
-        >
-          Install
-        </Button>
-      </div>
-    </aside>
-  );
+  return null;
 };
 
 export default PwaInstallNudge;

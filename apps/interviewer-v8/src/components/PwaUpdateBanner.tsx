@@ -1,10 +1,9 @@
-import { X } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { useLocation } from 'wouter';
 
-import Button from '@codaco/fresco-ui/Button';
-import { cx } from '@codaco/fresco-ui/utils/cva';
+import { useToast } from '@codaco/fresco-ui/Toast';
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000; // hourly
 // A pending update that surfaces within this window of loading the page is
@@ -19,6 +18,9 @@ const FRESH_LOAD_WINDOW_MS = 20 * 1000;
 const isInterviewActive = (location: string): boolean =>
   location.startsWith('/interview/');
 
+// Headless: surfaces the update prompt through the app's toast system (which
+// owns placement, stacking, motion, swipe-dismiss, and screen-reader
+// announcements) rather than rendering its own floating chrome.
 const PwaUpdateBanner = () => {
   const [location] = useLocation();
   const interviewActive = isInterviewActive(location);
@@ -26,8 +28,15 @@ const PwaUpdateBanner = () => {
   const [registration, setRegistration] = useState<
     ServiceWorkerRegistration | undefined
   >();
-  const [promptVisible, setPromptVisible] = useState(false);
   const loadedAt = useRef(Date.now());
+
+  const { add, close } = useToast();
+  const toastIdRef = useRef<string | null>(null);
+  // An explicit user dismissal holds for the rest of the session; a
+  // programmatic close (deferring while an interview starts) must not count
+  // as one, or the prompt would never come back afterwards.
+  const dismissedRef = useRef(false);
+  const deferringRef = useRef(false);
 
   const {
     needRefresh: [needRefresh],
@@ -50,51 +59,41 @@ const PwaUpdateBanner = () => {
 
   // Fresh loads (off an interview) end up on the latest version: a pending
   // update is applied silently. An update that appears later, in an open tab,
-  // gets the prompt. While an interview is active, do neither — hold the pending
-  // update; when the researcher leaves the interview this effect re-runs
-  // (location changed) and the prompt surfaces.
+  // gets the prompt. While an interview is active, do neither — the toast is
+  // withdrawn and the pending update held; when the researcher leaves the
+  // interview this effect re-runs (location changed) and the prompt surfaces.
+  // The id/dismissal refs make re-runs idempotent, so the unstable
+  // toast-manager identities in the deps are harmless.
   useEffect(() => {
     if (!needRefresh) return;
-    if (interviewActive) return;
+    if (interviewActive) {
+      if (toastIdRef.current) {
+        deferringRef.current = true;
+        close(toastIdRef.current);
+      }
+      return;
+    }
     if (Date.now() - loadedAt.current < FRESH_LOAD_WINDOW_MS) {
       void updateServiceWorker(true);
-    } else {
-      setPromptVisible(true);
+      return;
     }
-  }, [needRefresh, interviewActive, updateServiceWorker]);
+    if (dismissedRef.current || toastIdRef.current) return;
+    toastIdRef.current = add({
+      title: 'Update available',
+      description: 'A new version of Interviewer is ready. Your work is saved.',
+      icon: <RefreshCw className="size-5" aria-hidden="true" />,
+      timeout: 0,
+      cancelLabel: 'Reload',
+      onCancel: () => void updateServiceWorker(true),
+      onClose: () => {
+        toastIdRef.current = null;
+        if (!deferringRef.current) dismissedRef.current = true;
+        deferringRef.current = false;
+      },
+    });
+  }, [needRefresh, interviewActive, updateServiceWorker, add, close]);
 
-  if (!promptVisible || interviewActive) return null;
-
-  return (
-    <aside
-      aria-label="Update available"
-      aria-live="polite"
-      className={cx(
-        'fixed bottom-(--space-md) left-1/2 z-(--z-global-ui) -translate-x-1/2',
-        'flex max-w-[calc(100vw-2rem)] items-center gap-(--space-md)',
-        'border-border bg-surface-1 text-surface-1-foreground rounded border p-(--space-md) text-sm shadow-lg',
-      )}
-    >
-      <p className="m-0">
-        A new version of Interviewer is available. Your work is saved.
-      </p>
-      <Button
-        color="primary"
-        size="sm"
-        onClick={() => void updateServiceWorker(true)}
-      >
-        Reload
-      </Button>
-      <button
-        type="button"
-        aria-label="Dismiss"
-        onClick={() => setPromptVisible(false)}
-        className="text-muted-foreground hover:text-surface-1-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-current/10"
-      >
-        <X className="size-4" />
-      </button>
-    </aside>
-  );
+  return null;
 };
 
 export default PwaUpdateBanner;

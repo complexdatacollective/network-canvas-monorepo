@@ -1,19 +1,14 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2e2a6e"/>
-      <stop offset="1" stop-color="#120f34"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbfbfa"/>
+      <stop offset="1" stop-color="#e9e8e4"/>
     </linearGradient>
-    <radialGradient id="glow" cx="0.3" cy="0.22" r="0.95">
-      <stop offset="0" stop-color="#5747b8" stop-opacity="0.5"/>
-      <stop offset="0.6" stop-color="#5747b8" stop-opacity="0"/>
-    </radialGradient>
     <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="16" stdDeviation="26" flood-color="#08061e" flood-opacity="0.5"/>
+      <feDropShadow dx="0" dy="14" stdDeviation="22" flood-color="#8f1038" flood-opacity="0.22"/>
     </filter>
   </defs>
   <rect width="1024" height="1024" fill="url(#bg)"/>
-  <rect width="1024" height="1024" fill="url(#glow)"/>
   <g filter="url(#shadow)" transform="translate(512,512) scale(0.96) translate(-490,-495)">
     <g stroke="#dd1f5a" stroke-width="58" stroke-linecap="round">
       <line x1="310" y1="355" x2="680" y2="265"/>
