@@ -19,6 +19,17 @@ export async function requestPersistentStorage(): Promise<boolean> {
   }
 }
 
+export async function isStoragePersisted(): Promise<boolean> {
+  if (typeof navigator === 'undefined' || !navigator.storage?.persisted) {
+    return false;
+  }
+  try {
+    return await navigator.storage.persisted();
+  } catch {
+    return false;
+  }
+}
+
 export async function estimateStorage(): Promise<StorageEstimate> {
   if (typeof navigator === 'undefined' || !navigator.storage?.estimate) {
     return { usage: null, quota: null, free: null, percent: null };

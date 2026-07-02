@@ -6,6 +6,11 @@ import { createRoot } from 'react-dom/client';
 
 import App from './App';
 import { requestPersistentStorage } from './lib/platform/storage';
+import { initInstallPromptCapture } from './lib/pwa/installPrompt';
+
+// The beforeinstallprompt event fires early and is one-shot; capture it before
+// React mounts so PwaInstallNudge can offer a real one-tap install.
+initInstallPromptCapture();
 
 void requestPersistentStorage();
 

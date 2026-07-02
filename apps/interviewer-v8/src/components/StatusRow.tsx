@@ -1,12 +1,21 @@
+import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 
 import { APP_VERSION } from '~/lib/platform/appVersion';
+import {
+  estimateStorage,
+  formatBytes,
+  isStoragePersisted,
+} from '~/lib/platform/storage';
 
 type StatusRowProps = {
   protocolCount: number;
   interviewCount: number;
 };
+
+type Durability = { persisted: boolean; usage: number | null };
 
 const variants = {
   hidden: { opacity: 0, y: '100%' },
@@ -23,6 +32,20 @@ const variants = {
 } as const;
 
 export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
+  const [durability, setDurability] = useState<Durability | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void Promise.all([isStoragePersisted(), estimateStorage()]).then(
+      ([persisted, estimate]) => {
+        if (active) setDurability({ persisted, usage: estimate.usage });
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <motion.div
       variants={variants}
@@ -42,7 +65,31 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
           interviews
         </span>
       </Link>
-      <span>Interviewer {APP_VERSION}</span>
+      <div className="flex items-center gap-3.5">
+        {durability ? (
+          <span
+            className="inline-flex items-center gap-1.5"
+            title={
+              durability.usage !== null
+                ? `${formatBytes(durability.usage)} stored`
+                : undefined
+            }
+          >
+            {durability.persisted ? (
+              <>
+                <ShieldCheck className="size-3.5" />
+                Storage protected
+              </>
+            ) : (
+              <span className="text-warning inline-flex items-center gap-1.5">
+                <ShieldAlert className="size-3.5" />
+                Storage not protected
+              </span>
+            )}
+          </span>
+        ) : null}
+        <span>Interviewer {APP_VERSION}</span>
+      </div>
     </motion.div>
   );
 }
