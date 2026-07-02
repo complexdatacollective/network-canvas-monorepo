@@ -362,13 +362,16 @@ export default function StagesMenu({
         initial="closed"
         animate={animate}
         className={cx(
-          'relative block shrink-0 overflow-hidden rounded-xs',
+          // Hover/selected lift the preview via brightness + a soft inset ring
+          // rather than a transform, so the continuous timeline never shifts.
+          // `transition` is scoped off `transform` so it can't fight motion's y.
+          'relative block shrink-0 overflow-hidden rounded-xs ring-1 ring-white/0 transition-[filter,box-shadow] duration-200 ring-inset [&>picture]:block [&>picture]:size-full',
+          'group-hover:ring-white/25 group-hover:brightness-115',
+          'group-data-[selected]:ring-white/30 group-data-[selected]:brightness-110',
           isHorizontal ? 'aspect-4/3 w-full' : 'aspect-4/3 w-24',
         )}
       >
-        <span className="block size-full transition-transform duration-300 ease-out group-hover:scale-105 group-data-[selected]:scale-105 [&>picture]:block [&>picture]:size-full">
-          {picture}
-        </span>
+        {picture}
         {item.isSkipped && (
           <span
             role="img"
@@ -396,7 +399,7 @@ export default function StagesMenu({
             // No horizontal padding on the button itself: the timeline band is
             // full width so adjacent cards' segments meet with no gap. The
             // image/label get their own padding via the inner wrapper.
-            'group focusable relative flex w-36 cursor-pointer flex-col items-center gap-3 rounded-sm py-4 text-center transition-colors',
+            'group focusable hover:elevation-medium relative flex w-36 cursor-pointer flex-col items-center gap-3 rounded-sm py-4 text-center transition-[color,background-color,box-shadow] duration-200',
             'data-selected:bg-primary data-selected:text-primary-contrast',
             'hover:bg-accent data-focused:bg-accent',
             // Edge spacing lives on the first/last card so it survives the
@@ -446,7 +449,7 @@ export default function StagesMenu({
         initial="closed"
         animate={animate}
         className={cx(
-          'group focusable relative flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors',
+          'group focusable hover:elevation-medium relative flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-[color,background-color,box-shadow] duration-200',
           'data-selected:bg-primary data-selected:text-primary-contrast',
           'hover:bg-accent data-focused:bg-accent',
         )}
