@@ -86,7 +86,9 @@ if (introduced.length === 0) {
 const lines = readFileSync(WORKSPACE, 'utf8').split('\n');
 const keyIdx = lines.findIndex((l) => /^minimumReleaseAgeExclude\s*:/.test(l));
 if (keyIdx === -1) {
-  console.error('minimumReleaseAgeExclude key not found in pnpm-workspace.yaml.');
+  console.error(
+    'minimumReleaseAgeExclude key not found in pnpm-workspace.yaml.',
+  );
   process.exit(1);
 }
 
@@ -102,7 +104,10 @@ if (inline) {
   let i = keyIdx + 1;
   while (i < lines.length && /^\s+-\s+/.test(lines[i])) {
     existing.push(
-      lines[i].replace(/^\s+-\s+/, '').trim().replace(/^['"]|['"]$/g, ''),
+      lines[i]
+        .replace(/^\s+-\s+/, '')
+        .trim()
+        .replace(/^['"]|['"]$/g, ''),
     );
     i++;
   }
