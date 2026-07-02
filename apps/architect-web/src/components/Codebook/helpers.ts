@@ -95,7 +95,14 @@ export const getUsageAsStageMeta = (
 
   for (const key of usageArray) {
     const segments = key.split('.');
-    if (segments[0] === 'stages') {
+    // The node/edge type indexes (collectPaths) key with bracket notation
+    // (`stages[2].edges[0].subject.type`), while the variable index
+    // (collectEntityAttributeReferences) keys with dotted-array notation
+    // (`stages.2.form.fields.0.variable`) — accept both.
+    const bracketStage = /^stages\[(\d+)\]$/.exec(segments[0] ?? '');
+    if (bracketStage) {
+      stageIndexSet.add(Number(bracketStage[1]));
+    } else if (segments[0] === 'stages') {
       const stageIndex = Number(segments[1]);
       if (!Number.isNaN(stageIndex)) {
         stageIndexSet.add(stageIndex);

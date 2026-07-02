@@ -43,6 +43,7 @@ const paths: {
     ['stages[].subject', mapSubject('edge')],
     ['stages[].edgeType', mapSubject('edge')], // Legacy FamilyTreeCensus edge type
     'stages[].edgeConfig.type', // FamilyPedigree edge type
+    ['stages[].edges[].subject', mapSubject('edge')], // NetworkComposer drawable edge types
   ],
   nodes: [
     ['stages[].subject', mapSubject('node')],
