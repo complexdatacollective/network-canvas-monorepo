@@ -346,7 +346,7 @@ export default function StagesMenu({
           <span
             role="img"
             aria-label="Skipped"
-            className="bg-surface/85 text-text elevation-low absolute top-1 right-1 flex size-6 items-center justify-center rounded-full backdrop-blur-sm"
+            className="bg-cerulean-blue elevation-low absolute top-1 right-1 flex size-6 items-center justify-center rounded-full text-white"
           >
             <EyeOff className="size-3.5" aria-hidden />
           </span>
