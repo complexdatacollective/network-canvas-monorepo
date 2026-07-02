@@ -139,8 +139,8 @@ function BiometricStepUp({
       </div>
       <BiometricUnlockForm
         submitLabel="Verify identity"
-        onSubmit={async (signal) => {
-          const result = await authApi.verifyBiometric(signal);
+        onSubmit={async () => {
+          const result = await authApi.verifyBiometric();
           if (result.ok) {
             onResolve({ ok: true });
           }
@@ -161,7 +161,7 @@ export default function StepUpAuthDialog({
     onResolve({ ok: false, reason: 'cancelled' });
   };
 
-  if (mode === 'biometric-keystore' || mode === 'biometric-native') {
+  if (mode === 'biometric') {
     return (
       <BiometricStepUp
         open={open}
