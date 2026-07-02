@@ -41,7 +41,6 @@ import {
 import type { ProtocolWithCounts, StoredSettings } from '~/lib/db/types';
 import { APP_VERSION } from '~/lib/platform/appVersion';
 import { getInstallationId } from '~/lib/platform/installationId';
-import { isElectron } from '~/lib/platform/platform';
 import {
   estimateStorage,
   formatBytes,
@@ -241,7 +240,7 @@ export function SettingsDialog({
   const storageLabel = storageHasValues
     ? `${formatBytes(storage.usage)} of ${formatBytes(storage.quota)}${
         storage.percent !== null ? ` (${storage.percent.toFixed(1)}%)` : ''
-      }${isElectron && storage.free !== null ? ` · ${formatBytes(storage.free)} free` : ''}`
+      }`
     : 'Unknown';
 
   const protocolOptions = protocols.map((p) => ({

@@ -9,7 +9,6 @@ import * as authApi from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
 import type { IdleTimeoutMinutes } from '~/lib/auth/AuthContext';
 import { updateSettings } from '~/lib/db/api';
-import { isElectron } from '~/lib/platform/platform';
 
 import { ExternalLink } from './ExternalLink';
 import AuthorisationGlyph from './SetupWizard/AuthorisationGlyph';
@@ -130,16 +129,14 @@ export function useSetupWizard() {
                     your device or its files, they won't be able to read your
                     data.
                   </Paragraph>
-                  {!isElectron && (
-                    <Alert variant="info">
-                      <AlertTitle>Good news!</AlertTitle>
-                      <AlertDescription>
-                        On this platform, your data is sandboxed by the
-                        operating system automatically, and is not accessible to
-                        other apps or users. Data does not need to be encrypted.
-                      </AlertDescription>
-                    </Alert>
-                  )}
+                  <Alert variant="info">
+                    <AlertTitle>Good news!</AlertTitle>
+                    <AlertDescription>
+                      On this platform, your data is sandboxed by the operating
+                      system automatically, and is not accessible to other apps
+                      or users. Data does not need to be encrypted.
+                    </AlertDescription>
+                  </Alert>
                 </Surface>
                 <Surface level={1} spacing="sm" shadow="sm">
                   <div className="mb-2 flex items-center gap-3">
