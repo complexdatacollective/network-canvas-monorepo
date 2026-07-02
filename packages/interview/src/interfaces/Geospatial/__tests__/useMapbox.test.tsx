@@ -22,8 +22,8 @@ const { mapInstance, MapConstructor } = vi.hoisted(() => {
   };
 });
 
-vi.mock('mapbox-gl', () => ({
-  default: { Map: MapConstructor, accessToken: '' },
+vi.mock('mapbox-gl/esm', () => ({
+  Map: MapConstructor,
 }));
 
 vi.mock('~/contract/context', () => ({

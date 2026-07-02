@@ -35,7 +35,7 @@ vi.mock('es-toolkit', () => ({
 }));
 
 // The hook under test (imported after mocks are declared)
-import type { Map as MapboxMap } from 'mapbox-gl';
+import type { Map as MapboxMap } from 'mapbox-gl/esm';
 
 import { type Suggestion, useGeospatialSearch } from '../useGeospatialSearch';
 

@@ -1,4 +1,4 @@
-import type { MapMouseEvent } from 'mapbox-gl';
+import type { MapMouseEvent } from 'mapbox-gl/esm';
 
 import type { MapOptions } from '@codaco/protocol-validation';
 
@@ -7,7 +7,7 @@ export type ExtendedMapOptions = MapOptions & {
   allowSearch?: boolean;
 };
 
-import mapboxgl from 'mapbox-gl';
+import * as mapboxgl from 'mapbox-gl/esm';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
@@ -182,14 +182,13 @@ export const useMapbox = ({
     setIsTransitLoaded(false);
     setMapError(null);
 
-    mapboxgl.accessToken = accessToken;
-
     try {
       mapRef.current = new mapboxgl.Map({
         container: mapContainerRef.current,
         center,
         zoom: initialZoom,
         style,
+        accessToken,
       });
     } catch (err) {
       // mapbox-gl's Map constructor throws synchronously when the environment

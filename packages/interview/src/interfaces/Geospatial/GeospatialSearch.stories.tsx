@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import type mapboxgl from 'mapbox-gl';
+import type * as mapboxgl from 'mapbox-gl/esm';
 import { fn } from 'storybook/test';
 
 import GeospatialSearch from './GeospatialSearch';
