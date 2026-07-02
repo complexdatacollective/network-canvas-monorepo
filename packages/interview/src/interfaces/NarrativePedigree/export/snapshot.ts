@@ -9,6 +9,12 @@ export async function exportSnapshot(
     backgroundColor: '#ffffff',
     // Render at 2× for a crisp image regardless of the display's pixel ratio.
     pixelRatio: 2,
+    // The document is mounted off-screen (position: fixed; left: -100000px) so
+    // it never flashes on screen. html-to-image clones the element's computed
+    // style, so without this the clone keeps that positioning and renders the
+    // whole subtree outside the captured area — producing a blank PNG. Reset the
+    // clone (only) to in-flow so it renders at the origin of the capture.
+    style: { position: 'static', left: '0px', top: '0px' },
   });
 
   const anchor = document.createElement('a');
