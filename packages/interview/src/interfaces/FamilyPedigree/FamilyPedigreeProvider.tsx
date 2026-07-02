@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
 import { useCurrentStep } from '~/contexts/CurrentStepContext';
 import { useStageSelector } from '~/hooks/useStageSelector';
+import { getStageMetadata } from '~/selectors/session';
 import { useAppDispatch } from '~/store/store';
 
 import { FamilyPedigreeContext } from './FamilyPedigreeContext';
@@ -26,6 +27,7 @@ import {
   getNodeTypeKey,
   getRelationshipVariable,
 } from './utils/nodeUtils';
+import { pedigreeMemberIds } from './utils/pedigreeMembership';
 import { getFramingConfig } from './utils/stageConfig';
 
 export const FamilyPedigreeProvider = ({
@@ -75,8 +77,14 @@ export const FamilyPedigreeProvider = ({
   // The interview network is a single shared graph. Seed only the pedigree's
   // own node/edge types so the store works against the same entities it owns,
   // and remember which were already in Redux so finalize doesn't duplicate
-  // them.
-  const seededNodes = nodes.filter((node) => node.type === nodeType);
+  // them. Once the pedigree has committed its private membership, also drop
+  // same-typed alters nominated in later stages, which are not part of it.
+  const memberIds = pedigreeMemberIds(useStageSelector(getStageMetadata));
+  const seededNodes = nodes.filter(
+    (node) =>
+      node.type === nodeType &&
+      (memberIds === null || memberIds.has(node._uid)),
+  );
   const seededEdges = edges.filter((edge) => edge.type === edgeType);
 
   const initialNodes = new Map<string, NcNode>(

@@ -24,7 +24,9 @@ import PedigreeLayout from '~/interfaces/FamilyPedigree/pedigree-layout/componen
 import { computeNodeDisplayLabels } from '~/interfaces/FamilyPedigree/pedigree-layout/components/PedigreeNode';
 import { dimColor } from '~/interfaces/FamilyPedigree/pedigree-layout/dimColor';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
+import { pedigreeMemberIds } from '~/interfaces/FamilyPedigree/utils/pedigreeMembership';
 import {
+  getActiveSession,
   getNetworkEdges,
   getNetworkNodes,
   resolveNodeShape,
@@ -102,6 +104,18 @@ function makeSourceConfigSelector(sourceStageId: string) {
   });
 }
 
+// The set of node ids the source FamilyPedigree committed to its private
+// network, or null when it has no committed membership (a synthetic/seeded
+// network, or a pedigree not yet built). Stage metadata is keyed by stage index,
+// so resolve the source stage's position first.
+function makeSourceMembersSelector(sourceStageId: string) {
+  return createSelector(getStages, getActiveSession, (stages, session) => {
+    const index = stages.findIndex((s) => s.id === sourceStageId);
+    if (index < 0) return null;
+    return pedigreeMemberIds(session?.stageMetadata?.[index]);
+  });
+}
+
 type RenderableNode = NcNode & { id: string };
 
 type NarrativePedigreeViewProps = {
@@ -118,6 +132,12 @@ export default function NarrativePedigreeView({
     [stage.sourceStageId],
   );
   const sourceConfig = useStageSelector(sourceConfigSelector);
+
+  const sourceMembersSelector = useMemo(
+    () => makeSourceMembersSelector(stage.sourceStageId),
+    [stage.sourceStageId],
+  );
+  const sourceMemberIds = useStageSelector(sourceMembersSelector);
 
   const allNodes = useStageSelector(getNetworkNodes);
   const allEdges = useStageSelector(getNetworkEdges);
@@ -136,15 +156,19 @@ export default function NarrativePedigreeView({
     component: <Node size="sm" />,
   });
 
-  // Restrict the shared interview network to the source stage's own node/edge
-  // types. The interview network is one shared graph, so foreign-typed entities
-  // must never enter the pedigree layout or the genetics engine.
+  // Restrict the shared interview network to the source stage's own node type
+  // and — when the pedigree recorded its private membership — to the alters
+  // actually placed on it, so non-kin nominated in later stages (which can share
+  // the pedigree node type) never enter the layout or the genetics engine. The
+  // interview network is one shared graph, so this scoping is essential.
   const pedigreeNodes = useMemo<NcNode[]>(() => {
     if (!sourceConfig) return [];
     return allNodes.filter(
-      (node) => node.type === sourceConfig.config.nodeType,
+      (node) =>
+        node.type === sourceConfig.config.nodeType &&
+        (sourceMemberIds === null || sourceMemberIds.has(node._uid)),
     );
-  }, [allNodes, sourceConfig]);
+  }, [allNodes, sourceConfig, sourceMemberIds]);
 
   const pedigreeEdges = useMemo<NcEdge[]>(() => {
     if (!sourceConfig) return [];

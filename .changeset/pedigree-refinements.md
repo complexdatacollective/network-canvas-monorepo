@@ -11,4 +11,6 @@ Narrative Pedigree also gains a researcher option, **"Show possible (at-risk) st
 
 **Family Pedigree** intro is simplified: the language selector now uses the standard rich option group with plain-language wording ("Mother & father" listed first), and the separate "biological parents" explainer step is folded into the editable Information step (pre-filled in Architect, so researchers can reword it, remove it, or add a video). The in-wizard intro screen renders its explanation as markdown, with any headings kept beneath the dialog's own heading level. When the framing is a participant choice made partway through the quick-start wizard, the choice is now reflected in the following step titles (e.g. "Mother"/"Father"), not just their body text.
 
+Both pedigree interfaces now render only the alters placed on the pedigree. The interview network is one shared graph, so an alter nominated in a later stage can share the pedigree's node type; the views scope themselves to the pedigree's committed private membership (its stage metadata) and fall back to node type only when no membership has been recorded.
+
 The Narrative Pedigree genetics changes (inheritance-aware focal highlighting) require research-team sign-off before merge.

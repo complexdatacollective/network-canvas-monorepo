@@ -35,7 +35,7 @@ type NavigationInfo = {
   canMoveBackward: boolean;
 };
 
-const getActiveSession = (state: RootState) => {
+export const getActiveSession = (state: RootState) => {
   return state.session;
 };
 

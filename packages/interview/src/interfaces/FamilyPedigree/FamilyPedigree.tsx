@@ -42,6 +42,7 @@ import {
   getNodeTypeKey,
   getRelationshipVariable,
 } from './utils/nodeUtils';
+import { pedigreeMemberIds } from './utils/pedigreeMembership';
 import { getBoundaries } from './utils/stageConfig';
 import { validatePedigreeCompleteness } from './utils/validatePedigree';
 
@@ -49,11 +50,21 @@ import { validatePedigreeCompleteness } from './utils/validatePedigree';
 // return entities of every type. Restrict the nomination-phase override maps to
 // the pedigree's own node/edge types, mirroring the provider seed
 // (FamilyPedigreeProvider.tsx), so foreign-typed entities are never laid out as
-// orphan pedigree members or coerced into pedigree relationships.
-export const buildOverrideNodesMap = (nodes: NcNode[], nodeType: string) =>
+// orphan pedigree members or coerced into pedigree relationships. When the
+// pedigree recorded its private membership (memberIds), also drop same-typed
+// alters nominated in later stages, which are not part of this pedigree.
+export const buildOverrideNodesMap = (
+  nodes: NcNode[],
+  nodeType: string,
+  memberIds: Set<string> | null = null,
+) =>
   new Map<string, NcNode>(
     nodes
-      .filter((node) => node.type === nodeType)
+      .filter(
+        (node) =>
+          node.type === nodeType &&
+          (memberIds === null || memberIds.has(node._uid)),
+      )
       .map((node) => [node._uid, node]),
   );
 
@@ -106,12 +117,17 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   const allNodes = useStageSelector(getNetworkNodes);
   const allEdges = useStageSelector(getNetworkEdges);
 
-  const stageMetadata = useStageSelector(getStageMetadata) as
-    | { isNetworkCommitted?: boolean; noChildrenAffirmed?: boolean }
-    | undefined;
+  const stageMetadata = useStageSelector(getStageMetadata);
   const boundaries = useStageSelector(getBoundaries);
 
-  const isNetworkCommitted = stageMetadata?.isNetworkCommitted === true;
+  const isNetworkCommitted =
+    !Array.isArray(stageMetadata) && stageMetadata?.isNetworkCommitted === true;
+  // The alters this pedigree committed to its private network, or null while it
+  // is still being built. Used to drop same-typed alters added by later stages.
+  const memberIds = useMemo(
+    () => pedigreeMemberIds(stageMetadata),
+    [stageMetadata],
+  );
 
   const variableConfig: VariableConfig = {
     nodeType,
@@ -127,8 +143,8 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   };
 
   const reduxNodesMap = useMemo(
-    () => buildOverrideNodesMap(allNodes, nodeType),
-    [allNodes, nodeType],
+    () => buildOverrideNodesMap(allNodes, nodeType, memberIds),
+    [allNodes, nodeType, memberIds],
   );
   const reduxEdgesMap = useMemo(
     () => buildOverrideEdgesMap(allEdges, edgeType),
@@ -257,7 +273,8 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
       edgesMap,
       variableConfig,
       boundaries,
-      stageMetadata?.noChildrenAffirmed === true,
+      !Array.isArray(stageMetadata) &&
+        stageMetadata?.noChildrenAffirmed === true,
     );
 
     if (issues.length > 0) {
