@@ -174,7 +174,7 @@
           "id": "alpha",
           "label": "alpha",
           "type": "Sociogram",
-          "subject": { "entity": "edge", "type": "1234-5" },
+          "subject": { "entity": "node", "type": "bar" },
           "prompts": [
             {
               "id": "bravo",

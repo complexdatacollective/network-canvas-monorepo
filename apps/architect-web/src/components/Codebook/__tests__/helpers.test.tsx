@@ -105,11 +105,10 @@ it('getUsageAsStageMeta() produces stage links for stage-scoped paths', () => {
   ).toEqual(expectedResult);
 });
 
-it('getUsageAsStageMeta() also parses the bracket paths produced by the type indexes', () => {
-  // Node/edge type usage comes from collectPaths, which keys with bracket
-  // notation (e.g. a NetworkComposer drawable edge type) rather than the
-  // dotted-array notation of the variable index.
-  const usage = ['stages[1].edges[0].subject.type', 'stages[2].subject.type'];
+it('getUsageAsStageMeta() parses type-index paths (e.g. a composer edge type)', () => {
+  // Node/edge type usage comes from collectEntityTypeReferences, which keys
+  // with the same dotted-array notation as the variable index.
+  const usage = ['stages.1.edges.0.subject.type', 'stages.2.subject.type'];
 
   const mockStageMetaByIndex = [
     { label: 'foo', id: 'abcd' },

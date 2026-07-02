@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { entityAttributeReference } from '../entity-attribute-reference';
+import { entityTypeReference } from '../entity-type-reference';
 import { SortOrderSchema } from '../filters';
 
 export const promptSchema = z.strictObject({
@@ -32,8 +33,8 @@ export const sociogramPromptSchema = promptSchema.extend({
   }),
   edges: z
     .strictObject({
-      display: z.array(z.string()).optional(),
-      create: z.string().optional(),
+      display: z.array(entityTypeReference({ entity: 'edge' })).optional(),
+      create: entityTypeReference({ entity: 'edge' }).optional(),
     })
     .optional(),
   highlight: z
@@ -47,11 +48,11 @@ export const sociogramPromptSchema = promptSchema.extend({
 });
 
 export const dyadCensusPromptSchema = promptSchema.extend({
-  createEdge: z.string(),
+  createEdge: entityTypeReference({ entity: 'edge' }),
 });
 
 export const tieStrengthCensusPromptSchema = promptSchema.extend({
-  createEdge: z.string(),
+  createEdge: entityTypeReference({ entity: 'edge' }),
   edgeVariable: entityAttributeReference({
     subject: { sibling: 'createEdge', entity: 'edge' },
     requireType: ['ordinal'],
@@ -98,7 +99,7 @@ export const categoricalBinPromptSchema = promptSchema
   });
 
 export const oneToManyDyadCensusPromptSchema = promptSchema.extend({
-  createEdge: z.string(),
+  createEdge: entityTypeReference({ entity: 'edge' }),
   bucketSortOrder: SortOrderSchema.optional(),
   binSortOrder: SortOrderSchema.optional(),
 });

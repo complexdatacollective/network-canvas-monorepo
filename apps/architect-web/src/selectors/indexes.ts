@@ -1,23 +1,16 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { isArray, values } from 'es-toolkit/compat';
 
-import { collectEntityAttributeReferences } from '@codaco/protocol-validation';
+import {
+  collectEntityAttributeReferences,
+  collectEntityTypeReferences,
+} from '@codaco/protocol-validation';
 
 import collectPath, {
   type CollectPathsEntry,
   collectPaths,
 } from '../utils/collectPaths';
 import { getProtocol } from './protocol';
-
-const mapSubject =
-  (entityType: string) =>
-  (value: unknown, path: string): [unknown, string] | undefined => {
-    const { type, entity } = value as { type: string; entity: string };
-    if (entity !== entityType) {
-      return undefined;
-    }
-    return [type, `${path}.type`];
-  };
 
 const mapAssetItems = (
   value: unknown,
@@ -30,25 +23,13 @@ const mapAssetItems = (
   return [content, `${path}.content`];
 };
 
+// Node/edge TYPE usage and variable usage are both derived from the schema
+// (collectEntityTypeReferences / collectEntityAttributeReferences), so new
+// stage types are covered automatically. Only assets still need hand-kept
+// paths — the schema does not tag asset references.
 const paths: {
-  edges: CollectPathsEntry[];
-  nodes: CollectPathsEntry[];
   assets: CollectPathsEntry[];
 } = {
-  edges: [
-    'stages[].prompts[].edges.create',
-    'stages[].prompts[].edges.display[]',
-    'stages[].presets[].edges.display[]',
-    'stages[].prompts[].createEdge',
-    ['stages[].subject', mapSubject('edge')],
-    ['stages[].edgeType', mapSubject('edge')], // Legacy FamilyTreeCensus edge type
-    'stages[].edgeConfig.type', // FamilyPedigree edge type
-    ['stages[].edges[].subject', mapSubject('edge')], // NetworkComposer drawable edge types
-  ],
-  nodes: [
-    ['stages[].subject', mapSubject('node')],
-    'stages[].nodeConfig.type', // FamilyPedigree node type
-  ],
   assets: [
     'stages[].panels[].dataSource',
     'stages[].dataSource',
@@ -59,20 +40,34 @@ const paths: {
   ],
 };
 
+const collectTypeIndex = (
+  protocol: unknown,
+  entity: 'node' | 'edge',
+): Record<string, string> => {
+  if (!protocol) return {};
+  const index: Record<string, string> = {};
+  for (const hit of collectEntityTypeReferences(protocol)) {
+    if (hit.entity === entity) index[hit.path.join('.')] = hit.typeId;
+  }
+  return index;
+};
+
 /**
- * Returns index of used edges (entities)
- * @returns {object} in format: { [path]: variable }
+ * Returns index of used edge types.
+ * Keys use the dotted-array format produced by collectEntityTypeReferences,
+ * e.g. `stages.0.edges.0.subject.type`. Values are the edge type id strings.
+ * @returns {object} in format: { [dotted-path]: typeId }
  */
 const getEdgeIndex = createSelector(getProtocol, (protocol) =>
-  collectPaths(paths.edges, protocol),
+  collectTypeIndex(protocol, 'edge'),
 );
 
 /**
- * Returns index of used nodes (entities)
- * @returns {object} in format: { [path]: variable }
+ * Returns index of used node types.
+ * @returns {object} in format: { [dotted-path]: typeId }
  */
 const getNodeIndex = createSelector(getProtocol, (protocol) =>
-  collectPaths(paths.nodes, protocol),
+  collectTypeIndex(protocol, 'node'),
 );
 
 /**
