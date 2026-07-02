@@ -1,10 +1,16 @@
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import { db } from './db';
+import {
+  decryptAsset,
+  decryptProtocol,
+  encryptAsset,
+  encryptProtocol,
+} from './recordCrypto';
 import type { ProtocolWithCounts, StoredAsset, StoredProtocol } from './types';
 
 export async function listProtocols(): Promise<ProtocolWithCounts[]> {
-  const protocols = await db.protocols
+  const rows = await db.protocols
     .orderBy('importedAt')
     // Dexie Collection.reverse() returns a descending Collection, not an Array.
     // oxlint-disable-next-line unicorn/no-array-reverse
@@ -15,7 +21,8 @@ export async function listProtocols(): Promise<ProtocolWithCounts[]> {
   for (const s of sessions) {
     counts.set(s.protocolHash, (counts.get(s.protocolHash) ?? 0) + 1);
   }
-  return protocols.map((p) => ({
+  const decrypted = await Promise.all(rows.map((row) => decryptProtocol(row)));
+  return decrypted.map((p) => ({
     ...p,
     sessionCount: counts.get(p.hash) ?? 0,
   }));
@@ -24,7 +31,8 @@ export async function listProtocols(): Promise<ProtocolWithCounts[]> {
 export async function getProtocolByHash(
   hash: string,
 ): Promise<StoredProtocol | undefined> {
-  return db.protocols.where('hash').equals(hash).first();
+  const row = await db.protocols.where('hash').equals(hash).first();
+  return row ? decryptProtocol(row) : undefined;
 }
 
 export async function getProtocolsByHashes(
@@ -32,8 +40,8 @@ export async function getProtocolsByHashes(
 ): Promise<StoredProtocol[]> {
   const out: StoredProtocol[] = [];
   for (const hash of new Set(hashes)) {
-    const stored = await db.protocols.where('hash').equals(hash).first();
-    if (stored) out.push(stored);
+    const row = await db.protocols.where('hash').equals(hash).first();
+    if (row) out.push(await decryptProtocol(row));
   }
   return out;
 }
@@ -57,23 +65,31 @@ export async function saveProtocol(
     protocol,
   };
 
+  const assetRecords: StoredAsset[] = assets.map((asset) => {
+    const manifestEntry = protocol.assetManifest?.[asset.id];
+    const type = manifestEntry?.type ?? 'image';
+    return {
+      id: `${hash}::${asset.id}`,
+      protocolHash: hash,
+      assetId: asset.id,
+      name: asset.name,
+      type,
+      data: asset.data,
+    };
+  });
+
+  // Encrypt BEFORE opening the transaction (transaction-liveness rule): the
+  // crypto.subtle awaits would let Dexie auto-commit an open tx mid-await.
+  const protocolRow = await encryptProtocol(stored);
+  const assetRows = await Promise.all(
+    assetRecords.map((record) => encryptAsset(record)),
+  );
+
   await db.transaction('rw', db.protocols, db.assets, async () => {
-    await db.protocols.put(stored);
+    await db.protocols.put(protocolRow);
     await db.assets.where('protocolHash').equals(hash).delete();
-    const assetRecords: StoredAsset[] = assets.map((asset) => {
-      const manifestEntry = protocol.assetManifest?.[asset.id];
-      const type = (manifestEntry?.type ?? 'image') as StoredAsset['type'];
-      return {
-        id: `${hash}::${asset.id}`,
-        protocolHash: hash,
-        assetId: asset.id,
-        name: asset.name,
-        type,
-        data: asset.data,
-      };
-    });
-    if (assetRecords.length > 0) {
-      await db.assets.bulkPut(assetRecords);
+    if (assetRows.length > 0) {
+      await db.assets.bulkPut(assetRows);
     }
   });
 
@@ -89,12 +105,14 @@ export async function deleteProtocol(hash: string): Promise<void> {
 }
 
 export async function getProtocolAssets(hash: string): Promise<StoredAsset[]> {
-  return db.assets.where('protocolHash').equals(hash).toArray();
+  const rows = await db.assets.where('protocolHash').equals(hash).toArray();
+  return Promise.all(rows.map((row) => decryptAsset(row)));
 }
 
 export async function getProtocolAsset(
   hash: string,
   assetId: string,
 ): Promise<StoredAsset | undefined> {
-  return db.assets.get(`${hash}::${assetId}`);
+  const row = await db.assets.get(`${hash}::${assetId}`);
+  return row ? decryptAsset(row) : undefined;
 }
