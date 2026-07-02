@@ -1,4 +1,5 @@
 import Button from '@codaco/fresco-ui/Button';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
@@ -8,6 +9,8 @@ import { createInitialNetwork } from '@codaco/interview';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
 import { createSession, getSettings } from '~/lib/db/api';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
+import { useOnline } from '~/lib/net/OnlineStatusProvider';
+import { protocolRequiresInternet } from '~/lib/protocol/protocolRequiresInternet';
 
 type NewSessionFormProps = {
   protocol: ProtocolWithCounts;
@@ -21,6 +24,8 @@ export function NewSessionForm({
   onCancel,
 }: NewSessionFormProps) {
   const { requireFreshUnlock, setAuthorizedInterviewId } = useStepUpAuth();
+  const isOnline = useOnline();
+  const { openDialog } = useDialog();
 
   return (
     <Form
@@ -32,6 +37,23 @@ export function NewSessionForm({
             success: false,
             fieldErrors: { caseId: ['Case ID is required'] },
           };
+        }
+        // This protocol renders an online map but the device is offline. Warn
+        // the researcher; the map won't load, but they may still want to start
+        // (the rest of the interview works, and connectivity may return).
+        if (!isOnline && protocolRequiresInternet(protocol)) {
+          const proceed = await openDialog({
+            type: 'choice',
+            intent: 'warning',
+            title: 'You appear to be offline',
+            description:
+              'This protocol includes a map stage that needs an internet connection. The map will not load until you reconnect. You can still start the interview and complete the other stages.',
+            actions: {
+              primary: { label: 'Start anyway', value: true },
+              cancel: { label: 'Cancel', value: null },
+            },
+          });
+          if (proceed !== true) return { success: false };
         }
         // Run the enter gate before creating the session so a declined or
         // failed unlock doesn't leave an orphan session behind.
