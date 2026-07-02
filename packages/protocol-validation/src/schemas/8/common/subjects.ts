@@ -1,13 +1,15 @@
 import { z } from 'zod';
 
+import { entityTypeReference } from '../entity-type-reference';
+
 export const NodeStageSubjectSchema = z.strictObject({
   entity: z.literal('node'),
-  type: z.string(),
+  type: entityTypeReference({ entity: 'node' }),
 });
 
 export const EdgeStageSubjectSchema = z.strictObject({
   entity: z.literal('edge'),
-  type: z.string(),
+  type: entityTypeReference({ entity: 'edge' }),
 });
 
 export const EgoStageSubjectSchema = z.strictObject({

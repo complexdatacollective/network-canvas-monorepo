@@ -37,10 +37,12 @@ import {
   TieStrengthCensusPrompts,
   Title,
 } from '~/components/sections';
+import EdgeConfiguration from '~/components/sections/EdgeConfiguration/EdgeConfiguration';
 import CensusPrompt from '~/components/sections/FamilyPedigree/CensusPrompt';
-import EdgeConfiguration from '~/components/sections/FamilyPedigree/EdgeConfiguration';
-import NodeConfiguration from '~/components/sections/FamilyPedigree/NodeConfiguration';
+import FamilyPedigreeEdgeConfiguration from '~/components/sections/FamilyPedigree/EdgeConfiguration';
+import FamilyPedigreeNodeConfiguration from '~/components/sections/FamilyPedigree/NodeConfiguration';
 import NominationPrompts from '~/components/sections/FamilyPedigree/NominationPrompts';
+import NodeConfiguration from '~/components/sections/NodeConfiguration/NodeConfiguration';
 import { FilteredNodeType } from '~/components/sections/NodeType';
 
 /**
@@ -244,6 +246,23 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
     documentation:
       'https://documentation.networkcanvas.com/interface-documentation/sociogram/',
   },
+  NetworkComposer: {
+    sections: [
+      NodeType,
+      NodeConfiguration,
+      EdgeConfiguration,
+      Background,
+      SkipLogic,
+      InterviewScript,
+    ],
+    documentation:
+      'https://documentation.networkcanvas.com/interface-documentation/network-composer/',
+    template: {
+      behaviours: {
+        automaticLayout: true,
+      },
+    },
+  },
   TieStrengthCensus: {
     sections: [
       FilteredNodeType,
@@ -278,8 +297,8 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
   },
   FamilyPedigree: {
     sections: [
-      NodeConfiguration,
-      EdgeConfiguration,
+      FamilyPedigreeNodeConfiguration,
+      FamilyPedigreeEdgeConfiguration,
       CensusPrompt,
       NominationPrompts,
       SkipLogic,

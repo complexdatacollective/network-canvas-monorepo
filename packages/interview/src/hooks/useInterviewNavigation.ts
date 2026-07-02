@@ -20,10 +20,11 @@ import {
 } from '../selectors/session';
 import {
   getNavigableStages,
+  getSkipMap,
   resolveRecoveryStep,
 } from '../selectors/skip-logic';
 import { calculateProgress, getInterviewProgress } from '../selectors/utils';
-import { getProtocol } from '../store/modules/protocol';
+import { getProtocolStages } from '../store/modules/protocol';
 import { transitionStage, updatePrompt } from '../store/modules/session';
 import type {
   BeforeNextFunction,
@@ -81,7 +82,7 @@ export default function useInterviewNavigation() {
   // The raw protocol stages (without the appended FinishSession stage). Passed
   // to getInterviewProgress to compute the participant-facing progress meta
   // handed back to the host via onStepChange.
-  const protocolStages = useSelector(getProtocol).stages ?? [];
+  const protocolStages = useSelector(getProtocolStages);
 
   // Refs to avoid stale closures in navigation callbacks
   const nextValidStageIndexRef = useRef(nextValidStageIndex);
@@ -94,6 +95,14 @@ export default function useInterviewNavigation() {
   useEffect(() => {
     previousValidStageIndexRef.current = previousValidStageIndex;
   }, [previousValidStageIndex]);
+
+  const skipMap = useSelector(getSkipMap);
+  const skipMapRef = useRef(skipMap);
+  useEffect(() => {
+    skipMapRef.current = skipMap;
+  }, [skipMap]);
+
+  const [forcedStep, setForcedStep] = useState<number | null>(null);
 
   const [progress, setProgress] = useState(
     calculateProgress(currentStep, stageCount, promptIndex, promptCount),
@@ -184,6 +193,7 @@ export default function useInterviewNavigation() {
       );
       setProgress(meta.progress);
       registerBeforeNext(null);
+      setForcedStep(null);
 
       setStep(nextValidStageIndexRef.current, meta);
     } finally {
@@ -219,6 +229,7 @@ export default function useInterviewNavigation() {
       );
       setProgress(meta.progress);
       registerBeforeNext(null);
+      setForcedStep(null);
       setStep(previousValidStageIndexRef.current, meta);
     } finally {
       setForceNavigationDisabled(false);
@@ -231,6 +242,47 @@ export default function useInterviewNavigation() {
     registerBeforeNext,
     protocolStages,
   ]);
+
+  const goToStage = useCallback(
+    async (
+      targetIndex: number,
+      confirmSkip?: () => Promise<boolean>,
+    ): Promise<void> => {
+      if (targetIndex === currentStep || currentStep !== displayedStep) {
+        return;
+      }
+
+      setForceNavigationDisabled(true);
+
+      try {
+        const direction: Direction =
+          targetIndex > currentStep ? 'forwards' : 'backwards';
+
+        const stageAllowsNavigation = await canNavigate(direction);
+        if (!stageAllowsNavigation) {
+          return;
+        }
+
+        if (skipMapRef.current[targetIndex] === true) {
+          const confirmed = (await confirmSkip?.()) ?? false;
+          if (!confirmed) {
+            return;
+          }
+          setForcedStep(targetIndex);
+        } else {
+          setForcedStep(null);
+        }
+
+        const meta = getInterviewProgress(protocolStages, targetIndex);
+        setProgress(meta.progress);
+        registerBeforeNext(null);
+        setStep(targetIndex, meta);
+      } finally {
+        setForceNavigationDisabled(false);
+      }
+    },
+    [currentStep, displayedStep, protocolStages, registerBeforeNext, setStep],
+  );
 
   const getNavigationHelpers = useCallback(
     () => ({
@@ -259,7 +311,7 @@ export default function useInterviewNavigation() {
   // stage is skipped on entry) advance to the next valid stage so a skipped
   // stage is never rendered.
   useEffect(() => {
-    if (!isCurrentStepValid) {
+    if (!isCurrentStepValid && currentStep !== forcedStep) {
       const recoveryStep = resolveRecoveryStep({
         currentStep,
         previousValidStageIndex,
@@ -271,6 +323,7 @@ export default function useInterviewNavigation() {
     setStep,
     isCurrentStepValid,
     currentStep,
+    forcedStep,
     previousValidStageIndex,
     nextValidStageIndex,
     protocolStages,
@@ -293,6 +346,7 @@ export default function useInterviewNavigation() {
     // Navigation controls
     moveForward,
     moveBackward,
+    goToStage,
     disableMoveForward: forceNavigationDisabled || !canMoveForward,
     disableMoveBackward:
       forceNavigationDisabled ||

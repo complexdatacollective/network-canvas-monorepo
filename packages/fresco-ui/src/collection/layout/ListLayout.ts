@@ -1,6 +1,9 @@
 import type { Key } from 'react-aria-components';
 
-import { ListKeyboardDelegate } from '../keyboard/ListKeyboardDelegate';
+import {
+  ListKeyboardDelegate,
+  RowKeyboardDelegate,
+} from '../keyboard/ListKeyboardDelegate';
 import type { KeyboardDelegate } from '../keyboard/types';
 import type { Collection } from '../types';
 import { Layout } from './Layout';
@@ -20,10 +23,18 @@ type ListLayoutOptions = {
    * Default: 0.
    */
   gap?: number;
+  /**
+   * Direction items flow in. `'vertical'` (default) stacks them in a column
+   * and navigates with Up/Down; `'horizontal'` lays them out in a single row
+   * and navigates with Left/Right. Horizontal is intended for short,
+   * non-virtualized collections — the measurement pass stays height-based.
+   */
+  orientation?: 'vertical' | 'horizontal';
 };
 
 export class ListLayout<T = unknown> extends Layout<T> {
   private gap_: number;
+  private orientation_: 'vertical' | 'horizontal';
   private containerWidth = 0;
   private measuredHeights = new Map<Key, number>();
   private rows: RowInfo[] = [];
@@ -31,6 +42,7 @@ export class ListLayout<T = unknown> extends Layout<T> {
   constructor(options?: ListLayoutOptions) {
     super();
     this.gap_ = options?.gap ?? 0;
+    this.orientation_ = options?.orientation ?? 'vertical';
   }
 
   private getResolvedGap(): number {
@@ -40,7 +52,7 @@ export class ListLayout<T = unknown> extends Layout<T> {
   getContainerStyles(): React.CSSProperties {
     return {
       display: 'flex',
-      flexDirection: 'column',
+      flexDirection: this.orientation_ === 'horizontal' ? 'row' : 'column',
       gap: `calc(${this.gap_} * var(--spacing-base, 0.25rem))`,
     };
   }
@@ -149,6 +161,8 @@ export class ListLayout<T = unknown> extends Layout<T> {
     disabledKeys: Set<Key>,
     _containerWidth?: number,
   ): KeyboardDelegate {
-    return new ListKeyboardDelegate(collection, disabledKeys);
+    return this.orientation_ === 'horizontal'
+      ? new RowKeyboardDelegate(collection, disabledKeys)
+      : new ListKeyboardDelegate(collection, disabledKeys);
   }
 }

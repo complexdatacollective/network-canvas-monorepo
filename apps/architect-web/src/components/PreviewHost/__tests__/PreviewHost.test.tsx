@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { InterviewPayload } from '@codaco/interview';
 
+import type { PreviewPayload } from '../messages';
+
 const { shellMock } = vi.hoisted(() => ({ shellMock: vi.fn() }));
 vi.mock('@codaco/interview', async () => {
   const actual =
@@ -32,6 +34,24 @@ function makeProtocol() {
     stages: [{ id: 's1', type: 'Information', label: 'A' }],
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest: {},
+  };
+}
+
+type TestPreviewPayload = Omit<PreviewPayload, 'protocol'> & {
+  protocol: unknown;
+};
+
+function makePayload(
+  overrides: Partial<TestPreviewPayload> = {},
+): TestPreviewPayload {
+  return {
+    type: 'preview:payload',
+    protocol: makeProtocol(),
+    protocolId: 'protocol-1',
+    startStage: 0,
+    useSyntheticData: false,
+    skipLogicBypassed: false,
+    ...overrides,
   };
 }
 
@@ -82,13 +102,7 @@ describe('PreviewHost', () => {
 
   it('mounts Shell with the payload after receiving preview:payload', () => {
     render(<PreviewHost />);
-    const protocol = makeProtocol();
-    postPayload(openerStub, {
-      type: 'preview:payload',
-      protocol,
-      startStage: 0,
-      useSyntheticData: false,
-    });
+    postPayload(openerStub, makePayload());
 
     expect(screen.getByTestId('shell-mounted')).toBeInTheDocument();
     const call = shellMock.mock.calls.at(-1)?.[0] as {
@@ -103,15 +117,19 @@ describe('PreviewHost', () => {
     expect(typeof call.onStepChange).toBe('function');
   });
 
+  it('always enables stage navigation in Architect preview', () => {
+    render(<PreviewHost />);
+    postPayload(openerStub, makePayload());
+
+    const call = shellMock.mock.calls.at(-1)?.[0] as {
+      allowStageNavigation: boolean;
+    };
+    expect(call.allowStageNavigation).toBe(true);
+  });
+
   it('initialises currentStep from payload.startStage', () => {
     render(<PreviewHost />);
-    const protocol = makeProtocol();
-    postPayload(openerStub, {
-      type: 'preview:payload',
-      protocol,
-      startStage: 3,
-      useSyntheticData: false,
-    });
+    postPayload(openerStub, makePayload({ startStage: 3 }));
 
     const call = shellMock.mock.calls.at(-1)?.[0] as { currentStep: number };
     expect(call.currentStep).toBe(3);
@@ -119,13 +137,7 @@ describe('PreviewHost', () => {
 
   it('seeds a synthetic network when useSyntheticData is true', () => {
     render(<PreviewHost />);
-    const protocol = makeProtocol();
-    postPayload(openerStub, {
-      type: 'preview:payload',
-      protocol,
-      startStage: 0,
-      useSyntheticData: true,
-    });
+    postPayload(openerStub, makePayload({ useSyntheticData: true }));
 
     const call = shellMock.mock.calls.at(-1)?.[0] as {
       payload: InterviewPayload;
@@ -177,12 +189,10 @@ describe('PreviewHost', () => {
       },
       assetManifest: {},
     };
-    postPayload(openerStub, {
-      type: 'preview:payload',
-      protocol,
-      startStage: 1,
-      useSyntheticData: true,
-    });
+    postPayload(
+      openerStub,
+      makePayload({ protocol, startStage: 1, useSyntheticData: true }),
+    );
 
     const call = shellMock.mock.calls.at(-1)?.[0] as {
       payload: InterviewPayload;
@@ -197,32 +207,13 @@ describe('PreviewHost', () => {
 
   it('ignores payload messages from a non-opener source', () => {
     render(<PreviewHost />);
-    const protocol = makeProtocol();
-    postPayload(
-      {},
-      {
-        type: 'preview:payload',
-        protocol,
-        startStage: 0,
-        useSyntheticData: false,
-      },
-    );
+    postPayload({}, makePayload());
     expect(shellMock).not.toHaveBeenCalled();
   });
 
   it('ignores payload messages from a different origin', () => {
     render(<PreviewHost />);
-    const protocol = makeProtocol();
-    postPayload(
-      openerStub,
-      {
-        type: 'preview:payload',
-        protocol,
-        startStage: 0,
-        useSyntheticData: false,
-      },
-      'https://attacker.example',
-    );
+    postPayload(openerStub, makePayload(), 'https://attacker.example');
     expect(shellMock).not.toHaveBeenCalled();
   });
 

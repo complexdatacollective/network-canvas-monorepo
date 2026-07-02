@@ -153,5 +153,34 @@ describe('indexes selectors', () => {
 
       expect(subject).toMatchSnapshot();
     });
+
+    it('detects edge types used by a NetworkComposer stage (edges[].subject)', () => {
+      const protocol = {
+        schemaVersion: 8,
+        name: 'test',
+        codebook: { edge: { 'friendship-type-id': { name: 'Friendship' } } },
+        stages: [
+          {
+            id: 's1',
+            type: 'NetworkComposer',
+            label: 'Composer',
+            subject: { entity: 'node', type: 'person-type-id' },
+            edges: [
+              {
+                id: 'composer-edge-1',
+                subject: { entity: 'edge', type: 'friendship-type-id' },
+              },
+            ],
+          },
+        ],
+      };
+      const state = getMockState({
+        activeProtocol: { present: protocol },
+      }) as unknown as RootState;
+
+      expect(Object.values(getEdgeIndex(state))).toContain(
+        'friendship-type-id',
+      );
+    });
   });
 });

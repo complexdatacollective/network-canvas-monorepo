@@ -8,6 +8,7 @@ import { useFormContext } from '../Editor';
 
 type UseEditHandlersOptions = {
   fieldName: string;
+  form?: string;
   onChange?: (value: unknown) => Promise<unknown> | unknown;
   normalize?: (value: unknown) => unknown;
   template?: () => Record<string, unknown>;
@@ -18,10 +19,12 @@ const defaultNormalize = (value: unknown) => value;
 
 export const useEditHandlers = ({
   fieldName,
+  form: formOption,
   onChange,
   normalize = defaultNormalize,
 }: UseEditHandlersOptions) => {
-  const { form } = useFormContext();
+  const { form: contextForm } = useFormContext();
+  const form = formOption ?? contextForm;
   const dispatch = useAppDispatch();
   const store = useStore();
 

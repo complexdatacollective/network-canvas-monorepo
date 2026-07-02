@@ -170,6 +170,7 @@ export function PreviewHost() {
         onRequestAsset={onRequestAsset}
         currentStep={currentStep}
         onStepChange={setCurrentStep}
+        allowStageNavigation
         disableAnalytics
         analytics={{
           installationId: 'architect-preview',

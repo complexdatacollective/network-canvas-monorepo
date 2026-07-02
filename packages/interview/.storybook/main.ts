@@ -1,6 +1,14 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { defineMain } from '@storybook/react-vite/node';
 import tailwindcss from '@tailwindcss/vite';
 import { mergeConfig } from 'vite';
+
+// This file lives in packages/interview/.storybook, so its directory is the
+// storybook root and its parent is the package root.
+const storybookDir = path.dirname(fileURLToPath(import.meta.url));
+const srcDir = path.join(storybookDir, '..', 'src');
 
 export default defineMain({
   addons: [
@@ -24,7 +32,14 @@ export default defineMain({
     mergeConfig(config, {
       plugins: [tailwindcss()],
       resolve: {
-        tsconfigPaths: true,
+        // tsconfig.json excludes story files, so Vite's native
+        // resolve.tsconfigPaths won't map `~/` for them (see vitest.config.ts).
+        // Alias explicitly. `.storybook` is first because `~/.storybook/…` also
+        // matches the bare `~/` pattern and Vite uses the first match.
+        alias: [
+          { find: /^~\/\.storybook\//, replacement: `${storybookDir}/` },
+          { find: /^~\//, replacement: `${srcDir}/` },
+        ],
       },
       // mapbox-gl's worker bundle contains import.meta; the default classic
       // (iife) worker emission loads it as a non-module script and the worker

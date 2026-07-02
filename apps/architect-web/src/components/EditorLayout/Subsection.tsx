@@ -33,7 +33,7 @@ const Subsection = ({
     id={id}
     className={cx(
       'flex flex-col gap-(--space-md)',
-      'not-first:border-border not-first:border-t not-first:pt-(--space-lg)',
+      'not-first:pt-(--space-lg)',
       className,
     )}
   >

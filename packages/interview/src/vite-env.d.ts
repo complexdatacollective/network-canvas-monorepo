@@ -5,7 +5,7 @@
 // `useConsistentTypeDefinitions` rule must NOT flip this back.
 // biome-ignore lint/style/useConsistentTypeDefinitions: declaration merging
 interface Window {
-  __e2eMap?: import('mapbox-gl').Map;
+  __e2eMap?: import('mapbox-gl/esm').Map;
   __interviewStore?: import('@reduxjs/toolkit').Store<
     import('./store/store').RootState
   >;

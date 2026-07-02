@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { Route, Switch, useLocation } from 'wouter';
 
-import { BackgroundBlobs } from '@codaco/art';
+import { BackgroundLights } from '@codaco/art';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 
 import { AppErrorBoundary } from './components/AppErrorBoundary';
@@ -40,16 +40,17 @@ export default function App() {
           <PwaUpdateBanner />
           <PwaInstallNudge />
           <motion.div
-            className="fixed inset-0 -z-10 blur-[10rem]"
+            className="fixed inset-0 -z-10"
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.8 }}
             transition={{ duration: 2 }}
           >
-            <BackgroundBlobs
+            <BackgroundLights
               large={0}
               medium={4}
               small={0}
-              compositeOperation="color-dodge"
+              blendMode="color-dodge"
+              speedFactor={30}
             />
           </motion.div>
           <AuthGate>
