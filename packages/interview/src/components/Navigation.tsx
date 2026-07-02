@@ -24,7 +24,7 @@ import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
 import type { NavigationOrientation } from '../Shell';
 import PassphrasePrompter from './PassphrasePrompter';
-import StagesMenu from './StagesMenu';
+import StagesMenu, { STAGES_MENU_LIST_ID } from './StagesMenu';
 
 const variants = {
   initial: {
@@ -306,6 +306,9 @@ const Navigation = ({
             >
               <Drawer.Popup
                 aria-label="Go to a stage"
+                initialFocus={() =>
+                  document.getElementById(STAGES_MENU_LIST_ID)
+                }
                 className={cx(
                   'bg-surface elevation-medium flex flex-col overflow-hidden transition-transform duration-300 ease-out',
                   'data-swiping:duration-0 motion-reduce:transition-none',

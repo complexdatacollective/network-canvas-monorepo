@@ -52,6 +52,10 @@ type StageItem = {
   isSkipped: boolean;
 };
 
+// Stable id for the listbox so the host drawer can move initial focus onto it
+// when the menu opens (the collection then focuses the current stage).
+export const STAGES_MENU_LIST_ID = 'stages-menu-list';
+
 const isInterfaceType = (type: string): type is InterfaceType =>
   Object.hasOwn(manifest, type);
 
@@ -337,11 +341,13 @@ export default function StagesMenu({
         initial="closed"
         animate={animate}
         className={cx(
-          'relative block shrink-0 overflow-hidden rounded-xs [&>picture]:block [&>picture]:size-full',
+          'relative block shrink-0 overflow-hidden rounded-xs',
           isHorizontal ? 'aspect-4/3 w-full' : 'aspect-4/3 w-24',
         )}
       >
-        {picture}
+        <span className="block size-full transition-transform duration-300 ease-out group-hover:scale-105 group-data-[selected]:scale-105 [&>picture]:block [&>picture]:size-full">
+          {picture}
+        </span>
         {item.isSkipped && (
           <span
             role="img"
@@ -369,7 +375,7 @@ export default function StagesMenu({
             // No horizontal padding on the button itself: the timeline band is
             // full width so adjacent cards' segments meet with no gap. The
             // image/label get their own padding via the inner wrapper.
-            'focusable relative flex w-36 flex-col items-center gap-3 rounded-sm py-4 text-center transition-colors',
+            'group focusable relative flex w-36 cursor-pointer flex-col items-center gap-3 rounded-sm py-4 text-center transition-colors',
             'data-selected:bg-primary data-selected:text-primary-contrast',
             'hover:bg-accent data-focused:bg-accent',
           )}
@@ -413,7 +419,7 @@ export default function StagesMenu({
         initial="closed"
         animate={animate}
         className={cx(
-          'focusable relative flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
+          'group focusable relative flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors',
           'data-selected:bg-primary data-selected:text-primary-contrast',
           'hover:bg-accent data-focused:bg-accent',
         )}
@@ -465,6 +471,7 @@ export default function StagesMenu({
           }
         }}
         onFilterResultsChange={(keys) => setMatchingKeys(keys)}
+        id={STAGES_MENU_LIST_ID}
         aria-label="Stages"
         className="min-h-0 flex-1"
         viewportClassName={isHorizontal ? 'px-6 py-6' : 'py-4'}
