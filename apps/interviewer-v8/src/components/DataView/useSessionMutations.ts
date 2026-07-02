@@ -130,21 +130,32 @@ export function useSessionMutations({
   const handleShareReady = useCallback(async () => {
     if (!pendingShare) return;
     const { blob, fileName } = pendingShare;
-    const outcome = await shareOrDownloadBlob(blob, fileName);
-    setPendingShare(null);
-    if (!outcome.saved) {
+    try {
+      const outcome = await shareOrDownloadBlob(blob, fileName);
+      setPendingShare(null);
+      if (!outcome.saved) {
+        toast.add({
+          title: 'Export canceled',
+          description: 'The archive was not saved.',
+        });
+        return;
+      }
       toast.add({
-        title: 'Export canceled',
-        description: 'The archive was not saved.',
+        title: 'Export complete',
+        description: fileName,
+        variant: 'success',
       });
-      return;
+    } catch (cause) {
+      // pendingShare is retained on failure: the built archive is still
+      // valid, so the Save export button stays available for a retry.
+      analytics.captureException(cause, { feature: 'export' });
+      toast.add({
+        title: 'Export failed',
+        description: cause instanceof Error ? cause.message : String(cause),
+        variant: 'destructive',
+      });
     }
-    toast.add({
-      title: 'Export complete',
-      description: fileName,
-      variant: 'success',
-    });
-  }, [pendingShare, toast]);
+  }, [analytics, pendingShare, toast]);
 
   const handleDelete = useCallback(async () => {
     if (selectedCount === 0 || deleting) return;
