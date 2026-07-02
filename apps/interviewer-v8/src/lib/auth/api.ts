@@ -83,6 +83,23 @@ export async function unlockWithRecovery(phrase: string): Promise<AuthResult> {
   return applyUnlock(await vault.unlockRecovery(phrase));
 }
 
+// Non-destructive PIN/passphrase change. The vault rewraps the SAME DEK under a
+// KEK derived from the new secret, so the held session DEK is untouched — this
+// never calls setSessionDek. status() still reports the same (unchanged) mode.
+export async function reEnrolWithPin(
+  currentPin: string,
+  nextPin: string,
+): Promise<AuthResult> {
+  return toAuthResult(await vault.reEnrolPin(currentPin, nextPin));
+}
+
+export async function reEnrolWithPassphrase(
+  currentPhrase: string,
+  nextPhrase: string,
+): Promise<AuthResult> {
+  return toAuthResult(await vault.reEnrolPassphrase(currentPhrase, nextPhrase));
+}
+
 // Step-up verification: re-checks the secret / re-prompts biometrics WITHOUT
 // changing the gate. Never calls setSessionDek — the session stays as it was.
 export async function verifyWithPin(pin: string): Promise<AuthResult> {

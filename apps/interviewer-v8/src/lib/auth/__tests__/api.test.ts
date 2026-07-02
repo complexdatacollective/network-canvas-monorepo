@@ -95,6 +95,64 @@ describe('auth/api — pin mode delegates to the vault + sets the session DEK', 
   });
 });
 
+describe('auth/api — reEnrol keeps the session DEK untouched', () => {
+  it('reEnrolWithPin swaps the secret without changing the held DEK; new PIN unlocks, old fails', async () => {
+    await authApi.enrolWithPin('12345678');
+    const heldBefore = getSessionDek();
+    expect(heldBefore).not.toBeNull();
+
+    const r = await authApi.reEnrolWithPin('12345678', '87654321');
+    expect(r.ok).toBe(true);
+    // Custody invariant: the session holder still has the exact same key object.
+    expect(getSessionDek()).toBe(heldBefore);
+    // Mode is unchanged, still unlocked.
+    expect(await authApi.status()).toMatchObject({
+      configured: true,
+      locked: false,
+      mode: 'pin',
+    });
+
+    // The new PIN unlocks; the old one no longer does.
+    setSessionDek(null);
+    expect((await authApi.unlockWithPin('12345678')).ok).toBe(false);
+    expect((await authApi.unlockWithPin('87654321')).ok).toBe(true);
+  });
+
+  it('reEnrolWithPin with the wrong current PIN returns { ok: false } and does not touch the DEK', async () => {
+    await authApi.enrolWithPin('12345678');
+    const heldBefore = getSessionDek();
+    const r = await authApi.reEnrolWithPin('00000000', '87654321');
+    expect(r.ok).toBe(false);
+    expect(getSessionDek()).toBe(heldBefore);
+    // The original PIN still unlocks; nothing was rewritten.
+    setSessionDek(null);
+    expect((await authApi.unlockWithPin('12345678')).ok).toBe(true);
+  });
+
+  it('reEnrolWithPassphrase swaps the secret; data encrypted before still decrypts after', async () => {
+    await authApi.enrolWithPassphrase(STRONG);
+    const dek = getSessionDek();
+    if (!dek) throw new Error('expected a held DEK');
+
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      dek,
+      new TextEncoder().encode('pre-reenrol-row'),
+    );
+
+    const next = 'Fresh-Passphrase-4!';
+    expect((await authApi.reEnrolWithPassphrase(STRONG, next)).ok).toBe(true);
+
+    setSessionDek(null);
+    expect((await authApi.unlockWithPassphrase(next)).ok).toBe(true);
+    const after = getSessionDek();
+    if (!after) throw new Error('expected unlock with new passphrase');
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, after, ct);
+    expect(new TextDecoder().decode(pt)).toBe('pre-reenrol-row');
+  });
+});
+
 describe('auth/api — passphrase mode', () => {
   it('rejects a weak passphrase and unlocks a strong one', async () => {
     expect((await authApi.enrolWithPassphrase('short')).ok).toBe(false);

@@ -35,6 +35,14 @@ type AuthActions = {
   unlockWithPassphrase: (phrase: string) => Promise<authApi.AuthResult>;
   unlockWithBiometric: () => Promise<authApi.AuthResult>;
   unlockWithRecovery: (phrase: string) => Promise<authApi.AuthResult>;
+  reEnrolWithPin: (
+    currentPin: string,
+    nextPin: string,
+  ) => Promise<authApi.AuthResult>;
+  reEnrolWithPassphrase: (
+    currentPhrase: string,
+    nextPhrase: string,
+  ) => Promise<authApi.AuthResult>;
   lock: () => Promise<void>;
   revoke: () => Promise<void>;
   setIdleTimeoutMinutes: (minutes: IdleTimeoutMinutes) => Promise<void>;
@@ -153,6 +161,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (phrase: string) => runAndRefresh(() => authApi.unlockWithRecovery(phrase)),
     [runAndRefresh],
   );
+  const reEnrolWithPin = useCallback(
+    (currentPin: string, nextPin: string) =>
+      runAndRefresh(() => authApi.reEnrolWithPin(currentPin, nextPin)),
+    [runAndRefresh],
+  );
+  const reEnrolWithPassphrase = useCallback(
+    (currentPhrase: string, nextPhrase: string) =>
+      runAndRefresh(() =>
+        authApi.reEnrolWithPassphrase(currentPhrase, nextPhrase),
+      ),
+    [runAndRefresh],
+  );
 
   const revoke = useCallback(async () => {
     await authApi.revoke();
@@ -179,6 +199,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       unlockWithPassphrase,
       unlockWithBiometric,
       unlockWithRecovery,
+      reEnrolWithPin,
+      reEnrolWithPassphrase,
       lock,
       revoke,
       setIdleTimeoutMinutes,
@@ -194,6 +216,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       unlockWithPassphrase,
       unlockWithBiometric,
       unlockWithRecovery,
+      reEnrolWithPin,
+      reEnrolWithPassphrase,
       lock,
       revoke,
       setIdleTimeoutMinutes,
