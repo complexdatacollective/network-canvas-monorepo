@@ -8,6 +8,34 @@ import type { Plugin, UserConfig } from 'vite';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
+const ARRAYBUFFER_QUERY_RE = /(\?|&)arraybuffer(?:&|$)/;
+
+// Resolves `import.meta.glob('...', { query: '?arraybuffer', ... })` entries
+// (used to bundle the sample/development protocols' media assets — see
+// src/lib/protocol/bundledProtocols.ts) into a module exporting the file's raw
+// bytes as a `Uint8Array`, inlined as base64 at transform time. Vite has no
+// built-in `?arraybuffer` query (only `?url` and `?raw`); `?url` would require
+// a runtime `fetch` to read the bytes, which a bundled/offline install must
+// never do. Needed by both the app build (vite.renderer.config.ts) and the
+// unit tests (vitest.config.ts), so it's exported for both to share.
+export function arrayBufferAssetPlugin(): Plugin {
+  return {
+    name: 'arraybuffer-asset',
+    enforce: 'pre',
+    load(id) {
+      if (!ARRAYBUFFER_QUERY_RE.test(id)) return null;
+      const filePath = id.replace(ARRAYBUFFER_QUERY_RE, '').replace(/\?$/, '');
+      const base64 = readFileSync(filePath).toString('base64');
+      return `
+        const binary = atob(${JSON.stringify(base64)});
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        export default bytes.buffer;
+      `;
+    },
+  };
+}
+
 // Inject the app version from package.json at build time. Read here once
 // (rather than imported as JSON) so the renderer bundle gets a single
 // inlined string and TypeScript doesn't need package.json on its include
@@ -96,7 +124,12 @@ export function createRendererConfig({
         '@codaco/shared-consts',
       ],
     },
-    plugins: [react(), tailwindcss(), injectCspMeta()],
+    plugins: [
+      react(),
+      tailwindcss(),
+      injectCspMeta(),
+      arrayBufferAssetPlugin(),
+    ],
     server:
       port == null
         ? undefined

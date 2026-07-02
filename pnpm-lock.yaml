@@ -1154,6 +1154,9 @@ importers:
       '@codaco/art':
         specifier: workspace:*
         version: link:../../packages/art
+      '@codaco/development-protocol':
+        specifier: workspace:*
+        version: link:../../packages/development-protocol
       '@codaco/fresco-ui':
         specifier: workspace:*
         version: link:../../packages/fresco-ui
@@ -1169,6 +1172,9 @@ importers:
       '@codaco/protocol-validation':
         specifier: workspace:*
         version: link:../../packages/protocol-validation
+      '@codaco/sample-protocol':
+        specifier: workspace:*
+        version: link:../../packages/sample-protocol
       '@codaco/shared-consts':
         specifier: workspace:*
         version: link:../../packages/shared-consts

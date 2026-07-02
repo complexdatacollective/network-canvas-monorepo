@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 
+import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { BrandHeader } from '~/components/BrandHeader';
@@ -80,6 +81,13 @@ export function HomeRoute() {
 
   const handleInstallSample = useCallback(() => {
     void startImport({ source: 'sample' });
+  }, [startImport]);
+
+  // Dev-only: installs the Development protocol (exercises every stage type)
+  // without leaving a teaser card in production builds.
+  const handleInstallDevelopment = useCallback(() => {
+    if (!import.meta.env.DEV) return;
+    void startImport({ source: 'development' });
   }, [startImport]);
 
   const handleDismissSample = useCallback(async () => {
@@ -212,6 +220,21 @@ export function HomeRoute() {
               onCancelNewSession={closeNewSession}
               onSessionCreated={handleSessionCreated}
             />
+
+            {import.meta.env.DEV && (
+              <div
+                inert={newSessionActive}
+                className="flex justify-center px-11"
+              >
+                <Button
+                  variant="text"
+                  size="sm"
+                  onClick={handleInstallDevelopment}
+                >
+                  Install development protocol
+                </Button>
+              </div>
+            )}
 
             <div inert={newSessionActive} className="contents">
               <StatusRow

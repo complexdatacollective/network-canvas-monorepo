@@ -25,11 +25,13 @@
   "dependencies": {
     "@base-ui/react": "catalog:",
     "@codaco/art": "workspace:*",
+    "@codaco/development-protocol": "workspace:*",
     "@codaco/fresco-ui": "workspace:*",
     "@codaco/interview": "workspace:*",
     "@codaco/network-exporters": "workspace:*",
     "@codaco/protocol-utilities": "workspace:*",
     "@codaco/protocol-validation": "workspace:*",
+    "@codaco/sample-protocol": "workspace:*",
     "@codaco/shared-consts": "workspace:*",
     "@codaco/tailwind-config": "workspace:*",
     "@codaco/tsconfig": "workspace:*",

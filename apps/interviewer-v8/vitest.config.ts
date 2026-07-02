@@ -8,10 +8,12 @@ import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
+import { arrayBufferAssetPlugin } from './vite.renderer.config';
+
 const here = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), arrayBufferAssetPlugin()],
   resolve: {
     tsconfigPaths: true,
   },
