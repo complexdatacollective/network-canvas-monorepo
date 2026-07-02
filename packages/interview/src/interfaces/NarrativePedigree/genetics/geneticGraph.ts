@@ -50,6 +50,14 @@ export type GeneticGraph = {
   halfSiblingsOf: (id: string) => string[];
 
   /**
+   * Half-siblings of `id` who share at least one FEMALE (maternal) parent with
+   * `id` — i.e. those on `id`'s maternal (X / mitochondrial) lineage. A paternal
+   * half-sibling (sharing only a male parent) is excluded, as they carry none of
+   * the shared mother's X or mtDNA. Excludes `id` itself.
+   */
+  maternalHalfSiblingsOf: (id: string) => string[];
+
+  /**
    * Transitive closure of all genetic descendants of `id` (BFS).
    */
   descendants: (id: string) => Set<string>;
@@ -257,6 +265,21 @@ export function buildGeneticGraph(
     return result;
   }
 
+  function maternalHalfSiblingsOf(id: string): string[] {
+    const maternalParentIds = new Set(
+      parentsOf(id)
+        .filter((parent) => parent.sex === 'female')
+        .map((parent) => parent.id),
+    );
+    if (maternalParentIds.size === 0) {
+      return [];
+    }
+    return halfSiblingsOf(id).filter((sibId) => {
+      const theirParentIds = parentMap.get(sibId) ?? [];
+      return theirParentIds.some((parentId) => maternalParentIds.has(parentId));
+    });
+  }
+
   function nodeIds(): string[] {
     return nodes.map((n) => n._uid);
   }
@@ -266,6 +289,7 @@ export function buildGeneticGraph(
     childrenOf,
     fullSiblingsOf,
     halfSiblingsOf,
+    maternalHalfSiblingsOf,
     descendants,
     ancestors,
     propagate,

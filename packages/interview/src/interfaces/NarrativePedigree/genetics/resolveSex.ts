@@ -38,8 +38,10 @@ export function resolveSex(
   const node = nodes.find((n) => n._uid === nodeId);
 
   if (node !== undefined) {
-    const sexValue =
-      node[entityAttributesProperty][config.biologicalSexVariable];
+    const rawSex = node[entityAttributesProperty][config.biologicalSexVariable];
+    // biologicalSex is a categorical variable, stored as a single-element array;
+    // tolerate a bare string defensively.
+    const sexValue = Array.isArray(rawSex) ? rawSex[0] : rawSex;
     if (sexValue === 'female' || sexValue === 'male') {
       return sexValue;
     }
@@ -55,8 +57,10 @@ export function resolveSex(
       continue;
     }
 
-    const gameteRole =
-      edge[entityAttributesProperty][config.gameteRoleVariable];
+    const rawRole = edge[entityAttributesProperty][config.gameteRoleVariable];
+    // gameteRole is a categorical variable, stored as a single-element array;
+    // tolerate a bare string defensively.
+    const gameteRole = Array.isArray(rawRole) ? rawRole[0] : rawRole;
     if (gameteRole === 'egg') {
       return 'female';
     }

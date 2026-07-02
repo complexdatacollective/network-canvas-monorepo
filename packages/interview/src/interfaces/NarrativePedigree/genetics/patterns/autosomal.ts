@@ -300,7 +300,17 @@ export function computeAutosomalRecessiveHomozygous(
 ): Map<string, boolean> {
   const result = new Map<string, boolean>();
 
+  // The flag is a 25%-prior for a person whose own zygosity is still undetermined.
+  // It must NOT fire on an unaffected `obligateCarrier`: under a recessive model
+  // such a person is provably heterozygous (they would be affected if homozygous),
+  // so telling a clinician they "may be affected (homozygous)" contradicts the
+  // status the same engine emitted. (An `affected`/`obligateAffected` person is
+  // genuinely homozygous; the flag is redundant there but not false, and the
+  // display layer already keeps their spoken summary coherent.)
   for (const id of graph.nodeIds()) {
+    if (statuses.get(id) === 'obligateCarrier') {
+      continue;
+    }
     const segregatingParentCount = graph.parentsOf(id).filter((parent) => {
       const parentStatus = statuses.get(parent.id);
       return parentStatus !== undefined && parentStatus !== 'unknown';

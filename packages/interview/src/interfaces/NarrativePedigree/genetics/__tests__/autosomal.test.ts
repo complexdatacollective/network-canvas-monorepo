@@ -747,6 +747,48 @@ describe('computeAutosomalRecessiveHomozygous', () => {
     });
   });
 
+  describe('does NOT flag an obligate carrier (provably heterozygous)', () => {
+    /**
+     *   gm --- gp        (both atRiskCarrier collaterals)
+     *      \  /
+     *      ego --- partner   (both obligateCarrier: parents of affected mia)
+     *         \   /
+     *          mia (affected)
+     *
+     *   `ego` is an unaffected obligate carrier — provably heterozygous under a
+     *   recessive model. Both its parents (gm, gp) are atRiskCarrier, so the
+     *   structural two-carrier-parent rule WOULD flag ego; the zygosity-determined
+     *   guard must suppress it (ego cannot "may be affected (homozygous)").
+     */
+    const nodes = [
+      makeNode('gm'),
+      makeNode('gp'),
+      makeNode('ego'),
+      makeNode('partner'),
+      makeNode('mia'),
+    ];
+    const edges = [
+      makeGeneticEdge('gm', 'ego'),
+      makeGeneticEdge('gp', 'ego'),
+      makeGeneticEdge('ego', 'mia'),
+      makeGeneticEdge('partner', 'mia'),
+    ];
+    const graph = buildGraph(nodes, edges);
+    const affected = new Set(['mia']);
+    const statuses = computeAutosomalRecessive(graph, affected);
+    const flags = computeAutosomalRecessiveHomozygous(graph, statuses);
+
+    it('confirms ego is an obligate carrier with two at-risk-carrier parents (rule precondition)', () => {
+      expect(status(statuses, 'ego')).toBe('obligateCarrier');
+      expect(status(statuses, 'gm')).toBe('atRiskCarrier');
+      expect(status(statuses, 'gp')).toBe('atRiskCarrier');
+    });
+
+    it('does NOT flag the obligate-carrier ego as at-risk homozygous', () => {
+      expect(flags.get('ego') ?? false).toBe(false);
+    });
+  });
+
   describe('idempotence (shared ancestors do not escalate the flag)', () => {
     /**
      *                ggp (affected)

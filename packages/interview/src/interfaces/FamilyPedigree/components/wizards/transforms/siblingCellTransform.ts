@@ -29,7 +29,7 @@ function buildPersonAttributes(
   if (includeBiologicalSex) {
     const sex = readBiologicalSex(person.biologicalSex);
     if (sex !== undefined) {
-      attrs[variableConfig.biologicalSexVariable] = sex;
+      attrs[variableConfig.biologicalSexVariable] = [sex];
     }
   }
 
@@ -151,7 +151,7 @@ export function siblingCellTransform(
 
     const gameteRole = gameteRoleForRole(parent.roleKey);
     if (gameteRole) {
-      edgeAttributes[variableConfig.gameteRoleVariable] = gameteRole;
+      edgeAttributes[variableConfig.gameteRoleVariable] = [gameteRole];
     }
     batch.edges.push({
       source: parent.tempId,

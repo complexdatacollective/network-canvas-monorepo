@@ -32,7 +32,7 @@ export function childCellTransform(
   // whose sex is needed for sex-linked genetics).
   const childSex = readBiologicalSex(childValues?.biologicalSex);
   if (childSex !== undefined) {
-    childAttributes[variableConfig.biologicalSexVariable] = childSex;
+    childAttributes[variableConfig.biologicalSexVariable] = [childSex];
   }
 
   batch.nodes.push({

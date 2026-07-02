@@ -61,7 +61,7 @@ describe('biologicalSex capture — siblingCellTransform', () => {
     const siblingNode = batch.nodes.find((n) => n.tempId === 'sibling');
     expect(
       siblingNode?.data.attributes[variableConfig.biologicalSexVariable],
-    ).toBe('female');
+    ).toEqual(['female']);
   });
 
   it('does NOT write biologicalSex on egg-source or sperm-source new person nodes (gamete parents derive sex from role)', () => {
@@ -128,7 +128,7 @@ describe('biologicalSex capture — siblingCellTransform', () => {
     expect(carrierNode).toBeDefined();
     expect(
       carrierNode?.data.attributes[variableConfig.biologicalSexVariable],
-    ).toBe('female');
+    ).toEqual(['female']);
   });
 
   it('does not write biologicalSex when the value is not a valid BiologicalSex', () => {

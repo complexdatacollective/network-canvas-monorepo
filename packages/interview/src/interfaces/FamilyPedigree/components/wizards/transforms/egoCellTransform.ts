@@ -63,7 +63,7 @@ function buildBioParent(
   if (includeBiologicalSex) {
     const sex = readBiologicalSex(parent.biologicalSex);
     if (sex !== undefined) {
-      attributes[variableConfig.biologicalSexVariable] = sex;
+      attributes[variableConfig.biologicalSexVariable] = [sex];
     }
   }
 
@@ -94,7 +94,7 @@ function buildAdditionalParent(
 
   const sex = readBiologicalSex(parent.biologicalSex);
   if (sex !== undefined) {
-    attributes[variableConfig.biologicalSexVariable] = sex;
+    attributes[variableConfig.biologicalSexVariable] = [sex];
   }
 
   return {
@@ -214,7 +214,7 @@ export function egoCellTransform(
   // own sex-linked risk calculation.
   const egoSex = readBiologicalSex(values.biologicalSex);
   if (egoSex !== undefined) {
-    egoAttributes[variableConfig.biologicalSexVariable] = egoSex;
+    egoAttributes[variableConfig.biologicalSexVariable] = [egoSex];
   }
 
   if (!existingEgoId) {
@@ -240,7 +240,7 @@ export function egoCellTransform(
       edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
     }
     if (parent.gameteRole) {
-      edgeAttributes[variableConfig.gameteRoleVariable] = parent.gameteRole;
+      edgeAttributes[variableConfig.gameteRoleVariable] = [parent.gameteRole];
     }
 
     batch.edges.push({
@@ -302,7 +302,7 @@ export function egoCellTransform(
     };
     const partnerSex = readBiologicalSex(partnerObj.biologicalSex);
     if (partnerSex !== undefined) {
-      partnerAttrs[variableConfig.biologicalSexVariable] = partnerSex;
+      partnerAttrs[variableConfig.biologicalSexVariable] = [partnerSex];
     }
 
     batch.nodes.push({
@@ -351,7 +351,7 @@ export function egoCellTransform(
     };
     const childSex = readBiologicalSex(child.biologicalSex);
     if (childSex !== undefined) {
-      childAttrs[variableConfig.biologicalSexVariable] = childSex;
+      childAttrs[variableConfig.biologicalSexVariable] = [childSex];
     }
 
     batch.nodes.push({

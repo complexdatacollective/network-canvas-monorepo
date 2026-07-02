@@ -13,7 +13,7 @@ export const buildPedigreeDialog: AcknowledgeDialog = {
           You now need to add family members to build out your pedigree.
         </Paragraph>
         <Paragraph>
-          Click on any person in the diagram to open a menu where you can add
+          Select any person in the diagram to open a menu where you can add
           parents, children, partners, and siblings. Not all options are
           available for every person — the menu will show the actions relevant
           to that family member.
@@ -33,7 +33,7 @@ export const buildPedigreeDialog: AcknowledgeDialog = {
           className="w-40 rounded-lg shadow-lg"
         />
         <figcaption className="text-muted text-xs">
-          Click a person to see this menu
+          Select a person to see this menu
         </figcaption>
       </figure>
     </div>

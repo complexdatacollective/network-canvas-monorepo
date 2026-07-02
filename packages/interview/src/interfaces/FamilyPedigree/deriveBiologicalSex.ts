@@ -39,7 +39,10 @@ function inferSexFromRole(
       config.relationshipTypeVariable,
     );
     if (isGeneticRelationship(relType)) {
-      const role = attrs[config.gameteRoleVariable];
+      // gameteRole is categorical, stored as a single-element array; tolerate a
+      // bare string defensively.
+      const rawRole = attrs[config.gameteRoleVariable];
+      const role = Array.isArray(rawRole) ? rawRole[0] : rawRole;
       if (role === 'egg') return 'female';
       if (role === 'sperm') return 'male';
     }
@@ -68,11 +71,11 @@ export function withInferredBiologicalSex(
       data: {
         attributes: {
           ...attributes,
-          [config.biologicalSexVariable]: inferSexFromRole(
-            node.tempId,
-            batch.edges,
-            config,
-          ),
+          // Stored as a single-element categorical array, matching every other
+          // biologicalSex write and the categorical-attribute convention.
+          [config.biologicalSexVariable]: [
+            inferSexFromRole(node.tempId, batch.edges, config),
+          ],
         },
       },
     };

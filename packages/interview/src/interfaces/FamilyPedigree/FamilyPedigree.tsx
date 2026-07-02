@@ -197,6 +197,39 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
     updateReady(buildingPhase && checklistComplete);
   }, [updateReady, buildingPhase, checklistComplete]);
 
+  // Screen-reader announcements for the build phase. The pedigree is built via
+  // context-menu wizards that mutate the diagram without a page change, so
+  // without a live region a screen-reader participant gets no feedback that a
+  // relative was added or removed, or that the pedigree can now be finalized.
+  // The count is included so consecutive additions re-announce (identical text
+  // is not re-read by assistive technology).
+  const [buildAnnouncement, setBuildAnnouncement] = useState('');
+  const prevNonEgoCountRef = useRef(nonEgoNodeCount);
+  const prevChecklistCompleteRef = useRef(checklistComplete);
+  useEffect(() => {
+    if (!buildingPhase) {
+      prevNonEgoCountRef.current = nonEgoNodeCount;
+      prevChecklistCompleteRef.current = checklistComplete;
+      return;
+    }
+    const memberWord = nonEgoNodeCount === 1 ? 'member' : 'members';
+    if (checklistComplete && !prevChecklistCompleteRef.current) {
+      setBuildAnnouncement(
+        'All tasks are complete. You can now finalize your family pedigree.',
+      );
+    } else if (nonEgoNodeCount > prevNonEgoCountRef.current) {
+      setBuildAnnouncement(
+        `Family member added. Your family pedigree now has ${String(nonEgoNodeCount)} ${memberWord}.`,
+      );
+    } else if (nonEgoNodeCount < prevNonEgoCountRef.current) {
+      setBuildAnnouncement(
+        `Family member removed. Your family pedigree now has ${String(nonEgoNodeCount)} ${memberWord}.`,
+      );
+    }
+    prevNonEgoCountRef.current = nonEgoNodeCount;
+    prevChecklistCompleteRef.current = checklistComplete;
+  }, [buildingPhase, nonEgoNodeCount, checklistComplete]);
+
   const updateNominationVariable = (stepIndex: number) => {
     const prompt = allPrompts[stepIndex];
     setActiveNominationVariable(prompt?.variable ?? null);
@@ -371,6 +404,12 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   return (
     <>
       <div className="interface p-0">
+        {/* Visually-hidden live region announcing build-phase changes (adding or
+            removing a relative, and when the pedigree can be finalized) to
+            screen readers, which get no feedback from the context-menu wizards. */}
+        <div aria-live="polite" aria-atomic="true" className="sr-only">
+          {buildAnnouncement}
+        </div>
         <Prompts
           prompts={allPrompts}
           currentPromptId={allPrompts[currentStepIndex]?.id}

@@ -35,7 +35,6 @@ export default function ChildrenDetailStep() {
     {
       eggSource: 'ego',
       spermSource: 'partner',
-      carrier: 'egg-source',
       eggParentCarried: true,
     },
   );

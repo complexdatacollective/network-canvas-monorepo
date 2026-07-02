@@ -41,6 +41,7 @@ import {
   getVariableOptionsForSubject,
   makeGetVariable,
 } from '~/selectors/codebook';
+import { optionsMatch } from '~/utils/variables';
 
 import NodeFormFieldPreview from './NodeFormFieldPreview';
 
@@ -151,8 +152,15 @@ const NodeConfigurationInner = ({
   const booleanNodeVariables = nodeVariableOptions.filter(
     (v) => v.type === 'boolean',
   );
-  const categoricalNodeVariables = nodeVariableOptions.filter(
-    (v) => v.type === 'categorical',
+  // Only categorical variables whose options are exactly the canonical
+  // biological-sex set may be bound: the interview and genetics engine depend on
+  // the exact values (female/male/…), so an existing categorical variable with a
+  // different value set would silently degrade sex resolution. Mirrors the
+  // relationship-type picker in EdgeConfiguration.
+  const biologicalSexCompatible = nodeVariableOptions.filter(
+    (v) =>
+      v.type === 'categorical' &&
+      optionsMatch(v.options, BIOLOGICAL_SEX_OPTIONS),
   );
 
   const handleCreatedVariable = (...args: unknown[]) => {
@@ -257,7 +265,7 @@ const NodeConfigurationInner = ({
                 label="Biological Sex Variable"
                 description="Stores each family member’s sex recorded at birth (female/male/intersex/don’t know/prefer not to say), used for sex-linked inheritance."
                 entityType={nodeType}
-                options={categoricalNodeVariables}
+                options={biologicalSexCompatible}
                 onCreateOption={handleNewBiologicalSexVariable}
               />
             </div>

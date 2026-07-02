@@ -425,6 +425,69 @@ describe('computeXLinkedRecessive', () => {
     });
   });
 
+  describe("maternal collaterals: only the mother's MATERNAL-line siblings share her X", () => {
+    /**
+     *   grandmother (F) --- grandfather (M) --- otherWoman (F)
+     *        |         |            |                |
+     *     mother   maternalHalfSib  paternalHalfAunt / paternalHalfUncle
+     *    (F)       (F, shares GM)   (share ONLY the grandfather)
+     *        |
+     *      son (affected)
+     *
+     *   The mother is atRiskCarrier (single affected son). Her maternal-line
+     *   relatives (grandmother, maternal half-sister via the grandmother) are on
+     *   the grandmother's X lineage → atRiskCarrier. Her PATERNAL half-siblings
+     *   (shared grandfather only) carry none of the grandmother's X → unknown.
+     */
+    const nodes = [
+      makeNode('grandmother'),
+      makeNode('grandfather'),
+      makeNode('otherWoman'),
+      makeNode('mother'),
+      makeNode('maternalHalfSib'),
+      makeNode('paternalHalfAunt'),
+      makeNode('paternalHalfUncle'),
+      makeNode('son'),
+    ];
+    const edges = [
+      makeGeneticEdge('grandmother', 'mother'),
+      makeGeneticEdge('grandfather', 'mother'),
+      // maternal half-sib: shares the grandmother (via a different father)
+      makeGeneticEdge('grandmother', 'maternalHalfSib'),
+      // paternal half-aunt/uncle: share ONLY the grandfather
+      makeGeneticEdge('grandfather', 'paternalHalfAunt'),
+      makeGeneticEdge('otherWoman', 'paternalHalfAunt'),
+      makeGeneticEdge('grandfather', 'paternalHalfUncle'),
+      makeGeneticEdge('otherWoman', 'paternalHalfUncle'),
+      makeGeneticEdge('mother', 'son'),
+    ];
+    const resolveSex = sexResolver({
+      grandmother: 'female',
+      grandfather: 'male',
+      otherWoman: 'female',
+      mother: 'female',
+      maternalHalfSib: 'female',
+      paternalHalfAunt: 'female',
+      paternalHalfUncle: 'male',
+      son: 'male',
+    });
+    const graph = buildGraph(nodes, edges, resolveSex);
+    const affected = new Set(['son']);
+    const result = computeXLinkedRecessive(graph, affected, resolveSex);
+
+    it("marks the mother's MATERNAL half-sister as atRiskCarrier", () => {
+      expect(status(result, 'maternalHalfSib')).toBe('atRiskCarrier');
+    });
+
+    it("does NOT confer risk on the mother's PATERNAL half-aunt (off the X lineage)", () => {
+      expect(status(result, 'paternalHalfAunt')).toBe('unknown');
+    });
+
+    it("does NOT confer risk on the mother's PATERNAL half-uncle (off the X lineage)", () => {
+      expect(status(result, 'paternalHalfUncle')).toBe('unknown');
+    });
+  });
+
   describe('sons of a carrier female are atRiskAffected; daughters atRiskCarrier', () => {
     /**
      *   carrierMother (obligate via 2 affected sons elsewhere... )

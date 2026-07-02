@@ -104,7 +104,7 @@ describe('childCellTransform', () => {
 
     expect(batch.nodes[0]).toMatchObject({
       tempId: 'child',
-      data: { attributes: { name: 'Baby', biologicalSex: 'male' } },
+      data: { attributes: { name: 'Baby', biologicalSex: ['male'] } },
     });
   });
 

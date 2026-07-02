@@ -246,15 +246,14 @@ export type StageEntry = {
     relationshipTypeVariable: string;
     isActiveVariable: string;
     isGestationalCarrierVariable: string;
-    gameteRoleVariable?: string;
+    // Required by EdgeConfigSchema (strictObject); the builder always sets it.
+    gameteRoleVariable: string;
   };
   framing?: { mode: 'fixed'; value: FramingId } | { mode: 'participantChoice' };
   // NarrativePedigree-specific fields
   narrativePedigreeSourceStageId?: string;
   narrativePedigreeDiseases?: NarrativeDiseaseEntry[];
   narrativePedigreeShowAtRiskStatuses?: boolean;
-  narrativePedigreePresets?: NarrativePresetEntry[];
-  narrativePedigreeBehaviours?: { allowFocalReselection: boolean };
   boundaries?: {
     requireGrandparents: 'required' | 'recommended' | 'off';
     requireChildrenContributors: 'required' | 'recommended' | 'off';
@@ -410,8 +409,6 @@ export type AddStageInput = {
   sourceStageId?: string;
   diseases?: NarrativeDiseaseEntry[];
   showAtRiskStatuses?: boolean;
-  presets?: NarrativePresetEntry[];
-  allowFocalReselection?: boolean;
 };
 
 export type AddPromptInput = {
@@ -491,13 +488,6 @@ export type NarrativeDiseaseEntry = {
   color: string;
   variable: string;
   inheritancePattern: string;
-};
-
-export type NarrativePresetEntry = {
-  id: string;
-  label: string;
-  diseases: string[];
-  focal: string;
 };
 
 export type GetSessionInput = {

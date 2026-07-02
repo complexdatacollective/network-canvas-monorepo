@@ -34,7 +34,6 @@ export function inferGameteProviders(
     return {
       eggSource: a.value,
       spermSource: b.value,
-      carrier: 'egg-source',
       eggParentCarried: true,
     };
   }
@@ -42,7 +41,6 @@ export function inferGameteProviders(
     return {
       eggSource: b.value,
       spermSource: a.value,
-      carrier: 'egg-source',
       eggParentCarried: true,
     };
   }
@@ -52,7 +50,6 @@ export function inferGameteProviders(
     return {
       eggSource: a.value,
       spermSource: undefined,
-      carrier: 'egg-source',
       eggParentCarried: true,
     };
   }

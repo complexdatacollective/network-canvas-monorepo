@@ -101,7 +101,7 @@ export function buildChildParentage(
       if (!isGameteParen) {
         const sex = readBiologicalSex(personValues.biologicalSex);
         if (sex !== undefined) {
-          nodeAttrs[variableConfig.biologicalSexVariable] = sex;
+          nodeAttrs[variableConfig.biologicalSexVariable] = [sex];
         }
       }
       parentEntries.push({
@@ -154,7 +154,7 @@ export function buildChildParentage(
     }
     const gameteRole = gameteRoleForRole(entry.roleKey);
     if (gameteRole) {
-      edgeAttributes[variableConfig.gameteRoleVariable] = gameteRole;
+      edgeAttributes[variableConfig.gameteRoleVariable] = [gameteRole];
     }
     edges.push({
       source: entry.tempId,
@@ -173,7 +173,7 @@ export function buildChildParentage(
     }
     const gameteRole = gameteRoleForRole(entry.roleKey);
     if (gameteRole) {
-      edgeAttributes[variableConfig.gameteRoleVariable] = gameteRole;
+      edgeAttributes[variableConfig.gameteRoleVariable] = [gameteRole];
     }
     edges.push({
       source: entry.sourceId,

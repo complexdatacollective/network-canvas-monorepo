@@ -41,7 +41,7 @@ describe('egoCellTransform', () => {
 
     expect(batch.nodes[0]).toMatchObject({
       tempId: 'ego',
-      data: { attributes: { isEgo: true, biologicalSex: 'female' } },
+      data: { attributes: { isEgo: true, biologicalSex: ['female'] } },
     });
   });
 
@@ -196,6 +196,30 @@ describe('egoCellTransform', () => {
       tempId: 'sperm-parent',
       data: { attributes: { name: '' } },
     });
+  });
+
+  it("stores an additional parent's biological sex as a single-element array", () => {
+    const values = {
+      'egg-parent': { name: 'Linda' },
+      'sperm-parent': { name: 'Robert' },
+      'hasOtherParents': true,
+      'otherParentCount': 1,
+      'additional-parent': [
+        { role: 'raised-me', name: 'Patricia', biologicalSex: 'female' },
+      ],
+    };
+
+    const { batch } = egoCellTransform(
+      values as Record<string, unknown>,
+      variableConfig,
+    );
+
+    const additional = batch.nodes.find(
+      (n) => n.tempId === 'additional-parent-0',
+    );
+    expect(
+      additional?.data.attributes[variableConfig.biologicalSexVariable],
+    ).toEqual(['female']);
   });
 
   it('transforms single parent with two donors + gestational carrier', () => {

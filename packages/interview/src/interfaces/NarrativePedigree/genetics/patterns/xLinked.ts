@@ -159,9 +159,14 @@ export function computeXLinkedRecessive(
           markAtRiskFemale(grandparent.id);
         }
       }
+      // Only the mother's MATERNAL-line siblings share the maternal
+      // grandmother's X. Full siblings share both parents (hence the
+      // grandmother); half-siblings count only when they share her mother — a
+      // PATERNAL half-sibling (shared grandfather only) carries none of the
+      // grandmother's disease-bearing X and must not be marked at risk.
       const maternalSiblings = [
         ...graph.fullSiblingsOf(motherId),
-        ...graph.halfSiblingsOf(motherId),
+        ...graph.maternalHalfSiblingsOf(motherId),
       ];
       for (const siblingId of maternalSiblings) {
         const siblingSex = resolveSex(siblingId);

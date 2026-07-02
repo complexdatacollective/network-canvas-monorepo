@@ -497,6 +497,49 @@ const ProtocolSchema = z
         }
       }
 
+      // 3e.iii.b-2. FamilyPedigree: each nomination prompt variable must exist
+      // on the node type and be boolean — the interview writes a boolean flag
+      // onto nominated nodes, so a missing or non-boolean variable would write
+      // to an undeclared/mismatched codebook variable.
+      if (stage.type === 'FamilyPedigree' && stage.nominationPrompts) {
+        const nodeSubject = {
+          entity: 'node' as const,
+          type: stage.nodeConfig.type,
+        };
+        const nodeVariables = getVariablesForSubject(
+          protocol.codebook,
+          nodeSubject,
+        );
+        stage.nominationPrompts.forEach((prompt, promptIndex) => {
+          const nodeVariable = nodeVariables[prompt.variable];
+          if (!nodeVariable) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `FamilyPedigree nomination prompt variable "${prompt.variable}" does not exist on node type "${stage.nodeConfig.type}".`,
+              path: [
+                'stages',
+                stageIndex,
+                'nominationPrompts',
+                promptIndex,
+                'variable',
+              ],
+            });
+          } else if (nodeVariable.type !== 'boolean') {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `FamilyPedigree nomination prompt variable "${prompt.variable}" must be a boolean variable, but is "${nodeVariable.type}".`,
+              path: [
+                'stages',
+                stageIndex,
+                'nominationPrompts',
+                promptIndex,
+                'variable',
+              ],
+            });
+          }
+        });
+      }
+
       // 3e.iii.c. NarrativePedigree: sourceStageId must reference a FamilyPedigree
       // stage; disease variables must resolve on the source node type.
       if (stage.type === 'NarrativePedigree') {
@@ -529,10 +572,26 @@ const ProtocolSchema = z
           );
 
           stage.diseases.forEach((disease, diseaseIndex) => {
-            if (!(disease.variable in sourceVariables)) {
+            const sourceVariable = sourceVariables[disease.variable];
+            if (!sourceVariable) {
               ctx.addIssue({
                 code: 'custom' as const,
                 message: `NarrativePedigree disease variable "${disease.variable}" does not exist on source node type "${sourceNodeType}".`,
+                path: [
+                  'stages',
+                  stageIndex,
+                  'diseases',
+                  diseaseIndex,
+                  'variable',
+                ],
+              });
+            } else if (sourceVariable.type !== 'boolean') {
+              // The genetics engine's affection predicate is a strict boolean
+              // `=== true`; a non-boolean variable would silently yield an empty
+              // affected set (a clinically blank pedigree).
+              ctx.addIssue({
+                code: 'custom' as const,
+                message: `NarrativePedigree disease variable "${disease.variable}" must be a boolean variable (affected/not affected), but is "${sourceVariable.type}".`,
                 path: [
                   'stages',
                   stageIndex,

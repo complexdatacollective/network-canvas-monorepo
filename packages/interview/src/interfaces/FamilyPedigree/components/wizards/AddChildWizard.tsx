@@ -57,7 +57,6 @@ function getPreselection(
   const fallback: BioTriadConfig['preselection'] = {};
   if (a) {
     fallback.eggSource = a;
-    fallback.carrier = 'egg-source';
   }
   if (b) {
     fallback.spermSource = b;

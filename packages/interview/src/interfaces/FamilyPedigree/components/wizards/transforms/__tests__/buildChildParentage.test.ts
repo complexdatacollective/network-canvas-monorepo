@@ -40,7 +40,7 @@ describe('buildChildParentage', () => {
     expect(egoEdges[0]?.data.attributes.isGC).toBe(true);
     expect(
       egoEdges[0]?.data.attributes[variableConfig.gameteRoleVariable],
-    ).toBe('egg');
+    ).toEqual(['egg']);
 
     const spermEdge = edges.find((e) => e.source === 'partner-1');
     expect(spermEdge?.data.attributes.relationship).toEqual(['biological']);
@@ -119,13 +119,13 @@ describe('buildChildParentage', () => {
     );
 
     const eggEdge = edges.find((e) => e.source === 'ego-1');
-    expect(eggEdge?.data.attributes[variableConfig.gameteRoleVariable]).toBe(
-      'egg',
+    expect(eggEdge?.data.attributes[variableConfig.gameteRoleVariable]).toEqual(
+      ['egg'],
     );
 
     const spermEdge = edges.find((e) => e.source === 'partner-1');
-    expect(spermEdge?.data.attributes[variableConfig.gameteRoleVariable]).toBe(
-      'sperm',
-    );
+    expect(
+      spermEdge?.data.attributes[variableConfig.gameteRoleVariable],
+    ).toEqual(['sperm']);
   });
 });

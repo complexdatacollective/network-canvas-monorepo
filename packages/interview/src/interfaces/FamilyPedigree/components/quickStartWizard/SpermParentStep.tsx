@@ -50,7 +50,7 @@ export default function SpermParentStep() {
         />
         <Field
           name="is-donor"
-          label={`Was this person a ${terms.spermDonor.toLowerCase()}?`}
+          label={terms.spermDonorQuestion}
           component={BooleanField}
           initialValue={false}
           required

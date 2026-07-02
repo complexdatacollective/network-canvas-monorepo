@@ -50,7 +50,7 @@ export default function EggParentStep() {
         />
         <Field
           name="is-donor"
-          label={`Was this person an ${terms.eggDonor.toLowerCase()}?`}
+          label={terms.eggDonorQuestion}
           component={BooleanField}
           initialValue={false}
           required

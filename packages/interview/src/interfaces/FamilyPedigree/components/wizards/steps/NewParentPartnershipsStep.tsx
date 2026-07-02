@@ -43,8 +43,8 @@ type ParentEntry = {
 function getNewParentLabel(
   key: ParentKey,
   values: Record<string, unknown>,
-  eggParentTerm: string,
-  spermParentTerm: string,
+  newEggParentLabel: string,
+  newSpermParentLabel: string,
 ): string {
   const nameMap: Record<ParentKey, string> = {
     'egg-source': 'new-egg-source.name',
@@ -53,8 +53,8 @@ function getNewParentLabel(
   };
 
   const fallbackMap: Record<ParentKey, string> = {
-    'egg-source': `New ${eggParentTerm.toLowerCase()}`,
-    'sperm-source': `New ${spermParentTerm.toLowerCase()}`,
+    'egg-source': newEggParentLabel,
+    'sperm-source': newSpermParentLabel,
     'carrier-source': 'New gestational carrier',
   };
 
@@ -74,7 +74,7 @@ export function shouldSkipNewParentPartnerships({
   ).length;
   const totalParents = ALL_PARENT_KEYS.filter((key) => {
     const val = getFieldValue(key);
-    return val !== undefined && val !== 'egg-source';
+    return val !== undefined;
   }).length;
   return newCount === 0 || totalParents < 2;
 }
@@ -96,7 +96,7 @@ export default function NewParentPartnershipsStep() {
 
     for (const key of ALL_PARENT_KEYS) {
       const selection = formValues[key] as string | undefined;
-      if (!selection || selection === 'egg-source') continue;
+      if (!selection) continue;
 
       if (selection === 'new') {
         list.push({
@@ -104,15 +104,15 @@ export default function NewParentPartnershipsStep() {
           label: getNewParentLabel(
             key,
             formValues,
-            terms.eggParent,
-            terms.spermParent,
+            terms.newEggParent,
+            terms.newSpermParent,
           ),
           isNew: true,
         });
       } else if (selection === 'unknown') {
         const fallbackMap: Record<ParentKey, string> = {
-          'egg-source': `Unknown ${terms.eggParent.toLowerCase()}`,
-          'sperm-source': `Unknown ${terms.spermParent.toLowerCase()}`,
+          'egg-source': terms.unknownEggParent,
+          'sperm-source': terms.unknownSpermParent,
           'carrier-source': 'Unknown gestational carrier',
         };
         list.push({ key, label: fallbackMap[key], isNew: false });

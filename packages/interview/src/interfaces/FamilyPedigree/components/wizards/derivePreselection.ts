@@ -9,7 +9,9 @@ import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeU
 import type { BioTriadConfig } from './steps/BioTriadStep';
 
 function readGameteRole(value: unknown): GameteRole | undefined {
-  return value === 'egg' || value === 'sperm' ? value : undefined;
+  // Stored as a single-element categorical array; also tolerate a bare string.
+  const v = Array.isArray(value) ? value[0] : value;
+  return v === 'egg' || v === 'sperm' ? v : undefined;
 }
 
 export function derivePreselection(

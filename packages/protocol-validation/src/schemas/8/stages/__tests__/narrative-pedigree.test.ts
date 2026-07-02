@@ -262,4 +262,102 @@ describe('NarrativePedigree protocol-level cross-references', () => {
       expect(issue).toBeDefined();
     }
   });
+
+  it('rejects when a disease variable is not a boolean', () => {
+    // personBioSex is a 'text' variable; the affection predicate is boolean.
+    const result = ProtocolSchemaV8.safeParse(
+      makeProtocol({
+        stages: [
+          validFamilyPedigreeStage,
+          {
+            ...validNarrativePedigreeStageShape,
+            diseases: [
+              {
+                id: 'disease1',
+                label: 'Breast Cancer',
+                color: '#ff0000',
+                variable: 'personBioSex',
+                inheritancePattern: 'autosomalDominant',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((i) =>
+        i.message.includes('must be a boolean'),
+      );
+      expect(issue).toBeDefined();
+    }
+  });
+
+  it('accepts a FamilyPedigree nomination prompt bound to a boolean variable', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      makeProtocol({
+        stages: [
+          {
+            ...validFamilyPedigreeStage,
+            nominationPrompts: [
+              {
+                id: 'nom1',
+                text: 'Who is affected?',
+                variable: 'hasBreastCancer',
+              },
+            ],
+          },
+          validNarrativePedigreeStageShape,
+        ],
+      }),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a FamilyPedigree nomination prompt whose variable is missing from the codebook', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      makeProtocol({
+        stages: [
+          {
+            ...validFamilyPedigreeStage,
+            nominationPrompts: [
+              { id: 'nom1', text: 'Who is affected?', variable: 'ghostVar' },
+            ],
+          },
+          validNarrativePedigreeStageShape,
+        ],
+      }),
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((i) =>
+        i.message.includes('ghostVar'),
+      );
+      expect(issue).toBeDefined();
+    }
+  });
+
+  it('rejects a FamilyPedigree nomination prompt variable that is not a boolean', () => {
+    // personRel is a 'text' variable; a nomination writes a boolean flag.
+    const result = ProtocolSchemaV8.safeParse(
+      makeProtocol({
+        stages: [
+          {
+            ...validFamilyPedigreeStage,
+            nominationPrompts: [
+              { id: 'nom1', text: 'Who is affected?', variable: 'personRel' },
+            ],
+          },
+          validNarrativePedigreeStageShape,
+        ],
+      }),
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((i) =>
+        i.message.includes('must be a boolean'),
+      );
+      expect(issue).toBeDefined();
+    }
+  });
 });

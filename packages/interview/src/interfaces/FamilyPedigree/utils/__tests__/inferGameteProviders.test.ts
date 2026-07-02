@@ -7,7 +7,6 @@ import { inferGameteProviders } from '../inferGameteProviders';
 const FALLBACK = {
   eggSource: 'ego',
   spermSource: 'partner',
-  carrier: 'egg-source',
   eggParentCarried: true,
 };
 
@@ -21,7 +20,6 @@ describe('inferGameteProviders', () => {
     ).toEqual({
       eggSource: 'ego',
       spermSource: 'partner',
-      carrier: 'egg-source',
       eggParentCarried: true,
     });
   });
@@ -32,7 +30,6 @@ describe('inferGameteProviders', () => {
     ).toEqual({
       eggSource: 'partner',
       spermSource: 'ego',
-      carrier: 'egg-source',
       eggParentCarried: true,
     });
   });
@@ -43,7 +40,6 @@ describe('inferGameteProviders', () => {
     ).toEqual({
       eggSource: 'ego',
       spermSource: undefined,
-      carrier: 'egg-source',
       eggParentCarried: true,
     });
   });

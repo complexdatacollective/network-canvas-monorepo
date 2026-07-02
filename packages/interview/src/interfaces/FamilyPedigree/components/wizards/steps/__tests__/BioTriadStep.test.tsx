@@ -82,7 +82,6 @@ describe('BioTriadStep egg/sperm mutual exclusion', () => {
               preselection: {
                 eggSource: 'linda',
                 spermSource: 'robert',
-                carrier: 'egg-source',
               },
             }}
           >
@@ -153,7 +152,6 @@ describe('BioTriadStep egg/sperm mutual exclusion', () => {
               preselection: {
                 eggSource: 'linda',
                 spermSource: 'robert',
-                carrier: 'egg-source',
               },
             }}
           >

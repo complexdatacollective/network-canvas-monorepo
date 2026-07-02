@@ -138,4 +138,17 @@ describe('GestationalCarrierStep framing invariance', () => {
 
     expect(screen.getByText(/gestational carrier/i)).toBeTruthy();
   });
+
+  it('does not leak gamete wording ("egg") under gendered framing', () => {
+    const Wrapper = framingWrapper('gendered');
+    render(
+      <Wrapper>
+        <Form onSubmit={() => ({ success: true })}>
+          <GestationalCarrierStep />
+        </Form>
+      </Wrapper>,
+    );
+
+    expect(screen.queryByText(/egg/i)).toBeNull();
+  });
 });

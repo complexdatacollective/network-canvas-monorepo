@@ -23,7 +23,26 @@ const AtRiskStatuses = (_props: StageEditorSectionProps) => (
           shown as <em>may develop</em> it; the child of two carriers of a
           recessive condition is shown as <em>may carry</em> it, or{' '}
           <em>may be affected</em> when both copies could be inherited (such as
-          a consanguineous union).
+          a consanguineous union). Only <em>biological</em> and <em>donor</em>{' '}
+          relationships pass conditions on; social, adoptive, surrogate, and
+          partner links do not. Where a person&rsquo;s biological sex is not
+          known, sex-linked inheritance through that person is left uncertain
+          rather than guessed.
+        </p>
+        <p>
+          <strong>&ldquo;May be affected&rdquo; and known carriers.</strong> The{' '}
+          <em>may be affected</em> (possibly two copies) symbol is only shown
+          for a person whose status is still open. It is deliberately{' '}
+          <strong>not</strong> shown for someone the pedigree already
+          establishes is an unaffected carrier of a <em>recessive</em>{' '}
+          condition, because such a person cannot also be affected. The one
+          exception is <strong>X-linked recessive</strong>: a daughter of an
+          affected father and a carrier mother is still shown as{' '}
+          <em>may be affected</em>, because she can inherit an affected copy
+          from each parent, and carrier females of X-linked conditions can
+          themselves show symptoms. X-linked risk is traced along the{' '}
+          <strong>maternal line</strong> only, so relatives connected through an
+          unaffected father are not marked.
         </p>
         <p>
           <strong>Why this is off by default.</strong> At-risk symbols are a

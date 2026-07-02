@@ -315,6 +315,18 @@ export const createFamilyPedigreeStore = (
 
         syncMetadata: () => {
           const { nodes, edges } = get().network;
+          const { storeToReduxIdMap } = get();
+
+          // The persisted membership snapshot must be keyed by the ids the shared
+          // Redux graph uses, because every consumer (pedigreeMemberIds ->
+          // NarrativePedigree, and this stage's own revisit view) matches it
+          // against Redux `node._uid`. After finalize, nodes created here live in
+          // Redux under fresh ids recorded in storeToReduxIdMap; seeded/pre-finalize
+          // nodes are absent from the map and keep their id (which already equals
+          // their Redux id). So map every store id through it, falling back to
+          // itself.
+          const toReduxId = (storeId: string): string =>
+            storeToReduxIdMap.get(storeId) ?? storeId;
 
           const egoEntry = [...nodes.entries()].find(
             ([, n]) => n.attributes[variableConfig.egoVariable] === true,
@@ -344,7 +356,7 @@ export const createFamilyPedigreeStore = (
             }
 
             return {
-              id,
+              id: toReduxId(id),
               label,
               isEgo,
             };
@@ -352,8 +364,8 @@ export const createFamilyPedigreeStore = (
 
           const serializedEdges = [...edges.entries()].map(([id, edge]) => ({
             id,
-            from: edge.from,
-            to: edge.to,
+            from: toReduxId(edge.from),
+            to: toReduxId(edge.to),
             attributes: edge.attributes,
           }));
 

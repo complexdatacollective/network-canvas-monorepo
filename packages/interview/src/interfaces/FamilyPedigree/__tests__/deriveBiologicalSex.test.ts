@@ -64,12 +64,13 @@ describe('withInferredBiologicalSex', () => {
       config,
     );
 
-    expect(sexOf(result, 'egg')).toBe('female');
-    expect(sexOf(result, 'sperm')).toBe('male');
-    expect(sexOf(result, 'surrogate')).toBe('female');
+    // biologicalSex is categorical, stored as a single-element array.
+    expect(sexOf(result, 'egg')).toEqual(['female']);
+    expect(sexOf(result, 'sperm')).toEqual(['male']);
+    expect(sexOf(result, 'surrogate')).toEqual(['female']);
     // A leaf with no reproductive role and no captured sex is still populated.
-    expect(sexOf(result, 'child')).toBe('unknown');
-    expect(sexOf(result, 'lonely')).toBe('unknown');
+    expect(sexOf(result, 'child')).toEqual(['unknown']);
+    expect(sexOf(result, 'lonely')).toEqual(['unknown']);
     // The invariant: no node is left without the attribute.
     for (const node of result.nodes) {
       expect(node.data.attributes.biologicalSex).toBeDefined();
@@ -79,12 +80,12 @@ describe('withInferredBiologicalSex', () => {
   it('keeps a captured (asked) sex rather than overriding it from role', () => {
     const result = withInferredBiologicalSex(
       build(
-        [['person', { biologicalSex: 'male' }]],
-        [parentEdge('person', 'biological', { gameteRole: 'egg' })],
+        [['person', { biologicalSex: ['male'] }]],
+        [parentEdge('person', 'biological', { gameteRole: ['egg'] })],
       ),
       config,
     );
     // Captured 'male' wins over the egg-role inference of 'female'.
-    expect(sexOf(result, 'person')).toBe('male');
+    expect(sexOf(result, 'person')).toEqual(['male']);
   });
 });

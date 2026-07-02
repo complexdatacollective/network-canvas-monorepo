@@ -539,14 +539,14 @@ export class SyntheticInterview {
         const isGestCarrierVar =
           opts.edgeConfig.isGestationalCarrierVariable ??
           this.nextId('is-gest-carrier-var');
+        const gameteRoleVar =
+          opts.edgeConfig.gameteRoleVariable ?? this.nextId('gamete-role-var');
         entry.edgeConfig = {
           type: opts.edgeConfig.type,
           relationshipTypeVariable: opts.edgeConfig.relationshipTypeVariable,
           isActiveVariable: isActiveVar,
           isGestationalCarrierVariable: isGestCarrierVar,
-          ...(opts.edgeConfig.gameteRoleVariable !== undefined && {
-            gameteRoleVariable: opts.edgeConfig.gameteRoleVariable,
-          }),
+          gameteRoleVariable: gameteRoleVar,
         };
       } else {
         let edgeTypeId: string;
@@ -560,6 +560,7 @@ export class SyntheticInterview {
           relationshipTypeVariable: this.nextId('rel-type-var'),
           isActiveVariable: this.nextId('is-active-var'),
           isGestationalCarrierVariable: this.nextId('is-gest-carrier-var'),
+          gameteRoleVariable: this.nextId('gamete-role-var'),
         };
       }
 
@@ -612,12 +613,6 @@ export class SyntheticInterview {
       if (opts?.showAtRiskStatuses !== undefined) {
         entry.narrativePedigreeShowAtRiskStatuses = opts.showAtRiskStatuses;
       }
-      if (opts?.presets) {
-        entry.narrativePedigreePresets = opts.presets;
-      }
-      entry.narrativePedigreeBehaviours = {
-        allowFocalReselection: opts?.allowFocalReselection ?? false,
-      };
     }
 
     // Generate initial nodes (only for node-based stages)
@@ -1600,12 +1595,6 @@ export class SyntheticInterview {
       }
       config.showAtRiskStatuses =
         stage.narrativePedigreeShowAtRiskStatuses ?? false;
-      if (stage.narrativePedigreePresets) {
-        config.presets = stage.narrativePedigreePresets;
-      }
-      if (stage.narrativePedigreeBehaviours) {
-        config.behaviours = stage.narrativePedigreeBehaviours;
-      }
     }
 
     return config;

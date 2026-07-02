@@ -112,6 +112,7 @@ function buildStubGraph(
     childrenOf,
     fullSiblingsOf: () => [],
     halfSiblingsOf: () => [],
+    maternalHalfSiblingsOf: () => [],
     descendants,
     ancestors,
     propagate,
