@@ -91,7 +91,7 @@ export default function EgoCellWizard({
           ? []
           : [
               {
-                title: 'Choose your language',
+                title: 'How we’ll refer to your parents',
                 content: wrap(FramingSelectionStep),
               },
             ]),

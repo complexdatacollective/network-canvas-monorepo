@@ -19,16 +19,16 @@ export function shouldSkipFramingSelectionStep(
 
 const FRAMING_OPTIONS = [
   {
-    value: 'gamete' as const,
-    label: 'Egg parent & sperm parent',
-    description:
-      "We'll talk about the person whose egg you came from and the person whose sperm you came from.",
-  },
-  {
     value: 'gendered' as const,
     label: 'Mother & father',
     description:
       "We'll talk about your biological mother and biological father.",
+  },
+  {
+    value: 'gamete' as const,
+    label: 'Egg parent & sperm parent',
+    description:
+      "We'll talk about the person whose egg you came from and the person whose sperm you came from.",
   },
 ];
 
