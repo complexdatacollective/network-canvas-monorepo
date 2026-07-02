@@ -1,16 +1,15 @@
 import { db } from '../db/db';
-import { isCapacitor, isElectron } from '../platform/platform';
-import {
-  isBiometricNativeAvailable,
-  verifyBiometric as verifyBiometricNativePlugin,
-} from './biometricNative';
-import * as electronAuth from './electron';
 import * as vaultMetadata from './vaultMetadata';
 
 const PBKDF2_ITERATIONS = 600_000;
 const PBKDF2_SALT_BYTES = 32;
 const PBKDF2_KEY_BYTES = 32;
 const PIN_LENGTH = 8;
+
+const BIOMETRIC_UNAVAILABLE = {
+  ok: false,
+  message: 'Biometric authentication is not available',
+} as const;
 
 function fromBase64(b64: string): Uint8Array<ArrayBuffer> {
   const binary = atob(b64);
@@ -27,11 +26,10 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-// Non-Electron renderers hold the unlock flag in sessionStorage, not in a
-// module-level variable: a page reload (Vite HMR escalation, F5, etc.) wipes
-// module state and would otherwise re-show the LockScreen on every dev save.
-// sessionStorage clears when the tab / Capacitor process is killed, which
-// matches the spec's "re-lock on app close" requirement.
+// The unlock flag lives in sessionStorage, not a module variable: a page reload
+// (F5, Vite HMR) wipes module state and would otherwise re-show the LockScreen
+// on every dev save. sessionStorage clears when the tab is killed, matching the
+// "re-lock on app close" requirement.
 const WEB_UNLOCK_KEY = 'interviewer-v8:web-unlocked';
 
 function readWebUnlocked(): boolean {
@@ -52,10 +50,7 @@ function validatePin(
   pin: string,
 ): { ok: true } | { ok: false; message: string } {
   if (pin.length !== PIN_LENGTH || !/^\d+$/.test(pin)) {
-    return {
-      ok: false,
-      message: `PIN must be exactly ${PIN_LENGTH} digits`,
-    };
+    return { ok: false, message: `PIN must be exactly ${PIN_LENGTH} digits` };
   }
   return { ok: true };
 }
@@ -74,12 +69,7 @@ async function derivePinVerifier(
     ['deriveBits'],
   );
   const bits = await crypto.subtle.deriveBits(
-    {
-      name: 'PBKDF2',
-      salt,
-      iterations,
-      hash: 'SHA-256',
-    },
+    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
     material,
     PBKDF2_KEY_BYTES * 8,
   );
@@ -122,8 +112,6 @@ async function derivePassphraseVerifier(
   saltB64: string,
   iterations: number,
 ): Promise<string> {
-  // Same derivation as PIN — but kept separate so future tuning (e.g. argon2)
-  // can be passphrase-specific without disturbing PIN.
   const salt = fromBase64(saltB64);
   const material = await crypto.subtle.importKey(
     'raw',
@@ -133,12 +121,7 @@ async function derivePassphraseVerifier(
     ['deriveBits'],
   );
   const bits = await crypto.subtle.deriveBits(
-    {
-      name: 'PBKDF2',
-      salt,
-      iterations,
-      hash: 'SHA-256',
-    },
+    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
     material,
     PBKDF2_KEY_BYTES * 8,
   );
@@ -154,64 +137,36 @@ function constantTimeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-// Async availability check used by the setup wizard. On Electron this asks
-// the main process whether the platform's biometric keystore is reachable
-// (macOS only today); on web/Capacitor we have no Electron-side biometric.
+// Biometric is not available on the web target. Phase E replaces this with
+// WebAuthn-PRF enrolment/unlock.
 export async function isBiometricSupported(): Promise<boolean> {
-  if (isElectron) return electronAuth.biometricAvailable();
   return false;
 }
 
 export async function status(): Promise<AuthStatus> {
-  if (isElectron) return electronAuth.status();
   const metadata = await vaultMetadata.read();
   if (!metadata) {
     return { configured: false, locked: false };
   }
   if (metadata.mode === 'pin') {
-    return {
-      configured: true,
-      locked: !readWebUnlocked(),
-      mode: 'pin',
-    };
+    return { configured: true, locked: !readWebUnlocked(), mode: 'pin' };
   }
   if (metadata.mode === 'passphrase') {
-    return {
-      configured: true,
-      locked: !readWebUnlocked(),
-      mode: 'passphrase',
-    };
+    return { configured: true, locked: !readWebUnlocked(), mode: 'passphrase' };
   }
-  if (metadata.mode === 'biometric-native') {
-    return {
-      configured: true,
-      locked: !readWebUnlocked(),
-      mode: 'biometric-native',
-    };
-  }
-  return {
-    configured: true,
-    locked: false,
-    mode: 'none',
-  };
+  return { configured: true, locked: false, mode: 'none' };
 }
 
 export async function enrol(
   _signal?: AbortSignal,
 ): Promise<{ ok: boolean; message?: string }> {
-  if (isElectron) {
-    return electronAuth.setupBiometric();
-  }
-  return { ok: false, message: 'Biometric authentication is not available' };
+  return BIOMETRIC_UNAVAILABLE;
 }
 
 export async function enrolWithoutLock(): Promise<{
   ok: boolean;
   message?: string;
 }> {
-  if (isElectron) {
-    return electronAuth.setupNone();
-  }
   await vaultMetadata.writeNone();
   writeWebUnlocked(true);
   return { ok: true };
@@ -222,9 +177,6 @@ export async function enrolWithPin(
 ): Promise<{ ok: boolean; message?: string }> {
   const validation = validatePin(pin);
   if (!validation.ok) return validation;
-  if (isElectron) {
-    return electronAuth.setupPin({ pin });
-  }
   const salt = new Uint8Array(PBKDF2_SALT_BYTES);
   crypto.getRandomValues(salt);
   const saltB64 = toBase64(salt);
@@ -242,50 +194,20 @@ export async function enrolWithBiometricNative(): Promise<{
   ok: boolean;
   message?: string;
 }> {
-  if (!isCapacitor) {
-    return { ok: false, message: 'Biometric authentication is not available' };
-  }
-  const availability = await isBiometricNativeAvailable();
-  if (!availability.ok) {
-    return {
-      ok: false,
-      message: 'Biometric authentication is not available on this device',
-    };
-  }
-  const verification = await verifyBiometricNativePlugin();
-  if (!verification.ok) return verification;
-  await vaultMetadata.writeBiometricNative();
-  writeWebUnlocked(true);
-  return { ok: true };
+  return BIOMETRIC_UNAVAILABLE;
 }
 
 export async function unlockWithBiometricNative(): Promise<{
   ok: boolean;
   message?: string;
 }> {
-  if (!isCapacitor) {
-    return { ok: false, message: 'Biometric authentication is not available' };
-  }
-  const metadata = await vaultMetadata.read();
-  if (!metadata || metadata.mode !== 'biometric-native') {
-    return {
-      ok: false,
-      message: 'Biometric authentication is not configured on this device',
-    };
-  }
-  const verification = await verifyBiometricNativePlugin();
-  if (!verification.ok) return verification;
-  writeWebUnlocked(true);
-  return { ok: true };
+  return BIOMETRIC_UNAVAILABLE;
 }
 
 export async function unlock(
   _signal?: AbortSignal,
 ): Promise<{ ok: boolean; message?: string }> {
-  if (isElectron) {
-    return electronAuth.unlockBiometric();
-  }
-  return { ok: false, message: 'Biometric authentication is not available' };
+  return BIOMETRIC_UNAVAILABLE;
 }
 
 export async function unlockWithPin(
@@ -293,9 +215,6 @@ export async function unlockWithPin(
 ): Promise<{ ok: boolean; message?: string }> {
   const validation = validatePin(pin);
   if (!validation.ok) return validation;
-  if (isElectron) {
-    return electronAuth.unlockPin({ pin });
-  }
   const metadata = await vaultMetadata.read();
   if (!metadata || metadata.mode !== 'pin') {
     return { ok: false, message: 'PIN is not configured on this device' };
@@ -313,17 +232,13 @@ export async function unlockWithPin(
 }
 
 export async function lock(): Promise<void> {
-  if (isElectron) {
-    await electronAuth.lock();
-    return;
-  }
   writeWebUnlocked(false);
 }
 
 export async function reEnrol(
   _signal?: AbortSignal,
 ): Promise<{ ok: boolean; message?: string }> {
-  return { ok: false, message: 'Biometric authentication is not available' };
+  return BIOMETRIC_UNAVAILABLE;
 }
 
 export async function reEnrolWithPin(args: {
@@ -335,9 +250,6 @@ export async function reEnrolWithPin(args: {
   const currentValidation = validatePin(args.currentPin);
   if (!currentValidation.ok)
     return { ok: false, message: 'Current PIN is incorrect' };
-  if (isElectron) {
-    return electronAuth.reEnrolPin(args);
-  }
   const metadata = await vaultMetadata.read();
   if (!metadata || metadata.mode !== 'pin') {
     return { ok: false, message: 'PIN is not configured on this device' };
@@ -372,9 +284,6 @@ export async function enrolWithPassphrase(
 ): Promise<{ ok: boolean; message?: string }> {
   const validation = validatePassphrase(phrase);
   if (!validation.ok) return validation;
-  if (isElectron) {
-    return electronAuth.setupPassphrase({ phrase });
-  }
   const salt = new Uint8Array(PBKDF2_SALT_BYTES);
   crypto.getRandomValues(salt);
   const saltB64 = toBase64(salt);
@@ -397,9 +306,6 @@ export async function unlockWithPassphrase(
 ): Promise<{ ok: boolean; message?: string }> {
   const validation = validatePassphrase(phrase);
   if (!validation.ok) return { ok: false, message: 'Incorrect passphrase' };
-  if (isElectron) {
-    return electronAuth.unlockPassphrase({ phrase });
-  }
   const metadata = await vaultMetadata.read();
   if (!metadata || metadata.mode !== 'passphrase') {
     return {
@@ -425,9 +331,6 @@ export async function reEnrolWithPassphrase(args: {
 }): Promise<{ ok: boolean; message?: string }> {
   const nextValidation = validatePassphrase(args.nextPhrase);
   if (!nextValidation.ok) return nextValidation;
-  if (isElectron) {
-    return electronAuth.reEnrolPassphrase(args);
-  }
   const metadata = await vaultMetadata.read();
   if (!metadata || metadata.mode !== 'passphrase') {
     return {
@@ -463,13 +366,7 @@ export async function reEnrolWithPassphrase(args: {
 export async function verifyBiometric(
   _signal?: AbortSignal,
 ): Promise<{ ok: boolean; message?: string }> {
-  if (isCapacitor) {
-    return verifyBiometricNativePlugin();
-  }
-  if (isElectron) {
-    return electronAuth.verifyBiometric();
-  }
-  return { ok: false, message: 'Biometric authentication is not available' };
+  return BIOMETRIC_UNAVAILABLE;
 }
 
 export async function verifyWithPin(
@@ -477,7 +374,6 @@ export async function verifyWithPin(
 ): Promise<{ ok: boolean; message?: string }> {
   const validation = validatePin(pin);
   if (!validation.ok) return { ok: false, message: 'Incorrect PIN' };
-  if (isElectron) return electronAuth.verifyPin({ pin });
   const metadata = await vaultMetadata.read();
   if (!metadata || metadata.mode !== 'pin') {
     return { ok: false, message: 'PIN is not configured on this device' };
@@ -498,7 +394,6 @@ export async function verifyWithPassphrase(
 ): Promise<{ ok: boolean; message?: string }> {
   const validation = validatePassphrase(phrase);
   if (!validation.ok) return { ok: false, message: 'Incorrect passphrase' };
-  if (isElectron) return electronAuth.verifyPassphrase({ phrase });
   const metadata = await vaultMetadata.read();
   if (!metadata || metadata.mode !== 'passphrase') {
     return {
@@ -518,15 +413,9 @@ export async function verifyWithPassphrase(
 }
 
 export async function revoke(): Promise<void> {
-  if (isElectron) {
-    await electronAuth.revoke();
-    return;
-  }
   // Order matters: drop the Dexie DB first, then clear metadata. If we fail
   // mid-revoke, leaving metadata behind keeps the install in a recoverable
   // "configured but locked" state instead of an orphaned DB without a vault.
-  // disableAutoOpen: false keeps the singleton usable so re-enrolment in the
-  // same session (reset → setup wizard) can reopen a fresh database.
   await db.delete({ disableAutoOpen: false });
   await vaultMetadata.clear();
   writeWebUnlocked(false);
