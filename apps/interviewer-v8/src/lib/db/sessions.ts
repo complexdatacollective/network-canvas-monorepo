@@ -3,6 +3,11 @@ import { v4 as uuid } from 'uuid';
 import type { NcNetwork } from '@codaco/shared-consts';
 
 import { db } from './db';
+import {
+  decryptSession,
+  encryptSession,
+  type StoredSessionRow,
+} from './recordCrypto';
 import type {
   SessionQueryParams,
   SessionQueryResult,
@@ -11,7 +16,7 @@ import type {
   StoredSessionLite,
 } from './types';
 
-function deriveStatusKind(session: StoredSession): SessionStatusKind {
+function deriveStatusKind(session: StoredSessionRow): SessionStatusKind {
   if (session.exportedAt) return 'exported';
   if (session.finishedAt) return 'complete';
   return 'in-progress';
@@ -22,12 +27,12 @@ function deriveStatusKind(session: StoredSession): SessionStatusKind {
 // read it straight back here. A finished session is always 100% — `progress`
 // may not have been persisted for the finish step, so `finishedAt` is the
 // authoritative completion signal.
-export function deriveProgressPercent(session: StoredSession): number {
+export function deriveProgressPercent(session: StoredSessionRow): number {
   if (session.finishedAt) return 100;
   return Math.min(100, Math.max(0, session.progress ?? 0));
 }
 
-function toLite(session: StoredSession): StoredSessionLite {
+function toLite(session: StoredSessionRow): StoredSessionLite {
   return {
     id: session.id,
     protocolHash: session.protocolHash,
@@ -68,7 +73,7 @@ function inDateRange(
 }
 
 function matchesNonStatusFilters(
-  session: StoredSession,
+  session: StoredSessionRow,
   params: SessionQueryParams,
 ): boolean {
   const search = params.search?.trim().toLowerCase() ?? '';
@@ -196,14 +201,16 @@ export async function queryMatchingSessionIds(
 export async function getSession(
   id: string,
 ): Promise<StoredSession | undefined> {
-  return db.sessions.get(id);
+  const row = await db.sessions.get(id);
+  return row ? decryptSession(row) : undefined;
 }
 
 export async function getSessionsByIds(
   ids: readonly string[],
 ): Promise<StoredSession[]> {
-  const records = await db.sessions.bulkGet([...ids]);
-  return records.filter((r): r is StoredSession => Boolean(r));
+  const rows = await db.sessions.bulkGet([...ids]);
+  const present = rows.filter((r): r is StoredSessionRow => Boolean(r));
+  return Promise.all(present.map((row) => decryptSession(row)));
 }
 
 export async function createSession(args: {
@@ -228,7 +235,8 @@ export async function createSession(args: {
     stageMetadata: undefined,
     isSynthetic: args.isSynthetic ?? false,
   };
-  await db.sessions.put(session);
+  const row = await encryptSession(session);
+  await db.sessions.put(row);
   return session;
 }
 
@@ -236,20 +244,23 @@ export async function updateSession(
   id: string,
   patch: Partial<StoredSession>,
 ): Promise<StoredSession | undefined> {
-  const existing = await db.sessions.get(id);
-  if (!existing) return undefined;
+  const existingRow = await db.sessions.get(id);
+  if (!existingRow) return undefined;
+  const existing = await decryptSession(existingRow);
   const updated: StoredSession = {
     ...existing,
     ...patch,
     lastUpdatedAt: new Date().toISOString(),
   };
-  await db.sessions.put(updated);
+  const row = await encryptSession(updated);
+  await db.sessions.put(row);
   return updated;
 }
 
 export async function markSessionFinished(id: string): Promise<void> {
   const existing = await db.sessions.get(id);
   if (!existing) return;
+  // Only plaintext index fields change; spread preserves `_enc` — no key needed.
   await db.sessions.put({
     ...existing,
     finishedAt: new Date().toISOString(),
