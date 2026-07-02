@@ -454,10 +454,21 @@ export const createCollectionStore = <T>(
           _textValueExtractor,
         );
 
+        // If the focused item was filtered out, move focus to the first
+        // remaining item so keyboard focus / aria-activedescendant never points
+        // at a hidden row (otherwise the visible results can't be reached).
+        // Selection is intentionally left untouched — a filtered-out selected
+        // item stays selected and reappears when the filter is cleared.
+        let newFocusedKey = state.focusedKey;
+        if (newFocusedKey !== null && !itemsMap.has(newFocusedKey)) {
+          newFocusedKey = orderedKeys[0] ?? null;
+        }
+
         set({
           items: itemsMap,
           orderedKeys,
           size: orderedKeys.length,
+          focusedKey: newFocusedKey,
         });
       },
     })),

@@ -10,3 +10,8 @@ collections such as a horizontal timeline/filmstrip.
 `Collection`'s `filterFuseOptions` now accepts `includeScore`. Setting it to
 `false` keeps filtered results in their original collection order instead of
 re-sorting them by match relevance.
+
+Fixed keyboard focus after filtering: when the focused item is filtered out,
+focus (and `aria-activedescendant`) now moves to the first remaining result
+instead of pointing at a hidden row, so filtered results can be reached and
+selected with the keyboard.
