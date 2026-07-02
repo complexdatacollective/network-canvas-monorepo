@@ -8,6 +8,7 @@ import { useToast } from '@codaco/fresco-ui/Toast';
 import { BrandHeader } from '~/components/BrandHeader';
 import { DataView } from '~/components/DataView/DataView';
 import { ImportDialog } from '~/components/ImportDialog';
+import { InstallBanner } from '~/components/InstallBanner';
 import { ProtocolDeck } from '~/components/ProtocolCarousel/ProtocolDeck';
 import { ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
@@ -161,6 +162,7 @@ export function HomeRoute() {
           rendered below this header sits at z-40; the header itself has no
           z-index so it is visually overlaid, and `inert` keeps its
           controls out of the tab order while the new-session form is up. */}
+      <InstallBanner />
       <header
         className="relative flex items-center justify-between px-11 pt-9"
         inert={newSessionActive}

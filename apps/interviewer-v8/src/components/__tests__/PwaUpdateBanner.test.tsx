@@ -1,8 +1,5 @@
-import { Toast } from '@base-ui/react/toast';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-
-import { Toaster } from '@codaco/fresco-ui/Toast';
 
 const { mockUseRegisterSW, mockUseLocation } = vi.hoisted(() => ({
   mockUseRegisterSW: vi.fn(),
@@ -19,9 +16,6 @@ vi.mock('wouter', () => ({
 
 import PwaUpdateBanner from '../PwaUpdateBanner';
 
-// Matches FRESH_LOAD_WINDOW_MS in the component.
-const PAST_FRESH_LOAD = 25_000;
-
 const setSwState = ({
   needRefresh = false,
   updateServiceWorker = vi.fn(),
@@ -36,90 +30,73 @@ const setSwState = ({
   });
 };
 
-// The banner dispatches into the app's toast system, so tests render it
-// inside a real provider + viewport and assert against the toast output.
-const tree = () => (
-  <Toast.Provider>
-    <PwaUpdateBanner />
-    <Toaster />
-  </Toast.Provider>
-);
-
 afterEach(() => {
-  vi.useRealTimers();
   vi.clearAllMocks();
   mockUseLocation.mockReturnValue(['/']);
 });
 
 describe('PwaUpdateBanner', () => {
-  it('shows no toast when there is no update', () => {
+  it('renders nothing when there is no update', () => {
     setSwState({});
-    render(tree());
-    expect(screen.queryByText(/update available/i)).not.toBeInTheDocument();
+    const { container } = render(<PwaUpdateBanner />);
+    expect(container).toBeEmptyDOMElement();
   });
 
-  it('silently applies a pending update on a fresh load off an interview', () => {
-    vi.useFakeTimers();
+  // Regression: an earlier fresh-load window applied pending updates silently
+  // (the app appeared to restart itself). Updates must ALWAYS prompt.
+  it('prompts for a pending update instead of silently reloading', () => {
     const updateServiceWorker = vi.fn();
     setSwState({ needRefresh: true, updateServiceWorker });
 
-    render(tree());
+    render(<PwaUpdateBanner />);
 
-    expect(updateServiceWorker).toHaveBeenCalledWith(true);
-    expect(screen.queryByText(/update available/i)).not.toBeInTheDocument();
-  });
-
-  it('never silently reloads while an interview is active', () => {
-    vi.useFakeTimers();
-    mockUseLocation.mockReturnValue(['/interview/abc-123']);
-    const updateServiceWorker = vi.fn();
-    setSwState({ needRefresh: true, updateServiceWorker });
-
-    render(tree());
-
-    // Fresh-load silent update suppressed; no prompt shown mid-interview either.
     expect(updateServiceWorker).not.toHaveBeenCalled();
-    expect(screen.queryByText(/update available/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/new version of Interviewer is available/i),
+    ).toBeInTheDocument();
   });
 
-  it('prompts for an update that appears during an open session', () => {
-    vi.useFakeTimers();
+  it('reloads only on the explicit Reload action', () => {
     const updateServiceWorker = vi.fn();
-    setSwState({ needRefresh: false, updateServiceWorker });
-    const { rerender } = render(tree());
-
-    act(() => {
-      vi.advanceTimersByTime(PAST_FRESH_LOAD);
-    });
     setSwState({ needRefresh: true, updateServiceWorker });
-    act(() => rerender(tree()));
 
-    expect(screen.getByText(/update available/i)).toBeInTheDocument();
-    expect(updateServiceWorker).not.toHaveBeenCalled();
+    render(<PwaUpdateBanner />);
 
     fireEvent.click(screen.getByRole('button', { name: /reload/i }));
     expect(updateServiceWorker).toHaveBeenCalledWith(true);
   });
 
-  it('defers a pending update until the interview is exited, then prompts', () => {
-    vi.useFakeTimers();
+  it('can be dismissed for the session', () => {
+    const updateServiceWorker = vi.fn();
+    setSwState({ needRefresh: true, updateServiceWorker });
+
+    render(<PwaUpdateBanner />);
+
+    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+    expect(
+      screen.queryByText(/new version of Interviewer is available/i),
+    ).not.toBeInTheDocument();
+    expect(updateServiceWorker).not.toHaveBeenCalled();
+  });
+
+  it('withholds the prompt while an interview is active, then surfaces it', () => {
     mockUseLocation.mockReturnValue(['/interview/abc-123']);
     const updateServiceWorker = vi.fn();
-    setSwState({ needRefresh: false, updateServiceWorker });
-    const { rerender } = render(tree());
-
-    act(() => {
-      vi.advanceTimersByTime(PAST_FRESH_LOAD);
-    });
-    // Update arrives mid-interview: no prompt, no reload.
     setSwState({ needRefresh: true, updateServiceWorker });
-    act(() => rerender(tree()));
-    expect(screen.queryByText(/update available/i)).not.toBeInTheDocument();
+    const { rerender } = render(<PwaUpdateBanner />);
 
-    // User returns Home: the deferred update now surfaces as a prompt.
+    // Mid-interview: no prompt, and certainly no reload.
+    expect(updateServiceWorker).not.toHaveBeenCalled();
+    expect(
+      screen.queryByText(/new version of Interviewer is available/i),
+    ).not.toBeInTheDocument();
+
+    // The researcher returns Home: the pending update now surfaces.
     mockUseLocation.mockReturnValue(['/']);
-    act(() => rerender(tree()));
-    expect(screen.getByText(/update available/i)).toBeInTheDocument();
+    act(() => rerender(<PwaUpdateBanner />));
+    expect(
+      screen.getByText(/new version of Interviewer is available/i),
+    ).toBeInTheDocument();
     expect(updateServiceWorker).not.toHaveBeenCalled();
   });
 
@@ -137,7 +114,7 @@ describe('PwaUpdateBanner', () => {
       };
     });
 
-    const { unmount } = render(tree());
+    const { unmount } = render(<PwaUpdateBanner />);
     act(() => notifyRegistered?.());
 
     expect(setIntervalSpy).toHaveBeenCalledTimes(1);

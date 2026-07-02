@@ -6,7 +6,6 @@ import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { AuthGate } from './components/AuthGate';
-import PwaInstallNudge from './components/PwaInstallNudge';
 import PwaUpdateBanner from './components/PwaUpdateBanner';
 import { AppProviders } from './providers/AppProviders';
 import { HomeRoute } from './routes/Home';
@@ -38,7 +37,6 @@ export default function App() {
       <AppErrorBoundary>
         <AppProviders>
           <PwaUpdateBanner />
-          <PwaInstallNudge />
           <motion.div
             className="fixed inset-0 -z-10"
             initial={{ opacity: 0 }}
