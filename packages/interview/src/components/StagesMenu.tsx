@@ -378,6 +378,12 @@ export default function StagesMenu({
             'group focusable relative flex w-36 cursor-pointer flex-col items-center gap-3 rounded-sm py-4 text-center transition-colors',
             'data-selected:bg-primary data-selected:text-primary-contrast',
             'hover:bg-accent data-focused:bg-accent',
+            // Edge spacing lives on the first/last card so it survives the
+            // horizontal scroll — a scroll container's own end padding is
+            // dropped from the scrollable area, flushing the last card to the
+            // edge.
+            isFirst && 'ml-6',
+            isLast && 'mr-6',
           )}
         >
           <span className="relative flex h-8 w-full items-center justify-center">
@@ -474,7 +480,7 @@ export default function StagesMenu({
         id={STAGES_MENU_LIST_ID}
         aria-label="Stages"
         className="min-h-0 flex-1"
-        viewportClassName={isHorizontal ? 'px-6 py-6' : 'py-4'}
+        viewportClassName={isHorizontal ? 'py-6' : 'py-4'}
         emptyState={
           <Paragraph margin="none" className="text-text/70 p-8 text-sm">
             Nothing matched your search term.
