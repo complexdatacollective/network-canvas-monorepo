@@ -273,6 +273,23 @@ export default function StagesMenu({
     return undefined;
   }, [open]);
 
+  // Centre the current stage when the menu opens. The collection's own focus
+  // scroll only brings it to the nearest edge, which leaves an end stage flush
+  // against the edge; a frame later we recentre it.
+  useEffect(() => {
+    if (!open || currentId === undefined) return undefined;
+    const id = requestAnimationFrame(() => {
+      document
+        .getElementById(`${STAGES_MENU_LIST_ID}-item-${currentId}`)
+        ?.scrollIntoView(
+          isHorizontal
+            ? { inline: 'center', block: 'nearest' }
+            : { block: 'center', inline: 'nearest' },
+        );
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open, currentId, isHorizontal]);
+
   const handleSelectionChange = (keys: Set<Key>) => {
     const [key] = keys;
     if (key === undefined) {
