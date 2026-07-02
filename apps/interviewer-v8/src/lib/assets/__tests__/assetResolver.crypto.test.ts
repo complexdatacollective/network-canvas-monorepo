@@ -75,7 +75,7 @@ describe('assetResolver decrypts encrypted-at-rest assets', () => {
   it('returns an apikey string directly (no blob URL)', async () => {
     const { makeAssetResolver } = await import('../assetResolver');
     const protocol = makeProtocol({
-      'key-1': { id: 'key-1', type: 'apikey', name: 'Key' },
+      'key-1': { id: 'key-1', type: 'apikey', name: 'Key', value: 'secret' },
     });
     await saveProtocol(protocol, 'h1', [
       { id: 'key-1', name: 'Key', data: 'secret' },
