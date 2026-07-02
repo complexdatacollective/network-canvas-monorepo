@@ -1,11 +1,10 @@
 'use client';
 
-import { LayoutTemplate } from 'lucide-react';
+import { EyeOff, LayoutTemplate } from 'lucide-react';
 import { motion, useReducedMotion, type Variants } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
-import { Badge } from '@codaco/fresco-ui/Badge';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { CollectionFilterInput } from '@codaco/fresco-ui/collection/components/CollectionFilterInput';
 import { ListLayout } from '@codaco/fresco-ui/collection/layout/ListLayout';
@@ -57,11 +56,11 @@ const textValueExtractor = (item: StageItem) => item.label;
 // Timeline (line + numbered nodes) reveals as a directional "wipe"; the stage
 // cards rise in on a heavier spring. Keep the whole sequence bounded so a long
 // protocol doesn't turn into a slideshow.
-const WIPE_DURATION = 0.24;
-const NODE_LEAD = 0.08;
-const CONTENT_LEAD = 0.04;
-const EXIT_DURATION = 0.16;
-const EXIT_BUFFER = 0.06;
+const WIPE_DURATION = 0.16;
+const NODE_LEAD = 0.05;
+const CONTENT_LEAD = 0.02;
+const EXIT_DURATION = 0.1;
+const EXIT_BUFFER = 0.04;
 
 const clampStep = (base: number, count: number, maxWindow: number) =>
   count > 1 ? Math.min(base, maxWindow / (count - 1)) : 0;
@@ -127,9 +126,9 @@ const makeVariants = (
           : {
               delay: i * steps.content + CONTENT_LEAD,
               type: 'spring',
-              stiffness: 150,
-              damping: 17,
-              mass: 1.5,
+              stiffness: 220,
+              damping: 20,
+              mass: 1.1,
             },
       }),
       closed: (i: number) => ({
@@ -195,9 +194,9 @@ export default function StagesMenu({
 
   const steps = useMemo<Steps>(
     () => ({
-      wipe: clampStep(0.07, count, 0.55),
-      content: clampStep(0.09, count, 0.7),
-      exit: clampStep(0.03, count, 0.3),
+      wipe: clampStep(0.045, count, 0.33),
+      content: clampStep(0.055, count, 0.4),
+      exit: clampStep(0.02, count, 0.18),
     }),
     [count],
   );
@@ -270,12 +269,7 @@ export default function StagesMenu({
         custom={custom}
         initial="closed"
         animate={animate}
-        className={cx(
-          'bg-neon-coral relative z-10 flex items-center justify-center rounded-full text-xs font-bold text-white tabular-nums',
-          item.isCurrent
-            ? 'ring-neon-coral/30 size-9 ring-4'
-            : 'size-8 opacity-90',
-        )}
+        className="bg-neon-coral relative z-10 flex size-8 items-center justify-center rounded-full text-xs font-bold text-white tabular-nums"
       >
         {item.position}
       </motion.span>
@@ -303,11 +297,20 @@ export default function StagesMenu({
         initial="closed"
         animate={animate}
         className={cx(
-          'block shrink-0 overflow-hidden rounded-xs [&>picture]:block [&>picture]:size-full',
-          isHorizontal ? 'aspect-4/3 w-full' : 'aspect-4/3 w-32',
+          'relative block shrink-0 overflow-hidden rounded-xs [&>picture]:block [&>picture]:size-full',
+          isHorizontal ? 'aspect-4/3 w-full' : 'aspect-4/3 w-24',
         )}
       >
         {picture}
+        {item.isSkipped && (
+          <span
+            role="img"
+            aria-label="Skipped"
+            className="bg-surface/85 text-text elevation-low absolute top-1 right-1 flex size-6 items-center justify-center rounded-full backdrop-blur-sm"
+          >
+            <EyeOff className="size-3.5" aria-hidden />
+          </span>
+        )}
       </motion.span>
     );
 
@@ -318,12 +321,12 @@ export default function StagesMenu({
           type="button"
           aria-current={item.isCurrent ? 'step' : undefined}
           className={cx(
-            'focusable relative flex w-44 flex-col items-center gap-3 rounded-sm px-3 py-4 text-center transition-colors',
+            'focusable relative flex w-36 flex-col items-center gap-3 rounded-sm px-3 py-4 text-center transition-colors',
             'data-selected:bg-primary data-selected:text-primary-contrast',
             'hover:bg-accent data-focused:bg-accent',
           )}
         >
-          <span className="relative flex h-9 w-full items-center justify-center">
+          <span className="relative flex h-8 w-full items-center justify-center">
             <motion.span
               aria-hidden
               variants={variants.line}
@@ -345,11 +348,6 @@ export default function StagesMenu({
           </span>
           {image}
           {label}
-          {item.isSkipped && (
-            <Badge variant="secondary" className="shrink-0">
-              Skipped
-            </Badge>
-          )}
         </button>
       );
     }
@@ -385,11 +383,6 @@ export default function StagesMenu({
         {node}
         {image}
         {label}
-        {item.isSkipped && (
-          <Badge variant="secondary" className="shrink-0">
-            Skipped
-          </Badge>
-        )}
       </button>
     );
   };
