@@ -956,6 +956,9 @@ export function generateNetwork(
       case 'Information':
       case 'Anonymisation':
       case 'Narrative':
+      case 'NarrativePedigree':
+        // NarrativePedigree is read-only and never adds nodes or edges —
+        // it reads the shared network written by its source FamilyPedigree stage.
         break;
 
       default:

@@ -2,7 +2,7 @@ import { type MouseEventHandler, type Ref, useMemo } from 'react';
 
 import { useDragSource } from '@codaco/fresco-ui/dnd/dnd';
 import Node from '@codaco/fresco-ui/Node';
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 import { getNodeShapeDefinition } from '~/interfaces/FamilyPedigree/utils/nodeUtils';
@@ -73,30 +73,43 @@ export function EgoIcon({ className }: { className?: string }) {
  * Computes display labels for all nodes in the pedigree.
  * Named nodes use their name. Unnamed nodes get a BFS-based relationship
  * label with numbering when multiple nodes share the same role.
+ *
+ * Pass `knownEgoId` to skip the attribute-based ego discovery and use a
+ * pre-resolved id instead. This is required when the caller already has the
+ * correct ego id and the node map may contain other nodes whose egoVariable
+ * attribute is also true (e.g. from synthetic random generation in stories).
  */
 export function computeNodeDisplayLabels(
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
+  framing: FramingId,
+  knownEgoId?: string,
 ): Map<string, string> {
-  const egoEntry = [...nodes.entries()].find(
-    ([, n]) => n.attributes[variableConfig.egoVariable] === true,
-  );
-  if (!egoEntry) return new Map();
-  const egoId = egoEntry[0];
+  let egoId: string;
+  if (knownEgoId !== undefined) {
+    egoId = knownEgoId;
+  } else {
+    const egoEntry = [...nodes.entries()].find(
+      ([, n]) => n.attributes[variableConfig.egoVariable] === true,
+    );
+    if (!egoEntry) return new Map();
+    egoId = egoEntry[0];
+  }
 
   const computedLabels = computeAllDisplayLabels(
     egoId,
     nodes,
     edges,
     variableConfig,
+    framing,
   );
 
   const labels = new Map<string, string>();
   const roleBuckets = new Map<string, string[]>();
 
   for (const [nodeId, node] of nodes) {
-    if (node.attributes[variableConfig.egoVariable] === true) continue;
+    if (nodeId === egoId) continue;
 
     const storedName = node.attributes[variableConfig.nodeLabelVariable] as
       | string

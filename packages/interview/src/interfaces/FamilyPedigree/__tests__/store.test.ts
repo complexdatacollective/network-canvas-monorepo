@@ -12,6 +12,7 @@ import sessionReducer from '~/store/modules/session';
 import type { useAppDispatch } from '~/store/store';
 
 import { createFamilyPedigreeStore, type VariableConfig } from '../store';
+import { pedigreeMemberIds } from '../utils/pedigreeMembership';
 
 const testConfig: VariableConfig = {
   nodeType: 'person',
@@ -22,6 +23,8 @@ const testConfig: VariableConfig = {
   relationshipTypeVariable: 'relationshipType',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGestationalCarrier',
+  gameteRoleVariable: 'gameteRole',
+  biologicalSexVariable: 'biologicalSex',
 };
 
 describe('store creation', () => {
@@ -583,6 +586,65 @@ describe('finalizeNetwork', () => {
     expect(
       committedEgo?.[entityAttributesProperty][testConfig.relationshipVariable],
     ).toBeUndefined();
+  });
+
+  it('records committed Redux node ids (not store ids) in the membership metadata', async () => {
+    const { reduxStore, dispatch } = createReduxStore([]);
+
+    const store = createFamilyPedigreeStore(
+      new Map(),
+      new Map(),
+      new Map(),
+      testConfig,
+      dispatch,
+      0,
+    );
+
+    const egoStoreId = store.getState().addNode({
+      attributes: {
+        [testConfig.egoVariable]: true,
+        [testConfig.nodeLabelVariable]: 'Ego',
+      },
+    });
+    const parentStoreId = store.getState().addNode({
+      attributes: {
+        [testConfig.egoVariable]: false,
+        [testConfig.nodeLabelVariable]: 'Mum',
+      },
+    });
+    store.getState().addEdge({
+      from: parentStoreId,
+      to: egoStoreId,
+      attributes: {
+        [testConfig.relationshipTypeVariable]: ['biological'],
+        [testConfig.isActiveVariable]: true,
+      },
+    });
+
+    await store.getState().finalizeNetwork();
+
+    const committedIds = new Set(
+      reduxStore
+        .getState()
+        .session.network.nodes.map((n) => n[entityPrimaryKeyProperty]),
+    );
+
+    // pedigreeMemberIds is the real consumer (NarrativePedigree + revisit view);
+    // it must return the committed Redux ids so membership matches node._uid.
+    const memberIds = pedigreeMemberIds(
+      reduxStore.getState().session.stageMetadata?.[0],
+    );
+    if (memberIds === null) {
+      throw new Error('expected committed membership metadata');
+    }
+
+    expect(memberIds.size).toBe(2);
+    for (const id of committedIds) {
+      expect(memberIds.has(id)).toBe(true);
+    }
+    // The pre-finalize store ids must NOT leak into the persisted membership.
+    expect(memberIds.has(egoStoreId)).toBe(false);
+    expect(memberIds.has(parentStoreId)).toBe(false);
   });
 
   it('does not duplicate pre-existing same-type nodes already in Redux', async () => {

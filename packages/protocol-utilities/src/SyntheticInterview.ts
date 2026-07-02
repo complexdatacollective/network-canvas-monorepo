@@ -154,6 +154,7 @@ type GeospatialHandle = StageHandleBase & {
   addPrompt: (opts?: AddGeospatialPromptInput) => void;
 };
 
+type NarrativePedigreeHandle = StageHandleBase;
 type NetworkComposerHandle = StageHandleBase & {
   // Each call appends an entry to the stage's `edges[]`, returning the edge
   // type id so callers can seed edges of that type via `addEdges`.
@@ -179,6 +180,7 @@ type StageHandleMap = {
   Anonymisation: AnonymisationHandle;
   FamilyPedigree: FamilyPedigreeHandle;
   Geospatial: GeospatialHandle;
+  NarrativePedigree: NarrativePedigreeHandle;
   NetworkComposer: NetworkComposerHandle;
 };
 
@@ -187,6 +189,7 @@ const SUBJECTLESS_STAGES = new Set<StageType>([
   'EgoForm',
   'Information',
   'Anonymisation',
+  'NarrativePedigree',
 ]);
 
 // Stage types where the subject is an edge, not a node
@@ -530,11 +533,13 @@ export class SyntheticInterview {
         const nodeLabelVar = this.nextId('label-var');
         const egoVar = this.nextId('ego-var');
         const relToEgoVar = this.nextId('rel-to-ego-var');
+        const bioSexVar = this.nextId('biological-sex-var');
         entry.nodeConfig = {
           type: subject.type,
           nodeLabelVariable: nodeLabelVar,
           egoVariable: egoVar,
           relationshipVariable: relToEgoVar,
+          biologicalSexVariable: bioSexVar,
           form: [],
         };
       }
@@ -545,11 +550,14 @@ export class SyntheticInterview {
         const isGestCarrierVar =
           opts.edgeConfig.isGestationalCarrierVariable ??
           this.nextId('is-gest-carrier-var');
+        const gameteRoleVar =
+          opts.edgeConfig.gameteRoleVariable ?? this.nextId('gamete-role-var');
         entry.edgeConfig = {
           type: opts.edgeConfig.type,
           relationshipTypeVariable: opts.edgeConfig.relationshipTypeVariable,
           isActiveVariable: isActiveVar,
           isGestationalCarrierVariable: isGestCarrierVar,
+          gameteRoleVariable: gameteRoleVar,
         };
       } else {
         let edgeTypeId: string;
@@ -563,6 +571,7 @@ export class SyntheticInterview {
           relationshipTypeVariable: this.nextId('rel-type-var'),
           isActiveVariable: this.nextId('is-active-var'),
           isGestationalCarrierVariable: this.nextId('is-gest-carrier-var'),
+          gameteRoleVariable: this.nextId('gamete-role-var'),
         };
       }
 
@@ -571,6 +580,18 @@ export class SyntheticInterview {
         this.valueGen.generatePromptText('FamilyPedigree');
 
       entry.nominationPrompts = opts?.nominationPrompts ?? [];
+
+      if (opts?.framing) {
+        entry.framing = opts.framing;
+      }
+
+      if (opts?.boundaries) {
+        entry.boundaries = opts.boundaries;
+      }
+
+      if (opts?.introScreen) {
+        entry.introScreen = opts.introScreen;
+      }
     }
 
     // Geospatial
@@ -589,6 +610,19 @@ export class SyntheticInterview {
           color: 'node-color-seq-1',
           targetFeatureProperty: 'name',
         };
+      }
+    }
+
+    // NarrativePedigree
+    if (type === 'NarrativePedigree') {
+      if (opts?.sourceStageId) {
+        entry.narrativePedigreeSourceStageId = opts.sourceStageId;
+      }
+      if (opts?.diseases) {
+        entry.narrativePedigreeDiseases = opts.diseases;
+      }
+      if (opts?.showAtRiskStatuses !== undefined) {
+        entry.narrativePedigreeShowAtRiskStatuses = opts.showAtRiskStatuses;
       }
     }
 
@@ -912,6 +946,8 @@ export class SyntheticInterview {
           },
         } as StageHandleMap[T];
 
+      case 'NarrativePedigree':
+        return base as StageHandleMap[T];
       case 'NetworkComposer':
         return {
           ...base,
@@ -1442,9 +1478,13 @@ export class SyntheticInterview {
               varId
             ] as VariableValue;
           } else {
-            attributes[varId] = valueGen.generateForVariable(
-              variable,
-              index,
+            // Procedurally-generated nodes get random synthetic values;
+            // manually-seeded nodes keep unset attributes neutral so the
+            // caller's scenario isn't corrupted by random data.
+            attributes[varId] = (
+              nodeEntry.manual
+                ? valueGen.neutralForVariable(variable)
+                : valueGen.generateForVariable(variable, index)
             ) as VariableValue;
           }
         }
@@ -1665,11 +1705,29 @@ export class SyntheticInterview {
       if (stage.censusPrompt) config.censusPrompt = stage.censusPrompt;
       if (stage.nominationPrompts?.length)
         config.nominationPrompts = stage.nominationPrompts;
+      if (stage.framing) config.framing = stage.framing;
+      if (stage.boundaries) config.boundaries = stage.boundaries;
+      if (stage.introScreen) config.introScreen = stage.introScreen;
     }
 
     // Geospatial
     if (stage.mapOptions) {
       config.mapOptions = stage.mapOptions;
+    }
+
+    // NarrativePedigree
+    if (stage.type === 'NarrativePedigree') {
+      if (stage.narrativePedigreeSourceStageId) {
+        config.sourceStageId = stage.narrativePedigreeSourceStageId;
+      }
+      if (stage.narrativePedigreeDiseases) {
+        config.diseases = stage.narrativePedigreeDiseases.map((d) => ({
+          ...d,
+          variable: d.variable,
+        }));
+      }
+      config.showAtRiskStatuses =
+        stage.narrativePedigreeShowAtRiskStatuses ?? false;
     }
 
     // NetworkComposer (quickAdd is serialized by the shared block above)
@@ -1721,6 +1779,41 @@ export class SyntheticInterview {
       );
     }
     edge.attributes[variableId] = value;
+  }
+
+  /**
+   * Insert a pre-defined node directly into the network. Use this when the
+   * caller needs full control over node uid and attributes (e.g. seeding a
+   * pedigree for NarrativePedigree stories where node identity matters).
+   */
+  addManualNode(
+    stageId: string,
+    nodeTypeId: string,
+    uid: string,
+    attributes: Record<string, unknown>,
+  ): void {
+    this.nodes.push({
+      uid,
+      type: nodeTypeId,
+      stageId,
+      promptIDs: [],
+      explicitAttributes: attributes,
+      manual: true,
+    });
+  }
+
+  /**
+   * Insert a pre-defined edge directly into the network. Use this when the
+   * caller needs full control over edge uid, endpoints, and attributes.
+   */
+  addManualEdge(
+    edgeTypeId: string,
+    uid: string,
+    from: string,
+    to: string,
+    attributes: Record<string, unknown>,
+  ): void {
+    this.edges.push({ uid, type: edgeTypeId, from, to, attributes });
   }
 
   /**

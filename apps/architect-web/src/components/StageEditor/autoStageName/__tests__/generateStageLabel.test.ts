@@ -93,6 +93,7 @@ describe('STAGE_TYPE_NAMES', () => {
       NameGeneratorQuickAdd: 'Quick Add Name Generator',
       NameGeneratorRoster: 'Roster Name Generator',
       FamilyPedigree: 'Family Pedigree',
+      NarrativePedigree: 'Narrative Pedigree',
       DyadCensus: 'Dyad Census',
       OneToManyDyadCensus: 'One to Many Dyad Census',
       TieStrengthCensus: 'Tie-Strength Census',

@@ -26,6 +26,14 @@ type UseResizablePanelOptions = {
   breakpoints?: Breakpoint[];
   orientation?: 'horizontal' | 'vertical';
   keyboardStep?: number;
+  /**
+   * When true, the resized (first) panel sits at the END of the main axis (right
+   * for horizontal, bottom for vertical) instead of the start. The pointer
+   * position is measured from that end so dragging the handle still grows/shrinks
+   * the panel in the natural direction. Pair with `flex-row-reverse` /
+   * `flex-col-reverse` on the container.
+   */
+  reverse?: boolean;
 };
 
 const basisSchema = z.number().check(z.minimum(0)).check(z.maximum(100));
@@ -76,6 +84,7 @@ export default function useResizablePanel({
   breakpoints = [],
   orientation = 'horizontal',
   keyboardStep = 2,
+  reverse = false,
 }: UseResizablePanelOptions) {
   const hasBreakpoints = breakpoints.length > 0;
   const sortedBreakpoints = useMemo(
@@ -122,13 +131,21 @@ export default function useResizablePanel({
 
       const rect = container.getBoundingClientRect();
       const isHorizontal = orientation === 'horizontal';
-      const pos = isHorizontal ? clientX - rect.left : clientY - rect.top;
+      // When reversed the panel grows from the opposite edge, so measure the
+      // pointer from that edge (right/bottom) to keep the drag direction natural.
+      const pos = isHorizontal
+        ? reverse
+          ? rect.right - clientX
+          : clientX - rect.left
+        : reverse
+          ? rect.bottom - clientY
+          : clientY - rect.top;
       const size = isHorizontal ? rect.width : rect.height;
 
       if (size === 0) return persistedBasis;
       return (pos / size) * 100;
     },
-    [orientation, persistedBasis],
+    [orientation, reverse, persistedBasis],
   );
 
   const handlePointerDown = useCallback(

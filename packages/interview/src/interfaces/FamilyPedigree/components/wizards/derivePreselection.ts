@@ -8,6 +8,12 @@ import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeU
 
 import type { BioTriadConfig } from './steps/BioTriadStep';
 
+function readGameteRole(value: unknown): GameteRole | undefined {
+  // Stored as a single-element categorical array; also tolerate a bare string.
+  const v = Array.isArray(value) ? value[0] : value;
+  return v === 'egg' || v === 'sperm' ? v : undefined;
+}
+
 export function derivePreselection(
   anchorNodeId: string,
   edges: Map<string, FamilyEdge>,
@@ -28,7 +34,9 @@ export function derivePreselection(
       parentEdges.push({
         source: edge.from,
         relationshipType,
-        gameteRole: edge.gameteRole,
+        gameteRole: readGameteRole(
+          edge.attributes[variableConfig.gameteRoleVariable],
+        ),
       });
     }
   }

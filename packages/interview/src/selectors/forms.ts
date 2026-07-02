@@ -2,6 +2,7 @@ import { createSelector } from '@reduxjs/toolkit';
 import { invariant } from 'es-toolkit';
 
 import type {
+  Codebook,
   ComponentType,
   ComposerFormField,
   FormField,
@@ -153,7 +154,17 @@ export const selectFieldMetadataWithSubject = createSelector(
 
 export const getValidationContext = createSelector(
   [getCodebook, getNetwork, getStageSubject],
-  (codebook, network, stageSubject) => ({
+  // Explicit return type: naming `Codebook` keeps the inferred type short enough
+  // for TS to serialize (the enlarged stage union otherwise trips TS7056).
+  (
+    codebook,
+    network,
+    stageSubject,
+  ): {
+    codebook: Codebook;
+    network: ReturnType<typeof getNetwork>;
+    stageSubject: ReturnType<typeof getStageSubject>;
+  } => ({
     codebook,
     network,
     stageSubject,

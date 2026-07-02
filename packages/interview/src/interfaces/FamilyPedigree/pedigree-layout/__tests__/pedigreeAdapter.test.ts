@@ -24,6 +24,8 @@ const variableConfig: VariableConfig = {
   relationshipTypeVariable: 'rel',
   isActiveVariable: 'active',
   isGestationalCarrierVariable: 'gc',
+  gameteRoleVariable: 'gameteRole',
+  biologicalSexVariable: 'biologicalSex',
 };
 
 const TEST_DIMENSIONS: LayoutDimensions = {

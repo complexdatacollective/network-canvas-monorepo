@@ -5,16 +5,28 @@ import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { FRAMING_TERMS, type FramingId } from '@codaco/shared-consts';
 import useProtocolForm from '~/forms/useProtocolForm';
 import { useStageSelector } from '~/hooks/useStageSelector';
+import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import {
   getNodeForm,
   getNodeType,
 } from '~/interfaces/FamilyPedigree/utils/nodeUtils';
 
+const INTRO_COPY: Record<FramingId, string> = {
+  gamete:
+    'Please answer the following questions about your sperm parent. This is the person who contributed the sperm that you were conceived with.',
+  gendered:
+    'Please answer the following questions about your father. This is your biological father.',
+};
+
 export default function SpermParentStep() {
   const nodeType = useStageSelector(getNodeType);
   const nodeForm = useStageSelector(getNodeForm);
+  const framing = useFamilyPedigreeStore((s) => s.framing);
+  const framingKey = framing ?? 'gamete';
+  const terms = FRAMING_TERMS[framingKey];
 
   const { fieldComponents } = useProtocolForm({
     subject: {
@@ -26,10 +38,7 @@ export default function SpermParentStep() {
 
   return (
     <>
-      <Paragraph>
-        Please answer the following questions about your sperm parent. This is
-        the person who contributed the sperm that you were conceived with.
-      </Paragraph>
+      <Paragraph>{INTRO_COPY[framingKey]}</Paragraph>
       <hr />
       <FieldNamespace prefix="sperm-parent">
         <Field
@@ -41,7 +50,7 @@ export default function SpermParentStep() {
         />
         <Field
           name="is-donor"
-          label="Was this person a sperm donor?"
+          label={terms.spermDonorQuestion}
           component={BooleanField}
           initialValue={false}
           required

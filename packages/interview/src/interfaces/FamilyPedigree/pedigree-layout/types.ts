@@ -80,6 +80,7 @@ export type ParentGroupConnector = {
   descentXPositions?: number[];
   nodeHalfWidth?: number;
   slashSide?: 'left' | 'right';
+  partnerIds?: [string, string];
 };
 
 export type ParentChildConnector = {
@@ -88,6 +89,8 @@ export type ParentChildConnector = {
   uplines: LineSegment[];
   siblingBar: LineSegment;
   parentLink: LineSegment[];
+  parentIds?: string[];
+  uplineChildIds?: (string | undefined)[];
 };
 
 export type AuxiliaryConnector = {
@@ -95,6 +98,7 @@ export type AuxiliaryConnector = {
   // Relationship types plus a layout-only kind for parents with no partner.
   edgeType: RelationshipType | 'unpartnered-parent';
   segment: LineSegment;
+  endpointIds?: [string | undefined, string | undefined];
 };
 
 export type TwinIndicator = {
@@ -102,12 +106,14 @@ export type TwinIndicator = {
   code: 1 | 2 | 3;
   segment?: LineSegment; // MZ: horizontal line between twin uplines
   label?: Point; // unknown: position for "?" label
+  twinIds?: string[];
 };
 
 export type DuplicateArc = {
   type: 'duplicate-arc';
   path: ArcPath;
   personIndex: number;
+  personId?: string;
 };
 
 export type PedigreeConnectors = {

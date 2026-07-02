@@ -17,6 +17,7 @@ import { nameGeneratorStage } from './name-generator';
 import { nameGeneratorQuickAddStage } from './name-generator-quick-add';
 import { nameGeneratorRosterStage } from './name-generator-roster';
 import { narrativeStage } from './narrative';
+import { narrativePedigreeStage } from './narrative-pedigree';
 import { networkComposerStage } from './network-composer';
 import { oneToManyDyadCensusStage } from './one-to-many-dyad-census';
 import { ordinalBinStage } from './ordinal-bin';
@@ -36,6 +37,7 @@ export * from './information';
 export * from './name-generator';
 export * from './name-generator-quick-add';
 export * from './name-generator-roster';
+export * from './narrative-pedigree';
 export * from './narrative';
 export * from './network-composer';
 export * from './one-to-many-dyad-census';
@@ -63,6 +65,7 @@ const stageSchemas = [
   oneToManyDyadCensusStage,
   familyPedigreeStage,
   geospatialStage,
+  narrativePedigreeStage,
 ] as const;
 
 // Combine all stage types

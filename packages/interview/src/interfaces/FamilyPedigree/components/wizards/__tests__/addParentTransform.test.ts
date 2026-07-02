@@ -14,6 +14,8 @@ const variableConfig: VariableConfig = {
   relationshipTypeVariable: 'rel',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGC',
+  gameteRoleVariable: 'gameteRole',
+  biologicalSexVariable: 'biologicalSex',
 };
 
 describe('AddParentWizard transformToCommitBatch', () => {

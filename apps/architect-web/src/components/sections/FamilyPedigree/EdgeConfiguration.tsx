@@ -95,6 +95,9 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
   const booleanEdgeVariables = edgeVariableOptions.filter(
     (v) => v.type === 'boolean',
   );
+  const categoricalEdgeVariables = edgeVariableOptions.filter(
+    (v) => v.type === 'categorical',
+  );
 
   const handleCreatedVariable = (...args: unknown[]) => {
     const [id, params] = args as [string, { field: string }];
@@ -132,6 +135,12 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
     openVariableWindow(
       { initialValues: { name, type: 'boolean' }, lockedOptions: null },
       { field: 'edgeConfig.isGestationalCarrierVariable' },
+    );
+
+  const handleNewGameteRoleVariable = (name: string) =>
+    openVariableWindow(
+      { initialValues: { name, type: 'categorical' }, lockedOptions: null },
+      { field: 'edgeConfig.gameteRoleVariable' },
     );
 
   return (
@@ -179,6 +188,14 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
               edgeType={edgeType}
               options={booleanEdgeVariables}
               onCreateOption={handleNewGestationalCarrierVariable}
+            />
+            <VariableRow
+              name="edgeConfig.gameteRoleVariable"
+              label="Gamete Role Variable"
+              description="Stores the gamete role for each parent (which gamete each participant contributed)."
+              edgeType={edgeType}
+              options={categoricalEdgeVariables}
+              onCreateOption={handleNewGameteRoleVariable}
             />
           </div>
         )}

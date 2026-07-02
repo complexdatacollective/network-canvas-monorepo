@@ -70,6 +70,10 @@ function createFamilyPedigreeInterview(seed: number) {
     name: 'Relationship to Ego',
     type: 'text',
   });
+  const biologicalSexVar = nodeType.addVariable({
+    name: 'Biological Sex',
+    type: 'text',
+  });
 
   const edgeType = si.addEdgeType({ name: 'Family' });
 
@@ -102,6 +106,7 @@ function createFamilyPedigreeInterview(seed: number) {
     diabetesVar,
     isEgoVar,
     relationshipToEgoVar,
+    biologicalSexVar,
     edgeType,
     relationshipVar,
     isActiveVar,
@@ -172,8 +177,11 @@ export const Default: Story = {
         isGestCarrierVar,
         isEgoVar,
         relationshipToEgoVar,
+        biologicalSexVar,
       } = createFamilyPedigreeInterview(1);
 
+      // A leading information stage keeps the FamilyPedigree at step index 1,
+      // which the wrapper navigates to (getInterviewPayload currentStep: 1).
       si.addInformationStage({
         title: 'Welcome',
         text: 'Before the main stage.',
@@ -182,12 +190,34 @@ export const Default: Story = {
       si.addStage('FamilyPedigree', {
         label: 'Family Pedigree',
         subject: { entity: 'node', type: nodeType.id },
+        // The in-wizard intro screen explains what a family pedigree is and how
+        // it is built; participantChoice framing lets the participant pick how
+        // their parents are referred to (the FramingSelectionStep).
+        framing: { mode: 'participantChoice' },
+        introScreen: {
+          title: 'About your family pedigree',
+          text: [
+            'A family pedigree is a simple diagram of your biological relatives — the people you are related to by blood — across a few generations. Building one helps us understand patterns of health and inheritance that can run in a family.',
+            '',
+            '### How it works',
+            '',
+            "We'll build the diagram together, one step at a time. You'll start with the parents who conceived you, then add grandparents, any brothers and sisters, and — if you have them — a partner and children. For each person you can share a few details, and you can skip anything you would rather not answer.",
+            '',
+            '### What you will see',
+            '',
+            'Each relative appears as a shape, joined to the others by lines that show how everyone is related. Nothing is final while you work — you can go back and change your answers before you finish.',
+          ].join('\n'),
+        },
+        boundaries: {
+          requireGrandparents: 'off',
+          requireChildrenContributors: 'off',
+        },
         nodeConfig: {
           type: nodeType.id,
           nodeLabelVariable: nameVar.id,
           egoVariable: isEgoVar.id,
-
           relationshipVariable: relationshipToEgoVar.id,
+          biologicalSexVariable: biologicalSexVar.id,
           form: [
             {
               variable: genderVar.id,
@@ -244,6 +274,7 @@ export function buildScenarioInterview({ withNomination = false } = {}) {
     isGestCarrierVar,
     isEgoVar,
     relationshipToEgoVar,
+    biologicalSexVar,
   } = createFamilyPedigreeInterview(1);
 
   si.addInformationStage({
@@ -254,11 +285,20 @@ export function buildScenarioInterview({ withNomination = false } = {}) {
   si.addStage('FamilyPedigree', {
     label: 'Family Pedigree',
     subject: { entity: 'node', type: nodeType.id },
+    // framing and boundaries are mandatory FamilyPedigree schema fields
+    // (the provider reads framing.mode; the checklist reads
+    // boundaries.requireGrandparents).
+    framing: { mode: 'fixed', value: 'gamete' },
+    boundaries: {
+      requireGrandparents: 'off',
+      requireChildrenContributors: 'off',
+    },
     nodeConfig: {
       type: nodeType.id,
       nodeLabelVariable: nameVar.id,
       egoVariable: isEgoVar.id,
       relationshipVariable: relationshipToEgoVar.id,
+      biologicalSexVariable: biologicalSexVar.id,
       form: [
         {
           variable: genderVar.id,

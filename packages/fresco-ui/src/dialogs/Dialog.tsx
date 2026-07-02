@@ -26,7 +26,7 @@ export const STATE_VARIANTS = [
 ] as const;
 
 export type DialogProps = {
-  title?: string;
+  title?: ReactNode;
   description?: ReactNode;
   accent?: (typeof STATE_VARIANTS)[number];
   closeDialog?: () => void;

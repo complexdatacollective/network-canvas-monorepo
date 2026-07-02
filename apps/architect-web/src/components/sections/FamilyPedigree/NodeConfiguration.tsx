@@ -12,6 +12,7 @@ import {
 } from 'redux-form';
 
 import type { VariableOptions } from '@codaco/protocol-validation';
+import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/shared-consts';
 import EditableList from '~/components/EditableList';
 import { Row, Section } from '~/components/EditorLayout';
 import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
@@ -40,6 +41,7 @@ import {
   getVariableOptionsForSubject,
   makeGetVariable,
 } from '~/selectors/codebook';
+import { optionsMatch } from '~/utils/variables';
 
 import NodeFormFieldPreview from './NodeFormFieldPreview';
 
@@ -150,6 +152,16 @@ const NodeConfigurationInner = ({
   const booleanNodeVariables = nodeVariableOptions.filter(
     (v) => v.type === 'boolean',
   );
+  // Only categorical variables whose options are exactly the canonical
+  // biological-sex set may be bound: the interview and genetics engine depend on
+  // the exact values (female/male/…), so an existing categorical variable with a
+  // different value set would silently degrade sex resolution. Mirrors the
+  // relationship-type picker in EdgeConfiguration.
+  const biologicalSexCompatible = nodeVariableOptions.filter(
+    (v) =>
+      v.type === 'categorical' &&
+      optionsMatch(v.options, BIOLOGICAL_SEX_OPTIONS),
+  );
 
   const handleCreatedVariable = (...args: unknown[]) => {
     const [id, params] = args as [string, { field: string }];
@@ -184,6 +196,18 @@ const NodeConfigurationInner = ({
     openVariableWindow(
       { initialValues: { name, type: 'text' }, lockedOptions: null },
       { field: 'nodeConfig.relationshipVariable' },
+    );
+
+  const handleNewBiologicalSexVariable = (name: string) =>
+    openVariableWindow(
+      {
+        initialValues: { name, type: 'categorical' },
+        // Seed and lock the canonical value set — the interview and genetics
+        // engine depend on these exact values, so the researcher may not edit
+        // them (mirrors the relationship-type variable).
+        lockedOptions: BIOLOGICAL_SEX_OPTIONS,
+      },
+      { field: 'nodeConfig.biologicalSexVariable' },
     );
 
   return (
@@ -235,6 +259,14 @@ const NodeConfigurationInner = ({
                 entityType={nodeType}
                 options={textNodeVariables}
                 onCreateOption={handleNewRelationshipVariable}
+              />
+              <VariableRow
+                name="nodeConfig.biologicalSexVariable"
+                label="Biological Sex Variable"
+                description="Stores each family member’s sex recorded at birth (female/male/intersex/don’t know/prefer not to say), used for sex-linked inheritance."
+                entityType={nodeType}
+                options={biologicalSexCompatible}
+                onCreateOption={handleNewBiologicalSexVariable}
               />
             </div>
 

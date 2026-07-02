@@ -35,7 +35,7 @@ type NavigationInfo = {
   canMoveBackward: boolean;
 };
 
-const getActiveSession = (state: RootState) => {
+export const getActiveSession = (state: RootState) => {
   return state.session;
 };
 
@@ -89,7 +89,11 @@ export const getStageSubject = createSelector(getCurrentStage, (stage) => {
   if (
     stage.type === 'Information' ||
     stage.type === 'Anonymisation' ||
-    stage.type === 'FamilyPedigree'
+    stage.type === 'FamilyPedigree' ||
+    // NarrativePedigree has no stage subject: it reads the captured pedigree
+    // from the shared network filtered to its source FamilyPedigree stage's
+    // node/edge types, so it owns no subject of its own.
+    stage.type === 'NarrativePedigree'
   ) {
     return null;
   }

@@ -11,6 +11,8 @@ import {
   getNodeType,
 } from '~/interfaces/FamilyPedigree/utils/nodeUtils';
 
+import BiologicalSexField from '../BiologicalSexField';
+
 type PersonFieldsProps = {
   namespace?: string;
   initial?: {
@@ -19,12 +21,19 @@ type PersonFieldsProps = {
     attributes?: Record<string, unknown>;
   };
   namePlaceholder?: string;
+  /**
+   * When true (default), the biological-sex question is rendered. Pass false
+   * for egg/sperm gamete-parent creations — their sex is derived from
+   * gameteRole and should not be asked separately.
+   */
+  askBiologicalSex?: boolean;
 };
 
 export default function PersonFields({
   namespace,
   initial,
   namePlaceholder = 'Enter name',
+  askBiologicalSex = true,
 }: PersonFieldsProps) {
   const nodeType = useStageSelector(getNodeType);
   const nodeForm = useStageSelector(getNodeForm);
@@ -50,6 +59,7 @@ export default function PersonFields({
         hint="Leave blank if the name is not known"
         initialValue={initial?.name ?? ''}
       />
+      {askBiologicalSex && <BiologicalSexField subject="other" />}
       {fieldComponents}
     </>
   );

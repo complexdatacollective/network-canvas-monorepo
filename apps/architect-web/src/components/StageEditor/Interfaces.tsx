@@ -38,10 +38,16 @@ import {
   Title,
 } from '~/components/sections';
 import EdgeConfiguration from '~/components/sections/EdgeConfiguration/EdgeConfiguration';
+import BoundaryOptions from '~/components/sections/FamilyPedigree/BoundaryOptions';
 import CensusPrompt from '~/components/sections/FamilyPedigree/CensusPrompt';
 import FamilyPedigreeEdgeConfiguration from '~/components/sections/FamilyPedigree/EdgeConfiguration';
+import FramingConfig from '~/components/sections/FamilyPedigree/FramingConfig';
+import IntroScreen from '~/components/sections/FamilyPedigree/IntroScreen';
 import FamilyPedigreeNodeConfiguration from '~/components/sections/FamilyPedigree/NodeConfiguration';
 import NominationPrompts from '~/components/sections/FamilyPedigree/NominationPrompts';
+import AtRiskStatuses from '~/components/sections/NarrativePedigree/AtRiskStatuses';
+import Diseases from '~/components/sections/NarrativePedigree/Diseases';
+import SourceStage from '~/components/sections/NarrativePedigree/SourceStage';
 import NodeConfiguration from '~/components/sections/NodeConfiguration/NodeConfiguration';
 import { FilteredNodeType } from '~/components/sections/NodeType';
 
@@ -297,6 +303,9 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
   },
   FamilyPedigree: {
     sections: [
+      FramingConfig,
+      BoundaryOptions,
+      IntroScreen,
       FamilyPedigreeNodeConfiguration,
       FamilyPedigreeEdgeConfiguration,
       CensusPrompt,
@@ -306,6 +315,32 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
     ],
     documentation:
       'https://documentation.networkcanvas.com/interface-documentation/family-pedigree/',
+    template: {
+      framing: { mode: 'fixed', value: 'gamete' },
+      boundaries: {
+        requireGrandparents: 'off',
+        requireChildrenContributors: 'off',
+      },
+      introScreen: {
+        text: "Building a pedigree means asking about the people you're biologically related to — the people whose egg and sperm you came from — not necessarily the people who raised you. A pedigree maps genetic relationships, so we focus on biological parents. Don't worry — you'll be able to include non-biological parents later.",
+      },
+    },
+  },
+  NarrativePedigree: {
+    sections: [
+      SourceStage,
+      Diseases,
+      AtRiskStatuses,
+      SkipLogic,
+      InterviewScript,
+    ],
+    documentation:
+      'https://documentation.networkcanvas.com/interface-documentation/narrative-pedigree/',
+    template: {
+      sourceStageId: '',
+      diseases: [],
+      showAtRiskStatuses: false,
+    },
   },
 };
 

@@ -99,7 +99,11 @@ export const getCodebookVariablesForSubjectType = createSelector(
  */
 export const makeGetCodebookVariableById = createSelector(
   getCodebookVariablesForSubjectType,
-  (variables) => (variableId: string) => variables[variableId],
+  (variables) =>
+    // Explicit return type: the enlarged stage union makes the inferred type
+    // too long for TS to serialize (TS7056).
+    (variableId: string): Variable | undefined =>
+      variables[variableId],
 );
 
 export const makeGetCodebookForNodeType = createSelector(

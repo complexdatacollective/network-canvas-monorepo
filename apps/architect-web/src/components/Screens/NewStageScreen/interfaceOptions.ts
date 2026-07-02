@@ -33,6 +33,7 @@ const INTERFACE_TYPE_NAMES = [
   'NameGeneratorQuickAdd',
   'NameGeneratorRoster',
   'FamilyPedigree',
+  'NarrativePedigree',
   'DyadCensus',
   'OneToManyDyadCensus',
   'TieStrengthCensus',
@@ -102,6 +103,16 @@ export const INTERFACE_TYPES: InterfaceType[] = [
     title: 'Family Pedigree',
     description:
       'An interface for collecting family pedigrees, allowing for the capture of complex family relationships and attributes as well as hereditary disease information.',
+  },
+  {
+    category: CATEGORIES.SOCIOGRAMS,
+    tags: [TAGS.PROVIDE_INFORMATION, TAGS.NODE_ATTRIBUTES],
+    keywords:
+      'narrative pedigree disease visualize visualise genetics inheritance focal hereditary',
+    type: 'NarrativePedigree',
+    title: 'Narrative Pedigree',
+    description:
+      'A read-only visualisation interface that overlays disease status and inheritance patterns onto a family pedigree collected by a Family Pedigree stage.',
   },
   {
     category: CATEGORIES.GENERATORS,

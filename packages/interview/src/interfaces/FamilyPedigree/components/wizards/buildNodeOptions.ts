@@ -1,4 +1,4 @@
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
 import { getNodeLabel } from '~/interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
@@ -9,6 +9,7 @@ export function buildNodeOptions(
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
   candidateIds: Set<string>,
+  framing: FramingId,
 ): { value: string; label: string }[] {
   const options: { value: string; label: string }[] = [];
   for (const [id, node] of nodes) {
@@ -19,7 +20,7 @@ export function buildNodeOptions(
     }
     options.push({
       value: id,
-      label: getNodeLabel(id, nodes, edges, variableConfig),
+      label: getNodeLabel(id, nodes, edges, variableConfig, framing),
     });
   }
   return options;

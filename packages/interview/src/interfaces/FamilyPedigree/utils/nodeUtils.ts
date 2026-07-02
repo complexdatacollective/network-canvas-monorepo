@@ -35,6 +35,10 @@ export const getRelationshipVariable = createSelector(
   (c) => c.relationshipVariable,
 );
 export const getNodeForm = createSelector(getNodeConfig, (c) => c.form);
+export const getBiologicalSexVariable = createSelector(
+  getNodeConfig,
+  (c) => c.biologicalSexVariable,
+);
 
 /**
  * Resolves nodeConfig.form fields against the codebook to produce

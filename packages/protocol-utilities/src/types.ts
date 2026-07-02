@@ -4,6 +4,7 @@ import type {
   VariableOption,
   VariableType,
 } from '@codaco/protocol-validation';
+import type { FramingId } from '@codaco/shared-consts';
 
 export type VariableEntry = {
   id: string;
@@ -257,6 +258,7 @@ export type StageEntry = {
     nodeLabelVariable: string;
     egoVariable: string;
     relationshipVariable: string;
+    biologicalSexVariable: string;
     form: { variable: string; prompt: string }[];
   };
   edgeConfig?: {
@@ -264,6 +266,22 @@ export type StageEntry = {
     relationshipTypeVariable: string;
     isActiveVariable: string;
     isGestationalCarrierVariable: string;
+    // Required by EdgeConfigSchema (strictObject); the builder always sets it.
+    gameteRoleVariable: string;
+  };
+  framing?: { mode: 'fixed'; value: FramingId } | { mode: 'participantChoice' };
+  // NarrativePedigree-specific fields
+  narrativePedigreeSourceStageId?: string;
+  narrativePedigreeDiseases?: NarrativeDiseaseEntry[];
+  narrativePedigreeShowAtRiskStatuses?: boolean;
+  boundaries?: {
+    requireGrandparents: 'required' | 'recommended' | 'off';
+    requireChildrenContributors: 'required' | 'recommended' | 'off';
+  };
+  introScreen?: {
+    title?: string;
+    text: string;
+    videoAssetId?: string;
   };
   censusPrompt?: string;
   nominationPrompts?: { id: string; text: string; variable: string }[];
@@ -285,6 +303,9 @@ export type NodeEntry = {
   // getNetwork() time, since prompts are added after the stage is created.
   promptIndices?: number[];
   explicitAttributes: Record<string, unknown>;
+  // Manually seeded nodes (addManualNode) take full control of their
+  // attributes: unset attributes are left neutral rather than randomised.
+  manual?: boolean;
 };
 
 export type EdgeEntry = {
@@ -397,6 +418,7 @@ export type AddStageInput = {
     nodeLabelVariable: string;
     egoVariable: string;
     relationshipVariable: string;
+    biologicalSexVariable: string;
     form?: { variable: string; prompt: string }[];
   };
   edgeConfig?: {
@@ -404,11 +426,26 @@ export type AddStageInput = {
     relationshipTypeVariable: string;
     isActiveVariable?: string;
     isGestationalCarrierVariable?: string;
+    gameteRoleVariable?: string;
+  };
+  framing?: { mode: 'fixed'; value: FramingId } | { mode: 'participantChoice' };
+  boundaries?: {
+    requireGrandparents: 'required' | 'recommended' | 'off';
+    requireChildrenContributors: 'required' | 'recommended' | 'off';
+  };
+  introScreen?: {
+    title?: string;
+    text: string;
+    videoAssetId?: string;
   };
   censusPrompt?: string;
   nominationPrompts?: { id: string; text: string; variable: string }[];
   // Geospatial
   mapOptions?: MapOptionsEntry;
+  // NarrativePedigree
+  sourceStageId?: string;
+  diseases?: NarrativeDiseaseEntry[];
+  showAtRiskStatuses?: boolean;
   // NetworkComposer (quickAdd above is shared with NameGeneratorQuickAdd)
   layoutVariable?: string;
   nodeForm?: { fields: NetworkComposerFormFieldInput[] };
@@ -490,6 +527,14 @@ export type AddPresetInput = {
   };
   groupVariable?: string | boolean;
   highlight?: string[] | boolean;
+};
+
+export type NarrativeDiseaseEntry = {
+  id: string;
+  label: string;
+  color: string;
+  variable: string;
+  inheritancePattern: string;
 };
 
 export type GetSessionInput = {

@@ -20,7 +20,9 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import { FRAMING_TERMS } from '@codaco/shared-consts';
 import PersonFields from '~/interfaces/FamilyPedigree/components/quickStartWizard/PersonFields';
+import { useFramedTerms } from '~/interfaces/FamilyPedigree/hooks/useFramedTerms';
 import type { GameteRole } from '~/interfaces/FamilyPedigree/store';
 
 import type { BioTriadOption } from './bioTriadOptions';
@@ -81,6 +83,11 @@ type ParentSectionProps = {
   carriedLabel?: string;
   carriedHint?: string;
   carriedInitialValue?: boolean;
+  /**
+   * Whether to ask for biological sex when creating a new person in this role.
+   * False for egg/sperm sources — their sex derives from gameteRole.
+   */
+  askBiologicalSex?: boolean;
 };
 
 function ParentSection({
@@ -97,6 +104,7 @@ function ParentSection({
   carriedLabel,
   carriedHint,
   carriedInitialValue = true,
+  askBiologicalSex = false,
 }: ParentSectionProps) {
   const ownValue = useFormValue([roleKey])[roleKey];
   const otherValue = useFormValue([excludeSelectionFrom])[excludeSelectionFrom];
@@ -153,7 +161,10 @@ function ParentSection({
         watch={[roleKey]}
         condition={(values) => values[roleKey] === 'new'}
       >
-        <PersonFields namespace={`new-${roleKey}`} />
+        <PersonFields
+          namespace={`new-${roleKey}`}
+          askBiologicalSex={askBiologicalSex}
+        />
       </FieldGroup>
       {/* The donor and carrier questions stay visible regardless of the
           current selection, so resetting a colliding parent never hides them. */}
@@ -181,6 +192,7 @@ function ParentSection({
 export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
   const { existingNodes, preselection, gameteRoles } = useBioTriadConfig();
   const nodeOptions = useMemo(() => existingNodes ?? [], [existingNodes]);
+  const terms = useFramedTerms() ?? FRAMING_TERMS.gamete;
 
   // A node already nominated as an egg parent elsewhere can't be a sperm parent
   // here, and vice versa. The carrier can be anyone, so it stays unfiltered.
@@ -212,11 +224,11 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
     <div className="flex flex-col gap-6">
       <ParentSection
         roleKey="egg-source"
-        roleLabel="Egg Parent"
-        selectLabel="Who provided the egg?"
-        selectHint="Select the person who contributed the egg. If this was an egg donor, you can indicate that below."
+        roleLabel={terms.eggParent}
+        selectLabel={terms.eggProviderQuestion}
+        selectHint={terms.eggProviderHint}
         donorFieldName="egg-source-is-donor"
-        donorLabel="Was this person an egg donor?"
+        donorLabel={terms.eggDonorQuestion}
         options={eggOptions}
         excludeSelectionFrom="sperm-source"
         initialValue={preselection?.eggSource}
@@ -224,6 +236,7 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
         carriedFieldName="egg-parent-carried"
         carriedLabel="Did this person carry the pregnancy?"
         carriedHint="If someone else carried the pregnancy (e.g. a gestational carrier or surrogate), select 'No'."
+        askBiologicalSex={false}
       />
 
       <FieldGroup
@@ -231,12 +244,12 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
         condition={(values) => values['egg-parent-carried'] === false}
       >
         <Surface level={1} spacing="sm" shadow="sm" noContainer>
-          <Heading level="h4">Gestational Carrier</Heading>
+          <Heading level="h4">{terms.gestationalCarrier}</Heading>
           {carrierOnlyNewOption ? (
             <div className="hidden">
               <Field
                 name="carrier-source"
-                label="Gestational Carrier"
+                label={terms.gestationalCarrier}
                 component={RadioGroupField}
                 options={[{ value: 'new', label: 'new' }]}
                 initialValue="new"
@@ -264,14 +277,15 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
 
       <ParentSection
         roleKey="sperm-source"
-        roleLabel="Sperm Parent"
-        selectLabel="Who provided the sperm?"
-        selectHint="Select the person who contributed the sperm. If this was a sperm donor, you can indicate that below."
+        roleLabel={terms.spermParent}
+        selectLabel={terms.spermProviderQuestion}
+        selectHint={terms.spermProviderHint}
         donorFieldName="sperm-source-is-donor"
-        donorLabel="Was this person a sperm donor?"
+        donorLabel={terms.spermDonorQuestion}
         options={spermOptions}
         excludeSelectionFrom="egg-source"
         initialValue={preselection?.spermSource}
+        askBiologicalSex={false}
       />
     </div>
   );
