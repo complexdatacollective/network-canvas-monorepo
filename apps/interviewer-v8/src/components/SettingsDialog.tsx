@@ -3,6 +3,8 @@ import {
   Info,
   LineChart,
   Shield,
+  ShieldAlert,
+  ShieldCheck,
   Trash2,
   Upload as UploadIcon,
 } from 'lucide-react';
@@ -44,6 +46,7 @@ import { getInstallationId } from '~/lib/platform/installationId';
 import {
   estimateStorage,
   formatBytes,
+  isStoragePersisted,
   type StorageEstimate,
 } from '~/lib/platform/storage';
 import { generateSyntheticSessions } from '~/lib/synthetic/generate';
@@ -99,6 +102,9 @@ export function SettingsDialog({
     percent: null,
   });
   const [installationId, setInstallationId] = useState('');
+  const [storagePersisted, setStoragePersisted] = useState<boolean | null>(
+    null,
+  );
 
   // Synthetic data section state.
   const [protocols, setProtocols] = useState<ProtocolWithCounts[]>([]);
@@ -116,9 +122,14 @@ export function SettingsDialog({
   });
 
   const reload = useCallback(async () => {
-    const [s, e] = await Promise.all([getSettings(), estimateStorage()]);
+    const [s, e, persisted] = await Promise.all([
+      getSettings(),
+      estimateStorage(),
+      isStoragePersisted(),
+    ]);
     setSettings(s);
     setStorage(e);
+    setStoragePersisted(persisted);
     setInstallationId(getInstallationId());
   }, []);
 
@@ -242,6 +253,18 @@ export function SettingsDialog({
         storage.percent !== null ? ` (${storage.percent.toFixed(1)}%)` : ''
       }`
     : 'Unknown';
+  // `persisted` = the browser has promised not to evict this origin's data;
+  // `best-effort` = it may be cleared under storage pressure.
+  const durabilityLabel =
+    storagePersisted === null
+      ? null
+      : storagePersisted
+        ? `Offline storage: protected from eviction${
+            storage.usage !== null
+              ? ` · ${formatBytes(storage.usage)} used`
+              : ''
+          }`
+        : 'Offline storage: best-effort — the browser may clear it under storage pressure';
 
   const protocolOptions = protocols.map((p) => ({
     value: p.hash,
@@ -317,6 +340,26 @@ export function SettingsDialog({
                   )
                 }
               />
+              {durabilityLabel ? (
+                <SettingsRow
+                  title="Offline storage"
+                  desc={durabilityLabel}
+                  control={
+                    <span
+                      className={`inline-flex items-center gap-1.5 text-xs ${
+                        storagePersisted ? 'text-text/60' : 'text-warning'
+                      }`}
+                    >
+                      {storagePersisted ? (
+                        <ShieldCheck className="size-3.5" aria-hidden />
+                      ) : (
+                        <ShieldAlert className="size-3.5" aria-hidden />
+                      )}
+                      {storagePersisted ? 'Persisted' : 'Best-effort'}
+                    </span>
+                  }
+                />
+              ) : null}
               <SettingsRow
                 title="Installation ID"
                 desc="Unique per-device identifier"
