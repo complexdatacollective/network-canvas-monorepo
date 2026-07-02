@@ -149,5 +149,5 @@ export const DEFAULT_SETTINGS: StoredSettings = {
   requireUnlockOnExport: false,
   sampleProtocolDismissed: false,
   analyticsEnabled: true,
-  allowStageNavigation: false,
+  allowStageNavigation: true,
 };
