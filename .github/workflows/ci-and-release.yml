@@ -920,14 +920,13 @@ jobs:
           PKG_NAME: '@codaco/interviewer-v8'
         run: bash .github/scripts/detect-app-release.sh
 
-  # Build, deploy to Netlify production, and cut a GitHub release for each app
-  # whose version changed. NOTE(human-setup-required): interviewer needs
-  # NETLIFY_SITE_ID_INTERVIEWER set — see apps/interviewer-v8/RELEASING.md.
-  apps-release:
+  # Build, deploy to Netlify production, and cut a GitHub release for architect-web
+  # when its version changed. Separate from the interviewer job (below) so one
+  # app's build/deploy failure never blocks the other's release — the same
+  # per-app isolation the deleted deploy-*-prod jobs had.
+  apps-release-architect:
     needs: apps-release-detect
-    if: >-
-      needs.apps-release-detect.outputs.architect_released == 'true' ||
-      needs.apps-release-detect.outputs.interviewer_released == 'true'
+    if: needs.apps-release-detect.outputs.architect_released == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -944,18 +943,19 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile --ignore-scripts
-
-      # architect-web
-      - if: needs.apps-release-detect.outputs.architect_released == 'true'
-        name: Build & deploy architect-web to production
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - name: Build & deploy architect-web to production
         run: |
           pnpm exec turbo run build --filter=@codaco/architect-web
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/architect-web \
             --dir=apps/architect-web/dist \
             --site="${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}"
-      - if: needs.apps-release-detect.outputs.architect_released == 'true'
-        name: architect-web release notes
+      - name: architect-web release notes
         env:
           VERSION: ${{ needs.apps-release-detect.outputs.architect_version }}
         run: >-
@@ -964,8 +964,7 @@ jobs:
           --pkg @codaco/architect-web
           --version "$VERSION"
           --out "${RUNNER_TEMP}/architect-notes.md"
-      - if: needs.apps-release-detect.outputs.architect_released == 'true'
-        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
+      - uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           tag_name: '@codaco/architect-web@${{ needs.apps-release-detect.outputs.architect_version }}'
           name: Architect ${{ needs.apps-release-detect.outputs.architect_version }}
@@ -973,9 +972,34 @@ jobs:
           prerelease: true
           make_latest: 'false'
 
-      # interviewer-v8
-      - if: needs.apps-release-detect.outputs.interviewer_released == 'true'
-        name: Build & deploy interviewer-v8 to production
+  # Build, deploy to Netlify production, and cut a GitHub release for interviewer-v8
+  # when its version changed. Separate job (see apps-release-architect) so a
+  # failure in one app's build never blocks the other's release.
+  # NOTE(human-setup-required): needs NETLIFY_SITE_ID_INTERVIEWER set —
+  # see apps/interviewer-v8/RELEASING.md.
+  apps-release-interviewer:
+    needs: apps-release-detect
+    if: needs.apps-release-detect.outputs.interviewer_released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+      - name: Build & deploy interviewer-v8 to production
         run: |
           pnpm exec turbo run build --filter=@codaco/interviewer-v8^...
           pnpm --filter=@codaco/interviewer-v8 build:web
@@ -983,8 +1007,7 @@ jobs:
             --filter=@codaco/interviewer-v8 \
             --dir=apps/interviewer-v8/dist \
             --site="${{ secrets.NETLIFY_SITE_ID_INTERVIEWER }}"
-      - if: needs.apps-release-detect.outputs.interviewer_released == 'true'
-        name: interviewer-v8 release notes
+      - name: interviewer-v8 release notes
         env:
           VERSION: ${{ needs.apps-release-detect.outputs.interviewer_version }}
         run: >-
@@ -993,8 +1016,7 @@ jobs:
           --pkg @codaco/interviewer-v8
           --version "$VERSION"
           --out "${RUNNER_TEMP}/interviewer-notes.md"
-      - if: needs.apps-release-detect.outputs.interviewer_released == 'true'
-        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
+      - uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           tag_name: '@codaco/interviewer-v8@${{ needs.apps-release-detect.outputs.interviewer_version }}'
           name: Interviewer ${{ needs.apps-release-detect.outputs.interviewer_version }}
