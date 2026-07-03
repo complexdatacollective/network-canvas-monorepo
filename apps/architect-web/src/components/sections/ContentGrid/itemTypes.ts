@@ -36,10 +36,15 @@ export const denormalizeType = (
   }
 
   const assetManifest = getAssetManifest(state);
-  const manifestType = get(assetManifest, [item.content ?? '', 'type']);
+  const manifestType = get(assetManifest, [item.content ?? '', 'type']) as
+    | string
+    | undefined;
 
+  // Fall back to the persisted discriminant when the asset can't be resolved
+  // (no content selected yet, or a stale/deleted reference), so callers never
+  // receive `type: undefined`.
   return {
     ...item,
-    type: manifestType as string,
+    type: manifestType ?? item.type,
   };
 };

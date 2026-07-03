@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import type { FamilyPedigreeIntroItem } from '@codaco/protocol-validation';
 import EditableList from '~/components/EditableList';
 import { Row, Section } from '~/components/EditorLayout';
 import ItemEditor from '~/components/sections/ContentGrid/ItemEditor';
@@ -15,7 +16,7 @@ import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 
 type IntroScreenValue = {
-  items: { id: string; type: string; content?: string }[];
+  items: FamilyPedigreeIntroItem[];
 } | null;
 
 const IntroScreen = ({ form }: StageEditorSectionProps) => {

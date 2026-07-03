@@ -24,10 +24,19 @@ vi.mock('~/components/Form/ValidatedField', () => ({
   default: ({
     name,
     componentProps,
+    validation,
   }: {
     name: string;
     componentProps?: { label?: string };
-  }) => <div data-testid={`field-${name}`}>{componentProps?.label}</div>,
+    validation?: Record<string, unknown>;
+  }) => (
+    <div
+      data-testid={`field-${name}`}
+      data-required={validation?.required ? 'true' : 'false'}
+    >
+      {componentProps?.label}
+    </div>
+  ),
 }));
 
 vi.mock('~/components/Form/Fields/NativeSelect', () => ({
@@ -74,6 +83,16 @@ describe('BoundaryOptions', () => {
     expect(
       screen.getByTestId('field-requireChildrenContributors').textContent,
     ).toContain("Require Co-Parents' Families");
+  });
+
+  it('marks both boundary fields as required', () => {
+    renderSection();
+    expect(
+      screen.getByTestId('field-requireGrandparents').dataset.required,
+    ).toBe('true');
+    expect(
+      screen.getByTestId('field-requireChildrenContributors').dataset.required,
+    ).toBe('true');
   });
 
   it('explains the enforcement levels', () => {
