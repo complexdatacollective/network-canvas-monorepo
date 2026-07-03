@@ -7,6 +7,7 @@ import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import type { AuthMode } from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
 
 import { BiometricLockBody } from './UnlockForms/BiometricLockBody';
@@ -87,20 +88,23 @@ function PassphraseLockBody({
   );
 }
 
-export function LockScreen() {
-  const {
-    kind,
-    mode,
-    unlockWithPin,
-    unlockWithPassphrase,
-    unlockWithBiometric,
-    unlockWithRecovery,
-  } = useAuth();
-
-  if (kind !== 'locked') {
-    return null;
-  }
-
+export function LockScreenView({
+  mode,
+  unlockWithPin,
+  unlockWithPassphrase,
+  unlockWithBiometric,
+  unlockWithRecovery,
+}: {
+  mode: AuthMode | undefined;
+  unlockWithPin: (pin: string) => Promise<{ ok: boolean; message?: string }>;
+  unlockWithPassphrase: (
+    phrase: string,
+  ) => Promise<{ ok: boolean; message?: string }>;
+  unlockWithBiometric: () => Promise<{ ok: boolean; message?: string }>;
+  unlockWithRecovery: (
+    phrase: string,
+  ) => Promise<{ ok: boolean; message?: string }>;
+}) {
   switch (mode) {
     case 'biometric':
       return (
@@ -139,4 +143,29 @@ export function LockScreen() {
     default:
       return null;
   }
+}
+
+export function LockScreen() {
+  const {
+    kind,
+    mode,
+    unlockWithPin,
+    unlockWithPassphrase,
+    unlockWithBiometric,
+    unlockWithRecovery,
+  } = useAuth();
+
+  if (kind !== 'locked') {
+    return null;
+  }
+
+  return (
+    <LockScreenView
+      mode={mode}
+      unlockWithPin={unlockWithPin}
+      unlockWithPassphrase={unlockWithPassphrase}
+      unlockWithBiometric={unlockWithBiometric}
+      unlockWithRecovery={unlockWithRecovery}
+    />
+  );
 }
