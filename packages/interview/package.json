@@ -48,7 +48,6 @@
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
-    "@codaco/interface-images": "workspace:*",
     "@codaco/network-query": "workspace:^",
     "@faker-js/faker": "catalog:",
     "@mapbox/search-js-react": "^1.5.1",
@@ -71,6 +70,7 @@
   },
   "devDependencies": {
     "@chromatic-com/storybook": "catalog:",
+    "@codaco/interface-images": "workspace:*",
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/tsconfig": "workspace:*",
     "@playwright/test": "catalog:",

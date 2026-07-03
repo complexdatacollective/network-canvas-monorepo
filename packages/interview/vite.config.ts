@@ -31,6 +31,16 @@ const cssCopyPlugin = (): Plugin => ({
 // predicate to recognise the package's own files regardless of OS separator.
 const pkgRoot = __dirname.replace(/\\/g, '/');
 
+// `@codaco/interface-images` is a private, source-only workspace package (raw
+// TSX + generated `.webp` screenshots, never published to npm). It is consumed
+// only here — by the stage-navigation menu — so it must be BUNDLED into this
+// package's `dist` rather than externalized as a runtime dependency. Posix-
+// normalized for the same cross-platform reason as `pkgRoot` above.
+const interfaceImagesRoot = resolve(__dirname, '../interface-images').replace(
+  /\\/g,
+  '/',
+);
+
 // Skip dts emission for non-library consumers of this config (Storybook builds
 // the preview app; Vitest just runs tests). Storybook's CLI sets STORYBOOK=true;
 // Vitest sets VITEST=true.
@@ -97,6 +107,21 @@ export default defineConfig({
         const p = id.replace(/\\/g, '/');
         if (p.startsWith(`${pkgRoot}/`) && !p.includes('/node_modules/')) {
           return false; // a resolved file inside this package → bundle
+        }
+        // Bundle the private, source-only interface-images package (its bare
+        // specifier and its resolved source/asset files) so this package ships
+        // self-contained — it has no publishable npm version to depend on.
+        if (
+          p === '@codaco/interface-images' ||
+          p.startsWith('@codaco/interface-images/')
+        ) {
+          return false;
+        }
+        if (
+          p.startsWith(`${interfaceImagesRoot}/`) &&
+          !p.includes('/node_modules/')
+        ) {
+          return false;
         }
         return true; // bare specifier / other workspace package / node_modules
       },
