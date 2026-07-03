@@ -373,7 +373,8 @@ jobs:
       - id: deploy
         name: Build and deploy architect-web preview
         run: |
-          pnpm exec turbo run build --filter=@codaco/architect-web
+          pnpm exec turbo run build --filter=@codaco/architect-web^...
+          pnpm --filter=@codaco/architect-web build:web
           json=$(npx --yes netlify-cli@22 deploy --no-build \
                    --filter=@codaco/architect-web \
                    --dir=apps/architect-web/dist \
@@ -951,7 +952,8 @@ jobs:
           restore-keys: ${{ runner.os }}-turbo-
       - name: Build & deploy architect-web to production
         run: |
-          pnpm exec turbo run build --filter=@codaco/architect-web
+          pnpm exec turbo run build --filter=@codaco/architect-web^...
+          pnpm --filter=@codaco/architect-web build:web
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/architect-web \
             --dir=apps/architect-web/dist \

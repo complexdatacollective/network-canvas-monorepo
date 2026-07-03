@@ -27,3 +27,14 @@ the release notes, it does not move the base while in beta.
 Pull requests still get a preview deploy (`deploy-architect-preview`), aliased
 `pr-<number>` and posted as a comment. Production is no longer deployed on every
 push to `main` — only on a Release apps PR merge.
+
+## How CI builds
+
+Both the preview and release jobs build with `pnpm --filter @codaco/architect-web
+build:web` (not the plain `build`), which chains `scripts/assert-pwa-build.mjs`.
+That assertion fails the build if `dist/` is missing the service worker, manifest,
+or icons, or if any emitted JS chunk was dropped from the workbox precache
+manifest (e.g. for exceeding the size limit) — which would 404 offline and break
+the offline boot. Treat an assertion failure as a hard release blocker. (Sibling
+of interviewer-v8's `build:web`; architect asserts that _every_ chunk is precached
+because it uses no `globIgnores`.)

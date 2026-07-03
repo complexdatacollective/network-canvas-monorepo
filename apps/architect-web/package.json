@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node ../../scripts/with-turbo.mjs --with-deps vite",
     "build": "node ../../scripts/with-turbo.mjs vite build",
+    "build:web": "vite build && node scripts/assert-pwa-build.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --build --noEmit"
