@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 // state, so load a fresh copy per test with a stubbed queue.
 const loadModule = async () => {
   vi.resetModules();
-  let consumer: ((params: { files: { getFile: () => Promise<File> }[] }) => void) | undefined;
+  let consumer:
+    | ((params: { files: { getFile: () => Promise<File> }[] }) => void)
+    | undefined;
   vi.stubGlobal('launchQueue', {
     setConsumer: (fn: typeof consumer) => {
       consumer = fn;

@@ -20,14 +20,13 @@ import {
   type ImportRequest,
   useProtocolImport,
 } from '~/lib/protocol/useProtocolImport';
+import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
 
 import { buildDeleteProtocolMessage } from './deleteProtocolMessage';
 import {
   containerVariants,
   protocolsContainerVariants,
 } from './homeAnimations';
-import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
-
 import { useHomeData } from './useHomeData';
 
 type OpenDialog = 'import' | 'settings' | null;

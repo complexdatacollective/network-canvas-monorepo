@@ -4,11 +4,15 @@ import { Provider } from 'react-redux';
 
 import { AppErrorBoundary } from './components/Errors';
 import AppView from './components/ViewManager/views/App';
+import { openLocalNetcanvas } from './ducks/modules/userActions/userActions';
 import { store } from './ducks/store';
 import { preloadTimelineImages } from './images/timeline';
 import { warmBundledTemplateAssets } from './templates/warmBundledAssets';
-import { openLocalNetcanvas } from './ducks/modules/userActions/userActions';
-import { initFileLaunchCapture, subscribeLaunchFiles, takeLaunchFiles } from './utils/fileLaunchQueue';
+import {
+  initFileLaunchCapture,
+  subscribeLaunchFiles,
+  takeLaunchFiles,
+} from './utils/fileLaunchQueue';
 import { initInstallPromptCapture } from './utils/installPrompt';
 import { isRunningAsInstalledPwa, requestPersistentStorage } from './utils/pwa';
 

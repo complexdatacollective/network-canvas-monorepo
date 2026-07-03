@@ -1284,9 +1284,7 @@ function randomSaltB64(): string {
   return toBase64(crypto.getRandomValues(new Uint8Array(PBKDF2_SALT_BYTES)));
 }
 
-async function wrapFreshDekWithPassword(
-  secret: string,
-): Promise<{
+async function wrapFreshDekWithPassword(secret: string): Promise<{
   kdfSaltB64: string;
   kdfIterations: number;
   wrappedDekB64: string;
