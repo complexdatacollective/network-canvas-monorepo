@@ -7,7 +7,7 @@ const SEGMENTS = [
   { view: 'data', label: 'Data', href: '/data', Icon: Database },
 ] as const;
 
-type View = (typeof SEGMENTS)[number]['view'];
+export type View = (typeof SEGMENTS)[number]['view'];
 
 const CONTAINER_CLASS =
   'border border-outline bg-surface/50 backdrop-blur-md effect-shadow-md inline-flex items-center rounded-full p-1';
@@ -24,10 +24,10 @@ const variants = {
   exit: { opacity: 0, y: -6, transition: { duration: 0.55 } },
 };
 
-export function ViewSwitcher() {
-  const [location] = useLocation();
-  const active = activeView(location);
-
+// Pure presentation: a two-segment pill tab list of real wouter `Link`s.
+// `value` is the currently-active segment, read by the container from the
+// route; navigation itself still goes through each segment's own `href`.
+export function ViewSwitcherView({ value }: { value: View }) {
   return (
     <motion.div
       variants={variants}
@@ -36,7 +36,7 @@ export function ViewSwitcher() {
       aria-label="Home view"
     >
       {SEGMENTS.map(({ view, label, href, Icon }) => {
-        const isActive = active === view;
+        const isActive = value === view;
         return (
           <Link
             key={view}
@@ -62,4 +62,11 @@ export function ViewSwitcher() {
       })}
     </motion.div>
   );
+}
+
+export function ViewSwitcher() {
+  const [location] = useLocation();
+  const active = activeView(location);
+
+  return <ViewSwitcherView value={active} />;
 }

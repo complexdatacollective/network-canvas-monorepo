@@ -1,8 +1,9 @@
 import { Lock, Settings } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useLocation } from 'wouter';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
-import { ViewSwitcher } from '~/components/ViewSwitcher';
+import { type View, ViewSwitcherView } from '~/components/ViewSwitcher';
 import { useAuth } from '~/lib/auth/AuthContext';
 
 // Glass-pill treatment layered over the standard Button: backdrop-blur surface
@@ -10,23 +11,28 @@ import { useAuth } from '~/lib/auth/AuthContext';
 export const GLASS_PILL =
   'border border-outline bg-surface/50 backdrop-blur-md effect-shadow-md uppercase font-black';
 
-type TopActionBarProps = {
-  onOpenSettings: () => void;
-};
-
 const variants = {
   hidden: { opacity: 0, y: -6 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.55 } },
   exit: { opacity: 0, y: -6, transition: { duration: 0.55 } },
 };
 
-export function TopActionBar({ onOpenSettings }: TopActionBarProps) {
-  const { mode, lock } = useAuth();
-  const showLock = mode !== undefined && mode !== 'none';
-
+// Pure presentation: the view switcher plus the lock (when a security mode
+// is enrolled) and settings glass-pill buttons.
+export function TopActionBarView({
+  view,
+  showLock,
+  onLock,
+  onOpenSettings,
+}: {
+  view: View;
+  showLock: boolean;
+  onLock: () => void;
+  onOpenSettings: () => void;
+}) {
   return (
     <div className="flex items-center gap-3">
-      <ViewSwitcher />
+      <ViewSwitcherView value={view} />
       {showLock && (
         <motion.span
           variants={variants}
@@ -38,9 +44,7 @@ export function TopActionBar({ onOpenSettings }: TopActionBarProps) {
             variant="text"
             icon={<Lock size={22} className="stroke-[3px]" aria-hidden />}
             aria-label="Lock app"
-            onClick={() => {
-              void lock();
-            }}
+            onClick={onLock}
             className={GLASS_PILL}
           />
         </motion.span>
@@ -60,5 +64,30 @@ export function TopActionBar({ onOpenSettings }: TopActionBarProps) {
         />
       </motion.span>
     </div>
+  );
+}
+
+type TopActionBarProps = {
+  onOpenSettings: () => void;
+};
+
+function activeView(location: string): View {
+  return location === '/data' ? 'data' : 'protocols';
+}
+
+export function TopActionBar({ onOpenSettings }: TopActionBarProps) {
+  const { mode, lock } = useAuth();
+  const [location] = useLocation();
+  const showLock = mode !== undefined && mode !== 'none';
+
+  return (
+    <TopActionBarView
+      view={activeView(location)}
+      showLock={showLock}
+      onLock={() => {
+        void lock();
+      }}
+      onOpenSettings={onOpenSettings}
+    />
   );
 }
