@@ -78,7 +78,11 @@ describe('SegmentedSwitcher', () => {
         onValueChange={vi.fn()}
         options={[
           { value: 'a', label: 'Alpha' },
-          { value: 'b', label: 'Bravo', render: <a href="#seg" /> },
+          {
+            value: 'b',
+            label: 'Bravo',
+            render: <a href="#seg" aria-label="Bravo" />,
+          },
         ]}
       />,
     );
