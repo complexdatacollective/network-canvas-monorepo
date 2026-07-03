@@ -33,6 +33,55 @@ const variants = {
 const isInterviewActive = (location: string): boolean =>
   location.startsWith('/interview/');
 
+// Pure presentation: the bottom-centre "a new version is available" prompt.
+// A pending update is NEVER applied automatically — reloading is always the
+// explicit action wired to `onReload`.
+export function PwaUpdateBannerView({
+  visible,
+  onReload,
+  onDismiss,
+}: {
+  visible: boolean;
+  onReload: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.aside
+          key="update-available"
+          variants={variants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          aria-label="Update available"
+          aria-live="polite"
+          className={cx(
+            // The chip treatment ToastItem uses: surfaceVariants for padding/
+            // radius/shadow (the Surface COMPONENT is a page-width container and
+            // collapses a shrink-to-fit fixed element), plus the surface tokens.
+            surfaceVariants({ spacing: 'sm' }),
+            'bg-surface text-surface-contrast border-outline border bg-clip-padding',
+            'flex items-center gap-4',
+            // Positioning LAST: surfaceVariants carries `relative`, and cx
+            // (tailwind-merge) resolves position conflicts in favour of the
+            // later class — `fixed` must win.
+            'fixed bottom-6 left-1/2 z-50 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2',
+          )}
+        >
+          <Paragraph margin="none" className="text-sm">
+            A new version of Interviewer is available. Your work is saved.
+          </Paragraph>
+          <Button color="primary" size="sm" onClick={onReload}>
+            Reload
+          </Button>
+          <CloseButton size="sm" onClick={onDismiss} />
+        </motion.aside>
+      )}
+    </AnimatePresence>
+  );
+}
+
 // A pending update is NEVER applied automatically: reloading is always the
 // researcher's explicit choice via this prompt — a bottom-centre banner
 // mirroring Architect's. (An earlier fresh-load silent reload made the app
@@ -68,43 +117,11 @@ const PwaUpdateBanner = () => {
   const visible = needRefresh && !dismissed && !interviewActive;
 
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.aside
-          key="update-available"
-          variants={variants}
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-          aria-label="Update available"
-          aria-live="polite"
-          className={cx(
-            // The chip treatment ToastItem uses: surfaceVariants for padding/
-            // radius/shadow (the Surface COMPONENT is a page-width container and
-            // collapses a shrink-to-fit fixed element), plus the surface tokens.
-            surfaceVariants({ spacing: 'sm' }),
-            'bg-surface text-surface-contrast border-outline border bg-clip-padding',
-            'flex items-center gap-4',
-            // Positioning LAST: surfaceVariants carries `relative`, and cx
-            // (tailwind-merge) resolves position conflicts in favour of the
-            // later class — `fixed` must win.
-            'fixed bottom-6 left-1/2 z-50 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2',
-          )}
-        >
-          <Paragraph margin="none" className="text-sm">
-            A new version of Interviewer is available. Your work is saved.
-          </Paragraph>
-          <Button
-            color="primary"
-            size="sm"
-            onClick={() => void updateServiceWorker(true)}
-          >
-            Reload
-          </Button>
-          <CloseButton size="sm" onClick={() => setDismissed(true)} />
-        </motion.aside>
-      )}
-    </AnimatePresence>
+    <PwaUpdateBannerView
+      visible={visible}
+      onReload={() => void updateServiceWorker(true)}
+      onDismiss={() => setDismissed(true)}
+    />
   );
 };
 
