@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { type ReactElement, type ReactNode, useId } from 'react';
 
+import Surface from '../layout/Surface';
 import { cva, cx } from '../utils/cva';
 
 export type SegmentedOption<T extends string> = {
@@ -23,9 +24,6 @@ export type SegmentedSwitcherProps<T extends string> = {
   'aria-label': string;
   'className'?: string;
 };
-
-const containerClasses =
-  'border-outline bg-surface/50 inline-flex items-center rounded-full border p-1 backdrop-blur-md';
 
 const segmentVariants = cva({
   base: cx(
@@ -60,58 +58,65 @@ export default function SegmentedSwitcher<T extends string>({
   const reduced = useReducedMotion();
 
   return (
-    <ToggleGroup
-      aria-label={ariaLabel}
-      value={[value]}
-      multiple={false}
-      onValueChange={(next) => {
-        const first = next[0];
-        // No-deselect: ignore a change that would leave nothing selected.
-        if (first === undefined) return;
-        const picked = options.find((option) => option.value === first);
-        if (picked) onValueChange(picked.value);
-      }}
-      className={cx(containerClasses, className)}
+    <Surface
+      floating
+      noContainer
+      spacing="none"
+      className={cx('inline-flex items-center rounded-full p-1', className)}
     >
-      {options.map((option) => {
-        const active = option.value === value;
-        const Icon = option.icon;
-        return (
-          <Toggle
-            key={option.value}
-            value={option.value}
-            disabled={option.disabled}
-            render={option.render}
-            // The render escape hatch may swap in a non-button element (e.g. a
-            // wouter <Link>); tell Base UI so it doesn't assume button semantics.
-            nativeButton={option.render ? false : undefined}
-            className={cx(
-              segmentVariants({ size }),
-              active ? 'text-primary-contrast' : 'text-text/80',
-            )}
-          >
-            {active ? (
-              <motion.span
-                layoutId={layoutId}
-                aria-hidden
-                className="bg-primary absolute inset-0 rounded-full"
-                transition={
-                  reduced
-                    ? { duration: 0 }
-                    : { type: 'spring', stiffness: 380, damping: 32 }
-                }
-              />
-            ) : null}
-            {Icon ? (
-              <Icon
-                aria-hidden
-                className={cx('relative stroke-[3px]', iconSizeClass[size])}
-              />
-            ) : null}
-            <span className="relative">{option.label}</span>
-          </Toggle>
-        );
-      })}
-    </ToggleGroup>
+      <ToggleGroup
+        aria-label={ariaLabel}
+        value={[value]}
+        multiple={false}
+        onValueChange={(next) => {
+          const first = next[0];
+          // No-deselect: ignore a change that would leave nothing selected.
+          if (first === undefined) return;
+          const picked = options.find((option) => option.value === first);
+          if (picked) onValueChange(picked.value);
+        }}
+        className="flex items-center"
+      >
+        {options.map((option) => {
+          const active = option.value === value;
+          const Icon = option.icon;
+          return (
+            <Toggle
+              key={option.value}
+              value={option.value}
+              disabled={option.disabled}
+              render={option.render}
+              // The render escape hatch may swap in a non-button element (e.g. a
+              // wouter <Link>); tell Base UI so it doesn't assume button semantics.
+              nativeButton={option.render ? false : undefined}
+              className={cx(
+                segmentVariants({ size }),
+                active ? 'text-primary-contrast' : 'text-text/80',
+              )}
+            >
+              {active ? (
+                <motion.span
+                  layoutId={layoutId}
+                  aria-hidden
+                  className="bg-primary absolute inset-0 rounded-full"
+                  transition={
+                    reduced
+                      ? { duration: 0 }
+                      : { type: 'spring', stiffness: 380, damping: 32 }
+                  }
+                />
+              ) : null}
+              {Icon ? (
+                <Icon
+                  aria-hidden
+                  className={cx('relative stroke-[3px]', iconSizeClass[size])}
+                />
+              ) : null}
+              <span className="relative">{option.label}</span>
+            </Toggle>
+          );
+        })}
+      </ToggleGroup>
+    </Surface>
   );
 }
