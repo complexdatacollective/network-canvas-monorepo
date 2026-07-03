@@ -66,4 +66,32 @@ describe('SegmentedSwitcher', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Bravo' }));
     expect(onValueChange).not.toHaveBeenCalled();
   });
+
+  it('renders a render-swapped segment as its non-button element without a nativeButton warning', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    render(
+      <SegmentedSwitcher
+        aria-label="Test switcher"
+        value="a"
+        onValueChange={vi.fn()}
+        options={[
+          { value: 'a', label: 'Alpha' },
+          { value: 'b', label: 'Bravo', render: <a href="#seg" /> },
+        ]}
+      />,
+    );
+
+    const link = screen.getByRole('button', { name: 'Bravo' });
+    expect(link.tagName).toBe('A');
+    expect(link).toHaveAttribute('href', '#seg');
+
+    for (const call of [...errorSpy.mock.calls, ...warnSpy.mock.calls]) {
+      expect(call.join(' ')).not.toMatch(/nativeButton/);
+    }
+
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
 });

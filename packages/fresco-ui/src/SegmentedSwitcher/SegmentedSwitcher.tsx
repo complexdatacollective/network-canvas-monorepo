@@ -81,6 +81,9 @@ export default function SegmentedSwitcher<T extends string>({
             value={option.value}
             disabled={option.disabled}
             render={option.render}
+            // The render escape hatch may swap in a non-button element (e.g. a
+            // wouter <Link>); tell Base UI so it doesn't assume button semantics.
+            nativeButton={option.render ? false : undefined}
             className={cx(
               segmentVariants({ size }),
               active ? 'text-primary-contrast' : 'text-text/80',
