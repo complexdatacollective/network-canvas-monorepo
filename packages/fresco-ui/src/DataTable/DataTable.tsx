@@ -36,7 +36,6 @@ type DataTableProps<TData> = {
   toolbar?: ReactNode;
   floatingBar?: ReactNode;
   showPagination?: boolean;
-  surfaceLevel?: 0 | 1 | 2 | 3;
   emptyText?: string;
   getRowClasses?: (row: Row<TData>) => string | undefined;
   bodyScroll?: boolean;
@@ -47,7 +46,6 @@ export function DataTable<TData>({
   toolbar,
   floatingBar,
   showPagination = true,
-  surfaceLevel = 0,
   emptyText = 'No results.',
   getRowClasses,
   bodyScroll = false,
@@ -59,7 +57,7 @@ export function DataTable<TData>({
   return (
     <div className={cx('flex flex-col gap-6', bodyScroll && 'h-full min-h-0')}>
       {toolbar}
-      <Table surfaceProps={{ level: surfaceLevel }} bodyScroll={bodyScroll}>
+      <Table bodyScroll={bodyScroll}>
         <TableHeader className={cx(bodyScroll && 'sticky top-0 z-10')}>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>

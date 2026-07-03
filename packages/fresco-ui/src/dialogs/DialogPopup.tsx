@@ -1,4 +1,4 @@
-import { surfaceVariants } from '../layout/Surface';
+import { SurfaceDepthReset, surfaceVariants } from '../layout/Surface';
 import ModalPopup from '../Modal/ModalPopup';
 import { cx } from '../utils/cva';
 
@@ -11,9 +11,12 @@ export default function DialogPopup({
     <ModalPopup
       className={cx(
         surfaceVariants({
-          level: 0,
+          floating: true,
           spacing: 'none',
         }),
+        // The popover border is a stacked-popover affordance; dialogs sit on a
+        // backdrop and stay borderless as before.
+        'border-0',
         'tablet-portrait:w-auto w-[calc(100%-var(--spacing-base)*8)] max-w-2xl shadow-2xl',
         'fixed top-1/2 left-1/2 -translate-1/2',
         'flex max-h-[calc(100vh-var(--spacing-base)*10)] flex-col',
@@ -21,7 +24,7 @@ export default function DialogPopup({
       )}
       {...props}
     >
-      {children}
+      <SurfaceDepthReset>{children}</SurfaceDepthReset>
     </ModalPopup>
   );
 }

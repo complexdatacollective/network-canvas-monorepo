@@ -2,7 +2,7 @@
  * Framing identifiers and terminology for the FamilyPedigree interface.
  *
  * Two framings are supported: 'gamete' (biology-first language) and 'gendered'
- * (conventional mother/father language). Gestational carrier and donor terms
+ * (mother/father kinship terms). Gestational carrier and donor terms
  * are intentionally identical across both framings.
  */
 export const FRAMING_IDS = ['gamete', 'gendered'] as const;

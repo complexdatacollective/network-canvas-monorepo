@@ -7,6 +7,7 @@ import {
   type FramingId,
 } from '@codaco/shared-consts';
 import { Section } from '~/components/EditorLayout';
+import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import RadioGroup from '~/components/Form/Fields/RadioGroup';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -47,8 +48,10 @@ const FramingConfig = ({ form }: StageEditorSectionProps) => {
     }
   };
 
-  const handleValueChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    dispatch(change(form, 'framing.value', event.target.value));
+  const handleValueChange = (value: string | null) => {
+    if (value) {
+      dispatch(change(form, 'framing.value', value));
+    }
   };
 
   return (
@@ -62,6 +65,29 @@ const FramingConfig = ({ form }: StageEditorSectionProps) => {
         </p>
       }
     >
+      <p>
+        The framing determines the language the interface uses when talking
+        about biological parents:
+      </p>
+      <ul className="mb-(--space-md) list-disc pl-(--space-lg) [&_li]:mb-(--space-xs)">
+        <li>
+          <strong>Gamete-based</strong> — describes each parent by their
+          reproductive contribution, using terms such as &ldquo;egg
+          parent&rdquo; and &ldquo;sperm parent&rdquo; and questions such as
+          &ldquo;Who provided the egg?&rdquo;. This framing works for all family
+          structures, including donor conception, surrogacy, and same-sex
+          parents.
+        </li>
+        <li>
+          <strong>Gendered</strong> — uses gendered kinship terms such as
+          &ldquo;mother&rdquo; and &ldquo;father&rdquo; and questions such as
+          &ldquo;Who is the biological mother?&rdquo;. This framing assumes that
+          each child has a mother and a father.
+        </li>
+      </ul>
+      <p className="mb-(--space-md)">
+        Both framings use the same wording for gestational carriers and donors.
+      </p>
       <RadioGroup
         options={FRAMING_MODE_OPTIONS}
         input={{
@@ -73,17 +99,16 @@ const FramingConfig = ({ form }: StageEditorSectionProps) => {
 
       {mode === 'fixed' && (
         <div className="mt-(--space-md)">
-          <select
-            value={fixedValue}
-            onChange={handleValueChange}
+          <NativeSelect
             aria-label="Select framing"
-          >
-            {FRAMING_VALUE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            sortOptionsByLabel={false}
+            options={FRAMING_VALUE_OPTIONS}
+            input={{
+              name: 'framing.value',
+              value: fixedValue,
+              onChange: handleValueChange,
+            }}
+          />
         </div>
       )}
     </Section>

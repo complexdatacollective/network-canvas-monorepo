@@ -62,7 +62,9 @@ describe('AtRiskStatuses', () => {
     // WHAT — the "may develop / may carry / may be affected" symbols.
     expect(screen.getAllByText(/may develop/i).length).toBeGreaterThan(0);
     // HOW — derived from inheritance pattern, not observed status.
-    expect(screen.getByText(/inheritance pattern/i)).toBeDefined();
+    expect(screen.getAllByText(/inheritance pattern/i).length).toBeGreaterThan(
+      0,
+    );
     // WHY (caution + Bennett 2022 reference)
     expect(screen.getByText(/clinician-directed use/i)).toBeDefined();
     expect(screen.getByText(/Bennett/)).toBeDefined();

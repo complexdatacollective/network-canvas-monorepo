@@ -23,7 +23,7 @@ export function BaseUISharedPopoverContainer({
 }) {
   return (
     <MotionSurface
-      level="popover"
+      floating
       spacing="xs"
       shadow="md"
       noContainer

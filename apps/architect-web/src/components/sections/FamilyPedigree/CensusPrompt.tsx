@@ -19,7 +19,7 @@ const CensusPrompt = (_props: StageEditorSectionProps) => (
       <ValidatedField
         name="censusPrompt"
         component={RichText}
-        componentProps={{ label: 'Prompt for building the family tree' }}
+        componentProps={{ label: 'Prompt for building the family pedigree' }}
         validation={{ required: true }}
       />
     </Row>

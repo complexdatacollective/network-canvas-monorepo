@@ -294,7 +294,7 @@ export default function GeospatialSearch({
                   noContainer
                   spacing="none"
                   shadow="none"
-                  level="popover"
+                  floating
                   className="absolute left-0 mt-2 flex max-h-64 w-sm flex-col shadow-xl"
                   initial={{ opacity: 0, y: '-0.5rem' }}
                   animate={{ opacity: 1, y: 0 }}

@@ -12,16 +12,25 @@ describe('shouldSkipIntroStep', () => {
     expect(shouldSkipIntroStep(null)).toBe(true);
   });
 
-  it('returns false when introScreen is present', () => {
-    expect(shouldSkipIntroStep({ text: 'Hello' })).toBe(false);
+  it('returns true when introScreen has no items', () => {
+    expect(shouldSkipIntroStep({ items: [] })).toBe(true);
   });
 
-  it('returns false when introScreen has all fields', () => {
+  it('returns false when introScreen has items', () => {
     expect(
       shouldSkipIntroStep({
-        title: 'Welcome',
-        text: 'This is the intro.',
-        videoAssetId: 'abc123',
+        items: [{ id: 't1', type: 'text', content: 'Hello' }],
+      }),
+    ).toBe(false);
+  });
+
+  it('returns false when introScreen has multiple items', () => {
+    expect(
+      shouldSkipIntroStep({
+        items: [
+          { id: 't1', type: 'text', content: 'This is the intro.' },
+          { id: 'v1', type: 'asset', content: 'abc123' },
+        ],
       }),
     ).toBe(false);
   });

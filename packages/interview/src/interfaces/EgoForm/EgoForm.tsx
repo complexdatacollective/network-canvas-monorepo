@@ -229,7 +229,7 @@ const EgoFormInner = (props: EgoFormProps) => {
         {showScrollNudge && (
           <MotionSurface
             noContainer
-            level="popover"
+            floating
             spacing="xs"
             shadow="xs"
             role="status"

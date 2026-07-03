@@ -2394,4 +2394,107 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       }
     });
   });
+
+  describe('FamilyPedigree introScreen asset validation', () => {
+    // A shape-valid FamilyPedigree stage. Its config variables need not exist in
+    // the codebook for this suite: superRefine accumulates all issues, so the
+    // introScreen asset check runs regardless, and we assert its issue via
+    // find().
+    const familyPedigreeStage = {
+      id: 'fp1',
+      type: 'FamilyPedigree' as const,
+      label: 'Family Pedigree',
+      nodeConfig: {
+        type: 'person',
+        nodeLabelVariable: 'label',
+        egoVariable: 'isEgo',
+        relationshipVariable: 'rel',
+        biologicalSexVariable: 'bioSex',
+      },
+      edgeConfig: {
+        type: 'family',
+        relationshipTypeVariable: 'relType',
+        isActiveVariable: 'isActive',
+        isGestationalCarrierVariable: 'isGc',
+        gameteRoleVariable: 'gameteRole',
+      },
+      framing: { mode: 'fixed' as const, value: 'gamete' as const },
+      boundaries: {
+        requireGrandparents: 'off' as const,
+        requireChildrenContributors: 'off' as const,
+      },
+      censusPrompt: 'Build your family',
+    };
+
+    const protocolWithIntroItem = (
+      item: Record<string, unknown>,
+      assetManifest?: Record<string, unknown>,
+    ) => ({
+      ...baseValidProtocol,
+      ...(assetManifest ? { assetManifest } : {}),
+      stages: [{ ...familyPedigreeStage, introScreen: { items: [item] } }],
+    });
+
+    it('rejects an intro asset item absent from the manifest', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithIntroItem({
+          id: 'i1',
+          type: 'asset',
+          content: 'missing-asset',
+        }),
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find((i) =>
+          i.message.includes(
+            'introScreen item "missing-asset" does not reference an asset in the manifest',
+          ),
+        );
+        expect(issue).toBeDefined();
+        expect(issue?.path).toEqual([
+          'stages',
+          0,
+          'introScreen',
+          'items',
+          0,
+          'content',
+        ]);
+      }
+    });
+
+    it('rejects an intro asset item of a non-displayable type', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithIntroItem(
+          { id: 'i1', type: 'asset', content: 'net-1' },
+          {
+            'net-1': {
+              id: 'net-1',
+              type: 'network',
+              name: 'Roster',
+              source: 'roster.csv',
+            },
+          },
+        ),
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find(
+          (i) =>
+            i.message.includes('introScreen item "net-1"') &&
+            i.message.includes('must reference an asset of type'),
+        );
+        expect(issue).toBeDefined();
+      }
+    });
+
+    it('does not raise an introScreen asset issue for a text item', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithIntroItem({ id: 'i1', type: 'text', content: 'Welcome' }),
+      );
+      const introAssetIssue =
+        !result.success &&
+        result.error.issues.find((i) => i.message.includes('introScreen item'));
+      expect(introAssetIssue).toBeFalsy();
+    });
+  });
 });
