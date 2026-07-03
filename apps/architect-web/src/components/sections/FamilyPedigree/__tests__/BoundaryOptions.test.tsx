@@ -24,10 +24,19 @@ vi.mock('~/components/Form/ValidatedField', () => ({
   default: ({
     name,
     componentProps,
+    validation,
   }: {
     name: string;
     componentProps?: { label?: string };
-  }) => <div data-testid={`field-${name}`}>{componentProps?.label}</div>,
+    validation?: Record<string, unknown>;
+  }) => (
+    <div
+      data-testid={`field-${name}`}
+      data-required={validation?.required ? 'true' : 'false'}
+    >
+      {componentProps?.label}
+    </div>
+  ),
 }));
 
 vi.mock('~/components/Form/Fields/NativeSelect', () => ({
@@ -73,6 +82,28 @@ describe('BoundaryOptions', () => {
     renderSection();
     expect(
       screen.getByTestId('field-requireChildrenContributors').textContent,
-    ).toContain('Require Children Contributors');
+    ).toContain("Require Co-Parents' Families");
+  });
+
+  it('marks both boundary fields as required', () => {
+    renderSection();
+    expect(
+      screen.getByTestId('field-requireGrandparents').dataset.required,
+    ).toBe('true');
+    expect(
+      screen.getByTestId('field-requireChildrenContributors').dataset.required,
+    ).toBe('true');
+  });
+
+  it('explains the enforcement levels', () => {
+    renderSection();
+    expect(screen.getByText('Off')).toBeDefined();
+    expect(screen.getByText('Recommended')).toBeDefined();
+    expect(screen.getByText('Required')).toBeDefined();
+  });
+
+  it('does not use the phrase "family tree"', () => {
+    const { container } = renderSection();
+    expect(container.textContent).not.toContain('family tree');
   });
 });

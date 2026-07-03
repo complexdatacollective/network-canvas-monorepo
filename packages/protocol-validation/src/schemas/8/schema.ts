@@ -473,28 +473,47 @@ const ProtocolSchema = z
         }
       }
 
-      // 3e.iii.b. FamilyPedigree: introScreen.videoAssetId must resolve to a
-      // manifest entry of type 'video'.
+      // 3e.iii.b. FamilyPedigree: each introScreen asset item must resolve to
+      // a manifest entry of a displayable type (image/video/audio).
       if (
         stage.type === 'FamilyPedigree' &&
         'introScreen' in stage &&
-        stage.introScreen?.videoAssetId
+        stage.introScreen
       ) {
-        const videoAssetId = stage.introScreen.videoAssetId;
-        const asset = protocol.assetManifest?.[videoAssetId];
-        if (!asset) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `FamilyPedigree introScreen videoAssetId "${videoAssetId}" does not reference an asset in the manifest.`,
-            path: ['stages', stageIndex, 'introScreen', 'videoAssetId'],
-          });
-        } else if (asset.type !== 'video') {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `FamilyPedigree introScreen videoAssetId "${videoAssetId}" must reference a 'video' asset, but is of type "${asset.type}".`,
-            path: ['stages', stageIndex, 'introScreen', 'videoAssetId'],
-          });
-        }
+        const displayableAssetTypes = ['image', 'video', 'audio'];
+        stage.introScreen.items.forEach((item, itemIndex) => {
+          if (item.type !== 'asset') {
+            return;
+          }
+          const asset = protocol.assetManifest?.[item.content];
+          if (!asset) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `FamilyPedigree introScreen item "${item.content}" does not reference an asset in the manifest.`,
+              path: [
+                'stages',
+                stageIndex,
+                'introScreen',
+                'items',
+                itemIndex,
+                'content',
+              ],
+            });
+          } else if (!displayableAssetTypes.includes(asset.type)) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `FamilyPedigree introScreen item "${item.content}" must reference an asset of type ${displayableAssetTypes.map((t) => `'${t}'`).join(' or ')}, but is of type "${asset.type}".`,
+              path: [
+                'stages',
+                stageIndex,
+                'introScreen',
+                'items',
+                itemIndex,
+                'content',
+              ],
+            });
+          }
+        });
       }
 
       // 3e.iii.b-2. FamilyPedigree: each nomination prompt variable must exist

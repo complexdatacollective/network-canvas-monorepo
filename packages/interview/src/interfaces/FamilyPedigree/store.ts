@@ -4,6 +4,7 @@ import { immer } from 'zustand/middleware/immer';
 
 import type {
   FramingId,
+  GAMETE_ROLES,
   NcEdge,
   NcNode,
   RelationshipType,
@@ -48,9 +49,11 @@ export type NodeMetadata = {
 
 /**
  * Which gamete a biological/donor parent contributed. Written to the network
- * as an edge attribute under `variableConfig.gameteRoleVariable`.
+ * as an edge attribute under `variableConfig.gameteRoleVariable`. Derived from
+ * the canonical value set in shared-consts, which Architect locks onto the
+ * categorical edge variable, so the two cannot drift apart.
  */
-export type GameteRole = 'egg' | 'sperm';
+export type GameteRole = (typeof GAMETE_ROLES)[number];
 
 /** A pedigree edge. gameteRole is stored in `attributes[gameteRoleVariable]`. */
 export type FamilyEdge = NcEdge;

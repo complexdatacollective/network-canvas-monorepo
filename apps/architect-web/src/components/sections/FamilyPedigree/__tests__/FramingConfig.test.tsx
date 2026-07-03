@@ -94,7 +94,29 @@ vi.mock('~/components/Form/Fields/RadioGroup', () => ({
 }));
 
 vi.mock('~/components/Form/Fields/NativeSelect', () => ({
-  default: () => <div data-testid="native-select" />,
+  default: ({
+    options,
+    input,
+  }: {
+    options: { value: string; label: string }[];
+    input: {
+      value: string;
+      name: string;
+      onChange: (v: string | null) => void;
+    };
+  }) => (
+    <select
+      data-testid="native-select"
+      value={input.value}
+      onChange={(e) => input.onChange(e.target.value)}
+    >
+      {options.map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  ),
 }));
 
 import FramingConfig from '../FramingConfig';
@@ -158,5 +180,23 @@ describe('FramingConfig', () => {
       mode: 'fixed',
       value: 'gamete',
     });
+  });
+
+  it('dispatches change to framing.value when a fixed value is selected', () => {
+    mockFramingValue = { mode: 'fixed', value: 'gamete' };
+    mockDispatch.mockClear();
+    mockChange.mockClear();
+    renderSection();
+
+    fireEvent.change(screen.getByTestId('native-select'), {
+      target: { value: 'gendered' },
+    });
+
+    expect(mockDispatch).toHaveBeenCalled();
+    expect(mockChange).toHaveBeenCalledWith(
+      'edit-stage',
+      'framing.value',
+      'gendered',
+    );
   });
 });

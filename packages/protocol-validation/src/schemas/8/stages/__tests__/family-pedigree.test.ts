@@ -82,7 +82,7 @@ describe('familyPedigreeStage framing/boundaries/introScreen', () => {
     ).toBe(false);
   });
 
-  it('accepts an optional intro screen', () => {
+  it('accepts an optional intro screen with content items', () => {
     expect(
       familyPedigreeStage.safeParse({
         ...base,
@@ -91,8 +91,36 @@ describe('familyPedigreeStage framing/boundaries/introScreen', () => {
           requireGrandparents: 'off',
           requireChildrenContributors: 'off',
         },
-        introScreen: { text: 'Welcome' },
+        introScreen: {
+          items: [
+            { id: 'text1', type: 'text', content: 'Welcome' },
+            { id: 'video1', type: 'asset', content: 'assetId1' },
+          ],
+        },
       }).success,
     ).toBe(true);
+  });
+
+  it('rejects the legacy intro screen text shape', () => {
+    expect(
+      familyPedigreeStage.safeParse({
+        ...base,
+        introScreen: { text: 'Welcome' },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects intro screen items with duplicate ids', () => {
+    expect(
+      familyPedigreeStage.safeParse({
+        ...base,
+        introScreen: {
+          items: [
+            { id: 'dup', type: 'text', content: 'One' },
+            { id: 'dup', type: 'text', content: 'Two' },
+          ],
+        },
+      }).success,
+    ).toBe(false);
   });
 });

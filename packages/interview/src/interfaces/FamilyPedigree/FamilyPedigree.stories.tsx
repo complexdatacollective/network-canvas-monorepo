@@ -195,18 +195,23 @@ export const Default: Story = {
         // their parents are referred to (the FramingSelectionStep).
         framing: { mode: 'participantChoice' },
         introScreen: {
-          title: 'About your family pedigree',
-          text: [
-            'A family pedigree is a simple diagram of your biological relatives — the people you are related to by blood — across a few generations. Building one helps us understand patterns of health and inheritance that can run in a family.',
-            '',
-            '### How it works',
-            '',
-            "We'll build the diagram together, one step at a time. You'll start with the parents who conceived you, then add grandparents, any brothers and sisters, and — if you have them — a partner and children. For each person you can share a few details, and you can skip anything you would rather not answer.",
-            '',
-            '### What you will see',
-            '',
-            'Each relative appears as a shape, joined to the others by lines that show how everyone is related. Nothing is final while you work — you can go back and change your answers before you finish.',
-          ].join('\n'),
+          items: [
+            {
+              id: 'intro-text',
+              type: 'text',
+              content: [
+                'A family pedigree is a simple diagram of your biological relatives — the people you are related to by blood — across a few generations. Building one helps us understand patterns of health and inheritance that can run in a family.',
+                '',
+                '### How it works',
+                '',
+                "We'll build the diagram together, one step at a time. You'll start with the parents who conceived you, then add grandparents, any brothers and sisters, and — if you have them — a partner and children. For each person you can share a few details, and you can skip anything you would rather not answer.",
+                '',
+                '### What you will see',
+                '',
+                'Each relative appears as a shape, joined to the others by lines that show how everyone is related. Nothing is final while you work — you can go back and change your answers before you finish.',
+              ].join('\n'),
+            },
+          ],
         },
         boundaries: {
           requireGrandparents: 'off',

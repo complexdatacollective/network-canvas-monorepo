@@ -1,10 +1,16 @@
 import type {
   ComponentType,
+  FamilyPedigreeBoundaries,
+  FamilyPedigreeEdgeConfigInput,
+  FamilyPedigreeFraming,
+  FamilyPedigreeIntroItem,
+  FamilyPedigreeNodeConfigInput,
+  FamilyPedigreeNominationPromptInput,
+  Item,
   StageType,
   VariableOption,
   VariableType,
 } from '@codaco/protocol-validation';
-import type { FramingId } from '@codaco/shared-consts';
 
 export type VariableEntry = {
   id: string;
@@ -195,12 +201,6 @@ type PanelEntry = {
   dataSource: string;
 };
 
-type InformationItem = {
-  id: string;
-  type: 'text';
-  content: string;
-};
-
 export type StageEntry = {
   id: string;
   type: StageType;
@@ -228,7 +228,7 @@ export type StageEntry = {
     text: string;
   };
   title?: string;
-  items?: InformationItem[];
+  items?: Item[];
   initialEdges: [number, number][];
   // NameGeneratorQuickAdd
   quickAdd?: string;
@@ -252,39 +252,21 @@ export type StageEntry = {
   };
   // TieStrengthCensus (edge type reference on stage)
   edgeType?: { entity: 'edge'; type: string };
-  // FamilyPedigree-specific fields
-  nodeConfig?: {
-    type: string;
-    nodeLabelVariable: string;
-    egoVariable: string;
-    relationshipVariable: string;
-    biologicalSexVariable: string;
-    form: { variable: string; prompt: string }[];
-  };
-  edgeConfig?: {
-    type: string;
-    relationshipTypeVariable: string;
-    isActiveVariable: string;
-    isGestationalCarrierVariable: string;
-    // Required by EdgeConfigSchema (strictObject); the builder always sets it.
-    gameteRoleVariable: string;
-  };
-  framing?: { mode: 'fixed'; value: FramingId } | { mode: 'participantChoice' };
+  // FamilyPedigree-specific fields, derived from the protocol-validation schema
+  // so they cannot drift from it.
+  nodeConfig?: FamilyPedigreeNodeConfigInput;
+  edgeConfig?: FamilyPedigreeEdgeConfigInput;
+  framing?: FamilyPedigreeFraming;
   // NarrativePedigree-specific fields
   narrativePedigreeSourceStageId?: string;
   narrativePedigreeDiseases?: NarrativeDiseaseEntry[];
   narrativePedigreeShowAtRiskStatuses?: boolean;
-  boundaries?: {
-    requireGrandparents: 'required' | 'recommended' | 'off';
-    requireChildrenContributors: 'required' | 'recommended' | 'off';
-  };
+  boundaries?: FamilyPedigreeBoundaries;
   introScreen?: {
-    title?: string;
-    text: string;
-    videoAssetId?: string;
+    items: FamilyPedigreeIntroItem[];
   };
   censusPrompt?: string;
-  nominationPrompts?: { id: string; text: string; variable: string }[];
+  nominationPrompts?: FamilyPedigreeNominationPromptInput[];
   // Geospatial
   mapOptions?: MapOptionsEntry;
   // NetworkComposer
@@ -413,33 +395,23 @@ export type AddStageInput = {
     body?: string;
   };
   // FamilyPedigree
-  nodeConfig?: {
-    type: string;
-    nodeLabelVariable: string;
-    egoVariable: string;
-    relationshipVariable: string;
-    biologicalSexVariable: string;
-    form?: { variable: string; prompt: string }[];
-  };
-  edgeConfig?: {
-    type: string;
-    relationshipTypeVariable: string;
-    isActiveVariable?: string;
-    isGestationalCarrierVariable?: string;
-    gameteRoleVariable?: string;
-  };
-  framing?: { mode: 'fixed'; value: FramingId } | { mode: 'participantChoice' };
-  boundaries?: {
-    requireGrandparents: 'required' | 'recommended' | 'off';
-    requireChildrenContributors: 'required' | 'recommended' | 'off';
-  };
+  nodeConfig?: FamilyPedigreeNodeConfigInput;
+  // Derived from the schema's edge config, but the builder fills the non-core
+  // variables when omitted, so they are optional here.
+  edgeConfig?: Pick<
+    FamilyPedigreeEdgeConfigInput,
+    'type' | 'relationshipTypeVariable'
+  > &
+    Partial<
+      Omit<FamilyPedigreeEdgeConfigInput, 'type' | 'relationshipTypeVariable'>
+    >;
+  framing?: FamilyPedigreeFraming;
+  boundaries?: FamilyPedigreeBoundaries;
   introScreen?: {
-    title?: string;
-    text: string;
-    videoAssetId?: string;
+    items: FamilyPedigreeIntroItem[];
   };
   censusPrompt?: string;
-  nominationPrompts?: { id: string; text: string; variable: string }[];
+  nominationPrompts?: FamilyPedigreeNominationPromptInput[];
   // Geospatial
   mapOptions?: MapOptionsEntry;
   // NarrativePedigree

@@ -77,8 +77,14 @@ function buildFramingInterview({
     },
     ...(withIntroScreen && {
       introScreen: {
-        title: 'Before we begin',
-        text: 'This pedigree helps us understand your family health history.',
+        items: [
+          {
+            id: 'intro-text',
+            type: 'text' as const,
+            content:
+              'This pedigree helps us understand your family health history.',
+          },
+        ],
       },
     }),
   });

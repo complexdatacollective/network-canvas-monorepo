@@ -76,7 +76,14 @@ const NominationPrompts = ({ form }: StageEditorSectionProps) => {
         fieldName="nominationPrompts"
         form={form}
         editProps={{ nodeType }}
-      />
+      >
+        {!hasNominationPrompts?.length && (
+          <p className="text-current/70 italic">
+            No nomination prompts have been created yet. Click &ldquo;Create
+            new&rdquo; to add your first prompt.
+          </p>
+        )}
+      </EditableList>
     </Section>
   );
 };
