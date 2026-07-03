@@ -25,7 +25,7 @@ const meta: Meta<StoryArgs> = {
       <PinUnlockForm
         formId="story-pin-form"
         invalidMessage={invalidMessage}
-        verifyPin={async (pin) => {
+        verifyPin={async (_pin) => {
           await new Promise((r) => setTimeout(r, 100));
           return outcome === 'success'
             ? { ok: true }
@@ -43,7 +43,7 @@ export const Default: Story = {};
 
 // Typing 8 digits auto-submits; a wrong PIN surfaces the error and clears.
 export const AutoSubmitAndClearOnError: Story = {
-  render: (args) => {
+  render: (_args) => {
     const verifyPin = fn(async () => ({
       ok: false,
       message: 'Incorrect PIN.',
