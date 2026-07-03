@@ -3,6 +3,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { createInitialNetwork } from '@codaco/interview';
@@ -18,13 +19,17 @@ type NewSessionFormProps = {
   onCancel: () => void;
 };
 
-export function NewSessionForm({
-  protocol,
-  onCreated,
+export function NewSessionFormView({
+  requiresInternet,
+  online,
+  onSubmit,
   onCancel,
-}: NewSessionFormProps) {
-  const { requireFreshUnlock, setAuthorizedInterviewId } = useStepUpAuth();
-  const isOnline = useOnline();
+}: {
+  requiresInternet: boolean;
+  online: boolean;
+  onSubmit: (caseId: string) => Promise<FormSubmissionResult>;
+  onCancel: () => void;
+}) {
   const { openDialog } = useDialog();
 
   return (
@@ -41,7 +46,7 @@ export function NewSessionForm({
         // This protocol renders an online map but the device is offline. Warn
         // the researcher; the map won't load, but they may still want to start
         // (the rest of the interview works, and connectivity may return).
-        if (!isOnline && protocolRequiresInternet(protocol)) {
+        if (!online && requiresInternet) {
           const proceed = await openDialog({
             type: 'choice',
             intent: 'warning',
@@ -55,24 +60,7 @@ export function NewSessionForm({
           });
           if (proceed !== true) return { success: false };
         }
-        // Run the enter gate before creating the session so a declined or
-        // failed unlock doesn't leave an orphan session behind.
-        const settings = await getSettings();
-        if (settings.requireUnlockOnEnter) {
-          const result = await requireFreshUnlock();
-          if (!result.ok) return { success: false };
-        }
-        const session = await createSession({
-          protocolHash: protocol.hash,
-          protocolName: protocol.name,
-          caseId,
-          initialNetwork: createInitialNetwork(),
-        });
-        // The user just satisfied the enter gate for this session; mark it
-        // authorized so the InterviewRoute mount doesn't prompt again.
-        setAuthorizedInterviewId(session.id);
-        onCreated(session);
-        return { success: true };
+        return onSubmit(caseId);
       }}
     >
       <Paragraph>
@@ -97,5 +85,42 @@ export function NewSessionForm({
         <SubmitButton>Start interview</SubmitButton>
       </div>
     </Form>
+  );
+}
+
+export function NewSessionForm({
+  protocol,
+  onCreated,
+  onCancel,
+}: NewSessionFormProps) {
+  const { requireFreshUnlock, setAuthorizedInterviewId } = useStepUpAuth();
+  const isOnline = useOnline();
+
+  return (
+    <NewSessionFormView
+      requiresInternet={protocolRequiresInternet(protocol)}
+      online={isOnline}
+      onCancel={onCancel}
+      onSubmit={async (caseId) => {
+        // Run the enter gate before creating the session so a declined or
+        // failed unlock doesn't leave an orphan session behind.
+        const settings = await getSettings();
+        if (settings.requireUnlockOnEnter) {
+          const result = await requireFreshUnlock();
+          if (!result.ok) return { success: false };
+        }
+        const session = await createSession({
+          protocolHash: protocol.hash,
+          protocolName: protocol.name,
+          caseId,
+          initialNetwork: createInitialNetwork(),
+        });
+        // The user just satisfied the enter gate for this session; mark it
+        // authorized so the InterviewRoute mount doesn't prompt again.
+        setAuthorizedInterviewId(session.id);
+        onCreated(session);
+        return { success: true };
+      }}
+    />
   );
 }
