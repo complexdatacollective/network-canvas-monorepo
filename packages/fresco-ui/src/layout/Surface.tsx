@@ -170,6 +170,9 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
   ) => {
     const depth = useContext(SurfaceDepthContext);
     const renderedDepth = floating ? 0 : clampDepth(depth);
+    // Children receive the true (unclamped) depth so over-nesting warnings
+    // report accurate numbers; clamping applies only at render.
+    const childDepth = floating ? 1 : depth + 1;
 
     useEffect(() => {
       // Consumer bundlers replace NODE_ENV, so the warning (and this whole
@@ -201,7 +204,7 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
           className,
         )}
       >
-        <SurfaceDepthContext.Provider value={renderedDepth + 1}>
+        <SurfaceDepthContext.Provider value={childDepth}>
           {children}
         </SurfaceDepthContext.Provider>
       </Component>
