@@ -62,9 +62,9 @@ export function nextBetaVersion(current) {
 }
 
 const TYPE_HEADINGS = {
-  major: 'Major changes',
-  minor: 'Minor changes',
-  patch: 'Patch changes',
+  major: 'Major Changes',
+  minor: 'Minor Changes',
+  patch: 'Patch Changes',
 };
 
 export function renderChangelogSection(version, entries) {

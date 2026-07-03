@@ -24,8 +24,8 @@ base while in beta.
    consumed changesets, and opens/updates a summary PR. This PR is the release
    gate; it is torn down automatically when no app changesets are pending.
 3. **Merge to release.** Merging the PR bumps `package.json` on `main`; the
-   `apps-release-detect` job sees the version change and `apps-release` builds,
-   deploys to Netlify **production**, and creates the prerelease GitHub release
+   `apps-release-detect` job sees the version change and `apps-release-interviewer`
+   builds, deploys to Netlify **production**, and creates the prerelease GitHub release
    `@codaco/interviewer-v8@<version>` with the CHANGELOG notes.
 
 Pull requests still get a preview deploy (`deploy-interviewer-v8-preview`),
@@ -62,8 +62,9 @@ create one. Before the preview and production deploys will work:
 4. If interviewer-v8 needs its own custom domain, configure it in the
    Netlify site's domain settings; nothing in CI needs to change for that.
 
-Until the secret is set, `deploy-interviewer-v8-preview` and the `apps-release`
-production deploy will fail at the `netlify-cli deploy` step with a "site not
+Until the secret is set, `deploy-interviewer-v8-preview` and the
+`apps-release-interviewer` production deploy will fail at the `netlify-cli deploy`
+step with a "site not
 found" style error — the rest of CI (quality gate, typecheck, tests) is
 unaffected.
 

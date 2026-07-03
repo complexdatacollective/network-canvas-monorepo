@@ -854,8 +854,9 @@ jobs:
 
   # Maintains a "Release apps" PR (sibling of the library "Version Packages" PR).
   # On every push to main it re-runs the app version step on a fresh branch and
-  # opens/updates/closes the PR. Merging the PR is the release gate (see
-  # apps-release below). App changesets are ignored by the library release, so
+  # opens/updates/closes the PR. Merging the PR is the release gate (see the
+  # apps-release-architect / apps-release-interviewer jobs below). App changesets
+  # are ignored by the library release, so
   # they persist in .changeset/ until this job consumes them.
   apps-release-pr:
     needs: quality

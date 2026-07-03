@@ -19,8 +19,8 @@ the release notes, it does not move the base while in beta.
    consumed changesets, and opens/updates a summary PR. This PR is the release
    gate; it is torn down automatically when no app changesets are pending.
 3. **Merge to release.** Merging the PR bumps `package.json` on `main`; the
-   `apps-release-detect` job sees the change and `apps-release` builds, deploys to
-   Netlify **production** (site secret `NETLIFY_SITE_ID_ARCHITECT`), and creates
+   `apps-release-detect` job sees the change and `apps-release-architect` builds,
+   deploys to Netlify **production** (site secret `NETLIFY_SITE_ID_ARCHITECT`), and creates
    the prerelease GitHub release `@codaco/architect-web@<version>` with the
    CHANGELOG notes.
 
