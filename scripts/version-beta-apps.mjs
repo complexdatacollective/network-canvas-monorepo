@@ -1,0 +1,111 @@
+#!/usr/bin/env node
+// Version step for the app (beta) release lane. Reads pending app changesets,
+// increments each app's -beta.N (base untouched), writes CHANGELOG sections,
+// deletes the consumed changesets, and emits a PR-body summary. Consumed by the
+// `apps-release-pr` workflow job. Apps with no pending changesets are skipped.
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+import {
+  APP_DIRS,
+  APP_PACKAGES,
+  nextBetaVersion,
+  readChangesets,
+  renderChangelogSection,
+} from './changeset-app-utils.mjs';
+
+export function planAppReleases(cwd, appPackages = APP_PACKAGES) {
+  const changesets = readChangesets(join(cwd, '.changeset'));
+  const consumed = new Set();
+  const plans = [];
+  for (const pkg of appPackages) {
+    const entries = [];
+    for (const cs of changesets) {
+      const rel = cs.releases.find((r) => r.name === pkg);
+      if (!rel) continue;
+      entries.push({ type: rel.type, summary: cs.summary });
+      consumed.add(cs.id);
+    }
+    if (entries.length === 0) continue;
+    const dir = APP_DIRS[pkg];
+    const current = JSON.parse(
+      readFileSync(join(cwd, dir, 'package.json'), 'utf8'),
+    ).version;
+    plans.push({
+      pkg,
+      dir,
+      from: current,
+      to: nextBetaVersion(current),
+      entries,
+    });
+  }
+  return { plans, consumed: [...consumed] };
+}
+
+export function applyAppReleases(cwd, plans, consumed) {
+  for (const plan of plans) {
+    const pkgJsonPath = join(cwd, plan.dir, 'package.json');
+    const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf8'));
+    pkgJson.version = plan.to;
+    writeFileSync(pkgJsonPath, `${JSON.stringify(pkgJson, null, 2)}\n`);
+
+    const changelogPath = join(cwd, plan.dir, 'CHANGELOG.md');
+    const section = renderChangelogSection(plan.to, plan.entries);
+    let previousBody = '';
+    if (existsSync(changelogPath)) {
+      previousBody = readFileSync(changelogPath, 'utf8').replace(
+        /^#[^\n]*\n+/,
+        '',
+      );
+    }
+    const body = `# ${plan.pkg}\n\n${section}\n${previousBody}`
+      .replace(/\n{3,}/g, '\n\n')
+      .trimEnd();
+    writeFileSync(changelogPath, `${body}\n`);
+  }
+  for (const id of consumed) {
+    rmSync(join(cwd, '.changeset', `${id}.md`), { force: true });
+  }
+}
+
+export function renderPrBody(plans) {
+  if (plans.length === 0) return 'No app changes pending.\n';
+  const lines = [
+    'Merging this PR releases the app(s) below to Netlify **production** and',
+    'creates a GitHub release for each.',
+    '',
+    '| App | From | To |',
+    '| --- | --- | --- |',
+    ...plans.map((p) => `| \`${p.pkg}\` | ${p.from} | ${p.to} |`),
+    '',
+  ];
+  for (const p of plans) {
+    const section = renderChangelogSection(p.to, p.entries)
+      .replace(/^## .*\n?/, '')
+      .trim();
+    lines.push(`### ${p.pkg}@${p.to}`, '', section, '');
+  }
+  return `${lines.join('\n').trimEnd()}\n`;
+}
+
+function main() {
+  const cwd = process.cwd();
+  const outIdx = process.argv.indexOf('--out');
+  const outPath = outIdx !== -1 ? process.argv[outIdx + 1] : null;
+  const { plans, consumed } = planAppReleases(cwd);
+  applyAppReleases(cwd, plans, consumed);
+  const body = renderPrBody(plans);
+  if (outPath) writeFileSync(outPath, body);
+  process.stdout.write(body);
+  console.error(
+    `[version-beta-apps] released ${plans.length} app(s); consumed ${consumed.length} changeset(s).`,
+  );
+}
+
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  main();
+}
