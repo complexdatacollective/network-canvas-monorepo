@@ -64,9 +64,8 @@ create one. Before the preview and production deploys will work:
 
 Until the secret is set, `deploy-interviewer-v8-preview` and the
 `apps-release-interviewer` production deploy will fail at the `netlify-cli deploy`
-step with a "site not
-found" style error — the rest of CI (quality gate, typecheck, tests) is
-unaffected.
+step with a `site not found` style error — the rest of CI (quality gate,
+typecheck, tests) is unaffected.
 
 ## Service worker update propagation
 

@@ -1,7 +1,7 @@
 # PWA apps (architect-web & interviewer-v8) — changeset-driven beta releases
 
 **Date:** 2026-07-03
-**Status:** Design approved, not yet implemented
+**Status:** Implemented (PR #747)
 
 ## Problem
 
@@ -139,9 +139,14 @@ that app appears.
 
 New job, runs on **push to `main`** (`fetch-depth: 2`):
 
-1. For each app, diff `apps/<app>/package.json` `version` between `HEAD` and
-   `HEAD^`. Unchanged → no-op for that app (idempotent).
-2. Changed (i.e. a Release apps PR just merged) → for that app:
+1. For each app, compare `apps/<app>/package.json` `version` at `HEAD` vs `HEAD^`.
+   Release **only** on a Release-apps-PR bot increment — the same `X.Y.Z` base with
+   the `-beta.N` counter advanced (`beta.M → beta.N`, N > M). The initial
+   `8.0.0-beta.0` seed and any manual base change (e.g. `8.x → 9.0.0-beta.0`) are
+   setup edits, not releases, so they do not fire. Comparing versions (not commit
+   messages) is robust to the PR merge strategy. A git-tag check makes re-runs
+   idempotent.
+2. On such an increment → for that app:
    - Guard against re-release: skip if git tag `@codaco/<app>@<version>` already
      exists.
    - Build the app and its workspace deps, and **deploy to Netlify production**

@@ -92,6 +92,10 @@ export function renderPrBody(plans) {
 function main() {
   const cwd = process.cwd();
   const outIdx = process.argv.indexOf('--out');
+  if (outIdx !== -1 && !process.argv[outIdx + 1]) {
+    console.error('--out requires a file path');
+    process.exit(1);
+  }
   const outPath = outIdx !== -1 ? process.argv[outIdx + 1] : null;
   const { plans, consumed } = planAppReleases(cwd);
   applyAppReleases(cwd, plans, consumed);
