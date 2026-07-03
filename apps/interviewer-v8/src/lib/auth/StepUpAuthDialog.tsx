@@ -15,6 +15,7 @@ import { UnlockEmblem } from '~/components/UnlockForms/UnlockEmblem';
 import { hasPasskeyWindowLimitation } from '~/lib/pwa/passkeyWindowLimitation';
 
 import * as authApi from './api';
+import type { AuthMode } from './api';
 import { useAuth } from './AuthContext';
 
 export type StepUpResult = { ok: true } | { ok: false; reason: 'cancelled' };
@@ -28,10 +29,12 @@ function PinStepUp({
   open,
   onResolve,
   handleCancel,
+  verifyWithPin,
 }: {
   open: boolean;
   onResolve: (result: StepUpResult) => void;
   handleCancel: () => void;
+  verifyWithPin: (pin: string) => Promise<{ ok: boolean; message?: string }>;
 }) {
   const formId = useId();
 
@@ -56,7 +59,7 @@ function PinStepUp({
         <PinUnlockForm
           formId={formId}
           verifyPin={async (pin) => {
-            const result = await authApi.verifyWithPin(pin);
+            const result = await verifyWithPin(pin);
             if (result.ok) onResolve({ ok: true });
             return result;
           }}
@@ -70,10 +73,14 @@ function PassphraseStepUp({
   open,
   onResolve,
   handleCancel,
+  verifyWithPassphrase,
 }: {
   open: boolean;
   onResolve: (result: StepUpResult) => void;
   handleCancel: () => void;
+  verifyWithPassphrase: (
+    phrase: string,
+  ) => Promise<{ ok: boolean; message?: string }>;
 }) {
   const formId = useId();
 
@@ -100,7 +107,7 @@ function PassphraseStepUp({
           onSubmit={async (values): Promise<FormSubmissionResult> => {
             const phrase =
               typeof values.passphrase === 'string' ? values.passphrase : '';
-            const result = await authApi.verifyWithPassphrase(phrase);
+            const result = await verifyWithPassphrase(phrase);
             if (result.ok) {
               onResolve({ ok: true });
               return { success: true };
@@ -122,15 +129,22 @@ function BiometricStepUp({
   open,
   onResolve,
   handleCancel,
+  verifyBiometric,
+  verifyWithRecovery,
+  limited,
 }: {
   open: boolean;
   onResolve: (result: StepUpResult) => void;
   handleCancel: () => void;
+  verifyBiometric: () => Promise<{ ok: boolean; message?: string }>;
+  verifyWithRecovery: (
+    phrase: string,
+  ) => Promise<{ ok: boolean; message?: string }>;
+  limited: boolean;
 }) {
   // Installed-PWA windows on macOS Chromium can't reach the enrolled passkey
   // (crbug.com/364926914), so land on the recovery passphrase there — without
   // this, the enter/exit/export gates would dead-end on a QR prompt.
-  const limited = hasPasskeyWindowLimitation();
   const [useRecovery, setUseRecovery] = useState(limited);
   const formId = useId();
 
@@ -160,7 +174,7 @@ function BiometricStepUp({
             onSubmit={async (values): Promise<FormSubmissionResult> => {
               const phrase =
                 typeof values.passphrase === 'string' ? values.passphrase : '';
-              const result = await authApi.verifyWithRecovery(phrase);
+              const result = await verifyWithRecovery(phrase);
               if (result.ok) {
                 onResolve({ ok: true });
                 return { success: true };
@@ -201,7 +215,7 @@ function BiometricStepUp({
       <BiometricUnlockForm
         submitLabel="Verify identity"
         onSubmit={async () => {
-          const result = await authApi.verifyBiometric();
+          const result = await verifyBiometric();
           if (result.ok) {
             onResolve({ ok: true });
           }
@@ -220,45 +234,78 @@ function BiometricStepUp({
   );
 }
 
+export function StepUpAuthDialogView({
+  mode,
+  open,
+  onResolve,
+  onCancel,
+  verifyWithPin,
+  verifyWithPassphrase,
+  verifyBiometric,
+  verifyWithRecovery,
+  limited = hasPasskeyWindowLimitation(),
+}: {
+  mode: AuthMode | undefined;
+  open: boolean;
+  onResolve: (result: StepUpResult) => void;
+  onCancel: () => void;
+  verifyWithPin: (pin: string) => Promise<{ ok: boolean; message?: string }>;
+  verifyWithPassphrase: (
+    phrase: string,
+  ) => Promise<{ ok: boolean; message?: string }>;
+  verifyBiometric: () => Promise<{ ok: boolean; message?: string }>;
+  verifyWithRecovery: (
+    phrase: string,
+  ) => Promise<{ ok: boolean; message?: string }>;
+  limited?: boolean;
+}) {
+  if (mode === 'biometric')
+    return (
+      <BiometricStepUp
+        open={open}
+        onResolve={onResolve}
+        handleCancel={onCancel}
+        verifyBiometric={verifyBiometric}
+        verifyWithRecovery={verifyWithRecovery}
+        limited={limited}
+      />
+    );
+  if (mode === 'pin')
+    return (
+      <PinStepUp
+        open={open}
+        onResolve={onResolve}
+        handleCancel={onCancel}
+        verifyWithPin={verifyWithPin}
+      />
+    );
+  if (mode === 'passphrase')
+    return (
+      <PassphraseStepUp
+        open={open}
+        onResolve={onResolve}
+        handleCancel={onCancel}
+        verifyWithPassphrase={verifyWithPassphrase}
+      />
+    );
+  return null;
+}
+
 export default function StepUpAuthDialog({
   open,
   onResolve,
 }: StepUpAuthDialogProps) {
   const { mode } = useAuth();
-
-  const handleCancel = () => {
-    onResolve({ ok: false, reason: 'cancelled' });
-  };
-
-  if (mode === 'biometric') {
-    return (
-      <BiometricStepUp
-        open={open}
-        onResolve={onResolve}
-        handleCancel={handleCancel}
-      />
-    );
-  }
-
-  if (mode === 'pin') {
-    return (
-      <PinStepUp
-        open={open}
-        onResolve={onResolve}
-        handleCancel={handleCancel}
-      />
-    );
-  }
-
-  if (mode === 'passphrase') {
-    return (
-      <PassphraseStepUp
-        open={open}
-        onResolve={onResolve}
-        handleCancel={handleCancel}
-      />
-    );
-  }
-
-  return null;
+  return (
+    <StepUpAuthDialogView
+      mode={mode}
+      open={open}
+      onResolve={onResolve}
+      onCancel={() => onResolve({ ok: false, reason: 'cancelled' })}
+      verifyWithPin={authApi.verifyWithPin}
+      verifyWithPassphrase={authApi.verifyWithPassphrase}
+      verifyBiometric={authApi.verifyBiometric}
+      verifyWithRecovery={authApi.verifyWithRecovery}
+    />
+  );
 }

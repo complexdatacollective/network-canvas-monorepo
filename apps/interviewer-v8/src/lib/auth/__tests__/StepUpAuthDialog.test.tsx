@@ -23,13 +23,33 @@ vi.mock('~/lib/pwa/passkeyWindowLimitation', () => ({
   hasPasskeyWindowLimitation: () => hasPasskeyWindowLimitationMock(),
 }));
 
-import StepUpAuthDialog from '../StepUpAuthDialog';
+import StepUpAuthDialog, { StepUpAuthDialogView } from '../StepUpAuthDialog';
 
 afterEach(() => {
   useAuthMock.mockReset();
   verifyBiometricMock.mockClear().mockResolvedValue({ ok: true });
   verifyWithRecoveryMock.mockClear().mockResolvedValue({ ok: true });
   hasPasskeyWindowLimitationMock.mockClear().mockReturnValue(false);
+});
+
+const ok = vi.fn(async () => ({ ok: true }) as const);
+
+describe('StepUpAuthDialogView', () => {
+  it('renders the PIN verify body for mode="pin"', () => {
+    render(
+      <StepUpAuthDialogView
+        mode="pin"
+        open
+        onResolve={vi.fn()}
+        onCancel={vi.fn()}
+        verifyWithPin={ok}
+        verifyWithPassphrase={ok}
+        verifyBiometric={ok}
+        verifyWithRecovery={ok}
+      />,
+    );
+    expect(screen.getByText('Confirm your identity')).toBeInTheDocument();
+  });
 });
 
 describe('StepUpAuthDialog', () => {
