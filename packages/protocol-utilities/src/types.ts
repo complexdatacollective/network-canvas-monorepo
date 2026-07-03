@@ -195,11 +195,22 @@ type PanelEntry = {
   dataSource: string;
 };
 
-type InformationItem = {
-  id: string;
-  type: 'text';
-  content: string;
-};
+// Mirrors protocol-validation's `ItemSchema` (Information stage content items,
+// reused by the FamilyPedigree intro screen): a text section or a media asset.
+type InformationItem =
+  | {
+      id: string;
+      type: 'text';
+      content: string;
+      description?: string;
+    }
+  | {
+      id: string;
+      type: 'asset';
+      content: string;
+      description?: string;
+      size?: 'SMALL' | 'MEDIUM' | 'LARGE';
+    };
 
 export type StageEntry = {
   id: string;
