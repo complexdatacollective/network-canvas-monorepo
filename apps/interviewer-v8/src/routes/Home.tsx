@@ -2,11 +2,13 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 
+import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { BrandHeader } from '~/components/BrandHeader';
 import { DataView } from '~/components/DataView/DataView';
 import { ImportDialog } from '~/components/ImportDialog';
+import { InstallBanner } from '~/components/InstallBanner';
 import { ProtocolDeck } from '~/components/ProtocolCarousel/ProtocolDeck';
 import { ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
@@ -18,7 +20,7 @@ import {
   type ImportRequest,
   useProtocolImport,
 } from '~/lib/protocol/useProtocolImport';
-import { useUpdateCheck } from '~/lib/update/useUpdateCheck';
+import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
 
 import { buildDeleteProtocolMessage } from './deleteProtocolMessage';
 import {
@@ -39,6 +41,9 @@ export function HomeRoute() {
   const { pendingImports, startImport } = useProtocolImport({
     onInstalled: reload,
   });
+  // OS-launched .netcanvas files (installed-PWA file handler) import through
+  // the same pipeline as the import dialog.
+  useLaunchedProtocolImport(startImport);
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null);
   const [pendingProtocolHash, setPendingProtocolHash] = useState<string | null>(
     null,
@@ -50,8 +55,6 @@ export function HomeRoute() {
   const view = viewFromLocation(location);
   const dialog = useDialog();
   const toast = useToast();
-
-  const { availableUpdate, openUpdateDialog } = useUpdateCheck();
 
   // If the pending hash has since been deleted (e.g. cascade-delete from
   // the Protocols route while a card was still pending), drop the pending
@@ -83,6 +86,13 @@ export function HomeRoute() {
 
   const handleInstallSample = useCallback(() => {
     void startImport({ source: 'sample' });
+  }, [startImport]);
+
+  // Dev-only: installs the Development protocol (exercises every stage type)
+  // without leaving a teaser card in production builds.
+  const handleInstallDevelopment = useCallback(() => {
+    if (!import.meta.env.DEV) return;
+    void startImport({ source: 'development' });
   }, [startImport]);
 
   const handleDismissSample = useCallback(async () => {
@@ -156,6 +166,7 @@ export function HomeRoute() {
           rendered below this header sits at z-40; the header itself has no
           z-index so it is visually overlaid, and `inert` keeps its
           controls out of the tab order while the new-session form is up. */}
+      <InstallBanner />
       <header
         className="relative flex items-center justify-between px-11 pt-9"
         inert={newSessionActive}
@@ -216,16 +227,25 @@ export function HomeRoute() {
               onSessionCreated={handleSessionCreated}
             />
 
+            {import.meta.env.DEV && (
+              <div
+                inert={newSessionActive}
+                className="flex justify-center px-11"
+              >
+                <Button
+                  variant="text"
+                  size="sm"
+                  onClick={handleInstallDevelopment}
+                >
+                  Install development protocol
+                </Button>
+              </div>
+            )}
+
             <div inert={newSessionActive} className="contents">
               <StatusRow
                 protocolCount={protocols.length}
                 interviewCount={sessions.length}
-                availableUpdate={availableUpdate}
-                onOpenUpdate={
-                  availableUpdate
-                    ? () => openUpdateDialog(availableUpdate)
-                    : undefined
-                }
               />
             </div>
           </motion.div>

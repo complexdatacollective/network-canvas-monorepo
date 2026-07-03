@@ -1,17 +1,11 @@
-import { CloudDownload, Folder, Upload } from 'lucide-react';
+import { Folder, Upload } from 'lucide-react';
 import type { DragEvent } from 'react';
 import { useCallback, useState } from 'react';
 
-import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import Surface from '@codaco/fresco-ui/layout/Surface';
-import { useToast } from '@codaco/fresco-ui/Toast';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { pickProtocolFile } from '~/lib/files/pickFile';
-import { deriveNameFromUrl } from '~/lib/protocol/importProtocol';
 import type { ImportRequest } from '~/lib/protocol/useProtocolImport';
 
 import { ExternalLink } from './ExternalLink';
@@ -22,22 +16,10 @@ type ImportDialogProps = {
   onSubmit: (request: ImportRequest) => void;
 };
 
-function isProbablyValidUrl(value: string): boolean {
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
-  } catch {
-    return false;
-  }
-}
-
 export function ImportDialog({ open, onClose, onSubmit }: ImportDialogProps) {
-  const toast = useToast();
-  const [url, setUrl] = useState('');
   const [dragOver, setDragOver] = useState(false);
 
   const reset = useCallback(() => {
-    setUrl('');
     setDragOver(false);
   }, []);
 
@@ -70,25 +52,6 @@ export function ImportDialog({ open, onClose, onSubmit }: ImportDialogProps) {
     },
     [submitFile],
   );
-
-  const handleFetchUrl = useCallback(() => {
-    const trimmed = url.trim();
-    if (!isProbablyValidUrl(trimmed)) {
-      toast.add({
-        title: 'Invalid URL',
-        description:
-          'URL must start with https:// (or http:// for local servers).',
-        variant: 'destructive',
-      });
-      return;
-    }
-    onSubmit({
-      source: 'url',
-      url: trimmed,
-      label: deriveNameFromUrl(trimmed),
-    });
-    handleClose();
-  }, [handleClose, onSubmit, toast, url]);
 
   const dropZoneBorder = dragOver ? 'border-sea-green' : 'border-outline';
   const dropZoneBackground = dragOver
@@ -142,34 +105,6 @@ export function ImportDialog({ open, onClose, onSubmit }: ImportDialogProps) {
           picker
         </span>
       </button>
-
-      <div className="mx-1 my-5 flex items-center gap-3.5">
-        <span aria-hidden className="bg-outline h-px flex-1" />
-        <span className="uppercase">or</span>
-        <span aria-hidden className="bg-outline h-px flex-1" />
-      </div>
-
-      <Surface as="section" level={1} spacing="md" shadow="md" noContainer>
-        <Heading level="h4">Import from URL</Heading>
-        <div className="flex gap-2.5">
-          <InputField
-            type="url"
-            value={url}
-            onChange={(value) => setUrl(value ?? '')}
-            placeholder="https://..."
-            aria-label="Protocol URL"
-            className="flex-1"
-          />
-          <Button
-            color="primary"
-            icon={<CloudDownload size={16} strokeWidth={2.5} aria-hidden />}
-            onClick={handleFetchUrl}
-            disabled={url.trim().length === 0}
-          >
-            Fetch
-          </Button>
-        </div>
-      </Surface>
     </Dialog>
   );
 }

@@ -10,7 +10,7 @@ describe('DEFAULT_SETTINGS security gates', () => {
     expect('requireUnlockOnResume' in DEFAULT_SETTINGS).toBe(false);
   });
 
-  it('defaults stage navigation off', () => {
-    expect(DEFAULT_SETTINGS.allowStageNavigation).toBe(false);
+  it('defaults stage navigation on', () => {
+    expect(DEFAULT_SETTINGS.allowStageNavigation).toBe(true);
   });
 });

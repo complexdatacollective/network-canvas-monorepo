@@ -1,17 +1,16 @@
 import Dexie, { type Table } from 'dexie';
 
-import {
-  DEFAULT_SETTINGS,
-  type StoredAsset,
-  type StoredProtocol,
-  type StoredSession,
-  type StoredSettings,
-} from './types';
+import type {
+  StoredAssetRow,
+  StoredProtocolRow,
+  StoredSessionRow,
+} from './recordCrypto';
+import { DEFAULT_SETTINGS, type StoredSettings } from './types';
 
-class InterviewerV7DB extends Dexie {
-  protocols!: Table<StoredProtocol, string>;
-  sessions!: Table<StoredSession, string>;
-  assets!: Table<StoredAsset, string>;
+class InterviewerV8DB extends Dexie {
+  protocols!: Table<StoredProtocolRow, string>;
+  sessions!: Table<StoredSessionRow, string>;
+  assets!: Table<StoredAssetRow, string>;
   settings!: Table<StoredSettings, 'device'>;
 
   constructor() {
@@ -33,7 +32,7 @@ class InterviewerV7DB extends Dexie {
   }
 }
 
-export const db = new InterviewerV7DB();
+export const db = new InterviewerV8DB();
 
 export async function getSettings(): Promise<StoredSettings> {
   const existing = await db.settings.get('device');

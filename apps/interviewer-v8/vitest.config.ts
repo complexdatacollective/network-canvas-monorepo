@@ -6,12 +6,24 @@ import { fileURLToPath } from 'node:url';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
+import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
+
+import { arrayBufferAssetPlugin } from './vite.renderer.config';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    arrayBufferAssetPlugin(),
+    // Registers the `virtual:pwa-register/react` module id so components
+    // importing `useRegisterSW` can be loaded under test — vitest.config.ts
+    // doesn't otherwise share vite.config.ts's VitePWA plugin instance, and
+    // vite's import-analysis needs the id to resolve before a `vi.mock` of it
+    // can take effect. No SW is actually built under vitest.
+    VitePWA({ registerType: 'prompt', injectRegister: false }),
+  ],
   resolve: {
     tsconfigPaths: true,
   },
@@ -29,12 +41,7 @@ export default defineConfig({
           name: 'unit',
           environment: 'jsdom',
           setupFiles: ['./src/test-setup.ts'],
-          include: [
-            'src/**/*.test.{ts,tsx}',
-            'src/**/__tests__/**/*.{ts,tsx}',
-            'electron/**/*.test.{ts,tsx}',
-            'electron/**/__tests__/**/*.{ts,tsx}',
-          ],
+          include: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**/*.{ts,tsx}'],
           exclude: [
             '**/node_modules/**',
             '**/dist/**',

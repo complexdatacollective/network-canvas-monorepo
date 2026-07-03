@@ -6,7 +6,7 @@ import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { AuthGate } from './components/AuthGate';
-import { isElectron } from './lib/platform/platform';
+import PwaUpdateBanner from './components/PwaUpdateBanner';
 import { AppProviders } from './providers/AppProviders';
 import { HomeRoute } from './routes/Home';
 import { InterviewRoute } from './routes/Interview';
@@ -36,12 +36,7 @@ export default function App() {
     <ThemedRegion theme="interview" className="isolate h-full">
       <AppErrorBoundary>
         <AppProviders>
-          {isElectron && (
-            <div
-              aria-hidden
-              className="app-drag fixed inset-x-0 top-0 z-50 h-8"
-            />
-          )}
+          <PwaUpdateBanner />
           <motion.div
             className="fixed inset-0 -z-10"
             initial={{ opacity: 0 }}

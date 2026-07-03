@@ -12,7 +12,7 @@ export default function PasswordUnlockField({
       name="passphrase"
       label="Passphrase"
       placeholder="Enter passphrase"
-      autoComplete="current-password"
+      suppressPasswordManager
       showStrengthMeter={false}
       required
       autoFocus={autoFocus}

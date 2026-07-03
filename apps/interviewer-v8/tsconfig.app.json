@@ -5,10 +5,10 @@
       "~/*": ["./src/*"]
     },
     "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
-    "types": ["vite/client"],
+    "types": ["vite/client", "vite-plugin-pwa/client", "vite-plugin-pwa/react"],
     "strict": true,
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/global.d.ts"],
-  "exclude": ["node_modules", "dist", "electron"]
+  "exclude": ["node_modules", "dist"]
 }

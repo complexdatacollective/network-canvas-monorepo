@@ -9,7 +9,6 @@ import * as authApi from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
 import type { IdleTimeoutMinutes } from '~/lib/auth/AuthContext';
 import { updateSettings } from '~/lib/db/api';
-import { isElectron } from '~/lib/platform/platform';
 
 import { ExternalLink } from './ExternalLink';
 import AuthorisationGlyph from './SetupWizard/AuthorisationGlyph';
@@ -125,21 +124,18 @@ export function useSetupWizard() {
                   </div>
                   <Paragraph margin="none" emphasis="muted" intent="smallText">
                     Secure data storage protects your interview data by
-                    preventing unauthorized access, via encryption or app
-                    sandboxing. This means that even if someone gains access to
-                    your device or its files, they won't be able to read your
-                    data.
+                    encrypting it, so that even if someone gains access to your
+                    device or its files, they won't be able to read your data.
                   </Paragraph>
-                  {!isElectron && (
-                    <Alert variant="info">
-                      <AlertTitle>Good news!</AlertTitle>
-                      <AlertDescription>
-                        On this platform, your data is sandboxed by the
-                        operating system automatically, and is not accessible to
-                        other apps or users. Data does not need to be encrypted.
-                      </AlertDescription>
-                    </Alert>
-                  )}
+                  <Alert variant="info">
+                    <AlertTitle>Good news!</AlertTitle>
+                    <AlertDescription>
+                      If you set up a PIN, passphrase, or biometric lock next,
+                      your data is encrypted in this browser with a key derived
+                      from it. The key never leaves your device, so your data
+                      stays unreadable without it.
+                    </AlertDescription>
+                  </Alert>
                 </Surface>
                 <Surface level={1} spacing="sm" shadow="sm">
                   <div className="mb-2 flex items-center gap-3">

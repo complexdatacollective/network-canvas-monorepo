@@ -4,6 +4,10 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import { useBiometric } from '~/lib/auth/useBiometric';
+import {
+  hasPasskeyWindowLimitation,
+  isMacChromium,
+} from '~/lib/pwa/passkeyWindowLimitation';
 
 import type { WizardSelectedMethod } from '../SetupWizardDialog';
 
@@ -33,10 +37,18 @@ export default function Step2MethodPicker() {
   const biometricDisabled =
     biometric.status === 'checking' || biometric.status === 'unavailable';
 
+  // In a macOS Chromium browser tab, biometric enrolment works (Apple
+  // Passwords), but the installed app cannot reach that passkey later
+  // (crbug.com/364926914) — say so before the researcher commits to it.
+  const macInstallCaveat =
+    isMacChromium() && !hasPasskeyWindowLimitation()
+      ? ' Note: on macOS, Chrome cannot use biometrics from the installed app — there you would unlock with your recovery passphrase.'
+      : '';
+
   const biometricDescription =
     biometric.status === 'unavailable'
       ? biometric.reason
-      : 'Use Face ID, Touch ID, Windows Hello, or another biometric sensor on this device.';
+      : `Use Face ID, Touch ID, Windows Hello, or another biometric sensor on this device.${macInstallCaveat}`;
 
   const options = [
     {

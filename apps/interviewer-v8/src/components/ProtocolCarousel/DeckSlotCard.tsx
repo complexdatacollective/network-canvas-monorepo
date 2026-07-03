@@ -1,7 +1,8 @@
 import { Download } from 'lucide-react';
 
-import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
+import type { StoredSession } from '~/lib/db/types';
 import type { ImportPhase } from '~/lib/protocol/importProtocol';
+import { protocolRequiresInternet } from '~/lib/protocol/protocolRequiresInternet';
 import { SAMPLE_PROTOCOL } from '~/lib/protocol/sampleProtocol';
 
 import { NewSessionForm } from '../NewSessionForm';
@@ -16,16 +17,9 @@ import type { DeckEntry } from './deckEntries';
 
 // Status line shown on the loading card for each import phase.
 const PHASE_LABEL: Record<ImportPhase, string> = {
-  fetching: 'Fetching…',
   extracting: 'Extracting…',
   saving: 'Saving…',
 };
-
-// A Geospatial stage renders an online map (tile server), so a protocol
-// that contains one can't be administered while offline.
-function protocolRequiresInternet(protocol: ProtocolWithCounts): boolean {
-  return protocol.protocol.stages.some((stage) => stage.type === 'Geospatial');
-}
 
 type DeckSlotCardProps = {
   entry: Exclude<DeckEntry, { kind: 'import' }>;

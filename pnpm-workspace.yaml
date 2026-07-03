@@ -18,7 +18,6 @@ allowBuilds:
   phantomjs-prebuilt: false
   protobufjs: false
   workerd: false
-  better-sqlite3-multiple-ciphers: true
 
 catalog:
   '@base-ui/react': ^1.5.0
@@ -146,5 +145,3 @@ minimumReleaseAgeExclude:
     '@rolldown/binding-win32-x64-msvc@1.1.4',
     rolldown@1.1.4,
   ]
-patchedDependencies:
-  better-sqlite3-multiple-ciphers@12.9.0: patches/better-sqlite3-multiple-ciphers@12.9.0.patch

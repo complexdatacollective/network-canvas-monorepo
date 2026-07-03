@@ -8,15 +8,23 @@ import {
   hashProtocol,
   migrateProtocol,
   validateProtocol,
+  type VersionedProtocol,
+  VersionedProtocolSchema,
 } from '@codaco/protocol-validation';
 
 import { saveProtocol } from '../db/api';
-import { fetchProtocolFromUrl } from '../files/fetchFromUrl';
-import { isCapacitor, isElectron } from '../platform/platform';
+
+// `validateProtocol` takes the already-typed `VersionedProtocol` union, but the
+// documents flowing through this module start as `unknown` (parsed JSON from a
+// zip or a bundled asset). Narrow with the same schema `validateProtocol` uses
+// internally, rather than asserting the type.
+function isVersionedProtocol(document: unknown): document is VersionedProtocol {
+  return VersionedProtocolSchema.safeParse(document).success;
+}
 
 const APP_SCHEMA_VERSION = 8;
 
-export type ImportPhase = 'fetching' | 'extracting' | 'saving';
+export type ImportPhase = 'extracting' | 'saving';
 
 export type ImportProgressEvent = {
   phase: ImportPhase;
@@ -35,7 +43,6 @@ export type ImportProtocolSuccess = {
 export type ImportProtocolFailure = {
   success: false;
   error:
-    | 'fetch-failed'
     | 'extract-failed'
     | 'unsupported-version'
     | 'validation-failed'
@@ -95,6 +102,90 @@ async function extractZip(
   return { protocol, assets };
 }
 
+async function importParsedProtocol(
+  document: unknown,
+  assets: ExtractedAsset[],
+  sourceName: string,
+  onProgress?: OnImportProgress,
+  nameOverride?: string,
+): Promise<ImportProtocolResult> {
+  const version = detectSchemaVersion(document);
+
+  let migratedDocument: unknown = document;
+  let didMigrate = false;
+  if (version !== APP_SCHEMA_VERSION) {
+    const info = getMigrationInfo(version, APP_SCHEMA_VERSION);
+    if (!info.canMigrate) {
+      return {
+        success: false,
+        error: 'unsupported-version',
+        message: `Protocol schema version ${version} cannot be migrated to ${APP_SCHEMA_VERSION}.`,
+      };
+    }
+    try {
+      migratedDocument = migrateProtocol(document, APP_SCHEMA_VERSION, {
+        name: nameOverride ?? sourceName.replace(/\.netcanvas$/i, ''),
+      });
+      didMigrate = true;
+    } catch (cause) {
+      return {
+        success: false,
+        error: 'validation-failed',
+        message: cause instanceof Error ? cause.message : String(cause),
+      };
+    }
+  }
+
+  if (!isVersionedProtocol(migratedDocument)) {
+    return {
+      success: false,
+      error: 'validation-failed',
+      message: 'Protocol failed schema validation.',
+    };
+  }
+
+  const validation = await validateProtocol(migratedDocument);
+  if (!validation.success) {
+    return {
+      success: false,
+      error: 'validation-failed',
+      message: 'Protocol failed schema validation.',
+      issues: validation.error.issues.map((i) => ({
+        path: i.path.join('.'),
+        message: i.message,
+      })),
+    };
+  }
+
+  // `VersionedProtocol` is a schemaVersion-discriminated union (v7 | v8);
+  // migration always targets `APP_SCHEMA_VERSION` (8), so a successful
+  // validation here is always the current (v8) shape.
+  if (validation.data.schemaVersion !== APP_SCHEMA_VERSION) {
+    return {
+      success: false,
+      error: 'validation-failed',
+      message: 'Protocol failed schema validation.',
+    };
+  }
+
+  const validated: CurrentProtocol = validation.data;
+  const hash = hashProtocol(validated);
+
+  onProgress?.({ phase: 'saving' });
+
+  try {
+    await saveProtocol(validated, hash, assets);
+  } catch (cause) {
+    return {
+      success: false,
+      error: 'save-failed',
+      message: cause instanceof Error ? cause.message : String(cause),
+    };
+  }
+
+  return { success: true, protocol: validated, hash, migrated: didMigrate };
+}
+
 async function importFromBuffer(
   buffer: Uint8Array,
   sourceName: string,
@@ -114,68 +205,13 @@ async function importFromBuffer(
     };
   }
 
-  const version = detectSchemaVersion(extracted.protocol);
-
-  let migratedDocument: unknown = extracted.protocol;
-  let didMigrate = false;
-  if (version !== APP_SCHEMA_VERSION) {
-    const info = getMigrationInfo(version, APP_SCHEMA_VERSION);
-    if (!info.canMigrate) {
-      return {
-        success: false,
-        error: 'unsupported-version',
-        message: `Protocol schema version ${version} cannot be migrated to ${APP_SCHEMA_VERSION}.`,
-      };
-    }
-    try {
-      migratedDocument = migrateProtocol(
-        extracted.protocol,
-        APP_SCHEMA_VERSION,
-        {
-          name: nameOverride ?? sourceName.replace(/\.netcanvas$/i, ''),
-        },
-      );
-      didMigrate = true;
-    } catch (cause) {
-      return {
-        success: false,
-        error: 'validation-failed',
-        message: cause instanceof Error ? cause.message : String(cause),
-      };
-    }
-  }
-
-  const validation = await validateProtocol(
-    migratedDocument as Parameters<typeof validateProtocol>[0],
+  return importParsedProtocol(
+    extracted.protocol,
+    extracted.assets,
+    sourceName,
+    onProgress,
+    nameOverride,
   );
-  if (!validation.success) {
-    return {
-      success: false,
-      error: 'validation-failed',
-      message: 'Protocol failed schema validation.',
-      issues: validation.error.issues.map((i) => ({
-        path: i.path.join('.'),
-        message: i.message,
-      })),
-    };
-  }
-
-  const validated = validation.data as CurrentProtocol;
-  const hash = hashProtocol(validated);
-
-  onProgress?.({ phase: 'saving' });
-
-  try {
-    await saveProtocol(validated, hash, extracted.assets);
-  } catch (cause) {
-    return {
-      success: false,
-      error: 'save-failed',
-      message: cause instanceof Error ? cause.message : String(cause),
-    };
-  }
-
-  return { success: true, protocol: validated, hash, migrated: didMigrate };
 }
 
 export async function importProtocolFromFile(
@@ -187,90 +223,16 @@ export async function importProtocolFromFile(
   return importFromBuffer(buffer, file.name, onProgress, nameOverride);
 }
 
-export function deriveNameFromUrl(url: string): string {
-  try {
-    const parsed = new URL(url);
-    const last = parsed.pathname.split('/').filter(Boolean).pop();
-    if (last) return decodeURIComponent(last);
-  } catch {
-    // fall through
-  }
-  return 'protocol.netcanvas';
-}
-
-async function readStreamedBuffer(
-  response: Response,
+export function importBundledProtocol(
+  bundled: { document: unknown; assets: ExtractedAsset[]; name: string },
   onProgress?: OnImportProgress,
-): Promise<Uint8Array> {
-  const body = response.body;
-  if (!body) {
-    onProgress?.({ phase: 'fetching' });
-    return new Uint8Array(await response.arrayBuffer());
-  }
-  const reader = body.getReader();
-  const contentLengthHeader = response.headers.get('content-length');
-  const contentLength = contentLengthHeader
-    ? Number.parseInt(contentLengthHeader, 10)
-    : Number.NaN;
-  const hasContentLength = Number.isFinite(contentLength) && contentLength > 0;
-  const chunks: Uint8Array[] = [];
-  let received = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (!value) continue;
-    chunks.push(value);
-    received += value.byteLength;
-    onProgress?.({
-      phase: 'fetching',
-      progress: hasContentLength ? received / contentLength : undefined,
-    });
-  }
-  const buffer = new Uint8Array(received);
-  let offset = 0;
-  for (const chunk of chunks) {
-    buffer.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return buffer;
-}
-
-export async function importProtocolFromUrl(
-  url: string,
-  onProgress?: OnImportProgress,
-  nameOverride?: string,
 ): Promise<ImportProtocolResult> {
-  let buffer: Uint8Array;
-  try {
-    if (isElectron || isCapacitor) {
-      // Native HTTP path doesn't expose per-chunk progress; emit one
-      // indeterminate fetching event so the UI still shows activity.
-      onProgress?.({ phase: 'fetching' });
-      buffer = await fetchProtocolFromUrl(url);
-    } else {
-      // Web: stream the response so we can report determinate progress
-      // when Content-Length is present.
-      const response = await fetch(url, { redirect: 'follow' });
-      if (!response.ok) {
-        return {
-          success: false,
-          error: 'fetch-failed',
-          message: `Server responded with ${response.status} ${response.statusText}`,
-        };
-      }
-      buffer = await readStreamedBuffer(response, onProgress);
-    }
-  } catch (cause) {
-    return {
-      success: false,
-      error: 'fetch-failed',
-      message: cause instanceof Error ? cause.message : String(cause),
-    };
-  }
-  return importFromBuffer(
-    buffer,
-    deriveNameFromUrl(url),
+  onProgress?.({ phase: 'extracting' });
+  return importParsedProtocol(
+    bundled.document,
+    bundled.assets,
+    bundled.name,
     onProgress,
-    nameOverride,
+    bundled.name,
   );
 }

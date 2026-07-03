@@ -10,6 +10,7 @@ import { TooltipProvider } from '@codaco/fresco-ui/Tooltip';
 import { AnalyticsProvider } from '~/lib/analytics/AnalyticsProvider';
 import { AuthProvider } from '~/lib/auth/AuthContext';
 import { StepUpAuthProvider } from '~/lib/auth/StepUpAuthProvider';
+import { OnlineStatusProvider } from '~/lib/net/OnlineStatusProvider';
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
@@ -17,15 +18,17 @@ export function AppProviders({ children }: { children: ReactNode }) {
       <DirectionProvider direction="ltr">
         <Toast.Provider limit={7}>
           <TooltipProvider>
-            <DndStoreProvider>
-              <AuthProvider>
-                <AnalyticsProvider>
-                  <DialogProvider>
-                    <StepUpAuthProvider>{children}</StepUpAuthProvider>
-                  </DialogProvider>
-                </AnalyticsProvider>
-              </AuthProvider>
-            </DndStoreProvider>
+            <OnlineStatusProvider>
+              <DndStoreProvider>
+                <AuthProvider>
+                  <AnalyticsProvider>
+                    <DialogProvider>
+                      <StepUpAuthProvider>{children}</StepUpAuthProvider>
+                    </DialogProvider>
+                  </AnalyticsProvider>
+                </AuthProvider>
+              </DndStoreProvider>
+            </OnlineStatusProvider>
           </TooltipProvider>
           <Toaster />
         </Toast.Provider>

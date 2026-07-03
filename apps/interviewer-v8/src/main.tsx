@@ -5,7 +5,20 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import App from './App';
-import { requestPersistentStorage } from './lib/platform/storage';
+import { initFileLaunchCapture } from './lib/pwa/fileLaunchQueue';
+import { initInstallPromptCapture } from './lib/pwa/installPrompt';
+import { initSwipeNavigationGuard } from './lib/pwa/swipeNavigationGuard';
+import { requestPersistentStorage } from './lib/storage';
+
+// The beforeinstallprompt event fires early and is one-shot; capture it before
+// React mounts so PwaInstallNudge can offer a real one-tap install.
+initInstallPromptCapture();
+
+initSwipeNavigationGuard();
+
+// OS-launched .netcanvas files (installed-PWA file handler) can arrive before
+// React mounts; capture them for Home to import after unlock.
+initFileLaunchCapture();
 
 void requestPersistentStorage();
 

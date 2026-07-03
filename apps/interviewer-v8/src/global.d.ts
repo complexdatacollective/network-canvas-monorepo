@@ -3,17 +3,6 @@
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
-import type {
-  ProtocolWithCounts,
-  SessionQueryParams,
-  SessionQueryResult,
-  StoredProtocol,
-  StoredSession,
-  StoredSessionLite,
-  StoredSettings,
-} from './lib/db/types';
-import type { UpdateInfo } from './lib/update/types';
-
 declare module '*.css';
 
 declare global {
@@ -45,149 +34,42 @@ declare global {
   type AuthStatus = {
     configured: boolean;
     locked: boolean;
-    mode?:
-      | 'biometric-keystore'
-      | 'biometric-native'
-      | 'pin'
-      | 'passphrase'
-      | 'none';
+    mode?: 'pin' | 'passphrase' | 'biometric' | 'none';
   };
 
-  type DbBridge = {
-    protocols: {
-      list: () => Promise<ProtocolWithCounts[]>;
-      getByHash: (hash: string) => Promise<StoredProtocol | undefined>;
-      getByHashes: (hashes: string[]) => Promise<StoredProtocol[]>;
-      save: (input: {
-        protocol: CurrentProtocol;
-        hash: string;
-        assets: WireAssetInput[];
-      }) => Promise<StoredProtocol>;
-      delete: (hash: string) => Promise<void>;
-      listAssets: (hash: string) => Promise<WireAsset[]>;
-      getAsset: (args: {
-        hash: string;
-        assetId: string;
-      }) => Promise<WireAsset | null>;
-    };
-    sessions: {
-      list: () => Promise<StoredSessionLite[]>;
-      query: (params: SessionQueryParams) => Promise<SessionQueryResult>;
-      queryMatchingIds: (params: SessionQueryParams) => Promise<string[]>;
-      get: (id: string) => Promise<StoredSession | undefined>;
-      getByIds: (ids: string[]) => Promise<StoredSession[]>;
-      create: (args: {
-        protocolHash: string;
-        protocolName: string;
-        caseId: string;
-        initialNetwork: NcNetwork;
-        isSynthetic?: boolean;
-      }) => Promise<StoredSession>;
-      update: (args: {
-        id: string;
-        patch: Partial<StoredSession>;
-      }) => Promise<StoredSession | undefined>;
-      markFinished: (id: string) => Promise<void>;
-      markExported: (ids: string[]) => Promise<void>;
-      deleteMany: (ids: string[]) => Promise<void>;
-      countSynthetic: () => Promise<number>;
-      deleteSynthetic: () => Promise<number>;
-    };
-    settings: {
-      get: () => Promise<StoredSettings>;
-      update: (
-        patch: Partial<Omit<StoredSettings, 'id'>>,
-      ) => Promise<StoredSettings>;
-    };
-  };
+  // iOS Safari exposes installed-PWA (home-screen) state via this non-standard,
+  // read-only flag, which predates the `display-mode` media query.
+  interface Navigator {
+    readonly standalone?: boolean;
+  }
 
-  type AuthBridge = {
-    status: () => Promise<AuthStatus>;
-    setupPin: (args: {
-      pin: string;
-    }) => Promise<{ ok: boolean; message?: string }>;
-    setupNone: () => Promise<{ ok: boolean; message?: string }>;
-    setupBiometric: () => Promise<{ ok: boolean; message?: string }>;
-    unlockPin: (args: {
-      pin: string;
-    }) => Promise<{ ok: boolean; message?: string }>;
-    unlockBiometric: () => Promise<{ ok: boolean; message?: string }>;
-    verifyBiometric: () => Promise<{ ok: boolean; message?: string }>;
-    biometricAvailable: () => Promise<boolean>;
-    lock: () => Promise<void>;
-    reEnrolPin: (args: {
-      currentPin: string;
-      nextPin: string;
-    }) => Promise<{ ok: boolean; message?: string }>;
-    setupPassphrase: (args: {
-      phrase: string;
-    }) => Promise<{ ok: boolean; message?: string }>;
-    unlockPassphrase: (args: {
-      phrase: string;
-    }) => Promise<{ ok: boolean; message?: string }>;
-    reEnrolPassphrase: (args: {
-      currentPhrase: string;
-      nextPhrase: string;
-    }) => Promise<{ ok: boolean; message?: string }>;
-    verifyPin: (args: {
-      pin: string;
-    }) => Promise<{ ok: boolean; message?: string }>;
-    verifyPassphrase: (args: {
-      phrase: string;
-    }) => Promise<{ ok: boolean; message?: string }>;
-    revoke: () => Promise<void>;
-  };
+  // The File Handling API (Chromium desktop; manifest file_handlers) is not
+  // in TypeScript's DOM lib. Captured pre-React in fileLaunchQueue.ts.
+  interface LaunchParams {
+    readonly files: readonly FileSystemFileHandle[];
+    readonly targetURL?: string;
+  }
 
-  type SystemBridge = {
-    storageInfo: () => Promise<{
-      dbBytes: number | null;
-      diskFreeBytes: number | null;
-      diskTotalBytes: number | null;
-    }>;
-  };
+  interface LaunchQueue {
+    setConsumer(consumer: (params: LaunchParams) => void): void;
+  }
 
-  type UpdateProgress = {
-    percent: number;
-    transferred: number;
-    total: number;
-    bytesPerSecond: number;
-  };
-
-  type UpdateBridge = {
-    check: () => Promise<UpdateInfo | null>;
-    download: () => Promise<void>;
-    install: () => Promise<void>;
-    onProgress: (callback: (progress: UpdateProgress) => void) => () => void;
-    onDownloaded: (callback: () => void) => () => void;
-    onError: (callback: (message: string) => void) => () => void;
-  };
-
-  type ElectronAPI = {
-    openFile: () => Promise<{
-      canceled: boolean;
-      data?: Uint8Array;
-      name?: string;
-    } | null>;
-    saveFile: (
-      suggestedName: string,
-      data: Uint8Array,
-    ) => Promise<{ canceled: boolean; path?: string }>;
-    fetchProtocolFromUrl: (
-      url: string,
-    ) => Promise<
-      { ok: true; data: Uint8Array } | { ok: false; message: string }
-    >;
-    platform: 'darwin' | 'win32' | 'linux';
-    isPackaged: boolean;
-    db: DbBridge;
-    auth: AuthBridge;
-    system: SystemBridge;
-    update: UpdateBridge;
-  };
-
-  // `interface` is required (not `type`) so this declaration MERGES with
-  // the global Window from lib.dom.d.ts instead of replacing it.
   interface Window {
-    electronAPI?: ElectronAPI;
+    readonly launchQueue?: LaunchQueue;
+  }
+
+  // The PWA install prompt event is not in TypeScript's DOM lib. Captured
+  // pre-React in installPrompt.ts and offered by InstallBanner.
+  interface BeforeInstallPromptEvent extends Event {
+    readonly platforms: readonly string[];
+    readonly userChoice: Promise<{
+      readonly outcome: 'accepted' | 'dismissed';
+      readonly platform: string;
+    }>;
+    prompt(): Promise<void>;
+  }
+
+  interface WindowEventMap {
+    beforeinstallprompt: BeforeInstallPromptEvent;
   }
 }

@@ -13,11 +13,19 @@ import type { SelectOption } from './Select/shared';
 // no value, so `placeholder:` utilities never reach it. We conditionally apply
 // muted-italic styling when the value is empty: `color`/`italic` on the input
 // itself handles Firefox; the webkit-datetime-edit pseudo-element handles
-// Chromium/Safari where the color property doesn't cascade through.
+// Chromium/Safari where the color property doesn't cascade through. Safari
+// additionally repaints the empty day/month/year sub-fields with its own
+// contrast-adjusted color (a greenish tint on dark backgrounds) and only
+// -webkit-text-fill-color pins them; Blink honours `color`, so the extra
+// declaration is a no-op there.
 const emptyDateInputClass = cx(
   'text-input-contrast/50 italic',
   '[&::-webkit-datetime-edit]:text-input-contrast/50',
   '[&::-webkit-datetime-edit]:italic',
+  // NOTE: must reference --input-contrast (the runtime theme variable), not
+  // --color-input-contrast — the Tailwind theme is `inline`, so --color-*
+  // tokens are compiled away and never exist at runtime.
+  '[&::-webkit-datetime-edit]:[-webkit-text-fill-color:color-mix(in_oklab,var(--input-contrast)_50%,transparent)]',
 );
 
 type DatePickerFieldProps = CreateFormFieldProps<

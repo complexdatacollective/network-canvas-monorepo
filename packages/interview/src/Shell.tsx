@@ -15,6 +15,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { AnalyticsProvider } from './analytics/AnalyticsProvider';
 import { NULL_TRACKER, type Tracker } from './analytics/tracker';
 import { useStageNavigationAnalytics } from './analytics/useStageNavigationAnalytics';
+import { GeospatialOfflineIndicator } from './components/GeospatialOfflineIndicator';
 import Navigation from './components/Navigation';
 import StageErrorBoundary from './components/StageErrorBoundary';
 import { CurrentStepProvider } from './contexts/CurrentStepContext';
@@ -139,10 +140,13 @@ function Interview({
                     transition={{ duration: 0.5 }}
                   >
                     <div
-                      className="flex size-full flex-col items-center justify-center"
+                      className="relative flex size-full flex-col items-center justify-center"
                       id="stage"
                       key={stage.id}
                     >
+                      <GeospatialOfflineIndicator
+                        active={stage.type === 'Geospatial'}
+                      />
                       <StageErrorBoundary>
                         {CurrentInterface && (
                           <CurrentInterface

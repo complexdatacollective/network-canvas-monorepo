@@ -14,6 +14,7 @@ import {
 } from '@codaco/interview';
 import { InterviewComplete } from '~/components/InterviewComplete';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
+import { APP_VERSION } from '~/lib/appVersion';
 import {
   buildResolvedAssets,
   makeAssetResolver,
@@ -28,10 +29,8 @@ import {
   updateSettings,
 } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
-import { APP_VERSION } from '~/lib/platform/appVersion';
-import { getInstallationId } from '~/lib/platform/installationId';
-import { hostAppName } from '~/lib/platform/platform';
-import { useNavigationOrientation } from '~/lib/platform/useNavigationOrientation';
+import { getInstallationId } from '~/lib/installationId';
+import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
 
 type LoadState =
   | { kind: 'loading' }
@@ -57,6 +56,12 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // step. Mirror it into a ref so handleSync sees the latest value rather
   // than the stale closure value.
   const currentStepRef = useRef(0);
+
+  // A history-back (browser button or a swipe gesture the CSS/wheel guards
+  // can't intercept, e.g. iPadOS edge swipe) would leave the interview WITHOUT
+  // the requireUnlockOnExit gate. Pin the history for the life of the route;
+  // handleExit still navigates forward normally.
+  useHistoryBackGuard(true);
 
   // Gated exit shared by the Shell exit button and the completion screen.
   const handleExit = useCallback(async () => {
@@ -145,14 +150,13 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     setAuthorizedInterviewId,
   ]);
 
-  const navigationOrientation = useNavigationOrientation();
-
   const { client: posthogClient, enabled: analyticsEnabled } = useAnalytics();
 
   const analytics = useMemo(
     () => ({
       installationId: getInstallationId(),
-      hostApp: hostAppName,
+      // No Electron/Capacitor host remains; this app is the only host.
+      hostApp: 'interviewer-v8',
       hostVersion: APP_VERSION,
     }),
     [],
@@ -258,7 +262,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         posthogClient={posthogClient ?? undefined}
         disableAnalytics={!analyticsEnabled}
         onExit={() => void handleExit()}
-        navigationOrientation={navigationOrientation}
         allowStageNavigation={allowStageNavigation}
       />
     </div>

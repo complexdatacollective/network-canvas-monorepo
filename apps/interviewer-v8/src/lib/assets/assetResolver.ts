@@ -69,6 +69,8 @@ export function makeAssetResolver(
       return record.data;
     }
 
+    // `record.data` is already decrypted at the db boundary (db/protocols.ts
+    // decrypts asset rows on read), so this Blob holds plaintext bytes.
     const url = URL.createObjectURL(record.data);
     urlCache.set(key, url);
     return url;

@@ -10,14 +10,12 @@ import {
   type ReactNode,
 } from 'react';
 
+import { APP_VERSION } from '~/lib/appVersion';
 import { useAuth } from '~/lib/auth/AuthContext';
 import { getSettings, updateSettings } from '~/lib/db/api';
-import { APP_VERSION } from '~/lib/platform/appVersion';
-import { getInstallationId } from '~/lib/platform/installationId';
-import { hostAppName } from '~/lib/platform/platform';
+import { getInstallationId } from '~/lib/installationId';
 
 import { getAnalyticsClient } from './client';
-import { writeNativeAnalyticsPreference } from './nativePreference';
 
 export type AnalyticsContextValue = {
   // Current opt-in state, sourced from StoredSettings.analyticsEnabled.
@@ -25,7 +23,7 @@ export type AnalyticsContextValue = {
   // The shared posthog-js client, or null if it failed to load. Passed to the
   // `@codaco/interview` Shell so interview-engine events use the same instance.
   client: PostHog | null;
-  // Persist a new preference and apply it immediately (opt in/out + native).
+  // Persist a new preference and apply it immediately (opt in/out).
   setEnabled: (enabled: boolean) => Promise<void>;
   // App-level event tracking. No-ops when disabled or the client is missing.
   track: (event: string, properties?: Record<string, unknown>) => void;
@@ -52,7 +50,8 @@ const AnalyticsContext = createContext<AnalyticsContextValue>(NOOP_CONTEXT);
 // `installation_id` identifies the installation, never a user or participant.
 function registerSuperProperties(client: PostHog) {
   client.register({
-    app: hostAppName,
+    // No Electron/Capacitor host remains; this app is the only host.
+    app: 'interviewer-v8',
     installation_id: getInstallationId(),
     host_version: APP_VERSION,
   });
@@ -81,10 +80,10 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   const preferenceRevisionRef = useRef(0);
 
   // Load the stored preference once the app is unlocked, then initialise the
-  // client and apply. Reading settings is DB-backed; on Electron the SQLCipher
-  // database is only open after unlock, so we must wait for that. Analytics
-  // stays opted out (the safe default) until then. Re-runs on a lock/unlock
-  // cycle are idempotent.
+  // client and apply. Reading settings is DB-backed; the Dexie vault is only
+  // readable after unlock, so we must wait for that. Analytics stays opted
+  // out (the safe default) until then. Re-runs on a lock/unlock cycle are
+  // idempotent.
   useEffect(() => {
     if (kind !== 'unlocked') return;
     let active = true;
@@ -103,7 +102,6 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
         setClient(resolved);
         setEnabledState(settings.analyticsEnabled);
         if (resolved) applyPreference(resolved, settings.analyticsEnabled);
-        void writeNativeAnalyticsPreference(settings.analyticsEnabled);
       } catch {
         // Never let telemetry setup break the app.
       }
@@ -124,7 +122,6 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     try {
       await updateSettings({ analyticsEnabled: next });
       if (clientRef.current) applyPreference(clientRef.current, next);
-      await writeNativeAnalyticsPreference(next);
     } catch {
       // Swallow — the in-memory preference still took effect above.
     }

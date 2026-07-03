@@ -4,19 +4,18 @@ import { useToast } from '@codaco/fresco-ui/Toast';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { updateSettings } from '~/lib/db/api';
 
+import { loadBundledSampleProtocol } from './bundledProtocols';
 import {
   type ImportPhase,
   type ImportProgressEvent,
   type ImportProtocolResult,
+  importBundledProtocol,
   importProtocolFromFile,
-  importProtocolFromUrl,
   peekProtocolName,
 } from './importProtocol';
 import { SAMPLE_PROTOCOL } from './sampleProtocol';
 
-export type ImportRequest =
-  | { source: 'file'; file: File; label: string }
-  | { source: 'url'; url: string; label: string };
+export type ImportRequest = { source: 'file'; file: File; label: string };
 
 // An in-flight protocol import, tracked by this hook and rendered by
 // ProtocolDeck as a loading-state DeckCard that fills in as the import
@@ -24,7 +23,7 @@ export type ImportRequest =
 export type PendingImport = {
   id: string;
   label: string;
-  source: 'file' | 'url' | 'sample';
+  source: 'file' | 'sample' | 'development';
   phase: ImportPhase;
   progress?: number;
 };
@@ -39,27 +38,32 @@ const MIN_PENDING_VISIBLE_MS = 1500;
 // stall that animation mid-flight if it started immediately.
 const IMPORT_START_DELAY_MS = 600;
 
+type StartImportRequest =
+  | ImportRequest
+  | { source: 'sample' }
+  | { source: 'development' };
+
 function createPendingImport(
   id: string,
-  request: ImportRequest | { source: 'sample' },
+  request: StartImportRequest,
   fileLabel: string,
 ): PendingImport {
   if (request.source === 'file') {
     return { id, label: fileLabel, source: 'file', phase: 'extracting' };
   }
-  if (request.source === 'url') {
+  if (request.source === 'development') {
     return {
       id,
-      label: request.label.replace(/\.netcanvas$/i, ''),
-      source: 'url',
-      phase: 'fetching',
+      label: 'Development Protocol',
+      source: 'development',
+      phase: 'extracting',
     };
   }
   return {
     id,
     label: SAMPLE_PROTOCOL.name,
     source: 'sample',
-    phase: 'fetching',
+    phase: 'extracting',
   };
 }
 
@@ -75,7 +79,7 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
   const [pendingImports, setPendingImports] = useState<PendingImport[]>([]);
 
   const startImport = useCallback(
-    async (request: ImportRequest | { source: 'sample' }) => {
+    async (request: StartImportRequest) => {
       const id = crypto.randomUUID();
 
       const fileBuffer =
@@ -112,14 +116,17 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
             onProgress,
             peekedName ?? undefined,
           );
-        } else if (request.source === 'url') {
-          result = await importProtocolFromUrl(request.url, onProgress);
+        } else if (request.source === 'development') {
+          // Dynamically imported so its module (and the 23MB dev-only video
+          // it bundles) is split into a chunk production never fetches; the
+          // trigger that reaches this branch is itself DEV-gated in Home.
+          const { loadBundledDevelopmentProtocol } =
+            await import('./bundledDevelopmentProtocol');
+          const bundled = await loadBundledDevelopmentProtocol();
+          result = await importBundledProtocol(bundled, onProgress);
         } else {
-          result = await importProtocolFromUrl(
-            SAMPLE_PROTOCOL.url,
-            onProgress,
-            SAMPLE_PROTOCOL.name,
-          );
+          const bundled = await loadBundledSampleProtocol();
+          result = await importBundledProtocol(bundled, onProgress);
         }
 
         // Local imports can complete in a few milliseconds — too fast for

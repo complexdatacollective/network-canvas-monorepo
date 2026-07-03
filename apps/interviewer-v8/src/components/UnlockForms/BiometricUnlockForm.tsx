@@ -4,9 +4,7 @@ import Button from '@codaco/fresco-ui/Button';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 type BiometricUnlockFormProps = {
-  onSubmit: (
-    signal?: AbortSignal,
-  ) => Promise<{ ok: boolean; message?: string }>;
+  onSubmit: () => Promise<{ ok: boolean; message?: string }>;
   submitLabel?: string;
   disabled?: boolean;
 };

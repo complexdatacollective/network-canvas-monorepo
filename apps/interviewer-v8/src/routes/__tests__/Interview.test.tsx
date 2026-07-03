@@ -34,13 +34,8 @@ vi.mock('~/lib/assets/assetResolver', () => ({
   buildResolvedAssets: vi.fn(async () => ({})),
   makeAssetResolver: vi.fn(() => async () => ''),
 }));
-vi.mock('~/lib/platform/installationId', () => ({
+vi.mock('~/lib/installationId', () => ({
   getInstallationId: () => 'test-install',
-}));
-vi.mock('~/lib/platform/platform', () => ({
-  hostAppName: 'web',
-  isElectron: false,
-  isCapacitor: false,
 }));
 
 type CapturedShellProps = {
