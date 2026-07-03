@@ -852,6 +852,156 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 
+  # Maintains a "Release apps" PR (sibling of the library "Version Packages" PR).
+  # On every push to main it re-runs the app version step on a fresh branch and
+  # opens/updates/closes the PR. Merging the PR is the release gate (see
+  # apps-release below). App changesets are ignored by the library release, so
+  # they persist in .changeset/ until this job consumes them.
+  apps-release-pr:
+    needs: quality
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Guard against mixed changesets
+        run: pnpm check:changesets
+      - name: Compute app version bumps
+        run: node scripts/version-beta-apps.mjs --out "${RUNNER_TEMP}/apps-release-body.md"
+      - name: Open/update the Release apps PR
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          branch: changeset-release/apps
+          base: main
+          delete-branch: true
+          title: 'Release apps (beta)'
+          commit-message: 'chore(release): version beta apps'
+          body-path: ${{ runner.temp }}/apps-release-body.md
+
+  # On a push to main that changes an app version (i.e. the Release apps PR just
+  # merged), detect which app(s) moved — mirrors detect-legacy-release.sh, but
+  # idempotency is a local git-tag check (no external repo).
+  apps-release-detect:
+    needs: quality
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      architect_released: ${{ steps.architect.outputs.released }}
+      architect_version: ${{ steps.architect.outputs.version }}
+      interviewer_released: ${{ steps.interviewer.outputs.released }}
+      interviewer_version: ${{ steps.interviewer.outputs.version }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          fetch-depth: 2
+          fetch-tags: true
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+      - id: architect
+        env:
+          PKG_JSON: apps/architect-web/package.json
+          PKG_NAME: '@codaco/architect-web'
+        run: bash .github/scripts/detect-app-release.sh
+      - id: interviewer
+        env:
+          PKG_JSON: apps/interviewer-v8/package.json
+          PKG_NAME: '@codaco/interviewer-v8'
+        run: bash .github/scripts/detect-app-release.sh
+
+  # Build, deploy to Netlify production, and cut a GitHub release for each app
+  # whose version changed. NOTE(human-setup-required): interviewer needs
+  # NETLIFY_SITE_ID_INTERVIEWER set — see apps/interviewer-v8/RELEASING.md.
+  apps-release:
+    needs: apps-release-detect
+    if: >-
+      needs.apps-release-detect.outputs.architect_released == 'true' ||
+      needs.apps-release-detect.outputs.interviewer_released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      VITE_FRESCO_PREVIEW_URL: ${{ secrets.VITE_FRESCO_PREVIEW_URL }}
+      VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # architect-web
+      - if: needs.apps-release-detect.outputs.architect_released == 'true'
+        name: Build & deploy architect-web to production
+        run: |
+          pnpm exec turbo run build --filter=@codaco/architect-web
+          npx --yes netlify-cli@22 deploy --no-build --prod \
+            --filter=@codaco/architect-web \
+            --dir=apps/architect-web/dist \
+            --site="${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}"
+      - if: needs.apps-release-detect.outputs.architect_released == 'true'
+        name: architect-web release notes
+        env:
+          VERSION: ${{ needs.apps-release-detect.outputs.architect_version }}
+        run: >-
+          node scripts/release-notes.mjs
+          --app apps/architect-web
+          --pkg @codaco/architect-web
+          --version "$VERSION"
+          --out "${RUNNER_TEMP}/architect-notes.md"
+      - if: needs.apps-release-detect.outputs.architect_released == 'true'
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
+        with:
+          tag_name: '@codaco/architect-web@${{ needs.apps-release-detect.outputs.architect_version }}'
+          name: Architect ${{ needs.apps-release-detect.outputs.architect_version }}
+          body_path: ${{ runner.temp }}/architect-notes.md
+          prerelease: true
+          make_latest: 'false'
+
+      # interviewer-v8
+      - if: needs.apps-release-detect.outputs.interviewer_released == 'true'
+        name: Build & deploy interviewer-v8 to production
+        run: |
+          pnpm exec turbo run build --filter=@codaco/interviewer-v8^...
+          pnpm --filter=@codaco/interviewer-v8 build:web
+          npx --yes netlify-cli@22 deploy --no-build --prod \
+            --filter=@codaco/interviewer-v8 \
+            --dir=apps/interviewer-v8/dist \
+            --site="${{ secrets.NETLIFY_SITE_ID_INTERVIEWER }}"
+      - if: needs.apps-release-detect.outputs.interviewer_released == 'true'
+        name: interviewer-v8 release notes
+        env:
+          VERSION: ${{ needs.apps-release-detect.outputs.interviewer_version }}
+        run: >-
+          node scripts/release-notes.mjs
+          --app apps/interviewer-v8
+          --pkg @codaco/interviewer-v8
+          --version "$VERSION"
+          --out "${RUNNER_TEMP}/interviewer-notes.md"
+      - if: needs.apps-release-detect.outputs.interviewer_released == 'true'
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
+        with:
+          tag_name: '@codaco/interviewer-v8@${{ needs.apps-release-detect.outputs.interviewer_version }}'
+          name: Interviewer ${{ needs.apps-release-detect.outputs.interviewer_version }}
+          body_path: ${{ runner.temp }}/interviewer-notes.md
+          prerelease: true
+          make_latest: 'false'
+
   # Decide whether to (re)release the legacy desktop apps. A release fires when:
   #   * a workflow_dispatch selected the app (forced release at the current
   #     package.json version, even with no version change — used for the initial
