@@ -113,7 +113,7 @@ export function useSetupWizard() {
                 checks.
               </Paragraph>
               <div className="my-6 grid gap-4">
-                <Surface level={1} spacing="sm" shadow="sm">
+                <Surface spacing="sm" shadow="sm">
                   <div className="mb-2 flex items-center gap-3">
                     <span className="text-primary bg-primary/15 flex size-10 shrink-0 items-center justify-center rounded-full">
                       <SecureDataGlyph />
@@ -137,7 +137,7 @@ export function useSetupWizard() {
                     </AlertDescription>
                   </Alert>
                 </Surface>
-                <Surface level={1} spacing="sm" shadow="sm">
+                <Surface spacing="sm" shadow="sm">
                   <div className="mb-2 flex items-center gap-3">
                     <span className="text-accent bg-accent/15 flex size-10 shrink-0 items-center justify-center rounded-full">
                       <AuthorisationGlyph />

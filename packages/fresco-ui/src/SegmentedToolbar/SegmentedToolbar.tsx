@@ -688,7 +688,7 @@ export function SegmentedToolbar({
     return (
       <LayoutGroup>
         <MotionSurface
-          level={1}
+          floating
           shadow="md"
           spacing="none"
           noContainer
@@ -706,7 +706,7 @@ export function SegmentedToolbar({
   return (
     <LayoutGroup>
       <MotionSurface
-        level={1}
+        floating
         shadow="md"
         spacing="none"
         noContainer
