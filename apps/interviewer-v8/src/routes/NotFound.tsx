@@ -10,7 +10,6 @@ export function NotFoundRoute() {
   return (
     <div className="mx-auto flex h-full max-w-xl items-center justify-center p-8">
       <Surface
-        level={1}
         spacing="lg"
         shadow="lg"
         className="flex flex-col items-center gap-4 text-center"

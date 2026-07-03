@@ -1,4 +1,4 @@
-import { surfaceVariants } from '../layout/Surface';
+import { SurfaceDepthReset, surfaceVariants } from '../layout/Surface';
 import ModalPopup from '../Modal/ModalPopup';
 import { cx } from '../utils/cva';
 
@@ -11,7 +11,7 @@ export default function DialogPopup({
     <ModalPopup
       className={cx(
         surfaceVariants({
-          level: 0,
+          floating: true,
           spacing: 'none',
         }),
         'tablet-portrait:w-auto w-[calc(100%-var(--spacing-base)*8)] max-w-2xl shadow-2xl',
@@ -21,7 +21,7 @@ export default function DialogPopup({
       )}
       {...props}
     >
-      {children}
+      <SurfaceDepthReset>{children}</SurfaceDepthReset>
     </ModalPopup>
   );
 }

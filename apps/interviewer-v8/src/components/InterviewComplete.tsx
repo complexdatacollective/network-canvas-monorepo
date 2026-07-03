@@ -7,7 +7,6 @@ export function InterviewComplete({ onExit }: { onExit: () => void }) {
   return (
     <div className="mx-auto flex h-full max-w-lg items-center justify-center p-8">
       <Surface
-        level={1}
         spacing="lg"
         shadow="lg"
         className="flex flex-col items-center gap-4 text-center"

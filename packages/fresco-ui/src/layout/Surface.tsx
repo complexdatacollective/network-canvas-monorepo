@@ -1,7 +1,13 @@
 'use client';
 
 import { motion } from 'motion/react';
-import { type ElementType, forwardRef } from 'react';
+import {
+  createContext,
+  type ElementType,
+  forwardRef,
+  useContext,
+  useEffect,
+} from 'react';
 
 import { compose, cva, cx, type VariantProps } from '../utils/cva';
 import ResponsiveContainer, {
@@ -48,12 +54,18 @@ export const surfaceVariants = compose(
     // avoid clashing with the `elevation-*` Tailwind plugin utilities.
     base: 'publish-colors relative min-h-0 overflow-clip rounded',
     variants: {
-      level: {
-        0: 'text-surface-contrast bg-surface',
-        1: 'text-surface-1-contrast bg-surface-1',
-        2: 'text-surface-2-contrast bg-surface-2',
-        3: 'text-surface-3-contrast bg-surface-3',
-        popover: 'text-surface-popover-contrast bg-surface-popover border-2',
+      // `depth` is derived from nesting by the Surface component and is not
+      // part of its public props; there is deliberately no default so that
+      // class-level consumers (which only ever use `floating`) don't pick up
+      // a surface background by accident.
+      depth: {
+        0: 'text-surface-contrast bg-surface [--surface-depth:0]',
+        1: 'text-surface-1-contrast bg-surface-1 [--surface-depth:1]',
+        2: 'text-surface-2-contrast bg-surface-2 [--surface-depth:2]',
+        3: 'text-surface-3-contrast bg-surface-3 [--surface-depth:3]',
+      },
+      floating: {
+        true: 'text-surface-popover-contrast bg-surface-popover border-2 [--surface-depth:0]',
       },
       shadow: {
         none: '',
@@ -65,13 +77,44 @@ export const surfaceVariants = compose(
       },
     },
     defaultVariants: {
-      level: 0,
       shadow: 'md',
     },
   }),
 );
 
-export type SurfaceVariants = VariantProps<typeof surfaceVariants>;
+const MAX_SURFACE_DEPTH = 3;
+
+const clampDepth = (depth: number): 0 | 1 | 2 | 3 => {
+  if (depth <= 0) return 0;
+  if (depth === 1) return 1;
+  if (depth === 2) return 2;
+  return 3;
+};
+
+const SurfaceDepthContext = createContext(0);
+
+/**
+ * Restarts the Surface depth ladder for a subtree, as if the subtree were
+ * mounted directly inside a depth-0 surface. Used by floating chrome that
+ * applies the popover surface treatment via classes rather than by rendering
+ * a `<Surface floating>` (e.g. DialogPopup), so that Surfaces nested inside
+ * it derive from the overlay base rather than from wherever the overlay was
+ * triggered.
+ */
+export const SurfaceDepthReset = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => (
+  <SurfaceDepthContext.Provider value={1}>
+    {children}
+  </SurfaceDepthContext.Provider>
+);
+
+export type SurfaceVariants = Omit<
+  VariantProps<typeof surfaceVariants>,
+  'depth'
+>;
 
 type SurfaceProps<T extends ElementType = 'div'> = {
   as?: T;
@@ -92,22 +135,26 @@ type SurfaceProps<T extends ElementType = 'div'> = {
  * to construct hierarchical layouts, and is explicitly designed to support
  * being nested.
  *
- * Implementation note: Uses a ::before pseudo-element for the background layer
- * to ensure shadows correctly reference the parent's background color while
- * keeping a single DOM element for clean layout control.
+ * The visual level is derived from nesting: each Surface renders one step
+ * above the Surface it is mounted inside (via context, so portals keep their
+ * component-tree position). Depths beyond the token scale clamp to the
+ * deepest token and warn in development. `floating` applies the popover
+ * treatment regardless of depth and restarts the ladder for its children.
  *
- * To override the background color, use `before:bg-*` classes in className:
- * <Surface className="before:bg-primary text-primary-contrast">
+ * The derived depth is exposed to descendants as `--surface-depth`.
+ *
+ * To override the background color, use `bg-*` classes in className:
+ * <Surface className="bg-primary text-primary-contrast">
  */
 const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
   (
     {
       as,
       children,
-      level,
       spacing,
       shadow,
       section,
+      floating,
       className,
       maxWidth,
       baseSize,
@@ -116,6 +163,17 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
     },
     ref,
   ) => {
+    const depth = useContext(SurfaceDepthContext);
+    const renderedDepth = floating ? 0 : clampDepth(depth);
+
+    useEffect(() => {
+      if (!floating && depth > MAX_SURFACE_DEPTH) {
+        console.warn(
+          `Surface: nested ${depth} levels deep, which exceeds the surface token scale (0–${MAX_SURFACE_DEPTH}). Rendering with the level-${MAX_SURFACE_DEPTH} tokens. Consider flattening the layout.`,
+        );
+      }
+    }, [depth, floating]);
+
     const Component = as ?? 'div';
     const surfaceElement = (
       <Component
@@ -123,7 +181,8 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
         {...rest}
         className={cx(
           surfaceVariants({
-            level,
+            depth: floating ? undefined : renderedDepth,
+            floating,
             spacing,
             shadow,
             section,
@@ -131,7 +190,9 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
           className,
         )}
       >
-        {children}
+        <SurfaceDepthContext.Provider value={renderedDepth + 1}>
+          {children}
+        </SurfaceDepthContext.Provider>
       </Component>
     );
 

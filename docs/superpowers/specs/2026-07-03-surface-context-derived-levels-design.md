@@ -27,8 +27,12 @@ tokens. Surface should derive its level from where it actually renders.
    during development instead of silently flattening.
 3. **Popover treatment becomes `floating` + depth reset.** A new orthogonal
    `floating?: boolean` prop applies the popover tokens regardless of depth
-   and resets the depth context for children to 0, so surfaces inside an
-   overlay derive from the overlay base, not from wherever the trigger sat.
+   and restarts the depth ladder for children, so surfaces inside an overlay
+   derive from the overlay base, not from wherever the trigger sat. The
+   floating surface acts as the depth-0 base of its subtree: its direct
+   Surface children render depth 1 (a literal depth-0 child would render
+   `--surface` against `--surface-popover`, which are near-identical in the
+   default theme).
 
 ## Design
 
@@ -59,7 +63,7 @@ working because Surface still emits `publish-colors` + `bg-surface-*`.
   deprecation alias or fallback.
 - `floating?: boolean` — popover tokens (`bg-surface-popover`,
   `text-surface-popover-contrast`, `border-2`) regardless of depth; children
-  get depth 0.
+  restart the ladder from the floating base (direct children render depth 1).
 - `spacing`, `shadow`, `section`, `as`, `noContainer`, `maxWidth`,
   `baseSize` unchanged. `MotionSurface` unchanged.
 - The first Surface in a tree renders depth 0 (`--surface`) — identical to

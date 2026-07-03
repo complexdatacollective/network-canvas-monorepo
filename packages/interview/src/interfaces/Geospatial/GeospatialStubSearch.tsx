@@ -107,7 +107,7 @@ export default function GeospatialStubSearch({ className }: Props) {
               noContainer
               spacing="none"
               shadow="none"
-              level="popover"
+              floating
               className="absolute left-0 mt-2 flex max-h-64 w-sm flex-col shadow-xl"
             >
               <div

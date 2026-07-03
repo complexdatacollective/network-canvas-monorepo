@@ -55,7 +55,7 @@ const TooltipContent = React.forwardRef<
               ref={ref}
               render={
                 <MotionSurface
-                  level="popover"
+                  floating
                   spacing="sm"
                   shadow="sm"
                   className={cx(

@@ -20,7 +20,7 @@ import {
 
 import { MotionButton } from '../../../Button';
 import useDialog from '../../../dialogs/useDialog';
-import { surfaceVariants } from '../../../layout/Surface';
+import Surface from '../../../layout/Surface';
 import {
   controlVariants,
   groupSpacingVariants,
@@ -223,16 +223,15 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
   );
 
   return (
-    <Reorder.Item
+    <Surface
+      as={Reorder.Item}
+      noContainer
+      spacing="sm"
       ref={ref}
       value={item}
       dragListener={false}
       dragControls={dragControls}
-      className={cx(
-        itemVariants(),
-        surfaceVariants({ level: 1, spacing: 'sm' }),
-        resolvedItemClasses,
-      )}
+      className={cx(itemVariants(), resolvedItemClasses)}
       custom={hasMounted}
       layout
       layoutId={item._internalId}
@@ -254,7 +253,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
         onEdit={onEdit}
         dragControls={dragControls}
       />
-    </Reorder.Item>
+    </Surface>
   );
 }
 
