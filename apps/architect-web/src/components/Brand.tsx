@@ -1,4 +1,4 @@
-import architectIcon from '~/images/Arc-Flat.svg';
+import architectIcon from '~/images/architect-icon.png';
 import { cx } from '~/utils/cva';
 
 import Badge from './Badge';
