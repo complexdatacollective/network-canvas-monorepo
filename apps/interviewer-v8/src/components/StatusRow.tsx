@@ -4,17 +4,13 @@ import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 
 import { APP_VERSION } from '~/lib/appVersion';
+import type { AuthMode } from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
 import {
   estimateStorage,
   formatBytes,
   isStoragePersisted,
 } from '~/lib/storage';
-
-type StatusRowProps = {
-  protocolCount: number;
-  interviewCount: number;
-};
 
 type Durability = { persisted: boolean; usage: number | null };
 
@@ -32,35 +28,20 @@ const variants = {
   },
 } as const;
 
-export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
-  const { mode } = useAuth();
-  const [durability, setDurability] = useState<Durability | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    const refresh = () => {
-      void Promise.all([isStoragePersisted(), estimateStorage()]).then(
-        ([persisted, estimate]) => {
-          if (active) setDurability({ persisted, usage: estimate.usage });
-        },
-      );
-    };
-
-    refresh();
-
-    // requestPersistentStorage() in main.tsx is fire-and-forget and can
-    // resolve after this component has already mounted and read a stale
-    // (unpersisted) result. Re-check whenever the tab regains focus/visibility
-    // so a grant that lands late clears the "Storage not persistent" warning.
-    window.addEventListener('focus', refresh);
-    document.addEventListener('visibilitychange', refresh);
-    return () => {
-      active = false;
-      window.removeEventListener('focus', refresh);
-      document.removeEventListener('visibilitychange', refresh);
-    };
-  }, []);
-
+// Pure presentation: the dashboard's bottom-of-screen footer strip. `mode`
+// mirrors useAuth's enrolled security mode; `durability` mirrors the
+// storage-persistence poll (null until the first check resolves).
+export function StatusRowView({
+  protocolCount,
+  interviewCount,
+  mode,
+  durability,
+}: {
+  protocolCount: number;
+  interviewCount: number;
+  mode: AuthMode | undefined;
+  durability: Durability | null;
+}) {
   return (
     <motion.div
       variants={variants}
@@ -129,5 +110,49 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
         <span>Interviewer {APP_VERSION}</span>
       </div>
     </motion.div>
+  );
+}
+
+type StatusRowProps = {
+  protocolCount: number;
+  interviewCount: number;
+};
+
+export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
+  const { mode } = useAuth();
+  const [durability, setDurability] = useState<Durability | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const refresh = () => {
+      void Promise.all([isStoragePersisted(), estimateStorage()]).then(
+        ([persisted, estimate]) => {
+          if (active) setDurability({ persisted, usage: estimate.usage });
+        },
+      );
+    };
+
+    refresh();
+
+    // requestPersistentStorage() in main.tsx is fire-and-forget and can
+    // resolve after this component has already mounted and read a stale
+    // (unpersisted) result. Re-check whenever the tab regains focus/visibility
+    // so a grant that lands late clears the "Storage not persistent" warning.
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      active = false;
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, []);
+
+  return (
+    <StatusRowView
+      protocolCount={protocolCount}
+      interviewCount={interviewCount}
+      mode={mode}
+      durability={durability}
+    />
   );
 }
