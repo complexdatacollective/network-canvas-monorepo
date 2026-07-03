@@ -7,25 +7,32 @@
 > worker, same mechanism as architect-web (another `vite-plugin-pwa` app in
 > this monorepo).
 
-## Deploys are continuous, not versioned
+## Versioned beta releases (changeset-driven)
 
-There is no release step and no version bump to make — every push to `main`
-that touches `apps/interviewer-v8` (or a workspace dependency it builds from,
-e.g. `@codaco/interview`, `@codaco/fresco-ui`) deploys straight to production.
-Every pull request that touches it gets a PR preview deploy, aliased
-`pr-<number>`, posted as a comment on the PR.
+interviewer-v8 is on a `8.0.0-beta.N` line. It is `private` and in the changeset
+`ignore` list, so the library `changeset version` never touches it — a dedicated
+lane handles it instead. The base `8.0.0` is fixed (change it with a manual
+`package.json` edit, e.g. to graduate out of beta); a changeset's `major`/
+`minor`/`patch` type only categorises the release notes, it does not move the
+base while in beta.
 
-Both are handled by [`.github/workflows/ci-and-release.yml`](../../.github/workflows/ci-and-release.yml):
+1. **Author a changeset.** Run `pnpm changeset` and select
+   `@codaco/interviewer-v8` (see the `creating-a-changeset` skill). Never mix an
+   app and a library in one changeset — CI (`pnpm check:changesets`) rejects it.
+2. **The "Release apps (beta)" PR.** On every push to `main`, the
+   `apps-release-pr` job increments `-beta.N`, updates `CHANGELOG.md`, deletes the
+   consumed changesets, and opens/updates a summary PR. This PR is the release
+   gate; it is torn down automatically when no app changesets are pending.
+3. **Merge to release.** Merging the PR bumps `package.json` on `main`; the
+   `apps-release-detect` job sees the version change and `apps-release` builds,
+   deploys to Netlify **production**, and creates the prerelease GitHub release
+   `@codaco/interviewer-v8@<version>` with the CHANGELOG notes.
 
-- **`deploy-interviewer-v8-preview`** — runs on `pull_request`, gated on the
-  `detect` job's `interviewer_v8` flag. Doesn't wait on `quality` to pass
-  (so a broken lint/typecheck doesn't block seeing the preview), but does
-  wait on the `quality` job to finish so it can reuse the turbo cache slot.
-- **`deploy-interviewer-v8-prod`** — runs on push to `main`, gated on the same
-  flag plus `quality` succeeding and the fresco-ui/interview Chromatic +
-  interview e2e jobs not failing (interviewer-v8 depends on both packages).
+Pull requests still get a preview deploy (`deploy-interviewer-v8-preview`),
+aliased `pr-<number>` and posted as a comment. Production is no longer deployed
+on every push to `main` — only on a Release apps PR merge.
 
-Both jobs build the same way:
+### How CI builds
 
 ```bash
 pnpm exec turbo run build --filter=@codaco/interviewer-v8^...   # workspace deps
@@ -40,13 +47,10 @@ workbox precache manifest. A deploy that passes this assertion is one that
 will actually boot offline; treat an assertion failure as a hard release
 blocker, not a warning to route around.
 
-The built `apps/interviewer-v8/dist` is pushed with `netlify-cli`, same
-pattern as architect-web's deploy steps in the same workflow.
-
 ## Manual setup required (one-time)
 
 CI deploys to a Netlify **site that must already exist** — netlify-cli can't
-create one. Before the deploy jobs above will work:
+create one. Before the preview and production deploys will work:
 
 1. Create a new Netlify site for interviewer-v8 (Netlify dashboard or
    `netlify sites:create`). Don't point it at a repo for auto-build; CI
@@ -58,9 +62,10 @@ create one. Before the deploy jobs above will work:
 4. If interviewer-v8 needs its own custom domain, configure it in the
    Netlify site's domain settings; nothing in CI needs to change for that.
 
-Until the secret is set, `deploy-interviewer-v8-preview`/`-prod` will fail at
-the `netlify-cli deploy` step with a "site not found" style error — the rest
-of CI (quality gate, typecheck, tests) is unaffected.
+Until the secret is set, `deploy-interviewer-v8-preview` and the `apps-release`
+production deploy will fail at the `netlify-cli deploy` step with a "site not
+found" style error — the rest of CI (quality gate, typecheck, tests) is
+unaffected.
 
 ## Service worker update propagation
 
