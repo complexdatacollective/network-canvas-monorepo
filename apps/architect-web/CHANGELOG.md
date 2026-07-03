@@ -1,5 +1,9 @@
 # @codaco/architect-web
 
+## 8.0.0-beta.0
+
+- Start of the changeset-driven beta release line.
+
 ## 7.0.0-beta.1
 
 ### Patch Changes
