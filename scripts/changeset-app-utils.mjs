@@ -4,7 +4,12 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const APP_PACKAGES = ['@codaco/architect-web', '@codaco/interviewer-v8'];
+export const APP_PACKAGES = ['@codaco/architect-web', '@codaco/interviewer-v8'];
+
+export const APP_DIRS = {
+  '@codaco/architect-web': 'apps/architect-web',
+  '@codaco/interviewer-v8': 'apps/interviewer-v8',
+};
 
 export function parseChangeset(contents) {
   const m = contents.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
@@ -57,9 +62,9 @@ export function nextBetaVersion(current) {
 }
 
 const TYPE_HEADINGS = {
-  major: 'Major changes',
-  minor: 'Minor changes',
-  patch: 'Patch changes',
+  major: 'Major Changes',
+  minor: 'Minor Changes',
+  patch: 'Patch Changes',
 };
 
 export function renderChangelogSection(version, entries) {

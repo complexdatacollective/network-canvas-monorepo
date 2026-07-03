@@ -114,6 +114,20 @@ pnpm version-packages
 pnpm publish-packages
 ```
 
+#### Changeset lanes: libraries vs apps
+
+- **Library packages** (`packages/*`) release to npm via `changesets/action` (the
+  "Version Packages" PR).
+- **The two PWA apps** (`@codaco/architect-web`, `@codaco/interviewer-v8`) are
+  `private` and in the changeset `ignore` list. They release on a `-beta.N` line
+  via a separate "Release apps (beta)" PR (`apps-release-pr` job) that deploys to
+  Netlify production and cuts a GitHub release on merge.
+- **Never put an app and a library in the same changeset** — `changeset version`
+  errors on mixed changesets and `pnpm check:changesets` (a quality-gate step)
+  rejects them. Write two changesets.
+- See the `creating-a-changeset` skill and
+  `docs/superpowers/specs/2026-07-03-pwa-app-beta-releases-design.md`.
+
 ## Architecture Overview
 
 ### Monorepo Structure

@@ -100,6 +100,6 @@ test('renderChangelogSection groups entries by bump type', () => {
   ]);
   assert.equal(
     out,
-    '## 8.0.0-beta.1\n\n### Minor changes\n\n- Add X\n- Add Z\n\n### Patch changes\n\n- Fix Y\n',
+    '## 8.0.0-beta.1\n\n### Minor Changes\n\n- Add X\n- Add Z\n\n### Patch Changes\n\n- Fix Y\n',
   );
 });

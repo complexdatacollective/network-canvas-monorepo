@@ -1,10 +1,6 @@
 # @codaco/interviewer-v8
 
-The Interviewer (v8) app is pre-publish, so this changelog is maintained by hand
-rather than generated from changesets (the app is excluded from changeset
-versioning via `ignore` in `.changeset/config.json`).
-
-## Unreleased
+## 8.0.0-beta.0
 
 ### Added
 
