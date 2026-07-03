@@ -6,6 +6,7 @@
     "dev": "turbo watch dev",
     "test": "turbo run test",
     "test:watch": "turbo watch test:watch",
+    "test:scripts": "node --test scripts/*.test.mjs",
     "publish-packages": "pnpm exec changeset publish",
     "version-packages": "pnpm exec changeset version && pnpm install --no-frozen-lockfile && pnpm lint:fix",
     "changeset": "changeset add",
