@@ -45,18 +45,15 @@ export const FiresOnComplete: StoryObj<FiresOnCompleteArgs> = {
     </div>
   ),
   play: async ({ canvas, userEvent, args }) => {
-    const inputs = await Promise.all(
-      Array.from({ length: 8 }, (_, i) =>
-        canvas.findByLabelText(`Digit ${String(i + 1)} of 8, hidden`),
-      ),
-    );
+    const digitInput = (n: number) =>
+      canvas.findByLabelText(`Digit ${String(n)} of 8, hidden`);
 
-    for (const [index, digit] of '1234567'.split('').entries()) {
-      await userEvent.type(inputs[index], digit);
+    for (let n = 1; n <= 7; n++) {
+      await userEvent.type(await digitInput(n), String(n));
     }
     await expect(args.onComplete).not.toHaveBeenCalled();
 
-    await userEvent.type(inputs[7], '8');
+    await userEvent.type(await digitInput(8), '8');
     await expect(args.onComplete).toHaveBeenCalled();
   },
 };
