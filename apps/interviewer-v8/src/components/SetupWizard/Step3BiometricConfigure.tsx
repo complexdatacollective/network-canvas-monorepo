@@ -46,6 +46,30 @@ export default function Step3BiometricConfigure() {
   }, [wizard, phrase]);
 
   return (
+    <Step3BiometricConfigureView
+      phrase={phrase}
+      confirmValue={confirm}
+      error={error}
+      onPhraseChange={setPhrase}
+      onConfirmChange={setConfirm}
+    />
+  );
+}
+
+export function Step3BiometricConfigureView({
+  phrase,
+  confirmValue,
+  error,
+  onPhraseChange,
+  onConfirmChange,
+}: {
+  phrase: string;
+  confirmValue: string;
+  error: string | null;
+  onPhraseChange: (value: string) => void;
+  onConfirmChange: (value: string) => void;
+}) {
+  return (
     <>
       <Paragraph>
         Biometric unlock uses your device's Face ID, Touch ID, or Windows Hello.
@@ -65,22 +89,22 @@ export default function Step3BiometricConfigure() {
         hint="At least 12 characters combining uppercase, lowercase, numbers, and symbols."
         component={PasswordField}
         value={phrase}
-        onChange={(v) => setPhrase(v ?? '')}
+        onChange={(v) => onPhraseChange(v ?? '')}
         suppressPasswordManager
-        showStrengthMeter={true}
+        showStrengthMeter
         placeholder="Enter recovery passphrase"
       />
       <UnconnectedField
         name="recovery-passphrase-confirm"
         label="Confirm recovery passphrase"
         component={PasswordField}
-        value={confirm}
-        onChange={(v) => setConfirm(v ?? '')}
+        value={confirmValue}
+        onChange={(v) => onConfirmChange(v ?? '')}
         suppressPasswordManager
         showStrengthMeter={false}
         placeholder="Confirm recovery passphrase"
       />
-      {confirm.length > 0 && phrase !== confirm && (
+      {confirmValue.length > 0 && phrase !== confirmValue && (
         <Paragraph margin="none" className="text-destructive text-sm">
           Passphrases do not match.
         </Paragraph>
