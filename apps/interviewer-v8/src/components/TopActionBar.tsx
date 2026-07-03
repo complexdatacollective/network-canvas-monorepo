@@ -1,9 +1,8 @@
 import { Lock, Settings } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useLocation } from 'wouter';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
-import { type View, ViewSwitcherView } from '~/components/ViewSwitcher';
+import { ViewSwitcher } from '~/components/ViewSwitcher';
 import { useAuth } from '~/lib/auth/AuthContext';
 
 // Glass-pill treatment layered over the standard Button: backdrop-blur surface
@@ -20,19 +19,17 @@ const variants = {
 // Pure presentation: the view switcher plus the lock (when a security mode
 // is enrolled) and settings glass-pill buttons.
 export function TopActionBarView({
-  view,
   showLock,
   onLock,
   onOpenSettings,
 }: {
-  view: View;
   showLock: boolean;
   onLock: () => void;
   onOpenSettings: () => void;
 }) {
   return (
     <div className="flex items-center gap-3">
-      <ViewSwitcherView value={view} />
+      <ViewSwitcher />
       {showLock && (
         <motion.span
           variants={variants}
@@ -71,18 +68,12 @@ type TopActionBarProps = {
   onOpenSettings: () => void;
 };
 
-function activeView(location: string): View {
-  return location === '/data' ? 'data' : 'protocols';
-}
-
 export function TopActionBar({ onOpenSettings }: TopActionBarProps) {
   const { mode, lock } = useAuth();
-  const [location] = useLocation();
   const showLock = mode !== undefined && mode !== 'none';
 
   return (
     <TopActionBarView
-      view={activeView(location)}
       showLock={showLock}
       onLock={() => {
         void lock();
