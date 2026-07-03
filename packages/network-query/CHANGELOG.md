@@ -1,5 +1,20 @@
 # @codaco/network-query
 
+## 1.1.1
+
+### Patch Changes
+
+- Updated dependencies [38aff29]
+- Updated dependencies [37006d0]
+- Updated dependencies [fd2a7e2]
+- Updated dependencies [a171f96]
+- Updated dependencies [3218905]
+- Updated dependencies [0f577dd]
+- Updated dependencies [7970d1f]
+- Updated dependencies [c56b75a]
+  - @codaco/protocol-validation@11.8.0
+  - @codaco/shared-consts@5.4.0
+
 ## 1.1.0
 
 ### Minor Changes

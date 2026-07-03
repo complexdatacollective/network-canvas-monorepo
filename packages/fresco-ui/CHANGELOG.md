@@ -1,5 +1,117 @@
 # @codaco/fresco-ui
 
+## 3.0.0
+
+### Major Changes
+
+- 735fb6e: Surface now derives its visual level from nesting instead of taking a manual `level` prop.
+
+  Breaking changes:
+  - The `level` prop is removed from `Surface`/`MotionSurface`. Each Surface renders one step above the Surface it is mounted inside (via React context, so portalled overlays keep their component-tree position). Depths beyond the token scale clamp to level 3 and warn in development. Remove `level={0..3}` from call sites; if the derived result looks wrong, restructure the layout rather than overriding.
+  - The `'popover'` level is replaced by a new orthogonal `floating` prop, which applies the popover surface treatment at any depth and restarts the depth ladder for children. Replace `level="popover"` with `floating`.
+  - `surfaceVariants`' color axis is now `{ depth, floating }`; `depth` is supplied internally by the Surface component and there is no default, so class-level consumers only use `floating`.
+  - `DataTable` no longer accepts `surfaceLevel`; its table surface derives from context.
+  - A new `SurfaceDepthReset` export restarts the ladder for floating chrome styled via classes rather than a rendered `<Surface floating>` (used by `DialogPopup`).
+  - Surface exposes its derived depth to descendants as the `--surface-depth` CSS variable.
+
+### Minor Changes
+
+- 38de563: Allow a `Dialog` / wizard-step `title` to be any `ReactNode`, not just a string.
+  This lets a wizard step render a live title — for example one that reflects a
+  choice made in an earlier step. Existing string titles are unaffected.
+- 5869464: `ListLayout` now accepts an `orientation` option. `'horizontal'` lays items out
+  in a single row and navigates with Left/Right (via a new `RowKeyboardDelegate`);
+  `'vertical'` (the default) is unchanged. Intended for short, non-virtualized
+  collections such as a horizontal timeline/filmstrip.
+
+  `Collection`'s `filterFuseOptions` now accepts `includeScore`. Setting it to
+  `false` keeps filtered results in their original collection order instead of
+  re-sorting them by match relevance.
+
+  Fixed keyboard focus after filtering: when the focused item is filtered out,
+  focus (and `aria-activedescendant`) now moves to the first remaining result
+  instead of pointing at a hidden row, so filtered results can be reached and
+  selected with the keyboard.
+
+- 0f577dd: Add the **Network Composer** stage type — a free-form, single-screen, promptless
+  canvas for building a whole personal network in one place (create nodes, draw
+  multiple edge types, capture node and edge attributes, group nodes into convex
+  hulls, reposition, and delete, with undo/redo and lasso selection).
+  - `@codaco/protocol-validation`: a new additive schema-8 `NetworkComposer` stage
+    (no version bump, no migration) with cross-reference validation of its
+    `quickAdd` / `layoutVariable` / `nodeForm` / per-edge-type form references, and
+    a `superRefine` check rejecting duplicate edge subject types (edge types and
+    node attributes are both optional). Automatic layout uses the shared flat
+    `behaviours.automaticLayout` boolean (as the Sociogram and Narrative do); for
+    NetworkComposer it is only the starting default. An optional
+    `convexHullVariable` names a single categorical node variable whose values are
+    drawn as convex-hull groups.
+  - `@codaco/interview`: the `NetworkComposer` runtime interface, reusing the shared
+    canvas, edge layer, and force-directed auto-layout engine. Nodes are added by
+    name from a field in the tool palette and laid out on a grid; in edge mode the
+    first node tapped enters a linking state and the edge tool adopts that edge
+    type's colour. Selecting a node or edge opens a resizable, backdrop-less
+    right-hand drawer that leaves the canvas interactive; it edits the entity's
+    attribute form (saving valid edits automatically, with no Save button) or shows
+    an empty state when there is nothing to edit. When a `convexHullVariable` is
+    configured its hulls are always drawn (reusing the Narrative hull layer), and
+    group membership feeds the layout's group-cohesion force so same-group nodes
+    cluster under automatic layout. Nodes are grouped with the Groups tool (pick a
+    group in its popover, tap nodes to toggle membership) or by lasso-selecting in
+    select mode and choosing which group to add the selection to. Automatic layout
+    is an interview-time toggle whose live value is persisted in stage metadata, so
+    the participant's choice sticks across navigation; Architect only sets its
+    default.
+  - `@codaco/shared-consts`: a `NetworkComposer` stage-metadata shape storing the
+    participant's automatic-layout choice.
+  - `@codaco/fresco-ui`: the `SegmentedToolbar` gains a `menu` segment (a button
+    that opens a single-select menu) and a `popover` segment (a pressed-able button
+    that anchors arbitrary popover content), and a vertical toolbar now opens its
+    tooltips, menus, and popovers to the right (into the canvas); `Popover` accepts
+    a `side` prop.
+  - `@codaco/interview`: the NetworkComposer tool palette is built from the shared
+    `SegmentedToolbar` — a Select tool, an Add-node button whose popover holds the
+    name field, an edge tool that opens a menu of edge types, an automatic-layout
+    toggle, and undo/redo.
+
+- 8439757: Add a `suppressPasswordManager` prop to `PasswordField`. When set, the masked
+  value renders as a text input using `-webkit-text-security` instead of
+  `type="password"`, so browser password managers never treat it as a website
+  credential — no save prompts, no username association, no autofill. Intended
+  for app-internal secrets (device PINs, vault passphrases). Falls back to a
+  real password input where the CSS property is unsupported (e.g. Firefox).
+- ebaa737: Add a `reverse` prop to `ResizableFlexPanel`. When set, the resized (first) pane
+  is pinned to the end of the axis (right for horizontal, bottom for vertical) and
+  the drag direction is inverted to match, so a size-constrained panel can sit on
+  the right/bottom edge while the second pane fills — and scrolls — the remaining
+  space. Combine with `minSizePx` to give that edge panel a hard minimum size.
+- 617a920: Make `VisualAnalogScale` and `LikertScale` labels responsive so they stay
+  readable and on-screen when space is tight. Likert labels now follow a measured
+  three-tier ladder — wrap (never clipping), then clockwise-rotated labels centred
+  on each tick, then end anchors only — escalating as far as the available width
+  and vertical budget require. Both fields gain a transient value popover that
+  rides the thumb during adjustment (the current option label for Likert, the
+  value for VAS). Adds an optional `maxLabelHeight` prop to `LikertScale` to
+  override the viewport-derived vertical budget.
+- f551a2e: Add `SegmentedSwitcher`: an exclusive single-select segmented control built on Base UI `ToggleGroup`, with an animated sliding active-indicator, a `size` prop (`sm`/`md`/`lg`), and a per-segment `render` escape hatch (e.g. to render a segment as a link).
+- 79ccead: Add `SegmentedToolbar`: a config-driven, accessible (`Surface`-backed) toolbar of button / toggle / exclusive-group / separator segments, built on the shared `Button` component. Each segment supports an icon, text, or both, and an optional `className` (e.g. for named theme colours like `bg-tomato text-white`). A button segment can also be hosted inside a caller-supplied element (`render`) — e.g. a Popover or Menu trigger — so its overlay wiring composes with the toolbar button and its roving focus. The toolbar offers enter/exit animation, horizontal or vertical orientation, and an optional draggable handle (with keyboard repositioning).
+
+### Patch Changes
+
+- 97b0ef4: Fix the empty DatePicker's hint text rendering with a greenish tint in
+  Safari on dark backgrounds: WebKit repaints the empty day/month/year
+  sub-fields with its own contrast-adjusted color unless
+  `-webkit-text-fill-color` pins them. Blink already honoured the `color`
+  property, so Chrome is unchanged.
+- 5b06420: Fix `ResizableFlexPanel` so the first pane honours its flex-basis even when its
+  content has a larger intrinsic size. Without a `0` main-axis minimum, wide (or
+  tall) content set `min-width/height: auto` and overrode the basis, which also
+  capped how far the resize handle could grow the other pane.
+- 65b55f9: Fix the styled Select trigger so a long selected value truncates with an
+  ellipsis instead of overflowing its container. The value already used
+  `truncate`, but without `min-w-0` the flex item could not shrink below its
+  content width, so long labels spilled past narrow triggers.
+
 ## 2.14.0
 
 ### Minor Changes
