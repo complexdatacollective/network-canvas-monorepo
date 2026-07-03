@@ -83,16 +83,31 @@ vi.mock('~/components/Form/ValidatedField', () => ({
   }) => <div data-testid={`field-${name}`}>{componentProps?.label}</div>,
 }));
 
-vi.mock('~/components/Form/Fields/RichText', () => ({
-  Field: () => <div data-testid="rich-text" />,
-}));
-
 vi.mock('~/components/Form/Fields/Text', () => ({
   default: () => <div data-testid="text-field" />,
 }));
 
-vi.mock('~/components/Form/Fields/Video', () => ({
-  default: () => <div data-testid="video-field" />,
+vi.mock('~/components/EditableList', () => ({
+  default: ({
+    fieldName,
+    children,
+  }: {
+    fieldName: string;
+    children?: React.ReactNode;
+  }) => (
+    <div data-testid={`editable-list-${fieldName}`}>
+      {children}
+      <button>Create new</button>
+    </div>
+  ),
+}));
+
+vi.mock('~/components/sections/ContentGrid/ItemEditor', () => ({
+  default: () => <div data-testid="item-editor" />,
+}));
+
+vi.mock('~/components/sections/ContentGrid/ItemPreview', () => ({
+  default: () => <div data-testid="item-preview" />,
 }));
 
 import IntroScreen from '../IntroScreen';
@@ -124,26 +139,54 @@ describe('IntroScreen', () => {
   });
 
   it('section starts expanded when introScreen has a value', () => {
-    mockIntroScreenValue = { text: 'Hello', title: 'Intro' };
+    mockIntroScreenValue = { items: [] };
     renderSection();
     expect(screen.getByTestId('section-toggle').dataset.expanded).toBe('true');
   });
 
-  it('shows title and text fields when intro screen is enabled', () => {
-    mockIntroScreenValue = { text: 'Hello' };
+  it('shows the content-item list when enabled', () => {
+    mockIntroScreenValue = { items: [] };
     renderSection();
-    expect(screen.getByTestId('field-introScreen.title')).toBeDefined();
-    expect(screen.getByTestId('field-introScreen.text')).toBeDefined();
+    expect(screen.getByTestId('editable-list-introScreen.items')).toBeDefined();
   });
 
-  it('shows video asset field when intro screen is enabled', () => {
-    mockIntroScreenValue = { text: 'Hello' };
+  it('shows an empty-state message when there are no items', () => {
+    mockIntroScreenValue = { items: [] };
     renderSection();
-    expect(screen.getByTestId('field-introScreen.videoAssetId')).toBeDefined();
+    expect(
+      screen.getByText(/No content sections have been created yet/),
+    ).toBeDefined();
+  });
+
+  it('hides the empty-state message when items exist', () => {
+    mockIntroScreenValue = {
+      items: [{ id: 't1', type: 'text', content: 'Hello' }],
+    };
+    renderSection();
+    expect(
+      screen.queryByText(/No content sections have been created yet/),
+    ).toBeNull();
+  });
+
+  it('dispatches change to an empty items list when toggled on', async () => {
+    mockIntroScreenValue = undefined;
+    mockDispatch.mockClear();
+    renderSection();
+
+    expect(capturedToggleChange).toBeTypeOf('function');
+    await capturedToggleChange?.(true);
+
+    expect(mockDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'redux-form/CHANGE',
+        field: 'introScreen',
+        value: { items: [] },
+      }),
+    );
   });
 
   it('dispatches change to null when toggled off', async () => {
-    mockIntroScreenValue = { text: 'Hello' };
+    mockIntroScreenValue = { items: [] };
     mockDispatch.mockClear();
     renderSection();
 

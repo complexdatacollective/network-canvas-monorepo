@@ -47,7 +47,12 @@ import NodeFormFieldPreview from './NodeFormFieldPreview';
 
 const nodeEntity: Entity = 'node';
 
-const PRESERVE_ON_NODE_TYPE_CHANGE = [
+// Stage-level configuration that does not reference node variables survives a
+// node-type change; framing/boundaries/introScreen are required (or
+// self-contained) schema fields, so clearing them would make the stage fail
+// schema validation on save. Exported for the seam test that checks it against
+// the schema's required fields.
+export const PRESERVE_ON_NODE_TYPE_CHANGE = [
   'id',
   'type',
   'label',
@@ -55,6 +60,9 @@ const PRESERVE_ON_NODE_TYPE_CHANGE = [
   'skipLogic',
   'edgeConfig',
   'censusPrompt',
+  'framing',
+  'boundaries',
+  'introScreen',
   'nodeConfig.type',
 ];
 
@@ -83,7 +91,7 @@ const VariableRow = ({
   onCreateOption,
 }: VariableRowProps) => (
   <div className="flex items-start gap-(--space-md)">
-    <div className="flex grow flex-col gap-(--space-xs) pt-(--space-sm)">
+    <div className="flex flex-1 basis-0 flex-col gap-(--space-xs) pt-(--space-sm)">
       <span className="font-semibold">
         {label}
         <span className="text-error ms-(--space-xs)">*</span>
@@ -92,7 +100,7 @@ const VariableRow = ({
         {description}
       </span>
     </div>
-    <div className="relative flex-1">
+    <div className="relative flex-1 basis-0">
       <IssueAnchor fieldName={name} description={`${label} Variable`} />
       <ValidatedField
         name={name}
@@ -235,7 +243,8 @@ const NodeConfigurationInner = ({
 
         {nodeType && (
           <>
-            <div className="bg-surface-2 text-surface-2-foreground my-(--space-lg) flex flex-col gap-(--space-lg) rounded p-(--space-md)">
+            {/* `[&_.variable-pill]:bg-white` lifts the pills off the surface-2 panel */}
+            <div className="bg-surface-2 text-surface-2-foreground my-(--space-lg) flex flex-col gap-(--space-lg) rounded p-(--space-md) [&_.variable-pill]:bg-white">
               <VariableRow
                 name="nodeConfig.nodeLabelVariable"
                 label="Node Label"
@@ -247,7 +256,7 @@ const NodeConfigurationInner = ({
               <VariableRow
                 name="nodeConfig.egoVariable"
                 label="Ego Identifier"
-                description="A boolean variable to identify which node represents the participant (ego) in the family tree."
+                description="A boolean variable to identify which node represents the participant (ego) in the family pedigree."
                 entityType={nodeType}
                 options={booleanNodeVariables}
                 onCreateOption={handleNewEgoVariable}
@@ -255,7 +264,7 @@ const NodeConfigurationInner = ({
               <VariableRow
                 name="nodeConfig.relationshipVariable"
                 label="Relationship to Participant"
-                description="Stores each person's relationship to the participant (e.g., mother, uncle, daughter). Automatically calculated by the family tree interface."
+                description="Stores each person's relationship to the participant (e.g., mother, uncle, daughter). Automatically calculated by the family pedigree interface."
                 entityType={nodeType}
                 options={textNodeVariables}
                 onCreateOption={handleNewRelationshipVariable}
@@ -283,7 +292,6 @@ const NodeConfigurationInner = ({
               className="bg-surface-2 text-surface-2-foreground p-(--space-md)"
             >
               <EditableList
-                label="Form Fields"
                 editComponent={FieldFields}
                 editProps={{ type: nodeType, entity: 'node' }}
                 previewComponent={NodeFormFieldPreview}

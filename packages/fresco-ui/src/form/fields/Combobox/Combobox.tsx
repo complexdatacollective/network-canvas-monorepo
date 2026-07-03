@@ -166,7 +166,7 @@ function ComboboxField(props: ComboboxFieldProps) {
           <Combobox.Popup
             render={
               <Surface
-                level="popover"
+                floating
                 spacing="xs"
                 shadow="lg"
                 noContainer

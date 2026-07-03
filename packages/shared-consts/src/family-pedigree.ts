@@ -39,6 +39,36 @@ export const RELATIONSHIP_TYPE_OPTIONS: {
 }));
 
 /**
+ * Canonical gamete-role values for the FamilyPedigree interface — which
+ * reproductive cell (gamete) a parent contributed to a child.
+ *
+ * Stored on the `gameteRole` categorical edge variable of genetic parent
+ * edges. Shared so that Architect (which locks them onto the variable) and
+ * the interview interface (which writes and branches on them) cannot drift
+ * apart.
+ */
+export const GAMETE_ROLES = ['egg', 'sperm'] as const;
+
+export type GameteRole = (typeof GAMETE_ROLES)[number];
+
+const GAMETE_ROLE_LABELS: Record<GameteRole, string> = {
+  egg: 'Egg',
+  sperm: 'Sperm',
+};
+
+/**
+ * The gamete-role options as `{ value, label }` pairs, in canonical order.
+ * Architect locks the categorical edge variable to exactly this set.
+ */
+export const GAMETE_ROLE_OPTIONS: {
+  value: GameteRole;
+  label: string;
+}[] = GAMETE_ROLES.map((value) => ({
+  value,
+  label: GAMETE_ROLE_LABELS[value],
+}));
+
+/**
  * Canonical biological-sex values for pedigree participants — the sex recorded
  * at birth, needed for sex-linked genetic transmission (X-linked, Y-linked,
  * mitochondrial). This is distinct from gender identity.

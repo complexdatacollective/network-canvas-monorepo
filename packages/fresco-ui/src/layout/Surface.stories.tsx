@@ -9,13 +9,11 @@ const meta: Meta<typeof Surface> = {
   title: 'Components/Surface',
   component: Surface,
   argTypes: {
-    level: {
-      control: {
-        type: 'select',
-        options: [0, 1, 2, 3, 'popover'],
-      },
-      description: 'Defines the background and foreground levels.',
-      defaultValue: 1,
+    floating: {
+      control: 'boolean',
+      description:
+        'Applies the popover surface treatment regardless of depth and restarts the depth ladder for children.',
+      defaultValue: false,
     },
     spacing: {
       control: {
@@ -63,32 +61,66 @@ const meta: Meta<typeof Surface> = {
 
 export default meta;
 
-// Surface with Different Levels
-export const DifferentLevels: StoryFn<typeof Surface> = () => (
-  <div className="space-y-4">
-    {[0, 1, 2, 3, 'popover'].map((level) => (
-      <Surface
-        key={level}
-        level={level as SurfaceVariants['level']}
-        spacing="md"
-        className="flex items-center gap-10"
-      >
-        Surface Level {level}
+// Levels are derived from nesting: each Surface renders one step above the
+// Surface it is mounted inside, clamping at the deepest token.
+export const DerivedLevels: StoryFn<typeof Surface> = () => (
+  <div className="bg-background text-text @container p-10">
+    Background
+    <Surface className="mt-4 flex flex-col space-y-4">
+      Depth 0 (derived)
+      <Button color="default">Default Button</Button>
+      <Surface className="mt-4 flex flex-col space-y-4">
+        Depth 1 (derived)
         <Button color="default">Default Button</Button>
+        <Surface className="mt-4 flex flex-col space-y-4">
+          Depth 2 (derived)
+          <Button color="default">Default Button</Button>
+          <Surface className="mt-4 flex flex-col space-y-4">
+            Depth 3 (derived)
+            <Button color="default">Default Button</Button>
+          </Surface>
+        </Surface>
       </Surface>
-    ))}
+    </Surface>
   </div>
+);
+
+// Intermediate non-Surface elements do not affect the derived depth.
+export const DerivationThroughWrappers: StoryFn<typeof Surface> = () => (
+  <Surface spacing="lg">
+    Depth 0
+    <div className="mt-4 grid grid-cols-2 gap-4">
+      <Surface>Depth 1</Surface>
+      <Surface>Depth 1</Surface>
+    </div>
+  </Surface>
+);
+
+// A floating Surface applies the popover treatment at any depth and restarts
+// the ladder: Surfaces inside it derive from the overlay base.
+export const FloatingResetsDepth: StoryFn<typeof Surface> = () => (
+  <Surface>
+    Depth 0
+    <Surface className="mt-4">
+      Depth 1
+      <Surface className="mt-4">
+        Depth 2
+        <Surface floating className="mt-4">
+          Floating (popover treatment)
+          <Surface className="mt-4">
+            Depth 1 — derived from the floating base
+          </Surface>
+        </Surface>
+      </Surface>
+    </Surface>
+  </Surface>
 );
 
 // Surface with Different Spacing
 export const DifferentSpacing: StoryFn<typeof Surface> = () => (
   <div className="space-y-4">
     {['none', 'xs', 'sm', 'md', 'lg', 'xl'].map((spacing) => (
-      <Surface
-        key={spacing}
-        level={1}
-        spacing={spacing as SurfaceVariants['spacing']}
-      >
+      <Surface key={spacing} spacing={spacing as SurfaceVariants['spacing']}>
         Surface with {spacing} spacing
       </Surface>
     ))}
@@ -101,7 +133,6 @@ export const DifferentElevation: StoryFn<typeof Surface> = () => (
     {(['none', 'xs', 'sm', 'md', 'lg', 'xl'] as const).map((shadow) => (
       <Surface
         key={shadow}
-        level={1}
         spacing="sm"
         shadow={shadow as SurfaceVariants['shadow']}
       >
@@ -116,12 +147,7 @@ export const AsDifferentElements: StoryFn<typeof Surface> = () => (
   <div className="space-y-4">
     {['div', 'section', 'article', 'main', 'header', 'footer'].map(
       (element) => (
-        <Surface
-          key={element}
-          as={element as ElementType}
-          level={1}
-          spacing="md"
-        >
+        <Surface key={element} as={element as ElementType} spacing="md">
           Surface as &lt;{element}&gt; element
         </Surface>
       ),
@@ -131,7 +157,7 @@ export const AsDifferentElements: StoryFn<typeof Surface> = () => (
 
 // Surface with Additional Class Names
 export const WithAdditionalClassName: StoryFn<typeof Surface> = () => (
-  <Surface level={1} spacing="md" className="border-destructive border-2">
+  <Surface spacing="md" className="border-destructive border-2">
     Surface with additional border classes
   </Surface>
 );
@@ -139,7 +165,6 @@ export const WithAdditionalClassName: StoryFn<typeof Surface> = () => (
 // MotionSurface Story with Animation
 export const MotionSurfaceExample: StoryFn<typeof Surface> = () => (
   <MotionSurface
-    level={2}
     spacing="lg"
     initial={{ opacity: 0, y: -50 }}
     animate={{ opacity: 1, y: 0 }}
@@ -147,29 +172,4 @@ export const MotionSurfaceExample: StoryFn<typeof Surface> = () => (
   >
     Animated MotionSurface Component
   </MotionSurface>
-);
-
-// **New Story: Nested Surfaces**
-export const NestedSurfaces: StoryFn<typeof Surface> = () => (
-  <div className="bg-background text-text @container p-10">
-    Background
-    <Button color="default">Default Button</Button>
-    <Surface level={0} className="mt-4 flex flex-col space-y-4">
-      This is Surface Level 0<Button color="default">Default Button</Button>
-      <Surface level={1} className="mt-4 flex flex-col space-y-4">
-        This is Surface Level 1<Button color="default">Default Button</Button>
-        <Surface level={2} className="mt-4 flex flex-col space-y-4">
-          This is Surface Level 2<Button color="default">Default Button</Button>
-          <Surface level={3} className="mt-4 flex flex-col space-y-4">
-            This is Surface Level 3
-            <Button color="default">Default Button</Button>
-            <Surface level="popover" className="mt-4 flex flex-col space-y-4">
-              This is Surface Level Popover
-              <Button color="default">Default Button</Button>
-            </Surface>
-          </Surface>
-        </Surface>
-      </Surface>
-    </Surface>
-  </div>
 );

@@ -84,7 +84,7 @@ export default function ScaleValuePopover({
               <div
                 className={cx(
                   surfaceVariants({
-                    level: 'popover',
+                    floating: true,
                     shadow: 'sm',
                     spacing: 'none',
                   }),
