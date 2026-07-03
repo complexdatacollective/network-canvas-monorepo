@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   decryptAssetData,
@@ -8,7 +8,6 @@ import {
   encryptAssetData,
   encryptJson,
   generateDek,
-  PBKDF2_ITERATIONS,
   PBKDF2_SALT_BYTES,
   toBase64,
   unwrapDek,
@@ -42,9 +41,13 @@ describe('deriveKekFromPassword', () => {
     await expect(unwrapDek(wrapped, wrongKek)).rejects.toThrow();
   });
 
-  it('uses the standard PBKDF2 constants', () => {
-    expect(PBKDF2_ITERATIONS).toBe(600_000);
-    expect(PBKDF2_SALT_BYTES).toBe(32);
+  it('uses the standard PBKDF2 constants', async () => {
+    // The test setup mocks PBKDF2_ITERATIONS down for speed; this pin checks
+    // the REAL production constant, so read the unmocked module.
+    const actual =
+      await vi.importActual<typeof import('../crypto')>('../crypto');
+    expect(actual.PBKDF2_ITERATIONS).toBe(600_000);
+    expect(actual.PBKDF2_SALT_BYTES).toBe(32);
   });
 });
 

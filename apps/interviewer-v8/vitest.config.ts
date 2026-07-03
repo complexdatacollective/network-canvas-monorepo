@@ -40,13 +40,6 @@ export default defineConfig({
         test: {
           name: 'unit',
           environment: 'jsdom',
-          // The vault tests run real PBKDF2 (600k iterations, several
-          // derivations per test) and the auth UI tests type long secrets
-          // keystroke-by-keystroke — both blow the 5s default on loaded CI
-          // runners (and a timed-out test's un-cancellable typing then bleeds
-          // into the next test's focused field). Locally everything finishes
-          // in milliseconds; this is headroom, not a slowdown.
-          testTimeout: 30_000,
           setupFiles: ['./src/test-setup.ts'],
           include: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**/*.{ts,tsx}'],
           exclude: [

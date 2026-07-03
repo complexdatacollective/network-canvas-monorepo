@@ -1,11 +1,19 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, configure } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { cleanup } from '@testing-library/react';
+import { afterEach, vi } from 'vitest';
 
-// waitFor/findBy default to 1s, which real PBKDF2 (600k iterations) blows
-// past on loaded CI runners. Tests still resolve as soon as the condition
-// holds — this is headroom, not a slowdown.
-configure({ asyncUtilTimeout: 10_000 });
+// PBKDF2 at the production 600,000 iterations dominates unit-test time and,
+// across parallel vitest workers, saturates CI cores so badly that even
+// unrelated tests time out. The vault stores kdfIterations per record and
+// unlocks with the stored value, so a tiny count exercises the identical
+// WebCrypto path — wrap/unwrap round-trips and wrong-secret AES-KW integrity
+// failures behave exactly the same. Only the constant is replaced; every
+// function stays real. The production value itself remains pinned by
+// cryptoRecords.test.ts against the unmocked module via vi.importActual.
+vi.mock('~/lib/vault/crypto', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/lib/vault/crypto')>()),
+  PBKDF2_ITERATIONS: 10,
+}));
 
 afterEach(() => {
   cleanup();
