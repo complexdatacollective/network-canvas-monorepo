@@ -80,6 +80,9 @@ CLI version:
    `deploy-architect-prod` / `deploy-interviewer-v8-prod` jobs are **removed**; PR
    preview deploys are kept. Production updates only when a Release apps PR merges.
 6. **Documentation is a first-class deliverable** and takes precedence (per user).
+7. **A project skill (`creating-a-changeset`)** guides contributors through
+   authoring the correct changeset — right lane, bump type, no-mixing — when
+   preparing a PR.
 
 ## Design
 
@@ -174,10 +177,42 @@ New job, runs on **push to `main`** (`fetch-depth: 2`):
   no-mixed-changesets rule, and the `-beta.N` / human-controlled-base scheme.
 - **Note** the app lane in `.changeset/README.md`.
 
+### Part G — Contributor skill: `creating-a-changeset`
+
+New project skill at `.claude/skills/creating-a-changeset/SKILL.md`, matching the
+repo's existing project-skill format (`name`/`description` frontmatter + concise,
+trigger-oriented body). Its `description` fires when finishing a change and
+preparing to open a PR ("do I need a changeset", "before opening a pull request",
+"release notes"). It guides the author through:
+
+1. **Whether a changeset is needed.** Consumer-/participant-visible change to a
+   published package or an app → yes. Docs-only, test-only, CI/tooling-only, or an
+   internal refactor with no consumer-visible effect → usually no (state this
+   explicitly so contributors don't add empty noise).
+2. **Pick the lane — never mix:**
+   - **Library packages** (`packages/*`, published) → `pnpm changeset`, choose the
+     package(s); bump type = real semver impact on consumers; ships via the
+     "Version Packages" PR to npm.
+   - **Apps** (`@codaco/architect-web`, `@codaco/interviewer-v8`) → `pnpm
+changeset`, choose the app; bump type only **categorises** the notes (base is
+     fixed, `-beta.N` auto-increments); ships via the "Release apps" PR to Netlify
+     production + a GitHub release.
+   - **Hard rule:** a single changeset must not list an app _and_ a library — CI
+     (Part B) rejects it. Write two separate changesets. The skill is the
+     front-line way authors avoid that error before CI catches it.
+3. **Write the summary as reader-facing release notes** — it becomes the
+   changelog / GitHub release text; app-facing entries follow the repo's
+   participant-appropriate tone (see `developing-in-network-canvas`).
+4. **Commit the `.changeset/*.md`** with the PR.
+
+Cross-references `developing-in-network-canvas` and complements the Part B
+isolation guard.
+
 ## Contributor & release flow (end to end)
 
-1. Contributor changes an app, runs `pnpm changeset`, selects the app, writes the
-   summary. (Library changes get their own separate changeset as today.)
+1. Contributor changes an app; the `creating-a-changeset` skill guides them to run
+   `pnpm changeset`, select the app, and write the summary. (Library changes get
+   their own separate changeset as today.)
 2. On merge to `main`, the bot opens/updates the **Release apps** PR showing
    `…-beta.N → …-beta.(N+1)` and the accumulated notes.
 3. When ready to release, a maintainer **merges the Release apps PR**. That merge:
@@ -209,3 +244,8 @@ New job, runs on **push to `main`** (`fetch-depth: 2`):
   version script handles this without double-processing.
 - **Netlify prerequisite:** `NETLIFY_SITE_ID_INTERVIEWER` must be set (see
   `apps/interviewer-v8/RELEASING.md`); `NETLIFY_SITE_ID_ARCHITECT` already exists.
+- **Skill scope (guidance, not enforcement):** `creating-a-changeset` guides an
+  agent (Claude) preparing a PR; it does not enforce anything for a human opening
+  a PR directly on GitHub. If enforcement across _all_ PRs is wanted, that's a
+  separate CI addition (the changesets bot, or a "PR touches a releasable package
+  but has no changeset" check) — out of scope unless requested.
