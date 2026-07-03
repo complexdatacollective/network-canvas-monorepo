@@ -7,7 +7,7 @@ import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { AuthMode } from '~/lib/auth/api';
+import type { AuthMode, AuthResult } from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
 
 import { BiometricLockBody } from './UnlockForms/BiometricLockBody';
@@ -20,7 +20,7 @@ const LOCK_TITLE = 'Welcome back';
 function PinLockBody({
   verifyPin,
 }: {
-  verifyPin: (pin: string) => Promise<{ ok: boolean; message?: string }>;
+  verifyPin: (pin: string) => Promise<AuthResult>;
 }) {
   const formId = useId();
 
@@ -96,14 +96,10 @@ export function LockScreenView({
   unlockWithRecovery,
 }: {
   mode: AuthMode | undefined;
-  unlockWithPin: (pin: string) => Promise<{ ok: boolean; message?: string }>;
-  unlockWithPassphrase: (
-    phrase: string,
-  ) => Promise<{ ok: boolean; message?: string }>;
-  unlockWithBiometric: () => Promise<{ ok: boolean; message?: string }>;
-  unlockWithRecovery: (
-    phrase: string,
-  ) => Promise<{ ok: boolean; message?: string }>;
+  unlockWithPin: (pin: string) => Promise<AuthResult>;
+  unlockWithPassphrase: (phrase: string) => Promise<AuthResult>;
+  unlockWithBiometric: () => Promise<AuthResult>;
+  unlockWithRecovery: (phrase: string) => Promise<AuthResult>;
 }) {
   switch (mode) {
     case 'biometric':

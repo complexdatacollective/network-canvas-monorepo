@@ -15,7 +15,7 @@ import { UnlockEmblem } from '~/components/UnlockForms/UnlockEmblem';
 import { hasPasskeyWindowLimitation } from '~/lib/pwa/passkeyWindowLimitation';
 
 import * as authApi from './api';
-import type { AuthMode } from './api';
+import type { AuthMode, AuthResult } from './api';
 import { useAuth } from './AuthContext';
 
 export type StepUpResult = { ok: true } | { ok: false; reason: 'cancelled' };
@@ -34,7 +34,7 @@ function PinStepUp({
   open: boolean;
   onResolve: (result: StepUpResult) => void;
   handleCancel: () => void;
-  verifyWithPin: (pin: string) => Promise<{ ok: boolean; message?: string }>;
+  verifyWithPin: (pin: string) => Promise<AuthResult>;
 }) {
   const formId = useId();
 
@@ -78,9 +78,7 @@ function PassphraseStepUp({
   open: boolean;
   onResolve: (result: StepUpResult) => void;
   handleCancel: () => void;
-  verifyWithPassphrase: (
-    phrase: string,
-  ) => Promise<{ ok: boolean; message?: string }>;
+  verifyWithPassphrase: (phrase: string) => Promise<AuthResult>;
 }) {
   const formId = useId();
 
@@ -136,10 +134,8 @@ function BiometricStepUp({
   open: boolean;
   onResolve: (result: StepUpResult) => void;
   handleCancel: () => void;
-  verifyBiometric: () => Promise<{ ok: boolean; message?: string }>;
-  verifyWithRecovery: (
-    phrase: string,
-  ) => Promise<{ ok: boolean; message?: string }>;
+  verifyBiometric: () => Promise<AuthResult>;
+  verifyWithRecovery: (phrase: string) => Promise<AuthResult>;
   limited: boolean;
 }) {
   // Installed-PWA windows on macOS Chromium can't reach the enrolled passkey
@@ -249,14 +245,10 @@ export function StepUpAuthDialogView({
   open: boolean;
   onResolve: (result: StepUpResult) => void;
   onCancel: () => void;
-  verifyWithPin: (pin: string) => Promise<{ ok: boolean; message?: string }>;
-  verifyWithPassphrase: (
-    phrase: string,
-  ) => Promise<{ ok: boolean; message?: string }>;
-  verifyBiometric: () => Promise<{ ok: boolean; message?: string }>;
-  verifyWithRecovery: (
-    phrase: string,
-  ) => Promise<{ ok: boolean; message?: string }>;
+  verifyWithPin: (pin: string) => Promise<AuthResult>;
+  verifyWithPassphrase: (phrase: string) => Promise<AuthResult>;
+  verifyBiometric: () => Promise<AuthResult>;
+  verifyWithRecovery: (phrase: string) => Promise<AuthResult>;
   limited?: boolean;
 }) {
   if (mode === 'biometric')

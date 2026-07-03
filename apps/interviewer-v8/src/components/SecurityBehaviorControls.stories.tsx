@@ -30,7 +30,7 @@ const meta: Meta<StoryArgs> = {
   render: ({ disabled, ...initial }) => {
     const [value, setValue] = useState<Behavior>(initial);
     return (
-      <div className="max-w-xl">
+      <div className="max-w-xl" key={JSON.stringify(initial)}>
         <SecurityBehaviorControls
           value={value}
           onChange={setValue}

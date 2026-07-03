@@ -608,4 +608,3 @@ git commit -m "chore(fresco-ui): verification fixes for SegmentedSwitcher"
 **Placeholder scan:** no TBD/vague steps. The one read-first step (Task 2 Step 1, mirror the sibling story) and the grep in Task 3 Step 3 are explicit actions. Types/signatures are concrete.
 
 **Type consistency:** `SegmentedOption<T>`/`SegmentedSwitcher<T>` props identical across Tasks 1–4; `ChipFilter` (`'all'|'in-progress'|'complete'`) and `View` (`'protocols'|'data'`) reused from the real sources; `bg-primary`/`text-primary-contrast` indicator consistent; the `chipFilter ?? 'all'` fallback matches the switcher's always-one-value contract.
-</content>

@@ -153,5 +153,3 @@ and defer a component only when it is pure orchestration (below).
   container path is unchanged (the wizard/app already provides the store).
 - **knip false positive on a view export.** Low risk given the existing stories pass; a knip run after
   the export changes confirms.
-  </content>
-  </invoke>

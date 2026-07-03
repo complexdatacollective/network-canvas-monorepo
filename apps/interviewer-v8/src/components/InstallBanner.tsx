@@ -115,10 +115,12 @@ export function InstallBanner() {
     setDismissed(true);
   };
 
+  const canPromptInstall = deferredPrompt !== null;
+
   return (
     <InstallBannerView
-      message={bannerMessage(deferredPrompt !== null)}
-      canPromptInstall={deferredPrompt !== null}
+      message={bannerMessage(canPromptInstall)}
+      canPromptInstall={canPromptInstall}
       onInstall={() => void promptInstall()}
       onDismiss={dismiss}
     />

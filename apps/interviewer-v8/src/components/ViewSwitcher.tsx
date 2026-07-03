@@ -29,7 +29,7 @@ function activeView(location: string): View {
 }
 
 export function ViewSwitcher() {
-  const [location, navigate] = useLocation();
+  const [location] = useLocation();
   const value = activeView(location);
 
   return (
@@ -37,7 +37,9 @@ export function ViewSwitcher() {
       aria-label="Home view"
       size="lg"
       value={value}
-      onValueChange={(next) => navigate(HREF[next])}
+      onValueChange={() => {
+        /* Navigation is handled by each segment's <Link href>; navigating here too would double-push the history stack. */
+      }}
       options={OPTIONS}
     />
   );

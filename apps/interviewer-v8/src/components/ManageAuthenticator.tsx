@@ -11,6 +11,7 @@ import { useToast } from '@codaco/fresco-ui/Toast';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { SettingsRow } from '~/components/SettingsRow';
+import type { AuthResult } from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
 
 const MODE_LABEL: Record<string, string> = {
@@ -22,15 +23,14 @@ const MODE_LABEL: Record<string, string> = {
 
 const PIN_PATTERN = /^\d{8}$/;
 
+type ReEnrolHandler = (current: string, next: string) => Promise<AuthResult>;
+
 export function ChangePinForm({
   onReEnrol,
   onSuccess,
   onCancel,
 }: {
-  onReEnrol: (
-    current: string,
-    next: string,
-  ) => Promise<{ ok: boolean; message?: string }>;
+  onReEnrol: ReEnrolHandler;
   onSuccess: () => void;
   onCancel: () => void;
 }) {
@@ -128,10 +128,7 @@ export function ChangePassphraseForm({
   onSuccess,
   onCancel,
 }: {
-  onReEnrol: (
-    current: string,
-    next: string,
-  ) => Promise<{ ok: boolean; message?: string }>;
+  onReEnrol: ReEnrolHandler;
   onSuccess: () => void;
   onCancel: () => void;
 }) {

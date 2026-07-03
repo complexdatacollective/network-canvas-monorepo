@@ -125,7 +125,11 @@ export function ResumePill({ sessions }: ResumePillProps) {
   if (!inProgress) return null;
 
   const handleResume = async (sessionId: string) => {
-    await updateSettings({ lastActiveSessionId: sessionId });
+    try {
+      await updateSettings({ lastActiveSessionId: sessionId });
+    } catch {
+      // Persisting the last-active id is best-effort; resume regardless.
+    }
     navigate(`/interview/${sessionId}`);
   };
 

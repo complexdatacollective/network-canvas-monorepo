@@ -23,6 +23,32 @@ describe('LockScreenView', () => {
     expect(screen.getByText('Welcome back')).toBeInTheDocument();
   });
 
+  it('renders the passphrase unlock body for mode="passphrase"', () => {
+    render(
+      <LockScreenView
+        mode="passphrase"
+        unlockWithPin={noop}
+        unlockWithPassphrase={noop}
+        unlockWithBiometric={noop}
+        unlockWithRecovery={noop}
+      />,
+    );
+    expect(screen.getByText('Welcome back')).toBeInTheDocument();
+  });
+
+  it('renders the biometric unlock body for mode="biometric"', () => {
+    render(
+      <LockScreenView
+        mode="biometric"
+        unlockWithPin={noop}
+        unlockWithPassphrase={noop}
+        unlockWithBiometric={noop}
+        unlockWithRecovery={noop}
+      />,
+    );
+    expect(screen.getByText('Welcome back')).toBeInTheDocument();
+  });
+
   it('renders nothing for mode="none"', () => {
     const { container } = render(
       <LockScreenView

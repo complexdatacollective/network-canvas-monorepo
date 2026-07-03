@@ -1950,4 +1950,3 @@ git commit -m "chore(interviewer-v8): typecheck/knip fixes for storybook stories
 **Placeholder scan:** no "TBD/TODO/handle edge cases". The two honest read-first steps (Task 8 Step 1 `mode` type; Part B "open the component") are explicit actions, not vague code — Part B components' exact props are intentionally read at execution time rather than guessed.
 
 **Type consistency:** the `{ ok: boolean; message?: string }` result shape and `verify*`/`unlockWith*`/`onReEnrol` signatures match across Tasks 3/4/7/8/9/14; `Behavior` (Task 6) matches the source; `WizardSelectedMethod` (Task 10) imported from `SetupWizardDialog`; `StepUpResult` (Task 9) matches the source.
-</content>

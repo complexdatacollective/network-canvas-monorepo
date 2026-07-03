@@ -14,6 +14,10 @@ type StoryArgs = {
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const result = (o: Outcome, msg: string) =>
   o === 'success' ? { ok: true } : { ok: false, message: msg };
+const makeVerify = (outcome: Outcome, msg: string) => async () => {
+  await wait(120);
+  return result(outcome, msg);
+};
 
 const meta: Meta<StoryArgs> = {
   title: 'Auth/StepUpAuthDialog',
@@ -34,22 +38,10 @@ const meta: Meta<StoryArgs> = {
       limited={limited}
       onResolve={() => {}}
       onCancel={() => {}}
-      verifyWithPin={async () => (
-        await wait(120),
-        result(outcome, 'Incorrect PIN.')
-      )}
-      verifyWithPassphrase={async () => (
-        await wait(120),
-        result(outcome, 'Incorrect passphrase.')
-      )}
-      verifyBiometric={async () => (
-        await wait(120),
-        result(outcome, 'Verification failed.')
-      )}
-      verifyWithRecovery={async () => (
-        await wait(120),
-        result(outcome, 'Incorrect passphrase.')
-      )}
+      verifyWithPin={makeVerify(outcome, 'Incorrect PIN.')}
+      verifyWithPassphrase={makeVerify(outcome, 'Incorrect passphrase.')}
+      verifyBiometric={makeVerify(outcome, 'Verification failed.')}
+      verifyWithRecovery={makeVerify(outcome, 'Incorrect passphrase.')}
     />
   ),
 };
