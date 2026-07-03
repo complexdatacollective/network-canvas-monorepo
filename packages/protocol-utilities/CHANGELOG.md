@@ -1,5 +1,89 @@
 # @codaco/protocol-utilities
 
+## 2.1.0
+
+### Minor Changes
+
+- 37006d0: Refine the Architect stage editors for the Family Pedigree and Narrative Pedigree interfaces.
+
+  **Family Pedigree editor**
+  - The fixed-framing selector is now a styled select, and the framing section explains what the gamete-based and gendered framings mean in neutral, non-normative terms.
+  - Boundary options no longer use "family tree" (always "family pedigree"), explain what off/recommended/required do, and rename "Require Children Contributors" to "Require Co-Parents' Families". Both boundary fields are now required in the editor so a missing value surfaces as a named issue rather than a raw schema error.
+  - Fixed a bug where changing the node type cleared the stage-level `framing`, `boundaries`, and `introScreen`, producing a schema error on finish. A seam test now guards the preserve-list against the schema's required fields.
+  - The intro screen is now built on the Information content-item model — reorderable text and asset sections instead of a single title/text/video block. The `introScreen` schema field changes from `{ title?, text, videoAssetId? }` to `{ items }`, and the Information item renderer is extracted to a shared `ContentItem` component reused by the pedigree intro step. The intro-screen title field is removed.
+  - Node and edge configuration panels split their columns evenly (50% variable column), give variable pills a white background, and edge-type items render on a darker surface to stand out from the panel. Edge configuration explains why the interface needs an edge type, and the gamete-role variable now uses predefined read-only egg/sperm options (shared via `GAMETE_ROLE_OPTIONS` in `@codaco/shared-consts`) in the same way as relationship type.
+  - Nomination prompts show an empty-state message when no prompts exist yet.
+
+  **Narrative Pedigree editor**
+  - Corrected the new-stage dialog tags: Narrative Pedigree (read-only) is tagged Display Data only; Family Pedigree gains Capture Edge Attributes.
+  - The At-Risk Statuses explanation moves from the section side column into the main column and is formatted with subheadings and lists.
+
+- fd2a7e2: Family Pedigree redesign (three features):
+  - **Configurable FamilyPedigree framing** — swappable parent terminology (gamete-based "Egg/Sperm Parent" vs gendered "Mother/Father"), either researcher-fixed or participant-chosen; an optional video+text intro step; and two author-set boundary rules (require grandparents; require children's genetic contributors). Persists `gameteRole` as a network edge variable and captures biological sex for non-parent people.
+  - **Interface fixes** — "Add sibling" is now always discoverable (rendered disabled with an inline hint when it cannot apply, keeping the shared-parent rule), plus first-cousin representation/creation demonstration stories.
+  - **Narrative Pedigree** — a new read-only interface that renders a captured pedigree, computes faithful Mendelian carrier/at-risk status per disease (autosomal dominant/recessive, X-linked recessive/dominant, Y-linked, mitochondrial, multifactorial), highlights a focal node's affected genetic lineage under participant-switchable presets, renders status as edge stickers or classic pedigree notation, and exports a PNG snapshot.
+
+### Patch Changes
+
+- a171f96: Unify the Sociogram and Narrative stage behaviours into a single shared schema, and flatten the `automaticLayout` behaviour to a plain boolean (was `{ enabled }`). The Narrative interface gains a configurable `automaticLayout` behaviour (a force-directed layout that positions nodes). It is only active when explicitly enabled, so existing protocols keep their hand-authored static layouts; new Narrative stages created in Architect enable it by default. The v7→v8 migration flattens any existing Sociogram `automaticLayout` value.
+- 0f577dd: Add the **Network Composer** stage type — a free-form, single-screen, promptless
+  canvas for building a whole personal network in one place (create nodes, draw
+  multiple edge types, capture node and edge attributes, group nodes into convex
+  hulls, reposition, and delete, with undo/redo and lasso selection).
+  - `@codaco/protocol-validation`: a new additive schema-8 `NetworkComposer` stage
+    (no version bump, no migration) with cross-reference validation of its
+    `quickAdd` / `layoutVariable` / `nodeForm` / per-edge-type form references, and
+    a `superRefine` check rejecting duplicate edge subject types (edge types and
+    node attributes are both optional). Automatic layout uses the shared flat
+    `behaviours.automaticLayout` boolean (as the Sociogram and Narrative do); for
+    NetworkComposer it is only the starting default. An optional
+    `convexHullVariable` names a single categorical node variable whose values are
+    drawn as convex-hull groups.
+  - `@codaco/interview`: the `NetworkComposer` runtime interface, reusing the shared
+    canvas, edge layer, and force-directed auto-layout engine. Nodes are added by
+    name from a field in the tool palette and laid out on a grid; in edge mode the
+    first node tapped enters a linking state and the edge tool adopts that edge
+    type's colour. Selecting a node or edge opens a resizable, backdrop-less
+    right-hand drawer that leaves the canvas interactive; it edits the entity's
+    attribute form (saving valid edits automatically, with no Save button) or shows
+    an empty state when there is nothing to edit. When a `convexHullVariable` is
+    configured its hulls are always drawn (reusing the Narrative hull layer), and
+    group membership feeds the layout's group-cohesion force so same-group nodes
+    cluster under automatic layout. Nodes are grouped with the Groups tool (pick a
+    group in its popover, tap nodes to toggle membership) or by lasso-selecting in
+    select mode and choosing which group to add the selection to. Automatic layout
+    is an interview-time toggle whose live value is persisted in stage metadata, so
+    the participant's choice sticks across navigation; Architect only sets its
+    default.
+  - `@codaco/shared-consts`: a `NetworkComposer` stage-metadata shape storing the
+    participant's automatic-layout choice.
+  - `@codaco/fresco-ui`: the `SegmentedToolbar` gains a `menu` segment (a button
+    that opens a single-select menu) and a `popover` segment (a pressed-able button
+    that anchors arbitrary popover content), and a vertical toolbar now opens its
+    tooltips, menus, and popovers to the right (into the canvas); `Popover` accepts
+    a `side` prop.
+  - `@codaco/interview`: the NetworkComposer tool palette is built from the shared
+    `SegmentedToolbar` — a Select tool, an Add-node button whose popover holds the
+    name field, an edge tool that opens a menu of edge types, an automatic-layout
+    toggle, and undo/redo.
+
+- 9e603c5: Source `StageType` from `@codaco/protocol-validation` (the schema's canonical,
+  `z.infer`-derived union) instead of a hand-maintained copy, which had already
+  drifted from the schema. The duplicated union — previously re-exported
+  incidentally via the package barrel — is removed; import `StageType` from
+  `@codaco/protocol-validation` instead.
+- Updated dependencies [38aff29]
+- Updated dependencies [37006d0]
+- Updated dependencies [fd2a7e2]
+- Updated dependencies [a171f96]
+- Updated dependencies [3218905]
+- Updated dependencies [0f577dd]
+- Updated dependencies [7970d1f]
+- Updated dependencies [c56b75a]
+  - @codaco/protocol-validation@11.8.0
+  - @codaco/shared-consts@5.4.0
+  - @codaco/network-query@1.1.1
+
 ## 2.0.0
 
 ### Major Changes

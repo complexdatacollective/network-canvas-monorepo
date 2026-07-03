@@ -1,5 +1,11 @@
 # @codaco/tailwind-config
 
+## 1.0.2
+
+### Patch Changes
+
+- 8ed4c07: Interview theme: define `--selected-contrast` (the foreground colour for the white `--selected` fill). Previously it inherited the default theme's value (`--accent-contrast`, white in the interview palette), so selected text/icons rendered white-on-white and were invisible.
+
 ## 1.0.1
 
 ### Patch Changes
