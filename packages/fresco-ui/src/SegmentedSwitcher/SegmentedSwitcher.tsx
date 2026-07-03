@@ -63,6 +63,7 @@ export default function SegmentedSwitcher<T extends string>({
     <ToggleGroup
       aria-label={ariaLabel}
       value={[value]}
+      multiple={false}
       onValueChange={(next) => {
         const first = next[0];
         // No-deselect: ignore a change that would leave nothing selected.
