@@ -50,6 +50,42 @@ export default function Step2MethodPicker() {
       ? biometric.reason
       : `Use Face ID, Touch ID, Windows Hello, or another biometric sensor on this device.${macInstallCaveat}`;
 
+  return (
+    <Step2MethodPickerView
+      value={selectedMethod}
+      onChange={(value) => {
+        if (value === 'none') {
+          void confirm({
+            title: 'Continue without security?',
+            description:
+              'Your data will not be protected by an app lock or encryption managed by this app. Anyone with access to this device may be able to view collected data.',
+            confirmLabel: 'Continue without security',
+            intent: 'warning',
+            onConfirm: () => {
+              setStepData({ selectedMethod: 'none' });
+            },
+          });
+          return;
+        }
+        setStepData({ selectedMethod: value });
+      }}
+      biometricDisabled={biometricDisabled}
+      biometricDescription={biometricDescription}
+    />
+  );
+}
+
+export function Step2MethodPickerView({
+  value,
+  onChange,
+  biometricDisabled,
+  biometricDescription,
+}: {
+  value: WizardSelectedMethod | null;
+  onChange: (value: WizardSelectedMethod) => void;
+  biometricDisabled: boolean;
+  biometricDescription: string;
+}) {
   const options = [
     {
       value: 'biometric' as const,
@@ -77,27 +113,12 @@ export default function Step2MethodPicker() {
         'Skip app security. Your data will not be protected by the app.',
     },
   ];
-
   return (
     <RichSelectGroupField
       options={options}
-      value={selectedMethod ?? undefined}
-      onChange={(value) => {
-        if (!isWizardSelectedMethod(value)) return;
-        if (value === 'none') {
-          void confirm({
-            title: 'Continue without security?',
-            description:
-              'Your data will not be protected by an app lock or encryption managed by this app. Anyone with access to this device may be able to view collected data.',
-            confirmLabel: 'Continue without security',
-            intent: 'warning',
-            onConfirm: () => {
-              setStepData({ selectedMethod: 'none' });
-            },
-          });
-          return;
-        }
-        setStepData({ selectedMethod: value });
+      value={value ?? undefined}
+      onChange={(v) => {
+        if (isWizardSelectedMethod(v)) onChange(v);
       }}
       orientation="vertical"
       size="md"

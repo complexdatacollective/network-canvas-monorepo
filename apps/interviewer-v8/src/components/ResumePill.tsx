@@ -44,40 +44,23 @@ const contentPanelVariants = {
   },
 } as const;
 
-type ResumePillProps = {
-  sessions: StoredSessionLite[];
-};
-
-// No inner AnimatePresence — the outer AnimatePresence in Home owns the
-// presence tracking. If we nest one here, the motion.button's closest
-// AnimatePresence becomes the inner one, which still reports
-// `isPresent: true` while the outer is trying to exit. That swallowed
-// the exit animation on view → data.
-export function ResumePill({ sessions }: ResumePillProps) {
-  const [, navigate] = useLocation();
-
-  const inProgress = useMemo(() => {
-    return sessions
-      .filter((s) => s.finishedAt === null)
-      .toSorted(
-        (a, b) =>
-          new Date(b.lastUpdatedAt).getTime() -
-          new Date(a.lastUpdatedAt).getTime(),
-      )[0];
-  }, [sessions]);
-
-  if (!inProgress) return null;
-
-  const handleResume = async (sessionId: string) => {
-    await updateSettings({ lastActiveSessionId: sessionId });
-    navigate(`/interview/${sessionId}`);
-  };
-
+// Pure presentation: the pill for a single in-progress session. No inner
+// AnimatePresence — the outer AnimatePresence in Home owns the presence
+// tracking. If we nest one here, the motion.button's closest AnimatePresence
+// becomes the inner one, which still reports `isPresent: true` while the
+// outer is trying to exit. That swallowed the exit animation on view → data.
+export function ResumePillView({
+  session,
+  onResume,
+}: {
+  session: StoredSessionLite;
+  onResume: () => void;
+}) {
   return (
     <motion.button
       key="resume-pill-button"
       type="button"
-      onClick={() => void handleResume(inProgress.id)}
+      onClick={onResume}
       variants={pillVariants}
       initial="hidden"
       animate="visible"
@@ -108,7 +91,7 @@ export function ResumePill({ sessions }: ResumePillProps) {
             Resume last interview
           </div>
           <div className="font-heading max-w-xs overflow-hidden text-sm font-extrabold text-ellipsis">
-            {inProgress.protocolName} – {inProgress.caseId || 'Untitled'}
+            {session.protocolName} – {session.caseId || 'Untitled'}
           </div>
         </div>
         <div
@@ -119,5 +102,41 @@ export function ResumePill({ sessions }: ResumePillProps) {
         </div>
       </motion.div>
     </motion.button>
+  );
+}
+
+type ResumePillProps = {
+  sessions: StoredSessionLite[];
+};
+
+export function ResumePill({ sessions }: ResumePillProps) {
+  const [, navigate] = useLocation();
+
+  const inProgress = useMemo(() => {
+    return sessions
+      .filter((s) => s.finishedAt === null)
+      .toSorted(
+        (a, b) =>
+          new Date(b.lastUpdatedAt).getTime() -
+          new Date(a.lastUpdatedAt).getTime(),
+      )[0];
+  }, [sessions]);
+
+  if (!inProgress) return null;
+
+  const handleResume = async (sessionId: string) => {
+    try {
+      await updateSettings({ lastActiveSessionId: sessionId });
+    } catch {
+      // Persisting the last-active id is best-effort; resume regardless.
+    }
+    navigate(`/interview/${sessionId}`);
+  };
+
+  return (
+    <ResumePillView
+      session={inProgress}
+      onResume={() => void handleResume(inProgress.id)}
+    />
   );
 }

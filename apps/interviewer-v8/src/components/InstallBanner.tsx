@@ -56,6 +56,38 @@ const bannerMessage = (canPromptInstall: boolean): string => {
     : 'Safari deletes data stored by a browser tab after about 7 days without use. To keep interview data safe, install Interviewer: choose Share → Add to Home Screen.';
 };
 
+// Pure presentation: a quiet full-width strip urging install, with an
+// optional one-tap Install action when the browser offered a deferred
+// prompt. It exists for data safety, not convenience — browsers can evict
+// a website's stored data, while installed apps are exempt.
+export function InstallBannerView({
+  message,
+  canPromptInstall,
+  onInstall,
+  onDismiss,
+}: {
+  message: string;
+  canPromptInstall: boolean;
+  onInstall: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <aside
+      aria-label="Install Interviewer"
+      className="bg-surface-1 text-surface-1-contrast border-outline/40 flex w-full items-center gap-3 border-b px-6 py-2 text-sm"
+    >
+      <MonitorDown className="text-warning size-4 shrink-0" aria-hidden />
+      <p className="m-0 flex-1">{message}</p>
+      {canPromptInstall && (
+        <Button color="primary" size="sm" onClick={onInstall}>
+          Install
+        </Button>
+      )}
+      <CloseButton size="sm" onClick={onDismiss} />
+    </aside>
+  );
+}
+
 // A quiet full-width strip at the top of the dashboard whenever the app is
 // running in a browser tab rather than as an installed app. It exists for
 // data safety, not convenience: browsers can evict a website's stored data,
@@ -83,19 +115,14 @@ export function InstallBanner() {
     setDismissed(true);
   };
 
+  const canPromptInstall = deferredPrompt !== null;
+
   return (
-    <aside
-      aria-label="Install Interviewer"
-      className="bg-surface-1 text-surface-1-contrast border-outline/40 flex w-full items-center gap-3 border-b px-6 py-2 text-sm"
-    >
-      <MonitorDown className="text-warning size-4 shrink-0" aria-hidden />
-      <p className="m-0 flex-1">{bannerMessage(deferredPrompt !== null)}</p>
-      {deferredPrompt !== null && (
-        <Button color="primary" size="sm" onClick={() => void promptInstall()}>
-          Install
-        </Button>
-      )}
-      <CloseButton size="sm" onClick={dismiss} />
-    </aside>
+    <InstallBannerView
+      message={bannerMessage(canPromptInstall)}
+      canPromptInstall={canPromptInstall}
+      onInstall={() => void promptInstall()}
+      onDismiss={dismiss}
+    />
   );
 }

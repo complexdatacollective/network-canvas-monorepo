@@ -5,7 +5,63 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const useAuthMock = vi.fn();
 vi.mock('~/lib/auth/AuthContext', () => ({ useAuth: () => useAuthMock() }));
 
-import { LockScreen } from '../LockScreen';
+import { LockScreen, LockScreenView } from '../LockScreen';
+
+const noop = vi.fn(async () => ({ ok: true }));
+
+describe('LockScreenView', () => {
+  it('renders the PIN unlock body for mode="pin"', () => {
+    render(
+      <LockScreenView
+        mode="pin"
+        unlockWithPin={noop}
+        unlockWithPassphrase={noop}
+        unlockWithBiometric={noop}
+        unlockWithRecovery={noop}
+      />,
+    );
+    expect(screen.getByText('Welcome back')).toBeInTheDocument();
+  });
+
+  it('renders the passphrase unlock body for mode="passphrase"', () => {
+    render(
+      <LockScreenView
+        mode="passphrase"
+        unlockWithPin={noop}
+        unlockWithPassphrase={noop}
+        unlockWithBiometric={noop}
+        unlockWithRecovery={noop}
+      />,
+    );
+    expect(screen.getByText('Welcome back')).toBeInTheDocument();
+  });
+
+  it('renders the biometric unlock body for mode="biometric"', () => {
+    render(
+      <LockScreenView
+        mode="biometric"
+        unlockWithPin={noop}
+        unlockWithPassphrase={noop}
+        unlockWithBiometric={noop}
+        unlockWithRecovery={noop}
+      />,
+    );
+    expect(screen.getByText('Welcome back')).toBeInTheDocument();
+  });
+
+  it('renders nothing for mode="none"', () => {
+    const { container } = render(
+      <LockScreenView
+        mode="none"
+        unlockWithPin={noop}
+        unlockWithPassphrase={noop}
+        unlockWithBiometric={noop}
+        unlockWithRecovery={noop}
+      />,
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+});
 
 const base = {
   kind: 'locked' as const,

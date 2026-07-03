@@ -56,6 +56,10 @@
       "types": "./dist/ScrollArea.d.ts",
       "default": "./dist/ScrollArea.js"
     },
+    "./SegmentedSwitcher": {
+      "types": "./dist/SegmentedSwitcher/SegmentedSwitcher.d.ts",
+      "default": "./dist/SegmentedSwitcher/SegmentedSwitcher.js"
+    },
     "./SegmentedToolbar": {
       "types": "./dist/SegmentedToolbar/SegmentedToolbar.d.ts",
       "default": "./dist/SegmentedToolbar/SegmentedToolbar.js"

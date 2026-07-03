@@ -13,6 +13,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@codaco/fresco-ui/Popover';
+import SegmentedSwitcher, {
+  type SegmentedOption,
+} from '@codaco/fresco-ui/SegmentedSwitcher';
 import type { StoredSessionLite } from '~/lib/db/types';
 
 import {
@@ -23,9 +26,6 @@ import {
 import type { SessionStatusCounts } from './useSessionQuery';
 
 type ChipFilter = 'all' | 'in-progress' | 'complete';
-
-const FILTER_PILL_BASE =
-  'relative px-[18px] py-2.5 border-0 rounded-full cursor-pointer font-heading font-extrabold text-xs tracking-[0.06em] uppercase transition-colors bg-transparent';
 
 const toolbarVariants = {
   hidden: { opacity: 0, y: -8 },
@@ -143,6 +143,17 @@ export function DataViewToolbar({
     { id: 'complete', label: 'Complete', count: statusCounts.complete },
   ];
 
+  const statusOptions: SegmentedOption<ChipFilter>[] = chipOptions.map(
+    (option) => ({
+      value: option.id,
+      label: (
+        <>
+          {option.label} · {option.count}
+        </>
+      ),
+    }),
+  );
+
   const caseIdRawFilter = table.getColumn('caseId')?.getFilterValue();
   const caseIdColumnFilter =
     typeof caseIdRawFilter === 'string' ? caseIdRawFilter : '';
@@ -161,39 +172,14 @@ export function DataViewToolbar({
       variants={toolbarVariants}
       className="flex flex-wrap items-center gap-2.5"
     >
-      <motion.div
-        variants={toolbarItemVariants}
-        className="bg-surface inline-flex items-center rounded-full p-1"
-        role="tablist"
-        aria-label="Status filter"
-      >
-        {chipOptions.map((option) => {
-          const active = chipFilter === option.id;
-          return (
-            <button
-              key={option.id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setChipFilter(option.id)}
-              className={`${FILTER_PILL_BASE} ${
-                active ? 'text-primary-contrast' : 'text-text/80'
-              }`}
-            >
-              {active ? (
-                <motion.span
-                  layoutId="data-view-status-indicator"
-                  aria-hidden
-                  className="bg-sea-green absolute inset-0 rounded-full"
-                  transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                />
-              ) : null}
-              <span className="relative">
-                {option.label} · {option.count}
-              </span>
-            </button>
-          );
-        })}
+      <motion.div variants={toolbarItemVariants}>
+        <SegmentedSwitcher
+          aria-label="Status filter"
+          size="md"
+          value={chipFilter ?? 'all'}
+          onValueChange={setChipFilter}
+          options={statusOptions}
+        />
       </motion.div>
       <div className="flex-1" />
       <motion.div variants={toolbarItemVariants}>

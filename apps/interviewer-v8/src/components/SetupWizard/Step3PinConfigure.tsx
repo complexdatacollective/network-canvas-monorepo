@@ -51,6 +51,24 @@ export default function Step3PinConfigure() {
   }, [wizard, pin]);
 
   return (
+    <Step3PinConfigureView
+      error={error}
+      affirmed={affirmed}
+      onAffirmChange={setAffirmed}
+    />
+  );
+}
+
+export function Step3PinConfigureView({
+  error,
+  affirmed,
+  onAffirmChange,
+}: {
+  error: string | null;
+  affirmed: boolean;
+  onAffirmChange: (value: boolean) => void;
+}) {
+  return (
     <>
       <Field
         component={SegmentedCodeField}
@@ -93,7 +111,7 @@ export default function Step3PinConfigure() {
         label="I understand there is no recovery"
         component={Checkbox}
         value={affirmed}
-        onChange={(v) => setAffirmed(v ?? false)}
+        onChange={(v) => onAffirmChange(v ?? false)}
       />
     </>
   );

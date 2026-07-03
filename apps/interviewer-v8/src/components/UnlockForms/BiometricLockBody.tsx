@@ -21,16 +21,17 @@ type BiometricLockBodyProps = {
   unlockWithRecovery: (
     phrase: string,
   ) => Promise<{ ok: boolean; message?: string }>;
+  // Installed-PWA windows on macOS Chromium can't reach the enrolled passkey
+  // (crbug.com/364926914), so we land on recovery there. Defaults to the live
+  // platform check; overridable so callers (and stories) can force the state.
+  limited?: boolean;
 };
 
 export function BiometricLockBody({
   unlockWithBiometric,
   unlockWithRecovery,
+  limited = hasPasskeyWindowLimitation(),
 }: BiometricLockBodyProps) {
-  // Installed-PWA windows on macOS Chromium can't reach the passkey that
-  // biometric enrolment stored (crbug.com/364926914) — a biometric attempt
-  // there only offers a dead-end QR prompt, so land on recovery instead.
-  const limited = hasPasskeyWindowLimitation();
   const [useRecovery, setUseRecovery] = useState(limited);
   const formId = useId();
 

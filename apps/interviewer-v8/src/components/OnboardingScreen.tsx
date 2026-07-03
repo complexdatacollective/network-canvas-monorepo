@@ -52,18 +52,7 @@ const buttonVariants = {
   exit: { opacity: 0, y: 40, transition: { duration: 0.5 } },
 } as const;
 
-export function OnboardingScreen() {
-  const { openSetupWizard } = useSetupWizard();
-  const openedRef = useRef(false);
-
-  const handleStart = useCallback(() => {
-    if (openedRef.current) return;
-    openedRef.current = true;
-    void openSetupWizard().finally(() => {
-      openedRef.current = false;
-    });
-  }, [openSetupWizard]);
-
+export function OnboardingScreenView({ onBegin }: { onBegin: () => void }) {
   return (
     <motion.div
       variants={containerVariants}
@@ -84,10 +73,25 @@ export function OnboardingScreen() {
         <Paragraph margin="none">Let's set up this device.</Paragraph>
       </motion.div>
       <motion.div variants={buttonVariants} className="mt-2">
-        <Button type="button" color="primary" onClick={handleStart}>
+        <Button type="button" color="primary" onClick={onBegin}>
           Get started
         </Button>
       </motion.div>
     </motion.div>
   );
+}
+
+export function OnboardingScreen() {
+  const { openSetupWizard } = useSetupWizard();
+  const openedRef = useRef(false);
+
+  const handleStart = useCallback(() => {
+    if (openedRef.current) return;
+    openedRef.current = true;
+    void openSetupWizard().finally(() => {
+      openedRef.current = false;
+    });
+  }, [openSetupWizard]);
+
+  return <OnboardingScreenView onBegin={handleStart} />;
 }

@@ -11,6 +11,7 @@ import { useToast } from '@codaco/fresco-ui/Toast';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { SettingsRow } from '~/components/SettingsRow';
+import type { AuthResult } from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
 
 const MODE_LABEL: Record<string, string> = {
@@ -22,9 +23,17 @@ const MODE_LABEL: Record<string, string> = {
 
 const PIN_PATTERN = /^\d{8}$/;
 
-function ChangePinForm({ onDone }: { onDone: () => void }) {
-  const auth = useAuth();
-  const toast = useToast();
+type ReEnrolHandler = (current: string, next: string) => Promise<AuthResult>;
+
+export function ChangePinForm({
+  onReEnrol,
+  onSuccess,
+  onCancel,
+}: {
+  onReEnrol: ReEnrolHandler;
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
   const [currentPin, setCurrentPin] = useState('');
   const [nextPin, setNextPin] = useState('');
   const [nextPinConfirm, setNextPinConfirm] = useState('');
@@ -43,10 +52,9 @@ function ChangePinForm({ onDone }: { onDone: () => void }) {
     }
     setBusy(true);
     try {
-      const result = await auth.reEnrolWithPin(currentPin, nextPin);
+      const result = await onReEnrol(currentPin, nextPin);
       if (result.ok) {
-        toast.add({ title: 'PIN changed', variant: 'success' });
-        onDone();
+        onSuccess();
         return;
       }
       setError(result.message ?? 'We could not change your PIN.');
@@ -107,7 +115,7 @@ function ChangePinForm({ onDone }: { onDone: () => void }) {
         <Button onClick={() => void handleSave()} disabled={busy}>
           {busy ? 'Saving…' : 'Save new PIN'}
         </Button>
-        <Button color="secondary" onClick={onDone} disabled={busy}>
+        <Button color="secondary" onClick={onCancel} disabled={busy}>
           Cancel
         </Button>
       </div>
@@ -115,9 +123,15 @@ function ChangePinForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-function ChangePassphraseForm({ onDone }: { onDone: () => void }) {
-  const auth = useAuth();
-  const toast = useToast();
+export function ChangePassphraseForm({
+  onReEnrol,
+  onSuccess,
+  onCancel,
+}: {
+  onReEnrol: ReEnrolHandler;
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
   const [currentPhrase, setCurrentPhrase] = useState('');
   const [nextPhrase, setNextPhrase] = useState('');
   const [nextPhraseConfirm, setNextPhraseConfirm] = useState('');
@@ -141,13 +155,9 @@ function ChangePassphraseForm({ onDone }: { onDone: () => void }) {
     }
     setBusy(true);
     try {
-      const result = await auth.reEnrolWithPassphrase(
-        currentPhrase,
-        nextPhrase,
-      );
+      const result = await onReEnrol(currentPhrase, nextPhrase);
       if (result.ok) {
-        toast.add({ title: 'Passphrase changed', variant: 'success' });
-        onDone();
+        onSuccess();
         return;
       }
       setError(result.message ?? 'We could not change your passphrase.');
@@ -206,7 +216,7 @@ function ChangePassphraseForm({ onDone }: { onDone: () => void }) {
         <Button onClick={() => void handleSave()} disabled={busy}>
           {busy ? 'Saving…' : 'Save new passphrase'}
         </Button>
-        <Button color="secondary" onClick={onDone} disabled={busy}>
+        <Button color="secondary" onClick={onCancel} disabled={busy}>
           Cancel
         </Button>
       </div>
@@ -216,6 +226,7 @@ function ChangePassphraseForm({ onDone }: { onDone: () => void }) {
 
 export function ManageAuthenticator() {
   const auth = useAuth();
+  const toast = useToast();
   const [changing, setChanging] = useState(false);
 
   const canChange = auth.mode === 'pin' || auth.mode === 'passphrase';
@@ -238,10 +249,24 @@ export function ManageAuthenticator() {
       </dl>
 
       {canChange && changing && auth.mode === 'pin' && (
-        <ChangePinForm onDone={() => setChanging(false)} />
+        <ChangePinForm
+          onReEnrol={auth.reEnrolWithPin}
+          onCancel={() => setChanging(false)}
+          onSuccess={() => {
+            toast.add({ title: 'PIN changed', variant: 'success' });
+            setChanging(false);
+          }}
+        />
       )}
       {canChange && changing && auth.mode === 'passphrase' && (
-        <ChangePassphraseForm onDone={() => setChanging(false)} />
+        <ChangePassphraseForm
+          onReEnrol={auth.reEnrolWithPassphrase}
+          onCancel={() => setChanging(false)}
+          onSuccess={() => {
+            toast.add({ title: 'Passphrase changed', variant: 'success' });
+            setChanging(false);
+          }}
+        />
       )}
 
       {canChange && !changing && (
