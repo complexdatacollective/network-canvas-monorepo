@@ -54,6 +54,36 @@ export default function Step3PassphraseConfigure() {
   }, [wizard, phrase]);
 
   return (
+    <Step3PassphraseConfigureView
+      phrase={phrase}
+      confirmValue={confirm}
+      affirmed={affirmed}
+      error={error}
+      onPhraseChange={setPhrase}
+      onConfirmChange={setConfirm}
+      onAffirmChange={setAffirmed}
+    />
+  );
+}
+
+export function Step3PassphraseConfigureView({
+  phrase,
+  confirmValue,
+  affirmed,
+  error,
+  onPhraseChange,
+  onConfirmChange,
+  onAffirmChange,
+}: {
+  phrase: string;
+  confirmValue: string;
+  affirmed: boolean;
+  error: string | null;
+  onPhraseChange: (value: string) => void;
+  onConfirmChange: (value: string) => void;
+  onAffirmChange: (value: boolean) => void;
+}) {
+  return (
     <>
       <UnconnectedField
         name="passphrase"
@@ -61,22 +91,22 @@ export default function Step3PassphraseConfigure() {
         hint="A password of at least 12 characters that combines uppercase, lowercase, numbers, and symbols."
         component={PasswordField}
         value={phrase}
-        onChange={(v) => setPhrase(v ?? '')}
+        onChange={(v) => onPhraseChange(v ?? '')}
         suppressPasswordManager
-        showStrengthMeter={true}
+        showStrengthMeter
         placeholder="Enter passphrase"
       />
       <UnconnectedField
         name="passphrase-confirm"
         label="Confirm passphrase"
         component={PasswordField}
-        value={confirm}
-        onChange={(v) => setConfirm(v ?? '')}
+        value={confirmValue}
+        onChange={(v) => onConfirmChange(v ?? '')}
         suppressPasswordManager
         showStrengthMeter={false}
         placeholder="Confirm passphrase"
       />
-      {confirm.length > 0 && phrase !== confirm && (
+      {confirmValue.length > 0 && phrase !== confirmValue && (
         <Paragraph margin="none" className="text-destructive text-sm">
           Passphrases do not match.
         </Paragraph>
@@ -95,7 +125,7 @@ export default function Step3PassphraseConfigure() {
         label="I understand there is no recovery."
         component={Checkbox}
         value={affirmed}
-        onChange={(v) => setAffirmed(v ?? false)}
+        onChange={(v) => onAffirmChange(v ?? false)}
       />
     </>
   );
