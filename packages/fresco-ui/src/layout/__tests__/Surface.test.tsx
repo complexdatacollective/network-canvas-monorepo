@@ -2,7 +2,7 @@ import { render } from '@testing-library/react';
 import { createPortal } from 'react-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import Surface from '../Surface';
+import Surface, { MotionSurface, SurfaceDepthReset } from '../Surface';
 
 const getSurface = (id: string) => {
   const element = document.querySelector(`[data-testid="${id}"]`);
@@ -78,6 +78,27 @@ describe('Surface depth derivation', () => {
     expect(warn.mock.calls[0]?.[0]).toContain('Surface');
   });
 
+  it('derives through MotionSurface', () => {
+    render(
+      <MotionSurface data-testid="m0">
+        <MotionSurface data-testid="m1" />
+      </MotionSurface>,
+    );
+    expect(getSurface('m0').className).toContain('bg-surface');
+    expect(getSurface('m1').className).toContain('bg-surface-1');
+  });
+
+  it('renders as a custom element without a container when noContainer', () => {
+    const { container } = render(
+      <ul>
+        <Surface as="li" noContainer data-testid="item" />
+      </ul>,
+    );
+    const item = getSurface('item');
+    expect(item.tagName).toBe('LI');
+    expect(item.parentElement).toBe(container.querySelector('ul'));
+  });
+
   it('keeps component-tree depth for portalled children', () => {
     const PortalledSurface = () =>
       createPortal(<Surface data-testid="portalled" />, document.body);
@@ -107,6 +128,24 @@ describe('floating Surface', () => {
     expect(className).not.toContain('bg-surface-2');
   });
 
+  it('does not warn when floating sits beyond the token scale', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    render(
+      <Surface>
+        <Surface>
+          <Surface>
+            <Surface>
+              <Surface floating data-testid="deep-float" />
+            </Surface>
+          </Surface>
+        </Surface>
+      </Surface>,
+    );
+    // The only depth-4 Surface is the floating one, which must not warn.
+    expect(warn).not.toHaveBeenCalled();
+    expect(getSurface('deep-float').className).toContain('bg-surface-popover');
+  });
+
   it('restarts the depth ladder for its children', () => {
     render(
       <Surface>
@@ -123,5 +162,26 @@ describe('floating Surface', () => {
     );
     expect(getSurface('inner').className).toContain('bg-surface-1');
     expect(getSurface('deeper').className).toContain('bg-surface-2');
+  });
+});
+
+describe('SurfaceDepthReset', () => {
+  it('restarts the ladder at the floating base for class-styled overlays', () => {
+    render(
+      <Surface>
+        <Surface>
+          <Surface>
+            <SurfaceDepthReset>
+              <Surface data-testid="reset-child" />
+            </SurfaceDepthReset>
+          </Surface>
+        </Surface>
+      </Surface>,
+    );
+    // Direct children derive depth 1, exactly as inside <Surface floating> —
+    // a depth-0 child would render --surface against --surface-popover, which
+    // are near-identical in the default theme.
+    expect(getSurface('reset-child').className).toContain('bg-surface-1');
+    expect(getSurface('reset-child').className).not.toContain('bg-surface-3');
   });
 });

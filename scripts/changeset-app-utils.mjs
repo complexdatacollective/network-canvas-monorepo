@@ -4,12 +4,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-export const APP_PACKAGES = ['@codaco/architect-web', '@codaco/interviewer-v8'];
-
-export const APP_DIRS = {
-  '@codaco/architect-web': 'apps/architect-web',
-  '@codaco/interviewer-v8': 'apps/interviewer-v8',
-};
+const APP_PACKAGES = ['@codaco/architect-web', '@codaco/interviewer-v8'];
 
 export function parseChangeset(contents) {
   const m = contents.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
