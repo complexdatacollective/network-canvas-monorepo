@@ -3,7 +3,7 @@ import type { VariableOptions } from '@codaco/protocol-validation';
 /**
  * Checks if two sets of categorical/ordinal options match exactly.
  * Options must have the same length and identical label/value pairs.
- * Used for family tree census to ensure selected variables have the required locked options.
+ * Used by the family pedigree editor to ensure selected variables have the required locked options.
  */
 export function optionsMatch(
   variableOptions: VariableOptions | undefined,

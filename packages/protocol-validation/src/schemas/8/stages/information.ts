@@ -23,7 +23,9 @@ const assetItemSchema = baseItemSchema.extend({
   size: ItemSizeSchema.optional(),
 });
 
-const ItemSchema = z.discriminatedUnion('type', [
+// Also consumed by the FamilyPedigree stage, whose intro screen reuses the
+// Information content-item model.
+export const ItemSchema = z.discriminatedUnion('type', [
   textItemSchema,
   assetItemSchema,
 ]);

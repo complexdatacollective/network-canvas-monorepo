@@ -2,20 +2,20 @@ import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import EditableList from '~/components/EditableList';
 import { Row, Section } from '~/components/EditorLayout';
-import { Field as RichText } from '~/components/Form/Fields/RichText';
-import TextField from '~/components/Form/Fields/Text';
-import VideoInput from '~/components/Form/Fields/Video';
-import ValidatedField from '~/components/Form/ValidatedField';
-import IssueAnchor from '~/components/IssueAnchor';
+import ItemEditor from '~/components/sections/ContentGrid/ItemEditor';
+import ItemPreview from '~/components/sections/ContentGrid/ItemPreview';
+import {
+  denormalizeType,
+  normalizeType,
+} from '~/components/sections/ContentGrid/itemTypes';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 
 type IntroScreenValue = {
-  title?: string;
-  text: string;
-  videoAssetId?: string;
+  items: { id: string; type: string; content?: string }[];
 } | null;
 
 const IntroScreen = ({ form }: StageEditorSectionProps) => {
@@ -28,11 +28,12 @@ const IntroScreen = ({ form }: StageEditorSectionProps) => {
   );
 
   const isEnabled = introScreen !== null && introScreen !== undefined;
+  const hasItems = !!introScreen?.items?.length;
 
   const handleToggleChange = useCallback(
     async (newState: boolean) => {
       if (newState) {
-        dispatch(change(form, 'introScreen', { text: '' }));
+        dispatch(change(form, 'introScreen', { items: [] }));
         return true;
       }
 
@@ -48,7 +49,8 @@ const IntroScreen = ({ form }: StageEditorSectionProps) => {
       summary={
         <p>
           Optionally show an introductory screen to participants before the
-          family pedigree task begins.
+          family pedigree task begins. Add text and media sections below, and
+          drag them to reorder.
         </p>
       }
       toggleable
@@ -56,33 +58,28 @@ const IntroScreen = ({ form }: StageEditorSectionProps) => {
       handleToggleChange={handleToggleChange}
     >
       <Row>
-        <IssueAnchor fieldName="introScreen.title" description="Title" />
-        <ValidatedField
-          name="introScreen.title"
-          component={TextField}
-          validation={{}}
-          componentProps={{ label: 'Title (optional)' }}
-        />
-      </Row>
-      <Row>
-        <IssueAnchor fieldName="introScreen.text" description="Body text" />
-        <ValidatedField
-          name="introScreen.text"
-          component={RichText}
-          validation={{ required: true }}
-          componentProps={{ label: 'Body text' }}
-        />
-      </Row>
-      <Row>
-        <IssueAnchor
-          fieldName="introScreen.videoAssetId"
-          description="Video (optional)"
-        />
-        <ValidatedField
-          name="introScreen.videoAssetId"
-          component={VideoInput}
-          validation={{}}
-        />
+        <EditableList
+          label="Content sections"
+          previewComponent={ItemPreview}
+          editComponent={ItemEditor}
+          title="Edit Section"
+          fieldName="introScreen.items"
+          form={form}
+          normalize={normalizeType as unknown as (value: unknown) => unknown}
+          itemSelector={
+            denormalizeType as unknown as (
+              state: Record<string, unknown>,
+              params: { form: string; editField: string },
+            ) => unknown
+          }
+        >
+          {!hasItems && (
+            <p className="text-current/70 italic">
+              No content sections have been created yet. Click &ldquo;Create
+              new&rdquo; to add text or media to the intro screen.
+            </p>
+          )}
+        </EditableList>
       </Row>
     </Section>
   );

@@ -279,9 +279,7 @@ export type StageEntry = {
     requireChildrenContributors: 'required' | 'recommended' | 'off';
   };
   introScreen?: {
-    title?: string;
-    text: string;
-    videoAssetId?: string;
+    items: InformationItem[];
   };
   censusPrompt?: string;
   nominationPrompts?: { id: string; text: string; variable: string }[];
@@ -434,9 +432,7 @@ export type AddStageInput = {
     requireChildrenContributors: 'required' | 'recommended' | 'off';
   };
   introScreen?: {
-    title?: string;
-    text: string;
-    videoAssetId?: string;
+    items: InformationItem[];
   };
   censusPrompt?: string;
   nominationPrompts?: { id: string; text: string; variable: string }[];

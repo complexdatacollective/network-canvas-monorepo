@@ -2,7 +2,10 @@ import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
 import type { VariableOptions } from '@codaco/protocol-validation';
-import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/shared-consts';
+import {
+  GAMETE_ROLE_OPTIONS,
+  RELATIONSHIP_TYPE_OPTIONS,
+} from '@codaco/shared-consts';
 import { Row, Section } from '~/components/EditorLayout';
 import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import ValidatedField from '~/components/Form/ValidatedField';
@@ -45,7 +48,7 @@ const VariableRow = ({
   edgeType,
 }: VariableRowProps) => (
   <div className="flex items-start gap-(--space-md)">
-    <div className="flex grow flex-col gap-(--space-xs) pt-(--space-sm)">
+    <div className="flex flex-1 basis-0 flex-col gap-(--space-xs) pt-(--space-sm)">
       <span className="font-semibold">
         {label}
         <span className="text-error ms-(--space-xs)">*</span>
@@ -54,7 +57,7 @@ const VariableRow = ({
         {description}
       </span>
     </div>
-    <div className="relative flex-1">
+    <div className="relative flex-1 basis-0">
       <IssueAnchor fieldName={name} description={`${label} Variable`} />
       <ValidatedField
         name={name}
@@ -95,8 +98,14 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
   const booleanEdgeVariables = edgeVariableOptions.filter(
     (v) => v.type === 'boolean',
   );
-  const categoricalEdgeVariables = edgeVariableOptions.filter(
-    (v) => v.type === 'categorical',
+  // Only categorical variables whose options are exactly the canonical
+  // gamete-role set may be bound: the interview writes these exact values
+  // (egg/sperm) onto genetic parent edges, so an existing categorical variable
+  // with a different value set would silently break inheritance tracing.
+  // Mirrors the relationship-type picker above.
+  const gameteRoleCompatible = edgeVariableOptions.filter(
+    (v) =>
+      v.type === 'categorical' && optionsMatch(v.options, GAMETE_ROLE_OPTIONS),
   );
 
   const handleCreatedVariable = (...args: unknown[]) => {
@@ -139,7 +148,13 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
 
   const handleNewGameteRoleVariable = (name: string) =>
     openVariableWindow(
-      { initialValues: { name, type: 'categorical' }, lockedOptions: null },
+      {
+        initialValues: { name, type: 'categorical' },
+        // Seed and lock the canonical value set — the interview writes these
+        // exact values, so the researcher may not edit them (mirrors the
+        // relationship-type variable).
+        lockedOptions: GAMETE_ROLE_OPTIONS,
+      },
       { field: 'edgeConfig.gameteRoleVariable' },
     );
 
@@ -148,10 +163,20 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
       <Section
         title="Edge Configuration"
         summary={
-          <p>
-            Select the edge type and configure variables for family
-            relationships.
-          </p>
+          <>
+            <p>
+              The family pedigree is stored as a network: each family member is
+              a node, and every parent or partner connection between two people
+              is an edge. This interface needs an edge type so that it can
+              record those connections in your codebook — including the
+              parentage it infers automatically — and so that the structure of
+              the pedigree appears in your exported data.
+            </p>
+            <p>
+              Select the edge type to use, along with the variables that store
+              the details of each relationship.
+            </p>
+          </>
         }
       >
         <Row>
@@ -164,7 +189,8 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
           />
         </Row>
         {edgeType && (
-          <div className="bg-surface-2 text-surface-2-foreground mt-(--space-lg) flex flex-col gap-(--space-lg) rounded p-(--space-md)">
+          // `[&_.variable-pill]:bg-white` lifts the pills off the surface-2 panel
+          <div className="bg-surface-2 text-surface-2-foreground mt-(--space-lg) flex flex-col gap-(--space-lg) rounded p-(--space-md) [&_.variable-pill]:bg-white">
             <VariableRow
               name="edgeConfig.relationshipTypeVariable"
               label="Relationship Type"
@@ -191,10 +217,10 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
             />
             <VariableRow
               name="edgeConfig.gameteRoleVariable"
-              label="Gamete Role Variable"
-              description="Stores the gamete role for each parent (which gamete each participant contributed)."
+              label="Gamete Role"
+              description="Stores which reproductive cell (gamete) a parent contributed to a child: the egg or the sperm. The interface uses this to trace the biological route of inheritance along each parent relationship. This variable uses a fixed set of values (egg/sperm) that cannot be edited."
               edgeType={edgeType}
-              options={categoricalEdgeVariables}
+              options={gameteRoleCompatible}
               onCreateOption={handleNewGameteRoleVariable}
             />
           </div>

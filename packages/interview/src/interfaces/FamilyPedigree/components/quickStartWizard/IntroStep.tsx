@@ -1,8 +1,7 @@
 'use client';
 
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
-import Heading from '@codaco/fresco-ui/typography/Heading';
-import { useAssetUrl } from '~/hooks/useAssetUrl';
+import type { Item } from '@codaco/protocol-validation';
+import ContentItem from '~/components/ContentItem';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import { getIntroScreen } from '~/interfaces/FamilyPedigree/utils/stageConfig';
 
@@ -24,28 +23,13 @@ const INTRO_ALLOWED_TAGS = [
 ];
 
 type IntroScreen = {
-  title?: string;
-  text: string;
-  videoAssetId?: string;
+  items: Item[];
 };
 
 export function shouldSkipIntroStep(
   introScreen: IntroScreen | null | undefined,
 ): boolean {
-  return introScreen == null;
-}
-
-function IntroVideo({ assetId }: { assetId: string }) {
-  const { url } = useAssetUrl(assetId);
-
-  if (!url) return null;
-
-  return (
-    <video controls aria-label="Intro video" className="w-full rounded">
-      <source src={url} />
-      <track kind="captions" />
-    </video>
-  );
+  return introScreen == null || introScreen.items.length === 0;
 }
 
 export default function IntroStep() {
@@ -55,13 +39,13 @@ export default function IntroStep() {
 
   return (
     <>
-      {introScreen.title && <Heading level="h3">{introScreen.title}</Heading>}
-      <RenderMarkdown allowedElements={INTRO_ALLOWED_TAGS}>
-        {introScreen.text}
-      </RenderMarkdown>
-      {introScreen.videoAssetId && (
-        <IntroVideo assetId={introScreen.videoAssetId} />
-      )}
+      {introScreen.items.map((item) => (
+        <ContentItem
+          key={item.id}
+          item={item}
+          allowedTextElements={INTRO_ALLOWED_TAGS}
+        />
+      ))}
     </>
   );
 }

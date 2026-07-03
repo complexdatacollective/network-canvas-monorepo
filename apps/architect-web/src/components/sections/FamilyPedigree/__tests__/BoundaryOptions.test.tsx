@@ -73,6 +73,18 @@ describe('BoundaryOptions', () => {
     renderSection();
     expect(
       screen.getByTestId('field-requireChildrenContributors').textContent,
-    ).toContain('Require Children Contributors');
+    ).toContain("Require Co-Parents' Families");
+  });
+
+  it('explains the enforcement levels', () => {
+    renderSection();
+    expect(screen.getByText('Off')).toBeDefined();
+    expect(screen.getByText('Recommended')).toBeDefined();
+    expect(screen.getByText('Required')).toBeDefined();
+  });
+
+  it('does not use the phrase "family tree"', () => {
+    const { container } = renderSection();
+    expect(container.textContent).not.toContain('family tree');
   });
 });

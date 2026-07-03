@@ -96,7 +96,14 @@ export const INTERFACE_TYPES: InterfaceType[] = [
   },
   {
     category: CATEGORIES.GENERATORS,
-    tags: [TAGS.CREATE_NODES, TAGS.CREATE_EDGES, TAGS.NODE_ATTRIBUTES],
+    // Captures node attributes (sex, form fields, nomination flags) and edge
+    // attributes (relationship type, active status, carrier/gamete roles).
+    tags: [
+      TAGS.CREATE_NODES,
+      TAGS.CREATE_EDGES,
+      TAGS.NODE_ATTRIBUTES,
+      TAGS.EDGE_ATTRIBUTES,
+    ],
     keywords:
       'family pedigree tree census namegenerator name generator nodes node edges edge',
     type: 'FamilyPedigree',
@@ -106,7 +113,8 @@ export const INTERFACE_TYPES: InterfaceType[] = [
   },
   {
     category: CATEGORIES.SOCIOGRAMS,
-    tags: [TAGS.PROVIDE_INFORMATION, TAGS.NODE_ATTRIBUTES],
+    // Read-only visualisation: displays data, captures nothing.
+    tags: [TAGS.PROVIDE_INFORMATION],
     keywords:
       'narrative pedigree disease visualize visualise genetics inheritance focal hereditary',
     type: 'NarrativePedigree',

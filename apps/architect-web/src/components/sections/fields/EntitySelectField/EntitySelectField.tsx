@@ -106,6 +106,8 @@ const EntitySelectField = ({
             color={color ?? 'edge-color-seq-1'}
             onClick={() => handleClickItem(optionValue)}
             selected={value === optionValue}
+            // surface-2 lifts the pills off the section panel's surface-1 background
+            surface={2}
           />
         ) : (
           <PreviewNode

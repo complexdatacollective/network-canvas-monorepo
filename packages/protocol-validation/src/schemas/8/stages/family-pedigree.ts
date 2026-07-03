@@ -10,6 +10,7 @@ import {
 import { entityAttributeReference } from '../entity-attribute-reference';
 import { entityTypeReference } from '../entity-type-reference';
 import { baseStageSchema } from './base';
+import { ItemSchema } from './information';
 
 // Reserved id used by the interview for the synthetic census/scaffolding prompt;
 // an author-supplied nomination prompt may not reuse it (collides at runtime).
@@ -77,11 +78,20 @@ export const familyPedigreeStage = baseStageSchema.extend({
     requireChildrenContributors: z.enum(['required', 'recommended', 'off']),
   }),
   // Optional introductory screen shown before the main pedigree-building step.
+  // Reuses the Information stage's content-item model: an ordered list of text
+  // and asset sections.
   introScreen: z
     .object({
-      title: z.string().optional(),
-      text: z.string(),
-      videoAssetId: z.string().optional(),
+      items: z.array(ItemSchema).superRefine((items, ctx) => {
+        const duplicateItemId = findDuplicateId(items);
+        if (duplicateItemId) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Intro screen items contain duplicate ID "${duplicateItemId}"`,
+            path: [],
+          });
+        }
+      }),
     })
     .optional(),
   // Prompt shown during the family building phase
