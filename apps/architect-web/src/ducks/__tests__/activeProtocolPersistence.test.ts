@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import {
-  reconcileRehydratedActiveProtocol,
+  deserializeActiveProtocol,
   serializeActiveProtocol,
 } from '../activeProtocolPersistence';
 
@@ -27,60 +27,39 @@ const timeline = (present: CurrentProtocol | null) => ({
 describe('serializeActiveProtocol', () => {
   it('persists only the present, dropping past/future history', () => {
     const present = makeProtocol('current');
-    const json = serializeActiveProtocol(timeline(present), 'proto-1');
-    const parsed = JSON.parse(json);
+    const parsed = JSON.parse(serializeActiveProtocol(timeline(present)));
 
     expect(parsed.present).toEqual(present);
-    expect(parsed.activeProtocolId).toBe('proto-1');
     expect(parsed).not.toHaveProperty('past');
     expect(parsed).not.toHaveProperty('future');
     expect(parsed).not.toHaveProperty('timeline');
   });
 
-  it('stamps a null id when there is no active protocol', () => {
-    const json = serializeActiveProtocol(timeline(makeProtocol('x')), null);
-    expect(JSON.parse(json).activeProtocolId).toBeNull();
+  it('persists a null present when there is no active protocol', () => {
+    const parsed = JSON.parse(serializeActiveProtocol(timeline(null)));
+    expect(parsed.present).toBeNull();
   });
 });
 
-describe('reconcileRehydratedActiveProtocol', () => {
-  it('restores the present as an empty-history timeline when ids match', () => {
+describe('deserializeActiveProtocol', () => {
+  it('restores the present into an empty-history timeline', () => {
     const present = makeProtocol('current');
-    const persisted = { present, activeProtocolId: 'proto-1' };
+    const raw = serializeActiveProtocol(timeline(present));
 
-    const result = reconcileRehydratedActiveProtocol(persisted, 'proto-1');
+    const result = deserializeActiveProtocol(raw);
 
-    expect(result.clearActiveProtocolId).toBe(false);
-    expect(result.activeProtocol.present).toEqual(present);
-    expect(result.activeProtocol.past).toEqual([]);
-    expect(result.activeProtocol.future).toEqual([]);
+    expect(result.present).toEqual(present);
+    expect(result.past).toEqual([]);
+    expect(result.future).toEqual([]);
+    expect(result.timeline).toEqual([]);
+    expect(result.futureTimeline).toEqual([]);
   });
 
-  it('drops the present and clears the id when the stamped id mismatches', () => {
-    const persisted = {
-      present: makeProtocol('from-other-tab'),
-      activeProtocolId: 'proto-OTHER',
-    };
+  it('yields an empty timeline when nothing was persisted', () => {
+    const result = deserializeActiveProtocol(JSON.stringify({ present: null }));
 
-    const result = reconcileRehydratedActiveProtocol(persisted, 'proto-1');
-
-    expect(result.clearActiveProtocolId).toBe(true);
-    expect(result.activeProtocol.present).toBeNull();
-  });
-
-  it('keeps the present when no id was stamped (legacy persisted value)', () => {
-    const present = makeProtocol('legacy');
-    const result = reconcileRehydratedActiveProtocol({ present }, 'proto-1');
-
-    expect(result.clearActiveProtocolId).toBe(false);
-    expect(result.activeProtocol.present).toEqual(present);
-  });
-
-  it('yields an empty timeline for an absent persisted value', () => {
-    const result = reconcileRehydratedActiveProtocol(undefined, 'proto-1');
-
-    expect(result.clearActiveProtocolId).toBe(false);
-    expect(result.activeProtocol.present).toBeNull();
-    expect(result.activeProtocol.past).toEqual([]);
+    expect(result.present).toBeNull();
+    expect(result.past).toEqual([]);
+    expect(result.future).toEqual([]);
   });
 });

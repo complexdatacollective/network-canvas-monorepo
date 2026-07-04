@@ -2,13 +2,13 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import type { Locus } from './middleware/timeline';
 
-// The persisted shape of the `activeProtocol` remembered key. The live slice is
-// a full timeline (past/present/future); we persist only the `present` plus the
-// owning library id so a reload can (a) not carry a multi-megabyte undo history
-// into localStorage and (b) detect a cross-tab id/present mismatch.
+// The live `activeProtocol` slice is a full undo timeline (past/present/future),
+// but only the `present` is persisted: the past/future can hold up to 1000
+// protocol clones, which would bloat the tab's sessionStorage. On reload the
+// present is restored into a fresh, empty-history timeline. The durable protocol
+// content (including autosaved edits) always lives in IndexedDB regardless.
 type PersistedActiveProtocol = {
   present: CurrentProtocol | null;
-  activeProtocolId: string | null;
 };
 
 // A view of the live timeline slice — enough to read `present` when serialising
@@ -32,60 +32,21 @@ const emptyTimeline = (present: CurrentProtocol | null): TimelineSlice => ({
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
-// Persist only the timeline `present` (not the up-to-1000-entry past/future
-// history that otherwise fills localStorage until setItem throws) and stamp the
-// owning library id so rehydrate can reject a cross-tab mismatch.
-export const serializeActiveProtocol = (
-  data: unknown,
-  activeProtocolId: string | null,
-): string => {
-  const present =
-    isRecord(data) && 'present' in data
-      ? (data.present as CurrentProtocol | null)
-      : null;
+const readPresent = (value: unknown): CurrentProtocol | null =>
+  isRecord(value) && 'present' in value
+    ? (value.present as CurrentProtocol | null)
+    : null;
 
-  const payload: PersistedActiveProtocol = { present, activeProtocolId };
+// Persist only the timeline `present`, dropping the up-to-1000-entry past/future
+// history that would otherwise fill the tab's sessionStorage.
+export const serializeActiveProtocol = (data: unknown): string => {
+  const payload: PersistedActiveProtocol = { present: readPresent(data) };
   return JSON.stringify(payload);
 };
 
-type ReconciledActiveProtocol = {
-  activeProtocol: TimelineSlice;
-  // When the persisted present is discarded for a mismatched id, the paired
-  // `app.activeProtocolId` is stale too; the caller clears it so autosave can't
-  // later write into a row the present never belonged to.
-  clearActiveProtocolId: boolean;
-};
-
-// Normalise a rehydrated `activeProtocol` value into a full (empty-history)
-// timeline, dropping the persisted `present` when its stamped library id does
-// not match `app.activeProtocolId`. A partial cross-tab write can leave the two
-// keys describing different protocols; rehydrating that pair would autosave one
-// protocol's content into another's library row, so we discard the suspect
-// present and the stale id.
-export const reconcileRehydratedActiveProtocol = (
-  activeProtocol: unknown,
-  appActiveProtocolId: string | null,
-): ReconciledActiveProtocol => {
-  if (isRecord(activeProtocol) && 'present' in activeProtocol) {
-    const present = activeProtocol.present as CurrentProtocol | null;
-    const stampedId =
-      'activeProtocolId' in activeProtocol &&
-      typeof activeProtocol.activeProtocolId === 'string'
-        ? activeProtocol.activeProtocolId
-        : null;
-
-    if (present && stampedId !== null && stampedId !== appActiveProtocolId) {
-      return {
-        activeProtocol: emptyTimeline(null),
-        clearActiveProtocolId: true,
-      };
-    }
-
-    return {
-      activeProtocol: emptyTimeline(present),
-      clearActiveProtocolId: false,
-    };
-  }
-
-  return { activeProtocol: emptyTimeline(null), clearActiveProtocolId: false };
+// Rebuild the persisted `{ present }` into a full, empty-history timeline slice
+// so the timeline reducer and selectors see the shape they expect after reload.
+export const deserializeActiveProtocol = (raw: string): TimelineSlice => {
+  const parsed: unknown = JSON.parse(raw);
+  return emptyTimeline(readPresent(parsed));
 };

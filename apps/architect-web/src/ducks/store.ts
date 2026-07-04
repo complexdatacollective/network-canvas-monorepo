@@ -1,16 +1,11 @@
-import { configureStore, type Reducer } from '@reduxjs/toolkit';
-import {
-  PersistError,
-  REMEMBER_REHYDRATED,
-  rememberEnhancer,
-  rememberReducer,
-} from 'redux-remember';
+import { configureStore } from '@reduxjs/toolkit';
+import { rememberEnhancer, rememberReducer } from 'redux-remember';
 
 import { setActiveProtocolScope } from '~/utils/activeProtocolScope';
-import { reportError } from '~/utils/reportError';
+import { createSessionStorageDriver } from '~/utils/sessionStorageDriver';
 
 import {
-  reconcileRehydratedActiveProtocol,
+  deserializeActiveProtocol,
   serializeActiveProtocol,
 } from './activeProtocolPersistence';
 import { analyticsListenerMiddleware } from './middleware/analyticsListener';
@@ -19,75 +14,29 @@ import { protocolLibraryListenerMiddleware } from './middleware/protocolLibraryL
 import { protocolValidationListenerMiddleware } from './middleware/protocolValidationListener';
 import { scrollPositionsListenerMiddleware } from './middleware/scrollPositionsListener';
 import { stageEditorDraftListenerMiddleware } from './middleware/stageEditorDraftListener';
-import {
-  getActiveProtocolId,
-  getStorageUnavailable,
-  setStorageUnavailable,
-} from './modules/app';
+import { getActiveProtocolId } from './modules/app';
 import type { RootState } from './modules/root';
 import { rootReducer } from './modules/root';
+import { createProtocolTabLockSync } from './protocolTabLockSync';
 
+// The session slices (which protocol is open + its undo timeline) persist to the
+// tab's own sessionStorage rather than the origin-wide localStorage, so two tabs
+// editing different protocols stay isolated. The durable protocol content lives
+// in IndexedDB (protocolLibrary); sessionStorage only holds the in-session view.
 const rememberedKeys = ['app', 'activeProtocol'];
+const rememberDriver = createSessionStorageDriver();
 
-// On rehydrate, redux-remember merges the persisted keys into one state and
-// dispatches REMEMBER_REHYDRATED through the wrapped reducer. This is the only
-// point that sees both `app.activeProtocolId` and the persisted `activeProtocol`
-// together, so reconcile the (possibly cross-tab-mismatched) pair here before
-// the slice reducers run.
-const reconcilingRootReducer: Reducer<RootState> = (state, action) => {
-  if (action.type === REMEMBER_REHYDRATED && state) {
-    const appActiveProtocolId = getActiveProtocolId(state);
-    const { activeProtocol, clearActiveProtocolId } =
-      reconcileRehydratedActiveProtocol(
-        state.activeProtocol,
-        appActiveProtocolId,
-      );
+// Persist only the timeline `present` (not the up-to-1000-entry undo history),
+// and rebuild it into a full empty-history timeline on reload.
+const serialize = (data: unknown, key: string): string =>
+  key === 'activeProtocol'
+    ? serializeActiveProtocol(data)
+    : JSON.stringify(data);
 
-    const app = clearActiveProtocolId
-      ? { ...state.app, activeProtocolId: null }
-      : state.app;
+const unserialize = (data: string, key: string): unknown =>
+  key === 'activeProtocol' ? deserializeActiveProtocol(data) : JSON.parse(data);
 
-    return rootReducer({ ...state, app, activeProtocol }, action);
-  }
-
-  return rootReducer(state, action);
-};
-
-const reducer = rememberReducer(reconcilingRootReducer);
-
-// The custom serialize (below) needs `app.activeProtocolId` to stamp the
-// persisted protocol, but serialize is defined before the store exists.
-// serialize only runs on store.subscribe (after creation), so this ref is
-// populated by the time it is read.
-let storeRef: { getState: () => RootState; dispatch: AppDispatch } | null =
-  null;
-
-const serialize = (data: unknown, key: string): string => {
-  if (key === 'activeProtocol') {
-    const activeProtocolId = storeRef
-      ? getActiveProtocolId(storeRef.getState())
-      : null;
-    return serializeActiveProtocol(data, activeProtocolId);
-  }
-  return JSON.stringify(data);
-};
-
-// A quota failure (the persisted undo history outgrowing localStorage) would
-// otherwise be swallowed by redux-remember's default console.warn, leaving
-// persistence silently broken. Route it through the storage-unavailable path so
-// the user sees the "download a copy" banner instead of losing work unknowingly.
-const persistErrorHandler = (error: unknown): void => {
-  if (error instanceof PersistError) {
-    // Dispatching setStorageUnavailable mutates the persisted `app` slice, which
-    // itself triggers persistence — re-entering this handler if it fails again.
-    // Skip the dispatch once the flag is already set to break that loop.
-    if (storeRef && !getStorageUnavailable(storeRef.getState())) {
-      storeRef.dispatch(setStorageUnavailable(true));
-    }
-    return;
-  }
-  reportError(error);
-};
+const reducer = rememberReducer(rootReducer);
 
 const store = configureStore({
   reducer,
@@ -108,14 +57,12 @@ const store = configureStore({
       .prepend(stageEditorDraftListenerMiddleware.middleware),
   enhancers: (getDefaultEnhancers) =>
     getDefaultEnhancers().concat(
-      rememberEnhancer(window.localStorage, rememberedKeys, {
+      rememberEnhancer(rememberDriver, rememberedKeys, {
         serialize,
-        errorHandler: persistErrorHandler,
+        unserialize,
       }) as unknown as ReturnType<typeof getDefaultEnhancers>[0],
     ),
 });
-
-storeRef = store;
 
 // Keep the non-redux asset scope in sync with the persisted active protocol id,
 // so asset utils resolve against the right protocol after dispatches and after
@@ -129,6 +76,13 @@ store.subscribe(() => {
     setActiveProtocolScope(id);
   }
 });
+
+// Claim the active protocol on the cross-tab lock channel, and keep it in sync as
+// the active protocol changes. Driven by store.subscribe (not listener
+// middleware) so it also fires for redux-remember's startup rehydrate, which
+// bypasses middleware — otherwise a reloaded editor would stop blocking a
+// duplicate tab from autosaving into the same library row.
+createProtocolTabLockSync(store);
 
 export { store };
 

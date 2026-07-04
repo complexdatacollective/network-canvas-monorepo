@@ -1,0 +1,162 @@
+// Coordinates which tab is the sole editor of a given protocol library row.
+//
+// Two tabs editing DIFFERENT protocols are independent (separate rows), but two
+// tabs on the SAME protocol both autosave into one row (last-writer-wins). To
+// prevent that, tabs announce their active protocol over a same-origin
+// BroadcastChannel; the second tab to claim an id is told it is not exclusive
+// and becomes a read-only view (autosave disabled).
+//
+// This is a leaf module (no app imports) so it can't create import cycles. A
+// redux listener middleware bridges it to the store.
+
+type ClaimMessage = { type: 'claim'; id: string; from: string };
+type HeldMessage = { type: 'held'; id: string; from: string };
+type ReleaseMessage = { type: 'release'; id: string; from: string };
+type LockMessage = ClaimMessage | HeldMessage | ReleaseMessage;
+
+const CHANNEL_NAME = 'architect-protocol-lock';
+
+type ChannelFactory = (name: string) => BroadcastChannel | null;
+
+const defaultChannelFactory: ChannelFactory = (name) => {
+  if (typeof BroadcastChannel === 'undefined') return null;
+  try {
+    return new BroadcastChannel(name);
+  } catch {
+    return null;
+  }
+};
+
+export type ProtocolTabLock = {
+  // Announce this tab is editing `id`. If another tab already holds it, this
+  // tab becomes non-exclusive (see onExclusivityChange / isExclusive).
+  claimProtocol: (id: string) => void;
+  // Announce this tab has stopped editing its current protocol.
+  releaseProtocol: () => void;
+  // Whether this tab is the sole editor of its currently-claimed protocol.
+  isExclusive: () => boolean;
+  close: () => void;
+};
+
+type CreateOptions = {
+  channelFactory?: ChannelFactory;
+  onExclusivityChange?: (exclusive: boolean) => void;
+};
+
+const isLockMessage = (data: unknown): data is LockMessage => {
+  if (typeof data !== 'object' || data === null) return false;
+  if (!('type' in data) || !('id' in data)) return false;
+  const { type, id } = data;
+  return (
+    (type === 'claim' || type === 'held' || type === 'release') &&
+    typeof id === 'string'
+  );
+};
+
+export const createProtocolTabLock = (
+  options: CreateOptions = {},
+): ProtocolTabLock => {
+  const channelFactory = options.channelFactory ?? defaultChannelFactory;
+  const onExclusivityChange = options.onExclusivityChange;
+
+  const tabId =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+
+  const channel = channelFactory(CHANNEL_NAME);
+
+  let claimedId: string | null = null;
+  let exclusive = true;
+
+  const setExclusive = (next: boolean) => {
+    if (next === exclusive) return;
+    exclusive = next;
+    onExclusivityChange?.(exclusive);
+  };
+
+  const post = (message: LockMessage) => {
+    channel?.postMessage(message);
+  };
+
+  const onChannelMessage = (event: MessageEvent) => {
+    const data = event.data;
+    if (!isLockMessage(data)) return;
+
+    switch (data.type) {
+      case 'claim': {
+        // Another tab wants `data.id`. If we already hold it, tell them so —
+        // they yield to us (we were here first).
+        if (data.id === claimedId && exclusive) {
+          post({ type: 'held', id: claimedId, from: tabId });
+        }
+        break;
+      }
+      case 'held': {
+        // A tab that already holds our claimed protocol answered our claim;
+        // we are the newcomer and must not edit it.
+        if (data.id === claimedId) {
+          setExclusive(false);
+        }
+        break;
+      }
+      case 'release': {
+        // The holder of a protocol we're waiting on has let it go. Re-claim:
+        // if no one else answers "held", we become the exclusive editor.
+        if (data.id === claimedId && !exclusive) {
+          setExclusive(true);
+          post({ type: 'claim', id: claimedId, from: tabId });
+        }
+        break;
+      }
+    }
+  };
+
+  channel?.addEventListener('message', onChannelMessage);
+
+  // Broadcast a release for whatever we were holding. Clear `claimedId` FIRST:
+  // a waiting duplicate reacts to the release synchronously (real channels are
+  // async, but the fake test bus is sync), re-claims, and we must no longer
+  // answer "held" for the id we just let go.
+  const releaseCurrent = () => {
+    const previousId = claimedId;
+    claimedId = null;
+    if (previousId !== null) {
+      post({ type: 'release', id: previousId, from: tabId });
+    }
+  };
+
+  // Release our claim when the tab is unloaded (closed or navigated away) so a
+  // duplicate tab waiting on the same protocol can reclaim it. pagehide is more
+  // reliable than beforeunload/unload for this (fires on mobile bfcache too).
+  const onPageHide = () => {
+    releaseCurrent();
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pagehide', onPageHide);
+  }
+
+  return {
+    claimProtocol: (id: string) => {
+      if (id === claimedId) return;
+      releaseCurrent();
+      claimedId = id;
+      // Optimistically assume exclusivity; a "held" reply demotes us.
+      setExclusive(true);
+      post({ type: 'claim', id, from: tabId });
+    },
+    releaseProtocol: () => {
+      releaseCurrent();
+      setExclusive(true);
+    },
+    isExclusive: () => exclusive,
+    close: () => {
+      releaseCurrent();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('pagehide', onPageHide);
+      }
+      channel?.removeEventListener('message', onChannelMessage);
+      channel?.close();
+    },
+  };
+};

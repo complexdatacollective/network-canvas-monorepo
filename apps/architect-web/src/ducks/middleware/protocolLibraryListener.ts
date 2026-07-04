@@ -11,7 +11,11 @@ import {
   setActiveProtocol,
   updateLastModified,
 } from '../modules/activeProtocol';
-import { getActiveProtocolId, getStorageUnavailable } from '../modules/app';
+import {
+  getActiveProtocolId,
+  getProtocolOpenElsewhere,
+  getStorageUnavailable,
+} from '../modules/app';
 import type { RootState } from '../modules/root';
 import { generalErrorDialog } from '../modules/userActions/dialogs';
 import type { AppDispatch } from '../store';
@@ -111,6 +115,13 @@ startAppListening({
     // Nothing was persisted for an in-memory (storage-unavailable) protocol, so
     // skip autosave entirely rather than failing on every edit.
     if (getStorageUnavailable(currentState)) {
+      return false;
+    }
+
+    // The same protocol is open in another tab, which owns the single library
+    // row. This tab is a read-only view; skip autosave so the two tabs can't
+    // clobber each other's writes.
+    if (getProtocolOpenElsewhere(currentState)) {
       return false;
     }
 
