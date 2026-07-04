@@ -64,9 +64,16 @@ export function BiometricLockBody({
           dismissible={false}
           title={LOCK_TITLE}
           footer={
-            <SubmitButton form={formId} submittingText="Unlocking…">
-              Unlock
-            </SubmitButton>
+            <>
+              <ResetAppDataButton />
+              <SubmitButton
+                form={formId}
+                submittingText="Unlocking…"
+                className="phone-landscape:self-center"
+              >
+                Unlock
+              </SubmitButton>
+            </>
           }
         >
           <UnlockLayout
@@ -105,7 +112,6 @@ export function BiometricLockBody({
             >
               {limited ? 'Try biometrics anyway' : 'Back to biometrics'}
             </Button>
-            <ResetAppDataButton />
           </UnlockLayout>
         </Dialog>
       </FormStoreProvider>
@@ -113,7 +119,12 @@ export function BiometricLockBody({
   }
 
   return (
-    <Dialog open dismissible={false} title={LOCK_TITLE}>
+    <Dialog
+      open
+      dismissible={false}
+      title={LOCK_TITLE}
+      footer={<ResetAppDataButton />}
+    >
       <UnlockLayout
         emblem={<UnlockEmblem icon={Fingerprint} seed="biometric-unlock" />}
       >
@@ -132,7 +143,6 @@ export function BiometricLockBody({
         >
           Use recovery passphrase
         </Button>
-        <ResetAppDataButton />
       </UnlockLayout>
     </Dialog>
   );

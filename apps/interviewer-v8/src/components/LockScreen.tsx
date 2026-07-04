@@ -33,9 +33,16 @@ function PinLockBody({
         dismissible={false}
         title={LOCK_TITLE}
         footer={
-          <SubmitButton form={formId} submittingText="Unlocking…">
-            Unlock
-          </SubmitButton>
+          <>
+            <ResetAppDataButton />
+            <SubmitButton
+              form={formId}
+              submittingText="Unlocking…"
+              className="phone-landscape:self-center"
+            >
+              Unlock
+            </SubmitButton>
+          </>
         }
       >
         <UnlockLayout
@@ -45,7 +52,6 @@ function PinLockBody({
             Enter your PIN to unlock and pick up where you left off.
           </Paragraph>
           <PinUnlockForm formId={formId} verifyPin={verifyPin} />
-          <ResetAppDataButton />
         </UnlockLayout>
       </Dialog>
     </FormStoreProvider>
@@ -66,9 +72,16 @@ function PassphraseLockBody({
         dismissible={false}
         title={LOCK_TITLE}
         footer={
-          <SubmitButton form={formId} submittingText="Unlocking…">
-            Unlock
-          </SubmitButton>
+          <>
+            <ResetAppDataButton />
+            <SubmitButton
+              form={formId}
+              submittingText="Unlocking…"
+              className="phone-landscape:self-center"
+            >
+              Unlock
+            </SubmitButton>
+          </>
         }
       >
         <UnlockLayout
@@ -89,7 +102,6 @@ function PassphraseLockBody({
           >
             <PasswordUnlockField autoFocus />
           </FormWithoutProvider>
-          <ResetAppDataButton />
         </UnlockLayout>
       </Dialog>
     </FormStoreProvider>
