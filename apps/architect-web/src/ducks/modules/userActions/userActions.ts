@@ -28,6 +28,10 @@ import {
   disarmInMemoryUnloadGuard,
 } from '~/utils/beforeUnloadGuard';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
+import {
+  setExportInProgress,
+  setImportInProgress,
+} from '~/utils/criticalOperation';
 import { ensureError } from '~/utils/ensureError';
 import {
   loadGuardedNetcanvas,
@@ -147,6 +151,9 @@ const instantiateProtocol = async (
 export const openLocalNetcanvas = createAsyncThunk(
   'protocol/openLocalNetcanvas',
   async (file: File, { dispatch }) => {
+    // Signal an import is in flight so a fresh-load service-worker update won't
+    // silently reload mid-import (which could leave a partial library row).
+    setImportInProgress(true);
     try {
       const fileName = file.name.toLowerCase();
 
@@ -235,6 +242,8 @@ export const openLocalNetcanvas = createAsyncThunk(
         error instanceof Error ? error.message : String(error);
       dispatch(generalErrorDialog('Failed to Open Protocol', errorMessage));
       return false;
+    } finally {
+      setImportInProgress(false);
     }
   },
 );
@@ -386,27 +395,35 @@ export const exportNetcanvas = createAsyncThunk(
     if (!protocol) {
       throw new Error('No active protocol to export');
     }
-    const skippedAssets = await downloadProtocolAsNetcanvas(
-      protocol as CurrentProtocol,
-      protocol.name,
-      getActiveProtocolId(state) ?? undefined,
-    );
 
-    // Export is best-effort: unresolvable assets are omitted rather than
-    // aborting the whole export, but the author must be told which ones so a
-    // silently incomplete file isn't shared.
-    if (skippedAssets.length > 0) {
-      const assetList = skippedAssets.map((asset) => asset.name).join(', ');
-      dispatch(
-        generalErrorDialog(
-          'Some assets could not be exported',
-          `Your protocol was downloaded, but these assets could not be ` +
-            `included and are missing from the file: ${assetList}.`,
-        ),
+    // Signal an export is in flight so a service-worker update reload warns/defers
+    // rather than interrupting the download.
+    setExportInProgress(true);
+    try {
+      const skippedAssets = await downloadProtocolAsNetcanvas(
+        protocol as CurrentProtocol,
+        protocol.name,
+        getActiveProtocolId(state) ?? undefined,
       );
-    }
 
-    return true;
+      // Export is best-effort: unresolvable assets are omitted rather than
+      // aborting the whole export, but the author must be told which ones so a
+      // silently incomplete file isn't shared.
+      if (skippedAssets.length > 0) {
+        const assetList = skippedAssets.map((asset) => asset.name).join(', ');
+        dispatch(
+          generalErrorDialog(
+            'Some assets could not be exported',
+            `Your protocol was downloaded, but these assets could not be ` +
+              `included and are missing from the file: ${assetList}.`,
+          ),
+        );
+      }
+
+      return true;
+    } finally {
+      setExportInProgress(false);
+    }
   },
 );
 
