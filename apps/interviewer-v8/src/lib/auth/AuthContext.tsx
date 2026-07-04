@@ -52,9 +52,9 @@ type AuthActions = {
   setIdleTimeoutMinutes: (minutes: IdleTimeoutMinutes) => Promise<void>;
 };
 
-type AuthContextValue = AuthState & AuthActions;
+export type AuthContextValue = AuthState & AuthActions;
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
 // Lock 30s after window blur / tab hide, separate from the idle timeout — a
 // brief grace period to alt-tab without losing the session. Disabled in dev

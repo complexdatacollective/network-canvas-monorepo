@@ -13,7 +13,9 @@ import { useAuth } from '~/lib/auth/AuthContext';
 import { BiometricLockBody } from './UnlockForms/BiometricLockBody';
 import PasswordUnlockField from './UnlockForms/PasswordUnlockField';
 import { PinUnlockForm } from './UnlockForms/PinUnlockForm';
+import { ResetAppDataButton } from './UnlockForms/ResetAppDataButton';
 import { UnlockEmblem } from './UnlockForms/UnlockEmblem';
+import { UnlockLayout } from './UnlockForms/UnlockLayout';
 
 const LOCK_TITLE = 'Welcome back';
 
@@ -36,13 +38,15 @@ function PinLockBody({
           </SubmitButton>
         }
       >
-        <div className="mb-6 flex flex-col items-center gap-4 text-center">
-          <UnlockEmblem icon={KeyRound} seed="pin-unlock" />
-          <Paragraph margin="none" emphasis="muted">
+        <UnlockLayout
+          emblem={<UnlockEmblem icon={KeyRound} seed="pin-unlock" />}
+        >
+          <Paragraph emphasis="muted">
             Enter your PIN to unlock and pick up where you left off.
           </Paragraph>
-        </div>
-        <PinUnlockForm formId={formId} verifyPin={verifyPin} />
+          <PinUnlockForm formId={formId} verifyPin={verifyPin} />
+          <ResetAppDataButton />
+        </UnlockLayout>
       </Dialog>
     </FormStoreProvider>
   );
@@ -67,22 +71,26 @@ function PassphraseLockBody({
           </SubmitButton>
         }
       >
-        <div className="mb-6 flex flex-col items-center gap-4 text-center">
-          <UnlockEmblem icon={RectangleEllipsis} seed="passphrase-unlock" />
-          <Paragraph margin="none" emphasis="muted">
-            Enter your passphrase to unlock and pick up where you left off.
-          </Paragraph>
-        </div>
-        <FormWithoutProvider
-          id={formId}
-          onSubmit={(values) =>
-            onSubmit(
-              typeof values.passphrase === 'string' ? values.passphrase : '',
-            )
+        <UnlockLayout
+          emblem={
+            <UnlockEmblem icon={RectangleEllipsis} seed="passphrase-unlock" />
           }
         >
-          <PasswordUnlockField autoFocus />
-        </FormWithoutProvider>
+          <Paragraph emphasis="muted">
+            Enter your passphrase to unlock and pick up where you left off.
+          </Paragraph>
+          <FormWithoutProvider
+            id={formId}
+            onSubmit={(values) =>
+              onSubmit(
+                typeof values.passphrase === 'string' ? values.passphrase : '',
+              )
+            }
+          >
+            <PasswordUnlockField autoFocus />
+          </FormWithoutProvider>
+          <ResetAppDataButton />
+        </UnlockLayout>
       </Dialog>
     </FormStoreProvider>
   );
