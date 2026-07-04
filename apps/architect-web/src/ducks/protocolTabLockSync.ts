@@ -1,4 +1,4 @@
-import type { Dispatch, UnknownAction } from '@reduxjs/toolkit';
+import type { Dispatch } from '@reduxjs/toolkit';
 
 import {
   createProtocolTabLock,
