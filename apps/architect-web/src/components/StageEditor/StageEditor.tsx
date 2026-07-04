@@ -397,7 +397,7 @@ const StageEditor = (props: StageEditorProps) => {
 
   return (
     <Editor initialValues={initialValues} onSubmit={onSubmit} form={formName}>
-      <div className="relative h-dvh overflow-y-auto pb-32">
+      <div className="relative h-full overflow-y-auto pb-32">
         <StageEditorNav
           stageName={stageName}
           onCancel={handleCancel}

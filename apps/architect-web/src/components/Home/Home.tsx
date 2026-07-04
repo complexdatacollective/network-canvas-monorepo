@@ -197,7 +197,7 @@ const Home = () => {
         initialName={pendingTemplate?.defaultName}
       />
 
-      <div {...getRootProps()} className="flex h-dvh flex-col">
+      <div {...getRootProps()} className="flex h-full flex-col">
         <input {...getInputProps()} />
 
         {/* Dropzone */}

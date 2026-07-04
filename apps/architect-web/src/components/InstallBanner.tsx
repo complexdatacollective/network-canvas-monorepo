@@ -72,7 +72,7 @@ const InstallBanner = () => {
   return (
     <aside
       aria-label="Install Architect"
-      className="border-border bg-surface-1 text-surface-1-foreground fixed inset-x-0 top-0 z-(--z-global-ui) flex w-full items-center gap-3 border-b px-6 py-2 text-sm shadow-sm"
+      className="border-border bg-surface-1 text-surface-1-foreground flex w-full shrink-0 items-center gap-3 border-b px-6 py-2 text-sm"
     >
       <MonitorDown
         className="size-4 shrink-0 text-[hsl(var(--mustard-dark))]"

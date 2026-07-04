@@ -39,7 +39,7 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
       ref={ref}
       onScroll={handleScroll}
       className={cx(
-        'relative h-dvh overflow-y-auto pb-32 print:h-auto print:overflow-visible print:pb-0',
+        'relative h-full overflow-y-auto pb-32 print:h-auto print:overflow-visible print:pb-0',
         className,
       )}
     >
