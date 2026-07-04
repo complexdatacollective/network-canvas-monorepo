@@ -34,6 +34,10 @@ declare global {
   type AuthStatus = {
     configured: boolean;
     locked: boolean;
+    // The vault record is present but unreadable (corrupt, or written by a
+    // newer app version). Distinct from unconfigured so the app can surface a
+    // recovery screen rather than overwriting the wrapped DEK via fresh setup.
+    corrupt?: boolean;
     mode?: 'pin' | 'passphrase' | 'biometric' | 'none';
   };
 

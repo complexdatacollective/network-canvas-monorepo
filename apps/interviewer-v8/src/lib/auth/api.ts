@@ -27,6 +27,9 @@ export function isBiometricSupported(): Promise<boolean> {
 
 export async function status(): Promise<AuthStatus> {
   const s = vault.vaultStatus();
+  if (s.corrupt) {
+    return { configured: false, locked: false, corrupt: true };
+  }
   if (!s.configured || !s.mode) {
     return { configured: false, locked: false };
   }

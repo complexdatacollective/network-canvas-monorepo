@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { readVault } from '../vaultStore';
+import * as vaultStore from '../vaultStore';
 
 // The WebAuthn layer is mocked so enrol/unlock biometric are deterministic:
 // a fixed PRF secret per (credentialId, prfSalt). userHandle is ignored.
@@ -65,6 +66,46 @@ afterEach(() => {
 describe('vaultStatus', () => {
   it('reports unconfigured before enrol', () => {
     expect(vaultStatus()).toEqual({ configured: false });
+  });
+
+  it('reports corrupt for a present-but-unreadable record', () => {
+    window.localStorage.setItem(
+      'interviewer-v8:vault',
+      JSON.stringify({ version: 5, mode: 'none' }),
+    );
+    expect(vaultStatus()).toEqual({ configured: false, corrupt: true });
+  });
+});
+
+describe('cross-tab vault guard', () => {
+  it('refuses the derived DEK if the vault record changed during unlock', async () => {
+    await enrolPin('12345678');
+    const original = readVault();
+    if (!original || original.mode !== 'pin') throw new Error('expected pin');
+    // First read (start of unlockPin) → the real record so the unwrap
+    // succeeds; second read (the post-unwrap guard) → a re-enrolled vault, as
+    // if another tab revoked + re-enrolled while this unlock was in flight.
+    const reEnrolled = {
+      ...original,
+      wrappedDekB64: `${original.wrappedDekB64}x`,
+    };
+    const spy = vi
+      .spyOn(vaultStore, 'readVault')
+      .mockReturnValueOnce(original)
+      .mockReturnValueOnce(reEnrolled);
+
+    const result = await unlockPin('12345678');
+
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected failure');
+    expect(result.message).toMatch(/changed/i);
+  });
+
+  it('accepts the DEK when the vault is unchanged', async () => {
+    await enrolPin('12345678');
+    const result = await unlockPin('12345678');
+    expect(result.ok).toBe(true);
   });
 });
 

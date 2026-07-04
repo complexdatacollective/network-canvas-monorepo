@@ -5,6 +5,7 @@ import Spinner from '@codaco/fresco-ui/Spinner';
 import { useAuth } from '~/lib/auth/AuthContext';
 
 import { LockScreen } from './LockScreen';
+import { VaultRecoveryScreen } from './VaultRecoveryScreen';
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const { kind } = useAuth();
@@ -31,6 +32,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
       </div>
     );
   }
+
+  if (kind === 'corrupt') return <VaultRecoveryScreen />;
 
   if (kind === 'locked') return <LockScreen />;
 

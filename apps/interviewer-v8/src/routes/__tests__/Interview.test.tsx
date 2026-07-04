@@ -37,6 +37,14 @@ vi.mock('~/lib/assets/assetResolver', () => ({
   buildResolvedAssets: vi.fn(async () => ({})),
   makeAssetResolver: vi.fn(() => async () => ''),
 }));
+// The history mechanics are covered in useHistoryBackGuard's own test; here the
+// gated exit just runs its navigation callback. The returned exit function must
+// be a stable reference (the real hook uses useCallback), or consumers that put
+// it in effect deps re-run every render.
+vi.mock('~/lib/pwa/useHistoryBackGuard', () => {
+  const exit = (goHome: () => void) => goHome();
+  return { useHistoryBackGuard: () => exit };
+});
 vi.mock('~/lib/installationId', () => ({
   getInstallationId: () => 'test-install',
 }));
@@ -133,7 +141,9 @@ describe('InterviewRoute enter gate', () => {
 
     render(<InterviewRoute sessionId="s1" />);
 
-    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/'));
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
+    );
     expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
   });
 
@@ -212,7 +222,7 @@ describe('InterviewRoute exit gate', () => {
 
     await invoke(lastShellProps().onExit);
 
-    expect(navigateMock).not.toHaveBeenCalledWith('/');
+    expect(navigateMock).not.toHaveBeenCalledWith('/', { replace: true });
   });
 
   it('navigates home and clears authorization when the exit gate passes', async () => {
@@ -221,7 +231,9 @@ describe('InterviewRoute exit gate', () => {
 
     await invoke(lastShellProps().onExit);
 
-    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/'));
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
+    );
     expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
   });
 });
@@ -304,7 +316,7 @@ describe('InterviewRoute finish flow', () => {
     await invoke(() => button.click());
 
     expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
-    expect(navigateMock).toHaveBeenCalledWith('/');
+    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
   });
 
   it('applies the exit gate from the completion screen', async () => {
@@ -327,6 +339,6 @@ describe('InterviewRoute finish flow', () => {
     });
     await invoke(() => screen.getByRole('button', { name: /exit/i }).click());
 
-    expect(navigateMock).not.toHaveBeenCalledWith('/');
+    expect(navigateMock).not.toHaveBeenCalledWith('/', { replace: true });
   });
 });

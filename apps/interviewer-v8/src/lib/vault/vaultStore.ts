@@ -75,19 +75,36 @@ function isVaultRecord(value: unknown): value is VaultRecord {
   return false;
 }
 
-export function readVault(): VaultRecord | null {
-  if (typeof window === 'undefined') return null;
+// The three distinguishable states of the localStorage vault slot. `corrupt`
+// (present but unparseable/unknown-version/foreign-shaped) is kept separate from
+// `absent` so the app can surface a recovery screen instead of treating a
+// damaged or newer-version record as a fresh, unconfigured device and letting
+// setup silently overwrite the only wrapped copy of the DEK.
+export type VaultReadState =
+  | { status: 'absent' }
+  | { status: 'valid'; record: VaultRecord }
+  | { status: 'corrupt' };
+
+export function readVaultState(): VaultReadState {
+  if (typeof window === 'undefined') return { status: 'absent' };
   const raw = window.localStorage.getItem(VAULT_STORAGE_KEY);
-  if (raw === null) return null;
+  if (raw === null) return { status: 'absent' };
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return null;
+    return { status: 'corrupt' };
   }
 
-  return isVaultRecord(parsed) ? parsed : null;
+  return isVaultRecord(parsed)
+    ? { status: 'valid', record: parsed }
+    : { status: 'corrupt' };
+}
+
+export function readVault(): VaultRecord | null {
+  const state = readVaultState();
+  return state.status === 'valid' ? state.record : null;
 }
 
 export function writeVault(record: VaultRecord): void {
