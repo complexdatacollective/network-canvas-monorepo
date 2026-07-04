@@ -41,6 +41,48 @@ const interfaceImagesRoot = resolve(__dirname, '../interface-images').replace(
   '/',
 );
 
+// Emit the bundled interface-images screenshots as separate hashed files rather
+// than base64 data URIs. Vite's lib mode force-inlines every asset — `shouldInline`
+// returns `true` for `build.lib` before it ever consults `assetsInlineLimit`, so
+// no build setting can override it — which would fold the ~4.5 MB of `.webp` into
+// `dist/index.js`. The one per-asset escape that still wins is the `?no-inline`
+// query, so tag the manifest's `new URL('./assets/*.webp', import.meta.url)`
+// references with it (pre-transform, before Vite resolves the asset URLs). Vite
+// strips the query from the emitted reference, so consumers still resolve clean
+// `./assets/<name>-<hash>.webp` URLs and the images load on demand.
+const interfaceImagesNoInlinePlugin = (): Plugin => ({
+  name: 'interview-interface-images-no-inline',
+  enforce: 'pre',
+  transform(code, id) {
+    const p = id.replace(/\\/g, '/');
+    if (!p.startsWith(`${interfaceImagesRoot}/`)) return null;
+    if (!code.includes('import.meta.url')) return null;
+    const tagged = code.replace(
+      /(new URL\((['"])[^'"]+?\.webp)\2/g,
+      '$1?no-inline$2',
+    );
+    return tagged === code ? null : { code: tagged, map: null };
+  },
+  // With a relative `base`, Vite emits the asset reference as a bare
+  // `new URL("assets/…", import.meta.url)`. That resolves correctly for
+  // esm/Vite consumers, but webpack (Next.js) treats a `new URL()` request
+  // without a `./` prefix as a bare module request and fails to resolve it.
+  // Re-add the explicit `./` so the emitted references are the canonical,
+  // bundler-portable `new URL("./assets/…", import.meta.url)` form. Done in
+  // `generateBundle` because Vite only resolves the asset-URL placeholders into
+  // their final `new URL("assets/…")` text after the `renderChunk` phase.
+  generateBundle(_options, bundle) {
+    for (const file of Object.values(bundle)) {
+      if (file.type === 'chunk' && file.code.includes('new URL("assets/')) {
+        file.code = file.code.replaceAll(
+          'new URL("assets/',
+          'new URL("./assets/',
+        );
+      }
+    }
+  },
+});
+
 // Skip dts emission for non-library consumers of this config (Storybook builds
 // the preview app; Vitest just runs tests). Storybook's CLI sets STORYBOOK=true;
 // Vitest sets VITEST=true.
@@ -51,6 +93,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   plugins: [
+    interfaceImagesNoInlinePlugin(),
     react(),
     isLibraryBuild &&
       dts({
@@ -69,6 +112,12 @@ export default defineConfig({
   define: {
     __PACKAGE_VERSION__: JSON.stringify(pkg.version),
   },
+  // Emit asset URLs relative to the importing module rather than prefixed with
+  // the default `/` base. The screenshots are referenced via
+  // `new URL('./assets/…', import.meta.url)`, so a relative base keeps them
+  // resolvable from wherever a consumer installs `dist/` (e.g.
+  // `node_modules/@codaco/interview/dist/`) instead of the server root.
+  base: './',
   build: {
     // Bundle to ESM entries rather than `preserveModules`. rolldown's
     // preserveModules rewrites inter-module specifiers from the emitted file
@@ -124,6 +173,11 @@ export default defineConfig({
           return false;
         }
         return true; // bare specifier / other workspace package / node_modules
+      },
+      output: {
+        // Emit the interface-images screenshots into `dist/assets/` with a
+        // content hash, keeping them namespaced and cache-friendly.
+        assetFileNames: 'assets/[name]-[hash][extname]',
       },
     },
     sourcemap: true,
