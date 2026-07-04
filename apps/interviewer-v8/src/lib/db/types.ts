@@ -51,7 +51,7 @@ export type StoredSession = {
   isSynthetic?: boolean;
 };
 
-export type SessionStatusKind = 'in-progress' | 'complete' | 'exported';
+export type SessionStatusKind = 'in-progress' | 'complete';
 
 // Stripped-down session metadata used by everything except the interview
 // engine and the export pipeline. Excludes the heavy `network` blob and
