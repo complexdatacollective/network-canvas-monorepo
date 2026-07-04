@@ -1,6 +1,8 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { SessionPayload } from '@codaco/interview';
+
 const navigateMock = vi.fn();
 vi.mock('wouter', () => ({
   useLocation: () => ['/interview/s1', navigateMock],
@@ -21,11 +23,12 @@ const getSettingsMock = vi.fn();
 const getSessionMock = vi.fn();
 const getProtocolByHashMock = vi.fn();
 const markSessionFinishedMock = vi.fn();
+const updateSessionMock = vi.fn();
 vi.mock('~/lib/db/api', () => ({
   getSettings: (...a: unknown[]) => getSettingsMock(...a),
   getSession: (...a: unknown[]) => getSessionMock(...a),
   getProtocolByHash: (...a: unknown[]) => getProtocolByHashMock(...a),
-  updateSession: vi.fn(),
+  updateSession: (...a: unknown[]) => updateSessionMock(...a),
   updateSettings: vi.fn(),
   markSessionFinished: (...a: unknown[]) => markSessionFinishedMock(...a),
 }));
@@ -41,6 +44,7 @@ vi.mock('~/lib/installationId', () => ({
 type CapturedShellProps = {
   onExit: () => void;
   onFinish: (id: string) => Promise<void>;
+  onSync: (id: string, session: SessionPayload) => Promise<void>;
 };
 
 const { shellMock } = vi.hoisted(() => ({
@@ -84,6 +88,20 @@ function lastShellProps(): CapturedShellProps {
   const props = shellMock.mock.calls.at(-1)?.[0];
   if (!props) throw new Error('Shell was never rendered');
   return props;
+}
+
+function makeSyncPayload(
+  overrides: Partial<SessionPayload> = {},
+): SessionPayload {
+  return {
+    id: 's1',
+    startTime: '2026-01-01T00:00:00.000Z',
+    finishTime: null,
+    exportTime: null,
+    lastUpdated: '2026-01-01T00:00:00.000Z',
+    network: { nodes: [], edges: [], ego: { _uid: 'ego-1', attributes: {} } },
+    ...overrides,
+  };
 }
 
 async function invoke(fn: () => unknown) {
@@ -228,6 +246,41 @@ describe('InterviewRoute finish flow', () => {
     expect(markSessionFinishedMock).toHaveBeenCalledWith('s1');
     expect(await screen.findByText('Interview complete')).toBeInTheDocument();
     expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
+  });
+
+  it('never writes finishedAt from a sync', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    updateSessionMock.mockClear();
+
+    await act(async () => {
+      await lastShellProps().onSync('s1', makeSyncPayload());
+    });
+
+    const patch = updateSessionMock.mock.calls.at(-1)?.[1];
+    expect(patch).not.toHaveProperty('finishedAt');
+  });
+
+  it('does not un-finish when a trailing sync lands after finish', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const { onFinish, onSync } = lastShellProps();
+
+    await act(async () => {
+      await onFinish('s1');
+    });
+    await screen.findByText('Interview complete');
+
+    updateSessionMock.mockClear();
+    // A debounced sync fired after finish still carries finishTime: null
+    // (the engine never sets it for an in-progress session).
+    await act(async () => {
+      await onSync('s1', makeSyncPayload({ finishTime: null }));
+    });
+
+    for (const call of updateSessionMock.mock.calls) {
+      expect(call[1]).not.toHaveProperty('finishedAt');
+    }
   });
 
   it('renders the completion screen for an already-finished session', async () => {

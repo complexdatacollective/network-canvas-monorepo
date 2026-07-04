@@ -4,7 +4,7 @@ import { Route, Switch, useLocation } from 'wouter';
 import { BackgroundLights } from '@codaco/art';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 
-import { AppErrorBoundary } from './components/AppErrorBoundary';
+import { ErrorBoundary } from './components/AppErrorBoundary';
 import { AuthGate } from './components/AuthGate';
 import PwaUpdateBanner from './components/PwaUpdateBanner';
 import { AppProviders } from './providers/AppProviders';
@@ -34,7 +34,11 @@ export default function App() {
 
   return (
     <ThemedRegion theme="interview" className="isolate h-full">
-      <AppErrorBoundary>
+      {/* Bare, dependency-free outer boundary: catches crashes in AppProviders
+          construction itself (before AnalyticsProvider exists) and always shows
+          the fallback. The analytics-reporting boundary lives inside
+          AppProviders, within AnalyticsProvider, so it can actually report. */}
+      <ErrorBoundary>
         <AppProviders>
           <PwaUpdateBanner />
           <motion.div
@@ -87,7 +91,7 @@ export default function App() {
             </AnimatePresence>
           </AuthGate>
         </AppProviders>
-      </AppErrorBoundary>
+      </ErrorBoundary>
     </ThemedRegion>
   );
 }

@@ -86,4 +86,33 @@ describe('assetResolver decrypts encrypted-at-rest assets', () => {
     expect(value).toBe('secret');
     expect(URL.createObjectURL).not.toHaveBeenCalled();
   });
+
+  it('re-import mints a fresh URL and revokes the superseded one', async () => {
+    const { makeAssetResolver } = await import('../assetResolver');
+    await saveProtocol(
+      makeProtocol({
+        'img-1': { id: 'img-1', type: 'image', name: 'Photo', source: 'p.png' },
+      }),
+      'h1',
+      [{ id: 'img-1', name: 'Photo', data: new Blob([new Uint8Array([1])]) }],
+    );
+
+    vi.mocked(URL.createObjectURL)
+      .mockReturnValueOnce('blob:first')
+      .mockReturnValueOnce('blob:second');
+
+    const first = await makeAssetResolver(
+      'h1',
+      '2026-01-01T00:00:00.000Z',
+    )('img-1');
+    expect(first).toBe('blob:first');
+
+    // Same-hash re-import: same protocolHash + assetId, new importedAt.
+    const second = await makeAssetResolver(
+      'h1',
+      '2026-02-02T00:00:00.000Z',
+    )('img-1');
+    expect(second).toBe('blob:second');
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:first');
+  });
 });

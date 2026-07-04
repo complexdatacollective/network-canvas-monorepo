@@ -162,6 +162,10 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     [],
   );
 
+  // `finishedAt` is written solely by markSessionFinished (via handleFinish).
+  // The engine never sets session.finishTime for an in-progress session, so a
+  // trailing debounced sync landing after finish would otherwise rewrite it
+  // back to null and un-finish the interview.
   const handleSync = useCallback(
     async (id: string, session: SessionPayload) => {
       await updateSession(id, {
@@ -170,7 +174,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         stageMetadata: session.stageMetadata as
           | Record<string, unknown>
           | undefined,
-        finishedAt: session.finishTime,
       });
     },
     [],

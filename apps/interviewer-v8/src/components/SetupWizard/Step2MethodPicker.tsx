@@ -34,6 +34,16 @@ export default function Step2MethodPicker() {
     setNextEnabled(selectedMethod !== null);
   }, [selectedMethod, setNextEnabled]);
 
+  // Switching methods must not carry over a prior method's committed enrolment,
+  // or Step3 would show it as "configured" while the vault holds the old mode.
+  const commitMethod = (value: WizardSelectedMethod) => {
+    if (value === selectedMethod) {
+      setStepData({ selectedMethod: value });
+      return;
+    }
+    setStepData({ selectedMethod: value, enrolmentCommitted: false });
+  };
+
   const biometricDisabled =
     biometric.status === 'checking' || biometric.status === 'unavailable';
 
@@ -62,12 +72,12 @@ export default function Step2MethodPicker() {
             confirmLabel: 'Continue without security',
             intent: 'warning',
             onConfirm: () => {
-              setStepData({ selectedMethod: 'none' });
+              commitMethod('none');
             },
           });
           return;
         }
-        setStepData({ selectedMethod: value });
+        commitMethod(value);
       }}
       biometricDisabled={biometricDisabled}
       biometricDescription={biometricDescription}

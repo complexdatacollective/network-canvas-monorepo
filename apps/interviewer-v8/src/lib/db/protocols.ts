@@ -59,7 +59,11 @@ export async function saveProtocol(
     name: protocol.name,
     schemaVersion: protocol.schemaVersion,
     lastModified: protocol.lastModified,
-    importedAt: existing?.importedAt ?? new Date().toISOString(),
+    // Refresh on every save, including a same-hash re-import. The protocol hash
+    // excludes `assetManifest`, so re-importing with updated asset bytes keeps
+    // the same hash; a fresh timestamp is what changes the asset resolver's
+    // cache key (see assetResolver.ts) so stale blob URLs get evicted.
+    importedAt: new Date().toISOString(),
     description: protocol.description,
     codebook: protocol.codebook,
     protocol,
