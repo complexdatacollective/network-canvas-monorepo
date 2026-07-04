@@ -25,6 +25,11 @@ const withAssetUrl = <P extends WithAssetUrlProps>(
       let isMounted = true;
       let currentUrl: string | null = null;
 
+      // Clear any previously-shown URL up front so a changed id (or one that
+      // resolves to nothing) can't keep rendering the old, now-wrong asset while
+      // the new one loads.
+      setUrl(undefined);
+
       const loadAsset = async () => {
         if (!id) return;
 

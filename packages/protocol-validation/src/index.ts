@@ -5,7 +5,11 @@ import {
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,
 } from './utils/collectEntityAttributeReferences';
-import { type ExtractedAsset, extractProtocol } from './utils/extractProtocol';
+import {
+  type ExtractedAsset,
+  extractProtocol,
+  extractProtocolFromZip,
+} from './utils/extractProtocol';
 import { hashProtocol } from './utils/hashProtocol';
 import {
   getVariableNamesFromNetwork,
@@ -40,6 +44,7 @@ export {
   type EntityTypeReferenceHit,
   type ExtractedAsset,
   extractProtocol,
+  extractProtocolFromZip,
   getVariableNamesFromNetwork,
   hashProtocol,
   type Network,

@@ -26,7 +26,13 @@ type ResolvedAsset = {
 const entryNameFor = (assetId: string, source: string): string => {
   const dot = source.lastIndexOf('.');
   const extension = dot > 0 ? source.slice(dot) : '';
-  return `${assetId}${extension}`;
+  // `assetId` is a manifest record key, which the schema doesn't constrain to a
+  // safe basename, so a crafted id (`../evil`, `a/b`) must not become a
+  // path-traversal zip entry. Reduce it to safe characters and collapse `..`.
+  const safeStem = assetId
+    .replace(/[^A-Za-z0-9._-]/g, '_')
+    .replace(/\.{2,}/g, '_');
+  return `${safeStem}${extension}`;
 };
 
 const getAllProtocolAssets = async (

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import {
   type CurrentProtocol,
   type ExtractedAsset,
-  extractProtocol,
+  extractProtocolFromZip,
   getMigrationInfo,
   migrateProtocol,
   validateProtocol,
@@ -169,8 +169,9 @@ export const openLocalNetcanvas = createAsyncThunk(
       // a shared .netcanvas can't OOM-crash the tab. This is an expected input
       // problem (like an unsupported file type), so surface it without reaching
       // the exception-reporting catch below.
+      let guardedZip: Awaited<ReturnType<typeof loadGuardedNetcanvas>>;
       try {
-        await loadGuardedNetcanvas(bytes);
+        guardedZip = await loadGuardedNetcanvas(bytes);
       } catch (error) {
         if (error instanceof NetcanvasTooLargeError) {
           dispatch(
@@ -181,7 +182,8 @@ export const openLocalNetcanvas = createAsyncThunk(
         throw error;
       }
 
-      const { protocol, assets } = await extractProtocol(bytes);
+      // Reuse the zip the guard already parsed rather than re-loading the archive.
+      const { protocol, assets } = await extractProtocolFromZip(guardedZip);
       const protocolName = file.name.replace(/\.netcanvas$/, '');
 
       // Handle migration if needed
