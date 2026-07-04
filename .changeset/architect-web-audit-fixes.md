@@ -17,3 +17,7 @@ more robust (clearer errors instead of a preview that never loads). Option label
 pick up stray blank lines. Privacy is tightened: analytics no longer transmits
 your protocol's text, and a Content-Security-Policy is applied to the deployed
 app.
+
+Starting up is nicer too: a loading animation now appears while the app opens
+instead of a blank screen, and the "install Architect" banner disappears on its
+own as soon as you install the app, without needing to refresh.
